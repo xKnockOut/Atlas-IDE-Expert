@@ -124,7 +124,9 @@ begin
   Dialog := TAtlasSetupPreviewDialog.CreateDialog(nil, AConfigName, AProjectName, ATemplate, AText);
   try
     if Assigned(APrepare) then
+    begin
       APrepare(Dialog);
+    end;
     Result := Dialog.ShowModal = mrOk;
   finally
     Dialog.Free;

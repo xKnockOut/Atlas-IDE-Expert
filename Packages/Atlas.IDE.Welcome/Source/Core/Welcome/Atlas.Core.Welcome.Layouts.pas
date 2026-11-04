@@ -160,12 +160,18 @@ begin
         begin
           // Ein ungültiger Eintrag fällt weg; doppelte und leere Namen ebenso.
           if not (List.Items[Index] is TJSONObject) then
+          begin
             Continue;
+          end;
           if not TAtlasWelcomeLayout.FromJson(List.Items[Index].ToJSON, Layout) then
+          begin
             Continue;
+          end;
           Layout.Name := Trim(Layout.Name);
           if not ValidName(Layout.Name) or (Result.IndexOf(Layout.Name) >= 0) then
+          begin
             Continue;
+          end;
           Result.Items := Result.Items + [Layout];
         end;
       end;
@@ -174,10 +180,14 @@ begin
     end;
   end;
   if not Valid or (Length(Result.Items) = 0) then
+  begin
     Result := Defaults;
+  end;
   Result.Active := Result.IndexOf(Trim(AActive));
   if Result.Active < 0 then
+  begin
     Result.Active := 0;
+  end;
 end;
 
 function TAtlasWelcomeLayouts.ToJson: string;
@@ -186,11 +196,15 @@ var
 begin
   Result := '';
   if IsDefault then
+  begin
     Exit;
+  end;
   for Layout in Items do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Layout.ToJson;
   end;
   Result := '[' + Result + ']';
@@ -203,13 +217,17 @@ var
 begin
   Result := Length(Items) = 1;
   if not Result then
+  begin
     Exit;
+  end;
   Left := Items[0];
   Right := TAtlasWelcomeLayout.Atlas;
   // Sichtbarkeit steht in den Einstellungen der Bereiche; für den Vergleich gleich setzen.
   Left.Slots := Copy(Left.Slots);
   for Index := 0 to High(Left.Slots) do
+  begin
     Left.Slots[Index].Visible := True;
+  end;
   Result := TAtlasWelcomeLayout.Same(Left, Right);
 end;
 
@@ -218,8 +236,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Items) do
+  begin
     if SameText(Items[Index].Name, Trim(AName)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -229,17 +251,25 @@ var
 begin
   Result := nil;
   for Layout in Items do
+  begin
     Result := Result + [Layout.Name];
+  end;
 end;
 
 function TAtlasWelcomeLayouts.Current: TAtlasWelcomeLayout;
 begin
   if (Active >= 0) and (Active <= High(Items)) then
-    Result := Items[Active]
+  begin
+    Result := Items[Active];
+  end
   else if Length(Items) > 0 then
-    Result := Items[0]
+  begin
+    Result := Items[0];
+  end
   else
+  begin
     Result := TAtlasWelcomeLayout.Atlas;
+  end;
 end;
 
 function TAtlasWelcomeLayouts.ActiveName: string;
@@ -258,7 +288,9 @@ begin
     Exit;
   end;
   if (Result.Active < 0) or (Result.Active > High(Result.Items)) then
+  begin
     Result.Active := 0;
+  end;
   Result.Items[Result.Active] := ALayout;
   Result.Items[Result.Active].Name := Items[Result.Active].Name;
 end;
@@ -271,7 +303,9 @@ begin
   Index := IndexOf(AName);
   Result := Index >= 0;
   if Result then
+  begin
     ALayouts.Active := Index;
+  end;
 end;
 
 function TAtlasWelcomeLayouts.Added(const AName: string; out ALayouts: TAtlasWelcomeLayouts): Boolean;
@@ -281,7 +315,9 @@ begin
   ALayouts := Self;
   Result := ValidName(AName) and (IndexOf(AName) < 0);
   if not Result then
+  begin
     Exit;
+  end;
   Layout := Current;
   Layout.Name := Trim(AName);
   Layout.Slots := Copy(Layout.Slots);
@@ -297,7 +333,9 @@ begin
   Other := IndexOf(AName);
   Result := ValidName(AName) and ((Other < 0) or (Other = Active)) and (Active >= 0) and (Active <= High(Items));
   if not Result then
+  begin
     Exit;
+  end;
   ALayouts.Items := Copy(Items);
   ALayouts.Items[Active].Name := Trim(AName);
 end;
@@ -307,12 +345,16 @@ begin
   ALayouts := Self;
   Result := (Length(Items) > 1) and (Active >= 0) and (Active <= High(Items));
   if not Result then
+  begin
     Exit;
+  end;
   ALayouts.Items := Copy(Items);
   Delete(ALayouts.Items, Active, 1);
   ALayouts.Active := Active - 1;
   if ALayouts.Active < 0 then
+  begin
     ALayouts.Active := 0;
+  end;
 end;
 
 function TAtlasWelcomeLayouts.UniqueName(const ABase: string): string;
@@ -352,8 +394,12 @@ var
   Item: TAtlasWelcomeCatalogItem;
 begin
   for Item in Catalog do
+  begin
     if SameText(Item.Id, AId) then
+    begin
       Exit(Item.Setting);
+    end;
+  end;
   Result := '';
 end;
 
@@ -369,12 +415,18 @@ var
 begin
   Key := SettingOf(AId);
   if Key = '' then
+  begin
     Exit(True);
+  end;
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   if Store.HasInteger(Key) then
-    Result := Store.ReadInteger(Key, 0) <> 0
+  begin
+    Result := Store.ReadInteger(Key, 0) <> 0;
+  end
   else
+  begin
     Result := (Store.Text(Key) <> '') and not SameText(Store.Text(Key), 'off');
+  end;
 end;
 
 class function TAtlasWelcomeCustomizing.WithSection(const ASettings: TAtlasPluginSettings; const AId: string;
@@ -386,14 +438,20 @@ begin
   Result := ASettings;
   Key := SettingOf(AId);
   if (Key = '') or (IsOn(ASettings, AId) = AOn) then
+  begin
     Exit;
+  end;
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   if Store.HasInteger(Key) then
   begin
     if AOn then
-      Store.WriteInteger(Key, 1)
+    begin
+      Store.WriteInteger(Key, 1);
+    end
     else
+    begin
       Store.WriteInteger(Key, 0);
+    end;
   end
   else
   begin
@@ -404,7 +462,9 @@ begin
       Value := Defaults.Text(Key);
       // Ist schon die Vorgabe "off", gilt der erste Wert, der zeigt (welcomePage.whatsNew: afterUpdate).
       if SameText(Value, 'off') or (Value = '') then
+      begin
         Value := 'afterUpdate';
+      end;
     end;
     Store.WriteString(Key, Value);
   end;
@@ -420,8 +480,12 @@ begin
   Result := ALayout;
   Result.Slots := Copy(ALayout.Slots);
   for Index := 0 to High(Result.Slots) do
+  begin
     if TAtlasWelcomeCustomizing.InCatalog(Result.Slots[Index].Id) then
+    begin
       Result.Slots[Index].Visible := TAtlasWelcomeCustomizing.IsOn(ASettings, Result.Slots[Index].Id);
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeCustomizing.Load(const ASettings: TAtlasPluginSettings): TAtlasWelcomeLayouts;
@@ -432,7 +496,9 @@ begin
   // Spalten und Sichtbarkeit des aktiven Layouts gelten aus den Einstellungen (Optionsseite, Schnellschalter).
   Layout := VisibleFromSettings(Result.Current, ASettings);
   if Layout.Columns <> ASettings.WelcomePageColumns then
+  begin
     Layout := Layout.WithColumns(ASettings.WelcomePageColumns);
+  end;
   Result := Result.WithCurrent(Layout);
 end;
 
@@ -456,7 +522,9 @@ var
 begin
   Result := ASettings;
   for Slot in ALayouts.Current.Slots do
+  begin
     Result := WithSection(Result, Slot.Id, Slot.Visible);
+  end;
   Result := Stored(Result, ALayouts);
 end;
 
@@ -468,7 +536,9 @@ begin
   Result := ASettings;
   Layouts := Load(ASettings);
   if not Layouts.Activated(AName, Target) or (Target.Active = Layouts.Active) then
+  begin
     Exit;
+  end;
   // Das bisherige Layout behält Sichtbarkeit und Spalten aus den Einstellungen (Load).
   Result := Applied(ASettings, Target);
 end;
@@ -494,13 +564,19 @@ var
 begin
   Result := nil;
   for Item in Catalog do
+  begin
     for Id in ARegistered do
+    begin
       if SameText(Id, Item.Id) then
       begin
         if not IsOn(ASettings, Item.Id) then
+        begin
           Result := Result + [Item.Id];
+        end;
         Break;
       end;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeCustomizing.Adopted(const ASettings: TAtlasPluginSettings;
@@ -515,16 +591,24 @@ begin
   AAdded := nil;
   // Nur, wenn schon eigene Layouts gespeichert sind; die Vorgabe kennt alle Bereiche dieser Version.
   if Trim(ASettings.WelcomePageLayouts) = '' then
+  begin
     Exit;
+  end;
   Layouts := Load(ASettings);
   Ids := nil;
   for Id in ARegistered do
+  begin
     if not SameText(Id, TAtlasWelcomeIds.Header) and not SameText(Id, TAtlasWelcomeIds.Board) and
       not SameText(Id, TAtlasWelcomeIds.Search) then
+    begin
       Ids := Ids + [Id];
+    end;
+  end;
   Layouts := Layouts.WithCurrent(Layouts.Current.Adopted(Ids, AWeight, AAdded));
   if Length(AAdded) > 0 then
+  begin
     Result := Stored(ASettings, Layouts);
+  end;
 end;
 
 end.

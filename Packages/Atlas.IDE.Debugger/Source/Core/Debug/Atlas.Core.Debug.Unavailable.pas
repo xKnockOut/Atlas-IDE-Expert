@@ -176,8 +176,12 @@ var
 begin
   Result := TAtlasSwitchSource.Default;
   for Source := Low(TAtlasSwitchSource) to High(TAtlasSwitchSource) do
+  begin
     if SwitchSources[Source] = AText then
+    begin
       Result := Source;
+    end;
+  end;
 end;
 
 function LifetimeOf(const AText: string): TAtlasValueLifetime;
@@ -186,8 +190,12 @@ var
 begin
   Result := TAtlasValueLifetime.Unknown;
   for Lifetime := Low(TAtlasValueLifetime) to High(TAtlasValueLifetime) do
+  begin
     if TAtlasDebugUnavailable.LifetimeNames[Lifetime] = AText then
+    begin
       Result := Lifetime;
+    end;
+  end;
 end;
 
 function SwitchOf(AEntry: TJSONObject): TAtlasUnavailableSwitch;
@@ -243,22 +251,34 @@ var
   Name: string;
 begin
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Root := TJSONObject(AValue);
   Server := True;
   if Root.TryGetValue<TJSONArray>('switches', Switches) then
+  begin
     for Item in Switches do
+    begin
       if Item is TJSONObject then
       begin
         Entry := TJSONObject(Item);
         Name := Entry.GetValue<string>('name', '');
         if Name = 'D' then
-          DebugInfo := SwitchOf(Entry)
+        begin
+          DebugInfo := SwitchOf(Entry);
+        end
         else if Name = 'L' then
-          LocalSymbols := SwitchOf(Entry)
+        begin
+          LocalSymbols := SwitchOf(Entry);
+        end
         else if Name = 'O' then
+        begin
           Optimization := SwitchOf(Entry);
+        end;
       end;
+    end;
+  end;
   if Root.TryGetValue<TJSONObject>('routine', Routine) then
   begin
     RoutineName := Routine.GetValue<string>('name', '');
@@ -275,9 +295,13 @@ begin
   if Root.TryGetValue<TJSONObject>('fixes', Fixes) then
   begin
     if Fixes.TryGetValue<TJSONObject>('routineOptimization', Edit) then
+    begin
       RoutineEdit := TLspWorkspaceEdit.FromJson(Edit);
+    end;
     if Fixes.TryGetValue<TJSONObject>('unitOptimization', Edit) then
+    begin
       UnitEdit := TLspWorkspaceEdit.FromJson(Edit);
+    end;
   end;
 end;
 
@@ -289,8 +313,12 @@ var
 begin
   Result := False;
   for Fix in Fixes do
+  begin
     if Fix = AFix then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasDebugUnavailable }
@@ -303,16 +331,22 @@ var
 begin
   Result := False;
   if Trim(APattern) = '' then
+  begin
     Exit;
+  end;
   Text := AnsiLowerCase(AText);
   From := 1;
   for Part in AnsiLowerCase(Trim(APattern)).Split(['*']) do
   begin
     if Part = '' then
+    begin
       Continue;
+    end;
     Found := PosEx(Part, Text, From);
     if Found = 0 then
+    begin
       Exit;
+    end;
     From := Found + Length(Part);
   end;
   Result := True;
@@ -324,13 +358,23 @@ var
 begin
   Result := False;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   for Pattern in KnownTexts do
+  begin
     if MatchesPattern(AText, Pattern) then
+    begin
       Exit(True);
+    end;
+  end;
   for Pattern in AExtra do
+  begin
     if MatchesPattern(AText, Pattern) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasDebugUnavailable.ParsePatterns(const AText: string): TArray<string>;
@@ -344,10 +388,14 @@ begin
     Pattern := Line;
     Comment := Pos('#', Pattern);
     if Comment > 0 then
+    begin
       Pattern := Copy(Pattern, 1, Comment - 1);
+    end;
     Pattern := Trim(Pattern);
     if Pattern <> '' then
+    begin
       Result := Result + [Pattern];
+    end;
   end;
 end;
 
@@ -357,10 +405,14 @@ var
 begin
   Start := 1;
   while (Start <= Length(AExpression)) and not IsIdentifierChar(AExpression[Start]) do
+  begin
     Inc(Start);
+  end;
   Stop := Start;
   while (Stop <= Length(AExpression)) and IsIdentifierChar(AExpression[Stop]) do
+  begin
     Inc(Stop);
+  end;
   Result := Copy(AExpression, Start, Stop - Start);
 end;
 
@@ -370,9 +422,13 @@ var
 begin
   Value := Trim(AValue);
   if Value = '' then
-    Result := ADefault
+  begin
+    Result := ADefault;
+  end
   else
+  begin
     Result := not (SameText(Value, 'false') or (Value = '0') or (Value = '-') or SameText(Value, 'off'));
+  end;
 end;
 
 class function TAtlasDebugUnavailable.Explain(const AFacts: TAtlasUnavailableFacts): TAtlasUnavailableExplanation;
@@ -384,13 +440,21 @@ var
   begin
     if ASwitch.Known and ((ASwitch.Source = TAtlasSwitchSource.Directive) or
       (ASwitch.Source = TAtlasSwitchSource.Include)) then
-      Result := ASwitch.Value <> '-'
+    begin
+      Result := ASwitch.Value <> '-';
+    end
     else if AFacts.Launch.Known then
-      Result := OptionOn(ALaunchValue, ADefault)
+    begin
+      Result := OptionOn(ALaunchValue, ADefault);
+    end
     else if ASwitch.Known then
-      Result := ASwitch.Value <> '-'
+    begin
+      Result := ASwitch.Value <> '-';
+    end
     else
+    begin
       Result := ADefault;
+    end;
   end;
 
   procedure Check(ACheck: TAtlasUnavailableCheck);
@@ -401,17 +465,25 @@ var
   procedure Fix(AFix: TAtlasUnavailableFix);
   begin
     if not Explanation.HasFix(AFix) then
+    begin
       Explanation.Fixes := Explanation.Fixes + [AFix];
+    end;
   end;
 
   procedure OptimizationFixes;
   begin
     if not AFacts.RoutineEdit.IsEmpty then
+    begin
       Fix(TAtlasUnavailableFix.RoutineOptimization);
+    end;
     if not AFacts.UnitEdit.IsEmpty then
+    begin
       Fix(TAtlasUnavailableFix.UnitOptimization);
+    end;
     if AFacts.Optimization.IsDirective then
+    begin
       Fix(TAtlasUnavailableFix.ShowDirective);
+    end;
   end;
 
   procedure Found(ACause: TAtlasUnavailableCause; const ASwitch: TAtlasUnavailableSwitch);
@@ -443,18 +515,26 @@ begin
   begin
     Found(TAtlasUnavailableCause.NoDebugInfo, AFacts.DebugInfo);
     if AFacts.DebugInfo.IsDirective then
-      Fix(TAtlasUnavailableFix.ShowDirective)
+    begin
+      Fix(TAtlasUnavailableFix.ShowDirective);
+    end
     else
+    begin
       Fix(TAtlasUnavailableFix.RestartWithDebug);
+    end;
     Exit(Explanation);
   end;
   if (AFacts.Local or not AFacts.Server) and not IsOn(AFacts.LocalSymbols, AFacts.Launch.LocalSymbols, True) then
   begin
     Found(TAtlasUnavailableCause.NoLocalSymbols, AFacts.LocalSymbols);
     if AFacts.LocalSymbols.IsDirective then
-      Fix(TAtlasUnavailableFix.ShowDirective)
+    begin
+      Fix(TAtlasUnavailableFix.ShowDirective);
+    end
     else
+    begin
       Fix(TAtlasUnavailableFix.RestartWithDebug);
+    end;
     Exit(Explanation);
   end;
   // 3. Optimierung: nur lokale Namen liegen in Registern (ohne Server unbekannt, dann zählt es).
@@ -463,7 +543,9 @@ begin
   begin
     Found(TAtlasUnavailableCause.Optimization, AFacts.Optimization);
     if AFacts.Lifetime in [TAtlasValueLifetime.Unused, TAtlasValueLifetime.Before, TAtlasValueLifetime.After] then
+    begin
       Explanation.Lifetime := AFacts.Lifetime;
+    end;
     OptimizationFixes;
     Exit(Explanation);
   end;
@@ -502,12 +584,14 @@ var
 begin
   Result := nil;
   for FileEdits in AEdit.Files do
+  begin
     for Edit in FileEdits.Edits do
     begin
       Text := Trim(StringReplace(StringReplace(Edit.NewText, #13#10, ' ', [rfReplaceAll]), #10, ' ',
         [rfReplaceAll]));
       Result := Result + [Format('%d: %s', [Edit.StartPos.Line + 1, Text])];
     end;
+  end;
 end;
 
 end.

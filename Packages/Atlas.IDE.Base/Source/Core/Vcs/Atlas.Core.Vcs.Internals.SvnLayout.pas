@@ -79,9 +79,13 @@ function WithoutCaret(const AText: string): string;
 begin
   Result := Trim(AText);
   if Copy(Result, 1, 2) = '^/' then
-    Delete(Result, 1, 2)
+  begin
+    Delete(Result, 1, 2);
+  end
   else if Result = '^' then
+  begin
     Result := '';
+  end;
 end;
 
 { TAtlasSvnLayout }
@@ -95,6 +99,7 @@ begin
   Result := False;
   mParts := WithoutCaret(ARelativeUrl).Split(['/'], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(mParts) do
+  begin
     if (mParts[mIndex] = 'trunk') or
       (((mParts[mIndex] = 'branches') or (mParts[mIndex] = 'tags')) and (mIndex < High(mParts))) then
     begin
@@ -102,6 +107,7 @@ begin
       ARoot := string.Join('/', mParts, 0, mIndex);
       Exit(True);
     end;
+  end;
 end;
 
 class function TAtlasSvnLayout.ValidPattern(const APattern: string): Boolean;
@@ -123,29 +129,45 @@ begin
   Result := False;
   mText := Trim(APattern);
   if not ValidPattern(mText) or (AName = '') then
+  begin
     Exit;
+  end;
   mKey := AKey;
   if mKey = '' then
+  begin
     mKey := AName;
+  end;
   if NeedsRoot(mText) then
   begin
     if not ALayout then
+    begin
       Exit;
+    end;
     Delete(mText, 1, Length(RootPlaceholder));
     if WithoutCaret(ARoot) = '' then
-      mText := '^' + mText
+    begin
+      mText := '^' + mText;
+    end
     else
+    begin
       mText := '^/' + WithoutCaret(ARoot) + mText;
+    end;
   end;
   mText := Replaced(Replaced(mText, '{name}', AName), '{kennung}', mKey);
   if Copy(mText, 1, 2) <> '^/' then
+  begin
     Exit;
+  end;
   mText := Copy(mText, 3, MaxInt);
   while (mText <> '') and (mText[Length(mText)] = '/') do
+  begin
     Delete(mText, Length(mText), 1);
+  end;
   // Übrige Platzhalter, "..", "//", Leer- und Steuerzeichen: kein Ort.
   if (Pos('{', mText) > 0) or not VcsSafeBranchName(mText) then
+  begin
     Exit;
+  end;
   APath := mText;
   Result := True;
 end;
@@ -166,26 +188,38 @@ var
 begin
   Result := Trim(ACandidate);
   if Copy(Result, 1, 2) = '^/' then
+  begin
     Exit(Copy(Result, 3, MaxInt));
+  end;
   mRoot := WithoutCaret(ARoot);
   if not ALayout or (mRoot = '') or StartsText(mRoot + '/', Result) then
+  begin
     Exit;
+  end;
   mFirst := Result;
   if Pos('/', mFirst) > 0 then
+  begin
     mFirst := Copy(mFirst, 1, Pos('/', mFirst) - 1);
+  end;
   // Nur die Teile des Layouts liegen unter der Projektwurzel; "Kasse/trunk" oder "Andere/trunk" gelten wie angegeben.
   if (mFirst = 'trunk') or (mFirst = 'branches') or (mFirst = 'tags') then
+  begin
     Result := mRoot + '/' + Result;
+  end;
 end;
 
 class function TAtlasSvnLayout.MessageText(const APattern, AKey, ATitle, AName: string): string;
 begin
   if Trim(AKey) = '' then
+  begin
     Exit('Branch ' + AName);
+  end;
   Result := Trim(Replaced(Replaced(Replaced(APattern, '{kennung}', Trim(AKey)), '{titel}', Trim(ATitle)), '{name}',
     AName));
   if Result = '' then
+  begin
     Result := 'Branch ' + AName;
+  end;
 end;
 
 class function TAtlasSvnLayout.CheckoutFolder(const APattern, AWorkingRoot, AProject, AName, AKey: string): string;
@@ -195,19 +229,27 @@ begin
   Result := Trim(APattern);
   mRoot := VcsNormalizeDir(AWorkingRoot);
   if (Result = '') or (mRoot = '') then
+  begin
     Exit('');
+  end;
   mName := StringReplace(AName, '/', '-', [rfReplaceAll]);
   mKey := Trim(AKey);
   if mKey = '' then
+  begin
     mKey := mName;
+  end;
   mProject := Trim(AProject);
   if mProject = '' then
+  begin
     mProject := ExtractFileName(mRoot);
+  end;
   Result := Replaced(Replaced(Replaced(Result, '{projekt}', mProject), '{name}', mName), '{kennung}', mKey);
   Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
   // Absolut: Laufwerk, UNC bzw. "/" unter Unix; sonst neben bzw. unter der Arbeitskopie.
   if not ((Length(Result) >= 2) and (Result[2] = ':')) and (Copy(Result, 1, 1) <> PathDelim) then
+  begin
     Result := IncludeTrailingPathDelimiter(mRoot) + Result;
+  end;
   Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
 end;
 
@@ -221,7 +263,9 @@ begin
   mText := Trim(ASvnVersion);
   // Marken am Ende: M geändert, S umgeschaltet, P teilweise.
   while (mText <> '') and CharInSet(mText[Length(mText)], ['M', 'S', 'P']) do
+  begin
     Delete(mText, Length(mText), 1);
+  end;
   if Pos(':', mText) > 0 then
   begin
     AMixed := True;
@@ -229,9 +273,13 @@ begin
   end;
   Result := (mText <> '') and (StrToIntDef(mText, -1) >= 0);
   if Result then
-    ARevision := mText
+  begin
+    ARevision := mText;
+  end
   else
+  begin
     AMixed := False;
+  end;
 end;
 
 end.

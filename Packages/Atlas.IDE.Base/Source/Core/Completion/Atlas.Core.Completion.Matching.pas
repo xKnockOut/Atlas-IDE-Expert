@@ -62,21 +62,33 @@ begin
   Right := LowerCase(B);
   SetLength(Rows, Length(Left) + 1, Length(Right) + 1);
   for I := 0 to Length(Left) do
+  begin
     Rows[I][0] := I;
+  end;
   for J := 0 to Length(Right) do
+  begin
     Rows[0][J] := J;
+  end;
   for I := 1 to Length(Left) do
+  begin
     for J := 1 to Length(Right) do
     begin
       if Left[I] = Right[J] then
-        Cost := 0
+      begin
+        Cost := 0;
+      end
       else
+      begin
         Cost := 1;
+      end;
       Rows[I][J] := Min(Min(Rows[I - 1][J] + 1, Rows[I][J - 1] + 1), Rows[I - 1][J - 1] + Cost);
       // Vertauschte Nachbarn ("Lenght" statt "Length").
       if (I > 1) and (J > 1) and (Left[I] = Right[J - 1]) and (Left[I - 1] = Right[J]) then
+      begin
         Rows[I][J] := Min(Rows[I][J], Rows[I - 2][J - 2] + 1);
+      end;
     end;
+  end;
   Result := Rows[Length(Left)][Length(Right)];
 end;
 
@@ -84,26 +96,38 @@ class function TAtlasCompletionMatcher.TypoDistance(const APattern, AName: strin
 begin
   Result := Distance(APattern, AName);
   if Length(AName) > Length(APattern) then
+  begin
     Result := Min(Result, Distance(APattern, Copy(AName, 1, Length(APattern))));
+  end;
 end;
 
 class function TAtlasCompletionMatcher.TypoLimit(const APattern: string): Integer;
 begin
   if Length(APattern) < 3 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else if Length(APattern) <= 5 then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 2;
+  end;
 end;
 
 class function TAtlasCompletionMatcher.CommitText(const ATyped, AName: string; AFixCase: Boolean): string;
 begin
   if not AFixCase and (ATyped <> '') and (Length(ATyped) <= Length(AName)) and
     SameText(ATyped, Copy(AName, 1, Length(ATyped))) then
-    Result := ATyped + Copy(AName, Length(ATyped) + 1, MaxInt)
+  begin
+    Result := ATyped + Copy(AName, Length(ATyped) + 1, MaxInt);
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 class function TAtlasCompletionMatcher.IsWordStart(const AName: string; AIndex: Integer): Boolean;
@@ -114,23 +138,41 @@ end;
 class function TAtlasCompletionMatcher.Score(const APattern, AName: string): Integer;
 begin
   if APattern = '' then
+  begin
     Exit(ScoreSubsequence);
+  end;
   if Length(APattern) > Length(AName) then
+  begin
     Exit(NoMatch);
+  end;
   if SameText(APattern, AName) then
-    Result := ScoreExact
+  begin
+    Result := ScoreExact;
+  end
   else if AName.StartsWith(APattern) then
-    Result := ScorePrefixCase
+  begin
+    Result := ScorePrefixCase;
+  end
   else if AName.StartsWith(APattern, True) then
-    Result := ScorePrefix
+  begin
+    Result := ScorePrefix;
+  end
   else if TTextFuzzy.MatchesWordStarts(APattern, AName) then
-    Result := ScoreWordStarts
+  begin
+    Result := ScoreWordStarts;
+  end
   else if AName.ToUpper.Contains(APattern.ToUpper) then
-    Result := ScoreSubstring
+  begin
+    Result := ScoreSubstring;
+  end
   else if TTextFuzzy.MatchesBoundedSubsequence(APattern, AName) then
-    Result := ScoreSubsequence
+  begin
+    Result := ScoreSubsequence;
+  end
   else
+  begin
     Result := NoMatch;
+  end;
 end;
 
 class function TAtlasCompletionMatcher.Filter(const AItems: TAtlasCompletionItems;
@@ -148,11 +190,17 @@ begin
     for Index := 0 to High(Items) do
     begin
       if Items[Index].FilterText <> '' then
-        Scores[Index] := Score(APattern, Items[Index].FilterText)
+      begin
+        Scores[Index] := Score(APattern, Items[Index].FilterText);
+      end
       else
+      begin
         Scores[Index] := Score(APattern, Items[Index].Name);
+      end;
       if Scores[Index] <> NoMatch then
+      begin
         Matches.Add(Index);
+      end;
     end;
     Matches.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
@@ -160,13 +208,21 @@ begin
         // In der aktiven Konfiguration nicht vorhanden: immer ans Ende (#476).
         Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
         if Result = 0 then
+        begin
           Result := Scores[B] - Scores[A];
+        end;
         if Result = 0 then
+        begin
           Result := Items[A].Rank - Items[B].Rank;
+        end;
         if Result = 0 then
+        begin
           Result := CompareText(Items[A].Name, Items[B].Name);
+        end;
         if Result = 0 then
+        begin
           Result := A - B;
+        end;
       end));
     Result := Matches.ToArray;
   finally

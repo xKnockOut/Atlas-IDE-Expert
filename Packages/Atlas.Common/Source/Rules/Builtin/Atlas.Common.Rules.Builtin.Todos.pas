@@ -104,9 +104,28 @@ begin
   end;
 end;
 
+/// <summary>Gültige Schlüsselwörter aus der Option als JSON-Wert (Array von Strings), in Großbuchstaben.</summary>
+function KeywordsFromJson(AKeywords: TJSONValue): TArray<string>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if not (AKeywords is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AKeywords) do
+  begin
+    if (mItem is TJSONString) and TTodoRules.IsValidKeyword(Trim(mItem.Value)) then
+    begin
+      Result := Result + [UpperCase(Trim(mItem.Value))];
+    end;
+  end;
+end;
+
 class function TTodoRules.KeywordsFromOptions(const AOptions: string): TArray<string>;
 var
-  Value, Keywords, Item: TJSONValue;
+  Value: TJSONValue;
 begin
   Result := nil;
   if AOptions <> '' then
@@ -115,17 +134,7 @@ begin
     try
       if Value is TJSONObject then
       begin
-        Keywords := TJSONObject(Value).GetValue(TodoKeywordsOption);
-        if Keywords is TJSONArray then
-        begin
-          for Item in TJSONArray(Keywords) do
-          begin
-            if (Item is TJSONString) and IsValidKeyword(Trim(Item.Value)) then
-            begin
-              Result := Result + [UpperCase(Trim(Item.Value))];
-            end;
-          end;
-        end;
+        Result := KeywordsFromJson(TJSONObject(Value).GetValue(TodoKeywordsOption));
       end;
     finally
       Value.Free;
@@ -363,10 +372,41 @@ var
     end;
   end;
 
+  // Zeilenkommentar: an den laufenden Block anhängen bzw. einen neuen beginnen.
+  procedure AddLineComment(const AToken: TPascalToken);
+  var
+    mItem: TCommentLine;
+  begin
+    // XMLDoc bleibt stumm.
+    if StartsStr('///', AToken.Text) then
+    begin
+      Flush;
+      Exit;
+    end;
+    if (Run <> nil) and (Run[High(Run)].Line + 1 <> AToken.StartPos.Line) then
+    begin
+      Flush;
+    end;
+    mItem.Line := AToken.StartPos.Line;
+    mItem.Text := Copy(AToken.Text, 3, MaxInt);
+    mItem.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+    Run := Run + [mItem];
+  end;
+
+  // Kommentare vor dem ersten Token sind der Dateikopf (Lizenz, Beschreibung).
+  function FirstCodeToken: Integer;
+  begin
+    Result := 0;
+    while (Result <= High(Tokens)) and (Tokens[Result].Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.Directive]) do
+    begin
+      Inc(Result);
+    end;
+  end;
+
 var
-  Index, FirstCode: Integer;
+  Index: Integer;
   Token: TPascalToken;
-  Item: TCommentLine;
 begin
   if AContext.Tree = nil then
   begin
@@ -378,38 +418,17 @@ begin
   begin
     MinLines := DefaultMinLines;
   end;
-  // Kommentare vor dem ersten Token sind der Dateikopf (Lizenz, Beschreibung).
-  FirstCode := 0;
-  while (FirstCode <= High(Tokens)) and (Tokens[FirstCode].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(FirstCode);
-  end;
   Run := nil;
-  for Index := FirstCode to High(Tokens) do
+  for Index := FirstCodeToken to High(Tokens) do
   begin
     Token := Tokens[Index];
     if (Token.Kind <> TPascalTokenKind.Comment) or not FirstInLine(Index) then
     begin
       Flush;
-      Continue;
-    end;
-    if StartsStr('//', Token.Text) then
+    end
+    else if StartsStr('//', Token.Text) then
     begin
-      // XMLDoc bleibt stumm.
-      if StartsStr('///', Token.Text) then
-      begin
-        Flush;
-        Continue;
-      end;
-      if (Run <> nil) and (Run[High(Run)].Line + 1 <> Token.StartPos.Line) then
-      begin
-        Flush;
-      end;
-      Item.Line := Token.StartPos.Line;
-      Item.Text := Copy(Token.Text, 3, MaxInt);
-      Item.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-      Run := Run + [Item];
+      AddLineComment(Token);
     end
     else
     begin

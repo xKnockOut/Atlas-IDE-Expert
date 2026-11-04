@@ -60,7 +60,9 @@ begin
     end;
     Parent := VcsNormalizeDir(ExtractFileDir(Dir));
     if (Parent = Dir) or (Length(Parent) >= Length(Dir)) then
+    begin
       Break;
+    end;
     Dir := Parent;
   end;
 end;
@@ -73,7 +75,9 @@ end;
 class function TAtlasVcsDetection.Find(const AFolder: string; AProvider: TAtlasVcsProvider): TAtlasVcsWorkingCopy;
 begin
   if Trim(AFolder) = '' then
+  begin
     Exit(TAtlasVcsWorkingCopy.Empty);
+  end;
   Result := Find(ExpandFileName(AFolder), AProvider,
     function(const APath: string): Boolean
     begin

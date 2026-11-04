@@ -47,9 +47,13 @@ begin
   if Text <> FLast then
   begin
     if Text = '' then
-      TAtlasGuard.Log('Experimentelle Funktionen: keine wirksam (#834)')
+    begin
+      TAtlasGuard.Log('Experimentelle Funktionen: keine wirksam (#834)');
+    end
     else
+    begin
       TAtlasGuard.Log('Experimentelle Funktionen wirksam (#834): ' + string.Join(', ', Active));
+    end;
     FLast := Text;
   end;
   if Text = '' then
@@ -69,7 +73,9 @@ end;
 class procedure TAtlasIdeExperimental.Stop;
 begin
   if FLineRef = nil then
+  begin
     Exit;
+  end;
   TAtlasStatusRegistry.Default.Remove(StatusId);
   FLine := nil;
   FLineRef := nil;

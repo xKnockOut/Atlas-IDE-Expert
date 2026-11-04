@@ -88,7 +88,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasEditorPreview.Destroy;
@@ -97,7 +99,9 @@ var
 begin
   Clear;
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   inherited Destroy;
@@ -108,15 +112,21 @@ var
   Services: INTACodeEditorServices;
 begin
   if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTopLine(Services, ALine);
+  end;
 end;
 
 procedure TAtlasEditorPreview.Show(const AFileName: string; ALine, AColumn: Integer; const AText: string);
 begin
   if (AText = FText) and (ALine = FLine) and (AColumn = FColumn) and SameText(AFileName, FFileName) then
+  begin
     Exit;
+  end;
   if FLine <> ALine then
+  begin
     InvalidateLine(FLine);
+  end;
   FFileName := AFileName;
   FLine := ALine;
   FColumn := AColumn;
@@ -127,7 +137,9 @@ end;
 procedure TAtlasEditorPreview.Clear;
 begin
   if FText = '' then
+  begin
     Exit;
+  end;
   FText := '';
   InvalidateLine(FLine);
   FLine := 0;
@@ -146,9 +158,13 @@ begin
   try
     if BeforeEvent or (Stage <> plsEndPaint) or (FText = '') or (Context = nil) or
       (Context.LogicalLineNum <> FLine) or not SameText(Context.FileName, FFileName) then
+    begin
       Exit;
+    end;
     if FFollowCursor and ((Context.EditView = nil) or (Context.EditView.CursorPos.Line <> FLine)) then
+    begin
       Exit;
+    end;
     Cell := Context.EditorState.GetCharacterPosPx(FColumn, Context.EditorLineNum);
     Canvas := Context.Canvas;
     Top := Rect.Top + (Rect.Height - Canvas.TextHeight('Wg')) div 2;
@@ -172,7 +188,9 @@ begin
       end;
       TopRow := 0;
       if Context.EditView <> nil then
+      begin
         TopRow := Context.EditView.TopRow;
+      end;
       TAtlasIdeElements.Painted(FElement, Context.FileName, FLine - 1, '',
         TRect.Create(Cell.Left, Rect.Top, Cell.Left + Size.cx, Rect.Bottom), TopRow, Rect.Height);
     finally

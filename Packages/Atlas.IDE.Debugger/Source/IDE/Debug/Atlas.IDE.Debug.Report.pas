@@ -47,7 +47,9 @@ begin
   Result := 0;
   mProcess := TAtlasIdeDebugSession.Process;
   if mProcess <> nil then
+  begin
     Result := mProcess.ProcessId;
+  end;
 end;
 
 function TAtlasIdeDebugReport.LaunchProject: string;
@@ -83,7 +85,9 @@ begin
   AFileName := '';
   mThread := TAtlasIdeDebugSession.StoppedThread;
   if mThread = nil then
+  begin
     Exit(False);
+  end;
   mData := TAtlasDebugNoteData.Empty;
   mData.Project := TAtlasIdeDebugSession.LaunchProject;
   mData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
@@ -99,7 +103,9 @@ begin
     TAtlasIdeDebugSources.MarkFrames(mFrames);
     mData.Frames := mFrames;
     if Length(mFrames) > 0 then
+    begin
       mData.Routine := TAtlasDebugCallStack.RoutineOf(mFrames[0].Header);
+    end;
   end;
   // Ausschnitt von der Platte; ohne Datei bleibt der Ort ohne Code.
   if mData.FileName <> '' then
@@ -145,14 +151,18 @@ begin
   ACount := 0;
   mHistory := TAtlasIdeDebugExceptions.History;
   if mHistory = nil then
+  begin
     Exit;
+  end;
   mIndexes := mHistory.Filter('', '');
   ACount := Length(mIndexes);
   mItems := nil;
   for mIndex in mIndexes do
   begin
     if Length(mItems) >= AMax then
+    begin
       Break;
+    end;
     mItems := mItems + [mHistory[mIndex]];
   end;
   Result := TAtlasDebugNote.HistoryText(mItems, AMax);

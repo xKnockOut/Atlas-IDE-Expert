@@ -134,10 +134,14 @@ function TAtlasProjectEntry.Branch: string;
 begin
   Result := '';
   if not Summary.Vcs.InWorkingCopy then
+  begin
     Exit;
+  end;
   Result := Summary.Vcs.Branch;
   if (Result = '') and SameText(Summary.Vcs.Kind, 'git') then
+  begin
     Result := Copy(Summary.Vcs.Revision, 1, 7);
+  end;
 end;
 
 function TAtlasProjectEntry.VcsStale: Boolean;
@@ -161,33 +165,53 @@ begin
   Seen := nil;
   Limit := AMax;
   if Limit < MinMax then
+  begin
     Limit := MinMax;
+  end;
   if Limit > MaxMax then
+  begin
     Limit := MaxMax;
+  end;
   for Project in ARecent do
   begin
     if Length(Result) >= Limit then
+    begin
       Break;
+    end;
     if Trim(Project) = '' then
+    begin
       Continue;
+    end;
     Key := TAtlasProjectSummaries.NormalizedPath(Project);
     Duplicate := False;
     for Known in Seen do
+    begin
       if Known = Key then
+      begin
         Duplicate := True;
+      end;
+    end;
     if Duplicate then
+    begin
       Continue;
+    end;
     Seen := Seen + [Key];
     Entry := Default(TAtlasProjectEntry);
     Entry.Summary := TAtlasProjectSummary.Create(Trim(Project));
     if Assigned(ALoad) then
+    begin
       Entry.HasSummary := ALoad(Trim(Project), Entry.Summary);
+    end;
     if not Entry.HasSummary then
+    begin
       Entry.Summary := TAtlasProjectSummary.Create(Trim(Project));
+    end;
     // Der Pfad der IDE gilt: Die Datei kann vom selben Projekt in anderer Schreibweise stammen.
     Entry.Summary.Project := Trim(Project);
     if Entry.HasSummary and Entry.Summary.Hidden then
+    begin
       Continue;
+    end;
     Result := Result + [Entry];
   end;
 end;
@@ -213,14 +237,20 @@ begin
       Pill.Target := Build.First;
     end
     else if not Build.Succeeded then
+    begin
       // Fehlgeschlagen ohne lesbare Fehlermeldung (z. B. Linker): rot, aber ohne Sprungziel.
       Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Error, Build.Errors,
-        Build.Warnings, Build.Hints)
+        Build.Warnings, Build.Hints);
+    end
     else if (Build.Warnings > 0) or (Build.Hints > 0) then
+    begin
       Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Warning, 0,
-        Build.Warnings, Build.Hints)
+        Build.Warnings, Build.Hints);
+    end
     else
+    begin
       Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Good, 0, 0, 0);
+    end;
     Result := Result + [Pill];
   end;
   // Prüfung nur, wenn sie nach dem letzten Build lief: sonst zeigt der Build den neueren Stand.
@@ -232,22 +262,30 @@ begin
     Result := Result + [Pill];
   end;
   if Vcs.InWorkingCopy and (Vcs.Changed > 0) then
+  begin
     Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Changes, TAtlasProjectPillLevel.Warning,
       Vcs.Changed, 0, 0)];
+  end;
   if Vcs.InWorkingCopy and ((Vcs.Ahead > 0) or (Vcs.Behind > 0)) then
   begin
     Ahead := Vcs.Ahead;
     if Ahead < 0 then
+    begin
       Ahead := 0;
+    end;
     Behind := Vcs.Behind;
     if Behind < 0 then
+    begin
       Behind := 0;
+    end;
     Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Sync, TAtlasProjectPillLevel.Neutral, Ahead,
       Behind, 0)];
   end;
   if AEntry.Summary.Rules.Known and (AEntry.Summary.Rules.NewHits > 0) then
+  begin
     Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Rules, TAtlasProjectPillLevel.Warning,
       AEntry.Summary.Rules.NewHits, 0, 0)];
+  end;
 end;
 
 class function TAtlasWelcomeProjects.Level(const APills: TArray<TAtlasProjectPill>): TAtlasProjectPillLevel;
@@ -256,8 +294,12 @@ var
 begin
   Result := TAtlasProjectPillLevel.Neutral;
   for Pill in APills do
+  begin
     if Ord(Pill.Level) > Ord(Result) then
+    begin
       Result := Pill.Level;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeProjects.ShortPath(const APath: string; AMaxLength: Integer): string;
@@ -268,19 +310,27 @@ var
 begin
   Result := APath;
   if (AMaxLength < 4) or (Length(Result) <= AMaxLength) then
+  begin
     Exit;
+  end;
   Parts := StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']);
   if Length(Parts) < 3 then
+  begin
     Exit(Ellipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
+  end;
   Head := Parts[0] + '\' + Ellipsis;
   Tail := '\' + Parts[High(Parts)];
   if Length(Head) + Length(Tail) > AMaxLength then
+  begin
     Exit(Ellipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
+  end;
   for Index := High(Parts) - 1 downto 1 do
   begin
     Candidate := '\' + Parts[Index] + Tail;
     if Length(Head) + Length(Candidate) > AMaxLength then
+    begin
       Break;
+    end;
     Tail := Candidate;
   end;
   Result := Head + Tail;
