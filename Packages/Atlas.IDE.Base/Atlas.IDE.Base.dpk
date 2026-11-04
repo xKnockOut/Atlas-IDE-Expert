@@ -582,6 +582,7 @@ contains
   Atlas.UI.Problems.KindIcon in 'Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas',
   Atlas.UI.StatusBar.Bar in 'Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas',
   Atlas.IDE.StatusBar.Service in 'Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas',
+  Atlas.IDE.StatusBar.View in 'Source\IDE\StatusBar\Atlas.IDE.StatusBar.View.pas',
   Atlas.Core.Settings.FolderList in 'Source\Core\Settings\Atlas.Core.Settings.FolderList.pas',
   Atlas.Core.Completion.Providers.Expression in 'Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas',
   Atlas.Core.Lsp.DataFlow in 'Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',
