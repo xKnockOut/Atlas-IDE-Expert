@@ -107,11 +107,12 @@ begin
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
+  mContext.Name := AArguments.Items[2].Value;
+  mContext.Scope := Trim(AArguments.Items[3].Value);
   mResolver := NewResolver;
   try
     mAnswer := TLspTypeAlias.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
