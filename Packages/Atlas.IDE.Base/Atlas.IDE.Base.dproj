@@ -628,6 +628,7 @@
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
+        <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.FindMethod.pas"/>
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
         <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
