@@ -2506,7 +2506,8 @@ const
     '      "x-key": "problems.list",',
     '      "x-area": "editor",',
     '      "x-page": "Compiler",',
-    '      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernommen (trug meist die alte Vorgabe „an“)."',
+    '      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernomme' +
+      'n (trug meist die alte Vorgabe „an“)."',
     '    },',
     '    "ProblemsStatusCounter": {',
     '      "type": "boolean",',
