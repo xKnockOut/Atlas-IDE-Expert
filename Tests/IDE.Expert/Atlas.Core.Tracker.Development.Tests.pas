@@ -658,9 +658,10 @@ begin
   end;
 end;
 
-procedure TAtlasIssueDevelopmentTests.TenThousandCommitsUnderTwoSeconds;
 const
-  cCommits = 10000;
+  cTenThousandcCommits = 10000;
+
+procedure TAtlasIssueDevelopmentTests.TenThousandCommitsUnderTwoSeconds;
 var
   mGit, mFolder, mStream: string;
   mRunner: IAtlasVcsRunner;
@@ -682,7 +683,7 @@ begin
   try
     Assert.AreEqual(0, mRunner.Run(mGit, ['init', '-q'], mFolder, 30000).ExitCode);
     mStream := TPath.Combine(mFolder, 'import.fi');
-    TFile.WriteAllText(mStream, FastImportStream(cCommits), TEncoding.ASCII);
+    TFile.WriteAllText(mStream, FastImportStream(cTenThousandcCommits), TEncoding.ASCII);
     Assert.AreEqual(Cardinal(0), RunWithInput(mGit, ['fast-import', '--quiet'], mFolder, mStream), 'fast-import');
     TFile.Delete(mStream);
     Assert.AreEqual(0, mRunner.Run(mGit, ['symbolic-ref', 'HEAD', 'refs/heads/main'], mFolder, 30000).ExitCode);
@@ -694,7 +695,7 @@ begin
     mWatch := TStopwatch.StartNew;
     Assert.IsTrue(TAtlasIssueDevelopmentQuery.Collect(mVcs, mRequest, mDevelopment) = TAtlasVcsOutcome.Ok);
     mWatch.Stop;
-    Assert.AreEqual(cCommits div 100, Integer(Length(mDevelopment.Commits)), 'ATL-770 zählt nicht');
+    Assert.AreEqual(cTenThousandcCommits div 100, Integer(Length(mDevelopment.Commits)), 'ATL-770 zählt nicht');
     Assert.IsFalse(mDevelopment.Truncated);
     Assert.AreEqual(7, mDevelopment.UnitCount, 'Vereinigung der Dateien');
     Assert.AreEqual(1, Integer(Length(mDevelopment.Branches)));
@@ -705,7 +706,7 @@ begin
     mFile := mDevelopment.Commits[0].Files[0].Path;
     Assert.IsTrue(TFile.Exists(mFile), mFile);
     Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms für %d Commits', [mWatch.ElapsedMilliseconds,
-      cCommits]));
+      cTenThousandcCommits]));
   finally
     mVcs := nil;
     for mFile in TDirectory.GetFiles(mFolder, '*', TSearchOption.soAllDirectories) do

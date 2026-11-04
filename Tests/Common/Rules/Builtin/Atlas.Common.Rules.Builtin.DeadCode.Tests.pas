@@ -211,15 +211,63 @@ var
   // Dauer der letzten Prüfung in Run ohne Aufbau von Index und Graph (Zeitmessung #896).
   LastCheckMs: Int64;
 
+/// <summary>Vorgaben oder die atlas.json des Szenarios.</summary>
+function ScenarioSettings(const AConfig: string): TServerSettings;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  if AConfig = '' then
+  begin
+    Result := TServerSettings.Default;
+  end
+  else
+  begin
+    Result := TConfigurationParser.Parse(AConfig, mIssues);
+  end;
+end;
+
+/// <summary>Index über die Units des Szenarios; ATexts nimmt alle Dateien nach Namen auf.</summary>
+function IndexScenario(const AScenario: TScenario; const ATexts: TDictionary<string, string>): ISymbolIndex;
+var
+  mEntry: TTestFile;
+begin
+  Result := TSymbolIndex.Create;
+  for mEntry in AScenario.Files do
+  begin
+    ATexts.AddOrSetValue(UpperCase(mEntry.Name), mEntry.Text);
+    if not SameText(ExtractFileExt(mEntry.Name), '.dfm') then
+    begin
+      Result.AddUnit(TIndexExtractor.ExtractText(mEntry.Text, mEntry.Name, nil, nil, True));
+    end;
+  end;
+end;
+
+/// <summary>Projektdateien des Szenarios; AIncomplete meldet einen laufenden Index.</summary>
+function ScenarioProjectFiles(const AScenario: TScenario; const AIndex: ISymbolIndex;
+  const ATexts: TDictionary<string, string>; AIncomplete: Boolean): IRuleProjectFiles;
+begin
+  Result := TRuleProjectFiles.Create(AScenario.Projects, AIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ATexts.TryGetValue(UpperCase(AFileName), AText);
+    end,
+    function(out AReason: string): Boolean
+    begin
+      Result := not AIncomplete;
+      if AIncomplete then
+      begin
+        AReason := 'Index läuft';
+      end;
+    end);
+end;
+
 function Run(const AScenario: TScenario; const ACheck: string): TArray<TRuleFinding>;
 var
   Watch: TStopwatch;
   Round: Integer;
   Texts: TDictionary<string, string>;
   Index: ISymbolIndex;
-  Entry: TTestFile;
   Settings: TServerSettings;
-  Issues: TArray<TConfigurationIssue>;
   Context: TRuleContext;
   Tree: TSyntaxTree;
   Incomplete: Boolean;
@@ -228,23 +276,8 @@ begin
   Incomplete := AScenario.Incomplete;
   Texts := TDictionary<string, string>.Create;
   try
-    Index := TSymbolIndex.Create;
-    for Entry in AScenario.Files do
-    begin
-      Texts.AddOrSetValue(UpperCase(Entry.Name), Entry.Text);
-      if not SameText(ExtractFileExt(Entry.Name), '.dfm') then
-      begin
-        Index.AddUnit(TIndexExtractor.ExtractText(Entry.Text, Entry.Name, nil, nil, True));
-      end;
-    end;
-    if AScenario.Config = '' then
-    begin
-      Settings := TServerSettings.Default;
-    end
-    else
-    begin
-      Settings := TConfigurationParser.Parse(AScenario.Config, Issues);
-    end;
+    Index := IndexScenario(AScenario, Texts);
+    Settings := ScenarioSettings(AScenario.Config);
     Tree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       Context := Default(TRuleContext);
@@ -258,19 +291,7 @@ begin
       Context.Live := AScenario.Live;
       if not AScenario.NoProjects then
       begin
-        Context.ProjectFiles := TRuleProjectFiles.Create(AScenario.Projects, Index,
-          function(const AFileName: string; out AText: string): Boolean
-          begin
-            Result := Texts.TryGetValue(UpperCase(AFileName), AText);
-          end,
-          function(out AReason: string): Boolean
-          begin
-            Result := not Incomplete;
-            if Incomplete then
-            begin
-              AReason := 'Index läuft';
-            end;
-          end);
+        Context.ProjectFiles := ScenarioProjectFiles(AScenario, Index, Texts, Incomplete);
       end;
       for Round := 0 to AScenario.Repeats do
       begin

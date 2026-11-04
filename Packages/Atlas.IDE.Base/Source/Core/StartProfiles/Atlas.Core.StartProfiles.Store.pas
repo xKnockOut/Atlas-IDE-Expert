@@ -436,14 +436,36 @@ begin
   end;
 end;
 
+/// <summary>Ein Profil als JSON-Objekt, eingerückt wie in ToJson.</summary>
+function ProfileJson(const AProfile: TAtlasStartProfile): string;
+const
+  NewLine = #13#10;
+var
+  mVariable: Integer;
+  mSeparator: string;
+begin
+  Result := NewLine + '    {' + NewLine +
+    '      "name": ' + Quote(AProfile.Name) + ',' + NewLine +
+    '      "parameters": ' + Quote(AProfile.Parameters) + ',' + NewLine +
+    '      "workingDir": ' + Quote(AProfile.WorkingDir) + ',' + NewLine +
+    '      "host": ' + Quote(AProfile.Host) + ',' + NewLine +
+    '      "environment": {';
+  mSeparator := '';
+  for mVariable := 0 to High(AProfile.Environment) do
+  begin
+    Result := Result + mSeparator + Quote(AProfile.Environment[mVariable].Name) + ': ' +
+      Quote(AProfile.Environment[mVariable].Value);
+    mSeparator := ', ';
+  end;
+  Result := Result + '}' + NewLine + '    }';
+end;
+
 class function TAtlasStartProfiles.ToJson(const AState: TAtlasStartProfileState): string;
 const
   NewLine = #13#10;
 var
   Lines: TStringBuilder;
-  Index, Variable: Integer;
-  Profile: TAtlasStartProfile;
-  Separator: string;
+  Index: Integer;
 begin
   Lines := TStringBuilder.Create;
   try
@@ -454,25 +476,11 @@ begin
     Lines.Append('  "profiles": [');
     for Index := 0 to High(AState.Profiles) do
     begin
-      Profile := AState.Profiles[Index];
       if Index > 0 then
       begin
         Lines.Append(',');
       end;
-      Lines.Append(NewLine + '    {' + NewLine);
-      Lines.Append('      "name": ' + Quote(Profile.Name) + ',' + NewLine);
-      Lines.Append('      "parameters": ' + Quote(Profile.Parameters) + ',' + NewLine);
-      Lines.Append('      "workingDir": ' + Quote(Profile.WorkingDir) + ',' + NewLine);
-      Lines.Append('      "host": ' + Quote(Profile.Host) + ',' + NewLine);
-      Lines.Append('      "environment": {');
-      Separator := '';
-      for Variable := 0 to High(Profile.Environment) do
-      begin
-        Lines.Append(Separator + Quote(Profile.Environment[Variable].Name) + ': ' +
-          Quote(Profile.Environment[Variable].Value));
-        Separator := ', ';
-      end;
-      Lines.Append('}' + NewLine + '    }');
+      Lines.Append(ProfileJson(AState.Profiles[Index]));
     end;
     if Length(AState.Profiles) > 0 then
     begin
