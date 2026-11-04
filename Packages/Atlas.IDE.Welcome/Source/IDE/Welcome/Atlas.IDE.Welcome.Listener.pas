@@ -52,12 +52,12 @@ begin
   mWelcome := FCurrent();
   mProject := AProject;
   mResult := AResult;
-  if (mWelcome <> nil) and (mWelcome.QuickActions <> nil) then
+  if (mWelcome <> nil) and (mWelcome.Areas.QuickActions <> nil) then
   begin
     TAtlasGuard.Run(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mWelcome.QuickActions.TaskFinished(mProject, mResult);
+        mWelcome.Areas.QuickActions.TaskFinished(mProject, mResult);
       end);
   end;
 end;
@@ -70,12 +70,12 @@ begin
   // Ergebnis in der Zeile des Projekts; die Karte Tests (#763) liest die Projekt-Zusammenfassung.
   mWelcome := FCurrent();
   mProject := ATestProject;
-  if (mWelcome <> nil) and (mWelcome.QuickActions <> nil) then
+  if (mWelcome <> nil) and (mWelcome.Areas.QuickActions <> nil) then
   begin
     TAtlasGuard.Run(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mWelcome.QuickActions.TestsFinished(mProject, APassed, AFailed);
+        mWelcome.Areas.QuickActions.TestsFinished(mProject, APassed, AFailed);
       end);
   end;
 end;
@@ -85,9 +85,9 @@ var
   mWelcome: TAtlasIdeWelcome;
 begin
   mWelcome := FCurrent();
-  if (mWelcome <> nil) and (mWelcome.Discover <> nil) then
+  if (mWelcome <> nil) and (mWelcome.Areas.Discover <> nil) then
   begin
-    mWelcome.Discover.Refresh;
+    mWelcome.Areas.Discover.Refresh;
   end;
 end;
 

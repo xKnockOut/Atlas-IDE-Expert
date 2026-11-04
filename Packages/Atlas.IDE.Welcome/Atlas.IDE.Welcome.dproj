@@ -115,8 +115,13 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Areas.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.IdeLayout.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ProjectWatch.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas"/>
@@ -131,6 +136,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Startup.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
