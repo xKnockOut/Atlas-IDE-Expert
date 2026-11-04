@@ -25,6 +25,10 @@ type
     HasInitialization: Boolean;
     /// <summary>Namen der interface-Symbole, auch Mitglieder.</summary>
     Names: TArray<string>;
+    /// <summary>Die Formulardatei der geprüften Unit verweist auf ein Modul dieser Unit (Connection =
+    /// Form1.Connection): Der Eintrag gilt als im implementation-Teil verwendet, die IDE braucht ihn
+    /// (dfm-reference-unit-missing).</summary>
+    UsedByForm: Boolean;
   end;
 
   TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;

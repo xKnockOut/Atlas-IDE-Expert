@@ -212,6 +212,7 @@ uses
   Atlas.Common.Rules.Builtin.Loops.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Loops.Tests.pas',
   Atlas.Common.Rules.Builtin.Generics.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Generics.Tests.pas',
   Atlas.Common.Rules.Builtin.Forms.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Forms.Tests.pas',
+  Atlas.Common.Rules.Builtin.FormReferences.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormReferences.Tests.pas',
   Atlas.Common.Rules.Builtin.SharedState.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.SharedState.Tests.pas',
   Atlas.Common.Rules.Builtin.Conditions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Conditions.Tests.pas',
   Atlas.Common.Rules.Builtin.Platform.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.Tests.pas',

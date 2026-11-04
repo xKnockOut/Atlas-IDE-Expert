@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4866] of string = (
+  BaseLines: array[0..4876] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -4402,9 +4402,10 @@ const
     '      "severity": "hint",',
     '      "group": "style",',
     '      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same ' +
-    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} bran' +
-    'ches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where th' +
-    'e same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",',
+    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep, units the form file refers to (a glo' +
+    'bal variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove' +
+    ' the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index ' +
+    '(--no-index) and with syntax errors.",',
     '      "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",',
     '      "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",',
     '      "safeFix": true',
@@ -5103,6 +5104,21 @@ const
     '      "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"',
     '    },',
     '    {',
+    '      "id": "dfm-reference-unit-missing",',
+    '      "name": "Form file refers to a module whose unit is not in the uses clause",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "forms",',
+    '      "description": "A property in the form file points to a component of another form, frame or data module (Connection = Form1.Connection), but the unit of that module is neither in the interface n' +
+    'or in the implementation uses clause. When the form is opened, the IDE only opens the modules from the uses clause along with it; otherwise the reference stays empty and is lost when the form is saved' +
+    '. At run time the VCL only resolves the reference while a module of that name exists. The module is the name of the root component (Form1, not TForm1). Its unit comes from the .dpr of the project (Uni' +
+    't1 in ''Unit1.pas'' {Form1}, high confidence) or else from the index: a global variable of that name in the interface of a unit that declares its type as a class (medium confidence). Silent for referenc' +
+    'es to the own form, to own components (embedded frames such as Frame11.Button1) and to modules whose unit is known neither from the .dpr nor from the index. Reported at the field of the component that' +
+    ' holds the reference, otherwise at the form class; the line in the form file is shown as a related location. Quick fix: add the unit to the implementation uses clause, as the IDE offers.",',
+    '      "bad": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\n{$R *.dfm}",',
+    '      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}"',
+    '    },',
+    '    {',
     '      "id": "parallel-for-shared-write",',
     '      "name": "Shared variable written in TParallel.For",',
     '      "category": "bug",',
@@ -5727,7 +5743,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2200] of string = (
+  OverlayLines_de: array[0..2205] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -8164,9 +8180,10 @@ const
     '      "id": "unused-uses",',
     '      "name": "Ungenutzte Unit im uses",',
     '      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil i' +
-    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Eint' +
-    'räge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix' +
-    ' unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
+    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep, Units, ' +
+    'auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen b' +
+    'leiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo di' +
+    'eselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
     '    },',
     '    {',
     '      "id": "message-method-invalid",',
@@ -8528,6 +8545,16 @@ const
     'nd Methoden mit einem Parameter Sender: TObject; ein Formular ist die Wurzelklasse der Formulardatei mit ClientWidth bzw. ClientHeight oder eine direkt von TForm bzw. TCustomForm abgeleitete Klasse (R' +
     'ahmen und Datenmodule haben kein Release). Anweisungen in anonymen Methoden und with-Blöcken zählen nicht. Still ohne Formulardatei. Sicherheit hoch. Korrektur: Free durch Release ersetzen, in OnClose' +
     ' (var Action: TCloseAction) durch Action := caFree."',
+    '    },',
+    '    {',
+    '      "id": "dfm-reference-unit-missing",',
+    '      "name": "Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht",',
+    '      "description": "Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit aber weder im interface- ' +
+    'noch im implementation-uses steht. Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL d' +
+    'en Verweis nur auf, solange ein Modul dieses Namens existiert. Das Modul ist der Name der Wurzelkomponente (Form1, nicht TForm1). Seine Unit kommt aus der .dpr des Projekts (Unit1 in ''Unit1.pas'' {Form' +
+    '1}, Sicherheit hoch), sonst aus dem Index: globale Variable dieses Namens im interface einer Unit, die ihren Typ als Klasse deklariert (Sicherheit mittel). Still bleibt die Regel bei Verweisen auf das' +
+    ' eigene Formular, auf eigene Komponenten (eingebettete Rahmen wie Frame11.Button1) und auf Module, deren Unit weder .dpr noch Index kennen. Gemeldet wird am Feld der Komponente, die den Verweis hält, ' +
+    'sonst an der Formularklasse; die Zeile der Formulardatei steht als weitere Stelle dabei. Korrektur: die Unit ins implementation-uses aufnehmen, wie es die IDE anbietet."',
     '    },',
     '    {',
     '      "id": "parallel-for-shared-write",',

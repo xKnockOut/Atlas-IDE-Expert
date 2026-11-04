@@ -55,6 +55,9 @@ type
     /// <summary>#621: Code-Aktionen am Eintrag mit Kennung für den Hover.</summary>
     [Test]
     procedure ActionsAtEntryCarryTags;
+    /// <summary>Verweist die Formulardatei auf ein Modul der Unit (UsedByForm), ist der Eintrag gebraucht.</summary>
+    [Test]
+    procedure FormReferenceCountsAsImplementationUse;
   end;
 
 implementation
@@ -89,6 +92,11 @@ begin
   else if SameText(AUnitName, 'Units.C') then
   begin
     Result.Names := ['Baz', 'Qux'];
+  end
+  else if SameText(AUnitName, 'Units.Form') then
+  begin
+    Result.Names := ['TForm1', 'Form1'];
+    Result.UsedByForm := True;
   end
   else if SameText(AUnitName, 'Units.Reg') then
   begin
@@ -458,6 +466,16 @@ begin
   // Im interface benutzt: unauffällig.
   Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
   Assert.AreEqual('', States(Text, nil, nil));
+end;
+
+procedure TUsesActionsTests.FormReferenceCountsAsImplementationUse;
+var
+  mText: string;
+begin
+  // Der Code nennt nichts aus Units.Form, die Formulardatei aber Form1.Connection.
+  mText := Source('Units.A, Units.Form', '', '', 'procedure P;'#10'begin'#10'  Foo;'#10'end;'#10);
+  Assert.AreEqual('Units.A:impl|Units.Form:impl|', States(mText, nil, nil));
+  Assert.AreEqual(0, Integer(Length(TUsesActions.UnusedUnits(TPascalLexer.Tokenize(mText), Info, nil))));
 end;
 
 procedure TUsesActionsTests.EntriesFollowActiveBranch;

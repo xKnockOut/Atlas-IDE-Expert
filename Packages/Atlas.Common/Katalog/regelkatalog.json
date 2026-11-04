@@ -3775,7 +3775,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",
+      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep, units the form file refers to (a global variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",
       "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",
       "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",
       "safeFix": true
@@ -4352,6 +4352,16 @@
       "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form's own class, as a statement in an event handler of the form or one of its controls. After the handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sender: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Statements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caFree.",
       "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",
       "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"
+    },
+    {
+      "id": "dfm-reference-unit-missing",
+      "name": "Form file refers to a module whose unit is not in the uses clause",
+      "category": "bug",
+      "severity": "warning",
+      "group": "forms",
+      "description": "A property in the form file points to a component of another form, frame or data module (Connection = Form1.Connection), but the unit of that module is neither in the interface nor in the implementation uses clause. When the form is opened, the IDE only opens the modules from the uses clause along with it; otherwise the reference stays empty and is lost when the form is saved. At run time the VCL only resolves the reference while a module of that name exists. The module is the name of the root component (Form1, not TForm1). Its unit comes from the .dpr of the project (Unit1 in 'Unit1.pas' {Form1}, high confidence) or else from the index: a global variable of that name in the interface of a unit that declares its type as a class (medium confidence). Silent for references to the own form, to own components (embedded frames such as Frame11.Button1) and to modules whose unit is known neither from the .dpr nor from the index. Reported at the field of the component that holds the reference, otherwise at the form class; the line in the form file is shown as a related location. Quick fix: add the unit to the implementation uses clause, as the IDE offers.",
+      "bad": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\n{$R *.dfm}",
+      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}"
     },
     {
       "id": "parallel-for-shared-write",
