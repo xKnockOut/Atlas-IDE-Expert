@@ -54,35 +54,51 @@ var
 begin
   Result := Default(TAtlasTestUnitInfo);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AValue);
   Answer.TryGetValue<string>('unit', Result.UnitName);
   Answer.TryGetValue<Boolean>('isTest', Result.IsTest);
   Answer.TryGetValue<string>('counterpart', Result.Counterpart);
   // "uri" ist null, wenn das Gegenstück fehlt.
   if (Answer.GetValue('uri') is TJSONString) and Answer.TryGetValue<string>('uri', Uri) and (Uri <> '') then
+  begin
     Result.CounterpartFile := AUriToPath(Uri);
+  end;
   Answer.TryGetValue<Boolean>('canCreate', Result.CanCreate);
   if Answer.TryGetValue<string>('newUri', Uri) and (Uri <> '') then
+  begin
     Result.NewFile := AUriToPath(Uri);
+  end;
   Answer.TryGetValue<string>('reason', Result.Reason);
 end;
 
 function TAtlasTestUnitInfo.Lens: TAtlasTestUnitLens;
 begin
   if UnitName = '' then
-    Result := TAtlasTestUnitLens.None
+  begin
+    Result := TAtlasTestUnitLens.None;
+  end
   else if CounterpartFile <> '' then
   begin
     if IsTest then
-      Result := TAtlasTestUnitLens.ToUnit
+    begin
+      Result := TAtlasTestUnitLens.ToUnit;
+    end
     else
+    begin
       Result := TAtlasTestUnitLens.ToTest;
+    end;
   end
   else if CanCreate then
-    Result := TAtlasTestUnitLens.CreateTest
+  begin
+    Result := TAtlasTestUnitLens.CreateTest;
+  end
   else
+  begin
     Result := TAtlasTestUnitLens.None;
+  end;
 end;
 
 { TAtlasTestUnits }
@@ -101,7 +117,9 @@ begin
     if InComment then
     begin
       if (Pos('}', Line) > 0) or (Pos('*)', Line) > 0) then
+      begin
         InComment := False;
+      end;
       Continue;
     end;
     if Line.StartsWith('{') and (Pos('}', Line) = 0) then
@@ -115,9 +133,13 @@ begin
       Continue;
     end;
     if (Line = '') or Line.StartsWith('//') or Line.StartsWith('{') or Line.StartsWith('(*') then
+    begin
       Continue;
+    end;
     if SameText(Copy(Line, 1, 5), 'unit ') or SameText(Line, 'unit') then
+    begin
       Exit(Index);
+    end;
     // Erstes echtes Wort ist nicht "unit": Programm, Package oder anderes.
     Exit(-1);
   end;

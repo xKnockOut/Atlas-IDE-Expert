@@ -105,10 +105,16 @@ begin
   Result := Trim(ATitle);
   Colon := Pos(': ', Result);
   if Colon <= 1 then
+  begin
     Exit;
+  end;
   for Index := 1 to Colon - 1 do
+  begin
     if Result[Index] = ' ' then
+    begin
       Exit;
+    end;
+  end;
   Result := Trim(Copy(Result, Colon + 2, MaxInt));
 end;
 
@@ -129,14 +135,20 @@ begin
       Continue;
     end;
     if Word = '' then
+    begin
       Continue;
+    end;
     if Result <> '' then
+    begin
       Result := Result + '-';
+    end;
     Result := Result + Word;
     Word := '';
     Inc(Count);
     if Count >= ShortTitleWords then
+    begin
       Break;
+    end;
   end;
 end;
 
@@ -144,7 +156,9 @@ class function TAtlasTrackerNaming.BranchKey(const AKey: string): string;
 begin
   Result := Trim(AKey);
   while (Result <> '') and (Result[1] = '#') do
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 function Fill(const APattern, AKey: string; const AIssue: TAtlasTrackerIssue): string;
@@ -153,7 +167,9 @@ var
 begin
   Number := '';
   if AIssue.Number > 0 then
+  begin
     Number := IntToStr(AIssue.Number);
+  end;
   Result := StringReplace(APattern, '{kennung}', AKey, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{nummer}', Number, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{kurztitel}', TAtlasTrackerNaming.ShortTitle(AIssue.Title),
@@ -197,7 +213,9 @@ begin
   begin
     Part := Parts[PartIndex];
     while (Part <> '') and ((Part[1] = '.') or (Part[1] = '-')) do
+    begin
       Delete(Part, 1, 1);
+    end;
     repeat
       Changed := False;
       while (Part <> '') and ((Part[Length(Part)] = '.') or (Part[Length(Part)] = '-')) do
@@ -212,16 +230,22 @@ begin
       end;
     until not Changed;
     if Part = '' then
+    begin
       Continue;
+    end;
     if Result <> '' then
+    begin
       Result := Result + '/';
+    end;
     Result := Result + Part;
   end;
   if Length(Result) > TAtlasVcsBranchNames.MaxLength then
   begin
     Result := Copy(Result, 1, TAtlasVcsBranchNames.MaxLength);
     while (Result <> '') and CharInSet(Result[Length(Result)], ['.', '-', '/']) do
+    begin
       Delete(Result, Length(Result), 1);
+    end;
   end;
 end;
 
@@ -229,14 +253,18 @@ class function TAtlasTrackerNaming.BranchName(const APattern: string; const AIss
 begin
   Result := Sanitize(Fill(Trim(APattern), BranchKey(AIssue.Key), AIssue));
   if not TAtlasVcsBranchNames.Valid(Result) then
+  begin
     Result := '';
+  end;
 end;
 
 class function TAtlasTrackerNaming.CommitPrefix(const APattern: string; const AIssue: TAtlasTrackerIssue): string;
 begin
   Result := '';
   if (APattern = '') or (Trim(AIssue.Key) = '') then
+  begin
     Exit;
+  end;
   Result := Fill(APattern, Trim(AIssue.Key), AIssue);
   // Zeilenumbrüche gehören nicht in einen Präfix.
   Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
@@ -248,11 +276,15 @@ var
 begin
   Result := AMessage;
   if APrefix = '' then
+  begin
     Exit;
+  end;
   Bare := TrimRight(APrefix);
   if (Copy(AMessage, 1, Length(APrefix)) = APrefix) or ((Bare <> '') and (Copy(AMessage, 1, Length(Bare)) = Bare))
   then
+  begin
     Exit;
+  end;
   Result := APrefix + AMessage;
 end;
 
@@ -271,18 +303,26 @@ begin
     end;
     Stop := Index;
     while (Stop <= Length(ABranch)) and IsDigit(ABranch[Stop]) do
+    begin
       Inc(Stop);
+    end;
     if ((Index = 1) or CharInSet(ABranch[Index - 1], ['/', '-', '_', '#'])) and
       ((Stop > Length(ABranch)) or CharInSet(ABranch[Stop], ['-', '_'])) then
     begin
       Result := Copy(ABranch, Index, Stop - Index);
       // Führende Nullen gehören nicht zur Nummer.
       while (Length(Result) > 1) and (Result[1] = '0') do
+      begin
         Delete(Result, 1, 1);
+      end;
       if Result = '0' then
-        Result := ''
+      begin
+        Result := '';
+      end
       else
+      begin
         Result := '#' + Result;
+      end;
       Exit;
     end;
     Index := Stop;
@@ -308,14 +348,22 @@ begin
     end;
     Start := Index;
     while (Index <= Length(Upper)) and IsAsciiAlnum(Upper[Index]) do
+    begin
       Inc(Index);
+    end;
     if (Index >= Length(Upper)) or (Upper[Index] <> '-') or not IsDigit(Upper[Index + 1]) then
+    begin
       Continue;
+    end;
     if (Project <> '') and (Copy(Upper, Start, Index - Start) <> Project) then
+    begin
       Continue;
+    end;
     Stop := Index + 1;
     while (Stop <= Length(Upper)) and IsDigit(Upper[Stop]) do
+    begin
       Inc(Stop);
+    end;
     if (Stop <= Length(Upper)) and IsAsciiAlnum(Upper[Stop]) then
     begin
       Index := Stop;
@@ -329,9 +377,13 @@ class function TAtlasTrackerNaming.KeyOfBranch(const AProvider, AProject, ABranc
 begin
   Result := '';
   if SameText(AProvider, TAtlasTrackerTarget.GitHub) then
-    Result := GitHubKeyOf(Trim(ABranch))
+  begin
+    Result := GitHubKeyOf(Trim(ABranch));
+  end
   else if SameText(AProvider, TAtlasTrackerTarget.YouTrack) then
+  begin
     Result := YouTrackKeyOf(AProject, Trim(ABranch));
+  end;
 end;
 
 end.

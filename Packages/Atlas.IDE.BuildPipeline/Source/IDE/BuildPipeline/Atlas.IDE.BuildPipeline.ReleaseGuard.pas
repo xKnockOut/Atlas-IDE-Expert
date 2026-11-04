@@ -80,11 +80,15 @@ begin
   AGroup := nil;
   Result := Supports(BorlandIDEServices, IOTAMessageServices, AMessages);
   if not Result then
+  begin
     Exit;
+  end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
   AGroup := AMessages.GetGroup(TAtlasIdeReleaseGuard.MessageGroup);
   if AGroup = nil then
+  begin
     AGroup := AMessages.AddMessageGroup(TAtlasIdeReleaseGuard.MessageGroup);
+  end;
 end;
 
 procedure Say(const AText: string);
@@ -93,7 +97,9 @@ var
   Group: IOTAMessageGroup;
 begin
   if not MessageServices(Messages, Group) then
+  begin
     Exit;
+  end;
   Messages.AddTitleMessage(AText, Group);
   Messages.ShowMessageView(Group);
 end;
@@ -104,7 +110,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Supports(Modules.FindModule(AFileName), IOTAProject, Result);
+  end;
 end;
 
 /// <summary>.dpr bzw. .dpk des Projekts: aus den Moduldateien, sonst neben der .dproj.</summary>
@@ -119,16 +127,22 @@ begin
     begin
       Name := AProject.ModuleFileEditors[Index].FileName;
       if TAtlasIdeFiles.IsProjectSource(Name) then
+      begin
         Exit(Name);
+      end;
     end;
   except
     on Exception do
       ; // Rückfall unten.
   end;
   if FileExists(ChangeFileExt(AProject.FileName, '.dpk')) then
-    Result := ChangeFileExt(AProject.FileName, '.dpk')
+  begin
+    Result := ChangeFileExt(AProject.FileName, '.dpk');
+  end
   else if FileExists(ChangeFileExt(AProject.FileName, '.dpr')) then
+  begin
     Result := ChangeFileExt(AProject.FileName, '.dpr');
+  end;
 end;
 
 function SourceText(const AFileName: string): string;
@@ -137,13 +151,19 @@ var
 begin
   Result := '';
   if AFileName = '' then
+  begin
     Exit;
+  end;
   Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
+  begin
     Exit(TAtlasEditorBuffer.Text(Buffer));
+  end;
   try
     if FileExists(AFileName) then
+    begin
       Result := TAtlasTextFile.Load(AFileName).Text;
+    end;
   except
     on Exception do
       Result := '';
@@ -156,7 +176,9 @@ var
 begin
   Result := '';
   if (AFolder <> '') and TAtlasProjectSummaries.Load(AFolder, AProject, Summary) then
+  begin
     Result := Summary.Release.VersionOf(AConfiguration, APlatform);
+  end;
 end;
 
 { TAtlasIdeReleaseGuard }
@@ -181,8 +203,10 @@ begin
           TAtlasGuard.Report(TAtlasFeature.Build, E);
       end;
       if not Result then
+      begin
         Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseUnreadable,
           [ExtractFileName(AProject.FileName)]));
+      end;
     end,
     function(const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings;
       AOutcome: TAtlasReleaseOutcome): string
@@ -207,7 +231,9 @@ begin
   AOptions := Default(TAtlasReleaseOptions);
   Result := False;
   if (AProject = nil) or (AProject.ProjectOptions = nil) then
+  begin
     Exit;
+  end;
   AOptions.Project := AProject.FileName;
   AOptions.Configuration := AConfiguration;
   AOptions.Platform := APlatform;
@@ -221,7 +247,9 @@ begin
   AOptions.IncludeVersionInfo := Value('VerInfo_IncludeVerInfo');
   AOptions.AutoIncrementVersion := Value('VerInfo_AutoGenVersion');
   if AOptions.AutoIncrementVersion = '' then
+  begin
     AOptions.AutoIncrementVersion := Value('VerInfo_AutoIncVersion');
+  end;
   AOptions.VersionKeys := Value('VerInfo_Keys');
   AOptions.MajorVersion := Value('VerInfo_MajorVer');
   AOptions.MinorVersion := Value('VerInfo_MinorVer');
@@ -231,8 +259,10 @@ begin
   AOptions.HasDebugConfiguration := TAtlasIdeProjectContext.HasConfiguration(AProject,
     TAtlasReleaseGuard.DebugConfiguration);
   if AOptions.HasDebugConfiguration then
+  begin
     AOptions.DebugOutputFolder := Trim(TAtlasIdeProjectContext.ConfigurationValue(AProject,
       TAtlasReleaseGuard.DebugConfiguration, APlatform, 'DCC_ExeOutput'));
+  end;
   AOptions.SourceFile := ProjectSourceOf(AProject);
   AOptions.IsPackage := SameText(ExtractFileExt(AOptions.SourceFile), '.dpk');
   AOptions.Source := SourceText(AOptions.SourceFile);
@@ -286,62 +316,72 @@ begin
     Rule := TAtlasReleaseGuard.RuleIds[Finding.Check];
     Seen := False;
     for Known in Result do
+    begin
       if Known = Rule then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Rule];
+    end;
   end;
 end;
 
-class function TAtlasIdeReleaseGuard.Report(const AFolder: string; const AOptions: TAtlasReleaseOptions;
-  const AFindings: TAtlasReleaseFindings; AOutcome: TAtlasReleaseOutcome): string;
+/// <summary>Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.</summary>
+procedure RecordSummary(const AFolder: string; const AOptions: TAtlasReleaseOptions; ACount: Integer;
+  ABlocked: Boolean; const ARules: TArray<string>);
+var
+  Options: TAtlasReleaseOptions;
+  Stamp: TDateTime;
+begin
+  Options := AOptions;
+  Stamp := NowUtc;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasProjectSummaries.Update(AFolder, Options.Project,
+        procedure(var ASummary: TAtlasProjectSummary)
+        begin
+          ASummary.Release.Known := True;
+          ASummary.Release.CheckedAt := Stamp;
+          ASummary.Release.Configuration := Options.Configuration;
+          ASummary.Release.Platform := Options.Platform;
+          ASummary.Release.Findings := ACount;
+          ASummary.Release.Blocked := ABlocked;
+          ASummary.Release.Rules := ARules;
+        end);
+    end);
+end;
+
+/// <summary>Befunde in der Meldungsansicht; ohne Befund nichts.</summary>
+procedure ShowFindings(const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings;
+  AOutcome: TAtlasReleaseOutcome);
 var
   Messages: IOTAMessageServices;
   Group: IOTAMessageGroup;
   LineRef: Pointer;
   Finding: TAtlasReleaseFinding;
-  Rules: TArray<string>;
-  Options: TAtlasReleaseOptions;
-  Count: Integer;
-  Blocked: Boolean;
-  Stamp: TDateTime;
 begin
-  Result := '';
-  Rules := RulesOf(AFindings);
-  Count := Length(AFindings);
-  Blocked := AOutcome = TAtlasReleaseOutcome.Blocked;
-  if Blocked then
-    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseBlockReason,
-      [Count]) + ': ' + string.Join(', ', Rules);
-  // Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.
-  Options := AOptions;
-  Stamp := NowUtc;
-  if AFolder <> '' then
-    TAtlasGuard.Run(TAtlasFeature.Build,
-      procedure
-      begin
-        TAtlasProjectSummaries.Update(AFolder, Options.Project,
-          procedure(var ASummary: TAtlasProjectSummary)
-          begin
-            ASummary.Release.Known := True;
-            ASummary.Release.CheckedAt := Stamp;
-            ASummary.Release.Configuration := Options.Configuration;
-            ASummary.Release.Platform := Options.Platform;
-            ASummary.Release.Findings := Count;
-            ASummary.Release.Blocked := Blocked;
-            ASummary.Release.Rules := Rules;
-          end);
-      end);
-  if (Count = 0) or not MessageServices(Messages, Group) then
+  if (Length(AFindings) = 0) or not MessageServices(Messages, Group) then
+  begin
     Exit;
-  Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseFindings, [Count,
-    ExtractFileName(AOptions.Project), AOptions.Configuration, AOptions.Platform]), Group);
+  end;
+  Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseFindings,
+    [Length(AFindings), ExtractFileName(AOptions.Project), AOptions.Configuration, AOptions.Platform]), Group);
   for Finding in AFindings do
+  begin
     if (Finding.FileName <> '') and (Finding.Line > 0) then
-      Messages.AddToolMessage(Finding.FileName, FindingText(AOptions, Finding), 'Atlas', Finding.Line, 1, nil,
-        LineRef, Group)
+    begin
+      Messages.AddToolMessage(Finding.FileName, TAtlasIdeReleaseGuard.FindingText(AOptions, Finding), 'Atlas',
+        Finding.Line, 1, nil, LineRef, Group);
+    end
     else
-      Messages.AddTitleMessage('  ' + FindingText(AOptions, Finding), Group);
+    begin
+      Messages.AddTitleMessage('  ' + TAtlasIdeReleaseGuard.FindingText(AOptions, Finding), Group);
+    end;
+  end;
   case AOutcome of
     TAtlasReleaseOutcome.Blocked:
       Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.ReleaseBlocked), Group);
@@ -353,6 +393,27 @@ begin
   Messages.ShowMessageView(Group);
 end;
 
+class function TAtlasIdeReleaseGuard.Report(const AFolder: string; const AOptions: TAtlasReleaseOptions;
+  const AFindings: TAtlasReleaseFindings; AOutcome: TAtlasReleaseOutcome): string;
+var
+  Rules: TArray<string>;
+  Blocked: Boolean;
+begin
+  Result := '';
+  Rules := RulesOf(AFindings);
+  Blocked := AOutcome = TAtlasReleaseOutcome.Blocked;
+  if Blocked then
+  begin
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseBlockReason,
+      [Length(AFindings)]) + ': ' + string.Join(', ', Rules);
+  end;
+  if AFolder <> '' then
+  begin
+    RecordSummary(AFolder, AOptions, Length(AFindings), Blocked, Rules);
+  end;
+  ShowFindings(AOptions, AFindings, AOutcome);
+end;
+
 class procedure TAtlasIdeReleaseGuard.Remember(const AFolder: string; const AOptions: TAtlasReleaseOptions;
   const AVersion: string);
 var
@@ -361,7 +422,9 @@ var
   Stamp: TDateTime;
 begin
   if (AFolder = '') or (AVersion = '') then
+  begin
     Exit;
+  end;
   Options := AOptions;
   Version := AVersion;
   Stamp := NowUtc;
@@ -384,13 +447,23 @@ var
 begin
   Result := AProject.CurrentConfiguration;
   if ASettings.IsRelease(Result) then
+  begin
     Exit;
+  end;
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
+  begin
     if SameText(Name, TAtlasBuildPipelineSettings.ReleaseConfiguration) then
+    begin
       Exit(Name);
+    end;
+  end;
   for Name in TAtlasIdeProjectContext.Configurations(AProject) do
+  begin
     if ASettings.IsRelease(Name) then
+    begin
       Exit(Name);
+    end;
+  end;
   Result := '';
 end;
 
@@ -404,7 +477,9 @@ var
 begin
   Project := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Project := Modules.GetActiveProject;
+  end;
   if Project = nil then
   begin
     Say(TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.ReleaseNoProject));
@@ -425,9 +500,11 @@ begin
   end;
   Findings := TAtlasReleaseGuard.Evaluate(ASettings, Options);
   if Length(Findings) = 0 then
+  begin
     Say(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseClean,
       [ExtractFileName(Options.Project), Options.Configuration,
       Options.Platform]));
+  end;
   Report(AFolder, Options, Findings, TAtlasReleaseOutcome.Reported);
 end;
 

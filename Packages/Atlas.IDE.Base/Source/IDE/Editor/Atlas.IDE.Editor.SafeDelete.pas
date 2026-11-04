@@ -68,7 +68,9 @@ function NumberOf(AReply: TJSONObject; const AName: string): Integer;
 begin
   Result := 0;
   if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
+  begin
     Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
+  end;
 end;
 
 function Ask(const AText: string): Boolean;
@@ -95,7 +97,9 @@ var
 begin
   Result := nil;
   for Usage in AUsages do
+  begin
     Result := Result + [Format('%s:%d  %s', [ExtractFileName(Usage.FileName), Usage.Line + 1, Usage.Text])];
+  end;
 end;
 
 function Entries(const AUsages: TArray<TAtlasSafeDeleteUsage>): TArray<TAtlasResultEntry>;
@@ -127,6 +131,7 @@ begin
   try
     Dialog.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
     for Index := 0 to Dialog.ComponentCount - 1 do
+    begin
       if Dialog.Components[Index] is TButton then
       begin
         Button := TButton(Dialog.Components[Index]);
@@ -139,6 +144,7 @@ begin
             Button.Caption := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCancel);
         end;
       end;
+    end;
     case Dialog.ShowModal of
       mrYes:
         Result := TUsageChoice.Show;
@@ -190,7 +196,9 @@ begin
   end;
   Title := Info.Title;
   if Title = '' then
+  begin
     Title := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
+  end;
   // Erst die Überschreibungen: Bleiben sie, zählen sie als Verwendung.
   Overrides := (Info.Overrides <> nil) and Decide(Info.OverridesMode, TAtlasStrings.Fmt(
     TAtlasTextId.SafeDeleteAskOverrides, [Info.Name, Length(Info.Overrides), sLineBreak,
@@ -222,15 +230,21 @@ begin
     try
       Reply := nil;
       if Answer is TJSONObject then
+      begin
         Reply := TJSONObject(Answer);
+      end;
       Edit := TLspWorkspaceEdit.FromJson(nil);
       if Reply <> nil then
       begin
         Edit := TLspWorkspaceEdit.FromJson(Reply.GetValue('edit'));
         Deleted := NumberOf(Reply, 'deleted');
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           for Item in TJSONArray(Reply.GetValue('warnings')) do
+          begin
             Warnings := Warnings + [Item.Value];
+          end;
+        end;
       end;
     finally
       Answer.Free;
@@ -251,7 +265,9 @@ begin
   begin
     Hint := TAtlasStrings.Fmt(TAtlasTextId.SafeDeletePreviewHint, [Deleted, Edit.EditCount, Length(Edit.Files)]);
     for Warning in Warnings do
+    begin
       Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteWarning, [Warning]);
+    end;
     Preview := TAtlasResults.RenamePreview(Edit,
       function(const AFileName: string): string
       begin
@@ -264,7 +280,9 @@ begin
       end;
     if not TAtlasRenamePreview.Execute(Title, Hint, TAtlasStrings.Text(TAtlasTextId.SafeDeleteApply),
       TAtlasResults.Group(Preview), Open) then
+    begin
       Exit;
+    end;
   end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand));
   if Outcome.Error <> '' then
@@ -274,9 +292,13 @@ begin
   end;
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteDone, [Deleted, Outcome.Edits, Outcome.Files]));
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.SafeDeleteWarning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.

@@ -75,7 +75,9 @@ begin
   // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
   try
     if TDirectory.Exists(FFolder) then
+    begin
       TDirectory.Delete(FFolder, True);
+    end;
   except
     on Exception do
       ;
@@ -87,10 +89,14 @@ var
   RequestFile: string;
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.Files) then
+  begin
     Exit;
+  end;
   try
     for RequestFile in TAtlasEditInbox.Pending(FFolder) do
+    begin
       Process(RequestFile);
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Files, E);
@@ -103,7 +109,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Result := Modules.FindModule(AFileName);
+  end;
 end;
 
 procedure TAtlasIdeEditInbox.Process(const ARequestFile: string);
@@ -118,7 +126,9 @@ var
   Module: IOTAModule;
 begin
   if not TAtlasEditInbox.Take(ARequestFile, Request) then
+  begin
     Exit;
+  end;
   Buffer := TAtlasIdeFiles.BufferOf(Request.FileName);
   if Buffer = nil then
   begin
@@ -130,9 +140,13 @@ begin
   if TAtlasEditorBuffer.Text(Buffer) <> Request.Expected then
   begin
     if Buffer.IsModified then
-      TAtlasEditInbox.Answer(FFolder, Request, False, False, 'im Editor ungespeichert geändert')
+    begin
+      TAtlasEditInbox.Answer(FFolder, Request, False, False, 'im Editor ungespeichert geändert');
+    end
     else
+    begin
       TAtlasEditInbox.Answer(FFolder, Request, False, True, 'Puffer weicht von der Platte ab');
+    end;
     Exit;
   end;
   WasModified := Buffer.IsModified;
@@ -156,11 +170,15 @@ begin
   begin
     Module := ModuleOf(Request.FileName);
     if Module <> nil then
+    begin
       Module.Save(False, True);
+    end;
   end;
   TAtlasEditInbox.Answer(FFolder, Request, True, False, '');
   if Assigned(FOnMessage) then
+  begin
     FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.McpEditApplied, [ExtractFileName(Request.FileName)]));
+  end;
 end;
 
 end.

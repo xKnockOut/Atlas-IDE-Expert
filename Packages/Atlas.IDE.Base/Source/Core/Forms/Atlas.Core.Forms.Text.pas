@@ -34,7 +34,9 @@ type
 procedure TMethodNamer.FindMethodName(Writer: TWriter; AMethod: TMethod; var AName: string);
 begin
   if Assigned(FMethodName) then
+  begin
     AName := FMethodName(AMethod);
+  end;
 end;
 
 class function TAtlasFormText.Write(ARoot: TComponent; const AMethodName: TFunc<TMethod, string>): string;
@@ -52,7 +54,9 @@ begin
     Writer := TWriter.Create(Binary, 4096);
     try
       if Assigned(AMethodName) then
+      begin
         Writer.OnFindMethodName := Namer.FindMethodName;
+      end;
       Writer.WriteDescendent(ARoot, nil);
     finally
       // Erst das Freigeben schreibt den Puffer in den Stream.

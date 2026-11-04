@@ -132,14 +132,20 @@ var
 begin
   mSame := Length(AButtons) = Length(FButtons);
   if mSame then
+  begin
     for mIndex := 0 to High(AButtons) do
+    begin
       if not AButtons[mIndex].SameAs(FButtons[mIndex]) then
       begin
         mSame := False;
         Break;
       end;
+    end;
+  end;
   if mSame then
+  begin
     Exit;
+  end;
   FButtons := Copy(AButtons);
   Layout;
   SetHot(PartNone);
@@ -154,16 +160,22 @@ begin
   SetLength(FArrows, Length(FButtons));
   // ClientHeight holt ein Fenster; vor dem Einhängen (SetButtons in CreateBar) gibt es keine Eltern.
   if HandleAllocated then
-    mSize := ClientHeight
+  begin
+    mSize := ClientHeight;
+  end
   else
+  begin
     mSize := Height;
+  end;
   mSize := mSize - Scale(2);
   mArrow := Scale(10);
   mX := Scale(4);
   for mIndex := 0 to High(FButtons) do
   begin
     if FButtons[mIndex].GapBefore then
+    begin
       Inc(mX, Scale(9));
+    end;
     FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + Scale(8), Scale(1) + mSize);
     mX := FRects[mIndex].Right;
     if FButtons[mIndex].Menu then
@@ -172,7 +184,9 @@ begin
       mX := FArrows[mIndex].Right;
     end
     else
+    begin
       FArrows[mIndex] := TRect.Empty;
+    end;
     Inc(mX, Scale(2));
   end;
 end;
@@ -181,7 +195,9 @@ function TAtlasDesignerBar.ButtonOf(APart: Integer): Integer;
 begin
   Result := -1;
   if (APart >= 0) and (APart div 2 <= High(FButtons)) then
+  begin
     Result := APart div 2;
+  end;
 end;
 
 function TAtlasDesignerBar.PartAt(X, Y: Integer): Integer;
@@ -191,9 +207,13 @@ begin
   for mIndex := 0 to High(FButtons) do
   begin
     if FRects[mIndex].Contains(Point(X, Y)) then
+    begin
       Exit(2 * mIndex);
+    end;
     if FButtons[mIndex].Menu and FArrows[mIndex].Contains(Point(X, Y)) then
+    begin
       Exit(2 * mIndex + 1);
+    end;
   end;
   Result := PartNone;
 end;
@@ -205,7 +225,9 @@ begin
   Result := '';
   mIndex := ButtonOf(APart);
   if mIndex >= 0 then
+  begin
     Result := FButtons[mIndex].Hint;
+  end;
 end;
 
 function TAtlasDesignerBar.PartEnabled(APart: Integer): Boolean;
@@ -223,16 +245,22 @@ var
 begin
   mIndex := ButtonOf(APart);
   if (mIndex < 0) or not FButtons[mIndex].Enabled then
+  begin
     Exit;
+  end;
   // Kennung vorher merken: Der Aufrufer setzt im Ereignis oft neue Knöpfe.
   mId := FButtons[mIndex].Id;
   if Odd(APart) then
   begin
     if Assigned(FOnMenu) then
+    begin
       FOnMenu(mId, ClientToScreen(Point(FRects[mIndex].Left, FRects[mIndex].Bottom)));
+    end;
   end
   else if Assigned(FOnCommand) then
+  begin
     FOnCommand(mId);
+  end;
 end;
 
 procedure TAtlasDesignerBar.DrawButton(AIndex: Integer);
@@ -246,7 +274,9 @@ begin
   mButton := FButtons[AIndex];
   mArea := FRects[AIndex];
   if mButton.Menu then
+  begin
     mArea.Right := FArrows[AIndex].Right;
+  end;
   mHot := (Hot = 2 * AIndex) or (Hot = 2 * AIndex + 1);
   mBack := TColor(Colors.Gutter);
   mFore := TColor(Colors.Text);
@@ -270,7 +300,9 @@ begin
       mRadius, mRadius);
   end;
   if not mButton.Enabled then
+  begin
     mFore := TColor(Colors.Muted);
+  end;
   mIcon := FRects[AIndex];
   mIcon := Rect(mIcon.Left + Scale(4), mIcon.Top + (mIcon.Height - IconSize) div 2, mIcon.Left + Scale(4) + IconSize,
     mIcon.Top + (mIcon.Height - IconSize) div 2 + IconSize);
@@ -325,8 +357,12 @@ var
 begin
   Layout;
   for mIndex := 0 to High(FButtons) do
+  begin
     if SameText(FButtons[mIndex].Id, AId) then
+    begin
       Exit(FRects[mIndex]);
+    end;
+  end;
   Result := TRect.Empty;
 end;
 
@@ -336,8 +372,12 @@ var
 begin
   Layout;
   for mIndex := 0 to High(FButtons) do
+  begin
     if SameText(FButtons[mIndex].Id, AId) then
+    begin
       Exit(FArrows[mIndex]);
+    end;
+  end;
   Result := TRect.Empty;
 end;
 

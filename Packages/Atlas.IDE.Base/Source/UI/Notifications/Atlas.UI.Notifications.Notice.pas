@@ -117,7 +117,9 @@ begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
   if ADraw then
+  begin
     Canvas.Brush.Style := bsClear;
+  end;
   X := Scale(Pad);
   Y := Scale(Pad);
   Canvas.Font.Style := [fsBold];
@@ -131,20 +133,29 @@ begin
   // „×“ rechts neben der Überschrift; die endgültige Lage folgt der Breite.
   mWidth := mWidth + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
   for Line in FText.Split([sLineBreak]) do
+  begin
     mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(Line));
+  end;
   if Length(FActions) > 0 then
+  begin
     mWidth := Max(mWidth, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
+  end;
   mWidth := mWidth + Scale(Pad);
   FCloseRect := Rect(mWidth - Scale(Pad) - Canvas.TextWidth(CloseText), Y, mWidth - Scale(Pad), Y + TextHeight);
   if ADraw then
   begin
     if FHot = HitClose then
-      Canvas.Font.Color := ToColor(Colors.Text)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Text);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(Colors.Muted);
+    end;
     Canvas.TextOut(FCloseRect.Left, FCloseRect.Top, CloseText);
   end;
   if FText <> '' then
+  begin
     for Line in FText.Split([sLineBreak]) do
     begin
       Y := Y + TextHeight + Scale(RowGap);
@@ -154,6 +165,7 @@ begin
         Canvas.TextOut(X, Y, Line);
       end;
     end;
+  end;
   SetLength(FActionRects, Length(FActions));
   if Length(FActions) > 0 then
   begin
@@ -173,7 +185,9 @@ begin
       if ADraw then
       begin
         if FHot = Index then
+        begin
           Canvas.Font.Style := [fsUnderline];
+        end;
         Canvas.Font.Color := ToColor(Colors.Accent);
         Canvas.TextOut(X, Y, FActions[Index]);
         Canvas.Font.Style := [];
@@ -182,7 +196,9 @@ begin
     end;
   end;
   if ADraw then
+  begin
     Canvas.Brush.Style := bsSolid;
+  end;
   Result.cx := mWidth;
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
@@ -215,17 +231,23 @@ end;
 procedure TAtlasNoticeWindow.ClickAction(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FActions)) then
+  begin
     Exit;
+  end;
   Dismiss;
   if Assigned(FOnAction) then
+  begin
     FOnAction(AIndex);
+  end;
 end;
 
 function TAtlasNoticeWindow.ActionRect(AIndex: Integer): TRect;
 begin
   Result := TRect.Empty;
   if (AIndex >= 0) and (AIndex <= High(FActionRects)) then
+  begin
     Result := FActionRects[AIndex];
+  end;
 end;
 
 function TAtlasNoticeWindow.CloseRect: TRect;
@@ -239,10 +261,16 @@ var
 begin
   Result := HitNone;
   if not FCloseRect.IsEmpty and PtInRect(FCloseRect, APoint) then
+  begin
     Exit(HitClose);
+  end;
   for Index := 0 to High(FActionRects) do
+  begin
     if PtInRect(FActionRects[Index], APoint) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 procedure TAtlasNoticeWindow.TimerTick(Sender: TObject);
@@ -250,7 +278,9 @@ begin
   try
     // Wer auf den Hinweis zeigt, liest noch: noch einmal so lange.
     if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
+    begin
       Exit;
+    end;
     Dismiss;
   except
     on E: Exception do
@@ -273,12 +303,18 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Hit := HitTest(Point(X, Y));
   if Hit = HitClose then
-    Dismiss
+  begin
+    Dismiss;
+  end
   else if Hit >= 0 then
+  begin
     ClickAction(Hit);
+  end;
 end;
 
 procedure TAtlasNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -288,9 +324,13 @@ begin
   inherited;
   Hit := HitTest(Point(X, Y));
   if Hit = HitNone then
-    Cursor := crDefault
+  begin
+    Cursor := crDefault;
+  end
   else
+  begin
     Cursor := crHandPoint;
+  end;
   if Hit <> FHot then
   begin
     FHot := Hit;

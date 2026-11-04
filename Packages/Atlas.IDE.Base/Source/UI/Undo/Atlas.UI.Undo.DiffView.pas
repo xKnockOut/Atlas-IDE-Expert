@@ -74,7 +74,9 @@ begin
   FLines.Lines.BeginUpdate;
   try
     for Line in ALines do
+    begin
       FLines.Lines.Add(Line);
+    end;
   finally
     FLines.Lines.EndUpdate;
   end;

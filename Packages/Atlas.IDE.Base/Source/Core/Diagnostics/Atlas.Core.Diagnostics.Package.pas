@@ -151,12 +151,16 @@ var
 begin
   Result := nil;
   if (AFileName = '') or not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
     SetLength(Result, Stream.Size);
     if Length(Result) > 0 then
+    begin
       Stream.ReadBuffer(Result[0], Length(Result));
+    end;
   finally
     Stream.Free;
   end;
@@ -171,7 +175,9 @@ begin
   Bytes := TAtlasDiagnosticPackage.ReadShared(AFileName);
   Start := 0;
   if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
+  begin
     Start := 3;
+  end;
   Result := TEncoding.UTF8.GetString(Bytes, Start, Length(Bytes) - Start);
 end;
 
@@ -184,14 +190,20 @@ begin
   Lines := AText.Replace(#13#10, #10).Split([#10]);
   // Zeilenumbruch am Ende: keine leere letzte Zeile.
   if (Length(Lines) > 0) and (Lines[High(Lines)] = '') then
+  begin
     SetLength(Lines, Length(Lines) - 1);
+  end;
   First := Length(Lines) - ACount;
   if First < 0 then
+  begin
     First := 0;
+  end;
   Result := nil;
   SetLength(Result, Length(Lines) - First);
   for Index := First to High(Lines) do
+  begin
     Result[Index - First] := Lines[Index];
+  end;
 end;
 
 class function TAtlasDiagnosticPackage.Anonymize(const AText: string; const ARoots, AIdentity: TArray<string>): string;
@@ -212,17 +224,27 @@ begin
   Value := Trim(AValue);
   Result := False;
   if Value = '' then
+  begin
     Exit;
+  end;
   if Pos('\', Value) > 0 then
+  begin
     Exit(True);
+  end;
   if StartsText('file:', Value) then
+  begin
     Exit(True);
+  end;
   if Value[1] = '/' then
+  begin
     Exit(True);
+  end;
   // Laufwerk: „C:“ allein oder „C:/…“.
   if (Length(Value) >= 2) and CharInSet(Value[1], ['A'..'Z', 'a'..'z']) and (Value[2] = ':') and
     ((Length(Value) = 2) or CharInSet(Value[3], ['\', '/'])) then
+  begin
     Exit(True);
+  end;
 end;
 
 class function TAtlasDiagnosticPackage.SettingsWithoutPaths(const AJson: string): string;
@@ -281,12 +303,18 @@ begin
       // Schlüssel stehen vor einem Doppelpunkt.
       Next := Stop + 1;
       while (Next <= Length(AJson)) and CharInSet(AJson[Next], [' ', #9, #10, #13]) do
+      begin
         Inc(Next);
+      end;
       IsKey := (Next <= Length(AJson)) and (AJson[Next] = ':');
       if not IsKey and LooksLikePath(Decoded) then
-        Builder.Append('"').Append(PathValue).Append('"')
+      begin
+        Builder.Append('"').Append(PathValue).Append('"');
+      end
       else
+      begin
         Builder.Append(Copy(AJson, Index, Stop - Index + 1));
+      end;
       Index := Stop + 1;
     end;
     Result := Builder.ToString;
@@ -313,8 +341,10 @@ var
 begin
   Files := nil;
   if TAtlasPackagePart.Versions in AParts then
+  begin
     Files := Files + [TAtlasPackageFile.Create(InfoFileName, TAtlasPackagePart.Versions,
       Anonymize(Info(AInput), AInput.Roots, AInput.Identity))];
+  end;
   if TAtlasPackagePart.Settings in AParts then
   begin
     Text := Anonymize(SettingsWithoutPaths(AInput.SettingsJson), AInput.Roots, AInput.Identity);
@@ -327,7 +357,9 @@ begin
       Builder := TStringBuilder.Create;
       try
         for Line in LastLines(ReadText(AInput.PluginLog), PluginLogLines) do
+        begin
           Builder.Append(AnonymizeLog(Line, AInput.Roots, AInput.Identity)).Append(sLineBreak);
+        end;
         Text := Builder.ToString;
       finally
         Builder.Free;
@@ -336,13 +368,19 @@ begin
         TAtlasPackagePart.Logs, Text)];
     end;
     for FileName in AInput.ServerLogs do
+    begin
       if FileExists(FileName) then
+      begin
         Files := Files + [TAtlasPackageFile.Create(ServerFolder + '/' + ExtractFileName(FileName),
           TAtlasPackagePart.Logs, Anonymize(ReadText(FileName), AInput.Roots, AInput.Identity))];
+      end;
+    end;
   end;
   if (TAtlasPackagePart.LastData in AParts) and FileExists(AInput.LastDataFile) then
+  begin
     Files := Files + [TAtlasPackageFile.Create(LastDataFileName, TAtlasPackagePart.LastData,
       Anonymize(ReadText(AInput.LastDataFile), AInput.Roots, AInput.Identity))];
+  end;
   Result := Files;
 end;
 
@@ -374,7 +412,9 @@ var
   Content: TBytesStream;
 begin
   if FileExists(ATarget) then
+  begin
     System.SysUtils.DeleteFile(ATarget);
+  end;
   Zip := TZipFile.Create;
   try
     Zip.Open(ATarget, TZipMode.zmWrite);
@@ -399,7 +439,9 @@ var
 begin
   Result := 0;
   for Item in AFiles do
+  begin
     Inc(Result, Item.Size);
+  end;
 end;
 
 class function TAtlasDiagnosticPackage.Leaks(const AFiles: TAtlasPackageFiles; const ARoots,
@@ -415,13 +457,23 @@ begin
     Text := LowerCase(Item.Text);
     Found := False;
     for Value in ARoots do
+    begin
       if (Trim(Value) <> '') and (Pos(LowerCase(ExcludeTrailingPathDelimiter(Trim(Value))), Text) > 0) then
+      begin
         Found := True;
+      end;
+    end;
     for Value in AIdentity do
+    begin
       if (Length(Trim(Value)) >= 3) and (Pos(LowerCase(Trim(Value)), Text) > 0) then
+      begin
         Found := True;
+      end;
+    end;
     if Found then
+    begin
       Result := Result + [Item.Name];
+    end;
   end;
 end;
 
@@ -438,20 +490,28 @@ begin
     begin
       Builder.Append('## Description').Append(sLineBreak).Append(sLineBreak);
       if Description = '' then
+      begin
         Description := '(What happened? What did you expect? Steps to reproduce.)';
+      end;
     end
     else
     begin
       Builder.Append('## Beschreibung').Append(sLineBreak).Append(sLineBreak);
       if Description = '' then
+      begin
         Description := '(Was ist passiert? Was hast du erwartet? Schritte zum Nachstellen.)';
+      end;
     end;
     Builder.Append(Description).Append(sLineBreak).Append(sLineBreak);
 
     if AEnglish then
-      Builder.Append('## Versions')
+    begin
+      Builder.Append('## Versions');
+    end
     else
+    begin
       Builder.Append('## Versionen');
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
     if TAtlasPackagePart.Versions in AParts then
     begin
@@ -461,31 +521,51 @@ begin
       Builder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
     end
     else if AEnglish then
-      Builder.Append('(not included)').Append(sLineBreak)
+    begin
+      Builder.Append('(not included)').Append(sLineBreak);
+    end
     else
+    begin
       Builder.Append('(nicht angegeben)').Append(sLineBreak);
+    end;
     Builder.Append(sLineBreak);
 
     if AEnglish then
-      Builder.Append('## Diagnostic package')
+    begin
+      Builder.Append('## Diagnostic package');
+    end
     else
+    begin
       Builder.Append('## Diagnosepaket');
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
     if (AZipName <> '') and AEnglish then
+    begin
       Builder.Append('`').Append(ExtractFileName(AZipName))
-        .Append('` (anonymized, checked before sharing; please attach it to this issue)')
+        .Append('` (anonymized, checked before sharing; please attach it to this issue)');
+    end
     else if AZipName <> '' then
+    begin
       Builder.Append('`').Append(ExtractFileName(AZipName))
-        .Append('` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)')
+        .Append('` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)');
+    end
     else if AEnglish then
-      Builder.Append('No diagnostic package created.')
+    begin
+      Builder.Append('No diagnostic package created.');
+    end
     else
+    begin
       Builder.Append('Kein Diagnosepaket angelegt.');
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
     if AEnglish then
-      Builder.Append('_Created with Atlas › Report a problem; Atlas itself sends nothing._')
+    begin
+      Builder.Append('_Created with Atlas › Report a problem; Atlas itself sends nothing._');
+    end
     else
+    begin
       Builder.Append('_Erstellt mit Atlas › Problem melden; Atlas selbst sendet nichts._');
+    end;
     Builder.Append(sLineBreak);
     Result := Anonymize(Builder.ToString, AInput.Roots, AInput.Identity);
   finally
@@ -500,17 +580,29 @@ var
 begin
   Result := False;
   if StartsText('https://', AUrl) then
-    Rest := Copy(AUrl, 9, MaxInt)
+  begin
+    Rest := Copy(AUrl, 9, MaxInt);
+  end
   else if StartsText('http://', AUrl) then
-    Rest := Copy(AUrl, 8, MaxInt)
+  begin
+    Rest := Copy(AUrl, 8, MaxInt);
+  end
   else
+  begin
     Exit;
+  end;
   // Ein Host muss folgen.
   if (Rest = '') or CharInSet(Rest[1], ['/', '?', '#', ':']) then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(AUrl) do
+  begin
     if (Ord(AUrl[Index]) <= 32) or CharInSet(AUrl[Index], ['"', '<', '>', '\', '`', '^', '{', '}', '|']) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 

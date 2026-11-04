@@ -99,20 +99,30 @@ begin
     From := Max(AFrom, Token.Start);
     Till := Min(ATill, Token.Stop);
     if Till <= From then
+    begin
       Continue;
+    end;
     // Innerhalb des Tokens an den Grenzen des aktiven und der gedämpften Bereiche schneiden.
     CutCount := 0;
     AddCut(From);
     if (ActiveStart > From) and (ActiveStart < Till) then
+    begin
       AddCut(ActiveStart);
+    end;
     if (ActiveStop > From) and (ActiveStop < Till) then
+    begin
       AddCut(ActiveStop);
+    end;
     for Range in MutedRanges do
     begin
       if (Range.X > From) and (Range.X < Till) then
+      begin
         AddCut(Range.X);
+      end;
       if (Range.Y > From) and (Range.Y < Till) then
+      begin
         AddCut(Range.Y);
+      end;
     end;
     AddCut(Till);
     // Aufsteigend und ohne Doppelte: Einfügesortierung, die Liste ist winzig.
@@ -130,17 +140,25 @@ begin
     for Index := 0 to CutCount - 2 do
     begin
       if Cuts[Index + 1] = Cuts[Index] then
+      begin
         Continue;
+      end;
       Piece.Start := Cuts[Index];
       Piece.Stop := Cuts[Index + 1];
       Piece.Kind := Token.Kind;
       Piece.Active := (ActiveStart >= 0) and (Piece.Start >= ActiveStart) and (Piece.Stop <= ActiveStop);
       Piece.Muted := False;
       for Range in MutedRanges do
+      begin
         if (Piece.Start >= Range.X) and (Piece.Stop <= Range.Y) then
+        begin
           Piece.Muted := True;
+        end;
+      end;
       if Count = Length(Result) then
+      begin
         SetLength(Result, 2 * Count + 8);
+      end;
       Result[Count] := Piece;
       Inc(Count);
     end;
@@ -152,9 +170,13 @@ procedure TAtlasStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece);
 begin
   // Breite und Zeichnung gleich: Schlüsselwörter auch gedämpft halbfett.
   if APiece.Active or (not APiece.Muted and (APiece.Kind = TAtlasTokenKind.Keyword)) then
-    ACanvas.Font.Style := [fsBold]
+  begin
+    ACanvas.Font.Style := [fsBold];
+  end
   else
+  begin
     ACanvas.Font.Style := [];
+  end;
 end;
 
 function TAtlasStyledText.Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;
@@ -200,7 +222,9 @@ begin
     for Index := 0 to High(AllPieces) do
     begin
       if AllPieces[Index].Active and (FillStart < 0) then
+      begin
         FillStart := X;
+      end;
       Inc(X, Widths[Index]);
       if (FillStart >= 0) and ((Index = High(AllPieces)) or not AllPieces[Index + 1].Active) then
       begin
@@ -220,11 +244,17 @@ begin
   begin
     Piece := AllPieces[Index];
     if AX >= ARow.Right then
+    begin
       Break;
+    end;
     if Piece.Active and not ADimmed then
-      Color := AColors.Accent
+    begin
+      Color := AColors.Accent;
+    end
     else if ADimmed or Piece.Muted then
-      Color := AColors.Muted
+    begin
+      Color := AColors.Muted;
+    end
     else
       case Piece.Kind of
         TAtlasTokenKind.Keyword: Color := AColors.Keyword;
@@ -260,7 +290,9 @@ begin
   begin
     // Lücke ohne Token (kommt bei TAtlasSyntax nicht vor): Breite 0 wie bisher in Width.
     for Index := Done + 1 to Piece.Start do
+    begin
       Result[Index] := Result[Done];
+    end;
     Done := Piece.Stop;
     ApplyFont(ACanvas, Piece);
     PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
@@ -271,11 +303,17 @@ begin
     SetLength(Partial, Length(PieceText));
     if (Length(PieceText) > 0) and GetTextExtentExPointW(ACanvas.Handle, PChar(PieceText), Length(PieceText),
       MaxInt, @Fit, @Partial[0], Size) then
+    begin
       for Index := 0 to High(Partial) - 1 do
+      begin
         Result[Piece.Start + Index + 1] := Base + Partial[Index];
+      end;
+    end;
   end;
   for Index := Done + 1 to Length(Text) do
+  begin
     Result[Index] := Result[Done];
+  end;
   ACanvas.Font.Style := [];
 end;
 

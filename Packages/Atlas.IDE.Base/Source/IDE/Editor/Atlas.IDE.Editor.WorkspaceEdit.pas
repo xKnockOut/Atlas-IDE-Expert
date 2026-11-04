@@ -182,14 +182,20 @@ var
 begin
   AFile.IsForm := True;
   if AEntry.HasBase then
+  begin
     Exit('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften');
+  end;
   Result := TAtlasIdeForms.Check(AEntry.FileName, AEntry.Edits, AFile.FormChanges, AFile.FormProperties);
   if Result <> '' then
+  begin
     Exit;
+  end;
   // Check hat den Text schon geprüft; vorher ist der Stand, den der Server kennt.
   if TAtlasIdeForms.SentText(AEntry.FileName, Sent) then
+  begin
     AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, Content(AEntry.FileName, Sent),
       Content(AEntry.FileName, TLspEdits.Apply(Sent, AEntry.Edits)));
+  end;
 end;
 
 /// <summary>Puffer, Projektdatei oder Platte; ELspEditError und Fehler beim Lesen brechen ab.</summary>
@@ -204,18 +210,24 @@ begin
     // Projektdatei: nie als Text öffnen; ungespeicherte Projektänderungen nicht verwerfen.
     AFile.Project := TAtlasIdeFiles.ProjectModule(AEntry.FileName);
     if (AFile.Project <> nil) and TAtlasIdeFiles.ProjectModified(AFile.Project) then
+    begin
       raise ELspEditError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+    end;
   end
   // Ein Formular würde Atlas mit dem Designer öffnen; dessen Text passt nicht zu den Positionen.
   else if (AFile.Buffer = nil) and (APolicy = TAtlasUnopenedPolicy.OpenInEditor) and
     not TAtlasIdeFiles.IsFormFile(AEntry.FileName) and not TAtlasIdeFiles.IsProjectSource(AEntry.FileName) and
     FileExists(AEntry.FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) and
     Actions.OpenFile(AEntry.FileName) then
+  begin
     AFile.Buffer := TAtlasIdeFiles.BufferOf(AEntry.FileName);
+  end;
   if AFile.Buffer <> nil then
   begin
     if AFile.Buffer.IsReadOnly then
+    begin
       raise ELspEditError.Create('schreibgeschützt');
+    end;
     AFile.Text := TAtlasEditorBuffer.Text(AFile.Buffer);
     if AEntry.HasBase then
     begin
@@ -237,12 +249,16 @@ begin
     Exit;
   end;
   if not FileExists(AEntry.FileName) then
+  begin
     raise ELspEditError.Create('Datei nicht gefunden');
+  end;
   // Vorgabe-Kodierung aus atlas.json wie beim Server (#121); binäre Formulare brechen hier ab.
   AFile.Disk := TAtlasTextFile.Load(AEntry.FileName, TAtlasEncodingDefault.CodePageFor(AEntry.FileName));
   AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, AFile.Disk, AFile.Disk);
   if not AEntry.HasBase then
+  begin
     Base := AFile.Disk.Text;
+  end;
   AFile.Disk.Text := TLspEdits.Apply(Base, AEntry.Edits);
   AFile.Change.After := AFile.Disk;
 end;
@@ -266,7 +282,9 @@ begin
       Item := Default(TPreparedFile);
       Item.FileName := Entry.FileName;
       if not TAtlasIdeFiles.IsProjectFile(Entry.FileName) then
+      begin
         Item.Buffer := TAtlasIdeFiles.BufferOf(Entry.FileName);
+      end;
       if (Item.Buffer = nil) and TAtlasIdeFiles.IsFormFile(Entry.FileName) and
         TAtlasIdeForms.IsOpen(Entry.FileName) then
       begin
@@ -329,17 +347,23 @@ begin
       for Prepared in AFiles do
       begin
         if Prepared.IsForm then
+        begin
           Continue;
+        end;
         try
           if Prepared.Buffer <> nil then
-            TAtlasIdeWorkspaceEdit.WriteBuffer(Prepared.Buffer, Prepared.Text, Prepared.Ranges)
+          begin
+            TAtlasIdeWorkspaceEdit.WriteBuffer(Prepared.Buffer, Prepared.Text, Prepared.Ranges);
+          end
           else
           begin
             TAtlasTextFile.Save(Prepared.FileName, Prepared.Disk);
             Inc(AResult.Written);
             // Geladenes Projekt neu einlesen, sonst schreibt die IDE beim Speichern ihren alten Stand zurück.
             if (Prepared.Project <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+            begin
               Actions.ReloadFile(Prepared.FileName);
+            end;
           end;
         except
           on E: Exception do
@@ -355,7 +379,9 @@ begin
       for Prepared in AFiles do
       begin
         if not Prepared.IsForm then
+        begin
           Continue;
+        end;
         Error := TAtlasIdeForms.Apply(Prepared.FileName, Prepared.FormChanges, Prepared.FormProperties);
         if Error <> '' then
         begin
@@ -364,7 +390,9 @@ begin
           Exit;
         end;
         if Prepared.Change.FileName <> '' then
+        begin
           Recorded.Add(Prepared.Change);
+        end;
         Inc(AResult.Files);
       end;
       for Planned in APlan.Removes do
@@ -398,13 +426,19 @@ begin
   Result := '';
   Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
+  begin
     Exit(TAtlasEditorBuffer.Text(Buffer));
+  end;
   // Offenes Formular: der Stand des Designers, wie ihn der Server kennt (#402).
   if TAtlasIdeForms.SentText(AFileName, Result) then
+  begin
     Exit;
+  end;
   try
     if FileExists(AFileName) then
+    begin
       Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+    end;
   except
     on Exception do
       Result := '';
@@ -427,7 +461,9 @@ begin
     Writer.CopyTo(StartByte);
     Writer.DeleteTo(EndByte);
     if Range.NewText <> '' then
+    begin
       Writer.Insert(PAnsiChar(UTF8Encode(Range.NewText)));
+    end;
   end;
   Writer := nil;
   // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
@@ -454,7 +490,9 @@ begin
   end;
   Result.Edits := Plan.CreatedEdits;
   if not PrepareFiles(Plan, APolicy, Files, Result) then
+  begin
     Exit;
+  end;
   // 2. Anwenden.
   Execute(Plan, Files, AAction, Target, Result);
 end;

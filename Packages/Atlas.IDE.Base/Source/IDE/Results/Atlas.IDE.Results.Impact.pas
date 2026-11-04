@@ -118,13 +118,17 @@ begin
   // Hauptthread nicht auf. Beim Entladen (AWait) auf alle warten.
   Remaining := nil;
   for Index := 0 to High(FWorkers) do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
     end
     else
+    begin
       Remaining := Remaining + [FWorkers[Index]];
+    end;
+  end;
   FWorkers := Remaining;
 end;
 
@@ -139,7 +143,9 @@ begin
     Exit;
   end;
   if not TAtlasIdeResults.AtCursor(FileName, Line, Character, Name) then
+  begin
     Exit;
+  end;
   FFileName := FileName;
   FLine := Line;
   FCharacter := Character;
@@ -153,7 +159,9 @@ var
   Session: TLspSession;
 begin
   if not Enabled or (FFileName = '') then
+  begin
     Exit;
+  end;
   Session := TAtlasIdeResults.Session;
   if Session = nil then
   begin
@@ -214,7 +222,9 @@ class procedure TAtlasIdeImpact.Show(ARequest: Integer; const AImpact: TAtlasImp
 begin
   // Eine neuere Anfrage läuft schon oder das Package wird entladen.
   if ARequest <> FRequest then
+  begin
     Exit;
+  end;
   if AError <> '' then
   begin
     TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [AError]), nil);
@@ -234,7 +244,9 @@ end;
 class procedure TAtlasIdeImpact.RunTests(const AImpact: TAtlasImpact);
 begin
   if (Length(AImpact.Tests) = 0) or not Assigned(FRunTests) then
+  begin
     Exit;
+  end;
   // Der Server meldet nur Tests aus dem Testprogramm des Projekts: Eine Datei genügt, um es zu finden.
   FRunTests(AImpact.Tests[0].FileName, AImpact.RunNames);
 end;

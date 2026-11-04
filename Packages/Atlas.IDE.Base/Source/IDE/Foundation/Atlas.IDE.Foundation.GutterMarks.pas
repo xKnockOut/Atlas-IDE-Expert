@@ -241,7 +241,9 @@ begin
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 100;
   FTimer.OnTimer := Tick;
@@ -257,7 +259,9 @@ begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   if FEvents <> nil then
   begin
     FEvents.OnEditorPaintGutter := nil;
@@ -289,17 +293,27 @@ begin
   // Gemerkte Zeilen und der Tooltip zeigen auf Schichten nach ihrer Nummer; nach einer Änderung gilt keine mehr.
   HideTip;
   if FTip <> nil then
+  begin
     FTip.OnLink := nil;
+  end;
   FHovering := False;
   FHoverLayer := -1;
   FLayers := nil;
   if FWatch <> nil then
+  begin
     for mItem in FWatch.Items do
+    begin
       if Supports(mItem, IAtlasGutterLayer, mLayer) then
+      begin
         FLayers := FLayers + [mLayer];
+      end;
+    end;
+  end;
   FLayers := FLayers + FOwn;
   if FRows <> nil then
+  begin
     FRows.Clear;
+  end;
   // Eine neue Schicht soll die Datei vorn sofort kennen.
   FFileName := '';
   Invalidate;
@@ -312,10 +326,16 @@ var
 begin
   Result := False;
   if AtlasModuleRegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in AtlasModuleRegistry.FindAll(IAtlasGutterLayer) do
+  begin
     if Supports(mItem, IAtlasGutterLayer, mLayer) and mLayer.Wanted then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeGutterMarks.Invalidate;
@@ -323,7 +343,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasIdeGutterMarks.IconRect(const AGutter: TRect; ASlot: Integer): TRect;
@@ -357,7 +379,9 @@ begin
     (TAtlasProjectSummaries.NormalizedPath(FClickFile) = TAtlasProjectSummaries.NormalizedPath(AFileName)) and
     (TThread.GetTickCount64 - FClickAt <= LineMs);
   if not Result then
+  begin
     ALine := -1;
+  end;
   ForgetLine;
 end;
 
@@ -372,8 +396,12 @@ var
 begin
   Result := False;
   for Layer in FLayers do
+  begin
     if Active(Layer) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasIdeGutterMarks.TopView: IOTAEditView;
@@ -382,7 +410,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Result := Editors.TopView;
+  end;
 end;
 
 function TAtlasIdeGutterMarks.GuardFeature: TAtlasFeature;
@@ -391,12 +421,20 @@ var
 begin
   // Fehler außerhalb einer Schicht (Puffer lesen, Tooltip) gehen an die erste aktive Schicht.
   for Layer in FLayers do
+  begin
     if Active(Layer) then
+    begin
       Exit(Layer.Feature);
+    end;
+  end;
   if Length(FLayers) > 0 then
-    Result := FLayers[0].Feature
+  begin
+    Result := FLayers[0].Feature;
+  end
   else
+  begin
     Result := TAtlasFeature.Notes;
+  end;
 end;
 
 procedure TAtlasIdeGutterMarks.Tick(Sender: TObject);
@@ -433,7 +471,9 @@ var
 begin
   View := TopView;
   if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   if not SameText(FFileName, View.Buffer.FileName) then
   begin
@@ -444,6 +484,7 @@ begin
     FRows.Clear;
     HideTip;
     for Layer in FLayers do
+    begin
       if Active(Layer) then
         try
           Layer.Track(FFileName, Text, True);
@@ -451,6 +492,7 @@ begin
           on E: Exception do
             TAtlasGuard.Report(Layer.Feature, E);
         end;
+    end;
     FShowing := True;
     Invalidate;
     Exit;
@@ -463,10 +505,13 @@ begin
   end;
   // Nach der Tipp-Pause neu verankern; nur Dateien mit Markierungen kosten etwas.
   if (FTrackedText = FText) or (TThread.GetTickCount64 - FChangedAt < QuietMs) then
+  begin
     Exit;
+  end;
   FTrackedText := FText;
   Tracked := False;
   for Layer in FLayers do
+  begin
     if Active(Layer) then
       try
         if Layer.HasMarks(FFileName) then
@@ -478,9 +523,12 @@ begin
         on E: Exception do
           TAtlasGuard.Report(Layer.Feature, E);
       end;
+  end;
   // Auch ohne Bewegung neu zeichnen: Die Zeile einer Markierung wurde vielleicht nur bearbeitet.
   if Tracked then
+  begin
     Invalidate;
+  end;
 end;
 
 function TAtlasIdeGutterMarks.RowAt(X, Y: Integer; out ARow: TRow): Boolean;
@@ -493,16 +541,22 @@ begin
   Result := False;
   View := TopView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   for Row in FRows.Values do
+  begin
     if PtInRect(Row.Gutter, Point(X, Y)) then
     begin
       // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
       if not SameText(Row.FileName, View.Buffer.FileName) or (Row.TopRow <> View.TopRow) then
+      begin
         Exit;
+      end;
       ARow := Row;
       Exit(True);
     end;
+  end;
 end;
 
 procedure TAtlasIdeGutterMarks.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
@@ -524,7 +578,9 @@ var
   Prepared: Boolean;
 begin
   if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (Context = nil) or (Context.EditView = nil) then
+  begin
     Exit;
+  end;
   Row := Default(TRow);
   Row.FileName := Context.FileName;
   Row.Line := Context.LogicalLineNum - 1;
@@ -534,7 +590,9 @@ begin
   HasText := LineState <> nil;
   LineText := '';
   if HasText then
+  begin
     LineText := LineState.Text;
+  end;
   Canvas := nil;
   Colors := TAtlasColors.Light;
   Back := 0;
@@ -543,22 +601,32 @@ begin
   begin
     Layer := FLayers[Index];
     if TAtlasGuard.Disabled(Layer.Feature) then
+    begin
       Continue;
+    end;
     try
       if not Layer.Wanted or not Layer.MarkAt(Context.FileName, Row.Line, LineText, HasText) then
+      begin
         Continue;
+      end;
       // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
       if TAtlasIdeElements.Hidden(Layer.Element, Context.FileName, LineText) then
+      begin
         Continue;
+      end;
       if not Prepared then
       begin
         // Farben einmal je Zeile aus dem Grund der Rinne.
         Canvas := Context.Canvas;
         Sample := GetPixel(Canvas.Handle, Rect.Left + 1, Rect.Top + 1);
         if Sample = CLR_INVALID then
-          Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
+        begin
+          Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
+        end
         else
+        begin
           Back := TAtlasColor(Sample);
+        end;
         Colors := TAtlasColors.ForBackground(Back);
         Prepared := True;
       end;
@@ -597,12 +665,16 @@ begin
   try
     Found := -1;
     if AnyActive and RowAt(X, Y, Row) then
+    begin
       for Icon in Row.Marks do
+      begin
         if PtInRect(Icon.Rect, Point(X, Y)) then
         begin
           Found := Icon.Layer;
           Break;
         end;
+      end;
+    end;
     if Found < 0 then
     begin
       FHovering := False;
@@ -611,16 +683,22 @@ begin
     end;
     if FHovering and (FHoverLayer = Found) and SameText(FHover.FileName, Row.FileName) and
       (FHover.Line = Row.Line) then
+    begin
       Exit;
+    end;
     HideTip;
     FHover := Row;
     FHoverLayer := Found;
     FHovering := True;
     FHoverSince := TThread.GetTickCount64;
     for Icon in Row.Marks do
+    begin
       if Icon.Layer = Found then
+      begin
         FHoverScreen := TRect.Create(Editor.ClientToScreen(Icon.Rect.TopLeft),
           Editor.ClientToScreen(Icon.Rect.BottomRight));
+      end;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(GuardFeature, E);
@@ -637,9 +715,13 @@ begin
     FHovering := False;
     // Rechtsklick in die Rinne: Diese Zeile gilt für die Befehle im Kontextmenü.
     if (Button = mbRight) and AnyActive and RowAt(X, Y, Row) and (Row.Line >= 0) then
-      RememberLine(Row.FileName, Row.Line)
+    begin
+      RememberLine(Row.FileName, Row.Line);
+    end
     else
+    begin
       ForgetLine;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(GuardFeature, E);
@@ -651,7 +733,9 @@ var
   Inside: Boolean;
 begin
   if not FHovering then
+  begin
     Exit;
+  end;
   // Maus hat das Symbol verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
   Inside := PtInRect(FHoverScreen, Mouse.CursorPos) or (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
   if not Inside then
@@ -661,7 +745,9 @@ begin
     Exit;
   end;
   if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  begin
     ShowTip;
+  end;
 end;
 
 procedure TAtlasIdeGutterMarks.ShowTip;
@@ -699,7 +785,9 @@ end;
 procedure TAtlasIdeGutterMarks.HideTip;
 begin
   if (FTip <> nil) and FTip.IsShown then
+  begin
     FTip.HidePopup;
+  end;
 end;
 
 end.

@@ -88,11 +88,15 @@ begin
   try
     Name := '';
     if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) then
+    begin
       Name := Theming.ActiveTheme;
+    end;
     TAtlasGuard.Log(Format('Themenwechsel +%d ms: %s, Hintergrund %s', [AMs, Name,
       TAtlasColorMath.ToHex(TAtlasIdeStyle.Colors.Surface)]));
     if Assigned(TAtlasIdeSymbol.OnThemeChanged) then
+    begin
       TAtlasIdeSymbol.OnThemeChanged();
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Status, E);
@@ -114,7 +118,9 @@ begin
   if Later = nil then
   begin
     if Later_ = nil then
+    begin
       Later_ := TLater.Create;
+    end;
     Later := TTimer.Create(nil);
     Later.OnTimer := Later_.Tick;
   end;
@@ -142,7 +148,9 @@ class function TAtlasIdeSymbol.MenuImage: Integer;
 begin
   Result := FirstImage;
   if (Result >= 0) and (Current = TAtlasSymbolVariant.Dark) then
+  begin
     Inc(Result);
+  end;
 end;
 
 procedure AddSplash;
@@ -150,11 +158,15 @@ var
   Bitmap: HBITMAP;
 begin
   if SplashDone or (SplashScreenServices = nil) then
+  begin
     Exit;
+  end;
   SplashDone := True;
   Bitmap := TAtlasSymbolImages.Bitmap(TAtlasSymbolVariant.Dark, TAtlasSymbol.SplashSize, Screen.PixelsPerInch);
   if Bitmap <> 0 then
+  begin
     SplashScreenServices.AddPluginBitmap(Title, Bitmap);
+  end;
 end;
 
 procedure AddAbout;
@@ -163,7 +175,9 @@ var
   Bitmap: HBITMAP;
 begin
   if (AboutIndex >= 0) or not Supports(BorlandIDEServices, IOTAAboutBoxServices, Services) then
+  begin
     Exit;
+  end;
   Bitmap := TAtlasSymbolImages.Bitmap(TAtlasIdeSymbol.Current, TAtlasSymbol.AboutSize, Screen.PixelsPerInch);
   AboutIndex := Services.AddPluginInfo(Title, TAtlasStrings.Text(TAtlasTextId.SymbolDescription), Bitmap);
 end;
@@ -173,7 +187,9 @@ var
   Services: INTAServices;
 begin
   if (Images <> nil) or not Supports(BorlandIDEServices, INTAServices, Services) then
+  begin
     Exit;
+  end;
   Collection := TAtlasSymbolImages.Collection(nil);
   Images := TVirtualImageList.Create(nil);
   Images.SetSize(TAtlasSymbol.MenuSize, TAtlasSymbol.MenuSize);
@@ -188,7 +204,9 @@ var
   Theming: IOTAIDEThemingServices;
 begin
   if (ThemeNotifier < 0) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) then
+  begin
     ThemeNotifier := Theming.AddNotifier(TThemeNotifier.Create);
+  end;
 end;
 
 class procedure TAtlasIdeSymbol.Register;
@@ -229,10 +247,14 @@ begin
   FreeAndNil(Later);
   FreeAndNil(Later_);
   if (ThemeNotifier >= 0) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) then
+  begin
     Theming.RemoveNotifier(ThemeNotifier);
+  end;
   ThemeNotifier := -1;
   if (AboutIndex >= 0) and Supports(BorlandIDEServices, IOTAAboutBoxServices, About) then
+  begin
     About.RemovePluginInfo(AboutIndex);
+  end;
   AboutIndex := -1;
   // Die Bilder bleiben in der Bildliste der IDE (sie lassen sich nicht entfernen); die Menüeinträge sind dann weg.
   FirstImage := -1;

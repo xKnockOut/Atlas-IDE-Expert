@@ -111,7 +111,9 @@ function PlaceOf(const AView: IOTAEditView): TAtlasNavPlace;
 begin
   Result := Default(TAtlasNavPlace);
   if (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Result := TAtlasNavPlace.Create(AView.Buffer.FileName, AView.CursorPos.Line, AView.CursorPos.Col);
   Result.Time := Now;
 end;
@@ -120,7 +122,9 @@ function WithExcerpt(const AView: IOTAEditView; const APlace: TAtlasNavPlace): T
 begin
   Result := APlace;
   if (AView <> nil) and (APlace.Line > 0) then
+  begin
     Result.Excerpt := TAtlasNavHistory.Excerpt(TAtlasEditorBuffer.LineText(AView, APlace.Line));
+  end;
 end;
 
 function Enabled: Boolean;
@@ -158,7 +162,9 @@ var
 begin
   Owner := FOwner;
   if (Owner = nil) or (EditView = nil) or not Enabled then
+  begin
     Exit;
+  end;
   View := EditView;
   // Keine Exception an die IDE (#493).
   TAtlasGuard.Run(TAtlasFeature.NavHistory,
@@ -214,7 +220,9 @@ begin
     // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
     Anchor := ACursorLine;
     if SameText(Last.FileName, AView.Buffer.FileName) and (Last.Line > 0) then
+    begin
       Anchor := Min(Anchor, Last.Line);
+    end;
     History.LinesChanged(AView.Buffer.FileName, Anchor, Count - Known);
   end;
   LineCounts.AddOrSetValue(Key, Count);
@@ -226,7 +234,9 @@ var
 begin
   Place := PlaceOf(AView);
   if Place.FileName = '' then
+  begin
     Exit;
+  end;
   TrackLines(AView, Place.Line);
   Place := WithExcerpt(AView, Place);
   History.Edited(Place);
@@ -247,17 +257,27 @@ begin
     end;
     View := TAtlasEditorBuffer.ActiveView;
     if View = nil then
+    begin
       Exit;
+    end;
     Current := PlaceOf(View);
     if Current.FileName = '' then
+    begin
       Exit;
+    end;
     if Modified then
-      Modified := False
+    begin
+      Modified := False;
+    end
     else if TAtlasNavHistory.IsJump(Last, Current) then
-      History.Jumped(Last, Current)
+    begin
+      History.Jumped(Last, Current);
+    end
     else if SameText(Last.FileName, Current.FileName) and (Last.Line = Current.Line) then
+    begin
       // Unverändert: den Auszug nicht neu lesen.
       Exit;
+    end;
     Last := WithExcerpt(View, Current);
     TrackLines(View, Current.Line);
   except
@@ -297,7 +317,9 @@ class function TAtlasIdeNavHistory.History: TAtlasNavHistory;
 begin
   Result := nil;
   if State <> nil then
+  begin
     Result := State.History;
+  end;
 end;
 
 class procedure TAtlasIdeNavHistory.Install;
@@ -323,12 +345,18 @@ begin
   Owner := State;
   FState := nil;
   if Owner = nil then
+  begin
     Exit;
+  end;
   if Owner.Notifier <> nil then
+  begin
     Owner.Notifier.FOwner := nil;
+  end;
   // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
   if (Owner.NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Editors.RemoveNotifier(Owner.NotifierIndex);
+  end;
   Owner.Free;
 end;
 
@@ -337,10 +365,14 @@ var
   Here, Target: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
+  begin
     Exit;
+  end;
   Current(Here);
   if State.History.StepBack(Here, Target) then
+  begin
     GoTo_(Target);
+  end;
 end;
 
 class procedure TAtlasIdeNavHistory.GoForward;
@@ -348,10 +380,14 @@ var
   Here, Target: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
+  begin
     Exit;
+  end;
   Current(Here);
   if State.History.StepForward(Here, Target) then
+  begin
     GoTo_(Target);
+  end;
 end;
 
 class procedure TAtlasIdeNavHistory.GoLastEdit;
@@ -359,7 +395,9 @@ var
   Here, Target: TAtlasNavPlace;
 begin
   if (State = nil) or not Enabled then
+  begin
     Exit;
+  end;
   Current(Here);
   if State.History.LastEdit(Here, Target) then
   begin
@@ -391,7 +429,9 @@ var
   Area: TRect;
 begin
   if (State = nil) or not Enabled then
+  begin
     Exit;
+  end;
   Entries := State.History.Entries;
   Commands := nil;
   for Index := 0 to High(Entries) do
@@ -420,17 +460,27 @@ begin
     begin
       Chosen := StrToIntDef(ACommand.Id, -1);
       if (State = nil) or (Chosen < 0) or (Chosen > High(Entries)) then
+      begin
         Exit;
+      end;
       Current(Here);
       if State.History.Jump(Entries[Chosen], Here, Target) then
+      begin
         GoTo_(Target);
+      end;
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 

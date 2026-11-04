@@ -161,7 +161,9 @@ begin
   while (AControl <> nil) and (mDepth < 8) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' < ';
+    end;
     Result := Result + AControl.ClassName + ' ' + AControl.Name;
     AControl := AControl.Parent;
     Inc(mDepth);
@@ -176,16 +178,24 @@ var
 begin
   Result := False;
   if not AControl.Enabled or not AControl.HandleAllocated then
+  begin
     Exit;
+  end;
   if not IsWindowEnabled(AControl.Handle) then
   begin
     EnableWindow(AControl.Handle, True);
     Result := True;
   end;
   for mIndex := 0 to AControl.ControlCount - 1 do
+  begin
     if AControl.Controls[mIndex] is TWinControl then
+    begin
       if EnableWindows(TWinControl(AControl.Controls[mIndex])) then
+      begin
         Result := True;
+      end;
+    end;
+  end;
 end;
 
 { TAtlasEditorBarHost.TWatcher }
@@ -194,7 +204,9 @@ procedure TAtlasEditorBarHost.TWatcher.Notification(AComponent: TComponent; Oper
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent is TControl) and (FHost <> nil) then
+  begin
     FHost.Removed(TControl(AComponent));
+  end;
 end;
 
 { TAtlasEditorBarHost }
@@ -232,10 +244,14 @@ var
 begin
   Result := nil;
   if (AWindow = nil) or (AWindow.Form = nil) then
+  begin
     Exit;
+  end;
   mEditor := AWindow.Form.FindComponent('Editor');
   if (mEditor is TWinControl) and (TWinControl(mEditor).Parent <> nil) then
+  begin
     Result := TWinControl(mEditor);
+  end;
 end;
 
 class function TAtlasEditorBarHost.EditorIn(AControl: TControl): TWinControl;
@@ -245,13 +261,19 @@ var
 begin
   Result := nil;
   if AControl = nil then
+  begin
     Exit;
+  end;
   mForm := GetParentForm(AControl, False);
   if mForm = nil then
+  begin
     Exit;
+  end;
   mEditor := mForm.FindComponent('Editor');
   if mEditor is TWinControl then
+  begin
     Result := TWinControl(mEditor);
+  end;
 end;
 
 class function TAtlasEditorBarHost.TopEditor: TWinControl;
@@ -260,7 +282,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
     Result := EditorOf(mServices.TopEditWindow);
+  end;
 end;
 
 class procedure TAtlasEditorBarHost.FocusEditor(AControl: TControl);
@@ -269,13 +293,19 @@ var
   mEditor: TComponent;
 begin
   if AControl = nil then
+  begin
     Exit;
+  end;
   mForm := GetParentForm(AControl);
   if mForm = nil then
+  begin
     Exit;
+  end;
   mEditor := mForm.FindComponent('Editor');
   if (mEditor is TWinControl) and TWinControl(mEditor).CanFocus then
+  begin
     TWinControl(mEditor).SetFocus;
+  end;
 end;
 
 procedure TAtlasEditorBarHost.Removed(ABar: TControl);
@@ -285,12 +315,16 @@ var
 begin
   mIndex := FBars.IndexOf(ABar);
   if mIndex < 0 then
+  begin
     Exit;
+  end;
   FBars.Delete(mIndex);
   FParents.Delete(mIndex);
   mRemoved := FOnRemoved;
   if Assigned(mRemoved) then
+  begin
     mRemoved(ABar);
+  end;
 end;
 
 procedure TAtlasEditorBarHost.Clear;
@@ -322,8 +356,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to FParents.Count - 1 do
+  begin
     if FParents[mIndex] = AEditorParent then
+    begin
       Exit(FBars[mIndex]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -333,7 +371,9 @@ var
 begin
   mIndex := FBars.IndexOf(ABar);
   if mIndex < 0 then
+  begin
     Exit(nil);
+  end;
   Result := FParents[mIndex];
 end;
 
@@ -349,7 +389,9 @@ begin
   Result := nil;
   mEditor := TopEditor;
   if mEditor <> nil then
+  begin
     Result := BarOf(mEditor.Parent);
+  end;
 end;
 
 function TAtlasEditorBarHost.Bars: TArray<TControl>;
@@ -372,7 +414,9 @@ begin
   try
     mBar := FCreate(AEditorParent);
     if mBar = nil then
+    begin
       Exit;
+    end;
     mBar.FreeNotification(FWatcher);
     FBars.Add(mBar);
     FParents.Add(AEditorParent);
@@ -385,7 +429,9 @@ begin
       TAtlasGuard.Report(FFeature, E);
       // Halb angelegt: wieder weg, beim nächsten Takt neu.
       if (mBar <> nil) and FBars.Contains(mBar) then
-        mBar.Free
+      begin
+        mBar.Free;
+      end
       else if mBar <> nil then
       begin
         mBar.RemoveFreeNotification(FWatcher);
@@ -414,21 +460,31 @@ var
   mBar: TControl;
 begin
   if not Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to mServices.EditWindowCount - 1 do
   begin
     mEditor := EditorOf(mServices.EditWindow[mIndex]);
     if mEditor = nil then
+    begin
       Continue;
+    end;
     mBar := BarOf(mEditor.Parent);
     if mBar = nil then
-      CreateFor(mEditor.Parent)
+    begin
+      CreateFor(mEditor.Parent);
+    end
     else
+    begin
       PlaceGuarded(mBar, mEditor.Parent);
+    end;
   end;
   // Erst mit aktivem Editor: Während die IDE ihre Editoren schließt, gilt ihre Sperre noch.
   if TAtlasEditorBuffer.ActiveView <> nil then
+  begin
     Enable;
+  end;
 end;
 
 function TAtlasEditorBarHost.EnsureFor(const AWindow: INTAEditWindow): TControl;
@@ -438,12 +494,18 @@ begin
   Result := nil;
   mEditor := EditorOf(AWindow);
   if mEditor = nil then
+  begin
     Exit;
+  end;
   Result := BarOf(mEditor.Parent);
   if Result = nil then
-    Result := CreateFor(mEditor.Parent)
+  begin
+    Result := CreateFor(mEditor.Parent);
+  end
   else
+  begin
     PlaceGuarded(Result, mEditor.Parent);
+  end;
 end;
 
 procedure TAtlasEditorBarHost.ForEach(const AAction: TProc<TControl>);
@@ -471,7 +533,9 @@ begin
       TAtlasGuard.Log(FName + ': wieder freigegeben, ein Editor ist aktiv');
     end;
     if (mBar is TWinControl) and EnableWindows(TWinControl(mBar)) then
+    begin
       TAtlasGuard.Log(FName + ': Fenster wieder freigegeben (an der VCL vorbei gesperrt)');
+    end;
   end;
 end;
 
@@ -481,11 +545,15 @@ var
 begin
   // Die ersten Male reichen, um den Aufrufer zu sehen.
   if FDisabledLogged >= MaxDisabledLogs then
+  begin
     Exit;
+  end;
   Inc(FDisabledLogged);
   mChain := '';
   if ABar is TControl then
+  begin
     mChain := ControlChain(TControl(ABar).Parent);
+  end;
   try
     raise EAtlasBarDisabled.Create(FName + ' wird gesperrt');
   except
@@ -493,7 +561,9 @@ begin
     begin
       mTrace := E.StackTrace;
       if (mTrace = '') and Assigned(TAtlasGuard.StackOf) then
+      begin
         mTrace := TAtlasGuard.StackOf(E);
+      end;
     end;
   end;
   TAtlasGuard.Log(Format('%s: wird gesperrt (Enabled := False), in %s; Aufrufer:%s%s',
@@ -504,7 +574,9 @@ function TAtlasEditorBarHost.Wanted(AEditorParent: TWinControl): Boolean;
 begin
   Result := not FHidden;
   if not Result then
+  begin
     Exit;
+  end;
   case FShowIn of
     TAtlasEditorBarView.Code:
       // Nicht im Designer und nicht auf der Willkommensseite (#1442).
@@ -522,10 +594,14 @@ var
 begin
   // Any: Die Sichtbarkeit gehört dem Dienst (Suchleiste schließt sich selbst); nur die Sicherung blendet aus.
   if FShowIn = TAtlasEditorBarView.Any then
+  begin
     Exit;
+  end;
   mWanted := Wanted(AEditorParent);
   if ABar.Visible <> mWanted then
+  begin
     ABar.Visible := mWanted;
+  end;
 end;
 
 function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
@@ -539,22 +615,34 @@ var
 begin
   // Eingeblendet wird nur, was zur Ansicht passt (Code bzw. Designer).
   for mIndex := 0 to FBars.Count - 1 do
+  begin
     if AShown and (FShowIn <> TAtlasEditorBarView.Any) then
-      ApplyView(FBars[mIndex], FParents[mIndex])
+    begin
+      ApplyView(FBars[mIndex], FParents[mIndex]);
+    end
     else if FBars[mIndex].Visible <> AShown then
+    begin
       FBars[mIndex].Visible := AShown;
+    end;
+  end;
 end;
 
 function TAtlasEditorBarHost.Guard: Boolean;
 begin
   Result := not TAtlasGuard.Disabled(FFeature);
   if Result = not FHidden then
+  begin
     Exit;
+  end;
   FHidden := not Result;
   if FHidden then
-    TAtlasGuard.Log(FName + ': durch die Sicherung abgeschaltet')
+  begin
+    TAtlasGuard.Log(FName + ': durch die Sicherung abgeschaltet');
+  end
   else
+  begin
     TAtlasGuard.Log(FName + ': wieder eingeschaltet');
+  end;
   try
     Show(Result);
   except

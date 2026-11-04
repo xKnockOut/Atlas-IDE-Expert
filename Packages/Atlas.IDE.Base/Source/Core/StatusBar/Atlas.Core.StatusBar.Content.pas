@@ -148,10 +148,16 @@ var
   Problem: TAtlasProblem;
 begin
   for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+  begin
     Result[Kind] := 0;
+  end;
   for Problem in AProblems do
+  begin
     if Counted(Problem, AWithCompiler) then
+    begin
       Inc(Result[TAtlasFindings.KindOf(Problem.Severity)]);
+    end;
+  end;
 end;
 
 function Before(ALine, ACharacter, AOtherLine, AOtherCharacter: Integer): Boolean;
@@ -172,10 +178,14 @@ begin
   for Problem in AProblems do
   begin
     if not Counted(Problem, AWithCompiler) or (TAtlasFindings.KindOf(Problem.Severity) <> AKind) then
+    begin
       Continue;
+    end;
     // Der erste der Datei für den Umlauf.
     if not Any or Before(Problem.StartLine, Problem.StartCharacter, First.StartLine, First.StartCharacter) then
+    begin
       First := Problem;
+    end;
     Any := True;
     if Before(ALine, ACharacter, Problem.StartLine, Problem.StartCharacter) and
       (not Found or Before(Problem.StartLine, Problem.StartCharacter, ATarget.StartLine, ATarget.StartCharacter)) then
@@ -195,13 +205,21 @@ end;
 class function TAtlasStatusBarContent.AgeText(ASeconds: Int64; const ATexts: TAtlasStatusLiveTexts): string;
 begin
   if ASeconds < 0 then
+  begin
     ASeconds := 0;
+  end;
   if ASeconds < 60 then
-    Result := Format(ATexts.Seconds, [ASeconds])
+  begin
+    Result := Format(ATexts.Seconds, [ASeconds]);
+  end
   else if ASeconds < 3600 then
-    Result := Format(ATexts.Minutes, [ASeconds div 60])
+  begin
+    Result := Format(ATexts.Minutes, [ASeconds div 60]);
+  end
   else
+  begin
     Result := Format(ATexts.Hours, [ASeconds div 3600]);
+  end;
 end;
 
 class function TAtlasStatusBarContent.LiveText(ALive, AChecking: Boolean; ACheckedAt, ANow: TDateTime;
@@ -210,16 +228,24 @@ var
   Age: Int64;
 begin
   if AChecking then
+  begin
     Exit(ATexts.Checking);
+  end;
   if not ALive then
+  begin
     Exit(ATexts.OnSave);
+  end;
   Result := ATexts.Live;
   if ACheckedAt <= 0 then
+  begin
     Exit;
+  end;
   // Uhr zurückgestellt: nicht „vor −5 s“.
   Age := 0;
   if ANow > ACheckedAt then
+  begin
     Age := SecondsBetween(ANow, ACheckedAt);
+  end;
   Result := Result + ATexts.Separator + Format(ATexts.CheckedAgo, [AgeText(Age, ATexts)]);
 end;
 
@@ -227,9 +253,13 @@ class function TAtlasStatusBarContent.ProgressText(AChecked, ATotal: Integer;
   const ATexts: TAtlasStatusLiveTexts): string;
 begin
   if (ATotal <= 0) or (AChecked >= ATotal) then
+  begin
     Exit('');
+  end;
   if AChecked < 0 then
+  begin
     AChecked := 0;
+  end;
   Result := ATexts.Separator + Format(ATexts.ProjectProgress, [Int64(AChecked) * 100 div ATotal]);
 end;
 
@@ -238,21 +268,31 @@ class function TAtlasStatusBarContent.RunText(AActive: Boolean; ADone, ATotal: I
 begin
   Result := '';
   if ATotal <= 0 then
+  begin
     Exit;
+  end;
   if not AActive then
   begin
     if AFinishedAgoMs < cProjectDoneMs then
+    begin
       Result := ATexts.Separator + ATexts.ProjectDone;
+    end;
     Exit;
   end;
   if ADone < 0 then
+  begin
     ADone := 0;
+  end;
   if ADone > ATotal then
+  begin
     ADone := ATotal;
+  end;
   Result := ATexts.Separator + Format(ATexts.ProjectProgress, [Int64(ADone) * 100 div ATotal]);
   // Debuggen meldet die Statusleiste schon selbst; der Indexaufbau gehört zum Lauf.
   if APaused = 'compile' then
+  begin
     Result := Result + ' ' + ATexts.ProjectPaused;
+  end;
 end;
 
 /// <summary>Innerste Methode bzw. Routine, die ALine umfasst; -1 ohne.</summary>
@@ -264,12 +304,18 @@ begin
   for Index := 0 to High(ANodes) do
   begin
     if not (ANodes[Index].Category in [TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine]) then
+    begin
       Continue;
+    end;
     if (ALine < ANodes[Index].StartLine) or (ALine > ANodes[Index].EndLine) then
+    begin
       Continue;
+    end;
     // Die innerste: der späteste Anfang.
     if (Result < 0) or (ANodes[Index].StartLine >= ANodes[Result].StartLine) then
+    begin
       Result := Index;
+    end;
   end;
 end;
 
@@ -280,10 +326,16 @@ var
 begin
   Result := AMetrics.IndexAt(ALine);
   if Result >= 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(AMetrics.Methods) do
+  begin
     if SameText(AMetrics.Methods[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 class function TAtlasStatusBarContent.MethodAt(const ANodes: TAtlasOutlineNodes; ALine: Integer;
@@ -298,23 +350,31 @@ begin
   Result.CyclomaticLimit := MaxInt;
   Node := NodeAt(ANodes, ALine);
   if Node < 0 then
+  begin
     Exit;
+  end;
   Result.Found := True;
   Result.Name := TAtlasBreadcrumbs.QualifiedName(ANodes, Node);
   Result.Line := ANodes[Node].NameLine;
   Result.Character := ANodes[Node].NameCharacter;
   Result.Lines := ANodes[Node].EndLine - ANodes[Node].StartLine + 1;
   if not AMetricsKnown then
+  begin
     Exit;
+  end;
   Result.LinesLimit := AMetrics.Limits[TAtlasMetric.MethodLength];
   Result.CyclomaticLimit := AMetrics.Limits[TAtlasMetric.Cyclomatic];
   Index := MetricsIndex(AMetrics, ANodes[Node].NameLine, Result.Name);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Values := AMetrics.Methods[Index].Values;
   // Dieselben Zahlen wie die Regeln metric-*.
   if Values[TAtlasMetric.MethodLength] > 0 then
+  begin
     Result.Lines := Values[TAtlasMetric.MethodLength];
+  end;
   Result.Cyclomatic := Values[TAtlasMetric.Cyclomatic];
 end;
 
@@ -322,10 +382,14 @@ class function TAtlasStatusBarContent.MethodDetail(const AMethod: TAtlasStatusMe
   ACyclomaticFormat, ASeparator: string): string;
 begin
   if not AMethod.Found then
+  begin
     Exit('');
+  end;
   Result := Format(ALinesFormat, [AMethod.Lines]);
   if AMethod.Cyclomatic >= 0 then
+  begin
     Result := Result + ASeparator + Format(ACyclomaticFormat, [AMethod.Cyclomatic]);
+  end;
 end;
 
 class function TAtlasStatusBarContent.MethodLimits(const AMethod: TAtlasStatusMethod; const ALinesFormat,
@@ -334,15 +398,23 @@ var
   Part: string;
 begin
   if not AMethod.Found then
+  begin
     Exit('');
+  end;
   Result := Format(ALinesFormat, [AMethod.Lines]);
   if AMethod.LinesLimit < MaxInt then
+  begin
     Result := Format(ALimitFormat, [Result, AMethod.LinesLimit]);
+  end;
   if AMethod.Cyclomatic < 0 then
+  begin
     Exit;
+  end;
   Part := Format(ACyclomaticFormat, [AMethod.Cyclomatic]);
   if AMethod.CyclomaticLimit < MaxInt then
+  begin
     Part := Format(ALimitFormat, [Part, AMethod.CyclomaticLimit]);
+  end;
   Result := Result + ASeparator + Part;
 end;
 

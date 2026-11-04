@@ -199,11 +199,17 @@ function CurrentShift: TShiftState;
 begin
   Result := [];
   if GetKeyState(VK_SHIFT) < 0 then
+  begin
     Include(Result, ssShift);
+  end;
   if GetKeyState(VK_CONTROL) < 0 then
+  begin
     Include(Result, ssCtrl);
+  end;
   if GetKeyState(VK_MENU) < 0 then
+  begin
     Include(Result, ssAlt);
+  end;
 end;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
@@ -221,7 +227,9 @@ var
 begin
   Animate := True;
   if not SystemParametersInfo(SpiGetClientAreaAnimation, 0, @Animate, 0) then
+  begin
     Animate := True;
+  end;
   Result := Animate;
 end;
 
@@ -233,7 +241,9 @@ var
   Func: TBlendFunction;
 begin
   if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
+  begin
     Exit;
+  end;
   Memory := CreateCompatibleDC(ADC);
   Bitmap := CreateCompatibleBitmap(ADC, 1, 1);
   Old := SelectObject(Memory, Bitmap);
@@ -256,7 +266,9 @@ function LineOf(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
   if (ALine >= 0) and (ALine < Length(ALines)) then
+  begin
     Result := ALines[ALine];
+  end;
 end;
 
 { TAtlasIdeMultiCursor.TEvents }
@@ -291,7 +303,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasIdeMultiCursor.Destroy;
@@ -300,14 +314,20 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   if FEvents <> nil then
+  begin
     FEvents.OnEditorPaintLine := nil;
+  end;
   FEventsRef := nil;
   FreeAndNil(FMessages);
   FreeAndNil(FTimer);
   if Assigned(FStatus) and IsActive then
+  begin
     FStatus('', '');
+  end;
   FView := nil;
   FCarets := nil;
   FSteps := nil;
@@ -317,7 +337,9 @@ end;
 class procedure TAtlasIdeMultiCursor.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasMultiCursorStatusProc);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeMultiCursor.Create(ABusy, AStatus);
+  end;
 end;
 
 class procedure TAtlasIdeMultiCursor.Uninstall;
@@ -353,7 +375,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasIdeMultiCursor.ReadMain(const AView: IOTAEditView): TAtlasCaret;
@@ -371,7 +395,9 @@ begin
   Result := TAtlasCaret.At(Line, Character);
   Block := AView.Block;
   if (Block = nil) or not Block.IsValid or (Block.Size = 0) then
+  begin
     Exit;
+  end;
   StartLine := Block.StartingRow - 1;
   StartCharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, StartLine + 1),
     Block.StartingColumn, TabWidth);
@@ -380,9 +406,13 @@ begin
     TabWidth);
   // Der Anker ist das Ende, an dem der Cursor nicht steht.
   if (Line = StartLine) and (Character = StartCharacter) then
-    Result := TAtlasCaret.Range(EndLine, EndCharacter, StartLine, StartCharacter)
+  begin
+    Result := TAtlasCaret.Range(EndLine, EndCharacter, StartLine, StartCharacter);
+  end
   else
+  begin
     Result := TAtlasCaret.Range(StartLine, StartCharacter, EndLine, EndCharacter);
+  end;
 end;
 
 class procedure TAtlasIdeMultiCursor.WriteMain(const AView: IOTAEditView; const ALines: TArray<string>;
@@ -420,7 +450,9 @@ var
 begin
   Rows := Max(1, AView.ViewSize.cy);
   if (ALine + 1 >= AView.TopRow) and (ALine + 1 < AView.TopRow + Rows) then
+  begin
     Exit;
+  end;
   AView.SetTopLeft(Max(1, ALine + 1 - Rows div 2), AView.LeftColumn);
 end;
 
@@ -432,9 +464,13 @@ begin
   AText := '';
   AView := TAtlasEditorBuffer.ActiveView;
   if (AView = nil) or (AView.Buffer = nil) or AView.Buffer.IsReadOnly then
+  begin
     Exit;
+  end;
   if IsActive and ((FView = nil) or not SameText(FView.Buffer.FileName, AView.Buffer.FileName)) then
+  begin
     Finish;
+  end;
   AText := TAtlasEditorBuffer.Text(AView.Buffer);
   // Eine Änderung, deren Meldung noch aussteht, zuerst nachziehen.
   if IsActive and (AText <> FText) then
@@ -464,7 +500,9 @@ var
   Insert: string;
 begin
   if not TAtlasLineMover.Difference(AText, ANewText, Start, OldLength, Insert) then
+  begin
     Exit;
+  end;
   FWriting := True;
   try
     // Ein Schreiber: ein Rückgängig-Schritt für alle Marken.
@@ -472,7 +510,9 @@ begin
     Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Start)));
     Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, Start + OldLength)));
     if Insert <> '' then
+    begin
       Writer.Insert(PAnsiChar(UTF8Encode(Insert)));
+    end;
     Writer := nil;
   finally
     FWriting := False;
@@ -493,7 +533,9 @@ begin
   Step.AfterCarets := Copy(AAfterCarets);
   FSteps := FSteps + [Step];
   if Length(FSteps) > StepLimit then
+  begin
     Delete(FSteps, 0, 1);
+  end;
   FStep := Length(FSteps);
 end;
 
@@ -512,7 +554,9 @@ begin
   FView := AView;
   SetText(AText);
   if Length(FCarets) > 0 then
+  begin
     WriteMain(AView, FLines, FCarets[0]);
+  end;
   Refresh;
 end;
 
@@ -525,7 +569,9 @@ end;
 procedure TAtlasIdeMultiCursor.SyncMain;
 begin
   if not IsActive or (FView = nil) or (FView.Buffer = nil) then
+  begin
     Exit;
+  end;
   FCarets[0] := ReadMain(FView);
   FCarets := TAtlasMultiCursor.Merge(FCarets);
 end;
@@ -539,8 +585,10 @@ begin
   end;
   FWasModified := FView.Buffer.IsModified;
   if Assigned(FStatus) then
+  begin
     FStatus(TAtlasStrings.Fmt(TAtlasTextId.MultiCursorStatus, [Length(FCarets)]),
       TAtlasStrings.Text(TAtlasTextId.MultiCursorStatusHint));
+  end;
   // Nach jedem Schritt sichtbar, dann wieder im Takt.
   FBlink := True;
   FTimer.Enabled := False;
@@ -562,11 +610,15 @@ begin
   FText := '';
   FLines := nil;
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   if Was then
   begin
     if Assigned(FStatus) then
+    begin
       FStatus('', '');
+    end;
     Invalidate;
   end;
 end;
@@ -577,7 +629,9 @@ var
   Carets: TAtlasCarets;
 begin
   if not IsActive or (AText = FText) then
+  begin
     Exit;
+  end;
   // Rückgängig bzw. Wiederholen eines eigenen Schritts: dessen Marken.
   if (FStep > 0) and (AText = FSteps[FStep - 1].Before) then
   begin
@@ -615,7 +669,9 @@ begin
   if (FInstance = nil) or not FInstance.IsActive or FInstance.FWriting or (AView = nil) or
     (AView.Buffer = nil) or (FInstance.FView = nil) or
     not SameText(AView.Buffer.FileName, FInstance.FView.Buffer.FileName) then
+  begin
     Exit;
+  end;
   // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
   TAtlasMainThread.ForceQueue(TAtlasFeature.MultiCursor,
     procedure
@@ -635,7 +691,9 @@ end;
 class procedure TAtlasIdeMultiCursor.Dismiss;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Finish;
+  end;
 end;
 
 procedure TAtlasIdeMultiCursor.DoEdit(AKind: TAtlasCaretEditKind; const AInsert: string);
@@ -645,9 +703,13 @@ var
   Carets: TAtlasCarets;
 begin
   if not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   if TAtlasMultiCursor.Edit(Text, FCarets, AKind, AInsert, NewText, Carets) then
+  begin
     Apply(View, Text, NewText, Carets);
+  end;
 end;
 
 function TAtlasIdeMultiCursor.DoWrap(AOpen: Char): Boolean;
@@ -662,7 +724,9 @@ begin
   Result := False;
   if not TAtlasIdeWrapSelection.Enabled or not TAtlasWrapSelection.Accepts(AOpen, TAtlasIdeWrapSelection.Chars) or
     not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   SetLength(Ranges, Length(FCarets));
   for Index := 0 to High(FCarets) do
   begin
@@ -671,13 +735,17 @@ begin
   end;
   if not TAtlasWrapSelection.Wrap(TAtlasMultiCursor.Lines(Text), Ranges, AOpen, TAtlasIdeWrapSelection.Chars,
     Wrapped) then
+  begin
     Exit;
+  end;
   NewText := string.Join(TAtlasMultiCursor.LineBreakOf(Text), Wrapped.Lines);
   SetLength(Carets, Length(Wrapped.Selections));
   for Index := 0 to High(Carets) do
+  begin
     Carets[Index] := TAtlasCaret.Range(Wrapped.Selections[Index].StartPos.Line,
       Wrapped.Selections[Index].StartPos.Character, Wrapped.Selections[Index].EndPos.Line,
       Wrapped.Selections[Index].EndPos.Character);
+  end;
   Apply(View, Text, NewText, Carets);
   Result := True;
 end;
@@ -688,7 +756,9 @@ var
   Text: string;
 begin
   if not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   SetCarets(View, Text, TAtlasMultiCursor.Move(FLines, FCarets, AMove, AExtend,
     TAtlasEditorBuffer.TabWidth(View.Buffer)));
 end;
@@ -700,11 +770,15 @@ var
 begin
   Result := False;
   if not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   Selected := TAtlasMultiCursor.SelectedText(Text, FCarets, TAtlasMultiCursor.LineBreakOf(Text));
   // Ohne Markierung bleibt Kopieren der IDE.
   if Selected = '' then
+  begin
     Exit;
+  end;
   Clipboard.AsText := Selected;
   Result := True;
 end;
@@ -712,7 +786,9 @@ end;
 procedure TAtlasIdeMultiCursor.DoCut;
 begin
   if DoCopy then
+  begin
     DoEdit(TAtlasCaretEditKind.Insert, '');
+  end;
 end;
 
 procedure TAtlasIdeMultiCursor.DoPaste;
@@ -722,12 +798,18 @@ var
   Carets: TAtlasCarets;
 begin
   if not Clipboard.HasFormat(CF_UNICODETEXT) and not Clipboard.HasFormat(CF_TEXT) then
+  begin
     Exit;
+  end;
   Clip := Clipboard.AsText;
   if (Clip = '') or not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   if TAtlasMultiCursor.Paste(Text, FCarets, Clip, NewText, Carets) then
+  begin
     Apply(View, Text, NewText, Carets);
+  end;
 end;
 
 procedure TAtlasIdeMultiCursor.DoSkip;
@@ -737,12 +819,16 @@ var
   Carets: TAtlasCarets;
 begin
   if not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   if TAtlasMultiCursor.SkipOccurrence(FLines, FCarets, False, False, Carets) then
   begin
     SetCarets(View, Text, Carets);
     if Length(Carets) > 0 then
+    begin
       EnsureVisible(View, Carets[High(Carets)].Line);
+    end;
   end;
 end;
 
@@ -756,10 +842,14 @@ begin
   Result := False;
   // Platzhalter-Modus oder SyncEdit-ähnliche Zustände: Strg+D wirkungslos (die Taste bleibt bei Atlas).
   if IsBusy then
+  begin
     Exit(IsActive);
+  end;
   Was := IsActive;
   if not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   case TAtlasMultiCursor.NextOccurrence(FLines, FCarets, False, False, Carets) of
     TAtlasOccurrence.WordSelected:
       begin
@@ -778,7 +868,9 @@ begin
     // Kein Wort am Cursor: ohne Marken bekommt die IDE die Taste (Quelltext formatieren).
     Result := Was;
     if not Was then
+    begin
       FCarets := nil;
+    end;
   end;
 end;
 
@@ -789,7 +881,9 @@ var
 begin
   Result := False;
   if IsBusy or not Prepare(View, Text) or not FCarets[0].HasSelection then
+  begin
     Exit;
+  end;
   SetCarets(View, Text, TAtlasMultiCursor.LineEnds(FLines, FCarets[0]));
   View.Paint;
   Result := True;
@@ -803,10 +897,14 @@ var
 begin
   Result := False;
   if IsBusy or not Prepare(View, Text) then
+  begin
     Exit;
+  end;
   if not TAtlasMultiCursor.AddVertical(FLines, FCarets, AUp,
     TAtlasEditorBuffer.TabWidth(View.Buffer), Carets) then
+  begin
     Exit;
+  end;
   SetCarets(View, Text, Carets);
   EnsureVisible(View, Carets[High(Carets)].Line);
   Result := True;
@@ -830,17 +928,23 @@ end;
 procedure TAtlasIdeMultiCursor.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.MultiCursor) then
+  begin
     Exit;
+  end;
   try
     case Msg.message of
       WM_LBUTTONDOWN:
         MouseDown(Msg, Handled);
       WM_KEYDOWN, WM_SYSKEYDOWN:
         if IsActive then
+        begin
           KeyDown(Msg, Handled);
+        end;
       WM_CHAR:
         if IsActive then
+        begin
           CharTyped(Msg, Handled);
+        end;
     end;
   except
     // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
@@ -865,30 +969,42 @@ var
   Column, VisibleLine, Line, Character: Integer;
 begin
   if not IsEditorWindow(Msg.hwnd) then
+  begin
     Exit;
+  end;
   Settings := TAtlasIdeSettings.Current;
   Wanted := [ssAlt];
   if Settings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+  begin
     Wanted := [ssCtrl];
+  end;
   Shift := CurrentShift;
   if (Shift <> Wanted) or not Settings.Enabled or not Settings.MultiCursor or IsBusy then
   begin
     // Ein einfacher Klick beendet die Zusatzmarken; der Klick selbst gehört der IDE.
     if IsActive and (Shift = []) then
+    begin
       Finish;
+    end;
     Exit;
   end;
   Control := FindControl(Msg.hwnd);
   if not Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Exit;
+  end;
   State := Services.EditorState[Control];
   if (State = nil) or not State.PointToCharacterPos(Point(SmallInt(LoWord(Cardinal(Msg.lParam))),
     SmallInt(HiWord(Cardinal(Msg.lParam)))), Column, VisibleLine) then
+  begin
     Exit;
+  end;
   Line := State.LineState[VisibleLine].LogicalLineNum - 1;
   if (Line < 0) or not Prepare(View, Text) or (State.View = nil) or (State.View.Buffer = nil) or
     not SameText(State.View.Buffer.FileName, View.Buffer.FileName) then
+  begin
     Exit;
+  end;
   LineText := LineOf(FLines, Line);
   Character := Min(TLspSession.ColumnToIndex(LineText, Column, TAtlasEditorBuffer.TabWidth(View.Buffer)),
     Length(LineText));
@@ -904,10 +1020,14 @@ var
   Settings: TAtlasPluginSettings;
 begin
   if not IsEditorWindow(Msg.hwnd) or IsBusy then
+  begin
     Exit;
+  end;
   Key := Word(Msg.wParam);
   if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  begin
     Exit;
+  end;
   Shift := CurrentShift;
   Plain := Shift - [ssShift];
   Settings := TAtlasIdeSettings.Current;
@@ -937,76 +1057,136 @@ begin
   case Key of
     VK_ESCAPE:
       if Shift = [] then
-        Finish
+      begin
+        Finish;
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_BACK:
       if Plain = [] then
-        DoEdit(TAtlasCaretEditKind.Backspace, '')
+      begin
+        DoEdit(TAtlasCaretEditKind.Backspace, '');
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_DELETE:
       if Shift = [] then
-        DoEdit(TAtlasCaretEditKind.Delete, '')
+      begin
+        DoEdit(TAtlasCaretEditKind.Delete, '');
+      end
       else if Shift = [ssShift] then
-        DoCut
+      begin
+        DoCut;
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_RETURN:
       if Plain = [] then
-        DoEdit(TAtlasCaretEditKind.NewLine, '')
+      begin
+        DoEdit(TAtlasCaretEditKind.NewLine, '');
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_LEFT:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.Left, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.Left, ssShift in Shift);
+      end
       else if Plain = [ssCtrl] then
-        DoMove(TAtlasCaretMove.WordLeft, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.WordLeft, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_RIGHT:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.Right, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.Right, ssShift in Shift);
+      end
       else if Plain = [ssCtrl] then
-        DoMove(TAtlasCaretMove.WordRight, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.WordRight, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_UP:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.Up, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.Up, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_DOWN:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.Down, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.Down, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_HOME:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.LineStart, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.LineStart, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_END:
       if Plain = [] then
-        DoMove(TAtlasCaretMove.LineEnd, ssShift in Shift)
+      begin
+        DoMove(TAtlasCaretMove.LineEnd, ssShift in Shift);
+      end
       else
+      begin
         Handled := False;
+      end;
     VK_INSERT:
       if Shift = [ssCtrl] then
-        Handled := DoCopy
+      begin
+        Handled := DoCopy;
+      end
       else if Shift = [ssShift] then
-        DoPaste
+      begin
+        DoPaste;
+      end
       else
+      begin
         Handled := False;
+      end;
   else
     if (Key = Ord('C')) and (Shift = [ssCtrl]) then
-      Handled := DoCopy
+    begin
+      Handled := DoCopy;
+    end
     else if (Key = Ord('X')) and (Shift = [ssCtrl]) then
-      DoCut
+    begin
+      DoCut;
+    end
     else if (Key = Ord('V')) and (Shift = [ssCtrl]) then
-      DoPaste
+    begin
+      DoPaste;
+    end
     else
+    begin
       Handled := False;
+    end;
   end;
 end;
 
@@ -1015,11 +1195,15 @@ var
   Typed: Char;
 begin
   if not IsEditorWindow(Msg.hwnd) or IsBusy then
+  begin
     Exit;
+  end;
   Typed := Char(Msg.wParam);
   // Steuerzeichen (Strg+Buchstabe, Rücktaste, Enter, Tab) nicht: Tab übernimmt die IDE, Mirror zieht nach.
   if (Typed < ' ') or (Typed = #127) then
+  begin
     Exit;
+  end;
   Handled := True;
   // Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR.
   if (Typed >= #$D800) and (Typed <= #$DBFF) then
@@ -1036,7 +1220,9 @@ begin
   FHighSurrogate := #0;
   // Öffnendes Zeichen bei Markierungen: umschließen (#672) statt überschreiben.
   if DoWrap(Typed) then
+  begin
     Exit;
+  end;
   DoEdit(TAtlasCaretEditKind.Insert, Typed);
 end;
 
@@ -1106,18 +1292,26 @@ var
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not IsActive or
     TAtlasGuard.Disabled(TAtlasFeature.MultiCursor) then
+  begin
     Exit;
+  end;
   try
     if (FView = nil) or not SameText(Context.FileName, FView.Buffer.FileName) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if LineState = nil then
+    begin
       Exit;
+    end;
     Line := Context.LogicalLineNum - 1;
     Text := LineOf(FLines, Line);
     // Nur, wenn die Zeile im Editor dem bekannten Stand entspricht (sonst steht gleich ein Reconcile an).
     if TrimRight(LineState.Text) <> TrimRight(Text) then
+    begin
       Exit;
+    end;
     TabWidth := TAtlasEditorBuffer.TabWidth(FView.Buffer);
     Color := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Accent)));
     DC := Context.Canvas.Handle;
@@ -1126,7 +1320,9 @@ begin
     Brush := CreateSolidBrush(Color);
     try
       if Code.Right > Code.Left then
+      begin
         IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      end;
       // Die Hauptmarke zeichnet die IDE.
       for Index := 1 to High(FCarets) do
       begin
@@ -1138,10 +1334,14 @@ begin
           begin
             From := 0;
             if Line = StartLine then
+            begin
               From := StartCharacter;
+            end;
             Till := Length(Text) + 1;
             if Line = EndLine then
+            begin
               Till := EndCharacter;
+            end;
             First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, From, TabWidth),
               Context.EditorLineNum);
             Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Till, TabWidth),

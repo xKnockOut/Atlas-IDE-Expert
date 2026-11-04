@@ -43,11 +43,17 @@ uses
 class function TAtlasTrackerNoticeText.StateText(const AState: string): string;
 begin
   if SameText(AState, 'open') then
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateOpen)
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateOpen);
+  end
   else if SameText(AState, 'closed') then
-    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateClosed)
+  begin
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyStateClosed);
+  end
   else
+  begin
     Result := AState;
+  end;
 end;
 
 class function TAtlasTrackerNoticeText.Title(const ANotice: TAtlasTrackerNotice): string;
@@ -57,17 +63,27 @@ var
 begin
   mParts := nil;
   if ANotice.AssignedToMe then
-    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyAssignedMe)]
+  begin
+    mParts := mParts + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyAssignedMe)];
+  end
   else if ANotice.AssignedTo <> '' then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyAssignedOther, [ANotice.AssignedTo])];
+  end;
   if ANotice.Comments = 1 then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyComment, [string.Join(', ',
-      ANotice.CommentAuthors)])]
+      ANotice.CommentAuthors)])];
+  end
   else if ANotice.Comments > 1 then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyComments, [ANotice.Comments,
       string.Join(', ', ANotice.CommentAuthors)])];
+  end;
   if ANotice.State <> '' then
+  begin
     mParts := mParts + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueNotifyState, [StateText(ANotice.State)])];
+  end;
   // „ATL-123 dir zugewiesen“, „ATL-123 geändert“ lesen sich ohne Doppelpunkt.
   mPlain := ANotice.AssignedToMe;
   if Length(mParts) = 0 then
@@ -76,9 +92,13 @@ begin
     mPlain := True;
   end;
   if mPlain then
-    Result := ANotice.Key + ' ' + string.Join(Separator, mParts)
+  begin
+    Result := ANotice.Key + ' ' + string.Join(Separator, mParts);
+  end
   else
+  begin
     Result := ANotice.Key + ': ' + string.Join(Separator, mParts);
+  end;
 end;
 
 class function TAtlasTrackerNoticeText.MoreTitle(ACount: Integer): string;

@@ -49,11 +49,15 @@ begin
   AGroup := nil;
   Result := Supports(BorlandIDEServices, IOTAMessageServices, AMessages);
   if not Result then
+  begin
     Exit;
+  end;
   // Gruppe nicht dauerhaft halten (Hinweis in ToolsAPI); bei Bedarf neu anlegen.
   AGroup := AMessages.GetGroup(TAtlasIdeBuildGate.MessageGroup);
   if AGroup = nil then
+  begin
     AGroup := AMessages.AddMessageGroup(TAtlasIdeBuildGate.MessageGroup);
+  end;
 end;
 
 function ProjectOf(const AFileName: string): IOTAProject;
@@ -62,7 +66,9 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Supports(Modules.FindModule(AFileName), IOTAProject, Result);
+  end;
 end;
 
 function IsPascalFile(const AFileName: string): Boolean;
@@ -94,7 +100,7 @@ begin
   Result := FileAge(AFileName, Age);
   if Result then
   begin
-    AUnit.Stamp := 'd:' + FloatToStr(Age);
+    AUnit.Stamp := 'd:' + FloatToStr(Age, TFormatSettings.Invariant);
     AUnit.ModifiedAt := Age;
   end;
 end;
@@ -112,22 +118,30 @@ begin
   Project := ProjectOf(AProject.FileName);
   Result := Project <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to Project.GetModuleCount - 1 do
   begin
     Name := Project.GetModule(Index).FileName;
     if (Name <> '') and IsPascalFile(Name) and UnitState(Name, Item) then
+    begin
       AUnits := AUnits + [Item];
+    end;
   end;
   // Projektquelltext (.dpr/.dpk) steht nicht unter den Modulen des Projekts.
   for Index := 0 to Project.ModuleFileCount - 1 do
   begin
     Name := Project.ModuleFileEditors[Index].FileName;
     if TAtlasIdeFiles.IsProjectSource(Name) and UnitState(Name, Item) then
+    begin
       AUnits := AUnits + [Item];
+    end;
   end;
   if (AProject.OutputFile = '') or not FileAge(AProject.OutputFile, AOutputTime) then
+  begin
     AOutputTime := 0;
+  end;
 end;
 
 function CheckUnit(const ASession: TLspSession; const AFileName: string; ATimeoutMs: Integer;
@@ -139,12 +153,16 @@ begin
   AProblems := nil;
   Result := False;
   if ASession = nil then
+  begin
     Exit;
+  end;
   try
     // Puffer der IDE zuerst (#395): Geprüft wird, was gleich kompiliert wird, auch ungespeichert.
     Buffer := TAtlasIdeFiles.BufferOf(AFileName);
     if Buffer <> nil then
+    begin
       ASession.Sync(AFileName, TAtlasEditorBuffer.Text(Buffer));
+    end;
     Answer := ASession.DocumentDiagnostics(AFileName, '', Cardinal(ATimeoutMs));
     AProblems := Answer.Problems;
     Result := True;
@@ -170,7 +188,9 @@ begin
     Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateBlockReason, [Length(AFindings)]);
   end;
   if not MessageServices(Messages, Group) then
+  begin
     Exit;
+  end;
   if Length(AFindings) > 0 then
   begin
     Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.GateFindings, [Length(AFindings),
@@ -179,7 +199,9 @@ begin
     begin
       Text := Finding.Problem.Message;
       if Finding.Problem.Code <> '' then
+      begin
         Text := '[' + Finding.Problem.Code + '] ' + Text;
+      end;
       Messages.AddToolMessage(Finding.FileName, Text, 'Atlas', Finding.Problem.StartLine + 1,
         Finding.Problem.StartCharacter + 1, nil, LineRef, Group);
     end;
@@ -217,7 +239,9 @@ begin
       Result := False;
       // Ohne laufenden Server keine Prüfung; Atlas startet ihn dafür nicht (#874).
       if Session() = nil then
+      begin
         Exit;
+      end;
       try
         Result := ReadUnits(AProject, AUnits, AOutputTime);
       except
