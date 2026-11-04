@@ -190,6 +190,20 @@ begin
   end;
 end;
 
+/// <summary>Steht bei APrev ein Punkt, der nicht SysUtils bzw. System.SysUtils qualifiziert (Writer.Format)?
+/// </summary>
+function IsForeignMember(const ATokens: TTokens; APrev: Integer): Boolean;
+var
+  mOwner: Integer;
+begin
+  Result := (APrev >= 0) and ATokens[APrev].IsSymbol('.');
+  if Result then
+  begin
+    mOwner := PreviousCode(ATokens, APrev);
+    Result := not ((mOwner >= 0) and MatchText(ATokens[mOwner].Text, ['SysUtils', 'System.SysUtils']));
+  end;
+end;
+
 /// <summary>Formatierungsaufruf ohne TFormatSettings bei AIndex (Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate
 /// …); AClose ist dann die schließende Klammer.</summary>
 function IsLocaleCall(const ATokens: TTokens; AIndex: Integer; out AClose: Integer): Boolean;
@@ -205,9 +219,7 @@ begin
   Prev := PreviousCode(ATokens, AIndex);
   Open := NextCode(ATokens, AIndex + 1);
   // Methoden wie Writer.Format bleiben außen vor; SysUtils.Format zählt.
-  if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') or ((Prev >= 0) and ATokens[Prev].IsSymbol('.') and
-    not ((PreviousCode(ATokens, Prev) >= 0) and MatchText(ATokens[PreviousCode(ATokens, Prev)].Text,
-    ['SysUtils', 'System.SysUtils']))) then
+  if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') or IsForeignMember(ATokens, Prev) then
   begin
     Exit;
   end;
@@ -292,6 +304,46 @@ begin
     'Umwandlung einer Benutzereingabe ohne Prüfung');
 end;
 
+/// <summary>ANode ohne umgebende Klammern.</summary>
+function WithoutParentheses(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode;
+  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
+    Result := Result[0];
+  end;
+end;
+
+/// <summary>Hülle wie Trim(…), durch die die Eingabe unverändert geprüft wird?</summary>
+function IsTransparentCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and MatchText(ANode.Name, TransparentCalls);
+end;
+
+/// <summary>Eingabe aus einer der Quellen ASources: Edit.Text, Grid.Cells[C, R], Memo.Lines[I]?</summary>
+function IsInputNode(ANode: TSyntaxNode; const ASources: TArray<string>): Boolean;
+begin
+  case ANode.Kind of
+    TSyntaxKind.MemberAccess:
+      Result := MatchText(ANode.Name, ASources);
+    TSyntaxKind.IndexAccess:
+      Result := (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
+        MatchText(ANode.Name, ASources);
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Ist AStatement die Zuweisung "X := ACall" direkt in einer Anweisungsliste?</summary>
+function IsListedAssignment(AStatement, ACall: TSyntaxNode): Boolean;
+begin
+  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.AssignStatement) and
+    (AStatement.ChildCount = 2) and (AStatement[1] = ACall) and (AStatement.Parent <> nil);
+  Result := Result and (AStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+    TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
+    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]);
+end;
+
 procedure TUncheckedConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Functions, Sources: TArray<string>;
@@ -306,38 +358,18 @@ var
   // Edit.Text, Grid.Cells[C, R], Memo.Lines[I], auch in Trim(…); nil, wenn das Argument keine Eingabe ist.
   function InputSource(ANode: TSyntaxNode): TSyntaxNode;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): durch Klammern und Hüllen wie Trim(…) hindurch.
-    Result := nil;
-    Node := ANode;
-    while Node <> nil do
+    mNode := WithoutParentheses(ANode);
+    while IsTransparentCall(mNode) do
     begin
-      while (Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1) do
-      begin
-        Node := Node[0];
-      end;
-      case Node.Kind of
-        TSyntaxKind.MemberAccess:
-          if MatchText(Node.Name, Sources) then
-          begin
-            Result := Node;
-          end;
-        TSyntaxKind.IndexAccess:
-          if (Node.ChildCount > 0) and (Node[0].Kind = TSyntaxKind.MemberAccess) and MatchText(Node.Name, Sources) then
-          begin
-            Result := Node;
-          end;
-        TSyntaxKind.Call:
-          if (Node.ChildCount > 1) and MatchText(Node.Name, TransparentCalls) then
-          begin
-            Node := Node[1];
-            Continue;
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-      Node := nil;
+      mNode := WithoutParentheses(mNode[1]);
+    end;
+    Result := nil;
+    if IsInputNode(mNode, Sources) then
+    begin
+      Result := mNode;
     end;
   end;
 
@@ -386,10 +418,7 @@ var
   begin
     Result := nil;
     Statement := ACall.Parent;
-    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.ChildCount <> 2) or
-      (Statement[1] <> ACall) or (Statement.Parent = nil) or not (Statement.Parent.Kind in [TSyntaxKind.Block,
-      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
-      TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]) then
+    if not IsListedAssignment(Statement, ACall) then
     begin
       Exit;
     end;
@@ -877,6 +906,45 @@ begin
   Result := Format('die Formateinstellung %s', [AField]);
 end;
 
+type
+  /// <summary>Gefundene Zuweisung an die globale FormatSettings bzw. eine veraltete globale Variable.</summary>
+  TFormatSettingsModification = record
+    Statement: TSyntaxNode;
+    Target: TSyntaxNode;
+    Routine: TSyntaxNode;
+    /// <summary>Feld hinter FormatSettings bzw. die veraltete Variable; '' = die ganze FormatSettings.</summary>
+    Field: string;
+  end;
+
+/// <summary>Name der geprüften Datei: FileName, sonst der relative Pfad, sonst Unitname mit .pas.</summary>
+function RuleFileName(const AContext: TRuleContext): string;
+begin
+  Result := AContext.FileName;
+  if Result = '' then
+  begin
+    Result := AContext.RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := AContext.UnitName + '.pas';
+  end;
+end;
+
+/// <summary>Zahl der Änderungen in AFound, die in der Routine ARoutine stehen.</summary>
+function ModificationCount(const AFound: TArray<TFormatSettingsModification>; ARoutine: TSyntaxNode): Integer;
+var
+  mItem: TFormatSettingsModification;
+begin
+  Result := 0;
+  for mItem in AFound do
+  begin
+    if mItem.Routine = ARoutine then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 procedure TGlobalFormatSettingsModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   // RTL- und VCL-Basisklassen ohne Mitglieder namens FormatSettings, DecimalSeparator …: Bricht die Kette der
@@ -885,23 +953,14 @@ const
     'TPersistent', 'TInterfacedPersistent', 'TComponent', 'TThread', 'TCustomAttribute', 'TControl', 'TWinControl',
     'TCustomControl', 'TGraphicControl', 'TScrollingWinControl', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame',
     'TDataModule');
-type
-  TModification = record
-    Statement: TSyntaxNode;
-    Target: TSyntaxNode;
-    Routine: TSyntaxNode;
-    /// <summary>Feld hinter FormatSettings bzw. die veraltete Variable; '' = die ganze FormatSettings.</summary>
-    Field: string;
-  end;
 var
   Tokens: TTokens;
   Resolver: TNameResolver;
   mCache: IRuleDerivedCache;
   FileName, LineBreak: string;
   Used, Lines: TArray<string>;
-  Found: TArray<TModification>;
-  Item: TModification;
-  Index, Count: Integer;
+  Found: TArray<TFormatSettingsModification>;
+  Item: TFormatSettingsModification;
   Fixes: TArray<TRuleFix>;
   Fix: TRuleFix;
 
@@ -1022,7 +1081,7 @@ var
     Target: TSyntaxNode;
     Names: TArray<string>;
     First: Integer;
-    Modification: TModification;
+    Modification: TFormatSettingsModification;
   begin
     Target := AStatement[0];
     while (Target.Kind = TSyntaxKind.IndexAccess) and (Target.ChildCount > 0) do
@@ -1095,69 +1154,101 @@ var
     end;
   end;
 
-  /// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
-  /// übergeben. Nur bei einer einzeiligen Anweisung in einer Anweisungsliste mit mindestens einem solchen Aufruf.
-  /// </summary>
-  function LocalFix(const AItem: TModification; out AFix: TRuleFix): Boolean;
+  /// <summary>Formatierungsaufrufe nach der Anweisung bis zum Ende des Rumpfs: AName als letztes Argument.</summary>
+  function CallEdits(ABody: TSyntaxNode; const AItem: TFormatSettingsModification;
+    const AName: string): TArray<TRuleEdit>;
   var
-    Body: TSyntaxNode;
-    Name, Value, Tail, NewText: string;
-    Edits: TArray<TRuleEdit>;
-    Position, Close, Field: Integer;
+    mPosition, mClose: Integer;
   begin
-    Result := False;
-    Body := TRoutineBody.BodyOf(AItem.Routine);
-    if (Body = nil) or not TRoutineBody.InList(AItem.Statement) or
-      (AItem.Statement.StartPos.Line <> AItem.Statement.EndPos.Line) or
-      (AItem.Statement.StartPos.Line > High(Lines)) then
+    Result := nil;
+    mPosition := TRoutineBody.TokenAt(Tokens, AItem.Statement.EndOffset);
+    while (mPosition <= High(Tokens)) and (Tokens[mPosition].Offset < ABody.EndOffset) do
     begin
-      Exit;
-    end;
-    Name := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('FS'));
-    Edits := nil;
-    Position := TRoutineBody.TokenAt(Tokens, AItem.Statement.EndOffset);
-    while (Position <= High(Tokens)) and (Tokens[Position].Offset < Body.EndOffset) do
-    begin
-      if IsLocaleCall(Tokens, Position, Close) then
+      if IsLocaleCall(Tokens, mPosition, mClose) then
       begin
-        Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Tokens[Close].StartPos, Tokens[Close].StartPos),
-          ', ' + Name)];
+        Result := Result + [TRuleEdit.Create(TTextRange.Create(Tokens[mClose].StartPos, Tokens[mClose].StartPos),
+          ', ' + AName)];
       end;
-      Inc(Position);
+      Inc(mPosition);
     end;
-    if Edits = nil then
+  end;
+
+  /// <summary>Feld samt Index wie geschrieben: ShortMonthNames[1] aus FormatSettings.ShortMonthNames[1]; '' wenn
+  /// das Feld im Ziel nicht steht.</summary>
+  function FieldTail(const AItem: TFormatSettingsModification): string;
+  var
+    mField: Integer;
+  begin
+    Result := '';
+    mField := TRoutineBody.TokenAt(Tokens, AItem.Target.StartOffset);
+    while (mField <= High(Tokens)) and (Tokens[mField].Offset < AItem.Target.EndOffset) and
+      not IsIdentifierNamed(Tokens[mField], AItem.Field) do
     begin
-      Exit;
+      Inc(mField);
     end;
-    Value := NodeText(AItem.Statement[1]);
+    if (mField <= High(Tokens)) and (Tokens[mField].Offset < AItem.Target.EndOffset) then
+    begin
+      Result := Copy(AContext.Text, Tokens[mField].Offset + 1, AItem.Target.EndOffset - Tokens[mField].Offset);
+    end;
+  end;
+
+  /// <summary>Neuer Text der Zuweisung mit der lokalen TFormatSettings AName; False, wenn das Feld im Ziel nicht
+  /// zu finden ist.</summary>
+  function AssignmentText(const AItem: TFormatSettingsModification; const AName: string; out AText: string): Boolean;
+  var
+    mValue, mTail: string;
+  begin
+    Result := True;
+    mValue := NodeText(AItem.Statement[1]);
     if AItem.Field = '' then
     begin
-      NewText := Name + ' := ' + Value;
+      AText := AName + ' := ' + mValue;
     end
-    else if SameText(AItem.Field, 'DecimalSeparator') and (Value = '''.''') then
+    else if SameText(AItem.Field, 'DecimalSeparator') and (mValue = '''.''') then
     begin
-      NewText := Name + ' := TFormatSettings.Invariant';
+      AText := AName + ' := TFormatSettings.Invariant';
     end
     else
     begin
-      // Feld samt Index wie geschrieben: ShortMonthNames[1] aus FormatSettings.ShortMonthNames[1].
-      Field := TRoutineBody.TokenAt(Tokens, AItem.Target.StartOffset);
-      while (Field <= High(Tokens)) and (Tokens[Field].Offset < AItem.Target.EndOffset) and
-        not ((Tokens[Field].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Field].Text, AItem.Field)) do
-      begin
-        Inc(Field);
-      end;
-      if (Field > High(Tokens)) or (Tokens[Field].Offset >= AItem.Target.EndOffset) then
-      begin
-        Exit;
-      end;
-      Tail := Copy(AContext.Text, Tokens[Field].Offset + 1, AItem.Target.EndOffset - Tokens[Field].Offset);
-      NewText := Name + ' := FormatSettings;' + LineBreak + TTextLines.IndentOf(Lines[AItem.Statement.StartPos.Line]) +
-        Name + '.' + Tail + ' := ' + Value;
+      mTail := FieldTail(AItem);
+      Result := mTail <> '';
+      AText := AName + ' := FormatSettings;' + LineBreak + TTextLines.IndentOf(Lines[AItem.Statement.StartPos.Line]) +
+        AName + '.' + mTail + ' := ' + mValue;
     end;
-    Edits := [TRoutineBody.AddVariable(AContext.Text, AItem.Routine, Name, 'TFormatSettings', AContext.Formatting),
-      TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), NewText)] + Edits;
-    AFix := TRuleFix.Create('Lokale TFormatSettings anlegen und übergeben', Edits);
+  end;
+
+  /// <summary>Einzeilige Anweisung in einer Anweisungsliste?</summary>
+  function IsSingleLineStatement(const AItem: TFormatSettingsModification): Boolean;
+  begin
+    Result := TRoutineBody.InList(AItem.Statement) and (AItem.Statement.StartPos.Line = AItem.Statement.EndPos.Line) and
+      (AItem.Statement.StartPos.Line <= High(Lines));
+  end;
+
+  /// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
+  /// übergeben. Nur bei einer einzeiligen Anweisung in einer Anweisungsliste mit mindestens einem solchen Aufruf.
+  /// </summary>
+  function LocalFix(const AItem: TFormatSettingsModification; out AFix: TRuleFix): Boolean;
+  var
+    mBody: TSyntaxNode;
+    mName, mText: string;
+    mEdits, mCalls: TArray<TRuleEdit>;
+  begin
+    Result := False;
+    mBody := TRoutineBody.BodyOf(AItem.Routine);
+    if (mBody = nil) or not IsSingleLineStatement(AItem) then
+    begin
+      Exit;
+    end;
+    mName := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('FS'));
+    mCalls := CallEdits(mBody, AItem, mName);
+    if (mCalls = nil) or not AssignmentText(AItem, mName, mText) then
+    begin
+      Exit;
+    end;
+    mEdits := [TRoutineBody.AddVariable(AContext.Text, AItem.Routine, mName, 'TFormatSettings', AContext.Formatting),
+      TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), mText)];
+    mEdits := mEdits + mCalls;
+    AFix := TRuleFix.Create('Lokale TFormatSettings anlegen und übergeben', mEdits);
     Result := True;
   end;
 
@@ -1173,15 +1264,7 @@ begin
   end;
   Tokens := AContext.Tree.Tokens;
   Used := TUsesClauses.UsedUnits(Tokens);
-  FileName := AContext.FileName;
-  if FileName = '' then
-  begin
-    FileName := AContext.RelativePath;
-  end;
-  if FileName = '' then
-  begin
-    FileName := AContext.UnitName + '.pas';
-  end;
+  FileName := RuleFileName(AContext);
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Found := nil;
@@ -1193,16 +1276,8 @@ begin
   begin
     // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
     // finally nicht sinnvoll um.
-    Count := 0;
-    for Index := 0 to High(Found) do
-    begin
-      if Found[Index].Routine = Item.Routine then
-      begin
-        Inc(Count);
-      end;
-    end;
     Fixes := nil;
-    if (Item.Routine <> nil) and (Count = 1) and LocalFix(Item, Fix) then
+    if (Item.Routine <> nil) and (ModificationCount(Found, Item.Routine) = 1) and LocalFix(Item, Fix) then
     begin
       Fixes := [Fix];
     end;
