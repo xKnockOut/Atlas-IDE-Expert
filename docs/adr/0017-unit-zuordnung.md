@@ -379,8 +379,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Commands.Editor` | `IDE/Commands/Atlas.IDE.Commands.Editor.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.KeyMap` | `IDE/Commands/Atlas.IDE.Commands.KeyMap.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.MainMenu` | `IDE/Commands/Atlas.IDE.Commands.MainMenu.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.MenuActions` | `IDE/Commands/Atlas.IDE.Commands.MenuActions.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.MenuModules` | `IDE/Commands/Atlas.IDE.Commands.MenuModules.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Palette` | `IDE/Commands/Atlas.IDE.Commands.Palette.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.QuickOpen` | `IDE/Commands/Atlas.IDE.Commands.QuickOpen.pas` | Ordner `IDE/Commands` |
+| `Atlas.IDE.Commands.ShortcutKeys` | `IDE/Commands/Atlas.IDE.Commands.ShortcutKeys.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.ShortcutTips` | `IDE/Commands/Atlas.IDE.Commands.ShortcutTips.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Usage` | `IDE/Commands/Atlas.IDE.Commands.Usage.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Completion.Editor` | `IDE/Completion/Atlas.IDE.Completion.Editor.pas` | Ordner `IDE/Completion` |
