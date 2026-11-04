@@ -145,10 +145,156 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 
+type
+  /// <summary>Legt die Steuerelemente der Karte an: Überschriften, Zeilen mit Schalter und „Ausprobieren“, den
+  /// Knopf zum Schließen. Schreibt in die Felder der Karte.</summary>
+  TWhatsNewRowBuilder = record
+  private
+    FFrame: TAtlasWelcomeWhatsNewFrame;
+  public
+    constructor Create(AFrame: TAtlasWelcomeWhatsNewFrame);
+    procedure AddHeading(const AVersion: string);
+    procedure AddRows(const AVersion: TAtlasWhatsNewVersion);
+    function NewRow(const AVersion: string; const AItem: TAtlasWhatsNewItem; ASection: TLabel): TAtlasWhatsNewRow;
+    function NewSwitch(const ASetting: string): TCheckBox;
+    procedure AddDismiss;
+  end;
+
 var
   // Lebende Karten: Klicks auf Überschriften wirken über die Nachrichtenschleife, die Karte kann bis dahin frei
   // sein.
   Live: TList<TAtlasWelcomeWhatsNewFrame>;
+
+{ TWhatsNewRowBuilder }
+
+constructor TWhatsNewRowBuilder.Create(AFrame: TAtlasWelcomeWhatsNewFrame);
+begin
+  FFrame := AFrame;
+end;
+
+procedure TWhatsNewRowBuilder.AddHeading(const AVersion: string);
+var
+  mHeading: TLabel;
+begin
+  mHeading := FFrame.Add(TLabel.Create(nil));
+  mHeading.Caption := FFrame.HeadingText(AVersion, FFrame.Collapsible, FFrame.IsExpanded(AVersion));
+  mHeading.Font.Style := [fsBold];
+  if FFrame.Collapsible then
+  begin
+    mHeading.Cursor := crHandPoint;
+    mHeading.OnClick := FFrame.HeadingClick;
+  end;
+  mHeading.Tag := Length(FFrame.FHeadings);
+  FFrame.FHeadings := FFrame.FHeadings + [mHeading];
+  FFrame.FHeadingVersions := FFrame.FHeadingVersions + [AVersion];
+end;
+
+procedure TWhatsNewRowBuilder.AddRows(const AVersion: TAtlasWhatsNewVersion);
+var
+  mItem: TAtlasWhatsNewItem;
+  mInExperimental: Boolean;
+  mSection: TLabel;
+  mRow: TAtlasWhatsNewRow;
+begin
+  mInExperimental := False;
+  // Experimentelle Einträge nach den übrigen unter eigener Überschrift (#834).
+  for mItem in TAtlasWhatsNew.Ordered(AVersion.Items) do
+  begin
+    mSection := nil;
+    if mItem.Experimental and not mInExperimental then
+    begin
+      mInExperimental := True;
+      mSection := FFrame.Add(TLabel.Create(nil));
+      mSection.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsExperimental);
+      mSection.Font.Style := [fsItalic];
+      mSection.Font.Color := clGrayText;
+    end;
+    // NewRow vergibt Length(FFrame.FRows) als Tag, darum erst danach anhängen.
+    mRow := NewRow(AVersion.Version, mItem, mSection);
+    FFrame.FRows := FFrame.FRows + [mRow];
+  end;
+end;
+
+function TWhatsNewRowBuilder.NewRow(const AVersion: string; const AItem: TAtlasWhatsNewItem;
+  ASection: TLabel): TAtlasWhatsNewRow;
+var
+  mKeyText: string;
+begin
+  Result := Default(TAtlasWhatsNewRow);
+  Result.Section := ASection;
+  Result.Version := AVersion;
+  Result.Item := AItem;
+  Result.Title := FFrame.Add(TLabel.Create(nil));
+  Result.Title.Caption := AItem.Title;
+  Result.Title.Font.Style := [fsBold];
+  mKeyText := '';
+  if (FFrame.FSource <> nil) and (AItem.Key <> '') then
+  begin
+    mKeyText := FFrame.FSource.KeyText(AItem.Key);
+  end;
+  if mKeyText <> '' then
+  begin
+    Result.Key := FFrame.Add(TLabel.Create(nil));
+    Result.Key.Caption := mKeyText;
+    Result.Key.Font.Color := clGrayText;
+  end;
+  if AItem.Text <> '' then
+  begin
+    Result.Text := FFrame.Add(TLabel.Create(nil));
+    Result.Text.AutoSize := True;
+    Result.Text.WordWrap := True;
+    Result.Text.Caption := AItem.Text;
+  end;
+  Result.Switch := NewSwitch(AItem.Setting);
+  if (FFrame.FSource <> nil) and FFrame.FSource.CanTry(AItem) then
+  begin
+    Result.TryButton := FFrame.Add(TButton.Create(nil));
+    Result.TryButton.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTry);
+    Result.TryButton.Tag := Length(FFrame.FRows);
+    Result.TryButton.OnClick := FFrame.TryClick;
+  end;
+end;
+
+function TWhatsNewRowBuilder.NewSwitch(const ASetting: string): TCheckBox;
+var
+  mSwitch: TAtlasWhatsNewSwitch;
+begin
+  Result := nil;
+  mSwitch := TAtlasWhatsNewSwitch.None;
+  if (FFrame.FSource <> nil) and (ASetting <> '') then
+  begin
+    mSwitch := FFrame.FSource.SwitchOf(ASetting);
+  end;
+  if mSwitch = TAtlasWhatsNewSwitch.None then
+  begin
+    Exit;
+  end;
+  Result := FFrame.Add(TCheckBox.Create(nil));
+  Result.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsSwitch);
+  Result.Checked := mSwitch = TAtlasWhatsNewSwitch.On;
+  Result.Hint := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsSwitchHint, [ASetting]);
+  Result.ShowHint := True;
+  Result.Tag := Length(FFrame.FRows);
+  Result.OnClick := FFrame.SwitchClick;
+end;
+
+procedure TWhatsNewRowBuilder.AddDismiss;
+begin
+  if FFrame.FView = TAtlasWhatsNewView.Unread then
+  begin
+    FFrame.FDismiss := FFrame.Add(TButton.Create(nil));
+    FFrame.FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead);
+  end
+  else if FFrame.FView <> TAtlasWhatsNewView.Hidden then
+  begin
+    FFrame.FDismiss := FFrame.Add(TButton.Create(nil));
+    FFrame.FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose);
+  end;
+  if FFrame.FDismiss <> nil then
+  begin
+    FFrame.FDismiss.OnClick := FFrame.DismissClick;
+  end;
+end;
 
 { TAtlasWhatsNewMenu }
 
@@ -331,117 +477,28 @@ end;
 
 procedure TAtlasWelcomeWhatsNewFrame.Build;
 var
-  Version: TAtlasWhatsNewVersion;
-  Item: TAtlasWhatsNewItem;
-  Row: TAtlasWhatsNewRow;
-  Heading: TLabel;
-  Switch: TAtlasWhatsNewSwitch;
-  KeyText: string;
-  Headed, InExperimental: Boolean;
-  Section: TLabel;
+  mVersion: TAtlasWhatsNewVersion;
+  mHeaded: Boolean;
+  mBuilder: TWhatsNewRowBuilder;
 begin
+  mBuilder := TWhatsNewRowBuilder.Create(Self);
   FUpdating := True;
   try
     Clear;
     // Überschriften je Version, sobald es mehr als eine gibt oder alle gezeigt werden.
-    Headed := (Length(FVersions) > 1) or Collapsible;
-    for Version in FVersions do
+    mHeaded := (Length(FVersions) > 1) or Collapsible;
+    for mVersion in FVersions do
     begin
-      if Headed then
+      if mHeaded then
       begin
-        Heading := Add(TLabel.Create(nil));
-        Heading.Caption := HeadingText(Version.Version, Collapsible, IsExpanded(Version.Version));
-        Heading.Font.Style := [fsBold];
-        if Collapsible then
-        begin
-          Heading.Cursor := crHandPoint;
-          Heading.OnClick := HeadingClick;
-        end;
-        Heading.Tag := Length(FHeadings);
-        FHeadings := FHeadings + [Heading];
-        FHeadingVersions := FHeadingVersions + [Version.Version];
+        mBuilder.AddHeading(mVersion.Version);
       end;
-      if not IsExpanded(Version.Version) then
+      if IsExpanded(mVersion.Version) then
       begin
-        Continue;
-      end;
-      InExperimental := False;
-      // Experimentelle Einträge nach den übrigen unter eigener Überschrift (#834).
-      for Item in TAtlasWhatsNew.Ordered(Version.Items) do
-      begin
-        Section := nil;
-        if Item.Experimental and not InExperimental then
-        begin
-          InExperimental := True;
-          Section := Add(TLabel.Create(nil));
-          Section.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsExperimental);
-          Section.Font.Style := [fsItalic];
-          Section.Font.Color := clGrayText;
-        end;
-        Row := Default(TAtlasWhatsNewRow);
-        Row.Section := Section;
-        Row.Version := Version.Version;
-        Row.Item := Item;
-        Row.Title := Add(TLabel.Create(nil));
-        Row.Title.Caption := Item.Title;
-        Row.Title.Font.Style := [fsBold];
-        KeyText := '';
-        if (FSource <> nil) and (Item.Key <> '') then
-        begin
-          KeyText := FSource.KeyText(Item.Key);
-        end;
-        if KeyText <> '' then
-        begin
-          Row.Key := Add(TLabel.Create(nil));
-          Row.Key.Caption := KeyText;
-          Row.Key.Font.Color := clGrayText;
-        end;
-        if Item.Text <> '' then
-        begin
-          Row.Text := Add(TLabel.Create(nil));
-          Row.Text.AutoSize := True;
-          Row.Text.WordWrap := True;
-          Row.Text.Caption := Item.Text;
-        end;
-        Switch := TAtlasWhatsNewSwitch.None;
-        if (FSource <> nil) and (Item.Setting <> '') then
-        begin
-          Switch := FSource.SwitchOf(Item.Setting);
-        end;
-        if Switch <> TAtlasWhatsNewSwitch.None then
-        begin
-          Row.Switch := Add(TCheckBox.Create(nil));
-          Row.Switch.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsSwitch);
-          Row.Switch.Checked := Switch = TAtlasWhatsNewSwitch.On;
-          Row.Switch.Hint := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsSwitchHint, [Item.Setting]);
-          Row.Switch.ShowHint := True;
-          Row.Switch.Tag := Length(FRows);
-          Row.Switch.OnClick := SwitchClick;
-        end;
-        if (FSource <> nil) and FSource.CanTry(Item) then
-        begin
-          Row.TryButton := Add(TButton.Create(nil));
-          Row.TryButton.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTry);
-          Row.TryButton.Tag := Length(FRows);
-          Row.TryButton.OnClick := TryClick;
-        end;
-        FRows := FRows + [Row];
+        mBuilder.AddRows(mVersion);
       end;
     end;
-    if FView = TAtlasWhatsNewView.Unread then
-    begin
-      FDismiss := Add(TButton.Create(nil));
-      FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsRead);
-    end
-    else if FView <> TAtlasWhatsNewView.Hidden then
-    begin
-      FDismiss := Add(TButton.Create(nil));
-      FDismiss.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsClose);
-    end;
-    if FDismiss <> nil then
-    begin
-      FDismiss.OnClick := DismissClick;
-    end;
+    mBuilder.AddDismiss;
   finally
     FUpdating := False;
   end;

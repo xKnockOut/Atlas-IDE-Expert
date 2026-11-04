@@ -27,6 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -77,174 +78,233 @@ end;
 /// <summary>Vorlage mit ersetzten Platzhaltern, Zeilenenden wie ALineBreak.</summary>
 function ExpandHeader(const ATemplate, AUnitName, ALineBreak: string): string;
 var
-  Author: string;
+  mAuthor: string;
 begin
-  Author := GetEnvironmentVariable('USERNAME');
-  if Author = '' then
+  mAuthor := GetEnvironmentVariable('USERNAME');
+  if mAuthor = '' then
   begin
-    Author := GetEnvironmentVariable('USER');
+    mAuthor := GetEnvironmentVariable('USER');
   end;
   Result := StringReplace(ATemplate, '{unit}', AUnitName, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{jahr}', IntToStr(CurrentYear), [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '{autor}', Author, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{autor}', mAuthor, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(StringReplace(Result, #13#10, #10, [rfReplaceAll]), #10, ALineBreak, [rfReplaceAll]);
+end;
+
+/// <summary>Ziffer an AIndex (False außerhalb von AText).</summary>
+function IsDigitAt(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 1) and (AIndex <= Length(AText)) and CharInSet(AText[AIndex], ['0'..'9']);
+end;
+
+/// <summary>Beginnt an AIndex ein Jahrhundert 19 oder 20 (bzw. 10, 29)?</summary>
+function StartsCentury(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := CharInSet(AText[AIndex], ['1', '2']) and CharInSet(AText[AIndex + 1], ['0', '9']);
+end;
+
+/// <summary>Steht an AIndex eine vierstellige Jahreszahl, die nicht Teil einer längeren Zahl ist?</summary>
+function IsYearAt(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := StartsCentury(AText, AIndex) and IsDigitAt(AText, AIndex + 2) and IsDigitAt(AText, AIndex + 3) and
+    not IsDigitAt(AText, AIndex - 1) and not IsDigitAt(AText, AIndex + 4);
 end;
 
 /// <summary>Letzte Jahreszahl (19xx/20xx) in AText ab 1; 0 ohne.</summary>
 function LastYear(const AText: string; out AYear: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
   AYear := 0;
-  for Index := 1 to Length(AText) - 3 do
+  for mIndex := 1 to Length(AText) - 3 do
   begin
-    if CharInSet(AText[Index], ['1', '2']) and CharInSet(AText[Index + 1], ['0', '9']) and
-      CharInSet(AText[Index + 2], ['0'..'9']) and CharInSet(AText[Index + 3], ['0'..'9']) and
-      ((Index = 1) or not CharInSet(AText[Index - 1], ['0'..'9'])) and
-      ((Index + 4 > Length(AText)) or not CharInSet(AText[Index + 4], ['0'..'9'])) then
+    if IsYearAt(AText, mIndex) then
     begin
-      Result := Index;
-      AYear := StrToInt(Copy(AText, Index, 4));
+      Result := mIndex;
+      AYear := StrToInt(Copy(AText, mIndex, 4));
     end;
+  end;
+end;
+
+/// <summary>Erstes Token, das kein Kommentar und keine Direktive ist; hinter dem Ende ohne.</summary>
+function FirstCode(const ATokens: TTokens): Integer;
+begin
+  Result := 0;
+  while (Result <= High(ATokens)) and not IsCode(ATokens[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Steht vor AFirst ein Kommentar (der vorhandene Dateikopf)?</summary>
+function HasHeaderComment(const ATokens: TTokens; AFirst: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to AFirst - 1 do
+  begin
+    Result := Result or (ATokens[mIndex].Kind = TPascalTokenKind.Comment);
+  end;
+end;
+
+/// <summary>AText mit dem laufenden Jahr an der Jahreszahl ab AYearPos: 2019 wird 2019-2026, 2019-2025 wird
+/// 2019-2026.</summary>
+function WithCurrentYear(const AText: string; AYearPos: Integer): string;
+begin
+  if (AYearPos > 1) and (AText[AYearPos - 1] = '-') then
+  begin
+    Result := Copy(AText, 1, AYearPos - 1) + IntToStr(CurrentYear) + Copy(AText, AYearPos + 4, MaxInt);
+  end
+  else
+  begin
+    Result := Copy(AText, 1, AYearPos + 3) + '-' + IntToStr(CurrentYear) + Copy(AText, AYearPos + 4, MaxInt);
+  end;
+end;
+
+/// <summary>Fortgeschriebenes Jahr im Kommentar mit der letzten Jahreszahl vor AFirst; leer, wenn es aktuell ist
+/// oder fehlt.</summary>
+function YearEdits(const ATokens: TTokens; AFirst: Integer): TArray<TTextEdit>;
+var
+  mIndex, mLast, mYear, mYearPos: Integer;
+begin
+  Result := nil;
+  mLast := -1;
+  for mIndex := 0 to AFirst - 1 do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Comment) and (LastYear(ATokens[mIndex].Text, mYear) > 0) then
+    begin
+      mLast := mIndex;
+    end;
+  end;
+  if mLast < 0 then
+  begin
+    Exit;
+  end;
+  mYearPos := LastYear(ATokens[mLast].Text, mYear);
+  if mYear < CurrentYear then
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(ATokens[mLast].StartPos, ATokens[mLast].EndPos),
+      WithCurrentYear(ATokens[mLast].Text, mYearPos))];
+  end;
+end;
+
+/// <summary>Neuer Dateikopf aus der Vorlage des Hosts bzw. DefaultHeaderTemplate.</summary>
+function NewHeader(ASource: TCommandSource; const AContext: TSlashContext): TArray<TTextEdit>;
+var
+  mTemplate, mHeader: string;
+begin
+  mTemplate := '';
+  if AContext.Host <> nil then
+  begin
+    mTemplate := AContext.Host.HeaderTemplate(AContext.Uri);
+  end;
+  if mTemplate = '' then
+  begin
+    mTemplate := DefaultHeaderTemplate;
+  end;
+  mHeader := ExpandHeader(mTemplate, ASource.Tree.Root.Name, ASource.LineBreak) + ASource.LineBreak;
+  if ASource.Line = 0 then
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(0, 0, 1, 0), mHeader)];
+  end
+  else
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), mHeader), ASource.RemoveCommand];
   end;
 end;
 
 function ExecuteHeader(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Tokens: TTokens;
-  First, Index, Last, YearPos, Year: Integer;
-  Template, Header, HeaderText, Updated: string;
+  mSource: TCommandSource;
+  mTokens: TTokens;
+  mFirst: Integer;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Tokens := Source.Tree.Tokens;
-    First := 0;
-    while (First <= High(Tokens)) and not IsCode(Tokens[First]) do
-    begin
-      Inc(First);
-    end;
-    if (First > High(Tokens)) or (Source.Tree.Root = nil) or (Source.Tree.Root.Name = '') then
+    mTokens := mSource.Tree.Tokens;
+    mFirst := FirstCode(mTokens);
+    if (mFirst > High(mTokens)) or (mSource.Tree.Root = nil) or (mSource.Tree.Root.Name = '') then
     begin
       Exit(Fail('/header gilt nur in einer Unit', AReason));
     end;
     // Kommentare vor "unit" bilden den vorhandenen Kopf; dort nur das Jahr fortschreiben.
-    HeaderText := '';
-    for Index := 0 to First - 1 do
+    if HasHeaderComment(mTokens, mFirst) then
     begin
-      if Tokens[Index].Kind = TPascalTokenKind.Comment then
-      begin
-        HeaderText := HeaderText + Tokens[Index].Text + #10;
-      end;
-    end;
-    if HeaderText <> '' then
-    begin
-      // Kommentar mit der letzten Jahreszahl im Kopf.
-      Last := -1;
-      for Index := 0 to First - 1 do
-      begin
-        if (Tokens[Index].Kind = TPascalTokenKind.Comment) and (LastYear(Tokens[Index].Text, Year) > 0) then
-        begin
-          Last := Index;
-        end;
-      end;
-      if Last >= 0 then
-      begin
-        YearPos := LastYear(Tokens[Last].Text, Year);
-        if Year < CurrentYear then
-        begin
-          // 2019 wird 2019-2026, 2019-2025 wird 2019-2026.
-          if (YearPos > 1) and (Tokens[Last].Text[YearPos - 1] = '-') then
-          begin
-            Updated := Copy(Tokens[Last].Text, 1, YearPos - 1) + IntToStr(CurrentYear) +
-              Copy(Tokens[Last].Text, YearPos + 4, MaxInt);
-          end
-          else
-          begin
-            Updated := Copy(Tokens[Last].Text, 1, YearPos + 3) + '-' + IntToStr(CurrentYear) +
-              Copy(Tokens[Last].Text, YearPos + 4, MaxInt);
-          end;
-          AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Last].StartPos, Tokens[Last].EndPos), Updated)];
-        end;
-      end;
-      AEdits := AEdits + [Source.RemoveCommand];
-      Exit(True);
-    end;
-    Template := '';
-    if AContext.Host <> nil then
-    begin
-      Template := AContext.Host.HeaderTemplate(AContext.Uri);
-    end;
-    if Template = '' then
-    begin
-      Template := DefaultHeaderTemplate;
-    end;
-    Header := ExpandHeader(Template, Source.Tree.Root.Name, Source.LineBreak) + Source.LineBreak;
-    if Source.Line = 0 then
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 1, 0), Header)];
+      AEdits := YearEdits(mTokens, mFirst);
+      AEdits := AEdits + [mSource.RemoveCommand];
     end
     else
     begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), Header), Source.RemoveCommand];
+      AEdits := NewHeader(mSource, AContext);
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 { /deprecated }
 
+/// <summary>Index des ";" auf Klammertiefe 0 ab AStart; -1 ohne.</summary>
+function StatementEnd(const ATokens: TTokens; AStart: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  Result := AStart;
+  while (Result <= High(ATokens)) and ((mDepth <> 0) or not ATokens[Result].IsSymbol(';')) do
+  begin
+    if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
+    begin
+      Dec(mDepth);
+    end;
+    Inc(Result);
+  end;
+  if Result > High(ATokens) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Index des nächsten Symbols ASymbol ab AStart; hinter dem Ende ohne.</summary>
+function NextSymbol(const ATokens: TTokens; AStart: Integer; const ASymbol: string): Integer;
+begin
+  Result := AStart;
+  while (Result <= High(ATokens)) and not ATokens[Result].IsSymbol(ASymbol) do
+  begin
+    Inc(Result);
+  end;
+end;
+
 /// <summary>Token-Index des abschließenden ";" der Routinendeklaration ab AStart samt Direktiven.</summary>
 function RoutineEnd(const ATokens: TTokens; AStart: Integer; out ADeprecated: Boolean): Integer;
 var
-  Index, Depth, Next: Integer;
+  mNext, mStop: Integer;
 begin
   ADeprecated := False;
-  Depth := 0;
-  Index := AStart;
-  while Index <= High(ATokens) do
+  Result := StatementEnd(ATokens, AStart);
+  if Result < 0 then
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-    begin
-      Inc(Depth);
-    end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-    begin
-      Dec(Depth);
-    end
-    else if (Depth = 0) and ATokens[Index].IsSymbol(';') then
-    begin
-      Break;
-    end;
-    Inc(Index);
+    Exit;
   end;
-  if Index > High(ATokens) then
+  mNext := NextCode(ATokens, Result);
+  mStop := Result;
+  while (mStop <= High(ATokens)) and (mNext <= High(ATokens)) and MatchText(ATokens[mNext].Text, Directives) do
   begin
-    Exit(-1);
-  end;
-  Result := Index;
-  Next := NextCode(ATokens, Result);
-  while (Next <= High(ATokens)) and MatchText(ATokens[Next].Text, Directives) do
-  begin
-    if SameText(ATokens[Next].Text, 'deprecated') then
+    ADeprecated := ADeprecated or SameText(ATokens[mNext].Text, 'deprecated');
+    mStop := NextSymbol(ATokens, mNext, ';');
+    if mStop <= High(ATokens) then
     begin
-      ADeprecated := True;
+      Result := mStop;
+      mNext := NextCode(ATokens, Result);
     end;
-    Index := Next;
-    while (Index <= High(ATokens)) and not ATokens[Index].IsSymbol(';') do
-    begin
-      Inc(Index);
-    end;
-    if Index > High(ATokens) then
-    begin
-      Break;
-    end;
-    Result := Index;
-    Next := NextCode(ATokens, Result);
   end;
 end;
 
@@ -287,29 +347,34 @@ begin
   end;
 end;
 
+/// <summary>Methode, Konstruktor oder Routine AName in AContainer?</summary>
+function IsRoutineSymbol(const ASymbol: TIndexSymbol; const AName, AContainer: string): Boolean;
+begin
+  Result := (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) and
+    SameText(ASymbol.Name, AName) and SameText(ASymbol.Container, AContainer);
+end;
+
 /// <summary>Zeile der Deklaration zu einer Implementierung (Methode in der Klasse, Routine im interface);
 /// -1, wenn die Routine nur hier steht.</summary>
 function DeclarationLine(ASource: TCommandSource; const AName: string; AImplLine: Integer): Integer;
 var
-  Symbol: TIndexSymbol;
-  Container, Name: string;
-  Dot: Integer;
+  mSymbol: TIndexSymbol;
+  mContainer, mName: string;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', AName);
-  Container := Copy(AName, 1, Dot - 1);
-  if LastDelimiter('.', Container) > 0 then
+  mDot := LastDelimiter('.', AName);
+  mContainer := Copy(AName, 1, mDot - 1);
+  if LastDelimiter('.', mContainer) > 0 then
   begin
-    Container := Copy(Container, LastDelimiter('.', Container) + 1, MaxInt);
+    mContainer := Copy(mContainer, LastDelimiter('.', mContainer) + 1, MaxInt);
   end;
-  Name := Copy(AName, Dot + 1, MaxInt);
-  for Symbol in ASource.UnitIndex.Symbols do
+  mName := Copy(AName, mDot + 1, MaxInt);
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) and
-      SameText(Symbol.Name, Name) and SameText(Symbol.Container, Container) and
-      (Symbol.Range.StartPos.Line < AImplLine) and
-      ((Container <> '') or Symbol.InInterface) then
+    if IsRoutineSymbol(mSymbol, mName, mContainer) and (mSymbol.Range.StartPos.Line < AImplLine) and
+      ((mContainer <> '') or mSymbol.InInterface) then
     begin
-      Exit(Symbol.Range.StartPos.Line);
+      Exit(mSymbol.Range.StartPos.Line);
     end;
   end;
   Result := -1;
@@ -338,122 +403,198 @@ begin
     end);
 end;
 
+/// <summary>Erstes Code-Token unter Zeile ALine hinter Attributen [..]; -1 ohne.</summary>
+function TargetBelow(const ATokens: TTokens; ALine: Integer): Integer;
+begin
+  Result := 0;
+  while (Result <= High(ATokens)) and ((ATokens[Result].StartPos.Line <= ALine) or not IsCode(ATokens[Result])) do
+  begin
+    Inc(Result);
+  end;
+  while (Result <= High(ATokens)) and ATokens[Result].IsSymbol('[') do
+  begin
+    Result := NextCode(ATokens, NextSymbol(ATokens, Result, ']'));
+  end;
+  if Result > High(ATokens) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Letztes ";" ab AFrom, das vor AEnd endet; -1 ohne.</summary>
+function LastSemicolonBefore(const ATokens: TTokens; AFrom: Integer; const AEnd: TTextPosition): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  mIndex := AFrom;
+  while (mIndex <= High(ATokens)) and not Before(AEnd, ATokens[mIndex].EndPos) do
+  begin
+    if ATokens[mIndex].IsSymbol(';') then
+    begin
+      Result := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Steht vor AStop schon "deprecated" bzw. "deprecated 'Grund'"?</summary>
+function DeprecatedBefore(const ATokens: TTokens; AStop: Integer): Boolean;
+var
+  mPrev: Integer;
+begin
+  mPrev := PrevCode(ATokens, AStop);
+  if (mPrev >= 0) and (ATokens[mPrev].Kind = TPascalTokenKind.StringLiteral) then
+  begin
+    mPrev := PrevCode(ATokens, mPrev);
+  end;
+  Result := (mPrev >= 0) and SameText(ATokens[mPrev].Text, 'deprecated');
+end;
+
+type
+  /// <summary>Wo die Direktive deprecated hinkommt: an die Routinendeklaration oder vor das ";" des Typs.</summary>
+  TDeprecationPlan = record
+    Tokens: TTokens;
+    /// <summary>Erstes Token der Deklaration.</summary>
+    Target: Integer;
+    Hint: string;
+    Directive: TTextEdit;
+    Present: Boolean;
+    Error: string;
+    function Plan(ASource: TCommandSource): Boolean;
+    function PlanRoutine(ASource: TCommandSource): Boolean;
+    function PlanType(ASource: TCommandSource): Boolean;
+  end;
+
+function TDeprecationPlan.Plan(ASource: TCommandSource): Boolean;
+begin
+  Error := '/deprecated gehört über eine Routine oder einen Typ';
+  Result := Target >= 0;
+  if Result and MatchText(Tokens[Target].Text, RoutineKeywords) then
+  begin
+    Result := PlanRoutine(ASource);
+  end
+  else if Result then
+  begin
+    Result := PlanType(ASource);
+  end;
+  if Result and Present then
+  begin
+    Error := 'Die Deklaration ist schon als deprecated markiert';
+    Result := False;
+  end;
+end;
+
+function TDeprecationPlan.PlanRoutine(ASource: TCommandSource): Boolean;
+var
+  mName: string;
+  mDeclLine, mStop: Integer;
+begin
+  mName := RoutineName(Tokens, Target);
+  mDeclLine := DeclarationLine(ASource, mName, Tokens[Target].StartPos.Line);
+  // Die Direktive steht nur an der Deklaration, nie an der Implementierung.
+  if mDeclLine >= 0 then
+  begin
+    Target := RoutineTokenAt(Tokens, mDeclLine);
+  end;
+  mStop := -1;
+  if Target >= 0 then
+  begin
+    mStop := RoutineEnd(Tokens, Target, Present);
+  end;
+  Result := mStop >= 0;
+  if Target < 0 then
+  begin
+    Error := 'Deklaration von ' + mName + ' nicht gefunden';
+  end
+  else if mStop < 0 then
+  begin
+    Error := 'Deklaration von ' + mName + ' ist unvollständig';
+  end
+  else
+  begin
+    Directive := TTextEdit.Create(TTextRange.Create(Tokens[mStop].EndPos, Tokens[mStop].EndPos), Hint + ';');
+  end;
+end;
+
+function TDeprecationPlan.PlanType(ASource: TCommandSource): Boolean;
+var
+  mTypeNode: TSyntaxNode;
+  mStop: Integer;
+begin
+  mTypeNode := FindTypeDecl(ASource.Tree.Root, Tokens[Target].StartPos.Line);
+  mStop := -1;
+  if mTypeNode <> nil then
+  begin
+    mStop := LastSemicolonBefore(Tokens, Target, mTypeNode.EndPos);
+  end;
+  Result := mStop >= 0;
+  if (mTypeNode <> nil) and (mStop < 0) then
+  begin
+    Error := 'Typdeklaration ist unvollständig';
+  end
+  else if Result then
+  begin
+    Present := DeprecatedBefore(Tokens, mStop);
+    Directive := TTextEdit.Create(TTextRange.Create(Tokens[mStop].StartPos, Tokens[mStop].StartPos), Hint);
+  end;
+end;
+
+/// <summary>" deprecated" bzw. " deprecated 'Grund'".</summary>
+function DeprecationHint(const AReason: string): string;
+begin
+  Result := ' deprecated';
+  if AReason <> '' then
+  begin
+    Result := Result + ' ' + QuotedStr(AReason);
+  end;
+end;
+
+/// <summary>Zeile "/// &lt;remarks&gt;Veraltet: Grund&lt;/remarks&gt;" mit Einrückung und Zeilenende.</summary>
+function RemarkLine(ASource: TCommandSource; ALine: Integer; const AReason: string): string;
+begin
+  Result := ASource.Indent(ALine) + '/// <remarks>Veraltet';
+  if AReason <> '' then
+  begin
+    Result := Result + ': ' + AReason;
+  end;
+  Result := Result + '</remarks>' + ASource.LineBreak;
+end;
+
 function ExecuteDeprecated(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Tokens: TTokens;
-  Target, Index, Stop, Prev, DeclLine: Integer;
-  Present: Boolean;
-  Hint, Remark, Name: string;
-  TypeNode: TSyntaxNode;
-  Directive: TTextEdit;
+  mSource: TCommandSource;
+  mPlan: TDeprecationPlan;
+  mDeclLine: Integer;
+  mRemark: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Tokens := Source.Tree.Tokens;
-    // Erstes Code-Token unter dem Befehl; Attribute [..] davor überspringen.
-    Target := -1;
-    for Index := 0 to High(Tokens) do
+    mPlan := Default(TDeprecationPlan);
+    mPlan.Tokens := mSource.Tree.Tokens;
+    mPlan.Target := TargetBelow(mPlan.Tokens, mSource.Line);
+    mPlan.Hint := DeprecationHint(AContext.Arguments);
+    if not mPlan.Plan(mSource) then
     begin
-      if (Tokens[Index].StartPos.Line > Source.Line) and IsCode(Tokens[Index]) then
-      begin
-        Target := Index;
-        Break;
-      end;
+      Exit(Fail(mPlan.Error, AReason));
     end;
-    while (Target >= 0) and (Target <= High(Tokens)) and Tokens[Target].IsSymbol('[') do
+    mDeclLine := mPlan.Tokens[mPlan.Target].StartPos.Line;
+    mRemark := RemarkLine(mSource, mDeclLine, AContext.Arguments);
+    if mDeclLine = mSource.Line + 1 then
     begin
-      while (Target <= High(Tokens)) and not Tokens[Target].IsSymbol(']') do
-      begin
-        Inc(Target);
-      end;
-      Target := NextCode(Tokens, Target);
-    end;
-    if (Target < 0) or (Target > High(Tokens)) then
-    begin
-      Exit(Fail('/deprecated gehört über eine Routine oder einen Typ', AReason));
-    end;
-    Hint := ' deprecated';
-    if AContext.Arguments <> '' then
-    begin
-      Hint := Hint + ' ' + QuotedStr(AContext.Arguments);
-    end;
-    if MatchText(Tokens[Target].Text, RoutineKeywords) then
-    begin
-      Name := RoutineName(Tokens, Target);
-      DeclLine := DeclarationLine(Source, Name, Tokens[Target].StartPos.Line);
-      // Die Direktive steht nur an der Deklaration, nie an der Implementierung.
-      if DeclLine >= 0 then
-      begin
-        Target := RoutineTokenAt(Tokens, DeclLine);
-      end;
-      if Target < 0 then
-      begin
-        Exit(Fail('Deklaration von ' + Name + ' nicht gefunden', AReason));
-      end;
-      Stop := RoutineEnd(Tokens, Target, Present);
-      if Stop < 0 then
-      begin
-        Exit(Fail('Deklaration von ' + Name + ' ist unvollständig', AReason));
-      end;
-      Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].EndPos, Tokens[Stop].EndPos), Hint + ';');
+      AEdits := [TTextEdit.Create(TTextRange.Create(mSource.Line, 0, mSource.Line + 1, 0), mRemark),
+        mPlan.Directive];
     end
     else
     begin
-      TypeNode := FindTypeDecl(Source.Tree.Root, Tokens[Target].StartPos.Line);
-      if TypeNode = nil then
-      begin
-        Exit(Fail('/deprecated gehört über eine Routine oder einen Typ', AReason));
-      end;
-      Stop := -1;
-      for Index := Target to High(Tokens) do
-      begin
-        if Before(TypeNode.EndPos, Tokens[Index].EndPos) then
-        begin
-          Break;
-        end;
-        if Tokens[Index].IsSymbol(';') then
-        begin
-          Stop := Index;
-        end;
-      end;
-      if Stop < 0 then
-      begin
-        Exit(Fail('Typdeklaration ist unvollständig', AReason));
-      end;
-      Prev := PrevCode(Tokens, Stop);
-      if (Prev >= 0) and (Tokens[Prev].Kind = TPascalTokenKind.StringLiteral) then
-      begin
-        Prev := PrevCode(Tokens, Prev);
-      end;
-      Present := (Prev >= 0) and SameText(Tokens[Prev].Text, 'deprecated');
-      Directive := TTextEdit.Create(TTextRange.Create(Tokens[Stop].StartPos, Tokens[Stop].StartPos), Hint);
-    end;
-    if Present then
-    begin
-      Exit(Fail('Die Deklaration ist schon als deprecated markiert', AReason));
-    end;
-    DeclLine := Tokens[Target].StartPos.Line;
-    Remark := Source.Indent(DeclLine) + '/// <remarks>Veraltet';
-    if AContext.Arguments <> '' then
-    begin
-      Remark := Remark + ': ' + AContext.Arguments;
-    end;
-    Remark := Remark + '</remarks>' + Source.LineBreak;
-    if DeclLine = Source.Line + 1 then
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line + 1, 0), Remark), Directive];
-    end
-    else
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(DeclLine, 0, DeclLine, 0), Remark), Directive,
-        Source.RemoveCommand];
+      AEdits := [TTextEdit.Create(TTextRange.Create(mDeclLine, 0, mDeclLine, 0), mRemark), mPlan.Directive,
+        mSource.RemoveCommand];
     end;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -467,167 +608,266 @@ type
     Group: Integer;
   end;
 
+  TBodies = TArray<TBody>;
+
 const
   GroupNames: array[0..5] of string = ('Ereignis-Handler', 'Published', 'Public', 'Protected', 'Private',
     'Getter und Setter');
 
-function GroupOf(ASource: TCommandSource; const AClass: TIndexSymbol; ARoutine: TSyntaxNode): Integer;
+/// <summary>Die ersten drei Zeilen der Routine, für die Erkennung von Ereignis-Handlern.</summary>
+function RoutineHeaderText(ASource: TCommandSource; ARoutine: TSyntaxNode): string;
 var
-  Name, Header: string;
-  Symbol: TIndexSymbol;
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Name := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
-  Header := '';
-  for Index := ARoutine.StartPos.Line to ARoutine.StartPos.Line + 2 do
+  Result := '';
+  for mIndex := ARoutine.StartPos.Line to Min(ARoutine.StartPos.Line + 2, High(ASource.Lines)) do
   begin
-    if Index <= High(ASource.Lines) then
+    Result := Result + ASource.Lines[mIndex];
+  end;
+end;
+
+/// <summary>GetXyz bzw. SetXyz.</summary>
+function IsAccessorName(const AName: string): Boolean;
+begin
+  Result := (Length(AName) > 3) and (StartsText('Get', AName) or StartsText('Set', AName)) and
+    CharInSet(AName[4], ['A'..'Z']);
+end;
+
+function VisibilityGroup(AVisibility: TIndexVisibility): Integer;
+begin
+  case AVisibility of
+    TIndexVisibility.Published:
+      Result := 1;
+    TIndexVisibility.Public:
+      Result := 2;
+    TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
+      Result := 3;
+  else
+    Result := 4;
+  end;
+end;
+
+/// <summary>Gruppe nach der Sichtbarkeit der Deklaration AName in AClass; Private, wenn sie fehlt.</summary>
+function MemberGroup(ASource: TCommandSource; const AClass: TIndexSymbol; const AName: string): Integer;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in ASource.UnitIndex.Symbols do
+  begin
+    if SameText(mSymbol.Name, AName) and SameText(mSymbol.Container, AClass.Name) and
+      (mSymbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
+      (mSymbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
     begin
-      Header := Header + ASource.Lines[Index];
+      Exit(VisibilityGroup(mSymbol.Visibility));
     end;
   end;
-  if ContainsText(Header, 'Sender: TObject') then
-  begin
-    Exit(0);
-  end;
-  if (Length(Name) > 3) and (StartsText('Get', Name) or StartsText('Set', Name)) and CharInSet(Name[4], ['A'..'Z']) then
-  begin
-    Exit(5);
-  end;
-  for Symbol in ASource.UnitIndex.Symbols do
-  begin
-    if SameText(Symbol.Name, Name) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.Range.StartPos.Line > AClass.Range.StartPos.Line) and
-      (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
-      case Symbol.Visibility of
-        TIndexVisibility.Published:
-          Exit(1);
-        TIndexVisibility.Public:
-          Exit(2);
-        TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
-          Exit(3);
-      else
-        Exit(4);
-      end;
-  end;
   Result := 4;
+end;
+
+function GroupOf(ASource: TCommandSource; const AClass: TIndexSymbol; ARoutine: TSyntaxNode): Integer;
+var
+  mName: string;
+begin
+  mName := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+  if ContainsText(RoutineHeaderText(ASource, ARoutine), 'Sender: TObject') then
+  begin
+    Result := 0;
+  end
+  else if IsAccessorName(mName) then
+  begin
+    Result := 5;
+  end
+  else
+  begin
+    Result := MemberGroup(ASource, AClass, mName);
+  end;
+end;
+
+/// <summary>Methode der Klasse AClassName selbst (keine einer inneren Klasse).</summary>
+function IsMethodOf(ANode: TSyntaxNode; const AClassName: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.RoutineDecl) and StartsText(AClassName + '.', ANode.Name) and
+    (Pos('.', Copy(ANode.Name, Length(AClassName) + 2, MaxInt)) = 0);
+end;
+
+/// <summary>Kommentarzeile ("//" oder "{", aber keine Direktive "{$").</summary>
+function IsCommentLine(const ALine: string): Boolean;
+var
+  mText: string;
+begin
+  mText := TrimLeft(ALine);
+  Result := StartsStr('//', mText) or (StartsStr('{', mText) and not StartsText('{$', mText));
+end;
+
+/// <summary>Erste Zeile der Methode an ANode samt der Kommentare direkt darüber (ohne die Befehlszeile).</summary>
+function BodyStart(ASource: TCommandSource; ANode: TSyntaxNode): Integer;
+begin
+  Result := ANode.StartPos.Line;
+  while (Result > 0) and (Result - 1 <> ASource.Line) and IsCommentLine(ASource.Lines[Result - 1]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Methodenrümpfe der Klasse in der implementation, in Textreihenfolge.</summary>
+function ClassBodies(ASource: TCommandSource; const AClass: TIndexSymbol): TBodies;
+var
+  mSection: TSyntaxNode;
+  mIndex: Integer;
+  mBody: TBody;
+begin
+  Result := nil;
+  mSection := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mSection.ChildCount - 1 do
+  begin
+    if IsMethodOf(mSection[mIndex], AClass.Name) then
+    begin
+      mBody.Name := mSection[mIndex].Name;
+      mBody.FirstLine := BodyStart(ASource, mSection[mIndex]);
+      mBody.LastLine := mSection[mIndex].EndPos.Line;
+      mBody.Group := GroupOf(ASource, AClass, mSection[mIndex]);
+      Result := Result + [mBody];
+    end;
+  end;
+end;
+
+/// <summary>Steht zwischen der ersten und der letzten Methode schon ein {$REGION}?</summary>
+function HasRegions(ASource: TCommandSource; const ABodies: TBodies): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := False;
+  for mLine := ABodies[0].FirstLine to ABodies[High(ABodies)].LastLine do
+  begin
+    Result := Result or StartsText('{$REGION', TrimLeft(ASource.Lines[mLine]));
+  end;
+end;
+
+/// <summary>Steht der Befehl in einer der Methoden?</summary>
+function CommandInBodies(ASource: TCommandSource; const ABodies: TBodies): Boolean;
+var
+  mBody: TBody;
+begin
+  Result := False;
+  for mBody in ABodies do
+  begin
+    Result := Result or ((ASource.Line >= mBody.FirstLine) and (ASource.Line <= mBody.LastLine));
+  end;
+end;
+
+/// <summary>Grund, warum die Methoden nicht in Regionen geordnet werden; '' wenn es geht.</summary>
+function RegionError(ASource: TCommandSource; const AClassName: string; const ABodies: TBodies): string;
+begin
+  Result := '';
+  if Length(ABodies) < 2 then
+  begin
+    Result := Format('%s hat zu wenige Methoden für Regionen', [AClassName]);
+  end
+  else if HasRegions(ASource, ABodies) then
+  begin
+    Result := Format('Die Methoden von %s stehen schon in Regionen', [AClassName]);
+  end
+  else if CommandInBodies(ASource, ABodies) then
+  begin
+    Result := '/region-all gehört in die Deklaration der Klasse';
+  end;
+end;
+
+/// <summary>Zeilen aller Methoden der Gruppe AGroup, durch Leerzeilen getrennt; '' ohne.</summary>
+function GroupBlock(ASource: TCommandSource; const ABodies: TBodies; AGroup: Integer): string;
+var
+  mBody: TBody;
+  mLine: Integer;
+begin
+  Result := '';
+  for mBody in ABodies do
+  begin
+    if mBody.Group <> AGroup then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ASource.LineBreak;
+    end;
+    for mLine := mBody.FirstLine to mBody.LastLine do
+    begin
+      Result := Result + ASource.Lines[mLine] + ASource.LineBreak;
+    end;
+  end;
+end;
+
+/// <summary>Alle Gruppen als {$REGION}-Blöcke, durch Leerzeilen getrennt.</summary>
+function RegionText(ASource: TCommandSource; const ABodies: TBodies): string;
+var
+  mGroup: Integer;
+  mBlock: string;
+begin
+  Result := '';
+  for mGroup := 0 to High(GroupNames) do
+  begin
+    mBlock := GroupBlock(ASource, ABodies, mGroup);
+    if mBlock = '' then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ASource.LineBreak;
+    end;
+    Result := Result + Format('{$REGION ''%s''}', [GroupNames[mGroup]]) + ASource.LineBreak + mBlock +
+      '{$ENDREGION}' + ASource.LineBreak;
+  end;
+end;
+
+/// <summary>Erste Methode wird durch ARegions ersetzt, die übrigen entfallen samt Leerzeile danach.</summary>
+function RegionEdits(ASource: TCommandSource; const ABodies: TBodies; const ARegions: string): TArray<TTextEdit>;
+var
+  mIndex, mStop: Integer;
+begin
+  Result := [TTextEdit.Create(TTextRange.Create(ABodies[0].FirstLine, 0, ABodies[0].LastLine + 1, 0), ARegions)];
+  for mIndex := 1 to High(ABodies) do
+  begin
+    mStop := ABodies[mIndex].LastLine + 1;
+    if (mStop <= High(ASource.Lines)) and (Trim(ASource.Lines[mStop]) = '') and (mStop <> ASource.Line) then
+    begin
+      Inc(mStop);
+    end;
+    Result := Result + [TTextEdit.Create(TTextRange.Create(ABodies[mIndex].FirstLine, 0, mStop, 0), '')];
+  end;
 end;
 
 function ExecuteRegionAll(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  AClass: TIndexSymbol;
-  Section: TSyntaxNode;
-  Bodies: TArray<TBody>;
-  Body: TBody;
-  Index, Group, Line, Stop: Integer;
-  Text, Block: string;
-  First: Boolean;
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mBodies: TBodies;
+  mError: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(AClass) then
+    mBodies := nil;
+    mError := '/region-all gehört in die Deklaration der Klasse';
+    if mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/region-all gehört in die Deklaration der Klasse', AReason));
+      mBodies := ClassBodies(mSource, mClass);
+      mError := RegionError(mSource, mClass.Name, mBodies);
     end;
-    Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    Bodies := nil;
-    if Section <> nil then
+    if mError <> '' then
     begin
-      for Index := 0 to Section.ChildCount - 1 do
-      begin
-        if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClass.Name + '.', Section[Index].Name) and
-          (Pos('.', Copy(Section[Index].Name, Length(AClass.Name) + 2, MaxInt)) = 0) then
-        begin
-          Body.Name := Section[Index].Name;
-          Body.LastLine := Section[Index].EndPos.Line;
-          // Kommentare direkt über der Methode gehören dazu.
-          Body.FirstLine := Section[Index].StartPos.Line;
-          while (Body.FirstLine > 0) and (Body.FirstLine - 1 <> Source.Line) and
-            (StartsStr('//', TrimLeft(Source.Lines[Body.FirstLine - 1])) or
-            StartsStr('{', TrimLeft(Source.Lines[Body.FirstLine - 1])) and
-            not StartsText('{$', TrimLeft(Source.Lines[Body.FirstLine - 1]))) do
-          begin
-            Dec(Body.FirstLine);
-          end;
-          Body.Group := GroupOf(Source, AClass, Section[Index]);
-          Bodies := Bodies + [Body];
-        end;
-      end;
+      Exit(Fail(mError, AReason));
     end;
-    if Length(Bodies) < 2 then
-    begin
-      Exit(Fail(Format('%s hat zu wenige Methoden für Regionen', [AClass.Name]), AReason));
-    end;
-    for Line := Bodies[0].FirstLine to Bodies[High(Bodies)].LastLine do
-    begin
-      if StartsText('{$REGION', TrimLeft(Source.Lines[Line])) then
-      begin
-        Exit(Fail(Format('Die Methoden von %s stehen schon in Regionen', [AClass.Name]), AReason));
-      end;
-    end;
-    for Body in Bodies do
-    begin
-      if (Source.Line >= Body.FirstLine) and (Source.Line <= Body.LastLine) then
-      begin
-        Exit(Fail('/region-all gehört in die Deklaration der Klasse', AReason));
-      end;
-    end;
-    Text := '';
-    First := True;
-    for Group := 0 to High(GroupNames) do
-    begin
-      Block := '';
-      for Body in Bodies do
-      begin
-        if Body.Group = Group then
-        begin
-          if Block <> '' then
-          begin
-            Block := Block + Source.LineBreak;
-          end;
-          for Line := Body.FirstLine to Body.LastLine do
-          begin
-            Block := Block + Source.Lines[Line] + Source.LineBreak;
-          end;
-        end;
-      end;
-      if Block = '' then
-      begin
-        Continue;
-      end;
-      if not First then
-      begin
-        Text := Text + Source.LineBreak;
-      end;
-      First := False;
-      Text := Text + Format('{$REGION ''%s''}', [GroupNames[Group]]) + Source.LineBreak + Block + '{$ENDREGION}' +
-        Source.LineBreak;
-    end;
-    // Erste Methode wird durch den ganzen Block ersetzt, die übrigen entfallen samt Leerzeile danach.
-    for Index := 0 to High(Bodies) do
-    begin
-      Stop := Bodies[Index].LastLine + 1;
-      if (Index > 0) and (Stop <= High(Source.Lines)) and (Trim(Source.Lines[Stop]) = '') and
-        (Stop <> Source.Line) then
-      begin
-        Inc(Stop);
-      end;
-      if Index = 0 then
-      begin
-        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[0].FirstLine, 0, Stop, 0), Text)];
-      end
-      else
-      begin
-        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Bodies[Index].FirstLine, 0, Stop, 0), '')];
-      end;
-    end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := RegionEdits(mSource, mBodies, RegionText(mSource, mBodies));
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

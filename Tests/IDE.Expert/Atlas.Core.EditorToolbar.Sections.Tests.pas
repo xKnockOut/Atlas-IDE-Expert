@@ -38,6 +38,8 @@ type
     procedure UsesTargetFollowsCurrentSection;
     [Test]
     procedure StopsAtEndDot;
+    [Test]
+    procedure ScansWholeTextWithCrLf;
   end;
 
 implementation
@@ -267,6 +269,16 @@ begin
   Sections := Scan('unit U;'#10'interface'#10'implementation'#10'end.'#10'initialization'#10'uses X;');
   Assert.IsFalse(Sections.Initialization_.Found);
   Assert.IsFalse(Sections.ImplementationUses.Start.Found);
+end;
+
+procedure TAtlasSectionScannerTests.ScansWholeTextWithCrLf;
+var
+  Sections: TAtlasUnitSections;
+begin
+  Sections := TAtlasSectionScanner.Scan(UnitCode.Replace(#10, #13#10));
+  CheckMark(Sections.InterfacePart, 2, 0, 'interface');
+  CheckMark(Sections.ImplementationPart, 12, 0, 'implementation');
+  CheckMark(Sections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
 end;
 
 initialization

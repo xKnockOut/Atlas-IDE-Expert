@@ -23,6 +23,11 @@ type
     function IndexManaged(const AName: string; ADepth: Integer): string;
     function FieldsCustomManaged(ARecord: TSyntaxNode; ADepth: Integer): Boolean;
     function IndexCustomManaged(const AName: string; ADepth: Integer): Boolean;
+    /// <summary>Das erste Symbol AName der obersten Ebene im Index; False ohne Index oder Symbol.</summary>
+    function TopLevelSymbol(const AName: string; out ALocation: TSymbolLocation): Boolean;
+    function RecordFieldsManaged(const ALocation: TSymbolLocation; const AName: string; ADepth: Integer): string;
+    function DeclManaged(ADecl: TSyntaxNode; ADepth: Integer): string;
+    function SymbolCustomManaged(const ASymbol: TIndexSymbol; ADepth: Integer): Boolean;
   public
     constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
     /// <summary>'Strings', 'Interfaces', 'Methodenreferenzen', 'dynamische Arrays' oder 'Variants', wenn
@@ -142,57 +147,77 @@ begin
   end;
 end;
 
-function TManagedTypes.IndexManaged(const AName: string; ADepth: Integer): string;
+function TManagedTypes.TopLevelSymbol(const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
-  Location: TSymbolLocation;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  Result := '';
+  Result := False;
   if FIndex = nil then
   begin
     Exit;
   end;
-  for Location in FIndex.FindSymbols(AName) do
+  for mLocation in FIndex.FindSymbols(AName) do
   begin
-    if Location.Symbol.Container <> '' then
+    if mLocation.Symbol.Container = '' then
     begin
-      Continue;
+      ALocation := mLocation;
+      Exit(True);
     end;
-    case Location.Symbol.Kind of
-      TIndexSymbolKind.InterfaceType:
-        Exit('Interfaces');
-      TIndexSymbolKind.TypeAlias:
-        begin
-          // reference to … ist ein Interface mit Referenzzähler.
-          if IndexText('reference to', Location.Symbol.Directives) >= 0 then
-          begin
-            Exit('Methodenreferenzen');
-          end;
-          Exit(Managed(Location.Symbol.TypeName, ADepth + 1));
-        end;
-      TIndexSymbolKind.RecordType:
-        begin
-          if not FIndex.FindFile(Location.FileName, UnitIndex) then
-          begin
-            Exit;
-          end;
-          for Symbol in UnitIndex.Symbols do
-          begin
-            if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AName) then
-            begin
-              Result := Managed(Symbol.TypeName, ADepth + 1);
-              if Result <> '' then
-              begin
-                Exit;
-              end;
-            end;
-          end;
-          Exit;
-        end;
-    else
-      Exit;
+  end;
+end;
+
+function TManagedTypes.RecordFieldsManaged(const ALocation: TSymbolLocation; const AName: string;
+  ADepth: Integer): string;
+var
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  Result := '';
+  if not FIndex.FindFile(ALocation.FileName, mUnit) then
+  begin
+    Exit;
+  end;
+  for mSymbol in mUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, AName) then
+    begin
+      Result := Managed(mSymbol.TypeName, ADepth + 1);
+      if Result <> '' then
+      begin
+        Exit;
+      end;
     end;
+  end;
+end;
+
+function TManagedTypes.IndexManaged(const AName: string; ADepth: Integer): string;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := '';
+  // Es zählt das erste Symbol der obersten Ebene.
+  if not TopLevelSymbol(AName, mLocation) then
+  begin
+    Exit;
+  end;
+  case mLocation.Symbol.Kind of
+    TIndexSymbolKind.InterfaceType:
+      Result := 'Interfaces';
+    TIndexSymbolKind.TypeAlias:
+      // reference to … ist ein Interface mit Referenzzähler.
+      if IndexText('reference to', mLocation.Symbol.Directives) >= 0 then
+      begin
+        Result := 'Methodenreferenzen';
+      end
+      else
+      begin
+        Result := Managed(mLocation.Symbol.TypeName, ADepth + 1);
+      end;
+    TIndexSymbolKind.RecordType:
+      Result := RecordFieldsManaged(mLocation, AName, ADepth);
+  else
+    // Klassen, Konstanten usw. machen den Typ nicht verwaltet.
+    Result := '';
   end;
 end;
 
@@ -206,83 +231,92 @@ begin
     StartsText('array of', Name) or StartsText('TArray<', Name);
 end;
 
-function TManagedTypes.Managed(const ATypeName: string; ADepth: Integer): string;
-var
-  Name, Element: string;
-  Decl, Body: TSyntaxNode;
-  Index: Integer;
+/// <summary>Art verwalteter Daten, die schon der Name verrät (Strings, Variants, Interfaces, Methodenreferenzen,
+/// dynamische Arrays und bekannte RTL-Records); '' sonst.</summary>
+function NamedKind(const AName: string): string;
 begin
   Result := '';
-  Name := Trim(ATypeName);
-  if (Name = '') or (ADepth > 16) then
+  if MatchText(AName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) or
+    MatchText(AName, ManagedStringRecords) then
+  begin
+    Result := 'Strings';
+  end
+  else if MatchText(AName, ['Variant', 'OleVariant']) then
+  begin
+    Result := 'Variants';
+  end
+  else if MatchText(AName, ['IInterface', 'IUnknown', 'IDispatch']) or MatchText(AName, ManagedInterfaceRecords) then
+  begin
+    Result := 'Interfaces';
+  end
+  else if StartsText('reference to', AName) then
+  begin
+    Result := 'Methodenreferenzen';
+  end
+  else if StartsText('array of', AName) or StartsText('TArray<', AName) or MatchText(AName, DynamicArrayNames) then
+  begin
+    Result := 'dynamische Arrays';
+  end;
+end;
+
+function TManagedTypes.DeclManaged(ADecl: TSyntaxNode; ADepth: Integer): string;
+var
+  mBody: TSyntaxNode;
+begin
+  Result := '';
+  mBody := ADecl.FindChild(TSyntaxKind.ProcedureType);
+  if ADecl.FindChild(TSyntaxKind.RecordType) <> nil then
+  begin
+    Result := FieldsManaged(ADecl.FindChild(TSyntaxKind.RecordType), ADepth);
+  end
+  else if ADecl.FindChild(TSyntaxKind.InterfaceType) <> nil then
+  begin
+    Result := 'Interfaces';
+  end
+  else if (mBody <> nil) and SameText(mBody.Name, 'reference') then
+  begin
+    Result := 'Methodenreferenzen';
+  end
+  else if (ADecl.FindChild(TSyntaxKind.TypeReference) <> nil) or (ADecl.FindChild(TSyntaxKind.ArrayType) <> nil) then
+  begin
+    Result := Managed(NodeTypeText(ADecl), ADepth + 1);
+  end;
+end;
+
+function TManagedTypes.Managed(const ATypeName: string; ADepth: Integer): string;
+var
+  mName: string;
+  mDecl: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := '';
+  mName := Trim(ATypeName);
+  if (mName = '') or (ADepth > 16) then
   begin
     Exit;
   end;
-  if MatchText(Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) then
+  Result := NamedKind(mName);
+  if Result <> '' then
   begin
-    Exit('Strings');
-  end;
-  if MatchText(Name, ['Variant', 'OleVariant']) then
-  begin
-    Exit('Variants');
-  end;
-  if MatchText(Name, ['IInterface', 'IUnknown', 'IDispatch']) then
-  begin
-    Exit('Interfaces');
-  end;
-  if StartsText('reference to', Name) then
-  begin
-    Exit('Methodenreferenzen');
-  end;
-  if StartsText('array of', Name) or StartsText('TArray<', Name) or MatchText(Name, DynamicArrayNames) then
-  begin
-    Exit('dynamische Arrays');
+    Exit;
   end;
   // Statisches Array: verwaltet, wenn die Elemente es sind.
-  if StartsText('array', Name) then
+  mIndex := Pos(' of ', LowerCase(mName));
+  if StartsText('array', mName) and (mIndex > 0) then
   begin
-    Index := Pos(' of ', LowerCase(Name));
-    if Index = 0 then
+    Result := Managed(Copy(mName, mIndex + 4, MaxInt), ADepth + 1);
+  end
+  else if not StartsText('array', mName) and (Pos('<', mName) = 0) then
+  begin
+    mDecl := TypeDecl(mName);
+    if mDecl = nil then
     begin
-      Exit;
+      Result := IndexManaged(mName, ADepth);
+    end
+    else
+    begin
+      Result := DeclManaged(mDecl, ADepth);
     end;
-    Element := Copy(Name, Index + 4, MaxInt);
-    Exit(Managed(Element, ADepth + 1));
-  end;
-  if MatchText(Name, ManagedStringRecords) then
-  begin
-    Exit('Strings');
-  end;
-  if MatchText(Name, ManagedInterfaceRecords) then
-  begin
-    Exit('Interfaces');
-  end;
-  if Pos('<', Name) > 0 then
-  begin
-    Exit;
-  end;
-  Decl := TypeDecl(Name);
-  if Decl = nil then
-  begin
-    Exit(IndexManaged(Name, ADepth));
-  end;
-  Body := Decl.FindChild(TSyntaxKind.RecordType);
-  if Body <> nil then
-  begin
-    Exit(FieldsManaged(Body, ADepth));
-  end;
-  if Decl.FindChild(TSyntaxKind.InterfaceType) <> nil then
-  begin
-    Exit('Interfaces');
-  end;
-  Body := Decl.FindChild(TSyntaxKind.ProcedureType);
-  if (Body <> nil) and SameText(Body.Name, 'reference') then
-  begin
-    Exit('Methodenreferenzen');
-  end;
-  if (Decl.FindChild(TSyntaxKind.TypeReference) <> nil) or (Decl.FindChild(TSyntaxKind.ArrayType) <> nil) then
-  begin
-    Result := Managed(NodeTypeText(Decl), ADepth + 1);
   end;
 end;
 
@@ -364,45 +398,43 @@ begin
   end;
 end;
 
+function TManagedTypes.SymbolCustomManaged(const ASymbol: TIndexSymbol; ADepth: Integer): Boolean;
+begin
+  if ASymbol.Kind = TIndexSymbolKind.Method then
+  begin
+    Result := MatchText(ASymbol.Name, ['Initialize', 'Finalize']) and ContainsText(ASymbol.Signature, 'operator');
+  end
+  else
+  begin
+    Result := (ASymbol.Kind = TIndexSymbolKind.Field) and CustomManaged(ASymbol.TypeName, ADepth + 1);
+  end;
+end;
+
 function TManagedTypes.IndexCustomManaged(const AName: string; ADepth: Integer): Boolean;
 var
-  Location: TSymbolLocation;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
-  if FIndex = nil then
+  // Es zählt das erste Symbol der obersten Ebene.
+  if not TopLevelSymbol(AName, mLocation) then
   begin
     Exit;
   end;
-  for Location in FIndex.FindSymbols(AName) do
+  if mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias then
   begin
-    if Location.Symbol.Container <> '' then
+    Exit(CustomManaged(mLocation.Symbol.TypeName, ADepth + 1));
+  end;
+  if (mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType) or not FIndex.FindFile(mLocation.FileName, mUnit) then
+  begin
+    Exit;
+  end;
+  for mSymbol in mUnit.Symbols do
+  begin
+    if SameText(mSymbol.Container, AName) and SymbolCustomManaged(mSymbol, ADepth) then
     begin
-      Continue;
-    end;
-    case Location.Symbol.Kind of
-      TIndexSymbolKind.TypeAlias:
-        Exit(CustomManaged(Location.Symbol.TypeName, ADepth + 1));
-      TIndexSymbolKind.RecordType:
-        begin
-          if not FIndex.FindFile(Location.FileName, UnitIndex) then
-          begin
-            Exit;
-          end;
-          for Symbol in UnitIndex.Symbols do
-          begin
-            if SameText(Symbol.Container, AName) and (((Symbol.Kind = TIndexSymbolKind.Method) and
-              MatchText(Symbol.Name, ['Initialize', 'Finalize']) and ContainsText(Symbol.Signature, 'operator')) or
-              ((Symbol.Kind = TIndexSymbolKind.Field) and CustomManaged(Symbol.TypeName, ADepth + 1))) then
-            begin
-              Exit(True);
-            end;
-          end;
-          Exit;
-        end;
-    else
-      Exit;
+      Exit(True);
     end;
   end;
 end;

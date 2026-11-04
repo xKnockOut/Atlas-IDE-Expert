@@ -134,6 +134,9 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
