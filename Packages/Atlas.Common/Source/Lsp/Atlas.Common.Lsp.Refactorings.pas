@@ -674,7 +674,8 @@ begin
           Inc(Count);
         end;
       end;
-      if (Count = 1) and TInlineRefactoring.InlineMethod(Source, APosition, Callee, Routine, Options, Action) then
+      if (Count = 1) and TInlineRefactoring.InlineMethod(Source, APosition, TInlineCallee.Create(Callee, Routine),
+        Options, Action) then
       begin
         Result := Result + [Action];
       end;
