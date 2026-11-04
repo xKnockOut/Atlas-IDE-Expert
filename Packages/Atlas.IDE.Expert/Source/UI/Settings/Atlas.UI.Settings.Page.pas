@@ -2590,7 +2590,6 @@ begin
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
-  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   FProblemsStatusCounter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
   FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
@@ -2654,6 +2653,8 @@ begin
   FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
   // Sammelkorrektur im Kontextmenü des Fensters (#1352).
   FFixBulk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk));
+  // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
+  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
@@ -6577,7 +6578,7 @@ begin
   FMarks.Bind(FLightSwatches[0], ['PairColorsLight']);
   FMarks.Bind(FDarkSwatches[0], ['PairColorsDark']);
   FMarks.Bind(FProblems, ['Problems']);
-  FMarks.Bind(FProblemsList, ['ProblemsList']);
+  FMarks.Bind(FProblemsList, ['ProblemsMessageList']);
   FMarks.Bind(FProblemsWindow, ['ProblemsWindow']);
   FMarks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
   FMarks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
@@ -8910,7 +8911,7 @@ begin
   ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
   FProblems.Checked := ASettings.Problems;
-  FProblemsList.Checked := ASettings.ProblemsList;
+  FProblemsList.Checked := ASettings.ProblemsMessageList;
   FProblemsWindow.Checked := ASettings.ProblemsWindow;
   FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, ScopeValues));
   FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
@@ -9568,7 +9569,7 @@ begin
   ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
   ASettings.Problems := FProblems.Checked;
-  ASettings.ProblemsList := FProblemsList.Checked;
+  ASettings.ProblemsMessageList := FProblemsList.Checked;
   ASettings.ProblemsWindow := FProblemsWindow.Checked;
   if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
     ASettings.ProblemsWindowScope := ScopeValues[FProblemsWindowScope.Choice];

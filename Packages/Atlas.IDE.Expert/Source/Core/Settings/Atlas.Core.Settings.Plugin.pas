@@ -392,8 +392,11 @@ type
     /// <summary>Probleme im Editor unterstreichen und im Meldungsfenster auflisten (#398).</summary>
     Problems: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems. Seit dem
-    /// Fenster „Atlas-Prüfung“ (#909) Vorgabe aus.</summary>
-    ProblemsList: Boolean;
+    /// Fenster „Atlas-Prüfung“ (#909) Vorgabe aus. Registry-Name ProblemsMessageList: Der frühere Name ProblemsList
+    /// trug bei fast allen Installationen die alte Vorgabe „an“, weil Save alle Werte schreibt; er gilt bewusst nicht
+    /// mehr (kein x-renamedFrom).
+    /// </summary>
+    ProblemsMessageList: Boolean;
     /// <summary>Fenster „Atlas-Prüfung“ (#909): verfügbar (aus = kein Menüeintrag, kein Fenster); nur mit Problems.
     /// </summary>
     ProblemsWindow: Boolean;
@@ -1944,7 +1947,7 @@ begin
   Result.PairColorsLight := '';
   Result.PairColorsDark := '';
   Result.Problems := True;
-  Result.ProblemsList := False;
+  Result.ProblemsMessageList := False;
   Result.ProblemsWindow := True;
   Result.ProblemsWindowScope := 'group';
   Result.ProblemsWindowGroupBy := 'file';
@@ -2824,7 +2827,7 @@ begin
   PairColorsLight := AStore.ReadString('PairColorsLight', Default.PairColorsLight);
   PairColorsDark := AStore.ReadString('PairColorsDark', Default.PairColorsDark);
   Problems := AStore.ReadInteger('Problems', BoolValue(Default.Problems)) <> 0;
-  ProblemsList := AStore.ReadInteger('ProblemsList', BoolValue(Default.ProblemsList)) <> 0;
+  ProblemsMessageList := AStore.ReadInteger('ProblemsMessageList', BoolValue(Default.ProblemsMessageList)) <> 0;
   ProblemsWindow := AStore.ReadInteger('ProblemsWindow', BoolValue(Default.ProblemsWindow)) <> 0;
   ProblemsWindowScope := AStore.ReadString('ProblemsWindowScope', Default.ProblemsWindowScope);
   ProblemsWindowGroupBy := AStore.ReadString('ProblemsWindowGroupBy', Default.ProblemsWindowGroupBy);
@@ -3465,7 +3468,7 @@ begin
   AStore.WriteString('PairColorsLight', PairColorsLight);
   AStore.WriteString('PairColorsDark', PairColorsDark);
   AStore.WriteInteger('Problems', BoolValue(Problems));
-  AStore.WriteInteger('ProblemsList', BoolValue(ProblemsList));
+  AStore.WriteInteger('ProblemsMessageList', BoolValue(ProblemsMessageList));
   AStore.WriteInteger('ProblemsWindow', BoolValue(ProblemsWindow));
   AStore.WriteString('ProblemsWindowScope', ProblemsWindowScope);
   AStore.WriteString('ProblemsWindowGroupBy', ProblemsWindowGroupBy);
