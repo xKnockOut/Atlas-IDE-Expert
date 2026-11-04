@@ -482,11 +482,11 @@ begin
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
   mContext.UsesFor := UsesForFunc(UsesProvider);
+  mContext.Choices := mChoices;
   mResolver := NewResolver;
   try
     mAnswer := TLspSafeDelete.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mChoices,
-      mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;

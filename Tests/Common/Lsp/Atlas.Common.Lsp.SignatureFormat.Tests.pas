@@ -127,6 +127,7 @@ var
   mText: string;
   mTree: TSyntaxTree;
   mLine, mCharacter, mIndex: Integer;
+  mRequest: TSignatureHelpRequest;
 begin
   mText := StringReplace(UnitHaupt, '@', ABody, []);
   mIndex := Pos('|', mText);
@@ -149,8 +150,9 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     FIndex.AddUnit(TIndexExtractor.Extract(mTree, HauptFile));
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, mTree, mText, HauptFile,
-      TTextPosition.Create(mLine, mCharacter), ReadText, ARoutines);
+    mRequest := TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, HauptFile, ReadText);
+    mRequest.Routines := ARoutines;
+    Result := TLspSignatureHelp.HelpAt(mRequest, TTextPosition.Create(mLine, mCharacter));
   finally
     mTree.Free;
   end;

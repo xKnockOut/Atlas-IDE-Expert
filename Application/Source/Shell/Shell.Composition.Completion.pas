@@ -92,22 +92,22 @@ end;
 
 procedure TShellCompletion.WireCallbacks;
 begin
-  FCompletion.MatchingFor := MatchingFor;
-  FCompletion.SettingsFor := FServices.CompletionSettingsFor;
-  FCompletion.SlashCommandsFor := FServices.SlashCommandsFor;
-  FCompletion.RuleIdsFor := FServices.RuleIdsFor;
-  FCompletion.PostfixFor := PostfixOptionsFor;
+  FCompletion.Hooks.MatchingFor := MatchingFor;
+  FCompletion.Hooks.SettingsFor := FServices.CompletionSettingsFor;
+  FCompletion.Hooks.SlashCommandsFor := FServices.SlashCommandsFor;
+  FCompletion.Hooks.RuleIdsFor := FServices.RuleIdsFor;
+  FCompletion.Hooks.PostfixFor := PostfixOptionsFor;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
-  FCompletion.WithFor := WithEdits;
+  FCompletion.Hooks.WithFor := WithEdits;
   // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
-  FCompletion.CreateFor := CreateMethod;
-  FCompletion.NamingFor := FServices.NamingFor;
-  FCompletion.HintsFor := FServices.HintsFor;
-  FCompletion.DocCommentsFor := FServices.DocCommentsFor;
-  FCompletion.SymbolsFor := FServices.SymbolsFor;
-  FCompletion.ReadText := FServices.ReadText;
-  FCompletion.Notify := FServices.Notify;
-  FCompletion.Log := FServices.Log;
+  FCompletion.Hooks.CreateFor := CreateMethod;
+  FCompletion.Hooks.NamingFor := FServices.NamingFor;
+  FCompletion.Hooks.HintsFor := FServices.HintsFor;
+  FCompletion.Hooks.DocCommentsFor := FServices.DocCommentsFor;
+  FCompletion.Hooks.SymbolsFor := FServices.SymbolsFor;
+  FCompletion.Hooks.ReadText := FServices.ReadText;
+  FCompletion.Hooks.Notify := FServices.Notify;
+  FCompletion.Hooks.Log := FServices.Log;
 end;
 
 destructor TShellCompletion.Destroy;
@@ -145,6 +145,7 @@ var
 begin
   AEdits := nil;
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
+  mContext.CaretMarker := True;
   Result := mContext.Settings.ResolveWith and TLspRefactorings.WithAction(ARequest.Resolver, ARequest.Tree,
     ARequest.Text, ARequest.Position, mContext, mAction);
   if Result then
@@ -165,7 +166,7 @@ begin
   mContext := FServices.RefactoringContextFor(ARequest.Uri);
   // Nur Änderungen in dieser Datei; die Klasse in einer anderen Unit bekommt die Code-Aktion.
   Result := mContext.Settings.CreateMethod and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree,
-    ARequest.Text, ARequest.Position, mContext, True, mCreated) and (mCreated.FileEdits = nil);
+    ARequest.Text, ARequest.Position, mContext, mCreated) and (mCreated.FileEdits = nil);
   if Result then
   begin
     ATitle := mCreated.Title;

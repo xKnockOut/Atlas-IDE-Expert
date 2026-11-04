@@ -38,6 +38,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -373,7 +374,7 @@ const
       Request.Settings := Settings;
       Postfix := TPostfixOptions.Default;
       Postfix.Enabled := False;
-      Result := TLspCompletion.Collect(Request, Postfix, nil).Items;
+      Result := TCompletionLists.Collect(Request, Postfix, nil).Items;
     finally
       Request.Free;
       Resolver.Free;

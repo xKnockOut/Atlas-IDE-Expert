@@ -49,6 +49,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
@@ -145,7 +146,7 @@ begin
     Request.Index := FIndex;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;

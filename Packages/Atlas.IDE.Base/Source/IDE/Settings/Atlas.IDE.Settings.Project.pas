@@ -191,42 +191,40 @@ begin
   TAtlasTextFile.Save(FileName, Content);
 end;
 
-class function TAtlasProjectSettings.InstalledVersions: TArray<string>;
-const
-  Roots: array[0..1] of HKEY = (HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE);
+/// <summary>Versionsnummern unter Software\Embarcadero\BDS des Zweigs ARoot an AVersions anhängen.</summary>
+procedure AddInstalledVersions(ARoot: HKEY; var AVersions: TArray<string>);
 var
-  Registry: TRegistry;
-  Keys: TStringList;
-  Key: string;
-  Root: HKEY;
+  mRegistry: TRegistry;
+  mKeys: TStringList;
+  mKey: string;
 begin
-  Result := nil;
-  Keys := TStringList.Create;
+  mKeys := TStringList.Create;
+  mRegistry := TRegistry.Create(KEY_READ);
   try
-    for Root in Roots do
+    mRegistry.RootKey := ARoot;
+    if not mRegistry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
     begin
-      Registry := TRegistry.Create(KEY_READ);
-      try
-        Registry.RootKey := Root;
-        if Registry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
-        begin
-          Keys.Clear;
-          Registry.GetKeyNames(Keys);
-          for Key in Keys do
-          begin
-            if (Key <> '') and CharInSet(Key[1], ['0'..'9']) then
-            begin
-              Result := Result + [Key];
-            end;
-          end;
-        end;
-      finally
-        Registry.Free;
+      Exit;
+    end;
+    mRegistry.GetKeyNames(mKeys);
+    for mKey in mKeys do
+    begin
+      if (mKey <> '') and CharInSet(mKey[1], ['0'..'9']) then
+      begin
+        AVersions := AVersions + [mKey];
       end;
     end;
   finally
-    Keys.Free;
+    mRegistry.Free;
+    mKeys.Free;
   end;
+end;
+
+class function TAtlasProjectSettings.InstalledVersions: TArray<string>;
+begin
+  Result := nil;
+  AddInstalledVersions(HKEY_CURRENT_USER, Result);
+  AddInstalledVersions(HKEY_LOCAL_MACHINE, Result);
 end;
 
 class procedure TAtlasProjectSettings.Execute;
@@ -274,183 +272,288 @@ begin
   end;
 end;
 
+type
+  /// <summary>Ein Lauf des Dialogs über eine Einstellungsdatei: prüfen, zeigen, speichern, auf Wunsch im Editor
+  /// öffnen.</summary>
+  TAtlasSettingsFileEdit = class
+  private
+    FFileName: string;
+    FGlobal: Boolean;
+    FRuleId: string;
+    FTitle: string;
+    FContent: TAtlasTextFileContent;
+    FProject: string;
+    FDprojText: string;
+    FCheckScope: string;
+    FOpenFile: Boolean;
+    FModel: TAtlasSettingsModel;
+    FCatalog: TJSONValue;
+    /// <summary>False (mit Meldung und geöffneter Datei), wenn die Datei Text enthält, der kein JSON-Objekt ist.
+    /// </summary>
+    function ContentValid: Boolean;
+    /// <summary>Felder nach dem Ort der Datei: Im Projekt gibt es keine globale Vorgabe, die es überschreiben
+    /// könnte.</summary>
+    function Fields: TArray<TAtlasSettingField>;
+    /// <summary>Regelkatalog des Servers in der Sprache der Oberfläche (#446); nil ohne Server.</summary>
+    function LoadCatalog: TJSONValue;
+    function DprojChoices(const APath: string): TArray<TAtlasSettingChoice>;
+    function Choices(const APath: string): TArray<TAtlasSettingChoice>;
+    function Validate(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>;
+    procedure Prepare(ADialog: TAtlasProjectSettingsDialog);
+    /// <summary>Dialog zeigen; True nach OK.</summary>
+    function ShowDialog: Boolean;
+    procedure Save;
+    procedure OpenIfAsked;
+  public
+    constructor Create(const AFileName: string; AGlobal: Boolean; const ARuleId: string);
+    destructor Destroy; override;
+    procedure Run;
+  end;
+
+constructor TAtlasSettingsFileEdit.Create(const AFileName: string; AGlobal: Boolean; const ARuleId: string);
+begin
+  inherited Create;
+  FFileName := AFileName;
+  FGlobal := AGlobal;
+  FRuleId := ARuleId;
+  if AGlobal then
+  begin
+    FTitle := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
+    FCheckScope := ',"global"';
+  end
+  else
+  begin
+    FTitle := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle);
+    FCheckScope := '';
+  end;
+  FContent := LoadContent(AFileName);
+end;
+
+destructor TAtlasSettingsFileEdit.Destroy;
+begin
+  FModel.Free;
+  FCatalog.Free;
+  inherited Destroy;
+end;
+
+function TAtlasSettingsFileEdit.ContentValid: Boolean;
+var
+  mRoot: TJSONObject;
+  mMessage: TAtlasTextId;
+  mActions: IOTAActionServices;
+begin
+  mRoot := TAtlasJsonText.Parse(FContent.Text);
+  Result := (mRoot <> nil) or (Trim(FContent.Text) = '');
+  mRoot.Free;
+  if Result then
+  begin
+    Exit;
+  end;
+  mMessage := TAtlasTextId.ProjectSettingsInvalid;
+  if FGlobal then
+  begin
+    mMessage := TAtlasTextId.GlobalSettingsInvalid;
+  end;
+  MessageBox(Application.Handle, PChar(TAtlasStrings.Text(mMessage)), PChar(FTitle), MB_ICONWARNING or MB_OK);
+  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    mActions.OpenFile(FFileName);
+  end;
+end;
+
+function TAtlasSettingsFileEdit.Fields: TArray<TAtlasSettingField>;
+begin
+  if FGlobal then
+  begin
+    Result := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), True,
+      TAtlasSettingsScopes.IdeManagedPaths);
+  end
+  else
+  begin
+    Result := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), False, nil);
+  end;
+end;
+
+function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
+begin
+  if TAtlasStrings.Language = TAtlasLanguage.English then
+  begin
+    Result := RunCommand(TAtlasProjectSettings.CatalogCommand, '["en"]');
+  end
+  else
+  begin
+    Result := RunCommand(TAtlasProjectSettings.CatalogCommand, '["de"]');
+  end;
+end;
+
+function TAtlasSettingsFileEdit.DprojChoices(const APath: string): TArray<TAtlasSettingChoice>;
+begin
+  Result := nil;
+  if APath = 'config' then
+  begin
+    Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojConfigs(FDprojText));
+  end
+  else if APath = 'platform' then
+  begin
+    Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojPlatforms(FDprojText));
+  end
+  else if (APath = 'project') and (FProject <> '') and not FGlobal then
+  begin
+    Result := TAtlasSettingChoices.FromTexts([ExtractRelativePath(IncludeTrailingPathDelimiter(
+      ExtractFileDir(FFileName)), FProject)]);
+  end;
+end;
+
+function TAtlasSettingsFileEdit.Choices(const APath: string): TArray<TAtlasSettingChoice>;
+var
+  mProfiles: Integer;
+begin
+  Result := nil;
+  if APath = 'delphiVersion' then
+  begin
+    Result := TAtlasSettingChoices.DelphiVersions(TAtlasProjectSettings.InstalledVersions);
+  end
+  else if APath = 'minDelphiVersion' then
+  begin
+    Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
+  end
+  else if (APath = 'profile') or (APath = 'testProfile') then
+  begin
+    mProfiles := FModel.IndexOf('profiles');
+    if mProfiles >= 0 then
+    begin
+      Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.Profiles(FModel.Effective(mProfiles)));
+    end;
+  end
+  else
+  begin
+    Result := DprojChoices(APath);
+  end;
+end;
+
+function TAtlasSettingsFileEdit.Validate(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>;
+var
+  mAnswer: TJSONValue;
+  mValid: Boolean;
+begin
+  // Der Server meldet auch Schlüssel am falschen Ort (#227).
+  mAnswer := RunCommand(TAtlasProjectSettings.CheckCommand, '[' + TAtlasJsonText.Quote(AText) + FCheckScope + ']');
+  try
+    AChecked := TAtlasSettingsValidation.FromAnswer(mAnswer, Result, mValid);
+  finally
+    mAnswer.Free;
+  end;
+  if not AChecked then
+  begin
+    TAtlasSettingsValidation.Syntax(AText, Result);
+  end;
+end;
+
+procedure TAtlasSettingsFileEdit.Prepare(ADialog: TAtlasProjectSettingsDialog);
+var
+  mTarget: TAtlasBuildTarget;
+begin
+  ADialog.Catalog := FCatalog;
+  ADialog.ServerChecks := FCatalog <> nil;
+  if FRuleId <> '' then
+  begin
+    ADialog.SelectRule(FRuleId);
+  end;
+  if FGlobal then
+  begin
+    Exit;
+  end;
+  ADialog.ProjectHint := ExtractFileName(FProject);
+  // Die IDE sendet ihre Auswahl laufend an den Server (selectBuild, #46, #615).
+  if TAtlasIdeBuildTarget.Read(mTarget) then
+  begin
+    ADialog.BuildHint := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBuildOverride,
+      [mTarget.Config, mTarget.Platform]);
+  end;
+end;
+
+function TAtlasSettingsFileEdit.ShowDialog: Boolean;
+var
+  mDialog: TAtlasProjectSettingsDialog;
+begin
+  mDialog := TAtlasProjectSettingsDialog.CreateDialog(nil, FModel, FFileName);
+  try
+    Prepare(mDialog);
+    mDialog.OnChoices :=
+      function(const APath: string): TArray<TAtlasSettingChoice>
+      begin
+        Result := Choices(APath);
+      end;
+    mDialog.OnValidate :=
+      function(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>
+      begin
+        Result := Validate(AText, AChecked);
+      end;
+    mDialog.OnOpenFile :=
+      procedure
+      begin
+        FOpenFile := True;
+      end;
+    Result := mDialog.ShowModal = mrOk;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsFileEdit.Save;
+begin
+  FContent.Text := FModel.ResultText;
+  ForceDirectories(ExtractFileDir(FFileName));
+  TAtlasTextFile.Save(FFileName, FContent);
+end;
+
+procedure TAtlasSettingsFileEdit.OpenIfAsked;
+var
+  mActions: IOTAActionServices;
+begin
+  if not FOpenFile or not Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    Exit;
+  end;
+  if not TFile.Exists(FFileName) then
+  begin
+    ForceDirectories(ExtractFileDir(FFileName));
+    TFile.WriteAllBytes(FFileName, TEncoding.UTF8.GetBytes('{' + sLineBreak + '}' + sLineBreak));
+  end;
+  mActions.OpenFile(FFileName);
+end;
+
+procedure TAtlasSettingsFileEdit.Run;
+begin
+  if not ContentValid then
+  begin
+    Exit;
+  end;
+  FProject := TAtlasProjectSettings.ActiveProject;
+  FDprojText := '';
+  if SameText(ExtractFileExt(FProject), '.dproj') and TFile.Exists(FProject) then
+  begin
+    FDprojText := LoadContent(FProject).Text;
+  end;
+  FCatalog := LoadCatalog;
+  FModel := TAtlasSettingsModel.Create(Fields, FContent.Text, '', FGlobal);
+  if ShowDialog and FModel.Modified then
+  begin
+    Save;
+  end;
+  OpenIfAsked;
+end;
+
 class procedure TAtlasProjectSettings.ExecuteFile(const AFileName: string; AGlobal: Boolean;
   const ARuleId: string);
 var
-  Content: TAtlasTextFileContent;
-  GlobalText, Title, Project, DprojText: string;
-  Root: TJSONObject;
-  Model: TAtlasSettingsModel;
-  Dialog: TAtlasProjectSettingsDialog;
-  Catalog: TJSONValue;
-  Target: TAtlasBuildTarget;
-  Fields: TArray<TAtlasSettingField>;
-  CheckScope: string;
-  OpenFile, Accepted: Boolean;
-  Actions: IOTAActionServices;
+  mEdit: TAtlasSettingsFileEdit;
 begin
-  if AGlobal then
-  begin
-    Title := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsGlobalTitle);
-  end
-  else
-  begin
-    Title := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsTitle);
-  end;
-  Content := LoadContent(AFileName);
-  Root := TAtlasJsonText.Parse(Content.Text);
+  mEdit := TAtlasSettingsFileEdit.Create(AFileName, AGlobal, ARuleId);
   try
-    if (Root = nil) and (Trim(Content.Text) <> '') then
-    begin
-      if AGlobal then
-      begin
-        MessageBox(Application.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.GlobalSettingsInvalid)), PChar(Title),
-          MB_ICONWARNING or MB_OK);
-      end
-      else
-      begin
-        MessageBox(Application.Handle, PChar(TAtlasStrings.Text(TAtlasTextId.ProjectSettingsInvalid)), PChar(Title),
-          MB_ICONWARNING or MB_OK);
-      end;
-      if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
-      begin
-        Actions.OpenFile(AFileName);
-      end;
-      Exit;
-    end;
+    mEdit.Run;
   finally
-    Root.Free;
-  end;
-  // Eine Ebene je Datei: Im Projekt gibt es keine globale Vorgabe, die es überschreiben könnte.
-  GlobalText := '';
-  if AGlobal then
-  begin
-    Fields := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), True,
-      TAtlasSettingsScopes.IdeManagedPaths);
-    CheckScope := ',"global"';
-  end
-  else
-  begin
-    Fields := TAtlasSettingsSchema.ForScope(TAtlasSettingsSchema.Fields(AtlasSchemaJson), False, nil);
-    CheckScope := '';
-  end;
-  Project := ActiveProject;
-  DprojText := '';
-  if SameText(ExtractFileExt(Project), '.dproj') and TFile.Exists(Project) then
-  begin
-    DprojText := LoadContent(Project).Text;
-  end;
-  OpenFile := False;
-  // Namen und Kategorien der Regeln in der Sprache der Oberfläche (#446).
-  if TAtlasStrings.Language = TAtlasLanguage.English then
-  begin
-    Catalog := RunCommand(CatalogCommand, '["en"]');
-  end
-  else
-  begin
-    Catalog := RunCommand(CatalogCommand, '["de"]');
-  end;
-  Model := TAtlasSettingsModel.Create(Fields, Content.Text, GlobalText, AGlobal);
-  try
-    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, AFileName);
-    try
-      Dialog.Catalog := Catalog;
-      Dialog.ServerChecks := Catalog <> nil;
-      if ARuleId <> '' then
-      begin
-        Dialog.SelectRule(ARuleId);
-      end;
-      if not AGlobal then
-      begin
-        Dialog.ProjectHint := ExtractFileName(Project);
-        // Die IDE sendet ihre Auswahl laufend an den Server (selectBuild, #46, #615).
-        if TAtlasIdeBuildTarget.Read(Target) then
-        begin
-          Dialog.BuildHint := TAtlasStrings.Fmt(TAtlasTextId.ProjectSettingsBuildOverride,
-            [Target.Config, Target.Platform]);
-        end;
-      end;
-      Dialog.OnChoices :=
-        function(const APath: string): TArray<TAtlasSettingChoice>
-        var
-          Profiles: Integer;
-        begin
-          Result := nil;
-          if APath = 'delphiVersion' then
-          begin
-            Result := TAtlasSettingChoices.DelphiVersions(InstalledVersions);
-          end
-          else if APath = 'minDelphiVersion' then
-          begin
-            Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
-          end
-          else if APath = 'config' then
-          begin
-            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojConfigs(DprojText));
-          end
-          else if APath = 'platform' then
-          begin
-            Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.DprojPlatforms(DprojText));
-          end
-          else if (APath = 'project') and (Project <> '') and not AGlobal then
-          begin
-            Result := TAtlasSettingChoices.FromTexts([ExtractRelativePath(IncludeTrailingPathDelimiter(
-              ExtractFileDir(AFileName)), Project)]);
-          end
-          else if (APath = 'profile') or (APath = 'testProfile') then
-          begin
-            Profiles := Model.IndexOf('profiles');
-            if Profiles >= 0 then
-            begin
-              Result := TAtlasSettingChoices.FromTexts(TAtlasSettingChoices.Profiles(Model.Effective(Profiles)));
-            end;
-          end;
-        end;
-      Dialog.OnValidate :=
-        function(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>
-        var
-          Answer: TJSONValue;
-          Valid: Boolean;
-        begin
-          // Der Server meldet auch Schlüssel am falschen Ort (#227).
-          Answer := RunCommand(CheckCommand, '[' + TAtlasJsonText.Quote(AText) + CheckScope + ']');
-          try
-            AChecked := TAtlasSettingsValidation.FromAnswer(Answer, Result, Valid);
-          finally
-            Answer.Free;
-          end;
-          if not AChecked then
-          begin
-            TAtlasSettingsValidation.Syntax(AText, Result);
-          end;
-        end;
-      Dialog.OnOpenFile :=
-        procedure
-        begin
-          OpenFile := True;
-        end;
-      Accepted := Dialog.ShowModal = mrOk;
-    finally
-      Dialog.Free;
-    end;
-    if Accepted and Model.Modified then
-    begin
-      Content.Text := Model.ResultText;
-      ForceDirectories(ExtractFileDir(AFileName));
-      TAtlasTextFile.Save(AFileName, Content);
-    end;
-  finally
-    Model.Free;
-    Catalog.Free;
-  end;
-  if OpenFile and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
-  begin
-    if not TFile.Exists(AFileName) then
-    begin
-      ForceDirectories(ExtractFileDir(AFileName));
-      TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes('{' + sLineBreak + '}' + sLineBreak));
-    end;
-    Actions.OpenFile(AFileName);
+    mEdit.Free;
   end;
 end;
 
