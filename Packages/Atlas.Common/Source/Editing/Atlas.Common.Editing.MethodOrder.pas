@@ -206,139 +206,195 @@ begin
   Result := False;
 end;
 
+type
+  /// <summary>Merkmale je Zeile: Code, Kommentar und Tiefe der {$IF…}- und {$REGION}-Klammern am Zeilenanfang (der
+  /// letzte Eintrag gilt hinter der letzten Zeile).</summary>
+  TLineMarks = record
+    Code, Comment: TArray<Boolean>;
+    CondAt, RegionAt: TArray<Integer>;
+    /// <summary>Liest die Merkmale der ALineCount Zeilen aus den Tokens von ATree.</summary>
+    procedure Build(ATree: TSyntaxTree; ALineCount: Integer);
+    /// <summary>Markiert die Zeilen von AToken als Code bzw. Kommentar.</summary>
+    procedure MarkLines(const AToken: TPascalToken);
+    /// <summary>Region bzw. Conditional, wenn AFirst..ALast in einer Klammer liegt, eine nur zur Hälfte enthält
+    /// oder ACondition gesetzt ist; sonst None.</summary>
+    function ReasonFor(AFirst, ALast: Integer; const ACondition: string): TMethodStayReason;
+  end;
+
+/// <summary>Zählt die Direktive ADirective in Zeile ALine als Öffnen oder Schließen einer Klammer.</summary>
+procedure CountDirective(const ADirective: string; ALine: Integer; var ACondDelta, ARegionDelta: TArray<Integer>);
+begin
+  if MatchStr(ADirective, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
+  begin
+    Inc(ACondDelta[ALine]);
+  end
+  else if MatchStr(ADirective, ['ENDIF', 'IFEND']) then
+  begin
+    Dec(ACondDelta[ALine]);
+  end
+  else if ADirective = 'REGION' then
+  begin
+    Inc(ARegionDelta[ALine]);
+  end
+  else if ADirective = 'ENDREGION' then
+  begin
+    Dec(ARegionDelta[ALine]);
+  end;
+end;
+
+procedure TLineMarks.MarkLines(const AToken: TPascalToken);
+var
+  mLine: Integer;
+begin
+  for mLine := AToken.StartPos.Line to AToken.EndPos.Line do
+  begin
+    if AToken.Kind = TPascalTokenKind.Comment then
+    begin
+      Comment[mLine] := True;
+    end
+    else
+    begin
+      Code[mLine] := True;
+    end;
+  end;
+end;
+
+procedure TLineMarks.Build(ATree: TSyntaxTree; ALineCount: Integer);
+var
+  mCondDelta, mRegionDelta: TArray<Integer>;
+  mToken: TPascalToken;
+  mLine: Integer;
+begin
+  SetLength(Code, ALineCount);
+  SetLength(Comment, ALineCount);
+  SetLength(mCondDelta, ALineCount + 1);
+  SetLength(mRegionDelta, ALineCount + 1);
+  for mToken in ATree.Tokens do
+  begin
+    if (mToken.StartPos.Line < 0) or (mToken.EndPos.Line >= ALineCount) then
+    begin
+      Continue;
+    end;
+    MarkLines(mToken);
+    if mToken.Kind = TPascalTokenKind.Directive then
+    begin
+      CountDirective(TPascalLexer.DirectiveName(mToken.Text), mToken.StartPos.Line, mCondDelta, mRegionDelta);
+    end;
+  end;
+  SetLength(CondAt, ALineCount + 1);
+  SetLength(RegionAt, ALineCount + 1);
+  for mLine := 1 to ALineCount do
+  begin
+    CondAt[mLine] := CondAt[mLine - 1] + mCondDelta[mLine - 1];
+    RegionAt[mLine] := RegionAt[mLine - 1] + mRegionDelta[mLine - 1];
+  end;
+end;
+
+function TLineMarks.ReasonFor(AFirst, ALast: Integer; const ACondition: string): TMethodStayReason;
+begin
+  if (RegionAt[AFirst] > 0) or (RegionAt[ALast + 1] <> RegionAt[AFirst]) then
+  begin
+    Result := TMethodStayReason.Region;
+  end
+  else if (CondAt[AFirst] > 0) or (CondAt[ALast + 1] <> CondAt[AFirst]) or (ACondition <> '') then
+  begin
+    Result := TMethodStayReason.Conditional;
+  end
+  else
+  begin
+    Result := TMethodStayReason.None;
+  end;
+end;
+
+/// <summary>Teilt der Rumpf ARange eine Zeile mit anderem Code? Vor dem Kopf darf höchstens "class" stehen,
+/// hinter "end;" höchstens ein Kommentar.</summary>
+function SharesLine(const ALines: TArray<string>; const ARange: TTextRange): Boolean;
+var
+  mRest: string;
+begin
+  mRest := LowerCase(Trim(Copy(ALines[ARange.StartPos.Line], 1, ARange.StartPos.Character)));
+  if (mRest <> '') and (mRest <> 'class') then
+  begin
+    Exit(True);
+  end;
+  mRest := Trim(Copy(ALines[ARange.EndPos.Line], ARange.EndPos.Character + 1, MaxInt));
+  if StartsStr(';', mRest) then
+  begin
+    mRest := Trim(Copy(mRest, 2, MaxInt));
+  end;
+  Result := (mRest <> '') and not StartsStr('//', mRest);
+end;
+
+/// <summary>Rumpf der Methode AMethod mit Kommentaren direkt darüber; markiert, ob er stehen bleiben muss.</summary>
+function BlockOf(const AMethod: TDeclaredMethod; const ALines: TArray<string>; const AMarks: TLineMarks): TBlock;
+begin
+  Result := Default(TBlock);
+  Result.TypeName := AMethod.TypeName;
+  Result.Name := AMethod.Declaration.Name;
+  Result.TypeOrder := AMethod.TypeOrder;
+  Result.DeclarationOrder := AMethod.DeclarationOrder;
+  Result.Header := AMethod.Body.Range.StartPos.Line;
+  Result.Last := AMethod.Body.Range.EndPos.Line;
+  Result.First := Result.Header;
+  while (Result.First > 0) and AMarks.Comment[Result.First - 1] and not AMarks.Code[Result.First - 1] do
+  begin
+    Dec(Result.First);
+  end;
+  Result.Reason := AMarks.ReasonFor(Result.First, Result.Last, AMethod.Body.Condition);
+  if (Result.Reason = TMethodStayReason.None) and SharesLine(ALines, AMethod.Body.Range) then
+  begin
+    Result.Reason := TMethodStayReason.SharedLine;
+  end;
+  Result.Fixed := Result.Reason <> TMethodStayReason.None;
+end;
+
+/// <summary>Hält ABlock fest; ohne anderen Grund, weil er eine Zeile teilt.</summary>
+procedure FixShared(var ABlock: TBlock);
+begin
+  ABlock.Fixed := True;
+  if ABlock.Reason = TMethodStayReason.None then
+  begin
+    ABlock.Reason := TMethodStayReason.SharedLine;
+  end;
+end;
+
+/// <summary>Rümpfe (nach Zeilen geordnet), die sich Zeilen teilen, bleiben beide stehen.</summary>
+procedure FixSharedLines(var ABlocks: TBlocks);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to High(ABlocks) do
+  begin
+    if ABlocks[mIndex].First <= ABlocks[mIndex - 1].Last then
+    begin
+      ABlocks[mIndex].First := ABlocks[mIndex].Header;
+    end;
+    if ABlocks[mIndex].First <= ABlocks[mIndex - 1].Last then
+    begin
+      FixShared(ABlocks[mIndex]);
+      FixShared(ABlocks[mIndex - 1]);
+    end;
+  end;
+end;
+
 /// <summary>Die Rümpfe deklarierter Methoden mit ihrem Bereich; markiert, was stehen bleiben muss.</summary>
 function CollectBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>): TBlocks;
 var
-  Code, Comment: TArray<Boolean>;
-  CondDelta, RegionDelta, CondAt, RegionAt: TArray<Integer>;
-  Token: TPascalToken;
-  Directive: string;
-  Line, Index: Integer;
-  Method: TDeclaredMethod;
-  Block: TBlock;
-  Rest: string;
-  Ordered: TBlocks;
+  mMarks: TLineMarks;
+  mMethod: TDeclaredMethod;
 begin
   Result := nil;
-  SetLength(Code, Length(ALines));
-  SetLength(Comment, Length(ALines));
-  SetLength(CondDelta, Length(ALines) + 1);
-  SetLength(RegionDelta, Length(ALines) + 1);
-  for Token in ATree.Tokens do
+  mMarks := Default(TLineMarks);
+  mMarks.Build(ATree, Length(ALines));
+  for mMethod in TClassCompletion.DeclaredMethods(ATree, AText) do
   begin
-    if (Token.StartPos.Line < 0) or (Token.EndPos.Line > High(ALines)) then
+    if mMethod.HasBody and (mMethod.Body.Range.EndPos.Line <= High(ALines)) then
     begin
-      Continue;
-    end;
-    for Line := Token.StartPos.Line to Token.EndPos.Line do
-    begin
-      if Token.Kind = TPascalTokenKind.Comment then
-      begin
-        Comment[Line] := True;
-      end
-      else
-      begin
-        Code[Line] := True;
-      end;
-    end;
-    if Token.Kind <> TPascalTokenKind.Directive then
-    begin
-      Continue;
-    end;
-    Directive := TPascalLexer.DirectiveName(Token.Text);
-    if (Directive = 'IF') or (Directive = 'IFDEF') or (Directive = 'IFNDEF') or (Directive = 'IFOPT') then
-    begin
-      Inc(CondDelta[Token.StartPos.Line]);
-    end
-    else if (Directive = 'ENDIF') or (Directive = 'IFEND') then
-    begin
-      Dec(CondDelta[Token.StartPos.Line]);
-    end
-    else if Directive = 'REGION' then
-    begin
-      Inc(RegionDelta[Token.StartPos.Line]);
-    end
-    else if Directive = 'ENDREGION' then
-    begin
-      Dec(RegionDelta[Token.StartPos.Line]);
+      Result := Result + [BlockOf(mMethod, ALines, mMarks)];
     end;
   end;
-  // Tiefe am Anfang jeder Zeile; der letzte Eintrag gilt hinter der letzten Zeile.
-  SetLength(CondAt, Length(ALines) + 1);
-  SetLength(RegionAt, Length(ALines) + 1);
-  for Line := 1 to Length(ALines) do
-  begin
-    CondAt[Line] := CondAt[Line - 1] + CondDelta[Line - 1];
-    RegionAt[Line] := RegionAt[Line - 1] + RegionDelta[Line - 1];
-  end;
-  for Method in TClassCompletion.DeclaredMethods(ATree, AText) do
-  begin
-    if not Method.HasBody or (Method.Body.Range.EndPos.Line > High(ALines)) then
-    begin
-      Continue;
-    end;
-    Block := Default(TBlock);
-    Block.TypeName := Method.TypeName;
-    Block.Name := Method.Declaration.Name;
-    Block.TypeOrder := Method.TypeOrder;
-    Block.DeclarationOrder := Method.DeclarationOrder;
-    Block.Header := Method.Body.Range.StartPos.Line;
-    Block.Last := Method.Body.Range.EndPos.Line;
-    Block.First := Block.Header;
-    while (Block.First > 0) and Comment[Block.First - 1] and not Code[Block.First - 1] do
-    begin
-      Dec(Block.First);
-    end;
-    // Vor dem Kopf darf höchstens "class" stehen, hinter "end;" höchstens ein Kommentar.
-    Rest := LowerCase(Trim(Copy(ALines[Block.Header], 1, Method.Body.Range.StartPos.Character)));
-    if (Rest <> '') and (Rest <> 'class') then
-    begin
-      Block.Reason := TMethodStayReason.SharedLine;
-    end;
-    Rest := Trim(Copy(ALines[Block.Last], Method.Body.Range.EndPos.Character + 1, MaxInt));
-    if StartsStr(';', Rest) then
-    begin
-      Rest := Trim(Copy(Rest, 2, MaxInt));
-    end;
-    if (Rest <> '') and not StartsStr('//', Rest) then
-    begin
-      Block.Reason := TMethodStayReason.SharedLine;
-    end;
-    if (RegionAt[Block.First] > 0) or (RegionAt[Block.Last + 1] <> RegionAt[Block.First]) then
-    begin
-      Block.Reason := TMethodStayReason.Region;
-    end
-    else if (CondAt[Block.First] > 0) or (CondAt[Block.Last + 1] <> CondAt[Block.First]) or
-      (Method.Body.Condition <> '') then
-    begin
-      Block.Reason := TMethodStayReason.Conditional;
-    end;
-    Block.Fixed := Block.Reason <> TMethodStayReason.None;
-    Result := Result + [Block];
-  end;
-  // Rümpfe, die sich Zeilen teilen, bleiben beide stehen.
-  Ordered := ByLine(Result);
-  for Index := 1 to High(Ordered) do
-  begin
-    if Ordered[Index].First <= Ordered[Index - 1].Last then
-    begin
-      Ordered[Index].First := Ordered[Index].Header;
-      if Ordered[Index].First <= Ordered[Index - 1].Last then
-      begin
-        Ordered[Index].Fixed := True;
-        Ordered[Index - 1].Fixed := True;
-        if Ordered[Index].Reason = TMethodStayReason.None then
-        begin
-          Ordered[Index].Reason := TMethodStayReason.SharedLine;
-        end;
-        if Ordered[Index - 1].Reason = TMethodStayReason.None then
-        begin
-          Ordered[Index - 1].Reason := TMethodStayReason.SharedLine;
-        end;
-      end;
-    end;
-  end;
-  Result := Ordered;
+  Result := ByLine(Result);
+  FixSharedLines(Result);
 end;
 
 function BlockLines(const ALines: TArray<string>; const ABlock: TBlock): TArray<string>;
@@ -443,328 +499,481 @@ begin
   end;
 end;
 
+/// <summary>Rümpfe, die nicht stehen bleiben müssen.</summary>
+function MovableOf(const ABlocks: TBlocks): TBlocks;
+var
+  mBlock: TBlock;
+begin
+  Result := nil;
+  for mBlock in ABlocks do
+  begin
+    if not mBlock.Fixed then
+    begin
+      Result := Result + [mBlock];
+    end;
+  end;
+end;
+
+/// <summary>Zeilen, in denen jeder Platz ASlots[I] den Rumpf ATarget[I] bekommt; ATargetLines: dessen neue
+/// Kopfzeile.</summary>
+function Rearranged(const ALines: TArray<string>; const ASlots, ATarget: TBlocks;
+  out ATargetLines: TArray<Integer>): TArray<string>;
+var
+  mLine, mSlot: Integer;
+begin
+  Result := nil;
+  SetLength(ATargetLines, Length(ATarget));
+  mLine := 0;
+  mSlot := 0;
+  while mLine < Length(ALines) do
+  begin
+    if (mSlot < Length(ASlots)) and (mLine = ASlots[mSlot].First) then
+    begin
+      ATargetLines[mSlot] := Length(Result) + ATarget[mSlot].Header - ATarget[mSlot].First;
+      Result := Result + BlockLines(ALines, ATarget[mSlot]);
+      mLine := ASlots[mSlot].Last + 1;
+      Inc(mSlot);
+    end
+    else
+    begin
+      Result := Result + [ALines[mLine]];
+      Inc(mLine);
+    end;
+  end;
+end;
+
+/// <summary>Verschobene Rümpfe in der neuen Reihenfolge, danach die stehen bleibenden aus ABlocks.</summary>
+function ArrangeMoves(const ABlocks, ASlots, ATarget: TBlocks; const ATargetLines: TArray<Integer>):
+  TArray<TMethodMove>;
+var
+  mIndex, mFrom: Integer;
+  mBlock: TBlock;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ATarget) do
+  begin
+    mFrom := IndexOfBlock(ASlots, ATarget[mIndex]);
+    if mFrom <> mIndex then
+    begin
+      Result := Result + [MoveOf(ATarget[mIndex], mIndex - mFrom, ATargetLines[mIndex])];
+    end;
+  end;
+  for mBlock in ABlocks do
+  begin
+    if mBlock.Fixed then
+    begin
+      Result := Result + [MoveOf(mBlock, 0, -1)];
+    end;
+  end;
+end;
+
 class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
   APlacement: TMethodPlacement): TMethodOrderResult;
 var
-  Lines, NewLines: TArray<string>;
-  Blocks, Slots, Target: TBlocks;
-  TargetLines: TArray<Integer>;
-  Block: TBlock;
-  Line, Slot, Index: Integer;
-  Edit: TTextEdit;
+  mLines, mNewLines: TArray<string>;
+  mBlocks, mSlots, mTarget: TBlocks;
+  mTargetLines: TArray<Integer>;
+  mEdit: TTextEdit;
 begin
   Result := Default(TMethodOrderResult);
   if (ATree = nil) or (APlacement = TMethodPlacement.Off) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AText);
-  Blocks := CollectBlocks(ATree, AText, Lines);
-  Slots := nil;
-  for Block in Blocks do
+  mLines := TTextLines.SplitLines(AText);
+  mBlocks := CollectBlocks(ATree, AText, mLines);
+  mSlots := MovableOf(mBlocks);
+  mTarget := Sorted(mSlots, APlacement);
+  // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
+  mNewLines := Rearranged(mLines, mSlots, mTarget, mTargetLines);
+  if LinesEdit(mLines, mNewLines, TTextLines.LineBreakOf(AText), mEdit) then
   begin
-    if not Block.Fixed then
+    Result.Edits := [mEdit];
+    Result.Moves := ArrangeMoves(mBlocks, mSlots, mTarget, mTargetLines);
+  end;
+end;
+
+type
+  /// <summary>Setzt neue Rümpfe an ihre Stelle (PlaceNew).</summary>
+  TNewPlacement = record
+    Lines: TArray<string>;
+    Placement: TMethodPlacement;
+    /// <summary>Vorhandene und neue verschiebbare Rümpfe; News nach Ordnung.</summary>
+    Existing, News: TBlocks;
+    /// <summary>Alle verschiebbaren Rümpfe nach Zeilen.</summary>
+    Movable: TBlocks;
+    /// <summary>Ziel und ob verschoben, je neuem Rumpf.</summary>
+    Anchors: TArray<TAnchor>;
+    Moved: TArray<Boolean>;
+    /// <summary>Teilt die verschiebbaren Rümpfe in vorhandene und gegenüber ABefore neue.</summary>
+    procedure Split(const ABlocks: TBlocks; const ABefore: string);
+    /// <summary>Neu: Kopfzeile kam in AKnown nicht vor, endet mit end und umschließt keinen bekannten Kopf.</summary>
+    function IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
+    /// <summary>Spätester vorhandener Rumpf vor ANew desselben (ASameType) bzw. eines früheren Typs; -1 ohne.
+    /// </summary>
+    function LatestBefore(const ANew: TBlock; ASameType: Boolean): Integer;
+    /// <summary>Frühester vorhandener Rumpf hinter ANew desselben (ASameType) bzw. eines späteren Typs; -1 ohne.
+    /// </summary>
+    function EarliestAfter(const ANew: TBlock; ASameType: Boolean): Integer;
+    /// <summary>Ziel für ANew: hinter den nächstliegenden davor desselben Typs, sonst vor den nächsten danach; bei
+    /// einem Typ ohne Rümpfe hinter den letzten eines früheren, sonst vor den ersten eines späteren Typs.</summary>
+    function AnchorFor(const ANew: TBlock): TAnchor;
+    /// <summary>Ordnet die neuen Rümpfe und bestimmt ihre Ziele.</summary>
+    procedure Anchor;
+    /// <summary>Neue Rümpfe ab AIndex mit demselben Ziel wie der an AIndex.</summary>
+    function GroupOf(AIndex: Integer): TBlocks;
+    /// <summary>Steht die Gruppe des neuen Rumpfs AIndex schon direkt am Ziel?</summary>
+    function InPlace(AIndex: Integer; const AGroup: TBlocks): Boolean;
+    /// <summary>Gruppen je Ziel; eine Gruppe, die schon direkt am Ziel steht, bleibt.</summary>
+    procedure KeepGroupsInPlace;
+    /// <summary>Neuer Text: verschobene Rümpfe samt folgender Leerzeilen heraus, am Ziel mit Leerzeile hinein.
+    /// </summary>
+    function NewLines: TArray<string>;
+    /// <summary>Verschobene neue Rümpfe mit Ziel ABlock davor bzw. dahinter (AAfter).</summary>
+    function AnchoredAt(const ABlock: TBlock; AAfter: Boolean): TBlocks;
+    /// <summary>Reihenfolge danach: die übrigen Rümpfe, die verschobenen an ihrem Ziel.</summary>
+    function FinalOrder: TBlocks;
+    /// <summary>Verschiebungen der neuen Rümpfe im Text ANewLines.</summary>
+    function Moves(const ANewLines: TArray<string>): TArray<TMethodMove>;
+  end;
+
+function SameAnchor(const A, B: TAnchor): Boolean;
+begin
+  Result := (A.Block = B.Block) and (A.After = B.After);
+end;
+
+function TNewPlacement.IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := not AKnown.ContainsKey(Trim(Lines[ABlock.Header])) and StartsText('end', Trim(Lines[ABlock.Last]));
+  for mLine := ABlock.Header + 1 to ABlock.Last do
+  begin
+    if Result and IsRoutineHeader(Lines[mLine]) and AKnown.ContainsKey(Trim(Lines[mLine])) then
     begin
-      Slots := Slots + [Block];
+      Result := False;
     end;
   end;
-  Target := Sorted(Slots, APlacement);
-  // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
-  NewLines := nil;
-  SetLength(TargetLines, Length(Target));
-  Line := 0;
-  Slot := 0;
-  while Line < Length(Lines) do
-  begin
-    if (Slot < Length(Slots)) and (Line = Slots[Slot].First) then
+end;
+
+procedure TNewPlacement.Split(const ABlocks: TBlocks; const ABefore: string);
+var
+  mKnown: TDictionary<string, Boolean>;
+  mLine: string;
+  mBlock: TBlock;
+begin
+  Existing := nil;
+  News := nil;
+  mKnown := TDictionary<string, Boolean>.Create;
+  try
+    for mLine in TTextLines.SplitLines(ABefore) do
     begin
-      TargetLines[Slot] := Length(NewLines) + Target[Slot].Header - Target[Slot].First;
-      NewLines := NewLines + BlockLines(Lines, Target[Slot]);
-      Line := Slots[Slot].Last + 1;
-      Inc(Slot);
+      mKnown.AddOrSetValue(Trim(mLine), True);
+    end;
+    for mBlock in MovableOf(ABlocks) do
+    begin
+      if IsFresh(mBlock, mKnown) then
+      begin
+        News := News + [mBlock];
+        News[High(News)].New := True;
+      end
+      else
+      begin
+        Existing := Existing + [mBlock];
+      end;
+    end;
+  finally
+    mKnown.Free;
+  end;
+end;
+
+function TNewPlacement.LatestBefore(const ANew: TBlock; ASameType: Boolean): Integer;
+var
+  mCandidate: Integer;
+  mFits: Boolean;
+begin
+  Result := -1;
+  for mCandidate := 0 to High(Existing) do
+  begin
+    if ASameType then
+    begin
+      mFits := (Existing[mCandidate].TypeOrder = ANew.TypeOrder) and Before(Existing[mCandidate], ANew, Placement);
     end
     else
     begin
-      NewLines := NewLines + [Lines[Line]];
-      Inc(Line);
+      mFits := Existing[mCandidate].TypeOrder < ANew.TypeOrder;
+    end;
+    if mFits and ((Result < 0) or Before(Existing[Result], Existing[mCandidate], Placement)) then
+    begin
+      Result := mCandidate;
     end;
   end;
-  if not LinesEdit(Lines, NewLines, TTextLines.LineBreakOf(AText), Edit) then
+end;
+
+function TNewPlacement.EarliestAfter(const ANew: TBlock; ASameType: Boolean): Integer;
+var
+  mCandidate: Integer;
+  mFits: Boolean;
+begin
+  Result := -1;
+  for mCandidate := 0 to High(Existing) do
+  begin
+    if ASameType then
+    begin
+      mFits := (Existing[mCandidate].TypeOrder = ANew.TypeOrder) and Before(ANew, Existing[mCandidate], Placement);
+    end
+    else
+    begin
+      mFits := Existing[mCandidate].TypeOrder > ANew.TypeOrder;
+    end;
+    if mFits and ((Result < 0) or Before(Existing[mCandidate], Existing[Result], Placement)) then
+    begin
+      Result := mCandidate;
+    end;
+  end;
+end;
+
+function TNewPlacement.AnchorFor(const ANew: TBlock): TAnchor;
+begin
+  Result.After := True;
+  Result.Block := LatestBefore(ANew, True);
+  if Result.Block >= 0 then
   begin
     Exit;
   end;
-  Result.Edits := [Edit];
-  for Index := 0 to High(Target) do
+  Result.After := False;
+  Result.Block := EarliestAfter(ANew, True);
+  if Result.Block >= 0 then
   begin
-    if IndexOfBlock(Slots, Target[Index]) <> Index then
+    Exit;
+  end;
+  Result.After := True;
+  Result.Block := LatestBefore(ANew, False);
+  if Result.Block >= 0 then
+  begin
+    Exit;
+  end;
+  Result.After := False;
+  Result.Block := EarliestAfter(ANew, False);
+end;
+
+procedure TNewPlacement.Anchor;
+var
+  mIndex: Integer;
+begin
+  News := Sorted(News, Placement);
+  SetLength(Anchors, Length(News));
+  for mIndex := 0 to High(News) do
+  begin
+    Anchors[mIndex] := AnchorFor(News[mIndex]);
+  end;
+  Movable := ByLine(Existing + News);
+  SetLength(Moved, Length(News));
+end;
+
+function TNewPlacement.GroupOf(AIndex: Integer): TBlocks;
+var
+  mMember: Integer;
+begin
+  Result := nil;
+  for mMember := AIndex to High(News) do
+  begin
+    if SameAnchor(Anchors[mMember], Anchors[AIndex]) then
     begin
-      Result.Moves := Result.Moves + [MoveOf(Target[Index], Index - IndexOfBlock(Slots, Target[Index]),
-        TargetLines[Index])];
+      Result := Result + [News[mMember]];
     end;
   end;
-  for Block in Blocks do
+end;
+
+function TNewPlacement.InPlace(AIndex: Integer; const AGroup: TBlocks): Boolean;
+var
+  mPosition, mMember, mCandidate: Integer;
+begin
+  mPosition := IndexOfBlock(Movable, Existing[Anchors[AIndex].Block]);
+  for mMember := 0 to High(AGroup) do
   begin
-    if Block.Fixed then
+    if Anchors[AIndex].After then
     begin
-      Result.Moves := Result.Moves + [MoveOf(Block, 0, -1)];
+      mCandidate := mPosition + 1 + mMember;
+    end
+    else
+    begin
+      mCandidate := mPosition - Length(AGroup) + mMember;
     end;
+    if (mCandidate < 0) or (mCandidate > High(Movable)) or (Movable[mCandidate].Header <> AGroup[mMember].Header) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+procedure TNewPlacement.KeepGroupsInPlace;
+var
+  mIndex, mMember: Integer;
+  mInPlace: Boolean;
+  mAnchor: TAnchor;
+begin
+  for mIndex := 0 to High(News) do
+  begin
+    if (Anchors[mIndex].Block < 0) or Moved[mIndex] then
+    begin
+      Continue;
+    end;
+    mInPlace := InPlace(mIndex, GroupOf(mIndex));
+    mAnchor := Anchors[mIndex];
+    for mMember := mIndex to High(News) do
+    begin
+      if not SameAnchor(Anchors[mMember], mAnchor) then
+      begin
+        Continue;
+      end;
+      Moved[mMember] := not mInPlace;
+      if mInPlace then
+      begin
+        Anchors[mMember].Block := -1;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Markiert die Zeilen von ABlock und die Leerzeilen dahinter als entfernt.</summary>
+procedure MarkRemoved(const ALines: TArray<string>; const ABlock: TBlock; var ARemoved: TArray<Boolean>);
+var
+  mLine: Integer;
+begin
+  for mLine := ABlock.First to ABlock.Last do
+  begin
+    ARemoved[mLine] := True;
+  end;
+  mLine := ABlock.Last + 1;
+  while (mLine < High(ALines)) and (Trim(ALines[mLine]) = '') do
+  begin
+    ARemoved[mLine] := True;
+    Inc(mLine);
+  end;
+end;
+
+function TNewPlacement.NewLines: TArray<string>;
+var
+  mRemoved: TArray<Boolean>;
+  mInsertBefore, mInsertAfter: TArray<TArray<string>>;
+  mIndex, mLine: Integer;
+  mBlock: TBlock;
+begin
+  SetLength(mRemoved, Length(Lines));
+  SetLength(mInsertBefore, Length(Lines));
+  SetLength(mInsertAfter, Length(Lines));
+  for mIndex := 0 to High(News) do
+  begin
+    if not Moved[mIndex] then
+    begin
+      Continue;
+    end;
+    MarkRemoved(Lines, News[mIndex], mRemoved);
+    mBlock := Existing[Anchors[mIndex].Block];
+    if Anchors[mIndex].After then
+    begin
+      mInsertAfter[mBlock.Last] := mInsertAfter[mBlock.Last] + [''] + BlockLines(Lines, News[mIndex]);
+    end
+    else
+    begin
+      mInsertBefore[mBlock.First] := mInsertBefore[mBlock.First] + BlockLines(Lines, News[mIndex]) + [''];
+    end;
+  end;
+  Result := nil;
+  for mLine := 0 to High(Lines) do
+  begin
+    Result := Result + mInsertBefore[mLine];
+    if not mRemoved[mLine] then
+    begin
+      Result := Result + [Lines[mLine]];
+    end;
+    Result := Result + mInsertAfter[mLine];
+  end;
+end;
+
+function TNewPlacement.AnchoredAt(const ABlock: TBlock; AAfter: Boolean): TBlocks;
+var
+  mMember: Integer;
+begin
+  Result := nil;
+  for mMember := 0 to High(News) do
+  begin
+    if Moved[mMember] and (Anchors[mMember].After = AAfter) and
+      (Existing[Anchors[mMember].Block].Header = ABlock.Header) then
+    begin
+      Result := Result + [News[mMember]];
+    end;
+  end;
+end;
+
+function TNewPlacement.FinalOrder: TBlocks;
+var
+  mBlock: TBlock;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mBlock in Movable do
+  begin
+    mIndex := IndexOfBlock(News, mBlock);
+    if (mIndex < 0) or not Moved[mIndex] then
+    begin
+      Result := Result + AnchoredAt(mBlock, False) + [mBlock] + AnchoredAt(mBlock, True);
+    end;
+  end;
+end;
+
+function TNewPlacement.Moves(const ANewLines: TArray<string>): TArray<TMethodMove>;
+var
+  mFinal: TBlocks;
+  mIndex, mLine: Integer;
+begin
+  Result := nil;
+  mFinal := FinalOrder;
+  for mIndex := 0 to High(mFinal) do
+  begin
+    if not mFinal[mIndex].New or not Moved[IndexOfBlock(News, mFinal[mIndex])] then
+    begin
+      Continue;
+    end;
+    // Der Kopf eines neuen Rumpfs kam vorher nicht vor: seine erste Fundstelle ist die neue Zeile.
+    mLine := 0;
+    while (mLine < High(ANewLines)) and (ANewLines[mLine] <> Lines[mFinal[mIndex].Header]) do
+    begin
+      Inc(mLine);
+    end;
+    Result := Result + [MoveOf(mFinal[mIndex], mIndex - IndexOfBlock(Movable, mFinal[mIndex]), mLine)];
   end;
 end;
 
 class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
   APlacement: TMethodPlacement): TMethodOrderResult;
 var
-  Lines, NewLines, Insert: TArray<string>;
-  Known: TDictionary<string, Boolean>;
-  Blocks, Existing, News, Movable, Final, Group: TBlocks;
-  Anchors: TArray<TAnchor>;
-  Moved, Removed: TArray<Boolean>;
-  InsertBefore, InsertAfter: TArray<TArray<string>>;
-  Block, Item: TBlock;
-  Fresh, InPlace: Boolean;
-  Line, Index, Candidate, Position, Member, Best: Integer;
-  Edit: TTextEdit;
+  mPlacement: TNewPlacement;
+  mNewLines: TArray<string>;
+  mEdit: TTextEdit;
 begin
   Result := Default(TMethodOrderResult);
   if (ATree = nil) or (APlacement = TMethodPlacement.Off) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AText);
-  Blocks := CollectBlocks(ATree, AText, Lines);
-  Known := TDictionary<string, Boolean>.Create;
-  try
-    Insert := TTextLines.SplitLines(ABefore);
-    for Line := 0 to High(Insert) do
-    begin
-      Known.AddOrSetValue(Trim(Insert[Line]), True);
-    end;
-    Existing := nil;
-    News := nil;
-    for Block in Blocks do
-    begin
-      if Block.Fixed then
-      begin
-        Continue;
-      end;
-      Fresh := not Known.ContainsKey(Trim(Lines[Block.Header])) and
-        StartsText('end', Trim(Lines[Block.Last]));
-      for Line := Block.Header + 1 to Block.Last do
-      begin
-        if Fresh and IsRoutineHeader(Lines[Line]) and Known.ContainsKey(Trim(Lines[Line])) then
-        begin
-          Fresh := False;
-        end;
-      end;
-      Item := Block;
-      Item.New := Fresh;
-      if Fresh then
-      begin
-        News := News + [Item];
-      end
-      else
-      begin
-        Existing := Existing + [Item];
-      end;
-    end;
-  finally
-    Known.Free;
-  end;
-  if (News = nil) or (Existing = nil) then
+  mPlacement := Default(TNewPlacement);
+  mPlacement.Placement := APlacement;
+  mPlacement.Lines := TTextLines.SplitLines(AText);
+  mPlacement.Split(CollectBlocks(ATree, AText, mPlacement.Lines), ABefore);
+  if (mPlacement.News = nil) or (mPlacement.Existing = nil) then
   begin
     Exit;
   end;
-  News := Sorted(News, APlacement);
-  // Ziel je neuem Rumpf.
-  SetLength(Anchors, Length(News));
-  for Index := 0 to High(News) do
+  mPlacement.Anchor;
+  mPlacement.KeepGroupsInPlace;
+  mNewLines := mPlacement.NewLines;
+  if LinesEdit(mPlacement.Lines, mNewLines, TTextLines.LineBreakOf(AText), mEdit) then
   begin
-    Anchors[Index].Block := -1;
-    // Hinter den nächstliegenden davor desselben Typs, sonst vor den nächsten danach.
-    Best := -1;
-    for Candidate := 0 to High(Existing) do
-    begin
-      if (Existing[Candidate].TypeOrder = News[Index].TypeOrder) and
-        Before(Existing[Candidate], News[Index], APlacement) and
-        ((Best < 0) or Before(Existing[Best], Existing[Candidate], APlacement)) then
-      begin
-        Best := Candidate;
-      end;
-    end;
-    if Best >= 0 then
-    begin
-      Anchors[Index].Block := Best;
-      Anchors[Index].After := True;
-      Continue;
-    end;
-    for Candidate := 0 to High(Existing) do
-    begin
-      if (Existing[Candidate].TypeOrder = News[Index].TypeOrder) and
-        Before(News[Index], Existing[Candidate], APlacement) and
-        ((Best < 0) or Before(Existing[Candidate], Existing[Best], APlacement)) then
-      begin
-        Best := Candidate;
-      end;
-    end;
-    if Best >= 0 then
-    begin
-      Anchors[Index].Block := Best;
-      Continue;
-    end;
-    // Typ ohne bisherige Rümpfe: hinter den letzten eines früheren, sonst vor den ersten eines späteren Typs.
-    for Candidate := 0 to High(Existing) do
-    begin
-      if (Existing[Candidate].TypeOrder < News[Index].TypeOrder) and
-        ((Best < 0) or Before(Existing[Best], Existing[Candidate], APlacement)) then
-      begin
-        Best := Candidate;
-      end;
-    end;
-    if Best >= 0 then
-    begin
-      Anchors[Index].Block := Best;
-      Anchors[Index].After := True;
-      Continue;
-    end;
-    for Candidate := 0 to High(Existing) do
-    begin
-      if (Existing[Candidate].TypeOrder > News[Index].TypeOrder) and
-        ((Best < 0) or Before(Existing[Candidate], Existing[Best], APlacement)) then
-      begin
-        Best := Candidate;
-      end;
-    end;
-    Anchors[Index].Block := Best;
-  end;
-  // Gruppen je Ziel; eine Gruppe, die schon direkt am Ziel steht, bleibt.
-  Movable := ByLine(Existing + News);
-  SetLength(Moved, Length(News));
-  for Index := 0 to High(News) do
-  begin
-    if (Anchors[Index].Block < 0) or Moved[Index] then
-    begin
-      Continue;
-    end;
-    Group := nil;
-    for Member := Index to High(News) do
-    begin
-      if (Anchors[Member].Block = Anchors[Index].Block) and (Anchors[Member].After = Anchors[Index].After) then
-      begin
-        Group := Group + [News[Member]];
-      end;
-    end;
-    Position := IndexOfBlock(Movable, Existing[Anchors[Index].Block]);
-    InPlace := True;
-    for Member := 0 to High(Group) do
-    begin
-      if Anchors[Index].After then
-      begin
-        Candidate := Position + 1 + Member;
-      end
-      else
-      begin
-        Candidate := Position - Length(Group) + Member;
-      end;
-      if (Candidate < 0) or (Candidate > High(Movable)) or (Movable[Candidate].Header <> Group[Member].Header) then
-      begin
-        InPlace := False;
-      end;
-    end;
-    for Member := Index to High(News) do
-    begin
-      if (Anchors[Member].Block = Anchors[Index].Block) and (Anchors[Member].After = Anchors[Index].After) then
-      begin
-        Moved[Member] := not InPlace;
-        if InPlace then
-        begin
-          Anchors[Member].Block := -1;
-        end;
-      end;
-    end;
-  end;
-  // Neuen Text bauen: verschobene Rümpfe samt folgender Leerzeilen heraus, am Ziel mit Leerzeile hinein.
-  SetLength(Removed, Length(Lines));
-  SetLength(InsertBefore, Length(Lines));
-  SetLength(InsertAfter, Length(Lines));
-  for Index := 0 to High(News) do
-  begin
-    if not Moved[Index] then
-    begin
-      Continue;
-    end;
-    Line := News[Index].First;
-    while Line <= News[Index].Last do
-    begin
-      Removed[Line] := True;
-      Inc(Line);
-    end;
-    while (Line < High(Lines)) and (Trim(Lines[Line]) = '') do
-    begin
-      Removed[Line] := True;
-      Inc(Line);
-    end;
-    Block := Existing[Anchors[Index].Block];
-    if Anchors[Index].After then
-    begin
-      InsertAfter[Block.Last] := InsertAfter[Block.Last] + [''] + BlockLines(Lines, News[Index]);
-    end
-    else
-    begin
-      InsertBefore[Block.First] := InsertBefore[Block.First] + BlockLines(Lines, News[Index]) + [''];
-    end;
-  end;
-  NewLines := nil;
-  for Line := 0 to High(Lines) do
-  begin
-    NewLines := NewLines + InsertBefore[Line];
-    if not Removed[Line] then
-    begin
-      NewLines := NewLines + [Lines[Line]];
-    end;
-    NewLines := NewLines + InsertAfter[Line];
-  end;
-  if not LinesEdit(Lines, NewLines, TTextLines.LineBreakOf(AText), Edit) then
-  begin
-    Exit;
-  end;
-  Result.Edits := [Edit];
-  // Reihenfolge danach: die übrigen Rümpfe, die verschobenen an ihrem Ziel.
-  Final := nil;
-  for Block in Movable do
-  begin
-    Index := IndexOfBlock(News, Block);
-    if (Index >= 0) and Moved[Index] then
-    begin
-      Continue;
-    end;
-    for Member := 0 to High(News) do
-    begin
-      if Moved[Member] and not Anchors[Member].After and (Existing[Anchors[Member].Block].Header = Block.Header) then
-      begin
-        Final := Final + [News[Member]];
-      end;
-    end;
-    Final := Final + [Block];
-    for Member := 0 to High(News) do
-    begin
-      if Moved[Member] and Anchors[Member].After and (Existing[Anchors[Member].Block].Header = Block.Header) then
-      begin
-        Final := Final + [News[Member]];
-      end;
-    end;
-  end;
-  for Index := 0 to High(Final) do
-  begin
-    if Final[Index].New and Moved[IndexOfBlock(News, Final[Index])] then
-    begin
-      // Der Kopf eines neuen Rumpfs kam vorher nicht vor: seine erste Fundstelle ist die neue Zeile.
-      Line := 0;
-      while (Line < High(NewLines)) and (NewLines[Line] <> Lines[Final[Index].Header]) do
-      begin
-        Inc(Line);
-      end;
-      Result.Moves := Result.Moves + [MoveOf(Final[Index], Index - IndexOfBlock(Movable, Final[Index]), Line)];
-    end;
+    Result.Edits := [mEdit];
+    Result.Moves := mPlacement.Moves(mNewLines);
   end;
 end;
 
