@@ -43,7 +43,23 @@ type
     FTimer: TTimer;
     FOnNever: TNotifyEvent;
     FOnAllKeys: TNotifyEvent;
+    // Stand von Layout: Schreibstelle, Zeilen- und Texthöhe, zeichnen oder nur messen.
+    FX: Integer;
+    FY: Integer;
+    FRowHeight: Integer;
+    FTextHeight: Integer;
+    FDraw: Boolean;
     procedure TimerTick(Sender: TObject);
+    /// <summary>Text an der Schreibstelle, rückt sie weiter.</summary>
+    procedure PutText(const AText: string; AColor: TColor);
+    /// <summary>Link an der Schreibstelle; merkt seine Fläche.</summary>
+    procedure PutLink(ALink: TAtlasShortcutTipLink; const AText: string);
+    /// <summary>Tastenkappe an der Schreibstelle.</summary>
+    procedure PutCap(const AText: string);
+    /// <summary>Alle Schritte des Kürzels als Tastenkappen.</summary>
+    procedure PutKeys;
+    /// <summary>Befehlsname, höchstens MaxCommandWidth breit.</summary>
+    procedure PutCommand;
     /// <summary>Misst bzw. zeichnet (ADraw) den Inhalt; setzt die Flächen der Links.</summary>
     function Layout(ADraw: Boolean): TSize;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -107,119 +123,137 @@ begin
   Result := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipSpoken, [FView.KeyText, FView.Command]);
 end;
 
-function TAtlasShortcutTipWindow.Layout(ADraw: Boolean): TSize;
+procedure TAtlasShortcutTipWindow.PutText(const AText: string; AColor: TColor);
 var
-  X, Y, RowHeight, TextHeight, CapHeight, LineWidth, CommandWidth, Right: Integer;
-  Step, Key: Integer;
-  Kind: TAtlasShortcutTipLink;
-  Cap, Area: TRect;
-  CapText, Command: string;
-
-  procedure PutText(const AText: string; AColor: TColor);
-  var
-    TextRect: TRect;
-  begin
-    if ADraw then
-    begin
-      Canvas.Font.Color := AColor;
-      Canvas.Brush.Style := bsClear;
-      TextRect := Rect(X, Y, X + Canvas.TextWidth(AText), Y + RowHeight);
-      DrawText(Canvas.Handle, PChar(AText), -1, TextRect, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-      Canvas.Brush.Style := bsSolid;
-    end;
-    Inc(X, Canvas.TextWidth(AText));
-  end;
-
-  procedure PutLink(ALink: TAtlasShortcutTipLink; const AText: string);
-  begin
-    FLinks[ALink] := Rect(X, Y, X + Canvas.TextWidth(AText), Y + TextHeight);
-    if ADraw then
-    begin
-      Canvas.Font.Style := [];
-      if FHot = ALink then
-      begin
-        Canvas.Font.Style := [fsUnderline];
-      end;
-      Canvas.Font.Color := ToColor(Colors.Accent);
-      Canvas.Brush.Style := bsClear;
-      Canvas.TextOut(X, Y, AText);
-      Canvas.Brush.Style := bsSolid;
-      Canvas.Font.Style := [];
-    end;
-    Inc(X, Canvas.TextWidth(AText));
-  end;
-
+  mTextRect: TRect;
 begin
-  Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
-  CapHeight := TextHeight + Scale(2 * CapPadY);
-  RowHeight := CapHeight;
-  for Kind := Low(TAtlasShortcutTipLink) to High(TAtlasShortcutTipLink) do
+  if FDraw then
   begin
-    FLinks[Kind] := TRect.Empty;
+    Canvas.Font.Color := AColor;
+    Canvas.Brush.Style := bsClear;
+    mTextRect := Rect(FX, FY, FX + Canvas.TextWidth(AText), FY + FRowHeight);
+    DrawText(Canvas.Handle, PChar(AText), -1, mTextRect, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    Canvas.Brush.Style := bsSolid;
   end;
-  // Erste Zeile: „Tipp:“, Tastenkappen, Befehl.
-  X := Scale(Pad);
-  Y := Scale(Pad);
-  Canvas.Font.Style := [fsBold];
-  PutText(TAtlasStrings.Text(TAtlasTextId.ShortcutTipLabel), ToColor(Colors.Text));
-  Canvas.Font.Style := [];
-  Inc(X, Scale(KeyGap * 2));
-  for Step := 0 to High(FView.Steps) do
+  Inc(FX, Canvas.TextWidth(AText));
+end;
+
+procedure TAtlasShortcutTipWindow.PutLink(ALink: TAtlasShortcutTipLink; const AText: string);
+begin
+  FLinks[ALink] := Rect(FX, FY, FX + Canvas.TextWidth(AText), FY + FTextHeight);
+  if FDraw then
   begin
-    if Step > 0 then
+    Canvas.Font.Style := [];
+    if FHot = ALink then
     begin
-      PutText(',', ToColor(Colors.Muted));
-      Inc(X, Scale(KeyGap * 2));
+      Canvas.Font.Style := [fsUnderline];
     end;
-    for Key := 0 to High(FView.Steps[Step]) do
-    begin
-      if Key > 0 then
-      begin
-        Inc(X, Scale(KeyGap));
-        PutText('+', ToColor(Colors.Muted));
-        Inc(X, Scale(KeyGap));
-      end;
-      CapText := FView.Steps[Step][Key];
-      Cap := Rect(X, Y, X + Canvas.TextWidth(CapText) + Scale(2 * CapPadX), Y + CapHeight);
-      if ADraw then
-      begin
-        FillRounded(Cap, Colors.Gutter, CapRadius);
-        FrameRounded(Cap, Colors.Line, CapRadius);
-        Canvas.Font.Color := ToColor(Colors.Text);
-        Canvas.Brush.Style := bsClear;
-        DrawText(Canvas.Handle, PChar(CapText), -1, Cap, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-        Canvas.Brush.Style := bsSolid;
-      end;
-      X := Cap.Right;
-    end;
+    Canvas.Font.Color := ToColor(Colors.Accent);
+    Canvas.Brush.Style := bsClear;
+    Canvas.TextOut(FX, FY, AText);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Font.Style := [];
   end;
-  Inc(X, Scale(KeyGap * 2));
-  Command := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipCommand, [FView.Command]);
-  CommandWidth := Min(Canvas.TextWidth(Command), Scale(MaxCommandWidth));
-  if ADraw then
+  Inc(FX, Canvas.TextWidth(AText));
+end;
+
+procedure TAtlasShortcutTipWindow.PutCap(const AText: string);
+var
+  mCap: TRect;
+begin
+  mCap := Rect(FX, FY, FX + Canvas.TextWidth(AText) + Scale(2 * CapPadX), FY + FRowHeight);
+  if FDraw then
   begin
-    Area := Rect(X, Y, X + CommandWidth, Y + RowHeight);
+    FillRounded(mCap, Colors.Gutter, CapRadius);
+    FrameRounded(mCap, Colors.Line, CapRadius);
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(Command), -1, Area, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+    DrawText(Canvas.Handle, PChar(AText), -1, mCap, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    Canvas.Brush.Style := bsSolid;
+  end;
+  FX := mCap.Right;
+end;
+
+procedure TAtlasShortcutTipWindow.PutKeys;
+var
+  mStep, mKey: Integer;
+begin
+  for mStep := 0 to High(FView.Steps) do
+  begin
+    if mStep > 0 then
+    begin
+      PutText(',', ToColor(Colors.Muted));
+      Inc(FX, Scale(KeyGap * 2));
+    end;
+    for mKey := 0 to High(FView.Steps[mStep]) do
+    begin
+      if mKey > 0 then
+      begin
+        Inc(FX, Scale(KeyGap));
+        PutText('+', ToColor(Colors.Muted));
+        Inc(FX, Scale(KeyGap));
+      end;
+      PutCap(FView.Steps[mStep][mKey]);
+    end;
+  end;
+end;
+
+procedure TAtlasShortcutTipWindow.PutCommand;
+var
+  mCommand: string;
+  mWidth: Integer;
+  mArea: TRect;
+begin
+  mCommand := TAtlasStrings.Fmt(TAtlasTextId.ShortcutTipCommand, [FView.Command]);
+  mWidth := Min(Canvas.TextWidth(mCommand), Scale(MaxCommandWidth));
+  if FDraw then
+  begin
+    mArea := Rect(FX, FY, FX + mWidth, FY + FRowHeight);
+    Canvas.Font.Color := ToColor(Colors.Text);
+    Canvas.Brush.Style := bsClear;
+    DrawText(Canvas.Handle, PChar(mCommand), -1, mArea, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
       DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;
   end;
-  Inc(X, CommandWidth);
-  LineWidth := X;
+  Inc(FX, mWidth);
+end;
+
+function TAtlasShortcutTipWindow.Layout(ADraw: Boolean): TSize;
+var
+  mLineWidth: Integer;
+  mKind: TAtlasShortcutTipLink;
+begin
+  FDraw := ADraw;
+  Canvas.Font := UIFont;
+  FTextHeight := Canvas.TextHeight('Wg');
+  // Zeilenhöhe = Höhe der Tastenkappen.
+  FRowHeight := FTextHeight + Scale(2 * CapPadY);
+  for mKind := Low(TAtlasShortcutTipLink) to High(TAtlasShortcutTipLink) do
+  begin
+    FLinks[mKind] := TRect.Empty;
+  end;
+  // Erste Zeile: „Tipp:“, Tastenkappen, Befehl.
+  FX := Scale(Pad);
+  FY := Scale(Pad);
+  Canvas.Font.Style := [fsBold];
+  PutText(TAtlasStrings.Text(TAtlasTextId.ShortcutTipLabel), ToColor(Colors.Text));
+  Canvas.Font.Style := [];
+  Inc(FX, Scale(KeyGap * 2));
+  PutKeys;
+  Inc(FX, Scale(KeyGap * 2));
+  PutCommand;
+  mLineWidth := FX;
   // Zweite Zeile: Links.
-  X := Scale(Pad);
-  Y := Y + RowHeight + Scale(RowGap);
+  FX := Scale(Pad);
+  FY := FY + FRowHeight + Scale(RowGap);
   PutLink(TAtlasShortcutTipLink.Never, TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever));
   if FView.ShowAllKeys then
   begin
     PutText('  ·  ', ToColor(Colors.Muted));
     PutLink(TAtlasShortcutTipLink.AllKeys, TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys));
   end;
-  Right := Max(LineWidth, X) + Scale(Pad);
-  Result.cx := Right;
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cx := Max(mLineWidth, FX) + Scale(Pad);
+  Result.cy := FY + FTextHeight + Scale(Pad);
 end;
 
 procedure TAtlasShortcutTipWindow.ShowTip(const AView: TAtlasShortcutTipView; const AArea: TRect);

@@ -99,6 +99,106 @@ begin
   Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
 end;
 
+/// <summary>Kinder einer Hierarchie-Ebene unter dem Wächter; leer ohne Server oder bei Fehler (mit Meldung).</summary>
+function GuardedChildren(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+var
+  mChildren: TArray<TAtlasHierarchyItem>;
+begin
+  mChildren := nil;
+  TAtlasGuard.Run(TAtlasFeature.Results,
+    procedure
+    var
+      mCurrent: TLspSession;
+    begin
+      mCurrent := TAtlasIdeResults.Session;
+      if mCurrent = nil then
+      begin
+        Exit;
+      end;
+      try
+        mChildren := mCurrent.HierarchyChildren(ADirection, AItem);
+      except
+        on E: ELspClientError do
+          TAtlasIdeResults.Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+      end;
+    end);
+  Result := mChildren;
+end;
+
+/// <summary>Nächste Ebene des Datenflusses unter dem Wächter.</summary>
+function GuardedFlow(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+  const APath: TArray<string>): TAtlasDataFlowResult;
+var
+  mFound: TAtlasDataFlowResult;
+begin
+  mFound := Default(TAtlasDataFlowResult);
+  TAtlasGuard.Run(TAtlasFeature.Results,
+    procedure
+    begin
+      mFound := TAtlasIdeResults.ExpandDataFlow(ADirection, ASource, APath);
+    end);
+  Result := mFound;
+end;
+
+/// <summary>Symbole zum Muster; leer ohne Server, ohne Muster oder bei Fehler.</summary>
+function QuerySymbols(const APattern: string): TArray<TAtlasSymbol>;
+var
+  mCurrent: TLspSession;
+begin
+  Result := nil;
+  mCurrent := TAtlasIdeResults.Session;
+  if (mCurrent = nil) or (Trim(APattern) = '') then
+  begin
+    Exit;
+  end;
+  try
+    Result := mCurrent.WorkspaceSymbols(Trim(APattern), SymbolTimeoutMs);
+  except
+    on ELspClientError do
+      Result := nil;
+  end;
+end;
+
+/// <summary>Zeilen der Symbolsuche; die Kennung ist der Index in ASymbols.</summary>
+function SymbolCommands(const ASymbols: TArray<TAtlasSymbol>): TArray<TAtlasCommand>;
+var
+  mIndex: Integer;
+  mCommand: TAtlasCommand;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ASymbols) do
+  begin
+    mCommand := Default(TAtlasCommand);
+    mCommand.Id := IntToStr(mIndex);
+    mCommand.Caption := ASymbols[mIndex].Name;
+    mCommand.Path := ExtractFileName(ASymbols[mIndex].FileName);
+    if ASymbols[mIndex].Container <> '' then
+    begin
+      mCommand.Path := ASymbols[mIndex].Container + ' · ' + mCommand.Path;
+    end;
+    mCommand.ShortCut := TAtlasResults.SymbolBadge(ASymbols[mIndex].Kind);
+    Result := Result + [mCommand];
+  end;
+end;
+
+/// <summary>Fläche, über der die Symbolsuche erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
+function PaletteArea: TRect;
+begin
+  if Screen.ActiveForm <> nil then
+  begin
+    Result := Screen.ActiveForm.BoundsRect;
+  end
+  else if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.BoundsRect;
+  end
+  else
+  begin
+    Result := Screen.WorkAreaRect;
+  end;
+end;
+
 { TAtlasIdeResults }
 
 class procedure TAtlasIdeResults.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
@@ -116,28 +216,8 @@ begin
     end;
   TAtlasIdeResultsWindow.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
-    var
-      Children: TArray<TAtlasHierarchyItem>;
     begin
-      Children := nil;
-      TAtlasGuard.Run(TAtlasFeature.Results,
-        procedure
-        var
-          Current: TLspSession;
-        begin
-          Current := Session;
-          if Current = nil then
-          begin
-            Exit;
-          end;
-          try
-            Children := Current.HierarchyChildren(ADirection, AItem);
-          except
-            on E: ELspClientError do
-              Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
-          end;
-        end);
-      Result := Children;
+      Result := GuardedChildren(ADirection, AItem);
     end;
   // Aufrufdiagramm (#1122): nach callHierarchy.diagram; „Nur Projekt-Units“ über die Projektgruppe.
   TAtlasIdeResultsWindow.DiagramAllowed :=
@@ -153,16 +233,8 @@ begin
   TAtlasIdeResultsWindow.OnFlowExpand :=
     function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
       const APath: TArray<string>): TAtlasDataFlowResult
-    var
-      Found: TAtlasDataFlowResult;
     begin
-      Found := Default(TAtlasDataFlowResult);
-      TAtlasGuard.Run(TAtlasFeature.Results,
-        procedure
-        begin
-          Found := ExpandDataFlow(ADirection, ASource, APath);
-        end);
-      Result := Found;
+      Result := GuardedFlow(ADirection, ASource, APath);
     end;
   TAtlasIdeResultsWindow.OnFlowFilter :=
     procedure(AOnlyProject, AExcludeTests: Boolean)
@@ -541,7 +613,6 @@ class procedure TAtlasIdeResults.SearchSymbol;
 var
   Window: TAtlasPaletteWindow;
   Symbols: TArray<TAtlasSymbol>;
-  Area: TRect;
 begin
   if Session = nil then
   begin
@@ -553,37 +624,9 @@ begin
   Window.Prompt := '#';
   Window.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
-    var
-      Current: TLspSession;
-      Index: Integer;
-      Command: TAtlasCommand;
     begin
-      Result := nil;
-      Symbols := nil;
-      Current := Session;
-      if (Current = nil) or (Trim(APattern) = '') then
-      begin
-        Exit;
-      end;
-      try
-        Symbols := Current.WorkspaceSymbols(Trim(APattern), SymbolTimeoutMs);
-      except
-        on ELspClientError do
-          Symbols := nil;
-      end;
-      for Index := 0 to High(Symbols) do
-      begin
-        Command := Default(TAtlasCommand);
-        Command.Id := IntToStr(Index);
-        Command.Caption := Symbols[Index].Name;
-        Command.Path := ExtractFileName(Symbols[Index].FileName);
-        if Symbols[Index].Container <> '' then
-        begin
-          Command.Path := Symbols[Index].Container + ' · ' + Command.Path;
-        end;
-        Command.ShortCut := TAtlasResults.SymbolBadge(Symbols[Index].Kind);
-        Result := Result + [Command];
-      end;
+      Symbols := QuerySymbols(APattern);
+      Result := SymbolCommands(Symbols);
     end;
   Window.OnExecute :=
     procedure(ACommand: TAtlasCommand)
@@ -596,19 +639,7 @@ begin
         Open(Symbols[Index].FileName, Symbols[Index].Line, Symbols[Index].Character);
       end;
     end;
-  if Screen.ActiveForm <> nil then
-  begin
-    Area := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Area := Screen.WorkAreaRect;
-  end;
-  Window.ShowOver(Area);
+  Window.ShowOver(PaletteArea);
 end;
 
 class procedure TAtlasIdeResults.ShowWindow;

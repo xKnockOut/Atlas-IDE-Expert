@@ -55,6 +55,10 @@ type
     procedure LeavesBrokenFileAlone;
     [Test]
     procedure SplitsSchemaByScope;
+    /// <summary>Jede Beschreibung des Schemas gibt es auch englisch (#1458); ohne englischen Text die deutsche.
+    /// </summary>
+    [Test]
+    procedure SchemaDescriptionsInBothLanguages;
   end;
 
 implementation
@@ -885,6 +889,30 @@ begin
   Assert.AreEqual('{"index": ', Routed.Text);
   Assert.AreEqual(0, Store.ReadInteger('IndexUsages', 1));
 end;
+procedure TAtlasSettingsScopesTests.SchemaDescriptionsInBothLanguages;
+var
+  mFields: TArray<TAtlasSettingField>;
+  mField: TAtlasSettingField;
+  mMissing: string;
+begin
+  mMissing := '';
+  for mField in TAtlasSettingsSchema.Fields(AtlasSchemaJson) do
+  begin
+    if (mField.Description <> '') and (mField.DescriptionEn = '') then
+    begin
+      mMissing := mMissing + mField.Path + ' ';
+    end;
+  end;
+  Assert.AreEqual('', mMissing);
+  mFields := TAtlasSettingsSchema.Fields('{"properties": {"a": {"type": "boolean", "description": "Schalter", ' +
+    '"x-description-en": "Switch"}, "b": {"type": "boolean", "description": "Nur deutsch"}}}');
+  Assert.AreEqual(Integer(2), Integer(Length(mFields)));
+  Assert.AreEqual('Switch', mFields[0].DescriptionFor(True));
+  Assert.AreEqual('Schalter', mFields[0].DescriptionFor(False));
+  Assert.AreEqual('Nur deutsch', mFields[1].DescriptionFor(True));
+  mFields := nil;
+end;
+
 procedure TAtlasSettingsScopesTests.SplitsSchemaByScope;
 var
   Fields, Project, Global: TArray<TAtlasSettingField>;

@@ -38,6 +38,11 @@ type
     FOnAccept: TAtlasStepIntoIndexEvent;
     FOnCancel: TProc;
     function Layout(ADraw: Boolean): TSize;
+    /// <summary>Schriftfarbe der Zeile AIndex: gewählt, wählbar oder grau.</summary>
+    function RowColor(AIndex: Integer): TColor;
+    /// <summary>Zeile AIndex auf Höhe AY anordnen (mit ADraw auch zeichnen), Ort ab ARightX; Ergebnis: rechter Rand.
+    /// </summary>
+    function LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -154,100 +159,108 @@ begin
   end;
 end;
 
+/// <summary>Rechts in der Zeile: Datei:Zeile, bei nicht wählbaren Einträgen der Grund davor.</summary>
+function PlaceText(const ARow: TAtlasStepRow): string;
+begin
+  Result := TAtlasStepIntoWindow.ReasonText(ARow);
+  if Result = '' then
+  begin
+    Result := ARow.Location;
+  end
+  else if ARow.Location <> '' then
+  begin
+    Result := Result + '  ·  ' + ARow.Location;
+  end;
+end;
+
+function TAtlasStepIntoWindow.RowColor(AIndex: Integer): TColor;
+begin
+  if AIndex = FRow then
+  begin
+    Result := ToColor(Colors.Accent);
+  end
+  else if FRows[AIndex].Available then
+  begin
+    Result := ToColor(Colors.Text);
+  end
+  else
+  begin
+    Result := ToColor(Colors.Muted);
+  end;
+end;
+
+function TAtlasStepIntoWindow.LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
+var
+  mX: Integer;
+  mText, mRight: string;
+begin
+  mX := Scale(Pad);
+  mText := RowCaption(FRows, AIndex);
+  if AIndex = FRow then
+  begin
+    mText := Marker + mText;
+  end
+  else
+  begin
+    mX := mX + Canvas.TextWidth(Marker);
+  end;
+  mRight := PlaceText(FRows[AIndex]);
+  if ADraw then
+  begin
+    Canvas.Font.Color := RowColor(AIndex);
+    Canvas.TextOut(mX, AY, mText);
+    Canvas.Font.Color := ToColor(Colors.Muted);
+    Canvas.TextOut(ARightX, AY, mRight);
+  end;
+  Result := ARightX + Canvas.TextWidth(mRight);
+  FRowRects[AIndex] := Rect(Scale(Pad), AY, Result, AY + ATextHeight);
+end;
+
 function TAtlasStepIntoWindow.Layout(ADraw: Boolean): TSize;
 var
-  X, Y, TextHeight, Width, Index, NameWidth, RightX: Integer;
-  Text, Right: string;
-  Top: Integer;
+  mY, mTextHeight, mWidth, mIndex, mNameWidth, mRightX: Integer;
+  mText: string;
 begin
   Canvas.Font := UIFont;
-  TextHeight := Canvas.TextHeight('Wg');
+  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  X := Scale(Pad);
-  Y := Scale(Pad);
-  Text := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
+  mY := Scale(Pad);
+  mText := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, Text);
+    Canvas.TextOut(Scale(Pad), mY, mText);
   end;
-  Width := X + Canvas.TextWidth(Text);
+  mWidth := Scale(Pad) + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   // Spalte für den Ort: hinter dem breitesten Namen.
-  NameWidth := 0;
-  for Index := 0 to High(FRows) do
+  mNameWidth := 0;
+  for mIndex := 0 to High(FRows) do
   begin
-    NameWidth := Max(NameWidth, Canvas.TextWidth(Marker + RowCaption(FRows, Index)));
+    mNameWidth := Max(mNameWidth, Canvas.TextWidth(Marker + RowCaption(FRows, mIndex)));
   end;
-  RightX := Scale(Pad) + NameWidth + Scale(ColumnGap);
+  mRightX := Scale(Pad) + mNameWidth + Scale(ColumnGap);
   SetLength(FRowRects, Length(FRows));
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    Y := Y + TextHeight + Scale(RowGap);
-    Top := Y;
-    X := Scale(Pad);
-    Text := RowCaption(FRows, Index);
-    if Index = FRow then
-    begin
-      Text := Marker + Text;
-    end
-    else
-    begin
-      X := X + Canvas.TextWidth(Marker);
-    end;
-    if ADraw then
-    begin
-      if Index = FRow then
-      begin
-        Canvas.Font.Color := ToColor(Colors.Accent);
-      end
-      else if FRows[Index].Available then
-      begin
-        Canvas.Font.Color := ToColor(Colors.Text);
-      end
-      else
-      begin
-        Canvas.Font.Color := ToColor(Colors.Muted);
-      end;
-      Canvas.TextOut(X, Y, Text);
-    end;
-    // Rechts: Datei:Zeile, bei nicht wählbaren der Grund.
-    Right := ReasonText(FRows[Index]);
-    if Right = '' then
-    begin
-      Right := FRows[Index].Location;
-    end
-    else if FRows[Index].Location <> '' then
-    begin
-      Right := Right + '  ·  ' + FRows[Index].Location;
-    end;
-    if ADraw then
-    begin
-      Canvas.Font.Color := ToColor(Colors.Muted);
-      Canvas.TextOut(RightX, Y, Right);
-    end;
-    Width := Max(Width, RightX + Canvas.TextWidth(Right));
-    FRowRects[Index] := Rect(Scale(Pad), Top, RightX + Canvas.TextWidth(Right), Y + TextHeight);
+    mY := mY + mTextHeight + Scale(RowGap);
+    mWidth := Max(mWidth, LayoutRow(mIndex, mY, mRightX, mTextHeight, ADraw));
   end;
   // Fußzeile mit den Tasten.
-  Y := Y + TextHeight + Scale(RowGap) * 2;
-  Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
+  mY := mY + mTextHeight + Scale(RowGap) * 2;
+  mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
-    Canvas.TextOut(Scale(Pad), Y, Text);
-  end;
-  Width := Max(Width, Scale(Pad) + Canvas.TextWidth(Text));
-  if ADraw then
-  begin
+    Canvas.TextOut(Scale(Pad), mY, mText);
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := Width + Scale(Pad);
-  Result.cy := Y + TextHeight + Scale(Pad);
+  Result.cx := Max(mWidth, Scale(Pad) + Canvas.TextWidth(mText)) + Scale(Pad);
+  Result.cy := mY + mTextHeight + Scale(Pad);
 end;
 
 procedure TAtlasStepIntoWindow.ShowFor(const ARows: TArray<TAtlasStepRow>; const APoint: TPoint);

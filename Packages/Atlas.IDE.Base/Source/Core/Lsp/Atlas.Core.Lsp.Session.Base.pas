@@ -25,6 +25,17 @@ uses
   Atlas.Core.Lsp.Session.Json;
 
 type
+  /// <summary>Angaben für initialize, vor Initialize zu setzen.</summary>
+  TLspInitializeOptions = record
+    /// <summary>Einstellungen der Atlas-Optionen im Format von atlas.json (#652); gehen als initializationOptions
+    /// mit, damit schon der erste Indexaufbau sie nutzt.</summary>
+    Settings: string;
+    /// <summary>Sprache der Oberfläche (#1458), "de" oder "en"; '' überlässt die Wahl dem Server.</summary>
+    Locale: string;
+    /// <summary>Angaben nur mit der Sprache ALocale.</summary>
+    class function ForLocale(const ALocale: string): TLspInitializeOptions; static;
+  end;
+
   /// <summary>Zustand der LSP-Sitzung: Client, Dokumentabgleich, Projekte und initialize. Vorfahr der
   /// Anfragen (TLspSessionRequests) und von TLspSession.</summary>
   TLspSessionBase = class(TLspSessionJson)
@@ -49,7 +60,7 @@ type
     FOnApplyEdit: TLspApplyEditProc;
     FOnShowMessage: TLspShowMessageProc;
     FOnCrashNotification: TLspCrashNotificationProc;
-    FServerSettings: string;
+    FInitializeOptions: TLspInitializeOptions;
     FServerVersion: string;
     procedure SyncLocked(const AFileName, AText: string);
     procedure CloseLocked(const AFileName: string);
@@ -87,9 +98,8 @@ type
     property OnShowMessage: TLspShowMessageProc read FOnShowMessage write FOnShowMessage;
     /// <summary>Vor Initialize setzen (#1355): Absturzfälle und Überspringen des Servers.</summary>
     property OnCrashNotification: TLspCrashNotificationProc read FOnCrashNotification write FOnCrashNotification;
-    /// <summary>Einstellungen der Atlas-Optionen im Format von atlas.json (#652), vor Initialize setzen;
-    /// gehen als initializationOptions mit, damit schon der erste Indexaufbau sie nutzt.</summary>
-    property ServerSettings: string read FServerSettings write FServerSettings;
+    /// <summary>Einstellungen und Sprache für initialize (#652, #1458), vor Initialize setzen.</summary>
+    property InitializeOptions: TLspInitializeOptions read FInitializeOptions write FInitializeOptions;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
     procedure Sync(const AFileName, AText: string);
     /// <summary>didClose für eine abgeglichene Datei; danach liest der Server sie wieder von der Platte.</summary>
@@ -122,6 +132,14 @@ type
     function Count: Integer;
     procedure Signal;
   end;
+
+{ TLspInitializeOptions }
+
+class function TLspInitializeOptions.ForLocale(const ALocale: string): TLspInitializeOptions;
+begin
+  Result := Default(TLspInitializeOptions);
+  Result.Locale := ALocale;
+end;
 
 { TLspSignal }
 
@@ -291,7 +309,8 @@ var
   Context: TAtlasProjectContext;
   Response: TJSONValue;
 begin
-  Params := InitializeParams(FProjects, FServerSettings, FContexts, Assigned(FOnApplyEdit));
+  Params := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FOnApplyEdit),
+    FInitializeOptions.Locale);
   // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
   for Context in FContexts do
   begin

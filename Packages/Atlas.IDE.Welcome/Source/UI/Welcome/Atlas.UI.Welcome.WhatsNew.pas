@@ -225,7 +225,8 @@ begin
   Result.Version := AVersion;
   Result.Item := AItem;
   Result.Title := FFrame.Add(TLabel.Create(nil));
-  Result.Title.Caption := AItem.Title;
+  // Englisch mit englischer IDE (#1458).
+  Result.Title.Caption := AItem.TitleFor(TAtlasStrings.Language = TAtlasLanguage.English);
   Result.Title.Font.Style := [fsBold];
   mKeyText := '';
   if (FFrame.FSource <> nil) and (AItem.Key <> '') then
@@ -243,7 +244,7 @@ begin
     Result.Text := FFrame.Add(TLabel.Create(nil));
     Result.Text.AutoSize := True;
     Result.Text.WordWrap := True;
-    Result.Text.Caption := AItem.Text;
+    Result.Text.Caption := AItem.TextFor(TAtlasStrings.Language = TAtlasLanguage.English);
   end;
   Result.Switch := NewSwitch(AItem.Setting);
   if (FFrame.FSource <> nil) and FFrame.FSource.CanTry(AItem) then

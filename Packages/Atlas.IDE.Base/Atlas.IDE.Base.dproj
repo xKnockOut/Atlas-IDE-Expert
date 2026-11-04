@@ -276,6 +276,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ModuleSwitches.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.RuleChecksNotice.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Groups.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.PageNames.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.ProjectDialog.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Project.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Layers.pas"/>
@@ -520,6 +521,12 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.MethodToggle.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SlashTrigger.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ContextMenu.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.EditorContext.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.EditorSelection.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.EditorServer.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ClientCommands.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.EditorActions.pas"/>
+        <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.EditorMenu.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Editor.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.KeyList.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.KeysEditing.pas"/>
@@ -666,6 +673,7 @@
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
         <DCCReference Include="Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
         <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas"/>
+        <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.View.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.FolderList.pas"/>
         <DCCReference Include="Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>

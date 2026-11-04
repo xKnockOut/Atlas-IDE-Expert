@@ -64,7 +64,6 @@ type
     procedure ShowImage;
     procedure ShowColor;
     procedure ShowText;
-    function ColumnCaption(AColumn: TAtlasVisualizerColumn): string;
     function RowText(AIndex: Integer): string;
   public
     constructor CreateViewer(AOwner: TComponent);
@@ -98,11 +97,116 @@ const
   Gap = 8;
   ColorSize = 96;
 
+/// <summary>AControl oben in AForm, mit Rand Gap seitlich und ATopGap oben.</summary>
+procedure PlaceTop(AControl: TControl; AForm: TForm; ATopGap: Integer);
+begin
+  AControl.Parent := AForm;
+  AControl.Align := alTop;
+  AControl.AlignWithMargins := True;
+  AControl.Margins.SetBounds(AForm.ScaleValue(Gap), AForm.ScaleValue(ATopGap), AForm.ScaleValue(Gap), 0);
+end;
+
+/// <summary>AControl füllt AForm, mit Rand Gap ringsum.</summary>
+procedure PlaceClient(AControl: TControl; AForm: TForm);
+begin
+  AControl.Parent := AForm;
+  AControl.Align := alClient;
+  AControl.AlignWithMargins := True;
+  AControl.Margins.SetBounds(AForm.ScaleValue(Gap), AForm.ScaleValue(Gap), AForm.ScaleValue(Gap),
+    AForm.ScaleValue(Gap));
+end;
+
+/// <summary>Umbrechende Beschriftung oben in AForm.</summary>
+function TopLabel(AForm: TForm; ATopGap: Integer): TLabel;
+begin
+  Result := TLabel.Create(AForm);
+  PlaceTop(Result, AForm, ATopGap);
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+end;
+
+/// <summary>Kontextmenü mit „Kopieren“ (Strg+C).</summary>
+function CopyMenu(AForm: TForm; const AOnCopy: TNotifyEvent): TPopupMenu;
+var
+  mItem: TMenuItem;
+begin
+  Result := TPopupMenu.Create(AForm);
+  mItem := TMenuItem.Create(Result);
+  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerCopy);
+  mItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
+  mItem.OnClick := AOnCopy;
+  Result.Items.Add(mItem);
+end;
+
+/// <summary>Tabelle und Baum des Betrachters AViewer.</summary>
+procedure CreateListAndTree(AViewer: TAtlasDebugViewer);
+begin
+  AViewer.FList := TListView.Create(AViewer);
+  PlaceClient(AViewer.FList, AViewer);
+  AViewer.FList.ViewStyle := vsReport;
+  AViewer.FList.OwnerData := True;
+  AViewer.FList.ReadOnly := True;
+  AViewer.FList.RowSelect := True;
+  AViewer.FList.MultiSelect := True;
+  AViewer.FList.HideSelection := False;
+  AViewer.FList.OnData := AViewer.ListData;
+  AViewer.FList.OnKeyDown := AViewer.ContentKeyDown;
+  AViewer.FList.PopupMenu := AViewer.FMenu;
+
+  AViewer.FTree := TTreeView.Create(AViewer);
+  PlaceClient(AViewer.FTree, AViewer);
+  AViewer.FTree.ReadOnly := True;
+  AViewer.FTree.HideSelection := False;
+  AViewer.FTree.OnKeyDown := AViewer.ContentKeyDown;
+  AViewer.FTree.PopupMenu := AViewer.FMenu;
+end;
+
+/// <summary>Bild, Farbfläche und Text des Betrachters AViewer.</summary>
+procedure CreateImageAndText(AViewer: TAtlasDebugViewer);
+begin
+  AViewer.FImageBox := TScrollBox.Create(AViewer);
+  PlaceClient(AViewer.FImageBox, AViewer);
+  AViewer.FImageBox.BorderStyle := bsNone;
+  AViewer.FImage := TPaintBox.Create(AViewer);
+  AViewer.FImage.Parent := AViewer.FImageBox;
+  AViewer.FImage.OnPaint := AViewer.ImagePaint;
+
+  AViewer.FColor := TPanel.Create(AViewer);
+  PlaceTop(AViewer.FColor, AViewer, Gap);
+  AViewer.FColor.Height := AViewer.ScaleValue(ColorSize);
+  AViewer.FColor.BevelOuter := bvNone;
+  AViewer.FColor.ParentBackground := False;
+
+  AViewer.FText := TMemo.Create(AViewer);
+  PlaceClient(AViewer.FText, AViewer);
+  AViewer.FText.ReadOnly := True;
+  AViewer.FText.ScrollBars := ssBoth;
+  AViewer.FText.WordWrap := False;
+  AViewer.FText.Font.Name := 'Consolas';
+end;
+
+/// <summary>Überschrift der Tabellenspalte AColumn.</summary>
+function ColumnCaption(AColumn: TAtlasVisualizerColumn): string;
+begin
+  case AColumn of
+    TAtlasVisualizerColumn.Index:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnIndex);
+    TAtlasVisualizerColumn.Key:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnKey);
+    TAtlasVisualizerColumn.Field:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnField);
+    TAtlasVisualizerColumn.FieldType:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnFieldType);
+    TAtlasVisualizerColumn.OldValue:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnOldValue);
+  else
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnValue);
+  end;
+end;
+
 { TAtlasDebugViewer }
 
 constructor TAtlasDebugViewer.CreateViewer(AOwner: TComponent);
-var
-  Item: TMenuItem;
 begin
   inherited CreateNew(AOwner);
   BorderStyle := bsSizeable;
@@ -113,96 +217,24 @@ begin
   Width := ScaleValue(ViewerWidth);
   Height := ScaleValue(ViewerHeight);
   OnClose := ViewerClose;
+  FMenu := CopyMenu(Self, CopyClick);
 
-  FMenu := TPopupMenu.Create(Self);
-  Item := TMenuItem.Create(FMenu);
-  Item.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerCopy);
-  Item.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
-  Item.OnClick := CopyClick;
-  FMenu.Items.Add(Item);
-
-  FHeader := TLabel.Create(Self);
-  FHeader.Parent := Self;
-  FHeader.Align := alTop;
-  FHeader.AlignWithMargins := True;
-  FHeader.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), 0);
-  FHeader.WordWrap := True;
-  FHeader.ShowAccelChar := False;
+  FHeader := TopLabel(Self, Gap);
   FHeader.Font.Style := [fsBold];
 
-  FNote := TLabel.Create(Self);
-  FNote.Parent := Self;
-  FNote.Align := alTop;
-  FNote.AlignWithMargins := True;
-  FNote.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap div 2), ScaleValue(Gap), 0);
-  FNote.WordWrap := True;
-  FNote.ShowAccelChar := False;
+  FNote := TopLabel(Self, Gap div 2);
   FNote.Visible := False;
   FNote.Top := FHeader.Top + FHeader.Height + 1;
 
   FAllFields := TCheckBox.Create(Self);
-  FAllFields.Parent := Self;
-  FAllFields.Align := alTop;
-  FAllFields.AlignWithMargins := True;
-  FAllFields.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap div 2), ScaleValue(Gap), 0);
+  PlaceTop(FAllFields, Self, Gap div 2);
   FAllFields.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerAllFields);
   FAllFields.Visible := False;
   FAllFields.Top := FNote.Top + FNote.Height + 1;
   FAllFields.OnClick := AllFieldsClick;
 
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap));
-  FList.ViewStyle := vsReport;
-  FList.OwnerData := True;
-  FList.ReadOnly := True;
-  FList.RowSelect := True;
-  FList.MultiSelect := True;
-  FList.HideSelection := False;
-  FList.OnData := ListData;
-  FList.OnKeyDown := ContentKeyDown;
-  FList.PopupMenu := FMenu;
-
-  FTree := TTreeView.Create(Self);
-  FTree.Parent := Self;
-  FTree.Align := alClient;
-  FTree.AlignWithMargins := True;
-  FTree.Margins := FList.Margins;
-  FTree.ReadOnly := True;
-  FTree.HideSelection := False;
-  FTree.OnKeyDown := ContentKeyDown;
-  FTree.PopupMenu := FMenu;
-
-  FImageBox := TScrollBox.Create(Self);
-  FImageBox.Parent := Self;
-  FImageBox.Align := alClient;
-  FImageBox.AlignWithMargins := True;
-  FImageBox.Margins := FList.Margins;
-  FImageBox.BorderStyle := bsNone;
-  FImage := TPaintBox.Create(Self);
-  FImage.Parent := FImageBox;
-  FImage.OnPaint := ImagePaint;
-
-  FColor := TPanel.Create(Self);
-  FColor.Parent := Self;
-  FColor.Align := alTop;
-  FColor.AlignWithMargins := True;
-  FColor.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), 0);
-  FColor.Height := ScaleValue(ColorSize);
-  FColor.BevelOuter := bvNone;
-  FColor.ParentBackground := False;
-
-  FText := TMemo.Create(Self);
-  FText.Parent := Self;
-  FText.Align := alClient;
-  FText.AlignWithMargins := True;
-  FText.Margins := FList.Margins;
-  FText.ReadOnly := True;
-  FText.ScrollBars := ssBoth;
-  FText.WordWrap := False;
-  FText.Font.Name := 'Consolas';
+  CreateListAndTree(Self);
+  CreateImageAndText(Self);
   HideContent;
 end;
 
@@ -228,24 +260,6 @@ begin
   FImageBox.Visible := False;
   FColor.Visible := False;
   FText.Visible := False;
-end;
-
-function TAtlasDebugViewer.ColumnCaption(AColumn: TAtlasVisualizerColumn): string;
-begin
-  case AColumn of
-    TAtlasVisualizerColumn.Index:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnIndex);
-    TAtlasVisualizerColumn.Key:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnKey);
-    TAtlasVisualizerColumn.Field:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnField);
-    TAtlasVisualizerColumn.FieldType:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnFieldType);
-    TAtlasVisualizerColumn.OldValue:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnOldValue);
-  else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnValue);
-  end;
 end;
 
 procedure TAtlasDebugViewer.ShowView(const AExpression: string; const AView: TAtlasVisualizerView);

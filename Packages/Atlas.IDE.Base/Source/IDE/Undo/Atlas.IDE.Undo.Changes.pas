@@ -127,12 +127,32 @@ begin
   TAtlasIdeResultsWindow.OnChangeDiff := nil;
 end;
 
+/// <summary>Gesicherte Änderungen im Profil löschen; ein Fehler steht nur im Protokoll.</summary>
+procedure ClearStore(const AFactory: TAtlasUndoStoreFactory; const AFolder: string; const ALog: TProc<string>);
+var
+  mCleaner: IAtlasUndoStore;
+begin
+  if not Assigned(AFactory) then
+  begin
+    Exit;
+  end;
+  try
+    mCleaner := AFactory(AFolder, 0);
+    mCleaner.Clear;
+  except
+    on E: Exception do
+      if Assigned(ALog) then
+      begin
+        ALog('Atlas-Änderungsprotokoll nicht gelöscht: ' + E.ClassName);
+      end;
+  end;
+end;
+
 class procedure TAtlasIdeUndo.ApplySettings;
 var
   Settings: TAtlasPluginSettings;
   Options: TAtlasUndoOptions;
   Persist: Boolean;
-  Cleaner: IAtlasUndoStore;
 begin
   if FJournal = nil then
   begin
@@ -155,19 +175,7 @@ begin
     else
     begin
       // Ohne Sicherung bleibt kein Quelltext im Profil liegen.
-      try
-        if Assigned(FStoreFactory) then
-        begin
-          Cleaner := FStoreFactory(FFolder, 0);
-          Cleaner.Clear;
-        end;
-      except
-        on E: Exception do
-          if Assigned(FOnLog) then
-          begin
-            FOnLog('Atlas-Änderungsprotokoll nicht gelöscht: ' + E.ClassName);
-          end;
-      end;
+      ClearStore(FStoreFactory, FFolder, FOnLog);
       FJournal.Store := nil;
     end;
   end;
