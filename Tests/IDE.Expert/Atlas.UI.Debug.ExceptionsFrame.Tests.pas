@@ -51,7 +51,7 @@ uses
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;
 begin
-  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 77, '', AFile, ALine, 'Unit1.Laden');
+  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 77, '').At(AFile, ALine, 'Unit1.Laden');
 end;
 
 function SampleHistory: TAtlasDebugExceptionHistory;

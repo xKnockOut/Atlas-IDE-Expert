@@ -404,6 +404,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.ExtractSuperclass` | `IDE/Editor/Atlas.IDE.Editor.ExtractSuperclass.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.GutterColumn` | `IDE/Editor/Atlas.IDE.Editor.GutterColumn.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Hide` | `IDE/Editor/Atlas.IDE.Editor.Hide.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.HideTeamFile` | `IDE/Editor/Atlas.IDE.Editor.HideTeamFile.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.InlineAccessor` | `IDE/Editor/Atlas.IDE.Editor.InlineAccessor.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.InvertBoolean` | `IDE/Editor/Atlas.IDE.Editor.InvertBoolean.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LineChanges` | `IDE/Editor/Atlas.IDE.Editor.LineChanges.pas` | Ordner `IDE/Editor` |
@@ -431,6 +432,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.Rename` | `IDE/Editor/Atlas.IDE.Editor.Rename.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SafeDelete` | `IDE/Editor/Atlas.IDE.Editor.SafeDelete.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SelectionMatches` | `IDE/Editor/Atlas.IDE.Editor.SelectionMatches.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.ServerEdit` | `IDE/Editor/Atlas.IDE.Editor.ServerEdit.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SmartPaste` | `IDE/Editor/Atlas.IDE.Editor.SmartPaste.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.StatementCompletion` | `IDE/Editor/Atlas.IDE.Editor.StatementCompletion.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.TestUnitLens` | `IDE/Editor/Atlas.IDE.Editor.TestUnitLens.pas` | Ordner `IDE/Editor` |
@@ -469,6 +471,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Generate.NewFile` | `IDE/Generate/Atlas.IDE.Generate.NewFile.pas` | Ordner `IDE/Generate` |
 | `Atlas.IDE.Hover.DebugValue` | `IDE/Hover/Atlas.IDE.Hover.DebugValue.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.Hover.Editor` | `IDE/Hover/Atlas.IDE.Hover.Editor.pas` | Ordner `IDE/Hover` |
+| `Atlas.IDE.Hover.EditorContent` | `IDE/Hover/Atlas.IDE.Hover.EditorContent.pas` | Ordner `IDE/Hover` |
 | `Atlas.IDE.InlayHints.Editor` | `IDE/InlayHints/Atlas.IDE.InlayHints.Editor.pas` | Ordner `IDE/InlayHints` |
 | `Atlas.IDE.Notifications.Service` | `IDE/Notifications/Atlas.IDE.Notifications.Service.pas` | Ordner `IDE/Notifications` |
 | `Atlas.IDE.Outline.Breadcrumbs` | `IDE/Outline/Atlas.IDE.Outline.Breadcrumbs.pas` | Ordner `IDE/Outline` |

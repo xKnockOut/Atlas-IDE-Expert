@@ -133,6 +133,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.SvnExternals,
   Atlas.Core.Vcs.Internals.SvnLayout;
@@ -272,41 +273,39 @@ begin
   Result := Length(Rows) > 1;
 end;
 
-{ TAtlasVcsWorkingCopies }
+type
+  /// <summary>Erster wc-status eines Eintrags aus svn status --xml.</summary>
+  TStatusEntry = record
+    Path: string;
+    Item: string;
+    Props: string;
+  end;
 
-class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
+/// <summary>Einträge von svn status --xml mit Pfad ("/" getrennt) und ihrem ersten wc-status.</summary>
+function StatusEntries(const AStatusXml: string): TArray<TStatusEntry>;
 var
   mReader: TAtlasVcsXmlReader;
-  mPath: string;
+  mEntry: TStatusEntry;
   mInEntry: Boolean;
 begin
   Result := nil;
-  if Trim(AStatusXml) = '' then
-  begin
-    Exit;
-  end;
-  mPath := '';
   mInEntry := False;
+  mEntry := Default(TStatusEntry);
   mReader := TAtlasVcsXmlReader.Create(AStatusXml);
   try
     while mReader.Next do
     begin
-      if mReader.Node = TAtlasVcsXmlNode.StartTag then
+      if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'entry') then
       begin
-        if mReader.Name = 'entry' then
-        begin
-          mInEntry := True;
-          mPath := Slashed(mReader.Attr('path'));
-        end
-        else if (mReader.Name = 'wc-status') and mInEntry then
-        begin
-          // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
-          if (mReader.Attr('item') = 'external') and (mPath <> '') then
-          begin
-            Result := Result + [mPath];
-          end;
-          mInEntry := False;
-        end;
+        mInEntry := True;
+        mEntry.Path := Slashed(mReader.Attr('path'));
+      end
+      else if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'wc-status') and mInEntry then
+      begin
+        mInEntry := False;
+        mEntry.Item := mReader.Attr('item');
+        mEntry.Props := mReader.Attr('props');
+        Result := Result + [mEntry];
       end
       else if (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'entry') then
       begin
@@ -318,12 +317,38 @@ begin
   end;
 end;
 
+/// <summary>Zählt der Eintrag als Änderung (Inhalt oder Eigenschaften)?</summary>
+function IsChangedStatus(const AEntry: TStatusEntry): Boolean;
+begin
+  Result := MatchStr(AEntry.Item, ['modified', 'added', 'deleted', 'replaced', 'conflicted', 'missing',
+    'obstructed', 'incomplete']) or MatchStr(AEntry.Props, ['modified', 'conflicted']);
+end;
+
+{ TAtlasVcsWorkingCopies }
+
+class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
+var
+  mEntry: TStatusEntry;
+begin
+  Result := nil;
+  if Trim(AStatusXml) = '' then
+  begin
+    Exit;
+  end;
+  // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
+  for mEntry in StatusEntries(AStatusXml) do
+  begin
+    if (mEntry.Item = 'external') and (mEntry.Path <> '') then
+    begin
+      Result := Result + [mEntry.Path];
+    end;
+  end;
+end;
+
 class procedure TAtlasVcsWorkingCopies.CountChanges(var ARows: TArray<TAtlasVcsWorkingCopyRow>;
   const AStatusXml: string);
 var
-  mReader: TAtlasVcsXmlReader;
-  mPath, mItem, mProps: string;
-  mInEntry: Boolean;
+  mEntry: TStatusEntry;
   mIndex, mRow: Integer;
 begin
   if Trim(AStatusXml) = '' then
@@ -337,46 +362,19 @@ begin
       ARows[mIndex].Changed := 0;
     end;
   end;
-  mPath := '';
-  mInEntry := False;
-  mReader := TAtlasVcsXmlReader.Create(AStatusXml);
-  try
-    while mReader.Next do
+  // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
+  // (geänderte Eigenschaft) gehört zu ihm.
+  for mEntry in StatusEntries(AStatusXml) do
+  begin
+    mRow := -1;
+    if IsChangedStatus(mEntry) then
     begin
-      if mReader.Node = TAtlasVcsXmlNode.StartTag then
-      begin
-        if mReader.Name = 'entry' then
-        begin
-          mInEntry := True;
-          mPath := Slashed(mReader.Attr('path'));
-        end
-        else if (mReader.Name = 'wc-status') and mInEntry then
-        begin
-          mInEntry := False;
-          mItem := mReader.Attr('item');
-          mProps := mReader.Attr('props');
-          if not ((mItem = 'modified') or (mItem = 'added') or (mItem = 'deleted') or (mItem = 'replaced') or
-            (mItem = 'conflicted') or (mItem = 'missing') or (mItem = 'obstructed') or (mItem = 'incomplete') or
-            (mProps = 'modified') or (mProps = 'conflicted')) then
-          begin
-            Continue;
-          end;
-          // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
-          // (geänderte Eigenschaft) gehört zu ihm.
-          mRow := DeepestRow(ARows, mPath);
-          if mRow >= 0 then
-          begin
-            Inc(ARows[mRow].Changed);
-          end;
-        end;
-      end
-      else if (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'entry') then
-      begin
-        mInEntry := False;
-      end;
+      mRow := DeepestRow(ARows, mEntry.Path);
     end;
-  finally
-    mReader.Free;
+    if mRow >= 0 then
+    begin
+      Inc(ARows[mRow].Changed);
+    end;
   end;
 end;
 

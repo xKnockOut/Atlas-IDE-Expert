@@ -182,40 +182,95 @@ begin
   SetLength(Result, mFound);
 end;
 
-class function TAtlasVcsLineTrace.Touches(const AHunks: TArray<TAtlasVcsHunk>; AFirst, ALast: Integer): Boolean;
+/// <summary>Ändert AHunk eine Zeile im Bereich AFirst..ALast (neue Zählung)?</summary>
+function HunkTouches(const AHunk: TAtlasVcsHunk; AFirst, ALast: Integer): Boolean;
 var
-  mHunk: TAtlasVcsHunk;
   mLine: string;
   mNew: Integer;
 begin
   Result := False;
+  mNew := FirstOf(AHunk.NewStart, AHunk.NewCount);
+  for mLine in AHunk.Lines do
+  begin
+    case mLine[1] of
+      ' ':
+        Inc(mNew);
+      '+':
+        begin
+          Result := (mNew >= AFirst) and (mNew <= ALast);
+          Inc(mNew);
+        end;
+      '-':
+        // Gelöscht vor der neuen Zeile mNew: nur zwischen zwei Zeilen des Bereichs.
+        Result := (mNew > AFirst) and (mNew <= ALast);
+    end;
+    if Result then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+class function TAtlasVcsLineTrace.Touches(const AHunks: TArray<TAtlasVcsHunk>; AFirst, ALast: Integer): Boolean;
+var
+  mHunk: TAtlasVcsHunk;
+begin
+  Result := False;
   for mHunk in AHunks do
   begin
-    mNew := FirstOf(mHunk.NewStart, mHunk.NewCount);
-    if mNew > ALast + 1 then
+    if FirstOf(mHunk.NewStart, mHunk.NewCount) > ALast + 1 then
     begin
       Break;
     end;
-    for mLine in mHunk.Lines do
-      case mLine[1] of
-        ' ':
-          Inc(mNew);
-        '+':
-          begin
-            if (mNew >= AFirst) and (mNew <= ALast) then
-            begin
-              Exit(True);
-            end;
-            Inc(mNew);
-          end;
-        '-':
-          // Gelöscht vor der neuen Zeile mNew: nur zwischen zwei Zeilen des Bereichs.
-          if (mNew > AFirst) and (mNew <= ALast) then
+    if HunkTouches(mHunk, AFirst, ALast) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Sucht die neue Zeile ALine in AHunk: True mit ihrer alten Zeile AOld (hinzugefügte Zeilen bei AForward
+/// die nächste alte Zeile, sonst die vorige); sonst False und ADelta, der Abstand alt − neu hinter dem Block.
+/// </summary>
+function OldLineInHunk(const AHunk: TAtlasVcsHunk; ALine: Integer; AForward: Boolean; out AOld, ADelta: Integer):
+  Boolean;
+var
+  mLine: string;
+  mNew: Integer;
+begin
+  Result := False;
+  ADelta := 0;
+  mNew := FirstOf(AHunk.NewStart, AHunk.NewCount);
+  AOld := FirstOf(AHunk.OldStart, AHunk.OldCount);
+  for mLine in AHunk.Lines do
+  begin
+    case mLine[1] of
+      ' ':
+        begin
+          if mNew = ALine then
           begin
             Exit(True);
           end;
-      end;
+          Inc(AOld);
+          Inc(mNew);
+        end;
+      '-':
+        Inc(AOld);
+      '+':
+        begin
+          if mNew = ALine then
+          begin
+            if not AForward then
+            begin
+              Dec(AOld);
+            end;
+            Exit(True);
+          end;
+          Inc(mNew);
+        end;
+    end;
   end;
+  ADelta := AOld - mNew;
 end;
 
 /// <summary>Alte Zeile zur neuen Zeile ALine; hinzugefügte Zeilen gehen bei AForward zur nächsten alten Zeile,
@@ -223,45 +278,19 @@ end;
 function OldLineOf(const AHunks: TArray<TAtlasVcsHunk>; ALine: Integer; AForward: Boolean): Integer;
 var
   mHunk: TAtlasVcsHunk;
-  mLine: string;
-  mOld, mNew, mDelta: Integer;
+  mOld, mDelta: Integer;
 begin
   mDelta := 0;
   for mHunk in AHunks do
   begin
-    mNew := FirstOf(mHunk.NewStart, mHunk.NewCount);
-    if ALine < mNew then
+    if ALine < FirstOf(mHunk.NewStart, mHunk.NewCount) then
     begin
       Break;
     end;
-    mOld := FirstOf(mHunk.OldStart, mHunk.OldCount);
-    for mLine in mHunk.Lines do
-      case mLine[1] of
-        ' ':
-          begin
-            if mNew = ALine then
-            begin
-              Exit(mOld);
-            end;
-            Inc(mOld);
-            Inc(mNew);
-          end;
-        '-':
-          Inc(mOld);
-        '+':
-          begin
-            if mNew = ALine then
-            begin
-              if AForward then
-              begin
-                Exit(mOld);
-              end;
-              Exit(mOld - 1);
-            end;
-            Inc(mNew);
-          end;
-      end;
-    mDelta := mOld - mNew;
+    if OldLineInHunk(mHunk, ALine, AForward, mOld, mDelta) then
+    begin
+      Exit(mOld);
+    end;
   end;
   Result := ALine + mDelta;
 end;
