@@ -299,6 +299,7 @@ contains
   Atlas.Common.Editing.DeclareUnknown in 'Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas',
   Atlas.Common.Editing.ForwardDeclarations in 'Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas',
   Atlas.Common.Editing.FreeFields in 'Source\Editing\Atlas.Common.Editing.FreeFields.pas',
+  Atlas.Common.Editing.FreeFields.Types in 'Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas',
   Atlas.Common.Editing.PropertyFromAccessors in 'Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas',
   Atlas.Common.Lsp.PropertyFromAccessors in 'Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas',
   Atlas.Common.Editing.TextChanges in 'Source\Editing\Atlas.Common.Editing.TextChanges.pas',

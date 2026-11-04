@@ -332,6 +332,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TextChanges.pas"/>
