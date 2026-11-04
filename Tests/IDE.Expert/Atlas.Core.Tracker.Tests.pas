@@ -246,7 +246,9 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.Adapters.LocalFiles,
   Atlas.Core.Tracker.Internals.GitHubApi,
-  Atlas.Core.Tracker.GitHubParse;
+  Atlas.Core.Tracker.GitHubParse,
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Core.Tracker.YouTrackParse;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; zählt die Aufrufe.</summary>
@@ -716,21 +718,21 @@ procedure TAtlasYouTrackTrackerTests.QueryAndUrl;
 var
   Target: TAtlasTrackerTarget;
 begin
-  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackTracker.FullQuery(YouTrackTarget));
+  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackApi.FullQuery(YouTrackTarget));
   Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', '', 'for: me State: Open');
-  Assert.AreEqual('for: me State: Open', TAtlasYouTrackTracker.FullQuery(Target));
+  Assert.AreEqual('for: me State: Open', TAtlasYouTrackApi.FullQuery(Target));
   Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', '');
-  Assert.AreEqual('project: {Atlas IDE} for: me #Unresolved', TAtlasYouTrackTracker.FullQuery(Target));
+  Assert.AreEqual('project: {Atlas IDE} for: me #Unresolved', TAtlasYouTrackApi.FullQuery(Target));
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues?query=project%3A%20ATL%20for%3A%20me%20%23Unresolved' +
     '&fields=idReadable%2CnumberInProject%2Csummary%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%2Clogin' +
-    '%2CfullName%29%29&$top=20', TAtlasYouTrackTracker.IssuesUrl(YouTrackTarget, 20));
+    '%2CfullName%29%29&$top=20', TAtlasYouTrackApi.IssuesUrl(YouTrackTarget, 20));
 end;
 
 procedure TAtlasYouTrackTrackerTests.ParsesIssuesFromFixture;
 var
   Issues: TArray<TAtlasTrackerIssue>;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseIssues(Fixture('YouTrack', 'issues.json'), 20, Issues));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseIssues(Fixture('YouTrack', 'issues.json'), 20, Issues));
   Assert.AreEqual(2, Integer(Length(Issues)), 'ohne Kennung entfällt');
   Assert.AreEqual('ATL-123', Issues[0].Key);
   Assert.AreEqual(123, Issues[0].Number);
@@ -743,7 +745,7 @@ begin
   Assert.AreEqual('', Issues[1].Assignee);
   Assert.AreEqual('Offen', Issues[1].State, 'deutscher Feldname, Wert als presentation');
   Assert.AreEqual('', Issues[1].Priority);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseIssues('{"error":"x"}', 20, Issues));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseIssues('{"error":"x"}', 20, Issues));
 end;
 
 procedure TAtlasYouTrackTrackerTests.FetchAndErrors;
@@ -849,7 +851,7 @@ procedure TAtlasTrackerDetailsTests.YouTrackDetailsFromFixture;
 var
   mDetails: TAtlasTrackerDetails;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, True,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, True,
     mDetails));
   Assert.AreEqual('ATL-123', mDetails.Key);
   Assert.AreEqual(123, mDetails.Number);
@@ -892,12 +894,12 @@ procedure TAtlasTrackerDetailsTests.YouTrackWithoutComments;
 var
   mDetails: TAtlasTrackerDetails;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
     mDetails));
   Assert.IsFalse(mDetails.CommentsLoaded);
   Assert.AreEqual(0, Integer(Length(mDetails.Comments)));
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseDetails('{"summary": "ohne Kennung"}', YouTrackTarget, True, mDetails));
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseDetails('kein JSON', YouTrackTarget, True, mDetails));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseDetails('{"summary": "ohne Kennung"}', YouTrackTarget, True, mDetails));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseDetails('kein JSON', YouTrackTarget, True, mDetails));
 end;
 
 procedure TAtlasTrackerDetailsTests.YouTrackUrlAndTransport;
@@ -909,11 +911,11 @@ var
   mDetails: TAtlasTrackerDetails;
   mError: TAtlasCiFetchError;
 begin
-  mUrl := TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL-123', False);
+  mUrl := TAtlasYouTrackApi.DetailsUrl(YouTrackTarget, 'ATL-123', False);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-123?fields='));
   Assert.IsFalse(mUrl.Contains('comments'), 'ohne Kommentare nicht abgefragt');
-  Assert.IsTrue(TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL-123', True).Contains('comments'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL 1/../x', True));
+  Assert.IsTrue(TAtlasYouTrackApi.DetailsUrl(YouTrackTarget, 'ATL-123', True).Contains('comments'));
+  Assert.AreEqual('', TAtlasYouTrackApi.DetailsUrl(YouTrackTarget, 'ATL 1/../x', True));
   mProvider := TAtlasYouTrackTracker.Create;
   mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
@@ -1121,15 +1123,15 @@ var
   mText: string;
 begin
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues/ATL-131?fields=idReadable%2Cdescription',
-    TAtlasYouTrackTracker.IssueUrl(YouTrackTarget, 'ATL-131', 'idReadable,description'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.IssueUrl(YouTrackTarget, 'ATL 131', 'idReadable'), 'ungültige Kennung');
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDescription('{"idReadable":"ATL-131","description":"* [x] a\nb"}',
+    TAtlasYouTrackApi.IssueUrl(YouTrackTarget, 'ATL-131', 'idReadable,description'));
+  Assert.AreEqual('', TAtlasYouTrackApi.IssueUrl(YouTrackTarget, 'ATL 131', 'idReadable'), 'ungültige Kennung');
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDescription('{"idReadable":"ATL-131","description":"* [x] a\nb"}',
     mText));
   Assert.AreEqual('* [x] a'#10'b', mText);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDescription('{"idReadable":"ATL-131","description":null}', mText));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDescription('{"idReadable":"ATL-131","description":null}', mText));
   Assert.AreEqual('', mText);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseDescription('{"description":"x"}', mText), 'kein Issue');
-  Assert.AreEqual('{"description":"1. [ ] a"}', TAtlasYouTrackTracker.DescriptionJson('1. [ ] a'));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseDescription('{"description":"x"}', mText), 'kein Issue');
+  Assert.AreEqual('{"description":"1. [ ] a"}', TAtlasYouTrackBodies.DescriptionJson('1. [ ] a'));
 end;
 
 procedure TAtlasTrackerDescriptionsTests.YouTrackReadAndWrite;
@@ -1216,7 +1218,7 @@ var
   mDone, mTotal: Integer;
   mBlockers: TArray<TAtlasTrackerLink>;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-links-en.json'), YouTrackTarget, False,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDetails(Fixture('YouTrack', 'issue-links-en.json'), YouTrackTarget, False,
     mDetails));
   Assert.AreEqual(9, Integer(Length(mDetails.Links)));
   Assert.IsTrue(LinkOf(mDetails, 'ATL-129').Kind = TAtlasTrackerLinkKind.DependsOn, 'Depend, INWARD');
@@ -1237,7 +1239,7 @@ begin
   Assert.AreEqual('ATL-129', mBlockers[0].Key);
   Assert.IsTrue(TAtlasTrackerLinks.Locked(mDetails));
   // Älteres Fixture ohne resolved: Zustand unbekannt, keine Warnung; vertauschte Beschriftungen.
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
     mDetails));
   Assert.IsTrue(LinkOf(mDetails, 'ATL-100').Kind = TAtlasTrackerLinkKind.DependsOn);
   Assert.IsTrue(LinkOf(mDetails, 'ATL-130').Kind = TAtlasTrackerLinkKind.Blocks);
@@ -1249,7 +1251,7 @@ procedure TAtlasTrackerLinkProviderTests.YouTrackLinksGerman;
 var
   mDetails: TAtlasTrackerDetails;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-links-de.json'), YouTrackTarget, False,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseDetails(Fixture('YouTrack', 'issue-links-de.json'), YouTrackTarget, False,
     mDetails));
   Assert.AreEqual(7, Integer(Length(mDetails.Links)));
   Assert.IsTrue(LinkOf(mDetails, 'ATL-129').Kind = TAtlasTrackerLinkKind.DependsOn);
@@ -1270,25 +1272,25 @@ var
 begin
   mTypes := Fixture('YouTrack', 'issue-link-types.json');
   // Bekannte Namen gehen vor („Requirement“ steht davor).
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.DependsOn, mId));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseLinkType(mTypes, TAtlasTrackerLinkKind.DependsOn, mId));
   Assert.AreEqual('80-1t', mId, 'Issue im Pfad ist das Ziel von „is required for“');
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Blocks, mId));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Blocks, mId));
   Assert.AreEqual('80-1s', mId);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Subtask, mId));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Subtask, mId));
   Assert.AreEqual('80-3s', mId);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Parent, mId));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Parent, mId));
   Assert.AreEqual('80-3t', mId);
   // Ohne Depend: eigener Typ mit passenden Beschriftungen.
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType('[{"id": "80-9", "name": "Requirement", ' +
+  Assert.IsTrue(TAtlasYouTrackParse.ParseLinkType('[{"id": "80-9", "name": "Requirement", ' +
     '"sourceToTarget": "is required for", "targetToSource": "depends on"}]', TAtlasTrackerLinkKind.DependsOn, mId));
   Assert.AreEqual('80-9t', mId);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseLinkType('[{"id": "80-0", "name": "Relates"}]',
+  Assert.IsFalse(TAtlasYouTrackParse.ParseLinkType('[{"id": "80-0", "name": "Relates"}]',
     TAtlasTrackerLinkKind.Subtask, mId));
   Assert.AreEqual('', mId);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseLinkType('kein JSON', TAtlasTrackerLinkKind.Subtask, mId));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseLinkType('kein JSON', TAtlasTrackerLinkKind.Subtask, mId));
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issueLinkTypes?fields=' +
     'id%2Cname%2ClocalizedName%2CsourceToTarget%2ClocalizedSourceToTarget%2CtargetToSource%2C' +
-    'localizedTargetToSource%2Caggregation', TAtlasYouTrackTracker.LinkTypesUrl(YouTrackTarget));
+    'localizedTargetToSource%2Caggregation', TAtlasYouTrackApi.LinkTypesUrl(YouTrackTarget));
 end;
 
 procedure TAtlasTrackerLinkProviderTests.YouTrackCreateSubtaskRequests;
@@ -1667,19 +1669,19 @@ var
   mError: TAtlasCiFetchError;
   mUrl: string;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseVcsChanges(Fixture('YouTrack', 'vcs-changes.json'), mChanges));
+  Assert.IsTrue(TAtlasYouTrackParse.ParseVcsChanges(Fixture('YouTrack', 'vcs-changes.json'), mChanges));
   Assert.AreEqual(2, Integer(Length(mChanges)), 'leere Einträge entfallen');
   Assert.AreEqual('1a2b3c4d', mChanges[0].Version, 'neueste zuerst');
   Assert.AreEqual('anna', mChanges[0].Author, 'ohne vollen Namen die Anmeldung');
   Assert.AreEqual('ATL-123 Tracker angebunden', mChanges[1].Text, 'erste Zeile');
   Assert.AreEqual('Marco B.', mChanges[1].Author);
   Assert.IsTrue(Abs(mChanges[1].Date - UnixToDateTime(1761600000, True)) < 1 / SecsPerDay);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseVcsChanges('{}', mChanges));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseVcsChanges('{}', mChanges));
 
-  mUrl := TAtlasYouTrackTracker.VcsChangesUrl(YouTrackTarget, 'ATL-123');
+  mUrl := TAtlasYouTrackApi.VcsChangesUrl(YouTrackTarget, 'ATL-123');
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-123/vcsChanges?fields='), mUrl);
   Assert.IsTrue(mUrl.EndsWith('&$top=100'), mUrl);
-  Assert.AreEqual('', TAtlasYouTrackTracker.VcsChangesUrl(YouTrackTarget, 'ATL 1/../x'));
+  Assert.AreEqual('', TAtlasYouTrackApi.VcsChangesUrl(YouTrackTarget, 'ATL 1/../x'));
   mProvider := TAtlasYouTrackTracker.Create;
   mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
@@ -1719,42 +1721,42 @@ procedure TAtlasTrackerChangesTests.YouTrackScopeAndUrls;
 var
   mUrl: string;
 begin
-  Assert.AreEqual('for: me', TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.Assigned));
+  Assert.AreEqual('for: me', TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Assigned));
   Assert.AreEqual('(for: me or reporter: me)',
-    TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated));
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated));
   Assert.AreEqual('(for: me or reporter: me or has: star)',
-    TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.Watched));
-  mUrl := TAtlasYouTrackTracker.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.AssignedOrCreated);
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Watched));
+  mUrl := TAtlasYouTrackApi.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.AssignedOrCreated);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues?query='), mUrl);
   // Einen Tag früher (Zeitzone des Servers); ohne Projekt: alle Projekte der Verbindung.
   Assert.IsTrue(Pos(TTextUris.PercentEncode('(for: me or reporter: me) updated: 2025-12-30 .. *'), mUrl) > 0, mUrl);
-  Assert.AreEqual('', TAtlasYouTrackTracker.ChangedIssuesUrl(TAtlasTrackerTarget.Create('youtrack', '', '', ''),
+  Assert.AreEqual('', TAtlasYouTrackApi.ChangedIssuesUrl(TAtlasTrackerTarget.Create('youtrack', '', '', ''),
     Since, TAtlasTrackerNotifyScope.Assigned));
-  mUrl := TAtlasYouTrackTracker.ActivitiesUrl(YouTrackTarget, 'ATL-1', Since);
+  mUrl := TAtlasYouTrackApi.ActivitiesUrl(YouTrackTarget, 'ATL-1', Since);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-1/activities?categories='), mUrl);
   Assert.IsTrue(Pos('&start=1767182400001&', mUrl) > 0, 'Millisekunden nach dem Stand: ' + mUrl);
-  Assert.AreEqual('', TAtlasYouTrackTracker.ActivitiesUrl(YouTrackTarget, 'ATL 1/../x', Since), 'ungültige Kennung');
+  Assert.AreEqual('', TAtlasYouTrackApi.ActivitiesUrl(YouTrackTarget, 'ATL 1/../x', Since), 'ungültige Kennung');
 end;
 
 procedure TAtlasTrackerChangesTests.YouTrackChangedIssues;
 var
   mIssues: TArray<TAtlasTrackerChange>;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseChangedIssues(Fixture('YouTrack', 'changed-issues.json'), Since,
+  Assert.IsTrue(TAtlasYouTrackParse.ParseChangedIssues(Fixture('YouTrack', 'changed-issues.json'), Since,
     mIssues));
   Assert.AreEqual(Integer(1), Integer(Length(mIssues)), 'nur nach dem Stand und mit gültiger Kennung');
   Assert.AreEqual('ATL-1', mIssues[0].Key);
   Assert.AreEqual('Absturz beim Speichern', mIssues[0].Title);
   Assert.IsTrue(mIssues[0].Kind = TAtlasTrackerChangeKind.Other);
   Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 4, 0, 0), mIssues[0].Time, 1 / MSecsPerDay);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseChangedIssues('{"error":"x"}', Since, mIssues));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseChangedIssues('{"error":"x"}', Since, mIssues));
 end;
 
 procedure TAtlasTrackerChangesTests.YouTrackActivities;
 var
   mChanges: TArray<TAtlasTrackerChange>;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
     'marco', Since, mChanges));
   Assert.AreEqual(Integer(3), Integer(Length(mChanges)));
   Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
@@ -1768,10 +1770,10 @@ begin
   Assert.IsTrue(mChanges[2].Kind = TAtlasTrackerChangeKind.State);
   Assert.AreEqual('Fertig', mChanges[2].Value);
   // Ohne bekannten Benutzer: keine Zuweisung „an mich“.
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
     '', Since, mChanges));
   Assert.IsFalse(mChanges[1].ToMe);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseActivities('kein JSON', 'ATL-1', '', '', Since, mChanges));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseActivities('kein JSON', 'ATL-1', '', '', Since, mChanges));
 end;
 
 procedure TAtlasTrackerChangesTests.YouTrackChangesOverTransport;

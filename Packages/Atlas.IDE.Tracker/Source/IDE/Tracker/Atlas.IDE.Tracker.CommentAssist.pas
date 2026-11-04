@@ -423,53 +423,28 @@ begin
   Inc(FValueGeneration);
 end;
 
-procedure TAtlasIdeCommentAssist.FindUsers(const AText: string; const ADone: TAtlasCommentUsersDone);
+type
+  /// <summary>Eine Benutzerabfrage, wie sie in den Hintergrund geht.</summary>
+  TUserJob = record
+    Generation: Integer;
+    CacheKey: string;
+    Text: string;
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    People: IAtlasTrackerPeople;
+  end;
+
+/// <summary>Arbeit des Hintergrundthreads der Benutzerabfrage; die Antwort geht über den Hauptthread an AOwner,
+/// solange AKeep ihn hält. Eigene Routine: Die anonyme Methode hält nur ihre Parameter.</summary>
+function UsersWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IAtlasCommentAssist; const AJob: TUserJob;
+  const ADone: TAtlasCommentUsersDone): TProc;
 var
-  mProvider: IAtlasTrackerProvider;
-  mPeople: IAtlasTrackerPeople;
-  mTransport: IAtlasCiTransport;
-  mTarget: TAtlasTrackerTarget;
-  mText, mCacheKey: string;
-  mGeneration: Integer;
+  mJob: TUserJob;
   mKeep: IAtlasCommentAssist;
-  mOwner: TAtlasIdeCommentAssist;
-  mUsers: TArray<TAtlasTrackerUser>;
 begin
-  CancelUsers;
-  mGeneration := FUserGeneration;
-  if not Alive then
-  begin
-    Exit;
-  end;
-  mText := AText;
-  mCacheKey := TAtlasCommentDrafts.TrackerKey(FTarget) + '|' + AnsiLowerCase(mText);
-  // Rücktaste und neu getippt: dieselbe Liste ohne Netz.
-  if FService.CachedUsers(mCacheKey, mUsers) then
-  begin
-    ADone(mUsers);
-    Exit;
-  end;
-  mProvider := FService.ProviderOf(FTarget);
-  if not Supports(mProvider, IAtlasTrackerPeople, mPeople) then
-  begin
-    ADone(nil);
-    Exit;
-  end;
-  // Der Transport entsteht hier, damit die nächste Eingabe ihn abbrechen kann; er liest das Token ohne Dialog.
-  mTransport := FService.TransportOf(mProvider, FTarget);
-  if mTransport = nil then
-  begin
-    ADone(nil);
-    Exit;
-  end;
-  if not Supports(mTransport, IAtlasCiCancel, FUserCancel) then
-  begin
-    FUserCancel := nil;
-  end;
-  mTarget := FTarget;
-  mKeep := Self;
-  mOwner := Self;
-  FService.AddWorker(TThread.CreateAnonymousThread(
+  mJob := AJob;
+  mKeep := AKeep;
+  Result :=
     procedure
     var
       mFound: TArray<TAtlasTrackerUser>;
@@ -480,8 +455,8 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mPeople.Users(TAtlasTrackerCall.Create(mTarget, mTransport, TAtlasIdeCommentService.TimeoutMs), mText,
-          TAtlasCommentEditing.MaxSuggestions, mFound, mError);
+        mOk := mJob.People.Users(TAtlasTrackerCall.Create(mJob.Target, mJob.Transport,
+          TAtlasIdeCommentService.TimeoutMs), mJob.Text, TAtlasCommentEditing.MaxSuggestions, mFound, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -491,8 +466,8 @@ begin
           TAtlasGuard.Log('Kommentar-Editor: Benutzerabfrage mit ' + E.ClassName + ' abgebrochen');
         end;
       end;
-      mTransport := nil;
-      mPeople := nil;
+      mJob.Transport := nil;
+      mJob.People := nil;
       if TAtlasShutdown.Signalled then
       begin
         Exit;
@@ -502,10 +477,48 @@ begin
         begin
           if mKeep <> nil then
           begin
-            mOwner.UsersAnswered(mGeneration, mCacheKey, mOk, mFound, mError, ADone);
+            AOwner.UsersAnswered(mJob.Generation, mJob.CacheKey, mOk, mFound, mError, ADone);
           end;
         end);
-    end));
+    end;
+end;
+
+procedure TAtlasIdeCommentAssist.FindUsers(const AText: string; const ADone: TAtlasCommentUsersDone);
+var
+  mJob: TUserJob;
+  mUsers: TArray<TAtlasTrackerUser>;
+begin
+  CancelUsers;
+  mJob := Default(TUserJob);
+  mJob.Generation := FUserGeneration;
+  if not Alive then
+  begin
+    Exit;
+  end;
+  mJob.Text := AText;
+  mJob.CacheKey := TAtlasCommentDrafts.TrackerKey(FTarget) + '|' + AnsiLowerCase(AText);
+  // Rücktaste und neu getippt: dieselbe Liste ohne Netz.
+  if FService.CachedUsers(mJob.CacheKey, mUsers) then
+  begin
+    ADone(mUsers);
+    Exit;
+  end;
+  // Der Transport entsteht hier, damit die nächste Eingabe ihn abbrechen kann; er liest das Token ohne Dialog.
+  if Supports(FService.ProviderOf(FTarget), IAtlasTrackerPeople, mJob.People) then
+  begin
+    mJob.Transport := FService.TransportOf(FService.ProviderOf(FTarget), FTarget);
+  end;
+  if mJob.Transport = nil then
+  begin
+    ADone(nil);
+    Exit;
+  end;
+  if not Supports(mJob.Transport, IAtlasCiCancel, FUserCancel) then
+  begin
+    FUserCancel := nil;
+  end;
+  mJob.Target := FTarget;
+  FService.AddWorker(TThread.CreateAnonymousThread(UsersWorker(Self, Self, mJob, ADone)));
 end;
 
 procedure TAtlasIdeCommentAssist.UsersAnswered(AGeneration: Integer; const AKey: string; ASucceeded: Boolean;
@@ -535,19 +548,90 @@ begin
   ADone(AUsers);
 end;
 
+type
+  /// <summary>Eine Issue-Suche, wie sie in den Hintergrund geht.</summary>
+  TIssueJob = record
+    Generation: Integer;
+    Query: TAtlasIssueSearchQuery;
+    Provider: IAtlasTrackerProvider;
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+  end;
+
+/// <summary>Issue zur Kennung bzw. Suche nach Text; False mit AError.</summary>
+function FetchIssues(const AJob: TIssueJob; out AIssues: TArray<TAtlasTrackerIssue>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  AIssues := nil;
+  if AJob.Query.Kind <> TAtlasIssueSearchKind.Key then
+  begin
+    Exit(AJob.Provider.Search(TAtlasTrackerCall.Create(AJob.Target, AJob.Transport, TAtlasIdeCommentService.TimeoutMs),
+      AJob.Query.Text, TAtlasCommentEditing.MaxSuggestions, AIssues, AError));
+  end;
+  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIdeCommentService.TimeoutMs,
+    mIssue, AError);
+  if Result then
+  begin
+    AIssues := [mIssue];
+  end;
+end;
+
+/// <summary>Arbeit des Hintergrundthreads der Issue-Suche (siehe UsersWorker).</summary>
+function IssuesWorker(AOwner: TAtlasIdeCommentAssist; const AKeep: IAtlasCommentAssist; const AJob: TIssueJob;
+  const ADone: TAtlasCommentIssuesDone): TProc;
+var
+  mJob: TIssueJob;
+  mKeep: IAtlasCommentAssist;
+begin
+  mJob := AJob;
+  mKeep := AKeep;
+  Result :=
+    procedure
+    var
+      mIssues: TArray<TAtlasTrackerIssue>;
+      mError: TAtlasCiFetchError;
+      mOk: Boolean;
+    begin
+      mOk := False;
+      mError := TAtlasCiFetchError.Network;
+      try
+        mOk := FetchIssues(mJob, mIssues, mError);
+      except
+        on E: Exception do
+        begin
+          mOk := False;
+          mIssues := nil;
+          mError := TAtlasCiFetchError.Network;
+          TAtlasGuard.Log('Kommentar-Editor: Issue-Suche mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mJob.Transport := nil;
+      mJob.Provider := nil;
+      if TAtlasShutdown.Signalled then
+      begin
+        Exit;
+      end;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          if mKeep <> nil then
+          begin
+            AOwner.IssuesAnswered(mJob.Generation, mOk, mIssues, mError, ADone);
+          end;
+        end);
+    end;
+end;
+
 procedure TAtlasIdeCommentAssist.FindIssues(const AQuery: TAtlasIssueSearchQuery;
   const ADone: TAtlasCommentIssuesDone);
 var
-  mProvider: IAtlasTrackerProvider;
-  mTransport: IAtlasCiTransport;
-  mTarget: TAtlasTrackerTarget;
-  mQuery: TAtlasIssueSearchQuery;
-  mGeneration: Integer;
-  mKeep: IAtlasCommentAssist;
-  mOwner: TAtlasIdeCommentAssist;
+  mJob: TIssueJob;
 begin
   CancelIssues;
-  mGeneration := FIssueGeneration;
+  mJob := Default(TIssueJob);
+  mJob.Generation := FIssueGeneration;
   if not Alive then
   begin
     Exit;
@@ -566,69 +650,20 @@ begin
       end;
     TAtlasIssueSearchKind.Key, TAtlasIssueSearchKind.Text: ;
   end;
-  mProvider := FService.ProviderOf(FTarget);
-  mTransport := FService.TransportOf(mProvider, FTarget);
-  if mTransport = nil then
+  mJob.Provider := FService.ProviderOf(FTarget);
+  mJob.Transport := FService.TransportOf(mJob.Provider, FTarget);
+  if mJob.Transport = nil then
   begin
     ADone(nil);
     Exit;
   end;
-  if not Supports(mTransport, IAtlasCiCancel, FIssueCancel) then
+  if not Supports(mJob.Transport, IAtlasCiCancel, FIssueCancel) then
   begin
     FIssueCancel := nil;
   end;
-  mTarget := FTarget;
-  mQuery := AQuery;
-  mKeep := Self;
-  mOwner := Self;
-  FService.AddWorker(TThread.CreateAnonymousThread(
-    procedure
-    var
-      mIssues: TArray<TAtlasTrackerIssue>;
-      mIssue: TAtlasTrackerIssue;
-      mError: TAtlasCiFetchError;
-      mOk: Boolean;
-    begin
-      mIssues := nil;
-      mOk := False;
-      mError := TAtlasCiFetchError.Network;
-      try
-        if mQuery.Kind = TAtlasIssueSearchKind.Key then
-        begin
-          mOk := mProvider.Lookup(mTarget, mTransport, mQuery.Key, TAtlasIdeCommentService.TimeoutMs, mIssue, mError);
-          if mOk then
-          begin
-            mIssues := [mIssue];
-          end;
-        end
-        else
-        begin
-          mOk := mProvider.Search(TAtlasTrackerCall.Create(mTarget, mTransport, TAtlasIdeCommentService.TimeoutMs),
-            mQuery.Text, TAtlasCommentEditing.MaxSuggestions, mIssues, mError);
-        end;
-      except
-        on E: Exception do
-        begin
-          mOk := False;
-          mError := TAtlasCiFetchError.Network;
-          TAtlasGuard.Log('Kommentar-Editor: Issue-Suche mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mTransport := nil;
-      mProvider := nil;
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
-        procedure
-        begin
-          if mKeep <> nil then
-          begin
-            mOwner.IssuesAnswered(mGeneration, mOk, mIssues, mError, ADone);
-          end;
-        end);
-    end));
+  mJob.Target := FTarget;
+  mJob.Query := AQuery;
+  FService.AddWorker(TThread.CreateAnonymousThread(IssuesWorker(Self, Self, mJob, ADone)));
 end;
 
 procedure TAtlasIdeCommentAssist.IssuesAnswered(AGeneration: Integer; ASucceeded: Boolean;

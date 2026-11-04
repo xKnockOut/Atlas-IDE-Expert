@@ -330,7 +330,7 @@ begin
           (Member.SymbolKind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
         begin
           Message := Format('%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s',
-            [Name, TNameResolver.ShadowText(Local), TNameResolver.ShadowText(Member), Name, Name]);
+            [Name, Local.ShadowText, Member.ShadowText, Name, Name]);
           Insert := TTextRange.Create(Tokens[Start].StartPos, Tokens[Start].StartPos);
           Fixes := [TRuleFix.Create('Self. ergänzen', [TRuleEdit.Create(Insert, 'Self.')])] + Fixes;
         end;

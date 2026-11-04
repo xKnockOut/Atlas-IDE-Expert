@@ -849,7 +849,7 @@ var
     begin
       Exit;
     end;
-    mResolver.AncestorNames(mType, Result);
+    mResolver.Queries.AncestorNames(mType, Result);
   end;
 
   /// <summary>Rumpf einer Methode bzw. Routine, deren Deklaration mit overload schon in ASymbols steht

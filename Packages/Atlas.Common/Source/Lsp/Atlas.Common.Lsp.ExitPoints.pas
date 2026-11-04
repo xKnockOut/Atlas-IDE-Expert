@@ -189,7 +189,7 @@ begin
     function(const AClass, AHandler: string; AOffset: Integer): Boolean
     begin
       Result := Own(AClass, AHandler, AOffset) or
-        ((Resolver <> nil) and Resolver.TypeDescendsFrom(Tree, FileName, AOffset, AClass, AHandler));
+        ((Resolver <> nil) and Resolver.Queries.TypeDescendsFrom(Tree, FileName, AOffset, AClass, AHandler));
     end;
 end;
 

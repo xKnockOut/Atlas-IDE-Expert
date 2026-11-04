@@ -166,7 +166,7 @@ begin
   // Helfer: nur der Vorfahr-Helfer (#848); der Zieltyp am Ende von Ancestors ist kein Vorfahr.
   if Owner.SymbolKind = TIndexSymbolKind.HelperType then
   begin
-    if FResolver.HelperParent(Owner, Base) then
+    if FResolver.Queries.HelperParent(Owner, Base) then
     begin
       Bases := [Base];
     end;

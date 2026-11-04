@@ -35,6 +35,35 @@ uses
 
 { /var und /const }
 
+/// <summary>/var Name := Ausdruck: Inline-Variable (ab Delphi 10.3) an der Stelle der Befehlszeile.</summary>
+function InlineVarEdit(ASource: TCommandSource; const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
+  out AReason: string): Boolean;
+var
+  mName, mValue: string;
+  mAssign: Integer;
+begin
+  AEdits := nil;
+  mAssign := Pos(':=', AContext.Arguments);
+  mName := Trim(Copy(AContext.Arguments, 1, mAssign - 1));
+  mValue := Trim(Copy(AContext.Arguments, mAssign + 2, MaxInt));
+  if mValue.EndsWith(';') then
+  begin
+    mValue := Trim(Copy(mValue, 1, Length(mValue) - 1));
+  end;
+  if (mName = '') or (mValue = '') then
+  begin
+    Exit(Fail('Erwartet wird /var Name := Ausdruck', AReason));
+  end;
+  if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
+  begin
+    Exit(Fail(Format('Inline-Variablen gibt es erst ab Delphi 10.3 (eingestellt: %s); /var Name: Typ legt ' +
+      'eine lokale Variable an', [AContext.DelphiVersion]), AReason));
+  end;
+  AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line, Length(AContext.LineText)),
+    Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) + Format('var %s := %s;', [mName, mValue]))];
+  Result := True;
+end;
+
 function ExecuteVar(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
@@ -51,26 +80,7 @@ begin
     end;
     if Pos(':=', AContext.Arguments) > 0 then
     begin
-      // Inline-Variable (ab Delphi 10.3) an der Stelle der Befehlszeile.
-      Name := Trim(Copy(AContext.Arguments, 1, Pos(':=', AContext.Arguments) - 1));
-      Value := Trim(Copy(AContext.Arguments, Pos(':=', AContext.Arguments) + 2, MaxInt));
-      if Value.EndsWith(';') then
-      begin
-        Value := Trim(Copy(Value, 1, Length(Value) - 1));
-      end;
-      if (Name = '') or (Value = '') then
-      begin
-        Exit(Fail('Erwartet wird /var Name := Ausdruck', AReason));
-      end;
-      if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
-      begin
-        Exit(Fail(Format('Inline-Variablen gibt es erst ab Delphi 10.3 (eingestellt: %s); /var Name: Typ legt ' +
-          'eine lokale Variable an', [AContext.DelphiVersion]), AReason));
-      end;
-      AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
-        Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) +
-        Format('var %s := %s;', [Name, Value]))];
-      Exit(True);
+      Exit(InlineVarEdit(Source, AContext, AEdits, AReason));
     end;
     if not SplitDeclaration(AContext.Arguments, ':', Name, Value) then
     begin
@@ -182,149 +192,204 @@ begin
   end;
 end;
 
-function ExecuteProp(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+type
+  /// <summary>Property von /prop: Name, Typ und ob sie nur lesbar ist.</summary>
+  TPropSpec = record
+    Name: string;
+    TypeName: string;
+    ReadOnly: Boolean;
+    function Field: string;
+    function Setter: string;
+    function Declarations(const AIndent, ALineBreak: string; AHasPrivate: Boolean): string;
+  end;
+
+/// <summary>"/prop Name: Typ [ro]" zerlegen; False bei falscher Form.</summary>
+function ParsePropArguments(const AArguments: string; out ASpec: TPropSpec): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Arguments, Name, TypeName, Field, Setter, Indent, LB, Body: string;
-  ReadOnly: Boolean;
-  Line, EndLine: Integer;
+  mArguments: string;
 begin
-  AEdits := nil;
-  Arguments := Trim(AContext.Arguments);
-  ReadOnly := EndsText(' ro', Arguments);
+  ASpec := Default(TPropSpec);
+  mArguments := Trim(AArguments);
+  ASpec.ReadOnly := EndsText(' ro', mArguments);
+  if ASpec.ReadOnly then
+  begin
+    mArguments := Trim(Copy(mArguments, 1, Length(mArguments) - 3));
+  end;
+  Result := SplitDeclaration(mArguments, ':', ASpec.Name, ASpec.TypeName);
+end;
+
+function TPropSpec.Field: string;
+begin
+  Result := 'F' + Name;
+end;
+
+function TPropSpec.Setter: string;
+begin
+  Result := 'Set' + Name;
+end;
+
+/// <summary>Abschnitte vor "end": das Feld in private, wenn es noch keinen private-Abschnitt gibt (AHasPrivate),
+/// der Setter in private und die Property in public.</summary>
+function TPropSpec.Declarations(const AIndent, ALineBreak: string; AHasPrivate: Boolean): string;
+begin
+  Result := '';
+  if not AHasPrivate then
+  begin
+    Result := AIndent + 'private' + ALineBreak + AIndent + '  ' + Format('%s: %s;', [Field, TypeName]) + ALineBreak;
+  end;
+  if not ReadOnly then
+  begin
+    if AHasPrivate then
+    begin
+      Result := Result + AIndent + 'private' + ALineBreak;
+    end;
+    Result := Result + AIndent + '  ' + Format('procedure %s(const Value: %s);', [Setter, TypeName]) + ALineBreak;
+  end;
+  Result := Result + AIndent + 'public' + ALineBreak + AIndent + '  ';
   if ReadOnly then
   begin
-    Arguments := Trim(Copy(Arguments, 1, Length(Arguments) - 3));
+    Result := Result + Format('property %s: %s read %s;', [Name, TypeName, Field]);
+  end
+  else
+  begin
+    Result := Result + Format('property %s: %s read %s write %s;', [Name, TypeName, Field, Setter]);
   end;
-  if not SplitDeclaration(Arguments, ':', Name, TypeName) then
+end;
+
+function ExecuteProp(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mSpec: TPropSpec;
+  mLB: string;
+  mLine, mEndLine: Integer;
+begin
+  AEdits := nil;
+  if not ParsePropArguments(AContext.Arguments, mSpec) then
   begin
     Exit(Fail('Erwartet wird /prop Name: Typ [ro]', AReason));
   end;
-  Field := 'F' + Name;
-  Setter := 'Set' + Name;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClass) then
     begin
       Exit(Fail('/prop gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
     end;
-    LB := Source.LineBreak;
-    EndLine := ClassSymbol.Range.EndPos.Line;
-    Indent := Source.Indent(EndLine);
+    mLB := mSource.LineBreak;
+    mEndLine := mClass.Range.EndPos.Line;
     // Feld oben in private, Setter und Property in eigenen Abschnitten vor "end":
     // Felder müssen in einem Abschnitt vor den Methoden stehen.
-    Line := Source.PrivateLine(ClassSymbol);
-    if Line >= 0 then
+    mLine := mSource.PrivateLine(mClass);
+    if mLine >= 0 then
     begin
-      AEdits := [Source.AfterLine(Line, Source.Indent(Line) + '  ' + Format('%s: %s;', [Field, TypeName]))];
+      AEdits := [mSource.AfterLine(mLine, mSource.Indent(mLine) + '  ' + Format('%s: %s;', [mSpec.Field,
+        mSpec.TypeName]))];
     end;
-    Body := '';
-    if Line < 0 then
-    begin
-      Body := Indent + 'private' + LB + Indent + '  ' + Format('%s: %s;', [Field, TypeName]) + LB;
-    end;
-    if not ReadOnly then
-    begin
-      if Line >= 0 then
-      begin
-        Body := Body + Indent + 'private' + LB;
-      end;
-      Body := Body + Indent + '  ' + Format('procedure %s(const Value: %s);', [Setter, TypeName]) + LB;
-    end;
-    Body := Body + Indent + 'public' + LB + Indent + '  ';
-    if ReadOnly then
-    begin
-      Body := Body + Format('property %s: %s read %s;', [Name, TypeName, Field]);
-    end
-    else
-    begin
-      Body := Body + Format('property %s: %s read %s write %s;', [Name, TypeName, Field, Setter]);
-    end;
-    AEdits := AEdits + [Source.BeforeLine(EndLine, Body)];
-    if not ReadOnly then
+    AEdits := AEdits + [mSource.BeforeLine(mEndLine, mSpec.Declarations(mSource.Indent(mEndLine), mLB,
+      mLine >= 0))];
+    if not mSpec.ReadOnly then
     begin
       // Derselbe Setter wie bei /changed und der Code-Vorlage (#51): nur bei Änderung, mit Benachrichtigung.
-      Body := Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB +
-        TSetterGenerator.Body(Field, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol), LB);
-      AEdits := AEdits + [Source.AddBody(ClassSymbol.Name, Body)];
+      AEdits := AEdits + [mSource.AddBody(mClass.Name, Format('procedure %s.%s(const Value: %s);', [mClass.Name,
+        mSpec.Setter, mSpec.TypeName]) + mLB + TSetterGenerator.Body(mSpec.Field, 'Value',
+        TSetterGenerator.NotifyCall(mSource, AContext.Index, mClass), mLB))];
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 { /resstr }
 
+/// <summary>Erstes String-Literal in der Zeile über der Befehlszeile.</summary>
+function LiteralAbove(ASource: TCommandSource; out ALiteral: TPascalToken): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  ALiteral := Default(TPascalToken);
+  for mToken in ASource.Tree.Tokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.StringLiteral) and (mToken.StartPos.Line = ASource.Line - 1) then
+    begin
+      ALiteral := mToken;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Letzte Zeile des ersten resourcestring-Abschnitts zwischen AStart und der Befehlszeile; -1 ohne.
+/// </summary>
+function ResourceSectionEnd(ASource: TCommandSource; AStart: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := AStart + 1 to ASource.Line - 1 do
+  begin
+    if SameText(Trim(ASource.Lines[mIndex]), 'resourcestring') then
+    begin
+      Result := mIndex;
+      while (Result + 1 < ASource.Line) and (Pos('=', ASource.Lines[Result + 1]) > 0) and
+        (Trim(ASource.Lines[Result + 1]) <> '') do
+      begin
+        Inc(Result);
+      end;
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Name aus den Argumenten, sonst aus dem Text des Literals AValue.</summary>
+function ResourceName(const AArguments, AValue: string): string;
+begin
+  Result := AArguments;
+  if not IsValidIdent(Result) then
+  begin
+    Result := TResourceStrings.NameFor(StringReplace(Copy(AValue, 2, Length(AValue) - 2), '''''', '''',
+      [rfReplaceAll]));
+  end;
+end;
+
 function ExecuteResStr(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Token, Literal: TPascalToken;
-  Found: Boolean;
-  Name, Value: string;
-  Start, Index, Last: Integer;
+  mSource: TCommandSource;
+  mLiteral: TPascalToken;
+  mName, mValue: string;
+  mStart, mLast: Integer;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Found := False;
-    Literal := Default(TPascalToken);
-    for Token in Source.Tree.Tokens do
-    begin
-      if (Token.Kind = TPascalTokenKind.StringLiteral) and (Token.StartPos.Line = Source.Line - 1) then
-      begin
-        Literal := Token;
-        Found := True;
-        Break;
-      end;
-    end;
-    if not Found then
+    if not LiteralAbove(mSource, mLiteral) then
     begin
       Exit(Fail('/resstr braucht ein String-Literal in der Zeile darüber', AReason));
     end;
-    Start := Source.ImplementationStart;
-    if Start < 0 then
+    mStart := mSource.ImplementationStart;
+    if mStart < 0 then
     begin
       Exit(Fail('/resstr braucht einen implementation-Abschnitt', AReason));
     end;
-    Value := Literal.Text;
-    Name := AContext.Arguments;
-    if not IsValidIdent(Name) then
-    begin
-      Name := TResourceStrings.NameFor(StringReplace(Copy(Value, 2, Length(Value) - 2), '''''', '''',
-        [rfReplaceAll]));
-    end;
+    mValue := mLiteral.Text;
+    mName := ResourceName(AContext.Arguments, mValue);
     // Vorhandener resourcestring-Abschnitt hinter implementation: dort anhängen.
-    Last := -1;
-    for Index := Start + 1 to Source.Line - 1 do
+    mLast := ResourceSectionEnd(mSource, mStart);
+    if mLast >= 0 then
     begin
-      if SameText(Trim(Source.Lines[Index]), 'resourcestring') then
-      begin
-        Last := Index;
-        while (Last + 1 < Source.Line) and (Pos('=', Source.Lines[Last + 1]) > 0) and
-          (Trim(Source.Lines[Last + 1]) <> '') do
-        begin
-          Inc(Last);
-        end;
-        Break;
-      end;
-    end;
-    if Last >= 0 then
-    begin
-      AEdits := [Source.AfterLine(Last, Format('  %s = %s;', [Name, Value]))];
+      AEdits := [mSource.AfterLine(mLast, Format('  %s = %s;', [mName, mValue]))];
     end
     else
     begin
-      AEdits := [Source.AfterLine(Start, Source.LineBreak + 'resourcestring' + Source.LineBreak +
-        Format('  %s = %s;', [Name, Value]))];
+      AEdits := [mSource.AfterLine(mStart, mSource.LineBreak + 'resourcestring' + mSource.LineBreak +
+        Format('  %s = %s;', [mName, mValue]))];
     end;
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos), Name),
-      Source.RemoveCommand];
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos), mName),
+      mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
