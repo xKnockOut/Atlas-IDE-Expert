@@ -74,7 +74,8 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.PaletteSearch,
-  Atlas.Core.Tracker.Internals.GitHubApi;
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; merkt die Adressen.</summary>
@@ -346,21 +347,21 @@ procedure TAtlasIssuePaletteSearchTests.YouTrackSearchAndLookupUrl;
 var
   mUrl: string;
 begin
-  mUrl := TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, ' Speicher leck ', 20);
+  mUrl := TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, ' Speicher leck ', 20);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues?query=project%3A%20ATL%20Speicher%20leck' +
     '&fields='), mUrl);
   Assert.IsTrue(mUrl.EndsWith('&$top=20'), mUrl);
   Assert.AreEqual(0, Pos('Unresolved', mUrl), 'Abfrage der Einstellungen gilt nicht');
   Assert.IsTrue(mUrl.Contains('fullName'), 'Zuständig wird mitgelesen');
-  Assert.AreEqual('', TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, '', 20));
-  Assert.AreEqual('', TAtlasYouTrackTracker.TextSearchUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'x',
+  Assert.AreEqual('', TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, '', 20));
+  Assert.AreEqual('', TAtlasYouTrackApi.TextSearchUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'x',
     20), 'ohne Server');
-  mUrl := TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL-12');
+  mUrl := TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL-12');
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues/ATL-12?fields=idReadable%2CnumberInProject%2Csummary' +
     '%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%2Clogin%2CfullName%29%29', mUrl,
     'dieselben Felder wie die Liste');
-  Assert.AreEqual('', TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL 1/../x'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, ''));
+  Assert.AreEqual('', TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL 1/../x'));
+  Assert.AreEqual('', TAtlasYouTrackApi.LookupUrl(YouTrackTarget, ''));
 end;
 
 procedure TAtlasIssuePaletteSearchTests.GitHubSearchAndLookupOverTransport;
@@ -416,12 +417,12 @@ begin
     Fixture('YouTrack', 'issue-lookup.json'));
   Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'Tracker', 20,
     mIssues, mError));
-  Assert.AreEqual(TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
+  Assert.AreEqual(TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
   Assert.AreEqual('ATL-123', mIssues[0].Key);
   Assert.AreEqual('In Progress', mIssues[0].State);
   Assert.AreEqual('Beispiel', mIssues[0].Assignee);
   Assert.IsTrue(mProvider.Lookup(YouTrackTarget, mTransportRef, 'ATL-12', 5000, mIssue, mError));
-  Assert.AreEqual(TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL-12'), mTransport.Calls[1]);
+  Assert.AreEqual(TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL-12'), mTransport.Calls[1]);
   Assert.AreEqual('ATL-12', mIssue.Key);
   Assert.AreEqual(12, mIssue.Number);
   Assert.AreEqual('Speicherleck beim Schließen', mIssue.Title);
