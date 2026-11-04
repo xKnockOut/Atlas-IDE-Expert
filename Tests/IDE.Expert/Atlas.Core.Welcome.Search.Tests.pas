@@ -125,6 +125,62 @@ begin
   end;
 end;
 
+/// <summary>Nummer von AValue in der Stringtabelle; neue Werte werden angehängt.</summary>
+function StringIndex(const AStrings: TList<string>; const AValue: string): Integer;
+begin
+  Result := AStrings.IndexOf(AValue);
+  if Result < 0 then
+  begin
+    Result := AStrings.Add(AValue);
+  end;
+end;
+
+/// <summary>Ein Unit-Satz des Index-Caches mit allen Abschnitten der aktuellen Fassung.</summary>
+procedure PutUnitRecord(var ABody: TBytes; const AStrings: TList<string>; const ASpec: TUnitSpec);
+var
+  mIndex: Integer;
+begin
+  PutVar(ABody, StringIndex(AStrings, ASpec.Name));
+  PutVar(ABody, StringIndex(AStrings, ASpec.FileName));
+  PutVar(ABody, 2 * 638000000000000000); // Zeitstempel (ZigZag)
+  PutVar(ABody, StringIndex(AStrings, 'HASH-' + ASpec.Name));
+  if ASpec.Library_ then
+  begin
+    PutVar(ABody, 1 or 8);
+  end
+  else
+  begin
+    PutVar(ABody, 8);
+  end;
+  PutVar(ABody, 2); // uses (interface)
+  PutVar(ABody, StringIndex(AStrings, 'System.SysUtils'));
+  PutVar(ABody, StringIndex(AStrings, 'System.Classes'));
+  PutVar(ABody, 0); // uses (implementation)
+  PutVar(ABody, 1); // Include-Dateien
+  PutVar(ABody, StringIndex(AStrings, 'Atlas.inc'));
+  PutVar(ABody, 1); // Include-Zeitstempel
+  PutVar(ABody, 3); // -2 als ZigZag
+  for mIndex := 1 to 6 do
+  begin
+    PutVar(ABody, mIndex);
+  end; // Präfix-Zählung (#452)
+  PutVar(ABody, 1); // Hinweise im Unit-Kopf (#1018)
+  PutVar(ABody, StringIndex(AStrings, 'deprecated'));
+  PutVar(ABody, StringIndex(AStrings, 'Nutze Neu')); // Grund
+  PutVar(ABody, 1); // Begründungen der Unit (#1123)
+  PutVar(ABody, StringIndex(AStrings, 'W|3|Weil'));
+  PutVar(ABody, 2); // Symbolzahl
+  PutVar(ABody, 1); // nicht verfügbar
+  PutVar(ABody, 200); // Blocklänge über ein Byte hinaus
+  for mIndex := 1 to 200 do
+  begin
+    ABody := ABody + [Byte(mIndex)];
+  end;
+  PutVar(ABody, 1); // Verwendungen
+  PutVar(ABody, 3);
+  ABody := ABody + [$FF, $80, $01];
+end;
+
 /// <summary>Cache im Format von Atlas.Common.Index.Cache (Version AVersion).</summary>
 function CacheBytes(const AUnits: TArray<TUnitSpec>; AVersion: Integer): TBytes;
 var
@@ -134,16 +190,6 @@ var
   Value: string;
   Index, ChecksumAt: Integer;
   Sum: Cardinal;
-
-  function IndexOf(const AValue: string): Integer;
-  begin
-    Result := Strings.IndexOf(AValue);
-    if Result < 0 then
-    begin
-      Result := Strings.Add(AValue);
-    end;
-  end;
-
 begin
   Strings := TList<string>.Create;
   try
@@ -152,45 +198,7 @@ begin
     PutVar(Body, Length(AUnits));
     for Spec_ in AUnits do
     begin
-      PutVar(Body, IndexOf(Spec_.Name));
-      PutVar(Body, IndexOf(Spec_.FileName));
-      PutVar(Body, 2 * 638000000000000000); // Zeitstempel (ZigZag)
-      PutVar(Body, IndexOf('HASH-' + Spec_.Name));
-      if Spec_.Library_ then
-      begin
-        PutVar(Body, 1 or 8);
-      end
-      else
-      begin
-        PutVar(Body, 8);
-      end;
-      PutVar(Body, 2); // uses (interface)
-      PutVar(Body, IndexOf('System.SysUtils'));
-      PutVar(Body, IndexOf('System.Classes'));
-      PutVar(Body, 0); // uses (implementation)
-      PutVar(Body, 1); // Include-Dateien
-      PutVar(Body, IndexOf('Atlas.inc'));
-      PutVar(Body, 1); // Include-Zeitstempel
-      PutVar(Body, 3); // -2 als ZigZag
-      for Index := 1 to 6 do
-      begin
-        PutVar(Body, Index);
-      end; // Präfix-Zählung (#452)
-      PutVar(Body, 1); // Hinweise im Unit-Kopf (#1018)
-      PutVar(Body, IndexOf('deprecated'));
-      PutVar(Body, IndexOf('Nutze Neu')); // Grund
-      PutVar(Body, 1); // Begründungen der Unit (#1123)
-      PutVar(Body, IndexOf('W|3|Weil'));
-      PutVar(Body, 2); // Symbolzahl
-      PutVar(Body, 1); // nicht verfügbar
-      PutVar(Body, 200); // Blocklänge über ein Byte hinaus
-      for Index := 1 to 200 do
-      begin
-        Body := Body + [Byte(Index)];
-      end;
-      PutVar(Body, 1); // Verwendungen
-      PutVar(Body, 3);
-      Body := Body + [$FF, $80, $01];
+      PutUnitRecord(Body, Strings, Spec_);
     end;
     Result := TEncoding.ASCII.GetBytes('ATLASIDX');
     PutVar(Result, AVersion);

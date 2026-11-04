@@ -844,6 +844,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.YouTrackBoards.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas"/>
@@ -887,6 +891,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SettingsTables.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.QueryTest.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.GitHubJson.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Internals.YouTrackJson.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.NewIssue.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
@@ -1522,6 +1527,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AnalysisArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandArea.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.DiagnosticsArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
@@ -1555,6 +1561,7 @@
         <DCCReference Include="Application\Shell\Shell.Composition.AnalysisArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.CodeArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.CommandArea.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.DiagnosticsArea.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>

@@ -538,6 +538,7 @@ contains
   Atlas.Common.Rules.ConsideredUsed in 'Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas',
   Atlas.Common.Rules.ProjectFiles in 'Source\Rules\Atlas.Common.Rules.ProjectFiles.pas',
   Atlas.Common.Rules.Builtin.XmlDoc in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas',
+  Atlas.Common.Rules.Builtin.XmlDoc.Scanner in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Scanner.pas',
   Atlas.Common.Rules.Builtin.Naming in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas',
   Atlas.Common.Rules.Builtin.Casts in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas',
   Atlas.Common.Rules.Builtin.UnsafeCode in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.UnsafeCode.pas',

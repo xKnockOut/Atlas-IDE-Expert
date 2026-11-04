@@ -571,6 +571,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Scanner.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.UnsafeCode.pas"/>

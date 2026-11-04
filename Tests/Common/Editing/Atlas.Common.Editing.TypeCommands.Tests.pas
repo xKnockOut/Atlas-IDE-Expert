@@ -261,8 +261,8 @@ begin
   Keep := Host;
   Host.Settings := [TSlashSettings.EnumHelper + '=false'];
   Text := Format(EnumUnit, ['/helper TFarbe']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0), nil, nil, Edits, nil, '',
-    'file:///U.pas', Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('  TFarbeHelper = record helper for TFarbe'#10'  public'#10'  end;', Text) > 0, Text);
   Assert.IsTrue(Pos('cNames', Text) = 0, Text);
@@ -319,8 +319,8 @@ begin
   Keep := Host;
   Host.Settings := [TSlashSettings.SetHelper + '=false'];
   Text := Format(SetUnit, ['/helper TFarben']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0), nil, nil, Edits, nil, '',
-    'file:///U.pas', Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('  TFarbenHelper = record helper for TFarben'#10'  public'#10'  end;', Text) > 0, Text);
   Assert.IsTrue(Pos('Contains', Text) = 0, Text);
@@ -349,14 +349,14 @@ begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit,
-    ['constructor Create(AName: string);'#10'    /singleton']), TTextPosition.Create(14, 0), nil, nil, Edits, nil,
-    '', 'file:///U.pas', Keep));
+    ['constructor Create(AName: string);'#10'    /singleton']), TTextPosition.Create(14, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Assert.AreEqual(1, Integer(Length(Host.Notes)));
   Assert.Contains(Host.Notes[0], 'Konstruktor Create bleibt unverändert');
   // Ohne Konstruktor kein Hinweis.
   Host.Notes := nil;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit, ['/singleton']), TTextPosition.Create(13, 0),
-    nil, nil, Edits, nil, '', 'file:///U.pas', Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(ClassUnit, ['/singleton']),
+    TTextPosition.Create(13, 0), TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Assert.AreEqual(0, Integer(Length(Host.Notes)));
 end;
 
