@@ -138,39 +138,55 @@ var
 begin
   Result := ExceptionContinueSearch;
   if (Ring = nil) or (AInfo = nil) or (AInfo^.ExceptionRecord = nil) then
+  begin
     Exit;
+  end;
   Raw := AInfo^.ExceptionRecord;
   if Ignored(Raw^.ExceptionCode) then
+  begin
     Exit;
+  end;
   Count := CaptureStackBackTrace(1, Length(Captured), @Captured[0], nil);
   // Vorn steht die Ausnahmeverteilung von ntdll; sie sagt nichts über die Ursache.
   First := 0;
   while (First < Count) and (NativeUInt(Captured[First]) >= NtBase) and (NativeUInt(Captured[First]) < NtEnd) do
+  begin
     Inc(First);
+  end;
   Ours := InOwnModule(NativeUInt(Raw^.ExceptionAddress));
   for Index := First to Count - 1 do
+  begin
     if InOwnModule(NativeUInt(Captured[Index])) then
+    begin
       Ours := True;
+    end;
+  end;
   if not Ours then
+  begin
     Exit;
+  end;
   Item := Default(TAtlasStackRecord);
   Item.ThreadId := GetCurrentThreadId;
   Item.Code := Raw^.ExceptionCode;
   Item.Address := NativeUInt(Raw^.ExceptionAddress);
   Item.ParamCount := 0;
   for Index := 0 to Integer(Raw^.NumberParameters) - 1 do
+  begin
     if Index < TAtlasStackRecord.MaxParams then
     begin
       Item.Params[Index] := Raw^.ExceptionInformation[Index];
       Item.ParamCount := Index + 1;
     end;
+  end;
   Item.Count := 0;
   for Index := First to Count - 1 do
+  begin
     if Item.Count < TAtlasStackRecord.MaxFrames then
     begin
       Item.Frames[Item.Count] := NativeUInt(Captured[Index]);
       Inc(Item.Count);
     end;
+  end;
   Ring.Add(Item);
 end;
 
@@ -192,11 +208,16 @@ begin
       Name := TPath.GetFileNameWithoutExtension(Module);
       Index := Length(Name);
       while (Index > 0) and CharInSet(Name[Index], ['0'..'9']) do
+      begin
         Dec(Index);
+      end;
       Digits := Copy(Name, Index + 1, MaxInt);
       if Digits <> '' then
+      begin
         Candidates := Candidates + [TPath.Combine(ExtractFilePath(Module), Copy(Name, 1, Index) + '.map')];
+      end;
       for Name in Candidates do
+      begin
         if TFile.Exists(Name) then
         begin
           try
@@ -211,8 +232,11 @@ begin
           end;
           Break;
         end;
+      end;
       if Map = nil then
+      begin
         TAtlasGuard.Log('Stacktraces ohne Map-Datei (Rahmen als Modul+Offset)');
+      end;
     end;
     Result := Map;
   finally
@@ -225,12 +249,16 @@ end;
 class procedure TAtlasIdeStackCapture.Install;
 begin
   if Handle <> nil then
+  begin
     Exit;
+  end;
   ModuleRange(HInstance, OwnBase, OwnEnd);
   ModuleRange(GetModuleHandle('ntdll.dll'), NtBase, NtEnd);
   OwnName := ExtractFileName(GetModuleName(HInstance));
   if Ring = nil then
+  begin
     Ring := TAtlasStackRing.Create;
+  end;
   Ring.Clear;
   Handle := AddVectoredExceptionHandler(0, @Handler);
   if Handle = nil then
@@ -266,11 +294,15 @@ var
 begin
   Result := '';
   if (Ring = nil) or (E = nil) then
+  begin
     Exit;
+  end;
   // Delphi-Ausnahmen tragen ihr Objekt und die Adresse von raise in den Parametern, Prozessorfehler
   // (Zugriffsverletzung) die Fehleradresse im Record; ExceptAddr liefert beides für die laufende Behandlung.
   if not Ring.Find(GetCurrentThreadId, [NativeUInt(Pointer(E)), NativeUInt(ExceptAddr)], Item) then
+  begin
     Exit;
+  end;
   Result := TAtlasStackFrames.Describe(Item.Addresses, Modules, LoadedMap, OwnName, MaxLines);
 end;
 
@@ -283,9 +315,13 @@ begin
   Count := CaptureStackBackTrace(ASkip + 1, Length(Frames), @Frames[0], nil);
   SetLength(Addresses, Count);
   for Index := 0 to Count - 1 do
+  begin
     Addresses[Index] := UInt64(NativeUInt(Frames[Index]));
+  end;
   if OwnName = '' then
+  begin
     OwnName := ExtractFileName(GetModuleName(HInstance));
+  end;
   Result := TAtlasStackFrames.Describe(Addresses, Modules, LoadedMap, OwnName, MaxLines);
 end;
 
@@ -297,11 +333,17 @@ begin
   Result := Copy(AFrames);
   Loaded := LoadedMap;
   if Loaded = nil then
+  begin
     Exit;
+  end;
   if OwnName = '' then
+  begin
     OwnName := ExtractFileName(GetModuleName(HInstance));
+  end;
   for Index := 0 to High(Result) do
+  begin
     Result[Index] := TAtlasStackFrames.Symbolize(Result[Index], Loaded, OwnName);
+  end;
 end;
 
 class function TAtlasIdeStackCapture.Modules: TArray<TAtlasModuleRange>;
@@ -315,8 +357,11 @@ var
 begin
   Result := nil;
   if not EnumProcessModules(GetCurrentProcess, @Handles[0], SizeOf(Handles), Needed) then
+  begin
     Exit;
+  end;
   for Index := 0 to Integer(Needed div SizeOf(HMODULE)) - 1 do
+  begin
     if (Index <= High(Handles)) and GetModuleInformation(GetCurrentProcess, Handles[Index], @Info, SizeOf(Info)) and
       (GetModuleFileName(Handles[Index], Name, Length(Name)) > 0) then
     begin
@@ -325,6 +370,7 @@ begin
       Range.Size := Info.SizeOfImage;
       Result := Result + [Range];
     end;
+  end;
 end;
 
 initialization

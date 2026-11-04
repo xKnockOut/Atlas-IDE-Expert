@@ -128,38 +128,51 @@ begin
   end;
 end;
 
+/// <summary>Ersetzt einen Textwert im Paar APair durch eine Marke, wenn AAll gilt und der Schlüssel kein
+/// Protokollfeld (jsonrpc, method) ist.</summary>
+procedure ScrubText(APair: TJSONPair; AAll: Boolean);
+var
+  mKey: string;
+begin
+  mKey := APair.JsonString.Value;
+  if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and (APair.JsonValue.Value <> '') then
+  begin
+    ReplaceValue(APair, TTextAnonymizer.ValueLabel);
+  end;
+end;
+
+/// <summary>Bereinigt den Wert eines Paars: Geheimnisse immer, mit AAll auch alle Texte.</summary>
+procedure ScrubPair(APair: TJSONPair; AAll: Boolean);
+begin
+  if TServerPackage.IsSecretKey(APair.JsonString.Value) and not (APair.JsonValue is TJSONNull) then
+  begin
+    ReplaceValue(APair, TServerPackage.SecretLabel);
+  end
+  else if IsText(APair.JsonValue) then
+  begin
+    ScrubText(APair, AAll);
+  end
+  else if AAll and (APair.JsonValue is TJSONArray) then
+  begin
+    // Texte in Arrays lassen sich nicht an Ort und Stelle ersetzen: bereinigte Kopie einsetzen.
+    APair.JsonValue := ScrubbedArray(TJSONArray(APair.JsonValue), AAll);
+  end
+  else
+  begin
+    TServerPackage.Scrub(APair.JsonValue, AAll);
+  end;
+end;
+
 class procedure TServerPackage.Scrub(AValue: TJSONValue; AAll: Boolean);
 var
   mPair: TJSONPair;
   mItem: TJSONValue;
-  mKey: string;
 begin
   if AValue is TJSONObject then
   begin
     for mPair in TJSONObject(AValue) do
     begin
-      mKey := mPair.JsonString.Value;
-      if IsSecretKey(mKey) and not (mPair.JsonValue is TJSONNull) then
-      begin
-        ReplaceValue(mPair, SecretLabel);
-      end
-      else if IsText(mPair.JsonValue) then
-      begin
-        if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and
-          (mPair.JsonValue.Value <> '') then
-        begin
-          ReplaceValue(mPair, TTextAnonymizer.ValueLabel);
-        end;
-      end
-      else if AAll and (mPair.JsonValue is TJSONArray) then
-      begin
-        // Texte in Arrays lassen sich nicht an Ort und Stelle ersetzen: bereinigte Kopie einsetzen.
-        mPair.JsonValue := ScrubbedArray(TJSONArray(mPair.JsonValue), AAll);
-      end
-      else
-      begin
-        Scrub(mPair.JsonValue, AAll);
-      end;
+      ScrubPair(mPair, AAll);
     end;
   end
   else if AValue is TJSONArray then
@@ -250,18 +263,12 @@ begin
   end;
 end;
 
-class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
+/// <summary>Protokollzeilen, mit AAnonymize ohne Pfade und Namen.</summary>
+function LogText(const AInput: TServerPackageInput): string;
 var
-  mFile: TServerPackageFile;
   mBuilder: TStringBuilder;
   mLine, mText: string;
-  mDropped: Integer;
 begin
-  Result := nil;
-  mFile.Name := StatusName;
-  mFile.Content := StatusText(AInput);
-  Result := Result + [mFile];
-
   mBuilder := TStringBuilder.Create;
   try
     for mLine in AInput.LogLines do
@@ -273,17 +280,19 @@ begin
       end;
       mBuilder.Append(mText).Append(sLineBreak);
     end;
-    mFile.Name := LogName;
-    mFile.Content := mBuilder.ToString;
-    Result := Result + [mFile];
+    Result := mBuilder.ToString;
   finally
     mBuilder.Free;
   end;
+end;
 
-  if not AInput.Tracing then
-  begin
-    Exit;
-  end;
+/// <summary>Trace-Zeilen ohne Geheimnisse, mit AAnonymize auch ohne Texte; Zeilen ohne JSON fallen weg.</summary>
+function TraceText(const AInput: TServerPackageInput): string;
+var
+  mBuilder: TStringBuilder;
+  mLine, mText: string;
+  mDropped: Integer;
+begin
   mBuilder := TStringBuilder.Create;
   try
     mDropped := 0;
@@ -295,30 +304,42 @@ begin
     mBuilder.Append(sLineBreak);
     for mLine in AInput.TraceLines do
     begin
-      if AInput.Anonymize then
+      mText := ScrubbedTraceLine(mLine, AInput.Anonymize);
+      if (mText = '') and not AInput.Anonymize then
       begin
-        mText := AnonymizeTraceLine(mLine);
-      end
-      else
-      begin
-        mText := SecretFreeTraceLine(mLine);
+        mText := mLine;
       end;
       if mText = '' then
       begin
         Inc(mDropped);
-        Continue;
+      end
+      else
+      begin
+        mBuilder.Append(mText).Append(sLineBreak);
       end;
-      mBuilder.Append(mText).Append(sLineBreak);
     end;
     if mDropped > 0 then
     begin
       mBuilder.Append(Format('# %d Zeilen ohne JSON ausgelassen', [mDropped])).Append(sLineBreak);
     end;
-    mFile.Name := TraceName;
-    mFile.Content := mBuilder.ToString;
-    Result := Result + [mFile];
+    Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+function PackageFile(const AName, AContent: string): TServerPackageFile;
+begin
+  Result.Name := AName;
+  Result.Content := AContent;
+end;
+
+class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
+begin
+  Result := [PackageFile(StatusName, StatusText(AInput)), PackageFile(LogName, LogText(AInput))];
+  if AInput.Tracing then
+  begin
+    Result := Result + [PackageFile(TraceName, TraceText(AInput))];
   end;
 end;
 

@@ -168,7 +168,9 @@ end;
 function TIdeEnvironment.Keys: TArray<TAtlasSetupKey>;
 begin
   if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.KeysMaxAgeMs) then
+  begin
     Exit(FKeys);
+  end;
   // Gemeinsame Quelle mit der Tastenkürzel-Übersicht (#520): auch Editorbefehle, Undo/Redo, das Suchfeld der
   // Willkommensseite und Tastaturbelegungen anderer Erweiterungen.
   FKeys := TAtlasIdeKeyMap.SetupKeys;
@@ -191,24 +193,38 @@ begin
   Settings := TAtlasIdeSettings.Current;
   Path := '';
   if Assigned(FHooks.ServerPath) then
+  begin
     Path := FHooks.ServerPath();
+  end;
   Result.ServerFound := (Path <> '') and FileExists(Path);
   if Assigned(FHooks.ServerInfo) then
+  begin
     Result.Server := FHooks.ServerInfo();
+  end;
   Result.PluginVersion := TAtlasPluginVersion.Version;
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(Services.GetBaseRegistryKey);
+  end;
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
   begin
     Active := Modules.GetActiveProject;
     if Active <> nil then
+    begin
       Result.Platform := Active.CurrentPlatform;
+    end;
     Group := Modules.MainProjectGroup;
     if Group <> nil then
+    begin
       for Index := 0 to Group.ProjectCount - 1 do
+      begin
         if SameText(ExtractFileExt(Group.Projects[Index].FileName), '.dproj') then
+        begin
           Result.Projects := Result.Projects +
             [TAtlasSetupChecklist.ProjectName(Group.Projects[Index].FileName)];
+        end;
+      end;
+    end;
   end;
   Result.IndexPercent := -1;
   if (Result.Server.Phase = TAtlasServerPhase.Running) and Assigned(FHooks.Indexing) then
@@ -217,7 +233,9 @@ begin
     Result.IndexPercent := Percent;
   end;
   if Assigned(FHooks.StatusJson) and (Result.Server.Phase = TAtlasServerPhase.Running) then
+  begin
     Result.Status := TAtlasSetupServerStatus.Parse(FHooks.StatusJson());
+  end;
   Result.ErrorInsight := TAtlasIdeStructureSwitch.ErrorInsight;
   Result.ErrorInsightRestart := TAtlasIdeStructureSwitch.ErrorInsightChanged;
   Result.AtlasProblems := Settings.Enabled and Settings.Problems;
@@ -235,10 +253,14 @@ begin
     Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
     Dialog.Options := Dialog.Options + [ofFileMustExist];
     if Assigned(FHooks.ServerPath) then
+    begin
       Dialog.InitialDir := ExtractFilePath(FHooks.ServerPath());
+    end;
     Result := Dialog.Execute;
     if Result then
+    begin
       APath := Dialog.FileName;
+    end;
   finally
     Dialog.Free;
   end;
@@ -279,7 +301,9 @@ begin
   // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach Tasten neu lesen.
   if Supports(BorlandIDEServices, IOTAServices, Services) and
     Supports(Services.GetEnvironmentOptions, IOTAEnvironmentOptions140, Options) then
+  begin
     Options.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
+  end;
   ForgetKeys;
 end;
 
@@ -299,7 +323,9 @@ begin
     procedure
     begin
       if FInstance <> nil then
+      begin
         FInstance.ShowWindow;
+      end;
     end);
   FLineRef := FLine;
   FTimer := TTimer.Create(nil);
@@ -312,13 +338,19 @@ end;
 destructor TAtlasIdeSetupChecklist.Destroy;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   FreeAndNil(FTimer);
   FreeAndNil(FWindow);
   if FLine <> nil then
+  begin
     FLine.Detach;
+  end;
   if FLineAdded and (FRegistry <> nil) then
+  begin
     FRegistry.Remove(TAtlasSetupChecklist.StatusId);
+  end;
   FLineRef := nil;
   FLine := nil;
   FreeAndNil(FController);
@@ -351,11 +383,15 @@ begin
       // Fenster offen oder Start offen: alle 2 s; sonst nur gelegentlich für die Statuszeile.
       Inc(FIdle);
       if FLineAdded and not WindowVisible and not FStarting and (FIdle < IdleTicks) then
+      begin
         Exit;
+      end;
       FIdle := 0;
       Refresh;
       if FStarting then
+      begin
         DecideAtStart;
+      end;
     end);
 end;
 
@@ -376,22 +412,32 @@ var
   Done, Total: Integer;
 begin
   if FLine = nil then
+  begin
     Exit;
+  end;
   FController.Progress(Done, Total);
   if FController.Complete then
-    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusComplete, [Done, Total]), TAtlasStatusState.Green)
+  begin
+    FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusComplete, [Done, Total]), TAtlasStatusState.Green);
+  end
   else
+  begin
     // Gelb, solange unvollständig (#754); die roten Punkte meldet schon die Zeile des Servers.
     FLine.Update(TAtlasStrings.Fmt(TAtlasTextId.SetupStatusLine, [Done, Total]), TAtlasStatusState.Yellow,
       TAtlasStrings.Fmt(TAtlasTextId.SetupStatusSummary, [Done, Total]));
+  end;
 end;
 
 procedure TAtlasIdeSetupChecklist.UpdateWindow(AForce: Boolean);
 begin
   if FWindow = nil then
+  begin
     Exit;
+  end;
   if not AForce and (FController.Version = FShownVersion) then
+  begin
     Exit;
+  end;
   FShownVersion := FController.Version;
   FWindow.SetResults(FController.Results);
 end;
@@ -421,9 +467,13 @@ begin
   // Eigene Taste der Vervollständigung (#494), sonst die der IDE.
   Settings := TAtlasIdeSettings.Current;
   if Settings.CompletionKey <> 0 then
-    Result := ShortCutToText(TShortCut(Settings.CompletionKey))
+  begin
+    Result := ShortCutToText(TShortCut(Settings.CompletionKey));
+  end
   else
+  begin
     Result := ShortCutToText(TShortCut(TAtlasKeyConflicts.IdeCompletionKey));
+  end;
 end;
 
 procedure TAtlasIdeSetupChecklist.ShowWindow;
@@ -440,7 +490,9 @@ begin
       procedure(AResult: TAtlasSetupResult)
       begin
         if FInstance <> nil then
+        begin
           FInstance.Fix(AResult);
+        end;
       end;
     FWindow.OnCopy :=
       procedure
@@ -449,7 +501,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.CopyReport;
+            end;
           end);
       end;
     FWindow.OnRecheck :=
@@ -459,7 +513,9 @@ begin
           procedure
           begin
             if FInstance = nil then
+            begin
               Exit;
+            end;
             TIdeEnvironment(FInstance.FIdeEnvironment).ForgetKeys;
             FInstance.Refresh;
           end);
@@ -468,7 +524,9 @@ begin
       procedure(AValue: Boolean)
       begin
         if FInstance <> nil then
+        begin
           FInstance.SaveShowAtStart(AValue);
+        end;
       end;
   end;
   FWindow.SetColors(TAtlasIdeStyle.Colors);
@@ -526,7 +584,9 @@ procedure TAtlasIdeSetupChecklist.CopyReport;
 begin
   Clipboard.AsText := Report;
   if FWindow <> nil then
+  begin
     FWindow.ShowNote(TAtlasStrings.Text(TAtlasTextId.SetupCopied));
+  end;
 end;
 
 procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
@@ -535,7 +595,9 @@ var
 begin
   Settings := TAtlasIdeSettings.Stored;
   if Settings.SetupChecklist = AValue then
+  begin
     Exit;
+  end;
   Settings.SetupChecklist := AValue;
   TAtlasIdeSettings.Update(Settings);
 end;
@@ -546,7 +608,9 @@ var
 begin
   Settings := TAtlasIdeSettings.Stored;
   if Settings.SetupChecklistSeen then
+  begin
     Exit;
+  end;
   Settings.SetupChecklistSeen := True;
   TAtlasIdeSettings.Update(Settings);
 end;
@@ -557,14 +621,18 @@ begin
     procedure
     begin
       if FInstance <> nil then
+      begin
         FInstance.ShowWindow;
+      end;
     end);
 end;
 
 procedure TAtlasIdeSetupChecklist.ThemeChanged;
 begin
   if FWindow <> nil then
+  begin
     FWindow.SetColors(TAtlasIdeStyle.Colors);
+  end;
 end;
 
 function TAtlasIdeSetupChecklist.Progress(out ADone, ATotal: Integer): Boolean;

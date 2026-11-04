@@ -63,7 +63,9 @@ begin
   begin
     Buffer := TAtlasIdeFiles.BufferOf(FileName);
     if Buffer <> nil then
+    begin
       ASession.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
+    end;
   end;
   TAtlasIdeForms.SyncNow(ASession);
 end;
@@ -90,7 +92,9 @@ begin
   end;
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) then
   begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.RenameNothing));
@@ -124,10 +128,14 @@ begin
   NewName := OldName;
   if not InputQuery(TAtlasStrings.Text(TAtlasTextId.RenameTitle), TAtlasStrings.Fmt(TAtlasTextId.RenamePrompt,
     [OldName]), NewName) then
+  begin
     Exit;
+  end;
   NewName := Trim(NewName);
   if (NewName = '') or (NewName = OldName) then
+  begin
     Exit;
+  end;
   try
     Response := ASession.Rename(FileName, Line, Character, NewName, RenameTimeoutMs);
     try
@@ -162,17 +170,27 @@ begin
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewTitle, [OldName, NewName]),
     TAtlasStrings.Fmt(TAtlasTextId.RenamePreviewHint, [Edit.EditCount, Length(Edit.Files)]),
     TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
     TAtlasStrings.Fmt(TAtlasTextId.UndoActionRename, [OldName, NewName]));
   if Outcome.Error <> '' then
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end
   else
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.RenameDone, [OldName, NewName, Outcome.Edits, Outcome.Files]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
   if Edit.Unsupported > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [Edit.Unsupported]));
+  end;
 end;
 
 end.

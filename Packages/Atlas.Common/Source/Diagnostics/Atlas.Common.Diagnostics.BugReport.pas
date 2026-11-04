@@ -66,84 +66,104 @@ begin
   Result := TTextAnonymizer.AnonymizeLogLine(ALine, AWorkspaces, AIdentity);
 end;
 
+/// <summary>Kopf, Version und wirksame Konfiguration.</summary>
+procedure AppendHeader(ABuilder: TStringBuilder; const AInput: TBugReportInput);
+var
+  mText: string;
+begin
+  ABuilder.Append('# Atlas-Fehlerbericht (Server)').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
+  if AInput.Anonymize then
+  begin
+    ABuilder.Append(' · anonymisiert');
+  end;
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append('Quelltext steht nicht in diesem Bericht.').Append(sLineBreak).Append(sLineBreak);
+
+  ABuilder.Append('## Version').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append('- Server: ').Append(AInput.ServerVersion).Append(sLineBreak);
+  if AInput.Client <> '' then
+  begin
+    ABuilder.Append('- Editor: ').Append(AInput.Client).Append(sLineBreak);
+  end;
+  ABuilder.Append(sLineBreak);
+
+  ABuilder.Append('## Wirksame Konfiguration').Append(sLineBreak).Append(sLineBreak);
+  mText := AInput.Configuration;
+  if AInput.Anonymize then
+  begin
+    mText := TTextAnonymizer.AnonymizePaths(mText, AInput.Workspaces, AInput.Identity);
+  end;
+  ABuilder.Append('```json').Append(sLineBreak).Append(mText.TrimRight).Append(sLineBreak).Append('```');
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+end;
+
+/// <summary>Tabelle der letzten Anfragen.</summary>
+procedure AppendRequests(ABuilder: TStringBuilder; const AInput: TBugReportInput);
+var
+  mRequest: TRecentRequest;
+begin
+  ABuilder.Append(Format('## Letzte Anfragen (%d)', [Length(AInput.Requests)])).Append(sLineBreak);
+  ABuilder.Append(sLineBreak);
+  if Length(AInput.Requests) = 0 then
+  begin
+    ABuilder.Append('Keine.').Append(sLineBreak);
+  end
+  else
+  begin
+    ABuilder.Append('| Zeit | Methode | Dauer ms | Ergebnis |').Append(sLineBreak);
+    ABuilder.Append('|---|---|---:|---|').Append(sLineBreak);
+    for mRequest in AInput.Requests do
+    begin
+      ABuilder.Append('| ').Append(FormatDateTime('hh":"nn":"ss"."zzz', mRequest.Finished));
+      ABuilder.Append(' | ').Append(mRequest.Method);
+      ABuilder.Append(' | ').Append(mRequest.ElapsedMs);
+      if mRequest.Failed then
+      begin
+        ABuilder.Append(' | Fehler |');
+      end
+      else
+      begin
+        ABuilder.Append(' | ok |');
+      end;
+      ABuilder.Append(sLineBreak);
+    end;
+  end;
+  ABuilder.Append(sLineBreak);
+end;
+
+/// <summary>Letzte Zeilen des Protokolls als Codeblock.</summary>
+procedure AppendLog(ABuilder: TStringBuilder; const AInput: TBugReportInput);
+var
+  mLine, mText: string;
+begin
+  ABuilder.Append(Format('## Protokoll (letzte %d Zeilen)', [Length(AInput.LogLines)])).Append(sLineBreak);
+  ABuilder.Append(sLineBreak).Append('```').Append(sLineBreak);
+  for mLine in AInput.LogLines do
+  begin
+    mText := mLine;
+    if AInput.Anonymize then
+    begin
+      mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+    end;
+    // Mehrzeilige Einträge (z. B. Status) bleiben lesbar; ``` würde den Block schließen.
+    ABuilder.Append(TTextAnonymizer.FenceSafe(mText)).Append(sLineBreak);
+  end;
+  ABuilder.Append('```').Append(sLineBreak);
+end;
+
 class function TBugReport.Build(const AInput: TBugReportInput): string;
 var
-  Builder: TStringBuilder;
-  Request: TRecentRequest;
-  Line, Text: string;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('# Atlas-Fehlerbericht (Server)').Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
-    if AInput.Anonymize then
-    begin
-      Builder.Append(' · anonymisiert');
-    end;
-    Builder.Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('Quelltext steht nicht in diesem Bericht.').Append(sLineBreak).Append(sLineBreak);
-
-    Builder.Append('## Version').Append(sLineBreak).Append(sLineBreak);
-    Builder.Append('- Server: ').Append(AInput.ServerVersion).Append(sLineBreak);
-    if AInput.Client <> '' then
-    begin
-      Builder.Append('- Editor: ').Append(AInput.Client).Append(sLineBreak);
-    end;
-    Builder.Append(sLineBreak);
-
-    Builder.Append('## Wirksame Konfiguration').Append(sLineBreak).Append(sLineBreak);
-    Text := AInput.Configuration;
-    if AInput.Anonymize then
-    begin
-      Text := AnonymizePaths(Text, AInput.Workspaces, AInput.Identity);
-    end;
-    Builder.Append('```json').Append(sLineBreak).Append(Text.TrimRight).Append(sLineBreak).Append('```');
-    Builder.Append(sLineBreak).Append(sLineBreak);
-
-    Builder.Append(Format('## Letzte Anfragen (%d)', [Length(AInput.Requests)])).Append(sLineBreak);
-    Builder.Append(sLineBreak);
-    if Length(AInput.Requests) = 0 then
-    begin
-      Builder.Append('Keine.').Append(sLineBreak);
-    end
-    else
-    begin
-      Builder.Append('| Zeit | Methode | Dauer ms | Ergebnis |').Append(sLineBreak);
-      Builder.Append('|---|---|---:|---|').Append(sLineBreak);
-      for Request in AInput.Requests do
-      begin
-        Builder.Append('| ').Append(FormatDateTime('hh":"nn":"ss"."zzz', Request.Finished));
-        Builder.Append(' | ').Append(Request.Method);
-        Builder.Append(' | ').Append(Request.ElapsedMs);
-        if Request.Failed then
-        begin
-          Builder.Append(' | Fehler |');
-        end
-        else
-        begin
-          Builder.Append(' | ok |');
-        end;
-        Builder.Append(sLineBreak);
-      end;
-    end;
-    Builder.Append(sLineBreak);
-
-    Builder.Append(Format('## Protokoll (letzte %d Zeilen)', [Length(AInput.LogLines)])).Append(sLineBreak);
-    Builder.Append(sLineBreak).Append('```').Append(sLineBreak);
-    for Line in AInput.LogLines do
-    begin
-      Text := Line;
-      if AInput.Anonymize then
-      begin
-        Text := AnonymizeLogLine(Text, AInput.Workspaces, AInput.Identity);
-      end;
-      // Mehrzeilige Einträge (z. B. Status) bleiben lesbar; ``` würde den Block schließen.
-      Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
-    end;
-    Builder.Append('```').Append(sLineBreak);
-    Result := Builder.ToString;
+    AppendHeader(mBuilder, AInput);
+    AppendRequests(mBuilder, AInput);
+    AppendLog(mBuilder, AInput);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

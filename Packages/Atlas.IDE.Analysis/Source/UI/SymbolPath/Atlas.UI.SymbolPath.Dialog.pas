@@ -213,10 +213,14 @@ begin
     Dialog.Input := AInput;
     // Von schon gefüllt („Weg von hier nach …“): gleich ins Ziel.
     if Dialog.FFrom.Text <> '' then
+    begin
       Dialog.ActiveControl := Dialog.FTo;
+    end;
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       AInput := Dialog.Input;
+    end;
   finally
     Dialog.Free;
   end;
@@ -240,9 +244,13 @@ begin
     FFilling := False;
   end;
   if (AValue.MaxSteps >= 1) and (AValue.MaxSteps <= MaxSteps) then
-    FStepsUpDown.Position := AValue.MaxSteps
+  begin
+    FStepsUpDown.Position := AValue.MaxSteps;
+  end
   else
+  begin
     FStepsUpDown.Position := DefaultSteps;
+  end;
   // Ohne Fenster schreibt TUpDown nicht ins verbundene Feld; GetInput liest das Feld.
   FSteps.Text := IntToStr(FStepsUpDown.Position);
   FAll.Checked := AValue.All;
@@ -251,7 +259,9 @@ end;
 procedure TAtlasSymbolPathDialog.EditChange(Sender: TObject);
 begin
   if FFilling or not (Sender is TEdit) then
+  begin
     Exit;
+  end;
   FTarget := TEdit(Sender);
   FMessage.Caption := '';
   FTimer.Enabled := False;
@@ -262,7 +272,9 @@ procedure TAtlasSymbolPathDialog.TimerTick(Sender: TObject);
 begin
   FTimer.Enabled := False;
   if FTarget <> nil then
+  begin
     Suggest(FTarget);
+  end;
 end;
 
 procedure TAtlasSymbolPathDialog.Suggest(AEdit: TEdit);
@@ -273,16 +285,22 @@ begin
   FTarget := AEdit;
   Items := nil;
   if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
+  begin
     Items := FSuggest(Trim(AEdit.Text));
+  end;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
     for Item in Items do
     begin
       if FList.Items.Count >= MaxSuggestions then
+      begin
         Break;
+      end;
       if FList.Items.IndexOf(Item) < 0 then
+      begin
         FList.Items.Add(Item);
+      end;
     end;
   finally
     FList.Items.EndUpdate;
@@ -308,7 +326,9 @@ end;
 procedure TAtlasSymbolPathDialog.TakeSuggestion;
 begin
   if (FTarget = nil) or not FList.Visible or (FList.ItemIndex < 0) then
+  begin
     Exit;
+  end;
   FFilling := True;
   try
     FTarget.Text := FList.Items[FList.ItemIndex];
@@ -318,18 +338,24 @@ begin
   end;
   HideList;
   if FTarget.Showing and FTarget.CanFocus then
+  begin
     FTarget.SetFocus;
+  end;
 end;
 
 procedure TAtlasSymbolPathDialog.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if not FList.Visible or (Sender <> FTarget) then
+  begin
     Exit;
+  end;
   case Key of
     VK_DOWN:
       begin
         if FList.Showing and FList.CanFocus then
+        begin
           FList.SetFocus;
+        end;
         Key := 0;
       end;
   end;
@@ -339,7 +365,9 @@ procedure TAtlasSymbolPathDialog.ControlEnter(Sender: TObject);
 begin
   // Ein anderes Feld: die Liste gehört nicht dazu und verdeckte es sonst.
   if Sender <> FTarget then
+  begin
     HideList;
+  end;
 end;
 
 procedure TAtlasSymbolPathDialog.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -364,12 +392,16 @@ begin
   if FList.Visible and ((Message.CharCode = VK_RETURN) or (Message.CharCode = VK_ESCAPE)) then
   begin
     if Message.CharCode = VK_RETURN then
-      TakeSuggestion
+    begin
+      TakeSuggestion;
+    end
     else
     begin
       HideList;
       if (FTarget <> nil) and FTarget.Showing and FTarget.CanFocus then
+      begin
         FTarget.SetFocus;
+      end;
     end;
     Message.Result := 1;
     Exit;
@@ -381,19 +413,27 @@ function TAtlasSymbolPathDialog.Validate: Boolean;
 begin
   Result := (Trim(FFrom.Text) <> '') and (Trim(FTo.Text) <> '');
   if Result then
+  begin
     Exit;
+  end;
   FMessage.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMissing);
   if Trim(FFrom.Text) = '' then
-    ActiveControl := FFrom
+  begin
+    ActiveControl := FFrom;
+  end
   else
+  begin
     ActiveControl := FTo;
+  end;
 end;
 
 procedure TAtlasSymbolPathDialog.Accept;
 begin
   HideList;
   if Validate then
+  begin
     ModalResult := mrOk;
+  end;
 end;
 
 procedure TAtlasSymbolPathDialog.SearchClick(Sender: TObject);

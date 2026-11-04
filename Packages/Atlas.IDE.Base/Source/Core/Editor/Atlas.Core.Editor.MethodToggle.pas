@@ -146,7 +146,9 @@ var
 begin
   // Inaktiver Zweig der bedingten Übersetzung: kein Token.
   if not FConditionals.Active then
+  begin
     Exit;
+  end;
   Token.Text := AText;
   Token.Lower := LowerCase(AText);
   Token.Kind := AKind;
@@ -155,7 +157,9 @@ begin
   Token.Escaped := AEscaped;
   Token.AfterDot := (FCount > 0) and (FTokens[FCount - 1].Kind = tkSymbol) and (FTokens[FCount - 1].Text = '.');
   if FCount = Length(FTokens) then
+  begin
     SetLength(FTokens, 2 * FCount + 64);
+  end;
   FTokens[FCount] := Token;
   Inc(FCount);
 end;
@@ -181,7 +185,9 @@ var
     while (K <= Len) and (AText[K] <> #10) do
     begin
       if not CharInSet(AText[K], [' ', #9, #13]) then
+      begin
         Exit(False);
+      end;
       Inc(K);
     end;
   end;
@@ -202,11 +208,15 @@ begin
       Inc(I);
     end
     else if CharInSet(C, [' ', #9, #13, #12]) then
-      Inc(I)
+    begin
+      Inc(I);
+    end
     else if (C = '/') and (I < Len) and (AText[I + 1] = '/') then
     begin
       while (I <= Len) and (AText[I] <> #10) do
+      begin
         Inc(I);
+      end;
     end
     else if C = '{' then
     begin
@@ -214,11 +224,15 @@ begin
       while (I <= Len) and (AText[I] <> '}') do
       begin
         if AText[I] = #10 then
+        begin
           NewLine;
+        end;
         Inc(I);
       end;
       if (Start < Len) and (AText[Start + 1] = '$') then
+      begin
         FConditionals.Handle(Copy(AText, Start + 2, I - Start - 2));
+      end;
       Inc(I);
     end
     else if (C = '(') and (I < Len) and (AText[I + 1] = '*') then
@@ -228,11 +242,15 @@ begin
       while (I <= Len) and not ((AText[I] = '*') and (I < Len) and (AText[I + 1] = ')')) do
       begin
         if AText[I] = #10 then
+        begin
           NewLine;
+        end;
         Inc(I);
       end;
       if (Start + 2 <= Len) and (AText[Start + 2] = '$') then
+      begin
         FConditionals.Handle(Copy(AText, Start + 3, I - Start - 3));
+      end;
       Inc(I, 2);
     end
     else if C = '''' then
@@ -248,12 +266,16 @@ begin
           (AText[I + 2] = '''')) do
         begin
           if AText[I] = #10 then
+          begin
             NewLine;
+          end;
           Inc(I);
         end;
         Inc(I, 3);
         while (I <= Len) and (AText[I] = '''') do
+        begin
           Inc(I);
+        end;
       end
       else
       begin
@@ -263,7 +285,9 @@ begin
           if AText[I] = '''' then
           begin
             if (I < Len) and (AText[I + 1] = '''') then
-              Inc(I, 2)
+            begin
+              Inc(I, 2);
+            end
             else
             begin
               Inc(I);
@@ -271,7 +295,9 @@ begin
             end;
           end
           else
+          begin
             Inc(I);
+          end;
         end;
       end;
       AddToken(Copy(AText, Start, I - Start), tkString, StartLine, StartChar, False);
@@ -281,7 +307,9 @@ begin
       Start := I;
       Inc(I);
       while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or (AText[I] = '$')) do
+      begin
         Inc(I);
+      end;
       AddToken(Copy(AText, Start, I - Start), tkString, Line, Start - LineStart, False);
     end
     else if TTextChars.IsIdentStart(C) or ((C = '&') and (I < Len) and TTextChars.IsIdentStart(AText[I + 1])) then
@@ -289,10 +317,14 @@ begin
       // &begin und Sprungmarken wie @@End (#861) sind keine Schlüsselwörter.
       Escaped := (C = '&') or (I > 1) and (AText[I - 1] = '@');
       if C = '&' then
+      begin
         Inc(I);
+      end;
       Start := I;
       while (I <= Len) and TTextChars.IsIdentChar(AText[I]) do
+      begin
         Inc(I);
+      end;
       AddToken(Copy(AText, Start, I - Start), tkIdent, Line, Start - LineStart, Escaped);
     end
     else if CharInSet(C, ['0'..'9', '$', '%']) then
@@ -301,7 +333,9 @@ begin
       Inc(I);
       while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or
         ((AText[I] = '.') and (I < Len) and CharInSet(AText[I + 1], ['0'..'9']))) do
+      begin
         Inc(I);
+      end;
       AddToken(Copy(AText, Start, I - Start), tkNumber, Line, Start - LineStart, False);
     end
     else
@@ -309,9 +343,13 @@ begin
       Start := I;
       if (I < Len) and (((C = ':') and (AText[I + 1] = '=')) or ((C = '.') and (AText[I + 1] = '.')) or
         ((C = '<') and CharInSet(AText[I + 1], ['=', '>'])) or ((C = '>') and (AText[I + 1] = '='))) then
-        Inc(I, 2)
+      begin
+        Inc(I, 2);
+      end
       else
+      begin
         Inc(I);
+      end;
       AddToken(Copy(AText, Start, I - Start), tkSymbol, Line, Start - LineStart, False);
     end;
   end;
@@ -320,9 +358,13 @@ end;
 function TParser.Tok(AOffset: Integer): TToken;
 begin
   if (FPos + AOffset >= 0) and (FPos + AOffset < FCount) then
-    Result := FTokens[FPos + AOffset]
+  begin
+    Result := FTokens[FPos + AOffset];
+  end
   else
+  begin
     Result := FEof;
+  end;
 end;
 
 function TParser.Kw(AOffset: Integer; const AWord: string): Boolean;
@@ -363,9 +405,15 @@ var
 begin
   Result := Tok(0).Kind = tkEof;
   if not Result then
+  begin
     for Word in Words do
+    begin
       if Kw(0, Word) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 function TParser.IsDirective: Boolean;
@@ -381,13 +429,21 @@ begin
   Result := False;
   Token := Tok(0);
   if (Token.Kind <> tkIdent) or Token.Escaped then
+  begin
     Exit;
+  end;
   // Ein Feld gleichen Namens (Message: string;) ist keine Direktive.
   if Sym(1, ':') or Sym(1, ',') or Sym(1, '=') then
+  begin
     Exit;
+  end;
   for Word in Words do
+  begin
     if Token.Lower = Word then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TParser.SkipBrackets;
@@ -398,12 +454,18 @@ begin
   while Tok(0).Kind <> tkEof do
   begin
     if Sym(0, '(') or Sym(0, '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Sym(0, ')') or Sym(0, ']') then
+    begin
       Dec(Depth);
+    end;
     Inc(FPos);
     if Depth <= 0 then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -415,12 +477,18 @@ begin
   while Tok(0).Kind <> tkEof do
   begin
     if Sym(0, '<') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Sym(0, '>') then
+    begin
       Dec(Depth);
+    end;
     Inc(FPos);
     if Depth <= 0 then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -432,9 +500,13 @@ begin
   while Tok(0).Kind <> tkEof do
   begin
     if Sym(0, '(') or Sym(0, '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Sym(0, ')') or Sym(0, ']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if Depth <= 0 then
     begin
       if Sym(0, ';') then
@@ -444,7 +516,9 @@ begin
       end;
       // Letztes Feld vor end ohne Semikolon.
       if Kw(0, 'end') then
+      begin
         Exit;
+      end;
       if Kw(0, 'record') then
       begin
         Inc(FPos);
@@ -464,11 +538,17 @@ begin
   begin
     Before := FPos;
     if Sym(0, '[') then
-      SkipBrackets
+    begin
+      SkipBrackets;
+    end
     else
+    begin
       SkipToSemicolon;
+    end;
     if FPos = Before then
+    begin
       Inc(FPos);
+    end;
   end;
 end;
 
@@ -480,7 +560,9 @@ begin
   while Tok(0).Kind <> tkEof do
   begin
     if Kw(0, 'begin') or Kw(0, 'asm') or Kw(0, 'try') or Kw(0, 'case') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Kw(0, 'end') then
     begin
       Dec(Depth);
@@ -499,16 +581,24 @@ begin
   // helper[(Vorfahr)] for Typ
   Inc(FPos);
   if Sym(0, '(') then
+  begin
     SkipBrackets;
+  end;
   if Kw(0, 'for') then
   begin
     Inc(FPos);
     if Tok(0).Kind = tkIdent then
+    begin
       Inc(FPos);
+    end;
     while Sym(0, '.') and (Tok(1).Kind = tkIdent) do
+    begin
       Inc(FPos, 2);
+    end;
     if Sym(0, '<') then
+    begin
       SkipAngles;
+    end;
   end;
 end;
 
@@ -524,13 +614,19 @@ var
     K: Integer;
   begin
     if Names = 0 then
+    begin
       Exit;
+    end;
     if not Typed then
+    begin
       TypeText := '';
+    end;
     for K := 1 to Names do
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + TypeText;
       Inc(ACount);
     end;
@@ -553,13 +649,17 @@ begin
     begin
       Inc(Depth);
       if InType and not InDefault then
+      begin
         TypeText := TypeText + Token.Lower;
+      end;
     end
     else if (Token.Kind = tkSymbol) and ((Token.Text = ')') or (Token.Text = ']') or (Token.Text = '>')) then
     begin
       Dec(Depth);
       if InType and not InDefault then
+      begin
         TypeText := TypeText + Token.Lower;
+      end;
     end
     else if (Depth = 0) and (Token.Kind = tkSymbol) and (Token.Text = ';') then
     begin
@@ -576,15 +676,21 @@ begin
       Typed := True;
     end
     else if (Depth = 0) and (Token.Kind = tkSymbol) and (Token.Text = '=') and InType then
-      InDefault := True
+    begin
+      InDefault := True;
+    end
     else if InType then
     begin
       if not InDefault then
+      begin
         TypeText := TypeText + Token.Lower;
+      end;
     end
     else if (Depth = 0) and (Token.Kind = tkIdent) and not ((Names = 0) and not Token.Escaped and
       ((Token.Lower = 'const') or (Token.Lower = 'var') or (Token.Lower = 'out') or (Token.Lower = 'constref'))) then
+    begin
       Inc(Names);
+    end;
     Inc(Index);
   end;
   Flush;
@@ -611,14 +717,18 @@ begin
   AHeading.NameToken := FPos;
   Inc(FPos);
   if Sym(0, '<') then
+  begin
     SkipAngles;
+  end;
   while Sym(0, '.') and (Tok(1).Kind = tkIdent) do
   begin
     AHeading.Name := AHeading.Name + '.' + Tok(1).Text;
     AHeading.NameToken := FPos + 1;
     Inc(FPos, 2);
     if Sym(0, '<') then
+    begin
       SkipAngles;
+    end;
   end;
   // Methodenauflösungsklausel (procedure IFoo.Bar = MeinBar;): keine Deklaration.
   if Sym(0, '=') then
@@ -646,13 +756,19 @@ begin
   while IsDirective do
   begin
     if Kw(0, 'forward') then
-      AForward := True
+    begin
+      AForward := True;
+    end
     else if Kw(0, 'external') then
+    begin
       AExternal := True;
+    end;
     Before := FPos;
     SkipToSemicolon;
     if FPos = Before then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -661,11 +777,17 @@ var
   Place: TAtlasMethodPlace;
 begin
   if (AHeading.NameToken < 0) or (AFirst < 0) or (AFirst >= FCount) then
+  begin
     Exit;
+  end;
   if ALast >= FCount then
+  begin
     ALast := FCount - 1;
+  end;
   if ALast < AFirst then
+  begin
     ALast := AFirst;
+  end;
   Place.Name := AName;
   Place.Line := FTokens[AHeading.NameToken].Line;
   Place.Character := FTokens[AHeading.NameToken].Character;
@@ -677,7 +799,9 @@ begin
   Place.HasParameters := AHeading.HasParameters;
   Place.IsBody := AIsBody;
   if FPlaceCount = Length(FPlaces) then
+  begin
     SetLength(FPlaces, 2 * FPlaceCount + 16);
+  end;
   FPlaces[FPlaceCount] := Place;
   Inc(FPlaceCount);
 end;
@@ -696,7 +820,9 @@ begin
       Exit(FPos - 1);
     end
     else if Kw(0, 'initialization') or Kw(0, 'finalization') or Kw(0, 'implementation') then
-      Exit
+    begin
+      Exit;
+    end
     else if Kw(0, 'var') or Kw(0, 'const') or Kw(0, 'threadvar') or Kw(0, 'resourcestring') or Kw(0, 'label') then
     begin
       Inc(FPos);
@@ -708,12 +834,18 @@ begin
       ParseTypeSection('', False);
     end
     else if IsRoutineStart then
+    begin
       // Lokale Routine: gehört zum Rumpf der umgebenden.
-      ParseRoutine('', False, False)
+      ParseRoutine('', False, False);
+    end
     else
+    begin
       Inc(FPos);
+    end;
     if FPos = Before then
+    begin
       Inc(FPos);
+    end;
     Result := FPos - 1;
   end;
 end;
@@ -727,24 +859,36 @@ var
 begin
   First := FPos;
   if Kw(0, 'class') then
+  begin
     Inc(FPos);
+  end;
   if not ParseHeading(Heading) then
+  begin
     Exit;
+  end;
   SkipDirectives(IsForward, IsExternal);
   Name := Heading.Name;
   if AOwner <> '' then
+  begin
     Name := AOwner + '.' + Name;
+  end;
   if AInInterface or IsForward then
   begin
     if ACollect then
+    begin
       AddPlace(Name, Heading, First, FPos - 1, False);
+    end;
     Exit;
   end;
   if IsExternal then
+  begin
     Exit;
+  end;
   Last := ParseBlockBody;
   if ACollect then
+  begin
     AddPlace(Name, Heading, First, Last, True);
+  end;
 end;
 
 procedure TParser.ParseTypeSection(const AOwner: string; ACollect: Boolean);
@@ -761,35 +905,57 @@ begin
       Continue;
     end;
     if (Tok(0).Kind <> tkIdent) or not (Sym(1, '=') or Sym(1, '<')) then
+    begin
       Exit;
+    end;
     Path := Tok(0).Text;
     if AOwner <> '' then
+    begin
       Path := AOwner + '.' + Path;
+    end;
     Inc(FPos);
     if Sym(0, '<') then
+    begin
       SkipAngles;
+    end;
     if not Sym(0, '=') then
+    begin
       Exit;
+    end;
     Inc(FPos);
     if Kw(0, 'type') then
+    begin
       Inc(FPos);
+    end;
     if Kw(0, 'packed') then
+    begin
       Inc(FPos);
+    end;
     if Kw(0, 'class') then
     begin
       Inc(FPos);
       if Kw(0, 'of') or Sym(0, ';') then
-        SkipToSemicolon
+      begin
+        SkipToSemicolon;
+      end
       else
       begin
         if Kw(0, 'helper') then
+        begin
           SkipHelper;
+        end;
         while Kw(0, 'abstract') or Kw(0, 'sealed') do
+        begin
           Inc(FPos);
+        end;
         if Sym(0, '(') then
+        begin
           SkipBrackets;
+        end;
         if Sym(0, ';') then
-          Inc(FPos)
+        begin
+          Inc(FPos);
+        end
         else
         begin
           ParseStruct(Path, ACollect);
@@ -801,9 +967,13 @@ begin
     begin
       Inc(FPos);
       if Kw(0, 'helper') then
+      begin
         SkipHelper;
+      end;
       if Sym(0, '(') then
+      begin
         SkipBrackets;
+      end;
       ParseStruct(Path, ACollect);
       SkipToSemicolon;
     end
@@ -811,21 +981,31 @@ begin
     begin
       Inc(FPos);
       if Sym(0, '(') then
+      begin
         SkipBrackets;
+      end;
       if Sym(0, ';') then
-        Inc(FPos)
+      begin
+        Inc(FPos);
+      end
       else
       begin
         if Sym(0, '[') then
+        begin
           SkipBrackets;
+        end;
         ParseStruct(Path, ACollect);
         SkipToSemicolon;
       end;
     end
     else
+    begin
       SkipToSemicolon;
+    end;
     if FPos = Before then
+    begin
       Inc(FPos);
+    end;
   end;
 end;
 
@@ -842,19 +1022,29 @@ begin
       Exit;
     end
     else if Sym(0, '[') then
-      SkipBrackets
+    begin
+      SkipBrackets;
+    end
     else if Kw(0, 'private') or Kw(0, 'protected') or Kw(0, 'public') or Kw(0, 'published') or
       Kw(0, 'automated') or Kw(0, 'strict') then
-      Inc(FPos)
+    begin
+      Inc(FPos);
+    end
     else if IsRoutineStart then
-      ParseRoutine(AOwner, True, ACollect)
+    begin
+      ParseRoutine(AOwner, True, ACollect);
+    end
     else if Kw(0, 'class') or Kw(0, 'var') or Kw(0, 'const') or Kw(0, 'threadvar') then
-      Inc(FPos)
+    begin
+      Inc(FPos);
+    end
     else if Kw(0, 'property') then
     begin
       SkipToSemicolon;
       if Kw(0, 'default') and Sym(1, ';') then
+      begin
         Inc(FPos, 2);
+      end;
     end
     else if Kw(0, 'type') then
     begin
@@ -864,13 +1054,19 @@ begin
     else if Kw(0, 'case') then
     begin
       while (Tok(0).Kind <> tkEof) and not Kw(0, 'of') do
+      begin
         Inc(FPos);
+      end;
       Inc(FPos);
     end
     else
+    begin
       SkipToSemicolon;
+    end;
     if FPos = Before then
+    begin
       Inc(FPos);
+    end;
   end;
 end;
 
@@ -886,7 +1082,9 @@ begin
   FPlaceCount := 0;
   Defines := ADefines;
   if Defines = nil then
+  begin
     Defines := TTextDefines.Predefined('Win32', CompilerVersion);
+  end;
   FConditionals := TAtlasConditionals.Create(Defines, CompilerVersion);
   try
     Lex(AText);
@@ -901,7 +1099,9 @@ begin
     Before := FPos;
     if Kw(0, 'unit') or Kw(0, 'program') or Kw(0, 'library') or Kw(0, 'package') or Kw(0, 'uses') or
       Kw(0, 'contains') or Kw(0, 'requires') or Kw(0, 'exports') then
-      SkipToSemicolon
+    begin
+      SkipToSemicolon;
+    end
     else if Kw(0, 'interface') then
     begin
       InInterface := True;
@@ -923,15 +1123,25 @@ begin
       SkipDeclarations;
     end
     else if IsRoutineStart then
-      ParseRoutine('', InInterface, True)
+    begin
+      ParseRoutine('', InInterface, True);
+    end
     else if Kw(0, 'initialization') or Kw(0, 'finalization') or Kw(0, 'begin') or Kw(0, 'end') then
-      Break
+    begin
+      Break;
+    end
     else if Sym(0, '[') then
-      SkipBrackets
+    begin
+      SkipBrackets;
+    end
     else
+    begin
       Inc(FPos);
+    end;
     if FPos = Before then
+    begin
       Inc(FPos);
+    end;
   end;
   SetLength(FPlaces, FPlaceCount);
   Result := FPlaces;
@@ -967,11 +1177,15 @@ begin
   for Place in APlaces do
   begin
     if (ALine < Place.FirstLine) or (ALine > Place.LastLine) then
+    begin
       Continue;
+    end;
     // Mehrere Köpfe in einer Zeile: der letzte, der vor dem Cursor beginnt.
     if Result and ((Place.FirstLine > ALine) or
       ((Place.FirstLine = ALine) and (Place.FirstCharacter > ACharacter))) then
+    begin
       Continue;
+    end;
     APlace := Place;
     Result := True;
   end;
@@ -996,12 +1210,14 @@ begin
   Result := False;
   APlace := Default(TAtlasMethodPlace);
   for mPlace in APlaces do
+  begin
     if mPlace.IsBody and (ALine >= mPlace.FirstLine) and (ALine <= mPlace.LastLine) and
       (not Result or (mPlace.LastLine - mPlace.FirstLine < APlace.LastLine - APlace.FirstLine)) then
     begin
       APlace := mPlace;
       Result := True;
     end;
+  end;
 end;
 
 class function TAtlasMethodToggle.Match(const APlaces: TArray<TAtlasMethodPlace>; const ASource: TAtlasMethodPlace;
@@ -1014,27 +1230,39 @@ begin
   ATarget := Default(TAtlasMethodPlace);
   Candidates := nil;
   for Place in APlaces do
+  begin
     if (Place.IsBody <> ASource.IsBody) and SameText(Place.Name, ASource.Name) then
+    begin
       Candidates := Candidates + [Place];
+    end;
+  end;
   if Length(Candidates) = 0 then
+  begin
     Exit;
+  end;
   Result := True;
   ATarget := Candidates[0];
   if Length(Candidates) = 1 then
+  begin
     Exit;
+  end;
   // Überladungen: auch die ohne Parameter (Show; neben Show(P)) zählt als eigene Liste.
   for Place in Candidates do
+  begin
     if (Place.ParameterCount = ASource.ParameterCount) and (Place.Signature = ASource.Signature) then
     begin
       ATarget := Place;
       Exit;
     end;
+  end;
   for Place in Candidates do
+  begin
     if Place.ParameterCount = ASource.ParameterCount then
     begin
       ATarget := Place;
       Exit;
     end;
+  end;
 end;
 
 class function TAtlasMethodToggle.Counterpart(const AText: string; ALine, ACharacter: Integer;

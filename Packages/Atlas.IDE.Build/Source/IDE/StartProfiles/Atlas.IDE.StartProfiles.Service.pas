@@ -127,7 +127,9 @@ destructor TAtlasIdeStartProfiles.Destroy;
 begin
   FTimer.Free;
   if Assigned(FOnStatus) then
+  begin
     FOnStatus('', '');
+  end;
   inherited Destroy;
 end;
 
@@ -141,7 +143,9 @@ class function TAtlasIdeStartProfiles.Profiles(const AProject: string): TArray<T
 begin
   Result := nil;
   if AProject = '' then
+  begin
     Exit;
+  end;
   Result := TAtlasStartProfiles.ForProject(TAtlasIdeStartOptions.Folder, AProject, Team(AProject));
 end;
 
@@ -149,7 +153,9 @@ class function TAtlasIdeStartProfiles.ActiveName(const AProject: string): string
 begin
   Result := '';
   if AProject <> '' then
+  begin
     Result := TAtlasStartProfiles.Load(TAtlasIdeStartOptions.Folder, AProject).Active;
+  end;
 end;
 
 class function TAtlasIdeStartProfiles.Summary(const AOptions: TAtlasStartOptions): string;
@@ -160,22 +166,34 @@ var
 begin
   Parts := nil;
   if AOptions.Parameters <> '' then
-    Parts := Parts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesParameters, [AOptions.Parameters])]
+  begin
+    Parts := Parts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesParameters, [AOptions.Parameters])];
+  end
   else
+  begin
     Parts := Parts + [TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesNoOptions)];
+  end;
   if AOptions.WorkingDir <> '' then
+  begin
     Parts := Parts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesWorkingDir, [AOptions.WorkingDir])];
+  end;
   if AOptions.Host <> '' then
+  begin
     Parts := Parts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHost, [AOptions.Host])];
+  end;
   Names := '';
   for Variable in TAtlasStartProfiles.DecodeEnvironment(AOptions.Environment) do
   begin
     if Names <> '' then
+    begin
       Names := Names + ', ';
+    end;
     Names := Names + Variable.Name + '=' + Variable.Value;
   end;
   if Names <> '' then
+  begin
     Parts := Parts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesEnvironment, [Names])];
+  end;
   Result := string.Join(' · ', Parts);
 end;
 
@@ -243,7 +261,9 @@ begin
   end;
   Result := True;
   if FInstance <> nil then
+  begin
     FInstance.Check(True);
+  end;
 end;
 
 class function TAtlasIdeStartProfiles.Run(const AProject, AName: string; ADebugger: Boolean;
@@ -267,7 +287,9 @@ begin
   // „Start“ der IDE startet das aktive Projekt.
   TAtlasIdeStartOptions.MakeActive(Project);
   if not Activate(Project.FileName, AName, AReason) then
+  begin
     Exit;
+  end;
   Result := TAtlasIdeStartOptions.Execute(ADebugger, AReason);
 end;
 
@@ -281,7 +303,9 @@ begin
   Name := '';
   if not InputQuery(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesNameTitle),
     TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesNamePrompt), Name) then
+  begin
     Exit;
+  end;
   if Trim(Name) = '' then
   begin
     TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesInvalidName));
@@ -298,7 +322,9 @@ begin
   TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesSaved, [Trim(Name)]));
   // Gleich aktiv: Die Startoptionen bleiben dieselben, gemerkt wird das Profil.
   if not Activate(AProject.FileName, Trim(Name), Reason) then
+  begin
     TAtlasIdeStartOptions.Say(Reason);
+  end;
 end;
 
 class procedure TAtlasIdeStartProfiles.EditPersonal(const AProject: string);
@@ -318,7 +344,9 @@ begin
     end;
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+  begin
     Actions.OpenFile(FileName);
+  end;
 end;
 
 class function TAtlasIdeStartProfiles.ActionCommand(const AId: string; ATextId: TAtlasBuildTextId): TAtlasCommand;
@@ -356,16 +384,24 @@ begin
     Command.Id := ProfilePrefix + Entry.Profile.Name;
     Command.Caption := Entry.Profile.Name;
     if Entry.Source = TAtlasStartProfileSource.Team then
-      Command.Path := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesTeam)
+    begin
+      Command.Path := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesTeam);
+    end
     else
+    begin
       Command.Path := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesPersonal);
+    end;
     if SameText(Entry.Profile.Name, Active) then
+    begin
       Command.ShortCut := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesActiveMark);
+    end;
     Command.Description := Describe(Entry);
     Commands := Commands + [Command];
   end;
   if Active <> '' then
+  begin
     Commands := Commands + [ActionCommand(NoneId, TAtlasBuildTextId.StartProfilesNone)];
+  end;
   Commands := Commands + [ActionCommand(SaveId, TAtlasBuildTextId.StartProfilesSaveCurrent),
     ActionCommand(EditPersonalId, TAtlasBuildTextId.StartProfilesEditPersonal),
     ActionCommand(EditTeamId, TAtlasBuildTextId.StartProfilesEditTeam)];
@@ -394,32 +430,50 @@ begin
           if Id = NoneId then
           begin
             if not Activate(FileName, '', Reason) then
+            begin
               TAtlasIdeStartOptions.Say(Reason);
+            end;
           end
           else if Id = SaveId then
-            SaveCurrent(Current)
+          begin
+            SaveCurrent(Current);
+          end
           else if Id = EditPersonalId then
-            EditPersonal(FileName)
+          begin
+            EditPersonal(FileName);
+          end
           else if Id = EditTeamId then
           begin
             if TAtlasIdeSettings.Current.TeamFile then
-              TAtlasIdeTeamFile.OpenInEditor
+            begin
+              TAtlasIdeTeamFile.OpenInEditor;
+            end
             else
+            begin
               TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesTeamOff));
+            end;
           end
           else if Copy(Id, 1, Length(ProfilePrefix)) = ProfilePrefix then
           begin
             if not Activate(FileName, Copy(Id, Length(ProfilePrefix) + 1, MaxInt), Reason) then
+            begin
               TAtlasIdeStartOptions.Say(Reason);
+            end;
           end;
         end);
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 
@@ -430,7 +484,9 @@ var
   Active, Text, Hint: string;
 begin
   if not Assigned(FOnStatus) then
+  begin
     Exit;
+  end;
   Text := '';
   Hint := '';
   if AProject <> '' then
@@ -457,7 +513,9 @@ begin
       Hint := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHintMissing, [Active]);
     end;
     if Text <> '' then
+    begin
       Hint := Hint + sLineBreak + TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesHintClick);
+    end;
   end;
   FOnStatus(Text, Hint);
 end;
@@ -480,12 +538,18 @@ begin
     Personal := TAtlasStartProfiles.FileFor(TAtlasIdeStartOptions.Folder, FileName);
     Stamp := FileName + '|' + Project.CurrentConfiguration + '|' + Project.CurrentPlatform + '|' + TeamSettings.FileName;
     if (TeamSettings.FileName <> '') and FileAge(TeamSettings.FileName, Age) then
+    begin
       Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
+    end;
     if FileAge(Personal, Age) then
+    begin
       Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
+    end;
   end;
   if not AForce and (Stamp = FStamp) then
+  begin
     Exit;
+  end;
   FStamp := Stamp;
   // Gemerktes Profil für Projekt, Konfiguration und Plattform (wieder) setzen, wenn die Startoptionen abweichen;
   // nicht, solange vorübergehende Parameter gelten (#585). Ein liegengebliebener Eintrag wird zurückgestellt.
@@ -495,7 +559,9 @@ begin
     Active := ActiveName(FileName);
     if (Active <> '') and TAtlasStartProfiles.Find(Profiles(FileName), Active, Entry) and
       not TAtlasIdeStartOptions.WriteOptions(Project, TAtlasStartProfiles.OptionsOf(Entry), Reason) then
+    begin
       TAtlasIdeStartOptions.Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [Reason]));
+    end;
   end;
   Publish(FileName);
 end;
@@ -512,7 +578,9 @@ end;
 class procedure TAtlasIdeStartProfiles.Start;
 begin
   if FInstance <> nil then
+  begin
     Exit;
+  end;
   FInstance := TAtlasIdeStartProfiles.Create;
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
@@ -534,14 +602,18 @@ end;
 class procedure TAtlasIdeStartProfiles.Refresh;
 begin
   if FInstance <> nil then
+  begin
     FInstance.Check(True);
+  end;
 end;
 
 class procedure TAtlasIdeStartProfiles.SetStatusHandler(const AValue: TAtlasStartProfileStatus);
 begin
   FOnStatus := AValue;
   if FInstance <> nil then
+  begin
     FInstance.Check(True);
+  end;
 end;
 
 end.

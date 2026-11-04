@@ -108,9 +108,13 @@ begin
   begin
     Middle := (First + Last + 1) div 2;
     if AStarts[Middle] <= AOffset then
-      First := Middle
+    begin
+      First := Middle;
+    end
     else
+    begin
       Last := Middle - 1;
+    end;
   end;
   Result := TLspTextPosition.Create(First, AOffset - AStarts[First]);
 end;
@@ -121,7 +125,9 @@ var
 begin
   Index := 1;
   while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(ALine, 1, Index - 1);
 end;
 
@@ -132,9 +138,13 @@ var
 begin
   Result := False;
   for Span in ASpans do
+  begin
     if (Span.Kind = TAtlasCommentSpanKind.StringLiteral) and
       (TLspTextPosition.Compare(Span.StartPos, APos) < 0) and (TLspTextPosition.Compare(APos, Span.EndPos) < 0) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Steht vor AOffset (0-basiert) direkt ein Typname (Bezeichner, der mit Buchstabe oder _ beginnt)?
@@ -145,7 +155,9 @@ var
 begin
   Index := AOffset;
   while (Index >= 1) and TTextChars.IsIdentChar(AText[Index]) do
+  begin
     Dec(Index);
+  end;
   Result := (Index < AOffset) and not CharInSet(AText[Index + 1], ['0'..'9']);
 end;
 
@@ -166,8 +178,12 @@ var
 begin
   Result := '';
   for Ch in AChars do
+  begin
     if (Pos(Ch, AllChars) > 0) and (Pos(Ch, Result) = 0) then
+    begin
       Result := Result + Ch;
+    end;
+  end;
 end;
 
 class function TAtlasWrapSelection.Accepts(AChar: Char; const AChars: string): Boolean;
@@ -216,10 +232,14 @@ begin
   AResult.Selections := ARanges;
   Result := False;
   if not Accepts(AOpen, AChars) or (Length(ARanges) = 0) then
+  begin
     Exit;
+  end;
   Lines := ALines;
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Text := string.Join(#10, Lines);
   Starts := LineStarts(Lines);
   SpansRead := False;
@@ -254,14 +274,18 @@ begin
         '''':
           begin
             if StartPos.Line <> StopPos.Line then
+            begin
               Exit;
+            end;
             if not SpansRead then
             begin
               Spans := TAtlasBlockComment.Spans(Lines);
               SpansRead := True;
             end;
             if InString(Spans, StartPos) then
+            begin
               Exit;
+            end;
             Selected := StringReplace(Selected, '''', '''''', [rfReplaceAll]);
             Plan.Text := '''' + Selected + '''';
             Plan.SelStart := 1;
@@ -270,7 +294,9 @@ begin
         '<':
           begin
             if not AfterTypeName(Text, Plan.Start) then
+            begin
               Exit;
+            end;
             Plan.Text := '<' + Selected + '>';
             Plan.SelStart := 1;
             Plan.SelStop := 1 + Length(Selected);
@@ -285,7 +311,9 @@ begin
               Close := '*)';
             end;
             if ((Open = '(*') and (Pos('*)', Selected) > 0)) or Selected.StartsWith('$') then
+            begin
               Exit;
+            end;
             if WholeLines(Lines, StartPos, StopPos) then
             begin
               // Kommentarzeichen auf eigenen Zeilen, Einrückung der ersten Zeile.
@@ -295,9 +323,13 @@ begin
               Plan.SelStart := Length(Indent) + Length(Open) + 1 + (Plan.Start - LineStart);
               Plan.SelStop := Plan.SelStart + (Plan.Stop - Plan.Start);
               if (StopPos.Line > StartPos.Line) and (StopPos.Character = 0) then
-                Plan.Text := Plan.Text + Indent + Close + #10
+              begin
+                Plan.Text := Plan.Text + Indent + Close + #10;
+              end
               else
+              begin
                 Plan.Text := Plan.Text + #10 + Indent + Close;
+              end;
               Plan.Start := LineStart;
             end
             else
@@ -316,11 +348,15 @@ begin
     Plans[Index] := Plan;
   end;
   if not HasSelection then
+  begin
     Exit;
+  end;
   // Von hinten nach vorn einsetzen; was dahinter liegt, rückt um die Längenänderung.
   SetLength(Order, Length(Plans));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   for Index := 1 to High(Order) do
   begin
     Other := Index;
@@ -333,8 +369,12 @@ begin
     end;
   end;
   for Index := 1 to High(Order) do
+  begin
     if Plans[Order[Index]].Stop > Plans[Order[Index - 1]].Start then
+    begin
       Exit;
+    end;
+  end;
   NewText := Text;
   for Index := 0 to High(Order) do
   begin
@@ -351,7 +391,9 @@ begin
   end;
   AResult.Lines := NewText.Split([#10]);
   if Length(AResult.Lines) = 0 then
+  begin
     AResult.Lines := [''];
+  end;
   Starts := LineStarts(AResult.Lines);
   SetLength(AResult.Selections, Length(Plans));
   for Index := 0 to High(Plans) do

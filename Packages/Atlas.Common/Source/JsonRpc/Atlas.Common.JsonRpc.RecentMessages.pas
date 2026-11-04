@@ -94,11 +94,57 @@ begin
 end;
 
 procedure WriteShort(const AValue: TJSONValue; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer); forward;
+
+procedure WriteShortObject(AObject: TJSONObject; AMaxString: Integer; const AOut: TStringBuilder;
   AMaxLength: Integer);
 var
   mIndex: Integer;
-  mObject: TJSONObject;
-  mArray: TJSONArray;
+begin
+  AOut.Append('{');
+  for mIndex := 0 to AObject.Count - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      AOut.Append(',');
+    end;
+    // Über der Grenze: ein Platzhalter für den Rest, damit das Ergebnis gültiges JSON bleibt.
+    if AOut.Length > AMaxLength then
+    begin
+      AOut.Append(cRestPair);
+      Break;
+    end;
+    AOut.Append(ShortenedText(AObject.Pairs[mIndex].JsonString.Value, AMaxString));
+    AOut.Append(':');
+    WriteShort(AObject.Pairs[mIndex].JsonValue, AMaxString, AOut, AMaxLength);
+  end;
+  AOut.Append('}');
+end;
+
+procedure WriteShortArray(AArray: TJSONArray; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer);
+var
+  mIndex: Integer;
+begin
+  AOut.Append('[');
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      AOut.Append(',');
+    end;
+    if AOut.Length > AMaxLength then
+    begin
+      AOut.Append(cRest);
+      Break;
+    end;
+    WriteShort(AArray.Items[mIndex], AMaxString, AOut, AMaxLength);
+  end;
+  AOut.Append(']');
+end;
+
+procedure WriteShort(const AValue: TJSONValue; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer);
 begin
   if AValue = nil then
   begin
@@ -115,44 +161,11 @@ begin
   end
   else if AValue is TJSONObject then
   begin
-    mObject := TJSONObject(AValue);
-    AOut.Append('{');
-    for mIndex := 0 to mObject.Count - 1 do
-    begin
-      if mIndex > 0 then
-      begin
-        AOut.Append(',');
-      end;
-      // Über der Grenze: ein Platzhalter für den Rest, damit das Ergebnis gültiges JSON bleibt.
-      if AOut.Length > AMaxLength then
-      begin
-        AOut.Append(cRestPair);
-        Break;
-      end;
-      AOut.Append(ShortenedText(mObject.Pairs[mIndex].JsonString.Value, AMaxString));
-      AOut.Append(':');
-      WriteShort(mObject.Pairs[mIndex].JsonValue, AMaxString, AOut, AMaxLength);
-    end;
-    AOut.Append('}');
+    WriteShortObject(TJSONObject(AValue), AMaxString, AOut, AMaxLength);
   end
   else if AValue is TJSONArray then
   begin
-    mArray := TJSONArray(AValue);
-    AOut.Append('[');
-    for mIndex := 0 to mArray.Count - 1 do
-    begin
-      if mIndex > 0 then
-      begin
-        AOut.Append(',');
-      end;
-      if AOut.Length > AMaxLength then
-      begin
-        AOut.Append(cRest);
-        Break;
-      end;
-      WriteShort(mArray.Items[mIndex], AMaxString, AOut, AMaxLength);
-    end;
-    AOut.Append(']');
+    WriteShortArray(TJSONArray(AValue), AMaxString, AOut, AMaxLength);
   end
   else
   begin

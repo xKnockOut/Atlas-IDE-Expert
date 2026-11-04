@@ -86,97 +86,109 @@ begin
   end;
 end;
 
-class function TDfmNavigation.Targets(const ADfmText, ADfmFileName: string; const APosition: TTextPosition;
-  const AReadText: TDfmReadText): TArray<TDfmTarget>;
+type
+  /// <summary>Gesuchtes Symbol zur Stelle im Formular.</summary>
+  TDfmWanted = record
+    Name: string;
+    FormClass: string;
+    Kinds: set of TIndexSymbolKind;
+  end;
+
+/// <summary>Gesuchtes Symbol unter APosition: Ereignismethode im Wert oder Komponente bzw. Formular im Namen.
+/// False ohne.</summary>
+function WantedAt(const ADfmText: string; const APosition: TTextPosition; out AWanted: TDfmWanted): Boolean;
 var
-  Document: TDfmDocument;
-  Current: TDfmObject;
-  Item: TDfmProperty;
-  Wanted, FormClass, UnitFile, UnitText: string;
-  WantedKinds: set of TIndexSymbolKind;
-  UnitIndex: TUnitIndex;
-  Symbol, Best: TIndexSymbol;
-  HasBest: Boolean;
+  mDocument: TDfmDocument;
+  mCurrent: TDfmObject;
+  mItem: TDfmProperty;
 begin
-  Result := nil;
-  Document := TDfmParser.Parse(ADfmText);
+  AWanted := Default(TDfmWanted);
+  mDocument := TDfmParser.Parse(ADfmText);
   try
-    if Document.Root = nil then
+    mCurrent := nil;
+    if mDocument.Root <> nil then
     begin
-      Exit;
+      AWanted.FormClass := mDocument.Root.TypeName;
+      mCurrent := TDfmNavigation.ObjectAt(mDocument, APosition);
     end;
-    FormClass := Document.Root.TypeName;
-    Current := ObjectAt(Document, APosition);
-    if Current = nil then
+    if mCurrent = nil then
     begin
-      Exit;
+      Exit(False);
     end;
-    Wanted := '';
-    WantedKinds := [];
-    for Item in Current.Properties do
+    for mItem in mCurrent.Properties do
     begin
-      if Item.IsEvent and Contains(Item.ValueRange, APosition) then
+      if mItem.IsEvent and Contains(mItem.ValueRange, APosition) then
       begin
-        Wanted := Item.Value;
-        WantedKinds := [TIndexSymbolKind.Method];
+        AWanted.Name := mItem.Value;
+        AWanted.Kinds := [TIndexSymbolKind.Method];
         Break;
       end;
     end;
-    if (Wanted = '') and (Current.Name <> '') and Contains(Current.NameRange, APosition) then
+    if (AWanted.Name = '') and (mCurrent.Name <> '') and Contains(mCurrent.NameRange, APosition) then
     begin
-      Wanted := Current.Name;
-      if Current = Document.Root then
+      AWanted.Name := mCurrent.Name;
+      AWanted.Kinds := [TIndexSymbolKind.Field];
+      if mCurrent = mDocument.Root then
       begin
-        WantedKinds := [TIndexSymbolKind.ClassType];
-      end
-      else
-      begin
-        WantedKinds := [TIndexSymbolKind.Field];
+        AWanted.Kinds := [TIndexSymbolKind.ClassType];
       end;
     end;
+    Result := AWanted.Name <> '';
   finally
-    Document.Free;
+    mDocument.Free;
   end;
-  if (Wanted = '') or not Assigned(AReadText) then
+end;
+
+/// <summary>ASymbol ist das gesuchte: Formularklasse bzw. Feld oder Methode der Formularklasse.</summary>
+function IsWanted(const ASymbol: TIndexSymbol; const AWanted: TDfmWanted): Boolean;
+begin
+  Result := ASymbol.Kind in AWanted.Kinds;
+  if Result and (AWanted.Kinds = [TIndexSymbolKind.ClassType]) then
+  begin
+    // Formularklasse: Name im DFM ist der Komponentenname, gesucht ist die Klasse.
+    Result := SameText(ASymbol.Name, AWanted.FormClass);
+  end
+  else if Result then
+  begin
+    Result := SameText(ASymbol.Name, AWanted.Name) and SameText(ASymbol.Container, AWanted.FormClass);
+  end;
+end;
+
+/// <summary>Gesuchtes Symbol in AUnitIndex; bei Methoden gewinnt die Implementierung (die letzte Fundstelle).
+/// </summary>
+function BestSymbol(const AUnitIndex: TUnitIndex; const AWanted: TDfmWanted; out ABest: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  ABest := Default(TIndexSymbol);
+  for mSymbol in AUnitIndex.Symbols do
+  begin
+    if IsWanted(mSymbol, AWanted) and (not Result or (mSymbol.Range.StartPos.Line > ABest.Range.StartPos.Line)) then
+    begin
+      ABest := mSymbol;
+      Result := True;
+    end;
+  end;
+end;
+
+class function TDfmNavigation.Targets(const ADfmText, ADfmFileName: string; const APosition: TTextPosition;
+  const AReadText: TDfmReadText): TArray<TDfmTarget>;
+var
+  mWanted: TDfmWanted;
+  mUnitFile, mUnitText: string;
+  mBest: TIndexSymbol;
+begin
+  Result := nil;
+  if not WantedAt(ADfmText, APosition, mWanted) or not Assigned(AReadText) then
   begin
     Exit;
   end;
-  UnitFile := TFormFiles.UnitFile(ADfmFileName);
-  if not AReadText(UnitFile, UnitText) then
+  mUnitFile := TFormFiles.UnitFile(ADfmFileName);
+  if AReadText(mUnitFile, mUnitText) and
+    BestSymbol(TIndexExtractor.ExtractText(mUnitText, mUnitFile, nil), mWanted, mBest) then
   begin
-    Exit;
-  end;
-  UnitIndex := TIndexExtractor.ExtractText(UnitText, UnitFile, nil);
-  HasBest := False;
-  Best := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
-  begin
-    if not (Symbol.Kind in WantedKinds) then
-    begin
-      Continue;
-    end;
-    if WantedKinds = [TIndexSymbolKind.ClassType] then
-    begin
-      // Formularklasse: Name im DFM ist der Komponentenname, gesucht ist die Klasse.
-      if not SameText(Symbol.Name, FormClass) then
-      begin
-        Continue;
-      end;
-    end
-    else if not SameText(Symbol.Name, Wanted) or not SameText(Symbol.Container, FormClass) then
-    begin
-      Continue;
-    end;
-    // Bei Methoden gewinnt die Implementierung (die letzte Fundstelle).
-    if not HasBest or (Symbol.Range.StartPos.Line > Best.Range.StartPos.Line) then
-    begin
-      Best := Symbol;
-      HasBest := True;
-    end;
-  end;
-  if HasBest then
-  begin
-    Result := [Target(UnitFile, Best)];
+    Result := [Target(mUnitFile, mBest)];
   end;
 end;
 

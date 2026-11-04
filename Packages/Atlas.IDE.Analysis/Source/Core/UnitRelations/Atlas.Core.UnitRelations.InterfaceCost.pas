@@ -76,26 +76,44 @@ begin
   ACost := Default(TAtlasInterfaceCost);
   Result := False;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AJson);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     if not (Root.GetValue('recompileCount') is TJSONNumber) then
+    begin
       Exit;
+    end;
     ACost.Found := (Root.GetValue('found') is TJSONBool) and TJSONBool(Root.GetValue('found')).AsBoolean;
     if Root.GetValue('unit') is TJSONString then
+    begin
       ACost.UnitName := Root.GetValue('unit').Value;
+    end;
     if Root.GetValue('file') is TJSONString then
+    begin
       ACost.FileName := Root.GetValue('file').Value;
+    end;
     ACost.RecompileCount := TJSONNumber(Root.GetValue('recompileCount')).AsInt;
     if Root.GetValue('units') is TJSONArray then
+    begin
       for Item in TJSONArray(Root.GetValue('units')) do
+      begin
         if Item is TJSONString then
+        begin
           ACost.Units := ACost.Units + [Item.Value];
+        end;
+      end;
+    end;
     if Root.GetValue('generation') is TJSONNumber then
+    begin
       ACost.Generation := TJSONNumber(Root.GetValue('generation')).AsInt64;
+    end;
     Result := True;
   finally
     Value.Free;
@@ -120,7 +138,9 @@ begin
   Result := string.Join(', ', ACost.Units);
   AMore := ACost.RecompileCount - Length(ACost.Units);
   if AMore < 0 then
+  begin
     AMore := 0;
+  end;
 end;
 
 end.

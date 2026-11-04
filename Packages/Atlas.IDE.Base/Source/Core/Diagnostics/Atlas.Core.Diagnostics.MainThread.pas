@@ -83,7 +83,9 @@ begin
   NameThreadForDebugging('Atlas.MainThread');
   // Der Thread führt nichts aus; er besitzt nur die Einträge (RemoveQueuedEvents in Stop).
   while not Terminated do
+  begin
     FWake.WaitFor(1000);
+  end;
 end;
 
 procedure TAtlasMainThread.TOwner.TerminatedSet;
@@ -139,7 +141,9 @@ var
   Proc: TThreadProcedure;
 begin
   if FLock = nil then
+  begin
     Exit;
+  end;
   Proc := Guarded(AFeature, AProc);
   // Unter FLock nur einreihen, nie ausführen (AForce oder Arbeiter-Thread): Kein fremder Code hält die Sperre,
   // ein Hauptthread in Stop kann nicht auf einen Arbeiter warten, der hier wartet.
@@ -147,11 +151,17 @@ begin
   try
     // Nach Stop (Entladen): verwerfen; der Code dahinter ist gleich nicht mehr geladen.
     if FStopped or (FOwner = nil) then
+    begin
       Exit;
+    end;
     if AForce then
-      TThread.ForceQueue(FOwner, Proc)
+    begin
+      TThread.ForceQueue(FOwner, Proc);
+    end
     else
+    begin
       TThread.Queue(FOwner, Proc);
+    end;
   finally
     FLock.Leave;
   end;
@@ -168,7 +178,9 @@ begin
     Proc();
   end
   else
+  begin
     Post(AFeature, AProc, False);
+  end;
 end;
 
 class procedure TAtlasMainThread.ForceQueue(AFeature: TAtlasFeature; const AProc: TThreadProcedure);
@@ -179,12 +191,16 @@ end;
 class procedure TAtlasMainThread.Start;
 begin
   if FLock = nil then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     FStopped := False;
     if FOwner = nil then
+    begin
       FOwner := TOwner.Create;
+    end;
   finally
     FLock.Leave;
   end;
@@ -195,7 +211,9 @@ var
   Owner: TOwner;
 begin
   if FLock = nil then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     FStopped := True;
@@ -205,14 +223,18 @@ begin
     FLock.Leave;
   end;
   if Owner = nil then
+  begin
     Exit;
+  end;
   // Ab hier kommt kein Eintrag mehr dazu (Post prüft unter FLock); alle wartenden verwerfen.
   TThread.RemoveQueuedEvents(Owner);
   Owner.Terminate;
   // Nicht Owner.WaitFor (arbeitet im Hauptthread die Warteschlange ab) und nicht das Handle (braucht beim
   // Prozessende die Ladersperre): auf Finished warten wie TAtlasTimeLimit.StopAll.
   if TAtlasShutdown.WaitForThreads([TThread(Owner)], TAtlasShutdown.StopMs) then
-    Owner.Free
+  begin
+    Owner.Free;
+  end
   else
   begin
     TAtlasGuard.Log('Atlas: Besitzer der Hauptthread-Einträge endet nicht; er gibt sich bei Rückkehr selbst frei');

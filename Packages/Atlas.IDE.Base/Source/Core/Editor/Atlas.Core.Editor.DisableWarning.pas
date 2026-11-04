@@ -55,9 +55,13 @@ begin
   Result := nil;
   Value := TJSONObject.ParseJSONValue(AJson);
   if Value is TJSONArray then
-    Result := TJSONArray(Value)
+  begin
+    Result := TJSONArray(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 function IsIdentifier(const AText: string): Boolean;
@@ -66,8 +70,12 @@ var
 begin
   Result := AText <> '';
   for Index := 1 to Length(AText) do
+  begin
     if not CharInSet(AText[Index], ['A'..'Z', '0'..'9', '_']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 { TAtlasDisableWarningRequest }
@@ -82,7 +90,9 @@ begin
   try
     Result := (Arguments <> nil) and (Arguments.Count >= 4);
     if not Result then
+    begin
       Exit;
+    end;
     ARequest.Uri := Arguments.Items[0].Value;
     ARequest.Line := StrToIntDef(Arguments.Items[1].Value, -1);
     ARequest.Code := Arguments.Items[2].Value;
@@ -124,7 +134,9 @@ begin
   try
     Result := (Arguments <> nil) and (Arguments.Count >= 3);
     if not Result then
+    begin
       Exit;
+    end;
     ARequest.Uri := Arguments.Items[0].Value;
     ARequest.Code := Arguments.Items[1].Value;
     ARequest.Identifier := UpperCase(Trim(Arguments.Items[2].Value));

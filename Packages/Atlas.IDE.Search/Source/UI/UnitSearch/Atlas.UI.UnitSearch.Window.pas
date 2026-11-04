@@ -300,9 +300,13 @@ begin
   case FOptions.Mode of
     TAtlasUnitSearchMode.UseUnit:
       if FOptions.TargetUnit <> '' then
-        Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitTitle, [FOptions.TargetUnit])
+      begin
+        Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitTitle, [FOptions.TargetUnit]);
+      end
       else
+      begin
         Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitTitleNone);
+      end;
     TAtlasUnitSearchMode.Forms:
       Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsTitle);
   else
@@ -312,7 +316,9 @@ begin
   FUseSection := TAtlasUseUnitSection.Implementation_;
   // Formulare suchen: gesetzter, entfernbarer Filter; ohne Tippsyntax legt Refilter die Arten fest.
   if (FOptions.Mode = TAtlasUnitSearchMode.Forms) and FOptions.FilterSyntax then
+  begin
     FTyped := [TAtlasUseUnit.FormsFilter];
+  end;
   OnClose := FormClose;
   ShowHint := True;
   FUIFont := TFont.Create;
@@ -334,11 +340,15 @@ begin
     FKinds := Kinds;
   end;
   if FOptions.RememberCollapsed then
+  begin
     FCollapsed := FState.Collapsed(FOptions.GroupFile, FGrouping);
+  end;
   FPreviewVisible := FOptions.Preview and FState.PreviewVisible;
   FPreviewWidth := FState.PreviewWidth;
   if FPreviewWidth <= 0 then
+  begin
     FPreviewWidth := 340;
+  end;
   FPreview := Default(TAtlasUnitPreview);
   FPreviewTimer := TTimer.Create(Self);
   FPreviewTimer.Enabled := False;
@@ -391,17 +401,25 @@ end;
 function TAtlasUnitSearchWindow.ModeHeight: Integer;
 begin
   if FOptions.Mode = TAtlasUnitSearchMode.Search then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := S(30);
+  end;
 end;
 
 function TAtlasUnitSearchWindow.ChipHeight: Integer;
 begin
   if FOptions.Filters then
-    Result := S(32)
+  begin
+    Result := S(32);
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function TAtlasUnitSearchWindow.GroupHeight: Integer;
@@ -422,9 +440,13 @@ end;
 function TAtlasUnitSearchWindow.ActionHeight: Integer;
 begin
   if FOptions.Actions then
-    Result := S(34)
+  begin
+    Result := S(34);
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.ShowOver(const AArea: TRect);
@@ -476,7 +498,9 @@ procedure TAtlasUnitSearchWindow.UpdateUseMarks;
 begin
   FUseMarks := nil;
   if FOptions.Mode = TAtlasUnitSearchMode.UseUnit then
+  begin
     FUseMarks := TAtlasUseUnit.Marks(FUseInfo, FEntries);
+  end;
 end;
 
 function TAtlasUnitSearchWindow.UseInUses(AIndex: Integer): Boolean;
@@ -490,7 +514,9 @@ begin
   Result := (AIndex >= 0) and (AIndex <= High(FUseMarks)) and (FUseMarks[AIndex].Cycle >= 0) and
     not FUseMarks[AIndex].InUses;
   if Result then
+  begin
     ACycle := FUseInfo.Cycles[FUseMarks[AIndex].Cycle];
+  end;
 end;
 
 function TAtlasUnitSearchWindow.Query: TAtlasUnitQuery;
@@ -508,7 +534,9 @@ var
 begin
   Current := '';
   if AKeepSelection and CurrentEntry(Index) then
+  begin
     Current := EntryKey(Index);
+  end;
   Kinds := [];
   Origins := FOptions.DefaultOrigins;
   if FOptions.Filters then
@@ -521,14 +549,20 @@ begin
   begin
     Kinds := Kinds * TAtlasUseUnit.FormKinds;
     if Kinds = [] then
+    begin
       Kinds := TAtlasUseUnit.FormKinds;
+    end;
   end;
   NewQuery := Query;
   // Beim Weitertippen nur die bisherigen Treffer prüfen (#777: unter 50 ms je Taste bei 5000 Units).
   if FHasLast and (Origins = FLastOrigins) and (Kinds = FLastKinds) and NewQuery.Narrows(FLastQuery) then
-    FOrder := TAtlasUnitSearch.Order(FEntries, NewQuery, Origins, Kinds, FOrder)
+  begin
+    FOrder := TAtlasUnitSearch.Order(FEntries, NewQuery, Origins, Kinds, FOrder);
+  end
   else
+  begin
     FOrder := TAtlasUnitSearch.Order(FEntries, NewQuery, Origins, Kinds);
+  end;
   FLastQuery := NewQuery;
   FLastOrigins := Origins;
   FLastKinds := Kinds;
@@ -537,24 +571,32 @@ begin
   RebuildRows;
   FSelected := -1;
   if Current <> '' then
+  begin
     for Index := 0 to High(FRows) do
+    begin
       if not FRows[Index].IsGroup and (EntryKey(FRows[Index].Entry) = Current) then
       begin
         FSelected := Index;
         Break;
       end;
+    end;
+  end;
   if FSelected < 0 then
   begin
     FScroll := 0;
     // Erste Unit wählen, nicht den Kopf.
     for Index := 0 to High(FRows) do
+    begin
       if not FRows[Index].IsGroup then
       begin
         FSelected := Index;
         Break;
       end;
+    end;
     if (FSelected < 0) and (Length(FRows) > 0) then
+    begin
       FSelected := 0;
+    end;
   end;
   EnsureVisible;
   SchedulePreview;
@@ -573,9 +615,13 @@ begin
   begin
     FRowTops[Index] := mTop;
     if FRows[Index].IsGroup then
-      Inc(mTop, GroupHeight)
+    begin
+      Inc(mTop, GroupHeight);
+    end
     else
+    begin
       Inc(mTop, EntryHeight);
+    end;
   end;
   FRowTops[Length(FRows)] := mTop;
 end;
@@ -590,7 +636,9 @@ begin
   AIndex := -1;
   Result := (FSelected >= 0) and (FSelected <= High(FRows)) and not FRows[FSelected].IsGroup;
   if Result then
+  begin
     AIndex := FRows[FSelected].Entry;
+  end;
 end;
 
 function TAtlasUnitSearchWindow.SelectedEntries: TArray<TAtlasUnitEntry>;
@@ -602,19 +650,29 @@ begin
   if FOptions.MultiSelect and (FMarked.Count > 0) then
   begin
     for Index in FOrder do
+    begin
       if FMarked.ContainsKey(EntryKey(Index)) then
+      begin
         Result := Result + [FEntries[Index]];
+      end;
+    end;
     if Length(Result) > 0 then
+    begin
       Exit;
+    end;
   end;
   if CurrentEntry(Index) then
+  begin
     Result := [FEntries[Index]];
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.Select(ARow: Integer);
 begin
   if Length(FRows) = 0 then
+  begin
     Exit;
+  end;
   FSelected := EnsureRange(ARow, 0, High(FRows));
   EnsureVisible;
   SchedulePreview;
@@ -632,12 +690,18 @@ var
 begin
   Layout;
   if (FSelected < 0) or (FSelected > High(FRows)) then
+  begin
     Exit;
+  end;
   mVisible := FListRect.Height;
   if FRowTops[FSelected] < FScroll then
-    FScroll := FRowTops[FSelected]
+  begin
+    FScroll := FRowTops[FSelected];
+  end
   else if FRowTops[FSelected + 1] > FScroll + mVisible then
+  begin
     FScroll := FRowTops[FSelected + 1] - mVisible;
+  end;
   FScroll := EnsureRange(FScroll, 0, Max(0, FRowTops[Length(FRows)] - mVisible));
 end;
 
@@ -649,23 +713,33 @@ var
   Index: Integer;
 begin
   if (ARow < 0) or (ARow > High(FRows)) or (FGrouping = TAtlasUnitGrouping.None) then
+  begin
     Exit;
+  end;
   Key := LowerCase(FRows[ARow].Group);
   Kept := nil;
   for Item in FCollapsed do
+  begin
     if Item <> Key then
+    begin
       Kept := Kept + [Item];
+    end;
+  end;
   if ACollapse then
+  begin
     Kept := Kept + [Key];
+  end;
   FCollapsed := Kept;
   RebuildRows;
   // Auf dem Kopf der Gruppe bleiben.
   for Index := 0 to High(FRows) do
+  begin
     if FRows[Index].IsGroup and SameText(FRows[Index].Group, Key) then
     begin
       FSelected := Index;
       Break;
     end;
+  end;
   EnsureVisible;
   Invalidate;
 end;
@@ -675,12 +749,18 @@ var
   Key: string;
 begin
   if not FOptions.MultiSelect or (ARow < 0) or (ARow > High(FRows)) or FRows[ARow].IsGroup then
+  begin
     Exit;
+  end;
   Key := EntryKey(FRows[ARow].Entry);
   if FMarked.ContainsKey(Key) then
-    FMarked.Remove(Key)
+  begin
+    FMarked.Remove(Key);
+  end
   else
+  begin
     FMarked.Add(Key, True);
+  end;
   Invalidate;
 end;
 
@@ -691,20 +771,30 @@ var
   All: Boolean;
 begin
   if not FOptions.MultiSelect then
+  begin
     Exit;
+  end;
   // Sind schon alle markiert, hebt Strg+A die Markierung auf.
   All := FMarked.Count > 0;
   for Index in FOrder do
+  begin
     if not FMarked.ContainsKey(EntryKey(Index)) then
+    begin
       All := False;
+    end;
+  end;
   FMarked.Clear;
   if not All then
+  begin
     for Index in FOrder do
     begin
       Key := EntryKey(Index);
       if not FMarked.ContainsKey(Key) then
+      begin
         FMarked.Add(Key, True);
+      end;
     end;
+  end;
   Invalidate;
 end;
 
@@ -716,7 +806,9 @@ var
   Paths: TStringBuilder;
 begin
   if not ActionVisible(AAction) then
+  begin
     Exit;
+  end;
   // Unit verwenden: „In uses aufnehmen“ fügt in den gewählten Abschnitt ein (#786).
   if (AAction = TAtlasUnitSearchAction.AddUses) and (FOptions.Mode = TAtlasUnitSearchMode.UseUnit) then
   begin
@@ -725,13 +817,17 @@ begin
   end;
   Entries := SelectedEntries;
   if Length(Entries) = 0 then
+  begin
     Exit;
+  end;
   if AAction = TAtlasUnitSearchAction.CopyPaths then
   begin
     Paths := TStringBuilder.Create;
     try
       for Entry in Entries do
+      begin
         Paths.AppendLine(Entry.FileName);
+      end;
       Clipboard.AsText := TrimRight(Paths.ToString);
     finally
       Paths.Free;
@@ -742,13 +838,17 @@ begin
   // Öffnen, Formular und Testunits schließen das Fenster wie der IDE-Dialog; die übrigen lassen es offen.
   if AAction in [TAtlasUnitSearchAction.Open, TAtlasUnitSearchAction.OpenForm,
     TAtlasUnitSearchAction.OpenTests] then
+  begin
     Close;
+  end;
   if Assigned(Handler) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
       procedure
       begin
         Handler(AAction, Entries);
       end);
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.Accept(AShift: Boolean);
@@ -758,14 +858,22 @@ begin
       RunUse;
     TAtlasUnitSearchMode.Forms:
       if AShift then
-        Run(TAtlasUnitSearchAction.Open)
+      begin
+        Run(TAtlasUnitSearchAction.Open);
+      end
       else
+      begin
         Run(TAtlasUnitSearchAction.OpenForm);
+      end;
   else
     if AShift then
-      Run(TAtlasUnitSearchAction.OpenForm)
+    begin
+      Run(TAtlasUnitSearchAction.OpenForm);
+    end
     else
+    begin
       Run(TAtlasUnitSearchAction.Open);
+    end;
   end;
 end;
 
@@ -782,28 +890,38 @@ begin
   // Wie der Dialog der IDE: Einfügen schließt das Fenster.
   Close;
   if Assigned(Handler) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
       procedure
       begin
         Handler(Entries, Section);
       end);
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.ToggleUseSection;
 begin
   if FOptions.Mode <> TAtlasUnitSearchMode.UseUnit then
+  begin
     Exit;
+  end;
   if FUseSection = TAtlasUseUnitSection.Interface_ then
-    FUseSection := TAtlasUseUnitSection.Implementation_
+  begin
+    FUseSection := TAtlasUseUnitSection.Implementation_;
+  end
   else
+  begin
     FUseSection := TAtlasUseUnitSection.Interface_;
+  end;
   Invalidate;
 end;
 
 procedure TAtlasUnitSearchWindow.TogglePreview;
 begin
   if not FOptions.Preview then
+  begin
     Exit;
+  end;
   FPreviewVisible := not FPreviewVisible;
   EnsureVisible;
   SchedulePreview;
@@ -813,13 +931,19 @@ end;
 procedure TAtlasUnitSearchWindow.SetGrouping(AGrouping: TAtlasUnitGrouping);
 begin
   if AGrouping = FGrouping then
+  begin
     Exit;
+  end;
   if FOptions.RememberCollapsed then
+  begin
     FState.SetCollapsed(FOptions.GroupFile, FGrouping, FCollapsed);
+  end;
   FGrouping := AGrouping;
   FCollapsed := nil;
   if FOptions.RememberCollapsed then
+  begin
     FCollapsed := FState.Collapsed(FOptions.GroupFile, FGrouping);
+  end;
   Refilter(True);
 end;
 
@@ -847,9 +971,13 @@ begin
   begin
     Kind := TAtlasUnitKind(AValue - ChipKinds);
     if Kind in FKinds then
-      Exclude(FKinds, Kind)
+    begin
+      Exclude(FKinds, Kind);
+    end
     else
+    begin
       Include(FKinds, Kind);
+    end;
   end
   else
   begin
@@ -858,10 +986,14 @@ begin
     begin
       // Mindestens eine Herkunft bleibt gewählt.
       if FOrigins - [Origin] <> [] then
+      begin
         Exclude(FOrigins, Origin);
+      end;
     end
     else
+    begin
       Include(FOrigins, Origin);
+    end;
   end;
   Refilter(True);
 end;
@@ -874,11 +1006,17 @@ begin
   FState.Height := Height;
   FState.PreviewWidth := FPreviewWidth;
   if FOptions.Preview then
+  begin
     FState.PreviewVisible := FPreviewVisible;
+  end;
   if FOptions.Filters then
+  begin
     FState.SetFilters(FOptions.GroupFile, FOrigins, FKinds);
+  end;
   if FOptions.RememberCollapsed then
+  begin
     FState.SetCollapsed(FOptions.GroupFile, FGrouping, FCollapsed);
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -886,19 +1024,25 @@ var
   Closed: TProc;
 begin
   if FClosing then
+  begin
     Exit;
+  end;
   FClosing := True;
   SaveState;
   Action := caFree;
   Closed := FOnClosed;
   if Assigned(Closed) then
+  begin
     Closed();
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.SchedulePreview;
 begin
   if not FPreviewVisible or not Assigned(FOnPreview) then
+  begin
     Exit;
+  end;
   FPreviewTimer.Enabled := False;
   FPreviewTimer.Enabled := True;
 end;
@@ -909,7 +1053,9 @@ var
 begin
   FPreviewTimer.Enabled := False;
   if not FPreviewVisible or not Assigned(FOnPreview) then
+  begin
     Exit;
+  end;
   if not CurrentEntry(Index) then
   begin
     FPreview := Default(TAtlasUnitPreview);
@@ -918,7 +1064,9 @@ begin
     Exit;
   end;
   if SameText(FPreviewFile, FEntries[Index].FileName) then
+  begin
     Exit;
+  end;
   FPreviewFile := FEntries[Index].FileName;
   FPreview := FOnPreview(FEntries[Index]);
   Invalidate;
@@ -954,11 +1102,15 @@ begin
   for mAction := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
   begin
     if not ActionVisible(mAction) then
+    begin
       Continue;
+    end;
     Item := TMenuItem.Create(FActionMenu);
     Item.Caption := ActionCaption(mAction);
     if ShortCuts[mAction] <> '' then
+    begin
       Item.Caption := Item.Caption + #9 + ShortCuts[mAction];
+    end;
     Item.Tag := Ord(mAction);
     Item.OnClick := MenuClick;
     FActionMenu.Items.Add(Item);
@@ -1015,18 +1167,26 @@ begin
   // Feste Farbe je Projektname aus den Paarfarben der Palette.
   Hash := 0;
   for Index := 1 to Length(AProject) do
+  begin
     Hash := ((Hash and $FFFFFF) * 31 + Ord(UpCase(AProject[Index]))) and $FFFFFF;
+  end;
   Result := FColors.Pairs[Hash mod Cardinal(Length(FColors.Pairs))];
 end;
 
 function TAtlasUnitSearchWindow.GroupCaption(const AGroup: string): string;
 begin
   if AGroup <> '' then
+  begin
     Exit(AGroup);
+  end;
   if FGrouping = TAtlasUnitGrouping.Folder then
-    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchRootFolder)
+  begin
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchRootFolder);
+  end
   else
+  begin
     Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoProject);
+  end;
 end;
 
 { Zeichnen }
@@ -1060,7 +1220,9 @@ procedure TAtlasUnitSearchWindow.Resize;
 begin
   inherited;
   if Length(FRowTops) > 0 then
+  begin
     EnsureVisible;
+  end;
   Invalidate;
 end;
 
@@ -1074,16 +1236,24 @@ var
 begin
   SetLength(Marks, Length(AText) + 1);
   for Word in Query.Words do
+  begin
     for Position in TAtlasItemPresentation.Highlights(Word, AText) do
+    begin
       if (Position >= 1) and (Position <= Length(AText)) then
+      begin
         Marks[Position] := True;
+      end;
+    end;
+  end;
   X := ARect.Left;
   Index := 1;
   while (Index <= Length(AText)) and (X < ARect.Right) do
   begin
     Run := Index;
     while (Run < Length(AText)) and (Marks[Run + 1] = Marks[Index]) do
+    begin
       Inc(Run);
+    end;
     Chunk := Copy(AText, Index, Run - Index + 1);
     if Marks[Index] then
     begin
@@ -1112,7 +1282,9 @@ var
 begin
   Width_ := Canvas.TextWidth(ACaption) + S(16);
   if X + Width_ > ARight then
+  begin
     Exit;
+  end;
   Chip := Rect(X, Y, X + Width_, Y + S(22));
   if AOn then
   begin
@@ -1149,7 +1321,9 @@ begin
   Captions[TAtlasUnitGrouping.None] := TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone);
   SegmentWidth := 0;
   for Grouping := Low(TAtlasUnitGrouping) to High(TAtlasUnitGrouping) do
+  begin
     SegmentWidth := Max(SegmentWidth, Canvas.TextWidth(Captions[Grouping]) + S(20));
+  end;
   X := ClientWidth - S(10) - 3 * SegmentWidth;
   for Grouping in [TAtlasUnitGrouping.Project, TAtlasUnitGrouping.Folder, TAtlasUnitGrouping.None] do
   begin
@@ -1181,8 +1355,10 @@ begin
   X := Input.Left + S(8);
   Canvas.Font.Assign(FSmallFont);
   for Index := 0 to High(FTyped) do
+  begin
     DrawChip(X, Input.Top + (Input.Height - S(22)) div 2, FTyped[Index] + '  ×', True, ChipTyped + Index,
       Input.Right - S(80));
+  end;
   Canvas.Font.Assign(FUIFont);
   Input.Left := X;
   InflateRect(Input, -S(4), 0);
@@ -1191,9 +1367,13 @@ begin
   begin
     Canvas.Font.Color := C(FColors.Muted);
     if FOptions.FilterSyntax then
-      mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPrompt)
+    begin
+      mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPrompt);
+    end
     else
+    begin
       mText := TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle) + ' …';
+    end;
   end
   else
   begin
@@ -1212,7 +1392,9 @@ var
   Text: string;
 begin
   if FOptions.Mode = TAtlasUnitSearchMode.Search then
+  begin
     Exit;
+  end;
   Bar := Rect(0, HeaderHeight, ClientWidth, HeaderHeight + ModeHeight);
   Canvas.Font.Assign(FUIFont);
   Canvas.Font.Style := [fsBold];
@@ -1268,12 +1450,16 @@ var
   Kind: TAtlasUnitKind;
 begin
   if not FOptions.Filters then
+  begin
     Exit;
+  end;
   Canvas.Font.Assign(FSmallFont);
   X := S(10);
   Y := HeaderHeight + ModeHeight + (ChipHeight - S(22)) div 2 - S(2);
   for Origin := Low(TAtlasUnitOrigin) to High(TAtlasUnitOrigin) do
+  begin
     DrawChip(X, Y, OriginCaption(Origin), Origin in FOrigins, ChipOrigins + Ord(Origin), ClientWidth - S(10));
+  end;
   // Trenner zwischen Herkunft und Art.
   Canvas.Pen.Color := C(FColors.Line);
   Canvas.MoveTo(X + S(2), Y + S(3));
@@ -1281,7 +1467,9 @@ begin
   Inc(X, S(10));
   for Kind in [TAtlasUnitKind.Form, TAtlasUnitKind.Frame, TAtlasUnitKind.DataModule, TAtlasUnitKind.Unit_,
     TAtlasUnitKind.Test, TAtlasUnitKind.Include] do
+  begin
     DrawChip(X, Y, KindCaption(Kind), Kind in FKinds, ChipKinds + Ord(Kind), ClientWidth - S(10));
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.DrawRow(ARow: Integer; const ARect: TRect);
@@ -1308,9 +1496,13 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := C(FColors.Muted);
     if Row.Collapsed then
-      mText := '▸  '
+    begin
+      mText := '▸  ';
+    end
     else
+    begin
       mText := '▾  ';
+    end;
     mText := mText + GroupCaption(Row.Group) + '   ' + IntToStr(Row.Count);
     Part := Rect(ARect.Left + S(10), ARect.Top, ARect.Right - S(10), ARect.Bottom);
     DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -1341,7 +1533,9 @@ begin
       Canvas.Pen.Color := C(FColors.Accent);
     end
     else
+    begin
       Canvas.Brush.Color := C(FColors.Surface);
+    end;
     Canvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, S(4), S(4));
     if Marked then
     begin
@@ -1379,11 +1573,17 @@ begin
   Badge := Rect(Right - Width_, ARect.Top + S(4), Right, ARect.Top + S(20));
   Canvas.Brush.Style := bsSolid;
   if Entry.Kind = TAtlasUnitKind.Test then
-    Canvas.Brush.Color := C(FColors.AddSoft)
+  begin
+    Canvas.Brush.Color := C(FColors.AddSoft);
+  end
   else if Entry.Kind in [TAtlasUnitKind.Form, TAtlasUnitKind.Frame, TAtlasUnitKind.DataModule] then
-    Canvas.Brush.Color := C(FColors.WarnSoft)
+  begin
+    Canvas.Brush.Color := C(FColors.WarnSoft);
+  end
   else
+  begin
     Canvas.Brush.Color := C(FColors.Gutter);
+  end;
   Canvas.Pen.Color := C(FColors.Line);
   Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, S(6), S(6));
   Canvas.Brush.Style := bsClear;
@@ -1395,15 +1595,21 @@ begin
   mText := '';
   State := TAtlasUseUnitCycleState.None;
   if InUses then
-    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitInUses)
+  begin
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitInUses);
+  end
   else if UseCycle(Row.Entry, Cycle) then
   begin
     State := TAtlasUseUnit.CycleState(Cycle, FUseSection);
     if State = TAtlasUseUnitCycleState.Warning then
+    begin
       mText := '⚠ ' + TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycle,
-        [TAtlasUseUnit.CycleVia(Cycle, FUseSection)])
+        [TAtlasUseUnit.CycleVia(Cycle, FUseSection)]);
+    end
     else
+    begin
       mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycle, [TAtlasUseUnit.CycleVia(Cycle, FUseSection)]);
+    end;
   end;
   if mText <> '' then
   begin
@@ -1453,7 +1659,9 @@ begin
     NameEnd := DrawHighlighted(Entry.Name, Rect(Part.Left, ARect.Top + S(2), Right, ARect.Top + S(22)), FColors.Text);
     // Caption des Formulars (#1310) grau hinter dem Namen: Damit ist ein Treffer über sie erkennbar.
     if (Entry.Caption <> '') and (NameEnd + S(30) < Right) then
+    begin
       DrawHighlighted(Entry.Caption, Rect(NameEnd + S(10), ARect.Top + S(2), Right, ARect.Top + S(22)), FColors.Muted);
+    end;
   end;
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
@@ -1461,8 +1669,12 @@ begin
   MaxChars := Length(Path);
   Part := Rect(Part.Left, ARect.Top + S(21), ARect.Right - S(10), ARect.Bottom - S(2));
   if FOptions.PathStyle <> TAtlasUnitPathStyle.Absolute then
+  begin
     while (MaxChars > 8) and (Canvas.TextWidth(TAtlasUnitSearch.MiddleEllipsis(Path, MaxChars)) > Part.Width) do
+    begin
       Dec(MaxChars, Max(1, (MaxChars div 20)));
+    end;
+  end;
   mText := TAtlasUnitSearch.MiddleEllipsis(Path, MaxChars);
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
@@ -1481,10 +1693,14 @@ begin
     Canvas.Font.Color := C(FColors.Muted);
     Canvas.Brush.Style := bsClear;
     if FLoading then
+    begin
       DrawText(Canvas.Handle, PChar(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchLoading)), -1, FListRect,
-        DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX)
+        DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+    end
     else
+    begin
       DrawText(Canvas.Handle, '—', -1, FListRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+    end;
     Canvas.Brush.Style := bsSolid;
     Exit;
   end;
@@ -1496,7 +1712,9 @@ begin
   begin
     Middle := (Low_ + High_) div 2;
     if FRowTops[Middle + 1] <= FScroll then
-      Low_ := Middle + 1
+    begin
+      Low_ := Middle + 1;
+    end
     else
     begin
       First := Middle;
@@ -1539,7 +1757,9 @@ var
   Height_: Integer;
 begin
   if (FPreview.FormWidth <= 0) or (FPreview.FormHeight <= 0) then
+  begin
     Exit;
+  end;
   Scale_ := Min(AArea.Width / FPreview.FormWidth, S(180) / FPreview.FormHeight);
   Height_ := SketchHeight(AArea.Width) - S(14);
   Frame := Rect(AArea.Left, ATop, AArea.Left + Round(FPreview.FormWidth * Scale_), ATop + Height_ + S(14));
@@ -1562,7 +1782,9 @@ begin
     Box := Rect(Frame.Left + Round(Item.Left * Scale_), Frame.Top + S(14) + Round(Item.Top * Scale_),
       Frame.Left + Round((Item.Left + Item.Width) * Scale_), Frame.Top + S(14) + Round((Item.Top + Item.Height) * Scale_));
     if (Box.Width < 2) or (Box.Height < 2) then
+    begin
       Continue;
+    end;
     Canvas.Brush.Color := C(TAtlasColorMath.Mix(FColors.Accent, FColors.Gutter, Min(0.45, 0.08 * Item.Depth)));
     Canvas.Pen.Color := C(FColors.Line);
     Canvas.Rectangle(Box);
@@ -1581,7 +1803,9 @@ function TAtlasUnitSearchWindow.SketchHeight(AWidth: Integer): Integer;
 begin
   Result := 0;
   if (FPreview.FormWidth <= 0) or (FPreview.FormHeight <= 0) then
+  begin
     Exit;
+  end;
   Result := Round(FPreview.FormHeight * Min(AWidth / FPreview.FormWidth, S(180) / FPreview.FormHeight)) + S(14);
 end;
 
@@ -1596,7 +1820,9 @@ var
   Inputs: TAtlasSectionInputs;
 begin
   if not FPreviewVisible then
+  begin
     Exit;
+  end;
   Canvas.Brush.Color := C(FColors.Gutter);
   Canvas.FillRect(FPreviewRect);
   Canvas.Pen.Color := C(FColors.Line);
@@ -1628,22 +1854,38 @@ begin
   Canvas.Font.Color := C(FColors.Muted);
   Facts := [TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewLines, [FPreview.Lines])];
   if FPreview.Modified > 0 then
+  begin
     Facts := Facts + [TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchPreviewModified,
       [FormatDateTime('dd.mm.yyyy hh":"nn', FPreview.Modified)])];
+  end;
   if FPreview.Git = 'clean' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitClean)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitClean)];
+  end
   else if FPreview.Git = 'modified' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitModified)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitModified)];
+  end
   else if FPreview.Git = 'added' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitAdded)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitAdded)];
+  end
   else if FPreview.Git = 'untracked' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitUntracked)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitUntracked)];
+  end
   else if FPreview.Git = 'deleted' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitDeleted)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitDeleted)];
+  end
   else if FPreview.Git = 'renamed' then
-    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitRenamed)]
+  begin
+    Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitRenamed)];
+  end
   else if FPreview.Git = 'conflict' then
+  begin
     Facts := Facts + [TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchGitConflict)];
+  end;
   Line := Rect(Area.Left, mTop, Area.Right, mTop + S(16));
   mText := string.Join(' · ', Facts);
   DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -1655,20 +1897,28 @@ begin
     Inputs[Section].ClosedHeight := SectionHeadHeight;
     Inputs[Section].OpenHeight := 0;
     if Inputs[Section].Present then
+    begin
       Inputs[Section].OpenHeight := SectionHeadHeight + SectionBody(Section, Rect(Area.Left, 0, Area.Right, MaxInt div 2),
         False) + SectionGap;
+    end;
   end;
   FSections := TAtlasPreviewSections.Arrange(Inputs, FState.Sections, Area.Bottom - mTop, FOptions.PreviewAutoCollapse);
   for Section := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
   begin
     if FSections[Section] = TAtlasSectionState.Hidden then
+    begin
       Continue;
+    end;
     if mTop + SectionHeadHeight > Area.Bottom then
+    begin
       Break;
+    end;
     DrawSectionHead(Section, Rect(Area.Left, mTop, Area.Right, mTop + SectionHeadHeight));
     Inc(mTop, SectionHeadHeight);
     if TAtlasPreviewSections.IsOpen(FSections[Section]) then
+    begin
       Inc(mTop, SectionBody(Section, Rect(Area.Left, mTop, Area.Right, Area.Bottom), True) + SectionGap);
+    end;
   end;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -1734,9 +1984,13 @@ begin
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := C(FColors.Muted);
   if TAtlasPreviewSections.IsOpen(FSections[ASection]) then
-    mText := #$25BE' ' + SectionCaption(ASection)
+  begin
+    mText := #$25BE' ' + SectionCaption(ASection);
+  end
   else
+  begin
     mText := #$25B8' ' + SectionCaption(ASection);
+  end;
   Line := ARect;
   Line.Bottom := Line.Bottom - S(4);
   // Marke rechts, wenn Atlas den Abschnitt eingeklappt hat.
@@ -1808,9 +2062,13 @@ begin
         Rest := FPreview.TypeCount - Length(FPreview.Types);
         Result := Length(FPreview.Types) * S(17);
         if Rest > 0 then
+        begin
           Inc(Result, S(17));
+        end;
         if not ADraw then
+        begin
           Exit;
+        end;
         mTop := AArea.Top;
         Count := 0;
         for Item in FPreview.Types do
@@ -1818,7 +2076,9 @@ begin
           // Platz für die Zeile „+ n weitere“ lassen, wenn danach noch Typen kommen.
           if (mTop + S(17) > AArea.Bottom) or
             ((Count < Length(FPreview.Types) - 1) and (mTop + 2 * S(17) > AArea.Bottom)) then
+          begin
             Break;
+          end;
           // Symbol: Anfangsbuchstabe der Art im Kästchen.
           Line := Rect(AArea.Left, mTop + S(1), AArea.Left + S(16), mTop + S(15));
           Canvas.Brush.Style := bsSolid;
@@ -1853,12 +2113,16 @@ begin
         Canvas.Font.Assign(FSmallFont);
         Canvas.Font.Color := C(FColors.Text);
         if ASection = TAtlasPreviewSection.Uses_ then
-          mText := string.Join(', ', FPreview.Uses_)
+        begin
+          mText := string.Join(', ', FPreview.Uses_);
+        end
         else
         begin
           mText := string.Join(', ', FPreview.UsedByUnits);
           if FPreview.UsedBy > Length(FPreview.UsedByUnits) then
+          begin
             mText := mText + ' …';
+          end;
         end;
         Line := Rect(AArea.Left, AArea.Top, AArea.Right, AArea.Top);
         DrawText(Canvas.Handle, PChar(mText), -1, Line, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
@@ -1886,7 +2150,9 @@ var
   mText: string;
 begin
   if not FOptions.Actions then
+  begin
     Exit;
+  end;
   Bar := Rect(0, ClientHeight - FooterHeight - ActionHeight, ClientWidth, ClientHeight - FooterHeight);
   Canvas.Pen.Color := C(FColors.Line);
   Canvas.MoveTo(Bar.Left, Bar.Top);
@@ -1896,11 +2162,15 @@ begin
   for mAction := Low(TAtlasUnitSearchAction) to High(TAtlasUnitSearchAction) do
   begin
     if not ActionVisible(mAction) then
+    begin
       Continue;
+    end;
     mText := ActionCaption(mAction);
     Button := Rect(X, Bar.Top + S(6), X + Canvas.TextWidth(mText) + S(18), Bar.Bottom - S(6));
     if Button.Right > Bar.Right - S(10) then
+    begin
       Break;
+    end;
     if mAction = TAtlasUnitSearchAction.Open then
     begin
       Canvas.Brush.Color := C(FColors.Accent);
@@ -1938,7 +2208,9 @@ begin
   Canvas.Brush.Style := bsClear;
   mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchCount, [FMatchCount, Length(FEntries)]);
   if FMarked.Count > 0 then
+  begin
     mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchMarked, [FMarked.Count]) + ' · ' + mText;
+  end;
   CountWidth := Canvas.TextWidth(mText);
   Part := Rect(Bar.Right - S(10) - CountWidth, Bar.Top, Bar.Right - S(10), Bar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
@@ -1946,20 +2218,32 @@ begin
   if CurrentEntry(Index) and UseCycle(Index, Cycle) then
   begin
     if TAtlasUseUnit.CycleState(Cycle, FUseSection) = TAtlasUseUnitCycleState.Warning then
+    begin
       mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycleWarning,
-        [TAtlasUseUnit.CyclePath(Cycle, FUseSection)])
+        [TAtlasUseUnit.CyclePath(Cycle, FUseSection)]);
+    end
     else
+    begin
       mText := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UseUnitCycleHint,
         [TAtlasUseUnit.CyclePath(Cycle, FUseSection)]);
+    end;
   end
   else if CurrentEntry(Index) then
-    mText := FEntries[Index].FileName
+  begin
+    mText := FEntries[Index].FileName;
+  end
   else if FOptions.Mode = TAtlasUnitSearchMode.UseUnit then
-    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitHints)
+  begin
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitHints);
+  end
   else if FOptions.Mode = TAtlasUnitSearchMode.Forms then
-    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsHints)
+  begin
+    mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.FormsHints);
+  end
   else
+  begin
     mText := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchHints);
+  end;
   Part := Rect(Bar.Left + S(10), Bar.Top, Part.Left - S(16), Bar.Bottom);
   DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_PATH_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
@@ -1994,10 +2278,16 @@ begin
   Result := -1;
   Offset := Y - FListRect.Top + FScroll;
   if (Y < FListRect.Top) or (Y >= FListRect.Bottom) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FRows) do
+  begin
     if (Offset >= FRowTops[Index]) and (Offset < FRowTops[Index + 1]) then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 function TAtlasUnitSearchWindow.HitAt(X, Y: Integer; out AArea: THitArea): Boolean;
@@ -2006,11 +2296,13 @@ var
 begin
   // Rückwärts: Häkchen und Chips liegen über Zeilen und Feld.
   for Index := FAreas.Count - 1 downto 0 do
+  begin
     if PtInRect(FAreas[Index].Rect, Point(X, Y)) then
     begin
       AArea := FAreas[Index];
       Exit(True);
     end;
+  end;
   AArea := Default(THitArea);
   Result := False;
 end;
@@ -2026,27 +2318,47 @@ begin
   Edge := S(6);
   // Ränder zum Vergrößern.
   if (Point_.Y < Edge) and (Point_.X < Edge) then
-    Message.Result := HTTOPLEFT
+  begin
+    Message.Result := HTTOPLEFT;
+  end
   else if (Point_.Y < Edge) and (Point_.X >= ClientWidth - Edge) then
-    Message.Result := HTTOPRIGHT
+  begin
+    Message.Result := HTTOPRIGHT;
+  end
   else if (Point_.Y >= ClientHeight - Edge) and (Point_.X < Edge) then
-    Message.Result := HTBOTTOMLEFT
+  begin
+    Message.Result := HTBOTTOMLEFT;
+  end
   else if (Point_.Y >= ClientHeight - Edge) and (Point_.X >= ClientWidth - Edge) then
-    Message.Result := HTBOTTOMRIGHT
+  begin
+    Message.Result := HTBOTTOMRIGHT;
+  end
   else if Point_.Y < Edge then
-    Message.Result := HTTOP
+  begin
+    Message.Result := HTTOP;
+  end
   else if Point_.Y >= ClientHeight - Edge then
-    Message.Result := HTBOTTOM
+  begin
+    Message.Result := HTBOTTOM;
+  end
   else if Point_.X < Edge then
-    Message.Result := HTLEFT
+  begin
+    Message.Result := HTLEFT;
+  end
   else if Point_.X >= ClientWidth - Edge then
-    Message.Result := HTRIGHT
+  begin
+    Message.Result := HTRIGHT;
+  end
   // Freie Stellen im Kopf verschieben das Fenster.
   else if (Point_.Y < HeaderHeight) and not HitAt(Point_.X, Point_.Y, Area) and
     ((Point_.Y < S(7)) or (Point_.Y > HeaderHeight - S(7))) then
-    Message.Result := HTCAPTION
+  begin
+    Message.Result := HTCAPTION;
+  end
   else
+  begin
     Message.Result := HTCLIENT;
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.WMGetDlgCode(var Message: TWMGetDlgCode);
@@ -2066,11 +2378,17 @@ begin
       Close;
     VK_RETURN:
       if (FSelected >= 0) and (FSelected <= High(FRows)) and FRows[FSelected].IsGroup and (FMarked.Count = 0) then
-        ToggleGroup(FSelected, not FRows[FSelected].Collapsed)
+      begin
+        ToggleGroup(FSelected, not FRows[FSelected].Collapsed);
+      end
       else if (ssAlt in Shift) and (FOptions.Mode <> TAtlasUnitSearchMode.UseUnit) then
-        Run(TAtlasUnitSearchAction.AddUses)
+      begin
+        Run(TAtlasUnitSearchAction.AddUses);
+      end
       else
+      begin
         Accept(ssShift in Shift);
+      end;
     VK_UP:
       MoveSelection(-1);
     VK_DOWN:
@@ -2081,25 +2399,37 @@ begin
       MoveSelection(Max(1, FListRect.Height div EntryHeight));
     VK_HOME:
       if ssCtrl in Shift then
-        Select(0)
+      begin
+        Select(0);
+      end
       else
+      begin
         Exit;
+      end;
     VK_END:
       if ssCtrl in Shift then
-        Select(High(FRows))
+      begin
+        Select(High(FRows));
+      end
       else
+      begin
         Exit;
+      end;
     VK_LEFT, VK_RIGHT:
       begin
         if not (ssCtrl in Shift) or (FSelected < 0) or (FSelected > High(FRows)) then
+        begin
           Exit;
+        end;
         // Gruppe der markierten Zeile klappen.
         for Index := FSelected downto 0 do
+        begin
           if FRows[Index].IsGroup then
           begin
             ToggleGroup(Index, Key = VK_LEFT);
             Break;
           end;
+        end;
       end;
     VK_F4:
       TogglePreview;
@@ -2109,9 +2439,13 @@ begin
         // ein Leerzeichen für mehrere Suchwörter).
         Words := FPattern.Split([' '], TStringSplitOptions.ExcludeEmpty);
         if Length(Words) > 0 then
-          Last := Words[High(Words)]
+        begin
+          Last := Words[High(Words)];
+        end
         else
+        begin
           Last := '';
+        end;
         if FOptions.FilterSyntax and (Last <> '') and FPattern.EndsWith(Last) and TAtlasUnitQuery.IsFilter(Last) then
         begin
           FTyped := FTyped + [Last];
@@ -2134,14 +2468,22 @@ begin
         if FPattern <> '' then
         begin
           if ssCtrl in Shift then
-            FPattern := ''
+          begin
+            FPattern := '';
+          end
           else
+          begin
             Delete(FPattern, Length(FPattern), 1);
+          end;
         end
         else if Length(FTyped) > 0 then
-          SetLength(FTyped, Length(FTyped) - 1)
+        begin
+          SetLength(FTyped, Length(FTyped) - 1);
+        end
         else
+        begin
           Exit;
+        end;
         Refilter(False);
       end;
   else
@@ -2161,7 +2503,9 @@ begin
         Exit;
       end
     else
+    begin
       Exit;
+    end;
   end;
   Key := 0;
 end;
@@ -2184,7 +2528,9 @@ var
 begin
   inherited;
   if not HitAt(X, Y, Area) then
+  begin
     Exit;
+  end;
   case Area.Kind of
     THit.Splitter:
       if Button = mbLeft then
@@ -2194,13 +2540,19 @@ begin
       end;
     THit.Chip:
       if Button = mbLeft then
+      begin
         ChipClicked(Area.Value);
+      end;
     THit.Grouping:
       if Button = mbLeft then
+      begin
         SetGrouping(TAtlasUnitGrouping(Area.Value));
+      end;
     THit.Action:
       if Button = mbLeft then
+      begin
         Run(TAtlasUnitSearchAction(Area.Value));
+      end;
     THit.Check:
       if Button = mbLeft then
       begin
@@ -2209,10 +2561,14 @@ begin
       end;
     THit.Section:
       if Button = mbLeft then
+      begin
         ToggleSection(TAtlasPreviewSection(Area.Value));
+      end;
     THit.SectionSwitch:
       if (Button = mbLeft) and (TAtlasUseUnitSection(Area.Value) <> FUseSection) then
+      begin
         ToggleUseSection;
+      end;
     THit.Row:
       begin
         Row := Area.Value;
@@ -2220,10 +2576,14 @@ begin
         if FRows[Row].IsGroup then
         begin
           if Button = mbLeft then
+          begin
             ToggleGroup(Row, not FRows[Row].Collapsed);
+          end;
         end
         else if (Button = mbLeft) and (ssCtrl in Shift) then
-          ToggleMark(Row)
+        begin
+          ToggleMark(Row);
+        end
         else if Button = mbRight then
         begin
           Point_ := ClientToScreen(Point(X, Y));
@@ -2250,19 +2610,31 @@ begin
   if HitAt(X, Y, Area) then
   begin
     if Area.Kind = THit.Splitter then
-      Cursor := crHSplit
+    begin
+      Cursor := crHSplit;
+    end
     else if Area.Kind in [THit.Section, THit.SectionSwitch] then
-      Cursor := crHandPoint
+    begin
+      Cursor := crHandPoint;
+    end
     else
+    begin
       Cursor := crDefault;
+    end;
     // Voller Pfad als Tooltip.
     if (Area.Kind = THit.Row) and not FRows[Area.Value].IsGroup then
-      mText := FEntries[FRows[Area.Value].Entry].FileName
+    begin
+      mText := FEntries[FRows[Area.Value].Entry].FileName;
+    end
     else if (Area.Kind = THit.Section) and (TAtlasPreviewSection(Area.Value) = TAtlasPreviewSection.Path) then
+    begin
       mText := FPreview.FileName;
+    end;
   end
   else
+  begin
     Cursor := crDefault;
+  end;
   if mText <> FLastHint then
   begin
     FLastHint := mText;

@@ -124,6 +124,15 @@ begin
   Result := mLow;
 end;
 
+/// <summary>AToken (Index AIndex, Inhalt ABody) setzt den Eintrag fort, der mit Token ALastIndex in Zeile ALastLine
+/// endet: Zeilenkommentar direkt darunter, mit zwei Leerzeichen oder Tabulator eingerückt.</summary>
+function ContinuesEntry(const AToken: TPascalToken; AIndex, ALastIndex, ALastLine: Integer;
+  const ABody: string): Boolean;
+begin
+  Result := IsLineComment(AToken) and (AIndex = ALastIndex + 1) and (AToken.StartPos.Line = ALastLine + 1) and
+    ((Copy(ABody, 1, 2) = '  ') or (Copy(ABody, 1, 1) = #9));
+end;
+
 /// <summary>Einträge aus den Kommentar-Token AIndices (aufsteigend): Kommentare mit Marke beginnen einen
 /// Eintrag, eingerückte Zeilenkommentare direkt darunter setzen ihn fort.</summary>
 function FromComments(const ATokens: TArray<TPascalToken>; const AIndices: TArray<Integer>): TArray<TRationaleEntry>;
@@ -166,8 +175,7 @@ begin
       Continue;
     end;
     mBody := TRationaleScanner.CommentBody(mToken.Text);
-    if mOpen and mContinues and IsLineComment(mToken) and (AIndices[mPosition] = mLastIndex + 1) and
-      (mToken.StartPos.Line = mLastLine + 1) and ((Copy(mBody, 1, 2) = '  ') or (Copy(mBody, 1, 1) = #9)) then
+    if mOpen and mContinues and ContinuesEntry(mToken, AIndices[mPosition], mLastIndex, mLastLine, mBody) then
     begin
       mEntry.Text := mEntry.Text + ' ' + mBody;
       mLastIndex := AIndices[mPosition];
@@ -187,8 +195,45 @@ begin
   Flush;
 end;
 
-{ TRationaleScanner }
+/// <summary>Anfang des Attributs, das mit "]" an AIndex endet: Index des passenden "[", 0 ohne.</summary>
+function AttributeStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AIndex;
+  mDepth := 0;
+  while Result >= 0 do
+  begin
+    if ATokens[Result].IsSymbol(']') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol('[') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth = 0 then
+    begin
+      Exit;
+    end;
+    Dec(Result);
+  end;
+  Result := 0;
+end;
 
+/// <summary>Das Token AIndex ist ein Kommentar über ABoundary: höchstens eine Leerzeile dazwischen und nicht
+/// hinter Code in derselben Zeile (der gehört zum Code).</summary>
+function BelongsAbove(const ATokens: TArray<TPascalToken>; AIndex, ABoundary: Integer): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Comment) and (ABoundary - ATokens[AIndex].EndPos.Line <= 2);
+  if Result and (AIndex > 0) then
+  begin
+    Result := (ATokens[AIndex - 1].Kind = TPascalTokenKind.Comment) or
+      (ATokens[AIndex - 1].EndPos.Line <> ATokens[AIndex].StartPos.Line);
+  end;
+end;
+
+{ TRationaleScanner }
 class function TRationaleScanner.CommentBody(const AComment: string): string;
 var
   mFirst, mLast: Integer;
@@ -284,7 +329,7 @@ end;
 
 class function TRationaleScanner.Above(const ATokens: TArray<TPascalToken>; AOffset: Integer): TArray<TRationaleEntry>;
 var
-  mIndex, mBoundary, mDepth: Integer;
+  mIndex, mBoundary: Integer;
   mIndices: TArray<Integer>;
 begin
   Result := nil;
@@ -298,36 +343,12 @@ begin
   // Attribute zwischen Kommentar und Deklaration überspringen.
   while (mIndex >= 0) and ATokens[mIndex].IsSymbol(']') do
   begin
-    mDepth := 0;
-    repeat
-      if ATokens[mIndex].IsSymbol(']') then
-      begin
-        Inc(mDepth);
-      end
-      else if ATokens[mIndex].IsSymbol('[') then
-      begin
-        Dec(mDepth);
-      end;
-      Dec(mIndex);
-    until (mIndex < 0) or (mDepth = 0);
-    if mIndex >= -1 then
-    begin
-      mBoundary := ATokens[mIndex + 1].StartPos.Line;
-    end;
+    mIndex := AttributeStart(ATokens, mIndex) - 1;
+    mBoundary := ATokens[mIndex + 1].StartPos.Line;
   end;
   mIndices := nil;
-  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Comment) do
+  while (mIndex >= 0) and BelongsAbove(ATokens, mIndex, mBoundary) do
   begin
-    // Höchstens eine Leerzeile; ein Kommentar hinter Code gehört zum Code.
-    if mBoundary - ATokens[mIndex].EndPos.Line > 2 then
-    begin
-      Break;
-    end;
-    if (mIndex > 0) and (ATokens[mIndex - 1].Kind <> TPascalTokenKind.Comment) and
-      (ATokens[mIndex - 1].EndPos.Line = ATokens[mIndex].StartPos.Line) then
-    begin
-      Break;
-    end;
     mIndices := [mIndex] + mIndices;
     mBoundary := ATokens[mIndex].StartPos.Line;
     Dec(mIndex);

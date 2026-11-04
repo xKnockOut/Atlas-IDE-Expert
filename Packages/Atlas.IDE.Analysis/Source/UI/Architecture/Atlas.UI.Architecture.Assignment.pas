@@ -68,14 +68,20 @@ class function TAtlasArchitectureAssignment.Head(const AModel: TAtlasArchitectur
 begin
   Result := '';
   if not Available(AModel, AUnit) then
+  begin
     Exit;
+  end;
   // Hat ein anderes Teilsystem schon gleich viele Kanten, entschied Louvain über das ganze Teilsystem.
   if AModel.Units[AUnit].Close and (AModel.Units[AUnit].Missing = 0) then
+  begin
     Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentHeadTie,
-      [AModel.SubsystemName(AModel.Units[AUnit].Subsystem)])
+      [AModel.SubsystemName(AModel.Units[AUnit].Subsystem)]);
+  end
   else
+  begin
     Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentHead,
       [AModel.SubsystemName(AModel.Units[AUnit].Subsystem)]);
+  end;
 end;
 
 class function TAtlasArchitectureAssignment.Cells(const AModel: TAtlasArchitectureModel;
@@ -86,12 +92,18 @@ var
 begin
   Result := nil;
   if not Available(AModel, AUnit) or (ARow < 0) or (ARow > High(AModel.Units[AUnit].Assignment)) then
+  begin
     Exit;
+  end;
   mRow := AModel.Units[AUnit].Assignment[ARow];
   if mRow.Counts then
-    mLast := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentSum, [mRow.Sum])
+  begin
+    mLast := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentSum, [mRow.Sum]);
+  end
   else
+  begin
     mLast := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureAssignmentNotCounted);
+  end;
   Result := TArray<string>.Create(AModel.SubsystemName(mRow.Subsystem),
     TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentInterface, [mRow.Interfaces]),
     TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureAssignmentImplementation, [mRow.Implementations]),
@@ -106,11 +118,15 @@ var
 begin
   Result := '';
   if not Available(AModel, AUnit) or not AModel.Units[AUnit].Close then
+  begin
     Exit;
+  end;
   mRival := AModel.RivalRow(AUnit);
   mOwn := AModel.OwnRow(AUnit);
   if (mRival < 0) or (mOwn < 0) then
+  begin
     Exit;
+  end;
   mName := AModel.SubsystemName(AModel.Units[AUnit].Assignment[mRival].Subsystem);
   case AModel.Units[AUnit].Missing of
     0:
@@ -132,10 +148,14 @@ var
 begin
   Result := '';
   if not Available(AModel, AUnit) or not AModel.Units[AUnit].Close then
+  begin
     Exit;
+  end;
   mRival := AModel.RivalRow(AUnit);
   if mRival < 0 then
+  begin
     Exit;
+  end;
   mName := AModel.SubsystemName(AModel.Units[AUnit].Assignment[mRival].Subsystem);
   case AModel.Units[AUnit].Missing of
     0:
@@ -153,20 +173,34 @@ var
   mShare, mCohesion, mFoundations: string;
 begin
   if AModel.MaxShare > 0 then
-    mShare := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSplitShare, [Round(AModel.MaxShare * 100)])
+  begin
+    mShare := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSplitShare, [Round(AModel.MaxShare * 100)]);
+  end
   else
+  begin
     mShare := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSettingOff);
+  end;
   if AModel.MinCohesion > 0 then
+  begin
     mCohesion := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureSplitCohesion,
-      [TAtlasArchResolution.Text(AModel.MinCohesion, FormatSettings)])
+      [TAtlasArchResolution.Text(AModel.MinCohesion, FormatSettings)]);
+  end
   else
+  begin
     mCohesion := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureSettingOff);
+  end;
   if AModel.Foundations = 'group' then
-    mFoundations := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationsGroup)
+  begin
+    mFoundations := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationsGroup);
+  end
   else if AModel.Foundations = 'attach' then
-    mFoundations := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationsAttach)
+  begin
+    mFoundations := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationsAttach);
+  end
   else
+  begin
     mFoundations := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFoundationsSeparate);
+  end;
   Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplanation) + sLineBreak +
     TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureExplanationSettings,
       [TAtlasArchResolution.Text(AModel.Resolution,
@@ -186,7 +220,9 @@ begin
   begin
     mCells := TAtlasArchitectureAssignment.Cells(AModel, AUnit, mRow);
     for mCell := 0 to High(mCells) do
+    begin
       AWidths[mCell] := Max(AWidths[mCell], ACanvas.TextWidth(mCells[mCell]));
+    end;
   end;
   Inc(AWidths[0], MulDiv(TAtlasArchitectureAssignment.cDotSize + 6, APpi, 96));
 end;
@@ -200,7 +236,9 @@ var
 begin
   Result := TSize.Create(0, 0);
   if not Available(AModel, AUnit) then
+  begin
     Exit;
+  end;
   Columns(ACanvas, AModel, AUnit, APpi, mWidths, mLine);
   mPadding := MulDiv(cPadding, APpi, 96);
   mGap := MulDiv(cColumnGap, APpi, 96);
@@ -214,7 +252,9 @@ begin
   // Name, Kopf, Zeilen, Knapp-Zeile.
   Result.cy := 2 * mPadding + (2 + Length(AModel.Units[AUnit].Assignment)) * mLine;
   if CloseLine(AModel, AUnit) <> '' then
+  begin
     Inc(Result.cy, mLine);
+  end;
   Result.cx := mWidth + 2 * mPadding;
 end;
 
@@ -228,7 +268,9 @@ var
   mStyle: TFontStyles;
 begin
   if not Available(AModel, AUnit) then
+  begin
     Exit;
+  end;
   Columns(ACanvas, AModel, AUnit, APpi, mWidths, mLine);
   mPadding := MulDiv(cPadding, APpi, 96);
   mGap := MulDiv(cColumnGap, APpi, 96);
@@ -262,9 +304,13 @@ begin
     ACanvas.Ellipse(mX, mY + (mLine - mDot) div 2, mX + mDot, mY + (mLine - mDot) div 2 + mDot);
     ACanvas.Brush.Style := bsClear;
     if AModel.Units[AUnit].Assignment[mRow].Counts then
-      ACanvas.Font.Color := TColor(AColors.Text)
+    begin
+      ACanvas.Font.Color := TColor(AColors.Text);
+    end
     else
+    begin
       ACanvas.Font.Color := TColor(AColors.Muted);
+    end;
     ACanvas.TextOut(mX + mDot + MulDiv(6, APpi, 96), mY, mCells[0]);
     // Zahlen rechtsbündig.
     mLeft := mX + mWidths[0];

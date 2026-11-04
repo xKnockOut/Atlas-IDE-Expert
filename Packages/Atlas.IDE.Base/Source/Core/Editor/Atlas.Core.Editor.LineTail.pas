@@ -41,8 +41,12 @@ var
   Owner: Pointer;
 begin
   for Owner in FOwners do
+  begin
     if Owner = AOwner then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -61,19 +65,29 @@ begin
     FOwners := nil;
   end;
   if FRight > ABase then
-    Result := FRight
+  begin
+    Result := FRight;
+  end
   else
+  begin
     Result := ABase;
+  end;
 end;
 
 class procedure TAtlasLineTail.Finish(AOwner: Pointer; const AKey: string; ARight: Integer);
 begin
   if AKey <> FKey then
+  begin
     Exit;
+  end;
   if ARight + Gap > FRight then
+  begin
     FRight := ARight + Gap;
+  end;
   if not Has(AOwner) then
+  begin
     FOwners := FOwners + [AOwner];
+  end;
 end;
 
 class procedure TAtlasLineTail.Reset;

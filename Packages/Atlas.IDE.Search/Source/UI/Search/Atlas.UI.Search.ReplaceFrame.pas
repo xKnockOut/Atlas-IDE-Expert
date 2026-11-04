@@ -146,7 +146,9 @@ begin
   FModel := AModel;
   FRows := nil;
   if FModel <> nil then
+  begin
     FRows := FModel.Rows;
+  end;
   FList.Items.Count := Length(FRows);
   FList.Invalidate;
   UpdateTitle;
@@ -180,11 +182,15 @@ var
   Check: string;
 begin
   if (Item.Index < 0) or (Item.Index > High(FRows)) then
+  begin
     Exit;
+  end;
   Row := FRows[Item.Index];
   Check := CheckOff;
   if Row.Checked then
+  begin
     Check := CheckOn;
+  end;
   if Row.Kind = TAtlasReplaceRowKind.FileRow then
   begin
     Item.Caption := Check;
@@ -212,12 +218,18 @@ var
   Row: TAtlasReplaceRow;
 begin
   if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) then
+  begin
     Exit;
+  end;
   Row := FRows[AIndex];
   if Row.Kind = TAtlasReplaceRowKind.FileRow then
-    FModel.SetFileChecked(Row.FileIndex, not Row.Checked)
+  begin
+    FModel.SetFileChecked(Row.FileIndex, not Row.Checked);
+  end
   else
+  begin
     FModel.SetHitChecked(Row.FileIndex, Row.HitIndex, not Row.Checked);
+  end;
   // Zeilen neu aus dem Modell: Die Kopfzeile folgt ihren Treffern und umgekehrt.
   FRows := FModel.Rows;
   FList.Invalidate;
@@ -230,13 +242,19 @@ var
   Hit: Integer;
 begin
   if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) or not Assigned(FOnOpen) then
+  begin
     Exit;
+  end;
   Row := FRows[AIndex];
   Hit := Row.HitIndex;
   if Hit < 0 then
+  begin
     Hit := 0;
+  end;
   if (Row.FileIndex > High(FModel.Results)) or (Hit > High(FModel.Results[Row.FileIndex].Hits)) then
+  begin
     Exit;
+  end;
   FOnOpen(Row.FileName, FModel.Results[Row.FileIndex].Hits[Hit].Line,
     FModel.Results[Row.FileIndex].Hits[Hit].Character);
 end;
@@ -247,22 +265,30 @@ var
   Item: TListItem;
 begin
   if (Button <> mbLeft) or (X >= FList.Columns[0].Width) or (ssDouble in Shift) then
+  begin
     Exit;
+  end;
   Item := FList.GetItemAt(X, Y);
   if Item <> nil then
+  begin
     Toggle(Item.Index);
+  end;
 end;
 
 procedure TAtlasSearchReplaceFrame.ListDblClick(Sender: TObject);
 begin
   if FList.Selected <> nil then
+  begin
     Open(FList.Selected.Index);
+  end;
 end;
 
 procedure TAtlasSearchReplaceFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if FList.Selected = nil then
+  begin
     Exit;
+  end;
   case Key of
     VK_SPACE:
       begin
@@ -280,7 +306,9 @@ end;
 procedure TAtlasSearchReplaceFrame.ReplaceClick(Sender: TObject);
 begin
   if Assigned(FOnReplace) then
+  begin
     FOnReplace();
+  end;
 end;
 
 end.

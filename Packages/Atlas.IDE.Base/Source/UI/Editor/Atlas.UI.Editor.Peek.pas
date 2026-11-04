@@ -106,7 +106,9 @@ begin
   UpdatePage;
   Invalidate;
   if FView <> nil then
+  begin
     Announce(FView.Title);
+  end;
 end;
 
 procedure TAtlasPeekWindow.Dismiss;
@@ -139,7 +141,9 @@ function TAtlasPeekWindow.ListWidth: Integer;
 begin
   Result := 0;
   if (FView <> nil) and (FView.Count > 1) then
+  begin
     Result := Min(Scale(ListMax), ClientWidth div 3);
+  end;
 end;
 
 function TAtlasPeekWindow.CodeRect: TRect;
@@ -155,7 +159,9 @@ end;
 procedure TAtlasPeekWindow.UpdatePage;
 begin
   if FView = nil then
+  begin
     Exit;
+  end;
   FView.PageRows := Max(1, CodeRect.Height div Max(1, RowHeight));
 end;
 
@@ -170,7 +176,9 @@ begin
   UpdatePage;
   Invalidate;
   if (FView <> nil) and (FView.Count > 0) then
+  begin
     Announce(ExtractFileName(FView.Current.Target.Place.FileName) + ' ' + FView.Current.Excerpt);
+  end;
 end;
 
 procedure TAtlasPeekWindow.PrepareTokens;
@@ -180,11 +188,15 @@ var
   Index: Integer;
 begin
   if (FView = nil) or (FView.Count = 0) or (FTokensOf = FView.Selected) then
+  begin
     Exit;
+  end;
   Rows := FView.Current.Rows;
   SetLength(Lines, Length(Rows));
   for Index := 0 to High(Rows) do
+  begin
     Lines[Index] := Rows[Index].Text;
+  end;
   FTokens := TAtlasSyntax.LineTokens(Lines);
   FTokensOf := FView.Selected;
 end;
@@ -193,10 +205,14 @@ function TAtlasPeekWindow.EntryAt(const APoint: TPoint): Integer;
 begin
   Result := -1;
   if (FView = nil) or (ListWidth = 0) or (APoint.X >= ListWidth) or (APoint.Y < HeaderHeight) then
+  begin
     Exit;
+  end;
   Result := (APoint.Y - HeaderHeight) div EntryHeight;
   if Result >= FView.Count then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasPeekWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -205,7 +221,9 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Index := EntryAt(Point(X, Y));
   if (Index >= 0) and (Index <> FView.Selected) then
   begin
@@ -218,7 +236,9 @@ procedure TAtlasPeekWindow.DblClick;
 begin
   inherited;
   if Assigned(FOnOpen) and (FView <> nil) and (FView.Count > 0) then
+  begin
     FOnOpen(Self);
+  end;
 end;
 
 procedure TAtlasPeekWindow.PaintHeader;
@@ -249,8 +269,10 @@ begin
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Font.Style := [fsBold];
   if FView <> nil then
+  begin
     DrawText(Canvas.Handle, PChar(FView.Title), Length(FView.Title), Area,
       DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+  end;
   Canvas.Font.Style := [];
 end;
 
@@ -263,7 +285,9 @@ var
 begin
   mWidth := ListWidth;
   if mWidth = 0 then
+  begin
     Exit;
+  end;
   mHeight := EntryHeight;
   Area := Rect(0, HeaderHeight + 1, mWidth, ClientHeight);
   Canvas.Brush.Style := bsSolid;
@@ -277,12 +301,16 @@ begin
   // Die gewählte Zeile bleibt sichtbar: bei langen Listen weiterschieben.
   mTop := 0;
   if (FView.Selected + 1) * mHeight > Area.Height then
+  begin
     mTop := FView.Selected - Area.Height div mHeight + 1;
+  end;
   for Index := mTop to FView.Count - 1 do
   begin
     Line := Rect(0, Area.Top + (Index - mTop) * mHeight, mWidth, Area.Top + (Index - mTop + 1) * mHeight);
     if Line.Top >= ClientHeight then
+    begin
       Break;
+    end;
     Entry := FView.Entry(Index);
     if Index = FView.Selected then
     begin
@@ -320,7 +348,9 @@ begin
   Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(Area);
   if (FView = nil) or (FView.Count = 0) then
+  begin
     Exit;
+  end;
   PrepareTokens;
   Rows := FView.Current.Rows;
   mHeight := RowHeight;
@@ -363,7 +393,9 @@ begin
     DrawText(Canvas.Handle, PChar(Value), Length(Value), Number, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
     Styled := TAtlasStyledText.Create(Rows[Index].Text);
     if Index <= High(FTokens) then
+    begin
       Styled.Tokens := FTokens[Index];
+    end;
     Styled.MutedRanges := nil;
     Styled.ActiveStart := Rows[Index].NameStart;
     Styled.ActiveStop := Rows[Index].NameStop;

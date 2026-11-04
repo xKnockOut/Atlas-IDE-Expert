@@ -102,12 +102,18 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   Found := TList<string>.Create;
   try
     for Name in TDirectory.GetFiles(AFolder, '*' + RequestExtension) do
+    begin
       if Name.EndsWith(RequestExtension, True) and not Name.EndsWith(ResultSuffix, True) then
+      begin
         Found.Add(Name);
+      end;
+    end;
     Found.Sort;
     Result := Found.ToArray;
   finally
@@ -120,13 +126,21 @@ begin
   Result := True;
   AKind := TAtlasCompileKind.Make;
   if (AMode = '') or SameText(AMode, 'make') then
-    AKind := TAtlasCompileKind.Make
+  begin
+    AKind := TAtlasCompileKind.Make;
+  end
   else if SameText(AMode, 'build') then
-    AKind := TAtlasCompileKind.Build
+  begin
+    AKind := TAtlasCompileKind.Build;
+  end
   else if SameText(AMode, 'check') then
-    AKind := TAtlasCompileKind.Check
+  begin
+    AKind := TAtlasCompileKind.Check;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 class function TAtlasBuildInbox.ParseRequest(const AText: string; out ARequest: TAtlasBuildRequest;
@@ -177,7 +191,9 @@ begin
   Taken := ChangeFileExt(AFileName, TakenExtension);
   // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen zurückgezogen, schlägt es fehl.
   if not RenameFile(AFileName, Taken) then
+  begin
     Exit(False);
+  end;
   try
     Text := TFile.ReadAllText(Taken, TEncoding.UTF8);
   except
@@ -187,7 +203,9 @@ begin
   Result := ParseRequest(Text, ARequest, AReason);
   ARequest.Id := Id;
   if not Result then
+  begin
     Answer(ExtractFilePath(AFileName), Id, RefusalText(AReason));
+  end;
 end;
 
 class function TAtlasBuildInbox.BuildJson(const AReport: TAtlasBuildReport): TJSONObject;
@@ -210,7 +228,9 @@ begin
   for Message in AReport.Messages do
   begin
     if Message.Severity = TAtlasCompilerSeverity.Info then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('file', Message.FileName);
     Item.AddPair('line', TJSONNumber.Create(Message.Line));
@@ -258,10 +278,14 @@ begin
   Temporary := Target + '.tmp';
   TFile.WriteAllText(Temporary, AText, TEncoding.UTF8);
   if FileExists(Target) then
+  begin
     TFile.Delete(Target);
+  end;
   TFile.Move(Temporary, Target);
   if FileExists(TPath.Combine(AFolder, AId + TakenExtension)) then
+  begin
     TFile.Delete(TPath.Combine(AFolder, AId + TakenExtension));
+  end;
 end;
 
 end.

@@ -46,18 +46,20 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Report;
 
-function Routine(const AName: string; ALine, ALength, ADepth, ACyclomatic, ACognitive,
-  AParameters: Integer): TRoutineMetrics;
+/// <summary>Routine AName ab ALine; AValues sind Länge, Verschachtelung, zyklomatische und kognitive
+/// Komplexität und Parameterzahl.</summary>
+function Routine(const AName: string; ALine: Integer; const AValues: array of Integer): TRoutineMetrics;
 begin
+  Assert.AreEqual(5, Integer(Length(AValues)), 'Länge, Tiefe, zyklomatisch, kognitiv, Parameter');
   Result := Default(TRoutineMetrics);
   Result.Name := AName;
   Result.NameRange := TTextRange.Create(ALine, 10, ALine, 10 + Length(AName));
-  Result.Range := TTextRange.Create(ALine, 0, ALine + ALength + 1, 4);
-  Result.Values[TMetricKind.MethodLength] := ALength;
-  Result.Values[TMetricKind.NestingDepth] := ADepth;
-  Result.Values[TMetricKind.Cyclomatic] := ACyclomatic;
-  Result.Values[TMetricKind.Cognitive] := ACognitive;
-  Result.Values[TMetricKind.ParameterCount] := AParameters;
+  Result.Range := TTextRange.Create(ALine, 0, ALine + AValues[0] + 1, 4);
+  Result.Values[TMetricKind.MethodLength] := AValues[0];
+  Result.Values[TMetricKind.NestingDepth] := AValues[1];
+  Result.Values[TMetricKind.Cyclomatic] := AValues[2];
+  Result.Values[TMetricKind.Cognitive] := AValues[3];
+  Result.Values[TMetricKind.ParameterCount] := AValues[4];
 end;
 
 function SampleFiles: TArray<TFileMetrics>;
@@ -65,10 +67,10 @@ var
   First, Second: TArray<TRoutineMetrics>;
 begin
   SetLength(First, 2);
-  First[0] := Routine('TFoo.Small', 4, 10, 1, 2, 1, 0);
-  First[1] := Routine('TFoo.Big', 20, 75, 5, 17, 20, 2);
+  First[0] := Routine('TFoo.Small', 4, [10, 1, 2, 1, 0]);
+  First[1] := Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]);
   SetLength(Second, 1);
-  Second[0] := Routine('Helper', 7, 6, 0, 1, 0, 7);
+  Second[0] := Routine('Helper', 7, [6, 0, 1, 0, 7]);
   SetLength(Result, 2);
   Result[0] := TFileMetrics.Create('Source/Foo.pas', First);
   Result[1] := TFileMetrics.Create('Source/Helper.pas', Second);
@@ -120,7 +122,7 @@ procedure TMetricsReportTests.RoutineJsonListsExceeded;
 var
   Json: string;
 begin
-  Json := TMetricsReport.RoutineJson(Routine('TFoo.Big', 20, 75, 5, 17, 20, 2), TMetricLimits.Default);
+  Json := TMetricsReport.RoutineJson(Routine('TFoo.Big', 20, [75, 5, 17, 20, 2]), TMetricLimits.Default);
   Assert.Contains(Json, '"name": "TFoo.Big"');
   Assert.Contains(Json, '"line": 21');
   Assert.Contains(Json, '"character": 11');
@@ -166,7 +168,7 @@ var
   Text: string;
 begin
   SetLength(Routines, 1);
-  Routines[0] := Routine('Run', 1, 3, 0, 1, 0, 0);
+  Routines[0] := Routine('Run', 1, [3, 0, 1, 0, 0]);
   SetLength(Files, 1);
   Files[0] := TFileMetrics.Create('Run.pas', Routines);
   Text := TMetricsReport.Markdown(Files, TMetricLimits.Default, '');
@@ -178,7 +180,7 @@ procedure TMetricsReportTests.LensTitleShowsLimitWhenExceeded;
 var
   Values: TMetricValues;
 begin
-  Values := Routine('A', 0, 12, 2, 4, 3, 2).Values;
+  Values := Routine('A', 0, [12, 2, 4, 3, 2]).Values;
   Assert.AreEqual('12 Zeilen · Tiefe 2 · zyklomatisch 4 · kognitiv 3 · 2 Parameter · Operanden 0 · 0 lokale · ' +
     '0 Ausstiege', TMetricsReport.LensTitle(Values, TMetricLimits.Default));
   Values[TMetricKind.Cyclomatic] := 17;
@@ -206,7 +208,7 @@ begin
   Assert.AreEqual(5, Limits.Structure[TStructureKind.InheritanceDepth]);
   Assert.IsFalse(Limits.Exceeds(TMetricKind.Cyclomatic, 15), 'der Grenzwert selbst ist erlaubt');
   Assert.IsTrue(Limits.Exceeds(TMetricKind.Cyclomatic, 16));
-  Values := Routine('A', 0, 61, 0, 1, 0, 0).Values;
+  Values := Routine('A', 0, [61, 0, 1, 0, 0]).Values;
   Assert.AreEqual(1, Integer(Length(Limits.Exceeded(Values))));
 end;
 

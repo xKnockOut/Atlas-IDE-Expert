@@ -79,7 +79,9 @@ function NumberOf(AReply: TJSONObject; const AName: string): Integer;
 begin
   Result := 0;
   if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
+  begin
     Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
+  end;
 end;
 
 class procedure TAtlasIdeNamedRefactoring.Execute(ASession: TLspSession; const AArgumentsJson, AApplyCommand: string;
@@ -99,21 +101,29 @@ begin
   Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
   try
     if not (Arguments is TJSONArray) or (TJSONArray(Arguments).Count < 3) then
+    begin
       Exit;
+    end;
     Values := TJSONArray(Arguments);
     Name := Values.Items[2].Value;
     if not InputQuery(TAtlasStrings.Text(ATexts.Title), TAtlasStrings.Text(ATexts.Prompt), Name) then
+    begin
       Exit;
+    end;
     Name := Trim(Name);
     if Name = '' then
+    begin
       Exit;
+    end;
     List := TJSONArray.Create;
     try
       List.AddElement(Values.Items[0].Clone as TJSONValue);
       List.AddElement(Values.Items[1].Clone as TJSONValue);
       List.Add(Name);
       for Index := 3 to Values.Count - 1 do
+      begin
         List.AddElement(Values.Items[Index].Clone as TJSONValue);
+      end;
       ApplyArguments := List.ToJSON;
     finally
       List.Free;
@@ -159,7 +169,9 @@ begin
     try
       Reply := nil;
       if Answer is TJSONObject then
+      begin
         Reply := TJSONObject(Answer);
+      end;
       Edit := TLspWorkspaceEdit.FromJson(nil);
       if Reply <> nil then
       begin
@@ -168,10 +180,16 @@ begin
         Files := NumberOf(Reply, 'files');
         // Erklärung des Servers, z. B. die Form der Umwandlung (#680).
         if Reply.GetValue('preview') is TJSONString then
+        begin
           Explanation := Reply.GetValue('preview').Value;
+        end;
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           for Item in TJSONArray(Reply.GetValue('warnings')) do
+          begin
             Warnings := Warnings + [Item.Value];
+          end;
+        end;
       end;
     finally
       Answer.Free;
@@ -190,9 +208,13 @@ begin
   end;
   Hint := TAtlasStrings.Fmt(ATexts.PreviewHint, [Places, Files]);
   if Explanation <> '' then
+  begin
     Hint := Hint + sLineBreak + Explanation;
+  end;
   for Warning in Warnings do
+  begin
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(ATexts.Warning, [Warning]);
+  end;
   Preview := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin
@@ -205,7 +227,9 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(ATexts.Title), Hint, TAtlasStrings.Text(ATexts.Apply),
     TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(ATexts.Title));
   if Outcome.Error <> '' then
   begin
@@ -214,9 +238,13 @@ begin
   end;
   AMessage(TAtlasStrings.Fmt(ATexts.Done, [Outcome.Edits, Outcome.Files]));
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(ATexts.Warning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.
