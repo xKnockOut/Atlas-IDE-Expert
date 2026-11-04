@@ -278,8 +278,10 @@ begin
   mText := Trim(AText);
   Result := (Length(mText) = 7) and (mText[1] = '#') and TryStrToInt('$' + Copy(mText, 2, 6), mValue);
   if Result then
+  begin
     // #rrggbb → TColor $bbggrr.
     AColor := TColor(((mValue and $FF) shl 16) or (mValue and $FF00) or ((mValue shr 16) and $FF));
+  end;
 end;
 
 { TAtlasBoardMetrics }
@@ -298,7 +300,9 @@ function TAtlasBoardMetrics.Scaled(AMultiplier, ADivider: Integer): TAtlasBoardM
 begin
   Result := Self;
   if (ADivider <= 0) or (AMultiplier = ADivider) then
+  begin
     Exit;
+  end;
   Result.ColumnWidth := MulDiv(ColumnWidth, AMultiplier, ADivider);
   Result.Gap := MulDiv(Gap, AMultiplier, ADivider);
   Result.NarrowWidth := MulDiv(NarrowWidth, AMultiplier, ADivider);
@@ -312,8 +316,12 @@ var
 begin
   Result := False;
   for mItem in AItems do
+  begin
     if mItem = AValue then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasBoardLayout.Build(const ASnapshot: TAtlasBoardSnapshot; const AVisible: TArray<Integer>;
@@ -326,20 +334,30 @@ var
 begin
   Result := Default(TAtlasBoardLayout);
   for mIndex := 0 to High(ASnapshot.Columns) do
+  begin
     Result.Columns := Result.Columns + [mIndex];
+  end;
   if Length(TAtlasTrackerBoard.ColumnCards(ASnapshot, AVisible, -1)) > 0 then
+  begin
     Result.Columns := Result.Columns + [-1];
+  end;
   mCount := Length(Result.Columns);
   SetLength(Result.Headers, mCount);
   SetLength(Result.Areas, mCount);
   SetLength(Result.Counts, mCount);
   Result.Narrow := AWidth < AMetrics.NarrowWidth;
   if mCount = 0 then
+  begin
     Exit;
+  end;
   if Result.Narrow then
-    mColumnWidth := Max(AWidth - 2 * AMetrics.Gap, 1)
+  begin
+    mColumnWidth := Max(AWidth - 2 * AMetrics.Gap, 1);
+  end
   else
+  begin
     mColumnWidth := Max(AMetrics.ColumnWidth, (AWidth - (mCount + 1) * AMetrics.Gap) div mCount);
+  end;
   mLeft := AMetrics.Gap;
   mTop := AMetrics.Gap;
   for mIndex := 0 to mCount - 1 do
@@ -347,10 +365,13 @@ begin
     mCards := TAtlasTrackerBoard.ColumnCards(ASnapshot, AVisible, Result.Columns[mIndex]);
     Result.Counts[mIndex] := Length(mCards);
     if not Result.Narrow then
+    begin
       mTop := AMetrics.Gap;
+    end;
     Result.Headers[mIndex] := Rect(mLeft, mTop, mLeft + mColumnWidth, mTop + AMetrics.Header);
     mBottom := mTop + AMetrics.Header;
     if not (Result.Narrow and Contains(ACollapsed, Result.Columns[mIndex])) then
+    begin
       for mCard in mCards do
       begin
         mPlace.Card := mCard;
@@ -360,19 +381,28 @@ begin
         Result.Places := Result.Places + [mPlace];
         mBottom := mPlace.Bounds.Bottom;
       end;
+    end;
     // Leere Spalte: Platz zum Ablegen.
     mBottom := Max(mBottom + AMetrics.Gap div 2, mTop + AMetrics.Header + AMetrics.CardHeight div 2);
     Result.Areas[mIndex] := Rect(mLeft, mTop, mLeft + mColumnWidth, mBottom);
     Result.Height := Max(Result.Height, mBottom + AMetrics.Gap);
     if Result.Narrow then
-      mTop := mBottom + AMetrics.Gap
+    begin
+      mTop := mBottom + AMetrics.Gap;
+    end
     else
+    begin
       mLeft := mLeft + mColumnWidth + AMetrics.Gap;
+    end;
   end;
   if Result.Narrow then
-    Result.Width := AWidth
+  begin
+    Result.Width := AWidth;
+  end
   else
+  begin
     Result.Width := Max(AWidth, mLeft);
+  end;
 end;
 
 function TAtlasBoardLayout.CardAt(const APoint: TPoint): Integer;
@@ -380,8 +410,12 @@ var
   mPlace: TAtlasBoardPlace;
 begin
   for mPlace in Places do
+  begin
     if mPlace.Bounds.Contains(APoint) then
+    begin
       Exit(mPlace.Card);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -390,8 +424,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Areas) do
+  begin
     if Areas[mIndex].Contains(APoint) then
+    begin
       Exit(Columns[mIndex]);
+    end;
+  end;
   Result := -2;
 end;
 
@@ -400,8 +438,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Headers) do
+  begin
     if Headers[mIndex].Contains(APoint) then
+    begin
       Exit(Columns[mIndex]);
+    end;
+  end;
   Result := -2;
 end;
 
@@ -410,11 +452,13 @@ var
   mPlace: TAtlasBoardPlace;
 begin
   for mPlace in Places do
+  begin
     if mPlace.Card = ACard then
     begin
       APlace := mPlace;
       Exit(True);
     end;
+  end;
   APlace := Default(TAtlasBoardPlace);
   Result := False;
 end;
@@ -443,7 +487,9 @@ begin
     mLine := Canvas.TextHeight('Ag');
   end
   else if mLine < 8 then
+  begin
     mLine := 15;
+  end;
   // Zeilenhöhe ist schon in Bildschirmpixeln; Breiten und Abstände skalieren mit der Schrift.
   Result := TAtlasBoardMetrics.Create(mLine).Scaled(CurrentPPI, 96);
 end;
@@ -472,18 +518,22 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(FCollapsed) do
+  begin
     if FCollapsed[mIndex] = AColumn then
     begin
       Delete(FCollapsed, mIndex, 1);
       Exit;
     end;
+  end;
   FCollapsed := FCollapsed + [AColumn];
 end;
 
 function TAtlasBoardView.PriorityColor(const ACard: TAtlasBoardCard): TColor;
 begin
   if TryWebColor(ACard.PriorityColor, Result) then
+  begin
     Exit;
+  end;
   case TAtlasTrackerBoard.PriorityLevel(ACard.Priority) of
     4:
       Result := ToColor(FColors.Error);
@@ -521,9 +571,13 @@ begin
     Canvas.Pen.Width := 1;
   end;
   if AGhost then
-    Canvas.Pen.Style := psDot
+  begin
+    Canvas.Pen.Style := psDot;
+  end
   else
+  begin
     Canvas.Pen.Style := psSolid;
+  end;
   Canvas.Rectangle(mRect);
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Width := 1;
@@ -555,7 +609,9 @@ begin
     mMark := mCard.Checklist.Text;
     mText := Rect(mRight - Canvas.TextWidth(mMark), mRect.Top + 4, mRight, mRect.Top + 4 + mLine);
     if mCard.Checklist.Done = mCard.Checklist.Total then
+    begin
       Canvas.Font.Color := ToColor(FColors.Add);
+    end;
     DrawText(Canvas.Handle, PChar(mMark), Length(mMark), mText, DT_RIGHT or DT_SINGLELINE);
     Canvas.Font.Color := ToColor(FColors.Muted);
     mRight := mText.Left - 6;
@@ -595,21 +651,31 @@ begin
     mColumn := FLayout.Columns[mIndex];
     // Fläche der Spalte; Ziel beim Ziehen hervorgehoben.
     if FDragging and (mColumn = FDropColumn) and TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, mColumn) then
-      Canvas.Brush.Color := ToColor(FColors.Selection)
+    begin
+      Canvas.Brush.Color := ToColor(FColors.Selection);
+    end
     else
+    begin
       Canvas.Brush.Color := ToColor(FColors.Gutter);
+    end;
     Canvas.FillRect(FLayout.Areas[mIndex]);
     mName := '';
     if Assigned(FColumnName) then
+    begin
       mName := FColumnName(mColumn);
+    end;
     mText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardColumnCount,
       [AnsiUpperCase(mName), FLayout.Counts[mIndex]]);
     if FLayout.Narrow then
     begin
       if Collapsed(mColumn) then
-        mText := '▸ ' + mText
+      begin
+        mText := '▸ ' + mText;
+      end
       else
+      begin
         mText := '▾ ' + mText;
+      end;
     end;
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Style := [fsBold];
@@ -622,7 +688,9 @@ begin
     Canvas.Brush.Style := bsSolid;
   end;
   for mPlace in FLayout.Places do
+  begin
     PaintCard(mPlace, mPlace.Bounds, FDragging and (mPlace.Card = FPressCard));
+  end;
   // Gezogene Karte unter der Maus.
   if FDragging and FLayout.PlaceOf(FPressCard, mPlace) then
   begin
@@ -638,16 +706,22 @@ var
 begin
   inherited;
   if CanFocus then
+  begin
     SetFocus;
+  end;
   mCard := FLayout.CardAt(Point(X, Y));
   if Button = mbRight then
   begin
     if (mCard >= 0) and Assigned(FOnContext) then
+    begin
       FOnContext(mCard, ClientToScreen(Point(X, Y)));
+    end;
     Exit;
   end;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   FPressCard := mCard;
   FPressPoint := Point(X, Y);
   FDragging := False;
@@ -665,7 +739,9 @@ var
 begin
   inherited;
   if (FPressCard < 0) or not (ssLeft in Shift) then
+  begin
     Exit;
+  end;
   mDistance := MulDiv(DragDistance, CurrentPPI, 96);
   if not FDragging and FCanDrag and ((Abs(X - FPressPoint.X) > mDistance) or (Abs(Y - FPressPoint.Y) > mDistance))
   then
@@ -678,9 +754,13 @@ begin
     FDragPoint := Point(X, Y);
     FDropColumn := FLayout.ColumnAt(FDragPoint);
     if TAtlasTrackerBoard.CanMove(FSnapshot, FPressCard, FDropColumn) then
-      Cursor := crDrag
+    begin
+      Cursor := crDrag;
+    end
     else
+    begin
       Cursor := crNoDrop;
+    end;
     Invalidate;
   end;
 end;
@@ -692,20 +772,28 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   mCard := FPressCard;
   mDragging := FDragging;
   mColumn := FLayout.ColumnAt(Point(X, Y));
   CancelDrag;
   if mCard < 0 then
+  begin
     Exit;
+  end;
   if mDragging then
   begin
     if TAtlasTrackerBoard.CanMove(FSnapshot, mCard, mColumn) and Assigned(FOnMove) then
+    begin
       FOnMove(mCard, mColumn);
+    end;
   end
   else if (FLayout.CardAt(Point(X, Y)) = mCard) and Assigned(FOnOpen) then
+  begin
     FOnOpen(mCard);
+  end;
 end;
 
 procedure TAtlasBoardView.DblClick;
@@ -715,7 +803,9 @@ begin
   inherited;
   mCard := FLayout.CardAt(ScreenToClient(Mouse.CursorPos));
   if (mCard >= 0) and Assigned(FOnStart) then
+  begin
     FOnStart(mCard);
+  end;
 end;
 
 procedure TAtlasBoardView.KeyDown(var Key: Word; Shift: TShiftState);
@@ -732,19 +822,27 @@ function TAtlasBoardView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; M
 begin
   Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
   if Result or not (Parent is TScrollBox) then
+  begin
     Exit;
+  end;
   // Das Rad blättert die umgebende Fläche, mit Umschalt waagerecht.
   if ssShift in Shift then
-    TScrollBox(Parent).HorzScrollBar.Position := TScrollBox(Parent).HorzScrollBar.Position - WheelDelta div 2
+  begin
+    TScrollBox(Parent).HorzScrollBar.Position := TScrollBox(Parent).HorzScrollBar.Position - WheelDelta div 2;
+  end
   else
+  begin
     TScrollBox(Parent).VertScrollBar.Position := TScrollBox(Parent).VertScrollBar.Position - WheelDelta div 2;
+  end;
   Result := True;
 end;
 
 procedure TAtlasBoardView.CancelDrag;
 begin
   if FDragging then
+  begin
     MouseCapture := False;
+  end;
   FDragging := False;
   FPressCard := -1;
   FDropColumn := -2;
@@ -756,7 +854,9 @@ procedure TAtlasBoardView.CMMouseLeave(var AMessage: TMessage);
 begin
   inherited;
   if not FDragging then
+  begin
     FPressCard := -1;
+  end;
 end;
 
 { TAtlasBoardFrame }
@@ -846,19 +946,25 @@ begin
     procedure(ACard: Integer)
     begin
       if Assigned(FOnOpen) then
+      begin
         FOnOpen(ACard);
+      end;
     end;
   FView.OnStart :=
     procedure(ACard: Integer)
     begin
       if Assigned(FOnStart) then
+      begin
         FOnStart(ACard);
+      end;
     end;
   FView.OnMove :=
     procedure(ACard, AColumn: Integer)
     begin
       if Assigned(FOnMove) then
+      begin
         FOnMove(ACard, AColumn);
+      end;
     end;
   FView.OnContext :=
     procedure(ACard: Integer; APoint: TPoint)
@@ -884,7 +990,9 @@ end;
 destructor TAtlasBoardFrame.Destroy;
 begin
   if Assigned(FOnHidden) then
+  begin
     FOnHidden();
+  end;
   FOnHidden := nil;
   inherited;
 end;
@@ -902,7 +1010,9 @@ begin
   inherited;
   // Das X versteckt die Form samt Frame: wie Schließen.
   if not Showing and Assigned(FOnHidden) then
+  begin
     FOnHidden();
+  end;
 end;
 
 procedure TAtlasBoardFrame.ApplyColors(const AColors: TAtlasColors);
@@ -919,14 +1029,22 @@ end;
 function TAtlasBoardFrame.ColumnCaption(AColumn: Integer): string;
 begin
   if (AColumn < 0) or (AColumn > High(FSnapshot.Columns)) then
+  begin
     Exit(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardNoColumn));
+  end;
   Result := FSnapshot.Columns[AColumn].Name;
   // GitHub ohne Projekt: Zustände des Issues in der Sprache der Oberfläche.
   if FSnapshot.Kind = TAtlasBoardKind.Repository then
+  begin
     if FSnapshot.Columns[AColumn].Resolved then
-      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnClosed)
+    begin
+      Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnClosed);
+    end
     else
+    begin
       Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardColumnOpen);
+    end;
+  end;
 end;
 
 function TAtlasBoardFrame.VisibleCards: TArray<Integer>;
@@ -938,15 +1056,21 @@ function TAtlasBoardFrame.Card(AIndex: Integer): TAtlasBoardCard;
 begin
   Result := Default(TAtlasBoardCard);
   if (AIndex >= 0) and (AIndex <= High(FSnapshot.Cards)) then
+  begin
     Result := FSnapshot.Cards[AIndex];
+  end;
 end;
 
 function TAtlasBoardFrame.ScrollWidth: Integer;
 begin
   if FScroll.HandleAllocated then
-    Result := FScroll.ClientWidth
+  begin
+    Result := FScroll.ClientWidth;
+  end
   else
+  begin
     Result := FScroll.Width;
+  end;
 end;
 
 procedure TAtlasBoardFrame.UpdateView;
@@ -960,14 +1084,20 @@ begin
   if FHasSnapshot and (Length(mVisible) = 0) then
   begin
     if FOnlyMine and (Length(FSnapshot.Cards) > 0) then
-      FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmptyMine)
+    begin
+      FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmptyMine);
+    end
     else
+    begin
       FEmpty.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardEmpty);
+    end;
     FEmpty.Visible := True;
     FEmpty.Top := FView.Height + ScaleValue(8);
   end
   else if FHasSnapshot then
+  begin
     FEmpty.Visible := False;
+  end;
   FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
 end;
 
@@ -978,7 +1108,9 @@ var
 begin
   // Klapplisten brauchen ein Fenster; ohne Form bleibt die Auswahl leer (Tests).
   if GetParentForm(Self) = nil then
+  begin
     Exit;
+  end;
   FFilling := True;
   try
     FBoards.Items.BeginUpdate;
@@ -990,7 +1122,9 @@ begin
         FBoards.Items.Add(FSnapshot.Boards[mIndex].Name);
         FBoardIds := FBoardIds + [FSnapshot.Boards[mIndex].Id];
         if SameText(FSnapshot.Boards[mIndex].Id, FSnapshot.Board.Id) then
+        begin
           FBoards.ItemIndex := mIndex;
+        end;
       end;
     finally
       FBoards.Items.EndUpdate;
@@ -1007,7 +1141,9 @@ begin
         FSprints.Items.Add(mText);
         FSprintIds := FSprintIds + [FSnapshot.Sprints[mIndex].Id];
         if SameText(FSnapshot.Sprints[mIndex].Id, FSnapshot.Sprint.Id) then
+        begin
           FSprints.ItemIndex := mIndex;
+        end;
       end;
       if (FSprints.ItemIndex < 0) and (FSnapshot.Sprint.Name <> '') then
       begin
@@ -1056,24 +1192,32 @@ function TAtlasBoardFrame.StatusText: string;
 begin
   Result := '';
   if FStatus.Visible then
+  begin
     Result := FStatus.Caption;
+  end;
 end;
 
 procedure TAtlasBoardFrame.SetLoading(AValue: Boolean);
 begin
   FRefreshButton.Enabled := not AValue;
   if AValue then
+  begin
     SetStatus(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardLoading));
+  end;
 end;
 
 function TAtlasBoardFrame.MoveCard(ACard, AColumn: Integer): string;
 begin
   Result := '';
   if (ACard < 0) or (ACard > High(FSnapshot.Cards)) or (AColumn < 0) or (AColumn > High(FSnapshot.Columns)) then
+  begin
     Exit;
+  end;
   Result := FSnapshot.Cards[ACard].State;
   if Length(FSnapshot.Columns[AColumn].Values) > 0 then
+  begin
     FSnapshot.Cards[ACard].State := FSnapshot.Columns[AColumn].Values[0];
+  end;
   UpdateView;
 end;
 
@@ -1083,7 +1227,9 @@ var
 begin
   mCard := FSnapshot.CardIndex(AKey);
   if mCard < 0 then
+  begin
     Exit;
+  end;
   FSnapshot.Cards[mCard].State := AState;
   UpdateView;
 end;
@@ -1105,81 +1251,111 @@ begin
   FMine.Down := AValue;
   FAll.Down := not AValue;
   if FHasSnapshot then
+  begin
     UpdateView;
+  end;
 end;
 
 procedure TAtlasBoardFrame.BoardChange(Sender: TObject);
 begin
   if FFilling or (FBoards.ItemIndex < 0) or (FBoards.ItemIndex > High(FBoardIds)) then
+  begin
     Exit;
+  end;
   if Assigned(FOnBoard) then
+  begin
     FOnBoard(FBoardIds[FBoards.ItemIndex]);
+  end;
 end;
 
 procedure TAtlasBoardFrame.SprintChange(Sender: TObject);
 begin
   if FFilling or (FSprints.ItemIndex < 0) or (FSprints.ItemIndex > High(FSprintIds)) then
+  begin
     Exit;
+  end;
   if Assigned(FOnSprint) then
+  begin
     FOnSprint(FSprintIds[FSprints.ItemIndex]);
+  end;
 end;
 
 procedure TAtlasBoardFrame.MineClick(Sender: TObject);
 begin
   if FMine.Down = FOnlyMine then
+  begin
     Exit;
+  end;
   SetOnlyMine(FMine.Down);
   if Assigned(FOnOnlyMine) then
+  begin
     FOnOnlyMine(FOnlyMine);
+  end;
 end;
 
 procedure TAtlasBoardFrame.SearchChange(Sender: TObject);
 begin
   if FHasSnapshot then
+  begin
     UpdateView;
+  end;
 end;
 
 procedure TAtlasBoardFrame.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
+  begin
     FOnRefresh();
+  end;
 end;
 
 procedure TAtlasBoardFrame.ScrollResize(Sender: TObject);
 begin
   if FHasSnapshot then
+  begin
     FView.Relayout(ScrollWidth);
+  end;
   FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
 end;
 
 procedure TAtlasBoardFrame.MenuStart(Sender: TObject);
 begin
   if Assigned(FOnStart) then
+  begin
     FOnStart(FMenuCard);
+  end;
 end;
 
 procedure TAtlasBoardFrame.MenuPreview(Sender: TObject);
 begin
   if Assigned(FOnOpen) then
+  begin
     FOnOpen(FMenuCard);
+  end;
 end;
 
 procedure TAtlasBoardFrame.MenuBrowse(Sender: TObject);
 begin
   if Assigned(FOnBrowse) then
+  begin
     FOnBrowse(FMenuCard);
+  end;
 end;
 
 procedure TAtlasBoardFrame.MenuCopy(Sender: TObject);
 begin
   if (FMenuCard >= 0) and (FMenuCard <= High(FSnapshot.Cards)) then
+  begin
     Clipboard.AsText := FSnapshot.Cards[FMenuCard].Key;
+  end;
 end;
 
 procedure TAtlasBoardFrame.MenuAssign(Sender: TObject);
 begin
   if Assigned(FOnAssign) then
+  begin
     FOnAssign(FMenuCard);
+  end;
 end;
 
 end.

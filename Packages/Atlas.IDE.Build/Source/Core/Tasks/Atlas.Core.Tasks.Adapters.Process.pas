@@ -93,7 +93,9 @@ begin
   Result := nil;
   Block := GetEnvironmentStringsW;
   if Block = nil then
+  begin
     Exit;
+  end;
   try
     Cursor := Block;
     while Cursor^ <> #0 do
@@ -146,11 +148,17 @@ var
     while PeekNamedPipe(OutRead, nil, 0, nil, @Available, nil) and (Available > 0) do
     begin
       if Available > DWORD(Length(Chunk)) then
+      begin
         Available := Length(Chunk);
+      end;
       if not ReadFile(OutRead, Chunk[0], Available, BytesRead, nil) or (BytesRead = 0) then
+      begin
         Exit;
+      end;
       for Text in Lines.Feed(Chunk, Integer(BytesRead)) do
+      begin
         AOnLine(Text);
+      end;
     end;
   end;
 
@@ -182,14 +190,18 @@ begin
   begin
     ComSpec := GetEnvironmentVariable('ComSpec');
     if ComSpec = '' then
+    begin
       ComSpec := 'cmd.exe';
+    end;
     ProgramPath := ComSpec;
   end;
   UniqueString(CommandLine);
   Environment := string.Join(#0, TAtlasTaskCommands.MergeEnvironment(CurrentEnvironment, ATask.EnvNames,
     ATask.EnvValues)) + #0#0;
   if ACodePage = 0 then
+  begin
     ACodePage := Integer(GetOEMCP);
+  end;
 
   Security.nLength := SizeOf(Security);
   Security.lpSecurityDescriptor := nil;
@@ -221,13 +233,19 @@ begin
     Startup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
     Startup.wShowWindow := SW_HIDE;
     if NullInput <> INVALID_HANDLE_VALUE then
+    begin
       Startup.hStdInput := NullInput;
+    end;
     Startup.hStdOutput := OutWrite;
     Startup.hStdError := OutWrite;
     if ATask.Cwd <> '' then
-      WorkingDir := PChar(ATask.Cwd)
+    begin
+      WorkingDir := PChar(ATask.Cwd);
+    end
     else
+    begin
       WorkingDir := nil;
+    end;
     // Angehalten starten, damit der Prozess im Job ist, bevor er Kinder startet.
     if not CreateProcess(PChar(ProgramPath), PChar(CommandLine), nil, nil, True,
       CREATE_NO_WINDOW or CREATE_SUSPENDED or CreateUnicodeEnvironment, PChar(Environment), WorkingDir, Startup,
@@ -237,7 +255,9 @@ begin
       Exit;
     end;
     if Job <> 0 then
+    begin
       AssignToJob(Job, Process.hProcess);
+    end;
     ResumeThread(Process.hThread);
     CloseHandle(OutWrite);
     OutWrite := 0;
@@ -245,18 +265,28 @@ begin
     SetLength(Chunk, 16384);
     Result.Outcome := TAtlasTaskOutcome.Finished;
     if ATask.TimeoutSec > 0 then
-      Deadline := TThread.GetTickCount64 + UInt64(ATask.TimeoutSec) * 1000
+    begin
+      Deadline := TThread.GetTickCount64 + UInt64(ATask.TimeoutSec) * 1000;
+    end
     else
+    begin
       Deadline := High(UInt64);
+    end;
     while True do
     begin
       Drain;
       if WaitForSingleObject(Process.hProcess, TAtlasTaskProcess.SliceMs) = WAIT_OBJECT_0 then
+      begin
         Break;
+      end;
       if Cancelled then
-        Result.Outcome := TAtlasTaskOutcome.Cancelled
+      begin
+        Result.Outcome := TAtlasTaskOutcome.Cancelled;
+      end
       else if TThread.GetTickCount64 >= Deadline then
+      begin
         Result.Outcome := TAtlasTaskOutcome.TimedOut;
+      end;
       if Result.Outcome <> TAtlasTaskOutcome.Finished then
       begin
         // Job schließen beendet den ganzen Baum; ohne Job wenigstens den Prozess.
@@ -266,32 +296,50 @@ begin
           Job := 0;
         end
         else
+        begin
           TerminateProcess(Process.hProcess, 1);
+        end;
         WaitForSingleObject(Process.hProcess, 1000);
         Break;
       end;
     end;
     Drain;
     for Line in Lines.Flush do
+    begin
       AOnLine(Line);
+    end;
     if not GetExitCodeProcess(Process.hProcess, ExitCode) then
+    begin
       ExitCode := $FFFFFFFF;
+    end;
     Result.ExitCode := Integer(ExitCode);
   finally
     Lines.Free;
     if Process.hThread <> 0 then
+    begin
       CloseHandle(Process.hThread);
+    end;
     if Process.hProcess <> 0 then
+    begin
       CloseHandle(Process.hProcess);
+    end;
     // Enkelprozesse, die noch laufen, enden mit dem Job.
     if Job <> 0 then
+    begin
       CloseHandle(Job);
+    end;
     if NullInput <> INVALID_HANDLE_VALUE then
+    begin
       CloseHandle(NullInput);
+    end;
     if OutRead <> 0 then
+    begin
       CloseHandle(OutRead);
+    end;
     if OutWrite <> 0 then
+    begin
       CloseHandle(OutWrite);
+    end;
   end;
 end;
 

@@ -104,9 +104,13 @@ function OneLine(const AText: string): string;
 begin
   Result := Trim(AText.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ').Replace(#9, ' '));
   while Pos('  ', Result) > 0 do
+  begin
     Result := Result.Replace('  ', ' ');
+  end;
   if Length(Result) > TAtlasTrackerQueryTest.MaxMessage then
+  begin
     Result := Copy(Result, 1, TAtlasTrackerQueryTest.MaxMessage - 1) + '…';
+  end;
 end;
 
 function TextOf(AValue: TJSONValue; const AName: string): string;
@@ -115,10 +119,14 @@ var
 begin
   Result := '';
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   mValue := TJSONObject(AValue).GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := Trim(TJSONString(mValue).Value);
+  end;
 end;
 
 function LooksLikeHtml(const AText: string): Boolean;
@@ -134,30 +142,44 @@ var
 begin
   Result := '';
   if LooksLikeHtml(AText) then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if not (mRoot is TJSONObject) then
+    begin
       Exit(OneLine(AText));
+    end;
     // YouTrack: {"error": "bad_request", "error_description": "…"}.
     Result := TextOf(mRoot, 'error_description');
     if Result <> '' then
+    begin
       Exit(OneLine(Result));
+    end;
     // GitHub: {"message": "Validation Failed", "errors": [{"message": "…"}]}; die Einzelmeldungen sagen mehr.
     mParts := nil;
     mErrors := TJSONObject(mRoot).GetValue('errors');
     if mErrors is TJSONArray then
+    begin
       for mItem in TJSONArray(mErrors) do
       begin
         mPart := TextOf(mItem, 'message');
         if mPart <> '' then
+        begin
           mParts := mParts + [mPart];
+        end;
       end;
+    end;
     if Length(mParts) > 0 then
+    begin
       Exit(OneLine(string.Join('; ', mParts)));
+    end;
     Result := TextOf(mRoot, 'message');
     if Result = '' then
+    begin
       Result := TextOf(mRoot, 'error');
+    end;
     Result := OneLine(Result);
   finally
     mRoot.Free;
@@ -172,13 +194,19 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AText);
   try
     if not (mRoot is TJSONObject) then
+    begin
       Exit;
+    end;
     mLocale := TJSONObject(mRoot).GetValue('locale');
     Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'language'));
     if Result = '' then
+    begin
       Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'locale'));
+    end;
     if Result = '' then
+    begin
       Result := TAtlasTrackerTemplates.NormalLanguage(TextOf(mLocale, 'id'));
+    end;
   finally
     mRoot.Free;
   end;
@@ -193,7 +221,9 @@ var
 begin
   Result := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, AProvider.SentQuery(ATarget));
   if not AAnswered then
+  begin
     Exit;
+  end;
   Result.HttpStatus := AStatus;
   case AStatus of
     200:
@@ -206,15 +236,25 @@ begin
         end;
         Result.More := Length(mIssues) > MaxIssues;
         if Result.More then
+        begin
           SetLength(mIssues, MaxIssues);
+        end;
         Result.Count := Length(mIssues);
         for mIndex := 0 to High(mIssues) do
+        begin
           if mIndex < MaxKeys then
+          begin
             Result.Keys := Result.Keys + [mIssues[mIndex].Key];
+          end;
+        end;
         if Result.Count > 0 then
-          Result.Outcome := TAtlasTrackerQueryOutcome.Found
+        begin
+          Result.Outcome := TAtlasTrackerQueryOutcome.Found;
+        end
         else
+        begin
           Result.Outcome := TAtlasTrackerQueryOutcome.Empty;
+        end;
       end;
     400, 422:
       begin
@@ -227,9 +267,13 @@ begin
       Result.Outcome := TAtlasTrackerQueryOutcome.ProjectUnknown;
   else
     if LooksLikeHtml(AText) then
-      Result.Outcome := TAtlasTrackerQueryOutcome.Unreadable
+    begin
+      Result.Outcome := TAtlasTrackerQueryOutcome.Unreadable;
+    end
     else
+    begin
       Result.Outcome := TAtlasTrackerQueryOutcome.ServerError;
+    end;
   end;
 end;
 
@@ -240,7 +284,9 @@ begin
   mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
   Result := 0;
   if mRest > 0 then
+  begin
     Result := Integer(mRest);
+  end;
 end;
 
 /// <summary>Probe mit „Mir zugewiesen“ in ALanguage: -1 abgelehnt oder ohne Antwort, sonst die Zahl der Treffer.
@@ -256,12 +302,16 @@ var
 begin
   Result := -1;
   if ATimeoutMs <= 0 then
+  begin
     Exit;
+  end;
   mTarget := ATarget;
   mTarget.Query := TAtlasTrackerTemplates.QueryOf(AProvider.Name, ALanguage, TAtlasTrackerTemplateKind.AssignedToMe);
   if ATransport.Get(AProvider.ListUrl(mTarget, 1), ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
     AProvider.ParseList(mText, 1, mIssues) then
+  begin
     Result := Length(mIssues);
+  end;
 end;
 
 class function TAtlasTrackerQueryTest.DetectLanguage(const AProvider: IAtlasTrackerProvider;
@@ -274,27 +324,43 @@ var
 begin
   Result := '';
   if (AProvider = nil) or (ATransport = nil) then
+  begin
     Exit;
+  end;
   mUrl := AProvider.LocaleUrl(ATarget);
   if mUrl = '' then
+  begin
     Exit;
+  end;
   mWatch := TStopwatch.StartNew;
   if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) then
+  begin
     Result := LanguageOfLocale(mText);
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   // Ohne Recht auf die globalen Einstellungen: Die Vorlage in der Sprache der Oberfläche findet etwas, die andere
   // nichts (bzw. wird abgelehnt).
   mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.German, Remaining(mWatch, ATimeoutMs));
   mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.English, Remaining(mWatch, ATimeoutMs));
   if (mGerman > 0) and (mEnglish <= 0) then
-    Result := TAtlasTrackerTemplates.German
+  begin
+    Result := TAtlasTrackerTemplates.German;
+  end
   else if (mEnglish > 0) and (mGerman <= 0) then
-    Result := TAtlasTrackerTemplates.English
-  else if (mGerman = 0) and (mEnglish < 0) then
-    Result := TAtlasTrackerTemplates.German
-  else if (mEnglish = 0) and (mGerman < 0) then
+  begin
     Result := TAtlasTrackerTemplates.English;
+  end
+  else if (mGerman = 0) and (mEnglish < 0) then
+  begin
+    Result := TAtlasTrackerTemplates.German;
+  end
+  else if (mEnglish = 0) and (mGerman < 0) then
+  begin
+    Result := TAtlasTrackerTemplates.English;
+  end;
 end;
 
 class function TAtlasTrackerQueryTest.Run(const AProvider: IAtlasTrackerProvider;
@@ -307,33 +373,49 @@ var
   mAnswered: Boolean;
 begin
   if AProvider = nil then
+  begin
     Exit(TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.NotConfigured, ''));
+  end;
   if ATransport = nil then
+  begin
     Exit(TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.NoToken, AProvider.SentQuery(ATarget)));
+  end;
   mUrl := '';
   if ATarget.Configured then
+  begin
     mUrl := AProvider.ListUrl(ATarget, MaxIssues + 1);
+  end;
   // GitHub ohne owner/repo: keine Adresse.
   if mUrl = '' then
+  begin
     Exit(TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.NotConfigured,
       AProvider.SentQuery(ATarget)));
+  end;
   mWatch := TStopwatch.StartNew;
   mAnswered := ATransport.Get(mUrl, TimeoutMs, mStatus, mText, mError);
   Result := Evaluate(AProvider, ATarget, mAnswered, mStatus, mText);
   Result.ElapsedMs := mWatch.ElapsedMilliseconds;
   if Result.Outcome <> TAtlasTrackerQueryOutcome.Empty then
+  begin
     Exit;
+  end;
   // Anmeldung und Verbindung stehen, nur passt kein Issue: liegt es an der Sprache der Suchbegriffe?
   Result.Language := ATarget.Language;
   if Result.Language = '' then
+  begin
     Result.Language := DetectLanguage(AProvider, ATarget, ATransport, Remaining(mWatch, TimeoutMs));
+  end;
   // Gesendet wurde ATarget.Query bzw. ohne sie die Vorgabe zur bisher bekannten Sprache.
   mSent := ATarget.Query;
   if mSent = '' then
+  begin
     mSent := TAtlasTrackerTemplates.DefaultQuery(AProvider.Name, ATarget.Language);
+  end;
   mSuggested := TAtlasTrackerTemplates.DefaultQuery(AProvider.Name, Result.Language);
   if (Result.Language = TAtlasTrackerTemplates.German) and not SameText(mSuggested, mSent) then
+  begin
     Result.SuggestedQuery := mSuggested;
+  end;
 end;
 
 end.

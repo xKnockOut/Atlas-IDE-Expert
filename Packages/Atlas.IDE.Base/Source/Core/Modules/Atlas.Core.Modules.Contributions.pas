@@ -56,10 +56,16 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in ARegistry.Provisions(AIID) do
+  begin
     if not ARegistry.FindModule(mItem.OwnerId, mModule) or mModule.IsActive then
+    begin
       Result := Result + [mItem.Instance];
+    end;
+  end;
 end;
 
 class function TAtlasModuleContributions.Commands(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleCommand>;
@@ -69,10 +75,16 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasCommandSource) do
+  begin
     if Supports(mItem, IAtlasCommandSource, mSource) then
+    begin
       Result := Result + mSource.Commands;
+    end;
+  end;
 end;
 
 class function TAtlasModuleContributions.FindCommand(const ARegistry: IAtlasModuleRegistry; const AId: string;
@@ -83,11 +95,13 @@ begin
   Result := False;
   ACommand := Default(TAtlasModuleCommand);
   for mCommand in Commands(ARegistry) do
+  begin
     if SameText(mCommand.Id, AId) then
     begin
       ACommand := mCommand;
       Exit(True);
     end;
+  end;
 end;
 
 class function TAtlasModuleContributions.IsVisible(const ACommand: TAtlasModuleCommand): Boolean;
@@ -104,12 +118,22 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasMenuSource) do
+  begin
     if Supports(mItem, IAtlasMenuSource, mSource) then
+    begin
       for mEntry in mSource.MenuEntries do
+      begin
         if mEntry.Place = APlace then
+        begin
           Result := Result + [mEntry];
+        end;
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasModuleContributions.FindMenuEntry(const ARegistry: IAtlasModuleRegistry;
@@ -120,11 +144,13 @@ begin
   Result := False;
   AEntry := Default(TAtlasMenuEntry);
   for mEntry in MenuEntries(ARegistry, APlace) do
+  begin
     if (mEntry.Caption <> '') and SameText(mEntry.CommandId, AId) then
     begin
       AEntry := mEntry;
       Exit(True);
     end;
+  end;
 end;
 
 class function TAtlasModuleContributions.Keys(const ARegistry: IAtlasModuleRegistry): TArray<TAtlasModuleKey>;
@@ -135,12 +161,22 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasKeySource) do
+  begin
     if Supports(mItem, IAtlasKeySource, mSource) then
+    begin
       for mKey in mSource.Keys do
+      begin
         if (mKey.Key <> 0) and (Assigned(mKey.Attempt) or Assigned(mKey.Run)) then
+        begin
           Result := Result + [mKey];
+        end;
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasModuleContributions.EditorViewActivated(const ARegistry: IAtlasModuleRegistry): TArray<string>;
@@ -150,8 +186,11 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasFollowsEditorView) do
+  begin
     if Supports(mItem, IAtlasFollowsEditorView, mListener) then
       try
         mListener.EditorViewActivated;
@@ -159,6 +198,7 @@ begin
         on mError: Exception do
           Result := Result + ['IAtlasFollowsEditorView: ' + mError.ClassName + ': ' + mError.Message];
       end;
+  end;
 end;
 
 class function TAtlasModuleContributions.ApplySettings(const ARegistry: IAtlasModuleRegistry): TArray<string>;
@@ -168,8 +208,11 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasAppliesSettings) do
+  begin
     if Supports(mItem, IAtlasAppliesSettings, mListener) then
       try
         mListener.ApplySettings;
@@ -177,6 +220,7 @@ begin
         on mError: Exception do
           Result := Result + ['IAtlasAppliesSettings: ' + mError.ClassName + ': ' + mError.Message];
       end;
+  end;
 end;
 
 class function TAtlasModuleContributions.ThemeChanged(const ARegistry: IAtlasModuleRegistry): TArray<string>;
@@ -186,8 +230,11 @@ var
 begin
   Result := nil;
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasFollowsTheme) do
+  begin
     if Supports(mItem, IAtlasFollowsTheme, mListener) then
       try
         mListener.ThemeChanged;
@@ -195,6 +242,7 @@ begin
         on mError: Exception do
           Result := Result + ['IAtlasFollowsTheme: ' + mError.ClassName + ': ' + mError.Message];
       end;
+  end;
 end;
 
 class function TAtlasModuleContributions.HoverValue(const ARegistry: IAtlasModuleRegistry; const AExpression: string;
@@ -205,14 +253,20 @@ var
 begin
   Result := '';
   if ARegistry = nil then
+  begin
     Exit;
+  end;
   for mItem in Active(ARegistry, IAtlasHoverValueSource) do
+  begin
     if Supports(mItem, IAtlasHoverValueSource, mSource) then
     begin
       Result := mSource.HoverValue(AExpression, ATypeChain, AText);
       if Result <> '' then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 end.

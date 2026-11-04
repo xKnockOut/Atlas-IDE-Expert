@@ -120,9 +120,13 @@ begin
   Result := nil;
   Session := nil;
   if Assigned(FSessionOf) then
+  begin
     Session := FSessionOf();
+  end;
   if Session = nil then
+  begin
     Exit;
+  end;
   try
     Symbols := Session.WorkspaceSymbols(APattern, SuggestTimeoutMs);
   except
@@ -130,7 +134,9 @@ begin
       Symbols := nil;
   end;
   for Symbol in Symbols do
+  begin
     Result := Result + [TAtlasSymbolPathCommands.QualifiedName(Symbol.Name, Symbol.Container)];
+  end;
 end;
 
 class procedure TAtlasIdeSymbolPath.ShowDialogFrom(const AFrom: string);
@@ -139,7 +145,9 @@ var
   Suggest: TAtlasSymbolPathSuggest;
 begin
   if not FInstalled or not Enabled then
+  begin
     Exit;
+  end;
   Input := FLast;
   Input.From := AFrom;
   Suggest :=
@@ -148,7 +156,9 @@ begin
       Result := Suggestions(APattern);
     end;
   if not TAtlasSymbolPathDialog.Execute(Suggest, Input) then
+  begin
     Exit;
+  end;
   FLast := Input;
   Search(Input);
 end;
@@ -185,19 +195,29 @@ begin
         procedure
         begin
           if not FInstalled or (Request <> FRequest) then
+          begin
             Exit;
+          end;
           if not Parsed then
+          begin
             TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
-              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFailed))
+              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFailed));
+          end
           else if not Answer.Enabled then
+          begin
             TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
-              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathDisabled))
+              TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathDisabled));
+          end
           else
+          begin
             TAtlasIdeResultsWindow.ShowSymbolPath(Title, Answer, TAtlasIdeArchitecture.Enabled);
+          end;
         end);
     end) then
+  begin
     TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
       TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer));
+  end;
 end;
 
 end.

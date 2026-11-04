@@ -189,24 +189,34 @@ var
 begin
   Result := nil;
   for Mark in AMarks do
+  begin
     if GroupOf(Mark.Kind) in AKinds then
+    begin
       Result := Result + [Mark];
+    end;
+  end;
 end;
 
 class function TAtlasOverview.PixelOf(ALine, ALineCount, AHeight: Integer): Integer;
 begin
   if (ALineCount <= 0) or (AHeight <= 0) then
+  begin
     Exit(0);
+  end;
   Result := EnsureRange(Integer((Int64(ALine) * AHeight) div ALineCount), 0, AHeight - 1);
 end;
 
 class function TAtlasOverview.LineAt(AY, ALineCount, AHeight: Integer): Integer;
 begin
   if (ALineCount <= 0) or (AHeight <= 0) then
+  begin
     Exit(0);
+  end;
   // Das unterste Pixel erreicht die letzte Zeile.
   if AY >= AHeight - 1 then
+  begin
     Exit(ALineCount - 1);
+  end;
   Result := EnsureRange(Integer((Int64(Max(0, AY)) * ALineCount) div AHeight), 0, ALineCount - 1);
 end;
 
@@ -220,13 +230,16 @@ var
 begin
   Result := nil;
   if (ALineCount <= 0) or (AHeight <= 0) then
+  begin
     Exit;
+  end;
   // Je Art in Zeichenreihenfolge; innerhalb der Art aufsteigend, Überlappungen zusammengefasst.
   for Kind := Low(TAtlasOverviewMarkKind) to High(TAtlasOverviewMarkKind) do
   begin
     // Marken dieser Art nach Zeile (Einfügen; die Listen sind meist schon sortiert).
     Order := nil;
     for Index := 0 to High(AMarks) do
+    begin
       if AMarks[Index].Kind = Kind then
       begin
         Order := Order + [Index];
@@ -239,6 +252,7 @@ begin
           Dec(Position);
         end;
       end;
+    end;
     Last := -1;
     for Index in Order do
     begin
@@ -279,15 +293,25 @@ begin
   begin
     // Der Cursor ist kein Sprungziel.
     if ABars[Index].Kind = TAtlasOverviewMarkKind.Cursor then
+    begin
       Continue;
+    end;
     if AY < ABars[Index].Top then
-      Distance := ABars[Index].Top - AY
+    begin
+      Distance := ABars[Index].Top - AY;
+    end
     else if AY >= ABars[Index].Bottom then
-      Distance := AY - ABars[Index].Bottom + 1
+    begin
+      Distance := AY - ABars[Index].Bottom + 1;
+    end
     else
+    begin
       Distance := 0;
+    end;
     if Distance > ATolerance then
+    begin
       Continue;
+    end;
     // Wichtigere Art gewinnt, bei gleicher Art der nähere Balken.
     if (Best < 0) or (ABars[Index].Kind > ABars[Best].Kind) or
       ((ABars[Index].Kind = ABars[Best].Kind) and (Distance < BestDistance)) then
@@ -298,7 +322,9 @@ begin
   end;
   Result := Best >= 0;
   if Result then
+  begin
     AMark := ABars[Best].Mark;
+  end;
 end;
 
 class function TAtlasOverview.Occurrences(const ALines: TArray<string>; const ATerm: string): TArray<Integer>;
@@ -308,15 +334,21 @@ var
 begin
   Result := nil;
   if ATerm = '' then
+  begin
     Exit;
+  end;
   Term := AnsiLowerCase(ATerm);
   for Index := 0 to High(ALines) do
+  begin
     if Pos(Term, AnsiLowerCase(ALines[Index])) > 0 then
     begin
       Result := Result + [Index];
       if Length(Result) >= MaxSearchLines then
+      begin
         Exit;
+      end;
     end;
+  end;
 end;
 
 class function TAtlasOverview.SearchTerm(const ASelection: string; out ATerm: string): Boolean;
@@ -325,7 +357,9 @@ begin
   Result := (ASelection <> '') and (Trim(ASelection) <> '') and (Pos(#10, ASelection) = 0) and
     (Pos(#13, ASelection) = 0) and (Length(ASelection) <= MaxTermLength);
   if Result then
+  begin
     ATerm := ASelection;
+  end;
 end;
 
 class function TAtlasOverview.Same(const A, B: TAtlasOverviewMarks): Boolean;
@@ -334,11 +368,17 @@ var
 begin
   Result := Length(A) = Length(B);
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(A) do
+  begin
     if (A[Index].Kind <> B[Index].Kind) or (A[Index].Line <> B[Index].Line) or (A[Index].Count <> B[Index].Count) or
       (A[Index].Text <> B[Index].Text) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 end.

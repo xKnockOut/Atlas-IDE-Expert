@@ -177,7 +177,9 @@ end;
 function TAtlasTrackerResolution.Target(const AQuery: string): TAtlasTrackerTarget;
 begin
   if not Found then
+  begin
     Exit(TAtlasTrackerTarget.Create('', '', '', ''));
+  end;
   Result := TAtlasTrackerTarget.Create(Connection.Provider, Connection.Url, Project, AQuery);
 end;
 
@@ -202,7 +204,9 @@ begin
   Result := '';
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := TJSONString(mValue).Value;
+  end;
 end;
 
 class function TAtlasTrackerProjects.Read(const AJson: string): TArray<TAtlasTrackerProjectMapping>;
@@ -213,19 +217,27 @@ var
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mMapping := TAtlasTrackerProjectMapping.Create(TextOf(TJSONObject(mItem), 'match'),
         TextOf(TJSONObject(mItem), 'connection'), TextOf(TJSONObject(mItem), 'project'));
       if (mMapping.Match = '') or (mMapping.Connection = '') or (IndexOfMatch(Result, mMapping.Match) >= 0) then
+      begin
         Continue;
+      end;
       Result := Result + [mMapping];
     end;
   finally
@@ -240,9 +252,13 @@ var
 begin
   mParts := nil;
   for mItem in AItems do
+  begin
     if not mItem.ReadOnly then
+    begin
       mParts := mParts + ['{"match": ' + Quoted(mItem.Match) + ', "connection": ' + Quoted(mItem.Connection) +
         ', "project": ' + Quoted(mItem.Project) + '}'];
+    end;
+  end;
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
@@ -294,7 +310,9 @@ begin
   // 2.–4. Persönliche Zuordnung.
   mIndex := Find(AMappings, AConnections, AProjectFile, AGroupFile);
   if mIndex < 0 then
+  begin
     Exit;
+  end;
   Result.Match := Matches(AMappings[mIndex], AProjectFile, AGroupFile);
   Result.Index := mIndex;
   Result.Connection := AConnections[TAtlasTrackerConnections.IndexOfName(AConnections, AMappings[mIndex].Connection)];
@@ -321,7 +339,9 @@ var
 begin
   SetLength(mMatches, Length(AItems));
   for mIndex := 0 to High(AItems) do
+  begin
     mMatches[mIndex] := AItems[mIndex].Match;
+  end;
   Result := TAtlasProjectMatching.IndexOfMatch(mMatches, AMatch);
 end;
 

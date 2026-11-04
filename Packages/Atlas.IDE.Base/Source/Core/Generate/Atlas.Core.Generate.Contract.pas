@@ -42,8 +42,12 @@ var
 begin
   Result := nil;
   for Item in AText.Split([',', ';', #10]) do
+  begin
     if Trim(Item) <> '' then
+    begin
       Result := Result + [Trim(Item)];
+    end;
+  end;
 end;
 
 class function TAtlasGenerateLists.GroupName(AGroup: TAtlasGenerateGroup): string;
@@ -65,11 +69,13 @@ var
   Group: TAtlasGenerateGroup;
 begin
   for Group := Low(TAtlasGenerateGroup) to High(TAtlasGenerateGroup) do
+  begin
     if SameText(Trim(AName), GroupName(Group)) then
     begin
       AGroup := Group;
       Exit(True);
     end;
+  end;
   AGroup := TAtlasGenerateGroup.Generate;
   Result := False;
 end;
@@ -85,17 +91,29 @@ begin
   begin
     // "recent" ist keine Gruppe der Liste; dafür gibt es recentFirst.
     if not TryParseGroup(Item, Group) or (Group = TAtlasGenerateGroup.Recent) then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in Result do
+    begin
       if Known = Group then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Group];
+    end;
   end;
   if Length(Result) = 0 then
+  begin
     for Group in DefaultGroups do
+    begin
       Result := Result + [Group];
+    end;
+  end;
 end;
 
 class function TAtlasGenerateLists.NormalizeGroups(const AText: string): string;
@@ -106,7 +124,9 @@ begin
   for Group in ParseGroups(AText) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + GroupName(Group);
   end;
 end;
@@ -118,8 +138,12 @@ var
 begin
   Items := nil;
   for Item in Split(AText) do
+  begin
     if IndexText(Item, Items) < 0 then
+    begin
       Items := Items + [Item];
+    end;
+  end;
   Result := string.Join(', ', Items);
 end;
 

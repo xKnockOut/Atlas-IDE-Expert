@@ -78,11 +78,17 @@ var
 begin
   mText := LowerCase(Trim(AText));
   if mText.StartsWith(German) then
-    Result := German
+  begin
+    Result := German;
+  end
   else if mText.StartsWith(English) then
-    Result := English
+  begin
+    Result := English;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Add(const AItems: TArray<TAtlasTrackerTemplate>; const AProvider, ALanguage: string;
@@ -95,7 +101,9 @@ begin
   for mKind := Low(TAtlasTrackerTemplateKind) to High(TAtlasTrackerTemplateKind) do
   begin
     if AQueries[mKind] = '' then
+    begin
       Continue;
+    end;
     mItem.Kind := mKind;
     mItem.Provider := AProvider;
     mItem.Language := ALanguage;
@@ -112,13 +120,21 @@ begin
   mProvider := LowerCase(Trim(AProvider));
   mLanguage := NormalLanguage(ALanguage);
   if mProvider = 'github' then
+  begin
     Exit(Add(Result, mProvider, English, GitHubQueries));
+  end;
   if mProvider <> 'youtrack' then
+  begin
     Exit;
+  end;
   if mLanguage <> English then
+  begin
     Result := Add(Result, mProvider, German, YouTrackGerman);
+  end;
   if mLanguage <> German then
+  begin
     Result := Add(Result, mProvider, English, YouTrackEnglish);
+  end;
 end;
 
 class function TAtlasTrackerTemplates.QueryOf(const AProvider, ALanguage: string;
@@ -128,8 +144,12 @@ var
 begin
   Result := '';
   for mItem in Templates(AProvider, ALanguage) do
+  begin
     if mItem.Kind = AKind then
+    begin
       Exit(mItem.Query);
+    end;
+  end;
 end;
 
 class function TAtlasTrackerTemplates.DefaultQuery(const AProvider, ALanguage: string): string;
@@ -138,7 +158,9 @@ begin
   // ändert.
   Result := '';
   if NormalLanguage(ALanguage) <> '' then
+  begin
     Result := QueryOf(AProvider, ALanguage, TAtlasTrackerTemplateKind.AssignedToMe);
+  end;
 end;
 
 end.

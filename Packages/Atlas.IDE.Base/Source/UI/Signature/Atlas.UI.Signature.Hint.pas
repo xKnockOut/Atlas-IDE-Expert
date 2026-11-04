@@ -183,34 +183,56 @@ begin
   ADocumented := False;
   Result := False;
   if (FSignature < 0) or (FSignature > High(FHelp.Signatures)) then
+  begin
     Exit;
+  end;
   Signature := FHelp.Signatures[FSignature];
   if (FParameter < 0) or (FParameter > High(Signature.Parameters)) then
+  begin
     Exit;
+  end;
   Parameter := Signature.Parameters[FParameter];
   Default := Parameter.Text(Signature.Label_);
   if Pos('=', Default) > 0 then
-    Default := Trim(Copy(Default, Pos('=', Default) + 1, MaxInt))
+  begin
+    Default := Trim(Copy(Default, Pos('=', Default) + 1, MaxInt));
+  end
   else
+  begin
     Default := '';
+  end;
   AName := Trim(Parameter.Text(Signature.Label_));
   if Pos('=', AName) > 0 then
+  begin
     AName := Trim(Copy(AName, 1, Pos('=', AName) - 1));
+  end;
   if Pos(':', AName) > 0 then
+  begin
     AName := Trim(Copy(AName, 1, Pos(':', AName) - 1));
+  end;
   // "const S" → "S"
   if LastDelimiter(' ', AName) > 0 then
+  begin
     AName := Copy(AName, LastDelimiter(' ', AName) + 1, MaxInt);
+  end;
   AText := Trim(StringReplace(StringReplace(Parameter.Documentation, #13, '', [rfReplaceAll]), #10, ' ',
     [rfReplaceAll]));
   ADocumented := AText <> '';
   if not ADocumented then
+  begin
     AText := TAtlasStrings.Text(TAtlasTextId.DocUndocumented);
+  end;
   if Default <> '' then
+  begin
     if AText <> '' then
-      AText := AText + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.OptionalDefault, [Default])
+    begin
+      AText := AText + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.OptionalDefault, [Default]);
+    end
     else
+    begin
       AText := TAtlasStrings.Fmt(TAtlasTextId.OptionalDefault, [Default]);
+    end;
+  end;
   Result := True;
 end;
 
@@ -220,11 +242,15 @@ var
 begin
   Result := '';
   if (FSignature < 0) or (FSignature > High(FHelp.Signatures)) then
+  begin
     Exit;
+  end;
   mText := StringReplace(FHelp.Signatures[FSignature].Documentation, #13, '', [rfReplaceAll]);
   // Nur der erste Absatz: Die Zeile soll die Methode kurz nennen.
   if Pos(#10#10, mText) > 0 then
+  begin
     mText := Copy(mText, 1, Pos(#10#10, mText) - 1);
+  end;
   Result := Trim(StringReplace(mText, #10, ' ', [rfReplaceAll]));
 end;
 
@@ -260,14 +286,18 @@ begin
   begin
     Rows := 2;
     if SummaryText <> '' then
+    begin
       Inc(Rows);
+    end;
   end;
   // Platzhalter-Zeile (#451) oben; ohne Parameter-Doku steht sie allein.
   if FormatText <> '' then
   begin
     Inc(Rows);
     if not TooMany and not ParameterDoc(Name, Text, Documented) then
+    begin
       Rows := 1;
+    end;
   end;
   Result := Rows * DocRowHeight + Scale(8);
 end;
@@ -282,8 +312,12 @@ begin
   // Mögliche Umbrüche: hinter "; " (zwischen Parametern).
   Breaks := nil;
   for Index := 1 to Length(Label_) - 1 do
+  begin
     if (Label_[Index] = ';') and (Label_[Index + 1] = ' ') then
+    begin
       Breaks := Breaks + [Index + 1];
+    end;
+  end;
   Breaks := Breaks + [Length(Label_)];
   Result := nil;
   LineStart := 0;
@@ -292,9 +326,13 @@ begin
   for Candidate in Breaks do
   begin
     if Length(Result) = 0 then
-      Limit := AAvailable
+    begin
+      Limit := AAvailable;
+    end
     else
+    begin
       Limit := AAvailable - Indent;
+    end;
     if (Last >= 0) and (FStyled[AIndex].Width(Canvas, LineStart, Candidate) > Limit) then
     begin
       Result := Result + [Point(LineStart, Last)];
@@ -311,9 +349,13 @@ var
 begin
   Result := 0;
   for Lines in FLayouts do
+  begin
     Inc(Result, Length(Lines));
+  end;
   if Length(FHelp.Signatures) > MaxSignatures then
+  begin
     Inc(Result);
+  end;
 end;
 
 procedure TAtlasSignatureHint.Prepare;
@@ -337,8 +379,12 @@ begin
       FStyled[Index].ActiveStop := Signature.Parameters[FParameter].Stop;
       // Der Standardwert steht gedämpft hinter der Pille (#441).
       for Range in FStyled[Index].MutedRanges do
+      begin
         if (Range.X >= FStyled[Index].ActiveStart) and (Range.X < FStyled[Index].ActiveStop) then
+        begin
           FStyled[Index].ActiveStop := Range.X;
+        end;
+      end;
     end;
   end;
 end;
@@ -347,7 +393,9 @@ procedure TAtlasSignatureHint.MoveTo(const AAnchor: TRect);
 begin
   FAnchor := AAnchor;
   if IsShown then
+  begin
     Place;
+  end;
 end;
 
 procedure TAtlasSignatureHint.Place;
@@ -369,8 +417,10 @@ begin
     FLayouts[Index] := Layout(Index, Available);
     FFirstRows[Index] := Row;
     for Line := 0 to High(FLayouts[Index]) do
+    begin
       Widest := Max(Widest, FStyled[Index].Width(Canvas, FLayouts[Index][Line].X, FLayouts[Index][Line].Y) +
         IfThen(Line > 0, Indent));
+    end;
     Inc(Row, Length(FLayouts[Index]));
   end;
   // Die Doku-Zeile verbreitert den Hint höchstens bis zur Maximalbreite.
@@ -397,22 +447,38 @@ begin
   mWidth := Min(Widest + 2 * Gap + Bar + 2, Scale(MaxWidth));
   mHeight := CrumbHeight + 2 * Pad + TotalRows * LineHeight;
   if HasDocLine then
+  begin
     Inc(mHeight, DocHeight);
+  end;
   if TooMany then
-    BorderColor := Colors.Error
+  begin
+    BorderColor := Colors.Error;
+  end
   else
+  begin
     BorderColor := Colors.Accent;
+  end;
   Area := WorkAreaAt(FAnchor.TopLeft);
   if FAbove then
-    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Top - mHeight - 2), mWidth, mHeight)
+  begin
+    Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Top - mHeight - 2), mWidth, mHeight);
+  end
   else
+  begin
     Bounds := TRect.Create(Point(FAnchor.Left, FAnchor.Bottom + 2), mWidth, mHeight);
+  end;
   if Bounds.Bottom > Area.Bottom then
+  begin
     Bounds.SetLocation(Bounds.Left, FAnchor.Top - mHeight - 2);
+  end;
   if Bounds.Top < Area.Top then
+  begin
     Bounds.SetLocation(Bounds.Left, FAnchor.Bottom + 2);
+  end;
   if Bounds.Right > Area.Right then
+  begin
     Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+  end;
   ShowAt(Bounds);
 end;
 
@@ -433,9 +499,13 @@ begin
   if FFormatPlaceholders then
   begin
     if AParameter = AHelp.Format.ListParameter then
-      FFormatLine := TAtlasSignatureFormats.Line(AHelp.Format, AHelp.Format.ActiveArgument)
+    begin
+      FFormatLine := TAtlasSignatureFormats.Line(AHelp.Format, AHelp.Format.ActiveArgument);
+    end
     else
+    begin
       FFormatLine := TAtlasSignatureFormats.Line(AHelp.Format, -1);
+    end;
   end;
   Place;
   // Sprachausgabe (#447): Signatur und aktueller Parameter.
@@ -443,10 +513,14 @@ begin
   GuardFeature := TAtlasFeature.Signature;
   Spoken := AHelp.Signatures[ASignature].Label_;
   if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
+  begin
     Spoken := Spoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,
       AHelp.Signatures[ASignature].Parameters[AParameter].Text(AHelp.Signatures[ASignature].Label_)]);
+  end;
   if FormatText <> '' then
+  begin
     Spoken := Spoken + '. ' + FormatText;
+  end;
   Announce(Spoken);
 end;
 
@@ -463,22 +537,36 @@ begin
   // Höchstens drei Ebenen samt dem gezeigten Aufruf; darüber "…".
   Result := nil;
   if Length(FOuter) > 2 then
+  begin
     Result := ['…'];
+  end;
   for Index := Max(0, Length(FOuter) - 2) to High(FOuter) do
+  begin
     if FOuter[Index] <> '' then
-      Result := Result + [FOuter[Index]]
+    begin
+      Result := Result + [FOuter[Index]];
+    end
     else
+    begin
       Result := Result + ['…'];
+    end;
+  end;
   if FCallName <> '' then
-    Result := Result + [FCallName]
+  begin
+    Result := Result + [FCallName];
+  end
   else
+  begin
     Result := Result + ['…'];
+  end;
 end;
 
 function TAtlasSignatureHint.CrumbHeight: Integer;
 begin
   if Length(FOuter) = 0 then
+  begin
     Exit(0);
+  end;
   Canvas.Font := Font;
   Result := Canvas.TextHeight('Wg') + Scale(8);
 end;
@@ -491,7 +579,9 @@ var
   mText: string;
 begin
   if CrumbHeight = 0 then
+  begin
     Exit;
+  end;
   Band := Rect(0, 0, ClientWidth, CrumbHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
@@ -507,12 +597,18 @@ begin
   begin
     // Äußere Aufrufe gedämpft, der gezeigte in Textfarbe.
     if Index = High(Parts) then
-      Canvas.Font.Color := ToColor(Colors.Text)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Text);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(Colors.Muted);
+    end;
     mText := Parts[Index];
     if Index < High(Parts) then
+    begin
       mText := mText + ' › ';
+    end;
     Part := Rect(X, Band.Top, ClientWidth - Gap, Band.Bottom - 1);
     DrawText(Canvas.Handle, PChar(mText), -1, Part, TextFlags or DT_END_ELLIPSIS);
     Inc(X, Canvas.TextWidth(mText));
@@ -566,9 +662,13 @@ begin
   begin
     Canvas.Font := UIFont;
     if FFormatLine.IsError then
-      Canvas.Font.Color := ToColor(Colors.Error)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Error);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(Colors.Accent);
+    end;
     DrawText(Canvas.Handle, PChar(FormatText), -1, Part, TextFlags or DT_END_ELLIPSIS);
     OffsetRect(Part, 0, Row);
   end;
@@ -600,7 +700,9 @@ begin
     Part.Left := Part.Left + Canvas.TextWidth(mName) + Scale(8);
     Canvas.Font := UIFont;
     if Documented then
-      Canvas.Font.Color := ToColor(Colors.Text)
+    begin
+      Canvas.Font.Color := ToColor(Colors.Text);
+    end
     else
     begin
       Canvas.Font.Style := [fsItalic];
@@ -645,13 +747,17 @@ begin
   begin
     // Akzentbalken links neben der gewählten Überladung.
     if Index = FSignature then
+    begin
       FillRounded(Rect(Scale(3), mTop + RowIndex * mHeight + Scale(3), Scale(3) + Bar,
         mTop + (RowIndex + Length(FLayouts[Index])) * mHeight - Scale(3)), Colors.Accent, 1);
+    end;
     for Line := 0 to High(FLayouts[Index]) do
     begin
       Row := Rect(mLeft, mTop + RowIndex * mHeight, Right, mTop + (RowIndex + 1) * mHeight);
       if Line > 0 then
+      begin
         Inc(Row.Left, Indent);
+      end;
       X := Row.Left;
       Canvas.Font := Font;
       FStyled[Index].Draw(Canvas, Colors, FLayouts[Index][Line].X, FLayouts[Index][Line].Y, X,
@@ -670,7 +776,9 @@ begin
     Inc(RowIndex);
   end;
   if HasDocLine then
+  begin
     PaintDocLine(mTop + RowIndex * mHeight + Pad);
+  end;
   PaintBorder;
 end;
 
@@ -680,15 +788,21 @@ var
 begin
   inherited;
   if (Button <> mbLeft) or not Assigned(FOnSelect) or (Y < CrumbHeight + Pad) then
+  begin
     Exit;
+  end;
   Row := (Y - CrumbHeight - Pad) div LineHeight;
   for Index := High(FFirstRows) downto 0 do
+  begin
     if Row >= FFirstRows[Index] then
     begin
       if Row < FFirstRows[Index] + Length(FLayouts[Index]) then
+      begin
         FOnSelect(Index);
+      end;
       Exit;
     end;
+  end;
 end;
 
 end.

@@ -109,7 +109,9 @@ var
 begin
   Result := nil;
   if (AFileName <> '') and Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
     Supports(mServices.FindModule(AFileName), IOTAProject, Result);
+  end;
 end;
 
 class function TAtlasIdeStartOptions.ActiveProject: IOTAProject;
@@ -118,9 +120,13 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
     Result := mServices.GetActiveProject;
+  end;
   if (Result <> nil) and not SameText(ExtractFileExt(Result.FileName), '.dproj') then
+  begin
     Result := nil;
+  end;
 end;
 
 class procedure TAtlasIdeStartOptions.MakeActive(const AProject: IOTAProject);
@@ -129,7 +135,9 @@ var
 begin
   if (AProject <> nil) and Supports(BorlandIDEServices, IOTAModuleServices, mServices) and
     (mServices.MainProjectGroup <> nil) and (mServices.MainProjectGroup.ActiveProject <> AProject) then
+  begin
     mServices.MainProjectGroup.ActiveProject := AProject;
+  end;
 end;
 
 class function TAtlasIdeStartOptions.BuildConfiguration(const AProject: IOTAProject): IOTABuildConfiguration;
@@ -140,14 +148,20 @@ begin
   Result := nil;
   if (AProject = nil) or not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations,
     mConfigurations) then
+  begin
     Exit;
+  end;
   Result := mConfigurations.ActiveConfiguration;
   if (Result = nil) or (AProject.CurrentPlatform = '') then
+  begin
     Exit;
+  end;
   // Die IDE legt die Startoptionen je Konfiguration und Plattform ab (Cfg_1_Win32).
   mPlatformed := Result.PlatformConfiguration[AProject.CurrentPlatform];
   if mPlatformed <> nil then
+  begin
     Result := mPlatformed;
+  end;
 end;
 
 class function TAtlasIdeStartOptions.ReadOptions(const AProject: IOTAProject;
@@ -160,7 +174,9 @@ begin
   try
     mBuild := BuildConfiguration(AProject);
     if mBuild = nil then
+    begin
       Exit;
+    end;
     // Roh, ohne geerbte Werte: genau das, was „Kein Startprofil“ zurückschreibt.
     AOptions.Parameters := mBuild.GetValue(TAtlasStartProfiles.ParametersOption, False);
     AOptions.WorkingDir := mBuild.GetValue(TAtlasStartProfiles.WorkingDirOption, False);
@@ -189,7 +205,9 @@ begin
       Exit;
     end;
     if ReadOptions(AProject, mCurrent) and mCurrent.SameAs(AOptions) then
+    begin
       Exit(True);
+    end;
     mBuild.SetValue(TAtlasStartProfiles.ParametersOption, AOptions.Parameters);
     mBuild.SetValue(TAtlasStartProfiles.WorkingDirOption, AOptions.WorkingDir);
     mBuild.SetValue(TAtlasStartProfiles.HostOption, AOptions.Host);
@@ -210,21 +228,31 @@ var
 begin
   AReason := '';
   if ADebugger then
-    mName := RunAction
+  begin
+    mName := RunAction;
+  end
   else
+  begin
     mName := RunNoDebugAction;
+  end;
   if Supports(BorlandIDEServices, INTAServices, mActions) and (mActions.ActionList <> nil) then
+  begin
     for mIndex := 0 to mActions.ActionList.ActionCount - 1 do
     begin
       mAction := mActions.ActionList.Actions[mIndex];
       if not SameText(mAction.Name, mName) then
+      begin
         Continue;
+      end;
       mAction.Update;
       if (mAction is TCustomAction) and not TCustomAction(mAction).Enabled then
+      begin
         Break;
+      end;
       mAction.Execute;
       Exit(True);
     end;
+  end;
   AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesNoRunAction);
   Result := False;
 end;
@@ -293,13 +321,19 @@ begin
   AChanged := False;
   Result := False;
   if SameText(FTemporary, AProject) then
+  begin
     FTemporary := '';
+  end;
   mProject := FindProject(AProject);
   if mProject = nil then
+  begin
     Exit;
+  end;
   mState := TAtlasStartProfiles.Load(Folder, mProject.FileName);
   if not mState.HasTemporary then
+  begin
     Exit(True);
+  end;
   ReadOptions(mProject, mCurrent);
   if TAtlasStartProfiles.EndTemporary(mState, mCurrent, mBefore) then
   begin
@@ -310,7 +344,9 @@ begin
     end;
   end
   else
+  begin
     AChanged := True;
+  end;
   // Die Startprofile sehen die geänderte lokale Datei bei ihrer nächsten Prüfung und setzen das Profil wieder.
   Result := TAtlasStartProfiles.Save(Folder, mState);
 end;
@@ -322,13 +358,19 @@ var
 begin
   Result := False;
   if (AProject = nil) or SameText(FTemporary, AProject.FileName) or Debugging then
+  begin
     Exit;
+  end;
   mState := TAtlasStartProfiles.Load(Folder, AProject.FileName);
   if not mState.HasTemporary then
+  begin
     Exit;
+  end;
   Result := True;
   if EndTemporary(AProject.FileName, mChanged) and not mChanged then
+  begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesTemporaryRestored, [ExtractFileName(AProject.FileName)]));
+  end;
 end;
 
 class function TAtlasIdeStartOptions.TemporaryProject: string;

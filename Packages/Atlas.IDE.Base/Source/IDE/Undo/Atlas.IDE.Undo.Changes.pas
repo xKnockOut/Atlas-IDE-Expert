@@ -84,7 +84,9 @@ end;
 class procedure TAtlasIdeUndo.Start(const AMessage, ALog: TProc<string>);
 begin
   if FJournal <> nil then
+  begin
     Exit;
+  end;
   FOnMessage := AMessage;
   FOnLog := ALog;
   FFolder := DefaultFolder;
@@ -93,7 +95,9 @@ begin
     procedure(AText: string)
     begin
       if Assigned(FOnLog) then
+      begin
         FOnLog(AText);
+      end;
     end;
   FJournal.OnChanged :=
     procedure
@@ -107,7 +111,9 @@ begin
   except
     on E: Exception do
       if Assigned(FOnLog) then
+      begin
         FOnLog('Atlas-Änderungsprotokoll nicht geladen: ' + E.ClassName);
+      end;
   end;
 end;
 
@@ -129,7 +135,9 @@ var
   Cleaner: IAtlasUndoStore;
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   Settings := TAtlasIdeSettings.Current;
   Options.Enabled := Settings.UndoMultiFile;
   Options.Depth := Settings.UndoMultiFileDepth;
@@ -141,7 +149,9 @@ begin
     FPersist := Persist;
     FMaxSizeMb := Settings.UndoMultiFileMaxSizeMb;
     if Persist and Assigned(FStoreFactory) then
-      FJournal.Store := FStoreFactory(FFolder, Int64(FMaxSizeMb) * BytesPerMb)
+    begin
+      FJournal.Store := FStoreFactory(FFolder, Int64(FMaxSizeMb) * BytesPerMb);
+    end
     else
     begin
       // Ohne Sicherung bleibt kein Quelltext im Profil liegen.
@@ -154,7 +164,9 @@ begin
       except
         on E: Exception do
           if Assigned(FOnLog) then
+          begin
             FOnLog('Atlas-Änderungsprotokoll nicht gelöscht: ' + E.ClassName);
+          end;
       end;
       FJournal.Store := nil;
     end;
@@ -162,21 +174,27 @@ begin
   FJournal.Options := Options;
   // Aus: Das Protokoll ist leer, die Aktionen schreiben wie bisher.
   if not Settings.UndoMultiFile and (FJournal.Count > 0) then
+  begin
     FJournal.Clear;
+  end;
 end;
 
 class function TAtlasIdeUndo.Add(const AAction: string; const AFiles: TArray<TAtlasFileChange>): Integer;
 begin
   Result := 0;
   if FJournal = nil then
+  begin
     Exit;
+  end;
   try
     Result := FJournal.Add(AAction, AFiles);
   except
     // Eine nicht schreibbare Sicherung darf die Aktion nicht scheitern lassen.
     on E: Exception do
       if Assigned(FOnLog) then
+      begin
         FOnLog('Atlas-Änderung nicht gesichert: ' + E.ClassName);
+      end;
   end;
 end;
 
@@ -185,8 +203,12 @@ var
   Line: string;
 begin
   if Assigned(FOnMessage) then
+  begin
     for Line in ALines do
+    begin
       FOnMessage(Line);
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeUndo.Report(const AReport: TAtlasUndoReport);
@@ -197,28 +219,36 @@ end;
 class procedure TAtlasIdeUndo.UndoLast;
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   Report(FJournal.Undo);
 end;
 
 class procedure TAtlasIdeUndo.RedoLast;
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   Report(FJournal.Redo);
 end;
 
 class procedure TAtlasIdeUndo.Undo(AId: Integer);
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   Report(FJournal.Undo(AId));
 end;
 
 class procedure TAtlasIdeUndo.Redo(AId: Integer);
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   Report(FJournal.Redo(AId));
 end;
 
@@ -229,13 +259,17 @@ begin
   // Nur eine schon sichtbare Liste aktualisieren; nie das Fenster deswegen öffnen.
   Frame := TAtlasIdeResultsWindow.ExistingFrame;
   if (FJournal <> nil) and (Frame <> nil) and Frame.ShowsChanges then
+  begin
     Frame.ShowChanges(TAtlasStrings.Fmt(TAtlasTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now, True);
+  end;
 end;
 
 class procedure TAtlasIdeUndo.ShowList;
 begin
   if FJournal = nil then
+  begin
     Exit;
+  end;
   if not FJournal.Options.Enabled then
   begin
     Say([TAtlasStrings.Text(TAtlasTextId.UndoDisabled)]);
@@ -265,7 +299,9 @@ var
   ChangeSet: TAtlasChangeSet;
 begin
   if (FJournal = nil) or not FJournal.Find(AId, ChangeSet) then
+  begin
     Exit;
+  end;
   TAtlasUndoDiffView.Execute(TAtlasStrings.Fmt(TAtlasTextId.UndoDiffTitle, [ChangeSet.Action]),
     TAtlasUndoMessages.DiffLines(ChangeSet, AFileName));
 end;

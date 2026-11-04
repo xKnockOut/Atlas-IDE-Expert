@@ -156,9 +156,15 @@ var
 begin
   Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['W', 'H']);
   if Result then
+  begin
     for Index := 2 to 5 do
+    begin
       if not CharInSet(ACode[Index], ['0'..'9']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasBuildVerdicts.ParseCodes(const AText: string): TArray<string>;
@@ -170,7 +176,9 @@ begin
   begin
     Code := Trim(Part);
     if IsWarningOrHintCode(Code) and (IndexText(Code, Result) < 0) then
+    begin
       Result := Result + [Code];
+    end;
   end;
 end;
 
@@ -192,8 +200,12 @@ var
 begin
   Result := False;
   for Message in AMessages do
+  begin
     if Baselinable(Message) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasBuildVerdicts.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -217,7 +229,9 @@ begin
         begin
           Inc(Result.Errors);
           if (FirstError < 0) and (Message.FileName <> '') then
+          begin
             FirstError := Index;
+          end;
         end;
       TAtlasCompilerSeverity.Warning, TAtlasCompilerSeverity.Hint:
         begin
@@ -227,36 +241,58 @@ begin
             Continue;
           end;
           if Message.Severity = TAtlasCompilerSeverity.Warning then
-            Inc(Result.Warnings)
+          begin
+            Inc(Result.Warnings);
+          end
           else
+          begin
             Inc(Result.Hints);
+          end;
           if (FirstCounted < 0) and (Message.FileName <> '') then
+          begin
             FirstCounted := Index;
+          end;
           if IndexText(Message.Code, ASettings.WarningsAsErrors) >= 0 then
           begin
             Inc(Result.Promoted);
             if Result.PromotedCode = '' then
+            begin
               Result.PromotedCode := UpperCase(Message.Code);
+            end;
             if (FirstPromoted < 0) and (Message.FileName <> '') then
+            begin
               FirstPromoted := Index;
+            end;
           end;
         end;
       TAtlasCompilerSeverity.Info: ;
     end;
   end;
   if not ASucceeded or (Result.Errors > 0) then
-    Result.Reason := TAtlasBuildVerdictReason.CompilerFailed
+  begin
+    Result.Reason := TAtlasBuildVerdictReason.CompilerFailed;
+  end
   else if Result.Promoted > 0 then
-    Result.Reason := TAtlasBuildVerdictReason.WarningsAsErrors
+  begin
+    Result.Reason := TAtlasBuildVerdictReason.WarningsAsErrors;
+  end
   else if ASettings.ZeroHints and (Result.Warnings + Result.Hints > 0) then
-    Result.Reason := TAtlasBuildVerdictReason.ZeroHints
+  begin
+    Result.Reason := TAtlasBuildVerdictReason.ZeroHints;
+  end
   else
+  begin
     Result.Reason := TAtlasBuildVerdictReason.None;
+  end;
   Result.First := FirstError;
   if Result.First < 0 then
+  begin
     Result.First := FirstPromoted;
+  end;
   if Result.First < 0 then
+  begin
     Result.First := FirstCounted;
+  end;
 end;
 
 class procedure TAtlasBuildVerdicts.Run(const AMessages: TArray<TAtlasCompilerMessage>; ASucceeded: Boolean;
@@ -278,7 +314,9 @@ begin
     begin
       Done(Evaluate(Messages, ABaselined, Succeeded, Settings));
     end) then
+  begin
     Exit;
+  end;
   Done(Evaluate(Messages, nil, Succeeded, Settings));
 end;
 
@@ -316,20 +354,30 @@ var
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) then
+  begin
     Exit;
+  end;
   Value := TJSONObject(AAnswer).GetValue('baselined');
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   SetLength(Result, ACount);
   for Index := 0 to ACount - 1 do
+  begin
     Result[Index] := False;
+  end;
   for Item in TJSONArray(Value) do
+  begin
     if Item is TJSONNumber then
     begin
       Index := TJSONNumber(Item).AsInt;
       if (Index >= 0) and (Index < ACount) then
+      begin
         Result[Index] := True;
+      end;
     end;
+  end;
 end;
 
 { TAtlasCompilerBaselineAdd }
@@ -342,7 +390,9 @@ begin
   AResult := Default(TAtlasCompilerBaselineAdd);
   Result := (AAnswer is TJSONObject) and (TJSONObject(AAnswer).GetValue('file') is TJSONString);
   if not Result then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AAnswer);
   AResult.FileName := Answer.GetValue('file').Value;
   AResult.Total := Answer.GetValue<Integer>('total', 0);

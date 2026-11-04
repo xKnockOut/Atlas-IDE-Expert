@@ -305,7 +305,9 @@ begin
   FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesAsking);
   ShowDirty;
   if not Assigned(FActions.Fetch) then
+  begin
     Exit;
+  end;
   Alive := FAlive;
   Keep := FAliveRef;
   FActions.Fetch(
@@ -313,7 +315,9 @@ begin
     begin
       // Keep hält die Marke am Leben, bis die Antwort da ist.
       if Assigned(Keep) and Alive.Alive then
+      begin
         ShowAnswer(AAnswer);
+      end;
     end);
 end;
 
@@ -325,28 +329,42 @@ begin
   FMarkdown := TAtlasProcessesView.Markdown(AAnswer);
   FCopyButton.Enabled := FMarkdown <> '';
   if AAnswer = nil then
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer)
+  begin
+    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+  end
   else if Length(FWorkspaces) = 0 then
-    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesEmpty)
+  begin
+    FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesEmpty);
+  end
   else
+  begin
     FStatus.Caption := '';
+  end;
   if TAtlasProcessesView.GroupName(FWorkspaces) = '' then
-    FHeading.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone)
+  begin
+    FHeading.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesTitleNone);
+  end
   else
+  begin
     FHeading.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesTitle,
       [TAtlasProcessesView.GroupName(FWorkspaces)]);
+  end;
   Caption := FHeading.Caption;
   FChoice.Items.BeginUpdate;
   try
     FChoice.Items.Clear;
     for Index := 0 to High(FWorkspaces) do
+    begin
       FChoice.Items.Add(FWorkspaces[Index].Name);
+    end;
   finally
     FChoice.Items.EndUpdate;
   end;
   FChoice.Visible := Length(FWorkspaces) > 1;
   if Length(FWorkspaces) > 0 then
+  begin
     FChoice.ItemIndex := 0;
+  end;
   ShowWorkspace(0);
   ShowDirty;
 end;
@@ -377,9 +395,13 @@ begin
     Workspace := FWorkspaces[AIndex];
     FCacheValue.Caption := Workspace.Cache;
     if Workspace.LockHolder = '' then
-      FLockValue.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesFree)
+    begin
+      FLockValue.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesFree);
+    end
     else
+    begin
       FLockValue.Caption := Workspace.LockHolder;
+    end;
     // Marke „schreibt“ hinter dem Halter der Sperre; das Label misst sich selbst (AutoSize, ohne Fenster).
     FWriterTag.Visible := Workspace.LockHolder <> '';
     FWriterTag.Left := FLockValue.Left + FLockValue.Width + 2 * Gap;
@@ -391,17 +413,25 @@ begin
       Item.Caption := Row.Kind;
       Client := Row.Caption;
       if Row.Own then
+      begin
         Client := Client + TAtlasStrings.Text(TAtlasTextId.ProcessesOwn);
+      end;
       Item.SubItems.Add(Client);
       Item.SubItems.Add(Row.State);
     end;
     if Workspace.BuiltOnce then
-      FBuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [Workspace.Units])
+    begin
+      FBuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [Workspace.Units]);
+    end
     else
+    begin
       FBuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesUnits, [Workspace.Units]);
+    end;
     FCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesCount, [Length(Workspace.Processes)]);
     for Line in Workspace.Events do
+    begin
       FLog.Lines.Add(Line.Time + '  ' + Line.Text);
+    end;
   finally
     FLog.Lines.EndUpdate;
     FList.Items.EndUpdate;
@@ -418,14 +448,20 @@ var
 begin
   Names := nil;
   if Assigned(FActions.ModifiedFiles) then
+  begin
     Names := TAtlasProcessesView.DirtyNames(FActions.ModifiedFiles());
+  end;
   HasMcp := False;
   for Workspace in FWorkspaces do
+  begin
     HasMcp := HasMcp or Workspace.HasMcp;
+  end;
   // Ohne MCP-Prozess gibt es niemanden, der den gespeicherten Stand liest.
   Mcp := '';
   if HasMcp then
+  begin
     Mcp := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyMcpText);
+  end;
   FDirty.Items.BeginUpdate;
   try
     FDirty.Items.Clear;
@@ -440,11 +476,17 @@ begin
     FDirty.Items.EndUpdate;
   end;
   if Length(Names) = 0 then
-    FDirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNone)
+  begin
+    FDirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNone);
+  end
   else if HasMcp then
-    FDirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNote)
+  begin
+    FDirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNote);
+  end
   else
+  begin
     FDirtyNote.Caption := '';
+  end;
 end;
 
 procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);
@@ -460,7 +502,9 @@ end;
 procedure TAtlasProcessesDialog.CopyClick(Sender: TObject);
 begin
   if Assigned(FActions.CopyText) and (FMarkdown <> '') then
+  begin
     FActions.CopyText(FMarkdown);
+  end;
 end;
 
 class procedure TAtlasProcessesDialog.Execute(const AActions: TAtlasProcessesActions);

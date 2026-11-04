@@ -86,14 +86,18 @@ end;
 procedure TAtlasTimeClock.Close;
 begin
   if FOpen and (FLast > FStart) then
+  begin
     FDone := FDone + [TAtlasTimeSpan.Create(FIssue, FStart, FLast)];
+  end;
   FOpen := False;
 end;
 
 procedure TAtlasTimeClock.SetIssue(const AIssue: TAtlasTimeIssue);
 begin
   if FIssue.Same(AIssue) then
+  begin
     Exit;
+  end;
   Close;
   FIssue := AIssue;
 end;
@@ -106,7 +110,9 @@ end;
 procedure TAtlasTimeClock.Activity(AAt: TDateTime);
 begin
   if FPaused or FIssue.IsEmpty then
+  begin
     Exit;
+  end;
   if not FOpen then
   begin
     FOpen := True;
@@ -115,7 +121,9 @@ begin
     Exit;
   end;
   if AAt <= FLast then
+  begin
     Exit;
+  end;
   if AAt - FLast > FIdle then
   begin
     // Leerlauf: Die Spanne endet bei der letzten Meldung, die Pause zählt nicht.
@@ -129,7 +137,9 @@ end;
 procedure TAtlasTimeClock.Tick;
 begin
   if FOpen and (FNow() - FLast > FIdle) then
+  begin
     Close;
+  end;
 end;
 
 procedure TAtlasTimeClock.Pause;
@@ -160,16 +170,22 @@ var
 begin
   Result := 0;
   for mSpan in FDone do
+  begin
     Inc(Result, mSpan.Seconds);
+  end;
   if FOpen then
+  begin
     Inc(Result, TAtlasTimeSpan.Create(FIssue, FStart, FLast).Seconds);
+  end;
 end;
 
 procedure TAtlasTimeClock.Discard;
 begin
   FDone := nil;
   if FOpen then
+  begin
     FStart := FLast;
+  end;
 end;
 
 function TAtlasTimeClock.Running: Boolean;

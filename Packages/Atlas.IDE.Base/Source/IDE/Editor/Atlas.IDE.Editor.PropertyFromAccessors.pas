@@ -52,7 +52,9 @@ function NumberOf(AReply: TJSONObject; const AName: string): Integer;
 begin
   Result := 0;
   if (AReply <> nil) and (AReply.GetValue(AName) is TJSONNumber) then
+  begin
     Result := TJSONNumber(AReply.GetValue(AName)).AsInt;
+  end;
 end;
 
 class procedure TAtlasIdePropertyFromAccessors.Execute(ASession: TLspSession; const AArgumentsJson: string;
@@ -83,7 +85,9 @@ begin
     try
       Reply := nil;
       if Answer is TJSONObject then
+      begin
         Reply := TJSONObject(Answer);
+      end;
       Edit := TLspWorkspaceEdit.FromJson(nil);
       if Reply <> nil then
       begin
@@ -91,8 +95,12 @@ begin
         Properties := NumberOf(Reply, 'properties');
         Calls := NumberOf(Reply, 'calls');
         if Reply.GetValue('warnings') is TJSONArray then
+        begin
           for Item in TJSONArray(Reply.GetValue('warnings')) do
+          begin
             Warnings := Warnings + [Item.Value];
+          end;
+        end;
       end;
     finally
       Answer.Free;
@@ -112,7 +120,9 @@ begin
   Hint := TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsPreviewHint, [Properties, Calls, Edit.EditCount,
     Length(Edit.Files)]);
   for Warning in Warnings do
+  begin
     Hint := Hint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsWarning, [Warning]);
+  end;
   Preview := TAtlasResults.RenamePreview(Edit,
     function(const AFileName: string): string
     begin
@@ -125,7 +135,9 @@ begin
     end;
   if not TAtlasRenamePreview.Execute(TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsTitle), Hint,
     TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.PropertyAccessorsTitle));
   if Outcome.Error <> '' then
   begin
@@ -134,9 +146,13 @@ begin
   end;
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsDone, [Properties, Calls, Outcome.Edits, Outcome.Files]));
   for Warning in Warnings do
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.PropertyAccessorsWarning, [Warning]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.

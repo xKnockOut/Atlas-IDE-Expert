@@ -99,14 +99,20 @@ var
   Frame: TAtlasBoardFrame;
 begin
   if not (AFrame is TAtlasBoardFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasBoardFrame(AFrame);
   TAtlasIdeBoardWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeBoardWindow.OnFrame) then
+  begin
     TAtlasIdeBoardWindow.OnFrame(Frame);
+  end;
 end;
 
 function TBoardDock.GetMenuActionList: TCustomActionList;
@@ -158,7 +164,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TBoardDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeBoardWindow }
@@ -171,7 +179,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -179,7 +189,9 @@ class function TAtlasIdeBoardWindow.ExistingFrame: TAtlasBoardFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasBoardFrame) then
+  begin
     Result := TAtlasBoardFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeBoardWindow.Visible: Boolean;
@@ -191,7 +203,9 @@ end;
 class procedure TAtlasIdeBoardWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeBoardWindow.UpdateIcon;
@@ -199,7 +213,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -215,7 +231,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

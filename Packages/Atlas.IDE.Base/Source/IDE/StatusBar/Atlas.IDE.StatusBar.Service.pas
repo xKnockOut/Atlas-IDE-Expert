@@ -155,9 +155,13 @@ function BarColors: TAtlasColors;
 begin
   // Wie Brotkrumen- und Editorleiste.
   if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-    Result := TAtlasIdeStyle.ChromeColors
+  begin
+    Result := TAtlasIdeStyle.ChromeColors;
+  end
   else
+  begin
     Result := TAtlasIdeStyle.Colors;
+  end;
 end;
 
 function LiveTexts: TAtlasStatusLiveTexts;
@@ -199,10 +203,14 @@ begin
   ALine := -1;
   ACharacter := -1;
   if (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   if Cursor.Line < 1 then
+  begin
     Exit;
+  end;
   ALine := Cursor.Line - 1;
   ACharacter := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
@@ -250,9 +258,13 @@ var
 begin
   Field := nil;
   if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+  begin
     Field := TAtlasIdeStatusBar.FHooks.Field();
+  end;
   if Field <> nil then
+  begin
     Field.RequestRefresh;
+  end;
 end;
 
 procedure TStatusBarState.ApplyTheme;
@@ -270,10 +282,14 @@ end;
 procedure TStatusBarState.Want(AOn: Boolean);
 begin
   if AOn = FWanted then
+  begin
     Exit;
+  end;
   FWanted := AOn;
   if Assigned(TAtlasIdeStatusBar.FHooks.WantMetrics) then
+  begin
     TAtlasIdeStatusBar.FHooks.WantMetrics(AOn);
+  end;
 end;
 
 function TStatusBarState.TopBar: TAtlasEditorStatusBar;
@@ -312,9 +328,13 @@ begin
         begin
           Field := nil;
           if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+          begin
             Field := TAtlasIdeStatusBar.FHooks.Field();
+          end;
           if Field <> nil then
+          begin
             Field.OpenWindowAt(Corner);
+          end;
         end);
     end;
   Bar.OnStatusContext :=
@@ -330,9 +350,13 @@ begin
         begin
           Field := nil;
           if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+          begin
             Field := TAtlasIdeStatusBar.FHooks.Field();
+          end;
           if Field <> nil then
+          begin
             Field.ContextAt(Corner);
+          end;
         end);
     end;
   Bar.OnBadge :=
@@ -349,9 +373,13 @@ begin
         begin
           Field := nil;
           if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+          begin
             Field := TAtlasIdeStatusBar.FHooks.Field();
+          end;
           if Field <> nil then
+          begin
             Field.ClickBadge(Corner);
+          end;
         end);
     end;
   Bar.OnFinding :=
@@ -372,7 +400,9 @@ begin
     begin
       // Fenster „Atlas-Server“ (#1356); mit server.statusWindow aus tut der Doppelklick nichts.
       if not TAtlasIdeServerWindow.Enabled then
+      begin
         Exit;
+      end;
       TAtlasGuard.Log(LogPrefix + 'Doppelklick auf Status');
       Later(
         procedure
@@ -467,7 +497,9 @@ var
 begin
   Field := nil;
   if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+  begin
     Field := TAtlasIdeStatusBar.FHooks.Field();
+  end;
   if Field = nil then
   begin
     AView.StatusText := TAtlasStatusSummary.FieldCaption;
@@ -477,14 +509,20 @@ begin
   end;
   Text := Field.Text;
   if Text = '' then
+  begin
     Text := TAtlasStatusSummary.FieldCaption;
+  end;
   // Mehr Platz als in der Statuszeile: „Atlas · bereit“ statt nur „Atlas“.
   if (Field.State = TAtlasStatusState.Green) and SameText(Text, TAtlasStatusSummary.FieldCaption) then
+  begin
     Text := Text + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
+  end;
   AView.StatusText := Text;
   AView.StatusHint := Field.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
   if TAtlasIdeServerWindow.Enabled then
+  begin
     AView.StatusHint := AView.StatusHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusServer);
+  end;
   AView.StatusState := Field.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
   AView.BadgeCount := Field.BadgeCount;
@@ -516,7 +554,9 @@ begin
   StatusInto(Result);
   FileName := '';
   if (AView <> nil) and (AView.Buffer <> nil) then
+  begin
     FileName := AView.Buffer.FileName;
+  end;
   if not CaretOf(AView, Line, Character) then
   begin
     Line := -1;
@@ -527,7 +567,9 @@ begin
     Result.FindingsShown := True;
     Problems := nil;
     if FileName <> '' then
+    begin
       Problems := TAtlasProblemsController.Current.ForFile(FileName);
+    end;
     Result.Counts := TAtlasStatusBarContent.CountsOf(Problems, Settings.ProblemsWindowCompiler);
     Result.FindingsHint := TAtlasStrings.Fmt(TAtlasTextId.StatusBarFindingsHint,
       [Result.Counts[TAtlasFindingKind.Error], Result.Counts[TAtlasFindingKind.Warning],
@@ -538,7 +580,9 @@ begin
     Check := TAtlasProblemsController.LastCheck;
     CheckedAt := 0;
     if (FileName <> '') and SameText(Check.FileName, FileName) then
+    begin
       CheckedAt := Check.At;
+    end;
     Result.LiveBusy := ProblemsOn(Settings) and TAtlasProblemsController.Checking;
     Result.LiveText := TAtlasStatusBarContent.LiveText(Settings.ProblemsLive, Result.LiveBusy, CheckedAt, Now,
       LiveTexts);
@@ -560,19 +604,31 @@ begin
     else
     // Ältere Server ohne Laufstand: Fortschritt aus den Befunden (#1232), solange Units fehlen.
     if ProblemsOn(Settings) and TAtlasIdeProblems.ProjectProgress(Checked, Total) then
+    begin
       Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);
+    end;
     if Settings.ProblemsLive then
-      Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint)
+    begin
+      Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
+    end
     else
+    begin
       Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
+    end;
     if ProblemsOn(Settings) then
+    begin
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
+    end;
     if Check.FileName <> '' then
+    begin
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
         [ExtractFileName(Check.FileName), Check.DurationMs, FormatDateTime('hh:nn:ss', Check.At)]);
+    end;
     if Total > 0 then
+    begin
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
         [Checked, Total]);
+    end;
   end;
   FMethodFile := '';
   FMethod := Default(TAtlasStatusMethod);
@@ -587,7 +643,9 @@ begin
         Known := Assigned(TAtlasIdeStatusBar.FHooks.Metrics) and TAtlasIdeStatusBar.FHooks.Metrics(FileName,
           Metrics);
         if not Known then
+        begin
           Metrics := Default(TAtlasFileMetrics);
+        end;
         Method := TAtlasStatusBarContent.MethodAt(Snapshot.Nodes, Line, Metrics, Known);
       end;
     end;
@@ -607,7 +665,9 @@ begin
       FMethod := Method;
     end
     else
+    begin
       Result.MethodName := TAtlasStrings.Text(TAtlasTextId.StatusBarNoMethod);
+    end;
   end;
 end;
 
@@ -628,12 +688,16 @@ begin
     Exit;
   end;
   if WasHidden then
+  begin
     RefreshField;
+  end;
   if not On_ then
   begin
     Want(False);
     if FHost.Count > 0 then
+    begin
       FHost.Clear;
+    end;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.StatusBar,
@@ -653,7 +717,9 @@ begin
       begin
         Bar := TAtlasEditorStatusBar(Control);
         if Bar = Top then
+        begin
           Continue;
+        end;
         // Andere Fenster: nur Status und Belegung, der Rest bleibt vom letzten Mal, als sie oben waren.
         View := Bar.View;
         View.Items := Items;
@@ -661,7 +727,9 @@ begin
         Bar.SetView(View);
       end;
       if Top <> nil then
+      begin
         Top.SetView(ViewFor(TAtlasEditorBuffer.ActiveView, Items));
+      end;
     end);
 end;
 
@@ -677,7 +745,9 @@ begin
     procedure
     begin
       if TAtlasIdeStatusBar.FState <> Owner then
+      begin
         Exit;
+      end;
       TAtlasGuard.Run(TAtlasFeature.StatusBar, Action);
     end);
 end;
@@ -691,7 +761,9 @@ var
 begin
   View := TAtlasEditorBuffer.ActiveView;
   if not CaretOf(View, Line, Character) or not ProblemsOn(TAtlasIdeSettings.Current) then
+  begin
     Exit;
+  end;
   FileName := View.Buffer.FileName;
   if not TAtlasStatusBarContent.NextOf(TAtlasProblemsController.Current.ForFile(FileName), AKind,
     TAtlasIdeSettings.Current.ProblemsWindowCompiler, Line, Character, Target) then
@@ -705,7 +777,9 @@ end;
 procedure TStatusBarState.JumpToMethod;
 begin
   if (FMethodFile = '') or not FMethod.Found then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.GoToLocation(FMethodFile, FMethod.Line, FMethod.Character);
 end;
 
@@ -714,7 +788,9 @@ begin
   // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
   // liefert workspace/diagnostic nach und nach.
   if not ProblemsOn(TAtlasIdeSettings.Current) or not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
+  begin
     Exit;
+  end;
   TAtlasIdeStatusBar.Say(TAtlasStrings.Text(TAtlasTextId.StatusBarRechecking));
   TAtlasIdeStatusBar.FHooks.Recheck();
 end;
@@ -745,7 +821,9 @@ end;
 class procedure TAtlasIdeStatusBar.Say(const AText: string);
 begin
   if Assigned(FHooks.Message) then
+  begin
     FHooks.Message(AText);
+  end;
 end;
 
 class function TAtlasIdeStatusBar.Enabled: Boolean;
@@ -770,13 +848,17 @@ end;
 class procedure TAtlasIdeStatusBar.ApplySettings;
 begin
   if FState <> nil then
+  begin
     State.Reset;
+  end;
 end;
 
 class procedure TAtlasIdeStatusBar.ThemeChanged;
 begin
   if FState <> nil then
+  begin
     State.ApplyTheme;
+  end;
 end;
 
 class function TAtlasIdeStatusBar.Anchor(out APoint: TPoint): Boolean;
@@ -787,13 +869,19 @@ begin
   APoint := Point(0, 0);
   Result := False;
   if FState = nil then
+  begin
     Exit;
+  end;
   Bar := State.TopBar;
   if (Bar = nil) or not Bar.Visible or not Bar.HandleAllocated then
+  begin
     Exit;
+  end;
   Area := Bar.PartRect(TAtlasStatusBarPart.Status);
   if Area.IsEmpty then
+  begin
     Exit;
+  end;
   APoint := Bar.ClientToScreen(Point(Area.Left, Area.Top));
   Result := True;
 end;
