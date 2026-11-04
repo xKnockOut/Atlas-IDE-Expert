@@ -362,16 +362,15 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
 const
-  UnitBasis =
+  cImplementsMissingUnitBasis =
     'unit Basis;'#10'interface'#10'type'#10 +
     '  IFlush = interface'#10 +
     '    procedure Flush;'#10 +
     '  end;'#10 +
     'implementation'#10'end.';
-  HauptFile = 'C:\P\Haupt.pas';
-  Haupt =
+  cImplementsMissingHauptFile = 'C:\P\Haupt.pas';
+  cImplementsMissingHaupt =
     'unit Haupt;'#10 +                                   // 0
     'interface'#10 +                                     // 1
     'uses Basis;'#10 +                                   // 2
@@ -382,6 +381,8 @@ const
     '  end;'#10 +                                        // 7
     'implementation'#10 +                                // 8
     'end.';
+
+procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
 var
   Index: ISymbolIndex;
   Completion: TLspCompletion;
@@ -391,14 +392,14 @@ var
   Spot: TJSONObject;
 begin
   Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
-  FStore.Open(TDocumentUris.FromPath(HauptFile), 'pascal', 1, Haupt);
+  Index.AddUnit(TIndexExtractor.ExtractText(cImplementsMissingUnitBasis, 'C:\P\Basis.pas', nil));
+  FStore.Open(TDocumentUris.FromPath(cImplementsMissingHauptFile), 'pascal', 1, cImplementsMissingHaupt);
   Completion := TLspCompletion.Create(FStore, Index, nil);
   try
     Completion.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
+        AText := cImplementsMissingUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end;
     FMenu.Index := Index;
@@ -407,7 +408,7 @@ begin
     Spot.AddPair('line', TJSONNumber.Create(6));
     Spot.AddPair('character', TJSONNumber.Create(4));
     Position := TJSONArray.Create;
-    Position.Add(TDocumentUris.FromPath(HauptFile));
+    Position.Add(TDocumentUris.FromPath(cImplementsMissingHauptFile));
     Position.AddElement(Spot);
     Position.Add(-1);
     try

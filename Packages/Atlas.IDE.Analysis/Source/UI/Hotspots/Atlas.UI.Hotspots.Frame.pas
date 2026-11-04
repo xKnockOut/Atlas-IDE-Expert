@@ -581,7 +581,7 @@ begin
       // Rang in der ganzen Liste, nicht in der gefilterten.
       mItem.Caption := IntToStr(FRows[mIndex] + 1);
       mItem.SubItems.Add(mEntry.Caption);
-      mItem.SubItems.Add(FormatFloat('0.00', mEntry.Score));
+      mItem.SubItems.Add(FormatFloat('0.00', mEntry.Score, FormatSettings));
       mItem.SubItems.Add(IntToStr(mEntry.Changes));
       mItem.SubItems.Add(IntToStr(mEntry.Authors));
       mItem.SubItems.Add(IntToStr(mEntry.Complexity));

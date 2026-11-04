@@ -53,21 +53,6 @@ type
     procedure StringFixWritesCharLiteralAndParses;
     [Test]
     procedure FixOutsideStringRemovesCharacter;
-    [Test]
-    procedure FormCharCodeIsReported;
-    [Test]
-    procedure FormRawCharGetsFormFix;
-    [Test]
-    procedure InvalidUtf8ByteHasLineAndColumn;
-    [Test]
-    procedure InvalidUtf8InAnsiLookingUtf8File;
-    [Test]
-    procedure PlainAnsiFileIsNoInvalidUtf8;
-    [Test]
-    procedure InvalidUtf8InForm;
-    /// <summary>Minimalfall F15 (#1327): ANSI mit Umlauten und einem zufällig gültigen UTF-8-Paar.</summary>
-    [Test]
-    procedure AnsiFileWithStrayUtf8PairIsSilent;
     /// <summary>Minimalfall F16 (#1327): gültiges UTF-8 mit U+FFFD im Kommentar.</summary>
     [Test]
     procedure ReplacementCharInCommentIsSilent;
@@ -92,9 +77,30 @@ type
     [Test]
     procedure ConditionalBranchAndAsmAreSkipped;
     [Test]
-    procedure Utf32FileIsReportedOnce;
-    [Test]
     procedure ConfusableSkipsIdentifierWithQuote;
+  end;
+
+  /// <summary>Ungültiges UTF-8, Formulare und Zeichenkodierung der Datei.</summary>
+  [TestFixture]
+  TUnicodeEncodingRuleTests = class
+  public
+    [Test]
+    procedure FormCharCodeIsReported;
+    [Test]
+    procedure FormRawCharGetsFormFix;
+    [Test]
+    procedure InvalidUtf8ByteHasLineAndColumn;
+    [Test]
+    procedure InvalidUtf8InAnsiLookingUtf8File;
+    [Test]
+    procedure PlainAnsiFileIsNoInvalidUtf8;
+    [Test]
+    procedure InvalidUtf8InForm;
+    /// <summary>Minimalfall F15 (#1327): ANSI mit Umlauten und einem zufällig gültigen UTF-8-Paar.</summary>
+    [Test]
+    procedure AnsiFileWithStrayUtf8PairIsSilent;
+    [Test]
+    procedure Utf32FileIsReportedOnce;
   end;
 
 implementation
@@ -408,7 +414,7 @@ begin
   Assert.IsFalse(Findings[0].Fixes[0].Safe);
 end;
 
-procedure TUnicodeRuleTests.FormCharCodeIsReported;
+procedure TUnicodeEncodingRuleTests.FormCharCodeIsReported;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -421,7 +427,7 @@ begin
   Assert.AreEqual(4, Findings[0].Range.StartPos.Line);
 end;
 
-procedure TUnicodeRuleTests.FormRawCharGetsFormFix;
+procedure TUnicodeEncodingRuleTests.FormRawCharGetsFormFix;
 var
   Findings: TArray<TRuleFinding>;
   Form: string;
@@ -437,7 +443,7 @@ begin
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
 end;
 
-procedure TUnicodeRuleTests.InvalidUtf8ByteHasLineAndColumn;
+procedure TUnicodeEncodingRuleTests.InvalidUtf8ByteHasLineAndColumn;
 var
   Data: TBytes;
   Source: string;
@@ -464,7 +470,7 @@ begin
   Assert.Contains(Findings[0].Message, 'U+FFFD');
 end;
 
-procedure TUnicodeRuleTests.InvalidUtf8InAnsiLookingUtf8File;
+procedure TUnicodeEncodingRuleTests.InvalidUtf8InAnsiLookingUtf8File;
 var
   Data: TBytes;
   Source: string;
@@ -482,7 +488,7 @@ begin
   Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
 end;
 
-procedure TUnicodeRuleTests.PlainAnsiFileIsNoInvalidUtf8;
+procedure TUnicodeEncodingRuleTests.PlainAnsiFileIsNoInvalidUtf8;
 var
   Data: TBytes;
   Source: string;
@@ -495,7 +501,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, Source, '', Data, nil, ''))));
 end;
 
-procedure TUnicodeRuleTests.InvalidUtf8InForm;
+procedure TUnicodeEncodingRuleTests.InvalidUtf8InForm;
 var
   Data: TBytes;
   Form: string;
@@ -521,7 +527,7 @@ begin
     TEncoding.ASCII.GetBytes(''';'#13#10'implementation'#13#10'end.'#13#10);
 end;
 
-procedure TUnicodeRuleTests.AnsiFileWithStrayUtf8PairIsSilent;
+procedure TUnicodeEncodingRuleTests.AnsiFileWithStrayUtf8PairIsSilent;
 var
   mData: TBytes;
   mSource: string;
@@ -675,7 +681,7 @@ begin
     '  asm'#13#10'    db "x"'#13#10'  end;'#13#10'end;'));
 end;
 
-procedure TUnicodeRuleTests.Utf32FileIsReportedOnce;
+procedure TUnicodeEncodingRuleTests.Utf32FileIsReportedOnce;
 var
   Data: TBytes;
   Source: string;
@@ -703,5 +709,6 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TUnicodeRuleTests);
+  TDUnitX.RegisterTestFixture(TUnicodeEncodingRuleTests);
 
 end.

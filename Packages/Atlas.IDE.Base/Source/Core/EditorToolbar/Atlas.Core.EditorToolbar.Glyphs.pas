@@ -189,7 +189,8 @@ begin
   Result := Outline([P(3.5, 1.5), P(9.5, 1.5), P(12.5, 4.5), P(12.5, 14.5), P(3.5, 14.5)]);
 end;
 
-class function TAtlasGlyphs.Shapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
+/// <summary>Formen der Symbole für Abschnitte und Verlauf; nil für andere.</summary>
+function SectionShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
 begin
   case AIcon of
     TAtlasToolbarIcon.InterfacePart:
@@ -215,6 +216,15 @@ begin
     TAtlasToolbarIcon.Toggle:
       Result := [Stroke([P(5, 2.5), P(5, 11.5)]), Stroke([P(2.5, 9), P(5, 11.5), P(7.5, 9)]),
         Stroke([P(11, 13.5), P(11, 4.5)]), Stroke([P(8.5, 7), P(11, 4.5), P(13.5, 7)])];
+  else
+    Result := nil;
+  end;
+end;
+
+/// <summary>Formen der Symbole für Werkzeuge; nil für andere.</summary>
+function ToolShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
+begin
+  case AIcon of
     TAtlasToolbarIcon.TestUnit:
       // Kolben.
       Result := [Stroke([P(6, 1.5), P(6, 6), P(2.5, 13), P(2.6, 14), P(3.4, 14.5), P(12.6, 14.5), P(13.4, 14),
@@ -250,7 +260,15 @@ begin
     TAtlasToolbarIcon.Gear:
       // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
       Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
-    // Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16).
+  else
+    Result := nil;
+  end;
+end;
+
+/// <summary>Formen der Symbole für Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16); nil für andere.</summary>
+function DesignerShapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
+begin
+  case AIcon of
     TAtlasToolbarIcon.ComponentSearch:
       // Lupe.
       Result := [Circle(7, 7, 4.5, False), Stroke([P(10.5, 10.5), P(14, 14)])];
@@ -273,6 +291,19 @@ begin
         Outline([P(5, 9), P(10, 9), P(10, 12), P(5, 12)])];
   else
     Result := nil;
+  end;
+end;
+
+class function TAtlasGlyphs.Shapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>;
+begin
+  Result := SectionShapes(AIcon);
+  if Result = nil then
+  begin
+    Result := ToolShapes(AIcon);
+  end;
+  if Result = nil then
+  begin
+    Result := DesignerShapes(AIcon);
   end;
 end;
 

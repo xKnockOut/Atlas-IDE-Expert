@@ -60,6 +60,15 @@ type
     function HasSelection: Boolean;
   end;
 
+  /// <summary>Befehl, den das Erzeugen-Menü ausführt: "/Name Arguments" in der Umgebung Environment.</summary>
+  TSlashMenuCall = record
+    Name: string;
+    Arguments: string;
+    Environment: TSlashEnvironment;
+    class function Create(const AName, AArguments: string;
+      const AEnvironment: TSlashEnvironment): TSlashMenuCall; static;
+  end;
+
   TSlashMenu = class
   public const
     /// <summary>Höchstzahl der Vorschläge aus dem Index beim Tippen der Argumente.</summary>
@@ -104,17 +113,10 @@ type
     class function ArgumentKind(const AName, AArguments: string): TSlashArgumentKind; static;
     /// <summary>Das angefangene Wort am Ende von AArguments (nach Leerzeichen, Komma oder Doppelpunkt).</summary>
     class function CurrentWord(const AArguments: string): string; static;
-    /// <summary>Führt "/AName AArguments" an ASpot aus; AEdits beziehen sich auf AText. False mit AReason, wenn der
-    /// Befehl dort nicht passt oder abgeschaltet ist.</summary>
-    class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
-      AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion,
-      AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
-      overload; static;
-    /// <summary>Wie Run, mit der Einrückung nach AStyle (#43).</summary>
-    class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot; const AName,
-      AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex; const ADelphiVersion,
-      AUri: string; const AHost: ISlashHost; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>;
-      out AReason: string): Boolean; overload; static;
+    /// <summary>Führt ACall an ASpot aus; AEdits beziehen sich auf AText. False mit AReason, wenn der Befehl dort
+    /// nicht passt oder abgeschaltet ist.</summary>
+    class function Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
+      const ACall: TSlashMenuCall; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean; static;
     /// <summary>Rechnet Änderungen am Text mit der gedachten Zeile ACommandLine (Text ACommandText) auf den Text
     /// ohne sie um. Was die Änderungen von der Zeile nicht überdecken (Einrückung davor, Zeilenende), bleibt wie
     /// im gedachten Text erhalten.</summary>
@@ -157,25 +159,43 @@ begin
   Result := EndLine >= Line;
 end;
 
+{ TSlashMenuCall }
+
+class function TSlashMenuCall.Create(const AName, AArguments: string;
+  const AEnvironment: TSlashEnvironment): TSlashMenuCall;
+begin
+  Result.Name := AName;
+  Result.Arguments := AArguments;
+  Result.Environment := AEnvironment;
+end;
+
 { Hilfen }
 
-function Entry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup; AArgument: TSlashArgument;
-  AHasChoices, AMulti: Boolean; const ASeparator: string): TSlashMenuEntry; overload;
+function Entry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup;
+  AArgument: TSlashArgument): TSlashMenuEntry;
 begin
   Result := Default(TSlashMenuEntry);
   Result.Name := AName;
   Result.Places := APlaces;
   Result.Group := AGroup;
   Result.Argument := AArgument;
-  Result.HasChoices := AHasChoices;
-  Result.Multi := AMulti;
-  Result.Separator := ASeparator;
 end;
 
-function Entry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup;
-  AArgument: TSlashArgument): TSlashMenuEntry; overload;
+/// <summary>Eintrag mit Auswahl möglicher Argumente (Choices).</summary>
+function ChoiceEntry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup;
+  AArgument: TSlashArgument): TSlashMenuEntry;
 begin
-  Result := Entry(AName, APlaces, AGroup, AArgument, False, False, '');
+  Result := Entry(AName, APlaces, AGroup, AArgument);
+  Result.HasChoices := True;
+end;
+
+/// <summary>Eintrag mit Auswahl mehrerer Argumente, verbunden mit ASeparator.</summary>
+function MultiEntry(const AName: string; APlaces: TSlashPlaces; AGroup: TSlashGroup; AArgument: TSlashArgument;
+  const ASeparator: string): TSlashMenuEntry;
+begin
+  Result := ChoiceEntry(AName, APlaces, AGroup, AArgument);
+  Result.Multi := True;
+  Result.Separator := ASeparator;
 end;
 
 function LongerOf(const A, B: string): string;
@@ -190,45 +210,50 @@ begin
   end;
 end;
 
-{ TSlashMenu }
-
-class function TSlashMenu.Catalog: TArray<TSlashMenuEntry>;
 const
   InClass = [TSlashPlace.ClassBody];
   InRoutine = [TSlashPlace.Routine];
   InUnit = [TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation];
   Everywhere = [TSlashPlace.Routine, TSlashPlace.ClassBody, TSlashPlace.RecordBody, TSlashPlace.InterfaceBody,
     TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation, TSlashPlace.ProgramFile];
+
+/// <summary>Erzeugen in der Klasse (Mockup AC7).</summary>
+function ClassEntries: TArray<TSlashMenuEntry>;
 begin
-  // Reihenfolge wie im Menü: zuerst die Klasse (Mockup AC7), dann Records, Routinen und die Unit-Ebene.
   Result := [
-    Entry('ctor', InClass, TSlashGroup.Generate, TSlashArgument.Optional, True, True, ', '),
+    MultiEntry('ctor', InClass, TSlashGroup.Generate, TSlashArgument.Optional, ', '),
     Entry('dtor', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('prop', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('override', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
-    Entry('equals', [TSlashPlace.ClassBody, TSlashPlace.RecordBody], TSlashGroup.Generate,
-      TSlashArgument.Optional, True, True, ', '),
+    ChoiceEntry('override', InClass, TSlashGroup.Generate, TSlashArgument.Required),
+    MultiEntry('equals', [TSlashPlace.ClassBody, TSlashPlace.RecordBody], TSlashGroup.Generate,
+      TSlashArgument.Optional, ', '),
     // impl erst nach equals: Reihenfolge wie im Entwurf (AC7); der Server setzt „implement“ hinter override.
     Entry('impl', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('field', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('encapsulate', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
+    ChoiceEntry('encapsulate', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('clone', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('assign', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('json', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('msg', InClass, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
+    ChoiceEntry('msg', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('intf', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('event', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('notify', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('changed', InClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('loaded', InClass, TSlashGroup.Generate, TSlashArgument.None),
     Entry('notification', InClass, TSlashGroup.Generate, TSlashArgument.Optional),
-    Entry('singleton', InClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('singleton', InClass, TSlashGroup.Generate, TSlashArgument.None)];
+end;
+
+/// <summary>Erzeugen in Sammlungen, Records, Interfaces und Routinen.</summary>
+function RoutineEntries: TArray<TSlashMenuEntry>;
+begin
+  Result := [
     Entry('list', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict!', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('sort', InRoutine, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
-    Entry('filter', InRoutine, TSlashGroup.Generate, TSlashArgument.Required, True, False, ''),
-    Entry('operator', [TSlashPlace.RecordBody], TSlashGroup.Generate, TSlashArgument.Required, True, True, ' '),
+    ChoiceEntry('sort', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    ChoiceEntry('filter', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    MultiEntry('operator', [TSlashPlace.RecordBody], TSlashGroup.Generate, TSlashArgument.Required, ' '),
     Entry('guid', [TSlashPlace.InterfaceBody], TSlashGroup.Generate, TSlashArgument.None),
     Entry('var', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('const', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
@@ -240,7 +265,13 @@ begin
     Entry('sql', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('params', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('case', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('test', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('test', InRoutine, TSlashGroup.Generate, TSlashArgument.None)];
+end;
+
+/// <summary>Erzeugen auf Unit-Ebene und in der Programmdatei.</summary>
+function UnitEntries: TArray<TSlashMenuEntry>;
+begin
+  Result := [
     Entry('record', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('enum', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('enum!', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
@@ -249,20 +280,33 @@ begin
     Entry('thread', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('external', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('exports', [TSlashPlace.ProgramFile], TSlashGroup.Generate, TSlashArgument.None),
-    Entry('todo', Everywhere, TSlashGroup.Generate, TSlashArgument.Required),
-    // Umschließen (#296, #304, #302, #322): nur mit Markierung im Rumpf einer Routine.
+    Entry('todo', Everywhere, TSlashGroup.Generate, TSlashArgument.Required)];
+end;
+
+/// <summary>Umschließen (#296, #304, #302, #322): nur mit Markierung im Rumpf einer Routine.</summary>
+function SurroundEntries: TArray<TSlashMenuEntry>;
+begin
+  Result := [
     Entry('try', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
     Entry('except', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
     Entry('lock', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
     Entry('sync', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
     Entry('sync!', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('ifdef', InRoutine, TSlashGroup.Surround, TSlashArgument.Required, True, False, ''),
+    ChoiceEntry('ifdef', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
     Entry('region', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
     Entry('measure', InRoutine, TSlashGroup.Surround, TSlashArgument.Optional),
     Entry('task', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
     Entry('future', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
     Entry('loop', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
     Entry('transaction', InRoutine, TSlashGroup.Surround, TSlashArgument.Required)];
+end;
+
+{ TSlashMenu }
+
+class function TSlashMenu.Catalog: TArray<TSlashMenuEntry>;
+begin
+  // Reihenfolge wie im Menü: zuerst die Klasse (Mockup AC7), dann Records, Routinen und die Unit-Ebene.
+  Result := ClassEntries + RoutineEntries + UnitEntries + SurroundEntries;
 end;
 
 class function TSlashMenu.Find(const AName: string; out AEntry: TSlashMenuEntry): Boolean;
@@ -348,148 +392,145 @@ begin
   end;
 end;
 
+/// <summary>Einrückung der ersten Zeile mit Text in ALines[AFirst..ALast]; ADefault ohne.</summary>
+function FirstIndent(const ALines: TArray<string>; AFirst, ALast: Integer; const ADefault: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ADefault;
+  for mIndex := AFirst to ALast do
+  begin
+    if Trim(ALines[mIndex]) <> '' then
+    begin
+      Exit(TTextLines.IndentOf(ALines[mIndex]));
+    end;
+  end;
+end;
+
 class function TSlashMenu.Prepare(const AText: string; const ASpot: TSlashSpot; const ACommand: string;
   out AVirtual: string; out ACommandLine, AWrapUntil: Integer): Boolean;
 var
-  Lines: TArray<string>;
-  LineBreak, Indent, Current: string;
-  Index: Integer;
+  mLines: TArray<string>;
+  mLineBreak, mIndent, mCurrent: string;
 begin
   AVirtual := '';
   ACommandLine := -1;
   AWrapUntil := 0;
-  Lines := TTextLines.SplitLines(AText, LineBreak);
-  if (ASpot.Line < 0) or (ASpot.Line > High(Lines)) then
+  mLines := TTextLines.SplitLines(AText, mLineBreak);
+  if (ASpot.Line < 0) or (ASpot.Line > High(mLines)) then
   begin
     Exit(False);
   end;
-  Current := Lines[ASpot.Line];
+  mCurrent := mLines[ASpot.Line];
+  mIndent := TTextLines.IndentOf(mCurrent);
+  ACommandLine := ASpot.Line;
   if ASpot.HasSelection then
   begin
     // Vor die Markierung, eingerückt wie ihre erste Zeile mit Text; umschlossen wird nur sie.
-    ACommandLine := ASpot.Line;
-    Indent := TTextLines.IndentOf(Current);
-    for Index := ASpot.Line to Min(ASpot.EndLine, High(Lines)) do
-    begin
-      if Trim(Lines[Index]) <> '' then
-      begin
-        Indent := TTextLines.IndentOf(Lines[Index]);
-        Break;
-      end;
-    end;
-    AWrapUntil := Min(ASpot.EndLine, High(Lines)) + 2;
+    mIndent := FirstIndent(mLines, ASpot.Line, Min(ASpot.EndLine, High(mLines)), mIndent);
+    AWrapUntil := Min(ASpot.EndLine, High(mLines)) + 2;
   end
-  else if Trim(Current) = '' then
+  else if Trim(mCurrent) = '' then
   begin
     // Leere Zeile: an ihre Stelle; die IDE hält den Cursor oft hinter dem Zeilenende (eingerückt ohne Leerzeichen).
-    ACommandLine := ASpot.Line;
-    Indent := TTextLines.IndentOf(Current);
-    if ASpot.Character > Length(Indent) then
+    if ASpot.Character > Length(mIndent) then
     begin
-      Indent := StringOfChar(' ', ASpot.Character);
+      mIndent := StringOfChar(' ', ASpot.Character);
     end;
   end
   else
   begin
     // Zeile mit Text: dahinter, eingerückt wie sie oder wie die nächste Zeile mit Text, falls tiefer.
     ACommandLine := ASpot.Line + 1;
-    Indent := TTextLines.IndentOf(Current);
-    for Index := ASpot.Line + 1 to High(Lines) do
-    begin
-      if Trim(Lines[Index]) <> '' then
-      begin
-        Indent := LongerOf(Indent, TTextLines.IndentOf(Lines[Index]));
-        Break;
-      end;
-    end;
+    mIndent := LongerOf(mIndent, FirstIndent(mLines, ASpot.Line + 1, High(mLines), ''));
   end;
-  Insert(Indent + ACommand, Lines, ACommandLine);
-  AVirtual := TTextLines.JoinLines(Lines, LineBreak);
+  Insert(mIndent + ACommand, mLines, ACommandLine);
+  AVirtual := TTextLines.JoinLines(mLines, mLineBreak);
   Result := True;
 end;
 
-class function TSlashMenu.PlacesAt(const AText: string; const ASpot: TSlashSpot): TSlashPlaces;
+/// <summary>Record- bzw. Interface-Rumpf aus AIndex, der die Zeile ALine umschließt.</summary>
+function BodyPlaces(const AIndex: TUnitIndex; ALine: Integer): TSlashPlaces;
 var
-  Virtual: string;
-  CommandLine, WrapUntil, ImplementationLine: Integer;
-  Tokens: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Context: TSlashContext;
-  Source: TCommandSource;
-  Symbol, ClassSymbol: TIndexSymbol;
-  First: Boolean;
+  mSymbol: TIndexSymbol;
 begin
   Result := [];
-  if not Prepare(AText, ASpot, '/x', Virtual, CommandLine, WrapUntil) then
+  for mSymbol in AIndex.Symbols do
   begin
-    Exit;
-  end;
-  Tokens := TPascalLexer.Tokenize(Virtual);
-  if not TSlashCommandRegistry.IsCodeLine(Tokens, CommandLine) then
-  begin
-    Exit;
-  end;
-  Context := Default(TSlashContext);
-  Context.Text := Virtual;
-  Context.Line := CommandLine;
-  Context.Name := 'x';
-  Source := TCommandSource.Create(Context);
-  try
-    if Source.RoutineAt <> nil then
-    begin
-      Include(Result, TSlashPlace.Routine);
-    end;
-    if Source.ClassAt(ClassSymbol) then
-    begin
-      Include(Result, TSlashPlace.ClassBody);
-    end;
-    if Result <> [] then
-    begin
-      Exit;
-    end;
-    for Symbol in Source.UnitIndex.Symbols do
-    begin
-      if (Symbol.Range.StartPos.Line >= CommandLine) or (Symbol.Range.EndPos.Line <= CommandLine) then
-      begin
-        Continue;
-      end;
-      if Symbol.Kind = TIndexSymbolKind.RecordType then
-      begin
-        Include(Result, TSlashPlace.RecordBody);
-      end
-      else if Symbol.Kind = TIndexSymbolKind.InterfaceType then
-      begin
-        Include(Result, TSlashPlace.InterfaceBody);
-      end;
-    end;
-    if Result <> [] then
-    begin
-      Exit;
-    end;
-  finally
-    Source.Free;
-  end;
-  // Unit-Ebene: Programmdatei am ersten Wort, sonst vor oder hinter "implementation".
-  First := True;
-  ImplementationLine := -1;
-  for Token in Tokens do
-  begin
-    if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    if (mSymbol.Range.StartPos.Line >= ALine) or (mSymbol.Range.EndPos.Line <= ALine) then
     begin
       Continue;
     end;
-    if First and (Token.IsKeyword('program') or Token.IsKeyword('library')) then
+    if mSymbol.Kind = TIndexSymbolKind.RecordType then
+    begin
+      Include(Result, TSlashPlace.RecordBody);
+    end
+    else if mSymbol.Kind = TIndexSymbolKind.InterfaceType then
+    begin
+      Include(Result, TSlashPlace.InterfaceBody);
+    end;
+  end;
+end;
+
+/// <summary>Orte aus dem Syntaxbaum an der gedachten Befehlszeile ACommandLine von AVirtual: Routine und Klasse,
+/// sonst Record- oder Interface-Rumpf; leer auf Unit-Ebene.</summary>
+function TypePlaces(const AVirtual: string; ACommandLine: Integer): TSlashPlaces;
+var
+  mContext: TSlashContext;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+begin
+  Result := [];
+  mContext := Default(TSlashContext);
+  mContext.Text := AVirtual;
+  mContext.Line := ACommandLine;
+  mContext.Name := 'x';
+  mSource := TCommandSource.Create(mContext);
+  try
+    if mSource.RoutineAt <> nil then
+    begin
+      Include(Result, TSlashPlace.Routine);
+    end;
+    if mSource.ClassAt(mClassSymbol) then
+    begin
+      Include(Result, TSlashPlace.ClassBody);
+    end;
+    if Result = [] then
+    begin
+      Result := BodyPlaces(mSource.UnitIndex, ACommandLine);
+    end;
+  finally
+    mSource.Free;
+  end;
+end;
+
+/// <summary>Unit-Ebene: Programmdatei am ersten Wort, sonst vor oder hinter "implementation".</summary>
+function UnitPlaces(const ATokens: TArray<TPascalToken>; ACommandLine: Integer): TSlashPlaces;
+var
+  mToken: TPascalToken;
+  mFirst: Boolean;
+  mImplementationLine: Integer;
+begin
+  mFirst := True;
+  mImplementationLine := -1;
+  for mToken in ATokens do
+  begin
+    if mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    if mFirst and (mToken.IsKeyword('program') or mToken.IsKeyword('library')) then
     begin
       Exit([TSlashPlace.ProgramFile]);
     end;
-    First := False;
-    if Token.IsKeyword('implementation') then
+    mFirst := False;
+    if mToken.IsKeyword('implementation') then
     begin
-      ImplementationLine := Token.StartPos.Line;
+      mImplementationLine := mToken.StartPos.Line;
       Break;
     end;
   end;
-  if (ImplementationLine >= 0) and (CommandLine > ImplementationLine) then
+  if (mImplementationLine >= 0) and (ACommandLine > mImplementationLine) then
   begin
     Result := [TSlashPlace.UnitImplementation];
   end
@@ -499,42 +540,74 @@ begin
   end;
 end;
 
+class function TSlashMenu.PlacesAt(const AText: string; const ASpot: TSlashSpot): TSlashPlaces;
+var
+  mVirtual: string;
+  mCommandLine, mWrapUntil: Integer;
+  mTokens: TArray<TPascalToken>;
+begin
+  Result := [];
+  if not Prepare(AText, ASpot, '/x', mVirtual, mCommandLine, mWrapUntil) then
+  begin
+    Exit;
+  end;
+  mTokens := TPascalLexer.Tokenize(mVirtual);
+  if TSlashCommandRegistry.IsCodeLine(mTokens, mCommandLine) then
+  begin
+    Result := TypePlaces(mVirtual, mCommandLine);
+    if Result = [] then
+    begin
+      Result := UnitPlaces(mTokens, mCommandLine);
+    end;
+  end;
+end;
+
+/// <summary>Ist ASymbol ein Feld der Klasse AClassName mit F-Präfix?</summary>
+function IsPrefixedField(const ASymbol: TIndexSymbol; const AClassName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.Field) and SameText(ASymbol.Container, AClassName) and
+    (Length(ASymbol.Name) > 1) and CharInSet(ASymbol.Name[1], ['F', 'f']);
+end;
+
+/// <summary>Hat die Klasse AClassName eine Property zum Feld AFieldName (Name ohne F)?</summary>
+function HasPropertyFor(const AIndex: TUnitIndex; const AClassName, AFieldName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AIndex.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mSymbol.Container, AClassName) and
+      SameText(mSymbol.Name, Copy(AFieldName, 2, MaxInt)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Felder mit F-Präfix ohne gleichnamige Property in der Klasse um die Befehlszeile (/encapsulate).</summary>
 function EncapsulateFields(const AContext: TSlashContext): TArray<string>;
 var
-  Source: TCommandSource;
-  ClassSymbol, Symbol, Other: TIndexSymbol;
-  HasProperty: Boolean;
+  mSource: TCommandSource;
+  mClassSymbol, mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit;
     end;
-    for Symbol in Source.UnitIndex.Symbols do
+    for mSymbol in mSource.UnitIndex.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, ClassSymbol.Name) and
-        (Length(Symbol.Name) > 1) and CharInSet(Symbol.Name[1], ['F', 'f']) then
+      if IsPrefixedField(mSymbol, mClassSymbol.Name) and
+        not HasPropertyFor(mSource.UnitIndex, mClassSymbol.Name, mSymbol.Name) then
       begin
-        HasProperty := False;
-        for Other in Source.UnitIndex.Symbols do
-        begin
-          if (Other.Kind = TIndexSymbolKind.Property_) and SameText(Other.Container, ClassSymbol.Name) and
-            SameText(Other.Name, Copy(Symbol.Name, 2, MaxInt)) then
-          begin
-            HasProperty := True;
-          end;
-        end;
-        if not HasProperty then
-        begin
-          Result := Result + [Symbol.Name];
-        end;
+        Result := Result + [mSymbol.Name];
       end;
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -654,70 +727,106 @@ begin
   end;
 end;
 
+type
+  TWantedKinds = set of TIndexSymbolKind;
+
+/// <summary>Symbolarten, die zu AKind passen.</summary>
+function WantedKinds(AKind: TSlashArgumentKind): TWantedKinds;
+begin
+  case AKind of
+    TSlashArgumentKind.Interfaces:
+      Result := [TIndexSymbolKind.InterfaceType];
+    TSlashArgumentKind.Exceptions:
+      Result := [TIndexSymbolKind.ClassType];
+  else
+    Result := [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
+  end;
+end;
+
+/// <summary>Ist ASymbol ein Vorschlag zu AKind: auf Unit-Ebene, passende Art, beginnt mit APrefix; Ausnahmen mit
+/// E-Präfix.</summary>
+function IsChoice(const ASymbol: TIndexSymbol; AKind: TSlashArgumentKind; const AWanted: TWantedKinds;
+  const APrefix: string): Boolean;
+begin
+  Result := (ASymbol.Container = '') and (ASymbol.Kind in AWanted) and StartsText(APrefix, ASymbol.Name);
+  if Result and (AKind = TSlashArgumentKind.Exceptions) then
+  begin
+    Result := (Length(ASymbol.Name) > 1) and CharInSet(ASymbol.Name[1], ['E', 'e']);
+  end;
+end;
+
+/// <summary>Hängt die Vorschläge aus AUnit zu AKind an ANames an: den Unit-Namen bei Units, sonst ihre
+/// Typen.</summary>
+procedure AddUnitChoices(ANames: TList<string>; const AUnit: TUnitIndex; AKind: TSlashArgumentKind;
+  const AWanted: TWantedKinds; const APrefix: string);
+var
+  mSymbol: TIndexSymbol;
+begin
+  if AKind = TSlashArgumentKind.Units then
+  begin
+    if StartsText(APrefix, AUnit.UnitName) then
+    begin
+      ANames.Add(AUnit.UnitName);
+    end;
+    Exit;
+  end;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if IsChoice(mSymbol, AKind, AWanted, APrefix) then
+    begin
+      ANames.Add(mSymbol.Name);
+    end;
+  end;
+end;
+
+/// <summary>ANames nach Namen sortiert, ohne doppelte, höchstens TSlashMenu.MaxChoices.</summary>
+function SortedChoices(ANames: TList<string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  ANames.Sort(TComparer<string>.Construct(
+    function(const A, B: string): Integer
+    begin
+      Result := CompareText(A, B);
+    end));
+  Result := nil;
+  for mIndex := 0 to ANames.Count - 1 do
+  begin
+    if Length(Result) >= TSlashMenu.MaxChoices then
+    begin
+      Break;
+    end;
+    if (Length(Result) = 0) or not SameText(Result[High(Result)], ANames[mIndex]) then
+    begin
+      Result := Result + [ANames[mIndex]];
+    end;
+  end;
+end;
+
 /// <summary>Namen aus AIndex auf Unit-Ebene zu AKind, die mit APrefix beginnen; nach Namen sortiert, ohne
 /// doppelte, höchstens TSlashMenu.MaxChoices.</summary>
 function IndexChoices(const AIndex: ISymbolIndex; AKind: TSlashArgumentKind; const APrefix: string): TArray<string>;
 var
-  Names: TList<string>;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Wanted: set of TIndexSymbolKind;
-  Index: Integer;
+  mNames: TList<string>;
+  mUnit: TUnitIndex;
+  mWanted: TWantedKinds;
 begin
   Result := nil;
   if AIndex = nil then
   begin
     Exit;
   end;
-  Names := TList<string>.Create;
+  mWanted := WantedKinds(AKind);
+  mNames := TList<string>.Create;
   try
-    case AKind of
-      TSlashArgumentKind.Interfaces:
-        Wanted := [TIndexSymbolKind.InterfaceType];
-      TSlashArgumentKind.Exceptions:
-        Wanted := [TIndexSymbolKind.ClassType];
-    else
-      Wanted := [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-        TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-    end;
-    for UnitIndex in AIndex.Units do
+    for mUnit in AIndex.Units do
     begin
-      if AKind = TSlashArgumentKind.Units then
-      begin
-        if StartsText(APrefix, UnitIndex.UnitName) then
-        begin
-          Names.Add(UnitIndex.UnitName);
-        end;
-        Continue;
-      end;
-      for Symbol in UnitIndex.Symbols do
-      begin
-        if (Symbol.Container = '') and (Symbol.Kind in Wanted) and StartsText(APrefix, Symbol.Name) and
-          ((AKind <> TSlashArgumentKind.Exceptions) or
-          ((Length(Symbol.Name) > 1) and CharInSet(Symbol.Name[1], ['E', 'e']))) then
-        begin
-          Names.Add(Symbol.Name);
-        end;
-      end;
+      AddUnitChoices(mNames, mUnit, AKind, mWanted, APrefix);
     end;
-    Names.Sort(TComparer<string>.Construct(
-      function(const A, B: string): Integer
-      begin
-        Result := CompareText(A, B);
-      end));
-    for Index := 0 to Names.Count - 1 do
-    begin
-      if Length(Result) >= TSlashMenu.MaxChoices then
-      begin
-        Break;
-      end;
-      if (Length(Result) = 0) or not SameText(Result[High(Result)], Names[Index]) then
-      begin
-        Result := Result + [Names[Index]];
-      end;
-    end;
+    Result := SortedChoices(mNames);
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
@@ -788,129 +897,137 @@ begin
 end;
 
 class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
-  const AName, AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex;
-  const ADelphiVersion, AUri: string; const AHost: ISlashHost; out AEdits: TArray<TTextEdit>;
-  out AReason: string): Boolean;
-begin
-  Result := Run(ARegistry, AText, ASpot, AName, AArguments, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
-    TFormatStyle.Default, AEdits, AReason);
-end;
-
-class function TSlashMenu.Run(ARegistry: TSlashCommandRegistry; const AText: string; const ASpot: TSlashSpot;
-  const AName, AArguments: string; const ADisabled: TArray<string>; const AIndex: ISymbolIndex;
-  const ADelphiVersion, AUri: string; const AHost: ISlashHost; const AStyle: TFormatStyle;
-  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+  const ACall: TSlashMenuCall; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Virtual, Command, LineBreak: string;
-  CommandLine, WrapUntil: Integer;
-  Edits: TArray<TTextEdit>;
-  Lines: TArray<string>;
+  mVirtual, mCommand: string;
+  mCommandLine, mWrapUntil: Integer;
+  mEdits: TArray<TTextEdit>;
+  mLines: TArray<string>;
 begin
   AEdits := nil;
   AReason := '';
-  Command := '/' + AName;
-  if Trim(AArguments) <> '' then
+  mCommand := '/' + ACall.Name;
+  if Trim(ACall.Arguments) <> '' then
   begin
-    Command := Command + ' ' + Trim(AArguments);
+    mCommand := mCommand + ' ' + Trim(ACall.Arguments);
   end;
-  if not Prepare(AText, ASpot, Command, Virtual, CommandLine, WrapUntil) then
+  if not Prepare(AText, ASpot, mCommand, mVirtual, mCommandLine, mWrapUntil) then
   begin
     AReason := 'Die Cursorstelle liegt außerhalb der Datei';
     Exit(False);
   end;
-  Result := ARegistry.Run(Virtual, CommandLine, WrapUntil, nil, ADisabled, AIndex, ADelphiVersion, AUri, AHost,
-    AStyle, Edits, AReason);
-  if not Result then
+  Result := ARegistry.Run(mVirtual, mCommandLine, mWrapUntil, ACall.Environment, mEdits, AReason);
+  if Result then
   begin
-    Exit;
+    mLines := TTextLines.SplitLines(mVirtual);
+    AEdits := MapEdits(mEdits, mCommandLine, mLines[mCommandLine], TTextLines.LineBreakOf(AText));
   end;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Lines := TTextLines.SplitLines(Virtual);
-  AEdits := MapEdits(Edits, CommandLine, Lines[CommandLine], LineBreak);
 end;
 
-class function TSlashMenu.MapEdits(const AEdits: TArray<TTextEdit>; ACommandLine: Integer; const ACommandText,
-  ALineBreak: string): TArray<TTextEdit>;
-var
-  Edit: TTextEdit;
-  Mapped: TArray<TTextEdit>;
-  Index, FirstStart, FirstEdit, LastEnd, LastEdit: Integer;
-  BreakCovered: Boolean;
-  Indent: string;
-
-  function Map(const APosition: TTextPosition): TTextPosition;
+/// <summary>APosition im Text ohne die gedachte Zeile ACommandLine; Stellen in ihr rücken an ihren Anfang.</summary>
+function MapPosition(const APosition: TTextPosition; ACommandLine: Integer): TTextPosition;
+begin
+  if APosition.Line < ACommandLine then
   begin
-    if APosition.Line < ACommandLine then
-    begin
-      Result := APosition;
-    end
-    else if APosition.Line = ACommandLine then
-    begin
-      Result := TTextPosition.Create(ACommandLine, 0);
-    end
-    else
-    begin
-      Result := TTextPosition.Create(APosition.Line - 1, APosition.Character);
-    end;
+    Result := APosition;
+  end
+  else if APosition.Line = ACommandLine then
+  begin
+    Result := TTextPosition.Create(ACommandLine, 0);
+  end
+  else
+  begin
+    Result := TTextPosition.Create(APosition.Line - 1, APosition.Character);
+  end;
+end;
+
+type
+  /// <summary>Wie die Änderungen die gedachte Befehlszeile überdecken: erste Änderung in ihr (FirstEdit ab
+  /// FirstStart, -1 ohne bzw. wenn eine Änderung von davor hineinreicht), letzte, die in ihr endet (LastEdit bis
+  /// LastEnd), und ob eine Änderung ihr Zeilenende überdeckt.</summary>
+  TCommandLineCover = record
+    FirstStart: Integer;
+    FirstEdit: Integer;
+    LastEnd: Integer;
+    LastEdit: Integer;
+    BreakCovered: Boolean;
+    procedure Consider(const AEdit: TTextEdit; AIndex, ACommandLine: Integer);
+    procedure Scan(const AEdits: TArray<TTextEdit>; ACommandLine: Integer);
   end;
 
+procedure TCommandLineCover.Consider(const AEdit: TTextEdit; AIndex, ACommandLine: Integer);
 begin
-  // Was von der gedachten Zeile nicht überdeckt wird, bleibt im gedachten Ergebnis stehen: der Anfang vor der
-  // ersten Änderung in der Zeile und ihr Zeilenende, wenn keine Änderung darüber hinausreicht.
+  if (AEdit.Range.StartPos.Line <= ACommandLine) and (AEdit.Range.EndPos.Line > ACommandLine) then
+  begin
+    BreakCovered := True;
+  end;
+  if (AEdit.Range.StartPos.Line = ACommandLine) and (AEdit.Range.StartPos.Character < FirstStart) then
+  begin
+    FirstStart := AEdit.Range.StartPos.Character;
+    FirstEdit := AIndex;
+  end;
+  if (AEdit.Range.StartPos.Line < ACommandLine) and (AEdit.Range.EndPos.Line >= ACommandLine) then
+  begin
+    FirstStart := 0;
+    FirstEdit := -1;
+  end;
+  if (AEdit.Range.EndPos.Line = ACommandLine) and (AEdit.Range.EndPos.Character > LastEnd) then
+  begin
+    LastEnd := AEdit.Range.EndPos.Character;
+    LastEdit := AIndex;
+  end;
+end;
+
+procedure TCommandLineCover.Scan(const AEdits: TArray<TTextEdit>; ACommandLine: Integer);
+var
+  mIndex: Integer;
+begin
   FirstStart := MaxInt;
   FirstEdit := -1;
   LastEnd := -1;
   LastEdit := -1;
   BreakCovered := False;
-  for Index := 0 to High(AEdits) do
+  for mIndex := 0 to High(AEdits) do
   begin
-    Edit := AEdits[Index];
-    if (Edit.Range.StartPos.Line <= ACommandLine) and (Edit.Range.EndPos.Line > ACommandLine) then
-    begin
-      BreakCovered := True;
-    end;
-    if (Edit.Range.StartPos.Line = ACommandLine) and (Edit.Range.StartPos.Character < FirstStart) then
-    begin
-      FirstStart := Edit.Range.StartPos.Character;
-      FirstEdit := Index;
-    end;
-    if (Edit.Range.StartPos.Line < ACommandLine) and (Edit.Range.EndPos.Line >= ACommandLine) then
-    begin
-      FirstStart := 0;
-      FirstEdit := -1;
-    end;
-    if (Edit.Range.EndPos.Line = ACommandLine) and (Edit.Range.EndPos.Character > LastEnd) then
-    begin
-      LastEnd := Edit.Range.EndPos.Character;
-      LastEdit := Index;
-    end;
+    Consider(AEdits[mIndex], mIndex, ACommandLine);
   end;
+end;
+
+class function TSlashMenu.MapEdits(const AEdits: TArray<TTextEdit>; ACommandLine: Integer; const ACommandText,
+  ALineBreak: string): TArray<TTextEdit>;
+var
+  mCover: TCommandLineCover;
+  mEdit: TTextEdit;
+  mIndex: Integer;
+  mIndent: string;
+begin
+  // Was von der gedachten Zeile nicht überdeckt wird, bleibt im gedachten Ergebnis stehen: der Anfang vor der
+  // ersten Änderung in der Zeile und ihr Zeilenende, wenn keine Änderung darüber hinausreicht.
+  mCover.Scan(AEdits, ACommandLine);
   // Nur die Einrückung vor dem Befehl kann stehen bleiben, nie der Befehl selbst.
-  Indent := '';
-  if (FirstEdit >= 0) and (FirstStart > 0) then
+  mIndent := '';
+  if (mCover.FirstEdit >= 0) and (mCover.FirstStart > 0) then
   begin
-    Indent := Copy(ACommandText, 1, Min(FirstStart, Length(TTextLines.IndentOf(ACommandText))));
+    mIndent := Copy(ACommandText, 1, Min(mCover.FirstStart, Length(TTextLines.IndentOf(ACommandText))));
   end;
-  Mapped := nil;
-  for Index := 0 to High(AEdits) do
+  Result := nil;
+  for mIndex := 0 to High(AEdits) do
   begin
-    Edit := TTextEdit.Create(TTextRange.Create(Map(AEdits[Index].Range.StartPos), Map(AEdits[Index].Range.EndPos)),
-      AEdits[Index].NewText);
-    if Index = FirstEdit then
+    mEdit := TTextEdit.Create(TTextRange.Create(MapPosition(AEdits[mIndex].Range.StartPos, ACommandLine),
+      MapPosition(AEdits[mIndex].Range.EndPos, ACommandLine)), AEdits[mIndex].NewText);
+    if mIndex = mCover.FirstEdit then
     begin
-      Edit.NewText := Indent + Edit.NewText;
+      mEdit.NewText := mIndent + mEdit.NewText;
     end;
-    if (Index = LastEdit) and not BreakCovered then
+    if (mIndex = mCover.LastEdit) and not mCover.BreakCovered then
     begin
-      Edit.NewText := Edit.NewText + ALineBreak;
+      mEdit.NewText := mEdit.NewText + ALineBreak;
     end;
-    if (Edit.Range.StartPos = Edit.Range.EndPos) and (Edit.NewText = '') then
+    if not ((mEdit.Range.StartPos = mEdit.Range.EndPos) and (mEdit.NewText = '')) then
     begin
-      Continue;
+      Result := Result + [mEdit];
     end;
-    Mapped := Mapped + [Edit];
   end;
-  Result := Mapped;
 end;
 
 end.

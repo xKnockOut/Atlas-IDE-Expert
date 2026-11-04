@@ -56,6 +56,10 @@ type
   public const
     /// <summary>Befehl des Servers (Atlas.Common.Lsp.Processes).</summary>
     Command = 'atlas.server.processes';
+  private
+    class function ParseRows(const AList: TJSONValue): TArray<TAtlasProcessRow>; static;
+    class function ParseEvents(const AList: TJSONValue): TArray<TAtlasProcessLogLine>; static;
+    class function ParseWorkspace(const AItem: TJSONObject): TAtlasProcessWorkspace; static;
   public
     /// <summary>Arbeitsbereiche aus der Antwort; leer bei nil oder unbekanntem Format.</summary>
     class function Parse(const AAnswer: TJSONValue): TArray<TAtlasProcessWorkspace>; static;
@@ -107,70 +111,87 @@ end;
 
 { TAtlasProcessesView }
 
+class function TAtlasProcessesView.ParseRows(const AList: TJSONValue): TArray<TAtlasProcessRow>;
+var
+  mEntry: TJSONValue;
+  mRow: TAtlasProcessRow;
+begin
+  Result := nil;
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(AList) do
+  begin
+    if mEntry is TJSONObject then
+    begin
+      mRow.Pid := TJSONObject(mEntry).GetValue<Integer>('pid', 0);
+      mRow.Kind := TJSONObject(mEntry).GetValue<string>('kind', '');
+      mRow.Client := TJSONObject(mEntry).GetValue<string>('client', '');
+      mRow.State := TJSONObject(mEntry).GetValue<string>('state', '');
+      mRow.Writer := TJSONObject(mEntry).GetValue<Boolean>('writer', False);
+      mRow.Own := TJSONObject(mEntry).GetValue<Boolean>('own', False);
+      Result := Result + [mRow];
+    end;
+  end;
+end;
+
+class function TAtlasProcessesView.ParseEvents(const AList: TJSONValue): TArray<TAtlasProcessLogLine>;
+var
+  mEntry: TJSONValue;
+  mLine: TAtlasProcessLogLine;
+begin
+  Result := nil;
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(AList) do
+  begin
+    if mEntry is TJSONObject then
+    begin
+      mLine.Time := TJSONObject(mEntry).GetValue<string>('time', '');
+      mLine.Text := TJSONObject(mEntry).GetValue<string>('text', '');
+      Result := Result + [mLine];
+    end;
+  end;
+end;
+
+class function TAtlasProcessesView.ParseWorkspace(const AItem: TJSONObject): TAtlasProcessWorkspace;
+begin
+  Result := Default(TAtlasProcessWorkspace);
+  Result.Name := AItem.GetValue<string>('name', '');
+  Result.Project := AItem.GetValue<string>('project', '');
+  Result.Cache := AItem.GetValue<string>('cache', '');
+  Result.Format := AItem.GetValue<Integer>('format', 0);
+  Result.Saved := AItem.GetValue<string>('saved', '');
+  Result.Units := AItem.GetValue<Integer>('units', 0);
+  Result.LockHolder := AItem.GetValue<string>('lockHolder', '');
+  Result.BuiltOnce := AItem.GetValue<Boolean>('builtOnce', False);
+  Result.Processes := ParseRows(AItem.GetValue('processes'));
+  Result.Events := ParseEvents(AItem.GetValue('events'));
+end;
+
 class function TAtlasProcessesView.Parse(const AAnswer: TJSONValue): TArray<TAtlasProcessWorkspace>;
 var
-  Items, List: TJSONValue;
-  Item, Entry: TJSONValue;
-  Workspace: TAtlasProcessWorkspace;
-  Row: TAtlasProcessRow;
-  Line: TAtlasProcessLogLine;
+  mItems, mItem: TJSONValue;
 begin
   Result := nil;
   if not (AAnswer is TJSONObject) then
   begin
     Exit;
   end;
-  Items := TJSONObject(AAnswer).GetValue('workspaces');
-  if not (Items is TJSONArray) then
+  mItems := TJSONObject(AAnswer).GetValue('workspaces');
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if not (Item is TJSONObject) then
+    if mItem is TJSONObject then
     begin
-      Continue;
+      Result := Result + [ParseWorkspace(TJSONObject(mItem))];
     end;
-    Workspace := Default(TAtlasProcessWorkspace);
-    Workspace.Name := TJSONObject(Item).GetValue<string>('name', '');
-    Workspace.Project := TJSONObject(Item).GetValue<string>('project', '');
-    Workspace.Cache := TJSONObject(Item).GetValue<string>('cache', '');
-    Workspace.Format := TJSONObject(Item).GetValue<Integer>('format', 0);
-    Workspace.Saved := TJSONObject(Item).GetValue<string>('saved', '');
-    Workspace.Units := TJSONObject(Item).GetValue<Integer>('units', 0);
-    Workspace.LockHolder := TJSONObject(Item).GetValue<string>('lockHolder', '');
-    Workspace.BuiltOnce := TJSONObject(Item).GetValue<Boolean>('builtOnce', False);
-    List := TJSONObject(Item).GetValue('processes');
-    if List is TJSONArray then
-    begin
-      for Entry in TJSONArray(List) do
-      begin
-        if Entry is TJSONObject then
-        begin
-          Row.Pid := TJSONObject(Entry).GetValue<Integer>('pid', 0);
-          Row.Kind := TJSONObject(Entry).GetValue<string>('kind', '');
-          Row.Client := TJSONObject(Entry).GetValue<string>('client', '');
-          Row.State := TJSONObject(Entry).GetValue<string>('state', '');
-          Row.Writer := TJSONObject(Entry).GetValue<Boolean>('writer', False);
-          Row.Own := TJSONObject(Entry).GetValue<Boolean>('own', False);
-          Workspace.Processes := Workspace.Processes + [Row];
-        end;
-      end;
-    end;
-    List := TJSONObject(Item).GetValue('events');
-    if List is TJSONArray then
-    begin
-      for Entry in TJSONArray(List) do
-      begin
-        if Entry is TJSONObject then
-        begin
-          Line.Time := TJSONObject(Entry).GetValue<string>('time', '');
-          Line.Text := TJSONObject(Entry).GetValue<string>('text', '');
-          Workspace.Events := Workspace.Events + [Line];
-        end;
-      end;
-    end;
-    Result := Result + [Workspace];
   end;
 end;
 

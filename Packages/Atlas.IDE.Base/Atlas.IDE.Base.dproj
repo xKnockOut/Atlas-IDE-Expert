@@ -135,6 +135,7 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
+        <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Format.pas"/>
@@ -361,6 +362,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Overview.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.OverviewRuler.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.OverviewRuler.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.PaintedLine.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Minimap.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Bar.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Minimap.pas"/>

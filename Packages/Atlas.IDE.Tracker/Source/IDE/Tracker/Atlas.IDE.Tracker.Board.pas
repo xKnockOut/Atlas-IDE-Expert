@@ -482,8 +482,8 @@ begin
     procedure
     begin
       try
-        mOk := mBoards.LoadBoard(mTarget, mTransport, mBoardId, mSprintId, TAtlasTrackerBoard.TimeoutMs, mSnapshot,
-          mError);
+        mOk := mBoards.LoadBoard(TAtlasBoardRequest.Create(mTarget, mTransport, mBoardId, mSprintId,
+          TAtlasTrackerBoard.TimeoutMs), mSnapshot, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
         on E: Exception do
@@ -554,7 +554,7 @@ begin
   mFrame.SetCanDrag(False);
   if TAtlasTrackerBoard.Load(FCacheFolder, ATarget, mCached) and (AError <> TAtlasCiFetchError.NotFound) then
   begin
-    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched));
+    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
     mFrame.SetSnapshot(mCached, TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardOffline, [mWhen, ErrorText(AError)]));
     UpdateActive;
   end
@@ -638,8 +638,8 @@ begin
     procedure
     begin
       try
-        mResult := mBoards.MoveCard(mTarget, mTransport, mSnapshot, mCard, AColumn, mComment,
-          TAtlasTrackerBoard.MoveTimeoutMs);
+        mResult := mBoards.MoveCard(TAtlasBoardMove.Create(mTarget, mTransport, mCard, AColumn, mComment,
+          TAtlasTrackerBoard.MoveTimeoutMs), mSnapshot);
       except
         on E: Exception do
         begin

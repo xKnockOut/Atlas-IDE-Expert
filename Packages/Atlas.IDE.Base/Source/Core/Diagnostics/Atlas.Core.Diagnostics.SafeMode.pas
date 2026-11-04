@@ -256,71 +256,94 @@ begin
   end;
 end;
 
+/// <summary>ISO-8601-Zeitpunkt (UTC); 0 bei leerem oder ungültigem Text.</summary>
+function MarkerDateOf(const AStamp: string): TDateTime;
+begin
+  Result := 0;
+  if AStamp = '' then
+  begin
+    Exit;
+  end;
+  try
+    Result := ISO8601ToDate(AStamp, True);
+  except
+    on EConvertError do
+    begin
+      Result := 0;
+    end;
+  end;
+end;
+
+function MarkerFeaturesOf(const AValue: TJSONValue): TArray<string>;
+var
+  mElement: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mElement in TJSONArray(AValue) do
+  begin
+    if mElement is TJSONString then
+    begin
+      Result := Result + [TJSONString(mElement).Value];
+    end;
+  end;
+end;
+
+function MarkerFailuresOf(const AValue: TJSONValue): TArray<TPair<string, Integer>>;
+var
+  mPair: TJSONPair;
+begin
+  Result := nil;
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mPair in TJSONObject(AValue) do
+  begin
+    if mPair.JsonValue is TJSONNumber then
+    begin
+      Result := Result + [TPair<string, Integer>.Create(mPair.JsonString.Value, TJSONNumber(mPair.JsonValue).AsInt)];
+    end;
+  end;
+end;
+
 class function TAtlasSessionMarker.FromJson(const AText: string; out AMarker: TAtlasSessionMarker): Boolean;
 var
-  Root, Value: TJSONValue;
-  Element: TJSONValue;
-  Pair: TJSONPair;
-  Stamp: string;
+  mRoot, mValue: TJSONValue;
 begin
   AMarker := Default(TAtlasSessionMarker);
   Result := False;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
-    Value := TJSONObject(Root).GetValue('processId');
-    if not (Value is TJSONNumber) then
+    mValue := TJSONObject(mRoot).GetValue('processId');
+    if not (mValue is TJSONNumber) then
     begin
       Exit;
     end;
-    AMarker.ProcessId := Cardinal(TJSONNumber(Value).AsInt64);
-    AMarker.Version := TJSONObject(Root).GetValue<string>('version', '');
-    Stamp := TJSONObject(Root).GetValue<string>('startedAt', '');
-    if Stamp <> '' then
-      try
-        AMarker.StartedAt := ISO8601ToDate(Stamp, True);
-      except
-        on EConvertError do
-          AMarker.StartedAt := 0;
-      end;
-    Value := TJSONObject(Root).GetValue('loaded');
-    AMarker.Loaded := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
-    Value := TJSONObject(Root).GetValue('loadMs');
+    AMarker.ProcessId := Cardinal(TJSONNumber(mValue).AsInt64);
+    AMarker.Version := TJSONObject(mRoot).GetValue<string>('version', '');
+    AMarker.StartedAt := MarkerDateOf(TJSONObject(mRoot).GetValue<string>('startedAt', ''));
+    mValue := TJSONObject(mRoot).GetValue('loaded');
+    AMarker.Loaded := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
+    mValue := TJSONObject(mRoot).GetValue('loadMs');
     AMarker.LoadMs := -1;
-    if Value is TJSONNumber then
+    if mValue is TJSONNumber then
     begin
-      AMarker.LoadMs := TJSONNumber(Value).AsInt64;
+      AMarker.LoadMs := TJSONNumber(mValue).AsInt64;
     end;
-    AMarker.Level := LevelOf(TJSONObject(Root).GetValue<string>('level', ''));
-    Value := TJSONObject(Root).GetValue('features');
-    if Value is TJSONArray then
-    begin
-      for Element in TJSONArray(Value) do
-      begin
-        if Element is TJSONString then
-        begin
-          AMarker.Features := AMarker.Features + [TJSONString(Element).Value];
-        end;
-      end;
-    end;
-    Value := TJSONObject(Root).GetValue('failures');
-    if Value is TJSONObject then
-    begin
-      for Pair in TJSONObject(Value) do
-      begin
-        if Pair.JsonValue is TJSONNumber then
-        begin
-          AMarker.Failures := AMarker.Failures + [TPair<string, Integer>.Create(Pair.JsonString.Value,
-            TJSONNumber(Pair.JsonValue).AsInt)];
-        end;
-      end;
-    end;
+    AMarker.Level := LevelOf(TJSONObject(mRoot).GetValue<string>('level', ''));
+    AMarker.Features := MarkerFeaturesOf(TJSONObject(mRoot).GetValue('features'));
+    AMarker.Failures := MarkerFailuresOf(TJSONObject(mRoot).GetValue('failures'));
     Result := True;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -404,64 +427,61 @@ end;
 
 { TAtlasSafeMode }
 
+/// <summary>Zählt einen Absturz in AState und merkt die zuletzt gestartete abgestürzte Sitzung; True, wenn er
+/// binnen ARepeatMinutes nach dem letzten kam.</summary>
+function RecordCrash(var AState: TAtlasSafeState; const ACrashed: TArray<TAtlasSessionMarker>; ANow: TDateTime;
+  ARepeatMinutes: Integer): Boolean;
+var
+  mLatest, mMarker: TAtlasSessionMarker;
+begin
+  Result := (AState.CrashCount > 0) and (AState.LastCrashAt > 0) and
+    (MinutesBetween(ANow, AState.LastCrashAt) < ARepeatMinutes) and (ANow >= AState.LastCrashAt);
+  if Result then
+  begin
+    Inc(AState.CrashCount);
+  end
+  else
+  begin
+    AState.CrashCount := 1;
+  end;
+  AState.LastCrashAt := ANow;
+  // Für „Details“ die zuletzt gestartete abgestürzte Sitzung.
+  mLatest := ACrashed[0];
+  for mMarker in ACrashed do
+  begin
+    if mMarker.StartedAt > mLatest.StartedAt then
+    begin
+      mLatest := mMarker;
+    end;
+  end;
+  AState.CrashedMarker := mLatest.ToJson;
+end;
+
 class function TAtlasSafeMode.Decide(var AState: TAtlasSafeState; const ACrashed: TArray<TAtlasSessionMarker>;
   ANow: TDateTime; const AOptions: TAtlasSafeOptions; AKeyDown: TAtlasStartupKey;
   AForced: Boolean): TAtlasSafeDecision;
 var
-  Latest: TAtlasSessionMarker;
-  Marker: TAtlasSessionMarker;
-  Repeated: Boolean;
+  mRepeated: Boolean;
 begin
   Result := Default(TAtlasSafeDecision);
   Result.Crashed := Length(ACrashed) > 0;
-  Repeated := False;
-  if Result.Crashed then
-  begin
-    Repeated := (AState.CrashCount > 0) and (AState.LastCrashAt > 0) and
-      (MinutesBetween(ANow, AState.LastCrashAt) < RepeatWindowMinutes) and (ANow >= AState.LastCrashAt);
-    if Repeated then
-    begin
-      Inc(AState.CrashCount);
-    end
-    else
-    begin
-      AState.CrashCount := 1;
-    end;
-    AState.LastCrashAt := ANow;
-    // Für „Details“ die zuletzt gestartete abgestürzte Sitzung.
-    Latest := ACrashed[0];
-    for Marker in ACrashed do
-    begin
-      if Marker.StartedAt > Latest.StartedAt then
-      begin
-        Latest := Marker;
-      end;
-    end;
-    AState.CrashedMarker := Latest.ToJson;
-  end;
+  mRepeated := Result.Crashed and RecordCrash(AState, ACrashed, ANow, RepeatWindowMinutes);
   if AForced then
   begin
     Result.Level := TAtlasSafeLevel.Minimal;
     Result.Reason := TAtlasSafeReason.Forced;
-    Exit;
-  end;
-  if (AOptions.StartupKey <> TAtlasStartupKey.None) and (AKeyDown = AOptions.StartupKey) then
+  end
+  else if (AOptions.StartupKey <> TAtlasStartupKey.None) and (AKeyDown = AOptions.StartupKey) then
   begin
     Result.Level := TAtlasSafeLevel.Minimal;
     Result.Reason := TAtlasSafeReason.StartupKey;
-    Exit;
-  end;
-  if not Result.Crashed then
-  begin
-    Exit;
-  end;
-  if Repeated and AOptions.AutoAfterRepeatedCrash then
+  end
+  else if mRepeated and AOptions.AutoAfterRepeatedCrash then
   begin
     Result.Level := TAtlasSafeLevel.Safe;
     Result.Reason := TAtlasSafeReason.RepeatedCrash;
-    Exit;
-  end;
-  if AOptions.AskAfterCrash then
+  end
+  else if Result.Crashed and AOptions.AskAfterCrash then
   begin
     // Bis zur Antwort abgesichert: Die Rückfrage blockiert den Start nicht.
     Result.Level := TAtlasSafeLevel.Safe;

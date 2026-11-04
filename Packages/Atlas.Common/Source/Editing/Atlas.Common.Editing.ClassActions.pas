@@ -169,8 +169,8 @@ begin
   AEdits := nil;
   Phantom := PhantomText(AText, ALine, ACommand);
   Line := ALine + 1;
-  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, AContext.Namespaces, nil, AContext.Index,
-    AContext.DelphiVersion, AContext.Uri, AContext.Host, AContext.Style, Edits, Reason);
+  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, TSlashEnvironment.Create(AContext.Namespaces, nil,
+    AContext.Index, AContext.DelphiVersion, AContext.Uri, AContext.Host).WithStyle(AContext.Style), Edits, Reason);
   if not Result then
   begin
     Exit;

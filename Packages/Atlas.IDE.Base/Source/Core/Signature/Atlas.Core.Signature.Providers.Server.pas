@@ -22,6 +22,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Types,
   System.Classes,
   System.SyncObjs,
   System.JSON,
@@ -51,6 +52,11 @@ type
     FFlag: TAliveFlag;
     FFlagRef: IInterface;
     procedure ReapWorkers;
+    /// <summary>Sitzung holen und den Text abgleichen; False ohne Server.</summary>
+    function SyncedSession(const AFileName, AText: string; out ASession: TLspSession): Boolean;
+    /// <summary>Fragt im eigenen Thread an; APosition: X Zeichen, Y Zeile (0-basiert).</summary>
+    procedure StartWorker(ASession: TLspSession; const AFileName: string; const APosition: TPoint;
+      AGeneration: Integer; const ACallback: TAtlasSignatureCallback);
   public
     constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal); overload;
     /// <summary>Wie oben mit ATimeoutMs = DefaultTimeoutMs.</summary>
@@ -132,12 +138,83 @@ begin
 end;
 
 /// <summary>Objekt "format" der Antwort (#451); Found = False ohne.</summary>
+function PlaceholderFromLsp(AItem: TJSONObject): TAtlasFormatPlaceholder;
+var
+  mTypeText: string;
+begin
+  Result := Default(TAtlasFormatPlaceholder);
+  Result.Text := AItem.GetValue<string>('text', '');
+  mTypeText := AItem.GetValue<string>('type', '');
+  if mTypeText <> '' then
+  begin
+    Result.TypeChar := mTypeText[1];
+  end;
+  Result.Valid := AItem.GetValue<Boolean>('valid', False);
+  Result.Argument := AItem.GetValue<Integer>('argument', -1);
+  Result.WidthArgument := AItem.GetValue<Integer>('width', -1);
+  Result.PrecisionArgument := AItem.GetValue<Integer>('precision', -1);
+  Result.HasRange := RangeFromLsp(AItem.GetValue('range'), Result.Range);
+end;
+
+function PlaceholdersFromLsp(AItems: TJSONValue): TArray<TAtlasFormatPlaceholder>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if AItems is TJSONArray then
+  begin
+    for mItem in TJSONArray(AItems) do
+    begin
+      if mItem is TJSONObject then
+      begin
+        Result := Result + [PlaceholderFromLsp(TJSONObject(mItem))];
+      end;
+    end;
+  end;
+end;
+
+function ArgumentsFromLsp(AItems: TJSONValue): TArray<TAtlasFormatRange>;
+var
+  mItem: TJSONValue;
+  mRange: TAtlasFormatRange;
+begin
+  Result := nil;
+  if AItems is TJSONArray then
+  begin
+    for mItem in TJSONArray(AItems) do
+    begin
+      if not RangeFromLsp(mItem, mRange) then
+      begin
+        mRange := Default(TAtlasFormatRange);
+      end;
+      Result := Result + [mRange];
+    end;
+  end;
+end;
+
+function ProblemKindOf(const AKind: string): TAtlasFormatProblem;
+begin
+  if AKind = 'invalid' then
+  begin
+    Result := TAtlasFormatProblem.Invalid;
+  end
+  else if AKind = 'tooManyArguments' then
+  begin
+    Result := TAtlasFormatProblem.TooManyArguments;
+  end
+  else if AKind = 'typeConflict' then
+  begin
+    Result := TAtlasFormatProblem.TypeConflict;
+  end
+  else
+  begin
+    Result := TAtlasFormatProblem.None;
+  end;
+end;
+
 function FormatFromLsp(AValue: TJSONValue): TAtlasSignatureFormat;
 var
-  Item, Items, Problem: TJSONValue;
-  Placeholder: TAtlasFormatPlaceholder;
-  Range: TAtlasFormatRange;
-  Kind, TypeText: string;
+  mObject, mProblem: TJSONObject;
 begin
   Result := Default(TAtlasSignatureFormat);
   Result.ActiveArgument := -1;
@@ -147,75 +224,92 @@ begin
   begin
     Exit;
   end;
+  mObject := TJSONObject(AValue);
   Result.Found := True;
-  Result.FormatParameter := TJSONObject(AValue).GetValue<Integer>('formatParameter', -1);
-  Result.ListParameter := TJSONObject(AValue).GetValue<Integer>('listParameter', -1);
-  Result.ArgumentCount := TJSONObject(AValue).GetValue<Integer>('argumentCount', -1);
-  Result.ActiveArgument := TJSONObject(AValue).GetValue<Integer>('activeArgument', -1);
-  Items := TJSONObject(AValue).GetValue('placeholders');
-  if Items is TJSONArray then
+  Result.FormatParameter := mObject.GetValue<Integer>('formatParameter', -1);
+  Result.ListParameter := mObject.GetValue<Integer>('listParameter', -1);
+  Result.ArgumentCount := mObject.GetValue<Integer>('argumentCount', -1);
+  Result.ActiveArgument := mObject.GetValue<Integer>('activeArgument', -1);
+  Result.Placeholders := PlaceholdersFromLsp(mObject.GetValue('placeholders'));
+  Result.Arguments := ArgumentsFromLsp(mObject.GetValue('arguments'));
+  if mObject.GetValue('problem') is TJSONObject then
   begin
-    for Item in TJSONArray(Items) do
+    mProblem := TJSONObject(mObject.GetValue('problem'));
+    Result.Problem := ProblemKindOf(mProblem.GetValue<string>('kind', ''));
+    Result.ProblemPlaceholder := mProblem.GetValue<Integer>('placeholder', -1);
+    Result.ProblemArgument := mProblem.GetValue<Integer>('argument', -1);
+    Result.ProblemKind := mProblem.GetValue<string>('argumentKind', '');
+  end;
+end;
+
+/// <summary>label des Parameters: [Start, Ende] im Signaturtext oder der Text selbst.</summary>
+procedure ParameterRange(ALabel: TJSONValue; const ASignatureLabel: string;
+  var AParameter: TAtlasSignatureParameter);
+var
+  mPosition: Integer;
+begin
+  if (ALabel is TJSONArray) and (TJSONArray(ALabel).Count = 2) and
+    (TJSONArray(ALabel).Items[0] is TJSONNumber) and (TJSONArray(ALabel).Items[1] is TJSONNumber) then
+  begin
+    AParameter.Start := TJSONNumber(TJSONArray(ALabel).Items[0]).AsInt;
+    AParameter.Stop := TJSONNumber(TJSONArray(ALabel).Items[1]).AsInt;
+  end
+  else if ALabel is TJSONString then
+  begin
+    mPosition := Pos(TJSONString(ALabel).Value, ASignatureLabel);
+    if mPosition > 0 then
     begin
-      if Item is TJSONObject then
-      begin
-        Placeholder := Default(TAtlasFormatPlaceholder);
-        Placeholder.Text := TJSONObject(Item).GetValue<string>('text', '');
-        TypeText := TJSONObject(Item).GetValue<string>('type', '');
-        if TypeText <> '' then
-        begin
-          Placeholder.TypeChar := TypeText[1];
-        end;
-        Placeholder.Valid := TJSONObject(Item).GetValue<Boolean>('valid', False);
-        Placeholder.Argument := TJSONObject(Item).GetValue<Integer>('argument', -1);
-        Placeholder.WidthArgument := TJSONObject(Item).GetValue<Integer>('width', -1);
-        Placeholder.PrecisionArgument := TJSONObject(Item).GetValue<Integer>('precision', -1);
-        Placeholder.HasRange := RangeFromLsp(TJSONObject(Item).GetValue('range'), Placeholder.Range);
-        Result.Placeholders := Result.Placeholders + [Placeholder];
-      end;
+      AParameter.Start := mPosition - 1;
+      AParameter.Stop := AParameter.Start + Length(TJSONString(ALabel).Value);
     end;
   end;
-  Items := TJSONObject(AValue).GetValue('arguments');
-  if Items is TJSONArray then
+end;
+
+function ParametersFromLsp(AItems: TJSONValue; const ASignatureLabel: string): TArray<TAtlasSignatureParameter>;
+var
+  mItem: TJSONValue;
+  mParameter: TAtlasSignatureParameter;
+begin
+  Result := nil;
+  if not (AItems is TJSONArray) then
   begin
-    for Item in TJSONArray(Items) do
+    Exit;
+  end;
+  for mItem in TJSONArray(AItems) do
+  begin
+    if mItem is TJSONObject then
     begin
-      if not RangeFromLsp(Item, Range) then
-      begin
-        Range := Default(TAtlasFormatRange);
-      end;
-      Result.Arguments := Result.Arguments + [Range];
+      mParameter := Default(TAtlasSignatureParameter);
+      mParameter.Start := -1;
+      mParameter.Stop := -1;
+      ParameterRange(TJSONObject(mItem).GetValue('label'), ASignatureLabel, mParameter);
+      mParameter.Documentation := DocumentationText(TJSONObject(mItem).GetValue('documentation'));
+      Result := Result + [mParameter];
     end;
   end;
-  Problem := TJSONObject(AValue).GetValue('problem');
-  if Problem is TJSONObject then
+end;
+
+function SignatureFromLsp(AItem: TJSONObject): TAtlasSignature;
+var
+  mData: TJSONValue;
+begin
+  Result := Default(TAtlasSignature);
+  Result.Label_ := AItem.GetValue<string>('label', '');
+  Result.Documentation := DocumentationText(AItem.GetValue('documentation'));
+  // Argumenttypen (#498): data.fits = false dämpft die Überladung.
+  mData := AItem.GetValue('data');
+  if (mData is TJSONObject) and (TJSONObject(mData).GetValue('fits') is TJSONBool) and
+    not TJSONBool(TJSONObject(mData).GetValue('fits')).AsBoolean then
   begin
-    Kind := TJSONObject(Problem).GetValue<string>('kind', '');
-    if Kind = 'invalid' then
-    begin
-      Result.Problem := TAtlasFormatProblem.Invalid;
-    end
-    else if Kind = 'tooManyArguments' then
-    begin
-      Result.Problem := TAtlasFormatProblem.TooManyArguments;
-    end
-    else if Kind = 'typeConflict' then
-    begin
-      Result.Problem := TAtlasFormatProblem.TypeConflict;
-    end;
-    Result.ProblemPlaceholder := TJSONObject(Problem).GetValue<Integer>('placeholder', -1);
-    Result.ProblemArgument := TJSONObject(Problem).GetValue<Integer>('argument', -1);
-    Result.ProblemKind := TJSONObject(Problem).GetValue<string>('argumentKind', '');
+    Result.TypeMismatch := True;
+    Result.MismatchArgument := TJSONObject(mData).GetValue<Integer>('mismatch', 0);
   end;
+  Result.Parameters := ParametersFromLsp(AItem.GetValue('parameters'), Result.Label_);
 end;
 
 class function TAtlasServerSignatureProvider.HelpFromLsp(AResponse: TJSONValue): TAtlasSignatureHelp;
 var
-  Signatures, Parameters, LabelValue: TJSONValue;
-  Signature: TAtlasSignature;
-  Parameter: TAtlasSignatureParameter;
-  Item, ParameterItem, Data: TJSONValue;
-  Position: Integer;
+  mSignatures, mItem: TJSONValue;
 begin
   Result := Default(TAtlasSignatureHelp);
   Result.ActiveSignature := -1;
@@ -227,62 +321,16 @@ begin
   Result.ActiveSignature := TJSONObject(AResponse).GetValue<Integer>('activeSignature', -1);
   Result.ActiveParameter := TJSONObject(AResponse).GetValue<Integer>('activeParameter', -1);
   Result.Format := FormatFromLsp(TJSONObject(AResponse).GetValue('format'));
-  Signatures := TJSONObject(AResponse).GetValue('signatures');
-  if not (Signatures is TJSONArray) then
+  mSignatures := TJSONObject(AResponse).GetValue('signatures');
+  if mSignatures is TJSONArray then
   begin
-    Exit;
-  end;
-  for Item in TJSONArray(Signatures) do
-  begin
-    if not (Item is TJSONObject) then
+    for mItem in TJSONArray(mSignatures) do
     begin
-      Continue;
-    end;
-    Signature := Default(TAtlasSignature);
-    Signature.Label_ := TJSONObject(Item).GetValue<string>('label', '');
-    Signature.Documentation := DocumentationText(TJSONObject(Item).GetValue('documentation'));
-    // Argumenttypen (#498): data.fits = false dämpft die Überladung.
-    Data := TJSONObject(Item).GetValue('data');
-    if (Data is TJSONObject) and (TJSONObject(Data).GetValue('fits') is TJSONBool) and
-      not TJSONBool(TJSONObject(Data).GetValue('fits')).AsBoolean then
-    begin
-      Signature.TypeMismatch := True;
-      Signature.MismatchArgument := TJSONObject(Data).GetValue<Integer>('mismatch', 0);
-    end;
-    Parameters := TJSONObject(Item).GetValue('parameters');
-    if Parameters is TJSONArray then
-    begin
-      for ParameterItem in TJSONArray(Parameters) do
+      if mItem is TJSONObject then
       begin
-        if not (ParameterItem is TJSONObject) then
-        begin
-          Continue;
-        end;
-        Parameter := Default(TAtlasSignatureParameter);
-        Parameter.Start := -1;
-        Parameter.Stop := -1;
-        // label: [Start, Ende] im Signaturtext oder der Text selbst.
-        LabelValue := TJSONObject(ParameterItem).GetValue('label');
-        if (LabelValue is TJSONArray) and (TJSONArray(LabelValue).Count = 2) and
-          (TJSONArray(LabelValue).Items[0] is TJSONNumber) and (TJSONArray(LabelValue).Items[1] is TJSONNumber) then
-        begin
-          Parameter.Start := TJSONNumber(TJSONArray(LabelValue).Items[0]).AsInt;
-          Parameter.Stop := TJSONNumber(TJSONArray(LabelValue).Items[1]).AsInt;
-        end
-        else if LabelValue is TJSONString then
-        begin
-          Position := Pos(TJSONString(LabelValue).Value, Signature.Label_);
-          if Position > 0 then
-          begin
-            Parameter.Start := Position - 1;
-            Parameter.Stop := Parameter.Start + Length(TJSONString(LabelValue).Value);
-          end;
-        end;
-        Parameter.Documentation := DocumentationText(TJSONObject(ParameterItem).GetValue('documentation'));
-        Signature.Parameters := Signature.Parameters + [Parameter];
+        Result.Signatures := Result.Signatures + [SignatureFromLsp(TJSONObject(mItem))];
       end;
     end;
-    Result.Signatures := Result.Signatures + [Signature];
   end;
 end;
 
@@ -330,87 +378,90 @@ begin
   end;
 end;
 
-function TAtlasServerSignatureProvider.Query(const AFileName, AText: string; ALine, ACharacter: Integer;
-  const ACallback: TAtlasSignatureCallback): Boolean;
+function TAtlasServerSignatureProvider.SyncedSession(const AFileName, AText: string;
+  out ASession: TLspSession): Boolean;
 var
-  Session: TLspSession;
-  Generation: Integer;
-  FileName: string;
-  Worker: TThread;
-  Provider: TAtlasServerSignatureProvider;
-  Flag: TAliveFlag;
-  FlagRef: IInterface;
-  Watch: TStopwatch;
+  mWatch: TStopwatch;
 begin
-  Generation := TInterlocked.Increment(FGeneration);
-  ReapWorkers;
-  Result := False;
-  if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
-  begin
-    Exit;
-  end;
-  FileName := AFileName;
   // Sitzung holen und abgleichen im aufrufenden Thread: Sync wartet nicht auf den Server (siehe oben).
-  Session := nil;
-  Watch := TStopwatch.StartNew;
+  ASession := nil;
+  mWatch := TStopwatch.StartNew;
   try
     if Assigned(FSession) then
     begin
-      Session := FSession();
+      ASession := FSession();
     end;
-    if Session <> nil then
+    if ASession <> nil then
     begin
-      Session.Sync(FileName, AText);
+      ASession.Sync(AFileName, AText);
     end;
   except
     // Server weg: kein Hint. Anderes zählt die Sicherung (#493).
     on E: Exception do
     begin
+      ASession := nil;
       if not (E is ELspClientError) then
       begin
         TAtlasGuard.ReportProvider(ProviderTitle, E);
       end;
-      Exit;
     end;
   end;
-  if Watch.ElapsedMilliseconds > TAtlasTimeLimit.LimitMs then
+  if mWatch.ElapsedMilliseconds > TAtlasTimeLimit.LimitMs then
   begin
-    TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [Watch.ElapsedMilliseconds]));
+    TAtlasGuard.ReportProviderSlow(ProviderTitle, Format('Abgleich dauerte %d ms', [mWatch.ElapsedMilliseconds]));
   end;
-  Result := Session <> nil;
-  if not Result then
-  begin
-    Exit;
+  Result := ASession <> nil;
+end;
+
+/// <summary>Signaturen vom Server; leer, wenn er weg ist oder das Zeitlimit greift.</summary>
+function FetchHelp(ASession: TLspSession; const AFileName: string; const APosition: TPoint;
+  ATimeoutMs: Cardinal): TAtlasSignatureHelp;
+var
+  mResponse: TJSONValue;
+begin
+  Result := Default(TAtlasSignatureHelp);
+  try
+    mResponse := ASession.SignatureHelp(AFileName, APosition.Y, APosition.X, ATimeoutMs);
+    try
+      Result := TAtlasServerSignatureProvider.HelpFromLsp(mResponse);
+    finally
+      mResponse.Free;
+    end;
+  except
+    // Anderes als ein Fehler des Clients zählt die Sicherung (#493).
+    on E: Exception do
+    begin
+      Result := Default(TAtlasSignatureHelp);
+      if not (E is ELspClientError) then
+      begin
+        TAtlasGuard.ReportProvider(TAtlasServerSignatureProvider.ProviderTitle, E);
+      end;
+    end;
   end;
-  Provider := Self;
-  Flag := FFlag;
-  FlagRef := FFlagRef;
-  Worker := TThread.CreateAnonymousThread(
+end;
+
+procedure TAtlasServerSignatureProvider.StartWorker(ASession: TLspSession; const AFileName: string;
+  const APosition: TPoint; AGeneration: Integer; const ACallback: TAtlasSignatureCallback);
+var
+  mWorker: TThread;
+  mProvider: TAtlasServerSignatureProvider;
+  mFlag: TAliveFlag;
+  mFlagRef: IInterface;
+  mFileName: string;
+  mPosition: TPoint;
+begin
+  mProvider := Self;
+  mFlag := FFlag;
+  mFlagRef := FFlagRef;
+  mFileName := AFileName;
+  mPosition := APosition;
+  mWorker := TThread.CreateAnonymousThread(
     procedure
     var
-      Response: TJSONValue;
-      Help: TAtlasSignatureHelp;
+      mHelp: TAtlasSignatureHelp;
     begin
-      Help := Default(TAtlasSignatureHelp);
-      try
-        Response := Session.SignatureHelp(FileName, ALine, ACharacter, Provider.FTimeoutMs);
-        try
-          Help := HelpFromLsp(Response);
-        finally
-          Response.Free;
-        end;
-      except
-        // Server weg oder Zeitlimit: kein Hint. Anderes zählt die Sicherung (#493).
-        on E: Exception do
-        begin
-          Help := Default(TAtlasSignatureHelp);
-          if not (E is ELspClientError) then
-          begin
-            TAtlasGuard.ReportProvider(ProviderTitle, E);
-          end;
-        end;
-      end;
-      if TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) <> Generation then
+      mHelp := FetchHelp(ASession, mFileName, mPosition, mProvider.FTimeoutMs);
+      if TInterlocked.CompareExchange(mProvider.FGeneration, 0, 0) <> AGeneration then
       begin
         Exit;
       end;
@@ -418,25 +469,44 @@ begin
       TAtlasMainThread.Queue(TAtlasFeature.Signature,
         procedure
         begin
-          if Flag.Alive and (FlagRef <> nil) and
-            (TInterlocked.CompareExchange(Provider.FGeneration, 0, 0) = Generation) then
+          if mFlag.Alive and (mFlagRef <> nil) and
+            (TInterlocked.CompareExchange(mProvider.FGeneration, 0, 0) = AGeneration) then
           begin
             TAtlasGuard.Run(TAtlasFeature.Signature,
               procedure
               begin
-                ACallback(Help);
+                ACallback(mHelp);
               end);
           end;
         end);
     end);
-  Worker.FreeOnTerminate := False;
+  mWorker.FreeOnTerminate := False;
   FLock.Enter;
   try
-    FWorkers.Add(Worker);
+    FWorkers.Add(mWorker);
   finally
     FLock.Leave;
   end;
-  Worker.Start;
+  mWorker.Start;
+end;
+function TAtlasServerSignatureProvider.Query(const AFileName, AText: string; ALine, ACharacter: Integer;
+  const ACallback: TAtlasSignatureCallback): Boolean;
+var
+  mSession: TLspSession;
+  mGeneration: Integer;
+begin
+  mGeneration := TInterlocked.Increment(FGeneration);
+  ReapWorkers;
+  Result := False;
+  if (AFileName = '') or TAtlasGuard.ProviderDisabled(ProviderTitle) then
+  begin
+    Exit;
+  end;
+  Result := SyncedSession(AFileName, AText, mSession);
+  if Result then
+  begin
+    StartWorker(mSession, AFileName, TPoint.Create(ACharacter, ALine), mGeneration, ACallback);
+  end;
 end;
 
 end.
