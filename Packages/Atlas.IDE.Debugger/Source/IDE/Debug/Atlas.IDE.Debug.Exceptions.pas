@@ -492,7 +492,7 @@ begin
   FPending := Default(TAtlasDebugExceptionStop);
   FPending.Stop := TAtlasIdeDebugSession.StopCount;
   FPending.Exception := TAtlasDebugException.Create(Now, ExceptionClass, Message, Thread.GetOSThreadID,
-    TAtlasIdeDebugSession.ThreadName(Thread), '', 0, '');
+    TAtlasIdeDebugSession.ThreadName(Thread));
   FHasPending := True;
   FDialogDone := False;
   FStackDone := False;
@@ -529,7 +529,7 @@ begin
   FPending := Default(TAtlasDebugExceptionStop);
   FPending.Stop := FEarlyStop;
   FPending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
-    Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread), '', 0, '');
+    Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread));
   FHasPending := True;
   FDialogDone := False;
   FStackDone := False;

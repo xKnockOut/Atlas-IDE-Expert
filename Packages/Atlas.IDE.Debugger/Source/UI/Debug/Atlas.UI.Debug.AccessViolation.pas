@@ -71,10 +71,10 @@ begin
     TAtlasAvVerdictKind.Freed:
       begin
         Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreed, [AVerdict.Culprit.Expression]);
-        if TAtlasAvAnalysis.IsFreedPattern(AVerdict.Value, APointerSize) then
+        if TAtlasAvValues.IsFreedPattern(AVerdict.Value, APointerSize) then
         begin
           ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreedPattern,
-            [TAtlasAvAnalysis.HexText(AVerdict.Value)]);
+            [TAtlasAvValues.HexText(AVerdict.Value)]);
         end
         else
         begin
@@ -85,11 +85,11 @@ begin
       begin
         Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvFreedMemory);
         ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreedMemoryDetail,
-          [TAtlasAvAnalysis.HexText(AVerdict.Value)]);
+          [TAtlasAvValues.HexText(AVerdict.Value)]);
       end;
     TAtlasAvVerdictKind.Invalid:
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvInvalid, [AVerdict.Culprit.Expression,
-        TAtlasAvAnalysis.HexText(AVerdict.Value)]);
+        TAtlasAvValues.HexText(AVerdict.Value)]);
     TAtlasAvVerdictKind.OutOfRange:
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOutOfRange, [AVerdict.Culprit.IndexText, AVerdict.Index,
         AVerdict.Culprit.Expression, AVerdict.Length]);
