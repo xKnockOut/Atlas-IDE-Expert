@@ -168,78 +168,144 @@ begin
   Result := TAtlasStrings.Language = TAtlasLanguage.English;
 end;
 
+/// <summary>Beschriftung oben im Dialog; ATop ordnet sie unter die vorigen.</summary>
+function NewTopLabel(AOwner: TForm; const ACaption: string; ATop: Integer): TLabel;
+begin
+  Result := TLabel.Create(AOwner);
+  Result.Parent := AOwner;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(Gap, Gap, Gap, 0);
+  Result.Top := ATop;
+  Result.Caption := ACaption;
+end;
+
+/// <summary>Hinweistext oben im Dialog: umgebrochen, ohne Tastenkürzel.</summary>
+function NewInfoLabel(AOwner: TForm; const ACaption: string): TLabel;
+begin
+  Result := NewTopLabel(AOwner, ACaption, 0);
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+end;
+
+/// <summary>Auswahl mit zwei Einträgen oben im Dialog.</summary>
+function NewChoice(AOwner: TForm; const ACaption: string; ATop: Integer;
+  const AItems: TArray<string>): TRadioGroup;
+var
+  mItem: string;
+begin
+  Result := TRadioGroup.Create(AOwner);
+  Result.Parent := AOwner;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(Gap, Gap, Gap, 0);
+  Result.Top := ATop;
+  Result.Height := AOwner.ScaleValue(64);
+  Result.Caption := ACaption;
+  for mItem in AItems do
+  begin
+    Result.Items.Add(mItem);
+  end;
+end;
+
+/// <summary>Kontrollkästchen je Bereich des Katalogs in einer Leiste oben im Dialog; angekreuzt sind alle (AAll)
+/// oder die in AChecked. AIds bekommt die Bereiche in derselben Reihenfolge.</summary>
+function NewAreaBoxes(AOwner: TForm; ACatalog: TAtlasSettingsCatalog; const AChecked: TArray<string>;
+  AAll: Boolean; const AOnClick: TNotifyEvent; out AIds: TArray<string>): TArray<TCheckBox>;
+var
+  mPanel: TFlowPanel;
+  mArea: TAtlasCatalogArea;
+  mBox: TCheckBox;
+begin
+  Result := nil;
+  AIds := nil;
+  mPanel := TFlowPanel.Create(AOwner);
+  mPanel.Parent := AOwner;
+  mPanel.Align := alTop;
+  mPanel.AutoSize := True;
+  mPanel.BevelOuter := bvNone;
+  mPanel.AlignWithMargins := True;
+  mPanel.Margins.SetBounds(Gap, 4, Gap, 0);
+  mPanel.Top := 2000;
+  for mArea in ACatalog.Areas do
+  begin
+    mBox := TCheckBox.Create(AOwner);
+    mBox.Parent := mPanel;
+    mBox.Width := AOwner.ScaleValue(140);
+    mBox.Caption := ACatalog.AreaCaption(mArea.Id, English);
+    mBox.Checked := AAll or HasArea(AChecked, mArea.Id);
+    mBox.OnClick := AOnClick;
+    Result := Result + [mBox];
+    AIds := AIds + [mArea.Id];
+  end;
+end;
+
+/// <summary>Knopf ADefault („Speichern…“, „Übernehmen“) und „Abbrechen“ unten im Dialog; ACancel bekommt den
+/// zweiten Knopf, Ergebnis ist die Leiste.</summary>
+function NewDialogButtons(AOwner: TForm; const ACaption: string; out ADefault, ACancel: TButton): TFlowPanel;
+begin
+  Result := NewButtons(AOwner);
+  ADefault := NewButton(AOwner, Result, ACaption);
+  ADefault.ModalResult := mrOk;
+  ADefault.Default := True;
+  ACancel := NewButton(AOwner, Result, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
+  ACancel.ModalResult := mrCancel;
+  ACancel.Cancel := True;
+end;
+
+/// <summary>Name und Beschreibung der Datei (Profile) in der Sprache der Oberfläche, Hinweis auf eine neuere
+/// Version.</summary>
+function ImportInfo(const APreview: TAtlasImportPreview): string;
+begin
+  Result := APreview.Source.Name;
+  if English and (APreview.Source.NameEn <> '') then
+  begin
+    Result := APreview.Source.NameEn;
+  end;
+  if English and (APreview.Source.DescriptionEn <> '') then
+  begin
+    Result := Trim(Result + sLineBreak + APreview.Source.DescriptionEn);
+  end
+  else if APreview.Source.Description <> '' then
+  begin
+    Result := Trim(Result + sLineBreak + APreview.Source.Description);
+  end;
+  if APreview.Newer then
+  begin
+    Result := Trim(Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportNewer,
+      [APreview.Source.AtlasVersion]));
+  end;
+end;
+
+/// <summary>Spalte ACaption mit der (schon skalierten) Breite AWidth an AList anhängen.</summary>
+procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
+var
+  mColumn: TListColumn;
+begin
+  mColumn := AList.Columns.Add;
+  mColumn.Caption := ACaption;
+  mColumn.Width := AWidth;
+end;
+
 { TAtlasExportDialog }
 
 constructor TAtlasExportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlasSettingsCatalog;
   ASecrets: TAtlasSecretMode);
 var
-  Info, Title: TLabel;
-  Areas: TFlowPanel;
-  Box: TCheckBox;
-  Area: TAtlasCatalogArea;
-  Buttons: TFlowPanel;
+  mTitle: TLabel;
 begin
   inherited CreateNew(AOwner);
   SetupForm(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportTitle), 460);
-  Buttons := NewButtons(Self);
-  FSave := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsExportSave));
-  FSave.ModalResult := mrOk;
-  FSave.Default := True;
-  FCancel := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
-  FCancel.ModalResult := mrCancel;
-  FCancel.Cancel := True;
-
-  Info := TLabel.Create(Self);
-  Info.Parent := Self;
-  Info.Align := alTop;
-  Info.AlignWithMargins := True;
-  Info.Margins.SetBounds(Gap, Gap, Gap, 0);
-  Info.WordWrap := True;
-  Info.ShowAccelChar := False;
-  Info.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExportInfo);
-
-  Title := TLabel.Create(Self);
-  Title.Parent := Self;
-  Title.Align := alTop;
-  Title.AlignWithMargins := True;
-  Title.Margins.SetBounds(Gap, Gap, Gap, 0);
-  Title.Top := 1000;
-  Title.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExportAreas);
-  Title.Font.Style := [fsBold];
-
-  Areas := TFlowPanel.Create(Self);
-  Areas.Parent := Self;
-  Areas.Align := alTop;
-  Areas.AutoSize := True;
-  Areas.BevelOuter := bvNone;
-  Areas.AlignWithMargins := True;
-  Areas.Margins.SetBounds(Gap, 4, Gap, 0);
-  Areas.Top := 2000;
-  for Area in ACatalog.Areas do
-  begin
-    Box := TCheckBox.Create(Self);
-    Box.Parent := Areas;
-    Box.Width := ScaleValue(140);
-    Box.Caption := ACatalog.AreaCaption(Area.Id, English);
-    Box.Checked := True;
-    Box.OnClick := AreaClick;
-    FAreas := FAreas + [Box];
-    FAreaIds := FAreaIds + [Area.Id];
-  end;
-
-  FSecrets := TRadioGroup.Create(Self);
-  FSecrets.Parent := Self;
-  FSecrets.Align := alTop;
-  FSecrets.AlignWithMargins := True;
-  FSecrets.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FSecrets.Top := 3000;
-  FSecrets.Height := ScaleValue(64);
-  FSecrets.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets);
-  FSecrets.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit));
-  FSecrets.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder));
+  NewDialogButtons(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportSave), FSave, FCancel);
+  NewInfoLabel(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportInfo));
+  mTitle := NewTopLabel(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportAreas), 1000);
+  mTitle.Font.Style := [fsBold];
+  FAreas := NewAreaBoxes(Self, ACatalog, nil, True, AreaClick, FAreaIds);
+  FSecrets := NewChoice(Self, TAtlasStrings.Text(TAtlasTextId.SettingsExportSecrets), 3000,
+    [TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsOmit),
+    TAtlasStrings.Text(TAtlasTextId.SettingsExportSecretsPlaceholder)]);
   FSecrets.ItemIndex := Ord(ASecrets);
   FSecrets.Columns := 2;
-
   // Feste Höhe: vier Zeilen Bereiche bei 11 Bereichen und drei Spalten.
   ClientHeight := ScaleValue(360);
 end;
@@ -306,91 +372,25 @@ end;
 constructor TAtlasImportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlasSettingsCatalog;
   const AFileName: string; const APreview: TAtlasImportPreview; const AOnPreview: TAtlasImportPreviewFunc);
 var
-  Buttons, Areas: TFlowPanel;
-  Area: TAtlasCatalogArea;
-  Box: TCheckBox;
-  Info: string;
-  Column: TListColumn;
+  mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
   FCatalog := ACatalog;
   FPreview := APreview;
   FOnPreview := AOnPreview;
   SetupForm(Self, TAtlasStrings.Fmt(TAtlasTextId.SettingsImportTitle, [ExtractFileName(AFileName)]), 760);
-
-  Buttons := NewButtons(Self);
-  FApply := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsImportApply));
-  FApply.ModalResult := mrOk;
-  FApply.Default := True;
-  FCancel := NewButton(Self, Buttons, TAtlasStrings.Text(TAtlasTextId.SettingsDialogCancel));
-  FCancel.ModalResult := mrCancel;
-  FCancel.Cancel := True;
+  mButtons := NewDialogButtons(Self, TAtlasStrings.Text(TAtlasTextId.SettingsImportApply), FApply, FCancel);
   FCount := TLabel.Create(Self);
-  FCount.Parent := Buttons;
+  FCount.Parent := mButtons;
   FCount.AlignWithMargins := True;
   FCount.Margins.SetBounds(Gap, 4, 0, 0);
-
-  // Name und Beschreibung (Profile), Hinweis auf eine neuere Version.
-  Info := APreview.Source.Name;
-  if English and (APreview.Source.NameEn <> '') then
-  begin
-    Info := APreview.Source.NameEn;
-  end;
-  if English and (APreview.Source.DescriptionEn <> '') then
-  begin
-    Info := Trim(Info + sLineBreak + APreview.Source.DescriptionEn);
-  end
-  else if APreview.Source.Description <> '' then
-  begin
-    Info := Trim(Info + sLineBreak + APreview.Source.Description);
-  end;
-  if APreview.Newer then
-  begin
-    Info := Trim(Info + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.SettingsImportNewer,
-      [APreview.Source.AtlasVersion]));
-  end;
-  FInfo := TLabel.Create(Self);
-  FInfo.Parent := Self;
-  FInfo.Align := alTop;
-  FInfo.AlignWithMargins := True;
-  FInfo.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FInfo.WordWrap := True;
-  FInfo.ShowAccelChar := False;
-  FInfo.Caption := Info;
-  FInfo.Visible := Info <> '';
-
-  FMode := TRadioGroup.Create(Self);
-  FMode.Parent := Self;
-  FMode.Align := alTop;
-  FMode.AlignWithMargins := True;
-  FMode.Margins.SetBounds(Gap, Gap, Gap, 0);
-  FMode.Top := 1000;
-  FMode.Height := ScaleValue(64);
-  FMode.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsImportMerge));
-  FMode.Items.Add(TAtlasStrings.Text(TAtlasTextId.SettingsImportReplace));
+  FInfo := NewInfoLabel(Self, ImportInfo(APreview));
+  FInfo.Visible := FInfo.Caption <> '';
+  FMode := NewChoice(Self, '', 1000, [TAtlasStrings.Text(TAtlasTextId.SettingsImportMerge),
+    TAtlasStrings.Text(TAtlasTextId.SettingsImportReplace)]);
   FMode.ItemIndex := Ord(APreview.Mode);
   FMode.OnClick := Recalculate;
-
-  Areas := TFlowPanel.Create(Self);
-  Areas.Parent := Self;
-  Areas.Align := alTop;
-  Areas.AutoSize := True;
-  Areas.BevelOuter := bvNone;
-  Areas.AlignWithMargins := True;
-  Areas.Margins.SetBounds(Gap, 4, Gap, 0);
-  Areas.Top := 2000;
-  for Area in ACatalog.Areas do
-  begin
-    Box := TCheckBox.Create(Self);
-    Box.Parent := Areas;
-    Box.Width := ScaleValue(140);
-    Box.Caption := ACatalog.AreaCaption(Area.Id, English);
-    Box.Checked := HasArea(APreview.Areas, Area.Id);
-    Box.OnClick := Recalculate;
-    FAreaBoxes := FAreaBoxes + [Box];
-    FAreaIds := FAreaIds + [Area.Id];
-  end;
-
+  FAreaBoxes := NewAreaBoxes(Self, ACatalog, APreview.Areas, False, Recalculate, FAreaIds);
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -402,21 +402,11 @@ begin
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsImportColKey);
-  Column.Width := ScaleValue(220);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsImportColArea);
-  Column.Width := ScaleValue(100);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsImportColCurrent);
-  Column.Width := ScaleValue(110);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsImportColNew);
-  Column.Width := ScaleValue(110);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsImportColNote);
-  Column.Width := ScaleValue(180);
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColKey), ScaleValue(220));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColArea), ScaleValue(100));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColCurrent), ScaleValue(110));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColNew), ScaleValue(110));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SettingsImportColNote), ScaleValue(180));
 
   ClientHeight := ScaleValue(520);
 end;

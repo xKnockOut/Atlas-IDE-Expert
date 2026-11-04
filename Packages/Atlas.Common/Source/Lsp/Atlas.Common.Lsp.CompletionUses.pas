@@ -158,115 +158,76 @@ begin
   Result := TUsesGroup.Library_;
 end;
 
-class function TCompletionUses.SiteAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): TUsesSite;
-var
-  Index, First: Integer;
-  IsUnit, InImplementation, Current, AtCursor, AfterIn: Boolean;
-  Name: string;
-  Interface_, Implementation_, Others, Names: TArray<string>;
-  Section, ClauseSection: TUsesSection;
-  Token: TPascalToken;
-
-  procedure Flush;
-  begin
-    if (Name <> '') and not Current then
-    begin
-      Names := Names + [Name];
-    end;
-    Name := '';
-    Current := False;
-    AfterIn := False;
+type
+  /// <summary>Liest eine uses-Liste Token für Token.</summary>
+  TClauseReader = record
+    Names: TArray<string>;
+    Name: string;
+    // Der Name, an dem getippt wird, zählt nicht als eingebunden.
+    Current: Boolean;
+    AfterIn: Boolean;
+    procedure Flush;
+    /// <summary>Nimmt AToken auf; False am Ende der Liste (Semikolon bzw. fremdes Schlüsselwort).</summary>
+    function Take(const AToken: TPascalToken; const APosition: TTextPosition): Boolean;
   end;
 
+  /// <summary>Gelesene uses-Listen je Abschnitt.</summary>
+  TSectionLists = record
+    Interface_, Implementation_, Others: TArray<string>;
+    procedure Add(ASection: TUsesSection; const ANames: TArray<string>);
+    function Site(ASection: TUsesSection): TUsesSite;
+  end;
+
+procedure TClauseReader.Flush;
+begin
+  if (Name <> '') and not Current then
+  begin
+    Names := Names + [Name];
+  end;
+  Name := '';
+  Current := False;
+  AfterIn := False;
+end;
+
+function TClauseReader.Take(const AToken: TPascalToken; const APosition: TTextPosition): Boolean;
+begin
+  Result := True;
+  if AToken.IsSymbol(',') then
+  begin
+    Flush;
+  end
+  else if AToken.IsSymbol(';') or (AToken.Kind = TPascalTokenKind.Keyword) and not AToken.IsKeyword('in') then
+  begin
+    Result := False;
+  end
+  else if AToken.IsKeyword('in') then
+  begin
+    AfterIn := True;
+  end
+  else if not AfterIn and ((AToken.Kind = TPascalTokenKind.Identifier) or AToken.IsSymbol('.')) then
+  begin
+    Name := Name + AToken.Text;
+    Current := Current or (Before(AToken.StartPos, APosition) and not Before(AToken.EndPos, APosition));
+  end;
+end;
+
+procedure TSectionLists.Add(ASection: TUsesSection; const ANames: TArray<string>);
+begin
+  case ASection of
+    TUsesSection.Interface_:
+      Interface_ := Interface_ + ANames;
+    TUsesSection.Implementation_:
+      Implementation_ := Implementation_ + ANames;
+  else
+    Others := Others + ANames;
+  end;
+end;
+
+function TSectionLists.Site(ASection: TUsesSection): TUsesSite;
 begin
   Result := Default(TUsesSite);
-  Interface_ := nil;
-  Implementation_ := nil;
-  Others := nil;
-  Section := TUsesSection.Other;
-  First := 0;
-  while (First <= High(ATokens)) and IsTrivia(ATokens[First]) do
-  begin
-    Inc(First);
-  end;
-  IsUnit := (First <= High(ATokens)) and ATokens[First].IsKeyword('unit');
-  InImplementation := False;
-  Index := 0;
-  while Index <= High(ATokens) do
-  begin
-    Token := ATokens[Index];
-    if Token.IsKeyword('implementation') then
-    begin
-      InImplementation := True;
-    end
-    else if Token.IsKeyword('uses') or Token.IsKeyword('contains') then
-    begin
-      ClauseSection := TUsesSection.Other;
-      if IsUnit and InImplementation then
-      begin
-        ClauseSection := TUsesSection.Implementation_;
-      end
-      else if IsUnit then
-      begin
-        ClauseSection := TUsesSection.Interface_;
-      end;
-      AtCursor := not Before(APosition, Token.EndPos);
-      Names := nil;
-      Name := '';
-      Current := False;
-      AfterIn := False;
-      Inc(Index);
-      while Index <= High(ATokens) do
-      begin
-        Token := ATokens[Index];
-        if IsTrivia(Token) then
-        begin
-          Inc(Index);
-          Continue;
-        end;
-        if Token.IsSymbol(',') then
-        begin
-          Flush;
-        end
-        else if Token.IsSymbol(';') or (Token.Kind = TPascalTokenKind.Keyword) and not Token.IsKeyword('in') then
-        begin
-          Break;
-        end
-        else if Token.IsKeyword('in') then
-        begin
-          AfterIn := True;
-        end
-        else if not AfterIn and ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.')) then
-        begin
-          Name := Name + Token.Text;
-          // Der Name, an dem getippt wird, zählt nicht als eingebunden.
-          if Before(Token.StartPos, APosition) and not Before(Token.EndPos, APosition) then
-          begin
-            Current := True;
-          end;
-        end;
-        Inc(Index);
-      end;
-      Flush;
-      // Cursor in dieser Liste: hinter "uses" und vor dem Ende (Semikolon bzw. erstes fremdes Token).
-      if AtCursor and ((Index > High(ATokens)) or not Before(ATokens[Index].StartPos, APosition)) then
-      begin
-        Section := ClauseSection;
-      end;
-      case ClauseSection of
-        TUsesSection.Interface_:
-          Interface_ := Interface_ + Names;
-        TUsesSection.Implementation_:
-          Implementation_ := Implementation_ + Names;
-      else
-        Others := Others + Names;
-      end;
-      Continue;
-    end;
-    Inc(Index);
-  end;
-  Result.Section := Section;
-  case Section of
+  Result.Section := ASection;
+  case ASection of
     TUsesSection.Interface_:
       begin
         Result.Here := Interface_;
@@ -282,51 +243,142 @@ begin
   end;
 end;
 
-class function TCompletionUses.Match(const AUnitName, APrefix: string; const ANamespaces: TArray<string>;
-  AMatching: TCompletionMatching; out AMatch: TUsesMatch): Boolean;
+/// <summary>Namen der uses-Liste ab AIndex (hinter "uses"); AIndex steht danach auf ihrem Ende (Semikolon bzw.
+/// erstes fremdes Token).</summary>
+function ReadClause(const ATokens: TArray<TPascalToken>; var AIndex: Integer;
+  const APosition: TTextPosition): TArray<string>;
 var
-  Parts: TArray<string>;
-  Part, Dots, Score, Penalty: Integer;
-  Lead, Namespace: string;
+  mReader: TClauseReader;
 begin
-  AMatch := Default(TUsesMatch);
-  AMatch.Score := TFuzzyMatch.NoMatch;
-  Parts := AUnitName.Split(['.']);
-  Dots := Length(APrefix) - Length(APrefix.Replace('.', ''));
-  Result := False;
-  for Part := 0 to High(Parts) do
+  mReader := Default(TClauseReader);
+  while AIndex <= High(ATokens) do
   begin
-    // Ohne Eingabe nur der volle Name; sonst jede Stelle, an der ein Namensteil beginnt.
-    if (APrefix = '') and (Part > 0) then
+    if not IsTrivia(ATokens[AIndex]) and not mReader.Take(ATokens[AIndex], APosition) then
     begin
       Break;
     end;
-    Score := MatchScore(JoinParts(Parts, Part), APrefix, AMatching);
-    if Score = TFuzzyMatch.NoMatch then
+    Inc(AIndex);
+  end;
+  mReader.Flush;
+  Result := mReader.Names;
+end;
+
+/// <summary>Beginnt der Text mit "unit"?</summary>
+function IsUnitText(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mFirst: Integer;
+begin
+  mFirst := 0;
+  while (mFirst <= High(ATokens)) and IsTrivia(ATokens[mFirst]) do
+  begin
+    Inc(mFirst);
+  end;
+  Result := (mFirst <= High(ATokens)) and ATokens[mFirst].IsKeyword('unit');
+end;
+
+function ClauseSectionOf(AIsUnit, AInImplementation: Boolean): TUsesSection;
+begin
+  Result := TUsesSection.Other;
+  if AIsUnit and AInImplementation then
+  begin
+    Result := TUsesSection.Implementation_;
+  end
+  else if AIsUnit then
+  begin
+    Result := TUsesSection.Interface_;
+  end;
+end;
+
+class function TCompletionUses.SiteAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): TUsesSite;
+var
+  mIndex: Integer;
+  mIsUnit, mInImplementation, mAtCursor: Boolean;
+  mLists: TSectionLists;
+  mSection, mClause: TUsesSection;
+  mNames: TArray<string>;
+begin
+  mLists := Default(TSectionLists);
+  mSection := TUsesSection.Other;
+  mIsUnit := IsUnitText(ATokens);
+  mInImplementation := False;
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
+  begin
+    if ATokens[mIndex].IsKeyword('implementation') then
     begin
-      Continue;
-    end;
-    Penalty := 0;
-    if Part > 0 then
+      mInImplementation := True;
+    end
+    else if ATokens[mIndex].IsKeyword('uses') or ATokens[mIndex].IsKeyword('contains') then
     begin
-      Penalty := PartPenalty;
-      Lead := JoinParts(Copy(Parts, 0, Part), 0);
-      for Namespace in ANamespaces do
+      mClause := ClauseSectionOf(mIsUnit, mInImplementation);
+      mAtCursor := not Before(APosition, ATokens[mIndex].EndPos);
+      Inc(mIndex);
+      mNames := ReadClause(ATokens, mIndex, APosition);
+      // Cursor in dieser Liste: hinter "uses" und vor dem Ende (Semikolon bzw. erstes fremdes Token).
+      if mAtCursor and ((mIndex > High(ATokens)) or not Before(ATokens[mIndex].StartPos, APosition)) then
       begin
-        if SameText(Namespace, Lead) then
-        begin
-          Penalty := NamespacePenalty;
-        end;
+        mSection := mClause;
       end;
+      mLists.Add(mClause, mNames);
+      Continue;
     end;
-    Dec(Score, Penalty);
-    if Result and (Score <= AMatch.Score) then
+    Inc(mIndex);
+  end;
+  Result := mLists.Site(mSection);
+end;
+
+/// <summary>Abzug für einen Treffer ab Namensteil APart: keiner am Anfang, wenig hinter einem Namespace des
+/// Projekts, sonst mehr.</summary>
+function PartPenaltyOf(const AParts: TArray<string>; APart: Integer; const ANamespaces: TArray<string>): Integer;
+var
+  mLead, mNamespace: string;
+begin
+  Result := 0;
+  if APart = 0 then
+  begin
+    Exit;
+  end;
+  Result := TCompletionUses.PartPenalty;
+  mLead := JoinParts(Copy(AParts, 0, APart), 0);
+  for mNamespace in ANamespaces do
+  begin
+    if SameText(mNamespace, mLead) then
+    begin
+      Result := TCompletionUses.NamespacePenalty;
+    end;
+  end;
+end;
+
+class function TCompletionUses.Match(const AUnitName, APrefix: string; const ANamespaces: TArray<string>;
+  AMatching: TCompletionMatching; out AMatch: TUsesMatch): Boolean;
+var
+  mParts: TArray<string>;
+  mPart, mDots, mScore: Integer;
+begin
+  AMatch := Default(TUsesMatch);
+  AMatch.Score := TFuzzyMatch.NoMatch;
+  mParts := AUnitName.Split(['.']);
+  mDots := Length(APrefix) - Length(APrefix.Replace('.', ''));
+  Result := False;
+  for mPart := 0 to High(mParts) do
+  begin
+    // Ohne Eingabe nur der volle Name; sonst jede Stelle, an der ein Namensteil beginnt.
+    if (APrefix = '') and (mPart > 0) then
+    begin
+      Break;
+    end;
+    mScore := MatchScore(JoinParts(mParts, mPart), APrefix, AMatching);
+    if mScore = TFuzzyMatch.NoMatch then
     begin
       Continue;
     end;
-    Result := True;
-    AMatch.Score := Score;
-    AMatch.Filter := JoinParts(Parts, Min(Part + Dots, High(Parts)));
+    Dec(mScore, PartPenaltyOf(mParts, mPart, ANamespaces));
+    if not Result or (mScore > AMatch.Score) then
+    begin
+      Result := True;
+      AMatch.Score := mScore;
+      AMatch.Filter := JoinParts(mParts, Min(mPart + mDots, High(mParts)));
+    end;
   end;
 end;
 
@@ -381,115 +433,170 @@ begin
   end;
 end;
 
-class function TCompletionUses.Cycles(const AUnits: TArray<TUnitIndex>; const AOwnUnit: string;
-  const ANamespaces: TArray<string>): TDictionary<string, string>;
+/// <summary>Projekt-Units und AOwnUnit, je Großschreibung der Name. Bibliotheken binden keine Projekt-Units ein.
+/// </summary>
+function ProjectNames(const AUnits: TArray<TUnitIndex>; const AOwnUnit: string): TDictionary<string, string>;
 var
-  Names: TDictionary<string, string>;
-  Users: TObjectDictionary<string, TList<string>>;
-  Next: TDictionary<string, string>;
-  Queue: TQueue<string>;
-  UnitInfo: TUnitIndex;
-  Used, Target, Current, User, Chain, Step: string;
-  List: TList<string>;
-
-  function Resolve(const AName: string): string;
-  var
-    Namespace: string;
+  mUnitInfo: TUnitIndex;
+begin
+  Result := TDictionary<string, string>.Create;
+  for mUnitInfo in AUnits do
   begin
-    if Names.TryGetValue(UpperCase(AName), Result) then
+    if not mUnitInfo.Library_ then
+    begin
+      Result.AddOrSetValue(UpperCase(mUnitInfo.UnitName), mUnitInfo.UnitName);
+    end;
+  end;
+  Result.AddOrSetValue(UpperCase(AOwnUnit), AOwnUnit);
+end;
+
+/// <summary>Projekt-Unit zum Namen AName in uses, auch über die Namespaces; '' ohne.</summary>
+function ResolveUnit(ANames: TDictionary<string, string>; const ANamespaces: TArray<string>;
+  const AName: string): string;
+var
+  mNamespace: string;
+begin
+  if ANames.TryGetValue(UpperCase(AName), Result) then
+  begin
+    Exit;
+  end;
+  for mNamespace in ANamespaces do
+  begin
+    if ANames.TryGetValue(UpperCase(mNamespace + '.' + AName), Result) then
     begin
       Exit;
     end;
-    for Namespace in ANamespaces do
+  end;
+  Result := '';
+end;
+
+/// <summary>AUser als Nutzer von ATarget in AUsers eintragen.</summary>
+procedure AddUser(AUsers: TObjectDictionary<string, TList<string>>; const ATarget, AUser: string);
+var
+  mList: TList<string>;
+begin
+  if not AUsers.TryGetValue(UpperCase(ATarget), mList) then
+  begin
+    mList := TList<string>.Create;
+    AUsers.Add(UpperCase(ATarget), mList);
+  end;
+  mList.Add(AUser);
+end;
+
+/// <summary>Rückwärts: Je Projekt-Unit (Großschreibung) die Projekt-Units, die sie im interface-Teil einbinden.
+/// </summary>
+function InterfaceUsers(const AUnits: TArray<TUnitIndex>; const AOwnUnit: string;
+  ANames: TDictionary<string, string>; const ANamespaces: TArray<string>): TObjectDictionary<string, TList<string>>;
+var
+  mUnitInfo: TUnitIndex;
+  mUsed, mTarget: string;
+begin
+  Result := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
+  for mUnitInfo in AUnits do
+  begin
+    if mUnitInfo.Library_ or SameText(mUnitInfo.UnitName, AOwnUnit) then
     begin
-      if Names.TryGetValue(UpperCase(Namespace + '.' + AName), Result) then
+      Continue;
+    end;
+    for mUsed in mUnitInfo.InterfaceUses do
+    begin
+      mTarget := ResolveUnit(ANames, ANamespaces, mUsed);
+      if mTarget <> '' then
       begin
-        Exit;
+        AddUser(Result, mTarget, mUnitInfo.UnitName);
       end;
     end;
-    Result := '';
   end;
+end;
 
+/// <summary>Breitensuche ab AOwnUnit über AUsers: je erreichter Unit (Großschreibung) die nächste Unit der Kette
+/// zurück zu AOwnUnit ('' für AOwnUnit selbst).</summary>
+function ReachFrom(AUsers: TObjectDictionary<string, TList<string>>;
+  const AOwnUnit: string): TDictionary<string, string>;
+var
+  mQueue: TQueue<string>;
+  mCurrent, mUser: string;
+  mList: TList<string>;
+begin
+  Result := TDictionary<string, string>.Create;
+  mQueue := TQueue<string>.Create;
+  try
+    mQueue.Enqueue(AOwnUnit);
+    Result.Add(UpperCase(AOwnUnit), '');
+    while mQueue.Count > 0 do
+    begin
+      mCurrent := mQueue.Dequeue;
+      if not AUsers.TryGetValue(UpperCase(mCurrent), mList) then
+      begin
+        Continue;
+      end;
+      for mUser in mList do
+      begin
+        if not Result.ContainsKey(UpperCase(mUser)) then
+        begin
+          Result.Add(UpperCase(mUser), mCurrent);
+          mQueue.Enqueue(mUser);
+        end;
+      end;
+    end;
+  finally
+    mQueue.Free;
+  end;
+end;
+
+/// <summary>Kette "uA → uB → Haupt" ab AUser (Großschreibung).</summary>
+function ChainOf(ANames, ANext: TDictionary<string, string>; const AUser: string): string;
+var
+  mStep, mNextStep: string;
+begin
+  if not ANames.TryGetValue(AUser, Result) then
+  begin
+    Result := AUser;
+  end;
+  if not ANext.TryGetValue(AUser, mStep) then
+  begin
+    mStep := '';
+  end;
+  while mStep <> '' do
+  begin
+    Result := Result + ' → ' + mStep;
+    if not ANext.TryGetValue(UpperCase(mStep), mNextStep) then
+    begin
+      mNextStep := '';
+    end;
+    mStep := mNextStep;
+  end;
+end;
+
+class function TCompletionUses.Cycles(const AUnits: TArray<TUnitIndex>; const AOwnUnit: string;
+  const ANamespaces: TArray<string>): TDictionary<string, string>;
+var
+  mNames, mNext: TDictionary<string, string>;
+  mUsers: TObjectDictionary<string, TList<string>>;
+  mUser: string;
 begin
   Result := TDictionary<string, string>.Create;
   if AOwnUnit = '' then
   begin
     Exit;
   end;
-  Names := TDictionary<string, string>.Create;
-  Users := TObjectDictionary<string, TList<string>>.Create([doOwnsValues]);
-  Next := TDictionary<string, string>.Create;
-  Queue := TQueue<string>.Create;
+  mNames := ProjectNames(AUnits, AOwnUnit);
+  mUsers := nil;
+  mNext := nil;
   try
-    // Nur Projekt-Units: Bibliotheken binden keine Projekt-Units ein.
-    for UnitInfo in AUnits do
+    mUsers := InterfaceUsers(AUnits, AOwnUnit, mNames, ANamespaces);
+    mNext := ReachFrom(mUsers, AOwnUnit);
+    for mUser in mNext.Keys do
     begin
-      if not UnitInfo.Library_ then
+      if not SameText(mUser, AOwnUnit) then
       begin
-        Names.AddOrSetValue(UpperCase(UnitInfo.UnitName), UnitInfo.UnitName);
+        Result.Add(mUser, ChainOf(mNames, mNext, mUser));
       end;
-    end;
-    Names.AddOrSetValue(UpperCase(AOwnUnit), AOwnUnit);
-    // Rückwärts: wer bindet wen im interface-Teil ein.
-    for UnitInfo in AUnits do
-    begin
-      if UnitInfo.Library_ or SameText(UnitInfo.UnitName, AOwnUnit) then
-      begin
-        Continue;
-      end;
-      for Used in UnitInfo.InterfaceUses do
-      begin
-        Target := Resolve(Used);
-        if Target = '' then
-        begin
-          Continue;
-        end;
-        if not Users.TryGetValue(UpperCase(Target), List) then
-        begin
-          List := TList<string>.Create;
-          Users.Add(UpperCase(Target), List);
-        end;
-        List.Add(UnitInfo.UnitName);
-      end;
-    end;
-    Queue.Enqueue(AOwnUnit);
-    Next.Add(UpperCase(AOwnUnit), '');
-    while Queue.Count > 0 do
-    begin
-      Current := Queue.Dequeue;
-      if not Users.TryGetValue(UpperCase(Current), List) then
-      begin
-        Continue;
-      end;
-      for User in List do
-      begin
-        if not Next.ContainsKey(UpperCase(User)) then
-        begin
-          Next.Add(UpperCase(User), Current);
-          Queue.Enqueue(User);
-        end;
-      end;
-    end;
-    for User in Next.Keys do
-    begin
-      if SameText(User, AOwnUnit) then
-      begin
-        Continue;
-      end;
-      Chain := Names[User];
-      Step := Next[User];
-      while Step <> '' do
-      begin
-        Chain := Chain + ' → ' + Step;
-        Step := Next[UpperCase(Step)];
-      end;
-      Result.Add(User, Chain);
     end;
   finally
-    Queue.Free;
-    Next.Free;
-    Users.Free;
-    Names.Free;
+    mNext.Free;
+    mUsers.Free;
+    mNames.Free;
   end;
 end;
 
@@ -516,102 +623,151 @@ begin
   end;
 end;
 
+type
+  /// <summary>Gemeinsames für die Einträge von TCompletionUses.Collect.</summary>
+  TUsesItems = record
+    Request: TCompletionRequest;
+    Prefix: string;
+    Site: TUsesSite;
+    Namespaces, HiddenUnits: TArray<string>;
+    Own: string;
+    // Zirkelbezüge im interface-Teil; sonst nil.
+    Cycles: TDictionary<string, string>;
+    // Ersetzt wird der ganze getippte Name samt Punkten, auch der Rest hinter dem Cursor.
+    Range: TTextRange;
+    /// <summary>Soll AUnitInfo erscheinen (nicht die eigene, nicht schon hier, passend)?</summary>
+    function Wanted(const AUnitInfo: TUnitIndex; out AFound: TUsesMatch): Boolean;
+    function Item(const AUnitInfo: TUnitIndex; const AFound: TUsesMatch; AGroup: TUsesGroup): TCompletionItem;
+    /// <summary>Hinweis „bereits im … -Teil“, wenn der andere Abschnitt AUnitName einbindet.</summary>
+    function Elsewhere(const AUnitName: string): string;
+  end;
+
+function TUsesItems.Wanted(const AUnitInfo: TUnitIndex; out AFound: TUsesMatch): Boolean;
+begin
+  Result := not SameText(AUnitInfo.UnitName, Own) and not TUsesClauses.IsUsed(Site.Here, AUnitInfo.UnitName,
+    Namespaces) and TCompletionUses.Match(AUnitInfo.UnitName, Prefix, Namespaces, Request.Matching, AFound);
+end;
+
+function TUsesItems.Elsewhere(const AUnitName: string): string;
+begin
+  Result := '';
+  if not TUsesClauses.IsUsed(Site.Other, AUnitName, Namespaces) then
+  begin
+    Exit;
+  end;
+  Result := TCompletionUses.SectionNames[TUsesSection.Interface_];
+  if Site.Section = TUsesSection.Interface_ then
+  begin
+    Result := TCompletionUses.SectionNames[TUsesSection.Implementation_];
+  end;
+end;
+
+function TUsesItems.Item(const AUnitInfo: TUnitIndex; const AFound: TUsesMatch;
+  AGroup: TUsesGroup): TCompletionItem;
+var
+  mChain: string;
+  mCount: Integer;
+begin
+  Result := Default(TCompletionItem);
+  Result.Name := AUnitInfo.UnitName;
+  Result.Kind := KindModule;
+  Result.Detail := TCompletionUses.ShortPath(AUnitInfo.FileName);
+  Result.HasTextEdit := True;
+  Result.TextEdit := TTextEdit.Create(Range, AUnitInfo.UnitName);
+  if (Request.Matching = TCompletionMatching.Fuzzy) and not AUnitInfo.UnitName.StartsWith(Prefix, True) then
+  begin
+    Result.FilterText := Prefix;
+  end;
+  Result.UsesGroup := TCompletionUses.GroupNames[AGroup];
+  Result.UsesFilter := AFound.Filter;
+  Result.UsesElsewhere := Elsewhere(AUnitInfo.UnitName);
+  if (Cycles <> nil) and Cycles.TryGetValue(UpperCase(AUnitInfo.UnitName), mChain) then
+  begin
+    Result.UsesCycle := mChain;
+  end;
+  Result.UsesTypes := TCompletionUses.ExportedTypes(AUnitInfo, TCompletionUses.MaxTypes, mCount);
+  Result.UsesTypeCount := mCount;
+  Result.UsesHidden := HiddenUnits;
+end;
+
+/// <summary>Bereich des ganzen getippten Namens samt Punkten, auch des Rests hinter dem Cursor.</summary>
+function NameRange(ARequest: TCompletionRequest; const APrefix: string): TTextRange;
+var
+  mLine: string;
+  mStop: Integer;
+begin
+  mLine := ARequest.LineText(ARequest.Position.Line);
+  mStop := ARequest.Position.Character;
+  while (mStop < Length(mLine)) and (CharInSet(mLine[mStop + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or
+    (Ord(mLine[mStop + 1]) > 127)) do
+  begin
+    Inc(mStop);
+  end;
+  Result := TTextRange.Create(ARequest.Position.Line, Max(0, ARequest.Position.Character - Length(APrefix)),
+    ARequest.Position.Line, mStop);
+end;
+
+/// <summary>Units des Index nach Namen sortiert.</summary>
+function SortedUnits(const AIndex: ISymbolIndex): TArray<TUnitIndex>;
+begin
+  Result := AIndex.Units;
+  TArray.Sort<TUnitIndex>(Result, TComparer<TUnitIndex>.Construct(
+    function(const ALeft, ARight: TUnitIndex): Integer
+    begin
+      Result := CompareText(ALeft.UnitName, ARight.UnitName);
+    end));
+end;
+
+/// <summary>Ausgangswerte für die Einträge: Namespaces, eigene Unit, Liste am Cursor, Fußzeile, Bereich.</summary>
+function UsesItemsFor(ARequest: TCompletionRequest; const AContext: TCompletionContext): TUsesItems;
+begin
+  Result := Default(TUsesItems);
+  Result.Request := ARequest;
+  Result.Prefix := AContext.Prefix;
+  if ARequest.Resolver <> nil then
+  begin
+    Result.Namespaces := ARequest.Resolver.Namespaces;
+  end;
+  if ARequest.Tree <> nil then
+  begin
+    Result.Own := TUsesClauses.OwnName(ARequest.Tree.Tokens);
+    Result.Site := TCompletionUses.SiteAt(ARequest.Tree.Tokens, ARequest.Position);
+  end;
+  Result.HiddenUnits := TCompletionUses.Hidden(Result.Site, AContext.Prefix, Result.Namespaces,
+    ARequest.Matching);
+  Result.Range := NameRange(ARequest, AContext.Prefix);
+end;
+
 class procedure TCompletionUses.Collect(ARequest: TCompletionRequest; const AContext: TCompletionContext;
   ACollector: TCompletionCollector);
 var
-  Units: TArray<TUnitIndex>;
-  UnitInfo: TUnitIndex;
-  Site: TUsesSite;
-  Namespaces, HiddenUnits: TArray<string>;
-  Own, Line, Chain: string;
-  Found: TUsesMatch;
-  Item: TCompletionItem;
-  Group: TUsesGroup;
-  Cycles_: TDictionary<string, string>;
-  Start, Stop, Count: Integer;
+  mItems: TUsesItems;
+  mUnits: TArray<TUnitIndex>;
+  mUnitInfo: TUnitIndex;
+  mFound: TUsesMatch;
+  mGroup: TUsesGroup;
 begin
   if ARequest.Index = nil then
   begin
     Exit;
   end;
-  Namespaces := nil;
-  if ARequest.Resolver <> nil then
+  mItems := UsesItemsFor(ARequest, AContext);
+  mUnits := SortedUnits(ARequest.Index);
+  if mItems.Site.Section = TUsesSection.Interface_ then
   begin
-    Namespaces := ARequest.Resolver.Namespaces;
-  end;
-  Own := '';
-  Site := Default(TUsesSite);
-  if ARequest.Tree <> nil then
-  begin
-    Own := TUsesClauses.OwnName(ARequest.Tree.Tokens);
-    Site := SiteAt(ARequest.Tree.Tokens, ARequest.Position);
-  end;
-  HiddenUnits := Hidden(Site, AContext.Prefix, Namespaces, ARequest.Matching);
-  // Ersetzt wird der ganze getippte Name samt Punkten, auch der Rest hinter dem Cursor.
-  Line := ARequest.LineText(ARequest.Position.Line);
-  Start := Max(0, ARequest.Position.Character - Length(AContext.Prefix));
-  Stop := ARequest.Position.Character;
-  while (Stop < Length(Line)) and (CharInSet(Line[Stop + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) or
-    (Ord(Line[Stop + 1]) > 127)) do
-  begin
-    Inc(Stop);
-  end;
-  Units := ARequest.Index.Units;
-  TArray.Sort<TUnitIndex>(Units, TComparer<TUnitIndex>.Construct(
-    function(const ALeft, ARight: TUnitIndex): Integer
-    begin
-      Result := CompareText(ALeft.UnitName, ARight.UnitName);
-    end));
-  Cycles_ := nil;
-  if Site.Section = TUsesSection.Interface_ then
-  begin
-    Cycles_ := Cycles(Units, Own, Namespaces);
+    mItems.Cycles := Cycles(mUnits, mItems.Own, mItems.Namespaces);
   end;
   try
-    for UnitInfo in Units do
+    for mUnitInfo in mUnits do
     begin
-      if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Site.Here, UnitInfo.UnitName, Namespaces) or
-        not Match(UnitInfo.UnitName, AContext.Prefix, Namespaces, ARequest.Matching, Found) then
+      if mItems.Wanted(mUnitInfo, mFound) then
       begin
-        Continue;
+        mGroup := GroupOf(mUnitInfo);
+        ACollector.AddItem(mItems.Item(mUnitInfo, mFound, mGroup), mFound.Score - Ord(mGroup) * GroupPenalty);
       end;
-      Group := GroupOf(UnitInfo);
-      Item := Default(TCompletionItem);
-      Item.Name := UnitInfo.UnitName;
-      Item.Kind := KindModule;
-      Item.Detail := ShortPath(UnitInfo.FileName);
-      Item.HasTextEdit := True;
-      Item.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
-        Stop), UnitInfo.UnitName);
-      if (ARequest.Matching = TCompletionMatching.Fuzzy) and
-        not UnitInfo.UnitName.StartsWith(AContext.Prefix, True) then
-      begin
-        Item.FilterText := AContext.Prefix;
-      end;
-      Item.UsesGroup := GroupNames[Group];
-      Item.UsesFilter := Found.Filter;
-      if TUsesClauses.IsUsed(Site.Other, UnitInfo.UnitName, Namespaces) then
-      begin
-        if Site.Section = TUsesSection.Interface_ then
-        begin
-          Item.UsesElsewhere := SectionNames[TUsesSection.Implementation_];
-        end
-        else
-        begin
-          Item.UsesElsewhere := SectionNames[TUsesSection.Interface_];
-        end;
-      end;
-      if (Cycles_ <> nil) and Cycles_.TryGetValue(UpperCase(UnitInfo.UnitName), Chain) then
-      begin
-        Item.UsesCycle := Chain;
-      end;
-      Item.UsesTypes := ExportedTypes(UnitInfo, MaxTypes, Count);
-      Item.UsesTypeCount := Count;
-      Item.UsesHidden := HiddenUnits;
-      ACollector.AddItem(Item, Found.Score - Ord(Group) * GroupPenalty);
     end;
   finally
-    Cycles_.Free;
+    mItems.Cycles.Free;
   end;
 end;
 
