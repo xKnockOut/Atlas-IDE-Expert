@@ -265,8 +265,8 @@ begin
     NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), Plan.NewUnit + '.pas');
     CheckNewUnit(AContext, Plan, NewFile);
     // Verwendende Units über die Referenzsuche (#29).
-    References := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Decl.StartPos, False,
-      AContext.Files, AContext.ReadText);
+    References := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+      Decl.StartPos, False, AContext.Files, AContext.ReadText));
   finally
     AResolver.UnpinTree;
   end;

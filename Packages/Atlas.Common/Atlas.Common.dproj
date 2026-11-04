@@ -319,6 +319,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NestedRoutines.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineParts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.Shared.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.Embed.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.pas"/>
@@ -337,6 +339,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Shared.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Extract.Method.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Inlining.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.WithResolution.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CreateMethod.pas"/>
@@ -680,6 +684,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompactJson.pas"/>

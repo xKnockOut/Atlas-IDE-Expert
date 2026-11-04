@@ -282,8 +282,8 @@ var
 begin
   FDeclaring := TMethodSource.Create(FFileName, FText, FTree, nil);
   FLines := TLineTable.Build(FText);
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, FFileName, FTarget.NamePosition, False,
-    FContext.Files, FContext.ReadText) do
+  for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+    FTarget.NamePosition, False, FContext.Files, FContext.ReadText)) do
   begin
     AddUse(mLocation);
   end;

@@ -459,8 +459,8 @@ begin
   begin
     raise Fail('Alias auflösen geht nicht: ' + Reason);
   end;
-  Locations := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Target.NamePosition, False,
-    AContext.Files, AContext.ReadText);
+  Locations := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+    Target.NamePosition, False, AContext.Files, AContext.ReadText));
   Files := nil;
   try
     Declaring := TTypeAliasSource.Create(AFileName, AText, ATree);
