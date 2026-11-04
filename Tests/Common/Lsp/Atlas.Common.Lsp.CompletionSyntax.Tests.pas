@@ -307,7 +307,7 @@ begin
   try
     Completion.Attach(Dispatcher);
     FSyntaxNotice := True;
-    Completion.SettingsFor :=
+    Completion.Hooks.SettingsFor :=
       function(const AUri: string): TCompletionSettings
       begin
         Result := TCompletionSettings.Default;

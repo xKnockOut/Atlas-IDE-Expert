@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
@@ -70,7 +71,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.TestSupport,
-  Atlas.Common.Lsp.Completion.Declarations;
+  Atlas.Common.Lsp.Completion.Declarations,
+  Atlas.Common.Lsp.Completion.Details;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -186,7 +188,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -574,25 +576,25 @@ begin
   Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspCompletion.ClientPrefersMarkdown(Params), 'plaintext');
+    Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(Params), 'plaintext');
   finally
     Params.Free;
   end;
   Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["markdown","plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsTrue(TLspCompletion.ClientPrefersMarkdown(Params), 'markdown');
+    Assert.IsTrue(TCompletionDetails.ClientPrefersMarkdown(Params), 'markdown');
   finally
     Params.Free;
   end;
-  Assert.IsFalse(TLspCompletion.ClientPrefersMarkdown(nil));
+  Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(nil));
   Details := TJSONObject.Create;
   try
     Details.AddPair('summary', 'Kurz');
     Details.AddPair('documentationText', 'Kurz'#10'Mehr Text');
     Details.AddPair('documentationMarkdown', '**Kurz**');
     // Klartext: ganzer Text als String.
-    Documentation := TLspCompletion.ResolveDocumentation(Details, False);
+    Documentation := TCompletionDetails.ResolveDocumentation(Details, False);
     try
       Assert.IsTrue(Documentation is TJSONString, 'Klartext als String');
       Assert.AreEqual('Kurz'#10'Mehr Text', Documentation.Value);
@@ -600,7 +602,7 @@ begin
       Documentation.Free;
     end;
     // Markdown: MarkupContent.
-    Documentation := TLspCompletion.ResolveDocumentation(Details, True);
+    Documentation := TCompletionDetails.ResolveDocumentation(Details, True);
     try
       Assert.AreEqual('markdown', (Documentation as TJSONObject).GetValue<string>('kind'));
       Assert.AreEqual('**Kurz**', (Documentation as TJSONObject).GetValue<string>('value'));
@@ -610,7 +612,7 @@ begin
   finally
     Details.Free;
   end;
-  Assert.IsNull(TLspCompletion.ResolveDocumentation(nil, False));
+  Assert.IsNull(TCompletionDetails.ResolveDocumentation(nil, False));
 end;
 
 initialization

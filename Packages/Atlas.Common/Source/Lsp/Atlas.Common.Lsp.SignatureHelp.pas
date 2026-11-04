@@ -75,6 +75,20 @@ type
     function Found: Boolean;
   end;
 
+  /// <summary>Eingaben der Parameterhilfe: Namensauflösung, Index, Dokument und Formatroutinen (#451).</summary>
+  TSignatureHelpRequest = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    Tree: TSyntaxTree;
+    TreeText: string;
+    FileName: string;
+    ReadText: THoverReadText;
+    /// <summary>Formatroutinen (#451); Create setzt die eingebauten.</summary>
+    Routines: TArray<TFormatRoutine>;
+    class function Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ATreeText, AFileName: string; const AReadText: THoverReadText): TSignatureHelpRequest; static;
+  end;
+
   /// <summary>Formatroutinen für das Dokument AUri: eingebaute und eigene (#451).</summary>
   TFormatRoutinesFunc = reference to function(const AUri: string): TArray<TFormatRoutine>;
 
@@ -113,13 +127,9 @@ type
     class procedure Match(var ASignature: TSignature; const AArgumentTypes: TArray<string>); static;
     /// <summary>Kopf einer Routine ab ALine/AColumn bis zum ; hinter der Parameterliste, auf eine Zeile gebracht.</summary>
     class function ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature; static;
-    class function HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const ATreeText, AFileName: string; const APosition: TTextPosition;
-      const AReadText: THoverReadText): TSignatureHelp; overload; static;
-    /// <summary>Wie oben mit den Formatroutinen ARoutines (#451).</summary>
-    class function HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const ATreeText, AFileName: string; const APosition: TTextPosition; const AReadText: THoverReadText;
-      const ARoutines: TArray<TFormatRoutine>): TSignatureHelp; overload; static;
+    /// <summary>Signaturen des Aufrufs an APosition im Dokument von ARequest.</summary>
+    class function HelpAt(const ARequest: TSignatureHelpRequest; const APosition: TTextPosition): TSignatureHelp;
+      static;
     /// <summary>SignatureHelp des LSP; JSON-null ohne Signaturen. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AHelp: TSignatureHelp): TJSONValue; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -134,7 +144,6 @@ uses
   Atlas.Common.Index.Files,
   System.Math,
   System.StrUtils,
-  System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
@@ -152,6 +161,60 @@ const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
   MaxHeaderLines = 50;
   ParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
+  /// <summary>Schlüsselwörter, an denen die Suche nach der offenen Klammer endet.</summary>
+  cStatementKeywords: array[0..4] of string = ('begin', 'end', 'then', 'do', 'var');
+  /// <summary>Zeichen hinter einem Parameternamen in seiner Gruppe.</summary>
+  cNameEnds: array[0..2] of string = (':', ' ', ',');
+  /// <summary>LiteralChars: kein Zeichen- oder String-Literal.</summary>
+  cNoLiteral = -2;
+
+type
+  /// <summary>Rückwärtssuche nach der innersten offenen Aufrufklammer (CallSiteAt); sammelt die Argumente
+  /// (#498).</summary>
+  TCallScan = record
+    Tokens: TArray<TPascalToken>;
+    /// <summary>Letztes Token vor der Position.</summary>
+    Last: Integer;
+    Depth: Integer;
+    Commas: Integer;
+    /// <summary>Letztes Token des Arguments links vom nächsten Komma.</summary>
+    SpanEnd: Integer;
+    Firsts: TArray<Integer>;
+    Lasts: TArray<Integer>;
+    procedure AddArgument(AFirst: Integer);
+    function Opening(AIndex: Integer; var ASite: TCallSite): Boolean;
+    function Separator(AIndex: Integer): Boolean;
+    /// <summary>Verarbeitet das Token AIndex; True beendet die Suche.</summary>
+    function Step(AIndex: Integer; var ASite: TCallSite): Boolean;
+  end;
+
+  /// <summary>Ein Lauf von HelpAt: Aufruf finden, Überladungen sammeln, Argumente vergleichen.</summary>
+  THelpRun = class
+  private
+    FRequest: TSignatureHelpRequest;
+    FPosition: TTextPosition;
+    FSite: TCallSite;
+    FResolved: TResolvedSymbol;
+    FLines: TArray<string>;
+    FStarts: TArray<TTextPosition>;
+    FStartSymbols: TArray<TResolvedSymbol>;
+    procedure ResolveSite;
+    function IntrinsicHelp: TSignatureHelp;
+    function ReadLines: Boolean;
+    procedure AddStart(const APosition: TTextPosition; const ASymbol: TResolvedSymbol);
+    function IsOverload(const ASymbol: TIndexSymbol): Boolean;
+    function OwnerUnit(out AOwner: TUnitIndex): Boolean;
+    function CollectUnitStarts: Boolean;
+    function CollectStarts: Boolean;
+    function BoundTypes: TArray<string>;
+    function HeaderLines(const AStart: TTextPosition; const ABindings: TArray<string>): TArray<string>;
+    function Signatures: TArray<TSignature>;
+    procedure MatchArguments(var ASignatures: TArray<TSignature>);
+    procedure AddFormat(var AHelp: TSignatureHelp);
+  public
+    constructor Create(const ARequest: TSignatureHelpRequest; const APosition: TTextPosition);
+    function Run: TSignatureHelp;
+  end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -188,6 +251,139 @@ begin
       Result := Result + AText[Index];
     end;
   end;
+end;
+
+function IsSkipped(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
+end;
+
+/// <summary>Index des nächsten Tokens vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
+function PreviousCodeToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex - 1;
+  while (Result >= 0) and IsSkipped(ATokens[Result]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Letztes Token, das vor APosition beginnt; -1 ohne.</summary>
+function LastTokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if ComparePositions(ATokens[mIndex].StartPos, APosition) >= 0 then
+    begin
+      Break;
+    end;
+    Result := mIndex;
+  end;
+end;
+
+/// <summary>; oder ein Schlüsselwort, hinter dem kein offener Aufruf mehr stehen kann.</summary>
+function EndsStatement(const AToken: TPascalToken): Boolean;
+var
+  mKeyword: string;
+begin
+  Result := AToken.IsSymbol(';');
+  for mKeyword in cStatementKeywords do
+  begin
+    Result := Result or AToken.IsKeyword(mKeyword);
+  end;
+end;
+
+{ TCallScan }
+
+procedure TCallScan.AddArgument(AFirst: Integer);
+begin
+  Firsts := TArray<Integer>.Create(AFirst) + Firsts;
+  Lasts := TArray<Integer>.Create(SpanEnd) + Lasts;
+end;
+
+function TCallScan.Opening(AIndex: Integer; var ASite: TCallSite): Boolean;
+var
+  mPrevious: Integer;
+begin
+  Result := False;
+  if Depth > 0 then
+  begin
+    Dec(Depth);
+    Exit;
+  end;
+  mPrevious := PreviousCodeToken(Tokens, AIndex);
+  if Tokens[AIndex].IsSymbol('(') and (mPrevious >= 0) and (Tokens[mPrevious].Kind = TPascalTokenKind.Identifier) then
+  begin
+    AddArgument(AIndex + 1);
+    ASite.NamePosition := Tokens[mPrevious].StartPos;
+    ASite.ActiveParameter := Commas;
+    ASite.Found := True;
+    ASite.ArgumentFirst := Firsts;
+    ASite.ArgumentLast := Lasts;
+    Exit(True);
+  end;
+  // Klammer um einen Ausdruck oder eine Menge: sie ist selbst ein Argument des äußeren Aufrufs.
+  Commas := 0;
+  Firsts := nil;
+  Lasts := nil;
+  SpanEnd := Last;
+end;
+
+function TCallScan.Separator(AIndex: Integer): Boolean;
+begin
+  Result := False;
+  if Tokens[AIndex].IsSymbol(',') then
+  begin
+    Inc(Commas);
+    AddArgument(AIndex + 1);
+    SpanEnd := AIndex - 1;
+  end
+  else
+  begin
+    Result := EndsStatement(Tokens[AIndex]);
+  end;
+end;
+
+function TCallScan.Step(AIndex: Integer; var ASite: TCallSite): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  Result := False;
+  mToken := Tokens[AIndex];
+  if IsSkipped(mToken) then
+  begin
+    Exit;
+  end;
+  if mToken.IsSymbol(')') or mToken.IsSymbol(']') then
+  begin
+    Inc(Depth);
+  end
+  else if mToken.IsSymbol('(') or mToken.IsSymbol('[') then
+  begin
+    Result := Opening(AIndex, ASite);
+  end
+  else if Depth = 0 then
+  begin
+    Result := Separator(AIndex);
+  end;
+end;
+
+{ TSignatureHelpRequest }
+
+class function TSignatureHelpRequest.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ATreeText, AFileName: string; const AReadText: THoverReadText): TSignatureHelpRequest;
+begin
+  Result := Default(TSignatureHelpRequest);
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := ATree;
+  Result.TreeText := ATreeText;
+  Result.FileName := AFileName;
+  Result.ReadText := AReadText;
+  Result.Routines := TFormatRoutines.Defaults;
 end;
 
 { TSignatureHelp }
@@ -246,274 +442,260 @@ end;
 
 class function TLspSignatureHelp.CallSiteAt(ATree: TSyntaxTree; const APosition: TTextPosition): TCallSite;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Last, Depth, Commas, Previous, SpanEnd: Integer;
-  Token: TPascalToken;
-  Firsts, Lasts: TArray<Integer>;
+  mScan: TCallScan;
+  mIndex: Integer;
 begin
   Result := Default(TCallSite);
   if ATree = nil then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Last := -1;
-  for Index := 0 to High(Tokens) do
+  mScan := Default(TCallScan);
+  mScan.Tokens := ATree.Tokens;
+  mScan.Last := LastTokenBefore(mScan.Tokens, APosition);
+  // Argumente rückwärts gesammelt (#498).
+  mScan.SpanEnd := mScan.Last;
+  for mIndex := mScan.Last downto 0 do
   begin
-    if ComparePositions(Tokens[Index].StartPos, APosition) >= 0 then
+    if mScan.Step(mIndex, Result) then
     begin
       Break;
     end;
-    Last := Index;
   end;
-  Depth := 0;
-  Commas := 0;
-  // Argumente rückwärts gesammelt (#498): SpanEnd ist das letzte Token des Arguments links vom nächsten Komma.
-  SpanEnd := Last;
-  Firsts := nil;
-  Lasts := nil;
-  for Index := Last downto 0 do
+end;
+
+/// <summary>Position des ; außerhalb von Klammern in AText, 0 ohne; ADepth zählt offene Klammern über die Zeilen
+/// hinweg.</summary>
+function HeaderEnd(const AText: string; var ADepth: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := 1 to Length(AText) do
   begin
-    Token := Tokens[Index];
-    if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Continue;
+    case AText[mIndex] of
+      '(': Inc(ADepth);
+      ')': Dec(ADepth);
+      ';':
+        if ADepth = 0 then
+        begin
+          Exit(mIndex);
+        end;
     end;
-    if Token.IsSymbol(')') or Token.IsSymbol(']') then
+  end;
+end;
+
+/// <summary>Kopf ab ALine/AColumn bis zum ; außerhalb von Klammern, Zeilen mit Leerzeichen verbunden.</summary>
+function CollectHeader(const ALines: TArray<string>; ALine, AColumn: Integer): string;
+var
+  mDepth, mLine, mEnd: Integer;
+  mText: string;
+begin
+  Result := '';
+  mDepth := 0;
+  mLine := ALine;
+  while (mLine <= High(ALines)) and (mLine < ALine + MaxHeaderLines) do
+  begin
+    mText := ALines[mLine];
+    if mLine = ALine then
     begin
-      Inc(Depth);
+      mText := Copy(mText, AColumn + 1, MaxInt);
+    end;
+    mEnd := HeaderEnd(mText, mDepth);
+    if mEnd > 0 then
+    begin
+      Exit(Result + Copy(mText, 1, mEnd - 1));
+    end;
+    Result := Result + mText + ' ';
+    Inc(mLine);
+  end;
+end;
+
+/// <summary>procedure TFoo.Bar → procedure Bar; True, wenn ein Typ-Präfix entfernt wurde.</summary>
+function StripQualifier(var AText: string): Boolean;
+var
+  mKeyword, mOpen, mDot: Integer;
+begin
+  Result := False;
+  mKeyword := Pos(' ', AText);
+  if mKeyword = 0 then
+  begin
+    Exit;
+  end;
+  mOpen := Pos('(', AText);
+  if mOpen > 0 then
+  begin
+    mDot := LastDelimiter('.', Copy(AText, 1, mOpen - 1));
+  end
+  else
+  begin
+    mDot := LastDelimiter('.', AText);
+  end;
+  Result := mDot > mKeyword;
+  if Result then
+  begin
+    Delete(AText, mKeyword + 1, mDot - mKeyword);
+  end;
+end;
+
+/// <summary>Position der Klammer, die die Klammer an AOpen schließt; 0 ohne.</summary>
+function ClosingParen(const AText: string; AOpen: Integer): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := 0;
+  mDepth := 0;
+  for mIndex := AOpen to Length(AText) do
+  begin
+    if AText[mIndex] = '(' then
+    begin
+      Inc(mDepth);
     end
-    else if Token.IsSymbol('(') or Token.IsSymbol('[') then
+    else if AText[mIndex] = ')' then
     begin
-      if Depth > 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Dec(Depth);
-        Continue;
+        Exit(mIndex);
       end;
-      Previous := Index - 1;
-      while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Dec(Previous);
-      end;
-      if Token.IsSymbol('(') and (Previous >= 0) and (Tokens[Previous].Kind = TPascalTokenKind.Identifier) then
-      begin
-        Result.NamePosition := Tokens[Previous].StartPos;
-        Result.ActiveParameter := Commas;
-        Result.Found := True;
-        Firsts := [Index + 1] + Firsts;
-        Lasts := [SpanEnd] + Lasts;
-        Result.ArgumentFirst := Firsts;
-        Result.ArgumentLast := Lasts;
-        Exit;
-      end;
-      // Klammer um einen Ausdruck oder eine Menge: sie ist selbst ein Argument des äußeren Aufrufs.
-      Commas := 0;
-      Firsts := nil;
-      Lasts := nil;
-      SpanEnd := Last;
+    end;
+  end;
+end;
+
+/// <summary>Typ hinter dem Doppelpunkt ohne Vorgabewert und ohne Unit davor (System.Boolean → Boolean, #498);
+/// '' bei untypisierten Parametern.</summary>
+function GroupType(const AGroupText: string): string;
+var
+  mColon, mEqual: Integer;
+begin
+  Result := '';
+  mColon := Pos(':', AGroupText);
+  if mColon = 0 then
+  begin
+    Exit;
+  end;
+  Result := Copy(AGroupText, mColon + 1, MaxInt);
+  mEqual := Pos('=', Result);
+  if mEqual > 0 then
+  begin
+    Result := Copy(Result, 1, mEqual - 1);
+  end;
+  Result := Trim(Result);
+  if (Pos('<', Result) = 0) and (Pos(' ', Result) = 0) and (LastDelimiter('.', Result) > 0) then
+  begin
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Namen vor dem Doppelpunkt ohne const/var/out/constref/[ref].</summary>
+function GroupNames(const AGroupText: string): string;
+var
+  mColon: Integer;
+  mModifier: string;
+begin
+  mColon := Pos(':', AGroupText);
+  if mColon = 0 then
+  begin
+    Result := AGroupText;
+  end
+  else
+  begin
+    Result := Copy(AGroupText, 1, mColon - 1);
+  end;
+  for mModifier in ParameterModifiers do
+  begin
+    if StartsText(mModifier, Result) then
+    begin
+      Delete(Result, 1, Length(mModifier));
+    end;
+  end;
+end;
+
+function NewParameter(AStart, AEnd: Integer; const ATypeName: string): TSignatureParameter;
+begin
+  Result := Default(TSignatureParameter);
+  Result.StartIndex := AStart;
+  Result.EndIndex := AEnd;
+  Result.TypeName := ATypeName;
+end;
+
+/// <summary>Parameter der Gruppe AText[AFrom..ATo) (1-basiert, ATo exklusiv). A, B: Integer gibt je Name einen
+/// Parameter, hervorgehoben wird nur der Name.</summary>
+function GroupParameters(const AText: string; AFrom, ATo: Integer): TArray<TSignatureParameter>;
+var
+  mGroup, mNames, mTypeName, mItem: string;
+  mFrom, mOffset, mSearch: Integer;
+begin
+  Result := nil;
+  mGroup := Copy(AText, AFrom, ATo - AFrom);
+  mFrom := AFrom + Length(mGroup) - Length(TrimLeft(mGroup));
+  mGroup := Trim(mGroup);
+  if mGroup = '' then
+  begin
+    Exit;
+  end;
+  mTypeName := GroupType(mGroup);
+  mNames := GroupNames(mGroup);
+  if Pos(',', mNames) = 0 then
+  begin
+    Result := TArray<TSignatureParameter>.Create(NewParameter(mFrom - 1, mFrom - 1 + Length(mGroup), mTypeName));
+    Exit;
+  end;
+  mSearch := mFrom;
+  for mItem in mNames.Split([',']) do
+  begin
+    mOffset := PosEx(Trim(mItem), AText, mSearch);
+    Result := Result + [NewParameter(mOffset - 1, mOffset - 1 + Length(Trim(mItem)), mTypeName)];
+    mSearch := mOffset + Length(Trim(mItem));
+  end;
+end;
+
+/// <summary>Parameter zwischen den Klammern an AOpen und AClose, Gruppen durch ; getrennt.</summary>
+function ParameterGroups(const AText: string; AOpen, AClose: Integer): TArray<TSignatureParameter>;
+var
+  mIndex, mStart, mDepth: Integer;
+begin
+  Result := nil;
+  mStart := AOpen + 1;
+  mDepth := 0;
+  for mIndex := AOpen + 1 to AClose do
+  begin
+    if (mIndex = AClose) or (AText[mIndex] = ';') and (mDepth = 0) then
+    begin
+      Result := Result + GroupParameters(AText, mStart, mIndex);
+      mStart := mIndex + 1;
     end
-    else if Depth = 0 then
+    else if AText[mIndex] = '(' then
     begin
-      if Token.IsSymbol(',') then
-      begin
-        Inc(Commas);
-        Firsts := [Index + 1] + Firsts;
-        Lasts := [SpanEnd] + Lasts;
-        SpanEnd := Index - 1;
-      end
-      else if Token.IsSymbol(';') or Token.IsKeyword('begin') or Token.IsKeyword('end') or
-        Token.IsKeyword('then') or Token.IsKeyword('do') or Token.IsKeyword('var') then
-      begin
-        Exit;
-      end;
+      Inc(mDepth);
+    end
+    else if AText[mIndex] = ')' then
+    begin
+      Dec(mDepth);
     end;
   end;
 end;
 
 class function TLspSignatureHelp.ParseSignature(const ALines: TArray<string>; ALine, AColumn: Integer): TSignature;
 var
-  Raw, Text: string;
-  Line, Index, Depth, Open, Close, Start, Keyword, Dot: Integer;
-  Done: Boolean;
-  Groups: TList<TSignatureParameter>;
-  Parameter: TSignatureParameter;
-
-  procedure AddGroup(AFrom, ATo: Integer);
-  var
-    GroupText, NamesText, Item, Modifier, TypeText: string;
-    Offset, Skip, ColonAt, Search, EqualAt: Integer;
-  begin
-    // AFrom/ATo sind 1-basierte Positionen in Text; ATo exklusiv.
-    GroupText := Copy(Text, AFrom, ATo - AFrom);
-    Skip := Length(GroupText) - Length(TrimLeft(GroupText));
-    Inc(AFrom, Skip);
-    GroupText := Trim(GroupText);
-    if GroupText = '' then
-    begin
-      Exit;
-    end;
-    ColonAt := Pos(':', GroupText);
-    TypeText := '';
-    if ColonAt = 0 then
-    begin
-      NamesText := GroupText;
-    end
-    else
-    begin
-      NamesText := Copy(GroupText, 1, ColonAt - 1);
-      // Typ ohne Vorgabewert, ohne Unit davor (System.Boolean → Boolean, #498).
-      TypeText := Copy(GroupText, ColonAt + 1, MaxInt);
-      EqualAt := Pos('=', TypeText);
-      if EqualAt > 0 then
-      begin
-        TypeText := Copy(TypeText, 1, EqualAt - 1);
-      end;
-      TypeText := Trim(TypeText);
-      if (Pos('<', TypeText) = 0) and (Pos(' ', TypeText) = 0) and (LastDelimiter('.', TypeText) > 0) then
-      begin
-        TypeText := Copy(TypeText, LastDelimiter('.', TypeText) + 1, MaxInt);
-      end;
-    end;
-    Parameter.TypeName := TypeText;
-    // const/var/out/constref vor den Namen überspringen.
-    for Modifier in ParameterModifiers do
-    begin
-      if StartsText(Modifier, NamesText) then
-      begin
-        Delete(NamesText, 1, Length(Modifier));
-      end;
-    end;
-    if Pos(',', NamesText) = 0 then
-    begin
-      Parameter.StartIndex := AFrom - 1;
-      Parameter.EndIndex := AFrom - 1 + Length(GroupText);
-      Parameter.Documentation := '';
-      Groups.Add(Parameter);
-      Exit;
-    end;
-    // A, B: Integer → je Name ein Parameter, hervorgehoben wird nur der Name.
-    Search := AFrom;
-    for Item in NamesText.Split([',']) do
-    begin
-      Offset := PosEx(Trim(Item), Text, Search);
-      Parameter.StartIndex := Offset - 1;
-      Parameter.EndIndex := Offset - 1 + Length(Trim(Item));
-      Parameter.Documentation := '';
-      Groups.Add(Parameter);
-      Search := Offset + Length(Trim(Item));
-    end;
-  end;
-
+  mText: string;
+  mOpen, mClose: Integer;
 begin
   Result := Default(TSignature);
   Result.Fits := True;
   Result.Mismatch := -1;
-  // Kopf einsammeln: bis zum ; außerhalb von Klammern.
-  Raw := '';
-  Depth := 0;
-  Done := False;
-  Line := ALine;
-  while not Done and (Line <= High(ALines)) and (Line < ALine + MaxHeaderLines) do
-  begin
-    if Line = ALine then
-    begin
-      Text := Copy(ALines[Line], AColumn + 1, MaxInt);
-    end
-    else
-    begin
-      Text := ALines[Line];
-    end;
-    for Index := 1 to Length(Text) do
-    begin
-      case Text[Index] of
-        '(': Inc(Depth);
-        ')': Dec(Depth);
-        ';':
-          if Depth = 0 then
-          begin
-            Raw := Raw + Copy(Text, 1, Index - 1);
-            Done := True;
-            Break;
-          end;
-      end;
-    end;
-    if not Done then
-    begin
-      Raw := Raw + Text + ' ';
-    end;
-    Inc(Line);
-  end;
-  Text := CollapseSpaces(Raw);
-  // procedure TFoo.Bar → procedure Bar
-  Keyword := Pos(' ', Text);
-  Open := Pos('(', Text);
-  if Keyword > 0 then
-  begin
-    if Open > 0 then
-    begin
-      Dot := LastDelimiter('.', Copy(Text, 1, Open - 1));
-    end
-    else
-    begin
-      Dot := LastDelimiter('.', Text);
-    end;
-    if Dot > Keyword then
-    begin
-      Delete(Text, Keyword + 1, Dot - Keyword);
-      Result.Qualified := True;
-    end;
-  end;
-  Result.Text := Text;
-  Open := Pos('(', Text);
-  if Open = 0 then
+  mText := CollapseSpaces(CollectHeader(ALines, ALine, AColumn));
+  Result.Qualified := StripQualifier(mText);
+  Result.Text := mText;
+  mOpen := Pos('(', mText);
+  if mOpen = 0 then
   begin
     Exit;
   end;
-  Depth := 0;
-  Close := 0;
-  for Index := Open to Length(Text) do
+  mClose := ClosingParen(mText, mOpen);
+  if mClose > 0 then
   begin
-    if Text[Index] = '(' then
-    begin
-      Inc(Depth);
-    end
-    else if Text[Index] = ')' then
-    begin
-      Dec(Depth);
-      if Depth = 0 then
-      begin
-        Close := Index;
-        Break;
-      end;
-    end;
-  end;
-  if Close = 0 then
-  begin
-    Exit;
-  end;
-  Groups := TList<TSignatureParameter>.Create;
-  try
-    Start := Open + 1;
-    Depth := 0;
-    for Index := Open + 1 to Close do
-    begin
-      if (Index = Close) or (Text[Index] = ';') and (Depth = 0) then
-      begin
-        AddGroup(Start, Index);
-        Start := Index + 1;
-      end
-      else if Text[Index] = '(' then
-      begin
-        Inc(Depth);
-      end
-      else if Text[Index] = ')' then
-      begin
-        Dec(Depth);
-      end;
-    end;
-    Result.Parameters := Groups.ToArray;
-  finally
-    Groups.Free;
+    Result.Parameters := ParameterGroups(mText, mOpen, mClose);
   end;
 end;
 
@@ -540,141 +722,200 @@ begin
   Result := Length(StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]));
 end;
 
+/// <summary>Tokens ATokens[AFirst..ALast] ohne Kommentare und Direktiven.</summary>
+function CodeTokens(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): TArray<TPascalToken>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := Max(AFirst, 0) to Min(ALast, High(ATokens)) do
+  begin
+    if not IsSkipped(ATokens[mIndex]) then
+    begin
+      Result := Result + [ATokens[mIndex]];
+    end;
+  end;
+end;
+
+/// <summary>Zeichen im Literal AToken; -1 bei mehrzeiligen Strings, cNoLiteral bei anderen Tokens.</summary>
+function LiteralChars(const AToken: TPascalToken): Integer;
+begin
+  if AToken.Kind = TPascalTokenKind.StringLiteral then
+  begin
+    Result := LiteralLength(AToken.Text);
+  end
+  else if AToken.Kind = TPascalTokenKind.CharLiteral then
+  begin
+    Result := 1;
+  end
+  else
+  begin
+    Result := cNoLiteral;
+  end;
+end;
+
+/// <summary>Zeichen und Strings, auch zusammengesetzt wie 'a'#13'b'; True, wenn AParts so bestimmt ist. Ein offenes
+/// Literal wird noch getippt: True mit AType = ''.</summary>
+function TextLiteralType(const AParts: TArray<TPascalToken>; out AType: string): Boolean;
+var
+  mToken: TPascalToken;
+  mChars, mCount: Integer;
+  mLiteral: Boolean;
+begin
+  Result := True;
+  AType := '';
+  mChars := 0;
+  mLiteral := True;
+  for mToken in AParts do
+  begin
+    if not mToken.Terminated then
+    begin
+      Exit;
+    end;
+    mCount := LiteralChars(mToken);
+    if mCount = -1 then
+    begin
+      AType := 'string';
+      Exit;
+    end;
+    if mCount = cNoLiteral then
+    begin
+      mLiteral := False;
+    end
+    else
+    begin
+      Inc(mChars, mCount);
+    end;
+  end;
+  Result := mLiteral;
+  if Result and (mChars = 1) then
+  begin
+    AType := 'Char';
+  end
+  else if Result then
+  begin
+    AType := 'string';
+  end;
+end;
+
+function IsFloatText(const AText: string): Boolean;
+begin
+  Result := not CharInSet(AText[1], ['$', '%']) and ((Pos('.', AText) > 0) or ContainsText(AText, 'e'));
+end;
+
+/// <summary>Zahlen, auch mit Vorzeichen.</summary>
+function NumberType(const AParts: TArray<TPascalToken>; out AType: string): Boolean;
+var
+  mStart: Integer;
+begin
+  AType := '';
+  mStart := 0;
+  if (Length(AParts) = 2) and (AParts[0].IsSymbol('-') or AParts[0].IsSymbol('+')) then
+  begin
+    mStart := 1;
+  end;
+  Result := (Length(AParts) = mStart + 1) and (AParts[mStart].Kind = TPascalTokenKind.Number);
+  if Result and IsFloatText(AParts[mStart].Text) then
+  begin
+    AType := 'Double';
+  end
+  else if Result then
+  begin
+    AType := 'Integer';
+  end;
+end;
+
+/// <summary>nil, True oder False allein.</summary>
+function KeywordType(const AParts: TArray<TPascalToken>; out AType: string): Boolean;
+begin
+  AType := '';
+  if Length(AParts) = 1 then
+  begin
+    if AParts[0].IsKeyword('nil') then
+    begin
+      AType := 'nil';
+    end
+    else if (AParts[0].Kind = TPascalTokenKind.Identifier) and (SameText(AParts[0].Text, 'True') or
+      SameText(AParts[0].Text, 'False')) then
+    begin
+      AType := 'Boolean';
+    end;
+  end;
+  Result := AType <> '';
+end;
+
+/// <summary>Menge, Zeichen, String, Zahl, nil oder Boolean; True, wenn AParts damit bestimmt ist.</summary>
+function LiteralArgumentType(const AParts: TArray<TPascalToken>; out AType: string): Boolean;
+begin
+  Result := True;
+  if AParts[0].IsSymbol('[') then
+  begin
+    AType := '[]';
+  end
+  else if not TextLiteralType(AParts, AType) and not NumberType(AParts, AType) then
+  begin
+    Result := KeywordType(AParts, AType);
+  end;
+end;
+
+/// <summary>Bezeichner oder Kette A.B.C.</summary>
+function IsNameChain(const AParts: TArray<TPascalToken>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Odd(Length(AParts));
+  for mIndex := 0 to High(AParts) do
+  begin
+    if Odd(mIndex) then
+    begin
+      Result := Result and AParts[mIndex].IsSymbol('.');
+    end
+    else
+    begin
+      Result := Result and (AParts[mIndex].Kind = TPascalTokenKind.Identifier);
+    end;
+  end;
+end;
+
+/// <summary>Typ eines aufgelösten Bezeichners. Aufzählungswerte tragen ihren Typ als Container; Routinen bleiben
+/// unbekannt (Methodenzeiger).</summary>
+function ResolvedType(const AResolved: TResolvedSymbol): string;
+begin
+  Result := '';
+  if not (AResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
+  begin
+    Exit;
+  end;
+  if AResolved.SymbolKind = TIndexSymbolKind.EnumMember then
+  begin
+    Result := LastPart(AResolved.Container);
+  end
+  else if AResolved.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+    TIndexSymbolKind.Constant] then
+  begin
+    Result := LastPart(Trim(AResolved.TypeName));
+  end;
+end;
+
 class function TLspSignatureHelp.ArgumentType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   AFirst, ALast: Integer): string;
 var
-  Tokens, Parts: TArray<TPascalToken>;
-  Token: TPascalToken;
-  Index, Chars, Start, Count: Integer;
-  Literal: Boolean;
-  Resolved: TResolvedSymbol;
+  mParts: TArray<TPascalToken>;
 begin
   Result := '';
   if (ATree = nil) or (AFirst > ALast) then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Parts := nil;
-  for Index := Max(AFirst, 0) to Min(ALast, High(Tokens)) do
-  begin
-    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      Parts := Parts + [Tokens[Index]];
-    end;
-  end;
-  if Length(Parts) = 0 then
+  mParts := CodeTokens(ATree.Tokens, AFirst, ALast);
+  if (Length(mParts) = 0) or LiteralArgumentType(mParts, Result) then
   begin
     Exit;
-  end;
-  if Parts[0].IsSymbol('[') then
-  begin
-    Exit('[]');
-  end;
-  // Zeichen und Strings, auch zusammengesetzt wie 'a'#13'b'; ein offenes Literal wird noch getippt.
-  Chars := 0;
-  Literal := True;
-  for Token in Parts do
-  begin
-    if not Token.Terminated then
-    begin
-      Exit;
-    end
-    else if Token.Kind = TPascalTokenKind.StringLiteral then
-    begin
-      Count := LiteralLength(Token.Text);
-      if Count < 0 then
-      begin
-        Exit('string');
-      end;
-      Inc(Chars, Count);
-    end
-    else if Token.Kind = TPascalTokenKind.CharLiteral then
-    begin
-      Inc(Chars);
-    end
-    else
-    begin
-      Literal := False;
-    end;
-  end;
-  if Literal then
-  begin
-    if Chars = 1 then
-    begin
-      Result := 'Char';
-    end
-    else
-    begin
-      Result := 'string';
-    end;
-    Exit;
-  end;
-  // Zahlen, auch mit Vorzeichen.
-  Start := 0;
-  if (Length(Parts) = 2) and (Parts[0].IsSymbol('-') or Parts[0].IsSymbol('+')) then
-  begin
-    Start := 1;
-  end;
-  if (Length(Parts) = Start + 1) and (Parts[Start].Kind = TPascalTokenKind.Number) then
-  begin
-    if not CharInSet(Parts[Start].Text[1], ['$', '%']) and ((Pos('.', Parts[Start].Text) > 0) or
-      ContainsText(Parts[Start].Text, 'e')) then
-    begin
-      Result := 'Double';
-    end
-    else
-    begin
-      Result := 'Integer';
-    end;
-    Exit;
-  end;
-  if Length(Parts) = 1 then
-  begin
-    if Parts[0].IsKeyword('nil') then
-    begin
-      Exit('nil');
-    end;
-    if (Parts[0].Kind = TPascalTokenKind.Identifier) and (SameText(Parts[0].Text, 'True') or
-      SameText(Parts[0].Text, 'False')) then
-    begin
-      Exit('Boolean');
-    end;
   end;
   // Bezeichner oder Kette A.B.C; alles andere (Aufrufe, Ausdrücke) bleibt unbekannt.
-  if not Odd(Length(Parts)) then
+  if (AResolver <> nil) and IsNameChain(mParts) then
   begin
-    Exit;
-  end;
-  for Index := 0 to High(Parts) do
-  begin
-    if Odd(Index) and not Parts[Index].IsSymbol('.') then
-    begin
-      Exit;
-    end
-    else if not Odd(Index) and (Parts[Index].Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Exit;
-    end;
-  end;
-  if AResolver = nil then
-  begin
-    Exit;
-  end;
-  Resolved := AResolver.Resolve(ATree, AFileName, Parts[High(Parts)].StartPos);
-  if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
-  begin
-    Exit;
-  end;
-  // Aufzählungswerte tragen ihren Typ als Container; Routinen bleiben unbekannt (Methodenzeiger).
-  if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-  begin
-    Result := LastPart(Resolved.Container);
-  end
-  else if Resolved.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
-    TIndexSymbolKind.Constant] then
-  begin
-    Result := LastPart(Trim(Resolved.TypeName));
+    Result := ResolvedType(AResolver.Resolve(ATree, AFileName, mParts[High(mParts)].StartPos));
   end;
 end;
 
@@ -693,6 +934,18 @@ begin
       ASignature.Mismatch := Index;
       Exit;
     end;
+  end;
+end;
+
+/// <summary>Benennt der Parametertext AText (etwa "const A, B: Integer") den Parameter AName?</summary>
+function NamesParameter(const AText, AName: string): Boolean;
+var
+  mEnd: string;
+begin
+  Result := SameText(AText, AName);
+  for mEnd in cNameEnds do
+  begin
+    Result := Result or StartsText(AName + mEnd, AText) or ContainsText(AText, ' ' + AName + mEnd);
   end;
 end;
 
@@ -716,9 +969,7 @@ begin
     begin
       Text := Copy(ASignature.Text, ASignature.Parameters[Index].StartIndex + 1,
         ASignature.Parameters[Index].EndIndex - ASignature.Parameters[Index].StartIndex);
-      if SameText(Text, Name) or StartsText(Name + ':', Text) or StartsText(Name + ' ', Text) or
-        ContainsText(Text, ' ' + Name + ':') or ContainsText(Text, ' ' + Name + ' ') or
-        StartsText(Name + ',', Text) or ContainsText(Text, ' ' + Name + ',') then
+      if NamesParameter(Text, Name) then
       begin
         ASignature.Parameters[Index].Documentation := Section.Text;
         Break;
@@ -754,11 +1005,7 @@ begin
   begin
     if (Tokens[Index].StartPos.Line = APosition.Line) and (Tokens[Index].StartPos.Character = APosition.Character) then
     begin
-      Prev := Index - 1;
-      while (Prev >= 0) and (Tokens[Prev].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Dec(Prev);
-      end;
+      Prev := PreviousCodeToken(Tokens, Index);
       ANameToken := Tokens[Index];
       Exit((Tokens[Index].Kind = TPascalTokenKind.Identifier) and TAttributes.InBracket(Tokens, Prev));
     end;
@@ -811,213 +1058,283 @@ begin
   end;
 end;
 
-class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const ATreeText, AFileName: string; const APosition: TTextPosition;
-  const AReadText: THoverReadText): TSignatureHelp;
+/// <summary>Erste verträgliche Überladung mit genug Parametern, sonst die erste mit genug Parametern.</summary>
+function PreferredSignature(const ASignatures: TArray<TSignature>; AActiveParameter: Integer): Integer;
+var
+  mIndex: Integer;
 begin
-  Result := HelpAt(AResolver, AIndex, ATree, ATreeText, AFileName, APosition, AReadText, TFormatRoutines.Defaults);
+  for mIndex := 0 to High(ASignatures) do
+  begin
+    if (Length(ASignatures[mIndex].Parameters) > AActiveParameter) and ASignatures[mIndex].Fits then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := ActiveSignatureOf(ASignatures, AActiveParameter);
 end;
 
-class function TLspSignatureHelp.HelpAt(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const ATreeText, AFileName: string; const APosition: TTextPosition; const AReadText: THoverReadText;
-  const ARoutines: TArray<TFormatRoutine>): TSignatureHelp;
+{ THelpRun }
+
+constructor THelpRun.Create(const ARequest: TSignatureHelpRequest; const APosition: TTextPosition);
+begin
+  inherited Create;
+  FRequest := ARequest;
+  FPosition := APosition;
+end;
+
+procedure THelpRun.ResolveSite;
 var
-  Site: TCallSite;
-  Resolved: TResolvedSymbol;
-  OwnerUnit: TUnitIndex;
-  Text: string;
-  Lines: TArray<string>;
-  Starts: TList<TTextPosition>;
-  StartSymbols: TList<TResolvedSymbol>;
-  Signatures: TList<TSignature>;
-  Seen: TList<string>;
-  Symbol: TIndexSymbol;
-  HasInterface: Boolean;
-  Start: TTextPosition;
-  Signature: TSignature;
-  Key: string;
-  Index: Integer;
-  Reader: TDocReadText;
-  ArgumentTypes: TArray<string>;
-  SignatureLines, Bindings: TArray<string>;
-  Line: Integer;
-  Binding: string;
-  Nested: TResolvedSymbol;
-  IntrinsicName: string;
-  Routine: TFormatRoutine;
-  Ctor: TResolvedSymbol;
+  mCtor: TResolvedSymbol;
+begin
+  FResolved := FRequest.Resolver.Resolve(FRequest.Tree, FRequest.FileName, FSite.NamePosition);
+  // Attribut (#465): [TestCase('Name', |] zeigt den Konstruktor von TestCaseAttribute.
+  if AttributeConstructor(FRequest.Resolver, FRequest.Tree, FRequest.FileName, FSite.NamePosition, FResolved,
+    mCtor) then
+  begin
+    FResolved := mCtor;
+  end;
+end;
+
+function THelpRun.IntrinsicHelp: TSignatureHelp;
+var
+  mName: string;
+begin
+  // Unbekannt: vielleicht eine Routine von System ohne Quelltext (SetLength, Inc ...; #880).
+  Result := Default(TSignatureHelp);
+  if TSystemIntrinsics.NameAt(FRequest.Tree, FSite.NamePosition, mName) then
+  begin
+    Result.Signatures := IntrinsicSignatures(mName);
+    Result.Intrinsic := True;
+    Result.ActiveParameter := FSite.ActiveParameter;
+    Result.ActiveSignature := ActiveSignatureOf(Result.Signatures, FSite.ActiveParameter);
+  end;
+end;
+
+function THelpRun.ReadLines: Boolean;
+var
+  mText: string;
+begin
+  if SameText(FResolved.FileName, FRequest.FileName) then
+  begin
+    mText := FRequest.TreeText;
+  end
+  else if not (Assigned(FRequest.ReadText) and FRequest.ReadText(FResolved.FileName, mText)) then
+  begin
+    Exit(False);
+  end;
+  FLines := TTextLines.SplitLines(mText);
+  Result := True;
+end;
+
+procedure THelpRun.AddStart(const APosition: TTextPosition; const ASymbol: TResolvedSymbol);
+begin
+  FStarts := FStarts + [APosition];
+  FStartSymbols := FStartSymbols + [ASymbol];
+end;
+
+function THelpRun.IsOverload(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (ASymbol.Kind in RoutineKinds) and SameText(ASymbol.Name, FResolved.Name) and
+    SameText(ASymbol.Container, FResolved.Container);
+end;
+
+function THelpRun.OwnerUnit(out AOwner: TUnitIndex): Boolean;
+begin
+  Result := True;
+  if SameText(FResolved.FileName, FRequest.FileName) then
+  begin
+    AOwner := TIndexExtractor.Extract(FRequest.Tree, FRequest.FileName);
+  end
+  else
+  begin
+    Result := TIndexFiles.UnitOf(FRequest.Index, FResolved.FileName, AOwner);
+  end;
+end;
+
+function THelpRun.CollectUnitStarts: Boolean;
+var
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mHasInterface: Boolean;
+begin
+  Result := OwnerUnit(mOwner);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mHasInterface := False;
+  for mSymbol in mOwner.Symbols do
+  begin
+    mHasInterface := mHasInterface or (IsOverload(mSymbol) and mSymbol.InInterface);
+  end;
+  // Rümpfe globaler Routinen aus interface weglassen: sie dürfen die Parameter auslassen.
+  for mSymbol in mOwner.Symbols do
+  begin
+    if IsOverload(mSymbol) and (mSymbol.InInterface or not mHasInterface) and
+      SameText(mOwner.SymbolFile(mSymbol), FResolved.FileName) then
+    begin
+      AddStart(mSymbol.Range.StartPos, TResolvedSymbol.FromIndex(mOwner, mSymbol));
+    end;
+  end;
+end;
+
+function THelpRun.CollectStarts: Boolean;
+var
+  mNested: TResolvedSymbol;
+begin
+  // Überladungen: gleicher Name im selben Typ bzw. auf Unit-Ebene derselben Unit.
+  Result := True;
+  if FResolved.Kind = TResolvedKind.Local then
+  begin
+    // Verschachtelte Routinen (#881): alle Überladungen in der umgebenden Routine, vor und hinter dem Aufruf.
+    for mNested in FRequest.Resolver.Candidates.LocalOverloads(FResolved) do
+    begin
+      AddStart(mNested.Range.StartPos, mNested);
+    end;
+  end
+  else
+  begin
+    Result := CollectUnitStarts;
+  end;
+end;
+
+function THelpRun.BoundTypes: TArray<string>;
+var
+  mBinding: string;
+begin
+  // Typargumente ohne Unit davor ("T=TKunde" statt "T=Listen.TKunde").
+  Result := nil;
+  for mBinding in FResolved.Bindings do
+  begin
+    Result := Result + [Copy(mBinding, 1, Pos('=', mBinding)) +
+      FRequest.Resolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt))];
+  end;
+end;
+
+function THelpRun.HeaderLines(const AStart: TTextPosition; const ABindings: TArray<string>): TArray<string>;
+var
+  mLine: Integer;
+begin
+  // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde). Nur die
+  // Zeilen des Kopfs; die Spalte des Anfangs bleibt, weil davor kein Typparameter steht.
+  Result := FLines;
+  if Length(ABindings) = 0 then
+  begin
+    Exit;
+  end;
+  Result := Copy(FLines);
+  for mLine := AStart.Line to Min(High(Result), AStart.Line + MaxHeaderLines) do
+  begin
+    Result[mLine] := TInterfaceStubs.SubstituteWords(Result[mLine], ABindings);
+  end;
+end;
+
+function THelpRun.Signatures: TArray<TSignature>;
+var
+  mIndex: Integer;
+  mStart: TTextPosition;
+  mSignature: TSignature;
+  mKey: string;
+  mSeen, mBindings: TArray<string>;
+  mReader: TDocReadText;
+begin
+  Result := nil;
+  mSeen := nil;
+  mBindings := BoundTypes;
+  mReader := TLspDocumentation.Reader(FRequest.FileName, FRequest.TreeText, FRequest.ReadText);
+  for mIndex := 0 to High(FStarts) do
+  begin
+    mStart := FStarts[mIndex];
+    if (mStart.Line < 0) or (mStart.Line > High(FLines)) then
+    begin
+      Continue;
+    end;
+    mSignature := TLspSignatureHelp.ParseSignature(HeaderLines(mStart, mBindings), mStart.Line, mStart.Character);
+    // Deklaration und Rumpf derselben Routine nur einmal; die Deklaration steht vorn und trägt die Doku.
+    mKey := UpperCase(StringReplace(mSignature.Text, ' ', '', [rfReplaceAll]));
+    if (mSignature.Text = '') or mSignature.Qualified or MatchStr(mKey, mSeen) then
+    begin
+      Continue;
+    end;
+    mSeen := mSeen + [mKey];
+    ApplyDocumentation(mSignature, TLspDocumentation.Load(FRequest.Resolver, FStartSymbols[mIndex], FLines,
+      mStart.Line, mReader));
+    Result := Result + [mSignature];
+  end;
+end;
+
+procedure THelpRun.MatchArguments(var ASignatures: TArray<TSignature>);
+var
+  mTypes: TArray<string>;
+  mIndex: Integer;
+begin
+  // Argumenttypen (#498), erst nach dem Einsammeln der Überladungen aufgelöst.
+  mTypes := nil;
+  for mIndex := 0 to High(FSite.ArgumentFirst) do
+  begin
+    mTypes := mTypes + [TLspSignatureHelp.ArgumentType(FRequest.Resolver, FRequest.Tree, FRequest.FileName,
+      FSite.ArgumentFirst[mIndex], FSite.ArgumentLast[mIndex])];
+  end;
+  for mIndex := 0 to High(ASignatures) do
+  begin
+    TLspSignatureHelp.Match(ASignatures[mIndex], mTypes);
+  end;
+end;
+
+procedure THelpRun.AddFormat(var AHelp: TSignatureHelp);
+var
+  mRoutine: TFormatRoutine;
+  mCall: TSignatureFormatCall;
+begin
+  // Platzhalter einer Formatroutine (#451), nach dem voll qualifizierten Namen.
+  if (Length(AHelp.Signatures) = 0) or not TFormatRoutines.FindQualified(FRequest.Routines,
+    FResolved.UnitName + '.' + FResolved.QualifiedName, mRoutine) then
+  begin
+    Exit;
+  end;
+  mCall := Default(TSignatureFormatCall);
+  mCall.Resolver := FRequest.Resolver;
+  mCall.Tree := FRequest.Tree;
+  mCall.FileName := FRequest.FileName;
+  mCall.Firsts := FSite.ArgumentFirst;
+  mCall.Lasts := FSite.ArgumentLast;
+  mCall.ActiveParameter := FSite.ActiveParameter;
+  AHelp.Format := TSignatureFormats.Analyze(mCall, mRoutine);
+end;
+
+function THelpRun.Run: TSignatureHelp;
 begin
   Result := Default(TSignatureHelp);
-  Site := CallSiteAt(ATree, APosition);
-  if not Site.Found then
+  FSite := TLspSignatureHelp.CallSiteAt(FRequest.Tree, FPosition);
+  if not FSite.Found then
   begin
     Exit;
   end;
-  Resolved := AResolver.Resolve(ATree, AFileName, Site.NamePosition);
-  // Attribut (#465): [TestCase('Name', |] zeigt den Konstruktor von TestCaseAttribute.
-  if AttributeConstructor(AResolver, ATree, AFileName, Site.NamePosition, Resolved, Ctor) then
+  ResolveSite;
+  if not (FResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
   begin
-    Resolved := Ctor;
+    Exit(IntrinsicHelp);
   end;
-  if not (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) then
+  if (FResolved.SymbolKind in RoutineKinds) and ReadLines and CollectStarts then
   begin
-    // Unbekannt: vielleicht eine Routine von System ohne Quelltext (SetLength, Inc ...; #880).
-    if TSystemIntrinsics.NameAt(ATree, Site.NamePosition, IntrinsicName) then
-    begin
-      Result.Signatures := IntrinsicSignatures(IntrinsicName);
-      Result.Intrinsic := True;
-      Result.ActiveParameter := Site.ActiveParameter;
-      Result.ActiveSignature := ActiveSignatureOf(Result.Signatures, Site.ActiveParameter);
-    end;
-    Exit;
+    Result.Signatures := Signatures;
+    Result.ActiveParameter := FSite.ActiveParameter;
+    MatchArguments(Result.Signatures);
+    Result.ActiveSignature := PreferredSignature(Result.Signatures, FSite.ActiveParameter);
+    AddFormat(Result);
   end;
-  if not (Resolved.SymbolKind in RoutineKinds) then
-  begin
-    Exit;
-  end;
-  if SameText(Resolved.FileName, AFileName) then
-  begin
-    Text := ATreeText;
-  end
-  else if not (Assigned(AReadText) and AReadText(Resolved.FileName, Text)) then
-  begin
-    Exit;
-  end;
-  Lines := TTextLines.SplitLines(Text);
-  Reader := TLspDocumentation.Reader(AFileName, ATreeText, AReadText);
-  Starts := TList<TTextPosition>.Create;
-  // Typargumente ohne Unit davor ("T=TKunde" statt "T=Listen.TKunde").
-  Bindings := nil;
-  for Binding in Resolved.Bindings do
-  begin
-    Bindings := Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
-  end;
-  StartSymbols := TList<TResolvedSymbol>.Create;
-  Signatures := TList<TSignature>.Create;
-  Seen := TList<string>.Create;
+end;
+
+class function TLspSignatureHelp.HelpAt(const ARequest: TSignatureHelpRequest;
+  const APosition: TTextPosition): TSignatureHelp;
+var
+  mRun: THelpRun;
+begin
+  mRun := THelpRun.Create(ARequest, APosition);
   try
-    // Überladungen: gleicher Name im selben Typ bzw. auf Unit-Ebene derselben Unit.
-    if Resolved.Kind = TResolvedKind.Local then
-    begin
-      // Verschachtelte Routinen (#881): alle Überladungen in der umgebenden Routine, vor und hinter dem Aufruf.
-      for Nested in AResolver.Candidates.LocalOverloads(Resolved) do
-      begin
-        Starts.Add(Nested.Range.StartPos);
-        StartSymbols.Add(Nested);
-      end;
-    end
-    else
-    begin
-      if SameText(Resolved.FileName, AFileName) then
-      begin
-        OwnerUnit := TIndexExtractor.Extract(ATree, AFileName);
-      end
-      else if not TIndexFiles.UnitOf(AIndex, Resolved.FileName, OwnerUnit) then
-      begin
-        Exit;
-      end;
-      HasInterface := False;
-      for Symbol in OwnerUnit.Symbols do
-      begin
-        if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
-          SameText(Symbol.Container, Resolved.Container) and Symbol.InInterface then
-        begin
-          HasInterface := True;
-        end;
-      end;
-      // Rümpfe globaler Routinen aus interface weglassen: sie dürfen die Parameter auslassen.
-      for Symbol in OwnerUnit.Symbols do
-      begin
-        if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Name, Resolved.Name) and
-          SameText(Symbol.Container, Resolved.Container) and (Symbol.InInterface or not HasInterface) and
-          SameText(OwnerUnit.SymbolFile(Symbol), Resolved.FileName) then
-        begin
-          Starts.Add(Symbol.Range.StartPos);
-          StartSymbols.Add(TResolvedSymbol.FromIndex(OwnerUnit, Symbol));
-        end;
-      end;
-    end;
-    for Index := 0 to Starts.Count - 1 do
-    begin
-      Start := Starts[Index];
-      if (Start.Line < 0) or (Start.Line > High(Lines)) then
-      begin
-        Continue;
-      end;
-      // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde). Nur die
-      // Zeilen des Kopfs; die Spalte des Anfangs bleibt, weil davor kein Typparameter steht.
-      SignatureLines := Lines;
-      if Length(Bindings) > 0 then
-      begin
-        SignatureLines := Copy(Lines);
-        for Line := Start.Line to Min(High(SignatureLines), Start.Line + MaxHeaderLines) do
-        begin
-          SignatureLines[Line] := TInterfaceStubs.SubstituteWords(SignatureLines[Line], Bindings);
-        end;
-      end;
-      Signature := ParseSignature(SignatureLines, Start.Line, Start.Character);
-      // Deklaration und Rumpf derselben Routine nur einmal; die Deklaration steht vorn und trägt die Doku.
-      Key := UpperCase(StringReplace(Signature.Text, ' ', '', [rfReplaceAll]));
-      if (Signature.Text = '') or Signature.Qualified or Seen.Contains(Key) then
-      begin
-        Continue;
-      end;
-      Seen.Add(Key);
-      ApplyDocumentation(Signature, TLspDocumentation.Load(AResolver, StartSymbols[Index], Lines, Start.Line,
-        Reader));
-      Signatures.Add(Signature);
-    end;
-    Result.Signatures := Signatures.ToArray;
+    Result := mRun.Run;
   finally
-    Seen.Free;
-    Signatures.Free;
-    StartSymbols.Free;
-    Starts.Free;
-  end;
-  Result.ActiveParameter := Site.ActiveParameter;
-  // Argumenttypen (#498), erst nach dem Einsammeln der Überladungen aufgelöst.
-  ArgumentTypes := nil;
-  for Index := 0 to High(Site.ArgumentFirst) do
-  begin
-    ArgumentTypes := ArgumentTypes + [ArgumentType(AResolver, ATree, AFileName, Site.ArgumentFirst[Index],
-      Site.ArgumentLast[Index])];
-  end;
-  for Index := 0 to High(Result.Signatures) do
-  begin
-    Match(Result.Signatures[Index], ArgumentTypes);
-  end;
-  // Erste verträgliche Überladung mit genug Parametern, sonst die erste mit genug Parametern.
-  Result.ActiveSignature := -1;
-  for Index := 0 to High(Result.Signatures) do
-  begin
-    if (Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter) and Result.Signatures[Index].Fits then
-    begin
-      Result.ActiveSignature := Index;
-      Break;
-    end;
-  end;
-  if Result.ActiveSignature < 0 then
-  begin
-    for Index := 0 to High(Result.Signatures) do
-    begin
-      if Length(Result.Signatures[Index].Parameters) > Site.ActiveParameter then
-      begin
-        Result.ActiveSignature := Index;
-        Break;
-      end;
-    end;
-  end;
-  if Result.ActiveSignature < 0 then
-  begin
-    Result.ActiveSignature := 0;
-  end;
-  // Platzhalter einer Formatroutine (#451), nach dem voll qualifizierten Namen.
-  if (Length(Result.Signatures) > 0) and TFormatRoutines.FindQualified(ARoutines,
-    Resolved.UnitName + '.' + Resolved.QualifiedName, Routine) then
-  begin
-    Result.Format := TSignatureFormats.Analyze(AResolver, ATree, AFileName, Site.ArgumentFirst, Site.ArgumentLast,
-      Site.ActiveParameter, Routine);
+    mRun.Free;
   end;
 end;
 
@@ -1088,7 +1405,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Help: TSignatureHelp;
-  Routines: TArray<TFormatRoutine>;
+  mRequest: TSignatureHelpRequest;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -1104,19 +1421,16 @@ begin
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  if Assigned(FFormatRoutinesFor) then
-  begin
-    Routines := FFormatRoutinesFor(Uri);
-  end
-  else
-  begin
-    Routines := TFormatRoutines.Defaults;
-  end;
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
-    Help := HelpAt(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue), FReadText, Routines);
+    mRequest := TSignatureHelpRequest.Create(Resolver, FIndex, Tree, Document.Text, TDocumentUris.ToPath(Uri),
+      FReadText);
+    if Assigned(FFormatRoutinesFor) then
+    begin
+      mRequest.Routines := FFormatRoutinesFor(Uri);
+    end;
+    Help := HelpAt(mRequest, TLspPositions.ReadPosition(PositionValue));
   finally
     Resolver.Free;
   end;

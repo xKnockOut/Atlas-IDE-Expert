@@ -111,7 +111,8 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Lsp.DiagnosticItems;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
 begin
@@ -470,7 +471,7 @@ begin
   Finding.Message := 'Meldung';
   Finding.Severity := TRuleSeverity.Information;
   Finding.Confidence := TRuleConfidence.Medium;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual(3, Item.GetValue<Integer>('severity'));
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
@@ -497,7 +498,7 @@ begin
   Related.Range := TTextRange.Create(3, 2, 3, 3);
   Related.Message := 'C';
   Finding.Related := [Related];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Items := Item.GetValue('relatedInformation') as TJSONArray;
     Assert.AreEqual(1, Items.Count);
@@ -510,7 +511,7 @@ begin
   end;
   // Ohne weitere Stellen kein Feld.
   Finding.Related := nil;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.IsNull(Item.FindValue('relatedInformation'));
   finally
@@ -529,7 +530,7 @@ begin
   Finding.Message := 'Leerer except-Block';
   Finding.Severity := TRuleSeverity.Warning;
   Finding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
     Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
@@ -542,7 +543,7 @@ begin
   // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
   Finding.RuleId := 'argument-count-mismatch';
   Finding.Fixes := nil;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('compiler', Item.GetValue<string>('data.group'));
     Assert.AreEqual('["E2034","E2035"]', (Item.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
@@ -553,7 +554,7 @@ begin
   end;
   // Zusatz für den Befund-Hover (#1102).
   Finding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Item.GetValue<string>('data.details'));
   finally
@@ -575,7 +576,7 @@ begin
   First.Alternative := True;
   Second := TRuleFix.Create('Bevorzugt', nil);
   Finding.Fixes := [Second, First];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Data := Item.GetValue('data') as TJSONObject;
     Assert.IsNull(Data.FindValue('group'));
@@ -586,7 +587,7 @@ begin
   end;
   // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
   Finding.Fixes := [First, Second];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Data := Item.GetValue('data') as TJSONObject;
     Assert.IsNull(Data.FindValue('fix'));
@@ -678,10 +679,10 @@ var
   Params: TJSONObject;
   Item: TJSONValue;
 begin
-  Assert.AreEqual(TLspSyntaxDiagnostics.InactiveMessage, TLspSyntaxDiagnostics.InactiveMessageOf('', 'Win32', 'Debug'));
-  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', '', ''));
+  Assert.AreEqual(TLspDiagnosticItems.InactiveMessage, TLspDiagnosticItems.InactiveMessageOf('', 'Win32', 'Debug'));
+  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspDiagnosticItems.InactiveMessageOf('DEBUG', '', ''));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
-    TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', 'Win64', ''));
+    TLspDiagnosticItems.InactiveMessageOf('DEBUG', 'Win64', ''));
   Providers := Default(TSyntaxDiagnosticsProviders);
   Providers.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
