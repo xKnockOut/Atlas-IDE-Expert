@@ -146,8 +146,8 @@ type
     procedure Answer(const APrefix, APart: string; AStatus: Integer; const AText: string);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 procedure TFakeBoardTransport.Answer(const APrefix, APart: string; AStatus: Integer; const AText: string);
@@ -188,14 +188,14 @@ begin
   Result := True;
 end;
 
-function TFakeBoardTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeBoardTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
   Calls := Calls + [AUrl];
   Methods := Methods + [AMethod];
   Bodies := Bodies + [ABody];
-  AError := TAtlasCiFetchError.None;
-  Find(AUrl, ABody, AStatus, AText);
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
+  Find(AUrl, ABody, AResponse.Status, AResponse.Text);
   Result := True;
 end;
 

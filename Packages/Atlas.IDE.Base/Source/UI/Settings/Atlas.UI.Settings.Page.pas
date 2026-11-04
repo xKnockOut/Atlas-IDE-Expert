@@ -2998,7 +2998,7 @@ var
   mInvalid: string;
 begin
   // Ungültige Zeile: Hinweis; gespeichert bleiben dann die bisherigen Regeln (SaveTo).
-  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+  if TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
   begin
     FVcsExternalsRulesError.Caption := '';
   end
@@ -7502,7 +7502,7 @@ begin
   FVcsExternalsOnBranch.Choice := Max(0, IndexText(ASettings.VcsExternalsOnBranch, ['pin', 'keep', 'ask']));
   FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
     ['modified', 'never', 'always']));
-  FVcsExternalsRules.Text := TAtlasVcsBranchPlan.RulesText(TAtlasVcsBranchPlan.RulesOf(ASettings.VcsExternalsRules));
+  FVcsExternalsRules.Text := TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(ASettings.VcsExternalsRules));
   FVcsExternalsShow.Checked := ASettings.VcsExternalsShow;
   FVcsExternalsUpdate.Choice := Ord(AtlasVcsExternalsUpdateOf(ASettings.VcsExternalsUpdate));
   FVcsBranchGitBase.Choice := Max(0, IndexText(ASettings.VcsBranchGitBase, cVcsGitBases));
@@ -8129,9 +8129,9 @@ begin
     ASettings.VcsExternalsSuggestBranch := 'modified';
   end;
   // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
-  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+  if TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
   begin
-    ASettings.VcsExternalsRules := TAtlasVcsBranchPlan.RulesJson(mRules);
+    ASettings.VcsExternalsRules := TAtlasVcsExternalRules.RulesJson(mRules);
   end;
   ASettings.VcsExternalsShow := FVcsExternalsShow.Checked;
   case FVcsExternalsUpdate.Choice of

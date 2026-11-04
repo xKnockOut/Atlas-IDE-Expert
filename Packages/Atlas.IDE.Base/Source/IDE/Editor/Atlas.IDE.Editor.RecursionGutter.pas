@@ -54,6 +54,11 @@ type
     FFetchedDepth: Integer;
     FMarks: TAtlasFileRecursion;
     procedure Tick(Sender: TObject);
+    /// <summary>False und Stand gemerkt, wenn sich Datei AFileName oder Text AText seit dem letzten Takt geändert
+    /// haben.</summary>
+    function Settled(const AFileName, AText: string): Boolean;
+    /// <summary>Ruhezeit vorbei und für Datei, Text und Tiefe ADepth noch nichts geholt?</summary>
+    function Due(out ADepth: Integer): Boolean;
     procedure Fetch(ADepth: Integer);
     procedure Clear;
     function CallsAt(const AFileName: string; ALine: Integer): TArray<TAtlasRecursionCall>;
@@ -143,13 +148,26 @@ begin
   end;
 end;
 
+/// <summary>Oberer Editor mit einer Pascal-Quelle, sonst nil.</summary>
+function TopSourceView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
+  if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
+  begin
+    Result := nil;
+  end;
+end;
+
 procedure TAtlasIdeRecursionGutter.Tick(Sender: TObject);
 var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Text: string;
-  Moment: Cardinal;
-  Depth: Integer;
+  mView: IOTAEditView;
+  mDepth: Integer;
 begin
   try
     if not Wanted or TAtlasGuard.Disabled(Feature) then
@@ -157,38 +175,36 @@ begin
       Clear;
       Exit;
     end;
-    View := nil;
-    if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    mView := TopSourceView;
+    if (mView <> nil) and Settled(mView.Buffer.FileName, TAtlasEditorBuffer.Text(mView.Buffer)) and Due(mDepth) then
     begin
-      View := Editors.TopView;
+      Fetch(mDepth);
     end;
-    if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
-    begin
-      Exit;
-    end;
-    Text := TAtlasEditorBuffer.Text(View.Buffer);
-    if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
-    begin
-      FFileName := View.Buffer.FileName;
-      FText := Text;
-      FChangedAt := GetTickCount;
-      Exit;
-    end;
-    Moment := GetTickCount;
-    if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
-    begin
-      Exit;
-    end;
-    Depth := TAtlasIdeSettings.RecursionMarkersDepth;
-    if SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (FFetchedDepth = Depth) then
-    begin
-      Exit;
-    end;
-    Fetch(Depth);
   except
     on E: Exception do
       TAtlasGuard.Report(Feature, E);
   end;
+end;
+
+function TAtlasIdeRecursionGutter.Settled(const AFileName, AText: string): Boolean;
+begin
+  Result := SameText(FFileName, AFileName) and (FText = AText);
+  if not Result then
+  begin
+    FFileName := AFileName;
+    FText := AText;
+    FChangedAt := GetTickCount;
+  end;
+end;
+
+function TAtlasIdeRecursionGutter.Due(out ADepth: Integer): Boolean;
+var
+  mMoment: Cardinal;
+begin
+  ADepth := TAtlasIdeSettings.RecursionMarkersDepth;
+  mMoment := GetTickCount;
+  Result := (mMoment - FChangedAt >= QuietMs) and (mMoment >= FRetryAt) and
+    not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (FFetchedDepth = ADepth));
 end;
 
 procedure TAtlasIdeRecursionGutter.Fetch(ADepth: Integer);
