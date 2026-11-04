@@ -126,7 +126,8 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles;
+  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.GitHubBoards;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (GET) bzw. Adressanfang und Textstück im Inhalt

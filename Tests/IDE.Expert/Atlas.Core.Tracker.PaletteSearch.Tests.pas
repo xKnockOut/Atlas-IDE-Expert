@@ -73,7 +73,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.PaletteSearch;
+  Atlas.Core.Tracker.PaletteSearch,
+  Atlas.Core.Tracker.Internals.GitHubApi;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; merkt die Adressen.</summary>
@@ -329,14 +330,14 @@ end;
 procedure TAtlasIssuePaletteSearchTests.GitHubTextSearchUrl;
 begin
   Assert.AreEqual('https://api.github.com/search/issues?q=repo%3Abeispiel/atlas%20is%3Aissue%20Speicherleck' +
-    '&per_page=20', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, ' Speicherleck ', 20));
-  Assert.AreEqual(0, Pos('label', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 20)),
+    '&per_page=20', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, ' Speicherleck ', 20));
+  Assert.AreEqual(0, Pos('label', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 20)),
     'Abfrage der Einstellungen gilt nicht');
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 500).EndsWith('&per_page=100'));
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 0).EndsWith('&per_page=1'));
-  Assert.AreEqual('', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, '  ', 20));
-  Assert.AreEqual('', TAtlasGitHubTracker.TextSearchUrl(TAtlasTrackerTarget.Create('github', '', '', ''), 'x', 20));
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(TAtlasTrackerTarget.Create('github', 'https://git.firma.de',
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 500).EndsWith('&per_page=100'));
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 0).EndsWith('&per_page=1'));
+  Assert.AreEqual('', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, '  ', 20));
+  Assert.AreEqual('', TAtlasGitHubApi.TextSearchUrl(TAtlasTrackerTarget.Create('github', '', '', ''), 'x', 20));
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(TAtlasTrackerTarget.Create('github', 'https://git.firma.de',
     'team/kasse', ''), 'x', 20).StartsWith('https://git.firma.de/api/v3/search/issues?q=repo%3Ateam/kasse'),
     'GitHub Enterprise');
 end;
@@ -381,7 +382,7 @@ begin
   Assert.IsTrue(mProvider.Search(GitHubTarget, mTransportRef, 'Willkommensseite', 5000, 20, mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.None);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
-  Assert.AreEqual(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
+  Assert.AreEqual(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
   Assert.AreEqual(3, Integer(Length(mIssues)), 'ohne Pull Requests');
   Assert.AreEqual('#753', mIssues[0].Key);
   Assert.AreEqual('beispiel', mIssues[0].Assignee);
