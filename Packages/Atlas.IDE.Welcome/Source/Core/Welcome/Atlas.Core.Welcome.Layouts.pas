@@ -137,49 +137,52 @@ begin
   Result := Trim(AName) <> '';
 end;
 
+/// <summary>Layout aus AValue mit getrimmtem Namen; False bei ungültigem Eintrag oder leerem Namen.</summary>
+function TryLayoutFrom(AValue: TJSONValue; out ALayout: TAtlasWelcomeLayout): Boolean;
+begin
+  Result := (AValue is TJSONObject) and TAtlasWelcomeLayout.FromJson(AValue.ToJSON, ALayout);
+  if Result then
+  begin
+    ALayout.Name := Trim(ALayout.Name);
+    Result := TAtlasWelcomeLayouts.ValidName(ALayout.Name);
+  end;
+end;
+
+/// <summary>Gültige Layouts aus AList an ALayouts; ein ungültiger Eintrag fällt weg, doppelte Namen ebenso.
+/// </summary>
+procedure AddLayouts(var ALayouts: TAtlasWelcomeLayouts; AList: TJSONArray);
+var
+  mIndex: Integer;
+  mLayout: TAtlasWelcomeLayout;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    if TryLayoutFrom(AList.Items[mIndex], mLayout) and (ALayouts.IndexOf(mLayout.Name) < 0) then
+    begin
+      ALayouts.Items := ALayouts.Items + [mLayout];
+    end;
+  end;
+end;
+
 class function TAtlasWelcomeLayouts.FromJson(const AText, AActive: string): TAtlasWelcomeLayouts;
 var
   Value: TJSONValue;
-  List: TJSONArray;
-  Index: Integer;
-  Layout: TAtlasWelcomeLayout;
-  Valid: Boolean;
 begin
   Result := Defaults;
-  Valid := False;
   if Trim(AText) <> '' then
   begin
     Value := TJSONObject.ParseJSONValue(AText);
     try
       if Value is TJSONArray then
       begin
-        List := TJSONArray(Value);
         Result.Items := nil;
-        Valid := True;
-        for Index := 0 to List.Count - 1 do
-        begin
-          // Ein ungültiger Eintrag fällt weg; doppelte und leere Namen ebenso.
-          if not (List.Items[Index] is TJSONObject) then
-          begin
-            Continue;
-          end;
-          if not TAtlasWelcomeLayout.FromJson(List.Items[Index].ToJSON, Layout) then
-          begin
-            Continue;
-          end;
-          Layout.Name := Trim(Layout.Name);
-          if not ValidName(Layout.Name) or (Result.IndexOf(Layout.Name) >= 0) then
-          begin
-            Continue;
-          end;
-          Result.Items := Result.Items + [Layout];
-        end;
+        AddLayouts(Result, TJSONArray(Value));
       end;
     finally
       Value.Free;
     end;
   end;
-  if not Valid or (Length(Result.Items) = 0) then
+  if Length(Result.Items) = 0 then
   begin
     Result := Defaults;
   end;

@@ -120,6 +120,27 @@ type
     Height: Integer;
   end;
 
+  /// <summary>Fläche für TAtlasWelcomeFlow: Breite innen, Abstand der Spalten, Mindestbreite einer Spalte.</summary>
+  TAtlasWelcomeArea = record
+    ClientWidth: Integer;
+    Gap: Integer;
+    MinWidth: Integer;
+    class function Create(AClientWidth, AGap, AMinWidth: Integer): TAtlasWelcomeArea; static;
+  end;
+
+  /// <summary>Ziel beim Ziehen: Spalte und der Bereich, vor dem eingefügt wird ('' = ans Ende).</summary>
+  TAtlasWelcomeDrop = record
+    Column: Integer;
+    Before: string;
+  end;
+
+  /// <summary>Einfügelinie: linke Kante, Mitte der Lücke und Breite.</summary>
+  TAtlasWelcomeInsertLine = record
+    Left: Integer;
+    Top: Integer;
+    Width: Integer;
+  end;
+
   /// <summary>Höhe eines Bereichs bei der Breite AWidth.</summary>
   TAtlasWelcomeHeight = reference to function(const AId: string; AWidth: Integer): Integer;
 
@@ -140,14 +161,12 @@ type
       const AHeight: TAtlasWelcomeHeight): TArray<TAtlasWelcomePlaced>; static;
     /// <summary>Ziel beim Ziehen an (AX, AY): Spalte unter AX, davor der erste Bereich dieser Spalte (außer
     /// ADragged), dessen Mitte unter AY liegt; ABefore = '' heißt ans Ende.</summary>
-    class procedure DropTarget(const ACells: TAtlasWelcomeCells; const APlaced: TArray<TAtlasWelcomePlaced>;
-      AClientWidth, AGap, AMinWidth, AX, AY: Integer; const ADragged: string; out AColumn: Integer;
-      out ABefore: string); static;
+    class function DropTarget(const ACells: TAtlasWelcomeCells; const APlaced: TArray<TAtlasWelcomePlaced>;
+      const AArea: TAtlasWelcomeArea; AX, AY: Integer; const ADragged: string): TAtlasWelcomeDrop; static;
     /// <summary>Einfügelinie für (AColumn, ABefore): oberhalb von ABefore bzw. unter dem letzten Bereich der
     /// Spalte; ATop ist die Mitte der Lücke.</summary>
-    class procedure InsertLine(const ACells: TAtlasWelcomeCells; const APlaced: TArray<TAtlasWelcomePlaced>;
-      AClientWidth, AGap, AMinWidth, AColumn: Integer; const ABefore: string; out ALeft, ATop, AWidth: Integer);
-      static;
+    class function InsertLine(const ACells: TAtlasWelcomeCells; const APlaced: TArray<TAtlasWelcomePlaced>;
+      const AArea: TAtlasWelcomeArea; AColumn: Integer; const ABefore: string): TAtlasWelcomeInsertLine; static;
     /// <summary>Spalte mit dem tiefsten freien Platz oben (kleinstes Ende); Gleichstand: linke.</summary>
     class function ShortestColumn(const ACells: TAtlasWelcomeCells; const APlaced: TArray<TAtlasWelcomePlaced>;
       AGap: Integer): Integer; static;
@@ -158,6 +177,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   System.JSON;
 
@@ -269,62 +289,76 @@ begin
   end;
 end;
 
-function TAtlasWelcomeLayout.Cells(const ASections: TArray<TAtlasWelcomeSection>;
-  AColumns: Integer): TAtlasWelcomeCells;
+function SectionIndex(const ASections: TArray<TAtlasWelcomeSection>; const AId: string): Integer;
 var
-  Wide: TAtlasWelcomeCells;
-  Width, Target, Column: Integer;
-  Slot: TAtlasWelcomeSlot;
-  Section: TAtlasWelcomeSection;
-  Cell: TAtlasWelcomeCell;
+  mIndex: Integer;
 begin
-  // Ergebnis leeren: Ein dynamisches Array als Result kann beim Eintritt Inhalt des Ziels tragen.
+  for mIndex := 0 to High(ASections) do
+  begin
+    if SameText(ASections[mIndex].Id, AId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Spalten AWide auf ATarget Spalten falten: überzählige rücken unter die letzte.</summary>
+function FoldedCells(const AWide: TAtlasWelcomeCells; ATarget: Integer): TAtlasWelcomeCells;
+var
+  mColumn: Integer;
+  mCell: TAtlasWelcomeCell;
+begin
   Result := nil;
-  // Zuerst in der Breite des Layouts verteilen (mindestens zwei Spalten für die Vorgabespalten) …
-  Width := Clamp(Columns, MinColumns, MaxColumns);
-  if Width < 2 then
+  SetLength(Result, ATarget);
+  for mColumn := 0 to High(AWide) do
   begin
-    Width := 2;
-  end;
-  SetLength(Wide, Width);
-  for Slot in Slots do
-  begin
-    for Section in ASections do
+    for mCell in AWide[mColumn] do
     begin
-      if SameText(Section.Id, Slot.Id) then
+      if mColumn < ATarget then
       begin
-        Column := Clamp(Slot.Column, 0, Width - 1);
-        Wide[Column] := Wide[Column] + [TAtlasWelcomeCell.Create(Section.Id, Clamp(Slot.Width, MinWidth, MaxWidth))];
-        Break;
-      end;
-    end;
-  end;
-  for Section in ASections do
-  begin
-    if IndexOf(Section.Id) >= 0 then
-    begin
-      Continue;
-    end;
-    Column := Clamp(Ord(Section.Column), 0, Width - 1);
-    Wide[Column] := Wide[Column] + [TAtlasWelcomeCell.Create(Section.Id, 1)];
-  end;
-  // … dann auf die gewünschte Zahl falten: überzählige Spalten rücken unter die letzte.
-  Target := Clamp(AColumns, MinColumns, MaxColumns);
-  SetLength(Result, Target);
-  for Column := 0 to Width - 1 do
-  begin
-    for Cell in Wide[Column] do
-    begin
-      if Column < Target then
-      begin
-        Result[Column] := Result[Column] + [TAtlasWelcomeCell.Create(Cell.Id, Clamp(Cell.Span, 1, Target - Column))];
+        Result[mColumn] := Result[mColumn] + [TAtlasWelcomeCell.Create(mCell.Id, Clamp(mCell.Span, 1,
+          ATarget - mColumn))];
       end
       else
       begin
-        Result[Target - 1] := Result[Target - 1] + [TAtlasWelcomeCell.Create(Cell.Id, 1)];
+        Result[ATarget - 1] := Result[ATarget - 1] + [TAtlasWelcomeCell.Create(mCell.Id, 1)];
       end;
     end;
   end;
+end;
+
+function TAtlasWelcomeLayout.Cells(const ASections: TArray<TAtlasWelcomeSection>;
+  AColumns: Integer): TAtlasWelcomeCells;
+var
+  mWide: TAtlasWelcomeCells;
+  mWidth, mColumn, mIndex: Integer;
+  mSlot: TAtlasWelcomeSlot;
+  mSection: TAtlasWelcomeSection;
+begin
+  // Zuerst in der Breite des Layouts verteilen (mindestens zwei Spalten für die Vorgabespalten) …
+  mWidth := Clamp(Columns, 2, MaxColumns);
+  SetLength(mWide, mWidth);
+  for mSlot in Slots do
+  begin
+    mIndex := SectionIndex(ASections, mSlot.Id);
+    if mIndex >= 0 then
+    begin
+      mColumn := Clamp(mSlot.Column, 0, mWidth - 1);
+      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(ASections[mIndex].Id, Clamp(mSlot.Width,
+        MinWidth, MaxWidth))];
+    end;
+  end;
+  for mSection in ASections do
+  begin
+    if IndexOf(mSection.Id) < 0 then
+    begin
+      mColumn := Clamp(Ord(mSection.Column), 0, mWidth - 1);
+      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(mSection.Id, 1)];
+    end;
+  end;
+  // … dann auf die gewünschte Zahl falten.
+  Result := FoldedCells(mWide, Clamp(AColumns, MinColumns, MaxColumns));
 end;
 
 function TAtlasWelcomeLayout.Arrange(const ASections: TArray<TAtlasWelcomeSection>;
@@ -380,82 +414,82 @@ begin
   end;
 end;
 
-function TAtlasWelcomeLayout.MovedBy(const AId: string; ADirection: TAtlasWelcomeMove;
-  const ASections: TArray<TAtlasWelcomeSection>; out ALayout: TAtlasWelcomeLayout): Boolean;
+function FindCell(const AGrid: TAtlasWelcomeCells; const AId: string; out AColumn, ARow: Integer): Boolean;
 var
-  Grid: TAtlasWelcomeCells;
-  Column, Row, Index, Target: Integer;
-  Before: string;
+  mColumn, mRow: Integer;
 begin
-  ALayout := Self;
-  Grid := Cells(ASections, Columns);
-  Column := -1;
-  Row := -1;
-  for Index := 0 to High(Grid) do
+  AColumn := -1;
+  ARow := -1;
+  for mColumn := 0 to High(AGrid) do
   begin
-    for Target := 0 to High(Grid[Index]) do
+    for mRow := 0 to High(AGrid[mColumn]) do
     begin
-      if SameText(Grid[Index][Target].Id, AId) then
+      if SameText(AGrid[mColumn][mRow].Id, AId) then
       begin
-        Column := Index;
-        Row := Target;
+        AColumn := mColumn;
+        ARow := mRow;
       end;
     end;
   end;
-  Result := Column >= 0;
-  if not Result then
+  Result := AColumn >= 0;
+end;
+
+/// <summary>Kennung in Spalte AColumn, Zeile ARow; '' außerhalb.</summary>
+function CellIdAt(const AGrid: TAtlasWelcomeCells; AColumn, ARow: Integer): string;
+begin
+  Result := '';
+  if (AColumn >= 0) and (AColumn <= High(AGrid)) and (ARow >= 0) and (ARow <= High(AGrid[AColumn])) then
   begin
-    Exit;
+    Result := AGrid[AColumn][ARow].Id;
   end;
-  Before := '';
+end;
+
+/// <summary>Ziel eines Schritts von (AColumn, ARow); False am Rand.</summary>
+function StepTarget(const AGrid: TAtlasWelcomeCells; AColumn, ARow: Integer; ADirection: TAtlasWelcomeMove;
+  out ATarget: Integer; out ABefore: string): Boolean;
+begin
   case ADirection of
     TAtlasWelcomeMove.Up:
       begin
-        if Row = 0 then
-        begin
-          Exit(False);
-        end;
-        Target := Column;
-        Before := Grid[Column][Row - 1].Id;
+        Result := ARow > 0;
+        ATarget := AColumn;
+        ABefore := CellIdAt(AGrid, AColumn, ARow - 1);
       end;
     TAtlasWelcomeMove.Down:
       begin
-        if Row = High(Grid[Column]) then
-        begin
-          Exit(False);
-        end;
-        Target := Column;
-        if Row + 2 <= High(Grid[Column]) then
-        begin
-          Before := Grid[Column][Row + 2].Id;
-        end;
+        Result := ARow < High(AGrid[AColumn]);
+        ATarget := AColumn;
+        ABefore := CellIdAt(AGrid, AColumn, ARow + 2);
       end;
     TAtlasWelcomeMove.Left:
       begin
-        if Column = 0 then
-        begin
-          Exit(False);
-        end;
-        Target := Column - 1;
-        if Row <= High(Grid[Target]) then
-        begin
-          Before := Grid[Target][Row].Id;
-        end;
+        Result := AColumn > 0;
+        ATarget := AColumn - 1;
+        ABefore := CellIdAt(AGrid, ATarget, ARow);
       end;
   else
     begin
-      if Column >= High(Grid) then
-      begin
-        Exit(False);
-      end;
-      Target := Column + 1;
-      if Row <= High(Grid[Target]) then
-      begin
-        Before := Grid[Target][Row].Id;
-      end;
+      Result := AColumn < High(AGrid);
+      ATarget := AColumn + 1;
+      ABefore := CellIdAt(AGrid, ATarget, ARow);
     end;
   end;
-  ALayout := MovedTo(AId, Target, Before);
+end;
+
+function TAtlasWelcomeLayout.MovedBy(const AId: string; ADirection: TAtlasWelcomeMove;
+  const ASections: TArray<TAtlasWelcomeSection>; out ALayout: TAtlasWelcomeLayout): Boolean;
+var
+  mGrid: TAtlasWelcomeCells;
+  mColumn, mRow, mTarget: Integer;
+  mBefore: string;
+begin
+  ALayout := Self;
+  mGrid := Cells(ASections, Columns);
+  Result := FindCell(mGrid, AId, mColumn, mRow) and StepTarget(mGrid, mColumn, mRow, ADirection, mTarget, mBefore);
+  if Result then
+  begin
+    ALayout := MovedTo(AId, mTarget, mBefore);
+  end;
 end;
 
 function TAtlasWelcomeLayout.WithWidth(const AId: string; AWidth: Integer): TAtlasWelcomeLayout;
@@ -590,86 +624,90 @@ begin
   end;
 end;
 
+function IntegerField(AItem: TJSONObject; const AName: string; ADefault, AMin, AMax: Integer): Integer;
+var
+  mField: TJSONValue;
+begin
+  Result := ADefault;
+  mField := AItem.GetValue(AName);
+  if mField is TJSONNumber then
+  begin
+    Result := Clamp(TJSONNumber(mField).AsInt, AMin, AMax);
+  end;
+end;
+
+function BooleanField(AItem: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
+var
+  mField: TJSONValue;
+begin
+  Result := ADefault;
+  mField := AItem.GetValue(AName);
+  if mField is TJSONBool then
+  begin
+    Result := TJSONBool(mField).AsBoolean;
+  end;
+end;
+
+/// <summary>Plätze aus „slots“ in ALayout; doppelte Kennung: der erste Platz gilt. False bei ungültigem Eintrag.</summary>
+function SlotsFromJson(AList: TJSONArray; var ALayout: TAtlasWelcomeLayout): Boolean;
+var
+  mIndex: Integer;
+  mItem: TJSONObject;
+  mField: TJSONValue;
+  mId: string;
+begin
+  ALayout.Slots := nil;
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    if not (AList.Items[mIndex] is TJSONObject) then
+    begin
+      Exit(False);
+    end;
+    mItem := TJSONObject(AList.Items[mIndex]);
+    mField := mItem.GetValue('id');
+    if not (mField is TJSONString) or (Trim(mField.Value) = '') then
+    begin
+      Exit(False);
+    end;
+    mId := Trim(mField.Value);
+    if ALayout.IndexOf(mId) < 0 then
+    begin
+      ALayout.Slots := ALayout.Slots + [TAtlasWelcomeSlot.Create(mId,
+        IntegerField(mItem, 'column', 0, 0, TAtlasWelcomeLayout.MaxColumns - 1),
+        IntegerField(mItem, 'width', 1, TAtlasWelcomeLayout.MinWidth, TAtlasWelcomeLayout.MaxWidth),
+        BooleanField(mItem, 'visible', True))];
+    end;
+  end;
+  Result := True;
+end;
+
 class function TAtlasWelcomeLayout.FromJson(const AText: string; out ALayout: TAtlasWelcomeLayout): Boolean;
 var
-  Value, Field: TJSONValue;
-  Root, Item: TJSONObject;
-  List: TJSONArray;
-  Index, Column, Width: Integer;
-  Visible: Boolean;
-  Id: string;
+  mValue, mField: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ALayout := Atlas;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Value is TJSONObject) then
+    if mValue is TJSONObject then
     begin
-      Exit;
+      mRoot := TJSONObject(mValue);
+      mField := mRoot.GetValue('slots');
+      Result := (mField is TJSONArray) and SlotsFromJson(TJSONArray(mField), ALayout);
+      mField := mRoot.GetValue('name');
+      if Result and (mField is TJSONString) then
+      begin
+        ALayout.Name := mField.Value;
+      end;
+      ALayout.Columns := IntegerField(mRoot, 'columns', ALayout.Columns, MinColumns, MaxColumns);
     end;
-    Root := TJSONObject(Value);
-    Field := Root.GetValue('slots');
-    if not (Field is TJSONArray) then
-    begin
-      Exit;
-    end;
-    List := TJSONArray(Field);
-    ALayout.Slots := nil;
-    for Index := 0 to List.Count - 1 do
-    begin
-      if not (List.Items[Index] is TJSONObject) then
-      begin
-        Exit;
-      end;
-      Item := TJSONObject(List.Items[Index]);
-      Field := Item.GetValue('id');
-      if not (Field is TJSONString) or (Trim(Field.Value) = '') then
-      begin
-        Exit;
-      end;
-      Id := Trim(Field.Value);
-      // Doppelte Kennung: der erste Platz gilt.
-      if ALayout.IndexOf(Id) >= 0 then
-      begin
-        Continue;
-      end;
-      Column := 0;
-      Field := Item.GetValue('column');
-      if Field is TJSONNumber then
-      begin
-        Column := Clamp(TJSONNumber(Field).AsInt, 0, MaxColumns - 1);
-      end;
-      Width := 1;
-      Field := Item.GetValue('width');
-      if Field is TJSONNumber then
-      begin
-        Width := Clamp(TJSONNumber(Field).AsInt, MinWidth, MaxWidth);
-      end;
-      Visible := True;
-      Field := Item.GetValue('visible');
-      if Field is TJSONBool then
-      begin
-        Visible := TJSONBool(Field).AsBoolean;
-      end;
-      ALayout.Slots := ALayout.Slots + [TAtlasWelcomeSlot.Create(Id, Column, Width, Visible)];
-    end;
-    Field := Root.GetValue('name');
-    if Field is TJSONString then
-    begin
-      ALayout.Name := Field.Value;
-    end;
-    Field := Root.GetValue('columns');
-    if Field is TJSONNumber then
-    begin
-      ALayout.Columns := Clamp(TJSONNumber(Field).AsInt, MinColumns, MaxColumns);
-    end;
-    Result := True;
   finally
-    Value.Free;
-    if not Result then
-    begin
-      ALayout := Atlas;
-    end;
+    mValue.Free;
+  end;
+  if not Result then
+  begin
+    ALayout := Atlas;
   end;
 end;
 
@@ -693,6 +731,15 @@ begin
       Exit(False);
     end;
   end;
+end;
+
+{ TAtlasWelcomeArea }
+
+class function TAtlasWelcomeArea.Create(AClientWidth, AGap, AMinWidth: Integer): TAtlasWelcomeArea;
+begin
+  Result.ClientWidth := AClientWidth;
+  Result.Gap := AGap;
+  Result.MinWidth := AMinWidth;
 end;
 
 { TAtlasWelcomeFlow }
@@ -751,141 +798,145 @@ begin
   Result := -1;
 end;
 
-class function TAtlasWelcomeFlow.Place(const ACells: TAtlasWelcomeCells; AClientWidth, AGap, AMinWidth: Integer;
-  const AHeight: TAtlasWelcomeHeight): TArray<TAtlasWelcomePlaced>;
+/// <summary>Nächste Spalte zum Platzieren: die mit dem höchsten Ende, die noch Bereiche hat; wartet dort ein
+/// zweispaltiger Bereich, erst die Nachbarspalte bis auf seine Höhe.</summary>
+function NextColumn(const ACells: TAtlasWelcomeCells; const ANext, ATops: TArray<Integer>): Integer;
 var
-  Count, Width, Column, Index, Span, Top, Remaining: Integer;
-  Next, Tops: TArray<Integer>;
-  Cell: TAtlasWelcomeCell;
-  Placed: TAtlasWelcomePlaced;
+  mIndex: Integer;
 begin
-  Result := nil;
-  Count := Length(ACells);
-  if Count = 0 then
+  Result := -1;
+  for mIndex := 0 to High(ACells) do
   begin
-    Exit;
+    if (ANext[mIndex] <= High(ACells[mIndex])) and ((Result < 0) or (ATops[mIndex] < ATops[Result])) then
+    begin
+      Result := mIndex;
+    end;
   end;
-  Width := ColumnWidth(Count, AClientWidth, AGap, AMinWidth);
-  SetLength(Next, Count);
-  SetLength(Tops, Count);
-  Remaining := 0;
-  for Column := 0 to Count - 1 do
+  while (Result < High(ACells)) and (ACells[Result][ANext[Result]].Span > 1) and
+    (ANext[Result + 1] <= High(ACells[Result + 1])) and (ATops[Result + 1] < ATops[Result]) do
   begin
-    Tops[Column] := AGap;
-    Inc(Remaining, Length(ACells[Column]));
-  end;
-  while Remaining > 0 do
-  begin
-    // Spalte mit dem höchsten Ende, die noch Bereiche hat.
-    Column := -1;
-    for Index := 0 to Count - 1 do
-    begin
-      if (Next[Index] <= High(ACells[Index])) and ((Column < 0) or (Tops[Index] < Tops[Column])) then
-      begin
-        Column := Index;
-      end;
-    end;
-    // Wartet ein zweispaltiger Bereich, füllt erst die Nachbarspalte bis auf seine Höhe auf.
-    while (Column < Count - 1) and (ACells[Column][Next[Column]].Span > 1) and
-      (Next[Column + 1] <= High(ACells[Column + 1])) and (Tops[Column + 1] < Tops[Column]) do
-    begin
-      Inc(Column);
-    end;
-    Cell := ACells[Column][Next[Column]];
-    Inc(Next[Column]);
-    Dec(Remaining);
-    Span := Clamp(Cell.Span, 1, Count - Column);
-    Top := Tops[Column];
-    for Index := Column + 1 to Column + Span - 1 do
-    begin
-      if Tops[Index] > Top then
-      begin
-        Top := Tops[Index];
-      end;
-    end;
-    Placed.Id := Cell.Id;
-    Placed.Column := Column;
-    Placed.Span := Span;
-    Placed.Left := AGap + Column * (Width + AGap);
-    Placed.Top := Top;
-    Placed.Width := Span * Width + (Span - 1) * AGap;
-    Placed.Height := 0;
-    if Assigned(AHeight) then
-    begin
-      Placed.Height := AHeight(Cell.Id, Placed.Width);
-    end;
-    if Placed.Height < 0 then
-    begin
-      Placed.Height := 0;
-    end;
-    for Index := Column to Column + Span - 1 do
-    begin
-      Tops[Index] := Top + Placed.Height + AGap;
-    end;
-    Result := Result + [Placed];
+    Inc(Result);
   end;
 end;
 
-class procedure TAtlasWelcomeFlow.DropTarget(const ACells: TAtlasWelcomeCells;
-  const APlaced: TArray<TAtlasWelcomePlaced>; AClientWidth, AGap, AMinWidth, AX, AY: Integer;
-  const ADragged: string; out AColumn: Integer; out ABefore: string);
+/// <summary>Höchstes Ende der Spalten AColumn bis AColumn + ASpan - 1.</summary>
+function TopOf(const ATops: TArray<Integer>; AColumn, ASpan: Integer): Integer;
 var
-  Cell: TAtlasWelcomeCell;
-  Index: Integer;
+  mIndex: Integer;
 begin
-  ABefore := '';
-  AColumn := ColumnAt(AX, Length(ACells), AClientWidth, AGap, AMinWidth);
-  if AColumn > High(ACells) then
+  Result := ATops[AColumn];
+  for mIndex := AColumn + 1 to AColumn + ASpan - 1 do
+  begin
+    if ATops[mIndex] > Result then
+    begin
+      Result := ATops[mIndex];
+    end;
+  end;
+end;
+
+function HeightOf(const AHeight: TAtlasWelcomeHeight; const AId: string; AWidth: Integer): Integer;
+begin
+  Result := 0;
+  if Assigned(AHeight) then
+  begin
+    Result := Max(AHeight(AId, AWidth), 0);
+  end;
+end;
+
+class function TAtlasWelcomeFlow.Place(const ACells: TAtlasWelcomeCells; AClientWidth, AGap, AMinWidth: Integer;
+  const AHeight: TAtlasWelcomeHeight): TArray<TAtlasWelcomePlaced>;
+var
+  mCount, mWidth, mColumn, mIndex, mRemaining: Integer;
+  mNext, mTops: TArray<Integer>;
+  mCell: TAtlasWelcomeCell;
+  mPlaced: TAtlasWelcomePlaced;
+begin
+  Result := nil;
+  mCount := Length(ACells);
+  mWidth := ColumnWidth(mCount, AClientWidth, AGap, AMinWidth);
+  SetLength(mNext, mCount);
+  SetLength(mTops, mCount);
+  mRemaining := 0;
+  for mColumn := 0 to mCount - 1 do
+  begin
+    mTops[mColumn] := AGap;
+    Inc(mRemaining, Length(ACells[mColumn]));
+  end;
+  while mRemaining > 0 do
+  begin
+    mColumn := NextColumn(ACells, mNext, mTops);
+    mCell := ACells[mColumn][mNext[mColumn]];
+    Inc(mNext[mColumn]);
+    Dec(mRemaining);
+    mPlaced.Id := mCell.Id;
+    mPlaced.Column := mColumn;
+    mPlaced.Span := Clamp(mCell.Span, 1, mCount - mColumn);
+    mPlaced.Left := AGap + mColumn * (mWidth + AGap);
+    mPlaced.Top := TopOf(mTops, mColumn, mPlaced.Span);
+    mPlaced.Width := mPlaced.Span * mWidth + (mPlaced.Span - 1) * AGap;
+    mPlaced.Height := HeightOf(AHeight, mCell.Id, mPlaced.Width);
+    for mIndex := mColumn to mColumn + mPlaced.Span - 1 do
+    begin
+      mTops[mIndex] := mPlaced.Top + mPlaced.Height + AGap;
+    end;
+    Result := Result + [mPlaced];
+  end;
+end;
+
+class function TAtlasWelcomeFlow.DropTarget(const ACells: TAtlasWelcomeCells;
+  const APlaced: TArray<TAtlasWelcomePlaced>; const AArea: TAtlasWelcomeArea; AX, AY: Integer;
+  const ADragged: string): TAtlasWelcomeDrop;
+var
+  mCell: TAtlasWelcomeCell;
+  mIndex: Integer;
+begin
+  Result.Before := '';
+  Result.Column := ColumnAt(AX, Length(ACells), AArea.ClientWidth, AArea.Gap, AArea.MinWidth);
+  if Result.Column > High(ACells) then
   begin
     Exit;
   end;
-  for Cell in ACells[AColumn] do
+  for mCell in ACells[Result.Column] do
   begin
-    if SameText(Cell.Id, ADragged) then
+    mIndex := IndexOf(APlaced, mCell.Id);
+    if not SameText(mCell.Id, ADragged) and (mIndex >= 0) and
+      (AY < APlaced[mIndex].Top + APlaced[mIndex].Height div 2) then
     begin
-      Continue;
-    end;
-    Index := IndexOf(APlaced, Cell.Id);
-    if (Index >= 0) and (AY < APlaced[Index].Top + APlaced[Index].Height div 2) then
-    begin
-      ABefore := Cell.Id;
+      Result.Before := mCell.Id;
       Exit;
     end;
   end;
 end;
 
-class procedure TAtlasWelcomeFlow.InsertLine(const ACells: TAtlasWelcomeCells;
-  const APlaced: TArray<TAtlasWelcomePlaced>; AClientWidth, AGap, AMinWidth, AColumn: Integer;
-  const ABefore: string; out ALeft, ATop, AWidth: Integer);
+class function TAtlasWelcomeFlow.InsertLine(const ACells: TAtlasWelcomeCells;
+  const APlaced: TArray<TAtlasWelcomePlaced>; const AArea: TAtlasWelcomeArea; AColumn: Integer;
+  const ABefore: string): TAtlasWelcomeInsertLine;
 var
-  Count, Index: Integer;
-  Cell: TAtlasWelcomeCell;
+  mCount, mColumn, mIndex: Integer;
+  mCell: TAtlasWelcomeCell;
 begin
-  Count := Length(ACells);
-  if Count < 1 then
+  mCount := Max(Length(ACells), 1);
+  mColumn := Clamp(AColumn, 0, mCount - 1);
+  Result.Left := ColumnLeft(mColumn, mCount, AArea.ClientWidth, AArea.Gap, AArea.MinWidth);
+  Result.Width := ColumnWidth(mCount, AArea.ClientWidth, AArea.Gap, AArea.MinWidth);
+  Result.Top := AArea.Gap div 2;
+  mIndex := IndexOf(APlaced, ABefore);
+  if (ABefore <> '') and (mIndex >= 0) then
   begin
-    Count := 1;
-  end;
-  AColumn := Clamp(AColumn, 0, Count - 1);
-  ALeft := ColumnLeft(AColumn, Count, AClientWidth, AGap, AMinWidth);
-  AWidth := ColumnWidth(Count, AClientWidth, AGap, AMinWidth);
-  ATop := AGap div 2;
-  Index := IndexOf(APlaced, ABefore);
-  if (ABefore <> '') and (Index >= 0) then
-  begin
-    ATop := APlaced[Index].Top - AGap div 2;
+    Result.Top := APlaced[mIndex].Top - AArea.Gap div 2;
     Exit;
   end;
   // Ans Ende: unter den letzten Bereich der Spalte.
-  if AColumn <= High(ACells) then
+  if mColumn > High(ACells) then
   begin
-    for Cell in ACells[AColumn] do
+    Exit;
+  end;
+  for mCell in ACells[mColumn] do
+  begin
+    mIndex := IndexOf(APlaced, mCell.Id);
+    if mIndex >= 0 then
     begin
-      Index := IndexOf(APlaced, Cell.Id);
-      if Index >= 0 then
-      begin
-        ATop := APlaced[Index].Top + APlaced[Index].Height + AGap div 2;
-      end;
+      Result.Top := APlaced[mIndex].Top + APlaced[mIndex].Height + AArea.Gap div 2;
     end;
   end;
 end;

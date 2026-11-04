@@ -6835,7 +6835,7 @@ begin
   Names := nil;
   for Source in TAtlasNotificationSources.Known do
   begin
-    Names := Names + [TAtlasNotificationsWindow.SourceCaption(Source)];
+    Names := Names + [TAtlasNotificationTexts.SourceCaption(Source)];
   end;
   FNotificationSource := TAtlasChoiceBox.Create(Self);
   FNotificationSource.Parent := Panel;

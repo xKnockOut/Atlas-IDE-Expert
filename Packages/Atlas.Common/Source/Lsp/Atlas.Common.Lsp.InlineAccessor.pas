@@ -378,8 +378,8 @@ var
   mLocation: TReferenceLocation;
 begin
   Result := nil;
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, AUnit.Tree, AUnit.FileName, AAccessor.NamePos,
-    False, FContext.Files, FContext.ReadText) do
+  for mLocation in TLspReferences.Find(FResolver, FContext.Index, AUnit.Tree, TReferenceSearch.Create(AUnit.FileName,
+    AAccessor.NamePos, False, FContext.Files, FContext.ReadText)) do
   begin
     if not SameText(mLocation.FileName, AUnit.FileName) or not TInlineAccessor.IsOwnReference(ALayout, AAccessor,
       mLocation.Range.StartPos) then

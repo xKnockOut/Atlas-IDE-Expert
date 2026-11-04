@@ -185,12 +185,13 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'TestFixture]'), True,
+    Found := TLspReferences.Find(FResolver, FIndex, Tree,
+      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'TestFixture]'), True,
       [AttributeFile, HauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := ReadText(AFileName, AText);
-      end);
+      end));
   finally
     Tree.Free;
   end;

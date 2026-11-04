@@ -51,7 +51,8 @@ var
   mDialog: TAtlasDiagnosticExportDialog;
   mLine: Integer;
 begin
-  mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, 'Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip');
+  mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil,
+    TAtlasExportDialogTexts.Create('Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
   try
     mLine := mDialog.Canvas.TextHeight('Ag');
     Assert.IsTrue(mDialog.HintLabel.Height <= 4 * mLine,
@@ -66,7 +67,8 @@ var
   mDialog: TAtlasDiagnosticExportDialog;
   mWide: Integer;
 begin
-  mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil, 'Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip');
+  mDialog := TAtlasDiagnosticExportDialog.CreateDialog(nil,
+    TAtlasExportDialogTexts.Create('Titel', LongHint, 'Vorschau', 'a.zip', '*.zip', 'zip'));
   try
     mWide := mDialog.HintLabel.Height;
     mDialog.Width := 400;

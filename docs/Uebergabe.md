@@ -4,6 +4,11 @@
 - API: `Wrap` aus CommandSource nimmt den Rahmen als `TWrapFrame.Create(Kopf, Schluss, Einrückung)` statt drei Parametern; Aufrufer in Collection-, Database-, Refactoring-, Task- und WrapCommands angepasst (betrifft den pausierten Thread Editing H–Z).
 - Geprüft: FPC-Tests aller Editing-, Lsp-Formatting- und Completion-Testunits wie auf dem Basiszweig. Delphi-Build offen.
 
+## Atlas-Befunde in Rules.Engine (04.11.2026, Branch `claude/project-thread-1oi686` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle 7 Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Engine` (Teil B der Aufteilung Common/Rules; Catalog gehört Teil A). Ergebnis: 0 Befunde (PR #1706).
+- `TRuleEngine.Run` legt einen Lauf `TRuleRun` im implementation-Teil an (Felder statt Locals, Destruktor räumt Cache und Baumauswertung auf); nachgelagerte Regeln als `TDeferredRule`. Die Bedingung „Regel läuft für die Datei“ steht einmal in `SeverityIfOn` (Run, NewNames, OverridingRule). Öffentliche API unverändert.
+- FPC: Engine-nahe Tests 121/121, SavedQueries/Metrics/GoldenCorpus/CodeActions 66/66. Delphi-Build offen.
+
 ## GenericLists zerlegt (04.11.2026, Branch `claude/project-thread-3pj10y` auf `Pilot-2.0.0-beta.1`)
 - Ziel: `Atlas.Common.Editing.GenericLists` (2117 Zeilen, `TGenericListConversion` mit 63 Mitgliedern, 40 Atlas-Befunde mit Metriken) ohne Befunde, ohne Grenzwerte zu ändern. Jetzt neun Units `Atlas.Common.Editing.GenericLists*`, alle 0 Befunde.
 - Aufbau: `TGenericListConversion` (Fassade: `Start`, `AddFile`, `Finish`) ist die oberste Stufe der Klassenkette `TGenericListState` (`.State`, gemeinsamer Zustand, Ziel als Record `TGenericListTarget` mit `Accepts`) → `TGenericListDeclarations` (`.Declarations`, Deklaration, Properties, Create, `DeclarationAt`) → `TGenericListUsages` (`.Usages`, Verwendungen, Casts, Schleifen). Dazu `TLegacyListKind`/`TGenericListNames` (`.Kinds`), `TGenericListSyntax` (`.Syntax`), Datei mit Edits `TGenericListSource` (`.Source`), uses-Listen `TGenericListUses` (`.UsesEdits`) und Elementprüfung `TGenericListElementCheck` (`.Elements`).
@@ -34,6 +39,12 @@
 - Geprüft: FPC-Tests der Core-Units grün (Abweichungen nur wie auf dem Basiszweig: LspClient 3, Session 2 AV, Recording übersetzt unter FPC nicht). VCL-Units nur von Hand und mit Atlas geprüft; Delphi-Build offen.
 
 # Übergabe: Atlas IDE Expert – Stand 30.10.2026
+
+## Atlas-Befunde in Base UI Teil 1 (04.11.2026, Branch `claude/project-thread-joyczh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/UI/{Diagnostics,Results,Popup,Notifications}` (anfangs 36), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde. PR #1696.
+- `TAtlasResultsFrame` ist zerlegt: Frame mit Titelzeile und Baum, `TAtlasResultsView` (Daten je Knoten, verteilt Ereignisse an die Teile), Teile `TAtlasResultsPart` in `Atlas.UI.Results.{Entries,Hierarchy,Changes,Items,SymbolPath,Impact,DataFlow,Issues}`, Zeilentexte in `Atlas.UI.Results.Texts`. Aufruf über den Teil: `Frame.Impact.Show`, `Frame.Hierarchy.Controls.Toggle`, `Frame.Items.ShowsItemsOf` usw. Neue Darstellung = neuer Teil, im Konstruktor des Frames anmelden.
+- Weitere Schnittstellen: `TAtlasExportDialogTexts`, `TAtlasStyledText.Draw(TAtlasStyledTarget, …)`, `TAtlasNotificationTexts`, `Rows` im Benachrichtigungsfenster.
+- Offen: Delphi-Build und Handtests (Liste im PR), vor allem das Ergebnisfenster mit allen Listen.
 
 ## Atlas-Befunde in Configuration, Mcp, Index, Projects, Query (03.–04.11.2026, Branch `claude/project-thread-g1tunh` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common/Source/Configuration`, `Mcp`, `Index`, `Projects`, `Query` (und `Rules` ohne Builtin) beheben, ohne Grenzwerte zu ändern. Ergebnis: alle Units dieser fünf Ordner 0 Befunde. PRs #1529 (Query), #1541 (Projects), #1555 (Index), #1595 (Mcp Teil 2; Teil 1 kam als #1587 aus dem Common-Thread), #1618 (Configuration.Contract, Scopes), #1635 (Parser, JsonTree, Forbidden).

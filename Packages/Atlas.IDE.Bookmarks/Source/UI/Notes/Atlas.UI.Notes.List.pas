@@ -10,7 +10,7 @@ interface
 
 uses
   Atlas.Core.Notes.Store,
-  Atlas.UI.Results.Frame;
+  Atlas.UI.Results.Items;
 
 type
   TAtlasNotesList = class

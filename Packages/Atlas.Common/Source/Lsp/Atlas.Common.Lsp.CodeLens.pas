@@ -503,8 +503,9 @@ begin
   Result.Targets := nil;
   mHeaders := HeaderNames(ASource.Tree);
   try
-    for mFound in TLspReferences.Find(ASource.Resolver, ASource.Index, ASource.Tree, ASource.FileName,
-      AEntry.Range.StartPos, False, AFiles, ASource.ReadText, ACancellation) do
+    for mFound in TLspReferences.Find(ASource.Resolver, ASource.Index, ASource.Tree,
+      TReferenceSearch.Create(ASource.FileName, AEntry.Range.StartPos, False, AFiles, ASource.ReadText),
+      ACancellation) do
     begin
       if not (SameText(mFound.FileName, ASource.FileName) and
         mHeaders.ContainsKey(PositionKey(mFound.Range.StartPos))) then

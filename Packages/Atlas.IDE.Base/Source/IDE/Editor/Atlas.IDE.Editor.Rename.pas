@@ -43,7 +43,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.RenamePreview,
-  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.View,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,

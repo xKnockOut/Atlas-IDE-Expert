@@ -401,46 +401,59 @@ begin
   Result := (Name <> '') and SameText(ShortName(Name), 'TNotifyEvent');
 end;
 
+/// <summary>Anfangswert eines eingebauten Typs: False oder 0; '' sonst.</summary>
+function BuiltinDefault(const AName: string): string;
+begin
+  Result := '';
+  if IndexText(ShortName(AName), BooleanTypes) >= 0 then
+  begin
+    Result := 'False';
+  end
+  else if IndexText(ShortName(AName), IntegerTypes) >= 0 then
+  begin
+    Result := '0';
+  end;
+end;
+
+/// <summary>Erster Wert der Aufzählung "= (alNone, alTop, …)"; '' ohne.</summary>
+function FirstEnumValue(const ADeclaration: string): string;
+var
+  mWords: TArray<TWord>;
+begin
+  Result := '';
+  mWords := TopWords(Copy(ADeclaration, Pos('(', ADeclaration) + 1, MaxInt), 1);
+  if Length(mWords) > 0 then
+  begin
+    Result := mWords[0].Text;
+  end;
+end;
+
 /// <summary>Anfangswert eines Typs ohne default: False, 0 oder der erste Aufzählungswert; '' sonst.</summary>
 function ImplicitDefault(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
   const ATypeName: string): string;
 var
-  Name, Declaration: string;
-  Kind: TIndexSymbolKind;
-  Words: TArray<TWord>;
-  Step: Integer;
+  mName, mDeclaration: string;
+  mKind: TIndexSymbolKind;
+  mStep: Integer;
 begin
   Result := '';
-  Name := ATypeName;
-  for Step := 0 to MaxAliases do
+  mName := ATypeName;
+  for mStep := 0 to MaxAliases do
   begin
-    if IndexText(ShortName(Name), BooleanTypes) >= 0 then
-    begin
-      Exit('False');
-    end;
-    if IndexText(ShortName(Name), IntegerTypes) >= 0 then
-    begin
-      Exit('0');
-    end;
-    if (Name = '') or not TypeDeclaration(AIndex, AReadText, Name, Kind, Declaration) then
+    Result := BuiltinDefault(mName);
+    if (Result <> '') or (mName = '') or not TypeDeclaration(AIndex, AReadText, mName, mKind, mDeclaration) then
     begin
       Exit;
     end;
-    if Kind = TIndexSymbolKind.EnumType then
+    if mKind = TIndexSymbolKind.EnumType then
     begin
-      // "= (alNone, alTop, …)": der erste Wert.
-      Words := TopWords(Copy(Declaration, Pos('(', Declaration) + 1, MaxInt), 1);
-      if Length(Words) > 0 then
-      begin
-        Result := Words[0].Text;
-      end;
-      Exit;
+      Exit(FirstEnumValue(mDeclaration));
     end;
-    if Kind <> TIndexSymbolKind.TypeAlias then
+    if mKind <> TIndexSymbolKind.TypeAlias then
     begin
       Exit;
     end;
-    Name := AliasTarget(Declaration);
+    mName := AliasTarget(mDeclaration);
   end;
 end;
 
@@ -496,126 +509,206 @@ begin
   end;
 end;
 
+/// <summary>Neues Mitglied AName aus AInfo, published in AClassName.</summary>
+function NewMember(const AName: string; const AInfo: TPropertyInfo; const AClassName: string): TPublishedMember;
+begin
+  Result := Default(TPublishedMember);
+  Result.Name := AName;
+  Result.TypeName := AInfo.TypeName;
+  Result.DefaultKind := AInfo.Specifiers.DefaultKind;
+  Result.DefaultValue := AInfo.Specifiers.DefaultValue;
+  Result.Stored := AInfo.Specifiers.Stored;
+  Result.DeclaringClass := AClassName;
+  Result.PublishedIn := AClassName;
+end;
+
+/// <summary>Ergänzt an AMember, was eine abgeleitete Klasse offen ließ. Die erste Deklaration mit Typ ist die
+/// deklarierende Klasse.</summary>
+procedure Supplement(var AMember: TPublishedMember; const AInfo: TPropertyInfo; const AClassName: string);
+begin
+  if (AMember.TypeName = '') and (AInfo.TypeName <> '') then
+  begin
+    AMember.TypeName := AInfo.TypeName;
+    AMember.DeclaringClass := AClassName;
+  end;
+  if AMember.DefaultKind = TPublishedDefaultKind.None then
+  begin
+    AMember.DefaultKind := AInfo.Specifiers.DefaultKind;
+    AMember.DefaultValue := AInfo.Specifiers.DefaultValue;
+  end;
+  if AMember.Stored = '' then
+  begin
+    AMember.Stored := AInfo.Specifiers.Stored;
+  end;
+end;
+
+type
+  /// <summary>Sammelt die published-Mitglieder einer Klasse und ihrer Vorfahren.</summary>
+  TMemberCollect = class
+  private
+    FIndex: ISymbolIndex;
+    FReadText: TMemberReadText;
+    FMembers: TList<TPublishedMember>;
+    FPositions: TDictionary<string, Integer>;
+    FNames: TList<string>;
+    FInfos: TDictionary<string, TPropertyInfo>;
+    function ReadClass(const AClassName, AText: string): Boolean;
+    procedure AddClassMembers(const AClassName: string);
+    procedure AddImplicit(var AMember: TPublishedMember);
+    procedure Complete;
+  public
+    constructor Create(const AIndex: ISymbolIndex; const AReadText: TMemberReadText);
+    destructor Destroy; override;
+    function Run(const AClassName: string): TArray<TPublishedMember>;
+  end;
+
+constructor TMemberCollect.Create(const AIndex: ISymbolIndex; const AReadText: TMemberReadText);
+begin
+  inherited Create;
+  FIndex := AIndex;
+  FReadText := AReadText;
+  FMembers := TList<TPublishedMember>.Create;
+  FPositions := TDictionary<string, Integer>.Create;
+  FNames := TList<string>.Create;
+  FInfos := TDictionary<string, TPropertyInfo>.Create;
+end;
+
+destructor TMemberCollect.Destroy;
+begin
+  FInfos.Free;
+  FNames.Free;
+  FPositions.Free;
+  FMembers.Free;
+  inherited;
+end;
+
+function TMemberCollect.ReadClass(const AClassName, AText: string): Boolean;
+var
+  mTree: TSyntaxTree;
+  mDecl: TSyntaxNode;
+begin
+  FNames.Clear;
+  FInfos.Clear;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    mDecl := FindTypeDecl(mTree.Root, AClassName);
+    Result := mDecl <> nil;
+    if Result then
+    begin
+      ReadProperties(mDecl.FindChild(TSyntaxKind.ClassType), AText, False, FNames, FInfos, nil);
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TMemberCollect.AddClassMembers(const AClassName: string);
+var
+  mName, mKey: string;
+  mInfo: TPropertyInfo;
+  mIndex: Integer;
+  mMember: TPublishedMember;
+begin
+  for mName in FNames do
+  begin
+    mKey := LowerCase(mName);
+    mInfo := FInfos[mKey];
+    if FPositions.TryGetValue(mKey, mIndex) then
+    begin
+      // Schon aus einer abgeleiteten Klasse bekannt: fehlende Angaben ergänzen.
+      mMember := FMembers[mIndex];
+      Supplement(mMember, mInfo, AClassName);
+      FMembers[mIndex] := mMember;
+    end
+    else if mInfo.IsPublished then
+    begin
+      // Nicht published bleibt aus: In abgeleiteten Klassen kann sie noch published werden.
+      FPositions.Add(mKey, FMembers.Count);
+      FMembers.Add(NewMember(mName, mInfo, AClassName));
+    end;
+  end;
+end;
+
+procedure TMemberCollect.AddImplicit(var AMember: TPublishedMember);
+begin
+  AMember.DefaultValue := ImplicitDefault(FIndex, FReadText, AMember.TypeName);
+  if AMember.DefaultValue <> '' then
+  begin
+    AMember.DefaultKind := TPublishedDefaultKind.Implicit;
+  end;
+end;
+
+procedure TMemberCollect.Complete;
+var
+  mEvents: TDictionary<string, Boolean>;
+  mIndex: Integer;
+  mMember: TPublishedMember;
+  mKey: string;
+  mIsEvent: Boolean;
+begin
+  // Ereignis am Typ erkennen, implizite Vorgaben ergänzen.
+  mEvents := TDictionary<string, Boolean>.Create;
+  try
+    for mIndex := 0 to FMembers.Count - 1 do
+    begin
+      mMember := FMembers[mIndex];
+      mKey := LowerCase(mMember.TypeName);
+      if not mEvents.TryGetValue(mKey, mIsEvent) then
+      begin
+        mIsEvent := (mMember.TypeName <> '') and
+          TPublishedMembers.IsEventType(FIndex, FReadText, mMember.TypeName);
+        mEvents.Add(mKey, mIsEvent);
+      end;
+      mMember.IsEvent := mIsEvent;
+      if not mIsEvent and (mMember.DefaultKind = TPublishedDefaultKind.None) then
+      begin
+        AddImplicit(mMember);
+      end;
+      FMembers[mIndex] := mMember;
+    end;
+  finally
+    mEvents.Free;
+  end;
+end;
+
+function TMemberCollect.Run(const AClassName: string): TArray<TPublishedMember>;
+var
+  mLocation: TSymbolLocation;
+  mClassName, mText: string;
+  mDepth: Integer;
+begin
+  mClassName := AClassName;
+  mDepth := 0;
+  while (mClassName <> '') and (mDepth < TPublishedMembers.MaxDepth) and
+    FindClass(FIndex, mClassName, mLocation) and Assigned(FReadText) and FReadText(mLocation.FileName, mText) do
+  begin
+    Inc(mDepth);
+    mClassName := mLocation.Symbol.Name;
+    if not ReadClass(mClassName, mText) then
+    begin
+      Break;
+    end;
+    AddClassMembers(mClassName);
+    if Length(mLocation.Symbol.Ancestors) = 0 then
+    begin
+      Break;
+    end;
+    mClassName := mLocation.Symbol.Ancestors[0];
+  end;
+  Complete;
+  Result := FMembers.ToArray;
+end;
+
 class function TPublishedMembers.Collect(const AIndex: ISymbolIndex; const AClassName: string;
   const AReadText: TMemberReadText): TArray<TPublishedMember>;
 var
-  Members: TList<TPublishedMember>;
-  Positions: TDictionary<string, Integer>;
-  Events: TDictionary<string, Boolean>;
-  Location: TSymbolLocation;
-  ClassName, Text, Key, Name: string;
-  Depth, Index: Integer;
-  Tree: TSyntaxTree;
-  Decl, ClassNode: TSyntaxNode;
-  Names: TList<string>;
-  Infos: TDictionary<string, TPropertyInfo>;
-  Info: TPropertyInfo;
-  Member: TPublishedMember;
-  IsEvent: Boolean;
+  mCollect: TMemberCollect;
 begin
-  Members := TList<TPublishedMember>.Create;
-  Positions := TDictionary<string, Integer>.Create;
-  Events := TDictionary<string, Boolean>.Create;
-  Names := TList<string>.Create;
-  Infos := TDictionary<string, TPropertyInfo>.Create;
+  mCollect := TMemberCollect.Create(AIndex, AReadText);
   try
-    ClassName := AClassName;
-    Depth := 0;
-    while (ClassName <> '') and (Depth < MaxDepth) and FindClass(AIndex, ClassName, Location) and
-      Assigned(AReadText) and AReadText(Location.FileName, Text) do
-    begin
-      Inc(Depth);
-      ClassName := Location.Symbol.Name;
-      Tree := TSyntaxTreeCache.Parse(Text);
-      try
-        Decl := FindTypeDecl(Tree.Root, ClassName);
-        if Decl = nil then
-        begin
-          Break;
-        end;
-        ClassNode := Decl.FindChild(TSyntaxKind.ClassType);
-        Names.Clear;
-        Infos.Clear;
-        ReadProperties(ClassNode, Text, False, Names, Infos, nil);
-      finally
-        Tree.Free;
-      end;
-      for Name in Names do
-      begin
-        Key := LowerCase(Name);
-        Info := Infos[Key];
-        if Positions.TryGetValue(Key, Index) then
-        begin
-          // Schon aus einer abgeleiteten Klasse bekannt: fehlende Angaben ergänzen. Die erste Deklaration
-          // mit Typ ist die deklarierende Klasse.
-          Member := Members[Index];
-          if (Member.TypeName = '') and (Info.TypeName <> '') then
-          begin
-            Member.TypeName := Info.TypeName;
-            Member.DeclaringClass := ClassName;
-          end;
-          if Member.DefaultKind = TPublishedDefaultKind.None then
-          begin
-            Member.DefaultKind := Info.Specifiers.DefaultKind;
-            Member.DefaultValue := Info.Specifiers.DefaultValue;
-          end;
-          if Member.Stored = '' then
-          begin
-            Member.Stored := Info.Specifiers.Stored;
-          end;
-          Members[Index] := Member;
-          Continue;
-        end;
-        // Nicht published: in abgeleiteten Klassen kann sie noch published werden.
-        if not Info.IsPublished then
-        begin
-          Continue;
-        end;
-        Member := Default(TPublishedMember);
-        Member.Name := Name;
-        Member.TypeName := Info.TypeName;
-        Member.DefaultKind := Info.Specifiers.DefaultKind;
-        Member.DefaultValue := Info.Specifiers.DefaultValue;
-        Member.Stored := Info.Specifiers.Stored;
-        Member.DeclaringClass := ClassName;
-        Member.PublishedIn := ClassName;
-        Positions.Add(Key, Members.Count);
-        Members.Add(Member);
-      end;
-      if Length(Location.Symbol.Ancestors) = 0 then
-      begin
-        Break;
-      end;
-      ClassName := Location.Symbol.Ancestors[0];
-    end;
-    // Ereignis am Typ erkennen, implizite Vorgaben ergänzen.
-    for Index := 0 to Members.Count - 1 do
-    begin
-      Member := Members[Index];
-      Key := LowerCase(Member.TypeName);
-      if not Events.TryGetValue(Key, IsEvent) then
-      begin
-        IsEvent := (Member.TypeName <> '') and IsEventType(AIndex, AReadText, Member.TypeName);
-        Events.Add(Key, IsEvent);
-      end;
-      Member.IsEvent := IsEvent;
-      if not IsEvent and (Member.DefaultKind = TPublishedDefaultKind.None) then
-      begin
-        Member.DefaultValue := ImplicitDefault(AIndex, AReadText, Member.TypeName);
-        if Member.DefaultValue <> '' then
-        begin
-          Member.DefaultKind := TPublishedDefaultKind.Implicit;
-        end;
-      end;
-      Members[Index] := Member;
-    end;
-    Result := Members.ToArray;
+    Result := mCollect.Run(AClassName);
   finally
-    Infos.Free;
-    Names.Free;
-    Events.Free;
-    Positions.Free;
-    Members.Free;
+    mCollect.Free;
   end;
 end;
 
@@ -814,68 +907,87 @@ begin
   end;
 end;
 
-function Section(const ATitle: string; const AMembers: TArray<TPublishedMember>; AEvents, ACompact: Boolean): string;
+/// <summary>Deklarierende Klassen der Mitglieder (Ereignisse bei AEvents) in der Reihenfolge der Ableitung
+/// (erstes Auftreten), klein geschrieben; ACount: Zahl der Mitglieder.</summary>
+function SectionClasses(const AMembers: TArray<TPublishedMember>; AEvents: Boolean;
+  out ACount: Integer): TArray<string>;
 var
-  Member: TPublishedMember;
-  Classes: TList<string>;
-  CurrentClass, Names: string;
-  Count: Integer;
+  mMember: TPublishedMember;
+  mClasses: TList<string>;
+begin
+  ACount := 0;
+  mClasses := TList<string>.Create;
+  try
+    for mMember in AMembers do
+    begin
+      if mMember.IsEvent = AEvents then
+      begin
+        Inc(ACount);
+        if mClasses.IndexOf(LowerCase(mMember.DeclaringClass)) < 0 then
+        begin
+          mClasses.Add(LowerCase(mMember.DeclaringClass));
+        end;
+      end;
+    end;
+    Result := mClasses.ToArray;
+  finally
+    mClasses.Free;
+  end;
+end;
+
+/// <summary>Block der Klasse AClass: Überschrift, dann je Mitglied eine Zeile oder (ACompact) die Namen.</summary>
+function ClassBlock(const AMembers: TArray<TPublishedMember>; AEvents, ACompact: Boolean;
+  const AClass: string): string;
+var
+  mMember: TPublishedMember;
+  mNames: string;
 begin
   Result := '';
-  Classes := TList<string>.Create;
-  try
-    // Nach deklarierender Klasse gruppiert, in der Reihenfolge der Ableitung (erstes Auftreten).
-    Count := 0;
-    for Member in AMembers do
+  mNames := '';
+  for mMember in AMembers do
+  begin
+    if (mMember.IsEvent = AEvents) and SameText(mMember.DeclaringClass, AClass) then
     begin
-      if Member.IsEvent = AEvents then
+      if Result = '' then
       begin
-        Inc(Count);
-        if Classes.IndexOf(LowerCase(Member.DeclaringClass)) < 0 then
-        begin
-          Classes.Add(LowerCase(Member.DeclaringClass));
-        end;
+        Result := #10#10 + '*' + mMember.DeclaringClass + '*';
+      end;
+      if not ACompact then
+      begin
+        Result := Result + #10 + MemberLine(mMember);
+      end
+      else if mNames = '' then
+      begin
+        mNames := mMember.Name;
+      end
+      else
+      begin
+        mNames := mNames + ', ' + mMember.Name;
       end;
     end;
-    if Count = 0 then
-    begin
-      Exit;
-    end;
-    Result := Format('**%s** (%d)', [ATitle, Count]);
-    for CurrentClass in Classes do
-    begin
-      Names := '';
-      for Member in AMembers do
-      begin
-        if (Member.IsEvent <> AEvents) or not SameText(Member.DeclaringClass, CurrentClass) then
-        begin
-          Continue;
-        end;
-        if Names = '' then
-        begin
-          Result := Result + #10#10 + '*' + Member.DeclaringClass + '*';
-        end;
-        if ACompact then
-        begin
-          if Names <> '' then
-          begin
-            Names := Names + ', ';
-          end;
-          Names := Names + Member.Name;
-        end
-        else
-        begin
-          Result := Result + #10 + MemberLine(Member);
-          Names := Member.Name;
-        end;
-      end;
-      if ACompact then
-      begin
-        Result := Result + #10 + Names;
-      end;
-    end;
-  finally
-    Classes.Free;
+  end;
+  if ACompact then
+  begin
+    Result := Result + #10 + mNames;
+  end;
+end;
+
+function Section(const ATitle: string; const AMembers: TArray<TPublishedMember>; AEvents, ACompact: Boolean): string;
+var
+  mClasses: TArray<string>;
+  mClass: string;
+  mCount: Integer;
+begin
+  // Nach deklarierender Klasse gruppiert.
+  mClasses := SectionClasses(AMembers, AEvents, mCount);
+  if mCount = 0 then
+  begin
+    Exit('');
+  end;
+  Result := Format('**%s** (%d)', [ATitle, mCount]);
+  for mClass in mClasses do
+  begin
+    Result := Result + ClassBlock(AMembers, AEvents, ACompact, mClass);
   end;
 end;
 
@@ -911,60 +1023,52 @@ begin
   end;
 end;
 
-class function TPublishedMembers.ToJson(const AMembers: TArray<TPublishedMember>;
-  const ADefaultProperty: string): TJSONObject;
 const
   KindNames: array[TPublishedDefaultKind] of string = ('', 'explicit', 'implicit', 'nodefault');
+
+/// <summary>Setzt AKey auf AValue, wenn AValue nicht leer ist.</summary>
+procedure AddText(AItem: TJSONObject; const AKey, AValue: string);
+begin
+  if AValue <> '' then
+  begin
+    AItem.AddPair(AKey, AValue);
+  end;
+end;
+
+function MemberJson(const AMember: TPublishedMember): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', AMember.Name);
+  AddText(Result, 'type', AMember.TypeName);
+  AddText(Result, 'default', AMember.DefaultValue);
+  AddText(Result, 'defaultKind', KindNames[AMember.DefaultKind]);
+  AddText(Result, 'stored', AMember.Stored);
+  AddText(Result, 'declaringClass', AMember.DeclaringClass);
+  AddText(Result, 'publishedIn', AMember.PublishedIn);
+  if AMember.IsEvent then
+  begin
+    Result.AddPair('event', TJSONTrue.Create);
+  end;
+end;
+
+class function TPublishedMembers.ToJson(const AMembers: TArray<TPublishedMember>;
+  const ADefaultProperty: string): TJSONObject;
 var
-  Member: TPublishedMember;
-  Items: TJSONArray;
-  Item: TJSONObject;
+  mMember: TPublishedMember;
+  mItems: TJSONArray;
 begin
   if (Length(AMembers) = 0) and (ADefaultProperty = '') then
   begin
     Exit(nil);
   end;
   Result := TJSONObject.Create;
-  Items := TJSONArray.Create;
-  Result.AddPair('members', Items);
-  for Member in AMembers do
+  mItems := TJSONArray.Create;
+  Result.AddPair('members', mItems);
+  for mMember in AMembers do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Member.Name);
-    if Member.TypeName <> '' then
-    begin
-      Item.AddPair('type', Member.TypeName);
-    end;
-    if Member.DefaultValue <> '' then
-    begin
-      Item.AddPair('default', Member.DefaultValue);
-    end;
-    if KindNames[Member.DefaultKind] <> '' then
-    begin
-      Item.AddPair('defaultKind', KindNames[Member.DefaultKind]);
-    end;
-    if Member.Stored <> '' then
-    begin
-      Item.AddPair('stored', Member.Stored);
-    end;
-    if Member.DeclaringClass <> '' then
-    begin
-      Item.AddPair('declaringClass', Member.DeclaringClass);
-    end;
-    if Member.PublishedIn <> '' then
-    begin
-      Item.AddPair('publishedIn', Member.PublishedIn);
-    end;
-    if Member.IsEvent then
-    begin
-      Item.AddPair('event', TJSONTrue.Create);
-    end;
-    Items.AddElement(Item);
+    mItems.AddElement(MemberJson(mMember));
   end;
-  if ADefaultProperty <> '' then
-  begin
-    Result.AddPair('defaultProperty', ADefaultProperty);
-  end;
+  AddText(Result, 'defaultProperty', ADefaultProperty);
 end;
 
 end.
