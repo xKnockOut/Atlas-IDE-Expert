@@ -74,7 +74,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Deprecated,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.DiagnosticItems;
 
 const
   UnitWerkzeug =
@@ -554,7 +554,7 @@ begin
   Finding := Default(TRuleFinding);
   Finding.RuleId := DeprecatedSymbolRuleId;
   Finding.Message := 'Alt ist deprecated: Nutze Neu (wie W1000).';
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('[2]', Item.GetValue('tags').ToJSON);
   finally
@@ -562,14 +562,14 @@ begin
   end;
   // platform ist nicht veraltet und wird nicht durchgestrichen.
   Finding.Message := 'Grenze ist platform (wie W1002).';
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.IsNull(Item.GetValue('tags'));
   finally
     Item.Free;
   end;
   Finding.RuleId := 'unused-variable';
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.IsNull(Item.GetValue('tags'));
   finally
