@@ -26,6 +26,8 @@ type
     FMessage: TProc<string>;
   private
     class procedure RunWith(ATryKind: TAtlasTryKind); static;
+    class function Followed(const AFileName, ANewText, ALineBreak: string; const AEdit: TAtlasStatementEdit;
+      var ACursorLine, ACursorCharacter: Integer): string; static;
   public
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage zeigt eine Zeile in der Meldungsansicht.</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
@@ -95,53 +97,155 @@ begin
   end;
 end;
 
-/// <summary>Code-Aktion mit ATag an ALine, ACharacter für AText (dem Server vorher geschickt) angewandt; False
-/// ohne Aktion. ACursorLine verschiebt sich um die Zeilen, die vor ihr dazukommen.</summary>
-function WithServerAction(const ASession: TLspSession; const AFileName, AText, ALineBreak, ATag: string;
-  ALine, ACharacter: Integer; var ACursorLine: Integer; out AResult: string): Boolean;
+type
+  /// <summary>Code-Aktion mit Tag an Position für Text (dem Server vorher geschickt) in FileName; Zeilenumbrüche
+  /// wie LineBreak.</summary>
+  TActionRequest = record
+    FileName: string;
+    Text: string;
+    LineBreak: string;
+    Tag: string;
+    Position: TLspTextPosition;
+  end;
+
+/// <summary>Änderungen der ersten nutzbaren Code-Aktion von ARequest in ihrer Datei; False ohne.</summary>
+function ActionEdits(const ASession: TLspSession; const ARequest: TActionRequest;
+  out AEdits: TArray<TLspTextEdit>): Boolean;
 var
-  Actions: TArray<TLspCodeAction>;
-  Action: TLspCodeAction;
-  Files: TLspFileEdits;
-  Edits: TArray<TLspTextEdit>;
-  Index, Shift: Integer;
+  mAction: TLspCodeAction;
+  mFiles: TLspFileEdits;
 begin
-  Result := False;
-  AResult := AText;
-  ASession.Sync(AFileName, AText);
-  Actions := ASession.CodeActions(AFileName, TLspRange.Create(ALine, ACharacter, ALine, ACharacter));
-  for Action in Actions do
+  AEdits := nil;
+  ASession.Sync(ARequest.FileName, ARequest.Text);
+  for mAction in ASession.CodeActions(ARequest.FileName, TLspRange.Create(ARequest.Position.Line,
+    ARequest.Position.Character, ARequest.Position.Line, ARequest.Position.Character)) do
   begin
-    if SameText(Action.Tag, ATag) and (Action.Disabled = '') then
+    if SameText(mAction.Tag, ARequest.Tag) and (mAction.Disabled = '') then
     begin
-      Edits := nil;
-      for Files in Action.Edit.Files do
+      for mFiles in mAction.Edit.Files do
       begin
-        if SameText(Files.FileName, AFileName) then
+        if SameText(mFiles.FileName, ARequest.FileName) then
         begin
-          Edits := Edits + Files.Edits;
+          AEdits := AEdits + mFiles.Edits;
         end;
       end;
-      if Length(Edits) = 0 then
-      begin
-        Exit;
-      end;
-      Shift := 0;
-      for Index := 0 to High(Edits) do
-      begin
-        // Zeilenumbrüche wie im Puffer.
-        Edits[Index].NewText := StringReplace(StringReplace(Edits[Index].NewText, #13#10, #10, [rfReplaceAll]),
-          #10, ALineBreak, [rfReplaceAll]);
-        if Edits[Index].EndPos.Line < ACursorLine then
-        begin
-          Inc(Shift, LineCount(Edits[Index].NewText) - (Edits[Index].EndPos.Line - Edits[Index].StartPos.Line));
-        end;
-      end;
-      AResult := TLspEdits.Apply(AText, Edits);
-      Inc(ACursorLine, Shift);
-      Exit(True);
+      Break;
     end;
   end;
+  Result := Length(AEdits) > 0;
+end;
+
+/// <summary>Code-Aktion von ARequest angewandt; False ohne Aktion. ACursorLine verschiebt sich um die Zeilen, die
+/// vor ihr dazukommen.</summary>
+function WithServerAction(const ASession: TLspSession; const ARequest: TActionRequest; var ACursorLine: Integer;
+  out AResult: string): Boolean;
+var
+  mEdits: TArray<TLspTextEdit>;
+  mIndex, mShift: Integer;
+begin
+  AResult := ARequest.Text;
+  Result := ActionEdits(ASession, ARequest, mEdits);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mShift := 0;
+  for mIndex := 0 to High(mEdits) do
+  begin
+    // Zeilenumbrüche wie im Puffer.
+    mEdits[mIndex].NewText := StringReplace(StringReplace(mEdits[mIndex].NewText, #13#10, #10, [rfReplaceAll]),
+      #10, ARequest.LineBreak, [rfReplaceAll]);
+    if mEdits[mIndex].EndPos.Line < ACursorLine then
+    begin
+      Inc(mShift, LineCount(mEdits[mIndex].NewText) - (mEdits[mIndex].EndPos.Line - mEdits[mIndex].StartPos.Line));
+    end;
+  end;
+  AResult := TLspEdits.Apply(ARequest.Text, mEdits);
+  Inc(ACursorLine, mShift);
+end;
+
+/// <summary>Kennung der Code-Aktion, die AFollowUp nachliefert ('' ohne).</summary>
+function FollowUpTag(AFollowUp: TAtlasStatementFollowUp): string;
+begin
+  Result := '';
+  if AFollowUp = TAtlasStatementFollowUp.MethodBody then
+  begin
+    Result := ClassBodiesTag;
+  end
+  else if AFollowUp = TAtlasStatementFollowUp.CaseBranches then
+  begin
+    Result := CaseCompleteTag;
+  end;
+end;
+
+/// <summary>Fläche, über der die Auswahl erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
+function PaletteArea: TRect;
+begin
+  if Screen.ActiveForm <> nil then
+  begin
+    Result := Screen.ActiveForm.BoundsRect;
+  end
+  else if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.BoundsRect;
+  end
+  else
+  begin
+    Result := Screen.WorkAreaRect;
+  end;
+end;
+
+/// <summary>Gerüst nach try erfragen und damit vervollständigen.</summary>
+procedure ChooseTryKind;
+var
+  mCommands: TArray<TAtlasCommand>;
+  mCommand: TAtlasCommand;
+  mWindow: TAtlasPaletteWindow;
+begin
+  mCommand := Default(TAtlasCommand);
+  mCommand.Id := 'finally';
+  mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally);
+  mCommands := [mCommand];
+  mCommand.Id := 'except';
+  mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept);
+  mCommands := mCommands + [mCommand];
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, mCommands, nil, TAtlasIdeStyle.Colors);
+  mWindow.KeepOrder := True;
+  mWindow.OnExecute :=
+    procedure(AChosen: TAtlasCommand)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          if AChosen.Id = 'except' then
+          begin
+            TAtlasIdeStatementCompletion.RunWith(TAtlasTryKind.TryExcept);
+          end
+          else
+          begin
+            TAtlasIdeStatementCompletion.RunWith(TAtlasTryKind.TryFinally);
+          end;
+        end);
+    end;
+  mWindow.ShowOver(PaletteArea);
+end;
+
+/// <summary>Cursor auf Zeile ALine (ab 0), Zeichen ACharacter in ALines; nichts, wenn es die Zeile nicht gibt.
+/// </summary>
+procedure PlaceCursor(const AView: IOTAEditView; const ALines: TArray<string>; ALine, ACharacter,
+  ATabWidth: Integer);
+var
+  mTarget: TOTAEditPos;
+begin
+  if (ALine < 0) or (ALine > High(ALines)) then
+  begin
+    Exit;
+  end;
+  mTarget.Line := ALine + 1;
+  mTarget.Col := TLspSession.IndexToColumn(ALines[ALine], ACharacter, ATabWidth);
+  AView.CursorPos := mTarget;
+  AView.MoveViewToCursor;
+  AView.Paint;
 end;
 
 { TAtlasIdeStatementCompletion }
@@ -183,165 +287,110 @@ end;
 
 class procedure TAtlasIdeStatementCompletion.Run;
 var
-  View: IOTAEditView;
-  Commands: TArray<TAtlasCommand>;
-  Command: TAtlasCommand;
-  Window: TAtlasPaletteWindow;
-  Area: TRect;
+  mView: IOTAEditView;
 begin
-  if not Enabled then
-  begin
-    Exit;
-  end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
   begin
     Exit;
   end;
   if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
   begin
     RunWith(TAtlasTryKind.TryExcept);
-    Exit;
-  end;
-  if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.TryKindAsk) or
-    not TAtlasStatementCompleter.NeedsTryKind(TAtlasEditorBuffer.Text(View.Buffer), View.CursorPos.Line - 1) then
+  end
+  else if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.TryKindAsk) or
+    not TAtlasStatementCompleter.NeedsTryKind(TAtlasEditorBuffer.Text(mView.Buffer), mView.CursorPos.Line - 1) then
   begin
     RunWith(TAtlasTryKind.TryFinally);
-    Exit;
-  end;
-  // Gerüst nach try erfragen.
-  Command := Default(TAtlasCommand);
-  Command.Id := 'finally';
-  Command.Caption := TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryFinally);
-  Commands := [Command];
-  Command.Id := 'except';
-  Command.Caption := TAtlasStrings.Text(TAtlasTextId.CompleteStatementTryExcept);
-  Commands := Commands + [Command];
-  Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
-  Window.KeepOrder := True;
-  Window.OnExecute :=
-    procedure(AChosen: TAtlasCommand)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
-        procedure
-        begin
-          if AChosen.Id = 'except' then
-          begin
-            RunWith(TAtlasTryKind.TryExcept);
-          end
-          else
-          begin
-            RunWith(TAtlasTryKind.TryFinally);
-          end;
-        end);
-    end;
-  if Screen.ActiveForm <> nil then
-  begin
-    Area := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
   end
   else
   begin
-    Area := Screen.WorkAreaRect;
+    ChooseTryKind;
   end;
-  Window.ShowOver(Area);
+end;
+
+/// <summary>Rumpf bzw. Zweige vom Server, auf den ergänzten Text ANewText; ohne Server oder Antwort bleibt es beim
+/// Gerüst.</summary>
+class function TAtlasIdeStatementCompletion.Followed(const AFileName, ANewText, ALineBreak: string;
+  const AEdit: TAtlasStatementEdit; var ACursorLine, ACursorCharacter: Integer): string;
+var
+  mRequest: TActionRequest;
+  mSession: TLspSession;
+  mLines: TArray<string>;
+begin
+  Result := ANewText;
+  mRequest.FileName := AFileName;
+  mRequest.Text := ANewText;
+  mRequest.LineBreak := ALineBreak;
+  mRequest.Tag := FollowUpTag(AEdit.FollowUp);
+  mRequest.Position := TLspTextPosition.Create(AEdit.FollowLine, AEdit.FollowCharacter);
+  mSession := nil;
+  if (mRequest.Tag <> '') and Assigned(FSessionOf) then
+  begin
+    mSession := FSessionOf();
+  end;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  try
+    if WithServerAction(mSession, mRequest, ACursorLine, Result) and
+      (AEdit.FollowUp = TAtlasStatementFollowUp.CaseBranches) then
+    begin
+      mLines := Result.Split([#13#10, #10]);
+      if TAtlasStatementCompleter.AfterCaseBranches(mLines, ACursorLine, ACursorCharacter) then
+      begin
+        Result := string.Join(ALineBreak, mLines);
+      end;
+    end;
+  except
+    on E: ELspClientError do
+      if Assigned(FMessage) then
+      begin
+        FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      end;
+    on E: ELspEditError do
+      if Assigned(FMessage) then
+      begin
+        FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+      end;
+  end;
 end;
 
 class procedure TAtlasIdeStatementCompletion.RunWith(ATryKind: TAtlasTryKind);
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Session: TLspSession;
-  Text, LineBreak, NewText, Final, Insert, Tag: string;
-  Lines, NewLines: TArray<string>;
-  Edit: TAtlasStatementEdit;
-  TabWidth, CursorLine, CursorCharacter, Start, OldLength: Integer;
-  Target: TOTAEditPos;
+  mView: IOTAEditView;
+  mText, mLineBreak, mFinal, mInsert: string;
+  mEdit: TAtlasStatementEdit;
+  mCursorLine, mCursorCharacter, mStart, mOldLength: Integer;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if not Enabled or (View = nil) or (View.Buffer = nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
   begin
     Exit;
   end;
-  Buffer := View.Buffer;
-  if Buffer.IsReadOnly then
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mLineBreak := #10;
+  if Pos(#13#10, mText) > 0 then
+  begin
+    mLineBreak := #13#10;
+  end;
+  if not TAtlasStatementCompleter.Complete(mText, mView.CursorPos.Line - 1,
+    Options(TAtlasEditorBuffer.BlockIndent(mView.Buffer), ATryKind), mEdit) then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
+  mCursorLine := mEdit.CursorLine;
+  mCursorCharacter := mEdit.CursorCharacter;
+  mFinal := Followed(mView.Buffer.FileName, string.Join(mLineBreak,
+    TAtlasStatementCompleter.Apply(mText.Split([#13#10, #10]), mEdit)), mLineBreak, mEdit, mCursorLine,
+    mCursorCharacter);
+  if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
   begin
-    LineBreak := #13#10;
+    WriteBuffer(mView.Buffer, mText, mStart, mOldLength, mInsert);
   end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  if not TAtlasStatementCompleter.Complete(Text, View.CursorPos.Line - 1,
-    Options(TAtlasEditorBuffer.BlockIndent(Buffer), ATryKind), Edit) then
-  begin
-    Exit;
-  end;
-  NewLines := TAtlasStatementCompleter.Apply(Lines, Edit);
-  NewText := string.Join(LineBreak, NewLines);
-  Final := NewText;
-  CursorLine := Edit.CursorLine;
-  CursorCharacter := Edit.CursorCharacter;
-  // Rumpf bzw. Zweige vom Server, auf den ergänzten Text.
-  Tag := '';
-  if Edit.FollowUp = TAtlasStatementFollowUp.MethodBody then
-  begin
-    Tag := ClassBodiesTag;
-  end
-  else if Edit.FollowUp = TAtlasStatementFollowUp.CaseBranches then
-  begin
-    Tag := CaseCompleteTag;
-  end;
-  Session := nil;
-  if (Tag <> '') and Assigned(FSessionOf) then
-  begin
-    Session := FSessionOf();
-  end;
-  if Session <> nil then
-    try
-      if WithServerAction(Session, Buffer.FileName, NewText, LineBreak, Tag, Edit.FollowLine,
-        Edit.FollowCharacter, CursorLine, Final) and (Edit.FollowUp = TAtlasStatementFollowUp.CaseBranches) then
-      begin
-        NewLines := Final.Split([#13#10, #10]);
-        if TAtlasStatementCompleter.AfterCaseBranches(NewLines, CursorLine, CursorCharacter) then
-        begin
-          Final := string.Join(LineBreak, NewLines);
-        end;
-      end;
-    except
-      // Ohne Antwort bleibt es beim Gerüst.
-      on E: ELspClientError do
-        if Assigned(FMessage) then
-        begin
-          FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-        end;
-      on E: ELspEditError do
-        if Assigned(FMessage) then
-        begin
-          FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-        end;
-    end;
-  NewLines := Final.Split([#13#10, #10]);
-  if TAtlasLineMover.Difference(Text, Final, Start, OldLength, Insert) then
-  begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
-  end;
-  if (CursorLine < 0) or (CursorLine > High(NewLines)) then
-  begin
-    Exit;
-  end;
-  Target.Line := CursorLine + 1;
-  Target.Col := TLspSession.IndexToColumn(NewLines[CursorLine], CursorCharacter, TabWidth);
-  View.CursorPos := Target;
-  View.MoveViewToCursor;
-  View.Paint;
+  PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
+    TAtlasEditorBuffer.TabWidth(mView.Buffer));
 end;
 
 end.

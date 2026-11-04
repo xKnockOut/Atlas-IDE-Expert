@@ -114,6 +114,8 @@ type
     function CreateRuler: TAtlasOverviewRuler;
     procedure Place(ARuler: TAtlasOverviewRuler; AParent: TWinControl);
     procedure Update;
+    procedure RefreshSearch(const AView: IOTAEditView; const ATerm, AKey: string; AMatching: Boolean;
+      const AOptions: TAtlasSelectionMatchOptions);
     function Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
     procedure Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
     procedure Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
@@ -279,103 +281,155 @@ begin
   AMarks := nil;
 end;
 
+function ProblemKind(ASeverity: TAtlasProblemSeverity): TAtlasOverviewMarkKind;
+begin
+  case ASeverity of
+    TAtlasProblemSeverity.Error:
+      Result := TAtlasOverviewMarkKind.Error;
+    TAtlasProblemSeverity.Warning:
+      Result := TAtlasOverviewMarkKind.Warning;
+  else
+    Result := TAtlasOverviewMarkKind.Info;
+  end;
+end;
+
+/// <summary>Befunde der Datei ohne inaktive Zweige und uses-Einträge (die sind keine Befunde).</summary>
+function DiagnosticMarks(const AFileName: string): TAtlasOverviewMarks;
+var
+  mStore: TAtlasProblemStore;
+  mProblem: TAtlasProblem;
+begin
+  Result := nil;
+  mStore := TAtlasProblemsController.Current;
+  if mStore = nil then
+  begin
+    Exit;
+  end;
+  for mProblem in mStore.ForFile(AFileName) do
+  begin
+    if not mProblem.Unnecessary and (mProblem.UsesUnit = '') then
+    begin
+      Result := Result + [TAtlasOverviewMark.Create(ProblemKind(mProblem.Severity), mProblem.StartLine,
+        Max(1, mProblem.EndLine - mProblem.StartLine + 1), mProblem.Message)];
+    end;
+  end;
+end;
+
+function SearchMarks(const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
+var
+  mLine: Integer;
+begin
+  Result := nil;
+  for mLine in ASearchLines do
+  begin
+    Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, mLine, 1,
+      TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [ASearchTerm]))];
+  end;
+end;
+
+function ChangeMark(const AChange: TAtlasLineChange; ALineCount: Integer): TAtlasOverviewMark;
+begin
+  case AChange.Kind of
+    TAtlasLineChangeKind.Added:
+      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, AChange.Line, AChange.Count,
+        TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
+    TAtlasLineChangeKind.Modified:
+      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, AChange.Line, AChange.Count,
+        TAtlasStrings.Text(TAtlasTextId.OverviewModified));
+  else
+    Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted, Min(AChange.Line, Max(0, ALineCount - 1)), 1,
+      TAtlasStrings.Text(TAtlasTextId.OverviewDeleted));
+  end;
+end;
+
+/// <summary>Änderungen, wenn sie zum Stand mit ALineCount Zeilen gehören.</summary>
+function ChangeMarks(const AFileName: string; ALineCount: Integer): TAtlasOverviewMarks;
+var
+  mChanges: TAtlasLineChangeList;
+  mChange: TAtlasLineChange;
+  mChangeLines: Integer;
+begin
+  Result := nil;
+  if TAtlasIdeLineChanges.Snapshot(AFileName, mChanges, mChangeLines) and (mChangeLines = ALineCount) then
+  begin
+    for mChange in mChanges do
+    begin
+      Result := Result + [ChangeMark(mChange, ALineCount)];
+    end;
+  end;
+end;
+
+function BreakpointMarks(const AFileName: string): TAtlasOverviewMarks;
+var
+  mServices: IOTADebuggerServices;
+  mBreakpoint: IOTASourceBreakpoint;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mServices := Debugger;
+  if mServices = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
+  begin
+    mBreakpoint := mServices.SourceBkpts[mIndex];
+    if (mBreakpoint <> nil) and SameText(mBreakpoint.FileName, AFileName) and (mBreakpoint.LineNumber > 0) then
+    begin
+      Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, mBreakpoint.LineNumber - 1,
+        1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
+    end;
+  end;
+end;
+
+/// <summary>Lesezeichen eines Moduls (#1455), sonst die Lesezeichen 0–9 der IDE.</summary>
+function BookmarkMarks(const AView: IOTAEditView; const AFileName: string): TAtlasOverviewMarks;
+var
+  mBookmark: TOTACharPos;
+  mIndex: Integer;
+begin
+  if ModuleBookmarks(AFileName, Result) then
+  begin
+    Exit;
+  end;
+  Result := nil;
+  for mIndex := 0 to BookmarkCount - 1 do
+  begin
+    mBookmark := AView.BookmarkPos[mIndex];
+    if mBookmark.Line > 0 then
+    begin
+      Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, mBookmark.Line - 1, 1,
+        TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [mIndex]))];
+    end;
+  end;
+end;
+
 class function TAtlasIdeOverviewRuler.CollectMarks(const AView: IOTAEditView; ALineCount: Integer;
   AKinds: TAtlasOverviewKinds; const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
 var
-  Store: TAtlasProblemStore;
-  Problem: TAtlasProblem;
-  Kind: TAtlasOverviewMarkKind;
-  Changes: TAtlasLineChangeList;
-  Change: TAtlasLineChange;
-  ChangeLines, Line, Index: Integer;
-  Services: IOTADebuggerServices;
-  Breakpoint: IOTASourceBreakpoint;
-  Bookmark: TOTACharPos;
-  FileName: string;
-  Own: TAtlasOverviewMarks;
+  mFileName: string;
 begin
   Result := nil;
-  FileName := AView.Buffer.FileName;
+  mFileName := AView.Buffer.FileName;
   if TAtlasOverviewKind.Diagnostics in AKinds then
   begin
-    Store := TAtlasProblemsController.Current;
-    if Store <> nil then
-    begin
-      for Problem in Store.ForFile(FileName) do
-      begin
-        // Inaktive Zweige und uses-Einträge sind keine Befunde.
-        if Problem.Unnecessary or (Problem.UsesUnit <> '') then
-        begin
-          Continue;
-        end;
-        case Problem.Severity of
-          TAtlasProblemSeverity.Error:
-            Kind := TAtlasOverviewMarkKind.Error;
-          TAtlasProblemSeverity.Warning:
-            Kind := TAtlasOverviewMarkKind.Warning;
-        else
-          Kind := TAtlasOverviewMarkKind.Info;
-        end;
-        Result := Result + [TAtlasOverviewMark.Create(Kind, Problem.StartLine,
-          Max(1, Problem.EndLine - Problem.StartLine + 1), Problem.Message)];
-      end;
-    end;
+    Result := Result + DiagnosticMarks(mFileName);
   end;
   if (TAtlasOverviewKind.Search in AKinds) and (ASearchTerm <> '') then
   begin
-    for Line in ASearchLines do
-    begin
-      Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, Line, 1,
-        TAtlasStrings.Fmt(TAtlasTextId.OverviewSearch, [ASearchTerm]))];
-    end;
+    Result := Result + SearchMarks(ASearchTerm, ASearchLines);
   end;
-  if (TAtlasOverviewKind.Changes in AKinds) and TAtlasIdeLineChanges.Snapshot(FileName, Changes, ChangeLines) and
-    (ChangeLines = ALineCount) then
+  if TAtlasOverviewKind.Changes in AKinds then
   begin
-    for Change in Changes do
-      case Change.Kind of
-        TAtlasLineChangeKind.Added:
-          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, Change.Line, Change.Count,
-            TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle))];
-        TAtlasLineChangeKind.Modified:
-          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, Change.Line, Change.Count,
-            TAtlasStrings.Text(TAtlasTextId.OverviewModified))];
-      else
-        Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted,
-          Min(Change.Line, Max(0, ALineCount - 1)), 1, TAtlasStrings.Text(TAtlasTextId.OverviewDeleted))];
-      end;
+    Result := Result + ChangeMarks(mFileName, ALineCount);
   end;
   if TAtlasOverviewKind.Breakpoints in AKinds then
   begin
-    Services := Debugger;
-    if Services <> nil then
-    begin
-      for Index := 0 to Services.SourceBkptCount - 1 do
-      begin
-        Breakpoint := Services.SourceBkpts[Index];
-        if (Breakpoint <> nil) and SameText(Breakpoint.FileName, FileName) and (Breakpoint.LineNumber > 0) then
-        begin
-          Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Breakpoint, Breakpoint.LineNumber - 1,
-            1, TAtlasStrings.Text(TAtlasTextId.OverviewBreakpoint))];
-        end;
-      end;
-    end;
+    Result := Result + BreakpointMarks(mFileName);
   end;
-  if (TAtlasOverviewKind.Bookmarks in AKinds) and ModuleBookmarks(FileName, Own) then
+  if TAtlasOverviewKind.Bookmarks in AKinds then
   begin
-    Result := Result + Own;
-  end
-  else if TAtlasOverviewKind.Bookmarks in AKinds then
-  begin
-    for Index := 0 to BookmarkCount - 1 do
-    begin
-      Bookmark := AView.BookmarkPos[Index];
-      if Bookmark.Line > 0 then
-      begin
-        Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Bookmark, Bookmark.Line - 1, 1,
-          TAtlasStrings.Fmt(TAtlasTextId.OverviewBookmark, [Index]))];
-      end;
-    end;
+    Result := Result + BookmarkMarks(AView, mFileName);
   end;
   if TAtlasOverviewKind.Cursor in AKinds then
   begin
@@ -384,88 +438,107 @@ begin
   end;
 end;
 
-procedure TOverviewState.Update;
+/// <summary>Suchtext aus der einzeiligen Markierung von AView ('' ohne); mit „Gleichen Text hervorheben“
+/// (AMatching) nach dessen Optionen AOptions, AKey beschreibt sie.</summary>
+function SearchTermOf(const AView: IOTAEditView; AKinds: TAtlasOverviewKinds; out AMatching: Boolean;
+  out AOptions: TAtlasSelectionMatchOptions; out AKey: string): string;
 var
-  Ruler: TAtlasOverviewRuler;
-  View: IOTAEditView;
-  Block: IOTAEditBlock;
-  Text, Term, Key: string;
-  LineCount: Integer;
-  Matching, NavigateF3: Boolean;
-  Options: TAtlasSelectionMatchOptions;
+  mBlock: IOTAEditBlock;
+  mNavigateF3: Boolean;
 begin
-  FHost.Ensure;
-  Ruler := ActiveRuler;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (Ruler = nil) or (View = nil) or (View.Buffer = nil) then
+  Result := '';
+  AMatching := TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3);
+  AKey := '';
+  if AMatching then
+  begin
+    AKey := Format('%d|%d|%d|%d', [AOptions.MinLength, Ord(AOptions.CaseSensitive), Ord(AOptions.WholeWord),
+      AOptions.MaxMatches]);
+  end;
+  if not (TAtlasOverviewKind.Search in AKinds) then
   begin
     Exit;
   end;
-  LineCount := View.Buffer.GetLinesInBuffer;
-  // Suchtext aus der Markierung (einzeilig); nur dann kostet der Text des Puffers etwas.
-  Term := '';
-  Matching := TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3);
-  Key := '';
-  if Matching then
+  mBlock := AView.Block;
+  if (mBlock = nil) or not mBlock.IsValid or (mBlock.Size <= 0) or (mBlock.StartingRow <> mBlock.EndingRow) then
   begin
-    Key := Format('%d|%d|%d|%d', [Options.MinLength, Ord(Options.CaseSensitive), Ord(Options.WholeWord),
-      Options.MaxMatches]);
+    Exit;
   end;
-  if TAtlasOverviewKind.Search in FKinds then
+  if AMatching then
   begin
-    Block := View.Block;
-    if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
-    begin
-      if Matching then
-      begin
-        TAtlasSelectionMatches.Term(Block.Text, Options, Term);
-      end
-      else
-      begin
-        TAtlasOverview.SearchTerm(Block.Text, Term);
-      end;
-    end;
+    TAtlasSelectionMatches.Term(mBlock.Text, AOptions, Result);
+  end
+  else
+  begin
+    TAtlasOverview.SearchTerm(mBlock.Text, Result);
   end;
-  if not SameText(FFileName, View.Buffer.FileName) then
+end;
+
+/// <summary>Treffer von ATerm neu suchen: neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause; nur
+/// dann kostet der Text des Puffers etwas.</summary>
+procedure TOverviewState.RefreshSearch(const AView: IOTAEditView; const ATerm, AKey: string; AMatching: Boolean;
+  const AOptions: TAtlasSelectionMatchOptions);
+var
+  mText: string;
+begin
+  if not SameText(FFileName, AView.Buffer.FileName) then
   begin
-    FFileName := View.Buffer.FileName;
+    FFileName := AView.Buffer.FileName;
     FText := '';
     FSearchText := '';
     FSearchLines := nil;
     FChangedAt := 0;
   end;
-  if Term = '' then
+  if ATerm = '' then
   begin
     FSearchTerm := '';
     FSearchLines := nil;
+    Exit;
+  end;
+  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  if mText <> FText then
+  begin
+    FText := mText;
+    FChangedAt := TThread.GetTickCount64;
+  end;
+  if (ATerm = FSearchTerm) and (AKey = FSearchOptions) and
+    ((FText = FSearchText) or (TThread.GetTickCount64 - FChangedAt < QuietMs)) then
+  begin
+    Exit;
+  end;
+  FLines := TTextLines.SplitLines(FText);
+  if AMatching then
+  begin
+    FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, ATerm, AOptions));
   end
   else
   begin
-    Text := TAtlasEditorBuffer.Text(View.Buffer);
-    if Text <> FText then
-    begin
-      FText := Text;
-      FChangedAt := TThread.GetTickCount64;
-    end;
-    // Neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause.
-    if (Term <> FSearchTerm) or (Key <> FSearchOptions) or
-      ((FText <> FSearchText) and (TThread.GetTickCount64 - FChangedAt >= QuietMs)) then
-    begin
-      FLines := TTextLines.SplitLines(FText);
-      if Matching then
-      begin
-        FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, Term, Options));
-      end
-      else
-      begin
-        FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
-      end;
-      FSearchOptions := Key;
-      FSearchTerm := Term;
-      FSearchText := FText;
-    end;
+    FSearchLines := TAtlasOverview.Occurrences(FLines, ATerm);
   end;
-  Ruler.SetMarks(Collect(View, LineCount), LineCount, View.TopRow - 1, View.BottomRow - 1);
+  FSearchOptions := AKey;
+  FSearchTerm := ATerm;
+  FSearchText := FText;
+end;
+
+procedure TOverviewState.Update;
+var
+  mRuler: TAtlasOverviewRuler;
+  mView: IOTAEditView;
+  mTerm, mKey: string;
+  mLineCount: Integer;
+  mMatching: Boolean;
+  mOptions: TAtlasSelectionMatchOptions;
+begin
+  FHost.Ensure;
+  mRuler := ActiveRuler;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mRuler = nil) or (mView = nil) or (mView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  mLineCount := mView.Buffer.GetLinesInBuffer;
+  mTerm := SearchTermOf(mView, FKinds, mMatching, mOptions, mKey);
+  RefreshSearch(mView, mTerm, mKey, mMatching, mOptions);
+  mRuler.SetMarks(Collect(mView, mLineCount), mLineCount, mView.TopRow - 1, mView.BottomRow - 1);
   // Vorschau nach kurzer Zeit über der Marke.
   if (FHoverRuler <> nil) and (FHoverLine >= 0) and not FTip.IsShown and
     (TThread.GetTickCount64 - FHoverSince >= HoverMs) then

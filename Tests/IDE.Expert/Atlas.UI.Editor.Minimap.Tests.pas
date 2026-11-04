@@ -55,7 +55,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Syntax,
   Atlas.Core.Editor.Overview,
-  Atlas.Core.Editor.Minimap;
+  Atlas.Core.Editor.Minimap,
+  Atlas.UI.Editor.MinimapLayers;
 
 type
   TViewAccess = class(TAtlasMinimapView);
@@ -248,12 +249,12 @@ var
   Colors: TAtlasColors;
 begin
   Colors := TAtlasColors.Dark;
-  Assert.AreNotEqual(Integer(TAtlasMinimapView.TokenColor(Colors, TAtlasTokenKind.Keyword)),
-    Integer(TAtlasMinimapView.TokenColor(Colors, TAtlasTokenKind.Comment)));
-  Assert.AreNotEqual(Integer(TAtlasMinimapView.TokenColor(Colors, TAtlasTokenKind.Plain)),
-    Integer(TAtlasMinimapView.TokenColor(Colors, TAtlasTokenKind.StringLiteral)));
-  Assert.AreNotEqual(Integer(TAtlasMinimapView.TokenColor(TAtlasColors.Light, TAtlasTokenKind.Plain)),
-    Integer(TAtlasMinimapView.TokenColor(Colors, TAtlasTokenKind.Plain)), 'helles und dunkles Thema');
+  Assert.AreNotEqual(Integer(TAtlasMinimapCode.TokenColor(Colors, TAtlasTokenKind.Keyword)),
+    Integer(TAtlasMinimapCode.TokenColor(Colors, TAtlasTokenKind.Comment)));
+  Assert.AreNotEqual(Integer(TAtlasMinimapCode.TokenColor(Colors, TAtlasTokenKind.Plain)),
+    Integer(TAtlasMinimapCode.TokenColor(Colors, TAtlasTokenKind.StringLiteral)));
+  Assert.AreNotEqual(Integer(TAtlasMinimapCode.TokenColor(TAtlasColors.Light, TAtlasTokenKind.Plain)),
+    Integer(TAtlasMinimapCode.TokenColor(Colors, TAtlasTokenKind.Plain)), 'helles und dunkles Thema');
 end;
 
 end.
