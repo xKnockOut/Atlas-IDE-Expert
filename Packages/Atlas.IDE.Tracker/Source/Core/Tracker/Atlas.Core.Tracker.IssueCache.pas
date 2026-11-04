@@ -103,6 +103,192 @@ begin
   end;
 end;
 
+function LabelsJson(const ALabels: TArray<string>): TJSONArray;
+var
+  mText: string;
+begin
+  Result := TJSONArray.Create;
+  for mText in ALabels do
+  begin
+    Result.Add(mText);
+  end;
+end;
+
+function CommentsJson(const AComments: TArray<TAtlasTrackerComment>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mComment: TAtlasTrackerComment;
+begin
+  Result := TJSONArray.Create;
+  for mComment in AComments do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('author', mComment.Author);
+    mItem.AddPair('created', IsoOf(mComment.Created));
+    mItem.AddPair('text', mComment.Text);
+    Result.AddElement(mItem);
+  end;
+end;
+
+function AttachmentsJson(const AAttachments: TArray<TAtlasTrackerAttachment>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mAttachment: TAtlasTrackerAttachment;
+begin
+  Result := TJSONArray.Create;
+  for mAttachment in AAttachments do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mAttachment.Name);
+    mItem.AddPair('size', TJSONNumber.Create(mAttachment.Size));
+    // Signierte Adressen (YouTrack "?sign=…") nicht auf die Platte.
+    mItem.AddPair('url', WithoutQuery(mAttachment.Url));
+    mItem.AddPair('mimeType', mAttachment.MimeType);
+    mItem.AddPair('external', TJSONBool.Create(mAttachment.External));
+    Result.AddElement(mItem);
+  end;
+end;
+
+function LinksJson(const ALinks: TArray<TAtlasTrackerLink>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mLink: TAtlasTrackerLink;
+begin
+  Result := TJSONArray.Create;
+  for mLink in ALinks do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('key', mLink.Key);
+    mItem.AddPair('title', mLink.Title);
+    mItem.AddPair('relation', mLink.Relation);
+    mItem.AddPair('page', mLink.Page);
+    mItem.AddPair('local', TJSONBool.Create(mLink.Local));
+    mItem.AddPair('kind', TAtlasTrackerLink.KindKey(mLink.Kind));
+    mItem.AddPair('stateKnown', TJSONBool.Create(mLink.StateKnown));
+    mItem.AddPair('linkState', mLink.State);
+    mItem.AddPair('resolved', TJSONBool.Create(mLink.Resolved));
+    Result.AddElement(mItem);
+  end;
+end;
+
+function LabelsOf(AValue: TJSONValue): TArray<string>;
+var
+  mEntry: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mEntry in TJSONArray(AValue) do
+    begin
+      if mEntry is TJSONString then
+      begin
+        Result := Result + [TJSONString(mEntry).Value];
+      end;
+    end;
+  end;
+end;
+
+function CommentOf(AItem: TJSONObject): TAtlasTrackerComment;
+begin
+  Result := Default(TAtlasTrackerComment);
+  Result.Author := AItem.GetValue<string>('author', '');
+  Result.Created := TimeOf(AItem, 'created');
+  Result.Text := AItem.GetValue<string>('text', '');
+end;
+
+function CommentsOf(AValue: TJSONValue): TArray<TAtlasTrackerComment>;
+var
+  mEntry: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mEntry in TJSONArray(AValue) do
+    begin
+      if mEntry is TJSONObject then
+      begin
+        Result := Result + [CommentOf(TJSONObject(mEntry))];
+      end;
+    end;
+  end;
+end;
+
+function AttachmentOf(AItem: TJSONObject): TAtlasTrackerAttachment;
+begin
+  Result := Default(TAtlasTrackerAttachment);
+  Result.Name := AItem.GetValue<string>('name', '');
+  Result.Size := AItem.GetValue<Int64>('size', -1);
+  Result.Url := AItem.GetValue<string>('url', '');
+  Result.MimeType := AItem.GetValue<string>('mimeType', '');
+  Result.External := AItem.GetValue<Boolean>('external', False);
+end;
+
+function AttachmentsOf(AValue: TJSONValue): TArray<TAtlasTrackerAttachment>;
+var
+  mEntry: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mEntry in TJSONArray(AValue) do
+    begin
+      if mEntry is TJSONObject then
+      begin
+        Result := Result + [AttachmentOf(TJSONObject(mEntry))];
+      end;
+    end;
+  end;
+end;
+
+function LinkOf(AItem: TJSONObject): TAtlasTrackerLink;
+begin
+  Result := Default(TAtlasTrackerLink);
+  Result.Key := AItem.GetValue<string>('key', '');
+  Result.Title := AItem.GetValue<string>('title', '');
+  Result.Relation := AItem.GetValue<string>('relation', '');
+  Result.Page := AItem.GetValue<string>('page', '');
+  Result.Local := AItem.GetValue<Boolean>('local', False);
+  Result.Kind := TAtlasTrackerLink.KindOf(AItem.GetValue<string>('kind', ''));
+  Result.StateKnown := AItem.GetValue<Boolean>('stateKnown', False);
+  Result.State := AItem.GetValue<string>('linkState', '');
+  Result.Resolved := AItem.GetValue<Boolean>('resolved', False);
+end;
+
+function LinksOf(AValue: TJSONValue): TArray<TAtlasTrackerLink>;
+var
+  mEntry: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mEntry in TJSONArray(AValue) do
+    begin
+      if mEntry is TJSONObject then
+      begin
+        Result := Result + [LinkOf(TJSONObject(mEntry))];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Einfache Felder (ohne Kennung und Listen) aus ARoot.</summary>
+procedure ReadFields(ARoot: TJSONObject; var ADetails: TAtlasTrackerDetails);
+begin
+  ADetails.Number := ARoot.GetValue<Integer>('number', 0);
+  ADetails.Title := ARoot.GetValue<string>('title', '');
+  ADetails.Page := ARoot.GetValue<string>('page', '');
+  ADetails.State := ARoot.GetValue<string>('state', '');
+  ADetails.Priority := ARoot.GetValue<string>('priority', '');
+  ADetails.Kind := ARoot.GetValue<string>('kind', '');
+  ADetails.Assignee := ARoot.GetValue<string>('assignee', '');
+  ADetails.Sprint := ARoot.GetValue<string>('sprint', '');
+  ADetails.Created := TimeOf(ARoot, 'created');
+  ADetails.Updated := TimeOf(ARoot, 'updated');
+  ADetails.Description := ARoot.GetValue<string>('description', '');
+  ADetails.CommentsLoaded := ARoot.GetValue<Boolean>('commentsLoaded', False);
+  ADetails.Fetched := TimeOf(ARoot, 'fetched');
+end;
+
 { TAtlasTrackerIssueCache }
 
 constructor TAtlasTrackerIssueCache.Create(const AFolder: string);
@@ -165,12 +351,7 @@ end;
 
 class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;
 var
-  mRoot, mItem: TJSONObject;
-  mList: TJSONArray;
-  mText: string;
-  mComment: TAtlasTrackerComment;
-  mAttachment: TAtlasTrackerAttachment;
-  mLink: TAtlasTrackerLink;
+  mRoot: TJSONObject;
 begin
   mRoot := TJSONObject.Create;
   try
@@ -184,55 +365,14 @@ begin
     mRoot.AddPair('kind', ADetails.Kind);
     mRoot.AddPair('assignee', ADetails.Assignee);
     mRoot.AddPair('sprint', ADetails.Sprint);
-    mList := TJSONArray.Create;
-    for mText in ADetails.Labels do
-    begin
-      mList.Add(mText);
-    end;
-    mRoot.AddPair('labels', mList);
+    mRoot.AddPair('labels', LabelsJson(ADetails.Labels));
     mRoot.AddPair('created', IsoOf(ADetails.Created));
     mRoot.AddPair('updated', IsoOf(ADetails.Updated));
     mRoot.AddPair('description', ADetails.Description);
     mRoot.AddPair('commentsLoaded', TJSONBool.Create(ADetails.CommentsLoaded));
-    mList := TJSONArray.Create;
-    for mComment in ADetails.Comments do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('author', mComment.Author);
-      mItem.AddPair('created', IsoOf(mComment.Created));
-      mItem.AddPair('text', mComment.Text);
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('comments', mList);
-    mList := TJSONArray.Create;
-    for mAttachment in ADetails.Attachments do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('name', mAttachment.Name);
-      mItem.AddPair('size', TJSONNumber.Create(mAttachment.Size));
-      // Signierte Adressen (YouTrack "?sign=…") nicht auf die Platte.
-      mItem.AddPair('url', WithoutQuery(mAttachment.Url));
-      mItem.AddPair('mimeType', mAttachment.MimeType);
-      mItem.AddPair('external', TJSONBool.Create(mAttachment.External));
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('attachments', mList);
-    mList := TJSONArray.Create;
-    for mLink in ADetails.Links do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('key', mLink.Key);
-      mItem.AddPair('title', mLink.Title);
-      mItem.AddPair('relation', mLink.Relation);
-      mItem.AddPair('page', mLink.Page);
-      mItem.AddPair('local', TJSONBool.Create(mLink.Local));
-      mItem.AddPair('kind', TAtlasTrackerLink.KindKey(mLink.Kind));
-      mItem.AddPair('stateKnown', TJSONBool.Create(mLink.StateKnown));
-      mItem.AddPair('linkState', mLink.State);
-      mItem.AddPair('resolved', TJSONBool.Create(mLink.Resolved));
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('links', mList);
+    mRoot.AddPair('comments', CommentsJson(ADetails.Comments));
+    mRoot.AddPair('attachments', AttachmentsJson(ADetails.Attachments));
+    mRoot.AddPair('links', LinksJson(ADetails.Links));
     mRoot.AddPair('fetched', IsoOf(ADetails.Fetched));
     Result := mRoot.ToJSON;
   finally
@@ -242,11 +382,8 @@ end;
 
 class function TAtlasTrackerIssueCache.FromJson(const AJson: string; out ADetails: TAtlasTrackerDetails): Boolean;
 var
-  mValue, mEntry: TJSONValue;
-  mRoot, mItem: TJSONObject;
-  mComment: TAtlasTrackerComment;
-  mAttachment: TAtlasTrackerAttachment;
-  mLink: TAtlasTrackerLink;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   Result := False;
@@ -272,82 +409,11 @@ begin
     begin
       Exit;
     end;
-    ADetails.Number := mRoot.GetValue<Integer>('number', 0);
-    ADetails.Title := mRoot.GetValue<string>('title', '');
-    ADetails.Page := mRoot.GetValue<string>('page', '');
-    ADetails.State := mRoot.GetValue<string>('state', '');
-    ADetails.Priority := mRoot.GetValue<string>('priority', '');
-    ADetails.Kind := mRoot.GetValue<string>('kind', '');
-    ADetails.Assignee := mRoot.GetValue<string>('assignee', '');
-    ADetails.Sprint := mRoot.GetValue<string>('sprint', '');
-    if mRoot.Values['labels'] is TJSONArray then
-    begin
-      for mEntry in TJSONArray(mRoot.Values['labels']) do
-      begin
-        if mEntry is TJSONString then
-        begin
-          ADetails.Labels := ADetails.Labels + [TJSONString(mEntry).Value];
-        end;
-      end;
-    end;
-    ADetails.Created := TimeOf(mRoot, 'created');
-    ADetails.Updated := TimeOf(mRoot, 'updated');
-    ADetails.Description := mRoot.GetValue<string>('description', '');
-    ADetails.CommentsLoaded := mRoot.GetValue<Boolean>('commentsLoaded', False);
-    if mRoot.Values['comments'] is TJSONArray then
-    begin
-      for mEntry in TJSONArray(mRoot.Values['comments']) do
-      begin
-        if mEntry is TJSONObject then
-        begin
-          mItem := TJSONObject(mEntry);
-          mComment := Default(TAtlasTrackerComment);
-          mComment.Author := mItem.GetValue<string>('author', '');
-          mComment.Created := TimeOf(mItem, 'created');
-          mComment.Text := mItem.GetValue<string>('text', '');
-          ADetails.Comments := ADetails.Comments + [mComment];
-        end;
-      end;
-    end;
-    if mRoot.Values['attachments'] is TJSONArray then
-    begin
-      for mEntry in TJSONArray(mRoot.Values['attachments']) do
-      begin
-        if mEntry is TJSONObject then
-        begin
-          mItem := TJSONObject(mEntry);
-          mAttachment := Default(TAtlasTrackerAttachment);
-          mAttachment.Name := mItem.GetValue<string>('name', '');
-          mAttachment.Size := mItem.GetValue<Int64>('size', -1);
-          mAttachment.Url := mItem.GetValue<string>('url', '');
-          mAttachment.MimeType := mItem.GetValue<string>('mimeType', '');
-          mAttachment.External := mItem.GetValue<Boolean>('external', False);
-          ADetails.Attachments := ADetails.Attachments + [mAttachment];
-        end;
-      end;
-    end;
-    if mRoot.Values['links'] is TJSONArray then
-    begin
-      for mEntry in TJSONArray(mRoot.Values['links']) do
-      begin
-        if mEntry is TJSONObject then
-        begin
-          mItem := TJSONObject(mEntry);
-          mLink := Default(TAtlasTrackerLink);
-          mLink.Key := mItem.GetValue<string>('key', '');
-          mLink.Title := mItem.GetValue<string>('title', '');
-          mLink.Relation := mItem.GetValue<string>('relation', '');
-          mLink.Page := mItem.GetValue<string>('page', '');
-          mLink.Local := mItem.GetValue<Boolean>('local', False);
-          mLink.Kind := TAtlasTrackerLink.KindOf(mItem.GetValue<string>('kind', ''));
-          mLink.StateKnown := mItem.GetValue<Boolean>('stateKnown', False);
-          mLink.State := mItem.GetValue<string>('linkState', '');
-          mLink.Resolved := mItem.GetValue<Boolean>('resolved', False);
-          ADetails.Links := ADetails.Links + [mLink];
-        end;
-      end;
-    end;
-    ADetails.Fetched := TimeOf(mRoot, 'fetched');
+    ReadFields(mRoot, ADetails);
+    ADetails.Labels := LabelsOf(mRoot.Values['labels']);
+    ADetails.Comments := CommentsOf(mRoot.Values['comments']);
+    ADetails.Attachments := AttachmentsOf(mRoot.Values['attachments']);
+    ADetails.Links := LinksOf(mRoot.Values['links']);
     Result := True;
   finally
     mValue.Free;
