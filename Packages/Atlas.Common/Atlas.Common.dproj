@@ -506,6 +506,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatusTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas"/>
