@@ -59,7 +59,6 @@ type
     /// <summary>Compilermeldungen einordnen (Schnellbefehl im Editor).</summary>
     procedure RegisterClassifyCommand(ACommands: TLspCommands);
     property Baseline: TLspBaseline read FBaseline;
-    property BulkFix: TLspBulkFix read FBulkFix;
     property CompilerBaseline: TLspCompilerBaseline read FCompilerBaseline;
   end;
 

@@ -147,6 +147,8 @@ type
     [Test]
     procedure ConstantFromOtherUnit;
     [Test]
+    procedure OverloadedMethodsOfOtherUnit;
+    [Test]
     procedure ZeroForPointer;
     [Test]
     procedure ReadingAndShadowingAreSilent;
@@ -1135,6 +1137,26 @@ begin
   Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual('Standard ist eine typisierte Konstante und wird verändert (wie W1017).', Found[0].Message);
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+/// <summary>Überladene Methode einer Klasse aus einer anderen Unit: Die erste Überladung hat an der Stelle der
+/// Konstante einen var-Parameter, die aufgerufene nicht. Ohne eindeutige Überladung keine Meldung.</summary>
+procedure TTypedConstantModifiedTests.OverloadedMethodsOfOtherUnit;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Leser;'#10'interface'#10'type'#10'  TLeser = class'#10 +
+    '    procedure Lies(const A: array of Integer; var B: Integer); overload;'#10 +
+    '    procedure Lies(const A, B: array of Integer; var C: Integer); overload;'#10 +
+    '    procedure Tausche(var A: Integer);'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Leser.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TTypedConstantModifiedRule.Create, 'unit Zaehlen;'#10'interface'#10 +
+    'uses'#10'  Leser;'#10'implementation'#10'const'#10'  Glieder: array[0..1] of Integer = (1, 2);'#10 +
+    '  Zaehler: Integer = 0;'#10'procedure Zaehle(ALeser: TLeser);'#10'var'#10'  X: Integer;'#10'begin'#10 +
+    '  ALeser.Lies(Glieder, Glieder, X);'#10'  ALeser.Tausche(Zaehler);'#10'end;'#10'end.',
+    mIndex, '', 'Zaehlen.pas');
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).'#10, Messages(mFound));
 end;
 
 procedure TTypedConstantModifiedTests.ZeroForPointer;
