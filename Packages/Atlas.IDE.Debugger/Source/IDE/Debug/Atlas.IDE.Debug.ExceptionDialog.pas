@@ -60,6 +60,10 @@ type
     procedure SafetyTick(Sender: TObject);
     procedure Unhide;
     procedure Tick(Sender: TObject);
+    /// <summary>Gefunden: Takt anhalten und OnFound rufen.</summary>
+    procedure NotifyFound;
+    /// <summary>Offene Fenster durchsuchen; True, wenn der Dialog gefunden und gemeldet ist.</summary>
+    function ScanOpenForms: Boolean;
     function ScanForm(AForm: TCustomForm): Boolean;
     procedure Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
       var AButtonControls: TArray<TControl>);
@@ -257,6 +261,20 @@ begin
   FScan := Default(TAtlasDebugDialogScan);
 end;
 
+/// <summary>Text eines Beschriftungs- oder Eingabefelds; '' bei anderen Steuerelementen.</summary>
+function TextOf(AChild: TControl): string;
+begin
+  Result := '';
+  if (AChild is TCustomLabel) or (AChild is TCustomStaticText) then
+  begin
+    Result := TControlAccess(AChild).Caption;
+  end
+  else if AChild is TCustomEdit then
+  begin
+    Result := TControlAccess(AChild).Text;
+  end;
+end;
+
 procedure TAtlasIdeExceptionDialog.Collect(AControl: TWinControl; var ATexts, AButtons: TArray<string>;
   var AButtonControls: TArray<TControl>);
 var
@@ -276,17 +294,9 @@ begin
       AButtons := AButtons + [TControlAccess(Child).Caption];
       AButtonControls := AButtonControls + [Child];
     end
-    else if (Child is TCustomLabel) or (Child is TCustomStaticText) then
+    else
     begin
-      Text := TControlAccess(Child).Caption;
-      if Text <> '' then
-      begin
-        ATexts := ATexts + [Text];
-      end;
-    end
-    else if Child is TCustomEdit then
-    begin
-      Text := TControlAccess(Child).Text;
+      Text := TextOf(Child);
       if Text <> '' then
       begin
         ATexts := ATexts + [Text];
@@ -326,17 +336,31 @@ begin
   end;
 end;
 
-procedure TAtlasIdeExceptionDialog.Tick(Sender: TObject);
+procedure TAtlasIdeExceptionDialog.NotifyFound;
+var
+  Found: TAtlasDebugDialogFound;
+begin
+  FTimer.Enabled := False;
+  FArmed := False;
+  Found := FOnFound;
+  FOnFound := nil;
+  FOnTimeout := nil;
+  if Assigned(Found) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Debugger,
+      procedure
+      begin
+        Found(FScan);
+      end);
+  end;
+end;
+
+function TAtlasIdeExceptionDialog.ScanOpenForms: Boolean;
 var
   Index: Integer;
   Form: TCustomForm;
-  Found: TAtlasDebugDialogFound;
-  Timeout: TProc;
 begin
-  if not FTimer.Enabled then
-  begin
-    Exit;
-  end;
+  Result := False;
   for Index := 0 to Screen.CustomFormCount - 1 do
   begin
     Form := Screen.CustomForms[Index];
@@ -351,21 +375,19 @@ begin
     end;
     if ScanForm(Form) then
     begin
-      FTimer.Enabled := False;
-      FArmed := False;
-      Found := FOnFound;
-      FOnFound := nil;
-      FOnTimeout := nil;
-      if Assigned(Found) then
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Debugger,
-          procedure
-          begin
-            Found(FScan);
-          end);
-      end;
-      Exit;
+      NotifyFound;
+      Exit(True);
     end;
+  end;
+end;
+
+procedure TAtlasIdeExceptionDialog.Tick(Sender: TObject);
+var
+  Timeout: TProc;
+begin
+  if not FTimer.Enabled or ScanOpenForms then
+  begin
+    Exit;
   end;
   if not FArmed and (TThread.GetTickCount64 - FStartedAt >= WatchMs) then
   begin

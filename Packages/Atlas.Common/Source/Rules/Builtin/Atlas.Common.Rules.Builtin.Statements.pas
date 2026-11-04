@@ -1483,8 +1483,7 @@ var
     OfPos: TTextPosition;
     Slot: TCaseBranchSlot;
     TypeName, Prefix, LabelText: string;
-    Edits: TArray<TTextEdit>;
-    Count: Integer;
+    Completion: TCaseCompletionEdits;
     Fixes: TArray<TRuleFix>;
   begin
     if ACase.ChildCount = 0 then
@@ -1522,9 +1521,9 @@ var
       end;
     end;
     Fixes := nil;
-    if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, Values, Prefix, Edits, Count, HasElse) then
+    if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, Values, Prefix, Completion) then
     begin
-      Fixes := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [Count]), Edits)];
+      Fixes := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [Completion.Count]), Completion.Edits)];
     end;
     AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), Format('Fehlende Werte von %s: %s.',
       [TypeName, string.Join(', ', Absent)]), TRuleConfidence.High, Fixes);

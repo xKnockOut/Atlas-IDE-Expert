@@ -206,19 +206,20 @@ function CompleteText(const AText, APrefix: string; out ACount: Integer; out AHa
 var
   Tree: TSyntaxTree;
   CaseNode: TSyntaxNode;
-  Edits: TArray<TTextEdit>;
+  Completion: TCaseCompletionEdits;
 begin
   ACount := 0;
   AHasElse := False;
   Tree := TPascalParser.Parse(AText);
   try
     CaseNode := TCaseCompletion.CaseAt(Tree, TTextPosition.Create(3, 4));
-    if (CaseNode = nil) or not TCaseCompletion.Complete(AText, Tree, CaseNode, AlignValues, APrefix, Edits, ACount,
-      AHasElse) then
+    if (CaseNode = nil) or not TCaseCompletion.Complete(AText, Tree, CaseNode, AlignValues, APrefix, Completion) then
     begin
       Exit('-');
     end;
-    Result := TChangeSignature.ApplyEdits(AText, Edits);
+    ACount := Completion.Count;
+    AHasElse := Completion.HasElse;
+    Result := TChangeSignature.ApplyEdits(AText, Completion.Edits);
   finally
     Tree.Free;
   end;

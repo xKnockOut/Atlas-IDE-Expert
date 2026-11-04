@@ -419,69 +419,80 @@ begin
   end;
 end;
 
+/// <summary>Je Eintrag eine Zeile der Palette; ohne Einträge eine Zeile „leer“.</summary>
+function ListCommands(const AEntries: TArray<TAtlasNavListEntry>): TArray<TAtlasCommand>;
+var
+  mCommand: TAtlasCommand;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AEntries) do
+  begin
+    mCommand := Default(TAtlasCommand);
+    mCommand.Id := IntToStr(mIndex);
+    mCommand.Caption := ExtractFileName(AEntries[mIndex].Place.FileName) + ':' +
+      IntToStr(AEntries[mIndex].Place.Line);
+    mCommand.Path := AEntries[mIndex].Place.Excerpt;
+    mCommand.ShortCut := KindText(AEntries[mIndex].Kind) + ' · ' +
+      FormatDateTime('hh":"nn', AEntries[mIndex].Place.Time);
+    Result := Result + [mCommand];
+  end;
+  if Length(Result) = 0 then
+  begin
+    mCommand := Default(TAtlasCommand);
+    mCommand.Caption := TAtlasStrings.Text(TAtlasTextId.NavEmpty);
+    Result := [mCommand];
+  end;
+end;
+
+/// <summary>Fläche, über der die Palette erscheint: aktives Formular, Hauptfenster oder Arbeitsfläche.</summary>
+function PaletteArea: TRect;
+begin
+  if Screen.ActiveForm <> nil then
+  begin
+    Result := Screen.ActiveForm.BoundsRect;
+  end
+  else if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.BoundsRect;
+  end
+  else
+  begin
+    Result := Screen.WorkAreaRect;
+  end;
+end;
+
 class procedure TAtlasIdeNavHistory.ShowList;
 var
-  Entries: TArray<TAtlasNavListEntry>;
-  Commands: TArray<TAtlasCommand>;
-  Command: TAtlasCommand;
-  Index: Integer;
-  Window: TAtlasPaletteWindow;
-  Area: TRect;
+  mEntries: TArray<TAtlasNavListEntry>;
+  mWindow: TAtlasPaletteWindow;
 begin
   if (State = nil) or not Enabled then
   begin
     Exit;
   end;
-  Entries := State.History.Entries;
-  Commands := nil;
-  for Index := 0 to High(Entries) do
-  begin
-    Command := Default(TAtlasCommand);
-    Command.Id := IntToStr(Index);
-    Command.Caption := ExtractFileName(Entries[Index].Place.FileName) + ':' + IntToStr(Entries[Index].Place.Line);
-    Command.Path := Entries[Index].Place.Excerpt;
-    Command.ShortCut := KindText(Entries[Index].Kind) + ' · ' + FormatDateTime('hh":"nn', Entries[Index].Place.Time);
-    Commands := Commands + [Command];
-  end;
-  if Length(Commands) = 0 then
-  begin
-    Command := Default(TAtlasCommand);
-    Command.Caption := TAtlasStrings.Text(TAtlasTextId.NavEmpty);
-    Commands := [Command];
-  end;
-  Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
-  Window.Prompt := TAtlasStrings.Text(TAtlasTextId.NavListPrompt);
-  Window.KeepOrder := True;
-  Window.OnExecute :=
+  mEntries := State.History.Entries;
+  mWindow := TAtlasPaletteWindow.CreatePalette(Application, ListCommands(mEntries), nil, TAtlasIdeStyle.Colors);
+  mWindow.Prompt := TAtlasStrings.Text(TAtlasTextId.NavListPrompt);
+  mWindow.KeepOrder := True;
+  mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)
     var
-      Chosen: Integer;
-      Here, Target: TAtlasNavPlace;
+      mChosen: Integer;
+      mHere, mTarget: TAtlasNavPlace;
     begin
-      Chosen := StrToIntDef(ACommand.Id, -1);
-      if (State = nil) or (Chosen < 0) or (Chosen > High(Entries)) then
+      mChosen := StrToIntDef(ACommand.Id, -1);
+      if (State = nil) or (mChosen < 0) or (mChosen > High(mEntries)) then
       begin
         Exit;
       end;
-      Current(Here);
-      if State.History.Jump(Entries[Chosen], Here, Target) then
+      Current(mHere);
+      if State.History.Jump(mEntries[mChosen], mHere, mTarget) then
       begin
-        GoTo_(Target);
+        GoTo_(mTarget);
       end;
     end;
-  if Screen.ActiveForm <> nil then
-  begin
-    Area := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Area := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Area := Screen.WorkAreaRect;
-  end;
-  Window.ShowOver(Area);
+  mWindow.ShowOver(PaletteArea);
 end;
 
 end.

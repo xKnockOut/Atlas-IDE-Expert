@@ -60,9 +60,14 @@ type
     FBreakpoint: IOTABreakpoint;
     FStartedAt: Cardinal;
     procedure Tick(Sender: TObject);
+    procedure TickStarting(const AServices: IOTADebuggerServices);
+    procedure TickRunning(const AServices: IOTADebuggerServices);
     /// <summary>Bauen bzw. starten; False mit Grund, wenn es nicht geht (beschäftigt, Plattform, Build abgelehnt).
     /// </summary>
     function Prepare(const AProject: IOTAProject; out AReason: string): Boolean;
+    /// <summary>Build anstossen; False mit Grund, wenn der Build-Dienst ablehnt.</summary>
+    function StartBuild(out AReason: string): Boolean;
+    procedure BuildDone(ASucceeded: Boolean; const AOutputFile, AError: string);
     procedure Launch(const AExecutable: string);
     procedure Finish(AStarted: Boolean);
     procedure SetBreakpoint;
@@ -429,10 +434,6 @@ begin
 end;
 
 function TAtlasIdeTestDebugger.Prepare(const AProject: IOTAProject; out AReason: string): Boolean;
-var
-  Alive: TAlive;
-  Keep: IInterface;
-  Reason: string;
 begin
   AReason := '';
   Result := False;
@@ -460,41 +461,60 @@ begin
   if not FTests.CanBuild then
   begin
     Launch('');
-    Exit;
-  end;
-  Alive := FAlive;
-  Keep := FAliveRef;
-  if not FTests.BuildProject(FTarget.Project,
-    procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
-    begin
-      if (Keep = nil) or not Alive.Alive or (FPhase <> TPhase.Building) then
-      begin
-        Exit;
-      end;
-      if AError <> '' then
-      begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
-        Finish(False);
-      end
-      else if not ASucceeded then
-      begin
-        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
-        Finish(False);
-      end
-      else
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            Launch(AOutputFile);
-          end);
-      end;
-    end, Reason) then
+  end
+  else if not StartBuild(AReason) then
   begin
-    AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), Reason]);
     FPhase := TPhase.Idle;
     FTests.Debugging := False;
     Result := False;
+  end;
+end;
+
+function TAtlasIdeTestDebugger.StartBuild(out AReason: string): Boolean;
+var
+  mAlive: TAlive;
+  mKeep: IInterface;
+  mReason: string;
+begin
+  AReason := '';
+  mAlive := FAlive;
+  mKeep := FAliveRef;
+  Result := FTests.BuildProject(FTarget.Project,
+    procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
+    begin
+      if (mKeep <> nil) and mAlive.Alive and (FPhase = TPhase.Building) then
+      begin
+        BuildDone(ASucceeded, AOutputFile, AError);
+      end;
+    end, mReason);
+  if not Result then
+  begin
+    AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), mReason]);
+  end;
+end;
+
+procedure TAtlasIdeTestDebugger.BuildDone(ASucceeded: Boolean; const AOutputFile, AError: string);
+var
+  mOutputFile: string;
+begin
+  mOutputFile := AOutputFile;
+  if AError <> '' then
+  begin
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
+    Finish(False);
+  end
+  else if not ASucceeded then
+  begin
+    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
+    Finish(False);
+  end
+  else
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Build,
+      procedure
+      begin
+        Launch(mOutputFile);
+      end);
   end;
 end;
 
@@ -616,42 +636,50 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
     var
-      Services: IOTADebuggerServices;
-      Process: IOTAProcess;
+      mServices: IOTADebuggerServices;
     begin
-      Services := Debugger;
+      mServices := Debugger;
       case FPhase of
         TPhase.Starting:
-          if (Services <> nil) and (Services.ProcessCount > 0) then
-          begin
-            FPhase := TPhase.Running;
-          end
-          // Schneller als ein Takt gelaufen: der Bericht ist schon da.
-          else if (FXmlFile <> '') and FileExists(FXmlFile) then
-          begin
-            Finish(True);
-          end
-          else if GetTickCount - FStartedAt > TAtlasTestDebug.StartTimeoutMs then
-          begin
-            Finish(False);
-          end;
+          TickStarting(mServices);
         TPhase.Running:
-          begin
-            if (Services = nil) or (Services.ProcessCount = 0) then
-            begin
-              Finish(True);
-              Exit;
-            end;
-            // Einmaliger Haltepunkt: nach dem ersten Halt entfernen.
-            Process := Services.CurrentProcess;
-            if (FBreakpoint <> nil) and (Process <> nil) and
-              (Process.ProcessState in [psStopped, psFault, psException]) then
-            begin
-              RemoveBreakpoint;
-            end;
-          end;
+          TickRunning(mServices);
       end;
     end);
+end;
+
+procedure TAtlasIdeTestDebugger.TickStarting(const AServices: IOTADebuggerServices);
+begin
+  if (AServices <> nil) and (AServices.ProcessCount > 0) then
+  begin
+    FPhase := TPhase.Running;
+  end
+  // Schneller als ein Takt gelaufen: der Bericht ist schon da.
+  else if (FXmlFile <> '') and FileExists(FXmlFile) then
+  begin
+    Finish(True);
+  end
+  else if GetTickCount - FStartedAt > TAtlasTestDebug.StartTimeoutMs then
+  begin
+    Finish(False);
+  end;
+end;
+
+procedure TAtlasIdeTestDebugger.TickRunning(const AServices: IOTADebuggerServices);
+var
+  mProcess: IOTAProcess;
+begin
+  if (AServices = nil) or (AServices.ProcessCount = 0) then
+  begin
+    Finish(True);
+    Exit;
+  end;
+  // Einmaliger Haltepunkt: nach dem ersten Halt entfernen.
+  mProcess := AServices.CurrentProcess;
+  if (FBreakpoint <> nil) and (mProcess <> nil) and (mProcess.ProcessState in [psStopped, psFault, psException]) then
+  begin
+    RemoveBreakpoint;
+  end;
 end;
 
 procedure TAtlasIdeTestDebugger.Finish(AStarted: Boolean);
