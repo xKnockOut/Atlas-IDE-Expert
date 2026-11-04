@@ -89,7 +89,7 @@ procedure TMcpIdeEditsTests.WritesItselfWhenNobodyTakesTheRequest;
 var
   Reason: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, 'C:\P\A.pas', 'alt', 'neu',
+  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
@@ -102,7 +102,7 @@ var
   Reason, Seen: string;
   Json: TJSONValue;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, 'C:\P\A.pas', 'alt', 'neu',
+  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
@@ -123,13 +123,13 @@ procedure TMcpIdeEditsTests.WritesItselfWhenTheFileIsNoLongerOpen;
 var
   Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, 'C:\P\A.pas', 'alt', 'neu',
+  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
       Plugin(FInbox, '{"applied":false,"notOpen":true,"reason":"nicht offen"}', Seen);
     end, Clock, Reason) = TMcpIdeEditOutcome.WriteYourself);
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, 'C:\P\A.pas', 'alt', 'neu',
+  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 100);
@@ -142,7 +142,7 @@ procedure TMcpIdeEditsTests.FailsWhenTakenButNeverAnswered;
 var
   Reason, Seen: string;
 begin
-  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, 'C:\P\A.pas', 'alt', 'neu',
+  Assert.IsTrue(TMcpIdeEdits.Send(FInbox, TMcpIdeEdit.Make('C:\P\A.pas', 'alt', 'neu'),
     procedure
     begin
       Inc(Now_, 1000);

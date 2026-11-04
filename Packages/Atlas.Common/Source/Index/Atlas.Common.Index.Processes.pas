@@ -99,13 +99,33 @@ begin
     end;
 end;
 
+/// <summary>Ereignisse mit Text aus "events".</summary>
+function ReadEvents(AItems: TJSONArray): TArray<TIndexProcessEvent>;
+var
+  mValue: TJSONValue;
+  mEvent: TIndexProcessEvent;
+begin
+  Result := nil;
+  for mValue in AItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mEvent.Time := ReadTime(TJSONObject(mValue), 'time');
+    mEvent.Text := TJSONObject(mValue).GetValue<string>('text', '');
+    if mEvent.Text <> '' then
+    begin
+      Result := Result + [mEvent];
+    end;
+  end;
+end;
+
 class function TIndexProcessInfo.FromJson(const AText: string; out AInfo: TIndexProcessInfo): Boolean;
 var
   Root: TJSONValue;
   Item: TJSONObject;
   Items: TJSONArray;
-  Value: TJSONValue;
-  Event: TIndexProcessEvent;
   Pid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
@@ -131,18 +151,7 @@ begin
     AInfo.Started := ReadTime(Item, 'started');
     if Item.TryGetValue<TJSONArray>('events', Items) then
     begin
-      for Value in Items do
-      begin
-        if Value is TJSONObject then
-        begin
-          Event.Time := ReadTime(TJSONObject(Value), 'time');
-          Event.Text := TJSONObject(Value).GetValue<string>('text', '');
-          if Event.Text <> '' then
-          begin
-            AInfo.Events := AInfo.Events + [Event];
-          end;
-        end;
-      end;
+      AInfo.Events := ReadEvents(Items);
     end;
   finally
     Root.Free;

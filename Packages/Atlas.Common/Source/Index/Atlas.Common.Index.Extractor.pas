@@ -20,98 +20,76 @@
 // Vorwärtsdeklarationen (TFoo = class;) erscheinen nur, wenn die Unit den Typ
 // nicht vollständig deklariert. Sonst fänden Hover, Vererbungskette und
 // Gehe zu Definition die Vorwärtsdeklaration (ohne Vorfahren) statt des Typs.
+//
+// Tokens liest Atlas.Common.Index.Extractor.Tokens, Typtexte Atlas.Common.Index.Extractor.TypeText, bedingte
+// Kompilierung Atlas.Common.Index.Extractor.Conditions und inline-Rümpfe Atlas.Common.Index.Extractor.InlineRefs.
 
 interface
 
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Extractor.Tokens;
 
 type
-  TIndexExtractor = class
-  private
-    FTokens: TArray<TPascalToken>;
-    FSymbols: TList<TIndexSymbol>;
-    FInInterface: Boolean;
-    FVisibility: TIndexVisibility;
-    // Typargumente der Vorfahren für den nächsten Add aus AddType.
-    FAncestorArgs: TArray<string>;
-    // Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern in FSymbols.
-    FForward: Boolean;
+  /// <summary>Zustand beim Lesen der Deklarationen, den Add für das nächste Symbol braucht.</summary>
+  TIndexDeclarationState = record
+    InInterface: Boolean;
+    Visibility: TIndexVisibility;
+    /// <summary>Typargumente der Vorfahren für den nächsten Add aus AddType.</summary>
+    AncestorArgs: TArray<string>;
+    /// <summary>Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern.</summary>
+    IsForward: Boolean;
     /// <summary>Zweig des varianten Record-Teils, in dem AddMembers gerade steht (#846).</summary>
-    FVariant: string;
+    VariantBranch: string;
     /// <summary>AddMembers steht in einem Abschnitt "class var" (#1001).</summary>
-    FClassVar: Boolean;
-    FForwards: TList<Integer>;
+    ClassVar: Boolean;
     /// <summary>Der nächste Add gehört zu einer Aufzählung unter {$SCOPEDENUMS ON} (#849).</summary>
-    FScoped: Boolean;
-    /// <summary>Stellen der {$SCOPEDENUMS}-Schalter in FTokens (Offset, ON?); FScopedKnown nach dem ersten Lesen.
-    /// </summary>
-    FScopedOffsets: TArray<Integer>;
-    FScopedOn: TArray<Boolean>;
-    FScopedKnown: Boolean;
+    Scoped: Boolean;
     /// <summary>Nummer des Typs in FSymbols, dessen Rumpf AddMembers gerade liest; -1 ohne. Methodenzuordnungen
     /// landen in seinen Resolutions.</summary>
-    FResolutionOwner: Integer;
-    /// <summary>Gilt {$SCOPEDENUMS ON} an AOffset?</summary>
-    function ScopedAt(AOffset: Integer): Boolean;
-    function IsDefaultProperty(ANode: TSyntaxNode): Boolean;
-    /// <summary>Methodenkopf mit virtual, dynamic, abstract oder override?</summary>
-    class function IsVirtualHeader(ANode: TSyntaxNode): Boolean; static;
-    function TokenIndexAt(AOffset: Integer): Integer;
-    function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
-    function IsConstructor(ANode: TSyntaxNode): Boolean;
-    /// <summary>Beginnt die Deklaration mit "class" oder steht "class" direkt davor ("class property",
-    /// "class var" vor dem var-Abschnitt)?</summary>
-    function IsClassMember(ANode: TSyntaxNode): Boolean;
+    ResolutionOwner: Integer;
+  end;
+
+  TIndexExtractor = class
+  private
+    FReader: TIndexTokenReader;
+    FSymbols: TList<TIndexSymbol>;
+    FForwards: TList<Integer>;
+    FState: TIndexDeclarationState;
+    function NewSymbol(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind): TIndexSymbol;
+    /// <summary>Typ, Typargumente und Signatur.</summary>
+    procedure SetTypeInfo(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; const AName: string;
+      AKind: TIndexSymbolKind);
+    procedure SetParamInfo(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; AKind: TIndexSymbolKind);
+    procedure SetDirectives(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; AKind: TIndexSymbolKind;
+      const AContainer: string);
     procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
-      const AAncestors: TArray<string>); overload;
-    /// <summary>Wie oben ohne Vorfahren (AAncestors = nil).</summary>
-    procedure Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind); overload;
-    /// <summary>Tokens AFrom..ATo (ohne Kommentare und Compiler-Direktiven) als eine Zeile; mit
-    /// AFirstLine endet der Text am Ende der ersten Zeile außerhalb von Klammern.</summary>
-    function TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
-    function SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; const AName, ATypeText: string): string;
-    /// <summary>Prozedurtyp, den die Typdeklaration ANode deklariert (TEreignis = procedure … of object); nil bei
-    /// anderen Typen.</summary>
-    class function ProcedureTypeOf(ANode: TSyntaxNode): TSyntaxNode; static;
-    /// <summary>Art des Prozedurtyps AType (#1326): 'of object' bei Methodenzeigern, 'reference to' bei
-    /// Methodenreferenzen, sonst ''. Gelesen aus den Tokens, also unabhängig von Zeilenumbrüchen.</summary>
-    function ProcedureKindOf(AType: TSyntaxNode): string;
-    /// <summary>Direktiven der Deklaration; ADeprecatedText: Grund hinter deprecated 'Grund' (#38), sonst ''.
-    /// </summary>
-    function DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; out ADeprecatedText: string): TArray<string>;
-    function SummaryOf(ANode: TSyntaxNode): string;
+      const AAncestors: TArray<string>);
     procedure AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
+    procedure AddTypeSymbol(ADecl, ABody: TSyntaxNode; const AContainer: string);
+    procedure AddEnumMembers(ABody: TSyntaxNode; const AQualified: string);
+    /// <summary>Mitglieder des Rumpfs ABody; ACount: Nummer des Typs in FSymbols.</summary>
+    procedure AddBodyMembers(ABody: TSyntaxNode; const AQualified: string; ACount: Integer);
     procedure AddType(ADecl: TSyntaxNode; const AContainer: string);
     /// <summary>Hängt die Methodenzuordnung AHeader als "IFoo.Bar=Baz" an die Resolutions des Typs an.</summary>
     procedure AddResolution(AHeader: TSyntaxNode);
+    procedure AddHeader(AHeader: TSyntaxNode; const AContainer: string);
+    /// <summary>Zweig eines varianten Teils (#846); das Selektorfeld davor steht im äußeren Zweig.</summary>
+    procedure AddCaseItem(AItem: TSyntaxNode; const AContainer: string);
+    procedure AddMember(AChild: TSyntaxNode; const AContainer: string);
     procedure AddMembers(ABody: TSyntaxNode; const AContainer: string);
     procedure AddDeclarations(ANode: TSyntaxNode);
     procedure AddRoutine(ANode: TSyntaxNode);
     /// <summary>Vorwärtsdeklarationen entfernen, deren Typ in der Unit vollständig deklariert ist.</summary>
     procedure DropForwards;
-    /// <summary>Verweise des Rumpfs ANode einer inline-Routine (#1017), siehe TIndexSymbol.InlineRefs; nil, wenn
-    /// die Routine nicht einbettbar ist. AContainer: Klasse der Methode, '' bei freien Routinen.</summary>
-    function InlineRefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
-    /// <summary>Trägt InlineRefs an Deklaration und Implementierung der inline-Routinen aus ASection ein.</summary>
-    procedure AddInlineRefs(ASection: TSyntaxNode);
-    /// <summary>Typparameter des Typs AContainer (TList&lt;T&gt; → 'T'), '' ohne.</summary>
-    function ContainerParams(const AContainer: string): string;
-    procedure SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
-    /// <summary>Hinweise zwischen unit Name und ";" (#1018).</summary>
-    procedure AddUnitHints(var AUnit: TUnitIndex);
+    /// <summary>uses-Listen, Hinweise, Begründungen und Initialisierung der Unit.</summary>
+    procedure ReadUnitInfo(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
     procedure Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
-    class function UsesOf(ASection: TSyntaxNode): TArray<string>; static;
-    class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex; static;
-    class procedure AddIncluded(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; const AStack: TArray<string>; var AUnit: TUnitIndex); static;
   public
     /// <summary>Erster direkter Typverweis eines Knotens (A: TFoo, function F: TFoo); sonst ''.</summary>
     class function DeclaredType(ANode: TSyntaxNode): string; static;
@@ -121,8 +99,6 @@ type
     class function TypeText(ANode: TSyntaxNode): string; static;
     /// <summary>Typargumente eines Typverweises kommagetrennt ('' ohne).</summary>
     class function GenericArgsText(ATypeRef: TSyntaxNode): string; static;
-    /// <summary>Typparameter aus GenericParams eines Knotens kommagetrennt ('' ohne).</summary>
-    class function TypeParamsOf(ANode: TSyntaxNode): string; static;
     /// <summary>Parameterzahlen und -typen eines Routinenkopfs oder einer indizierten Property.</summary>
     class procedure ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>); static;
     constructor Create(const ATokens: TArray<TPascalToken>);
@@ -140,23 +116,8 @@ type
     /// <summary>Wie oben ohne $I-Dateien und Verwendungen (AResolver = nil, AUsages = False).</summary>
     class function ExtractText(const AText, AFileName: string; const ADefines: TArray<string>): TUnitIndex;
       overload; static;
-    /// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols
-    /// (#492), nach Name sortiert; Schlüsselwörter, Direktiven, Self und Result zählen nicht.</summary>
-    class function CollectUsages(const ATokens: TArray<TPascalToken>;
-      const ASymbols: TArray<TIndexSymbol>): TArray<TIndexUsage>; static;
     /// <summary>Ersetzt inaktive Zweige durch Leerzeichen; Zeilen und Spalten bleiben erhalten.</summary>
-    class function BlankInactive(const AText: string; const ADefines: TArray<string>): string; overload; static;
-    /// <summary>Wie oben, mit Include-Auflösung; AIncludes erhält die eingebundenen Dateien.</summary>
-    class function BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string; overload; static;
-    /// <summary>Wie oben, zusätzlich die bedingten Zweige der Hauptdatei (#476).</summary>
-    class function BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
-      const AResolver: TIncludeResolver; out AIncludes: TArray<string>;
-      out AConditionals: TArray<TConditionalRange>): string; overload; static;
-    /// <summary>Bedingungen an die Symbole schreiben und Deklarationen aus nicht geltenden Zweigen
-    /// als Unavailable erfassen (#476).</summary>
-    class procedure AnnotateConditions(var AUnit: TUnitIndex; const AText: string;
-      const AConditionals: TArray<TConditionalRange>); static;
+    class function BlankInactive(const AText: string; const ADefines: TArray<string>): string; static;
     /// <summary>Beginnt AName mit APrefix vor einem Großbuchstaben (FName, AValue, LIndex)?</summary>
     class function HasNamePrefix(const AName, APrefix: string): Boolean; static;
     /// <summary>Felder (auch in Records und var-Abschnitten von Klassen), Parameter und lokale Variablen
@@ -168,16 +129,16 @@ implementation
 
 uses
   System.StrUtils,
-  System.Math,
-  System.RegularExpressions,
   System.Generics.Defaults,
-  Atlas.Common.Pascal.XmlDoc,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Rationale.Scanner,
-  Atlas.Text.Lines;
+  Atlas.Common.Index.Extractor.TypeText,
+  Atlas.Common.Index.Extractor.Conditions,
+  Atlas.Common.Index.Extractor.InlineRefs;
 
 const
   // Direktiven nach Routinenköpfen und Hinweise (wie im Parser); zählen nicht als Verwendung.
@@ -187,30 +148,39 @@ const
     'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
     'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
     'virtual', 'winapi', 'delayed', 'sealed', 'nodefault');
-  HintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
+  /// <summary>Arten mit Typverweis (A: TFoo, function F: TFoo, TAlias = TFoo).</summary>
+  TypedKinds = [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
+    TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine];
+  /// <summary>Rümpfe mit Mitgliedern.</summary>
+  MemberBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType, TSyntaxKind.RecordType,
+    TSyntaxKind.InterfaceType];
+  /// <summary>Höchste Verschachtelung von $I-Dateien.</summary>
+  MaxIncludeDepth = 16;
+  /// <summary>Name des Hilfstyps, in den AddIncluded eine .inc aus einem Klassenrumpf einbettet (#849).</summary>
+  IncludeHost = 'TAtlasIncludeHost__';
 
 function VisibilityOf(const AText: string): TIndexVisibility;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := LowerCase(Trim(AText));
-  if Text = 'strict private' then
+  mText := LowerCase(Trim(AText));
+  if mText = 'strict private' then
   begin
     Result := TIndexVisibility.StrictPrivate;
   end
-  else if Text = 'private' then
+  else if mText = 'private' then
   begin
     Result := TIndexVisibility.Private;
   end
-  else if Text = 'strict protected' then
+  else if mText = 'strict protected' then
   begin
     Result := TIndexVisibility.StrictProtected;
   end
-  else if Text = 'protected' then
+  else if mText = 'protected' then
   begin
     Result := TIndexVisibility.Protected;
   end
-  else if Text = 'published' then
+  else if mText = 'published' then
   begin
     Result := TIndexVisibility.Published;
   end
@@ -220,163 +190,17 @@ begin
   end;
 end;
 
-function NodeRange(ANode: TSyntaxNode): TTextRange;
-begin
-  Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-end;
-
 function FileNameToUnitName(const AFileName: string): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Start := LastDelimiter('\/', AFileName) + 1;
-  Stop := LastDelimiter('.', AFileName);
-  if Stop < Start then
+  mStart := LastDelimiter('\/', AFileName) + 1;
+  mStop := LastDelimiter('.', AFileName);
+  if mStop < mStart then
   begin
-    Stop := Length(AFileName) + 1;
+    mStop := Length(AFileName) + 1;
   end;
-  Result := Copy(AFileName, Start, Stop - Start);
-end;
-
-{ TIndexExtractor }
-
-constructor TIndexExtractor.Create(const ATokens: TArray<TPascalToken>);
-begin
-  inherited Create;
-  FTokens := ATokens;
-  FSymbols := TList<TIndexSymbol>.Create;
-  FForwards := TList<Integer>.Create;
-  FResolutionOwner := -1;
-end;
-
-destructor TIndexExtractor.Destroy;
-begin
-  FForwards.Free;
-  FSymbols.Free;
-  inherited;
-end;
-
-function TIndexExtractor.TokenIndexAt(AOffset: Integer): Integer;
-var
-  Left, Right, Middle: Integer;
-begin
-  Left := 0;
-  Right := Length(FTokens);
-  while Left < Right do
-  begin
-    Middle := (Left + Right) div 2;
-    if FTokens[Middle].Offset < AOffset then
-    begin
-      Left := Middle + 1;
-    end
-    else
-    begin
-      Right := Middle;
-    end;
-  end;
-  Result := Left;
-end;
-
-function TIndexExtractor.ScopedAt(AOffset: Integer): Boolean;
-var
-  Token: TPascalToken;
-  Text: string;
-  Index: Integer;
-begin
-  if not FScopedKnown then
-  begin
-    FScopedKnown := True;
-    for Token in FTokens do
-    begin
-      if Token.Kind = TPascalTokenKind.Directive then
-      begin
-        Text := UpperCase(Token.Text);
-        if Text.StartsWith('{$SCOPEDENUMS') or Text.StartsWith('(*$SCOPEDENUMS') then
-        begin
-          Text := Trim(Copy(Text, Pos('SCOPEDENUMS', Text) + Length('SCOPEDENUMS'), MaxInt));
-          FScopedOffsets := FScopedOffsets + [Token.Offset];
-          FScopedOn := FScopedOn + [Text.StartsWith('ON')];
-        end;
-      end;
-    end;
-  end;
-  Result := False;
-  for Index := 0 to High(FScopedOffsets) do
-  begin
-    if FScopedOffsets[Index] < AOffset then
-    begin
-      Result := FScopedOn[Index];
-    end
-    else
-    begin
-      Break;
-    end;
-  end;
-end;
-
-function TIndexExtractor.NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
-var
-  Index: Integer;
-begin
-  Index := TokenIndexAt(ANode.StartOffset);
-  while (Index < Length(FTokens)) and (FTokens[Index].Offset < ANode.EndOffset) do
-  begin
-    if (FTokens[Index].Kind = TPascalTokenKind.Identifier) and
-      (SameText(FTokens[Index].Text, AName) or SameText(FTokens[Index].Text, '&' + AName)) then
-    begin
-      Exit(TTextRange.Create(FTokens[Index].StartPos, FTokens[Index].EndPos));
-    end;
-    Inc(Index);
-  end;
-  Result := NodeRange(ANode);
-end;
-
-function TIndexExtractor.IsConstructor(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  Index := TokenIndexAt(ANode.StartOffset);
-  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Inc(Index);
-  end;
-  if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
-  begin
-    Inc(Index);
-  end;
-  Result := (Index < Length(FTokens)) and
-    (FTokens[Index].IsKeyword('constructor') or FTokens[Index].IsKeyword('destructor'));
-end;
-
-function TIndexExtractor.IsClassMember(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  Index := TokenIndexAt(ANode.StartOffset);
-  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Inc(Index);
-  end;
-  if (Index < Length(FTokens)) and FTokens[Index].IsKeyword('class') then
-  begin
-    Exit(True);
-  end;
-  Index := TokenIndexAt(ANode.StartOffset) - 1;
-  while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Index);
-  end;
-  if (Index < 0) or not FTokens[Index].IsKeyword('class') then
-  begin
-    Exit(False);
-  end;
-  // "TFoo = class" bzw. "= packed class" direkt vor dem ersten Mitglied ist der Typ selbst.
-  Dec(Index);
-  while (Index >= 0) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Index);
-  end;
-  Result := (Index >= 0) and not FTokens[Index].IsSymbol('=') and not FTokens[Index].IsKeyword('packed');
+  Result := Copy(AFileName, mStart, mStop - mStart);
 end;
 
 /// <summary>Höchstens TRationale.MaxEntries Begründungen für den Index.</summary>
@@ -385,1656 +209,598 @@ begin
   Result := TRationale.EncodeAll(Copy(AEntries, 0, TRationale.MaxEntries));
 end;
 
-procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind);
+/// <summary>Rumpf einer Typdeklaration: das erste Kind außer Typparametern und Attributen; nil ohne.</summary>
+function TypeBodyOf(ADecl: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
 begin
-  Add(ANode, AName, AContainer, AKind, nil);
+  for mIndex := 0 to ADecl.ChildCount - 1 do
+  begin
+    if not (ADecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
+    begin
+      Exit(ADecl[mIndex]);
+    end;
+  end;
+  Result := nil;
 end;
 
-procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
-  const AAncestors: TArray<string>);
-var
-  Symbol: TIndexSymbol;
-  TypeText_, mProcedureKind: string;
+function KindOfBody(ABody: TSyntaxNode): TIndexSymbolKind;
 begin
-  if AName = '' then
+  Result := TIndexSymbolKind.TypeAlias;
+  if ABody = nil then
   begin
     Exit;
   end;
-  // Der Index führt die Namen ohne Escape-&, wie die Namensauflösung sie sucht (#1137).
-  Symbol.Name := TPascalLexer.PlainName(AName);
-  Symbol.Container := TPascalLexer.PlainName(AContainer);
-  Symbol.Kind := AKind;
-  Symbol.Range := NodeRange(ANode);
-  Symbol.SelectionRange := NameRange(ANode, Symbol.Name);
-  Symbol.InInterface := FInInterface;
-  Symbol.Ancestors := AAncestors;
-  Symbol.TypeArgs := '';
-  if AKind in [TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-    TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
+  case ABody.Kind of
+    TSyntaxKind.ClassType, TSyntaxKind.ClassOfType, TSyntaxKind.ForwardType:
+      Result := TIndexSymbolKind.ClassType;
+    TSyntaxKind.ObjectType:
+      Result := TIndexSymbolKind.ObjectType;
+    TSyntaxKind.HelperType:
+      Result := TIndexSymbolKind.HelperType;
+    TSyntaxKind.RecordType:
+      Result := TIndexSymbolKind.RecordType;
+    TSyntaxKind.InterfaceType:
+      Result := TIndexSymbolKind.InterfaceType;
+    TSyntaxKind.EnumType:
+      Result := TIndexSymbolKind.EnumType;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Vorfahren: direkte Typverweise des Rumpfs (class(TBase, IFoo), helper for T). AArgs: Typargumente
+/// jedes Vorfahren, nil wenn keiner welche hat.</summary>
+function AncestorsOf(ABody: TSyntaxNode; out AArgs: TArray<string>): TArray<string>;
+var
+  mIndex: Integer;
+  mArgs: string;
+  mWithArgs: Boolean;
+begin
+  Result := nil;
+  AArgs := nil;
+  mWithArgs := False;
+  if (ABody = nil) or not (ABody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
+    TSyntaxKind.HelperType]) then
   begin
-    Symbol.TypeName := DeclaredType(ANode);
-    // type AnsiString(Codepage) ist ein eigener Stringtyp (RawByteString, UTF8String): Die Namensauflösung darf
-    // ihn nicht bis AnsiString verfolgen, sonst meldet z. B. suspicious-string-pointer-cast "R ist AnsiString".
-    if (AKind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.TypeName, 'AnsiString') and
-      (DeclaredTypeNode(ANode).ChildCount > 0) then
+    Exit;
+  end;
+  for mIndex := 0 to ABody.ChildCount - 1 do
+  begin
+    if (ABody[mIndex].Kind = TSyntaxKind.TypeReference) and (ABody[mIndex].Name <> '') then
     begin
-      Symbol.TypeName := '';
+      // Typargumente jedes Vorfahren: IComparer<TKunde> an zweiter Stelle braucht sie für den
+      // Vergleich der Signaturen genauso wie der erste.
+      mArgs := TIndexTypeText.GenericArgsText(ABody[mIndex]);
+      mWithArgs := mWithArgs or (mArgs <> '');
+      AArgs := AArgs + [mArgs];
+      Result := Result + [ABody[mIndex].Name];
     end;
-    if Symbol.TypeName <> '' then
-    begin
-      Symbol.TypeArgs := GenericArgsText(DeclaredTypeNode(ANode));
-    end;
+  end;
+  if not mWithArgs then
+  begin
+    AArgs := nil;
+  end;
+end;
+
+function QualifiedOf(const AContainer, AName: string): string;
+begin
+  if AContainer = '' then
+  begin
+    Result := AName;
   end
   else
   begin
-    Symbol.TypeName := '';
+    Result := AContainer + '.' + AName;
   end;
+end;
+
+{ TIndexExtractor }
+
+constructor TIndexExtractor.Create(const ATokens: TArray<TPascalToken>);
+begin
+  inherited Create;
+  FReader := TIndexTokenReader.Create(ATokens);
+  FSymbols := TList<TIndexSymbol>.Create;
+  FForwards := TList<Integer>.Create;
+  FState := Default(TIndexDeclarationState);
+  FState.ResolutionOwner := -1;
+end;
+
+destructor TIndexExtractor.Destroy;
+begin
+  FForwards.Free;
+  FSymbols.Free;
+  FReader.Free;
+  inherited;
+end;
+
+class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.DeclaredType(ANode);
+end;
+
+class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := TIndexTypeText.DeclaredTypeNode(ANode);
+end;
+
+class function TIndexExtractor.TypeText(ANode: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.TypeText(ANode);
+end;
+
+class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
+begin
+  Result := TIndexTypeText.GenericArgsText(ATypeRef);
+end;
+
+class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
+begin
+  TIndexTypeText.ParamInfo(ANode, AMin, AMax, ATypes);
+end;
+
+class function TIndexExtractor.HasNamePrefix(const AName, APrefix: string): Boolean;
+begin
+  Result := TIndexTypeText.HasNamePrefix(AName, APrefix);
+end;
+
+class function TIndexExtractor.NamingOf(ARoot: TSyntaxNode): TNamingCounts;
+begin
+  Result := TIndexTypeText.NamingOf(ARoot);
+end;
+
+function TIndexExtractor.NewSymbol(ANode: TSyntaxNode; const AName, AContainer: string;
+  AKind: TIndexSymbolKind): TIndexSymbol;
+begin
+  Result := Default(TIndexSymbol);
+  // Der Index führt die Namen ohne Escape-&, wie die Namensauflösung sie sucht (#1137).
+  Result.Name := TPascalLexer.PlainName(AName);
+  Result.Container := TPascalLexer.PlainName(AContainer);
+  Result.Kind := AKind;
+  Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  Result.SelectionRange := FReader.NameRange(ANode, Result.Name);
+  Result.InInterface := FState.InInterface;
   // Erweiterungen für die Namensauflösung, Stufe 2 (#263).
-  Symbol.AncestorArgs := FAncestorArgs;
-  Symbol.TypeParams := TypeParamsOf(ANode);
+  Result.AncestorArgs := FState.AncestorArgs;
+  Result.TypeParams := TIndexTypeText.TypeParamsOf(ANode);
+  Result.Visibility := TIndexVisibility.Public;
   if (AContainer <> '') and (AKind <> TIndexSymbolKind.EnumMember) then
   begin
-    Symbol.Visibility := FVisibility;
-  end
-  else
-  begin
-    Symbol.Visibility := TIndexVisibility.Public;
+    Result.Visibility := FState.Visibility;
   end;
-  Symbol.MinArgs := 0;
-  Symbol.MaxArgs := 0;
-  Symbol.ParamTypes := nil;
-  Symbol.IsDefault := False;
+  Result.VariantBranch := FState.VariantBranch;
+  Result.ScopedEnum := FState.Scoped;
+end;
+
+procedure TIndexExtractor.SetTypeInfo(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; const AName: string;
+  AKind: TIndexSymbolKind);
+var
+  mTypeNode: TSyntaxNode;
+  mTypeText: string;
+begin
+  mTypeText := '';
+  if AKind in TypedKinds then
+  begin
+    mTypeNode := TIndexTypeText.DeclaredTypeNode(ANode);
+    ASymbol.TypeName := TIndexTypeText.DeclaredType(ANode);
+    // type AnsiString(Codepage) ist ein eigener Stringtyp (RawByteString, UTF8String): Die Namensauflösung darf
+    // ihn nicht bis AnsiString verfolgen, sonst meldet z. B. suspicious-string-pointer-cast "R ist AnsiString".
+    if (AKind = TIndexSymbolKind.TypeAlias) and SameText(ASymbol.TypeName, 'AnsiString') and
+      (mTypeNode.ChildCount > 0) then
+    begin
+      ASymbol.TypeName := '';
+    end;
+    if ASymbol.TypeName <> '' then
+    begin
+      ASymbol.TypeArgs := TIndexTypeText.GenericArgsText(mTypeNode);
+      mTypeText := TIndexTypeText.TypeText(mTypeNode);
+    end;
+  end;
+  // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
+  ASymbol.Signature := FReader.SignatureOf(ANode, AKind, AName, mTypeText);
+end;
+
+procedure TIndexExtractor.SetParamInfo(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; AKind: TIndexSymbolKind);
+begin
   if AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine,
     TIndexSymbolKind.Property_] then
   begin
-    ParamInfo(ANode, Symbol.MinArgs, Symbol.MaxArgs, Symbol.ParamTypes);
+    TIndexTypeText.ParamInfo(ANode, ASymbol.MinArgs, ASymbol.MaxArgs, ASymbol.ParamTypes);
   end;
-  if AKind = TIndexSymbolKind.Property_ then
+  ASymbol.IsDefault := (AKind = TIndexSymbolKind.Property_) and FReader.IsDefaultProperty(ANode);
+  ASymbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+    TIndexTypeText.IsVirtualHeader(ANode);
+end;
+
+procedure TIndexExtractor.SetDirectives(var ASymbol: TIndexSymbol; ANode: TSyntaxNode; AKind: TIndexSymbolKind;
+  const AContainer: string);
+var
+  mProcedureKind: string;
+begin
+  ASymbol.Directives := FReader.DirectivesOf(ANode, AKind, ASymbol.DeprecatedText);
+  if ASymbol.IsDefault and (IndexText('default', ASymbol.Directives) < 0) then
   begin
-    Symbol.IsDefault := IsDefaultProperty(ANode);
-  end;
-  Symbol.IsVirtual := (AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and IsVirtualHeader(ANode);
-  Symbol.FileName := '';
-  if FForward then
-  begin
-    FForwards.Add(FSymbols.Count);
-  end;
-  Symbol.Condition := '';
-  Symbol.Unavailable := False;
-  Symbol.VariantBranch := FVariant;
-  Symbol.ScopedEnum := FScoped;
-  // Inhalt für Hover, Detailpanel und Verwendungen ohne erneutes Lesen der Datei (#492).
-  TypeText_ := '';
-  if Symbol.TypeName <> '' then
-  begin
-    TypeText_ := TypeText(DeclaredTypeNode(ANode));
-  end;
-  Symbol.Signature := SignatureOf(ANode, AKind, AName, TypeText_);
-  Symbol.Directives := DirectivesOf(ANode, AKind, Symbol.DeprecatedText);
-  if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
-  begin
-    Symbol.Directives := Symbol.Directives + ['default'];
+    ASymbol.Directives := ASymbol.Directives + ['default'];
   end;
   // Methodenzeiger und Methodenreferenzen als Merkmal (#1326): Die Signatur kann bei langen Parameterlisten
   // vor "of object" abgeschnitten sein (TIndexSymbol.MaxSignature).
   if AKind = TIndexSymbolKind.TypeAlias then
   begin
-    mProcedureKind := ProcedureKindOf(ProcedureTypeOf(ANode));
+    mProcedureKind := FReader.ProcedureKindOf(TIndexTypeText.ProcedureTypeOf(ANode));
     if mProcedureKind <> '' then
     begin
-      Symbol.Directives := Symbol.Directives + [mProcedureKind];
+      ASymbol.Directives := ASymbol.Directives + [mProcedureKind];
     end;
   end;
   // Klassenmitglieder (class var, class property, class function) tragen "class" vorn, damit Regeln wie
   // property-accessor-invalid (#1001) sie ohne die Datei erkennen.
-  if (AContainer <> '') and (((AKind = TIndexSymbolKind.Field) and FClassVar) or
+  if (AContainer <> '') and (((AKind = TIndexSymbolKind.Field) and FState.ClassVar) or
     ((AKind in [TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-    IsClassMember(ANode))) then
+    FReader.IsClassMember(ANode))) then
   begin
-    Symbol.Directives := ['class'] + Symbol.Directives;
-  end;
-  Symbol.Summary := SummaryOf(ANode);
-  Symbol.Rationale := RationaleOf(TRationaleScanner.ForNode(FTokens, ANode));
-  FSymbols.Add(Symbol);
-end;
-
-function TIndexExtractor.TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
-const
-  NoSpaceBefore: array[0..9] of string = (';', ',', ')', ']', ':', '.', '(', '[', '^', '>');
-  NoSpaceAfter: array[0..4] of string = ('(', '[', '.', '<', '@');
-var
-  Builder: TStringBuilder;
-  Index, Depth, FirstLine: Integer;
-  Token: TPascalToken;
-  Previous, IncludeName: string;
-begin
-  Builder := TStringBuilder.Create;
-  try
-    Depth := 0;
-    FirstLine := -1;
-    Previous := '';
-    for Index := AFrom to ATo do
-    begin
-      if (Index < 0) or (Index >= Length(FTokens)) then
-      begin
-        Continue;
-      end;
-      Token := FTokens[Index];
-      // {$I datei.inc} als Wert (#849) bleibt stehen; AddIncluded setzt den Inhalt ein.
-      if (Token.Kind = TPascalTokenKind.Comment) or
-        ((Token.Kind = TPascalTokenKind.Directive) and
-        not TPascalPreprocessor.IncludeFileOf(Token.Text, IncludeName)) then
-      begin
-        Continue;
-      end;
-      if FirstLine < 0 then
-      begin
-        FirstLine := Token.StartPos.Line;
-      end;
-      if AFirstLine and (Depth = 0) and (Token.StartPos.Line > FirstLine) then
-      begin
-        Break;
-      end;
-      // ":" vor "=" (Zuweisung im Standardwert) bleibt ein Wort.
-      if (Builder.Length > 0) and (Token.Text <> '') then
-      begin
-        if not ((Token.Kind = TPascalTokenKind.Symbol) and (IndexStr(Token.Text, NoSpaceBefore) >= 0)) and
-          (IndexStr(Previous, NoSpaceAfter) < 0) then
-        begin
-          Builder.Append(' ');
-        end;
-      end;
-      // Ein Doppelpunkt trennt Name und Typ: "A: Integer".
-      Builder.Append(Token.Text);
-      if Token.Kind = TPascalTokenKind.Symbol then
-      begin
-        if (Token.Text = '(') or (Token.Text = '[') then
-        begin
-          Inc(Depth);
-        end
-        else if ((Token.Text = ')') or (Token.Text = ']')) and (Depth > 0) then
-        begin
-          Dec(Depth);
-        end;
-      end;
-      Previous := Token.Text;
-      if Builder.Length > TIndexSymbol.MaxSignature then
-      begin
-        Break;
-      end;
-    end;
-    Result := Builder.ToString;
-  finally
-    Builder.Free;
-  end;
-  if Length(Result) > TIndexSymbol.MaxSignature then
-  begin
-    Result := Copy(Result, 1, TIndexSymbol.MaxSignature - 1) + '…';
+    ASymbol.Directives := ['class'] + ASymbol.Directives;
   end;
 end;
 
-function TIndexExtractor.SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
-  const AName, ATypeText: string): string;
+procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: string; AKind: TIndexSymbolKind;
+  const AAncestors: TArray<string>);
 var
-  Node, TypeRef: TSyntaxNode;
-  First, Last: Integer;
-  Suffix: string;
+  mSymbol: TIndexSymbol;
 begin
-  Node := ANode;
-  if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-  begin
-    Node := Node.FindChild(TSyntaxKind.RoutineHeader);
-  end;
-  case AKind of
-    TIndexSymbolKind.EnumMember:
-      Exit(AName);
-    TIndexSymbolKind.Field, TIndexSymbolKind.Variable:
-      // A, B: Integer: je Name eine eigene Signatur.
-      if ATypeText <> '' then
-      begin
-        // string[8]: Die Länge gehört zur Signatur (Anzeige, string-length-limit #1036); der Typname bleibt
-        // string, damit die Namensauflösung ihn findet.
-        Suffix := '';
-        TypeRef := DeclaredTypeNode(ANode);
-        if (TypeRef <> nil) and SameText(TypeRef.Name, 'string') and (TypeRef.ChildCount = 1) and
-          (TypeRef[0].Kind <> TSyntaxKind.GenericArgs) then
-        begin
-          Suffix := '[' + TokenText(TokenIndexAt(TypeRef[0].StartOffset), TokenIndexAt(TypeRef[0].EndOffset) - 1,
-            False) + ']';
-        end;
-        Exit(AName + ': ' + ATypeText + Suffix);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-  First := TokenIndexAt(Node.StartOffset);
-  Last := TokenIndexAt(Node.EndOffset) - 1;
-  // Ein Prozedurtyp über mehrere Zeilen gehört ganz in die Signatur, sonst fehlt "of object" (#1326).
-  Result := TokenText(First, Last, (AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
-    TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType,
-    TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and
-    not ((AKind = TIndexSymbolKind.TypeAlias) and (ProcedureTypeOf(Node) <> nil)));
-  // Ein abschließendes Semikolon gehört nicht zur Anzeige.
-  while Result.EndsWith(';') do
-  begin
-    Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
-  end;
-end;
-
-class function TIndexExtractor.ProcedureTypeOf(ANode: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if (ANode = nil) or (ANode.Kind <> TSyntaxKind.TypeDecl) then
+  if AName = '' then
   begin
     Exit;
   end;
-  // Rumpf ist das erste Kind außer Typparametern und Attributen (wie in AddType).
-  for mIndex := 0 to ANode.ChildCount - 1 do
+  mSymbol := NewSymbol(ANode, AName, AContainer, AKind);
+  mSymbol.Ancestors := AAncestors;
+  SetTypeInfo(mSymbol, ANode, AName, AKind);
+  SetParamInfo(mSymbol, ANode, AKind);
+  SetDirectives(mSymbol, ANode, AKind, AContainer);
+  mSymbol.Summary := FReader.SummaryOf(ANode);
+  mSymbol.Rationale := RationaleOf(TRationaleScanner.ForNode(FReader.Tokens, ANode));
+  if FState.IsForward then
   begin
-    if not (ANode[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
-    begin
-      if ANode[mIndex].Kind = TSyntaxKind.ProcedureType then
-      begin
-        Result := ANode[mIndex];
-      end;
-      Exit;
-    end;
+    FForwards.Add(FSymbols.Count);
   end;
-end;
-
-function TIndexExtractor.ProcedureKindOf(AType: TSyntaxNode): string;
-var
-  mIndex, mLast, mDepth: Integer;
-  mToken: TPascalToken;
-begin
-  Result := '';
-  if AType = nil then
-  begin
-    Exit;
-  end;
-  if SameText(AType.Name, 'reference') then
-  begin
-    Exit('reference to');
-  end;
-  mDepth := 0;
-  mLast := TokenIndexAt(AType.EndOffset) - 1;
-  mIndex := TokenIndexAt(AType.StartOffset);
-  while mIndex < mLast do
-  begin
-    mToken := FTokens[mIndex];
-    if mToken.Kind = TPascalTokenKind.Symbol then
-    begin
-      if (mToken.Text = '(') or (mToken.Text = '[') then
-      begin
-        Inc(mDepth);
-      end
-      else if ((mToken.Text = ')') or (mToken.Text = ']')) and (mDepth > 0) then
-      begin
-        Dec(mDepth);
-      end;
-    end
-    else if (mDepth = 0) and mToken.IsKeyword('of') then
-    begin
-      // Kommentare und Direktiven zwischen "of" und "object" überspringen.
-      Inc(mIndex);
-      while (mIndex <= mLast) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Inc(mIndex);
-      end;
-      if (mIndex <= mLast) and SameText(FTokens[mIndex].Text, 'object') then
-      begin
-        Result := 'of object';
-      end;
-      Exit;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
-function TIndexExtractor.DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
-  out ADeprecatedText: string): TArray<string>;
-var
-  Node: TSyntaxNode;
-  Index, Last: Integer;
-  Word: string;
-
-  procedure AddWord(const AWord: string);
-  begin
-    if IndexText(AWord, Result) < 0 then
-    begin
-      Result := Result + [LowerCase(AWord)];
-    end;
-  end;
-
-  function IsHintAt(APos: Integer): Boolean;
-  begin
-    Result := (APos >= 0) and (APos < Length(FTokens)) and
-      (FTokens[APos].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-      (IndexText(FTokens[APos].Text, HintDirectives) >= 0);
-  end;
-
-  function NextCode(APos: Integer): Integer;
-  begin
-    Result := APos + 1;
-    while (Result < Length(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
-      TPascalTokenKind.Directive]) do
-    begin
-      Inc(Result);
-    end;
-  end;
-
-  // Grund hinter deprecated am Token APos: deprecated 'Stattdessen Bar verwenden'.
-  procedure TakeReason(APos: Integer);
-  var
-    Next: Integer;
-    Text: string;
-  begin
-    if (APos < 0) or (APos >= Length(FTokens)) or not SameText(FTokens[APos].Text, 'deprecated') then
-    begin
-      Exit;
-    end;
-    Next := NextCode(APos);
-    if (Next >= Length(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
-    begin
-      Exit;
-    end;
-    Text := FTokens[Next].Text;
-    if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
-    begin
-      Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
-    end;
-    ADeprecatedText := Text;
-  end;
-
-  function EndsHint(APos: Integer): Boolean;
-  begin
-    // Hinter einem Hinweis folgt ";", "," oder der Grund als String, sonst ist es ein Bezeichner
-    // (z. B. ein Feld "platform: Integer").
-    Result := (APos >= Length(FTokens)) or FTokens[APos].IsSymbol(';') or FTokens[APos].IsSymbol(',') or
-      (FTokens[APos].Kind = TPascalTokenKind.StringLiteral) or IsHintAt(APos);
-  end;
-
-begin
-  Result := nil;
-  ADeprecatedText := '';
-  Node := ANode;
-  if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-  begin
-    Node := Node.FindChild(TSyntaxKind.RoutineHeader);
-  end;
-  if Node.Kind = TSyntaxKind.RoutineHeader then
-  begin
-    for Index := 0 to Node.ChildCount - 1 do
-    begin
-      if Node[Index].Kind = TSyntaxKind.Directive then
-      begin
-        AddWord(Node[Index].Name);
-        TakeReason(TokenIndexAt(Node[Index].StartOffset));
-      end;
-    end;
-    Exit;
-  end;
-  if AKind = TIndexSymbolKind.EnumMember then
-  begin
-    Exit;
-  end;
-  // Hinweise hinter der Deklaration: "X = 1 deprecated;", "end platform;", "A: Integer platform;".
-  Last := TokenIndexAt(Node.EndOffset) - 1;
-  Index := Last;
-  while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
-    TPascalTokenKind.StringLiteral]) or FTokens[Index].IsSymbol(';')) do
-  begin
-    Dec(Index);
-  end;
-  while (Index > 0) and IsHintAt(Index) do
-  begin
-    Word := FTokens[Index].Text;
-    AddWord(Word);
-    TakeReason(Index);
-    Dec(Index);
-    while (Index > 0) and ((FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
-      FTokens[Index].IsSymbol(',')) do
-    begin
-      Dec(Index);
-    end;
-  end;
-  // Steht der Hinweis hinter dem Ende des Knotens, gehört er trotzdem dazu.
-  Index := Last + 1;
-  while (Index < Length(FTokens)) and (FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
-    TPascalTokenKind.StringLiteral]) do
-  begin
-    Inc(Index);
-  end;
-  while IsHintAt(Index) and EndsHint(NextCode(Index)) do
-  begin
-    AddWord(FTokens[Index].Text);
-    TakeReason(Index);
-    Index := NextCode(Index);
-    while (Index < Length(FTokens)) and ((FTokens[Index].Kind = TPascalTokenKind.StringLiteral) or
-      FTokens[Index].IsSymbol(',')) do
-    begin
-      Index := NextCode(Index);
-    end;
-  end;
-end;
-
-function TIndexExtractor.SummaryOf(ANode: TSyntaxNode): string;
-var
-  Index, Depth: Integer;
-  Lines: TArray<string>;
-  Text: string;
-  Doc: TXmlDoc;
-begin
-  Result := '';
-  Index := TokenIndexAt(ANode.StartOffset) - 1;
-  // Attribute zwischen Doku und Deklaration überspringen: [Weak] /// steht darüber.
-  while (Index >= 0) and FTokens[Index].IsSymbol(']') do
-  begin
-    Depth := 0;
-    repeat
-      if FTokens[Index].IsSymbol(']') then
-      begin
-        Inc(Depth);
-      end
-      else if FTokens[Index].IsSymbol('[') then
-      begin
-        Dec(Depth);
-      end;
-      Dec(Index);
-    until (Index < 0) or (Depth = 0);
-  end;
-  Lines := nil;
-  while (Index >= 0) and (FTokens[Index].Kind = TPascalTokenKind.Comment) and
-    FTokens[Index].Text.StartsWith('///') do
-  begin
-    Lines := [Copy(FTokens[Index].Text, 4, MaxInt)] + Lines;
-    Dec(Index);
-  end;
-  if Length(Lines) = 0 then
-  begin
-    Exit;
-  end;
-  Doc := TXmlDoc.Parse(String.Join(#10, Lines));
-  Text := Doc.Summary;
-  // Eine Zeile, Leerraum zusammengefasst.
-  Text := TRegEx.Replace(Text, '\s+', ' ').Trim;
-  if Length(Text) > TIndexSymbol.MaxSummary then
-  begin
-    Text := Copy(Text, 1, TIndexSymbol.MaxSummary - 1) + '…';
-  end;
-  Result := Text;
-end;
-
-class function TIndexExtractor.DeclaredTypeNode(ANode: TSyntaxNode): TSyntaxNode;
-var
-  Index: Integer;
-begin
-  // Erster direkter Typverweis: A: TFoo, property P: TFoo, function F: TFoo.
-  // Bei RoutineDecl steht der Typ im Kopf.
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-  begin
-    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[Index].Kind = TSyntaxKind.TypeReference then
-    begin
-      Exit(ANode[Index]);
-    end;
-  end;
-  Result := nil;
-end;
-
-class function TIndexExtractor.DeclaredType(ANode: TSyntaxNode): string;
-var
-  Node: TSyntaxNode;
-begin
-  Node := DeclaredTypeNode(ANode);
-  if Node <> nil then
-  begin
-    Result := Node.Name;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-class function TIndexExtractor.GenericArgsText(ATypeRef: TSyntaxNode): string;
-var
-  Args: TSyntaxNode;
-  Index: Integer;
-begin
-  Result := '';
-  if ATypeRef = nil then
-  begin
-    Exit;
-  end;
-  Args := ATypeRef.FindChild(TSyntaxKind.GenericArgs);
-  if Args = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Args.ChildCount - 1 do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + TypeText(Args[Index]);
-  end;
-end;
-
-class function TIndexExtractor.TypeText(ANode: TSyntaxNode): string;
-var
-  Args: string;
-begin
-  Result := '';
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  case ANode.Kind of
-    TSyntaxKind.TypeReference:
-      begin
-        Result := ANode.Name;
-        Args := GenericArgsText(ANode);
-        if Args <> '' then
-        begin
-          Result := Result + '<' + Args + '>';
-        end;
-      end;
-    TSyntaxKind.ArrayType:
-      if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
-      begin
-        Result := 'array of ' + TypeText(ANode[ANode.ChildCount - 1]);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-class function TIndexExtractor.TypeParamsOf(ANode: TSyntaxNode): string;
-var
-  Params: TSyntaxNode;
-  Index: Integer;
-begin
-  Result := '';
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-  begin
-    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
-  end;
-  Params := ANode.FindChild(TSyntaxKind.GenericParams);
-  if Params = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Params.ChildCount - 1 do
-  begin
-    if Params[Index].Name <> '' then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ',';
-      end;
-      Result := Result + Params[Index].Name;
-    end;
-  end;
-end;
-
-class procedure TIndexExtractor.ParamInfo(ANode: TSyntaxNode; out AMin, AMax: Integer; out ATypes: TArray<string>);
-var
-  Params, Param, TypeNode: TSyntaxNode;
-  Index, Child, Count: Integer;
-  ParamType: string;
-  HasDefault: Boolean;
-begin
-  AMin := 0;
-  AMax := 0;
-  ATypes := nil;
-  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-  begin
-    ANode := ANode.FindChild(TSyntaxKind.RoutineHeader);
-  end;
-  Params := ANode.FindChild(TSyntaxKind.Parameters);
-  if Params = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Params.ChildCount - 1 do
-  begin
-    Param := Params[Index];
-    if Param.Kind <> TSyntaxKind.Parameter then
-    begin
-      Continue;
-    end;
-    // Kinder: Typ (fehlt bei untypisierten Parametern), danach ggf. der Standardwert.
-    TypeNode := nil;
-    HasDefault := False;
-    for Child := 0 to Param.ChildCount - 1 do
-    begin
-      if (TypeNode = nil) and (Param[Child].Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType]) then
-      begin
-        TypeNode := Param[Child];
-      end
-      else
-      begin
-        HasDefault := True;
-      end;
-    end;
-    ParamType := TypeText(TypeNode);
-    // A, B: Integer zählt zweimal.
-    for Count := 1 to Length(Param.Name.Split([','])) do
-    begin
-      Inc(AMax);
-      if not HasDefault then
-      begin
-        Inc(AMin);
-      end;
-      ATypes := ATypes + [ParamType];
-    end;
-  end;
-end;
-
-class function TIndexExtractor.IsVirtualHeader(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  Result := False;
-  if ANode.Kind <> TSyntaxKind.RoutineHeader then
-  begin
-    Exit;
-  end;
-  for Index := 0 to ANode.ChildCount - 1 do
-  begin
-    if (ANode[Index].Kind = TSyntaxKind.Directive) and (SameText(ANode[Index].Name, 'virtual') or
-      SameText(ANode[Index].Name, 'dynamic') or SameText(ANode[Index].Name, 'abstract') or
-      SameText(ANode[Index].Name, 'override')) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-function TIndexExtractor.IsDefaultProperty(ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  // property Items[I: Integer]: T read Get; default;  Anders als "default 0" (gespeicherter
-  // Standardwert) folgt "default" hier auf ein Semikolon.
-  Result := False;
-  Index := TokenIndexAt(ANode.StartOffset);
-  while (Index + 1 < Length(FTokens)) and (FTokens[Index].Offset <= ANode.EndOffset) do
-  begin
-    if FTokens[Index].IsSymbol(';') and SameText(FTokens[Index + 1].Text, 'default') then
-    begin
-      Exit(True);
-    end;
-    Inc(Index);
-  end;
+  FSymbols.Add(mSymbol);
 end;
 
 procedure TIndexExtractor.AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
 var
-  Name: string;
+  mName: string;
 begin
   // A, B: Integer
-  for Name in ANode.Name.Split([',']) do
+  for mName in ANode.Name.Split([',']) do
   begin
-    Add(ANode, Name.Trim, AContainer, AKind);
+    Add(ANode, mName.Trim, AContainer, AKind, nil);
   end;
 end;
 
-procedure TIndexExtractor.AddMembers(ABody: TSyntaxNode; const AContainer: string);
+procedure TIndexExtractor.AddTypeSymbol(ADecl, ABody: TSyntaxNode; const AContainer: string);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
-  Kind: TIndexSymbolKind;
-  Outer: string;
-  ClassVar: Boolean;
+  mKind: TIndexSymbolKind;
+  mAncestors, mArgs: TArray<string>;
 begin
-  for Index := 0 to ABody.ChildCount - 1 do
-  begin
-    Child := ABody[Index];
-    case Child.Kind of
-      TSyntaxKind.Visibility:
-        begin
-          FVisibility := VisibilityOf(Child.Name);
-          AddMembers(Child, AContainer);
-        end;
-      TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VariantPart:
-        AddMembers(Child, AContainer);
-      TSyntaxKind.VarSection:
-        begin
-          ClassVar := FClassVar;
-          FClassVar := (AContainer <> '') and IsClassMember(Child);
-          try
-            AddMembers(Child, AContainer);
-          finally
-            FClassVar := ClassVar;
-          end;
-        end;
-      TSyntaxKind.CaseItem:
-        begin
-          // Zweig eines varianten Teils (#846); das Selektorfeld davor steht im äußeren Zweig.
-          Outer := FVariant;
-          if FVariant = '' then
-          begin
-            FVariant := Child.Name;
-          end
-          else
-          begin
-            FVariant := FVariant + ' › ' + Child.Name;
-          end;
-          try
-            AddMembers(Child, AContainer);
-          finally
-            FVariant := Outer;
-          end;
-        end;
-      TSyntaxKind.TypeDecl:
-        AddType(Child, AContainer);
-      TSyntaxKind.ConstDecl:
-        Add(Child, Child.Name, AContainer, TIndexSymbolKind.Constant);
-      TSyntaxKind.VarDecl, TSyntaxKind.Field:
-        AddNames(Child, AContainer, TIndexSymbolKind.Field);
-      TSyntaxKind.PropertyDecl:
-        Add(Child, Child.Name, AContainer, TIndexSymbolKind.Property_);
-      TSyntaxKind.RoutineHeader:
-        // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849), sondern steht am Typ.
-        if Child.IsMethodResolution then
-        begin
-          AddResolution(Child);
-        end
-        else
-        begin
-          if IsConstructor(Child) then
-          begin
-            Kind := TIndexSymbolKind.Constructor_;
-          end
-          else
-          begin
-            Kind := TIndexSymbolKind.Method;
-          end;
-          Add(Child, Child.Name, AContainer, Kind);
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
+  mKind := KindOfBody(ABody);
+  mAncestors := AncestorsOf(ABody, mArgs);
+  FState.AncestorArgs := mArgs;
+  FState.IsForward := (ABody <> nil) and (ABody.Kind = TSyntaxKind.ForwardType);
+  FState.Scoped := (mKind = TIndexSymbolKind.EnumType) and FReader.ScopedAt(ADecl.StartOffset);
+  try
+    Add(ADecl, ADecl.Name, AContainer, mKind, mAncestors);
+  finally
+    FState.AncestorArgs := nil;
+    FState.IsForward := False;
+  end;
+end;
+
+procedure TIndexExtractor.AddEnumMembers(ABody: TSyntaxNode; const AQualified: string);
+var
+  mIndex: Integer;
+begin
+  // Enum-Werte sind ohne SCOPEDENUMS auch auf Unit-Ebene sichtbar; der
+  // Container hält den Typ fest, ScopedEnum den Schalter (#849), die Namensauflösung entscheidet.
+  try
+    for mIndex := 0 to ABody.ChildCount - 1 do
+    begin
+      if ABody[mIndex].Kind = TSyntaxKind.Identifier then
+      begin
+        Add(ABody[mIndex], ABody[mIndex].Name, AQualified, TIndexSymbolKind.EnumMember, nil);
+      end;
     end;
+  finally
+    FState.Scoped := False;
+  end;
+end;
+
+procedure TIndexExtractor.AddBodyMembers(ABody: TSyntaxNode; const AQualified: string; ACount: Integer);
+var
+  mVisibility: TIndexVisibility;
+  mOwner: Integer;
+begin
+  // Verschachtelte Typen haben ihre eigene Sichtbarkeit; danach gilt wieder die äußere.
+  mVisibility := FState.Visibility;
+  mOwner := FState.ResolutionOwner;
+  FState.Visibility := TIndexVisibility.Public;
+  FState.ResolutionOwner := -1;
+  if FSymbols.Count > ACount then
+  begin
+    FState.ResolutionOwner := ACount;
+  end;
+  try
+    AddMembers(ABody, AQualified);
+  finally
+    FState.Visibility := mVisibility;
+    FState.ResolutionOwner := mOwner;
   end;
 end;
 
 procedure TIndexExtractor.AddType(ADecl: TSyntaxNode; const AContainer: string);
 var
-  Body: TSyntaxNode;
-  Index: Integer;
-  Kind: TIndexSymbolKind;
-  Ancestors: TList<string>;
-  Qualified, Args: string;
-  AncestorArgs: TArray<string>;
-  WithArgs: Boolean;
-  Visibility: TIndexVisibility;
-  Owner, Count: Integer;
+  mBody: TSyntaxNode;
+  mCount: Integer;
 begin
-  Body := nil;
-  AncestorArgs := nil;
-  WithArgs := False;
-  for Index := 0 to ADecl.ChildCount - 1 do
-  begin
-    if not (ADecl[Index].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
-    begin
-      Body := ADecl[Index];
-      Break;
-    end;
-  end;
-  Kind := TIndexSymbolKind.TypeAlias;
-  Ancestors := TList<string>.Create;
-  try
-    if Body <> nil then
-    begin
-      case Body.Kind of
-        TSyntaxKind.ClassType, TSyntaxKind.ClassOfType, TSyntaxKind.ForwardType:
-          Kind := TIndexSymbolKind.ClassType;
-        TSyntaxKind.ObjectType:
-          Kind := TIndexSymbolKind.ObjectType;
-        TSyntaxKind.HelperType:
-          Kind := TIndexSymbolKind.HelperType;
-        TSyntaxKind.RecordType:
-          Kind := TIndexSymbolKind.RecordType;
-        TSyntaxKind.InterfaceType:
-          Kind := TIndexSymbolKind.InterfaceType;
-        TSyntaxKind.EnumType:
-          Kind := TIndexSymbolKind.EnumType;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-      // Vorfahren: direkte Typverweise des Rumpfs (class(TBase, IFoo), helper for T).
-      if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
-        TSyntaxKind.HelperType] then
-      begin
-        for Index := 0 to Body.ChildCount - 1 do
-        begin
-          if (Body[Index].Kind = TSyntaxKind.TypeReference) and (Body[Index].Name <> '') then
-          begin
-            // Typargumente jedes Vorfahren: IComparer<TKunde> an zweiter Stelle braucht sie für den
-            // Vergleich der Signaturen genauso wie der erste.
-            Args := GenericArgsText(Body[Index]);
-            WithArgs := WithArgs or (Args <> '');
-            AncestorArgs := AncestorArgs + [Args];
-            Ancestors.Add(Body[Index].Name);
-          end;
-        end;
-      end;
-    end;
-    if not WithArgs then
-    begin
-      AncestorArgs := nil;
-    end;
-    FAncestorArgs := AncestorArgs;
-    FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
-    FScoped := (Kind = TIndexSymbolKind.EnumType) and ScopedAt(ADecl.StartOffset);
-    Count := FSymbols.Count;
-    try
-      Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
-    finally
-      FAncestorArgs := nil;
-      FForward := False;
-    end;
-  finally
-    Ancestors.Free;
-  end;
-  if Body = nil then
+  mBody := TypeBodyOf(ADecl);
+  mCount := FSymbols.Count;
+  AddTypeSymbol(ADecl, mBody, AContainer);
+  if mBody = nil then
   begin
     Exit;
   end;
-  if AContainer = '' then
+  if mBody.Kind = TSyntaxKind.EnumType then
   begin
-    Qualified := ADecl.Name;
+    AddEnumMembers(mBody, QualifiedOf(AContainer, ADecl.Name));
   end
-  else
+  else if mBody.Kind in MemberBodies then
   begin
-    Qualified := AContainer + '.' + ADecl.Name;
-  end;
-  if Body.Kind = TSyntaxKind.EnumType then
-  begin
-    // Enum-Werte sind ohne SCOPEDENUMS auch auf Unit-Ebene sichtbar; der
-    // Container hält den Typ fest, ScopedEnum den Schalter (#849), die Namensauflösung entscheidet.
-    try
-      for Index := 0 to Body.ChildCount - 1 do
-      begin
-        if Body[Index].Kind = TSyntaxKind.Identifier then
-        begin
-          Add(Body[Index], Body[Index].Name, Qualified, TIndexSymbolKind.EnumMember);
-        end;
-      end;
-    finally
-      FScoped := False;
-    end;
-  end
-  else if Body.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType,
-    TSyntaxKind.RecordType, TSyntaxKind.InterfaceType] then
-  begin
-    // Verschachtelte Typen haben ihre eigene Sichtbarkeit; danach gilt wieder die äußere.
-    Visibility := FVisibility;
-    FVisibility := TIndexVisibility.Public;
-    Owner := FResolutionOwner;
-    FResolutionOwner := -1;
-    if FSymbols.Count > Count then
-    begin
-      FResolutionOwner := Count;
-    end;
-    try
-      AddMembers(Body, Qualified);
-    finally
-      FVisibility := Visibility;
-      FResolutionOwner := Owner;
-    end;
+    AddBodyMembers(mBody, QualifiedOf(AContainer, ADecl.Name), mCount);
   end;
 end;
 
 procedure TIndexExtractor.AddResolution(AHeader: TSyntaxNode);
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  if (FResolutionOwner < 0) or (AHeader.Name = '') or (AHeader.ResolutionTarget = '') then
+  if (FState.ResolutionOwner < 0) or (AHeader.Name = '') or (AHeader.ResolutionTarget = '') then
   begin
     Exit;
   end;
-  Symbol := FSymbols[FResolutionOwner];
-  Symbol.Resolutions := Symbol.Resolutions + [AHeader.Name + '=' + AHeader.ResolutionTarget];
-  FSymbols[FResolutionOwner] := Symbol;
+  mSymbol := FSymbols[FState.ResolutionOwner];
+  mSymbol.Resolutions := mSymbol.Resolutions + [AHeader.Name + '=' + AHeader.ResolutionTarget];
+  FSymbols[FState.ResolutionOwner] := mSymbol;
+end;
+
+procedure TIndexExtractor.AddHeader(AHeader: TSyntaxNode; const AContainer: string);
+begin
+  // Methodenzuordnung procedure IFoo.Bar = MyBar ist kein Mitglied (#849), sondern steht am Typ.
+  if AHeader.IsMethodResolution then
+  begin
+    AddResolution(AHeader);
+  end
+  else if FReader.IsConstructor(AHeader) then
+  begin
+    Add(AHeader, AHeader.Name, AContainer, TIndexSymbolKind.Constructor_, nil);
+  end
+  else
+  begin
+    Add(AHeader, AHeader.Name, AContainer, TIndexSymbolKind.Method, nil);
+  end;
+end;
+
+procedure TIndexExtractor.AddCaseItem(AItem: TSyntaxNode; const AContainer: string);
+var
+  mOuter: string;
+begin
+  mOuter := FState.VariantBranch;
+  if FState.VariantBranch = '' then
+  begin
+    FState.VariantBranch := AItem.Name;
+  end
+  else
+  begin
+    FState.VariantBranch := FState.VariantBranch + ' › ' + AItem.Name;
+  end;
+  try
+    AddMembers(AItem, AContainer);
+  finally
+    FState.VariantBranch := mOuter;
+  end;
+end;
+
+procedure TIndexExtractor.AddMember(AChild: TSyntaxNode; const AContainer: string);
+var
+  mClassVar: Boolean;
+begin
+  case AChild.Kind of
+    TSyntaxKind.Visibility:
+      begin
+        FState.Visibility := VisibilityOf(AChild.Name);
+        AddMembers(AChild, AContainer);
+      end;
+    TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VariantPart:
+      AddMembers(AChild, AContainer);
+    TSyntaxKind.VarSection:
+      begin
+        mClassVar := FState.ClassVar;
+        FState.ClassVar := (AContainer <> '') and FReader.IsClassMember(AChild);
+        try
+          AddMembers(AChild, AContainer);
+        finally
+          FState.ClassVar := mClassVar;
+        end;
+      end;
+    TSyntaxKind.CaseItem:
+      AddCaseItem(AChild, AContainer);
+    TSyntaxKind.TypeDecl:
+      AddType(AChild, AContainer);
+    TSyntaxKind.ConstDecl:
+      Add(AChild, AChild.Name, AContainer, TIndexSymbolKind.Constant, nil);
+    TSyntaxKind.VarDecl, TSyntaxKind.Field:
+      AddNames(AChild, AContainer, TIndexSymbolKind.Field);
+    TSyntaxKind.PropertyDecl:
+      Add(AChild, AChild.Name, AContainer, TIndexSymbolKind.Property_, nil);
+    TSyntaxKind.RoutineHeader:
+      AddHeader(AChild, AContainer);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TIndexExtractor.AddMembers(ABody: TSyntaxNode; const AContainer: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ABody.ChildCount - 1 do
+  begin
+    AddMember(ABody[mIndex], AContainer);
+  end;
 end;
 
 procedure TIndexExtractor.AddRoutine(ANode: TSyntaxNode);
 var
-  Name, Container: string;
-  Dot: Integer;
-  Kind: TIndexSymbolKind;
+  mName: string;
+  mDot: Integer;
 begin
   // TFoo.Bar in implementation: Methode von TFoo; sonst freie Routine.
-  Name := ANode.Name;
-  Dot := Name.LastIndexOf('.');
-  if Dot >= 0 then
+  mName := ANode.Name;
+  mDot := mName.LastIndexOf('.');
+  if mDot < 0 then
   begin
-    Container := Name.Substring(0, Dot);
-    Name := Name.Substring(Dot + 1);
-    if IsConstructor(ANode) then
-    begin
-      Kind := TIndexSymbolKind.Constructor_;
-    end
-    else
-    begin
-      Kind := TIndexSymbolKind.Method;
-    end;
+    Add(ANode, mName, '', TIndexSymbolKind.Routine, nil);
+  end
+  else if FReader.IsConstructor(ANode) then
+  begin
+    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Constructor_, nil);
   end
   else
   begin
-    Container := '';
-    Kind := TIndexSymbolKind.Routine;
+    Add(ANode, mName.Substring(mDot + 1), mName.Substring(0, mDot), TIndexSymbolKind.Method, nil);
   end;
-  Add(ANode, Name, Container, Kind);
 end;
 
 procedure TIndexExtractor.AddDeclarations(ANode: TSyntaxNode);
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    case Child.Kind of
+    mChild := ANode[mIndex];
+    case mChild.Kind of
       TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection:
-        AddDeclarations(Child);
+        AddDeclarations(mChild);
       TSyntaxKind.TypeDecl:
-        AddType(Child, '');
+        AddType(mChild, '');
       TSyntaxKind.ConstDecl:
-        Add(Child, Child.Name, '', TIndexSymbolKind.Constant);
+        Add(mChild, mChild.Name, '', TIndexSymbolKind.Constant, nil);
       TSyntaxKind.VarDecl:
-        AddNames(Child, '', TIndexSymbolKind.Variable);
+        AddNames(mChild, '', TIndexSymbolKind.Variable);
       TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl:
-        AddRoutine(Child);
+        AddRoutine(mChild);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
 end;
 
-class function TIndexExtractor.UsesOf(ASection: TSyntaxNode): TArray<string>;
-var
-  Clause: TSyntaxNode;
-  Names: TList<string>;
-  Index: Integer;
-begin
-  Result := nil;
-  if ASection = nil then
-  begin
-    Exit;
-  end;
-  Clause := ASection.FindChild(TSyntaxKind.UsesClause);
-  if Clause = nil then
-  begin
-    Exit;
-  end;
-  Names := TList<string>.Create;
-  try
-    for Index := 0 to Clause.ChildCount - 1 do
-    begin
-      if (Clause[Index].Kind = TSyntaxKind.UsedUnit) and (Clause[Index].Name <> '') then
-      begin
-        Names.Add(Clause[Index].Name);
-      end;
-    end;
-    Result := Names.ToArray;
-  finally
-    Names.Free;
-  end;
-end;
-
 procedure TIndexExtractor.DropForwards;
 var
-  Index: Integer;
-  Forwards: TArray<Boolean>;
-  Full: TDictionary<string, Boolean>;
+  mIndex: Integer;
+  mForwards: TArray<Boolean>;
+  mFull: TDictionary<string, Boolean>;
 begin
   if FForwards.Count = 0 then
   begin
     Exit;
   end;
-  SetLength(Forwards, FSymbols.Count);
-  for Index in FForwards do
+  SetLength(mForwards, FSymbols.Count);
+  for mIndex in FForwards do
   begin
-    Forwards[Index] := True;
+    mForwards[mIndex] := True;
   end;
-  Full := TDictionary<string, Boolean>.Create;
+  mFull := TDictionary<string, Boolean>.Create;
   try
-    for Index := 0 to FSymbols.Count - 1 do
+    for mIndex := 0 to FSymbols.Count - 1 do
     begin
-      if not Forwards[Index] then
+      if not mForwards[mIndex] then
       begin
-        Full.AddOrSetValue(UpperCase(FSymbols[Index].QualifiedName), True);
+        mFull.AddOrSetValue(UpperCase(FSymbols[mIndex].QualifiedName), True);
       end;
     end;
-    for Index := FForwards.Count - 1 downto 0 do
+    for mIndex := FForwards.Count - 1 downto 0 do
     begin
-      if Full.ContainsKey(UpperCase(FSymbols[FForwards[Index]].QualifiedName)) then
+      if mFull.ContainsKey(UpperCase(FSymbols[FForwards[mIndex]].QualifiedName)) then
       begin
-        FSymbols.Delete(FForwards[Index]);
+        FSymbols.Delete(FForwards[mIndex]);
       end;
     end;
   finally
-    Full.Free;
+    mFull.Free;
   end;
   FForwards.Clear;
 end;
 
-/// <summary>Namen einer Liste "A, B" bzw. "A,B" in ANames eintragen (klein).</summary>
-procedure AddNameList(ANames: TDictionary<string, Boolean>; const AList: string);
-var
-  Name: string;
-begin
-  for Name in AList.Split([',']) do
-  begin
-    if Name.Trim <> '' then
-    begin
-      ANames.AddOrSetValue(LowerCase(TPascalLexer.PlainName(Name.Trim)), True);
-    end;
-  end;
-end;
-
-/// <summary>Liegt ANode in AOuter (oder ist es selbst)?</summary>
-function IsInside(ANode, AOuter: TSyntaxNode): Boolean;
-begin
-  Result := False;
-  if AOuter = nil then
-  begin
-    Exit;
-  end;
-  while ANode <> nil do
-  begin
-    if ANode = AOuter then
-    begin
-      Exit(True);
-    end;
-    ANode := ANode.Parent;
-  end;
-end;
-
-function TIndexExtractor.InlineRefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
-var
-  Locals: TDictionary<string, Boolean>;
-  Refs: TList<string>;
-  Seen: TDictionary<string, Boolean>;
-  Own: TDictionary<string, TIndexSymbol>;
-  Members: TDictionary<string, TIndexSymbol>;
-  Header: TSyntaxNode;
-  Symbol: TIndexSymbol;
-  Blocked: Boolean;
-  Nodes: TList<TSyntaxNode>;
-  Stack: TStack<TSyntaxNode>;
-  Child: TSyntaxNode;
-  Index: Integer;
-
-  procedure AddRef(const ARef: string);
-  begin
-    if (ARef = '') or Seen.ContainsKey(LowerCase(ARef)) then
-    begin
-      Exit;
-    end;
-    Seen.Add(LowerCase(ARef), True);
-    Refs.Add(ARef);
-  end;
-
-  function TypeRefOf(const ASymbol: TIndexSymbol): string;
-  begin
-    Result := ':' + ASymbol.TypeName;
-    if ASymbol.TypeArgs <> '' then
-    begin
-      Result := Result + '<' + ASymbol.TypeArgs + '>';
-    end;
-  end;
-
-  // Wird ANode als Wert weiter benutzt (A.B, A[i])? Dann braucht der Rumpf die Unit seines Typs.
-  function IsDereferenced(AIdent: TSyntaxNode): Boolean;
-  var
-    Parent: TSyntaxNode;
-  begin
-    Parent := AIdent.Parent;
-    Result := (Parent <> nil) and (Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
-      (Parent.ChildCount > 0) and (Parent[0] = AIdent) and (Parent.FindChild(TSyntaxKind.GenericArgs) = nil);
-  end;
-
-  procedure Identifier(AIdent: TSyntaxNode);
-  var
-    Name, Key: string;
-    Member: TIndexSymbol;
-  begin
-    Name := TPascalLexer.PlainName(AIdent.Name);
-    Key := LowerCase(Name);
-    if (Name = '') or Locals.ContainsKey(Key) then
-    begin
-      Exit;
-    end;
-    if (AContainer <> '') and Members.TryGetValue(Key, Member) then
-    begin
-      if Member.Visibility = TIndexVisibility.StrictPrivate then
-      begin
-        AddRef('!' + Member.Name);
-      end;
-      if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-        (Member.TypeName <> '') then
-      begin
-        AddRef(TypeRefOf(Member));
-      end;
-      Exit;
-    end;
-    if Own.TryGetValue(Key, Member) then
-    begin
-      if IsDereferenced(AIdent) and (Member.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
-        (Member.TypeName <> '') then
-      begin
-        AddRef(TypeRefOf(Member));
-      end;
-      Exit;
-    end;
-    AddRef(Name);
-  end;
-
-  procedure TypeReference(AType: TSyntaxNode);
-  var
-    Name: string;
-  begin
-    Name := TPascalLexer.PlainName(AType.Name);
-    if (Name = '') or SameText(Name, 'string') or SameText(Name, 'const') or SameText(Name, 'file') or
-      Locals.ContainsKey(LowerCase(Name)) or Own.ContainsKey(LowerCase(Name)) or
-      ((AContainer <> '') and Members.ContainsKey(LowerCase(Name))) then
-    begin
-      Exit;
-    end;
-    AddRef(':' + Name);
-  end;
-
-begin
-  Result := nil;
-  Locals := TDictionary<string, Boolean>.Create;
-  Refs := TList<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
-  Own := TDictionary<string, TIndexSymbol>.Create;
-  Members := TDictionary<string, TIndexSymbol>.Create;
-  try
-    for Symbol in FSymbols do
-    begin
-      if Symbol.Container = '' then
-      begin
-        Own.AddOrSetValue(LowerCase(Symbol.Name), Symbol);
-      end
-      else if (AContainer <> '') and SameText(Symbol.Container, AContainer) and
-        not Members.ContainsKey(LowerCase(Symbol.Name)) then
-      begin
-        Members.Add(LowerCase(Symbol.Name), Symbol);
-      end;
-    end;
-    Locals.Add('result', True);
-    Locals.Add('self', True);
-    AddNameList(Locals, AContainerParams);
-    Header := ANode.FindChild(TSyntaxKind.RoutineHeader);
-    if Header <> nil then
-    begin
-      AddNameList(Locals, TypeParamsOf(Header));
-    end;
-    Blocked := False;
-    Nodes := TList<TSyntaxNode>.Create;
-    try
-      // Lokale Namen zuerst, damit die Reihenfolge im Rumpf keine Rolle spielt. Ohne anonyme Methode, weil
-      // die lokalen Prozeduren dieselben Variablen benutzen.
-      Stack := TStack<TSyntaxNode>.Create;
-      try
-        Stack.Push(ANode);
-        while Stack.Count > 0 do
-        begin
-          Child := Stack.Pop;
-          case Child.Kind of
-            TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar,
-            TSyntaxKind.InlineConst, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.TypeDecl:
-              AddNameList(Locals, Child.Name);
-            TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement:
-              Blocked := True;
-            TSyntaxKind.RoutineDecl:
-              if Child <> ANode then
-              begin
-                Blocked := True;
-              end;
-            TSyntaxKind.ArrayType:
-              // Offene Array-Parameter verhindern das Einbetten.
-              if (Child.Parent <> nil) and (Child.Parent.Kind = TSyntaxKind.Parameter) then
-              begin
-                Blocked := True;
-              end;
-          else
-            // Übrige Werte bewusst ohne Wirkung.
-          end;
-          // Den Kopf (Parameter- und Ergebnistypen) kennt der Aufrufer ohnehin.
-          if (Child.Kind in [TSyntaxKind.Identifier, TSyntaxKind.TypeReference]) and not IsInside(Child, Header) then
-          begin
-            Nodes.Add(Child);
-          end;
-          for Index := Child.ChildCount - 1 downto 0 do
-          begin
-            Stack.Push(Child[Index]);
-          end;
-        end;
-      finally
-        Stack.Free;
-      end;
-      if Blocked then
-      begin
-        Exit;
-      end;
-      for Child in Nodes do
-      begin
-        if Child.Kind = TSyntaxKind.Identifier then
-        begin
-          Identifier(Child);
-        end
-        else
-        begin
-          TypeReference(Child);
-        end;
-      end;
-    finally
-      Nodes.Free;
-    end;
-    Result := Refs.ToArray;
-    // nil heißt „nicht einbettbar“; ohne Verweise bleibt die Routine trotzdem als inline erkennbar (#1381).
-    if Length(Result) = 0 then
-    begin
-      Result := TArray<string>.Create(TIndexSymbol.InlineWithoutRefs);
-    end;
-  finally
-    Members.Free;
-    Own.Free;
-    Seen.Free;
-    Refs.Free;
-    Locals.Free;
-  end;
-end;
-
-/// <summary>Direktiven eines Routinenkopfs in Kleinschreibung.</summary>
-function DirectivesOfHeader(AHeader: TSyntaxNode): TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index := 0 to AHeader.ChildCount - 1 do
-  begin
-    if AHeader[Index].Kind = TSyntaxKind.Directive then
-    begin
-      Result := Result + [LowerCase(AHeader[Index].Name)];
-    end;
-  end;
-end;
-
-function SameParamTypes(const A, B: TArray<string>): Boolean;
-var
-  Index: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for Index := 0 to High(A) do
-    begin
-      if not SameText(A[Index], B[Index]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
-function TIndexExtractor.ContainerParams(const AContainer: string): string;
-var
-  Symbol: TIndexSymbol;
-begin
-  Result := '';
-  if AContainer = '' then
-  begin
-    Exit;
-  end;
-  for Symbol in FSymbols do
-  begin
-    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
-    begin
-      Exit(Symbol.TypeParams);
-    end;
-  end;
-end;
-
-procedure TIndexExtractor.SetInlineRefs(APosition: Integer; const ARefs: TArray<string>);
-var
-  Symbol: TIndexSymbol;
-begin
-  Symbol := FSymbols[APosition];
-  Symbol.InlineRefs := ARefs;
-  FSymbols[APosition] := Symbol;
-end;
-
-procedure TIndexExtractor.AddInlineRefs(ASection: TSyntaxNode);
-const
-  NotInlined: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'message', 'external');
-var
-  Index, Position, Found: Integer;
-  Node, Header: TSyntaxNode;
-  Name, Container: string;
-  Dot, Min, Max: Integer;
-  Types: TArray<string>;
-  Inline_, Skip: Boolean;
-  Symbol: TIndexSymbol;
-  Refs: TArray<string>;
-  Directive: string;
-begin
-  if ASection = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to ASection.ChildCount - 1 do
-  begin
-    Node := ASection[Index];
-    if Node.Kind <> TSyntaxKind.RoutineDecl then
-    begin
-      Continue;
-    end;
-    Header := Node.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header = nil) or (Node.FindChild(TSyntaxKind.Block) = nil) or IsConstructor(Node) then
-    begin
-      Continue;
-    end;
-    Name := Node.Name;
-    Container := '';
-    Dot := Name.LastIndexOf('.');
-    if Dot >= 0 then
-    begin
-      Container := Name.Substring(0, Dot);
-      Name := Name.Substring(Dot + 1);
-    end;
-    ParamInfo(Header, Min, Max, Types);
-    // Deklaration suchen: gleicher Name und Typ, bei Überladungen dieselben Parametertypen.
-    Found := -1;
-    Inline_ := False;
-    Skip := False;
-    for Directive in DirectivesOfHeader(Header) do
-    begin
-      Inline_ := Inline_ or SameText(Directive, 'inline');
-      Skip := Skip or (IndexText(Directive, NotInlined) >= 0);
-    end;
-    for Position := 0 to FSymbols.Count - 1 do
-    begin
-      Symbol := FSymbols[Position];
-      if not (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
-        not SameText(Symbol.Name, Name) or not SameText(Symbol.Container, Container) or
-        (Symbol.Range.StartPos = Node.StartPos) then
-      begin
-        Continue;
-      end;
-      if (Length(Types) > 0) and not SameParamTypes(Symbol.ParamTypes, Types) then
-      begin
-        Continue;
-      end;
-      if Found >= 0 then
-      begin
-        // Mehrdeutig (Überladungen ohne Parameterliste in der Implementierung).
-        Found := -2;
-        Break;
-      end;
-      Found := Position;
-    end;
-    if Found = -2 then
-    begin
-      Continue;
-    end;
-    if Found >= 0 then
-    begin
-      for Directive in FSymbols[Found].Directives do
-      begin
-        Inline_ := Inline_ or SameText(Directive, 'inline');
-        Skip := Skip or (IndexText(Directive, NotInlined) >= 0);
-      end;
-    end;
-    if not Inline_ or Skip then
-    begin
-      Continue;
-    end;
-    Refs := InlineRefsOf(Node, Container, ContainerParams(Container));
-    if Refs = nil then
-    begin
-      Continue;
-    end;
-    if Found >= 0 then
-    begin
-      SetInlineRefs(Found, Refs);
-    end;
-    for Position := 0 to FSymbols.Count - 1 do
-    begin
-      if (FSymbols[Position].Range.StartPos = Node.StartPos) and SameText(FSymbols[Position].Name, Name) then
-      begin
-        SetInlineRefs(Position, Refs);
-      end;
-    end;
-  end;
-end;
-
-procedure TIndexExtractor.AddUnitHints(var AUnit: TUnitIndex);
-var
-  Index, Next: Integer;
-  Started, InName, AfterPart: Boolean;
-  Text: string;
-begin
-  // unit A.B deprecated 'Grund' platform;  Kommentare und Direktiven dazwischen überspringen.
-  // Der Unit-Name zählt nicht als Hinweis: Atlas.Settings.Experimental ist nicht experimental.
-  Started := False;
-  InName := True;
-  AfterPart := False;
-  for Index := 0 to High(FTokens) do
-  begin
-    if FTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Continue;
-    end;
-    if not Started then
-    begin
-      if not ((FTokens[Index].Kind = TPascalTokenKind.Keyword) and SameText(FTokens[Index].Text, 'unit')) then
-      begin
-        Exit;
-      end;
-      Started := True;
-      Continue;
-    end;
-    if FTokens[Index].IsSymbol(';') then
-    begin
-      Exit;
-    end;
-    if InName then
-    begin
-      // Name aus Teilen mit Punkt dazwischen; nach einem Teil ohne folgenden Punkt beginnen die Hinweise.
-      if AfterPart and not FTokens[Index].IsSymbol('.') then
-      begin
-        InName := False;
-      end
-      else
-      begin
-        AfterPart := not FTokens[Index].IsSymbol('.');
-        Continue;
-      end;
-    end;
-    if not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
-      (IndexText(FTokens[Index].Text, HintDirectives) < 0) then
-    begin
-      Continue;
-    end;
-    if IndexText(FTokens[Index].Text, AUnit.Directives) < 0 then
-    begin
-      AUnit.Directives := AUnit.Directives + [LowerCase(FTokens[Index].Text)];
-    end;
-    if not SameText(FTokens[Index].Text, 'deprecated') then
-    begin
-      Continue;
-    end;
-    Next := Index + 1;
-    while (Next <= High(FTokens)) and (FTokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-    begin
-      Inc(Next);
-    end;
-    if (Next > High(FTokens)) or (FTokens[Next].Kind <> TPascalTokenKind.StringLiteral) then
-    begin
-      Continue;
-    end;
-    Text := FTokens[Next].Text;
-    if (Length(Text) >= 2) and (Text[1] = '''') and (Text[Length(Text)] = '''') then
-    begin
-      Text := StringReplace(Copy(Text, 2, Length(Text) - 2), '''''', '''', [rfReplaceAll]);
-    end;
-    AUnit.DeprecatedText := Text;
-  end;
-end;
-
-procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
-var
-  Index: Integer;
-  Child: TSyntaxNode;
+procedure TIndexExtractor.ReadUnitInfo(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
 begin
   AUnit.InterfaceUses := nil;
   AUnit.ImplementationUses := nil;
   AUnit.Directives := nil;
   AUnit.DeprecatedText := '';
-  AUnit.Rationale := RationaleOf(TRationaleScanner.ForUnit(FTokens, ARoot));
+  AUnit.Rationale := RationaleOf(TRationaleScanner.ForUnit(FReader.Tokens, ARoot));
   AUnit.HasInitialization := (ARoot.FindChild(TSyntaxKind.InitializationSection) <> nil) or
     (ARoot.FindChild(TSyntaxKind.FinalizationSection) <> nil);
   if ARoot.Kind = TSyntaxKind.UnitFile then
   begin
-    AddUnitHints(AUnit);
-    AUnit.InterfaceUses := UsesOf(ARoot.FindChild(TSyntaxKind.InterfaceSection));
-    AUnit.ImplementationUses := UsesOf(ARoot.FindChild(TSyntaxKind.ImplementationSection));
+    FReader.UnitHints(AUnit);
+    AUnit.InterfaceUses := TIndexTypeText.UsesOf(ARoot.FindChild(TSyntaxKind.InterfaceSection));
+    AUnit.ImplementationUses := TIndexTypeText.UsesOf(ARoot.FindChild(TSyntaxKind.ImplementationSection));
   end
   else
   begin
     // program, library, package: alles gilt als implementation.
-    AUnit.ImplementationUses := UsesOf(ARoot);
+    AUnit.ImplementationUses := TIndexTypeText.UsesOf(ARoot);
   end;
-  for Index := 0 to ARoot.ChildCount - 1 do
+end;
+
+procedure TIndexExtractor.Walk(ARoot: TSyntaxNode; var AUnit: TUnitIndex);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mInlineRefs: TIndexInlineRefs;
+begin
+  ReadUnitInfo(ARoot, AUnit);
+  for mIndex := 0 to ARoot.ChildCount - 1 do
   begin
-    Child := ARoot[Index];
-    if Child.Kind = TSyntaxKind.InterfaceSection then
+    mChild := ARoot[mIndex];
+    if mChild.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
     begin
-      FInInterface := True;
-      AddDeclarations(Child);
-    end
-    else if Child.Kind = TSyntaxKind.ImplementationSection then
-    begin
-      FInInterface := False;
-      AddDeclarations(Child);
+      FState.InInterface := mChild.Kind = TSyntaxKind.InterfaceSection;
+      AddDeclarations(mChild);
     end;
   end;
   if ARoot.Kind <> TSyntaxKind.UnitFile then
   begin
-    FInInterface := False;
+    FState.InInterface := False;
     AddDeclarations(ARoot);
   end;
   DropForwards;
   if ARoot.Kind = TSyntaxKind.UnitFile then
   begin
-    AddInlineRefs(ARoot.FindChild(TSyntaxKind.ImplementationSection));
+    mInlineRefs := TIndexInlineRefs.Create(FSymbols, FReader);
+    try
+      mInlineRefs.Add(ARoot.FindChild(TSyntaxKind.ImplementationSection));
+    finally
+      mInlineRefs.Free;
+    end;
   end;
   AUnit.Symbols := FSymbols.ToArray;
-  AUnit.Naming := NamingOf(ARoot);
-end;
-
-class function TIndexExtractor.HasNamePrefix(const AName, APrefix: string): Boolean;
-begin
-  Result := (APrefix <> '') and (Length(AName) > Length(APrefix)) and StartsStr(APrefix, AName) and
-    CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']);
-end;
-
-/// <summary>Art der Namen in ANode (Field, VarDecl, Parameter, InlineVar); False für globale Variablen,
-/// Konstanten und alles andere.</summary>
-function NamingKindOf(ANode: TSyntaxNode; out AKind: TNamingKind): Boolean;
-var
-  Owner: TSyntaxNode;
-begin
-  Result := True;
-  AKind := TNamingKind.Local;
-  case ANode.Kind of
-    TSyntaxKind.Field:
-      AKind := TNamingKind.Field;
-    TSyntaxKind.Parameter:
-      AKind := TNamingKind.Parameter;
-    TSyntaxKind.InlineVar:
-      AKind := TNamingKind.Local;
-    TSyntaxKind.VarDecl:
-      begin
-        // Nächster Besitzer entscheidet: Typ = Feld, Routine = lokal, sonst global.
-        Owner := ANode.Parent;
-        while (Owner <> nil) and not (Owner.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
-          TSyntaxKind.RecordType, TSyntaxKind.HelperType, TSyntaxKind.RoutineDecl]) do
-        begin
-          Owner := Owner.Parent;
-        end;
-        if Owner = nil then
-        begin
-          Exit(False);
-        end;
-        if Owner.Kind = TSyntaxKind.RoutineDecl then
-        begin
-          AKind := TNamingKind.Local;
-        end
-        else
-        begin
-          AKind := TNamingKind.Field;
-        end;
-      end;
-  else
-    Result := False;
-  end;
-end;
-
-class function TIndexExtractor.NamingOf(ARoot: TSyntaxNode): TNamingCounts;
-var
-  Counts: TNamingCounts;
-begin
-  Counts := Default(TNamingCounts);
-  if ARoot <> nil then
-  begin
-    ARoot.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      var
-        Kind: TNamingKind;
-        Name: string;
-      begin
-        Result := True;
-        if not NamingKindOf(ANode, Kind) then
-        begin
-          Exit;
-        end;
-        for Name in ANode.Name.Split([',']) do
-        begin
-          if Trim(Name) <> '' then
-          begin
-            Inc(Counts[Kind].Total);
-            if HasNamePrefix(Trim(Name), NamingPrefixes[Kind]) then
-            begin
-              Inc(Counts[Kind].Prefixed);
-            end;
-          end;
-        end;
-      end);
-  end;
-  Result := Counts;
+  AUnit.Naming := TIndexTypeText.NamingOf(ARoot);
 end;
 
 class function TIndexExtractor.Extract(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 var
-  Extractor: TIndexExtractor;
+  mExtractor: TIndexExtractor;
 begin
   Result := Default(TUnitIndex);
   Result.FileName := AFileName;
@@ -2043,142 +809,20 @@ begin
   begin
     Result.UnitName := FileNameToUnitName(AFileName);
   end;
-  Extractor := TIndexExtractor.Create(ATree.Tokens);
+  mExtractor := TIndexExtractor.Create(ATree.Tokens);
   try
-    Extractor.Walk(ATree.Root, Result);
+    mExtractor.Walk(ATree.Root, Result);
   finally
-    Extractor.Free;
+    mExtractor.Free;
   end;
 end;
 
 class function TIndexExtractor.BlankInactive(const AText: string; const ADefines: TArray<string>): string;
 var
-  Includes: TArray<string>;
+  mIncludes: TArray<string>;
+  mConditionals: TArray<TConditionalRange>;
 begin
-  Result := BlankInactive(AText, '', ADefines, nil, Includes);
-end;
-
-class function TIndexExtractor.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; out AIncludes: TArray<string>): string;
-var
-  Conditionals: TArray<TConditionalRange>;
-begin
-  Result := BlankInactive(AText, AFileName, ADefines, AResolver, AIncludes, Conditionals);
-end;
-
-class function TIndexExtractor.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; out AIncludes: TArray<string>;
-  out AConditionals: TArray<TConditionalRange>): string;
-var
-  Conditional: TConditionalRange;
-  Options: TPreprocessorOptions;
-  Processed: TPreprocessorResult;
-  LineStarts: TList<Integer>;
-  Range: TInactiveRange;
-  Index, StartOffset, EndOffset: Integer;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  begin
-    // 1-basiert; über das Textende hinaus wird abgeschnitten.
-    if APosition.Line >= LineStarts.Count then
-    begin
-      Exit(Length(AText) + 1);
-    end;
-    Result := LineStarts[APosition.Line] + APosition.Character;
-    if Result > Length(AText) + 1 then
-    begin
-      Result := Length(AText) + 1;
-    end;
-  end;
-
-begin
-  Result := AText;
-  AIncludes := nil;
-  AConditionals := nil;
-  if Pos('{$', AText) + Pos('(*$', AText) = 0 then
-  begin
-    Exit;
-  end;
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := ADefines;
-  Options.FileName := AFileName;
-  Options.ResolveInclude := AResolver;
-  Processed := TPascalPreprocessor.Process(AText, Options);
-  for Index := 1 to High(Processed.Files) do
-  begin
-    if IndexText(Processed.Files[Index], AIncludes) < 0 then
-    begin
-      AIncludes := AIncludes + [Processed.Files[Index]];
-    end;
-  end;
-  for Conditional in Processed.Conditionals do
-  begin
-    if Conditional.FileIndex = 0 then
-    begin
-      AConditionals := AConditionals + [Conditional];
-    end;
-  end;
-  if Length(Processed.InactiveRanges) = 0 then
-  begin
-    Exit;
-  end;
-  LineStarts := TList<Integer>.Create;
-  try
-    LineStarts.Add(1);
-    Index := 1;
-    while Index <= Length(AText) do
-    begin
-      if AText[Index] = #13 then
-      begin
-        if (Index < Length(AText)) and (AText[Index + 1] = #10) then
-        begin
-          Inc(Index);
-        end;
-        LineStarts.Add(Index + 1);
-      end
-      else if AText[Index] = #10 then
-      begin
-        LineStarts.Add(Index + 1);
-      end;
-      Inc(Index);
-    end;
-    for Range in Processed.InactiveRanges do
-    begin
-      if Range.FileIndex <> 0 then
-      begin
-        Continue;
-      end;
-      StartOffset := OffsetOf(Range.Range.StartPos);
-      EndOffset := OffsetOf(Range.Range.EndPos);
-      for Index := StartOffset to EndOffset - 1 do
-      begin
-        if (Index >= 1) and (Index <= Length(Result)) and not CharInSet(Result[Index], [#10, #13]) then
-        begin
-          Result[Index] := ' ';
-        end;
-      end;
-    end;
-  finally
-    LineStarts.Free;
-  end;
-end;
-
-class function TIndexExtractor.ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver): TUnitIndex;
-begin
-  Result := ExtractText(AText, AFileName, ADefines, AResolver, False);
-end;
-
-class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>): TUnitIndex;
-begin
-  Result := ExtractText(AText, AFileName, ADefines, nil, False);
-end;
-
-class function TIndexExtractor.ExtractText(const AText, AFileName: string;
-  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
-begin
-  Result := ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages);
+  Result := TIndexConditions.BlankInactive(AText, '', ADefines, nil, mIncludes, mConditionals);
 end;
 
 type
@@ -2202,526 +846,154 @@ begin
   inherited;
 end;
 
-class function TIndexExtractor.CollectUsages(const ATokens: TArray<TPascalToken>;
-  const ASymbols: TArray<TIndexSymbol>): TArray<TIndexUsage>;
-var
-  Declared: TDictionary<Int64, Boolean>;
-  Buckets: TObjectDictionary<string, TUsageBucket>;
-  Bucket: TUsageBucket;
-  Names: TArray<string>;
-  Symbol: TIndexSymbol;
-  Token: TPascalToken;
-  Name, Key: string;
-  Index: Integer;
-
-  function PositionKey(const APosition: TTextPosition): Int64;
-  begin
-    Result := (Int64(APosition.Line) shl 32) or Cardinal(APosition.Character);
-  end;
-
+function PositionKey(const APosition: TTextPosition): Int64;
 begin
-  Result := nil;
-  Declared := TDictionary<Int64, Boolean>.Create;
-  Buckets := TObjectDictionary<string, TUsageBucket>.Create([doOwnsValues]);
-  try
-    // Die Deklaration selbst ist keine Verwendung; Symbole aus $I-Dateien stehen woanders.
-    for Symbol in ASymbols do
-    begin
-      if Symbol.FileName = '' then
-      begin
-        Declared.AddOrSetValue(PositionKey(Symbol.SelectionRange.StartPos), True);
-      end;
-    end;
-    for Token in ATokens do
-    begin
-      if Token.Kind <> TPascalTokenKind.Identifier then
-      begin
-        Continue;
-      end;
-      Name := Token.Text;
-      if Name.StartsWith('&') then
-      begin
-        Name := Copy(Name, 2, MaxInt);
-      end;
-      if (Name = '') or SameText(Name, 'Self') or SameText(Name, 'Result') or
-        (IndexText(Name, DirectiveWords) >= 0) or Declared.ContainsKey(PositionKey(Token.StartPos)) then
-      begin
-        Continue;
-      end;
-      Key := UpperCase(Name);
-      if not Buckets.TryGetValue(Key, Bucket) then
-      begin
-        Bucket := TUsageBucket.Create(Name);
-        Buckets.Add(Key, Bucket);
-      end;
-      Bucket.Positions.Add(Token.StartPos);
-    end;
-    Names := Buckets.Keys.ToArray;
-    TArray.Sort<string>(Names);
-    SetLength(Result, Length(Names));
-    for Index := 0 to High(Names) do
-    begin
-      Bucket := Buckets[Names[Index]];
-      Result[Index].Name := Bucket.Name;
-      Result[Index].Positions := Bucket.Positions.ToArray;
-    end;
-  finally
-    Buckets.Free;
-    Declared.Free;
-  end;
+  Result := (Int64(APosition.Line) shl 32) or Cardinal(APosition.Character);
 end;
 
-/// <summary>Liegt APosition in ARange (Ende ausgeschlossen)?</summary>
-function InRange(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
+/// <summary>Name der Verwendung am Token AToken ohne Escape-&amp;; '' für Schlüsselwörter, Direktiven, Self, Result
+/// und Deklarationsstellen (ADeclared).</summary>
+function UsageName(const AToken: TPascalToken; ADeclared: TDictionary<Int64, Boolean>): string;
 begin
-  Result := ((APosition.Line > ARange.StartPos.Line) or
-    ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
-    ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character < ARange.EndPos.Character)));
-end;
-
-class procedure TIndexExtractor.AnnotateConditions(var AUnit: TUnitIndex; const AText: string;
-  const AConditionals: TArray<TConditionalRange>);
-var
-  Lines: TArray<string>;
-  Index, LineIndex, Best, ImplementationLine, Indent: Integer;
-  Conditional: TConditionalRange;
-  Symbol: TIndexSymbol;
-  Section, Line, Code, Keyword, Owner: string;
-  Match: TMatch;
-  Known: TDictionary<string, Boolean>;
-  // Abschnitt (type/const/var …) am Anfang jeder Zeile; einmal für die ganze Datei bestimmt.
-  Sections: TArray<string>;
-
-  procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
-    const ACondition, AContainer: string); overload;
-  var
-    Item: TIndexSymbol;
-    Key: string;
+  if AToken.Kind <> TPascalTokenKind.Identifier then
   begin
-    // Mitglieder je Typ: gleichnamige Mitglieder anderer Typen sind etwas anderes.
-    Key := UpperCase(AName);
-    if AContainer <> '' then
-    begin
-      Key := UpperCase(AContainer) + '.' + Key;
-    end;
-    if Known.ContainsKey(Key) then
-    begin
-      Exit;
-    end;
-    Known.Add(Key, True);
-    Item := Default(TIndexSymbol);
-    Item.Name := AName;
-    Item.Kind := AKind;
-    Item.Container := AContainer;
-    Item.Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine, Length(Lines[ALine])));
-    Item.SelectionRange := TTextRange.Create(TTextPosition.Create(ALine, AColumn),
-      TTextPosition.Create(ALine, AColumn + Length(AName)));
-    Item.InInterface := (ImplementationLine < 0) or (ALine < ImplementationLine);
-    Item.Visibility := TIndexVisibility.Public;
-    Item.Condition := ACondition;
-    Item.Unavailable := True;
-    AUnit.Unavailable := AUnit.Unavailable + [Item];
+    Exit('');
   end;
-
-  // Wie oben ohne Typ (AContainer = '').
-  procedure AddUnavailable(const AName: string; AKind: TIndexSymbolKind; ALine, AColumn: Integer;
-    const ACondition: string); overload;
+  Result := AToken.Text;
+  if Result.StartsWith('&') then
   begin
-    AddUnavailable(AName, AKind, ALine, AColumn, ACondition, '');
+    Result := Copy(Result, 2, MaxInt);
   end;
-
-  // Innerster Klassen-, Record- oder Interface-Typ, in dessen Rumpf ALine liegt; '' = keiner.
-  function OwnerOf(ALine: Integer): string;
-  var
-    Candidate: TIndexSymbol;
-    Best: TTextRange;
+  if MatchText(Result, ['Self', 'Result']) or (IndexText(Result, DirectiveWords) >= 0) or
+    ADeclared.ContainsKey(PositionKey(AToken.StartPos)) then
   begin
     Result := '';
-    for Candidate in AUnit.Symbols do
-    begin
-      if (Candidate.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-        TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and (Candidate.FileName = '') and
-        (Candidate.Range.StartPos.Line < ALine) and (Candidate.Range.EndPos.Line >= ALine) then
-      begin
-        if (Result = '') or (Candidate.Range.StartPos.Line >= Best.StartPos.Line) then
-        begin
-          Result := Candidate.QualifiedName;
-          Best := Candidate.Range;
-        end;
-      end;
-    end;
-  end;
-
-  // Mitglied in einem nicht geltenden Zweig innerhalb eines Typrumpfs (#476): Methoden, Properties, Felder.
-  procedure AddMember(const ACode: string; ALine: Integer; const AOwner, ACondition: string);
-  var
-    Found: TMatch;
-    Words: string;
-    Kind: TIndexSymbolKind;
-    Name: string;
-    Column: Integer;
-  begin
-    Found := TRegEx.Match(ACode,
-      '^\s*(class\s+)?(procedure|function|constructor|destructor|operator)\s+([A-Za-z_]\w*)', [roIgnoreCase]);
-    if Found.Success then
-    begin
-      Words := LowerCase(Found.Groups[2].Value);
-      if Words = 'constructor' then
-      begin
-        Kind := TIndexSymbolKind.Constructor_;
-      end
-      else
-      begin
-        Kind := TIndexSymbolKind.Method;
-      end;
-      AddUnavailable(Found.Groups[3].Value, Kind, ALine, Found.Groups[3].Index - 1, ACondition, AOwner);
-      Exit;
-    end;
-    Found := TRegEx.Match(ACode, '^\s*(class\s+)?property\s+([A-Za-z_]\w*)', [roIgnoreCase]);
-    if Found.Success then
-    begin
-      AddUnavailable(Found.Groups[2].Value, TIndexSymbolKind.Property_, ALine, Found.Groups[2].Index - 1,
-        ACondition, AOwner);
-      Exit;
-    end;
-    // Felder "A, B: Integer;" (auch nach "class var" / "var"); Schlüsselwörter sind keine Felder.
-    Found := TRegEx.Match(ACode, '^\s*((class\s+)?var\s+)?([A-Za-z_]\w*(\s*,\s*[A-Za-z_]\w*)*)\s*:[^=]',
-      [roIgnoreCase]);
-    if not Found.Success then
-    begin
-      Exit;
-    end;
-    Column := Found.Groups[3].Index - 1;
-    for Name in Found.Groups[3].Value.Split([',']) do
-    begin
-      Words := Trim(Name);
-      if MatchText(Words, ['private', 'protected', 'public', 'published', 'strict', 'case', 'end']) then
-      begin
-        Continue;
-      end;
-      AddUnavailable(Words, TIndexSymbolKind.Field, ALine, Column + Pos(Words, Found.Groups[3].Value) - 1,
-        ACondition, AOwner);
-    end;
-  end;
-
-  procedure AddType(const AMatch: TMatch; ALine: Integer; const ACondition: string);
-  var
-    Kind: TIndexSymbolKind;
-  begin
-    Keyword := LowerCase(AMatch.Groups[4].Value);
-    if Keyword = 'class' then
-    begin
-      Kind := TIndexSymbolKind.ClassType;
-    end
-    else if Keyword = 'record' then
-    begin
-      Kind := TIndexSymbolKind.RecordType;
-    end
-    else if (Keyword = 'interface') or (Keyword = 'dispinterface') then
-    begin
-      Kind := TIndexSymbolKind.InterfaceType;
-    end
-    else if Keyword = '(' then
-    begin
-      Kind := TIndexSymbolKind.EnumType;
-    end
-    else
-    begin
-      Kind := TIndexSymbolKind.TypeAlias;
-    end;
-    AddUnavailable(AMatch.Groups[1].Value, Kind, ALine, AMatch.Groups[1].Index - 1, ACondition);
-  end;
-
-begin
-  AUnit.Unavailable := nil;
-  Lines := AText.Replace(#13#10, #10).Split([#10]);
-  // Geltende Zweige: der innerste umgebende Zweig bestimmt die Bedingung.
-  for Index := 0 to High(AUnit.Symbols) do
-  begin
-    if AUnit.Symbols[Index].FileName <> '' then
-    begin
-      Continue;
-    end;
-    Best := -1;
-    for LineIndex := 0 to High(AConditionals) do
-    begin
-      if AConditionals[LineIndex].Active and InRange(AUnit.Symbols[Index].SelectionRange.StartPos,
-        AConditionals[LineIndex].Range) then
-      begin
-        if (Best < 0) or InRange(AConditionals[LineIndex].Range.StartPos, AConditionals[Best].Range) then
-        begin
-          Best := LineIndex;
-        end;
-      end;
-    end;
-    if Best >= 0 then
-    begin
-      AUnit.Symbols[Index].Condition := AConditionals[Best].Condition;
-    end
-    else
-    begin
-      // Direktive platform an der Deklaration (erste Zeile).
-      LineIndex := AUnit.Symbols[Index].SelectionRange.StartPos.Line;
-      if (LineIndex >= 0) and (LineIndex <= High(Lines)) and
-        TRegEx.IsMatch(Lines[LineIndex], '\bplatform\s*;', [roIgnoreCase]) then
-      begin
-        AUnit.Symbols[Index].Condition := 'platform';
-      end;
-    end;
-  end;
-  // Nur wenn ein Zweig nicht gilt, lohnt die Suche nach Deklarationen darin.
-  Best := 0;
-  for Conditional in AConditionals do
-  begin
-    if not Conditional.Active then
-    begin
-      Inc(Best);
-    end;
-  end;
-  if Best = 0 then
-  begin
-    Exit;
-  end;
-  // Ein Durchlauf über die Datei: Abschnitt je Zeile und Beginn des implementation-Teils.
-  // Große Units (System.pas) haben tausende Zweige; je Zweig neu zu suchen wäre quadratisch.
-  ImplementationLine := -1;
-  SetLength(Sections, Length(Lines));
-  Section := '';
-  for LineIndex := 0 to High(Lines) do
-  begin
-    Sections[LineIndex] := Section;
-    Line := TrimLeft(Lines[LineIndex]);
-    if (Line = '') or not CharInSet(Line[1], ['a'..'z', 'A'..'Z']) then
-    begin
-      Continue;
-    end;
-    Match := TRegEx.Match(Line, '^(type|const|var|threadvar|resourcestring|implementation|interface)\b',
-      [roIgnoreCase]);
-    if not Match.Success then
-    begin
-      Continue;
-    end;
-    Keyword := LowerCase(Match.Groups[1].Value);
-    if (Keyword = 'implementation') or (Keyword = 'interface') then
-    begin
-      Section := '';
-      if (Keyword = 'implementation') and (ImplementationLine < 0) then
-      begin
-        ImplementationLine := LineIndex;
-      end;
-    end
-    else
-    begin
-      Section := Keyword;
-    end;
-  end;
-  Known := TDictionary<string, Boolean>.Create;
-  try
-    // Was in geltenden Zweigen schon deklariert ist, nicht noch einmal (IFDEF WIN32 ... ELSE ... gleicher Name).
-    for Symbol in AUnit.Symbols do
-    begin
-      if Symbol.Container = '' then
-      begin
-        Known.AddOrSetValue(UpperCase(Symbol.Name), True);
-      end
-      else
-      begin
-        Known.AddOrSetValue(UpperCase(Symbol.Container) + '.' + UpperCase(Symbol.Name), True);
-      end;
-    end;
-    for Conditional in AConditionals do
-    begin
-      if Conditional.Active then
-      begin
-        Continue;
-      end;
-      // Abschnitt am Anfang des Zweigs aus dem einen Durchlauf oben.
-      if (Conditional.Range.StartPos.Line >= 0) and (Conditional.Range.StartPos.Line < Length(Sections) - 1) then
-      begin
-        Section := Sections[Conditional.Range.StartPos.Line + 1];
-      end
-      else
-      begin
-        Section := '';
-      end;
-      // Im implementation-Teil nur Routinen der Unit (eigene Unit, z. B. "procedure ApplyAppIcon;" unter
-      // {$IFDEF FPC}): ein billiger Vergleich am Zeilenanfang je Zeile, denn lange Zweige mit ganzen
-      // Implementierungen (System.pas) sollen nichts kosten. Methodenrümpfe "TFoo.Bar" zählen nicht.
-      if (ImplementationLine >= 0) and (Conditional.Range.StartPos.Line > ImplementationLine) then
-      begin
-        for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
-        begin
-          Line := Lines[LineIndex];
-          if not (StartsText('procedure ', Line) or StartsText('function ', Line)) then
-          begin
-            Continue;
-          end;
-          Match := TRegEx.Match(Line, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
-          if Match.Success then
-          begin
-            AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
-              Conditional.Condition);
-          end;
-        end;
-        Continue;
-      end;
-      // Zweig im Rumpf einer Klasse, eines Records oder Interfaces: Mitglieder dieses Typs.
-      Owner := OwnerOf(Conditional.Range.StartPos.Line);
-      if Owner <> '' then
-      begin
-        for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
-        begin
-          Code := Lines[LineIndex];
-          if Pos('//', Code) > 0 then
-          begin
-            Code := Copy(Code, 1, Pos('//', Code) - 1);
-          end;
-          AddMember(Code, LineIndex, Owner, Conditional.Condition);
-        end;
-        Continue;
-      end;
-      for LineIndex := Conditional.Range.StartPos.Line + 1 to Min(Conditional.Range.EndPos.Line, High(Lines)) do
-      begin
-        Line := Lines[LineIndex];
-        Code := Line;
-        if Pos('//', Code) > 0 then
-        begin
-          Code := Copy(Code, 1, Pos('//', Code) - 1);
-        end;
-        Match := TRegEx.Match(Code, '^\s*(type|const|var|threadvar|resourcestring)\b', [roIgnoreCase]);
-        if Match.Success then
-        begin
-          Section := LowerCase(Match.Groups[1].Value);
-          Code := Copy(Code, Match.Length + 1, MaxInt);
-          if Trim(Code) = '' then
-          begin
-            Continue;
-          end;
-        end;
-        Indent := TTextLines.IndentLength(Line);
-        // Routinen auf Unit-Ebene stehen am Zeilenanfang.
-        Match := TRegEx.Match(Code, '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]', [roIgnoreCase]);
-        if Match.Success then
-        begin
-          AddUnavailable(Match.Groups[2].Value, TIndexSymbolKind.Routine, LineIndex, Match.Groups[2].Index - 1,
-            Conditional.Condition);
-          Section := '';
-          Continue;
-        end;
-        if Indent > 2 then
-        begin
-          Continue;
-        end;
-        if Section = 'type' then
-        begin
-          // Vorwärtsdeklaration "TFoo = class;" zählt nicht.
-          if TRegEx.IsMatch(Code, '=\s*(packed\s+)?(class|interface)\s*;', [roIgnoreCase]) then
-          begin
-            Continue;
-          end;
-          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(<[^>]*>)?\s*=\s*(packed\s+)?(\w+|\()', [roIgnoreCase]);
-          if Match.Success then
-          begin
-            AddType(Match, LineIndex, Conditional.Condition);
-          end;
-        end
-        else if (Section = 'const') or (Section = 'resourcestring') then
-        begin
-          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*(:[^=]+)?=', [roIgnoreCase]);
-          if Match.Success then
-          begin
-            AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Constant, LineIndex, Match.Groups[1].Index - 1,
-              Conditional.Condition);
-          end;
-        end
-        else if (Section = 'var') or (Section = 'threadvar') then
-        begin
-          Match := TRegEx.Match(Code, '^\s*([A-Za-z_]\w*)\s*:', [roIgnoreCase]);
-          if Match.Success then
-          begin
-            AddUnavailable(Match.Groups[1].Value, TIndexSymbolKind.Variable, LineIndex, Match.Groups[1].Index - 1,
-              Conditional.Condition);
-          end;
-        end;
-      end;
-    end;
-  finally
-    Known.Free;
   end;
 end;
 
-class function TIndexExtractor.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
-  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex;
+/// <summary>Verwendungen aus ABuckets, nach Name sortiert.</summary>
+function UsagesOf(ABuckets: TObjectDictionary<string, TUsageBucket>): TArray<TIndexUsage>;
 var
-  Tree: TSyntaxTree;
-  Includes: TArray<string>;
-  Conditionals: TArray<TConditionalRange>;
+  mNames: TArray<string>;
+  mBucket: TUsageBucket;
+  mIndex: Integer;
 begin
-  Tree := TSyntaxTreeCache.Parse(BlankInactive(AText, AFileName, ADefines, AResolver, Includes, Conditionals));
+  mNames := ABuckets.Keys.ToArray;
+  TArray.Sort<string>(mNames);
+  SetLength(Result, Length(mNames));
+  for mIndex := 0 to High(mNames) do
+  begin
+    mBucket := ABuckets[mNames[mIndex]];
+    Result[mIndex].Name := mBucket.Name;
+    Result[mIndex].Positions := mBucket.Positions.ToArray;
+  end;
+end;
+
+/// <summary>Verwendungen aller Bezeichner in ATokens außer an den Deklarationsstellen von ASymbols
+/// (#492), nach Name sortiert; Schlüsselwörter, Direktiven, Self und Result zählen nicht.</summary>
+function CollectUsages(const ATokens: TArray<TPascalToken>; const ASymbols: TArray<TIndexSymbol>):
+  TArray<TIndexUsage>;
+var
+  mDeclared: TDictionary<Int64, Boolean>;
+  mBuckets: TObjectDictionary<string, TUsageBucket>;
+  mBucket: TUsageBucket;
+  mSymbol: TIndexSymbol;
+  mToken: TPascalToken;
+  mName: string;
+begin
+  mDeclared := TDictionary<Int64, Boolean>.Create;
+  mBuckets := TObjectDictionary<string, TUsageBucket>.Create([doOwnsValues]);
   try
-    Result := Extract(Tree, AFileName);
-    Result.Includes := Includes;
-    AnnotateConditions(Result, AText, Conditionals);
-    if AUsages then
+    // Die Deklaration selbst ist keine Verwendung; Symbole aus $I-Dateien stehen woanders.
+    for mSymbol in ASymbols do
     begin
-      Result.Usages := CollectUsages(Tree.Tokens, Result.Symbols);
-      Result.UsagesIndexed := True;
+      if mSymbol.FileName = '' then
+      begin
+        mDeclared.AddOrSetValue(PositionKey(mSymbol.SelectionRange.StartPos), True);
+      end;
     end;
-    AddIncluded(Tree, AFileName, ADefines, AResolver, AStack, Result);
+    for mToken in ATokens do
+    begin
+      mName := UsageName(mToken, mDeclared);
+      if mName = '' then
+      begin
+        Continue;
+      end;
+      if not mBuckets.TryGetValue(UpperCase(mName), mBucket) then
+      begin
+        mBucket := TUsageBucket.Create(mName);
+        mBuckets.Add(UpperCase(mName), mBucket);
+      end;
+      mBucket.Positions.Add(mToken.StartPos);
+    end;
+    Result := UsagesOf(mBuckets);
   finally
-    Tree.Free;
+    mBuckets.Free;
+    mDeclared.Free;
+  end;
+end;
+
+/// <summary>Position hinter dem Schluss AClose ab AIndex; hinter dem Text, wenn er fehlt.</summary>
+function ClosingAfter(const AText, AClose: string; AIndex: Integer): Integer;
+begin
+  Result := PosEx(AClose, AText, AIndex);
+  if Result = 0 then
+  begin
+    Result := Length(AText) + 1;
+  end
+  else
+  begin
+    Inc(Result, Length(AClose));
+  end;
+end;
+
+/// <summary>Erstes Zeichen hinter dem Leerzeichen oder Kommentar an AIndex; AIndex, wenn dort keins beginnt.
+/// </summary>
+function TriviaEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  if CharInSet(AText[AIndex], [#1..' ']) then
+  begin
+    Result := AIndex + 1;
+  end
+  else if AText[AIndex] = '{' then
+  begin
+    Result := ClosingAfter(AText, '}', AIndex);
+  end
+  else if Copy(AText, AIndex, 2) = '(*' then
+  begin
+    Result := ClosingAfter(AText, '*)', AIndex);
+  end
+  else if Copy(AText, AIndex, 2) = '//' then
+  begin
+    while (Result <= Length(AText)) and not CharInSet(AText[Result], [#10, #13]) do
+    begin
+      Inc(Result);
+    end;
   end;
 end;
 
 /// <summary>Erstes Wort von AText hinter Leerraum und Kommentaren, klein.</summary>
 function FirstWord(const AText: string): string;
 var
-  Index, Start: Integer;
+  mIndex, mNext, mStart: Integer;
 begin
-  Result := '';
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if CharInSet(AText[Index], [#1..' ']) then
+    mNext := TriviaEnd(AText, mIndex);
+    if mNext = mIndex then
     begin
-      Inc(Index);
-    end
-    else if AText[Index] = '{' then
-    begin
-      Index := PosEx('}', AText, Index);
-      if Index = 0 then
-      begin
-        Exit;
-      end;
-      Inc(Index);
-    end
-    else if Copy(AText, Index, 2) = '(*' then
-    begin
-      Index := PosEx('*)', AText, Index);
-      if Index = 0 then
-      begin
-        Exit;
-      end;
-      Inc(Index, 2);
-    end
-    else if Copy(AText, Index, 2) = '//' then
-    begin
-      while (Index <= Length(AText)) and not CharInSet(AText[Index], [#10, #13]) do
-      begin
-        Inc(Index);
-      end;
-    end
-    else
-    begin
-      Start := Index;
-      while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-      begin
-        Inc(Index);
-      end;
-      Exit(LowerCase(Copy(AText, Start, Index - Start)));
+      Break;
     end;
+    mIndex := mNext;
   end;
+  mStart := mIndex;
+  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
+    Inc(mIndex);
+  end;
+  Result := LowerCase(Copy(AText, mStart, mIndex - mStart));
 end;
 
 function Shifted(const APosition: TTextPosition; ALines: Integer): TTextPosition;
@@ -2729,31 +1001,26 @@ begin
   Result := TTextPosition.Create(APosition.Line - ALines, APosition.Character);
 end;
 
-const
-  /// <summary>Name des Hilfstyps, in den AddIncluded eine .inc aus einem Klassenrumpf einbettet (#849).</summary>
-  IncludeHost = 'TAtlasIncludeHost__';
-
 /// <summary>Innerster Rumpf (class, object, record, interface, helper) unter ANode, der AOffset enthält; sonst nil.
 /// </summary>
 function BodyAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
-  Inner: TSyntaxNode;
+  mIndex: Integer;
+  mInner: TSyntaxNode;
 begin
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if (ANode[Index].StartOffset < AOffset) and (AOffset < ANode[Index].EndOffset) then
+    if (ANode[mIndex].StartOffset < AOffset) and (AOffset < ANode[mIndex].EndOffset) then
     begin
-      if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
-        TSyntaxKind.InterfaceType, TSyntaxKind.HelperType] then
+      if ANode[mIndex].Kind in MemberBodies then
       begin
-        Result := ANode[Index];
+        Result := ANode[mIndex];
       end;
-      Inner := BodyAt(ANode[Index], AOffset);
-      if Inner <> nil then
+      mInner := BodyAt(ANode[mIndex], AOffset);
+      if mInner <> nil then
       begin
-        Result := Inner;
+        Result := mInner;
       end;
       Exit;
     end;
@@ -2764,15 +1031,15 @@ end;
 /// Sichtbarkeit, z. B. "type TAtlasIncludeHost__ = class public" und ein Zeilenumbruch.</summary>
 function HostHead(ABody: TSyntaxNode; AOffset: Integer): string;
 var
-  Index: Integer;
-  Visibility: string;
+  mIndex: Integer;
+  mVisibility: string;
 begin
-  Visibility := '';
-  for Index := 0 to ABody.ChildCount - 1 do
+  mVisibility := '';
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if (ABody[Index].Kind = TSyntaxKind.Visibility) and (ABody[Index].StartOffset < AOffset) then
+    if (ABody[mIndex].Kind = TSyntaxKind.Visibility) and (ABody[mIndex].StartOffset < AOffset) then
     begin
-      Visibility := ABody[Index].Name;
+      mVisibility := ABody[mIndex].Name;
     end;
   end;
   case ABody.Kind of
@@ -2785,20 +1052,20 @@ begin
   else
     Result := 'class';
   end;
-  Result := 'type' + #10 + IncludeHost + ' = ' + Result + ' ' + Visibility + #10;
+  Result := 'type' + #10 + IncludeHost + ' = ' + Result + ' ' + mVisibility + #10;
 end;
 
 /// <summary>Inhalt einer .inc als eine Zeile für die Signatur einer Konstanten (#849).</summary>
 function OneLine(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if CharInSet(Result[Index], [#9, #10, #13]) then
+    if CharInSet(Result[mIndex], [#9, #10, #13]) then
     begin
-      Result[Index] := ' ';
+      Result[mIndex] := ' ';
     end;
   end;
   Result := Trim(Result);
@@ -2812,152 +1079,290 @@ begin
   end;
 end;
 
-class procedure TIndexExtractor.AddIncluded(ATree: TSyntaxTree; const AFileName: string;
-  const ADefines: TArray<string>; const AResolver: TIncludeResolver; const AStack: TArray<string>;
-  var AUnit: TUnitIndex);
-const
-  MaxDepth = 16;
-  SectionWords: array[0..4] of string = ('type', 'const', 'var', 'resourcestring', 'threadvar');
-  StartWords: array[0..13] of string = ('type', 'const', 'var', 'resourcestring', 'threadvar', 'procedure',
-    'function', 'constructor', 'destructor', 'class', 'operator', 'uses', 'begin', 'exports');
-var
-  Token, Previous: TPascalToken;
-  ImplementationOffset, Shift, Position: Integer;
-  IsUnit, InInterface: Boolean;
-  Section, Name, IncFile, IncText, HostType: string;
-  Included: TUnitIndex;
-  Symbol, Copied: TIndexSymbol;
-  Symbols: TList<TIndexSymbol>;
-  Body: TSyntaxNode;
+/// <summary>Zuletzt geöffneter Deklarationsabschnitt hinter AToken, für Dateien ohne eigenes Schlüsselwort.
+/// </summary>
+function SectionAfter(const AToken: TPascalToken; const ASection: string): string;
 begin
-  if not Assigned(AResolver) or (Length(AStack) > MaxDepth) then
+  Result := ASection;
+  if (AToken.Kind = TPascalTokenKind.Keyword) and
+    MatchText(AToken.Text, ['type', 'const', 'var', 'resourcestring', 'threadvar']) then
+  begin
+    Result := LowerCase(AToken.Text);
+  end
+  else if AToken.IsKeyword('begin') or AToken.IsKeyword('implementation') or AToken.IsKeyword('interface') then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Typ eines Symbols aus einer .inc im Hilfstyp: TAtlasIncludeHost__ wird zum umgebenden Typ AHost.
+/// </summary>
+function HostContainer(const AContainer, AHost: string): string;
+begin
+  Result := AContainer;
+  if AHost = '' then
   begin
     Exit;
   end;
-  IsUnit := ATree.Root.Kind = TSyntaxKind.UnitFile;
-  ImplementationOffset := MaxInt;
-  for Token in ATree.Tokens do
+  if SameText(AContainer, IncludeHost) then
   begin
-    if Token.IsKeyword('implementation') then
+    Result := AHost;
+  end
+  else if StartsText(IncludeHost + '.', AContainer) then
+  begin
+    Result := AHost + Copy(AContainer, Length(IncludeHost) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Symbol ASymbol aus der .inc AFile an seinen Platz in der Unit: Typ, Datei und um AShift Zeilen
+/// verschobene Stellen (für die vorangestellten Zeilen).</summary>
+function Relocated(const ASymbol: TIndexSymbol; const AFile, AHost: string; AShift: Integer;
+  AInInterface: Boolean): TIndexSymbol;
+begin
+  Result := ASymbol;
+  Result.Container := HostContainer(ASymbol.Container, AHost);
+  if Result.FileName = '' then
+  begin
+    Result.FileName := AFile;
+    Result.Range := TTextRange.Create(Shifted(Result.Range.StartPos, AShift), Shifted(Result.Range.EndPos, AShift));
+    Result.SelectionRange := TTextRange.Create(Shifted(Result.SelectionRange.StartPos, AShift),
+      Shifted(Result.SelectionRange.EndPos, AShift));
+  end;
+  Result.InInterface := AInInterface;
+end;
+
+type
+  /// <summary>Fügt die Deklarationen aktiver $I-Dateien in den Eintrag einer Unit ein (#500).</summary>
+  TIncludeMerger = class
+  private
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FDefines: TArray<string>;
+    FResolver: TIncludeResolver;
+    FStack: TArray<string>;
+    FSymbols: TList<TIndexSymbol>;
+    FIncludes: TArray<string>;
+    FImplementationOffset: Integer;
+    procedure AddInclude(const AFile: string);
+    /// <summary>Wert einer Konstanten (V = {$I commit.inc};, #849): Inhalt in die Signatur, keine Deklarationen.
+    /// </summary>
+    procedure ReplaceValue(const AToken: TPascalToken; const AText: string);
+    procedure AddSymbols(const AIncluded: TUnitIndex; const AFile, AHost: string; AShift: Integer;
+      AInInterface: Boolean);
+    procedure AddFile(const AToken: TPascalToken; const ASection, AFile, AText: string);
+    procedure TakeDirective(const AToken, APrevious: TPascalToken; const ASection: string);
+  public
+    constructor Create(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>);
+    destructor Destroy; override;
+    procedure Merge(var AUnit: TUnitIndex);
+    class function ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
+      const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex; static;
+  end;
+
+constructor TIncludeMerger.Create(ATree: TSyntaxTree; const AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>);
+var
+  mToken: TPascalToken;
+begin
+  inherited Create;
+  FTree := ATree;
+  FFileName := AFileName;
+  FDefines := ADefines;
+  FResolver := AResolver;
+  FStack := AStack;
+  FSymbols := TList<TIndexSymbol>.Create;
+  FImplementationOffset := MaxInt;
+  for mToken in ATree.Tokens do
+  begin
+    if mToken.IsKeyword('implementation') then
     begin
-      ImplementationOffset := Token.Offset;
+      FImplementationOffset := mToken.Offset;
       Break;
     end;
   end;
-  Section := '';
-  Previous := Default(TPascalToken);
-  Previous.Kind := TPascalTokenKind.Unknown;
-  Symbols := TList<TIndexSymbol>.Create;
-  try
-    Symbols.AddRange(AUnit.Symbols);
-    for Token in ATree.Tokens do
-    begin
-      // Zuletzt geöffneter Deklarationsabschnitt, für Dateien ohne eigenes Schlüsselwort.
-      if (Token.Kind = TPascalTokenKind.Keyword) and (IndexText(Token.Text, SectionWords) >= 0) then
-      begin
-        Section := LowerCase(Token.Text);
-      end
-      else if Token.IsKeyword('begin') or Token.IsKeyword('implementation') or Token.IsKeyword('interface') then
-      begin
-        Section := '';
-      end;
-      if Token.Kind <> TPascalTokenKind.Directive then
-      begin
-        if Token.Kind <> TPascalTokenKind.Comment then
-        begin
-          Previous := Token;
-        end;
-        Continue;
-      end;
-      if not TPascalPreprocessor.IncludeFileOf(Token.Text, Name) then
-      begin
-        Continue;
-      end;
-      // Nicht gefunden oder Zyklus: überspringen, die Diagnose kommt aus dem Präprozessor.
-      if not AResolver(Name, AFileName, IncFile, IncText) or (IndexText(IncFile, AStack) >= 0) then
-      begin
-        Continue;
-      end;
-      if IndexText(IncFile, AUnit.Includes) < 0 then
-      begin
-        AUnit.Includes := AUnit.Includes + [IncFile];
-      end;
-      // Wert einer Konstanten (V = {$I commit.inc};, #849): Inhalt in die Signatur, keine Deklarationen.
-      if TPascalParser.IncludeAsValue(Previous) then
-      begin
-        for Position := 0 to Symbols.Count - 1 do
-        begin
-          if (Symbols[Position].Kind = TIndexSymbolKind.Constant) and (Symbols[Position].FileName = '') and
-            InRange(Token.StartPos, Symbols[Position].Range) then
-          begin
-            Copied := Symbols[Position];
-            Copied.Signature := StringReplace(Copied.Signature, Token.Text, OneLine(IncText), []);
-            if Length(Copied.Signature) > TIndexSymbol.MaxSignature then
-            begin
-              Copied.Signature := Copy(Copied.Signature, 1, TIndexSymbol.MaxSignature - 1) + '…';
-            end;
-            Symbols[Position] := Copied;
-          end;
-        end;
-        Continue;
-      end;
-      InInterface := IsUnit and (Token.Offset < ImplementationOffset);
-      Shift := 0;
-      HostType := '';
-      Body := BodyAt(ATree.Root, Token.Offset);
-      if Body <> nil then
-      begin
-        // Mitten im Klassenrumpf (#849): die .inc in einen Hilfstyp derselben Art einbetten; ihre
-        // Mitglieder gehören danach zum umgebenden Typ.
-        HostType := Body.EnclosingTypeName;
-        IncText := HostHead(Body, Token.Offset) + IncText + #10 + 'end;';
-        Shift := 2;
-      end
-      else if (Section <> '') and (IndexText(FirstWord(IncText), StartWords) < 0) then
-      begin
-        IncText := Section + #10 + IncText;
-        Shift := 1;
-      end;
-      Included := ExtractLevel(IncText, IncFile, ADefines, AResolver, AStack + [IncFile], False);
-      for Symbol in Included.Symbols do
-      begin
-        Copied := Symbol;
-        if HostType <> '' then
-        begin
-          if SameText(Copied.Container, '') and SameText(Copied.Name, IncludeHost) then
-          begin
-            Continue;
-          end;
-          if SameText(Copied.Container, IncludeHost) then
-          begin
-            Copied.Container := HostType;
-          end
-          else if StartsText(IncludeHost + '.', Copied.Container) then
-          begin
-            Copied.Container := HostType + Copy(Copied.Container, Length(IncludeHost) + 1, MaxInt);
-          end;
-        end;
-        if Copied.FileName = '' then
-        begin
-          Copied.FileName := IncFile;
-          Copied.Range := TTextRange.Create(Shifted(Copied.Range.StartPos, Shift), Shifted(Copied.Range.EndPos, Shift));
-          Copied.SelectionRange := TTextRange.Create(Shifted(Copied.SelectionRange.StartPos, Shift),
-            Shifted(Copied.SelectionRange.EndPos, Shift));
-        end;
-        Copied.InInterface := InInterface;
-        Symbols.Add(Copied);
-      end;
-      for Name in Included.Includes do
-      begin
-        if IndexText(Name, AUnit.Includes) < 0 then
-        begin
-          AUnit.Includes := AUnit.Includes + [Name];
-        end;
-      end;
-    end;
-    AUnit.Symbols := Symbols.ToArray;
-  finally
-    Symbols.Free;
+end;
+
+destructor TIncludeMerger.Destroy;
+begin
+  FSymbols.Free;
+  inherited;
+end;
+
+procedure TIncludeMerger.AddInclude(const AFile: string);
+begin
+  if IndexText(AFile, FIncludes) < 0 then
+  begin
+    FIncludes := FIncludes + [AFile];
   end;
 end;
+
+procedure TIncludeMerger.ReplaceValue(const AToken: TPascalToken; const AText: string);
+var
+  mPosition: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  for mPosition := 0 to FSymbols.Count - 1 do
+  begin
+    mSymbol := FSymbols[mPosition];
+    if (mSymbol.Kind = TIndexSymbolKind.Constant) and (mSymbol.FileName = '') and
+      TIndexConditions.InRange(AToken.StartPos, mSymbol.Range) then
+    begin
+      mSymbol.Signature := TIndexTokenReader.Shortened(StringReplace(mSymbol.Signature, AToken.Text,
+        OneLine(AText), []), TIndexSymbol.MaxSignature);
+      FSymbols[mPosition] := mSymbol;
+    end;
+  end;
+end;
+
+procedure TIncludeMerger.AddSymbols(const AIncluded: TUnitIndex; const AFile, AHost: string; AShift: Integer;
+  AInInterface: Boolean);
+var
+  mSymbol: TIndexSymbol;
+  mName: string;
+begin
+  for mSymbol in AIncluded.Symbols do
+  begin
+    // Der Hilfstyp selbst gehört nicht in den Index.
+    if (AHost = '') or not SameText(mSymbol.Container, '') or not SameText(mSymbol.Name, IncludeHost) then
+    begin
+      FSymbols.Add(Relocated(mSymbol, AFile, AHost, AShift, AInInterface));
+    end;
+  end;
+  for mName in AIncluded.Includes do
+  begin
+    AddInclude(mName);
+  end;
+end;
+
+procedure TIncludeMerger.AddFile(const AToken: TPascalToken; const ASection, AFile, AText: string);
+var
+  mBody: TSyntaxNode;
+  mText, mHost: string;
+  mShift: Integer;
+begin
+  mText := AText;
+  mHost := '';
+  mShift := 0;
+  mBody := BodyAt(FTree.Root, AToken.Offset);
+  if mBody <> nil then
+  begin
+    // Mitten im Klassenrumpf (#849): die .inc in einen Hilfstyp derselben Art einbetten; ihre
+    // Mitglieder gehören danach zum umgebenden Typ.
+    mHost := mBody.EnclosingTypeName;
+    mText := HostHead(mBody, AToken.Offset) + AText + #10 + 'end;';
+    mShift := 2;
+  end
+  else if (ASection <> '') and not MatchText(FirstWord(AText), ['type', 'const', 'var', 'resourcestring',
+    'threadvar', 'procedure', 'function', 'constructor', 'destructor', 'class', 'operator', 'uses', 'begin',
+    'exports']) then
+  begin
+    mText := ASection + #10 + AText;
+    mShift := 1;
+  end;
+  AddSymbols(ExtractLevel(mText, AFile, FDefines, FResolver, FStack + [AFile], False), AFile, mHost, mShift,
+    (FTree.Root.Kind = TSyntaxKind.UnitFile) and (AToken.Offset < FImplementationOffset));
+end;
+
+procedure TIncludeMerger.TakeDirective(const AToken, APrevious: TPascalToken; const ASection: string);
+var
+  mName, mFile, mText: string;
+begin
+  if not TPascalPreprocessor.IncludeFileOf(AToken.Text, mName) then
+  begin
+    Exit;
+  end;
+  // Nicht gefunden oder Zyklus: überspringen, die Diagnose kommt aus dem Präprozessor.
+  if not FResolver(mName, FFileName, mFile, mText) or (IndexText(mFile, FStack) >= 0) then
+  begin
+    Exit;
+  end;
+  AddInclude(mFile);
+  if TPascalParser.IncludeAsValue(APrevious) then
+  begin
+    ReplaceValue(AToken, mText);
+  end
+  else
+  begin
+    AddFile(AToken, ASection, mFile, mText);
+  end;
+end;
+
+procedure TIncludeMerger.Merge(var AUnit: TUnitIndex);
+var
+  mToken, mPrevious: TPascalToken;
+  mSection: string;
+begin
+  FSymbols.AddRange(AUnit.Symbols);
+  FIncludes := AUnit.Includes;
+  mSection := '';
+  mPrevious := Default(TPascalToken);
+  mPrevious.Kind := TPascalTokenKind.Unknown;
+  for mToken in FTree.Tokens do
+  begin
+    mSection := SectionAfter(mToken, mSection);
+    if mToken.Kind = TPascalTokenKind.Directive then
+    begin
+      TakeDirective(mToken, mPrevious, mSection);
+    end
+    else if mToken.Kind <> TPascalTokenKind.Comment then
+    begin
+      mPrevious := mToken;
+    end;
+  end;
+  AUnit.Symbols := FSymbols.ToArray;
+  AUnit.Includes := FIncludes;
+end;
+
+class function TIncludeMerger.ExtractLevel(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver; const AStack: TArray<string>; AUsages: Boolean): TUnitIndex;
+var
+  mTree: TSyntaxTree;
+  mIncludes: TArray<string>;
+  mConditionals: TArray<TConditionalRange>;
+  mMerger: TIncludeMerger;
+begin
+  mTree := TSyntaxTreeCache.Parse(TIndexConditions.BlankInactive(AText, AFileName, ADefines, AResolver, mIncludes,
+    mConditionals));
+  try
+    Result := TIndexExtractor.Extract(mTree, AFileName);
+    Result.Includes := mIncludes;
+    TIndexConditions.AnnotateConditions(Result, AText, mConditionals);
+    if AUsages then
+    begin
+      Result.Usages := CollectUsages(mTree.Tokens, Result.Symbols);
+      Result.UsagesIndexed := True;
+    end;
+    if Assigned(AResolver) and (Length(AStack) <= MaxIncludeDepth) then
+    begin
+      mMerger := TIncludeMerger.Create(mTree, AFileName, ADefines, AResolver, AStack);
+      try
+        mMerger.Merge(Result);
+      finally
+        mMerger.Free;
+      end;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string; const ADefines: TArray<string>;
+  const AResolver: TIncludeResolver): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, AResolver, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>): TUnitIndex;
+begin
+  Result := ExtractText(AText, AFileName, ADefines, nil, False);
+end;
+
+class function TIndexExtractor.ExtractText(const AText, AFileName: string;
+  const ADefines: TArray<string>; const AResolver: TIncludeResolver; AUsages: Boolean): TUnitIndex;
+begin
+  Result := TIncludeMerger.ExtractLevel(AText, AFileName, ADefines, AResolver, [AFileName], AUsages);
+end;
+
 end.
