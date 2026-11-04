@@ -128,7 +128,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.TypeChecks,
-  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Rules.Builtin.TypeChecks.Hresult,
   Atlas.Common.Rules.Builtin.TypeChecks.VarArguments,
   Atlas.Common.Index.Contract,
