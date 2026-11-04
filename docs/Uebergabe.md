@@ -1,4 +1,11 @@
-﻿## Atlas-Befunde in Base UI Teil 2 (04.11.2026, Branch `claude/project-thread-dy513l` auf `Pilot-2.0.0-beta.1`)
+﻿## GenericLists zerlegt (04.11.2026, Branch `claude/project-thread-3pj10y` auf `Pilot-2.0.0-beta.1`)
+- Ziel: `Atlas.Common.Editing.GenericLists` (2117 Zeilen, `TGenericListConversion` mit 63 Mitgliedern, 40 Atlas-Befunde mit Metriken) ohne Befunde, ohne Grenzwerte zu ändern. Jetzt neun Units `Atlas.Common.Editing.GenericLists*`, alle 0 Befunde.
+- Aufbau: `TGenericListConversion` (Fassade: `Start`, `AddFile`, `Finish`) ist die oberste Stufe der Klassenkette `TGenericListState` (`.State`, gemeinsamer Zustand, Ziel als Record `TGenericListTarget` mit `Accepts`) → `TGenericListDeclarations` (`.Declarations`, Deklaration, Properties, Create, `DeclarationAt`) → `TGenericListUsages` (`.Usages`, Verwendungen, Casts, Schleifen). Dazu `TLegacyListKind`/`TGenericListNames` (`.Kinds`), `TGenericListSyntax` (`.Syntax`), Datei mit Edits `TGenericListSource` (`.Source`), uses-Listen `TGenericListUses` (`.UsesEdits`) und Elementprüfung `TGenericListElementCheck` (`.Elements`).
+- API für Aufrufer: unverändert bis auf die Unit von `TLegacyListKind` (jetzt `.Kinds` einbinden); neue Abfragen am Record (`IsKnown`, `ElementArgument`, `RenameOf`, `UnsupportedReason`, `GenericText`).
+- Ursache behoben: Eine uses-Liste mit Direktive, aus der Contnrs entfallen sollte, bekam zusätzlich `System.Generics.Collections`, obwohl die Unit schon in die Zielliste kam (doppelt eingebunden, E2004). Test `ContnrsKeptInClauseWithDirectives`.
+- Tests: neue Unit `Tests/Common/Editing/Atlas.Common.Editing.GenericLists.Parts.Tests.pas` (11 Tests). FPC: GenericLists 40/40, Parts 11/11, Collections 24/24. Delphi-Build offen.
+
+## Atlas-Befunde in Base UI Teil 2 (04.11.2026, Branch `claude/project-thread-dy513l` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/UI/{EditorToolbar,Generate,Documentation,Setup,Signature,Undo,SymbolPath,StatusBar}` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 11 Units (PR #1697).
 - API für Aufrufer: `TAtlasDocView.Build` nimmt `TAtlasDocContent` und `TAtlasDocFonts`; die Editorleiste liefert ihre Lage über `Places` (`ButtonRect`, `Return`, `More`, `Gear`, `OverflowIds`); Textfunktionen von Setup- und Erzeugen-Fenster liegen statisch in `TAtlasSetupTexts` bzw. `TAtlasGenerateTexts`; die Statusleiste bekommt ihre Beschriftungen über `Texts := TAtlasStatusBarTexts.Create(...)`.
 - Offen: Delphi-Build und Handtest (CI übersetzt den VCL-Code nicht). Vorhandene Befunde in Aufrufern (`StatusBar.Service`, `Setup.Checklist`, `Completion.Details`) gehören anderen Threads.
@@ -21,6 +28,13 @@
 - Geprüft: FPC-Tests der Core-Units grün (Abweichungen nur wie auf dem Basiszweig: LspClient 3, Session 2 AV, Recording übersetzt unter FPC nicht). VCL-Units nur von Hand und mit Atlas geprüft; Delphi-Build offen.
 
 # Übergabe: Atlas IDE Expert – Stand 30.10.2026
+
+## Atlas-Befunde in Configuration, Mcp, Index, Projects, Query (03.–04.11.2026, Branch `claude/project-thread-g1tunh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common/Source/Configuration`, `Mcp`, `Index`, `Projects`, `Query` (und `Rules` ohne Builtin) beheben, ohne Grenzwerte zu ändern. Ergebnis: alle Units dieser fünf Ordner 0 Befunde. PRs #1529 (Query), #1541 (Projects), #1555 (Index), #1595 (Mcp Teil 2; Teil 1 kam als #1587 aus dem Common-Thread), #1618 (Configuration.Contract, Scopes), #1635 (Parser, JsonTree, Forbidden).
+- `Rules` ohne Builtin übernimmt der Thread „Atlas-Befunde in Atlas.Common“ (abgesprochen); Stand 04.11.2026 06:10: noch `Rules.Baseline` 14, `Rules.Catalog` 9, `Rules.Engine` 7, `Rules.Catalog.Data` 1.
+- **Parser von atlas.json:** Jeder Schlüssel der obersten Ebene ist ein `TConfigurationSection` (`Section`, `Read`, `Take`) in einer der Units `Atlas.Common.Configuration.Internals.*Options` (General, Rule, Mcp, Editor, Refactoring, Workflow, Analysis, Project). Gemeinsames in `Internals.Reader` (`TConfigurationReader`, `ReadObject` mit `TFlagOption`/`TChoiceOption`/`TMemberOption`). `Parser.pas` verteilt nur noch; `ParseLayered` ruft je Dateischlüssel `Take`. **Neue Einstellung:** Abschnitt bzw. Glied in der passenden Options-Unit eintragen; `Update-ConfigDoc.ps1` prüft die Schlüssel jetzt über `Section: '…'`.
+- Falle: Unter FPC zeigt `PString` auf einen AnsiString; deshalb eigener Typ `PSettingText = ^string`.
+- Offen: Delphi-Build (Win64-Gruppe). FPC: Konfigurationstests und die Regel-/Profil-/Engine-Tests, die den Parser nutzen, grün.
 
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
