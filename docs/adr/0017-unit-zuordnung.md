@@ -414,6 +414,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.LineChanges` | `IDE/Editor/Atlas.IDE.Editor.LineChanges.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LineMove` | `IDE/Editor/Atlas.IDE.Editor.LineMove.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditing` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditing.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodKind` | `IDE/Editor/Atlas.IDE.Editor.MethodKind.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodPlacement` | `IDE/Editor/Atlas.IDE.Editor.MethodPlacement.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MetricsLens` | `IDE/Editor/Atlas.IDE.Editor.MetricsLens.pas` | Ordner `IDE/Editor` |
