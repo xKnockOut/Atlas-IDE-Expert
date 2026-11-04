@@ -126,6 +126,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
@@ -135,6 +136,31 @@ uses
   Atlas.Common.Rules.Suppressions,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Semantics.TreeUnits;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Engine in beiden Sprachen (#1458).</summary>
+  TEngineText = (UnitTooDeep, Cancelled, UnusedSuppression, RemoveSuppression, UnknownRuleId, UnknownRuleIdGuess,
+    ReplaceWith);
+
+const
+  cTexts: array[TEngineText] of TAtlasText = (
+    (De: 'Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist %d Ebenen tief (Grenze %d). Die ' +
+      'tiefste Stelle liegt hier; eine lange Kette aus - oder * in Teilausdrücke aufteilen';
+     En: 'The rules do not run for this unit: the syntax tree is %d levels deep (limit %d). The deepest point ' +
+      'is here; split a long chain of - or * into partial expressions'),
+    (De: 'Prüfung abgebrochen'; En: 'Check cancelled'),
+    (De: 'Unterdrückung ohne Wirkung: hier meldet keine der genannten Regeln etwas';
+     En: 'Suppression without effect: none of the named rules reports anything here'),
+    (De: 'Unterdrückung entfernen'; En: 'Remove suppression'),
+    (De: 'Unbekannte Regelkennung "%s"; die Unterdrückung wirkt nicht';
+     En: 'Unknown rule id "%s"; the suppression has no effect'),
+    (De: 'Unbekannte Regelkennung "%s"; gemeint ist vermutlich "%s"';
+     En: 'Unknown rule id "%s"; probably "%s" is meant'),
+    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TRuleReport = class(TInterfacedObject, IRuleReport, IRuleRelatedReport)
@@ -173,9 +199,7 @@ begin
   Finding := Default(TRuleFinding);
   Finding.RuleId := UnitTooDeepRuleId;
   Finding.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
-  Finding.Message := Format('Die Prüfregeln laufen für diese Unit nicht: Der Syntaxbaum ist %d Ebenen tief ' +
-    '(Grenze %d). Die tiefste Stelle liegt hier; eine lange Kette aus - oder * in Teilausdrücke aufteilen',
-    [ATree.Depth, TRuleEngine.MaxTreeDepth]);
+  Finding.Message := cTexts[TEngineText.UnitTooDeep].Fmt([ATree.Depth, TRuleEngine.MaxTreeDepth]);
   Finding.Severity := ASettings.RuleSeverity(UnitTooDeepRuleId, TRuleSeverity.Hint);
   Finding.Confidence := TRuleConfidence.High;
   Result := [Finding];
@@ -708,7 +732,7 @@ begin
       // const; ohne gezählte Referenz würde er nie freigegeben (Speicherleck).
       if Assigned(AContext.Cancelled) and AContext.Cancelled() then
       begin
-        raise ERuleCheckCancelled.Create('Prüfung abgebrochen');
+        raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
       end;
       Report := TRuleReport.Create(Descriptor.Id, Severity, Findings);
       Watch := TStopwatch.StartNew;
@@ -829,10 +853,11 @@ begin
         Finding := Default(TRuleFinding);
         Finding.RuleId := UnusedSuppressionRuleId;
         Finding.Range := Entry.Range;
-        Finding.Message := 'Unterdrückung ohne Wirkung: hier meldet keine der genannten Regeln etwas';
+        Finding.Message := cTexts[TEngineText.UnusedSuppression].Text;
         Finding.Severity := ASettings.RuleSeverity(UnusedSuppressionRuleId, TRuleSeverity.Hint);
         Finding.Confidence := TRuleConfidence.High;
-        Finding.Fixes := [TRuleFix.Create('Unterdrückung entfernen', [TRuleEdit.Create(Removal, '')], True)];
+        Finding.Fixes := [TRuleFix.Create(cTexts[TEngineText.RemoveSuppression].Text, [TRuleEdit.Create(Removal, '')],
+          True)];
         Kept.Add(Finding);
       end;
     end;
@@ -862,15 +887,15 @@ begin
           Finding.Confidence := TRuleConfidence.High;
           if Suggestion = '' then
           begin
-            Finding.Message := Format('Unbekannte Regelkennung "%s"; die Unterdrückung wirkt nicht', [Id]);
+            Finding.Message := cTexts[TEngineText.UnknownRuleId].Fmt([Id]);
           end
           else
           begin
-            Finding.Message := Format('Unbekannte Regelkennung "%s"; gemeint ist vermutlich "%s"', [Id, Suggestion]);
+            Finding.Message := cTexts[TEngineText.UnknownRuleIdGuess].Fmt([Id, Suggestion]);
             // Nur genau markierte Kennungen ersetzen, nicht den ganzen Kommentar.
             if Entry.IdRanges[Index].StartPos.Line = Entry.IdRanges[Index].EndPos.Line then
             begin
-              Finding.Fixes := [TRuleFix.Create(Format('Durch "%s" ersetzen', [Suggestion]),
+              Finding.Fixes := [TRuleFix.Create(cTexts[TEngineText.ReplaceWith].Fmt([Suggestion]),
                 [TRuleEdit.Create(Entry.IdRanges[Index], Suggestion)], True)];
             end;
           end;
@@ -902,5 +927,8 @@ begin
     Findings.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Engine', cTexts);
 
 end.

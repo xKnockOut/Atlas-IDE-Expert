@@ -156,7 +156,8 @@ begin
     Assert.IsTrue(Found['compiler.onSave'].Kind = TAtlasSettingKind.Boolean_);
     Assert.AreEqual('Compiler', Found['compiler.onSave'].Page);
     Assert.IsTrue(Found['language'].Kind = TAtlasSettingKind.Choice);
-    Assert.AreEqual('"de"', Found['language'].DefaultJson);
+    // Vorgabe "" = wie der Client bzw. die IDE (#1458).
+    Assert.AreEqual('""', Found['language'].DefaultJson);
     Assert.IsTrue(Found['format.indentSize'].Kind = TAtlasSettingKind.Integer_);
     Assert.IsTrue(Found['exclude'].Kind = TAtlasSettingKind.List);
     Assert.IsTrue(Found['rules'].Kind = TAtlasSettingKind.Complex);

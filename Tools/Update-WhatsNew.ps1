@@ -18,6 +18,9 @@
       line     Zeile in der Beispieldatei ab 1
       experimental  true, wenn die Funktion experimentell ist (#834); ebenso alle
                Einträge unter einer Überschrift „### Experimentell“ der Version
+      titleEn  Titel auf Englisch (#1458), Pflicht
+      textEn   Text auf Englisch (#1458), Pflicht; mit englischer IDE zeigt die
+               Karte titleEn und textEn
 
     Experimentelle Einträge zeigt die Karte in einem eigenen Abschnitt
     „Experimentell“ mit dem Hinweis auf den Hauptschalter.
@@ -41,7 +44,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Fields = 'title', 'text', 'setting', 'key', 'command', 'sample', 'line', 'experimental'
+$Fields = 'title', 'text', 'titleEn', 'textEn', 'setting', 'key', 'command', 'sample', 'line', 'experimental'
 
 function ConvertFrom-Markdown([string] $Text) {
     $Text = [regex]::Replace($Text, '\[([^\]]*)\]\([^)]*\)', '$1')
@@ -90,6 +93,10 @@ function ConvertTo-WhatsNewItem([string] $Line) {
         else { $Item[$Name] = $Values[$Name] }
     }
     if (-not $Item.title) { throw "whatsnew-Eintrag ohne Titel: $Line" }
+    # Englische Fassung (#1458): Mit englischer IDE zeigt die Karte titleEn und textEn.
+    if (-not $Item.Contains('titleEn') -or -not $Item.titleEn -or -not $Item.Contains('textEn') -or -not $Item.textEn) {
+        throw "whatsnew-Eintrag ohne titleEn oder textEn: $Line"
+    }
     if ($Item.Contains('sample') -and -not (Test-Path (Join-Path $Root ('Setup/' + $Item.sample.Replace('\', '/'))))) {
         throw "Beispieldatei fehlt: Setup/$($Item.sample)"
     }

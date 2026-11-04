@@ -133,13 +133,13 @@ begin
   FBar.SetButtons(Sample);
   FBar.Height := Height_ * 2;
   Assert.AreEqual(Height_, FBar.Height, 'eine Zeile, nie höher');
-  Assert.IsTrue(FBar.ButtonRect(TAtlasToolbarItems.GotoInterface).Right <=
-    FBar.ButtonRect(TAtlasToolbarItems.GotoImplementation).Left, 'Reihenfolge von links');
-  Assert.IsTrue(FBar.ButtonRect('Atlas.NavBack').Left > FBar.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
+  Assert.IsTrue(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoInterface).Right <=
+    FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Left, 'Reihenfolge von links');
+  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Left > FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
     'Trennstrich dazwischen');
-  Assert.IsTrue(FBar.MoreRect.IsEmpty, 'alles passt');
-  Assert.AreEqual(0, Integer(Length(FBar.OverflowIds)));
-  Assert.IsTrue(FBar.GearRect.Right > FBar.ClientWidth - 10, 'Zahnrad rechts außen');
+  Assert.IsTrue(FBar.Places.More.IsEmpty, 'alles passt');
+  Assert.AreEqual(0, Integer(Length(FBar.Places.OverflowIds)));
+  Assert.IsTrue(FBar.Places.Gear.Right > FBar.ClientWidth - 10, 'Zahnrad rechts außen');
   Assert.IsTrue(FBar.PreferredWidth < FBar.ClientWidth);
   FBar.Repaint;
 end;
@@ -147,17 +147,17 @@ end;
 procedure TAtlasEditorToolbarTests.ReturnFollowsPinnedSections;
 begin
   FBar.SetButtons(Sample);
-  Assert.IsTrue(FBar.ReturnRect.IsEmpty);
+  Assert.IsTrue(FBar.Places.Return.IsEmpty);
   FBar.SetReturn(True, '214', 'Zurück zu Zeile 214 · TfrmKunde.btnSpeichernClick');
-  Assert.IsFalse(FBar.ReturnRect.IsEmpty);
-  Assert.IsTrue(FBar.ReturnRect.Left >= FBar.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
+  Assert.IsFalse(FBar.Places.Return.IsEmpty);
+  Assert.IsTrue(FBar.Places.Return.Left >= FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).Right,
     'hinter den Abschnittssymbolen');
-  Assert.IsTrue(FBar.ReturnRect.Right <= FBar.ButtonRect('Atlas.NavBack').Left);
+  Assert.IsTrue(FBar.Places.Return.Right <= FBar.Places.ButtonRect('Atlas.NavBack').Left);
   Assert.AreEqual('Zurück zu Zeile 214 · TfrmKunde.btnSpeichernClick',
-    FBar.HintAt(FBar.ReturnRect.CenterPoint.X, FBar.ReturnRect.CenterPoint.Y));
+    FBar.HintAt(FBar.Places.Return.CenterPoint.X, FBar.Places.Return.CenterPoint.Y));
   FBar.Repaint;
   FBar.SetReturn(False, '', '');
-  Assert.IsTrue(FBar.ReturnRect.IsEmpty);
+  Assert.IsTrue(FBar.Places.Return.IsEmpty);
 end;
 
 procedure TAtlasEditorToolbarTests.NarrowBarOverflows;
@@ -168,13 +168,13 @@ begin
   FBar.SetReturn(True, '214', '');
   // alTop: Die Leiste ist so breit wie das Formular.
   FForm.ClientWidth := 204;
-  Assert.IsFalse(FBar.MoreRect.IsEmpty, '» erscheint');
-  Overflow := FBar.OverflowIds;
+  Assert.IsFalse(FBar.Places.More.IsEmpty, '» erscheint');
+  Overflow := FBar.Places.OverflowIds;
   Assert.IsTrue(Length(Overflow) > 0);
   Assert.AreEqual('Atlas.Custom', Overflow[High(Overflow)], 'Reihenfolge bleibt');
-  Assert.IsFalse(FBar.ButtonRect(TAtlasToolbarItems.GotoInterface).IsEmpty, 'angeheftet');
-  Assert.IsFalse(FBar.ButtonRect(TAtlasToolbarItems.GotoImplementation).IsEmpty, 'angeheftet');
-  Assert.IsFalse(FBar.ReturnRect.IsEmpty, 'Rücksprung bleibt sichtbar');
+  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoInterface).IsEmpty, 'angeheftet');
+  Assert.IsFalse(FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation).IsEmpty, 'angeheftet');
+  Assert.IsFalse(FBar.Places.Return.IsEmpty, 'Rücksprung bleibt sichtbar');
   Assert.IsFalse(Overflow[0] = TAtlasToolbarItems.Separator, 'kein Trennstrich vorn im Menü');
   FBar.Repaint;
 end;
@@ -205,17 +205,17 @@ begin
     end;
   FBar.SetButtons(Sample);
   FBar.SetReturn(True, '214', '');
-  Area := FBar.ButtonRect('Atlas.NavBack');
+  Area := FBar.Places.ButtonRect('Atlas.NavBack');
   FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual('Atlas.NavBack', Fired);
   Fired := '';
-  Area := FBar.ButtonRect('Atlas.NavForward');
+  Area := FBar.Places.ButtonRect('Atlas.NavForward');
   FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual('', Fired, 'gesperrt');
-  Area := FBar.ReturnRect;
+  Area := FBar.Places.Return;
   FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.IsTrue(Returned);
-  Area := FBar.GearRect;
+  Area := FBar.Places.Gear;
   FBar.ClickAt(Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.IsTrue(Customized);
   FBar.OnCommand := nil;
@@ -245,9 +245,9 @@ begin
     end;
   FBar.SetButtons(Sample);
   // Mauspunkte als lParam der Fensternachrichten.
-  Back := MousePoint(FBar.ButtonRect('Atlas.NavBack').CenterPoint);
-  Problems := MousePoint(FBar.ButtonRect('Atlas.ProblemsWindow').CenterPoint);
-  Gear := MousePoint(FBar.GearRect.CenterPoint);
+  Back := MousePoint(FBar.Places.ButtonRect('Atlas.NavBack').CenterPoint);
+  Problems := MousePoint(FBar.Places.ButtonRect('Atlas.ProblemsWindow').CenterPoint);
+  Gear := MousePoint(FBar.Places.Gear.CenterPoint);
   // Drücken, Mausverlassen (Mausfang, Fokus in den Editor), Loslassen auf demselben Knopf.
   FBar.Perform(WM_LBUTTONDOWN, MK_LBUTTON, Back);
   FBar.Perform(CM_MOUSELEAVE, 0, 0);
@@ -304,17 +304,17 @@ var
   Area: TRect;
 begin
   FBar.SetButtons(Sample);
-  Area := FBar.ButtonRect('Atlas.NavBack');
+  Area := FBar.Places.ButtonRect('Atlas.NavBack');
   Assert.AreEqual('Zurück (Alt+Links)', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y));
-  Area := FBar.ButtonRect(TAtlasToolbarItems.GotoImplementation);
+  Area := FBar.Places.ButtonRect(TAtlasToolbarItems.GotoImplementation);
   Assert.AreEqual('Zum implementation-Teil', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y),
     'ohne Tooltip die Beschriftung');
-  Area := FBar.ButtonRect('Atlas.ProblemsWindow');
+  Area := FBar.Places.ButtonRect('Atlas.ProblemsWindow');
   Assert.AreEqual('Probleme · 3 Befunde', FBar.HintAt(Area.CenterPoint.X, Area.CenterPoint.Y));
   // Mit Text neben den Symbolen werden die Knöpfe breiter.
-  Area := FBar.ButtonRect('Atlas.NavBack');
+  Area := FBar.Places.ButtonRect('Atlas.NavBack');
   FBar.Labels := True;
-  Assert.IsTrue(FBar.ButtonRect('Atlas.NavBack').Width > Area.Width);
+  Assert.IsTrue(FBar.Places.ButtonRect('Atlas.NavBack').Width > Area.Width);
   FBar.Repaint;
 end;
 

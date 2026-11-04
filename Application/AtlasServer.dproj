@@ -98,6 +98,9 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Protocol.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Session.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.IdeArea.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.EditingArea.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.IndexArea.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Source\Shell\Shell.CommandLine.pas"/>
         <DCCReference Include="Source\Shell\Shell.Workspace.pas"/>

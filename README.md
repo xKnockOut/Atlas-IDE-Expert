@@ -219,7 +219,9 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - Export, import, load profiles and reset settings
 - Team-wide values in the project file `.atlas` (next to the .dproj, in a folder above it up to the Git or SVN root, or next to the .groupproj), server and rule settings in `atlas.json` (*Atlas › Projekt-Einstellungen*), global values in `%APPDATA%\Atlas\settings.json`
 
-All keys (German): [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konfiguration.md](docs/Konfiguration.md).
+- Language follows the IDE (#1458): with an English Delphi IDE, settings descriptions, "New in Atlas" and the first server texts (rule explanations, unknown rule ids, unused suppressions) are English, with a German IDE everything stays German; `language` (`""` like the IDE, `"de"`, `"en"`) fixes it, `AtlasServer --check` takes `--locale de|en`. Server texts move to text tables (`TAtlasText`) group by group; `Tools/Check-GermanText.ps1` keeps new German literals out
+
+All keys: [docs/en/Configuration.md](docs/en/Configuration.md) (English), [docs/Einstellungen.md](docs/Einstellungen.md) and [docs/Konfiguration.md](docs/Konfiguration.md) (German).
 
 ### Claude Code and MCP
 
@@ -264,7 +266,9 @@ So far it is built and checked only with RAD Studio 13 in the 32-bit IDE. What r
 
 More: [docs/Installation.md](docs/Installation.md).
 
-## Documentation (German)
+## Documentation
+
+In English: [Installation](docs/en/Installation.md) and [Configuration](docs/en/Configuration.md) of `atlas.json` (generated from the schema's `x-description-en`). The rest is German:
 
 - [Installation](docs/Installation.md) for RAD Studio, Claude Code and the command line
 - [IDE plugin](docs/RAD-Studio.md): every feature in detail
@@ -383,6 +387,7 @@ A check run evaluates each unit once and shares the result with all rules (#1322
 | `--rules <a,b>` | only these rules, e.g. `syntax` |
 | `--units <a,b>` | only these units: name or glob pattern for paths |
 | `--min-severity <s>` | `hint`, `info`, `warning`, `error` |
+| `--locale <de\|en>` | language of the texts (#1458); without it `language` from `%APPDATA%\Atlas\settings.json`, otherwise English |
 | `--fail-on <s>` | which findings make the exit code 1: `error` (default), `warning` or `never`, so warnings in legacy projects do not break a pre-commit hook |
 | `--source-root <folder>` | root of the SARIF paths; defaults to the Git root above the target, otherwise the target's folder. Paths below it carry `uriBaseId` `%SRCROOT%`, files outside appear as absolute `file:` URIs |
 | `--profile <name>` | rule profile (`standard`, `fast`, `strict`, `security`, `style` or one of your own from `profiles`); overrides `profile` in `atlas.json` |
