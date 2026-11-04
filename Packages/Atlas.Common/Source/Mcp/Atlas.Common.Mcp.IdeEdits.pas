@@ -21,6 +21,14 @@ uses
 type
   TMcpIdeEditOutcome = (Applied, WriteYourself, Failed);
 
+  /// <summary>Änderung einer Datei: erwarteter Inhalt des Puffers und neuer Text.</summary>
+  TMcpIdeEdit = record
+    FileName: string;
+    Expected: string;
+    Text: string;
+    class function Make(const AFileName, AExpected, AText: string): TMcpIdeEdit; static;
+  end;
+
   TMcpIdeEdits = class
   public const
     AnswerMs = 3000;
@@ -31,12 +39,12 @@ type
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function InboxOf(const ABase: string; APid: Cardinal): string; static;
     /// <summary>
-    /// Schickt die Änderung von AExpected zu AText an den Eingang AInbox und wartet auf das Plugin.
+    /// Schickt die Änderung AEdit (von Expected zu Text) an den Eingang AInbox und wartet auf das Plugin.
     /// AWait schläft kurz (Tests: übernimmt die Rolle des Plugins); AClock liefert Millisekunden.
     /// WriteYourself: Das Plugin hat den Auftrag nicht angenommen oder die Datei ist nicht mehr offen.
     /// Failed: abgelehnt (AReason), etwa weil der Puffer inzwischen geändert wurde.
     /// </summary>
-    class function Send(const AInbox, AFileName, AExpected, AText: string; const AWait: TProc;
+    class function Send(const AInbox: string; const AEdit: TMcpIdeEdit; const AWait: TProc;
       const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome; static;
   end;
 
@@ -85,68 +93,56 @@ begin
   end;
 end;
 
-class function TMcpIdeEdits.Send(const AInbox, AFileName, AExpected, AText: string; const AWait: TProc;
-  const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome;
-var
-  Id, Request, Answer, Text: string;
-  Json: TJSONObject;
-  Started: Int64;
-  WasApplied, NotOpen: Boolean;
+class function TMcpIdeEdit.Make(const AFileName, AExpected, AText: string): TMcpIdeEdit;
 begin
-  AReason := '';
-  Id := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
-  Request := TPath.Combine(AInbox, Id + '.json');
-  Answer := TPath.Combine(AInbox, Id + '.result.json');
-  Json := TJSONObject.Create;
+  Result.FileName := AFileName;
+  Result.Expected := AExpected;
+  Result.Text := AText;
+end;
+
+function RequestText(const AEdit: TMcpIdeEdit): string;
+var
+  mJson: TJSONObject;
+begin
+  mJson := TJSONObject.Create;
   try
-    Json.AddPair('file', AFileName);
-    Json.AddPair('expected', AExpected);
-    Json.AddPair('text', AText);
-    Text := Json.ToJSON;
+    mJson.AddPair('file', AEdit.FileName);
+    mJson.AddPair('expected', AEdit.Expected);
+    mJson.AddPair('text', AEdit.Text);
+    Result := mJson.ToJSON;
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  ForceDirectories(AInbox);
-  TFile.WriteAllText(Request + '.tmp', Text, TEncoding.UTF8);
-  TFile.Move(Request + '.tmp', Request);
-  Started := AClock();
-  while AClock() - Started < AnswerMs do
+end;
+
+/// <summary>Wartet höchstens AMs Millisekunden auf AAnswer; True, wenn sie da ist.</summary>
+function AwaitAnswer(const AAnswer: string; AMs: Int64; const AWait: TProc; const AClock: TFunc<Int64>): Boolean;
+var
+  mStarted: Int64;
+begin
+  mStarted := AClock();
+  while (AClock() - mStarted < AMs) and not FileExists(AAnswer) do
   begin
-    if FileExists(Answer) then
-    begin
-      Break;
-    end;
     AWait();
   end;
-  if not FileExists(Answer) then
-  begin
-    // Nicht übernommen: zurückziehen und selbst schreiben.
-    if DeleteFile(Request) then
-    begin
-      Exit(TMcpIdeEditOutcome.WriteYourself);
-    end;
-    // Übernommen, aber noch nicht fertig.
-    Started := AClock();
-    while (AClock() - Started < TakenMs) and not FileExists(Answer) do
-    begin
-      AWait();
-    end;
-    if not FileExists(Answer) then
-    begin
-      AReason := 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
-      Exit(TMcpIdeEditOutcome.Failed);
-    end;
-  end;
-  if not ReadAnswer(Answer, WasApplied, NotOpen, AReason) then
+  Result := FileExists(AAnswer);
+end;
+
+/// <summary>Ergebnis aus der Antwortdatei des Plugins.</summary>
+function OutcomeOf(const AAnswer: string; out AReason: string): TMcpIdeEditOutcome;
+var
+  mApplied, mNotOpen: Boolean;
+begin
+  if not ReadAnswer(AAnswer, mApplied, mNotOpen, AReason) then
   begin
     AReason := 'Antwort der IDE nicht lesbar.';
-    Exit(TMcpIdeEditOutcome.Failed);
-  end;
-  if WasApplied then
+    Result := TMcpIdeEditOutcome.Failed;
+  end
+  else if mApplied then
   begin
     Result := TMcpIdeEditOutcome.Applied;
   end
-  else if NotOpen then
+  else if mNotOpen then
   begin
     Result := TMcpIdeEditOutcome.WriteYourself;
   end
@@ -154,6 +150,35 @@ begin
   begin
     Result := TMcpIdeEditOutcome.Failed;
   end;
+end;
+
+class function TMcpIdeEdits.Send(const AInbox: string; const AEdit: TMcpIdeEdit; const AWait: TProc;
+  const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome;
+var
+  mId, mRequest, mAnswer: string;
+begin
+  AReason := '';
+  mId := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
+  mRequest := TPath.Combine(AInbox, mId + '.json');
+  mAnswer := TPath.Combine(AInbox, mId + '.result.json');
+  ForceDirectories(AInbox);
+  TFile.WriteAllText(mRequest + '.tmp', RequestText(AEdit), TEncoding.UTF8);
+  TFile.Move(mRequest + '.tmp', mRequest);
+  if not AwaitAnswer(mAnswer, AnswerMs, AWait, AClock) then
+  begin
+    // Nicht übernommen: zurückziehen und selbst schreiben.
+    if DeleteFile(mRequest) then
+    begin
+      Exit(TMcpIdeEditOutcome.WriteYourself);
+    end;
+    // Übernommen, aber noch nicht fertig.
+    if not AwaitAnswer(mAnswer, TakenMs, AWait, AClock) then
+    begin
+      AReason := 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
+      Exit(TMcpIdeEditOutcome.Failed);
+    end;
+  end;
+  Result := OutcomeOf(mAnswer, AReason);
 end;
 
 end.
