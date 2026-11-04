@@ -828,6 +828,8 @@ type
     FClassRange: TTextRange;
     /// <summary>Feld der Komponente in der Formularklasse; sonst die Formularklasse.</summary>
     function FieldRange(AObject: TDfmObject): TTextRange;
+    /// <summary>AFix als einzige Korrektur, angewendet auf die Formulardatei.</summary>
+    function InFormFile(const AFix: TRuleFix): TArray<TRuleFix>;
     /// <summary>Korrektur in der Formulardatei; nil ohne.</summary>
     function FormFixes(const ARun: TRun): TArray<TRuleFix>;
     procedure ReportRun(const ARun: TRun);
@@ -894,9 +896,16 @@ begin
   end;
 end;
 
-function TFormCharCheck.FormFixes(const ARun: TRun): TArray<TRuleFix>;
+function TFormCharCheck.InFormFile(const AFix: TRuleFix): TArray<TRuleFix>;
 var
   mFix: TRuleFix;
+begin
+  mFix := AFix;
+  mFix.FileName := FContext.FormFile;
+  Result := [mFix];
+end;
+
+function TFormCharCheck.FormFixes(const ARun: TRun): TArray<TRuleFix>;
 begin
   Result := nil;
   if FContext.FormFile = '' then
@@ -906,19 +915,13 @@ begin
   // Rohe Zeichen in einem String der Formulardatei: als #nnnn ausschreiben, wie Delphi es tut.
   if (ARun.Place = TCharPlace.StringLiteral) and ARun.Hits[0].Raw and ARun.Hits[High(ARun.Hits)].Raw then
   begin
-    mFix := TRuleFix.Create('In der Formulardatei durch ' + CharLiterals(ARun, True) + ' ersetzen',
-      [TRuleEdit.Create(RunRange(ARun), '''' + CharLiterals(ARun, True) + '''')], True);
+    Result := InFormFile(TRuleFix.Create('In der Formulardatei durch ' + CharLiterals(ARun, True) + ' ersetzen',
+      [TRuleEdit.Create(RunRange(ARun), '''' + CharLiterals(ARun, True) + '''')], True));
   end
   else if ARun.Place = TCharPlace.Code then
   begin
-    mFix := TRuleFix.Create('In der Formulardatei entfernen', [TRuleEdit.Create(RunRange(ARun), '')]);
-  end
-  else
-  begin
-    Exit;
+    Result := InFormFile(TRuleFix.Create('In der Formulardatei entfernen', [TRuleEdit.Create(RunRange(ARun), '')]));
   end;
-  mFix.FileName := FContext.FormFile;
-  Result := [mFix];
 end;
 
 procedure TFormCharCheck.ReportRun(const ARun: TRun);
