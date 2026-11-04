@@ -258,6 +258,12 @@ begin
     (IsNumeric(ALeft) and (ARight = TExpressionCategory.String_)));
 end;
 
+/// <summary>Beide Seiten haben die Kategorie ACategory.</summary>
+function BothOf(ALeft, ARight, ACategory: TExpressionCategory): Boolean;
+begin
+  Result := (ALeft = ACategory) and (ARight = ACategory);
+end;
+
 /// <summary>AOperator ist für beide Seiten definiert: passen sie zusammen?</summary>
 function DefinedFit(const AOperator: string; const ALeft, ARight: TValueType): TOperatorFit;
 var
@@ -266,8 +272,7 @@ begin
   mLeft := ALeft.Category;
   mRight := ARight.Category;
   // div, mod, and … nur mit Ganzzahlen; die Gleitkommaseite ist vorher schon ausgeschieden.
-  if (IsNumeric(mLeft) and IsNumeric(mRight)) or
-    ((mLeft = TExpressionCategory.Boolean_) and (mRight = TExpressionCategory.Boolean_)) or
+  if (IsNumeric(mLeft) and IsNumeric(mRight)) or BothOf(mLeft, mRight, TExpressionCategory.Boolean_) or
     (IsText(mLeft) and IsText(mRight)) then
   begin
     Result := TOperatorFit.Fits;
@@ -276,7 +281,7 @@ begin
   begin
     Result := TOperatorFit.Incompatible;
   end
-  else if (mLeft = TExpressionCategory.Set_) and (mRight = TExpressionCategory.Set_) then
+  else if BothOf(mLeft, mRight, TExpressionCategory.Set_) then
   begin
     Result := SetFit(ALeft, ARight);
   end
