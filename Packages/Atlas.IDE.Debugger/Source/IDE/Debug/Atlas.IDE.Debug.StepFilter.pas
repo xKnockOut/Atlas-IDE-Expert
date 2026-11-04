@@ -562,7 +562,7 @@ class procedure TAtlasIdeDebugStepFilter.Remember(const ARoutine: TAtlasStepRout
 begin
   Inc(FSkips.Count);
   FSkips.LastName := ARoutine.Name;
-  FSkips.LastReason := TAtlasDebugStepFilterFrame.VerdictText(AVerdict);
+  FSkips.LastReason := TAtlasStepFilterTexts.VerdictText(AVerdict);
   UpdateSession;
 end;
 
@@ -658,7 +658,7 @@ begin
   if mVerdict.Filtered then
   begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
-      [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]));
+      [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
   end
   else
   begin
@@ -699,7 +699,7 @@ begin
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
     TAtlasStepVerdictKind.Kind:
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByKind,
-        [mRoutine.Name, TAtlasDebugStepFilterFrame.VerdictText(mVerdict)]));
+        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
   else
     if mRemoved then
     begin
