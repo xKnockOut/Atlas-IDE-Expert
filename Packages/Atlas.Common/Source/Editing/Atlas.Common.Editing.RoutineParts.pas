@@ -209,6 +209,13 @@ begin
   end;
 end;
 
+/// <summary>Wort vor dem Routinennamen im Kopf: class, procedure, function, Kommentar oder Direktive.</summary>
+function IsHeadPrefix(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsKeyword('class') or AToken.IsKeyword('procedure') or AToken.IsKeyword('function') or
+    (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
+end;
+
 class function TRoutineParts.NameTokens(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode;
   out AFirst, ALast: Integer): Boolean;
 var
@@ -217,9 +224,7 @@ begin
   Result := False;
   Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
   while (Index <= High(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) and
-    (ATokens[Index].IsKeyword('class') or ATokens[Index].IsKeyword('procedure') or
-    ATokens[Index].IsKeyword('function') or (ATokens[Index].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive])) do
+    IsHeadPrefix(ATokens[Index]) do
   begin
     Inc(Index);
   end;
@@ -401,37 +406,42 @@ begin
   end;
 end;
 
-class function TRoutineParts.UnitNames(ARoot: TSyntaxNode): TArray<string>;
+/// <summary>Namen, die der Abschnitt ASection (interface oder implementation) auf Unit-Ebene vergibt.</summary>
+function SectionNames(ASection: TSyntaxNode): TArray<string>;
 var
-  Section, Child: TSyntaxNode;
-  Index, Inner: Integer;
-  Name: string;
+  mChild: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ARoot.ChildCount - 1 do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    Section := ARoot[Index];
-    if not (Section.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
-    begin
-      Continue;
+    mChild := ASection[mIndex];
+    case mChild.Kind of
+      TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
+        if TRoutineBody.QualifierOf(mChild.Name) = '' then
+        begin
+          Result := Result + [mChild.Name];
+        end;
+      TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
+        Result := Result + TRoutineParts.ChildNames(mChild);
+    else
+      // Übrige Arten: nichts zu tun.
     end;
-    for Inner := 0 to Section.ChildCount - 1 do
+  end;
+end;
+
+class function TRoutineParts.UnitNames(ARoot: TSyntaxNode): TArray<string>;
+var
+  mSection: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ARoot.ChildCount - 1 do
+  begin
+    mSection := ARoot[mIndex];
+    if mSection.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
     begin
-      Child := Section[Inner];
-      case Child.Kind of
-        TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader:
-          if TRoutineBody.QualifierOf(Child.Name) = '' then
-          begin
-            Result := Result + [Child.Name];
-          end;
-        TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-          for Name in TRoutineParts.ChildNames(Child) do
-          begin
-            Result := Result + [Name];
-          end;
-      else
-        // Übrige Arten: nichts zu tun.
-      end;
+      Result := Result + SectionNames(mSection);
     end;
   end;
 end;
@@ -557,43 +567,51 @@ begin
   end;
 end;
 
+/// <summary>Gilt der lokale Name ALocal an AOffset? Parameter, Variablen und Konstanten des Kopfs überall,
+/// Inline-Variablen nur in ihrem Gültigkeitsbereich.</summary>
+function LocalVisible(const ALocal: TRoutineLocal; const AName: string; AOffset: Integer): Boolean;
+begin
+  Result := SameText(ALocal.Name, AName) and ((ALocal.Kind in [TRoutineLocalKind.Parameter,
+    TRoutineLocalKind.Variable, TRoutineLocalKind.Constant]) or ((ALocal.ScopeStart <= AOffset) and
+    (AOffset <= ALocal.ScopeEnd)));
+end;
+
+/// <summary>Deklariert ARoutine eine lokale Routine oder einen lokalen Typ namens AName?</summary>
+function DeclaresNested(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := False;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    mChild := ARoutine[mIndex];
+    if (mChild.Kind = TSyntaxKind.RoutineDecl) and SameText(mChild.Name, AName) then
+    begin
+      Exit(True);
+    end;
+    if (mChild.Kind = TSyntaxKind.TypeSection) and MatchText(AName, TRoutineParts.ChildNames(mChild)) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TLocalsCache.Declares(ARoutine: TSyntaxNode; const AName: string; AOffset: Integer): Boolean;
 var
-  Local: TRoutineLocal;
-  Index: Integer;
-  Child: TSyntaxNode;
-  Name: string;
+  mLocal: TRoutineLocal;
 begin
   if SameText(AName, 'Result') and TRoutineParts.IsFunction(ARoutine) then
   begin
     Exit(True);
   end;
-  for Local in Locals(ARoutine) do
+  for mLocal in Locals(ARoutine) do
   begin
-    if SameText(Local.Name, AName) and ((Local.Kind in [TRoutineLocalKind.Parameter, TRoutineLocalKind.Variable,
-      TRoutineLocalKind.Constant]) or ((Local.ScopeStart <= AOffset) and (AOffset <= Local.ScopeEnd))) then
+    if LocalVisible(mLocal, AName, AOffset) then
     begin
       Exit(True);
     end;
   end;
-  for Index := 0 to ARoutine.ChildCount - 1 do
-  begin
-    Child := ARoutine[Index];
-    if (Child.Kind = TSyntaxKind.RoutineDecl) and SameText(Child.Name, AName) then
-    begin
-      Exit(True);
-    end;
-    if Child.Kind = TSyntaxKind.TypeSection then
-    begin
-      for Name in TRoutineParts.ChildNames(Child) do
-      begin
-        if SameText(Name, AName) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  end;
-  Result := False;
+  Result := DeclaresNested(ARoutine, AName);
 end;
 end.
