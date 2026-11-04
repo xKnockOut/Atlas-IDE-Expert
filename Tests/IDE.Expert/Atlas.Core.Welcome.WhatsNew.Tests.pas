@@ -18,6 +18,9 @@ type
   public
     [Test]
     procedure ParsesAllFields;
+    /// <summary>#1458: titleEn und textEn mit englischer Oberfläche, sonst Deutsch.</summary>
+    [Test]
+    procedure EnglishFieldsWithFallback;
     [Test]
     procedure SortsNewestFirstAndDropsEmpty;
     [Test]
@@ -132,6 +135,24 @@ begin
   Assert.AreEqual('Beispiele\Neu.pas', Item.Sample);
   Assert.AreEqual(12, Item.Line);
   Assert.AreEqual('', Item.Setting);
+end;
+
+procedure TAtlasWhatsNewTests.EnglishFieldsWithFallback;
+var
+  mParsed: TAtlasWhatsNewVersions;
+  mItem: TAtlasWhatsNewItem;
+begin
+  mParsed := TAtlasWhatsNew.Parse('{"versions": [{"version": "1.2.0", "items": [' +
+    '{"title": "Suchfeld", "titleEn": "Search box", "text": "Sucht Dateien.", "textEn": "Finds files."},' +
+    '{"title": "Nur deutsch", "text": "Text"}]}]}');
+  mItem := mParsed[0].Items[0];
+  Assert.AreEqual('Search box', mItem.TitleFor(True));
+  Assert.AreEqual('Finds files.', mItem.TextFor(True));
+  Assert.AreEqual('Suchfeld', mItem.TitleFor(False));
+  Assert.AreEqual('Sucht Dateien.', mItem.TextFor(False));
+  mItem := mParsed[0].Items[1];
+  Assert.AreEqual('Nur deutsch', mItem.TitleFor(True));
+  Assert.AreEqual('Text', mItem.TextFor(True));
 end;
 
 procedure TAtlasWhatsNewTests.SortsNewestFirstAndDropsEmpty;

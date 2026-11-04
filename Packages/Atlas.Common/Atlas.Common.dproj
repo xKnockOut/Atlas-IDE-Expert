@@ -73,6 +73,7 @@
         <DCCReference Include="Atlas.Text.dcp"/>
         <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
+        <DCCReference Include="Source\Localization\Atlas.Common.Localization.Texts.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
