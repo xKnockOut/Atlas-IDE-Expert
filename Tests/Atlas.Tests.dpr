@@ -184,6 +184,7 @@ uses
   Atlas.Common.Architecture.Service.Tests in 'Common\Architecture\Atlas.Common.Architecture.Service.Tests.pas',
   Atlas.Common.Rules.Builtin.Todos.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas',
   Atlas.Common.Rules.Builtin.DebugDisplay.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.Tests.pas',
+  Atlas.Common.Rules.Builtin.Registration.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Tests.pas',
   Atlas.Common.Lsp.Todos.Tests in 'Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas',
   Atlas.Common.Lsp.Architecture.Tests in 'Common\Lsp\Atlas.Common.Lsp.Architecture.Tests.pas',
   Atlas.Common.Lsp.Query.Tests in 'Common\Lsp\Atlas.Common.Lsp.Query.Tests.pas',
