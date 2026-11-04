@@ -399,6 +399,19 @@ begin
   end;
 end;
 
+/// <summary>Sprache der Oberfläche für den Server (#1458): Befunde, Code-Aktionen und Hover wie die IDE.</summary>
+function InterfaceLocale: string;
+begin
+  if TAtlasStrings.Language = TAtlasLanguage.English then
+  begin
+    Result := 'en';
+  end
+  else
+  begin
+    Result := 'de';
+  end;
+end;
+
 /// <summary>Öffnet den Schlüssel der Einstellungen, ersatzweise den früheren; liefert den
 /// geöffneten Schlüssel oder ''.</summary>
 function OpenSettingsKey(ARegistry: TRegistry): string;
@@ -1191,6 +1204,7 @@ begin
         end;
       end;
     FSession := TLspSession.Create(FServer.Client);
+    FSession.InitializeOptions := TLspInitializeOptions.ForLocale(InterfaceLocale);
     FContextsChecked := 0;
     RefreshContexts;
     AcceptApplyEdit(FSession);

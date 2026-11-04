@@ -281,7 +281,7 @@ begin
   Edit.Files[0].FileName := FileName;
   Edit.Files[0].Edits := Edits;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
-    TAtlasGenerateWindow.EntryCaption(AEntry));
+    TAtlasGenerateTexts.EntryCaption(AEntry));
   if Outcome.Error <> '' then
   begin
     ASay(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
@@ -568,7 +568,7 @@ begin
   // Beschriftungen in der Sprache der Oberfläche; filtert das Fenster mit.
   for mIndex := 0 to High(mContent.Entries) do
   begin
-    mContent.Entries[mIndex].Caption := TAtlasGenerateWindow.EntryCaption(mContent.Entries[mIndex]);
+    mContent.Entries[mIndex].Caption := TAtlasGenerateTexts.EntryCaption(mContent.Entries[mIndex]);
   end;
   LoadRecent;
   mWindow := TAtlasGenerateWindow.CreateMenu(Application, mContent.Entries, mOptions, FRecent, TAtlasIdeStyle.Colors);

@@ -38,94 +38,62 @@ uses
   Atlas.Core.Commands.Palette;
 
 type
-  TAtlasPaletteWindow = class(TForm)
-  private const
+  /// <summary>Zeichnen der Palette: Maße, Eingabefeld, Zeilen mit Hervorhebung, Abzeichen, Überschrift und Status
+  /// der Zusatzgruppe.</summary>
+  TAtlasPaletteDrawing = class(TForm)
+  protected const
     VisibleRows = 12;
-  private
-    FCommands: TArray<TAtlasCommand>;
-    FHistory: TAtlasCommandHistory;
+  protected
     FColors: TAtlasColors;
-    FPattern: string;
-    FOrder: TArray<Integer>;
-    FSelected: Integer;
-    FTop: Integer;
+    function RowHeight: Integer;
+    function InputHeight: Integer;
+    function RowRect(ARow: Integer): TRect;
+    /// <summary>Eingabefeld mit Akzentrahmen: APattern mit Schreibmarke, leer APrompt.</summary>
+    procedure DrawInput(const APattern, APrompt: string);
+    procedure DrawCommand(const ACommand: TAtlasCommand; const ARow: TRect; ASelected: Boolean;
+      const AHighlight: string);
+    procedure DrawHighlighted(const AText, AHighlight: string; const ARect: TRect);
+    /// <summary>Überschrift der Gruppe mit Trennlinie darüber.</summary>
+    procedure DrawHeader(const ARow: TRect; const ATitle: string);
+    /// <summary>Statuszeile der Gruppe, kursiv und gedimmt.</summary>
+    procedure DrawStatus(const ARow: TRect; const AStatus: string);
+    procedure CreateParams(var Params: TCreateParams); override;
+  public
+    /// <summary>Oben mittig über AArea (Editor bzw. Hauptfenster).</summary>
+    procedure ShowOver(const AArea: TRect);
+  end;
+
+  /// <summary>Ereignisse und Schließen der Palette: einmal OnClosed, Ausführen erst nach dem Schließen.</summary>
+  TAtlasPaletteEvents = class(TAtlasPaletteDrawing)
+  protected
     FOnExecute: TProc<TAtlasCommand>;
     FExecuting: Boolean;
     FOnQuery: TFunc<string, TArray<TAtlasCommand>>;
     FQueryTimer: TTimer;
     FPrompt: string;
-    FKeepOrder: Boolean;
-    FPresorted: Boolean;
     FOnHighlight: TFunc<string, string>;
     FInitialId: string;
     FShiftExecuted: Boolean;
     FCtrlExecuted: Boolean;
     FOnExecuteShift: TProc<TAtlasCommand, Boolean>;
-    FGroup: TAtlasPaletteGroup;
     FOnPattern: TProc<string>;
     FOnGroupExecute: TProc<TAtlasCommand, TAtlasPaletteAction>;
     FOnClosed: TProc;
     FClosedSent: Boolean;
-    procedure PatternChanged;
-    procedure QueryTick(Sender: TObject);
-    function RowHeight: Integer;
-    function InputHeight: Integer;
-    function RowRect(ARow: Integer): TRect;
-    procedure Refilter;
-    procedure Select(AIndex: Integer);
-    /// <summary>Um ADelta weiter; Überschrift und Status werden übersprungen.</summary>
-    procedure Step(ADelta: Integer);
-    function Rows: TAtlasPaletteRows;
-    procedure SelectFirst;
-    procedure Execute;
-    procedure ExecuteItem(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
     procedure NotifyClosed;
-    procedure DrawRow(ARow: Integer);
-    procedure DrawCommand(const ACommand: TAtlasCommand; const ARow: TRect; ASelected: Boolean;
-      const AHighlight: string);
-    procedure DrawHighlighted(const AText, AHighlight: string; const ARect: TRect);
     procedure FormDeactivate(Sender: TObject);
-    procedure SetKeepOrder(AValue: Boolean);
-    procedure SetPresorted(AValue: Boolean);
     function GetQueryDelay: Integer;
     procedure SetQueryDelay(AValue: Integer);
-    function HighlightPattern: string;
-  protected
-    procedure CreateParams(var Params: TCreateParams); override;
-    procedure Paint; override;
-    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    procedure KeyPress(var Key: Char); override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    /// <summary>Hervorzuhebender Text zur Eingabe APattern (OnHighlight, sonst APattern).</summary>
+    function HighlightOf(const APattern: string): string;
   public
-    /// <summary>AHistory gehört weiter dem Aufrufer.</summary>
-    constructor CreatePalette(AOwner: TComponent; const ACommands: TArray<TAtlasCommand>;
-      AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
     destructor Destroy; override;
-    /// <summary>Zusatzgruppe unter den Befehlen zeigen bzw. ersetzen (#1270); TAtlasPaletteGroup.None entfernt sie.
-    /// Steht die Auswahl auf einem Befehl, bleibt sie dort; sonst der erste Eintrag.</summary>
-    procedure SetGroup(const AGroup: TAtlasPaletteGroup);
-    /// <summary>Zeilen insgesamt (Befehle und Gruppe).</summary>
-    function RowCount: Integer;
-    /// <summary>Art der Zeile ARow; AIndex: Befehl in der Liste der Treffer bzw. Eintrag der Gruppe.</summary>
-    function RowKind(ARow: Integer; out AIndex: Integer): TAtlasPaletteRowKind;
-    /// <summary>Oben mittig über AArea (Editor bzw. Hauptfenster).</summary>
-    procedure ShowOver(const AArea: TRect);
-    /// <summary>Linke obere Ecke bei APoint (Bildschirm), AWidth breit; bleibt im Arbeitsbereich.</summary>
-    procedure ShowAt(const APoint: TPoint; AWidth: Integer);
-    /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
-    procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
     /// <summary>Nach dem Schließen; das Fenster gibt sich danach selbst frei.</summary>
     property OnExecute: TProc<TAtlasCommand> read FOnExecute write FOnExecute;
-    property Pattern: string read FPattern;
     /// <summary>Einträge zur Eingabe neu holen (z. B. beim Server); läuft im Hauptthread.</summary>
     property OnQuery: TFunc<string, TArray<TAtlasCommand>> read FOnQuery write FOnQuery;
     /// <summary>Zeichen im leeren Eingabefeld, Standard "&gt;".</summary>
     property Prompt: string read FPrompt write FPrompt;
-    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
-    property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
-    /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
-    property Presorted: Boolean read FPresorted write SetPresorted;
     /// <summary>Wartezeit vor OnQuery in ms, Standard 150; 0 = sofort bei jeder Eingabe.</summary>
     property QueryDelay: Integer read GetQueryDelay write SetQueryDelay;
     /// <summary>Text, dessen Zeichen in den Einträgen hervorgehoben werden; ohne die Eingabe selbst.</summary>
@@ -140,6 +108,58 @@ type
     property OnGroupExecute: TProc<TAtlasCommand, TAtlasPaletteAction> read FOnGroupExecute write FOnGroupExecute;
     /// <summary>Palette geschlossen (Ausführen, Escape, Klick daneben, Freigeben); einmal.</summary>
     property OnClosed: TProc read FOnClosed write FOnClosed;
+  end;
+
+  TAtlasPaletteWindow = class(TAtlasPaletteEvents)
+  private
+    FCommands: TArray<TAtlasCommand>;
+    FHistory: TAtlasCommandHistory;
+    FPattern: string;
+    FOrder: TArray<Integer>;
+    FSelected: Integer;
+    FTop: Integer;
+    FKeepOrder: Boolean;
+    FPresorted: Boolean;
+    FGroup: TAtlasPaletteGroup;
+    procedure PatternChanged;
+    procedure QueryTick(Sender: TObject);
+    procedure Refilter;
+    procedure Select(AIndex: Integer);
+    /// <summary>Um ADelta weiter; Überschrift und Status werden übersprungen.</summary>
+    procedure Step(ADelta: Integer);
+    function Rows: TAtlasPaletteRows;
+    procedure SelectFirst;
+    procedure Execute;
+    procedure ExecuteItem(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
+    procedure DrawRow(ARow: Integer);
+    procedure SetKeepOrder(AValue: Boolean);
+    procedure SetPresorted(AValue: Boolean);
+  protected
+    procedure Paint; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyPress(var Key: Char); override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+  public
+    /// <summary>AHistory gehört weiter dem Aufrufer.</summary>
+    constructor CreatePalette(AOwner: TComponent; const ACommands: TArray<TAtlasCommand>;
+      AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
+    /// <summary>Zusatzgruppe unter den Befehlen zeigen bzw. ersetzen (#1270); TAtlasPaletteGroup.None entfernt sie.
+    /// Steht die Auswahl auf einem Befehl, bleibt sie dort; sonst der erste Eintrag.</summary>
+    procedure SetGroup(const AGroup: TAtlasPaletteGroup);
+    /// <summary>Zeilen insgesamt (Befehle und Gruppe).</summary>
+    function RowCount: Integer;
+    /// <summary>Art der Zeile ARow; AIndex: Befehl in der Liste der Treffer bzw. Eintrag der Gruppe.</summary>
+    function RowKind(ARow: Integer; out AIndex: Integer): TAtlasPaletteRowKind;
+    /// <summary>Linke obere Ecke bei APoint (Bildschirm), AWidth breit; bleibt im Arbeitsbereich.</summary>
+    procedure ShowAt(const APoint: TPoint; AWidth: Integer);
+    /// <summary>Einträge ersetzen (etwa die erste Liste, wenn OnQuery das Fenster braucht).</summary>
+    procedure SetCommands(const ACommands: TArray<TAtlasCommand>);
+    property Pattern: string read FPattern;
+    /// <summary>Reihenfolge der Einträge beibehalten statt alphabetisch (Code-Aktionen, #399); vor ShowOver setzen.</summary>
+    property KeepOrder: Boolean read FKeepOrder write SetKeepOrder;
+    /// <summary>Einträge in der Reihenfolge von OnQuery bzw. ACommands zeigen, ohne zu filtern (#503).</summary>
+    property Presorted: Boolean read FPresorted write SetPresorted;
     property Group: TAtlasPaletteGroup read FGroup;
   end;
 
@@ -181,13 +201,13 @@ begin
   Refilter;
 end;
 
-destructor TAtlasPaletteWindow.Destroy;
+destructor TAtlasPaletteEvents.Destroy;
 begin
   NotifyClosed;
   inherited;
 end;
 
-procedure TAtlasPaletteWindow.NotifyClosed;
+procedure TAtlasPaletteEvents.NotifyClosed;
 var
   mHandler: TProc;
 begin
@@ -250,49 +270,49 @@ begin
   Refilter;
 end;
 
-function TAtlasPaletteWindow.GetQueryDelay: Integer;
+function TAtlasPaletteEvents.GetQueryDelay: Integer;
 begin
   Result := Integer(FQueryTimer.Interval);
 end;
 
-procedure TAtlasPaletteWindow.SetQueryDelay(AValue: Integer);
+procedure TAtlasPaletteEvents.SetQueryDelay(AValue: Integer);
 begin
   FQueryTimer.Interval := Cardinal(Max(0, AValue));
 end;
 
-function TAtlasPaletteWindow.HighlightPattern: string;
+function TAtlasPaletteEvents.HighlightOf(const APattern: string): string;
 begin
-  Result := FPattern;
+  Result := APattern;
   if Assigned(FOnHighlight) then
   begin
-    Result := FOnHighlight(FPattern);
+    Result := FOnHighlight(APattern);
   end;
 end;
 
-procedure TAtlasPaletteWindow.CreateParams(var Params: TCreateParams);
+procedure TAtlasPaletteDrawing.CreateParams(var Params: TCreateParams);
 begin
   inherited;
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
-function TAtlasPaletteWindow.RowHeight: Integer;
+function TAtlasPaletteDrawing.RowHeight: Integer;
 begin
   Canvas.Font := Font;
   Result := Canvas.TextHeight('Wg') + ScaleValue(10);
 end;
 
-function TAtlasPaletteWindow.InputHeight: Integer;
+function TAtlasPaletteDrawing.InputHeight: Integer;
 begin
   Result := RowHeight + ScaleValue(10);
 end;
 
-function TAtlasPaletteWindow.RowRect(ARow: Integer): TRect;
+function TAtlasPaletteDrawing.RowRect(ARow: Integer): TRect;
 begin
   Result := Rect(ScaleValue(6), InputHeight + ARow * RowHeight, ClientWidth - ScaleValue(6),
     InputHeight + (ARow + 1) * RowHeight);
 end;
 
-procedure TAtlasPaletteWindow.ShowOver(const AArea: TRect);
+procedure TAtlasPaletteDrawing.ShowOver(const AArea: TRect);
 var
   Width_: Integer;
 begin
@@ -510,7 +530,7 @@ begin
   Release;
 end;
 
-procedure TAtlasPaletteWindow.FormDeactivate(Sender: TObject);
+procedure TAtlasPaletteEvents.FormDeactivate(Sender: TObject);
 begin
   if not FExecuting then
   begin
@@ -606,7 +626,7 @@ begin
   Result := True;
 end;
 
-procedure TAtlasPaletteWindow.DrawHighlighted(const AText, AHighlight: string; const ARect: TRect);
+procedure TAtlasPaletteDrawing.DrawHighlighted(const AText, AHighlight: string; const ARect: TRect);
 var
   Marks: TArray<Boolean>;
   Position, Index, Run, X: Integer;
@@ -649,7 +669,7 @@ begin
   Canvas.Font.Style := [];
 end;
 
-procedure TAtlasPaletteWindow.DrawCommand(const ACommand: TAtlasCommand; const ARow: TRect; ASelected: Boolean;
+procedure TAtlasPaletteDrawing.DrawCommand(const ACommand: TAtlasCommand; const ARow: TRect; ASelected: Boolean;
   const AHighlight: string);
 var
   Row, Part: TRect;
@@ -710,46 +730,52 @@ begin
   Row := RowRect(ARow);
   case RowKind(FTop + ARow, mIndex) of
     TAtlasPaletteRowKind.Command:
-      DrawCommand(FCommands[FOrder[mIndex]], Row, FTop + ARow = FSelected, HighlightPattern);
+      DrawCommand(FCommands[FOrder[mIndex]], Row, FTop + ARow = FSelected, HighlightOf(FPattern));
     TAtlasPaletteRowKind.Item:
       DrawCommand(FGroup.Items[mIndex], Row, FTop + ARow = FSelected, FGroup.Highlight);
     TAtlasPaletteRowKind.Header:
-      begin
-        // Überschrift der Gruppe mit Trennlinie darüber.
-        Canvas.Pen.Color := ToColor(FColors.Gutter);
-        Canvas.MoveTo(Row.Left, Row.Top);
-        Canvas.LineTo(Row.Right, Row.Top);
-        InflateRect(Row, -ScaleValue(8), 0);
-        Canvas.Brush.Style := bsClear;
-        Canvas.Font.Style := [fsBold];
-        Canvas.Font.Color := ToColor(FColors.Muted);
-        DrawText(Canvas.Handle, PChar(FGroup.Title), -1, Row, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-        Canvas.Font.Style := [];
-        Canvas.Brush.Style := bsSolid;
-      end;
+      DrawHeader(Row, FGroup.Title);
     TAtlasPaletteRowKind.Status:
-      begin
-        InflateRect(Row, -ScaleValue(8), 0);
-        Canvas.Brush.Style := bsClear;
-        Canvas.Font.Style := [fsItalic];
-        Canvas.Font.Color := ToColor(FColors.Muted);
-        DrawText(Canvas.Handle, PChar(FGroup.Status), -1, Row, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
-          DT_END_ELLIPSIS);
-        Canvas.Font.Style := [];
-        Canvas.Brush.Style := bsSolid;
-      end;
+      DrawStatus(Row, FGroup.Status);
   end;
 end;
 
-procedure TAtlasPaletteWindow.Paint;
+procedure TAtlasPaletteDrawing.DrawHeader(const ARow: TRect; const ATitle: string);
+var
+  mRow: TRect;
+begin
+  mRow := ARow;
+  Canvas.Pen.Color := ToColor(FColors.Gutter);
+  Canvas.MoveTo(mRow.Left, mRow.Top);
+  Canvas.LineTo(mRow.Right, mRow.Top);
+  InflateRect(mRow, -ScaleValue(8), 0);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(FColors.Muted);
+  DrawText(Canvas.Handle, PChar(ATitle), -1, mRow, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  Canvas.Font.Style := [];
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasPaletteDrawing.DrawStatus(const ARow: TRect; const AStatus: string);
+var
+  mRow: TRect;
+begin
+  mRow := ARow;
+  InflateRect(mRow, -ScaleValue(8), 0);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Style := [fsItalic];
+  Canvas.Font.Color := ToColor(FColors.Muted);
+  DrawText(Canvas.Handle, PChar(AStatus), -1, mRow, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  Canvas.Font.Style := [];
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasPaletteDrawing.DrawInput(const APattern, APrompt: string);
 var
   Input: TRect;
-  Row: Integer;
   mText: string;
 begin
-  Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
   // Eingabefeld mit Akzentrahmen.
   Input := Rect(ScaleValue(6), ScaleValue(6), ClientWidth - ScaleValue(6), InputHeight - ScaleValue(4));
   Canvas.Pen.Color := ToColor(FColors.Accent);
@@ -757,18 +783,28 @@ begin
   Canvas.Rectangle(Input);
   InflateRect(Input, -ScaleValue(8), 0);
   Canvas.Brush.Style := bsClear;
-  if FPattern = '' then
+  if APattern = '' then
   begin
     Canvas.Font.Color := ToColor(FColors.Muted);
-    mText := FPrompt;
+    mText := APrompt;
   end
   else
   begin
     Canvas.Font.Color := ToColor(FColors.Text);
-    mText := FPattern + '|';
+    mText := APattern + '|';
   end;
   DrawText(Canvas.Handle, PChar(mText), -1, Input, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasPaletteWindow.Paint;
+var
+  Row: Integer;
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  DrawInput(FPattern, FPrompt);
   for Row := 0 to VisibleRows - 1 do
   begin
     if FTop + Row < RowCount then

@@ -234,21 +234,6 @@ begin
   end;
 end;
 
-/// <summary>Pull der Zeile ist ein SVN-Update: „aktualisiert …“ statt „holt …“.</summary>
-function IsUpdateRow(AQuick: TAtlasQuickActionsBar; ARow: Integer): Boolean;
-var
-  mButton: TAtlasQuickActionButton;
-begin
-  Result := False;
-  for mButton in AQuick.ButtonsOf(ARow) do
-  begin
-    if mButton.Action = TAtlasQuickAction.Pull then
-    begin
-      Result := mButton.Update;
-    end;
-  end;
-end;
-
 procedure AddFirstHint(ALines: TStrings; const ALocation: TAtlasProjectLocation);
 begin
   if not ALocation.IsEmpty then
@@ -313,33 +298,12 @@ end;
 
 /// <summary>Tooltip der Zeile ARow samt Stand der letzten Schnellaktion (#764); '' ohne Zeile.</summary>
 function RowHint(AFrame: TAtlasWelcomeProjectsFrame; ARow: Integer): string;
-var
-  mQuick: TAtlasQuickActionsBar;
-  mState: string;
 begin
   Result := '';
-  if ARow < 0 then
+  if ARow >= 0 then
   begin
-    Exit;
-  end;
-  Result := TAtlasProjectsTexts.HintFor(AFrame.FEntries[ARow], (AFrame.FSource <> nil) and AFrame.FSource.Selectable);
-  mQuick := AFrame.FQuick;
-  if mQuick.Source = nil then
-  begin
-    Exit;
-  end;
-  mState := TAtlasQuickActionsBar.StateText(mQuick.StateOf(ARow), mQuick.NowMs, IsUpdateRow(mQuick, ARow));
-  if (mState <> '') and (mQuick.StateOf(ARow).Detail <> '') then
-  begin
-    mState := mState + ': ' + mQuick.StateOf(ARow).Detail;
-  end;
-  if mState <> '' then
-  begin
-    Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintState, [mState]);
-  end;
-  if mQuick.Active then
-  begin
-    Result := Result + sLineBreak + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintKeys);
+    Result := TAtlasProjectsTexts.HintFor(AFrame.FEntries[ARow], (AFrame.FSource <> nil) and
+      AFrame.FSource.Selectable) + TAtlasQuickRowTexts.HintSuffix(AFrame.FQuick, ARow);
   end;
 end;
 
@@ -518,7 +482,7 @@ var
 begin
   // Stand der letzten Schnellaktion links der Marken („baut … 12 s“, „Tests: 57 ok“).
   mState := FFrame.FQuick.StateOf(ARow);
-  mText := TAtlasQuickActionsBar.StateText(mState, FFrame.FQuick.NowMs, IsUpdateRow(FFrame.FQuick, ARow));
+  mText := TAtlasQuickRowTexts.StateText(FFrame.FQuick, ARow);
   if mText = '' then
   begin
     Exit;
@@ -531,7 +495,7 @@ begin
   mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.PillPadding),
     ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.PillHeight));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(mState);
+  Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(mState);
   Canvas.Pen.Color := Canvas.Brush.Color;
   Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, FRadius, FRadius);
   Canvas.Brush.Style := bsClear;
@@ -601,7 +565,7 @@ begin
   FQuick.OnOpenRow := QuickOpenRow;
   FQuick.OnSelectRow := QuickSelectRow;
   FQuick.OnRowMenu := QuickRowMenu;
-  FQuick.AttachMenu(FMenu);
+  FQuick.Menus.Attach(FMenu);
 end;
 
 function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;
@@ -1058,7 +1022,7 @@ begin
   FMenu.WorkingCopiesItem.Enabled := FMenu.CreateBranchItem.Enabled;
   FMenu.RemoveItem.Enabled := mRow >= 0;
   // Schnellaktionen der Zeile (#764): nur eingestellte Knöpfe, gesperrte grau.
-  FQuick.PrepareMenu(mRow);
+  FQuick.Menus.Prepare(mRow);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.MenuAction(AAction: TAtlasProjectsMenuAction);
