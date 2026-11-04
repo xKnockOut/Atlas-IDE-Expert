@@ -201,6 +201,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.InheritedCalls.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Slash.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Lists.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Hooks.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Cases.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>

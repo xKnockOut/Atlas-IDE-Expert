@@ -90,7 +90,7 @@ var
 begin
   mCompletion := TShellCompletion.Create(NewServices);
   try
-    Assert.IsTrue(mCompletion.Completion.MatchingFor(cUri) = TCompletionMatching.Prefix);
+    Assert.IsTrue(mCompletion.Completion.Hooks.MatchingFor(cUri) = TCompletionMatching.Prefix);
   finally
     mCompletion.Free;
   end;
@@ -104,7 +104,7 @@ begin
   FLevel := '20.0';
   mCompletion := TShellCompletion.Create(NewServices);
   try
-    mOptions := mCompletion.Completion.PostfixFor(cUri);
+    mOptions := mCompletion.Completion.Hooks.PostfixFor(cUri);
     Assert.IsTrue(mOptions.Enabled);
     Assert.IsTrue(mOptions.InlineVar);
   finally
@@ -120,7 +120,7 @@ begin
   FLevel := '19.0';
   mCompletion := TShellCompletion.Create(NewServices);
   try
-    mOptions := mCompletion.Completion.PostfixFor(cUri);
+    mOptions := mCompletion.Completion.Hooks.PostfixFor(cUri);
     Assert.IsTrue(mOptions.Enabled);
     Assert.IsFalse(mOptions.InlineVar);
   finally
@@ -135,7 +135,7 @@ begin
   FPostfix := False;
   mCompletion := TShellCompletion.Create(NewServices);
   try
-    Assert.IsFalse(mCompletion.Completion.PostfixFor(cUri).Enabled);
+    Assert.IsFalse(mCompletion.Completion.Hooks.PostfixFor(cUri).Enabled);
   finally
     mCompletion.Free;
   end;

@@ -611,7 +611,7 @@ begin
     procedure(const ANamespaces: TArray<string>)
     begin
       FCodeArea.Navigation.SetNamespaces(ANamespaces);
-      FCodeArea.Completion.Completion.Namespaces := ANamespaces;
+      FCodeArea.Completion.Completion.Hooks.Namespaces := ANamespaces;
       FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
     end;
   Result.LibraryRootsChanged :=
@@ -887,8 +887,8 @@ begin
   end;
   FCodeArea.Navigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
-  FCodeArea.Completion.Completion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
-  FCodeArea.Completion.Completion.DocumentationMarkdown := TCompletionDetails.ClientPrefersMarkdown(AParams);
+  FCodeArea.Completion.Completion.Hooks.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
+  FCodeArea.Completion.Completion.Hooks.DocumentationMarkdown := TCompletionDetails.ClientPrefersMarkdown(AParams);
 end;
 
 destructor TServerComposition.Destroy;

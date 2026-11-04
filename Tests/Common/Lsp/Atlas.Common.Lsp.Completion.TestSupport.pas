@@ -117,7 +117,7 @@ function EventsAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ou
 /// </summary>
 function ComponentsAt(const ALookup: TEnumLookup; const APosition: TTextPosition;
   out AItems: TArray<TCompletionItem>): Boolean;
-/// <summary>TLspCompletion.SenderItems an APosition mit Typumwandlung ACast, das Formular ohne Zwischenspeicher.
+/// <summary>TCompletionCases.SenderItems an APosition mit Typumwandlung ACast, das Formular ohne Zwischenspeicher.
 /// </summary>
 function SendersAt(const ALookup: TEnumLookup; const APosition: TTextPosition; ACast: TCompletionSenderCast;
   out AItems: TCompletionItems): Boolean;
@@ -135,6 +135,7 @@ implementation
 
 uses
   Atlas.Common.Lsp.Completion.Lists,
+  Atlas.Common.Lsp.Completion.Cases,
   Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Completion.Forms,
   Atlas.Common.Lsp.Completion.Methods,
@@ -367,7 +368,7 @@ begin
     mSettings := mRequest.Settings;
     mSettings.SenderCast := ACast;
     mRequest.Settings := mSettings;
-    Result := TLspCompletion.SenderItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
+    Result := TCompletionCases.SenderItems(mRequest, TCompletionForms.Uncached(ALookup.ReadText), AItems);
   finally
     mRequest.Free;
   end;
