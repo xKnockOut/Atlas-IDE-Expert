@@ -697,8 +697,8 @@ begin
     begin
       Exit;
     end;
-    if not TUsesActions.AddUnits(ATree.Tokens, Units, AContext.Declaring, AContext.Namespaces,
-      TTextLines.LineBreakOf(AText), Edits, Added) then
+    if not TUsesActions.AddUnits(ATree.Tokens, TUsesAddRequest.Create(Units, AContext.Declaring,
+      AContext.Namespaces, TTextLines.LineBreakOf(AText)), Edits, Added) then
     begin
       Exit;
     end;
