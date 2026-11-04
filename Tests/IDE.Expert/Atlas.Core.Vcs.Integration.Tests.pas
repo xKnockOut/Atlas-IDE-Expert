@@ -545,6 +545,47 @@ begin
   end;
 end;
 
+/// <summary>Ablage und Arbeitskopie mit Kunde.pas und Fremd.pas, erster Stand gepusht.</summary>
+procedure InitGitWithCustomerUnits(const ARunner: IAtlasVcsRunner; const AGitExe, ARemote, AFolder: string);
+var
+  mName: string;
+  mNames: TArray<string>;
+begin
+  Exec(ARunner, AGitExe, ['init', '-q', '--bare', ARemote], ARemote);
+  // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], ARemote);
+  Exec(ARunner, AGitExe, ['init', '-q'], AFolder);
+  Exec(ARunner, AGitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.name', 'Atlas Test'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'user.email', 'test@example.org'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'core.autocrlf', 'false'], AFolder);
+  Exec(ARunner, AGitExe, ['config', 'commit.gpgsign', 'false'], AFolder);
+  mNames := ['Kunde', 'Fremd'];
+  for mName in mNames do
+  begin
+    TFile.WriteAllText(TPath.Combine(AFolder, mName + '.pas'), 'unit ' + mName + ';'#10, TEncoding.ASCII);
+  end;
+  Exec(ARunner, AGitExe, ['add', '.'], AFolder);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-m', 'Erster Stand'], AFolder);
+  Exec(ARunner, AGitExe, ['remote', 'add', 'origin', ARemote], AFolder);
+  Exec(ARunner, AGitExe, ['push', '-q', '-u', 'origin', 'main'], AFolder);
+end;
+
+/// <summary>Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.</summary>
+procedure PushColleagueCommits(const ARunner: IAtlasVcsRunner; const AGitExe, ARemote, AOther: string);
+begin
+  Exec(ARunner, AGitExe, ['clone', '-q', ARemote, AOther], AOther);
+  Exec(ARunner, AGitExe, ['config', 'user.name', 'Eva Kollegin'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'user.email', 'eva@example.org'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'core.autocrlf', 'false'], AOther);
+  Exec(ARunner, AGitExe, ['config', 'commit.gpgsign', 'false'], AOther);
+  TFile.AppendAllText(TPath.Combine(AOther, 'Kunde.pas'), '// Prüfung'#10, TEncoding.UTF8);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-am', 'Kunde: Prüfung'], AOther);
+  TFile.AppendAllText(TPath.Combine(AOther, 'Fremd.pas'), '// anders'#10, TEncoding.ASCII);
+  Exec(ARunner, AGitExe, ['commit', '-q', '-am', 'Fremd geändert'], AOther);
+  Exec(ARunner, AGitExe, ['push', '-q', 'origin', 'main'], AOther);
+end;
+
 procedure TAtlasVcsIntegrationTests.GitIncomingCommitsOnEditedFiles;
 var
   GitExe, Remote, Folder, Other: string;
@@ -553,8 +594,6 @@ var
   State: TAtlasWorkState;
   Found: TAtlasContinueIncoming;
   NowUtc: TDateTime;
-  Name: string;
-  Names: TArray<string>;
 begin
   GitExe := TAtlasVcsTools.Find(TAtlasVcsKind.Git);
   if GitExe = '' then
@@ -566,24 +605,7 @@ begin
   Folder := NewFolder('git-in-local');
   Other := NewFolder('git-in-other');
   try
-    Exec(Runner, GitExe, ['init', '-q', '--bare', Remote], Remote);
-    // Ohne init.defaultBranch = main zeigte HEAD der Ablage auf master: Der Klon bliebe leer.
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Remote);
-    Exec(Runner, GitExe, ['init', '-q'], Folder);
-    Exec(Runner, GitExe, ['symbolic-ref', 'HEAD', 'refs/heads/main'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Atlas Test'], Folder);
-    Exec(Runner, GitExe, ['config', 'user.email', 'test@example.org'], Folder);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Folder);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Folder);
-    Names := ['Kunde', 'Fremd'];
-    for Name in Names do
-    begin
-      TFile.WriteAllText(TPath.Combine(Folder, Name + '.pas'), 'unit ' + Name + ';'#10, TEncoding.ASCII);
-    end;
-    Exec(Runner, GitExe, ['add', '.'], Folder);
-    Exec(Runner, GitExe, ['commit', '-q', '-m', 'Erster Stand'], Folder);
-    Exec(Runner, GitExe, ['remote', 'add', 'origin', Remote], Folder);
-    Exec(Runner, GitExe, ['push', '-q', '-u', 'origin', 'main'], Folder);
+    InitGitWithCustomerUnits(Runner, GitExe, Remote, Folder);
     Vcs := TAtlasVersionControl.Open(Folder, TAtlasVcsProvider.Auto, Runner);
     // Beim Schließen: Kunde.pas offen, HEAD und origin/main gemerkt.
     State := TAtlasWorkState.Empty;
@@ -594,16 +616,7 @@ begin
     Assert.AreEqual(40, Integer(Length(State.Head)));
     Assert.AreEqual(State.Head, State.UpstreamRevision);
     // Ein Kollege pusht je einen Commit zu Kunde.pas und zu Fremd.pas.
-    Exec(Runner, GitExe, ['clone', '-q', Remote, Other], Other);
-    Exec(Runner, GitExe, ['config', 'user.name', 'Eva Kollegin'], Other);
-    Exec(Runner, GitExe, ['config', 'user.email', 'eva@example.org'], Other);
-    Exec(Runner, GitExe, ['config', 'core.autocrlf', 'false'], Other);
-    Exec(Runner, GitExe, ['config', 'commit.gpgsign', 'false'], Other);
-    TFile.AppendAllText(TPath.Combine(Other, 'Kunde.pas'), '// Prüfung'#10, TEncoding.UTF8);
-    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Kunde: Prüfung'], Other);
-    TFile.AppendAllText(TPath.Combine(Other, 'Fremd.pas'), '// anders'#10, TEncoding.ASCII);
-    Exec(Runner, GitExe, ['commit', '-q', '-am', 'Fremd geändert'], Other);
-    Exec(Runner, GitExe, ['push', '-q', 'origin', 'main'], Other);
+    PushColleagueCommits(Runner, GitExe, Remote, Other);
     NowUtc := TTimeZone.Local.ToUniversalTime(Now);
     // Ohne fetch: Grundlage ist der lokale Stand der Remote-Branches, dort ist noch nichts Neues.
     Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TPath.Combine(Folder, 'Atlas.dproj'), State, NowUtc,
@@ -655,10 +668,32 @@ begin
   Assert.AreEqual('""', TAtlasVcsProcessRunner.QuoteArgument(''));
 end;
 
+/// <summary>Arbeitskopie des Repositorys, in dem die Tests laufen, mit dem Läufer der IDE.</summary>
+function RepositoryVcs(const AGitExe: string): IAtlasVersionControl;
+var
+  mRunner: IAtlasVcsRunner;
+begin
+  // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
+  mRunner := TAtlasVcsProcessRunner.Create;
+  Result := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), mRunner, AGitExe, 5000);
+  Assert.IsTrue(Result.Kind = TAtlasVcsKind.None, 'ohne Arbeitskopie die leere Umsetzung');
+  // Arbeitskopie des Repositorys, in dem die Tests laufen; ohne: irgendein Ordner (dann NoWorkingCopy).
+  Result := TAtlasVersionControl.Open(ExtractFilePath(ParamStr(0)), TAtlasVcsProvider.Auto, mRunner);
+end;
+
+/// <summary>In einer Git-Arbeitskopie liefert Head den Commit.</summary>
+procedure AssertRepositoryHead(const AVcs: IAtlasVersionControl; AOutcome: TAtlasVcsOutcome; const AHead: TAtlasVcsHead);
+begin
+  if AVcs.Kind = TAtlasVcsKind.Git then
+  begin
+    Assert.IsTrue(AOutcome = TAtlasVcsOutcome.Ok);
+    Assert.IsTrue(AHead.Revision <> '', 'Commit des Repositorys');
+  end;
+end;
+
 procedure TAtlasVcsIntegrationTests.WorkerRunsInBackgroundAndDeliversInMainThread;
 var
   Worker: TAtlasVcsWorker;
-  Runner: IAtlasVcsRunner;
   Vcs: IAtlasVersionControl;
   Outcome: TAtlasVcsOutcome;
   Head: TAtlasVcsHead;
@@ -671,12 +706,7 @@ begin
   begin
     Assert.Pass('git nicht installiert; Prüfung übersprungen');
   end;
-  // Der Läufer der IDE: lehnt den Hauptthread ab, im Worker läuft er.
-  Runner := TAtlasVcsProcessRunner.Create;
-  Vcs := TAtlasVersionControl.ForWorkingCopy(Default(TAtlasVcsWorkingCopy), Runner, GitExe, 5000);
-  Assert.IsTrue(Vcs.Kind = TAtlasVcsKind.None, 'ohne Arbeitskopie die leere Umsetzung');
-  // Arbeitskopie des Repositorys, in dem die Tests laufen; ohne: irgendein Ordner (dann NoWorkingCopy).
-  Vcs := TAtlasVersionControl.Open(ExtractFilePath(ParamStr(0)), TAtlasVcsProvider.Auto, Runner);
+  Vcs := RepositoryVcs(GitExe);
   Done := False;
   InMain := False;
   Outcome := TAtlasVcsOutcome.Failed;
@@ -700,11 +730,7 @@ begin
     Assert.IsTrue(Done, 'Ergebnis zugestellt');
     Assert.IsTrue(InMain, 'im Hauptthread');
     Assert.IsTrue(Outcome <> TAtlasVcsOutcome.MainThread, 'im Hintergrund gelaufen');
-    if Vcs.Kind = TAtlasVcsKind.Git then
-    begin
-      Assert.IsTrue(Outcome = TAtlasVcsOutcome.Ok);
-      Assert.IsTrue(Head.Revision <> '', 'Commit des Repositorys');
-    end;
+    AssertRepositoryHead(Vcs, Outcome, Head);
     Assert.AreEqual(0, Worker.Pending);
     // Nach Stop kommt nichts mehr an.
     Done := False;
