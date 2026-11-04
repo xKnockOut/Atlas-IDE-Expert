@@ -115,11 +115,13 @@ begin
     Oldest := '';
     Time := High(UInt64);
     for Pair in Entries do
+    begin
       if Pair.Value.Used < Time then
       begin
         Time := Pair.Value.Used;
         Oldest := Pair.Key;
       end;
+    end;
     Entries.Remove(Oldest);
   end;
 end;
@@ -135,7 +137,9 @@ begin
   Session := nil;
   // Kann den Server starten und die Projektkontexte abgleichen (InvalidateAll); der Wächter hält das zurück.
   if Assigned(SessionOf) then
+  begin
     Session := SessionOf();
+  end;
   AEntry.NoServer := Session = nil;
   if Session = nil then
   begin
@@ -170,7 +174,9 @@ begin
   end;
   // Syntaxfehler: Ohne Knoten bleibt der letzte gültige Stand.
   if (Length(Nodes) = 0) and (Length(AEntry.Nodes) > 0) then
+  begin
     Exit;
+  end;
   AEntry.Nodes := Nodes;
   AEntry.Text := ASnapshot.Text;
   Inc(LastStamp);
@@ -189,11 +195,19 @@ begin
     Load(AEntry, ASnapshot);
   finally
     if Guard.Leave(Clear, Keys) and (Entries <> nil) then
+    begin
       if Clear then
-        Entries.Clear
+      begin
+        Entries.Clear;
+      end
       else
+      begin
         for Pending in Keys do
+        begin
           Entries.Remove(Pending);
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -203,9 +217,13 @@ class procedure TAtlasIdeOutlineCache.Install(const ASessionOf: TFunc<TLspSessio
 begin
   SessionOf := ASessionOf;
   if Entries = nil then
+  begin
     Entries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  end;
   if Guard = nil then
+  begin
     Guard := TAtlasOutlineLoadGuard.Create;
+  end;
 end;
 
 class procedure TAtlasIdeOutlineCache.Uninstall;
@@ -220,21 +238,29 @@ var
   Extension: string;
 begin
   for Extension in PascalExtensions do
+  begin
     if SameText(ExtractFileExt(AFileName), Extension) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 class procedure TAtlasIdeOutlineCache.Invalidate(const AFileName: string);
 begin
   if (Entries <> nil) and Guard.Remove(Key(AFileName)) then
+  begin
     Entries.Remove(Key(AFileName));
+  end;
 end;
 
 class procedure TAtlasIdeOutlineCache.InvalidateAll;
 begin
   if (Entries <> nil) and Guard.ClearAll then
+  begin
     Entries.Clear;
+  end;
 end;
 
 class function TAtlasIdeOutlineCache.Refresh(const AView: IOTAEditView): TAtlasOutlineSnapshot;
@@ -247,10 +273,14 @@ begin
   Result := Default(TAtlasOutlineSnapshot);
   Result.Status := TAtlasOutlineStatus.NoFile;
   if (Entries = nil) or (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   FileName := AView.Buffer.FileName;
   if not IsPascal(FileName) then
+  begin
     Exit;
+  end;
   Result.FileName := FileName;
   Result.Status := TAtlasOutlineStatus.Waiting;
   Snapshot := TAtlasEditorSnapshots.Get(AView);
@@ -259,7 +289,9 @@ begin
   if Guard.Busy then
   begin
     if not Entries.TryGetValue(Key(FileName), Entry) then
+    begin
       Exit;
+    end;
   end
   else if not Entries.TryGetValue(Key(FileName), Entry) then
   begin
@@ -279,23 +311,35 @@ begin
       Entry.PendingSince := Moment;
     end
     else if Moment - Entry.PendingSince >= PauseMs then
+    begin
       GuardedLoad(Entry, Snapshot);
+    end;
   end
   else if not Entry.Loaded and (Moment >= Entry.RetryAt) then
+  begin
     GuardedLoad(Entry, Snapshot);
+  end;
   // Nach dem Laden neu nachschlagen: Vorgemerktes Leeren kann den Eintrag freigegeben haben.
   if (Entries = nil) or not Entries.TryGetValue(Key(FileName), Entry) then
+  begin
     Exit;
+  end;
   Entry.Used := Moment;
   Result.Nodes := Entry.Nodes;
   Result.Text := Entry.Text;
   Result.Stamp := Entry.Stamp;
   if Entry.NoServer and (Length(Entry.Nodes) = 0) then
-    Result.Status := TAtlasOutlineStatus.NoServer
+  begin
+    Result.Status := TAtlasOutlineStatus.NoServer;
+  end
   else if Entry.Stamp = 0 then
-    Result.Status := TAtlasOutlineStatus.Waiting
+  begin
+    Result.Status := TAtlasOutlineStatus.Waiting;
+  end
   else
+  begin
     Result.Status := TAtlasOutlineStatus.Ready;
+  end;
 end;
 
 end.

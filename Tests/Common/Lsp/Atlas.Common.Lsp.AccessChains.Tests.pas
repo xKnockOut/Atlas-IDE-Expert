@@ -154,12 +154,48 @@ begin
   end;
 end;
 
+/// <summary>ALink als "Ausdruck:art:Typ" mit :call, :self, :idx=… und :plain.</summary>
+function LinkText(const ALink: TAccessLink): string;
+begin
+  Result := ALink.Expression + ':' + TLspAccessChains.KindName(ALink.Kind) + ':' + ALink.TypeName;
+  if ALink.Call then
+  begin
+    Result := Result + ':call';
+  end;
+  if ALink.ImplicitSelf then
+  begin
+    Result := Result + ':self';
+  end;
+  if ALink.IndexText <> '' then
+  begin
+    Result := Result + ':idx=' + ALink.IndexText;
+  end;
+  if ALink.IndexPlain then
+  begin
+    Result := Result + ':plain';
+  end;
+end;
+
+/// <summary>Die Glieder von AChain, mit Leerzeichen getrennt.</summary>
+function ChainText(const AChain: TAccessChain): string;
+var
+  mLink: TAccessLink;
+begin
+  Result := '';
+  for mLink in AChain.Links do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + LinkText(mLink);
+  end;
+end;
+
 function TLspAccessChainsTests.Describe(ALine: Integer): string;
 var
   Found: TAccessChainsResult;
   Chain: TAccessChain;
-  Link: TAccessLink;
-  Part: string;
 begin
   Result := '';
   Found := Chains(ALine);
@@ -169,32 +205,7 @@ begin
     begin
       Result := Result + ' | ';
     end;
-    Part := '';
-    for Link in Chain.Links do
-    begin
-      if Part <> '' then
-      begin
-        Part := Part + ' ';
-      end;
-      Part := Part + Link.Expression + ':' + TLspAccessChains.KindName(Link.Kind) + ':' + Link.TypeName;
-      if Link.Call then
-      begin
-        Part := Part + ':call';
-      end;
-      if Link.ImplicitSelf then
-      begin
-        Part := Part + ':self';
-      end;
-      if Link.IndexText <> '' then
-      begin
-        Part := Part + ':idx=' + Link.IndexText;
-      end;
-      if Link.IndexPlain then
-      begin
-        Part := Part + ':plain';
-      end;
-    end;
-    Result := Result + Part;
+    Result := Result + ChainText(Chain);
   end;
 end;
 

@@ -166,7 +166,9 @@ begin
         begin
           // Server nimmt nichts mehr an: Wartende Anfragen sollen nicht bis zum Zeitlimit hängen.
           if not Terminated and (FClient <> nil) and (FOwner <> nil) then
+          begin
             FClient.CloseWith(FOwner.EndInfo);
+          end;
           Exit;
         end;
         Inc(Offset, Integer(Written));
@@ -196,7 +198,9 @@ begin
       while not Terminated do
       begin
         if not ReadFile(FHandle, Buffer[0], Length(Buffer), Read, nil) or (Read = 0) then
+        begin
           Break;
+        end;
         FClient.Receive(Buffer, Integer(Read));
       end;
     except
@@ -233,9 +237,13 @@ begin
   try
     // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
     if not CreatePipe(InputRead, FInputWrite, @Security, 1 shl 20) then
+    begin
       RaiseLastOSError;
+    end;
     if not CreatePipe(FOutputRead, OutputWrite, @Security, 0) then
+    begin
       RaiseLastOSError;
+    end;
     // Die eigenen Enden dürfen nicht vererbt werden, sonst endet der Server nie.
     SetHandleInformation(FInputWrite, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(FOutputRead, HANDLE_FLAG_INHERIT, 0);
@@ -250,14 +258,22 @@ begin
     UniqueString(CommandLine);
     if not CreateProcess(nil, PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
       PChar(ExtractFileDir(AExeName)), Startup, Info) then
+    begin
       RaiseLastOSError;
+    end;
   finally
     if InputRead <> 0 then
+    begin
       CloseHandle(InputRead);
+    end;
     if OutputWrite <> 0 then
+    begin
       CloseHandle(OutputWrite);
+    end;
     if ErrorHandle <> INVALID_HANDLE_VALUE then
+    begin
       CloseHandle(ErrorHandle);
+    end;
   end;
   CloseHandle(Info.hThread);
   FProcess := Info.hProcess;
@@ -291,7 +307,9 @@ begin
     Result := CreateFile(PChar(FStderrFile), AppendData, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
       ASecurity, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
     if Result = INVALID_HANDLE_VALUE then
+    begin
       RaiseLastOSError;
+    end;
     Header := TEncoding.UTF8.GetBytes(Format('---- %s Serverstart ----'#13#10,
       [FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', Now)]));
     WriteFile(Result, Header[0], Length(Header), Written, nil);
@@ -300,7 +318,9 @@ begin
     on E: Exception do
     begin
       if Result <> INVALID_HANDLE_VALUE then
+      begin
         CloseHandle(Result);
+      end;
       TAtlasGuard.Log('stderr des Servers bleibt bei NUL: ' + TAtlasGuard.SafeMessage(E.Message));
       FStderrFile := '';
       Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, ASecurity, OPEN_EXISTING, 0, 0);
@@ -318,27 +338,39 @@ var
 begin
   Result := 0;
   if FStderrFile = '' then
+  begin
     Exit;
+  end;
   try
     Stream := TFileStream.Create(FStderrFile, fmOpenRead or fmShareDenyNone);
     try
       if Stream.Size <= FStderrStart then
+      begin
         Exit;
+      end;
       Stream.Position := FStderrStart;
       Count := MaxBytes;
       if Stream.Size - FStderrStart < Count then
+      begin
         Count := Integer(Stream.Size - FStderrStart);
+      end;
       SetLength(Bytes, Count);
       Stream.ReadBuffer(Bytes[0], Count);
     finally
       Stream.Free;
     end;
     for Index := 0 to Count - 1 do
+    begin
       if Bytes[Index] = 10 then
+      begin
         Inc(Result);
+      end;
+    end;
     // Letzte Zeile ohne Zeilenende zählt mit.
     if (Count > 0) and (Bytes[Count - 1] <> 10) then
+    begin
       Inc(Result);
+    end;
   except
     // Nur eine Zahl fürs Protokoll; ohne Datei bleibt sie 0.
     on Exception do
@@ -354,11 +386,15 @@ begin
   Result := Default(TLspCloseInfo);
   // Atlas beendet den Server selbst (Destroy schließt den Client vorher): kein Absturz, nichts zu warten.
   if (FClient = nil) or FClient.Closed then
+  begin
     Exit;
+  end;
   Result.RuntimeMs := Int64(TThread.GetTickCount64 - FStarted);
   WaitMs := ExitWaitMs;
   if TAtlasShutdown.Signalled then
+  begin
     WaitMs := 0;
+  end;
   if (WaitForSingleObject(FProcess, WaitMs) = WAIT_OBJECT_0) and GetExitCodeProcess(FProcess, Code) then
   begin
     Result.ExitKnown := True;
@@ -383,7 +419,9 @@ begin
     ProcessMs := 400;
   end;
   if FClient <> nil then
+  begin
     FClient.Close;
+  end;
   // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
   if FWriter <> nil then
   begin
@@ -392,7 +430,9 @@ begin
     begin
       CancelSynchronousIoOf(FWriter.Handle);
       if (FProcess <> 0) and (WaitForSingleObject(FWriter.Handle, CancelMs) <> WAIT_OBJECT_0) then
+      begin
         TerminateProcess(FProcess, 1);
+      end;
     end;
     FWriter.WaitFor;
     // Erst aus dem Zugriff nehmen, dann freigeben: Antworten des Lese-Threads fallen danach weg.
@@ -407,11 +447,15 @@ begin
   end;
   // stdin schließen: Der Server sieht das Ende der Eingabe und beendet sich.
   if FInputWrite <> 0 then
+  begin
     CloseHandle(FInputWrite);
+  end;
   if FProcess <> 0 then
   begin
     if WaitForSingleObject(FProcess, ProcessMs) <> WAIT_OBJECT_0 then
+    begin
       TerminateProcess(FProcess, 1);
+    end;
   end;
   if FReader <> nil then
   begin
@@ -420,9 +464,13 @@ begin
   end;
   // Erst nach dem Lese-Thread: Der fragt beim Ende den Exit-Code über dieses Handle ab (EndInfo).
   if FProcess <> 0 then
+  begin
     CloseHandle(FProcess);
+  end;
   if FOutputRead <> 0 then
+  begin
     CloseHandle(FOutputRead);
+  end;
   FClient.Free;
   FWriterLock.Free;
   inherited;
@@ -434,7 +482,9 @@ begin
   try
     // nil: Destroy hat den Schreib-Thread schon abgebaut (Antwort des Lese-Threads beim Beenden).
     if FWriter <> nil then
+    begin
       TWriterThread(FWriter).Add(ABytes);
+    end;
   finally
     System.TMonitor.Exit(FWriterLock);
   end;

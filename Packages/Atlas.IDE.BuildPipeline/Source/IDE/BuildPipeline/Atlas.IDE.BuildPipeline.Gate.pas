@@ -100,7 +100,7 @@ begin
   Result := FileAge(AFileName, Age);
   if Result then
   begin
-    AUnit.Stamp := 'd:' + FloatToStr(Age);
+    AUnit.Stamp := 'd:' + FloatToStr(Age, TFormatSettings.Invariant);
     AUnit.ModifiedAt := Age;
   end;
 end;
