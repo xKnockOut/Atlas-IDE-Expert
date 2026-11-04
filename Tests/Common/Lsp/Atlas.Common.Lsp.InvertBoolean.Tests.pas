@@ -198,6 +198,7 @@ var
   Item: TJSONValue;
   Document: TJSONObject;
   FileName: string;
+  mContext: TInvertBooleanContext;
 begin
   Result := nil;
   AWarnings := nil;
@@ -205,8 +206,9 @@ begin
   Resolver := TNameResolver.Create(AIndex, nil);
   Answer := nil;
   try
-    Answer := TLspInvertBoolean.Execute(Resolver, Tree, AFileName, TextOf(AFileName), APosition, ANewName,
-      Context(AIndex));
+    mContext := Context(AIndex);
+    mContext.NewName := ANewName;
+    Answer := TLspInvertBoolean.Execute(Resolver, Tree, AFileName, TextOf(AFileName), APosition, mContext);
     for Item in (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
       Document := TJSONObject(Item);
@@ -346,7 +348,7 @@ begin
   Tree := TPascalParser.Parse(UnitPanels);
   Resolver := TNameResolver.Create(FIndex, nil);
   try
-    Actions := TLspInvertBoolean.Actions(True, Resolver, Tree, PanelsFile, 'file:///C:/P/Panels.pas',
+    Actions := TLspInvertBoolean.Actions(Resolver, Tree, PanelsFile, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(5, 5), Context(FIndex));
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
@@ -359,9 +361,7 @@ begin
         Action.Free;
       end;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(False, Resolver, Tree, PanelsFile,
-      'file:///C:/P/Panels.pas', TTextPosition.Create(5, 5), Context(FIndex)))));
-    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(True, Resolver, Tree, PanelsFile,
+    Assert.AreEqual(0, Integer(Length(TLspInvertBoolean.Actions(Resolver, Tree, PanelsFile,
       'file:///C:/P/Panels.pas', TTextPosition.Create(10, 15), Context(FIndex)))));
   finally
     Resolver.Free;
