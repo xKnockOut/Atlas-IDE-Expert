@@ -125,7 +125,9 @@ begin
     procedure(AFrame: TAtlasTimingFrame)
     begin
       if FInstance <> nil then
+      begin
         FInstance.FrameCreated(AFrame);
+      end;
     end;
   FKey := TAtlasIdeKeyBinding.Create('Atlas.DiagnosticMode', 'Atlas-Diagnosemodus', TAtlasFeature.Settings,
     procedure
@@ -139,13 +141,17 @@ end;
 destructor TAtlasIdeDiagnosticMode.Destroy;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   // Erst abmelden, dann freigeben (#493).
   FreeAndNil(FKey);
   FreeAndNil(FGate);
   FTimer.Free;
   if FActive then
+  begin
     SaveLastData;
+  end;
   FActive := False;
   TAtlasQueryTimings.Enabled := False;
   RemoveStatusLine;
@@ -178,7 +184,9 @@ var
 begin
   Wanted := TAtlasIdeSettings.Current.DiagnosticMode;
   if Wanted = FActive then
+  begin
     Exit;
+  end;
   FActive := Wanted;
   TAtlasQueryTimings.Enabled := Wanted;
   if Wanted then
@@ -194,7 +202,9 @@ begin
       procedure
       begin
         if (FInstance <> nil) and FInstance.FActive then
+        begin
           FInstance.ShowWindow;
+        end;
       end);
   end
   else
@@ -210,12 +220,16 @@ end;
 procedure TAtlasIdeDiagnosticMode.AddStatusLine;
 begin
   if (FRegistry = nil) or (FLineRef <> nil) then
+  begin
     Exit;
+  end;
   FLine := TAtlasStatusLine.Create(FRegistry, StatusId, StatusOrder,
     procedure
     begin
       if FInstance <> nil then
+      begin
         FInstance.ShowWindow;
+      end;
     end);
   FLineRef := FLine;
   // Gelb: Der Modus misst und schreibt Diagnosedaten (#754).
@@ -228,9 +242,13 @@ end;
 procedure TAtlasIdeDiagnosticMode.RemoveStatusLine;
 begin
   if FLineRef = nil then
+  begin
     Exit;
+  end;
   if FRegistry <> nil then
+  begin
     FRegistry.Remove(StatusId);
+  end;
   FLine := nil;
   FLineRef := nil;
 end;
@@ -241,7 +259,9 @@ var
 begin
   Frame := TAtlasIdeTimingWindow.Show;
   if Frame <> nil then
+  begin
     Refresh(Frame, True);
+  end;
 end;
 
 procedure TAtlasIdeDiagnosticMode.FrameCreated(AFrame: TAtlasTimingFrame);
@@ -253,7 +273,9 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             FInstance.CopyReport(AFileNames);
+          end;
         end);
     end;
   Refresh(AFrame, True);
@@ -264,12 +286,18 @@ var
   Version: Integer;
 begin
   if AFrame = nil then
+  begin
     Exit;
+  end;
   Version := TAtlasQueryTimings.Shared.Version;
   if AForce then
-    AFrame.SetColors(TAtlasIdeStyle.Colors)
+  begin
+    AFrame.SetColors(TAtlasIdeStyle.Colors);
+  end
   else if Version = FShownVersion then
+  begin
     Exit;
+  end;
   FShownVersion := Version;
   AFrame.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
 end;
@@ -280,10 +308,14 @@ begin
     procedure
     begin
       if TAtlasIdeTimingWindow.Visible then
+      begin
         Refresh(TAtlasIdeTimingWindow.ExistingFrame, False);
+      end;
       if (TAtlasQueryTimings.Shared.Version <> FSavedVersion) and
         (TThread.GetTickCount64 - FSavedAt >= SaveEveryMs) then
+      begin
         SaveLastData;
+      end;
     end);
 end;
 
@@ -300,7 +332,9 @@ begin
   Clipboard.AsText := Report(AFileNames);
   Frame := TAtlasIdeTimingWindow.ExistingFrame;
   if Frame <> nil then
+  begin
     Frame.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+  end;
 end;
 
 procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
@@ -309,11 +343,17 @@ begin
     procedure
     begin
       if FInstance = nil then
+      begin
         Exit;
+      end;
       if FInstance.FActive then
-        FInstance.ShowWindow
+      begin
+        FInstance.ShowWindow;
+      end
       else
+      begin
         Toggle;
+      end;
     end);
 end;
 
@@ -361,7 +401,9 @@ begin
   Version := TAtlasQueryTimings.Shared.Version;
   FSavedAt := TThread.GetTickCount64;
   if (Version = FSavedVersion) or (Length(TAtlasQueryTimings.Shared.Snapshot) = 0) then
+  begin
     Exit;
+  end;
   FSavedVersion := Version;
   try
     ForceDirectories(ExtractFileDir(LastDataFile));

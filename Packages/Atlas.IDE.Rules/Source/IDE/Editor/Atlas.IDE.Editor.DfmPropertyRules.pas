@@ -75,9 +75,13 @@ begin
   Result := '';
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View <> nil) and (View.Buffer <> nil) then
+  begin
     Result := View.Buffer.FileName;
+  end;
 end;
 
 /// <summary>Unit mit Formular: .pas mit .dfm/.fmx daneben oder die Formulardatei selbst.</summary>
@@ -121,8 +125,12 @@ begin
     // Projekt: das aktive; der Server wählt den Arbeitsbereich über die Datei.
     Project := GetActiveProject;
     if (AScope = TAtlasDfmRulesScope.Project) or (FileName = '') then
+    begin
       if Project <> nil then
+      begin
         FileName := Project.FileName;
+      end;
+    end;
     if FileName = '' then
     begin
       AMessage(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesNoProject));
@@ -171,15 +179,23 @@ begin
   if not TAtlasRenamePreview.Execute(TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle),
     TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesPreviewHint, [Edit.EditCount, Length(Edit.Files)]),
     TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewApply), TAtlasResults.Group(Preview), Open) then
+  begin
     Exit;
+  end;
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy,
     TAtlasRulesStrings.Text(TAtlasRulesTextId.DfmRulesPreviewTitle));
   if Outcome.Error <> '' then
-    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]))
+  begin
+    AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end
   else
+  begin
     AMessage(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.DfmRulesDone, [Outcome.Edits, Outcome.Files]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 end.

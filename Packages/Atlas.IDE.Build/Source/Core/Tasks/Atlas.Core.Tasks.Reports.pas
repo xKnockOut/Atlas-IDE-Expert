@@ -67,12 +67,18 @@ begin
   for Finding in AFindings do
   begin
     if Finding.FileName = '' then
+    begin
       Continue;
+    end;
     if Length(Result) >= MaxProblems then
+    begin
       Break;
+    end;
     Problem := Default(TAtlasProblem);
     if Finding.Line > 0 then
+    begin
       Problem.StartLine := Finding.Line - 1;
+    end;
     Problem.EndLine := Problem.StartLine;
     Known := Assigned(AReadLine) and AReadLine(Finding.FileName, Problem.StartLine, Text);
     if Finding.Column > 0 then
@@ -80,22 +86,32 @@ begin
       Problem.StartCharacter := Finding.Column - 1;
       Stop := Problem.StartCharacter;
       if Known then
+      begin
         while (Stop < Length(Text)) and TTextChars.IsIdentChar(Text[Stop + 1]) do
+        begin
           Inc(Stop);
+        end;
+      end;
       if Stop = Problem.StartCharacter then
+      begin
         Stop := Problem.StartCharacter + 1;
+      end;
       Problem.EndCharacter := Stop;
     end
     else if Known and (Trim(Text) <> '') then
     begin
       Stop := 0;
       while (Stop < Length(Text)) and CharInSet(Text[Stop + 1], [' ', #9]) do
+      begin
         Inc(Stop);
+      end;
       Problem.StartCharacter := Stop;
       Problem.EndCharacter := Length(TrimRight(Text));
     end
     else
+    begin
       Problem.EndCharacter := 1;
+    end;
     Problem.Severity := Severity(Finding.Severity);
     Problem.Code := Finding.Code;
     Problem.Source := ATask;

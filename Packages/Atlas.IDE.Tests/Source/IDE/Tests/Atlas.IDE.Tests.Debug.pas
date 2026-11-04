@@ -148,10 +148,14 @@ begin
   begin
     RemoveBreakpoint;
     if not Debugging then
+    begin
       TAtlasIdeStartOptions.EndTemporary(FTarget.Project, Changed);
+    end;
   end;
   if FPhase <> TPhase.Idle then
+  begin
     FTests.Debugging := False;
+  end;
   FAliveRef := nil;
   inherited Destroy;
 end;
@@ -165,7 +169,9 @@ end;
 class function TAtlasIdeTestDebugger.Debugger: IOTADebuggerServices;
 begin
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TAtlasIdeTestDebugger.Debugging: Boolean;
@@ -182,7 +188,9 @@ var
 begin
   Result := nil;
   if (AFileName <> '') and Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Supports(Services.FindModule(AFileName), IOTAProject, Result);
+  end;
 end;
 
 class function TAtlasIdeTestDebugger.ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
@@ -193,11 +201,15 @@ begin
   ALines := nil;
   Buffer := TAtlasIdeFiles.BufferOf(AFileName);
   if Buffer <> nil then
-    Text := TAtlasEditorBuffer.Text(Buffer)
+  begin
+    Text := TAtlasEditorBuffer.Text(Buffer);
+  end
   else
   begin
     if not FileExists(AFileName) then
+    begin
       Exit(False);
+    end;
     try
       Text := TAtlasTextFile.Load(AFileName).Text;
     except
@@ -223,14 +235,20 @@ begin
   ASelection := Default(TAtlasTestSelection);
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
+  begin
     Exit(Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor)));
+  end;
   AFileName := View.Buffer.FileName;
   Result := TAtlasTestDebug.SelectAt(TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer))),
     View.CursorPos.Line - 1, ASelection) and (Length(ASelection.Names) > 0);
   if not Result then
+  begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoTestAtCursor));
+  end;
 end;
 
 procedure TAtlasIdeTestDebugger.RunAtCursor;
@@ -244,7 +262,9 @@ begin
     Exit;
   end;
   if AtCursor(FileName, Selection) then
+  begin
     Run(FileName, Selection);
+  end;
 end;
 
 procedure TAtlasIdeTestDebugger.DebugAtCursor;
@@ -258,13 +278,17 @@ begin
     Exit;
   end;
   if AtCursor(FileName, Selection) then
+  begin
     Debug(FileName, Selection);
+  end;
 end;
 
 procedure TAtlasIdeTestDebugger.Run(const AFileName: string; const ASelection: TAtlasTestSelection);
 begin
   if not TAtlasTestDebug.RunWanted(TAtlasIdeSettings.Current) or (Length(ASelection.Names) = 0) then
+  begin
     Exit;
+  end;
   FTests.RunTests(AFileName, ASelection.Names);
 end;
 
@@ -274,7 +298,9 @@ var
   Keep: IInterface;
 begin
   if not TAtlasTestDebug.DebugWanted(TAtlasIdeSettings.Current) or (Length(ASelection.Names) = 0) then
+  begin
     Exit;
+  end;
   if Busy then
   begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugBusy));
@@ -300,9 +326,13 @@ begin
       Reason: string;
     begin
       if (Keep = nil) or not Alive.Alive then
+      begin
         Exit;
+      end;
       if not Prepare(AProject, Reason) then
+      begin
         Say(Reason);
+      end;
     end);
 end;
 
@@ -332,11 +362,15 @@ begin
   for Index := Length(Name) downto 1 do
   begin
     if Name[Index] <> '.' then
+    begin
       Continue;
+    end;
     UnitName := Copy(Name, 1, Index - 1);
     FileName := TAtlasIdeTests.UnitFileOf(Project.FileName, UnitName);
     if (FileName = '') or not ReadLines(FileName, Lines) then
+    begin
       Continue;
+    end;
     if TAtlasTestDebug.SelectByName(TDUnitXSource.Scan(Lines), Name, Selection) and
       (Length(Selection.Names) > 0) then
     begin
@@ -370,18 +404,26 @@ begin
   for Index := Length(Name) downto 1 do
   begin
     if Name[Index] <> '.' then
+    begin
       Continue;
+    end;
     UnitName := Copy(Name, 1, Index - 1);
     FileName := TAtlasIdeTests.UnitFileOf(AProject, UnitName);
     if (FileName = '') or not ReadLines(FileName, Lines) then
+    begin
       Continue;
+    end;
     Found := TDUnitXSource.Scan(Lines);
     if not TAtlasTestDebug.SelectByName(Found, Name, Selection) then
+    begin
       Continue;
+    end;
     Line := Found.LineOf(Selection.Fixture, Selection.Method);
     AFileName := FileName;
     if Line >= 0 then
+    begin
       ALine := Line + 1;
+    end;
     Exit(True);
   end;
 end;
@@ -409,7 +451,9 @@ begin
   Result := True;
   FPreviousProject := '';
   if GetActiveProject <> nil then
+  begin
     FPreviousProject := GetActiveProject.FileName;
+  end;
   FPhase := TPhase.Building;
   FTests.Debugging := True;
   // Ohne Build-Dienst baut „Start“ der IDE selbst.
@@ -424,7 +468,9 @@ begin
     procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
     begin
       if (Keep = nil) or not Alive.Alive or (FPhase <> TPhase.Building) then
+      begin
         Exit;
+      end;
       if AError <> '' then
       begin
         Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
@@ -436,11 +482,13 @@ begin
         Finish(False);
       end
       else
+      begin
         TAtlasGuard.Run(TAtlasFeature.Build,
           procedure
           begin
             Launch(AOutputFile);
           end);
+      end;
     end, Reason) then
   begin
     AReason := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), Reason]);
@@ -456,7 +504,9 @@ var
   XmlFile, Reason: string;
 begin
   if AExecutable <> '' then
+  begin
     FTarget.Executable := AExecutable;
+  end;
   if Debugging then
   begin
     Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugRunning));
@@ -468,7 +518,9 @@ begin
     TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
   FXmlFile := XmlFile;
   if TAtlasTestDebug.BreakWanted(TAtlasIdeSettings.Current, FSelection) then
+  begin
     SetBreakpoint;
+  end;
   Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugStarted, [ProjectName(FTarget.Project), FSelection.Caption,
     FTarget.Configuration, FTarget.Platform]));
   FPhase := TPhase.Starting;
@@ -498,19 +550,25 @@ begin
   FBreakpoint := nil;
   Services := Debugger;
   if (Services = nil) or (FUnitFile = '') or (FSelection.BreakLine < 0) then
+  begin
     Exit;
+  end;
   Line := FSelection.BreakLine + 1;
   // Ein Haltepunkt des Benutzers an derselben Stelle bleibt, wie er ist.
   for Index := 0 to Services.SourceBkptCount - 1 do
   begin
     Existing := Services.SourceBkpts[Index];
     if (Existing <> nil) and SameText(Existing.FileName, FUnitFile) and (Existing.LineNumber = Line) then
+    begin
       Exit;
+    end;
   end;
   try
     FBreakpoint := Services.NewSourceBreakpoint(FUnitFile, Line, nil);
     if FBreakpoint <> nil then
+    begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugBreak, [Line]));
+    end;
   except
     on Exception do
       FBreakpoint := nil;
@@ -522,11 +580,15 @@ var
   Services: IOTADebuggerServices;
 begin
   if FBreakpoint = nil then
+  begin
     Exit;
+  end;
   Services := Debugger;
   try
     if Services <> nil then
+    begin
       Services.RemoveBreakpoint(FBreakpoint);
+    end;
   finally
     FBreakpoint := nil;
   end;
@@ -538,11 +600,15 @@ var
   Previous: IOTAProject;
 begin
   if FPreviousProject = '' then
+  begin
     Exit;
+  end;
   Previous := ProjectOf(FPreviousProject);
   if (Previous <> nil) and Supports(BorlandIDEServices, IOTAModuleServices, Services) and
     (Services.MainProjectGroup <> nil) and (Services.MainProjectGroup.ActiveProject <> Previous) then
+  begin
     Services.MainProjectGroup.ActiveProject := Previous;
+  end;
 end;
 
 procedure TAtlasIdeTestDebugger.Tick(Sender: TObject);
@@ -557,12 +623,18 @@ begin
       case FPhase of
         TPhase.Starting:
           if (Services <> nil) and (Services.ProcessCount > 0) then
-            FPhase := TPhase.Running
+          begin
+            FPhase := TPhase.Running;
+          end
           // Schneller als ein Takt gelaufen: der Bericht ist schon da.
           else if (FXmlFile <> '') and FileExists(FXmlFile) then
-            Finish(True)
+          begin
+            Finish(True);
+          end
           else if GetTickCount - FStartedAt > TAtlasTestDebug.StartTimeoutMs then
+          begin
             Finish(False);
+          end;
         TPhase.Running:
           begin
             if (Services = nil) or (Services.ProcessCount = 0) then
@@ -574,7 +646,9 @@ begin
             Process := Services.CurrentProcess;
             if (FBreakpoint <> nil) and (Process <> nil) and
               (Process.ProcessState in [psStopped, psFault, psException]) then
+            begin
               RemoveBreakpoint;
+            end;
           end;
       end;
     end);
@@ -592,12 +666,18 @@ begin
   if FPhase in [TPhase.Starting, TPhase.Running] then
   begin
     if TAtlasIdeStartOptions.EndTemporary(Project, Changed) and Changed then
+    begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugKeptParameters, [ProjectName(Project)]));
+    end;
     RestoreActiveProject;
     if AStarted then
-      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugFinished, [ProjectName(Project)]))
+    begin
+      Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugFinished, [ProjectName(Project)]));
+    end
     else
+    begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugNoProcess, [ProjectName(Project)]));
+    end;
   end;
   FPhase := TPhase.Idle;
   FTests.Debugging := False;
@@ -618,7 +698,9 @@ begin
   end;
   // Ergebnis wie nach „Tests ausführen“: Code Lens, Probleme, Meldungen, Projekt-Zusammenfassung.
   if AStarted and (Xml <> '') then
+  begin
     FTests.ReportRun(FTarget, Xml);
+  end;
 end;
 
 end.

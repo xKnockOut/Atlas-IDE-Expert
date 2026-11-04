@@ -109,11 +109,17 @@ var
 begin
   Lower := AnsiLowerCase(AFileName);
   if (Pos('\.git\', Lower) > 0) or (Pos('\__history\', Lower) > 0) or (Pos('\__recovery\', Lower) > 0) then
+  begin
     Exit(False);
+  end;
   Extension := ExtractFileExt(Lower);
   for Candidate in Extensions do
+  begin
     if Extension = Candidate then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -140,10 +146,14 @@ begin
       end;
     TAtlasFileChangeKind.Changed:
       if AKind = TAtlasFileChangeKind.Deleted then
+      begin
         Known.Kind := TAtlasFileChangeKind.Deleted;
+      end;
     TAtlasFileChangeKind.Deleted:
       if AKind <> TAtlasFileChangeKind.Deleted then
+      begin
         Known.Kind := TAtlasFileChangeKind.Changed;
+      end;
   end;
   FPending[Key] := Known;
 end;
@@ -151,7 +161,9 @@ end;
 procedure TAtlasWatchedChanges.Add(const AFileName: string; AAction: Cardinal; ANow: Cardinal);
 begin
   if not IsWatched(AFileName) then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     case AAction of
@@ -178,9 +190,13 @@ begin
   FLock.Enter;
   try
     if (FOrder.Count = 0) or (ANow - FLastAdd < QuietMs) then
+    begin
       Exit;
+    end;
     for Key in FOrder do
+    begin
       Result := Result + [FPending[Key]];
+    end;
     FOrder.Clear;
     FPending.Clear;
   finally
@@ -202,7 +218,9 @@ begin
     begin
       Folder := ExcludeTrailingPathDelimiter(ExtractFilePath(Project));
       if Folder = '' then
+      begin
         Continue;
+      end;
       // Nach oben bis zum Git-Arbeitsverzeichnis; ohne Git der Projektordner.
       Root := Folder;
       Candidate := Folder;
@@ -214,7 +232,9 @@ begin
           Break;
         end;
         if ExtractFileDir(Candidate) = Candidate then
+        begin
           Break;
+        end;
         Candidate := ExtractFileDir(Candidate);
       end;
       Found.Add(Root);
@@ -225,6 +245,7 @@ begin
       Nested := False;
       Current := Found[Index];
       for Other := 0 to Found.Count - 1 do
+      begin
         // Doppelt (der erste bleibt) oder unterhalb eines anderen Ordners.
         if ((Other < Index) and SameText(Found[Other], Current)) or
           ((Other <> Index) and Current.StartsWith(IncludeTrailingPathDelimiter(Found[Other]), True)) then
@@ -232,8 +253,11 @@ begin
           Nested := True;
           Break;
         end;
+      end;
       if not Nested then
+      begin
         Result := Result + [Current];
+      end;
     end;
   finally
     Found.Free;

@@ -433,9 +433,13 @@ end;
 function TLayoutBuilder.HeightOf(const AFace: TAtlasDocFace): Integer;
 begin
   if AFace.Font = TAtlasDocFont.Mono then
-    Result := FMetrics.MonoHeight
+  begin
+    Result := FMetrics.MonoHeight;
+  end
   else
+  begin
     Result := FMetrics.LineHeight;
+  end;
 end;
 
 procedure TLayoutBuilder.SetBase(ALeft: Integer);
@@ -457,7 +461,9 @@ begin
   NewLine;
   // Kein Abstand vor der ersten Zeile.
   if Length(FLines) > 0 then
+  begin
     FPendingGap := Max(FPendingGap, AValue);
+  end;
 end;
 
 procedure TLayoutBuilder.OpenLine;
@@ -486,9 +492,13 @@ var
   Width, Last: Integer;
 begin
   if AText = '' then
+  begin
     Exit;
+  end;
   if not FOpen then
+  begin
     OpenLine;
+  end;
   Width := FMeasure(AText, AFace);
   Last := High(FLines);
   // Gleich gestaltetes Stück direkt davor verlängern.
@@ -527,7 +537,9 @@ var
 begin
   Bare := Trim(AText);
   if Bare = '' then
+  begin
     Exit;
+  end;
   Width := FMeasure(Bare, AFace) + 2 * FMetrics.PillPad;
   // Die Pille bleibt ganz: passt sie nicht mehr, in die nächste Zeile.
   if FOpen and (FX > FNextStart) and (FX + Width > FWidth) then
@@ -536,7 +548,9 @@ begin
     FNextStart := FHang;
   end;
   if not FOpen then
+  begin
     OpenLine;
+  end;
   Last := High(FLines);
   Span := Default(TAtlasDocSpan);
   Span.Text := Bare;
@@ -552,7 +566,9 @@ begin
   Inc(FX, Width);
   // Leerzeichen nach dem Namen bleiben als Text.
   if Length(AText) > Length(TrimRight(AText)) then
+  begin
     AddSpan(' ', TAtlasDocFace.Create(TAtlasDocFont.UI), TAtlasDocColor.Text, False, -1);
+  end;
 end;
 
 procedure TLayoutBuilder.AddWords(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor);
@@ -572,14 +588,20 @@ begin
     // Wort samt folgender Leerzeichen.
     Start := Index;
     while (Index <= Length(AText)) and (AText[Index] <> ' ') do
+    begin
       Inc(Index);
+    end;
     while (Index <= Length(AText)) and (AText[Index] = ' ') do
+    begin
       Inc(Index);
+    end;
     Word := Copy(AText, Start, Index - Start);
     Bare := TrimRight(Word);
     // Am Zeilenanfang keine Leerzeichen.
     if (not FOpen or (FX = FNextStart)) and (Bare = '') then
+    begin
       Continue;
+    end;
     if FOpen and (FX > FNextStart) and (Bare <> '') and (FX + FMeasure(Bare, AFace) > FWidth) then
     begin
       FOpen := False;
@@ -590,9 +612,13 @@ begin
     begin
       Count := Length(Bare) - 1;
       while (Count > 1) and (FMeasure(Copy(Bare, 1, Count), AFace) > FWidth - IfThen(FOpen, FX, FNextStart)) do
+      begin
         Dec(Count);
+      end;
       if Count < 1 then
+      begin
         Break;
+      end;
       AddSpan(Copy(Bare, 1, Count), AFace, AColor, AUnderline, ALink);
       Delete(Bare, 1, Count);
       Delete(Word, 1, Count);
@@ -650,7 +676,9 @@ begin
       // Andere Sprachen (Markdown der Issue-Vorschau, #1264) ohne Delphi-Farben.
       mKind := Token.Kind;
       if not AHighlight then
+      begin
         mKind := TAtlasTokenKind.Plain;
+      end;
       case mKind of
         TAtlasTokenKind.Keyword:
           Color := TAtlasDocColor.Keyword;
@@ -677,9 +705,13 @@ begin
         end;
         Count := Length(Piece);
         while (Count > 0) and (FX + FMeasure(Copy(Piece, 1, Count), Face) > Right) do
+        begin
           Dec(Count);
+        end;
         if (Count = 0) and (FX <= Inner + FMetrics.Indent) then
+        begin
           Count := 1;
+        end;
         if Count > 0 then
         begin
           AddSpan(Copy(Piece, 1, Count), Face, Color, False, -1);
@@ -700,7 +732,9 @@ begin
   Result := AIndex + 1;
   while (Result <= High(ARuns)) and not (ARuns[Result].Kind in [TAtlasDocRunKind.Bullet,
     TAtlasDocRunKind.Paragraph]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TLayoutBuilder.IsTableRow(const ARuns: TAtlasDocRuns; AIndex: Integer): Boolean;
@@ -709,10 +743,16 @@ var
 begin
   Result := False;
   if (AIndex > High(ARuns)) or (ARuns[AIndex].Kind <> TAtlasDocRunKind.Bullet) then
+  begin
     Exit;
+  end;
   for Index := AIndex + 1 to RowEnd(ARuns, AIndex) - 1 do
+  begin
     if ARuns[Index].Kind = TAtlasDocRunKind.Cell then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TLayoutBuilder.SingleLineWidth(const ARuns: TAtlasDocRuns; AFrom, ATo: Integer): Integer;
@@ -725,12 +765,18 @@ begin
   begin
     if ARuns[Index].Kind in [TAtlasDocRunKind.Code, TAtlasDocRunKind.Ref, TAtlasDocRunKind.ParamRef,
       TAtlasDocRunKind.Keyword] then
-      Font := TAtlasDocFont.Mono
+    begin
+      Font := TAtlasDocFont.Mono;
+    end
     else
+    begin
       Font := TAtlasDocFont.UI;
+    end;
     Inc(Result, FMeasure(ARuns[Index].Text, TAtlasDocFace.Create(Font, ARuns[Index].Bold, ARuns[Index].Italic)));
     if ARuns[Index].Kind = TAtlasDocRunKind.ParamRef then
+    begin
       Inc(Result, 2 * FMetrics.PillPad);
+    end;
   end;
 end;
 
@@ -745,19 +791,25 @@ begin
   // Zeilen der Spalten nebeneinander; Links der Spalten werden übernommen.
   Count := 0;
   for Source in ABuilders do
+  begin
     Count := Max(Count, Source.LineCount);
+  end;
   NewLine;
   for Row := 0 to Count - 1 do
   begin
     Line := Default(TAtlasDocLine);
     Line.Height := FMetrics.LineHeight;
     if Row = 0 then
+    begin
       Line.GapBefore := Max(FPendingGap, AGap);
+    end;
     for Column := 0 to High(ABuilders) do
     begin
       Source := ABuilders[Column];
       if Row >= Source.LineCount then
+      begin
         Continue;
+      end;
       Line.Height := Max(Line.Height, Source.Lines[Row].Height);
       if Source.Lines[Row].Shaded and not Line.Shaded then
       begin
@@ -769,11 +821,15 @@ begin
         Line.Spans := Line.Spans + [Span];
         Inc(Line.Spans[High(Line.Spans)].Left, ALefts[Column]);
         if Span.Link >= 0 then
+        begin
           Line.Spans[High(Line.Spans)].Link := AddLink(Source.Links[Span.Link]);
+        end;
       end;
     end;
     if Length(FLines) = 0 then
+    begin
       Line.GapBefore := 0;
+    end;
     FLines := FLines + [Line];
   end;
   FPendingGap := 0;
@@ -790,8 +846,12 @@ var
     Probe: Integer;
   begin
     for Probe := AFrom to ATo - 1 do
+    begin
       if ARuns[Probe].Kind = TAtlasDocRunKind.Cell then
+      begin
         Exit(Probe);
+      end;
+    end;
     Result := ATo;
   end;
 
@@ -862,13 +922,17 @@ begin
             TAtlasDocColor.Accent, True, LinkIndex);
         end
         else
+        begin
           AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.Mono, Run.Bold, Run.Italic),
             TAtlasDocColor.Accent);
+        end;
       TAtlasDocRunKind.Link:
         if Run.Target.StartsWith(TAtlasDocIssueLinks.Prefix, True) and
           (TAtlasDocIssueLinks.Url(Run.Target) = '') then
+        begin
           // Issue ohne Tracker (#1123): nicht anklickbar.
-          AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold, Run.Italic), ABaseColor)
+          AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold, Run.Italic), ABaseColor);
+        end
         else
         begin
           LinkIndex := -1;
@@ -878,7 +942,9 @@ begin
             Link.Kind := TAtlasDocLinkKind.Url;
             Link.Url := Run.Target;
             if Run.Target.StartsWith(TAtlasDocIssueLinks.Prefix, True) then
+            begin
               Link.Url := TAtlasDocIssueLinks.Url(Run.Target);
+            end;
             LinkIndex := AddLink(Link);
           end;
           AddWords(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold, Run.Italic), TAtlasDocColor.Accent,
@@ -928,7 +994,9 @@ begin
                 AddLink(Link));
             end
             else
+            begin
               AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Muted, False, -1);
+            end;
             // Fester Platz für die Marke, damit die Texte der Punkte bündig stehen.
             Bullet := Max(FMeasure(Run.Text + ' ', TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold)),
               FMeasure('00. ', TAtlasDocFace.Create(TAtlasDocFont.UI)));
@@ -967,19 +1035,27 @@ begin
     for Index := 0 to High(ARow) do
     begin
       if Index < High(ARow) then
-        Width := AWidths[Index]
+      begin
+        Width := AWidths[Index];
+      end
       else
+      begin
         Width := FWidth - Left;
+      end;
       Lefts[Index] := Left;
       Builders[Index] := TLayoutBuilder.Create(Max(1, Width), FMetrics, FMeasure);
       Cell := ARow[Index];
       if Cell.HasRuns then
-        Builders[Index].FlowRuns(Cell.Runs, Cell.Color)
+      begin
+        Builders[Index].FlowRuns(Cell.Runs, Cell.Color);
+      end
       else
       begin
         LinkIndex := -1;
         if Cell.HasLink then
+        begin
           LinkIndex := Builders[Index].AddLink(Cell.Link);
+        end;
         Builders[Index].AddWords(Cell.Text, Cell.Face, Cell.Color, Cell.HasLink, LinkIndex);
       end;
       Inc(Left, Width + FMetrics.ColumnGap);
@@ -989,7 +1065,9 @@ begin
     NewLine;
   finally
     for Index := 0 to High(Builders) do
+    begin
       Builders[Index].Free;
+    end;
   end;
 end;
 
@@ -1025,7 +1103,9 @@ var
   Surface: TAtlasDocSurface;
 begin
   for Surface := Low(TAtlasDocSurface) to High(TAtlasDocSurface) do
+  begin
     FLast[Surface] := False;
+  end;
 end;
 
 { TAtlasDocIssueLinks }
@@ -1044,11 +1124,15 @@ class function TAtlasDocIssueLinks.Url(const ATarget: string): string;
 begin
   Result := '';
   if not ATarget.StartsWith(Prefix, True) or not Assigned(FResolver) then
+  begin
     Exit;
+  end;
   Result := FResolver(Copy(ATarget, Length(Prefix) + 1, MaxInt));
   // Nur Web-Adressen, wie beim Öffnen aus „Meine Issues“.
   if not (Result.StartsWith('https://', True) or Result.StartsWith('http://', True)) then
+  begin
     Result := '';
+  end;
 end;
 
 { TAtlasDocLayout }
@@ -1063,8 +1147,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Lines) do
+  begin
     if (AY >= Lines[Index].Top - Lines[Index].GapBefore) and (AY < Lines[Index].Bottom) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -1076,10 +1164,16 @@ begin
   Result := -1;
   Line := LineAt(AY);
   if (Line < 0) or (AY < Lines[Line].Top) then
+  begin
     Exit;
+  end;
   for Span in Lines[Line].Spans do
+  begin
     if (Span.Link >= 0) and (AX >= Span.Left) and (AX < Span.Right) then
+    begin
       Exit(Span.Link);
+    end;
+  end;
 end;
 
 function TAtlasDocLayout.PositionAt(AX, AY: Integer; const AMeasure: TAtlasDocMeasure): Integer;
@@ -1089,14 +1183,20 @@ var
   Spans: TArray<TAtlasDocSpan>;
 begin
   if (Length(Lines) = 0) or (AY < Lines[0].Top - Lines[0].GapBefore) then
+  begin
     Exit(0);
+  end;
   Line := LineAt(AY);
   if Line < 0 then
   begin
     // Unterhalb bzw. zwischen Zeilen: Ende bzw. nächste Zeile.
     for Index := 0 to High(Lines) do
+    begin
       if AY < Lines[Index].Top then
+      begin
         Exit(PositionAt(AX, Lines[Index].Top, AMeasure));
+      end;
+    end;
     Exit(Length(Text));
   end;
   // Leere Zeile: Anfang der nächsten Zeile mit Text.
@@ -1104,25 +1204,37 @@ begin
   if Length(Spans) = 0 then
   begin
     for Index := Line + 1 to High(Lines) do
+    begin
       if Length(Lines[Index].Spans) > 0 then
+      begin
         Exit(Lines[Index].Spans[0].TextStart);
+      end;
+    end;
     Exit(Length(Text));
   end;
   if AX < Spans[0].Left then
+  begin
     Exit(Spans[0].TextStart);
+  end;
   for Span in Spans do
+  begin
     if AX < Span.Right then
     begin
       if AX < Span.Left + Span.Pad then
+      begin
         Exit(Span.TextStart);
+      end;
       // Zeichen, dessen Mitte links von AX liegt, gehören dazu.
       Count := 0;
       while (Count < Length(Span.Text)) and
         (Span.Left + Span.Pad + (AMeasure(Copy(Span.Text, 1, Count), Span.Face) +
         AMeasure(Copy(Span.Text, 1, Count + 1), Span.Face)) div 2 <= AX) do
+      begin
         Inc(Count);
+      end;
       Exit(Span.TextStart + Count);
     end;
+  end;
   Span := Spans[High(Spans)];
   Result := Span.TextStart + Length(Span.Text);
 end;
@@ -1136,7 +1248,9 @@ begin
   Till := Min(ATo, ASpan.TextStart + Length(ASpan.Text)) - ASpan.TextStart;
   Result := Till > From;
   if not Result then
+  begin
     Exit;
+  end;
   ALeft := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, From), ASpan.Face);
   ARight := ASpan.Left + ASpan.Pad + AMeasure(Copy(ASpan.Text, 1, Till), ASpan.Face);
 end;
@@ -1153,7 +1267,9 @@ end;
 function TAtlasDocLayout.HeightOfLines(ALines: Integer): Integer;
 begin
   if (ALines <= 0) or (ALines >= Length(Lines)) then
+  begin
     Exit(Height);
+  end;
   Result := Lines[ALines - 1].Bottom;
 end;
 
@@ -1165,10 +1281,16 @@ begin
   // Begründungen sind zugeklappt sichtbar, nur über MaxRationale hinaus nicht.
   Rationale := 0;
   for Section in ADoc.Sections do
+  begin
     if Section.Kind = TAtlasDocSectionKind.Rationale then
-      Inc(Rationale)
+    begin
+      Inc(Rationale);
+    end
     else if Section.Kind <> TAtlasDocSectionKind.Summary then
+    begin
       Exit(True);
+    end;
+  end;
   Result := Rationale > MaxRationale;
 end;
 
@@ -1178,8 +1300,12 @@ var
 begin
   Result := nil;
   for Section in ADoc.Sections do
+  begin
     if Section.Kind = AKind then
+    begin
       Result := Result + [Section];
+    end;
+  end;
 end;
 
 /// <summary>Parameter der Doku, die die Signatur nicht kennt; ohne erkannte Signatur keine.</summary>
@@ -1189,18 +1315,28 @@ var
 begin
   Result := nil;
   if not ASignature.Known then
+  begin
     Exit;
+  end;
   for Section in SectionsOf(ADoc, TAtlasDocSectionKind.Param) do
+  begin
     if ASignature.IndexOf(Section.Name) < 0 then
+    begin
       Result := Result + [Section];
+    end;
+  end;
 end;
 
 function ParamCount(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature): Integer;
 begin
   if ASignature.Known then
-    Result := Length(ASignature.Params) + Length(UnknownParams(ADoc, ASignature))
+  begin
+    Result := Length(ASignature.Params) + Length(UnknownParams(ADoc, ASignature));
+  end
   else
+  begin
     Result := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Param));
+  end;
 end;
 
 function HasReturns(const ADoc: TAtlasDoc; const ASignature: TAtlasDocSignature): Boolean;
@@ -1230,9 +1366,13 @@ var
   function Counted(ACount: Integer; const AOne, AMany: string): string;
   begin
     if ACount = 1 then
-      Result := Format(AOne, [ACount])
+    begin
+      Result := Format(AOne, [ACount]);
+    end
     else
+    begin
       Result := Format(AMany, [ACount]);
+    end;
   end;
 
 begin
@@ -1240,26 +1380,44 @@ begin
   Colors := nil;
   Count := ParamCount(ADoc, ASignature);
   if Count > 0 then
+  begin
     Add(Counted(Count, ALabels.CountParam, ALabels.CountParams), TAtlasDocColor.Muted);
+  end;
   Count := Length(SectionsOf(ADoc, TAtlasDocSectionKind.TypeParam));
   if Count > 0 then
+  begin
     Add(Counted(Count, ALabels.CountTypeParam, ALabels.CountTypeParams), TAtlasDocColor.Muted);
+  end;
   if HasReturns(ADoc, ASignature) then
+  begin
     Add(ALabels.ItemReturns, TAtlasDocColor.Muted);
+  end;
   if HasValue(ADoc, ASignature) then
+  begin
     Add(ALabels.ItemValue, TAtlasDocColor.Muted);
+  end;
   Count := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Exception));
   if Count > 0 then
+  begin
     Add(Counted(Count, ALabels.CountException, ALabels.CountExceptions), TAtlasDocColor.Error);
+  end;
   if ADoc.Has(TAtlasDocSectionKind.Remarks) then
+  begin
     Add(ALabels.ItemRemarks, TAtlasDocColor.Muted);
+  end;
   if ADoc.Has(TAtlasDocSectionKind.Example) then
+  begin
     Add(ALabels.ItemExample, TAtlasDocColor.Muted);
+  end;
   if ADoc.Has(TAtlasDocSectionKind.SeeAlso) then
+  begin
     Add(ALabels.ItemSeeAlso, TAtlasDocColor.Muted);
+  end;
   Count := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Rationale)) - MaxRationale;
   if Count > 0 then
+  begin
     Add(Counted(Count, ALabels.CountRationale, ALabels.CountRationales), TAtlasDocColor.Muted);
+  end;
   AColors := Colors;
   Result := Parts;
 end;
@@ -1311,29 +1469,41 @@ var
   begin
     Docs := SectionsOf(ADoc, AKind);
     if (AType <> '') and (Length(Docs) > 0) then
+    begin
       Builder.Columns([TDocCell.OfText(AType, Mono, TAtlasDocColor.Keyword),
-        TDocCell.OfRuns(Docs[0].Runs, TAtlasDocColor.Muted)], [Width(AType, Mono, TypeColumnPercent)])
+        TDocCell.OfRuns(Docs[0].Runs, TAtlasDocColor.Muted)], [Width(AType, Mono, TypeColumnPercent)]);
+    end
     else if AType <> '' then
-      Builder.Columns([TDocCell.OfText(AType, Mono, TAtlasDocColor.Keyword)], nil)
+    begin
+      Builder.Columns([TDocCell.OfText(AType, Mono, TAtlasDocColor.Keyword)], nil);
+    end
     else if Length(Docs) > 0 then
+    begin
       Builder.Columns([TDocCell.OfRuns(Docs[0].Runs, TAtlasDocColor.Muted)], nil);
+    end;
   end;
 
   procedure ParamRow(const AName, AType: string; const ARuns: TAtlasDocRuns;
     ANameColor, ATextColor: TAtlasDocColor);
   begin
     if ThreeColumns then
+    begin
       Builder.Columns([TDocCell.OfText(AName, Name, ANameColor), TDocCell.OfText(AType, Muted,
-        TAtlasDocColor.Muted), TDocCell.OfRuns(ARuns, ATextColor)], [NameWidth, TypeWidth])
+        TAtlasDocColor.Muted), TDocCell.OfRuns(ARuns, ATextColor)], [NameWidth, TypeWidth]);
+    end
     else
+    begin
       Builder.Columns([TDocCell.OfText(AName, Name, ANameColor), TDocCell.OfRuns(ARuns, ATextColor)],
         [NameWidth]);
+    end;
   end;
 
 begin
   Result := Default(TAtlasDocLayout);
   if ADoc.IsEmpty then
+  begin
     Exit;
+  end;
   Result.Collapsible := IsCollapsible(ADoc);
   Result.Expanded := AExpanded or not Result.Collapsible;
   Name := TAtlasDocFace.Create(TAtlasDocFont.Mono, True);
@@ -1345,7 +1515,9 @@ begin
   Builder := TLayoutBuilder.Create(AWidth, AMetrics, AMeasure);
   try
     for Section in SectionsOf(ADoc, TAtlasDocSectionKind.Summary) do
+    begin
       Builder.Section(Section, TAtlasDocColor.Text);
+    end;
     if Result.Expanded and Result.Collapsible then
     begin
       // PARAMETER: in der Reihenfolge der Signatur, dann unbekannte in Warnfarbe.
@@ -1361,7 +1533,9 @@ begin
           TypeWidth := Max(TypeWidth, Width(Param.TypeText, Muted, TypeColumnPercent));
         end;
         for Section in SectionsOf(ADoc, TAtlasDocSectionKind.Param) do
+        begin
           NameWidth := Max(NameWidth, Width(Section.Name, Name, NameColumnPercent));
+        end;
         NameWidth := Max(NameWidth, 1);
         TypeWidth := Max(TypeWidth, 1);
         Sections := SectionsOf(ADoc, TAtlasDocSectionKind.Param);
@@ -1371,23 +1545,35 @@ begin
           begin
             Found := -1;
             for Index := 0 to High(Sections) do
+            begin
               if SameText(Sections[Index].Name, Param.Name) then
               begin
                 Found := Index;
                 Break;
               end;
+            end;
             if Found >= 0 then
+            begin
               ParamRow(Param.Name, Param.TypeText, Sections[Found].Runs, TAtlasDocColor.Accent,
-                TAtlasDocColor.Text)
+                TAtlasDocColor.Text);
+            end
             else
+            begin
               ParamRow(Param.Name, Param.TypeText, Undocumented, TAtlasDocColor.Accent, TAtlasDocColor.Muted);
+            end;
           end;
           for Section in UnknownParams(ADoc, ASignature) do
+          begin
             ParamRow(Section.Name, '', Section.Runs, TAtlasDocColor.Warn, TAtlasDocColor.Warn);
+          end;
         end
         else
+        begin
           for Section in Sections do
+          begin
             ParamRow(Section.Name, '', Section.Runs, TAtlasDocColor.Accent, TAtlasDocColor.Text);
+          end;
+        end;
       end;
       Sections := SectionsOf(ADoc, TAtlasDocSectionKind.TypeParam);
       if Length(Sections) > 0 then
@@ -1395,26 +1581,38 @@ begin
         Builder.Heading(ALabels.TypeParams);
         NameWidth := 1;
         for Section in Sections do
+        begin
           NameWidth := Max(NameWidth, Width(Section.Name, Name, NameColumnPercent));
+        end;
         for Section in Sections do
+        begin
           Builder.Columns([TDocCell.OfText(Section.Name, Name, TAtlasDocColor.Accent),
             TDocCell.OfRuns(Section.Runs, TAtlasDocColor.Text)], [NameWidth]);
+        end;
       end;
       if HasReturns(ADoc, ASignature) then
       begin
         Builder.Heading(ALabels.Returns);
         if ASignature.IsProperty then
-          TypeAndText('', TAtlasDocSectionKind.Returns)
+        begin
+          TypeAndText('', TAtlasDocSectionKind.Returns);
+        end
         else
+        begin
           TypeAndText(ASignature.ResultType, TAtlasDocSectionKind.Returns);
+        end;
       end;
       if HasValue(ADoc, ASignature) then
       begin
         Builder.Heading(ALabels.Value);
         if ASignature.IsProperty then
-          TypeAndText(ASignature.ResultType, TAtlasDocSectionKind.Value)
+        begin
+          TypeAndText(ASignature.ResultType, TAtlasDocSectionKind.Value);
+        end
         else
+        begin
           TypeAndText('', TAtlasDocSectionKind.Value);
+        end;
       end;
       Sections := SectionsOf(ADoc, TAtlasDocSectionKind.Exception);
       if Length(Sections) > 0 then
@@ -1422,23 +1620,31 @@ begin
         Builder.Heading(ALabels.Exceptions);
         NameWidth := 1;
         for Section in Sections do
+        begin
           NameWidth := Max(NameWidth, Width(Section.Name, Mono, 50));
+        end;
         for Section in Sections do
+        begin
           Builder.Columns([LinkCell(Section), TDocCell.OfRuns(Section.Runs, TAtlasDocColor.Muted)], [NameWidth]);
+        end;
       end;
       Sections := SectionsOf(ADoc, TAtlasDocSectionKind.Remarks);
       if Length(Sections) > 0 then
       begin
         Builder.Heading(ALabels.Remarks);
         for Section in Sections do
+        begin
           Builder.Section(Section, TAtlasDocColor.Muted);
+        end;
       end;
       Sections := SectionsOf(ADoc, TAtlasDocSectionKind.Example);
       if Length(Sections) > 0 then
       begin
         Builder.Heading(ALabels.Example);
         for Section in Sections do
+        begin
           Builder.Section(Section, TAtlasDocColor.Text);
+        end;
       end;
       // SIEHE AUCH in einer Zeile mit den Verweisen.
       Sections := SectionsOf(ADoc, TAtlasDocSectionKind.SeeAlso);
@@ -1451,7 +1657,9 @@ begin
         for Index := 0 to High(Sections) do
         begin
           if Index > 0 then
+          begin
             Builder.AddWords(', ', UI, TAtlasDocColor.Muted);
+          end;
           Builder.FlowRuns(Sections[Index].Runs, TAtlasDocColor.Text);
         end;
         Builder.NewLine;
@@ -1464,13 +1672,19 @@ begin
       Builder.Heading(ALabels.Rationale);
       Shown := Length(Sections);
       if not Result.Expanded then
+      begin
         Shown := Min(Shown, MaxRationale);
+      end;
       NameWidth := 1;
       for Index := 0 to Shown - 1 do
+      begin
         NameWidth := Max(NameWidth, Width(Sections[Index].Name, Name, NameColumnPercent));
+      end;
       for Index := 0 to Shown - 1 do
+      begin
         Builder.Columns([TDocCell.OfText(Sections[Index].Name, Name, TAtlasDocColor.Accent),
           TDocCell.OfRuns(Sections[Index].Runs, TAtlasDocColor.Text)], [NameWidth]);
+      end;
     end;
     // Schalter: zugeklappt mit dem, was verborgen ist.
     if Result.Collapsible then
@@ -1480,17 +1694,23 @@ begin
       Builder.SetBase(0);
       Builder.Gap(AMetrics.SectionGap);
       if Result.Expanded then
-        Builder.AddWhole(ALabels.Less, UI, TAtlasDocColor.Accent, Builder.AddLink(Toggle))
+      begin
+        Builder.AddWhole(ALabels.Less, UI, TAtlasDocColor.Accent, Builder.AddLink(Toggle));
+      end
       else
       begin
         Builder.AddWhole(ALabels.More, UI, TAtlasDocColor.Accent, Builder.AddLink(Toggle));
         Parts := HiddenParts(ADoc, ASignature, ALabels, PartColors);
         if Length(Parts) > 0 then
+        begin
           Builder.AddSpan('   ', UI, TAtlasDocColor.Muted, False, -1);
+        end;
         for Index := 0 to High(Parts) do
         begin
           if Index > 0 then
+          begin
             Builder.AddWords(Separator, UI, TAtlasDocColor.Muted);
+          end;
           Builder.AddWords(Parts[Index], UI, PartColors[Index]);
         end;
       end;
@@ -1503,19 +1723,25 @@ begin
   end;
   // Leere Zeilen am Ende weg; dann Positionen und Klartext.
   while (Length(Result.Lines) > 0) and (Length(Result.Lines[High(Result.Lines)].Spans) = 0) do
+  begin
     SetLength(Result.Lines, Length(Result.Lines) - 1);
+  end;
   Y := 0;
   Text_ := TStringBuilder.Create;
   try
     for LineIndex := 0 to High(Result.Lines) do
     begin
       if LineIndex = 0 then
+      begin
         Result.Lines[LineIndex].GapBefore := 0;
+      end;
       Inc(Y, Result.Lines[LineIndex].GapBefore);
       Result.Lines[LineIndex].Top := Y;
       Inc(Y, Result.Lines[LineIndex].Height);
       if Text_.Length > 0 then
+      begin
         Text_.Append(#13#10);
+      end;
       Pen := -1;
       for SpanIndex := 0 to High(Result.Lines[LineIndex].Spans) do
       begin
@@ -1523,7 +1749,9 @@ begin
         // Sprung in eine andere Spalte als Tabulator.
         if (Pen >= 0) and (Span.Left > Pen + 1) and (Text_.Length > 0) and
           not CharInSet(Text_.Chars[Text_.Length - 1], [' ', #9]) then
+        begin
           Text_.Append(#9);
+        end;
         Result.Lines[LineIndex].Spans[SpanIndex].TextStart := Text_.Length;
         Text_.Append(Span.Text);
         Pen := Span.Right;

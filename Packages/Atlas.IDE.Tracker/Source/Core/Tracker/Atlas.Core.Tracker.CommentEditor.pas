@@ -260,13 +260,19 @@ var
 begin
   Result := TAtlasCommentTrigger.None;
   if (ACaret < 1) or (ACaret > System.Length(AText)) then
+  begin
     Exit;
+  end;
   // Mitten im Wort nicht: Die Schreibmarke steht am Ende des getippten Worts.
   if (ACaret < System.Length(AText)) and IsNameChar(AText[ACaret + 1]) then
+  begin
     Exit;
+  end;
   mStart := ACaret;
   while (mStart >= 1) and IsNameChar(AText[mStart]) do
+  begin
     Dec(mStart);
+  end;
   mWord := Copy(AText, mStart + 1, ACaret - mStart);
   if (mStart >= 1) and CharInSet(AText[mStart], [cMention, cHash]) then
   begin
@@ -274,13 +280,19 @@ begin
     // "a@b" (E-Mail), "##" und "`#" sind keine Auslöser.
     if (mStart > 1) and (IsNameChar(AText[mStart - 1]) or CharInSet(AText[mStart - 1], [cMention, cHash, '`', '/',
       '\'])) then
+    begin
       Exit;
+    end;
     if mWord = '' then
+    begin
       Exit;
+    end;
     if mMark = cMention then
     begin
       if not mWord[1].IsLetter then
+      begin
         Exit;
+      end;
       Result.Kind := TAtlasCommentTriggerKind.Mention;
       Result.Text := mWord;
     end
@@ -288,7 +300,9 @@ begin
     begin
       mQuery := TAtlasIssuePaletteSearch.Parse(ATarget, cHash + mWord);
       if mQuery.Kind = TAtlasIssueSearchKind.None then
+      begin
         Exit;
+      end;
       Result.Kind := TAtlasCommentTriggerKind.Issue;
       Result.Text := cHash + mWord;
       Result.Query := mQuery;
@@ -299,10 +313,14 @@ begin
   end;
   // Projektkürzel mit "-" (YouTrack): ein eigenes Wort, nicht Teil eines Pfads oder Codes.
   if (mWord = '') or ((mStart >= 1) and CharInSet(AText[mStart], ['`', '/', '\'])) then
+  begin
     Exit;
+  end;
   mQuery := TAtlasIssuePaletteSearch.Parse(ATarget, mWord);
   if mQuery.Kind = TAtlasIssueSearchKind.None then
+  begin
     Exit;
+  end;
   Result.Kind := TAtlasCommentTriggerKind.Issue;
   Result.Text := mWord;
   Result.Query := mQuery;
@@ -322,7 +340,9 @@ begin
     Inc(ACaret);
   end
   else if Result[ACaret + 1] = ' ' then
+  begin
     Inc(ACaret);
+  end;
 end;
 
 class function TAtlasCommentEditing.Insert(const AText: string; ASelStart, ASelLength: Integer;
@@ -395,10 +415,14 @@ begin
   end;
   mOpen := cFence + CodeLanguage + LineBreak;
   if (mBefore <> '') and not IsBreak(mBefore[Length(mBefore)]) then
+  begin
     mOpen := LineBreak + mOpen;
+  end;
   Result := mBefore + mOpen + mCode + LineBreak + cFence;
   if (mAfter <> '') and not IsBreak(mAfter[1]) then
+  begin
     Result := Result + LineBreak;
+  end;
   Result := Result + mAfter;
   AStart := Length(mBefore) + Length(mOpen);
   ALength := Length(mCode);
@@ -413,16 +437,22 @@ class function TAtlasCommentEditing.UserRow(const AUser: TAtlasTrackerUser): str
 begin
   Result := MentionText(AUser);
   if Trim(AUser.Name) <> '' then
+  begin
     Result := Result + ' · ' + Trim(AUser.Name);
+  end;
 end;
 
 class function TAtlasCommentEditing.IssueRow(const AIssue: TAtlasTrackerIssue): string;
 begin
   Result := Trim(AIssue.Key);
   if Trim(AIssue.Title) <> '' then
+  begin
     Result := Result + ' · ' + Trim(AIssue.Title);
+  end;
   if Trim(AIssue.State) <> '' then
+  begin
     Result := Result + ' · ' + Trim(AIssue.State);
+  end;
 end;
 
 { TAtlasCommentValues }
@@ -469,13 +499,19 @@ begin
   try
     Result := mValue is TJSONArray;
     if not Result then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mValue) do
     begin
       if Length(ASnippets) >= MaxSnippets then
+      begin
         Break;
+      end;
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mName := '';
       mText := '';
       TJSONObject(mItem).TryGetValue<string>('name', mName);
@@ -483,7 +519,9 @@ begin
       mName := Copy(Trim(mName), 1, MaxName);
       mText := Copy(mText, 1, MaxText);
       if (mName = '') or (Trim(mText) = '') then
+      begin
         Continue;
+      end;
       ASnippets := ASnippets + [TAtlasCommentSnippet.Create(mName, mText)];
     end;
   finally
@@ -494,7 +532,9 @@ end;
 class function TAtlasCommentSnippets.Read(const AJson: string): TArray<TAtlasCommentSnippet>;
 begin
   if not Parse(AJson, Result) then
+  begin
     Result := Defaults;
+  end;
 end;
 
 class function TAtlasCommentSnippets.ToJson(const ASnippets: TArray<TAtlasCommentSnippet>): string;
@@ -522,7 +562,9 @@ function Placed(const AText, APlaceholder, AValue: string): string;
 begin
   Result := AText;
   if AValue <> '' then
+  begin
     Result := StringReplace(Result, APlaceholder, AValue, [rfReplaceAll, rfIgnoreCase]);
+  end;
 end;
 
 class function TAtlasCommentSnippets.Expand(const AText: string; const AValues: TAtlasCommentValues): string;
@@ -563,9 +605,13 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to FEntries.Count - 1 do
+  begin
     if SameText(FEntries[mIndex].Tracker, Trim(ATracker)) and SameText(FEntries[mIndex].Issue, Trim(AIssue)) and
       SameText(FEntries[mIndex].Field, Trim(AField)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -579,7 +625,9 @@ begin
   mIndex := IndexOf(ATracker, AIssue, AField);
   Result := mIndex >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   AText := FEntries[mIndex].Text;
   ASaved := FEntries[mIndex].Saved;
 end;
@@ -601,7 +649,9 @@ begin
   mEntry.Saved := ASaved;
   FEntries.Insert(0, mEntry);
   while FEntries.Count > MaxDrafts do
+  begin
     FEntries.Delete(FEntries.Count - 1);
+  end;
 end;
 
 function TAtlasCommentDrafts.Delete(const ATracker, AIssue, AField: string): Boolean;
@@ -611,7 +661,9 @@ begin
   mIndex := IndexOf(ATracker, AIssue, AField);
   Result := mIndex >= 0;
   if Result then
+  begin
     FEntries.Delete(mIndex);
+  end;
 end;
 
 function TAtlasCommentDrafts.Count: Integer;
@@ -644,7 +696,9 @@ begin
       mItem.AddPair('field', mEntry.Field);
       mItem.AddPair('text', mEntry.Text);
       if mEntry.Saved > 0 then
+      begin
         mItem.AddPair('saved', DateToISO8601(mEntry.Saved, True));
+      end;
     end;
     Result := mRoot.ToJSON;
   finally
@@ -666,16 +720,24 @@ begin
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('version', mVersion) and
       (mVersion = Version);
     if not Result then
+    begin
       Exit;
+    end;
     mList := TJSONObject(mRoot).Values['drafts'];
     if not (mList is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mList) do
     begin
       if FEntries.Count >= MaxDrafts then
+      begin
         Break;
+      end;
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mObject := TJSONObject(mItem);
       mEntry := Default(TEntry);
       if not mObject.TryGetValue<string>('tracker', mEntry.Tracker) or
@@ -683,13 +745,19 @@ begin
         not mObject.TryGetValue<string>('field', mEntry.Field) or
         not mObject.TryGetValue<string>('text', mEntry.Text) or (Trim(mEntry.Text) = '') or
         (Trim(mEntry.Issue) = '') or (Trim(mEntry.Tracker) = '') or (Trim(mEntry.Field) = '') then
+      begin
         Continue;
+      end;
       mSaved := '';
       if mObject.TryGetValue<string>('saved', mSaved) and (mSaved <> '') then
+      begin
         TryISO8601ToDate(mSaved, mEntry.Saved, True);
+      end;
       mEntry.Text := Copy(mEntry.Text, 1, TAtlasTrackerDetails.MaxText);
       if IndexOf(mEntry.Tracker, mEntry.Issue, mEntry.Field) < 0 then
+      begin
         FEntries.Add(mEntry);
+      end;
     end;
   finally
     mRoot.Free;
@@ -706,16 +774,22 @@ begin
       Result := Parse(AText);
     end);
   if not TAtlasDataFile.Writable(Result) then
+  begin
     FKept := AFileName;
+  end;
   if Result <> TAtlasDataLoad.Loaded then
+  begin
     FEntries.Clear;
+  end;
 end;
 
 function TAtlasCommentDrafts.SaveToFile(const AFileName: string): Boolean;
 begin
   Result := not SameFileName(AFileName, FKept);
   if Result then
+  begin
     TAtlasDataFile.Write(AFileName, ToJson);
+  end;
 end;
 
 end.

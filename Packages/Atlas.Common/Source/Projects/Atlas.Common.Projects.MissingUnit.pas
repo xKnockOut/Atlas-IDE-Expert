@@ -170,6 +170,10 @@ type
     FSearched: TArray<string>;
     function FileIn(const AFolder: string): string;
     procedure Look(const AFolder: string; APlace: TMissingUnitPlace; const ADetail: string);
+    procedure LookInProjectFolder;
+    procedure LookInGroup;
+    procedure LookInOtherTargets;
+    procedure LookInOtherLibraries;
   public
     constructor Create(const ASetup: TMissingUnitSetup);
     procedure Run;
@@ -245,97 +249,124 @@ begin
   FHits := FHits + [Hit];
 end;
 
-procedure TSearch.Run;
+procedure TSearch.LookInProjectFolder;
 var
-  Root, Folder, IndexFile, Platform: string;
-  Queue: TArray<string>;
-  Depths: TArray<Integer>;
-  Position: Integer;
-  Target: TMissingUnitTarget;
-  Project: TMissingUnitProject;
-  ActiveSearch: TArray<string>;
+  mRoot, mFolder: string;
+  mQueue: TArray<string>;
+  mDepths: TArray<Integer>;
+  mPosition: Integer;
 begin
-  // Was der Compiler schon durchsucht hat, zählt nicht als Fund.
-  ActiveSearch := FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths;
-  for Folder in ActiveSearch do
+  mRoot := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
+  if mRoot = '' then
   begin
-    FSeen := FSeen + [FolderKey(Folder)];
+    Exit;
   end;
-  // 1. Projektordner und Unterordner, Breitensuche.
-  Root := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
-  if Root <> '' then
+  FSearched := FSearched + [Format('Projektordner %s und Unterordner', [mRoot])];
+  // Der Projektordner selbst steht immer im Suchweg des Compilers.
+  FSeen := FSeen + [FolderKey(mRoot)];
+  mQueue := [mRoot];
+  mDepths := [0];
+  mPosition := 0;
+  while mPosition < Length(mQueue) do
   begin
-    FSearched := FSearched + [Format('Projektordner %s und Unterordner', [Root])];
-    // Der Projektordner selbst steht immer im Suchweg des Compilers.
-    FSeen := FSeen + [FolderKey(Root)];
-    Queue := [Root];
-    Depths := [0];
-    Position := 0;
-    while Position < Length(Queue) do
+    if mDepths[mPosition] > 0 then
     begin
-      if Depths[Position] > 0 then
+      Look(mQueue[mPosition], TMissingUnitPlace.ProjectFolder, NameOf(FSetup.Project.FileName));
+    end;
+    if (mDepths[mPosition] < TMissingUnitSearch.MaxDepth) and Assigned(FSetup.ListFolders) then
+    begin
+      for mFolder in FSetup.ListFolders(mQueue[mPosition]) do
       begin
-        Look(Queue[Position], TMissingUnitPlace.ProjectFolder, NameOf(FSetup.Project.FileName));
+        mQueue := mQueue + [mFolder];
+        mDepths := mDepths + [mDepths[mPosition] + 1];
       end;
-      if (Depths[Position] < TMissingUnitSearch.MaxDepth) and Assigned(FSetup.ListFolders) then
-      begin
-        for Folder in FSetup.ListFolders(Queue[Position]) do
-        begin
-          Queue := Queue + [Folder];
-          Depths := Depths + [Depths[Position] + 1];
-        end;
-      end;
-      Inc(Position);
+    end;
+    Inc(mPosition);
+  end;
+end;
+
+procedure TSearch.LookInGroup;
+var
+  mProject: TMissingUnitProject;
+  mFolder: string;
+begin
+  for mProject in FSetup.GroupProjects do
+  begin
+    FSearched := FSearched + [Format('Projekt %s', [NameOf(mProject.FileName)])];
+    Look(TProjectPaths.DirectoryOf(mProject.FileName), TMissingUnitPlace.GroupProject, NameOf(mProject.FileName));
+    for mFolder in mProject.SearchPaths do
+    begin
+      Look(mFolder, TMissingUnitPlace.GroupProject, NameOf(mProject.FileName));
     end;
   end;
-  // 2. Andere Projekte der Gruppe: ihr Ordner und ihre Suchpfade.
-  for Project in FSetup.GroupProjects do
+end;
+
+procedure TSearch.LookInOtherTargets;
+var
+  mTarget: TMissingUnitTarget;
+  mFolder: string;
+begin
+  for mTarget in FSetup.Targets do
   begin
-    FSearched := FSearched + [Format('Projekt %s', [NameOf(Project.FileName)])];
-    Look(TProjectPaths.DirectoryOf(Project.FileName), TMissingUnitPlace.GroupProject,
-      NameOf(Project.FileName));
-    for Folder in Project.SearchPaths do
-    begin
-      Look(Folder, TMissingUnitPlace.GroupProject, NameOf(Project.FileName));
-    end;
-  end;
-  // 3. Suchpfade der anderen Konfigurationen und Plattformen.
-  for Target in FSetup.Targets do
-  begin
-    if SameText(Target.Config, FSetup.Project.Config) and SameText(Target.Platform, FSetup.Project.Platform) then
+    if SameText(mTarget.Config, FSetup.Project.Config) and SameText(mTarget.Platform, FSetup.Project.Platform) then
     begin
       Continue;
     end;
-    FSearched := FSearched + [Format('Suchpfade von %s, %s', [Target.Config, Target.Platform])];
-    for Folder in Target.SearchPaths do
+    FSearched := FSearched + [Format('Suchpfade von %s, %s', [mTarget.Config, mTarget.Platform])];
+    for mFolder in mTarget.SearchPaths do
     begin
-      Look(Folder, TMissingUnitPlace.OtherTarget, Target.Config + ', ' + Target.Platform);
+      Look(mFolder, TMissingUnitPlace.OtherTarget, mTarget.Config + ', ' + mTarget.Platform);
     end;
   end;
-  // 4. Bibliothekspfade anderer Plattformen.
-  if Assigned(FSetup.LibraryPaths) then
+end;
+
+procedure TSearch.LookInOtherLibraries;
+var
+  mPlatform, mFolder: string;
+begin
+  if not Assigned(FSetup.LibraryPaths) then
   begin
-    for Platform in FSetup.Platforms do
+    Exit;
+  end;
+  for mPlatform in FSetup.Platforms do
+  begin
+    if SameText(mPlatform, FSetup.Project.Platform) then
     begin
-      if SameText(Platform, FSetup.Project.Platform) then
-      begin
-        Continue;
-      end;
-      FSearched := FSearched + [Format('Bibliothek %s', [Platform])];
-      for Folder in FSetup.LibraryPaths(Platform) do
-      begin
-        Look(Folder, TMissingUnitPlace.OtherPlatformLibrary, Platform);
-      end;
+      Continue;
+    end;
+    FSearched := FSearched + [Format('Bibliothek %s', [mPlatform])];
+    for mFolder in FSetup.LibraryPaths(mPlatform) do
+    begin
+      Look(mFolder, TMissingUnitPlace.OtherPlatformLibrary, mPlatform);
     end;
   end;
+end;
+
+procedure TSearch.Run;
+var
+  mFolder, mIndexFile: string;
+begin
+  // Was der Compiler schon durchsucht hat, zählt nicht als Fund.
+  for mFolder in FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths do
+  begin
+    FSeen := FSeen + [FolderKey(mFolder)];
+  end;
+  // 1. Projektordner und Unterordner, Breitensuche.
+  LookInProjectFolder;
+  // 2. Andere Projekte der Gruppe: ihr Ordner und ihre Suchpfade.
+  LookInGroup;
+  // 3. Suchpfade der anderen Konfigurationen und Plattformen.
+  LookInOtherTargets;
+  // 4. Bibliothekspfade anderer Plattformen.
+  LookInOtherLibraries;
   // 5. Index.
   if Assigned(FSetup.IndexFile) then
   begin
     FSearched := FSearched + ['Index'];
-    IndexFile := FSetup.IndexFile(FSetup.UnitName);
-    if IndexFile <> '' then
+    mIndexFile := FSetup.IndexFile(FSetup.UnitName);
+    if mIndexFile <> '' then
     begin
-      Look(TProjectPaths.DirectoryOf(IndexFile), TMissingUnitPlace.Index, 'Index');
+      Look(TProjectPaths.DirectoryOf(mIndexFile), TMissingUnitPlace.Index, 'Index');
     end;
   end;
 end;

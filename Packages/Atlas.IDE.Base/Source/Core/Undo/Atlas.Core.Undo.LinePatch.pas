@@ -90,9 +90,15 @@ begin
   Step := Hunks(SourceLines, TargetLines);
   Later := Hunks(SourceLines, CurrentLines);
   for A in Step do
+  begin
     for B in Later do
+    begin
       if Touches(A, B) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
   // Beide Blocklisten sind disjunkt: den Ausgangstext durchlaufen und je Block die passende Seite einsetzen.
   Builder := TStringBuilder.Create(Length(ACurrent));
   try
@@ -105,7 +111,9 @@ begin
       begin
         A := Step[StepIndex];
         for Index := A.NewStart to A.NewStart + A.NewCount - 1 do
+        begin
           Builder.Append(TargetLines[Index]);
+        end;
         Inc(Line, A.OldCount);
         Inc(StepIndex);
         Continue;
@@ -114,13 +122,17 @@ begin
       begin
         B := Later[LaterIndex];
         for Index := B.NewStart to B.NewStart + B.NewCount - 1 do
+        begin
           Builder.Append(CurrentLines[Index]);
+        end;
         Inc(Line, B.OldCount);
         Inc(LaterIndex);
         Continue;
       end;
       if Line >= Length(SourceLines) then
+      begin
         Break;
+      end;
       Builder.Append(SourceLines[Line]);
       Inc(Line);
     end;

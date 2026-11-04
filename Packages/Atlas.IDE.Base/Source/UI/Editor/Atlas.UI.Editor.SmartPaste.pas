@@ -95,11 +95,17 @@ var
 begin
   Units := TAtlasSmartPaste.Selected(FAnalysis);
   if Length(Units) = 0 then
-    Result := TAtlasStrings.Text(TAtlasTextId.SmartPasteNone)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.SmartPasteNone);
+  end
   else if Length(Units) = 1 then
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SmartPasteOne, [Units[0]])
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.SmartPasteOne, [Units[0]]);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.SmartPasteTitle, [Length(Units), TAtlasSmartPaste.Named(Units)]);
+  end;
 end;
 
 function TAtlasSmartPasteWindow.Layout(ADraw: Boolean): TSize;
@@ -112,7 +118,9 @@ begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
   if ADraw then
+  begin
     Canvas.Brush.Style := bsClear;
+  end;
   X := Scale(Pad);
   Y := Scale(Pad);
   mText := Title;
@@ -132,9 +140,13 @@ begin
     X := Scale(Pad);
     mText := Choice.Name + ':  ';
     if Index = FRow then
-      mText := Marker + mText
+    begin
+      mText := Marker + mText;
+    end
     else
+    begin
       X := X + Canvas.TextWidth(Marker);
+    end;
     if ADraw then
     begin
       Canvas.Font.Color := ToColor(Colors.Muted);
@@ -155,16 +167,24 @@ begin
         mText := Choice.Units[Option];
       end
       else
+      begin
         mText := TAtlasStrings.Text(TAtlasTextId.SmartPasteNoUnit);
+      end;
       if Option = Choice.Chosen then
+      begin
         Canvas.Font.Style := [fsBold];
+      end;
       Rects := Rects + [Rect(X, Y, X + Canvas.TextWidth(mText), Y + TextHeight)];
       if ADraw then
       begin
         if Option = Choice.Chosen then
-          Canvas.Font.Color := ToColor(Colors.Accent)
+        begin
+          Canvas.Font.Color := ToColor(Colors.Accent);
+        end
         else
+        begin
           Canvas.Font.Color := ToColor(Colors.Text);
+        end;
         Canvas.TextOut(X, Y, mText);
       end;
       Inc(X, Canvas.TextWidth(mText));
@@ -195,7 +215,9 @@ begin
   end;
   mWidth := Max(mWidth, FCancelRect.Right);
   if ADraw then
+  begin
     Canvas.Brush.Style := bsSolid;
+  end;
   Result.cx := mWidth + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
@@ -209,14 +231,18 @@ begin
   FAnalysis := AAnalysis;
   FRow := 0;
   if Length(FAnalysis.Choices) = 0 then
+  begin
     FRow := -1;
+  end;
   HandleNeeded;
   Size := Layout(False);
   Area := WorkAreaAt(APoint);
   mLeft := Min(APoint.X, Area.Right - Size.cx);
   mTop := APoint.Y + Scale(Gap);
   if mTop + Size.cy > Area.Bottom then
+  begin
     mTop := APoint.Y - Scale(Gap) - Size.cy;
+  end;
   ShowAt(Rect(Max(mLeft, Area.Left), Max(mTop, Area.Top), Max(mLeft, Area.Left) + Size.cx,
     Max(mTop, Area.Top) + Size.cy));
   Announce(Title);
@@ -231,7 +257,9 @@ procedure TAtlasSmartPasteWindow.Choose(ARow, AOption: Integer);
 begin
   if (ARow < 0) or (ARow > High(FAnalysis.Choices)) or (AOption < -1) or
     (AOption > High(FAnalysis.Choices[ARow].Units)) then
+  begin
     Exit;
+  end;
   FRow := ARow;
   FAnalysis.Choices[ARow].Chosen := AOption;
   if IsShown then
@@ -250,7 +278,9 @@ begin
   Count := Length(FAnalysis.Choices);
   Result := Count > 0;
   if not Result then
+  begin
     Exit;
+  end;
   FRow := ((FRow + ADelta) mod Count + Count) mod Count;
   Invalidate;
 end;
@@ -261,7 +291,9 @@ var
 begin
   Result := (FRow >= 0) and (FRow <= High(FAnalysis.Choices));
   if not Result then
+  begin
     Exit;
+  end;
   // Wahl -1 (keine) bis High(Units), ringsum.
   Count := Length(FAnalysis.Choices[FRow].Units) + 1;
   Option := ((FAnalysis.Choices[FRow].Chosen + 1 + ADelta) mod Count + Count) mod Count - 1;
@@ -273,7 +305,9 @@ begin
   Result := TRect.Empty;
   if (ARow >= 0) and (ARow <= High(FOptionRects)) and (AOption + 1 >= 0) and
     (AOption + 1 <= High(FOptionRects[ARow])) then
+  begin
     Result := FOptionRects[ARow][AOption + 1];
+  end;
 end;
 
 function TAtlasSmartPasteWindow.AcceptRect: TRect;
@@ -285,14 +319,18 @@ procedure TAtlasSmartPasteWindow.Accept;
 begin
   Dismiss;
   if Assigned(FOnAccept) then
+  begin
     FOnAccept();
+  end;
 end;
 
 procedure TAtlasSmartPasteWindow.Cancel;
 begin
   Dismiss;
   if Assigned(FOnCancel) then
+  begin
     FOnCancel();
+  end;
 end;
 
 procedure TAtlasSmartPasteWindow.Paint;
@@ -311,7 +349,9 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Point := TPoint.Create(X, Y);
   if PtInRect(FAcceptRect, Point) then
   begin
@@ -324,12 +364,16 @@ begin
     Exit;
   end;
   for Index := 0 to High(FOptionRects) do
+  begin
     for Option := 0 to High(FOptionRects[Index]) do
+    begin
       if PtInRect(FOptionRects[Index][Option], Point) then
       begin
         Choose(Index, Option - 1);
         Exit;
       end;
+    end;
+  end;
 end;
 
 procedure TAtlasSmartPasteWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -342,13 +386,23 @@ begin
   Point := TPoint.Create(X, Y);
   Hot := PtInRect(FAcceptRect, Point) or PtInRect(FCancelRect, Point);
   for Index := 0 to High(FOptionRects) do
+  begin
     for Option := 0 to High(FOptionRects[Index]) do
+    begin
       if PtInRect(FOptionRects[Index][Option], Point) then
+      begin
         Hot := True;
+      end;
+    end;
+  end;
   if Hot then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
 end;
 
 end.

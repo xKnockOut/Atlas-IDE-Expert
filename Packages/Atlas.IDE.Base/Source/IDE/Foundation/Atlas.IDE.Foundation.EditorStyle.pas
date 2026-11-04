@@ -54,7 +54,9 @@ begin
     Registry.RootKey := HKEY_CURRENT_USER;
     if Registry.OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Themes\Personalize') and
       Registry.ValueExists('AppsUseLightTheme') then
+    begin
       Result := Registry.ReadInteger('AppsUseLightTheme') <> 0;
+    end;
   finally
     Registry.Free;
   end;
@@ -85,7 +87,9 @@ var
   Func: TBlendFunction;
 begin
   if (ARect.Right <= ARect.Left) or (ARect.Bottom <= ARect.Top) then
+  begin
     Exit;
+  end;
   Memory := CreateCompatibleDC(ADC);
   Bitmap := CreateCompatibleBitmap(ADC, 1, 1);
   Old := SelectObject(Memory, Bitmap);
@@ -110,9 +114,13 @@ var
 begin
   Sample := GetPixel(ACanvas.Handle, X, Y);
   if Sample = CLR_INVALID then
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color))
+  begin
+    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
+  end
   else
+  begin
     Result := TAtlasColor(Sample);
+  end;
 end;
 
 class function TAtlasIdeStyle.Colors: TAtlasColors;
@@ -120,11 +128,17 @@ var
   Theming: IOTAIDEThemingServices;
 begin
   if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+  begin
     Exit(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clWindow)))));
+  end;
   if WindowsUsesLightApps then
-    Result := TAtlasColors.Light
+  begin
+    Result := TAtlasColors.Light;
+  end
   else
+  begin
     Result := TAtlasColors.Dark;
+  end;
 end;
 
 class function TAtlasIdeStyle.ChromeColors: TAtlasColors;
@@ -132,8 +146,10 @@ var
   Theming: IOTAIDEThemingServices;
 begin
   if Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and Theming.IDEThemingEnabled then
+  begin
     Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnFace))),
       TAtlasColor(ColorToRGB(Theming.StyleServices.GetSystemColor(clBtnText)))));
+  end;
   Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
 end;
 
@@ -142,9 +158,13 @@ var
   Editor: IOTAEditorServices;
 begin
   if Supports(BorlandIDEServices, IOTAEditorServices, Editor) and (Editor.EditOptions <> nil) then
-    Result := TextHeightAt(Editor.EditOptions.FontName, Editor.EditOptions.FontSize, 96)
+  begin
+    Result := TextHeightAt(Editor.EditOptions.FontName, Editor.EditOptions.FontSize, 96);
+  end
   else
+  begin
     Result := 16;
+  end;
 end;
 
 class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;

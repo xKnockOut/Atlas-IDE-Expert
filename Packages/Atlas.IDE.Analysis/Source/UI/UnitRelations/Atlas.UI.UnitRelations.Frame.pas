@@ -294,10 +294,14 @@ var
 begin
   Result := Default(TNodeData);
   if ANode = nil then
+  begin
     Exit;
+  end;
   Index := Integer(NativeInt(ANode.Data));
   if (Index >= 0) and (Index < FData.Count) then
+  begin
     Result := FData[Index];
+  end;
 end;
 
 function TAtlasUnitRelationsFrame.AddNode(AParent: TTreeNode; const AText: string;
@@ -311,17 +315,29 @@ function TAtlasUnitRelationsFrame.EntryText(const ARelation: TAtlasUnitRelation)
 begin
   Result := ARelation.Name + '  ';
   if ARelation.InInterface then
-    Result := Result + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsInterface)
+  begin
+    Result := Result + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsInterface);
+  end
   else
+  begin
     Result := Result + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsImplementation);
+  end;
   if ARelation.Cycle then
+  begin
     Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCycle);
+  end;
   if ARelation.Unused then
-    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsUnused)
+  begin
+    Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsUnused);
+  end
   else if ARelation.OnlyImplementation and ARelation.InInterface then
+  begin
     Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsOnlyImplementation);
+  end;
   if ARelation.Repeated then
+  begin
     Result := Result + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRepeated);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.AddEntries(AParent: TTreeNode; const AItems: TAtlasUnitRelationList;
@@ -353,11 +369,15 @@ begin
   while Node <> nil do
   begin
     if Node.HasChildren then
+    begin
       AExpanded.AddOrSetValue(DataOf(Node).Key, Node.Expanded);
+    end;
     Node := Node.GetNext;
   end;
   if FTree.Selected <> nil then
+  begin
     ASelected := DataOf(FTree.Selected).Key;
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.RestoreState(AExpanded: TDictionary<string, Boolean>; const ASelected: string);
@@ -375,11 +395,15 @@ begin
       // Unbekannte Knoten: Abschnitte und Verwender-Gruppen offen, Bibliothek und tiefere Ebenen zu; mit Filter
       // alles offen.
       if not AExpanded.TryGetValue(Data.Key, Expanded) then
+      begin
         Expanded := (Data.Kind in [TNodeKind.Section, TNodeKind.UsedByGroup]) or (Trim(FFilter.Text) <> '');
+      end;
       Node.Expanded := Expanded;
     end;
     if (ASelected <> '') and (Data.Key = ASelected) then
+    begin
       FTree.Selected := Node;
+    end;
     Node := Node.GetNext;
   end;
 end;
@@ -398,7 +422,9 @@ begin
     Selected := '';
     // Andere Unit oder neuer Filter: Vorgaben statt des alten Zustands.
     if SameText(FRenderedFile, FRelations.FileName) then
+    begin
       SaveState(Expanded, Selected);
+    end;
     FRenderedFile := FRelations.FileName;
     FHintNode := nil;
     FTree.Items.BeginUpdate;
@@ -407,23 +433,37 @@ begin
       FData.Clear;
       FTitle.Caption := FRelations.UnitName;
       if not FRelations.Found then
-        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNotInGraph)
+      begin
+        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNotInGraph);
+      end
       else if FRelations.RecompileCount = 1 then
-        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRecompileOne)
+      begin
+        Line := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsRecompileOne);
+      end
       else
+      begin
         Line := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsRecompile, [FRelations.RecompileCount]);
+      end;
       Movable := TAtlasUnitRelationsModel.Movable(FRelations.Uses_);
       if Movable > 0 then
+      begin
         Line := Line + ' · ' + TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsMovable, [Movable]);
+      end;
       if FRelations.InCycle then
+      begin
         Line := Line + ' · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCycle);
+      end;
       FInfo.Caption := Line;
       FInfo.Hint := FRelations.CyclePath;
       if FRelations.InCycle then
+      begin
         FInfo.Font.Color := TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
-          StyleServices(Self).GetSystemColor(clWindow)))).Error)
+          StyleServices(Self).GetSystemColor(clWindow)))).Error);
+      end
       else
+      begin
         FInfo.ParentFont := True;
+      end;
       Uses_ := TAtlasUnitRelationsModel.Filter(FRelations.Uses_, FFilter.Text);
       TAtlasUnitRelationsModel.SplitLibrary(Uses_, Project, Library_);
       Data := Default(TNodeData);
@@ -475,7 +515,9 @@ end;
 procedure TAtlasUnitRelationsFrame.SetRelations(const ARelations: TAtlasUnitRelations);
 begin
   if not SameText(ARelations.FileName, FRelations.FileName) then
+  begin
     FRenderedFile := '';
+  end;
   FRelations := ARelations;
   FHasRelations := True;
   SetAllLevels(ARelations.Depth <> 1);
@@ -531,7 +573,9 @@ begin
     Data := DataOf(Node);
     if (Data.Kind = TNodeKind.Entry) and Data.TopLevel and (Data.UsesSide = AUsesSide) and
       SameText(Data.Relation.Name, AName) then
+    begin
       Exit(Node);
+    end;
     Node := Node.GetNext;
   end;
   Result := nil;
@@ -543,13 +587,21 @@ var
 begin
   Result := '';
   if not EntryOf(ANode, Relation) then
+  begin
     Exit;
+  end;
   if Relation.Cycle and (Relation.CyclePath <> '') then
-    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsCyclePath, [Relation.CyclePath])
+  begin
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsCyclePath, [Relation.CyclePath]);
+  end
   else if Relation.OnlyImplementation and Relation.InInterface and not Relation.Unused then
-    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsOnlyImplementationHint, [Relation.Name])
+  begin
+    Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsOnlyImplementationHint, [Relation.Name]);
+  end
   else
+  begin
     Result := Relation.FileName;
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.OpenNode(ANode: TTreeNode; AToEntry: Boolean);
@@ -557,14 +609,22 @@ var
   Relation: TAtlasUnitRelation;
 begin
   if not EntryOf(ANode, Relation) or not Assigned(FOnOpen) then
+  begin
     Exit;
+  end;
   if AToEntry and (Relation.LocationFile <> '') and (Relation.Line >= 0) then
-    FOnOpen(Relation.LocationFile, Relation.Line, Relation.Character)
+  begin
+    FOnOpen(Relation.LocationFile, Relation.Line, Relation.Character);
+  end
   else if Relation.FileName <> '' then
-    FOnOpen(Relation.FileName, -1, -1)
+  begin
+    FOnOpen(Relation.FileName, -1, -1);
+  end
   else if (Relation.LocationFile <> '') and (Relation.Line >= 0) then
+  begin
     // Unit ohne Quelltext (RTL ohne Pfad): wenigstens der Eintrag.
     FOnOpen(Relation.LocationFile, Relation.Line, Relation.Character);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.FilterChange(Sender: TObject);
@@ -580,9 +640,13 @@ end;
 procedure TAtlasUnitRelationsFrame.DepthClick(Sender: TObject);
 begin
   if FUpdatingDepth or not (Sender as TRadioButton).Checked then
+  begin
     Exit;
+  end;
   if Assigned(FOnDepthChanged) then
+  begin
     FOnDepthChanged(FAllLevels.Checked);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.TreeDblClick(Sender: TObject);
@@ -605,7 +669,9 @@ var
 begin
   Node := FTree.GetNodeAt(X, Y);
   if Node = FHintNode then
+  begin
     Exit;
+  end;
   FHintNode := Node;
   FTree.Hint := HintOf(Node);
   Application.CancelHint;
@@ -626,12 +692,18 @@ begin
   end;
   // Gewählte Zeile in den Farben der Auswahl lassen.
   if cdsSelected in State then
+  begin
     Exit;
+  end;
   Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
   if (Data.Kind = TNodeKind.Entry) and Data.Relation.Cycle then
-    Sender.Canvas.Font.Color := TColor(Colors.Error)
+  begin
+    Sender.Canvas.Font.Color := TColor(Colors.Error);
+  end
   else if (Data.Kind = TNodeKind.LibraryGroup) or Data.Relation.Library_ or Data.Relation.Unused then
+  begin
     Sender.Canvas.Font.Color := TColor(Colors.Muted);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.UpdateMenu;
@@ -660,7 +732,9 @@ var
   Relation: TAtlasUnitRelation;
 begin
   if EntryOf(FTree.Selected, Relation) and Assigned(FOnMove) then
+  begin
     FOnMove(Relation.Name, False);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.MoveInterfaceClick(Sender: TObject);
@@ -668,7 +742,9 @@ var
   Relation: TAtlasUnitRelation;
 begin
   if EntryOf(FTree.Selected, Relation) and Assigned(FOnMove) then
+  begin
     FOnMove(Relation.Name, True);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.RemoveClick(Sender: TObject);
@@ -676,7 +752,9 @@ var
   Relation: TAtlasUnitRelation;
 begin
   if EntryOf(FTree.Selected, Relation) and Relation.Unused and Assigned(FOnRemove) then
+  begin
     FOnRemove(Relation.Name);
+  end;
 end;
 
 procedure TAtlasUnitRelationsFrame.CopyPathClick(Sender: TObject);
@@ -684,7 +762,9 @@ var
   Relation: TAtlasUnitRelation;
 begin
   if EntryOf(FTree.Selected, Relation) and (Relation.FileName <> '') then
+  begin
     Clipboard.AsText := Relation.FileName;
+  end;
 end;
 
 end.

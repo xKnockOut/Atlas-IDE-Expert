@@ -132,7 +132,9 @@ begin
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -146,7 +148,9 @@ begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
   FEventsRef := nil;
@@ -158,7 +162,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
@@ -196,9 +202,13 @@ begin
     end;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View = nil) or (View.Buffer = nil) or not SameText(ExtractFileExt(View.Buffer.FileName), '.pas') then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
     begin
@@ -209,10 +219,14 @@ begin
     end;
     Moment := GetTickCount;
     if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
+    begin
       Exit;
+    end;
     // Gleicher Stand schon gefragt: nur ab und zu neu (Testunit inzwischen angelegt).
     if SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (Moment - FFetchedAt < RefreshMs) then
+    begin
       Exit;
+    end;
     Fetch;
   except
     on E: Exception do
@@ -241,7 +255,9 @@ begin
   end;
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
   if Session.Indexing(Percent) then
   begin
@@ -280,7 +296,9 @@ begin
   FFetchedText := FText;
   FFetchedAt := GetTickCount;
   if (Info.Lens = FInfo.Lens) and (Info.Counterpart = FInfo.Counterpart) and (Line = FLine) then
+  begin
     Exit;
+  end;
   FInfo := Info;
   FLine := Line;
   FShowing := Info.Lens <> TAtlasTestUnitLens.None;
@@ -317,12 +335,18 @@ var
   Sample: COLORREF;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
+  begin
     Exit;
+  end;
   try
     if not Wanted(TAtlasIdeSettings.Current) then
+    begin
       Exit;
+    end;
     if (Context.LogicalLineNum - 1 <> FLine) or not SameText(Context.FileName, FFetchedFile) then
+    begin
       Exit;
+    end;
     // In dieser Datei ausgeblendet (#628): keine Marke, kein Klickziel.
     if TAtlasIdeElements.FileHidden(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName) then
     begin
@@ -332,20 +356,28 @@ begin
     Text := Caption;
     LineState := Context.LineState;
     if (Text = '') or (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
+    begin
       Exit;
+    end;
     Line := LineState.Text;
     // Nur über einer echten Zeile „unit …“ (Text kann seit dem Abruf verschoben sein).
     if TAtlasTestUnits.UnitLine([Line]) <> 0 then
+    begin
       Exit;
+    end;
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Column := Length(TrimRight(TAtlasPairs.DisplayLine(Line, TabWidth))) + 1;
     Cell := Context.EditorState.GetCharacterPosPx(Column + 3, Context.EditorLineNum);
     Canvas := Context.Canvas;
     Sample := GetPixel(Canvas.Handle, Cell.Left, Rect.Top + 1);
     if Sample = CLR_INVALID then
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
+    begin
+      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
+    end
     else
+    begin
       Back := TAtlasColor(Sample);
+    end;
     Colors := TAtlasColors.ForBackground(Back);
     OldFont := TFont.Create;
     OldBrush := TBrush.Create;
@@ -394,14 +426,20 @@ var
 begin
   if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or
     not PtInRect(FLensRect, Point(X, Y)) then
+  begin
     Exit;
+  end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
   View := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     View := Editors.TopView;
+  end;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFetchedFile) or
     (View.TopRow <> FLensTopRow) then
+  begin
     Exit;
+  end;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor nach dem Wechsel.
   TAtlasMainThread.ForceQueue(TAtlasFeature.CodeLens,
     procedure
@@ -410,7 +448,9 @@ begin
         procedure
         begin
           if Assigned(FOnSwitchTestUnit) then
+          begin
             FOnSwitchTestUnit();
+          end;
         end);
       // Neu fragen: eine angelegte Testunit ändert die Lens.
       FFetchedAt := 0;

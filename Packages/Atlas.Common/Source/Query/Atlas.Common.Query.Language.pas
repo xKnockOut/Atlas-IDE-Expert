@@ -134,6 +134,16 @@ type
     function ParseValue(const AField: TQueryFieldInfo; ALike: Boolean): TQueryValue;
     function FieldFor(const AToken: TQueryToken): TQueryFieldInfo;
     function IsComparisonStart(const AToken: TQueryToken): Boolean;
+    function ParseNot: TQueryNode;
+    function ParseGroup: TQueryNode;
+    /// <summary>Beginnt mit AToken ein Prädikat (inherits, implements, calls, has attribute, uses)?</summary>
+    function IsPredicateStart(const AToken: TQueryToken; out AKind: TQueryPredicateKind): Boolean;
+    function ParseKeywordPredicate(AKind: TQueryPredicateKind): TQueryNode;
+    function ParseEntity: TQueryEntity;
+    procedure ParseOrder(AAst: TQueryAst);
+    procedure ParseLimit(AAst: TQueryAst);
+    /// <summary>Meldet, was nach der Abfrage noch steht.</summary>
+    procedure CheckEnd(AAst: TQueryAst);
   public
     /// <summary>Parst und prüft AText; EQueryError mit Spalte und Vorschlag. Der Aufrufer gibt das Ergebnis frei.
     /// </summary>
@@ -257,12 +267,136 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '*', '?', '&']) or (Ord(AChar) > 127);
 end;
 
+/// <summary>Text in Anführungszeichen ab APosition; ein verdoppeltes Zeichen steht für sich selbst ('O''Brien').
+/// </summary>
+procedure ReadQuoted(const AText: string; var APosition: Integer; var AToken: TQueryToken);
+var
+  mQuote: Char;
+  mStart: Integer;
+begin
+  mStart := APosition;
+  mQuote := AText[APosition];
+  Inc(APosition);
+  AToken.Kind := TQueryTokenKind.Text;
+  while (APosition <= Length(AText)) and
+    ((AText[APosition] <> mQuote) or ((APosition < Length(AText)) and (AText[APosition + 1] = mQuote))) do
+  begin
+    AToken.Text := AToken.Text + AText[APosition];
+    if AText[APosition] = mQuote then
+    begin
+      Inc(APosition);
+    end;
+    Inc(APosition);
+  end;
+  if APosition > Length(AText) then
+  begin
+    raise EQueryError.Create('Text ohne schließendes Anführungszeichen', mStart, '');
+  end;
+  Inc(APosition);
+end;
+
+function IsNumberStart(const AText: string; APosition: Integer): Boolean;
+begin
+  Result := CharInSet(AText[APosition], ['0'..'9']) or ((AText[APosition] = '-') and
+    (APosition < Length(AText)) and CharInSet(AText[APosition + 1], ['0'..'9']));
+end;
+
+procedure ReadNumber(const AText: string; var APosition: Integer; var AToken: TQueryToken);
+var
+  mStart: Integer;
+begin
+  mStart := APosition;
+  Inc(APosition);
+  while (APosition <= Length(AText)) and CharInSet(AText[APosition], ['0'..'9']) do
+  begin
+    Inc(APosition);
+  end;
+  AToken.Text := Copy(AText, mStart, APosition - mStart);
+  // 12abc ist kein Name und keine Zahl.
+  if (APosition <= Length(AText)) and IsNameChar(AText[APosition]) then
+  begin
+    raise EQueryError.Create(Format('"%s…" ist keine Zahl', [AToken.Text]), mStart, '');
+  end;
+  AToken.Kind := TQueryTokenKind.Number;
+end;
+
+procedure ReadOperator(const AText: string; var APosition: Integer; var AToken: TQueryToken);
+var
+  mStart: Integer;
+begin
+  mStart := APosition;
+  Inc(APosition);
+  if (APosition <= Length(AText)) and CharInSet(AText[APosition], ['=', '>']) and
+    (AText[mStart] <> '=') and not ((AText[mStart] = '>') and (AText[APosition] = '>')) then
+  begin
+    Inc(APosition);
+  end;
+  AToken.Text := Copy(AText, mStart, APosition - mStart);
+  // != wie <> (häufige Gewohnheit aus anderen Sprachen); ! allein gibt es nicht.
+  if AToken.Text = '!=' then
+  begin
+    AToken.Text := '<>';
+  end
+  else if AToken.Text = '!' then
+  begin
+    raise EQueryError.Create('"!" gibt es nicht; für Verneinung "not", für ungleich "<>"', mStart, '<>');
+  end;
+  AToken.Kind := TQueryTokenKind.Symbol;
+end;
+
+procedure ReadName(const AText: string; var APosition: Integer; var AToken: TQueryToken);
+var
+  mStart: Integer;
+begin
+  mStart := APosition;
+  while (APosition <= Length(AText)) and IsNameChar(AText[APosition]) do
+  begin
+    Inc(APosition);
+  end;
+  AToken.Kind := TQueryTokenKind.Name;
+  AToken.Text := Copy(AText, mStart, APosition - mStart);
+end;
+
+/// <summary>Liest das Zeichen ab APosition (kein Leerraum) als Token.</summary>
+procedure ReadToken(const AText: string; var APosition: Integer; var AToken: TQueryToken);
+begin
+  if CharInSet(AText[APosition], ['''', '"']) then
+  begin
+    ReadQuoted(AText, APosition, AToken);
+  end
+  else if IsNumberStart(AText, APosition) then
+  begin
+    ReadNumber(AText, APosition, AToken);
+  end
+  else if CharInSet(AText[APosition], cOperatorChars) then
+  begin
+    ReadOperator(AText, APosition, AToken);
+  end
+  else if CharInSet(AText[APosition], ['(', ')']) then
+  begin
+    AToken.Text := AText[APosition];
+    AToken.Kind := TQueryTokenKind.OpenParen;
+    if AText[APosition] = ')' then
+    begin
+      AToken.Kind := TQueryTokenKind.CloseParen;
+    end;
+    Inc(APosition);
+  end
+  else if IsNameChar(AText[APosition]) then
+  begin
+    ReadName(AText, APosition, AToken);
+  end
+  else
+  begin
+    raise EQueryError.Create(Format('Unerwartetes Zeichen "%s"', [AText[APosition]]), APosition, '');
+  end;
+end;
+
 class function TQueryLexer.Tokenize(const AText: string): TArray<TQueryToken>;
 var
   mList: TList<TQueryToken>;
   mToken: TQueryToken;
-  mPosition, mStart: Integer;
-  mQuote: Char;
+  mPosition: Integer;
 begin
   mList := TList<TQueryToken>.Create;
   try
@@ -276,95 +410,7 @@ begin
       end;
       mToken := Default(TQueryToken);
       mToken.Column := mPosition;
-      mStart := mPosition;
-      if CharInSet(AText[mPosition], ['''', '"']) then
-      begin
-        mQuote := AText[mPosition];
-        Inc(mPosition);
-        mToken.Kind := TQueryTokenKind.Text;
-        while True do
-        begin
-          if mPosition > Length(AText) then
-          begin
-            raise EQueryError.Create('Text ohne schließendes Anführungszeichen', mStart, '');
-          end;
-          if AText[mPosition] = mQuote then
-          begin
-            // Verdoppeltes Zeichen steht für sich selbst ('O''Brien').
-            if (mPosition < Length(AText)) and (AText[mPosition + 1] = mQuote) then
-            begin
-              mToken.Text := mToken.Text + mQuote;
-              Inc(mPosition, 2);
-              Continue;
-            end;
-            Inc(mPosition);
-            Break;
-          end;
-          mToken.Text := mToken.Text + AText[mPosition];
-          Inc(mPosition);
-        end;
-      end
-      else if CharInSet(AText[mPosition], ['0'..'9']) or ((AText[mPosition] = '-') and (mPosition < Length(AText)) and
-        CharInSet(AText[mPosition + 1], ['0'..'9'])) then
-      begin
-        Inc(mPosition);
-        while (mPosition <= Length(AText)) and CharInSet(AText[mPosition], ['0'..'9']) do
-        begin
-          Inc(mPosition);
-        end;
-        mToken.Text := Copy(AText, mStart, mPosition - mStart);
-        // 12abc ist kein Name und keine Zahl.
-        if (mPosition <= Length(AText)) and IsNameChar(AText[mPosition]) then
-        begin
-          raise EQueryError.Create(Format('"%s…" ist keine Zahl', [mToken.Text]), mStart, '');
-        end;
-        mToken.Kind := TQueryTokenKind.Number;
-      end
-      else if CharInSet(AText[mPosition], cOperatorChars) then
-      begin
-        Inc(mPosition);
-        if (mPosition <= Length(AText)) and CharInSet(AText[mPosition], ['=', '>']) and
-          (AText[mStart] <> '=') and not ((AText[mStart] = '>') and (AText[mPosition] = '>')) then
-        begin
-          Inc(mPosition);
-        end;
-        mToken.Text := Copy(AText, mStart, mPosition - mStart);
-        // != wie <> (häufige Gewohnheit aus anderen Sprachen); ! allein gibt es nicht.
-        if mToken.Text = '!=' then
-        begin
-          mToken.Text := '<>';
-        end
-        else if mToken.Text = '!' then
-        begin
-          raise EQueryError.Create('"!" gibt es nicht; für Verneinung "not", für ungleich "<>"', mStart, '<>');
-        end;
-        mToken.Kind := TQueryTokenKind.Symbol;
-      end
-      else if AText[mPosition] = '(' then
-      begin
-        Inc(mPosition);
-        mToken.Kind := TQueryTokenKind.OpenParen;
-        mToken.Text := '(';
-      end
-      else if AText[mPosition] = ')' then
-      begin
-        Inc(mPosition);
-        mToken.Kind := TQueryTokenKind.CloseParen;
-        mToken.Text := ')';
-      end
-      else if IsNameChar(AText[mPosition]) then
-      begin
-        while (mPosition <= Length(AText)) and IsNameChar(AText[mPosition]) do
-        begin
-          Inc(mPosition);
-        end;
-        mToken.Kind := TQueryTokenKind.Name;
-        mToken.Text := Copy(AText, mStart, mPosition - mStart);
-      end
-      else
-      begin
-        raise EQueryError.Create(Format('Unerwartetes Zeichen "%s"', [AText[mPosition]]), mPosition, '');
-      end;
+      ReadToken(AText, mPosition, mToken);
       mList.Add(mToken);
     end;
     mToken := Default(TQueryToken);
@@ -625,68 +671,102 @@ begin
   Result := mNode;
 end;
 
-function TQueryParser.ParseFactor: TQueryNode;
+function TQueryParser.ParseNot: TQueryNode;
 var
-  mToken: TQueryToken;
+  mColumn: Integer;
   mNot: TQueryNotNode;
-  mInner: TQueryNode;
 begin
-  mToken := Current;
-  if mToken.Is_('not') then
-  begin
-    Next;
-    mInner := ParseFactor;
-    mNot := TQueryNotNode.Create;
-    mNot.Column := mToken.Column;
-    mNot.Inner := mInner;
-    Exit(mNot);
+  mColumn := Next.Column;
+  mNot := TQueryNotNode.Create;
+  mNot.Column := mColumn;
+  try
+    mNot.Inner := ParseFactor;
+  except
+    mNot.Free;
+    raise;
   end;
-  if mToken.Kind = TQueryTokenKind.OpenParen then
+  Result := mNot;
+end;
+
+function TQueryParser.ParseGroup: TQueryNode;
+var
+  mColumn: Integer;
+begin
+  mColumn := Next.Column;
+  Result := ParseExpression;
+  if Current.Kind <> TQueryTokenKind.CloseParen then
   begin
-    Next;
-    Result := ParseExpression;
-    if Current.Kind <> TQueryTokenKind.CloseParen then
-    begin
-      Result.Free;
-      Fail(Format('Erwartet: ")" zu "(" in Spalte %d, gefunden %s', [mToken.Column, Describe(Current)]),
-        Current.Column);
-    end;
-    Next;
-    Exit;
+    Result.Free;
+    Fail(Format('Erwartet: ")" zu "(" in Spalte %d, gefunden %s', [mColumn, Describe(Current)]), Current.Column);
   end;
-  if mToken.Is_('inherits') then
+  Next;
+end;
+
+function TQueryParser.IsPredicateStart(const AToken: TQueryToken; out AKind: TQueryPredicateKind): Boolean;
+begin
+  Result := True;
+  if AToken.Is_('inherits') then
   begin
-    Next;
-    Exit(ParsePredicate(TQueryPredicateKind.Inherits, mToken.Column));
+    AKind := TQueryPredicateKind.Inherits;
+  end
+  else if AToken.Is_('implements') then
+  begin
+    AKind := TQueryPredicateKind.Implements;
+  end
+  else if AToken.Is_('calls') then
+  begin
+    AKind := TQueryPredicateKind.Calls;
+  end
+  else if AToken.Is_('has') then
+  begin
+    AKind := TQueryPredicateKind.HasAttribute;
+  end
+  else
+  begin
+    // "uses" ist bei Units auch ein Feld: mit Vergleich das Feld, sonst das Prädikat.
+    AKind := TQueryPredicateKind.Uses_;
+    Result := AToken.Is_('uses') and
+      not ((FEntity = TQueryEntity.Units) and IsComparisonStart(FTokens[FPosition + 1]));
   end;
-  if mToken.Is_('implements') then
+end;
+
+function TQueryParser.ParseKeywordPredicate(AKind: TQueryPredicateKind): TQueryNode;
+var
+  mColumn: Integer;
+begin
+  mColumn := Next.Column;
+  if AKind = TQueryPredicateKind.HasAttribute then
   begin
-    Next;
-    Exit(ParsePredicate(TQueryPredicateKind.Implements, mToken.Column));
-  end;
-  if mToken.Is_('calls') then
-  begin
-    Next;
-    Exit(ParsePredicate(TQueryPredicateKind.Calls, mToken.Column));
-  end;
-  if mToken.Is_('has') then
-  begin
-    Next;
     if not Current.Is_('attribute') then
     begin
       Fail(Format('Erwartet: `attribute` nach `has`, gefunden %s', [Describe(Current)]), Current.Column,
         'attribute');
     end;
     Next;
-    Exit(ParsePredicate(TQueryPredicateKind.HasAttribute, mToken.Column));
   end;
-  // "uses" ist bei Units auch ein Feld: mit Vergleich das Feld, sonst das Prädikat.
-  if mToken.Is_('uses') and not ((FEntity = TQueryEntity.Units) and IsComparisonStart(FTokens[FPosition + 1])) then
+  Result := ParsePredicate(AKind, mColumn);
+end;
+
+function TQueryParser.ParseFactor: TQueryNode;
+var
+  mKind: TQueryPredicateKind;
+begin
+  if Current.Is_('not') then
   begin
-    Next;
-    Exit(ParsePredicate(TQueryPredicateKind.Uses_, mToken.Column));
+    Result := ParseNot;
+  end
+  else if Current.Kind = TQueryTokenKind.OpenParen then
+  begin
+    Result := ParseGroup;
+  end
+  else if IsPredicateStart(Current, mKind) then
+  begin
+    Result := ParseKeywordPredicate(mKind);
+  end
+  else
+  begin
+    Result := ParseComparison;
   end;
-  Result := ParseComparison;
 end;
 
 function TQueryParser.ParseTerm: TQueryNode;
@@ -739,13 +819,83 @@ begin
   Result := mLogic;
 end;
 
+function TQueryParser.ParseEntity: TQueryEntity;
+var
+  mToken: TQueryToken;
+  mSuggestion: string;
+begin
+  mToken := Next;
+  if (mToken.Kind = TQueryTokenKind.Name) and TQueryCatalog.TryEntity(mToken.Text, Result) then
+  begin
+    Exit;
+  end;
+  Result := Low(TQueryEntity);
+  mSuggestion := TTextFuzzy.Closest(mToken.Text, TQueryCatalog.EntityNames);
+  if mSuggestion <> '' then
+  begin
+    Fail(UnknownText('Unbekannte Menge', mToken.Text, mSuggestion), mToken.Column, mSuggestion);
+  end;
+  Fail(Format('Erwartet: Menge (%s), gefunden %s', [string.Join(', ', TQueryCatalog.EntityNames),
+    Describe(mToken)]), mToken.Column);
+end;
+
+procedure TQueryParser.ParseOrder(AAst: TQueryAst);
+begin
+  Next;
+  if not Current.Is_('by') then
+  begin
+    Fail(Format('Erwartet: `by` nach `order`, gefunden %s', [Describe(Current)]), Current.Column, 'by');
+  end;
+  Next;
+  AAst.OrderField := FieldFor(Next);
+  AAst.HasOrder := True;
+  if Current.Is_('desc') then
+  begin
+    AAst.Descending := True;
+    Next;
+  end
+  else if Current.Is_('asc') then
+  begin
+    Next;
+  end;
+end;
+
+procedure TQueryParser.ParseLimit(AAst: TQueryAst);
+var
+  mToken: TQueryToken;
+  mLimit: Integer;
+begin
+  Next;
+  mToken := Next;
+  if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt(mToken.Text, mLimit) or (mLimit < 0) then
+  begin
+    Fail(Format('Erwartet: Anzahl nach `limit`, gefunden %s', [Describe(mToken)]), mToken.Column);
+  end;
+  AAst.Limit := mLimit;
+end;
+
+procedure TQueryParser.CheckEnd(AAst: TQueryAst);
+var
+  mToken: TQueryToken;
+begin
+  mToken := Current;
+  if mToken.Kind = TQueryTokenKind.EndOfQuery then
+  begin
+    Exit;
+  end;
+  if (AAst.Condition = nil) and not AAst.HasOrder and (AAst.Limit < 0) then
+  begin
+    Fail(Format('Erwartet: where, order by oder limit, gefunden %s', [Describe(mToken)]), mToken.Column,
+      TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('where', 'order', 'limit')));
+  end;
+  Fail(Format('Unerwartet: %s; Bedingungen verbinden and und or', [Describe(mToken)]), mToken.Column,
+    TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('and', 'or', 'order', 'limit')));
+end;
+
 class function TQueryParser.Parse(const AText: string): TQueryAst;
 var
   mParser: TQueryParser;
-  mToken: TQueryToken;
-  mSuggestion: string;
   mAst: TQueryAst;
-  mLimit: Integer;
 begin
   if Trim(AText) = '' then
   begin
@@ -758,20 +908,7 @@ begin
     mAst.Limit := -1;
     mParser.FTokens := TQueryLexer.Tokenize(AText);
     mParser.FPosition := 0;
-    mToken := mParser.Next;
-    if (mToken.Kind <> TQueryTokenKind.Name) or not TQueryCatalog.TryEntity(mToken.Text, mAst.Entity) then
-    begin
-      mSuggestion := TTextFuzzy.Closest(mToken.Text, TQueryCatalog.EntityNames);
-      if mSuggestion <> '' then
-      begin
-        mParser.Fail(UnknownText('Unbekannte Menge', mToken.Text, mSuggestion), mToken.Column, mSuggestion);
-      end
-      else
-      begin
-        mParser.Fail(Format('Erwartet: Menge (%s), gefunden %s', [string.Join(', ', TQueryCatalog.EntityNames),
-          Describe(mToken)]), mToken.Column);
-      end;
-    end;
+    mAst.Entity := mParser.ParseEntity;
     mParser.FEntity := mAst.Entity;
     if mParser.Current.Is_('where') then
     begin
@@ -780,49 +917,13 @@ begin
     end;
     if mParser.Current.Is_('order') then
     begin
-      mParser.Next;
-      if not mParser.Current.Is_('by') then
-      begin
-        mParser.Fail(Format('Erwartet: `by` nach `order`, gefunden %s', [Describe(mParser.Current)]),
-          mParser.Current.Column, 'by');
-      end;
-      mParser.Next;
-      mAst.OrderField := mParser.FieldFor(mParser.Next);
-      mAst.HasOrder := True;
-      if mParser.Current.Is_('desc') then
-      begin
-        mAst.Descending := True;
-        mParser.Next;
-      end
-      else if mParser.Current.Is_('asc') then
-      begin
-        mParser.Next;
-      end;
+      mParser.ParseOrder(mAst);
     end;
     if mParser.Current.Is_('limit') then
     begin
-      mParser.Next;
-      mToken := mParser.Next;
-      if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt(mToken.Text, mLimit) or (mLimit < 0) then
-      begin
-        mParser.Fail(Format('Erwartet: Anzahl nach `limit`, gefunden %s', [Describe(mToken)]), mToken.Column);
-      end;
-      mAst.Limit := mLimit;
+      mParser.ParseLimit(mAst);
     end;
-    mToken := mParser.Current;
-    if mToken.Kind <> TQueryTokenKind.EndOfQuery then
-    begin
-      if (mAst.Condition = nil) and not mAst.HasOrder and (mAst.Limit < 0) then
-      begin
-        mParser.Fail(Format('Erwartet: where, order by oder limit, gefunden %s', [Describe(mToken)]), mToken.Column,
-          TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('where', 'order', 'limit')));
-      end
-      else
-      begin
-        mParser.Fail(Format('Unerwartet: %s; Bedingungen verbinden and und or', [Describe(mToken)]), mToken.Column,
-          TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('and', 'or', 'order', 'limit')));
-      end;
-    end;
+    mParser.CheckEnd(mAst);
     Result := mAst;
     mAst := nil;
   finally

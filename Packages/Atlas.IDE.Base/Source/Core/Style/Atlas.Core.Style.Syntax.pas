@@ -62,8 +62,12 @@ var
   Word: string;
 begin
   for Word in Keywords do
+  begin
     if SameText(Word, AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -75,7 +79,9 @@ var
   procedure Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
   begin
     if AStop <= AStart then
+    begin
       Exit;
+    end;
     if (AKind = TAtlasTokenKind.Plain) and (Count > 0) and (Result[Count - 1].Kind = TAtlasTokenKind.Plain) and
       (Result[Count - 1].Stop = AStart) then
     begin
@@ -83,7 +89,9 @@ var
       Exit;
     end;
     if Count = Length(Result) then
+    begin
       SetLength(Result, Count * 2 + 4);
+    end;
     Result[Count].Start := AStart;
     Result[Count].Stop := AStop;
     Result[Count].Kind := AKind;
@@ -102,14 +110,18 @@ begin
     begin
       Inc(Index);
       while (Index <= Length(AText)) and (AText[Index] <> '''') do
+      begin
         Inc(Index);
+      end;
       Inc(Index);
       Kind := TAtlasTokenKind.StringLiteral;
     end
     else if AText[Index] = '{' then
     begin
       while (Index <= Length(AText)) and (AText[Index] <> '}') do
+      begin
         Inc(Index);
+      end;
       Inc(Index);
       Kind := TAtlasTokenKind.Comment;
     end
@@ -117,7 +129,9 @@ begin
     begin
       Inc(Index, 2);
       while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+      begin
         Inc(Index);
+      end;
       Inc(Index, 2);
       Kind := TAtlasTokenKind.Comment;
     end
@@ -129,18 +143,26 @@ begin
     else if TTextChars.IsIdentStart(AText[Index]) then
     begin
       while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
+      begin
         Inc(Index);
+      end;
       // Nach einem Punkt ist es ein Name (TFoo.Create, Self.Read), kein Schlüsselwort.
       if ((Start = 1) or (AText[Start - 1] <> '.')) and IsKeyword(Copy(AText, Start, Index - Start)) then
-        Kind := TAtlasTokenKind.Keyword
+      begin
+        Kind := TAtlasTokenKind.Keyword;
+      end
       else
+      begin
         Kind := TAtlasTokenKind.Plain;
+      end;
     end
     else if CharInSet(AText[Index], ['0'..'9', '$']) then
     begin
       Inc(Index);
       while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', 'A'..'F', 'a'..'f', '.']) do
+      begin
         Inc(Index);
+      end;
       Kind := TAtlasTokenKind.Number;
     end
     else
@@ -149,7 +171,9 @@ begin
       Kind := TAtlasTokenKind.Plain;
     end;
     if Index > Length(AText) + 1 then
+    begin
       Index := Length(AText) + 1;
+    end;
     Emit(Start - 1, Index - 1, Kind);
   end;
   SetLength(Result, Count);
@@ -174,26 +198,38 @@ begin
         begin
           Inc(Index);
           while (Index <= Length(AText)) and (AText[Index] <> '''') do
+          begin
             Inc(Index);
+          end;
         end;
       '/':
         if (Index < Length(AText)) and (AText[Index + 1] = '/') then
+        begin
           Exit;
+        end;
       '{':
         begin
           while (Index <= Length(AText)) and (AText[Index] <> '}') do
+          begin
             Inc(Index);
+          end;
           if Index > Length(AText) then
+          begin
             Exit(TOpenComment.Brace);
+          end;
         end;
       '(':
         if (Index < Length(AText)) and (AText[Index + 1] = '*') then
         begin
           Inc(Index, 2);
           while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+          begin
             Inc(Index);
+          end;
           if Index >= Length(AText) then
+          begin
             Exit(TOpenComment.ParenStar);
+          end;
           Inc(Index);
         end;
     end;
@@ -225,13 +261,17 @@ begin
       begin
         Index := Pos('}', Text);
         if Index > 0 then
+        begin
           Close := Index + 1;
+        end;
       end
       else
       begin
         Index := Pos('*)', Text);
         if Index > 0 then
+        begin
           Close := Index + 2;
+        end;
       end;
       Head.Start := 0;
       Head.Kind := TAtlasTokenKind.Comment;
@@ -239,7 +279,9 @@ begin
       begin
         Head.Stop := Length(Text);
         if Head.Stop > 0 then
+        begin
           Result[Line] := [Head];
+        end;
         Continue;
       end;
       Head.Stop := Close - 1;
@@ -271,9 +313,13 @@ begin
   for Index := 1 to Length(ASignature) do
   begin
     if ASignature[Index] = '''' then
+    begin
       InString := not InString;
+    end;
     if InString then
+    begin
       Continue;
+    end;
     case ASignature[Index] of
       '(', '[':
         Inc(Depth);
@@ -298,7 +344,9 @@ begin
           // Leerzeichen vor "=" gehören dazu: "Offset: Integer = 1" → " = 1".
           Start := Index - 1;
           while (Start > 0) and (ASignature[Start] = ' ') do
+          begin
             Dec(Start);
+          end;
         end;
     end;
   end;

@@ -61,13 +61,17 @@ end;
 class procedure TAtlasShutdown.Signal;
 begin
   if FEvent <> nil then
+  begin
     FEvent.SetEvent;
+  end;
 end;
 
 class procedure TAtlasShutdown.Reset;
 begin
   if FEvent <> nil then
+  begin
     FEvent.ResetEvent;
+  end;
 end;
 
 class function TAtlasShutdown.Signalled: Boolean;
@@ -78,7 +82,9 @@ end;
 class function TAtlasShutdown.Wait(AMs: Cardinal): Boolean;
 begin
   if FEvent = nil then
+  begin
     Exit(True);
+  end;
   Result := FEvent.WaitFor(AMs) = wrSignaled;
 end;
 
@@ -91,17 +97,27 @@ begin
   Watch := TStopwatch.StartNew;
   repeat
     if Signalled then
+    begin
       Exit(wrAbandoned);
+    end;
     Left := Int64(ATimeoutMs) - Watch.ElapsedMilliseconds;
     if Left <= 0 then
-      Slice := 0
+    begin
+      Slice := 0;
+    end
     else if Left < SliceMs then
-      Slice := Cardinal(Left)
+    begin
+      Slice := Cardinal(Left);
+    end
     else
+    begin
       Slice := SliceMs;
+    end;
     Result := AEvent.WaitFor(Slice);
     if Result <> wrTimeout then
+    begin
       Exit;
+    end;
   until Watch.ElapsedMilliseconds >= ATimeoutMs;
   Result := wrTimeout;
 end;
@@ -120,10 +136,16 @@ begin
   repeat
     Result := True;
     for Thread in AThreads do
+    begin
       if (Thread <> nil) and not Thread.Finished then
+      begin
         Result := False;
+      end;
+    end;
     if Result then
+    begin
       Exit;
+    end;
     // Bewusst Finished statt Thread-Handle: Das Handle wird erst nach DLL_THREAD_DETACH signalisiert, und das braucht
     // beim Prozessende die Ladersperre, die das Entladen unter Umständen hält (Code-Review A-13).
     Sleep(5);

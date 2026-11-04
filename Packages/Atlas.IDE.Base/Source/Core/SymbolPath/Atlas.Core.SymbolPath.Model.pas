@@ -127,7 +127,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := Value.Value;
+  end;
 end;
 
 function IntegerOf(AObject: TJSONObject; const AName: string): Integer;
@@ -137,7 +139,9 @@ begin
   Result := 0;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
+  begin
     Result := TJSONNumber(Value).AsInt;
+  end;
 end;
 
 function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -155,7 +159,9 @@ begin
   Result := nil;
   Value := AObject.GetValue(AName);
   if Value is TJSONArray then
+  begin
     Result := TJSONArray(Value);
+  end;
 end;
 
 function NodeOf(AObject: TJSONObject): TAtlasSymbolPathNode;
@@ -189,10 +195,16 @@ var
 begin
   Result := nil;
   if AArray = nil then
+  begin
     Exit;
+  end;
   for Item in AArray do
+  begin
     if Item is TJSONObject then
+    begin
       Result := Result + [NodeOf(TJSONObject(Item))];
+    end;
+  end;
 end;
 
 function StatusOf(const AText: string; out AStatus: TAtlasSymbolPathStatus): Boolean;
@@ -202,11 +214,13 @@ var
   Status: TAtlasSymbolPathStatus;
 begin
   for Status := Low(TAtlasSymbolPathStatus) to High(TAtlasSymbolPathStatus) do
+  begin
     if Names[Status] = AText then
     begin
       AStatus := Status;
       Exit(True);
     end;
+  end;
   AStatus := TAtlasSymbolPathStatus.NotFound;
   Result := False;
 end;
@@ -221,9 +235,13 @@ begin
   for Node in Nodes do
   begin
     if Node.UnitName = '' then
+    begin
       Continue;
+    end;
     if (Length(Result) > 0) and SameText(Result[High(Result)], Node.UnitName) then
+    begin
       Continue;
+    end;
     Result := Result + [Node.UnitName];
   end;
 end;
@@ -242,7 +260,9 @@ begin
   AModel := Default(TAtlasSymbolPathAnswer);
   Result := False;
   if Trim(AAnswer) = '' then
+  begin
     Exit;
+  end;
   try
     Root := TJSONObject.ParseJSONValue(AAnswer);
   except
@@ -257,12 +277,18 @@ begin
   try
     Data := TJSONObject(Root);
     if not (Data.GetValue('enabled') is TJSONBool) then
+    begin
       Exit;
+    end;
     AModel.Enabled := BoolOf(Data, 'enabled');
     if not AModel.Enabled then
+    begin
       Exit(True);
+    end;
     if not StatusOf(StringOf(Data, 'status'), Status) then
+    begin
       Exit;
+    end;
     AModel.Status := Status;
     AModel.From := StringOf(Data, 'from');
     AModel.To_ := StringOf(Data, 'to');
@@ -277,23 +303,35 @@ begin
     AModel.Candidates := NodesOf(ArrayOf(Data, 'candidates'));
     Routes := ArrayOf(Data, 'routes');
     if Routes <> nil then
+    begin
       for Item in Routes do
       begin
         if not (Item is TJSONObject) then
+        begin
           Continue;
+        end;
         RouteObject := TJSONObject(Item);
         Route := Default(TAtlasSymbolPathRoute);
         Route.Nodes := NodesOf(ArrayOf(RouteObject, 'nodes'));
         Steps := ArrayOf(RouteObject, 'steps');
         if Steps <> nil then
+        begin
           for StepItem in Steps do
+          begin
             if StepItem is TJSONObject then
+            begin
               Route.Steps := Route.Steps + [StepOf(TJSONObject(StepItem))];
+            end;
+          end;
+        end;
         // Ein Weg mit n Knoten hat n - 1 Schritte; sonst ist die Antwort beschädigt.
         if Length(Route.Nodes) <> Length(Route.Steps) + 1 then
+        begin
           Exit;
+        end;
         AModel.Routes := AModel.Routes + [Route];
       end;
+    end;
     Result := True;
   finally
     Root.Free;
@@ -304,7 +342,9 @@ function TAtlasSymbolPathAnswer.StepCount: Integer;
 begin
   Result := 0;
   if Length(Routes) > 0 then
+  begin
     Result := Length(Routes[0].Steps);
+  end;
 end;
 
 function TAtlasSymbolPathAnswer.Rows: TArray<TAtlasSymbolPathRow>;
@@ -350,7 +390,9 @@ begin
       Row.Character := Route.Nodes[Index].Character;
       Result := Result + [Row];
       if Index > High(Route.Steps) then
+      begin
         Continue;
+      end;
       Row := Default(TAtlasSymbolPathRow);
       Row.Kind := TAtlasSymbolPathRowKind.Step;
       Row.Route := RouteIndex;
@@ -389,7 +431,9 @@ begin
     Options.AddPair('from', Trim(AFrom));
     Options.AddPair('to', Trim(ATo));
     if (AMaxSteps >= 1) and (AMaxSteps <= MaxSteps) then
+    begin
       Options.AddPair('maxSteps', TJSONNumber.Create(AMaxSteps));
+    end;
     Options.AddPair('all', TJSONBool.Create(AAll));
     Result := Values.ToJSON;
   finally
@@ -400,9 +444,13 @@ end;
 class function TAtlasSymbolPathCommands.QualifiedName(const AName, AContainer: string): string;
 begin
   if AContainer = '' then
-    Result := AName
+  begin
+    Result := AName;
+  end
   else
+  begin
     Result := AContainer + '.' + AName;
+  end;
 end;
 
 end.

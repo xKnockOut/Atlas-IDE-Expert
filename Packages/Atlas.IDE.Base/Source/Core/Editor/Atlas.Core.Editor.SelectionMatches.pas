@@ -108,10 +108,16 @@ begin
   Result := nil;
   // Matches ist nach Zeile und Zeichen sortiert.
   for Match in Matches do
+  begin
     if Match.Line = ALine then
-      Result := Result + [Match]
+    begin
+      Result := Result + [Match];
+    end
     else if Match.Line > ALine then
+    begin
       Break;
+    end;
+  end;
 end;
 
 { TAtlasSelectionMatches }
@@ -122,11 +128,17 @@ function Bounded(const ALine: string; AIndex, ALength: Integer; AWholeWord: Bool
 begin
   Result := True;
   if not AWholeWord then
+  begin
     Exit;
+  end;
   if (AIndex > 1) and TTextChars.IsIdentChar(ALine[AIndex - 1]) then
+  begin
     Exit(False);
+  end;
   if (AIndex + ALength <= Length(ALine)) and TTextChars.IsIdentChar(ALine[AIndex + ALength]) then
+  begin
     Exit(False);
+  end;
 end;
 
 /// <summary>Anfänge (ab 1) aller nicht überlappenden Treffer von ANeedle (schon passend groß geschrieben) in
@@ -138,10 +150,14 @@ var
 begin
   Result := nil;
   if (ANeedle = '') or (Length(ALine) < Length(ANeedle)) then
+  begin
     Exit;
+  end;
   Haystack := ALine;
   if not AOptions.CaseSensitive then
+  begin
     Haystack := AnsiUpperCase(ALine);
+  end;
   Index := Pos(ANeedle, Haystack);
   while Index > 0 do
   begin
@@ -151,7 +167,9 @@ begin
       Index := Pos(ANeedle, Haystack, Index + Length(ANeedle));
     end
     else
+    begin
       Index := Pos(ANeedle, Haystack, Index + 1);
+    end;
   end;
 end;
 
@@ -159,7 +177,9 @@ function NeedleOf(const ATerm: string; const AOptions: TAtlasSelectionMatchOptio
 begin
   Result := ATerm;
   if not AOptions.CaseSensitive then
+  begin
     Result := AnsiUpperCase(ATerm);
+  end;
 end;
 
 class function TAtlasSelectionMatches.Term(const ASelection: string; const AOptions: TAtlasSelectionMatchOptions;
@@ -170,7 +190,9 @@ begin
     (Pos(#13, ASelection) = 0) and (Length(ASelection) >= Max(1, AOptions.MinLength)) and
     (Length(ASelection) <= MaxTermLength);
   if Result then
+  begin
     ATerm := ASelection;
+  end;
 end;
 
 class function TAtlasSelectionMatches.Find(const ALines: TArray<string>; const ATerm: string;
@@ -188,9 +210,12 @@ var
 begin
   Result := Default(TAtlasSelectionMatchList);
   if ATerm = '' then
+  begin
     Exit;
+  end;
   Needle := NeedleOf(ATerm, AOptions);
   for Line := Max(0, AFirstLine) to Min(High(ALines), ALastLine) do
+  begin
     for Index in Positions(ALines[Line], Needle, AOptions) do
     begin
       if Result.Count >= Max(1, AOptions.MaxMatches) then
@@ -203,6 +228,7 @@ begin
       Match.Length := Length(ATerm);
       Result.Matches := Result.Matches + [Match];
     end;
+  end;
 end;
 
 class function TAtlasSelectionMatches.Next(const ALines: TArray<string>; const ATerm: string;
@@ -217,30 +243,44 @@ begin
   AFound := TLspRange.Create(AFrom.Line, AFrom.Character, AFrom.Line, AFrom.Character);
   Count := Length(ALines);
   if (ATerm = '') or (Count = 0) then
+  begin
     Exit;
+  end;
   Needle := NeedleOf(ATerm, AOptions);
   // Einmal um die Datei; die Ausgangszeile kommt am Ende noch einmal ganz dran (Step > 0: alle Treffer zählen).
   for Step := 0 to Count do
   begin
     if ABackward then
-      Row := ((AFrom.Line - Step) mod Count + Count) mod Count
+    begin
+      Row := ((AFrom.Line - Step) mod Count + Count) mod Count;
+    end
     else
+    begin
       Row := ((AFrom.Line + Step) mod Count + Count) mod Count;
+    end;
     Found := Positions(ALines[Row], Needle, AOptions);
     Chosen := -1;
     if not ABackward then
     begin
       for Index in Found do
+      begin
         if (Step > 0) or (Index - 1 >= AFrom.Character) then
         begin
           Chosen := Index;
           Break;
         end;
+      end;
     end
     else
+    begin
       for Index in Found do
+      begin
         if (Step > 0) or (Index - 1 + Length(ATerm) <= AFrom.Character) then
+        begin
           Chosen := Index;
+        end;
+      end;
+    end;
     if Chosen > 0 then
     begin
       AFound := TLspRange.Create(Row, Chosen - 1, Row, Chosen - 1 + Length(ATerm));
@@ -255,8 +295,12 @@ var
 begin
   Result := nil;
   for Match in AList.Matches do
+  begin
     if (Length(Result) = 0) or (Result[High(Result)] <> Match.Line) then
+    begin
       Result := Result + [Match.Line];
+    end;
+  end;
 end;
 
 class function TAtlasSelectionMatches.IsSelection(const AMatch: TAtlasSelectionMatch; ALine, AStart,
