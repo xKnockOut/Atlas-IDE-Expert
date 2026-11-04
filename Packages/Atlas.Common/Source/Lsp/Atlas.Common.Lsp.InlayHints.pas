@@ -517,8 +517,9 @@ var
 begin
   mTokens := ASource.Tree.Tokens;
   mStarts := ArgumentStarts(mTokens, AOpen);
-  if (mStarts <> nil) and ChooseSignature(TLspSignatureHelp.HelpAt(ASource.Resolver, ASource.Index, ASource.Tree,
-    ASource.TreeText, ASource.FileName, mTokens[AOpen].EndPos, ASource.ReadText), Length(mStarts), mSignature) then
+  if (mStarts <> nil) and ChooseSignature(TLspSignatureHelp.HelpAt(
+    TSignatureHelpRequest.Create(ASource.Resolver, ASource.Index, ASource.Tree, ASource.TreeText, ASource.FileName,
+    ASource.ReadText), mTokens[AOpen].EndPos), Length(mStarts), mSignature) then
   begin
     AddArgumentHints(AList, mTokens, mStarts, mSignature);
   end;

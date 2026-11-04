@@ -152,8 +152,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      NoText);
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+      NoText), PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;
