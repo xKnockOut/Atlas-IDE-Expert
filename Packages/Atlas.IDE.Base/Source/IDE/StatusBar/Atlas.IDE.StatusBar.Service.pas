@@ -561,7 +561,18 @@ procedure TStatusBarState.Recheck;
 begin
   // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
   // liefert workspace/diagnostic nach und nach.
-  if not TAtlasStatusBarViews.ProblemsOn(TAtlasIdeSettings.Current) or not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
+  if not TAtlasStatusBarViews.ProblemsOn(TAtlasIdeSettings.Current) then
+  begin
+    Exit;
+  end;
+  // Ohne Live-Prüfung prüft der Klick nur die offene Datei: Wer selbst bestimmt, wann geprüft wird, will nicht alle
+  // Units neu prüfen lassen.
+  if TAtlasStatusBarContent.ClickChecksFile(TAtlasIdeProblems.UpdateMode) then
+  begin
+    TAtlasIdeProblems.CheckFileNow;
+    Exit;
+  end;
+  if not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
   begin
     Exit;
   end;

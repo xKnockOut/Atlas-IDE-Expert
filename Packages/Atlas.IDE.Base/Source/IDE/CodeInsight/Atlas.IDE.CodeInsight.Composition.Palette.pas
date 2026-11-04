@@ -27,6 +27,7 @@ function PaletteStarted: Boolean;
 implementation
 
 uses
+  Atlas.IDE.Problems.Service,
   System.SysUtils,
   Atlas.UI.Strings,
   Atlas.Core.Modules.Registry,
@@ -85,6 +86,12 @@ begin
   begin
     PaletteInstance.Show;
   end;
+end;
+
+/// <summary>„Datei jetzt prüfen“ (problems.update): sichtbar, solange Atlas die offene Datei prüft.</summary>
+function CheckFileVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.Problems;
 end;
 
 function GenerateMenuVisible: Boolean;
@@ -219,6 +226,9 @@ procedure AddSettingsCommands(APalette: TAtlasIdePalette);
 begin
   AddCommand(APalette, 'Atlas.GenerateMenu', TAtlasTextId.GenerateMenuCommand, ShowGenerateMenu,
     GenerateMenuVisible);
+  // Offene Datei jetzt prüfen, auch ungespeichert und ohne Live-Prüfung (problems.update).
+  AddCommand(APalette, 'Atlas.CheckFile', TAtlasTextId.ProblemsCheckFileCommand,
+    Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.CheckFileNow), CheckFileVisible);
   AddCommand(APalette, 'Atlas.SettingsExport', TAtlasTextId.SettingsExportCommand,
     Guarded(TAtlasFeature.Settings, TAtlasIdeSettingsTransfer.ExportCommand), SettingsTransferVisible);
   AddCommand(APalette, 'Atlas.SettingsImport', TAtlasTextId.SettingsImportCommand,

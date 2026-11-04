@@ -229,7 +229,8 @@ uses
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.QueryMigration,
+  Atlas.Core.Settings.ProblemsUpdate;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -1297,6 +1298,12 @@ begin
     begin
       AJson := '"expanded"';
     end;
+  end
+  // problems.live (#909) war ein Wahrheitswert; problems.update ist eine Auswahl (an = live, aus = save).
+  else if (AEntry.Name = 'ProblemsUpdate') and ((AValue is TJSONBool) or (AValue is TJSONNumber)) then
+  begin
+    AJson := '"' + TAtlasProblemsUpdateSetting.FromLive(IsTrue(AValue) or ((AValue is TJSONNumber) and
+      (TJSONNumber(AValue).AsInt <> 0))) + '"';
   end
   // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
   // „Standard“ kommt.

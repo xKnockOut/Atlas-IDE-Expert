@@ -127,7 +127,6 @@ type
       destructor Destroy; override;
     end;
   public const
-    QuietMs = 400;
     DocumentTimeoutMs = 8000;
     /// <summary>Länger als Zeitbudget (3 s) und Long-Polling (5 s) des Servers.</summary>
     WorkspaceTimeoutMs = 15000;
@@ -211,6 +210,8 @@ type
     procedure CheckProjectsRemoved;
     /// <summary>Pufferstand von AView merken; Markierungen wandern mit. Liefert den Text.</summary>
     function TrackEdit(const AView: IOTAEditView): string;
+    /// <summary>Datei AKey mit Text AText jetzt holen (problems.update, Anforderung)?</summary>
+    function PullDue(const AKey, AText: string; AModified: Boolean): Boolean;
     procedure Serve(ASession: TLspSession; const AView: IOTAEditView; const AFileName, AText: string);
     /// <summary>Editor gewechselt: Getipptes der vorigen Unit sofort senden (#492).</summary>
     procedure SyncPrevious(ASession: TLspSession; const AFileName: string);
@@ -241,6 +242,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
@@ -853,20 +856,19 @@ end;
 procedure TAtlasProblemsController.PullIfDue(ASession: TLspSession; const AView: IOTAEditView;
   const AFileName, AText: string);
 var
-  mKey, mKnown: string;
+  mKey: string;
   mRefresh, mChanged: Boolean;
   mPull: TPull;
   mPulls: TArray<TPull>;
 begin
   mKey := TAtlasProblemStore.Key(AFileName);
   mRefresh := ASession.RefreshCount <> FRefreshSeen;
-  mChanged := not FPulled.TryGetValue(mKey, mKnown) or (mKnown <> AText);
-  // Ohne laufende Prüfung erst nach dem Speichern (Puffer wieder ungeändert).
-  mChanged := mChanged and (TAtlasIdeSettings.Current.ProblemsLive or not AView.Buffer.IsModified);
-  if not (mRefresh or (mChanged and (GetTickCount - FChangedAt >= QuietMs))) or not FDocuments.Idle then
+  mChanged := PullDue(mKey, AText, AView.Buffer.IsModified);
+  if not (mRefresh or mChanged) or not FDocuments.Idle then
   begin
     Exit;
   end;
+  TAtlasProblemsCheckRequest.Clear;
   ASession.Sync(AFileName, AText);
   FPulled.AddOrSetValue(mKey, AText);
   mPull := Default(TPull);
@@ -884,6 +886,25 @@ begin
     mPulls := mPulls + OtherPulls(ASession, AFileName);
   end;
   FDocuments.Add(mPulls);
+end;
+
+function TAtlasProblemsController.PullDue(const AKey, AText: string; AModified: Boolean): Boolean;
+var
+  mState: TAtlasProblemsRefreshState;
+  mKnown: string;
+  mDelay: Integer;
+begin
+  mState := Default(TAtlasProblemsRefreshState);
+  mState.CheckedBefore := FPulled.TryGetValue(AKey, mKnown);
+  mState.Changed := not mState.CheckedBefore or (mKnown <> AText);
+  mState.Modified := AModified;
+  mState.QuietMs := GetTickCount - FChangedAt;
+  mState.Requested := TAtlasProblemsCheckRequest.Pending;
+  mDelay := TAtlasIdeSettings.Current.ProblemsLiveDelayMs;
+  // Kürzere Verzögerung als der Takt: öfter nachsehen.
+  FTimer.Interval := TAtlasProblemsRefresh.TickMs(mDelay);
+  Result := TAtlasProblemsRefresh.Due(TAtlasProblemsUpdateSetting.Parse(TAtlasIdeSettings.Current.ProblemsUpdate),
+    mState, mDelay);
 end;
 
 procedure TAtlasProblemsController.Serve(ASession: TLspSession; const AView: IOTAEditView;

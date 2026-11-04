@@ -49,7 +49,8 @@ uses
   Vcl.Menus,
   Vcl.ImgList,
   Vcl.Forms,
-  Atlas.Core.Problems.Findings;
+  Atlas.Core.Problems.Findings,
+  Atlas.Core.Settings.ProblemsUpdate;
 
 type
   TAtlasFindingEvent = reference to procedure(const AFinding: TAtlasFinding);
@@ -103,6 +104,8 @@ type
     FCategory: TComboBox;
     FGrouping: TComboBox;
     FOpenFirst: TSpeedButton;
+    FCheckFile: TSpeedButton;
+    FOnCheckFile: TProc;
     FFilter: TEdit;
     FLive: TLabel;
     FList: TListView;
@@ -124,6 +127,7 @@ type
   public
     /// <summary>Umschalter der Art AKind („Warnung 3“).</summary>
     function KindButton(AKind: TAtlasFindingKind): TSpeedButton;
+    procedure CheckFileClick(Sender: TObject);
     class function KindText(AKind: TAtlasFindingKind): string; static;
     class function CategoryText(ACategory: TAtlasFindingCategory): string; static;
     property View: TAtlasFindingsView read FView;
@@ -137,6 +141,10 @@ type
     property StatusLabel: TLabel read FStatus;
     property EmptyLabel: TLabel read FEmpty;
     property Menu: TPopupMenu read FMenu;
+  public
+    property CheckFileButton: TSpeedButton read FCheckFile;
+    /// <summary>„Datei jetzt prüfen“ geklickt.</summary>
+    property OnCheckFile: TProc read FOnCheckFile write FOnCheckFile;
   end;
 
   /// <summary>Spalten, Zellen und Zeichnen der virtuellen Liste.</summary>
@@ -280,8 +288,9 @@ type
     procedure SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
       const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean); overload;
     procedure SetStatus(const AText: string);
-    /// <summary>„Live“ bei laufender Prüfung, sonst „Angehalten“.</summary>
-    procedure SetLive(ALive: Boolean);
+    /// <summary>Anzeige nach problems.update: „Live“, „Beim Speichern“ oder „Manuell“; ohne Live-Prüfung mit dem
+    /// Knopf „Datei jetzt prüfen“.</summary>
+    procedure SetUpdate(AMode: TAtlasProblemsUpdate);
     /// <summary>Markierung folgt dem Cursor (problems.window.followCursor).</summary>
     procedure FollowCursor(const AFileName: string; ALine: Integer);
     /// <summary>F8/Umschalt+F8 aus dem Editor: nächster bzw. vorheriger Befund der gefilterten Liste.</summary>
@@ -423,6 +432,17 @@ begin
   FLive.Layout := tlCenter;
   FLive.ShowAccelChar := False;
   FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  // Links neben der Anzeige; sichtbar nur ohne Live-Prüfung (SetUpdate).
+  FCheckFile := TSpeedButton.Create(Self);
+  FCheckFile.Parent := FBar;
+  FCheckFile.Left := 0;
+  FCheckFile.Align := alRight;
+  FCheckFile.AlignWithMargins := True;
+  FCheckFile.Flat := True;
+  FCheckFile.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand);
+  FCheckFile.Width := MulDiv(110, CurrentPPI, 96);
+  FCheckFile.Visible := False;
+  FCheckFile.OnClick := CheckFileClick;
 end;
 
 procedure TAtlasProblemsFrame.BuildList;
@@ -1084,16 +1104,31 @@ begin
   FStatus.Caption := AText;
 end;
 
-procedure TAtlasProblemsFrame.SetLive(ALive: Boolean);
+procedure TAtlasProblemsFrameParts.CheckFileClick(Sender: TObject);
 begin
-  if ALive then
+  if Assigned(FOnCheckFile) then
   begin
+    FOnCheckFile();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.SetUpdate(AMode: TAtlasProblemsUpdate);
+begin
+  case AMode of
+    TAtlasProblemsUpdate.Save:
+      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsOnSave);
+    TAtlasProblemsUpdate.Manual:
+      FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsManual);
+  else
     FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsLive);
+  end;
+  FCheckFile.Visible := AMode <> TAtlasProblemsUpdate.Live;
+  if AMode = TAtlasProblemsUpdate.Live then
+  begin
     FLive.Font.Color := $0050A030;
   end
   else
   begin
-    FLive.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsPaused);
     FLive.Font.Color := clGrayText;
   end;
 end;

@@ -308,7 +308,8 @@ type
     property GotoInterfaceKey: Integer read FNavigationKeys.GotoInterfaceKey write FNavigationKeys.GotoInterfaceKey;
     property GotoImplementationKey: Integer read FNavigationKeys.GotoImplementationKey
       write FNavigationKeys.GotoImplementationKey;
-    property ProblemsLive: Boolean read FRules.ProblemsLive write FRules.ProblemsLive;
+    property ProblemsUpdate: string read FRules.ProblemsUpdate write FRules.ProblemsUpdate;
+    property ProblemsLiveDelayMs: Integer read FRules.ProblemsLiveDelayMs write FRules.ProblemsLiveDelayMs;
     property FixBulk: Boolean read FRules.FixBulk write FRules.FixBulk;
     property HoverProblemActions: Boolean read FEditorInsight.HoverProblemActions
       write FEditorInsight.HoverProblemActions;

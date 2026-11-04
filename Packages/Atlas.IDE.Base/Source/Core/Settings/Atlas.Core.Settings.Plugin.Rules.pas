@@ -38,8 +38,12 @@ type
     ProblemsCompilerMerge: string;
     /// <summary>Compilercode (E2035 …) in Meldung, Spalte „Compiler“ und Hover zeigen (#1024).</summary>
     ProblemsShowCompilerCode: Boolean;
-    /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
-    ProblemsLive: Boolean;
+    /// <summary>Wann die offene Datei geprüft wird (problems.update): 'live' (beim Tippen, Vorgabe), 'save' (beim
+    /// Speichern), 'manual' (nur auf Anforderung). Ersetzt ProblemsLive (#909).</summary>
+    ProblemsUpdate: string;
+    /// <summary>Verzögerung der Live-Prüfung nach der letzten Änderung in ms (problems.liveDelayMs, 100 bis
+    /// 10000).</summary>
+    ProblemsLiveDelayMs: Integer;
     /// <summary>„Alle sicheren Treffer korrigieren …“ im Fenster Atlas-Prüfung (#1352, fix.bulk).</summary>
     FixBulk: Boolean;
     /// <summary>Probleme zusätzlich im Meldungsfenster auflisten (Gruppe „Atlas-Probleme“); nur mit Problems. Seit
@@ -61,6 +65,9 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Settings.ProblemsUpdate;
+
 { TAtlasPluginRulesSettings }
 
 class function TAtlasPluginRulesSettings.Defaults: TAtlasPluginRulesSettings;
@@ -76,7 +83,8 @@ begin
   Result.ProblemsWindowShowCleanActive := True;
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
-  Result.ProblemsLive := True;
+  Result.ProblemsUpdate := TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Live);
+  Result.ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.DefaultDelayMs;
   Result.FixBulk := True;
   Result.ProblemsMessageList := False;
   Result.RuleChecksEnabled := True;
@@ -88,6 +96,8 @@ begin
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
+  ProblemsUpdate := TAtlasProblemsUpdateSetting.Normalize(ProblemsUpdate);
+  ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.ClampDelay(ProblemsLiveDelayMs);
 end;
 
 procedure TAtlasPluginRulesSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -103,7 +113,16 @@ begin
   AIo.Flag('ProblemsWindowShowCleanActive', ProblemsWindowShowCleanActive);
   AIo.Text('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AIo.Flag('ProblemsShowCompilerCode', ProblemsShowCompilerCode);
-  AIo.Flag('ProblemsLive', ProblemsLive);
+  // Vor problems.update: problems.live (#909) übernehmen, an = live, aus = beim Speichern.
+  if not AIo.Writing and (AIo.Store.ReadString('ProblemsUpdate', '') = '') then
+  begin
+    ProblemsUpdate := TAtlasProblemsUpdateSetting.FromLive(AIo.Store.ReadInteger('ProblemsLive', 1) <> 0);
+  end
+  else
+  begin
+    AIo.Text('ProblemsUpdate', ProblemsUpdate);
+  end;
+  AIo.Number('ProblemsLiveDelayMs', ProblemsLiveDelayMs);
   AIo.Flag('FixBulk', FixBulk);
   AIo.Flag('ProblemsMessageList', ProblemsMessageList);
   AIo.Flag('RuleChecksEnabled', RuleChecksEnabled);

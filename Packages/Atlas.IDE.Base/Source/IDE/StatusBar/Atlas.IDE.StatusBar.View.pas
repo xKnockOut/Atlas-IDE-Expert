@@ -64,6 +64,12 @@ uses
 function LiveTexts: TAtlasStatusLiveTexts;
 begin
   Result.Live := TAtlasStrings.Text(TAtlasTextId.StatusBarLive);
+  Result.Manual := TAtlasStrings.Text(TAtlasTextId.StatusBarManual);
+  Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
+  Result.OnSaveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
+  Result.ManualHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveManualHint);
+  Result.RecheckClick := TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
+  Result.CheckFileClick := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckFileClick);
   Result.OnSave := TAtlasStrings.Text(TAtlasTextId.StatusBarOnSave);
   Result.Checking := TAtlasStrings.Text(TAtlasTextId.StatusBarChecking);
   Result.CheckedAgo := TAtlasStrings.Text(TAtlasTextId.StatusBarCheckedAgo);
@@ -128,18 +134,8 @@ end;
 function LiveHint(const ASettings: TAtlasPluginSettings; const ACheck: TAtlasProblemsCheck;
   AChecked, ATotal: Integer): string;
 begin
-  if ASettings.ProblemsLive then
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
-  end;
-  if TAtlasStatusBarViews.ProblemsOn(ASettings) then
-  begin
-    Result := Result + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
-  end;
+  Result := TAtlasStatusBarContent.LiveHint(TAtlasIdeProblems.UpdateMode, TAtlasStatusBarViews.ProblemsOn(ASettings),
+    LiveTexts);
   if ACheck.FileName <> '' then
   begin
     Result := Result + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
@@ -165,7 +161,7 @@ begin
     mCheckedAt := mCheck.At;
   end;
   AView.LiveBusy := TAtlasStatusBarViews.ProblemsOn(ASettings) and TAtlasProblemsController.Checking;
-  AView.LiveText := TAtlasStatusBarContent.LiveText(ASettings.ProblemsLive, AView.LiveBusy, mCheckedAt, Now,
+  AView.LiveText := TAtlasStatusBarContent.LiveText(TAtlasIdeProblems.UpdateMode, AView.LiveBusy, mCheckedAt, Now,
     LiveTexts);
   mChecked := 0;
   mTotal := 0;
