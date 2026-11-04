@@ -43,6 +43,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
@@ -327,7 +328,7 @@ begin
     // Vervollständigung bietet TKunde an, Details kommen aus der .inc.
     Tree := TPascalParser.Parse(TippText);
     try
-      Items := TLspCompletion.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
+      Items := TCompletionLists.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
     finally
       Tree.Free;
     end;
