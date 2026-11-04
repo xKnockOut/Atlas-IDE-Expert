@@ -41,6 +41,8 @@ type
     FFollowCursor: Boolean;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    /// <summary>Gehört die Vorschau in die Zeile, die AContext zeichnet?</summary>
+    function ShowsIn(const AContext: INTACodeEditorPaintContext): Boolean;
     procedure InvalidateLine(ALine: Integer);
   public
     constructor Create;
@@ -145,6 +147,17 @@ begin
   FLine := 0;
 end;
 
+function TAtlasEditorPreview.ShowsIn(const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := (FText <> '') and (AContext <> nil) and (AContext.LogicalLineNum = FLine) and
+    SameText(AContext.FileName, FFileName);
+  // Nur in der Cursorzeile (FollowCursor): Der Cursor der Ansicht muss in der Zeile stehen.
+  if Result and FFollowCursor then
+  begin
+    Result := (AContext.EditView <> nil) and (AContext.EditView.CursorPos.Line = FLine);
+  end;
+end;
+
 procedure TAtlasEditorPreview.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -156,12 +169,7 @@ var
   Size: TSize;
 begin
   try
-    if BeforeEvent or (Stage <> plsEndPaint) or (FText = '') or (Context = nil) or
-      (Context.LogicalLineNum <> FLine) or not SameText(Context.FileName, FFileName) then
-    begin
-      Exit;
-    end;
-    if FFollowCursor and ((Context.EditView = nil) or (Context.EditView.CursorPos.Line <> FLine)) then
+    if BeforeEvent or (Stage <> plsEndPaint) or not ShowsIn(Context) then
     begin
       Exit;
     end;
