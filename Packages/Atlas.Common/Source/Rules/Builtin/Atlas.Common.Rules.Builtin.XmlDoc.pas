@@ -447,7 +447,7 @@ end;
 /// <summary>Ist der Name sicher nicht prüfbar? Generische Ziele und eingebaute Namen bleiben offen.</summary>
 function Unverifiable(const AName: string): Boolean;
 begin
-  Result := (AName = '') or (LastDelimiter('<>{}`', AName) > 0) or TNameResolver.IsBuiltinTypeName(AName) or
+  Result := (AName = '') or (LastDelimiter('<>{}`', AName) > 0) or TResolverText.IsBuiltinTypeName(AName) or
     TUnresolvedNames.IsIntrinsic(AName);
 end;
 
@@ -1072,7 +1072,7 @@ var
   mWanted: string;
 begin
   mWanted := Copy(AName, ADot + 1, MaxInt);
-  FResolver.NameFilter :=
+  FResolver.Candidates.NameFilter :=
     function(const ACandidate: string): Boolean
     begin
       Result := Abs(Length(ACandidate) - Length(mWanted)) <= 2;
@@ -1080,20 +1080,20 @@ begin
   try
     if ADot > 0 then
     begin
-      Result := CandidateNames(FResolver.MemberCandidates(FContext.Tree, FContext.RelativePath,
+      Result := CandidateNames(FResolver.Candidates.MemberCandidates(FContext.Tree, FContext.RelativePath,
         Copy(AName, 1, ADot - 1).Split(['.']), AOffset));
     end
     else
     begin
-      Result := CandidateNames(FResolver.ScopeCandidates(FContext.Tree, FContext.RelativePath, AOffset));
+      Result := CandidateNames(FResolver.Candidates.ScopeCandidates(FContext.Tree, FContext.RelativePath, AOffset));
       if AContainer <> '' then
       begin
-        Result := Result + CandidateNames(FResolver.MemberCandidates(FContext.Tree, FContext.RelativePath,
+        Result := Result + CandidateNames(FResolver.Candidates.MemberCandidates(FContext.Tree, FContext.RelativePath,
           AContainer.Split(['.']), AOffset));
       end;
     end;
   finally
-    FResolver.NameFilter := nil;
+    FResolver.Candidates.NameFilter := nil;
   end;
 end;
 
