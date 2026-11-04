@@ -541,8 +541,8 @@ begin
     begin
       Settings := TAtlasIdeSettings.Current;
       Branches := LongBranches(FBranches, Settings.StickyScrollBlockMinLines);
-      FRows := TAtlasStickyScroll.Rows(FNodes, FLines, Branches, StickyKinds(Settings) *
-        TAtlasStickyScroll.OutlineKinds, Top, FMaxLines, TAtlasEditorBuffer.TabWidth(View.Buffer));
+      FRows := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(FNodes, FLines, Branches,
+        StickyKinds(Settings) * TAtlasStickyScroll.OutlineKinds), Top, FMaxLines, TAtlasEditorBuffer.TabWidth(View.Buffer));
       FRowsTop := Top;
       FRowsMax := FMaxLines;
     end;
