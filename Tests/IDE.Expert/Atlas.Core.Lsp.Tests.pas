@@ -458,7 +458,7 @@ begin
             Inc(Calls);
             Result := Calls >= 2;
           end).Free;
-      end, ELspClientError);
+      end, ELspCancelledError);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, 'wartet bis zum Zeitlimit');
     Assert.AreEqual('atlas/query,$/cancelRequest', string.Join(',', Sent.ToArray));
   finally

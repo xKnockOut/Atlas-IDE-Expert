@@ -90,12 +90,17 @@ type
 
 implementation
 
+uses
+  Atlas.Core.Diagnostics.PluginTimings;
+
 type
   TActivityScope = class(TInterfacedObject)
   private
     FName: string;
     FTimed: Boolean;
     FStarted: Int64;
+    // Diagnose-Fenster, Reiter „Hauptthread“: Dauer der Aktion als Zeile der langsamen Aufrufe.
+    FPluginStarted: Int64;
   public
     constructor Create(const AName: string; ATimed: Boolean; AStarted: Int64);
     destructor Destroy; override;
@@ -107,10 +112,12 @@ begin
   FName := AName;
   FTimed := ATimed;
   FStarted := AStarted;
+  FPluginStarted := TAtlasPluginTimings.StampIfEnabled;
 end;
 
 destructor TActivityScope.Destroy;
 begin
+  TAtlasPluginTimings.NoteActivity(FName, FPluginStarted);
   TAtlasActivity.Leave(FName, FTimed, FStarted);
   inherited;
 end;
@@ -276,6 +283,8 @@ begin
   begin
     Inc(FWithAtlas);
   end;
+  // Diagnose-Fenster, Reiter „Hänger“.
+  TAtlasPluginTimings.NoteHang(AHang.At, AHang.DurationMs, AHang.Activity, InvolvesAtlas(AHang));
   Lines := TStringBuilder.Create;
   try
     Lines.AppendFormat('Hänger %d ms um %s', [AHang.DurationMs, FormatDateTime('hh":"nn":"ss', AHang.At)]);

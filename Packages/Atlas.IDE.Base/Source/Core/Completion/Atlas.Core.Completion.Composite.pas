@@ -86,6 +86,10 @@ type
     FCurrentRef: IInterface;
     FTimeLimitMs: Integer;
     procedure QueryOne(const AEntry: TEntry; const AContext: TAtlasContext; const APart: IAtlasCompletionSink);
+    /// <summary>Arbeit eines Arbeiters für AEntry: fragt die Quelle, misst sie und gibt Running wieder frei.
+    /// </summary>
+    class function Work(const AEntry: TEntry; const AContext: TAtlasContext;
+      const APart: IAtlasCompletionSink): TProc; static;
   public
     /// <summary>Name einer Quelle ohne IAtlasNamedProvider.</summary>
     const DefaultName = 'Vervollständigung';
@@ -104,6 +108,7 @@ implementation
 
 uses
   System.Classes,
+  Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.Timing;
 
 function TimeLimitOf(ALimitMs: Integer): Integer;
@@ -276,14 +281,48 @@ begin
   end;
 end;
 
+class function TAtlasCompletionProviders.Work(const AEntry: TEntry; const AContext: TAtlasContext;
+  const APart: IAtlasCompletionSink): TProc;
+var
+  mProvider: IAtlasCompletionProvider;
+  mPart: IAtlasCompletionSink;
+  mContext: TAtlasContext;
+  mRunning: TRunning;
+  mRunningRef: IInterface;
+  mName: string;
+begin
+  mProvider := AEntry.Provider;
+  mPart := APart;
+  mContext := AContext;
+  mRunning := AEntry.Running;
+  mRunningRef := AEntry.RunningRef;
+  mName := AEntry.Name;
+  Result :=
+    procedure
+    var
+      mStarted: Int64;
+    begin
+      // Diagnose-Fenster, Reiter „Hintergrund“: Arbeitszeit der Quelle, auch über dem Zeitlimit.
+      mStarted := TAtlasPluginTimings.StampIfEnabled;
+      try
+        mProvider.Query(mContext, mPart);
+      finally
+        TAtlasPluginTimings.NoteSource(mName, mStarted);
+        // Über mRunningRef lebt der Zustand, auch wenn die Quellen inzwischen freigegeben sind.
+        if mRunningRef <> nil then
+        begin
+          TInterlocked.Exchange(mRunning.Active, 0);
+        end;
+      end;
+    end;
+end;
+
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
   const APart: IAtlasCompletionSink);
 var
   Provider: IAtlasCompletionProvider;
   Part: IAtlasCompletionSink;
-  Context: TAtlasContext;
   Running: TRunning;
-  RunningRef: IInterface;
   Error: string;
 begin
   if TAtlasGuard.ProviderDisabled(AEntry.Name) then
@@ -292,7 +331,6 @@ begin
     Exit;
   end;
   Running := AEntry.Running;
-  RunningRef := AEntry.RunningRef;
   // Der vorige Aufruf läuft noch: keinen weiteren Arbeiter belegen, diesmal ohne diese Quelle.
   if TInterlocked.CompareExchange(Running.Active, 1, 0) <> 0 then
   begin
@@ -304,18 +342,7 @@ begin
   TInterlocked.Exchange(Running.Started, Int64(TThread.GetTickCount64));
   Provider := AEntry.Provider;
   Part := APart;
-  Context := AContext;
-  case TAtlasTimeLimit.Run(
-    procedure
-    begin
-      try
-        Provider.Query(Context, Part);
-      finally
-        // Über RunningRef lebt der Zustand, auch wenn die Quellen inzwischen freigegeben sind.
-        if RunningRef <> nil then
-          TInterlocked.Exchange(Running.Active, 0);
-      end;
-    end, Error, FTimeLimitMs) of
+  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), Error, FTimeLimitMs) of
     TAtlasTimedOutcome.Done:
       ;
     TAtlasTimedOutcome.Failed:

@@ -2086,6 +2086,17 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert, ein Projekt mit e
 | DM13 | Diagnosemodus an, einige Abfragen, dann aus (oder IDE schließen) | `atlas-diagnosemodus.txt` enthält den Bericht ohne Dateinamen; während der Modus an ist, höchstens alle 30 s aktualisiert |
 | DM14 | Dunkles und helles Thema, 150 % Skalierung | Tabelle lesbar, Warnfarbe deutlich, nichts abgeschnitten; Themenwechsel ohne Neustart |
 | DM15 | Diagnosemodus an, IDE neu starten | Fenster öffnet nach dem Laden wieder, Statuszeile gelb |
+| DM16 | `Atlas.Tests` ausführen | `TAtlasPluginTimingsTests`, `TAtlasPluginReportTests`, `TAtlasPluginTimingsSettingsTests`, `TAtlasPluginGridRowsTests` und `TAtlasDiagnosticsFrameTests` grün |
+| DM17 | Diagnosemodus an; Fenster „Atlas-Diagnose“ | Reiter Hauptthread, Server, Hintergrund, Hänger, Vervollständigung; Hauptthread aktiv mit Leiste „Hauptthread durch Atlas belegt, letzte 60 s: … %“ mit Verlaufslinie, „Langsam ab 16 ms“, Knöpfe Anhalten, Zurücksetzen, Bericht kopieren |
+| DM18 | Eine Minute normal arbeiten (tippen, scrollen, speichern) | Tabelle je Funktion füllt sich, größte eigene Zeit oben, Anteil als Balken; Werte ab 16 ms gelb, ab 160 ms rot; langsame Aufrufe neueste zuerst mit Aktion (z. B. „Speichern prüfen“) |
+| DM19 | Rechtsklick auf eine Funktion: „Nur X zeigen“, dann „Alle langsamen Aufrufe zeigen“ | Liste und Überschrift nur für X, dann wieder alle; Doppelklick auf die Zeile wirkt wie „Nur X zeigen“ |
+| DM20 | Rechtsklick: „bis zum Neustart ausschalten“ | Funktion arbeitet nicht mehr (z. B. Minimap leer), Hinweis in der Leiste („… ist bis zum Neustart aus …“), Eintrag in `atlas.log`; wieder an über *Atlas › Abgeschaltete Funktionen einschalten* oder nach IDE-Neustart |
+| DM21 | „Zeile kopieren“, „Anhalten“, „Zurücksetzen“ | Zeile mit Tabulatoren in der Zwischenablage; angehalten bleiben die Werte stehen, Knopf heißt „Weiter“, Fußzeile „Angehalten“; Zurücksetzen leert alles, „Messung seit“ neu |
+| DM22 | Reiter Server, einige Vervollständigungen und Tooltips | Je Anfrage Anzahl, Mittel, Maximum, „Hauptthread gewartet“, Zeitüberschreitung (gelb), abgebrochen, Fehler (rot); längste Wartezeit oben |
+| DM23 | Reiter Hintergrund und Hänger; Wächter testen (W1) | Quellen der Vervollständigung mit Arbeitszeit und „zu langsam“, Kopf „Arbeiter für Datenquellen belegt: n“; Hänger mit Aktion „Wächter-Test“, ~1000 ms, Atlas beteiligt: ja |
+| DM24 | „Bericht kopieren“ auf einem Plugin-Reiter | Bericht wie DM7 mit zusätzlichem Abschnitt „## Plugin-Zeiten“ (Funktionen, langsame Aufrufe, Anfragen, Quellen, Hänger), ohne Quelltext und Dateinamen |
+| DM25 | *Allgemein*: „Plugin-Zeiten messen …“ aus, OK | Plugin-Reiter zeigen nur den Hinweis, Vervollständigung wie bisher; kein Messpunkt läuft (Profiler ohne Zusatzzeit). „Langsam ab (ms eigener Zeit im Hauptthread)“ auf 50: Schwelle in der Leiste 50 ms, 0 bzw. 5000 werden 1 bzw. 1000 |
+| DM26 | Dunkles und helles Thema, 150 % Skalierung, Fenster schmal | Reiter, Tabellen und Leiste lesbar, nichts abgeschnitten, Tabellen scrollen |
 
 ## Einrichtung mit Prüfliste (#625)
 
