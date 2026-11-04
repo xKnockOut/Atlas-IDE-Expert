@@ -147,6 +147,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Dock.Plan` | `Core/Dock/Atlas.Core.Dock.Plan.pas` | Ordner `Core/Dock` |
 | `Atlas.Core.Documentation.Contract` | `Core/Documentation/Atlas.Core.Documentation.Contract.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Documentation.Layout` | `Core/Documentation/Atlas.Core.Documentation.Layout.pas` | Ordner `Core/Documentation` |
+| `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
