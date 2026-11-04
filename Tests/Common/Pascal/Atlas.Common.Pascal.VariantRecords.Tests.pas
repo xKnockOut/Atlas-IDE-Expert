@@ -30,6 +30,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -283,7 +284,7 @@ begin
     Request.Index := Index;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := TCompletionSettings.Default;
-    Items := TLspCompletion.Collect(Request, TPostfixOptions.Default, nil);
+    Items := TCompletionLists.Collect(Request, TPostfixOptions.Default, nil);
   finally
     Request.Free;
     Resolver.Free;

@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
@@ -187,7 +188,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;

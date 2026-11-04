@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -208,7 +209,7 @@ begin
         AText := UnitListen;
         Result := SameText(AFileName, ListenFile);
       end;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;

@@ -81,6 +81,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Lsp.Completion.Postfix,
+  Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
@@ -158,12 +159,18 @@ function TPostfixCompletionTests.ItemsIn(const AText: string; ALine: Integer; AC
   const AOptions: TPostfixOptions): TCompletionItems;
 var
   Tree: TSyntaxTree;
+  Request: TCompletionRequest;
 begin
   Tree := TPascalParser.Parse(AText);
+  Request := TCompletionRequest.Create(AText, HauptFile, TTextPosition.Create(ALine, ACharacter));
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, AText,
-      TTextPosition.Create(ALine, ACharacter), TCompletionMatching.Prefix, AOptions);
+    Request.Tree := Tree;
+    Request.Resolver := FResolver;
+    Request.Index := FIndex;
+    Request.Matching := TCompletionMatching.Prefix;
+    Result := TCompletionLists.Collect(Request, AOptions, nil);
   finally
+    Request.Free;
     Tree.Free;
   end;
 end;
