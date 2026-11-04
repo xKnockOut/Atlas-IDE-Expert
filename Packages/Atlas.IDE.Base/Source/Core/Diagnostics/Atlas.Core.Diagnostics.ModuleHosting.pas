@@ -56,6 +56,12 @@ type
     procedure AddPart(const AModule: IAtlasModule);
     /// <summary>Teile der Tabelle mit den bereitgestellten abgleichen; True, wenn eins dazukam.</summary>
     function SyncParts: Boolean;
+    class function Contains(const AParts: TArray<IAtlasFeaturePart>; const APart: IAtlasFeaturePart): Boolean;
+      static;
+    /// <summary>Teile, die nicht mehr in AWanted stehen, stoppen und austragen.</summary>
+    procedure DropWithdrawn(const AWanted: TArray<IAtlasFeaturePart>);
+    /// <summary>Neuen Teil eintragen; wirft, wenn sein Name schon in der Tabelle steht.</summary>
+    procedure AppendPart(const AItem: TAtlasProvided; const APart: IAtlasFeaturePart);
     function SwitchOf(const AOwnerId: string): string;
     function IndexOfPart(const APart: IAtlasFeaturePart): Integer;
     class function IsActiveOf(const AModule: IAtlasModule): TFunc<Boolean>; static;
@@ -236,16 +242,74 @@ begin
   end;
 end;
 
+class function TAtlasModuleHosting.Contains(const AParts: TArray<IAtlasFeaturePart>;
+  const APart: IAtlasFeaturePart): Boolean;
+var
+  mPart: IAtlasFeaturePart;
+begin
+  Result := False;
+  for mPart in AParts do
+  begin
+    if Pointer(mPart) = Pointer(APart) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TAtlasModuleHosting.DropWithdrawn(const AWanted: TArray<IAtlasFeaturePart>);
+var
+  mIndex: Integer;
+begin
+  // Zurückgezogen: stoppen, falls es läuft, und aus der Tabelle (rückwärts).
+  for mIndex := High(FParts) downto 0 do
+  begin
+    if Contains(AWanted, FParts[mIndex].Part) then
+    begin
+      Continue;
+    end;
+    try
+      if FParts[mIndex].Part.IsActive then
+      begin
+        FParts[mIndex].Part.Stop;
+      end;
+    except
+      on mError: Exception do
+      begin
+        FFailures := FFailures + [FParts[mIndex].Name + ': ' + mError.ClassName + ': ' + mError.Message];
+      end;
+    end;
+    FFeatures.Remove(FParts[mIndex].Name);
+    Delete(FParts, mIndex, 1);
+  end;
+end;
+
+procedure TAtlasModuleHosting.AppendPart(const AItem: TAtlasProvided; const APart: IAtlasFeaturePart);
+var
+  mEntry: TPartEntry;
+  mSwitch: string;
+begin
+  mEntry.Part := APart;
+  mEntry.Name := APart.Name;
+  if FFeatures.Contains(mEntry.Name) then
+  begin
+    raise EAtlasModuleRegistry.CreateFmt('Teil %s gibt es schon (Modul %s)', [mEntry.Name, AItem.OwnerId]);
+  end;
+  FFeatures.AddWanted(mEntry.Name, PartWanted(APart), PartIsActive(APart), PartStart(APart), PartStop(APart));
+  mSwitch := SwitchOf(AItem.OwnerId);
+  if mSwitch <> '' then
+  begin
+    FFeatures.Join(mSwitch, [mEntry.Name]);
+  end;
+  FParts := FParts + [mEntry];
+end;
+
 function TAtlasModuleHosting.SyncParts: Boolean;
 var
   mProvided: TArray<TAtlasProvided>;
   mItem: TAtlasProvided;
   mWanted: TArray<IAtlasFeaturePart>;
   mPart: IAtlasFeaturePart;
-  mIndex: Integer;
-  mFound: Boolean;
-  mEntry: TPartEntry;
-  mSwitch: string;
 begin
   Result := False;
   mProvided := FRegistry.Provisions(IAtlasFeaturePart);
@@ -257,54 +321,15 @@ begin
       mWanted := mWanted + [mPart];
     end;
   end;
-  // Zurückgezogen: stoppen, falls es läuft, und aus der Tabelle (rückwärts).
-  for mIndex := High(FParts) downto 0 do
-  begin
-    mFound := False;
-    for mPart in mWanted do
-    begin
-      if Pointer(mPart) = Pointer(FParts[mIndex].Part) then
-      begin
-        mFound := True;
-      end;
-    end;
-    if mFound then
-    begin
-      Continue;
-    end;
-    try
-      if FParts[mIndex].Part.IsActive then
-      begin
-        FParts[mIndex].Part.Stop;
-      end;
-    except
-      on mError: Exception do
-        FFailures := FFailures + [FParts[mIndex].Name + ': ' + mError.ClassName + ': ' + mError.Message];
-    end;
-    FFeatures.Remove(FParts[mIndex].Name);
-    Delete(FParts, mIndex, 1);
-  end;
+  DropWithdrawn(mWanted);
   // Neu: in Reihenfolge der Bereitstellung anhängen.
   for mItem in mProvided do
   begin
-    if not Supports(mItem.Instance, IAtlasFeaturePart, mPart) or (IndexOfPart(mPart) >= 0) then
+    if Supports(mItem.Instance, IAtlasFeaturePart, mPart) and (IndexOfPart(mPart) < 0) then
     begin
-      Continue;
+      AppendPart(mItem, mPart);
+      Result := True;
     end;
-    mEntry.Part := mPart;
-    mEntry.Name := mPart.Name;
-    if FFeatures.Contains(mEntry.Name) then
-    begin
-      raise EAtlasModuleRegistry.CreateFmt('Teil %s gibt es schon (Modul %s)', [mEntry.Name, mItem.OwnerId]);
-    end;
-    FFeatures.AddWanted(mEntry.Name, PartWanted(mPart), PartIsActive(mPart), PartStart(mPart), PartStop(mPart));
-    mSwitch := SwitchOf(mItem.OwnerId);
-    if mSwitch <> '' then
-    begin
-      FFeatures.Join(mSwitch, [mEntry.Name]);
-    end;
-    FParts := FParts + [mEntry];
-    Result := True;
   end;
 end;
 

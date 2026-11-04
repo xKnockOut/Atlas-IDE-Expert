@@ -292,73 +292,87 @@ begin
   Result := False;
 end;
 
+/// <summary>Läufe eines Abschnitts; unbekannte (neuerer Server) fallen weg.</summary>
+function DocRunsFromJson(const AItem: TJSONObject): TAtlasDocRuns;
+var
+  mRuns: TJSONArray;
+  mRunItem: TJSONValue;
+  mRun: TAtlasDocRun;
+  mKind: TAtlasDocRunKind;
+begin
+  Result := nil;
+  mRuns := nil;
+  if not AItem.TryGetValue<TJSONArray>('runs', mRuns) then
+  begin
+    Exit;
+  end;
+  for mRunItem in mRuns do
+  begin
+    if not (mRunItem is TJSONObject) or
+      not TAtlasDoc.TryParseRunKind(TJSONObject(mRunItem).GetValue<string>('kind', ''), mKind) then
+    begin
+      Continue;
+    end;
+    mRun := TAtlasDocRun.Create(mKind, TJSONObject(mRunItem).GetValue<string>('text', ''),
+      TJSONObject(mRunItem).GetValue<string>('target', ''));
+    mRun.Bold := TJSONObject(mRunItem).GetValue<Boolean>('bold', False);
+    mRun.Italic := TJSONObject(mRunItem).GetValue<Boolean>('italic', False);
+    mRun.Level := TJSONObject(mRunItem).GetValue<Integer>('level', 0);
+    if mKind = TAtlasDocRunKind.Ref then
+    begin
+      mRun.Location := TAtlasDocTarget.FromJson(TJSONObject(mRunItem));
+      if mRun.Location.Name = '' then
+      begin
+        mRun.Location.Name := mRun.Target;
+      end;
+    end;
+    Result := Result + [mRun];
+  end;
+end;
+
+function DocSectionFromJson(const AItem: TJSONObject; AKind: TAtlasDocSectionKind): TAtlasDocSection;
+var
+  mRef: TJSONValue;
+begin
+  Result := Default(TAtlasDocSection);
+  Result.Kind := AKind;
+  Result.Name := AItem.GetValue<string>('name', '');
+  mRef := AItem.GetValue('ref');
+  if mRef is TJSONObject then
+  begin
+    Result.NameRef := TAtlasDocTarget.FromJson(TJSONObject(mRef));
+    if Result.NameRef.Name = '' then
+    begin
+      Result.NameRef.Name := Result.Name;
+    end;
+  end;
+  Result.Runs := DocRunsFromJson(AItem);
+end;
+
 class function TAtlasDoc.FromJson(const AValue: TJSONValue): TAtlasDoc;
 var
-  List, Runs: TJSONArray;
-  Item, RunItem: TJSONValue;
-  Ref: TJSONValue;
-  Section: TAtlasDocSection;
-  Run: TAtlasDocRun;
-  SectionKind: TAtlasDocSectionKind;
-  RunKind: TAtlasDocRunKind;
+  mList: TJSONArray;
+  mItem: TJSONValue;
+  mKind: TAtlasDocSectionKind;
 begin
   Result := Default(TAtlasDoc);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  List := nil;
-  if not TJSONObject(AValue).TryGetValue<TJSONArray>('sections', List) then
+  mList := nil;
+  if not TJSONObject(AValue).TryGetValue<TJSONArray>('sections', mList) then
   begin
     Exit;
   end;
-  for Item in List do
+  for mItem in mList do
   begin
     // Unbekannte Abschnitte und Läufe (neuerer Server) überspringen statt abbrechen.
-    if not (Item is TJSONObject) or
-      not TryParseSectionKind(TJSONObject(Item).GetValue<string>('kind', ''), SectionKind) then
+    if (mItem is TJSONObject) and
+      TryParseSectionKind(TJSONObject(mItem).GetValue<string>('kind', ''), mKind) then
     begin
-      Continue;
+      Result.Sections := Result.Sections + [DocSectionFromJson(TJSONObject(mItem), mKind)];
     end;
-    Section := Default(TAtlasDocSection);
-    Section.Kind := SectionKind;
-    Section.Name := TJSONObject(Item).GetValue<string>('name', '');
-    Ref := TJSONObject(Item).GetValue('ref');
-    if Ref is TJSONObject then
-    begin
-      Section.NameRef := TAtlasDocTarget.FromJson(TJSONObject(Ref));
-      if Section.NameRef.Name = '' then
-      begin
-        Section.NameRef.Name := Section.Name;
-      end;
-    end;
-    Runs := nil;
-    if TJSONObject(Item).TryGetValue<TJSONArray>('runs', Runs) then
-    begin
-      for RunItem in Runs do
-      begin
-        if not (RunItem is TJSONObject) or
-          not TryParseRunKind(TJSONObject(RunItem).GetValue<string>('kind', ''), RunKind) then
-        begin
-          Continue;
-        end;
-        Run := TAtlasDocRun.Create(RunKind, TJSONObject(RunItem).GetValue<string>('text', ''),
-          TJSONObject(RunItem).GetValue<string>('target', ''));
-        Run.Bold := TJSONObject(RunItem).GetValue<Boolean>('bold', False);
-        Run.Italic := TJSONObject(RunItem).GetValue<Boolean>('italic', False);
-        Run.Level := TJSONObject(RunItem).GetValue<Integer>('level', 0);
-        if RunKind = TAtlasDocRunKind.Ref then
-        begin
-          Run.Location := TAtlasDocTarget.FromJson(TJSONObject(RunItem));
-          if Run.Location.Name = '' then
-          begin
-            Run.Location.Name := Run.Target;
-          end;
-        end;
-        Section.Runs := Section.Runs + [Run];
-      end;
-    end;
-    Result.Sections := Result.Sections + [Section];
   end;
 end;
 
@@ -569,157 +583,207 @@ begin
   until False;
 end;
 
-class function TAtlasDocSignature.Parse(const ADeclaration: string): TAtlasDocSignature;
+/// <summary>Erstes Wort nach "class": function, procedure, constructor, destructor, operator oder property;
+/// '' bei anderem.</summary>
+function SignatureWord(const AText: string): string;
 const
-  Modifiers: array[0..3] of string = ('const', 'var', 'out', 'constref');
-  Directives: array[0..6] of string = ('read', 'write', 'index', 'default', 'stored', 'nodefault', 'implements');
+  cWords: array[0..5] of string = ('function', 'procedure', 'constructor', 'destructor', 'operator', 'property');
 var
-  Text, Head, Group, Names, TypeName, Modifier, Name, Word, Rest: string;
-  Open, Close, Colon, Equal, Index: Integer;
-  CloseChar: Char;
-  Param: TAtlasDocParam;
+  mHead, mWord: string;
 begin
-  Result := Default(TAtlasDocSignature);
-  Text := Trim(StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Text = '' then
+  Result := '';
+  mHead := LowerCase(AText);
+  if mHead.StartsWith('class ') then
   begin
+    mHead := Trim(Copy(mHead, 7, MaxInt));
+  end;
+  mWord := Copy(mHead, 1, Pos(' ', mHead + ' ') - 1);
+  for mHead in cWords do
+  begin
+    if mWord = mHead then
+    begin
+      Exit(mWord);
+    end;
+  end;
+end;
+
+/// <summary>Position der öffnenden Klammer AOpenChar nach dem Namen, außerhalb von Generics; 0 ohne. AIndex steht
+/// danach auf der Klammer bzw. dem ersten Zeichen hinter dem Namen.</summary>
+function FindParamOpen(const AText: string; AOpenChar: Char; out AIndex: Integer): Integer;
+var
+  mClose: Integer;
+begin
+  Result := 0;
+  AIndex := 1;
+  while AIndex <= Length(AText) do
+  begin
+    if AText[AIndex] = '<' then
+    begin
+      mClose := FindTop(AText, '>', AIndex + 1);
+      if mClose = 0 then
+      begin
+        Exit;
+      end;
+      AIndex := mClose + 1;
+      Continue;
+    end;
+    if CharInSet(AText[AIndex], [':', ';', '=']) then
+    begin
+      Exit;
+    end;
+    if AText[AIndex] = AOpenChar then
+    begin
+      Exit(AIndex);
+    end;
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>[Ref] und andere Attribute vorn weglassen.</summary>
+function StripAttributes(const ANames: string): string;
+begin
+  Result := ANames;
+  while Result.StartsWith('[') and (Pos(']', Result) > 0) do
+  begin
+    Result := Trim(Copy(Result, Pos(']', Result) + 1, MaxInt));
+  end;
+end;
+
+/// <summary>Art (const/var/out/constref) vorn abtrennen; '' ohne.</summary>
+function TakeModifier(var ANames: string): string;
+const
+  cModifiers: array[0..3] of string = ('const', 'var', 'out', 'constref');
+var
+  mWord: string;
+begin
+  Result := '';
+  for mWord in cModifiers do
+  begin
+    if LowerCase(ANames).StartsWith(mWord + ' ') then
+    begin
+      ANames := Trim(Copy(ANames, Length(mWord) + 1, MaxInt));
+      Exit(mWord);
+    end;
+  end;
+end;
+
+/// <summary>Namen und Typ einer Gruppe "const A, B: string = ''".</summary>
+procedure SplitGroup(const AGroup: string; out ANames, ATypeName: string);
+var
+  mColon, mEqual: Integer;
+begin
+  mColon := FindTop(AGroup, ':', 1);
+  if mColon = 0 then
+  begin
+    ANames := AGroup;
+    ATypeName := '';
     Exit;
   end;
-  // Erstes Wort nach "class": function, procedure, constructor, destructor, operator, property.
-  Head := LowerCase(Text);
-  if Head.StartsWith('class ') then
+  ANames := Trim(Copy(AGroup, 1, mColon - 1));
+  ATypeName := Trim(Copy(AGroup, mColon + 1, MaxInt));
+  mEqual := FindTop(ATypeName, '=', 1);
+  if mEqual > 0 then
   begin
-    Head := Trim(Copy(Head, 7, MaxInt));
+    ATypeName := Trim(Copy(ATypeName, 1, mEqual - 1));
   end;
-  Word := Copy(Head, 1, Pos(' ', Head + ' ') - 1);
-  if (Word <> 'function') and (Word <> 'procedure') and (Word <> 'constructor') and (Word <> 'destructor') and
-    (Word <> 'operator') and (Word <> 'property') then
+end;
+
+/// <summary>Parameter einer Gruppe; Attribute stehen vor oder nach der Art.</summary>
+function GroupParams(const AGroup: string): TArray<TAtlasDocParam>;
+var
+  mNames, mTypeName, mModifier, mName: string;
+  mParam: TAtlasDocParam;
+begin
+  Result := nil;
+  SplitGroup(AGroup, mNames, mTypeName);
+  mNames := StripAttributes(mNames);
+  mModifier := TakeModifier(mNames);
+  mNames := StripAttributes(mNames);
+  for mName in SplitTop(mNames, ',') do
+  begin
+    if mName <> '' then
+    begin
+      mParam.Name := mName;
+      mParam.Modifier := mModifier;
+      mParam.TypeName := mTypeName;
+      Result := Result + [mParam];
+    end;
+  end;
+end;
+
+/// <summary>Ergebnis- bzw. Property-Typ: nach ":" bis ";" oder bis zum ersten Wort von read/write/index/default;
+/// '' ohne Doppelpunkt.</summary>
+function ResultTypeOf(const ARest: string): string;
+const
+  cDirectives: array[0..6] of string = ('read', 'write', 'index', 'default', 'stored', 'nodefault', 'implements');
+var
+  mWord: string;
+  mStop: Integer;
+begin
+  Result := Trim(ARest);
+  if not Result.StartsWith(':') then
+  begin
+    Exit('');
+  end;
+  Result := Trim(Copy(Result, 2, MaxInt));
+  mStop := FindTop(Result, ';', 1);
+  if mStop > 0 then
+  begin
+    Result := Copy(Result, 1, mStop - 1);
+  end;
+  for mWord in cDirectives do
+  begin
+    mStop := Pos(' ' + mWord + ' ', LowerCase(Result) + ' ');
+    if mStop > 0 then
+    begin
+      Result := Copy(Result, 1, mStop - 1);
+    end;
+  end;
+  Result := Trim(Result);
+end;
+
+class function TAtlasDocSignature.Parse(const ADeclaration: string): TAtlasDocSignature;
+var
+  mText, mGroup, mWord, mRest: string;
+  mOpen, mClose, mIndex: Integer;
+  mOpenChar, mCloseChar: Char;
+begin
+  Result := Default(TAtlasDocSignature);
+  mText := Trim(StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+  mWord := SignatureWord(mText);
+  if mWord = '' then
   begin
     Exit;
   end;
   // Parameterliste: erste runde (bzw. bei Properties eckige) Klammer nach dem Namen, außerhalb von Generics.
-  Result.IsProperty := Word = 'property';
+  Result.IsProperty := mWord = 'property';
+  mOpenChar := '(';
+  mCloseChar := ')';
   if Result.IsProperty then
   begin
-    CloseChar := ']';
-  end
-  else
-  begin
-    CloseChar := ')';
+    mOpenChar := '[';
+    mCloseChar := ']';
   end;
-  Open := 0;
-  Index := 1;
-  while Index <= Length(Text) do
+  mOpen := FindParamOpen(mText, mOpenChar, mIndex);
+  mRest := Copy(mText, mIndex, MaxInt);
+  if mOpen > 0 then
   begin
-    if Text[Index] = '<' then
-    begin
-      Close := FindTop(Text, '>', Index + 1);
-      if Close = 0 then
-      begin
-        Break;
-      end;
-      Index := Close + 1;
-      Continue;
-    end;
-    if CharInSet(Text[Index], [':', ';', '=']) then
-    begin
-      Break;
-    end;
-    if ((CloseChar = ')') and (Text[Index] = '(')) or ((CloseChar = ']') and (Text[Index] = '[')) then
-    begin
-      Open := Index;
-      Break;
-    end;
-    Inc(Index);
-  end;
-  Rest := Text;
-  if Open > 0 then
-  begin
-    Close := FindTop(Text, CloseChar, Open + 1);
-    if Close = 0 then
+    mClose := FindTop(mText, mCloseChar, mOpen + 1);
+    if mClose = 0 then
     begin
       Exit;
     end;
-    for Group in SplitTop(Copy(Text, Open + 1, Close - Open - 1), ';') do
+    for mGroup in SplitTop(Copy(mText, mOpen + 1, mClose - mOpen - 1), ';') do
     begin
-      if Group = '' then
+      if mGroup <> '' then
       begin
-        Continue;
-      end;
-      Colon := FindTop(Group, ':', 1);
-      if Colon > 0 then
-      begin
-        Names := Trim(Copy(Group, 1, Colon - 1));
-        TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
-        Equal := FindTop(TypeName, '=', 1);
-        if Equal > 0 then
-        begin
-          TypeName := Trim(Copy(TypeName, 1, Equal - 1));
-        end;
-      end
-      else
-      begin
-        Names := Group;
-        TypeName := '';
-      end;
-      // [Ref] und andere Attribute stehen vor oder nach der Art (const/var/out).
-      while Names.StartsWith('[') and (Pos(']', Names) > 0) do
-      begin
-        Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
-      end;
-      Modifier := '';
-      for Word in Modifiers do
-      begin
-        if LowerCase(Names).StartsWith(Word + ' ') then
-        begin
-          Modifier := Word;
-          Names := Trim(Copy(Names, Length(Word) + 1, MaxInt));
-          Break;
-        end;
-      end;
-      // Attribute zwischen Art und Name ebenfalls weglassen.
-      while Names.StartsWith('[') and (Pos(']', Names) > 0) do
-      begin
-        Names := Trim(Copy(Names, Pos(']', Names) + 1, MaxInt));
-      end;
-      for Name in SplitTop(Names, ',') do
-      begin
-        if Name <> '' then
-        begin
-          Param.Name := Name;
-          Param.Modifier := Modifier;
-          Param.TypeName := TypeName;
-          Result.Params := Result.Params + [Param];
-        end;
+        Result.Params := Result.Params + GroupParams(mGroup);
       end;
     end;
-    Rest := Copy(Text, Close + 1, MaxInt);
-  end
-  else
-  begin
-    Rest := Copy(Text, Index, MaxInt);
+    mRest := Copy(mText, mClose + 1, MaxInt);
   end;
   Result.Known := True;
-  // Ergebnis- bzw. Property-Typ: nach ":" bis ";" oder bis zum ersten Wort von read/write/index/default.
-  Rest := Trim(Rest);
-  if Rest.StartsWith(':') then
-  begin
-    Rest := Trim(Copy(Rest, 2, MaxInt));
-    Close := FindTop(Rest, ';', 1);
-    if Close > 0 then
-    begin
-      Rest := Copy(Rest, 1, Close - 1);
-    end;
-    for Word in Directives do
-    begin
-      Index := Pos(' ' + Word + ' ', LowerCase(Rest) + ' ');
-      if Index > 0 then
-      begin
-        Rest := Copy(Rest, 1, Index - 1);
-      end;
-    end;
-    Result.ResultType := Trim(Rest);
-  end;
+  Result.ResultType := ResultTypeOf(mRest);
 end;
 
 end.
