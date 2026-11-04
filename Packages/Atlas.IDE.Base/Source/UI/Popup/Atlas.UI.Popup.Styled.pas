@@ -20,6 +20,15 @@ uses
   Atlas.Core.Style.Syntax;
 
 type
+  /// <summary>Wohin gezeichnet wird: Leinwand, Farben und Eckradius der Akzentfläche.</summary>
+  TAtlasStyledTarget = record
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Radius: Integer;
+    class function Create(ACanvas: TCanvas; const AColors: TAtlasColors; ARadius: Integer): TAtlasStyledTarget;
+      static;
+  end;
+
   TAtlasStyledText = record
   private type
     TPiece = record
@@ -31,6 +40,12 @@ type
     end;
   private
     function Pieces(AFrom, ATill: Integer): TArray<TPiece>;
+    /// <summary>Schnitte in [AFrom, ATill] an den Grenzen des aktiven und der gedämpften Bereiche, aufsteigend;
+    /// liefert ihre Zahl.</summary>
+    function CutsWithin(AFrom, ATill: Integer; var ACuts: TArray<Integer>): Integer;
+    function PieceOf(AStart, AStop: Integer; AKind: TAtlasTokenKind): TPiece;
+    function PieceText(const APiece: TPiece): string;
+    function PieceWidths(ACanvas: TCanvas; const APieces: TArray<TPiece>): TArray<Integer>;
     procedure ApplyFont(ACanvas: TCanvas; const APiece: TPiece);
   public
     Text: string;
@@ -45,9 +60,10 @@ type
     class function Create(const AText: string): TAtlasStyledText; static;
     /// <summary>Breite von Text[AFrom..ATill) in der Schrift von ACanvas.</summary>
     function Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;
-    /// <summary>Zeichnet Text[AFrom..ATill) ab AX in der Zeile ARow; AX steht danach hinter dem Text.</summary>
-    procedure Draw(ACanvas: TCanvas; const AColors: TAtlasColors; AFrom, ATill: Integer; var AX: Integer;
-      const ARow: TRect; ADimmed: Boolean; ARadius: Integer);
+    /// <summary>Zeichnet Text[AFrom..ATill) ab AX in der Zeile ARow; AX steht danach hinter dem Text.
+    /// ARange: X = AFrom, Y = ATill (wie die Zeilen von WrapAtSpaces).</summary>
+    procedure Draw(const ATarget: TAtlasStyledTarget; const ARange: TPoint; var AX: Integer; const ARow: TRect;
+      ADimmed: Boolean);
     /// <summary>Breiten aller Präfixe: Ergebnis[i] = Breite von Text[0..i), Länge Length(Text) + 1.</summary>
     function PrefixWidths(ACanvas: TCanvas): TArray<Integer>;
     /// <summary>Zeilen (Bereiche) bei Umbruch an Leerzeichen; Folgezeilen um AIndent schmaler.</summary>
@@ -61,6 +77,54 @@ uses
   System.Math,
   Atlas.Core.Style.Wrap;
 
+/// <summary>ACuts[0..ACount) aufsteigend: Einfügesortierung, die Liste ist winzig.</summary>
+procedure SortCuts(var ACuts: TArray<Integer>; ACount: Integer);
+var
+  mIndex, mValue, mPosition: Integer;
+begin
+  for mIndex := 1 to ACount - 1 do
+  begin
+    mValue := ACuts[mIndex];
+    mPosition := mIndex - 1;
+    while (mPosition >= 0) and (ACuts[mPosition] > mValue) do
+    begin
+      ACuts[mPosition + 1] := ACuts[mPosition];
+      Dec(mPosition);
+    end;
+    ACuts[mPosition + 1] := mValue;
+  end;
+end;
+
+/// <summary>Farbe eines Stücks: aktiv in Akzent, gedämpft, sonst nach der Art des Tokens.</summary>
+function PieceColor(const AColors: TAtlasColors; AKind: TAtlasTokenKind; AActive, AMuted: Boolean): TAtlasColor;
+begin
+  if AActive then
+  begin
+    Exit(AColors.Accent);
+  end;
+  if AMuted then
+  begin
+    Exit(AColors.Muted);
+  end;
+  case AKind of
+    TAtlasTokenKind.Keyword: Result := AColors.Keyword;
+    TAtlasTokenKind.StringLiteral: Result := AColors.StringLiteral;
+    TAtlasTokenKind.Comment: Result := AColors.Comment;
+  else
+    Result := AColors.Text;
+  end;
+end;
+
+{ TAtlasStyledTarget }
+
+class function TAtlasStyledTarget.Create(ACanvas: TCanvas; const AColors: TAtlasColors;
+  ARadius: Integer): TAtlasStyledTarget;
+begin
+  Result.Canvas := ACanvas;
+  Result.Colors := AColors;
+  Result.Radius := ARadius;
+end;
+
 { TAtlasStyledText }
 
 class function TAtlasStyledText.Create(const AText: string): TAtlasStyledText;
@@ -73,97 +137,106 @@ begin
   Result.MutedRanges := TAtlasSyntax.DefaultRanges(AText);
 end;
 
-function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
+function TAtlasStyledText.CutsWithin(AFrom, ATill: Integer; var ACuts: TArray<Integer>): Integer;
 var
-  Token: TAtlasToken;
-  Cuts: TArray<Integer>;
-  CutCount, Count: Integer;
-  Piece: TPiece;
-  Index, From, Till, Value, Position: Integer;
-  Range: TPoint;
+  mCount: Integer;
+  mRange: TPoint;
 
-  procedure AddCut(AValue: Integer);
+  procedure AddInside(AValue: Integer);
   begin
-    Cuts[CutCount] := AValue;
-    Inc(CutCount);
+    if (AValue > AFrom) and (AValue < ATill) then
+    begin
+      ACuts[mCount] := AValue;
+      Inc(mCount);
+    end;
   end;
 
 begin
-  Result := nil;
-  Count := 0;
-  // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
-  Cuts := nil;
-  SetLength(Cuts, 4 + 2 * Length(MutedRanges));
-  for Token in Tokens do
+  ACuts[0] := AFrom;
+  mCount := 1;
+  AddInside(ActiveStart);
+  AddInside(ActiveStop);
+  for mRange in MutedRanges do
   begin
-    From := Max(AFrom, Token.Start);
-    Till := Min(ATill, Token.Stop);
-    if Till <= From then
+    AddInside(mRange.X);
+    AddInside(mRange.Y);
+  end;
+  ACuts[mCount] := ATill;
+  Inc(mCount);
+  SortCuts(ACuts, mCount);
+  Result := mCount;
+end;
+
+function TAtlasStyledText.PieceOf(AStart, AStop: Integer; AKind: TAtlasTokenKind): TPiece;
+var
+  mRange: TPoint;
+begin
+  Result.Start := AStart;
+  Result.Stop := AStop;
+  Result.Kind := AKind;
+  Result.Active := (ActiveStart >= 0) and (AStart >= ActiveStart) and (AStop <= ActiveStop);
+  Result.Muted := False;
+  for mRange in MutedRanges do
+  begin
+    if (AStart >= mRange.X) and (AStop <= mRange.Y) then
+    begin
+      Result.Muted := True;
+    end;
+  end;
+end;
+
+function TAtlasStyledText.PieceText(const APiece: TPiece): string;
+begin
+  Result := Copy(Text, APiece.Start + 1, APiece.Stop - APiece.Start);
+end;
+
+function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
+var
+  mToken: TAtlasToken;
+  mCuts: TArray<Integer>;
+  mCutCount, mCount, mIndex: Integer;
+begin
+  Result := nil;
+  mCount := 0;
+  // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
+  mCuts := nil;
+  SetLength(mCuts, 4 + 2 * Length(MutedRanges));
+  for mToken in Tokens do
+  begin
+    if Min(ATill, mToken.Stop) <= Max(AFrom, mToken.Start) then
     begin
       Continue;
     end;
     // Innerhalb des Tokens an den Grenzen des aktiven und der gedämpften Bereiche schneiden.
-    CutCount := 0;
-    AddCut(From);
-    if (ActiveStart > From) and (ActiveStart < Till) then
+    mCutCount := CutsWithin(Max(AFrom, mToken.Start), Min(ATill, mToken.Stop), mCuts);
+    for mIndex := 0 to mCutCount - 2 do
     begin
-      AddCut(ActiveStart);
-    end;
-    if (ActiveStop > From) and (ActiveStop < Till) then
-    begin
-      AddCut(ActiveStop);
-    end;
-    for Range in MutedRanges do
-    begin
-      if (Range.X > From) and (Range.X < Till) then
-      begin
-        AddCut(Range.X);
-      end;
-      if (Range.Y > From) and (Range.Y < Till) then
-      begin
-        AddCut(Range.Y);
-      end;
-    end;
-    AddCut(Till);
-    // Aufsteigend und ohne Doppelte: Einfügesortierung, die Liste ist winzig.
-    for Index := 1 to CutCount - 1 do
-    begin
-      Value := Cuts[Index];
-      Position := Index - 1;
-      while (Position >= 0) and (Cuts[Position] > Value) do
-      begin
-        Cuts[Position + 1] := Cuts[Position];
-        Dec(Position);
-      end;
-      Cuts[Position + 1] := Value;
-    end;
-    for Index := 0 to CutCount - 2 do
-    begin
-      if Cuts[Index + 1] = Cuts[Index] then
+      if mCuts[mIndex + 1] = mCuts[mIndex] then
       begin
         Continue;
       end;
-      Piece.Start := Cuts[Index];
-      Piece.Stop := Cuts[Index + 1];
-      Piece.Kind := Token.Kind;
-      Piece.Active := (ActiveStart >= 0) and (Piece.Start >= ActiveStart) and (Piece.Stop <= ActiveStop);
-      Piece.Muted := False;
-      for Range in MutedRanges do
+      if mCount = Length(Result) then
       begin
-        if (Piece.Start >= Range.X) and (Piece.Stop <= Range.Y) then
-        begin
-          Piece.Muted := True;
-        end;
+        SetLength(Result, 2 * mCount + 8);
       end;
-      if Count = Length(Result) then
-      begin
-        SetLength(Result, 2 * Count + 8);
-      end;
-      Result[Count] := Piece;
-      Inc(Count);
+      Result[mCount] := PieceOf(mCuts[mIndex], mCuts[mIndex + 1], mToken.Kind);
+      Inc(mCount);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
+end;
+
+function TAtlasStyledText.PieceWidths(ACanvas: TCanvas; const APieces: TArray<TPiece>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(APieces));
+  for mIndex := 0 to High(APieces) do
+  begin
+    ApplyFont(ACanvas, APieces[mIndex]);
+    Result[mIndex] := ACanvas.TextWidth(PieceText(APieces[mIndex]));
+  end;
 end;
 
 procedure TAtlasStyledText.ApplyFont(ACanvas: TCanvas; const APiece: TPiece);
@@ -192,86 +265,81 @@ begin
   ACanvas.Font.Style := [];
 end;
 
-procedure TAtlasStyledText.Draw(ACanvas: TCanvas; const AColors: TAtlasColors; AFrom, ATill: Integer;
-  var AX: Integer; const ARow: TRect; ADimmed: Boolean; ARadius: Integer);
-const
-  Flags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
+/// <summary>Akzentfläche unter jedem zusammenhängenden aktiven Lauf ab AX.</summary>
+procedure DrawActiveFill(const ATarget: TAtlasStyledTarget; const AActive: TArray<Boolean>;
+  const AWidths: TArray<Integer>; AX: Integer; const ARow: TRect);
 var
-  AllPieces: TArray<TPiece>;
-  Piece: TPiece;
-  Widths: TArray<Integer>;
-  Index, X, FillStart, Pad: Integer;
-  Part: TRect;
-  Color: TAtlasColor;
-  PieceText: string;
+  mIndex, mX, mFillStart, mPad: Integer;
+  mCanvas: TCanvas;
 begin
-  AllPieces := Pieces(AFrom, ATill);
-  SetLength(Widths, Length(AllPieces));
-  for Index := 0 to High(AllPieces) do
+  mCanvas := ATarget.Canvas;
+  mX := AX;
+  mFillStart := -1;
+  mPad := Max(1, ATarget.Radius div 2);
+  for mIndex := 0 to High(AActive) do
   begin
-    ApplyFont(ACanvas, AllPieces[Index]);
-    Widths[Index] := ACanvas.TextWidth(Copy(Text, AllPieces[Index].Start + 1,
-      AllPieces[Index].Stop - AllPieces[Index].Start));
+    if AActive[mIndex] and (mFillStart < 0) then
+    begin
+      mFillStart := mX;
+    end;
+    Inc(mX, AWidths[mIndex]);
+    if (mFillStart >= 0) and ((mIndex = High(AActive)) or not AActive[mIndex + 1]) then
+    begin
+      mCanvas.Brush.Style := bsSolid;
+      mCanvas.Brush.Color := TColor(ATarget.Colors.AccentSoft);
+      mCanvas.Pen.Style := psClear;
+      mCanvas.RoundRect(mFillStart - mPad, ARow.Top + 1, Min(mX + mPad, ARow.Right) + 1, ARow.Bottom,
+        2 * ATarget.Radius, 2 * ATarget.Radius);
+      mCanvas.Pen.Style := psSolid;
+      mFillStart := -1;
+    end;
   end;
+end;
+
+procedure TAtlasStyledText.Draw(const ATarget: TAtlasStyledTarget; const ARange: TPoint; var AX: Integer;
+  const ARow: TRect; ADimmed: Boolean);
+const
+  cFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS;
+var
+  mPieces: TArray<TPiece>;
+  mWidths: TArray<Integer>;
+  mActive: TArray<Boolean>;
+  mIndex: Integer;
+  mPart: TRect;
+  mText: string;
+  mCanvas: TCanvas;
+begin
+  mCanvas := ATarget.Canvas;
+  mPieces := Pieces(ARange.X, ARange.Y);
+  mWidths := PieceWidths(mCanvas, mPieces);
   // 1. Akzentfläche unter dem aktiven Bereich (vor dem Text, damit Nachbarzeichen darüber liegen).
   if ActiveFill and not ADimmed then
   begin
-    X := AX;
-    FillStart := -1;
-    Pad := Max(1, ARadius div 2);
-    for Index := 0 to High(AllPieces) do
+    SetLength(mActive, Length(mPieces));
+    for mIndex := 0 to High(mPieces) do
     begin
-      if AllPieces[Index].Active and (FillStart < 0) then
-      begin
-        FillStart := X;
-      end;
-      Inc(X, Widths[Index]);
-      if (FillStart >= 0) and ((Index = High(AllPieces)) or not AllPieces[Index + 1].Active) then
-      begin
-        ACanvas.Brush.Style := bsSolid;
-        ACanvas.Brush.Color := TColor(AColors.AccentSoft);
-        ACanvas.Pen.Style := psClear;
-        ACanvas.RoundRect(FillStart - Pad, ARow.Top + 1, Min(X + Pad, ARow.Right) + 1, ARow.Bottom, 2 * ARadius,
-          2 * ARadius);
-        ACanvas.Pen.Style := psSolid;
-        FillStart := -1;
-      end;
+      mActive[mIndex] := mPieces[mIndex].Active;
     end;
+    DrawActiveFill(ATarget, mActive, mWidths, AX, ARow);
   end;
   // 2. Text.
-  ACanvas.Brush.Style := bsClear;
-  for Index := 0 to High(AllPieces) do
+  mCanvas.Brush.Style := bsClear;
+  for mIndex := 0 to High(mPieces) do
   begin
-    Piece := AllPieces[Index];
     if AX >= ARow.Right then
     begin
       Break;
     end;
-    if Piece.Active and not ADimmed then
-    begin
-      Color := AColors.Accent;
-    end
-    else if ADimmed or Piece.Muted then
-    begin
-      Color := AColors.Muted;
-    end
-    else
-      case Piece.Kind of
-        TAtlasTokenKind.Keyword: Color := AColors.Keyword;
-        TAtlasTokenKind.StringLiteral: Color := AColors.StringLiteral;
-        TAtlasTokenKind.Comment: Color := AColors.Comment;
-      else
-        Color := AColors.Text;
-      end;
-    ApplyFont(ACanvas, Piece);
-    ACanvas.Font.Color := TColor(Color);
-    PieceText := Copy(Text, Piece.Start + 1, Piece.Stop - Piece.Start);
-    Part := Rect(AX, ARow.Top, ARow.Right, ARow.Bottom);
-    DrawText(ACanvas.Handle, PChar(PieceText), -1, Part, Flags or DT_END_ELLIPSIS);
-    Inc(AX, Widths[Index]);
+    ApplyFont(mCanvas, mPieces[mIndex]);
+    mCanvas.Font.Color := TColor(PieceColor(ATarget.Colors, mPieces[mIndex].Kind,
+      mPieces[mIndex].Active and not ADimmed, ADimmed or mPieces[mIndex].Muted));
+    mText := PieceText(mPieces[mIndex]);
+    mPart := Rect(AX, ARow.Top, ARow.Right, ARow.Bottom);
+    DrawText(mCanvas.Handle, PChar(mText), -1, mPart, cFlags);
+    Inc(AX, mWidths[mIndex]);
   end;
-  ACanvas.Font.Style := [];
-  ACanvas.Brush.Style := bsSolid;
+  mCanvas.Font.Style := [];
+  mCanvas.Brush.Style := bsSolid;
 end;
 
 function TAtlasStyledText.PrefixWidths(ACanvas: TCanvas): TArray<Integer>;

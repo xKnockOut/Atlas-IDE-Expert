@@ -7,7 +7,7 @@
 // - TAtlasCodeLinkHover zeigt nach TAtlasCloseRules.TooltipShowDelayMs die
 //   Kurzvorschau: Stand aus dem Zwischenspeicher der Vorschau (Peek), sonst
 //   „Wird geladen …“ und eine Kurzabfrage im Hintergrund (Lookup); ein Stand
-//   älter als TAtlasIdeIssuePreview.FreshMs wird dabei aufgefrischt.
+//   älter als TAtlasIdeIssueLookups.FreshMs wird dabei aufgefrischt.
 // Gesichert über TAtlasFeature.IssueLinks (#493). Nur im Hauptthread.
 
 interface
@@ -99,7 +99,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Tracker.IssueLookups;
 
 { TAtlasCodeLinkPainter }
 
@@ -279,7 +280,7 @@ begin
     Exit;
   end;
   mTarget := FHit.Match.IssueTarget(FTarget);
-  mCached := mPreview.Peek(mTarget, FHit.Match.IssueKey, mDetails);
+  mCached := mPreview.Lookups.Peek(mTarget, FHit.Match.IssueKey, mDetails);
   if mCached then
   begin
     ShowState(FHit.Match.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None);
@@ -289,13 +290,13 @@ begin
     ShowState(FHit.Match.Key, TAtlasIssueTipState.Loading, mDetails, TAtlasCiFetchError.None);
   end;
   // Erst der Hover fragt; ein frischer Stand braucht keine Abfrage.
-  if mCached and TAtlasIdeIssuePreview.Fresh(mDetails) then
+  if mCached and TAtlasIdeIssueLookups.Fresh(mDetails) then
   begin
     Exit;
   end;
   mSerial := FSerialOf;
   mKey := FHit.Match.Key;
-  mPreview.Lookup(mTarget, FHit.Match.IssueKey,
+  mPreview.Lookups.Lookup(mTarget, FHit.Match.IssueKey,
     procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
     begin
       if (FInstance <> nil) and (FInstance.FSerialOf = mSerial) then
@@ -323,7 +324,7 @@ begin
   begin
     ShowState(AKey, TAtlasIssueTipState.NotFound, ADetails, AError);
   end
-  else if not ((Preview <> nil) and Preview.Peek(FHit.Match.IssueTarget(FTarget), FHit.Match.IssueKey, mCached)) then
+  else if not ((Preview <> nil) and Preview.Lookups.Peek(FHit.Match.IssueTarget(FTarget), FHit.Match.IssueKey, mCached)) then
   begin
     // Ohne Netz bleibt ein vorhandener Stand stehen; sonst der Grund.
     ShowState(AKey, TAtlasIssueTipState.Failed, ADetails, AError);

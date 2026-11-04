@@ -97,6 +97,9 @@ type
 
 implementation
 
+uses
+  System.Math;
+
 const
   Ellipsis = #$2026;
 
@@ -151,68 +154,111 @@ end;
 
 { TAtlasWelcomeProjects }
 
+/// <summary>Eintrag für AProject mit seiner Zusammenfassung, sofern ALoad eine liefert.</summary>
+function EntryFor(const AProject: string; const ALoad: TAtlasProjectSummaryLoader): TAtlasProjectEntry;
+begin
+  Result := Default(TAtlasProjectEntry);
+  Result.Summary := TAtlasProjectSummary.Create(AProject);
+  if Assigned(ALoad) then
+  begin
+    Result.HasSummary := ALoad(AProject, Result.Summary);
+  end;
+  if not Result.HasSummary then
+  begin
+    Result.Summary := TAtlasProjectSummary.Create(AProject);
+  end;
+  // Der Pfad der IDE gilt: Die Datei kann vom selben Projekt in anderer Schreibweise stammen.
+  Result.Summary.Project := AProject;
+end;
+
+/// <summary>Steht AKey schon in ASeen? Sonst anfügen.</summary>
+function SeenBefore(var ASeen: TArray<string>; const AKey: string): Boolean;
+var
+  mKnown: string;
+begin
+  Result := False;
+  for mKnown in ASeen do
+  begin
+    Result := Result or (mKnown = AKey);
+  end;
+  if not Result then
+  begin
+    ASeen := ASeen + [AKey];
+  end;
+end;
+
 class function TAtlasWelcomeProjects.Entries(const ARecent: TArray<string>; const ALoad: TAtlasProjectSummaryLoader;
   AMax: Integer): TAtlasProjectEntries;
 var
   Limit: Integer;
-  Project, Key: string;
+  Project: string;
   Seen: TArray<string>;
-  Known: string;
-  Duplicate: Boolean;
   Entry: TAtlasProjectEntry;
 begin
   Result := nil;
   Seen := nil;
-  Limit := AMax;
-  if Limit < MinMax then
-  begin
-    Limit := MinMax;
-  end;
-  if Limit > MaxMax then
-  begin
-    Limit := MaxMax;
-  end;
+  Limit := Min(Max(AMax, MinMax), MaxMax);
   for Project in ARecent do
   begin
     if Length(Result) >= Limit then
     begin
       Break;
     end;
-    if Trim(Project) = '' then
+    if (Trim(Project) = '') or SeenBefore(Seen, TAtlasProjectSummaries.NormalizedPath(Project)) then
     begin
       Continue;
     end;
-    Key := TAtlasProjectSummaries.NormalizedPath(Project);
-    Duplicate := False;
-    for Known in Seen do
+    Entry := EntryFor(Trim(Project), ALoad);
+    if not (Entry.HasSummary and Entry.Summary.Hidden) then
     begin
-      if Known = Key then
-      begin
-        Duplicate := True;
-      end;
+      Result := Result + [Entry];
     end;
-    if Duplicate then
-    begin
-      Continue;
-    end;
-    Seen := Seen + [Key];
-    Entry := Default(TAtlasProjectEntry);
-    Entry.Summary := TAtlasProjectSummary.Create(Trim(Project));
-    if Assigned(ALoad) then
-    begin
-      Entry.HasSummary := ALoad(Trim(Project), Entry.Summary);
-    end;
-    if not Entry.HasSummary then
-    begin
-      Entry.Summary := TAtlasProjectSummary.Create(Trim(Project));
-    end;
-    // Der Pfad der IDE gilt: Die Datei kann vom selben Projekt in anderer Schreibweise stammen.
-    Entry.Summary.Project := Trim(Project);
-    if Entry.HasSummary and Entry.Summary.Hidden then
-    begin
-      Continue;
-    end;
-    Result := Result + [Entry];
+  end;
+end;
+
+/// <summary>Pille des letzten Builds.</summary>
+function BuildPill(const ABuild: TAtlasProjectBuild): TAtlasProjectPill;
+begin
+  if ABuild.Errors > 0 then
+  begin
+    Result := TAtlasProjectPill.Create(TAtlasProjectPillKind.BuildErrors, TAtlasProjectPillLevel.Error,
+      ABuild.Errors, 0, 0);
+    Result.Target := ABuild.First;
+  end
+  else if not ABuild.Succeeded then
+  begin
+    // Fehlgeschlagen ohne lesbare Fehlermeldung (z. B. Linker): rot, aber ohne Sprungziel.
+    Result := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Error, ABuild.Errors,
+      ABuild.Warnings, ABuild.Hints);
+  end
+  else if (ABuild.Warnings > 0) or (ABuild.Hints > 0) then
+  begin
+    Result := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Warning, 0,
+      ABuild.Warnings, ABuild.Hints);
+  end
+  else
+  begin
+    Result := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Good, 0, 0, 0);
+  end;
+end;
+
+/// <summary>Pillen der Versionsverwaltung: Änderungen und Abstand zum Ziel (nur in einer Arbeitskopie).</summary>
+function VcsPills(const AVcs: TAtlasProjectVcs): TArray<TAtlasProjectPill>;
+begin
+  Result := nil;
+  if not AVcs.InWorkingCopy then
+  begin
+    Exit;
+  end;
+  if AVcs.Changed > 0 then
+  begin
+    Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Changes, TAtlasProjectPillLevel.Warning,
+      AVcs.Changed, 0, 0)];
+  end;
+  if (AVcs.Ahead > 0) or (AVcs.Behind > 0) then
+  begin
+    Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Sync, TAtlasProjectPillLevel.Neutral,
+      Max(AVcs.Ahead, 0), Max(AVcs.Behind, 0), 0)];
   end;
 end;
 
@@ -220,38 +266,14 @@ class function TAtlasWelcomeProjects.Pills(const AEntry: TAtlasProjectEntry): TA
 var
   Build: TAtlasProjectBuild;
   Check: TAtlasProjectCheck;
-  Vcs: TAtlasProjectVcs;
   Pill: TAtlasProjectPill;
-  Ahead, Behind: Integer;
 begin
   Result := nil;
   Build := AEntry.Summary.Build;
   Check := AEntry.Summary.Check;
-  Vcs := AEntry.Summary.Vcs;
   if Build.Known then
   begin
-    if Build.Errors > 0 then
-    begin
-      Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.BuildErrors, TAtlasProjectPillLevel.Error,
-        Build.Errors, 0, 0);
-      Pill.Target := Build.First;
-    end
-    else if not Build.Succeeded then
-    begin
-      // Fehlgeschlagen ohne lesbare Fehlermeldung (z. B. Linker): rot, aber ohne Sprungziel.
-      Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Error, Build.Errors,
-        Build.Warnings, Build.Hints);
-    end
-    else if (Build.Warnings > 0) or (Build.Hints > 0) then
-    begin
-      Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Warning, 0,
-        Build.Warnings, Build.Hints);
-    end
-    else
-    begin
-      Pill := TAtlasProjectPill.Create(TAtlasProjectPillKind.Build, TAtlasProjectPillLevel.Good, 0, 0, 0);
-    end;
-    Result := Result + [Pill];
+    Result := Result + [BuildPill(Build)];
   end;
   // Prüfung nur, wenn sie nach dem letzten Build lief: sonst zeigt der Build den neueren Stand.
   if Check.Known and (Check.Errors > 0) and (not Build.Known or (Check.At >= Build.At)) then
@@ -261,26 +283,7 @@ begin
     Pill.Target := Check.First;
     Result := Result + [Pill];
   end;
-  if Vcs.InWorkingCopy and (Vcs.Changed > 0) then
-  begin
-    Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Changes, TAtlasProjectPillLevel.Warning,
-      Vcs.Changed, 0, 0)];
-  end;
-  if Vcs.InWorkingCopy and ((Vcs.Ahead > 0) or (Vcs.Behind > 0)) then
-  begin
-    Ahead := Vcs.Ahead;
-    if Ahead < 0 then
-    begin
-      Ahead := 0;
-    end;
-    Behind := Vcs.Behind;
-    if Behind < 0 then
-    begin
-      Behind := 0;
-    end;
-    Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Sync, TAtlasProjectPillLevel.Neutral, Ahead,
-      Behind, 0)];
-  end;
+  Result := Result + VcsPills(AEntry.Summary.Vcs);
   if AEntry.Summary.Rules.Known and (AEntry.Summary.Rules.NewHits > 0) then
   begin
     Result := Result + [TAtlasProjectPill.Create(TAtlasProjectPillKind.Rules, TAtlasProjectPillLevel.Warning,

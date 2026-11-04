@@ -94,7 +94,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
-  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
