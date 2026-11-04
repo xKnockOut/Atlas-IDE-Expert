@@ -662,135 +662,200 @@ begin
   Result := (ANode <> nil) and AGraph.Complete and Missing('Result') and Missing(AName);
 end;
 
-function ExitPointsOf(ATree: TSyntaxTree; ARoutine: TSyntaxNode; const AOptions: TExitPointOptions;
-  ARaising: TRaisingRoutines; out ASet: TExitPointSet): Boolean;
+type
+  /// <summary>Gemeinsame Werte beim Sammeln der Austritte einer Routine.</summary>
+  TExitScan = record
+    Tokens: TArray<TPascalToken>;
+    Graph: TControlFlowGraph;
+    Options: TExitPointOptions;
+    Raising: TRaisingRoutines;
+    /// <summary>Kurzname der Routine (Zuweisung an den Funktionsnamen).</summary>
+    Name: string;
+    IsFunction: Boolean;
+  end;
+
+/// <summary>Bereich des Namens AName im Kopf der Implementierung ARoutine; False ohne.</summary>
+function RoutineNameRange(const ATokens: TArray<TPascalToken>; ARoutine: TSyntaxNode; const AName: string;
+  out ARange: TTextRange): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Body, Node, Header: TSyntaxNode;
-  Points: TList<TExitPoint>;
-  Point: TExitPoint;
-  Graph: TControlFlowGraph;
-  Word, Name: string;
-  Index: Integer;
-  Ends: TArray<TFlowNode>;
-  EndNode: TFlowNode;
-  Kind: TExitPointKind;
-  Wanted: Boolean;
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
 begin
-  ASet := Default(TExitPointSet);
-  Body := BodyOf(ARoutine);
-  Result := Body <> nil;
+  ARange := Default(TTextRange);
+  mHeader := nil;
+  if ARoutine.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  end;
+  if mHeader = nil then
+  begin
+    Exit(False);
+  end;
+  mIndex := 0;
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < mHeader.EndOffset) do
+  begin
+    if (ATokens[mIndex].Offset >= mHeader.StartOffset) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(ATokens[mIndex].Text, AName) then
+    begin
+      ARange := TokenRange(ATokens[mIndex]);
+      Exit(True);
+    end;
+    Inc(mIndex);
+  end;
+  Result := False;
+end;
+
+/// <summary>Art eines Aufrufs mit dem Wort AWord (Exit, Abort, Halt, RunError, auslösende Routine); False, wenn
+/// der Aufruf nicht als Austritt gezeigt wird.</summary>
+function CallKind(const AScan: TExitScan; const AWord: string; out AKind: TExitPointKind): Boolean;
+begin
+  AKind := TExitPointKind.ExitCall;
+  Result := False;
+  if SameText(AWord, 'Exit') then
+  begin
+    Result := WordWanted(AScan.Options, 'Exit');
+  end
+  else if SameText(AWord, 'Abort') then
+  begin
+    AKind := TExitPointKind.RaiseStatement;
+    Result := WordWanted(AScan.Options, 'Abort');
+  end
+  else if SameText(AWord, 'Halt') or SameText(AWord, 'RunError') then
+  begin
+    AKind := TExitPointKind.Terminate;
+    Result := WordWanted(AScan.Options, AWord);
+  end
+  else if AScan.Raising.Contains(AWord) or ((AWord <> '') and (AScan.Options.Keywords <> nil) and
+    MatchText(AWord, AScan.Options.Keywords)) then
+  begin
+    // Eigene Wörter aus highlight.exitKeywords (etwa eine Fehlerroutine des Projekts) wie ein Aufruf, der
+    // immer auslöst.
+    AKind := TExitPointKind.RaisingCall;
+    Result := True;
+  end;
+end;
+
+/// <summary>Exit(Wert) gibt das Ergebnis mit.</summary>
+function ExitWithValue(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Call) and (ANode[0].ChildCount > 1);
+end;
+
+/// <summary>Austritt an der Anweisung ANode (Aufruf oder raise); False, wenn sie keiner ist.</summary>
+function StatementPoint(const AScan: TExitScan; ANode: TSyntaxNode; out APoint: TExitPoint): Boolean;
+var
+  mIndex: Integer;
+  mKind: TExitPointKind;
+  mWord: string;
+begin
+  APoint := Default(TExitPoint);
+  mIndex := TokenAtOffset(AScan.Tokens, ANode.StartOffset);
+  mWord := '';
+  if mIndex < 0 then
+  begin
+    Exit(False);
+  end;
+  if ANode.Kind = TSyntaxKind.RaiseStatement then
+  begin
+    mKind := TExitPointKind.RaiseStatement;
+    Result := WordWanted(AScan.Options, 'raise');
+  end
+  else
+  begin
+    mWord := StatementWord(ANode);
+    Result := CallKind(AScan, mWord, mKind);
+  end;
   if not Result then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  ASet.RoutineName := ARoutine.Name;
-  ASet.IsFunction := IsFunctionRoutine(ARoutine);
-  Name := ShortName(ARoutine.Name);
-  if ARoutine.Kind = TSyntaxKind.RoutineDecl then
+  APoint := MakePoint(mKind, TokenRange(AScan.Tokens[mIndex]), '');
+  if mKind = TExitPointKind.RaisingCall then
   begin
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header <> nil then
+    APoint.Detail := mWord;
+  end;
+  // Exit ohne Wert in einer Funktion: Ist das Ergebnis auf einem Weg hierher noch ungesetzt?
+  if AScan.IsFunction and (mKind = TExitPointKind.ExitCall) and not ExitWithValue(ANode) then
+  begin
+    APoint.ResultMissing := MissingAt(AScan.Graph, AScan.Graph.NodeOf(ANode), AScan.Name, False);
+  end;
+end;
+
+/// <summary>Abschließendes end von ABody, wenn ein Weg herausfällt.</summary>
+function FallThroughPoint(const AScan: TExitScan; ABody: TSyntaxNode; out APoint: TExitPoint): Boolean;
+var
+  mEnds: TArray<TFlowNode>;
+  mEnd: TFlowNode;
+  mIndex: Integer;
+begin
+  APoint := Default(TExitPoint);
+  mIndex := -1;
+  if FallsThrough(AScan.Graph, AScan.Raising, mEnds) then
+  begin
+    mIndex := LastKeyword(AScan.Tokens, ABody.StartOffset, ABody.EndOffset, 'end');
+  end;
+  Result := mIndex >= 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  APoint := MakePoint(TExitPointKind.FallThrough, TokenRange(AScan.Tokens[mIndex]), '');
+  if AScan.IsFunction then
+  begin
+    for mEnd in mEnds do
     begin
-      for Index := 0 to High(Tokens) do
-      begin
-        if Tokens[Index].Offset >= Header.EndOffset then
-        begin
-          Break;
-        end;
-        if (Tokens[Index].Offset >= Header.StartOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-          SameText(Tokens[Index].Text, Name) then
-        begin
-          ASet.RoutineRange := TokenRange(Tokens[Index]);
-          ASet.HasRoutine := True;
-          Break;
-        end;
-      end;
+      APoint.ResultMissing := APoint.ResultMissing or MissingAt(AScan.Graph, mEnd, AScan.Name, True);
     end;
   end;
-  Points := TList<TExitPoint>.Create;
-  Graph := TControlFlowGraph.Build(ARoutine);
+end;
+
+/// <summary>Austritte im Rumpf ABody.</summary>
+function ScanPoints(const AScan: TExitScan; ABody: TSyntaxNode): TArray<TExitPoint>;
+var
+  mNode: TSyntaxNode;
+  mPoint: TExitPoint;
+begin
+  Result := nil;
+  for mNode in OwnNodes(ABody, [TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement]) do
+  begin
+    if StatementPoint(AScan, mNode, mPoint) then
+    begin
+      Result := Result + [mPoint];
+    end;
+  end;
+  if FallThroughPoint(AScan, ABody, mPoint) then
+  begin
+    Result := Result + [mPoint];
+  end;
+end;
+
+function ExitPointsOf(ATree: TSyntaxTree; ARoutine: TSyntaxNode; const AOptions: TExitPointOptions;
+  ARaising: TRaisingRoutines; out ASet: TExitPointSet): Boolean;
+var
+  mBody: TSyntaxNode;
+  mScan: TExitScan;
+begin
+  ASet := Default(TExitPointSet);
+  mBody := BodyOf(ARoutine);
+  Result := mBody <> nil;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mScan := Default(TExitScan);
+  mScan.Tokens := ATree.Tokens;
+  mScan.Options := AOptions;
+  mScan.Raising := ARaising;
+  mScan.Name := ShortName(ARoutine.Name);
+  mScan.IsFunction := IsFunctionRoutine(ARoutine);
+  ASet.RoutineName := ARoutine.Name;
+  ASet.IsFunction := mScan.IsFunction;
+  ASet.HasRoutine := RoutineNameRange(mScan.Tokens, ARoutine, mScan.Name, ASet.RoutineRange);
+  mScan.Graph := TControlFlowGraph.Build(ARoutine);
   try
-    for Node in OwnNodes(Body, [TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement]) do
-    begin
-      Index := TokenAtOffset(Tokens, Node.StartOffset);
-      if Index < 0 then
-      begin
-        Continue;
-      end;
-      Wanted := False;
-      Kind := TExitPointKind.ExitCall;
-      Word := '';
-      if Node.Kind = TSyntaxKind.RaiseStatement then
-      begin
-        Kind := TExitPointKind.RaiseStatement;
-        Wanted := WordWanted(AOptions, 'raise');
-      end
-      else
-      begin
-        Word := StatementWord(Node);
-        if SameText(Word, 'Exit') then
-        begin
-          Wanted := WordWanted(AOptions, 'Exit');
-        end
-        else if SameText(Word, 'Abort') then
-        begin
-          Kind := TExitPointKind.RaiseStatement;
-          Wanted := WordWanted(AOptions, 'Abort');
-        end
-        else if SameText(Word, 'Halt') or SameText(Word, 'RunError') then
-        begin
-          Kind := TExitPointKind.Terminate;
-          Wanted := WordWanted(AOptions, Word);
-        end
-        else if ARaising.Contains(Word) or ((Word <> '') and (AOptions.Keywords <> nil) and
-          MatchText(Word, AOptions.Keywords)) then
-        begin
-          // Eigene Wörter aus highlight.exitKeywords (etwa eine Fehlerroutine des Projekts) wie ein Aufruf, der
-          // immer auslöst.
-          Kind := TExitPointKind.RaisingCall;
-          Wanted := True;
-        end;
-      end;
-      if not Wanted then
-      begin
-        Continue;
-      end;
-      Point := MakePoint(Kind, TokenRange(Tokens[Index]), '');
-      if Kind = TExitPointKind.RaisingCall then
-      begin
-        Point.Detail := Word;
-      end;
-      // Exit ohne Wert in einer Funktion: Ist das Ergebnis auf einem Weg hierher noch ungesetzt?
-      if ASet.IsFunction and (Kind = TExitPointKind.ExitCall) and not ((Node.ChildCount > 0) and
-        (Node[0].Kind = TSyntaxKind.Call) and (Node[0].ChildCount > 1)) then
-      begin
-        Point.ResultMissing := MissingAt(Graph, Graph.NodeOf(Node), Name, False);
-      end;
-      Points.Add(Point);
-    end;
-    // Abschließendes end, wenn ein Weg herausfällt.
-    if FallsThrough(Graph, ARaising, Ends) then
-    begin
-      Index := LastKeyword(Tokens, Body.StartOffset, Body.EndOffset, 'end');
-      if Index >= 0 then
-      begin
-        Point := MakePoint(TExitPointKind.FallThrough, TokenRange(Tokens[Index]), '');
-        if ASet.IsFunction then
-        begin
-          for EndNode in Ends do
-          begin
-            Point.ResultMissing := Point.ResultMissing or MissingAt(Graph, EndNode, Name, True);
-          end;
-        end;
-        Points.Add(Point);
-      end;
-    end;
-    ASet.Points := Sorted(Points.ToArray);
+    ASet.Points := Sorted(ScanPoints(mScan, mBody));
   finally
-    Graph.Free;
-    Points.Free;
+    mScan.Graph.Free;
   end;
 end;
 
@@ -856,86 +921,128 @@ begin
   end;
 end;
 
-function ExceptionSources(ATree: TSyntaxTree; ATry: TSyntaxNode; const AClasses: TArray<string>;
-  AOffset: Integer; const AExceptions: TExitPointExceptionLookup; const AIsA: TExitPointClassTest): TArray<TExitPoint>;
-var
-  Part, Node, Callee: TSyntaxNode;
-  Index: Integer;
-  Raised, Handler, Matched: string;
-  Documented: TArray<string>;
-  Point: TExitPoint;
+type
+  /// <summary>Gemeinsame Werte bei der Suche nach den auslösenden Stellen eines try-Teils.</summary>
+  TExceptionScan = record
+    Tokens: TArray<TPascalToken>;
+    /// <summary>Klassen der Handler; nil = bloßes except ohne Handler.</summary>
+    Classes: TArray<string>;
+    Offset: Integer;
+    Exceptions: TExitPointExceptionLookup;
+    IsA: TExitPointClassTest;
+  end;
 
-  function Matching(const AClass: string): string;
-  var
-    Candidate: string;
+/// <summary>AClass, wenn ein Handler sie fängt; sonst ''.</summary>
+function MatchingClass(const AScan: TExceptionScan; const AClass: string): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  // Bloßes except ohne Handler: jede Exception passt.
+  if (AClass = '') or (AScan.Classes = nil) then
   begin
-    Result := '';
-    if AClass = '' then
-    begin
-      Exit;
-    end;
-    // Bloßes except ohne Handler: jede Exception passt.
-    if AClasses = nil then
+    Exit(AClass);
+  end;
+  for mCandidate in AScan.Classes do
+  begin
+    if SameText(AClass, mCandidate) or (Assigned(AScan.IsA) and AScan.IsA(AClass, mCandidate, AScan.Offset)) then
     begin
       Exit(AClass);
     end;
-    for Candidate in AClasses do
+  end;
+end;
+
+/// <summary>raise ANode mit einer gefangenen Klasse; markiert wird nur das Wort raise.</summary>
+function RaisePoint(const AScan: TExceptionScan; ANode: TSyntaxNode; out APoint: TExitPoint): Boolean;
+var
+  mRaised, mMatched: string;
+begin
+  APoint := Default(TExitPoint);
+  mRaised := RaisedClass(ANode);
+  mMatched := MatchingClass(AScan, mRaised);
+  Result := mMatched <> '';
+  if Result then
+  begin
+    APoint := MakePoint(TExitPointKind.ExceptionSource, TTextRange.Create(ANode.StartPos, ANode.StartPos), mRaised);
+    APoint.Range.EndPos.Character := APoint.Range.StartPos.Character + Length('raise');
+    APoint.ExceptionClass := mMatched;
+  end;
+end;
+
+/// <summary>Aufruf ANode, der laut XMLDoc eine gefangene Klasse auslösen kann.</summary>
+function CallPoint(const AScan: TExceptionScan; ANode: TSyntaxNode; out APoint: TExitPoint): Boolean;
+var
+  mCallee: TSyntaxNode;
+  mClass, mMatched: string;
+begin
+  APoint := Default(TExitPoint);
+  // Foo(1); steht als CallStatement über einem Call: nur der Call zählt.
+  mCallee := nil;
+  if not ((ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and
+    (ANode[0].Kind = TSyntaxKind.Call)) and Assigned(AScan.Exceptions) then
+  begin
+    mCallee := CalleeOf(ANode);
+  end;
+  if mCallee = nil then
+  begin
+    Exit(False);
+  end;
+  for mClass in AScan.Exceptions(mCallee) do
+  begin
+    mMatched := MatchingClass(AScan, mClass);
+    if mMatched <> '' then
     begin
-      if SameText(AClass, Candidate) or (Assigned(AIsA) and AIsA(AClass, Candidate, AOffset)) then
-      begin
-        Exit(AClass);
-      end;
+      APoint := MakePoint(TExitPointKind.ExceptionSource, CalleeNameRange(AScan.Tokens, mCallee), mCallee.Name);
+      APoint.ExceptionClass := mMatched;
+      Exit(True);
     end;
   end;
+  Result := False;
+end;
 
+/// <summary>Auslösende Stellen im Teil APart eines try.</summary>
+function PartSources(const AScan: TExceptionScan; APart: TSyntaxNode): TArray<TExitPoint>;
+var
+  mNode: TSyntaxNode;
+  mPoint: TExitPoint;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Index := 0 to ATry.ChildCount - 1 do
+  for mNode in OwnNodes(APart, [TSyntaxKind.CallStatement, TSyntaxKind.Call, TSyntaxKind.RaiseStatement]) do
   begin
-    Part := ATry[Index];
-    if Part.Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+    if mNode.Kind = TSyntaxKind.RaiseStatement then
     begin
-      Continue;
+      mFound := RaisePoint(AScan, mNode, mPoint);
+    end
+    else
+    begin
+      mFound := CallPoint(AScan, mNode, mPoint);
     end;
-    for Node in OwnNodes(Part, [TSyntaxKind.CallStatement, TSyntaxKind.Call, TSyntaxKind.RaiseStatement]) do
+    if mFound then
     begin
-      if Node.Kind = TSyntaxKind.RaiseStatement then
-      begin
-        Raised := RaisedClass(Node);
-        Matched := Matching(Raised);
-        if Matched <> '' then
-        begin
-          Point := MakePoint(TExitPointKind.ExceptionSource, TTextRange.Create(Node.StartPos, Node.StartPos), Raised);
-          // Nur das Wort raise.
-          Point.Range.EndPos.Character := Point.Range.StartPos.Character + Length('raise');
-          Point.ExceptionClass := Matched;
-          Result := Result + [Point];
-        end;
-        Continue;
-      end;
-      // Foo(1); steht als CallStatement über einem Call: nur der Call zählt.
-      if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount > 0) and (Node[0].Kind = TSyntaxKind.Call) then
-      begin
-        Continue;
-      end;
-      Callee := CalleeOf(Node);
-      if (Callee = nil) or not Assigned(AExceptions) then
-      begin
-        Continue;
-      end;
-      Documented := AExceptions(Callee);
-      for Handler in Documented do
-      begin
-        Matched := Matching(Handler);
-        if Matched = '' then
-        begin
-          Continue;
-        end;
-        Point := MakePoint(TExitPointKind.ExceptionSource, CalleeNameRange(ATree.Tokens, Callee), Callee.Name);
-        Point.ExceptionClass := Matched;
-        Result := Result + [Point];
-        Break;
-      end;
+      Result := Result + [mPoint];
+    end;
+  end;
+end;
+
+function ExceptionSources(ATree: TSyntaxTree; ATry: TSyntaxNode; const AClasses: TArray<string>;
+  AOffset: Integer; const AExceptions: TExitPointExceptionLookup; const AIsA: TExitPointClassTest): TArray<TExitPoint>;
+var
+  mScan: TExceptionScan;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mScan := Default(TExceptionScan);
+  mScan.Tokens := ATree.Tokens;
+  mScan.Classes := AClasses;
+  mScan.Offset := AOffset;
+  mScan.Exceptions := AExceptions;
+  mScan.IsA := AIsA;
+  for mIndex := 0 to ATry.ChildCount - 1 do
+  begin
+    if not (ATry[mIndex].Kind in [TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock]) then
+    begin
+      Result := Result + PartSources(mScan, ATry[mIndex]);
     end;
   end;
 end;
@@ -1068,157 +1175,230 @@ begin
   end;
 end;
 
+type
+  /// <summary>Abfrage an einer Stelle: das Wort dort und die Werte, mit denen TExitPoints.Find sucht.</summary>
+  TExitQuery = record
+    Tree: TSyntaxTree;
+    Token: TPascalToken;
+    Word: string;
+    /// <summary>Foo.Exit, Obj.Break, Obj.Result: kein Austritt (der Kopf TFoo.Run zählt).</summary>
+    Qualified: Boolean;
+    Options: TExitPointOptions;
+    Exceptions: TExitPointExceptionLookup;
+    IsA: TExitPointClassTest;
+    Raising: TRaisingRoutines;
+  end;
+
+/// <summary>Break und Continue: die Schleife. False, wenn das Wort keins davon ist.</summary>
+function LoopQuery(const AQuery: TExitQuery; var ASet: TExitPointSet): Boolean;
+var
+  mLoop: TSyntaxNode;
+begin
+  Result := (AQuery.Token.Kind = TPascalTokenKind.Identifier) and MatchText(AQuery.Word, ['Break', 'Continue']) and
+    not AQuery.Qualified;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mLoop := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, LoopKinds, RoutineKinds);
+  if (mLoop <> nil) and AQuery.Options.Loops then
+  begin
+    ASet.Query := TExitPointQuery.Loop;
+    ASet.Points := Sorted(LoopPoints(AQuery.Tree, mLoop));
+  end;
+end;
+
+/// <summary>Handler, wenn die Abfrage auf "on" oder auf seiner Klasse steht (nicht im Rumpf oder auf dem Namen
+/// der Variablen); sonst nil.</summary>
+function QueriedHandler(const AQuery: TExitQuery): TSyntaxNode;
+var
+  mClass: TSyntaxNode;
+begin
+  Result := nil;
+  if AQuery.Token.Kind = TPascalTokenKind.Identifier then
+  begin
+    Result := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptionHandler], RoutineKinds);
+  end;
+  if Result = nil then
+  begin
+    Exit;
+  end;
+  mClass := Result.FindChild(TSyntaxKind.TypeReference);
+  if not (SameText(AQuery.Word, 'on') and (AQuery.Token.Offset = Result.StartOffset)) and
+    not ((mClass <> nil) and (AQuery.Token.Offset >= mClass.StartOffset) and
+    (AQuery.Token.Offset < mClass.EndOffset)) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Klassen, die AHandler bzw. (ohne AHandler) alle Handler von AExceptPart fangen.</summary>
+function CaughtClasses(AHandler, AExceptPart: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  if AHandler <> nil then
+  begin
+    Exit(TArray<string>.Create(HandlerClass(AHandler)));
+  end;
+  Result := nil;
+  for mIndex := 0 to AExceptPart.ChildCount - 1 do
+  begin
+    if AExceptPart[mIndex].Kind = TSyntaxKind.ExceptionHandler then
+    begin
+      Result := Result + [HandlerClass(AExceptPart[mIndex])];
+    end;
+  end;
+end;
+
+/// <summary>except, on und die Klasse eines Handlers: die auslösenden Stellen im try-Teil. False, wenn die
+/// Abfrage dort nicht steht.</summary>
+function ExceptQuery(const AQuery: TExitQuery; var ASet: TExitPointSet): Boolean;
+var
+  mHandler, mExceptPart: TSyntaxNode;
+  mPoints: TArray<TExitPoint>;
+begin
+  mHandler := nil;
+  mExceptPart := nil;
+  if AQuery.Token.IsKeyword('except') then
+  begin
+    mExceptPart := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptBlock], RoutineKinds);
+  end
+  else
+  begin
+    mHandler := QueriedHandler(AQuery);
+    if mHandler <> nil then
+    begin
+      mExceptPart := mHandler.Parent;
+    end;
+  end;
+  Result := (mExceptPart <> nil) and (mExceptPart.Kind = TSyntaxKind.ExceptBlock);
+  if not Result or not AQuery.Options.Exceptions then
+  begin
+    Exit;
+  end;
+  mPoints := ExceptionSources(AQuery.Tree, mExceptPart.Parent, CaughtClasses(mHandler, mExceptPart),
+    AQuery.Token.Offset, AQuery.Exceptions, AQuery.IsA);
+  mPoints := mPoints + [MakePoint(TExitPointKind.Handler, TokenRange(AQuery.Token), '')];
+  ASet.Query := TExitPointQuery.Exceptions;
+  ASet.Points := Sorted(mPoints);
+end;
+
+/// <summary>Austritte von ARoutine als Abfrage AKind.</summary>
+procedure RoutineQuery(const AQuery: TExitQuery; ARoutine: TSyntaxNode; AKind: TExitPointQuery;
+  var ASet: TExitPointSet);
+begin
+  if ExitPointsOf(AQuery.Tree, ARoutine, AQuery.Options, AQuery.Raising, ASet) then
+  begin
+    ASet.Query := AKind;
+  end;
+end;
+
+/// <summary>Name der Routine im Kopf ihrer Implementierung.</summary>
+function HeaderQuery(const AQuery: TExitQuery; var ASet: TExitPointSet): Boolean;
+var
+  mRoutine: TSyntaxNode;
+begin
+  mRoutine := nil;
+  if AQuery.Token.Kind = TPascalTokenKind.Identifier then
+  begin
+    mRoutine := RoutineOfHeader(AQuery.Tree.Root, AQuery.Token.Offset);
+  end;
+  Result := (mRoutine <> nil) and SameText(AQuery.Word, ShortName(mRoutine.Name));
+  if Result then
+  begin
+    RoutineQuery(AQuery, mRoutine, TExitPointQuery.Routine, ASet);
+  end;
+end;
+
+/// <summary>Result bzw. der Funktionsname als Ziel einer Zuweisung: Austritte und Zuweisungen.</summary>
+function ResultQuery(const AQuery: TExitQuery; ARoutine: TSyntaxNode; var ASet: TExitPointSet): Boolean;
+var
+  mStatement: TSyntaxNode;
+begin
+  Result := False;
+  if not IsFunctionRoutine(ARoutine) or (AQuery.Token.Kind <> TPascalTokenKind.Identifier) then
+  begin
+    Exit;
+  end;
+  mStatement := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.AssignStatement], RoutineKinds);
+  Result := SameText(AQuery.Word, 'Result') or ((mStatement <> nil) and (mStatement.ChildCount > 0) and
+    (mStatement[0].StartOffset = AQuery.Token.Offset) and IsResultTarget(mStatement, ShortName(ARoutine.Name)));
+  if Result and ExitPointsOf(AQuery.Tree, ARoutine, AQuery.Options, AQuery.Raising, ASet) then
+  begin
+    ASet.Query := TExitPointQuery.ResultValue;
+    ASet.Points := Sorted(ASet.Points + ResultAssignments(ARoutine));
+  end;
+end;
+
+/// <summary>Exit, raise, Abort, Halt, RunError und Aufrufe, die immer auslösen.</summary>
+function IsExitStatement(const AQuery: TExitQuery; AStatement: TSyntaxNode): Boolean;
+var
+  mWord: string;
+begin
+  mWord := StatementWord(AStatement);
+  Result := (AStatement.Kind = TSyntaxKind.RaiseStatement) or
+    MatchText(mWord, ['Exit', 'Abort', 'Halt', 'RunError']) or AQuery.Raising.Contains(mWord) or
+    ((AQuery.Options.Keywords <> nil) and (mWord <> '') and MatchText(mWord, AQuery.Options.Keywords));
+end;
+
+/// <summary>Abfrage auf einer Anweisung im Rumpf von ARoutine.</summary>
+procedure StatementQuery(const AQuery: TExitQuery; ARoutine: TSyntaxNode; var ASet: TExitPointSet);
+var
+  mStatement: TSyntaxNode;
+begin
+  mStatement := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.CallStatement,
+    TSyntaxKind.RaiseStatement], RoutineKinds);
+  if (mStatement <> nil) and (mStatement.StartOffset = AQuery.Token.Offset) and
+    IsExitStatement(AQuery, mStatement) then
+  begin
+    RoutineQuery(AQuery, ARoutine, TExitPointQuery.Routine, ASet);
+  end;
+end;
+
+/// <summary>Steht die Abfrage unqualifiziert im Rumpf von ARoutine?</summary>
+function InBody(const AQuery: TExitQuery; ARoutine: TSyntaxNode): Boolean;
+begin
+  Result := not AQuery.Qualified and (ARoutine <> nil) and (BodyOf(ARoutine) <> nil) and
+    (AQuery.Token.Offset >= BodyOf(ARoutine).StartOffset);
+end;
+
 class function TExitPoints.Find(ATree: TSyntaxTree; const APosition: TTextPosition;
   const AOptions: TExitPointOptions; const AExceptions: TExitPointExceptionLookup;
   const AIsA: TExitPointClassTest): TExitPointSet;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Token: TPascalToken;
-  Routine, Loop, Statement, Handler, TryNode, ExceptPart, Child: TSyntaxNode;
-  Raising: TRaisingRoutines;
-  Classes: TArray<string>;
-  Points: TArray<TExitPoint>;
-  Word: string;
-  Qualified: Boolean;
+  mIndex: Integer;
+  mQuery: TExitQuery;
+  mRoutine: TSyntaxNode;
 begin
   Result := Default(TExitPointSet);
-  if (ATree = nil) or (ATree.Root = nil) then
+  mIndex := -1;
+  if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
+    mIndex := WordAt(ATree.Tokens, APosition);
+  end;
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Index := WordAt(Tokens, APosition);
-  if Index < 0 then
-  begin
-    Exit;
-  end;
-  Token := Tokens[Index];
-  // Foo.Exit, Obj.Break, Obj.Result: kein Austritt (der Kopf TFoo.Run zählt).
-  Qualified := (Index > 0) and Tokens[Index - 1].IsSymbol('.');
-  Word := Token.Text;
-  Routine := Innermost(ATree.Root, Token.Offset, RoutineKinds, []);
-  Raising := TRaisingRoutines.Create(ATree);
+  mQuery := Default(TExitQuery);
+  mQuery.Tree := ATree;
+  mQuery.Token := ATree.Tokens[mIndex];
+  mQuery.Word := mQuery.Token.Text;
+  mQuery.Qualified := (mIndex > 0) and ATree.Tokens[mIndex - 1].IsSymbol('.');
+  mQuery.Options := AOptions;
+  mQuery.Exceptions := AExceptions;
+  mQuery.IsA := AIsA;
+  mRoutine := Innermost(ATree.Root, mQuery.Token.Offset, RoutineKinds, []);
+  mQuery.Raising := TRaisingRoutines.Create(ATree);
   try
-    // Break und Continue: die Schleife.
-    if (Token.Kind = TPascalTokenKind.Identifier) and MatchText(Word, ['Break', 'Continue']) and not Qualified then
+    if not LoopQuery(mQuery, Result) and not ExceptQuery(mQuery, Result) and not HeaderQuery(mQuery, Result) and
+      InBody(mQuery, mRoutine) and not ResultQuery(mQuery, mRoutine, Result) then
     begin
-      Loop := Innermost(ATree.Root, Token.Offset, LoopKinds, RoutineKinds);
-      if (Loop = nil) or not AOptions.Loops then
-      begin
-        Exit;
-      end;
-      Result.Query := TExitPointQuery.Loop;
-      Result.Points := Sorted(LoopPoints(ATree, Loop));
-      Exit;
-    end;
-    // except, on und die Klasse eines Handlers: die auslösenden Stellen im try-Teil.
-    if Token.IsKeyword('except') or ((Token.Kind = TPascalTokenKind.Identifier) and
-      (Innermost(ATree.Root, Token.Offset, [TSyntaxKind.ExceptionHandler], RoutineKinds) <> nil)) then
-    begin
-      Handler := Innermost(ATree.Root, Token.Offset, [TSyntaxKind.ExceptionHandler], RoutineKinds);
-      if Token.IsKeyword('except') then
-      begin
-        Handler := nil;
-        ExceptPart := Innermost(ATree.Root, Token.Offset, [TSyntaxKind.ExceptBlock], RoutineKinds);
-      end
-      else
-      begin
-        // Nur "on" und die Klasse, nicht der Rumpf des Handlers oder der Name der Variablen.
-        Child := Handler.FindChild(TSyntaxKind.TypeReference);
-        if not (SameText(Word, 'on') and (Token.Offset = Handler.StartOffset)) and
-          not ((Child <> nil) and (Token.Offset >= Child.StartOffset) and (Token.Offset < Child.EndOffset)) then
-        begin
-          Handler := nil;
-        end;
-        ExceptPart := nil;
-        if Handler <> nil then
-        begin
-          ExceptPart := Handler.Parent;
-        end;
-      end;
-      if (ExceptPart <> nil) and (ExceptPart.Kind = TSyntaxKind.ExceptBlock) and
-        ((Handler <> nil) or Token.IsKeyword('except')) then
-      begin
-        if not AOptions.Exceptions then
-        begin
-          Exit;
-        end;
-        TryNode := ExceptPart.Parent;
-        Classes := nil;
-        if Handler <> nil then
-        begin
-          Classes := [HandlerClass(Handler)];
-        end
-        else
-        begin
-          for Index := 0 to ExceptPart.ChildCount - 1 do
-          begin
-            if ExceptPart[Index].Kind = TSyntaxKind.ExceptionHandler then
-            begin
-              Classes := Classes + [HandlerClass(ExceptPart[Index])];
-            end;
-          end;
-        end;
-        Points := ExceptionSources(ATree, TryNode, Classes, Token.Offset, AExceptions, AIsA);
-        Points := Points + [MakePoint(TExitPointKind.Handler, TokenRange(Token), '')];
-        Result.Query := TExitPointQuery.Exceptions;
-        Result.Points := Sorted(Points);
-        Exit;
-      end;
-    end;
-    // Name der Routine im Kopf ihrer Implementierung.
-    if Token.Kind = TPascalTokenKind.Identifier then
-    begin
-      Statement := RoutineOfHeader(ATree.Root, Token.Offset);
-      if (Statement <> nil) and SameText(Word, ShortName(Statement.Name)) then
-      begin
-        if ExitPointsOf(ATree, Statement, AOptions, Raising, Result) then
-        begin
-          Result.Query := TExitPointQuery.Routine;
-        end;
-        Exit;
-      end;
-    end;
-    if Qualified or (Routine = nil) or (BodyOf(Routine) = nil) or (Token.Offset < BodyOf(Routine).StartOffset) then
-    begin
-      Exit;
-    end;
-    // Result bzw. der Funktionsname als Ziel einer Zuweisung: Austritte und Zuweisungen.
-    if IsFunctionRoutine(Routine) and (Token.Kind = TPascalTokenKind.Identifier) then
-    begin
-      Statement := Innermost(ATree.Root, Token.Offset, [TSyntaxKind.AssignStatement], RoutineKinds);
-      if SameText(Word, 'Result') or ((Statement <> nil) and (Statement.ChildCount > 0) and
-        (Statement[0].StartOffset = Token.Offset) and IsResultTarget(Statement, ShortName(Routine.Name))) then
-      begin
-        if ExitPointsOf(ATree, Routine, AOptions, Raising, Result) then
-        begin
-          Result.Query := TExitPointQuery.ResultValue;
-          Result.Points := Sorted(Result.Points + ResultAssignments(Routine));
-        end;
-        Exit;
-      end;
-    end;
-    // Exit, raise, Abort, Halt, RunError und Aufrufe, die immer auslösen.
-    Statement := Innermost(ATree.Root, Token.Offset, [TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement],
-      RoutineKinds);
-    if (Statement = nil) or (Statement.StartOffset <> Token.Offset) then
-    begin
-      Exit;
-    end;
-    if not ((Statement.Kind = TSyntaxKind.RaiseStatement) or MatchText(StatementWord(Statement),
-      ['Exit', 'Abort', 'Halt', 'RunError']) or Raising.Contains(StatementWord(Statement)) or
-      ((AOptions.Keywords <> nil) and (StatementWord(Statement) <> '') and
-      MatchText(StatementWord(Statement), AOptions.Keywords))) then
-    begin
-      Exit;
-    end;
-    if ExitPointsOf(ATree, Routine, AOptions, Raising, Result) then
-    begin
-      Result.Query := TExitPointQuery.Routine;
+      StatementQuery(mQuery, mRoutine, Result);
     end;
   finally
-    Raising.Free;
+    mQuery.Raising.Free;
   end;
 end;
 
@@ -1228,137 +1408,164 @@ type
     Classes: TArray<string>;
   end;
 
+/// <summary>Kopf oder Rumpf einer Routine (ein Kopf unter seiner RoutineDecl zählt nicht doppelt).</summary>
+function IsDocumentedRoutine(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.RoutineDecl) or ((ANode.Kind = TSyntaxKind.RoutineHeader) and
+    not ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.RoutineDecl)));
+end;
+
+/// <summary>&lt;exception cref&gt; im ///-Kommentar über ANode; False ohne.</summary>
+function DocumentedExceptions(ANode: TSyntaxNode; const ALines: TArray<string>;
+  out AItem: TRoutineExceptions): Boolean;
+var
+  mDoc: TXmlDoc;
+  mEntry: TXmlDocEntry;
+  mComment: string;
+begin
+  AItem := Default(TRoutineExceptions);
+  mComment := '';
+  if IsDocumentedRoutine(ANode) then
+  begin
+    mComment := TXmlDoc.CommentAbove(ALines, ANode.StartPos.Line);
+  end;
+  if mComment = '' then
+  begin
+    Exit(False);
+  end;
+  mDoc := TXmlDoc.Parse(mComment);
+  AItem.Name := ShortName(ANode.Name);
+  for mEntry in mDoc.Exceptions do
+  begin
+    AItem.Classes := AItem.Classes + [TXmlDoc.NormalizeCref(mEntry.Name)];
+  end;
+  Result := Length(AItem.Classes) > 0;
+end;
+
+/// <summary>Name, unter dem ACallee in den Doku-Einträgen steht; '' ohne.</summary>
+function DocumentedName(ACallee: TSyntaxNode): string;
+begin
+  Result := TExitPoints.PlainCallee(ACallee);
+  if (Result = '') and (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.MemberAccess) then
+  begin
+    Result := ACallee.Name;
+  end;
+end;
+
+/// <summary>Lookup über die gesammelten Einträge ADocs.</summary>
+function DocumentedLookup(const ADocs: TArray<TRoutineExceptions>): TExitPointExceptionLookup;
+var
+  mDocs: TArray<TRoutineExceptions>;
+begin
+  mDocs := ADocs;
+  Result :=
+    function(ACallee: TSyntaxNode): TArray<string>
+    var
+      mName: string;
+      mItem: TRoutineExceptions;
+    begin
+      Result := nil;
+      mName := DocumentedName(ACallee);
+      for mItem in mDocs do
+      begin
+        if (mName <> '') and SameText(mItem.Name, mName) then
+        begin
+          Result := Result + mItem.Classes;
+        end;
+      end;
+    end;
+end;
+
 class function TExitPoints.TreeExceptions(ATree: TSyntaxTree; const ALines: TArray<string>):
   TExitPointExceptionLookup;
 var
-  Docs: TArray<TRoutineExceptions>;
-  Lines: TArray<string>;
+  mDocs: TArray<TRoutineExceptions>;
+  mLines: TArray<string>;
 begin
-  Docs := nil;
-  Lines := ALines;
+  mDocs := nil;
+  mLines := ALines;
   // Deklarationen in Klassen und Rümpfe: der ///-Kommentar darüber. Einmal je Lookup gelesen.
   if (ATree <> nil) and (ATree.Root <> nil) then
   begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
-        Doc: TXmlDoc;
-        Entry: TXmlDocEntry;
-        Item: TRoutineExceptions;
-        Comment: string;
+        mItem: TRoutineExceptions;
       begin
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
-        if not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader]) or
-          ((ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-          (ANode.Parent.Kind = TSyntaxKind.RoutineDecl)) then
+        if DocumentedExceptions(ANode, mLines, mItem) then
         begin
-          Exit;
+          mDocs := mDocs + [mItem];
         end;
-        Comment := TXmlDoc.CommentAbove(Lines, ANode.StartPos.Line);
-        if Comment = '' then
-        begin
-          Exit;
-        end;
-        Doc := TXmlDoc.Parse(Comment);
-        if Length(Doc.Exceptions) = 0 then
-        begin
-          Exit;
-        end;
-        Item.Name := ShortName(ANode.Name);
-        Item.Classes := nil;
-        for Entry in Doc.Exceptions do
-        begin
-          Item.Classes := Item.Classes + [TXmlDoc.NormalizeCref(Entry.Name)];
-        end;
-        Docs := Docs + [Item];
       end);
   end;
-  Result :=
-    function(ACallee: TSyntaxNode): TArray<string>
+  Result := DocumentedLookup(mDocs);
+end;
+
+/// <summary>Erster Vorfahr der Klasse AClass in ATree; '' ohne.</summary>
+function AncestorIn(ATree: TSyntaxTree; const AClass: string): string;
+var
+  mAncestor, mClass: string;
+  mFound: Boolean;
+begin
+  mAncestor := '';
+  mClass := AClass;
+  mFound := False;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
     var
-      Name: string;
-      Item: TRoutineExceptions;
+      mClassNode, mFirst: TSyntaxNode;
     begin
-      Result := nil;
-      Name := PlainCallee(ACallee);
-      if (Name = '') and (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.MemberAccess) then
-      begin
-        Name := ACallee.Name;
-      end;
-      if Name = '' then
+      Result := not mFound;
+      if mFound or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mClass) then
       begin
         Exit;
       end;
-      for Item in Docs do
+      mClassNode := ANode.FindChild(TSyntaxKind.ClassType);
+      if mClassNode = nil then
       begin
-        if SameText(Item.Name, Name) then
-        begin
-          Result := Result + Item.Classes;
-        end;
+        Exit;
       end;
+      mFound := True;
+      mFirst := mClassNode.FindChild(TSyntaxKind.TypeReference);
+      if mFirst <> nil then
+      begin
+        mAncestor := mFirst.Name;
+      end;
+    end);
+  Result := mAncestor;
+end;
+
+/// <summary>Stammt AClass über die Klassen in ATree von AHandler ab (höchstens 32 Stufen)?</summary>
+function DescendsIn(ATree: TSyntaxTree; const AClass, AHandler: string): Boolean;
+var
+  mCurrent, mAncestor: string;
+  mDepth: Integer;
+begin
+  mCurrent := AClass;
+  for mDepth := 1 to 32 do
+  begin
+    mAncestor := AncestorIn(ATree, mCurrent);
+    if (mAncestor = '') or SameText(mAncestor, AHandler) then
+    begin
+      Exit(mAncestor <> '');
     end;
+    mCurrent := mAncestor;
+  end;
+  Result := False;
 end;
 
 class function TExitPoints.TreeClassTest(ATree: TSyntaxTree): TExitPointClassTest;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := ATree;
+  mTree := ATree;
   Result :=
     function(const AClass, AHandler: string; AOffset: Integer): Boolean
-    var
-      Current, Ancestor: string;
-      Depth: Integer;
-      Found: Boolean;
     begin
       // Jede Exception-Klasse stammt von Exception ab (Konvention der RTL).
-      if SameText(AHandler, 'Exception') or SameText(AHandler, 'System.SysUtils.Exception') or
-        SameText(AClass, AHandler) then
-      begin
-        Exit(True);
-      end;
-      Result := False;
-      if Tree = nil then
-      begin
-        Exit;
-      end;
-      Current := AClass;
-      for Depth := 1 to 32 do
-      begin
-        Ancestor := '';
-        Found := False;
-        Tree.Root.Walk(
-          function(ANode: TSyntaxNode): Boolean
-          var
-            ClassNode, First: TSyntaxNode;
-          begin
-            Result := not Found;
-            if Found or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, Current) then
-            begin
-              Exit;
-            end;
-            ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
-            if ClassNode = nil then
-            begin
-              Exit;
-            end;
-            Found := True;
-            First := ClassNode.FindChild(TSyntaxKind.TypeReference);
-            if First <> nil then
-            begin
-              Ancestor := First.Name;
-            end;
-          end);
-        if Ancestor = '' then
-        begin
-          Exit;
-        end;
-        if SameText(Ancestor, AHandler) then
-        begin
-          Exit(True);
-        end;
-        Current := Ancestor;
-      end;
+      Result := SameText(AHandler, 'Exception') or SameText(AHandler, 'System.SysUtils.Exception') or
+        SameText(AClass, AHandler) or ((mTree <> nil) and DescendsIn(mTree, AClass, AHandler));
     end;
 end;
 
