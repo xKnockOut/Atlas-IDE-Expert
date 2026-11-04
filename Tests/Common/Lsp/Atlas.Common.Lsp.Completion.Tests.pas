@@ -153,6 +153,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Lsp.Completion.Values,
   System.SysUtils,
   System.IOUtils,
   System.Generics.Collections,
@@ -236,6 +238,58 @@ begin
     end;
   end;
   Result := TTextPosition.Create(Line, Index - LineStart);
+end;
+
+/// <summary>Was TCompletionValues aus der Datei HauptFile braucht.</summary>
+function LookupOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AText: string;
+  const AReadText: TCompletionReadText): TEnumLookup;
+begin
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.FileName := HauptFile;
+  Result.ReadText := AReadText;
+end;
+
+/// <summary>Anfrage an APosition mit Auflöser, Index, Baum und Lesen aus ALookup; der Aufrufer gibt sie frei.
+/// </summary>
+function RequestOf(const ALookup: TEnumLookup; const APosition: TTextPosition): TCompletionRequest;
+begin
+  Result := TCompletionRequest.Create(ALookup.Text, ALookup.FileName, APosition);
+  Result.Tree := ALookup.Tree;
+  Result.Resolver := ALookup.Resolver;
+  Result.Index := ALookup.Index;
+  Result.ReadText := ALookup.ReadText;
+  Result.Matching := TCompletionMatching.Fuzzy;
+end;
+
+/// <summary>TCompletionValues.EnumItems an APosition.</summary>
+function EnumAt(const ALookup: TEnumLookup; const APosition: TTextPosition; out AItems: TArray<TCompletionItem>;
+  out ASetMode: Boolean): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionValues.EnumItems(mRequest, AItems, ASetMode);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+/// <summary>TCompletionValues.DeclareItems an APosition.</summary>
+function DeclareAt(const ALookup: TEnumLookup; const APosition: TTextPosition; AInlineVar: Boolean;
+  const AKnown: TArray<TCompletionItem>; out AItems: TArray<TCompletionItem>): Boolean;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := RequestOf(ALookup, APosition);
+  try
+    Result := TCompletionValues.DeclareItems(mRequest, AInlineVar, AKnown, AItems);
+  finally
+    mRequest.Free;
+  end;
 end;
 
 function WithCode(const ACode: string): string;
@@ -648,7 +702,7 @@ begin
     try
       Found := '';
       for Symbol in FResolver.ScopeCandidates(Tree, HauptFile,
-        TLspCompletion.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
+        TCompletionContexts.Analyze(Tree, PositionOf(Text, #10'begin'#10'  ')).Offset) do
       begin
         Found := Found + Symbol.Name + ' ';
       end;
@@ -1801,7 +1855,7 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     // Ziel einer Zuweisung: Typ aus der rechten Seite.
-    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+    Assert.IsTrue(DeclareAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
       PositionOf(Text, '  TotalCount'), True, nil, Items));
     Item := Named('Lokale Variable anlegen');
     Assert.AreEqual('TotalCount: Integer', Item.Detail);
@@ -1824,20 +1878,20 @@ begin
       Assert.AreNotEqual('Konstante anlegen', Item.Name);
     end;
     // Als Argument: Typ des Parameters, auch als Konstante in der implementation.
-    Assert.IsTrue(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+    Assert.IsTrue(DeclareAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
       PositionOf(Text, 'Zeige(Anzahl'), False, nil, Items));
     Assert.AreEqual('Anzahl: Integer', Named('Lokale Variable anlegen').Detail);
     Item := Named('Konstante anlegen');
     Assert.AreEqual('Anzahl = 0;', Item.Detail);
     Assert.AreEqual(12, Item.AdditionalEdits[0].Range.StartPos.Line);
     // Bekannte Namen und genaue Treffer: nichts.
-    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+    Assert.IsFalse(DeclareAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
       PositionOf(Text, 'Zeige(Anzahl);'#13#10'  FLines'), True, nil, Items));
     // Eigene Variable für die bekannten Einträge: Ein out-Parameter leert sein Ziel vor dem Aufruf.
     SetLength(Known, 1);
     Known[0] := Default(TCompletionItem);
     Known[0].Name := 'Anzahl';
-    Assert.IsFalse(TLspCompletion.DeclareItems(Resolver, FIndex, Tree, Text, HauptFile,
+    Assert.IsFalse(DeclareAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
       PositionOf(Text, 'Zeige(Anzahl'), True, Known, Items));
   finally
     Resolver.Free;
@@ -1889,8 +1943,7 @@ begin
   try
     // Ohne Zweige: „Alle Werte einfügen“ zuerst, mit Anzahl; alle vier Zweige und das fehlende end.
     Position := PositionOf(Text, 'case S.Kind of'#13#10'    ');
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, Position, nil,
-      TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, nil), Position, Items, SetMode));
     Assert.AreEqual('Alle Werte einfügen', Items[0].Name);
     Assert.IsTrue(Items[0].Pinned);
     Assert.AreEqual(4, Integer(Items[0].Count));
@@ -1904,14 +1957,14 @@ begin
     Assert.AreEqual(Position.Character, Items[0].TextEdit.Range.EndPos.Character);
     Assert.AreEqual('skCircle', Items[1].Name, 'darunter die einzelnen Werte');
     // Mit Zweig skCircle: nur die drei übrigen, end ist vorhanden.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skCircle: Zeichne;'#13#10'    sk'), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
+      PositionOf(Text, 'skCircle: Zeichne;'#13#10'    sk'), Items, SetMode));
     Assert.AreEqual('Fehlende Werte ergänzen (3)', Items[0].Name);
     Assert.AreEqual(0, Integer(Items[0].Count));
     Assert.AreEqual(#13#10'    skLine: $0;'#13#10'    skRect: ;'#13#10'    skTriangle: ;', Items[0].TextEdit.NewText);
     // Bereiche und Listen zählen als vorhanden: nichts mehr zu ergänzen.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skTriangle: ;'#13#10'    '), nil, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, nil),
+      PositionOf(Text, 'skTriangle: ;'#13#10'    '), Items, SetMode));
     Assert.AreEqual('skCircle', Items[0].Name);
     Assert.IsFalse(Items[0].Pinned);
   finally
@@ -1983,7 +2036,7 @@ begin
     Settings := TCompletionSettings.Default;
     Settings.AssignAllFields := AOn;
     Request.Settings := Settings;
-    Result := TLspCompletion.AssignAllItem(Request, ASnippets, AItem);
+    Result := TCompletionValues.AssignAllItem(Request, ASnippets, AItem);
   finally
     Request.Free;
     Tree.Free;
@@ -2134,8 +2187,8 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     // Zuweisung: Werte in Deklarationsreihenfolge, auch über mehrere Zeilen.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Align := '),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, 'C.Align := '), Items, SetMode));
     Assert.IsFalse(SetMode);
     Assert.AreEqual('alNone alTop alClient', Joined);
     Assert.AreEqual(3, Items[2].Ordinal);
@@ -2144,19 +2197,19 @@ begin
     Assert.AreEqual('', Items[0].InsertText);
     Assert.AreEqual(TypenFile, Items[0].SourceFile, 'Position für completionItem/resolve');
     // Vergleich mit Scoped Enum: Typpräfix beim Einfügen, gefiltert nach dem Getippten.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind = sk'),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, 'C.Kind = sk'), Items, SetMode));
     Assert.AreEqual(4, Integer(Length(Items)));
     Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
     // case-Zweig.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'skCircle: ;'#13#10'    '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, 'skCircle: ;'#13#10'    '), Items, SetMode));
     Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', Joined);
     Assert.AreEqual(#13#10'    TShapeKind.skRect: $0;'#13#10'    TShapeKind.skLine: ;'#13#10'    TShapeKind.skTriangle: ;',
       Items[0].TextEdit.NewText, 'Scoped Enum mit Typpräfix (#449)');
     // Menge: alle Werte des Elementtyps, akLeft angehakt, Enter ersetzt die ganze Klammer.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile,
-      PositionOf(Text, 'C.Anchors := [akLeft, '), Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, 'C.Anchors := [akLeft, '), Items, SetMode));
     Assert.IsTrue(SetMode);
     Assert.AreEqual('akLeft akTop akRight akBottom', Joined);
     Assert.IsTrue(Items[0].SetChecked);
@@ -2167,14 +2220,14 @@ begin
     Assert.AreEqual(15, Items[0].SetRange.StartPos.Character);
     Assert.AreEqual(25, Items[0].SetRange.EndPos.Character);
     // "in": Elementtyp aus der linken Seite.
-    Assert.IsTrue(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'C.Kind in ['),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsTrue(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, 'C.Kind in ['), Items, SetMode));
     Assert.IsTrue(SetMode);
     Assert.AreEqual('set of TShapeKind', Items[0].Expected);
     Assert.AreEqual('TShapeKind.skCircle', Items[0].InsertText);
     // Index statt Menge.
-    Assert.IsFalse(TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, ':= List['),
-      Reader, TCompletionMatching.Fuzzy, Items, SetMode));
+    Assert.IsFalse(EnumAt(LookupOf(Resolver, FIndex, Tree, Text, Reader),
+      PositionOf(Text, ':= List['), Items, SetMode));
     Assert.IsFalse(SetMode);
   finally
     Resolver.Free;
@@ -2230,7 +2283,7 @@ procedure TLspCompletionTests.GroupsByExpectedType;
     Tree := TPascalParser.Parse(Text);
     Resolver := TNameResolver.Create(FIndex);
     try
-      Result := TLspCompletion.ExpectedType(Resolver, Tree, HauptFile, Position);
+      Result := TCompletionContexts.ExpectedType(Resolver, Tree, HauptFile, Position);
       Items := TLspCompletion.Collect(Resolver, FIndex, Tree, HauptFile, Position);
       // Passende zuerst, danach keine passenden mehr.
       Fits := '';
@@ -2805,12 +2858,12 @@ begin
   Tree := TPascalParser.Parse(Text);
   Resolver := TNameResolver.Create(FIndex);
   try
-    if TLspCompletion.EnumItems(Resolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, '  I := '),
+    if EnumAt(LookupOf(Resolver, FIndex, Tree, Text,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitFremd;
         Result := SameText(AFileName, 'C:\P\Fremd.pas');
-      end, TCompletionMatching.Fuzzy, Items, SetMode) then
+      end), PositionOf(Text, '  I := '), Items, SetMode) then
     begin
       for Item in Items do
       begin
