@@ -269,136 +269,173 @@ begin
   end;
 end;
 
-function TLspArchitecture.Request(const AParams: TJSONValue): TJSONValue;
-var
-  Params, Answer: TJSONObject;
-  Format: TLspArchitectureFormat;
-  Section: TArchitectureSection;
-  Overview: TArchitectureOverview;
-  Settings: TServerSettings;
-  Comparison: TArchitectureComparison;
-  Compared: Boolean;
-  FailOn: TArchitectureFailKinds;
-  Enabled: Boolean;
-  UnitName, Data, Root, Baseline, Error: string;
-  Value: TJSONValue;
+type
+  /// <summary>Übersicht samt Baseline und Vergleich einer Anfrage.</summary>
+  TArchitectureState = record
+    Overview: TArchitectureOverview;
+    Enabled: Boolean;
+    Root: string;
+    Settings: TServerSettings;
+    /// <summary>Datei der Baseline; '' ohne Vergleich.</summary>
+    Baseline: string;
+    FailOn: TArchitectureFailKinds;
+    Compared: Boolean;
+    Comparison: TArchitectureComparison;
+    /// <summary>Grund, wenn der Vergleich mit der Baseline nicht ging.</summary>
+    Error: string;
+  end;
+
+const
+  cFormatNames: array[TLspArchitectureFormat] of string = ('json', 'markdown', 'html', 'text');
+
+function StateFor(AOwner: TLspArchitecture; const AParams: TJSONObject): TArchitectureState;
 begin
-  if AParams is TJSONObject then
+  Result := Default(TArchitectureState);
+  Result.Overview := AOwner.OverviewFor(AParams, Result.Enabled, Result.Root, Result.Settings);
+  if Result.Enabled then
   begin
-    Params := TJSONObject(AParams);
+    Result.Baseline := BaselineFile(AParams, Result.Root, Result.Settings);
+    Result.FailOn := FailOnOf(Result.Settings);
+  end;
+end;
+
+procedure Compare(var AState: TArchitectureState);
+begin
+  if AState.Baseline <> '' then
+  begin
+    AState.Compared := TArchitectureComparer.CompareWithFile(AState.Baseline, AState.Overview, AState.Comparison,
+      AState.Error);
+  end;
+end;
+
+/// <summary>AText als JSON; EJsonRpcError mit AWhat, wenn es keins ist.</summary>
+function ParsedJson(const AText, AWhat: string): TJSONValue;
+begin
+  Result := TJSONObject.ParseJSONValue(AText);
+  if Result = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, AWhat + ' sind kein gültiges JSON');
+  end;
+end;
+
+procedure AddJsonReport(AAnswer: TJSONObject; const AState: TArchitectureState);
+begin
+  AAnswer.AddPair('data', ParsedJson(TArchitectureReport.Json(AState.Overview,
+    TArchitectureLayouter.Compute(AState.Overview)), 'Architekturdaten'));
+  if AState.Compared then
+  begin
+    AAnswer.AddPair('comparison', ParsedJson(TArchitectureComparer.Json(AState.Comparison, AState.FailOn),
+      'Vergleichsdaten'));
+  end;
+end;
+
+function PlainText(const AParams: TJSONObject; const AState: TArchitectureState;
+  ASection: TArchitectureSection): string;
+var
+  mUnitName: string;
+begin
+  mUnitName := StringOf(AParams, 'unit');
+  if mUnitName <> '' then
+  begin
+    Result := TArchitectureReport.UnitText(AState.Overview, mUnitName);
+  end
+  else if AState.Compared then
+  begin
+    Result := TArchitectureComparer.Text(AState.Comparison, AState.FailOn, TArchitectureReport.TextLimit);
   end
   else
   begin
-    Params := nil;
+    Result := TArchitectureReport.Text(AState.Overview, ASection, TArchitectureReport.TextLimit);
   end;
-  if not TryParseFormat(StringOf(Params, 'format'), Format) then
+end;
+
+/// <summary>Bericht als Markdown, HTML oder Text.</summary>
+function ReportText(AFormat: TLspArchitectureFormat; const AParams: TJSONObject; const AState: TArchitectureState;
+  ASection: TArchitectureSection): string;
+begin
+  case AFormat of
+    TLspArchitectureFormat.Markdown:
+      if AState.Compared then
+      begin
+        Result := TArchitectureReport.Markdown(AState.Overview, AState.Comparison);
+      end
+      else
+      begin
+        Result := TArchitectureReport.Markdown(AState.Overview);
+      end;
+    TLspArchitectureFormat.Html:
+      if AState.Compared then
+      begin
+        Result := TArchitectureReport.Html(AState.Overview, AState.Comparison, AState.FailOn);
+      end
+      else
+      begin
+        Result := TArchitectureReport.Html(AState.Overview);
+      end;
+  else
+    Result := PlainText(AParams, AState, ASection);
+  end;
+end;
+
+function AnswerFor(AFormat: TLspArchitectureFormat; const AParams: TJSONObject; const AState: TArchitectureState;
+  ASection: TArchitectureSection): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  try
+    Result.AddPair('enabled', TJSONBool.Create(AState.Enabled));
+    if not AState.Enabled then
+    begin
+      Exit;
+    end;
+    // Nur in der Antwort, nicht in den Berichtsdaten: Ein weitergegebener Bericht nennt keine lokalen Pfade.
+    Result.AddPair('root', AState.Root);
+    if AState.Compared then
+    begin
+      Result.AddPair('baseline', AState.Baseline);
+    end
+    else if AState.Error <> '' then
+    begin
+      Result.AddPair('comparisonError', AState.Error);
+    end;
+    Result.AddPair('format', cFormatNames[AFormat]);
+    if AFormat = TLspArchitectureFormat.Json then
+    begin
+      AddJsonReport(Result, AState);
+    end
+    else
+    begin
+      Result.AddPair('text', ReportText(AFormat, AParams, AState, ASection));
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TLspArchitecture.Request(const AParams: TJSONValue): TJSONValue;
+var
+  mParams: TJSONObject;
+  mFormat: TLspArchitectureFormat;
+  mSection: TArchitectureSection;
+  mState: TArchitectureState;
+begin
+  mParams := nil;
+  if AParams is TJSONObject then
+  begin
+    mParams := TJSONObject(AParams);
+  end;
+  if not TryParseFormat(StringOf(mParams, 'format'), mFormat) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, html oder text');
   end;
-  if not TArchitectureReport.ParseSection(StringOf(Params, 'section'), Section) then
+  if not TArchitectureReport.ParseSection(StringOf(mParams, 'section'), mSection) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       '"section" ist overview, central, subsystems, cycles oder crossLinks');
   end;
-  Overview := OverviewFor(Params, Enabled, Root, Settings);
-  Compared := False;
-  Baseline := '';
-  Error := '';
-  FailOn := [];
-  if Enabled then
-  begin
-    Baseline := BaselineFile(Params, Root, Settings);
-    FailOn := FailOnOf(Settings);
-    if Baseline <> '' then
-    begin
-      Compared := TArchitectureComparer.CompareWithFile(Baseline, Overview, Comparison, Error);
-    end;
-  end;
-  Answer := TJSONObject.Create;
-  try
-    Answer.AddPair('enabled', TJSONBool.Create(Enabled));
-    // Nur in der Antwort, nicht in den Berichtsdaten: Ein weitergegebener Bericht nennt keine lokalen Pfade.
-    if Enabled then
-    begin
-      Answer.AddPair('root', Root);
-    end;
-    if Compared then
-    begin
-      Answer.AddPair('baseline', Baseline);
-    end
-    else if Error <> '' then
-    begin
-      Answer.AddPair('comparisonError', Error);
-    end;
-    if Enabled then
-      case Format of
-        TLspArchitectureFormat.Json:
-          begin
-            Data := TArchitectureReport.Json(Overview, TArchitectureLayouter.Compute(Overview));
-            Value := TJSONObject.ParseJSONValue(Data);
-            if Value = nil then
-            begin
-              raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Architekturdaten sind kein gültiges JSON');
-            end;
-            Answer.AddPair('format', 'json');
-            Answer.AddPair('data', Value);
-            if Compared then
-            begin
-              Value := TJSONObject.ParseJSONValue(TArchitectureComparer.Json(Comparison, FailOn));
-              if Value = nil then
-              begin
-                raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Vergleichsdaten sind kein gültiges JSON');
-              end;
-              Answer.AddPair('comparison', Value);
-            end;
-          end;
-        TLspArchitectureFormat.Markdown:
-          begin
-            Answer.AddPair('format', 'markdown');
-            if Compared then
-            begin
-              Answer.AddPair('text', TArchitectureReport.Markdown(Overview, Comparison));
-            end
-            else
-            begin
-              Answer.AddPair('text', TArchitectureReport.Markdown(Overview));
-            end;
-          end;
-        TLspArchitectureFormat.Html:
-          begin
-            Answer.AddPair('format', 'html');
-            if Compared then
-            begin
-              Answer.AddPair('text', TArchitectureReport.Html(Overview, Comparison, FailOn));
-            end
-            else
-            begin
-              Answer.AddPair('text', TArchitectureReport.Html(Overview));
-            end;
-          end;
-        TLspArchitectureFormat.Text:
-          begin
-            Answer.AddPair('format', 'text');
-            UnitName := StringOf(Params, 'unit');
-            if UnitName <> '' then
-            begin
-              Answer.AddPair('text', TArchitectureReport.UnitText(Overview, UnitName));
-            end
-            else if Compared then
-            begin
-              Answer.AddPair('text', TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit));
-            end
-            else
-            begin
-              Answer.AddPair('text', TArchitectureReport.Text(Overview, Section, TArchitectureReport.TextLimit));
-            end;
-          end;
-      end;
-    Result := Answer;
-    Answer := nil;
-  finally
-    Answer.Free;
-  end;
+  mState := StateFor(Self, mParams);
+  Compare(mState);
+  Result := AnswerFor(mFormat, mParams, mState, mSection);
 end;
 
 function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
@@ -430,101 +467,109 @@ begin
   end;
 end;
 
+/// <summary>Optionen von saveReport, die die Übersicht bestimmen, in AParams übernehmen.</summary>
+procedure CopySaveOptions(AOptions, AParams: TJSONObject);
+var
+  mName: string;
+begin
+  for mName in TArray<string>.Create('scope', 'compareWith') do
+  begin
+    if StringOf(AOptions, mName) <> '' then
+    begin
+      AParams.AddPair(mName, StringOf(AOptions, mName));
+    end;
+  end;
+  for mName in TArray<string>.Create('includeLibraryUnits', 'compare') do
+  begin
+    if AOptions.GetValue(mName) is TJSONBool then
+    begin
+      AParams.AddPair(mName, TJSONBool.Create(FlagOf(AOptions, mName, False)));
+    end;
+  end;
+  if AOptions.GetValue('resolution') <> nil then
+  begin
+    AParams.AddPair('resolution', TJSONValue(AOptions.GetValue('resolution').Clone));
+  end;
+end;
+
+/// <summary>Zieldatei aus den Argumenten [uri, Ziel, Optionen]; EJsonRpcError, wenn sie fehlt.</summary>
+function SaveTarget(const AArguments: TJSONArray): string;
+begin
+  Result := '';
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+  begin
+    Result := PathOf(AArguments.Items[1].Value);
+  end;
+  if Result = '' then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
+  end;
+end;
+
+/// <summary>Schreibt den Bericht nach ATarget; ein misslungener Vergleich steht in AAnswer.</summary>
+procedure WriteReport(const ATarget: string; var AState: TArchitectureState; AAnswer: TJSONObject);
+var
+  mText: string;
+begin
+  if SameText(ExtractFileExt(ATarget), '.json') then
+  begin
+    // Stand für den Vergleich (#1121): stabil sortiert, bei gleichem Stand byteweise gleich.
+    TArchitectureSnapshots.Save(ATarget, TArchitectureSnapshots.FromOverview(AState.Overview));
+    Exit;
+  end;
+  Compare(AState);
+  if (AState.Baseline <> '') and not AState.Compared then
+  begin
+    AAnswer.AddPair('comparisonError', AState.Error);
+  end;
+  if AState.Compared then
+  begin
+    mText := TArchitectureReport.ForFile(AState.Overview, ATarget, AState.Comparison, AState.FailOn);
+  end
+  else
+  begin
+    mText := TArchitectureReport.ForFile(AState.Overview, ATarget);
+  end;
+  ForceDirectories(ExtractFileDir(ATarget));
+  // UTF-8 ohne BOM wie --architecture; Browser und Markdown-Leser brauchen keins.
+  TFile.WriteAllBytes(ATarget, TEncoding.UTF8.GetBytes(mText));
+end;
+
 function TLspArchitecture.SaveReport(const AArguments: TJSONArray): TJSONValue;
 var
-  Params, Options: TJSONObject;
-  Target, Root, Baseline, Error, Extension: string;
-  Overview: TArchitectureOverview;
-  Settings: TServerSettings;
-  Comparison: TArchitectureComparison;
-  Enabled, Compared: Boolean;
-  Answer: TJSONObject;
-  Name: string;
+  mParams, mAnswer: TJSONObject;
+  mTarget: string;
+  mState: TArchitectureState;
 begin
-  Params := TJSONObject.Create;
+  mParams := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
     begin
-      Params.AddPair('uri', AArguments.Items[0].Value);
+      mParams.AddPair('uri', AArguments.Items[0].Value);
     end;
-    Target := '';
-    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+    mTarget := SaveTarget(AArguments);
+    if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
     begin
-      Target := PathOf(AArguments.Items[1].Value);
+      CopySaveOptions(TJSONObject(AArguments.Items[2]), mParams);
     end;
-    if Target = '' then
-    begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
-    end;
-    if (AArguments <> nil) and (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
-    begin
-      Options := TJSONObject(AArguments.Items[2]);
-      for Name in TArray<string>.Create('scope', 'compareWith') do
-      begin
-        if StringOf(Options, Name) <> '' then
-        begin
-          Params.AddPair(Name, StringOf(Options, Name));
-        end;
-      end;
-      for Name in TArray<string>.Create('includeLibraryUnits', 'compare') do
-      begin
-        if Options.GetValue(Name) is TJSONBool then
-        begin
-          Params.AddPair(Name, TJSONBool.Create(FlagOf(Options, Name, False)));
-        end;
-      end;
-      if Options.GetValue('resolution') <> nil then
-      begin
-        Params.AddPair('resolution', TJSONValue(Options.GetValue('resolution').Clone));
-      end;
-    end;
-    Overview := OverviewFor(Params, Enabled, Root, Settings);
-    Baseline := '';
-    if Enabled then
-    begin
-      Baseline := BaselineFile(Params, Root, Settings);
-    end;
+    mState := StateFor(Self, mParams);
   finally
-    Params.Free;
+    mParams.Free;
   end;
-  if not Enabled then
+  if not mState.Enabled then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Architekturübersicht ist ausgeschaltet ' +
       '(architecture.enabled)');
   end;
-  Extension := LowerCase(ExtractFileExt(Target));
-  Answer := TJSONObject.Create;
+  mAnswer := TJSONObject.Create;
   try
-    if Extension = '.json' then
-    begin
-      // Stand für den Vergleich (#1121): stabil sortiert, bei gleichem Stand byteweise gleich.
-      TArchitectureSnapshots.Save(Target, TArchitectureSnapshots.FromOverview(Overview));
-    end
-    else
-    begin
-      Compared := (Baseline <> '') and TArchitectureComparer.CompareWithFile(Baseline, Overview, Comparison, Error);
-      if (Baseline <> '') and not Compared then
-      begin
-        Answer.AddPair('comparisonError', Error);
-      end;
-      ForceDirectories(ExtractFileDir(Target));
-      // UTF-8 ohne BOM wie --architecture; Browser und Markdown-Leser brauchen keins.
-      if Compared then
-      begin
-        TFile.WriteAllBytes(Target, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview, Target, Comparison,
-          FailOnOf(Settings))));
-      end
-      else
-      begin
-        TFile.WriteAllBytes(Target, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview, Target)));
-      end;
-    end;
-    Answer.AddPair('file', Target);
-    Answer.AddPair('units', TJSONNumber.Create(Length(Overview.Units)));
-    Result := Answer;
-    Answer := nil;
+    WriteReport(mTarget, mState, mAnswer);
+    mAnswer.AddPair('file', mTarget);
+    mAnswer.AddPair('units', TJSONNumber.Create(Length(mState.Overview.Units)));
+    Result := mAnswer;
+    mAnswer := nil;
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 

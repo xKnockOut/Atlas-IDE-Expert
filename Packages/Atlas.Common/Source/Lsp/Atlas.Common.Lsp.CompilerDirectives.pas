@@ -73,7 +73,8 @@ end;
 var
   Directives: TArray<TDirectiveInfo>;
 
-procedure InitDirectives;
+/// <summary>Direktiven A bis L.</summary>
+procedure InitDirectivesToL;
 begin
   Directives := [
     D('ALIGN', 'A', 'Ausrichtung der Felder in Records und Klassen (1, 2, 4, 8, 16 oder ON/OFF).', 'Align_fields_(Delphi)'),
@@ -111,7 +112,13 @@ begin
     D('LEGACYIFEND', '', '{$IF} nur mit {$IFEND} schließen (wie vor Delphi XE4).', 'Legacy_IFEND_(Delphi)'),
     D('LINK', 'L', 'Objektdatei einbinden ({$L Datei}).', 'Link_object_file_(Delphi)'),
     D('LOCALSYMBOLS', 'L', 'Informationen über lokale Symbole für den Debugger ({$L+}).',
-      'Local_symbol_information_(Delphi)'),
+      'Local_symbol_information_(Delphi)')];
+end;
+
+/// <summary>Direktiven ab LONGSTRINGS.</summary>
+procedure InitDirectivesFromL;
+begin
+  Directives := Directives + [
     D('LONGSTRINGS', 'H', 'string bedeutet einen langen String statt ShortString.', 'Long_strings_(Delphi)'),
     D('MESSAGE', '', 'Eigene Meldung beim Kompilieren ausgeben (HINT, WARN, ERROR, FATAL).',
       'MESSAGE_directive_(Delphi)'),
@@ -145,6 +152,12 @@ begin
     D('WEAKPACKAGEUNIT', '', 'Unit schwach in ein Package aufnehmen.', 'Weak_packaging'),
     D('WRITEABLECONST', 'J', 'Typisierte Konstanten beschreibbar machen.', 'Writeable_typed_constants_(Delphi)'),
     D('ZEROBASEDSTRINGS', '', 'String-Indizes beginnen bei 0.', 'Zero-based_strings_(Delphi)')];
+end;
+
+procedure InitDirectives;
+begin
+  InitDirectivesToL;
+  InitDirectivesFromL;
 end;
 
 { TCompilerDirectives }
@@ -194,95 +207,122 @@ begin
   Result := Result + #10#10 + '[DocWiki](' + TCompilerDirectives.Url(AVersion, AInfo.Topic) + ')';
 end;
 
-class function TCompilerDirectives.Describe(const ADirective, ADelphiVersion: string; out AMarkdown: string): Boolean;
+/// <summary>Beschreibung eines Kurzschalters wie R+ ('' wenn keiner).</summary>
+function DescribeSwitch(const APart, AVersion: string): string;
 var
-  Text, Name, Rest, Part, Value: string;
-  Info: TDirectiveInfo;
-  Parts: TArray<string>;
-  Start, Index: Integer;
+  mInfo: TDirectiveInfo;
 begin
-  AMarkdown := '';
-  Text := TDirectiveNames.Body(ADirective);
-  Name := TDirectiveNames.LeadingName(Text);
-  Rest := Trim(Copy(Text, Length(Name) + 1, MaxInt));
-  if Name = '' then
+  Result := '';
+  if not ((Length(APart) = 2) and CharInSet(APart[2], ['+', '-'])) then
   begin
-    Exit(False);
+    Exit;
   end;
-  // Kurzschalter, auch mehrere: {$R+,Q-}
-  if (Length(Name) = 1) and (Rest <> '') and CharInSet(Rest[1], ['+', '-']) then
+  for mInfo in Directives do
   begin
-    Parts := nil;
-    Start := 1;
-    for Index := 1 to Length(Text) + 1 do
+    // I, L und R sind mit Dateinamen andere Direktiven; mit +/- sind es die Schalter.
+    if SameText(mInfo.Letter, APart[1]) and not MatchText(mInfo.Name, ['INCLUDE', 'LINK', 'RESOURCE']) then
     begin
-      if (Index > Length(Text)) or (Text[Index] = ',') then
-      begin
-        Parts := Parts + [Trim(Copy(Text, Start, Index - Start))];
-        Start := Index + 1;
-      end;
+      Exit(DescribeInfo(mInfo, AVersion, IfThen(APart[2] = '+', 'eingeschaltet', 'ausgeschaltet')));
     end;
-    for Part in Parts do
+  end;
+end;
+
+/// <summary>Kurzschalter, auch mehrere: {$R+,Q-}.</summary>
+function DescribeSwitches(const AText, AVersion: string): string;
+var
+  mPart, mOne: string;
+begin
+  Result := '';
+  for mPart in AText.Split([',']) do
+  begin
+    mOne := DescribeSwitch(Trim(mPart), AVersion);
+    if (mOne <> '') and (Result <> '') then
     begin
-      if (Length(Part) = 2) and CharInSet(Part[2], ['+', '-']) then
-      begin
-        // I, L und R sind mit Dateinamen andere Direktiven; mit +/- sind es die Schalter.
-        Value := IfThen(Part[2] = '+', 'eingeschaltet', 'ausgeschaltet');
-        for Info in Directives do
-        begin
-          if SameText(Info.Letter, Part[1]) and not MatchText(Info.Name, ['INCLUDE', 'LINK', 'RESOURCE']) then
-          begin
-            if AMarkdown <> '' then
-            begin
-              AMarkdown := AMarkdown + #10#10'---'#10#10;
-            end;
-            AMarkdown := AMarkdown + DescribeInfo(Info, ADelphiVersion, Value);
-            Break;
-          end;
-        end;
-      end;
+      Result := Result + #10#10'---'#10#10;
     end;
-    Exit(AMarkdown <> '');
+    Result := Result + mOne;
   end;
-  // {$I Datei}, {$L Datei}, {$R Datei}: Dateidirektiven
-  if (Length(Name) = 1) and MatchText(Name, ['I', 'L', 'R']) then
+end;
+
+/// <summary>{$WARN BEZEICHNER OFF}: die Direktive und, wenn bekannt, die Warnung.</summary>
+function DescribeWarn(const AInfo: TDirectiveInfo; const ARest, AVersion: string): string;
+var
+  mWarning: string;
+begin
+  mWarning := TDirectiveNames.LeadingName(ARest);
+  Result := DescribeInfo(AInfo, AVersion, '');
+  if TDirectiveNames.IsWarning(mWarning) then
   begin
-    case UpCase(Name[1]) of
-      'I': Name := 'INCLUDE';
-      'L': Name := 'LINK';
-    else
-      Name := 'RESOURCE';
-    end;
+    Result := Result + #10#10 + Format('Warnung `%s`: %s', [UpperCase(mWarning),
+      Trim(Copy(ARest, Length(mWarning) + 1, MaxInt))]);
   end;
-  if not Find(Name, Info) then
+end;
+
+/// <summary>Zustand nach dem Namen: ON/+ eingeschaltet, OFF/- ausgeschaltet, sonst ''.</summary>
+function StateOf(const ARest: string): string;
+begin
+  if MatchText(ARest, ['ON', '+']) then
   begin
-    Exit(False);
-  end;
-  if SameText(Info.Name, 'WARN') then
-  begin
-    Value := TDirectiveNames.LeadingName(Rest);
-    AMarkdown := DescribeInfo(Info, ADelphiVersion, '');
-    if TDirectiveNames.IsWarning(Value) then
-    begin
-      AMarkdown := AMarkdown + #10#10 + Format('Warnung `%s`: %s', [UpperCase(Value),
-        Trim(Copy(Rest, Length(Value) + 1, MaxInt))]);
-    end;
-    Exit(True);
-  end;
-  if MatchText(Rest, ['ON', '+']) then
-  begin
-    Value := 'eingeschaltet';
+    Result := 'eingeschaltet';
   end
-  else if MatchText(Rest, ['OFF', '-']) then
+  else if MatchText(ARest, ['OFF', '-']) then
   begin
-    Value := 'ausgeschaltet';
+    Result := 'ausgeschaltet';
   end
   else
   begin
-    Value := '';
+    Result := '';
   end;
-  AMarkdown := DescribeInfo(Info, ADelphiVersion, Value);
-  Result := True;
+end;
+
+/// <summary>{$I Datei}, {$L Datei}, {$R Datei}: Dateidirektiven; andere Namen bleiben.</summary>
+function FileDirectiveName(const AName: string): string;
+begin
+  Result := AName;
+  if Length(AName) <> 1 then
+  begin
+    Exit;
+  end;
+  case UpCase(AName[1]) of
+    'I': Result := 'INCLUDE';
+    'L': Result := 'LINK';
+    'R': Result := 'RESOURCE';
+  else
+    // Übrige Buchstaben: Name bleibt.
+  end;
+end;
+
+class function TCompilerDirectives.Describe(const ADirective, ADelphiVersion: string; out AMarkdown: string): Boolean;
+var
+  mText, mName, mRest: string;
+  mInfo: TDirectiveInfo;
+begin
+  AMarkdown := '';
+  mText := TDirectiveNames.Body(ADirective);
+  mName := TDirectiveNames.LeadingName(mText);
+  mRest := Trim(Copy(mText, Length(mName) + 1, MaxInt));
+  if mName = '' then
+  begin
+    Exit(False);
+  end;
+  if (Length(mName) = 1) and (mRest <> '') and CharInSet(mRest[1], ['+', '-']) then
+  begin
+    AMarkdown := DescribeSwitches(mText, ADelphiVersion);
+    Exit(AMarkdown <> '');
+  end;
+  Result := Find(FileDirectiveName(mName), mInfo);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if SameText(mInfo.Name, 'WARN') then
+  begin
+    AMarkdown := DescribeWarn(mInfo, mRest, ADelphiVersion);
+  end
+  else
+  begin
+    AMarkdown := DescribeInfo(mInfo, ADelphiVersion, StateOf(mRest));
+  end;
 end;
 
 class function TCompilerDirectives.CompletionAt(const ALineBeforeCursor: string; out ANames: TArray<string>;

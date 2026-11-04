@@ -58,7 +58,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Editing.Contract,
@@ -75,6 +77,21 @@ const
   cExtractInterfaceOff = '"Interface herauslösen" ist abgeschaltet (refactoring.extractInterface).';
   cExtractSuperclassOff = '"Basisklasse herauslösen" ist abgeschaltet (refactoring.extractSuperclass).';
   cExtractMissing = 'Argument mit Name, Ziel und Mitgliedern fehlt';
+
+/// <summary>Ansatz für „Signatur ändern“: Dokument und Position aus den Argumenten (URI, Position).</summary>
+function SignatureSource(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ADocument: ITextDocument;
+  const AArguments: TJSONArray; const AFiles: TArray<string>; const AReadText: TReferenceReadText):
+  TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := AIndex;
+  Result.Tree := TSyntaxTreeCache.Get(ADocument, nil).Tree;
+  Result.FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  Result.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Result.Files := AFiles;
+  Result.ReadText := AReadText;
+end;
 
 function ParameterModeOf(const ASettings: TRefactoringSettings): TNewParameterMode;
 begin
@@ -196,10 +213,8 @@ begin
   mDocument := Open(mUri, mSettings.ChangeSignature, cChangeSignatureOff);
   mResolver := NewResolver;
   try
-    Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(mResolver, Index,
-      TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
-      TLspPositions.ReadPosition(AArguments.Items[1]), ProjectFiles, Reader, nil), ParameterModeOf(mSettings),
-      mSettings.VirtualOverload);
+    Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(SignatureSource(mResolver, Index, mDocument,
+      AArguments, ProjectFiles, Reader)), ParameterModeOf(mSettings), mSettings.VirtualOverload);
   finally
     mResolver.Free;
   end;
@@ -224,9 +239,8 @@ begin
     mSettings.VirtualOverload);
   mResolver := NewResolver;
   try
-    mOutcome := TLspChangeSignature.Execute(mResolver, Index, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), TLspPositions.ReadPosition(AArguments.Items[1]), mRequest, ProjectFiles, Reader,
-      IsReadOnly, nil);
+    mOutcome := TLspChangeSignature.Execute(SignatureSource(mResolver, Index, mDocument, AArguments, ProjectFiles,
+      Reader), mRequest, IsReadOnly);
   finally
     mResolver.Free;
   end;

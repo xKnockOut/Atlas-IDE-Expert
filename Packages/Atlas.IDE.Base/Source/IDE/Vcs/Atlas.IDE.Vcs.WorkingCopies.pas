@@ -83,13 +83,17 @@ var
   mFile: string;
 begin
   if ExtractFileDir(AProject) = '' then
+  begin
     Exit;
+  end;
   mSession := TAtlasIdeWorkingCopies.Create;
   mKeep := mSession;
   mSession.FFolder := ExtractFileDir(AProject);
   mFile := TAtlasIdeFiles.GroupOfProject(AProject);
   if mFile = '' then
+  begin
     mFile := AProject;
+  end;
   mSession.FName := ChangeFileExt(ExtractFileName(mFile), '');
   mSession.FDone := ADone;
   mSession.FList := TAtlasVcsWorkingCopyList.Empty;
@@ -120,7 +124,9 @@ function TAtlasIdeWorkingCopies.RowName(AIndex: Integer): string;
 begin
   Result := FName;
   if (AIndex >= 0) and (AIndex <= High(FList.Rows)) then
+  begin
     Result := FList.Rows[AIndex].Caption(FName);
+  end;
 end;
 
 procedure TAtlasIdeWorkingCopies.Collect;
@@ -144,16 +150,22 @@ begin
     procedure
     begin
       if (mKeep = nil) or not Current(mGeneration) then
+      begin
         Exit;
+      end;
       TAtlasGuard.Log(Format('Arbeitskopien: %s, %d Zeilen, %s', [AtlasVcsKindName(mList.Kind),
         Length(mList.Rows), AtlasVcsOutcomeName(mList.Outcome)]));
       if (mList.Kind <> TAtlasVcsKind.Git) and (mList.Kind <> TAtlasVcsKind.Svn) then
+      begin
         TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+      end;
       FList := mList;
       FDialog.SetList(FList);
       FillNext(0);
     end) then
+  begin
     TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+  end;
 end;
 
 procedure TAtlasIdeWorkingCopies.FillNext(AIndex: Integer);
@@ -167,9 +179,13 @@ begin
   mIndex := AIndex;
   while (mIndex <= High(FList.Rows)) and FList.Rows[mIndex].Loaded and
     not ((FList.Kind = TAtlasVcsKind.Git) and (FList.Rows[mIndex].Changed < 0)) do
+  begin
     Inc(mIndex);
+  end;
   if mIndex > High(FList.Rows) then
+  begin
     Exit;
+  end;
   mGeneration := FGeneration;
   mKeep := Self;
   // Eigene Kopie für den Hintergrund: Die Tabelle liest FList weiter.
@@ -183,31 +199,41 @@ begin
       mSvn: IAtlasVcsSvnWorkingCopy;
     begin
       if mWork.Kind = TAtlasVcsKind.Git then
+      begin
         TAtlasVcsWorkingCopies.FillChanges(mWork, mIndex, TAtlasIdeVcs.ForFolder(mFolder,
-          TAtlasIdeVcs.AtLeast(LocalTimeoutMs)))
+          TAtlasIdeVcs.AtLeast(LocalTimeoutMs)));
+      end
       else
       begin
         if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(LocalTimeoutMs)), IAtlasVcsSvnWorkingCopy,
           mSvn) then
+        begin
           mSvn := nil;
+        end;
         TAtlasVcsWorkingCopies.FillRevision(mWork, mIndex, mSvn);
       end;
     end,
     procedure
     begin
       if (mKeep = nil) or not Current(mGeneration) then
+      begin
         Exit;
+      end;
       FList.Rows[mIndex] := mWork.Rows[mIndex];
       FDialog.SetRow(mIndex, FList.Rows[mIndex]);
       FillNext(mIndex + 1);
     end) then
+  begin
     Exit;
+  end;
 end;
 
 procedure TAtlasIdeWorkingCopies.CheckServer(Sender: TObject);
 begin
   if FList.Kind <> TAtlasVcsKind.Svn then
+  begin
     Exit;
+  end;
   FDialog.SetBusy(True);
   CheckNext(0);
 end;
@@ -222,7 +248,9 @@ begin
   // Nur Zeilen mit Pfad im selben Repository; je Zeile ein svn log, nacheinander.
   mIndex := AIndex;
   while (mIndex <= High(FList.Rows)) and (FList.Rows[mIndex].RepositoryPath = '') do
+  begin
     Inc(mIndex);
+  end;
   if mIndex > High(FList.Rows) then
   begin
     FDialog.SetBusy(False);
@@ -241,19 +269,25 @@ begin
     begin
       if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(ServerTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
+      begin
         mExternals := nil;
+      end;
       TAtlasVcsWorkingCopies.CheckServer(mWork, mIndex, mExternals);
     end,
     procedure
     begin
       if (mKeep = nil) or not Current(mGeneration) then
+      begin
         Exit;
+      end;
       FList.Rows[mIndex] := mWork.Rows[mIndex];
       FDialog.SetChecking(mIndex, False);
       FDialog.SetRow(mIndex, FList.Rows[mIndex]);
       CheckNext(mIndex + 1);
     end) then
+  begin
     FDialog.SetBusy(False);
+  end;
 end;
 
 procedure TAtlasIdeWorkingCopies.Update(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
@@ -265,7 +299,9 @@ var
   mReason: TAtlasVcsOutcome;
 begin
   if (AIndex < 0) or (AIndex > High(FList.Rows)) then
+  begin
     Exit;
+  end;
   mKeep := Self;
   // Wurzel bzw. die eigene Arbeitskopie des Externals (der Ordner hat ein eigenes .svn).
   mFolder := FList.Rows[AIndex].Folder;
@@ -283,7 +319,9 @@ begin
     procedure
     begin
       if mKeep = nil then
+      begin
         Exit;
+      end;
       TAtlasGuard.Log(Format('Arbeitskopien: aktualisiert (ohne Externals %s), %s',
         [BoolToStr(mIgnore, True), AtlasVcsOutcomeName(mReason)]));
       case mOutcome of
@@ -295,20 +333,30 @@ begin
           TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [mName]));
       else
         if mReason = TAtlasVcsOutcome.LoginNeeded then
-          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [mName]))
+        begin
+          TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [mName]));
+        end
         else
+        begin
           TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesUpdateFailed, [mName,
             AtlasVcsOutcomeName(mReason)]));
+        end;
       end;
       if Assigned(FDone) then
+      begin
         FDone();
+      end;
       if not FOpen or (FDialog = nil) then
+      begin
         Exit;
+      end;
       FDialog.SetBusy(False);
       // Neue Revisionen, ggf. neue Externals: neu lesen.
       Collect;
     end) then
+  begin
     FDialog.SetBusy(False);
+  end;
 end;
 
 class function TAtlasIdeWorkingCopies.PinQuestion(const AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
@@ -319,11 +367,17 @@ begin
   AText := '';
   Result := TAtlasVcsWorkingCopies.PinnedText(AList, AIndex, mOwner, mDefinition);
   if not Result then
+  begin
     Exit;
+  end;
   if mOwner = '' then
-    mOwner := AName
+  begin
+    mOwner := AName;
+  end
   else
+  begin
     mOwner := StringReplace(mOwner, '/', '\', [rfReplaceAll]);
+  end;
   AText := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinConfirm, [AList.Rows[AIndex].Caption(AName),
     AList.Rows[AIndex].Revision, mOwner, sLineBreak + sLineBreak]);
 end;
@@ -336,9 +390,13 @@ var
   mOutcome: TAtlasVcsOutcome;
 begin
   if not PinQuestion(FList, AIndex, FName, mQuestion) then
+  begin
     Exit;
+  end;
   if MessageDlg(mQuestion, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
     Exit;
+  end;
   mKeep := Self;
   mWork := FList;
   mWork.Rows := Copy(FList.Rows);
@@ -354,27 +412,41 @@ begin
     begin
       if not Supports(TAtlasIdeVcs.ForFolder(mRoot, TAtlasIdeVcs.AtLeast(LocalTimeoutMs)), IAtlasVcsSvnExternals,
         mExternals) then
+      begin
         mExternals := nil;
+      end;
       mOutcome := TAtlasVcsWorkingCopies.Pin(mWork, AIndex, mExternals);
     end,
     procedure
     begin
       if mKeep = nil then
+      begin
         Exit;
+      end;
       TAtlasGuard.Log('Arbeitskopien: festschreiben, ' + AtlasVcsOutcomeName(mOutcome));
       if mOutcome = TAtlasVcsOutcome.Ok then
-        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinned, [mName, mRevision]))
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinned, [mName, mRevision]));
+      end
       else
+      begin
         TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesPinFailed, [mName,
           AtlasVcsOutcomeName(mOutcome)]));
+      end;
       if Assigned(FDone) then
+      begin
         FDone();
+      end;
       if not FOpen or (FDialog = nil) then
+      begin
         Exit;
+      end;
       FDialog.SetBusy(False);
       Collect;
     end) then
+  begin
     FDialog.SetBusy(False);
+  end;
 end;
 
 procedure TAtlasIdeWorkingCopies.OpenFolder(Sender: TObject; AIndex: Integer);
@@ -382,13 +454,17 @@ var
   mFolder: string;
 begin
   if (AIndex < 0) or (AIndex > High(FList.Rows)) then
+  begin
     Exit;
+  end;
   mFolder := FList.Rows[AIndex].Folder;
   TAtlasGuard.Run(TAtlasFeature.Files,
     procedure
     begin
       if DirectoryExists(mFolder) then
+      begin
         ShellExecute(0, 'open', PChar(mFolder), nil, nil, SW_SHOWNORMAL);
+      end;
     end);
 end;
 

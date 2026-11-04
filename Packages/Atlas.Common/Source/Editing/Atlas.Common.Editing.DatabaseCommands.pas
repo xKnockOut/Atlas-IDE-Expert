@@ -123,7 +123,7 @@ begin
       // Lange Abfragen: eine Zeile je Klausel, ab Delphi 12 als '''-String, sonst mit sLineBreak.
       Literal := TStringLiterals.ToLiteral(string.Join(#13#10, TSqlText.Layout(Sql, 0)), Indent + '  ', True,
         TStringLiterals.UseMultiline(TStringLiteralStyle.Auto, AContext.DelphiVersion),
-        TStringLiteralBreak.SLineBreak, 0, Source.LineBreak);
+        TStringLiteralSettings.Default, Source.LineBreak);
       Lines := [Format('%s%s.SQL.Text :=', [Indent, Name]), Literal + ';'];
     end;
     for Param in TSqlText.Params(Sql) do
