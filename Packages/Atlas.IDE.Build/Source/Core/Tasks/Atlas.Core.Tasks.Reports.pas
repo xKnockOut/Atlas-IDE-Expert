@@ -53,20 +53,82 @@ begin
   end;
 end;
 
+/// <summary>Bereich ab der Spalte AColumn (0-basiert): das Wort dort, sonst ein Zeichen.</summary>
+procedure ColumnRange(var AProblem: TAtlasProblem; AColumn: Integer; AKnown: Boolean; const AText: string);
+var
+  mStop: Integer;
+begin
+  AProblem.StartCharacter := AColumn;
+  mStop := AColumn;
+  if AKnown then
+  begin
+    while (mStop < Length(AText)) and TTextChars.IsIdentChar(AText[mStop + 1]) do
+    begin
+      Inc(mStop);
+    end;
+  end;
+  if mStop = AColumn then
+  begin
+    mStop := AColumn + 1;
+  end;
+  AProblem.EndCharacter := mStop;
+end;
+
+/// <summary>Bereich der ganzen Zeile ohne Einrückung und Leerraum am Ende.</summary>
+procedure LineRange(var AProblem: TAtlasProblem; const AText: string);
+var
+  mStop: Integer;
+begin
+  mStop := 0;
+  while (mStop < Length(AText)) and CharInSet(AText[mStop + 1], [' ', #9]) do
+  begin
+    Inc(mStop);
+  end;
+  AProblem.StartCharacter := mStop;
+  AProblem.EndCharacter := Length(TrimRight(AText));
+end;
+
+function FindingProblem(const ATask: string; const AFinding: TAtlasTaskFinding;
+  const AReadLine: TAtlasTaskReadLine): TAtlasProblem;
+var
+  mText: string;
+  mKnown: Boolean;
+begin
+  Result := Default(TAtlasProblem);
+  if AFinding.Line > 0 then
+  begin
+    Result.StartLine := AFinding.Line - 1;
+  end;
+  Result.EndLine := Result.StartLine;
+  mKnown := Assigned(AReadLine) and AReadLine(AFinding.FileName, Result.StartLine, mText);
+  if AFinding.Column > 0 then
+  begin
+    ColumnRange(Result, AFinding.Column - 1, mKnown, mText);
+  end
+  else if mKnown and (Trim(mText) <> '') then
+  begin
+    LineRange(Result, mText);
+  end
+  else
+  begin
+    Result.EndCharacter := 1;
+  end;
+  Result.Severity := TAtlasTaskReports.Severity(AFinding.Severity);
+  Result.Code := AFinding.Code;
+  Result.Source := ATask;
+  Result.Message := AFinding.Message;
+end;
+
 class function TAtlasTaskReports.Problems(const ATask: string; const AFindings: TAtlasTaskFindings;
   const AReadLine: TAtlasTaskReadLine): TArray<TPair<string, TAtlasProblem>>;
 var
-  Finding: TAtlasTaskFinding;
-  Problem: TAtlasProblem;
-  Pair: TPair<string, TAtlasProblem>;
-  Text: string;
-  Known: Boolean;
-  Stop: Integer;
+  mFinding: TAtlasTaskFinding;
+  mPair: TPair<string, TAtlasProblem>;
 begin
   Result := nil;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if Finding.FileName = '' then
+    if mFinding.FileName = '' then
     begin
       Continue;
     end;
@@ -74,51 +136,9 @@ begin
     begin
       Break;
     end;
-    Problem := Default(TAtlasProblem);
-    if Finding.Line > 0 then
-    begin
-      Problem.StartLine := Finding.Line - 1;
-    end;
-    Problem.EndLine := Problem.StartLine;
-    Known := Assigned(AReadLine) and AReadLine(Finding.FileName, Problem.StartLine, Text);
-    if Finding.Column > 0 then
-    begin
-      Problem.StartCharacter := Finding.Column - 1;
-      Stop := Problem.StartCharacter;
-      if Known then
-      begin
-        while (Stop < Length(Text)) and TTextChars.IsIdentChar(Text[Stop + 1]) do
-        begin
-          Inc(Stop);
-        end;
-      end;
-      if Stop = Problem.StartCharacter then
-      begin
-        Stop := Problem.StartCharacter + 1;
-      end;
-      Problem.EndCharacter := Stop;
-    end
-    else if Known and (Trim(Text) <> '') then
-    begin
-      Stop := 0;
-      while (Stop < Length(Text)) and CharInSet(Text[Stop + 1], [' ', #9]) do
-      begin
-        Inc(Stop);
-      end;
-      Problem.StartCharacter := Stop;
-      Problem.EndCharacter := Length(TrimRight(Text));
-    end
-    else
-    begin
-      Problem.EndCharacter := 1;
-    end;
-    Problem.Severity := Severity(Finding.Severity);
-    Problem.Code := Finding.Code;
-    Problem.Source := ATask;
-    Problem.Message := Finding.Message;
-    Pair.Key := Finding.FileName;
-    Pair.Value := Problem;
-    Result := Result + [Pair];
+    mPair.Key := mFinding.FileName;
+    mPair.Value := FindingProblem(ATask, mFinding, AReadLine);
+    Result := Result + [mPair];
   end;
 end;
 

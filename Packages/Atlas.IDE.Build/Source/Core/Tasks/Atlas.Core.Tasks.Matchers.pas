@@ -66,6 +66,7 @@ type
     procedure AddRule(AForm: TForm; const APattern: string; AOptions: TRegExOptions);
     function Apply(const ARule: TRule; const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
     function CustomSeverity(const AText: string): TAtlasTaskSeverity;
+    procedure ReadCustom(const AFound: TMatch; const ALine: string; var AFinding: TAtlasTaskFinding);
   public
     constructor Create(const AMatcher: TAtlasTaskMatcher);
     /// <summary>Fundstelle in ALine; False ohne Treffer oder ohne Muster.</summary>
@@ -127,68 +128,79 @@ begin
   end;
 end;
 
+/// <summary>Name der Gruppe, die bei AIndex mit (? beginnt: (?&lt;name&gt;…), (?P&lt;name&gt;…), (?'name'…); '' bei
+/// anderen Formen.</summary>
+function GroupName(const APattern: string; AIndex: Integer): string;
+var
+  mClose: Integer;
+begin
+  Result := '';
+  if (AIndex + 2 > Length(APattern)) or not CharInSet(APattern[AIndex + 2], ['<', 'P', '''']) then
+  begin
+    Exit;
+  end;
+  mClose := AIndex + 3;
+  if APattern[AIndex + 2] = 'P' then
+  begin
+    Inc(mClose);
+  end;
+  while (mClose <= Length(APattern)) and not CharInSet(APattern[mClose], ['>', '''']) do
+  begin
+    Inc(mClose);
+  end;
+  if (APattern[AIndex + 2] = 'P') and (AIndex + 3 <= Length(APattern)) and (APattern[AIndex + 3] = '<') then
+  begin
+    Result := Copy(APattern, AIndex + 4, mClose - AIndex - 4);
+  end
+  else if APattern[AIndex + 2] <> 'P' then
+  begin
+    Result := Copy(APattern, AIndex + 3, mClose - AIndex - 3);
+  end;
+end;
+
+/// <summary>Die Klammer bei AIndex öffnet eine zählende Gruppe; AName ist ihr Name ('' ohne). Nicht (?&lt;=…),
+/// (?&lt;!…) und andere (?…-Formen.</summary>
+function OpensGroup(const APattern: string; AIndex: Integer; out AName: string): Boolean;
+begin
+  AName := '';
+  Result := True;
+  if (AIndex < Length(APattern)) and (APattern[AIndex + 1] = '?') then
+  begin
+    AName := GroupName(APattern, AIndex);
+    Result := (AName <> '') and not CharInSet(AName[1], ['=', '!']);
+  end;
+end;
+
 class function TAtlasTaskLineMatcher.GroupNumber(const APattern, AName: string): Integer;
 var
-  Index, Count, Close: Integer;
-  InClass: Boolean;
-  Name: string;
+  mIndex, mCount: Integer;
+  mInClass: Boolean;
+  mName: string;
 begin
   Result := 0;
-  Count := 0;
-  InClass := False;
-  Index := 1;
-  while Index <= Length(APattern) do
+  mCount := 0;
+  mInClass := False;
+  mIndex := 1;
+  while mIndex <= Length(APattern) do
   begin
-    case APattern[Index] of
+    case APattern[mIndex] of
       '\':
-        Inc(Index);
+        Inc(mIndex);
       '[':
-        InClass := True;
+        mInClass := True;
       ']':
-        InClass := False;
+        mInClass := False;
       '(':
-        if not InClass then
+        if not mInClass and OpensGroup(APattern, mIndex, mName) then
         begin
-          if (Index < Length(APattern)) and (APattern[Index + 1] = '?') then
+          Inc(mCount);
+          if (mName <> '') and SameText(mName, AName) then
           begin
-            Name := '';
-            // (?<name>…), (?P<name>…), (?'name'…); nicht (?<=…) und (?<!…).
-            if (Index + 2 <= Length(APattern)) and CharInSet(APattern[Index + 2], ['<', 'P', '''']) then
-            begin
-              Close := Index + 3;
-              if APattern[Index + 2] = 'P' then
-              begin
-                Inc(Close);
-              end;
-              while (Close <= Length(APattern)) and not CharInSet(APattern[Close], ['>', '''']) do
-              begin
-                Inc(Close);
-              end;
-              if (APattern[Index + 2] = 'P') and (Index + 3 <= Length(APattern)) and (APattern[Index + 3] = '<') then
-              begin
-                Name := Copy(APattern, Index + 4, Close - Index - 4);
-              end
-              else if APattern[Index + 2] <> 'P' then
-              begin
-                Name := Copy(APattern, Index + 3, Close - Index - 3);
-              end;
-              if (Name <> '') and not CharInSet(Name[1], ['=', '!']) then
-              begin
-                Inc(Count);
-                if SameText(Name, AName) then
-                begin
-                  Exit(Count);
-                end;
-              end;
-            end;
-          end
-          else
-          begin
-            Inc(Count);
+            Exit(mCount);
           end;
         end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -312,123 +324,138 @@ begin
   end;
 end;
 
+// Datei(Zeile,Spalte) Schwere Code Meldung: dcc auf der Kommandozeile und MSBuild.
+procedure ReadFileFirst(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+begin
+  AFinding.FileName := Trim(GroupText(AFound, 1));
+  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 4), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, 5);
+  AFinding.Message := Trim(GroupText(AFound, 6));
+end;
+
+// [dcc Schwere] Datei(Zeile,Spalte) Code Meldung: Meldungen der IDE.
+procedure ReadDccIde(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+begin
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
+  AFinding.FileName := Trim(GroupText(AFound, 2));
+  AFinding.Line := StrToIntDef(GroupText(AFound, 3), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, 4), 0);
+  AFinding.Code := GroupText(AFound, 5);
+  AFinding.Message := Trim(GroupText(AFound, 6));
+end;
+
+/// <summary>Wert der ersten beteiligten Gruppe von AFirst und ASecond.</summary>
+function EitherGroup(const AFound: TMatch; AFirst, ASecond: Integer): string;
+begin
+  Result := GroupText(AFound, AFirst);
+  if Result = '' then
+  begin
+    Result := GroupText(AFound, ASecond);
+  end;
+end;
+
+procedure ReadPwsh(const AFound: TMatch; const ALine: string; var AFinding: TAtlasTaskFinding);
+var
+  mSeverity: TAtlasTaskSeverity;
+begin
+  AFinding.FileName := Trim(GroupText(AFound, 2));
+  AFinding.Line := StrToIntDef(EitherGroup(AFound, 3, 5), 0);
+  AFinding.Column := StrToIntDef(EitherGroup(AFound, 4, 6), 0);
+  AFinding.Message := Trim(GroupText(AFound, 7));
+  if GroupText(AFound, 1) <> '' then
+  begin
+    TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
+  end
+  else if UpperSeverity(AFinding.Message, mSeverity) then
+  begin
+    AFinding.Severity := mSeverity;
+  end
+  else if TRegEx.IsMatch(ALine, '^\s*Write-Error:', []) then
+  begin
+    AFinding.Severity := TAtlasTaskSeverity.Error;
+  end;
+end;
+
+procedure ReadMsBuildFile(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+begin
+  AFinding.FileName := Trim(GroupText(AFound, 1));
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 2), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, 3);
+  AFinding.Message := Trim(GroupText(AFound, 4));
+  // „MSBUILD : error …“ und andere Werkzeugnamen sind keine Dateien.
+  if Pos('.', ExtractFileName(AFinding.FileName)) = 0 then
+  begin
+    AFinding.FileName := '';
+  end;
+end;
+
+procedure ReadGeneric(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+var
+  mSeverity: TAtlasTaskSeverity;
+  mCode: TMatch;
+begin
+  AFinding.FileName := Trim(GroupText(AFound, 1));
+  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
+  AFinding.Message := Trim(GroupText(AFound, 4));
+  if LeadingSeverity(AFinding.Message, mSeverity) then
+  begin
+    AFinding.Severity := mSeverity;
+  end;
+  // „error E2003: …“: Code hinter dem Wort.
+  mCode := TRegEx.Match(AFinding.Message, '^([A-Za-z]{1,4}\d{2,5})\s*:\s*', []);
+  if mCode.Success then
+  begin
+    AFinding.Code := mCode.Groups[1].Value;
+    AFinding.Message := Copy(AFinding.Message, mCode.Length + 1, MaxInt);
+  end;
+end;
+
+procedure TAtlasTaskLineMatcher.ReadCustom(const AFound: TMatch; const ALine: string;
+  var AFinding: TAtlasTaskFinding);
+begin
+  AFinding.FileName := Trim(GroupText(AFound, FFileGroup));
+  AFinding.Line := StrToIntDef(GroupText(AFound, FLineGroup), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, FColumnGroup), 0);
+  AFinding.Severity := CustomSeverity(GroupText(AFound, FSeverityGroup));
+  AFinding.Code := Trim(GroupText(AFound, FCodeGroup));
+  if FMessageGroup > 0 then
+  begin
+    AFinding.Message := Trim(GroupText(AFound, FMessageGroup));
+  end
+  else
+  begin
+    AFinding.Message := Trim(ALine);
+  end;
+end;
+
 function TAtlasTaskLineMatcher.Apply(const ARule: TRule; const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
 var
-  Found: TMatch;
-  Severity: TAtlasTaskSeverity;
-  Text: string;
+  mFound: TMatch;
 begin
   AFinding := Default(TAtlasTaskFinding);
   AFinding.Severity := TAtlasTaskSeverity.Error;
-  Found := ARule.Regex.Match(ALine);
-  Result := Found.Success;
+  mFound := ARule.Regex.Match(ALine);
+  Result := mFound.Success;
   if not Result then
   begin
     Exit;
   end;
   case ARule.Form of
     TForm.DccIde:
-      begin
-        SeverityWord(GroupText(Found, 1), AFinding.Severity);
-        AFinding.FileName := Trim(GroupText(Found, 2));
-        AFinding.Line := StrToIntDef(GroupText(Found, 3), 0);
-        AFinding.Column := StrToIntDef(GroupText(Found, 4), 0);
-        AFinding.Code := GroupText(Found, 5);
-        AFinding.Message := Trim(GroupText(Found, 6));
-      end;
-    TForm.DccCommandLine:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, 1));
-        AFinding.Line := StrToIntDef(GroupText(Found, 2), 0);
-        AFinding.Column := StrToIntDef(GroupText(Found, 3), 0);
-        SeverityWord(GroupText(Found, 4), AFinding.Severity);
-        AFinding.Code := GroupText(Found, 5);
-        AFinding.Message := Trim(GroupText(Found, 6));
-      end;
+      ReadDccIde(mFound, AFinding);
+    TForm.DccCommandLine, TForm.MsBuildLine:
+      ReadFileFirst(mFound, AFinding);
     TForm.PwshLine:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, 2));
-        Text := GroupText(Found, 3);
-        if Text = '' then
-        begin
-          Text := GroupText(Found, 5);
-        end;
-        AFinding.Line := StrToIntDef(Text, 0);
-        Text := GroupText(Found, 4);
-        if Text = '' then
-        begin
-          Text := GroupText(Found, 6);
-        end;
-        AFinding.Column := StrToIntDef(Text, 0);
-        AFinding.Message := Trim(GroupText(Found, 7));
-        if GroupText(Found, 1) <> '' then
-        begin
-          SeverityWord(GroupText(Found, 1), AFinding.Severity);
-        end
-        else if UpperSeverity(AFinding.Message, Severity) then
-        begin
-          AFinding.Severity := Severity;
-        end
-        else if TRegEx.IsMatch(ALine, '^\s*Write-Error:', []) then
-        begin
-          AFinding.Severity := TAtlasTaskSeverity.Error;
-        end;
-      end;
-    TForm.MsBuildLine:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, 1));
-        AFinding.Line := StrToIntDef(GroupText(Found, 2), 0);
-        AFinding.Column := StrToIntDef(GroupText(Found, 3), 0);
-        SeverityWord(GroupText(Found, 4), AFinding.Severity);
-        AFinding.Code := GroupText(Found, 5);
-        AFinding.Message := Trim(GroupText(Found, 6));
-      end;
+      ReadPwsh(mFound, ALine, AFinding);
     TForm.MsBuildFile:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, 1));
-        SeverityWord(GroupText(Found, 2), AFinding.Severity);
-        AFinding.Code := GroupText(Found, 3);
-        AFinding.Message := Trim(GroupText(Found, 4));
-        // „MSBUILD : error …“ und andere Werkzeugnamen sind keine Dateien.
-        if Pos('.', ExtractFileName(AFinding.FileName)) = 0 then
-        begin
-          AFinding.FileName := '';
-        end;
-      end;
+      ReadMsBuildFile(mFound, AFinding);
     TForm.GenericParen, TForm.GenericColon:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, 1));
-        AFinding.Line := StrToIntDef(GroupText(Found, 2), 0);
-        AFinding.Column := StrToIntDef(GroupText(Found, 3), 0);
-        AFinding.Message := Trim(GroupText(Found, 4));
-        if LeadingSeverity(AFinding.Message, Severity) then
-        begin
-          AFinding.Severity := Severity;
-        end;
-        // „error E2003: …“: Code hinter dem Wort.
-        Found := TRegEx.Match(AFinding.Message, '^([A-Za-z]{1,4}\d{2,5})\s*:\s*', []);
-        if Found.Success then
-        begin
-          AFinding.Code := Found.Groups[1].Value;
-          AFinding.Message := Copy(AFinding.Message, Found.Length + 1, MaxInt);
-        end;
-      end;
+      ReadGeneric(mFound, AFinding);
     TForm.Custom:
-      begin
-        AFinding.FileName := Trim(GroupText(Found, FFileGroup));
-        AFinding.Line := StrToIntDef(GroupText(Found, FLineGroup), 0);
-        AFinding.Column := StrToIntDef(GroupText(Found, FColumnGroup), 0);
-        AFinding.Severity := CustomSeverity(GroupText(Found, FSeverityGroup));
-        AFinding.Code := Trim(GroupText(Found, FCodeGroup));
-        if FMessageGroup > 0 then
-        begin
-          AFinding.Message := Trim(GroupText(Found, FMessageGroup));
-        end
-        else
-        begin
-          AFinding.Message := Trim(ALine);
-        end;
-      end;
+      ReadCustom(mFound, ALine, AFinding);
   end;
   if AFinding.Line < 0 then
   begin
@@ -522,46 +549,68 @@ begin
   end;
 end;
 
-class function TAtlasTaskPaths.Resolve(const APath, ACwd: string; const AProjectFiles, ASearchPath: TArray<string>;
-  const AExists: TAtlasTaskFileExists): string;
+/// <summary>Projektdatei, deren Pfad ACandidate ist oder auf \ARelative endet.</summary>
+function ProjectMatch(const AProjectFiles: TArray<string>; const ACandidate, ARelative: string;
+  out AFile: string): Boolean;
 var
-  Relative, Candidate, ProjectFile, Folder: string;
+  mProjectFile, mNormal: string;
 begin
-  Relative := Normalize(APath);
-  if (Relative = '') or IsAbsolute(Relative) then
+  AFile := '';
+  for mProjectFile in AProjectFiles do
   begin
-    Exit(Relative);
-  end;
-  Candidate := Normalize(Combine(ACwd, Relative));
-  if Assigned(AExists) and AExists(Candidate) then
-  begin
-    Exit(Candidate);
-  end;
-  // Projektdateien: gleicher Name mit passendem Ende des Pfads.
-  for ProjectFile in AProjectFiles do
-  begin
-    if SameText(Normalize(ProjectFile), Candidate) or
-      SameText(Copy(Normalize(ProjectFile), Length(Normalize(ProjectFile)) - Length(Relative), MaxInt),
-      '\' + Relative) then
+    mNormal := TAtlasTaskPaths.Normalize(mProjectFile);
+    if SameText(mNormal, ACandidate) or
+      SameText(Copy(mNormal, Length(mNormal) - Length(ARelative), MaxInt), '\' + ARelative) then
     begin
-      Exit(Normalize(ProjectFile));
+      AFile := mNormal;
+      Exit(True);
     end;
   end;
-  if Assigned(AExists) then
+  Result := False;
+end;
+
+/// <summary>Erste vorhandene Datei ARelative in einem Ordner von ASearchPath.</summary>
+function SearchPathMatch(const ASearchPath: TArray<string>; const ARelative: string;
+  const AExists: TAtlasTaskFileExists; out AFile: string): Boolean;
+var
+  mFolder: string;
+begin
+  AFile := '';
+  for mFolder in ASearchPath do
   begin
-    for Folder in ASearchPath do
+    if Trim(mFolder) <> '' then
     begin
-      if Trim(Folder) <> '' then
+      AFile := TAtlasTaskPaths.Normalize(Combine(Trim(mFolder), ARelative));
+      if AExists(AFile) then
       begin
-        Result := Normalize(Combine(Trim(Folder), Relative));
-        if AExists(Result) then
-        begin
-          Exit;
-        end;
+        Exit(True);
       end;
     end;
   end;
-  Result := Candidate;
+  Result := False;
+end;
+
+class function TAtlasTaskPaths.Resolve(const APath, ACwd: string; const AProjectFiles, ASearchPath: TArray<string>;
+  const AExists: TAtlasTaskFileExists): string;
+var
+  mRelative, mCandidate: string;
+begin
+  mRelative := Normalize(APath);
+  if (mRelative = '') or IsAbsolute(mRelative) then
+  begin
+    Exit(mRelative);
+  end;
+  mCandidate := Normalize(Combine(ACwd, mRelative));
+  if Assigned(AExists) and AExists(mCandidate) then
+  begin
+    Exit(mCandidate);
+  end;
+  // Projektdateien: gleicher Name mit passendem Ende des Pfads.
+  if not ProjectMatch(AProjectFiles, mCandidate, mRelative, Result) and
+    not (Assigned(AExists) and SearchPathMatch(ASearchPath, mRelative, AExists, Result)) then
+  begin
+    Result := mCandidate;
+  end;
 end;
 
 end.

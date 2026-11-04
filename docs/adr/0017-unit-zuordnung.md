@@ -941,6 +941,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Build.SwitchesWindow` | `IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.StartProfiles.Service` | `IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas` | Ordner `IDE/StartProfiles` |
 | `Atlas.IDE.Tasks.Output` | `IDE/Tasks/Atlas.IDE.Tasks.Output.pas` | Ordner `IDE/Tasks` |
+| `Atlas.IDE.Tasks.Projects` | `IDE/Tasks/Atlas.IDE.Tasks.Projects.pas` | Ordner `IDE/Tasks` |
+| `Atlas.IDE.Tasks.Shortcuts` | `IDE/Tasks/Atlas.IDE.Tasks.Shortcuts.pas` | Ordner `IDE/Tasks` |
+| `Atlas.IDE.Tasks.Pickers` | `IDE/Tasks/Atlas.IDE.Tasks.Pickers.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
 | `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |
 | `Atlas.UI.Build.SwitchesFrame` | `UI/Build/Atlas.UI.Build.SwitchesFrame.pas` | Ordner `UI/Build` |
