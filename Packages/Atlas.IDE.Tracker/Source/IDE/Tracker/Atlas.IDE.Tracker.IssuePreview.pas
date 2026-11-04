@@ -850,7 +850,7 @@ function TAtlasIdeIssuePreview.StaleText(const ADetails: TAtlasTrackerDetails; c
 var
   mWhen: string;
 begin
-  mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched));
+  mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched), FormatSettings);
   if AReason = '' then
   begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen]);

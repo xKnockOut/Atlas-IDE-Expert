@@ -55,6 +55,12 @@ type
     procedure SuspendReportsAndResumeWithArgumentsIsSilent;
     [Test]
     procedure ResumeOnOwnNonThreadClassIsSilent;
+  end;
+
+  /// <summary>Regeln zu Paaren ohne finally, ProcessMessages, Queue(nil), blockierenden Aufrufen, Threadschleifen und Tasks.</summary>
+  [TestFixture]
+  TConcurrencyPatternRulesTests = class
+  public
     [Test]
     procedure PairWithoutFinallyIssueExample;
     [Test]
@@ -396,7 +402,7 @@ begin
     '  SR: TSearchRec;'#10'  F: TextFile;'#10'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
-procedure TConcurrencyRulesTests.PairWithoutFinallyIssueExample;
+procedure TConcurrencyPatternRulesTests.PairWithoutFinallyIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -417,7 +423,7 @@ begin
   TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Fixed);
 end;
 
-procedure TConcurrencyRulesTests.PairWithoutFinallyVariants;
+procedure TConcurrencyPatternRulesTests.PairWithoutFinallyVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -445,7 +451,7 @@ begin
     '{"rules": {"pair-without-finally": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
-procedure TConcurrencyRulesTests.PairWithoutFinallySilentCases;
+procedure TConcurrencyPatternRulesTests.PairWithoutFinallySilentCases;
 begin
   // Mit try/finally, direkt hintereinander, anderer Empfänger, Schließen in einer anderen Routine.
   TRuleAssert.Silent(TPairWithoutFinallyRule.Create, Import('  Tabelle.DisableControls;'#10'  try'#10 +
@@ -457,7 +463,7 @@ begin
     '    Screen.Cursor := Alt;'#10'  end;'));
 end;
 
-procedure TConcurrencyRulesTests.PairWithoutFinallyOptions;
+procedure TConcurrencyPatternRulesTests.PairWithoutFinallyOptions;
 var
   Findings: TArray<TRuleFinding>;
   Issues: TArray<TConfigurationIssue>;
@@ -478,7 +484,7 @@ const
   ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
     'Ende sperren.';
 
-procedure TConcurrencyRulesTests.ProcessMessagesInLoopIssueExample;
+procedure TConcurrencyPatternRulesTests.ProcessMessagesInLoopIssueExample;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -497,7 +503,7 @@ begin
     '      Application.ProcessMessages;'#10'  until Fertig;'), 2);
 end;
 
-procedure TConcurrencyRulesTests.ProcessMessagesInEventHandler;
+procedure TConcurrencyPatternRulesTests.ProcessMessagesInEventHandler;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -508,7 +514,7 @@ begin
     ProcessMessagesAdvice, Findings[0].Message);
 end;
 
-procedure TConcurrencyRulesTests.ProcessMessagesSilentCases;
+procedure TConcurrencyPatternRulesTests.ProcessMessagesSilentCases;
 begin
   // Außerhalb von Schleife und Handler, im Thread (anonyme Methode), fremdes ProcessMessages,
   // Schleife ohne ProcessMessages.
@@ -521,7 +527,7 @@ begin
     'procedure TForm1.LadenClick(Sender: TObject);'));
 end;
 
-procedure TConcurrencyRulesTests.ProcessMessagesOptions;
+procedure TConcurrencyPatternRulesTests.ProcessMessagesOptions;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -573,7 +579,7 @@ begin
   end;
 end;
 
-procedure TConcurrencyRulesTests.QueueNilIssueExample;
+procedure TConcurrencyPatternRulesTests.QueueNilIssueExample;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -603,7 +609,7 @@ begin
     Fixed(Source, Findings[0]), 'Atlas.IDE.Expert', '', 'U.pas'))));
 end;
 
-procedure TConcurrencyRulesTests.QueueNilFixAndVariants;
+procedure TConcurrencyPatternRulesTests.QueueNilFixAndVariants;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -632,7 +638,7 @@ begin
     Findings[0].Message);
 end;
 
-procedure TConcurrencyRulesTests.QueueNilSilentCases;
+procedure TConcurrencyPatternRulesTests.QueueNilSilentCases;
 begin
   // Kein Package: Programm oder unbekannt.
   TRuleAssert.Silent(TQueueNilInPackageRule.Create, Routine(QueueExample));
@@ -647,7 +653,7 @@ begin
     Routine('  TThread.Queue(nil, Aktualisieren); // mainthread-ok'), 'P', '', 'U.pas'))));
 end;
 
-procedure TConcurrencyRulesTests.QueueNilOptions;
+procedure TConcurrencyPatternRulesTests.QueueNilOptions;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -668,7 +674,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
 end;
 
-procedure TConcurrencyRulesTests.QueueNilWrapperCall;
+procedure TConcurrencyPatternRulesTests.QueueNilWrapperCall;
 begin
   Assert.AreEqual('TAtlasMainThread.Queue(', TQueueNilInPackageRule.WrapperCall('TAtlasMainThread.Queue', 'Queue'));
   Assert.AreEqual('TAtlasMainThread.ForceQueue(',
@@ -692,7 +698,7 @@ begin
   Result := FormUnit(AHeader + #10'begin'#10 + ABody + 'end;'#10);
 end;
 
-procedure TConcurrencyRulesTests.BlockingCallIssueExample;
+procedure TConcurrencyPatternRulesTests.BlockingCallIssueExample;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -715,7 +721,7 @@ begin
     'btnExport.Enabled := True; end); end);'#10));
 end;
 
-procedure TConcurrencyRulesTests.BlockingCallVariants;
+procedure TConcurrencyPatternRulesTests.BlockingCallVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -743,7 +749,7 @@ begin
   Assert.AreEqual(-1, TBlockingCallInMainThreadRule.TimeoutArgument('Pause'));
 end;
 
-procedure TConcurrencyRulesTests.BlockingCallSilentCases;
+procedure TConcurrencyPatternRulesTests.BlockingCallSilentCases;
 begin
   // Kurze Wartezeiten, Warteschleife mit ProcessMessages, anonyme Methode, fremde Sleep- und Wait-Methoden.
   TRuleAssert.Silent(TBlockingCallInMainThreadRule.Create, FormMethod('procedure TfrmHaupt.Laden;',
@@ -758,7 +764,7 @@ begin
     'procedure Warten;'#10'begin'#10'  Sleep(1000);'#10'end;'#10'end.');
 end;
 
-procedure TConcurrencyRulesTests.BlockingCallOptions;
+procedure TConcurrencyPatternRulesTests.BlockingCallOptions;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -791,7 +797,7 @@ begin
   Result := Poller('procedure TPoller.Execute;'#10'begin'#10 + ABody + 'end;'#10);
 end;
 
-procedure TConcurrencyRulesTests.ThreadLoopIssueExample;
+procedure TConcurrencyPatternRulesTests.ThreadLoopIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -813,7 +819,7 @@ begin
   TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, Fixed);
 end;
 
-procedure TConcurrencyRulesTests.ThreadLoopVariants;
+procedure TConcurrencyPatternRulesTests.ThreadLoopVariants;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -840,7 +846,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings)));
 end;
 
-procedure TConcurrencyRulesTests.ThreadLoopSilentCases;
+procedure TConcurrencyPatternRulesTests.ThreadLoopSilentCases;
 begin
   // Terminated in Bedingung oder Rumpf, CheckTerminated, begrenzte Schleifen, for, anonyme Methode.
   TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, PollerExecute(
@@ -859,7 +865,7 @@ begin
     'procedure TDienst.Execute;'#10'begin'#10'  while True do Sleep(1);'#10'end;'#10'end.');
 end;
 
-procedure TConcurrencyRulesTests.ThreadLoopOffAndExclude;
+procedure TConcurrencyPatternRulesTests.ThreadLoopOffAndExclude;
 var
   Source: string;
 begin
@@ -870,7 +876,7 @@ begin
     '{"rules": {"thread-loop-without-terminated": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
-procedure TConcurrencyRulesTests.AnonymousThreadIssueExample;
+procedure TConcurrencyPatternRulesTests.AnonymousThreadIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -892,7 +898,7 @@ begin
   TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, Fixed);
 end;
 
-procedure TConcurrencyRulesTests.AnonymousThreadVariables;
+procedure TConcurrencyPatternRulesTests.AnonymousThreadVariables;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -915,7 +921,7 @@ begin
     '  Weiter;'), Findings[0].Fixes[0].Edits));
 end;
 
-procedure TConcurrencyRulesTests.AnonymousThreadSilentCases;
+procedure TConcurrencyPatternRulesTests.AnonymousThreadSilentCases;
 begin
   // Gestartet, später gestartet, Resume, weitergegeben, Ergebnis, Feld, fremde Fabrik.
   TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, Routine(
@@ -926,7 +932,7 @@ begin
     '  Fabrik.CreateAnonymousThread(Arbeit);', 'function TA.Run: TThread;'#10'var'#10'  T, U, V: TThread;'));
 end;
 
-procedure TConcurrencyRulesTests.AnonymousThreadOffAndExclude;
+procedure TConcurrencyPatternRulesTests.AnonymousThreadOffAndExclude;
 var
   Source: string;
 begin
@@ -943,7 +949,7 @@ begin
     'procedure TA.Run;'#10'var'#10'  A: ITask;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TConcurrencyRulesTests.TaskExceptionIssueExample;
+procedure TConcurrencyPatternRulesTests.TaskExceptionIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -975,7 +981,7 @@ begin
   TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, Fixed);
 end;
 
-procedure TConcurrencyRulesTests.TaskExceptionVariants;
+procedure TConcurrencyPatternRulesTests.TaskExceptionVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -989,7 +995,7 @@ begin
     Findings[2].Message);
 end;
 
-procedure TConcurrencyRulesTests.TaskExceptionSilentCases;
+procedure TConcurrencyPatternRulesTests.TaskExceptionSilentCases;
 begin
   // try … except im Rumpf, abgefragtes Ergebnis, Variable weitergegeben, Methodenzeiger, nie gestartetes Create.
   TRuleAssert.Silent(TTaskExceptionUnobservedRule.Create, TaskUnit(
@@ -999,7 +1005,7 @@ begin
     '  var C := TTask.Create(procedure begin Laden; end);'#10'  Result := TTask.Run(procedure begin end);'#10));
 end;
 
-procedure TConcurrencyRulesTests.TaskExceptionOffAndExclude;
+procedure TConcurrencyPatternRulesTests.TaskExceptionOffAndExclude;
 var
   Source: string;
 begin
@@ -1012,5 +1018,6 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TConcurrencyRulesTests);
+  TDUnitX.RegisterTestFixture(TConcurrencyPatternRulesTests);
 
 end.

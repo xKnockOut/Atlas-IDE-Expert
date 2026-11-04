@@ -774,7 +774,7 @@ begin
   FComment.Parent := FCommentPanel;
   FComment.Align := alClient;
   FComment.AlignWithMargins := True;
-  FComment.OnSend := CommentSendClick;
+  FComment.Events := TAtlasCommentEditorEvents.Create(CommentSendClick, nil);
   FCommentEdit := FComment.Memo;
 
   FPages := TPageControl.Create(Self);
@@ -1057,7 +1057,7 @@ begin
   Result := '';
   if ATime > 0 then
   begin
-    Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime));
+    Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime), FormatSettings);
   end;
 end;
 
@@ -1254,7 +1254,7 @@ begin
           mItem.Caption := mAttachment.Name;
           if mAttachment.Size >= 0 then
           begin
-            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB');
+            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024, FormatSettings) + ' KB');
           end
           else
           begin
@@ -1832,7 +1832,7 @@ begin
   FEmpty.Font.Color := ToColor(AColors.Muted);
   FCommentHint.Font.Color := ToColor(AColors.Muted);
   FCommentNote.Font.Color := ToColor(AColors.Muted);
-  FComment.ApplyColors(AColors);
+  FComment.Preview.ApplyColors(AColors);
   if FHasDetails then
   begin
     Rebuild;
@@ -1842,7 +1842,7 @@ end;
 procedure TAtlasIssueFrame.SetMonoFont(AValue: TFont);
 begin
   FMono.Assign(AValue);
-  FComment.MonoFont := AValue;
+  FComment.Preview.Mono := AValue;
   if FHasDetails then
   begin
     Rebuild;

@@ -81,6 +81,20 @@ type
     public
       procedure Tick(Sender: TObject);
     end;
+    /// <summary>Aufnahme des aktuellen Halts: Stapel und Dialog, beide müssen fertig sein (Finish).</summary>
+    TCapture = record
+      Pending: TAtlasDebugExceptionStop;
+      HasPending: Boolean;
+      DialogDone: Boolean;
+      StackDone: Boolean;
+      Retries: Integer;
+      /// <summary>Halt, den der Dialog schon vor der Meldung der Session ausgelöst hat (Arm); 0 = keiner.</summary>
+      EarlyStop: Integer;
+    end;
+    THandlers = record
+      Items: TArray<TAtlasDebugExceptionHandler>;
+      NextHandle: Integer;
+    end;
   private class var
     FTicker: TTicker;
     FHistory: TAtlasDebugExceptionHistory;
@@ -88,18 +102,11 @@ type
     FListener: IAtlasIdeDebugListener;
     FDialog: TAtlasIdeExceptionDialog;
     FRetry: TTimer;
-    FRetries: Integer;
-    FPending: TAtlasDebugExceptionStop;
-    FHasPending: Boolean;
-    FDialogDone: Boolean;
-    FStackDone: Boolean;
+    FCapture: TCapture;
     FMessage: TProc<string>;
-    FOnException: TArray<TAtlasDebugExceptionHandler>;
-    FNextHandle: Integer;
+    FHandlers: THandlers;
     /// <summary>Quelle der Klasse schon protokolliert (Studie #783, Punkt S3; einmal je Sitzung).</summary>
     FStatusLogged: Boolean;
-    /// <summary>Halt, den der Dialog schon vor der Meldung der Session ausgelöst hat (Arm); 0 = keiner.</summary>
-    FEarlyStop: Integer;
     /// <summary>Rückruf der Exception-Leiste für FDialog.MayHide (auch vor Start gesetzt).</summary>
     FMayHide: TAtlasDebugDialogMayHide;
     class procedure Captured(AFault: Boolean); static;
@@ -117,8 +124,6 @@ type
       const AStop: TAtlasDebugExceptionStop); static;
     class procedure WireFrame(AFrame: TAtlasDebugExceptionsFrame); static;
     class procedure RefreshWindow; static;
-    class procedure StatusTexts(out AClass, AMessage: string); static;
-    class function Folder: string; static;
     class procedure SetIgnored(const AClass: string; AIgnore: Boolean); static;
   public
     /// <summary>AMessage: Zeile für die Meldungsansicht.</summary>
@@ -168,6 +173,53 @@ uses
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.UI.Debug.Strings;
 
+function Folder: string;
+begin
+  Result := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
+end;
+
+
+/// <summary>Klasse und Meldung aus dem Zustandstext von Thread bzw. Prozess; ALogged: Quelle schon protokolliert.
+/// </summary>
+procedure StatusTexts(var ALogged: Boolean; out AClass, AMessage: string);
+var
+  Thread: IOTAThread;
+  Process: IOTAProcess;
+  Source: string;
+begin
+  AClass := '';
+  AMessage := '';
+  Source := 'keinem';
+  Thread := TAtlasIdeDebugSession.StoppedThread;
+  Process := TAtlasIdeDebugSession.Process;
+  try
+    if (Thread <> nil) and TAtlasDebugExceptionText.Parse(Thread.GetStatusString, AClass, AMessage) then
+    begin
+      Source := 'Thread';
+    end
+    else if (Process <> nil) and TAtlasDebugExceptionText.Parse(Process.GetStatusString, AClass, AMessage) then
+    begin
+      Source := 'Prozess';
+    end;
+  except
+    // Ältere Debugger ohne Zustandstexte.
+    AClass := '';
+    AMessage := '';
+  end;
+  if Source = 'keinem' then
+  begin
+    AClass := '';
+    AMessage := '';
+  end;
+  // Für die Studie (#783, S3): woher die Klasse kam, nie der Text (er kann Daten des Programms enthalten).
+  if not ALogged then
+  begin
+    ALogged := True;
+    TAtlasGuard.Log(Format('Exception-Halt: Klasse aus dem Zustandstext von %s', [Source]));
+  end;
+end;
+
+
 { TAtlasIdeDebugExceptions.TListener }
 
 procedure TAtlasIdeDebugExceptions.TListener.DebugStarted;
@@ -179,8 +231,8 @@ begin
   FHistory.StartSession;
   FDialog.NewSession;
   FStatusLogged := False;
-  FHasPending := False;
-  FEarlyStop := 0;
+  FCapture.HasPending := False;
+  FCapture.EarlyStop := 0;
   TAtlasIdeDebugSources.Clear;
   RefreshWindow;
   ArmDialog;
@@ -189,7 +241,7 @@ end;
 procedure TAtlasIdeDebugExceptions.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
   // Schon über den Dialog aufgenommen (EarlyFound): nicht doppelt.
-  if FEarlyStop = TAtlasIdeDebugSession.StopCount then
+  if FCapture.EarlyStop = TAtlasIdeDebugSession.StopCount then
   begin
     Exit;
   end;
@@ -208,10 +260,10 @@ end;
 procedure TAtlasIdeDebugExceptions.TListener.DebugResumed;
 begin
   // Weiter ohne Dialog (etwa F9 im Dialog): mit dem Bekannten aufnehmen.
-  if FHasPending then
+  if FCapture.HasPending then
   begin
-    FDialogDone := True;
-    FStackDone := True;
+    FCapture.DialogDone := True;
+    FCapture.StackDone := True;
     FDialog.Cancel;
     FRetry.Enabled := False;
     Finish;
@@ -226,11 +278,6 @@ begin
 end;
 
 { TAtlasIdeDebugExceptions }
-
-class function TAtlasIdeDebugExceptions.Folder: string;
-begin
-  Result := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
-end;
 
 class procedure TAtlasIdeDebugExceptions.Start(const AMessage: TProc<string>);
 begin
@@ -277,8 +324,8 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
-  FOnException := nil;
-  FHasPending := False;
+  FHandlers.Items := nil;
+  FCapture.HasPending := False;
   TAtlasIdeDebugExceptionsWindow.Release;
   FreeAndNil(FRetry);
   FreeAndNil(FTicker);
@@ -335,10 +382,10 @@ begin
   begin
     Exit;
   end;
-  Inc(FNextHandle);
-  Entry.Handle := FNextHandle;
+  Inc(FHandlers.NextHandle);
+  Entry.Handle := FHandlers.NextHandle;
   Entry.Handler := AHandler;
-  FOnException := FOnException + [Entry];
+  FHandlers.Items := FHandlers.Items + [Entry];
   Result := Entry.Handle;
 end;
 
@@ -346,11 +393,11 @@ class procedure TAtlasIdeDebugExceptions.RemoveExceptionHandler(AHandle: Integer
 var
   Index: Integer;
 begin
-  for Index := High(FOnException) downto 0 do
+  for Index := High(FHandlers.Items) downto 0 do
   begin
-    if FOnException[Index].Handle = AHandle then
+    if FHandlers.Items[Index].Handle = AHandle then
     begin
-      Delete(FOnException, Index, 1);
+      Delete(FHandlers.Items, Index, 1);
     end;
   end;
 end;
@@ -422,44 +469,6 @@ begin
     TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation;
 end;
 
-class procedure TAtlasIdeDebugExceptions.StatusTexts(out AClass, AMessage: string);
-var
-  Thread: IOTAThread;
-  Process: IOTAProcess;
-  Source: string;
-begin
-  AClass := '';
-  AMessage := '';
-  Source := 'keinem';
-  Thread := TAtlasIdeDebugSession.StoppedThread;
-  Process := TAtlasIdeDebugSession.Process;
-  try
-    if (Thread <> nil) and TAtlasDebugExceptionText.Parse(Thread.GetStatusString, AClass, AMessage) then
-    begin
-      Source := 'Thread';
-    end
-    else if (Process <> nil) and TAtlasDebugExceptionText.Parse(Process.GetStatusString, AClass, AMessage) then
-    begin
-      Source := 'Prozess';
-    end;
-  except
-    // Ältere Debugger ohne Zustandstexte.
-    AClass := '';
-    AMessage := '';
-  end;
-  if Source = 'keinem' then
-  begin
-    AClass := '';
-    AMessage := '';
-  end;
-  // Für die Studie (#783, S3): woher die Klasse kam, nie der Text (er kann Daten des Programms enthalten).
-  if not FStatusLogged then
-  begin
-    FStatusLogged := True;
-    TAtlasGuard.Log(Format('Exception-Halt: Klasse aus dem Zustandstext von %s', [Source]));
-  end;
-end;
-
 class procedure TAtlasIdeDebugExceptions.Captured(AFault: Boolean);
 var
   Thread: IOTAThread;
@@ -471,13 +480,13 @@ begin
     Exit;
   end;
   // Ein noch offener Halt (kein Dialog, kein Weiterlaufen dazwischen) zuerst abschließen.
-  if FHasPending then
+  if FCapture.HasPending then
   begin
-    FDialogDone := True;
-    FStackDone := True;
+    FCapture.DialogDone := True;
+    FCapture.StackDone := True;
     Finish;
   end;
-  StatusTexts(ExceptionClass, Message);
+  StatusTexts(FStatusLogged, ExceptionClass, Message);
   if ExceptionClass = '' then
   begin
     if AFault then
@@ -489,14 +498,14 @@ begin
       ExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsUnknownClass);
     end;
   end;
-  FPending := Default(TAtlasDebugExceptionStop);
-  FPending.Stop := TAtlasIdeDebugSession.StopCount;
-  FPending.Exception := TAtlasDebugException.Create(Now, ExceptionClass, Message, Thread.GetOSThreadID,
+  FCapture.Pending := Default(TAtlasDebugExceptionStop);
+  FCapture.Pending.Stop := TAtlasIdeDebugSession.StopCount;
+  FCapture.Pending.Exception := TAtlasDebugException.Create(Now, ExceptionClass, Message, Thread.GetOSThreadID,
     TAtlasIdeDebugSession.ThreadName(Thread));
-  FHasPending := True;
-  FDialogDone := False;
-  FStackDone := False;
-  FRetries := 0;
+  FCapture.HasPending := True;
+  FCapture.DialogDone := False;
+  FCapture.StackDone := False;
+  FCapture.Retries := 0;
   ReadStack;
   FDialog.Watch(DialogFound, DialogTimeout);
 end;
@@ -518,22 +527,22 @@ begin
   begin
     Exit;
   end;
-  if FHasPending then
+  if FCapture.HasPending then
   begin
-    FDialogDone := True;
-    FStackDone := True;
+    FCapture.DialogDone := True;
+    FCapture.StackDone := True;
     Finish;
   end;
   // Die Session zählt diesen Halt erst, wenn die IDE ihren Dialog geschlossen hat: Nummer vorwegnehmen.
-  FEarlyStop := TAtlasIdeDebugSession.StopCount + 1;
-  FPending := Default(TAtlasDebugExceptionStop);
-  FPending.Stop := FEarlyStop;
-  FPending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
+  FCapture.EarlyStop := TAtlasIdeDebugSession.StopCount + 1;
+  FCapture.Pending := Default(TAtlasDebugExceptionStop);
+  FCapture.Pending.Stop := FCapture.EarlyStop;
+  FCapture.Pending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
     Thread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(Thread));
-  FHasPending := True;
-  FDialogDone := False;
-  FStackDone := False;
-  FRetries := 0;
+  FCapture.HasPending := True;
+  FCapture.DialogDone := False;
+  FCapture.StackDone := False;
+  FCapture.Retries := 0;
   ReadStack;
   // Der Dialog ist schon erkannt (FDialog kennt seine Knöpfe): kein neues Watch, das ihn vergäße.
   DialogFound(AScan);
@@ -548,15 +557,15 @@ begin
   Thread := TAtlasIdeDebugSession.StoppedThread;
   if Thread = nil then
   begin
-    FStackDone := True;
+    FCapture.StackDone := True;
     Finish;
     Exit;
   end;
   case TAtlasIdeDebugSession.ReadStack(Thread, TAtlasDebugCallStack.MaxFrames, Frames) of
     TAtlasDebugStackRead.Wait:
       begin
-        Inc(FRetries);
-        if FRetries <= StackRetries then
+        Inc(FCapture.Retries);
+        if FCapture.Retries <= StackRetries then
         begin
           FRetry.Enabled := True;
           Exit;
@@ -566,22 +575,22 @@ begin
       begin
         // Pfade auflösen, eigenen Code markieren (#578); mit debug.justMyCode ist der Ort der erste eigene Rahmen.
         TAtlasIdeDebugSources.MarkFrames(Frames);
-        FPending.Frames := Frames;
-        FPending.Exception.Frames := Frames;
+        FCapture.Pending.Frames := Frames;
+        FCapture.Pending.Exception.Frames := Frames;
         Index := TAtlasDebugOwnCode.LocationIndex(Frames, TAtlasIdeSettings.Current.DebugJustMyCode);
         if Index >= 0 then
         begin
-          FPending.Exception.FileName := Frames[Index].FileName;
-          FPending.Exception.Line := Frames[Index].Line;
-          FPending.Exception.Routine := Frames[Index].Routine;
+          FCapture.Pending.Exception.FileName := Frames[Index].FileName;
+          FCapture.Pending.Exception.Line := Frames[Index].Line;
+          FCapture.Pending.Exception.Routine := Frames[Index].Routine;
         end
         else if Frames <> nil then
         begin
-          FPending.Exception.Routine := Frames[0].Routine;
+          FCapture.Pending.Exception.Routine := Frames[0].Routine;
         end;
       end;
   end;
-  FStackDone := True;
+  FCapture.StackDone := True;
   Finish;
 end;
 
@@ -595,7 +604,7 @@ end;
 class procedure TAtlasIdeDebugExceptions.RetryTick;
 begin
   FRetry.Enabled := False;
-  if FHasPending and not FStackDone then
+  if FCapture.HasPending and not FCapture.StackDone then
   begin
     ReadStack;
   end;
@@ -603,24 +612,24 @@ end;
 
 class procedure TAtlasIdeDebugExceptions.DialogFound(const AScan: TAtlasDebugDialogScan);
 begin
-  if not FHasPending then
+  if not FCapture.HasPending then
   begin
     Exit;
   end;
-  FPending.Dialog := AScan;
-  FPending.Exception.ExceptionClass := AScan.ExceptionClass;
-  FPending.Exception.Message := AScan.Message;
-  FDialogDone := True;
+  FCapture.Pending.Dialog := AScan;
+  FCapture.Pending.Exception.ExceptionClass := AScan.ExceptionClass;
+  FCapture.Pending.Exception.Message := AScan.Message;
+  FCapture.DialogDone := True;
   Finish;
 end;
 
 class procedure TAtlasIdeDebugExceptions.DialogTimeout;
 begin
-  if not FHasPending then
+  if not FCapture.HasPending then
   begin
     Exit;
   end;
-  FDialogDone := True;
+  FCapture.DialogDone := True;
   Finish;
 end;
 
@@ -631,12 +640,12 @@ var
   Handlers: TArray<TAtlasDebugExceptionHandler>;
   Auto: TAtlasDebugAutoContinue;
 begin
-  if not FHasPending or not FDialogDone or not FStackDone then
+  if not FCapture.HasPending or not FCapture.DialogDone or not FCapture.StackDone then
   begin
     Exit;
   end;
-  FHasPending := False;
-  Done := FPending;
+  FCapture.HasPending := False;
+  Done := FCapture.Pending;
   // Klasse bzw. Ort auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
   Auto := TAtlasDebugBannerRules.AutoContinue(FIgnore.IgnoresClass(Done.Exception.ExceptionClass),
     FIgnore.IgnoresLocation(TAtlasIdeDebugSession.LaunchProject, Done.Exception.ExceptionClass,
@@ -656,7 +665,7 @@ begin
   end;
   FHistory.Add(Done.Exception);
   RefreshWindow;
-  Handlers := FOnException;
+  Handlers := FHandlers.Items;
   for Entry in Handlers do
   begin
     CallHandler(Entry.Handler, Done);

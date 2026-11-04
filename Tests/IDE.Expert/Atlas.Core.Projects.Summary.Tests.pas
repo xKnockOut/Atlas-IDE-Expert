@@ -642,6 +642,28 @@ begin
   Assert.Contains(Json, '"version":"2.0.0.0","signed":true}');
 end;
 
+/// <summary>Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.</summary>
+procedure AssertCiWithoutTestReport;
+var
+  mRead: TAtlasProjectSummary;
+  mJson: string;
+begin
+  // Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
+    ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
+    ' "failures": [{"test": "A.B", "flaky": true}]}}', mRead));
+  Assert.IsTrue(mRead.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
+  Assert.IsTrue(mRead.Ci.Build.TestsKnown);
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.Contains(mJson, '"extra":1');
+  Assert.Contains(mJson, '{"test":"A.B","flaky":true}');
+  mRead.Ci.Build.TestsKnown := False;
+  mRead.Ci.Build.Failures := nil;
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.DoesNotContain(mJson, '"passed"');
+  Assert.DoesNotContain(mJson, '"failures"');
+end;
+
 procedure TAtlasProjectSummaryTests.CiRoundTripAndMatches;
 var
   Summary, Read: TAtlasProjectSummary;
@@ -695,20 +717,7 @@ begin
   Assert.AreEqual(2, Read.Ci.Build.Failed);
   Assert.AreEqual(1, Integer(Length(Read.Ci.Build.Failures)));
   Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', Read.Ci.Build.Failures[0].Message);
-  // Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
-    ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
-    ' "failures": [{"test": "A.B", "flaky": true}]}}', Read));
-  Assert.IsTrue(Read.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
-  Assert.IsTrue(Read.Ci.Build.TestsKnown);
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.Contains(Json, '"extra":1');
-  Assert.Contains(Json, '{"test":"A.B","flaky":true}');
-  Read.Ci.Build.TestsKnown := False;
-  Read.Ci.Build.Failures := nil;
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.DoesNotContain(Json, '"passed"');
-  Assert.DoesNotContain(Json, '"failures"');
+  AssertCiWithoutTestReport;
 end;
 
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
@@ -772,6 +781,25 @@ begin
   Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
 end;
 
+/// <summary>Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.</summary>
+procedure AssertSetupCleanKeepsUnknown;
+var
+  mRead: TAtlasProjectSummary;
+  mJson: string;
+begin
+  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
+    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', mRead));
+  Assert.IsTrue(mRead.Setup.PathsClean);
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.Contains(mJson, '"x":1');
+  Assert.Contains(mJson, '"y":2');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
+    '{"file": "ohne Namen"}]}}}', mRead));
+  Assert.AreEqual(1, mRead.Setup.MissingUnitCount);
+  Assert.AreEqual(1, Integer(mRead.Setup.MissingUnits[0].Count));
+end;
+
 procedure TAtlasProjectSummaryTests.SetupRoundTripAndLimits;
 var
   Summary, Read: TAtlasProjectSummary;
@@ -825,17 +853,7 @@ begin
   Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
   Assert.AreEqual(3, Integer(Read.Setup.UndefinedDefines[0].Count));
   Assert.IsFalse(Read.Setup.PathsClean);
-  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
-    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', Read));
-  Assert.IsTrue(Read.Setup.PathsClean);
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.Contains(Json, '"x":1');
-  Assert.Contains(Json, '"y":2');
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
-    '{"file": "ohne Namen"}]}}}', Read));
-  Assert.AreEqual(1, Read.Setup.MissingUnitCount);
-  Assert.AreEqual(1, Integer(Read.Setup.MissingUnits[0].Count));
+  AssertSetupCleanKeepsUnknown;
 end;
 
 procedure TAtlasProjectSummaryTests.SetupKeepsUncertainFindings;

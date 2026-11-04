@@ -208,6 +208,35 @@ begin
   end;
 end;
 
+/// <summary>Meldet x.write seriell und x.status nebenläufig an und prüft die Zuordnung.</summary>
+procedure RegisterWriteAndStatus(const ACommands: TLspCommands);
+var
+  mParams: TJSONValue;
+begin
+  ACommands.Register('x.write',
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TJSONString.Create('write');
+    end);
+  ACommands.RegisterConcurrent('x.status',
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TJSONString.Create('status');
+    end);
+  mParams := TJSONObject.ParseJSONValue('{"command":"x.status"}');
+  try
+    Assert.IsTrue(ACommands.IsConcurrent(mParams));
+  finally
+    mParams.Free;
+  end;
+  mParams := TJSONObject.ParseJSONValue('{"command":"x.write"}');
+  try
+    Assert.IsFalse(ACommands.IsConcurrent(mParams));
+  finally
+    mParams.Free;
+  end;
+end;
+
 procedure TLspStatusTests.ReadOnlyCommandsRunConcurrently;
 var
   Commands: TLspCommands;
@@ -215,7 +244,6 @@ var
   Work: TList<TProc>;
   Responses: TObjectList<TJSONObject>;
   Item: TProc;
-  Params: TJSONValue;
 
   function Dispatch(const AJson: string): TJSONObject;
   var
@@ -235,28 +263,7 @@ begin
   Work := TList<TProc>.Create;
   Responses := TObjectList<TJSONObject>.Create(True);
   try
-    Commands.Register('x.write',
-      function(const AArguments: TJSONArray): TJSONValue
-      begin
-        Result := TJSONString.Create('write');
-      end);
-    Commands.RegisterConcurrent('x.status',
-      function(const AArguments: TJSONArray): TJSONValue
-      begin
-        Result := TJSONString.Create('status');
-      end);
-    Params := TJSONObject.ParseJSONValue('{"command":"x.status"}');
-    try
-      Assert.IsTrue(Commands.IsConcurrent(Params));
-    finally
-      Params.Free;
-    end;
-    Params := TJSONObject.ParseJSONValue('{"command":"x.write"}');
-    try
-      Assert.IsFalse(Commands.IsConcurrent(Params));
-    finally
-      Params.Free;
-    end;
+    RegisterWriteAndStatus(Commands);
     Assert.IsFalse(Commands.IsConcurrent(nil), 'ohne Parameter');
     Dispatcher.Scheduler :=
       procedure(const AWork: TProc)
@@ -420,42 +427,49 @@ begin
   end;
 end;
 
-procedure TLspStatusTests.StatusShowsDiagnostics;
+/// <summary>Server prüft gerade, über dem Speicherbudget, mit Warteschlange und einem Prüflauf.</summary>
+function BusyServerStatus: TServerStatus;
 var
-  mStatus: TServerStatus;
   mProfiler: TCheckProfiler;
-  mJson, mPart: TJSONObject;
-  mMarkdown: string;
 begin
-  mStatus := Default(TServerStatus);
-  mStatus.ProcessId := 4711;
-  mStatus.Version := '1.2.0';
-  mStatus.UptimeMs := 65000;
-  mStatus.State := TServerStatus.StateChecking;
-  mStatus.Memory.Symbols := 10 * 1024 * 1024;
-  mStatus.Memory.Usages := 20 * 1024 * 1024;
-  mStatus.Memory.LibraryUnits := 30 * 1024 * 1024;
-  mStatus.Memory.TreeCache := 4 * 1024 * 1024;
-  mStatus.Memory.Documents := 1024 * 1024;
-  mStatus.Memory.Total := 100 * 1024 * 1024;
-  mStatus.Memory.Budget := 50 * 1024 * 1024;
-  mStatus.Queue.IndexWaiting := 1;
-  mStatus.Queue.CheckWaiting := 12;
-  mStatus.Queue.CheckRunning := 1;
-  mStatus.Queue.OldestWaitMs := 900;
-  mStatus.IndexCacheHitPercent := 95;
-  mStatus.TreeCacheHitPercent := 80;
-  mStatus.TreeCacheTrees := 3;
+  Result := Default(TServerStatus);
+  Result.ProcessId := 4711;
+  Result.Version := '1.2.0';
+  Result.UptimeMs := 65000;
+  Result.State := TServerStatus.StateChecking;
+  Result.Memory.Symbols := 10 * 1024 * 1024;
+  Result.Memory.Usages := 20 * 1024 * 1024;
+  Result.Memory.LibraryUnits := 30 * 1024 * 1024;
+  Result.Memory.TreeCache := 4 * 1024 * 1024;
+  Result.Memory.Documents := 1024 * 1024;
+  Result.Memory.Total := 100 * 1024 * 1024;
+  Result.Memory.Budget := 50 * 1024 * 1024;
+  Result.Queue.IndexWaiting := 1;
+  Result.Queue.CheckWaiting := 12;
+  Result.Queue.CheckRunning := 1;
+  Result.Queue.OldestWaitMs := 900;
+  Result.IndexCacheHitPercent := 95;
+  Result.TreeCacheHitPercent := 80;
+  Result.TreeCacheTrees := 3;
   mProfiler := TCheckProfiler.Create;
   try
     mProfiler.BeginRun(Now);
     mProfiler.AddUnit('C:\P\Haupt.pas', 5000);
     mProfiler.AddRule('format-args', 2000);
     mProfiler.FinishRun(6);
-    mStatus.CheckRun := mProfiler.Snapshot(TCheckRunProfile.cTop);
+    Result.CheckRun := mProfiler.Snapshot(TCheckRunProfile.cTop);
   finally
     mProfiler.Free;
   end;
+end;
+
+procedure TLspStatusTests.StatusShowsDiagnostics;
+var
+  mStatus: TServerStatus;
+  mJson, mPart: TJSONObject;
+  mMarkdown: string;
+begin
+  mStatus := BusyServerStatus;
   mMarkdown := mStatus.ToMarkdown;
   Assert.IsTrue(mMarkdown.Contains('Prozess 4711, Version 1.2.0, läuft seit 65 s, prüft'), mMarkdown);
   Assert.IsTrue(mMarkdown.Contains('| Verwendungen | 20.0 MB |'), mMarkdown);

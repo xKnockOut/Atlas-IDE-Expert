@@ -433,15 +433,57 @@ begin
   end;
 end;
 
+/// <summary>Referenzen tragen die Sicherheit je Fundstelle.</summary>
+procedure AssertReferenceLevels(const ADispatcher: TJsonRpcDispatcher; const AUri, APosition: string);
+var
+  mResponse: TJSONObject;
+  mReasons: string;
+  mItem: TJSONValue;
+begin
+  mResponse := Request(ADispatcher, 'textDocument/references', '{"textDocument":{"uri":"' + AUri.Replace('', '\') +
+    '"},"position":' + APosition + ',"context":{"includeDeclaration":false}}');
+  try
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONArray, mResponse.ToJSON);
+    mReasons := '';
+    for mItem in TJSONArray(mResponse.GetValue('result')) do
+    begin
+      mReasons := mReasons + TJSONObject(mItem).GetValue<string>('atlasConfidence.level') + ' ';
+    end;
+    Assert.AreEqual('sure sure inferred inferred inferred inferred', Trim(mReasons));
+  finally
+    mResponse.Free;
+  end;
+end;
+
+/// <summary>Umbenennen nennt die Gründe der nicht geänderten Stellen.</summary>
+procedure AssertRenameUnchangedReasons(const ADispatcher: TJsonRpcDispatcher; const AUri, APosition: string);
+var
+  mResponse: TJSONObject;
+  mReasons: string;
+  mItem: TJSONValue;
+begin
+  mResponse := Request(ADispatcher, 'textDocument/rename', '{"textDocument":{"uri":"' + AUri.Replace('', '\') +
+    '"},"position":' + APosition + ',"newName":"Sichern"}');
+  try
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
+    mReasons := '';
+    for mItem in mResponse.GetValue<TJSONArray>('result.atlasUnchanged') do
+    begin
+      mReasons := mReasons + TJSONObject(mItem).GetValue<string>('atlasConfidence.reason') + ' ';
+    end;
+    Assert.AreEqual('interface virtual unresolved', Trim(mReasons));
+  finally
+    mResponse.Free;
+  end;
+end;
+
 procedure TReferenceConfidenceTests.LspResponses;
 var
   Store: IDocumentStore;
   References: TLspReferences;
   Rename: TLspRename;
   Dispatcher: TJsonRpcDispatcher;
-  Response: TJSONObject;
-  Uri, Position, Reasons: string;
-  Item: TJSONValue;
+  Uri, Position: string;
   Files: TReferenceFilesProvider;
   Provider: TReferenceSettingsProvider;
 begin
@@ -468,32 +510,8 @@ begin
     Rename.Attach(Dispatcher);
     Position := Format('{"line":%d,"character":%d}', [PositionOf(UnitKunden, 'Speichern; override').Line,
       PositionOf(UnitKunden, 'Speichern; override').Character]);
-    Response := Request(Dispatcher, 'textDocument/references', '{"textDocument":{"uri":"' + Uri.Replace('', '\') +
-      '"},"position":' + Position + ',"context":{"includeDeclaration":false}}');
-    try
-      Assert.IsTrue(Response.GetValue('result') is TJSONArray, Response.ToJSON);
-      Reasons := '';
-      for Item in TJSONArray(Response.GetValue('result')) do
-      begin
-        Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.level') + ' ';
-      end;
-      Assert.AreEqual('sure sure inferred inferred inferred inferred', Trim(Reasons));
-    finally
-      Response.Free;
-    end;
-    Response := Request(Dispatcher, 'textDocument/rename', '{"textDocument":{"uri":"' + Uri.Replace('', '\') +
-      '"},"position":' + Position + ',"newName":"Sichern"}');
-    try
-      Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
-      Reasons := '';
-      for Item in Response.GetValue<TJSONArray>('result.atlasUnchanged') do
-      begin
-        Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.reason') + ' ';
-      end;
-      Assert.AreEqual('interface virtual unresolved', Trim(Reasons));
-    finally
-      Response.Free;
-    end;
+    AssertReferenceLevels(Dispatcher, Uri, Position);
+    AssertRenameUnchangedReasons(Dispatcher, Uri, Position);
   finally
     Dispatcher.Free;
     Rename.Free;

@@ -193,49 +193,47 @@ end;
 
 procedure TAtlasSearchFilesTests.NextLocationWalksAcrossFiles;
 var
-  FileIndex, HitIndex: Integer;
-  Wrapped: Boolean;
+  Location: TAtlasFileLocation;
 begin
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'a.pas', TAtlasSearchPos.Create(0, 1), False, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(0, FileIndex);
-  Assert.AreEqual(1, HitIndex);
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'a.pas', TAtlasSearchPos.Create(0, 1), False,
+    Location));
+  Assert.AreEqual(0, Location.FileIndex);
+  Assert.AreEqual(1, Location.HitIndex);
   // Hinter dem letzten Treffer von A geht es mit C weiter (B hat keinen).
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'A.pas', TAtlasSearchPos.Create(1, 3), False, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(2, FileIndex);
-  Assert.AreEqual(0, HitIndex);
-  Assert.IsFalse(Wrapped);
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'A.pas', TAtlasSearchPos.Create(1, 3), False,
+    Location));
+  Assert.AreEqual(2, Location.FileIndex);
+  Assert.AreEqual(0, Location.HitIndex);
+  Assert.IsFalse(Location.Wrapped);
   // Hinter C von vorn.
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'C.pas', TAtlasSearchPos.Create(0, 5), False, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(0, FileIndex);
-  Assert.AreEqual(0, HitIndex);
-  Assert.IsTrue(Wrapped);
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'C.pas', TAtlasSearchPos.Create(0, 5), False,
+    Location));
+  Assert.AreEqual(0, Location.FileIndex);
+  Assert.AreEqual(0, Location.HitIndex);
+  Assert.IsTrue(Location.Wrapped);
   // Rückwärts vor dem ersten Treffer von C: letzter Treffer von A.
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'C.pas', TAtlasSearchPos.Create(0, 2), True, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(0, FileIndex);
-  Assert.AreEqual(1, HitIndex);
-  Assert.IsFalse(Wrapped);
-  Assert.IsFalse(TAtlasFileSearch.NextLocation(nil, 'A.pas', TAtlasSearchPos.Create(0, 0), False, FileIndex,
-    HitIndex, Wrapped));
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'C.pas', TAtlasSearchPos.Create(0, 2), True,
+    Location));
+  Assert.AreEqual(0, Location.FileIndex);
+  Assert.AreEqual(1, Location.HitIndex);
+  Assert.IsFalse(Location.Wrapped);
+  Assert.IsFalse(TAtlasFileSearch.NextLocation(nil, 'A.pas', TAtlasSearchPos.Create(0, 0), False,
+    Location));
   Assert.AreEqual(3, TAtlasFileSearch.HitCount(Results));
 end;
 
 procedure TAtlasSearchFilesTests.NextLocationStartsOutsideTheResults;
 var
-  FileIndex, HitIndex: Integer;
-  Wrapped: Boolean;
+  Location: TAtlasFileLocation;
 begin
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'Fremd.pas', TAtlasSearchPos.Create(9, 9), False, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(0, FileIndex);
-  Assert.AreEqual(0, HitIndex);
-  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'Fremd.pas', TAtlasSearchPos.Create(9, 9), True, FileIndex,
-    HitIndex, Wrapped));
-  Assert.AreEqual(2, FileIndex);
-  Assert.AreEqual(0, HitIndex);
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'Fremd.pas', TAtlasSearchPos.Create(9, 9), False,
+    Location));
+  Assert.AreEqual(0, Location.FileIndex);
+  Assert.AreEqual(0, Location.HitIndex);
+  Assert.IsTrue(TAtlasFileSearch.NextLocation(Results, 'Fremd.pas', TAtlasSearchPos.Create(9, 9), True,
+    Location));
+  Assert.AreEqual(2, Location.FileIndex);
+  Assert.AreEqual(0, Location.HitIndex);
 end;
 
 procedure TAtlasSearchFilesTests.SpansFilesOnlyForTheFileScopes;

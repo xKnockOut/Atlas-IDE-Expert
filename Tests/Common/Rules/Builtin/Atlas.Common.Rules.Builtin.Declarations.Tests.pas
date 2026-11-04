@@ -96,6 +96,12 @@ type
     procedure InterfaceResolutionForUnlistedInterface;
     [Test]
     procedure InterfaceOffAndExclude;
+  end;
+
+  /// <summary>Regeln zu Feldreihenfolge, Überladungen, Sonderformen und doppelten Deklarationen.</summary>
+  [TestFixture]
+  TDeclarationOrderRulesTests = class
+  public
     [Test]
     procedure FieldAfterMethodIssueExample;
     [Test]
@@ -144,6 +150,12 @@ type
     procedure DuplicateDeclarationOverloadedDefaultProperty;
     [Test]
     procedure DuplicateDeclarationOptions;
+  end;
+
+  /// <summary>Regeln zu Variant-Feldern, zu großen Typen und Standardparametern.</summary>
+  [TestFixture]
+  TDeclarationTypeRulesTests = class
+  public
     [Test]
     procedure VariantManagedIssueExample;
     [Test]
@@ -786,7 +798,7 @@ begin
     'implementation'#10'end.';
 end;
 
-procedure TDeclarationRulesTests.FieldAfterMethodIssueExample;
+procedure TDeclarationOrderRulesTests.FieldAfterMethodIssueExample;
 const
   Members = '  private'#10'    function GetName: string;'#10'    FName: string;'#10;
 var
@@ -811,7 +823,7 @@ begin
   TRuleAssert.Silent(TFieldAfterMethodRule.Create, Text);
 end;
 
-procedure TDeclarationRulesTests.FieldAfterMethodVariants;
+procedure TDeclarationOrderRulesTests.FieldAfterMethodVariants;
 const
   Members = '  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
     '    procedure Setzen;'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10;
@@ -843,7 +855,7 @@ begin
   Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
 end;
 
-procedure TDeclarationRulesTests.FieldAfterMethodSilentCases;
+procedure TDeclarationOrderRulesTests.FieldAfterMethodSilentCases;
 begin
   // Felder zuerst, neuer Abschnitt, var und class var, verschiedene {$IF}-Zweige.
   TRuleAssert.Silent(TFieldAfterMethodRule.Create, Kunde('    FErst: Integer;'#10'    procedure A;'#10 +
@@ -856,7 +868,7 @@ begin
     '    FX: Integer;'#10'{$ENDIF}'#10));
 end;
 
-procedure TDeclarationRulesTests.FieldAfterMethodConditional;
+procedure TDeclarationOrderRulesTests.FieldAfterMethodConditional;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -868,7 +880,7 @@ begin
   Assert.AreEqual('var davor setzen', Findings[0].Fixes[0].Title);
 end;
 
-procedure TDeclarationRulesTests.FieldAfterMethodOffAndExclude;
+procedure TDeclarationOrderRulesTests.FieldAfterMethodOffAndExclude;
 const
   Members = '    procedure A;'#10'    FX: Integer;'#10;
 begin
@@ -882,7 +894,7 @@ begin
     '{"rules": {"field-after-method": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Kunden.pas'))));
 end;
 
-procedure TDeclarationRulesTests.OverloadIssueExample;
+procedure TDeclarationOrderRulesTests.OverloadIssueExample;
 const
   Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
 var
@@ -903,7 +915,7 @@ begin
   TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, Text);
 end;
 
-procedure TDeclarationRulesTests.OverloadVariants;
+procedure TDeclarationOrderRulesTests.OverloadVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -944,7 +956,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
 end;
 
-procedure TDeclarationRulesTests.OverloadSilentCases;
+procedure TDeclarationOrderRulesTests.OverloadSilentCases;
 begin
   // overload überall, var gegen Wert, Generika, Operatoren, Rumpf zu forward, Methodenrümpfe,
   // gleichnamige Methoden verschiedener Klassen und Zweige von {$IFDEF}/{$ELSE}.
@@ -959,7 +971,7 @@ begin
     'procedure Schreiben(A: Integer);'#10'begin'#10'end;'#10'{$ENDIF}'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.OverloadOffAndExclude;
+procedure TDeclarationOrderRulesTests.OverloadOffAndExclude;
 const
   Members = '    procedure Laden(const Datei: string);'#10'    procedure Laden(Strom: TStream);'#10;
 begin
@@ -980,7 +992,7 @@ begin
   TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, ASource);
 end;
 
-procedure TDeclarationRulesTests.SpecialFormClassConstructor;
+procedure TDeclarationOrderRulesTests.SpecialFormClassConstructor;
 begin
   // F02: class constructor ist keine Überladung des Instanz-Konstruktors.
   AssertMatchingSilent('unit F02_ClassCtorOverload;'#10'interface'#10'type'#10'  TA = class'#10'  public'#10 +
@@ -991,7 +1003,7 @@ begin
     'destructor TA.Destroy; begin end;'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormMethodResolution;
+procedure TDeclarationOrderRulesTests.SpecialFormMethodResolution;
 begin
   // F03: Methodenzuordnung braucht keinen Rumpf und ist keine Überladung.
   AssertMatchingSilent('unit F03_MethodResolution;'#10'interface'#10'type'#10'  IFoo = interface'#10 +
@@ -1000,7 +1012,7 @@ begin
     'function TA.MyGetX: Integer; begin Result := 1; end;'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormGenericConstraints;
+procedure TDeclarationOrderRulesTests.SpecialFormGenericConstraints;
 begin
   // F06: Constraints stehen nur in der Deklaration; das ";" darin beendet den Kopf nicht.
   AssertMatchingSilent('unit F06_GenericConstraints;'#10'interface'#10'type'#10'  TA = class'#10 +
@@ -1010,7 +1022,7 @@ begin
     'procedure TA.Reg<TI, TC>(const S: Boolean; const N: string); begin end;'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormEmptyParentheses;
+procedure TDeclarationOrderRulesTests.SpecialFormEmptyParentheses;
 begin
   // F07: "()" in der Implementierung heißt keine Parameter.
   AssertMatchingSilent('unit F07_EmptyParens;'#10'interface'#10'uses Classes;'#10'type'#10'  TW = class(TThread)'#10 +
@@ -1019,7 +1031,7 @@ begin
     'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormShortImplementation;
+procedure TDeclarationOrderRulesTests.SpecialFormShortImplementation;
 begin
   // F13: Die Kurzform der Implementierung gehört zur einzigen Deklaration gleichen Namens, auch mit Kommentaren
   // im mehrzeiligen Kopf; ebenso bei Methoden.
@@ -1029,7 +1041,7 @@ begin
     '  Result := A + B;'#10'end;'#10'function TA.Bar;'#10'begin'#10'  Result := A;'#10'end;'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormOpenArrayElementType;
+procedure TDeclarationOrderRulesTests.SpecialFormOpenArrayElementType;
 begin
   // F18: Bei offenen Arrays zählt der Elementtyp.
   AssertMatchingSilent('unit F18_OpenArrayOverload;'#10'interface'#10'uses System.Rtti, System.TypInfo;'#10'type'#10 +
@@ -1042,7 +1054,7 @@ begin
     'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormAsmExternalAndOverride;
+procedure TDeclarationOrderRulesTests.SpecialFormAsmExternalAndOverride;
 begin
   // Rumpf aus asm, external im implementation-Teil (auch in Kurzform), forward mit asm-Rumpf; override ohne
   // overload übernimmt es von der überschriebenen Methode.
@@ -1056,7 +1068,7 @@ begin
     'procedure TB.Add(P: PChar); begin end;'#10'procedure TB.Add(P: PChar; Len: Integer); begin end;'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.SpecialFormGenericNamesake;
+procedure TDeclarationOrderRulesTests.SpecialFormGenericNamesake;
 begin
   // Neben TProperty steht ein generischer TProperty<T> gleichen Namens (Spring4D): Dessen Deklarationen und Rümpfe
   // gehören nicht zum nicht generischen Typ.
@@ -1076,7 +1088,7 @@ begin
     '      function MoveNext: Boolean;'#10'    end;'#10'  end;'#10'implementation'#10'end.'))));
 end;
 
-procedure TDeclarationRulesTests.SpecialFormCounterChecks;
+procedure TDeclarationOrderRulesTests.SpecialFormCounterChecks;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1110,7 +1122,7 @@ begin
     'procedure TRechnung.Summieren(Betrag: Currency);'#10 + ADeclarations + 'begin'#10'end;'#10'end.';
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationIssueExample;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationIssueExample;
 var
   Findings: TArray<TRuleFinding>;
   Text: string;
@@ -1140,7 +1152,7 @@ begin
     '  Summe, Betrag: Currency;'#10), Findings[0].Fixes[0].Edits));
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationScopes;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationScopes;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1183,7 +1195,7 @@ begin
   Assert.AreEqual('Zaehler ist schon als Variable deklariert (wie E2004).', Findings[1].Message);
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationUses;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationUses;
 const
   Source = 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
     'implementation'#10'uses'#10'  System.Classes;'#10'end.';
@@ -1208,7 +1220,7 @@ begin
     'U.pas'))));
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationSilentCases;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationSilentCases;
 begin
   // Überladungen und Rümpfe, Vorwärtsdeklaration, TList neben TList<T>, Feld und gleichnamiger
   // Parameter einer Methode, lokale Variable wie ein Feld, {$IFDEF}/{$ELSE}.
@@ -1221,7 +1233,7 @@ begin
     '  Stufe: Integer;'#10'{$ELSE}'#10'const'#10'  Stufe = 0;'#10'{$ENDIF}'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationOverloadedDefaultProperty;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationOverloadedDefaultProperty;
 const
   cKopf = 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10 +
     '    function GetName(const AName: string): Integer;'#10'    function GetIndex(AIndex: Integer): Integer;'#10;
@@ -1240,7 +1252,7 @@ begin
   Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
 end;
 
-procedure TDeclarationRulesTests.DuplicateDeclarationOptions;
+procedure TDeclarationOrderRulesTests.DuplicateDeclarationOptions;
 var
   Issues: TArray<TConfigurationIssue>;
 begin
@@ -1268,7 +1280,7 @@ begin
     ATypes + 'implementation'#10'end.';
 end;
 
-procedure TDeclarationRulesTests.VariantManagedIssueExample;
+procedure TDeclarationTypeRulesTests.VariantManagedIssueExample;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1303,7 +1315,7 @@ begin
   TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Source);
 end;
 
-procedure TDeclarationRulesTests.VariantManagedKinds;
+procedure TDeclarationTypeRulesTests.VariantManagedKinds;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1321,7 +1333,7 @@ begin
     Findings[6].Message);
 end;
 
-procedure TDeclarationRulesTests.VariantManagedMoveFixes;
+procedure TDeclarationTypeRulesTests.VariantManagedMoveFixes;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1342,7 +1354,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TDeclarationRulesTests.VariantManagedGenericAndFile;
+procedure TDeclarationTypeRulesTests.VariantManagedGenericAndFile;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1369,7 +1381,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TDeclarationRulesTests.VariantManagedFromIndex;
+procedure TDeclarationTypeRulesTests.VariantManagedFromIndex;
 var
   Index: ISymbolIndex;
   Findings: TArray<TRuleFinding>;
@@ -1386,7 +1398,7 @@ begin
   Assert.IsTrue(Findings[1].Message.StartsWith('TFremdZaehler braucht Initialisierung'));
 end;
 
-procedure TDeclarationRulesTests.VariantManagedSilentCases;
+procedure TDeclarationTypeRulesTests.VariantManagedSilentCases;
 begin
   // Kurze Strings, einfache Typen, Klassen, Zeiger, unbekannte Typen, fester Teil, eingeschränkte Parameter.
   TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Typen('  TWert = record'#10'    Name: string;'#10 +
@@ -1397,7 +1409,7 @@ begin
     '  TRoh = file;'#10'  TKurz = file of ShortString;'#10));
 end;
 
-procedure TDeclarationRulesTests.VariantManagedOffAndExclude;
+procedure TDeclarationTypeRulesTests.VariantManagedOffAndExclude;
 var
   Source: string;
 begin
@@ -1413,7 +1425,7 @@ begin
   Result := 'unit U;'#10'interface'#10'type'#10 + ATypes + 'implementation'#10'end.';
 end;
 
-procedure TDeclarationRulesTests.TypeTooLargeIssueExample;
+procedure TDeclarationTypeRulesTests.TypeTooLargeIssueExample;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1431,7 +1443,7 @@ begin
     '  TListe = array of Int64;'#10));
 end;
 
-procedure TDeclarationRulesTests.TypeTooLargeRecordsAndNames;
+procedure TDeclarationTypeRulesTests.TypeTooLargeRecordsAndNames;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1457,7 +1469,7 @@ begin
   Assert.AreEqual('A, B ist 16 GB groß; erlaubt sind 2 GB (wie E2100).', Findings[0].Message);
 end;
 
-procedure TDeclarationRulesTests.TypeTooLargeGenericInstance;
+procedure TDeclarationTypeRulesTests.TypeTooLargeGenericInstance;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1470,7 +1482,7 @@ begin
   Assert.AreEqual('TFeld<Double> ist 2 GB groß; erlaubt sind 2 GB (wie E2543).', Findings[1].Message);
 end;
 
-procedure TDeclarationRulesTests.TypeTooLargeSilentCases;
+procedure TDeclarationTypeRulesTests.TypeTooLargeSilentCases;
 begin
   // Knapp unter 2 GB, dynamische Arrays, Klassen, unbekannte Grenzen, Index aus fremder Unit, typisierte Konstante.
   TRuleAssert.Silent(TTypeTooLargeRule.Create, 'unit U;'#10'interface'#10'const'#10'  Grenze: Integer = MaxInt;'#10 +
@@ -1480,7 +1492,7 @@ begin
     '  TOffen<T> = array[0..MaxInt] of T;'#10'  TKurz = array[0..$FFFF] of string[200];'#10'implementation'#10'end.');
 end;
 
-procedure TDeclarationRulesTests.TypeTooLargeOffAndExclude;
+procedure TDeclarationTypeRulesTests.TypeTooLargeOffAndExclude;
 var
   Source: string;
 begin
@@ -1517,7 +1529,7 @@ begin
   end;
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterReportedWithFix;
+procedure TDeclarationTypeRulesTests.DefaultParameterReportedWithFix;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1540,7 +1552,7 @@ begin
   Assert.AreEqual(0, Integer(Length(DefaultFindings(DefaultFixed(Source)))));
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterMethodWithSeveral;
+procedure TDeclarationTypeRulesTests.DefaultParameterMethodWithSeveral;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1562,7 +1574,7 @@ begin
     '  Result := A + B + C;'#10'end;', 'TRechner = class'), DefaultFixed(Source));
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterImplementationOnly;
+procedure TDeclarationTypeRulesTests.DefaultParameterImplementationOnly;
 var
   Source: string;
 begin
@@ -1575,7 +1587,7 @@ begin
   Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterSafeOnlyInsideUnit;
+procedure TDeclarationTypeRulesTests.DefaultParameterSafeOnlyInsideUnit;
 var
   Source: string;
 begin
@@ -1593,7 +1605,7 @@ begin
   Assert.IsTrue(DefaultFindings(Source)[0].Fixes[0].Safe);
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterWithoutFix;
+procedure TDeclarationTypeRulesTests.DefaultParameterWithoutFix;
 const
   Cases: array[0..4] of string = (
     // virtual: Nachfahren überschreiben genau diese Signatur.
@@ -1627,7 +1639,7 @@ begin
     'implementation'#10'procedure P(A: Integer);'#10'begin'#10'end;'#10'end.'))));
 end;
 
-procedure TDeclarationRulesTests.DefaultParameterSwitchedOff;
+procedure TDeclarationTypeRulesTests.DefaultParameterSwitchedOff;
 var
   Source: string;
 begin
@@ -1642,5 +1654,7 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TDeclarationRulesTests);
+  TDUnitX.RegisterTestFixture(TDeclarationOrderRulesTests);
+  TDUnitX.RegisterTestFixture(TDeclarationTypeRulesTests);
 
 end.

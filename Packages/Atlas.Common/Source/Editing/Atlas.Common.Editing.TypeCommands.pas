@@ -92,42 +92,55 @@ begin
   Result := UpperCase(Copy(AText, 1, 1)) + Copy(AText, 2, MaxInt);
 end;
 
+/// <summary>Liegt Zeile ALine in einem type-Abschnitt des interface- oder implementation-Teils?</summary>
+function InTypeSectionAt(ATree: TSyntaxTree; ALine: Integer): Boolean;
+var
+  mSection: TSyntaxNode;
+  mIndex, mChild: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ATree.Root.ChildCount - 1 do
+  begin
+    mSection := ATree.Root[mIndex];
+    if not (mSection.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) then
+    begin
+      Continue;
+    end;
+    for mChild := 0 to mSection.ChildCount - 1 do
+    begin
+      if (mSection[mChild].Kind = TSyntaxKind.TypeSection) and (mSection[mChild].StartPos.Line <= ALine) and
+        (mSection[mChild].EndPos.Line >= ALine) then
+      begin
+        Result := True;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Letzte Zeile mit Text vor der Befehlszeile; -1 ohne.</summary>
+function PreviousCodeLine(ASource: TCommandSource): Integer;
+begin
+  Result := ASource.Line - 1;
+  while (Result >= 0) and (Trim(ASource.Lines[Result]) = '') do
+  begin
+    Dec(Result);
+  end;
+end;
+
 /// <summary>Steht die Befehlszeile in einem type-Abschnitt (nicht in Klasse oder Routine)?
 /// False mit Grund, wenn dort kein Typ stehen darf.</summary>
 function TypePlace(ASource: TCommandSource; const AName: string; out AInTypeSection: Boolean;
   out AReason: string): Boolean;
 var
-  ClassSymbol: TIndexSymbol;
-  Previous: Integer;
-  Section: TSyntaxNode;
-  Index, Child: Integer;
+  mClassSymbol: TIndexSymbol;
 begin
   AInTypeSection := False;
-  if (ASource.RoutineAt <> nil) or ASource.ClassAt(ClassSymbol) then
+  if (ASource.RoutineAt <> nil) or ASource.ClassAt(mClassSymbol) then
   begin
     Exit(Fail('/' + AName + ' gilt nur auf Unit-Ebene', AReason));
   end;
-  Previous := ASource.Line - 1;
-  while (Previous >= 0) and (Trim(ASource.Lines[Previous]) = '') do
-  begin
-    Dec(Previous);
-  end;
   // type-Abschnitt, der die vorige Zeile mit Code enthält.
-  for Index := 0 to ASource.Tree.Root.ChildCount - 1 do
-  begin
-    Section := ASource.Tree.Root[Index];
-    if Section.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
-    begin
-      for Child := 0 to Section.ChildCount - 1 do
-      begin
-        if (Section[Child].Kind = TSyntaxKind.TypeSection) and (Section[Child].StartPos.Line <= Previous) and
-          (Section[Child].EndPos.Line >= Previous) then
-        begin
-          AInTypeSection := True;
-        end;
-      end;
-    end;
-  end;
+  AInTypeSection := InTypeSectionAt(ASource.Tree, PreviousCodeLine(ASource));
   if ASource.Tree.Root.FindChild(TSyntaxKind.InterfaceSection) = nil then
   begin
     Exit(Fail('/' + AName + ' gilt nur in einer Unit', AReason));
@@ -186,86 +199,104 @@ end;
 
 { /enum }
 
-function ExecuteEnum(const AContext: TSlashContext; APrefixed: Boolean; out AEdits: TArray<TTextEdit>;
-  out AReason: string): Boolean;
+/// <summary>Liest "TTyp wert1, wert2 [names]"; False, wenn Typname oder ein Wert kein Bezeichner ist.</summary>
+function EnumArguments(const AArguments: string; out ATypeName: string; out AValues: TArray<string>;
+  out AWithNames: Boolean): Boolean;
 var
-  Source: TCommandSource;
-  Arguments, TypeName, Prefix, Members, Names, Value: string;
-  Values: TArray<string>;
-  WithNames, InTypeSection: Boolean;
-  Space, Index: Integer;
-  Lines: TArray<string>;
+  mArguments: string;
+  mSpace, mIndex: Integer;
 begin
-  AEdits := nil;
-  Arguments := Trim(AContext.Arguments);
-  WithNames := EndsText(' names', Arguments);
-  if WithNames then
+  mArguments := Trim(AArguments);
+  AWithNames := EndsText(' names', mArguments);
+  if AWithNames then
   begin
-    Arguments := Trim(Copy(Arguments, 1, Length(Arguments) - 6));
+    mArguments := Trim(Copy(mArguments, 1, Length(mArguments) - 6));
   end;
-  Space := Pos(' ', Arguments);
-  TypeName := Copy(Arguments, 1, Space - 1);
-  Values := Copy(Arguments, Space + 1, MaxInt).Split([',']);
-  if (Space = 0) or not IsValidIdent(TypeName) or (Length(Values) = 0) then
+  mSpace := Pos(' ', mArguments);
+  ATypeName := Copy(mArguments, 1, mSpace - 1);
+  AValues := Copy(mArguments, mSpace + 1, MaxInt).Split([',']);
+  Result := (mSpace > 0) and IsValidIdent(ATypeName) and (Length(AValues) > 0);
+  for mIndex := 0 to High(AValues) do
   begin
-    Exit(Fail('Erwartet wird /enum TTyp wert1, wert2 [names]', AReason));
+    AValues[mIndex] := Trim(AValues[mIndex]);
+    Result := Result and IsValidIdent(AValues[mIndex]);
   end;
-  for Index := 0 to High(Values) do
+end;
+
+/// <summary>Werte der Aufzählung, mit APrefixed als Präfix von ATypeName plus Wert mit großem Anfang.</summary>
+function EnumMemberList(const ATypeName: string; const AValues: TArray<string>; APrefixed: Boolean): string;
+var
+  mPrefix, mValue: string;
+begin
+  mPrefix := EnumPrefix(ATypeName);
+  Result := '';
+  for mValue in AValues do
   begin
-    Values[Index] := Trim(Values[Index]);
-    if not IsValidIdent(Values[Index]) then
+    if Result <> '' then
     begin
-      Exit(Fail('Erwartet wird /enum TTyp wert1, wert2 [names]', AReason));
-    end;
-  end;
-  if APrefixed then
-  begin
-    Prefix := EnumPrefix(TypeName);
-  end
-  else
-  begin
-    Prefix := '';
-  end;
-  Members := '';
-  Names := '';
-  for Value in Values do
-  begin
-    if Members <> '' then
-    begin
-      Members := Members + ', ';
-      Names := Names + ', ';
+      Result := Result + ', ';
     end;
     if APrefixed then
     begin
-      Members := Members + Prefix + Capitalize(Value);
+      Result := Result + mPrefix + Capitalize(mValue);
     end
     else
     begin
-      Members := Members + Value;
+      Result := Result + mValue;
     end;
-    Names := Names + QuotedStr(Value);
   end;
-  Source := TCommandSource.Create(AContext);
-  try
-    if not TypePlace(Source, AContext.Name, InTypeSection, AReason) then
+end;
+
+/// <summary>Werte als Strings für die Namenstabelle.</summary>
+function QuotedList(const AValues: TArray<string>): string;
+var
+  mValue: string;
+begin
+  Result := '';
+  for mValue in AValues do
+  begin
+    if Result <> '' then
     begin
-      Exit(False);
+      Result := Result + ', ';
     end;
-    Lines := [Format('%s = (%s);', [TypeName, Members])];
-    if WithNames then
+    Result := Result + QuotedStr(mValue);
+  end;
+end;
+
+function ExecuteEnum(const AContext: TSlashContext; APrefixed: Boolean; out AEdits: TArray<TTextEdit>;
+  out AReason: string): Boolean;
+var
+  mSource: TCommandSource;
+  mTypeName: string;
+  mValues, mLines: TArray<string>;
+  mWithNames, mInTypeSection: Boolean;
+begin
+  AEdits := nil;
+  if not EnumArguments(AContext.Arguments, mTypeName, mValues, mWithNames) then
+  begin
+    Exit(Fail('Erwartet wird /enum TTyp wert1, wert2 [names]', AReason));
+  end;
+  mSource := TCommandSource.Create(AContext);
+  try
+    Result := TypePlace(mSource, AContext.Name, mInTypeSection, AReason);
+    if not Result then
     begin
-      Lines := Lines + ['#const', Format('#  %sNamen: array[%s] of string = (%s);',
-        [Copy(TypeName, 2, MaxInt), TypeName, Names])];
+      Exit;
+    end;
+    mLines := [Format('%s = (%s);', [mTypeName, EnumMemberList(mTypeName, mValues, APrefixed)])];
+    if mWithNames then
+    begin
+      mLines := mLines + ['#const', Format('#  %sNamen: array[%s] of string = (%s);',
+        [Copy(mTypeName, 2, MaxInt), mTypeName, QuotedList(mValues)])];
       // Folgen weitere Typen, braucht es wieder "type".
-      if TypeFollows(Source) then
+      if TypeFollows(mSource) then
       begin
-        Lines := Lines + ['#type'];
+        mLines := mLines + ['#type'];
       end;
     end;
-    AEdits := [TypeDeclaration(Source, InTypeSection, Lines)];
-    Result := True;
+    AEdits := [TypeDeclaration(mSource, mInTypeSection, mLines)];
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -427,43 +458,58 @@ begin
   end;
 end;
 
+/// <summary>Elementtyp der Menge AName aus der Datei AFileName, gelesen über den Host.</summary>
+function FileSetElement(const AContext: TSlashContext; const AFileName, AName: string; out AElement: string): Boolean;
+var
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  AElement := '';
+  if not AContext.Host.ReadFile(AFileName, mText) then
+  begin
+    Exit(False);
+  end;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    Result := SetElementIn(mTree, AName, AElement);
+  finally
+    mTree.Free;
+  end;
+end;
+
+/// <summary>Elementtyp der Menge AName aus der Unit, die der Index nennt; False ohne Index oder Host.</summary>
+function IndexedSetElement(const AContext: TSlashContext; const AName: string; out AElement: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  AElement := '';
+  if (AContext.Index = nil) or (AContext.Host = nil) then
+  begin
+    Exit(False);
+  end;
+  for mLocation in AContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and (mLocation.Symbol.Container = '') and
+      FileSetElement(AContext, mLocation.FileName, AName, AElement) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Elementtyp der Menge ATypeName: aus der Datei, sonst aus der Unit, die der Index nennt (#875).</summary>
 function SetElement(ASource: TCommandSource; const AContext: TSlashContext; const ATypeName: string;
   out AElement: string): Boolean;
 var
-  Name, Text: string;
-  Location: TSymbolLocation;
-  Tree: TSyntaxTree;
+  mName: string;
 begin
-  Name := ATypeName;
-  if Pos('.', Name) > 0 then
+  mName := ATypeName;
+  if Pos('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  if SetElementIn(ASource.Tree, Name, AElement) then
-  begin
-    Exit(True);
-  end;
-  if (AContext.Index <> nil) and (AContext.Host <> nil) then
-  begin
-    for Location in AContext.Index.FindSymbols(Name) do
-    begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and (Location.Symbol.Container = '') and
-        AContext.Host.ReadFile(Location.FileName, Text) then
-      begin
-        Tree := TSyntaxTreeCache.Parse(Text);
-        try
-          if SetElementIn(Tree, Name, AElement) then
-          begin
-            Exit(True);
-          end;
-        finally
-          Tree.Free;
-        end;
-      end;
-    end;
-  end;
-  Result := False;
+  Result := SetElementIn(ASource.Tree, mName, AElement) or IndexedSetElement(AContext, mName, AElement);
 end;
 
 /// <summary>Helper für eine Menge (#875): Contains, ToText, Toggle und All.</summary>
@@ -501,83 +547,103 @@ begin
   Result := [TypeDeclaration(ASource, AInTypeSection, Lines), ASource.AddBody(AHelperName, Join(ASource, Body))];
 end;
 
+/// <summary>Trägt AUnitName ins uses ein, wenn sie dort fehlt; der Eintrag gilt für die Stelle in Zeile ALine.</summary>
+procedure AddMissingUses(ASource: TCommandSource; const AContext: TSlashContext; const AUnitName: string;
+  ALine: Integer; var AEdits: TArray<TTextEdit>);
+var
+  mUsesEdit: TTextEdit;
+begin
+  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
+    TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
+  begin
+    AEdits := AEdits + [mUsesEdit];
+  end;
+end;
+
+/// <summary>Ist die Einstellung AKey eingeschaltet? Ohne Host gilt sie als an.</summary>
+function SettingOn(const AContext: TSlashContext; const AKey: string): Boolean;
+begin
+  Result := (AContext.Host = nil) or not SameText(AContext.Host.Setting(AContext.Uri, AKey), 'false');
+end;
+
+/// <summary>Helper für eine Aufzählung (#875): Namenstabelle, ToString und FromString.</summary>
+function EnumHelper(ASource: TCommandSource; AInTypeSection: Boolean; const ATypeName, AHelperName: string;
+  const AValues: TArray<string>): TArray<TTextEdit>;
+var
+  mLines: TArray<string>;
+begin
+  mLines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+    Format('%s = record helper for %s', [AHelperName, ATypeName]), 'private const'];
+  mLines := mLines + NamesConstant(ATypeName, AValues);
+  mLines := mLines + ['public', '  function ToString: string;',
+    Format('  class function FromString(const AValue: string): %s; static;', [ATypeName]), 'end;'];
+  Result := [TypeDeclaration(ASource, AInTypeSection, mLines),
+    ASource.AddBody(AHelperName, Join(ASource, [
+    Format('function %s.ToString: string;', [AHelperName]), 'begin', '  Result := cNames[Self];', 'end;', '',
+    Format('class function %s.FromString(const AValue: string): %s;', [AHelperName, ATypeName]), 'var',
+    Format('  Value: %s;', [ATypeName]), 'begin', Format('  for Value := Low(%s) to High(%s) do', [ATypeName,
+    ATypeName]), '    if SameText(cNames[Value], AValue) then', '      Exit(Value);',
+    Format('  raise EArgumentException.CreateFmt(''Unbekannter Wert "%%s" für %s'', [AValue]);', [ATypeName]),
+    'end;']))];
+end;
+
+/// <summary>Leerer Helper AHelperName der Art AKind (record bzw. class) für ATypeName.</summary>
+function PlainHelper(ASource: TCommandSource; AInTypeSection: Boolean; const ATypeName, AHelperName,
+  AKind: string): TTextEdit;
+begin
+  Result := TypeDeclaration(ASource, AInTypeSection, [
+    '// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+    Format('%s = %s helper for %s', [AHelperName, AKind, ATypeName]),
+    'public', 'end;']);
+end;
+
 function ExecuteHelper(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  TypeName, Kind, HelperName, Element: string;
-  InTypeSection: Boolean;
-  Values, Lines: TArray<string>;
-  UsesEdit: TTextEdit;
+  mSource: TCommandSource;
+  mTypeName, mHelperName, mElement: string;
+  mInTypeSection: Boolean;
+  mValues: TArray<string>;
 begin
   AEdits := nil;
-  TypeName := Trim(AContext.Arguments);
-  if not IsValidIdent(TypeName, True) then
+  mTypeName := Trim(AContext.Arguments);
+  if not IsValidIdent(mTypeName, True) then
   begin
     Exit(Fail('Erwartet wird /helper TTyp', AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not TypePlace(Source, 'helper', InTypeSection, AReason) then
+    Result := TypePlace(mSource, 'helper', mInTypeSection, AReason);
+    if not Result then
     begin
-      Exit(False);
+      Exit;
     end;
-    if IsClassType(Source, AContext.Index, TypeName) then
+    mHelperName := StringReplace(mTypeName, '.', '', [rfReplaceAll]) + 'Helper';
+    if IsClassType(mSource, AContext.Index, mTypeName) then
     begin
-      Kind := 'class';
+      AEdits := [PlainHelper(mSource, mInTypeSection, mTypeName, mHelperName, 'class')];
+    end
+    // #875: Mengen bekommen Contains, ToText, Toggle und All (abschaltbar).
+    else if SettingOn(AContext, TSlashSettings.SetHelper) and SetElement(mSource, AContext, mTypeName, mElement) then
+    begin
+      AEdits := SetHelper(mSource, AContext, mInTypeSection, mTypeName, mHelperName, mElement);
+      if not EnumMembers(mSource, AContext.Index, mElement, mValues) then
+      begin
+        AddMissingUses(mSource, AContext, 'System.TypInfo', mSource.Line, AEdits);
+      end;
+    end
+    // #875: Aufzählungen bekommen Namen, ToString und FromString (abschaltbar).
+    else if SettingOn(AContext, TSlashSettings.EnumHelper) and
+      EnumMembers(mSource, AContext.Index, mTypeName, mValues) then
+    begin
+      AEdits := EnumHelper(mSource, mInTypeSection, mTypeName, mHelperName, mValues);
+      AddMissingUses(mSource, AContext, 'System.SysUtils', mSource.Line, AEdits);
     end
     else
     begin
-      Kind := 'record';
+      AEdits := [PlainHelper(mSource, mInTypeSection, mTypeName, mHelperName, 'record')];
     end;
-    HelperName := StringReplace(TypeName, '.', '', [rfReplaceAll]) + 'Helper';
-    // #875: Mengen bekommen Contains, ToText, Toggle und All (abschaltbar).
-    if (Kind = 'record') and
-      ((AContext.Host = nil) or not SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SetHelper),
-      'false')) and SetElement(Source, AContext, TypeName, Element) then
-    begin
-      AEdits := SetHelper(Source, AContext, InTypeSection, TypeName, HelperName, Element);
-      if not EnumMembers(Source, AContext.Index, Element, Values) and
-        not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.TypInfo',
-        AContext.Namespaces) and TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line),
-        'System.TypInfo', Source.LineBreak, UsesEdit) then
-      begin
-        AEdits := AEdits + [UsesEdit];
-      end;
-      Exit(True);
-    end;
-    // #875: Aufzählungen bekommen Namen, ToString und FromString (abschaltbar).
-    if (Kind = 'record') and
-      ((AContext.Host = nil) or not SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.EnumHelper),
-      'false')) and EnumMembers(Source, AContext.Index, TypeName, Values) then
-    begin
-      Lines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
-        Format('%s = record helper for %s', [HelperName, TypeName]), 'private const'];
-      Lines := Lines + NamesConstant(TypeName, Values);
-      Lines := Lines + ['public', '  function ToString: string;',
-        Format('  class function FromString(const AValue: string): %s; static;', [TypeName]), 'end;'];
-      AEdits := [TypeDeclaration(Source, InTypeSection, Lines),
-        Source.AddBody(HelperName, Join(Source, [
-        Format('function %s.ToString: string;', [HelperName]), 'begin', '  Result := cNames[Self];', 'end;', '',
-        Format('class function %s.FromString(const AValue: string): %s;', [HelperName, TypeName]), 'var',
-        Format('  Value: %s;', [TypeName]), 'begin', Format('  for Value := Low(%s) to High(%s) do', [TypeName,
-        TypeName]), '    if SameText(cNames[Value], AValue) then', '      Exit(Value);',
-        Format('  raise EArgumentException.CreateFmt(''Unbekannter Wert "%%s" für %s'', [AValue]);', [TypeName]),
-        'end;']))];
-      if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.SysUtils',
-        AContext.Namespaces) and TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line),
-        'System.SysUtils', Source.LineBreak, UsesEdit) then
-      begin
-        AEdits := AEdits + [UsesEdit];
-      end;
-      Exit(True);
-    end;
-    AEdits := [TypeDeclaration(Source, InTypeSection, [
-      '// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
-      Format('%s = %s helper for %s', [HelperName, Kind, TypeName]),
-      'public', 'end;'])];
-    Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -741,155 +807,207 @@ begin
   Result := (Length(AName) >= 2) and CharInSet(AName[1], ['F', 'f']) and CharInSet(AName[2], ['A'..'Z']);
 end;
 
+/// <summary>Bereiche der Methodenrümpfe von AClassName.</summary>
+function MethodRanges(ASource: TCommandSource; const AClassName: string): TArray<TTextRange>;
+var
+  mPrefix: string;
+  mFound: TList<TTextRange>;
+begin
+  mPrefix := AClassName + '.';
+  // Walk statt Rekursion (Bericht M1); in die gefundenen Methoden geht der Lauf nicht hinein.
+  mFound := TList<TTextRange>.Create;
+  try
+    ASource.Tree.Root.Walk(
+      function(AChild: TSyntaxNode): Boolean
+      begin
+        Result := not ((AChild.Kind = TSyntaxKind.RoutineDecl) and StartsText(mPrefix, AChild.Name));
+        if not Result then
+        begin
+          mFound.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos));
+        end;
+      end);
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
+  end;
+end;
+
+/// <summary>Liegt Zeile ALine hinter der Kopfzeile eines der Bereiche ARanges?</summary>
+function InMethodBody(ALine: Integer; const ARanges: TArray<TTextRange>): Boolean;
+var
+  mRange: TTextRange;
+begin
+  for mRange in ARanges do
+  begin
+    if (ALine > mRange.StartPos.Line) and (ALine <= mRange.EndPos.Line) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Letztes Token ab AIndex rückwärts, das weder Kommentar noch Direktive ist; -1 ohne.</summary>
+function SolidBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Steht das Token AIndex allein oder hinter "Self." (nicht hinter einem anderen Ausdruck mit Punkt)?
+/// </summary>
+function IsOwnAccess(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := SolidBefore(ATokens, AIndex - 1);
+  if (mBefore < 0) or not ATokens[mBefore].IsSymbol('.') then
+  begin
+    Exit(True);
+  end;
+  mBefore := SolidBefore(ATokens, mBefore - 1);
+  Result := (mBefore >= 0) and SameText(ATokens[mBefore].Text, 'Self');
+end;
+
 /// <summary>Benennt in den Methodenrümpfen von AClassName das Feld AOld in ANew um: der Name allein
 /// oder hinter "Self.", nicht hinter einem anderen Ausdruck mit Punkt.</summary>
 function RenameInMethods(ASource: TCommandSource; const AClassName, AOld, ANew: string): TArray<TTextEdit>;
 var
-  Tokens: TArray<TPascalToken>;
-  Ranges: TArray<TTextRange>;
-  Node: TSyntaxNode;
-  Index, Before: Integer;
-  Range: TTextRange;
-  Inside: Boolean;
-  Prefix: string;
-  Found: TList<TTextRange>;
+  mTokens: TArray<TPascalToken>;
+  mRanges: TArray<TTextRange>;
+  mIndex: Integer;
 begin
   Result := nil;
-  Node := ASource.Tree.Root;
-  Prefix := AClassName + '.';
-  // Walk statt Rekursion (Bericht M1); in die gefundenen Methoden geht der Lauf nicht hinein.
-  Found := TList<TTextRange>.Create;
-  try
-    Node.Walk(
-      function(AChild: TSyntaxNode): Boolean
-      begin
-        Result := not ((AChild.Kind = TSyntaxKind.RoutineDecl) and StartsText(Prefix, AChild.Name));
-        if not Result then
-        begin
-          Found.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos));
-        end;
-      end);
-    Ranges := Found.ToArray;
-  finally
-    Found.Free;
-  end;
-  Tokens := TPascalLexer.Tokenize(ASource.Text);
-  for Index := 0 to High(Tokens) do
+  mRanges := MethodRanges(ASource, AClassName);
+  mTokens := TPascalLexer.Tokenize(ASource.Text);
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(Tokens[Index].Text, AOld) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AOld) and
+      InMethodBody(mTokens[mIndex].StartPos.Line, mRanges) and IsOwnAccess(mTokens, mIndex) then
     begin
-      Continue;
+      Result := Result + [TTextEdit.Create(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos),
+        ANew)];
     end;
-    Inside := False;
-    for Range in Ranges do
-    begin
-      if (Tokens[Index].StartPos.Line > Range.StartPos.Line) and (Tokens[Index].StartPos.Line <= Range.EndPos.Line) then
-      begin
-        Inside := True;
-      end;
-    end;
-    if not Inside then
-    begin
-      Continue;
-    end;
-    Before := Index - 1;
-    while (Before >= 0) and (Tokens[Before].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-    begin
-      Dec(Before);
-    end;
-    if (Before >= 0) and Tokens[Before].IsSymbol('.') then
-    begin
-      Dec(Before);
-      while (Before >= 0) and (Tokens[Before].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Dec(Before);
-      end;
-      if (Before < 0) or not SameText(Tokens[Before].Text, 'Self') then
-      begin
-        Continue;
-      end;
-    end;
-    Result := Result + [TTextEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos), ANew)];
   end;
+end;
+
+/// <summary>Namen für /encapsulate: Property AName und Feld AFieldName; True, wenn das Feld dabei umbenannt wird
+/// (ohne F-Präfix, #298).</summary>
+function EncapsulateNames(const AOldName: string; out AName, AFieldName: string): Boolean;
+begin
+  Result := not HasFieldPrefix(AOldName);
+  if Result then
+  begin
+    AName := AOldName;
+    AFieldName := 'F' + UpperCase(Copy(AOldName, 1, 1)) + Copy(AOldName, 2, MaxInt);
+  end
+  else
+  begin
+    AName := Copy(AOldName, 2, MaxInt);
+    AFieldName := AOldName;
+  end;
+end;
+
+/// <summary>Sucht das Feld AOldName in AClass; Grund, wenn es fehlt oder der neue Name AFieldName beim Umbenennen
+/// (ARename) schon vergeben ist, sonst ''.</summary>
+function FindField(ASource: TCommandSource; const AClass: TIndexSymbol; const AOldName, AFieldName: string;
+  ARename: Boolean; out AField: TIndexSymbol): string;
+var
+  mSymbol: TIndexSymbol;
+begin
+  AField := Default(TIndexSymbol);
+  Result := 'Kein Feld ' + AOldName + ' in ' + AClass.Name;
+  for mSymbol in FieldsOf(ASource, AClass) do
+  begin
+    if ARename and SameText(mSymbol.Name, AFieldName) then
+    begin
+      Exit(Format('%s gibt es schon in %s', [AFieldName, AClass.Name]));
+    end;
+    if SameText(mSymbol.Name, AOldName) then
+    begin
+      AField := mSymbol;
+      Result := '';
+    end;
+  end;
+end;
+
+/// <summary>Grund, wenn AField schon private ist oder nicht allein in seiner Zeile steht ("FName: string;");
+/// sonst ''.</summary>
+function FieldPlacementIssue(ASource: TCommandSource; const AField: TIndexSymbol; const AOldName: string): string;
+var
+  mLine: string;
+begin
+  mLine := ASource.Lines[AField.Range.StartPos.Line];
+  Result := '';
+  if AField.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate] then
+  begin
+    Result := AOldName + ' ist schon private';
+  end
+  else if (AField.Range.StartPos.Line <> AField.Range.EndPos.Line) or
+    not StartsText(AOldName + ':', StringReplace(Trim(mLine), ' :', ':', [])) or (Pos(',', mLine) > 0) then
+  begin
+    Result := AOldName + ' muss allein in seiner Zeile deklariert sein';
+  end;
+end;
+
+/// <summary>Neues privates Feld AFieldName, Setter und Property AName in AClass; die alte Deklaration und die
+/// Befehlszeile gehen.</summary>
+function EncapsulateEdits(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClass, AField: TIndexSymbol;
+  const AName, AFieldName: string): TArray<TTextEdit>;
+begin
+  Result := AddToClass(ASource, AClass, ['private', Format('%s: %s;', [AFieldName, AField.TypeName]),
+    Format('procedure Set%s(const Value: %s);', [AName, AField.TypeName]), 'public',
+    Format('property %s: %s read %s write Set%s;', [AName, AField.TypeName, AFieldName, AName])],
+    Join(ASource, [Format('procedure %s.Set%s(const Value: %s);', [AClass.Name, AName, AField.TypeName]),
+    TSetterGenerator.Body(AFieldName, 'Value', TSetterGenerator.NotifyCall(ASource, AIndex, AClass),
+    ASource.LineBreak)]));
+  // Alte Deklaration entfernen.
+  Result := Result + [TTextEdit.Create(TTextRange.Create(AField.Range.StartPos.Line, 0,
+    AField.Range.StartPos.Line + 1, 0), ''), ASource.RemoveCommand];
 end;
 
 function ExecuteEncapsulate(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Field, Symbol: TIndexSymbol;
-  Name, FieldName, OldName: string;
-  Found, Rename: Boolean;
+  mSource: TCommandSource;
+  mClass, mField: TIndexSymbol;
+  mName, mFieldName, mOldName: string;
+  mRename: Boolean;
 begin
   AEdits := nil;
-  OldName := Trim(AContext.Arguments);
-  if not IsValidIdent(OldName) then
+  mOldName := Trim(AContext.Arguments);
+  if not IsValidIdent(mOldName) then
   begin
     Exit(Fail('Erwartet wird /encapsulate FName', AReason));
   end;
   // Ohne F-Präfix (#298): das Feld heißt danach FName, die Property trägt den alten Namen, damit
   // Verwendungen außerhalb der Klasse gültig bleiben; in den eigenen Methoden wird es umbenannt.
-  Rename := not HasFieldPrefix(OldName);
-  if Rename then
-  begin
-    Name := OldName;
-    FieldName := 'F' + UpperCase(Copy(OldName, 1, 1)) + Copy(OldName, 2, MaxInt);
-  end
-  else
-  begin
-    Name := Copy(OldName, 2, MaxInt);
-    FieldName := OldName;
-  end;
-  Source := TCommandSource.Create(AContext);
+  mRename := EncapsulateNames(mOldName, mName, mFieldName);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    AReason := '/encapsulate gilt nur in einer Klasse oder einer ihrer Methoden';
+    if mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/encapsulate gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      AReason := FindField(mSource, mClass, mOldName, mFieldName, mRename, mField);
     end;
-    Found := False;
-    for Symbol in FieldsOf(Source, ClassSymbol) do
+    if AReason = '' then
     begin
-      if SameText(Symbol.Name, OldName) then
+      AReason := FieldPlacementIssue(mSource, mField, mOldName);
+    end;
+    Result := AReason = '';
+    if Result then
+    begin
+      AEdits := EncapsulateEdits(mSource, AContext.Index, mClass, mField, mName, mFieldName);
+      if mRename then
       begin
-        Field := Symbol;
-        Found := True;
-      end;
-      if Rename and SameText(Symbol.Name, FieldName) then
-      begin
-        Exit(Fail(Format('%s gibt es schon in %s', [FieldName, ClassSymbol.Name]), AReason));
+        AEdits := AEdits + RenameInMethods(mSource, mClass.Name, mOldName, mFieldName);
       end;
     end;
-    if not Found then
-    begin
-      Exit(Fail('Kein Feld ' + OldName + ' in ' + ClassSymbol.Name, AReason));
-    end;
-    if Field.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate] then
-    begin
-      Exit(Fail(OldName + ' ist schon private', AReason));
-    end;
-    // Nur Felder, die allein in ihrer Zeile stehen ("FName: string;").
-    if (Field.Range.StartPos.Line <> Field.Range.EndPos.Line) or
-      not StartsText(OldName + ':', StringReplace(Trim(Source.Lines[Field.Range.StartPos.Line]), ' :', ':', [])) or
-      (Pos(',', Source.Lines[Field.Range.StartPos.Line]) > 0) then
-    begin
-      Exit(Fail(OldName + ' muss allein in seiner Zeile deklariert sein', AReason));
-    end;
-    AEdits := AddToClass(Source, ClassSymbol, ['private', Format('%s: %s;', [FieldName, Field.TypeName]),
-      Format('procedure Set%s(const Value: %s);', [Name, Field.TypeName]), 'public',
-      Format('property %s: %s read %s write Set%s;', [Name, Field.TypeName, FieldName, Name])],
-      Join(Source, [Format('procedure %s.Set%s(const Value: %s);', [ClassSymbol.Name, Name, Field.TypeName]),
-      TSetterGenerator.Body(FieldName, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol),
-      Source.LineBreak)]));
-    // Alte Deklaration entfernen.
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Field.Range.StartPos.Line, 0,
-      Field.Range.StartPos.Line + 1, 0), ''), Source.RemoveCommand];
-    if Rename then
-    begin
-      AEdits := AEdits + RenameInMethods(Source, ClassSymbol.Name, OldName, FieldName);
-    end;
-    Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -940,80 +1058,95 @@ end;
 
 { /json }
 
+/// <summary>JSON-Schlüssel zum Feld AFieldName: ohne F-Präfix.</summary>
+function JsonKey(const AFieldName: string): string;
+begin
+  Result := AFieldName;
+  if StartsText('F', Result) and (Length(Result) > 1) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
+    Result := Copy(Result, 2, MaxInt);
+  end;
+end;
+
+/// <summary>Hängt Schreiben und Lesen des Felds AField an AToJson und AFromJson an; unbekannte Typen als TODO.
+/// </summary>
+procedure AddJsonField(const AField: TIndexSymbol; const ALineBreak: string; var AToJson, AFromJson: string);
+var
+  mKey: string;
+begin
+  mKey := JsonKey(AField.Name);
+  if MatchText(AField.TypeName, StringTypes) then
+  begin
+    AToJson := AToJson + ALineBreak + Format('  Result.AddPair(''%s'', %s);', [mKey, AField.Name]);
+    AFromJson := AFromJson + ALineBreak + Format('  Result.%s := AJson.GetValue<string>(''%s'');', [AField.Name,
+      mKey]);
+  end
+  else if MatchText(AField.TypeName, IntegerTypes) or MatchText(AField.TypeName, FloatTypes) then
+  begin
+    AToJson := AToJson + ALineBreak + Format('  Result.AddPair(''%s'', TJSONNumber.Create(%s));', [mKey,
+      AField.Name]);
+    AFromJson := AFromJson + ALineBreak + Format('  Result.%s := AJson.GetValue<%s>(''%s'');', [AField.Name,
+      AField.TypeName, mKey]);
+  end
+  else if SameText(AField.TypeName, 'Boolean') then
+  begin
+    AToJson := AToJson + ALineBreak + Format('  Result.AddPair(''%s'', TJSONBool.Create(%s));', [mKey,
+      AField.Name]);
+    AFromJson := AFromJson + ALineBreak + Format('  Result.%s := AJson.GetValue<Boolean>(''%s'');', [AField.Name,
+      mKey]);
+  end
+  else
+  begin
+    AToJson := AToJson + ALineBreak + Format('  // TODO %s: %s', [AField.Name, AField.TypeName]);
+    AFromJson := AFromJson + ALineBreak + Format('  // TODO %s: %s', [AField.Name, AField.TypeName]);
+  end;
+end;
+
+/// <summary>Rümpfe von ToJson und FromJson für den Typ ATypeSymbol (Klasse oder Record).</summary>
+function JsonBodies(ASource: TCommandSource; const ATypeSymbol: TIndexSymbol): string;
+var
+  mName, mToJson, mFromJson: string;
+  mField: TIndexSymbol;
+begin
+  mName := ATypeSymbol.Name;
+  mToJson := Join(ASource, [Format('function %s.ToJson: TJSONObject;', [mName]), 'begin',
+    '  Result := TJSONObject.Create;']);
+  mFromJson := Join(ASource, [Format('class function %s.FromJson(AJson: TJSONObject): %s;', [mName, mName]),
+    'begin']);
+  if ATypeSymbol.Kind = TIndexSymbolKind.ClassType then
+  begin
+    mFromJson := mFromJson + ASource.LineBreak + Format('  Result := %s.Create;', [mName]);
+  end
+  else
+  begin
+    mFromJson := mFromJson + ASource.LineBreak + Format('  Result := Default(%s);', [mName]);
+  end;
+  for mField in FieldsOf(ASource, ATypeSymbol) do
+  begin
+    AddJsonField(mField, ASource.LineBreak, mToJson, mFromJson);
+  end;
+  Result := mToJson + ASource.LineBreak + 'end;' + ASource.LineBreak + ASource.LineBreak + mFromJson +
+    ASource.LineBreak + 'end;';
+end;
+
 function ExecuteJson(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  TypeSymbol, Field: TIndexSymbol;
-  Name, Key, ToJson, FromJson, Text: string;
-  IsClass: Boolean;
-  UsesEdit: TTextEdit;
+  mSource: TCommandSource;
+  mTypeSymbol: TIndexSymbol;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not TypeAt(Source, 'json', TypeSymbol, AReason) then
+    Result := TypeAt(mSource, 'json', mTypeSymbol, AReason);
+    if Result then
     begin
-      Exit(False);
+      AEdits := AddToClass(mSource, mTypeSymbol, ['public', 'function ToJson: TJSONObject;',
+        Format('class function FromJson(AJson: TJSONObject): %s; static;', [mTypeSymbol.Name])],
+        JsonBodies(mSource, mTypeSymbol)) + [mSource.RemoveCommand];
+      AddMissingUses(mSource, AContext, 'System.JSON', mTypeSymbol.Range.StartPos.Line, AEdits);
     end;
-    Name := TypeSymbol.Name;
-    IsClass := TypeSymbol.Kind = TIndexSymbolKind.ClassType;
-    ToJson := Join(Source, [Format('function %s.ToJson: TJSONObject;', [Name]), 'begin',
-      '  Result := TJSONObject.Create;']);
-    FromJson := Join(Source, [Format('class function %s.FromJson(AJson: TJSONObject): %s;', [Name, Name]), 'begin']);
-    if IsClass then
-    begin
-      FromJson := FromJson + Source.LineBreak + Format('  Result := %s.Create;', [Name]);
-    end
-    else
-    begin
-      FromJson := FromJson + Source.LineBreak + Format('  Result := Default(%s);', [Name]);
-    end;
-    for Field in FieldsOf(Source, TypeSymbol) do
-    begin
-      Key := Field.Name;
-      if StartsText('F', Key) and (Length(Key) > 1) and CharInSet(Key[2], ['A'..'Z']) then
-      begin
-        Key := Copy(Key, 2, MaxInt);
-      end;
-      if MatchText(Field.TypeName, StringTypes) then
-      begin
-        ToJson := ToJson + Source.LineBreak + Format('  Result.AddPair(''%s'', %s);', [Key, Field.Name]);
-        FromJson := FromJson + Source.LineBreak +
-          Format('  Result.%s := AJson.GetValue<string>(''%s'');', [Field.Name, Key]);
-      end
-      else if MatchText(Field.TypeName, IntegerTypes) or MatchText(Field.TypeName, FloatTypes) then
-      begin
-        ToJson := ToJson + Source.LineBreak +
-          Format('  Result.AddPair(''%s'', TJSONNumber.Create(%s));', [Key, Field.Name]);
-        FromJson := FromJson + Source.LineBreak +
-          Format('  Result.%s := AJson.GetValue<%s>(''%s'');', [Field.Name, Field.TypeName, Key]);
-      end
-      else if SameText(Field.TypeName, 'Boolean') then
-      begin
-        ToJson := ToJson + Source.LineBreak +
-          Format('  Result.AddPair(''%s'', TJSONBool.Create(%s));', [Key, Field.Name]);
-        FromJson := FromJson + Source.LineBreak +
-          Format('  Result.%s := AJson.GetValue<Boolean>(''%s'');', [Field.Name, Key]);
-      end
-      else
-      begin
-        ToJson := ToJson + Source.LineBreak + Format('  // TODO %s: %s', [Field.Name, Field.TypeName]);
-        FromJson := FromJson + Source.LineBreak + Format('  // TODO %s: %s', [Field.Name, Field.TypeName]);
-      end;
-    end;
-    Text := ToJson + Source.LineBreak + 'end;' + Source.LineBreak + Source.LineBreak + FromJson + Source.LineBreak +
-      'end;';
-    AEdits := AddToClass(Source, TypeSymbol, ['public', 'function ToJson: TJSONObject;',
-      Format('class function FromJson(AJson: TJSONObject): %s; static;', [Name])], Text) + [Source.RemoveCommand];
-    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.JSON', AContext.Namespaces) and
-      TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(TypeSymbol.Range.StartPos.Line), 'System.JSON',
-      Source.LineBreak, UsesEdit) then
-    begin
-      AEdits := AEdits + [UsesEdit];
-    end;
-    Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -1061,7 +1194,6 @@ var
   Source: TCommandSource;
   TypeName: string;
   InTypeSection: Boolean;
-  UsesEdit: TTextEdit;
 begin
   AEdits := nil;
   TypeName := Trim(AContext.Arguments);
@@ -1081,12 +1213,7 @@ begin
       '  // Wartet niemand auf den Thread, im Konstruktor FreeOnTerminate := True setzen.',
       '  while not Terminated do', '  begin',
       '    // Ergebnisse im Hauptthread zeigen: TThread.Queue(nil, procedure begin … end);', '  end;', 'end;']))];
-    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), 'System.Classes', AContext.Namespaces) and
-      TUsesClauses.AddUnit(Source.Tree.Tokens, Source.Offset(Source.Line), 'System.Classes', Source.LineBreak,
-      UsesEdit) then
-    begin
-      AEdits := AEdits + [UsesEdit];
-    end;
+    AddMissingUses(Source, AContext, 'System.Classes', Source.Line, AEdits);
     Result := True;
   finally
     Source.Free;
