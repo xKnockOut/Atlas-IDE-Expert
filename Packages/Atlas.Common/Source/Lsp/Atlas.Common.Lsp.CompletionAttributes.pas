@@ -81,7 +81,7 @@ begin
     var
       AttributeClass: TResolvedSymbol;
     begin
-      Result := AResolver.AttributeClassOf(ASymbol, AttributeClass);
+      Result := AResolver.Queries.AttributeClassOf(ASymbol, AttributeClass);
     end;
 end;
 
@@ -167,7 +167,7 @@ begin
     for Item in AItems do
     begin
       if not TCompletionGenerics.ItemSymbol(ARequest, Units, Item, Symbol) or
-        not ARequest.Resolver.AttributeClassOf(Symbol, AttributeClass) then
+        not ARequest.Resolver.Queries.AttributeClassOf(Symbol, AttributeClass) then
       begin
         Continue;
       end;

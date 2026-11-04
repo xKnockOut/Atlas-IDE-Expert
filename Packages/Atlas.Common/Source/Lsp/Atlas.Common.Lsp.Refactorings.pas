@@ -255,14 +255,13 @@ begin
   Result :=
     function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
     var
-      Owner: TSyntaxNode;
-      Unknown: Boolean;
+      mWith: TResolvedWithMember;
     begin
       AElement := -1;
-      if AResolver.WithMember(ATree, FileName, AIdentifier.Name, AIdentifier.StartOffset, Owner, AElement,
-        Unknown) then
+      if AResolver.Queries.WithMember(ATree, FileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
       begin
-        if Owner = AWith then
+        AElement := mWith.Element;
+        if mWith.Statement = AWith then
         begin
           Result := TWithOwner.Element;
         end
@@ -271,7 +270,7 @@ begin
           Result := TWithOwner.Other;
         end;
       end
-      else if Unknown then
+      else if mWith.Unknown then
       begin
         Result := TWithOwner.Unknown;
       end

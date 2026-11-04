@@ -1376,7 +1376,7 @@ var
     Ignored: TUnitIndex;
   begin
     Result := False;
-    if (AName = '') or (LastDelimiter('<>{}`', AName) > 0) or TNameResolver.IsBuiltinTypeName(AName) or
+    if (AName = '') or (LastDelimiter('<>{}`', AName) > 0) or TResolverText.IsBuiltinTypeName(AName) or
       TUnresolvedNames.IsIntrinsic(AName) then
     begin
       Exit;
@@ -1458,7 +1458,7 @@ var
     Head := Copy(Name, 1, Dot);
     Tail := Copy(Name, Dot + 1, MaxInt);
     Wanted := Tail;
-    Resolver.NameFilter :=
+    Resolver.Candidates.NameFilter :=
       function(const ACandidate: string): Boolean
       begin
         Result := Abs(Length(ACandidate) - Length(Wanted)) <= 2;
@@ -1466,20 +1466,22 @@ var
     try
       if Dot > 0 then
       begin
-        Candidates := CandidateNames(Resolver.MemberCandidates(AContext.Tree, AContext.RelativePath,
+        Candidates := CandidateNames(Resolver.Candidates.MemberCandidates(AContext.Tree, AContext.RelativePath,
           Copy(Name, 1, Dot - 1).Split(['.']), AOffset));
       end
       else
       begin
-        Candidates := CandidateNames(Resolver.ScopeCandidates(AContext.Tree, AContext.RelativePath, AOffset));
+        Candidates := CandidateNames(Resolver.Candidates.ScopeCandidates(AContext.Tree, AContext.RelativePath,
+          AOffset));
         if AContainer <> '' then
         begin
-          Candidates := Candidates + CandidateNames(Resolver.MemberCandidates(AContext.Tree, AContext.RelativePath,
+          Candidates := Candidates + CandidateNames(Resolver.Candidates.MemberCandidates(AContext.Tree,
+            AContext.RelativePath,
             AContainer.Split(['.']), AOffset));
         end;
       end;
     finally
-      Resolver.NameFilter := nil;
+      Resolver.Candidates.NameFilter := nil;
     end;
     Closest := TTextFuzzy.Closest(Tail, Candidates);
     Fixes := nil;

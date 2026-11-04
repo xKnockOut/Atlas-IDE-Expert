@@ -515,8 +515,9 @@ var
 begin
   Tree := TPascalParser.Parse(SourceVerdeckt);
   try
-    Candidates := FResolver.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}', SourceVerdeckt) - 1);
-    FResolver.UsedScopeCandidates;
+    Candidates := FResolver.Candidates.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}',
+      SourceVerdeckt) - 1);
+    FResolver.Candidates.UsedScopeCandidates;
   finally
     Tree.Free;
   end;

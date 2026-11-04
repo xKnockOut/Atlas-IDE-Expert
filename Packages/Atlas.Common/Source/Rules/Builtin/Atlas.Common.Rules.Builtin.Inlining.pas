@@ -480,7 +480,7 @@ begin
         if not FCallee.ResolveNameFrom(ACallee.OwnerUnit, Ref, Resolved) then
         begin
           // Eingebaute Typen (Integer(...)) und Intrinsics (SizeOf, Length) löst der Index nicht auf.
-          if not TNameResolver.IsBuiltinTypeName(Ref) and not TUnresolvedNames.IsIntrinsic(Ref) then
+          if not TResolverText.IsBuiltinTypeName(Ref) and not TUnresolvedNames.IsIntrinsic(Ref) then
           begin
             Result.External := True;
           end;

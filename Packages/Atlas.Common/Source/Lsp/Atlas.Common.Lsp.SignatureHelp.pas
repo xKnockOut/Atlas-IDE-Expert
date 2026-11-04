@@ -687,7 +687,7 @@ begin
   // Zu viele Argumente zählt der Hint selbst; hier nur die Typen.
   for Index := 0 to Min(High(AArgumentTypes), High(ASignature.Parameters)) do
   begin
-    if not TNameResolver.ArgumentFits(ASignature.Parameters[Index].TypeName, AArgumentTypes[Index]) then
+    if not TResolverText.ArgumentFits(ASignature.Parameters[Index].TypeName, AArgumentTypes[Index]) then
     begin
       ASignature.Fits := False;
       ASignature.Mismatch := Index;
@@ -779,8 +779,8 @@ begin
   begin
     Exit;
   end;
-  if not AResolver.AttributeClassOf(AResolved, AttributeClass) and
-    not AResolver.AttributeClassOf(AResolver.ResolveChain(ATree, AFileName,
+  if not AResolver.Queries.AttributeClassOf(AResolved, AttributeClass) and
+    not AResolver.Queries.AttributeClassOf(AResolver.ResolveChain(ATree, AFileName,
       TArray<string>.Create(TAttributes.ShortName(NameToken.Text) + 'Attribute'), NameToken.Offset), AttributeClass) then
   begin
     Exit;
@@ -891,7 +891,7 @@ begin
   for Binding in Resolved.Bindings do
   begin
     Bindings := Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
   end;
   StartSymbols := TList<TResolvedSymbol>.Create;
   Signatures := TList<TSignature>.Create;
@@ -901,7 +901,7 @@ begin
     if Resolved.Kind = TResolvedKind.Local then
     begin
       // Verschachtelte Routinen (#881): alle Überladungen in der umgebenden Routine, vor und hinter dem Aufruf.
-      for Nested in AResolver.LocalOverloads(Resolved) do
+      for Nested in AResolver.Candidates.LocalOverloads(Resolved) do
       begin
         Starts.Add(Nested.Range.StartPos);
         StartSymbols.Add(Nested);
@@ -934,7 +934,7 @@ begin
           SameText(OwnerUnit.SymbolFile(Symbol), Resolved.FileName) then
         begin
           Starts.Add(Symbol.Range.StartPos);
-          StartSymbols.Add(AResolver.SymbolFrom(OwnerUnit, Symbol));
+          StartSymbols.Add(TResolvedSymbol.FromIndex(OwnerUnit, Symbol));
         end;
       end;
     end;

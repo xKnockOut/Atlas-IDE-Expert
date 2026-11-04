@@ -341,8 +341,8 @@ var
   CaseIndex, OfIndex, Index, Depth, LastIndex: Integer;
   Names, Missing, Values: TArray<string>;
   Resolver: TNameResolver;
-  Owner, EnumType: TResolvedSymbol;
-  TypeFound, Scoped: Boolean;
+  mChain: TResolvedChainType;
+  Scoped: Boolean;
   FileName, EnumName, Prefix, Text, Label_: string;
   Slot: TCaseBranchSlot;
   InsertAt: TTextPosition;
@@ -396,13 +396,13 @@ begin
     end;
     Resolver := TNameResolver.Create(AContext.Index);
     try
-      if not Resolver.ChainType(Source.Tree, FileName, Names, Tokens[CaseIndex].Offset, Owner, EnumType,
-        TypeFound) or not TypeFound or
-        not EnumValues(Resolver, Source, AContext.Index, FileName, EnumType, EnumName, Values) then
+      if not Resolver.ChainType(Source.Tree, FileName, Names, Tokens[CaseIndex].Offset, mChain) or
+        not mChain.TypeFound or
+        not EnumValues(Resolver, Source, AContext.Index, FileName, mChain.TypeInfo, EnumName, Values) then
       begin
         Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', Names)]), AReason));
       end;
-      Scoped := ScopedEnum(AContext, Source, FileName, EnumType);
+      Scoped := ScopedEnum(AContext, Source, FileName, mChain.TypeInfo);
     finally
       Resolver.Free;
     end;

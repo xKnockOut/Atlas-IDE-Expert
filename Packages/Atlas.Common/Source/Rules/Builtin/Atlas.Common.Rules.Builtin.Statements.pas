@@ -1478,8 +1478,8 @@ var
   procedure CheckCase(ACase: TSyntaxNode);
   var
     Names, Values, Absent: TArray<string>;
-    Owner, TypeSymbol: TResolvedSymbol;
-    TypeFound, HasElse: Boolean;
+    mChain: TResolvedChainType;
+    HasElse: Boolean;
     OfPos: TTextPosition;
     Slot: TCaseBranchSlot;
     TypeName, Prefix, LabelText: string;
@@ -1502,12 +1502,12 @@ var
     begin
       Exit;
     end;
-    if not Resolver.ChainType(AContext.Tree, FileName, Names, ACase[0].EndOffset, Owner, TypeSymbol, TypeFound) or
-      not TypeFound then
+    if not Resolver.ChainType(AContext.Tree, FileName, Names, ACase[0].EndOffset, mChain) or
+      not mChain.TypeFound then
     begin
       Exit;
     end;
-    Values := EnumValues(TypeSymbol, TypeName);
+    Values := EnumValues(mChain.TypeInfo, TypeName);
     if (Values = nil) or not TCaseCompletion.Missing(Values, Slot.Labels, Absent) or (Absent = nil) then
     begin
       Exit;
@@ -2045,7 +2045,7 @@ var
     begin
       Exit;
     end;
-    mNames := mResolver.AncestorNames(mTypeInfo, mComplete);
+    mNames := mResolver.Queries.AncestorNames(mTypeInfo, mComplete);
     Result := (IndexText('TDataSet', mNames) >= 0) or not mComplete;
   end;
 

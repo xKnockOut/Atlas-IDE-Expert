@@ -1109,7 +1109,7 @@ var
     Names := ANode.Name.Split(['.']);
     Bare := Names[High(Names)];
     // Typen, die der Compiler kennt, ohne dass System.pas sie deklariert (TextFile, Real48 …, #1382).
-    if TNameResolver.IsBuiltinTypeName(Bare) or TSystemIntrinsics.IsType(Bare) or
+    if TResolverText.IsBuiltinTypeName(Bare) or TSystemIntrinsics.IsType(Bare) or
       Declared.ContainsKey(LowerCase(Bare)) then
     begin
       Exit;

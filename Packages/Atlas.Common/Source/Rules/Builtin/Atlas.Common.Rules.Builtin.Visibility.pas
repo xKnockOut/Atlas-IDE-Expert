@@ -334,9 +334,8 @@ var
   procedure CheckInstanceMember(ANode: TSyntaxNode; AMethod: TSyntaxNode);
   var
     Symbol, TypeInfo: TResolvedSymbol;
-    TypeFound, Unknown: Boolean;
-    WithNode: TSyntaxNode;
-    Element: Integer;
+    TypeFound: Boolean;
+    mWith: TResolvedWithMember;
     What, MethodName: string;
   begin
     if not Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) or
@@ -347,8 +346,7 @@ var
       Exit;
     end;
     // Mitglied eines with-Ausdrucks (with Result do Pfad := …) ist erreichbar.
-    if Resolver.WithMember(AContext.Tree, FileName, ANode.Name, ANode.StartOffset, WithNode, Element, Unknown) or
-      Unknown then
+    if Resolver.Queries.WithMember(AContext.Tree, FileName, ANode.Name, ANode.StartOffset, mWith) or mWith.Unknown then
     begin
       Exit;
     end;

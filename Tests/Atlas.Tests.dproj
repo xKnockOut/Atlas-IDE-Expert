@@ -140,6 +140,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.PureRoutines.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>

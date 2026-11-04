@@ -220,7 +220,7 @@ begin
   begin
     mPart.Text := LowerCase(BuiltinName(ANames[High(ANames)]));
     // Eingebaute Typen sind auch ohne Index bekannt.
-    mPart.Known := TNameResolver.IsBuiltinTypeName(ANames[High(ANames)]) or
+    mPart.Known := TResolverText.IsBuiltinTypeName(ANames[High(ANames)]) or
       not SameText(mPart.Text, ANames[High(ANames)]);
   end;
   Result := [mPart];
