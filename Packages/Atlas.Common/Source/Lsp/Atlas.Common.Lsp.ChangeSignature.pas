@@ -366,8 +366,8 @@ begin
   mModified := TChangeSignature.ApplyEdits(AText, ToTextEdits(AInner));
   mTokens := TPascalLexer.Tokenize(mModified);
   mToken := TChangeSignature.NameTokenAt(mTokens, AEdit.NamePos);
-  if (mToken >= 0) and TChangeSignature.CallEdit(mModified, mTokens, mToken, AOld, AChanges, AEdit.Values,
-    mRebuilt) then
+  if (mToken >= 0) and TChangeSignature.CallEdit(mModified, mTokens, mToken,
+    TCallChange.Create(AOld, AChanges, AEdit.Values), mRebuilt) then
   begin
     AEdit.NewText := mRebuilt.NewText;
   end;
@@ -909,7 +909,7 @@ begin
     mValues := InheritedValues(FRequest.Changes);
   end;
   if TChangeSignature.CallEdit(mUnit.Text, mUnit.Tokens, TChangeSignature.NameTokenAt(mUnit.Tokens, ASite.NamePos),
-    FRoot.Decl.Parameters, FRequest.Changes, mValues, mRebuilt) then
+    TCallChange.Create(FRoot.Decl.Parameters, FRequest.Changes, mValues), mRebuilt) then
   begin
     mEdit := MakeEdit(TEditKind.Call, mRebuilt.Range, mRebuilt.NewText);
     mEdit.NamePos := ASite.NamePos;

@@ -876,13 +876,26 @@ begin
   Result := AddListener('', AListener);
 end;
 
+/// <summary>AInfo in AList ersetzen oder anhängen: Angaben eines in dieser Sitzung angemeldeten Moduls sind neuer
+/// als die gespeicherten.</summary>
+procedure PutKnown(AList: TList<TAtlasModuleInfo>; const AInfo: TAtlasModuleInfo);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    if SameText(AList[mIndex].Id, AInfo.Id) then
+    begin
+      AList[mIndex] := AInfo;
+      Exit;
+    end;
+  end;
+  AList.Add(AInfo);
+end;
 procedure TAtlasModuleRegistry.UseStorage(const AStorage: IAtlasSettingsStorage);
 var
-  mStored: TArray<TAtlasModuleInfo>;
   mMerged: TList<TAtlasModuleInfo>;
   mInfo: TAtlasModuleInfo;
-  mFound: Boolean;
-  mIndex: Integer;
 begin
   FLock.Acquire;
   try
@@ -891,27 +904,12 @@ begin
     begin
       Exit;
     end;
-    mStored := TAtlasKnownModulesText.Decode(FStorage.ReadText(cAtlasKnownModulesName));
     mMerged := TList<TAtlasModuleInfo>.Create;
     try
-      mMerged.AddRange(mStored);
+      mMerged.AddRange(TAtlasKnownModulesText.Decode(FStorage.ReadText(cAtlasKnownModulesName)));
       for mInfo in FKnown do
       begin
-        mFound := False;
-        for mIndex := 0 to mMerged.Count - 1 do
-        begin
-          if SameText(mMerged[mIndex].Id, mInfo.Id) then
-          begin
-            // Angaben eines in dieser Sitzung angemeldeten Moduls sind neuer als die gespeicherten.
-            mMerged[mIndex] := mInfo;
-            mFound := True;
-            Break;
-          end;
-        end;
-        if not mFound then
-        begin
-          mMerged.Add(mInfo);
-        end;
+        PutKnown(mMerged, mInfo);
       end;
       FKnown.Clear;
       FKnown.AddRange(mMerged);

@@ -1229,8 +1229,7 @@ var
   var
     Index: Integer;
     Variable: TPascalToken;
-    Owner, TypeInfo: TResolvedSymbol;
-    TypeFound: Boolean;
+    mChain: TResolvedChainType;
     Name: string;
   begin
     // for [var] I [: Typ] := …: der Name ist das erste Bezeichner-Token nach for bzw. var.
@@ -1257,22 +1256,22 @@ var
       end
       else
       begin
-        if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode[0].Name], ANode[0].StartOffset, Owner,
-          TypeInfo, TypeFound) or not TypeFound or not Scope.DeclarationSure(Owner, ANode) then
+        if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode[0].Name], ANode[0].StartOffset,
+          mChain) or not mChain.TypeFound or not Scope.DeclarationSure(mChain.Owner, ANode) then
         begin
           Exit;
         end;
-        Name := NonOrdinalName(TypeInfo);
+        Name := NonOrdinalName(mChain.TypeInfo);
       end;
     end
     else
     begin
-      if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode.Name], Variable.Offset, Owner, TypeInfo,
-        TypeFound) or not TypeFound or Owner.IsType or not Scope.DeclarationSure(Owner, ANode) then
+      if not Scope.Resolver.ChainType(AContext.Tree, Scope.FileName, [ANode.Name], Variable.Offset, mChain) or
+        not mChain.TypeFound or mChain.Owner.IsType or not Scope.DeclarationSure(mChain.Owner, ANode) then
       begin
         Exit;
       end;
-      Name := NonOrdinalName(TypeInfo);
+      Name := NonOrdinalName(mChain.TypeInfo);
     end;
     if Name <> '' then
     begin

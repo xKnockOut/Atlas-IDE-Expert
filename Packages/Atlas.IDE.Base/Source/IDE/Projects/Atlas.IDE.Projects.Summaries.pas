@@ -71,6 +71,10 @@ type
     /// <summary>Mit ABuildUtc &gt; 0 trägt das Ergebnis Branch und Commit in den Messpunkt dieses Builds ein
     /// (#758).</summary>
     procedure Query(const AProject: string; ABuildUtc: TDateTime);
+    /// <summary>Stand der Versionsverwaltung in die Zusammenfassung; mit ABuildUtc &gt; 0 auch in den Messpunkt
+    /// dieses Builds (#758).</summary>
+    class procedure StoreVcs(const ARoot, AProject: string; const AState: TAtlasProjectVcs;
+      ABuildUtc: TDateTime); static;
     function QueryingKey(const AKey: string): Boolean;
     procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
     procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
@@ -410,6 +414,26 @@ begin
   Query(AProject, 0);
 end;
 
+class procedure TAtlasIdeProjectSummaries.StoreVcs(const ARoot, AProject: string; const AState: TAtlasProjectVcs;
+  ABuildUtc: TDateTime);
+var
+  mState: TAtlasProjectVcs;
+  mBuildStamp: TDateTime;
+begin
+  mState := AState;
+  mBuildStamp := ABuildUtc;
+  TAtlasProjectSummaries.Update(ARoot, AProject,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Vcs := mState;
+      // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
+      if mBuildStamp > 0 then
+      begin
+        TAtlasProjectTrendLog.Fill(ASummary, mBuildStamp);
+      end;
+    end);
+end;
+
 procedure TAtlasIdeProjectSummaries.Query(const AProject: string; ABuildUtc: TDateTime);
 var
   mKey, mProject, mDir, mRoot: string;
@@ -458,16 +482,7 @@ begin
       if mOk then
       begin
         FLive.AddOrSetValue(mKey, mState);
-        TAtlasProjectSummaries.Update(mRoot, mProject,
-          procedure(var ASummary: TAtlasProjectSummary)
-          begin
-            ASummary.Vcs := mState;
-            // Branch und Commit zum Zeitpunkt des Builds in dessen Messpunkt (#758).
-            if mBuildStamp > 0 then
-            begin
-              TAtlasProjectTrendLog.Fill(ASummary, mBuildStamp);
-            end;
-          end);
+        StoreVcs(mRoot, mProject, mState, mBuildStamp);
       end;
       Changed(mProject);
     end) then
@@ -573,8 +588,8 @@ begin
   TAtlasProjectSummaries.Update(Folder, AProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
-      TAtlasProjectRecording.RecordCompile(ASummary, mMessages, mInfo.Background, mSucceeded,
-        TAtlasCompileEvents.KindText(mInfo.Kind), mInfo.Configuration, mInfo.Platform, mStamp);
+      TAtlasProjectRecording.RecordCompile(ASummary, mMessages, TAtlasProjectCompileRun.Create(mInfo.Background,
+        mSucceeded, TAtlasCompileEvents.KindText(mInfo.Kind), mInfo.Configuration, mInfo.Platform), mStamp);
       // Build-Dauer (#758); eine Hintergrundprüfung ändert den Abschnitt "build" nicht.
       if not mInfo.Background then
       begin

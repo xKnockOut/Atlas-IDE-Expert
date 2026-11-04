@@ -57,72 +57,59 @@ type
   /// <summary>Rückfrage bzw. Hinweis; True = ja.</summary>
   TAtlasWelcomeConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
 
-  TAtlasWelcomeBoardFrame = class(TAtlasWelcomeFrame)
-  public const
-    Gap = 12;
-    /// <summary>Mindestbreite einer Spalte beim Verteilen.</summary>
-    MinColumnWidth = 120;
-    /// <summary>Mit AutoFold: schmaler als das faltet eine Spalte unter die vorige.</summary>
-    FoldWidth = 280;
+  TAtlasWelcomeBoardFrame = class;
+
+  /// <summary>Scrollen der Tafel (#1440): Mausrad über allen Bereichen, Bild auf/ab und Pos1/Ende, Scrollen am
+  /// Rand beim Ziehen eines Bereichs.</summary>
+  TAtlasWelcomeBoardScroller = class(TComponent)
   private
-    FHeader: TAtlasWelcomeHeaderFrame;
-    FBar: TAtlasArrangeStrip;
-    FScroll: TScrollBox;
-    FHiddenBar: TAtlasArrangeStrip;
-    FInsertLine: TPanel;
-    FViews: TObjectDictionary<string, TAtlasWelcomeSectionFrame>;
-    FColumns: TArray<TArray<string>>;
-    FCells: TAtlasWelcomeCells;
-    FPlaced: TArray<TAtlasWelcomePlaced>;
-    FSections: TArray<TAtlasWelcomeSection>;
-    FLayout: TAtlasWelcomeLayout;
-    FWanted: Integer;
-    FAutoFold: Boolean;
-    FPlacing: Boolean;
-    FSource: IAtlasWelcomeArrangeSource;
-    FCanCustomize: Boolean;
-    FEditing: Boolean;
-    FCatalog: TArray<TAtlasWelcomeCatalogEntry>;
-    FLayoutNames: TArray<string>;
-    FActiveLayout: string;
-    FTargetColumn: Integer;
-    FTargetBefore: string;
-    FDragId: string;
-    FDragHidden: Boolean;
-    FDropValid: Boolean;
-    FSectionMenu: TPopupMenu;
-    FMenuId: string;
-    FBarMenu: TPopupMenu;
-    FOnAskName: TAtlasWelcomeAskName;
-    FOnConfirm: TAtlasWelcomeConfirm;
+    FBoard: TAtlasWelcomeBoardFrame;
     FEvents: TApplicationEvents;
     FWheelRest: Integer;
     FEdgeTimer: TTimer;
     FEdgePoint: TPoint;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
+    /// <summary>Mausrad über der Tafel; True = die Nachricht gehört ihr.</summary>
+    function WheelMessage(const AMsg: TMsg): Boolean;
+    function KeyMessage(const AMsg: TMsg): Boolean;
     function ScrollArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
-    procedure UpdateEdgeScroll(const AScreen: TPoint);
+    function ScrollBoxArea(AControl: TScrollingWinControl; AWheelDelta: Integer): Boolean;
+    function ScrollWindowArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
     function EdgeStep: Integer;
     procedure EdgeTick(Sender: TObject);
-    procedure ScrollResize(Sender: TObject);
-    procedure ScrollMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure ViewHeightChanged(Sender: TObject);
-    procedure Place;
-    procedure ReadSource;
-    procedure ApplyEditing;
-    procedure UpdateBars;
-    procedure UpdateInsertLine;
-    function ViewSections: TArray<TAtlasWelcomeSection>;
-    function CatalogIndex(const AId: string): Integer;
-    procedure Later(const AProc: TProc<IAtlasWelcomeArrangeSource>);
-    procedure Rearranged(const ALayout: TAtlasWelcomeLayout);
-    procedure BarClick(const APart: TAtlasArrangePart);
-    procedure HiddenClick(const APart: TAtlasArrangePart);
-    procedure DragStart(const AId: string; AHidden: Boolean);
-    procedure DragMove(const AScreen: TPoint);
-    procedure DragEnd(ADrop: Boolean);
-    function GripMove(const AId: string; ADirection: TAtlasWelcomeMove): Boolean;
-    procedure ToolClick(const AId: string; ATool: TAtlasWelcomeTool);
+  public
+    constructor Create(ABoard: TAtlasWelcomeBoardFrame); reintroduce;
+    destructor Destroy; override;
+    /// <summary>Keine Nachrichten und kein Takt mehr (vor dem Abbau der Bereiche).</summary>
+    procedure Stop;
+    /// <summary>Beim Ziehen: Zeiger an AScreen; scrollt am oberen und unteren Rand der Seite.</summary>
+    procedure UpdateEdgeScroll(const AScreen: TPoint);
+    /// <summary>Mausrad über AControl (#1440): die innerste Fläche, die in die Richtung noch scrollen kann, sonst
+    /// die Seite. AWheelDelta wie WM_MOUSEWHEEL (positiv = nach oben). False = AControl liegt nicht in der Tafel
+    /// oder nichts kann sich mehr bewegen.</summary>
+    function ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
+    /// <summary>Seite mit Bild auf/ab bzw. Pos1/Ende scrollen; False = Position unverändert.</summary>
+    function ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
+    /// <summary>Taste der Seite zu AKey (VK_PRIOR, VK_NEXT, VK_HOME, VK_END ohne Alt); None = keine.</summary>
+    class function ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey; static;
+    /// <summary>Behält AControl Bild auf/ab und Pos1/Ende für sich (Eingabefeld, Liste, Auswahlfeld)?</summary>
+    class function OwnsScrollKeys(AControl: TControl): Boolean; static;
+    /// <summary>Takt für das Scrollen am Rand beim Ziehen; läuft nur, solange gescrollt wird.</summary>
+    property EdgeTimer: TTimer read FEdgeTimer;
+  end;
+
+  /// <summary>Kontextmenü eines Bereichs („Ausblenden“, „Einstellungen dazu …“, „Seite anpassen“) und die Menüs
+  /// „Layout“ und „Bereich hinzufügen“ der Leiste.</summary>
+  TAtlasWelcomeBoardMenus = class(TComponent)
+  private
+    FBoard: TAtlasWelcomeBoardFrame;
+    FSectionMenu: TPopupMenu;
+    FMenuId: string;
+    FBarMenu: TPopupMenu;
+    FOnAskName: TAtlasWelcomeAskName;
+    FOnConfirm: TAtlasWelcomeConfirm;
+    procedure AddSectionItem(AId: TAtlasWelcomeTextId; ATag: Integer; const AOnClick: TNotifyEvent);
+    function AddBarItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;
     procedure SectionMenuPopup(Sender: TObject);
     procedure SectionMenuHide(Sender: TObject);
     procedure SectionMenuSettings(Sender: TObject);
@@ -135,7 +122,117 @@ type
     function AskName(const APrompt: string; var AName: string): Boolean;
     function Confirm(const AText: string; AQuestion: Boolean): Boolean;
     function NameTaken(const AName: string): Boolean;
-    function SectionIdOf(AComponent: TComponent): string;
+  public
+    constructor Create(ABoard: TAtlasWelcomeBoardFrame); reintroduce;
+    /// <summary>Menü „Layout“ bzw. „Bereich hinzufügen“ füllen, ohne es zu zeigen (auch für Tests).</summary>
+    procedure BuildLayoutMenu;
+    procedure BuildAddMenu;
+    /// <summary>Kontextmenü für den Bereich AId vorbereiten (auch für Tests).</summary>
+    procedure PrepareSectionMenu(const AId: string);
+    /// <summary>Rechtsklick „Ausblenden“ (#628-Weg) an Titel und Fläche von AFrame; AOn = False nimmt es ab.
+    /// </summary>
+    procedure AttachTo(AFrame: TAtlasWelcomeSectionFrame; AOn: Boolean);
+    property SectionMenu: TPopupMenu read FSectionMenu;
+    property BarMenu: TPopupMenu read FBarMenu;
+    property OnAskName: TAtlasWelcomeAskName read FOnAskName write FOnAskName;
+    property OnConfirm: TAtlasWelcomeConfirm read FOnConfirm write FOnConfirm;
+  end;
+
+  /// <summary>„Seite anpassen“ (#767): Leiste unter dem Kopf, Leiste „Ausgeblendet“, Einfügelinie, Griffe und
+  /// Werkzeuge der Bereiche und das Ziehen.</summary>
+  TAtlasWelcomeBoardArranger = class(TComponent)
+  private type
+    TDrag = record
+      /// <summary>Spalte der Einfügelinie; -1 = Vorgabe.</summary>
+      TargetColumn: Integer;
+      TargetBefore: string;
+      /// <summary>Gezogener Bereich; '' = keiner.</summary>
+      Id: string;
+      Hidden: Boolean;
+      DropValid: Boolean;
+    end;
+  private
+    FBoard: TAtlasWelcomeBoardFrame;
+    FBar: TAtlasArrangeStrip;
+    FHiddenBar: TAtlasArrangeStrip;
+    FInsertLine: TPanel;
+    FDrag: TDrag;
+    procedure BarClick(const APart: TAtlasArrangePart);
+    procedure HiddenClick(const APart: TAtlasArrangePart);
+    procedure DragStart(const AId: string; AHidden: Boolean);
+    procedure DragMove(const AScreen: TPoint);
+    procedure DragEnd(ADrop: Boolean);
+    function GripMove(const AId: string; ADirection: TAtlasWelcomeMove): Boolean;
+    procedure ToolClick(const AId: string; ATool: TAtlasWelcomeTool);
+    function EnsureGrip(AFrame: TAtlasWelcomeSectionFrame): TAtlasWelcomeGrip;
+    function EnsureTools(AFrame: TAtlasWelcomeSectionFrame): TAtlasWelcomeSectionTools;
+    /// <summary>Teile der Leiste unter dem Kopf: Stift bzw. „Fertig“, Layout, im Bearbeitungsmodus Spalten,
+    /// „Bereich hinzufügen“ und „Zurücksetzen“.</summary>
+    function BarParts: TArray<TAtlasArrangePart>;
+    function EditingParts: TArray<TAtlasArrangePart>;
+    /// <summary>Ausgeblendet: angemeldete Bereiche, deren Einstellung aus ist.</summary>
+    function HiddenParts: TArray<TAtlasArrangePart>;
+  public
+    constructor Create(ABoard: TAtlasWelcomeBoardFrame); reintroduce;
+    /// <summary>Griffe und Werkzeuge der Bereiche nach dem Bearbeitungsmodus, Kontextmenü der Bereiche.</summary>
+    procedure ApplyEditing;
+    procedure UpdateBars;
+    /// <summary>Höhe der sichtbaren Leisten an ihren Inhalt anpassen.</summary>
+    procedure FitBars;
+    procedure UpdateInsertLine;
+    /// <summary>Klick auf freie Fläche (Koordinaten der Scrollbox) setzt die Einfügelinie.</summary>
+    procedure ClickAt(X, Y: Integer);
+    /// <summary>Einfügelinie setzen: Spalte und Bereich, vor dem eingefügt wird ('' = ans Ende); -1 = Vorgabe
+    /// (Ende der Spalte mit dem meisten Platz).</summary>
+    procedure SetTarget(AColumn: Integer; const ABefore: string);
+    /// <summary>Ziel der Einfügelinie.</summary>
+    procedure Target(out AColumn: Integer; out ABefore: string);
+    property Bar: TAtlasArrangeStrip read FBar;
+    property HiddenBar: TAtlasArrangeStrip read FHiddenBar;
+    property InsertLine: TPanel read FInsertLine;
+  end;
+
+  TAtlasWelcomeBoardFrame = class(TAtlasWelcomeFrame)
+  public const
+    Gap = 12;
+    /// <summary>Mindestbreite einer Spalte beim Verteilen.</summary>
+    MinColumnWidth = 120;
+    /// <summary>Mit AutoFold: schmaler als das faltet eine Spalte unter die vorige.</summary>
+    FoldWidth = 280;
+  private type
+    /// <summary>Stand der Quelle „Seite anpassen“ beim letzten Rebuild.</summary>
+    TSourceState = record
+      CanCustomize: Boolean;
+      Editing: Boolean;
+      Catalog: TArray<TAtlasWelcomeCatalogEntry>;
+      LayoutNames: TArray<string>;
+      ActiveLayout: string;
+    end;
+    /// <summary>Bereiche und ihre Verteilung, wie zuletzt gesetzt.</summary>
+    TPlacement = record
+      Sections: TArray<TAtlasWelcomeSection>;
+      Wanted: Integer;
+      Placing: Boolean;
+      Columns: TArray<TArray<string>>;
+      Cells: TAtlasWelcomeCells;
+      Placed: TArray<TAtlasWelcomePlaced>;
+    end;
+  private
+    FHeader: TAtlasWelcomeHeaderFrame;
+    FScroll: TScrollBox;
+    FViews: TObjectDictionary<string, TAtlasWelcomeSectionFrame>;
+    FLayout: TAtlasWelcomeLayout;
+    FAutoFold: Boolean;
+    FSource: IAtlasWelcomeArrangeSource;
+    FState: TSourceState;
+    FPlacement: TPlacement;
+    FScroller: TAtlasWelcomeBoardScroller;
+    FMenus: TAtlasWelcomeBoardMenus;
+    FArranger: TAtlasWelcomeBoardArranger;
+    procedure PlaceEvent(Sender: TObject);
+    procedure ScrollMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure Place;
+    procedure Rearranged(const ALayout: TAtlasWelcomeLayout);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -150,50 +247,27 @@ type
     /// <summary>Griff bzw. Werkzeuge eines Bereichs im Bearbeitungsmodus; nil ohne.</summary>
     function GripOf(const AId: string): TAtlasWelcomeGrip;
     function ToolsOf(const AId: string): TAtlasWelcomeSectionTools;
-    /// <summary>Menü „Layout“ bzw. „Bereich hinzufügen“ füllen, ohne es zu zeigen (auch für Tests).</summary>
-    procedure BuildLayoutMenu;
-    procedure BuildAddMenu;
-    /// <summary>Kontextmenü für den Bereich AId vorbereiten (auch für Tests).</summary>
-    procedure PrepareSectionMenu(const AId: string);
-    /// <summary>Einfügelinie setzen: Spalte und Bereich, vor dem eingefügt wird ('' = ans Ende); -1 = Vorgabe
-    /// (Ende der Spalte mit dem meisten Platz).</summary>
-    procedure SetTarget(AColumn: Integer; const ABefore: string);
-    /// <summary>Ziel der Einfügelinie.</summary>
-    procedure Target(out AColumn: Integer; out ABefore: string);
+    /// <summary>Liegt AControl in der Tafel (Kopf, Leisten, Bereiche)?</summary>
+    function Contains(AControl: TControl): Boolean;
     /// <summary>Kennungen je Spalte, wie zuletzt verteilt.</summary>
-    property Columns: TArray<TArray<string>> read FColumns;
+    property Columns: TArray<TArray<string>> read FPlacement.Columns;
     property Header: TAtlasWelcomeHeaderFrame read FHeader;
     /// <summary>Layout, wie zuletzt gesetzt bzw. lokal bearbeitet.</summary>
     property Layout: TAtlasWelcomeLayout read FLayout;
-    property Placed: TArray<TAtlasWelcomePlaced> read FPlaced;
+    property Placed: TArray<TAtlasWelcomePlaced> read FPlacement.Placed;
     /// <summary>Fenster „Atlas-Start“: Spalten falten, wenn sie schmaler als FoldWidth würden.</summary>
     property AutoFold: Boolean read FAutoFold write FAutoFold;
     /// <summary>„Seite anpassen“ (#767); nil = ohne Leiste und Bearbeitungsmodus. Vor Rebuild setzen.</summary>
     property Source: IAtlasWelcomeArrangeSource read FSource write FSource;
-    property Editing: Boolean read FEditing;
-    property Bar: TAtlasArrangeStrip read FBar;
-    property HiddenBar: TAtlasArrangeStrip read FHiddenBar;
-    property InsertLine: TPanel read FInsertLine;
-    property SectionMenu: TPopupMenu read FSectionMenu;
-    property BarMenu: TPopupMenu read FBarMenu;
-    /// <summary>Liegt AControl in der Tafel (Kopf, Leisten, Bereiche)?</summary>
-    function Contains(AControl: TControl): Boolean;
-    /// <summary>Mausrad über AControl (#1440): die innerste Fläche, die in die Richtung noch scrollen kann, sonst
-    /// die Seite. AWheelDelta wie WM_MOUSEWHEEL (positiv = nach oben). False = AControl liegt nicht in der Tafel
-    /// oder nichts kann sich mehr bewegen.</summary>
-    function ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
-    /// <summary>Seite mit Bild auf/ab bzw. Pos1/Ende scrollen; False = Position unverändert.</summary>
-    function ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
-    /// <summary>Taste der Seite zu AKey (VK_PRIOR, VK_NEXT, VK_HOME, VK_END ohne Alt); None = keine.</summary>
-    class function ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey; static;
-    /// <summary>Behält AControl Bild auf/ab und Pos1/Ende für sich (Eingabefeld, Liste, Auswahlfeld)?</summary>
-    class function OwnsScrollKeys(AControl: TControl): Boolean; static;
-    property OnAskName: TAtlasWelcomeAskName read FOnAskName write FOnAskName;
-    property OnConfirm: TAtlasWelcomeConfirm read FOnConfirm write FOnConfirm;
+    property Editing: Boolean read FState.Editing;
     /// <summary>Scrollbare Fläche unter Kopf und Leiste.</summary>
     property ScrollBox: TScrollBox read FScroll;
-    /// <summary>Takt für das Scrollen am Rand beim Ziehen; läuft nur, solange gescrollt wird.</summary>
-    property EdgeTimer: TTimer read FEdgeTimer;
+    /// <summary>Mausrad, Tasten und Scrollen am Rand (#1440).</summary>
+    property Scroller: TAtlasWelcomeBoardScroller read FScroller;
+    /// <summary>Kontextmenü der Bereiche und Menüs der Leiste.</summary>
+    property Menus: TAtlasWelcomeBoardMenus read FMenus;
+    /// <summary>Leisten, Einfügelinie und Ziehen von „Seite anpassen“.</summary>
+    property Arranger: TAtlasWelcomeBoardArranger read FArranger;
   end;
 
 implementation
@@ -221,24 +295,744 @@ begin
   Result := MulDiv(AValue, AControl.CurrentPPI, 96);
 end;
 
-{ TAtlasWelcomeBoardFrame }
-
-constructor TAtlasWelcomeBoardFrame.Create(AOwner: TComponent);
+/// <summary>Kann AControl jetzt den Fokus nehmen? Nur mit sichtbarer Form: CanFocus allein lässt eine verborgene
+/// durch („kann den Fokus nicht erhalten“).</summary>
+function CanTakeFocus(AControl: TWinControl): Boolean;
 var
-  Item: TMenuItem;
+  mForm: TCustomForm;
 begin
-  inherited Create(AOwner);
-  FViews := TObjectDictionary<string, TAtlasWelcomeSectionFrame>.Create([doOwnsValues]);
-  FTargetColumn := -1;
-  FWanted := 2;
-  FLayout := TAtlasWelcomeLayout.Atlas;
-  FHeader := TAtlasWelcomeHeaderFrame.Create(Self);
-  FHeader.Parent := Self;
-  FHeader.Align := alTop;
+  mForm := GetParentForm(AControl);
+  Result := AControl.CanFocus and AControl.Showing and not AControl.Focused and (mForm <> nil) and mForm.Visible;
+end;
+
+/// <summary>AProc mit der Quelle über die Nachrichtenschleife; ohne Quelle nichts.</summary>
+procedure Later(ABoard: TAtlasWelcomeBoardFrame; const AProc: TProc<IAtlasWelcomeArrangeSource>);
+var
+  mSource: IAtlasWelcomeArrangeSource;
+begin
+  mSource := ABoard.FSource;
+  if mSource = nil then
+  begin
+    Exit;
+  end;
+  // Über die Nachrichtenschleife: Der Aufruf baut die Tafel neu auf und gäbe sonst das klickende Element frei.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          AProc(mSource);
+        end);
+    end);
+end;
+
+/// <summary>„Bereich AId zeigen“ an der Einfügelinie; danach wieder die Vorgabe.</summary>
+procedure ShowAtTarget(ABoard: TAtlasWelcomeBoardFrame; const AId: string);
+var
+  mId, mBefore: string;
+  mColumn: Integer;
+begin
+  mId := AId;
+  ABoard.FArranger.Target(mColumn, mBefore);
+  ABoard.FArranger.SetTarget(-1, '');
+  Later(ABoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.ShowSection(mId, mColumn, mBefore);
+    end);
+end;
+
+procedure SetEditingLater(ABoard: TAtlasWelcomeBoardFrame; AOn: Boolean);
+begin
+  Later(ABoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.SetEditing(AOn);
+    end);
+end;
+
+function CatalogIndex(ABoard: TAtlasWelcomeBoardFrame; const AId: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ABoard.FState.Catalog) do
+  begin
+    if SameText(ABoard.FState.Catalog[mIndex].Id, AId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Bereiche, deren Frame es gibt, in der Reihenfolge des letzten Rebuild.</summary>
+function ViewSections(ABoard: TAtlasWelcomeBoardFrame): TArray<TAtlasWelcomeSection>;
+var
+  mSection: TAtlasWelcomeSection;
+begin
+  Result := nil;
+  for mSection in ABoard.FPlacement.Sections do
+  begin
+    if ABoard.View(mSection.Id) <> nil then
+    begin
+      Result := Result + [mSection];
+    end;
+  end;
+end;
+
+procedure ReadSource(ABoard: TAtlasWelcomeBoardFrame);
+var
+  mSource: IAtlasWelcomeArrangeSource;
+begin
+  ABoard.FState := Default(TAtlasWelcomeBoardFrame.TSourceState);
+  mSource := ABoard.FSource;
+  if mSource = nil then
+  begin
+    Exit;
+  end;
+  ABoard.FState.CanCustomize := mSource.CanCustomize;
+  ABoard.FState.Editing := ABoard.FState.CanCustomize and mSource.Editing;
+  ABoard.FState.Catalog := mSource.Catalog;
+  ABoard.FState.LayoutNames := mSource.LayoutNames;
+  ABoard.FState.ActiveLayout := mSource.ActiveLayout;
+end;
+
+/// <summary>Kennungen je Spalte.</summary>
+function ColumnIds(const ACells: TAtlasWelcomeCells): TArray<TArray<string>>;
+var
+  mColumn: Integer;
+  mCell: TAtlasWelcomeCell;
+begin
+  Result := nil;
+  SetLength(Result, Length(ACells));
+  for mColumn := 0 to High(ACells) do
+  begin
+    for mCell in ACells[mColumn] do
+    begin
+      Result[mColumn] := Result[mColumn] + [mCell.Id];
+    end;
+  end;
+end;
+
+/// <summary>Element von AParent, das von AClass ist; nil ohne.</summary>
+function ChildOf(AParent: TWinControl; AClass: TControlClass): TControl;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    if AParent.Controls[mIndex] is AClass then
+    begin
+      Exit(AParent.Controls[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Bereich, in dem AComponent liegt; '' ohne.</summary>
+function SectionIdOf(AComponent: TComponent): string;
+var
+  mControl: TControl;
+begin
+  Result := '';
+  if not (AComponent is TControl) then
+  begin
+    Exit;
+  end;
+  mControl := TControl(AComponent);
+  while (mControl <> nil) and not (mControl is TAtlasWelcomeSectionFrame) do
+  begin
+    mControl := mControl.Parent;
+  end;
+  if mControl <> nil then
+  begin
+    Result := TAtlasWelcomeSectionFrame(mControl).SectionId;
+  end;
+end;
+
+{ TAtlasWelcomeBoardScroller }
+
+constructor TAtlasWelcomeBoardScroller.Create(ABoard: TAtlasWelcomeBoardFrame);
+begin
+  inherited Create(ABoard);
+  FBoard := ABoard;
+  FEdgeTimer := TTimer.Create(Self);
+  FEdgeTimer.Enabled := False;
+  FEdgeTimer.Interval := 40;
+  FEdgeTimer.OnTimer := EdgeTick;
+  FEvents := TApplicationEvents.Create(nil);
+  FEvents.OnMessage := AppMessage;
+end;
+
+destructor TAtlasWelcomeBoardScroller.Destroy;
+begin
+  Stop;
+  inherited;
+end;
+
+procedure TAtlasWelcomeBoardScroller.Stop;
+begin
+  FreeAndNil(FEvents);
+  if FEdgeTimer <> nil then
+  begin
+    FEdgeTimer.Enabled := False;
+  end;
+end;
+
+function TAtlasWelcomeBoardScroller.ScrollBoxArea(AControl: TScrollingWinControl; AWheelDelta: Integer): Boolean;
+var
+  mBar: TControlScrollBar;
+  mMax, mPixels: Integer;
+begin
+  // Scrollbox und Frames: Die VCL scrollt sie nicht selbst mit dem Mausrad.
+  Result := False;
+  mBar := AControl.VertScrollBar;
+  if not mBar.Visible or not mBar.IsScrollBarVisible then
+  begin
+    Exit;
+  end;
+  mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, AControl.ClientHeight);
+  if not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, AWheelDelta) then
+  begin
+    Exit;
+  end;
+  mPixels := TAtlasWelcomeScroll.WheelPixels(FWheelRest, AWheelDelta, Mouse.WheelScrollLines,
+    Scaled(FBoard, TAtlasWelcomeScroll.LineHeight), AControl.ClientHeight);
+  mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mPixels, mMax);
+  Result := True;
+end;
+
+function TAtlasWelcomeBoardScroller.ScrollWindowArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
+var
+  mMax, mLines, mIndex: Integer;
+  mInfo: TScrollInfo;
+  mCode: WPARAM;
+begin
+  // Fenster mit eigener senkrechter Leiste (Listen, Mehrzeiler): zeilenweise, wie ihr eigenes Mausrad.
+  Result := False;
+  if not AControl.HandleAllocated or ((GetWindowLongPtr(AControl.Handle, GWL_STYLE) and WS_VSCROLL) = 0) then
+  begin
+    Exit;
+  end;
+  mInfo := Default(TScrollInfo);
+  mInfo.cbSize := SizeOf(mInfo);
+  mInfo.fMask := SIF_ALL;
+  if not GetScrollInfo(AControl.Handle, SB_VERT, mInfo) then
+  begin
+    Exit;
+  end;
+  mMax := TAtlasWelcomeScroll.MaxPosition(mInfo.nMax - mInfo.nMin + 1, Integer(mInfo.nPage));
+  if not TAtlasWelcomeScroll.CanScroll(mInfo.nPos - mInfo.nMin, mMax, AWheelDelta) then
+  begin
+    Exit;
+  end;
+  mLines := TAtlasWelcomeScroll.WheelLines(FWheelRest, AWheelDelta, Mouse.WheelScrollLines);
+  mCode := SB_LINEDOWN;
+  if mLines < 0 then
+  begin
+    mCode := SB_LINEUP;
+  end;
+  for mIndex := 1 to Abs(mLines) do
+  begin
+    AControl.Perform(WM_VSCROLL, mCode, 0);
+  end;
+  if mLines <> 0 then
+  begin
+    AControl.Perform(WM_VSCROLL, SB_ENDSCROLL, 0);
+  end;
+  Result := True;
+end;
+
+function TAtlasWelcomeBoardScroller.ScrollArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
+begin
+  if AControl is TScrollingWinControl then
+  begin
+    Result := ScrollBoxArea(TScrollingWinControl(AControl), AWheelDelta);
+  end
+  else
+  begin
+    Result := ScrollWindowArea(AControl, AWheelDelta);
+  end;
+end;
+
+function TAtlasWelcomeBoardScroller.ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
+var
+  mControl: TControl;
+begin
+  Result := False;
+  if (AWheelDelta = 0) or not FBoard.Contains(AControl) then
+  begin
+    Exit;
+  end;
+  // Von innen nach außen: Eine Liste mit eigener Leiste scrollt zuerst selbst, an ihrem Ende die Seite.
+  mControl := AControl;
+  while (mControl <> nil) and (mControl <> FBoard.FScroll) and (mControl <> FBoard) do
+  begin
+    if (mControl is TWinControl) and ScrollArea(TWinControl(mControl), AWheelDelta) then
+    begin
+      Exit(True);
+    end;
+    mControl := mControl.Parent;
+  end;
+  Result := ScrollArea(FBoard.FScroll, AWheelDelta);
+end;
+
+function TAtlasWelcomeBoardScroller.ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
+var
+  mScroll: TScrollBox;
+  mOld, mNew: Integer;
+begin
+  mScroll := FBoard.FScroll;
+  mOld := mScroll.VertScrollBar.Position;
+  mNew := TAtlasWelcomeScroll.KeyPosition(AKey, mOld,
+    TAtlasWelcomeScroll.MaxPosition(mScroll.VertScrollBar.Range, mScroll.ClientHeight), mScroll.ClientHeight,
+    Scaled(FBoard, TAtlasWelcomeScroll.LineHeight));
+  Result := mNew <> mOld;
+  if Result then
+  begin
+    mScroll.VertScrollBar.Position := mNew;
+  end;
+end;
+
+class function TAtlasWelcomeBoardScroller.ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey;
+begin
+  Result := TAtlasWelcomeScrollKey.None;
+  if ssAlt in AShift then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_PRIOR:
+      Result := TAtlasWelcomeScrollKey.PageUp;
+    VK_NEXT:
+      Result := TAtlasWelcomeScrollKey.PageDown;
+    VK_HOME:
+      Result := TAtlasWelcomeScrollKey.Top;
+    VK_END:
+      Result := TAtlasWelcomeScrollKey.Bottom;
+  else
+    // Übrige Tasten bleiben beim Steuerelement.
+  end;
+end;
+
+class function TAtlasWelcomeBoardScroller.OwnsScrollKeys(AControl: TControl): Boolean;
+begin
+  // Eingabefelder (Suchfeld #760) bewegen den Cursor, Listen und Auswahlfelder ihre Auswahl.
+  Result := (AControl is TCustomEdit) or (AControl is TCustomListControl);
+end;
+
+function TAtlasWelcomeBoardScroller.WheelMessage(const AMsg: TMsg): Boolean;
+var
+  mControl: TControl;
+begin
+  // Strg (Zoom) und Umschalt (waagerecht) bleiben beim Fenster.
+  Result := False;
+  if (LoWord(AMsg.wParam) and (MK_CONTROL or MK_SHIFT)) <> 0 then
+  begin
+    Exit;
+  end;
+  mControl := FindDragTarget(AMsg.pt, True);
+  if not FBoard.Contains(mControl) then
+  begin
+    Exit;
+  end;
+  ScrollWheel(mControl, SmallInt(HiWord(AMsg.wParam)));
+  // Auch am Ende: Über der Seite gehört das Rad ihr, sonst scrollte das fokussierte Fenster (der Editor).
+  Result := True;
+end;
+
+function TAtlasWelcomeBoardScroller.KeyMessage(const AMsg: TMsg): Boolean;
+var
+  mControl: TControl;
+  mKey: TAtlasWelcomeScrollKey;
+begin
+  Result := False;
+  mControl := FindControl(AMsg.hwnd);
+  if not FBoard.Contains(mControl) or OwnsScrollKeys(mControl) then
+  begin
+    Exit;
+  end;
+  mKey := ScrollKeyOf(Word(AMsg.wParam), KeyDataToShiftState(AMsg.lParam));
+  if mKey <> TAtlasWelcomeScrollKey.None then
+  begin
+    ScrollKey(mKey);
+    Result := True;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardScroller.AppMessage(var Msg: TMsg; var Handled: Boolean);
+begin
+  if Handled or not FBoard.Showing then
+  begin
+    Exit;
+  end;
+  try
+    case Msg.message of
+      WM_MOUSEWHEEL:
+        Handled := WheelMessage(Msg);
+      WM_KEYDOWN:
+        Handled := KeyMessage(Msg);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+  end;
+end;
+
+function TAtlasWelcomeBoardScroller.EdgeStep: Integer;
+var
+  mScroll: TScrollBox;
+  mLocal: TPoint;
+begin
+  Result := 0;
+  mScroll := FBoard.FScroll;
+  if (FBoard.FArranger.FDrag.Id = '') or not mScroll.HandleAllocated then
+  begin
+    Exit;
+  end;
+  mLocal := mScroll.ScreenToClient(FEdgePoint);
+  // Nur über der Seite: Der Zug aus der Leiste „Ausgeblendet“ unten soll nicht gleich losscrollen.
+  if PtInRect(mScroll.ClientRect, mLocal) then
+  begin
+    Result := TAtlasWelcomeScroll.EdgeScroll(mLocal.Y, mScroll.ClientHeight,
+      Scaled(FBoard, TAtlasWelcomeScroll.EdgeWidth), Scaled(FBoard, TAtlasWelcomeScroll.EdgeStep));
+  end;
+end;
+
+procedure TAtlasWelcomeBoardScroller.UpdateEdgeScroll(const AScreen: TPoint);
+begin
+  FEdgePoint := AScreen;
+  FEdgeTimer.Enabled := (EdgeStep <> 0) and FBoard.FScroll.VertScrollBar.IsScrollBarVisible;
+end;
+
+procedure TAtlasWelcomeBoardScroller.EdgeTick(Sender: TObject);
+var
+  mBar: TControlScrollBar;
+  mStep, mMax: Integer;
+begin
+  mStep := EdgeStep;
+  mBar := FBoard.FScroll.VertScrollBar;
+  mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, FBoard.FScroll.ClientHeight);
+  if (mStep = 0) or not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, -mStep) then
+  begin
+    FEdgeTimer.Enabled := False;
+    Exit;
+  end;
+  mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mStep, mMax);
+  // Einfügelinie zum neuen Inhalt unter dem stehenden Zeiger nachführen.
+  FBoard.FArranger.DragMove(FEdgePoint);
+end;
+
+{ TAtlasWelcomeBoardMenus }
+
+constructor TAtlasWelcomeBoardMenus.Create(ABoard: TAtlasWelcomeBoardFrame);
+begin
+  inherited Create(ABoard);
+  FBoard := ABoard;
+  FSectionMenu := TPopupMenu.Create(Self);
+  FSectionMenu.OnPopup := SectionMenuPopup;
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeHide, TagHide, SectionMenuHide);
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeSettings, TagSettings, SectionMenuSettings);
+  AddSectionItem(TAtlasWelcomeTextId.WelcomeArrangeCustomize, TagCustomize, SectionMenuCustomize);
+  FBarMenu := TPopupMenu.Create(Self);
+end;
+
+procedure TAtlasWelcomeBoardMenus.AddSectionItem(AId: TAtlasWelcomeTextId; ATag: Integer;
+  const AOnClick: TNotifyEvent);
+var
+  mItem: TMenuItem;
+begin
+  // „Seite anpassen“ steht hinter einem Trennstrich (Eintrag 2).
+  if ATag = TagCustomize then
+  begin
+    mItem := TMenuItem.Create(FSectionMenu);
+    mItem.Caption := '-';
+    FSectionMenu.Items.Add(mItem);
+  end;
+  mItem := TMenuItem.Create(FSectionMenu);
+  mItem.Caption := TAtlasWelcomeStrings.Text(AId);
+  mItem.Tag := ATag;
+  mItem.OnClick := AOnClick;
+  FSectionMenu.Items.Add(mItem);
+end;
+
+function TAtlasWelcomeBoardMenus.AddBarItem(const ACaption: string; const AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(FBarMenu);
+  Result.Caption := ACaption;
+  Result.OnClick := AOnClick;
+  FBarMenu.Items.Add(Result);
+end;
+
+procedure TAtlasWelcomeBoardMenus.BuildLayoutMenu;
+var
+  mItem: TMenuItem;
+  mName: string;
+  mIndex: Integer;
+begin
+  FBarMenu.Items.Clear;
+  for mIndex := 0 to High(FBoard.FState.LayoutNames) do
+  begin
+    mName := FBoard.FState.LayoutNames[mIndex];
+    mItem := AddBarItem(mName, LayoutMenuSwitch);
+    mItem.RadioItem := True;
+    mItem.Checked := SameText(mName, FBoard.FState.ActiveLayout);
+    mItem.Tag := mIndex;
+  end;
+  AddBarItem('-', nil);
+  AddBarItem(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewLayout), LayoutMenuNew);
+  AddBarItem(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeRenameLayout), LayoutMenuRename);
+  mItem := AddBarItem(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteLayout,
+    [FBoard.FState.ActiveLayout]), LayoutMenuDelete);
+  mItem.Enabled := Length(FBoard.FState.LayoutNames) > 1;
+end;
+
+procedure TAtlasWelcomeBoardMenus.BuildAddMenu;
+var
+  mItem: TMenuItem;
+  mIndex: Integer;
+  mEntry: TAtlasWelcomeCatalogEntry;
+begin
+  FBarMenu.Items.Clear;
+  // Alle Atlas-Bereiche mit kurzer Beschreibung; sichtbare sind abgehakt und lassen sich nicht wählen.
+  for mIndex := 0 to High(FBoard.FState.Catalog) do
+  begin
+    mEntry := FBoard.FState.Catalog[mIndex];
+    mItem := AddBarItem(mEntry.Title + ' – ' + mEntry.Description, AddMenuClick);
+    mItem.Checked := mEntry.Shown;
+    mItem.Enabled := not mEntry.Shown;
+    mItem.Tag := mIndex;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardMenus.AddMenuClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := (Sender as TMenuItem).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FBoard.FState.Catalog)) and not FBoard.FState.Catalog[mIndex].Shown then
+  begin
+    ShowAtTarget(FBoard, FBoard.FState.Catalog[mIndex].Id);
+  end;
+end;
+
+procedure TAtlasWelcomeBoardMenus.LayoutMenuSwitch(Sender: TObject);
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  mIndex := (Sender as TMenuItem).Tag;
+  if (mIndex < 0) or (mIndex > High(FBoard.FState.LayoutNames)) or
+    SameText(FBoard.FState.LayoutNames[mIndex], FBoard.FState.ActiveLayout) then
+  begin
+    Exit;
+  end;
+  mName := FBoard.FState.LayoutNames[mIndex];
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.SwitchLayout(mName);
+    end);
+end;
+
+function TAtlasWelcomeBoardMenus.NameTaken(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in FBoard.FState.LayoutNames do
+  begin
+    Result := Result or SameText(mName, Trim(AName));
+  end;
+end;
+
+procedure TAtlasWelcomeBoardMenus.LayoutMenuNew(Sender: TObject);
+var
+  mName: string;
+begin
+  mName := '';
+  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
+    (Trim(mName) = '') then
+  begin
+    Exit;
+  end;
+  if NameTaken(mName) then
+  begin
+    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
+    Exit;
+  end;
+  mName := Trim(mName);
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.AddLayout(mName);
+    end);
+end;
+
+procedure TAtlasWelcomeBoardMenus.LayoutMenuRename(Sender: TObject);
+var
+  mName: string;
+begin
+  mName := FBoard.FState.ActiveLayout;
+  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
+    (Trim(mName) = '') or SameText(Trim(mName), FBoard.FState.ActiveLayout) then
+  begin
+    Exit;
+  end;
+  if NameTaken(mName) then
+  begin
+    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
+    Exit;
+  end;
+  mName := Trim(mName);
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.RenameLayout(mName);
+    end);
+end;
+
+procedure TAtlasWelcomeBoardMenus.LayoutMenuDelete(Sender: TObject);
+begin
+  if (Length(FBoard.FState.LayoutNames) < 2) or
+    not Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteConfirm,
+    [FBoard.FState.ActiveLayout]), True) then
+  begin
+    Exit;
+  end;
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.DeleteLayout;
+    end);
+end;
+
+function TAtlasWelcomeBoardMenus.AskName(const APrompt: string; var AName: string): Boolean;
+begin
+  if Assigned(FOnAskName) then
+  begin
+    Exit(FOnAskName(APrompt, AName));
+  end;
+  Result := InputQuery(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize), APrompt, AName);
+end;
+
+function TAtlasWelcomeBoardMenus.Confirm(const AText: string; AQuestion: Boolean): Boolean;
+begin
+  if Assigned(FOnConfirm) then
+  begin
+    Exit(FOnConfirm(AText, AQuestion));
+  end;
+  if AQuestion then
+  begin
+    Result := MessageDlg(AText, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  end
+  else
+  begin
+    MessageDlg(AText, mtInformation, [mbOK], 0);
+    Result := True;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardMenus.PrepareSectionMenu(const AId: string);
+var
+  mItem: TMenuItem;
+  mIndex: Integer;
+begin
+  FMenuId := AId;
+  for mIndex := 0 to FSectionMenu.Items.Count - 1 do
+  begin
+    mItem := FSectionMenu.Items[mIndex];
+    case mItem.Tag of
+      TagHide, TagSettings:
+        mItem.Enabled := (FBoard.FSource <> nil) and (CatalogIndex(FBoard, AId) >= 0);
+      TagCustomize:
+        begin
+          mItem.Visible := FBoard.FState.CanCustomize;
+          mItem.Checked := FBoard.FState.Editing;
+        end;
+    end;
+  end;
+  // Trennstrich nur mit „Seite anpassen“ dahinter.
+  FSectionMenu.Items[2].Visible := FBoard.FState.CanCustomize;
+end;
+
+procedure TAtlasWelcomeBoardMenus.AttachTo(AFrame: TAtlasWelcomeSectionFrame; AOn: Boolean);
+begin
+  if AOn then
+  begin
+    AFrame.TitleBar.PopupMenu := FSectionMenu;
+    if AFrame.PopupMenu = nil then
+    begin
+      AFrame.PopupMenu := FSectionMenu;
+    end;
+    Exit;
+  end;
+  if AFrame.TitleBar.PopupMenu = FSectionMenu then
+  begin
+    AFrame.TitleBar.PopupMenu := nil;
+  end;
+  if AFrame.PopupMenu = FSectionMenu then
+  begin
+    AFrame.PopupMenu := nil;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardMenus.SectionMenuPopup(Sender: TObject);
+begin
+  PrepareSectionMenu(SectionIdOf(FSectionMenu.PopupComponent));
+end;
+
+procedure TAtlasWelcomeBoardMenus.SectionMenuHide(Sender: TObject);
+var
+  mId: string;
+  mWhere: TPoint;
+begin
+  mId := FMenuId;
+  if mId = '' then
+  begin
+    Exit;
+  end;
+  mWhere := FSectionMenu.PopupPoint;
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.HideSectionAt(mId, mWhere);
+    end);
+end;
+
+procedure TAtlasWelcomeBoardMenus.SectionMenuSettings(Sender: TObject);
+var
+  mId: string;
+begin
+  mId := FMenuId;
+  if mId = '' then
+  begin
+    Exit;
+  end;
+  Later(FBoard,
+    procedure(ASource: IAtlasWelcomeArrangeSource)
+    begin
+      ASource.ShowSectionSettings(mId);
+    end);
+end;
+
+procedure TAtlasWelcomeBoardMenus.SectionMenuCustomize(Sender: TObject);
+begin
+  SetEditingLater(FBoard, not FBoard.FState.Editing);
+end;
+
+{ TAtlasWelcomeBoardArranger }
+
+constructor TAtlasWelcomeBoardArranger.Create(ABoard: TAtlasWelcomeBoardFrame);
+begin
+  inherited Create(ABoard);
+  FBoard := ABoard;
+  FDrag.TargetColumn := -1;
   FBar := TAtlasArrangeStrip.Create(Self);
-  FBar.Parent := Self;
+  FBar.Parent := ABoard;
   FBar.Align := alTop;
-  FBar.Top := FHeader.Top + FHeader.Height;
+  FBar.Top := ABoard.FHeader.Top + ABoard.FHeader.Height;
   FBar.Visible := False;
   FBar.OnPartClick :=
     procedure(const APart: TAtlasArrangePart)
@@ -246,7 +1040,7 @@ begin
       BarClick(APart);
     end;
   FHiddenBar := TAtlasArrangeStrip.Create(Self);
-  FHiddenBar.Parent := Self;
+  FHiddenBar.Parent := ABoard;
   FHiddenBar.Align := alBottom;
   FHiddenBar.Visible := False;
   FHiddenBar.OnPartClick :=
@@ -269,58 +1063,413 @@ begin
     begin
       DragEnd(ADrop);
     end;
-  FScroll := TScrollBox.Create(Self);
-  FScroll.Parent := Self;
-  FScroll.Align := alClient;
-  FScroll.BorderStyle := bsNone;
-  FScroll.ParentBackground := True;
-  FScroll.VertScrollBar.Tracking := True;
-  FScroll.OnResize := ScrollResize;
-  FScroll.OnMouseDown := ScrollMouseDown;
   FInsertLine := TPanel.Create(Self);
-  FInsertLine.Parent := FScroll;
+  FInsertLine.Parent := ABoard.FScroll;
   FInsertLine.BevelOuter := bvNone;
   FInsertLine.ParentBackground := False;
   FInsertLine.StyleElements := [];
   FInsertLine.Color := clHighlight;
   FInsertLine.Height := 3;
   FInsertLine.Visible := False;
-  FSectionMenu := TPopupMenu.Create(Self);
-  FSectionMenu.OnPopup := SectionMenuPopup;
-  Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHide);
-  Item.Tag := TagHide;
-  Item.OnClick := SectionMenuHide;
-  FSectionMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeSettings);
-  Item.Tag := TagSettings;
-  Item.OnClick := SectionMenuSettings;
-  FSectionMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := '-';
-  FSectionMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FSectionMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize);
-  Item.Tag := TagCustomize;
-  Item.OnClick := SectionMenuCustomize;
-  FSectionMenu.Items.Add(Item);
-  FBarMenu := TPopupMenu.Create(Self);
-  FEdgeTimer := TTimer.Create(Self);
-  FEdgeTimer.Enabled := False;
-  FEdgeTimer.Interval := 40;
-  FEdgeTimer.OnTimer := EdgeTick;
-  FEvents := TApplicationEvents.Create(nil);
-  FEvents.OnMessage := AppMessage;
+end;
+
+function TAtlasWelcomeBoardArranger.EnsureGrip(AFrame: TAtlasWelcomeSectionFrame): TAtlasWelcomeGrip;
+begin
+  Result := FBoard.GripOf(AFrame.SectionId);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  Result := TAtlasWelcomeGrip.Create(AFrame);
+  Result.Parent := AFrame.TitleBar;
+  Result.Align := alLeft;
+  Result.Width := Scaled(AFrame, TAtlasWelcomeGrip.GripWidth);
+  Result.SectionId := AFrame.SectionId;
+  Result.OnMove := GripMove;
+  Result.OnDragStart :=
+    procedure(AId: string)
+    begin
+      DragStart(AId, False);
+    end;
+  Result.OnDragMove :=
+    procedure(APoint: TPoint)
+    begin
+      DragMove(APoint);
+    end;
+  Result.OnDragEnd :=
+    procedure(ADrop: Boolean)
+    begin
+      DragEnd(ADrop);
+    end;
+end;
+
+function TAtlasWelcomeBoardArranger.EnsureTools(AFrame: TAtlasWelcomeSectionFrame): TAtlasWelcomeSectionTools;
+begin
+  Result := FBoard.ToolsOf(AFrame.SectionId);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  Result := TAtlasWelcomeSectionTools.Create(AFrame);
+  Result.Parent := AFrame.TitleBar;
+  Result.Align := alRight;
+  Result.Width := Scaled(AFrame, 2 * TAtlasWelcomeSectionTools.ToolWidth);
+  Result.SectionId := AFrame.SectionId;
+  Result.OnTool :=
+    procedure(AId: string; ATool: TAtlasWelcomeTool)
+    begin
+      ToolClick(AId, ATool);
+    end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.ApplyEditing;
+var
+  mFrame: TAtlasWelcomeSectionFrame;
+  mGrip: TAtlasWelcomeGrip;
+  mTools: TAtlasWelcomeSectionTools;
+begin
+  for mFrame in FBoard.FViews.Values do
+  begin
+    if FBoard.FState.Editing then
+    begin
+      mGrip := EnsureGrip(mFrame);
+      mTools := EnsureTools(mFrame);
+      mTools.Wide := FBoard.FLayout.WidthOf(mFrame.SectionId) > 1;
+      mTools.Invalidate;
+      mFrame.TitleLabel.Left := mGrip.Width + Scaled(mFrame, 4);
+    end
+    else
+    begin
+      FBoard.GripOf(mFrame.SectionId).Free;
+      FBoard.ToolsOf(mFrame.SectionId).Free;
+      mFrame.TitleLabel.Left := 2;
+    end;
+    // Rechtsklick „Ausblenden“ (#628-Weg) an Titel und Fläche des Bereichs.
+    FBoard.FMenus.AttachTo(mFrame, FBoard.FSource <> nil);
+  end;
+end;
+
+function TAtlasWelcomeBoardArranger.EditingParts: TArray<TAtlasArrangePart>;
+var
+  mCount: Integer;
+begin
+  Result := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeColumns), '', False)];
+  for mCount := TAtlasWelcomeLayout.MinColumns to TAtlasWelcomeLayout.MaxColumns do
+  begin
+    Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Column, IntToStr(mCount), IntToStr(mCount),
+      '', FBoard.FLayout.Columns = mCount)];
+  end;
+  Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Add, '',
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeAdd) + ' ▾', '', False),
+    TAtlasArrangePart.Create(TAtlasArrangePartKind.Reset, '',
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeReset),
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeResetHint), False)];
+end;
+
+function TAtlasWelcomeBoardArranger.BarParts: TArray<TAtlasArrangePart>;
+var
+  mState: TAtlasWelcomeBoardFrame.TSourceState;
+begin
+  Result := nil;
+  mState := FBoard.FState;
+  if not mState.CanCustomize then
+  begin
+    Exit;
+  end;
+  if mState.Editing then
+  begin
+    Result := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDone), '', True)];
+  end
+  else
+  begin
+    Result := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
+      '✎ ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize),
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CommandWelcomeCustomize), False)];
+  end;
+  // Umschalter im Kopf: mit mehreren Layouts immer, sonst nur beim Bearbeiten (dort Neu/Umbenennen).
+  if mState.Editing or (Length(mState.LayoutNames) > 1) then
+  begin
+    Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Layout, '',
+      TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayout, [mState.ActiveLayout]) + ' ▾', '', False)];
+  end;
+  if mState.Editing then
+  begin
+    Result := Result + EditingParts;
+  end;
+end;
+
+function TAtlasWelcomeBoardArranger.HiddenParts: TArray<TAtlasArrangePart>;
+var
+  mEntry: TAtlasWelcomeCatalogEntry;
+  mAny: Boolean;
+begin
+  Result := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHidden), '', False)];
+  mAny := False;
+  for mEntry in FBoard.FState.Catalog do
+  begin
+    if not mEntry.Shown then
+    begin
+      Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Hidden, mEntry.Id, mEntry.Title + ' +',
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeShowHint), False)];
+      mAny := True;
+    end;
+  end;
+  if not mAny then
+  begin
+    Result := Result + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHiddenNone), '', False)];
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.UpdateBars;
+var
+  mParts: TArray<TAtlasArrangePart>;
+begin
+  mParts := BarParts;
+  FBar.SetParts(mParts);
+  FBar.Visible := Length(mParts) > 0;
+  FHiddenBar.SetParts(HiddenParts);
+  FHiddenBar.Visible := FBoard.FState.Editing;
+  FInsertLine.Visible := FBoard.FState.Editing;
+end;
+
+procedure TAtlasWelcomeBoardArranger.FitBars;
+begin
+  if FBar.Visible then
+  begin
+    FBar.Height := FBar.PreferredHeight;
+  end;
+  if FHiddenBar.Visible then
+  begin
+    FHiddenBar.Height := FHiddenBar.PreferredHeight;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.Target(out AColumn: Integer; out ABefore: string);
+begin
+  AColumn := FDrag.TargetColumn;
+  ABefore := FDrag.TargetBefore;
+  if (AColumn < 0) or (AColumn > High(FBoard.FPlacement.Cells)) then
+  begin
+    // Vorgabe: Ende der Spalte mit dem meisten Platz.
+    AColumn := TAtlasWelcomeFlow.ShortestColumn(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed,
+      TAtlasWelcomeBoardFrame.Gap);
+    ABefore := '';
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.SetTarget(AColumn: Integer; const ABefore: string);
+begin
+  FDrag.TargetColumn := AColumn;
+  FDrag.TargetBefore := ABefore;
+  if AColumn < 0 then
+  begin
+    FDrag.TargetBefore := '';
+  end;
+  UpdateInsertLine;
+end;
+
+procedure TAtlasWelcomeBoardArranger.UpdateInsertLine;
+var
+  mColumn, mLeft, mTop, mWidth: Integer;
+  mBefore: string;
+begin
+  if not FBoard.FState.Editing then
+  begin
+    FInsertLine.Visible := False;
+    Exit;
+  end;
+  Target(mColumn, mBefore);
+  TAtlasWelcomeFlow.InsertLine(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
+    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, mColumn, mBefore, mLeft, mTop, mWidth);
+  FInsertLine.SetBounds(mLeft, mTop - 1 - FBoard.FScroll.VertScrollBar.Position, mWidth, 3);
+  FInsertLine.Color := StyleServices(FBoard).GetSystemColor(clHighlight);
+  FInsertLine.Visible := True;
+  FInsertLine.BringToFront;
+end;
+
+procedure TAtlasWelcomeBoardArranger.ClickAt(X, Y: Integer);
+var
+  mColumn: Integer;
+  mBefore: string;
+begin
+  TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
+    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, X, Y + FBoard.FScroll.VertScrollBar.Position,
+    '', mColumn, mBefore);
+  SetTarget(mColumn, mBefore);
+end;
+
+function TAtlasWelcomeBoardArranger.GripMove(const AId: string; ADirection: TAtlasWelcomeMove): Boolean;
+var
+  mMoved: TAtlasWelcomeLayout;
+  mGrip: TAtlasWelcomeGrip;
+begin
+  Result := FBoard.FState.Editing and FBoard.FLayout.MovedBy(AId, ADirection, ViewSections(FBoard), mMoved);
+  if not Result then
+  begin
+    Exit;
+  end;
+  FBoard.Rearranged(mMoved);
+  // Der Fokus bleibt am Griff des verschobenen Bereichs.
+  mGrip := FBoard.GripOf(AId);
+  if (mGrip <> nil) and CanTakeFocus(mGrip) then
+  begin
+    mGrip.SetFocus;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.ToolClick(const AId: string; ATool: TAtlasWelcomeTool);
+var
+  mId: string;
+begin
+  case ATool of
+    TAtlasWelcomeTool.Width:
+      FBoard.Rearranged(FBoard.FLayout.WithWidth(AId, 3 - FBoard.FLayout.WidthOf(AId)));
+    TAtlasWelcomeTool.Eye:
+      begin
+        mId := AId;
+        Later(FBoard,
+          procedure(ASource: IAtlasWelcomeArrangeSource)
+          begin
+            ASource.HideSection(mId);
+          end);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.DragStart(const AId: string; AHidden: Boolean);
+begin
+  if FBoard.FState.Editing then
+  begin
+    FDrag.Id := AId;
+    FDrag.Hidden := AHidden;
+    FDrag.DropValid := False;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.DragMove(const AScreen: TPoint);
+var
+  mLocal: TPoint;
+  mColumn: Integer;
+  mBefore: string;
+begin
+  if FDrag.Id = '' then
+  begin
+    Exit;
+  end;
+  mLocal := FBoard.FScroll.ScreenToClient(AScreen);
+  FDrag.DropValid := PtInRect(FBoard.FScroll.ClientRect, mLocal);
+  FBoard.FScroller.UpdateEdgeScroll(AScreen);
+  if not FDrag.DropValid then
+  begin
+    Exit;
+  end;
+  TAtlasWelcomeFlow.DropTarget(FBoard.FPlacement.Cells, FBoard.FPlacement.Placed, FBoard.FScroll.ClientWidth,
+    TAtlasWelcomeBoardFrame.Gap, TAtlasWelcomeBoardFrame.MinColumnWidth, mLocal.X,
+    mLocal.Y + FBoard.FScroll.VertScrollBar.Position, FDrag.Id, mColumn, mBefore);
+  SetTarget(mColumn, mBefore);
+end;
+
+procedure TAtlasWelcomeBoardArranger.DragEnd(ADrop: Boolean);
+var
+  mId, mBefore: string;
+  mColumn: Integer;
+begin
+  mId := FDrag.Id;
+  FDrag.Id := '';
+  FBoard.FScroller.EdgeTimer.Enabled := False;
+  if (mId = '') or not ADrop or not FDrag.DropValid then
+  begin
+    SetTarget(-1, '');
+    Exit;
+  end;
+  if FDrag.Hidden then
+  begin
+    ShowAtTarget(FBoard, mId);
+    Exit;
+  end;
+  Target(mColumn, mBefore);
+  // Danach wieder die Vorgabe: Ende der Spalte mit dem meisten Platz.
+  SetTarget(-1, '');
+  FBoard.Rearranged(FBoard.FLayout.MovedTo(mId, mColumn, mBefore));
+end;
+
+procedure TAtlasWelcomeBoardArranger.HiddenClick(const APart: TAtlasArrangePart);
+begin
+  if APart.Kind = TAtlasArrangePartKind.Hidden then
+  begin
+    ShowAtTarget(FBoard, APart.Value);
+  end;
+end;
+
+procedure TAtlasWelcomeBoardArranger.BarClick(const APart: TAtlasArrangePart);
+var
+  mWhere: TPoint;
+begin
+  case APart.Kind of
+    TAtlasArrangePartKind.Edit:
+      SetEditingLater(FBoard, not FBoard.FState.Editing);
+    TAtlasArrangePartKind.Column:
+      FBoard.Rearranged(FBoard.FLayout.WithColumns(StrToIntDef(APart.Value, FBoard.FLayout.Columns)));
+    TAtlasArrangePartKind.Reset:
+      Later(FBoard,
+        procedure(ASource: IAtlasWelcomeArrangeSource)
+        begin
+          ASource.ResetLayout;
+        end);
+    TAtlasArrangePartKind.Layout, TAtlasArrangePartKind.Add:
+      begin
+        if APart.Kind = TAtlasArrangePartKind.Layout then
+        begin
+          FBoard.FMenus.BuildLayoutMenu;
+        end
+        else
+        begin
+          FBoard.FMenus.BuildAddMenu;
+        end;
+        mWhere := FBar.ClientToScreen(Point(APart.Rect.Left, APart.Rect.Bottom));
+        FBoard.FMenus.BarMenu.Popup(mWhere.X, mWhere.Y);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+{ TAtlasWelcomeBoardFrame }
+
+constructor TAtlasWelcomeBoardFrame.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FViews := TObjectDictionary<string, TAtlasWelcomeSectionFrame>.Create([doOwnsValues]);
+  FPlacement.Wanted := 2;
+  FLayout := TAtlasWelcomeLayout.Atlas;
+  FHeader := TAtlasWelcomeHeaderFrame.Create(Self);
+  FHeader.Parent := Self;
+  FHeader.Align := alTop;
+  FScroll := TScrollBox.Create(Self);
+  FScroll.Parent := Self;
+  FScroll.Align := alClient;
+  FScroll.BorderStyle := bsNone;
+  FScroll.ParentBackground := True;
+  FScroll.VertScrollBar.Tracking := True;
+  FScroll.OnResize := PlaceEvent;
+  FScroll.OnMouseDown := ScrollMouseDown;
+  FArranger := TAtlasWelcomeBoardArranger.Create(Self);
+  FMenus := TAtlasWelcomeBoardMenus.Create(Self);
+  FScroller := TAtlasWelcomeBoardScroller.Create(Self);
 end;
 
 destructor TAtlasWelcomeBoardFrame.Destroy;
 begin
   // Zuerst: Nach dem Abbau der Bereiche darf keine Nachricht mehr hier ankommen.
-  FreeAndNil(FEvents);
-  if FEdgeTimer <> nil then
+  if FScroller <> nil then
   begin
-    FEdgeTimer.Enabled := False;
+    FScroller.Stop;
   end;
   // Die Bereichs-Frames gehören dem Wörterbuch, nicht dem Frame.
   FreeAndNil(FViews);
@@ -338,438 +1487,149 @@ end;
 
 function TAtlasWelcomeBoardFrame.GripOf(const AId: string): TAtlasWelcomeGrip;
 var
-  Frame: TAtlasWelcomeSectionFrame;
-  Index: Integer;
+  mFrame: TAtlasWelcomeSectionFrame;
 begin
   Result := nil;
-  Frame := View(AId);
-  if Frame = nil then
+  mFrame := View(AId);
+  if mFrame <> nil then
   begin
-    Exit;
-  end;
-  for Index := 0 to Frame.TitleBar.ControlCount - 1 do
-  begin
-    if Frame.TitleBar.Controls[Index] is TAtlasWelcomeGrip then
-    begin
-      Exit(TAtlasWelcomeGrip(Frame.TitleBar.Controls[Index]));
-    end;
+    Result := TAtlasWelcomeGrip(ChildOf(mFrame.TitleBar, TAtlasWelcomeGrip));
   end;
 end;
 
 function TAtlasWelcomeBoardFrame.ToolsOf(const AId: string): TAtlasWelcomeSectionTools;
 var
-  Frame: TAtlasWelcomeSectionFrame;
-  Index: Integer;
+  mFrame: TAtlasWelcomeSectionFrame;
 begin
   Result := nil;
-  Frame := View(AId);
-  if Frame = nil then
+  mFrame := View(AId);
+  if mFrame <> nil then
   begin
-    Exit;
+    Result := TAtlasWelcomeSectionTools(ChildOf(mFrame.TitleBar, TAtlasWelcomeSectionTools));
   end;
-  for Index := 0 to Frame.TitleBar.ControlCount - 1 do
-  begin
-    if Frame.TitleBar.Controls[Index] is TAtlasWelcomeSectionTools then
-    begin
-      Exit(TAtlasWelcomeSectionTools(Frame.TitleBar.Controls[Index]));
-    end;
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.ReadSource;
-begin
-  FCanCustomize := False;
-  FEditing := False;
-  FCatalog := nil;
-  FLayoutNames := nil;
-  FActiveLayout := '';
-  if FSource = nil then
-  begin
-    Exit;
-  end;
-  FCanCustomize := FSource.CanCustomize;
-  FEditing := FCanCustomize and FSource.Editing;
-  FCatalog := FSource.Catalog;
-  FLayoutNames := FSource.LayoutNames;
-  FActiveLayout := FSource.ActiveLayout;
 end;
 
 procedure TAtlasWelcomeBoardFrame.Rebuild(const ASections: TArray<TAtlasWelcomeSection>;
   const ALayout: TAtlasWelcomeLayout; AColumns: Integer);
 var
-  Wanted: TDictionary<string, Boolean>;
-  Section: TAtlasWelcomeSection;
-  Key: string;
-  Frame: TAtlasWelcomeSectionFrame;
+  mWanted: TDictionary<string, Boolean>;
+  mSection: TAtlasWelcomeSection;
+  mKey: string;
+  mFrame: TAtlasWelcomeSectionFrame;
 begin
-  FSections := ASections;
+  FPlacement.Sections := ASections;
   FLayout := ALayout;
-  FWanted := AColumns;
-  ReadSource;
-  Wanted := TDictionary<string, Boolean>.Create;
+  FPlacement.Wanted := AColumns;
+  ReadSource(Self);
+  mWanted := TDictionary<string, Boolean>.Create;
   try
-    for Section in ASections do
+    for mSection in ASections do
     begin
-      Key := LowerCase(Section.Id);
-      Wanted.AddOrSetValue(Key, True);
-      if not FViews.TryGetValue(Key, Frame) then
+      mKey := LowerCase(mSection.Id);
+      mWanted.AddOrSetValue(mKey, True);
+      if not FViews.TryGetValue(mKey, mFrame) then
       begin
         // Ohne Besitzer: Das Wörterbuch gibt die Frames frei.
-        Frame := TAtlasWelcomeViews.CreateView(Section.Id, nil);
-        if Frame = nil then
+        mFrame := TAtlasWelcomeViews.CreateView(mSection.Id, nil);
+        if mFrame = nil then
         begin
           Continue;
         end;
-        Frame.Parent := FScroll;
-        Frame.OnHeightChanged := ViewHeightChanged;
-        FViews.Add(Key, Frame);
-        Frame.UpdateContent;
+        mFrame.Parent := FScroll;
+        mFrame.OnHeightChanged := PlaceEvent;
+        FViews.Add(mKey, mFrame);
+        mFrame.UpdateContent;
       end;
-      Frame.ShowTitle := True;
-      Frame.Title := Section.Title;
+      mFrame.ShowTitle := True;
+      mFrame.Title := mSection.Title;
     end;
-    for Key in FViews.Keys.ToArray do
+    for mKey in FViews.Keys.ToArray do
     begin
-      if not Wanted.ContainsKey(Key) then
+      if not mWanted.ContainsKey(mKey) then
       begin
-        FViews.Remove(Key);
+        FViews.Remove(mKey);
       end;
     end;
   finally
-    Wanted.Free;
+    mWanted.Free;
   end;
   // Ein Ziel, dessen Bereich verschwunden ist, gilt nicht mehr.
-  if (FTargetBefore <> '') and (View(FTargetBefore) = nil) then
+  if (FArranger.FDrag.TargetBefore <> '') and (View(FArranger.FDrag.TargetBefore) = nil) then
   begin
-    FTargetColumn := -1;
+    FArranger.FDrag.TargetColumn := -1;
   end;
-  ApplyEditing;
-  UpdateBars;
+  FArranger.ApplyEditing;
+  FArranger.UpdateBars;
   Place;
 end;
 
-function TAtlasWelcomeBoardFrame.ViewSections: TArray<TAtlasWelcomeSection>;
-var
-  Section: TAtlasWelcomeSection;
-begin
-  Result := nil;
-  for Section in FSections do
-  begin
-    if View(Section.Id) <> nil then
-    begin
-      Result := Result + [Section];
-    end;
-  end;
-end;
-
-function TAtlasWelcomeBoardFrame.CatalogIndex(const AId: string): Integer;
-var
-  Index: Integer;
-begin
-  for Index := 0 to High(FCatalog) do
-  begin
-    if SameText(FCatalog[Index].Id, AId) then
-    begin
-      Exit(Index);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasWelcomeBoardFrame.ApplyEditing;
-var
-  Pair: TPair<string, TAtlasWelcomeSectionFrame>;
-  Frame: TAtlasWelcomeSectionFrame;
-  Grip: TAtlasWelcomeGrip;
-  Tools: TAtlasWelcomeSectionTools;
-begin
-  for Pair in FViews do
-  begin
-    Frame := Pair.Value;
-    Grip := GripOf(Frame.SectionId);
-    Tools := ToolsOf(Frame.SectionId);
-    if FEditing then
-    begin
-      if Grip = nil then
-      begin
-        Grip := TAtlasWelcomeGrip.Create(Frame);
-        Grip.Parent := Frame.TitleBar;
-        Grip.Align := alLeft;
-        Grip.Width := Scaled(Frame, TAtlasWelcomeGrip.GripWidth);
-        Grip.SectionId := Frame.SectionId;
-        Grip.OnMove := GripMove;
-        Grip.OnDragStart :=
-          procedure(AId: string)
-          begin
-            DragStart(AId, False);
-          end;
-        Grip.OnDragMove :=
-          procedure(APoint: TPoint)
-          begin
-            DragMove(APoint);
-          end;
-        Grip.OnDragEnd :=
-          procedure(ADrop: Boolean)
-          begin
-            DragEnd(ADrop);
-          end;
-      end;
-      if Tools = nil then
-      begin
-        Tools := TAtlasWelcomeSectionTools.Create(Frame);
-        Tools.Parent := Frame.TitleBar;
-        Tools.Align := alRight;
-        Tools.Width := Scaled(Frame, 2 * TAtlasWelcomeSectionTools.ToolWidth);
-        Tools.SectionId := Frame.SectionId;
-        Tools.OnTool :=
-          procedure(AId: string; ATool: TAtlasWelcomeTool)
-          begin
-            ToolClick(AId, ATool);
-          end;
-      end;
-      Tools.Wide := FLayout.WidthOf(Frame.SectionId) > 1;
-      Tools.Invalidate;
-      Frame.TitleLabel.Left := Grip.Width + Scaled(Frame, 4);
-    end
-    else
-    begin
-      Grip.Free;
-      Tools.Free;
-      Frame.TitleLabel.Left := 2;
-    end;
-    // Rechtsklick „Ausblenden“ (#628-Weg) an Titel und Fläche des Bereichs.
-    if FSource <> nil then
-    begin
-      Frame.TitleBar.PopupMenu := FSectionMenu;
-      if Frame.PopupMenu = nil then
-      begin
-        Frame.PopupMenu := FSectionMenu;
-      end;
-    end
-    else
-    begin
-      if Frame.TitleBar.PopupMenu = FSectionMenu then
-      begin
-        Frame.TitleBar.PopupMenu := nil;
-      end;
-      if Frame.PopupMenu = FSectionMenu then
-      begin
-        Frame.PopupMenu := nil;
-      end;
-    end;
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.UpdateBars;
-var
-  Parts: TArray<TAtlasArrangePart>;
-  Entry: TAtlasWelcomeCatalogEntry;
-  Count: Integer;
-  Any: Boolean;
-begin
-  Parts := nil;
-  if FCanCustomize then
-  begin
-    if FEditing then
-    begin
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeDone), '', True)];
-    end
-    else
-    begin
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Edit, '',
-        '✎ ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize),
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.CommandWelcomeCustomize), False)];
-    end;
-    // Umschalter im Kopf: mit mehreren Layouts immer, sonst nur beim Bearbeiten (dort Neu/Umbenennen).
-    if FEditing or (Length(FLayoutNames) > 1) then
-    begin
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Layout, '',
-        TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayout, [FActiveLayout]) + ' ▾', '', False)];
-    end;
-    if FEditing then
-    begin
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeColumns), '', False)];
-      for Count := TAtlasWelcomeLayout.MinColumns to TAtlasWelcomeLayout.MaxColumns do
-      begin
-        Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Column, IntToStr(Count), IntToStr(Count),
-          '', FLayout.Columns = Count)];
-      end;
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Add, '',
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeAdd) + ' ▾', '', False),
-        TAtlasArrangePart.Create(TAtlasArrangePartKind.Reset, '',
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeReset),
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeResetHint), False)];
-    end;
-  end;
-  FBar.SetParts(Parts);
-  FBar.Visible := Length(Parts) > 0;
-  // Ausgeblendet: angemeldete Bereiche, deren Einstellung aus ist.
-  Parts := [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHidden), '', False)];
-  Any := False;
-  for Entry in FCatalog do
-  begin
-    if not Entry.Shown then
-    begin
-      Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Hidden, Entry.Id, Entry.Title + ' +',
-        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeShowHint), False)];
-      Any := True;
-    end;
-  end;
-  if not Any then
-  begin
-    Parts := Parts + [TAtlasArrangePart.Create(TAtlasArrangePartKind.Text, '',
-      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeHiddenNone), '', False)];
-  end;
-  FHiddenBar.SetParts(Parts);
-  FHiddenBar.Visible := FEditing;
-  FInsertLine.Visible := FEditing;
-end;
-
-procedure TAtlasWelcomeBoardFrame.ScrollResize(Sender: TObject);
-begin
-  Place;
-end;
-
-procedure TAtlasWelcomeBoardFrame.ViewHeightChanged(Sender: TObject);
+procedure TAtlasWelcomeBoardFrame.PlaceEvent(Sender: TObject);
 begin
   Place;
 end;
 
 procedure TAtlasWelcomeBoardFrame.Place;
 var
-  Count, Position: Integer;
-  Item: TAtlasWelcomePlaced;
-  Frame: TAtlasWelcomeSectionFrame;
-  Column: Integer;
-  Cell: TAtlasWelcomeCell;
+  mCount, mPosition: Integer;
+  mItem: TAtlasWelcomePlaced;
+  mFrame: TAtlasWelcomeSectionFrame;
 begin
-  if FPlacing or (FViews = nil) then
+  if FPlacement.Placing or (FViews = nil) then
   begin
     Exit;
   end;
-  FPlacing := True;
+  FPlacement.Placing := True;
   try
-    if FBar.Visible then
-    begin
-      FBar.Height := FBar.PreferredHeight;
-    end;
-    if FHiddenBar.Visible then
-    begin
-      FHiddenBar.Height := FHiddenBar.PreferredHeight;
-    end;
-    Count := FWanted;
+    FArranger.FitBars;
+    mCount := FPlacement.Wanted;
     if FAutoFold and (FScroll.ClientWidth > 0) then
     begin
-      Count := TAtlasWelcomeFlow.FitColumns(FWanted, FScroll.ClientWidth, Gap, FoldWidth);
+      mCount := TAtlasWelcomeFlow.FitColumns(FPlacement.Wanted, FScroll.ClientWidth, Gap, FoldWidth);
     end;
-    FCells := FLayout.Cells(ViewSections, Count);
-    FColumns := nil;
-    SetLength(FColumns, Length(FCells));
-    for Column := 0 to High(FCells) do
-    begin
-      for Cell in FCells[Column] do
-      begin
-        FColumns[Column] := FColumns[Column] + [Cell.Id];
-      end;
-    end;
+    FPlacement.Cells := FLayout.Cells(ViewSections(Self), mCount);
+    FPlacement.Columns := ColumnIds(FPlacement.Cells);
     // Breite zuerst: Bereiche mit umbrechendem Text (#756) berechnen ihre Höhe danach.
-    FPlaced := TAtlasWelcomeFlow.Place(FCells, FScroll.ClientWidth, Gap, MinColumnWidth,
+    FPlacement.Placed := TAtlasWelcomeFlow.Place(FPlacement.Cells, FScroll.ClientWidth, Gap, MinColumnWidth,
       function(const AId: string; AWidth: Integer): Integer
       var
-        View_: TAtlasWelcomeSectionFrame;
+        mView: TAtlasWelcomeSectionFrame;
       begin
         Result := 0;
-        View_ := View(AId);
-        if View_ = nil then
+        mView := View(AId);
+        if mView <> nil then
         begin
-          Exit;
+          mView.Width := AWidth;
+          Result := mView.PreferredHeight;
         end;
-        View_.Width := AWidth;
-        Result := View_.PreferredHeight;
       end);
-    Position := FScroll.VertScrollBar.Position;
-    for Item in FPlaced do
+    mPosition := FScroll.VertScrollBar.Position;
+    for mItem in FPlacement.Placed do
     begin
-      Frame := View(Item.Id);
-      if Frame <> nil then
+      mFrame := View(mItem.Id);
+      if mFrame <> nil then
       begin
-        Frame.SetBounds(Item.Left, Item.Top - Position, Item.Width, Item.Height);
+        mFrame.SetBounds(mItem.Left, mItem.Top - mPosition, mItem.Width, mItem.Height);
       end;
     end;
-    UpdateInsertLine;
+    FArranger.UpdateInsertLine;
   finally
-    FPlacing := False;
+    FPlacement.Placing := False;
   end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.Target(out AColumn: Integer; out ABefore: string);
-begin
-  AColumn := FTargetColumn;
-  ABefore := FTargetBefore;
-  if (AColumn < 0) or (AColumn > High(FCells)) then
-  begin
-    // Vorgabe: Ende der Spalte mit dem meisten Platz.
-    AColumn := TAtlasWelcomeFlow.ShortestColumn(FCells, FPlaced, Gap);
-    ABefore := '';
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.SetTarget(AColumn: Integer; const ABefore: string);
-begin
-  FTargetColumn := AColumn;
-  FTargetBefore := ABefore;
-  if AColumn < 0 then
-  begin
-    FTargetBefore := '';
-  end;
-  UpdateInsertLine;
-end;
-
-procedure TAtlasWelcomeBoardFrame.UpdateInsertLine;
-var
-  Column, mLeft, mTop, mWidth: Integer;
-  Before: string;
-begin
-  if not FEditing then
-  begin
-    FInsertLine.Visible := False;
-    Exit;
-  end;
-  Target(Column, Before);
-  TAtlasWelcomeFlow.InsertLine(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, Column, Before, mLeft,
-    mTop, mWidth);
-  FInsertLine.SetBounds(mLeft, mTop - 1 - FScroll.VertScrollBar.Position, mWidth, 3);
-  FInsertLine.Color := StyleServices(Self).GetSystemColor(clHighlight);
-  FInsertLine.Visible := True;
-  FInsertLine.BringToFront;
 end;
 
 procedure TAtlasWelcomeBoardFrame.ScrollMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
-var
-  Column: Integer;
-  Before: string;
-  mForm: TCustomForm;
 begin
-  // Fokus auf die Seite, damit Bild auf/ab und Pos1/Ende sie scrollen (#1440). Nur mit sichtbarer Form:
-  // CanFocus allein lässt eine verborgene durch.
-  mForm := GetParentForm(FScroll);
-  if (Button = mbLeft) and FScroll.CanFocus and FScroll.Showing and not FScroll.Focused and (mForm <> nil) and
-    mForm.Visible then
+  // Fokus auf die Seite, damit Bild auf/ab und Pos1/Ende sie scrollen (#1440).
+  if (Button = mbLeft) and CanTakeFocus(FScroll) then
   begin
     FScroll.SetFocus;
   end;
   // Klick auf freie Fläche setzt die Einfügelinie für „Bereich hinzufügen“ und „Ausgeblendet“.
-  if not FEditing or (Button <> mbLeft) then
+  if FState.Editing and (Button = mbLeft) then
   begin
-    Exit;
+    FArranger.ClickAt(X, Y);
   end;
-  TAtlasWelcomeFlow.DropTarget(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, X,
-    Y + FScroll.VertScrollBar.Position, '', Column, Before);
-  SetTarget(Column, Before);
 end;
 
 function TAtlasWelcomeBoardFrame.Contains(AControl: TControl): Boolean;
@@ -788,746 +1648,49 @@ begin
   Result := False;
 end;
 
-function TAtlasWelcomeBoardFrame.ScrollArea(AControl: TWinControl; AWheelDelta: Integer): Boolean;
-var
-  mBar: TControlScrollBar;
-  mMax, mPixels, mLines, mIndex: Integer;
-  mInfo: TScrollInfo;
-  mCode: WPARAM;
-begin
-  Result := False;
-  if AControl is TScrollingWinControl then
-  begin
-    // Scrollbox und Frames: Die VCL scrollt sie nicht selbst mit dem Mausrad.
-    mBar := TScrollingWinControl(AControl).VertScrollBar;
-    if not mBar.Visible or not mBar.IsScrollBarVisible then
-    begin
-      Exit;
-    end;
-    mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, AControl.ClientHeight);
-    if not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, AWheelDelta) then
-    begin
-      Exit;
-    end;
-    mPixels := TAtlasWelcomeScroll.WheelPixels(FWheelRest, AWheelDelta, Mouse.WheelScrollLines,
-      Scaled(Self, TAtlasWelcomeScroll.LineHeight), AControl.ClientHeight);
-    mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mPixels, mMax);
-    Exit(True);
-  end;
-  // Fenster mit eigener senkrechter Leiste (Listen, Mehrzeiler): zeilenweise, wie ihr eigenes Mausrad.
-  if not AControl.HandleAllocated or ((GetWindowLongPtr(AControl.Handle, GWL_STYLE) and WS_VSCROLL) = 0) then
-  begin
-    Exit;
-  end;
-  mInfo := Default(TScrollInfo);
-  mInfo.cbSize := SizeOf(mInfo);
-  mInfo.fMask := SIF_ALL;
-  if not GetScrollInfo(AControl.Handle, SB_VERT, mInfo) then
-  begin
-    Exit;
-  end;
-  mMax := TAtlasWelcomeScroll.MaxPosition(mInfo.nMax - mInfo.nMin + 1, Integer(mInfo.nPage));
-  if not TAtlasWelcomeScroll.CanScroll(mInfo.nPos - mInfo.nMin, mMax, AWheelDelta) then
-  begin
-    Exit;
-  end;
-  mLines := TAtlasWelcomeScroll.WheelLines(FWheelRest, AWheelDelta, Mouse.WheelScrollLines);
-  if mLines < 0 then
-  begin
-    mCode := SB_LINEUP;
-  end
-  else
-  begin
-    mCode := SB_LINEDOWN;
-  end;
-  for mIndex := 1 to Abs(mLines) do
-  begin
-    AControl.Perform(WM_VSCROLL, mCode, 0);
-  end;
-  if mLines <> 0 then
-  begin
-    AControl.Perform(WM_VSCROLL, SB_ENDSCROLL, 0);
-  end;
-  Result := True;
-end;
-
-function TAtlasWelcomeBoardFrame.ScrollWheel(AControl: TControl; AWheelDelta: Integer): Boolean;
-var
-  mControl: TControl;
-begin
-  Result := False;
-  if (AWheelDelta = 0) or not Contains(AControl) then
-  begin
-    Exit;
-  end;
-  // Von innen nach außen: Eine Liste mit eigener Leiste scrollt zuerst selbst, an ihrem Ende die Seite.
-  mControl := AControl;
-  while (mControl <> nil) and (mControl <> FScroll) and (mControl <> Self) do
-  begin
-    if (mControl is TWinControl) and ScrollArea(TWinControl(mControl), AWheelDelta) then
-    begin
-      Exit(True);
-    end;
-    mControl := mControl.Parent;
-  end;
-  Result := ScrollArea(FScroll, AWheelDelta);
-end;
-
-function TAtlasWelcomeBoardFrame.ScrollKey(AKey: TAtlasWelcomeScrollKey): Boolean;
-var
-  mBar: TControlScrollBar;
-  mOld, mNew: Integer;
-begin
-  mBar := FScroll.VertScrollBar;
-  mOld := mBar.Position;
-  mNew := TAtlasWelcomeScroll.KeyPosition(AKey, mOld,
-    TAtlasWelcomeScroll.MaxPosition(mBar.Range, FScroll.ClientHeight), FScroll.ClientHeight,
-    Scaled(Self, TAtlasWelcomeScroll.LineHeight));
-  Result := mNew <> mOld;
-  if Result then
-  begin
-    mBar.Position := mNew;
-  end;
-end;
-
-class function TAtlasWelcomeBoardFrame.ScrollKeyOf(AKey: Word; AShift: TShiftState): TAtlasWelcomeScrollKey;
-begin
-  Result := TAtlasWelcomeScrollKey.None;
-  if ssAlt in AShift then
-  begin
-    Exit;
-  end;
-  case AKey of
-    VK_PRIOR:
-      Result := TAtlasWelcomeScrollKey.PageUp;
-    VK_NEXT:
-      Result := TAtlasWelcomeScrollKey.PageDown;
-    VK_HOME:
-      Result := TAtlasWelcomeScrollKey.Top;
-    VK_END:
-      Result := TAtlasWelcomeScrollKey.Bottom;
-  else
-    // Übrige Tasten bleiben beim Steuerelement.
-  end;
-end;
-
-class function TAtlasWelcomeBoardFrame.OwnsScrollKeys(AControl: TControl): Boolean;
-begin
-  // Eingabefelder (Suchfeld #760) bewegen den Cursor, Listen und Auswahlfelder ihre Auswahl.
-  Result := (AControl is TCustomEdit) or (AControl is TCustomListControl);
-end;
-
-procedure TAtlasWelcomeBoardFrame.AppMessage(var Msg: TMsg; var Handled: Boolean);
-var
-  mControl: TControl;
-  mKey: TAtlasWelcomeScrollKey;
-begin
-  if Handled or not Showing then
-  begin
-    Exit;
-  end;
-  try
-    case Msg.message of
-      WM_MOUSEWHEEL:
-        begin
-          // Strg (Zoom) und Umschalt (waagerecht) bleiben beim Fenster.
-          if (LoWord(Msg.wParam) and (MK_CONTROL or MK_SHIFT)) <> 0 then
-          begin
-            Exit;
-          end;
-          mControl := FindDragTarget(Msg.pt, True);
-          if not Contains(mControl) then
-          begin
-            Exit;
-          end;
-          ScrollWheel(mControl, SmallInt(HiWord(Msg.wParam)));
-          // Auch am Ende: Über der Seite gehört das Rad ihr, sonst scrollte das fokussierte Fenster (der Editor).
-          Handled := True;
-        end;
-      WM_KEYDOWN:
-        begin
-          mControl := FindControl(Msg.hwnd);
-          if not Contains(mControl) or OwnsScrollKeys(mControl) then
-          begin
-            Exit;
-          end;
-          mKey := ScrollKeyOf(Word(Msg.wParam), KeyDataToShiftState(Msg.lParam));
-          if mKey = TAtlasWelcomeScrollKey.None then
-          begin
-            Exit;
-          end;
-          ScrollKey(mKey);
-          Handled := True;
-        end;
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-  end;
-end;
-
-function TAtlasWelcomeBoardFrame.EdgeStep: Integer;
-var
-  mLocal: TPoint;
-begin
-  Result := 0;
-  if (FDragId = '') or not FScroll.HandleAllocated then
-  begin
-    Exit;
-  end;
-  mLocal := FScroll.ScreenToClient(FEdgePoint);
-  // Nur über der Seite: Der Zug aus der Leiste „Ausgeblendet“ unten soll nicht gleich losscrollen.
-  if not PtInRect(FScroll.ClientRect, mLocal) then
-  begin
-    Exit;
-  end;
-  Result := TAtlasWelcomeScroll.EdgeScroll(mLocal.Y, FScroll.ClientHeight,
-    Scaled(Self, TAtlasWelcomeScroll.EdgeWidth), Scaled(Self, TAtlasWelcomeScroll.EdgeStep));
-end;
-
-procedure TAtlasWelcomeBoardFrame.UpdateEdgeScroll(const AScreen: TPoint);
-var
-  mBar: TControlScrollBar;
-begin
-  FEdgePoint := AScreen;
-  mBar := FScroll.VertScrollBar;
-  FEdgeTimer.Enabled := (EdgeStep <> 0) and mBar.IsScrollBarVisible;
-end;
-
-procedure TAtlasWelcomeBoardFrame.EdgeTick(Sender: TObject);
-var
-  mBar: TControlScrollBar;
-  mStep, mMax: Integer;
-begin
-  mStep := EdgeStep;
-  mBar := FScroll.VertScrollBar;
-  mMax := TAtlasWelcomeScroll.MaxPosition(mBar.Range, FScroll.ClientHeight);
-  if (mStep = 0) or not TAtlasWelcomeScroll.CanScroll(mBar.Position, mMax, -mStep) then
-  begin
-    FEdgeTimer.Enabled := False;
-    Exit;
-  end;
-  mBar.Position := TAtlasWelcomeScroll.Clamp(mBar.Position + mStep, mMax);
-  // Einfügelinie zum neuen Inhalt unter dem stehenden Zeiger nachführen.
-  DragMove(FEdgePoint);
-end;
-
-procedure TAtlasWelcomeBoardFrame.Later(const AProc: TProc<IAtlasWelcomeArrangeSource>);
-var
-  Source_: IAtlasWelcomeArrangeSource;
-begin
-  Source_ := FSource;
-  if Source_ = nil then
-  begin
-    Exit;
-  end;
-  // Über die Nachrichtenschleife: Der Aufruf baut die Tafel neu auf und gäbe sonst das klickende Element frei.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-        procedure
-        begin
-          AProc(Source_);
-        end);
-    end);
-end;
-
 procedure TAtlasWelcomeBoardFrame.Rearranged(const ALayout: TAtlasWelcomeLayout);
 var
-  Layout_: TAtlasWelcomeLayout;
+  mLayout: TAtlasWelcomeLayout;
 begin
   if TAtlasWelcomeLayout.Same(ALayout, FLayout) then
   begin
     Exit;
   end;
   // Sofort zeigen (mehrere Strg+Pfeiltasten hintereinander), gespeichert wird über die Quelle. Eine andere
-  // Spaltenzahl gilt gleich mit: Place verteilt auf FWanted, das sonst erst der nächste Rebuild setzt.
+  // Spaltenzahl gilt gleich mit: Place verteilt auf Wanted, das sonst erst der nächste Rebuild setzt.
   if ALayout.Columns <> FLayout.Columns then
   begin
-    FWanted := ALayout.Columns;
+    FPlacement.Wanted := ALayout.Columns;
   end;
   FLayout := ALayout;
-  Layout_ := ALayout;
-  ApplyEditing;
-  UpdateBars;
+  mLayout := ALayout;
+  FArranger.ApplyEditing;
+  FArranger.UpdateBars;
   Place;
-  Later(
+  Later(Self,
     procedure(ASource: IAtlasWelcomeArrangeSource)
     begin
-      ASource.Arrange(Layout_);
-    end);
-end;
-
-function TAtlasWelcomeBoardFrame.GripMove(const AId: string; ADirection: TAtlasWelcomeMove): Boolean;
-var
-  Moved: TAtlasWelcomeLayout;
-  Grip: TAtlasWelcomeGrip;
-begin
-  Result := FEditing and FLayout.MovedBy(AId, ADirection, ViewSections, Moved);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Rearranged(Moved);
-  // Der Fokus bleibt am Griff des verschobenen Bereichs.
-  Grip := GripOf(AId);
-  // Nur mit sichtbarer Form: CanFocus allein lässt eine verborgene durch („kann den Fokus nicht erhalten“).
-  if (Grip <> nil) and Grip.CanFocus and not Grip.Focused and (GetParentForm(Grip) <> nil) and GetParentForm(Grip).Visible then
-  begin
-    Grip.SetFocus;
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.ToolClick(const AId: string; ATool: TAtlasWelcomeTool);
-var
-  Id: string;
-begin
-  case ATool of
-    TAtlasWelcomeTool.Width:
-      Rearranged(FLayout.WithWidth(AId, 3 - FLayout.WidthOf(AId)));
-    TAtlasWelcomeTool.Eye:
-      begin
-        Id := AId;
-        Later(
-          procedure(ASource: IAtlasWelcomeArrangeSource)
-          begin
-            ASource.HideSection(Id);
-          end);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.DragStart(const AId: string; AHidden: Boolean);
-begin
-  if not FEditing then
-  begin
-    Exit;
-  end;
-  FDragId := AId;
-  FDragHidden := AHidden;
-  FDropValid := False;
-end;
-
-procedure TAtlasWelcomeBoardFrame.DragMove(const AScreen: TPoint);
-var
-  Local: TPoint;
-  Column: Integer;
-  Before: string;
-begin
-  if FDragId = '' then
-  begin
-    Exit;
-  end;
-  Local := FScroll.ScreenToClient(AScreen);
-  FDropValid := PtInRect(FScroll.ClientRect, Local);
-  UpdateEdgeScroll(AScreen);
-  if not FDropValid then
-  begin
-    Exit;
-  end;
-  TAtlasWelcomeFlow.DropTarget(FCells, FPlaced, FScroll.ClientWidth, Gap, MinColumnWidth, Local.X,
-    Local.Y + FScroll.VertScrollBar.Position, FDragId, Column, Before);
-  SetTarget(Column, Before);
-end;
-
-procedure TAtlasWelcomeBoardFrame.DragEnd(ADrop: Boolean);
-var
-  Id, Before: string;
-  Column: Integer;
-begin
-  Id := FDragId;
-  FDragId := '';
-  FEdgeTimer.Enabled := False;
-  if (Id = '') or not ADrop or not FDropValid then
-  begin
-    SetTarget(-1, '');
-    Exit;
-  end;
-  Target(Column, Before);
-  // Danach wieder die Vorgabe: Ende der Spalte mit dem meisten Platz.
-  SetTarget(-1, '');
-  if FDragHidden then
-  begin
-    Later(
-      procedure(ASource: IAtlasWelcomeArrangeSource)
-      begin
-        ASource.ShowSection(Id, Column, Before);
-      end);
-  end
-  else
-  begin
-    Rearranged(FLayout.MovedTo(Id, Column, Before));
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.HiddenClick(const APart: TAtlasArrangePart);
-var
-  Id, Before: string;
-  Column: Integer;
-begin
-  if APart.Kind <> TAtlasArrangePartKind.Hidden then
-  begin
-    Exit;
-  end;
-  Id := APart.Value;
-  Target(Column, Before);
-  SetTarget(-1, '');
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.ShowSection(Id, Column, Before);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.BarClick(const APart: TAtlasArrangePart);
-var
-  Editing_: Boolean;
-  Count: Integer;
-  Where: TPoint;
-begin
-  case APart.Kind of
-    TAtlasArrangePartKind.Edit:
-      begin
-        Editing_ := not FEditing;
-        Later(
-          procedure(ASource: IAtlasWelcomeArrangeSource)
-          begin
-            ASource.SetEditing(Editing_);
-          end);
-      end;
-    TAtlasArrangePartKind.Column:
-      begin
-        Count := StrToIntDef(APart.Value, FLayout.Columns);
-        Rearranged(FLayout.WithColumns(Count));
-      end;
-    TAtlasArrangePartKind.Reset:
-      Later(
-        procedure(ASource: IAtlasWelcomeArrangeSource)
-        begin
-          ASource.ResetLayout;
-        end);
-    TAtlasArrangePartKind.Layout, TAtlasArrangePartKind.Add:
-      begin
-        if APart.Kind = TAtlasArrangePartKind.Layout then
-        begin
-          BuildLayoutMenu;
-        end
-        else
-        begin
-          BuildAddMenu;
-        end;
-        Where := FBar.ClientToScreen(Point(APart.Rect.Left, APart.Rect.Bottom));
-        FBarMenu.Popup(Where.X, Where.Y);
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.BuildLayoutMenu;
-var
-  Item: TMenuItem;
-  mName: string;
-  Index: Integer;
-begin
-  FBarMenu.Items.Clear;
-  for Index := 0 to High(FLayoutNames) do
-  begin
-    mName := FLayoutNames[Index];
-    Item := TMenuItem.Create(FBarMenu);
-    Item.Caption := mName;
-    Item.RadioItem := True;
-    Item.Checked := SameText(mName, FActiveLayout);
-    Item.Tag := Index;
-    Item.OnClick := LayoutMenuSwitch;
-    FBarMenu.Items.Add(Item);
-  end;
-  Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := '-';
-  FBarMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNewLayout);
-  Item.OnClick := LayoutMenuNew;
-  FBarMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeRenameLayout);
-  Item.OnClick := LayoutMenuRename;
-  FBarMenu.Items.Add(Item);
-  Item := TMenuItem.Create(FBarMenu);
-  Item.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteLayout, [FActiveLayout]);
-  Item.Enabled := Length(FLayoutNames) > 1;
-  Item.OnClick := LayoutMenuDelete;
-  FBarMenu.Items.Add(Item);
-end;
-
-procedure TAtlasWelcomeBoardFrame.BuildAddMenu;
-var
-  Item: TMenuItem;
-  Index: Integer;
-begin
-  FBarMenu.Items.Clear;
-  // Alle Atlas-Bereiche mit kurzer Beschreibung; sichtbare sind abgehakt und lassen sich nicht wählen.
-  for Index := 0 to High(FCatalog) do
-  begin
-    Item := TMenuItem.Create(FBarMenu);
-    Item.Caption := FCatalog[Index].Title + ' – ' + FCatalog[Index].Description;
-    Item.Checked := FCatalog[Index].Shown;
-    Item.Enabled := not FCatalog[Index].Shown;
-    Item.Tag := Index;
-    Item.OnClick := AddMenuClick;
-    FBarMenu.Items.Add(Item);
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.AddMenuClick(Sender: TObject);
-var
-  Index, Column: Integer;
-  Id, Before: string;
-begin
-  Index := (Sender as TMenuItem).Tag;
-  if (Index < 0) or (Index > High(FCatalog)) or FCatalog[Index].Shown then
-  begin
-    Exit;
-  end;
-  Id := FCatalog[Index].Id;
-  Target(Column, Before);
-  SetTarget(-1, '');
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.ShowSection(Id, Column, Before);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.LayoutMenuSwitch(Sender: TObject);
-var
-  Index: Integer;
-  mName: string;
-begin
-  Index := (Sender as TMenuItem).Tag;
-  if (Index < 0) or (Index > High(FLayoutNames)) or SameText(FLayoutNames[Index], FActiveLayout) then
-  begin
-    Exit;
-  end;
-  mName := FLayoutNames[Index];
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.SwitchLayout(mName);
-    end);
-end;
-
-function TAtlasWelcomeBoardFrame.NameTaken(const AName: string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in FLayoutNames do
-  begin
-    Result := Result or SameText(mName, Trim(AName));
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.LayoutMenuNew(Sender: TObject);
-var
-  mName: string;
-begin
-  mName := '';
-  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
-    (Trim(mName) = '') then
-  begin
-    Exit;
-  end;
-  if NameTaken(mName) then
-  begin
-    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
-    Exit;
-  end;
-  mName := Trim(mName);
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.AddLayout(mName);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.LayoutMenuRename(Sender: TObject);
-var
-  mName: string;
-begin
-  mName := FActiveLayout;
-  if not AskName(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeLayoutName), mName) or
-    (Trim(mName) = '') or SameText(Trim(mName), FActiveLayout) then
-  begin
-    Exit;
-  end;
-  if NameTaken(mName) then
-  begin
-    Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeLayoutTaken, [Trim(mName)]), False);
-    Exit;
-  end;
-  mName := Trim(mName);
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.RenameLayout(mName);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.LayoutMenuDelete(Sender: TObject);
-begin
-  if (Length(FLayoutNames) < 2) or
-    not Confirm(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeArrangeDeleteConfirm, [FActiveLayout]), True) then
-  begin
-    Exit;
-  end;
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.DeleteLayout;
-    end);
-end;
-
-function TAtlasWelcomeBoardFrame.AskName(const APrompt: string; var AName: string): Boolean;
-begin
-  if Assigned(FOnAskName) then
-  begin
-    Exit(FOnAskName(APrompt, AName));
-  end;
-  Result := InputQuery(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeCustomize), APrompt, AName);
-end;
-
-function TAtlasWelcomeBoardFrame.Confirm(const AText: string; AQuestion: Boolean): Boolean;
-begin
-  if Assigned(FOnConfirm) then
-  begin
-    Exit(FOnConfirm(AText, AQuestion));
-  end;
-  if AQuestion then
-  begin
-    Result := MessageDlg(AText, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
-  end
-  else
-  begin
-    MessageDlg(AText, mtInformation, [mbOK], 0);
-    Result := True;
-  end;
-end;
-
-function TAtlasWelcomeBoardFrame.SectionIdOf(AComponent: TComponent): string;
-var
-  Control: TControl;
-begin
-  Result := '';
-  if not (AComponent is TControl) then
-  begin
-    Exit;
-  end;
-  Control := TControl(AComponent);
-  while (Control <> nil) and not (Control is TAtlasWelcomeSectionFrame) do
-  begin
-    Control := Control.Parent;
-  end;
-  if Control <> nil then
-  begin
-    Result := TAtlasWelcomeSectionFrame(Control).SectionId;
-  end;
-end;
-
-procedure TAtlasWelcomeBoardFrame.PrepareSectionMenu(const AId: string);
-var
-  Item: TMenuItem;
-  Index: Integer;
-begin
-  FMenuId := AId;
-  for Index := 0 to FSectionMenu.Items.Count - 1 do
-  begin
-    Item := FSectionMenu.Items[Index];
-    case Item.Tag of
-      TagHide, TagSettings:
-        Item.Enabled := (FSource <> nil) and (CatalogIndex(AId) >= 0);
-      TagCustomize:
-        begin
-          Item.Visible := FCanCustomize;
-          Item.Checked := FEditing;
-        end;
-    end;
-  end;
-  // Trennstrich nur mit „Seite anpassen“ dahinter.
-  FSectionMenu.Items[2].Visible := FCanCustomize;
-end;
-
-procedure TAtlasWelcomeBoardFrame.SectionMenuPopup(Sender: TObject);
-begin
-  PrepareSectionMenu(SectionIdOf(FSectionMenu.PopupComponent));
-end;
-
-procedure TAtlasWelcomeBoardFrame.SectionMenuHide(Sender: TObject);
-var
-  Id: string;
-  Where: TPoint;
-begin
-  Id := FMenuId;
-  if Id = '' then
-  begin
-    Exit;
-  end;
-  Where := FSectionMenu.PopupPoint;
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.HideSectionAt(Id, Where);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.SectionMenuSettings(Sender: TObject);
-var
-  Id: string;
-begin
-  Id := FMenuId;
-  if Id = '' then
-  begin
-    Exit;
-  end;
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.ShowSectionSettings(Id);
-    end);
-end;
-
-procedure TAtlasWelcomeBoardFrame.SectionMenuCustomize(Sender: TObject);
-var
-  Editing_: Boolean;
-begin
-  Editing_ := not FEditing;
-  Later(
-    procedure(ASource: IAtlasWelcomeArrangeSource)
-    begin
-      ASource.SetEditing(Editing_);
+      ASource.Arrange(mLayout);
     end);
 end;
 
 procedure TAtlasWelcomeBoardFrame.UpdateSection(const AId: string);
 var
-  Frame: TAtlasWelcomeSectionFrame;
+  mFrame: TAtlasWelcomeSectionFrame;
 begin
   if AId = '' then
   begin
-    for Frame in FViews.Values do
+    for mFrame in FViews.Values do
     begin
-      Frame.UpdateContent;
+      mFrame.UpdateContent;
     end;
     Place;
     Exit;
   end;
-  Frame := View(AId);
-  if Frame <> nil then
+  mFrame := View(AId);
+  if mFrame <> nil then
   begin
-    Frame.UpdateContent;
+    mFrame.UpdateContent;
     Place;
   end;
 end;

@@ -116,11 +116,41 @@ begin
   Result := TRuleDescriptor.Create(UnconditionalRecursionRuleId, TRuleSeverity.Error, 'Rekursion ohne Abbruch');
 end;
 
+/// <summary>Liegt A nicht hinter B?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
+/// <summary>Liegt A vor B?</summary>
+function Earlier(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
 function Inside(const APosition: TTextPosition; ANode: TSyntaxNode): Boolean;
 begin
-  Result := ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
-    (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < ANode.EndPos.Line) or
-    ((APosition.Line = ANode.EndPos.Line) and (APosition.Character < ANode.EndPos.Character)));
+  Result := NotAfter(ANode.StartPos, APosition) and Earlier(APosition, ANode.EndPos);
+end;
+
+/// <summary>Legt die Kinder von ANode so auf APending, dass das erste zuerst wieder herunterkommt.</summary>
+procedure PushChildren(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    APending.Push(ANode[mIndex]);
+  end;
+end;
+
+/// <summary>Legt nur das erste Kind von ANode auf APending (falls vorhanden).</summary>
+procedure PushFirst(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>);
+begin
+  if ANode.ChildCount > 0 then
+  begin
+    APending.Push(ANode[0]);
+  end;
 end;
 
 /// <summary>Selbstaufrufe einer Routine und die Prüfung, ob jeder Pfad einen davon ausführt.</summary>
@@ -130,6 +160,19 @@ type
     FSites: TArray<TTextPosition>;
     function SiteIn(const AFrom, ATo: TTextPosition): Boolean;
     function Leaves(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
+    /// <summary>Prüft einen Ausdrucksknoten und legt die auf jedem Weg ausgewerteten Kinder auf APending.</summary>
+    function CallsAt(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>): Boolean;
+    /// <summary>Wertet einer der Ausdrücke ANode[0..ChildCount-2] (Kopf von for bzw. with) einen Selbstaufruf aus?</summary>
+    function InHead(ANode: TSyntaxNode): Boolean;
+    /// <summary>Ein Durchlauf von Always für den Knoten ANode; ANext: als Nächstes zu prüfender Knoten oder nil.</summary>
+    function Step(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
+    function IfAlways(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
+    function CaseAlways(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
+    /// <summary>Führt ein case-Zweig (bzw. der else-Teil) auf jedem Pfad einen Selbstaufruf aus?</summary>
+    function CasePartAlways(APart: TSyntaxNode; ALoop: Boolean): Boolean;
+    function RepeatAlways(ANode: TSyntaxNode): Boolean;
+    function WithAlways(ANode: TSyntaxNode; out ANext: TSyntaxNode): Boolean;
+    function TryAlways(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
   public
     constructor Create(const ASites: TArray<TTextPosition>);
     /// <summary>Wertet ein Ausdruck auf jedem Weg einen Selbstaufruf aus?</summary>
@@ -149,12 +192,11 @@ end;
 
 function TSelfCalls.SiteIn(const AFrom, ATo: TTextPosition): Boolean;
 var
-  Site: TTextPosition;
+  mSite: TTextPosition;
 begin
-  for Site in FSites do
+  for mSite in FSites do
   begin
-    if ((AFrom.Line < Site.Line) or ((AFrom.Line = Site.Line) and (AFrom.Character <= Site.Character))) and
-      ((Site.Line < ATo.Line) or ((Site.Line = ATo.Line) and (Site.Character < ATo.Character))) then
+    if NotAfter(AFrom, mSite) and Earlier(mSite, ATo) then
     begin
       Exit(True);
     end;
@@ -162,65 +204,53 @@ begin
   Result := False;
 end;
 
+function TSelfCalls.CallsAt(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>): Boolean;
+begin
+  Result := False;
+  case ANode.Kind of
+    TSyntaxKind.AnonymousMethod:
+      // Rumpf läuft nicht auf jedem Weg.
+      ;
+    TSyntaxKind.Identifier:
+      Result := SiteIn(ANode.StartPos, ANode.EndPos);
+    TSyntaxKind.MemberAccess:
+      begin
+        // Self.Name: der Name hinter dem Empfänger.
+        Result := (ANode.ChildCount > 0) and SiteIn(ANode[0].EndPos, ANode.EndPos);
+        PushChildren(ANode, APending);
+      end;
+    TSyntaxKind.BinaryExpr:
+      // Kurzschluss: rechts von and/or nicht auf jedem Weg.
+      if (ANode.Name = 'and') or (ANode.Name = 'or') then
+      begin
+        PushFirst(ANode, APending);
+      end
+      else
+      begin
+        PushChildren(ANode, APending);
+      end;
+    TSyntaxKind.IfExpr:
+      PushFirst(ANode, APending);
+  else
+    PushChildren(ANode, APending);
+  end;
+end;
+
 function TSelfCalls.InExpression(ANode: TSyntaxNode): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while (mPending.Count > 0) and not Result do
     begin
-      Node := Pending.Pop;
-      case Node.Kind of
-        TSyntaxKind.AnonymousMethod:
-          Continue;
-        TSyntaxKind.Identifier:
-          begin
-            if SiteIn(Node.StartPos, Node.EndPos) then
-            begin
-              Exit(True);
-            end;
-            Continue;
-          end;
-        TSyntaxKind.MemberAccess:
-          // Self.Name: der Name hinter dem Empfänger.
-          if (Node.ChildCount > 0) and SiteIn(Node[0].EndPos, Node.EndPos) then
-          begin
-            Exit(True);
-          end;
-        TSyntaxKind.BinaryExpr:
-          // Kurzschluss: rechts von and/or nicht auf jedem Weg.
-          if (Node.Name = 'and') or (Node.Name = 'or') then
-          begin
-            if Node.ChildCount > 0 then
-            begin
-              Pending.Push(Node[0]);
-            end;
-            Continue;
-          end;
-        TSyntaxKind.IfExpr:
-          begin
-            if Node.ChildCount > 0 then
-            begin
-              Pending.Push(Node[0]);
-            end;
-            Continue;
-          end;
-      else
-        // Übrige Werte bewusst ohne Wirkung.
-      end;
-      for Index := Node.ChildCount - 1 downto 0 do
-      begin
-        Pending.Push(Node[Index]);
-      end;
+      Result := CallsAt(mPending.Pop, mPending);
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -291,114 +321,139 @@ begin
   Result := False;
 end;
 
+function TSelfCalls.InHead(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 2 do
+  begin
+    if InExpression(ANode[mIndex]) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TSelfCalls.IfAlways(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
+begin
+  // else-Zweig als nächster Durchlauf statt rekursiv.
+  ANext := nil;
+  Result := (ANode.ChildCount > 0) and InExpression(ANode[0]);
+  if not Result and (ANode.ChildCount = 3) and Always(ANode[1], ALoop) then
+  begin
+    ANext := ANode[2];
+  end;
+end;
+
+function TSelfCalls.CasePartAlways(APart: TSyntaxNode; ALoop: Boolean): Boolean;
+begin
+  if APart.Kind = TSyntaxKind.CaseElse then
+  begin
+    Result := AlwaysList(APart, 0, APart.ChildCount - 1, ALoop);
+  end
+  else
+  begin
+    Result := (APart.ChildCount > 0) and Always(APart[APart.ChildCount - 1], ALoop);
+  end;
+end;
+
+function TSelfCalls.CaseAlways(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
+var
+  mIndex: Integer;
+begin
+  if ANode.ChildCount = 0 then
+  begin
+    Exit(False);
+  end;
+  if InExpression(ANode[0]) then
+  begin
+    Exit(True);
+  end;
+  // Ohne else gibt es einen Pfad ohne Zweig; sonst muss jeder Zweig aufrufen.
+  Result := ANode.FindChild(TSyntaxKind.CaseElse) <> nil;
+  mIndex := 1;
+  while Result and (mIndex < ANode.ChildCount) do
+  begin
+    Result := CasePartAlways(ANode[mIndex], ALoop);
+    Inc(mIndex);
+  end;
+end;
+
+function TSelfCalls.RepeatAlways(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.ChildCount > 0) and (AlwaysList(ANode, 0, ANode.ChildCount - 2, True) or
+    (not Leaves(ANode, True) and InExpression(ANode[ANode.ChildCount - 1])));
+end;
+
+function TSelfCalls.WithAlways(ANode: TSyntaxNode; out ANext: TSyntaxNode): Boolean;
+begin
+  // Rumpf als nächster Durchlauf statt rekursiv.
+  ANext := nil;
+  Result := InHead(ANode);
+  if not Result and (ANode.ChildCount > 0) then
+  begin
+    ANext := ANode[ANode.ChildCount - 1];
+  end;
+end;
+
+function TSelfCalls.TryAlways(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
+var
+  mIndex: Integer;
+begin
+  // try-Teil nacheinander; bei try … finally zählt auch der finally-Teil.
+  mIndex := 0;
+  while (mIndex < ANode.ChildCount) and not (ANode[mIndex].Kind in [TSyntaxKind.ExceptBlock,
+    TSyntaxKind.FinallyBlock]) do
+  begin
+    Inc(mIndex);
+  end;
+  Result := AlwaysList(ANode, 0, mIndex - 1, ALoop) or ((mIndex < ANode.ChildCount) and
+    (ANode[mIndex].Kind = TSyntaxKind.FinallyBlock) and Always(ANode[mIndex], ALoop));
+end;
+
+function TSelfCalls.Step(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
+begin
+  Result := False;
+  ANext := nil;
+  case ANode.Kind of
+    TSyntaxKind.Block, TSyntaxKind.LabeledStatement, TSyntaxKind.FinallyBlock:
+      Result := AlwaysList(ANode, 0, ANode.ChildCount - 1, ALoop);
+    TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar,
+    TSyntaxKind.InlineConst:
+      Result := InExpression(ANode);
+    TSyntaxKind.IfStatement:
+      Result := IfAlways(ANode, ALoop, ANext);
+    TSyntaxKind.CaseStatement:
+      Result := CaseAlways(ANode, ALoop);
+    TSyntaxKind.WhileStatement:
+      Result := (ANode.ChildCount > 0) and InExpression(ANode[0]);
+    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
+      Result := InHead(ANode);
+    TSyntaxKind.RepeatStatement:
+      Result := RepeatAlways(ANode);
+    TSyntaxKind.WithStatement:
+      Result := WithAlways(ANode, ANext);
+    TSyntaxKind.TryStatement:
+      Result := TryAlways(ANode, ALoop);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
 // Lange else-if-Ketten und with-Rümpfe laufen iterativ über Node (Bericht M1); Ausdrücke prüfen die iterativen
 // InExpression und Leaves. Rekursiv bleibt nur der Abstieg in then-Zweige, Blöcke und case-Zweige: diese
 // Schachtelung baut der Parser selbst rekursiv auf (ParseStatement), sie ist durch dessen größere Rahmen begrenzt.
 function TSelfCalls.Always(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
 var
-  Index: Integer;
-  Node, Next, Part: TSyntaxNode;
+  mNode, mNext: TSyntaxNode;
 begin
   Result := False;
-  Node := ANode;
-  while Node <> nil do
+  mNode := ANode;
+  while mNode <> nil do
   begin
-    Result := False;
-    Next := nil;
-    case Node.Kind of
-      TSyntaxKind.Block, TSyntaxKind.LabeledStatement, TSyntaxKind.FinallyBlock:
-        Result := AlwaysList(Node, 0, Node.ChildCount - 1, ALoop);
-      TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar,
-      TSyntaxKind.InlineConst:
-        Result := InExpression(Node);
-      TSyntaxKind.IfStatement:
-        // else-Zweig als nächster Durchlauf statt rekursiv.
-        if Node.ChildCount > 0 then
-        begin
-          if InExpression(Node[0]) then
-          begin
-            Result := True;
-          end
-          else if (Node.ChildCount = 3) and Always(Node[1], ALoop) then
-          begin
-            Next := Node[2];
-          end;
-        end;
-      TSyntaxKind.CaseStatement:
-        begin
-          if Node.ChildCount = 0 then
-          begin
-            Exit;
-          end;
-          if InExpression(Node[0]) then
-          begin
-            Exit(True);
-          end;
-          if Node.FindChild(TSyntaxKind.CaseElse) = nil then
-          begin
-            Exit;
-          end;
-          for Index := 1 to Node.ChildCount - 1 do
-          begin
-            Part := Node[Index];
-            if Part.Kind = TSyntaxKind.CaseElse then
-            begin
-              if not AlwaysList(Part, 0, Part.ChildCount - 1, ALoop) then
-              begin
-                Exit;
-              end;
-            end
-            else if (Part.ChildCount = 0) or not Always(Part[Part.ChildCount - 1], ALoop) then
-            begin
-              Exit;
-            end;
-          end;
-          Result := True;
-        end;
-      TSyntaxKind.WhileStatement:
-        Result := (Node.ChildCount > 0) and InExpression(Node[0]);
-      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
-        for Index := 0 to Node.ChildCount - 2 do
-        begin
-          if InExpression(Node[Index]) then
-          begin
-            Exit(True);
-          end;
-        end;
-      TSyntaxKind.RepeatStatement:
-        Result := (Node.ChildCount > 0) and (AlwaysList(Node, 0, Node.ChildCount - 2, True) or
-          (not Leaves(Node, True) and InExpression(Node[Node.ChildCount - 1])));
-      TSyntaxKind.WithStatement:
-        begin
-          for Index := 0 to Node.ChildCount - 2 do
-          begin
-            if InExpression(Node[Index]) then
-            begin
-              Exit(True);
-            end;
-          end;
-          // Rumpf als nächster Durchlauf statt rekursiv.
-          if Node.ChildCount > 0 then
-          begin
-            Next := Node[Node.ChildCount - 1];
-          end;
-        end;
-      TSyntaxKind.TryStatement:
-        begin
-          // try-Teil nacheinander; bei try … finally zählt auch der finally-Teil.
-          Index := 0;
-          while (Index < Node.ChildCount) and not (Node[Index].Kind in [TSyntaxKind.ExceptBlock,
-            TSyntaxKind.FinallyBlock]) do
-          begin
-            Inc(Index);
-          end;
-          Result := AlwaysList(Node, 0, Index - 1, ALoop) or ((Index < Node.ChildCount) and
-            (Node[Index].Kind = TSyntaxKind.FinallyBlock) and Always(Node[Index], ALoop));
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    Node := Next;
+    Result := Step(mNode, ALoop, mNext);
+    mNode := mNext;
   end;
 end;
 
@@ -451,183 +506,257 @@ begin
   end;
 end;
 
+/// <summary>Teil nach dem letzten Punkt eines qualifizierten Namens.</summary>
+function ShortName(const AName: string): string;
+begin
+  Result := Copy(AName, AName.LastIndexOf('.') + 2, MaxInt);
+end;
+
+/// <summary>Innerste implementierte Routine unter ARoot, die APosition enthält.</summary>
+function RoutineAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+var
+  mIndex: Integer;
+  mNode, mNext: TSyntaxNode;
+begin
+  // Iterativ (Bericht M1): je Ebene in das erste Kind, das APosition enthält.
+  Result := nil;
+  mNode := ARoot;
+  while mNode <> nil do
+  begin
+    mNext := nil;
+    mIndex := 0;
+    while (mNext = nil) and (mIndex < mNode.ChildCount) do
+    begin
+      if Inside(APosition, mNode[mIndex]) then
+      begin
+        mNext := mNode[mIndex];
+      end;
+      Inc(mIndex);
+    end;
+    if (mNext <> nil) and (mNext.Kind = TSyntaxKind.RoutineDecl) and (mNext.FindChild(TSyntaxKind.Block) <> nil) then
+    begin
+      Result := mNext;
+    end;
+    mNode := mNext;
+  end;
+end;
+
+/// <summary>Trägt die Routinendeklaration bzw. der Kopf ADecl die Direktive overload?</summary>
+function HasOverloadDirective(ADecl: TSyntaxNode): Boolean;
+var
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mHeader := ADecl;
+  if ADecl.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+  end;
+  if mHeader = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mHeader.ChildCount - 1 do
+  begin
+    if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(mHeader[mIndex].Name, 'overload') then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Ein Lauf von unconditional-recursion über eine Datei.</summary>
+type
+  TRecursionScan = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FRoot: TSyntaxNode;
+    FCalls: TArray<TRecursiveCall>;
+    FTraps: TArray<TAccessorTrap>;
+    // Kurznamen (klein) mit overload-Direktive oder mehreren Rümpfen gleichen Namens.
+    FOverloaded: TArray<string>;
+    // Bereits gemeldete Routinen (Name klein).
+    FReported: TArray<string>;
+    FBodies: TArray<string>;
+    procedure CollectOverloads;
+    procedure CollectRoutine(ADecl: TSyntaxNode);
+    function IsTrap(const APosition: TTextPosition): Boolean;
+    /// <summary>Alle Selbstaufrufe von ARoutine, ohne Property-Zugriffe (setter-recursion).</summary>
+    function SitesOf(ARoutine: TSyntaxNode): TArray<TTextPosition>;
+    function AlwaysRecurses(ARoutine: TSyntaxNode; const ASites: TArray<TTextPosition>): Boolean;
+    procedure CheckCall(const ACall: TRecursiveCall);
+    procedure ReportCall(const ACall: TRecursiveCall; ARoutine: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+constructor TRecursionScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FRoot := AContext.Tree.Root;
+end;
+
+procedure TRecursionScan.CollectRoutine(ADecl: TSyntaxNode);
+var
+  mKey: string;
+begin
+  mKey := ShortName(LowerCase(ADecl.Name));
+  if HasOverloadDirective(ADecl) then
+  begin
+    FOverloaded := FOverloaded + [mKey];
+  end;
+  if (ADecl.Kind = TSyntaxKind.RoutineDecl) and (ADecl.FindChild(TSyntaxKind.Block) <> nil) then
+  begin
+    if IndexStr(LowerCase(ADecl.Name), FBodies) >= 0 then
+    begin
+      FOverloaded := FOverloaded + [mKey];
+    end;
+    FBodies := FBodies + [LowerCase(ADecl.Name)];
+  end;
+end;
+
+procedure TRecursionScan.CollectOverloads;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (Vorordnung).
+  FBodies := nil;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    PushChildren(FRoot, mPending);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader] then
+      begin
+        CollectRoutine(mNode);
+      end;
+      PushChildren(mNode, mPending);
+    end;
+  finally
+    mPending.Free;
+  end;
+  FBodies := nil;
+end;
+
+function TRecursionScan.IsTrap(const APosition: TTextPosition): Boolean;
+var
+  mTrap: TAccessorTrap;
+begin
+  for mTrap in FTraps do
+  begin
+    if mTrap.Range.StartPos = APosition then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TRecursionScan.SitesOf(ARoutine: TSyntaxNode): TArray<TTextPosition>;
+var
+  mCall: TRecursiveCall;
+begin
+  Result := nil;
+  for mCall in FCalls do
+  begin
+    if (RoutineAt(FRoot, mCall.Range.StartPos) = ARoutine) and not IsTrap(mCall.Range.StartPos) then
+    begin
+      Result := Result + [mCall.Range.StartPos];
+    end;
+  end;
+end;
+
+function TRecursionScan.AlwaysRecurses(ARoutine: TSyntaxNode; const ASites: TArray<TTextPosition>): Boolean;
+var
+  mAnalysis: TSelfCalls;
+begin
+  mAnalysis := TSelfCalls.Create(ASites);
+  try
+    Result := mAnalysis.Always(ARoutine.FindChild(TSyntaxKind.Block), False);
+  finally
+    mAnalysis.Free;
+  end;
+end;
+
+procedure TRecursionScan.ReportCall(const ACall: TRecursiveCall; ARoutine: TSyntaxNode);
+var
+  mName, mHint: string;
+begin
+  mName := ShortName(ACall.Chain[0].Name);
+  mHint := StopHint(ARoutine);
+  if mHint <> '' then
+  begin
+    FReport.Add(ACall.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch ' +
+      '(z. B. %s).', [mName, mHint]), TRuleConfidence.High);
+  end
+  else
+  begin
+    FReport.Add(ACall.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.',
+      [mName]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TRecursionScan.CheckCall(const ACall: TRecursiveCall);
+var
+  mRoutine: TSyntaxNode;
+  mKey: string;
+  mSites: TArray<TTextPosition>;
+begin
+  mRoutine := RoutineAt(FRoot, ACall.Range.StartPos);
+  if mRoutine = nil then
+  begin
+    Exit;
+  end;
+  mKey := LowerCase(mRoutine.Name);
+  if (IndexStr(mKey, FReported) >= 0) or (IndexStr(ShortName(mKey), FOverloaded) >= 0) then
+  begin
+    Exit;
+  end;
+  FReported := FReported + [mKey];
+  mSites := SitesOf(mRoutine);
+  if (mSites <> nil) and AlwaysRecurses(mRoutine, mSites) then
+  begin
+    ReportCall(ACall, mRoutine);
+  end;
+end;
+
+procedure TRecursionScan.Run;
+var
+  mCall: TRecursiveCall;
+begin
+  FCalls := TRecursionAnalysis.Calls(FContext.Tree, 1);
+  if FCalls = nil then
+  begin
+    Exit;
+  end;
+  FTraps := TRecursionAnalysis.AccessorTraps(FContext.Tree);
+  CollectOverloads;
+  for mCall in FCalls do
+  begin
+    CheckCall(mCall);
+  end;
+end;
+
 procedure TUnconditionalRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Calls: TArray<TRecursiveCall>;
-  Traps: TArray<TAccessorTrap>;
-  Overloaded: TArray<string>;
-  Reported: TArray<string>;
-
-  // Innerste implementierte Routine, die APosition enthält.
-  function RoutineAt(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
-  var
-    Index: Integer;
-    Node, Next: TSyntaxNode;
-  begin
-    // Iterativ (Bericht M1): je Ebene in das erste Kind, das APosition enthält.
-    Result := nil;
-    Node := ANode;
-    while Node <> nil do
-    begin
-      Next := nil;
-      for Index := 0 to Node.ChildCount - 1 do
-      begin
-        if Inside(APosition, Node[Index]) then
-        begin
-          Next := Node[Index];
-          Break;
-        end;
-      end;
-      if (Next <> nil) and (Next.Kind = TSyntaxKind.RoutineDecl) and (Next.FindChild(TSyntaxKind.Block) <> nil) then
-      begin
-        Result := Next;
-      end;
-      Node := Next;
-    end;
-  end;
-
-  // Kurznamen (klein) mit overload-Direktive oder mehreren Rümpfen gleichen Namens.
-  procedure CollectOverloads(ANode: TSyntaxNode; var ABodies: TArray<string>);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Index, Item: Integer;
-    Child, Header: TSyntaxNode;
-    Key: string;
-  begin
-    // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion (Vorordnung).
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      for Index := ANode.ChildCount - 1 downto 0 do
-      begin
-        Pending.Push(ANode[Index]);
-      end;
-      while Pending.Count > 0 do
-      begin
-        Child := Pending.Pop;
-        if Child.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader] then
-        begin
-          Key := LowerCase(Child.Name);
-          if Key.Contains('.') then
-          begin
-            Key := Copy(Key, Key.LastIndexOf('.') + 2, MaxInt);
-          end;
-          Header := Child;
-          if Child.Kind = TSyntaxKind.RoutineDecl then
-          begin
-            Header := Child.FindChild(TSyntaxKind.RoutineHeader);
-          end;
-          if Header <> nil then
-          begin
-            for Item := 0 to Header.ChildCount - 1 do
-            begin
-              if (Header[Item].Kind = TSyntaxKind.Directive) and SameText(Header[Item].Name, 'overload') then
-              begin
-                Overloaded := Overloaded + [Key];
-              end;
-            end;
-          end;
-          if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
-          begin
-            if IndexStr(LowerCase(Child.Name), ABodies) >= 0 then
-            begin
-              Overloaded := Overloaded + [Key];
-            end;
-            ABodies := ABodies + [LowerCase(Child.Name)];
-          end;
-        end;
-        for Index := Child.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Child[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-var
-  Call: TRecursiveCall;
-  Trap: TAccessorTrap;
-  Routine: TSyntaxNode;
-  Sites: TArray<TTextPosition>;
-  Analysis: TSelfCalls;
-  Key, Hint, Name: string;
-  Index: Integer;
-  Skip: Boolean;
+  mScan: TRecursionScan;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Calls := TRecursionAnalysis.Calls(AContext.Tree, 1);
-  if Calls = nil then
-  begin
-    Exit;
-  end;
-  Traps := TRecursionAnalysis.AccessorTraps(AContext.Tree);
-  Overloaded := nil;
-  Reported := nil;
-  CollectOverloads(AContext.Tree.Root, Reported);
-  Reported := nil;
-  for Call in Calls do
-  begin
-    Routine := RoutineAt(AContext.Tree.Root, Call.Range.StartPos);
-    if Routine = nil then
-    begin
-      Continue;
-    end;
-    Key := LowerCase(Routine.Name);
-    if (IndexStr(Key, Reported) >= 0) or (IndexStr(Copy(Key, Key.LastIndexOf('.') + 2, MaxInt), Overloaded) >= 0) then
-    begin
-      Continue;
-    end;
-    Reported := Reported + [Key];
-    // Alle Selbstaufrufe dieser Routine, ohne Property-Zugriffe (setter-recursion).
-    Sites := nil;
-    for Index := 0 to High(Calls) do
-    begin
-      Skip := RoutineAt(AContext.Tree.Root, Calls[Index].Range.StartPos) <> Routine;
-      for Trap in Traps do
-      begin
-        if Trap.Range.StartPos = Calls[Index].Range.StartPos then
-        begin
-          Skip := True;
-        end;
-      end;
-      if not Skip then
-      begin
-        Sites := Sites + [Calls[Index].Range.StartPos];
-      end;
-    end;
-    if Sites = nil then
-    begin
-      Continue;
-    end;
-    Analysis := TSelfCalls.Create(Sites);
-    try
-      if not Analysis.Always(Routine.FindChild(TSyntaxKind.Block), False) then
-      begin
-        Continue;
-      end;
-    finally
-      Analysis.Free;
-    end;
-    Name := Call.Chain[0].Name;
-    if Name.Contains('.') then
-    begin
-      Name := Copy(Name, Name.LastIndexOf('.') + 2, MaxInt);
-    end;
-    Hint := StopHint(Routine);
-    if Hint <> '' then
-    begin
-      AReport.Add(Call.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch ' +
-        '(z. B. %s).', [Name, Hint]), TRuleConfidence.High);
-    end
-    else
-    begin
-      AReport.Add(Call.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.',
-        [Name]), TRuleConfidence.High);
-    end;
+  mScan := TRecursionScan.Create(AContext, AReport);
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
   end;
 end;
 

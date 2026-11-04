@@ -51,6 +51,20 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
+    /// <summary>Stand der Treffer: Datei, Suchtext, Optionen, Pufferstand, Markierung (Zeile und Zeichen ab 0,
+    /// Ende ausschließlich) und gesuchter Bereich (bei großen Dateien nur der sichtbare).</summary>
+    TState = record
+      FileName: string;
+      Term: string;
+      OptionsKey: string;
+      Version: Cardinal;
+      SelectionLine: Integer;
+      SelectionStart: Integer;
+      SelectionStop: Integer;
+      FirstLine: Integer;
+      LastLine: Integer;
+      function Same(const AOther: TState): Boolean;
+    end;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -58,24 +72,15 @@ type
     FTimer: TTimer;
     FFont: TFont;
     FFontKey: string;
-    // Stand der Treffer: Datei, Suchtext, Optionen, Pufferstand und (bei großen Dateien) sichtbarer Bereich.
-    FFileName: string;
-    FTerm: string;
-    FOptionsKey: string;
-    FVersion: Cardinal;
-    FFirstLine: Integer;
-    FLastLine: Integer;
+    FState: TState;
     FVisibleOnly: Boolean;
     FLines: TArray<string>;
     FTabWidth: Integer;
     FMatches: TAtlasSelectionMatchList;
     FByLine: TDictionary<Integer, TArray<TAtlasSelectionMatch>>;
-    // Markierung: Zeile und Zeichen ab 0, Ende ausschließlich.
-    FSelectionLine: Integer;
-    FSelectionStart: Integer;
-    FSelectionStop: Integer;
     procedure TimerTick(Sender: TObject);
     procedure Update;
+    procedure Locate(const AView: IOTAEditView; var AState: TState);
     procedure Clear;
     procedure BuildIndex;
     procedure EnsureFont(const AEditorFont: TFont);
@@ -108,7 +113,8 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.PaintedLine;
 
 function OptionsKey(const AOptions: TAtlasSelectionMatchOptions): string;
 begin
@@ -136,7 +142,7 @@ var
 begin
   inherited Create;
   FIndex := -1;
-  FSelectionLine := -1;
+  FState.SelectionLine := -1;
   FByLine := TDictionary<Integer, TArray<TAtlasSelectionMatch>>.Create;
   FFont := TFont.Create;
   FEvents := TEvents.Create;
@@ -165,7 +171,7 @@ begin
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
-  Painted := FTerm <> '';
+  Painted := FState.Term <> '';
   Clear;
   FreeAndNil(FByLine);
   FreeAndNil(FFont);
@@ -188,17 +194,14 @@ end;
 
 procedure TAtlasIdeSelectionMatches.Clear;
 begin
-  FFileName := '';
-  FTerm := '';
-  FOptionsKey := '';
-  FVersion := 0;
+  FState := Default(TState);
+  FState.SelectionLine := -1;
   FLines := nil;
   FMatches := Default(TAtlasSelectionMatchList);
   if FByLine <> nil then
   begin
     FByLine.Clear;
   end;
-  FSelectionLine := -1;
   FVisibleOnly := False;
 end;
 
@@ -228,81 +231,99 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSelectionMatches.Update;
-var
-  Options: TAtlasSelectionMatchOptions;
-  NavigateF3, VisibleOnly: Boolean;
-  View: IOTAEditView;
-  Block: IOTAEditBlock;
-  Snapshot: TAtlasEditorSnapshot;
-  Term, Key, LineText: string;
-  Row, First, Last, Start, Stop: Integer;
+function TAtlasIdeSelectionMatches.TState.Same(const AOther: TState): Boolean;
 begin
-  View := nil;
-  Term := '';
-  if TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3) and
+  Result := (Term = AOther.Term) and (OptionsKey = AOther.OptionsKey) and (Version = AOther.Version) and
+    SameText(FileName, AOther.FileName);
+  Result := Result and (SelectionLine = AOther.SelectionLine) and (SelectionStart = AOther.SelectionStart) and
+    (SelectionStop = AOther.SelectionStop);
+  Result := Result and (FirstLine = AOther.FirstLine) and (LastLine = AOther.LastLine);
+end;
+
+/// <summary>Suchtext aus der einzeiligen Markierung im oberen Editor; False ohne (auch, wenn die Funktion aus ist).
+/// </summary>
+function SelectedTerm(out AView: IOTAEditView; out AOptions: TAtlasSelectionMatchOptions; out ATerm: string): Boolean;
+var
+  mNavigateF3: Boolean;
+  mBlock: IOTAEditBlock;
+begin
+  ATerm := '';
+  AView := nil;
+  if TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3) and
     not TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
   begin
-    View := TAtlasEditorBuffer.ActiveView;
+    AView := TAtlasEditorBuffer.ActiveView;
   end;
-  if (View <> nil) and (View.Buffer <> nil) then
+  if (AView <> nil) and (AView.Buffer <> nil) then
   begin
-    Block := View.Block;
-    if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
+    mBlock := AView.Block;
+    if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow) then
     begin
-      TAtlasSelectionMatches.Term(Block.Text, Options, Term);
+      TAtlasSelectionMatches.Term(mBlock.Text, AOptions, ATerm);
     end;
   end;
-  if Term = '' then
+  Result := ATerm <> '';
+end;
+
+/// <summary>Markierung von AView und gesuchter Bereich in FLines.</summary>
+procedure TAtlasIdeSelectionMatches.Locate(const AView: IOTAEditView; var AState: TState);
+var
+  mBlock: IOTAEditBlock;
+  mLineText: string;
+begin
+  mBlock := AView.Block;
+  AState.SelectionLine := mBlock.StartingRow - 1;
+  mLineText := '';
+  if (AState.SelectionLine >= 0) and (AState.SelectionLine < Length(FLines)) then
   begin
-    if FTerm <> '' then
+    mLineText := FLines[AState.SelectionLine];
+  end;
+  AState.SelectionStart := TLspSession.ColumnToIndex(mLineText, mBlock.StartingColumn, FTabWidth);
+  AState.SelectionStop := TLspSession.ColumnToIndex(mLineText, mBlock.EndingColumn, FTabWidth);
+  AState.FirstLine := 0;
+  AState.LastLine := High(FLines);
+  // Sehr große Dateien: nur der sichtbare Bereich.
+  if Length(FLines) > TAtlasSelectionMatches.LargeFileLines then
+  begin
+    AState.FirstLine := AView.TopRow - 1;
+    AState.LastLine := AView.BottomRow - 1;
+  end;
+end;
+
+procedure TAtlasIdeSelectionMatches.Update;
+var
+  mOptions: TAtlasSelectionMatchOptions;
+  mView: IOTAEditView;
+  mSnapshot: TAtlasEditorSnapshot;
+  mWanted: TState;
+begin
+  mWanted := Default(TState);
+  if not SelectedTerm(mView, mOptions, mWanted.Term) then
+  begin
+    if FState.Term <> '' then
     begin
       Clear;
       Invalidate;
     end;
     Exit;
   end;
-  Snapshot := TAtlasEditorSnapshots.Get(View);
-  Key := OptionsKey(Options);
-  if (Snapshot.Version <> FVersion) or not SameText(Snapshot.FileName, FFileName) then
+  mSnapshot := TAtlasEditorSnapshots.Get(mView);
+  if (mSnapshot.Version <> FState.Version) or not SameText(mSnapshot.FileName, FState.FileName) then
   begin
-    FLines := TTextLines.SplitLines(Snapshot.Text);
-    FTabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
+    FLines := TTextLines.SplitLines(mSnapshot.Text);
+    FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
   end;
-  Row := Block.StartingRow - 1;
-  LineText := '';
-  if (Row >= 0) and (Row < Length(FLines)) then
-  begin
-    LineText := FLines[Row];
-  end;
-  Start := TLspSession.ColumnToIndex(LineText, Block.StartingColumn, FTabWidth);
-  Stop := TLspSession.ColumnToIndex(LineText, Block.EndingColumn, FTabWidth);
-  // Sehr große Dateien: nur der sichtbare Bereich.
-  VisibleOnly := Length(FLines) > TAtlasSelectionMatches.LargeFileLines;
-  First := 0;
-  Last := High(FLines);
-  if VisibleOnly then
-  begin
-    First := View.TopRow - 1;
-    Last := View.BottomRow - 1;
-  end;
-  if (Term = FTerm) and (Key = FOptionsKey) and (Snapshot.Version = FVersion) and
-    SameText(Snapshot.FileName, FFileName) and (Row = FSelectionLine) and (Start = FSelectionStart) and
-    (Stop = FSelectionStop) and (First = FFirstLine) and (Last = FLastLine) then
+  mWanted.FileName := mSnapshot.FileName;
+  mWanted.OptionsKey := OptionsKey(mOptions);
+  mWanted.Version := mSnapshot.Version;
+  Locate(mView, mWanted);
+  if mWanted.Same(FState) then
   begin
     Exit;
   end;
-  FFileName := Snapshot.FileName;
-  FTerm := Term;
-  FOptionsKey := Key;
-  FVersion := Snapshot.Version;
-  FSelectionLine := Row;
-  FSelectionStart := Start;
-  FSelectionStop := Stop;
-  FFirstLine := First;
-  FLastLine := Last;
-  FVisibleOnly := VisibleOnly;
-  FMatches := TAtlasSelectionMatches.Find(FLines, Term, Options, First, Last);
+  FState := mWanted;
+  FVisibleOnly := Length(FLines) > TAtlasSelectionMatches.LargeFileLines;
+  FMatches := TAtlasSelectionMatches.Find(FLines, mWanted.Term, mOptions, mWanted.FirstLine, mWanted.LastLine);
   BuildIndex;
   Invalidate;
 end;
@@ -362,7 +383,8 @@ begin
     for Match in AMatches do
     begin
       // Die Markierung selbst zeichnet die IDE.
-      if TAtlasSelectionMatches.IsSelection(Match, FSelectionLine, FSelectionStart, FSelectionStop) then
+      if TAtlasSelectionMatches.IsSelection(Match, FState.SelectionLine, FState.SelectionStart,
+        FState.SelectionStop) then
       begin
         Continue;
       end;
@@ -413,58 +435,39 @@ begin
     RestoreDC(DC, Saved);
   end;
   TAtlasLineTail.Finish(Self, Key, Mark.Right);
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.SelectionMatches, Context.FileName, FSelectionLine, AText, Mark,
-    Context.EditView.TopRow, Rect.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.SelectionMatches, Context.FileName,
+    FState.SelectionLine, AText), Mark, Context.EditView.TopRow, Rect.Height);
 end;
 
 procedure TAtlasIdeSelectionMatches.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Matches: TArray<TAtlasSelectionMatch>;
-  Text: string;
-  Line: Integer;
-  Back: TAtlasColor;
+  mMatches: TArray<TAtlasSelectionMatch>;
+  mLine: Integer;
+  mBack: TAtlasColor;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FTerm = '') or
-    TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
+  if (FState.Term = '') or TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
   begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FFileName) or
+    if not TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FState.FileName, FLines, mLine) or
       TAtlasIdeElements.FileHidden(TAtlasDrawnElement.SelectionMatches, Context.FileName) then
     begin
       Exit;
     end;
-    LineState := Context.LineState;
-    if LineState = nil then
+    if not FByLine.TryGetValue(mLine, mMatches) and (mLine <> FState.SelectionLine) then
     begin
       Exit;
     end;
-    Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line >= Length(FLines)) then
+    mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
+    if Length(mMatches) > 0 then
     begin
-      Exit;
+      PaintMatches(Rect, Context, FLines[mLine], mMatches, mBack);
     end;
-    Text := FLines[Line];
-    // Nur, wenn die Zeile im Editor dem gesuchten Stand entspricht (sonst kommt gleich ein neuer Takt).
-    if TrimRight(LineState.Text) <> TrimRight(Text) then
+    if mLine = FState.SelectionLine then
     begin
-      Exit;
-    end;
-    if not FByLine.TryGetValue(Line, Matches) and (Line <> FSelectionLine) then
-    begin
-      Exit;
-    end;
-    Back := TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1);
-    if Length(Matches) > 0 then
-    begin
-      PaintMatches(Rect, Context, Text, Matches, Back);
-    end;
-    if Line = FSelectionLine then
-    begin
-      PaintCount(Rect, Context, Text, Back);
+      PaintCount(Rect, Context, FLines[mLine], mBack);
     end;
   except
     on E: Exception do

@@ -48,7 +48,10 @@ contains
   Atlas.Core.UnitSearch.Sections in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
   Atlas.Core.UnitSearch.UseUnit in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas',
   Atlas.Core.UnitSearch.State in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas',
+  Atlas.UI.UnitSearch.Data in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Data.pas',
+  Atlas.UI.UnitSearch.Painter in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Painter.pas',
   Atlas.UI.UnitSearch.Window in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas',
+  Atlas.IDE.UnitSearch.Actions in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Actions.pas',
   Atlas.IDE.UnitSearch.Commands in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas',
   Atlas.UI.Search.Strings in 'Source\UI\Search\Atlas.UI.Search.Strings.pas',
   Atlas.Core.Search.Matching in 'Source\Core\Search\Atlas.Core.Search.Matching.pas',
@@ -66,6 +69,7 @@ contains
   Atlas.IDE.Search.Commands in 'Source\IDE\Search\Atlas.IDE.Search.Commands.pas',
   Atlas.IDE.Search.Composition in 'Source\IDE\Search\Atlas.IDE.Search.Composition.pas',
   Atlas.Core.Query.Model in 'Source\Core\Query\Atlas.Core.Query.Model.pas',
+  Atlas.UI.Query.Parts in 'Source\UI\Query\Atlas.UI.Query.Parts.pas',
   Atlas.UI.Query.Frame in 'Source\UI\Query\Atlas.UI.Query.Frame.pas' {AtlasCodeQueryFrame: TFrame},
   Atlas.IDE.Query.Window in 'Source\IDE\Query\Atlas.IDE.Query.Window.pas',
   Atlas.IDE.Query.Service in 'Source\IDE\Query\Atlas.IDE.Query.Service.pas';

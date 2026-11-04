@@ -134,6 +134,58 @@ const
     'WelcomePageProjectSetup', 'WelcomePageSearch', 'WelcomePageUnsaved', 'WelcomePageTests', 'WelcomePageHelp',
     'WelcomePageIssues', 'WelcomePageSprint');
 
+type
+  TElementRow = record
+    Key: string;
+    Scopes: TAtlasHideScopes;
+    Overlay: Boolean;
+    Gutter: Boolean;
+  end;
+
+const
+  cAllScopes = [TAtlasHideScope.Here, TAtlasHideScope.InFile, TAtlasHideScope.Everywhere];
+  cFileScopes = [TAtlasHideScope.InFile, TAtlasHideScope.Everywhere];
+  /// <summary>Je Element in der Reihenfolge von TAtlasDrawnElement: Einstellung, Bereiche, Pille, Rinne.</summary>
+  cElementRows: array[TAtlasDrawnElement] of TElementRow = (
+    (Key: 'CodeLensMetrics'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'CodeLensTests'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    // Nur einmal je Datei: „Nur hier“ wäre dasselbe wie „In dieser Datei“.
+    (Key: 'CodeLensTestUnit'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    (Key: 'BlockEndLabels'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'InlayHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'Problems'; Scopes: cAllScopes; Overlay: False; Gutter: False),
+    (Key: 'Notes'; Scopes: cAllScopes; Overlay: False; Gutter: True),
+    (Key: 'BookmarksNamed'; Scopes: cAllScopes; Overlay: False; Gutter: True),
+    // Farben und Linien gehören zum ganzen Block: an einer einzelnen Stelle ergibt Ausblenden keinen Sinn.
+    (Key: 'PairColors'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    (Key: 'PairGuides'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    (Key: 'PairOwners'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    (Key: 'InactiveDim'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    // Die Vorschau steht nur, solange die Liste offen ist: weder Stelle noch Datei sind dauerhaft.
+    (Key: 'Preview'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False),
+    (Key: 'DimUnusedUses'; Scopes: cFileScopes; Overlay: False; Gutter: False),
+    (Key: 'RecursionMarkers'; Scopes: cAllScopes; Overlay: False; Gutter: True),
+    // Text hinter dem Zeilenende wie eine Beschriftung; „Überall“ setzt editor.inlineDiagnostics auf aus.
+    (Key: 'InlineDiagnostics'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'InlayTypeHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    // Marken und Historie hängen an der ganzen Datei im Repository: „Nur hier“ hielte nur bis zum nächsten Commit.
+    (Key: 'GitGutter'; Scopes: cFileScopes; Overlay: False; Gutter: True),
+    (Key: 'GitBlame'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    // Wie die Vorschau der Vervollständigung nur bis zum nächsten Tastendruck sichtbar.
+    (Key: 'ContinuePattern'; Scopes: [TAtlasHideScope.Everywhere]; Overlay: False; Gutter: False),
+    (Key: 'GutterColumn'; Scopes: cAllScopes; Overlay: False; Gutter: True),
+    // Nur solange die Markierung steht; Ausblenden je Datei oder überall.
+    (Key: 'SelectionMatches'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    (Key: 'InlayDefineHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'InlayCharHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    (Key: 'QuickBookmarksGutter'; Scopes: cAllScopes; Overlay: False; Gutter: True),
+    (Key: 'InlayMethodHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
+    // Nur solange der Cursor steht; Ausblenden je Datei oder überall an der Marke.
+    (Key: 'ExitPoints'; Scopes: cFileScopes; Overlay: True; Gutter: False),
+    // Je Datei oder überall an einer Unterstreichung.
+    (Key: 'Reassigned'; Scopes: cFileScopes; Overlay: True; Gutter: False)
+  );
+
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;
   AOverlay, AGutter: Boolean): TAtlasDrawnElementInfo;
 begin
@@ -148,79 +200,9 @@ end;
 { TAtlasDrawnElements }
 
 class function TAtlasDrawnElements.Info(AElement: TAtlasDrawnElement): TAtlasDrawnElementInfo;
-const
-  AllScopes = [TAtlasHideScope.Here, TAtlasHideScope.InFile, TAtlasHideScope.Everywhere];
-  FileScopes = [TAtlasHideScope.InFile, TAtlasHideScope.Everywhere];
 begin
-  case AElement of
-    TAtlasDrawnElement.CodeLensMetrics:
-      Result := Make(AElement, 'CodeLensMetrics', AllScopes, True, False);
-    TAtlasDrawnElement.CodeLensTests:
-      Result := Make(AElement, 'CodeLensTests', AllScopes, True, False);
-    // Nur einmal je Datei: „Nur hier“ wäre dasselbe wie „In dieser Datei“.
-    TAtlasDrawnElement.CodeLensTestUnit:
-      Result := Make(AElement, 'CodeLensTestUnit', FileScopes, True, False);
-    TAtlasDrawnElement.BlockEndLabels:
-      Result := Make(AElement, 'BlockEndLabels', AllScopes, True, False);
-    TAtlasDrawnElement.InlayHints:
-      Result := Make(AElement, 'InlayHints', AllScopes, True, False);
-    TAtlasDrawnElement.Problems:
-      Result := Make(AElement, 'Problems', AllScopes, False, False);
-    TAtlasDrawnElement.Notes:
-      Result := Make(AElement, 'Notes', AllScopes, False, True);
-    TAtlasDrawnElement.Bookmarks:
-      Result := Make(AElement, 'BookmarksNamed', AllScopes, False, True);
-    // Farben und Linien gehören zum ganzen Block: an einer einzelnen Stelle ergibt Ausblenden keinen Sinn.
-    TAtlasDrawnElement.PairColors:
-      Result := Make(AElement, 'PairColors', FileScopes, False, False);
-    TAtlasDrawnElement.PairGuides:
-      Result := Make(AElement, 'PairGuides', FileScopes, False, False);
-    TAtlasDrawnElement.PairOwners:
-      Result := Make(AElement, 'PairOwners', FileScopes, False, False);
-    TAtlasDrawnElement.InactiveDim:
-      Result := Make(AElement, 'InactiveDim', FileScopes, False, False);
-    // Die Vorschau steht nur, solange die Liste offen ist: weder Stelle noch Datei sind dauerhaft.
-    TAtlasDrawnElement.CompletionPreview:
-      Result := Make(AElement, 'Preview', [TAtlasHideScope.Everywhere], False, False);
-    TAtlasDrawnElement.UnusedUses:
-      Result := Make(AElement, 'DimUnusedUses', FileScopes, False, False);
-    TAtlasDrawnElement.Recursion:
-      Result := Make(AElement, 'RecursionMarkers', AllScopes, False, True);
-    // Text hinter dem Zeilenende wie eine Beschriftung; „Überall“ setzt editor.inlineDiagnostics auf aus.
-    TAtlasDrawnElement.InlineDiagnostics:
-      Result := Make(AElement, 'InlineDiagnostics', AllScopes, True, False);
-    TAtlasDrawnElement.InlayTypeHints:
-      Result := Make(AElement, 'InlayTypeHints', AllScopes, True, False);
-    // Marken und Historie hängen an der ganzen Datei im Repository: „Nur hier“ hielte nur bis zum nächsten Commit.
-    TAtlasDrawnElement.GitGutter:
-      Result := Make(AElement, 'GitGutter', FileScopes, False, True);
-    TAtlasDrawnElement.GitBlame:
-      Result := Make(AElement, 'GitBlame', FileScopes, True, False);
-    // Wie die Vorschau der Vervollständigung nur bis zum nächsten Tastendruck sichtbar.
-    TAtlasDrawnElement.PatternPreview:
-      Result := Make(AElement, 'ContinuePattern', [TAtlasHideScope.Everywhere], False, False);
-    TAtlasDrawnElement.GutterColumn:
-      Result := Make(AElement, 'GutterColumn', AllScopes, False, True);
-    // Nur solange die Markierung steht; Ausblenden je Datei oder überall.
-    TAtlasDrawnElement.SelectionMatches:
-      Result := Make(AElement, 'SelectionMatches', FileScopes, True, False);
-    TAtlasDrawnElement.InlayDefineHints:
-      Result := Make(AElement, 'InlayDefineHints', AllScopes, True, False);
-    TAtlasDrawnElement.InlayCharHints:
-      Result := Make(AElement, 'InlayCharHints', AllScopes, True, False);
-    TAtlasDrawnElement.QuickBookmarks:
-      Result := Make(AElement, 'QuickBookmarksGutter', AllScopes, False, True);
-    TAtlasDrawnElement.InlayMethodHints:
-      Result := Make(AElement, 'InlayMethodHints', AllScopes, True, False);
-    // Nur solange der Cursor steht; Ausblenden je Datei oder überall an der Marke.
-    TAtlasDrawnElement.ExitPoints:
-      Result := Make(AElement, 'ExitPoints', FileScopes, True, False);
-    // Je Datei oder überall an einer Unterstreichung.
-    TAtlasDrawnElement.Reassigned:
-      Result := Make(AElement, 'Reassigned', FileScopes, True, False);
-  else
-    Result := Make(AElement, '', [], False, False);
-  end;
+  Result := Make(AElement, cElementRows[AElement].Key, cElementRows[AElement].Scopes, cElementRows[AElement].Overlay,
+    cElementRows[AElement].Gutter);
 end;
 
 class function TAtlasDrawnElements.All: TArray<TAtlasDrawnElement>;

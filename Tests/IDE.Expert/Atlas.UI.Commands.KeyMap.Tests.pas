@@ -52,9 +52,9 @@ var
 
 function AtlasItem(AFunc: TAtlasKeyFunction; AKey: Word; const AText: string): TAtlasKeyItem;
 begin
-  Result := TAtlasKeyItem.Create(AKey, AText, TAtlasKeyMapWindow.FunctionCaption(AFunc), TAtlasKeyOrigin.Atlas,
-    TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(AFunc), TAtlasKeyMap.SourceOf(AFunc),
-    'Atlas.Key.' + IntToStr(Ord(AFunc)), Ord(AFunc));
+  Result := TAtlasKeyItem.Create(AKey, AText, TAtlasKeyMapWindow.FunctionCaption(AFunc),
+    TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas, TAtlasKeyMap.AtlasName, TAtlasKeyMap.ContextOf(AFunc),
+    TAtlasKeyMap.SourceOf(AFunc), 'Atlas.Key.' + IntToStr(Ord(AFunc)), Ord(AFunc)));
   Result.Func := AFunc;
 end;
 
@@ -64,12 +64,13 @@ function Sample: TArray<TAtlasKeyItem>;
 var
   Other: TAtlasKeyItem;
 begin
-  Other := TAtlasKeyItem.Create($4053, 'Strg+S', 'Speichern', TAtlasKeyOrigin.Ide, TAtlasKeyMap.IdeName,
-    TAtlasKeyContext.Global, TAtlasKeySource.Action, 'FileSaveCommand', 4);
+  Other := TAtlasKeyItem.Create($4053, 'Strg+S', 'Speichern', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Ide,
+    TAtlasKeyMap.IdeName, TAtlasKeyContext.Global, TAtlasKeySource.Action, 'FileSaveCommand', 4));
   Result := [AtlasItem(TAtlasKeyFunction.Palette, $6050, 'Strg+Umschalt+P'),
     AtlasItem(TAtlasKeyFunction.ExpandSelection, $6050, 'Strg+Umschalt+P'), Other,
-    TAtlasKeyItem.Create($4044, 'Strg+D', 'Tastaturbelegung des Editors', TAtlasKeyOrigin.Plugin, 'CnWizards_D120',
-    TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'Editor.16452', 101)];
+    TAtlasKeyItem.Create($4044, 'Strg+D', 'Tastaturbelegung des Editors',
+      TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Plugin, 'CnWizards_D120', TAtlasKeyContext.Editor,
+      TAtlasKeySource.Binding, 'Editor.16452', 101))];
   TAtlasKeyMap.Analyze(Result);
 end;
 
@@ -259,25 +260,31 @@ begin
   Assert.IsFalse(Items[0].RarelyByKeyboard);
 end;
 
-procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
+/// <summary>Jede Funktion hat eine eigene, nicht leere Beschriftung ohne Doppelpunkt oder Auslassung.</summary>
+procedure AssertCaptionsPlainAndUnique;
 var
-  Func, Other: TAtlasKeyFunction;
-  Caption: string;
+  mFunc, mOther: TAtlasKeyFunction;
+  mCaption: string;
 begin
-  for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
   begin
-    Caption := TAtlasKeyMapWindow.FunctionCaption(Func);
-    Assert.AreNotEqual('', Caption);
-    Assert.IsFalse(Caption.EndsWith(':') or Caption.EndsWith('…'), Caption);
+    mCaption := TAtlasKeyMapWindow.FunctionCaption(mFunc);
+    Assert.AreNotEqual('', mCaption);
+    Assert.IsFalse(mCaption.EndsWith(':') or mCaption.EndsWith('…'), mCaption);
     // Jede Funktion hat ihren eigenen Namen: Eine neue Funktion ohne eigenen Zweig fiele hier auf.
-    for Other := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+    for mOther := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
     begin
-      if Other <> Func then
+      if mOther <> mFunc then
       begin
-        Assert.AreNotEqual(Caption, TAtlasKeyMapWindow.FunctionCaption(Other), Caption);
+        Assert.AreNotEqual(mCaption, TAtlasKeyMapWindow.FunctionCaption(mOther), mCaption);
       end;
     end;
   end;
+end;
+
+procedure TAtlasKeyMapWindowTests.FunctionCaptionsWithoutPunctuation;
+begin
+  AssertCaptionsPlainAndUnique;
   Assert.AreEqual('Deklaration/Implementierung wechseln',
     TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.MethodToggleUp));
   Assert.AreEqual('Zwischen Unit und Testunit wechseln',

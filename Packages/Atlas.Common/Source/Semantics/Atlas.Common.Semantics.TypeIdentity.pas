@@ -154,6 +154,13 @@ begin
   Result := (mEquals > 0) and StartsText('type ', Clean(Copy(ASignature, mEquals + 1, MaxInt)) + ' ');
 end;
 
+/// <summary>AType ist ein schlichter Alias, der sich in Tiefe ADepth noch verfolgen lässt.</summary>
+function IsPlainAlias(const AType: TResolvedSymbol; ADepth: Integer): Boolean;
+begin
+  Result := not AType.Builtin and (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and (AType.TypeName <> '') and
+    (ADepth < cMaxDepth) and not TTypeIdentity.IsDistinctAlias(AType.Signature);
+end;
+
 class function TTypeIdentity.Followed(const AType: TResolvedSymbol; AResolver: TNameResolver; ADepth: Integer;
   out AParts: TArray<TPart>): Boolean;
 var
@@ -165,9 +172,7 @@ begin
   // bleiben eigene Typen.
   AParts := nil;
   Result := False;
-  if AType.Builtin or (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
-    (ADepth >= cMaxDepth) or IsDistinctAlias(AType.Signature) or (AResolver = nil) or
-    not AResolver.DeclaringUnit(AType, mUnit) then
+  if not IsPlainAlias(AType, ADepth) or (AResolver = nil) or not AResolver.DeclaringUnit(AType, mUnit) then
   begin
     Exit;
   end;
@@ -220,7 +225,7 @@ begin
   begin
     mPart.Text := LowerCase(BuiltinName(ANames[High(ANames)]));
     // Eingebaute Typen sind auch ohne Index bekannt.
-    mPart.Known := TNameResolver.IsBuiltinTypeName(ANames[High(ANames)]) or
+    mPart.Known := TResolverText.IsBuiltinTypeName(ANames[High(ANames)]) or
       not SameText(mPart.Text, ANames[High(ANames)]);
   end;
   Result := [mPart];

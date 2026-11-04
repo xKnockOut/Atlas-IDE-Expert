@@ -182,6 +182,19 @@ begin
     ((A.EndPos.Line = B.StartPos.Line) and (A.EndPos.Character <= B.StartPos.Character));
 end;
 
+/// <summary>Überschneidet AEdit keine der Änderungen in AFound?</summary>
+function IsFree(AFound: TList<TTextEdit>; const AEdit: TTextEdit): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := 0 to AFound.Count - 1 do
+  begin
+    Result := Result and (EndsBefore(AFound[mIndex].Range, AEdit.Range) or
+      EndsBefore(AEdit.Range, AFound[mIndex].Range));
+  end;
+end;
+
 class function TFormatCheck.Edits(const AText: string; const AStyle: TFormatStyle;
   const AScope: TFormatScope): TArray<TTextEdit>;
 var
@@ -189,8 +202,6 @@ var
   mSpan: TFormatLineSpan;
   mEdit: TTextEdit;
   mFound: TList<TTextEdit>;
-  mFree: Boolean;
-  mIndex: Integer;
 begin
   mTokens := TPascalLexer.Tokenize(AText);
   if AScope.WholeFile then
@@ -205,16 +216,7 @@ begin
       begin
         // Sicherheitsnetz: Ein Umbruch über die Grenze zweier Bereiche darf keine überlappenden Änderungen
         // ergeben (die Bereiche sind getrennt, die Gruppen des Formatierers bleiben in einem Bereich).
-        mFree := True;
-        for mIndex := 0 to mFound.Count - 1 do
-        begin
-          if not (EndsBefore(mFound[mIndex].Range, mEdit.Range) or EndsBefore(mEdit.Range, mFound[mIndex].Range))
-          then
-          begin
-            mFree := False;
-          end;
-        end;
-        if mFree then
+        if IsFree(mFound, mEdit) then
         begin
           mFound.Add(mEdit);
         end;
@@ -323,62 +325,79 @@ begin
   end;
 end;
 
-/// <summary>Abweichungen einer Zeile, deren formatierte Fassung ANew ist.</summary>
-procedure DescribeLine(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOld, ANew: string;
-  AIndentSize: Integer);
+type
+  /// <summary>Führender Leerraum einer Zeile.</summary>
+  TLeading = record
+    /// <summary>Breite in Spalten (Tab bis zur nächsten Ebene).</summary>
+    Width: Integer;
+    HasTab: Boolean;
+    /// <summary>Der Leerraum selbst.</summary>
+    Chars: string;
+    /// <summary>Die Zeile hinter dem Leerraum.</summary>
+    Rest: string;
+    class function Create(const ALine: string; AIndentSize: Integer): TLeading; static;
+  end;
+
+class function TLeading.Create(const ALine: string; AIndentSize: Integer): TLeading;
 var
-  mOldWidth, mNewWidth, mOldLength, mNewLength, mIndex: Integer;
-  mOldTab, mNewTab, mSameTokens: Boolean;
-  mOldRest, mNewRest: string;
-  mOldTokens, mNewTokens: TArray<TPascalToken>;
+  mLength: Integer;
 begin
-  mOldWidth := LeadingWidth(AOld, AIndentSize, mOldTab, mOldLength);
-  mNewWidth := LeadingWidth(ANew, AIndentSize, mNewTab, mNewLength);
-  mOldRest := Copy(AOld, mOldLength + 1, MaxInt);
-  mNewRest := Copy(ANew, mNewLength + 1, MaxInt);
-  if mOldRest <> '' then
+  Result.Width := LeadingWidth(ALine, AIndentSize, Result.HasTab, mLength);
+  Result.Chars := Copy(ALine, 1, mLength);
+  Result.Rest := Copy(ALine, mLength + 1, MaxInt);
+end;
+
+/// <summary>Abweichung der Einrückung: Breite, Tab statt Leerzeichen oder umgekehrt, gemischt.</summary>
+procedure DescribeIndent(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOld, ANew: TLeading);
+begin
+  if AOld.Width <> ANew.Width then
   begin
-    if mOldWidth <> mNewWidth then
+    AddOnce(AList, ALine, TFormatDeviationKind.Indent, Format('Einrückung %d statt %d', [AOld.Width, ANew.Width]));
+  end
+  else if AOld.HasTab and not ANew.HasTab then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Tabulator statt Leerzeichen');
+  end
+  else if ANew.HasTab and not AOld.HasTab then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Leerzeichen statt Tabulator');
+  end
+  else if AOld.Chars <> ANew.Chars then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung aus Tabulatoren und Leerzeichen');
+  end;
+end;
+
+/// <summary>Dieselben Token bis auf Groß-/Kleinschreibung?</summary>
+function SameTokenTexts(const AOld, ANew: TArray<TPascalToken>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(AOld) = Length(ANew);
+  if Result then
+  begin
+    for mIndex := 0 to High(AOld) do
     begin
-      AddOnce(AList, ALine, TFormatDeviationKind.Indent, Format('Einrückung %d statt %d',
-        [mOldWidth, mNewWidth]));
-    end
-    else if mOldTab and not mNewTab then
-    begin
-      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Tabulator statt Leerzeichen');
-    end
-    else if mNewTab and not mOldTab then
-    begin
-      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Leerzeichen statt Tabulator');
-    end
-    else if Copy(AOld, 1, mOldLength) <> Copy(ANew, 1, mNewLength) then
-    begin
-      AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung aus Tabulatoren und Leerzeichen');
+      Result := Result and SameText(AOld[mIndex].Text, ANew[mIndex].Text);
     end;
   end;
-  if (TrimRight(AOld) <> AOld) and (TrimRight(ANew) = ANew) then
-  begin
-    AddOnce(AList, ALine, TFormatDeviationKind.TrailingWhitespace, 'Leerzeichen am Zeilenende');
-    mOldRest := TrimRight(mOldRest);
-  end;
-  if mOldRest = mNewRest then
-  begin
-    Exit;
-  end;
-  mOldTokens := TPascalLexer.Tokenize(mOldRest);
-  mNewTokens := TPascalLexer.Tokenize(mNewRest);
-  mSameTokens := Length(mOldTokens) = Length(mNewTokens);
-  if mSameTokens then
-  begin
-    for mIndex := 0 to High(mOldTokens) do
-    begin
-      if not SameText(mOldTokens[mIndex].Text, mNewTokens[mIndex].Text) then
-      begin
-        mSameTokens := False;
-      end;
-    end;
-  end;
-  if not mSameTokens then
+end;
+
+/// <summary>Abstand zwischen dem Token AIndex und seinem Vorgänger.</summary>
+function GapBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := ATokens[AIndex].StartPos.Character - ATokens[AIndex - 1].EndPos.Character;
+end;
+
+/// <summary>Abweichungen im Rest der Zeile hinter der Einrückung: Umbruch, Schreibweise, Leerraum.</summary>
+procedure DescribeTokens(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOldRest, ANewRest: string);
+var
+  mOldTokens, mNewTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+begin
+  mOldTokens := TPascalLexer.Tokenize(AOldRest);
+  mNewTokens := TPascalLexer.Tokenize(ANewRest);
+  if not SameTokenTexts(mOldTokens, mNewTokens) then
   begin
     AddOnce(AList, ALine, TFormatDeviationKind.LineBreaks, 'Zeilenumbruch');
     Exit;
@@ -390,12 +409,33 @@ begin
       AddOnce(AList, ALine, TFormatDeviationKind.KeywordCase, Format('Schreibweise `%s`',
         [mOldTokens[mIndex].Text]));
     end;
-    if (mIndex > 0) and (mOldTokens[mIndex].StartPos.Character - mOldTokens[mIndex - 1].EndPos.Character <>
-      mNewTokens[mIndex].StartPos.Character - mNewTokens[mIndex - 1].EndPos.Character) then
+    if (mIndex > 0) and (GapBefore(mOldTokens, mIndex) <> GapBefore(mNewTokens, mIndex)) then
     begin
-      DescribeGap(AList, ALine, mOldTokens[mIndex - 1], mOldTokens[mIndex],
-        mOldTokens[mIndex].StartPos.Character - mOldTokens[mIndex - 1].EndPos.Character);
+      DescribeGap(AList, ALine, mOldTokens[mIndex - 1], mOldTokens[mIndex], GapBefore(mOldTokens, mIndex));
     end;
+  end;
+end;
+
+/// <summary>Abweichungen einer Zeile, deren formatierte Fassung ANew ist.</summary>
+procedure DescribeLine(var AList: TArray<TFormatDeviation>; ALine: Integer; const AOld, ANew: string;
+  AIndentSize: Integer);
+var
+  mOld, mNew: TLeading;
+begin
+  mOld := TLeading.Create(AOld, AIndentSize);
+  mNew := TLeading.Create(ANew, AIndentSize);
+  if mOld.Rest <> '' then
+  begin
+    DescribeIndent(AList, ALine, mOld, mNew);
+  end;
+  if (TrimRight(AOld) <> AOld) and (TrimRight(ANew) = ANew) then
+  begin
+    AddOnce(AList, ALine, TFormatDeviationKind.TrailingWhitespace, 'Leerzeichen am Zeilenende');
+    mOld.Rest := TrimRight(mOld.Rest);
+  end;
+  if mOld.Rest <> mNew.Rest then
+  begin
+    DescribeTokens(AList, ALine, mOld.Rest, mNew.Rest);
   end;
 end;
 
@@ -415,14 +455,63 @@ begin
   end;
 end;
 
+/// <summary>Unterschiedliche Zeilenenden (beide Texte haben welche).</summary>
+procedure DescribeLineBreaks(var AList: TArray<TFormatDeviation>; const AOld, ANew: string);
+var
+  mOldKind, mNewKind: TTextLineBreak;
+begin
+  mOldKind := TTextLines.KindOf(AOld);
+  mNewKind := TTextLines.KindOf(ANew);
+  if (mOldKind <> mNewKind) and (mOldKind <> TTextLineBreak.None) and (mNewKind <> TTextLineBreak.None) then
+  begin
+    AddOnce(AList, 0, TFormatDeviationKind.EndOfLine, Format('Zeilenenden %s statt %s',
+      [LineBreakName(mOldKind), LineBreakName(mNewKind)]));
+  end;
+end;
+
+/// <summary>Hängt AHunk nur leere Zeilen ans Dateiende? Dann fehlt der abschließende Umbruch.</summary>
+function OnlyEmptyAppended(const AHunk: TTextLineHunk; const AOld, ANew: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AHunk.OldCount = 0) and (AHunk.OldStart = Length(AOld));
+  for mIndex := 0 to AHunk.NewCount - 1 do
+  begin
+    Result := Result and (ANew[AHunk.NewStart + mIndex] = '');
+  end;
+end;
+
+/// <summary>Abweichungen eines Abschnitts des Zeilenvergleichs.</summary>
+procedure DescribeHunk(var AList: TArray<TFormatDeviation>; const AHunk: TTextLineHunk;
+  const AOld, ANew: TArray<string>; AIndentSize: Integer);
+var
+  mIndex: Integer;
+begin
+  if AHunk.OldCount = AHunk.NewCount then
+  begin
+    for mIndex := 0 to AHunk.OldCount - 1 do
+    begin
+      DescribeLine(AList, AHunk.OldStart + mIndex, AOld[AHunk.OldStart + mIndex], ANew[AHunk.NewStart + mIndex],
+        AIndentSize);
+    end;
+  end
+  else if OnlyEmptyAppended(AHunk, AOld, ANew) then
+  begin
+    AddOnce(AList, Max(Length(AOld) - 1, 0), TFormatDeviationKind.FinalNewline, 'Zeilenumbruch am Dateiende fehlt');
+  end
+  else
+  begin
+    AddOnce(AList, Min(AHunk.OldStart, Max(Length(AOld) - 1, 0)), TFormatDeviationKind.LineBreaks,
+      Format('Zeilenumbruch: %d Zeilen statt %d', [AHunk.OldCount, AHunk.NewCount]));
+  end;
+end;
+
 class function TFormatCheck.Deviations(const AOld, ANew: string; const AStyle: TFormatStyle):
   TArray<TFormatDeviation>;
 var
   mOld, mNew: TArray<string>;
   mHunk: TTextLineHunk;
-  mIndex, mIndentSize: Integer;
-  mOnlyEmpty: Boolean;
-  mOldKind, mNewKind: TTextLineBreak;
+  mIndentSize: Integer;
 begin
   Result := nil;
   if AOld = ANew then
@@ -436,39 +525,10 @@ begin
   end;
   mOld := TTextLines.SplitLines(AOld);
   mNew := TTextLines.SplitLines(ANew);
-  mOldKind := TTextLines.KindOf(AOld);
-  mNewKind := TTextLines.KindOf(ANew);
-  if (mOldKind <> mNewKind) and (mOldKind <> TTextLineBreak.None) and (mNewKind <> TTextLineBreak.None) then
-  begin
-    AddOnce(Result, 0, TFormatDeviationKind.EndOfLine, Format('Zeilenenden %s statt %s',
-      [LineBreakName(mOldKind), LineBreakName(mNewKind)]));
-  end;
+  DescribeLineBreaks(Result, AOld, ANew);
   for mHunk in TTextDiff.Hunks(mOld, mNew) do
   begin
-    if mHunk.OldCount = mHunk.NewCount then
-    begin
-      for mIndex := 0 to mHunk.OldCount - 1 do
-      begin
-        DescribeLine(Result, mHunk.OldStart + mIndex, mOld[mHunk.OldStart + mIndex], mNew[mHunk.NewStart + mIndex],
-          mIndentSize);
-      end;
-      Continue;
-    end;
-    // Nur leere Zeilen am Dateiende angehängt: der abschließende Umbruch fehlt.
-    mOnlyEmpty := (mHunk.OldCount = 0) and (mHunk.OldStart = Length(mOld));
-    for mIndex := 0 to mHunk.NewCount - 1 do
-    begin
-      mOnlyEmpty := mOnlyEmpty and (mNew[mHunk.NewStart + mIndex] = '');
-    end;
-    if mOnlyEmpty then
-    begin
-      AddOnce(Result, Max(Length(mOld) - 1, 0), TFormatDeviationKind.FinalNewline, 'Zeilenumbruch am Dateiende fehlt');
-    end
-    else
-    begin
-      AddOnce(Result, Min(mHunk.OldStart, Max(Length(mOld) - 1, 0)), TFormatDeviationKind.LineBreaks,
-        Format('Zeilenumbruch: %d Zeilen statt %d', [mHunk.OldCount, mHunk.NewCount]));
-    end;
+    DescribeHunk(Result, mHunk, mOld, mNew, mIndentSize);
   end;
   TArray.Sort<TFormatDeviation>(Result, TComparer<TFormatDeviation>.Construct(
     function(const A, B: TFormatDeviation): Integer

@@ -1,15 +1,9 @@
 ﻿unit Atlas.IDE.UnitSearch.Commands;
 
 // Fenster „Units suchen“ (#777) in der IDE:
-// - Zeigen: Einträge über atlas.server.units, offene Module markiert, Lage und
-//   Wahl aus %LOCALAPPDATA%\Atlas\unitsearch.json; Vorschau über
-//   atlas.server.unitPreview (Formularskizze und „Verwendet von“ nach den
-//   Einstellungen).
-// - Aktionen: Öffnen, Formular öffnen, In uses aufnehmen (atlas.server.addUses
-//   in die Unit des obersten Editors), Testunits öffnen
-//   (atlas.server.testUnit), Im Projektmanager zeigen, Im Explorer zeigen.
-//   „Im Projektmanager zeigen“ öffnet den Projektmanager und nennt das
-//   Projekt; einen Knoten auswählen kann die Open Tools API nicht.
+// - Zeigen: Lage und Wahl aus %LOCALAPPDATA%\Atlas\unitsearch.json; Einträge,
+//   Vorschau und Aktionen (Öffnen, In uses aufnehmen, Testunits …) laufen
+//   über Atlas.IDE.UnitSearch.Actions.
 // - Strg+F12: Die IDE-Aktion „Units“ (ViewUnitCommand, ersatzweise die Aktion
 //   mit Strg+F12) ruft das Atlas-Fenster auf, solange unitSearch.enabled und
 //   unitSearch.replaceIdeDialog an sind. Mit gedrückter Umschalttaste, ohne
@@ -41,8 +35,6 @@ uses
 type
   TAtlasIdeUnitSearch = class
   private class var
-    FSessionOf: TFunc<TLspSession>;
-    FMessage: TProc<string>;
     FHooks: array[TAtlasUnitSearchMode] of TComponent;
   private
     class function Session: TLspSession; static;
@@ -79,44 +71,26 @@ implementation
 uses
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
-  Winapi.ShellAPI,
   System.Types,
-  System.JSON,
   System.IOUtils,
   System.Actions,
-  System.Generics.Collections,
   Vcl.ActnList,
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Editor.TestUnit,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
-  Atlas.UI.Strings,
   Atlas.UI.Search.Strings,
+  Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.UnitSearch.Actions;
 
 const
-  UnitsCommand = 'atlas.server.units';
-  PreviewCommand = 'atlas.server.unitPreview';
-  AddUsesCommand = 'atlas.server.addUses';
-  TestUnitCommand = 'atlas.server.testUnit';
-  // Die Liste kann bei großen Bibliotheken dauern; die Vorschau soll das Tippen nicht aufhalten.
-  UnitsTimeoutMs = 30000;
-  PreviewTimeoutMs = 5000;
-  CommandTimeoutMs = 30000;
-  ProjectManagerActionName = 'ViewPrjMgrCommand';
   // Aktionen der IDE je Modus (#777, #786) und ihre Standardtasten als Ersatz.
   IdeActionNames: array[TAtlasUnitSearchMode] of string = ('ViewUnitCommand', 'FileUseUnitCommand',
     'ViewFormCommand');
@@ -198,33 +172,9 @@ begin
   end;
 end;
 
-function RunNamedAction(const AName: string): Boolean;
-var
-  Services: INTAServices;
-  Index: Integer;
-begin
-  Result := False;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
-  begin
-    if SameText(Services.ActionList.Actions[Index].Name, AName) then
-    begin
-      Exit(Services.ActionList.Actions[Index].Execute);
-    end;
-  end;
-end;
-
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
-end;
-
-function UriToPath(AUri: string): string;
-begin
-  Result := TLspSession.UriToPath(AUri);
 end;
 
 { TUnitDialogHook }
@@ -322,43 +272,7 @@ begin
   inherited Destroy;
 end;
 
-{ Hilfen der Aktionen }
-
-function OpenModules: TArray<string>;
-var
-  Services: IOTAModuleServices;
-  Index: Integer;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-  begin
-    for Index := 0 to Services.ModuleCount - 1 do
-    begin
-      Result := Result + [Services.Modules[Index].FileName];
-    end;
-  end;
-end;
-
-procedure MarkOpen(var AEntries: TAtlasUnitEntries);
-var
-  Files: TDictionary<string, Boolean>;
-  FileName: string;
-  Index: Integer;
-begin
-  Files := TDictionary<string, Boolean>.Create;
-  try
-    for FileName in OpenModules do
-    begin
-      Files.AddOrSetValue(LowerCase(FileName), True);
-    end;
-    for Index := 0 to High(AEntries) do
-    begin
-      AEntries[Index].IsOpen := Files.ContainsKey(LowerCase(AEntries[Index].FileName));
-    end;
-  finally
-    Files.Free;
-  end;
-end;
+{ Hilfen }
 
 procedure GroupInfo(out AGroupFile, AActiveProject, ARoot: string);
 var
@@ -404,62 +318,6 @@ begin
   end;
 end;
 
-function FormFileOf(const AFileName: string): string;
-begin
-  Result := ChangeFileExt(AFileName, '.dfm');
-  if FileExists(Result) then
-  begin
-    Exit;
-  end;
-  Result := ChangeFileExt(AFileName, '.fmx');
-  if not FileExists(Result) then
-  begin
-    Result := '';
-  end;
-end;
-
-function ShowForm(const AFileName: string): Boolean;
-var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  FormEditor: IOTAFormEditor;
-begin
-  Result := False;
-  if not TAtlasIdeNavigation.ShowFile(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Exit;
-  end;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
-  begin
-    if Supports(Module.ModuleFileEditors[Index], IOTAFormEditor, FormEditor) then
-    begin
-      FormEditor.Show;
-      Exit(True);
-    end;
-  end;
-end;
-
-function UnitList(const AEntries: TArray<TAtlasUnitEntry>): string;
-var
-  Entry: TAtlasUnitEntry;
-begin
-  Result := '';
-  for Entry in AEntries do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + Entry.Name;
-  end;
-end;
-
 { TAtlasIdeUnitSearch }
 
 class procedure TAtlasIdeUnitSearch.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
@@ -467,8 +325,7 @@ var
   Action: TContainedAction;
   Mode: TAtlasUnitSearchMode;
 begin
-  FSessionOf := ASessionOf;
-  FMessage := AMessage;
+  TAtlasIdeUnitSearchActions.Install(ASessionOf, AMessage);
   for Mode := Low(TAtlasUnitSearchMode) to High(TAtlasUnitSearchMode) do
   begin
     FHooks[Mode] := nil;
@@ -498,25 +355,17 @@ begin
   begin
     FreeAndNil(FHooks[Mode]);
   end;
-  FSessionOf := nil;
-  FMessage := nil;
+  TAtlasIdeUnitSearchActions.Uninstall;
 end;
 
 class function TAtlasIdeUnitSearch.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TAtlasIdeUnitSearchActions.Session;
 end;
 
 class procedure TAtlasIdeUnitSearch.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasIdeUnitSearchActions.Say(AText);
 end;
 
 class function TAtlasIdeUnitSearch.StateFile: string;
@@ -546,7 +395,7 @@ begin
   end
   else
   begin
-    RunNamedAction(IdeActionNames[AMode]);
+    TAtlasIdeUnitSearchActions.RunNamedAction(IdeActionNames[AMode]);
   end;
 end;
 
@@ -580,85 +429,198 @@ begin
   Show(TAtlasUnitSearchMode.Forms, False);
 end;
 
-/// <summary>Datei, in deren uses „Unit verwenden“ und „In uses aufnehmen“ einfügen können.</summary>
-function UsesTarget(const AFileName: string): Boolean;
+/// <summary>Einstellungen des neuen Fensters im Modus AMode; ATargetFile ist die Unit für „Unit verwenden“.
+/// </summary>
+function OptionsFor(AMode: TAtlasUnitSearchMode; const ATargetFile: string): TAtlasUnitSearchOptions;
+var
+  mPlugin: TAtlasPluginSettings;
 begin
-  Result := (AFileName <> '') and (SameText(ExtractFileExt(AFileName), '.pas') or
-    SameText(ExtractFileExt(AFileName), '.dpr') or SameText(ExtractFileExt(AFileName), '.dpk'));
+  mPlugin := Settings;
+  Result := Default(TAtlasUnitSearchOptions);
+  Result.Filters := mPlugin.UnitSearchFilters;
+  Result.FilterSyntax := mPlugin.UnitSearchFilterSyntax;
+  Result.Preview := mPlugin.UnitSearchPreview;
+  Result.PreviewForm := mPlugin.UnitSearchPreviewForm;
+  Result.PreviewUsedBy := mPlugin.UnitSearchPreviewUsedBy;
+  Result.PreviewAutoCollapse := mPlugin.UnitSearchPreviewAutoCollapse;
+  Result.MultiSelect := mPlugin.UnitSearchMultiSelect;
+  Result.Actions := mPlugin.UnitSearchActions;
+  Result.AddUses := mPlugin.UnitSearchActionsAddUses;
+  Result.RememberCollapsed := mPlugin.UnitSearchRememberCollapsed;
+  Result.PathStyle := TAtlasUnitSearch.PathStyleFromText(mPlugin.UnitSearchPathStyle);
+  Result.Grouping := TAtlasUnitSearch.GroupingFromText(mPlugin.UnitSearchGroupBy);
+  Result.DefaultOrigins := TAtlasUnitSearch.OriginsForScope(mPlugin.UnitSearchDefaultScope);
+  GroupInfo(Result.GroupFile, Result.ActiveProject, Result.Root);
+  Result.Mode := AMode;
+  if AMode = TAtlasUnitSearchMode.UseUnit then
+  begin
+    Result.TargetUnit := ChangeFileExt(ExtractFileName(ATargetFile), '');
+  end;
 end;
 
-/// <summary>Der Server braucht den Text des Puffers, nicht den der Platte.</summary>
-procedure SyncBuffer(ALive: TLspSession; const AFileName: string);
-var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Index: Integer;
-  Editor: IOTASourceEditor;
+/// <summary>Derselbe Modus für dieselbe Unit: offenes Fenster nach vorn holen (True); ein anderes offenes
+/// Fenster wird geschlossen.</summary>
+function BringCurrentToFront(AMode: TAtlasUnitSearchMode; const ATargetFile: string): Boolean;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  Result := False;
+  if Current = nil then
   begin
     Exit;
   end;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
+  Result := (Current.Mode = AMode) and ((AMode <> TAtlasUnitSearchMode.UseUnit) or
+    SameText(Current.Target, ATargetFile));
+  if Result then
+  begin
+    Current.Window.Show;
+    Current.Window.SetFocus;
+    Exit;
+  end;
+  Current.Window.Close;
+  if Current <> nil then
+  begin
+    Current.Window.OnClosed := nil;
+    FreeAndNil(Current);
+  end;
+end;
+
+/// <summary>Zustand beim Schließen speichern und das Fenster vergessen.</summary>
+procedure ForgetCurrent;
+begin
+  if Current = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
-  begin
-    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) and (Editor.EditViewCount > 0) then
+  try
+    Current.State.SaveToFile(TAtlasIdeUnitSearch.StateFile);
+  except
+    // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
+    on E: Exception do
     begin
-      ALive.Sync(AFileName, TAtlasEditorBuffer.Text(Editor.EditViews[0].Buffer));
-      Exit;
+      TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
     end;
   end;
+  FreeAndNil(Current);
 end;
 
-/// <summary>„schon in uses“ und Kreise der Zielunit (#786); False ohne Antwort.</summary>
-function LoadUseInfo(ALive: TLspSession; const ATarget: string; out AInfo: TAtlasUseUnitInfo): Boolean;
+procedure WireEvents(ASearch: TOpenSearch);
 var
-  Answer: TJSONValue;
+  mTargetFile: string;
 begin
-  AInfo := Default(TAtlasUseUnitInfo);
-  SyncBuffer(ALive, ATarget);
-  try
-    Answer := ALive.RunCommand(TAtlasUseUnit.Command, TAtlasUseUnit.Arguments(TLspSession.PathToUri(ATarget)),
-      CommandTimeoutMs);
-  except
-    on E: ELspClientError do
-      Exit(False);
-  end;
-  try
-    Result := (Answer <> nil) and TAtlasUseUnit.Parse(Answer.ToJSON, AInfo);
-  finally
-    Answer.Free;
-  end;
+  // Läuft OnUse nach dem Schließen, ist ASearch frei: nur die Datei von oben.
+  mTargetFile := ASearch.Target;
+  ASearch.Window.OnClosed :=
+    procedure
+    begin
+      ForgetCurrent;
+    end;
+  ASearch.Window.OnPreview :=
+    function(const AEntry: TAtlasUnitEntry): TAtlasUnitPreview
+    begin
+      Result := TAtlasIdeUnitSearchActions.Preview(AEntry);
+    end;
+  ASearch.Window.OnAction :=
+    procedure(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>)
+    var
+      mTarget: string;
+      mChosen: TArray<TAtlasUnitEntry>;
+    begin
+      mTarget := '';
+      if Current <> nil then
+      begin
+        mTarget := Current.Target;
+      end;
+      mChosen := AEntries;
+      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
+        procedure
+        begin
+          TAtlasIdeUnitSearchActions.Run(AAction, mChosen, mTarget);
+        end);
+    end;
+  ASearch.Window.OnUse :=
+    procedure(const AEntries: TArray<TAtlasUnitEntry>; ASection: TAtlasUseUnitSection)
+    var
+      mChosen: TArray<TAtlasUnitEntry>;
+    begin
+      mChosen := AEntries;
+      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
+        procedure
+        begin
+          TAtlasIdeUnitSearchActions.UseUnits(mChosen, mTargetFile, ASection);
+        end);
+    end;
 end;
 
-procedure UseUnits(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string;
-  ASection: TAtlasUseUnitSection); forward;
+/// <summary>Einträge erst nach dem Zeichnen laden: Das Fenster zeigt so lange „Units werden geladen …“.</summary>
+procedure LoadLater(ASearch: TOpenSearch; const AActiveProject: string);
+var
+  mSearch: TOpenSearch;
+  mActive: string;
+begin
+  mSearch := ASearch;
+  mActive := AActiveProject;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
+    procedure
+    var
+      mEntries: TAtlasUnitEntries;
+      mLive: TLspSession;
+      mUseInfo: TAtlasUseUnitInfo;
+    begin
+      if Current <> mSearch then
+      begin
+        Exit;
+      end;
+      mLive := TAtlasIdeUnitSearchActions.Session;
+      if mLive = nil then
+      begin
+        TAtlasIdeUnitSearchActions.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
+        Exit;
+      end;
+      if not TAtlasIdeUnitSearchActions.LoadEntries(mLive, mActive, mEntries) or (Current <> mSearch) then
+      begin
+        Exit;
+      end;
+      mSearch.Window.SetEntries(mEntries);
+      // Unit verwenden: Kreise und „schon in uses“ der Zielunit (#786); ohne Antwort ohne Kennzeichen.
+      if (mSearch.Mode = TAtlasUnitSearchMode.UseUnit) and
+        TAtlasIdeUnitSearchActions.LoadUseInfo(mLive, mSearch.Target, mUseInfo) and (Current = mSearch) then
+      begin
+        mSearch.Window.SetUseInfo(mUseInfo);
+      end;
+    end);
+end;
 
-procedure RunAction(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>;
-  const ATarget: string); forward;
+procedure OpenSearch(AMode: TAtlasUnitSearchMode; const ATargetFile: string);
+var
+  mOptions: TAtlasUnitSearchOptions;
+  mSearch: TOpenSearch;
+begin
+  mOptions := OptionsFor(AMode, ATargetFile);
+  mSearch := TOpenSearch.Create;
+  mSearch.Mode := AMode;
+  mSearch.State := TAtlasUnitSearchState.Create;
+  // Fehlt, unbrauchbar oder gesperrt: Vorgaben; TAtlasDataFile legt Unbrauchbares beiseite und protokolliert
+  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
+  mSearch.State.LoadFromFile(TAtlasIdeUnitSearch.StateFile);
+  mSearch.Target := ATargetFile;
+  mSearch.Window := TAtlasUnitSearchWindow.CreateSearch(Application, mOptions, mSearch.State,
+    TAtlasIdeStyle.Colors);
+  Current := mSearch;
+  WireEvents(mSearch);
+  mSearch.Window.ShowOver(Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect);
+  LoadLater(mSearch, mOptions.ActiveProject);
+end;
 
 class procedure TAtlasIdeUnitSearch.Show(AMode: TAtlasUnitSearchMode; AFallback: Boolean);
 var
-  Plugin: TAtlasPluginSettings;
-  Options: TAtlasUnitSearchOptions;
-  Search: TOpenSearch;
-  Area: TRect;
-  Running: TLspSession;
-  TargetFile: string;
+  mTargetFile: string;
 begin
-  Plugin := Settings;
   // Abgeschaltet: der Dialog der IDE übernimmt.
-  if not Plugin.UnitSearchEnabled then
+  if not Settings.UnitSearchEnabled then
   begin
     ShowIdeDialog(AMode);
     Exit;
   end;
-  Running := Session;
-  if Running = nil then
+  if Session = nil then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
     if AFallback then
@@ -667,428 +629,15 @@ begin
     end;
     Exit;
   end;
-  TargetFile := TopFile;
-  if (AMode = TAtlasUnitSearchMode.UseUnit) and not UsesTarget(TargetFile) then
+  mTargetFile := TopFile;
+  if (AMode = TAtlasUnitSearchMode.UseUnit) and not TAtlasIdeUnitSearchActions.UsesTarget(mTargetFile) then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));
     Exit;
   end;
-  if Current <> nil then
+  if not BringCurrentToFront(AMode, mTargetFile) then
   begin
-    // Derselbe Modus für dieselbe Unit: nach vorn holen; sonst neu öffnen.
-    if (Current.Mode = AMode) and ((AMode <> TAtlasUnitSearchMode.UseUnit) or
-      SameText(Current.Target, TargetFile)) then
-    begin
-      Current.Window.Show;
-      Current.Window.SetFocus;
-      Exit;
-    end;
-    Current.Window.Close;
-    if Current <> nil then
-    begin
-      Current.Window.OnClosed := nil;
-      FreeAndNil(Current);
-    end;
-  end;
-  Options := Default(TAtlasUnitSearchOptions);
-  Options.Filters := Plugin.UnitSearchFilters;
-  Options.FilterSyntax := Plugin.UnitSearchFilterSyntax;
-  Options.Preview := Plugin.UnitSearchPreview;
-  Options.PreviewForm := Plugin.UnitSearchPreviewForm;
-  Options.PreviewUsedBy := Plugin.UnitSearchPreviewUsedBy;
-  Options.PreviewAutoCollapse := Plugin.UnitSearchPreviewAutoCollapse;
-  Options.MultiSelect := Plugin.UnitSearchMultiSelect;
-  Options.Actions := Plugin.UnitSearchActions;
-  Options.AddUses := Plugin.UnitSearchActionsAddUses;
-  Options.RememberCollapsed := Plugin.UnitSearchRememberCollapsed;
-  Options.PathStyle := TAtlasUnitSearch.PathStyleFromText(Plugin.UnitSearchPathStyle);
-  Options.Grouping := TAtlasUnitSearch.GroupingFromText(Plugin.UnitSearchGroupBy);
-  Options.DefaultOrigins := TAtlasUnitSearch.OriginsForScope(Plugin.UnitSearchDefaultScope);
-  GroupInfo(Options.GroupFile, Options.ActiveProject, Options.Root);
-  Options.Mode := AMode;
-  if AMode = TAtlasUnitSearchMode.UseUnit then
-  begin
-    Options.TargetUnit := ChangeFileExt(ExtractFileName(TargetFile), '');
-  end;
-  Search := TOpenSearch.Create;
-  Search.Mode := AMode;
-  Search.State := TAtlasUnitSearchState.Create;
-  // Fehlt, unbrauchbar oder gesperrt: Vorgaben; TAtlasDataFile legt Unbrauchbares beiseite und protokolliert
-  // ohne Pfad, eine gesperrte Datei schreibt SaveToFile nicht (Bericht N3).
-  Search.State.LoadFromFile(StateFile);
-  Search.Target := TargetFile;
-  Search.Window := TAtlasUnitSearchWindow.CreateSearch(Application, Options, Search.State, TAtlasIdeStyle.Colors);
-  Current := Search;
-  Search.Window.Loading := True;
-  Search.Window.OnClosed :=
-    procedure
-    begin
-      if Current = nil then
-      begin
-        Exit;
-      end;
-      try
-        Current.State.SaveToFile(StateFile);
-      except
-        // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
-        on E: Exception do
-          TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
-      end;
-      FreeAndNil(Current);
-    end;
-  Search.Window.OnPreview :=
-    function(const AEntry: TAtlasUnitEntry): TAtlasUnitPreview
-    var
-      Arguments: TJSONArray;
-      Flags: TJSONObject;
-      Answer: TJSONValue;
-      Live: TLspSession;
-      Text: string;
-    begin
-      Result := Default(TAtlasUnitPreview);
-      Result.FileName := AEntry.FileName;
-      Result.UsedBy := -1;
-      Live := Session;
-      if Live = nil then
-      begin
-        Exit;
-      end;
-      Arguments := TJSONArray.Create;
-      try
-        Arguments.Add(TLspSession.PathToUri(AEntry.FileName));
-        Flags := TJSONObject.Create;
-        Flags.AddPair('form', TJSONBool.Create(Settings.UnitSearchPreviewForm));
-        Flags.AddPair('usedBy', TJSONBool.Create(Settings.UnitSearchPreviewUsedBy));
-        Arguments.Add(Flags);
-        Text := Arguments.ToJSON;
-      finally
-        Arguments.Free;
-      end;
-      try
-        Answer := Live.RunCommand(PreviewCommand, Text, PreviewTimeoutMs);
-      except
-        on E: ELspClientError do
-          Exit;
-      end;
-      try
-        Result := TAtlasUnitPreview.FromJson(Answer, UriToPath);
-      finally
-        Answer.Free;
-      end;
-    end;
-  Search.Window.OnAction :=
-    procedure(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>)
-    var
-      Target: string;
-    begin
-      Target := '';
-      if Current <> nil then
-      begin
-        Target := Current.Target;
-      end;
-      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
-        procedure
-        begin
-          RunAction(AAction, AEntries, Target);
-        end);
-    end;
-  Search.Window.OnUse :=
-    procedure(const AEntries: TArray<TAtlasUnitEntry>; ASection: TAtlasUseUnitSection)
-    begin
-      // Läuft nach dem Schließen (Search ist dann frei): nur die Datei von oben.
-      TAtlasGuard.Run(TAtlasFeature.UnitSearch,
-        procedure
-        begin
-          UseUnits(AEntries, TargetFile, ASection);
-        end);
-    end;
-  Area := Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect;
-  Search.Window.ShowOver(Area);
-  // Erst nach dem Zeichnen laden: das Fenster zeigt so lange „Units werden geladen …“.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.UnitSearch,
-    procedure
-    var
-      Answer: TJSONValue;
-      Entries: TAtlasUnitEntries;
-      Live: TLspSession;
-      Active: string;
-      UseInfo: TAtlasUseUnitInfo;
-    begin
-      if Current <> Search then
-      begin
-        Exit;
-      end;
-      Live := Session;
-      if Live = nil then
-      begin
-        Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
-        Exit;
-      end;
-      try
-        Answer := Live.RunCommand(UnitsCommand, TAtlasUnitSearch.UnitsArguments(Settings.UnitSearchFormCaptions),
-          UnitsTimeoutMs);
-      except
-        on E: ELspClientError do
-        begin
-          Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-          Exit;
-        end;
-      end;
-      try
-        Active := Options.ActiveProject;
-        Entries := TAtlasUnitSearch.FromJson(Answer, Active, UriToPath);
-      finally
-        Answer.Free;
-      end;
-      MarkOpen(Entries);
-      if Current <> Search then
-      begin
-        Exit;
-      end;
-      Search.Window.SetEntries(Entries);
-      // Unit verwenden: Kreise und „schon in uses“ der Zielunit (#786); ohne Antwort ohne Kennzeichen.
-      if (Search.Mode = TAtlasUnitSearchMode.UseUnit) and LoadUseInfo(Live, Search.Target, UseInfo) and
-        (Current = Search) then
-      begin
-        Search.Window.SetUseInfo(UseInfo);
-      end;
-    end);
-end;
-
-procedure OpenTests(const AEntries: TArray<TAtlasUnitEntry>);
-var
-  Entry: TAtlasUnitEntry;
-  Values: TJSONArray;
-  Arguments: string;
-  Answer: TJSONValue;
-  Info: TAtlasTestUnitInfo;
-  Live: TLspSession;
-begin
-  for Entry in AEntries do
-  begin
-    if Entry.Kind = TAtlasUnitKind.Test then
-    begin
-      TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
-      Continue;
-    end;
-    Live := TAtlasIdeUnitSearch.Session;
-    if Live = nil then
-    begin
-      Exit;
-    end;
-    Values := TJSONArray.Create;
-    try
-      Values.Add(TLspSession.PathToUri(Entry.FileName));
-      Values.Add(0);
-      Arguments := Values.ToJSON;
-    finally
-      Values.Free;
-    end;
-    try
-      Answer := Live.RunCommand(TestUnitCommand, Arguments, CommandTimeoutMs);
-    except
-      on E: ELspClientError do
-      begin
-        TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-    try
-      Info := TAtlasTestUnitInfo.FromJson(Answer, UriToPath);
-    finally
-      Answer.Free;
-    end;
-    if Info.CounterpartFile <> '' then
-    begin
-      TAtlasIdeNavigation.GoToLocation(Info.CounterpartFile, 0, 0);
-    end
-    else
-    begin
-      TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoTests, [Entry.Name]));
-    end;
-  end;
-end;
-
-/// <summary>Namen ohne Include-Dateien.</summary>
-function UsesNames(const AEntries: TArray<TAtlasUnitEntry>): TArray<string>;
-var
-  Entry: TAtlasUnitEntry;
-begin
-  Result := nil;
-  for Entry in AEntries do
-  begin
-    if Entry.Kind <> TAtlasUnitKind.Include then
-    begin
-      Result := Result + [Entry.Name];
-    end;
-  end;
-end;
-
-/// <summary>atlas.server.addUses mit AArguments ausführen und als ein Rückgängig-Schritt anwenden.</summary>
-procedure RunAddUses(ALive: TLspSession; const AEntries: TArray<TAtlasUnitEntry>; const ATarget,
-  AArguments: string);
-var
-  Answer, EditValue, AddedValue: TJSONValue;
-  Edit: TLspWorkspaceEdit;
-  Outcome: TAtlasWorkspaceEditResult;
-  Added: Integer;
-begin
-  try
-    Answer := ALive.RunCommand(AddUsesCommand, AArguments, CommandTimeoutMs);
-  except
-    on E: ELspClientError do
-    begin
-      TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  Added := 0;
-  try
-    Edit := Default(TLspWorkspaceEdit);
-    if Answer is TJSONObject then
-    begin
-      EditValue := TJSONObject(Answer).GetValue('edit');
-      Edit := TLspWorkspaceEdit.FromJson(EditValue);
-      AddedValue := TJSONObject(Answer).GetValue('added');
-      if AddedValue is TJSONArray then
-      begin
-        Added := TJSONArray(AddedValue).Count;
-      end;
-    end;
-  finally
-    Answer.Free;
-  end;
-  if Edit.IsEmpty then
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
-      [0, ExtractFileName(ATarget)]));
-    Exit;
-  end;
-  Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit,
-    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
-  if Outcome.Error <> '' then
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
-  end
-  else
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchUsesAdded,
-      [Added, ExtractFileName(ATarget)]));
-  end;
-end;
-
-/// <summary>Sitzung für das Einfügen in ATarget, Puffer abgeglichen; nil mit Meldung.</summary>
-function AddUsesSession(const ATarget: string): TLspSession;
-begin
-  Result := nil;
-  if not UsesTarget(ATarget) then
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));
-    Exit;
-  end;
-  Result := TAtlasIdeUnitSearch.Session;
-  if Result = nil then
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoServer));
-    Exit;
-  end;
-  SyncBuffer(Result, ATarget);
-end;
-
-procedure AddUses(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string);
-var
-  Values, Names: TJSONArray;
-  Name, Arguments: string;
-  Live: TLspSession;
-begin
-  Live := AddUsesSession(ATarget);
-  if Live = nil then
-  begin
-    Exit;
-  end;
-  Values := TJSONArray.Create;
-  try
-    Values.Add(TLspSession.PathToUri(ATarget));
-    Names := TJSONArray.Create;
-    for Name in UsesNames(AEntries) do
-    begin
-      Names.Add(Name);
-    end;
-    Values.AddElement(Names);
-    Arguments := Values.ToJSON;
-  finally
-    Values.Free;
-  end;
-  RunAddUses(Live, AEntries, ATarget, Arguments);
-end;
-
-procedure UseUnits(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string;
-  ASection: TAtlasUseUnitSection);
-var
-  Live: TLspSession;
-begin
-  if Length(AEntries) = 0 then
-  begin
-    TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UseUnitNothing));
-    Exit;
-  end;
-  Live := AddUsesSession(ATarget);
-  if Live <> nil then
-  begin
-    RunAddUses(Live, AEntries, ATarget, TAtlasUseUnit.AddUsesArguments(TLspSession.PathToUri(ATarget),
-      UsesNames(AEntries), ASection));
-  end;
-end;
-
-procedure RunAction(AAction: TAtlasUnitSearchAction; const AEntries: TArray<TAtlasUnitEntry>;
-  const ATarget: string);
-var
-  Entry: TAtlasUnitEntry;
-  FormFile, Project: string;
-begin
-  if Length(AEntries) = 0 then
-  begin
-    Exit;
-  end;
-  case AAction of
-    TAtlasUnitSearchAction.Open:
-      for Entry in AEntries do
-      begin
-        TAtlasIdeNavigation.GoToLocation(Entry.FileName, 0, 0);
-      end;
-    TAtlasUnitSearchAction.OpenForm:
-      for Entry in AEntries do
-      begin
-        FormFile := FormFileOf(Entry.FileName);
-        if (FormFile = '') or not ShowForm(Entry.FileName) then
-        begin
-          TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchNoForm, [Entry.Name]));
-        end;
-      end;
-    TAtlasUnitSearchAction.AddUses:
-      AddUses(AEntries, ATarget);
-    TAtlasUnitSearchAction.OpenTests:
-      OpenTests(AEntries);
-    TAtlasUnitSearchAction.ShowProject:
-      begin
-        // Die Open Tools API wählt keinen Knoten im Projektmanager aus: öffnen und das Projekt nennen.
-        RunNamedAction(ProjectManagerActionName);
-        for Entry in AEntries do
-        begin
-          Project := string.Join(', ', Entry.Projects);
-          if Project = '' then
-          begin
-            Project := TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchNoProject);
-          end;
-          TAtlasIdeUnitSearch.Say(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.UnitSearchProjectOf,
-            [Entry.Name, Project]));
-        end;
-      end;
-    TAtlasUnitSearchAction.ShowExplorer:
-      ShellExecute(0, 'open', 'explorer.exe', PChar('/select,"' + AEntries[0].FileName + '"'), nil, SW_SHOWNORMAL);
-  else
-    // Übrige Werte bewusst ohne Wirkung.
+    OpenSearch(AMode, mTargetFile);
   end;
 end;
 

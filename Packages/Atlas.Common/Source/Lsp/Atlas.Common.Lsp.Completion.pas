@@ -1045,51 +1045,51 @@ end;
 function PostfixTraits(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AContext: TCompletionContext; const AMembers: TArray<TResolvedSymbol>; out ATraits: TPostfixTraits): Boolean;
 var
-  Owner, TypeInfo, Member, Enumerator: TResolvedSymbol;
-  TypeFound: Boolean;
+  mChain: TResolvedChainType;
+  Member, Enumerator: TResolvedSymbol;
   OwnerType: string;
 begin
   ATraits := Default(TPostfixTraits);
   // Ein Typ ist kein Wert, außer als Typumwandlung TFoo(X) (#188).
-  if not AResolver.ChainType(ATree, AFileName, AContext.Names, AContext.Offset, Owner, TypeInfo, TypeFound) or
-    (Owner.Kind = TResolvedKind.UnitName) or (Owner.IsType and not AContext.Called) then
+  if not AResolver.ChainType(ATree, AFileName, AContext.Names, AContext.Offset, mChain) or
+    (mChain.Owner.Kind = TResolvedKind.UnitName) or (mChain.Owner.IsType and not AContext.Called) then
   begin
     Exit(False);
   end;
   // Typargumente stehen getrennt: TArray mit TypeArgs Integer.
-  if Owner.IsType then
+  if mChain.Owner.IsType then
   begin
-    OwnerType := Owner.Name;
+    OwnerType := mChain.Owner.Name;
   end
   else
   begin
-    OwnerType := Owner.TypeName;
+    OwnerType := mChain.Owner.TypeName;
   end;
-  if Owner.TypeArgs <> '' then
+  if mChain.Owner.TypeArgs <> '' then
   begin
-    OwnerType := OwnerType + '<' + Owner.TypeArgs + '>';
+    OwnerType := OwnerType + '<' + mChain.Owner.TypeArgs + '>';
   end;
   // Typ für eine Deklaration im var-Abschnitt; TFoo.Create liefert ein TFoo.
-  if Owner.SymbolKind = TIndexSymbolKind.Constructor_ then
+  if mChain.Owner.SymbolKind = TIndexSymbolKind.Constructor_ then
   begin
     ATraits.IsConstructorCall := True;
-    ATraits.TypeName := Owner.Container;
+    ATraits.TypeName := mChain.Owner.Container;
   end
   else if OwnerType <> '' then
   begin
     ATraits.TypeName := OwnerType;
   end
-  else if TypeFound then
+  else if mChain.TypeFound then
   begin
-    ATraits.TypeName := TypeInfo.Name;
+    ATraits.TypeName := mChain.TypeInfo.Name;
   end;
   ATraits.ElementType := TPostfixTemplates.ElementOf(OwnerType);
-  if (ATraits.ElementType = '') and TypeFound then
+  if (ATraits.ElementType = '') and mChain.TypeFound then
   begin
-    ATraits.ElementType := TPostfixTemplates.ElementOf(TypeInfo.TypeName);
+    ATraits.ElementType := TPostfixTemplates.ElementOf(mChain.TypeInfo.TypeName);
   end;
   ATraits.Enumerable := ATraits.ElementType <> '';
-  if TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind in [TIndexSymbolKind.ClassType,
+  if mChain.TypeFound and not mChain.TypeInfo.Builtin and (mChain.TypeInfo.SymbolKind in [TIndexSymbolKind.ClassType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType]) then
   begin
     for Member in AMembers do
@@ -1098,7 +1098,7 @@ begin
       begin
         ATraits.Enumerable := True;
         // Elementtyp für die klassische Schleife: Current des Enumerators.
-        for Enumerator in AResolver.MemberCandidates(ATree, AFileName, AContext.Names + ['GetEnumerator'],
+        for Enumerator in AResolver.Candidates.MemberCandidates(ATree, AFileName, AContext.Names + ['GetEnumerator'],
           AContext.Offset) do
         begin
           if SameText(Enumerator.Name, 'Current') then
@@ -1110,16 +1110,18 @@ begin
       end;
     end;
   end;
-  ATraits.IsString := TPostfixTemplates.IsStringType(Owner.TypeName) or
-    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsStringType(TypeInfo.Name));
-  ATraits.IsBoolean := TPostfixTemplates.IsBooleanType(Owner.TypeName) or
-    (TypeFound and TypeInfo.Builtin and TPostfixTemplates.IsBooleanType(TypeInfo.Name));
-  ATraits.IsClass := TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.ClassType);
+  ATraits.IsString := TPostfixTemplates.IsStringType(mChain.Owner.TypeName) or
+    (mChain.TypeFound and mChain.TypeInfo.Builtin and TPostfixTemplates.IsStringType(mChain.TypeInfo.Name));
+  ATraits.IsBoolean := TPostfixTemplates.IsBooleanType(mChain.Owner.TypeName) or
+    (mChain.TypeFound and mChain.TypeInfo.Builtin and TPostfixTemplates.IsBooleanType(mChain.TypeInfo.Name));
+  ATraits.IsClass := mChain.TypeFound and not mChain.TypeInfo.Builtin and
+    (mChain.TypeInfo.SymbolKind = TIndexSymbolKind.ClassType);
   ATraits.IsReference := ATraits.IsClass or
-    (TypeFound and not TypeInfo.Builtin and (TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
-    TPostfixTemplates.IsPointerType(Owner.TypeName) or
-    (TypeFound and TPostfixTemplates.IsPointerType(TypeInfo.TypeName));
-  Result := TypeFound or ATraits.Enumerable or ATraits.IsString or ATraits.IsReference;
+    (mChain.TypeFound and not mChain.TypeInfo.Builtin and
+      (mChain.TypeInfo.SymbolKind = TIndexSymbolKind.InterfaceType)) or
+    TPostfixTemplates.IsPointerType(mChain.Owner.TypeName) or
+    (mChain.TypeFound and TPostfixTemplates.IsPointerType(mChain.TypeInfo.TypeName));
+  Result := mChain.TypeFound or ATraits.Enumerable or ATraits.IsString or ATraits.IsReference;
 end;
 
 class function TLspCompletion.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -1171,7 +1173,7 @@ begin
   Descends :=
     function(ATypeName: string): Boolean
     begin
-      Result := Resolver.TypeDescendsFrom(Tree, FileName, Offset, TypeName, ATypeName);
+      Result := Resolver.Queries.TypeDescendsFrom(Tree, FileName, Offset, TypeName, ATypeName);
     end;
   for Template in TPostfixTemplates.Templates + APostfix.Custom do
   begin
@@ -1238,7 +1240,8 @@ var
   LineBefore, After, Text: string;
   WithResult: Boolean;
 begin
-  Symbols := ARequest.Resolver.InheritedOverloads(ARequest.Tree, ARequest.FileName, AContext.Offset, Start, Depths);
+  Symbols := ARequest.Resolver.Queries.InheritedOverloads(ARequest.Tree, ARequest.FileName, AContext.Offset, Start,
+    Depths);
   if (Start < 0) or not TInheritedHeader.Parse(TCompletionInherited.HeaderText(ARequest.Text, Start + 1),
     Current) then
   begin
@@ -1513,7 +1516,8 @@ begin
             // Die Postfix-Vorlagen brauchen die Mitglieder (GetEnumerator).
             Collector.SetNameFilter(True);
             try
-              Candidates := ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, Context.Names,
+              Candidates := ARequest.Resolver.Candidates.MemberCandidates(ARequest.Tree, ARequest.FileName,
+                Context.Names,
                 Context.Offset);
             finally
               Collector.SetNameFilter(False);
@@ -1521,7 +1525,8 @@ begin
             Collector.AddCandidates(Candidates);
             Collector.AddUnavailableMembers(Candidates);
             // Helper aus nicht eingebundenen Units mit uses-Eintrag (#456), wie Symbole bei #180.
-            Collector.AddHelpersFromOtherUnits(ARequest.Resolver.ReceiverTypes(ARequest.Tree, ARequest.FileName,
+            Collector.AddHelpersFromOtherUnits(ARequest.Resolver.Candidates.ReceiverTypes(ARequest.Tree,
+              ARequest.FileName,
               Context.Names, Context.Offset));
           end
           else if Context.Filter = TCompletionFilter.InheritedCall then
@@ -1529,7 +1534,8 @@ begin
             // Nach "inherited " nur Methoden der Vorfahren (#31).
             Collector.SetNameFilter(True);
             try
-              Candidates := ARequest.Resolver.InheritedCandidates(ARequest.Tree, ARequest.FileName, Context.Offset);
+              Candidates := ARequest.Resolver.Candidates.InheritedCandidates(ARequest.Tree, ARequest.FileName,
+                Context.Offset);
             finally
               Collector.SetNameFilter(False);
             end;
@@ -1545,7 +1551,8 @@ begin
             // Eigener Gültigkeitsbereich zuerst (#616): lokal, Self, eigene Unit; dann die Units aus uses.
             Collector.SetNameFilter(True);
             try
-              Candidates := ARequest.Resolver.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, Context.Offset);
+              Candidates := ARequest.Resolver.Candidates.OwnScopeCandidates(ARequest.Tree, ARequest.FileName,
+                Context.Offset);
             finally
               Collector.SetNameFilter(False);
             end;
@@ -1556,7 +1563,7 @@ begin
             try
               // Mit Eingabe auch die Bezeichner von System ohne Quelltext (#880): Assigned, SetLength,
               // Integer ... Ohne Eingabe nicht, die Liste ist dann ohnehin unvollständig (Incomplete).
-              Candidates := ARequest.Resolver.UsedScopeCandidates(Context.Prefix <> '');
+              Candidates := ARequest.Resolver.Candidates.UsedScopeCandidates(Context.Prefix <> '');
             finally
               Collector.SetNameFilter(False);
             end;
@@ -1863,7 +1870,7 @@ begin
   end;
   if ARequest.Resolver <> nil then
   begin
-    for Candidate in ARequest.Resolver.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, ASite.Offset) do
+    for Candidate in ARequest.Resolver.Candidates.OwnScopeCandidates(ARequest.Tree, ARequest.FileName, ASite.Offset) do
     begin
       Result := Result + [Candidate.Name];
     end;
@@ -2748,7 +2755,7 @@ begin
   try
     if Found then
     begin
-      Doc := TLspDocumentation.Load(Resolver, Resolver.SymbolFrom(UnitInfo, Symbol), Lines, Range.StartPos.Line,
+      Doc := TLspDocumentation.Load(Resolver, TResolvedSymbol.FromIndex(UnitInfo, Symbol), Lines, Range.StartPos.Line,
         TLspDocumentation.Reader(AFileName, AText, AReadText));
     end
     else
@@ -3072,8 +3079,8 @@ begin
   end
   else
   begin
-    if not TResourceStrings.Insertion(ARequest.Text, ARequest.Tree.Tokens, False, Literal.Range.StartPos.Line,
-      Declaration, LB, Edit) then
+    if not TResourceStrings.Insertion(ARequest.Text, ARequest.Tree.Tokens,
+      TResourcePlace.Create(False, Literal.Range.StartPos.Line), Declaration, LB, Edit) then
     begin
       Exit(Length(AItems.Items) > 0);
     end;
@@ -3227,7 +3234,7 @@ begin
       Inc(IndexCount, Length(Copy(Param, 1, Pos(':', Param) - 1).Split([','])));
     end;
   end;
-  for Candidate in ARequest.Resolver.AccessorCandidates(UnitIndex, TypeName) do
+  for Candidate in ARequest.Resolver.Queries.AccessorCandidates(UnitIndex, TypeName) do
   begin
     if Candidate.SymbolKind = TIndexSymbolKind.Field then
     begin
@@ -3339,7 +3346,7 @@ begin
   Files := TDictionary<string, TArray<string>>.Create;
   Items := TList<TCompletionItem>.Create;
   try
-    for Candidate in ARequest.Resolver.OverridableMembers(UnitIndex, TypeName) do
+    for Candidate in ARequest.Resolver.Queries.OverridableMembers(UnitIndex, TypeName) do
     begin
       if not CachedLines(Files, Candidate.FileName, ARequest.FileName, ARequest.Text, ARequest.ReadText,
         SourceLines) then
@@ -3530,7 +3537,7 @@ begin
   Indent := Copy(Lines[EndLine], 1, Length(Lines[EndLine]) - Length(TrimLeft(Lines[EndLine])));
   TypeName := QualifiedTypeName(TypeSymbol);
   // Vorfahrenliste aus dem Quelltext: Der Index kennt die Typargumente nur beim ersten Vorfahren.
-  Missing := ARequest.Resolver.MissingInterfaceMembers(UnitIndex, TypeName,
+  Missing := ARequest.Resolver.Queries.MissingInterfaceMembers(UnitIndex, TypeName,
     HeaderAncestors(Lines, TypeSymbol.Range.StartPos.Line));
   if Length(Missing) = 0 then
   begin
@@ -4162,11 +4169,11 @@ begin
     Exit;
   end;
   // Nur aus der Formulardatei: Ohne Designer-Informationen kein geratener Vorschlag.
-  Names := TDataFieldNames.Lookup(ARequest.Text, ARequest.FileName, Call, ARequest.Index,
+  Names := TDataFieldNames.Lookup(TDataLookupSource.Create(ARequest.Text, ARequest.FileName, ARequest.Index,
     function(const AName: string; out AContent: string): Boolean
     begin
       Result := ARequest.ReadText(AName, AContent);
-    end, Sql, Found);
+    end), Call, Sql, Found);
   Source := TDataFieldNames.ShortSql(Sql);
   Range := TTextRange.Create(ARequest.Position.Line, Call.ContentStart, ARequest.Position.Line, Call.ContentEnd);
   for Name in Names do
@@ -4438,7 +4445,8 @@ begin
       end;
     end;
     // Passende Methoden der Klasse samt geerbter.
-    for Candidate in ARequest.Resolver.MemberCandidates(ARequest.Tree, ARequest.FileName, ['Self'], Offset) do
+    for Candidate in ARequest.Resolver.Candidates.MemberCandidates(ARequest.Tree, ARequest.FileName, ['Self'],
+      Offset) do
     begin
       Taken.AddOrSetValue(LowerCase(Candidate.Name), True);
       if (Candidate.SymbolKind <> TIndexSymbolKind.Method) or (Length(Candidate.ParamTypes) <> Length(ParamTypes)) or
@@ -4619,13 +4627,13 @@ begin
     Exit;
   end;
   // Bindungen generischer Instanzen sind qualifiziert ("Kunden.TKunde"); im Gerüst wie im Quelltext üblich.
-  Expected := ARequest.Resolver.UnqualifyType(Expected, ARequest.UnitIndex.UnitName);
+  Expected := ARequest.Resolver.Queries.UnqualifyType(Expected, ARequest.UnitIndex.UnitName);
   for Index := 0 to High(MethodRef.Params) do
   begin
-    MethodRef.Params[Index].TypeText := ARequest.Resolver.UnqualifyType(MethodRef.Params[Index].TypeText,
+    MethodRef.Params[Index].TypeText := ARequest.Resolver.Queries.UnqualifyType(MethodRef.Params[Index].TypeText,
       ARequest.UnitIndex.UnitName);
   end;
-  MethodRef.ResultType := ARequest.Resolver.UnqualifyType(MethodRef.ResultType, ARequest.UnitIndex.UnitName);
+  MethodRef.ResultType := ARequest.Resolver.Queries.UnqualifyType(MethodRef.ResultType, ARequest.UnitIndex.UnitName);
   if Assigned(ANamingFor) then
   begin
     Prefix := ANamingFor(ARequest.Uri, TNamingKind.Parameter);

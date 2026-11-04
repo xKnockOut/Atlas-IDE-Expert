@@ -65,7 +65,7 @@ begin
     TimeoutMs, TAtlasTextId.ExtractIntfFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfTitle, [AModel.SourceClass]);
+      Result := TAtlasStrings.Fmt(TAtlasTextId.ExtractIntfTitle, [AModel.Source.SourceClass]);
     end, AMessage, mChoice) then
   begin
     Exit;

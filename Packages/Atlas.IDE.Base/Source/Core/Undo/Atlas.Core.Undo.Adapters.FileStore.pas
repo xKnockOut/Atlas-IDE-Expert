@@ -151,68 +151,84 @@ begin
   end;
 end;
 
+/// <summary>Kennung, Aktion, Zeit und die Liste der Dateien; False, wenn etwas fehlt.</summary>
+function HeaderFromJson(const AValue: TJSONValue; var ASet: TAtlasChangeSet; out AFiles: TJSONArray): Boolean;
+var
+  mRoot: TJSONObject;
+  mTime: string;
+begin
+  AFiles := nil;
+  Result := AValue is TJSONObject;
+  if Result then
+  begin
+    mRoot := TJSONObject(AValue);
+    Result := mRoot.TryGetValue<Integer>('id', ASet.Id) and mRoot.TryGetValue<string>('action', ASet.Action) and
+      mRoot.TryGetValue<string>('time', mTime) and mRoot.TryGetValue<TJSONArray>('files', AFiles) and
+      TryISO8601ToDate(mTime, ASet.Time, False);
+  end;
+end;
+
+function KindOf(const AName: string; out AKind: TAtlasFileChangeKind): Boolean;
+var
+  mCandidate: TAtlasFileChangeKind;
+begin
+  Result := False;
+  AKind := Low(TAtlasFileChangeKind);
+  for mCandidate := Low(TAtlasFileChangeKind) to High(TAtlasFileChangeKind) do
+  begin
+    if KindNames[mCandidate] = AName then
+    begin
+      AKind := mCandidate;
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Eine Datei der Änderung; vorher fehlt bei neuen, nachher bei gelöschten Dateien.</summary>
+function ChangeFromJson(const AValue: TJSONValue; out AChange: TAtlasFileChange): Boolean;
+var
+  mItem: TJSONObject;
+  mKind: string;
+begin
+  AChange := Default(TAtlasFileChange);
+  Result := AValue is TJSONObject;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AValue);
+  Result := mItem.TryGetValue<string>('file', AChange.FileName) and mItem.TryGetValue<string>('kind', mKind) and
+    mItem.TryGetValue<string>('project', AChange.Project) and mItem.TryGetValue<Boolean>('undone', AChange.Undone) and
+    KindOf(mKind, AChange.Kind);
+  if Result and (AChange.Kind <> TAtlasFileChangeKind.Created) then
+  begin
+    Result := ContentFromJson(mItem.GetValue('before'), AChange.Before);
+  end;
+  if Result and (AChange.Kind <> TAtlasFileChangeKind.Deleted) then
+  begin
+    Result := ContentFromJson(mItem.GetValue('after'), AChange.After);
+  end;
+end;
 class function TAtlasUndoFileStore.FromJson(const AValue: TJSONValue; out ASet: TAtlasChangeSet): Boolean;
 var
-  Root, Item: TJSONObject;
-  Files: TJSONArray;
-  Value: TJSONValue;
-  Change: TAtlasFileChange;
-  Time, Kind: string;
-  Known: Boolean;
-  Candidate: TAtlasFileChangeKind;
+  mFiles: TJSONArray;
+  mValue: TJSONValue;
+  mChange: TAtlasFileChange;
 begin
   ASet := Default(TAtlasChangeSet);
-  if not (AValue is TJSONObject) then
+  Result := HeaderFromJson(AValue, ASet, mFiles);
+  if not Result then
   begin
-    Exit(False);
+    Exit;
   end;
-  Root := TJSONObject(AValue);
-  if not (Root.TryGetValue<Integer>('id', ASet.Id) and Root.TryGetValue<string>('action', ASet.Action) and
-    Root.TryGetValue<string>('time', Time) and Root.TryGetValue<TJSONArray>('files', Files)) then
+  for mValue in mFiles do
   begin
-    Exit(False);
-  end;
-  if not TryISO8601ToDate(Time, ASet.Time, False) then
-  begin
-    Exit(False);
-  end;
-  for Value in Files do
-  begin
-    if not (Value is TJSONObject) then
+    Result := ChangeFromJson(mValue, mChange);
+    if not Result then
     begin
-      Exit(False);
+      Exit;
     end;
-    Item := TJSONObject(Value);
-    Change := Default(TAtlasFileChange);
-    if not (Item.TryGetValue<string>('file', Change.FileName) and Item.TryGetValue<string>('kind', Kind) and
-      Item.TryGetValue<string>('project', Change.Project) and Item.TryGetValue<Boolean>('undone', Change.Undone)) then
-    begin
-      Exit(False);
-    end;
-    Known := False;
-    for Candidate := Low(TAtlasFileChangeKind) to High(TAtlasFileChangeKind) do
-    begin
-      if KindNames[Candidate] = Kind then
-      begin
-        Change.Kind := Candidate;
-        Known := True;
-      end;
-    end;
-    if not Known then
-    begin
-      Exit(False);
-    end;
-    if (Change.Kind <> TAtlasFileChangeKind.Created) and not ContentFromJson(Item.GetValue('before'),
-      Change.Before) then
-    begin
-      Exit(False);
-    end;
-    if (Change.Kind <> TAtlasFileChangeKind.Deleted) and not ContentFromJson(Item.GetValue('after'),
-      Change.After) then
-    begin
-      Exit(False);
-    end;
-    ASet.Files := ASet.Files + [Change];
+    ASet.Files := ASet.Files + [mChange];
   end;
   Result := (ASet.Id > 0) and (Length(ASet.Files) > 0);
 end;

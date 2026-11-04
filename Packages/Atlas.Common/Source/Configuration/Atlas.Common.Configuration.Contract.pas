@@ -590,7 +590,8 @@ type
     /// (#1126); '' = keine. Sprachmerkmale neuerer Versionen meldet die Regel language-feature, und Code-Aktionen
     /// erzeugen sie nicht (TLanguageFeatures.LanguageLevel).</summary>
     MinDelphiVersion: string;
-    /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
+    /// <summary>Sprache der Meldungen (#1458), "de" oder "en"; '' = wie der Client (initialize.locale), sonst
+    /// Englisch (TAtlasLocale.Resolve).</summary>
     Language: string;
     /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);
     /// 65001 = UTF-8 (Standard), sonst eine ANSI-Codepage wie 1250.</summary>
@@ -957,68 +958,86 @@ begin
   end;
 end;
 
-function MatchAt(const APattern: string; APatternIndex: Integer; const APath: string; APathIndex: Integer): Boolean;
-var
-  Index: Integer;
+function MatchAt(const APattern: string; APatternIndex: Integer; const APath: string;
+  APathIndex: Integer): Boolean; forward;
+
+/// <summary>Passt das Zeichen des Musters ('?' oder ein festes Zeichen) auf APath[AIndex]?</summary>
+function CharMatches(APatternChar: Char; const APath: string; AIndex: Integer): Boolean;
 begin
-  while APatternIndex <= Length(APattern) do
+  Result := AIndex <= Length(APath);
+  if Result then
   begin
-    case APattern[APatternIndex] of
-      '*':
-        begin
-          if (APatternIndex < Length(APattern)) and (APattern[APatternIndex + 1] = '*') then
-          begin
-            // "**/" passt auch auf keinen Ordner.
-            Inc(APatternIndex, 2);
-            if (APatternIndex <= Length(APattern)) and (APattern[APatternIndex] = '/') then
-            begin
-              if MatchAt(APattern, APatternIndex + 1, APath, APathIndex) then
-              begin
-                Exit(True);
-              end;
-            end;
-            for Index := APathIndex to Length(APath) + 1 do
-            begin
-              if MatchAt(APattern, APatternIndex, APath, Index) then
-              begin
-                Exit(True);
-              end;
-            end;
-            Exit(False);
-          end;
-          Inc(APatternIndex);
-          for Index := APathIndex to Length(APath) + 1 do
-          begin
-            if MatchAt(APattern, APatternIndex, APath, Index) then
-            begin
-              Exit(True);
-            end;
-            if (Index <= Length(APath)) and (APath[Index] = '/') then
-            begin
-              Exit(False);
-            end;
-          end;
-          Exit(False);
-        end;
-      '?':
-        begin
-          if (APathIndex > Length(APath)) or (APath[APathIndex] = '/') then
-          begin
-            Exit(False);
-          end;
-          Inc(APatternIndex);
-          Inc(APathIndex);
-        end;
+    if APatternChar = '?' then
+    begin
+      Result := APath[AIndex] <> '/';
+    end
     else
-      if (APathIndex > Length(APath)) or (APattern[APatternIndex] <> APath[APathIndex]) then
-      begin
-        Exit(False);
-      end;
-      Inc(APatternIndex);
-      Inc(APathIndex);
+    begin
+      Result := APatternChar = APath[AIndex];
     end;
   end;
-  Result := APathIndex > Length(APath);
+end;
+
+/// <summary>Rest des Musters hinter "**": passt auf beliebig viele Ordner, mit "**/" auch auf keinen.</summary>
+function MatchAnyFolders(const APattern: string; APatternIndex: Integer; const APath: string;
+  APathIndex: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  if (APatternIndex <= Length(APattern)) and (APattern[APatternIndex] = '/')
+    and MatchAt(APattern, APatternIndex + 1, APath, APathIndex) then
+  begin
+    Exit(True);
+  end;
+  for mIndex := APathIndex to Length(APath) + 1 do
+  begin
+    if MatchAt(APattern, APatternIndex, APath, mIndex) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Rest des Musters hinter "*": passt auf beliebig viele Zeichen innerhalb eines Ordners.</summary>
+function MatchAnyChars(const APattern: string; APatternIndex: Integer; const APath: string;
+  APathIndex: Integer): Boolean;
+var
+  mIndex: Integer;
+  mStop: Boolean;
+begin
+  mIndex := APathIndex;
+  repeat
+    if MatchAt(APattern, APatternIndex, APath, mIndex) then
+    begin
+      Exit(True);
+    end;
+    mStop := (mIndex > Length(APath)) or (APath[mIndex] = '/');
+    Inc(mIndex);
+  until mStop;
+  Result := False;
+end;
+
+function MatchAt(const APattern: string; APatternIndex: Integer; const APath: string;
+  APathIndex: Integer): Boolean;
+begin
+  if APatternIndex > Length(APattern) then
+  begin
+    Result := APathIndex > Length(APath);
+  end
+  else if APattern[APatternIndex] <> '*' then
+  begin
+    Result := CharMatches(APattern[APatternIndex], APath, APathIndex)
+      and MatchAt(APattern, APatternIndex + 1, APath, APathIndex + 1);
+  end
+  else if (APatternIndex < Length(APattern)) and (APattern[APatternIndex + 1] = '*') then
+  begin
+    Result := MatchAnyFolders(APattern, APatternIndex + 2, APath, APathIndex);
+  end
+  else
+  begin
+    Result := MatchAnyChars(APattern, APatternIndex + 1, APath, APathIndex);
+  end;
 end;
 
 function MatchesGlob(const APattern, APath: string): Boolean;
@@ -1198,76 +1217,88 @@ end;
 
 { TRefactoringSettings }
 
+/// <summary>Vorgaben der Refactorings von InlineVar bis SuggestConst.</summary>
+procedure SetRefactoringBasics(var ASettings: TRefactoringSettings);
+begin
+  ASettings.InlineVar := True;
+  ASettings.ChangeSignature := True;
+  ASettings.NewParameterOverload := True;
+  ASettings.VirtualOverload := False;
+  ASettings.SyncSignatures := True;
+  ASettings.ForwardDeclaration := True;
+  ASettings.TryFinally := True;
+  ASettings.ClassActions := True;
+  ASettings.ExplicitType := True;
+  ASettings.CompilerFixes := True;
+  ASettings.MissingUnit := True;
+  ASettings.DisableWarning := True;
+  ASettings.DisableWarningReason := True;
+  ASettings.Extract := True;
+  ASettings.CompleteCase := True;
+  ASettings.ResolveWith := True;
+  ASettings.InlineCode := False;
+  ASettings.MoveClass := False;
+  ASettings.UnitRenameFollowUp := False;
+  ASettings.CreateMethod := True;
+  ASettings.CreateMethodSection := 'private';
+  ASettings.CreateMethodCaretInBody := False;
+  ASettings.ConstParameters := True;
+  ASettings.PropertyFromAccessors := True;
+  ASettings.PropertyFromAccessorsPrefixes := ['Get', 'Set', 'Is', 'Has'];
+  ASettings.PropertyFromAccessorsReplaceCalls := 'ask';
+  ASettings.PropertyFromAccessorsSection := 'accessor';
+  ASettings.PropertyFromAccessorsHideAccessors := 'off';
+  ASettings.FreeFields := True;
+  ASettings.FreeFieldsStyle := 'free';
+  ASettings.SuggestConst := False;
+end;
+
+/// <summary>Vorgaben der Refactorings ab InvertBoolean.</summary>
+procedure SetRefactoringExtras(var ASettings: TRefactoringSettings);
+begin
+  ASettings.InvertBoolean := True;
+  ASettings.InvertBooleanAntonyms := nil;
+  ASettings.InvertBooleanFallbackPrefix := 'Not';
+  ASettings.InvertBooleanIncludeDfm := True;
+  ASettings.IfCase := True;
+  ASettings.Conditions := True;
+  ASettings.ConditionalExpression := True;
+  ASettings.NestedRoutine := True;
+  ASettings.PromoteVariable := True;
+  ASettings.AnonymousMethod := True;
+  ASettings.AnonymousMethodDeferredCapture := 'forward';
+  ASettings.MethodKind := True;
+  ASettings.MethodKindMarker := True;
+  ASettings.MethodKindStatic := True;
+  ASettings.TypeAlias := True;
+  ASettings.TypeAliasScope := 'unit';
+  ASettings.EnumTables := True;
+  ASettings.EnumTablesResourceStrings := False;
+  ASettings.Overloads := True;
+  ASettings.VarBlock := True;
+  ASettings.VarBlockMerge := True;
+  ASettings.VarBlockSort := 'usage';
+  ASettings.ExtractInterface := True;
+  ASettings.ExtractSuperclass := True;
+  ASettings.ExtractSuperclassTarget := 'sameUnit';
+  ASettings.ExtractSuperclassNameSuffix := 'Base';
+  ASettings.ExtractSuperclassMethodMode := 'move';
+  ASettings.ExtractSuperclassRaiseVisibility := 'protected';
+  ASettings.MoveMember := True;
+  ASettings.InlineAccessor := True;
+  ASettings.InlineAccessorEqualityCheck := True;
+  ASettings.InlineAccessorBulk := True;
+  ASettings.InlineAccessorDiagnostic := False;
+  ASettings.SafeDelete := True;
+  ASettings.SafeDeletePreviewWhenUnused := False;
+  ASettings.SafeDeleteCascade := 'ask';
+  ASettings.SafeDeleteIncludeOverrides := 'ask';
+end;
+
 class function TRefactoringSettings.Default: TRefactoringSettings;
 begin
-  Result.InlineVar := True;
-  Result.ChangeSignature := True;
-  Result.NewParameterOverload := True;
-  Result.VirtualOverload := False;
-  Result.SyncSignatures := True;
-  Result.ForwardDeclaration := True;
-  Result.TryFinally := True;
-  Result.ClassActions := True;
-  Result.ExplicitType := True;
-  Result.CompilerFixes := True;
-  Result.MissingUnit := True;
-  Result.DisableWarning := True;
-  Result.DisableWarningReason := True;
-  Result.Extract := True;
-  Result.CompleteCase := True;
-  Result.ResolveWith := True;
-  Result.InlineCode := False;
-  Result.MoveClass := False;
-  Result.UnitRenameFollowUp := False;
-  Result.CreateMethod := True;
-  Result.CreateMethodSection := 'private';
-  Result.CreateMethodCaretInBody := False;
-  Result.ConstParameters := True;
-  Result.PropertyFromAccessors := True;
-  Result.PropertyFromAccessorsPrefixes := ['Get', 'Set', 'Is', 'Has'];
-  Result.PropertyFromAccessorsReplaceCalls := 'ask';
-  Result.PropertyFromAccessorsSection := 'accessor';
-  Result.PropertyFromAccessorsHideAccessors := 'off';
-  Result.FreeFields := True;
-  Result.FreeFieldsStyle := 'free';
-  Result.SuggestConst := False;
-  Result.InvertBoolean := True;
-  Result.InvertBooleanAntonyms := nil;
-  Result.InvertBooleanFallbackPrefix := 'Not';
-  Result.InvertBooleanIncludeDfm := True;
-  Result.IfCase := True;
-  Result.Conditions := True;
-  Result.ConditionalExpression := True;
-  Result.NestedRoutine := True;
-  Result.PromoteVariable := True;
-  Result.AnonymousMethod := True;
-  Result.AnonymousMethodDeferredCapture := 'forward';
-  Result.MethodKind := True;
-  Result.MethodKindMarker := True;
-  Result.MethodKindStatic := True;
-  Result.TypeAlias := True;
-  Result.TypeAliasScope := 'unit';
-  Result.EnumTables := True;
-  Result.EnumTablesResourceStrings := False;
-  Result.Overloads := True;
-  Result.VarBlock := True;
-  Result.VarBlockMerge := True;
-  Result.VarBlockSort := 'usage';
-  Result.ExtractInterface := True;
-  Result.ExtractSuperclass := True;
-  Result.ExtractSuperclassTarget := 'sameUnit';
-  Result.ExtractSuperclassNameSuffix := 'Base';
-  Result.ExtractSuperclassMethodMode := 'move';
-  Result.ExtractSuperclassRaiseVisibility := 'protected';
-  Result.MoveMember := True;
-  Result.InlineAccessor := True;
-  Result.InlineAccessorEqualityCheck := True;
-  Result.InlineAccessorBulk := True;
-  Result.InlineAccessorDiagnostic := False;
-  Result.SafeDelete := True;
-  Result.SafeDeletePreviewWhenUnused := False;
-  Result.SafeDeleteCascade := 'ask';
-  Result.SafeDeleteIncludeOverrides := 'ask';
+  SetRefactoringBasics(Result);
+  SetRefactoringExtras(Result);
 end;
 
 { TCompletionSettings }
@@ -1303,117 +1334,141 @@ end;
 
 { TServerSettings }
 
-class function TServerSettings.Default: TServerSettings;
+/// <summary>Vorgaben von Version, Projekt, Regeln und den Unter-Einstellungen.</summary>
+procedure SetGeneralDefaults(var ASettings: TServerSettings);
 begin
-  Result.DelphiVersion := '';
-  Result.MinDelphiVersion := '';
-  Result.Language := 'de';
-  Result.DefaultEncoding := 65001;
-  Result.Project := '';
-  Result.Config := '';
-  Result.Platform := '';
-  Result.Rules := nil;
-  Result.Profile := '';
-  Result.CliProfile := '';
-  Result.Profiles := nil;
-  Result.Overrides := nil;
-  Result.ExcludeTests := False;
-  Result.TestProfile := '';
-  Result.MinConfidenceGiven := False;
-  Result.MinConfidence := TRuleConfidence.Medium;
-  Result.FixMinConfidence := TRuleConfidence.High;
-  Result.Exclude := nil;
-  Result.Format := '';
-  Result.Formatting := TFormatStyle.Default;
-  Result.InlayHints := TInlayHintSettings.Default;
-  Result.CodeLens := TCodeLensSettings.Default;
-  Result.References := TReferenceSettings.Default;
-  Result.Navigation := TNavigationSettings.Default;
-  Result.Hints := THintSettings.Default;
-  Result.Directives := TDirectiveSettings.Default;
-  Result.Highlight := THighlightSettings.Default;
-  Result.Compiler := TCompilerSettings.Default;
-  Result.Completion := TCompletionSettings.Default;
-  Result.Refactoring := TRefactoringSettings.Default;
-  Result.UsesCommand := True;
-  Result.CompleteBlocksDocComment := True;
-  Result.ExperimentalEnabled := False;
-  Result.Metrics := True;
-  Result.SlashCommands := True;
-  Result.SlashCommandsDisabled := nil;
-  Result.SlashHeaderTemplate := '';
-  Result.SlashLogCall := '';
-  Result.SlashComponentPalette := 'Eigene';
-  Result.SlashTodoOwner := '';
-  Result.SlashTodoCategory := '';
-  Result.SlashSortUsesRemoveUnused := True;
-  Result.SlashEnumHelper := True;
-  Result.SlashSetHelper := True;
-  Result.SortUses := False;
-  Result.SortUsesByNamespace := False;
-  Result.UsesKeep := nil;
-  Result.DeadCodeKeepAttributes := nil;
-  Result.DeadCodeKeepPatterns := nil;
-  Result.StringLiteral := TStringLiteralSettings.Default;
-  Result.MemberOrder := TMemberOrderSettings.Default;
-  Result.TestUnits := TTestUnitSettings.Default;
-  Result.Tests := TTestsSettings.Default;
-  Result.DfmPropertyRules := nil;
+  ASettings.DelphiVersion := '';
+  ASettings.MinDelphiVersion := '';
+  ASettings.Language := '';
+  ASettings.DefaultEncoding := 65001;
+  ASettings.Project := '';
+  ASettings.Config := '';
+  ASettings.Platform := '';
+  ASettings.Rules := nil;
+  ASettings.Profile := '';
+  ASettings.CliProfile := '';
+  ASettings.Profiles := nil;
+  ASettings.Overrides := nil;
+  ASettings.ExcludeTests := False;
+  ASettings.TestProfile := '';
+  ASettings.MinConfidenceGiven := False;
+  ASettings.MinConfidence := TRuleConfidence.Medium;
+  ASettings.FixMinConfidence := TRuleConfidence.High;
+  ASettings.Exclude := nil;
+  ASettings.Format := '';
+  ASettings.Formatting := TFormatStyle.Default;
+  ASettings.InlayHints := TInlayHintSettings.Default;
+  ASettings.CodeLens := TCodeLensSettings.Default;
+  ASettings.References := TReferenceSettings.Default;
+  ASettings.Navigation := TNavigationSettings.Default;
+  ASettings.Hints := THintSettings.Default;
+  ASettings.Directives := TDirectiveSettings.Default;
+  ASettings.Highlight := THighlightSettings.Default;
+  ASettings.Compiler := TCompilerSettings.Default;
+  ASettings.Completion := TCompletionSettings.Default;
+  ASettings.Refactoring := TRefactoringSettings.Default;
+end;
+
+/// <summary>Vorgaben von Slash-Befehlen, uses, totem Code, Tests und DFM-Regeln.</summary>
+procedure SetEditorDefaults(var ASettings: TServerSettings);
+begin
+  ASettings.UsesCommand := True;
+  ASettings.CompleteBlocksDocComment := True;
+  ASettings.ExperimentalEnabled := False;
+  ASettings.Metrics := True;
+  ASettings.SlashCommands := True;
+  ASettings.SlashCommandsDisabled := nil;
+  ASettings.SlashHeaderTemplate := '';
+  ASettings.SlashLogCall := '';
+  ASettings.SlashComponentPalette := 'Eigene';
+  ASettings.SlashTodoOwner := '';
+  ASettings.SlashTodoCategory := '';
+  ASettings.SlashSortUsesRemoveUnused := True;
+  ASettings.SlashEnumHelper := True;
+  ASettings.SlashSetHelper := True;
+  ASettings.SortUses := False;
+  ASettings.SortUsesByNamespace := False;
+  ASettings.UsesKeep := nil;
+  ASettings.DeadCodeKeepAttributes := nil;
+  ASettings.DeadCodeKeepPatterns := nil;
+  ASettings.StringLiteral := TStringLiteralSettings.Default;
+  ASettings.MemberOrder := TMemberOrderSettings.Default;
+  ASettings.TestUnits := TTestUnitSettings.Default;
+  ASettings.Tests := TTestsSettings.Default;
+  ASettings.DfmPropertyRules := nil;
+end;
+
+/// <summary>Vorgaben von Server, Diagnose, MCP und Index.</summary>
+procedure SetServerDefaults(var ASettings: TServerSettings);
+begin
   // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
-  Result.MemoryBudgetMb := 768;
-  Result.RequestTimeoutMs := 10000;
-  Result.ServerCrashCases := True;
-  Result.ServerCrashSkip := True;
-  Result.DiagnosticsLog := True;
-  Result.DiagnosticsLogDays := 7;
-  Result.DiagnosticsLogMapFile := False;
-  Result.DiagnosticsUsesCycleLive := True;
-  Result.DiagnosticsUsesCycleImplementation := False;
-  Result.DiagnosticsLibrarySources := False;
-  Result.IndexProjectGroup := True;
-  Result.McpGlobalSettings := True;
-  Result.McpPrompts := True;
-  Result.McpPromptLanguage := 'de';
-  Result.McpCustomPrompts := nil;
-  Result.IndexSearchPaths := True;
+  ASettings.MemoryBudgetMb := 768;
+  ASettings.RequestTimeoutMs := 10000;
+  ASettings.ServerCrashCases := True;
+  ASettings.ServerCrashSkip := True;
+  ASettings.DiagnosticsLog := True;
+  ASettings.DiagnosticsLogDays := 7;
+  ASettings.DiagnosticsLogMapFile := False;
+  ASettings.DiagnosticsUsesCycleLive := True;
+  ASettings.DiagnosticsUsesCycleImplementation := False;
+  ASettings.DiagnosticsLibrarySources := False;
+  ASettings.IndexProjectGroup := True;
+  ASettings.McpGlobalSettings := True;
+  ASettings.McpPrompts := True;
+  ASettings.McpPromptLanguage := 'de';
+  ASettings.McpCustomPrompts := nil;
+  ASettings.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
-  Result.IndexLibraryPaths := False;
-  Result.IndexUsages := True;
-  Result.IndexExclude := nil;
-  Result.IndexRemoveOrphans := True;
-  Result.IndexCacheMaxAgeDays := 14;
+  ASettings.IndexLibraryPaths := False;
+  ASettings.IndexUsages := True;
+  ASettings.IndexExclude := nil;
+  ASettings.IndexRemoveOrphans := True;
+  ASettings.IndexCacheMaxAgeDays := 14;
   // Ein Bibliotheks-Cache allein hat rund 85 MB (RTL, VCL, FMX je Plattform), ein Projekt 1-10 MB. Mit 256 MB
   // passten keine zwei Projektgruppen hinein: Jedes Öffnen der einen löschte die Caches der anderen, die dann
   // komplett neu eingelesen wurde (XML-Inspector und Atlas im Wechsel, 29.10.2026).
-  Result.IndexCacheMaxMb := 1024;
-  Result.ArchitectureEnabled := True;
-  Result.ArchitectureScope := 'projectGroup';
-  Result.ArchitectureIncludeLibraryUnits := False;
-  Result.ArchitectureCentralUnits := 15;
-  Result.ArchitectureExclude := nil;
-  Result.ArchitectureBaseline := '';
-  Result.ArchitectureFailOn := ['newCycle'];
-  Result.ArchitectureExplainAssignment := True;
-  Result.ArchitectureGroupingResolution := 1;
-  Result.ArchitectureGroupingShowResolutionSlider := True;
-  Result.ArchitectureGroupingMaxShare := 0.25;
-  Result.ArchitectureGroupingMinCohesion := 0.3;
-  Result.QueryEnabled := True;
-  Result.RuleChecksEnabled := True;
-  Result.Queries := nil;
-  Result.ArchitectureGroupingFoundations := 'separate';
-  Result.ArchitectureGroupingKeepPrevious := True;
-  Result.HotspotsEnabled := True;
-  Result.HotspotsMonths := 12;
-  Result.HotspotsCouplingMinCommits := 5;
-  Result.LogLevel := 'info';
-  Result.LogFile := '';
-  Result.TraceFile := '';
-  Result.VcsProvider := 'auto';
-  Result.VcsGitPath := '';
-  Result.VcsSvnPath := '';
-  Result.VcsTimeoutSeconds := 15;
-  Result.VcsProjects := '';
+  ASettings.IndexCacheMaxMb := 1024;
+end;
+
+/// <summary>Vorgaben von Architektur, Abfragen, Hotspots, Protokoll und Versionsverwaltung.</summary>
+procedure SetAnalysisDefaults(var ASettings: TServerSettings);
+begin
+  ASettings.ArchitectureEnabled := True;
+  ASettings.ArchitectureScope := 'projectGroup';
+  ASettings.ArchitectureIncludeLibraryUnits := False;
+  ASettings.ArchitectureCentralUnits := 15;
+  ASettings.ArchitectureExclude := nil;
+  ASettings.ArchitectureBaseline := '';
+  ASettings.ArchitectureFailOn := ['newCycle'];
+  ASettings.ArchitectureExplainAssignment := True;
+  ASettings.ArchitectureGroupingResolution := 1;
+  ASettings.ArchitectureGroupingShowResolutionSlider := True;
+  ASettings.ArchitectureGroupingMaxShare := 0.25;
+  ASettings.ArchitectureGroupingMinCohesion := 0.3;
+  ASettings.QueryEnabled := True;
+  ASettings.RuleChecksEnabled := True;
+  ASettings.Queries := nil;
+  ASettings.ArchitectureGroupingFoundations := 'separate';
+  ASettings.ArchitectureGroupingKeepPrevious := True;
+  ASettings.HotspotsEnabled := True;
+  ASettings.HotspotsMonths := 12;
+  ASettings.HotspotsCouplingMinCommits := 5;
+  ASettings.LogLevel := 'info';
+  ASettings.LogFile := '';
+  ASettings.TraceFile := '';
+  ASettings.VcsProvider := 'auto';
+  ASettings.VcsGitPath := '';
+  ASettings.VcsSvnPath := '';
+  ASettings.VcsTimeoutSeconds := 15;
+  ASettings.VcsProjects := '';
+end;
+
+class function TServerSettings.Default: TServerSettings;
+begin
+  SetGeneralDefaults(Result);
+  SetEditorDefaults(Result);
+  SetServerDefaults(Result);
+  SetAnalysisDefaults(Result);
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

@@ -238,13 +238,13 @@ end;
 
 function TAtlasSprintJob.LoadCurrent: Boolean;
 begin
-  Result := Boards.LoadBoard(Target, Transport, BoardId, '', TAtlasTrackerBoard.TimeoutMs, Outcome.Snapshot,
-    Outcome.Error);
+  Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, BoardId, '', TAtlasTrackerBoard.TimeoutMs),
+    Outcome.Snapshot, Outcome.Error);
   // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
   if not Result and (BoardId <> '') and (Outcome.Error = TAtlasCiFetchError.NotFound) then
   begin
-    Result := Boards.LoadBoard(Target, Transport, '', '', TAtlasTrackerBoard.TimeoutMs, Outcome.Snapshot,
-      Outcome.Error);
+    Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, '', '', TAtlasTrackerBoard.TimeoutMs),
+      Outcome.Snapshot, Outcome.Error);
   end;
 end;
 
@@ -280,8 +280,8 @@ begin
     begin
       Break;
     end
-    else if Boards.LoadBoard(Target, Transport, Outcome.Snapshot.Board.Id, mSprint.Id, Integer(mLeft), mOld,
-      mOldError) then
+    else if Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, Outcome.Snapshot.Board.Id, mSprint.Id,
+      Integer(mLeft)), mOld, mOldError) then
     begin
       mSummary := TAtlasTrackerSprint.Summarize(mOld, Outcome.Calendar, TAtlasIdeSprint.NowUtc);
       TAtlasIdeSprint.SaveSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSummary);

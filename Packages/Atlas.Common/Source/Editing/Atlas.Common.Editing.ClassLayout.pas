@@ -90,6 +90,14 @@ type
     function IsFieldGroup: Boolean;
   end;
 
+  /// <summary>Klasse auf der Kopfzeile Line einer Unit mit Text und Syntaxbaum.</summary>
+  TClassSource = record
+    Tree: TSyntaxTree;
+    Text: string;
+    Line: Integer;
+    class function Create(ATree: TSyntaxTree; const AText: string; ALine: Integer): TClassSource; static;
+  end;
+
   TClassSection = record
     Visibility: TClassVisibility;
     /// <summary>Zeile des Schlüsselworts; -1 beim ersten Abschnitt ohne Schlüsselwort.</summary>
@@ -103,13 +111,6 @@ type
     FText: string;
     FTree: TSyntaxTree;
     FLines: TArray<string>;
-    procedure ReadHeader;
-    procedure ReadMembers;
-    procedure FindBodies;
-    function DocStart(ALine: Integer): Integer;
-    function NodeText(ANode: TSyntaxNode): string;
-    function TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
-    function AfterClass(AOffset: Integer): Boolean;
   public
     Decl: TSyntaxNode;
     ClassNode: TSyntaxNode;
@@ -319,6 +320,63 @@ begin
   Result := Low_;
 end;
 
+type
+  /// <summary>Liest Kopf, Mitglieder und Rümpfe einer Klassendeklaration in ein TClassLayout.</summary>
+  TClassLayoutReader = record
+  private
+    FLayout: TClassLayout;
+    FTokens: TArray<TPascalToken>;
+    /// <summary>Sichtbarkeit und Abschnitt, in dem das nächste Mitglied steht.</summary>
+    FVisibility: TClassVisibility;
+    FSection: TClassSection;
+    /// <summary>Zeile des ersten Attributs vor dem nächsten Mitglied; -1 ohne.</summary>
+    FPending: Integer;
+    function NodeText(ANode: TSyntaxNode): string;
+    function CollapsedText(ANode: TSyntaxNode): string;
+    function InnerText(ANode: TSyntaxNode): string;
+    function DocStart(ALine: Integer): Integer;
+    function TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
+    function AfterClass(AOffset: Integer): Boolean;
+    function SkipTrivia(AIndex, ALast: Integer): Integer;
+    function ClosingParen(AOpen, ALast: Integer): Integer;
+    function FirstAttribute: TSyntaxNode;
+    function IsInInterface: Boolean;
+    procedure ReadAncestors;
+    procedure ReadHeritage;
+    procedure ReadHeader;
+    function NewMember(AKind: TClassMemberKind; ANode: TSyntaxNode; const AName: string): TClassMember;
+    procedure Add(const AMember: TClassMember);
+    procedure StartSection(AChild: TSyntaxNode);
+    procedure ReadField(AChild: TSyntaxNode);
+    procedure ReadVarDecl(AInner: TSyntaxNode; AIsClass: Boolean);
+    procedure ReadVarSection(AChild: TSyntaxNode);
+    function ParameterTypes(AParameters: TSyntaxNode): TArray<string>;
+    procedure ReadRoutineParts(var AMember: TClassMember; AChild: TSyntaxNode);
+    procedure ReadRoutine(AChild: TSyntaxNode);
+    procedure ReadSpecifiers(var AMember: TClassMember; AFirst, ALast: Integer);
+    procedure ReadProperty(AChild: TSyntaxNode);
+    procedure ReadChild(AChild: TSyntaxNode);
+    procedure ReadMembers;
+    function Routines(const APrefix: string): TArray<TSyntaxNode>;
+    function NeedsBody(AIndex: Integer): Boolean;
+    function IsOverloaded(AIndex: Integer): Boolean;
+    function BodyTypes(ARoutine: TSyntaxNode): TArray<string>;
+    procedure SetBody(AIndex: Integer; ARoutine: TSyntaxNode);
+    procedure FindBody(AIndex: Integer; const APrefix: string; const ARoutines: TArray<TSyntaxNode>);
+    procedure FindBodies;
+  public
+    class procedure Run(ALayout: TClassLayout); static;
+  end;
+
+{ TClassSource }
+
+class function TClassSource.Create(ATree: TSyntaxTree; const AText: string; ALine: Integer): TClassSource;
+begin
+  Result.Tree := ATree;
+  Result.Text := AText;
+  Result.Line := ALine;
+end;
+
 { TClassMember }
 
 function TClassMember.IsMethod: Boolean;
@@ -360,8 +418,6 @@ begin
   Result := Length(GroupNames) > 1;
 end;
 
-{ TClassLayout }
-
 class function TClassLayout.Read(ATree: TSyntaxTree; const AText: string; ADecl: TSyntaxNode): TClassLayout;
 begin
   Result := TClassLayout.Create;
@@ -372,9 +428,7 @@ begin
     Result.Decl := ADecl;
     Result.ClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
     Result.Name := ADecl.Name;
-    Result.ReadHeader;
-    Result.ReadMembers;
-    Result.FindBodies;
+    TClassLayoutReader.Run(Result);
   except
     Result.Free;
     raise;
@@ -441,588 +495,738 @@ begin
   Result := nil;
 end;
 
-function TClassLayout.NodeText(ANode: TSyntaxNode): string;
+function TClassLayout.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-function TClassLayout.TextOf(ANode: TSyntaxNode): string;
+{ TClassLayoutReader }
+
+class procedure TClassLayoutReader.Run(ALayout: TClassLayout);
+var
+  mReader: TClassLayoutReader;
 begin
-  Result := NodeText(ANode);
+  mReader := Default(TClassLayoutReader);
+  mReader.FLayout := ALayout;
+  mReader.FTokens := ALayout.FTree.Tokens;
+  mReader.ReadHeader;
+  mReader.ReadMembers;
+  mReader.FindBodies;
 end;
 
-function TClassLayout.TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
-var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+function TClassLayoutReader.NodeText(ANode: TSyntaxNode): string;
 begin
-  Tokens := FTree.Tokens;
+  Result := FLayout.TextOf(ANode);
+end;
+
+function TClassLayoutReader.CollapsedText(ANode: TSyntaxNode): string;
+begin
+  Result := CollapseSpace(NodeText(ANode));
+end;
+
+/// <summary>Text eines Knotens ohne das erste und letzte Zeichen (Klammern), Leerraum zusammengefasst.</summary>
+function TClassLayoutReader.InnerText(ANode: TSyntaxNode): string;
+var
+  mText: string;
+begin
+  mText := NodeText(ANode);
+  Result := CollapseSpace(Copy(mText, 2, Length(mText) - 2));
+end;
+
+function TClassLayoutReader.TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
   AFirst := -1;
   ALast := -1;
-  for Index := TokenIndexAt(Tokens, AFirstOffset) to High(Tokens) do
+  mIndex := TokenIndexAt(FTokens, AFirstOffset);
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ALastOffset) do
   begin
-    if Tokens[Index].Offset >= ALastOffset then
-    begin
-      Break;
-    end;
     if AFirst < 0 then
     begin
-      AFirst := Index;
+      AFirst := mIndex;
     end;
-    ALast := Index;
+    ALast := mIndex;
+    Inc(mIndex);
   end;
   Result := AFirst >= 0;
 end;
 
-function TClassLayout.AfterClass(AOffset: Integer): Boolean;
+function TClassLayoutReader.AfterClass(AOffset: Integer): Boolean;
 var
-  Index: Integer;
-  Tokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := FTree.Tokens;
-  Index := TokenIndexAt(Tokens, AOffset) - 1;
-  while (Index >= 0) and IsTrivia(Tokens[Index]) do
+  mIndex := TokenIndexAt(FTokens, AOffset) - 1;
+  while (mIndex >= 0) and IsTrivia(FTokens[mIndex]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := (Index >= 0) and Tokens[Index].IsKeyword('class');
+  Result := (mIndex >= 0) and FTokens[mIndex].IsKeyword('class');
 end;
 
-function TClassLayout.DocStart(ALine: Integer): Integer;
+function TClassLayoutReader.DocStart(ALine: Integer): Integer;
 begin
   Result := -1;
-  while (ALine > 0) and StartsText('///', Trim(FLines[ALine - 1])) do
+  while (ALine > 0) and StartsText('///', Trim(FLayout.FLines[ALine - 1])) do
   begin
     Dec(ALine);
     Result := ALine;
   end;
 end;
 
-procedure TClassLayout.ReadHeader;
-var
-  Tokens: TArray<TPascalToken>;
-  First, Last, Index, Depth: Integer;
-  Child, Params, Previous: TSyntaxNode;
-  Doc: Integer;
+/// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist; ALast + 1 ohne.</summary>
+function TClassLayoutReader.SkipTrivia(AIndex, ALast: Integer): Integer;
 begin
-  HeaderLine := Decl.StartPos.Line;
-  FirstLine := HeaderLine;
-  // Attribute stehen als Geschwister vor der Deklaration.
-  Previous := nil;
-  if Decl.Parent <> nil then
+  Result := AIndex;
+  while (Result <= ALast) and IsTrivia(FTokens[Result]) do
   begin
-    for Index := 0 to Decl.Parent.ChildCount - 1 do
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Offset der Klammer, die die Klammer am Token AOpen schließt; -1 ohne bis ALast.</summary>
+function TClassLayoutReader.ClosingParen(AOpen, ALast: Integer): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := -1;
+  mDepth := 0;
+  mIndex := AOpen;
+  while (mIndex <= ALast) and (Result < 0) do
+  begin
+    if FTokens[mIndex].IsSymbol('(') then
     begin
-      if Decl.Parent[Index] = Decl then
+      Inc(mDepth);
+    end
+    else if FTokens[mIndex].IsSymbol(')') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Depth := Index - 1;
-        while (Depth >= 0) and (Decl.Parent[Depth].Kind = TSyntaxKind.Attribute) do
-        begin
-          Previous := Decl.Parent[Depth];
-          Dec(Depth);
-        end;
-        Break;
+        Result := FTokens[mIndex].Offset;
       end;
     end;
+    Inc(mIndex);
   end;
-  if Previous <> nil then
+end;
+
+/// <summary>Erstes der Attribute, die als Geschwister direkt vor der Deklaration stehen; nil ohne.</summary>
+function TClassLayoutReader.FirstAttribute: TSyntaxNode;
+var
+  mParent: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mParent := FLayout.Decl.Parent;
+  if mParent = nil then
   begin
-    FirstLine := Previous.StartPos.Line;
+    Exit;
   end;
-  Doc := DocStart(FirstLine);
-  if Doc >= 0 then
+  mIndex := 0;
+  while (mIndex < mParent.ChildCount) and (mParent[mIndex] <> FLayout.Decl) do
   begin
-    FirstLine := Doc;
+    Inc(mIndex);
   end;
-  Indent := TTextLines.IndentOf(FLines[HeaderLine]);
-  EndLine := ClassNode.EndPos.Line;
-  InInterface := False;
-  Child := Decl.Parent;
-  while Child <> nil do
+  if mIndex >= mParent.ChildCount then
   begin
-    if Child.Kind = TSyntaxKind.InterfaceSection then
-    begin
-      InInterface := True;
-    end;
-    Child := Child.Parent;
+    Exit;
   end;
-  Params := Decl.FindChild(TSyntaxKind.GenericParams);
-  if Params <> nil then
+  Dec(mIndex);
+  while (mIndex >= 0) and (mParent[mIndex].Kind = TSyntaxKind.Attribute) do
   begin
-    GenericParams := CollapseSpace(NodeText(Params));
+    Result := mParent[mIndex];
+    Dec(mIndex);
   end;
-  Ancestors := nil;
-  for Index := 0 to ClassNode.ChildCount - 1 do
+end;
+
+function TClassLayoutReader.IsInInterface: Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := False;
+  mNode := FLayout.Decl.Parent;
+  while (mNode <> nil) and not Result do
   begin
-    Child := ClassNode[Index];
-    if Child.Kind <> TSyntaxKind.TypeReference then
-    begin
-      Break;
-    end;
-    Ancestors := Ancestors + [CollapseSpace(NodeText(Child))];
+    Result := mNode.Kind = TSyntaxKind.InterfaceSection;
+    mNode := mNode.Parent;
   end;
-  // Klammern der Vorfahrenliste und Stelle hinter class [abstract|sealed].
-  HeritageOpen := -1;
-  HeritageClose := -1;
-  HeritageInsert := ClassNode.StartOffset + Length('class');
-  Tokens := FTree.Tokens;
-  if TokenRange(ClassNode.StartOffset, ClassNode.EndOffset, First, Last) then
+end;
+
+procedure TClassLayoutReader.ReadAncestors;
+var
+  mIndex: Integer;
+  mClass: TSyntaxNode;
+begin
+  mClass := FLayout.ClassNode;
+  FLayout.Ancestors := nil;
+  mIndex := 0;
+  while (mIndex < mClass.ChildCount) and (mClass[mIndex].Kind = TSyntaxKind.TypeReference) do
   begin
-    Index := First + 1;
-    while (Index <= Last) and IsTrivia(Tokens[Index]) do
-    begin
-      Inc(Index);
-    end;
-    if (Index <= Last) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-      MatchText(Tokens[Index].Text, ['abstract', 'sealed']) then
-    begin
-      HeritageInsert := Tokens[Index].Offset + Length(Tokens[Index].Text);
-      Inc(Index);
-      while (Index <= Last) and IsTrivia(Tokens[Index]) do
-      begin
-        Inc(Index);
-      end;
-    end;
-    if (Index <= Last) and Tokens[Index].IsSymbol('(') then
-    begin
-      HeritageOpen := Tokens[Index].Offset;
-      Depth := 0;
-      while Index <= Last do
-      begin
-        if Tokens[Index].IsSymbol('(') then
-        begin
-          Inc(Depth);
-        end
-        else if Tokens[Index].IsSymbol(')') then
-        begin
-          Dec(Depth);
-          if Depth = 0 then
-          begin
-            HeritageClose := Tokens[Index].Offset;
-            Break;
-          end;
-        end;
-        Inc(Index);
-      end;
-    end;
+    FLayout.Ancestors := FLayout.Ancestors + [CollapsedText(mClass[mIndex])];
+    Inc(mIndex);
   end;
-  MemberIndent := Indent + '  ';
+end;
+
+/// <summary>Klammern der Vorfahrenliste und Stelle hinter class [abstract|sealed].</summary>
+procedure TClassLayoutReader.ReadHeritage;
+var
+  mFirst, mLast, mIndex: Integer;
+  mClass: TSyntaxNode;
+begin
+  mClass := FLayout.ClassNode;
+  FLayout.HeritageOpen := -1;
+  FLayout.HeritageClose := -1;
+  FLayout.HeritageInsert := mClass.StartOffset + Length('class');
+  if not TokenRange(mClass.StartOffset, mClass.EndOffset, mFirst, mLast) then
+  begin
+    Exit;
+  end;
+  mIndex := SkipTrivia(mFirst + 1, mLast);
+  if (mIndex <= mLast) and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+    MatchText(FTokens[mIndex].Text, ['abstract', 'sealed']) then
+  begin
+    FLayout.HeritageInsert := FTokens[mIndex].Offset + Length(FTokens[mIndex].Text);
+    mIndex := SkipTrivia(mIndex + 1, mLast);
+  end;
+  if (mIndex <= mLast) and FTokens[mIndex].IsSymbol('(') then
+  begin
+    FLayout.HeritageOpen := FTokens[mIndex].Offset;
+    FLayout.HeritageClose := ClosingParen(mIndex, mLast);
+  end;
+end;
+
+procedure TClassLayoutReader.ReadHeader;
+var
+  mAttribute, mParams: TSyntaxNode;
+  mDoc: Integer;
+begin
+  FLayout.HeaderLine := FLayout.Decl.StartPos.Line;
+  FLayout.FirstLine := FLayout.HeaderLine;
+  mAttribute := FirstAttribute;
+  if mAttribute <> nil then
+  begin
+    FLayout.FirstLine := mAttribute.StartPos.Line;
+  end;
+  mDoc := DocStart(FLayout.FirstLine);
+  if mDoc >= 0 then
+  begin
+    FLayout.FirstLine := mDoc;
+  end;
+  FLayout.Indent := TTextLines.IndentOf(FLayout.FLines[FLayout.HeaderLine]);
+  FLayout.MemberIndent := FLayout.Indent + '  ';
+  FLayout.EndLine := FLayout.ClassNode.EndPos.Line;
+  FLayout.InInterface := IsInInterface;
+  mParams := FLayout.Decl.FindChild(TSyntaxKind.GenericParams);
+  if mParams <> nil then
+  begin
+    FLayout.GenericParams := CollapsedText(mParams);
+  end;
+  ReadAncestors;
+  ReadHeritage;
 end;
 
 const
   PropertySpecifiers: array[0..7] of string = ('read', 'write', 'index', 'stored', 'default', 'nodefault',
     'implements', 'dispid');
 
+/// <summary>Token AIndex ist ein Spezifizierer einer Property (read, write, …).</summary>
+function IsSpecifier(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+    MatchText(AToken.Text, PropertySpecifiers);
+end;
+
+/// <summary>Text der Token ab AIndex bis vor den nächsten Spezifizierer bzw. das Semikolon, ohne Kommentare.
+/// </summary>
+function SpecifierValue(const ATokens: TArray<TPascalToken>; AIndex, ALast: Integer): string;
+begin
+  Result := '';
+  while (AIndex <= ALast) and not ATokens[AIndex].IsSymbol(';') and not IsSpecifier(ATokens[AIndex]) do
+  begin
+    if not IsTrivia(ATokens[AIndex]) then
+    begin
+      Result := Result + ATokens[AIndex].Text;
+    end;
+    Inc(AIndex);
+  end;
+end;
+
 /// <summary>Wert hinter dem Spezifizierer AKeyword einer Property zwischen den Token AFirst und ALast (bis zum
 /// nächsten Spezifizierer bzw. Semikolon); '' ohne.</summary>
 function SpecifierAfter(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer; const AKeyword: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  Index := AFirst;
-  while Index <= ALast do
+  mIndex := AFirst;
+  while (mIndex <= ALast) and not ATokens[mIndex].IsSymbol(';') do
   begin
-    if not IsTrivia(ATokens[Index]) and (ATokens[Index].Kind in [TPascalTokenKind.Identifier,
-      TPascalTokenKind.Keyword]) and SameText(ATokens[Index].Text, AKeyword) then
+    if not IsTrivia(ATokens[mIndex]) and (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier,
+      TPascalTokenKind.Keyword]) and SameText(ATokens[mIndex].Text, AKeyword) then
     begin
-      Inc(Index);
-      while (Index <= ALast) and not ATokens[Index].IsSymbol(';') and
-        not ((ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-        MatchText(ATokens[Index].Text, PropertySpecifiers)) do
-      begin
-        if not IsTrivia(ATokens[Index]) then
-        begin
-          Result := Result + ATokens[Index].Text;
-        end;
-        Inc(Index);
-      end;
-      Exit;
+      Exit(SpecifierValue(ATokens, mIndex + 1, ALast));
     end;
-    if ATokens[Index].IsSymbol(';') then
-    begin
-      Exit;
-    end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
-procedure TClassLayout.ReadMembers;
+/// <summary>"; default;" hinter dem Semikolon der Deklaration zwischen den Token AFirst und ALast.</summary>
+function IsDefaultArray(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
-  Index, Part, Pending, First, Last, Next: Integer;
-  Child, Inner, TypeRef, Parameters, Parameter: TSyntaxNode;
-  Visibility: TClassVisibility;
-  Section: TClassSection;
-  Member: TClassMember;
-  Head, mText, Names, TypeText: string;
-  GroupNames: TArray<string>;
-  IsClassPrefix: Boolean;
-
-  procedure Add(const AMember: TClassMember);
-  begin
-    Members := Members + [AMember];
-    Section.Members := Section.Members + [High(Members)];
-  end;
-
-  function NewMember(AKind: TClassMemberKind; ANode: TSyntaxNode; const AName: string): TClassMember;
-  begin
-    Result := Default(TClassMember);
-    Result.Kind := AKind;
-    Result.Node := ANode;
-    Result.Name := AName;
-    Result.GroupNames := [AName];
-    Result.Visibility := Visibility;
-    Result.FirstLine := ANode.StartPos.Line;
-    if Pending >= 0 then
-    begin
-      Result.FirstLine := Pending;
-    end;
-    Result.DocLine := DocStart(Result.FirstLine);
-    if Result.DocLine >= 0 then
-    begin
-      Result.FirstLine := Result.DocLine;
-    end;
-    Result.LastLine := ANode.EndPos.Line;
-    Result.BodyFirstLine := -1;
-    Result.BodyLastLine := -1;
-  end;
-
+  mIndex: Integer;
 begin
-  Members := nil;
-  Sections := nil;
-  Visibility := TClassVisibility.Public_;
-  Section := Default(TClassSection);
-  Section.Visibility := Visibility;
-  Section.HeadLine := -1;
-  Pending := -1;
-  for Index := 0 to ClassNode.ChildCount - 1 do
+  Result := False;
+  mIndex := AFirst;
+  while (mIndex < ALast) and not ATokens[mIndex].IsSymbol(';') do
   begin
-    Child := ClassNode[Index];
-    case Child.Kind of
-      TSyntaxKind.TypeReference:
-        Continue;
-      TSyntaxKind.Visibility:
-        begin
-          if (Section.HeadLine >= 0) or (Section.Members <> nil) then
-          begin
-            Sections := Sections + [Section];
-          end;
-          Visibility := TClassEdits.VisibilityOf(Child.Name);
-          Section := Default(TClassSection);
-          Section.Visibility := Visibility;
-          Section.HeadLine := Child.StartPos.Line;
-          Pending := -1;
-        end;
-      TSyntaxKind.Attribute:
-        if Pending < 0 then
-        begin
-          Pending := Child.StartPos.Line;
-        end;
-      TSyntaxKind.Field:
-        begin
-          GroupNames := nil;
-          for Names in Child.Name.Split([',']) do
-          begin
-            GroupNames := GroupNames + [Trim(Names)];
-          end;
-          TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
-          TypeText := '';
-          if Child.ChildCount > 0 then
-          begin
-            TypeText := CollapseSpace(NodeText(Child[0]));
-          end;
-          if TypeRef <> nil then
-          begin
-            TypeText := CollapseSpace(NodeText(TypeRef));
-          end;
-          for Part := 0 to High(GroupNames) do
-          begin
-            Member := NewMember(TClassMemberKind.Field, Child, GroupNames[Part]);
-            Member.GroupNames := GroupNames;
-            Member.TypeName := TypeText;
-            Add(Member);
-          end;
-          Pending := -1;
-        end;
-      TSyntaxKind.VarSection:
-        begin
-          // class var bzw. var-Abschnitt in der Klasse: je Name ein Mitglied.
-          IsClassPrefix := AfterClass(Child.StartOffset);
-          for Part := 0 to Child.ChildCount - 1 do
-          begin
-            Inner := Child[Part];
-            if Inner.Kind <> TSyntaxKind.VarDecl then
-            begin
-              Continue;
-            end;
-            GroupNames := nil;
-            for Names in Inner.Name.Split([',']) do
-            begin
-              GroupNames := GroupNames + [Trim(Names)];
-            end;
-            TypeRef := Inner.FindChild(TSyntaxKind.TypeReference);
-            for Names in GroupNames do
-            begin
-              if IsClassPrefix then
-              begin
-                Member := NewMember(TClassMemberKind.ClassVar, Inner, Names);
-              end
-              else
-              begin
-                Member := NewMember(TClassMemberKind.Field, Inner, Names);
-              end;
-              Member.GroupNames := GroupNames;
-              Member.IsClassMember := IsClassPrefix;
-              if TypeRef <> nil then
-              begin
-                Member.TypeName := CollapseSpace(NodeText(TypeRef));
-              end;
-              Add(Member);
-            end;
-          end;
-          Pending := -1;
-        end;
-      TSyntaxKind.RoutineHeader:
-        begin
-          if Child.IsMethodResolution then
-          begin
-            Pending := -1;
-            Continue;
-          end;
-          Head := TrimLeft(Copy(FText, Child.StartOffset + 1, 40));
-          Member := NewMember(TClassMemberKind.Method, Child, Child.Name);
-          Member.IsClassMember := StartsText('class', Head) and (Length(Head) > 5) and not Head[6].IsLetterOrDigit;
-          if Member.IsClassMember then
-          begin
-            Head := TrimLeft(Copy(Head, 6, MaxInt));
-          end;
-          if StartsText('constructor', Head) then
-          begin
-            Member.Kind := TClassMemberKind.Constructor_;
-          end
-          else if StartsText('destructor', Head) then
-          begin
-            Member.Kind := TClassMemberKind.Destructor_;
-          end
-          else if StartsText('operator', Head) then
-          begin
-            Member.Kind := TClassMemberKind.Other;
-          end;
-          Member.IsGeneric := Child.FindChild(TSyntaxKind.GenericParams) <> nil;
-          for Part := 0 to Child.ChildCount - 1 do
-          begin
-            Inner := Child[Part];
-            if Inner.Kind = TSyntaxKind.TypeReference then
-            begin
-              Member.TypeName := CollapseSpace(NodeText(Inner));
-            end
-            else if Inner.Kind = TSyntaxKind.Directive then
-            begin
-              Member.Directives := Member.Directives + [Inner.Name];
-            end;
-          end;
-          Parameters := Child.FindChild(TSyntaxKind.Parameters);
-          if Parameters <> nil then
-          begin
-            mText := NodeText(Parameters);
-            Member.Parameters := CollapseSpace(Copy(mText, 2, Length(mText) - 2));
-            for Part := 0 to Parameters.ChildCount - 1 do
-            begin
-              Parameter := Parameters[Part];
-              TypeRef := Parameter.FindChild(TSyntaxKind.TypeReference);
-              if TypeRef = nil then
-              begin
-                TypeRef := Parameter.FindChild(TSyntaxKind.ArrayType);
-              end;
-              TypeText := '';
-              if TypeRef <> nil then
-              begin
-                TypeText := CollapseSpace(NodeText(TypeRef));
-              end;
-              for Names in Parameter.Name.Split([',']) do
-              begin
-                Member.ParameterTypes := Member.ParameterTypes + [UpperCase(TypeText)];
-              end;
-            end;
-          end;
-          Add(Member);
-          Pending := -1;
-        end;
-      TSyntaxKind.PropertyDecl:
-        begin
-          Member := NewMember(TClassMemberKind.Property_, Child, Child.Name);
-          Member.IsClassMember := AfterClass(Child.StartOffset);
-          TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
-          Member.IsRedeclaration := TypeRef = nil;
-          if TypeRef <> nil then
-          begin
-            Member.TypeName := CollapseSpace(NodeText(TypeRef));
-          end;
-          Parameters := Child.FindChild(TSyntaxKind.Parameters);
-          if Parameters <> nil then
-          begin
-            Head := NodeText(Parameters);
-            Member.Parameters := CollapseSpace(Copy(Head, 2, Length(Head) - 2));
-          end;
-          // Spezifizierer erst hinter dem Typ suchen, damit Parameternamen wie "Index" nicht stören.
-          TokenRange(Child.StartOffset, Child.EndOffset, First, Last);
-          if TypeRef <> nil then
-          begin
-            TokenRange(TypeRef.EndOffset, Child.EndOffset, First, Last);
-          end;
-          if First >= 0 then
-          begin
-            Member.ReadAccessor := SpecifierAfter(FTree.Tokens, First, Last, 'read');
-            Member.WriteAccessor := SpecifierAfter(FTree.Tokens, First, Last, 'write');
-            Member.IndexSpecifier := SpecifierAfter(FTree.Tokens, First, Last, 'index');
-            Member.StoredSpecifier := SpecifierAfter(FTree.Tokens, First, Last, 'stored');
-            // "; default;" hinter dem Semikolon der Deklaration.
-            for Part := First to Last - 1 do
-            begin
-              if FTree.Tokens[Part].IsSymbol(';') then
-              begin
-                Next := Part + 1;
-                while (Next <= Last) and IsTrivia(FTree.Tokens[Next]) do
-                begin
-                  Inc(Next);
-                end;
-                Member.IsDefaultArray := (Next <= Last) and SameText(FTree.Tokens[Next].Text, 'default');
-                Break;
-              end;
-            end;
-          end;
-          Add(Member);
-          Pending := -1;
-        end;
-    else
-      begin
-        // Konstanten, verschachtelte Typen, variante Teile: zählen als Zeilen, sind aber keine Umbauziele.
-        Member := NewMember(TClassMemberKind.Other, Child, Child.Name);
-        Add(Member);
-        Pending := -1;
-      end;
-    end;
+    Inc(mIndex);
   end;
-  Sections := Sections + [Section];
+  if mIndex < ALast then
+  begin
+    Inc(mIndex);
+    while (mIndex <= ALast) and IsTrivia(ATokens[mIndex]) do
+    begin
+      Inc(mIndex);
+    end;
+    Result := (mIndex <= ALast) and SameText(ATokens[mIndex].Text, 'default');
+  end;
 end;
 
-procedure TClassLayout.FindBodies;
+/// <summary>Namen einer Gruppe ("FA, FB") einzeln, ohne Leerraum am Rand.</summary>
+function SplitNames(const AText: string): TArray<string>;
 var
-  Index, Other, Doc: Integer;
-  Prefix: string;
-  Routines: TArray<TSyntaxNode>;
-  Routine, Header, Parameters, Parameter, TypeRef: TSyntaxNode;
-  Types: TArray<string>;
-  Names: string;
-  Overloaded: Boolean;
-
-  function SameTypes(const A, B: TArray<string>): Boolean;
-  var
-    Position: Integer;
+  mName: string;
+begin
+  Result := nil;
+  for mName in AText.Split([',']) do
   begin
-    Result := Length(A) = Length(B);
-    if Result then
+    Result := Result + [Trim(mName)];
+  end;
+end;
+
+/// <summary>Art einer Routine nach ihrem Schlüsselwort (ohne "class" davor).</summary>
+function RoutineKind(const AHead: string): TClassMemberKind;
+begin
+  Result := TClassMemberKind.Method;
+  if StartsText('constructor', AHead) then
+  begin
+    Result := TClassMemberKind.Constructor_;
+  end
+  else if StartsText('destructor', AHead) then
+  begin
+    Result := TClassMemberKind.Destructor_;
+  end
+  else if StartsText('operator', AHead) then
+  begin
+    Result := TClassMemberKind.Other;
+  end;
+end;
+
+function SameTypes(const A, B: TArray<string>): Boolean;
+var
+  mPosition: Integer;
+begin
+  Result := Length(A) = Length(B);
+  mPosition := 0;
+  while Result and (mPosition <= High(A)) do
+  begin
+    Result := SameText(A[mPosition], B[mPosition]);
+    Inc(mPosition);
+  end;
+end;
+
+function TClassLayoutReader.NewMember(AKind: TClassMemberKind; ANode: TSyntaxNode; const AName: string): TClassMember;
+begin
+  Result := Default(TClassMember);
+  Result.Kind := AKind;
+  Result.Node := ANode;
+  Result.Name := AName;
+  Result.GroupNames := [AName];
+  Result.Visibility := FVisibility;
+  Result.FirstLine := ANode.StartPos.Line;
+  if FPending >= 0 then
+  begin
+    Result.FirstLine := FPending;
+  end;
+  Result.DocLine := DocStart(Result.FirstLine);
+  if Result.DocLine >= 0 then
+  begin
+    Result.FirstLine := Result.DocLine;
+  end;
+  Result.LastLine := ANode.EndPos.Line;
+  Result.BodyFirstLine := -1;
+  Result.BodyLastLine := -1;
+end;
+
+procedure TClassLayoutReader.Add(const AMember: TClassMember);
+begin
+  FLayout.Members := FLayout.Members + [AMember];
+  FSection.Members := FSection.Members + [High(FLayout.Members)];
+end;
+
+procedure TClassLayoutReader.StartSection(AChild: TSyntaxNode);
+begin
+  if (FSection.HeadLine >= 0) or (FSection.Members <> nil) then
+  begin
+    FLayout.Sections := FLayout.Sections + [FSection];
+  end;
+  FVisibility := TClassEdits.VisibilityOf(AChild.Name);
+  FSection := Default(TClassSection);
+  FSection.Visibility := FVisibility;
+  FSection.HeadLine := AChild.StartPos.Line;
+end;
+
+procedure TClassLayoutReader.ReadField(AChild: TSyntaxNode);
+var
+  mNames: TArray<string>;
+  mName, mTypeText: string;
+  mTypeRef: TSyntaxNode;
+  mMember: TClassMember;
+begin
+  mNames := SplitNames(AChild.Name);
+  mTypeText := '';
+  mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
+  if mTypeRef <> nil then
+  begin
+    mTypeText := CollapsedText(mTypeRef);
+  end
+  else if AChild.ChildCount > 0 then
+  begin
+    mTypeText := CollapsedText(AChild[0]);
+  end;
+  for mName in mNames do
+  begin
+    mMember := NewMember(TClassMemberKind.Field, AChild, mName);
+    mMember.GroupNames := mNames;
+    mMember.TypeName := mTypeText;
+    Add(mMember);
+  end;
+end;
+
+procedure TClassLayoutReader.ReadVarDecl(AInner: TSyntaxNode; AIsClass: Boolean);
+var
+  mNames: TArray<string>;
+  mName: string;
+  mTypeRef: TSyntaxNode;
+  mKind: TClassMemberKind;
+  mMember: TClassMember;
+begin
+  mNames := SplitNames(AInner.Name);
+  mTypeRef := AInner.FindChild(TSyntaxKind.TypeReference);
+  mKind := TClassMemberKind.Field;
+  if AIsClass then
+  begin
+    mKind := TClassMemberKind.ClassVar;
+  end;
+  for mName in mNames do
+  begin
+    mMember := NewMember(mKind, AInner, mName);
+    mMember.GroupNames := mNames;
+    mMember.IsClassMember := AIsClass;
+    if mTypeRef <> nil then
     begin
-      for Position := 0 to High(A) do
-      begin
-        if not SameText(A[Position], B[Position]) then
-        begin
-          Exit(False);
-        end;
-      end;
+      mMember.TypeName := CollapsedText(mTypeRef);
+    end;
+    Add(mMember);
+  end;
+end;
+
+/// <summary>class var bzw. var-Abschnitt in der Klasse: je Name ein Mitglied.</summary>
+procedure TClassLayoutReader.ReadVarSection(AChild: TSyntaxNode);
+var
+  mIndex: Integer;
+  mIsClass: Boolean;
+begin
+  mIsClass := AfterClass(AChild.StartOffset);
+  for mIndex := 0 to AChild.ChildCount - 1 do
+  begin
+    if AChild[mIndex].Kind = TSyntaxKind.VarDecl then
+    begin
+      ReadVarDecl(AChild[mIndex], mIsClass);
     end;
   end;
+end;
 
+/// <summary>Typen der Parameter in Reihenfolge, je Name einer Gruppe einer, in Großschreibung; '' ohne Typ.
+/// </summary>
+function TClassLayoutReader.ParameterTypes(AParameters: TSyntaxNode): TArray<string>;
+var
+  mIndex, mCount: Integer;
+  mParameter, mTypeRef: TSyntaxNode;
+  mTypeText: string;
 begin
-  Prefix := Decl.EnclosingTypeName;
-  if Prefix = '' then
+  Result := nil;
+  for mIndex := 0 to AParameters.ChildCount - 1 do
   begin
-    Prefix := Name;
+    mParameter := AParameters[mIndex];
+    mTypeRef := mParameter.FindChild(TSyntaxKind.TypeReference);
+    if mTypeRef = nil then
+    begin
+      mTypeRef := mParameter.FindChild(TSyntaxKind.ArrayType);
+    end;
+    mTypeText := '';
+    if mTypeRef <> nil then
+    begin
+      mTypeText := UpperCase(CollapsedText(mTypeRef));
+    end;
+    for mCount := 1 to Length(mParameter.Name.Split([','])) do
+    begin
+      Result := Result + [mTypeText];
+    end;
   end;
-  Routines := nil;
-  FTree.Root.Walk(
+end;
+
+/// <summary>Ergebnistyp und Direktiven einer Routine.</summary>
+procedure TClassLayoutReader.ReadRoutineParts(var AMember: TClassMember; AChild: TSyntaxNode);
+var
+  mIndex: Integer;
+  mInner: TSyntaxNode;
+begin
+  for mIndex := 0 to AChild.ChildCount - 1 do
+  begin
+    mInner := AChild[mIndex];
+    if mInner.Kind = TSyntaxKind.TypeReference then
+    begin
+      AMember.TypeName := CollapsedText(mInner);
+    end
+    else if mInner.Kind = TSyntaxKind.Directive then
+    begin
+      AMember.Directives := AMember.Directives + [mInner.Name];
+    end;
+  end;
+end;
+
+procedure TClassLayoutReader.ReadRoutine(AChild: TSyntaxNode);
+var
+  mHead: string;
+  mMember: TClassMember;
+  mParameters: TSyntaxNode;
+begin
+  if AChild.IsMethodResolution then
+  begin
+    Exit;
+  end;
+  mHead := TrimLeft(Copy(FLayout.FText, AChild.StartOffset + 1, 40));
+  mMember := NewMember(TClassMemberKind.Method, AChild, AChild.Name);
+  mMember.IsClassMember := StartsText('class', mHead) and (Length(mHead) > 5) and not mHead[6].IsLetterOrDigit;
+  if mMember.IsClassMember then
+  begin
+    mHead := TrimLeft(Copy(mHead, 6, MaxInt));
+  end;
+  mMember.Kind := RoutineKind(mHead);
+  mMember.IsGeneric := AChild.FindChild(TSyntaxKind.GenericParams) <> nil;
+  ReadRoutineParts(mMember, AChild);
+  mParameters := AChild.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
+  begin
+    mMember.Parameters := InnerText(mParameters);
+    mMember.ParameterTypes := ParameterTypes(mParameters);
+  end;
+  Add(mMember);
+end;
+
+procedure TClassLayoutReader.ReadSpecifiers(var AMember: TClassMember; AFirst, ALast: Integer);
+begin
+  AMember.ReadAccessor := SpecifierAfter(FTokens, AFirst, ALast, 'read');
+  AMember.WriteAccessor := SpecifierAfter(FTokens, AFirst, ALast, 'write');
+  AMember.IndexSpecifier := SpecifierAfter(FTokens, AFirst, ALast, 'index');
+  AMember.StoredSpecifier := SpecifierAfter(FTokens, AFirst, ALast, 'stored');
+  AMember.IsDefaultArray := IsDefaultArray(FTokens, AFirst, ALast);
+end;
+
+procedure TClassLayoutReader.ReadProperty(AChild: TSyntaxNode);
+var
+  mMember: TClassMember;
+  mTypeRef, mParameters: TSyntaxNode;
+  mStart, mFirst, mLast: Integer;
+begin
+  mMember := NewMember(TClassMemberKind.Property_, AChild, AChild.Name);
+  mMember.IsClassMember := AfterClass(AChild.StartOffset);
+  mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
+  mMember.IsRedeclaration := mTypeRef = nil;
+  mStart := AChild.StartOffset;
+  if mTypeRef <> nil then
+  begin
+    mMember.TypeName := CollapsedText(mTypeRef);
+    // Spezifizierer erst hinter dem Typ suchen, damit Parameternamen wie "Index" nicht stören.
+    mStart := mTypeRef.EndOffset;
+  end;
+  mParameters := AChild.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
+  begin
+    mMember.Parameters := InnerText(mParameters);
+  end;
+  if TokenRange(mStart, AChild.EndOffset, mFirst, mLast) then
+  begin
+    ReadSpecifiers(mMember, mFirst, mLast);
+  end;
+  Add(mMember);
+end;
+
+procedure TClassLayoutReader.ReadChild(AChild: TSyntaxNode);
+begin
+  if AChild.Kind = TSyntaxKind.TypeReference then
+  begin
+    Exit;
+  end;
+  case AChild.Kind of
+    TSyntaxKind.Visibility:
+      StartSection(AChild);
+    TSyntaxKind.Attribute:
+      if FPending < 0 then
+      begin
+        FPending := AChild.StartPos.Line;
+      end;
+    TSyntaxKind.Field:
+      ReadField(AChild);
+    TSyntaxKind.VarSection:
+      ReadVarSection(AChild);
+    TSyntaxKind.RoutineHeader:
+      ReadRoutine(AChild);
+    TSyntaxKind.PropertyDecl:
+      ReadProperty(AChild);
+  else
+    // Konstanten, verschachtelte Typen, variante Teile: zählen als Zeilen, sind aber keine Umbauziele.
+    Add(NewMember(TClassMemberKind.Other, AChild, AChild.Name));
+  end;
+  if AChild.Kind <> TSyntaxKind.Attribute then
+  begin
+    FPending := -1;
+  end;
+end;
+
+procedure TClassLayoutReader.ReadMembers;
+var
+  mIndex: Integer;
+begin
+  FLayout.Members := nil;
+  FLayout.Sections := nil;
+  FVisibility := TClassVisibility.Public_;
+  FSection := Default(TClassSection);
+  FSection.Visibility := FVisibility;
+  FSection.HeadLine := -1;
+  FPending := -1;
+  for mIndex := 0 to FLayout.ClassNode.ChildCount - 1 do
+  begin
+    ReadChild(FLayout.ClassNode[mIndex]);
+  end;
+  FLayout.Sections := FLayout.Sections + [FSection];
+end;
+
+/// <summary>Routinen der Datei, deren Name APrefix.Methode lautet.</summary>
+function TClassLayoutReader.Routines(const APrefix: string): TArray<TSyntaxNode>;
+var
+  mFound: TArray<TSyntaxNode>;
+begin
+  mFound := nil;
+  FLayout.FTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-      if not Result and StartsText(Prefix + '.', ANode.Name) and
-        (Pos('.', Copy(ANode.Name, Length(Prefix) + 2, MaxInt)) = 0) then
+      if not Result and StartsText(APrefix + '.', ANode.Name) and
+        (Pos('.', Copy(ANode.Name, Length(APrefix) + 2, MaxInt)) = 0) then
       begin
-        Routines := Routines + [ANode];
+        mFound := mFound + [ANode];
       end;
     end);
-  for Index := 0 to High(Members) do
+  Result := mFound;
+end;
+
+function TClassLayoutReader.NeedsBody(AIndex: Integer): Boolean;
+var
+  mMember: TClassMember;
+begin
+  mMember := FLayout.Members[AIndex];
+  Result := mMember.IsMethod or (mMember.Kind = TClassMemberKind.Other) and
+    (mMember.Node.Kind = TSyntaxKind.RoutineHeader);
+end;
+
+function TClassLayoutReader.IsOverloaded(AIndex: Integer): Boolean;
+var
+  mOther: Integer;
+begin
+  Result := False;
+  mOther := 0;
+  while not Result and (mOther <= High(FLayout.Members)) do
   begin
-    if not Members[Index].IsMethod and (Members[Index].Kind <> TClassMemberKind.Other) then
+    Result := (mOther <> AIndex) and FLayout.Members[mOther].IsMethod and
+      SameText(FLayout.Members[mOther].Name, FLayout.Members[AIndex].Name);
+    Inc(mOther);
+  end;
+end;
+
+/// <summary>Parametertypen im Kopf eines Rumpfs.</summary>
+function TClassLayoutReader.BodyTypes(ARoutine: TSyntaxNode): TArray<string>;
+var
+  mHeader, mParameters: TSyntaxNode;
+begin
+  Result := nil;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
+  begin
+    Exit;
+  end;
+  mParameters := mHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
+  begin
+    Result := ParameterTypes(mParameters);
+  end;
+end;
+
+procedure TClassLayoutReader.SetBody(AIndex: Integer; ARoutine: TSyntaxNode);
+var
+  mDoc: Integer;
+begin
+  FLayout.Members[AIndex].Body := ARoutine;
+  FLayout.Members[AIndex].BodyFirstLine := ARoutine.StartPos.Line;
+  mDoc := DocStart(ARoutine.StartPos.Line);
+  if mDoc >= 0 then
+  begin
+    FLayout.Members[AIndex].BodyFirstLine := mDoc;
+  end;
+  FLayout.Members[AIndex].BodyLastLine := ARoutine.EndPos.Line;
+end;
+
+/// <summary>Rumpf des Mitglieds AIndex unter ARoutines; überladene Methoden über die Parametertypen.</summary>
+procedure TClassLayoutReader.FindBody(AIndex: Integer; const APrefix: string; const ARoutines: TArray<TSyntaxNode>);
+var
+  mOverloaded: Boolean;
+  mRoutine: TSyntaxNode;
+begin
+  mOverloaded := IsOverloaded(AIndex);
+  for mRoutine in ARoutines do
+  begin
+    if SameText(mRoutine.Name, APrefix + '.' + FLayout.Members[AIndex].Name) and
+      (not mOverloaded or SameTypes(BodyTypes(mRoutine), FLayout.Members[AIndex].ParameterTypes)) then
     begin
-      Continue;
-    end;
-    if (Members[Index].Kind = TClassMemberKind.Other) and (Members[Index].Node.Kind <> TSyntaxKind.RoutineHeader) then
-    begin
-      Continue;
-    end;
-    Overloaded := False;
-    for Other := 0 to High(Members) do
-    begin
-      if (Other <> Index) and Members[Other].IsMethod and SameText(Members[Other].Name, Members[Index].Name) then
-      begin
-        Overloaded := True;
-      end;
-    end;
-    for Routine in Routines do
-    begin
-      if not SameText(Routine.Name, Prefix + '.' + Members[Index].Name) then
-      begin
-        Continue;
-      end;
-      if Overloaded then
-      begin
-        Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-        Types := nil;
-        Parameters := nil;
-        if Header <> nil then
-        begin
-          Parameters := Header.FindChild(TSyntaxKind.Parameters);
-        end;
-        if Parameters <> nil then
-        begin
-          for Other := 0 to Parameters.ChildCount - 1 do
-          begin
-            Parameter := Parameters[Other];
-            TypeRef := Parameter.FindChild(TSyntaxKind.TypeReference);
-            if TypeRef = nil then
-            begin
-              TypeRef := Parameter.FindChild(TSyntaxKind.ArrayType);
-            end;
-            for Names in Parameter.Name.Split([',']) do
-            begin
-              if TypeRef <> nil then
-              begin
-                Types := Types + [UpperCase(CollapseSpace(NodeText(TypeRef)))];
-              end
-              else
-              begin
-                Types := Types + [''];
-              end;
-            end;
-          end;
-        end;
-        if not SameTypes(Types, Members[Index].ParameterTypes) then
-        begin
-          Continue;
-        end;
-      end;
-      Members[Index].Body := Routine;
-      Members[Index].BodyFirstLine := Routine.StartPos.Line;
-      Doc := DocStart(Routine.StartPos.Line);
-      if Doc >= 0 then
-      begin
-        Members[Index].BodyFirstLine := Doc;
-      end;
-      Members[Index].BodyLastLine := Routine.EndPos.Line;
-      Break;
+      SetBody(AIndex, mRoutine);
+      Exit;
     end;
   end;
 end;
+
+procedure TClassLayoutReader.FindBodies;
+var
+  mPrefix: string;
+  mRoutines: TArray<TSyntaxNode>;
+  mIndex: Integer;
+begin
+  mPrefix := FLayout.Decl.EnclosingTypeName;
+  if mPrefix = '' then
+  begin
+    mPrefix := FLayout.Name;
+  end;
+  mRoutines := Routines(mPrefix);
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if NeedsBody(mIndex) then
+    begin
+      FindBody(mIndex, mPrefix, mRoutines);
+    end;
+  end;
+end;
+
+{ TClassLayout }
 
 function TClassLayout.Find(const AName: string): TArray<Integer>;
 var
@@ -1053,98 +1257,92 @@ begin
   Result := -1;
 end;
 
+/// <summary>Index des letzten Tokens vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
+function PreviousSolid(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex - 1;
+  while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Der Bezeichner AIndex kann ein Mitglied der eigenen Klasse meinen: ohne Punkt davor oder hinter
+/// Self.</summary>
+function IsOwnMemberRef(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrevious, mBefore: Integer;
+begin
+  mPrevious := PreviousSolid(ATokens, AIndex);
+  Result := (mPrevious < 0) or not ATokens[mPrevious].IsSymbol('.');
+  if not Result then
+  begin
+    mBefore := PreviousSolid(ATokens, mPrevious);
+    Result := (mBefore >= 0) and SameText(ATokens[mBefore].Text, 'Self');
+  end;
+end;
+
 /// <summary>Bezeichner im Offsetbereich, die als Mitglied der eigenen Klasse gemeint sein können: ohne Punkt
 /// davor oder hinter Self.</summary>
 function MemberNames(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): TArray<string>;
 var
-  Index, Previous, Before: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := TSyntaxTree.FirstTokenOf(ATokens, AFirst) to High(ATokens) do
+  mIndex := TSyntaxTree.FirstTokenOf(ATokens, AFirst);
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ALast) do
   begin
-    if ATokens[Index].Offset < AFirst then
+    if (ATokens[mIndex].Offset >= AFirst) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      IsOwnMemberRef(ATokens, mIndex) then
     begin
-      Continue;
+      Result := Result + [ATokens[mIndex].Text];
     end;
-    if ATokens[Index].Offset >= ALast then
-    begin
-      Break;
-    end;
-    if ATokens[Index].Kind <> TPascalTokenKind.Identifier then
-    begin
-      Continue;
-    end;
-    Previous := Index - 1;
-    while (Previous >= 0) and IsTrivia(ATokens[Previous]) do
-    begin
-      Dec(Previous);
-    end;
-    if (Previous >= 0) and ATokens[Previous].IsSymbol('.') then
-    begin
-      Before := Previous - 1;
-      while (Before >= 0) and IsTrivia(ATokens[Before]) do
-      begin
-        Dec(Before);
-      end;
-      if (Before < 0) or not SameText(ATokens[Before].Text, 'Self') then
-      begin
-        Continue;
-      end;
-    end;
-    Result := Result + [ATokens[Index].Text];
+    Inc(mIndex);
   end;
+end;
+
+/// <summary>Namen, die AMember in Deklaration (nur Property-Zugriff) und Rumpf (ohne Kopf) benutzt.</summary>
+function NamesUsedBy(const ATokens: TArray<TPascalToken>; const AMember: TClassMember): TArray<string>;
+var
+  mStart: Integer;
+  mHeader: TSyntaxNode;
+begin
+  Result := nil;
+  if AMember.Kind = TClassMemberKind.Property_ then
+  begin
+    Result := MemberNames(ATokens, AMember.Node.StartOffset, AMember.Node.EndOffset);
+  end;
+  if AMember.Body = nil then
+  begin
+    Exit;
+  end;
+  // Ohne den Kopf: dessen Name ist kein Aufruf.
+  mStart := AMember.Body.StartOffset;
+  mHeader := AMember.Body.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader <> nil then
+  begin
+    mStart := mHeader.EndOffset;
+  end;
+  Result := Result + MemberNames(ATokens, mStart, AMember.Body.EndOffset);
 end;
 
 function TClassLayout.UsedBy(AIndex: Integer): TArray<Integer>;
 var
-  Names: TArray<string>;
-  Member: TClassMember;
-  Index, Other: Integer;
-  Body: TSyntaxNode;
-  Start: Integer;
+  mNames: TArray<string>;
+  mMember: TClassMember;
+  mIndex: Integer;
 begin
-  Member := Members[AIndex];
-  Names := nil;
-  if Member.Kind = TClassMemberKind.Property_ then
-  begin
-    Names := MemberNames(FTree.Tokens, Member.Node.StartOffset, Member.Node.EndOffset);
-  end;
-  Body := Member.Body;
-  if Body <> nil then
-  begin
-    // Ohne den Kopf: dessen Name ist kein Aufruf.
-    Start := Body.StartOffset;
-    if Body.FindChild(TSyntaxKind.RoutineHeader) <> nil then
-    begin
-      Start := Body.FindChild(TSyntaxKind.RoutineHeader).EndOffset;
-    end;
-    Names := Names + MemberNames(FTree.Tokens, Start, Body.EndOffset);
-  end;
+  mMember := Members[AIndex];
+  mNames := NamesUsedBy(FTree.Tokens, mMember);
   Result := nil;
-  for Index := 0 to High(Members) do
+  for mIndex := 0 to High(Members) do
   begin
-    if (Index = AIndex) or (Members[Index].Kind = TClassMemberKind.Other) then
+    // Der Name der Property selbst ist keine Verwendung.
+    if (mIndex <> AIndex) and (Members[mIndex].Kind <> TClassMemberKind.Other) and
+      (IndexText(Members[mIndex].Name, mNames) >= 0) and
+      not ((mMember.Kind = TClassMemberKind.Property_) and SameText(Members[mIndex].Name, mMember.Name)) then
     begin
-      Continue;
-    end;
-    for Other := 0 to High(Names) do
-    begin
-      if SameText(Names[Other], Members[Index].Name) then
-      begin
-        Result := Result + [Index];
-        Break;
-      end;
-    end;
-  end;
-  // Der Name der Property selbst ist keine Verwendung.
-  if Member.Kind = TClassMemberKind.Property_ then
-  begin
-    for Index := High(Result) downto 0 do
-    begin
-      if SameText(Members[Result[Index]].Name, Member.Name) then
-      begin
-        Delete(Result, Index, 1);
-      end;
+      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -1186,7 +1384,7 @@ begin
     end;
     Exit;
   end;
-  Result := CollapseSpace(NodeText(Member.Node));
+  Result := CollapseSpace(TextOf(Member.Node));
   if Member.IsClassMember and (Member.Kind = TClassMemberKind.Property_) then
   begin
     Result := 'class ' + Result;
@@ -1327,149 +1525,227 @@ begin
   Result := DeleteMembers(ALayout, [AIndex], ABody);
 end;
 
+function NodeIn(const ANodes: TArray<TSyntaxNode>; ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in ANodes do
+  begin
+    if mNode = ANode then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Unter AIndexes steht ein Mitglied mit Knoten ANode und Namen AName.</summary>
+function IsDropped(ALayout: TClassLayout; const AIndexes: TArray<Integer>; ANode: TSyntaxNode;
+  const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex in AIndexes do
+  begin
+    if (ALayout.Members[mIndex].Node = ANode) and SameText(ALayout.Members[mIndex].Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Namen der Feldgruppe von AMember, die nicht unter AIndexes gelöscht werden.</summary>
+function RemainingNames(ALayout: TClassLayout; const AIndexes: TArray<Integer>;
+  const AMember: TClassMember): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in AMember.GroupNames do
+  begin
+    if not IsDropped(ALayout, AIndexes, AMember.Node, mName) then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
+/// <summary>Deklaration der Feldgruppe von AMember durch die übrigen Namen ARemaining ersetzen.</summary>
+function GroupEdit(ALayout: TClassLayout; const AMember: TClassMember; const ARemaining: TArray<string>): TTextEdit;
+var
+  mTable: TLineTable;
+  mRange: TTextRange;
+begin
+  mTable := TLineTable.Build(ALayout.Text);
+  mRange := TTextRange.Create(mTable.PositionAt(AMember.Node.StartOffset), mTable.PositionAt(AMember.Node.EndOffset));
+  Result := TTextEdit.Create(mRange, string.Join(', ', ARemaining) + ': ' + AMember.TypeName + ';');
+end;
+
+/// <summary>Zeilen der Deklaration von AMember löschen; beim einzigen Eintrag eines var-Abschnitts den ganzen
+/// Abschnitt samt "class var".</summary>
+function DeclarationDelete(const AMember: TClassMember): TTextEdit;
+var
+  mNode: TSyntaxNode;
+  mFirst: Integer;
+begin
+  mNode := AMember.Node;
+  mFirst := AMember.FirstLine;
+  if (mNode.Kind = TSyntaxKind.VarDecl) and (mNode.Parent <> nil) and (mNode.Parent.ChildCount = 1) then
+  begin
+    mFirst := mNode.Parent.StartPos.Line;
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(mFirst, 0, AMember.LastLine + 1, 0), '');
+end;
+
 class function TClassEdits.DeleteMembers(ALayout: TClassLayout; const AIndexes: TArray<Integer>;
   ABodies: Boolean): TArray<TTextEdit>;
 var
-  Index, Other: Integer;
-  Member: TClassMember;
-  Remaining: TArray<string>;
-  Done: TArray<TSyntaxNode>;
-  Name, Declaration: string;
-  Dropped: Boolean;
-  Node: TSyntaxNode;
-  Range: TTextRange;
-  Table: TLineTable;
+  mIndex: Integer;
+  mMember: TClassMember;
+  mRemaining: TArray<string>;
+  mDone: TArray<TSyntaxNode>;
 begin
   Result := nil;
-  Done := nil;
-  Table := TLineTable.Build(ALayout.Text);
-  for Index in AIndexes do
+  mDone := nil;
+  for mIndex in AIndexes do
   begin
-    Member := ALayout.Members[Index];
-    Node := Member.Node;
-    Dropped := False;
-    for Other := 0 to High(Done) do
-    begin
-      if Done[Other] = Node then
-      begin
-        Dropped := True;
-      end;
-    end;
-    if Dropped then
+    mMember := ALayout.Members[mIndex];
+    if NodeIn(mDone, mMember.Node) then
     begin
       Continue;
     end;
-    Done := Done + [Node];
-    if Member.IsFieldGroup then
+    mDone := mDone + [mMember.Node];
+    mRemaining := nil;
+    if mMember.IsFieldGroup then
+    begin
+      mRemaining := RemainingNames(ALayout, AIndexes, mMember);
+    end;
+    if mRemaining <> nil then
     begin
       // Übrige Namen der Gruppe behalten.
-      Remaining := nil;
-      for Name in Member.GroupNames do
-      begin
-        Dropped := False;
-        for Other in AIndexes do
-        begin
-          if (ALayout.Members[Other].Node = Node) and SameText(ALayout.Members[Other].Name, Name) then
-          begin
-            Dropped := True;
-          end;
-        end;
-        if not Dropped then
-        begin
-          Remaining := Remaining + [Name];
-        end;
-      end;
-      if Remaining <> nil then
-      begin
-        Declaration := string.Join(', ', Remaining) + ': ' + Member.TypeName + ';';
-        Range := TTextRange.Create(Table.PositionAt(Node.StartOffset), Table.PositionAt(Node.EndOffset));
-        Result := Result + [TTextEdit.Create(Range, Declaration)];
-        Continue;
-      end;
-    end;
-    if (Node.Kind = TSyntaxKind.VarDecl) and (Node.Parent <> nil) and (Node.Parent.ChildCount = 1) then
-    begin
-      // Einziger Eintrag eines var-Abschnitts: der ganze Abschnitt samt "class var".
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Node.Parent.StartPos.Line, 0, Member.LastLine + 1, 0),
-        '')];
+      Result := Result + [GroupEdit(ALayout, mMember, mRemaining)];
     end
     else
     begin
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Member.FirstLine, 0, Member.LastLine + 1, 0), '')];
-    end;
-    if ABodies and (Member.Body <> nil) then
-    begin
-      Result := Result + [DeleteLines(ALayout, Member.BodyFirstLine, Member.BodyLastLine)];
+      Result := Result + [DeclarationDelete(mMember)];
+      if ABodies and (mMember.Body <> nil) then
+      begin
+        Result := Result + [DeleteLines(ALayout, mMember.BodyFirstLine, mMember.BodyLastLine)];
+      end;
     end;
   end;
+end;
+
+/// <summary>Zeilen von ADeclarations mit der Einrückung der Mitglieder und den Zeilenenden der Unit.</summary>
+function IndentedBody(ALayout: TClassLayout; const ADeclarations: TArray<string>): string;
+var
+  mItem, mPart: string;
+begin
+  Result := '';
+  for mItem in ADeclarations do
+  begin
+    for mPart in mItem.Split([#10]) do
+    begin
+      Result := Result + ALayout.MemberIndent + TrimRight(mPart) + ALayout.LineBreak;
+    end;
+  end;
+end;
+
+/// <summary>Letzter Abschnitt mit Sichtbarkeit AVisibility (ohne Schlüsselwort nur public); -1 ohne.</summary>
+function SectionIndex(ALayout: TClassLayout; AVisibility: TClassVisibility): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ALayout.Sections) do
+  begin
+    if (ALayout.Sections[mIndex].Visibility = AVisibility) and
+      ((ALayout.Sections[mIndex].HeadLine >= 0) or (AVisibility = TClassVisibility.Public_)) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Zeile eines neuen Abschnitts in der Reihenfolge der Sichtbarkeit: vor dem ersten mit höherer, sonst
+/// vor end.</summary>
+function NewSectionLine(ALayout: TClassLayout; AVisibility: TClassVisibility): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := ALayout.EndLine;
+  for mIndex := High(ALayout.Sections) downto 0 do
+  begin
+    if (ALayout.Sections[mIndex].HeadLine >= 0) and (ALayout.Sections[mIndex].Visibility > AVisibility) then
+    begin
+      Result := ALayout.Sections[mIndex].HeadLine;
+    end;
+  end;
+end;
+
+/// <summary>Erste Zeile der ersten Methode bzw. Property des Abschnitts; -1 ohne.</summary>
+function FirstRoutineLine(ALayout: TClassLayout; const ASection: TClassSection): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex in ASection.Members do
+  begin
+    if ALayout.Members[mIndex].IsMethod or (ALayout.Members[mIndex].Kind = TClassMemberKind.Property_) then
+    begin
+      Exit(ALayout.Members[mIndex].FirstLine);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Zeile, vor der neue Mitglieder in ASection kommen: Felder (AFields) vor die erste Methode bzw.
+/// Property, sonst hinter das letzte Mitglied bzw. die Kopfzeile des Abschnitts.</summary>
+function SectionInsertLine(ALayout: TClassLayout; const ASection: TClassSection; AFields: Boolean): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if AFields then
+  begin
+    Result := FirstRoutineLine(ALayout, ASection);
+  end;
+  if Result >= 0 then
+  begin
+    Exit;
+  end;
+  Result := ASection.HeadLine;
+  if Result < 0 then
+  begin
+    Result := ALayout.HeaderLine;
+  end;
+  for mIndex in ASection.Members do
+  begin
+    if ALayout.Members[mIndex].LastLine > Result then
+    begin
+      Result := ALayout.Members[mIndex].LastLine;
+    end;
+  end;
+  Inc(Result);
 end;
 
 class function TClassEdits.InsertMembers(ALayout: TClassLayout; AVisibility: TClassVisibility; AFields: Boolean;
   const ADeclarations: TArray<string>): TTextEdit;
 var
-  Section: TClassSection;
-  Found, Index, Line: Integer;
-  Body, Item, Part: string;
-  Member: TClassMember;
+  mBody: string;
+  mFound: Integer;
 begin
-  Body := '';
-  for Item in ADeclarations do
+  mBody := IndentedBody(ALayout, ADeclarations);
+  mFound := SectionIndex(ALayout, AVisibility);
+  if mFound < 0 then
   begin
-    for Part in Item.Split([#10]) do
-    begin
-      Body := Body + ALayout.MemberIndent + TrimRight(Part) + ALayout.LineBreak;
-    end;
-  end;
-  Found := -1;
-  for Index := 0 to High(ALayout.Sections) do
+    Result := InsertBeforeLine(NewSectionLine(ALayout, AVisibility), ALayout.Indent + VisibilityName(AVisibility) +
+      ALayout.LineBreak + mBody);
+  end
+  else
   begin
-    if (ALayout.Sections[Index].Visibility = AVisibility) and
-      ((ALayout.Sections[Index].HeadLine >= 0) or (AVisibility = TClassVisibility.Public_)) then
-    begin
-      Found := Index;
-    end;
+    Result := InsertBeforeLine(SectionInsertLine(ALayout, ALayout.Sections[mFound], AFields), mBody);
   end;
-  if Found < 0 then
-  begin
-    // Neuer Abschnitt in der Reihenfolge der Sichtbarkeit: vor den ersten mit höherer, sonst vor end.
-    Line := ALayout.EndLine;
-    for Index := High(ALayout.Sections) downto 0 do
-    begin
-      if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Visibility > AVisibility) then
-      begin
-        Line := ALayout.Sections[Index].HeadLine;
-      end;
-    end;
-    Result := InsertBeforeLine(Line, ALayout.Indent + VisibilityName(AVisibility) +
-      ALayout.LineBreak + Body);
-    Exit;
-  end;
-  Section := ALayout.Sections[Found];
-  if AFields then
-  begin
-    for Index in Section.Members do
-    begin
-      Member := ALayout.Members[Index];
-      if Member.IsMethod or (Member.Kind = TClassMemberKind.Property_) then
-      begin
-        Exit(InsertBeforeLine(Member.FirstLine, Body));
-      end;
-    end;
-  end;
-  // Hinter das letzte Mitglied bzw. die Kopfzeile des Abschnitts.
-  Line := Section.HeadLine;
-  if Line < 0 then
-  begin
-    Line := ALayout.HeaderLine;
-  end;
-  for Index in Section.Members do
-  begin
-    if ALayout.Members[Index].LastLine > Line then
-    begin
-      Line := ALayout.Members[Index].LastLine;
-    end;
-  end;
-  Result := InsertBeforeLine(Line + 1, Body);
 end;
 
 class function TClassEdits.SetAncestors(ALayout: TClassLayout; const AAncestors: TArray<string>): TTextEdit;

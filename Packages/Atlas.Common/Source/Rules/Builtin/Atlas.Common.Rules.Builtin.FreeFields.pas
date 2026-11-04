@@ -191,6 +191,10 @@ type
     FHarmless: TArray<TSyntaxNode>;
     function IsRef(ANode: TSyntaxNode): Boolean;
     procedure Harmless(ANode: TSyntaxNode);
+    procedure VisitMember(ANode: TSyntaxNode);
+    procedure VisitCall(ANode: TSyntaxNode);
+    procedure VisitCompare(ANode: TSyntaxNode);
+    procedure VisitAssign(ANode: TSyntaxNode);
     procedure Visit(ARoot: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const ACreation: TInitCreation);
@@ -231,79 +235,113 @@ begin
   FHarmless := FHarmless + [ANode];
 end;
 
+/// <summary>X.Free u. a. gibt frei, X.FreeOnTerminate gibt weiter (ein Thread, der sich selbst freigibt);
+/// jedes andere Mitglied ist harmlos.</summary>
+procedure TInitUses.VisitMember(ANode: TSyntaxNode);
+begin
+  if (ANode.ChildCount < 1) or not IsRef(ANode[0]) then
+  begin
+    Exit;
+  end;
+  if MatchText(ANode.Name, ReleasingMethods) then
+  begin
+    FFreed := True;
+  end
+  else if SameText(ANode.Name, 'FreeOnTerminate') then
+  begin
+    FEscaped := True;
+  end
+  else
+  begin
+    Harmless(ANode[0]);
+  end;
+end;
+
+/// <summary>FreeAndNil(X) gibt frei, Assigned(X) ist harmlos.</summary>
+procedure TInitUses.VisitCall(ANode: TSyntaxNode);
+begin
+  if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.Identifier) or not IsRef(ANode[1]) then
+  begin
+    Exit;
+  end;
+  if SameText(ANode[0].Name, 'FreeAndNil') then
+  begin
+    FFreed := True;
+  end
+  else if SameText(ANode[0].Name, 'Assigned') then
+  begin
+    Harmless(ANode[1]);
+  end;
+end;
+
+/// <summary>Vergleiche mit X (gleich, ungleich) sind harmlos.</summary>
+procedure TInitUses.VisitCompare(ANode: TSyntaxNode);
+var
+  mIndex: Integer;
+begin
+  if (ANode.Name <> '=') and (ANode.Name <> '<>') then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if IsRef(ANode[mIndex]) then
+    begin
+      Harmless(ANode[mIndex]);
+    end;
+  end;
+end;
+
+/// <summary>X := nil und X := TKlasse.Create (ohne Besitzer) sind harmlos.</summary>
+procedure TInitUses.VisitAssign(ANode: TSyntaxNode);
+var
+  mTypeName: string;
+  mOwned, mReset: Boolean;
+begin
+  if (ANode.ChildCount < 2) or not IsRef(ANode[0]) then
+  begin
+    Exit;
+  end;
+  mReset := (ANode[1].Kind = TSyntaxKind.Literal) and SameText(ANode[1].Name, 'nil');
+  if mReset or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text, FContext.Index, ANode[1], mTypeName,
+    mOwned) and not mOwned) then
+  begin
+    Harmless(ANode[0]);
+  end;
+end;
+
 // Iterativ (Bericht M1).
 procedure TInitUses.Visit(ARoot: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
-  TypeName: string;
-  Owned: Boolean;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      case Node.Kind of
+      mNode := mPending.Pop;
+      case mNode.Kind of
         TSyntaxKind.MemberAccess:
-          if (Node.ChildCount >= 1) and IsRef(Node[0]) then
-          begin
-            if MatchText(Node.Name, ReleasingMethods) then
-            begin
-              FFreed := True;
-            end
-            else if SameText(Node.Name, 'FreeOnTerminate') then
-            begin
-              // Ein Thread, der sich selbst freigibt.
-              FEscaped := True;
-            end
-            else
-            begin
-              Harmless(Node[0]);
-            end;
-          end;
+          VisitMember(mNode);
         TSyntaxKind.Call:
-          if (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) and IsRef(Node[1]) then
-          begin
-            if SameText(Node[0].Name, 'FreeAndNil') then
-            begin
-              FFreed := True;
-            end
-            else if SameText(Node[0].Name, 'Assigned') then
-            begin
-              Harmless(Node[1]);
-            end;
-          end;
+          VisitCall(mNode);
         TSyntaxKind.BinaryExpr:
-          if (Node.Name = '=') or (Node.Name = '<>') then
-          begin
-            for Index := 0 to Node.ChildCount - 1 do
-            begin
-              if IsRef(Node[Index]) then
-              begin
-                Harmless(Node[Index]);
-              end;
-            end;
-          end;
+          VisitCompare(mNode);
         TSyntaxKind.AssignStatement:
-          if (Node.ChildCount >= 2) and IsRef(Node[0]) and (((Node[1].Kind = TSyntaxKind.Literal) and
-            SameText(Node[1].Name, 'nil')) or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text,
-            FContext.Index, Node[1], TypeName, Owned) and not Owned)) then
-          begin
-            Harmless(Node[0]);
-          end;
+          VisitAssign(mNode);
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -400,86 +438,152 @@ begin
   end;
 end;
 
+/// <summary>Variablen mit Objekttyp aus dem var-Abschnitt AVars; AClassDecl: Klasse der class var, nil bei
+/// Unit-Variablen; AVisible: für andere Units erreichbar.</summary>
+procedure AddObjectVariables(const AContext: TRuleContext; AVars, AClassDecl: TSyntaxNode; AVisible: Boolean;
+  var AVariables: TArray<TInitVariable>);
+var
+  mDecl: TSyntaxNode;
+  mIndex: Integer;
+  mVariable: TInitVariable;
+  mName: string;
+begin
+  for mIndex := 0 to AVars.ChildCount - 1 do
+  begin
+    mDecl := AVars[mIndex];
+    if (mDecl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, mDecl) = '') or
+      not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index, DeclaredType(AContext.Text, mDecl)) then
+    begin
+      Continue;
+    end;
+    for mName in mDecl.Name.Split([',']) do
+    begin
+      mVariable := Default(TInitVariable);
+      mVariable.Name := Trim(mName);
+      mVariable.ClassDecl := AClassDecl;
+      mVariable.Visible := AVisible;
+      mVariable.DeclStart := mDecl.StartOffset;
+      mVariable.DeclEnd := mDecl.EndOffset;
+      AVariables := AVariables + [mVariable];
+    end;
+  end;
+end;
+
+/// <summary>class vars mit Objekttyp der Klasse ATypeDecl; private sind für andere Units nicht sichtbar.</summary>
+procedure AddClassVariables(const AContext: TRuleContext; ATypeDecl: TSyntaxNode; AVisible: Boolean;
+  var AVariables: TArray<TInitVariable>);
+var
+  mClassNode, mMember: TSyntaxNode;
+  mIndex: Integer;
+  mVisibility: string;
+begin
+  mClassNode := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+  if (ATypeDecl.Kind <> TSyntaxKind.TypeDecl) or (mClassNode = nil) then
+  begin
+    Exit;
+  end;
+  mVisibility := 'public';
+  for mIndex := 0 to mClassNode.ChildCount - 1 do
+  begin
+    mMember := mClassNode[mIndex];
+    if mMember.Kind = TSyntaxKind.Visibility then
+    begin
+      mVisibility := mMember.Name;
+    end;
+    if (mMember.Kind = TSyntaxKind.VarSection) and AfterClassKeyword(AContext.Tree.Tokens, mMember) then
+    begin
+      AddObjectVariables(AContext, mMember, ATypeDecl, AVisible and not ContainsText(mVisibility, 'private'),
+        AVariables);
+    end;
+  end;
+end;
+
 /// <summary>Variablen mit Objekttyp aus dem Abschnitt ASection: Unit-Variablen (var) und class vars der
 /// Klassen darin.</summary>
 procedure ReadVariables(const AContext: TRuleContext; ASection: TSyntaxNode; AVisible: Boolean;
   var AVariables: TArray<TInitVariable>);
 var
-  Child, TypeDecl, ClassNode, Member, Decl: TSyntaxNode;
-  Index, TypeIndex, MemberIndex, DeclIndex: Integer;
-  Variable: TInitVariable;
-  Name, Visibility: string;
+  mChild: TSyntaxNode;
+  mIndex, mTypeIndex: Integer;
 begin
-  for Index := 0 to ASection.ChildCount - 1 do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    Child := ASection[Index];
-    if (Child.Kind = TSyntaxKind.VarSection) and SameText(Child.Name, 'var') then
+    mChild := ASection[mIndex];
+    if (mChild.Kind = TSyntaxKind.VarSection) and SameText(mChild.Name, 'var') then
     begin
-      for DeclIndex := 0 to Child.ChildCount - 1 do
+      AddObjectVariables(AContext, mChild, nil, AVisible, AVariables);
+    end
+    else if mChild.Kind = TSyntaxKind.TypeSection then
+    begin
+      for mTypeIndex := 0 to mChild.ChildCount - 1 do
       begin
-        Decl := Child[DeclIndex];
-        if (Decl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, Decl) = '') or
-          not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
-          DeclaredType(AContext.Text, Decl)) then
-        begin
-          Continue;
-        end;
-        for Name in Decl.Name.Split([',']) do
-        begin
-          Variable := Default(TInitVariable);
-          Variable.Name := Trim(Name);
-          Variable.Visible := AVisible;
-          Variable.DeclStart := Decl.StartOffset;
-          Variable.DeclEnd := Decl.EndOffset;
-          AVariables := AVariables + [Variable];
-        end;
+        AddClassVariables(AContext, mChild[mTypeIndex], AVisible, AVariables);
       end;
     end;
-    if Child.Kind <> TSyntaxKind.TypeSection then
+  end;
+end;
+
+/// <summary>Name der Variablen, der ATarget zuweist: X, im class constructor auch Self.X oder TKlasse.X;
+/// '' sonst.</summary>
+function AssignedName(ATarget, AClassDecl: TSyntaxNode): string;
+begin
+  Result := '';
+  if ATarget.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := ATarget.Name;
+  end
+  else if (AClassDecl <> nil) and (ATarget.Kind = TSyntaxKind.MemberAccess) and (ATarget.ChildCount = 1) and
+    (ATarget[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    if SameText(ATarget[0].Name, 'Self') or SameText(ATarget[0].Name, AClassDecl.Name) then
     begin
-      Continue;
+      Result := ATarget.Name;
     end;
-    for TypeIndex := 0 to Child.ChildCount - 1 do
+  end;
+end;
+
+/// <summary>Steht die Erzeugung von AName in AClassDecl schon in ACreations?</summary>
+function KnownCreation(const ACreations: TArray<TInitCreation>; const AName: string; AClassDecl: TSyntaxNode):
+  Boolean;
+var
+  mCreation: TInitCreation;
+begin
+  Result := False;
+  for mCreation in ACreations do
+  begin
+    Result := Result or (SameText(mCreation.Name, AName) and (mCreation.ClassDecl = AClassDecl));
+  end;
+end;
+
+/// <summary>Nimmt die Zuweisung AAssign auf, wenn sie einer Variablen aus AVariables ein neues Objekt ohne
+/// Besitzer zuweist.</summary>
+procedure AddCreation(const AContext: TRuleContext; AAssign, AClassDecl: TSyntaxNode;
+  const AVariables: TArray<TInitVariable>; var ACreations: TArray<TInitCreation>);
+var
+  mVariable: TInitVariable;
+  mCreation: TInitCreation;
+  mTypeName, mName: string;
+  mOwned: Boolean;
+begin
+  mName := AssignedName(AAssign[0], AClassDecl);
+  if (mName = '') or KnownCreation(ACreations, mName, AClassDecl) or not TFreeFields.ObjectCreation(AContext.Tree,
+    AContext.Text, AContext.Index, AAssign[1], mTypeName, mOwned) or mOwned then
+  begin
+    Exit;
+  end;
+  for mVariable in AVariables do
+  begin
+    if SameText(mVariable.Name, mName) and (mVariable.ClassDecl = AClassDecl) then
     begin
-      TypeDecl := Child[TypeIndex];
-      ClassNode := TypeDecl.FindChild(TSyntaxKind.ClassType);
-      if (TypeDecl.Kind <> TSyntaxKind.TypeDecl) or (ClassNode = nil) then
-      begin
-        Continue;
-      end;
-      Visibility := 'public';
-      for MemberIndex := 0 to ClassNode.ChildCount - 1 do
-      begin
-        Member := ClassNode[MemberIndex];
-        if Member.Kind = TSyntaxKind.Visibility then
-        begin
-          Visibility := Member.Name;
-        end;
-        if (Member.Kind <> TSyntaxKind.VarSection) or not AfterClassKeyword(AContext.Tree.Tokens, Member) then
-        begin
-          Continue;
-        end;
-        for DeclIndex := 0 to Member.ChildCount - 1 do
-        begin
-          Decl := Member[DeclIndex];
-          if (Decl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, Decl) = '') or
-            not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
-            DeclaredType(AContext.Text, Decl)) then
-          begin
-            Continue;
-          end;
-          for Name in Decl.Name.Split([',']) do
-          begin
-            Variable := Default(TInitVariable);
-            Variable.Name := Trim(Name);
-            Variable.ClassDecl := TypeDecl;
-            Variable.Visible := AVisible and not ContainsText(Visibility, 'private');
-            Variable.DeclStart := Decl.StartOffset;
-            Variable.DeclEnd := Decl.EndOffset;
-            AVariables := AVariables + [Variable];
-          end;
-        end;
-      end;
+      mCreation := Default(TInitCreation);
+      mCreation.Name := mVariable.Name;
+      mCreation.Assignment := AAssign;
+      mCreation.ClassDecl := AClassDecl;
+      mCreation.Visible := mVariable.Visible;
+      mCreation.DeclStart := mVariable.DeclStart;
+      mCreation.DeclEnd := mVariable.DeclEnd;
+      ACreations := ACreations + [mCreation];
+      Exit;
     end;
   end;
 end;
@@ -489,74 +593,72 @@ end;
 procedure FindCreations(const AContext: TRuleContext; ANode, AClassDecl: TSyntaxNode;
   const AVariables: TArray<TInitVariable>; var ACreations: TArray<TInitCreation>);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
-  Variable: TInitVariable;
-  Creation: TInitCreation;
-  Target: TSyntaxNode;
-  TypeName, Name: string;
-  Owned, Known: Boolean;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.AnonymousMethod then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
       begin
         Continue;
       end;
-      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount >= 2) then
       begin
-        Target := Node[0];
-        Name := '';
-        if Target.Kind = TSyntaxKind.Identifier then
-        begin
-          Name := Target.Name;
-        end
-        else if (AClassDecl <> nil) and (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount = 1) and
-          (Target[0].Kind = TSyntaxKind.Identifier) and (SameText(Target[0].Name, 'Self') or
-          SameText(Target[0].Name, AClassDecl.Name)) then
-        begin
-          Name := Target.Name;
-        end;
-        Known := False;
-        for Creation in ACreations do
-        begin
-          if SameText(Creation.Name, Name) and (Creation.ClassDecl = AClassDecl) then
-          begin
-            Known := True;
-          end;
-        end;
-        if (Name <> '') and not Known and TFreeFields.ObjectCreation(AContext.Tree, AContext.Text, AContext.Index,
-          Node[1], TypeName, Owned) and not Owned then
-        begin
-          for Variable in AVariables do
-          begin
-            if SameText(Variable.Name, Name) and (Variable.ClassDecl = AClassDecl) then
-            begin
-              Creation := Default(TInitCreation);
-              Creation.Name := Variable.Name;
-              Creation.Assignment := Node;
-              Creation.ClassDecl := AClassDecl;
-              Creation.Visible := Variable.Visible;
-              Creation.DeclStart := Variable.DeclStart;
-              Creation.DeclEnd := Variable.DeclEnd;
-              ACreations := ACreations + [Creation];
-              Break;
-            end;
-          end;
-        end;
+        AddCreation(AContext, mNode, AClassDecl, AVariables, ACreations);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Letztes Token bei oder vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
+function CodeBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Das "end" vor dem letzten Punkt der Unit; -1 ohne.</summary>
+function UnitEndIndex(const ATokens: TArray<TPascalToken>): Integer;
+var
+  mIndex, mPrevious: Integer;
+begin
+  Result := -1;
+  for mIndex := High(ATokens) downto 1 do
+  begin
+    if ATokens[mIndex].IsSymbol('.') then
+    begin
+      mPrevious := CodeBefore(ATokens, mIndex - 1);
+      if (mPrevious >= 0) and ATokens[mPrevious].IsKeyword('end') then
+      begin
+        Result := mPrevious;
+      end;
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Neuer finalization-Abschnitt mit AStatement vor der Zeile ALine; mit Leerzeile davor, wenn die
+/// Zeile darüber nicht leer ist.</summary>
+function NewFinalization(const ALines: TArray<string>; ALine: Integer; const AStatement, ALineBreak: string): string;
+begin
+  Result := 'finalization' + ALineBreak + '  ' + AStatement + ALineBreak;
+  if (ALine = 0) or (Trim(ALines[ALine - 1]) <> '') then
+  begin
+    Result := ALineBreak + Result;
   end;
 end;
 
@@ -565,72 +667,211 @@ end;
 function FinalizationEdits(const AContext: TRuleContext; const AStatement: string; out AEdits: TArray<TTextEdit>;
   out ACreated: Boolean): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Lines: TArray<string>;
-  LineBreak, Text: string;
-  Index, EndIndex, Previous: Integer;
-  Section: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mLines: TArray<string>;
+  mLineBreak, mText: string;
+  mEnd, mPrevious, mLine: Integer;
 begin
   AEdits := nil;
   ACreated := False;
-  Result := False;
-  Tokens := AContext.Tree.Tokens;
-  // "end" vor dem letzten Punkt.
-  EndIndex := -1;
-  for Index := High(Tokens) downto 1 do
-  begin
-    if Tokens[Index].IsSymbol('.') then
-    begin
-      Previous := Index - 1;
-      while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      begin
-        Dec(Previous);
-      end;
-      if (Previous >= 0) and Tokens[Previous].IsKeyword('end') then
-      begin
-        EndIndex := Previous;
-      end;
-      Break;
-    end;
-  end;
-  if EndIndex < 1 then
+  mTokens := AContext.Tree.Tokens;
+  mEnd := UnitEndIndex(mTokens);
+  Result := mEnd >= 1;
+  if not Result then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mLine := mTokens[mEnd].StartPos.Line;
   // Nur wenn "end." am Zeilenanfang steht; sonst gäbe es keine saubere Stelle.
-  if (Tokens[EndIndex].StartPos.Line > High(Lines)) or
-    (Trim(Copy(Lines[Tokens[EndIndex].StartPos.Line], 1, Tokens[EndIndex].StartPos.Character)) <> '') then
+  Result := (mLine <= High(mLines)) and (Trim(Copy(mLines[mLine], 1, mTokens[mEnd].StartPos.Character)) = '');
+  if not Result then
   begin
     Exit;
   end;
-  Section := AContext.Tree.Root.FindChild(TSyntaxKind.FinalizationSection);
-  Previous := EndIndex - 1;
-  while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Previous);
-  end;
-  if Section <> nil then
+  mPrevious := CodeBefore(mTokens, mEnd - 1);
+  if AContext.Tree.Root.FindChild(TSyntaxKind.FinalizationSection) <> nil then
   begin
     // Letzte Anweisung ohne Semikolon: erst eins ergänzen.
-    if (Previous >= 0) and not Tokens[Previous].IsSymbol(';') and not Tokens[Previous].IsKeyword('finalization') then
+    if (mPrevious >= 0) and not mTokens[mPrevious].IsSymbol(';') and
+      not mTokens[mPrevious].IsKeyword('finalization') then
     begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Previous].EndPos, Tokens[Previous].EndPos), ';')];
+      AEdits := [TTextEdit.Create(TTextRange.Create(mTokens[mPrevious].EndPos, mTokens[mPrevious].EndPos), ';')];
     end;
-    Text := '  ' + AStatement + LineBreak;
+    mText := '  ' + AStatement + mLineBreak;
   end
   else
   begin
     ACreated := True;
-    Text := 'finalization' + LineBreak + '  ' + AStatement + LineBreak;
-    if (Tokens[EndIndex].StartPos.Line = 0) or (Trim(Lines[Tokens[EndIndex].StartPos.Line - 1]) <> '') then
+    mText := NewFinalization(mLines, mLine, AStatement, mLineBreak);
+  end;
+  AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, 0),
+    TTextPosition.Create(mLine, 0)), mText)];
+end;
+
+/// <summary>Variablen mit Objekttyp aus interface und implementation.</summary>
+function UnitVariables(const AContext: TRuleContext): TArray<TInitVariable>;
+var
+  mSection: TSyntaxNode;
+begin
+  Result := nil;
+  mSection := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if mSection <> nil then
+  begin
+    ReadVariables(AContext, mSection, True, Result);
+  end;
+  mSection := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection <> nil then
+  begin
+    ReadVariables(AContext, mSection, False, Result);
+  end;
+end;
+
+/// <summary>Ist ADecl ein class constructor mit Rumpf?</summary>
+function IsClassConstructor(const AContext: TRuleContext; ADecl: TSyntaxNode): Boolean;
+var
+  mHeader: TSyntaxNode;
+begin
+  mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+  Result := (ADecl.Kind = TSyntaxKind.RoutineDecl) and (mHeader <> nil) and
+    (ADecl.FindChild(TSyntaxKind.Block) <> nil);
+  Result := Result and TRegEx.IsMatch(Copy(AContext.Text, mHeader.StartOffset + 1, mHeader.EndOffset -
+    mHeader.StartOffset), '^class\s+constructor\b', [roIgnoreCase]);
+end;
+
+/// <summary>Erzeugungen in den class constructors der Klassen mit class vars.</summary>
+procedure AddClassConstructorCreations(const AContext: TRuleContext; const AVariables: TArray<TInitVariable>;
+  var ACreations: TArray<TInitCreation>);
+var
+  mSection, mDecl: TSyntaxNode;
+  mIndex: Integer;
+  mVariable: TInitVariable;
+begin
+  mSection := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mSection.ChildCount - 1 do
+  begin
+    mDecl := mSection[mIndex];
+    if not IsClassConstructor(AContext, mDecl) then
     begin
-      Text := LineBreak + Text;
+      Continue;
+    end;
+    for mVariable in AVariables do
+    begin
+      if (mVariable.ClassDecl <> nil) and StartsText(mVariable.ClassDecl.Name + '.', mDecl.Name) then
+      begin
+        FindCreations(AContext, mDecl.FindChild(TSyntaxKind.Block), mVariable.ClassDecl, AVariables, ACreations);
+        Break;
+      end;
     end;
   end;
-  AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Tokens[EndIndex].StartPos.Line, 0),
-    TTextPosition.Create(Tokens[EndIndex].StartPos.Line, 0)), Text)];
-  Result := True;
+end;
+
+/// <summary>Erzeugungen der Variablen AVariables in initialization und in class constructors.</summary>
+function CollectCreations(const AContext: TRuleContext; const AVariables: TArray<TInitVariable>):
+  TArray<TInitCreation>;
+var
+  mSection: TSyntaxNode;
+  mVariable: TInitVariable;
+  mHasClassVars: Boolean;
+begin
+  Result := nil;
+  mSection := AContext.Tree.Root.FindChild(TSyntaxKind.InitializationSection);
+  if mSection <> nil then
+  begin
+    FindCreations(AContext, mSection, nil, AVariables, Result);
+  end;
+  mHasClassVars := False;
+  for mVariable in AVariables do
+  begin
+    mHasClassVars := mHasClassVars or (mVariable.ClassDecl <> nil);
+  end;
+  if mHasClassVars then
+  begin
+    AddClassConstructorCreations(AContext, AVariables, Result);
+  end;
+end;
+
+/// <summary>Gibt die Unit ACreation nirgends frei und nirgends weiter, und keine andere Unit sieht sie?</summary>
+function IsLeak(const AContext: TRuleContext; const ACreation: TInitCreation): Boolean;
+var
+  mScan: TInitUses;
+begin
+  mScan := TInitUses.Create(AContext, ACreation);
+  try
+    Result := mScan.Leaks(ACreation);
+  finally
+    mScan.Free;
+  end;
+  Result := Result and not (ACreation.Visible and UsedElsewhere(AContext, ACreation.Name));
+end;
+
+/// <summary>Änderungen zum Freigeben von ACreation in finalization bzw. im class destructor; ASafe: als
+/// sichere Korrektur anwendbar (kein neu angelegter Abschnitt).</summary>
+function ReleaseEdits(const AContext: TRuleContext; const ACreation: TInitCreation; out ASafe: Boolean):
+  TArray<TTextEdit>;
+var
+  mStatement: string;
+  mCreated: Boolean;
+begin
+  mStatement := Format('FreeAndNil(%s);', [ACreation.Name]);
+  if ACreation.ClassDecl = nil then
+  begin
+    ASafe := FinalizationEdits(AContext, mStatement, Result, mCreated) and not mCreated;
+  end
+  else
+  begin
+    if not TFreeFields.ClassDestructorEdits(AContext.Tree, AContext.Text, ACreation.ClassDecl, [mStatement],
+      Result) then
+    begin
+      Result := nil;
+    end;
+    ASafe := Length(Result) = 1;
+  end;
+end;
+
+/// <summary>Ergänzt AEdits um System.SysUtils in uses, wenn es fehlt; nil, wenn das nicht geht. Mehrere neu
+/// angelegte Abschnitte oder uses-Einträge an derselben Stelle vertragen sich nicht: solche Korrekturen nur
+/// einzeln (nicht sicher).</summary>
+procedure AddSysUtils(const AContext: TRuleContext; const ACreation: TInitCreation; var AEdits: TArray<TTextEdit>;
+  var ASafe: Boolean);
+var
+  mUsesEdit: TTextEdit;
+begin
+  if (AEdits = nil) or TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils',
+    AContext.Namespaces) then
+  begin
+    Exit;
+  end;
+  if TUsesClauses.AddUnit(AContext.Tree.Tokens, ACreation.Assignment.StartOffset, 'System.SysUtils',
+    TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
+  begin
+    AEdits := AEdits + [mUsesEdit];
+    ASafe := False;
+  end
+  else
+  begin
+    AEdits := nil;
+  end;
+end;
+
+/// <summary>Meldung und Titel der Korrektur für ACreation.</summary>
+function LeakMessage(const ACreation: TInitCreation; out ATitle: string): string;
+begin
+  if ACreation.ClassDecl = nil then
+  begin
+    Result := Format('%s wird in initialization erzeugt, aber in finalization nicht freigegeben.', [ACreation.Name]);
+    ATitle := 'In finalization freigeben';
+  end
+  else
+  begin
+    Result := Format('%s wird im class constructor erzeugt, aber im class destructor nicht freigegeben.',
+      [ACreation.Name]);
+    ATitle := 'Im class destructor freigeben';
+  end;
 end;
 
 function TInitializationNotFinalizedRule.Descriptor: TRuleDescriptor;
@@ -641,132 +882,38 @@ end;
 
 procedure TInitializationNotFinalizedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Variables: TArray<TInitVariable>;
-  Creations: TArray<TInitCreation>;
-  Creation: TInitCreation;
-  Section, Decl, Header: TSyntaxNode;
-  Index: Integer;
-  Variable: TInitVariable;
-  Scan: TInitUses;
-  Leaks, Created, Safe: Boolean;
-  Edits: TArray<TTextEdit>;
-  UsesEdit: TTextEdit;
-  Fixes: TArray<TRuleFix>;
-  Statement, Message, Title: string;
-  Classes: TArray<TSyntaxNode>;
+  mVariables: TArray<TInitVariable>;
+  mCreation: TInitCreation;
+  mEdits: TArray<TTextEdit>;
+  mSafe: Boolean;
+  mFixes: TArray<TRuleFix>;
+  mMessage, mTitle: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Variables := nil;
-  Section := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if Section <> nil then
-  begin
-    ReadVariables(AContext, Section, True, Variables);
-  end;
-  Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section <> nil then
-  begin
-    ReadVariables(AContext, Section, False, Variables);
-  end;
-  if Variables = nil then
+  mVariables := UnitVariables(AContext);
+  if mVariables = nil then
   begin
     Exit;
   end;
-  Creations := nil;
-  Section := AContext.Tree.Root.FindChild(TSyntaxKind.InitializationSection);
-  if Section <> nil then
+  for mCreation in CollectCreations(AContext, mVariables) do
   begin
-    FindCreations(AContext, Section, nil, Variables, Creations);
-  end;
-  // class constructor der Klassen mit class vars
-  Classes := nil;
-  for Variable in Variables do
-  begin
-    if (Variable.ClassDecl <> nil) and not ((Classes <> nil) and (Classes[High(Classes)] = Variable.ClassDecl)) then
-    begin
-      Classes := Classes + [Variable.ClassDecl];
-    end;
-  end;
-  Section := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if (Section <> nil) and (Classes <> nil) then
-  begin
-    for Index := 0 to Section.ChildCount - 1 do
-    begin
-      Decl := Section[Index];
-      Header := Decl.FindChild(TSyntaxKind.RoutineHeader);
-      if (Decl.Kind <> TSyntaxKind.RoutineDecl) or (Header = nil) or (Decl.FindChild(TSyntaxKind.Block) = nil) or
-        not TRegEx.IsMatch(Copy(AContext.Text, Header.StartOffset + 1, Header.EndOffset - Header.StartOffset),
-        '^class\s+constructor\b', [roIgnoreCase]) then
-      begin
-        Continue;
-      end;
-      for Variable in Variables do
-      begin
-        if (Variable.ClassDecl <> nil) and StartsText(Variable.ClassDecl.Name + '.', Decl.Name) then
-        begin
-          FindCreations(AContext, Decl.FindChild(TSyntaxKind.Block), Variable.ClassDecl, Variables, Creations);
-          Break;
-        end;
-      end;
-    end;
-  end;
-  for Creation in Creations do
-  begin
-    Scan := TInitUses.Create(AContext, Creation);
-    try
-      Leaks := Scan.Leaks(Creation);
-    finally
-      Scan.Free;
-    end;
-    if not Leaks or (Creation.Visible and UsedElsewhere(AContext, Creation.Name)) then
+    if not IsLeak(AContext, mCreation) then
     begin
       Continue;
     end;
-    Statement := Format('FreeAndNil(%s);', [Creation.Name]);
-    if Creation.ClassDecl = nil then
+    mMessage := LeakMessage(mCreation, mTitle);
+    mEdits := ReleaseEdits(AContext, mCreation, mSafe);
+    AddSysUtils(AContext, mCreation, mEdits, mSafe);
+    mFixes := nil;
+    if mEdits <> nil then
     begin
-      Message := Format('%s wird in initialization erzeugt, aber in finalization nicht freigegeben.', [Creation.Name]);
-      Title := 'In finalization freigeben';
-      Safe := FinalizationEdits(AContext, Statement, Edits, Created);
-      Safe := Safe and not Created;
-    end
-    else
-    begin
-      Message := Format('%s wird im class constructor erzeugt, aber im class destructor nicht freigegeben.',
-        [Creation.Name]);
-      Title := 'Im class destructor freigeben';
-      if not TFreeFields.ClassDestructorEdits(AContext.Tree, AContext.Text, Creation.ClassDecl, [Statement],
-        Edits) then
-      begin
-        Edits := nil;
-      end;
-      Safe := Length(Edits) = 1;
+      mFixes := [TRuleFix.Create(mTitle, mEdits, mSafe)];
     end;
-    // Mehrere neu angelegte Abschnitte oder uses-Einträge an derselben Stelle vertragen sich nicht:
-    // solche Korrekturen nur einzeln (nicht sicher).
-    if (Edits <> nil) and not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils',
-      AContext.Namespaces) then
-    begin
-      if TUsesClauses.AddUnit(AContext.Tree.Tokens, Creation.Assignment.StartOffset, 'System.SysUtils',
-        TTextLines.LineBreakOf(AContext.Text), UsesEdit) then
-      begin
-        Edits := Edits + [UsesEdit];
-        Safe := False;
-      end
-      else
-      begin
-        Edits := nil;
-      end;
-    end;
-    Fixes := nil;
-    if Edits <> nil then
-    begin
-      Fixes := [TRuleFix.Create(Title, Edits, Safe)];
-    end;
-    AReport.Add(TTextRange.Create(Creation.Assignment[0].StartPos, Creation.Assignment[0].EndPos), Message,
-      TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(mCreation.Assignment[0].StartPos, mCreation.Assignment[0].EndPos), mMessage,
+      TRuleConfidence.High, mFixes);
   end;
 end;
 

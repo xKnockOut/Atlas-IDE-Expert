@@ -78,6 +78,17 @@ type
 
   TTokens = TArray<TToken>;
 
+  /// <summary>Eine Spalte über die Musterzeilen und alles, was zur Folge gehört.</summary>
+  TColumnInput = record
+    Tokens: TArray<TTokens>;
+    LineIndexes: TArray<Integer>;
+    Column: Integer;
+    Indent: Integer;
+    Texts: TArray<string>;
+    Enums: TAtlasEnumLookup;
+    Exists: TAtlasNameExists;
+  end;
+
 function LeadingSpace(const ALine: string): string;
 var
   Index: Integer;
@@ -96,137 +107,183 @@ begin
     ((AToken.Kind = TTokenKind.Symbol) and ((AToken.Text = ')') or (AToken.Text = ']')));
 end;
 
-function Tokenize(const ALine: string): TTokens;
-var
-  Index, Start, SpaceStart: Integer;
-  Token: TToken;
+function CharAt(const ALine: string; AIndex: Integer): Char;
 begin
-  Result := nil;
-  Index := 1;
-  while Index <= Length(ALine) do
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(ALine)) then
   begin
-    SpaceStart := Index;
-    while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    Result := ALine[AIndex];
+  end;
+end;
+
+procedure SkipChars(const ALine: string; var AIndex: Integer; const AChars: TSysCharSet);
+begin
+  while (AIndex <= Length(ALine)) and CharInSet(ALine[AIndex], AChars) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Vorzeichen nur, wo kein Operand davorsteht ("A - 1" bleibt eine Rechnung).</summary>
+function IsSignStart(const ALine: string; AIndex: Integer; const APrevious: TTokens): Boolean;
+begin
+  Result := (CharAt(ALine, AIndex) = '-') and CharInSet(CharAt(ALine, AIndex + 1), ['0'..'9', '$']) and
+    ((Length(APrevious) = 0) or not IsOperand(APrevious[High(APrevious)]));
+end;
+
+function IsNumberStart(const ALine: string; AIndex: Integer; const APrevious: TTokens): Boolean;
+begin
+  Result := CharInSet(CharAt(ALine, AIndex), ['0'..'9']) or ((CharAt(ALine, AIndex) = '$') and
+    CharInSet(CharAt(ALine, AIndex + 1), ['0'..'9', 'A'..'F', 'a'..'f'])) or IsSignStart(ALine, AIndex, APrevious);
+end;
+
+function ScanNumber(const ALine: string; var AIndex: Integer): TTokenKind;
+begin
+  if CharAt(ALine, AIndex) = '-' then
+  begin
+    Inc(AIndex);
+  end;
+  if CharAt(ALine, AIndex) = '$' then
+  begin
+    Inc(AIndex);
+    SkipChars(ALine, AIndex, ['0'..'9', 'A'..'F', 'a'..'f']);
+  end
+  else
+  begin
+    SkipChars(ALine, AIndex, ['0'..'9']);
+  end;
+  Result := TTokenKind.Number;
+  // Gleitkommazahlen und Bereiche: nur Ganzzahlen bilden Folgen.
+  if (CharAt(ALine, AIndex) = '.') and CharInSet(CharAt(ALine, AIndex + 1), ['0'..'9']) then
+  begin
+    Inc(AIndex);
+    SkipChars(ALine, AIndex, ['0'..'9', 'e', 'E']);
+    Result := TTokenKind.Symbol;
+  end;
+end;
+
+procedure ScanString(const ALine: string; var AIndex: Integer);
+var
+  mDone: Boolean;
+begin
+  Inc(AIndex);
+  mDone := False;
+  while not mDone and (AIndex <= Length(ALine)) do
+  begin
+    if (ALine[AIndex] = '''') and (CharAt(ALine, AIndex + 1) = '''') then
     begin
-      Inc(Index);
-    end;
-    if Index > Length(ALine) then
-    begin
-      Break;
-    end;
-    Token := Default(TToken);
-    Token.Space := Copy(ALine, SpaceStart, Index - SpaceStart);
-    Start := Index;
-    Token.Start := Start;
-    if TTextChars.IsIdentStart(ALine[Index]) then
-    begin
-      while (Index <= Length(ALine)) and TTextChars.IsIdentChar(ALine[Index]) do
-      begin
-        Inc(Index);
-      end;
-      Token.Kind := TTokenKind.Ident;
+      Inc(AIndex, 2);
     end
-    else if CharInSet(ALine[Index], ['0'..'9']) or ((ALine[Index] = '$') and (Index < Length(ALine)) and
-      CharInSet(ALine[Index + 1], ['0'..'9', 'A'..'F', 'a'..'f'])) or ((ALine[Index] = '-') and
-      (Index < Length(ALine)) and CharInSet(ALine[Index + 1], ['0'..'9', '$']) and
-      ((Length(Result) = 0) or not IsOperand(Result[High(Result)]))) then
+    else if ALine[AIndex] = '''' then
     begin
-      // Vorzeichen nur, wo kein Operand davorsteht ("A - 1" bleibt eine Rechnung).
-      if ALine[Index] = '-' then
-      begin
-        Inc(Index);
-      end;
-      if ALine[Index] = '$' then
-      begin
-        Inc(Index);
-        while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9', 'A'..'F', 'a'..'f']) do
-        begin
-          Inc(Index);
-        end;
-      end
-      else
-      begin
-        while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9']) do
-        begin
-          Inc(Index);
-        end;
-      end;
-      // Gleitkommazahlen und Bereiche: nur Ganzzahlen bilden Folgen.
-      if (Index < Length(ALine)) and (ALine[Index] = '.') and CharInSet(ALine[Index + 1], ['0'..'9']) then
-      begin
-        Inc(Index);
-        while (Index <= Length(ALine)) and CharInSet(ALine[Index], ['0'..'9', 'e', 'E']) do
-        begin
-          Inc(Index);
-        end;
-        Token.Kind := TTokenKind.Symbol;
-      end
-      else
-      begin
-        Token.Kind := TTokenKind.Number;
-      end;
-    end
-    else if ALine[Index] = '''' then
-    begin
-      Inc(Index);
-      while Index <= Length(ALine) do
-      begin
-        if ALine[Index] = '''' then
-        begin
-          if (Index < Length(ALine)) and (ALine[Index + 1] = '''') then
-          begin
-            Inc(Index);
-          end
-          else
-          begin
-            Break;
-          end;
-        end;
-        Inc(Index);
-      end;
-      Inc(Index);
-      Token.Kind := TTokenKind.Str;
-    end
-    else if (ALine[Index] = '/') and (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
-    begin
-      Index := Length(ALine) + 1;
-      Token.Kind := TTokenKind.Comment;
-    end
-    else if (ALine[Index] = '{') or ((ALine[Index] = '(') and (Index < Length(ALine)) and (ALine[Index + 1] = '*'))
-    then
-    begin
-      if ALine[Index] = '{' then
-      begin
-        Index := Pos('}', ALine, Index);
-      end
-      else
-      begin
-        Index := Pos('*)', ALine, Index + 2);
-        if Index > 0 then
-        begin
-          Inc(Index);
-        end;
-      end;
-      if Index = 0 then
-      begin
-        Index := Length(ALine);
-      end;
-      Inc(Index);
-      Token.Kind := TTokenKind.Comment;
+      mDone := True;
     end
     else
     begin
-      // Zweizeichige Operatoren als ein Token.
-      if (Index < Length(ALine)) and ((Copy(ALine, Index, 2) = ':=') or (Copy(ALine, Index, 2) = '..') or
-        (Copy(ALine, Index, 2) = '<=') or (Copy(ALine, Index, 2) = '>=') or (Copy(ALine, Index, 2) = '<>')) then
-      begin
-        Inc(Index);
-      end;
-      Inc(Index);
-      Token.Kind := TTokenKind.Symbol;
+      Inc(AIndex);
     end;
-    Token.Text := Copy(ALine, Start, Index - Start);
-    Result := Result + [Token];
+  end;
+  Inc(AIndex);
+end;
+
+function IsBlockCommentStart(const ALine: string; AIndex: Integer): Boolean;
+begin
+  Result := (CharAt(ALine, AIndex) = '{') or ((CharAt(ALine, AIndex) = '(') and (CharAt(ALine, AIndex + 1) = '*'));
+end;
+
+procedure ScanBlockComment(const ALine: string; var AIndex: Integer);
+begin
+  if ALine[AIndex] = '{' then
+  begin
+    AIndex := Pos('}', ALine, AIndex);
+  end
+  else
+  begin
+    AIndex := Pos('*)', ALine, AIndex + 2);
+    if AIndex > 0 then
+    begin
+      Inc(AIndex);
+    end;
+  end;
+  if AIndex = 0 then
+  begin
+    AIndex := Length(ALine);
+  end;
+  Inc(AIndex);
+end;
+
+function IsTwoCharOperator(const APair: string): Boolean;
+begin
+  Result := (APair = ':=') or (APair = '..') or (APair = '<=') or (APair = '>=') or (APair = '<>');
+end;
+
+procedure ScanSymbol(const ALine: string; var AIndex: Integer);
+begin
+  // Zweizeichige Operatoren als ein Token.
+  if IsTwoCharOperator(Copy(ALine, AIndex, 2)) then
+  begin
+    Inc(AIndex);
+  end;
+  Inc(AIndex);
+end;
+
+/// <summary>Liest das Token ab AIndex und liefert seine Art; AIndex steht danach dahinter.</summary>
+function ScanToken(const ALine: string; var AIndex: Integer; const APrevious: TTokens): TTokenKind;
+begin
+  if TTextChars.IsIdentStart(ALine[AIndex]) then
+  begin
+    while (AIndex <= Length(ALine)) and TTextChars.IsIdentChar(ALine[AIndex]) do
+    begin
+      Inc(AIndex);
+    end;
+    Result := TTokenKind.Ident;
+  end
+  else if IsNumberStart(ALine, AIndex, APrevious) then
+  begin
+    Result := ScanNumber(ALine, AIndex);
+  end
+  else if ALine[AIndex] = '''' then
+  begin
+    ScanString(ALine, AIndex);
+    Result := TTokenKind.Str;
+  end
+  else if (ALine[AIndex] = '/') and (CharAt(ALine, AIndex + 1) = '/') then
+  begin
+    AIndex := Length(ALine) + 1;
+    Result := TTokenKind.Comment;
+  end
+  else if IsBlockCommentStart(ALine, AIndex) then
+  begin
+    ScanBlockComment(ALine, AIndex);
+    Result := TTokenKind.Comment;
+  end
+  else
+  begin
+    ScanSymbol(ALine, AIndex);
+    Result := TTokenKind.Symbol;
+  end;
+end;
+
+function Tokenize(const ALine: string): TTokens;
+var
+  mIndex, mSpaceStart: Integer;
+  mToken: TToken;
+begin
+  Result := nil;
+  mIndex := 1;
+  while mIndex <= Length(ALine) do
+  begin
+    mSpaceStart := mIndex;
+    SkipChars(ALine, mIndex, [' ', #9]);
+    if mIndex <= Length(ALine) then
+    begin
+      mToken := Default(TToken);
+      mToken.Space := Copy(ALine, mSpaceStart, mIndex - mSpaceStart);
+      mToken.Start := mIndex;
+      mToken.Kind := ScanToken(ALine, mIndex, Result);
+      mToken.Text := Copy(ALine, mToken.Start, mIndex - mToken.Start);
+      Result := Result + [mToken];
+    end;
   end;
 end;
 
@@ -350,155 +407,335 @@ begin
   Result := (Index > 0) and (ADigits > 0) and TryStrToInt64(Copy(AName, Index + 1, MaxInt), ANumber);
 end;
 
-/// <summary>Nächster Wert der Spalte AColumn über die Zeilen ATokens; False, wenn keine Folge.</summary>
-function NextValue(const ATokens: TArray<TTokens>; const ALineIndexes: TArray<Integer>; AColumn, AIndent: Integer;
-  const AEnums: TAtlasEnumLookup; const AExists: TAtlasNameExists; out AValue: string; out AFree: Boolean): Boolean;
+function ColumnTexts(const ATokens: TArray<TTokens>; AColumn: Integer): TArray<string>;
 var
-  Values: TArray<Int64>;
-  Texts: TArray<string>;
-  Index, Digits, FirstDigits, Position: Integer;
-  Value, Step: Int64;
-  Hex, FirstHex, Declares, Chars: Boolean;
-  Prefix, FirstPrefix, Last: string;
-  Members: TArray<string>;
-
-  function MemberIndex(const AName: string): Integer;
-  var
-    Item: Integer;
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ATokens));
+  for mIndex := 0 to High(ATokens) do
   begin
-    Result := -1;
-    for Item := 0 to High(Members) do
+    Result[mIndex] := ATokens[mIndex][AColumn].Text;
+  end;
+end;
+
+function NumberNext(const AInput: TColumnInput; out AValue: string): Boolean;
+var
+  mValues: TArray<Int64>;
+  mValue, mStep: Int64;
+  mIndex, mDigits, mFirstDigits: Integer;
+  mHex, mFirstHex: Boolean;
+begin
+  Result := False;
+  AValue := '';
+  mFirstHex := False;
+  mFirstDigits := 0;
+  SetLength(mValues, Length(AInput.Texts));
+  for mIndex := 0 to High(AInput.Texts) do
+  begin
+    if not TryNumber(AInput.Texts[mIndex], mValue, mHex, mDigits) or ((mIndex > 0) and (mHex <> mFirstHex)) then
     begin
-      if SameText(Members[Item], AName) then
-      begin
-        Exit(Item);
-      end;
+      Exit;
+    end;
+    if mIndex = 0 then
+    begin
+      mFirstHex := mHex;
+      mFirstDigits := mDigits;
+    end;
+    mValues[mIndex] := mValue;
+  end;
+  if ConstantStep(mValues, mStep) then
+  begin
+    AValue := FormatNumber(mValues[High(mValues)] + mStep, AInput.Texts[High(AInput.Texts)], mFirstHex, mFirstDigits);
+    Result := True;
+  end;
+end;
+
+function IsPlainChar(AValue: Int64): Boolean;
+begin
+  Result := (AValue >= 32) and (AValue < $FFFF) and (AValue <> Ord(''''));
+end;
+
+/// <summary>Einzelne Zeichen mit fester Schrittweite bilden eine Folge, alles andere wird ein freies Feld.</summary>
+function StringNext(const AInput: TColumnInput; out AValue: string; out AFree: Boolean): Boolean;
+var
+  mValues: TArray<Int64>;
+  mStep: Int64;
+  mIndex: Integer;
+  mChars: Boolean;
+begin
+  mChars := True;
+  SetLength(mValues, Length(AInput.Texts));
+  for mIndex := 0 to High(AInput.Texts) do
+  begin
+    if (Length(AInput.Texts[mIndex]) = 3) and (AInput.Texts[mIndex][2] <> '''') then
+    begin
+      mValues[mIndex] := Ord(AInput.Texts[mIndex][2]);
+    end
+    else
+    begin
+      mChars := False;
     end;
   end;
+  AFree := not (mChars and ConstantStep(mValues, mStep) and IsPlainChar(mValues[High(mValues)] + mStep));
+  if AFree then
+  begin
+    AValue := '''''';
+  end
+  else
+  begin
+    AValue := '''' + Char(Integer(mValues[High(mValues)] + mStep)) + '''';
+  end;
+  Result := True;
+end;
 
+/// <summary>Alle Texte sind Bezeichner mit Nummer und gleichem Präfix; AValues: die Nummern.</summary>
+function NumberedValues(const ATexts: TArray<string>; out AValues: TArray<Int64>): Boolean;
+var
+  mFirstPrefix, mPrefix: string;
+  mValue: Int64;
+  mDigits, mIndex: Integer;
+begin
+  SetLength(AValues, Length(ATexts));
+  Result := SplitNumbered(ATexts[0], mFirstPrefix, mValue, mDigits);
+  mIndex := 0;
+  while Result and (mIndex <= High(ATexts)) do
+  begin
+    Result := SplitNumbered(ATexts[mIndex], mPrefix, mValue, mDigits) and SameText(mPrefix, mFirstPrefix);
+    AValues[mIndex] := mValue;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Deklariert die Zeile den Namen (Name: Typ; Name, …), darf er neu sein.</summary>
+function DeclaresName(const AInput: TColumnInput): Boolean;
+begin
+  Result := (AInput.Column = 0) and (Length(AInput.Tokens[0]) > 1) and
+    ((AInput.Tokens[0][1].Text = ':') or (AInput.Tokens[0][1].Text = ','));
+end;
+
+/// <summary>Nummerierte Bezeichner; ADecided: Die Spalte ist eine solche Folge (dann gilt das Ergebnis).</summary>
+function NumberedNext(const AInput: TColumnInput; out AValue: string; out ADecided: Boolean): Boolean;
+var
+  mValues: TArray<Int64>;
+  mStep, mValue: Int64;
+  mPrefix, mLast: string;
+  mDigits: Integer;
+begin
+  Result := False;
+  AValue := '';
+  ADecided := NumberedValues(AInput.Texts, mValues) and ConstantStep(mValues, mStep) and
+    (mValues[High(mValues)] + mStep >= 0);
+  if not ADecided then
+  begin
+    Exit;
+  end;
+  mLast := AInput.Texts[High(AInput.Texts)];
+  SplitNumbered(mLast, mPrefix, mValue, mDigits);
+  AValue := IntToStr(mValues[High(mValues)] + mStep);
+  // Führende Nullen wie im Vorbild ("Spalte01").
+  while (Length(AValue) < mDigits) and (Copy(mLast, Length(mPrefix) + 1, 1) = '0') do
+  begin
+    AValue := '0' + AValue;
+  end;
+  AValue := mPrefix + AValue;
+  Result := DeclaresName(AInput) or (Assigned(AInput.Exists) and AInput.Exists(AValue));
+end;
+
+function IndexOfText(const AItems: TArray<string>; const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := High(AItems) downto 0 do
+  begin
+    if SameText(AItems[mIndex], AName) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Stellen der Texte unter AMembers; False, wenn einer fehlt oder AMembers leer ist.</summary>
+function MemberIndexes(const AMembers, ATexts: TArray<string>; out AValues: TArray<Int64>): Boolean;
+var
+  mIndex: Integer;
+begin
+  SetLength(AValues, Length(ATexts));
+  Result := Length(AMembers) > 0;
+  mIndex := 0;
+  while Result and (mIndex <= High(ATexts)) do
+  begin
+    AValues[mIndex] := IndexOfText(AMembers, ATexts[mIndex]);
+    Result := AValues[mIndex] >= 0;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Werte eines Aufzählungstyps in Deklarationsreihenfolge.</summary>
+function EnumNext(const AInput: TColumnInput; out AValue: string): Boolean;
+var
+  mMembers: TArray<string>;
+  mValues: TArray<Int64>;
+  mStep, mNext: Int64;
+  mPosition: Integer;
+begin
+  Result := False;
+  AValue := '';
+  if not Assigned(AInput.Enums) then
+  begin
+    Exit;
+  end;
+  mPosition := AInput.Indent + AInput.Tokens[High(AInput.Tokens)][AInput.Column].Start - 1;
+  mMembers := AInput.Enums(AInput.Texts[High(AInput.Texts)], AInput.LineIndexes[High(AInput.LineIndexes)], mPosition);
+  if not MemberIndexes(mMembers, AInput.Texts, mValues) or not ConstantStep(mValues, mStep) then
+  begin
+    Exit;
+  end;
+  mNext := mValues[High(mValues)] + mStep;
+  if (mNext >= 0) and (mNext <= High(mMembers)) then
+  begin
+    AValue := mMembers[mNext];
+    Result := True;
+  end;
+end;
+
+function IdentNext(const AInput: TColumnInput; out AValue: string): Boolean;
+var
+  mDecided: Boolean;
+begin
+  Result := NumberedNext(AInput, AValue, mDecided);
+  if not mDecided then
+  begin
+    Result := EnumNext(AInput, AValue);
+  end;
+end;
+
+/// <summary>Nächster Wert der Spalte AInput.Column über die Zeilen AInput.Tokens; False, wenn keine Folge.</summary>
+function NextValue(const AInput: TColumnInput; out AValue: string; out AFree: Boolean): Boolean;
 begin
   Result := False;
   AValue := '';
   AFree := False;
-  SetLength(Texts, Length(ATokens));
-  for Index := 0 to High(ATokens) do
-  begin
-    Texts[Index] := ATokens[Index][AColumn].Text;
-  end;
-  Last := Texts[High(Texts)];
-  SetLength(Values, Length(Texts));
-  case ATokens[0][AColumn].Kind of
+  case AInput.Tokens[0][AInput.Column].Kind of
     TTokenKind.Number:
       begin
-        FirstHex := False;
-        FirstDigits := 0;
-        for Index := 0 to High(Texts) do
-        begin
-          if not TryNumber(Texts[Index], Value, Hex, Digits) then
-          begin
-            Exit;
-          end;
-          if Index = 0 then
-          begin
-            FirstHex := Hex;
-            FirstDigits := Digits;
-          end
-          else if Hex <> FirstHex then
-          begin
-            Exit;
-          end;
-          Values[Index] := Value;
-        end;
-        if not ConstantStep(Values, Step) then
-        begin
-          Exit;
-        end;
-        AValue := FormatNumber(Values[High(Values)] + Step, Last, FirstHex, FirstDigits);
-        Result := True;
+        Result := NumberNext(AInput, AValue);
       end;
     TTokenKind.Str:
       begin
-        // Einzelne Zeichen mit fester Schrittweite bilden eine Folge, alles andere wird ein freies Feld.
-        Chars := True;
-        for Index := 0 to High(Texts) do
-        begin
-          if (Length(Texts[Index]) = 3) and (Texts[Index][2] <> '''') then
-          begin
-            Values[Index] := Ord(Texts[Index][2]);
-          end
-          else
-          begin
-            Chars := False;
-          end;
-        end;
-        if Chars and ConstantStep(Values, Step) and (Values[High(Values)] + Step >= 32) and
-          (Values[High(Values)] + Step < $FFFF) and (Values[High(Values)] + Step <> Ord('''')) then
-        begin
-          AValue := '''' + Char(Integer(Values[High(Values)] + Step)) + '''';
-        end
-        else
-        begin
-          AValue := '''''';
-          AFree := True;
-        end;
-        Result := True;
+        Result := StringNext(AInput, AValue, AFree);
       end;
     TTokenKind.Ident:
       begin
-        // Nummerierte Bezeichner.
-        if SplitNumbered(Texts[0], FirstPrefix, Value, FirstDigits) then
-        begin
-          Values[0] := Value;
-          Index := 1;
-          while (Index <= High(Texts)) and SplitNumbered(Texts[Index], Prefix, Value, Digits) and
-            SameText(Prefix, FirstPrefix) do
-          begin
-            Values[Index] := Value;
-            Inc(Index);
-          end;
-          if (Index > High(Texts)) and ConstantStep(Values, Step) and (Values[High(Values)] + Step >= 0) then
-          begin
-            SplitNumbered(Last, Prefix, Value, Digits);
-            AValue := IntToStr(Values[High(Values)] + Step);
-            // Führende Nullen wie im Vorbild ("Spalte01").
-            while (Length(AValue) < Digits) and (Copy(Last, Length(Prefix) + 1, 1) = '0') do
-            begin
-              AValue := '0' + AValue;
-            end;
-            AValue := Prefix + AValue;
-            // Deklariert die Zeile den Namen (Name: Typ; Name, …), darf er neu sein.
-            Declares := (AColumn = 0) and (Length(ATokens[0]) > 1) and
-              ((ATokens[0][1].Text = ':') or (ATokens[0][1].Text = ','));
-            Exit(Declares or (Assigned(AExists) and AExists(AValue)));
-          end;
-        end;
-        // Werte eines Aufzählungstyps.
-        if not Assigned(AEnums) then
-        begin
-          Exit;
-        end;
-        Position := AIndent + ATokens[High(ATokens)][AColumn].Start - 1;
-        Members := AEnums(Last, ALineIndexes[High(ALineIndexes)], Position);
-        if Length(Members) = 0 then
-        begin
-          Exit;
-        end;
-        for Index := 0 to High(Texts) do
-        begin
-          Values[Index] := MemberIndex(Texts[Index]);
-          if Values[Index] < 0 then
-          begin
-            Exit;
-          end;
-        end;
-        if not ConstantStep(Values, Step) or (Values[High(Values)] + Step < 0) or
-          (Values[High(Values)] + Step > High(Members)) then
-        begin
-          Exit;
-        end;
-        AValue := Members[Values[High(Values)] + Step];
-        Result := True;
+        Result := IdentNext(AInput, AValue);
       end;
+  end;
+end;
+
+function ColumnVaries(const ARun: TArray<TTokens>; AColumn: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 1 to High(ARun) do
+  begin
+    Result := Result or (ARun[mIndex][AColumn].Text <> ARun[0][AColumn].Text);
+  end;
+end;
+
+/// <summary>Wert der Spalte AColumn in der neuen Zeile; False, wenn sie sich ohne Folge ändert.</summary>
+function ColumnValue(var AInput: TColumnInput; AColumn: Integer; out AValue: string; out AFree: Boolean;
+  var AAnyVaries: Boolean): Boolean;
+begin
+  AValue := AInput.Tokens[High(AInput.Tokens)][AColumn].Text;
+  AFree := False;
+  Result := True;
+  if not ColumnVaries(AInput.Tokens, AColumn) then
+  begin
+    Exit;
+  end;
+  AInput.Column := AColumn;
+  AInput.Texts := ColumnTexts(AInput.Tokens, AColumn);
+  Result := NextValue(AInput, AValue, AFree);
+  AAnyVaries := AAnyVaries or (Result and not AFree);
+end;
+
+function BuildSuggestion(var AInput: TColumnInput; var ASuggestion: TAtlasPatternSuggestion): Boolean;
+var
+  mTemplate: TTokens;
+  mBuilder: TStringBuilder;
+  mColumn: Integer;
+  mValue: string;
+  mFree, mAnyVaries: Boolean;
+begin
+  Result := False;
+  mAnyVaries := False;
+  mTemplate := AInput.Tokens[High(AInput.Tokens)];
+  mBuilder := TStringBuilder.Create;
+  try
+    for mColumn := 0 to High(mTemplate) do
+    begin
+      if not ColumnValue(AInput, mColumn, mValue, mFree, mAnyVaries) then
+      begin
+        Exit;
+      end;
+      mBuilder.Append(mTemplate[mColumn].Space);
+      if mFree then
+      begin
+        ASuggestion.Fields := ASuggestion.Fields + [mBuilder.Length + 1];
+      end;
+      mBuilder.Append(mValue);
+    end;
+    // Nur freie Strings oder lauter gleiche Zeilen sind kein Muster.
+    Result := mAnyVaries;
+    if Result then
+    begin
+      ASuggestion.Text := mBuilder.ToString;
+    end;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+function IsPatternLine(const ALine, AIndent: string): Boolean;
+begin
+  Result := (LeadingSpace(ALine) = AIndent) and (Trim(ALine) <> '');
+end;
+
+/// <summary>Längster Lauf gleicher Form wie ATemplate direkt über ALine, neueste Zeile zuletzt.</summary>
+function CollectRun(const ALines: TArray<string>; ALine: Integer; const AIndent: string; const ATemplate: TTokens;
+  out ALineIndexes: TArray<Integer>): TArray<TTokens>;
+var
+  mLine: Integer;
+  mTokens: TTokens;
+begin
+  Result := [ATemplate];
+  ALineIndexes := [ALine - 1];
+  mLine := ALine - 2;
+  while (mLine >= 0) and (Length(Result) < TAtlasPatternContinuation.MaxLines) and
+    IsPatternLine(ALines[mLine], AIndent) do
+  begin
+    mTokens := Tokenize(Copy(ALines[mLine], Length(AIndent) + 1, MaxInt));
+    if not SameShape(mTokens, ATemplate) then
+    begin
+      Break;
+    end;
+    Result := [mTokens] + Result;
+    ALineIndexes := [mLine] + ALineIndexes;
+    Dec(mLine);
+  end;
+end;
+
+function ClampMinLines(AMinLines: Integer): Integer;
+begin
+  Result := AMinLines;
+  if Result < TAtlasPatternContinuation.MinLines then
+  begin
+    Result := TAtlasPatternContinuation.MinLines;
+  end;
+  if Result > TAtlasPatternContinuation.MaxLines then
+  begin
+    Result := TAtlasPatternContinuation.MaxLines;
   end;
 end;
 
@@ -507,97 +744,33 @@ end;
 class function TAtlasPatternContinuation.Suggest(const ALines: TArray<string>; ALine, AMinLines: Integer;
   const AEnums: TAtlasEnumLookup; const AExists: TAtlasNameExists; out ASuggestion: TAtlasPatternSuggestion): Boolean;
 var
-  Indent, Value: string;
-  Run: TArray<TTokens>;
-  LineIndexes: TArray<Integer>;
-  Tokens, Template: TTokens;
-  Line, Column, Index: Integer;
-  Varies, Free, AnyVaries: Boolean;
-  Builder: TStringBuilder;
+  mMinLines: Integer;
+  mIndent: string;
+  mTemplate: TTokens;
+  mInput: TColumnInput;
 begin
   ASuggestion := Default(TAtlasPatternSuggestion);
   Result := False;
-  if AMinLines < MinLines then
-  begin
-    AMinLines := MinLines;
-  end;
-  if AMinLines > MaxLines then
-  begin
-    AMinLines := MaxLines;
-  end;
-  if (ALine < AMinLines) or (ALine > High(ALines)) or (Trim(ALines[ALine]) <> '') then
+  mMinLines := ClampMinLines(AMinLines);
+  if (ALine < mMinLines) or (ALine > High(ALines)) or (Trim(ALines[ALine]) <> '') then
   begin
     Exit;
   end;
-  Indent := LeadingSpace(ALines[ALine - 1]);
-  // Längster Lauf gleicher Form direkt über der Cursorzeile, neueste Zeile zuletzt.
-  Template := Tokenize(Copy(ALines[ALine - 1], Length(Indent) + 1, MaxInt));
-  if Length(Template) = 0 then
+  mIndent := LeadingSpace(ALines[ALine - 1]);
+  mTemplate := Tokenize(Copy(ALines[ALine - 1], Length(mIndent) + 1, MaxInt));
+  if Length(mTemplate) = 0 then
   begin
     Exit;
   end;
-  Run := [Template];
-  LineIndexes := [ALine - 1];
-  Line := ALine - 2;
-  while (Line >= 0) and (Length(Run) < MaxLines) and (LeadingSpace(ALines[Line]) = Indent) and
-    (Trim(ALines[Line]) <> '') do
+  mInput := Default(TColumnInput);
+  mInput.Tokens := CollectRun(ALines, ALine, mIndent, mTemplate, mInput.LineIndexes);
+  mInput.Indent := Length(mIndent);
+  mInput.Enums := AEnums;
+  mInput.Exists := AExists;
+  Result := (Length(mInput.Tokens) >= mMinLines) and BuildSuggestion(mInput, ASuggestion);
+  if Result then
   begin
-    Tokens := Tokenize(Copy(ALines[Line], Length(Indent) + 1, MaxInt));
-    if not SameShape(Tokens, Template) then
-    begin
-      Break;
-    end;
-    Run := [Tokens] + Run;
-    LineIndexes := [Line] + LineIndexes;
-    Dec(Line);
-  end;
-  if Length(Run) < AMinLines then
-  begin
-    Exit;
-  end;
-  Builder := TStringBuilder.Create;
-  try
-    AnyVaries := False;
-    for Column := 0 to High(Template) do
-    begin
-      Varies := False;
-      for Index := 1 to High(Run) do
-      begin
-        if Run[Index][Column].Text <> Run[0][Column].Text then
-        begin
-          Varies := True;
-        end;
-      end;
-      Value := Template[Column].Text;
-      Free := False;
-      if Varies then
-      begin
-        if not NextValue(Run, LineIndexes, Column, Length(Indent), AEnums, AExists, Value, Free) then
-        begin
-          Exit;
-        end;
-        if not Free then
-        begin
-          AnyVaries := True;
-        end;
-      end;
-      Builder.Append(Template[Column].Space);
-      if Free then
-      begin
-        ASuggestion.Fields := ASuggestion.Fields + [Builder.Length + 1];
-      end;
-      Builder.Append(Value);
-    end;
-    // Nur freie Strings oder lauter gleiche Zeilen sind kein Muster.
-    if not AnyVaries then
-    begin
-      Exit;
-    end;
-    ASuggestion.Text := Builder.ToString;
-    ASuggestion.Indent := Indent;
-    Result := True;
-  finally
-    Builder.Free;
+    ASuggestion.Indent := mIndent;
   end;
 end;
 
@@ -625,61 +798,76 @@ begin
   end;
 end;
 
+/// <summary>Beginnt hinter dem "=" an AAt eine Liste "( … )"? AOpen: Stelle der Klammer.</summary>
+function EnumListAt(const AText: string; AAt: Integer; out AOpen: Integer): Boolean;
+begin
+  AOpen := AAt + 1;
+  SkipChars(AText, AOpen, [' ', #9, #13, #10]);
+  Result := (CharAt(AText, AOpen) = '(') and (CharAt(AText, AOpen + 1) <> '*');
+end;
+
+/// <summary>Name eines Werts ohne Zuweisung ("stA = 1" → "stA").</summary>
+function MemberName(const APart: string): string;
+var
+  mEqual: Integer;
+begin
+  Result := Trim(APart);
+  mEqual := Pos('=', Result);
+  if mEqual > 0 then
+  begin
+    Result := Trim(Copy(Result, 1, mEqual - 1));
+  end;
+end;
+
+function IsMemberName(const AName: string): Boolean;
+begin
+  Result := (AName <> '') and TTextChars.IsIdentStart(AName[1]) and (Pos(' ', AName) = 0) and (Pos(':', AName) = 0);
+end;
+
+/// <summary>Werte der Liste AInner, wenn sie nur aus Bezeichnern besteht und ALowerName enthält.</summary>
+function EnumMembers(const AInner, ALowerName: string; out AParts: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  AParts := AInner.Split([',']);
+  for mIndex := 0 to High(AParts) do
+  begin
+    AParts[mIndex] := MemberName(AParts[mIndex]);
+    if not IsMemberName(AParts[mIndex]) then
+    begin
+      AParts := nil;
+      Exit(False);
+    end;
+    Result := Result or (LowerCase(AParts[mIndex]) = ALowerName);
+  end;
+end;
+
 class function TAtlasPatternContinuation.LocalEnumValues(const AText, AMember: string): TArray<string>;
 var
-  Text, Name, Inner: string;
-  At, Open, Close, Index: Integer;
-  Parts: TArray<string>;
-  Found: Boolean;
+  mName: string;
+  mAt, mOpen, mClose: Integer;
+  mParts: TArray<string>;
 begin
   Result := nil;
-  Text := AText;
-  Name := LowerCase(AMember);
+  mName := LowerCase(AMember);
   // Jede "= ( … )"-Liste aus Bezeichnern ist ein Aufzählungstyp; die mit AMember gewinnt.
-  At := Pos('=', Text);
-  while At > 0 do
+  mAt := Pos('=', AText);
+  while mAt > 0 do
   begin
-    Open := At + 1;
-    while (Open <= Length(Text)) and CharInSet(Text[Open], [' ', #9, #13, #10]) do
+    if EnumListAt(AText, mAt, mOpen) then
     begin
-      Inc(Open);
-    end;
-    if (Open <= Length(Text)) and (Text[Open] = '(') and ((Open = Length(Text)) or (Text[Open + 1] <> '*')) then
-    begin
-      Close := Pos(')', Text, Open);
-      if Close = 0 then
+      mClose := Pos(')', AText, mOpen);
+      if mClose = 0 then
       begin
         Exit;
       end;
-      Inner := Copy(Text, Open + 1, Close - Open - 1);
-      Parts := Inner.Split([',']);
-      Found := False;
-      for Index := 0 to High(Parts) do
+      if EnumMembers(Copy(AText, mOpen + 1, mClose - mOpen - 1), mName, mParts) then
       begin
-        // "stA = 1" erlaubt; nur der Name zählt.
-        Parts[Index] := Trim(Parts[Index]);
-        if Pos('=', Parts[Index]) > 0 then
-        begin
-          Parts[Index] := Trim(Copy(Parts[Index], 1, Pos('=', Parts[Index]) - 1));
-        end;
-        if (Parts[Index] = '') or not TTextChars.IsIdentStart(Parts[Index][1]) or (Pos(' ', Parts[Index]) > 0) or
-          (Pos(':', Parts[Index]) > 0) then
-        begin
-          Found := False;
-          Parts := nil;
-          Break;
-        end;
-        if LowerCase(Parts[Index]) = Name then
-        begin
-          Found := True;
-        end;
-      end;
-      if Found then
-      begin
-        Exit(Parts);
+        Exit(mParts);
       end;
     end;
-    At := Pos('=', Text, At + 1);
+    mAt := Pos('=', AText, mAt + 1);
   end;
 end;
 

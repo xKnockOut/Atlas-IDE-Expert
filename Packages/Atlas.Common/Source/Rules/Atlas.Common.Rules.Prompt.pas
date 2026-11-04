@@ -34,6 +34,7 @@ implementation
 
 uses
   System.Math,
+  System.StrUtils,
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.Output;
 
@@ -66,90 +67,103 @@ begin
   Result := Markdown(AFinding, AFileName, AText, ACatalog, DefaultContext);
 end;
 
+/// <summary>Abschnitt "### Code": AContext Zeilen um ALine (ab 0), die Fundzeile mit ">" markiert.</summary>
+procedure AppendCode(ABuilder: TStringBuilder; const AText: string; ALine, AContext: Integer);
+var
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  mLines := AText.Replace(#13#10, #10).Split([#10]);
+  if Length(mLines) = 0 then
+  begin
+    Exit;
+  end;
+  ABuilder.AppendLine;
+  ABuilder.AppendLine('### Code');
+  ABuilder.AppendLine;
+  ABuilder.AppendLine('```pascal');
+  for mIndex := Max(0, ALine - AContext) to Min(High(mLines), ALine + AContext) do
+  begin
+    ABuilder.AppendFormat('%s %4d | %s', [IfThen(mIndex = ALine, '>', ' '), mIndex + 1, mLines[mIndex]]).AppendLine;
+  end;
+  ABuilder.AppendLine('```');
+end;
+
+/// <summary>Ein Beispiel unter ATitle ("Vorher:"/"Nachher:"); nichts ohne Code.</summary>
+procedure AppendExample(ABuilder: TStringBuilder; const ATitle, ACode: string);
+begin
+  if ACode = '' then
+  begin
+    Exit;
+  end;
+  ABuilder.AppendLine;
+  ABuilder.AppendLine(ATitle);
+  ABuilder.AppendLine;
+  ABuilder.AppendLine('```pascal');
+  ABuilder.AppendLine(TrimRight(ACode));
+  ABuilder.AppendLine('```');
+end;
+
+/// <summary>Abschnitt "### Regel" aus dem Katalogeintrag.</summary>
+procedure AppendEntry(ABuilder: TStringBuilder; const AEntry: TRuleCatalogEntry);
+begin
+  if AEntry.Description <> '' then
+  begin
+    ABuilder.AppendLine;
+    ABuilder.AppendLine('### Regel');
+    ABuilder.AppendLine;
+    ABuilder.AppendLine(AEntry.Description);
+  end;
+end;
+
+/// <summary>Abschnitt "### Vorher/Nachher" aus dem Katalogeintrag.</summary>
+procedure AppendExamples(ABuilder: TStringBuilder; const AEntry: TRuleCatalogEntry);
+begin
+  if (AEntry.Bad <> '') or (AEntry.Good <> '') then
+  begin
+    ABuilder.AppendLine;
+    ABuilder.AppendLine('### Vorher/Nachher');
+    AppendExample(ABuilder, 'Vorher:', AEntry.Bad);
+    AppendExample(ABuilder, 'Nachher:', AEntry.Good);
+  end;
+end;
+
 class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
   const ACatalog: TRuleCatalog; AContext: Integer): string;
 var
-  Builder: TStringBuilder;
-  Lines: TArray<string>;
-  Entry: TRuleCatalogEntry;
-  Known: Boolean;
-  Index, First, Last, Line: Integer;
-  Marker: string;
+  mBuilder: TStringBuilder;
+  mEntry: TRuleCatalogEntry;
+  mKnown: Boolean;
 begin
-  Known := (ACatalog <> nil) and ACatalog.TryFind(AFinding.RuleId, Entry);
-  Line := AFinding.Range.StartPos.Line;
-  Lines := AText.Replace(#13#10, #10).Split([#10]);
-  Builder := TStringBuilder.Create;
+  mKnown := (ACatalog <> nil) and ACatalog.TryFind(AFinding.RuleId, mEntry);
+  mBuilder := TStringBuilder.Create;
   try
-    if Known and (Entry.Name <> '') then
+    if mKnown and (mEntry.Name <> '') then
     begin
-      Builder.AppendFormat('## Befund %s: %s', [AFinding.RuleId, Entry.Name]).AppendLine;
+      mBuilder.AppendFormat('## Befund %s: %s', [AFinding.RuleId, mEntry.Name]).AppendLine;
     end
     else
     begin
-      Builder.AppendFormat('## Befund %s', [AFinding.RuleId]).AppendLine;
+      mBuilder.AppendFormat('## Befund %s', [AFinding.RuleId]).AppendLine;
     end;
-    Builder.AppendLine;
-    Builder.AppendFormat('- Datei: `%s`, Zeile %d, Spalte %d', [AFileName, Line + 1,
+    mBuilder.AppendLine;
+    mBuilder.AppendFormat('- Datei: `%s`, Zeile %d, Spalte %d', [AFileName, AFinding.Range.StartPos.Line + 1,
       AFinding.Range.StartPos.Character + 1]).AppendLine;
-    Builder.AppendFormat('- Schweregrad: %s', [TFindingsOutput.SeverityName(AFinding.Severity)]).AppendLine;
-    Builder.AppendFormat('- Meldung: %s', [AFinding.Message]).AppendLine;
-    Builder.AppendFormat('- Konfidenz: %s', [ConfidenceText(AFinding.Confidence)]).AppendLine;
-    if Known and (Entry.Description <> '') then
+    mBuilder.AppendFormat('- Schweregrad: %s', [TFindingsOutput.SeverityName(AFinding.Severity)]).AppendLine;
+    mBuilder.AppendFormat('- Meldung: %s', [AFinding.Message]).AppendLine;
+    mBuilder.AppendFormat('- Konfidenz: %s', [ConfidenceText(AFinding.Confidence)]).AppendLine;
+    if mKnown then
     begin
-      Builder.AppendLine;
-      Builder.AppendLine('### Regel');
-      Builder.AppendLine;
-      Builder.AppendLine(Entry.Description);
+      AppendEntry(mBuilder, mEntry);
     end;
-    if Length(Lines) > 0 then
+    AppendCode(mBuilder, AText, AFinding.Range.StartPos.Line, AContext);
+    if mKnown then
     begin
-      First := Max(0, Line - AContext);
-      Last := Min(High(Lines), Line + AContext);
-      Builder.AppendLine;
-      Builder.AppendLine('### Code');
-      Builder.AppendLine;
-      Builder.AppendLine('```pascal');
-      for Index := First to Last do
-      begin
-        if Index = Line then
-        begin
-          Marker := '>';
-        end
-        else
-        begin
-          Marker := ' ';
-        end;
-        Builder.AppendFormat('%s %4d | %s', [Marker, Index + 1, Lines[Index]]).AppendLine;
-      end;
-      Builder.AppendLine('```');
+      AppendExamples(mBuilder, mEntry);
     end;
-    if Known and ((Entry.Bad <> '') or (Entry.Good <> '')) then
-    begin
-      Builder.AppendLine;
-      Builder.AppendLine('### Vorher/Nachher');
-      if Entry.Bad <> '' then
-      begin
-        Builder.AppendLine;
-        Builder.AppendLine('Vorher:');
-        Builder.AppendLine;
-        Builder.AppendLine('```pascal');
-        Builder.AppendLine(TrimRight(Entry.Bad));
-        Builder.AppendLine('```');
-      end;
-      if Entry.Good <> '' then
-      begin
-        Builder.AppendLine;
-        Builder.AppendLine('Nachher:');
-        Builder.AppendLine;
-        Builder.AppendLine('```pascal');
-        Builder.AppendLine(TrimRight(Entry.Good));
-        Builder.AppendLine('```');
-      end;
-    end;
-    Result := TrimRight(Builder.ToString);
+    Result := TrimRight(mBuilder.ToString);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

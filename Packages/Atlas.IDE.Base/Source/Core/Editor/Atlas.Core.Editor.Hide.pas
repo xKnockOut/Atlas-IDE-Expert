@@ -330,72 +330,89 @@ begin
   Result.Text := FileMarker + ARuleId + TTextLines.LineBreakOf(AText);
 end;
 
+/// <summary>Befund mit Regel: Unterdrückungskommentar (#147); False mit AlreadyHidden, wenn er schon steht.
+/// </summary>
+function CommentPlan(const ATarget: TAtlasHideTarget; AScope: TAtlasHideScope; const AText: string;
+  var APlan: TAtlasHidePlan; out ARefusal: TAtlasHideRefusal): Boolean;
+begin
+  ARefusal := TAtlasHideRefusal.None;
+  if AScope = TAtlasHideScope.Here then
+  begin
+    APlan.Kind := TAtlasHideKind.LineComment;
+    APlan.Insert := TAtlasHide.SuppressLine(AText, ATarget.Line, ATarget.RuleId);
+  end
+  else
+  begin
+    APlan.Kind := TAtlasHideKind.FileComment;
+    APlan.Insert := TAtlasHide.SuppressFile(AText, ATarget.RuleId);
+  end;
+  Result := not APlan.Insert.IsEmpty;
+  if not Result then
+  begin
+    ARefusal := TAtlasHideRefusal.AlreadyHidden;
+  end;
+end;
+
+/// <summary>Eintrag in der Projektdatei .atlas; False mit dem Grund, wenn keiner möglich ist.</summary>
+function TeamFilePlan(const ATarget: TAtlasHideTarget; AScope: TAtlasHideScope; const ATeamFolder: string;
+  var APlan: TAtlasHidePlan; out ARefusal: TAtlasHideRefusal): Boolean;
+var
+  mRelative, mAnchor: string;
+begin
+  ARefusal := TAtlasHideRefusal.None;
+  mAnchor := '';
+  if AScope = TAtlasHideScope.Here then
+  begin
+    mAnchor := ATarget.Anchor;
+  end;
+  if ATeamFolder = '' then
+  begin
+    ARefusal := TAtlasHideRefusal.NoProjectFolder;
+  end
+  else if not TAtlasHiddenPlaces.Relative(ATeamFolder, ATarget.FileName, mRelative) then
+  begin
+    ARefusal := TAtlasHideRefusal.OutsideProject;
+  end
+  else if (AScope = TAtlasHideScope.Here) and (mAnchor = '') then
+  begin
+    // Ohne Anker gäbe es keine einzelne Stelle: dann gilt der Eintrag nur mit Zeilennummer nicht.
+    ARefusal := TAtlasHideRefusal.ScopeNotOffered;
+  end
+  else
+  begin
+    APlan.Kind := TAtlasHideKind.TeamFile;
+    APlan.Place := TAtlasHiddenPlace.Create(ATarget.SettingKey, mRelative, mAnchor);
+  end;
+  Result := ARefusal = TAtlasHideRefusal.None;
+end;
+
 class function TAtlasHide.Plan(const ATarget: TAtlasHideTarget; AScope: TAtlasHideScope;
   const AText, ATeamFolder: string; out APlan: TAtlasHidePlan; out ARefusal: TAtlasHideRefusal): Boolean;
-var
-  Relative, Anchor: string;
 begin
   APlan := Default(TAtlasHidePlan);
   APlan.Target := ATarget;
   APlan.Scope := AScope;
   APlan.SettingKey := ATarget.SettingKey;
   ARefusal := TAtlasHideRefusal.None;
-  Result := False;
   if not ATarget.Offers(AScope) then
   begin
     ARefusal := TAtlasHideRefusal.ScopeNotOffered;
-    Exit;
-  end;
-  if AScope = TAtlasHideScope.Everywhere then
+    Result := False;
+  end
+  else if AScope = TAtlasHideScope.Everywhere then
   begin
     APlan.Kind := TAtlasHideKind.Setting;
-    Exit(True);
-  end;
-  // Befund mit Regel: Unterdrückungskommentar (#147).
-  if (ATarget.Element = TAtlasDrawnElement.Problems) and (ATarget.RuleId <> '') then
+    Result := True;
+  end
+  else if (ATarget.Element = TAtlasDrawnElement.Problems) and (ATarget.RuleId <> '') then
   begin
-    if AScope = TAtlasHideScope.Here then
-    begin
-      APlan.Kind := TAtlasHideKind.LineComment;
-      APlan.Insert := SuppressLine(AText, ATarget.Line, ATarget.RuleId);
-    end
-    else
-    begin
-      APlan.Kind := TAtlasHideKind.FileComment;
-      APlan.Insert := SuppressFile(AText, ATarget.RuleId);
-    end;
-    if APlan.Insert.IsEmpty then
-    begin
-      ARefusal := TAtlasHideRefusal.AlreadyHidden;
-      Exit;
-    end;
-    Exit(True);
-  end;
-  // Sonst Eintrag in der Projektdatei.
-  if ATeamFolder = '' then
+    Result := CommentPlan(ATarget, AScope, AText, APlan, ARefusal);
+  end
+  else
   begin
-    ARefusal := TAtlasHideRefusal.NoProjectFolder;
-    Exit;
+    // Sonst Eintrag in der Projektdatei.
+    Result := TeamFilePlan(ATarget, AScope, ATeamFolder, APlan, ARefusal);
   end;
-  if not TAtlasHiddenPlaces.Relative(ATeamFolder, ATarget.FileName, Relative) then
-  begin
-    ARefusal := TAtlasHideRefusal.OutsideProject;
-    Exit;
-  end;
-  Anchor := '';
-  if AScope = TAtlasHideScope.Here then
-  begin
-    Anchor := ATarget.Anchor;
-    // Ohne Anker gäbe es keine einzelne Stelle: dann gilt der Eintrag nur mit Zeilennummer nicht.
-    if Anchor = '' then
-    begin
-      ARefusal := TAtlasHideRefusal.ScopeNotOffered;
-      Exit;
-    end;
-  end;
-  APlan.Kind := TAtlasHideKind.TeamFile;
-  APlan.Place := TAtlasHiddenPlace.Create(ATarget.SettingKey, Relative, Anchor);
-  Result := True;
 end;
 
 class function TAtlasHide.IsOn(const ASettings: TAtlasPluginSettings; const AKey: string): Boolean;

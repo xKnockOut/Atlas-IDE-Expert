@@ -39,74 +39,83 @@ uses
 
 type
   TAtlasHotspotsFrame = class(TFrame)
+  private type
+    /// <summary>Steuerelemente des Frames.</summary>
+    TParts = record
+      Top: TPanel;
+      Refresh: TButton;
+      Save: TButton;
+      Level: TComboBox;
+      Filter: TEdit;
+      Chart: TAtlasHotspotChartView;
+      Splitter: TSplitter;
+      Pages: TPageControl;
+      /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).
+      /// </summary>
+      Sheets: TArray<TTabSheet>;
+      HotspotSheet: TTabSheet;
+      CouplingSheet: TTabSheet;
+      HistorySheet: TTabSheet;
+      Hotspots: TListView;
+      Coupling: TListView;
+      HistoryInfo: TLabel;
+      History: TListView;
+      Status: TLabel;
+      Menu: TPopupMenu;
+      MenuOpen: TMenuItem;
+      MenuHistory: TMenuItem;
+      MenuImpact: TMenuItem;
+    end;
+
+    /// <summary>Rückrufe an die IDE-Schicht.</summary>
+    THandlers = record
+      OnRefresh: TProc;
+      OnSave: TProc<string>;
+      OnLevelChanged: TProc<string>;
+      OnOpen: TProc<string, Integer>;
+      OnImpact: TProc<string, Integer, string>;
+    end;
+
+    /// <summary>Gezeigte Daten und Auswahl.</summary>
+    TState = record
+      Model: TAtlasHotspotModel;
+      HasModel: Boolean;
+      MessageText: string;
+      /// <summary>'unit' oder 'method'; gilt auch ohne Fenster.</summary>
+      LevelValue: string;
+      Updating: Boolean;
+      /// <summary>Gezeigte Zeilen der Rangliste (Nummern in Entries).</summary>
+      Rows: TArray<Integer>;
+      Pairs: TArray<Integer>;
+      /// <summary>Gewählte Zeile (Nummer in Entries), -1 = keine.</summary>
+      Selected: Integer;
+      /// <summary>Zeile, deren Verlauf der Reiter zeigt, -1 = keine.</summary>
+      HistoryEntry: Integer;
+    end;
+
+    /// <summary>Ereignisse der Steuerelemente; gehört dem Frame.</summary>
+    TEvents = class(TComponent)
+    private
+      FFrame: TAtlasHotspotsFrame;
+    public
+      constructor Create(AFrame: TAtlasHotspotsFrame); reintroduce;
+      procedure RefreshClick(Sender: TObject);
+      procedure SaveClick(Sender: TObject);
+      procedure LevelChange(Sender: TObject);
+      procedure FilterChange(Sender: TObject);
+      procedure HotspotsSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
+      procedure HotspotsDblClick(Sender: TObject);
+      procedure CouplingDblClick(Sender: TObject);
+      procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+      procedure MenuPopup(Sender: TObject);
+      procedure MenuOpenClick(Sender: TObject);
+      procedure MenuHistoryClick(Sender: TObject);
+      procedure MenuImpactClick(Sender: TObject);
+    end;
   private
-    FTop: TPanel;
-    FRefresh: TButton;
-    FSave: TButton;
-    FLevel: TComboBox;
-    FFilter: TEdit;
-    FChart: TAtlasHotspotChartView;
-    FSplitter: TSplitter;
-    FPages: TPageControl;
-    /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
-    FSheets: TArray<TTabSheet>;
-    FHotspotSheet: TTabSheet;
-    FCouplingSheet: TTabSheet;
-    FHistorySheet: TTabSheet;
-    FHotspots: TListView;
-    FCoupling: TListView;
-    FHistoryInfo: TLabel;
-    FHistory: TListView;
-    FStatus: TLabel;
-    FMenu: TPopupMenu;
-    FMenuOpen: TMenuItem;
-    FMenuHistory: TMenuItem;
-    FMenuImpact: TMenuItem;
-    FModel: TAtlasHotspotModel;
-    FHasModel: Boolean;
-    FMessageText: string;
-    /// <summary>'unit' oder 'method'; gilt auch ohne Fenster.</summary>
-    FLevelValue: string;
-    FUpdating: Boolean;
-    /// <summary>Gezeigte Zeilen der Rangliste (Nummern in Entries).</summary>
-    FRows: TArray<Integer>;
-    FPairs: TArray<Integer>;
-    /// <summary>Gewählte Zeile (Nummer in Entries), -1 = keine.</summary>
-    FSelected: Integer;
-    /// <summary>Zeile, deren Verlauf der Reiter zeigt, -1 = keine.</summary>
-    FHistoryEntry: Integer;
-    FOnRefresh: TProc;
-    FOnSave: TProc<string>;
-    FOnLevelChanged: TProc<string>;
-    FOnOpen: TProc<string, Integer>;
-    FOnImpact: TProc<string, Integer, string>;
-    function NewSheet(const ACaption: string): TTabSheet;
-    function NewList(AParent: TWinControl): TListView;
-    function AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn;
-    function CanFill(AControl: TWinControl): Boolean;
-    function TrendCaption(const ATrend: string): string;
-    function Entries: TArray<TAtlasHotspotEntry>;
-    procedure FillLevel;
-    procedure FillAll;
-    procedure FillHotspots;
-    procedure FillCoupling;
-    procedure FillHistory;
-    procedure FillHotspotColumns;
-    procedure UpdateStatus;
-    procedure SelectRow(AEntry: Integer);
-    procedure RefreshClick(Sender: TObject);
-    procedure SaveClick(Sender: TObject);
-    procedure LevelChange(Sender: TObject);
-    procedure FilterChange(Sender: TObject);
-    procedure HotspotsSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
-    procedure HotspotsDblClick(Sender: TObject);
-    procedure CouplingDblClick(Sender: TObject);
-    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure MenuPopup(Sender: TObject);
-    procedure MenuOpenClick(Sender: TObject);
-    procedure MenuHistoryClick(Sender: TObject);
-    procedure MenuImpactClick(Sender: TObject);
-    procedure ChartSelect(AEntry: Integer);
+    FParts: TParts;
+    FHandlers: THandlers;
+    FState: TState;
     procedure SetLevelValue(const AValue: string);
   protected
     procedure CreateWnd; override;
@@ -129,32 +138,32 @@ type
     function HotspotText: TArray<string>;
     function CouplingText: TArray<string>;
     function HistoryText: TArray<string>;
-    property Model: TAtlasHotspotModel read FModel;
-    property HasModel: Boolean read FHasModel;
-    property Chart: TAtlasHotspotChartView read FChart;
-    property Pages: TPageControl read FPages;
-    property RefreshButton: TButton read FRefresh;
-    property SaveButton: TButton read FSave;
-    property LevelCombo: TComboBox read FLevel;
-    property Filter: TEdit read FFilter;
-    property HotspotList: TListView read FHotspots;
-    property CouplingList: TListView read FCoupling;
-    property HistoryList: TListView read FHistory;
-    property HistoryInfo: TLabel read FHistoryInfo;
-    property StatusLabel: TLabel read FStatus;
-    property Menu: TPopupMenu read FMenu;
-    property Selected: Integer read FSelected;
+    property Model: TAtlasHotspotModel read FState.Model;
+    property HasModel: Boolean read FState.HasModel;
+    property Chart: TAtlasHotspotChartView read FParts.Chart;
+    property Pages: TPageControl read FParts.Pages;
+    property RefreshButton: TButton read FParts.Refresh;
+    property SaveButton: TButton read FParts.Save;
+    property LevelCombo: TComboBox read FParts.Level;
+    property Filter: TEdit read FParts.Filter;
+    property HotspotList: TListView read FParts.Hotspots;
+    property CouplingList: TListView read FParts.Coupling;
+    property HistoryList: TListView read FParts.History;
+    property HistoryInfo: TLabel read FParts.HistoryInfo;
+    property StatusLabel: TLabel read FParts.Status;
+    property Menu: TPopupMenu read FParts.Menu;
+    property Selected: Integer read FState.Selected;
     /// <summary>'unit' oder 'method'.</summary>
-    property LevelValue: string read FLevelValue write SetLevelValue;
-    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
+    property LevelValue: string read FState.LevelValue write SetLevelValue;
+    property OnRefresh: TProc read FHandlers.OnRefresh write FHandlers.OnRefresh;
     /// <summary>Gewählte Zieldatei (.html, .md oder .json).</summary>
-    property OnSave: TProc<string> read FOnSave write FOnSave;
+    property OnSave: TProc<string> read FHandlers.OnSave write FHandlers.OnSave;
     /// <summary>Ebene im Fenster gewechselt ('unit' oder 'method').</summary>
-    property OnLevelChanged: TProc<string> read FOnLevelChanged write FOnLevelChanged;
+    property OnLevelChanged: TProc<string> read FHandlers.OnLevelChanged write FHandlers.OnLevelChanged;
     /// <summary>Vollständiger Pfad und Zeile ab 1 (1 = Anfang der Unit).</summary>
-    property OnOpen: TProc<string, Integer> read FOnOpen write FOnOpen;
+    property OnOpen: TProc<string, Integer> read FHandlers.OnOpen write FHandlers.OnOpen;
     /// <summary>Vollständiger Pfad, Zeile ab 1 und Methode (TFoo.Bar; '' auf Unit-Ebene).</summary>
-    property OnImpact: TProc<string, Integer, string> read FOnImpact write FOnImpact;
+    property OnImpact: TProc<string, Integer, string> read FHandlers.OnImpact write FHandlers.OnImpact;
   end;
 
 implementation
@@ -170,155 +179,32 @@ uses
 const
   cLevelValues: array[0..1] of string = ('unit', 'method');
 
-{ TAtlasHotspotsFrame }
+type
+  THotspotsFrame = TAtlasHotspotsFrame;
 
-constructor TAtlasHotspotsFrame.Create(AOwner: TComponent);
+function Entries(AFrame: THotspotsFrame): TArray<TAtlasHotspotEntry>;
 begin
-  inherited Create(AOwner);
-  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
-  Name := '';
-  FLevelValue := cLevelValues[0];
-  FSelected := -1;
-  FHistoryEntry := -1;
-
-  FTop := TPanel.Create(Self);
-  FTop.Parent := Self;
-  FTop.Align := alTop;
-  FTop.BevelOuter := bvNone;
-  FTop.ShowCaption := False;
-  FTop.AutoSize := True;
-  FTop.Padding.SetBounds(2, 2, 2, 2);
-
-  FRefresh := TButton.Create(Self);
-  FRefresh.Parent := FTop;
-  FRefresh.Align := alLeft;
-  FRefresh.AlignWithMargins := True;
-  FRefresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
-  FRefresh.Width := 110;
-  FRefresh.OnClick := RefreshClick;
-
-  FSave := TButton.Create(Self);
-  FSave.Parent := FTop;
-  FSave.Align := alLeft;
-  FSave.AlignWithMargins := True;
-  FSave.Left := FRefresh.Left + FRefresh.Width + 1;
-  FSave.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
-  FSave.Width := 130;
-  FSave.OnClick := SaveClick;
-
-  FLevel := TComboBox.Create(Self);
-  FLevel.Parent := FTop;
-  FLevel.Align := alLeft;
-  FLevel.AlignWithMargins := True;
-  FLevel.Left := FSave.Left + FSave.Width + 1;
-  FLevel.Style := csDropDownList;
-  FLevel.Width := 110;
-  FLevel.OnChange := LevelChange;
-
-  FFilter := TEdit.Create(Self);
-  FFilter.Parent := FTop;
-  FFilter.Align := alClient;
-  FFilter.AlignWithMargins := True;
-  FFilter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFilterHint);
-  FFilter.OnChange := FilterChange;
-
-  FStatus := TLabel.Create(Self);
-  FStatus.Parent := Self;
-  FStatus.Align := alBottom;
-  FStatus.AlignWithMargins := True;
-  FStatus.ShowAccelChar := False;
-  FStatus.EllipsisPosition := epEndEllipsis;
-  FStatus.Caption := '';
-
-  FMenu := TPopupMenu.Create(Self);
-  FMenu.OnPopup := MenuPopup;
-  FMenuOpen := TMenuItem.Create(FMenu);
-  FMenuOpen.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuOpen);
-  FMenuOpen.Default := True;
-  FMenuOpen.OnClick := MenuOpenClick;
-  FMenu.Items.Add(FMenuOpen);
-  FMenuHistory := TMenuItem.Create(FMenu);
-  FMenuHistory.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuHistory);
-  FMenuHistory.OnClick := MenuHistoryClick;
-  FMenu.Items.Add(FMenuHistory);
-  FMenuImpact := TMenuItem.Create(FMenu);
-  FMenuImpact.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsMenuImpact);
-  FMenuImpact.OnClick := MenuImpactClick;
-  FMenu.Items.Add(FMenuImpact);
-
-  FChart := TAtlasHotspotChartView.Create(Self);
-  FChart.Parent := Self;
-  FChart.Align := alTop;
-  FChart.AlignWithMargins := True;
-  FChart.Height := MulDiv(220, CurrentPPI, 96);
-  FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
-  FChart.PopupMenu := FMenu;
-  FChart.OnSelect :=
-    procedure(AEntry: Integer)
-    begin
-      ChartSelect(AEntry);
-    end;
-  FChart.OnOpen :=
-    procedure(AEntry: Integer)
-    begin
-      OpenEntry(AEntry);
-    end;
-
-  FSplitter := TSplitter.Create(Self);
-  FSplitter.Parent := Self;
-  FSplitter.Align := alTop;
-  FSplitter.Top := FChart.Top + FChart.Height + 1;
-  FSplitter.MinSize := MulDiv(80, CurrentPPI, 96);
-
-  FPages := TPageControl.Create(Self);
-  FPages.Parent := Self;
-  FPages.Align := alClient;
-  FPages.AlignWithMargins := True;
-
-  FHotspotSheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabHotspots));
-  FHotspots := NewList(FHotspotSheet);
-  FHotspots.PopupMenu := FMenu;
-  FHotspots.OnSelectItem := HotspotsSelect;
-  FHotspots.OnDblClick := HotspotsDblClick;
-
-  FCouplingSheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabCoupling));
-  FCoupling := NewList(FCouplingSheet);
-  FCoupling.OnDblClick := CouplingDblClick;
-  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColFirst), 200);
-  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColSecond), 200);
-  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColShared), 80);
-  AddColumn(FCoupling, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRatio), 70);
-
-  FHistorySheet := NewSheet(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsTabHistory));
-  FHistoryInfo := TLabel.Create(Self);
-  FHistoryInfo.Parent := FHistorySheet;
-  FHistoryInfo.Align := alTop;
-  FHistoryInfo.AlignWithMargins := True;
-  FHistoryInfo.ShowAccelChar := False;
-  FHistoryInfo.EllipsisPosition := epEndEllipsis;
-  FHistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
-  FHistory := NewList(FHistorySheet);
-  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRevision), 80);
-  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColDate), 90);
-  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColAuthor), 120);
-  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColSummary), 300);
-  AddColumn(FHistory, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLines), 70);
-  FillHotspotColumns;
+  Result := AFrame.FState.Model.Entries;
 end;
 
-function TAtlasHotspotsFrame.NewSheet(const ACaption: string): TTabSheet;
+function ValidEntry(AFrame: THotspotsFrame; AEntry: Integer): Boolean;
 begin
-  Result := TTabSheet.Create(Self);
+  Result := (AEntry >= 0) and (AEntry < Length(Entries(AFrame)));
+end;
+
+function NewSheet(AFrame: THotspotsFrame; AText: TAtlasAnalysisTextId): TTabSheet;
+begin
+  Result := TTabSheet.Create(AFrame);
   // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (CreateWnd zeigt ihn).
   Result.TabVisible := False;
-  Result.PageControl := FPages;
-  Result.Caption := ACaption;
-  FSheets := FSheets + [Result];
+  Result.PageControl := AFrame.FParts.Pages;
+  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  AFrame.FParts.Sheets := AFrame.FParts.Sheets + [Result];
 end;
 
-function TAtlasHotspotsFrame.NewList(AParent: TWinControl): TListView;
+function NewList(AFrame: THotspotsFrame; AParent: TWinControl; AEvents: THotspotsFrame.TEvents): TListView;
 begin
-  Result := TListView.Create(Self);
+  Result := TListView.Create(AFrame);
   Result.Parent := AParent;
   Result.Align := alClient;
   Result.ViewStyle := vsReport;
@@ -326,195 +212,87 @@ begin
   Result.ReadOnly := True;
   Result.HideSelection := False;
   Result.ColumnClick := False;
-  Result.OnKeyDown := ListKeyDown;
+  Result.OnKeyDown := AEvents.ListKeyDown;
 end;
 
-function TAtlasHotspotsFrame.AddColumn(AList: TListView; const ACaption: string; AWidth: Integer): TListColumn;
+procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth, APpi: Integer);
+var
+  mColumn: TListColumn;
 begin
-  Result := AList.Columns.Add;
-  Result.Caption := ACaption;
-  Result.Width := MulDiv(AWidth, CurrentPPI, 96);
+  mColumn := AList.Columns.Add;
+  mColumn.Caption := TAtlasAnalysisStrings.Text(AText);
+  mColumn.Width := MulDiv(AWidth, APpi, 96);
 end;
 
-procedure TAtlasHotspotsFrame.FillHotspotColumns;
+procedure FillHotspotColumns(AFrame: THotspotsFrame);
+var
+  mList: TListView;
+  mPpi: Integer;
 begin
-  FHotspots.Columns.BeginUpdate;
+  mList := AFrame.FParts.Hotspots;
+  mPpi := AFrame.CurrentPPI;
+  mList.Columns.BeginUpdate;
   try
-    FHotspots.Columns.Clear;
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColRank), 36);
-    if FLevelValue = cLevelValues[1] then
+    mList.Columns.Clear;
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColRank, 36, mPpi);
+    if AFrame.FState.LevelValue = cLevelValues[1] then
     begin
-      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColMethod), 220);
+      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColMethod, 220, mPpi);
     end
     else
     begin
-      AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColUnit), 220);
+      AddColumn(mList, TAtlasAnalysisTextId.HotspotsColUnit, 220, mPpi);
     end;
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColScore), 60);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges), 80);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColAuthors), 60);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColComplexity), 85);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLines), 60);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColTrend), 70);
-    AddColumn(FHotspots, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColLast), 90);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColScore, 60, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColChanges, 80, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColAuthors, 60, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColComplexity, 85, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLines, 60, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColTrend, 70, mPpi);
+    AddColumn(mList, TAtlasAnalysisTextId.HotspotsColLast, 90, mPpi);
   finally
-    FHotspots.Columns.EndUpdate;
+    mList.Columns.EndUpdate;
   end;
 end;
 
-procedure TAtlasHotspotsFrame.CreateWnd;
-var
-  mSheet: TTabSheet;
-begin
-  inherited CreateWnd;
-  for mSheet in FSheets do
-  begin
-    mSheet.TabVisible := True;
-  end;
-  if (FPages.ActivePage = nil) and (Length(FSheets) > 0) then
-  begin
-    FPages.ActivePage := FSheets[0];
-  end;
-  // Combo und Listen halten ihre Einträge im Fenster: erst jetzt füllen.
-  FillLevel;
-  FillAll;
-end;
-
-function TAtlasHotspotsFrame.CanFill(AControl: TWinControl): Boolean;
+function CanFill(AControl: TWinControl): Boolean;
 begin
   Result := AControl.HandleAllocated or (GetParentForm(AControl) <> nil);
 end;
 
-procedure TAtlasHotspotsFrame.FillLevel;
+procedure FillLevel(AFrame: THotspotsFrame);
+var
+  mLevel: TComboBox;
 begin
-  if not CanFill(FLevel) then
+  mLevel := AFrame.FParts.Level;
+  if not CanFill(mLevel) then
   begin
     Exit;
   end;
-  FUpdating := True;
+  AFrame.FState.Updating := True;
   try
-    FLevel.Items.BeginUpdate;
+    mLevel.Items.BeginUpdate;
     try
-      FLevel.Items.Clear;
-      FLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelUnits));
-      FLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelMethods));
+      mLevel.Items.Clear;
+      mLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelUnits));
+      mLevel.Items.Add(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsLevelMethods));
     finally
-      FLevel.Items.EndUpdate;
+      mLevel.Items.EndUpdate;
     end;
-    if FLevelValue = cLevelValues[1] then
+    if AFrame.FState.LevelValue = cLevelValues[1] then
     begin
-      FLevel.ItemIndex := 1;
+      mLevel.ItemIndex := 1;
     end
     else
     begin
-      FLevel.ItemIndex := 0;
+      mLevel.ItemIndex := 0;
     end;
   finally
-    FUpdating := False;
+    AFrame.FState.Updating := False;
   end;
 end;
 
-procedure TAtlasHotspotsFrame.SetLevelValue(const AValue: string);
-var
-  mValue: string;
-  mSelected: string;
-  mIndex: Integer;
-begin
-  if AValue = cLevelValues[1] then
-  begin
-    mValue := cLevelValues[1];
-  end
-  else
-  begin
-    mValue := cLevelValues[0];
-  end;
-  if mValue = FLevelValue then
-  begin
-    FillLevel;
-    Exit;
-  end;
-  // Die Auswahl bleibt über die Unit erhalten, wenn es sie auf der anderen Ebene gibt.
-  mSelected := '';
-  if (FSelected >= 0) and (FSelected < Length(Entries)) then
-  begin
-    mSelected := Entries[FSelected].UnitName;
-  end;
-  FLevelValue := mValue;
-  FModel.Level := mValue;
-  FSelected := -1;
-  FHistoryEntry := -1;
-  FillLevel;
-  FillHotspotColumns;
-  FillAll;
-  if mSelected = '' then
-  begin
-    Exit;
-  end;
-  // Erste (höchstbewertete) Zeile derselben Unit.
-  for mIndex := 0 to High(Entries) do
-  begin
-    if SameText(Entries[mIndex].UnitName, mSelected) then
-    begin
-      Select(mIndex);
-      Break;
-    end;
-  end;
-end;
-
-function TAtlasHotspotsFrame.Entries: TArray<TAtlasHotspotEntry>;
-begin
-  Result := FModel.Entries;
-end;
-
-procedure TAtlasHotspotsFrame.SetModel(const AModel: TAtlasHotspotModel);
-var
-  mCaption: string;
-  mFound: TArray<Integer>;
-  mIndex: Integer;
-begin
-  mCaption := '';
-  if (FSelected >= 0) and (FSelected < Length(Entries)) then
-  begin
-    mCaption := Entries[FSelected].Caption + #1 + Entries[FSelected].Path;
-  end;
-  FModel := AModel;
-  FModel.Level := FLevelValue;
-  FHasModel := True;
-  FMessageText := '';
-  FSelected := -1;
-  FHistoryEntry := -1;
-  FillAll;
-  if mCaption = '' then
-  begin
-    Exit;
-  end;
-  mFound := FModel.Filter('');
-  for mIndex in mFound do
-  begin
-    if Entries[mIndex].Caption + #1 + Entries[mIndex].Path = mCaption then
-    begin
-      Select(mIndex);
-      Break;
-    end;
-  end;
-end;
-
-procedure TAtlasHotspotsFrame.SetMessage(const AText: string; AKeep: Boolean);
-begin
-  FMessageText := AText;
-  if not AKeep then
-  begin
-    FModel := Default(TAtlasHotspotModel);
-    FModel.Level := FLevelValue;
-    FHasModel := False;
-    FSelected := -1;
-    FHistoryEntry := -1;
-    FillAll;
-  end;
-  UpdateStatus;
-end;
-
-function TAtlasHotspotsFrame.TrendCaption(const ATrend: string): string;
+function TrendCaption(const ATrend: string): string;
 begin
   if ATrend = 'rising' then
   begin
@@ -538,374 +316,369 @@ begin
   end;
 end;
 
-procedure TAtlasHotspotsFrame.FillAll;
+procedure AddHotspotItem(AList: TListView; const AEntry: TAtlasHotspotEntry; ARank: Integer; ASelected: Boolean);
+var
+  mItem: TListItem;
 begin
-  FRows := FModel.Filter(FFilter.Text);
-  FPairs := FModel.FilterCoupling(FFilter.Text);
-  if FHasModel and (Length(Entries) = 0) then
+  mItem := AList.Items.Add;
+  // Rang in der ganzen Liste, nicht in der gefilterten.
+  mItem.Caption := IntToStr(ARank);
+  mItem.SubItems.Add(AEntry.Caption);
+  mItem.SubItems.Add(FormatFloat('0.00', AEntry.Score, FormatSettings));
+  mItem.SubItems.Add(IntToStr(AEntry.Changes));
+  mItem.SubItems.Add(IntToStr(AEntry.Authors));
+  mItem.SubItems.Add(IntToStr(AEntry.Complexity));
+  mItem.SubItems.Add(IntToStr(AEntry.Lines));
+  mItem.SubItems.Add(TrendCaption(AEntry.Trend));
+  mItem.SubItems.Add(Copy(AEntry.LastChange, 1, 10));
+  if ASelected then
   begin
-    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoEntries);
-  end
-  else
-  begin
-    FChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
+    mItem.Selected := True;
   end;
-  FChart.SetEntries(Entries, FRows);
-  FChart.SelectEntry(FSelected);
-  FillHotspots;
-  FillCoupling;
-  FillHistory;
-  UpdateStatus;
 end;
 
-procedure TAtlasHotspotsFrame.FillHotspots;
+procedure FillHotspots(AFrame: THotspotsFrame);
 var
   mIndex: Integer;
-  mItem: TListItem;
-  mEntry: TAtlasHotspotEntry;
   mAll: TArray<TAtlasHotspotEntry>;
+  mRows: TArray<Integer>;
+  mList: TListView;
 begin
-  if not CanFill(FHotspots) then
+  mList := AFrame.FParts.Hotspots;
+  if not CanFill(mList) then
   begin
     Exit;
   end;
-  mAll := Entries;
-  FUpdating := True;
-  FHotspots.Items.BeginUpdate;
+  mAll := Entries(AFrame);
+  mRows := AFrame.FState.Rows;
+  AFrame.FState.Updating := True;
+  mList.Items.BeginUpdate;
   try
-    FHotspots.Items.Clear;
-    for mIndex := 0 to High(FRows) do
+    mList.Items.Clear;
+    for mIndex := 0 to High(mRows) do
     begin
-      mEntry := mAll[FRows[mIndex]];
-      mItem := FHotspots.Items.Add;
-      // Rang in der ganzen Liste, nicht in der gefilterten.
-      mItem.Caption := IntToStr(FRows[mIndex] + 1);
-      mItem.SubItems.Add(mEntry.Caption);
-      mItem.SubItems.Add(FormatFloat('0.00', mEntry.Score));
-      mItem.SubItems.Add(IntToStr(mEntry.Changes));
-      mItem.SubItems.Add(IntToStr(mEntry.Authors));
-      mItem.SubItems.Add(IntToStr(mEntry.Complexity));
-      mItem.SubItems.Add(IntToStr(mEntry.Lines));
-      mItem.SubItems.Add(TrendCaption(mEntry.Trend));
-      mItem.SubItems.Add(Copy(mEntry.LastChange, 1, 10));
-      if FRows[mIndex] = FSelected then
-      begin
-        mItem.Selected := True;
-      end;
+      AddHotspotItem(mList, mAll[mRows[mIndex]], mRows[mIndex] + 1, mRows[mIndex] = AFrame.FState.Selected);
     end;
   finally
-    FHotspots.Items.EndUpdate;
-    FUpdating := False;
+    mList.Items.EndUpdate;
+    AFrame.FState.Updating := False;
   end;
 end;
 
-procedure TAtlasHotspotsFrame.FillCoupling;
+procedure FillCoupling(AFrame: THotspotsFrame);
 var
   mIndex: Integer;
   mItem: TListItem;
   mPair: TAtlasHotspotPair;
+  mList: TListView;
 begin
-  if not CanFill(FCoupling) then
+  mList := AFrame.FParts.Coupling;
+  if not CanFill(mList) then
   begin
     Exit;
   end;
-  FCoupling.Items.BeginUpdate;
+  mList.Items.BeginUpdate;
   try
-    FCoupling.Items.Clear;
-    for mIndex in FPairs do
+    mList.Items.Clear;
+    for mIndex in AFrame.FState.Pairs do
     begin
-      mPair := FModel.Coupling[mIndex];
-      mItem := FCoupling.Items.Add;
+      mPair := AFrame.FState.Model.Coupling[mIndex];
+      mItem := mList.Items.Add;
       mItem.Caption := mPair.FirstUnit;
       mItem.SubItems.Add(mPair.SecondUnit);
       mItem.SubItems.Add(IntToStr(mPair.Shared));
       mItem.SubItems.Add(IntToStr(Round(mPair.Ratio * 100)) + ' %');
     end;
   finally
-    FCoupling.Items.EndUpdate;
+    mList.Items.EndUpdate;
   end;
 end;
 
-procedure TAtlasHotspotsFrame.FillHistory;
+procedure AddCommitItem(AList: TListView; const ACommit: TAtlasHotspotCommit; const AVcs: string);
 var
   mItem: TListItem;
-  mEntry: TAtlasHotspotEntry;
-  mCommit: TAtlasHotspotCommit;
 begin
-  if (FHistoryEntry < 0) or (FHistoryEntry >= Length(Entries)) then
+  mItem := AList.Items.Add;
+  mItem.Caption := ACommit.ShortRevision(AVcs);
+  mItem.SubItems.Add(Copy(ACommit.Date, 1, 10));
+  mItem.SubItems.Add(ACommit.Author);
+  mItem.SubItems.Add(ACommit.Summary);
+  if ACommit.Added < 0 then
   begin
-    FHistoryEntry := -1;
-    FHistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
+    mItem.SubItems.Add('');
   end
   else
   begin
-    mEntry := Entries[FHistoryEntry];
-    FHistoryInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsHistoryOf,
-      [mEntry.Caption, mEntry.Changes]);
-  end;
-  if not CanFill(FHistory) then
-  begin
-    Exit;
-  end;
-  FHistory.Items.BeginUpdate;
-  try
-    FHistory.Items.Clear;
-    if FHistoryEntry < 0 then
-    begin
-      Exit;
-    end;
-    for mCommit in Entries[FHistoryEntry].History do
-    begin
-      mItem := FHistory.Items.Add;
-      mItem.Caption := mCommit.ShortRevision(FModel.Vcs);
-      mItem.SubItems.Add(Copy(mCommit.Date, 1, 10));
-      mItem.SubItems.Add(mCommit.Author);
-      mItem.SubItems.Add(mCommit.Summary);
-      if mCommit.Added < 0 then
-      begin
-        mItem.SubItems.Add('');
-      end
-      else
-      begin
-        mItem.SubItems.Add('+' + IntToStr(mCommit.Added) + ' −' + IntToStr(mCommit.Deleted));
-      end;
-    end;
-  finally
-    FHistory.Items.EndUpdate;
+    mItem.SubItems.Add('+' + IntToStr(ACommit.Added) + ' −' + IntToStr(ACommit.Deleted));
   end;
 end;
 
-procedure TAtlasHotspotsFrame.UpdateStatus;
+procedure FillHistory(AFrame: THotspotsFrame);
+var
+  mEntry: TAtlasHotspotEntry;
+  mCommit: TAtlasHotspotCommit;
+  mList: TListView;
+begin
+  if not ValidEntry(AFrame, AFrame.FState.HistoryEntry) then
+  begin
+    AFrame.FState.HistoryEntry := -1;
+    AFrame.FParts.HistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
+  end
+  else
+  begin
+    mEntry := Entries(AFrame)[AFrame.FState.HistoryEntry];
+    AFrame.FParts.HistoryInfo.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsHistoryOf,
+      [mEntry.Caption, mEntry.Changes]);
+  end;
+  mList := AFrame.FParts.History;
+  if not CanFill(mList) then
+  begin
+    Exit;
+  end;
+  mList.Items.BeginUpdate;
+  try
+    mList.Items.Clear;
+    if AFrame.FState.HistoryEntry >= 0 then
+    begin
+      for mCommit in Entries(AFrame)[AFrame.FState.HistoryEntry].History do
+      begin
+        AddCommitItem(mList, mCommit, AFrame.FState.Model.Vcs);
+      end;
+    end;
+  finally
+    mList.Items.EndUpdate;
+  end;
+end;
+
+function StatusText(const AState: THotspotsFrame.TState): string;
 var
   mRange: string;
 begin
-  if FMessageText <> '' then
+  if AState.MessageText <> '' then
   begin
-    FStatus.Caption := FMessageText;
-  end
-  else if FHasModel then
-  begin
-    if SameText(FModel.Vcs, 'svn') then
-    begin
-      mRange := 'SVN';
-    end
-    else
-    begin
-      mRange := 'Git';
-    end;
-    mRange := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsRange,
-      [mRange, FModel.Months, Copy(FModel.Since, 1, 10),
-      FModel.Commits]);
-    FStatus.Caption := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsStatus, [mRange, Length(FModel.Units),
-      Length(FModel.Methods), Length(FModel.Coupling)]);
-  end
-  else
-  begin
-    FStatus.Caption := '';
+    Exit(AState.MessageText);
   end;
-end;
-
-procedure TAtlasHotspotsFrame.SelectRow(AEntry: Integer);
-var
-  mIndex: Integer;
-begin
-  if not CanFill(FHotspots) then
+  Result := '';
+  if not AState.HasModel then
   begin
     Exit;
   end;
-  FUpdating := True;
+  mRange := 'Git';
+  if SameText(AState.Model.Vcs, 'svn') then
+  begin
+    mRange := 'SVN';
+  end;
+  mRange := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsRange,
+    [mRange, AState.Model.Months, Copy(AState.Model.Since, 1, 10), AState.Model.Commits]);
+  Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsStatus, [mRange, Length(AState.Model.Units),
+    Length(AState.Model.Methods), Length(AState.Model.Coupling)]);
+end;
+
+procedure UpdateStatus(AFrame: THotspotsFrame);
+begin
+  AFrame.FParts.Status.Caption := StatusText(AFrame.FState);
+end;
+
+procedure FillAll(AFrame: THotspotsFrame);
+var
+  mChart: TAtlasHotspotChartView;
+begin
+  AFrame.FState.Rows := AFrame.FState.Model.Filter(AFrame.FParts.Filter.Text);
+  AFrame.FState.Pairs := AFrame.FState.Model.FilterCoupling(AFrame.FParts.Filter.Text);
+  mChart := AFrame.FParts.Chart;
+  if AFrame.FState.HasModel and (Length(Entries(AFrame)) = 0) then
+  begin
+    mChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsNoEntries);
+  end
+  else
+  begin
+    mChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
+  end;
+  mChart.SetEntries(Entries(AFrame), AFrame.FState.Rows);
+  mChart.SelectEntry(AFrame.FState.Selected);
+  FillHotspots(AFrame);
+  FillCoupling(AFrame);
+  FillHistory(AFrame);
+  UpdateStatus(AFrame);
+end;
+
+procedure SelectRow(AFrame: THotspotsFrame; AEntry: Integer);
+var
+  mIndex: Integer;
+  mList: TListView;
+begin
+  mList := AFrame.FParts.Hotspots;
+  if not CanFill(mList) then
+  begin
+    Exit;
+  end;
+  AFrame.FState.Updating := True;
   try
-    for mIndex := 0 to High(FRows) do
+    for mIndex := 0 to High(AFrame.FState.Rows) do
     begin
-      if (FRows[mIndex] = AEntry) and (mIndex < FHotspots.Items.Count) then
+      if (AFrame.FState.Rows[mIndex] = AEntry) and (mIndex < mList.Items.Count) then
       begin
-        FHotspots.Items[mIndex].Selected := True;
-        FHotspots.Items[mIndex].MakeVisible(False);
+        mList.Items[mIndex].Selected := True;
+        mList.Items[mIndex].MakeVisible(False);
         Exit;
       end;
     end;
-    FHotspots.Selected := nil;
+    mList.Selected := nil;
   finally
-    FUpdating := False;
+    AFrame.FState.Updating := False;
   end;
 end;
 
-procedure TAtlasHotspotsFrame.Select(AEntry: Integer);
-begin
-  if (AEntry < 0) or (AEntry >= Length(Entries)) then
-  begin
-    AEntry := -1;
-  end;
-  FSelected := AEntry;
-  FChart.SelectEntry(AEntry);
-  SelectRow(AEntry);
-end;
-
-procedure TAtlasHotspotsFrame.ChartSelect(AEntry: Integer);
-begin
-  Select(AEntry);
-end;
-
-procedure TAtlasHotspotsFrame.OpenEntry(AEntry: Integer);
+/// <summary>Neu berechnen, Bericht speichern, Ebene und Filter.</summary>
+procedure BuildTop(AFrame: THotspotsFrame; AEvents: THotspotsFrame.TEvents);
 var
-  mEntry: TAtlasHotspotEntry;
+  mTop: TPanel;
 begin
-  if (AEntry < 0) or (AEntry >= Length(Entries)) or not Assigned(FOnOpen) then
-  begin
-    Exit;
-  end;
-  mEntry := Entries[AEntry];
-  FOnOpen(mEntry.FileName, Max(1, mEntry.Line));
+  mTop := TPanel.Create(AFrame);
+  mTop.Parent := AFrame;
+  mTop.Align := alTop;
+  mTop.BevelOuter := bvNone;
+  mTop.ShowCaption := False;
+  mTop.AutoSize := True;
+  mTop.Padding.SetBounds(2, 2, 2, 2);
+  AFrame.FParts.Top := mTop;
+  AFrame.FParts.Refresh := TButton.Create(AFrame);
+  AFrame.FParts.Refresh.Parent := mTop;
+  AFrame.FParts.Refresh.Align := alLeft;
+  AFrame.FParts.Refresh.AlignWithMargins := True;
+  AFrame.FParts.Refresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
+  AFrame.FParts.Refresh.Width := 110;
+  AFrame.FParts.Refresh.OnClick := AEvents.RefreshClick;
+  AFrame.FParts.Save := TButton.Create(AFrame);
+  AFrame.FParts.Save.Parent := mTop;
+  AFrame.FParts.Save.Align := alLeft;
+  AFrame.FParts.Save.AlignWithMargins := True;
+  AFrame.FParts.Save.Left := AFrame.FParts.Refresh.Left + AFrame.FParts.Refresh.Width + 1;
+  AFrame.FParts.Save.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
+  AFrame.FParts.Save.Width := 130;
+  AFrame.FParts.Save.OnClick := AEvents.SaveClick;
+  AFrame.FParts.Level := TComboBox.Create(AFrame);
+  AFrame.FParts.Level.Parent := mTop;
+  AFrame.FParts.Level.Align := alLeft;
+  AFrame.FParts.Level.AlignWithMargins := True;
+  AFrame.FParts.Level.Left := AFrame.FParts.Save.Left + AFrame.FParts.Save.Width + 1;
+  AFrame.FParts.Level.Style := csDropDownList;
+  AFrame.FParts.Level.Width := 110;
+  AFrame.FParts.Level.OnChange := AEvents.LevelChange;
+  AFrame.FParts.Filter := TEdit.Create(AFrame);
+  AFrame.FParts.Filter.Parent := mTop;
+  AFrame.FParts.Filter.Align := alClient;
+  AFrame.FParts.Filter.AlignWithMargins := True;
+  AFrame.FParts.Filter.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsFilterHint);
+  AFrame.FParts.Filter.OnChange := AEvents.FilterChange;
 end;
 
-procedure TAtlasHotspotsFrame.ShowHistory(AEntry: Integer);
+function NewMenuItem(AMenu: TPopupMenu; AText: TAtlasAnalysisTextId; const AOnClick: TNotifyEvent): TMenuItem;
 begin
-  if (AEntry < 0) or (AEntry >= Length(Entries)) then
-  begin
-    Exit;
-  end;
-  Select(AEntry);
-  FHistoryEntry := AEntry;
-  FillHistory;
-  FPages.ActivePage := FHistorySheet;
-  OpenEntry(AEntry);
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  Result.OnClick := AOnClick;
+  AMenu.Items.Add(Result);
 end;
 
-procedure TAtlasHotspotsFrame.ShowImpact(AEntry: Integer);
+/// <summary>Statuszeile und Kontextmenü.</summary>
+procedure BuildStatusAndMenu(AFrame: THotspotsFrame; AEvents: THotspotsFrame.TEvents);
 var
-  mEntry: TAtlasHotspotEntry;
+  mMenu: TPopupMenu;
 begin
-  if (AEntry < 0) or (AEntry >= Length(Entries)) or not Assigned(FOnImpact) then
-  begin
-    Exit;
-  end;
-  mEntry := Entries[AEntry];
-  FOnImpact(mEntry.FileName, Max(1, mEntry.Line), mEntry.Method);
+  AFrame.FParts.Status := TLabel.Create(AFrame);
+  AFrame.FParts.Status.Parent := AFrame;
+  AFrame.FParts.Status.Align := alBottom;
+  AFrame.FParts.Status.AlignWithMargins := True;
+  AFrame.FParts.Status.ShowAccelChar := False;
+  AFrame.FParts.Status.EllipsisPosition := epEndEllipsis;
+  AFrame.FParts.Status.Caption := '';
+  mMenu := TPopupMenu.Create(AFrame);
+  mMenu.OnPopup := AEvents.MenuPopup;
+  AFrame.FParts.Menu := mMenu;
+  AFrame.FParts.MenuOpen := NewMenuItem(mMenu, TAtlasAnalysisTextId.HotspotsMenuOpen, AEvents.MenuOpenClick);
+  AFrame.FParts.MenuOpen.Default := True;
+  AFrame.FParts.MenuHistory := NewMenuItem(mMenu, TAtlasAnalysisTextId.HotspotsMenuHistory,
+    AEvents.MenuHistoryClick);
+  AFrame.FParts.MenuImpact := NewMenuItem(mMenu, TAtlasAnalysisTextId.HotspotsMenuImpact, AEvents.MenuImpactClick);
 end;
 
-procedure TAtlasHotspotsFrame.RefreshClick(Sender: TObject);
+function ChartSelectHandler(AFrame: THotspotsFrame): TProc<Integer>;
 begin
-  if Assigned(FOnRefresh) then
-  begin
-    FOnRefresh();
-  end;
-end;
-
-procedure TAtlasHotspotsFrame.SaveClick(Sender: TObject);
-var
-  mDialog: TSaveDialog;
-begin
-  mDialog := TSaveDialog.Create(nil);
-  try
-    mDialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveFilter);
-    mDialog.DefaultExt := 'html';
-    mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
-    if FModel.Title <> '' then
+  Result :=
+    procedure(AEntry: Integer)
     begin
-      mDialog.FileName := 'Hotspots-' + FModel.Title + '.html';
+      AFrame.Select(AEntry);
     end;
-    if mDialog.Execute and Assigned(FOnSave) then
+end;
+
+function ChartOpenHandler(AFrame: THotspotsFrame): TProc<Integer>;
+begin
+  Result :=
+    procedure(AEntry: Integer)
     begin
-      FOnSave(mDialog.FileName);
+      AFrame.OpenEntry(AEntry);
     end;
-  finally
-    mDialog.Free;
-  end;
 end;
 
-procedure TAtlasHotspotsFrame.LevelChange(Sender: TObject);
-begin
-  if FUpdating or (FLevel.ItemIndex < 0) then
-  begin
-    Exit;
-  end;
-  LevelValue := cLevelValues[EnsureRange(FLevel.ItemIndex, 0, High(cLevelValues))];
-  if Assigned(FOnLevelChanged) then
-  begin
-    FOnLevelChanged(FLevelValue);
-  end;
-end;
-
-procedure TAtlasHotspotsFrame.FilterChange(Sender: TObject);
-begin
-  FillAll;
-  Select(FSelected);
-end;
-
-procedure TAtlasHotspotsFrame.HotspotsSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
-begin
-  if FUpdating or not Selected or (Item = nil) or (Item.Index > High(FRows)) then
-  begin
-    Exit;
-  end;
-  FSelected := FRows[Item.Index];
-  FChart.SelectEntry(FSelected);
-end;
-
-procedure TAtlasHotspotsFrame.HotspotsDblClick(Sender: TObject);
-begin
-  OpenEntry(FSelected);
-end;
-
-procedure TAtlasHotspotsFrame.CouplingDblClick(Sender: TObject);
+/// <summary>Blasendiagramm, Teiler und das PageControl der Reiter.</summary>
+procedure BuildChart(AFrame: THotspotsFrame);
 var
-  mPair: TAtlasHotspotPair;
+  mChart: TAtlasHotspotChartView;
 begin
-  if (FCoupling.Selected = nil) or (FCoupling.Selected.Index > High(FPairs)) or not Assigned(FOnOpen) then
-  begin
-    Exit;
-  end;
-  mPair := FModel.Coupling[FPairs[FCoupling.Selected.Index]];
-  if GetKeyState(VK_CONTROL) < 0 then
-  begin
-    FOnOpen(mPair.SecondFile, 1);
-  end
-  else
-  begin
-    FOnOpen(mPair.FirstFile, 1);
-  end;
+  mChart := TAtlasHotspotChartView.Create(AFrame);
+  mChart.Parent := AFrame;
+  mChart.Align := alTop;
+  mChart.AlignWithMargins := True;
+  mChart.Height := MulDiv(220, AFrame.CurrentPPI, 96);
+  mChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
+  mChart.PopupMenu := AFrame.FParts.Menu;
+  mChart.OnSelect := ChartSelectHandler(AFrame);
+  mChart.OnOpen := ChartOpenHandler(AFrame);
+  AFrame.FParts.Chart := mChart;
+  AFrame.FParts.Splitter := TSplitter.Create(AFrame);
+  AFrame.FParts.Splitter.Parent := AFrame;
+  AFrame.FParts.Splitter.Align := alTop;
+  AFrame.FParts.Splitter.Top := mChart.Top + mChart.Height + 1;
+  AFrame.FParts.Splitter.MinSize := MulDiv(80, AFrame.CurrentPPI, 96);
+  AFrame.FParts.Pages := TPageControl.Create(AFrame);
+  AFrame.FParts.Pages.Parent := AFrame;
+  AFrame.FParts.Pages.Align := alClient;
+  AFrame.FParts.Pages.AlignWithMargins := True;
 end;
 
-procedure TAtlasHotspotsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key <> VK_RETURN then
-  begin
-    Exit;
-  end;
-  if Sender = FHotspots then
-  begin
-    HotspotsDblClick(Sender);
-  end
-  else if Sender = FCoupling then
-  begin
-    CouplingDblClick(Sender);
-  end;
-  Key := 0;
-end;
-
-procedure TAtlasHotspotsFrame.MenuPopup(Sender: TObject);
+/// <summary>Reiter Hotspots, Änderungskopplung und Verlauf.</summary>
+procedure BuildSheets(AFrame: THotspotsFrame; AEvents: THotspotsFrame.TEvents);
 var
-  mHas: Boolean;
+  mPpi: Integer;
 begin
-  mHas := (FSelected >= 0) and (FSelected < Length(Entries));
-  FMenuOpen.Enabled := mHas;
-  FMenuHistory.Enabled := mHas;
-  FMenuImpact.Enabled := mHas and Assigned(FOnImpact);
-end;
-
-procedure TAtlasHotspotsFrame.MenuOpenClick(Sender: TObject);
-begin
-  OpenEntry(FSelected);
-end;
-
-procedure TAtlasHotspotsFrame.MenuHistoryClick(Sender: TObject);
-begin
-  ShowHistory(FSelected);
-end;
-
-procedure TAtlasHotspotsFrame.MenuImpactClick(Sender: TObject);
-begin
-  ShowImpact(FSelected);
+  mPpi := AFrame.CurrentPPI;
+  AFrame.FParts.HotspotSheet := NewSheet(AFrame, TAtlasAnalysisTextId.HotspotsTabHotspots);
+  AFrame.FParts.Hotspots := NewList(AFrame, AFrame.FParts.HotspotSheet, AEvents);
+  AFrame.FParts.Hotspots.PopupMenu := AFrame.FParts.Menu;
+  AFrame.FParts.Hotspots.OnSelectItem := AEvents.HotspotsSelect;
+  AFrame.FParts.Hotspots.OnDblClick := AEvents.HotspotsDblClick;
+  AFrame.FParts.CouplingSheet := NewSheet(AFrame, TAtlasAnalysisTextId.HotspotsTabCoupling);
+  AFrame.FParts.Coupling := NewList(AFrame, AFrame.FParts.CouplingSheet, AEvents);
+  AFrame.FParts.Coupling.OnDblClick := AEvents.CouplingDblClick;
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColFirst, 200, mPpi);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColSecond, 200, mPpi);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColShared, 80, mPpi);
+  AddColumn(AFrame.FParts.Coupling, TAtlasAnalysisTextId.HotspotsColRatio, 70, mPpi);
+  AFrame.FParts.HistorySheet := NewSheet(AFrame, TAtlasAnalysisTextId.HotspotsTabHistory);
+  AFrame.FParts.HistoryInfo := TLabel.Create(AFrame);
+  AFrame.FParts.HistoryInfo.Parent := AFrame.FParts.HistorySheet;
+  AFrame.FParts.HistoryInfo.Align := alTop;
+  AFrame.FParts.HistoryInfo.AlignWithMargins := True;
+  AFrame.FParts.HistoryInfo.ShowAccelChar := False;
+  AFrame.FParts.HistoryInfo.EllipsisPosition := epEndEllipsis;
+  AFrame.FParts.HistoryInfo.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsHistoryNone);
+  AFrame.FParts.History := NewList(AFrame, AFrame.FParts.HistorySheet, AEvents);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColRevision, 80, mPpi);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColDate, 90, mPpi);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColAuthor, 120, mPpi);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColSummary, 300, mPpi);
+  AddColumn(AFrame.FParts.History, TAtlasAnalysisTextId.HotspotsColLines, 70, mPpi);
 end;
 
 function ListText(AList: TListView): TArray<string>;
@@ -925,19 +698,340 @@ begin
   end;
 end;
 
+{ TAtlasHotspotsFrame.TEvents }
+
+constructor TAtlasHotspotsFrame.TEvents.Create(AFrame: TAtlasHotspotsFrame);
+begin
+  inherited Create(AFrame);
+  FFrame := AFrame;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.RefreshClick(Sender: TObject);
+begin
+  if Assigned(FFrame.FHandlers.OnRefresh) then
+  begin
+    FFrame.FHandlers.OnRefresh();
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.SaveClick(Sender: TObject);
+var
+  mDialog: TSaveDialog;
+begin
+  mDialog := TSaveDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveFilter);
+    mDialog.DefaultExt := 'html';
+    mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if FFrame.FState.Model.Title <> '' then
+    begin
+      mDialog.FileName := 'Hotspots-' + FFrame.FState.Model.Title + '.html';
+    end;
+    if mDialog.Execute and Assigned(FFrame.FHandlers.OnSave) then
+    begin
+      FFrame.FHandlers.OnSave(mDialog.FileName);
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.LevelChange(Sender: TObject);
+begin
+  if FFrame.FState.Updating or (FFrame.FParts.Level.ItemIndex < 0) then
+  begin
+    Exit;
+  end;
+  FFrame.LevelValue := cLevelValues[EnsureRange(FFrame.FParts.Level.ItemIndex, 0, High(cLevelValues))];
+  if Assigned(FFrame.FHandlers.OnLevelChanged) then
+  begin
+    FFrame.FHandlers.OnLevelChanged(FFrame.FState.LevelValue);
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.FilterChange(Sender: TObject);
+begin
+  FillAll(FFrame);
+  FFrame.Select(FFrame.FState.Selected);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.HotspotsSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FFrame.FState.Updating or not Selected or (Item = nil) or (Item.Index > High(FFrame.FState.Rows)) then
+  begin
+    Exit;
+  end;
+  FFrame.FState.Selected := FFrame.FState.Rows[Item.Index];
+  FFrame.FParts.Chart.SelectEntry(FFrame.FState.Selected);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.HotspotsDblClick(Sender: TObject);
+begin
+  FFrame.OpenEntry(FFrame.FState.Selected);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.CouplingDblClick(Sender: TObject);
+var
+  mPair: TAtlasHotspotPair;
+  mList: TListView;
+begin
+  mList := FFrame.FParts.Coupling;
+  if (mList.Selected = nil) or (mList.Selected.Index > High(FFrame.FState.Pairs))
+    or not Assigned(FFrame.FHandlers.OnOpen) then
+  begin
+    Exit;
+  end;
+  mPair := FFrame.FState.Model.Coupling[FFrame.FState.Pairs[mList.Selected.Index]];
+  if GetKeyState(VK_CONTROL) < 0 then
+  begin
+    FFrame.FHandlers.OnOpen(mPair.SecondFile, 1);
+  end
+  else
+  begin
+    FFrame.FHandlers.OnOpen(mPair.FirstFile, 1);
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key <> VK_RETURN then
+  begin
+    Exit;
+  end;
+  if Sender = FFrame.FParts.Hotspots then
+  begin
+    HotspotsDblClick(Sender);
+  end
+  else if Sender = FFrame.FParts.Coupling then
+  begin
+    CouplingDblClick(Sender);
+  end;
+  Key := 0;
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.MenuPopup(Sender: TObject);
+var
+  mHas: Boolean;
+begin
+  mHas := ValidEntry(FFrame, FFrame.FState.Selected);
+  FFrame.FParts.MenuOpen.Enabled := mHas;
+  FFrame.FParts.MenuHistory.Enabled := mHas;
+  FFrame.FParts.MenuImpact.Enabled := mHas and Assigned(FFrame.FHandlers.OnImpact);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.MenuOpenClick(Sender: TObject);
+begin
+  FFrame.OpenEntry(FFrame.FState.Selected);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.MenuHistoryClick(Sender: TObject);
+begin
+  FFrame.ShowHistory(FFrame.FState.Selected);
+end;
+
+procedure TAtlasHotspotsFrame.TEvents.MenuImpactClick(Sender: TObject);
+begin
+  FFrame.ShowImpact(FFrame.FState.Selected);
+end;
+
+{ TAtlasHotspotsFrame }
+
+constructor TAtlasHotspotsFrame.Create(AOwner: TComponent);
+var
+  mEvents: TEvents;
+begin
+  inherited Create(AOwner);
+  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
+  Name := '';
+  FState.LevelValue := cLevelValues[0];
+  FState.Selected := -1;
+  FState.HistoryEntry := -1;
+  mEvents := TEvents.Create(Self);
+  BuildTop(Self, mEvents);
+  BuildStatusAndMenu(Self, mEvents);
+  BuildChart(Self);
+  BuildSheets(Self, mEvents);
+  FillHotspotColumns(Self);
+end;
+
+procedure TAtlasHotspotsFrame.CreateWnd;
+var
+  mSheet: TTabSheet;
+begin
+  inherited CreateWnd;
+  for mSheet in FParts.Sheets do
+  begin
+    mSheet.TabVisible := True;
+  end;
+  if (FParts.Pages.ActivePage = nil) and (Length(FParts.Sheets) > 0) then
+  begin
+    FParts.Pages.ActivePage := FParts.Sheets[0];
+  end;
+  // Combo und Listen halten ihre Einträge im Fenster: erst jetzt füllen.
+  FillLevel(Self);
+  FillAll(Self);
+end;
+
+/// <summary>Erste (höchstbewertete) Zeile der Unit AUnitName; -1 ohne.</summary>
+function FirstOfUnit(AFrame: THotspotsFrame; const AUnitName: string): Integer;
+var
+  mIndex: Integer;
+  mAll: TArray<TAtlasHotspotEntry>;
+begin
+  mAll := Entries(AFrame);
+  for mIndex := 0 to High(mAll) do
+  begin
+    if SameText(mAll[mIndex].UnitName, AUnitName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TAtlasHotspotsFrame.SetLevelValue(const AValue: string);
+var
+  mValue: string;
+  mSelected: string;
+begin
+  mValue := cLevelValues[0];
+  if AValue = cLevelValues[1] then
+  begin
+    mValue := cLevelValues[1];
+  end;
+  if mValue = FState.LevelValue then
+  begin
+    FillLevel(Self);
+    Exit;
+  end;
+  // Die Auswahl bleibt über die Unit erhalten, wenn es sie auf der anderen Ebene gibt.
+  mSelected := '';
+  if ValidEntry(Self, FState.Selected) then
+  begin
+    mSelected := Entries(Self)[FState.Selected].UnitName;
+  end;
+  FState.LevelValue := mValue;
+  FState.Model.Level := mValue;
+  FState.Selected := -1;
+  FState.HistoryEntry := -1;
+  FillLevel(Self);
+  FillHotspotColumns(Self);
+  FillAll(Self);
+  if (mSelected <> '') and (FirstOfUnit(Self, mSelected) >= 0) then
+  begin
+    Select(FirstOfUnit(Self, mSelected));
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.SetModel(const AModel: TAtlasHotspotModel);
+var
+  mCaption: string;
+  mIndex: Integer;
+  mAll: TArray<TAtlasHotspotEntry>;
+begin
+  mCaption := '';
+  if ValidEntry(Self, FState.Selected) then
+  begin
+    mCaption := Entries(Self)[FState.Selected].Caption + #1 + Entries(Self)[FState.Selected].Path;
+  end;
+  FState.Model := AModel;
+  FState.Model.Level := FState.LevelValue;
+  FState.HasModel := True;
+  FState.MessageText := '';
+  FState.Selected := -1;
+  FState.HistoryEntry := -1;
+  FillAll(Self);
+  if mCaption = '' then
+  begin
+    Exit;
+  end;
+  mAll := Entries(Self);
+  for mIndex in FState.Model.Filter('') do
+  begin
+    if mAll[mIndex].Caption + #1 + mAll[mIndex].Path = mCaption then
+    begin
+      Select(mIndex);
+      Break;
+    end;
+  end;
+end;
+
+procedure TAtlasHotspotsFrame.SetMessage(const AText: string; AKeep: Boolean);
+begin
+  FState.MessageText := AText;
+  if not AKeep then
+  begin
+    FState.Model := Default(TAtlasHotspotModel);
+    FState.Model.Level := FState.LevelValue;
+    FState.HasModel := False;
+    FState.Selected := -1;
+    FState.HistoryEntry := -1;
+    FillAll(Self);
+  end;
+  UpdateStatus(Self);
+end;
+
+procedure TAtlasHotspotsFrame.Select(AEntry: Integer);
+begin
+  if not ValidEntry(Self, AEntry) then
+  begin
+    AEntry := -1;
+  end;
+  FState.Selected := AEntry;
+  FParts.Chart.SelectEntry(AEntry);
+  SelectRow(Self, AEntry);
+end;
+
+procedure TAtlasHotspotsFrame.OpenEntry(AEntry: Integer);
+var
+  mEntry: TAtlasHotspotEntry;
+begin
+  if not ValidEntry(Self, AEntry) or not Assigned(FHandlers.OnOpen) then
+  begin
+    Exit;
+  end;
+  mEntry := Entries(Self)[AEntry];
+  FHandlers.OnOpen(mEntry.FileName, Max(1, mEntry.Line));
+end;
+
+procedure TAtlasHotspotsFrame.ShowHistory(AEntry: Integer);
+begin
+  if not ValidEntry(Self, AEntry) then
+  begin
+    Exit;
+  end;
+  Select(AEntry);
+  FState.HistoryEntry := AEntry;
+  FillHistory(Self);
+  FParts.Pages.ActivePage := FParts.HistorySheet;
+  OpenEntry(AEntry);
+end;
+
+procedure TAtlasHotspotsFrame.ShowImpact(AEntry: Integer);
+var
+  mEntry: TAtlasHotspotEntry;
+begin
+  if not ValidEntry(Self, AEntry) or not Assigned(FHandlers.OnImpact) then
+  begin
+    Exit;
+  end;
+  mEntry := Entries(Self)[AEntry];
+  FHandlers.OnImpact(mEntry.FileName, Max(1, mEntry.Line), mEntry.Method);
+end;
+
 function TAtlasHotspotsFrame.HotspotText: TArray<string>;
 begin
-  Result := ListText(FHotspots);
+  Result := ListText(FParts.Hotspots);
 end;
 
 function TAtlasHotspotsFrame.CouplingText: TArray<string>;
 begin
-  Result := ListText(FCoupling);
+  Result := ListText(FParts.Coupling);
 end;
 
 function TAtlasHotspotsFrame.HistoryText: TArray<string>;
 begin
-  Result := ListText(FHistory);
+  Result := ListText(FParts.History);
 end;
 
 end.

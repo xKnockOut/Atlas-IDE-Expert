@@ -145,20 +145,21 @@ begin
   Assert.AreEqual('qryOrders', Call.DisplayName);
 end;
 
-procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
 const
-  MainFile = 'C:\P\Main.pas';
-  ModuleFile = 'C:\P\Daten.pas';
-  MainText = 'unit Main;'#13#10'interface'#13#10'implementation'#13#10'{$R *.dfm}'#13#10'end.'#13#10;
-  ModuleText = 'unit Daten;'#13#10'interface'#13#10'type'#13#10'  TdmMain = class(TDataModule)'#13#10'  end;'#13#10 +
+  cLooksUpMainFile = 'C:\P\Main.pas';
+  cLooksUpModuleFile = 'C:\P\Daten.pas';
+  cLooksUpMainText = 'unit Main;'#13#10'interface'#13#10'implementation'#13#10'{$R *.dfm}'#13#10'end.'#13#10;
+  cLooksUpModuleText = 'unit Daten;'#13#10'interface'#13#10'type'#13#10'  TdmMain = class(TDataModule)'#13#10'  end;'#13#10 +
     'var'#13#10'  dmMain: TdmMain;'#13#10'implementation'#13#10'{$R *.dfm}'#13#10'end.'#13#10;
-  ModuleForm =
+  cLooksUpModuleForm =
     'object dmMain: TdmMain'#13#10 +
     '  object qryKunden: TSQLQuery'#13#10 +
     '    SQL.Strings = ('#13#10 +
     '      ''select K.KUNDE_ID, K.NAME from KUNDEN K'')'#13#10 +
     '  end'#13#10 +
     'end'#13#10;
+
+procedure TDataFieldNamesTests.LooksUpOwnFormAndDataModules;
 var
   Index: ISymbolIndex;
   Reader: TDataTextReader;
@@ -168,26 +169,26 @@ var
   Items: TArray<TDataName>;
 begin
   Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(ModuleText, ModuleFile, nil));
+  Index.AddUnit(TIndexExtractor.ExtractText(cLooksUpModuleText, cLooksUpModuleFile, nil));
   Reader :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
-      if SameText(AFileName, MainFile) then
+      if SameText(AFileName, cLooksUpMainFile) then
       begin
-        AText := MainText;
+        AText := cLooksUpMainText;
       end
-      else if SameText(AFileName, ChangeFileExt(MainFile, '.dfm')) then
+      else if SameText(AFileName, ChangeFileExt(cLooksUpMainFile, '.dfm')) then
       begin
         AText := Form;
       end
-      else if SameText(AFileName, ModuleFile) then
+      else if SameText(AFileName, cLooksUpModuleFile) then
       begin
-        AText := ModuleText;
+        AText := cLooksUpModuleText;
       end
-      else if SameText(AFileName, ChangeFileExt(ModuleFile, '.dfm')) then
+      else if SameText(AFileName, ChangeFileExt(cLooksUpModuleFile, '.dfm')) then
       begin
-        AText := ModuleForm;
+        AText := cLooksUpModuleForm;
       end
       else
       begin
@@ -196,27 +197,27 @@ begin
     end;
   // Eigene Unit, auch über den Namen des eigenen Formulars.
   Assert.IsTrue(TDataFieldNames.CallAt('  qryOrders.FieldByName(''cu'');', 27, Call));
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   Assert.Contains(Names(Items), 'CUSTOMER_ID');
   Assert.IsTrue(TDataFieldNames.CallAt('  frmOrders.qryOrders.FieldByName(''cu'');', 37, Call));
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   // Anderes Datenmodul über die globale Variable im Index.
   Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryKunden.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsTrue(Found);
   Assert.AreEqual('KUNDE_ID|NAME', Names(Items));
   Assert.Contains(Sql, 'from KUNDEN');
   // Ohne Index, unbekanntes Datenmodul oder unbekannte Datenmenge: nichts.
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, nil, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, nil, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
   Assert.IsTrue(TDataFieldNames.CallAt('  dmFremd.qryKunden.FieldByName(''na'');', 35, Call));
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
   Assert.AreEqual(0, Integer(Length(Items)));
   Assert.IsTrue(TDataFieldNames.CallAt('  dmMain.qryOrders.FieldByName(''na'');', 34, Call));
-  Items := TDataFieldNames.Lookup(MainText, MainFile, Call, Index, Reader, Sql, Found);
+  Items := TDataFieldNames.Lookup(TDataLookupSource.Create(cLooksUpMainText, cLooksUpMainFile, Index, Reader), Call, Sql, Found);
   Assert.IsFalse(Found);
 end;
 

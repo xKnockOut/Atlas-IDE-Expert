@@ -18,14 +18,8 @@
 //                             wenn A eine lokale Variable ist, die vorher nicht benutzt wird,
 //                             und A in der Schleife nur über A[High(A)] bzw. A[Length(A) - 1]
 //                             beschrieben wird.
-// Standardmäßig aus (#975):
-//   managed-param-without-const  String-, Interface-, Array- bzw. Record-Parameter (ab
-//                             minRecordSize Byte) ohne const, den die Routine sicher nicht
-//                             verändert; Übergabe an Aufrufe mit unbekannter Signatur, with,
-//                             anonyme Methoden und inherited ohne Namen lassen die Regel
-//                             schweigen. Vorgegebene Signaturen (virtual, Interfaces,
-//                             published, Ereignisse) bleiben außen vor. Die Korrektur
-//                             ergänzt const in Rumpf und Deklaration.
+// managed-param-without-const (#975) steht in Atlas.Common.Rules.Builtin.Performance.ManagedParams und
+// wird hier mit angemeldet.
 // ParamByName in Schleifen und DisableControls gehören zu #70.
 
 interface
@@ -59,12 +53,6 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
-  TManagedParamWithoutConstRule = class(TInterfacedObject, IRule)
-  public
-    function Descriptor: TRuleDescriptor;
-    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-  end;
-
 /// <summary>Registriert die Performance-Regeln.</summary>
 procedure RegisterPerformanceRules(const ARegistry: TRuleRegistry);
 
@@ -84,9 +72,10 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
+  Atlas.Common.Rules.Builtin.Performance.ManagedParams;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -135,61 +124,98 @@ begin
     AToken.IsKeyword('asm') or AToken.IsKeyword('repeat');
 end;
 
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Wie es nach einem Token beim Suchen des Anweisungsendes weitergeht.</summary>
+  TStatementStep = (Next, StopBefore, StopAt);
+{$SCOPEDENUMS OFF}
+
+/// <summary>Ein end bei der Tiefe ADepth: vor ihm endet die Anweisung auf oberster Ebene; beginnt die Anweisung
+/// selbst mit dem Block (AFirst), endet sie mit seinem end.</summary>
+function EndStep(const AFirst: TPascalToken; var ADepth: Integer): TStatementStep;
+begin
+  if ADepth = 0 then
+  begin
+    Exit(TStatementStep.StopBefore);
+  end;
+  Dec(ADepth);
+  Result := TStatementStep.Next;
+  if (ADepth = 0) and OpensBlock(AFirst) then
+  begin
+    Result := TStatementStep.StopAt;
+  end;
+end;
+
+/// <summary>Token auf oberster Ebene: if öffnet einen möglichen else-Zweig, else ohne offenes if und ;
+/// beenden die Anweisung.</summary>
+function TopLevelStep(const AToken: TPascalToken; var AOpenIfs: Integer): TStatementStep;
+begin
+  Result := TStatementStep.Next;
+  if AToken.IsKeyword('if') then
+  begin
+    Inc(AOpenIfs);
+  end
+  else if AToken.IsKeyword('else') then
+  begin
+    if AOpenIfs = 0 then
+    begin
+      Result := TStatementStep.StopBefore;
+    end
+    else
+    begin
+      Dec(AOpenIfs);
+    end;
+  end
+  else if AToken.IsSymbol(';') then
+  begin
+    Result := TStatementStep.StopBefore;
+  end;
+end;
+
 /// <summary>Letztes Token der Anweisung ab AFirst: bis zum passenden end bzw. vor ; oder end.
 /// Ein else gehört zur Anweisung, solange ein if davor noch keinen else-Zweig hat
 /// (if … then begin … end else …).</summary>
 function StatementEnd(const ATokens: TTokens; AFirst: Integer): Integer;
 var
-  Index, Depth, OpenIfs: Integer;
+  mIndex, mDepth, mOpenIfs: Integer;
+  mStep: TStatementStep;
 begin
-  Depth := 0;
-  OpenIfs := 0;
-  Index := AFirst;
+  mDepth := 0;
+  mOpenIfs := 0;
+  mIndex := AFirst;
   Result := AFirst;
-  while Index <= High(ATokens) do
+  while mIndex <= High(ATokens) do
   begin
-    if OpensBlock(ATokens[Index]) then
+    mStep := TStatementStep.Next;
+    if OpensBlock(ATokens[mIndex]) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsKeyword('until') then
+    else if ATokens[mIndex].IsKeyword('until') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if ATokens[Index].IsKeyword('end') then
+    else if ATokens[mIndex].IsKeyword('end') then
     begin
-      if Depth = 0 then
-      begin
-        Exit;
-      end;
-      Dec(Depth);
-      // Beginnt die Anweisung selbst mit dem Block, endet sie mit seinem end.
-      if (Depth = 0) and OpensBlock(ATokens[AFirst]) then
-      begin
-        Exit(Index);
-      end;
+      mStep := EndStep(ATokens[AFirst], mDepth);
     end
-    else if (Depth = 0) and ATokens[Index].IsKeyword('if') then
+    else if mDepth = 0 then
     begin
-      Inc(OpenIfs);
-    end
-    else if (Depth = 0) and ATokens[Index].IsKeyword('else') then
+      mStep := TopLevelStep(ATokens[mIndex], mOpenIfs);
+    end;
+    if mStep = TStatementStep.StopAt then
     begin
-      if OpenIfs = 0 then
-      begin
-        Exit;
-      end;
-      Dec(OpenIfs);
-    end
-    else if (Depth = 0) and ATokens[Index].IsSymbol(';') then
+      Exit(mIndex);
+    end;
+    if mStep = TStatementStep.StopBefore then
     begin
       Exit;
     end;
-    if not IsTrivia(ATokens[Index]) then
+    if not IsTrivia(ATokens[mIndex]) then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -221,57 +247,82 @@ begin
   Result := -1;
 end;
 
+/// <summary>for- bzw. while-Schleife ab dem Schlüsselwort AIndex; False ohne do oder Rumpf.</summary>
+function HeadLoop(const ATokens: TTokens; AIndex: Integer; var ALoop: TLoop): Boolean;
+var
+  mMark: Integer;
+begin
+  mMark := FindKeyword(ATokens, AIndex + 1, 'do');
+  Result := mMark >= 0;
+  if Result then
+  begin
+    ALoop.BodyFirst := NextCode(ATokens, mMark + 1);
+    Result := ALoop.BodyFirst <= High(ATokens);
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  ALoop.BodyLast := StatementEnd(ATokens, ALoop.BodyFirst);
+  if ATokens[AIndex].IsKeyword('while') then
+  begin
+    ALoop.CondFirst := NextCode(ATokens, AIndex + 1);
+    ALoop.CondLast := PreviousCode(ATokens, mMark);
+  end
+  else
+  begin
+    ALoop.CondFirst := 1;
+    ALoop.CondLast := 0;
+  end;
+end;
+
+/// <summary>repeat-Schleife ab dem Schlüsselwort AIndex; False ohne until.</summary>
+function RepeatLoop(const ATokens: TTokens; AIndex: Integer; var ALoop: TLoop): Boolean;
+var
+  mMark: Integer;
+begin
+  mMark := FindKeyword(ATokens, AIndex + 1, 'until');
+  Result := mMark >= 0;
+  if Result then
+  begin
+    ALoop.BodyFirst := AIndex + 1;
+    ALoop.BodyLast := PreviousCode(ATokens, mMark);
+    ALoop.CondFirst := NextCode(ATokens, mMark + 1);
+    ALoop.CondLast := StatementEnd(ATokens, ALoop.CondFirst);
+  end;
+end;
+
+/// <summary>Schleife mit dem Schlüsselwort bei AIndex?</summary>
+function LoopAt(const ATokens: TTokens; AIndex: Integer; out ALoop: TLoop): Boolean;
+begin
+  ALoop := Default(TLoop);
+  ALoop.Keyword := AIndex;
+  if ATokens[AIndex].IsKeyword('for') or ATokens[AIndex].IsKeyword('while') then
+  begin
+    Result := HeadLoop(ATokens, AIndex, ALoop);
+  end
+  else if ATokens[AIndex].IsKeyword('repeat') then
+  begin
+    Result := RepeatLoop(ATokens, AIndex, ALoop);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 function Loops(const ATokens: TTokens): TArray<TLoop>;
 var
-  Index, Mark: Integer;
-  Loop: TLoop;
+  mIndex: Integer;
+  mLoop: TLoop;
 begin
   Result := nil;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Loop := Default(TLoop);
-    Loop.Keyword := Index;
-    if ATokens[Index].IsKeyword('for') or ATokens[Index].IsKeyword('while') then
+    if LoopAt(ATokens, mIndex, mLoop) then
     begin
-      Mark := FindKeyword(ATokens, Index + 1, 'do');
-      if Mark < 0 then
-      begin
-        Continue;
-      end;
-      Loop.BodyFirst := NextCode(ATokens, Mark + 1);
-      if Loop.BodyFirst > High(ATokens) then
-      begin
-        Continue;
-      end;
-      Loop.BodyLast := StatementEnd(ATokens, Loop.BodyFirst);
-      if ATokens[Index].IsKeyword('while') then
-      begin
-        Loop.CondFirst := NextCode(ATokens, Index + 1);
-        Loop.CondLast := PreviousCode(ATokens, Mark);
-      end
-      else
-      begin
-        Loop.CondFirst := 1;
-        Loop.CondLast := 0;
-      end;
-    end
-    else if ATokens[Index].IsKeyword('repeat') then
-    begin
-      Mark := FindKeyword(ATokens, Index + 1, 'until');
-      if Mark < 0 then
-      begin
-        Continue;
-      end;
-      Loop.BodyFirst := Index + 1;
-      Loop.BodyLast := PreviousCode(ATokens, Mark);
-      Loop.CondFirst := NextCode(ATokens, Mark + 1);
-      Loop.CondLast := StatementEnd(ATokens, Loop.CondFirst);
-    end
-    else
-    begin
-      Continue;
+      Result := Result + [mLoop];
     end;
-    Result := Result + [Loop];
   end;
 end;
 
@@ -459,43 +510,51 @@ begin
   Result := True;
 end;
 
-/// <summary>Grenzen des statischen Arrays AName, das in der Datei als AName: array[A..B] steht.</summary>
-function StaticArrayBounds(const ATokens: TTokens; const AName: string; out ALow, AHigh: Int64): Boolean;
+/// <summary>Steht bei AIndex (Code-Token) das Symbol ASymbol?</summary>
+function SymbolAt(const ATokens: TTokens; AIndex: Integer; const ASymbol: string): Boolean;
+begin
+  Result := (AIndex <= High(ATokens)) and ATokens[AIndex].IsSymbol(ASymbol);
+end;
+
+/// <summary>": array[A..B]" nach dem Namen bei AIndex; liefert die Grenzen.</summary>
+function ArrayBoundsAt(const ATokens: TTokens; AIndex: Integer; out ALow, AHigh: Int64): Boolean;
 var
-  Index, Next, Last: Integer;
+  mNext, mLast: Integer;
 begin
   ALow := 0;
   AHigh := -1;
-  for Index := 0 to High(ATokens) - 1 do
+  mLast := AIndex;
+  mNext := NextCode(ATokens, AIndex + 1);
+  Result := SymbolAt(ATokens, mNext, ':');
+  if Result then
   begin
-    if (ATokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(ATokens[Index].Text, AName) then
-    begin
-      Continue;
-    end;
-    Next := NextCode(ATokens, Index + 1);
-    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol(':') then
-    begin
-      Continue;
-    end;
-    Next := NextCode(ATokens, Next + 1);
-    if (Next > High(ATokens)) or not ATokens[Next].IsKeyword('array') then
-    begin
-      Continue;
-    end;
-    Next := NextCode(ATokens, Next + 1);
-    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol('[') or
-      not IntegerAt(ATokens, NextCode(ATokens, Next + 1), ALow, Last) then
-    begin
-      Continue;
-    end;
-    Next := NextCode(ATokens, Last + 1);
-    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol('..') or
-      not IntegerAt(ATokens, NextCode(ATokens, Next + 1), AHigh, Last) then
-    begin
-      Continue;
-    end;
-    Next := NextCode(ATokens, Last + 1);
-    if (Next <= High(ATokens)) and ATokens[Next].IsSymbol(']') then
+    mNext := NextCode(ATokens, mNext + 1);
+    Result := (mNext <= High(ATokens)) and ATokens[mNext].IsKeyword('array');
+  end;
+  if Result then
+  begin
+    mNext := NextCode(ATokens, mNext + 1);
+    Result := SymbolAt(ATokens, mNext, '[') and IntegerAt(ATokens, NextCode(ATokens, mNext + 1), ALow, mLast);
+  end;
+  if Result then
+  begin
+    mNext := NextCode(ATokens, mLast + 1);
+    Result := SymbolAt(ATokens, mNext, '..') and IntegerAt(ATokens, NextCode(ATokens, mNext + 1), AHigh, mLast);
+  end;
+  Result := Result and SymbolAt(ATokens, NextCode(ATokens, mLast + 1), ']');
+end;
+
+/// <summary>Grenzen des statischen Arrays AName, das in der Datei als AName: array[A..B] steht.</summary>
+function StaticArrayBounds(const ATokens: TTokens; const AName: string; out ALow, AHigh: Int64): Boolean;
+var
+  mIndex: Integer;
+begin
+  ALow := 0;
+  AHigh := -1;
+  for mIndex := 0 to High(ATokens) - 1 do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) and
+      ArrayBoundsAt(ATokens, mIndex, ALow, AHigh) then
     begin
       Exit(True);
     end;
@@ -503,101 +562,132 @@ begin
   Result := False;
 end;
 
+/// <summary>Low(X) bzw. High(X) ab AIndex, endend vor AStop; AName = Position von X.</summary>
+function IsBoundCall(const ATokens: TTokens; AIndex, AStop: Integer; out AName: Integer): Boolean;
+var
+  mOpen, mClose: Integer;
+begin
+  mOpen := NextCode(ATokens, AIndex + 1);
+  AName := NextCode(ATokens, mOpen + 1);
+  mClose := NextCode(ATokens, AName + 1);
+  Result := (mClose < AStop) and (NextCode(ATokens, mClose + 1) = AStop) and ATokens[mOpen].IsSymbol('(') and
+    (ATokens[AName].Kind = TPascalTokenKind.Identifier) and ATokens[mClose].IsSymbol(')');
+end;
+
 /// <summary>Grenze einer for-Schleife ab AIndex bis vor AStop: Zahl, Low(X) oder High(X) mit
 /// statischem Array X der Datei.</summary>
 function BoundAt(const ATokens: TTokens; AIndex, AStop: Integer; out AValue: Int64): Boolean;
 var
-  Last, Open, Name, Close: Integer;
-  First, Final: Int64;
+  mLast, mName: Integer;
+  mFirst, mFinal: Int64;
 begin
-  if IntegerAt(ATokens, AIndex, AValue, Last) then
+  if IntegerAt(ATokens, AIndex, AValue, mLast) then
   begin
-    Exit(NextCode(ATokens, Last + 1) = AStop);
+    Exit(NextCode(ATokens, mLast + 1) = AStop);
   end;
-  Result := False;
-  Open := NextCode(ATokens, AIndex + 1);
-  Name := NextCode(ATokens, Open + 1);
-  Close := NextCode(ATokens, Name + 1);
-  if (Close >= AStop) or (NextCode(ATokens, Close + 1) <> AStop) or not ATokens[Open].IsSymbol('(') or
-    (ATokens[Name].Kind <> TPascalTokenKind.Identifier) or not ATokens[Close].IsSymbol(')') or
-    not StaticArrayBounds(ATokens, ATokens[Name].Text, First, Final) then
+  Result := IsBoundCall(ATokens, AIndex, AStop, mName) and
+    StaticArrayBounds(ATokens, ATokens[mName].Text, mFirst, mFinal);
+  if not Result then
   begin
     Exit;
   end;
   if SameText(ATokens[AIndex].Text, 'Low') then
   begin
-    AValue := First;
+    AValue := mFirst;
   end
   else if SameText(ATokens[AIndex].Text, 'High') then
   begin
-    AValue := Final;
+    AValue := mFinal;
   end
   else
   begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Kopf einer for-Schleife: AIndex = Token nach der Laufvariablen (":=" bzw. in), AStop = do.</summary>
+function ForHead(const ATokens: TTokens; const ALoop: TLoop; out AIndex, AStop: Integer): Boolean;
+begin
+  AIndex := -1;
+  AStop := -1;
+  if not ATokens[ALoop.Keyword].IsKeyword('for') then
+  begin
+    Exit(False);
+  end;
+  AStop := FindKeyword(ATokens, ALoop.Keyword + 1, 'do');
+  AIndex := NextCode(ATokens, ALoop.Keyword + 1);
+  if (AIndex <= High(ATokens)) and ATokens[AIndex].IsKeyword('var') then
+  begin
+    AIndex := NextCode(ATokens, AIndex + 1);
+  end;
+  AIndex := NextCode(ATokens, AIndex + 1);
+  Result := (AStop >= 0) and (AIndex < AStop);
+end;
+
+/// <summary>for X in Werte do mit "in" bei AIndex: Werte ist ein statisches Array der Datei; -1 sonst.</summary>
+function InIterations(const ATokens: TTokens; AIndex, AStop: Integer): Int64;
+var
+  mIndex: Integer;
+  mFirst, mLast: Int64;
+begin
+  Result := -1;
+  mIndex := NextCode(ATokens, AIndex + 1);
+  if (NextCode(ATokens, mIndex + 1) = AStop) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+    StaticArrayBounds(ATokens, ATokens[mIndex].Text, mFirst, mLast) then
+  begin
+    Result := mLast - mFirst + 1;
+  end;
+end;
+
+/// <summary>for I := A to B do mit ":=" bei AIndex: Durchläufe bei festen Grenzen; -1 sonst.</summary>
+function RangeIterations(const ATokens: TTokens; AIndex, AStop: Integer): Int64;
+var
+  mBound: Integer;
+  mFirst, mLast: Int64;
+begin
+  Result := -1;
+  mBound := AIndex + 1;
+  while (mBound < AStop) and not ATokens[mBound].IsKeyword('to') and not ATokens[mBound].IsKeyword('downto') do
+  begin
+    Inc(mBound);
+  end;
+  if (mBound >= AStop) or not BoundAt(ATokens, NextCode(ATokens, AIndex + 1), mBound, mFirst) or
+    not BoundAt(ATokens, NextCode(ATokens, mBound + 1), AStop, mLast) then
+  begin
     Exit;
   end;
-  Result := True;
+  if ATokens[mBound].IsKeyword('downto') then
+  begin
+    Result := mFirst - mLast + 1;
+  end
+  else
+  begin
+    Result := mLast - mFirst + 1;
+  end;
+  if Result < 0 then
+  begin
+    Result := 0;
+  end;
 end;
 
 /// <summary>Anzahl der Durchläufe einer for-Schleife mit festen Grenzen bzw. über ein statisches
 /// Array der Datei; -1 wenn unbekannt (while, repeat, Grenzen erst zur Laufzeit).</summary>
 function FixedIterations(const ATokens: TTokens; const ALoop: TLoop): Int64;
 var
-  Index, Stop, Bound: Integer;
-  First, Last: Int64;
+  mIndex, mStop: Integer;
 begin
   Result := -1;
-  if not ATokens[ALoop.Keyword].IsKeyword('for') then
+  if not ForHead(ATokens, ALoop, mIndex, mStop) then
   begin
     Exit;
   end;
-  Stop := FindKeyword(ATokens, ALoop.Keyword + 1, 'do');
-  Index := NextCode(ATokens, ALoop.Keyword + 1);
-  if (Index <= High(ATokens)) and ATokens[Index].IsKeyword('var') then
+  if ATokens[mIndex].IsKeyword('in') then
   begin
-    Index := NextCode(ATokens, Index + 1);
-  end;
-  Index := NextCode(ATokens, Index + 1);
-  if (Stop < 0) or (Index >= Stop) then
-  begin
-    Exit;
-  end;
-  if ATokens[Index].IsKeyword('in') then
-  begin
-    // for X in Werte do: Werte ist ein statisches Array der Datei.
-    Index := NextCode(ATokens, Index + 1);
-    if (NextCode(ATokens, Index + 1) = Stop) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
-      StaticArrayBounds(ATokens, ATokens[Index].Text, First, Last) then
-    begin
-      Result := Last - First + 1;
-    end;
-    Exit;
-  end;
-  if not ATokens[Index].IsSymbol(':=') then
-  begin
-    Exit;
-  end;
-  Bound := Index + 1;
-  while (Bound < Stop) and not ATokens[Bound].IsKeyword('to') and not ATokens[Bound].IsKeyword('downto') do
-  begin
-    Inc(Bound);
-  end;
-  if (Bound >= Stop) or not BoundAt(ATokens, NextCode(ATokens, Index + 1), Bound, First) or
-    not BoundAt(ATokens, NextCode(ATokens, Bound + 1), Stop, Last) then
-  begin
-    Exit;
-  end;
-  if ATokens[Bound].IsKeyword('downto') then
-  begin
-    Result := First - Last + 1;
+    Result := InIterations(ATokens, mIndex, mStop);
   end
-  else
+  else if ATokens[mIndex].IsSymbol(':=') then
   begin
-    Result := Last - First + 1;
-  end;
-  if Result < 0 then
-  begin
-    Result := 0;
+    Result := RangeIterations(ATokens, mIndex, mStop);
   end;
 end;
 
@@ -627,109 +717,132 @@ begin
   Result := True;
 end;
 
+/// <summary>Empfänger, für die irgendwo in der Datei BeginUpdate aufgerufen wird (Kleinbuchstaben).</summary>
+function UpdatedReceivers(const ATokens: TTokens): TArray<string>;
+var
+  mIndex, mLast: Integer;
+  mText: string;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if StartsDesignator(ATokens, mIndex) then
+    begin
+      mText := Chain(ATokens, mIndex, mLast);
+      if EndsText('.beginupdate', mText) then
+      begin
+        Result := Result + [Copy(mText, 1, Length(mText) - Length('.beginupdate'))];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Teil vor dem letzten Punkt: listbox1.items → listbox1.</summary>
+function OwnerOf(const AReceiver: string): string;
+begin
+  Result := Copy(AReceiver, 1, LastDelimiter('.', AReceiver) - 1);
+end;
+
+/// <summary>Hinzufügen an einer sichtbaren Liste ab AIndex: ListBox1.Items.Add, Memo1.Lines.Append …; der
+/// Empfänger hat mindestens zwei Glieder.</summary>
+function AddCall(const ATokens: TTokens; AIndex: Integer; out AReceiver: string; out ALast: Integer): Boolean;
+var
+  mText, mMethod: string;
+  mDot: Integer;
+begin
+  mText := Chain(ATokens, AIndex, ALast);
+  mDot := LastDelimiter('.', mText);
+  AReceiver := Copy(mText, 1, mDot - 1);
+  mMethod := Copy(mText, mDot + 1, MaxInt);
+  Result := (mDot > 0) and (Pos('.', AReceiver) > 0) and
+    MatchText(Copy(AReceiver, LastDelimiter('.', AReceiver) + 1, MaxInt), ['items', 'lines', 'strings']) and
+    MatchText(mMethod, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']);
+end;
+
+/// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate.</summary>
+function IsMenuItems(const ATypes: TDeclaredTypes; const AReceiver: string; const APosition: TTextPosition): Boolean;
+var
+  mOwner: string;
+begin
+  mOwner := OwnerOf(AReceiver);
+  if StartsText('self.', mOwner) then
+  begin
+    mOwner := Copy(mOwner, Length('self.') + 1, MaxInt);
+  end;
+  Result := (Pos('.', mOwner) = 0) and MatchText(ATypes.DeclaredType(mOwner, APosition), MenuTypes);
+end;
+
+/// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>
+function IsHandled(const AReceiver: string; const AUpdated, AReported: TArray<string>): Boolean;
+begin
+  Result := MatchText(AReceiver, AUpdated) or MatchText(OwnerOf(AReceiver), AUpdated) or
+    MatchText(AReceiver, AReported);
+end;
+
 function TMissingBeginUpdateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-begin-update', TRuleSeverity.Hint,
     'Hinzufügen in einer Schleife ohne BeginUpdate', True);
 end;
 
+/// <summary>Meldet das Hinzufügen ab AIndex bis ALast.</summary>
+procedure ReportAdd(const AContext: TRuleContext; const AReport: IRuleReport; const ATokens: TTokens;
+  AIndex, ALast: Integer);
+var
+  mReceiverText: string;
+begin
+  mReceiverText := Copy(AContext.Text, ATokens[AIndex].Offset + 1,
+    ATokens[PreviousCode(ATokens, ALast)].Offset - ATokens[AIndex].Offset);
+  AReport.Add(RangeOf(ATokens, AIndex, ALast), Format('Jedes %s in der Schleife zeichnet das Steuerelement neu; ' +
+    'die Schleife mit %s.BeginUpdate und try … finally %s.EndUpdate umschließen',
+    [ATokens[ALast].Text, mReceiverText, mReceiverText]), TRuleConfidence.Medium);
+end;
+
 procedure TMissingBeginUpdateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Found: TArray<TLoop>;
-  Updated, Reported: TArray<string>;
-  Types: TDeclaredTypes;
-  Index, Last, Dot: Integer;
-  Text, Receiver, Method, Collection, ReceiverText, Owner: string;
+  mTokens: TTokens;
+  mFound: TArray<TLoop>;
+  mUpdated, mReported: TArray<string>;
+  mTypes: TDeclaredTypes;
+  mIndex, mLast: Integer;
+  mReceiver: string;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Found := Loops(Tokens);
-  if Found = nil then
+  mTokens := AContext.Tree.Tokens;
+  mFound := Loops(mTokens);
+  if mFound = nil then
   begin
     Exit;
   end;
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    // Empfänger, für die irgendwo in der Datei BeginUpdate aufgerufen wird.
-    Updated := nil;
-    for Index := 0 to High(Tokens) do
+    mUpdated := UpdatedReceivers(mTokens);
+    mReported := nil;
+    for mIndex := 0 to High(mTokens) do
     begin
-      if StartsDesignator(Tokens, Index) then
-      begin
-        Text := Chain(Tokens, Index, Last);
-        if EndsText('.beginupdate', Text) then
-        begin
-          Updated := Updated + [Copy(Text, 1, Length(Text) - Length('.beginupdate'))];
-        end;
-      end;
-    end;
-    Reported := nil;
-    for Index := 0 to High(Tokens) do
-    begin
-      if not StartsDesignator(Tokens, Index) or not InLoopBody(Found, Index) then
-      begin
-        Continue;
-      end;
-      Text := Chain(Tokens, Index, Last);
-      Dot := LastDelimiter('.', Text);
-      if Dot = 0 then
-      begin
-        Continue;
-      end;
-      Receiver := Copy(Text, 1, Dot - 1);
-      Method := Copy(Text, Dot + 1, MaxInt);
-      Collection := Copy(Receiver, LastDelimiter('.', Receiver) + 1, MaxInt);
-      // Nur sichtbare Listen: ListBox1.Items, Memo1.Lines, TreeView1.Items; Receiver hat mindestens zwei Glieder.
-      if (Pos('.', Receiver) = 0) or not MatchText(Collection, ['items', 'lines', 'strings']) or
-        not MatchText(Method, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']) then
-      begin
-        Continue;
-      end;
-      if MatchText(Receiver, Updated) or MatchText(Copy(Receiver, 1, LastDelimiter('.', Receiver) - 1), Updated) or
-        MatchText(Receiver, Reported) then
-      begin
-        Continue;
-      end;
-      // Menu.Items ist ein TMenuItem ohne BeginUpdate.
-      Owner := Copy(Receiver, 1, LastDelimiter('.', Receiver) - 1);
-      if StartsText('self.', Owner) then
-      begin
-        Owner := Copy(Owner, Length('self.') + 1, MaxInt);
-      end;
-      if (Pos('.', Owner) = 0) and MatchText(Types.DeclaredType(Owner, Tokens[Index].StartPos), MenuTypes) then
+      if not StartsDesignator(mTokens, mIndex) or not InLoopBody(mFound, mIndex) or
+        not AddCall(mTokens, mIndex, mReceiver, mLast) then
       begin
         Continue;
       end;
       // Wenige Einträge: Das Neuzeichnen fällt nicht ins Gewicht.
-      if FewInLoops(Tokens, Found, Index) then
+      if IsHandled(mReceiver, mUpdated, mReported) or IsMenuItems(mTypes, mReceiver, mTokens[mIndex].StartPos) or
+        FewInLoops(mTokens, mFound, mIndex) then
       begin
         Continue;
       end;
-      Reported := Reported + [Receiver];
-      ReceiverText := Copy(AContext.Text, Tokens[Index].Offset + 1,
-        Tokens[PreviousCode(Tokens, Last)].Offset - Tokens[Index].Offset);
-      AReport.Add(RangeOf(Tokens, Index, Last), Format('Jedes %s in der Schleife zeichnet das Steuerelement neu; ' +
-        'die Schleife mit %s.BeginUpdate und try … finally %s.EndUpdate umschließen',
-        [Tokens[Last].Text, ReceiverText, ReceiverText]),
-        TRuleConfidence.Medium);
+      mReported := mReported + [mReceiver];
+      ReportAdd(AContext, AReport, mTokens, mIndex, mLast);
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
 { TSetLengthInLoopRule }
-
-const
-  /// <summary>Dynamische Arrays der RTL, die nicht in der Datei deklariert sind.</summary>
-  RtlDynamicArrays: array[0..13] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray',
-    'TInt64DynArray', 'TCardinalDynArray', 'TDoubleDynArray', 'TSingleDynArray', 'TByteDynArray',
-    'TWordDynArray', 'TBooleanDynArray', 'TShortIntDynArray', 'TSmallIntDynArray', 'TLongWordDynArray',
-    'TExtendedDynArray');
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
@@ -830,44 +943,6 @@ begin
   Result := (Body = AStatement) or ((Body <> nil) and (Body.Kind = TSyntaxKind.Block) and (AStatement.Parent = Body));
 end;
 
-/// <summary>Ist ATypeText ein dynamisches Array? ADeclared: Namen der Array-Typen der Datei.</summary>
-function IsDynamicArrayType(const ATypeText: string; const ADeclared: TArray<string>): Boolean;
-var
-  Text: string;
-begin
-  Text := Trim(ATypeText);
-  Result := StartsText('array of ', Text) or StartsText('TArray<', Text) or MatchText(Text, RtlDynamicArrays) or
-    MatchText(Text, ADeclared);
-end;
-
-/// <summary>Namen der Typen der Datei, die als dynamisches Array deklariert sind (T = array of X bzw. TArray&lt;X&gt;).
-/// </summary>
-function DynamicArrayTypes(const AText: string; ARoot: TSyntaxNode): TArray<string>;
-var
-  Found: TArray<string>;
-begin
-  Found := nil;
-  ARoot.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      Child: TSyntaxNode;
-      Text: string;
-    begin
-      Result := not (ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.ClassType, TSyntaxKind.RecordType]);
-      if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.ChildCount > 0) then
-      begin
-        Child := ANode[ANode.ChildCount - 1];
-        Text := Trim(NodeText(AText, Child));
-        if ((Child.Kind = TSyntaxKind.ArrayType) and StartsText('array of ', Text)) or
-          ((Child.Kind = TSyntaxKind.TypeReference) and StartsText('TArray<', Text)) then
-        begin
-          Found := Found + [ANode.Name];
-        end;
-      end;
-    end);
-  Result := Found;
-end;
-
 /// <summary>Ergebnistyp der Funktion um ANode als Quelltext; '' ohne.</summary>
 function ResultType(const AText: string; ANode: TSyntaxNode): string;
 var
@@ -944,524 +1019,31 @@ begin
   end;
 end;
 
-function TSetLengthInLoopRule.Descriptor: TRuleDescriptor;
+/// <summary>Routine um ANode; nil ohne oder in einer anonymen Methode.</summary>
+function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  Result := TRuleDescriptor.Create('setlength-in-loop', TRuleSeverity.Hint,
-    'Dynamisches Array wächst in einer Schleife um je ein Element');
-end;
-
-procedure TSetLengthInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  Cache: IRuleDerivedCache;
-  Types: TDeclaredTypes;
-  ArrayTypes: TArray<string>;
-  Calls: TArray<TSyntaxNode>;
-  Call, Statement, Loop: TSyntaxNode;
-  Target, Count, LoopIndex, TypeText: string;
-  Fixes: TArray<TRuleFix>;
-
-  function Range(AStart, AEnd: Integer): TTextRange;
+  Result := ANode.Parent;
+  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
   begin
-    Result := TRuleDerived.OffsetRange(Cache, AContext, AStart, AEnd);
-  end;
-
-  function LineStart(AOffset: Integer): Integer;
-  begin
-    Result := AOffset;
-    while (Result > 0) and not CharInSet(AContext.Text[Result], [#10, #13]) do
+    if Result.Kind = TSyntaxKind.AnonymousMethod then
     begin
-      Dec(Result);
+      Exit(nil);
     end;
-  end;
-
-  function Indent(AOffset: Integer): string;
-  var
-    Start, Index: Integer;
-  begin
-    Start := LineStart(AOffset);
-    Index := Start;
-    while (Index < AOffset) and CharInSet(AContext.Text[Index + 1], [' ', #9]) do
-    begin
-      Inc(Index);
-    end;
-    Result := Copy(AContext.Text, Start + 1, Index - Start);
-  end;
-
-  /// <summary>Bereich der ganzen Zeile(n) von AStatement samt folgendem ; und Zeilenende; False, wenn mehr in der
-  /// Zeile steht.</summary>
-  function WholeLines(AStatement: TSyntaxNode; out AStart, AEnd: Integer): Boolean;
-  begin
-    AStart := LineStart(AStatement.StartOffset);
-    Result := Trim(Copy(AContext.Text, AStart + 1, AStatement.StartOffset - AStart)) = '';
-    AEnd := AStatement.EndOffset;
-    while (AEnd < Length(AContext.Text)) and CharInSet(AContext.Text[AEnd + 1], [' ', #9]) do
-    begin
-      Inc(AEnd);
-    end;
-    if (AEnd < Length(AContext.Text)) and (AContext.Text[AEnd + 1] = ';') then
-    begin
-      Inc(AEnd);
-    end;
-    while (AEnd < Length(AContext.Text)) and CharInSet(AContext.Text[AEnd + 1], [' ', #9]) do
-    begin
-      Inc(AEnd);
-    end;
-    if (AEnd < Length(AContext.Text)) and (AContext.Text[AEnd + 1] = #13) then
-    begin
-      Inc(AEnd);
-    end;
-    if (AEnd < Length(AContext.Text)) and (AContext.Text[AEnd + 1] = #10) then
-    begin
-      Inc(AEnd);
-    end
-    else
-    begin
-      Result := False;
-    end;
-  end;
-
-  /// <summary>Lokale Variable ATarget der Routine um ALoop, die vor der Schleife nicht vorkommt?</summary>
-  function FreshLocal(ALoop: TSyntaxNode): Boolean;
-  var
-    Routine, Section, Body: TSyntaxNode;
-    Index, Inner: Integer;
-    Declared, Used: Boolean;
-    Name, Wanted: string;
-  begin
-    Wanted := Target;
-    Routine := ALoop.Parent;
-    while (Routine <> nil) and (Routine.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      if Routine.Kind = TSyntaxKind.AnonymousMethod then
-      begin
-        Exit(False);
-      end;
-      Routine := Routine.Parent;
-    end;
-    if Routine = nil then
-    begin
-      Exit(False);
-    end;
-    Declared := False;
-    for Index := 0 to Routine.ChildCount - 1 do
-    begin
-      Section := Routine[Index];
-      if Section.Kind = TSyntaxKind.VarSection then
-      begin
-        for Inner := 0 to Section.ChildCount - 1 do
-        begin
-          for Name in SplitString(Section[Inner].Name, ',') do
-          begin
-            if SameText(Trim(Name), Target) then
-            begin
-              Declared := True;
-            end;
-          end;
-        end;
-      end;
-    end;
-    Body := Routine.FindChild(TSyntaxKind.Block);
-    if not Declared or (Body = nil) then
-    begin
-      Exit(False);
-    end;
-    Used := False;
-    Body.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        Result := not Used;
-        if (ANode.Kind = TSyntaxKind.Identifier) and (ANode.EndOffset <= ALoop.StartOffset) and
-          SameText(ANode.Name, Wanted) then
-        begin
-          Used := True;
-        end;
-      end);
-    Result := not Used;
-  end;
-
-  /// <summary>Text von AFrom bis ATo mit den Ersetzungen in AEdits (Offsets) darin.</summary>
-  function Rewrite(AFrom, ATo: Integer; const AReplaced: TArray<TSyntaxNode>; const ANew: string): string;
-  var
-    Index: Integer;
-  begin
-    Result := Copy(AContext.Text, AFrom + 1, ATo - AFrom);
-    for Index := High(AReplaced) downto 0 do
-    begin
-      if (AReplaced[Index].StartOffset >= AFrom) and (AReplaced[Index].EndOffset <= ATo) then
-      begin
-        Result := Copy(Result, 1, AReplaced[Index].StartOffset - AFrom) + ANew +
-          Copy(Result, AReplaced[Index].EndOffset - AFrom + 1, MaxInt);
-      end;
-    end;
-  end;
-
-  function OnOwnLine(AOffset: Integer): Boolean;
-  begin
-    Result := Trim(Copy(AContext.Text, LineStart(AOffset) + 1, AOffset - LineStart(AOffset))) = '';
-  end;
-
-  /// <summary>Korrektur: Länge vor der Schleife setzen, SetLength entfernen, A[High(A)] durch A[I] ersetzen.
-  /// Bleibt im begin … end nur eine Anweisung, entfällt der Block.</summary>
-  function CountFix(ALoop, AStatement: TSyntaxNode): TArray<TRuleFix>;
-  var
-    Body, Other: TSyntaxNode;
-    Edits: TArray<TRuleEdit>;
-    Replaced: TArray<TSyntaxNode>;
-    Safe: Boolean;
-    Start, Stop, Index, Remaining: Integer;
-    Wanted, Text: string;
-  begin
-    Result := nil;
-    Wanted := Target;
-    Text := AContext.Text;
-    Body := LoopBody(ALoop);
-    if (LoopIndex = '') or (Body = nil) or not FreshLocal(ALoop) or not WholeLines(AStatement, Start, Stop) then
-    begin
-      Exit;
-    end;
-    // Jede andere Stelle mit A im Rumpf muss A[High(A)] bzw. A[Length(A) - 1] sein; Sprünge verkürzen das Array.
-    Safe := True;
-    Replaced := nil;
-    Body.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        Result := Safe and (ANode <> AStatement);
-        if not Result then
-        begin
-          Exit;
-        end;
-        if (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount = 2) and
-          (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, Wanted) and
-          IsLastIndex(Text, ANode[1], Wanted) then
-        begin
-          Replaced := Replaced + [ANode[1]];
-          Exit(False);
-        end;
-        if ((ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, Wanted)) or
-          ((ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.CallStatement]) and
-          MatchText(ANode.Name, ['Break', 'Continue', 'Exit'])) or (ANode.Kind = TSyntaxKind.GotoStatement) then
-        begin
-          Safe := False;
-        end;
-      end);
-    if not Safe or (Replaced = nil) then
-    begin
-      Exit;
-    end;
-    Edits := [TRuleEdit.Create(Range(LineStart(ALoop.StartOffset), LineStart(ALoop.StartOffset)),
-      Indent(ALoop.StartOffset) + Format('SetLength(%s, %s);', [Target, Count]) + TTextLines.LineBreakOf(AContext.Text))];
-    Remaining := 0;
-    Other := nil;
-    if Body.Kind = TSyntaxKind.Block then
-    begin
-      for Index := 0 to Body.ChildCount - 1 do
-      begin
-        if Body[Index] <> AStatement then
-        begin
-          Inc(Remaining);
-          Other := Body[Index];
-        end;
-      end;
-    end;
-    if (Remaining = 1) and OnOwnLine(Body.StartOffset) and OnOwnLine(Body.EndOffset - 3) and
-      OnOwnLine(Other.StartOffset) and (Other.StartOffset > AStatement.StartOffset) then
-    begin
-      // Die Anweisung steht schon zwei Zeichen tiefer als begin, also dort, wo sie ohne Block hingehört.
-      Edits := Edits + [TRuleEdit.Create(Range(LineStart(Body.StartOffset), Body.EndOffset),
-        Rewrite(LineStart(Other.StartOffset), Other.EndOffset, Replaced, LoopIndex))];
-    end
-    else
-    begin
-      Edits := Edits + [TRuleEdit.Create(Range(Start, Stop), '')];
-      for Index := 0 to High(Replaced) do
-      begin
-        Edits := Edits + [TRuleEdit.Create(Range(Replaced[Index].StartOffset, Replaced[Index].EndOffset), LoopIndex)];
-      end;
-    end;
-    Result := [TRuleFix.Create(Format('Länge von %s vor der Schleife setzen', [Target]), Edits)];
-  end;
-
-begin
-  if AContext.Tree = nil then
-  begin
-    Exit;
-  end;
-  // Vorfilter: ohne SetLength keine Arbeit.
-  if not ContainsText(AContext.Text, 'SetLength') then
-  begin
-    Exit;
-  end;
-  Calls := nil;
-  AContext.Tree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      Result := True;
-      if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
-        (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'SetLength') and (ANode[0].ChildCount = 3) then
-      begin
-        Calls := Calls + [ANode];
-      end;
-    end);
-  if Calls = nil then
-  begin
-    Exit;
-  end;
-  Cache := TRuleDerived.Open(AContext);
-  ArrayTypes := DynamicArrayTypes(AContext.Text, AContext.Tree.Root);
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
-  try
-    for Statement in Calls do
-    begin
-      Call := Statement[0];
-      if Call[1].Kind <> TSyntaxKind.Identifier then
-      begin
-        Continue;
-      end;
-      Target := Call[1].Name;
-      Loop := EnclosingLoop(Statement);
-      if (Loop = nil) or not IsGrowth(AContext.Text, Call[2], Target) then
-      begin
-        Continue;
-      end;
-      TypeText := Types.DeclaredType(Target, Call[1].StartPos);
-      if (TypeText = '') and SameText(Target, 'Result') then
-      begin
-        TypeText := ResultType(AContext.Text, Statement);
-      end;
-      if not IsDynamicArrayType(TypeText, ArrayTypes) then
-      begin
-        Continue;
-      end;
-      Count := '';
-      LoopIndex := '';
-      if RunsEveryIteration(Loop, Statement) then
-      begin
-        Count := ForCount(AContext.Text, Loop, LoopIndex);
-      end;
-      if Count <> '' then
-      begin
-        Fixes := CountFix(Loop, Statement);
-        AReport.Add(Range(Statement.StartOffset, Statement.EndOffset), Format('SetLength in der Schleife kopiert ' +
-          '%s bei jedem Durchlauf; die Anzahl %s ist vorher bekannt.', [Target, Count]), Fixes);
-      end
-      else
-      begin
-        AReport.Add(Range(Statement.StartOffset, Statement.EndOffset), Format('SetLength in der Schleife kopiert ' +
-          '%s bei jedem Durchlauf; die Länge vor der Schleife setzen oder die Werte in einer TList<T> sammeln.',
-          [Target]));
-      end;
-    end;
-  finally
-    Types.Free;
+    Result := Result.Parent;
   end;
 end;
 
-{ TManagedParamWithoutConstRule }
-
-const
-  ManagedParamRuleId = 'managed-param-without-const';
-  StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
-    'UTF8String', 'ShortString');
-  KnownInterfaces: array[0..3] of string = ('IInterface', 'IUnknown', 'IDispatch', 'IInvokable');
-  /// <summary>Direktiven, bei denen die Signatur von außen vorgegeben ist (Vorfahr, Nachfahren, Aufrufer).</summary>
-  FixedSignatureDirectives: array[0..10] of string = ('virtual', 'dynamic', 'abstract', 'message', 'stdcall',
-    'cdecl', 'safecall', 'pascal', 'register', 'external', 'export');
-
-type
-  TSyntaxKinds = set of TSyntaxKind;
-
-{$SCOPEDENUMS ON}
-  /// <summary>Was eine Wertübergabe kostet.</summary>
-  TParamCost = (RefCount, Copy);
-
-  /// <summary>Wie die Routine einen Parameter benutzt.</summary>
-  TParamAccess = (Read, Modified, Undecided);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Ein Wertparameter, der für const in Frage kommt.</summary>
-  TParamCandidate = record
-    Name: string;
-    Cost: TParamCost;
-    /// <summary>Strings, Records, Arrays: Zuweisungen an Teile ändern den Wert (Interfaces: nur das Objekt).
-    /// </summary>
-    PartsAreValue: Boolean;
-    /// <summary>Feldnamen bei Records der Datei; andere Mitglieder (Methoden, Properties) können ändern.</summary>
-    Fields: TArray<string>;
-    IsRecord: Boolean;
-    /// <summary>Parameterknoten (Gruppe) und Stelle des Namens darin.</summary>
-    Group: TSyntaxNode;
-    Position: Integer;
-  end;
-
-/// <summary>Name ohne Typparameter: TListe&lt;T&gt; wird TListe.</summary>
-function WithoutTypeParams(const AName: string): string;
+/// <summary>Deklariert der var-Abschnitt ASection den Namen AName?</summary>
+function SectionDeclares(ASection: TSyntaxNode; const AName: string): Boolean;
 var
-  Index, Depth: Integer;
+  mIndex: Integer;
+  mName: string;
 begin
-  Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    if AName[Index] = '<' then
+    for mName in SplitString(ASection[mIndex].Name, ',') do
     begin
-      Inc(Depth);
-    end
-    else if AName[Index] = '>' then
-    begin
-      Dec(Depth);
-    end
-    else if Depth = 0 then
-    begin
-      Result := Result + AName[Index];
-    end;
-  end;
-end;
-
-/// <summary>Quelltext ohne Leerraum, klein geschrieben; für den Vergleich von Parameterlisten.</summary>
-function Squeezed(const AText: string): string;
-var
-  Index: Integer;
-begin
-  Result := '';
-  for Index := 1 to Length(AText) do
-  begin
-    if AText[Index] > ' ' then
-    begin
-      Result := Result + AText[Index];
-    end;
-  end;
-  Result := LowerCase(Result);
-end;
-
-function ParamsText(const AText: string; AHeader: TSyntaxNode): string;
-var
-  Params: TSyntaxNode;
-begin
-  Result := '';
-  Params := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Params <> nil then
-  begin
-    Result := Squeezed(NodeText(AText, Params));
-  end;
-end;
-
-/// <summary>Knoten der Arten AKinds unter ARoot in Baumreihenfolge; Teilbäume der Arten ASkip werden übergangen.
-/// </summary>
-function NodesOf(ARoot: TSyntaxNode; const AKinds, ASkip: TSyntaxKinds): TArray<TSyntaxNode>;
-var
-  Found: TArray<TSyntaxNode>;
-begin
-  Found := nil;
-  ARoot.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      if ANode.Kind in AKinds then
-      begin
-        Found := Found + [ANode];
-      end;
-      Result := (ANode = ARoot) or not (ANode.Kind in ASkip);
-    end);
-  Result := Found;
-end;
-
-/// <summary>Kopf der Deklaration zum Rumpf ARoutine: die Methode in ihrer Klasse bzw. die Routine im interface
-/// oder als forward, mit gleicher Parameterliste. nil ohne eigene Deklaration. AFound False, wenn eine Methode
-/// ihre Klasse nicht findet (dann ist nichts sicher). AVisibility: Abschnitt in der Klasse ('' = ohne Angabe);
-/// AClass: Typknoten der Klasse bzw. nil.</summary>
-function DeclarationOf(const AText: string; ARoot, ARoutine: TSyntaxNode; out AFound: Boolean;
-  out AVisibility: string; out AClass: TSyntaxNode): TSyntaxNode;
-var
-  Header, Container, Member: TSyntaxNode;
-  TypeName, Name, Params, Section: string;
-  Candidates: TArray<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index, Matches: Integer;
-begin
-  Result := nil;
-  AFound := True;
-  AVisibility := '';
-  AClass := nil;
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Header = nil) or ((ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl)) then
-  begin
-    Exit;
-  end;
-  Name := Header.Name;
-  TypeName := '';
-  if Pos('.', Name) > 0 then
-  begin
-    TypeName := WithoutTypeParams(Copy(Name, 1, LastDelimiter('.', Name) - 1));
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  end;
-  Params := ParamsText(AText, Header);
-  Matches := 0;
-  if TypeName <> '' then
-  begin
-    for Node in NodesOf(ARoot, [TSyntaxKind.TypeDecl], [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]) do
-    begin
-      if SameText(WithoutTypeParams(Node.Name), TypeName) and (Node.ChildCount > 0) then
-      begin
-        Container := Node[Node.ChildCount - 1];
-        Section := '';
-        for Index := 0 to Container.ChildCount - 1 do
-        begin
-          Member := Container[Index];
-          if Member.Kind = TSyntaxKind.Visibility then
-          begin
-            Section := LowerCase(Member.Name);
-          end
-          else if (Member.Kind = TSyntaxKind.RoutineHeader) and SameText(Member.Name, Name) then
-          begin
-            Inc(Matches);
-            if (Params = '') or (ParamsText(AText, Member) = Params) then
-            begin
-              Result := Member;
-              AVisibility := Section;
-              AClass := Container;
-            end;
-          end;
-        end;
-      end;
-    end;
-    // Ohne Parameterliste im Rumpf ist die Überladung nicht eindeutig.
-    AFound := (Result <> nil) and ((Params <> '') or (Matches = 1));
-    if not AFound then
-    begin
-      Result := nil;
-    end;
-    Exit;
-  end;
-  Candidates := NodesOf(ARoot, [TSyntaxKind.RoutineDecl], [TSyntaxKind.Block, TSyntaxKind.RoutineDecl,
-    TSyntaxKind.TypeDecl]);
-  for Node in Candidates do
-  begin
-    if (Node <> ARoutine) and (Node.FindChild(TSyntaxKind.Block) = nil) and (Node.ChildCount > 0) and
-      (Node[0].Kind = TSyntaxKind.RoutineHeader) and SameText(Node[0].Name, Name) and
-      (Node[0].StartOffset < Header.StartOffset) then
-    begin
-      Inc(Matches);
-      if (Params = '') or (ParamsText(AText, Node[0]) = Params) then
-      begin
-        Result := Node[0];
-      end;
-    end;
-  end;
-  if (Result <> nil) and (Params = '') and (Matches > 1) then
-  begin
-    AFound := False;
-    Result := nil;
-  end;
-end;
-
-function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-var
-  Index: Integer;
-begin
-  if AHeader <> nil then
-  begin
-    for Index := 0 to AHeader.ChildCount - 1 do
-    begin
-      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+      if SameText(Trim(mName), AName) then
       begin
         Exit(True);
       end;
@@ -1470,622 +1052,414 @@ begin
   Result := False;
 end;
 
-function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
-  ADepth: Integer): Integer; forward;
-
-/// <summary>Größe eines Typs in Byte als Untergrenze (Win64, ohne Ausrichtung); -1 = unbekannt. ARecords: Records
-/// der Datei nach Namen (klein); ADepth schützt vor Zyklen.</summary>
-function TypeSize(const AText, ATypeName: string; const ARecords: TDictionary<string, TSyntaxNode>;
-  ADepth: Integer): Integer;
-const
-  Sizes: array[0..30] of string = ('Byte=1', 'Boolean=1', 'ByteBool=1', 'AnsiChar=1', 'ShortInt=1', 'Int8=1',
-    'UInt8=1', 'Word=2', 'SmallInt=2', 'Char=2', 'WideChar=2', 'WordBool=2', 'Int16=2', 'UInt16=2', 'Integer=4',
-    'Cardinal=4', 'LongInt=4', 'LongWord=4', 'Single=4', 'LongBool=4', 'Int32=4', 'UInt32=4', 'Int64=8',
-    'UInt64=8', 'Double=8', 'Currency=8', 'TDateTime=8', 'Comp=8', 'Extended=8', 'TDate=8', 'TTime=8');
-  Pointers: array[0..7] of string = ('Pointer', 'NativeInt', 'NativeUInt', 'string', 'UnicodeString', 'TObject',
-    'PChar', 'IInterface');
+/// <summary>Ist AName eine lokale Variable der Routine ARoutine?</summary>
+function DeclaresLocal(ARoutine: TSyntaxNode; const AName: string): Boolean;
 var
-  Item: string;
-  Node: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Result := -1;
-  for Item in Sizes do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    if SameText(Copy(Item, 1, Pos('=', Item) - 1), ATypeName) then
+    if (ARoutine[mIndex].Kind = TSyntaxKind.VarSection) and SectionDeclares(ARoutine[mIndex], AName) then
     begin
-      Exit(StrToInt(Copy(Item, Pos('=', Item) + 1, MaxInt)));
+      Exit(True);
     end;
   end;
-  if MatchText(ATypeName, Pointers) or StartsText('TArray<', ATypeName) then
-  begin
-    Exit(8);
-  end;
-  if (ADepth < 4) and ARecords.TryGetValue(LowerCase(ATypeName), Node) then
-  begin
-    Result := RecordSize(AText, Node, ARecords, ADepth + 1);
-  end;
+  Result := False;
 end;
 
-/// <summary>Summe der Feldgrößen eines Records der Datei; -1, wenn ein Feld unbekannt ist.</summary>
-function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
-  ADepth: Integer): Integer;
+/// <summary>Kommt AName in ABody vor der Stelle AOffset vor?</summary>
+function UsedBefore(ABody: TSyntaxNode; AOffset: Integer; const AName: string): Boolean;
 var
-  Index, Size, Count, LowBound, HighBound: Integer;
-  Field, TypeNode, Bounds: TSyntaxNode;
+  mUsed: Boolean;
+  mName: string;
 begin
-  Result := 0;
-  for Index := 0 to ARecord.ChildCount - 1 do
-  begin
-    Field := ARecord[Index];
-    if Field.Kind = TSyntaxKind.VariantPart then
+  mUsed := False;
+  mName := AName;
+  ABody.Walk(
+    function(ANode: TSyntaxNode): Boolean
     begin
-      Exit(-1);
-    end;
-    if Field.Kind <> TSyntaxKind.Field then
-    begin
-      Continue;
-    end;
-    if Field.ChildCount = 0 then
-    begin
-      Exit(-1);
-    end;
-    TypeNode := Field[0];
-    Count := 1;
-    if TypeNode.Kind = TSyntaxKind.ArrayType then
-    begin
-      // array[A..B] of T mit Zahlen als Grenzen
-      Bounds := TypeNode.FindChild(TSyntaxKind.SubrangeType);
-      if (Bounds = nil) or (Bounds.ChildCount <> 2) or not TryStrToInt(Bounds[0].Name, LowBound) or
-        not TryStrToInt(Bounds[1].Name, HighBound) or
-        (TypeNode[TypeNode.ChildCount - 1].Kind <> TSyntaxKind.TypeReference) then
+      Result := not mUsed;
+      if (ANode.Kind = TSyntaxKind.Identifier) and (ANode.EndOffset <= AOffset) and SameText(ANode.Name, mName) then
       begin
-        Exit(-1);
+        mUsed := True;
       end;
-      Count := HighBound - LowBound + 1;
-      TypeNode := TypeNode[TypeNode.ChildCount - 1];
-    end;
-    if TypeNode.Kind <> TSyntaxKind.TypeReference then
-    begin
-      Exit(-1);
-    end;
-    Size := TypeSize(AText, Trim(NodeText(AText, TypeNode)), ARecords, ADepth);
-    if Size < 0 then
-    begin
-      Exit(-1);
-    end;
-    Inc(Result, Size * Count * Length(Field.Name.Split([','])));
-  end;
+    end);
+  Result := mUsed;
 end;
 
-/// <summary>Feldnamen eines Records (Gruppen aufgeteilt).</summary>
-function RecordFields(ARecord: TSyntaxNode): TArray<string>;
+/// <summary>A[High(A)] bzw. A[Length(A) - 1] für A = ATarget?</summary>
+function IsLastElement(const AText: string; ANode: TSyntaxNode; const ATarget: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount = 2) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, ATarget) and
+    IsLastIndex(AText, ANode[1], ATarget);
+end;
+
+/// <summary>Andere Verwendung von ATarget oder ein Sprung (Break, Continue, Exit, goto), der das Array
+/// verkürzt?</summary>
+function SpoilsCount(ANode: TSyntaxNode; const ATarget: string): Boolean;
+begin
+  Result := ((ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, ATarget)) or
+    ((ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.CallStatement]) and
+    MatchText(ANode.Name, ['Break', 'Continue', 'Exit'])) or (ANode.Kind = TSyntaxKind.GotoStatement);
+end;
+
+/// <summary>Einzige Anweisung im Block ABody außer AStatement; nil, wenn es nicht genau eine gibt.</summary>
+function SoleOther(ABody, AStatement: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
-  Name: string;
+  mIndex, mRemaining: Integer;
 begin
   Result := nil;
-  for Index := 0 to ARecord.ChildCount - 1 do
+  mRemaining := 0;
+  if ABody.Kind = TSyntaxKind.Block then
   begin
-    if ARecord[Index].Kind = TSyntaxKind.Field then
+    for mIndex := 0 to ABody.ChildCount - 1 do
     begin
-      for Name in ARecord[Index].Name.Split([',']) do
+      if ABody[mIndex] <> AStatement then
       begin
-        Result := Result + [Trim(Name)];
+        Inc(mRemaining);
+        Result := ABody[mIndex];
       end;
     end;
   end;
+  if mRemaining <> 1 then
+  begin
+    Result := nil;
+  end;
 end;
 
-/// <summary>Wie ANode (Bezeichner des Parameters) den Parameter benutzt. Undecided mit ACall: Argument eines
-/// Aufrufs, dessen Signatur ALookup nicht kennt; AArgument ist die Stelle (ab 0).</summary>
-function ParamAccess(ANode: TSyntaxNode; const ACandidate: TParamCandidate; const ALookup: TFlowSignatureLookup;
-  out ACall: TSyntaxNode; out AArgument: Integer): TParamAccess;
+/// <summary>Alle SetLength(A, …)-Anweisungen der Datei.</summary>
+function SetLengthCalls(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Node, Top, Parent: TSyntaxNode;
-  Index: Integer;
-  Mode: TFlowArgumentMode;
+  mCalls: TArray<TSyntaxNode>;
 begin
-  ACall := nil;
-  AArgument := -1;
-  Node := ANode.Parent;
-  while (Node <> nil) and (Node.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    // Anonyme Methoden fangen den Parameter ein; with-Ausdrücke binden ihn für den Rumpf.
-    if Node.Kind = TSyntaxKind.AnonymousMethod then
+  mCalls := nil;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
     begin
-      Exit(TParamAccess.Undecided);
-    end;
-    if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount > 1) and
-      (ANode.StartOffset < Node[Node.ChildCount - 1].StartOffset) then
-    begin
-      Exit(TParamAccess.Undecided);
-    end;
-    Node := Node.Parent;
-  end;
-  Parent := ANode.Parent;
-  if Parent.Kind = TSyntaxKind.AddressOf then
-  begin
-    Exit(TParamAccess.Modified);
-  end;
-  // Bei Records nur Felder; Methoden und Properties können den Wert ändern.
-  if ACandidate.IsRecord and (Parent.Kind = TSyntaxKind.MemberAccess) and (Parent[0] = ANode) and
-    not MatchText(Parent.Name, ACandidate.Fields) then
-  begin
-    Exit(TParamAccess.Modified);
-  end;
-  Top := ANode;
-  while (Top.Parent <> nil) and (Top.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-    TSyntaxKind.Dereference]) and (Top.Parent[0] = Top) do
-  begin
-    Top := Top.Parent;
-  end;
-  Parent := Top.Parent;
-  Result := TParamAccess.Read;
-  if Parent = nil then
-  begin
-    Exit;
-  end;
-  if (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent[0] = Top) then
-  begin
-    if (Top = ANode) or ACandidate.PartsAreValue then
-    begin
-      Result := TParamAccess.Modified;
-    end;
-    Exit;
-  end;
-  // Methode eines Feldes: Kunde.Adresse.Leeren
-  if ACandidate.IsRecord and (Top <> ANode) and ((Parent.Kind = TSyntaxKind.CallStatement) or
-    ((Parent.Kind = TSyntaxKind.Call) and (Parent[0] = Top))) then
-  begin
-    Exit(TParamAccess.Modified);
-  end;
-  if (Parent.Kind = TSyntaxKind.Call) and (Parent[0] <> Top) then
-  begin
-    Index := 0;
-    while (Index < Parent.ChildCount) and (Parent[Index] <> Top) do
-    begin
-      Inc(Index);
-    end;
-    Mode := TFlowArgumentMode.Unknown;
-    if Assigned(ALookup) then
-    begin
-      Mode := ALookup(Parent, Index - 1);
-    end;
-    case Mode of
-      TFlowArgumentMode.Value:
-        Result := TParamAccess.Read;
-      TFlowArgumentMode.Reference, TFlowArgumentMode.Output:
-        if (Top = ANode) or ACandidate.PartsAreValue then
-        begin
-          Result := TParamAccess.Modified;
-        end;
-    else
-      Result := TParamAccess.Undecided;
-      ACall := Parent;
-      AArgument := Index - 1;
-      // Ein Teil (A[I], Intf.Wert) ändert an einem var-Parameter den Wert nicht, wenn Teile keine Werte sind.
-      if (Top <> ANode) and not ACandidate.PartsAreValue then
+      Result := True;
+      if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
+        (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'SetLength') and (ANode[0].ChildCount = 3) then
       begin
-        Result := TParamAccess.Read;
+        mCalls := mCalls + [ANode];
       end;
-    end;
-  end;
+    end);
+  Result := mCalls;
 end;
 
-function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
+type
+  /// <summary>Prüft eine Datei auf setlength-in-loop.</summary>
+  TSetLengthScan = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FCache: IRuleDerivedCache;
+    FTypes: TDeclaredTypes;
+    FArrayTypes: TArray<string>;
+    /// <summary>Array der gerade geprüften Anweisung, Anzahl der Durchläufe und Index des I-ten Elements.</summary>
+    FTarget: string;
+    FCount: string;
+    FLoopIndex: string;
+    function Range(AStart, AEnd: Integer): TTextRange;
+    function LineStart(AOffset: Integer): Integer;
+    function Indent(AOffset: Integer): string;
+    function SkipBlanks(AOffset: Integer): Integer;
+    function WholeLines(AStatement: TSyntaxNode; out AStart, AEnd: Integer): Boolean;
+    function FreshLocal(ALoop: TSyntaxNode): Boolean;
+    function Rewrite(AFrom, ATo: Integer; const AReplaced: TArray<TSyntaxNode>; const ANew: string): string;
+    function OnOwnLine(AOffset: Integer): Boolean;
+    function LastIndexUses(ABody, AStatement: TSyntaxNode; out AReplaced: TArray<TSyntaxNode>): Boolean;
+    function StatementEdits(AStart, AStop: Integer; const AReplaced: TArray<TSyntaxNode>): TArray<TRuleEdit>;
+    function CountFix(ALoop, AStatement: TSyntaxNode): TArray<TRuleFix>;
+    function TargetType(AStatement, ATargetNode: TSyntaxNode): string;
+    procedure ReportCall(ALoop, AStatement: TSyntaxNode);
+    procedure CheckCall(AStatement: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TSetLengthScan }
+
+constructor TSetLengthScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  Result := TRuleDescriptor.Create(ManagedParamRuleId, TRuleSeverity.Hint,
-    'String-, Interface-, Array- oder Record-Parameter ohne const wird nicht verändert', True);
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
 end;
 
-procedure TManagedParamWithoutConstRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+function TSetLengthScan.Range(AStart, AEnd: Integer): TTextRange;
+begin
+  Result := TRuleDerived.OffsetRange(FCache, FContext, AStart, AEnd);
+end;
+
+function TSetLengthScan.LineStart(AOffset: Integer): Integer;
+begin
+  Result := AOffset;
+  while (Result > 0) and not CharInSet(FContext.Text[Result], [#10, #13]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+function TSetLengthScan.Indent(AOffset: Integer): string;
 var
-  Cache: IRuleDerivedCache;
-  Lookup: TFlowSignatureLookup;
-  Resolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  Records: TDictionary<string, TSyntaxNode>;
-  Interfaces, DynArrays, Exported: TArray<string>;
-  MinRecordSize: Integer;
-  IgnoreOverrides: Boolean;
-  Root: TSyntaxNode;
-
-  function Range(AStart, AEnd: Integer): TTextRange;
+  mStart, mIndex: Integer;
+begin
+  mStart := LineStart(AOffset);
+  mIndex := mStart;
+  while (mIndex < AOffset) and CharInSet(FContext.Text[mIndex + 1], [' ', #9]) do
   begin
-    Result := TRuleDerived.OffsetRange(Cache, AContext, AStart, AEnd);
+    Inc(mIndex);
   end;
+  Result := Copy(FContext.Text, mStart + 1, mIndex - mStart);
+end;
 
-  /// <summary>Übergabeart über die Namensauflösung (Methoden, Routinen anderer Units, Typumwandlungen).</summary>
-  function ResolvedMode(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
+/// <summary>Stelle nach Leerzeichen und Tabs ab AOffset.</summary>
+function TSetLengthScan.SkipBlanks(AOffset: Integer): Integer;
+begin
+  Result := AOffset;
+  while (Result < Length(FContext.Text)) and CharInSet(FContext.Text[Result + 1], [' ', #9]) do
   begin
-    if (Resolver = nil) and (AContext.Index <> nil) then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      Resolver := TRuleDerived.Resolver(mCache, AContext);
-    end;
-    Result := TResolvedSignatures.Mode(Resolver, AContext.Tree, AContext.RelativePath, ACall, AArgument);
+    Inc(Result);
   end;
+end;
 
-  function CandidateOf(AGroup: TSyntaxNode; APosition: Integer; out ACandidate: TParamCandidate): Boolean;
-  var
-    TypeText: string;
-    Node: TSyntaxNode;
-    Size: Integer;
+/// <summary>Bereich der ganzen Zeile(n) von AStatement samt folgendem ; und Zeilenende; False, wenn mehr in der
+/// Zeile steht.</summary>
+function TSetLengthScan.WholeLines(AStatement: TSyntaxNode; out AStart, AEnd: Integer): Boolean;
+begin
+  AStart := LineStart(AStatement.StartOffset);
+  Result := Trim(Copy(FContext.Text, AStart + 1, AStatement.StartOffset - AStart)) = '';
+  AEnd := SkipBlanks(AStatement.EndOffset);
+  if (AEnd < Length(FContext.Text)) and (FContext.Text[AEnd + 1] = ';') then
+  begin
+    Inc(AEnd);
+  end;
+  AEnd := SkipBlanks(AEnd);
+  if (AEnd < Length(FContext.Text)) and (FContext.Text[AEnd + 1] = #13) then
+  begin
+    Inc(AEnd);
+  end;
+  if (AEnd < Length(FContext.Text)) and (FContext.Text[AEnd + 1] = #10) then
+  begin
+    Inc(AEnd);
+  end
+  else
   begin
     Result := False;
-    ACandidate := Default(TParamCandidate);
-    if (AGroup.Modifier <> TParameterModifier.None) or (AGroup.ChildCount = 0) then
-    begin
-      Exit;
-    end;
-    TypeText := Trim(NodeText(AContext.Text, AGroup[0]));
-    ACandidate.Name := Trim(AGroup.Name.Split([','])[APosition]);
-    ACandidate.Group := AGroup;
-    ACandidate.Position := APosition;
-    if MatchText(TypeText, StringTypes) then
-    begin
-      ACandidate.PartsAreValue := True;
-      if SameText(TypeText, 'ShortString') then
-      begin
-        ACandidate.Cost := TParamCost.Copy;
-      end;
-      Exit(True);
-    end;
-    if MatchText(TypeText, Interfaces) or MatchText(TypeText, KnownInterfaces) then
-    begin
-      Exit(True);
-    end;
-    if StartsText('array of ', TypeText) then
-    begin
-      if SameText(Trim(Copy(TypeText, 10, MaxInt)), 'const') then
-      begin
-        Exit;
-      end;
-      ACandidate.Cost := TParamCost.Copy;
-      ACandidate.PartsAreValue := True;
-      Exit(True);
-    end;
-    // Elemente eines const-Arrays lassen sich zwar schreiben, das ändert aber den Wert des Aufrufers.
-    if IsDynamicArrayType(TypeText, DynArrays) then
-    begin
-      ACandidate.PartsAreValue := True;
-      Exit(True);
-    end;
-    if Records.TryGetValue(LowerCase(TypeText), Node) then
-    begin
-      Size := RecordSize(AContext.Text, Node, Records, 0);
-      if (Size >= 0) and (Size >= MinRecordSize) then
-      begin
-        ACandidate.Cost := TParamCost.Copy;
-        ACandidate.PartsAreValue := True;
-        ACandidate.IsRecord := True;
-        ACandidate.Fields := RecordFields(Node);
-        Result := True;
-      end;
-    end;
   end;
+end;
 
-  /// <summary>Routine wird als Wert benutzt (Methodenzeiger, @Routine, Formular, exports).</summary>
-  function UsedAsValue(const AName: string): Boolean;
-  var
-    Node: TSyntaxNode;
-  begin
-    Result := MatchText(AName, Exported) or
-      ((AContext.FormText <> '') and TRegEx.IsMatch(AContext.FormText, '\b' + AName + '\b', [roIgnoreCase]));
-    if Result then
-    begin
-      Exit;
-    end;
-    for Node in NodesOf(Root, [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess], []) do
-    begin
-      if SameText(Node.Name, AName) and (Node.Parent <> nil) and not ((Node.Parent.Kind = TSyntaxKind.Call) and
-        (Node.Parent[0] = Node)) and (Node.Parent.Kind <> TSyntaxKind.CallStatement) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  /// <summary>Text der Gruppe mit const vor den Namen in AConst (Stellen); Gruppen werden bei Bedarf geteilt.
-  /// </summary>
-  function GroupEdit(AGroup: TSyntaxNode; const AConst: TArray<Boolean>): TRuleEdit;
-  var
-    Names: TArray<string>;
-    Text, TypeText, Part: string;
-    Index: Integer;
-    All: Boolean;
-  begin
-    Names := AGroup.Name.Split([',']);
-    All := True;
-    for Index := 0 to High(AConst) do
-    begin
-      All := All and AConst[Index];
-    end;
-    if All then
-    begin
-      Exit(TRuleEdit.Create(Range(AGroup.StartOffset, AGroup.StartOffset), 'const '));
-    end;
-    Text := NodeText(AContext.Text, AGroup);
-    TypeText := Trim(Copy(Text, Pos(':', Text) + 1, MaxInt));
-    Text := '';
-    for Index := 0 to High(Names) do
-    begin
-      Part := Trim(Names[Index]) + ': ' + TypeText;
-      if AConst[Index] then
-      begin
-        Part := 'const ' + Part;
-      end;
-      if Text <> '' then
-      begin
-        Text := Text + '; ';
-      end;
-      Text := Text + Part;
-    end;
-    Result := TRuleEdit.Create(Range(AGroup.StartOffset, AGroup.EndOffset), Text);
-  end;
-
-  procedure CheckRoutine(ARoutine: TSyntaxNode);
-  var
-    Header, Declaration, ClassNode, Params, DeclParams, Group, Node, Call: TSyntaxNode;
-    Visibility, Name, ShortName, Subject, Costs: string;
-    Found, IsOverride, HasRefCount, HasCopy: Boolean;
-    Candidates, Unchanged: TArray<TParamCandidate>;
-    Candidate: TParamCandidate;
-    Usages, Declared: TArray<TSyntaxNode>;
-    Index, Position, Argument: Integer;
-    Access: TParamAccess;
-    Names: TArray<string>;
-    Marks: TArray<Boolean>;
-    Edits: TArray<TRuleEdit>;
-  begin
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header = nil) or (NodesOf(ARoutine, [TSyntaxKind.AsmBlock, TSyntaxKind.Error], []) <> nil) or
-      ContainsText(NodeText(AContext.Text, Header), '{$') then
-    begin
-      Exit;
-    end;
-    Declaration := DeclarationOf(AContext.Text, Root, ARoutine, Found, Visibility, ClassNode);
-    if not Found then
-    begin
-      Exit;
-    end;
-    IsOverride := HasDirective(Header, ['override']) or HasDirective(Declaration, ['override']);
-    if HasDirective(Header, FixedSignatureDirectives) or HasDirective(Declaration, FixedSignatureDirectives) or
-      (IsOverride and IgnoreOverrides) then
-    begin
-      Exit;
-    end;
-    if ClassNode <> nil then
-    begin
-      // Interfaces geben die Signatur vor; published (auch ohne Abschnitt bei Vorfahren) heißt Formular-Ereignis.
-      if (ClassNode.Kind = TSyntaxKind.ClassType) and ((Length(NodesOf(ClassNode, [TSyntaxKind.TypeReference],
-        [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl])) > 1) or
-        (Visibility = 'published') or ((Visibility = '') and (ClassNode.FindChild(TSyntaxKind.TypeReference) <> nil)))
-        then
-      begin
-        Exit;
-      end;
-    end;
-    Name := Header.Name;
-    ShortName := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-    if UsedAsValue(ShortName) then
-    begin
-      Exit;
-    end;
-    // Bare inherited reicht alle Parameter weiter.
-    for Node in NodesOf(ARoutine, [TSyntaxKind.InheritedExpr], [TSyntaxKind.RoutineHeader]) do
-    begin
-      if (Node.Name = '') and (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.CallStatement) then
-      begin
-        Exit;
-      end;
-    end;
-    Params := Header.FindChild(TSyntaxKind.Parameters);
-    DeclParams := nil;
-    if Declaration <> nil then
-    begin
-      DeclParams := Declaration.FindChild(TSyntaxKind.Parameters);
-    end;
-    if Params = nil then
-    begin
-      Params := DeclParams;
-    end;
-    if Params = nil then
-    begin
-      Exit;
-    end;
-    Candidates := nil;
-    for Index := 0 to Params.ChildCount - 1 do
-    begin
-      Group := Params[Index];
-      if Group.Kind <> TSyntaxKind.Parameter then
-      begin
-        Continue;
-      end;
-      for Position := 0 to High(Group.Name.Split([','])) do
-      begin
-        if CandidateOf(Group, Position, Candidate) then
-        begin
-          Candidates := Candidates + [Candidate];
-        end;
-      end;
-    end;
-    if Candidates = nil then
-    begin
-      Exit;
-    end;
-    Usages := nil;
-    Declared := nil;
-    for Index := 0 to ARoutine.ChildCount - 1 do
-    begin
-      if ARoutine[Index] <> Header then
-      begin
-        Usages := Usages + NodesOf(ARoutine[Index], [TSyntaxKind.Identifier], []);
-        Declared := Declared + NodesOf(ARoutine[Index], [TSyntaxKind.Parameter, TSyntaxKind.VarDecl,
-          TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.ForStatement,
-          TSyntaxKind.ForInStatement], []);
-      end;
-    end;
-    Unchanged := nil;
-    for Candidate in Candidates do
-    begin
-      Access := TParamAccess.Read;
-      // Gleichnamige Deklarationen darunter verdecken den Parameter; for-Variable heißt verändert.
-      for Node in Declared do
-      begin
-        if MatchText(Candidate.Name, Node.Name.Split([',', ' '])) then
-        begin
-          Access := TParamAccess.Modified;
-        end;
-      end;
-      for Node in Usages do
-      begin
-        if Access <> TParamAccess.Read then
-        begin
-          Break;
-        end;
-        if not SameText(Node.Name, Candidate.Name) then
-        begin
-          Continue;
-        end;
-        Access := ParamAccess(Node, Candidate, Lookup, Call, Argument);
-        if (Access = TParamAccess.Undecided) and (Call <> nil) then
-          case ResolvedMode(Call, Argument) of
-            TFlowArgumentMode.Value:
-              Access := TParamAccess.Read;
-            TFlowArgumentMode.Reference, TFlowArgumentMode.Output:
-              Access := TParamAccess.Modified;
-          end;
-      end;
-      if Access = TParamAccess.Read then
-      begin
-        Unchanged := Unchanged + [Candidate];
-      end;
-    end;
-    if Unchanged = nil then
-    begin
-      Exit;
-    end;
-    Names := nil;
-    HasRefCount := False;
-    HasCopy := False;
-    for Candidate in Unchanged do
-    begin
-      Names := Names + [Candidate.Name];
-      HasRefCount := HasRefCount or (Candidate.Cost = TParamCost.RefCount);
-      HasCopy := HasCopy or (Candidate.Cost = TParamCost.Copy);
-    end;
-    if Length(Names) = 1 then
-    begin
-      Subject := Names[0] + ' wird';
-    end
-    else
-    begin
-      Subject := string.Join(', ', Copy(Names, 0, Length(Names) - 1)) + ' und ' + Names[High(Names)] + ' werden';
-    end;
-    if HasRefCount and HasCopy then
-    begin
-      Costs := 'entfallen Referenzzählung und Kopie';
-    end
-    else if HasRefCount then
-    begin
-      Costs := 'entfällt die Referenzzählung';
-    end
-    else
-    begin
-      Costs := 'entfällt die Kopie';
-    end;
-    Edits := nil;
-    if not IsOverride then
-    begin
-      for Index := 0 to Params.ChildCount - 1 do
-      begin
-        Group := Params[Index];
-        Marks := nil;
-        SetLength(Marks, Length(Group.Name.Split([','])));
-        Found := False;
-        for Candidate in Unchanged do
-        begin
-          if Candidate.Group = Group then
-          begin
-            Marks[Candidate.Position] := True;
-            Found := True;
-          end;
-        end;
-        if not Found then
-        begin
-          Continue;
-        end;
-        if Params <> DeclParams then
-        begin
-          Edits := Edits + [GroupEdit(Group, Marks)];
-        end;
-        // Gleiche Parameterliste: die Gruppe steht an derselben Stelle.
-        if (DeclParams <> nil) and (Index < DeclParams.ChildCount) then
-        begin
-          Edits := Edits + [GroupEdit(DeclParams[Index], Marks)];
-        end;
-      end;
-    end;
-    if Edits <> nil then
-    begin
-      AReport.Add(Range(Params.StartOffset, Params.EndOffset), Format('%s nicht verändert; mit const %s.',
-        [Subject, Costs]), [TRuleFix.Create('const ergänzen', Edits)]);
-    end
-    else
-    begin
-      AReport.Add(Range(Params.StartOffset, Params.EndOffset), Format('%s nicht verändert; mit const %s ' +
-        '(override: die Signatur des Vorfahren mit ändern).', [Subject, Costs]));
-    end;
-  end;
-
+/// <summary>Lokale Variable FTarget der Routine um ALoop, die vor der Schleife nicht vorkommt?</summary>
+function TSetLengthScan.FreshLocal(ALoop: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
-  Routine: TSyntaxNode;
-  Name: string;
+  mRoutine, mBody: TSyntaxNode;
 begin
-  if AContext.Tree = nil then
+  mRoutine := EnclosingRoutine(ALoop);
+  if (mRoutine = nil) or not DeclaresLocal(mRoutine, FTarget) then
+  begin
+    Exit(False);
+  end;
+  mBody := mRoutine.FindChild(TSyntaxKind.Block);
+  Result := (mBody <> nil) and not UsedBefore(mBody, ALoop.StartOffset, FTarget);
+end;
+
+/// <summary>Text von AFrom bis ATo mit den Ersetzungen in AEdits (Offsets) darin.</summary>
+function TSetLengthScan.Rewrite(AFrom, ATo: Integer; const AReplaced: TArray<TSyntaxNode>; const ANew: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Copy(FContext.Text, AFrom + 1, ATo - AFrom);
+  for mIndex := High(AReplaced) downto 0 do
+  begin
+    if (AReplaced[mIndex].StartOffset >= AFrom) and (AReplaced[mIndex].EndOffset <= ATo) then
+    begin
+      Result := Copy(Result, 1, AReplaced[mIndex].StartOffset - AFrom) + ANew +
+        Copy(Result, AReplaced[mIndex].EndOffset - AFrom + 1, MaxInt);
+    end;
+  end;
+end;
+
+function TSetLengthScan.OnOwnLine(AOffset: Integer): Boolean;
+begin
+  Result := Trim(Copy(FContext.Text, LineStart(AOffset) + 1, AOffset - LineStart(AOffset))) = '';
+end;
+
+/// <summary>Jede andere Stelle mit FTarget im Rumpf muss A[High(A)] bzw. A[Length(A) - 1] sein; Sprünge verkürzen
+/// das Array. AReplaced: die Indexausdrücke dieser Stellen.</summary>
+function TSetLengthScan.LastIndexUses(ABody, AStatement: TSyntaxNode; out AReplaced: TArray<TSyntaxNode>): Boolean;
+var
+  mSafe: Boolean;
+  mReplaced: TArray<TSyntaxNode>;
+  mText, mTarget: string;
+begin
+  mSafe := True;
+  mReplaced := nil;
+  mText := FContext.Text;
+  mTarget := FTarget;
+  ABody.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := mSafe and (ANode <> AStatement);
+      if not Result then
+      begin
+        Exit;
+      end;
+      if IsLastElement(mText, ANode, mTarget) then
+      begin
+        mReplaced := mReplaced + [ANode[1]];
+        Exit(False);
+      end;
+      if SpoilsCount(ANode, mTarget) then
+      begin
+        mSafe := False;
+      end;
+    end);
+  AReplaced := mReplaced;
+  Result := mSafe and (mReplaced <> nil);
+end;
+
+/// <summary>SetLength-Zeilen AStart bis AStop entfernen, die Indexausdrücke durch FLoopIndex ersetzen.</summary>
+function TSetLengthScan.StatementEdits(AStart, AStop: Integer; const AReplaced: TArray<TSyntaxNode>): TArray<TRuleEdit>;
+var
+  mIndex: Integer;
+begin
+  Result := [TRuleEdit.Create(Range(AStart, AStop), '')];
+  for mIndex := 0 to High(AReplaced) do
+  begin
+    Result := Result + [TRuleEdit.Create(Range(AReplaced[mIndex].StartOffset, AReplaced[mIndex].EndOffset),
+      FLoopIndex)];
+  end;
+end;
+
+/// <summary>Korrektur: Länge vor der Schleife setzen, SetLength entfernen, A[High(A)] durch A[I] ersetzen.
+/// Bleibt im begin … end nur eine Anweisung, entfällt der Block.</summary>
+function TSetLengthScan.CountFix(ALoop, AStatement: TSyntaxNode): TArray<TRuleFix>;
+var
+  mBody, mOther: TSyntaxNode;
+  mEdits: TArray<TRuleEdit>;
+  mReplaced: TArray<TSyntaxNode>;
+  mStart, mStop: Integer;
+begin
+  Result := nil;
+  mBody := LoopBody(ALoop);
+  if (FLoopIndex = '') or (mBody = nil) or not FreshLocal(ALoop) or not WholeLines(AStatement, mStart, mStop) or
+    not LastIndexUses(mBody, AStatement, mReplaced) then
   begin
     Exit;
   end;
-  Root := AContext.Tree.Root;
-  MinRecordSize := TRuleOptions.Int(AContext.Options, 'minRecordSize', 16);
-  IgnoreOverrides := TRuleOptions.Bool(AContext.Options, 'ignoreOverrides', True);
-  Cache := TRuleDerived.Open(AContext);
-  Lookup := TRuleDerived.FlowSignatures(Cache, AContext);
-  DynArrays := DynamicArrayTypes(AContext.Text, Root);
-  Interfaces := nil;
-  Exported := nil;
-  Resolver := nil;
-  Records := TDictionary<string, TSyntaxNode>.Create;
+  mEdits := [TRuleEdit.Create(Range(LineStart(ALoop.StartOffset), LineStart(ALoop.StartOffset)),
+    Indent(ALoop.StartOffset) + Format('SetLength(%s, %s);', [FTarget, FCount]) +
+    TTextLines.LineBreakOf(FContext.Text))];
+  mOther := SoleOther(mBody, AStatement);
+  if (mOther <> nil) and OnOwnLine(mBody.StartOffset) and OnOwnLine(mBody.EndOffset - 3) and
+    OnOwnLine(mOther.StartOffset) and (mOther.StartOffset > AStatement.StartOffset) then
+  begin
+    // Die Anweisung steht schon zwei Zeichen tiefer als begin, also dort, wo sie ohne Block hingehört.
+    mEdits := mEdits + [TRuleEdit.Create(Range(LineStart(mBody.StartOffset), mBody.EndOffset),
+      Rewrite(LineStart(mOther.StartOffset), mOther.EndOffset, mReplaced, FLoopIndex))];
+  end
+  else
+  begin
+    mEdits := mEdits + StatementEdits(mStart, mStop, mReplaced);
+  end;
+  Result := [TRuleFix.Create(Format('Länge von %s vor der Schleife setzen', [FTarget]), mEdits)];
+end;
+
+/// <summary>Deklarierter Typ des Arrays bzw. Ergebnistyp bei Result.</summary>
+function TSetLengthScan.TargetType(AStatement, ATargetNode: TSyntaxNode): string;
+begin
+  Result := FTypes.DeclaredType(FTarget, ATargetNode.StartPos);
+  if (Result = '') and SameText(FTarget, 'Result') then
+  begin
+    Result := ResultType(FContext.Text, AStatement);
+  end;
+end;
+
+procedure TSetLengthScan.ReportCall(ALoop, AStatement: TSyntaxNode);
+begin
+  if FCount <> '' then
+  begin
+    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset), Format('SetLength in der Schleife kopiert ' +
+      '%s bei jedem Durchlauf; die Anzahl %s ist vorher bekannt.', [FTarget, FCount]), CountFix(ALoop, AStatement));
+  end
+  else
+  begin
+    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset), Format('SetLength in der Schleife kopiert ' +
+      '%s bei jedem Durchlauf; die Länge vor der Schleife setzen oder die Werte in einer TList<T> sammeln.',
+      [FTarget]));
+  end;
+end;
+
+procedure TSetLengthScan.CheckCall(AStatement: TSyntaxNode);
+var
+  mCall, mLoop: TSyntaxNode;
+begin
+  mCall := AStatement[0];
+  if mCall[1].Kind <> TSyntaxKind.Identifier then
+  begin
+    Exit;
+  end;
+  FTarget := mCall[1].Name;
+  mLoop := EnclosingLoop(AStatement);
+  if (mLoop = nil) or not IsGrowth(FContext.Text, mCall[2], FTarget) or
+    not TDynamicArrayTypes.IsDynamic(TargetType(AStatement, mCall[1]), FArrayTypes) then
+  begin
+    Exit;
+  end;
+  FCount := '';
+  FLoopIndex := '';
+  if RunsEveryIteration(mLoop, AStatement) then
+  begin
+    FCount := ForCount(FContext.Text, mLoop, FLoopIndex);
+  end;
+  ReportCall(mLoop, AStatement);
+end;
+
+procedure TSetLengthScan.Run;
+var
+  mCalls: TArray<TSyntaxNode>;
+  mStatement: TSyntaxNode;
+begin
+  mCalls := SetLengthCalls(FContext.Tree.Root);
+  if mCalls = nil then
+  begin
+    Exit;
+  end;
+  FCache := TRuleDerived.Open(FContext);
+  FArrayTypes := TDynamicArrayTypes.DeclaredIn(FContext.Text, FContext.Tree.Root);
+  FTypes := TDeclaredTypes.Create(FContext.Tree, FContext.Text);
   try
-    for Node in NodesOf(Root, [TSyntaxKind.TypeDecl, TSyntaxKind.ExportsClause], [TSyntaxKind.Block]) do
+    for mStatement in mCalls do
     begin
-      if Node.Kind = TSyntaxKind.ExportsClause then
-      begin
-        for Name in TRegEx.Split(NodeText(AContext.Text, Node), '[^A-Za-z0-9_]+') do
-        begin
-          if Name <> '' then
-          begin
-            Exported := Exported + [Name];
-          end;
-        end;
-      end
-      else if Node.ChildCount > 0 then
-        case Node[Node.ChildCount - 1].Kind of
-          TSyntaxKind.InterfaceType:
-            Interfaces := Interfaces + [Node.Name];
-          TSyntaxKind.RecordType:
-            Records.AddOrSetValue(LowerCase(Node.Name), Node[Node.ChildCount - 1]);
-        end;
-    end;
-    for Routine in TRuleDerived.Routines(Cache, AContext) do
-    begin
-      CheckRoutine(Routine);
+      CheckCall(mStatement);
     end;
   finally
-    Records.Free;
+    FreeAndNil(FTypes);
+  end;
+end;
+
+function TSetLengthInLoopRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('setlength-in-loop', TRuleSeverity.Hint,
+    'Dynamisches Array wächst in einer Schleife um je ein Element');
+end;
+
+procedure TSetLengthInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TSetLengthScan;
+begin
+  // Vorfilter: ohne SetLength keine Arbeit.
+  if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'SetLength') then
+  begin
+    Exit;
+  end;
+  mScan := TSetLengthScan.Create(AContext, AReport);
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
   end;
 end;
 
