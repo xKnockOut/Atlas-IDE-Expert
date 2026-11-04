@@ -63,7 +63,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Lsp.References;
 
 const
   WerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -226,8 +228,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspRename.Edits(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), ANewName,
-      [WerkzeugFile, HauptFile],
+    Result := TLspRename.Edits(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile,
+      PositionOf(UnitHaupt, AMarker), True, [WerkzeugFile, HauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
@@ -243,7 +245,7 @@ begin
         begin
           Result := False;
         end;
-      end);
+      end), ANewName);
   finally
     Tree.Free;
   end;
@@ -262,7 +264,8 @@ begin
   try
     Result := '';
     try
-      TLspRename.Edits(Resolver, Index, Tree, KundeFile, PositionOf(UnitKunde, AMarker), ANewName, [KundeFile],
+      TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KundeFile, PositionOf(UnitKunde, AMarker),
+        True, [KundeFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
           Result := SameText(AFileName, KundeFile);
@@ -270,7 +273,7 @@ begin
           begin
             AText := UnitKunde;
           end;
-        end);
+        end), ANewName);
     except
       on E: EJsonRpcError do
         Result := E.Message;
@@ -302,8 +305,8 @@ begin
   Resolver := TNameResolver.Create(Index);
   Tree := TPascalParser.Parse(UnitText);
   try
-    Result := TLspRename.Edits(Resolver, Index, Tree, MaskeFile, PositionOf(UnitText, AMarker), ANewName,
-      [MaskeFile],
+    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(MaskeFile,
+      PositionOf(UnitText, AMarker), True, [MaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
@@ -323,7 +326,7 @@ begin
         begin
           Result := False;
         end;
-      end, nil, AHandlers);
+      end), TRenameRequest.Create(ANewName, AHandlers, TReferenceSettings.SureOnly, nil));
   finally
     Tree.Free;
     Resolver.Free;

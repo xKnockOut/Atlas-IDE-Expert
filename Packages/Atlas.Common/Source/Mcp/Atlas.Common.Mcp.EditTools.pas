@@ -387,8 +387,9 @@ begin
     try
       mResolver.Namespaces := FNamespaces;
       try
-        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, AFileName, TTextPosition.Create(ALine - 1,
-          AColumn - 1), ANewName, FProjectFiles(), FReadText, nil, True, mSettings, AUnchanged);
+        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
+          TTextPosition.Create(ALine - 1, AColumn - 1), True, FProjectFiles(), FReadText),
+          TRenameRequest.Create(ANewName, True, mSettings, nil), AUnchanged);
       except
         on E: EJsonRpcError do
           raise EMcpToolError.Create(E.Message);
