@@ -292,8 +292,6 @@ var
     end;
   end;
 
-  /// <summary>New(P, Init) bzw. Dispose(P, Done) mit der Routine aus System (#1382): Den Namen des Konstruktors
-  /// bzw. Destruktors merken; fehlt er im object-Typ hinter P, Eintrag mit E2601 bzw. E2602.</summary>
   /// <summary>Aufruf New(P, Init) bzw. Dispose(P, Done) der Routine aus System: Init bzw. Done in AMember.</summary>
   function AllocationMember(ACall: TSyntaxNode; out AMember: TSyntaxNode): Boolean;
   begin
