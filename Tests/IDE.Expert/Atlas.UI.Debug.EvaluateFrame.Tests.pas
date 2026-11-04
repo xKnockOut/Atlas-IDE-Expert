@@ -149,7 +149,7 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnExpand :=
+    Frame.Hooks.Expand :=
       procedure(ANode: TAtlasEvalNode)
       begin
         Expanded := ANode.Key;
@@ -158,19 +158,19 @@ begin
     List.SetResult(Node, True, '(FName: ''Meier''; FCount: 3)');
     List.SetResult(List.Add('Zahl'), True, '7');
     Frame.SetList(List);
-    Assert.AreEqual(3, Integer(Frame.Tree.Items.Count), 'Self, Platzhalter, Zahl');
-    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', Frame.Tree.Items[0].Text);
-    Frame.Tree.Items[0].Expand(False);
+    Assert.AreEqual(3, Integer(Frame.Parts.Tree.Items.Count), 'Self, Platzhalter, Zahl');
+    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', Frame.Parts.Tree.Items[0].Text);
+    Frame.Parts.Tree.Items[0].Expand(False);
     Assert.AreEqual('Self', Expanded, 'Felder holt die IDE-Schicht');
     Assert.IsTrue(Node.Expanded);
     List.SetParts(Node);
     Frame.Refresh;
-    Assert.AreEqual(4, Integer(Frame.Tree.Items.Count));
-    Assert.AreEqual('FName = ''Meier''', Frame.Tree.Items[1].Text);
-    Assert.IsTrue(Frame.Tree.Items[0].Expanded);
-    Frame.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Meier', Frame.Detail.Text);
-    Assert.IsFalse(Frame.ModifyButton.Enabled, 'Teil ohne Ausdruck');
+    Assert.AreEqual(4, Integer(Frame.Parts.Tree.Items.Count));
+    Assert.AreEqual('FName = ''Meier''', Frame.Parts.Tree.Items[1].Text);
+    Assert.IsTrue(Frame.Parts.Tree.Items[0].Expanded);
+    Frame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Meier', Frame.Parts.Detail.Text);
+    Assert.IsFalse(Frame.Parts.ModifyButton.Enabled, 'Teil ohne Ausdruck');
     Frame.SetList(nil);
   finally
     Host.Free;
@@ -193,28 +193,28 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnAdd :=
+    Frame.Hooks.Add :=
       procedure(AExpression: string)
       begin
         Added := AExpression;
       end;
-    Frame.OnPinExpression :=
+    Frame.Hooks.PinExpression :=
       procedure(AExpression: string)
       begin
         Pinned := AExpression;
       end;
-    Frame.Input.Text := ' Kunde.Name ';
+    Frame.Parts.Input.Text := ' Kunde.Name ';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, []);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
     Assert.AreEqual('Kunde.Name', Added);
-    Assert.AreEqual('', Frame.Input.Text, 'Feld leer für den nächsten');
-    Frame.Input.Text := 'Liste.Count';
+    Assert.AreEqual('', Frame.Parts.Input.Text, 'Feld leer für den nächsten');
+    Frame.Parts.Input.Text := 'Liste.Count';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, [ssCtrl]);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, [ssCtrl]);
     Assert.AreEqual('Liste.Count', Pinned);
     Added := '';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, []);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
     Assert.AreEqual('', Added, 'leer fügt nichts an');
   finally
     Host.Free;
@@ -239,7 +239,7 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnDelete :=
+    Frame.Hooks.Delete :=
       procedure(ANode: TAtlasEvalNode)
       begin
         Deleted := ANode.Key;
@@ -249,9 +249,9 @@ begin
     Node.Expanded := True;
     List.SetParts(Node);
     Frame.SetList(List);
-    Frame.Tree.Items[2].Selected := True;
+    Frame.Parts.Tree.Items[2].Selected := True;
     Key := VK_DELETE;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
+    Frame.Parts.Tree.OnKeyDown(Frame.Parts.Tree, Key, []);
     Assert.AreEqual('P', Deleted);
     Frame.SetList(nil);
   finally
@@ -276,10 +276,10 @@ begin
     List.Add('A').Pinned := True;
     List.Add('B');
     Frame.SetList(List);
-    Frame.Tree.Items[0].Selected := True;
-    Assert.AreEqual('Lösen', Frame.PinButton.Caption);
-    Frame.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Festheften', Frame.PinButton.Caption);
+    Frame.Parts.Tree.Items[0].Selected := True;
+    Assert.AreEqual('Lösen', Frame.Parts.PinButton.Caption);
+    Frame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Festheften', Frame.Parts.PinButton.Caption);
     Frame.SetList(nil);
   finally
     Host.Free;

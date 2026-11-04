@@ -192,6 +192,10 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Context.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Values.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Declarations.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Names.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Forms.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Methods.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Completion.Guard.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionEnums.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionGenerics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompletionAttributes.pas"/>

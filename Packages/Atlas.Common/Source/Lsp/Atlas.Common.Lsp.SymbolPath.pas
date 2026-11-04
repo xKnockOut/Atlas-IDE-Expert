@@ -143,12 +143,61 @@ begin
     end);
 end;
 
+/// <summary>Wert AName aus AParams; nil ohne Parameter oder Feld.</summary>
+function ParamValue(const AParams: TJSONObject; const AName: string): TJSONValue;
+begin
+  Result := nil;
+  if AParams <> nil then
+  begin
+    Result := AParams.GetValue(AName);
+  end;
+end;
+
+/// <summary>Liest "via" (Kantenarten und library) in ARequest.</summary>
+procedure ReadVia(AValue: TJSONArray; var ARequest: TSymbolPathRequest);
+var
+  mItem: TJSONValue;
+  mKind: TSymbolPathEdgeKind;
+  mLibrary: Boolean;
+begin
+  ARequest.Via := [];
+  for mItem in AValue do
+  begin
+    if not (mItem is TJSONString) or not TSymbolPathSearch.TryParseEdge(mItem.Value, mKind, mLibrary) then
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"via" kennt uses, inherits, implements, ' +
+        'hasField, parameter, result, calls, contains und library');
+    end;
+    if mLibrary then
+    begin
+      ARequest.ThroughLibrary := True;
+    end
+    else
+    begin
+      Include(ARequest.Via, mKind);
+    end;
+  end;
+  // Nur "library": alle Kantenarten, Bibliothek als Durchgang.
+  if ARequest.Via = [] then
+  begin
+    ARequest.Via := AllSymbolPathEdges;
+  end;
+end;
+
+/// <summary>"maxSteps" zwischen 1 und TSymbolPathRequest.MaxStepsLimit.</summary>
+function ReadMaxSteps(AValue: TJSONNumber): Integer;
+begin
+  Result := AValue.AsInt;
+  if (Result < 1) or (Result > TSymbolPathRequest.MaxStepsLimit) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"maxSteps" liegt zwischen 1 und %d',
+      [TSymbolPathRequest.MaxStepsLimit]));
+  end;
+end;
+
 class function TLspSymbolPath.ReadRequest(const AParams: TJSONObject): TSymbolPathRequest;
 var
-  Value, Item: TJSONValue;
-  Kind: TSymbolPathEdgeKind;
-  Library_: Boolean;
-  Steps: Integer;
+  mValue: TJSONValue;
 begin
   Result := TSymbolPathRequest.Default;
   Result.From := StringOf(AParams, 'from');
@@ -157,65 +206,20 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"from" und "to" sind nötig');
   end;
-  Value := nil;
-  if AParams <> nil then
+  mValue := ParamValue(AParams, 'via');
+  if mValue is TJSONArray then
   begin
-    Value := AParams.GetValue('via');
+    ReadVia(TJSONArray(mValue), Result);
   end;
-  if Value is TJSONArray then
+  mValue := ParamValue(AParams, 'maxSteps');
+  if mValue is TJSONNumber then
   begin
-    Result.Via := [];
-    for Item in TJSONArray(Value) do
-    begin
-      if not (Item is TJSONString) or not TSymbolPathSearch.TryParseEdge(Item.Value, Kind, Library_) then
-      begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"via" kennt uses, inherits, implements, ' +
-          'hasField, parameter, result, calls, contains und library');
-      end;
-      if Library_ then
-      begin
-        Result.ThroughLibrary := True;
-      end
-      else
-      begin
-        Include(Result.Via, Kind);
-      end;
-    end;
-    // Nur "library": alle Kantenarten, Bibliothek als Durchgang.
-    if Result.Via = [] then
-    begin
-      Result.Via := AllSymbolPathEdges;
-    end;
+    Result.MaxSteps := ReadMaxSteps(TJSONNumber(mValue));
   end;
-  if AParams <> nil then
+  mValue := ParamValue(AParams, 'all');
+  if mValue is TJSONBool then
   begin
-    Value := AParams.GetValue('maxSteps');
-  end
-  else
-  begin
-    Value := nil;
-  end;
-  if Value is TJSONNumber then
-  begin
-    Steps := TJSONNumber(Value).AsInt;
-    if (Steps < 1) or (Steps > TSymbolPathRequest.MaxStepsLimit) then
-    begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"maxSteps" liegt zwischen 1 und %d',
-        [TSymbolPathRequest.MaxStepsLimit]));
-    end;
-    Result.MaxSteps := Steps;
-  end;
-  if AParams <> nil then
-  begin
-    Value := AParams.GetValue('all');
-  end
-  else
-  begin
-    Value := nil;
-  end;
-  if Value is TJSONBool then
-  begin
-    Result.All := TJSONBool(Value).AsBoolean;
+    Result.All := TJSONBool(mValue).AsBoolean;
   end;
 end;
 

@@ -71,6 +71,7 @@ var
   mLine: Integer;
   mDocument: ITextDocument;
   mResolver: TNameResolver;
+  mTargets: TLspStepTargets;
   mAnswer: TJSONObject;
 begin
   // Argumente: URI und Zeile (ab 0) des Ausführungspunkts (#836).
@@ -79,8 +80,13 @@ begin
   mDocument := Open(mUri);
   mResolver := NewResolver;
   try
-    mAnswer := TLspStepTargets.Execute(mResolver, Index, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
-      TDocumentUris.ToPath(mUri), mLine, ReadFile);
+    mTargets := TLspStepTargets.Create(mResolver, Index, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+      TDocumentUris.ToPath(mUri), ReadFile);
+    try
+      mAnswer := mTargets.Execute(mLine);
+    finally
+      mTargets.Free;
+    end;
   finally
     mResolver.Free;
   end;

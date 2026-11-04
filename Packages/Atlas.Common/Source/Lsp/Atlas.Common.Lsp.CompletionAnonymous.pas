@@ -2,7 +2,7 @@
 
 // Anonyme Methoden (#468, ARG-069): Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp
 // ("reference to procedure/function"), bietet die Vervollständigung ganz oben ein Gerüst mit passender
-// Signatur an. Hier die Teile ohne Namensauflösung; TLspCompletion.AnonymousItem verbindet sie mit dem
+// Signatur an. Hier die Teile ohne Namensauflösung; TCompletionMethods.AnonymousItem verbindet sie mit dem
 // erwarteten Typ.
 // - Parse liest die Deklaration aus der Signatur des Index ("TPredicate<T> = reference to function(Arg1: T):
 //   Boolean;"); ein Alias ("TKundenFilter = TPredicate<TKunde>;") liefert sein Ziel.
