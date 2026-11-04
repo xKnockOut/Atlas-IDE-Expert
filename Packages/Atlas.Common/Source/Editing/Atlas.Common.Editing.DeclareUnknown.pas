@@ -7,7 +7,7 @@
 //   - Shape: Form eines Ausdrucks. Vergleiche ergeben Boolean, "/" Extended, div und mod Integer, "as T" den
 //     Typ T; sonst entscheidet der erste Operand (TermFirst..TermLast), den der Aufrufer auflöst.
 //   - Namen und Platzhalter: Feldname mit F-Konvention, Vorgabewert für Konstanten, "$0" für den Cursor.
-// Die Vervollständigung (TLspCompletion.DeclareItems) baut daraus die Einträge; /var aus #294 ist derselbe
+// Die Vervollständigung (TCompletionValues.DeclareItems) baut daraus die Einträge; /var aus #294 ist derselbe
 // Vorgang als Befehl.
 
 interface
