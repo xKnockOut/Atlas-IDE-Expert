@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6501] of string = (
+  Lines: array[0..6502] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2500,15 +2500,6 @@ const
     '      "x-parent": "highlight.pairColors",',
     '      "x-node": ""',
     '    },',
-    '    "ProblemsMessageList": {',
-    '      "type": "boolean",',
-    '      "default": false,',
-    '      "x-key": "problems.list",',
-    '      "x-area": "editor",',
-    '      "x-page": "Compiler",',
-    '      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernomme' +
-      'n (trug meist die alte Vorgabe „an“)."',
-    '    },',
     '    "ProblemsStatusCounter": {',
     '      "type": "boolean",',
     '      "default": true,',
@@ -2735,6 +2726,16 @@ const
     '      "x-node": "rules.window",',
     '      "x-control": "Schalter „Sammelkorrektur im Fenster Atlas-Prüfung“",',
     '      "x-issue": "#1352"',
+    '    },',
+    '    "ProblemsMessageList": {',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "problems.list",',
+    '      "x-area": "rules",',
+    '      "x-page": "Prüfregeln",',
+    '      "x-node": "rules.window",',
+    '      "description": "Probleme zusätzlich im Meldungsfenster (Gruppe „Atlas-Probleme“) auflisten; seit dem Fenster „Atlas-Prüfung“ Vorgabe aus. Früherer Registry-Name ProblemsList wird nicht übernomme' +
+      'n (trug meist die alte Vorgabe „an“)."',
     '    },',
     '    "HoverProblemActions": {',
     '      "type": "boolean",',
