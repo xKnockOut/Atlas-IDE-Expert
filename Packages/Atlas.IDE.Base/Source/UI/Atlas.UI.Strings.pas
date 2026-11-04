@@ -511,7 +511,7 @@ type
     ProblemsKindCount, ProblemsCategoryAll, ProblemsCategoryBug, ProblemsCategoryVulnerability,
     ProblemsCategoryCodeSmell, ProblemsCategoryHotspot, ProblemsCategoryCompiler, ProblemsCategoryOther,
     ProblemsGroupNone, ProblemsGroupFile, ProblemsGroupRule, ProblemsGroupCategory, ProblemsFilterHint,
-    ProblemsLive, ProblemsPaused, ProblemsColumnKind, ProblemsColumnCategory, ProblemsColumnMessage,
+    ProblemsLive, ProblemsOnSave, ProblemsColumnKind, ProblemsColumnCategory, ProblemsColumnMessage,
     ProblemsColumnLine, ProblemsColumnLocation, ProblemsColumnRule, ProblemsStatusCount, ProblemsStatusLast,
     ProblemsStatusProject, ProblemsStatusWaiting, ProblemsEmpty, ProblemsMenuOpen, ProblemsMenuFix, ProblemsMenuFixNone,
     ProblemsMenuSuppress, ProblemsMenuConfigure, ProblemsMenuDisable, ProblemsMenuExplain, ProblemsMenuCopy,
@@ -527,7 +527,7 @@ type
     RulesGroupForms, RulesGroupArchitecture, RulesGroupStyle, RulesGroupPackages, RulesGroupInternal,
     RulesProfilesNode, RulesProfilesText, RulesProjectButton, SettingsProblemsWindow, SettingsProblemsWindowScope,
     SettingsProblemsWindowGroupBy, SettingsProblemsWindowCompiler, SettingsProblemsWindowFollowCursor,
-    SettingsProblemsLive, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses,
+    SettingsProblemsUpdate, SettingsHoverProblemActions, MetricsLensMembers, MetricsLensUses,
     ProblemsColumnCompiler, ProblemsCompilerConfirmed, ProblemsCompilerConfirmedCode, SettingsProblemsCompilerMerge,
     ProblemsCompilerMergeMerge, ProblemsCompilerMergeBoth, SettingsProblemsShowCompilerCode, RulesTypeLevel,
     BreadcrumbsDisabled, FuseTrippedTitle, FuseTrippedEnable, FuseTrippedOpenLog, ServerCrashedCause, ServerHeldTitle,
@@ -849,7 +849,10 @@ type
     DiagColRequest, DiagColCount, DiagColWaited, DiagColTimedOut, DiagColCancelled, DiagColFailed, DiagColSource,
     DiagColTooSlow, DiagWorkers, DiagHangSummary, DiagColWithAtlas, DiagYes, DiagNo, DiagSince, DiagPaused,
     DiagHint, DiagMenuOnly, DiagMenuAll, DiagMenuDisable, DiagMenuCopyRow, DiagPluginOff, DiagEmpty, DiagDisabled,
-    SettingsDiagnosticPluginTimings, SettingsDiagnosticSlowMs);
+    SettingsDiagnosticPluginTimings, SettingsDiagnosticSlowMs,
+    // Aktualisierung der Prüfung (problems.update, problems.liveDelayMs).
+    ProblemsUpdateLive, ProblemsUpdateSave, ProblemsUpdateManual, SettingsProblemsLiveDelay, ProblemsManual,
+    ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick);
 
   TAtlasStrings = class
   private class var
@@ -2009,7 +2012,7 @@ const
      'Nach Kategorie',
      'Filtern (Meldung, Regel, Datei)',
      '● Live',
-     'Angehalten',
+     'Beim Speichern',
      'Art',
      'Kategorie',
      'Meldung',
@@ -2086,7 +2089,7 @@ const
      'Gruppieren:',
      'Compilermeldungen im Fenster zeigen',
      'Eintrag zur Cursorzeile markieren',
-     'Laufende Prüfung beim Tippen (aus: nur beim Speichern)',
+     'Offene Datei prüfen:',
      'Aktionszeile unter Befunden im Hover',
      '%d Member',
      '%d Units im uses',
@@ -2202,7 +2205,8 @@ const
      '%d Zeilen', 'CC %d', '%s (Grenze %d)',
      'In dieser Unit: %d Fehler, %d Warnungen, %d Hinweise. Klick: nächster Befund dieser Art, Doppelklick: ' +
      '„Atlas-Prüfung“ für diese Unit.',
-     'Prüft beim Tippen (problems.live).', 'Prüft erst nach dem Speichern (problems.live aus).',
+     'Prüft beim Tippen nach der Verzögerung problems.liveDelayMs (problems.update live).',
+     'Prüft erst nach dem Speichern (problems.update save).',
      'Letzte Prüfung: %s in %d ms um %s', 'Klick: zum Methodenkopf', 'keine Methode',
      'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit',
      'Platzhalter %d von %d erwartet %s',
@@ -2896,7 +2900,16 @@ const
      'Noch nichts gemessen.',
      '„%s“ ist bis zum Neustart aus. Wieder an über Atlas › Abgeschaltete Funktionen einschalten.',
      'Plugin-Zeiten messen (Hauptthread je Funktion, Server, Hintergrund, Hänger)',
-     'Langsam ab (ms eigener Zeit im Hauptthread):'),
+     'Langsam ab (ms eigener Zeit im Hauptthread):',
+     'Live beim Tippen',
+     'Beim Speichern',
+     'Nur auf Anforderung',
+     'Verzögerung der Live-Prüfung in ms (100 bis 10000):',
+     'Manuell',
+     'Datei jetzt prüfen',
+     'manuell',
+     'Prüft nur auf Anforderung (problems.update manual).',
+     'Klick: Datei jetzt prüfen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3976,7 +3989,7 @@ const
      'By category',
      'Filter (message, rule, file)',
      '● Live',
-     'Paused',
+     'On save',
      'Kind',
      'Category',
      'Message',
@@ -4053,7 +4066,7 @@ const
      'Group by:',
      'Show compiler messages in the window',
      'Select the entry of the cursor line',
-     'Check while typing (off: only on save)',
+     'Check the open file:',
      'Action row below findings in the hover',
      '%d members',
      '%d units in uses',
@@ -4168,7 +4181,8 @@ const
      '%d lines', 'CC %d', '%s (limit %d)',
      'In this unit: %d errors, %d warnings, %d hints. Click: next finding of this kind, double-click: ' +
      '“Atlas check” for this unit.',
-     'Checks while you type (problems.live).', 'Checks only after saving (problems.live off).',
+     'Checks while you type after the delay problems.liveDelayMs (problems.update live).',
+     'Checks only after saving (problems.update save).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
      'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready',
      'Placeholder %d of %d expects %s',
@@ -4859,7 +4873,16 @@ const
      'Nothing measured yet.',
      '“%s” is off until restart. Turn it on again via Atlas › Turn disabled features on.',
      'Measure plugin timings (main thread per feature, server, background, hangs)',
-     'Slow from (ms of own main thread time):'));
+     'Slow from (ms of own main thread time):',
+     'Live while typing',
+     'On save',
+     'Only on request',
+     'Delay of the live check in ms (100 to 10000):',
+     'Manual',
+     'Check file now',
+     'manual',
+     'Checks only on request (problems.update manual).',
+     'Click: check this file now'));
 
 { TAtlasStrings }
 

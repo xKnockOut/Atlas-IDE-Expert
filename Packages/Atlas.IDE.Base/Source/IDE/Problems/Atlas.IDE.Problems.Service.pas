@@ -41,7 +41,9 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Problems.FindingsCache;
+  Atlas.Core.Problems.FindingsCache,
+  Atlas.Core.Problems.Refresh,
+  Atlas.Core.Settings.ProblemsUpdate;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
@@ -86,6 +88,11 @@ type
     class function StepWindow(AForward: Boolean): Boolean; static;
     /// <summary>problems.window an.</summary>
     class function Enabled: Boolean; static;
+    /// <summary>Wann die offene Datei geprüft wird (problems.update).</summary>
+    class function UpdateMode: TAtlasProblemsUpdate; static;
+    /// <summary>„Datei jetzt prüfen“: Der Controller prüft die Datei des oberen Editors im nächsten Takt, auch
+    /// ungespeichert und ohne Live-Prüfung.</summary>
+    class procedure CheckFileNow; static;
     /// <summary>Fortschritt der Projektprüfung (#1232): geprüfte und alle Units des aktiven Projekts wie in der
     /// Statuszeile des Fensters. False ohne Projekt oder Speicher. Die Projektliste höchstens alle 2 s neu.</summary>
     class function ProjectProgress(out AChecked, ATotal: Integer): Boolean; static;
@@ -434,7 +441,7 @@ begin
   end;
   mStore := TAtlasProblemsController.Current;
   mInputs := GatherInputs(mFrame, mStore);
-  mFrame.SetLive(Settings.ProblemsLive and Settings.Problems);
+  mFrame.SetUpdate(TAtlasIdeProblems.UpdateMode);
   UpdateFindings(mFrame, mStore, mInputs, AForce);
   mStatus := StatusText(mFrame, mStore, mInputs.Project);
   if mStatus <> State.Status then
@@ -618,6 +625,11 @@ end;
 /// <summary>Öffnen, Beheben und Unterdrücken aus der Liste.</summary>
 procedure WireFixes(AFrame: TAtlasProblemsFrame);
 begin
+  AFrame.OnCheckFile :=
+    procedure
+    begin
+      TAtlasIdeProblems.CheckFileNow;
+    end;
   AFrame.OnOpen :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -772,6 +784,16 @@ begin
 end;
 
 { TAtlasIdeProblems }
+
+class function TAtlasIdeProblems.UpdateMode: TAtlasProblemsUpdate;
+begin
+  Result := TAtlasProblemsUpdateSetting.Parse(Settings.ProblemsUpdate);
+end;
+
+class procedure TAtlasIdeProblems.CheckFileNow;
+begin
+  TAtlasProblemsCheckRequest.Request;
+end;
 
 class function TAtlasIdeProblems.Enabled: Boolean;
 begin

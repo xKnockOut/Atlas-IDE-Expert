@@ -5,9 +5,11 @@
 //   (TAtlasFindings.IsFinding, Art aus dem Schweregrad; Compilermeldungen nur
 //   mit AWithCompiler wie problems.window.compiler). NextOf liefert den
 //   nächsten Befund einer Art nach dem Cursor, am Ende wieder vom Anfang.
-// - Live-Prüfung: „prüft …“ während einer Prüfung, sonst „live“ bzw. „beim
-//   Speichern“ (problems.live aus), bei live mit dem Alter der letzten
-//   Prüfung dieser Datei („live · geprüft vor 2 s“). Die Texte kommen von der
+// - Live-Prüfung: „prüft …“ während einer Prüfung, sonst nach problems.update
+//   „live“, „beim Speichern“ oder „manuell“, bei live und manuell mit dem
+//   Alter der letzten Prüfung dieser Datei („live · geprüft vor 2 s“). Der
+//   Tooltip nennt die Art und was ein Klick tut: live prüft alle Units neu,
+//   sonst nur die offene Datei (ClickChecksFile). Die Texte kommen von der
 //   Oberfläche (TAtlasStatusLiveTexts). Solange die Projektprüfung nicht alle
 //   Units hat, folgt „ · Projekt 45 %“ (#1232).
 // - Aktuelle Methode: innerste Methode bzw. Routine der Gliederung, die die
@@ -23,6 +25,7 @@ uses
   System.SysUtils,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Metrics;
 
@@ -34,6 +37,16 @@ type
     Live: string;
     /// <summary>„beim Speichern“.</summary>
     OnSave: string;
+    /// <summary>„manuell“ (problems.update manual).</summary>
+    Manual: string;
+    /// <summary>Tooltip je Art: „Prüft beim Tippen …“, „Prüft erst nach dem Speichern …“, „Prüft nur auf
+    /// Anforderung …“.</summary>
+    LiveHint: string;
+    OnSaveHint: string;
+    ManualHint: string;
+    /// <summary>Tooltip zum Klick: „Klick: alle Units neu prüfen“ (live) bzw. „Klick: Datei jetzt prüfen“.</summary>
+    RecheckClick: string;
+    CheckFileClick: string;
     /// <summary>„prüft …“.</summary>
     Checking: string;
     /// <summary>„geprüft vor %s“.</summary>
@@ -87,9 +100,16 @@ type
       AWithCompiler: Boolean; ALine, ACharacter: Integer; out ATarget: TAtlasProblem): Boolean; static;
     /// <summary>Alter als „2 s“, „3 min“, „1 h“ (abgerundet, nie negativ).</summary>
     class function AgeText(ASeconds: Int64; const ATexts: TAtlasStatusLiveTexts): string; static;
-    /// <summary>Text der Live-Prüfung. ACheckedAt = 0: Datei noch nicht geprüft.</summary>
-    class function LiveText(ALive, AChecking: Boolean; ACheckedAt, ANow: TDateTime;
+    /// <summary>Text der Live-Prüfung zur Art AMode (problems.update). ACheckedAt = 0: Datei noch nicht geprüft.
+    /// </summary>
+    class function LiveText(AMode: TAtlasProblemsUpdate; AChecking: Boolean; ACheckedAt, ANow: TDateTime;
       const ATexts: TAtlasStatusLiveTexts): string; static;
+    /// <summary>Tooltip der Live-Prüfung zur Art AMode; mit AClickable zusätzlich, was ein Klick tut.</summary>
+    class function LiveHint(AMode: TAtlasProblemsUpdate; AClickable: Boolean;
+      const ATexts: TAtlasStatusLiveTexts): string; static;
+    /// <summary>Prüft ein Klick auf die Live-Prüfung nur die offene Datei (save, manual) statt alle Units neu
+    /// (live, #1231)?</summary>
+    class function ClickChecksFile(AMode: TAtlasProblemsUpdate): Boolean; static;
     /// <summary>Anhang „ · Projekt 45 %“, solange die Projektprüfung nicht alle ATotal Units hat (#1232); sonst ''.
     /// Abgerundet: 100 % erst, wenn alle geprüft sind.</summary>
     class function ProgressText(AChecked, ATotal: Integer; const ATexts: TAtlasStatusLiveTexts): string; static;
@@ -222,8 +242,8 @@ begin
   end;
 end;
 
-class function TAtlasStatusBarContent.LiveText(ALive, AChecking: Boolean; ACheckedAt, ANow: TDateTime;
-  const ATexts: TAtlasStatusLiveTexts): string;
+class function TAtlasStatusBarContent.LiveText(AMode: TAtlasProblemsUpdate; AChecking: Boolean; ACheckedAt,
+  ANow: TDateTime; const ATexts: TAtlasStatusLiveTexts): string;
 var
   Age: Int64;
 begin
@@ -231,11 +251,14 @@ begin
   begin
     Exit(ATexts.Checking);
   end;
-  if not ALive then
-  begin
-    Exit(ATexts.OnSave);
+  case AMode of
+    TAtlasProblemsUpdate.Save:
+      Exit(ATexts.OnSave);
+    TAtlasProblemsUpdate.Manual:
+      Result := ATexts.Manual;
+  else
+    Result := ATexts.Live;
   end;
-  Result := ATexts.Live;
   if ACheckedAt <= 0 then
   begin
     Exit;
@@ -247,6 +270,36 @@ begin
     Age := SecondsBetween(ANow, ACheckedAt);
   end;
   Result := Result + ATexts.Separator + Format(ATexts.CheckedAgo, [AgeText(Age, ATexts)]);
+end;
+
+class function TAtlasStatusBarContent.LiveHint(AMode: TAtlasProblemsUpdate; AClickable: Boolean;
+  const ATexts: TAtlasStatusLiveTexts): string;
+begin
+  case AMode of
+    TAtlasProblemsUpdate.Save:
+      Result := ATexts.OnSaveHint;
+    TAtlasProblemsUpdate.Manual:
+      Result := ATexts.ManualHint;
+  else
+    Result := ATexts.LiveHint;
+  end;
+  if not AClickable then
+  begin
+    Exit;
+  end;
+  if ClickChecksFile(AMode) then
+  begin
+    Result := Result + sLineBreak + ATexts.CheckFileClick;
+  end
+  else
+  begin
+    Result := Result + sLineBreak + ATexts.RecheckClick;
+  end;
+end;
+
+class function TAtlasStatusBarContent.ClickChecksFile(AMode: TAtlasProblemsUpdate): Boolean;
+begin
+  Result := AMode <> TAtlasProblemsUpdate.Live;
 end;
 
 class function TAtlasStatusBarContent.ProgressText(AChecked, ATotal: Integer;

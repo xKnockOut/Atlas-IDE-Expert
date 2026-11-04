@@ -62,6 +62,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Settings.ProblemsUpdate,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain;
 
@@ -493,10 +494,22 @@ begin
   Host := TForm.CreateNew(nil);
   try
     Frame := NewFrame(Host);
-    Frame.SetLive(True);
+    Frame.SetUpdate(TAtlasProblemsUpdate.Live);
     Assert.AreEqual('● Live', Frame.LiveLabel.Caption);
-    Frame.SetLive(False);
-    Assert.AreEqual('Angehalten', Frame.LiveLabel.Caption);
+    Assert.IsFalse(Frame.CheckFileButton.Visible, 'live: kein Knopf');
+    Frame.SetUpdate(TAtlasProblemsUpdate.Save);
+    Assert.AreEqual('Beim Speichern', Frame.LiveLabel.Caption);
+    Assert.IsTrue(Frame.CheckFileButton.Visible, 'beim Speichern: Knopf');
+    Frame.SetUpdate(TAtlasProblemsUpdate.Manual);
+    Assert.AreEqual('Manuell', Frame.LiveLabel.Caption);
+    Assert.AreEqual('Datei jetzt prüfen', Frame.CheckFileButton.Caption);
+    Frame.OnCheckFile :=
+      procedure
+      begin
+        Frame.SetStatus('angefordert');
+      end;
+    Frame.CheckFileButton.Click;
+    Assert.AreEqual('angefordert', Frame.StatusLabel.Caption, 'Klick meldet OnCheckFile');
     Frame.SetStatus('3 Befunde in 2 Dateien');
     Assert.AreEqual('3 Befunde in 2 Dateien', Frame.StatusLabel.Caption);
     Frame.SetFindings(nil, '', nil);

@@ -18,6 +18,10 @@ type
     procedure MessageListIgnoresFormerRegistryName;
     [Test]
     procedure ProblemsWindowOptions;
+    /// <summary>Aktualisierung der Prüfung (problems.update, problems.liveDelayMs), Übernahme von problems.live.
+    /// </summary>
+    [Test]
+    procedure ProblemsUpdateOptions;
     /// <summary>#1108: offene Units zuerst, nicht geöffnete Units, aktive Unit ohne Befunde.</summary>
     [Test]
     procedure ProblemsWindowOpenFirstOptions;
@@ -1020,7 +1024,8 @@ begin
   ASettings.ProblemsWindowCompiler := True;
   ASettings.ProblemsWindowFollowCursor := False;
   ASettings.ProblemsWindowKey := $C051;
-  ASettings.ProblemsLive := False;
+  ASettings.ProblemsUpdate := 'save';
+  ASettings.ProblemsLiveDelayMs := 900;
   ASettings.FixBulk := False;
   ASettings.HoverProblemActions := False;
   ASettings.ProblemsMessageList := True;
@@ -1037,7 +1042,8 @@ begin
   Assert.IsTrue(ALoaded.ProblemsWindowCompiler);
   Assert.IsFalse(ALoaded.ProblemsWindowFollowCursor);
   Assert.AreEqual($C051, ALoaded.ProblemsWindowKey);
-  Assert.IsFalse(ALoaded.ProblemsLive);
+  Assert.AreEqual('save', ALoaded.ProblemsUpdate);
+  Assert.AreEqual(900, ALoaded.ProblemsLiveDelayMs);
   Assert.IsFalse(ALoaded.FixBulk);
   Assert.IsFalse(ALoaded.HoverProblemActions);
   Assert.AreEqual('both', ALoaded.ProblemsCompilerMerge);
@@ -1059,6 +1065,49 @@ begin
   Assert.IsTrue(mLoaded.ProblemsMessageList, 'Neuer Name gilt');
 end;
 
+procedure TAtlasPluginSettingsTests.ProblemsUpdateOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('live', mSettings.ProblemsUpdate);
+  Assert.AreEqual(400, mSettings.ProblemsLiveDelayMs);
+  // Rundweg.
+  mSettings.ProblemsUpdate := 'manual';
+  mSettings.ProblemsLiveDelayMs := 1500;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('manual', mLoaded.ProblemsUpdate);
+  Assert.AreEqual(1500, mLoaded.ProblemsLiveDelayMs);
+  // Grenzen und unbekannte Werte.
+  mSettings.ProblemsUpdate := 'SAVE';
+  mSettings.ProblemsLiveDelayMs := 20;
+  mSettings.Normalize;
+  Assert.AreEqual('save', mSettings.ProblemsUpdate);
+  Assert.AreEqual(100, mSettings.ProblemsLiveDelayMs);
+  mSettings.ProblemsUpdate := 'manuell';
+  mSettings.ProblemsLiveDelayMs := 99999;
+  mSettings.Normalize;
+  Assert.AreEqual('live', mSettings.ProblemsUpdate, 'Unbekanntes = Vorgabe');
+  Assert.AreEqual(10000, mSettings.ProblemsLiveDelayMs);
+  // Vor problems.update: problems.live aus wird „beim Speichern“, an bleibt live.
+  mStore := TMemoryStore.Create;
+  mStore.WriteInteger('ProblemsLive', 0);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('save', mLoaded.ProblemsUpdate);
+  mStore.WriteInteger('ProblemsLive', 1);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('live', mLoaded.ProblemsUpdate);
+  // Ein gespeicherter neuer Wert geht vor.
+  mStore.WriteInteger('ProblemsLive', 0);
+  mStore.WriteString('ProblemsUpdate', 'manual');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('manual', mLoaded.ProblemsUpdate);
+end;
+
 procedure TAtlasPluginSettingsTests.ProblemsWindowOptions;
 var
   Settings, Loaded: TAtlasPluginSettings;
@@ -1073,7 +1122,6 @@ begin
   Assert.IsFalse(Settings.ProblemsWindowCompiler);
   Assert.IsTrue(Settings.ProblemsWindowFollowCursor);
   Assert.AreEqual($C050, Settings.ProblemsWindowKey, 'Strg+Alt+P');
-  Assert.IsTrue(Settings.ProblemsLive);
   Assert.IsTrue(Settings.FixBulk, 'Sammelkorrektur (#1352) an');
   Assert.IsTrue(Settings.HoverProblemActions);
   Assert.IsFalse(Settings.ProblemsMessageList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');

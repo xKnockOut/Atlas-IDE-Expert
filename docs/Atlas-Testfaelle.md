@@ -2944,7 +2944,7 @@ Gilt für Editorleiste, Statusleiste, Brotkrumen, Übersichtsleiste, Minimap (ex
 
 ## Atlas-Statusleiste (#1155)
 
-Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.live` an, Regel `metric-method-length` mit `max` 40.
+Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.update` auf „Live beim Tippen“, Regel `metric-method-length` mit `max` 40.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -2954,7 +2954,8 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL4 | Klick auf den Warnzähler, mehrmals | Caret springt zur nächsten Warnung der Unit hinter dem Cursor, nach der letzten wieder zur ersten; Klick auf einen Zähler mit 0 meldet „keine Befunde dieser Art“ |
 | ASL5 | Doppelklick auf einen Zähler | „Atlas-Prüfung“ öffnet sich mit Bereich „Aktuelle Datei“; der Doppelklick springt nicht zusätzlich |
 | ASL6 | Tippen, ohne zu speichern | Kurz „prüft …“ mit Symbol in Akzentfarbe, danach „live · geprüft vor 0 s“, die Sekunden zählen hoch; Tooltip „Letzte Prüfung: … in … ms um …“ |
-| ASL7 | `problems.live` aus | „beim Speichern“; nach Strg+S zählen die Sekunden wieder ab der Prüfung |
+| ASL7 | `problems.update` auf „Beim Speichern“ | „beim Speichern“; nach Strg+S zählen die Sekunden wieder ab der Prüfung; Klick darauf prüft nur die offene Datei |
+| ASL7b | `problems.update` auf „Nur auf Anforderung“ | „manuell · geprüft vor …“; Tooltip endet mit „Klick: Datei jetzt prüfen“; Klick prüft die offene Datei, nicht alle Units |
 | ASL7a | Maus über „live · …“, dann Klick darauf (#1231) | Handzeiger und Hervorhebung; Tooltip endet mit „Klick: alle Units neu prüfen“. Der Klick meldet „Atlas prüft alle Units neu …“, kurz „prüft …“, danach füllt „Atlas-Prüfung“ (Bereich Projekt) alle Units neu, auch eine zuvor hängengebliebene. Mit ausgeschalteten Problemen passiert nichts |
 | ASL8 | Caret in `btnSpeichernClick` (48 Zeilen, CC 9) | `TfrmKunde.btnSpeichernClick · 48 Zeilen · CC 9`, Zeilen in Warnfarbe, Tooltip nennt „(Grenze 40)“; Klick springt zum Methodenkopf. Außerhalb einer Methode gedämpft „keine Methode“, Klick tut nichts |
 | ASL9 | Editorfenster schmal ziehen | Erst kürzt sich der Methodenname („…“), dann die Live-Prüfung, dann der Status; reicht es nicht, fallen Elemente ganz weg (Methode zuerst, die Zähler zuletzt). Nie zwei Zeilen |
@@ -4618,7 +4619,7 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
 | AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
 | AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
-| AP14 | `problems.live` aus | Anzeige „Angehalten“, Liste ändert sich erst beim Speichern |
+| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau und Knopf „Datei jetzt prüfen“; die Liste ändert sich erst beim Speichern bzw. erst auf den Knopf |
 | AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
 | AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
 | AP17 | „Regel einstellen…“ im Tooltip | Der Dialog der Projekt-Einstellungen (ohne Projekt der globale) öffnet sich im Knoten der Gruppe, die Regel ist markiert |
@@ -9273,3 +9274,18 @@ Voraussetzung: Release-Paket einer älteren Version (z. B. 2.0.0-beta.1) in `%LO
 | UX17 | Signiertes Release: in `Updates\X\files` eine BPL durch eine unsignierte ersetzen, Vorbereitung erneut | „Datei nicht signiert“ bzw. „Signatur ungültig …“; nichts installiert |
 | UX18 | `AtlasUpdate.exe install` im entpackten Paket | Fragt IDE und Profil, Ziel (Vorschlag `%LOCALAPPDATA%\Programs\Atlas`) und Module; danach lädt die IDE Atlas ohne Handarbeit; alte Einträge `Atlas.IDE.Expert`/`BetterDelphiLSP` sind aus den Known Packages entfernt |
 | UX19 | Release-Workflow mit einem Test-Tag | Release enthält `AtlasUpdate.exe` im ZIP, `atlas-ide-expert-source-<Version>.zip`, `atlas-version.json` mit `packages."37.0"` und `source` samt SHA-256; Release `update-channel` (Vorabversion) mit neuer `atlas-version-beta.json` |
+## Aktualisierung der Prüfung einstellbar (problems.update)
+
+Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfung“ offen, Statusleiste an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LV1 | *Tools › Optionen › Atlas › Prüfregeln* ansehen | Auswahl „Offene Datei prüfen:“ mit „Live beim Tippen“, „Beim Speichern“, „Nur auf Anforderung“ und Feld „Verzögerung der Live-Prüfung in ms (100 bis 10000):“ mit 400; beide gesperrt, wenn die Prüfregeln aus sind |
+| LV2 | Live, Verzögerung 2000, OK; tippen und anhalten | Die Liste ändert sich erst etwa 2 s nach dem letzten Tastendruck; mit 100 fast sofort (**Abnahme**) |
+| LV3 | Verzögerung 50 bzw. 50000 eingeben, OK, Dialog wieder öffnen | Wert auf 100 bzw. 10000 begrenzt |
+| LV4 | „Beim Speichern“; tippen, dann Strg+S | Beim Tippen keine Prüfung; nach dem Speichern die neuen Befunde |
+| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Knopf „Datei jetzt prüfen“ im Fenster prüft sofort (**Abnahme**) |
+| LV6 | In LV5 Befehlspalette (Strg+Umschalt+P) › „Datei jetzt prüfen“ | Die offene Datei wird geprüft; mit ausgeschalteten Prüfregeln fehlt der Befehl |
+| LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
+| LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
+| LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |

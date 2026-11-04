@@ -265,6 +265,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
@@ -318,6 +319,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.Plugin.Snippets` | `Core/Settings/Atlas.Core.Settings.Plugin.Snippets.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Vcs` | `Core/Settings/Atlas.Core.Settings.Plugin.Vcs.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Plugin.Welcome` | `Core/Settings/Atlas.Core.Settings.Plugin.Welcome.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.ProblemsUpdate` | `Core/Settings/Atlas.Core.Settings.ProblemsUpdate.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.QueryMigration` | `Core/Settings/Atlas.Core.Settings.QueryMigration.pas` | Ordner `Core/Settings` |
