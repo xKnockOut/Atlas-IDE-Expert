@@ -263,61 +263,76 @@ begin
   end;
 end;
 
-class function TAtlasTasks.ParseKey(const AText: string): Word;
 const
-  ShiftBit = $2000;
-  CtrlBit = $4000;
-  AltBit = $8000;
+  cShiftBit = $2000;
+  cCtrlBit = $4000;
+  cAltBit = $8000;
+
+/// <summary>Umschalttasten aller Teile außer dem letzten; False bei einem unbekannten Teil.</summary>
+function KeyModifiers(const AParts: TArray<string>; out AModifiers: Word): Boolean;
 var
-  Parts: TArray<string>;
-  Part, Name: string;
-  Index, Number: Integer;
-  Modifiers, Key: Word;
+  mIndex: Integer;
+  mPart: string;
 begin
-  Result := 0;
-  Parts := Trim(AText).Split(['+']);
-  if Length(Parts) = 0 then
+  AModifiers := 0;
+  for mIndex := 0 to High(AParts) - 1 do
   begin
-    Exit;
-  end;
-  Modifiers := 0;
-  for Index := 0 to High(Parts) - 1 do
-  begin
-    Part := Trim(Parts[Index]);
-    if SameText(Part, 'Ctrl') or SameText(Part, 'Strg') or SameText(Part, 'Control') then
+    mPart := Trim(AParts[mIndex]);
+    if SameText(mPart, 'Ctrl') or SameText(mPart, 'Strg') or SameText(mPart, 'Control') then
     begin
-      Modifiers := Modifiers or CtrlBit;
+      AModifiers := AModifiers or cCtrlBit;
     end
-    else if SameText(Part, 'Shift') or SameText(Part, 'Umschalt') then
+    else if SameText(mPart, 'Shift') or SameText(mPart, 'Umschalt') then
     begin
-      Modifiers := Modifiers or ShiftBit;
+      AModifiers := AModifiers or cShiftBit;
     end
-    else if SameText(Part, 'Alt') then
+    else if SameText(mPart, 'Alt') then
     begin
-      Modifiers := Modifiers or AltBit;
+      AModifiers := AModifiers or cAltBit;
     end
     else
     begin
-      Exit;
+      Exit(False);
     end;
   end;
-  Name := UpperCase(Trim(Parts[High(Parts)]));
-  Key := 0;
-  if (Length(Name) = 1) and CharInSet(Name[1], ['A'..'Z', '0'..'9']) then
+  Result := True;
+end;
+
+/// <summary>Taste A–Z, 0–9 oder F1–F24 (Name groß); 0 bei anderen.</summary>
+function KeyCode(const AName: string): Word;
+var
+  mNumber: Integer;
+begin
+  Result := 0;
+  if (Length(AName) = 1) and CharInSet(AName[1], ['A'..'Z', '0'..'9']) then
   begin
-    Key := Ord(Name[1]);
+    Result := Ord(AName[1]);
   end
-  else if (Length(Name) >= 2) and (Name[1] = 'F') and TryStrToInt(Copy(Name, 2, MaxInt), Number) and
-    (Number >= 1) and (Number <= 24) then
+  else if (Length(AName) >= 2) and (AName[1] = 'F') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and
+    (mNumber >= 1) and (mNumber <= 24) then
   begin
-    Key := $6F + Number;
+    Result := $6F + mNumber;
   end;
-  // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
-  if (Key = 0) or ((Modifiers and (CtrlBit or AltBit) = 0) and (Key < $70)) then
+end;
+
+class function TAtlasTasks.ParseKey(const AText: string): Word;
+var
+  mParts: TArray<string>;
+  mModifiers, mKey: Word;
+begin
+  Result := 0;
+  mParts := Trim(AText).Split(['+']);
+  if (Length(mParts) = 0) or not KeyModifiers(mParts, mModifiers) then
   begin
     Exit;
   end;
-  Result := Modifiers or Key;
+  mKey := KeyCode(UpperCase(Trim(mParts[High(mParts)])));
+  // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
+  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < $70)) then
+  begin
+    Exit;
+  end;
+  Result := mModifiers or mKey;
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string; out AValue: string): Boolean;
@@ -333,67 +348,198 @@ begin
   end;
 end;
 
-function ParseMatcher(AValue: TJSONValue; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+/// <summary>Eingebautes Muster nach Name; unbekannte (außer leer und none) melden.</summary>
+function NamedMatcher(const AText, AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
 var
-  Kind: TAtlasTaskMatcherKind;
-  Item: TJSONObject;
-  Map: TJSONValue;
-  Pair: TJSONPair;
-  Text: string;
-  Severity: TAtlasTaskSeverity;
+  mKind: TAtlasTaskMatcherKind;
 begin
+  for mKind := TAtlasTaskMatcherKind.Dcc to TAtlasTaskMatcherKind.Generic do
+  begin
+    if SameText(Trim(AText), TAtlasTasks.MatcherNames[mKind]) then
+    begin
+      Exit(TAtlasTaskMatcher.Create(mKind));
+    end;
+  end;
+  if (Trim(AText) <> '') and not SameText(Trim(AText), 'none') then
+  begin
+    AIssues := AIssues + [Format('%s: unbekanntes Muster "%s", Ausgabe ohne Befunde', [AName, AText])];
+  end;
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None);
-  if AValue = nil then
+end;
+
+/// <summary>severityMap: eigene Wörter und ihre Schwere; ungültige Einträge melden.</summary>
+procedure ReadSeverityMap(AMap: TJSONObject; const AName: string; var AMatcher: TAtlasTaskMatcher;
+  var AIssues: TArray<string>);
+var
+  mPair: TJSONPair;
+  mSeverity: TAtlasTaskSeverity;
+begin
+  for mPair in AMap do
   begin
-    Exit;
-  end;
-  if AValue is TJSONString then
-  begin
-    for Kind := TAtlasTaskMatcherKind.Dcc to TAtlasTaskMatcherKind.Generic do
+    if (mPair.JsonValue is TJSONString) and TAtlasTasks.TrySeverity(mPair.JsonValue.Value, mSeverity) then
     begin
-      if SameText(Trim(AValue.Value), TAtlasTasks.MatcherNames[Kind]) then
-      begin
-        Exit(TAtlasTaskMatcher.Create(Kind));
-      end;
-    end;
-    if (Trim(AValue.Value) <> '') and not SameText(Trim(AValue.Value), 'none') then
+      AMatcher.SeverityWords := AMatcher.SeverityWords + [AnsiLowerCase(mPair.JsonString.Value)];
+      AMatcher.SeverityValues := AMatcher.SeverityValues + [mSeverity];
+    end
+    else
     begin
-      AIssues := AIssues + [Format('%s: unbekanntes Muster "%s", Ausgabe ohne Befunde', [AName, AValue.Value])];
+      AIssues := AIssues + [Format('%s: severityMap "%s" ist weder error, warning noch info',
+        [AName, mPair.JsonString.Value])];
     end;
-    Exit;
   end;
-  if not (AValue is TJSONObject) then
-  begin
-    AIssues := AIssues + [Format('%s: matcher muss Name oder Objekt sein', [AName])];
-    Exit;
-  end;
-  Item := TJSONObject(AValue);
-  if not StringOf(Item, 'regex', Text) or (Text = '') then
+end;
+
+/// <summary>Eigenes Muster aus { regex, severity, severityMap }; ohne regex keins.</summary>
+function CustomMatcher(AItem: TJSONObject; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+var
+  mMap: TJSONValue;
+  mText: string;
+  mSeverity: TAtlasTaskSeverity;
+begin
+  if not StringOf(AItem, 'regex', mText) or (mText = '') then
   begin
     AIssues := AIssues + [Format('%s: matcher ohne regex', [AName])];
-    Exit;
+    Exit(TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None));
   end;
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.Custom);
-  Result.Regex := Text;
-  if StringOf(Item, 'severity', Text) and TAtlasTasks.TrySeverity(Text, Severity) then
+  Result.Regex := mText;
+  if StringOf(AItem, 'severity', mText) and TAtlasTasks.TrySeverity(mText, mSeverity) then
   begin
-    Result.DefaultSeverity := Severity;
+    Result.DefaultSeverity := mSeverity;
   end;
-  Map := Item.GetValue('severityMap');
-  if Map is TJSONObject then
+  mMap := AItem.GetValue('severityMap');
+  if mMap is TJSONObject then
   begin
-    for Pair in TJSONObject(Map) do
+    ReadSeverityMap(TJSONObject(mMap), AName, Result, AIssues);
+  end;
+end;
+
+function ParseMatcher(AValue: TJSONValue; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+begin
+  if AValue is TJSONString then
+  begin
+    Result := NamedMatcher(AValue.Value, AName, AIssues);
+  end
+  else if AValue is TJSONObject then
+  begin
+    Result := CustomMatcher(TJSONObject(AValue), AName, AIssues);
+  end
+  else
+  begin
+    if AValue <> nil then
     begin
-      if (Pair.JsonValue is TJSONString) and TAtlasTasks.TrySeverity(Pair.JsonValue.Value, Severity) then
+      AIssues := AIssues + [Format('%s: matcher muss Name oder Objekt sein', [AName])];
+    end;
+    Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None);
+  end;
+end;
+
+procedure ReadArgs(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
+  var AIssues: TArray<string>);
+var
+  mValue, mElement: TJSONValue;
+begin
+  mValue := AItem.GetValue('args');
+  if mValue is TJSONArray then
+  begin
+    for mElement in TJSONArray(mValue) do
+    begin
+      if mElement is TJSONString then
       begin
-        Result.SeverityWords := Result.SeverityWords + [AnsiLowerCase(Pair.JsonString.Value)];
-        Result.SeverityValues := Result.SeverityValues + [Severity];
+        ATask.Args := ATask.Args + [mElement.Value];
+      end
+      else if mElement is TJSONNumber then
+      begin
+        ATask.Args := ATask.Args + [mElement.ToString];
       end
       else
       begin
-        AIssues := AIssues + [Format('%s: severityMap "%s" ist weder error, warning noch info',
-          [AName, Pair.JsonString.Value])];
+        AIssues := AIssues + [Format('%s: args enthält einen Wert, der kein Text ist', [AWhere])];
       end;
+    end;
+  end
+  else if mValue <> nil then
+  begin
+    AIssues := AIssues + [Format('%s: args muss eine Liste sein', [AWhere])];
+  end;
+end;
+
+procedure ReadEnv(AItem: TJSONObject; var ATask: TAtlasTaskDefinition);
+var
+  mValue: TJSONValue;
+  mPair: TJSONPair;
+begin
+  mValue := AItem.GetValue('env');
+  if not (mValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mPair in TJSONObject(mValue) do
+  begin
+    if mPair.JsonValue is TJSONString then
+    begin
+      ATask.EnvNames := ATask.EnvNames + [mPair.JsonString.Value];
+      ATask.EnvValues := ATask.EnvValues + [mPair.JsonValue.Value];
+    end;
+  end;
+end;
+
+procedure ReadKey(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
+  var AIssues: TArray<string>);
+begin
+  if StringOf(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
+  begin
+    ATask.Key := TAtlasTasks.ParseKey(ATask.KeyText);
+    if ATask.Key = 0 then
+    begin
+      AIssues := AIssues + [Format('%s: Taste "%s" nicht lesbar', [AWhere, ATask.KeyText])];
+    end;
+  end;
+end;
+
+procedure ReadTimeout(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
+  var AIssues: TArray<string>);
+var
+  mValue: TJSONValue;
+  mNumber: Integer;
+begin
+  mValue := AItem.GetValue('timeoutSec');
+  if (mValue is TJSONNumber) and TryStrToInt(mValue.ToString, mNumber) and (mNumber >= 0) then
+  begin
+    if mNumber > TAtlasTasks.MaxTimeoutSec then
+    begin
+      mNumber := TAtlasTasks.MaxTimeoutSec;
+    end;
+    ATask.TimeoutSec := mNumber;
+  end
+  else if mValue <> nil then
+  begin
+    AIssues := AIssues + [Format('%s: timeoutSec muss eine ganze Zahl ab 0 sein', [AWhere])];
+  end;
+end;
+
+procedure ReadGroup(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
+  var AIssues: TArray<string>);
+var
+  mText: string;
+begin
+  if StringOf(AItem, 'group', mText) and not TAtlasTasks.TryGroup(mText, ATask.Group) then
+  begin
+    AIssues := AIssues + [Format('%s: unbekannte group "%s", gilt als other', [AWhere, mText])];
+  end;
+end;
+
+procedure ReadBeforeBuild(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
+  var AIssues: TArray<string>);
+var
+  mText: string;
+begin
+  if StringOf(AItem, 'beforeBuild', mText) then
+  begin
+    ATask.HasBeforeBuild := TAtlasTasks.TryBeforeBuild(mText, ATask.BeforeBuild);
+    if not ATask.HasBeforeBuild then
+    begin
+      AIssues := AIssues + [Format('%s: beforeBuild "%s" ist weder off, warn noch block', [AWhere, mText])];
     end;
   end;
 end;
@@ -401,99 +547,33 @@ end;
 function ParseTask(AItem: TJSONObject; AIndex: Integer; AGlobal: Boolean; out ATask: TAtlasTaskDefinition;
   var AIssues: TArray<string>): Boolean;
 var
-  Value, Element: TJSONValue;
-  Pair: TJSONPair;
-  Text, Where: string;
-  Number: Integer;
+  mWhere: string;
 begin
   ATask := Default(TAtlasTaskDefinition);
   ATask.Group := TAtlasTaskGroup.Other;
   ATask.TimeoutSec := TAtlasTasks.DefaultTimeoutSec;
   ATask.Global := AGlobal;
-  Where := Format('tasks[%d]', [AIndex]);
   if not StringOf(AItem, 'name', ATask.Name) or (Trim(ATask.Name) = '') then
   begin
-    AIssues := AIssues + [Format('%s: ohne name', [Where])];
+    AIssues := AIssues + [Format('%s: ohne name', [Format('tasks[%d]', [AIndex])])];
     Exit(False);
   end;
   ATask.Name := Trim(ATask.Name);
-  Where := ATask.Name;
+  mWhere := ATask.Name;
   if not StringOf(AItem, 'command', ATask.Command) or (Trim(ATask.Command) = '') then
   begin
-    AIssues := AIssues + [Format('%s: ohne command', [Where])];
+    AIssues := AIssues + [Format('%s: ohne command', [mWhere])];
     Exit(False);
   end;
   ATask.Command := Trim(ATask.Command);
-  Value := AItem.GetValue('args');
-  if Value is TJSONArray then
-  begin
-    for Element in TJSONArray(Value) do
-    begin
-      if Element is TJSONString then
-      begin
-        ATask.Args := ATask.Args + [Element.Value];
-      end
-      else if Element is TJSONNumber then
-      begin
-        ATask.Args := ATask.Args + [Element.ToString];
-      end
-      else
-      begin
-        AIssues := AIssues + [Format('%s: args enthält einen Wert, der kein Text ist', [Where])];
-      end;
-    end;
-  end
-  else if Value <> nil then
-  begin
-    AIssues := AIssues + [Format('%s: args muss eine Liste sein', [Where])];
-  end;
+  ReadArgs(AItem, mWhere, ATask, AIssues);
   StringOf(AItem, 'cwd', ATask.Cwd);
-  Value := AItem.GetValue('env');
-  if Value is TJSONObject then
-  begin
-    for Pair in TJSONObject(Value) do
-    begin
-      if Pair.JsonValue is TJSONString then
-      begin
-        ATask.EnvNames := ATask.EnvNames + [Pair.JsonString.Value];
-        ATask.EnvValues := ATask.EnvValues + [Pair.JsonValue.Value];
-      end;
-    end;
-  end;
-  if StringOf(AItem, 'group', Text) and not TAtlasTasks.TryGroup(Text, ATask.Group) then
-  begin
-    AIssues := AIssues + [Format('%s: unbekannte group "%s", gilt als other', [Where, Text])];
-  end;
-  ATask.Matcher := ParseMatcher(AItem.GetValue('matcher'), Where, AIssues);
-  if StringOf(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
-  begin
-    ATask.Key := TAtlasTasks.ParseKey(ATask.KeyText);
-    if ATask.Key = 0 then
-    begin
-      AIssues := AIssues + [Format('%s: Taste "%s" nicht lesbar', [Where, ATask.KeyText])];
-    end;
-  end;
-  Value := AItem.GetValue('timeoutSec');
-  if (Value is TJSONNumber) and TryStrToInt(Value.ToString, Number) and (Number >= 0) then
-  begin
-    if Number > TAtlasTasks.MaxTimeoutSec then
-    begin
-      Number := TAtlasTasks.MaxTimeoutSec;
-    end;
-    ATask.TimeoutSec := Number;
-  end
-  else if Value <> nil then
-  begin
-    AIssues := AIssues + [Format('%s: timeoutSec muss eine ganze Zahl ab 0 sein', [Where])];
-  end;
-  if StringOf(AItem, 'beforeBuild', Text) then
-  begin
-    ATask.HasBeforeBuild := TAtlasTasks.TryBeforeBuild(Text, ATask.BeforeBuild);
-    if not ATask.HasBeforeBuild then
-    begin
-      AIssues := AIssues + [Format('%s: beforeBuild "%s" ist weder off, warn noch block', [Where, Text])];
-    end;
-  end;
+  ReadEnv(AItem, ATask);
+  ReadGroup(AItem, mWhere, ATask, AIssues);
+  ATask.Matcher := ParseMatcher(AItem.GetValue('matcher'), mWhere, AIssues);
+  ReadKey(AItem, mWhere, ATask, AIssues);
+  ReadTimeout(AItem, mWhere, ATask, AIssues);
+  ReadBeforeBuild(AItem, mWhere, ATask, AIssues);
   Result := True;
 end;
 

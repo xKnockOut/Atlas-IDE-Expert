@@ -628,11 +628,12 @@ begin
     'end.']), True, False, Title));
 end;
 
-procedure TExtractTests.ExtractConstantInRoutineAndUnit;
+/// <summary>Konstante in der Routine oder in der Unit extrahieren.</summary>
+procedure AssertConstantInRoutineOrUnit;
 var
-  Title, Marked: string;
+  mTitle, mMarked: string;
 begin
-  Marked := Join([
+  mMarked := Join([
     'unit U;',
     'interface',
     'implementation',
@@ -651,8 +652,8 @@ begin
     'begin',
     '  Sleep(NewConstant);',
     'end;',
-    'end.']), Constant(Marked, False, Title));
-  Assert.AreEqual('Konstante extrahieren', Title);
+    'end.']), Constant(mMarked, False, mTitle));
+  Assert.AreEqual('Konstante extrahieren', mTitle);
   Assert.AreEqual(Join([
     'unit U;',
     'interface',
@@ -664,8 +665,15 @@ begin
     'begin',
     '  Sleep(NewConstant);',
     'end;',
-    'end.']), Constant(Marked, True, Title));
-  Assert.AreEqual('Konstante in der Unit extrahieren', Title);
+    'end.']), Constant(mMarked, True, mTitle));
+  Assert.AreEqual('Konstante in der Unit extrahieren', mTitle);
+end;
+
+/// <summary>Cursor im Literal genügt; ein vorhandener const-Abschnitt wird ergänzt.</summary>
+procedure AssertConstantAtCursorJoinsSection;
+var
+  mTitle: string;
+begin
   // Cursor im Literal genügt; ein vorhandener const-Abschnitt wird ergänzt.
   Assert.AreEqual(Join([
     'unit U;',
@@ -688,7 +696,13 @@ begin
     'begin',
     '  Writeln(''Ha|llo'');',
     'end;',
-    'end.']), False, Title));
+    'end.']), False, mTitle));
+end;
+
+procedure TExtractTests.ExtractConstantInRoutineAndUnit;
+begin
+  AssertConstantInRoutineOrUnit;
+  AssertConstantAtCursorJoinsSection;
 end;
 
 procedure TExtractTests.ExtractConstantRejectsNonLiterals;

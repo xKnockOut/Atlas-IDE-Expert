@@ -192,10 +192,29 @@ begin
     TMcpFileEdit.Create('B.dfm', TTextRange.Create(1, 2, 1, 5), 'Neu')];
 end;
 
+/// <summary>Der Aufruf von AName scheitert mit einer Meldung, die AExpected enthält.</summary>
+procedure AssertToolRefused(const AServer: TMcpServer; const AName, AExpected: string);
+var
+  mParams, mCalled: TJSONObject;
+begin
+  mParams := TJSONObject.ParseJSONValue('{"name":"' + AName + '"}') as TJSONObject;
+  try
+    mCalled := AServer.CallTool(mParams);
+    try
+      Assert.IsTrue(mCalled.GetValue<Boolean>('isError'));
+      Assert.Contains(mCalled.ToJSON, AExpected);
+    finally
+      mCalled.Free;
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
 procedure TMcpEditToolsTests.DisabledAndRestrictedToolsAreHiddenAndRefused;
 var
   Server: TMcpServer;
-  Listed, Called, Params: TJSONObject;
+  Listed: TJSONObject;
 begin
   Server := TMcpServer.Create('Atlas', '0');
   try
@@ -220,18 +239,7 @@ begin
     finally
       Listed.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"name":"lesen"}') as TJSONObject;
-    try
-      Called := Server.CallTool(Params);
-      try
-        Assert.IsTrue(Called.GetValue<Boolean>('isError'));
-        Assert.Contains(Called.ToJSON, 'mcp.disabledTools');
-      finally
-        Called.Free;
-      end;
-    finally
-      Params.Free;
-    end;
+    AssertToolRefused(Server, 'lesen', 'mcp.disabledTools');
     Server.OnDisabledTools := nil;
     Server.Restricted := True;
     Listed := Server.ListTools;
@@ -241,18 +249,7 @@ begin
     finally
       Listed.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"name":"schreiben"}') as TJSONObject;
-    try
-      Called := Server.CallTool(Params);
-      try
-        Assert.IsTrue(Called.GetValue<Boolean>('isError'));
-        Assert.Contains(Called.ToJSON, 'Modus aus');
-      finally
-        Called.Free;
-      end;
-    finally
-      Params.Free;
-    end;
+    AssertToolRefused(Server, 'schreiben', 'Modus aus');
   finally
     Server.Free;
   end;

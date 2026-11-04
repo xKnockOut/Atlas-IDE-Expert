@@ -279,7 +279,7 @@ begin
   begin
     Exit;
   end;
-  if (Pos('.', mName) = 0) and TNameResolver.IsBuiltinTypeName(mName) then
+  if (Pos('.', mName) = 0) and TResolverText.IsBuiltinTypeName(mName) then
   begin
     Result := TResolvedTypeKinds.OfBuiltin(mName);
     AType.Name := mName;
@@ -634,7 +634,7 @@ begin
     Exit;
   end;
   mPointee := PointeeName(ANode[1]);
-  if (mPointee = '') or not TNameResolver.IsBuiltinTypeName(mPointee) then
+  if (mPointee = '') or not TResolverText.IsBuiltinTypeName(mPointee) then
   begin
     Exit;
   end;
@@ -879,7 +879,7 @@ begin
       begin
         Exit;
       end;
-      mAncestors := FResolver.AncestorNames(mOwnerType, mComplete);
+      mAncestors := FResolver.Queries.AncestorNames(mOwnerType, mComplete);
       if not mComplete or MatchText(mBaseType.Name, mAncestors) then
       begin
         Exit;

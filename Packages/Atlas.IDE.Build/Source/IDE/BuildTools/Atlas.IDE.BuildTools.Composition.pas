@@ -78,6 +78,7 @@ uses
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Runner,
   Atlas.UI.Tasks.Texts,
   Atlas.UI.Strings,
@@ -254,7 +255,7 @@ begin
   try
     FreeAndNil(GTasks);
   finally
-    TAtlasIdeTasks.ClearFindings;
+    TAtlasIdeTaskProjects.ClearFindings;
   end;
 end;
 

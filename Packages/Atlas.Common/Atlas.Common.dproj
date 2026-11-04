@@ -480,6 +480,19 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Contract.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TreeUnits.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Symbols.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Place.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Units.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Lookup.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Typing.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Members.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Locals.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Expressions.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Chains.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Candidates.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.InterfaceMembers.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Queries.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Core.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
@@ -560,6 +573,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ConsideredUsed.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Scanner.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.UnsafeCode.pas"/>
