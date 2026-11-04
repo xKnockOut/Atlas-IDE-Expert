@@ -235,7 +235,7 @@ begin
     procedure(const ANamespaces: TArray<string>)
     begin
       AParts.CodeArea.Navigation.SetNamespaces(ANamespaces);
-      AParts.CodeArea.Completion.Completion.Namespaces := ANamespaces;
+      AParts.CodeArea.Completion.Completion.Hooks.Namespaces := ANamespaces;
       AParts.AnalysisArea.Analysis.SetNamespaces(ANamespaces);
     end;
   Result.LibraryRootsChanged :=

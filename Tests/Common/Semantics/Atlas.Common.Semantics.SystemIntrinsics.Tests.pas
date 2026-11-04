@@ -44,6 +44,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -147,7 +148,7 @@ begin
   Text := WithCode(ACode);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -269,7 +270,7 @@ begin
     'function Assigned(P: Pointer): Boolean;'#10'begin'#10'end;'#10'procedure TFoo.Bar;', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
+    Items := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;

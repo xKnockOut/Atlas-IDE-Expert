@@ -400,6 +400,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Commands.ShortcutTips` | `IDE/Commands/Atlas.IDE.Commands.ShortcutTips.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Usage` | `IDE/Commands/Atlas.IDE.Commands.Usage.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Completion.Editor` | `IDE/Completion/Atlas.IDE.Completion.Editor.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorState` | `IDE/Completion/Atlas.IDE.Completion.EditorState.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorSnippets` | `IDE/Completion/Atlas.IDE.Completion.EditorSnippets.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorOpen` | `IDE/Completion/Atlas.IDE.Completion.EditorOpen.pas` | Ordner `IDE/Completion` |
+| `Atlas.IDE.Completion.EditorCommit` | `IDE/Completion/Atlas.IDE.Completion.EditorCommit.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.Favorites` | `IDE/Completion/Atlas.IDE.Completion.Favorites.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.History` | `IDE/Completion/Atlas.IDE.Completion.History.pas` | Ordner `IDE/Completion` |
 | `Atlas.IDE.Completion.Placeholders` | `IDE/Completion/Atlas.IDE.Completion.Placeholders.pas` | Ordner `IDE/Completion` |
@@ -527,6 +531,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Settings.QuickToggles` | `IDE/Settings/Atlas.IDE.Settings.QuickToggles.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.RuleChecksNotice` | `IDE/Settings/Atlas.IDE.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
 | `Atlas.IDE.Settings.ServerTool` | `IDE/Settings/Atlas.IDE.Settings.ServerTool.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.ServerActions` | `IDE/Settings/Atlas.IDE.Settings.ServerActions.pas` | Baseline, Unterdrückungen und Index-Cache über AtlasServer.exe |
+| `Atlas.IDE.Settings.SubPages` | `IDE/Settings/Atlas.IDE.Settings.SubPages.pas` | Unterseiten Snippets, Tastenkonflikte und Server in Tools › Optionen |
+| `Atlas.IDE.Settings.VcsOptions` | `IDE/Settings/Atlas.IDE.Settings.VcsOptions.pas` | Seite Versionsverwaltung in Tools › Optionen, #1285 |
 | `Atlas.IDE.Settings.Transfer` | `IDE/Settings/Atlas.IDE.Settings.Transfer.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Setup.Checklist` | `IDE/Setup/Atlas.IDE.Setup.Checklist.pas` | Ordner `IDE/Setup` |
 | `Atlas.IDE.Signature.Editor` | `IDE/Signature/Atlas.IDE.Signature.Editor.pas` | Ordner `IDE/Signature` |
@@ -547,6 +554,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Commands.ShortcutTip` | `UI/Commands/Atlas.UI.Commands.ShortcutTip.pas` | Ordner `UI/Commands` |
 | `Atlas.UI.Completion.Details` | `UI/Completion/Atlas.UI.Completion.Details.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Completion.Popup` | `UI/Completion/Atlas.UI.Completion.Popup.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.PopupState` | `UI/Completion/Atlas.UI.Completion.PopupState.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.PopupLayout` | `UI/Completion/Atlas.UI.Completion.PopupLayout.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.PopupPainter` | `UI/Completion/Atlas.UI.Completion.PopupPainter.pas` | Ordner `UI/Completion` |
+| `Atlas.UI.Completion.PopupTexts` | `UI/Completion/Atlas.UI.Completion.PopupTexts.pas` | Ordner `UI/Completion` |
 | `Atlas.UI.Diagnostics.ExportDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ExportDialog.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.ProcessesDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ProcessesDialog.pas` | Ordner `UI/Diagnostics` |
 | `Atlas.UI.Diagnostics.ReportDialog` | `UI/Diagnostics/Atlas.UI.Diagnostics.ReportDialog.pas` | Ordner `UI/Diagnostics` |

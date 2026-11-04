@@ -549,14 +549,67 @@ begin
   Result.AddPair('newText', AEdit.NewText);
 end;
 
-function ItemToJson(const AItem: TCompletionItem; ASort: Integer): TJSONObject;
+/// <summary>additionalTextEdits von AItem nach AResult; ohne Zusatzänderungen nichts.</summary>
+procedure AddEditsJson(AResult: TJSONObject; const AItem: TCompletionItem);
 var
-  Edits, Arguments: TJSONArray;
-  Command: TJSONObject;
-  Argument: string;
-  Edit: TRuleEdit;
-  Data: TJSONObject;
-  Writer: TItemDataWriter;
+  mEdits: TJSONArray;
+  mEdit: TRuleEdit;
+begin
+  if Length(AItem.AdditionalEdits) = 0 then
+  begin
+    Exit;
+  end;
+  mEdits := TJSONArray.Create;
+  AResult.AddPair('additionalTextEdits', mEdits);
+  for mEdit in AItem.AdditionalEdits do
+  begin
+    mEdits.AddElement(EditToJson(mEdit));
+  end;
+end;
+
+/// <summary>Befehl nach dem Übernehmen (#473), etwa resourcestring in eine andere Unit schreiben; ohne Befehl
+/// nichts.</summary>
+procedure AddCommandJson(AResult: TJSONObject; const AItem: TCompletionItem);
+var
+  mCommand: TJSONObject;
+  mArguments: TJSONArray;
+  mArgument: string;
+begin
+  if AItem.Command = '' then
+  begin
+    Exit;
+  end;
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', AItem.CommandTitle);
+  mCommand.AddPair('command', AItem.Command);
+  mArguments := TJSONArray.Create;
+  for mArgument in AItem.CommandArguments do
+  begin
+    mArguments.Add(mArgument);
+  end;
+  mCommand.AddPair('arguments', mArguments);
+  AResult.AddPair('command', mCommand);
+end;
+
+/// <summary>data mit den Merkmalen für Atlas; ohne Merkmale nichts.</summary>
+procedure AddDataJson(AResult: TJSONObject; const AItem: TCompletionItem);
+var
+  mData: TJSONObject;
+  mWriter: TItemDataWriter;
+begin
+  if not NeedsData(AItem) then
+  begin
+    Exit;
+  end;
+  mData := TJSONObject.Create;
+  for mWriter in DataWriters do
+  begin
+    mWriter(AItem, mData);
+  end;
+  AResult.AddPair('data', mData);
+end;
+
+function ItemToJson(const AItem: TCompletionItem; ASort: Integer): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('label', AItem.Name);
@@ -582,41 +635,11 @@ begin
   begin
     Result.AddPair('insertTextFormat', TJSONNumber.Create(2));
   end;
-  if Length(AItem.AdditionalEdits) > 0 then
-  begin
-    Edits := TJSONArray.Create;
-    Result.AddPair('additionalTextEdits', Edits);
-    for Edit in AItem.AdditionalEdits do
-    begin
-      Edits.AddElement(EditToJson(Edit));
-    end;
-  end;
-  // Befehl nach dem Übernehmen (#473): resourcestring in eine andere Unit schreiben.
-  if AItem.Command <> '' then
-  begin
-    Command := TJSONObject.Create;
-    Command.AddPair('title', AItem.CommandTitle);
-    Command.AddPair('command', AItem.Command);
-    Arguments := TJSONArray.Create;
-    for Argument in AItem.CommandArguments do
-    begin
-      Arguments.Add(Argument);
-    end;
-    Command.AddPair('arguments', Arguments);
-    Result.AddPair('command', Command);
-  end;
+  AddEditsJson(Result, AItem);
+  AddCommandJson(Result, AItem);
   // Reihenfolge wie geliefert: beste Punktzahl, dann nächster Gültigkeitsbereich.
   Result.AddPair('sortText', Format('%.5d', [ASort]));
-  if not NeedsData(AItem) then
-  begin
-    Exit;
-  end;
-  Data := TJSONObject.Create;
-  for Writer in DataWriters do
-  begin
-    Writer(AItem, Data);
-  end;
-  Result.AddPair('data', Data);
+  AddDataJson(Result, AItem);
 end;
 
 function CompletionItemsToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;

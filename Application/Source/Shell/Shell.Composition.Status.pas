@@ -260,8 +260,8 @@ begin
       mItem := TJSONObject.Create;
       mItems.AddElement(mItem);
       mItem.AddPair('root', mWorkspace.Root);
-      mItem.AddPair('file', ExtractFileName(mWorkspace.Configuration.FileName));
-      mItem.AddPair('fileContent', JsonOrText(mWorkspace.Configuration.FileText));
+      mItem.AddPair('file', ExtractFileName(mWorkspace.Configuration.Files.Read));
+      mItem.AddPair('fileContent', JsonOrText(mWorkspace.Configuration.Texts.Workspace));
       mItem.AddPair('effective', EffectiveSettings(mWorkspace.Configuration.Settings));
       // Projektwahl (#46): geladen, gewählt, aktiv, ausgewählt; Vorrang atlas.json < selectBuild < IDE.
       mStatus := mWorkspace.IndexStatus;

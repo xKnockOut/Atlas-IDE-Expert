@@ -540,105 +540,163 @@ begin
   Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
+/// <summary>Zeichnet PaintLine für AContext: Modus läuft, Ansicht mit Puffer, Datei des Modus.</summary>
+function PaintsLine(ASession: TAtlasPlaceholderSession; const AFileName: string;
+  const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := (ASession <> nil) and (AContext <> nil) and (AContext.LineState <> nil) and (AContext.EditView <> nil);
+  Result := Result and (AContext.EditView.Buffer <> nil) and SameText(AContext.FileName, AFileName);
+end;
+
+type
+  /// <summary>Rahmen und Fußzeile der Platzhalter in einer Editorzeile (PaintLine).</summary>
+  TPlaceholderPaint = record
+    Session: TAtlasPlaceholderSession;
+    Context: INTACodeEditorPaintContext;
+    Area: TRect;
+    Colors: TAtlasColors;
+    DC: HDC;
+    /// <summary>Zeile (0-basiert) und ihr Text im Modell.</summary>
+    Line: Integer;
+    Text: string;
+    TabWidth: Integer;
+    /// <summary>Entspricht die Zeile im Editor dem Stand des Modells?</summary>
+    function Matches: Boolean;
+    /// <summary>Linker Rand des Zeichens ACharacter (0-basiert) der Zeile in Pixeln.</summary>
+    function Pixel(ACharacter: Integer): Integer;
+    /// <summary>Aktueller Platzhalter durchgezogen, verknüpfte gestrichelt, die übrigen gepunktet.</summary>
+    procedure Frame(const AField, ACurrent: TAtlasPlaceholderField);
+    procedure Frames;
+    /// <summary>Fußzeile hinter der Zeile des aktuellen Platzhalters.</summary>
+    procedure Footer;
+  end;
+
+{ TPlaceholderPaint }
+
+function TPlaceholderPaint.Matches: Boolean;
+begin
+  Result := TrimRight(TAtlasPairs.DisplayLine(Context.LineState.Text, TabWidth)) =
+    TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth));
+end;
+
+function TPlaceholderPaint.Pixel(ACharacter: Integer): Integer;
+begin
+  Result := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, ACharacter, TabWidth), Context.EditorLineNum).Left;
+end;
+
+procedure TPlaceholderPaint.Frame(const AField, ACurrent: TAtlasPlaceholderField);
+var
+  mStartLine, mStartChar, mEndLine, mEndChar, mLeft, mRight, mPenStyle: Integer;
+  mColor: TColor;
+  mPen, mOldPen: HGDIOBJ;
+begin
+  TAtlasPlaceholderSession.Locate(Session.Text, AField.Start, mStartLine, mStartChar);
+  TAtlasPlaceholderSession.Locate(Session.Text, AField.Stop, mEndLine, mEndChar);
+  if mStartLine <> Line then
+  begin
+    Exit;
+  end;
+  if mEndLine <> Line then
+  begin
+    mEndChar := Length(Text);
+  end;
+  mLeft := Pixel(mStartChar) - 1;
+  mRight := Max(Pixel(mEndChar) + 1, mLeft + 2);
+  if (AField.Start = ACurrent.Start) and (AField.Number = ACurrent.Number) then
+  begin
+    mPenStyle := PS_SOLID;
+    mColor := TColor(Colors.Accent);
+  end
+  else if AField.Number = ACurrent.Number then
+  begin
+    mPenStyle := PS_DASH;
+    mColor := TColor(Colors.Accent);
+  end
+  else
+  begin
+    mPenStyle := PS_DOT;
+    mColor := TColor(Colors.Muted);
+  end;
+  mPen := CreatePen(mPenStyle, 1, ColorToRGB(mColor));
+  mOldPen := SelectObject(DC, mPen);
+  try
+    Winapi.Windows.Rectangle(DC, mLeft, Area.Top, mRight, Area.Bottom);
+  finally
+    SelectObject(DC, mOldPen);
+    DeleteObject(mPen);
+  end;
+end;
+
+procedure TPlaceholderPaint.Frames;
+var
+  mField, mCurrent: TAtlasPlaceholderField;
+  mOldBrush: HGDIOBJ;
+begin
+  mCurrent := Session.Current;
+  mOldBrush := SelectObject(DC, GetStockObject(NULL_BRUSH));
+  for mField in Session.Fields do
+  begin
+    Frame(mField, mCurrent);
+  end;
+  SelectObject(DC, mOldBrush);
+end;
+
+procedure TPlaceholderPaint.Footer;
+var
+  mStartLine, mStartChar, mLeft: Integer;
+  mHint: string;
+  mOldFont: TColor;
+  mOldBrushStyle: TBrushStyle;
+begin
+  TAtlasPlaceholderSession.Locate(Session.Text, Session.Current.Start, mStartLine, mStartChar);
+  if mStartLine <> Line then
+  begin
+    Exit;
+  end;
+  mHint := Format(TAtlasStrings.Text(TAtlasTextId.PlaceholderFooter), [Session.Position, Session.Count]);
+  mLeft := Context.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(Text, TabWidth)) + 4,
+    Context.EditorLineNum).Left;
+  mOldFont := Context.Canvas.Font.Color;
+  mOldBrushStyle := Context.Canvas.Brush.Style;
+  try
+    Context.Canvas.Font.Color := TColor(Colors.Muted);
+    Context.Canvas.Brush.Style := bsClear;
+    Context.Canvas.TextOut(mLeft, Area.Top, mHint);
+  finally
+    Context.Canvas.Font.Color := mOldFont;
+    Context.Canvas.Brush.Style := mOldBrushStyle;
+  end;
+end;
+
 procedure TAtlasEditorPlaceholders.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Fields: TArray<TAtlasPlaceholderField>;
-  Field, Current: TAtlasPlaceholderField;
-  Line, TabWidth, StartLine, StartChar, EndLine, EndChar, Left, Right, Saved, PenStyle, Footer: Integer;
-  Text, Hint: string;
-  Colors: TAtlasColors;
-  DC: HDC;
-  Pen, OldPen, OldBrush: HGDIOBJ;
-  Color: TColor;
-  OldFont: TColor;
-  OldBrushStyle: TBrushStyle;
+  mPaint: TPlaceholderPaint;
+  mSaved: Integer;
 begin
-  if (FSession = nil) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or
-    (Context.LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
-    not SameText(Context.FileName, FFileName) then
+  if BeforeEvent or (Stage <> plsEndPaint) or not PaintsLine(FSession, FFileName, Context) then
   begin
     Exit;
   end;
   try
-    Line := Context.LogicalLineNum - 1;
-    Text := LineOf(FSession.Text, Line);
-    TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
-    // Nur, wenn die Zeile im Editor dem Stand des Modells entspricht.
-    if TrimRight(TAtlasPairs.DisplayLine(Context.LineState.Text, TabWidth)) <>
-      TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth)) then
+    mPaint.Session := FSession;
+    mPaint.Context := Context;
+    mPaint.Area := Rect;
+    mPaint.Line := Context.LogicalLineNum - 1;
+    mPaint.Text := LineOf(FSession.Text, mPaint.Line);
+    mPaint.TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
+    if not mPaint.Matches then
     begin
       Exit;
     end;
-    Colors := TAtlasIdeStyle.Colors;
-    Current := FSession.Current;
-    Fields := FSession.Fields;
-    DC := Context.Canvas.Handle;
-    Saved := SaveDC(DC);
+    mPaint.Colors := TAtlasIdeStyle.Colors;
+    mPaint.DC := Context.Canvas.Handle;
+    mSaved := SaveDC(mPaint.DC);
     try
-      OldBrush := SelectObject(DC, GetStockObject(NULL_BRUSH));
-      for Field in Fields do
-      begin
-        TAtlasPlaceholderSession.Locate(FSession.Text, Field.Start, StartLine, StartChar);
-        TAtlasPlaceholderSession.Locate(FSession.Text, Field.Stop, EndLine, EndChar);
-        if StartLine <> Line then
-        begin
-          Continue;
-        end;
-        if EndLine <> Line then
-        begin
-          EndChar := Length(Text);
-        end;
-        Left := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, StartChar, TabWidth),
-          Context.EditorLineNum).Left - 1;
-        Right := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, EndChar, TabWidth),
-          Context.EditorLineNum).Left + 1;
-        Right := Max(Right, Left + 2);
-        if (Field.Start = Current.Start) and (Field.Number = Current.Number) then
-        begin
-          PenStyle := PS_SOLID;
-          Color := TColor(Colors.Accent);
-        end
-        else if Field.Number = Current.Number then
-        begin
-          PenStyle := PS_DASH;
-          Color := TColor(Colors.Accent);
-        end
-        else
-        begin
-          PenStyle := PS_DOT;
-          Color := TColor(Colors.Muted);
-        end;
-        Pen := CreatePen(PenStyle, 1, ColorToRGB(Color));
-        OldPen := SelectObject(DC, Pen);
-        try
-          Winapi.Windows.Rectangle(DC, Left, Rect.Top, Right, Rect.Bottom);
-        finally
-          SelectObject(DC, OldPen);
-          DeleteObject(Pen);
-        end;
-      end;
-      SelectObject(DC, OldBrush);
-      // Fußzeile hinter der Zeile des aktuellen Platzhalters.
-      TAtlasPlaceholderSession.Locate(FSession.Text, Current.Start, StartLine, StartChar);
-      if StartLine = Line then
-      begin
-        Hint := Format(TAtlasStrings.Text(TAtlasTextId.PlaceholderFooter), [FSession.Position, FSession.Count]);
-        Footer := Context.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(Text, TabWidth)) + 4,
-          Context.EditorLineNum).Left;
-        OldFont := Context.Canvas.Font.Color;
-        OldBrushStyle := Context.Canvas.Brush.Style;
-        try
-          Context.Canvas.Font.Color := TColor(Colors.Muted);
-          Context.Canvas.Brush.Style := bsClear;
-          Context.Canvas.TextOut(Footer, Rect.Top, Hint);
-        finally
-          Context.Canvas.Font.Color := OldFont;
-          Context.Canvas.Brush.Style := OldBrushStyle;
-        end;
-      end;
+      mPaint.Frames;
+      mPaint.Footer;
     finally
-      RestoreDC(DC, Saved);
+      RestoreDC(mPaint.DC, mSaved);
     end;
   except
     // Zeichnen darf die IDE nie stören.

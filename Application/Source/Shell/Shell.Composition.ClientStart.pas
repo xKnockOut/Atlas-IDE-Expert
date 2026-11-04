@@ -27,7 +27,8 @@ uses
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Lsp.Configuration,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.Details;
 
 class procedure TShellClientStart.Initialized(AParts: TShellParts);
 var
@@ -93,8 +94,9 @@ begin
   end;
   AParts.CodeArea.Navigation.Hover.Markdown := TLspHover.ClientSupportsMarkdown(AParams);
   // Code-Vorlagen mit Platzhaltern nur an Clients mit snippetSupport (#51).
-  AParts.CodeArea.Completion.Completion.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
-  AParts.CodeArea.Completion.Completion.DocumentationMarkdown := TLspCompletion.ClientPrefersMarkdown(AParams);
+  AParts.CodeArea.Completion.Completion.Hooks.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
+  AParts.CodeArea.Completion.Completion.Hooks.DocumentationMarkdown :=
+    TCompletionDetails.ClientPrefersMarkdown(AParams);
 end;
 
 end.

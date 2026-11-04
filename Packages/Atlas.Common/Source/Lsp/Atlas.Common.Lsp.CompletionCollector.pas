@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.CompletionCollector;
 
 // Sammler der allgemeinen Vervollständigung (Code-Review S-01, Konzept 4.2 Schritt 5): vorher 13
-// verschachtelte Routinen in TLspCompletion.Collect mit 18 geteilten Variablen. Jeder Eintrag entsteht aus
+// verschachtelte Routinen in TCompletionLists.Collect mit 18 geteilten Variablen. Jeder Eintrag entsteht aus
 // Name, Detail, Art, Strafpunkten und dem aufgelösten Symbol; Quelle und Merkmale kommen aus dem Symbol,
 // nicht aus geteiltem Zustand. Bewertet wird nach Treffer (unscharf oder Anfang), Strafpunkten für die
 // Gruppen (eingebunden, Schlüsselwörter, Projekt-Import, Bibliotheks-Import, nicht verfügbar), dann nach
