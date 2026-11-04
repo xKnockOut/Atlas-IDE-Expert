@@ -132,7 +132,9 @@ begin
         CheckStep;
       end
       else
+      begin
         FStepping := False;
+      end;
     TAtlasDebugStop.Exception, TAtlasDebugStop.Fault:
       begin
         FStepping := False;
@@ -162,11 +164,17 @@ class procedure TAtlasIdeDebugOwnCode.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
   if FTicker = nil then
+  begin
     FTicker := TTicker.Create;
+  end;
   if FStepTimer = nil then
+  begin
     FStepTimer := NewTimer(FTicker.StepTick);
+  end;
   if FJumpTimer = nil then
+  begin
     FJumpTimer := NewTimer(FTicker.JumpTick);
+  end;
   TAtlasIdeDebugTrace.AddHandler(TraceHandler,
     procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
     begin
@@ -183,7 +191,9 @@ end;
 class procedure TAtlasIdeDebugOwnCode.Release;
 begin
   if FListener <> nil then
+  begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
   FListener := nil;
   TAtlasIdeDebugTrace.RemoveHandler(TraceHandler);
   FreeAndNil(FStepTimer);
@@ -208,7 +218,9 @@ end;
 class procedure TAtlasIdeDebugOwnCode.Traced(AKind: TAtlasTraceKind);
 begin
   if AKind = TAtlasTraceKind.TraceInto then
+  begin
     Stepped;
+  end;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.ToggleSetting(const AMessage: TProc<string>);
@@ -219,16 +231,24 @@ begin
   Next.DebugJustMyCode := not Next.DebugJustMyCode;
   TAtlasIdeSettings.Update(Next);
   if Assigned(AMessage) then
+  begin
     if Next.DebugJustMyCode then
-      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn))
+    begin
+      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn));
+    end
     else
+    begin
       AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOff));
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.Stepped;
 begin
   if not TAtlasIdeSettings.Current.DebugJustMyCode or (TAtlasIdeDebugSession.StoppedThread = nil) then
+  begin
     Exit;
+  end;
   FStepping := True;
   FStepStop := TAtlasIdeDebugSession.StopCount;
   FReturns := 0;
@@ -241,10 +261,14 @@ begin
   AFrames := nil;
   Thread := TAtlasIdeDebugSession.StoppedThread;
   if Thread = nil then
+  begin
     Exit(TAtlasDebugStackRead.None);
+  end;
   Result := TAtlasIdeDebugSession.ReadStack(Thread, TAtlasDebugCallStack.MaxFrames, AFrames);
   if Result = TAtlasDebugStackRead.Ready then
+  begin
     TAtlasIdeDebugSources.MarkFrames(AFrames);
+  end;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.CheckStep;
@@ -253,15 +277,21 @@ var
 begin
   FStepTimer.Enabled := False;
   if not FStepping then
+  begin
     Exit;
+  end;
   case ReadFrames(Frames) of
     TAtlasDebugStackRead.Wait:
       begin
         Inc(FStepRetries);
         if FStepRetries <= StackRetries then
-          FStepTimer.Enabled := True
+        begin
+          FStepTimer.Enabled := True;
+        end
         else
+        begin
           FStepping := False;
+        end;
         Exit;
       end;
     TAtlasDebugStackRead.None:
@@ -279,13 +309,17 @@ begin
   Inc(FReturns);
   FStepStop := TAtlasIdeDebugSession.StopCount;
   if not TAtlasIdeDebugSession.RunMode(ormRunUntilReturn) then
+  begin
     FStepping := False;
+  end;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.ScheduleJump;
 begin
   if not TAtlasIdeSettings.Current.DebugJustMyCode then
+  begin
     Exit;
+  end;
   FJumpStop := TAtlasIdeDebugSession.StopCount;
   FJumpStarted := TThread.GetTickCount64;
   FJumpQuiet := 0;
@@ -313,13 +347,17 @@ begin
   end;
   Inc(FJumpQuiet);
   if FJumpQuiet < 2 then
+  begin
     Exit;
+  end;
   case ReadFrames(Frames) of
     TAtlasDebugStackRead.Wait:
       begin
         Inc(FJumpRetries);
         if FJumpRetries > StackRetries then
+        begin
           FJumpTimer.Enabled := False;
+        end;
         Exit;
       end;
     TAtlasDebugStackRead.None:
@@ -331,11 +369,15 @@ begin
   FJumpTimer.Enabled := False;
   Index := TAtlasDebugOwnCode.JumpIndex(Frames, TAtlasIdeSettings.Current.DebugJustMyCode);
   if Index < 0 then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.MarkLine(Frames[Index].FileName, Frames[Index].Line - 1);
   if Assigned(FMessage) then
+  begin
     FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugJustMyCodeJumped,
       [ExtractFileName(Frames[Index].FileName), Frames[Index].Line, Index]));
+  end;
 end;
 
 end.

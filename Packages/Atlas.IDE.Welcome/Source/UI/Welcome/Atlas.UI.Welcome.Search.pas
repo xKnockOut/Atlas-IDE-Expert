@@ -152,7 +152,9 @@ function TAtlasWelcomeSearchList.RowAt(Y: Integer): Integer;
 begin
   Result := Y div RowHeight;
   if (Result < 0) or (Result > High(FBox.FRows)) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasWelcomeSearchList.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -162,7 +164,9 @@ begin
   inherited;
   Row := RowAt(Y);
   if (Row < 0) or (FBox.FRows[Row].Kind <> TAtlasWelcomeRowKind.Hit) then
+  begin
     Exit;
+  end;
   FBox.Select(FBox.FRows[Row].Index);
   FBox.OpenSelected;
 end;
@@ -193,9 +197,13 @@ begin
         Canvas.Font.Style := [fsItalic];
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
         if Row.Kind = TAtlasWelcomeRowKind.Hint then
-          mText := Row.Text
+        begin
+          mText := Row.Text;
+        end
         else
+        begin
           mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSearchMore, [Row.Index]);
+        end;
         Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
         DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
         Canvas.Font.Style := [];
@@ -237,7 +245,9 @@ begin
   Canvas.FillRect(ClientRect);
   Height_ := RowHeight;
   for Row := 0 to Min(High(FBox.FRows), VisibleRows - 1) do
+  begin
     DrawRow(Row, Rect(0, Row * Height_, ClientWidth, (Row + 1) * Height_));
+  end;
 end;
 
 { TAtlasWelcomeSearchBox }
@@ -288,7 +298,9 @@ procedure TAtlasWelcomeSearchBox.SetColors(const AValue: TAtlasColors);
 begin
   FColors := AValue;
   if FList <> nil then
+  begin
     FList.Invalidate;
+  end;
 end;
 
 procedure TAtlasWelcomeSearchBox.EditChange(Sender: TObject);
@@ -318,16 +330,24 @@ begin
   FTimer.Enabled := False;
   FResults := nil;
   if Assigned(FOnQuery) and (Trim(FEdit.Text) <> '') then
+  begin
     FResults := FOnQuery(FEdit.Text);
+  end;
   FHits := TAtlasWelcomeSearch.Flatten(FResults);
   FRows := TAtlasWelcomeSearch.Rows(FResults);
   FSelected := -1;
   if Length(FHits) > 0 then
+  begin
     FSelected := 0;
+  end;
   if (Length(FRows) > 0) and FEdit.Focused then
-    ShowList
+  begin
+    ShowList;
+  end
   else
+  begin
     HideList;
+  end;
 end;
 
 procedure TAtlasWelcomeSearchBox.Clear;
@@ -344,7 +364,9 @@ end;
 procedure TAtlasWelcomeSearchBox.FocusSearch;
 begin
   if not FEdit.CanFocus then
+  begin
     Exit;
+  end;
   FEdit.SetFocus;
   FEdit.SelectAll;
 end;
@@ -352,10 +374,14 @@ end;
 procedure TAtlasWelcomeSearchBox.Select(AIndex: Integer);
 begin
   if Length(FHits) = 0 then
+  begin
     Exit;
+  end;
   FSelected := EnsureRange(AIndex, 0, High(FHits));
   if FList <> nil then
+  begin
     FList.Invalidate;
+  end;
 end;
 
 procedure TAtlasWelcomeSearchBox.OpenSelected;
@@ -365,7 +391,9 @@ var
   Open: TThreadProcedure;
 begin
   if (FSelected < 0) or (FSelected > High(FHits)) then
+  begin
     Exit;
+  end;
   Hit := FHits[FSelected];
   Handler := FOnOpen;
   Clear;
@@ -397,7 +425,9 @@ begin
       begin
         // Noch in der Tipppause: erst die Treffer zum aktuellen Text holen.
         if FTimer.Enabled then
+        begin
           Query;
+        end;
         OpenSelected;
       end;
     VK_ESCAPE:
@@ -412,7 +442,9 @@ procedure TAtlasWelcomeSearchBox.EditKeyPress(Sender: TObject; var Key: Char);
 begin
   // Kein Signalton für Enter und Esc.
   if (Key = #13) or (Key = #27) then
+  begin
     Key := #0;
+  end;
 end;
 
 procedure TAtlasWelcomeSearchBox.ShowList;
@@ -422,7 +454,9 @@ var
   Width_, Height_: Integer;
 begin
   if not FEdit.HandleAllocated then
+  begin
     Exit;
+  end;
   if FList = nil then
   begin
     FList := TAtlasWelcomeSearchList.Create(nil);
@@ -442,7 +476,9 @@ begin
   // Rechts bündig unter dem Feld (es steht rechts im Kopf), nie über den Bildschirm hinaus.
   Origin.X := Max(Area.Left, Min(Origin.X + FEdit.Width - Width_, Area.Right - Width_));
   if Origin.Y + Height_ > Area.Bottom then
+  begin
     Origin.Y := Max(Area.Top, Origin.Y - FEdit.Height - Height_);
+  end;
   FList.SetBounds(Origin.X, Origin.Y, Width_, Height_);
   // SWP_NOOWNERZORDER: nicht die ganze Owner-Gruppe umsortieren (Hänger wie in TAtlasPopupWindow.ShowAt).
   SetWindowPos(FList.Handle, HWND_TOP, Origin.X, Origin.Y, Width_, Height_,

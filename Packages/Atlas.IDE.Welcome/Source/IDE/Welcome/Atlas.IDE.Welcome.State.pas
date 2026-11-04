@@ -122,36 +122,50 @@ begin
   FShown := ShouldShow(Rows);
   TAtlasWelcomeSections.Default.Add(Section);
   if FRegistry <> nil then
+  begin
     FListener := FRegistry.AddListener(
       procedure
       begin
         // Aus jedem Thread: verglichen und gemeldet wird im Hauptthread, höchstens eine Prüfung unterwegs.
         if AtomicCmpExchange(Queued, 1, 0) <> 0 then
+        begin
           Exit;
+        end;
         TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
           procedure
           begin
             AtomicExchange(Queued, 0);
             if Current <> nil then
+            begin
               TAtlasGuard.Run(TAtlasFeature.WelcomePage,
                 procedure
                 begin
                   if Current <> nil then
+                  begin
                     Current.Check;
+                  end;
                 end);
+            end;
           end);
       end);
+  end;
 end;
 
 procedure TAtlasIdeWelcomeState.Stop;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   FStopped := True;
   if Current = Self then
+  begin
     Current := nil;
+  end;
   if (FRegistry <> nil) and (FListener >= 0) then
+  begin
     FRegistry.RemoveListener(FListener);
+  end;
   FListener := -1;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.State);
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.State);
@@ -177,7 +191,9 @@ begin
       Result := (Current <> nil) and Current.ShouldShow(Current.Rows);
       // Was die Willkommensseite zuletzt gefragt hat (auch nach geänderten Einstellungen), ist der Stand für Check.
       if Current <> nil then
+      begin
         Current.FShown := Result;
+      end;
     end);
 end;
 
@@ -188,10 +204,14 @@ var
   Shown: Boolean;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   // Ausgeschaltet: nichts zu tun; die Willkommensseite fragt den Schalter beim nächsten Sync selbst.
   if not TAtlasIdeSettings.Current.WelcomePageStatusTile then
+  begin
     Exit;
+  end;
   Next := Rows;
   Signature := TAtlasWelcomeState.Signature(Next);
   Shown := ShouldShow(Next);
@@ -204,7 +224,9 @@ begin
     Exit;
   end;
   if Signature = FSignature then
+  begin
     Exit;
+  end;
   FSignature := Signature;
   // Nur dieser Bereich: Die Frames lesen die Zeilen neu und zeichnen (Invalidate).
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.State);
@@ -214,7 +236,9 @@ function TAtlasIdeWelcomeState.Rows: TAtlasStateRows;
 begin
   Result := nil;
   if FRegistry <> nil then
+  begin
     Result := TAtlasWelcomeState.Rows(FRegistry.Items);
+  end;
 end;
 
 procedure TAtlasIdeWelcomeState.RunRow(const AId: string);
@@ -222,10 +246,14 @@ var
   Item: IAtlasStatusItem;
 begin
   if FStopped or (FRegistry = nil) then
+  begin
     Exit;
+  end;
   Item := FRegistry.Find(AId);
   if (Item = nil) or not Item.HasAction then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
@@ -238,7 +266,9 @@ var
   Action: TProc;
 begin
   if FStopped then
+  begin
     Exit;
+  end;
   case AButton of
     TAtlasStateButton.Restart:
       Action := FActions.Restart;
@@ -250,7 +280,9 @@ begin
     Action := FActions.Update;
   end;
   if not Assigned(Action) then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin

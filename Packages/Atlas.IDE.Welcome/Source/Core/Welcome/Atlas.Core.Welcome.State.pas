@@ -99,8 +99,12 @@ var
 begin
   Result := nil;
   for Item in AItems do
+  begin
     if (Item <> nil) and SameText(Item.Id, AId) then
+    begin
       Exit(Item);
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeState.Rows(const AItems: TArray<IAtlasStatusItem>): TAtlasStateRows;
@@ -130,7 +134,9 @@ begin
       if Supports(Item, IAtlasStatusBrief, Brief) then
       begin
         if Brief.Brief <> '' then
+        begin
           Row.Text := Brief.Brief;
+        end;
         Row.Detail := Brief.Detail;
       end;
     end;
@@ -144,8 +150,12 @@ var
 begin
   Result := TAtlasStatusState.Neutral;
   for Row in ARows do
+  begin
     if Ord(Row.State) > Ord(Result) then
+    begin
       Result := Row.State;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeState.HasProblem(const ARows: TAtlasStateRows): Boolean;
@@ -164,8 +174,12 @@ var
 begin
   Result := False;
   for Row in ARows do
+  begin
     if (Row.Kind = TAtlasStateRowKind.Version) and Row.Present and (Row.State = TAtlasStatusState.Yellow) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeState.Buttons(const ARows: TAtlasStateRows): TArray<TAtlasStateButton>;
@@ -188,8 +202,10 @@ var
 begin
   Result := '';
   for Row in ARows do
+  begin
     Result := Result + Format('%d|%d|%d|%d|%s|%s|%s'#10, [Ord(Row.Kind), Ord(Row.Present), Ord(Row.State),
       Ord(Row.HasAction), Row.Text, Row.Detail, Row.Hint]);
+  end;
 end;
 
 end.

@@ -147,7 +147,9 @@ procedure TAtlasIdeDisplayVisualizer.GetSupportedType(Index: Integer; var TypeNa
   var AllDescendants: Boolean);
 begin
   if (Index < 0) or (Index > High(FTypes)) then
+  begin
     Exit;
+  end;
   TypeName := FTypes[Index];
   AllDescendants := True;
 end;
@@ -156,7 +158,9 @@ procedure TAtlasIdeDisplayVisualizer.GetSupportedType(Index: Integer; var TypeNa
   var AllDescendants: Boolean; var IsGeneric: Boolean);
 begin
   if (Index < 0) or (Index > High(FTypes)) then
+  begin
     Exit;
+  end;
   TypeName := FTypes[Index];
   AllDescendants := True;
   IsGeneric := False;
@@ -186,7 +190,9 @@ begin
   try
     Text := TAtlasIdeDisplayRules.ReplacementText(Expression, TypeName);
     if Text <> '' then
+    begin
       Result := Text;
+    end;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -232,7 +238,9 @@ end;
 class procedure TAtlasIdeDisplayRules.Start(const ASession: TAtlasDisplayRulesSessionFunc);
 begin
   if Started then
+  begin
     Exit;
+  end;
   FSession := ASession;
   FRules := TAtlasDisplayRules.Create;
   FTicker := TTicker.Create;
@@ -248,7 +256,9 @@ end;
 class procedure TAtlasIdeDisplayRules.Stop;
 begin
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   TAtlasIdeVisualizers.CloseViewers(TAtlasViewerGroup.DisplayRules);
   Unregister;
   FreeAndNil(FTimer);
@@ -262,9 +272,13 @@ end;
 class procedure TAtlasIdeDisplayRules.ApplySettings;
 begin
   if not TAtlasIdeSettings.Current.DebugDisplayRules then
-    Stop
+  begin
+    Stop;
+  end
   else
+  begin
     FFetchedKey := '';
+  end;
 end;
 
 class function TAtlasIdeDisplayRules.Options: TAtlasDisplayRuleOptions;
@@ -292,11 +306,15 @@ var
 begin
   try
     if not Started or not TAtlasIdeSettings.Current.DebugDisplayRules or not Debugging then
+    begin
       Exit;
+    end;
     Key := StateKey;
     // Gleicher Stand mit Antwort des Servers: nichts zu tun; ohne Antwort erst nach RetryMs wieder fragen.
     if (Key = FFetchedKey) and ((FServerKey = Key) or (GetTickCount64 < FRetryAt)) then
+    begin
       Exit;
+    end;
     Fetch(Key);
   except
     on E: Exception do
@@ -313,12 +331,18 @@ begin
   Values := TJSONArray.Create;
   try
     if AProject = '' then
-      Values.AddElement(TJSONNull.Create)
+    begin
+      Values.AddElement(TJSONNull.Create);
+    end
     else
+    begin
       Values.Add(TLspSession.PathToUri(AProject));
+    end;
     Names := TJSONArray.Create;
     for Name in ANames do
+    begin
       Names.Add(Name);
+    end;
     Values.AddElement(Names);
     Result := Values.ToJSON;
   finally
@@ -352,14 +376,18 @@ begin
   end;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session <> nil then
     try
       Answer := Session.RunCommand(Command, ServerArguments(TAtlasIdeTeamFile.ActiveProject, FRules.ProjectNames),
         TimeoutMs);
       try
         if (Answer <> nil) and FRules.LoadJson(Answer.ToJSON) then
+        begin
           FServerKey := AKey;
+        end;
       finally
         Answer.Free;
       end;
@@ -379,7 +407,9 @@ begin
   Unregister;
   Types := FRules.TypeNames;
   if (Length(Types) = 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   FVisualizer := TAtlasIdeDisplayVisualizer.Create(Types);
   try
     Debugger.RegisterDebugVisualizer(FVisualizer);
@@ -397,7 +427,9 @@ var
   Debugger: IOTADebuggerServices;
 begin
   if FVisualizer = nil then
+  begin
     Exit;
+  end;
   if Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
     try
       Debugger.UnregisterDebugVisualizer(FVisualizer);
@@ -419,7 +451,9 @@ var
 begin
   Result := '';
   if not FindRule(ATypeName, Rule) then
+  begin
     Exit;
+  end;
   Result := TAtlasDisplayRender.Render(Rule, AExpression, Options,
     TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs).Eval);
 end;
@@ -430,7 +464,9 @@ var
 begin
   Result := '';
   if (FRules = nil) or not TAtlasIdeSettings.Current.DebugDisplayRules or not FRules.FindChain(ATypeChain, Rule) then
+  begin
     Exit;
+  end;
   try
     Result := TAtlasDisplayRender.Render(Rule, AExpression, Options,
       TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs).Eval);
