@@ -206,6 +206,7 @@ begin
   EveryPageGetsOwnSection;
   BrokenSectionDoesNotStopPage;
   BrokenProviderDoesNotStopPage;
+  WindowReadyAndShowReachSection;
 end;
 
 procedure TSettingsPageSectionsTests.SectionLandsOnSheetOfItsArea;

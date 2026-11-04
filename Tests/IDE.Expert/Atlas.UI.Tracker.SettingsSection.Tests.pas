@@ -144,6 +144,12 @@ begin
   finally
     TearDown;
   end;
+  Setup;
+  try
+    SettingsRoundTrip;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TTrackerSettingsSectionTests.Setup;
