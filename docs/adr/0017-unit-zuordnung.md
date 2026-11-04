@@ -562,6 +562,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Status.Lines` | `IDE/Status/Atlas.IDE.Status.Lines.pas` | Ordner `IDE/Status` |
 | `Atlas.IDE.Status.ServerWindow` | `IDE/Status/Atlas.IDE.Status.ServerWindow.pas` | Ordner `IDE/Status` |
 | `Atlas.IDE.StatusBar.Service` | `IDE/StatusBar/Atlas.IDE.StatusBar.Service.pas` | Ordner `IDE/StatusBar` |
+| `Atlas.IDE.StatusBar.View` | `IDE/StatusBar/Atlas.IDE.StatusBar.View.pas` | Ordner `IDE/StatusBar` |
 | `Atlas.IDE.Undo.Changes` | `IDE/Undo/Atlas.IDE.Undo.Changes.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Undo.Target` | `IDE/Undo/Atlas.IDE.Undo.Target.pas` | Ordner `IDE/Undo` |
 | `Atlas.IDE.Updates.Check` | `IDE/Updates/Atlas.IDE.Updates.Check.pas` | Ordner `IDE/Updates` |
