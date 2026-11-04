@@ -609,6 +609,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Documentation.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>

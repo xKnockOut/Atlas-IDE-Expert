@@ -471,6 +471,7 @@ uses
   Atlas.Core.Hover.Tests in 'IDE.Expert\Atlas.Core.Hover.Tests.pas',
   Atlas.Core.Documentation.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas',
   Atlas.Core.Documentation.Layout in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas',
+  Atlas.Core.Documentation.Typeset in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas',
   Atlas.Core.Documentation.Tests in 'IDE.Expert\Atlas.Core.Documentation.Tests.pas',
   Atlas.Core.Signature.CallScanner in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas',
   Atlas.Core.Signature.Controller in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Controller.pas',
