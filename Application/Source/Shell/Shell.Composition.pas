@@ -40,7 +40,6 @@ uses
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.Contract,
@@ -61,6 +60,7 @@ uses
   Shell.Composition.Session,
   Shell.Composition.IdeArea,
   Shell.Composition.EditingArea,
+  Shell.Composition.IndexArea,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -121,13 +121,11 @@ type
     FIdeArea: TShellIdeArea;
     /// <summary>Teilwurzel Bearbeiten: Gliederung, Formatieren, Erzeugen-Menü und Host der Schnellbefehle.</summary>
     FEditingArea: TShellEditingArea;
+    /// <summary>Teilwurzel Index: Symbolindex, Uses-Graph, Ordner des Arbeitsbereichs und Ereignisse des Aufbaus.</summary>
+    FIndexArea: TShellIndexArea;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
-    FWorkspaceFolders: TLspWorkspaceFolders;
     FConnection: TJsonRpcConnection;
-    FIndex: ISymbolIndex;
-    /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
-    FUsesGraph: TUsesGraphService;
     /// <summary>Arbeitsbereiche, Einstellungen, Ordner und was je Datei aus ihnen folgt.</summary>
     FCore: TShellCore;
     FCompilerProcess: ICompilerProcess;
@@ -167,6 +165,8 @@ type
     procedure CoreEvents(var AServices: TShellCoreServices);
     /// <summary>Teil von Create (S-02): Symbolindex und Diagnoselog.</summary>
     procedure WireIndex;
+    /// <summary>Teil von WireIndex: Was die Teilwurzel Index von den anderen Teilen braucht.</summary>
+    function IndexAreaServices: TShellIndexAreaServices;
     /// <summary>Teil von WireIndex: Teilwurzel Sitzung mit dem Diagnoselog am Verteiler.</summary>
     procedure WireSession;
     /// <summary>Teil von Create: Teilwurzel Code nach Kern und Index.</summary>
@@ -185,17 +185,10 @@ type
     procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Teil von Create (S-02): Anbindung an die IDE: Build-Meldungen und Projektkontext.</summary>
     procedure WireIde;
-    /// <summary>Teil von Create (S-02): Arbeitsbereichsordner und Ereignisse nach initialized.</summary>
-    procedure WireWorkspaceFolders;
-    /// <summary>Arbeitsbereichsordner entfernen und hinzufügen, wie der Client sie meldet.</summary>
-    procedure WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
     /// <summary>Nach initialized: Client, Einstellungen, Beobachtung und erste Arbeitsbereiche.</summary>
     procedure ClientInitialized;
     /// <summary>Name, Fähigkeiten und Editor-Einstellungen des Clients aus initialize.</summary>
     procedure ApplyClientInfo(const AParams: TJSONObject);
-    /// <summary>Projektstufe (True) bzw. ganzer Aufbau eines Index fertig: Befunde neu prüfen (#647). Index-Thread.
-    /// </summary>
-    procedure IndexStageDone(AProjectStage: Boolean);
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
     function ReadSourceText(const AFileName: string; out AText: string): Boolean;
     /// <summary>Muster, Ordner und Testprogramm für Testunits zur Datei (#274, #189).</summary>
@@ -206,12 +199,6 @@ type
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
-    /// <summary>Namespaces aller Projekte an die Features weitergeben, Diagnosen neu prüfen.</summary>
-    procedure ProjectLoaded;
-    /// <summary>Namespaces und Bibliothekswurzeln aller Projekte ohne Doppelte.</summary>
-    procedure CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
-    /// <summary>Gibt die Namespaces an alle Features und den Uses-Graphen.</summary>
-    procedure ApplyNamespaces(const ANamespaces: TArray<string>);
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
     /// <summary>Teil von FreeFeatures: Analyse, Übersichten und Baselines.</summary>
@@ -236,7 +223,8 @@ type
     function CrashCases: TShellCrashCases;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
-    property Index: ISymbolIndex read FIndex;
+    /// <summary>Gemeinsamer Symbolindex; nil vor WireIndex und nach dem Freigeben.</summary>
+    function Index: ISymbolIndex;
   end;
 
 implementation
@@ -259,7 +247,6 @@ uses
   Atlas.Common.Editing.SmartPaste,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Projects.GroupReader,
@@ -281,7 +268,7 @@ begin
   WireAnalysis;
   WireCommands;
   WireIde;
-  WireWorkspaceFolders;
+  FProtocol.Lifecycle.OnInitialized := ClientInitialized;
   FConnection := TJsonRpcConnection.Create(FTransport, FProtocol.Dispatcher);
   FConnection.OnError :=
     procedure(const AError: Exception)
@@ -429,7 +416,7 @@ begin
   mServices.Index :=
     function: ISymbolIndex
     begin
-      Result := FIndex;
+      Result := Index;
     end;
   mServices.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
@@ -449,6 +436,15 @@ begin
   if FSession <> nil then
   begin
     Result := FSession.FileLabel(AFileName);
+  end;
+end;
+
+function TServerComposition.Index: ISymbolIndex;
+begin
+  Result := nil;
+  if FIndexArea <> nil then
+  begin
+    Result := FIndexArea.Index;
   end;
 end;
 
@@ -549,12 +545,13 @@ begin
   Result.Index :=
     function: ISymbolIndex
     begin
-      Result := FIndex;
+      Result := Index;
     end;
   Result.UsesGraph :=
     function: TUsesGraphService
     begin
-      Result := FUsesGraph;
+      // Der Kern fragt erst nach WireIndex und ist beim Beenden vor dem Index fort.
+      Result := FIndexArea.UsesGraph;
     end;
   Result.Queries :=
     function: ICodeQueries
@@ -600,8 +597,16 @@ end;
 
 procedure TServerComposition.CoreEvents(var AServices: TShellCoreServices);
 begin
-  AServices.ProjectLoaded := ProjectLoaded;
-  AServices.IndexStageDone := IndexStageDone;
+  AServices.ProjectLoaded :=
+    procedure
+    begin
+      FIndexArea.ProjectLoaded;
+    end;
+  AServices.IndexStageDone :=
+    procedure(AProjectStage: Boolean)
+    begin
+      FIndexArea.IndexStageDone(AProjectStage);
+    end;
   AServices.IndexEvent :=
     procedure(AText: string)
     begin
@@ -632,29 +637,57 @@ begin
 end;
 
 procedure TServerComposition.WireIndex;
-var
-  mIndex: ISymbolIndex;
 begin
-  FIndex := TSymbolIndex.Create;
-  FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
-  // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
-  mIndex := FIndex;
-  TPascalPreprocessor.SetDeclaredProvider(
-    function(const AName: string): Boolean
-    var
-      Location: TSymbolLocation;
-    begin
-      for Location in mIndex.FindSymbols(AName) do
-      begin
-        if Location.Symbol.Container = '' then
-        begin
-          Exit(True);
-        end;
-      end;
-      Result := False;
-    end);
-  FEditingArea.Editing.UseIndex(FIndex);
+  FIndexArea := TShellIndexArea.Create(IndexAreaServices);
+  FEditingArea.Editing.UseIndex(FIndexArea.Index);
   WireSession;
+end;
+
+function TServerComposition.IndexAreaServices: TShellIndexAreaServices;
+begin
+  Result := Default(TShellIndexAreaServices);
+  Result.Dispatcher := FProtocol.Dispatcher;
+  Result.Core :=
+    function: TShellCore
+    begin
+      Result := FCore;
+    end;
+  Result.Diagnostics :=
+    function: TShellDiagnosticsArea
+    begin
+      Result := FDiagnosticsArea;
+    end;
+  // Closure: CreateForStdio setzt den Anonymisierer erst nach Create.
+  Result.Anonymizer :=
+    function: ILogAnonymizer
+    begin
+      Result := FLogAnonymizer;
+    end;
+  Result.ProjectStarted :=
+    procedure
+    begin
+      if FCompile <> nil then
+      begin
+        FCompile.Reset;
+      end;
+    end;
+  Result.NamespacesChanged :=
+    procedure(const ANamespaces: TArray<string>)
+    begin
+      FCodeArea.Navigation.SetNamespaces(ANamespaces);
+      FCodeArea.Completion.Completion.Namespaces := ANamespaces;
+      FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
+    end;
+  Result.LibraryRootsChanged :=
+    procedure(const ARoots: TArray<string>)
+    begin
+      FSession.Diagnostics.SetLibraryRoots(ARoots);
+    end;
+  Result.Queue :=
+    function(const AWork: TProc): Boolean
+    begin
+      Result := (FConnection <> nil) and FConnection.Queue(AWork);
+    end;
 end;
 
 procedure TServerComposition.WireSession;
@@ -663,7 +696,7 @@ var
 begin
   mServices.Logger := FLogger;
   mServices.Documents := FDocuments;
-  mServices.Index := FIndex;
+  mServices.Index := Index;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.IndexLoading :=
     function: Integer
@@ -686,7 +719,7 @@ begin
   mServices.Logger := FLogger;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
-  mServices.Index := FIndex;
+  mServices.Index := Index;
   mServices.Editing := FEditingArea.Editing;
   mServices.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
@@ -718,7 +751,7 @@ begin
   mServices.Logger := FLogger;
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
-  mServices.Index := FIndex;
+  mServices.Index := Index;
   mServices.FormatRoutinesFor := FormatRoutinesFor;
   mServices.UsesContextFor := UsesContextFor;
   mServices.RefreshLater := RefreshDiagnosticsLater;
@@ -742,9 +775,9 @@ begin
   CommandStatus(mServices.Status);
   CommandServer(mServices.Server);
   mServices.Editor.Documents := FDocuments;
-  mServices.Editor.Index := FIndex;
+  mServices.Editor.Index := Index;
   mServices.Editor.ResourceStringWrite := FEditingArea.Slash.ResourceStringWrite;
-  mServices.UnitSearch.Index := FIndex;
+  mServices.UnitSearch.Index := Index;
   mServices.UnitSearch.UsesContextFor := UsesContextFor;
   mServices.UnitSearch.Process :=
     function: ICompilerProcess
@@ -756,7 +789,7 @@ end;
 
 procedure TServerComposition.CommandStatus(var AServices: TShellStatusServices);
 begin
-  AServices.Index := FIndex;
+  AServices.Index := Index;
   AServices.Documents := FDocuments;
   AServices.Statistics := FProtocol.Statistics;
   AServices.ActiveProject :=
@@ -849,28 +882,6 @@ begin
       Result := FCompile;
     end;
   FIdeArea := TShellIdeArea.Create(FCore, mServices);
-end;
-
-procedure TServerComposition.WireWorkspaceFolders;
-begin
-  FWorkspaceFolders := TLspWorkspaceFolders.Create;
-  FWorkspaceFolders.OnChanged := WorkspaceFoldersChanged;
-  FWorkspaceFolders.Attach(FProtocol.Dispatcher);
-  FProtocol.Lifecycle.OnInitialized := ClientInitialized;
-end;
-
-procedure TServerComposition.WorkspaceFoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
-var
-  mFolder: TWorkspaceFolder;
-begin
-  for mFolder in ARemoved do
-  begin
-    FCore.Folders.Remove(mFolder);
-  end;
-  for mFolder in AAdded do
-  begin
-    FCore.Folders.Add(mFolder);
-  end;
 end;
 
 procedure TServerComposition.ClientInitialized;
@@ -1011,9 +1022,7 @@ begin
   // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
   FreeAndNil(FDiagnosticsArea);
   FreeAndNil(FCore);
-  FWorkspaceFolders.Free;
-  FreeAndNil(FUsesGraph);
-  FIndex := nil;
+  FreeAndNil(FIndexArea);
   // Danach die Features in umgekehrter Reihenfolge ihrer Gruppen; Protokoll und Absturzfälle zuletzt.
   FreeAnalysisFeatures;
   FreeCodeFeatures;
@@ -1037,55 +1046,6 @@ begin
   FDocuments := nil;
   // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
   FreeAndNil(FProtocol);
-end;
-
-procedure TServerComposition.IndexStageDone(AProjectStage: Boolean);
-var
-  UnitIndex: TUnitIndex;
-begin
-  // Units aus Suchpfaden stehen in keiner .dproj; im Server-Log ebenfalls verbergen (#647).
-  if FLogAnonymizer <> nil then
-  begin
-    for UnitIndex in FIndex.Units do
-    begin
-      FLogAnonymizer.AddUnit(UnitIndex.UnitName, UnitIndex.FileName);
-    end;
-  end;
-  // Befunde aus der Zeit des Aufbaus enthalten Units, die damals noch fehlten. Im Pull-Modus steigt
-  // damit die Generation: Der Client holt geöffnete Dateien neu, workspace/diagnostic prüft alle.
-  // Gebündelt: Die große Datei zu prüfen dauerte im Log über 20 s, und jedes Projekt meldet sich.
-  // In einer Projektgruppe erst, wenn kein Projekt mehr indiziert wird: Sonst prüfte jedes fertige
-  // Projekt alle Dateien neu (CPU-Last beim Start).
-  if not FCore.Workspaces.ProjectIndexPending then
-  begin
-    // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
-    // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
-    if FDiagnosticsArea.IndexRecheck.Recheck(AProjectStage) then
-    begin
-      FDiagnosticsArea.Syntax.RefreshLater;
-    end;
-    // Meldungen in atlas.json, die den Index brauchen (#309); Publish nur in der Nachrichtenschleife.
-    if FConnection <> nil then
-    begin
-      FConnection.Queue(
-        procedure
-        var
-          Workspace: TShellWorkspace;
-          Workspaces: TArray<TShellWorkspace>;
-        begin
-          TMonitor.Enter(FCore.Workspaces.Lock);
-          try
-            Workspaces := FCore.Workspaces.Items.ToArray;
-          finally
-            TMonitor.Exit(FCore.Workspaces.Lock);
-          end;
-          for Workspace in Workspaces do
-          begin
-            Workspace.Configuration.Revalidate;
-          end;
-        end);
-    end;
-  end;
 end;
 
 function TServerComposition.ReadSourceText(const AFileName: string; out AText: string): Boolean;
@@ -1126,76 +1086,6 @@ begin
   begin
     Result := Result + Context.FormatFunctions;
   end;
-end;
-
-procedure TServerComposition.ProjectLoaded;
-var
-  mNamespaces: TArray<string>;
-  mLibraryRoots: TArray<string>;
-begin
-  // Neuer Indexaufbau: Seine Projektstufe oder, falls die ausbleibt, sein Ende startet die Projektprüfung.
-  FDiagnosticsArea.IndexRecheck.IndexStarted;
-  // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
-  if FCompile <> nil then
-  begin
-    FCompile.Reset;
-  end;
-  CollectNamespaces(mNamespaces, mLibraryRoots);
-  ApplyNamespaces(mNamespaces);
-  FSession.Diagnostics.SetLibraryRoots(mLibraryRoots);
-  if FLogAnonymizer <> nil then
-  begin
-    FLogAnonymizer.SetLibraryRoots(mLibraryRoots);
-  end;
-  FDiagnosticsArea.Syntax.Refresh;
-end;
-
-procedure TServerComposition.CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
-var
-  mWorkspace: TShellWorkspace;
-  mNamespace: string;
-begin
-  // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
-  ANamespaces := nil;
-  ALibraryRoots := nil;
-  System.TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    // Projekte für projektweite Prüfregeln neu bestimmen (#1102).
-    FCore.Workspaces.Touch;
-    for mWorkspace in FCore.Workspaces.Items do
-    begin
-      for mNamespace in mWorkspace.State.Namespaces do
-      begin
-        if IndexText(mNamespace, ANamespaces) < 0 then
-        begin
-          ANamespaces := ANamespaces + [mNamespace];
-        end;
-      end;
-      // Units der Delphi-Installation erscheinen im Diagnoselog mit Namen (#647).
-      if (mWorkspace.State.BdsRoot <> '') and (IndexText(mWorkspace.State.BdsRoot, ALibraryRoots) < 0) then
-      begin
-        ALibraryRoots := ALibraryRoots + [mWorkspace.State.BdsRoot];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
-end;
-
-procedure TServerComposition.ApplyNamespaces(const ANamespaces: TArray<string>);
-var
-  mGraphOptions: TUsesGraphOptions;
-begin
-  FCodeArea.Navigation.SetNamespaces(ANamespaces);
-  // Uses-Graph (#64) löst Namen ohne Namensraum über dieselbe Liste auf; neu aufgebaut nur bei Änderung.
-  mGraphOptions := FUsesGraph.Options;
-  if string.Join(';', mGraphOptions.Namespaces) <> string.Join(';', ANamespaces) then
-  begin
-    mGraphOptions.Namespaces := ANamespaces;
-    FUsesGraph.SetOptions(mGraphOptions);
-  end;
-  FCodeArea.Completion.Completion.Namespaces := ANamespaces;
-  FAnalysisArea.Analysis.SetNamespaces(ANamespaces);
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;

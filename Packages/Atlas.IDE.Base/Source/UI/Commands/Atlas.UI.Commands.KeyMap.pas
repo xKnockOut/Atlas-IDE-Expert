@@ -29,40 +29,19 @@ uses
   Atlas.Core.Commands.KeyMap;
 
 type
-  TAtlasKeyMapWindow = class(TForm)
+  /// <summary>Grundlage des Fensters: Texte der Spalten und Hinweise sowie die Ereignisse der Knöpfe.</summary>
+  TAtlasKeyMapForm = class(TForm)
   private
-    FColors: TAtlasColors;
-    FItems: TArray<TAtlasKeyItem>;
-    FShown: TArray<Integer>;
-    FTop: TPanel;
-    FBottom: TPanel;
-    FSearch: TEdit;
-    FOnlyConflicts: TCheckBox;
-    FSummary: TLabel;
-    FList: TListView;
-    FExportButton: TButton;
-    FSettingsButton: TButton;
-    FRefreshButton: TButton;
-    FCloseButton: TButton;
     FOnExport: TProc;
     FOnSettings: TProc;
     FOnRefresh: TProc;
-    procedure ApplyFilter;
-    procedure SearchChange(Sender: TObject);
-    procedure OnlyConflictsClick(Sender: TObject);
-    procedure ListData(Sender: TObject; Item: TListItem);
-    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
-      var DefaultDraw: Boolean);
+  protected
     procedure ExportClick(Sender: TObject);
     procedure SettingsClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
     procedure CloseClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
-  protected
-    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
-    constructor CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Name einer Atlas-Funktion wie in Menü und Einstellungen, ohne „:“ und „…“.</summary>
     class function FunctionCaption(AFunc: TAtlasKeyFunction): string; static;
     class function OriginText(const AItem: TAtlasKeyItem): string; static;
@@ -78,6 +57,43 @@ type
     class function RarelyText(const AItem: TAtlasKeyItem): string; static;
     /// <summary>„812 Kürzel, 3 Konflikte“ bzw. „12 von 812 Kürzeln, 3 Konflikte“.</summary>
     class function SummaryText(AShown, ATotal, AConflicts: Integer): string; static;
+    property OnExport: TProc read FOnExport write FOnExport;
+    property OnSettings: TProc read FOnSettings write FOnSettings;
+    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
+  end;
+
+  TAtlasKeyMapWindow = class(TAtlasKeyMapForm)
+  private
+    FColors: TAtlasColors;
+    FItems: TArray<TAtlasKeyItem>;
+    FShown: TArray<Integer>;
+    FTop: TPanel;
+    FBottom: TPanel;
+    FSearch: TEdit;
+    FOnlyConflicts: TCheckBox;
+    FSummary: TLabel;
+    FList: TListView;
+    FExportButton: TButton;
+    FSettingsButton: TButton;
+    FRefreshButton: TButton;
+    FCloseButton: TButton;
+    procedure ApplyFilter;
+    procedure SearchChange(Sender: TObject);
+    procedure OnlyConflictsClick(Sender: TObject);
+    procedure ListData(Sender: TObject; Item: TListItem);
+    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+      var DefaultDraw: Boolean);
+    function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
+    /// <summary>Kopf mit Suchfeld, „Nur Konflikte“ und Anzahl.</summary>
+    procedure CreateTop;
+    /// <summary>Fuß mit den Knöpfen.</summary>
+    procedure CreateBottom;
+    /// <summary>Liste mit den Spalten aus Headers.</summary>
+    procedure CreateList;
+  protected
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+  public
+    constructor CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Druckbare HTML-Seite der gezeigten Zeilen; ACreated ist der Zeitpunkt als Text.</summary>
     function ExportHtml(const ACreated: string): string;
     /// <summary>Belegungen setzen (auch bei offenem Fenster); Suche und Filter bleiben.</summary>
@@ -96,9 +112,6 @@ type
     property SettingsButton: TButton read FSettingsButton;
     property RefreshButton: TButton read FRefreshButton;
     property CloseButton: TButton read FCloseButton;
-    property OnExport: TProc read FOnExport write FOnExport;
-    property OnSettings: TProc read FOnSettings write FOnSettings;
-    property OnRefresh: TProc read FOnRefresh write FOnRefresh;
   end;
 
 implementation
@@ -123,14 +136,85 @@ begin
   end;
 end;
 
-{ TAtlasKeyMapWindow }
+const
+  /// <summary>Text je Atlas-Funktion (Name wie in Menü und Einstellungen). Bei Deklaration ⇄ Implementierung trägt
+  /// die erste Taste den Namen des Befehls (Tipps #600), die zweite den Zusatz „Taste 2“.</summary>
+  cFunctionTexts: array[TAtlasKeyFunction] of TAtlasTextId = (
+    TAtlasTextId.SettingsPaletteKey, // Palette
+    TAtlasTextId.SettingsCheckKey, // Check
+    TAtlasTextId.SettingsCompletionKey, // Completion
+    TAtlasTextId.SettingsSignatureKey, // Signature
+    TAtlasTextId.SettingsQuickToggleKey, // QuickToggle
+    TAtlasTextId.SettingsDiagnosticModeKey, // DiagnosticMode
+    TAtlasTextId.EditorActions, // CodeActions
+    TAtlasTextId.EditorExpand, // ExpandSelection
+    TAtlasTextId.EditorShrink, // ShrinkSelection
+    TAtlasTextId.MenuImplementations, // GoToImplementation
+    TAtlasTextId.EditorTypeDefinition, // TypeDefinition
+    TAtlasTextId.UndoMenu, // UndoChange
+    TAtlasTextId.RedoMenu, // RedoChange
+    TAtlasTextId.SettingsWelcomeSearchKey, // WelcomeSearch
+    TAtlasTextId.EditorMethodToggle, // MethodToggleUp
+    TAtlasTextId.SettingsMethodToggleDown, // MethodToggleDown
+    TAtlasTextId.EditorTestUnit, // TestUnit
+    TAtlasTextId.UnitSearchTitle, // UnitSearch
+    TAtlasTextId.KeyMapUnitSearchIde, // UnitSearchIde
+    TAtlasTextId.BookmarksMenuAdd, // Bookmark
+    TAtlasTextId.GenerateMenuCommand, // GenerateMenu
+    TAtlasTextId.NotificationsCommand, // Notifications
+    TAtlasTextId.SettingsWelcomeQuickActionsBuildKey, // WelcomeQuickBuild
+    TAtlasTextId.SettingsWelcomeQuickActionsTestKey, // WelcomeQuickTests
+    TAtlasTextId.HideElementCommand, // HideElement
+    TAtlasTextId.ProblemNextCommand, // NextProblem
+    TAtlasTextId.ProblemPreviousCommand, // PreviousProblem
+    TAtlasTextId.QuickOpenTitle, // QuickOpen
+    TAtlasTextId.NavBackCommand, // NavBack
+    TAtlasTextId.NavForwardCommand, // NavForward
+    TAtlasTextId.NavLastEditCommand, // LastEdit
+    TAtlasTextId.PeekDefinitionCommand, // PeekDefinition
+    TAtlasTextId.PeekReferencesCommand, // PeekReferences
+    TAtlasTextId.BreadcrumbsCommand, // Breadcrumbs
+    TAtlasTextId.JumpToMatchCommand, // JumpToMatch
+    TAtlasTextId.JumpToMatchSelectCommand, // JumpToMatchSelect
+    TAtlasTextId.NextChangeCommand, // NextChange
+    TAtlasTextId.PreviousChangeCommand, // PreviousChange
+    TAtlasTextId.MoveLinesUpCommand, // MoveLinesUp
+    TAtlasTextId.MoveLinesDownCommand, // MoveLinesDown
+    TAtlasTextId.DuplicateLinesUpCommand, // DuplicateLinesUp
+    TAtlasTextId.DuplicateLinesDownCommand, // DuplicateLinesDown
+    TAtlasTextId.CompleteStatementCommand, // CompleteStatement
+    TAtlasTextId.MultiCursorNextCommand, // MultiCursorNext
+    TAtlasTextId.MultiCursorSkipCommand, // MultiCursorSkip
+    TAtlasTextId.MultiCursorLineEndsCommand, // MultiCursorLineEnds
+    TAtlasTextId.MultiCursorAboveCommand, // MultiCursorAbove
+    TAtlasTextId.MultiCursorBelowCommand, // MultiCursorBelow
+    TAtlasTextId.SearchCommand, // Search
+    TAtlasTextId.SearchNextCommand, // SearchNext
+    TAtlasTextId.SearchPreviousCommand, // SearchPrevious
+    TAtlasTextId.SearchInMethodCommand, // SearchMethod
+    TAtlasTextId.FormatCodeCommand, // FormatCode
+    TAtlasTextId.ToggleBlockCommentCommand, // ToggleBlockComment
+    TAtlasTextId.NewLineBelowCommand, // NewLineBelow
+    TAtlasTextId.NewLineAboveCommand, // NewLineAbove
+    TAtlasTextId.UnwrapCommand, // Unwrap
+    TAtlasTextId.ProblemsWindowCommand, // ProblemsWindow
+    TAtlasTextId.GotoInterfaceCommand, // SectionInterface
+    TAtlasTextId.GotoImplementationCommand, // SectionImplementation
+    TAtlasTextId.QuickBookmarkToggleCommand, // QuickBookmark
+    TAtlasTextId.QuickBookmarkSetCommand, // QuickBookmarkSet
+    TAtlasTextId.QuickBookmarkJumpCommand, // QuickBookmarkJump
+    TAtlasTextId.NextBookmarkCommand, // NextBookmark
+    TAtlasTextId.PreviousBookmarkCommand, // PreviousBookmark
+    TAtlasTextId.SearchReplaceCommand, // SearchReplace
+    TAtlasTextId.StepIntoTargetCommand, // StepIntoTarget
+    TAtlasTextId.ExpressionTypeCommand, // ExpressionType
+    TAtlasTextId.SafeDeleteCommand, // SafeDelete
+    TAtlasTextId.CreateIssueCommand, // CreateIssue
+    TAtlasTextId.DesignerBarSearchHint); // DesignerSearch
+
+{ TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
 constructor TAtlasKeyMapWindow.CreateKeyMap(AOwner: TComponent; const AColors: TAtlasColors);
-var
-  Column: TListColumn;
-  Header: string;
-  Widths: TArray<Integer>;
-  Index: Integer;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasStrings.Text(TAtlasTextId.KeyMapTitle);
@@ -145,6 +229,15 @@ begin
   Font.Name := 'Segoe UI';
   Font.Size := 9;
   OnClose := FormClose;
+  CreateTop;
+  CreateBottom;
+  CreateList;
+  SetColors(AColors);
+  ApplyFilter;
+end;
+
+procedure TAtlasKeyMapWindow.CreateTop;
+begin
   FTop := TPanel.Create(Self);
   FTop.Parent := Self;
   FTop.Align := alTop;
@@ -171,6 +264,10 @@ begin
   FSummary.Width := 300;
   FSummary.Alignment := taRightJustify;
   FSummary.Layout := tlCenter;
+end;
+
+procedure TAtlasKeyMapWindow.CreateBottom;
+begin
   FBottom := TPanel.Create(Self);
   FBottom.Parent := Self;
   FBottom.Align := alBottom;
@@ -189,6 +286,15 @@ begin
   FCloseButton.Margins.SetBounds(8, 9, 12, 9);
   FCloseButton.Width := 100;
   FCloseButton.Cancel := True;
+end;
+
+procedure TAtlasKeyMapWindow.CreateList;
+var
+  mColumn: TListColumn;
+  mHeader: string;
+  mWidths: TArray<Integer>;
+  mIndex: Integer;
+begin
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -201,17 +307,15 @@ begin
   FList.HideSelection := False;
   FList.OnData := ListData;
   FList.OnCustomDrawItem := ListCustomDrawItem;
-  Widths := [150, 260, 130, 110, 150, 400];
-  Index := 0;
-  for Header in Headers do
+  mWidths := [150, 260, 130, 110, 150, 400];
+  mIndex := 0;
+  for mHeader in Headers do
   begin
-    Column := FList.Columns.Add;
-    Column.Caption := Header;
-    Column.Width := Widths[Index];
-    Inc(Index);
+    mColumn := FList.Columns.Add;
+    mColumn.Caption := mHeader;
+    mColumn.Width := mWidths[mIndex];
+    Inc(mIndex);
   end;
-  SetColors(AColors);
-  ApplyFilter;
 end;
 
 function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
@@ -222,159 +326,12 @@ begin
   Result.OnClick := AOnClick;
 end;
 
-class function TAtlasKeyMapWindow.FunctionCaption(AFunc: TAtlasKeyFunction): string;
-var
-  Id: TAtlasTextId;
+class function TAtlasKeyMapForm.FunctionCaption(AFunc: TAtlasKeyFunction): string;
 begin
-  case AFunc of
-    TAtlasKeyFunction.Palette:
-      Id := TAtlasTextId.SettingsPaletteKey;
-    TAtlasKeyFunction.Check:
-      Id := TAtlasTextId.SettingsCheckKey;
-    TAtlasKeyFunction.Completion:
-      Id := TAtlasTextId.SettingsCompletionKey;
-    TAtlasKeyFunction.Signature:
-      Id := TAtlasTextId.SettingsSignatureKey;
-    TAtlasKeyFunction.QuickToggle:
-      Id := TAtlasTextId.SettingsQuickToggleKey;
-    TAtlasKeyFunction.DiagnosticMode:
-      Id := TAtlasTextId.SettingsDiagnosticModeKey;
-    TAtlasKeyFunction.CodeActions:
-      Id := TAtlasTextId.EditorActions;
-    TAtlasKeyFunction.ExpandSelection:
-      Id := TAtlasTextId.EditorExpand;
-    TAtlasKeyFunction.ShrinkSelection:
-      Id := TAtlasTextId.EditorShrink;
-    TAtlasKeyFunction.GoToImplementation:
-      Id := TAtlasTextId.MenuImplementations;
-    TAtlasKeyFunction.TypeDefinition:
-      Id := TAtlasTextId.EditorTypeDefinition;
-    TAtlasKeyFunction.UndoChange:
-      Id := TAtlasTextId.UndoMenu;
-    TAtlasKeyFunction.RedoChange:
-      Id := TAtlasTextId.RedoMenu;
-    TAtlasKeyFunction.WelcomeSearch:
-      Id := TAtlasTextId.SettingsWelcomeSearchKey;
-    // Die erste Taste trägt den Namen des Befehls (Tipps #600), die zweite den Zusatz „Taste 2“.
-    TAtlasKeyFunction.MethodToggleUp:
-      Id := TAtlasTextId.EditorMethodToggle;
-    TAtlasKeyFunction.MethodToggleDown:
-      Id := TAtlasTextId.SettingsMethodToggleDown;
-    TAtlasKeyFunction.TestUnit:
-      Id := TAtlasTextId.EditorTestUnit;
-    TAtlasKeyFunction.UnitSearch:
-      Id := TAtlasTextId.UnitSearchTitle;
-    TAtlasKeyFunction.Bookmark:
-      Id := TAtlasTextId.BookmarksMenuAdd;
-    TAtlasKeyFunction.GenerateMenu:
-      Id := TAtlasTextId.GenerateMenuCommand;
-    TAtlasKeyFunction.Notifications:
-      Id := TAtlasTextId.NotificationsCommand;
-    TAtlasKeyFunction.WelcomeQuickBuild:
-      Id := TAtlasTextId.SettingsWelcomeQuickActionsBuildKey;
-    TAtlasKeyFunction.WelcomeQuickTests:
-      Id := TAtlasTextId.SettingsWelcomeQuickActionsTestKey;
-    TAtlasKeyFunction.HideElement:
-      Id := TAtlasTextId.HideElementCommand;
-    TAtlasKeyFunction.NextProblem:
-      Id := TAtlasTextId.ProblemNextCommand;
-    TAtlasKeyFunction.PreviousProblem:
-      Id := TAtlasTextId.ProblemPreviousCommand;
-    TAtlasKeyFunction.QuickOpen:
-      Id := TAtlasTextId.QuickOpenTitle;
-    TAtlasKeyFunction.NavBack:
-      Id := TAtlasTextId.NavBackCommand;
-    TAtlasKeyFunction.NavForward:
-      Id := TAtlasTextId.NavForwardCommand;
-    TAtlasKeyFunction.LastEdit:
-      Id := TAtlasTextId.NavLastEditCommand;
-    TAtlasKeyFunction.PeekDefinition:
-      Id := TAtlasTextId.PeekDefinitionCommand;
-    TAtlasKeyFunction.PeekReferences:
-      Id := TAtlasTextId.PeekReferencesCommand;
-    TAtlasKeyFunction.Breadcrumbs:
-      Id := TAtlasTextId.BreadcrumbsCommand;
-    TAtlasKeyFunction.JumpToMatch:
-      Id := TAtlasTextId.JumpToMatchCommand;
-    TAtlasKeyFunction.JumpToMatchSelect:
-      Id := TAtlasTextId.JumpToMatchSelectCommand;
-    TAtlasKeyFunction.NextChange:
-      Id := TAtlasTextId.NextChangeCommand;
-    TAtlasKeyFunction.PreviousChange:
-      Id := TAtlasTextId.PreviousChangeCommand;
-    TAtlasKeyFunction.MoveLinesUp:
-      Id := TAtlasTextId.MoveLinesUpCommand;
-    TAtlasKeyFunction.MoveLinesDown:
-      Id := TAtlasTextId.MoveLinesDownCommand;
-    TAtlasKeyFunction.DuplicateLinesUp:
-      Id := TAtlasTextId.DuplicateLinesUpCommand;
-    TAtlasKeyFunction.DuplicateLinesDown:
-      Id := TAtlasTextId.DuplicateLinesDownCommand;
-    TAtlasKeyFunction.CompleteStatement:
-      Id := TAtlasTextId.CompleteStatementCommand;
-    TAtlasKeyFunction.MultiCursorNext:
-      Id := TAtlasTextId.MultiCursorNextCommand;
-    TAtlasKeyFunction.MultiCursorSkip:
-      Id := TAtlasTextId.MultiCursorSkipCommand;
-    TAtlasKeyFunction.MultiCursorLineEnds:
-      Id := TAtlasTextId.MultiCursorLineEndsCommand;
-    TAtlasKeyFunction.MultiCursorAbove:
-      Id := TAtlasTextId.MultiCursorAboveCommand;
-    TAtlasKeyFunction.MultiCursorBelow:
-      Id := TAtlasTextId.MultiCursorBelowCommand;
-    TAtlasKeyFunction.Search:
-      Id := TAtlasTextId.SearchCommand;
-    TAtlasKeyFunction.SearchNext:
-      Id := TAtlasTextId.SearchNextCommand;
-    TAtlasKeyFunction.SearchPrevious:
-      Id := TAtlasTextId.SearchPreviousCommand;
-    TAtlasKeyFunction.SearchMethod:
-      Id := TAtlasTextId.SearchInMethodCommand;
-    TAtlasKeyFunction.SearchReplace:
-      Id := TAtlasTextId.SearchReplaceCommand;
-    TAtlasKeyFunction.FormatCode:
-      Id := TAtlasTextId.FormatCodeCommand;
-    TAtlasKeyFunction.ToggleBlockComment:
-      Id := TAtlasTextId.ToggleBlockCommentCommand;
-    TAtlasKeyFunction.NewLineBelow:
-      Id := TAtlasTextId.NewLineBelowCommand;
-    TAtlasKeyFunction.NewLineAbove:
-      Id := TAtlasTextId.NewLineAboveCommand;
-    TAtlasKeyFunction.Unwrap:
-      Id := TAtlasTextId.UnwrapCommand;
-    TAtlasKeyFunction.ProblemsWindow:
-      Id := TAtlasTextId.ProblemsWindowCommand;
-    TAtlasKeyFunction.SectionInterface:
-      Id := TAtlasTextId.GotoInterfaceCommand;
-    TAtlasKeyFunction.SectionImplementation:
-      Id := TAtlasTextId.GotoImplementationCommand;
-    TAtlasKeyFunction.QuickBookmark:
-      Id := TAtlasTextId.QuickBookmarkToggleCommand;
-    TAtlasKeyFunction.QuickBookmarkSet:
-      Id := TAtlasTextId.QuickBookmarkSetCommand;
-    TAtlasKeyFunction.QuickBookmarkJump:
-      Id := TAtlasTextId.QuickBookmarkJumpCommand;
-    TAtlasKeyFunction.NextBookmark:
-      Id := TAtlasTextId.NextBookmarkCommand;
-    TAtlasKeyFunction.PreviousBookmark:
-      Id := TAtlasTextId.PreviousBookmarkCommand;
-    TAtlasKeyFunction.StepIntoTarget:
-      Id := TAtlasTextId.StepIntoTargetCommand;
-    TAtlasKeyFunction.ExpressionType:
-      Id := TAtlasTextId.ExpressionTypeCommand;
-    TAtlasKeyFunction.SafeDelete:
-      Id := TAtlasTextId.SafeDeleteCommand;
-    TAtlasKeyFunction.CreateIssue:
-      Id := TAtlasTextId.CreateIssueCommand;
-    TAtlasKeyFunction.DesignerSearch:
-      Id := TAtlasTextId.DesignerBarSearchHint;
-  else
-    Id := TAtlasTextId.KeyMapUnitSearchIde;
-  end;
-  Result := Plain(TAtlasStrings.Text(Id));
+  Result := Plain(TAtlasStrings.Text(cFunctionTexts[AFunc]));
 end;
 
-class function TAtlasKeyMapWindow.OriginText(const AItem: TAtlasKeyItem): string;
+class function TAtlasKeyMapForm.OriginText(const AItem: TAtlasKeyItem): string;
 begin
   case AItem.Origin of
     TAtlasKeyOrigin.Atlas:
@@ -386,7 +343,7 @@ begin
   end;
 end;
 
-class function TAtlasKeyMapWindow.ContextText(AContext: TAtlasKeyContext): string;
+class function TAtlasKeyMapForm.ContextText(AContext: TAtlasKeyContext): string;
 begin
   case AContext of
     TAtlasKeyContext.Editor:
@@ -400,7 +357,7 @@ begin
   end;
 end;
 
-class function TAtlasKeyMapWindow.ReasonText(AReason: TAtlasKeyReason): string;
+class function TAtlasKeyMapForm.ReasonText(AReason: TAtlasKeyReason): string;
 begin
   case AReason of
     TAtlasKeyReason.AtlasPriority:
@@ -422,7 +379,7 @@ begin
   end;
 end;
 
-class function TAtlasKeyMapWindow.HintText(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): string;
+class function TAtlasKeyMapForm.HintText(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): string;
 var
   Item: TAtlasKeyItem;
 begin
@@ -447,20 +404,20 @@ begin
   end;
 end;
 
-class function TAtlasKeyMapWindow.Headers: TArray<string>;
+class function TAtlasKeyMapForm.Headers: TArray<string>;
 begin
   Result := [TAtlasStrings.Text(TAtlasTextId.KeyMapColumnKey), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnCommand),
     TAtlasStrings.Text(TAtlasTextId.KeyMapColumnOrigin), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnContext),
     TAtlasStrings.Text(TAtlasTextId.KeyMapColumnRarely), TAtlasStrings.Text(TAtlasTextId.KeyMapColumnHint)];
 end;
 
-class function TAtlasKeyMapWindow.Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>;
+class function TAtlasKeyMapForm.Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>;
 begin
   Result := [AItems[AIndex].KeyText, AItems[AIndex].Command, OriginText(AItems[AIndex]),
     ContextText(AItems[AIndex].Context), RarelyText(AItems[AIndex]), HintText(AItems, AIndex)];
 end;
 
-class function TAtlasKeyMapWindow.RarelyText(const AItem: TAtlasKeyItem): string;
+class function TAtlasKeyMapForm.RarelyText(const AItem: TAtlasKeyItem): string;
 begin
   // Aus der Zählung der Tastenkürzel-Tipps (#600); leer, solange der Befehl selten genutzt oder nicht gezählt ist.
   if AItem.RarelyByKeyboard then
@@ -473,7 +430,7 @@ begin
   end;
 end;
 
-class function TAtlasKeyMapWindow.SummaryText(AShown, ATotal, AConflicts: Integer): string;
+class function TAtlasKeyMapForm.SummaryText(AShown, ATotal, AConflicts: Integer): string;
 begin
   if AShown = ATotal then
   begin
@@ -593,7 +550,7 @@ begin
   end;
 end;
 
-procedure TAtlasKeyMapWindow.ExportClick(Sender: TObject);
+procedure TAtlasKeyMapForm.ExportClick(Sender: TObject);
 begin
   if Assigned(FOnExport) then
   begin
@@ -601,7 +558,7 @@ begin
   end;
 end;
 
-procedure TAtlasKeyMapWindow.SettingsClick(Sender: TObject);
+procedure TAtlasKeyMapForm.SettingsClick(Sender: TObject);
 begin
   if Assigned(FOnSettings) then
   begin
@@ -609,7 +566,7 @@ begin
   end;
 end;
 
-procedure TAtlasKeyMapWindow.RefreshClick(Sender: TObject);
+procedure TAtlasKeyMapForm.RefreshClick(Sender: TObject);
 begin
   if Assigned(FOnRefresh) then
   begin
@@ -617,12 +574,12 @@ begin
   end;
 end;
 
-procedure TAtlasKeyMapWindow.CloseClick(Sender: TObject);
+procedure TAtlasKeyMapForm.CloseClick(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TAtlasKeyMapWindow.FormClose(Sender: TObject; var Action: TCloseAction);
+procedure TAtlasKeyMapForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   // Nur verstecken: Die IDE-Schicht hält das Fenster und gibt es beim Entladen frei.
   Action := caHide;
