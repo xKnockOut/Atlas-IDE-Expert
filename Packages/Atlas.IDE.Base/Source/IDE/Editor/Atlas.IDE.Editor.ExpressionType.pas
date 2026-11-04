@@ -69,6 +69,9 @@ type
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
     procedure Execute;
+    function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
+    function Ask(ASession: TLspSession; const AFileName, AText, AArguments: string;
+      out AInfo: TAtlasExpressionTypeInfo): Boolean;
     procedure Show(const AInfo: TAtlasExpressionTypeInfo);
     procedure Navigate;
     procedure Close;
@@ -114,7 +117,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.PaintedLine;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
@@ -320,105 +324,130 @@ begin
   end;
 end;
 
-procedure TAtlasIdeExpressionType.Execute;
+function PositionIn(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 var
-  View: IOTAEditView;
-  Session: TLspSession;
-  Settings: TAtlasPluginSettings;
-  FileName, Text, Arguments: string;
-  Lines: TArray<string>;
-  TabWidth: Integer;
-  Selection, Range: TLspRange;
-  Expand: Boolean;
-  Block: IOTAEditBlock;
-  Cursor: TOTAEditPos;
-  Answer: TJSONValue;
-  Info: TAtlasExpressionTypeInfo;
-
-  function Position(ARow, AColumn: Integer): TLspTextPosition;
-  var
-    LineText: string;
-  begin
-    LineText := '';
-    if (ARow >= 1) and (ARow <= Length(Lines)) then
-    begin
-      LineText := Lines[ARow - 1];
-    end;
-    Result := TLspTextPosition.Create(ARow - 1, Min(TLspSession.ColumnToIndex(LineText, AColumn, TabWidth),
-      Length(LineText)));
-  end;
-
+  mLineText: string;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or not IsPascal(View.Buffer.FileName) then
+  mLineText := '';
+  if (ARow >= 1) and (ARow <= Length(ALines)) then
   begin
-    Close;
-    Exit;
+    mLineText := ALines[ARow - 1];
   end;
-  Session := nil;
-  if Assigned(FSession) then
+  Result := TLspTextPosition.Create(ARow - 1, Min(TLspSession.ColumnToIndex(mLineText, AColumn, ATabWidth),
+    Length(mLineText)));
+end;
+
+/// <summary>Markierung in AView, ohne sie die Schreibmarke, als Bereich in ALines.</summary>
+function SelectionOf(const AView: IOTAEditView; const ALines: TArray<string>; ATabWidth: Integer): TLspRange;
+var
+  mBlock: IOTAEditBlock;
+  mCursor: TOTAEditPos;
+begin
+  mCursor := AView.CursorPos;
+  Result.StartPos := PositionIn(ALines, mCursor.Line, mCursor.Col, ATabWidth);
+  Result.EndPos := Result.StartPos;
+  mBlock := AView.Block;
+  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) then
   begin
-    Session := FSession();
+    Result.StartPos := PositionIn(ALines, mBlock.StartingRow, mBlock.StartingColumn, ATabWidth);
+    Result.EndPos := PositionIn(ALines, mBlock.EndingRow, mBlock.EndingColumn, ATabWidth);
   end;
-  if Session = nil then
+end;
+
+/// <summary>Argumente der Anfrage nach den Einstellungen.</summary>
+function ArgumentsFor(const AFileName: string; const ARange: TLspRange; AExpand: Boolean): string;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasExpressionType.Arguments(TLspSession.PathToUri(AFileName), ARange, AExpand,
+    mSettings.ExpressionTypeConversions, mSettings.ExpressionTypeConstValue);
+end;
+
+function TAtlasIdeExpressionType.Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
+begin
+  ASession := nil;
+  AView := TAtlasEditorBuffer.ActiveView;
+  Result := (AView <> nil) and (AView.Buffer <> nil) and IsPascal(AView.Buffer.FileName);
+  if Result and Assigned(FSession) then
   begin
-    Close;
+    ASession := FSession();
+  end;
+  if Result and (ASession = nil) then
+  begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
+    Result := False;
   end;
-  FileName := View.Buffer.FileName;
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  Lines := TTextLines.SplitLines(Text);
-  TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
-  Cursor := View.CursorPos;
-  Selection.StartPos := Position(Cursor.Line, Cursor.Col);
-  Selection.EndPos := Selection.StartPos;
-  Block := View.Block;
-  if (Block <> nil) and Block.IsValid and (Block.Size > 0) then
-  begin
-    Selection.StartPos := Position(Block.StartingRow, Block.StartingColumn);
-    Selection.EndPos := Position(Block.EndingRow, Block.EndingColumn);
-  end;
-  // Steht der Tooltip noch für diesen Stand, geht es eine Stufe hinaus.
-  FShown.Active := FShown.Active and Active;
-  TAtlasExpressionType.NextRequest(FShown, FileName, Text, Selection, Range, Expand);
-  Settings := TAtlasIdeSettings.Current;
-  Arguments := TAtlasExpressionType.Arguments(TLspSession.PathToUri(FileName), Range, Expand,
-    Settings.ExpressionTypeConversions, Settings.ExpressionTypeConstValue);
+end;
+
+function TAtlasIdeExpressionType.Ask(ASession: TLspSession; const AFileName, AText, AArguments: string;
+  out AInfo: TAtlasExpressionTypeInfo): Boolean;
+var
+  mAnswer: TJSONValue;
+begin
+  Result := False;
   try
-    Session.Sync(FileName, Text);
-    Answer := Session.RunCommand(TAtlasExpressionType.Command, Arguments, TimeoutMs);
+    ASession.Sync(AFileName, AText);
+    mAnswer := ASession.RunCommand(TAtlasExpressionType.Command, AArguments, TimeoutMs);
     try
-      TAtlasExpressionType.Read(Answer, Info);
+      TAtlasExpressionType.Read(mAnswer, AInfo);
     finally
-      Answer.Free;
+      mAnswer.Free;
+    end;
+    Result := AInfo.Usable;
+    if not Result then
+    begin
+      Report(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     end;
   except
     on E: ELspClientError do
     begin
-      Close;
       Report(TAtlasStrings.Fmt(TAtlasTextId.ExpressionTypeFailed, [E.Message]));
-      Exit;
     end;
   end;
-  if not Info.Usable then
+end;
+
+procedure TAtlasIdeExpressionType.Execute;
+var
+  mView: IOTAEditView;
+  mSession: TLspSession;
+  mFileName, mText: string;
+  mLines: TArray<string>;
+  mTabWidth: Integer;
+  mSelection, mRange: TLspRange;
+  mExpand: Boolean;
+  mInfo: TAtlasExpressionTypeInfo;
+begin
+  if not Ready(mView, mSession) then
   begin
     Close;
-    Report(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    Exit;
+  end;
+  mFileName := mView.Buffer.FileName;
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mLines := TTextLines.SplitLines(mText);
+  mTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+  mSelection := SelectionOf(mView, mLines, mTabWidth);
+  // Steht der Tooltip noch für diesen Stand, geht es eine Stufe hinaus.
+  FShown.Active := FShown.Active and Active;
+  TAtlasExpressionType.NextRequest(FShown, mFileName, mText, mSelection, mRange, mExpand);
+  if not Ask(mSession, mFileName, mText, ArgumentsFor(mFileName, mRange, mExpand), mInfo) then
+  begin
+    Close;
     Exit;
   end;
   // Schon der äußerste Ausdruck: Tooltip und Hervorhebung bleiben.
-  if TAtlasExpressionType.KeepShown(Expand, Info) then
+  if TAtlasExpressionType.KeepShown(mExpand, mInfo) then
   begin
     Exit;
   end;
-  FShown.FileName := FileName;
-  FShown.Text := Text;
-  FShown.Selection := Selection;
-  FShown.Range := Info.Range;
-  FLines := Lines;
-  FTabWidth := TabWidth;
-  Show(Info);
+  FShown.FileName := mFileName;
+  FShown.Text := mText;
+  FShown.Selection := mSelection;
+  FShown.Range := mInfo.Range;
+  FLines := mLines;
+  FTabWidth := mTabWidth;
+  Show(mInfo);
 end;
 
 procedure TAtlasIdeExpressionType.Show(const AInfo: TAtlasExpressionTypeInfo);
@@ -515,65 +544,51 @@ begin
   end;
 end;
 
+/// <summary>Hinterlegt ASpan in der Zeile AText von AContext.</summary>
+procedure PaintSpan(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
+  const ASpan: TAtlasExpressionTypeSpan; ATabWidth: Integer);
+var
+  mFirst, mLast, mCode, mArea: TRect;
+  mColors: TAtlasColors;
+  mDC: HDC;
+  mSaved: Integer;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1));
+  mDC := AContext.Canvas.Handle;
+  mCode := AContext.LineState.CodeRect;
+  mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, ASpan.Start, ATabWidth),
+    AContext.EditorLineNum);
+  mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, ASpan.Stop, ATabWidth),
+    AContext.EditorLineNum);
+  mArea := TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom);
+  mSaved := SaveDC(mDC);
+  try
+    if mCode.Right > mCode.Left then
+    begin
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
+    end;
+    TAtlasIdeStyle.Blend(mDC, mArea, COLORREF(ColorToRGB(TColor(mColors.Accent))), TAtlasIdeExpressionType.MarkAlpha);
+  finally
+    RestoreDC(mDC, mSaved);
+  end;
+end;
+
 procedure TAtlasIdeExpressionType.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Span: TAtlasExpressionTypeSpan;
-  Text: string;
-  Line: Integer;
-  First, Last, Code, Area: TRect;
-  Colors: TAtlasColors;
-  DC: HDC;
-  Saved: Integer;
+  mSpan: TAtlasExpressionTypeSpan;
+  mLine: Integer;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShown.Active or
-    TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) then
+  if not FShown.Active or TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) then
   begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FShown.FileName) then
-    begin
-      Exit;
-    end;
-    LineState := Context.LineState;
-    if LineState = nil then
-    begin
-      Exit;
-    end;
-    Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line >= Length(FLines)) then
-    begin
-      Exit;
-    end;
-    Text := FLines[Line];
-    if not TAtlasExpressionType.SpanOnLine(FShown.Range, Line, Length(Text), Span) then
-    begin
-      Exit;
-    end;
     // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
-    if TrimRight(LineState.Text) <> TrimRight(Text) then
+    if TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FShown.FileName, FLines, mLine) and
+      TAtlasExpressionType.SpanOnLine(FShown.Range, mLine, Length(FLines[mLine]), mSpan) then
     begin
-      Exit;
-    end;
-    Colors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1));
-    DC := Context.Canvas.Handle;
-    Code := LineState.CodeRect;
-    First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Span.Start, FTabWidth),
-      Context.EditorLineNum);
-    Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Span.Stop, FTabWidth),
-      Context.EditorLineNum);
-    Area := TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom);
-    Saved := SaveDC(DC);
-    try
-      if Code.Right > Code.Left then
-      begin
-        IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
-      end;
-      TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Accent))), MarkAlpha);
-    finally
-      RestoreDC(DC, Saved);
+      PaintSpan(Rect, Context, FLines[mLine], mSpan, FTabWidth);
     end;
   except
     on E: Exception do

@@ -90,7 +90,7 @@ begin
   end;
   try
     AChoice.Title := ATitle(mModel);
-    AChoice.SourceClass := mModel.SourceClass;
+    AChoice.SourceClass := mModel.Source.SourceClass;
     Result := TAtlasExtractMembersDialog.Execute(mModel, AChoice.Title) and
       TAtlasIdeServerEdit.Appended(APrepare.Arguments, mModel.RequestJson, AChoice.ApplyArguments);
     AChoice.Name := Trim(mModel.Name);

@@ -76,6 +76,34 @@ type
     FinalStart, FinalStop: Integer;
   end;
 
+  /// <summary>Ein Lauf von Wrap: Text, Zeilenanfänge und die Pläne je Bereich.</summary>
+  TWrapJob = record
+  private
+    FLines: TArray<string>;
+    FText: string;
+    FStarts: TArray<Integer>;
+    FSpans: TArray<TAtlasCommentSpan>;
+    FSpansRead: Boolean;
+    FOpen: Char;
+    /// <summary>Beginnt APos in einem String? Liest die Spannen beim ersten Mal.</summary>
+    function InStringAt(const APos: TLspTextPosition): Boolean;
+    function PlanQuote(var APlan: TPlan; const ASelected: string; const AStartPos,
+      AStopPos: TLspTextPosition): Boolean;
+    function PlanAngle(var APlan: TPlan; const ASelected: string): Boolean;
+    /// <summary>Kommentarzeichen auf eigenen Zeilen, Einrückung der ersten Zeile.</summary>
+    procedure PlanBraceLines(var APlan: TPlan; const AStartPos, AStopPos: TLspTextPosition; const AOpener,
+      ACloser: string);
+    function PlanBrace(var APlan: TPlan; const ASelected: string; const AStartPos,
+      AStopPos: TLspTextPosition): Boolean;
+    function PlanSelection(var APlan: TPlan; const ASelected: string; const AStartPos,
+      AStopPos: TLspTextPosition): Boolean;
+    /// <summary>Plan für ARange; ASelected: mit Markierung. False, wenn nicht umschlossen werden kann.</summary>
+    function PlanFor(const ARange: TLspRange; out APlan: TPlan; out ASelected: Boolean): Boolean;
+  public
+    function Run(const ALines: TArray<string>; const ARanges: TArray<TLspRange>; AOpen: Char;
+      var AResult: TAtlasWrapResult): Boolean;
+  end;
+
 function LineStarts(const ALines: TArray<string>): TArray<Integer>;
 var
   Index, Offset: Integer;
@@ -170,6 +198,258 @@ begin
     (AStop.Character >= Length(ALines[AStop.Line])));
 end;
 
+/// <summary>Reihenfolge der Pläne absteigend nach Start (zum Einsetzen von hinten nach vorn).</summary>
+function PlanOrder(const APlans: TArray<TPlan>): TArray<Integer>;
+var
+  mIndex, mOther, mSwap: Integer;
+begin
+  SetLength(Result, Length(APlans));
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := mIndex;
+  end;
+  for mIndex := 1 to High(Result) do
+  begin
+    mOther := mIndex;
+    while (mOther > 0) and (APlans[Result[mOther - 1]].Start < APlans[Result[mOther]].Start) do
+    begin
+      mSwap := Result[mOther];
+      Result[mOther] := Result[mOther - 1];
+      Result[mOther - 1] := mSwap;
+      Dec(mOther);
+    end;
+  end;
+end;
+
+function Overlapping(const APlans: TArray<TPlan>; const AOrder: TArray<Integer>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 1 to High(AOrder) do
+  begin
+    Result := Result or (APlans[AOrder[mIndex]].Stop > APlans[AOrder[mIndex - 1]].Start);
+  end;
+end;
+
+/// <summary>Pläne von hinten nach vorn einsetzen; was dahinter liegt, rückt um die Längenänderung.</summary>
+function ApplyPlans(const AText: string; var APlans: TArray<TPlan>; const AOrder: TArray<Integer>): string;
+var
+  mIndex, mOther, mDelta: Integer;
+  mPlan: TPlan;
+begin
+  Result := AText;
+  for mIndex := 0 to High(AOrder) do
+  begin
+    mPlan := APlans[AOrder[mIndex]];
+    Result := Copy(Result, 1, mPlan.Start) + mPlan.Text + Copy(Result, mPlan.Stop + 1, MaxInt);
+    mDelta := Length(mPlan.Text) - (mPlan.Stop - mPlan.Start);
+    for mOther := 0 to mIndex - 1 do
+    begin
+      Inc(APlans[AOrder[mOther]].FinalStart, mDelta);
+      Inc(APlans[AOrder[mOther]].FinalStop, mDelta);
+    end;
+    APlans[AOrder[mIndex]].FinalStart := mPlan.Start + mPlan.SelStart;
+    APlans[AOrder[mIndex]].FinalStop := mPlan.Start + mPlan.SelStop;
+  end;
+end;
+
+function SelectionsOf(const APlans: TArray<TPlan>; const AStarts: TArray<Integer>): TArray<TLspRange>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(APlans));
+  for mIndex := 0 to High(APlans) do
+  begin
+    Result[mIndex].StartPos := PositionOf(AStarts, APlans[mIndex].FinalStart);
+    Result[mIndex].EndPos := PositionOf(AStarts, APlans[mIndex].FinalStop);
+  end;
+end;
+
+{ TWrapJob }
+
+function TWrapJob.InStringAt(const APos: TLspTextPosition): Boolean;
+begin
+  if not FSpansRead then
+  begin
+    FSpans := TAtlasBlockComment.Spans(FLines);
+    FSpansRead := True;
+  end;
+  Result := InString(FSpans, APos);
+end;
+
+function TWrapJob.PlanQuote(var APlan: TPlan; const ASelected: string; const AStartPos,
+  AStopPos: TLspTextPosition): Boolean;
+var
+  mSelected: string;
+begin
+  // Nur in einer Zeile und nicht aus einem String heraus; Hochkommas verdoppeln.
+  Result := (AStartPos.Line = AStopPos.Line) and not InStringAt(AStartPos);
+  if Result then
+  begin
+    mSelected := StringReplace(ASelected, '''', '''''', [rfReplaceAll]);
+    APlan.Text := '''' + mSelected + '''';
+    APlan.SelStart := 1;
+    APlan.SelStop := 1 + Length(mSelected);
+  end;
+end;
+
+function TWrapJob.PlanAngle(var APlan: TPlan; const ASelected: string): Boolean;
+begin
+  Result := AfterTypeName(FText, APlan.Start);
+  if Result then
+  begin
+    APlan.Text := '<' + ASelected + '>';
+    APlan.SelStart := 1;
+    APlan.SelStop := 1 + Length(ASelected);
+  end;
+end;
+
+procedure TWrapJob.PlanBraceLines(var APlan: TPlan; const AStartPos, AStopPos: TLspTextPosition; const AOpener,
+  ACloser: string);
+var
+  mIndent: string;
+  mLineStart: Integer;
+begin
+  mIndent := LeadingWhitespace(FLines[AStartPos.Line]);
+  mLineStart := FStarts[AStartPos.Line];
+  APlan.Text := mIndent + AOpener + #10 + Copy(FText, mLineStart + 1, APlan.Stop - mLineStart);
+  APlan.SelStart := Length(mIndent) + Length(AOpener) + 1 + (APlan.Start - mLineStart);
+  APlan.SelStop := APlan.SelStart + (APlan.Stop - APlan.Start);
+  if (AStopPos.Line > AStartPos.Line) and (AStopPos.Character = 0) then
+  begin
+    APlan.Text := APlan.Text + mIndent + ACloser + #10;
+  end
+  else
+  begin
+    APlan.Text := APlan.Text + #10 + mIndent + ACloser;
+  end;
+  APlan.Start := mLineStart;
+end;
+
+function TWrapJob.PlanBrace(var APlan: TPlan; const ASelected: string; const AStartPos,
+  AStopPos: TLspTextPosition): Boolean;
+var
+  mOpener, mCloser: string;
+begin
+  mOpener := '{';
+  mCloser := '}';
+  if Pos('}', ASelected) > 0 then
+  begin
+    mOpener := '(*';
+    mCloser := '*)';
+  end;
+  // Beide Kommentarenden oder eine Direktive: nicht umschließen.
+  Result := not (((mOpener = '(*') and (Pos('*)', ASelected) > 0)) or ASelected.StartsWith('$'));
+  if Result and WholeLines(FLines, AStartPos, AStopPos) then
+  begin
+    PlanBraceLines(APlan, AStartPos, AStopPos, mOpener, mCloser);
+  end
+  else if Result then
+  begin
+    APlan.Text := mOpener + ASelected + mCloser;
+    APlan.SelStart := Length(mOpener);
+    APlan.SelStop := Length(mOpener) + Length(ASelected);
+  end;
+end;
+
+function TWrapJob.PlanSelection(var APlan: TPlan; const ASelected: string; const AStartPos,
+  AStopPos: TLspTextPosition): Boolean;
+begin
+  Result := True;
+  if FOpen = '''' then
+  begin
+    Result := PlanQuote(APlan, ASelected, AStartPos, AStopPos);
+  end
+  else if FOpen = '<' then
+  begin
+    Result := PlanAngle(APlan, ASelected);
+  end
+  else if FOpen = '{' then
+  begin
+    Result := PlanBrace(APlan, ASelected, AStartPos, AStopPos);
+  end
+  else
+  begin
+    APlan.Text := FOpen + ASelected + TAtlasWrapSelection.CloserOf(FOpen);
+    APlan.SelStart := 1;
+    APlan.SelStop := 1 + Length(ASelected);
+  end;
+end;
+
+function TWrapJob.PlanFor(const ARange: TLspRange; out APlan: TPlan; out ASelected: Boolean): Boolean;
+var
+  mStartPos, mStopPos: TLspTextPosition;
+  mSelected: string;
+begin
+  mStartPos := ARange.StartPos;
+  mStopPos := ARange.EndPos;
+  if TLspTextPosition.Compare(mStopPos, mStartPos) < 0 then
+  begin
+    mStartPos := ARange.EndPos;
+    mStopPos := ARange.StartPos;
+  end;
+  APlan := Default(TPlan);
+  APlan.Start := OffsetOf(FLines, FStarts, mStartPos);
+  APlan.Stop := OffsetOf(FLines, FStarts, mStopPos);
+  mStartPos := PositionOf(FStarts, APlan.Start);
+  mStopPos := PositionOf(FStarts, APlan.Stop);
+  mSelected := Copy(FText, APlan.Start + 1, APlan.Stop - APlan.Start);
+  ASelected := mSelected <> '';
+  Result := True;
+  if not ASelected then
+  begin
+    // Ohne Markierung: das Zeichen wie beim Tippen.
+    APlan.Text := FOpen;
+    APlan.SelStart := 1;
+    APlan.SelStop := 1;
+  end
+  else
+  begin
+    Result := PlanSelection(APlan, mSelected, mStartPos, mStopPos);
+  end;
+end;
+
+function TWrapJob.Run(const ALines: TArray<string>; const ARanges: TArray<TLspRange>; AOpen: Char;
+  var AResult: TAtlasWrapResult): Boolean;
+var
+  mPlans: TArray<TPlan>;
+  mOrder: TArray<Integer>;
+  mIndex: Integer;
+  mOk, mSelected, mHasSelection: Boolean;
+begin
+  FLines := ALines;
+  if Length(FLines) = 0 then
+  begin
+    FLines := [''];
+  end;
+  FText := string.Join(#10, FLines);
+  FStarts := LineStarts(FLines);
+  FSpansRead := False;
+  FOpen := AOpen;
+  SetLength(mPlans, Length(ARanges));
+  mOk := True;
+  mHasSelection := False;
+  mIndex := 0;
+  while mOk and (mIndex <= High(ARanges)) do
+  begin
+    mOk := PlanFor(ARanges[mIndex], mPlans[mIndex], mSelected);
+    mHasSelection := mHasSelection or mSelected;
+    Inc(mIndex);
+  end;
+  mOrder := PlanOrder(mPlans);
+  Result := mOk and mHasSelection and not Overlapping(mPlans, mOrder);
+  if Result then
+  begin
+    AResult.Lines := ApplyPlans(FText, mPlans, mOrder).Split([#10]);
+    if Length(AResult.Lines) = 0 then
+    begin
+      AResult.Lines := [''];
+    end;
+    AResult.Selections := SelectionsOf(mPlans, LineStarts(AResult.Lines));
+  end;
+end;
+
 { TAtlasWrapSelection }
 
 class function TAtlasWrapSelection.Normalize(const AChars: string): string;
@@ -218,190 +498,16 @@ end;
 class function TAtlasWrapSelection.Wrap(const ALines: TArray<string>; const ARanges: TArray<TLspRange>;
   AOpen: Char; const AChars: string; out AResult: TAtlasWrapResult): Boolean;
 var
-  Lines: TArray<string>;
-  Starts, Order: TArray<Integer>;
-  Spans: TArray<TAtlasCommentSpan>;
-  Plans: TArray<TPlan>;
-  Text, NewText, Selected, Indent, Open, Close: string;
-  Index, Other, Swap, LineStart, Delta: Integer;
-  StartPos, StopPos: TLspTextPosition;
-  Plan: TPlan;
-  HasSelection, SpansRead: Boolean;
+  mJob: TWrapJob;
 begin
   AResult.Lines := ALines;
   AResult.Selections := ARanges;
   Result := False;
-  if not Accepts(AOpen, AChars) or (Length(ARanges) = 0) then
+  if Accepts(AOpen, AChars) and (Length(ARanges) > 0) then
   begin
-    Exit;
+    mJob := Default(TWrapJob);
+    Result := mJob.Run(ALines, ARanges, AOpen, AResult);
   end;
-  Lines := ALines;
-  if Length(Lines) = 0 then
-  begin
-    Lines := [''];
-  end;
-  Text := string.Join(#10, Lines);
-  Starts := LineStarts(Lines);
-  SpansRead := False;
-  HasSelection := False;
-  SetLength(Plans, Length(ARanges));
-  for Index := 0 to High(ARanges) do
-  begin
-    StartPos := ARanges[Index].StartPos;
-    StopPos := ARanges[Index].EndPos;
-    if TLspTextPosition.Compare(StopPos, StartPos) < 0 then
-    begin
-      StartPos := ARanges[Index].EndPos;
-      StopPos := ARanges[Index].StartPos;
-    end;
-    Plan := Default(TPlan);
-    Plan.Start := OffsetOf(Lines, Starts, StartPos);
-    Plan.Stop := OffsetOf(Lines, Starts, StopPos);
-    StartPos := PositionOf(Starts, Plan.Start);
-    StopPos := PositionOf(Starts, Plan.Stop);
-    Selected := Copy(Text, Plan.Start + 1, Plan.Stop - Plan.Start);
-    if Selected = '' then
-    begin
-      // Ohne Markierung: das Zeichen wie beim Tippen.
-      Plan.Text := AOpen;
-      Plan.SelStart := 1;
-      Plan.SelStop := 1;
-    end
-    else
-    begin
-      HasSelection := True;
-      case AOpen of
-        '''':
-          begin
-            if StartPos.Line <> StopPos.Line then
-            begin
-              Exit;
-            end;
-            if not SpansRead then
-            begin
-              Spans := TAtlasBlockComment.Spans(Lines);
-              SpansRead := True;
-            end;
-            if InString(Spans, StartPos) then
-            begin
-              Exit;
-            end;
-            Selected := StringReplace(Selected, '''', '''''', [rfReplaceAll]);
-            Plan.Text := '''' + Selected + '''';
-            Plan.SelStart := 1;
-            Plan.SelStop := 1 + Length(Selected);
-          end;
-        '<':
-          begin
-            if not AfterTypeName(Text, Plan.Start) then
-            begin
-              Exit;
-            end;
-            Plan.Text := '<' + Selected + '>';
-            Plan.SelStart := 1;
-            Plan.SelStop := 1 + Length(Selected);
-          end;
-        '{':
-          begin
-            Open := '{';
-            Close := '}';
-            if Pos('}', Selected) > 0 then
-            begin
-              Open := '(*';
-              Close := '*)';
-            end;
-            if ((Open = '(*') and (Pos('*)', Selected) > 0)) or Selected.StartsWith('$') then
-            begin
-              Exit;
-            end;
-            if WholeLines(Lines, StartPos, StopPos) then
-            begin
-              // Kommentarzeichen auf eigenen Zeilen, Einrückung der ersten Zeile.
-              Indent := LeadingWhitespace(Lines[StartPos.Line]);
-              LineStart := Starts[StartPos.Line];
-              Plan.Text := Indent + Open + #10 + Copy(Text, LineStart + 1, Plan.Stop - LineStart);
-              Plan.SelStart := Length(Indent) + Length(Open) + 1 + (Plan.Start - LineStart);
-              Plan.SelStop := Plan.SelStart + (Plan.Stop - Plan.Start);
-              if (StopPos.Line > StartPos.Line) and (StopPos.Character = 0) then
-              begin
-                Plan.Text := Plan.Text + Indent + Close + #10;
-              end
-              else
-              begin
-                Plan.Text := Plan.Text + #10 + Indent + Close;
-              end;
-              Plan.Start := LineStart;
-            end
-            else
-            begin
-              Plan.Text := Open + Selected + Close;
-              Plan.SelStart := Length(Open);
-              Plan.SelStop := Length(Open) + Length(Selected);
-            end;
-          end;
-      else
-        Plan.Text := AOpen + Selected + CloserOf(AOpen);
-        Plan.SelStart := 1;
-        Plan.SelStop := 1 + Length(Selected);
-      end;
-    end;
-    Plans[Index] := Plan;
-  end;
-  if not HasSelection then
-  begin
-    Exit;
-  end;
-  // Von hinten nach vorn einsetzen; was dahinter liegt, rückt um die Längenänderung.
-  SetLength(Order, Length(Plans));
-  for Index := 0 to High(Order) do
-  begin
-    Order[Index] := Index;
-  end;
-  for Index := 1 to High(Order) do
-  begin
-    Other := Index;
-    while (Other > 0) and (Plans[Order[Other - 1]].Start < Plans[Order[Other]].Start) do
-    begin
-      Swap := Order[Other];
-      Order[Other] := Order[Other - 1];
-      Order[Other - 1] := Swap;
-      Dec(Other);
-    end;
-  end;
-  for Index := 1 to High(Order) do
-  begin
-    if Plans[Order[Index]].Stop > Plans[Order[Index - 1]].Start then
-    begin
-      Exit;
-    end;
-  end;
-  NewText := Text;
-  for Index := 0 to High(Order) do
-  begin
-    Plan := Plans[Order[Index]];
-    NewText := Copy(NewText, 1, Plan.Start) + Plan.Text + Copy(NewText, Plan.Stop + 1, MaxInt);
-    Delta := Length(Plan.Text) - (Plan.Stop - Plan.Start);
-    for Other := 0 to Index - 1 do
-    begin
-      Inc(Plans[Order[Other]].FinalStart, Delta);
-      Inc(Plans[Order[Other]].FinalStop, Delta);
-    end;
-    Plans[Order[Index]].FinalStart := Plan.Start + Plan.SelStart;
-    Plans[Order[Index]].FinalStop := Plan.Start + Plan.SelStop;
-  end;
-  AResult.Lines := NewText.Split([#10]);
-  if Length(AResult.Lines) = 0 then
-  begin
-    AResult.Lines := [''];
-  end;
-  Starts := LineStarts(AResult.Lines);
-  SetLength(AResult.Selections, Length(Plans));
-  for Index := 0 to High(Plans) do
-  begin
-    AResult.Selections[Index].StartPos := PositionOf(Starts, Plans[Index].FinalStart);
-    AResult.Selections[Index].EndPos := PositionOf(Starts, Plans[Index].FinalStop);
-  end;
-  Result := True;
 end;
 
 end.

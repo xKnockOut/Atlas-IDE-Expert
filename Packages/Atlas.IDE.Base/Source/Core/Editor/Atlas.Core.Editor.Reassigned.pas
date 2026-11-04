@@ -76,83 +76,93 @@ begin
   Result.Y2 := AY2;
 end;
 
+function ReadSymbol(const AItem: TJSONObject): TAtlasReassignedSymbol;
+begin
+  Result.Name := AItem.GetValue<string>('name', '');
+  Result.Kind := AItem.GetValue<string>('kind', '');
+  Result.Writes := AItem.GetValue<Integer>('writes', 0);
+  Result.Routine := AItem.GetValue<string>('routine', '');
+end;
+
+/// <summary>Stellen des Symbols ASymbol aus AItem.uses nach AFound; ohne gültige Zeile und Spalten keine.</summary>
+procedure AddUses(const AItem: TJSONObject; ASymbol: Integer; AFound: TList<TAtlasReassignedUse>);
+var
+  mUseItem: TJSONValue;
+  mUse: TAtlasReassignedUse;
+begin
+  if AItem.GetValue('uses') is TJSONArray then
+  begin
+    for mUseItem in TJSONArray(AItem.GetValue('uses')) do
+    begin
+      if mUseItem is TJSONObject then
+      begin
+        mUse.Line := TJSONObject(mUseItem).GetValue<Integer>('line', -1);
+        mUse.Character := TJSONObject(mUseItem).GetValue<Integer>('character', 0);
+        mUse.EndCharacter := TJSONObject(mUseItem).GetValue<Integer>('endCharacter', 0);
+        mUse.Write := TJSONObject(mUseItem).GetValue<Boolean>('write', False);
+        mUse.Symbol := ASymbol;
+        if (mUse.Line >= 0) and (mUse.EndCharacter > mUse.Character) then
+        begin
+          AFound.Add(mUse);
+        end;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Nach Zeile, Spalte und Symbol.</summary>
+function UseComparer: IComparer<TAtlasReassignedUse>;
+begin
+  Result := TComparer<TAtlasReassignedUse>.Construct(
+    function(const ALeft, ARight: TAtlasReassignedUse): Integer
+    begin
+      Result := ALeft.Line - ARight.Line;
+      if Result = 0 then
+      begin
+        Result := ALeft.Character - ARight.Character;
+      end;
+      if Result = 0 then
+      begin
+        Result := ALeft.Symbol - ARight.Symbol;
+      end;
+    end);
+end;
+
 { TAtlasReassignedSet }
 
 class function TAtlasReassignedSet.FromJson(AValue: TJSONValue): TAtlasReassignedSet;
 var
-  List, UsesList: TJSONArray;
-  Item, UseItem: TJSONValue;
-  Symbol: TAtlasReassignedSymbol;
-  Use: TAtlasReassignedUse;
-  Found: TList<TAtlasReassignedUse>;
-  Line: Integer;
+  mItem: TJSONValue;
+  mUse: TAtlasReassignedUse;
+  mFound: TList<TAtlasReassignedUse>;
 begin
   Result := Default(TAtlasReassignedSet);
-  if not (AValue is TJSONObject) or not (TJSONObject(AValue).GetValue('symbols') is TJSONArray) then
+  if (AValue is TJSONObject) and (TJSONObject(AValue).GetValue('symbols') is TJSONArray) then
   begin
-    Exit;
-  end;
-  List := TJSONArray(TJSONObject(AValue).GetValue('symbols'));
-  Found := TList<TAtlasReassignedUse>.Create;
-  try
-    for Item in List do
-    begin
-      if not (Item is TJSONObject) then
+    mFound := TList<TAtlasReassignedUse>.Create;
+    try
+      for mItem in TJSONArray(TJSONObject(AValue).GetValue('symbols')) do
       begin
-        Continue;
-      end;
-      Symbol.Name := TJSONObject(Item).GetValue<string>('name', '');
-      Symbol.Kind := TJSONObject(Item).GetValue<string>('kind', '');
-      Symbol.Writes := TJSONObject(Item).GetValue<Integer>('writes', 0);
-      Symbol.Routine := TJSONObject(Item).GetValue<string>('routine', '');
-      Result.Symbols := Result.Symbols + [Symbol];
-      if not (TJSONObject(Item).GetValue('uses') is TJSONArray) then
-      begin
-        Continue;
-      end;
-      UsesList := TJSONArray(TJSONObject(Item).GetValue('uses'));
-      for UseItem in UsesList do
-      begin
-        if UseItem is TJSONObject then
+        if mItem is TJSONObject then
         begin
-          Use.Line := TJSONObject(UseItem).GetValue<Integer>('line', -1);
-          Use.Character := TJSONObject(UseItem).GetValue<Integer>('character', 0);
-          Use.EndCharacter := TJSONObject(UseItem).GetValue<Integer>('endCharacter', 0);
-          Use.Write := TJSONObject(UseItem).GetValue<Boolean>('write', False);
-          Use.Symbol := High(Result.Symbols);
-          if (Use.Line >= 0) and (Use.EndCharacter > Use.Character) then
-          begin
-            Found.Add(Use);
-          end;
+          Result.Symbols := Result.Symbols + [ReadSymbol(TJSONObject(mItem))];
+          AddUses(TJSONObject(mItem), High(Result.Symbols), mFound);
         end;
       end;
+      mFound.Sort(UseComparer);
+      for mUse in mFound do
+      begin
+        if mUse.Line >= Length(Result.FByLine) then
+        begin
+          SetLength(Result.FByLine, mUse.Line + 1);
+        end;
+        Result.FByLine[mUse.Line] := Result.FByLine[mUse.Line] + [mUse];
+      end;
+    finally
+      mFound.Free;
     end;
-    Found.Sort(TComparer<TAtlasReassignedUse>.Construct(
-      function(const ALeft, ARight: TAtlasReassignedUse): Integer
-      begin
-        Result := ALeft.Line - ARight.Line;
-        if Result = 0 then
-        begin
-          Result := ALeft.Character - ARight.Character;
-        end;
-        if Result = 0 then
-        begin
-          Result := ALeft.Symbol - ARight.Symbol;
-        end;
-      end));
-    for Use in Found do
-    begin
-      Line := Use.Line;
-      if Line >= Length(Result.FByLine) then
-      begin
-        SetLength(Result.FByLine, Line + 1);
-      end;
-      Result.FByLine[Line] := Result.FByLine[Line] + [Use];
-    end;
-  finally
-    Found.Free;
+    Result.Valid := True;
   end;
-  Result.Valid := True;
 end;
 
 function TAtlasReassignedSet.HasUses: Boolean;
