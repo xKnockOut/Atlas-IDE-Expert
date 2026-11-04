@@ -31,6 +31,8 @@ type
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
     function IsCancelled: Boolean;
+    /// <summary>True, wenn gar nicht gestartet wird (Hauptthread, Programm fehlt, Abbruch); AOutcome sagt warum.</summary>
+    function Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
   public
     /// <summary>Lehnt den Hauptthread ab; Abbruch nur über das Ende des aufrufenden Threads.</summary>
     constructor Create; overload;
@@ -232,168 +234,244 @@ begin
   Result := Result + StringOfChar('\', Backslashes) + '"';
 end;
 
+function TAtlasVcsProcessRunner.Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
+begin
+  AOutcome := TAtlasVcsOutcome.Ok;
+  if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
+  begin
+    AOutcome := TAtlasVcsOutcome.MainThread;
+  end
+  else if (AExecutable = '') or not FileExists(AExecutable) then
+  begin
+    AOutcome := TAtlasVcsOutcome.ToolMissing;
+  end
+  else if IsCancelled then
+  begin
+    AOutcome := TAtlasVcsOutcome.Cancelled;
+  end;
+  Result := AOutcome <> TAtlasVcsOutcome.Ok;
+end;
+
+type
+  /// <summary>Ein Kindprozess mit seinen Pipes; der Destruktor schließt alle Handles.</summary>
+  TChildProcess = class
+  private
+    FOutRead: THandle;
+    FOutWrite: THandle;
+    FErrRead: THandle;
+    FErrWrite: THandle;
+    FNullInput: THandle;
+    FProcess: TProcessInformation;
+    FOutput: TPipeBuffer;
+    FErrors: TPipeBuffer;
+    function OpenPipes: Boolean;
+    function StartupInfo: TStartupInfo;
+    function Start(const AExecutable, ACommandLine, AWorkingDir: string): Boolean;
+    procedure DrainAll;
+    function Wait(ARunner: TAtlasVcsProcessRunner; ATimeoutMs: Cardinal): TAtlasVcsOutcome;
+    function Finish(AOutcome: TAtlasVcsOutcome): TAtlasVcsRunResult;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Execute(ARunner: TAtlasVcsProcessRunner; const AExecutable, ACommandLine, AWorkingDir: string;
+      ATimeoutMs: Cardinal): TAtlasVcsRunResult;
+  end;
+
+procedure CloseHandleOf(var AHandle: THandle; AEmpty: THandle);
+begin
+  if AHandle <> AEmpty then
+  begin
+    CloseHandle(AHandle);
+    AHandle := AEmpty;
+  end;
+end;
+
+function CommandLineOf(const AExecutable: string; const AArguments: TArray<string>): string;
+var
+  mArgument: string;
+begin
+  Result := TAtlasVcsProcessRunner.QuoteArgument(AExecutable);
+  for mArgument in AArguments do
+  begin
+    Result := Result + ' ' + TAtlasVcsProcessRunner.QuoteArgument(mArgument);
+  end;
+end;
+
+/// <summary>Abbruch oder Zeitlimit während der Prozess läuft; sonst Ok.</summary>
+function Interruption(ARunner: TAtlasVcsProcessRunner; ADeadline: UInt64): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Ok;
+  if ARunner.IsCancelled then
+  begin
+    Result := TAtlasVcsOutcome.Cancelled;
+  end
+  else if TThread.GetTickCount64 >= ADeadline then
+  begin
+    Result := TAtlasVcsOutcome.TimedOut;
+  end;
+end;
+
+constructor TChildProcess.Create;
+begin
+  inherited Create;
+  FNullInput := INVALID_HANDLE_VALUE;
+end;
+
+destructor TChildProcess.Destroy;
+begin
+  CloseHandleOf(FProcess.hThread, 0);
+  CloseHandleOf(FProcess.hProcess, 0);
+  CloseHandleOf(FNullInput, INVALID_HANDLE_VALUE);
+  CloseHandleOf(FOutRead, 0);
+  CloseHandleOf(FOutWrite, 0);
+  CloseHandleOf(FErrRead, 0);
+  CloseHandleOf(FErrWrite, 0);
+  inherited;
+end;
+
+function TChildProcess.OpenPipes: Boolean;
+var
+  mSecurity: TSecurityAttributes;
+begin
+  mSecurity.nLength := SizeOf(mSecurity);
+  mSecurity.lpSecurityDescriptor := nil;
+  mSecurity.bInheritHandle := True;
+  Result := CreatePipe(FOutRead, FOutWrite, @mSecurity, 0) and CreatePipe(FErrRead, FErrWrite, @mSecurity, 0);
+  if Result then
+  begin
+    // Nur die Schreibenden erbt der Kindprozess.
+    SetHandleInformation(FOutRead, HANDLE_FLAG_INHERIT, 0);
+    SetHandleInformation(FErrRead, HANDLE_FLAG_INHERIT, 0);
+    FNullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @mSecurity, OPEN_EXISTING, 0,
+      0);
+  end;
+end;
+
+function TChildProcess.StartupInfo: TStartupInfo;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  Result.cb := SizeOf(Result);
+  Result.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
+  Result.wShowWindow := SW_HIDE;
+  if FNullInput <> INVALID_HANDLE_VALUE then
+  begin
+    Result.hStdInput := FNullInput;
+  end;
+  Result.hStdOutput := FOutWrite;
+  Result.hStdError := FErrWrite;
+end;
+
+function TChildProcess.Start(const AExecutable, ACommandLine, AWorkingDir: string): Boolean;
+var
+  mStartup: TStartupInfo;
+  mCommandLine, mEnvironment: string;
+  mWorkingDir: PChar;
+begin
+  mStartup := StartupInfo;
+  mCommandLine := ACommandLine;
+  UniqueString(mCommandLine);
+  mWorkingDir := nil;
+  if AWorkingDir <> '' then
+  begin
+    mWorkingDir := PChar(AWorkingDir);
+  end;
+  mEnvironment := NoPromptBlock;
+  Result := CreateProcess(PChar(AExecutable), PChar(mCommandLine), nil, nil, True,
+    CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, PChar(mEnvironment), mWorkingDir, mStartup, FProcess);
+  if Result then
+  begin
+    // Eigene Schreibenden schließen, damit die Pipes mit dem Prozess enden.
+    CloseHandleOf(FOutWrite, 0);
+    CloseHandleOf(FErrWrite, 0);
+  end;
+end;
+
+procedure TChildProcess.DrainAll;
+begin
+  Drain(FOutRead, FOutput, TAtlasVcsProcessRunner.MaxOutputBytes + 1);
+  Drain(FErrRead, FErrors, MaxErrorBytes);
+end;
+
+function TChildProcess.Wait(ARunner: TAtlasVcsProcessRunner; ATimeoutMs: Cardinal): TAtlasVcsOutcome;
+var
+  mDeadline: UInt64;
+begin
+  mDeadline := TThread.GetTickCount64 + ATimeoutMs;
+  repeat
+    DrainAll;
+    if WaitForSingleObject(FProcess.hProcess, SliceMs) = WAIT_OBJECT_0 then
+    begin
+      Result := TAtlasVcsOutcome.Ok;
+      Break;
+    end;
+    Result := Interruption(ARunner, mDeadline);
+  until Result <> TAtlasVcsOutcome.Ok;
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    TerminateProcess(FProcess.hProcess, 1);
+    WaitForSingleObject(FProcess.hProcess, 1000);
+  end;
+  // Rest nach dem Ende; ein Enkelprozess mit offener Pipe hält hier nicht auf.
+  DrainAll;
+end;
+
+function TChildProcess.Finish(AOutcome: TAtlasVcsOutcome): TAtlasVcsRunResult;
+var
+  mExitCode: DWORD;
+  mOutcome: TAtlasVcsOutcome;
+begin
+  if not GetExitCodeProcess(FProcess.hProcess, mExitCode) then
+  begin
+    mExitCode := $FFFFFFFF;
+  end;
+  mOutcome := AOutcome;
+  if (mOutcome = TAtlasVcsOutcome.Ok) and (FOutput.Count > TAtlasVcsProcessRunner.MaxOutputBytes) then
+  begin
+    mOutcome := TAtlasVcsOutcome.Failed;
+  end;
+  Result := TAtlasVcsRunResult.Make(mOutcome, Integer(mExitCode), nil);
+  if mOutcome = TAtlasVcsOutcome.Ok then
+  begin
+    Result.Output := FOutput.Bytes;
+  end;
+  if FErrors.Count > 0 then
+  begin
+    Result.ErrorText := Trim(TEncoding.UTF8.GetString(FErrors.Data, 0, FErrors.Count));
+  end;
+end;
+
+function TChildProcess.Execute(ARunner: TAtlasVcsProcessRunner; const AExecutable, ACommandLine,
+  AWorkingDir: string; ATimeoutMs: Cardinal): TAtlasVcsRunResult;
+begin
+  Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
+  if not OpenPipes then
+  begin
+    Exit;
+  end;
+  if not Start(AExecutable, ACommandLine, AWorkingDir) then
+  begin
+    // Programm verschwunden oder nicht ausführbar: wie nicht installiert.
+    Result.Outcome := TAtlasVcsOutcome.ToolMissing;
+    Exit;
+  end;
+  Result := Finish(Wait(ARunner, ATimeoutMs));
+end;
+
 function TAtlasVcsProcessRunner.Run(const AExecutable: string; const AArguments: TArray<string>;
   const AWorkingDir: string; ATimeoutMs: Cardinal): TAtlasVcsRunResult;
 var
-  Security: TSecurityAttributes;
-  OutRead, OutWrite, ErrRead, ErrWrite, NullInput: THandle;
-  Startup: TStartupInfo;
-  Process: TProcessInformation;
-  CommandLine, Argument: string;
-  WorkingDir: PChar;
-  Output, Errors: TPipeBuffer;
-  Deadline: UInt64;
-  ExitCode: DWORD;
-  Outcome: TAtlasVcsOutcome;
-  Environment: string;
+  mOutcome: TAtlasVcsOutcome;
+  mChild: TChildProcess;
 begin
-  Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
-  if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
+  if Refused(AExecutable, mOutcome) then
   begin
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.MainThread, -1, nil));
+    Exit(TAtlasVcsRunResult.Make(mOutcome, -1, nil));
   end;
-  if (AExecutable = '') or not FileExists(AExecutable) then
-  begin
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.ToolMissing, -1, nil));
-  end;
-  if IsCancelled then
-  begin
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Cancelled, -1, nil));
-  end;
-
-  Security.nLength := SizeOf(Security);
-  Security.lpSecurityDescriptor := nil;
-  Security.bInheritHandle := True;
-  OutRead := 0;
-  OutWrite := 0;
-  ErrRead := 0;
-  ErrWrite := 0;
-  NullInput := INVALID_HANDLE_VALUE;
-  FillChar(Process, SizeOf(Process), 0);
+  mChild := TChildProcess.Create;
   try
-    if not CreatePipe(OutRead, OutWrite, @Security, 0) or not CreatePipe(ErrRead, ErrWrite, @Security, 0) then
-    begin
-      Exit;
-    end;
-    // Nur die Schreibenden erbt der Kindprozess.
-    SetHandleInformation(OutRead, HANDLE_FLAG_INHERIT, 0);
-    SetHandleInformation(ErrRead, HANDLE_FLAG_INHERIT, 0);
-    NullInput := CreateFile('NUL', GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, @Security, OPEN_EXISTING, 0, 0);
-
-    FillChar(Startup, SizeOf(Startup), 0);
-    Startup.cb := SizeOf(Startup);
-    Startup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-    Startup.wShowWindow := SW_HIDE;
-    if NullInput <> INVALID_HANDLE_VALUE then
-    begin
-      Startup.hStdInput := NullInput;
-    end;
-    Startup.hStdOutput := OutWrite;
-    Startup.hStdError := ErrWrite;
-    CommandLine := QuoteArgument(AExecutable);
-    for Argument in AArguments do
-    begin
-      CommandLine := CommandLine + ' ' + QuoteArgument(Argument);
-    end;
-    UniqueString(CommandLine);
-    if AWorkingDir <> '' then
-    begin
-      WorkingDir := PChar(AWorkingDir);
-    end
-    else
-    begin
-      WorkingDir := nil;
-    end;
-    Environment := NoPromptBlock;
-    if not CreateProcess(PChar(AExecutable), PChar(CommandLine), nil, nil, True,
-      CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, PChar(Environment), WorkingDir, Startup, Process) then
-    begin
-      // Programm verschwunden oder nicht ausführbar: wie nicht installiert.
-      Result.Outcome := TAtlasVcsOutcome.ToolMissing;
-      Exit;
-    end;
-    // Eigene Schreibenden schließen, damit die Pipes mit dem Prozess enden.
-    CloseHandle(OutWrite);
-    OutWrite := 0;
-    CloseHandle(ErrWrite);
-    ErrWrite := 0;
-
-    Output := Default(TPipeBuffer);
-    Errors := Default(TPipeBuffer);
-    Deadline := TThread.GetTickCount64 + ATimeoutMs;
-    Outcome := TAtlasVcsOutcome.Ok;
-    while True do
-    begin
-      Drain(OutRead, Output, MaxOutputBytes + 1);
-      Drain(ErrRead, Errors, MaxErrorBytes);
-      if WaitForSingleObject(Process.hProcess, SliceMs) = WAIT_OBJECT_0 then
-      begin
-        Break;
-      end;
-      if IsCancelled then
-      begin
-        Outcome := TAtlasVcsOutcome.Cancelled;
-      end
-      else if TThread.GetTickCount64 >= Deadline then
-      begin
-        Outcome := TAtlasVcsOutcome.TimedOut;
-      end;
-      if Outcome <> TAtlasVcsOutcome.Ok then
-      begin
-        TerminateProcess(Process.hProcess, 1);
-        WaitForSingleObject(Process.hProcess, 1000);
-        Break;
-      end;
-    end;
-    // Rest nach dem Ende; ein Enkelprozess mit offener Pipe hält hier nicht auf.
-    Drain(OutRead, Output, MaxOutputBytes + 1);
-    Drain(ErrRead, Errors, MaxErrorBytes);
-    if not GetExitCodeProcess(Process.hProcess, ExitCode) then
-    begin
-      ExitCode := $FFFFFFFF;
-    end;
-    if (Outcome = TAtlasVcsOutcome.Ok) and (Output.Count > MaxOutputBytes) then
-    begin
-      Outcome := TAtlasVcsOutcome.Failed;
-    end;
-    Result := TAtlasVcsRunResult.Make(Outcome, Integer(ExitCode), nil);
-    if Outcome = TAtlasVcsOutcome.Ok then
-    begin
-      Result.Output := Output.Bytes;
-    end;
-    if Errors.Count > 0 then
-    begin
-      Result.ErrorText := Trim(TEncoding.UTF8.GetString(Errors.Data, 0, Errors.Count));
-    end;
+    Result := mChild.Execute(Self, AExecutable, CommandLineOf(AExecutable, AArguments), AWorkingDir, ATimeoutMs);
   finally
-    if Process.hThread <> 0 then
-    begin
-      CloseHandle(Process.hThread);
-    end;
-    if Process.hProcess <> 0 then
-    begin
-      CloseHandle(Process.hProcess);
-    end;
-    if NullInput <> INVALID_HANDLE_VALUE then
-    begin
-      CloseHandle(NullInput);
-    end;
-    if OutRead <> 0 then
-    begin
-      CloseHandle(OutRead);
-    end;
-    if OutWrite <> 0 then
-    begin
-      CloseHandle(OutWrite);
-    end;
-    if ErrRead <> 0 then
-    begin
-      CloseHandle(ErrRead);
-    end;
-    if ErrWrite <> 0 then
-    begin
-      CloseHandle(ErrWrite);
-    end;
+    mChild.Free;
   end;
 end;
 

@@ -200,108 +200,104 @@ begin
   end;
 end;
 
+/// <summary>Kopfzeile "# branch.… Wert" von git status --porcelain=v2 in AHead übernehmen.</summary>
+procedure ReadStatusHeader(const AEntry: string; var AHead: TAtlasVcsHead);
+var
+  mKey, mValue: string;
+begin
+  mKey := Field(AEntry, 1, False);
+  mValue := Field(AEntry, 2, True);
+  if (mKey = 'branch.oid') and (mValue <> '(initial)') then
+  begin
+    AHead.Revision := mValue;
+  end
+  else if (mKey = 'branch.head') and (mValue = '(detached)') then
+  begin
+    AHead.Detached := True;
+  end
+  else if mKey = 'branch.head' then
+  begin
+    AHead.Branch := mValue;
+  end
+  else if mKey = 'branch.upstream' then
+  begin
+    AHead.Upstream := mValue;
+  end
+  else if mKey = 'branch.ab' then
+  begin
+    ReadAheadBehind(mValue, AHead);
+  end;
+end;
+
+/// <summary>Eintrag "2 XY sub mH mI mW hH hI Xscore path"; der alte Pfad folgt als eigener Eintrag bei AIndex, der
+/// dann übersprungen wird.</summary>
+function ReadMoved(const ARoot, AEntry: string; const AEntries: TArray<string>; var AIndex: Integer):
+  TAtlasVcsChange;
+var
+  mXY: string;
+begin
+  mXY := Field(AEntry, 1, False);
+  if Copy(Field(AEntry, 8, False), 1, 1) = 'C' then
+  begin
+    Result := MakeChange(ARoot, Field(AEntry, 9, True), TAtlasVcsChangeKind.Copied, mXY);
+  end
+  else
+  begin
+    Result := MakeChange(ARoot, Field(AEntry, 9, True), TAtlasVcsChangeKind.Renamed, mXY);
+  end;
+  if AIndex <= High(AEntries) then
+  begin
+    Result.OldPath := VcsFullPath(ARoot, AEntries[AIndex]);
+    Inc(AIndex);
+  end;
+end;
+
 class procedure TAtlasGitParser.ParseStatus(const AText, ARoot: string; out AHead: TAtlasVcsHead;
   out AChanges: TArray<TAtlasVcsChange>);
 var
-  Entries: TArray<string>;
-  Index: Integer;
-  Entry, Key, Value, XY: string;
-  Change: TAtlasVcsChange;
+  mEntries: TArray<string>;
+  mIndex: Integer;
+  mEntry: string;
 begin
   AHead := TAtlasVcsHead.Empty;
   AChanges := nil;
   // Mit -z durch NUL getrennt, sonst durch Zeilenumbrüche.
   if Pos(#0, AText) > 0 then
   begin
-    Entries := AText.Split([#0]);
+    mEntries := AText.Split([#0]);
   end
   else
   begin
-    Entries := AText.Split([#10]);
+    mEntries := AText.Split([#10]);
   end;
-  Index := 0;
-  while Index <= High(Entries) do
+  mIndex := 0;
+  while mIndex <= High(mEntries) do
   begin
-    Entry := Entries[Index];
-    Inc(Index);
-    Entry := Entry.TrimRight([#13, #10]);
-    if Entry = '' then
+    mEntry := mEntries[mIndex].TrimRight([#13, #10]);
+    Inc(mIndex);
+    if mEntry = '' then
     begin
       Continue;
     end;
-    case Entry[1] of
+    case mEntry[1] of
       '#':
-        begin
-          Key := Field(Entry, 1, False);
-          Value := Field(Entry, 2, True);
-          if Key = 'branch.oid' then
-          begin
-            if Value <> '(initial)' then
-            begin
-              AHead.Revision := Value;
-            end;
-          end
-          else if Key = 'branch.head' then
-          begin
-            if Value = '(detached)' then
-            begin
-              AHead.Detached := True;
-            end
-            else
-            begin
-              AHead.Branch := Value;
-            end;
-          end
-          else if Key = 'branch.upstream' then
-          begin
-            AHead.Upstream := Value;
-          end
-          else if Key = 'branch.ab' then
-          begin
-            ReadAheadBehind(Value, AHead);
-          end;
-        end;
+        ReadStatusHeader(mEntry, AHead);
       '1':
-        begin
-          // 1 XY sub mH mI mW hH hI path
-          XY := Field(Entry, 1, False);
-          AChanges := AChanges + [MakeChange(ARoot, Field(Entry, 8, True), KindOf(XY), XY)];
-        end;
+        // 1 XY sub mH mI mW hH hI path
+        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, 8, True), KindOf(Field(mEntry, 1, False)),
+          Field(mEntry, 1, False))];
       '2':
-        begin
-          // 2 XY sub mH mI mW hH hI Xscore path, danach der alte Pfad als eigener Eintrag
-          XY := Field(Entry, 1, False);
-          Value := Field(Entry, 8, False);
-          if Copy(Value, 1, 1) = 'C' then
-          begin
-            Change := MakeChange(ARoot, Field(Entry, 9, True), TAtlasVcsChangeKind.Copied, XY);
-          end
-          else
-          begin
-            Change := MakeChange(ARoot, Field(Entry, 9, True), TAtlasVcsChangeKind.Renamed, XY);
-          end;
-          if Index <= High(Entries) then
-          begin
-            Change.OldPath := VcsFullPath(ARoot, Entries[Index]);
-            Inc(Index);
-          end;
-          AChanges := AChanges + [Change];
-        end;
+        AChanges := AChanges + [ReadMoved(ARoot, mEntry, mEntries, mIndex)];
       'u':
-        begin
-          // u XY sub m1 m2 m3 mW h1 h2 h3 path
-          XY := Field(Entry, 1, False);
-          AChanges := AChanges + [MakeChange(ARoot, Field(Entry, 10, True), TAtlasVcsChangeKind.Conflicted, XY)];
-        end;
+        // u XY sub m1 m2 m3 mW h1 h2 h3 path
+        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, 10, True), TAtlasVcsChangeKind.Conflicted,
+          Field(mEntry, 1, False))];
       '?':
-        begin
-          Change := MakeChange(ARoot, Copy(Entry, 3, MaxInt), TAtlasVcsChangeKind.Untracked, '.?');
-          AChanges := AChanges + [Change];
-        end;
+        AChanges := AChanges + [MakeChange(ARoot, Copy(mEntry, 3, MaxInt), TAtlasVcsChangeKind.Untracked, '.?')];
       '!':
         ;
     else
-      raise EAtlasVcsParse.CreateFmt('git status: unbekannter Eintrag "%s"', [Copy(Entry, 1, 1)]);
+      raise EAtlasVcsParse.CreateFmt('git status: unbekannter Eintrag "%s"', [Copy(mEntry, 1, 1)]);
     end;
   end;
 end;
@@ -336,14 +332,36 @@ begin
   end;
 end;
 
+/// <summary>Ein Teil von "ahead 3, behind 2" (getrimmt); löst EAtlasVcsParse für Unbekanntes aus.</summary>
+procedure ReadTrackPart(const APart, AText: string; var ABranch: TAtlasVcsBranch);
+var
+  mNumber: Integer;
+  mKnown: Boolean;
+begin
+  mKnown := APart = '';
+  if Copy(APart, 1, 6) = 'ahead ' then
+  begin
+    mKnown := TryStrToInt(Trim(Copy(APart, 7, MaxInt)), mNumber);
+    ABranch.Ahead := mNumber;
+  end
+  else if Copy(APart, 1, 7) = 'behind ' then
+  begin
+    mKnown := TryStrToInt(Trim(Copy(APart, 8, MaxInt)), mNumber);
+    ABranch.Behind := mNumber;
+  end;
+  if not mKnown then
+  begin
+    raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [AText]);
+  end;
+end;
+
 procedure ReadTrack(const AText: string; var ABranch: TAtlasVcsBranch);
 var
-  Part, Text: string;
-  Number: Integer;
+  mPart, mText: string;
 begin
   // "ahead 3", "behind 2", "ahead 3, behind 2", "gone" oder leer (gleichauf bzw. ohne Upstream).
-  Text := Trim(AText);
-  if Text = 'gone' then
+  mText := Trim(AText);
+  if mText = 'gone' then
   begin
     ABranch.Gone := True;
     Exit;
@@ -354,34 +372,9 @@ begin
   end;
   ABranch.Ahead := 0;
   ABranch.Behind := 0;
-  for Part in Text.Split([',']) do
+  for mPart in mText.Split([',']) do
   begin
-    if Copy(Trim(Part), 1, 6) = 'ahead ' then
-    begin
-      if TryStrToInt(Trim(Copy(Trim(Part), 7, MaxInt)), Number) then
-      begin
-        ABranch.Ahead := Number;
-      end
-      else
-      begin
-        raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
-      end;
-    end
-    else if Copy(Trim(Part), 1, 7) = 'behind ' then
-    begin
-      if TryStrToInt(Trim(Copy(Trim(Part), 8, MaxInt)), Number) then
-      begin
-        ABranch.Behind := Number;
-      end
-      else
-      begin
-        raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
-      end;
-    end
-    else if Trim(Part) <> '' then
-    begin
-      raise EAtlasVcsParse.CreateFmt('git for-each-ref: Abstand "%s" unbekannt', [Text]);
-    end;
+    ReadTrackPart(Trim(mPart), mText, ABranch);
   end;
 end;
 
@@ -417,56 +410,63 @@ begin
   end;
 end;
 
+/// <summary>Betreff "WIP on &lt;branch&gt;: &lt;hash&gt; &lt;Betreff des Commits&gt;" (ohne Namen) oder
+/// "On &lt;branch&gt;: &lt;Name&gt;" in Branch und Nachricht zerlegen; sonst bleibt der Betreff die Nachricht.</summary>
+procedure ReadStashSubject(const ASubject: string; var AStash: TAtlasVcsStash);
+var
+  mRest: string;
+  mColon, mSpace: Integer;
+  mWip: Boolean;
+begin
+  AStash.Message := ASubject;
+  mColon := Pos(': ', ASubject);
+  mWip := Copy(ASubject, 1, 7) = 'WIP on ';
+  if (mColon = 0) or not (mWip or (Copy(ASubject, 1, 3) = 'On ')) then
+  begin
+    Exit;
+  end;
+  mRest := Copy(ASubject, mColon + 2, MaxInt);
+  if mWip then
+  begin
+    AStash.Branch := Copy(ASubject, 8, mColon - 8);
+    // Kurzer Hash vorn entfällt.
+    mSpace := Pos(' ', mRest);
+    if mSpace > 0 then
+    begin
+      mRest := Copy(mRest, mSpace + 1, MaxInt);
+    end;
+  end
+  else
+  begin
+    AStash.Branch := Copy(ASubject, 4, mColon - 4);
+  end;
+  AStash.Message := mRest;
+end;
+
 class function TAtlasGitParser.ParseStashes(const AText: string): TArray<TAtlasVcsStash>;
 var
-  Line, Subject, Rest: string;
-  Fields: TArray<string>;
-  Stash: TAtlasVcsStash;
-  Colon, Space: Integer;
+  mLine: string;
+  mFields: TArray<string>;
+  mStash: TAtlasVcsStash;
 begin
   Result := nil;
-  for Line in NonEmptyLines(AText) do
+  for mLine in NonEmptyLines(AText) do
   begin
-    Fields := Line.Split([#0]);
-    if Length(Fields) < 4 then
+    mFields := mLine.Split([#0]);
+    if Length(mFields) < 4 then
     begin
       raise EAtlasVcsParse.Create('git stash list: vier Felder erwartet');
     end;
-    Stash := Default(TAtlasVcsStash);
-    Stash.Hash := Fields[0];
-    Stash.Date := UnixField(Fields[1]);
-    Stash.Ref := Fields[2];
-    // Betreff: "WIP on <branch>: <hash> <Betreff des Commits>" (ohne Namen) oder "On <branch>: <Name>".
-    Subject := Fields[3];
-    Stash.Message := Subject;
-    Colon := Pos(': ', Subject);
-    if (Colon > 0) and ((Copy(Subject, 1, 7) = 'WIP on ') or (Copy(Subject, 1, 3) = 'On ')) then
-    begin
-      if Copy(Subject, 1, 7) = 'WIP on ' then
-      begin
-        Stash.Branch := Copy(Subject, 8, Colon - 8);
-      end
-      else
-      begin
-        Stash.Branch := Copy(Subject, 4, Colon - 4);
-      end;
-      Rest := Copy(Subject, Colon + 2, MaxInt);
-      if Copy(Subject, 1, 7) = 'WIP on ' then
-      begin
-        // Kurzer Hash vorn entfällt.
-        Space := Pos(' ', Rest);
-        if Space > 0 then
-        begin
-          Rest := Copy(Rest, Space + 1, MaxInt);
-        end;
-      end;
-      Stash.Message := Rest;
-    end;
-    if Stash.Hash = '' then
+    mStash := Default(TAtlasVcsStash);
+    mStash.Hash := mFields[0];
+    mStash.Date := UnixField(mFields[1]);
+    mStash.Ref := mFields[2];
+    ReadStashSubject(mFields[3], mStash);
+    if mStash.Hash = '' then
     begin
       raise EAtlasVcsParse.Create('git stash list: Hash fehlt');
     end;
-    Result := Result + [Stash];
+    Result := Result + [mStash];
   end;
 end;
 
@@ -498,70 +498,78 @@ begin
   end;
 end;
 
+/// <summary>Art aus dem Kennbuchstaben von git diff --name-status; löst EAtlasVcsParse für unbekannte aus.</summary>
+function NameStatusKind(const AStatus: string): TAtlasVcsChangeKind;
+begin
+  case AStatus[1] of
+    'M':
+      Result := TAtlasVcsChangeKind.Modified;
+    'A':
+      Result := TAtlasVcsChangeKind.Added;
+    'D':
+      Result := TAtlasVcsChangeKind.Deleted;
+    'T':
+      Result := TAtlasVcsChangeKind.TypeChanged;
+    'U':
+      Result := TAtlasVcsChangeKind.Conflicted;
+    'R':
+      Result := TAtlasVcsChangeKind.Renamed;
+    'C':
+      Result := TAtlasVcsChangeKind.Copied;
+  else
+    raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [AStatus]);
+  end;
+end;
+
+/// <summary>Pfad bei AIndex (danach weiter); löst EAtlasVcsParse mit AMissing aus, wenn er fehlt.</summary>
+function NextPath(const AEntries: TArray<string>; var AIndex: Integer; const AMissing: string): string;
+begin
+  if (AIndex > High(AEntries)) or (AEntries[AIndex] = '') then
+  begin
+    raise EAtlasVcsParse.Create(AMissing);
+  end;
+  Result := AEntries[AIndex];
+  Inc(AIndex);
+end;
+
 class function TAtlasGitParser.ParseNameStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>;
 var
-  Entries: TArray<string>;
-  Index: Integer;
-  Status: string;
-  Change: TAtlasVcsChange;
+  mEntries: TArray<string>;
+  mIndex: Integer;
+  mStatus: string;
+  mChange: TAtlasVcsChange;
 begin
   Result := nil;
-  Entries := AText.Split([#0]);
-  Index := 0;
-  while Index <= High(Entries) do
+  mEntries := AText.Split([#0]);
+  mIndex := 0;
+  while mIndex <= High(mEntries) do
   begin
-    Status := Entries[Index].Trim([#10, #13]);
-    Inc(Index);
-    if Status = '' then
+    mStatus := mEntries[mIndex].Trim([#10, #13]);
+    Inc(mIndex);
+    if mStatus = '' then
     begin
       Continue;
     end;
-    if Index > High(Entries) then
+    if mIndex > High(mEntries) then
     begin
       raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
     end;
-    Change := Default(TAtlasVcsChange);
-    Change.Staged := True;
-    Change.Unstaged := False;
-    case Status[1] of
-      'M':
-        Change.Kind := TAtlasVcsChangeKind.Modified;
-      'A':
-        Change.Kind := TAtlasVcsChangeKind.Added;
-      'D':
-        Change.Kind := TAtlasVcsChangeKind.Deleted;
-      'T':
-        Change.Kind := TAtlasVcsChangeKind.TypeChanged;
-      'U':
-        Change.Kind := TAtlasVcsChangeKind.Conflicted;
-      'R', 'C':
-        begin
-          if Status[1] = 'R' then
-          begin
-            Change.Kind := TAtlasVcsChangeKind.Renamed;
-          end
-          else
-          begin
-            Change.Kind := TAtlasVcsChangeKind.Copied;
-          end;
-          // Erst der alte, dann der neue Pfad.
-          Change.OldPath := VcsFullPath(ARoot, Entries[Index]);
-          Inc(Index);
-          if Index > High(Entries) then
-          begin
-            raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
-          end;
-        end;
-    else
-      raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [Status]);
-    end;
-    if Entries[Index] = '' then
+    mChange := Default(TAtlasVcsChange);
+    mChange.Staged := True;
+    mChange.Unstaged := False;
+    mChange.Kind := NameStatusKind(mStatus);
+    if mChange.Kind in [TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied] then
     begin
-      raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
+      // Erst der alte, dann der neue Pfad.
+      mChange.OldPath := VcsFullPath(ARoot, mEntries[mIndex]);
+      Inc(mIndex);
+      if mIndex > High(mEntries) then
+      begin
+        raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
+      end;
     end;
-    Change.Path := VcsFullPath(ARoot, Entries[Index]);
-    Inc(Index);
-    Result := Result + [Change];
+    mChange.Path := VcsFullPath(ARoot, NextPath(mEntries, mIndex, 'git diff --name-status: Pfad fehlt'));
+    Result := Result + [mChange];
   end;
 end;
 
@@ -626,13 +634,68 @@ begin
   end;
 end;
 
+/// <summary>Erste Zeile einer Nachricht.</summary>
+function SummaryOf(const AMessage: string): string;
+var
+  mBreak: Integer;
+begin
+  mBreak := Pos(#10, AMessage);
+  if mBreak > 0 then
+  begin
+    Result := Copy(AMessage, 1, mBreak - 1);
+  end
+  else
+  begin
+    Result := AMessage;
+  end;
+end;
+
+/// <summary>Paare aus Art und Pfad ab Feld 4; leere Einträge (Ende der Nachricht, Zeilenende davor) zählen nicht.
+/// </summary>
+procedure ReadHistoryFiles(const AFields: TArray<string>; const ARoot: string; AFiles: TList<TAtlasVcsLogFile>);
+var
+  mIndex: Integer;
+  mStatus: string;
+  mFile: TAtlasVcsLogFile;
+begin
+  AFiles.Clear;
+  mIndex := 4;
+  while mIndex <= High(AFields) do
+  begin
+    mStatus := AFields[mIndex].Trim([#10, #13]);
+    Inc(mIndex);
+    if mStatus = '' then
+    begin
+      Continue;
+    end;
+    mFile := Default(TAtlasVcsLogFile);
+    mFile.RepositoryPath := NextPath(AFields, mIndex, 'git log --name-status: Pfad fehlt');
+    mFile.Kind := StatusKind(mStatus);
+    mFile.Path := VcsFullPath(ARoot, mFile.RepositoryPath);
+    AFiles.Add(mFile);
+  end;
+end;
+
+/// <summary>Kopf eines Commits aus git log: Hash, Zeit, Autor und Nachricht.</summary>
+function HistoryEntry(const AFields: TArray<string>): TAtlasVcsLogEntry;
+begin
+  if (Length(AFields) < 4) or (Length(AFields[0]) < 7) then
+  begin
+    raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Nachricht erwartet');
+  end;
+  Result := Default(TAtlasVcsLogEntry);
+  Result.Revision := AFields[0];
+  Result.Date := UnixField(AFields[1]);
+  Result.Author := AFields[2];
+  Result.Message := StringReplace(AFields[3], #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
+  Result.Summary := SummaryOf(Result.Message);
+end;
+
 class function TAtlasGitParser.ParseHistory(const AText, ARoot: string): TArray<TAtlasVcsLogEntry>;
 var
-  mRecords, mFields: TArray<string>;
-  mItem, mStatus, mMessage: string;
-  mIndex, mBreak: Integer;
+  mFields: TArray<string>;
+  mItem: string;
   mEntry: TAtlasVcsLogEntry;
-  mFile: TAtlasVcsLogFile;
   mEntries: TList<TAtlasVcsLogEntry>;
   mFiles: TList<TAtlasVcsLogFile>;
 begin
@@ -640,55 +703,15 @@ begin
   mEntries := TList<TAtlasVcsLogEntry>.Create;
   mFiles := TList<TAtlasVcsLogFile>.Create;
   try
-    mRecords := AText.Split([#$1E]);
-    for mItem in mRecords do
+    for mItem in AText.Split([#$1E]) do
     begin
       if mItem.Trim([#0, #10, #13]) = '' then
       begin
         Continue;
       end;
       mFields := mItem.Split([#0]);
-      if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
-      begin
-        raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Nachricht erwartet');
-      end;
-      mEntry := Default(TAtlasVcsLogEntry);
-      mEntry.Revision := mFields[0];
-      mEntry.Date := UnixField(mFields[1]);
-      mEntry.Author := mFields[2];
-      mMessage := StringReplace(mFields[3], #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
-      mEntry.Message := mMessage;
-      mBreak := Pos(#10, mMessage);
-      if mBreak > 0 then
-      begin
-        mEntry.Summary := Copy(mMessage, 1, mBreak - 1);
-      end
-      else
-      begin
-        mEntry.Summary := mMessage;
-      end;
-      // Danach Paare aus Art und Pfad; leere Einträge (Ende der Nachricht, Zeilenende davor) zählen nicht.
-      mFiles.Clear;
-      mIndex := 4;
-      while mIndex <= High(mFields) do
-      begin
-        mStatus := mFields[mIndex].Trim([#10, #13]);
-        Inc(mIndex);
-        if mStatus = '' then
-        begin
-          Continue;
-        end;
-        if (mIndex > High(mFields)) or (mFields[mIndex] = '') then
-        begin
-          raise EAtlasVcsParse.Create('git log --name-status: Pfad fehlt');
-        end;
-        mFile := Default(TAtlasVcsLogFile);
-        mFile.Kind := StatusKind(mStatus);
-        mFile.RepositoryPath := mFields[mIndex];
-        mFile.Path := VcsFullPath(ARoot, mFields[mIndex]);
-        Inc(mIndex);
-        mFiles.Add(mFile);
-      end;
+      mEntry := HistoryEntry(mFields);
+      ReadHistoryFiles(mFields, ARoot, mFiles);
       mEntry.Files := mFiles.ToArray;
       mEntries.Add(mEntry);
     end;
@@ -890,97 +913,145 @@ type
     Summary: string;
   end;
 
+  /// <summary>Liest git blame --porcelain Kopfzeile für Kopfzeile.</summary>
+  TGitBlameReader = class
+  strict private
+    FLines: TArray<string>;
+    FIndex: Integer;
+    FCommits: TArray<TCommitInfo>;
+    FCommitCount: Integer;
+    FCommitIndexOf: TDictionary<string, Integer>;
+    function CommitFor(const AHash: string): Integer;
+    procedure ReadCommitInfo(var ACommit: TCommitInfo);
+  public
+    constructor Create(const AText: string);
+    destructor Destroy; override;
+    /// <summary>Höchstzahl der Zeilen (eine je Kopfzeile).</summary>
+    function Capacity: Integer;
+    /// <summary>Nächste Zeile; False am Ende. Löst EAtlasVcsParse aus, wenn keine Kopfzeile folgt.</summary>
+    function Next(out AItem: TAtlasVcsBlameLine): Boolean;
+  end;
+
+constructor TGitBlameReader.Create(const AText: string);
+begin
+  inherited Create;
+  FLines := AText.Split([#10]);
+  // Höchstens ein Commit je Kopfzeile: einmal anlegen statt je Zeile zu kopieren, Commits über ihren Hash finden statt
+  // die Liste zu durchsuchen (#1109).
+  SetLength(FCommits, Length(FLines));
+  FCommitIndexOf := TDictionary<string, Integer>.Create;
+end;
+
+destructor TGitBlameReader.Destroy;
+begin
+  FreeAndNil(FCommitIndexOf);
+  inherited;
+end;
+
+function TGitBlameReader.Capacity: Integer;
+begin
+  Result := Length(FLines);
+end;
+
+function TGitBlameReader.CommitFor(const AHash: string): Integer;
+begin
+  if not FCommitIndexOf.TryGetValue(AHash, Result) then
+  begin
+    Result := FCommitCount;
+    Inc(FCommitCount);
+    FCommitIndexOf.Add(AHash, Result);
+    FCommits[Result] := Default(TCommitInfo);
+    FCommits[Result].Hash := AHash;
+  end;
+end;
+
+procedure TGitBlameReader.ReadCommitInfo(var ACommit: TCommitInfo);
+var
+  mLine, mKey, mValue: string;
+  mSeconds: Int64;
+begin
+  // Angaben zum Commit bis zur Inhaltszeile (beginnt mit Tab).
+  while FIndex <= High(FLines) do
+  begin
+    mLine := FLines[FIndex].TrimRight([#13]);
+    Inc(FIndex);
+    if (mLine <> '') and (mLine[1] = #9) then
+    begin
+      Break;
+    end;
+    mKey := Field(mLine, 0, False);
+    mValue := Field(mLine, 1, True);
+    if mKey = 'author' then
+    begin
+      ACommit.Author := mValue;
+    end
+    else if (mKey = 'author-time') and TryStrToInt64(mValue, mSeconds) then
+    begin
+      ACommit.Date := VcsUnixToDate(mSeconds);
+    end
+    else if mKey = 'summary' then
+    begin
+      ACommit.Summary := mValue;
+    end;
+  end;
+end;
+
+function TGitBlameReader.Next(out AItem: TAtlasVcsBlameLine): Boolean;
+var
+  mLine, mHash: string;
+  mCommit, mFinal: Integer;
+begin
+  AItem := Default(TAtlasVcsBlameLine);
+  mLine := '';
+  while (mLine = '') and (FIndex <= High(FLines)) do
+  begin
+    mLine := FLines[FIndex].TrimRight([#13]);
+    Inc(FIndex);
+  end;
+  Result := mLine <> '';
+  if not Result then
+  begin
+    Exit;
+  end;
+  // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
+  mHash := Field(mLine, 0, False);
+  if (Length(mHash) < 40) or not TryStrToInt(Field(mLine, 2, False), mFinal) then
+  begin
+    raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
+  end;
+  mCommit := CommitFor(mHash);
+  ReadCommitInfo(FCommits[mCommit]);
+  AItem.Line := mFinal;
+  // Noch nicht übernommen: git nennt "Not Committed Yet" und die Uhrzeit von jetzt.
+  if mHash <> NullCommit then
+  begin
+    AItem.Revision := mHash;
+    AItem.Author := FCommits[mCommit].Author;
+    AItem.Date := FCommits[mCommit].Date;
+    AItem.Summary := FCommits[mCommit].Summary;
+  end;
+end;
+
 class function TAtlasGitParser.ParseBlame(const AText: string): TArray<TAtlasVcsBlameLine>;
 var
-  Lines: TArray<string>;
-  Commits: TArray<TCommitInfo>;
-  CommitIndexOf: TDictionary<string, Integer>;
-  Index, CommitIndex, CommitCount, Count, Final: Integer;
-  Line, Hash, Key, Value: string;
-  Seconds: Int64;
-  Item: TAtlasVcsBlameLine;
+  mReader: TGitBlameReader;
+  mItem: TAtlasVcsBlameLine;
+  mCount: Integer;
 begin
-  Lines := AText.Split([#10]);
-  // Höchstens eine Zeile und ein Commit je Kopfzeile: einmal anlegen statt je Zeile zu kopieren, Commits über ihren
-  // Hash finden statt die Liste zu durchsuchen (#1109).
-  SetLength(Result, Length(Lines));
-  SetLength(Commits, Length(Lines));
-  Count := 0;
-  CommitCount := 0;
-  CommitIndexOf := TDictionary<string, Integer>.Create;
+  mCount := 0;
+  mReader := TGitBlameReader.Create(AText);
   try
-    Index := 0;
-    while Index <= High(Lines) do
+    // Höchstens eine Zeile je Kopfzeile: einmal anlegen, am Ende kürzen.
+    SetLength(Result, mReader.Capacity);
+    while mReader.Next(mItem) do
     begin
-      Line := Lines[Index].TrimRight([#13]);
-      Inc(Index);
-      if Line = '' then
-      begin
-        Continue;
-      end;
-      // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
-      Hash := Field(Line, 0, False);
-      if (Length(Hash) < 40) or not TryStrToInt(Field(Line, 2, False), Final) then
-      begin
-        raise EAtlasVcsParse.Create('git blame: Kopfzeile erwartet');
-      end;
-      if not CommitIndexOf.TryGetValue(Hash, CommitIndex) then
-      begin
-        CommitIndex := CommitCount;
-        Inc(CommitCount);
-        CommitIndexOf.Add(Hash, CommitIndex);
-        Commits[CommitIndex].Hash := Hash;
-        Commits[CommitIndex].Author := '';
-        Commits[CommitIndex].Date := 0;
-        Commits[CommitIndex].Summary := '';
-      end;
-      // Angaben zum Commit bis zur Inhaltszeile (beginnt mit Tab).
-      while Index <= High(Lines) do
-      begin
-        Line := Lines[Index].TrimRight([#13]);
-        Inc(Index);
-        if (Line <> '') and (Line[1] = #9) then
-        begin
-          Break;
-        end;
-        Key := Field(Line, 0, False);
-        Value := Field(Line, 1, True);
-        if Key = 'author' then
-        begin
-          Commits[CommitIndex].Author := Value;
-        end
-        else if (Key = 'author-time') and TryStrToInt64(Value, Seconds) then
-        begin
-          Commits[CommitIndex].Date := VcsUnixToDate(Seconds);
-        end
-        else if Key = 'summary' then
-        begin
-          Commits[CommitIndex].Summary := Value;
-        end;
-      end;
-      Item.Line := Final;
-      if Hash = NullCommit then
-      begin
-        // Noch nicht übernommen: git nennt "Not Committed Yet" und die Uhrzeit von jetzt.
-        Item.Revision := '';
-        Item.Author := '';
-        Item.Date := 0;
-        Item.Summary := '';
-      end
-      else
-      begin
-        Item.Revision := Hash;
-        Item.Author := Commits[CommitIndex].Author;
-        Item.Date := Commits[CommitIndex].Date;
-        Item.Summary := Commits[CommitIndex].Summary;
-      end;
-      Result[Count] := Item;
-      Inc(Count);
+      Result[mCount] := mItem;
+      Inc(mCount);
     end;
   finally
-    CommitIndexOf.Free;
+    mReader.Free;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 end.
