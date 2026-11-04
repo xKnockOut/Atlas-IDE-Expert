@@ -291,7 +291,8 @@ var
 begin
   List := Entries;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('', True), TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', nil, False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', nil, False));
   // Aktives Projekt oben, dann alphabetisch.
   Assert.IsTrue(Rows[0].IsGroup);
   Assert.AreEqual('Atlas.IDE.Expert', Rows[0].Group);
@@ -300,13 +301,14 @@ begin
   Assert.AreEqual('Atlas.Common', Rows[4].Group);
   Assert.AreEqual(2, Integer(Rows[4].Count), 'BinaryForm und Optionen.inc');
   // Eingeklappt: nur der Kopf.
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert',
-    ['atlas.common'], False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', ['atlas.common'], False));
   Assert.AreEqual(3 + 1 + 1 + 2 + 1, Integer(Length(Rows)));
   Assert.IsTrue(Rows[4].Collapsed);
   Assert.AreEqual(2, Integer(Rows[4].Count));
   // Ohne Gruppierung keine Köpfe.
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.None, Root, '', nil, False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.None, Root, '', nil, False));
   Assert.AreEqual(Integer(Length(Order)), Integer(Length(Rows)));
   Assert.IsFalse(Rows[0].IsGroup);
 end;
@@ -320,7 +322,8 @@ begin
   List := Entries;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('settingstests', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.Expert', nil, True);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.Expert', nil, True));
   Assert.AreEqual('Tests\IDE.Expert', Rows[0].Group);
   Assert.AreEqual('Packages\Atlas.IDE.Expert\Source\Core\Settings',
     TAtlasUnitSearch.GroupOf(List[5], TAtlasUnitGrouping.Folder, Root));
@@ -512,7 +515,8 @@ begin
     end;
     Previous := Query;
     HasPrevious := True;
-    TAtlasUnitSearch.Rows(Units, Order, TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True);
+    TAtlasUnitSearch.Rows(Units, Order,
+      TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True));
     Worst := Max(Worst, Watch.ElapsedMilliseconds);
     Assert.IsTrue(Length(Order) > 0, Pattern);
   end;
