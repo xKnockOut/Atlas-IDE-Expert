@@ -2590,7 +2590,6 @@ begin
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasTextId.SettingsTabCompiler);
   FProblems := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblems));
-  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   FProblemsStatusCounter := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsStatusCounter));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
   FAfterSave := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsCheckOnSave),
@@ -2654,6 +2653,8 @@ begin
   FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
   // Sammelkorrektur im Kontextmenü des Fensters (#1352).
   FFixBulk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk));
+  // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
+  FProblemsList := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
