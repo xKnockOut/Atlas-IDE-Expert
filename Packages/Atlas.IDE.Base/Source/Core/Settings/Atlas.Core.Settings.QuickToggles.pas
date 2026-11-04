@@ -115,20 +115,30 @@ uses
 function BoolJson(AValue: Boolean): string;
 begin
   if AValue then
-    Result := 'true'
+  begin
+    Result := 'true';
+  end
   else
+  begin
     Result := 'false';
+  end;
 end;
 
 function CaptionOf(ASchema: TJSONObject; AEnglish: Boolean): string;
 begin
   Result := '';
   if AEnglish then
+  begin
     Result := ASchema.GetValue<string>('x-captionEn', '');
+  end;
   if Result = '' then
+  begin
     Result := ASchema.GetValue<string>('x-caption', '');
+  end;
   if Result = '' then
+  begin
     Result := ASchema.GetValue<string>('description', '');
+  end;
 end;
 
 function IsTrue(ASchema: TJSONObject; const AName: string): Boolean;
@@ -150,42 +160,118 @@ begin
   Result := (Kind is TJSONString) and (TJSONString(Kind).Value = 'boolean');
 end;
 
+function IsQuickToggle(AValue: TJSONValue): Boolean;
+begin
+  Result := (AValue is TJSONObject) and IsBoolean(TJSONObject(AValue)) and
+    IsTrue(TJSONObject(AValue), 'x-quickToggle');
+end;
+
+/// <summary>Schnellschalter unter den Gliedern des Objekts AName: Pfad "objekt.glied", x-scope des Glieds oder
+/// sonst AScope.</summary>
+procedure VisitChildren(const AName, APage, AScope: string; AObject: TJSONObject; const AVisit: TVisit);
+var
+  mChildren: TJSONValue;
+  mSub: TJSONPair;
+begin
+  mChildren := AObject.GetValue('properties');
+  if not (mChildren is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mSub in TJSONObject(mChildren) do
+  begin
+    if IsQuickToggle(mSub.JsonValue) then
+    begin
+      AVisit(AName + '.' + mSub.JsonString.Value, APage,
+        TJSONObject(mSub.JsonValue).GetValue<string>('x-scope', AScope), TJSONObject(mSub.JsonValue));
+    end;
+  end;
+end;
+
 /// <summary>Ruft AVisit für jede boolesche Einstellung mit x-quickToggle auf, auch für Glieder von Objekten
 /// (Pfad "objekt.glied", Seite des Objekts, x-scope des Glieds oder sonst des Objekts).</summary>
 procedure Walk(const ASchemaJson: string; const AVisit: TVisit);
 var
-  Root, Properties, Children: TJSONValue;
-  Pair, Sub: TJSONPair;
-  Page, Scope: string;
+  mRoot, mProperties: TJSONValue;
+  mPair: TJSONPair;
+  mObject: TJSONObject;
+  mPage, mScope: string;
 begin
-  Root := TJSONObject.ParseJSONValue(ASchemaJson);
+  mRoot := TJSONObject.ParseJSONValue(ASchemaJson);
   try
-    if not (Root is TJSONObject) then
-      Exit;
-    Properties := TJSONObject(Root).GetValue('properties');
-    if not (Properties is TJSONObject) then
-      Exit;
-    for Pair in TJSONObject(Properties) do
+    mProperties := nil;
+    if mRoot is TJSONObject then
     begin
-      if not (Pair.JsonValue is TJSONObject) then
+      mProperties := TJSONObject(mRoot).GetValue('properties');
+    end;
+    if not (mProperties is TJSONObject) then
+    begin
+      Exit;
+    end;
+    for mPair in TJSONObject(mProperties) do
+    begin
+      if not (mPair.JsonValue is TJSONObject) then
+      begin
         Continue;
-      Page := TJSONObject(Pair.JsonValue).GetValue<string>('x-page', '');
-      Scope := TJSONObject(Pair.JsonValue).GetValue<string>('x-scope', '');
-      if IsBoolean(TJSONObject(Pair.JsonValue)) and IsTrue(TJSONObject(Pair.JsonValue), 'x-quickToggle') then
-        AVisit(Pair.JsonString.Value, Page, Scope, TJSONObject(Pair.JsonValue));
-      Children := TJSONObject(Pair.JsonValue).GetValue('properties');
-      if Children is TJSONObject then
-        for Sub in TJSONObject(Children) do
-          if (Sub.JsonValue is TJSONObject) and IsBoolean(TJSONObject(Sub.JsonValue)) and
-            IsTrue(TJSONObject(Sub.JsonValue), 'x-quickToggle') then
-            AVisit(Pair.JsonString.Value + '.' + Sub.JsonString.Value, Page,
-              TJSONObject(Sub.JsonValue).GetValue<string>('x-scope', Scope), TJSONObject(Sub.JsonValue));
+      end;
+      mObject := TJSONObject(mPair.JsonValue);
+      mPage := mObject.GetValue<string>('x-page', '');
+      mScope := mObject.GetValue<string>('x-scope', '');
+      if IsQuickToggle(mObject) then
+      begin
+        AVisit(mPair.JsonString.Value, mPage, mScope, mObject);
+      end;
+      VisitChildren(mPair.JsonString.Value, mPage, mScope, mObject, AVisit);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
+function ToggleOf(const AKey, APage: string; ASchema: TJSONObject; AEnglish: Boolean;
+  const AProjectPath: string): TAtlasQuickToggle;
+begin
+  Result := Default(TAtlasQuickToggle);
+  Result.Key := AKey;
+  Result.Page := APage;
+  Result.Caption := CaptionOf(ASchema, AEnglish);
+  Result.ProjectPath := AProjectPath;
+  Result.Drawing := IsTrue(ASchema, 'x-drawing');
+  Result.Feature := ASchema.GetValue<string>('x-feature', '');
+  Result.Experimental := IsTrue(ASchema, 'x-experimental');
+end;
+
+/// <summary>Projekteinstellung mit Plugin-Einstellung (x-plugin): Ziel „Projekt“ beim Schalter der
+/// Plugin-Einstellung, sonst ein eigener Schalter.</summary>
+procedure AddProjectToggle(var AList: TArray<TAtlasQuickToggle>; const APath, APage, AScope: string;
+  ASchema: TJSONObject; AEnglish: Boolean);
+var
+  mIndex: Integer;
+  mKey, mProjectPath: string;
+begin
+  mKey := ASchema.GetValue<string>('x-plugin', '');
+  // Ohne Plugin-Einstellung gibt es keinen globalen Wert, den der Schalter schreiben könnte.
+  if mKey = '' then
+  begin
+    Exit;
+  end;
+  // Globale Schlüssel gelten in atlas.json nicht (#227): kein Ziel „Projekt“.
+  mProjectPath := APath;
+  if AScope = 'global' then
+  begin
+    mProjectPath := '';
+  end;
+  for mIndex := 0 to High(AList) do
+  begin
+    if SameText(AList[mIndex].Key, mKey) then
+    begin
+      AList[mIndex].ProjectPath := mProjectPath;
+      AList[mIndex].Experimental := AList[mIndex].Experimental or IsTrue(ASchema, 'x-experimental');
+      Exit;
+    end;
+  end;
+  AList := AList + [ToggleOf(mKey, APage, ASchema, AEnglish, mProjectPath)];
+end;
 { TAtlasToggleSession }
 
 procedure TAtlasToggleSession.Put(const AKey: string; AValue: Boolean);
@@ -193,11 +279,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Overrides) do
+  begin
     if SameText(Overrides[Index].Key, AKey) then
     begin
       Overrides[Index] := TPair<string, Boolean>.Create(Overrides[Index].Key, AValue);
       Exit;
     end;
+  end;
   Overrides := Overrides + [TPair<string, Boolean>.Create(AKey, AValue)];
 end;
 
@@ -206,8 +294,12 @@ var
   Index: Integer;
 begin
   for Index := High(Overrides) downto 0 do
+  begin
     if SameText(Overrides[Index].Key, AKey) then
+    begin
       Delete(Overrides, Index, 1);
+    end;
+  end;
 end;
 
 function TAtlasToggleSession.TryGet(const AKey: string; out AValue: Boolean): Boolean;
@@ -216,11 +308,13 @@ var
 begin
   AValue := False;
   for Pair in Overrides do
+  begin
     if SameText(Pair.Key, AKey) then
     begin
       AValue := Pair.Value;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -232,11 +326,19 @@ var
 begin
   Result := AStored;
   for Pair in Overrides do
+  begin
     TAtlasQuickToggles.SetFlag(Result, Pair.Key, Pair.Value);
+  end;
   if AllOff then
+  begin
     for Toggle in AToggles do
+    begin
       if Toggle.Drawing then
+      begin
         TAtlasQuickToggles.SetFlag(Result, Toggle.Key, False);
+      end;
+    end;
+  end;
 end;
 
 { TAtlasQuickToggles }
@@ -257,63 +359,26 @@ end;
 class function TAtlasQuickToggles.Build(const APluginCatalog, AProjectSchema: string;
   AEnglish: Boolean): TArray<TAtlasQuickToggle>;
 var
-  List: TArray<TAtlasQuickToggle>;
-  Ordered: TArray<TAtlasQuickToggle>;
-  Group: TAtlasQuickToggleGroup;
+  mList: TArray<TAtlasQuickToggle>;
+  mGroup: TAtlasQuickToggleGroup;
 begin
-  List := nil;
+  mList := nil;
   Walk(APluginCatalog,
     procedure(const APath, APage, AScope: string; ASchema: TJSONObject)
-    var
-      Toggle: TAtlasQuickToggle;
     begin
-      Toggle := Default(TAtlasQuickToggle);
-      Toggle.Key := APath;
-      Toggle.Page := APage;
-      Toggle.Caption := CaptionOf(ASchema, AEnglish);
-      Toggle.ProjectPath := ASchema.GetValue<string>('x-project', '');
-      Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
-      Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
-      Toggle.Experimental := IsTrue(ASchema, 'x-experimental');
-      List := List + [Toggle];
+      mList := mList + [ToggleOf(APath, APage, ASchema, AEnglish, ASchema.GetValue<string>('x-project', ''))];
     end);
   Walk(AProjectSchema,
     procedure(const APath, APage, AScope: string; ASchema: TJSONObject)
-    var
-      Toggle: TAtlasQuickToggle;
-      Index: Integer;
-      Key, ProjectPath: string;
     begin
-      Key := ASchema.GetValue<string>('x-plugin', '');
-      // Ohne Plugin-Einstellung gibt es keinen globalen Wert, den der Schalter schreiben könnte.
-      if Key = '' then
-        Exit;
-      // Globale Schlüssel gelten in atlas.json nicht (#227): kein Ziel „Projekt“.
-      ProjectPath := APath;
-      if AScope = 'global' then
-        ProjectPath := '';
-      for Index := 0 to High(List) do
-        if SameText(List[Index].Key, Key) then
-        begin
-          List[Index].ProjectPath := ProjectPath;
-          List[Index].Experimental := List[Index].Experimental or IsTrue(ASchema, 'x-experimental');
-          Exit;
-        end;
-      Toggle := Default(TAtlasQuickToggle);
-      Toggle.Key := Key;
-      Toggle.Page := APage;
-      Toggle.Caption := CaptionOf(ASchema, AEnglish);
-      Toggle.ProjectPath := ProjectPath;
-      Toggle.Drawing := IsTrue(ASchema, 'x-drawing');
-      Toggle.Feature := ASchema.GetValue<string>('x-feature', '');
-      Toggle.Experimental := IsTrue(ASchema, 'x-experimental');
-      List := List + [Toggle];
+      AddProjectToggle(mList, APath, APage, AScope, ASchema, AEnglish);
     end);
   // Nach Seiten ordnen, Reihenfolge der Seiten wie ihr erstes Auftreten.
-  Ordered := nil;
-  for Group in Groups(List) do
-    Ordered := Ordered + Group.Toggles;
-  Result := Ordered;
+  Result := nil;
+  for mGroup in Groups(mList) do
+  begin
+    Result := Result + mGroup.Toggles;
+  end;
 end;
 
 class function TAtlasQuickToggles.Groups(const AToggles: TArray<TAtlasQuickToggle>): TArray<TAtlasQuickToggleGroup>;
@@ -327,8 +392,12 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Page, Toggle.Page) then
+      begin
         Found := Index;
+      end;
+    end;
     if Found < 0 then
     begin
       Group.Page := Toggle.Page;
@@ -347,11 +416,13 @@ var
 begin
   AToggle := Default(TAtlasQuickToggle);
   for Toggle in AToggles do
+  begin
     if SameText(Toggle.Key, AKey) then
     begin
       AToggle := Toggle;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -374,11 +445,17 @@ begin
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Result := Store.HasInteger(AKey);
   if not Result then
+  begin
     Exit;
+  end;
   if AValue then
-    Store.WriteInteger(AKey, 1)
+  begin
+    Store.WriteInteger(AKey, 1);
+  end
   else
+  begin
     Store.WriteInteger(AKey, 0);
+  end;
   ASettings.Load(Store);
 end;
 
@@ -391,12 +468,16 @@ begin
   AValue := False;
   Result := False;
   if (AProject = nil) or (APath = '') then
+  begin
     Exit;
+  end;
   Current := AProject;
   for Segment in APath.Split(['.']) do
   begin
     if not (Current is TJSONObject) then
+    begin
       Exit;
+    end;
     Current := TJSONObject(Current).GetValue(Segment);
   end;
   if Current is TJSONBool then
@@ -422,10 +503,14 @@ begin
     GetFlag(AStored, Toggle.Key, Item.Checked);
     Item.Project := ProjectValue(AProject, Toggle.ProjectPath, Value);
     if Item.Project then
+    begin
       Item.Checked := Value;
+    end;
     Item.Session := ASession.TryGet(Toggle.Key, Value);
     if Item.Session then
+    begin
       Item.Checked := Value;
+    end;
     Result := Result + [Item];
   end;
 end;

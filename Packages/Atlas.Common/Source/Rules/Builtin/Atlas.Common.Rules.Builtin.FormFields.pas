@@ -485,6 +485,15 @@ var
     Result := (APosition <= High(Code)) and SameText(Tokens[Code[APosition]].Text, AText);
   end;
 
+  /// <summary>Steht ab APosition "Application.CreateForm(Klasse, Name)" mit einem Bezeichner als Name?</summary>
+  function IsCreateForm(APosition: Integer): Boolean;
+  begin
+    Result := IsText(APosition, 'Application') and IsText(APosition + 1, '.') and
+      IsText(APosition + 2, 'CreateForm') and IsText(APosition + 3, '(');
+    Result := Result and IsText(APosition + 5, ',') and IsText(APosition + 7, ')') and
+      (Tokens[Code[APosition + 6]].Kind = TPascalTokenKind.Identifier);
+  end;
+
 begin
   Result := nil;
   Tokens := TPascalLexer.Tokenize(AMainSource);
@@ -499,9 +508,7 @@ begin
   // Application.CreateForm(TfrmHaupt, frmHaupt);
   for Position := 0 to High(Code) - 7 do
   begin
-    if IsText(Position, 'Application') and IsText(Position + 1, '.') and IsText(Position + 2, 'CreateForm') and
-      IsText(Position + 3, '(') and IsText(Position + 5, ',') and IsText(Position + 7, ')') and
-      (Tokens[Code[Position + 6]].Kind = TPascalTokenKind.Identifier) then
+    if IsCreateForm(Position) then
     begin
       Result := Result + [Tokens[Code[Position + 6]].Text];
     end;
@@ -630,47 +637,71 @@ var
     Result := False;
   end;
 
+  /// <summary>Deklariert ein Kind von ANode (Variable, Parameter, Konstante) den Namen AName?</summary>
+  function ChildDeclares(ANode: TSyntaxNode; const AName: string): Boolean;
+  var
+    mIndex: Integer;
+    mName: string;
+  begin
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[mIndex].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
+        TSyntaxKind.ConstDecl] then
+      begin
+        for mName in SplitString(ANode[mIndex].Name, ',') do
+        begin
+          if SameText(Trim(mName), AName) then
+          begin
+            Exit(True);
+          end;
+        end;
+      end;
+    end;
+    Result := False;
+  end;
+
   // Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (Bericht M1).
   function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node, Child: TSyntaxNode;
-    Index: Integer;
-    Name: string;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while not Result and (mPending.Count > 0) do
       begin
-        Node := Pending.Pop;
-        for Index := 0 to Node.ChildCount - 1 do
+        mNode := mPending.Pop;
+        Result := ChildDeclares(mNode, AName);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Child := Node[Index];
-          if Child.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
-            TSyntaxKind.ConstDecl] then
+          if mNode[mIndex].Kind <> TSyntaxKind.Block then
           begin
-            for Name in SplitString(Child.Name, ',') do
-            begin
-              if SameText(Trim(Name), AName) then
-              begin
-                Exit(True);
-              end;
-            end;
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          if Node[Index].Kind <> TSyntaxKind.Block then
-          begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
+  end;
+
+  /// <summary>Vergleicht der Name an APosition mit nil (= nil, &lt;&gt; nil)?</summary>
+  function ComparedWithNil(APosition: Integer): Boolean;
+  begin
+    Result := (IsSym(APosition + 1, '<>') or IsSym(APosition + 1, '=')) and (APosition + 2 <= High(Code)) and
+      Token(APosition + 2).IsKeyword('nil');
+  end;
+
+  /// <summary>Prüft oder setzt der Name an APosition die Variable (Assigned, nil-Vergleich, Zuweisung,
+  /// CreateForm)?</summary>
+  function HandledAt(APosition: Integer): Boolean;
+  begin
+    Result := (IsSym(APosition - 1, '(') and IsName(APosition - 2, 'Assigned')) or IsSym(APosition + 1, ':=') or
+      ComparedWithNil(APosition);
+    Result := Result or (IsSym(APosition - 1, ',') and IsName(APosition - 4, 'CreateForm'));
   end;
 
   // Prüft oder setzt die Routine die Variable selbst (Assigned, nil-Vergleich, Zuweisung, CreateForm)?
@@ -680,14 +711,9 @@ var
   begin
     for Position := AFirst to ALast do
     begin
-      if IsName(Position, AName) and not IsSym(Position - 1, '.') then
+      if IsName(Position, AName) and not IsSym(Position - 1, '.') and HandledAt(Position) then
       begin
-        if (IsSym(Position - 1, '(') and IsName(Position - 2, 'Assigned')) or IsSym(Position + 1, ':=') or
-          ((IsSym(Position + 1, '<>') or IsSym(Position + 1, '=')) and (Position + 2 <= High(Code)) and
-          Token(Position + 2).IsKeyword('nil')) or (IsSym(Position - 1, ',') and IsName(Position - 4, 'CreateForm')) then
-        begin
-          Exit(True);
-        end;
+        Exit(True);
       end;
     end;
     Result := False;

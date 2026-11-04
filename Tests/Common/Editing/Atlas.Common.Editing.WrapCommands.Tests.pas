@@ -205,16 +205,16 @@ begin
   Wide := StringReplace(WithCommand('/try'), #10'  ', #10'    ', [rfReplaceAll]);
   Style := TFormatStyle.Default;
   Style.IndentSize := 4;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0), nil, nil, nil, '', '',
-    nil, Style, Edits));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0),
+    TSlashEnvironment.Create(nil, nil).WithStyle(Style), Edits));
   Text := Apply(Wide, Edits);
   Assert.IsTrue(Pos('begin'#10'    Liste := TStringList.Create;'#10'    try'#10'        Liste.Add(''a'');'#10 +
     '        Liste.Sort;'#10'    finally'#10'        Liste.Free;'#10'    end;'#10'end;', Text) > 0, Text);
   // Tabulatoren.
   Wide := StringReplace(WithCommand('/try'), #10'  ', #10#9, [rfReplaceAll]);
   Style.UseTabs := True;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0), nil, nil, nil, '', '',
-    nil, Style, Edits));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Wide, TTextPosition.Create(16, 0),
+    TSlashEnvironment.Create(nil, nil).WithStyle(Style), Edits));
   Text := Apply(Wide, Edits);
   Assert.IsTrue(Pos('begin'#10#9'Liste := TStringList.Create;'#10#9'try'#10#9#9'Liste.Add(''a'');'#10 +
     #9#9'Liste.Sort;'#10#9'finally'#10#9#9'Liste.Free;'#10#9'end;'#10'end;', Text) > 0, Text);
@@ -394,8 +394,8 @@ begin
   // {$SCOPEDENUMS ON} an der Deklaration: Werte nur mit Typpräfix.
   Text := StringReplace(Format(CaseUnit, ['']), '  TArt = (', '  {$SCOPEDENUMS ON}'#10'  TArt = (', []);
   Text := StringReplace(Text, '/case', '', []);
-  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(14, 2, -1), 'case', '', nil,
-    nil, '', '', nil, Edits, Reason), Reason);
+  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(14, 2, -1),
+    TSlashMenuCall.Create('case', '', TSlashEnvironment.Create(nil, nil)), Edits, Reason), Reason);
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('    TArt.aKreis: ;'#10'    TArt.aLinie: ;'#10'    TArt.aRechteck: ;', Text) > 0, Text);
 end;
@@ -408,8 +408,8 @@ var
 begin
   // Markierung über dem case (Zeilen 13 bis 15): die gedachte Befehlszeile steht davor.
   Text := StringReplace(Format(CaseUnit, ['    aKreis: Run;'#10]), '  /case'#10, '', []);
-  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(13, 0, 15), 'case', '', nil,
-    nil, '', '', nil, Edits, Reason), Reason);
+  Assert.IsTrue(TSlashMenu.Run(TSlashCommandRegistry.Shared, Text, TSlashSpot.Create(13, 0, 15),
+    TSlashMenuCall.Create('case', '', TSlashEnvironment.Create(nil, nil)), Edits, Reason), Reason);
   Text := Apply(Text, Edits);
   Assert.IsTrue(Pos('    aKreis: Run;'#10'    aLinie: ;'#10'    aRechteck: ;'#10'  end;', Text) > 0, Text);
 end;

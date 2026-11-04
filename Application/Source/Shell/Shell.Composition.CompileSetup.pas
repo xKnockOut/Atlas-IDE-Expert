@@ -14,12 +14,15 @@ uses
   Shell.Composition.Workspaces;
 
 type
+  TShellCompileWorkspacesFunc = reference to function: TShellWorkspaceRegistry;
+
   /// <summary>Was der Compile-Host von der Komposition braucht.</summary>
   TShellCompileSetupServices = record
     Logger: ILogger;
     Transport: IJsonRpcTransport;
     Process: ICompilerProcess;
-    Workspaces: TShellWorkspaceRegistry;
+    /// <summary>Fragt erst beim Auftrag: Die Arbeitsbereiche entstehen nach dem Compile-Host.</summary>
+    Workspaces: TShellCompileWorkspacesFunc;
     /// <summary>Meldungen der Dateien neu veröffentlichen.</summary>
     Publish: TShellCompilePublish;
   end;
@@ -104,7 +107,7 @@ class function TShellCompileSetup.NewHost(const AServices: TShellCompileSetupSer
 var
   mServices: TShellCompileServices;
   mLogger: ILogger;
-  mWorkspaces: TShellWorkspaceRegistry;
+  mWorkspaces: TShellCompileWorkspacesFunc;
 begin
   mLogger := AServices.Logger;
   mWorkspaces := AServices.Workspaces;
@@ -133,7 +136,7 @@ begin
   mServices.JobFor :=
     function(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean
     begin
-      Result := JobFor(mWorkspaces, AFileName, AJob, AError);
+      Result := JobFor(mWorkspaces(), AFileName, AJob, AError);
     end;
   mServices.Publish := AServices.Publish;
   Result := TShellCompileHost.Create(mServices);

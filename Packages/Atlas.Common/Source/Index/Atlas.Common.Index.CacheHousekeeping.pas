@@ -137,37 +137,37 @@ begin
   end;
 end;
 
-class function TIndexCacheHousekeeping.SelectOrphans(const AFiles: TArray<TCacheFileInfo>;
-  const AKeep: TArray<string>; const AExists: TFunc<string, Boolean>): TArray<string>;
+/// <summary>Nennt Info bekannte Ursprünge, von denen keiner mehr besteht?</summary>
+function IsOrphan(const AInfo: TCacheFileInfo; const AExists: TFunc<string, Boolean>): Boolean;
 var
-  Info: TCacheFileInfo;
-  Origin: string;
-  Known, Alive: Boolean;
+  mOrigin: string;
 begin
-  Result := nil;
-  for Info in AFiles do
+  Result := False;
+  for mOrigin in AInfo.Origins do
   begin
-    if Info.Locked or IsKept(Info.FileName, AKeep) then
+    if mOrigin = '' then
     begin
       Continue;
     end;
-    Known := False;
-    Alive := False;
-    for Origin in Info.Origins do
+    if AExists(mOrigin) then
     begin
-      if Origin <> '' then
-      begin
-        Known := True;
-        if AExists(Origin) then
-        begin
-          Alive := True;
-          Break;
-        end;
-      end;
+      Exit(False);
     end;
-    if Known and not Alive then
+    Result := True;
+  end;
+end;
+
+class function TIndexCacheHousekeeping.SelectOrphans(const AFiles: TArray<TCacheFileInfo>;
+  const AKeep: TArray<string>; const AExists: TFunc<string, Boolean>): TArray<string>;
+var
+  mInfo: TCacheFileInfo;
+begin
+  Result := nil;
+  for mInfo in AFiles do
+  begin
+    if not mInfo.Locked and not IsKept(mInfo.FileName, AKeep) and IsOrphan(mInfo, AExists) then
     begin
-      Result := Result + [Info.FileName];
+      Result := Result + [mInfo.FileName];
     end;
   end;
 end;

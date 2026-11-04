@@ -144,8 +144,12 @@ begin
   FNodeList := ACatalog.Nodes;
   Entries := nil;
   for Index := 0 to ACatalog.Count - 1 do
+  begin
     if ACatalog[Index].Source = asPlugin then
+    begin
       Entries := Entries + [ACatalog[Index]];
+    end;
+  end;
   Count := Length(Entries);
   SetLength(FNames, Count);
   SetLength(FKeys, Count);
@@ -169,18 +173,26 @@ begin
     FByKey.AddOrSetValue(LowerCase(Entry.Key), Index);
   end;
   for Index := 0 to Count - 1 do
+  begin
     ResolveParent(Index, Entries[Index]);
+  end;
   CutCycles;
   ResolveNodes;
   for Index := 0 to Count - 1 do
+  begin
     if FParents[Index] >= 0 then
+    begin
       Inc(FChildCount[FParents[Index]]);
+    end;
+  end;
 end;
 
 function TAtlasSettingsGroups.BooleanKey(const AKey: string): Integer;
 begin
   if not FByKey.TryGetValue(LowerCase(AKey), Result) or not FBoolean[Result] then
+  begin
     Result := -1;
+  end;
 end;
 
 function TAtlasSettingsGroups.PrefixParent(AIndex: Integer): Integer;
@@ -196,9 +208,13 @@ begin
     Prefix := Prefix.Substring(0, Dot);
     Result := BooleanKey(Prefix);
     if (Result < 0) or (Result = AIndex) then
+    begin
       Result := BooleanKey(Prefix + '.enabled');
+    end;
     if (Result >= 0) and (Result <> AIndex) then
+    begin
       Exit;
+    end;
     Result := -1;
     Dot := Prefix.LastIndexOf('.');
   end;
@@ -214,7 +230,9 @@ begin
     Exit;
   end;
   if AEntry.Parent = '' then
+  begin
     Exit;
+  end;
   if not FByKey.TryGetValue(LowerCase(AEntry.Parent), Parent) then
   begin
     AddIssue(Format('%s: unbekannter Hauptschalter x-parent "%s"', [AEntry.Key, AEntry.Parent]));
@@ -248,10 +266,14 @@ begin
         Current := FParents[Current];
       end;
       if Current <> Index then
+      begin
         Continue;
+      end;
       Path := '';
       for Current in Seen do
+      begin
         Path := Path + FKeys[Current] + ' → ';
+      end;
       AddIssue(Format('Zyklus über x-parent: %s%s', [Path, FKeys[Index]]));
       FParents[Index] := -1;
     end;
@@ -269,7 +291,9 @@ begin
   for Index := 0 to High(FNames) do
   begin
     if FOwnNode[Index] and (Own[Index] <> '') and not HasNode(Own[Index]) then
+    begin
       AddIssue(Format('%s: unbekannter Unterpunkt x-node "%s"', [FKeys[Index], Own[Index]]));
+    end;
     FNodes[Index] := '';
     Current := Index;
     while Current >= 0 do
@@ -287,7 +311,9 @@ end;
 function TAtlasSettingsGroups.Find(const AName: string): Integer;
 begin
   if not FByName.TryGetValue(LowerCase(AName), Result) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TAtlasSettingsGroups.Contains(const AName: string): Boolean;
@@ -302,7 +328,9 @@ begin
   Result := '';
   Index := Find(AName);
   if Index >= 0 then
+  begin
     Result := FKeys[Index];
+  end;
 end;
 
 function TAtlasSettingsGroups.ParentOf(const AName: string): string;
@@ -312,7 +340,9 @@ begin
   Result := '';
   Index := Find(AName);
   if (Index >= 0) and (FParents[Index] >= 0) then
+  begin
     Result := FNames[FParents[Index]];
+  end;
 end;
 
 function TAtlasSettingsGroups.AncestorsOf(const AName: string): TArray<string>;
@@ -322,7 +352,9 @@ begin
   Result := nil;
   Current := Find(AName);
   if Current < 0 then
+  begin
     Exit;
+  end;
   Current := FParents[Current];
   while Current >= 0 do
   begin
@@ -338,10 +370,16 @@ begin
   Result := nil;
   Parent := Find(AName);
   if Parent < 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(FParents) do
+  begin
     if FParents[Index] = Parent then
+    begin
       Result := Result + [FNames[Index]];
+    end;
+  end;
 end;
 
 function TAtlasSettingsGroups.NodeOf(const AName: string): string;
@@ -351,7 +389,9 @@ begin
   Result := '';
   Index := Find(AName);
   if Index >= 0 then
+  begin
     Result := FNodes[Index];
+  end;
 end;
 
 function TAtlasSettingsGroups.IsMaster(const AName: string): Boolean;
@@ -372,7 +412,9 @@ begin
   while Current >= 0 do
   begin
     if FExperimental[Current] then
+    begin
       Exit(True);
+    end;
     Current := FParents[Current];
   end;
 end;
@@ -385,7 +427,9 @@ begin
   Result := Default(TAtlasSettingsLock);
   Current := Find(AName);
   if Current < 0 then
+  begin
     Exit;
+  end;
   if not AExperimentalOn and not SameText(AName, TAtlasExperimental.MasterName) and IsExperimental(AName) then
   begin
     Result.Reason := lrExperimental;
@@ -410,8 +454,12 @@ var
   Node: TAtlasCatalogArea;
 begin
   for Node in FNodeList do
+  begin
     if SameText(Node.Id, AId) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -421,12 +469,16 @@ var
 begin
   Result := AId;
   for Node in FNodeList do
+  begin
     if SameText(Node.Id, AId) then
     begin
       Result := Node.Caption;
       if AEnglish and (Node.CaptionEn <> '') then
+      begin
         Result := Node.CaptionEn;
+      end;
     end;
+  end;
 end;
 
 function TAtlasSettingsGroups.NamesOfNode(const AId: string): TArray<string>;
@@ -435,8 +487,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(FNames) do
+  begin
     if SameText(FNodes[Index], AId) then
+    begin
       Result := Result + [FNames[Index]];
+    end;
+  end;
 end;
 
 end.

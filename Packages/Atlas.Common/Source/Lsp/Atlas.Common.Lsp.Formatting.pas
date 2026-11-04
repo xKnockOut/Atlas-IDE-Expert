@@ -191,8 +191,8 @@ begin
     end;
     Style := Resolve(Options, TDocumentUris.ToPath(Uri), Configured, FReadFile);
     if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
-      TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-      FIndex, Version, Uri, FSlashHost, Style, Edits) then
+      TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue),
+        TSlashEnvironment.Create(nil, Disabled, FIndex, Version, Uri, FSlashHost).WithStyle(Style), Edits) then
     begin
       for Edit in Edits do
       begin

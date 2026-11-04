@@ -325,14 +325,18 @@ procedure TAtlasQuickKeySink.DoEnter;
 begin
   inherited;
   if Assigned(FOnFocusChange) then
+  begin
     FOnFocusChange(Self);
+  end;
 end;
 
 procedure TAtlasQuickKeySink.DoExit;
 begin
   inherited;
   if Assigned(FOnFocusChange) then
+  begin
     FOnFocusChange(Self);
+  end;
 end;
 
 { TAtlasQuickActionsBar }
@@ -360,7 +364,9 @@ end;
 destructor TAtlasQuickActionsBar.Destroy;
 begin
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   FSource := nil;
   inherited;
 end;
@@ -369,7 +375,9 @@ function TAtlasQuickActionsBar.Scale(AValue: Integer): Integer;
 begin
   Result := AValue;
   if Assigned(FScale) then
+  begin
     Result := FScale(AValue);
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.SetSource(const AValue: IAtlasQuickActionsSource);
@@ -404,25 +412,39 @@ begin
     FStates[Row] := TAtlasQuickActionState.Idle;
     FRects[Row] := nil;
     if FSource = nil then
+    begin
       Continue;
+    end;
     // Der Stand gilt auch ohne Knöpfe (Ergebnis einer Aktion vor dem Ausschalten).
     FStates[Row] := FSource.State(FProjects[Row]);
     if On then
+    begin
       FButtons[Row] := FSource.Buttons(FProjects[Row]);
+    end;
   end;
   if FSource <> nil then
+  begin
     FNowMs := FSource.NowMs;
+  end;
   if FKeyRow > High(FProjects) then
+  begin
     FKeyRow := High(FProjects);
+  end;
   if FHoverRow > High(FProjects) then
+  begin
     FHoverRow := -1;
+  end;
   if ValidRow(FKeyRow) and (FKeyButton > High(FButtons[FKeyRow])) then
+  begin
     FKeyButton := -1;
+  end;
   FHoverButton := -1;
   FSink.TabStop := On and (Length(FProjects) > 0);
   UpdateTimer;
   if FBox <> nil then
+  begin
     FBox.Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.UpdateTimer;
@@ -432,8 +454,12 @@ var
 begin
   Running := False;
   for State in FStates do
+  begin
     if State.Running then
+    begin
       Running := True;
+    end;
+  end;
   FTimer.Enabled := Running;
 end;
 
@@ -450,10 +476,14 @@ begin
     end;
     FNowMs := FSource.NowMs;
     for Row := 0 to High(FProjects) do
+    begin
       FStates[Row] := FSource.State(FProjects[Row]);
+    end;
     UpdateTimer;
     if FBox <> nil then
+    begin
       FBox.Invalidate;
+    end;
   except
     on E: Exception do
     begin
@@ -467,14 +497,18 @@ function TAtlasQuickActionsBar.ButtonsOf(ARow: Integer): TAtlasQuickActionButton
 begin
   Result := nil;
   if ValidRow(ARow) and Active then
+  begin
     Result := FButtons[ARow];
+  end;
 end;
 
 function TAtlasQuickActionsBar.StateOf(ARow: Integer): TAtlasQuickActionState;
 begin
   Result := TAtlasQuickActionState.Idle;
   if ValidRow(ARow) then
+  begin
     Result := FStates[ARow];
+  end;
 end;
 
 function TAtlasQuickActionsBar.ItemsOf(ARow: Integer): TAtlasQuickActions;
@@ -483,7 +517,9 @@ var
 begin
   Result := [];
   for Button in ButtonsOf(ARow) do
+  begin
     Include(Result, Button.Action);
+  end;
 end;
 
 function TAtlasQuickActionsBar.Focused: Boolean;
@@ -495,24 +531,38 @@ function TAtlasQuickActionsBar.ActiveRow: Integer;
 begin
   Result := -1;
   if not Active or (Length(FProjects) = 0) then
+  begin
     Exit;
+  end;
   if FUseKey and Focused and ValidRow(FKeyRow) then
-    Result := FKeyRow
-  else if ValidRow(FHoverRow) then
-    Result := FHoverRow
-  else if Focused and ValidRow(FKeyRow) then
+  begin
     Result := FKeyRow;
+  end
+  else if ValidRow(FHoverRow) then
+  begin
+    Result := FHoverRow;
+  end
+  else if Focused and ValidRow(FKeyRow) then
+  begin
+    Result := FKeyRow;
+  end;
   if (Result >= 0) and (Length(FButtons[Result]) = 0) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.SinkFocusChange(Sender: TObject);
 begin
   // Mit dem Fokus kommt eine Zeile; ohne gewählte die erste.
   if Focused and not ValidRow(FKeyRow) and (Length(FProjects) > 0) then
+  begin
     FKeyRow := 0;
+  end;
   if FBox <> nil then
+  begin
     FBox.Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.MouseMove(ARow, X, Y: Integer);
@@ -523,30 +573,42 @@ begin
   Changed := ARow <> FHoverRow;
   // Maus in eine andere Zeile: Sie wird die aktive.
   if Changed then
+  begin
     FUseKey := False;
+  end;
   FHoverRow := ARow;
   OldButton := FHoverButton;
   if not HitTest(X, Y, Row, Index, mMenu) or (Row <> ARow) then
+  begin
     Index := -1;
+  end;
   FHoverButton := Index;
   if (Changed or (OldButton <> Index)) and (FBox <> nil) then
+  begin
     FBox.Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.MouseLeave;
 begin
   if (FHoverRow < 0) and (FHoverButton < 0) then
+  begin
     Exit;
+  end;
   FHoverRow := -1;
   FHoverButton := -1;
   if FBox <> nil then
+  begin
     FBox.Invalidate;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.MouseDown(ARow: Integer);
 begin
   if not Active then
+  begin
     Exit;
+  end;
   if ValidRow(ARow) then
   begin
     FKeyRow := ARow;
@@ -554,7 +616,9 @@ begin
   end;
   FUseKey := False;
   if FSink.CanFocus and not FSink.Focused and (GetParentForm(FSink) <> nil) and GetParentForm(FSink).Visible then
+  begin
     FSink.SetFocus;
+  end;
 end;
 
 function TAtlasQuickActionsBar.LayoutRow(ACanvas: TCanvas; ARow: Integer; const AArea: TRect): Integer;
@@ -570,9 +634,13 @@ var
   begin
     Result := 0;
     for I := AFrom to ATo do
+    begin
       Inc(Result, Widths[I]);
+    end;
     if ATo > AFrom then
+    begin
       Inc(Result, (ATo - AFrom) * Gap);
+    end;
   end;
 
   procedure Place(AFrom, ATo, ATop, AHeight: Integer);
@@ -591,36 +659,48 @@ begin
   Result := AArea.Right;
   Buttons := ButtonsOf(ARow);
   if not ValidRow(ARow) then
+  begin
     Exit;
+  end;
   FRects[ARow] := nil;
   if Length(Buttons) = 0 then
+  begin
     Exit;
+  end;
   SetLength(Widths, Length(Buttons));
   SetLength(Rects, Length(Buttons));
   for Index := 0 to High(Buttons) do
   begin
     Widths[Index] := ACanvas.TextWidth(Caption(Buttons[Index], FStates[ARow], FNowMs)) + 2 * Scale(ButtonPadding);
     if Buttons[Index].Action = TAtlasQuickAction.Build then
+    begin
       Inc(Widths[Index], Scale(MenuPart));
+    end;
   end;
   Gap := Scale(ButtonGap);
   Height := Scale(ButtonHeight);
   Total := Span(0, High(Buttons));
   if (Total <= AArea.Width) or (Length(Buttons) < 2) then
-    Place(0, High(Buttons), AArea.Top + (AArea.Height - Height) div 2, Height)
+  begin
+    Place(0, High(Buttons), AArea.Top + (AArea.Height - Height) div 2, Height);
+  end
   else
   begin
     // Zwei Zeilen in der Zeilenhöhe: vorne die ersten Knöpfe, so gleichmäßig wie möglich.
     Split := Length(Buttons) div 2;
     for Index := 1 to High(Buttons) do
+    begin
       if (Span(0, Index - 1) <= AArea.Width) and (Span(Index, High(Buttons)) <= AArea.Width) then
       begin
         Split := Index;
         Break;
       end;
+    end;
     LineHeight := (AArea.Height - Scale(LineGap)) div 2;
     if LineHeight > Height then
+    begin
       LineHeight := Height;
+    end;
     Top := AArea.Top + (AArea.Height - 2 * LineHeight - Scale(LineGap)) div 2;
     First := Split - 1;
     Second := Split;
@@ -628,8 +708,12 @@ begin
     Place(Second, High(Buttons), Top + LineHeight + Scale(LineGap), LineHeight);
   end;
   for Index := 0 to High(Rects) do
+  begin
     if Rects[Index].Left < Result then
+    begin
       Result := Rects[Index].Left;
+    end;
+  end;
   FRects[ARow] := Rects;
 end;
 
@@ -667,11 +751,15 @@ var
   Primary: Boolean;
 begin
   if not ValidRow(ARow) then
+  begin
     Exit;
+  end;
   Buttons := ButtonsOf(ARow);
   Rects := FRects[ARow];
   if Length(Rects) <> Length(Buttons) then
+  begin
     Exit;
+  end;
   TextColor := StyleServices(FBox).GetSystemColor(clWindowText);
   MutedColor := StyleServices(FBox).GetSystemColor(clGrayText);
   LineColor := StyleServices(FBox).GetSystemColor(clBtnShadow);
@@ -697,14 +785,22 @@ begin
     begin
       ACanvas.Brush.Style := bsClear;
       if (Index = FHoverButton) and (ARow = FHoverRow) and Button.Enabled then
-        ACanvas.Pen.Color := AccentColor
+      begin
+        ACanvas.Pen.Color := AccentColor;
+      end
       else
+      begin
         ACanvas.Pen.Color := LineColor;
+      end;
       ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom, Radius, Radius);
       if Button.Enabled then
-        ACanvas.Font.Color := TextColor
+      begin
+        ACanvas.Font.Color := TextColor;
+      end
       else
+      begin
         ACanvas.Font.Color := MutedColor;
+      end;
     end;
     ACanvas.Brush.Style := bsClear;
     Text := Caption(Button, FStates[ARow], FNowMs);
@@ -720,8 +816,10 @@ begin
         Area.Top + (Area.Height - ACanvas.TextHeight(MenuArrow)) div 2, MenuArrow);
     end
     else
+    begin
       ACanvas.TextOut(Area.Left + (Area.Width - ACanvas.TextWidth(Text)) div 2,
         Area.Top + (Area.Height - ACanvas.TextHeight(Text)) div 2, Text);
+    end;
     if Focused and (ARow = FKeyRow) and (Index = FKeyButton) then
     begin
       Focus := Area;
@@ -743,11 +841,16 @@ begin
   AMenu := False;
   Result := False;
   if not ValidRow(ARow) then
+  begin
     Exit;
+  end;
   Rects := FRects[ARow];
   if Length(Rects) <> Length(FButtons[ARow]) then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Rects) do
+  begin
     if Rects[Index].Contains(Point(X, Y)) then
     begin
       AIndex := Index;
@@ -755,6 +858,7 @@ begin
         (X >= Rects[Index].Right - Scale(MenuPart));
       Exit(True);
     end;
+  end;
 end;
 
 function TAtlasQuickActionsBar.ClickAt(X, Y: Integer): Boolean;
@@ -764,7 +868,9 @@ var
 begin
   Result := HitTest(X, Y, Row, Index, mMenu);
   if Result then
+  begin
     Activate(Row, Index, mMenu);
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.Queue(const AProc: TProc);
@@ -788,10 +894,14 @@ var
   Candidates: TArray<string>;
 begin
   if (FSource = nil) or not ValidRow(ARow) or (AIndex < 0) or (AIndex > High(ButtonsOf(ARow))) then
+  begin
     Exit;
+  end;
   Button := FButtons[ARow][AIndex];
   if not Button.Enabled then
+  begin
     Exit;
+  end;
   mSource := FSource;
   mName := FProjects[ARow];
   case Button.Action of
@@ -839,13 +949,19 @@ var
   Position: TPoint;
 begin
   if not FillChoices(FMenu.Items, ARow, AIndex) then
+  begin
     Exit;
+  end;
   Area := Rect(0, 0, 0, 0);
   if (ARow <= High(FRects)) and (AIndex <= High(FRects[ARow])) then
+  begin
     Area := FRects[ARow][AIndex];
+  end;
   Position := Point(Area.Left, Area.Bottom);
   if FBox <> nil then
+  begin
     Position := FBox.ClientToScreen(Position);
+  end;
   FMenu.Popup(Position.X, Position.Y);
 end;
 
@@ -885,7 +1001,9 @@ begin
       Choice.B := '';
       Text := Configuration;
       if SameText(Configuration, Wanted) then
+      begin
         Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
+      end;
       AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted));
       Continue;
     end;
@@ -895,7 +1013,9 @@ begin
       Choice.B := Platform;
       Text := Configuration + Separator + Platform;
       if SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform) then
+      begin
         Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTargetLast, [Text]);
+      end;
       AddChoice(AParent, Text, Choice, SameText(Configuration, Wanted) and SameText(Platform, WantedPlatform));
     end;
   end;
@@ -916,7 +1036,9 @@ begin
     Choice.A := mName;
     Text := mName;
     if SameText(mName, Active) then
+    begin
       Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickProfileActive, [mName]);
+    end;
     AddChoice(AParent, Text, Choice, SameText(mName, Active));
   end;
   Choice.A := '';
@@ -973,7 +1095,9 @@ var
 begin
   // Überschrift der aufgeklappten Auswahl (nicht im Untermenü des Kontextmenüs).
   if AParent <> FMenu.Items then
+  begin
     Exit;
+  end;
   Item := TMenuItem.Create(FMenu);
   Item.Caption := TAtlasWelcomeStrings.Text(AId);
   Item.Enabled := False;
@@ -992,10 +1116,14 @@ begin
   Result := False;
   Buttons := ButtonsOf(ARow);
   if (FSource = nil) or (AIndex < 0) or (AIndex > High(Buttons)) or not Buttons[AIndex].Enabled then
+  begin
     Exit;
+  end;
   AParent.Clear;
   if AParent = FMenu.Items then
+  begin
     FChoices := nil;
+  end;
   mName := FProjects[ARow];
   case Buttons[AIndex].Action of
     TAtlasQuickAction.Build:
@@ -1012,21 +1140,27 @@ begin
       begin
         Candidates := FSource.TestProjects(mName);
         if Length(Candidates) < 2 then
+        begin
           Exit;
+        end;
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTestsChoose);
         FillTestProjects(AParent, mName, Candidates);
       end;
     TAtlasQuickAction.Tasks:
       begin
         if Length(FSource.TaskNames(mName)) = 0 then
+        begin
           Exit;
+        end;
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickTasksTitle);
         FillTasks(AParent, mName);
       end;
     TAtlasQuickAction.Pull:
       begin
         if not Buttons[AIndex].AskExternals then
+        begin
           Exit;
+        end;
         AddTitle(AParent, TAtlasWelcomeTextId.WelcomeQuickUpdate);
         FillUpdate(AParent, mName);
       end;
@@ -1044,7 +1178,9 @@ var
 begin
   Index := TMenuItem(Sender).Tag;
   if (FSource = nil) or (Index < 0) or (Index > High(FChoices)) then
+  begin
     Exit;
+  end;
   Choice := FChoices[Index];
   mSource := FSource;
   Queue(
@@ -1117,15 +1253,23 @@ begin
     if (Found >= 0) and (FContextActions[Index] = TAtlasQuickAction.Pull) then
     begin
       if Buttons[Found].Update then
-        Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate)
+      begin
+        Item.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdate);
+      end
       else
+      begin
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+      end;
       // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
       if not (Buttons[Found].Enabled and Buttons[Found].AskExternals and FillChoices(Item, ARow, Found)) then
+      begin
         Item.Clear;
+      end;
     end
     else if FContextActions[Index] = TAtlasQuickAction.Pull then
+    begin
       Item.Clear;
+    end;
     Any := Any or Item.Visible;
   end;
   // Untermenüs „Bauen mit“ und „Starten mit“ mit der Auswahl der Zeile.
@@ -1150,7 +1294,9 @@ begin
     Any := Any or FTasksItem.Visible;
   end;
   if FContextSeparator <> nil then
+  begin
     FContextSeparator.Visible := Any;
+  end;
 end;
 
 procedure TAtlasQuickActionsBar.ContextClick(Sender: TObject);
@@ -1159,10 +1305,14 @@ var
 begin
   Index := TMenuItem(Sender).Tag;
   if (Index < 0) or (Index > High(FContextActions)) then
+  begin
     Exit;
+  end;
   Found := TAtlasWelcomeQuickActions.IndexOf(ButtonsOf(FContextRow), FContextActions[Index]);
   if Found >= 0 then
+  begin
     Activate(FContextRow, Found, False);
+  end;
 end;
 
 function TAtlasQuickActionsBar.HintAt(X, Y: Integer; out AHint: string): Boolean;
@@ -1175,16 +1325,22 @@ begin
   AHint := '';
   Result := HitTest(X, Y, Row, Index, mMenu);
   if not Result then
+  begin
     Exit;
+  end;
   Button := FButtons[Row][Index];
   Key := 0;
   Console := '';
   if FSource <> nil then
   begin
     if Button.Action = TAtlasQuickAction.Build then
-      Key := FSource.BuildKey
+    begin
+      Key := FSource.BuildKey;
+    end
     else if Button.Action = TAtlasQuickAction.Tests then
+    begin
       Key := FSource.TestKey;
+    end;
     Console := FSource.ConsoleProgram;
   end;
   AHint := ButtonHint(Button, FStates[Row].Running, Key, Console);
@@ -1204,9 +1360,13 @@ var
 begin
   Result := False;
   if not Active or (Length(FProjects) = 0) then
+  begin
     Exit;
+  end;
   if not ValidRow(FKeyRow) then
+  begin
     FKeyRow := 0;
+  end;
   Row := FKeyRow;
   Buttons := ButtonsOf(Row);
   Shift := AShift * [ssShift, ssAlt, ssCtrl];
@@ -1222,7 +1382,9 @@ begin
       Activate(Row, Index, False);
     end;
     if FBox <> nil then
+    begin
       FBox.Invalidate;
+    end;
     Exit(True);
   end;
   case AKey of
@@ -1232,30 +1394,44 @@ begin
         // Alt+↓: Auswahl des gewählten Knopfs, sonst die von „Öffnen und bauen“.
         Index := FKeyButton;
         if (Index < 0) or (Index > High(Buttons)) or not Buttons[Index].HasMenu then
+        begin
           Index := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Build);
+        end;
         if Index >= 0 then
+        begin
           PopupAt(Row, Index);
+        end;
         Result := True;
       end
       else if Shift = [] then
       begin
         if AKey = VK_UP then
-          FKeyRow := TAtlasWelcomeQuickActions.MoveRow(FKeyRow, -1, Length(FProjects))
+        begin
+          FKeyRow := TAtlasWelcomeQuickActions.MoveRow(FKeyRow, -1, Length(FProjects));
+        end
         else
+        begin
           FKeyRow := TAtlasWelcomeQuickActions.MoveRow(FKeyRow, 1, Length(FProjects));
+        end;
         FKeyButton := -1;
         FUseKey := True;
         if (FKeyRow <> Row) and Assigned(FOnSelectRow) then
+        begin
           FOnSelectRow(FKeyRow);
+        end;
         Result := True;
       end;
     VK_LEFT, VK_RIGHT:
       if Shift = [] then
       begin
         if AKey = VK_LEFT then
-          FKeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, FKeyButton, -1)
+        begin
+          FKeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, FKeyButton, -1);
+        end
         else
+        begin
           FKeyButton := TAtlasWelcomeQuickActions.MoveButton(Buttons, FKeyButton, 1);
+        end;
         FUseKey := True;
         Result := True;
       end;
@@ -1271,9 +1447,13 @@ begin
       begin
         FUseKey := True;
         if (FKeyButton >= 0) and (FKeyButton <= High(Buttons)) then
-          Activate(Row, FKeyButton, False)
+        begin
+          Activate(Row, FKeyButton, False);
+        end
         else if Assigned(FOnOpenRow) then
+        begin
           FOnOpenRow(Row);
+        end;
         Result := True;
       end;
     VK_ESCAPE:
@@ -1290,14 +1470,18 @@ begin
       end;
   end;
   if Result and (FBox <> nil) then
+  begin
     FBox.Invalidate;
+  end;
 end;
 
 class function TAtlasQuickActionsBar.Caption(const AButton: TAtlasQuickActionButton;
   const AState: TAtlasQuickActionState; ANowMs: UInt64): string;
 begin
   if AState.Running and (AState.Action = AButton.Action) then
+  begin
     Exit(StateText(AState, ANowMs, AButton.Update));
+  end;
   if AButton.Action = TAtlasQuickAction.Pull then
   begin
     if AButton.Update then
@@ -1357,9 +1541,13 @@ begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickStarting, [Seconds]);
       TAtlasQuickAction.Pull:
         if AUpdate then
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickUpdating, [Seconds])
+        begin
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickUpdating, [Seconds]);
+        end
         else
+        begin
           Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickPulling, [Seconds]);
+        end;
       TAtlasQuickAction.Tasks:
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTasking, [Seconds]);
     else
@@ -1368,49 +1556,81 @@ begin
     Exit;
   end;
   if AState.Phase = TAtlasQuickActionPhase.Idle then
+  begin
     Exit;
+  end;
   case AState.Action of
     TAtlasQuickAction.Build:
       // Gebaut: Die Marke „Build 0/0/0“ des Bereichs zeigt das Ergebnis.
       if AState.Phase = TAtlasQuickActionPhase.Refused then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildRefused)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildRefused);
+      end
       else if AState.Phase = TAtlasQuickActionPhase.Failed then
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBuildFailed);
+      end;
     TAtlasQuickAction.Tests:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsPassed, [AState.Passed])
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsPassed, [AState.Passed]);
+      end
       else if (AState.Phase = TAtlasQuickActionPhase.Failed) and (AState.Failed > 0) then
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsFailed, [AState.Failed])
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTestsFailed, [AState.Failed]);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTestsNotRun);
+      end;
     TAtlasQuickAction.Run:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunStarted)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunStarted);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickRunRefused);
+      end;
     TAtlasQuickAction.Pull:
       if AState.Phase = TAtlasQuickActionPhase.Succeeded then
       begin
         if AState.Pull = TAtlasPullOutcome.Updated then
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpdated)
+        begin
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpdated);
+        end
         else
+        begin
           Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullUpToDate);
+        end;
       end
       else if AState.Pull = TAtlasPullOutcome.Blocked then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullBlocked)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullBlocked);
+      end
       else if AUpdate then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateFailed)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickUpdateFailed);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullFailed);
+      end;
     TAtlasQuickAction.Console:
       if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickConsoleFailed);
+      end;
     TAtlasQuickAction.Tasks:
       // Fertig: Aufgabe und Ergebnis als Text der IDE-Schicht („Delphi-12-Prüfung: 2 Fehler 14:03“).
       if (AState.Phase = TAtlasQuickActionPhase.Refused) or (AState.Detail = '') then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasksRefused)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickTasksRefused);
+      end
       else
+      begin
         Result := AState.Detail;
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -1426,9 +1646,13 @@ begin
       Result := TColor($001A8CC9);
     TAtlasQuickActionPhase.Failed:
       if (AState.Action = TAtlasQuickAction.Pull) and (AState.Pull = TAtlasPullOutcome.Blocked) then
-        Result := TColor($001A8CC9)
+      begin
+        Result := TColor($001A8CC9);
+      end
       else
+      begin
         Result := TColor($002E22CF);
+      end;
   else
     Result := TColor($00817666);
   end;
@@ -1450,7 +1674,9 @@ begin
   if not AButton.Enabled then
   begin
     if ARunning then
+    begin
       Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickBusy));
+    end;
     Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickIdeBusy));
   end;
   case AButton.Action of
@@ -1462,9 +1688,13 @@ begin
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintRun);
     TAtlasQuickAction.Pull:
       if AButton.Update then
-        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintUpdate)
+      begin
+        Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintUpdate);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintPull);
+      end;
     TAtlasQuickAction.Folder:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickHintFolder);
     TAtlasQuickAction.Tasks:
@@ -1474,8 +1704,10 @@ begin
       [TAtlasWelcomeQuickActions.NormalizedConsole(AConsole)]);
   end;
   if AKey <> 0 then
+  begin
     Result := Result + sLineBreak + TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickHintKey,
       [ShortCutToText(TShortCut(AKey))]);
+  end;
 end;
 
 end.

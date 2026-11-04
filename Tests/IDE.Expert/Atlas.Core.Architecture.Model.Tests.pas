@@ -105,7 +105,9 @@ uses
   Atlas.Common.Architecture.Overview.Tests,
   Atlas.Common.Architecture.Alignment,
   Atlas.Common.Architecture.Alignment.Tests,
-  Atlas.Core.Architecture.Model;
+  Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Commands,
+  Atlas.Core.Architecture.View;
 
 /// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
 function SampleOverview(AOlder: Boolean): TArchitectureOverview; overload; forward;

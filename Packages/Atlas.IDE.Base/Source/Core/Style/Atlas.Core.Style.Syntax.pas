@@ -55,6 +55,149 @@ const
     'static', 'stdcall', 'stored', 'strict', 'string', 'then', 'threadvar', 'to',
     'try', 'type', 'unit', 'until', 'uses', 'var', 'virtual', 'while', 'with', 'write', 'xor'];
 
+{ Lesen ab einer 1-basierten Position }
+
+/// <summary>Steht hinter AIndex das Zeichen ANext?</summary>
+function IsPairAt(const AText: string; AIndex: Integer; ANext: Char): Boolean;
+begin
+  Result := (AIndex < Length(AText)) and (AText[AIndex + 1] = ANext);
+end;
+
+/// <summary>Position hinter dem schließenden Anführungszeichen des Strings an AIndex.</summary>
+function AfterQuote(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and (AText[Result] <> '''') do
+  begin
+    Inc(Result);
+  end;
+  Inc(Result);
+end;
+
+/// <summary>Position hinter „}“ des Kommentars an AIndex; Length + 2, wenn er offen bleibt.</summary>
+function AfterBrace(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and (AText[Result] <> '}') do
+  begin
+    Inc(Result);
+  end;
+  Inc(Result);
+end;
+
+/// <summary>Position hinter „*)“ des Kommentars „(*“ an AIndex; über Length + 1, wenn er offen bleibt.</summary>
+function AfterParenStar(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 2;
+  while (Result < Length(AText)) and not ((AText[Result] = '*') and (AText[Result + 1] = ')')) do
+  begin
+    Inc(Result);
+  end;
+  Inc(Result, 2);
+end;
+
+/// <summary>Bezeichner ab AIndex; nach einem Punkt ist es ein Name (TFoo.Create, Self.Read), kein
+/// Schlüsselwort.</summary>
+function WordAt(const AText: string; var AIndex: Integer): TAtlasTokenKind;
+var
+  mStart: Integer;
+begin
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and TTextChars.IsIdentChar(AText[AIndex]) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := TAtlasTokenKind.Plain;
+  if ((mStart = 1) or (AText[mStart - 1] <> '.')) and
+    TAtlasSyntax.IsKeyword(Copy(AText, mStart, AIndex - mStart)) then
+  begin
+    Result := TAtlasTokenKind.Keyword;
+  end;
+end;
+
+function NumberEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], ['0'..'9', 'A'..'F', 'a'..'f', '.']) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Art des Tokens ab AIndex; AIndex steht danach hinter ihm.</summary>
+function TokenAt(const AText: string; var AIndex: Integer): TAtlasTokenKind;
+begin
+  Result := TAtlasTokenKind.Comment;
+  if AText[AIndex] = '''' then
+  begin
+    AIndex := AfterQuote(AText, AIndex);
+    Result := TAtlasTokenKind.StringLiteral;
+  end
+  else if AText[AIndex] = '{' then
+  begin
+    AIndex := AfterBrace(AText, AIndex);
+  end
+  else if (AText[AIndex] = '(') and IsPairAt(AText, AIndex, '*') then
+  begin
+    AIndex := AfterParenStar(AText, AIndex);
+  end
+  else if (AText[AIndex] = '/') and IsPairAt(AText, AIndex, '/') then
+  begin
+    AIndex := Length(AText) + 1;
+  end
+  else if TTextChars.IsIdentStart(AText[AIndex]) then
+  begin
+    Result := WordAt(AText, AIndex);
+  end
+  else if CharInSet(AText[AIndex], ['0'..'9', '$']) then
+  begin
+    AIndex := NumberEnd(AText, AIndex);
+    Result := TAtlasTokenKind.Number;
+  end
+  else
+  begin
+    Inc(AIndex);
+    Result := TAtlasTokenKind.Plain;
+  end;
+end;
+
+type
+  /// <summary>Wachsende Liste der Tokens; benachbarte Plain-Stücke werden zusammengefasst.</summary>
+  TTokenList = record
+    Items: TAtlasTokens;
+    Count: Integer;
+    procedure Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
+    function Done: TAtlasTokens;
+  end;
+
+procedure TTokenList.Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
+begin
+  if AStop <= AStart then
+  begin
+    Exit;
+  end;
+  if (AKind = TAtlasTokenKind.Plain) and (Count > 0) and (Items[Count - 1].Kind = TAtlasTokenKind.Plain) and
+    (Items[Count - 1].Stop = AStart) then
+  begin
+    Items[Count - 1].Stop := AStop;
+    Exit;
+  end;
+  if Count = Length(Items) then
+  begin
+    SetLength(Items, Count * 2 + 4);
+  end;
+  Items[Count].Start := AStart;
+  Items[Count].Stop := AStop;
+  Items[Count].Kind := AKind;
+  Inc(Count);
+end;
+
+function TTokenList.Done: TAtlasTokens;
+begin
+  SetLength(Items, Count);
+  Result := Items;
+end;
+
 { TAtlasSyntax }
 
 class function TAtlasSyntax.IsKeyword(const AWord: string): Boolean;
@@ -73,110 +216,24 @@ end;
 
 class function TAtlasSyntax.Tokens(const AText: string): TAtlasTokens;
 var
-  Index, Start, Count: Integer;
-  Kind: TAtlasTokenKind;
-
-  procedure Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
-  begin
-    if AStop <= AStart then
-    begin
-      Exit;
-    end;
-    if (AKind = TAtlasTokenKind.Plain) and (Count > 0) and (Result[Count - 1].Kind = TAtlasTokenKind.Plain) and
-      (Result[Count - 1].Stop = AStart) then
-    begin
-      Result[Count - 1].Stop := AStop;
-      Exit;
-    end;
-    if Count = Length(Result) then
-    begin
-      SetLength(Result, Count * 2 + 4);
-    end;
-    Result[Count].Start := AStart;
-    Result[Count].Stop := AStop;
-    Result[Count].Kind := AKind;
-    Inc(Count);
-  end;
-
+  mList: TTokenList;
+  mIndex, mStart: Integer;
+  mKind: TAtlasTokenKind;
 begin
-  Result := nil;
-  Count := 0;
+  mList := Default(TTokenList);
   // Index 1-basiert über den String; Tokens 0-basiert.
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    Start := Index;
-    if AText[Index] = '''' then
+    mStart := mIndex;
+    mKind := TokenAt(AText, mIndex);
+    if mIndex > Length(AText) + 1 then
     begin
-      Inc(Index);
-      while (Index <= Length(AText)) and (AText[Index] <> '''') do
-      begin
-        Inc(Index);
-      end;
-      Inc(Index);
-      Kind := TAtlasTokenKind.StringLiteral;
-    end
-    else if AText[Index] = '{' then
-    begin
-      while (Index <= Length(AText)) and (AText[Index] <> '}') do
-      begin
-        Inc(Index);
-      end;
-      Inc(Index);
-      Kind := TAtlasTokenKind.Comment;
-    end
-    else if (AText[Index] = '(') and (Index < Length(AText)) and (AText[Index + 1] = '*') then
-    begin
-      Inc(Index, 2);
-      while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
-      begin
-        Inc(Index);
-      end;
-      Inc(Index, 2);
-      Kind := TAtlasTokenKind.Comment;
-    end
-    else if (AText[Index] = '/') and (Index < Length(AText)) and (AText[Index + 1] = '/') then
-    begin
-      Index := Length(AText) + 1;
-      Kind := TAtlasTokenKind.Comment;
-    end
-    else if TTextChars.IsIdentStart(AText[Index]) then
-    begin
-      while (Index <= Length(AText)) and TTextChars.IsIdentChar(AText[Index]) do
-      begin
-        Inc(Index);
-      end;
-      // Nach einem Punkt ist es ein Name (TFoo.Create, Self.Read), kein Schlüsselwort.
-      if ((Start = 1) or (AText[Start - 1] <> '.')) and IsKeyword(Copy(AText, Start, Index - Start)) then
-      begin
-        Kind := TAtlasTokenKind.Keyword;
-      end
-      else
-      begin
-        Kind := TAtlasTokenKind.Plain;
-      end;
-    end
-    else if CharInSet(AText[Index], ['0'..'9', '$']) then
-    begin
-      Inc(Index);
-      while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', 'A'..'F', 'a'..'f', '.']) do
-      begin
-        Inc(Index);
-      end;
-      Kind := TAtlasTokenKind.Number;
-    end
-    else
-    begin
-      Inc(Index);
-      Kind := TAtlasTokenKind.Plain;
+      mIndex := Length(AText) + 1;
     end;
-    if Index > Length(AText) + 1 then
-    begin
-      Index := Length(AText) + 1;
-    end;
-    Emit(Start - 1, Index - 1, Kind);
+    mList.Emit(mStart - 1, mIndex - 1, mKind);
   end;
-  SetLength(Result, Count);
+  Result := mList.Done;
 end;
 
 type
@@ -184,172 +241,200 @@ type
   TOpenComment = (None, Brace, ParenStar);
 {$SCOPEDENUMS OFF}
 
+/// <summary>Überspringt das Zeichen bzw. den String oder Kommentar an AIndex (danach auf seinem letzten
+/// Zeichen). False am Zeilenkommentar oder an einem offenen Kommentar (AOpen).</summary>
+function SkipAt(const AText: string; var AIndex: Integer; out AOpen: TOpenComment): Boolean;
+var
+  mClose: Integer;
+begin
+  AOpen := TOpenComment.None;
+  Result := True;
+  mClose := AIndex + 1;
+  case AText[AIndex] of
+    '''':
+      mClose := AfterQuote(AText, AIndex);
+    '/':
+      Result := not IsPairAt(AText, AIndex, '/');
+    '{':
+      begin
+        mClose := AfterBrace(AText, AIndex);
+        AOpen := TOpenComment.Brace;
+      end;
+    '(':
+      if IsPairAt(AText, AIndex, '*') then
+      begin
+        mClose := AfterParenStar(AText, AIndex);
+        AOpen := TOpenComment.ParenStar;
+      end;
+  end;
+  if (AOpen <> TOpenComment.None) and (mClose > Length(AText) + 1) then
+  begin
+    Result := False;
+  end
+  else
+  begin
+    AOpen := TOpenComment.None;
+    AIndex := mClose - 1;
+  end;
+end;
+
 /// <summary>Kommentar, der am Ende von AText (ab dem 1-basierten AFrom) offen bleibt.</summary>
 function OpenAtEnd(const AText: string; AFrom: Integer): TOpenComment;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TOpenComment.None;
-  Index := AFrom;
-  while Index <= Length(AText) do
+  mIndex := AFrom;
+  while (mIndex <= Length(AText)) and SkipAt(AText, mIndex, Result) do
   begin
-    case AText[Index] of
-      '''':
-        begin
-          Inc(Index);
-          while (Index <= Length(AText)) and (AText[Index] <> '''') do
-          begin
-            Inc(Index);
-          end;
-        end;
-      '/':
-        if (Index < Length(AText)) and (AText[Index + 1] = '/') then
-        begin
-          Exit;
-        end;
-      '{':
-        begin
-          while (Index <= Length(AText)) and (AText[Index] <> '}') do
-          begin
-            Inc(Index);
-          end;
-          if Index > Length(AText) then
-          begin
-            Exit(TOpenComment.Brace);
-          end;
-        end;
-      '(':
-        if (Index < Length(AText)) and (AText[Index + 1] = '*') then
-        begin
-          Inc(Index, 2);
-          while (Index < Length(AText)) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
-          begin
-            Inc(Index);
-          end;
-          if Index >= Length(AText) then
-          begin
-            Exit(TOpenComment.ParenStar);
-          end;
-          Inc(Index);
-        end;
-    end;
-    Inc(Index);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>1-basierte Position hinter dem Ende des offenen Kommentars AState in AText; 0, wenn er weiter offen
+/// bleibt.</summary>
+function CommentEnd(const AText: string; AState: TOpenComment): Integer;
+begin
+  Result := 0;
+  if AState = TOpenComment.Brace then
+  begin
+    Result := Pos('}', AText) + 1;
+  end
+  else if Pos('*)', AText) > 0 then
+  begin
+    Result := Pos('*)', AText) + 2;
+  end;
+  if Result = 1 then
+  begin
+    Result := 0;
+  end;
+end;
+
+function CommentToken(AStop: Integer): TAtlasTokens;
+var
+  mHead: TAtlasToken;
+begin
+  Result := nil;
+  if AStop > 0 then
+  begin
+    mHead.Start := 0;
+    mHead.Stop := AStop;
+    mHead.Kind := TAtlasTokenKind.Comment;
+    Result := [mHead];
+  end;
+end;
+
+function Shifted(const ATokens: TAtlasTokens; AOffset: Integer): TAtlasTokens;
+var
+  mIndex: Integer;
+begin
+  Result := Copy(ATokens);
+  for mIndex := 0 to High(Result) do
+  begin
+    Inc(Result[mIndex].Start, AOffset);
+    Inc(Result[mIndex].Stop, AOffset);
   end;
 end;
 
 class function TAtlasSyntax.LineTokens(const ALines: TArray<string>): TArray<TAtlasTokens>;
 var
-  Line, Close, Offset, Index: Integer;
-  State: TOpenComment;
-  Text: string;
-  Rest: TAtlasTokens;
-  Head: TAtlasToken;
+  mLine, mClose, mOffset: Integer;
+  mState: TOpenComment;
+  mText: string;
 begin
   Result := nil;
   SetLength(Result, Length(ALines));
-  State := TOpenComment.None;
-  for Line := 0 to High(ALines) do
+  mState := TOpenComment.None;
+  for mLine := 0 to High(ALines) do
   begin
-    Text := ALines[Line];
-    Offset := 0;
-    Result[Line] := nil;
-    if State <> TOpenComment.None then
+    mText := ALines[mLine];
+    mOffset := 0;
+    Result[mLine] := nil;
+    if mState <> TOpenComment.None then
     begin
-      // Ende des offenen Kommentars suchen (1-basiert, Close hinter dem Ende).
-      Close := 0;
-      if State = TOpenComment.Brace then
+      mClose := CommentEnd(mText, mState);
+      if mClose = 0 then
       begin
-        Index := Pos('}', Text);
-        if Index > 0 then
-        begin
-          Close := Index + 1;
-        end;
-      end
-      else
-      begin
-        Index := Pos('*)', Text);
-        if Index > 0 then
-        begin
-          Close := Index + 2;
-        end;
-      end;
-      Head.Start := 0;
-      Head.Kind := TAtlasTokenKind.Comment;
-      if Close = 0 then
-      begin
-        Head.Stop := Length(Text);
-        if Head.Stop > 0 then
-        begin
-          Result[Line] := [Head];
-        end;
+        Result[mLine] := CommentToken(Length(mText));
         Continue;
       end;
-      Head.Stop := Close - 1;
-      Result[Line] := [Head];
-      Offset := Close - 1;
+      Result[mLine] := CommentToken(mClose - 1);
+      mOffset := mClose - 1;
     end;
-    Rest := Tokens(Copy(Text, Offset + 1, MaxInt));
-    for Index := 0 to High(Rest) do
-    begin
-      Inc(Rest[Index].Start, Offset);
-      Inc(Rest[Index].Stop, Offset);
-    end;
-    Result[Line] := Result[Line] + Rest;
-    State := OpenAtEnd(Text, Offset + 1);
+    Result[mLine] := Result[mLine] + Shifted(Tokens(Copy(mText, mOffset + 1, MaxInt)), mOffset);
+    mState := OpenAtEnd(mText, mOffset + 1);
+  end;
+end;
+
+type
+  /// <summary>Zustand von DefaultRanges: Klammertiefe und Anfang des offenen Standardwerts (0-basiert, -1 ohne).
+  /// </summary>
+  TDefaultScan = record
+    Depth: Integer;
+    Start: Integer;
+    Ranges: TArray<TPoint>;
+    /// <summary>Offener Standardwert endet vor AIndex.</summary>
+    procedure Close(AIndex: Integer);
+    procedure Take(const ASignature: string; AIndex: Integer);
+  end;
+
+procedure TDefaultScan.Close(AIndex: Integer);
+begin
+  if (Depth = 1) and (Start >= 0) then
+  begin
+    Ranges := Ranges + [Point(Start, AIndex - 1)];
+    Start := -1;
+  end;
+end;
+
+procedure TDefaultScan.Take(const ASignature: string; AIndex: Integer);
+begin
+  case ASignature[AIndex] of
+    '(', '[':
+      Inc(Depth);
+    ')', ']':
+      begin
+        Close(AIndex);
+        Dec(Depth);
+      end;
+    ';':
+      Close(AIndex);
+    '=':
+      if (Depth = 1) and (Start < 0) then
+      begin
+        // Leerzeichen vor "=" gehören dazu: "Offset: Integer = 1" → " = 1".
+        Start := AIndex - 1;
+        while (Start > 0) and (ASignature[Start] = ' ') do
+        begin
+          Dec(Start);
+        end;
+      end;
   end;
 end;
 
 class function TAtlasSyntax.DefaultRanges(const ASignature: string): TArray<TPoint>;
 var
-  Index, Depth, Start: Integer;
-  InString: Boolean;
+  mIndex: Integer;
+  mScan: TDefaultScan;
+  mInString: Boolean;
 begin
   // 1-basiert über den Text; Ergebnis 0-basiert. "=" auf Ebene 1 beginnt einen Standardwert, der bis
   // vor das nächste ";" bzw. die schließende Klammer derselben Ebene reicht.
-  Result := nil;
-  Depth := 0;
-  Start := -1;
-  InString := False;
-  for Index := 1 to Length(ASignature) do
+  mScan := Default(TDefaultScan);
+  mScan.Start := -1;
+  mInString := False;
+  for mIndex := 1 to Length(ASignature) do
   begin
-    if ASignature[Index] = '''' then
+    if ASignature[mIndex] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end;
-    if InString then
+    if not mInString then
     begin
-      Continue;
-    end;
-    case ASignature[Index] of
-      '(', '[':
-        Inc(Depth);
-      ')', ']':
-        begin
-          if (Depth = 1) and (Start >= 0) then
-          begin
-            Result := Result + [Point(Start, Index - 1)];
-            Start := -1;
-          end;
-          Dec(Depth);
-        end;
-      ';':
-        if (Depth = 1) and (Start >= 0) then
-        begin
-          Result := Result + [Point(Start, Index - 1)];
-          Start := -1;
-        end;
-      '=':
-        if (Depth = 1) and (Start < 0) then
-        begin
-          // Leerzeichen vor "=" gehören dazu: "Offset: Integer = 1" → " = 1".
-          Start := Index - 1;
-          while (Start > 0) and (ASignature[Start] = ' ') do
-          begin
-            Dec(Start);
-          end;
-        end;
+      mScan.Take(ASignature, mIndex);
     end;
   end;
+  Result := mScan.Ranges;
 end;
 
 end.

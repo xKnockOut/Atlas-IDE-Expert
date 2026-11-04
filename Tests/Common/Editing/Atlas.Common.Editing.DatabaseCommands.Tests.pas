@@ -61,7 +61,7 @@ const
 function Run(const ACommand: string; out AEdits: TArray<TRuleEdit>; const AVersion: string = ''): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(RoutineUnit, [ACommand]), TTextPosition.Create(10, 0),
-    nil, nil, AEdits, nil, AVersion);
+    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), AEdits);
 end;
 
 procedure TDatabaseCommandsTests.SqlWithTwoParams;

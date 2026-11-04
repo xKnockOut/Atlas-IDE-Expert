@@ -76,6 +76,12 @@ type
     procedure OverrideTargetGenericAndPlainNamesakes;
     [Test]
     procedure OverrideTargetOptions;
+  end;
+
+  /// <summary>Regeln zu abstrakten Methoden, Klassenreferenzen und inherited.</summary>
+  [TestFixture]
+  TInheritanceAbstractRulesTests = class
+  public
     [Test]
     procedure AbstractInstantiatedIssueExample;
     [Test]
@@ -847,7 +853,7 @@ begin
     'procedure Rechnen;'#10'var'#10'  Form: TForm;'#10'  Gesamt: Double;'#10'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TInheritanceRulesTests.AbstractInstantiatedIssueExample;
+procedure TInheritanceAbstractRulesTests.AbstractInstantiatedIssueExample;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -865,7 +871,7 @@ begin
     '    function Flaeche: Double; override;'#10, '  Form := TKreis.Create;'#10));
 end;
 
-procedure TInheritanceRulesTests.AbstractInstantiatedInheritedWithFix;
+procedure TInheritanceAbstractRulesTests.AbstractInstantiatedInheritedWithFix;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -887,7 +893,7 @@ begin
     Findings[0].Message);
 end;
 
-procedure TInheritanceRulesTests.AbstractInstantiatedAbstractClassAndIndex;
+procedure TInheritanceAbstractRulesTests.AbstractInstantiatedAbstractClassAndIndex;
 const
   ListenSource = 'unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  protected'#10 +
     '    function Get(Index: Integer): string; virtual; abstract;'#10'  end;'#10 +
@@ -916,7 +922,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TInheritanceRulesTests.AbstractInstantiatedSilentCases;
+procedure TInheritanceAbstractRulesTests.AbstractInstantiatedSilentCases;
 begin
   // Konstruktor-Rumpf, inherited, unbekannte Klasse, Klassenreferenz.
   TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
@@ -937,7 +943,7 @@ begin
     'procedure P;'#10'begin'#10'  TC.Create.Free;'#10'end;'#10'end.');
 end;
 
-procedure TInheritanceRulesTests.AbstractInstantiatedOptions;
+procedure TInheritanceAbstractRulesTests.AbstractInstantiatedOptions;
 var
   Source: string;
 begin
@@ -978,7 +984,7 @@ begin
   Inc(Result, APosition.Character);
 end;
 
-procedure TInheritanceRulesTests.InheritedAbstractIssueExample;
+procedure TInheritanceAbstractRulesTests.InheritedAbstractIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1006,7 +1012,7 @@ begin
     Kreise('  inherited Zeichnen;'#10)))));
 end;
 
-procedure TInheritanceRulesTests.InheritedAbstractExpressionAndIndex;
+procedure TInheritanceAbstractRulesTests.InheritedAbstractExpressionAndIndex;
 const
   BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TRechner = class'#10'  protected'#10 +
     '    function Berechnen(X: Integer): Integer; virtual; abstract;'#10'  end;'#10'implementation'#10'end.';
@@ -1030,7 +1036,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TInheritanceRulesTests.InheritedAbstractSilentCases;
+procedure TInheritanceAbstractRulesTests.InheritedAbstractSilentCases;
 begin
   // Bloßes inherited, konkrete Methode des Vorfahren (Flaeche), unbekannter Vorfahr.
   TRuleAssert.Silent(TInheritedAbstractCallRule.Create, Kreise('  inherited;'#10));
@@ -1053,7 +1059,7 @@ begin
     '  inherited Eins(X);'#10'end;'#10'end.');
 end;
 
-procedure TInheritanceRulesTests.InheritedAbstractOptions;
+procedure TInheritanceAbstractRulesTests.InheritedAbstractOptions;
 var
   Source: string;
 begin
@@ -1108,7 +1114,7 @@ begin
   end;
 end;
 
-procedure TInheritanceRulesTests.ClassRefConstructorIssueExample;
+procedure TInheritanceAbstractRulesTests.ClassRefConstructorIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1140,7 +1146,7 @@ begin
   Assert.AreEqual('virtual an TTeil.Create', Findings[0].Fixes[0].Title);
 end;
 
-procedure TInheritanceRulesTests.ClassRefConstructorFromIndex;
+procedure TInheritanceAbstractRulesTests.ClassRefConstructorFromIndex;
 const
   BasisSource = 'unit Basis;'#10'interface'#10'type'#10'  TDienst = class'#10'  public'#10 +
     '    constructor Create;'#10'  end;'#10'  TDienstKlasse = class of TDienst;'#10 +
@@ -1164,7 +1170,7 @@ begin
   Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
 end;
 
-procedure TInheritanceRulesTests.ClassRefConstructorSilentCases;
+procedure TInheritanceAbstractRulesTests.ClassRefConstructorSilentCases;
 begin
   // Virtueller Konstruktor mit override in den Nachfahren, Create direkt an der Klasse.
   TRuleAssert.Silent(TClassReferenceNonvirtualConstructorRule.Create, Plugins(' virtual;', ' override;',
@@ -1189,7 +1195,7 @@ begin
     '  K.Create;'#10'end;'#10'end.');
 end;
 
-procedure TInheritanceRulesTests.ClassRefConstructorOptions;
+procedure TInheritanceAbstractRulesTests.ClassRefConstructorOptions;
 var
   Source: string;
 begin
@@ -1220,7 +1226,7 @@ const
   LaufDecl = '    procedure Lauf(A, B: Integer); override;'#10;
   WertDecl = '    function Wert(X: Integer): Integer; override;'#10;
 
-procedure TInheritanceRulesTests.OverrideOnlyInheritedIssueExample;
+procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedIssueExample;
 const
   FormsSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TForm = class'#10'  protected'#10 +
     '    procedure Loaded; virtual;'#10'  end;'#10'implementation'#10'end.';
@@ -1259,7 +1265,7 @@ begin
     'Kunden.pas'))));
 end;
 
-procedure TInheritanceRulesTests.OverrideOnlyInheritedForms;
+procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedForms;
 var
   mSource: string;
   mFindings: TArray<TRuleFinding>;
@@ -1284,7 +1290,7 @@ begin
     'function TFoo.Wert(X: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(X);'#10'end;'#10), 2);
 end;
 
-procedure TInheritanceRulesTests.OverrideOnlyInheritedSilentCases;
+procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedSilentCases;
 
   procedure Lauf(const AMembers, ABody: string);
   begin
@@ -1325,7 +1331,7 @@ begin
     'procedure TB.P(X: Integer);'#10'begin'#10'  inherited P(X);'#10'end;'#10'end.');
 end;
 
-procedure TInheritanceRulesTests.OverrideOnlyInheritedObjectMethods;
+procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedObjectMethods;
 const
   Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public'#10 +
     '    destructor Destroy; override;'#10'    procedure AfterConstruction; override;'#10 +
@@ -1343,7 +1349,7 @@ begin
   Assert.AreEqual('TFoo.AfterConstruction ruft nur inherited auf und kann entfallen.', mFindings[1].Message);
 end;
 
-procedure TInheritanceRulesTests.OverrideOnlyInheritedOptions;
+procedure TInheritanceAbstractRulesTests.OverrideOnlyInheritedOptions;
 var
   mSource: string;
 begin
@@ -1367,7 +1373,7 @@ begin
     'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TInheritanceRulesTests.InheritedWithoutAncestorIssueExample;
+procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorIssueExample;
 var
   mSource, mFixed: string;
   mFindings: TArray<TRuleFinding>;
@@ -1397,7 +1403,7 @@ begin
     'procedure TFoo.Lauf;'#10'begin'#10'  inherited;'#10'  inherited;'#10'end;'#10'end.', 2);
 end;
 
-procedure TInheritanceRulesTests.InheritedWithoutAncestorSilentCases;
+procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorSilentCases;
 begin
   // override, Message-Handler, Konstruktor, Destruktor, Klassenmethode.
   TRuleAssert.Silent(TInheritedWithoutAncestorRule.Create, Importe('',
@@ -1423,7 +1429,7 @@ begin
     'procedure TFoo.Free;'#10'begin'#10'  inherited;'#10'end;'#10'end.');
 end;
 
-procedure TInheritanceRulesTests.InheritedWithoutAncestorFromIndex;
+procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorFromIndex;
 const
   MitSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
     '    procedure Vorbereiten;'#10'  end;'#10'implementation'#10'end.';
@@ -1439,7 +1445,7 @@ begin
     IndexWith([OhneSource]), '', 'U.pas'))));
 end;
 
-procedure TInheritanceRulesTests.InheritedWithoutAncestorOptions;
+procedure TInheritanceAbstractRulesTests.InheritedWithoutAncestorOptions;
 var
   mSource: string;
 begin
@@ -1454,5 +1460,6 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TInheritanceRulesTests);
+  TDUnitX.RegisterTestFixture(TInheritanceAbstractRulesTests);
 
 end.

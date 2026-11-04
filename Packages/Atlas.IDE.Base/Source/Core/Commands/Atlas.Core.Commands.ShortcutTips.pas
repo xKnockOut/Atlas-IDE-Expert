@@ -131,6 +131,80 @@ implementation
 uses
   Atlas.Core.Commands.KeyMap;
 
+/// <summary>Einstellung, Umfang, Kürzel und Weg des Aufrufs; Show, wenn nichts dagegen spricht.</summary>
+function SetupVerdict(const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
+begin
+  if not ASituation.Enabled then
+  begin
+    Result := TAtlasTipVerdict.Disabled;
+  end
+  else if (ASituation.Scope = TAtlasTipScope.Atlas) and not ASituation.IsAtlas then
+  begin
+    Result := TAtlasTipVerdict.OutOfScope;
+  end
+  else if Trim(ASituation.KeyText) = '' then
+  begin
+    Result := TAtlasTipVerdict.NoShortCut;
+  end
+  else if ASituation.ViaKeyboard then
+  begin
+    Result := TAtlasTipVerdict.ViaKeyboard;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
+/// <summary>Was der Befehl selbst sagt (ausgeblendet, gelernt, heute schon gezeigt); Show sonst.</summary>
+function EntryVerdict(const AEntry: TAtlasCommandUsageEntry; ANow: TDateTime): TAtlasTipVerdict;
+begin
+  if AEntry.Never then
+  begin
+    Result := TAtlasTipVerdict.Hidden;
+  end
+  else if AEntry.Keyboard >= TAtlasShortcutTips.LearnedAfter then
+  begin
+    Result := TAtlasTipVerdict.Learned;
+  end
+  else if TAtlasShortcutTips.SameDay(AEntry.LastTip, ANow) then
+  begin
+    Result := TAtlasTipVerdict.ShownToday;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
+/// <summary>Letzter Tipp so kurz her, dass keiner kommt; auch bei zurückgestellter Uhr nicht sofort wieder.</summary>
+function TooSoon(const ASituation: TAtlasTipSituation): Boolean;
+begin
+  Result := (ASituation.LastTipAt > 0)
+    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.MinGapSeconds);
+end;
+
+/// <summary>Der Augenblick: Debugger angehalten, modales Fenster, letzter Tipp zu kurz her; Show sonst.</summary>
+function MomentVerdict(const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
+begin
+  if ASituation.DebugPaused then
+  begin
+    Result := TAtlasTipVerdict.Debugging;
+  end
+  else if ASituation.ModalOpen then
+  begin
+    Result := TAtlasTipVerdict.Modal;
+  end
+  else if TooSoon(ASituation) then
+  begin
+    Result := TAtlasTipVerdict.TooSoon;
+  end
+  else
+  begin
+    Result := TAtlasTipVerdict.Show;
+  end;
+end;
+
 { TAtlasTipSituation }
 
 class function TAtlasTipSituation.Create(AEnabled: Boolean; AScope: TAtlasTipScope; AIsAtlas: Boolean;
@@ -165,17 +239,25 @@ end;
 class function TAtlasShortcutTips.ScopeOf(const AText: string): TAtlasTipScope;
 begin
   if SameText(Trim(AText), ScopeAtlas) then
-    Result := TAtlasTipScope.Atlas
+  begin
+    Result := TAtlasTipScope.Atlas;
+  end
   else
+  begin
     Result := TAtlasTipScope.All;
+  end;
 end;
 
 class function TAtlasShortcutTips.ScopeName(AScope: TAtlasTipScope): string;
 begin
   if AScope = TAtlasTipScope.Atlas then
-    Result := ScopeAtlas
+  begin
+    Result := ScopeAtlas;
+  end
   else
+  begin
     Result := ScopeAll;
+  end;
 end;
 
 class function TAtlasShortcutTips.SameDay(A, B: TDateTime): Boolean;
@@ -186,28 +268,15 @@ end;
 class function TAtlasShortcutTips.Decide(const AEntry: TAtlasCommandUsageEntry;
   const ASituation: TAtlasTipSituation): TAtlasTipVerdict;
 begin
-  if not ASituation.Enabled then
-    Exit(TAtlasTipVerdict.Disabled);
-  if (ASituation.Scope = TAtlasTipScope.Atlas) and not ASituation.IsAtlas then
-    Exit(TAtlasTipVerdict.OutOfScope);
-  if Trim(ASituation.KeyText) = '' then
-    Exit(TAtlasTipVerdict.NoShortCut);
-  if ASituation.ViaKeyboard then
-    Exit(TAtlasTipVerdict.ViaKeyboard);
-  if AEntry.Never then
-    Exit(TAtlasTipVerdict.Hidden);
-  if AEntry.Keyboard >= LearnedAfter then
-    Exit(TAtlasTipVerdict.Learned);
-  if SameDay(AEntry.LastTip, ASituation.Now) then
-    Exit(TAtlasTipVerdict.ShownToday);
-  if ASituation.DebugPaused then
-    Exit(TAtlasTipVerdict.Debugging);
-  if ASituation.ModalOpen then
-    Exit(TAtlasTipVerdict.Modal);
-  // Auch bei zurückgestellter Uhr nicht sofort wieder.
-  if (ASituation.LastTipAt > 0) and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < MinGapSeconds) then
-    Exit(TAtlasTipVerdict.TooSoon);
-  Result := TAtlasTipVerdict.Show;
+  Result := SetupVerdict(ASituation);
+  if Result = TAtlasTipVerdict.Show then
+  begin
+    Result := EntryVerdict(AEntry, ASituation.Now);
+  end;
+  if Result = TAtlasTipVerdict.Show then
+  begin
+    Result := MomentVerdict(ASituation);
+  end;
 end;
 
 class procedure TAtlasShortcutTips.MarkShown(var AEntry: TAtlasCommandUsageEntry; ANow: TDateTime);
@@ -225,7 +294,9 @@ begin
   Result := nil;
   Text := Trim(AStep);
   if Text = '' then
+  begin
     Exit;
+  end;
   Part := '';
   Index := 1;
   while Index <= Length(Text) do
@@ -236,11 +307,15 @@ begin
       Part := '';
     end
     else
+    begin
       Part := Part + Text[Index];
+    end;
     Inc(Index);
   end;
   if Trim(Part) <> '' then
+  begin
     Result := Result + [Trim(Part)];
+  end;
 end;
 
 class function TAtlasShortcutTips.Steps(const AKeyText: string): TArray<TArray<string>>;
@@ -254,7 +329,9 @@ begin
   begin
     Keys := KeysOf(Step);
     if Length(Keys) > 0 then
+    begin
       Result := Result + [Keys];
+    end;
   end;
 end;
 
@@ -266,7 +343,9 @@ begin
   for Index := 0 to High(ASteps) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + string.Join('+', ASteps[Index]);
   end;
 end;
@@ -277,7 +356,9 @@ var
 begin
   Tab := Pos(#9, ACaption);
   if Tab = 0 then
+  begin
     Exit('');
+  end;
   Result := Trim(Copy(ACaption, Tab + 1, MaxInt));
 end;
 
@@ -295,9 +376,13 @@ begin
     // Ein zweiter Schritt darf eine einzelne Taste ohne Umschalttaste sein („Strg+K, D“).
     if (Key = 0) and (Length(Step) = 1) and (Length(Step[0]) = 1) and CharInSet(UpCase(Step[0][1]), ['A'..'Z', '0'..'9'])
     then
+    begin
       Key := Ord(UpCase(Step[0][1]));
+    end;
     if Key = 0 then
+    begin
       Exit(nil);
+    end;
     Result := Result + [Key];
   end;
 end;
@@ -310,7 +395,9 @@ begin
   for Index := 0 to High(AShortCuts) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + IntToStr(AShortCuts[Index]);
   end;
 end;
@@ -321,7 +408,9 @@ var
 begin
   Key := AShortCut and $FF;
   if Key = 0 then
+  begin
     Exit(False);
+  end;
   Result := ((AShortCut and (TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt)) <> 0) or
     ((Key >= $70) and (Key <= $87));
 end;
@@ -330,7 +419,9 @@ class function TAtlasShortcutTips.AtlasCommandId(AFunc: TAtlasKeyFunction): stri
 begin
   Result := TAtlasKeyMap.CommandIdOf(AFunc);
   if Result <> '' then
+  begin
     Exit;
+  end;
   case AFunc of
     TAtlasKeyFunction.Palette:
       Result := PaletteCommandId;
@@ -358,11 +449,13 @@ var
 begin
   AFunc := TAtlasKeyFunction.Palette;
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  begin
     if SameText(AtlasCommandId(Func), Trim(AId)) then
     begin
       AFunc := Func;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -378,9 +471,13 @@ begin
   Left := AArea.Right - AMargin - AWidth;
   Top := AArea.Bottom - AMargin - AHeight;
   if Left < AArea.Left then
+  begin
     Left := AArea.Left;
+  end;
   if Top < AArea.Top then
+  begin
     Top := AArea.Top;
+  end;
   Result := Rect(Left, Top, Left + AWidth, Top + AHeight);
 end;
 

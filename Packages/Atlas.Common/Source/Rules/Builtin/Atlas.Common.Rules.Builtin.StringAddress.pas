@@ -116,47 +116,60 @@ var
     begin
       ANode := ANode.Parent;
     end;
-    if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent.ChildCount = 2) and
-      (ANode.Parent[1] = ANode) and (ANode.Parent[0].Kind = TSyntaxKind.Identifier) and
+    if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.Call) or (ANode.Parent.ChildCount <> 2) then
+    begin
+      Exit;
+    end;
+    if (ANode.Parent[1] = ANode) and (ANode.Parent[0].Kind = TSyntaxKind.Identifier) and
       MatchText(ANode.Parent[0].Name, ['PChar', 'PAnsiChar', 'PWideChar', 'PByte', 'Pointer']) then
     begin
       Result := ANode.Parent;
     end;
   end;
 
+  /// <summary>Ist ANode @S[1] auf einer String-Variablen oder einem String-Feld? Liefert S, das Symbol und die
+  /// Zeichenbreite.</summary>
+  function IsFirstCharAddress(ANode: TSyntaxNode; out ABase: TSyntaxNode; out ASymbol: TResolvedSymbol;
+    out AWidth: Integer): Boolean;
+  var
+    mAccess: TSyntaxNode;
+    mType: TResolvedSymbol;
+  begin
+    Result := False;
+    ABase := nil;
+    AWidth := 0;
+    mAccess := nil;
+    if ANode.ChildCount = 1 then
+    begin
+      mAccess := Unwrapped(ANode[0]);
+    end;
+    if (mAccess = nil) or (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) or
+      not IsFirstIndex(mAccess[1], mAccess[0]) then
+    begin
+      Exit;
+    end;
+    ABase := mAccess[0];
+    if not mScope.SureType(ABase, ASymbol, mType) or ASymbol.IsType or
+      not (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+    begin
+      Exit;
+    end;
+    if mType.Builtin or SameText(mType.UnitName, 'System') then
+    begin
+      AWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
+    end;
+    Result := AWidth <> 0;
+  end;
+
   procedure CheckAddress(ANode: TSyntaxNode);
   var
-    mAccess, mBase, mCast, mReplaced: TSyntaxNode;
-    mSymbol, mType: TResolvedSymbol;
+    mBase, mCast, mReplaced: TSyntaxNode;
+    mSymbol: TResolvedSymbol;
     mWidth: Integer;
     mPointer, mSafe, mMessage: string;
     mFixes: TArray<TRuleFix>;
   begin
-    if ANode.ChildCount <> 1 then
-    begin
-      Exit;
-    end;
-    mAccess := Unwrapped(ANode[0]);
-    if (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) then
-    begin
-      Exit;
-    end;
-    mBase := mAccess[0];
-    if not IsFirstIndex(mAccess[1], mBase) then
-    begin
-      Exit;
-    end;
-    if not mScope.SureType(mBase, mSymbol, mType) or mSymbol.IsType or
-      not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
-    begin
-      Exit;
-    end;
-    if not mType.Builtin and not SameText(mType.UnitName, 'System') then
-    begin
-      Exit;
-    end;
-    mWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
-    if mWidth = 0 then
+    if not IsFirstCharAddress(ANode, mBase, mSymbol, mWidth) then
     begin
       Exit;
     end;

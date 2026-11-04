@@ -193,6 +193,23 @@ begin
   FLogFolder := '';
 end;
 
+/// <summary>Schickt alle Anfragen aus Queries für AUri an ADispatcher.</summary>
+procedure SendQueries(ADispatcher: TJsonRpcDispatcher; const AUri: string);
+var
+  mMessage: TJSONObject;
+  mId: Integer;
+begin
+  for mId := 0 to High(Queries) do
+  begin
+    mMessage := Request(mId + 1, Queries[mId].Method, AUri, Queries[mId].Line, Queries[mId].Character);
+    try
+      ADispatcher.DispatchMessage(mMessage).Free;
+    finally
+      mMessage.Free;
+    end;
+  end;
+end;
+
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);
 var
   Folder, FileName, Uri: string;
@@ -204,8 +221,6 @@ var
   Diagnostics: TShellDiagnostics;
   Ref: IJsonRpcRequestObserver;
   Settings: TServerSettings;
-  Message: TJSONObject;
-  Id: Integer;
 begin
   Folder := TPath.Combine(TPath.Combine(FRoot, 'MarkerPfadXq7'), 'MarkerProjektBn6');
   ForceDirectories(Folder);
@@ -243,15 +258,7 @@ begin
     Settings := TServerSettings.Default;
     Settings.DiagnosticsLog := AEnabled;
     Diagnostics.ApplySettings(Settings);
-    for Id := 0 to High(Queries) do
-    begin
-      Message := Request(Id + 1, Queries[Id].Method, Uri, Queries[Id].Line, Queries[Id].Character);
-      try
-        Dispatcher.DispatchMessage(Message).Free;
-      finally
-        Message.Free;
-      end;
-    end;
+    SendQueries(Dispatcher, Uri);
     Diagnostics.EndRun(TDiagnosticEndReason.ParentExited, 0, 2 * 1024 * 1024);
     Dispatcher.Observer := nil;
     Ref := nil;

@@ -103,7 +103,9 @@ end;
 destructor TAtlasIdeQuickToggles.Destroy;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   FreeAndNil(FKey);
   if FWindow <> nil then
   begin
@@ -117,7 +119,9 @@ procedure TAtlasIdeQuickToggles.Notification(AComponent: TComponent; Operation: 
 begin
   inherited;
   if (Operation = opRemove) and (AComponent = FWindow) then
+  begin
     FWindow := nil;
+  end;
 end;
 
 procedure TAtlasIdeQuickToggles.Rebind;
@@ -154,8 +158,12 @@ var
   Item: TAtlasQuickToggleItem;
 begin
   for Item in Items do
+  begin
     if SameText(Item.Toggle.Key, AKey) then
+    begin
       Exit(Item.Checked);
+    end;
+  end;
   Result := False;
 end;
 
@@ -181,7 +189,9 @@ begin
     Button.ModalResult := AnswerProject;
     Result := Dialog.Execute;
     if not Result then
+    begin
       Exit;
+    end;
     case Dialog.ModalResult of
       AnswerSession:
         ATarget := TAtlasToggleTarget.Session;
@@ -205,9 +215,13 @@ begin
   Target := TAtlasToggleTarget.Global;
   // Sitzungswert über einem Projektwert: ein weiterer Klick gilt wieder nur für die Sitzung.
   if AItem.Session then
-    Target := TAtlasToggleTarget.Session
+  begin
+    Target := TAtlasToggleTarget.Session;
+  end
   else if AItem.Project and not AskTarget(AItem, Target) then
+  begin
     Exit;
+  end;
   Stored := TAtlasIdeSettings.Stored;
   Session := TAtlasIdeSettings.Session;
   Json := TAtlasQuickToggles.Toggle(AItem, Target, Stored, Session);
@@ -224,7 +238,9 @@ begin
       end;
     end;
   if Target = TAtlasToggleTarget.Global then
+  begin
     TAtlasIdeSettings.Update(Stored);
+  end;
   TAtlasIdeSettings.SetSession(Session);
   Applied;
 end;
@@ -234,11 +250,13 @@ var
   Item: TAtlasQuickToggleItem;
 begin
   for Item in Items do
+  begin
     if SameText(Item.Toggle.Key, AKey) then
     begin
       SwitchItem(Item);
       Exit;
     end;
+  end;
 end;
 
 class procedure TAtlasIdeQuickToggles.ToggleAllOff;
@@ -258,15 +276,21 @@ begin
   // Wie beim Schließen der Optionsseite: Strukturhervorhebung der IDE abgleichen, dann neu zeichnen.
   TAtlasIdeStructureSwitch.Sync;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
   if FInstance <> nil then
+  begin
     FInstance.Refresh;
+  end;
 end;
 
 procedure TAtlasIdeQuickToggles.Refresh;
 begin
   if FWindow <> nil then
+  begin
     FWindow.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
+  end;
 end;
 
 procedure TAtlasIdeQuickToggles.Show(const AAnchor: TPoint);
@@ -318,16 +342,24 @@ var
 begin
   Anchor := Point(MaxInt, MaxInt);
   if Assigned(FOnAnchor) then
+  begin
     Anchor := FOnAnchor();
+  end;
   if Anchor.X = MaxInt then
   begin
     // Ohne Statusfeld: unten links im aktiven Fenster.
     if Screen.ActiveForm <> nil then
-      Area := Screen.ActiveForm.BoundsRect
+    begin
+      Area := Screen.ActiveForm.BoundsRect;
+    end
     else if Application.MainForm <> nil then
-      Area := Application.MainForm.BoundsRect
+    begin
+      Area := Application.MainForm.BoundsRect;
+    end
     else
+    begin
       Area := Screen.WorkAreaRect;
+    end;
     Anchor := Point(Area.Left + 40, Area.Bottom - 40);
   end;
   Show(Anchor);
@@ -367,9 +399,11 @@ begin
         end);
     end);
   for Toggle in TAtlasIdeSettings.QuickToggles do
+  begin
     ARegistry.RegisterCommand('Atlas.QuickToggles.' + Toggle.Key,
       TAtlasStrings.Fmt(TAtlasTextId.QuickTogglePalette, [Toggle.Caption]),
       TAtlasStrings.Text(TAtlasTextId.QuickTogglePaletteHint), SwitchCommand(Toggle.Key));
+  end;
 end;
 
 end.

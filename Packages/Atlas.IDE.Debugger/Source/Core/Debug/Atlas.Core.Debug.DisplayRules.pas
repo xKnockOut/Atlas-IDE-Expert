@@ -24,6 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  System.JSON,
   Atlas.Text.DebugDisplay,
   Atlas.Core.Debug.Visualizers,
   Atlas.Core.Settings.VisualizerKinds;
@@ -63,6 +64,10 @@ type
     FInheritNames: TDictionary<string, string>;
     function Lookup(const AName: string; out AIndex: Integer): Boolean;
     procedure MapName(const AKey: string; AIndex: Integer);
+    /// <summary>Regeln aus "rules" (Array) hinzufügen.</summary>
+    procedure AddRules(ARules: TJSONValue);
+    /// <summary>Erben aus "inherits" (Array) hinzufügen.</summary>
+    procedure AddInherits(AInherits: TJSONValue);
   public
     constructor Create;
     destructor Destroy; override;
@@ -103,9 +108,6 @@ type
   end;
 
 implementation
-
-uses
-  System.JSON;
 
 { TAtlasDisplayRule }
 
@@ -149,10 +151,14 @@ begin
   Result := Trim(ATypeName);
   Angle := Pos('<', Result);
   if Angle > 0 then
+  begin
     Result := Copy(Result, 1, Angle - 1);
+  end;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 procedure TAtlasDisplayRules.MapName(const AKey: string; AIndex: Integer);
@@ -160,12 +166,16 @@ var
   Existing: Integer;
 begin
   if AKey = '' then
+  begin
     Exit;
+  end;
   // Quelltext schlägt Projektdatei; sonst gilt die erste Regel des Namens.
   if FByName.TryGetValue(AKey, Existing) and
     ((FRules[Existing].Origin <> TDebugDisplayOrigin.Project) or
     (FRules[AIndex].Origin = TDebugDisplayOrigin.Project)) then
+  begin
     Exit;
+  end;
   FByName.AddOrSetValue(AKey, AIndex);
 end;
 
@@ -177,9 +187,13 @@ begin
   Rule := ARule;
   Rule.TypeName := Trim(Rule.TypeName);
   if Rule.Name = '' then
+  begin
     Rule.Name := ShortName(Rule.TypeName);
+  end;
   if (Rule.TypeName = '') or (not Rule.HasTemplate and (Rule.Children = nil)) then
+  begin
     Exit;
+  end;
   Index := FRules.Add(Rule);
   MapName(LowerCase(Rule.TypeName), Index);
   MapName(LowerCase(Rule.Name), Index);
@@ -191,71 +205,125 @@ var
   Name: string;
 begin
   if (Trim(ATypeName) = '') or (Trim(AFrom) = '') then
+  begin
     Exit;
+  end;
   for Name in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
+  begin
     if not FInherits.ContainsKey(LowerCase(Name)) or (Name = Trim(ATypeName)) then
     begin
       FInherits.AddOrSetValue(LowerCase(Name), Trim(AFrom));
       FInheritNames.AddOrSetValue(LowerCase(Name), Name);
     end;
+  end;
+end;
+
+/// <summary>Namen aus "children": nur nicht leere Zeichenketten.</summary>
+function ChildrenOf(AChildren: TJSONValue): TArray<string>;
+var
+  mChild: TJSONValue;
+  mText: string;
+begin
+  Result := nil;
+  if not (AChildren is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mChild in TJSONArray(AChildren) do
+  begin
+    if mChild is TJSONString then
+    begin
+      mText := Trim(mChild.Value);
+      if mText <> '' then
+      begin
+        Result := Result + [mText];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Eine Regel aus einem Eintrag von "rules".</summary>
+function RuleOf(AItem: TJSONObject): TAtlasDisplayRule;
+var
+  mLine: Integer;
+  mOrigin: string;
+begin
+  Result := Default(TAtlasDisplayRule);
+  Result.Line := -1;
+  AItem.TryGetValue<string>('type', Result.TypeName);
+  AItem.TryGetValue<string>('name', Result.Name);
+  AItem.TryGetValue<string>('template', Result.Template);
+  AItem.TryGetValue<string>('file', Result.FileName);
+  if AItem.TryGetValue<Integer>('line', mLine) then
+  begin
+    Result.Line := mLine;
+  end;
+  mOrigin := '';
+  AItem.TryGetValue<string>('origin', mOrigin);
+  if mOrigin = 'attribute' then
+  begin
+    Result.Origin := TDebugDisplayOrigin.Attribute;
+  end
+  else
+  begin
+    Result.Origin := TDebugDisplayOrigin.Comment;
+  end;
+  Result.Children := ChildrenOf(AItem.GetValue('children'));
+end;
+
+procedure TAtlasDisplayRules.AddRules(ARules: TJSONValue);
+var
+  mItem: TJSONValue;
+begin
+  if not (ARules is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(ARules) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      Add(RuleOf(TJSONObject(mItem)));
+    end;
+  end;
+end;
+
+procedure TAtlasDisplayRules.AddInherits(AInherits: TJSONValue);
+var
+  mItem: TJSONValue;
+  mTypeName, mFrom: string;
+begin
+  if not (AInherits is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AInherits) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mTypeName := '';
+      mFrom := '';
+      TJSONObject(mItem).TryGetValue<string>('type', mTypeName);
+      TJSONObject(mItem).TryGetValue<string>('from', mFrom);
+      AddInherit(mTypeName, mFrom);
+    end;
+  end;
 end;
 
 function TAtlasDisplayRules.LoadJson(const AJson: string): Boolean;
 var
-  Root, Item: TJSONValue;
-  Rule: TAtlasDisplayRule;
-  Children: TJSONValue;
-  Child: TJSONValue;
-  Text, Origin: string;
-  Line: Integer;
+  Root: TJSONValue;
+  Version: Integer;
 begin
-  Result := False;
   Root := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Root is TJSONObject) or not TJSONObject(Root).TryGetValue<Integer>('format', Line) or
-      (Line <> ServerFormat) then
-      Exit;
-    if TJSONObject(Root).GetValue('rules') is TJSONArray then
-      for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
-      begin
-        if not (Item is TJSONObject) then
-          Continue;
-        Rule := Default(TAtlasDisplayRule);
-        Rule.Line := -1;
-        TJSONObject(Item).TryGetValue<string>('type', Rule.TypeName);
-        TJSONObject(Item).TryGetValue<string>('name', Rule.Name);
-        TJSONObject(Item).TryGetValue<string>('template', Rule.Template);
-        TJSONObject(Item).TryGetValue<string>('file', Rule.FileName);
-        if TJSONObject(Item).TryGetValue<Integer>('line', Line) then
-          Rule.Line := Line;
-        Origin := '';
-        TJSONObject(Item).TryGetValue<string>('origin', Origin);
-        if Origin = 'attribute' then
-          Rule.Origin := TDebugDisplayOrigin.Attribute
-        else
-          Rule.Origin := TDebugDisplayOrigin.Comment;
-        Children := TJSONObject(Item).GetValue('children');
-        if Children is TJSONArray then
-          for Child in TJSONArray(Children) do
-            if Child is TJSONString then
-            begin
-              Text := Trim(Child.Value);
-              if Text <> '' then
-                Rule.Children := Rule.Children + [Text];
-            end;
-        Add(Rule);
-      end;
-    if TJSONObject(Root).GetValue('inherits') is TJSONArray then
-      for Item in TJSONArray(TJSONObject(Root).GetValue('inherits')) do
-        if Item is TJSONObject then
-        begin
-          Text := '';
-          Origin := '';
-          TJSONObject(Item).TryGetValue<string>('type', Text);
-          TJSONObject(Item).TryGetValue<string>('from', Origin);
-          AddInherit(Text, Origin);
-        end;
-    Result := True;
+    Result := (Root is TJSONObject) and TJSONObject(Root).TryGetValue<Integer>('format', Version) and
+      (Version = ServerFormat);
+    if Result then
+    begin
+      AddRules(TJSONObject(Root).GetValue('rules'));
+      AddInherits(TJSONObject(Root).GetValue('inherits'));
+    end;
   finally
     Root.Free;
   end;
@@ -276,9 +344,13 @@ begin
   Result := Lookup(ATypeName, Index);
   if not Result and (FInherits.TryGetValue(LowerCase(Trim(ATypeName)), From) or
     FInherits.TryGetValue(LowerCase(ShortName(ATypeName)), From)) then
+  begin
     Result := Lookup(From, Index);
+  end;
   if Result then
+  begin
     ARule := FRules[Index];
+  end;
 end;
 
 function TAtlasDisplayRules.FindChain(const AChain: array of string; out ARule: TAtlasDisplayRule): Boolean;
@@ -286,8 +358,12 @@ var
   Name: string;
 begin
   for Name in AChain do
+  begin
     if (Trim(Name) <> '') and Find(Name, ARule) then
+    begin
       Exit(True);
+    end;
+  end;
   ARule := Default(TAtlasDisplayRule);
   Result := False;
 end;
@@ -318,8 +394,12 @@ begin
       AddName(ShortName(Rule.TypeName));
     end;
     for Name in FInherits.Keys do
+    begin
       if Lookup(FInherits[Name], Index) then
+      begin
         AddName(FInheritNames[Name]);
+      end;
+    end;
   finally
     Seen.Free;
   end;
@@ -341,8 +421,12 @@ var
 begin
   Result := nil;
   for Rule in FRules do
+  begin
     if Rule.Origin = TDebugDisplayOrigin.Project then
+    begin
       Result := Result + [Rule.TypeName];
+    end;
+  end;
 end;
 
 { TAtlasDisplayRender }
@@ -350,9 +434,13 @@ end;
 class function TAtlasDisplayRender.ExpressionOf(const AExpression, APlaceholder: string): string;
 begin
   if (APlaceholder <> '') and (APlaceholder[1] = '[') then
-    Result := '(' + AExpression + ')' + APlaceholder
+  begin
+    Result := '(' + AExpression + ')' + APlaceholder;
+  end
   else
+  begin
     Result := '(' + AExpression + ').' + APlaceholder;
+  end;
 end;
 
 class function TAtlasDisplayRender.Missing(const APlaceholder: string): string;
@@ -367,10 +455,15 @@ var
 begin
   Result := AText;
   if AFormat = '' then
+  begin
     Exit;
+  end;
   Invariant := TFormatSettings.Invariant;
   if TryStrToFloat(Trim(AText), Value, Invariant) then
-    Result := FormatFloat(AFormat, Value);
+  begin
+    // Anzeige in der IDE: bewusst im Gebietsschema des Benutzers.
+    Result := FormatFloat(AFormat, Value, FormatSettings);
+  end;
 end;
 
 class function TAtlasDisplayRender.PlaceholderText(const ASegment: TDebugDisplaySegment;
@@ -381,13 +474,19 @@ var
 begin
   Result := Missing(ASegment.Text);
   if not Assigned(AEval) or (ASegment.NeedsCall and not AOptions.AllowCalls) then
+  begin
     Exit;
+  end;
   // Ohne allowCalls keine Nebenwirkungen: Ein Getter scheitert und zeigt {?…}.
   Evaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
+  begin
     Evaluation := TAtlasVisualizerEvaluation.Calls;
+  end;
   if not AEval(ExpressionOf(AExpression, ASegment.Text), Evaluation, Value) then
+  begin
     Exit;
+  end;
   Result := FormatValue(TAtlasVisualizerFormat.Unquote(Value), ASegment.Format);
 end;
 
@@ -399,15 +498,25 @@ var
 begin
   Result := '';
   if not ARule.HasTemplate then
+  begin
     Exit;
+  end;
   Template := TDebugDisplayTemplate.Parse(ARule.Template);
   if not Template.Valid then
+  begin
     Exit;
+  end;
   for Segment in Template.Segments do
+  begin
     if Segment.Kind = TDebugDisplaySegmentKind.Text then
-      Result := Result + Segment.Text
+    begin
+      Result := Result + Segment.Text;
+    end
     else
+    begin
       Result := Result + PlaceholderText(Segment, AExpression, AOptions, AEval);
+    end;
+  end;
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
@@ -428,24 +537,36 @@ begin
   Unlimited.MaxLength := 0;
   Result.Summary := Render(ARule, AExpression, Unlimited, AEval);
   if Result.Summary = '' then
+  begin
     Result.Summary := AEvalResult;
+  end;
   Evaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
+  begin
     Evaluation := TAtlasVisualizerEvaluation.Calls;
+  end;
   for Name in ARule.Children do
   begin
     Value := TAtlasDisplayRender.Missing(Name);
     if Assigned(AEval) and AEval(ExpressionOf(AExpression, Name), Evaluation, Raw) then
+    begin
       Value := Raw;
+    end;
     Result.Rows := Result.Rows + [TArray<string>.Create(Name, Value)];
   end;
   // Alle Felder: Feldliste des Debuggers (,r zeigt Objekte mit Feldnamen), sonst der Text der IDE.
   Raw := AEvalResult;
   if Assigned(AEval) and AEval(AExpression + ',r', TAtlasVisualizerEvaluation.Fields, Value) then
+  begin
     Raw := Value;
+  end;
   if TAtlasVisualizerFormat.ParseFields(Raw, Fields) then
+  begin
     for Field in Fields do
+    begin
       Result.AllRows := Result.AllRows + [TArray<string>.Create(Field.Name, Field.Value)];
+    end;
+  end;
   if ARule.Children = nil then
   begin
     Result.Rows := Result.AllRows;

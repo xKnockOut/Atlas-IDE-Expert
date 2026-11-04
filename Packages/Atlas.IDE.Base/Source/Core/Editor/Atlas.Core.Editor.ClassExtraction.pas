@@ -55,21 +55,33 @@ type
     Checked: Boolean;
   end;
 
+  /// <summary>Was prepare über die Klasse und den Aufruf meldet; ändert sich in der Maske nicht.</summary>
+  TAtlasExtractionSource = record
+    SourceClass: string;
+    /// <summary>Unit der Klasse.</summary>
+    OwnUnit: string;
+    /// <summary>Units des Projekts für die Auswahl.</summary>
+    Units: TArray<string>;
+    Notes: TArray<string>;
+    /// <summary>Mitglied an der Stelle der Code-Aktion (#675); '' sonst.</summary>
+    MemberName: string;
+    /// <summary>'up' oder 'down' (#675); '' sonst.</summary>
+    Direction: string;
+    /// <summary>Mehrere Ziele wählbar (Nachfahren).</summary>
+    MultiTarget: Boolean;
+    /// <summary>Fehlende Abhängigkeiten sperren das Absenden.</summary>
+    NeedsRequired: Boolean;
+    /// <summary>'overrideSiblings', 'keepAbstract' oder '' ohne Wahl.</summary>
+    OptionKind: string;
+  end;
+
   TAtlasClassExtractionModel = class
   private
-    FSourceClass: string;
-    FOwnUnit: string;
+    FSource: TAtlasExtractionSource;
     FName: string;
     FTargetUnit: string;
-    FUnits: TArray<string>;
-    FNotes: TArray<string>;
     FMembers: TArray<TAtlasExtractionMember>;
-    FMember: string;
-    FDirection: string;
     FTargets: TArray<TAtlasExtractionTarget>;
-    FMultiTarget: Boolean;
-    FNeedsRequired: Boolean;
-    FOptionKind: string;
     FOption: Boolean;
     function GetMember(AIndex: Integer): TAtlasExtractionMember;
     function GetCount: Integer;
@@ -112,29 +124,15 @@ type
     procedure SetTargetChecked(AIndex: Integer; AChecked: Boolean);
     /// <summary>Namen der gewählten Ziele.</summary>
     function CheckedTargets: TArray<string>;
-    property SourceClass: string read FSourceClass;
-    /// <summary>Unit der Klasse.</summary>
-    property OwnUnit: string read FOwnUnit;
+    /// <summary>Klasse, Units, Hinweise und Art des Aufrufs aus prepare.</summary>
+    property Source: TAtlasExtractionSource read FSource;
     property Name: string read FName write FName;
     /// <summary>Ziel-Unit; '' = die Unit der Klasse. Vorbelegt aus prepare (unit).</summary>
     property TargetUnit: string read FTargetUnit write FTargetUnit;
-    /// <summary>Units des Projekts für die Auswahl.</summary>
-    property Units: TArray<string> read FUnits;
-    property Notes: TArray<string> read FNotes;
     property Members[AIndex: Integer]: TAtlasExtractionMember read GetMember; default;
     property Count: Integer read GetCount;
-    /// <summary>Mitglied an der Stelle der Code-Aktion (#675); '' sonst.</summary>
-    property MemberName: string read FMember;
-    /// <summary>'up' oder 'down' (#675); '' sonst.</summary>
-    property Direction: string read FDirection;
     property Targets[AIndex: Integer]: TAtlasExtractionTarget read GetTarget;
     property TargetCount: Integer read GetTargetCount;
-    /// <summary>Mehrere Ziele wählbar (Nachfahren).</summary>
-    property MultiTarget: Boolean read FMultiTarget;
-    /// <summary>Fehlende Abhängigkeiten sperren das Absenden.</summary>
-    property NeedsRequired: Boolean read FNeedsRequired;
-    /// <summary>'overrideSiblings', 'keepAbstract' oder '' ohne Wahl.</summary>
-    property OptionKind: string read FOptionKind;
     property Option: Boolean read FOption write FOption;
   end;
 
@@ -184,7 +182,11 @@ function BoolOf(AObject: TJSONObject; const AKey: string; ADefault: Boolean): Bo
 var
   Value: TJSONValue;
 begin
-  Value := AObject.GetValue(AKey);
+  Value := nil;
+  if AObject <> nil then
+  begin
+    Value := AObject.GetValue(AKey);
+  end;
   if Value is TJSONBool then
   begin
     Result := TJSONBool(Value).AsBoolean;
@@ -234,79 +236,138 @@ end;
 
 { TAtlasClassExtractionModel }
 
-constructor TAtlasClassExtractionModel.Create(const APrepared: TJSONObject);
-var
-  Value, Item: TJSONValue;
-  Member: TAtlasExtractionMember;
-  Entry: TJSONObject;
-  Target_: TAtlasExtractionTarget;
+/// <summary>Option aus prepare ({kind, value}); nil, wenn keine angeboten wird.</summary>
+function OptionOf(APrepared: TJSONObject): TJSONObject;
 begin
-  inherited Create;
-  FSourceClass := StringOf(APrepared, 'className');
-  FOwnUnit := StringOf(APrepared, 'ownUnit');
-  FName := StringOf(APrepared, 'name');
-  FNotes := StringsOf(APrepared, 'notes');
-  FUnits := StringsOf(APrepared, 'units');
-  FTargetUnit := StringOf(APrepared, 'unit');
-  FMember := StringOf(APrepared, 'member');
-  FDirection := StringOf(APrepared, 'direction');
-  FNeedsRequired := True;
-  if APrepared = nil then
+  Result := nil;
+  if (APrepared <> nil) and (APrepared.GetValue('option') is TJSONObject) then
   begin
-    Exit;
+    Result := TJSONObject(APrepared.GetValue('option'));
   end;
-  FNeedsRequired := BoolOf(APrepared, 'needsRequired', True);
-  FMultiTarget := BoolOf(APrepared, 'multiTarget', False);
-  if APrepared.GetValue('option') is TJSONObject then
+end;
+
+function ReadSource(APrepared: TJSONObject): TAtlasExtractionSource;
+begin
+  Result := Default(TAtlasExtractionSource);
+  Result.SourceClass := StringOf(APrepared, 'className');
+  Result.OwnUnit := StringOf(APrepared, 'ownUnit');
+  Result.Notes := StringsOf(APrepared, 'notes');
+  Result.Units := StringsOf(APrepared, 'units');
+  Result.MemberName := StringOf(APrepared, 'member');
+  Result.Direction := StringOf(APrepared, 'direction');
+  Result.NeedsRequired := BoolOf(APrepared, 'needsRequired', True);
+  Result.MultiTarget := BoolOf(APrepared, 'multiTarget', False);
+  Result.OptionKind := StringOf(OptionOf(APrepared), 'kind');
+end;
+
+/// <summary>Einträge der Liste AKey, die Objekte sind.</summary>
+function ObjectsOf(APrepared: TJSONObject; const AKey: string): TArray<TJSONObject>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if (APrepared <> nil) and (APrepared.GetValue(AKey) is TJSONArray) then
   begin
-    Entry := TJSONObject(APrepared.GetValue('option'));
-    FOptionKind := StringOf(Entry, 'kind');
-    FOption := BoolOf(Entry, 'value', False);
-  end;
-  Value := APrepared.GetValue('targets');
-  if Value is TJSONArray then
-  begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(APrepared.GetValue(AKey)) do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        Target_ := Default(TAtlasExtractionTarget);
-        Target_.Name := StringOf(TJSONObject(Item), 'name');
-        Target_.UnitName := StringOf(TJSONObject(Item), 'unit');
-        Target_.Checked := BoolOf(TJSONObject(Item), 'checked', False);
-        FTargets := FTargets + [Target_];
+        Result := Result + [TJSONObject(mItem)];
       end;
     end;
   end;
-  Value := APrepared.GetValue('candidates');
-  if not (Value is TJSONArray) then
+end;
+
+function ReadTargets(APrepared: TJSONObject): TArray<TAtlasExtractionTarget>;
+var
+  mEntry: TJSONObject;
+  mTarget: TAtlasExtractionTarget;
+begin
+  Result := nil;
+  for mEntry in ObjectsOf(APrepared, 'targets') do
   begin
-    Exit;
+    mTarget := Default(TAtlasExtractionTarget);
+    mTarget.Name := StringOf(mEntry, 'name');
+    mTarget.UnitName := StringOf(mEntry, 'unit');
+    mTarget.Checked := BoolOf(mEntry, 'checked', False);
+    Result := Result + [mTarget];
   end;
-  for Item in TJSONArray(Value) do
+end;
+
+function ReadMember(AEntry: TJSONObject): TAtlasExtractionMember;
+begin
+  Result := Default(TAtlasExtractionMember);
+  if AEntry.GetValue('id') is TJSONNumber then
   begin
-    if not (Item is TJSONObject) then
-    begin
-      Continue;
-    end;
-    Entry := TJSONObject(Item);
-    Member := Default(TAtlasExtractionMember);
-    if Entry.GetValue('id') is TJSONNumber then
-    begin
-      Member.Id := TJSONNumber(Entry.GetValue('id')).AsInt;
-    end;
-    Member.Name := StringOf(Entry, 'name');
-    Member.Kind := StringOf(Entry, 'kind');
-    Member.Display := StringOf(Entry, 'display');
-    Member.Visibility := StringOf(Entry, 'visibility');
-    Member.Enabled := BoolOf(Entry, 'enabled', True);
-    Member.Checked := BoolOf(Entry, 'checked', False) and Member.Enabled;
-    Member.Reason := StringOf(Entry, 'reason');
-    Member.CanAbstract := BoolOf(Entry, 'canAbstract', False) and Member.Enabled;
-    Member.Abstract := BoolOf(Entry, 'abstract', False) and Member.CanAbstract;
-    Member.Needs := IdsOf(Entry, 'needs');
-    FMembers := FMembers + [Member];
+    Result.Id := TJSONNumber(AEntry.GetValue('id')).AsInt;
   end;
+  Result.Name := StringOf(AEntry, 'name');
+  Result.Kind := StringOf(AEntry, 'kind');
+  Result.Display := StringOf(AEntry, 'display');
+  Result.Visibility := StringOf(AEntry, 'visibility');
+  Result.Enabled := BoolOf(AEntry, 'enabled', True);
+  Result.Checked := BoolOf(AEntry, 'checked', False) and Result.Enabled;
+  Result.Reason := StringOf(AEntry, 'reason');
+  Result.CanAbstract := BoolOf(AEntry, 'canAbstract', False) and Result.Enabled;
+  Result.Abstract := BoolOf(AEntry, 'abstract', False) and Result.CanAbstract;
+  Result.Needs := IdsOf(AEntry, 'needs');
+end;
+
+function ReadMembers(APrepared: TJSONObject): TArray<TAtlasExtractionMember>;
+var
+  mEntry: TJSONObject;
+begin
+  Result := nil;
+  for mEntry in ObjectsOf(APrepared, 'candidates') do
+  begin
+    Result := Result + [ReadMember(mEntry)];
+  end;
+end;
+
+/// <summary>Stelle des Mitglieds mit der Kennung AId; -1 ohne.</summary>
+function IndexIn(const AMembers: TArray<TAtlasExtractionMember>; AId: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := High(AMembers) downto 0 do
+  begin
+    if AMembers[mIndex].Id = AId then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Hakt an, was AMembers[AIndex] benutzt und noch fehlt; liefert die Zahl neu angehakter Einträge.
+/// </summary>
+function TakeNeedsOf(var AMembers: TArray<TAtlasExtractionMember>; AIndex: Integer): Integer;
+var
+  mNeed, mNeeded: Integer;
+begin
+  Result := 0;
+  for mNeed in AMembers[AIndex].Needs do
+  begin
+    mNeeded := IndexIn(AMembers, mNeed);
+    if (mNeeded >= 0) and AMembers[mNeeded].Enabled and not AMembers[mNeeded].Checked then
+    begin
+      AMembers[mNeeded].Checked := True;
+      Inc(Result);
+    end;
+  end;
+end;
+
+{ TAtlasClassExtractionModel }
+
+constructor TAtlasClassExtractionModel.Create(const APrepared: TJSONObject);
+begin
+  inherited Create;
+  FSource := ReadSource(APrepared);
+  FName := StringOf(APrepared, 'name');
+  FTargetUnit := StringOf(APrepared, 'unit');
+  FOption := BoolOf(OptionOf(APrepared), 'value', False);
+  FTargets := ReadTargets(APrepared);
+  FMembers := ReadMembers(APrepared);
 end;
 
 function TAtlasClassExtractionModel.GetMember(AIndex: Integer): TAtlasExtractionMember;
@@ -342,7 +403,7 @@ begin
   begin
     Exit;
   end;
-  if not FMultiTarget then
+  if not FSource.MultiTarget then
   begin
     // Ein Vorfahr: genau einer gewählt.
     for Index := 0 to High(FTargets) do
@@ -369,17 +430,8 @@ begin
 end;
 
 function TAtlasClassExtractionModel.IndexOfId(AId: Integer): Integer;
-var
-  Index: Integer;
 begin
-  Result := -1;
-  for Index := 0 to High(FMembers) do
-  begin
-    if FMembers[Index].Id = AId then
-    begin
-      Exit(Index);
-    end;
-  end;
+  Result := IndexIn(FMembers, AId);
 end;
 
 procedure TAtlasClassExtractionModel.SetChecked(AIndex: Integer; AChecked: Boolean);
@@ -481,72 +533,65 @@ end;
 
 function TAtlasClassExtractionModel.TakeDependencies: Integer;
 var
-  Index, Need, Needed: Integer;
-  Changed: Boolean;
+  mIndex, mTaken: Integer;
 begin
   Result := 0;
   repeat
-    Changed := False;
-    for Index := 0 to High(FMembers) do
+    mTaken := 0;
+    for mIndex := 0 to High(FMembers) do
     begin
-      if FMembers[Index].Checked and not FMembers[Index].Abstract then
+      if FMembers[mIndex].Checked and not FMembers[mIndex].Abstract then
       begin
-        for Need in FMembers[Index].Needs do
-        begin
-          Needed := IndexOfId(Need);
-          if (Needed >= 0) and FMembers[Needed].Enabled and not FMembers[Needed].Checked then
-          begin
-            FMembers[Needed].Checked := True;
-            Inc(Result);
-            Changed := True;
-          end;
-        end;
+        Inc(mTaken, TakeNeedsOf(FMembers, mIndex));
       end;
     end;
-  until not Changed;
+    Inc(Result, mTaken);
+  until mTaken = 0;
 end;
 
 function TAtlasClassExtractionModel.Validate(out ASubject: string): TAtlasExtractionProblem;
 var
-  Candidate, Needed: string;
+  mCandidate, mMember, mNeeded: string;
 begin
-  Candidate := Trim(FName);
-  ASubject := Candidate;
-  if not IsMove and not IsName(Candidate) then
+  Result := TAtlasExtractionProblem.None;
+  mCandidate := Trim(FName);
+  ASubject := mCandidate;
+  if not IsMove and not IsName(mCandidate) then
   begin
-    Exit(TAtlasExtractionProblem.BadName);
-  end;
-  if not IsMove and SameText(Candidate, FSourceClass) then
+    Result := TAtlasExtractionProblem.BadName;
+  end
+  else if not IsMove and SameText(mCandidate, FSource.SourceClass) then
   begin
-    Exit(TAtlasExtractionProblem.SameName);
-  end;
-  if CheckedCount = 0 then
+    Result := TAtlasExtractionProblem.SameName;
+  end
+  else if CheckedCount = 0 then
   begin
     ASubject := '';
-    Exit(TAtlasExtractionProblem.NoMembers);
-  end;
-  if FNeedsRequired and MissingDependency(Candidate, Needed) then
+    Result := TAtlasExtractionProblem.NoMembers;
+  end
+  else if FSource.NeedsRequired and MissingDependency(mMember, mNeeded) then
   begin
-    ASubject := Candidate;
-    Exit(TAtlasExtractionProblem.MissingDependency);
-  end;
-  if IsMove then
+    ASubject := mMember;
+    Result := TAtlasExtractionProblem.MissingDependency;
+  end
+  else if IsMove then
   begin
     ASubject := '';
     if CheckedTargets = nil then
     begin
-      Exit(TAtlasExtractionProblem.NoTarget);
+      Result := TAtlasExtractionProblem.NoTarget;
     end;
-    Exit(TAtlasExtractionProblem.None);
-  end;
-  Candidate := Target;
-  if (Candidate <> '') and not IsUnitName(Candidate) then
+  end
+  else
   begin
-    ASubject := Candidate;
-    Exit(TAtlasExtractionProblem.BadUnit);
+    mCandidate := Target;
+    ASubject := '';
+    if (mCandidate <> '') and not IsUnitName(mCandidate) then
+    begin
+      ASubject := mCandidate;
+      Result := TAtlasExtractionProblem.BadUnit;
+    end;
   end;
-  ASubject := '';
-  Result := TAtlasExtractionProblem.None;
 end;
 
 function TAtlasClassExtractionModel.Validate: TAtlasExtractionProblem;
@@ -559,7 +604,7 @@ end;
 function TAtlasClassExtractionModel.Target: string;
 begin
   Result := Trim(FTargetUnit);
-  if SameText(Result, FOwnUnit) then
+  if SameText(Result, FSource.OwnUnit) then
   begin
     Result := '';
   end;
@@ -612,7 +657,7 @@ begin
     List.Add(mName);
   end;
   Result.AddPair('targets', List);
-  if FOptionKind <> '' then
+  if FSource.OptionKind <> '' then
   begin
     Result.AddPair('option', TJSONBool.Create(FOption));
   end;

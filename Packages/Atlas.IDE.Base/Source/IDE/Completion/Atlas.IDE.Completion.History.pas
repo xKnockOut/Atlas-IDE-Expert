@@ -55,13 +55,17 @@ class procedure TAtlasIdeHistory.Committed;
 begin
   Inc(FCommits);
   if FCommits mod 10 = 0 then
+  begin
     Save;
+  end;
 end;
 
 class procedure TAtlasIdeHistory.Save;
 begin
   if (FUsage = nil) or not FUsage.Changed then
+  begin
     Exit;
+  end;
   try
     FUsage.SaveToFile(FileName);
   except

@@ -87,6 +87,10 @@ type
     /// suchen“ (#777, eigene Taste und Strg+F12) und „Lesezeichen setzen…“ (#622). Abgeschaltete Funktionen kommen
     /// mit Disabled.</summary>
     class function AllFromSettings(const ASettings: TAtlasPluginSettings): TArray<TAtlasKeyEntry>; static;
+    /// <summary>Zweiter Teil von AllFromSettings ab dem Navigationsverlauf; AShared ist der gemeinsame Vorrang
+    /// der Editorbefehle.</summary>
+    class function MoreFromSettings(const ASettings: TAtlasPluginSettings;
+      AShared: Boolean): TArray<TAtlasKeyEntry>; static;
     /// <summary>Tasten und Vorrang zurück in die Einstellungen; Disabled und die feste Taste Strg+F12 nicht (dafür
     /// gibt es eigene Schalter).</summary>
     class procedure ToSettings(const AEntries: TArray<TAtlasKeyEntry>; var ASettings: TAtlasPluginSettings); static;
@@ -212,23 +216,30 @@ begin
     Create(TAtlasKeyFunction.NextProblem, Word(ASettings.NextProblemKey), Shared, ASettings.Problems),
     Create(TAtlasKeyFunction.PreviousProblem, Word(ASettings.PreviousProblemKey), Shared, ASettings.Problems),
     // Schnell öffnen (#503): aus = Strg+P bleibt der IDE.
-    Create(TAtlasKeyFunction.QuickOpen, Word(ASettings.QuickOpenKey), Shared, ASettings.QuickOpen),
+    Create(TAtlasKeyFunction.QuickOpen, Word(ASettings.QuickOpenKey), Shared, ASettings.QuickOpen)];
+  Result := Result + MoreFromSettings(ASettings, Shared);
+end;
+
+class function TAtlasKeyEntry.MoreFromSettings(const ASettings: TAtlasPluginSettings;
+  AShared: Boolean): TArray<TAtlasKeyEntry>;
+begin
+  Result := [
     // Navigationsverlauf (#504): Alt+Links/Rechts sind in der IDE „Zurück/Vor“ ihrer eigenen Navigation; der Atlas-
     // Verlauf führt deren Sprünge mit, darum mit Vorrang. Aus = die IDE behält die Tasten.
     Create(TAtlasKeyFunction.NavBack, Word(ASettings.NavBackKey), True, ASettings.NavHistory),
     Create(TAtlasKeyFunction.NavForward, Word(ASettings.NavForwardKey), True, ASettings.NavHistory),
-    Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), Shared, ASettings.NavHistory),
+    Create(TAtlasKeyFunction.LastEdit, Word(ASettings.LastEditKey), AShared, ASettings.NavHistory),
     // Definition und Referenzen einblenden (#505).
-    Create(TAtlasKeyFunction.PeekDefinition, Word(ASettings.PeekDefinitionKey), Shared, ASettings.Peek),
-    Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), Shared, ASettings.Peek),
+    Create(TAtlasKeyFunction.PeekDefinition, Word(ASettings.PeekDefinitionKey), AShared, ASettings.Peek),
+    Create(TAtlasKeyFunction.PeekReferences, Word(ASettings.PeekReferencesKey), AShared, ASettings.Peek),
     // Brotkrumenleiste (#590).
-    Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), Shared, ASettings.Breadcrumbs),
+    Create(TAtlasKeyFunction.Breadcrumbs, Word(ASettings.BreadcrumbsKey), AShared, ASettings.Breadcrumbs),
     // Sprung zum Gegenstück (#635).
-    Create(TAtlasKeyFunction.JumpToMatch, Word(ASettings.JumpToMatchKey), Shared, ASettings.JumpToMatch),
-    Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), Shared, ASettings.JumpToMatch),
+    Create(TAtlasKeyFunction.JumpToMatch, Word(ASettings.JumpToMatchKey), AShared, ASettings.JumpToMatch),
+    Create(TAtlasKeyFunction.JumpToMatchSelect, Word(ASettings.JumpToMatchSelectKey), AShared, ASettings.JumpToMatch),
     // Nächste/vorherige Änderung (#507).
-    Create(TAtlasKeyFunction.NextChange, Word(ASettings.NextChangeKey), Shared, ASettings.GitGutter),
-    Create(TAtlasKeyFunction.PreviousChange, Word(ASettings.PreviousChangeKey), Shared, ASettings.GitGutter),
+    Create(TAtlasKeyFunction.NextChange, Word(ASettings.NextChangeKey), AShared, ASettings.GitGutter),
+    Create(TAtlasKeyFunction.PreviousChange, Word(ASettings.PreviousChangeKey), AShared, ASettings.GitGutter),
     // Zeilen verschieben und duplizieren (#634): Alt+↑ ist in der IDE Code-Browsing, Umschalt+Alt+↑/↓ markiert
     // Spaltenblöcke; bewusst übernommen, darum mit Vorrang. Aus = die IDE behält die Tasten.
     Create(TAtlasKeyFunction.MoveLinesUp, Word(ASettings.MoveLinesUpKey), True, ASettings.MoveLines),
@@ -252,43 +263,274 @@ begin
     Create(TAtlasKeyFunction.Search, Word(ASettings.SearchKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchNext, Word(ASettings.SearchNextKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchPrevious, Word(ASettings.SearchPreviousKey), True, ASettings.SearchReplaceIde),
-    Create(TAtlasKeyFunction.SearchMethod, Word(ASettings.SearchMethodKey), Shared),
+    Create(TAtlasKeyFunction.SearchMethod, Word(ASettings.SearchMethodKey), AShared),
     // Suchen und ersetzen (#893): Strg+H wie Strg+F bewusst übernommen; mit search.replace aus gehört sie der IDE.
     Create(TAtlasKeyFunction.SearchReplace, Word(ASettings.SearchReplaceKey), True,
       ASettings.SearchReplaceIde and ASettings.SearchReplace),
     // Formatieren (#43): aus = keine Taste.
-    Create(TAtlasKeyFunction.FormatCode, Word(ASettings.FormatCodeKey), Shared, ASettings.FormatCode),
+    Create(TAtlasKeyFunction.FormatCode, Word(ASettings.FormatCodeKey), AShared, ASettings.FormatCode),
     // Blockkommentar umschalten (#703): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.ToggleBlockComment, Word(ASettings.ToggleBlockCommentKey), Shared,
+    Create(TAtlasKeyFunction.ToggleBlockComment, Word(ASettings.ToggleBlockCommentKey), AShared,
       ASettings.ToggleBlockComment),
     // Neue Zeile ober- oder unterhalb (#700): aus = Tasten frei.
-    Create(TAtlasKeyFunction.NewLineBelow, Word(ASettings.NewLineBelowKey), Shared, ASettings.NewLineAround),
-    Create(TAtlasKeyFunction.NewLineAbove, Word(ASettings.NewLineAboveKey), Shared, ASettings.NewLineAround),
+    Create(TAtlasKeyFunction.NewLineBelow, Word(ASettings.NewLineBelowKey), AShared, ASettings.NewLineAround),
+    Create(TAtlasKeyFunction.NewLineAbove, Word(ASettings.NewLineAboveKey), AShared, ASettings.NewLineAround),
     // Umschließung entfernen (#657): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.Unwrap, Word(ASettings.UnwrapKey), Shared, ASettings.Unwrap),
+    Create(TAtlasKeyFunction.Unwrap, Word(ASettings.UnwrapKey), AShared, ASettings.Unwrap),
     // Fenster „Atlas-Prüfung“ (#909): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.ProblemsWindow, Word(ASettings.ProblemsWindowKey), Shared,
+    Create(TAtlasKeyFunction.ProblemsWindow, Word(ASettings.ProblemsWindowKey), AShared,
       ASettings.Problems and ASettings.ProblemsWindow),
     // Abschnittssprünge (#1101): wirken auch ohne Editorleiste; ohne Taste nichts belegt.
-    Create(TAtlasKeyFunction.SectionInterface, Word(ASettings.GotoInterfaceKey), Shared),
-    Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared),
+    Create(TAtlasKeyFunction.SectionInterface, Word(ASettings.GotoInterfaceKey), AShared),
+    Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), AShared),
     // Nächstes/voriges Lesezeichen (#1104): Vorgabe ohne Taste.
-    Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), Shared, ASettings.QuickBookmarks),
-    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks),
+    Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), AShared, ASettings.QuickBookmarks),
+    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), AShared, ASettings.QuickBookmarks),
     // Gezielt hineinspringen (#836): nur im angehaltenen Zustand, sonst geht die Taste an die IDE; aus = Kürzel frei.
-    Create(TAtlasKeyFunction.StepIntoTarget, Word(ASettings.DebugStepIntoTargetKey), Shared,
+    Create(TAtlasKeyFunction.StepIntoTarget, Word(ASettings.DebugStepIntoTargetKey), AShared,
       ASettings.DebugStepIntoTarget),
     // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; bewusst
     // übernommen, darum mit Vorrang. Aus = die IDE behält die Taste.
     Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType),
     // Sicher löschen (#716): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete),
+    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), AShared, ASettings.SafeDelete),
     // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
-    Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), Shared,
+    Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), AShared,
       ASettings.WelcomePage and ASettings.IssuesCreate),
     // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
     // Willkommensseite).
     Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar)];
+end;
+
+/// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys1(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.Palette:
+      begin
+        ASettings.PaletteKey := AEntry.Key;
+        ASettings.PaletteKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.Check:
+      begin
+        ASettings.CheckKey := AEntry.Key;
+        ASettings.CheckKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.Completion:
+      begin
+        ASettings.CompletionKey := AEntry.Key;
+        ASettings.CompletionKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.Signature:
+      begin
+        ASettings.SignatureKey := AEntry.Key;
+        ASettings.SignatureKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.QuickToggle:
+      begin
+        ASettings.QuickToggleKey := AEntry.Key;
+        ASettings.QuickToggleKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.DiagnosticMode:
+      begin
+        ASettings.DiagnosticModeKey := AEntry.Key;
+        ASettings.DiagnosticModeKeyPriority := AEntry.Priority;
+      end;
+    // Editorbefehle (#399, #721): eine gemeinsame Wahl für alle.
+    TAtlasKeyFunction.CodeActions:
+      begin
+        ASettings.ActionsKey := AEntry.Key;
+        ASettings.EditorKeysPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.ExpandSelection:
+      ASettings.ExpandKey := AEntry.Key;
+    TAtlasKeyFunction.ShrinkSelection:
+      ASettings.ShrinkKey := AEntry.Key;
+    TAtlasKeyFunction.GoToImplementation:
+      ASettings.ImplementationKey := AEntry.Key;
+    TAtlasKeyFunction.TypeDefinition:
+      ASettings.TypeDefinitionKey := AEntry.Key;
+    TAtlasKeyFunction.UndoChange:
+      ASettings.UndoKey := AEntry.Key;
+    TAtlasKeyFunction.RedoChange:
+      ASettings.RedoKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 2 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys2(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.WelcomeSearch:
+      ASettings.WelcomePageSearchKey := AEntry.Key;
+    TAtlasKeyFunction.MethodToggleUp:
+      ASettings.MethodToggleUpKey := AEntry.Key;
+    TAtlasKeyFunction.MethodToggleDown:
+      ASettings.MethodToggleDownKey := AEntry.Key;
+    TAtlasKeyFunction.TestUnit:
+      ASettings.TestUnitKey := AEntry.Key;
+    TAtlasKeyFunction.UnitSearch:
+      ASettings.UnitSearchKey := AEntry.Key;
+    TAtlasKeyFunction.Bookmark:
+      ASettings.BookmarkKey := AEntry.Key;
+    TAtlasKeyFunction.GenerateMenu:
+      ASettings.GenerateMenuKey := AEntry.Key;
+    TAtlasKeyFunction.Notifications:
+      ASettings.NotificationsKey := AEntry.Key;
+    TAtlasKeyFunction.WelcomeQuickBuild:
+      ASettings.WelcomePageQuickActionsBuildKey := AEntry.Key;
+    TAtlasKeyFunction.WelcomeQuickTests:
+      ASettings.WelcomePageQuickActionsTestKey := AEntry.Key;
+    TAtlasKeyFunction.HideElement:
+      ASettings.HideElementKey := AEntry.Key;
+    TAtlasKeyFunction.NextProblem:
+      ASettings.NextProblemKey := AEntry.Key;
+    TAtlasKeyFunction.PreviousProblem:
+      ASettings.PreviousProblemKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 3 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys3(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.QuickOpen:
+      ASettings.QuickOpenKey := AEntry.Key;
+    TAtlasKeyFunction.NavBack:
+      ASettings.NavBackKey := AEntry.Key;
+    TAtlasKeyFunction.NavForward:
+      ASettings.NavForwardKey := AEntry.Key;
+    TAtlasKeyFunction.LastEdit:
+      ASettings.LastEditKey := AEntry.Key;
+    TAtlasKeyFunction.PeekDefinition:
+      ASettings.PeekDefinitionKey := AEntry.Key;
+    TAtlasKeyFunction.PeekReferences:
+      ASettings.PeekReferencesKey := AEntry.Key;
+    TAtlasKeyFunction.Breadcrumbs:
+      ASettings.BreadcrumbsKey := AEntry.Key;
+    TAtlasKeyFunction.JumpToMatch:
+      ASettings.JumpToMatchKey := AEntry.Key;
+    TAtlasKeyFunction.JumpToMatchSelect:
+      ASettings.JumpToMatchSelectKey := AEntry.Key;
+    TAtlasKeyFunction.NextChange:
+      ASettings.NextChangeKey := AEntry.Key;
+    TAtlasKeyFunction.PreviousChange:
+      ASettings.PreviousChangeKey := AEntry.Key;
+    TAtlasKeyFunction.MoveLinesUp:
+      ASettings.MoveLinesUpKey := AEntry.Key;
+    TAtlasKeyFunction.MoveLinesDown:
+      ASettings.MoveLinesDownKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 4 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys4(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.DuplicateLinesUp:
+      ASettings.DuplicateLinesUpKey := AEntry.Key;
+    TAtlasKeyFunction.DuplicateLinesDown:
+      ASettings.DuplicateLinesDownKey := AEntry.Key;
+    TAtlasKeyFunction.CompleteStatement:
+      ASettings.CompleteStatementKey := AEntry.Key;
+    TAtlasKeyFunction.MultiCursorNext:
+      ASettings.MultiCursorNextKey := AEntry.Key;
+    TAtlasKeyFunction.MultiCursorSkip:
+      ASettings.MultiCursorSkipKey := AEntry.Key;
+    TAtlasKeyFunction.MultiCursorLineEnds:
+      ASettings.MultiCursorLineEndsKey := AEntry.Key;
+    TAtlasKeyFunction.MultiCursorAbove:
+      ASettings.MultiCursorAboveKey := AEntry.Key;
+    TAtlasKeyFunction.MultiCursorBelow:
+      ASettings.MultiCursorBelowKey := AEntry.Key;
+    TAtlasKeyFunction.Search:
+      ASettings.SearchKey := AEntry.Key;
+    TAtlasKeyFunction.SearchNext:
+      ASettings.SearchNextKey := AEntry.Key;
+    TAtlasKeyFunction.SearchPrevious:
+      ASettings.SearchPreviousKey := AEntry.Key;
+    TAtlasKeyFunction.SearchMethod:
+      ASettings.SearchMethodKey := AEntry.Key;
+    TAtlasKeyFunction.SearchReplace:
+      ASettings.SearchReplaceKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 5 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys5(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.FormatCode:
+      ASettings.FormatCodeKey := AEntry.Key;
+    TAtlasKeyFunction.ToggleBlockComment:
+      ASettings.ToggleBlockCommentKey := AEntry.Key;
+    TAtlasKeyFunction.NewLineBelow:
+      ASettings.NewLineBelowKey := AEntry.Key;
+    TAtlasKeyFunction.NewLineAbove:
+      ASettings.NewLineAboveKey := AEntry.Key;
+    TAtlasKeyFunction.Unwrap:
+      ASettings.UnwrapKey := AEntry.Key;
+    TAtlasKeyFunction.ProblemsWindow:
+      ASettings.ProblemsWindowKey := AEntry.Key;
+    TAtlasKeyFunction.SectionInterface:
+      ASettings.GotoInterfaceKey := AEntry.Key;
+    TAtlasKeyFunction.SectionImplementation:
+      ASettings.GotoImplementationKey := AEntry.Key;
+    TAtlasKeyFunction.QuickBookmark:
+      begin
+        ASettings.QuickBookmarkKey := AEntry.Key;
+        ASettings.QuickBookmarkKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.QuickBookmarkSet:
+      begin
+        ASettings.QuickBookmarkSetKey := AEntry.Key;
+        ASettings.QuickBookmarkSetKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.QuickBookmarkJump:
+      begin
+        ASettings.QuickBookmarkJumpKey := AEntry.Key;
+        ASettings.QuickBookmarkJumpKeyPriority := AEntry.Priority;
+      end;
+    TAtlasKeyFunction.NextBookmark:
+      ASettings.NextBookmarkKey := AEntry.Key;
+    TAtlasKeyFunction.PreviousBookmark:
+      ASettings.PreviousBookmarkKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 6 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
+/// gehört.</summary>
+procedure StoreKeys6(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
+    TAtlasKeyFunction.StepIntoTarget:
+      ASettings.DebugStepIntoTargetKey := AEntry.Key;
+    TAtlasKeyFunction.ExpressionType:
+      ASettings.ExpressionTypeKey := AEntry.Key;
+    TAtlasKeyFunction.SafeDelete:
+      ASettings.SafeDeleteKey := AEntry.Key;
+    TAtlasKeyFunction.CreateIssue:
+      ASettings.CreateIssueKey := AEntry.Key;
+    TAtlasKeyFunction.DesignerSearch:
+      ASettings.DesignerSearchKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -296,183 +538,16 @@ class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>
 var
   Entry: TAtlasKeyEntry;
 begin
+  // Strg+F12 (UnitSearchIde) ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
   for Entry in AEntries do
-    case Entry.Func of
-      TAtlasKeyFunction.Palette:
-        begin
-          ASettings.PaletteKey := Entry.Key;
-          ASettings.PaletteKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.Check:
-        begin
-          ASettings.CheckKey := Entry.Key;
-          ASettings.CheckKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.Completion:
-        begin
-          ASettings.CompletionKey := Entry.Key;
-          ASettings.CompletionKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.Signature:
-        begin
-          ASettings.SignatureKey := Entry.Key;
-          ASettings.SignatureKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.QuickToggle:
-        begin
-          ASettings.QuickToggleKey := Entry.Key;
-          ASettings.QuickToggleKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.DiagnosticMode:
-        begin
-          ASettings.DiagnosticModeKey := Entry.Key;
-          ASettings.DiagnosticModeKeyPriority := Entry.Priority;
-        end;
-      // Editorbefehle (#399, #721): eine gemeinsame Wahl für alle.
-      TAtlasKeyFunction.CodeActions:
-        begin
-          ASettings.ActionsKey := Entry.Key;
-          ASettings.EditorKeysPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.ExpandSelection:
-        ASettings.ExpandKey := Entry.Key;
-      TAtlasKeyFunction.ShrinkSelection:
-        ASettings.ShrinkKey := Entry.Key;
-      TAtlasKeyFunction.GoToImplementation:
-        ASettings.ImplementationKey := Entry.Key;
-      TAtlasKeyFunction.TypeDefinition:
-        ASettings.TypeDefinitionKey := Entry.Key;
-      TAtlasKeyFunction.UndoChange:
-        ASettings.UndoKey := Entry.Key;
-      TAtlasKeyFunction.RedoChange:
-        ASettings.RedoKey := Entry.Key;
-      TAtlasKeyFunction.WelcomeSearch:
-        ASettings.WelcomePageSearchKey := Entry.Key;
-      TAtlasKeyFunction.MethodToggleUp:
-        ASettings.MethodToggleUpKey := Entry.Key;
-      TAtlasKeyFunction.MethodToggleDown:
-        ASettings.MethodToggleDownKey := Entry.Key;
-      TAtlasKeyFunction.TestUnit:
-        ASettings.TestUnitKey := Entry.Key;
-      TAtlasKeyFunction.UnitSearch:
-        ASettings.UnitSearchKey := Entry.Key;
-      TAtlasKeyFunction.Bookmark:
-        ASettings.BookmarkKey := Entry.Key;
-      TAtlasKeyFunction.GenerateMenu:
-        ASettings.GenerateMenuKey := Entry.Key;
-      TAtlasKeyFunction.Notifications:
-        ASettings.NotificationsKey := Entry.Key;
-      TAtlasKeyFunction.WelcomeQuickBuild:
-        ASettings.WelcomePageQuickActionsBuildKey := Entry.Key;
-      TAtlasKeyFunction.WelcomeQuickTests:
-        ASettings.WelcomePageQuickActionsTestKey := Entry.Key;
-      TAtlasKeyFunction.HideElement:
-        ASettings.HideElementKey := Entry.Key;
-      TAtlasKeyFunction.NextProblem:
-        ASettings.NextProblemKey := Entry.Key;
-      TAtlasKeyFunction.PreviousProblem:
-        ASettings.PreviousProblemKey := Entry.Key;
-      TAtlasKeyFunction.QuickOpen:
-        ASettings.QuickOpenKey := Entry.Key;
-      TAtlasKeyFunction.NavBack:
-        ASettings.NavBackKey := Entry.Key;
-      TAtlasKeyFunction.NavForward:
-        ASettings.NavForwardKey := Entry.Key;
-      TAtlasKeyFunction.LastEdit:
-        ASettings.LastEditKey := Entry.Key;
-      TAtlasKeyFunction.PeekDefinition:
-        ASettings.PeekDefinitionKey := Entry.Key;
-      TAtlasKeyFunction.PeekReferences:
-        ASettings.PeekReferencesKey := Entry.Key;
-      TAtlasKeyFunction.Breadcrumbs:
-        ASettings.BreadcrumbsKey := Entry.Key;
-      TAtlasKeyFunction.JumpToMatch:
-        ASettings.JumpToMatchKey := Entry.Key;
-      TAtlasKeyFunction.JumpToMatchSelect:
-        ASettings.JumpToMatchSelectKey := Entry.Key;
-      TAtlasKeyFunction.NextChange:
-        ASettings.NextChangeKey := Entry.Key;
-      TAtlasKeyFunction.PreviousChange:
-        ASettings.PreviousChangeKey := Entry.Key;
-      TAtlasKeyFunction.MoveLinesUp:
-        ASettings.MoveLinesUpKey := Entry.Key;
-      TAtlasKeyFunction.MoveLinesDown:
-        ASettings.MoveLinesDownKey := Entry.Key;
-      TAtlasKeyFunction.DuplicateLinesUp:
-        ASettings.DuplicateLinesUpKey := Entry.Key;
-      TAtlasKeyFunction.DuplicateLinesDown:
-        ASettings.DuplicateLinesDownKey := Entry.Key;
-      TAtlasKeyFunction.CompleteStatement:
-        ASettings.CompleteStatementKey := Entry.Key;
-      TAtlasKeyFunction.MultiCursorNext:
-        ASettings.MultiCursorNextKey := Entry.Key;
-      TAtlasKeyFunction.MultiCursorSkip:
-        ASettings.MultiCursorSkipKey := Entry.Key;
-      TAtlasKeyFunction.MultiCursorLineEnds:
-        ASettings.MultiCursorLineEndsKey := Entry.Key;
-      TAtlasKeyFunction.MultiCursorAbove:
-        ASettings.MultiCursorAboveKey := Entry.Key;
-      TAtlasKeyFunction.MultiCursorBelow:
-        ASettings.MultiCursorBelowKey := Entry.Key;
-      TAtlasKeyFunction.Search:
-        ASettings.SearchKey := Entry.Key;
-      TAtlasKeyFunction.SearchNext:
-        ASettings.SearchNextKey := Entry.Key;
-      TAtlasKeyFunction.SearchPrevious:
-        ASettings.SearchPreviousKey := Entry.Key;
-      TAtlasKeyFunction.SearchMethod:
-        ASettings.SearchMethodKey := Entry.Key;
-      TAtlasKeyFunction.SearchReplace:
-        ASettings.SearchReplaceKey := Entry.Key;
-      TAtlasKeyFunction.FormatCode:
-        ASettings.FormatCodeKey := Entry.Key;
-      TAtlasKeyFunction.ToggleBlockComment:
-        ASettings.ToggleBlockCommentKey := Entry.Key;
-      TAtlasKeyFunction.NewLineBelow:
-        ASettings.NewLineBelowKey := Entry.Key;
-      TAtlasKeyFunction.NewLineAbove:
-        ASettings.NewLineAboveKey := Entry.Key;
-      TAtlasKeyFunction.Unwrap:
-        ASettings.UnwrapKey := Entry.Key;
-      TAtlasKeyFunction.ProblemsWindow:
-        ASettings.ProblemsWindowKey := Entry.Key;
-      TAtlasKeyFunction.SectionInterface:
-        ASettings.GotoInterfaceKey := Entry.Key;
-      TAtlasKeyFunction.SectionImplementation:
-        ASettings.GotoImplementationKey := Entry.Key;
-      TAtlasKeyFunction.QuickBookmark:
-        begin
-          ASettings.QuickBookmarkKey := Entry.Key;
-          ASettings.QuickBookmarkKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.QuickBookmarkSet:
-        begin
-          ASettings.QuickBookmarkSetKey := Entry.Key;
-          ASettings.QuickBookmarkSetKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.QuickBookmarkJump:
-        begin
-          ASettings.QuickBookmarkJumpKey := Entry.Key;
-          ASettings.QuickBookmarkJumpKeyPriority := Entry.Priority;
-        end;
-      TAtlasKeyFunction.NextBookmark:
-        ASettings.NextBookmarkKey := Entry.Key;
-      TAtlasKeyFunction.PreviousBookmark:
-        ASettings.PreviousBookmarkKey := Entry.Key;
-      TAtlasKeyFunction.StepIntoTarget:
-        ASettings.DebugStepIntoTargetKey := Entry.Key;
-      TAtlasKeyFunction.ExpressionType:
-        ASettings.ExpressionTypeKey := Entry.Key;
-      TAtlasKeyFunction.SafeDelete:
-        ASettings.SafeDeleteKey := Entry.Key;
-      TAtlasKeyFunction.CreateIssue:
-        ASettings.CreateIssueKey := Entry.Key;
-      TAtlasKeyFunction.DesignerSearch:
-        ASettings.DesignerSearchKey := Entry.Key;
-      // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
-      TAtlasKeyFunction.UnitSearchIde:
-        ;
-    end;
+  begin
+    StoreKeys1(Entry, ASettings);
+    StoreKeys2(Entry, ASettings);
+    StoreKeys3(Entry, ASettings);
+    StoreKeys4(Entry, ASettings);
+    StoreKeys5(Entry, ASettings);
+    StoreKeys6(Entry, ASettings);
+  end;
 end;
 
 function TAtlasKeyEntry.IdeKey: Word;
@@ -490,35 +565,53 @@ end;
 function TAtlasKeyEntry.Choice: TAtlasKeyChoice;
 begin
   if Priority then
-    Result := TAtlasKeyChoice.UseAtlas
+  begin
+    Result := TAtlasKeyChoice.UseAtlas;
+  end
   else
+  begin
     Result := TAtlasKeyChoice.LeaveOther;
+  end;
 end;
 
 procedure TAtlasKeyEntry.Choose(AChoice: TAtlasKeyChoice);
 begin
   Priority := AChoice = TAtlasKeyChoice.UseAtlas;
   if Priority and (Key = 0) then
+  begin
     Key := IdeKey;
+  end;
 end;
 
 function TAtlasKeyEntry.Status(const AOwner: string): TAtlasKeyStatus;
 begin
   if Disabled then
-    Result := TAtlasKeyStatus.NoKey
+  begin
+    Result := TAtlasKeyStatus.NoKey;
+  end
   else if Key = 0 then
   begin
     if IdeKey <> 0 then
-      Result := TAtlasKeyStatus.IdeKey
+    begin
+      Result := TAtlasKeyStatus.IdeKey;
+    end
     else
+    begin
       Result := TAtlasKeyStatus.NoKey;
+    end;
   end
   else if AOwner = '' then
-    Result := TAtlasKeyStatus.Free
+  begin
+    Result := TAtlasKeyStatus.Free;
+  end
   else if Priority then
-    Result := TAtlasKeyStatus.AtlasWins
+  begin
+    Result := TAtlasKeyStatus.AtlasWins;
+  end
   else
+  begin
     Result := TAtlasKeyStatus.Left;
+  end;
 end;
 
 { TAtlasKeyOwner }
@@ -549,9 +642,11 @@ begin
     TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
   for Digit := 0 to 9 do
+  begin
     Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + Digit),
       'IDE: Lesezeichen ' + IntToStr(Digit) + ' umschalten'), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + Digit),
       'IDE: Zu Lesezeichen ' + IntToStr(Digit) + ' springen')];
+  end;
 end;
 
 class function TAtlasKeyConflicts.OwnerOf(AShortCut: Word; const AKeys: TArray<TAtlasKeyOwner>): string;
@@ -560,10 +655,16 @@ var
 begin
   Result := '';
   if AShortCut = 0 then
+  begin
     Exit;
+  end;
   for Key in AKeys do
+  begin
     if Key.ShortCut = AShortCut then
+    begin
       Exit(Key.Owner);
+    end;
+  end;
 end;
 
 class function TAtlasKeyConflicts.ShouldBind(AShortCut: Word; const AOwner: string; APriority: Boolean): Boolean;
@@ -596,10 +697,14 @@ begin
     begin
       Name := ExtractFileName(Module);
       if Name.StartsWith(Known[Index].Prefix, True) then
+      begin
         Found := True;
+      end;
     end;
     if Found then
+    begin
       Result := Result + [Known[Index].Name];
+    end;
   end;
 end;
 

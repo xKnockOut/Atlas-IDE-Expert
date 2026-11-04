@@ -114,11 +114,28 @@ begin
   end;
 end;
 
+/// <summary>Stellen von ASymbol als "Zeile:Spalte" mit Schreibkennung, mit Leerzeichen getrennt.</summary>
+function OccurrencesText(const ASymbol: TReassignedSymbol): string;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := '';
+  for mOccurrence in ASymbol.Occurrences do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + Format('%d:%d%s', [mOccurrence.Range.StartPos.Line, mOccurrence.Range.StartPos.Character,
+      WriteCodes[mOccurrence.Write]]);
+  end;
+end;
+
 class function TReassignedTests.Places(const ASource, AName: string): string;
 var
   Tree: TSyntaxTree;
   Symbol: TReassignedSymbol;
-  Occurrence: TReassignedOccurrence;
+  Text: string;
 begin
   Result := '';
   Tree := TPascalParser.Parse(ASource);
@@ -127,15 +144,12 @@ begin
     begin
       if SameText(Symbol.Name, AName) then
       begin
-        for Occurrence in Symbol.Occurrences do
+        Text := OccurrencesText(Symbol);
+        if (Result <> '') and (Text <> '') then
         begin
-          if Result <> '' then
-          begin
-            Result := Result + ' ';
-          end;
-          Result := Result + Format('%d:%d%s', [Occurrence.Range.StartPos.Line, Occurrence.Range.StartPos.Character,
-            WriteCodes[Occurrence.Write]]);
+          Result := Result + ' ';
         end;
+        Result := Result + Text;
       end;
     end;
   finally

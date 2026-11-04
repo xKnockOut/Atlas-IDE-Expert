@@ -255,22 +255,30 @@ var
   Index: Integer;
 begin
   if FPrepared then
+  begin
     Exit;
+  end;
   FPrepared := True;
   HandleNeeded;
   FForm.Items.BeginUpdate;
   try
     for Name in FForms do
+    begin
       FForm.Items.Add(Name);
+    end;
   finally
     FForm.Items.EndUpdate;
   end;
   Index := FForm.Items.IndexOf(FChoice.Form);
   if (Index < 0) and (FForm.Items.Count > 0) then
+  begin
     Index := 0;
+  end;
   FForm.ItemIndex := Index;
   for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+  begin
     FCategories[Category].Checked := Category in FChoice.Categories;
+  end;
   FFrequent.Checked := FChoice.Frequent;
   FAll.Checked := FChoice.Scope = TAtlasEventScope.AllForms;
   FVisible.Checked := FChoice.Scope = TAtlasEventScope.VisibleForms;
@@ -296,12 +304,18 @@ var
 begin
   Result := Default(TAtlasEventChoice);
   for Category := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
+  begin
     if FCategories[Category].Checked then
+    begin
       Include(Result.Categories, Category);
+    end;
+  end;
   Result.Frequent := FFrequent.Checked;
   Result.Scope := TAtlasEventScope.AllForms;
   if FVisible.Checked then
-    Result.Scope := TAtlasEventScope.VisibleForms
+  begin
+    Result.Scope := TAtlasEventScope.VisibleForms;
+  end
   else if FOne.Checked and (FForm.ItemIndex >= 0) then
   begin
     Result.Scope := TAtlasEventScope.OneForm;
@@ -314,21 +328,31 @@ var
   Current: TAtlasEventChoice;
 begin
   if not FPrepared then
+  begin
     Exit;
+  end;
   if (Sender = FForm) and (FForm.ItemIndex >= 0) then
+  begin
     FOne.Checked := True;
+  end;
   Current := Choice;
   FOk.Enabled := Current.Categories <> [];
   if Assigned(FCountText) then
-    FCount.Caption := FCountText(Current)
+  begin
+    FCount.Caption := FCountText(Current);
+  end
   else
+  begin
     FCount.Caption := '';
+  end;
 end;
 
 procedure TAtlasEventBreakDialog.OkClick(Sender: TObject);
 begin
   if Choice.Categories = [] then
+  begin
     Exit;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -346,7 +370,9 @@ begin
   try
     Result := Dialog.ShowModal = mrOk;
     if Result then
+    begin
       AChoice := Dialog.Choice;
+    end;
   finally
     Dialog.Free;
   end;
@@ -374,9 +400,13 @@ var
     begin
       Canvas.Font.Color := ToColor(Colors.Accent);
       if FHot = AIndex then
-        Canvas.Font.Style := [fsUnderline]
+      begin
+        Canvas.Font.Style := [fsUnderline];
+      end
       else
+      begin
         Canvas.Font.Style := [];
+      end;
       Canvas.TextOut(X, Y, ACaption);
       Canvas.Font.Style := [];
     end;
@@ -387,7 +417,9 @@ begin
   Canvas.Font := UIFont;
   TextHeight := Canvas.TextHeight('Wg');
   if ADraw then
+  begin
     Canvas.Brush.Style := bsClear;
+  end;
   X := Scale(Pad);
   Y := Scale(Pad);
   mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]);
@@ -404,7 +436,9 @@ begin
   Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakClose), 1, FCloseRect);
   Width := Max(Width, FCloseRect.Right);
   if ADraw then
+  begin
     Canvas.Brush.Style := bsSolid;
+  end;
   Result.cx := Width + Scale(Pad);
   Result.cy := Y + TextHeight + Scale(Pad);
 end;
@@ -423,7 +457,9 @@ begin
   Left := Max(Area.Left, Min(APoint.X, Area.Right - Size.cx));
   Top := APoint.Y + Scale(Gap);
   if Top + Size.cy > Area.Bottom then
+  begin
     Top := APoint.Y - Scale(Gap) - Size.cy;
+  end;
   Top := Max(Top, Area.Top);
   ShowAt(Rect(Left, Top, Left + Size.cx, Top + Size.cy));
   Announce(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]));
@@ -438,14 +474,18 @@ procedure TAtlasEventBreakBar.KeepWatching;
 begin
   Dismiss;
   if Assigned(FOnContinue) then
+  begin
     FOnContinue();
+  end;
 end;
 
 procedure TAtlasEventBreakBar.CloseBar;
 begin
   Dismiss;
   if Assigned(FOnClose) then
+  begin
     FOnClose();
+  end;
 end;
 
 function TAtlasEventBreakBar.ContinueRect: TRect;
@@ -473,12 +513,18 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Point := TPoint.Create(X, Y);
   if PtInRect(FContinueRect, Point) then
-    KeepWatching
+  begin
+    KeepWatching;
+  end
   else if PtInRect(FCloseRect, Point) then
+  begin
     CloseBar;
+  end;
 end;
 
 procedure TAtlasEventBreakBar.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -490,13 +536,21 @@ begin
   Point := TPoint.Create(X, Y);
   Hot := -1;
   if PtInRect(FContinueRect, Point) then
-    Hot := 0
+  begin
+    Hot := 0;
+  end
   else if PtInRect(FCloseRect, Point) then
+  begin
     Hot := 1;
+  end;
   if Hot >= 0 then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   if Hot <> FHot then
   begin
     FHot := Hot;

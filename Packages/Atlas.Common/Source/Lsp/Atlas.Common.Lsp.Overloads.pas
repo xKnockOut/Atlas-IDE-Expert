@@ -248,7 +248,7 @@ begin
   begin
     raise Fail('Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.');
   end;
-  if not TOverloads.Build(AText, ATree, Target, Kind, ADefault, Outcome, Reason) then
+  if not TOverloads.Build(AText, ATree, Target, TOverloadRequest.Create(Kind, ADefault), Outcome, Reason) then
   begin
     raise Fail('Überladung geht nicht: ' + Reason);
   end;

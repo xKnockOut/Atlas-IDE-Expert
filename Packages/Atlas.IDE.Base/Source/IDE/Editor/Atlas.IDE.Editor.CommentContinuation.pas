@@ -60,6 +60,38 @@ begin
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
+/// <summary>ALines mit den Zeilen von AEdit an Stelle der ersetzten.</summary>
+function ReplacedLines(const ALines: TArray<string>; const AEdit: TAtlasCommentEdit): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ALines) - AEdit.OldCount + Length(AEdit.Lines));
+  for mIndex := 0 to AEdit.StartLine - 1 do
+  begin
+    Result[mIndex] := ALines[mIndex];
+  end;
+  for mIndex := 0 to High(AEdit.Lines) do
+  begin
+    Result[AEdit.StartLine + mIndex] := AEdit.Lines[mIndex];
+  end;
+  for mIndex := AEdit.StartLine + AEdit.OldCount to High(ALines) do
+  begin
+    Result[mIndex - AEdit.OldCount + Length(AEdit.Lines)] := ALines[mIndex];
+  end;
+end;
+
+/// <summary>Schreibt nur den Unterschied von AText zu ANewText in den Puffer von AView.</summary>
+procedure WriteLines(const AView: IOTAEditView; const AText, ANewText: string);
+var
+  mStart, mOldLength: Integer;
+  mInsert: string;
+begin
+  if TAtlasLineMover.Difference(AText, ANewText, mStart, mOldLength, mInsert) then
+  begin
+    WriteBuffer(AView.Buffer, AText, mStart, mOldLength, mInsert);
+  end;
+end;
+
 class function TAtlasIdeCommentContinuation.Options: TAtlasCommentOptions;
 begin
   Result := TAtlasCommentOptions.Defaults;
@@ -96,10 +128,10 @@ end;
 class function TAtlasIdeCommentContinuation.Run(const AView: IOTAEditView): Boolean;
 var
   Buffer: IOTAEditBuffer;
-  Text, LineBreak, NewText, Insert, LineText: string;
+  Text, LineBreak: string;
   Lines, NewLines: TArray<string>;
   Cursor, Target: TOTAEditPos;
-  TabWidth, Line, Character, Start, OldLength, Index: Integer;
+  TabWidth, Line, Character: Integer;
   Edit: TAtlasCommentEdit;
 begin
   Result := False;
@@ -131,27 +163,10 @@ begin
   begin
     Exit;
   end;
-  SetLength(NewLines, Length(Lines) - Edit.OldCount + Length(Edit.Lines));
-  for Index := 0 to Edit.StartLine - 1 do
-  begin
-    NewLines[Index] := Lines[Index];
-  end;
-  for Index := 0 to High(Edit.Lines) do
-  begin
-    NewLines[Edit.StartLine + Index] := Edit.Lines[Index];
-  end;
-  for Index := Edit.StartLine + Edit.OldCount to High(Lines) do
-  begin
-    NewLines[Index - Edit.OldCount + Length(Edit.Lines)] := Lines[Index];
-  end;
-  NewText := string.Join(LineBreak, NewLines);
-  if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
-  begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
-  end;
-  LineText := NewLines[Edit.CursorLine];
+  NewLines := ReplacedLines(Lines, Edit);
+  WriteLines(AView, Text, string.Join(LineBreak, NewLines));
   Target.Line := Edit.CursorLine + 1;
-  Target.Col := TLspSession.IndexToColumn(LineText, Edit.CursorCharacter, TabWidth);
+  Target.Col := TLspSession.IndexToColumn(NewLines[Edit.CursorLine], Edit.CursorCharacter, TabWidth);
   AView.CursorPos := Target;
   AView.MoveViewToCursor;
   AView.Paint;

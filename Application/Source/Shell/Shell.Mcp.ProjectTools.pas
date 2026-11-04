@@ -27,6 +27,7 @@ uses
   System.JSON,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.DeadCodeTools,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -232,8 +233,8 @@ begin
   begin
     raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
   end;
-  Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AContext.Group.Main.Configuration.Settings, AContext.Root, Files,
-    AContext.Index, AContext.Group.RuleProjectFiles, AContext.Group.Main.State.Namespaces, SameText(Format, 'json'));
+  Result := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), Files, AContext.Index, AContext.Group.RuleProjectFiles, AContext.Group.Main.State.Namespaces, SameText(Format, 'json'));
 end;
 
 procedure AddFindUnusedCode(const AContext: TMcpToolContext);

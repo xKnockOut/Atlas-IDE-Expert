@@ -95,8 +95,12 @@ var
 begin
   Result := Trim(APath);
   for Index := Length(Result) downto 1 do
+  begin
     if CharInSet(Result[Index], ['\', '/']) then
+    begin
       Exit(Copy(Result, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 { TAtlasSavedItem }
@@ -104,10 +108,14 @@ end;
 function TAtlasSavedItem.Place: string;
 begin
   if Kind = TAtlasSavedKind.Favorite then
+  begin
     Exit(UnitName);
+  end;
   Result := NameOfPath(FileName);
   if Line >= 0 then
+  begin
     Result := Result + ':' + IntToStr(Line + 1);
+  end;
 end;
 
 function TAtlasSavedItem.ProjectName: string;
@@ -116,7 +124,9 @@ var
 begin
   Result := '';
   if Project = '' then
+  begin
     Exit;
+  end;
   Summary := TAtlasProjectSummary.Create(Project);
   Result := Summary.Name;
 end;
@@ -127,15 +137,25 @@ function Compare(const A, B: TAtlasSavedItem): Integer;
 begin
   Result := CompareText(A.ProjectName, B.ProjectName);
   if Result = 0 then
+  begin
     Result := CompareText(A.Project, B.Project);
+  end;
   if Result = 0 then
+  begin
     Result := Ord(A.Kind) - Ord(B.Kind);
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(NameOfPath(A.FileName), NameOfPath(B.FileName));
+  end;
   if Result = 0 then
+  begin
     Result := CompareText(A.FileName, B.FileName);
+  end;
   if Result = 0 then
+  begin
     Result := A.Line - B.Line;
+  end;
 end;
 
 /// <summary>Stabil sortieren (Einfügen); die Listen sind klein.</summary>
@@ -222,7 +242,9 @@ var
 begin
   Words := LowerCase(APattern).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   if Length(Words) = 0 then
+  begin
     Exit(AItems);
+  end;
   Result := nil;
   for Item in AItems do
   begin
@@ -230,13 +252,17 @@ begin
       #1 + Item.UnitName);
     Matches := True;
     for Word in Words do
+    begin
       if Pos(Word, Haystack) = 0 then
       begin
         Matches := False;
         Break;
       end;
+    end;
     if Matches then
+    begin
       Result := Result + [Item];
+    end;
   end;
 end;
 
@@ -248,17 +274,23 @@ var
 begin
   Result := False;
   if AWord = '' then
+  begin
     Exit;
+  end;
   Lower := LowerCase(ALine);
   Wanted := LowerCase(AWord);
   Start := 1;
   repeat
     Found := Pos(Wanted, Lower, Start);
     if Found = 0 then
+    begin
       Exit;
+    end;
     if ((Found = 1) or not TTextChars.IsIdentChar(Lower[Found - 1])) and
       ((Found + Length(Wanted) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Found + Length(Wanted)])) then
+    begin
       Exit(True);
+    end;
     Start := Found + 1;
   until False;
 end;
@@ -272,19 +304,27 @@ begin
   Text := TrimLeft(ALine);
   Result := False;
   if not SameText(Copy(Text, 1, Length(ATypeName)), ATypeName) then
+  begin
     Exit;
+  end;
   Index := Length(ATypeName) + 1;
   if (Index <= Length(Text)) and TTextChars.IsIdentChar(Text[Index]) then
+  begin
     Exit;
+  end;
   // Generische Parameter überspringen.
   if (Index <= Length(Text)) and (Text[Index] = '<') then
   begin
     while (Index <= Length(Text)) and (Text[Index] <> '>') do
+    begin
       Inc(Index);
+    end;
     Inc(Index);
   end;
   while (Index <= Length(Text)) and (Text[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   Result := (Index <= Length(Text)) and (Text[Index] = '=');
 end;
 
@@ -298,38 +338,54 @@ var
 begin
   Result := -1;
   if Trim(AMember) = '' then
+  begin
     Exit;
+  end;
   Wanted := AMember;
   if ATypeName <> '' then
+  begin
     Wanted := ATypeName + '.' + AMember;
+  end;
   // Methoden und Routinen: zuerst die Deklaration, sonst die Implementierung.
   Places := TAtlasMethodToggle.Places(AText);
   Body := -1;
   for Place in Places do
+  begin
     if SameText(Place.Name, Wanted) then
     begin
       if not Place.IsBody then
+      begin
         Exit(Place.Line);
+      end;
       if Body < 0 then
+      begin
         Body := Place.Line;
+      end;
     end;
+  end;
   // Eigenschaften, Felder und Ereignisse: in der Deklaration des Typs.
   if ATypeName <> '' then
   begin
     Lines := AText.Replace(#13, '').Split([#10]);
     for Index := 0 to High(Lines) do
+    begin
       if IsTypeHead(Lines[Index], ATypeName) then
       begin
         for Line := Index + 1 to High(Lines) do
         begin
           if HasWord(Lines[Line], AMember) then
+          begin
             Exit(Line);
+          end;
           // Ende der Deklaration.
           if SameText(Trim(Lines[Line]), 'end;') then
+          begin
             Break;
+          end;
         end;
         Break;
       end;
+    end;
   end;
   Result := Body;
 end;
@@ -342,22 +398,30 @@ begin
   Path := Trim(ARelative).Replace('/', '\');
   // Laufwerk („C:\…“) oder Netzwerkpfad („\\server\…“): schon absolut.
   if ((Length(Path) >= 2) and (Path[2] = ':')) or Path.StartsWith('\\') or (Trim(AFolder) = '') then
+  begin
     Exit(Path);
+  end;
   Path := Trim(AFolder).Replace('/', '\');
   if not Path.EndsWith('\') then
+  begin
     Path := Path + '\';
+  end;
   Path := Path + Trim(ARelative).Replace('/', '\');
   Parts := Path.Split(['\']);
   Kept := nil;
   for Part in Parts do
   begin
     if Part = '.' then
+    begin
       Continue;
+    end;
     // „..“ nimmt den letzten Teil weg, aber nie das Laufwerk.
     if Part = '..' then
     begin
       if Length(Kept) > 1 then
+      begin
         SetLength(Kept, Length(Kept) - 1);
+      end;
       Continue;
     end;
     Kept := Kept + [Part];
@@ -375,27 +439,35 @@ begin
   Result := nil;
   Folder := '';
   for Index := Length(AGroupFile) downto 1 do
+  begin
     if CharInSet(AGroupFile[Index], ['\', '/']) then
     begin
       Folder := Copy(AGroupFile, 1, Index - 1);
       Break;
     end;
+  end;
   Lower := LowerCase(AText);
   Start := 1;
   repeat
     Found := Pos('<projects ', Lower, Start);
     if Found = 0 then
+    begin
       Break;
+    end;
     Stop := Pos('>', Lower, Found);
     if Stop = 0 then
+    begin
       Break;
+    end;
     Index := Pos(Marker, Lower, Found);
     if (Index > 0) and (Index < Stop) then
     begin
       Inc(Index, Length(Marker));
       Value := Copy(AText, Index, Pos('"', AText, Index) - Index);
       if Trim(Value) <> '' then
+      begin
         Result := Result + [ResolvePath(Folder, Value)];
+      end;
     end;
     Start := Stop + 1;
   until False;
@@ -407,10 +479,16 @@ var
 begin
   Result := '';
   if Trim(AUnitName) = '' then
+  begin
     Exit;
+  end;
   for Entry in AFiles do
+  begin
     if SameText(Entry.UnitName, Trim(AUnitName)) then
+    begin
       Exit(Entry.FileName);
+    end;
+  end;
 end;
 
 end.

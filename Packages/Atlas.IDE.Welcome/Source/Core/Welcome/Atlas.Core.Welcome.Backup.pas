@@ -106,11 +106,13 @@ var
   Kind: TAtlasRegKind;
 begin
   for Kind := Low(TAtlasRegKind) to High(TAtlasRegKind) do
+  begin
     if SameText(KindNames[Kind], AName) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   AKind := TAtlasRegKind.Text;
   Result := False;
 end;
@@ -132,10 +134,16 @@ begin
   Result := SameText(ALeft.Name, ARight.Name) and (ALeft.Kind = ARight.Kind) and (ALeft.Data = ARight.Data) and
     (Length(ALeft.Lines) = Length(ARight.Lines));
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 0 to High(ALeft.Lines) do
+  begin
     if ALeft.Lines[Index] <> ARight.Lines[Index] then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 { TAtlasRegKey }
@@ -159,7 +167,9 @@ function TAtlasRegKey.AddKey(const AName: string): TAtlasRegKey;
 begin
   Result := FindKey(AName);
   if Result <> nil then
+  begin
     Exit;
+  end;
   Result := TAtlasRegKey.Create(AName);
   FKeys.Add(Result);
 end;
@@ -169,8 +179,12 @@ var
   Key: TAtlasRegKey;
 begin
   for Key in FKeys do
+  begin
     if SameText(Key.Name, AName) then
+    begin
       Exit(Key);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -179,11 +193,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to FValues.Count - 1 do
+  begin
     if SameText(FValues[Index].Name, AValue.Name) then
     begin
       FValues[Index] := AValue;
       Exit;
     end;
+  end;
   FValues.Add(AValue);
 end;
 
@@ -192,11 +208,13 @@ var
   Value: TAtlasRegValue;
 begin
   for Value in FValues do
+  begin
     if SameText(Value.Name, AName) then
     begin
       AValue := Value;
       Exit(True);
     end;
+  end;
   AValue := TAtlasRegValue.Create(AName, TAtlasRegKind.Text, '');
   Result := False;
 end;
@@ -208,9 +226,13 @@ var
 begin
   Result := TAtlasRegKey.Create(FName);
   for Value in FValues do
+  begin
     Result.FValues.Add(Value);
+  end;
   for Key in FKeys do
+  begin
     Result.FKeys.Add(Key.Clone);
+  end;
 end;
 
 function TAtlasRegKey.SameAs(AOther: TAtlasRegKey): Boolean;
@@ -219,17 +241,27 @@ var
   Key, OtherKey: TAtlasRegKey;
 begin
   if AOther = nil then
+  begin
     Exit(False);
+  end;
   if (FValues.Count <> AOther.FValues.Count) or (FKeys.Count <> AOther.FKeys.Count) then
+  begin
     Exit(False);
+  end;
   for Value in FValues do
+  begin
     if not AOther.FindValue(Value.Name, Other) or not TAtlasRegValue.Same(Value, Other) then
+    begin
       Exit(False);
+    end;
+  end;
   for Key in FKeys do
   begin
     OtherKey := AOther.FindKey(Key.Name);
     if (OtherKey = nil) or not Key.SameAs(OtherKey) then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -254,17 +286,23 @@ begin
     begin
       Lines := TJSONArray.Create;
       for Line in Value.Lines do
+      begin
         Lines.Add(Line);
+      end;
       Item.AddPair('lines', Lines);
     end
     else
+    begin
       Item.AddPair('data', Value.Data);
+    end;
     Values.AddElement(Item);
   end;
   Keys := TJSONObject.Create;
   Result.AddPair('keys', Keys);
   for Key in AKey.Keys do
+  begin
     Keys.AddPair(Key.Name, KeyToJson(Key));
+  end;
 end;
 
 function KeyFromJson(const AName: string; AJson: TJSONObject; out AKey: TAtlasRegKey): Boolean;
@@ -287,30 +325,42 @@ begin
       for Index := 0 to Values.Count - 1 do
       begin
         if not (Values.Items[Index] is TJSONObject) then
+        begin
           Exit;
+        end;
         Item := TJSONObject(Values.Items[Index]);
         Field := Item.GetValue('name');
         if not (Field is TJSONString) then
+        begin
           Exit;
+        end;
         Value := TAtlasRegValue.Create(Field.Value, TAtlasRegKind.Text, '');
         Field := Item.GetValue('kind');
         if not (Field is TJSONString) or not KindOf(Field.Value, Kind) then
+        begin
           Exit;
+        end;
         Value.Kind := Kind;
         if Kind = TAtlasRegKind.MultiText then
         begin
           LinesField := Item.GetValue('lines');
           if not (LinesField is TJSONArray) then
+          begin
             Exit;
+          end;
           Lines := TJSONArray(LinesField);
           for LineIndex := 0 to Lines.Count - 1 do
+          begin
             Value.Lines := Value.Lines + [Lines.Items[LineIndex].Value];
+          end;
         end
         else
         begin
           Field := Item.GetValue('data');
           if not (Field is TJSONString) then
+          begin
             Exit;
+          end;
           Value.Data := Field.Value;
         end;
         AKey.Values.Add(Value);
@@ -323,16 +373,22 @@ begin
       for Index := 0 to Keys.Count - 1 do
       begin
         if not (Keys.Pairs[Index].JsonValue is TJSONObject) then
+        begin
           Exit;
+        end;
         if not KeyFromJson(Keys.Pairs[Index].JsonString.Value, TJSONObject(Keys.Pairs[Index].JsonValue), Child) then
+        begin
           Exit;
+        end;
         AKey.Keys.Add(Child);
       end;
     end;
     Result := True;
   finally
     if not Result then
+    begin
       FreeAndNil(AKey);
+    end;
   end;
 end;
 
@@ -356,7 +412,9 @@ begin
   Value := TJSONObject.ParseJSONValue(AText);
   try
     if Value is TJSONObject then
+    begin
       KeyFromJson('', TJSONObject(Value), Result);
+    end;
   finally
     Value.Free;
   end;
@@ -382,14 +440,18 @@ var
 begin
   Result := nil;
   if FKeys.TryGetValue(LowerCase(APath), Key) then
+  begin
     Result := Key.Clone;
+  end;
 end;
 
 procedure TAtlasMemoryRegistry.Replace(const APath: string; AKey: TAtlasRegKey);
 begin
   FKeys.Remove(LowerCase(APath));
   if AKey <> nil then
+  begin
     FKeys.Add(LowerCase(APath), AKey.Clone);
+  end;
 end;
 
 { TAtlasWelcomeBackup }
@@ -406,7 +468,9 @@ begin
     try
       Root.AddPair('existed', TJSONBool.Create(Key <> nil));
       if Key <> nil then
+      begin
         Root.AddPair('key', KeyToJson(Key));
+      end;
     finally
       Key.Free;
     end;
@@ -427,17 +491,23 @@ begin
   Value := TJSONObject.ParseJSONValue(ASnapshot);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     Field := Root.GetValue('path');
     if not (Field is TJSONString) or (Field.Value = '') then
+    begin
       Exit;
+    end;
     Path := Field.Value;
     Field := Root.GetValue('key');
     if Field is TJSONObject then
     begin
       if not KeyFromJson('', TJSONObject(Field), Key) then
+      begin
         Exit;
+      end;
       try
         AAccess.Replace(Path, Key);
       finally
@@ -445,8 +515,10 @@ begin
       end;
     end
     else
+    begin
       // Vorher gab es den Schlüssel nicht: wieder entfernen.
       AAccess.Replace(Path, nil);
+    end;
     Result := True;
   finally
     Value.Free;
@@ -463,18 +535,24 @@ begin
   Value := TJSONObject.ParseJSONValue(ASnapshot);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     Field := Root.GetValue('path');
     if not (Field is TJSONString) or (Field.Value = '') then
+    begin
       Exit;
+    end;
     Current := AAccess.Read(Field.Value);
     try
       Field := Root.GetValue('key');
       if Field is TJSONObject then
       begin
         if not KeyFromJson('', TJSONObject(Field), Key) then
+        begin
           Exit;
+        end;
         try
           Result := Key.SameAs(Current);
         finally
@@ -482,7 +560,9 @@ begin
         end;
       end
       else
+      begin
         Result := Current = nil;
+      end;
     finally
       Current.Free;
     end;
@@ -502,9 +582,13 @@ var
 begin
   Base := ABaseKey;
   while (Base <> '') and (Base[1] = '\') do
+  begin
     Delete(Base, 1, 1);
+  end;
   while (Base <> '') and (Base[Length(Base)] = '\') do
+  begin
     Delete(Base, Length(Base), 1);
+  end;
   Result := Base + '\WelcomePage';
 end;
 

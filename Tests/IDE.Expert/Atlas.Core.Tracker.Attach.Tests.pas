@@ -104,8 +104,8 @@ type
     procedure Answer(const AStatus: array of Integer);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
   end;
 
   /// <summary>Transport nur zum Lesen (wie vor #1276).</summary>
@@ -155,7 +155,7 @@ begin
 end;
 
 function TFakeSend.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
-  out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+  out AResponse: TAtlasCiResponse): Boolean;
 var
   mIndex: Integer;
 begin
@@ -163,13 +163,13 @@ begin
   Urls := Urls + [AUrl];
   ContentTypes := ContentTypes + [AContentType];
   Bodies := Bodies + [BodyText(ABody)];
-  AStatus := 200;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
+  AResponse.Status := 200;
   if mIndex < Length(FStatus) then
   begin
-    AStatus := FStatus[mIndex];
+    AResponse.Status := FStatus[mIndex];
   end;
-  AText := '{}';
-  AError := TAtlasCiFetchError.None;
+  AResponse.Text := '{}';
   Result := True;
 end;
 

@@ -172,7 +172,9 @@ class function TAtlasWelcomeSetup.Elapsed(AStarted, ANow: UInt64): Integer;
 begin
   Result := 0;
   if (AStarted = 0) or (ANow < AStarted) then
+  begin
     Exit;
+  end;
   Result := Integer((ANow - AStarted) div 1000);
 end;
 
@@ -189,7 +191,9 @@ class function TAtlasWelcomeSetup.Lines(const ASetup: TAtlasProjectSetup; AMax: 
     Line.Uncertain := AFinding.Uncertain;
     Line.Macros := '';
     if Line.Uncertain then
+    begin
       Line.Macros := TAtlasWelcomeSetup.MacroList(ASetup.SkippedMacros);
+    end;
     Line.FileName := AFinding.FileName;
     Line.Line := AFinding.Line;
     Line.Count := AFinding.Count;
@@ -205,20 +209,36 @@ begin
   AMore := 0;
   // Bei einer Gruppe stehen Funde schon da, bevor alle Projekte geprüft sind.
   if not ASetup.Checked and (Length(ASetup.MissingUnits) + Length(ASetup.UndefinedDefines) = 0) then
+  begin
     Exit(nil);
+  end;
   for Finding in ASetup.MissingUnits do
+  begin
     if Length(List) < AMax then
+    begin
       Add(TAtlasSetupFindingKind.MissingUnit, Finding, List);
+    end;
+  end;
   for Finding in ASetup.UndefinedDefines do
+  begin
     if Length(List) < AMax then
+    begin
       Add(TAtlasSetupFindingKind.UndefinedDefine, Finding, List);
+    end;
+  end;
   // Hinweise zu requires-Packages (#759) zuletzt; sie sind keine Fehler.
   for Finding in ASetup.Hints do
+  begin
     if Length(List) < AMax then
+    begin
       Add(TAtlasSetupFindingKind.Hint, Finding, List);
+    end;
+  end;
   AMore := ASetup.MissingUnitCount + ASetup.UndefinedDefineCount + Length(ASetup.Hints) - Length(List);
   if AMore < 0 then
+  begin
     AMore := 0;
+  end;
   Result := List;
 end;
 
@@ -230,13 +250,17 @@ begin
   Result := AFileName;
   Folder := '';
   for Index := Length(AProject) downto 1 do
+  begin
     if CharInSet(AProject[Index], ['\', '/']) then
     begin
       Folder := Copy(AProject, 1, Index);
       Break;
     end;
+  end;
   if (Folder <> '') and SameText(Copy(AFileName, 1, Length(Folder)), Folder) then
+  begin
     Result := Copy(AFileName, Length(Folder) + 1, MaxInt);
+  end;
 end;
 
 class function TAtlasWelcomeSetup.NameOf(const AProject: string): string;
@@ -259,7 +283,9 @@ class function TAtlasWelcomeSetup.Checked(const APrevious: TAtlasProjectSetup; c
     for Item in AList do
     begin
       if Length(Result) >= TAtlasProjectSetup.MaxFindings then
+      begin
         Break;
+      end;
       Finding := Default(TAtlasSetupFinding);
       Finding.Name := Item.Name;
       Finding.FileName := Relative(AProject, Item.FileName);
@@ -307,8 +333,12 @@ var
 begin
   Result := '';
   for Index := Length(AFileName) downto 1 do
+  begin
     if CharInSet(AFileName[Index], ['\', '/']) then
+    begin
       Exit(Copy(AFileName, 1, Index));
+    end;
+  end;
 end;
 
 function IsAbsolutePath(const APath: string): Boolean;
@@ -327,13 +357,17 @@ class function TAtlasWelcomeSetup.Combined(const AGroupProject: string; const AG
     for Finding in AFrom do
     begin
       if Length(AList) >= TAtlasProjectSetup.MaxFindings then
+      begin
         Exit;
+      end;
       AList := AList + [Finding];
       AList[High(AList)].Project := TAtlasWelcomeSetup.NameOf(AMember.Project);
       // Relativ zum Projekt gespeichert, für die Karte relativ zur Gruppe.
       if (Finding.FileName <> '') and not IsAbsolutePath(Finding.FileName) then
+      begin
         AList[High(AList)].FileName := TAtlasWelcomeSetup.Relative(AGroupProject,
           FolderWithSlash(AMember.Project) + Finding.FileName);
+      end;
     end;
   end;
 
@@ -350,10 +384,14 @@ begin
   for Member in AMembers do
   begin
     if not Member.Setup.Checked then
+    begin
       Continue;
+    end;
     Inc(AChecked);
     if Member.Setup.CheckedAt > Result.CheckedAt then
+    begin
       Result.CheckedAt := Member.Setup.CheckedAt;
+    end;
     Inc(Result.Files, Member.Setup.Files);
     Inc(Result.Unreadable, Member.Setup.Unreadable);
     Inc(Result.MissingUnitCount, Member.Setup.MissingUnitCount);
@@ -367,16 +405,24 @@ begin
     begin
       Seen := False;
       for Known in Result.SkippedMacros do
+      begin
         if SameText(Known, Macro) then
+        begin
           Seen := True;
+        end;
+      end;
       if not Seen then
+      begin
         Result.SkippedMacros := Result.SkippedMacros + [Macro];
+      end;
     end;
   end;
   // Erledigt erst, wenn jedes Projekt geprüft ist.
   Result.Checked := (Length(AMembers) > 0) and (AChecked = Length(AMembers));
   if Result.Checked or (AChecked > 0) then
+  begin
     Result.Known := True;
+  end;
 end;
 
 class function TAtlasWelcomeSetup.MacroList(const AMacros: TArray<string>): string;
@@ -392,7 +438,9 @@ begin
       Break;
     end;
     if Result <> '' then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + '$(' + AMacros[Index] + ')';
   end;
 end;
