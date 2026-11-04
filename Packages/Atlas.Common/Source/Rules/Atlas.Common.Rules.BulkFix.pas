@@ -436,7 +436,8 @@ begin
     var
       mScopes: TFindingScopes;
     begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText, AProject, ASource, mScopes);
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
     end;
 end;
 
@@ -453,7 +454,8 @@ begin
     var
       mScopes: TFindingScopes;
     begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText, AProject, ASource, mScopes);
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
       Result := ABaseline.Filter(ARelativePath, AText, mScopes, Result);
     end;
 end;

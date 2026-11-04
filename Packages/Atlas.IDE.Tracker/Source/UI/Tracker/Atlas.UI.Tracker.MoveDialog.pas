@@ -32,6 +32,8 @@ type
     FMove: TButton;
     FCancel: TButton;
     procedure DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
+    procedure AddButtons(ATop: Integer);
   public
     constructor CreateDialog(AOwner: TComponent; const AKey, AColumn: string);
     /// <summary>Kommentar ohne Leerzeilen am Ende; '' = keiner.</summary>
@@ -61,7 +63,6 @@ const
 constructor TAtlasBoardMoveDialog.CreateDialog(AOwner: TComponent; const AKey, AColumn: string);
 var
   mLabel: TLabel;
-  mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveTitle);
@@ -108,6 +109,24 @@ begin
   FDontAsk.Top := FComment.Top + FComment.Height + 1;
   FDontAsk.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveDontAsk);
 
+  AddButtons(FDontAsk.Top + FDontAsk.Height + 1);
+  ActiveControl := FComment;
+end;
+
+function TAtlasBoardMoveDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, 0, Gap, 0);
+end;
+
+procedure TAtlasBoardMoveDialog.AddButtons(ATop: Integer);
+var
+  mButtons: TFlowPanel;
+begin
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
   mButtons.Align := alTop;
@@ -115,25 +134,14 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
   mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  mButtons.Top := FDontAsk.Top + FDontAsk.Height + 1;
+  mButtons.Top := ATop;
   Canvas.Font := Font;
-  FMove := TButton.Create(Self);
-  FMove.Parent := mButtons;
-  FMove.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveOk);
-  FMove.Width := Canvas.TextWidth(FMove.Caption) + ScaleValue(32);
-  FMove.AlignWithMargins := True;
-  FMove.Margins.SetBounds(0, 0, Gap, 0);
+  FMove := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardMoveOk));
   FMove.Default := True;
   FMove.ModalResult := mrOk;
-  FCancel := TButton.Create(Self);
-  FCancel.Parent := mButtons;
-  FCancel.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel);
-  FCancel.Width := Canvas.TextWidth(FCancel.Caption) + ScaleValue(32);
-  FCancel.AlignWithMargins := True;
-  FCancel.Margins.SetBounds(0, 0, Gap, 0);
+  FCancel := AddButton(mButtons, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueDialogCancel));
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
-  ActiveControl := FComment;
   ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 

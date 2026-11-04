@@ -14,6 +14,7 @@ procedure RegisterBuiltinRules3(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Rules.Builtin.Platform,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
   Atlas.Common.Rules.Builtin.CompilerHints,
@@ -42,6 +43,7 @@ uses
 
 procedure RegisterBuiltinRules3(const ARegistry: TRuleRegistry);
 begin
+  RegisterPlatformRules(ARegistry);
   RegisterIdiomRules(ARegistry);
   RegisterInliningRules(ARegistry);
   RegisterCompilerHintRules(ARegistry);
