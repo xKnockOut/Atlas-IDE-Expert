@@ -69,8 +69,8 @@ begin
   begin
     LineBreak := #13#10;
   end;
-  if not TResourceStrings.Insertion(AText, Tokens, True, -1, Format('%s = %s;', [AName, AValue]), LineBreak,
-    AEdit) then
+  if not TResourceStrings.Insertion(AText, Tokens, TResourcePlace.Create(True, -1), Format('%s = %s;', [AName, AValue]),
+    LineBreak, AEdit) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die Unit hat keinen implementation-Teil');
   end;

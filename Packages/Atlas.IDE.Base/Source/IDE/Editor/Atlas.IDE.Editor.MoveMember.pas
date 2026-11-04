@@ -53,13 +53,13 @@ const
 /// <summary>„… in Vorfahr verschieben“ bzw. „… in Nachfahren verschieben“ je nach Richtung von AModel.</summary>
 function TitleOf(AModel: TAtlasClassExtractionModel): string;
 begin
-  if AModel.Direction = 'down' then
+  if AModel.Source.Direction = 'down' then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveDownTitle, [AModel.MemberName]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveDownTitle, [AModel.Source.MemberName]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveUpTitle, [AModel.MemberName]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.MoveUpTitle, [AModel.Source.MemberName]);
   end;
 end;
 

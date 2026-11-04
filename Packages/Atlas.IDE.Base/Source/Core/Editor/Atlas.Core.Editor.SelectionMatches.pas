@@ -231,61 +231,73 @@ begin
   end;
 end;
 
+/// <summary>Erster Treffer (1-basiert) aus AFound, der bei oder nach ACharacter beginnt; AAll: jeder zählt.
+/// 0 ohne.</summary>
+function FirstFrom(const AFound: TArray<Integer>; ACharacter: Integer; AAll: Boolean): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  mIndex := 0;
+  while (Result = 0) and (mIndex <= High(AFound)) do
+  begin
+    if AAll or (AFound[mIndex] - 1 >= ACharacter) then
+    begin
+      Result := AFound[mIndex];
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Letzter Treffer (1-basiert) aus AFound, der bis ACharacter endet; AAll: jeder zählt. 0 ohne.</summary>
+function LastBefore(const AFound: TArray<Integer>; ACharacter, ALength: Integer; AAll: Boolean): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex in AFound do
+  begin
+    if AAll or (mIndex - 1 + ALength <= ACharacter) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
 class function TAtlasSelectionMatches.Next(const ALines: TArray<string>; const ATerm: string;
   const AOptions: TAtlasSelectionMatchOptions; const AFrom: TLspTextPosition; ABackward: Boolean;
   out AFound: TLspRange): Boolean;
 var
-  Needle: string;
-  Count, Step, Row, Index, Chosen: Integer;
-  Found: TArray<Integer>;
+  mNeedle: string;
+  mCount, mStep, mRow, mChosen: Integer;
+  mFound: TArray<Integer>;
 begin
   Result := False;
   AFound := TLspRange.Create(AFrom.Line, AFrom.Character, AFrom.Line, AFrom.Character);
-  Count := Length(ALines);
-  if (ATerm = '') or (Count = 0) then
-  begin
-    Exit;
-  end;
-  Needle := NeedleOf(ATerm, AOptions);
+  mCount := Length(ALines);
+  mNeedle := NeedleOf(ATerm, AOptions);
+  mStep := 0;
   // Einmal um die Datei; die Ausgangszeile kommt am Ende noch einmal ganz dran (Step > 0: alle Treffer zählen).
-  for Step := 0 to Count do
+  while (ATerm <> '') and not Result and (mStep <= mCount) and (mCount > 0) do
   begin
     if ABackward then
     begin
-      Row := ((AFrom.Line - Step) mod Count + Count) mod Count;
+      mRow := ((AFrom.Line - mStep) mod mCount + mCount) mod mCount;
+      mFound := Positions(ALines[mRow], mNeedle, AOptions);
+      mChosen := LastBefore(mFound, AFrom.Character, Length(ATerm), mStep > 0);
     end
     else
     begin
-      Row := ((AFrom.Line + Step) mod Count + Count) mod Count;
+      mRow := ((AFrom.Line + mStep) mod mCount + mCount) mod mCount;
+      mFound := Positions(ALines[mRow], mNeedle, AOptions);
+      mChosen := FirstFrom(mFound, AFrom.Character, mStep > 0);
     end;
-    Found := Positions(ALines[Row], Needle, AOptions);
-    Chosen := -1;
-    if not ABackward then
+    if mChosen > 0 then
     begin
-      for Index in Found do
-      begin
-        if (Step > 0) or (Index - 1 >= AFrom.Character) then
-        begin
-          Chosen := Index;
-          Break;
-        end;
-      end;
-    end
-    else
-    begin
-      for Index in Found do
-      begin
-        if (Step > 0) or (Index - 1 + Length(ATerm) <= AFrom.Character) then
-        begin
-          Chosen := Index;
-        end;
-      end;
+      AFound := TLspRange.Create(mRow, mChosen - 1, mRow, mChosen - 1 + Length(ATerm));
+      Result := True;
     end;
-    if Chosen > 0 then
-    begin
-      AFound := TLspRange.Create(Row, Chosen - 1, Row, Chosen - 1 + Length(ATerm));
-      Exit(True);
-    end;
+    Inc(mStep);
   end;
 end;
 

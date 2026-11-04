@@ -160,6 +160,163 @@ begin
   Result := MatchText(Copy(Text, 1, Stop), Closers);
 end;
 
+/// <summary>Stimmen die Zeilen zwischen der ersten und der letzten überein?</summary>
+function MiddleLinesEqual(const ALines, APasted: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := 1 to Length(APasted) - 2 do
+  begin
+    Result := Result and (ALines[mIndex] = APasted[mIndex]);
+  end;
+end;
+
+/// <summary>Erste Zeile mit Inhalt; -1 ohne.</summary>
+function FirstContent(const APasted: TArray<string>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  mIndex := 0;
+  while (Result < 0) and (mIndex <= High(APasted)) do
+  begin
+    if not IsBlank(APasted[mIndex]) then
+    begin
+      Result := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Kleinste Einrückung der Zeilen ab der zweiten und die kleinste einer Zeile mit end, else …; -1 ohne.
+/// </summary>
+procedure ScanWidths(const APasted: TArray<string>; ATabWidth: Integer; out ASmallest, AClosing: Integer);
+var
+  mIndex, mWidth: Integer;
+begin
+  ASmallest := -1;
+  AClosing := -1;
+  for mIndex := 1 to High(APasted) do
+  begin
+    if not IsBlank(APasted[mIndex]) then
+    begin
+      mWidth := TAtlasSmartPaste.IndentWidth(APasted[mIndex], ATabWidth);
+      if (ASmallest < 0) or (mWidth < ASmallest) then
+      begin
+        ASmallest := mWidth;
+      end;
+      if Closes(APasted[mIndex]) and ((AClosing < 0) or (mWidth < AClosing)) then
+      begin
+        AClosing := mWidth;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Ziel: Leerraum vor der Einfügestelle, am Zeilenanfang die Einrückung der Zeile darüber (eine Stufe
+/// mehr nach einem öffnenden Wort).</summary>
+function TargetIndent(const APrefix, AAbove: string; ATabWidth, AStep: Integer): Integer;
+begin
+  if APrefix <> '' then
+  begin
+    Result := TAtlasSmartPaste.IndentWidth(APrefix, ATabWidth);
+  end
+  else
+  begin
+    Result := TAtlasSmartPaste.IndentWidth(AAbove, ATabWidth);
+    if TAtlasSmartPaste.Opens(AAbove) then
+    begin
+      Inc(Result, AStep);
+    end;
+  end;
+end;
+
+/// <summary>Einrückung des Blocks: die der ersten Zeile mit Inhalt; ohne Leerraum am Anfang (aus der Mitte einer
+/// Zeile kopiert) die einer Zeile mit end, else …, sonst die flachste, nach einem öffnenden Wort eine Stufe
+/// darüber.</summary>
+function BaseIndent(const APasted: TArray<string>; AFirst, ATabWidth, AStep: Integer): Integer;
+var
+  mSmallest, mClosing: Integer;
+begin
+  Result := TAtlasSmartPaste.IndentWidth(APasted[AFirst], ATabWidth);
+  if (AFirst = 0) and (LeadLength(APasted[0]) = 0) then
+  begin
+    ScanWidths(APasted, ATabWidth, mSmallest, mClosing);
+    if mClosing >= 0 then
+    begin
+      Result := mClosing;
+    end
+    else if mSmallest > 0 then
+    begin
+      Result := mSmallest;
+      if TAtlasSmartPaste.Opens(APasted[0]) then
+      begin
+        Result := Result - AStep;
+      end;
+      if Result < 0 then
+      begin
+        Result := 0;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Erste Zeile: Der Leerraum vor der Einfügestelle steht mit davor. False ohne Änderung.</summary>
+function FirstLineEdit(const APrefix, ALine: string; ATarget: Integer; out AEdit: TAtlasIndentEdit): Boolean;
+begin
+  AEdit.Line := 0;
+  AEdit.Remove := Length(APrefix) + LeadLength(ALine);
+  AEdit.Indent := StringOfChar(' ', ATarget);
+  Result := AEdit.Indent <> APrefix + Copy(ALine, 1, LeadLength(ALine));
+end;
+
+/// <summary>Weitere Zeile AIndex: Einrückung um ADelta verschoben (nicht unter 0). False ohne Änderung.</summary>
+function OtherLineEdit(const ALine: string; AIndex, ADelta, ATabWidth: Integer; out AEdit: TAtlasIndentEdit):
+  Boolean;
+var
+  mWidth: Integer;
+begin
+  mWidth := TAtlasSmartPaste.IndentWidth(ALine, ATabWidth) + ADelta;
+  if mWidth < 0 then
+  begin
+    mWidth := 0;
+  end;
+  AEdit.Line := AIndex;
+  AEdit.Remove := LeadLength(ALine);
+  AEdit.Indent := StringOfChar(' ', mWidth);
+  Result := AEdit.Indent <> Copy(ALine, 1, AEdit.Remove);
+end;
+
+/// <summary>Zeichenketten in AValue, wenn es ein Array ist.</summary>
+function StringsOf(AValue: TJSONValue): TArray<string>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if mItem is TJSONString then
+      begin
+        Result := Result + [mItem.Value];
+      end;
+    end;
+  end;
+end;
+
+function ReadChoice(AItem: TJSONObject): TAtlasPasteChoice;
+begin
+  Result := Default(TAtlasPasteChoice);
+  Result.Chosen := -1;
+  if AItem.GetValue('name') is TJSONString then
+  begin
+    Result.Name := AItem.GetValue('name').Value;
+  end;
+  Result.Units := StringsOf(AItem.GetValue('units'));
+end;
+
 { TAtlasSmartPaste }
 
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
@@ -200,39 +357,24 @@ end;
 class function TAtlasSmartPaste.Match(const ALines: TArray<string>; ACaret: Integer; const APasted: TArray<string>;
   out AStart: Integer): Boolean;
 var
-  Count, Index: Integer;
-  Last: string;
+  mCount: Integer;
 begin
   AStart := -1;
-  Result := False;
-  Count := Length(APasted);
-  if (Count = 0) or (Length(ALines) <> Count) or (ACaret < 0) or (ACaret > Length(ALines[Count - 1])) then
-  begin
-    Exit;
-  end;
-  Last := Copy(ALines[Count - 1], 1, ACaret);
-  if not Last.EndsWith(APasted[Count - 1]) then
-  begin
-    Exit;
-  end;
-  if Count = 1 then
+  mCount := Length(APasted);
+  Result := (mCount > 0) and (Length(ALines) = mCount) and (ACaret >= 0) and (ACaret <= Length(ALines[mCount - 1]));
+  Result := Result and Copy(ALines[mCount - 1], 1, ACaret).EndsWith(APasted[mCount - 1]);
+  if Result and (mCount = 1) then
   begin
     AStart := ACaret - Length(APasted[0]);
-    Exit(True);
-  end;
-  for Index := 1 to Count - 2 do
+  end
+  else if Result then
   begin
-    if ALines[Index] <> APasted[Index] then
+    Result := MiddleLinesEqual(ALines, APasted) and ALines[0].EndsWith(APasted[0]);
+    if Result then
     begin
-      Exit;
+      AStart := Length(ALines[0]) - Length(APasted[0]);
     end;
   end;
-  if not ALines[0].EndsWith(APasted[0]) then
-  begin
-    Exit;
-  end;
-  AStart := Length(ALines[0]) - Length(APasted[0]);
-  Result := True;
 end;
 
 class function TAtlasSmartPaste.IndentWidth(const ALine: string; ATabWidth: Integer): Integer;
@@ -282,170 +424,73 @@ end;
 class function TAtlasSmartPaste.Reindent(const APrefix, AAbove: string; const APasted: TArray<string>;
   ATabWidth, AStep: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean;
 var
-  First, Index, Target, Base, Smallest, Closing, Delta, Width: Integer;
-  Edit: TAtlasIndentEdit;
+  mFirst, mIndex, mTarget, mDelta: Integer;
+  mEdit: TAtlasIndentEdit;
+  mChanged: Boolean;
 begin
   AEdits := nil;
-  Result := False;
-  if (Length(APasted) < 2) or not IsBlank(APrefix) then
+  mFirst := -1;
+  if (Length(APasted) >= 2) and IsBlank(APrefix) then
   begin
-    Exit;
+    mFirst := FirstContent(APasted);
   end;
-  // Erste Zeile mit Inhalt.
-  First := -1;
-  for Index := 0 to High(APasted) do
+  if mFirst >= 0 then
   begin
-    if not IsBlank(APasted[Index]) then
+    mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
+    mDelta := mTarget - BaseIndent(APasted, mFirst, ATabWidth, AStep);
+    for mIndex := mFirst to High(APasted) do
     begin
-      First := Index;
-      Break;
-    end;
-  end;
-  if First < 0 then
-  begin
-    Exit;
-  end;
-  if APrefix <> '' then
-  begin
-    Target := IndentWidth(APrefix, ATabWidth);
-  end
-  else
-  begin
-    Target := IndentWidth(AAbove, ATabWidth);
-    if Opens(AAbove) then
-    begin
-      Inc(Target, AStep);
-    end;
-  end;
-  Base := IndentWidth(APasted[First], ATabWidth);
-  if (First = 0) and (LeadLength(APasted[0]) = 0) then
-  begin
-    // Eine Zeile mit end, else … steht auf der Ebene der ersten; sonst die flachste, nach einem öffnenden Wort
-    // eine Stufe darüber.
-    Smallest := -1;
-    Closing := -1;
-    for Index := 1 to High(APasted) do
-    begin
-      if not IsBlank(APasted[Index]) then
+      if IsBlank(APasted[mIndex]) then
       begin
-        Width := IndentWidth(APasted[Index], ATabWidth);
-        if (Smallest < 0) or (Width < Smallest) then
-        begin
-          Smallest := Width;
-        end;
-        if Closes(APasted[Index]) and ((Closing < 0) or (Width < Closing)) then
-        begin
-          Closing := Width;
-        end;
+        mChanged := False;
+      end
+      else if mIndex = 0 then
+      begin
+        mChanged := FirstLineEdit(APrefix, APasted[0], mTarget, mEdit);
+      end
+      else
+      begin
+        mChanged := OtherLineEdit(APasted[mIndex], mIndex, mDelta, ATabWidth, mEdit);
+      end;
+      if mChanged then
+      begin
+        AEdits := AEdits + [mEdit];
       end;
     end;
-    if Closing >= 0 then
-    begin
-      Base := Closing;
-    end
-    else if Smallest > 0 then
-    begin
-      Base := Smallest;
-      if Opens(APasted[0]) then
-      begin
-        Base := Base - AStep;
-      end;
-      if Base < 0 then
-      begin
-        Base := 0;
-      end;
-    end;
-  end;
-  Delta := Target - Base;
-  for Index := First to High(APasted) do
-  begin
-    if IsBlank(APasted[Index]) then
-    begin
-      Continue;
-    end;
-    Edit.Line := Index;
-    if Index = 0 then
-    begin
-      // In der ersten Zeile steht der Leerraum vor der Einfügestelle mit davor.
-      Edit.Remove := Length(APrefix) + LeadLength(APasted[0]);
-      Edit.Indent := StringOfChar(' ', Target);
-      if Edit.Indent = APrefix + Copy(APasted[0], 1, LeadLength(APasted[0])) then
-      begin
-        Continue;
-      end;
-    end
-    else
-    begin
-      Width := IndentWidth(APasted[Index], ATabWidth) + Delta;
-      if Width < 0 then
-      begin
-        Width := 0;
-      end;
-      Edit.Remove := LeadLength(APasted[Index]);
-      Edit.Indent := StringOfChar(' ', Width);
-      if Edit.Indent = Copy(APasted[Index], 1, Edit.Remove) then
-      begin
-        Continue;
-      end;
-    end;
-    AEdits := AEdits + [Edit];
   end;
   Result := AEdits <> nil;
 end;
 
 class function TAtlasSmartPaste.ReadAnalysis(AValue: TJSONValue): TAtlasPasteAnalysis;
 var
-  Reply, Item: TJSONObject;
-  Value, UnitValue: TJSONValue;
-  Choice: TAtlasPasteChoice;
+  mReply: TJSONObject;
+  mValue: TJSONValue;
+  mChoice: TAtlasPasteChoice;
 begin
   Result := Default(TAtlasPasteAnalysis);
-  if not (AValue is TJSONObject) then
+  mReply := nil;
+  if AValue is TJSONObject then
   begin
-    Exit;
+    mReply := TJSONObject(AValue);
+    Result.Valid := (mReply.GetValue('units') is TJSONArray) and (mReply.GetValue('choices') is TJSONArray);
   end;
-  Reply := TJSONObject(AValue);
-  if not (Reply.GetValue('units') is TJSONArray) or not (Reply.GetValue('choices') is TJSONArray) then
+  if Result.Valid then
   begin
-    Exit;
-  end;
-  Result.Valid := True;
-  for Value in TJSONArray(Reply.GetValue('units')) do
-  begin
-    if Value is TJSONString then
+    Result.Units := StringsOf(mReply.GetValue('units'));
+    for mValue in TJSONArray(mReply.GetValue('choices')) do
     begin
-      Result.Units := Result.Units + [Value.Value];
-    end;
-  end;
-  for Value in TJSONArray(Reply.GetValue('choices')) do
-  begin
-    if not (Value is TJSONObject) then
-    begin
-      Continue;
-    end;
-    Item := TJSONObject(Value);
-    Choice := Default(TAtlasPasteChoice);
-    Choice.Chosen := -1;
-    if Item.GetValue('name') is TJSONString then
-    begin
-      Choice.Name := Item.GetValue('name').Value;
-    end;
-    if Item.GetValue('units') is TJSONArray then
-    begin
-      for UnitValue in TJSONArray(Item.GetValue('units')) do
+      if mValue is TJSONObject then
       begin
-        if UnitValue is TJSONString then
+        mChoice := ReadChoice(TJSONObject(mValue));
+        if Length(mChoice.Units) > 1 then
         begin
-          Choice.Units := Choice.Units + [UnitValue.Value];
+          Result.Choices := Result.Choices + [mChoice];
         end;
       end;
     end;
-    if Length(Choice.Units) > 1 then
-    begin
-      Result.Choices := Result.Choices + [Choice];
-    end;
+    Result.InInterface := (mReply.GetValue('interface') is TJSONBool) and
+      TJSONBool(mReply.GetValue('interface')).AsBoolean;
   end;
-  Result.InInterface := (Reply.GetValue('interface') is TJSONBool) and TJSONBool(Reply.GetValue('interface')).AsBoolean;
 end;
 
 class function TAtlasSmartPaste.Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>;

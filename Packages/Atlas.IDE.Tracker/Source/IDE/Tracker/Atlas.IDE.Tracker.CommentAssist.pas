@@ -480,7 +480,7 @@ begin
       mOk := False;
       mError := TAtlasCiFetchError.Network;
       try
-        mOk := mPeople.Users(mTarget, mTransport, mText, TAtlasIdeCommentService.TimeoutMs,
+        mOk := mPeople.Users(TAtlasTrackerCall.Create(mTarget, mTransport, TAtlasIdeCommentService.TimeoutMs), mText,
           TAtlasCommentEditing.MaxSuggestions, mFound, mError);
       except
         // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
@@ -603,8 +603,8 @@ begin
         end
         else
         begin
-          mOk := mProvider.Search(mTarget, mTransport, mQuery.Text, TAtlasIdeCommentService.TimeoutMs,
-            TAtlasCommentEditing.MaxSuggestions, mIssues, mError);
+          mOk := mProvider.Search(TAtlasTrackerCall.Create(mTarget, mTransport, TAtlasIdeCommentService.TimeoutMs),
+            mQuery.Text, TAtlasCommentEditing.MaxSuggestions, mIssues, mError);
         end;
       except
         on E: Exception do

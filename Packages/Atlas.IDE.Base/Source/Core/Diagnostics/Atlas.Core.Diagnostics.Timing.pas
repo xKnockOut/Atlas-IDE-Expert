@@ -768,6 +768,21 @@ begin
   end;
 end;
 
+function RowLine(const ARow: TAtlasTimingRow): string;
+begin
+  if ARow.Kind = TAtlasTimingRowKind.Entries then
+  begin
+    Result := RowCaption(ARow) + ' | ' + TAtlasTimingRows.CountText(ARow.Last) + ' | ' +
+      TAtlasTimingRows.CountText(ARow.Mean) + ' | ' + TAtlasTimingRows.CountText(ARow.Maximum) + ' | ' + NoValue;
+  end
+  else
+  begin
+    Result := RowCaption(ARow) + ' | ' + TAtlasTimingRows.Ms(ARow.Last) + Mark(ARow.LastWarn) + ' | ' +
+      TAtlasTimingRows.Ms(ARow.Mean) + Mark(ARow.MeanWarn) + ' | ' + TAtlasTimingRows.Ms(ARow.Maximum) +
+      Mark(ARow.MaxWarn) + ' | ' + TAtlasTimingRows.Ms(ARow.Budget);
+  end;
+end;
+
 class function TAtlasTimingReport.Build(const AQueries: TArray<TAtlasQueryTiming>;
   const AInput: TAtlasTimingReportInput): string;
 var
@@ -796,17 +811,7 @@ begin
     Rows := TAtlasTimingRows.Build(AQueries);
     for Row in Rows do
     begin
-      if Row.Kind = TAtlasTimingRowKind.Entries then
-      begin
-        Lines.Add(RowCaption(Row) + ' | ' + TAtlasTimingRows.CountText(Row.Last) + ' | ' +
-          TAtlasTimingRows.CountText(Row.Mean) + ' | ' + TAtlasTimingRows.CountText(Row.Maximum) + ' | ' + NoValue);
-      end
-      else
-      begin
-        Lines.Add(RowCaption(Row) + ' | ' + TAtlasTimingRows.Ms(Row.Last) + Mark(Row.LastWarn) + ' | ' +
-          TAtlasTimingRows.Ms(Row.Mean) + Mark(Row.MeanWarn) + ' | ' + TAtlasTimingRows.Ms(Row.Maximum) +
-          Mark(Row.MaxWarn) + ' | ' + TAtlasTimingRows.Ms(Row.Budget));
-      end;
+      Lines.Add(RowLine(Row));
     end;
     Lines.Add('');
     Lines.Add('## Abfragen, neueste zuerst');

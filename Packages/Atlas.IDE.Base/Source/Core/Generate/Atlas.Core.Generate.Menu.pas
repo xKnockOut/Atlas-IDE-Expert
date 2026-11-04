@@ -378,125 +378,164 @@ begin
   end;
 end;
 
+type
+  /// <summary>Zustand von Rows: Punktzahlen, schon unter „Zuletzt“ gezeigte Einträge, Zeilen und nächste
+  /// Ziffer.</summary>
+  TRowBuilder = record
+    Entries: TArray<TAtlasGenerateEntry>;
+    Pattern: string;
+    Scores: TArray<Integer>;
+    InRecent: TArray<Boolean>;
+    Rows: TArray<TAtlasGenerateRow>;
+    Digit: Integer;
+    class function Create(const AEntries: TArray<TAtlasGenerateEntry>; const AOptions: TAtlasGenerateOptions;
+      const APattern: string): TRowBuilder; static;
+    /// <summary>Zuletzt gewählt: nach Rang, höchstens RecentCount.</summary>
+    function RecentOf(ARecent: TAtlasGenerateRecent): TArray<Integer>;
+    function MembersOf(AGroup: TAtlasGenerateGroup): TArray<Integer>;
+    /// <summary>Bei Eingabe die besten Treffer zuerst, sonst und bei Gleichstand die Reihenfolge der Liste.</summary>
+    procedure SortByScore(var AMembers: TArray<Integer>);
+    procedure AddGroup(AGroup: TAtlasGenerateGroup; const AMembers: TArray<Integer>);
+  end;
+
+class function TRowBuilder.Create(const AEntries: TArray<TAtlasGenerateEntry>;
+  const AOptions: TAtlasGenerateOptions; const APattern: string): TRowBuilder;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TRowBuilder);
+  Result.Entries := AEntries;
+  Result.Pattern := APattern;
+  Result.Digit := 1;
+  SetLength(Result.Scores, Length(AEntries));
+  SetLength(Result.InRecent, Length(AEntries));
+  for mIndex := 0 to High(AEntries) do
+  begin
+    Result.Scores[mIndex] := TAtlasGenerateMenu.NoMatch;
+    if not AOptions.IsHidden(AEntries[mIndex]) and AOptions.HasGroup(AEntries[mIndex].Group) then
+    begin
+      Result.Scores[mIndex] := TAtlasGenerateMenu.Score(AEntries[mIndex], APattern);
+    end;
+  end;
+end;
+
+function TRowBuilder.RecentOf(ARecent: TAtlasGenerateRecent): TArray<Integer>;
+var
+  mIndex, mOther, mSwap: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Entries) do
+  begin
+    if (Scores[mIndex] = TAtlasGenerateMenu.NoMatch) or (ARecent.Rank(Entries[mIndex].Id) < 0) then
+    begin
+      Continue;
+    end;
+    mOther := Length(Result);
+    Result := Result + [mIndex];
+    while (mOther > 0) and (ARecent.Rank(Entries[Result[mOther - 1]].Id) >
+      ARecent.Rank(Entries[Result[mOther]].Id)) do
+    begin
+      mSwap := Result[mOther - 1];
+      Result[mOther - 1] := Result[mOther];
+      Result[mOther] := mSwap;
+      Dec(mOther);
+    end;
+  end;
+  if Length(Result) > TAtlasGenerateMenu.RecentCount then
+  begin
+    SetLength(Result, TAtlasGenerateMenu.RecentCount);
+  end;
+  for mIndex in Result do
+  begin
+    InRecent[mIndex] := True;
+  end;
+end;
+
+function TRowBuilder.MembersOf(AGroup: TAtlasGenerateGroup): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Entries) do
+  begin
+    if (Entries[mIndex].Group = AGroup) and (Scores[mIndex] <> TAtlasGenerateMenu.NoMatch) and
+      not InRecent[mIndex] then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+procedure TRowBuilder.SortByScore(var AMembers: TArray<Integer>);
+var
+  I, J, mSwap: Integer;
+begin
+  if Trim(Pattern) = '' then
+  begin
+    Exit;
+  end;
+  for I := 1 to High(AMembers) do
+  begin
+    J := I;
+    while (J > 0) and (Scores[AMembers[J - 1]] < Scores[AMembers[J]]) do
+    begin
+      mSwap := AMembers[J - 1];
+      AMembers[J - 1] := AMembers[J];
+      AMembers[J] := mSwap;
+      Dec(J);
+    end;
+  end;
+end;
+
+procedure TRowBuilder.AddGroup(AGroup: TAtlasGenerateGroup; const AMembers: TArray<Integer>);
+var
+  mMember: Integer;
+  mRow: TAtlasGenerateRow;
+begin
+  if Length(AMembers) = 0 then
+  begin
+    Exit;
+  end;
+  mRow := Default(TAtlasGenerateRow);
+  mRow.IsHeader := True;
+  mRow.Group := AGroup;
+  mRow.Entry := -1;
+  Rows := Rows + [mRow];
+  for mMember in AMembers do
+  begin
+    mRow := Default(TAtlasGenerateRow);
+    mRow.Group := AGroup;
+    mRow.Entry := mMember;
+    if Digit <= 9 then
+    begin
+      mRow.Digit := Digit;
+      Inc(Digit);
+    end;
+    Rows := Rows + [mRow];
+  end;
+end;
 class function TAtlasGenerateMenu.Rows(const AEntries: TArray<TAtlasGenerateEntry>;
   const AOptions: TAtlasGenerateOptions; ARecent: TAtlasGenerateRecent;
   const APattern: string): TArray<TAtlasGenerateRow>;
 var
-  Scores: TArray<Integer>;
-  InRecent: TArray<Boolean>;
-  Recent, Members: TArray<Integer>;
-  Index, Other, Digit, Swap: Integer;
-  Group: TAtlasGenerateGroup;
-  Row: TAtlasGenerateRow;
-  Rows_: TArray<TAtlasGenerateRow>;
-
-  procedure AddGroup(AGroup: TAtlasGenerateGroup; const AMembers: TArray<Integer>);
-  var
-    Member: Integer;
-  begin
-    if Length(AMembers) = 0 then
-    begin
-      Exit;
-    end;
-    Row := Default(TAtlasGenerateRow);
-    Row.IsHeader := True;
-    Row.Group := AGroup;
-    Row.Entry := -1;
-    Rows_ := Rows_ + [Row];
-    for Member in AMembers do
-    begin
-      Row := Default(TAtlasGenerateRow);
-      Row.Group := AGroup;
-      Row.Entry := Member;
-      if Digit <= 9 then
-      begin
-        Row.Digit := Digit;
-        Inc(Digit);
-      end;
-      Rows_ := Rows_ + [Row];
-    end;
-  end;
-
-  /// <summary>Bei Eingabe die besten Treffer zuerst, sonst und bei Gleichstand die Reihenfolge der Liste.</summary>
-  procedure SortByScore(var AMembers: TArray<Integer>);
-  var
-    I, J: Integer;
-  begin
-    if Trim(APattern) = '' then
-    begin
-      Exit;
-    end;
-    for I := 1 to High(AMembers) do
-    begin
-      J := I;
-      while (J > 0) and (Scores[AMembers[J - 1]] < Scores[AMembers[J]]) do
-      begin
-        Swap := AMembers[J - 1];
-        AMembers[J - 1] := AMembers[J];
-        AMembers[J] := Swap;
-        Dec(J);
-      end;
-    end;
-  end;
-
+  mBuilder: TRowBuilder;
+  mGroup: TAtlasGenerateGroup;
+  mRecent, mMembers: TArray<Integer>;
 begin
-  Rows_ := nil;
-  SetLength(Scores, Length(AEntries));
-  SetLength(InRecent, Length(AEntries));
-  for Index := 0 to High(AEntries) do
-  begin
-    Scores[Index] := NoMatch;
-    if AOptions.IsHidden(AEntries[Index]) or not AOptions.HasGroup(AEntries[Index].Group) then
-    begin
-      Continue;
-    end;
-    Scores[Index] := Score(AEntries[Index], APattern);
-  end;
-  // Zuletzt gewählt: nach Rang, höchstens RecentCount.
-  Recent := nil;
+  mBuilder := TRowBuilder.Create(AEntries, AOptions, APattern);
+  mRecent := nil;
   if AOptions.RecentFirst and (ARecent <> nil) then
   begin
-    for Index := 0 to High(AEntries) do
-    begin
-      if (Scores[Index] <> NoMatch) and (ARecent.Rank(AEntries[Index].Id) >= 0) then
-      begin
-        Other := Length(Recent);
-        Recent := Recent + [Index];
-        while (Other > 0) and (ARecent.Rank(AEntries[Recent[Other - 1]].Id) >
-          ARecent.Rank(AEntries[Recent[Other]].Id)) do
-        begin
-          Swap := Recent[Other - 1];
-          Recent[Other - 1] := Recent[Other];
-          Recent[Other] := Swap;
-          Dec(Other);
-        end;
-      end;
-    end;
-    if Length(Recent) > RecentCount then
-    begin
-      SetLength(Recent, RecentCount);
-    end;
-    for Index in Recent do
-    begin
-      InRecent[Index] := True;
-    end;
+    mRecent := mBuilder.RecentOf(ARecent);
   end;
-  Digit := 1;
-  AddGroup(TAtlasGenerateGroup.Recent, Recent);
-  for Group in AOptions.Groups do
+  mBuilder.AddGroup(TAtlasGenerateGroup.Recent, mRecent);
+  for mGroup in AOptions.Groups do
   begin
-    Members := nil;
-    for Index := 0 to High(AEntries) do
-    begin
-      if (AEntries[Index].Group = Group) and (Scores[Index] <> NoMatch) and not InRecent[Index] then
-      begin
-        Members := Members + [Index];
-      end;
-    end;
-    SortByScore(Members);
-    AddGroup(Group, Members);
+    mMembers := mBuilder.MembersOf(mGroup);
+    mBuilder.SortByScore(mMembers);
+    mBuilder.AddGroup(mGroup, mMembers);
   end;
-  Result := Rows_;
+  Result := mBuilder.Rows;
 end;
 
 class function TAtlasGenerateMenu.RowOfDigit(const ARows: TArray<TAtlasGenerateRow>; ADigit: Integer): Integer;

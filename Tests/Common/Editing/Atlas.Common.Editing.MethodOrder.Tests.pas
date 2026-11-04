@@ -35,6 +35,8 @@ type
     [Test]
     procedure LeavesNewBodyInPlace;
     [Test]
+    procedure LeavesNewGroupInPlace;
+    [Test]
     procedure IgnoresKnownAndHalfTypedBodies;
     [Test]
     procedure Names;
@@ -299,6 +301,15 @@ var
   Order: TMethodOrderResult;
 begin
   Placed(Foo(['TFoo.A', 'TFoo.C']), Foo(['TFoo.A', 'TFoo.B', 'TFoo.C']), Order);
+  Assert.AreEqual(0, Integer(Length(Order.Edits)));
+end;
+
+procedure TMethodOrderTests.LeavesNewGroupInPlace;
+var
+  Order: TMethodOrderResult;
+begin
+  // Zwei neue Rümpfe direkt hinter ihrem Ziel: die ganze Gruppe bleibt, auch der zweite.
+  Placed(Foo(['TFoo.A']), Foo(['TFoo.A', 'TFoo.B', 'TFoo.C']), Order);
   Assert.AreEqual(0, Integer(Length(Order.Edits)));
 end;
 
