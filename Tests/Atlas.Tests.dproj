@@ -106,6 +106,10 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameIndex.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.NameFacts.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Usages.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Conditions.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.InlineRefs.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.Tokens.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.Extractor.TypeText.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.TypeMembers.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Files.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.LibraryUnits.Tests.pas"/>
@@ -382,6 +386,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FoldingRanges.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SelectionRanges.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Preprocessor.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Preprocessor.Expressions.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Robustness.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalSyntax.Tests.pas"/>
@@ -1283,6 +1288,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.InlineHints.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Findings.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.FindingsCache.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LineTail.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Styled.pas"/>
@@ -1494,6 +1500,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Core.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AnalysisArea.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CodeArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Baselines.Tests.pas"/>
@@ -1524,6 +1532,8 @@
         <DCCReference Include="Application\Shell\Shell.Composition.AffectedTests.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.DfmPropertyRules.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Core.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.AnalysisArea.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.CodeArea.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
