@@ -17,10 +17,10 @@
   3. Nach dem Abmelden erreicht nichts mehr das Modul (Serverantwort, `TAtlasMainThread`, Timer, Ereignis).
   4. Alles, was ein Modul anmeldet, läuft über seinen `IAtlasModuleScope` und wird beim Abmelden rückwärts gelöst.
   5. Base stoppt in seiner Finalisierung zuerst alle Module.
-  6. Über Package-Grenzen nur Interfaces mit GUID, Records, Arrays, Methodenreferenzen; kein `is TList<…>`, kein `ClassName`-Vergleich. Allgemeine Verträge in Base, Verträge zwischen Modulen in `Atlas.IDE.Contracts`; benannt nach der Fähigkeit.
+  6. Über Package-Grenzen nur Interfaces mit GUID, Records, Arrays, Methodenreferenzen; kein `is TList<…>`, kein `ClassName`-Vergleich. Alle Verträge liegen in Base, die zwischen Modulen unter `Source/Contracts` (`Atlas.IDE.Contracts.*`, kein eigenes Package); benannt nach der Fähigkeit.
   7. Ein Modul prüft zuerst die Vertragsversion von Base (`GetProcAddress`) und meldet sich bei Abweichung nicht an.
   8. Nie `HInstance`/`GetModuleName(HInstance)` für „ist das Atlas?“ oder Datenordner; die Registry bzw. Funktionen von Base fragen.
-  9. Base kennt keine Modulnamen; ein Modul ist, was sich anmeldet. Kein Modul requiret ein anderes, Base requiret weder Module noch Contracts.
+  9. Base kennt keine Modulnamen; ein Modul ist, was sich anmeldet. Kein Modul requiret ein anderes, Module requiren nur Base, Base requiret kein Modul.
   Neues Modul nach dem Muster in `docs/Architektur.md` („Muster eines Moduls“): eine Unit `Atlas.IDE.<Modul>.Composition`, Beiträge über `GScope.Provide`, Serverbefehle über `TAtlasIdeHost` (nie Manager oder Wurzel direkt), Zuordnung jeder Unit in `docs/adr/0017-unit-zuordnung.md`. Texte nur des Moduls in `Atlas.UI.<Modul>.Strings`; Testklassen eines Moduls mit `[Category('<Package>')]` (prüft `Check-TestCoverage`).
 
 ## Mit Delphi bauen vor dem Merge

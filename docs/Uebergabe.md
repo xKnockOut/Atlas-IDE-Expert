@@ -115,6 +115,13 @@
 - Ursache: `TAtlasIdeSearch.CreateBar` setzt `Features` vor `Place`; `UpdateStates` las `FScope.ItemIndex`/`FLevel.Items.Count`, die ComboBox legt dafür unter Delphi 12 ein Fenster an. Fix: `SelectedScope`/`SelectedLevel` lesen ohne Fenster `FQuery`, Stufen über `FLevels`. Test `FeaturesBeforeWindowNeedNoWindow`.
 - Offen: Delphi-Build 0/0/0 und Handtest unter Delphi 12. Nebenbefund ohne Änderung: Modultasten (Strg+F) laufen unter der Sicherung `EditorCommands`; ist sie ausgelöst, gibt `TBinding.Pressed` trotzdem `krHandled` zurück und Strg+F tut gar nichts (auch nicht die IDE-Suche).
 
+## Verträge nach Base verschoben (04.11.2026, Branch `claude/project-thread-pd3l3e` auf `Pilot-2.0.0-beta.1`)
+- Marco fragte, wofür `Atlas.IDE.Contracts` gebraucht wird. Antwort: Die Module kennen sich nicht (kein requires untereinander); die Verträge sind nur das gemeinsame Vokabular, wenn ein Modul eine Fähigkeit eines anderen nutzt. Marco entschied (Karte, 04.11.2026): Verträge nach Base, das Package entfällt. Begründung und verworfene Varianten in ADR 0017, Abschnitt „Verträge in Base“.
+- Die sechs Units `Atlas.IDE.Contracts.*` liegen jetzt unter `Packages/Atlas.IDE.Base/Source/Contracts` (Namen unverändert, kein uses geändert), stehen in `contains`/`DCCReference` von Base und im Abschnitt `## Atlas.IDE.Base` von `docs/adr/0017-unit-zuordnung.md`. Module requiren nur noch `rtl`, `vcl`, `vclwinx`, `designide`, `Atlas.IDE.Base`.
+- Angepasst: alle Modul-`.dpk`/`.dproj`, `Atlas.groupproj`, `release.yml` (erst Base, dann Module), `Check-PackageDependencies.ps1` und `Test-PackageDependencies.ps1`, `Architektur.md`, `CLAUDE.md` (Regeln 6 und 9), `Installation.md`, READMEs.
+- **Für Marcos PC:** Ein installiertes `Atlas.IDE.Contracts370.bpl` aus Known Packages entfernen und die BPL aus dem Bpl-Ordner löschen; sonst meldet die IDE doppelte Units zwischen Base und Contracts. Danach Base und alle Module neu bauen.
+- Offen: Delphi-Build (Win32/Win64), Handtest: IDE startet mit Base und allen Modulen ohne Contracts-BPL, Willkommensseite (Schnellaktionen Build/Tests, Kacheln des Trackers), „An Issue anhängen“ mit Debug-Notiz.
+
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
 - Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
@@ -207,11 +214,11 @@
 
 ## Modulgrenzen im Prüfskript (#1455, 01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
 
-- `Tools/Check-PackageDependencies.ps1` liest `docs/adr/0017-unit-zuordnung.md` als Daten: Ordnertabelle, Einzelzeilen je Package und den neuen Abschnitt „Grenzen zwischen Base, Modulen und Verträgen“. Verboten sind Base → Modul, Base → Contracts, Modul → anderes Modul und Contracts → Base oder Modul.
+- `Tools/Check-PackageDependencies.ps1` liest `docs/adr/0017-unit-zuordnung.md` als Daten: Ordnertabelle, Einzelzeilen je Package und den neuen Abschnitt „Grenzen zwischen Base, Modulen und Verträgen“. Verboten sind Base → Modul, Base → Contracts, Modul → anderes Modul und Contracts → Base oder Modul (seit 04.11.2026 nur noch Base → Modul und Modul → Modul, die Verträge liegen in Base).
 - **Jede neue Unit unter `Packages/Atlas.IDE.Expert/Source` braucht eine Zeile in der Zuordnung**, sonst schlägt das Skript fehl (ebenso Zeilen ohne Datei, falsche Pfade, Abweichung von der Ordnertabelle mit Begründung „Ordner …“). Nachgetragen: `Atlas.Core.Settings.Contract`, `.ModuleSwitches`, `.Parts`.
 - **Befristete Ausnahme:** `Atlas.IDE.CodeInsight.Composition` → Welcome, Tracker, `Contracts.BuildTools/Tests/Rules`.
 - **Bekannte Verstöße (27 Zeilen, 92 Verweise, Stand 8510d10a):** Einstellungen (`Settings.Plugin`, `Settings.Options`, `UI.Settings.Page`, `UI.Settings.QueryDialog`) → Build, Tracker, Welcome; VCS (`Vcs.Branching`, `Vcs.WorkingCopies`, `UI.Vcs.BranchDialog`) → Tracker, Welcome; `Projects.Summary` → `Ci.Contract`; `Contracts.Rules`/`Contracts.Tests` → Base (`Projects.Baseline`/`Projects.Summary`); Welcome → Tracker und Bookmarks; `Tracker.BlameLinks` → Bookmarks. Das Skript nennt sie bei jedem Lauf, schlägt nur bei neuen fehl und verlangt, dass behobene Zeilen gestrichen werden.
-- **Test:** `Tools/Test-PackageDependencies.ps1` (in `package-dependencies.yml`) baut in einer Kopie Verstöße ein und erwartet Fehlschlag mit Meldung; Modul → Base/Contracts muss bestehen.
+- **Test:** `Tools/Test-PackageDependencies.ps1` (in `package-dependencies.yml`) baut in einer Kopie Verstöße ein und erwartet Fehlschlag mit Meldung; Modul → Base/Contracts muss bestehen (seit 04.11.2026: Modul → Base samt Verträgen, Base → eigener Vertrag).
 - **Geprüft:** Logik in der Cloud mit einem Python-Nachbau gegen den Quellbaum (0 neue, 0 veraltete Zeilen); `pwsh` ließ sich hier nicht installieren, die Skripte laufen erst in der GitHub Action. Keine Pascal-Unit geändert, darum kein `AtlasServer --check` und kein FPC-Lauf nötig.
 
 ## Modulschalter (#1454, 01.11.2026, Branch `claude/project-thread-rc7rg9` von `Pilot-2.0.0-beta.1`)

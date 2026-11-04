@@ -8,7 +8,7 @@
 // Base, weil auch Base (Auswirkungsanalyse #1120) Tests startet. Wer das
 // Ergebnis eines Laufs wissen will, stellt einen IAtlasTestsListener bereit;
 // den ganzen Lauf schreibt das Modul in die Projekt-Zusammenfassung (Base).
-// Nur Interfaces, kein Code. Liegt im Package Atlas.IDE.Contracts (#1456).
+// Nur Interfaces, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
 
 interface
 

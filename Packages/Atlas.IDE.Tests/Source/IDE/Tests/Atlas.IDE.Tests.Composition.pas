@@ -10,11 +10,11 @@
 //   Atlas-Menü und „Test ausführen“/„Test debuggen“ im Kontextmenü,
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
-//   IAtlasTestsSource (Atlas.IDE.Contracts, Willkommensseite); das Ende eines
+//   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
 //   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener.
 // Gebaut wird über den Läufer der Builds auf Auftrag der Build-Pipeline
-// (IAtlasBuildJobs aus Atlas.IDE.Contracts, ohne Modul nicht), die Probleme gehen an das Problemfenster von
+// (IAtlasBuildJobs aus Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht), die Probleme gehen an das Problemfenster von
 // Base; die fehlgeschlagenen Tests des letzten Laufs liest das Modul aus den
 // Projektdateien (TAtlasProjectSummaries), auch ohne Willkommensseite.
 // Diese Haken stehen in Atlas.IDE.Tests.Composition.Hooks.

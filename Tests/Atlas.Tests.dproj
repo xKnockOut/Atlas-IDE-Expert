@@ -1238,7 +1238,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.NewIssueDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.SprintTile.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.SprintTile.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Contracts\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Contracts\Atlas.IDE.Contracts.WelcomeTiles.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.IDE.Welcome.Tiles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Status\Atlas.UI.Status.Window.pas"/>

@@ -93,7 +93,6 @@
         <DCCReference Include="vclwinx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
-        <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Credentials.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Http.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
