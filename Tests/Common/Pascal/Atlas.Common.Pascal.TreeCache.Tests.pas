@@ -201,28 +201,56 @@ begin
   Assert.AreEqual(2, Calls);
 end;
 
+/// <summary>Ordner über der Test-exe, der Packages enthält; '' ohne.</summary>
+function SourceRoot: string;
+var
+  mDirectory: string;
+begin
+  Result := '';
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
+  begin
+    if TDirectory.Exists(TPath.Combine(mDirectory, 'Packages')) then
+    begin
+      Exit(mDirectory);
+    end;
+    if ExtractFileDir(mDirectory) = mDirectory then
+    begin
+      Break;
+    end;
+    mDirectory := ExtractFileDir(mDirectory);
+  end;
+end;
+
+/// <summary>Units unter ADirectory außer Parser und Cache, die TPascalParser.Parse aufrufen, je mit Leerzeichen
+/// davor.</summary>
+function ParserCallers(const ADirectory: string): string;
+var
+  mFileName, mName: string;
+begin
+  Result := '';
+  for mFileName in TDirectory.GetFiles(ADirectory, '*.pas', TSearchOption.soAllDirectories) do
+  begin
+    mName := ExtractFileName(mFileName);
+    if SameText(mName, 'Atlas.Common.Pascal.Parser.pas') or SameText(mName, 'Atlas.Common.Pascal.TreeCache.pas') then
+    begin
+      Continue;
+    end;
+    if Pos('TPascalParser.Parse', TFile.ReadAllText(mFileName, TEncoding.UTF8)) > 0 then
+    begin
+      Result := Result + ' ' + mName;
+    end;
+  end;
+end;
+
 procedure TSyntaxTreeCacheTests.NoParserCallsOutsideCache;
 var
-  Directory, Root, FileName, Name: string;
+  Directory, Root: string;
   Offenders: string;
   Folders: TArray<string>;
 begin
   // Wächter (#262): außerhalb des Caches ruft niemand den Parser direkt auf.
-  Root := '';
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
-  begin
-    if TDirectory.Exists(TPath.Combine(Directory, 'Packages')) then
-    begin
-      Root := Directory;
-      Break;
-    end;
-    if ExtractFileDir(Directory) = Directory then
-    begin
-      Break;
-    end;
-    Directory := ExtractFileDir(Directory);
-  end;
+  Root := SourceRoot;
   if Root = '' then
   begin
     Assert.Pass('Quelltexte nicht gefunden; Prüfung übersprungen');
@@ -233,18 +261,7 @@ begin
   begin
     if TDirectory.Exists(Directory) then
     begin
-      for FileName in TDirectory.GetFiles(Directory, '*.pas', TSearchOption.soAllDirectories) do
-      begin
-        Name := ExtractFileName(FileName);
-        if SameText(Name, 'Atlas.Common.Pascal.Parser.pas') or SameText(Name, 'Atlas.Common.Pascal.TreeCache.pas') then
-        begin
-          Continue;
-        end;
-        if Pos('TPascalParser.Parse', TFile.ReadAllText(FileName, TEncoding.UTF8)) > 0 then
-        begin
-          Offenders := Offenders + ' ' + Name;
-        end;
-      end;
+      Offenders := Offenders + ParserCallers(Directory);
     end;
   end;
   Assert.AreEqual('', Offenders, 'TPascalParser.Parse außerhalb des Caches');

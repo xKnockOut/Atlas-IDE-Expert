@@ -104,14 +104,43 @@ begin
   Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
+/// <summary>Schneidet einen führenden Modifizierer (const, var, out …) von ANames ab und liefert ihn klein.</summary>
+function TakeModifier(var ANames: string): string;
+var
+  mSpace: Integer;
+  mFirst: string;
+begin
+  Result := '';
+  mSpace := Pos(' ', ANames);
+  if mSpace = 0 then
+  begin
+    Exit;
+  end;
+  mFirst := LowerCase(Copy(ANames, 1, mSpace - 1));
+  if MatchText(mFirst, cModifiers) then
+  begin
+    Result := mFirst;
+    ANames := Trim(Copy(ANames, mSpace + 1, MaxInt));
+  end;
+end;
+
+/// <summary>Typ einer Parametergruppe ohne Standardwert; '' bei untypisierten Parametern.</summary>
+function GroupTypeName(const AParts: TArray<string>): string;
+begin
+  Result := '';
+  if Length(AParts) > 1 then
+  begin
+    Result := Trim(AParts[1]);
+  end;
+end;
+
 /// <summary>Ein Parameter je Eintrag, ohne Standardwert: Deklaration und Implementierung dürfen Parameter
 /// verschieden gruppieren (const A: string; const B: string = '' gegen const A, B: string) und die
 /// Implementierung lässt Standardwerte weg (#647).</summary>
 function NormalizedParameters(const AParameters: string): string;
 var
-  mGroup, mNames, mTypeName, mModifier, mName, mFirst: string;
+  mGroup, mNames, mTypeName, mModifier, mName: string;
   mParts: TArray<string>;
-  mSpace: Integer;
 begin
   Result := '';
   for mGroup in SplitTopLevel(AParameters, ';') do
@@ -120,29 +149,12 @@ begin
     mParts := SplitTopLevel(mGroup, '=');
     mParts := SplitTopLevel(mParts[0], ':');
     mNames := Trim(mParts[0]);
-    if Length(mParts) > 1 then
-    begin
-      mTypeName := Trim(mParts[1]);
-    end
-    else
-    begin
-      mTypeName := '';
-    end;
+    mTypeName := GroupTypeName(mParts);
     if mNames = '' then
     begin
       Continue;
     end;
-    mModifier := '';
-    mSpace := Pos(' ', mNames);
-    if mSpace > 0 then
-    begin
-      mFirst := LowerCase(Copy(mNames, 1, mSpace - 1));
-      if MatchText(mFirst, cModifiers) then
-      begin
-        mModifier := mFirst;
-        mNames := Trim(Copy(mNames, mSpace + 1, MaxInt));
-      end;
-    end;
+    mModifier := TakeModifier(mNames);
     for mName in SplitTopLevel(mNames, ',') do
     begin
       if Result <> '' then
@@ -153,6 +165,64 @@ begin
     end;
   end;
   Result := LowerCase(StringReplace(Result, ' ', '', [rfReplaceAll]));
+end;
+
+/// <summary>Position von ANeedle (".name") in ALower, an der der Name endet (vor "(", "&lt;", ":",
+/// Leerraum oder am Ende); 0, wenn es keine gibt.</summary>
+function QualifiedNamePos(const ALower, ANeedle: string): Integer;
+begin
+  Result := Pos(ANeedle, ALower);
+  while (Result > 0) and (Result + Length(ANeedle) <= Length(ALower)) and
+    CharInSet(ALower[Result + Length(ANeedle)], ['a'..'z', '0'..'9', '_']) do
+  begin
+    Result := PosEx(ANeedle, ALower, Result + 1);
+  end;
+end;
+
+function GenericDigit(AGeneric: Boolean): string;
+begin
+  Result := '0';
+  if AGeneric then
+  begin
+    Result := '1';
+  end;
+end;
+
+/// <summary>Maske der Qualifiziererteile in den ersten ACount Zeichen von AText: je Teil "1" für
+/// generisch, sonst "0". "." trennt, Leerraum außerhalb von &lt;&gt; beginnt neu (Schlüsselwörter davor).</summary>
+function QualifierPartsMask(const AText: string; ACount: Integer): string;
+var
+  mDepth, mPos: Integer;
+  mGeneric: Boolean;
+begin
+  Result := '';
+  mDepth := 0;
+  mGeneric := False;
+  for mPos := 1 to ACount do
+  begin
+    case AText[mPos] of
+      '<':
+        begin
+          Inc(mDepth);
+          mGeneric := True;
+        end;
+      '>':
+        Dec(mDepth);
+      '.':
+        if mDepth = 0 then
+        begin
+          Result := Result + GenericDigit(mGeneric);
+          mGeneric := False;
+        end;
+      ' ', #9:
+        if mDepth = 0 then
+        begin
+          Result := '';
+          mGeneric := False;
+        end;
+    end;
+  end;
+  Result := Result + GenericDigit(mGeneric);
 end;
 
 { TRoutineSignatures }
@@ -273,9 +343,8 @@ end;
 
 class function TRoutineSignatures.QualifierMask(const AHead, AName: string): string;
 var
-  mText, mLower, mNeedle: string;
-  mIndex, mDepth, mPos: Integer;
-  mGeneric: Boolean;
+  mText, mNeedle: string;
+  mIndex: Integer;
 begin
   Result := '';
   // Bedingte Direktiven: Welcher Zweig aktiv ist, steht nicht im Text.
@@ -284,58 +353,11 @@ begin
     Exit('?');
   end;
   mText := QualifierText(AHead);
-  mLower := LowerCase(mText);
   mNeedle := '.' + LowerCase(StringReplace(AName, '&', '', [rfReplaceAll]));
-  mIndex := Pos(mNeedle, mLower);
-  // Der Name endet vor "(", "<", ":", Leerraum oder am Ende des Kopfs.
-  while (mIndex > 0) and (mIndex + Length(mNeedle) <= Length(mLower)) and
-    CharInSet(mLower[mIndex + Length(mNeedle)], ['a'..'z', '0'..'9', '_']) do
+  mIndex := QualifiedNamePos(LowerCase(mText), mNeedle);
+  if mIndex > 0 then
   begin
-    mIndex := PosEx(mNeedle, mLower, mIndex + 1);
-  end;
-  if mIndex = 0 then
-  begin
-    Exit;
-  end;
-  // Teile des Qualifizierers: "." trennt, Leerraum außerhalb von <> beginnt neu (Schlüsselwörter davor).
-  mDepth := 0;
-  mGeneric := False;
-  for mPos := 1 to mIndex - 1 do
-    case mText[mPos] of
-      '<':
-        begin
-          Inc(mDepth);
-          mGeneric := True;
-        end;
-      '>':
-        Dec(mDepth);
-      '.':
-        if mDepth = 0 then
-        begin
-          if mGeneric then
-          begin
-            Result := Result + '1';
-          end
-          else
-          begin
-            Result := Result + '0';
-          end;
-          mGeneric := False;
-        end;
-      ' ', #9:
-        if mDepth = 0 then
-        begin
-          Result := '';
-          mGeneric := False;
-        end;
-    end;
-  if mGeneric then
-  begin
-    Result := Result + '1';
-  end
-  else
-  begin
-    Result := Result + '0';
+    Result := QualifierPartsMask(mText, mIndex - 1);
   end;
 end;
 

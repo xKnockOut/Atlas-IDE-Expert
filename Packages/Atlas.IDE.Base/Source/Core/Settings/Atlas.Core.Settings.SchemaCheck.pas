@@ -47,7 +47,9 @@ var
 begin
   Result := False;
   if not (AValue is TJSONNumber) then
+  begin
     Exit;
+  end;
   Text := AValue.ToString;
   Result := (Pos('.', Text) = 0) and (Pos('e', LowerCase(Text)) = 0);
 end;
@@ -55,22 +57,38 @@ end;
 function HasType(AValue: TJSONValue; const AType: string): Boolean;
 begin
   if AType = 'string' then
-    Result := IsText(AValue)
+  begin
+    Result := IsText(AValue);
+  end
   else if AType = 'integer' then
-    Result := IsInteger(AValue)
+  begin
+    Result := IsInteger(AValue);
+  end
   else if AType = 'number' then
-    Result := AValue is TJSONNumber
+  begin
+    Result := AValue is TJSONNumber;
+  end
   else if AType = 'boolean' then
-    Result := AValue is TJSONBool
+  begin
+    Result := AValue is TJSONBool;
+  end
   else if AType = 'object' then
-    Result := AValue is TJSONObject
+  begin
+    Result := AValue is TJSONObject;
+  end
   else if AType = 'array' then
-    Result := AValue is TJSONArray
+  begin
+    Result := AValue is TJSONArray;
+  end
   else if AType = 'null' then
-    Result := AValue is TJSONNull
+  begin
+    Result := AValue is TJSONNull;
+  end
   else
+  begin
     // Unbekannter Typ im Schema: nicht ablehnen.
     Result := True;
+  end;
 end;
 
 function TypeMatches(AValue: TJSONValue; AType: TJSONValue; out AExpected: string): Boolean;
@@ -86,14 +104,20 @@ begin
   if AType is TJSONArray then
   begin
     for Item in TJSONArray(AType) do
+    begin
       if IsText(Item) then
       begin
         if AExpected <> '' then
+        begin
           AExpected := AExpected + '|';
+        end;
         AExpected := AExpected + Item.Value;
         if HasType(AValue, Item.Value) then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Exit(False);
   end;
   Result := True;
@@ -105,23 +129,31 @@ var
 begin
   Path := APath;
   if Path = '' then
+  begin
     Path := '(Wurzel)';
+  end;
   AIssues := AIssues + [Path + ': ' + AMessage];
 end;
 
 function Child(const APath, AName: string): string;
 begin
   if APath = '' then
-    Result := AName
+  begin
+    Result := AName;
+  end
   else
+  begin
     Result := APath + '.' + AName;
+  end;
 end;
 
 function NumberOf(AValue: TJSONValue): Double;
 begin
   Result := 0;
   if AValue is TJSONNumber then
+  begin
     Result := TJSONNumber(AValue).AsDouble;
+  end;
 end;
 
 { TAtlasSchemaCheck }
@@ -138,21 +170,29 @@ var
   Pair: TJSONPair;
 begin
   if (AValue = nil) or (ASchema = nil) then
+  begin
     Exit;
+  end;
   Variants := ASchema.GetValue('oneOf');
   if Variants is TJSONArray then
   begin
     Matches := 0;
     for Item in TJSONArray(Variants) do
+    begin
       if Item is TJSONObject then
       begin
         Probe := nil;
         Check(AValue, TJSONObject(Item), APath, Probe);
         if Length(Probe) = 0 then
+        begin
           Inc(Matches);
+        end;
       end;
+    end;
     if Matches <> 1 then
+    begin
       Add(AIssues, APath, 'passt zu keiner erlaubten Form');
+    end;
     Exit;
   end;
   if not TypeMatches(AValue, ASchema.GetValue('type'), Expected) then
@@ -165,19 +205,29 @@ begin
   begin
     Found := False;
     for Item in TJSONArray(Enum) do
+    begin
       if Item.ToJSON = AValue.ToJSON then
+      begin
         Found := True;
+      end;
+    end;
     if not Found then
+    begin
       Add(AIssues, APath, 'Wert ' + AValue.ToJSON + ' ist nicht erlaubt');
+    end;
   end;
   if AValue is TJSONNumber then
   begin
     Sub := ASchema.GetValue('minimum');
     if (Sub is TJSONNumber) and (NumberOf(AValue) < NumberOf(Sub)) then
+    begin
       Add(AIssues, APath, 'kleiner als ' + Sub.ToJSON);
+    end;
     Sub := ASchema.GetValue('maximum');
     if (Sub is TJSONNumber) and (NumberOf(AValue) > NumberOf(Sub)) then
+    begin
       Add(AIssues, APath, 'größer als ' + Sub.ToJSON);
+    end;
   end;
   if AValue is TJSONObject then
   begin
@@ -185,29 +235,47 @@ begin
     Additional := ASchema.GetValue('additionalProperties');
     Required := ASchema.GetValue('required');
     if Required is TJSONArray then
+    begin
       for Item in TJSONArray(Required) do
+      begin
         if IsText(Item) and (TJSONObject(AValue).GetValue(Item.Value) = nil) then
+        begin
           Add(AIssues, Child(APath, Item.Value), 'fehlt');
+        end;
+      end;
+    end;
     for Index := 0 to TJSONObject(AValue).Count - 1 do
     begin
       Pair := TJSONObject(AValue).Pairs[Index];
       Sub := nil;
       if Properties is TJSONObject then
+      begin
         Sub := TJSONObject(Properties).GetValue(Pair.JsonString.Value);
+      end;
       if Sub is TJSONObject then
-        Check(Pair.JsonValue, TJSONObject(Sub), Child(APath, Pair.JsonString.Value), AIssues)
+      begin
+        Check(Pair.JsonValue, TJSONObject(Sub), Child(APath, Pair.JsonString.Value), AIssues);
+      end
       else if Additional is TJSONObject then
-        Check(Pair.JsonValue, TJSONObject(Additional), Child(APath, Pair.JsonString.Value), AIssues)
+      begin
+        Check(Pair.JsonValue, TJSONObject(Additional), Child(APath, Pair.JsonString.Value), AIssues);
+      end
       else if (Additional is TJSONBool) and not TJSONBool(Additional).AsBoolean then
+      begin
         Add(AIssues, Child(APath, Pair.JsonString.Value), 'unbekannter Schlüssel');
+      end;
     end;
   end;
   if AValue is TJSONArray then
   begin
     Items := ASchema.GetValue('items');
     if Items is TJSONObject then
+    begin
       for Index := 0 to TJSONArray(AValue).Count - 1 do
+      begin
         Check(TJSONArray(AValue).Items[Index], TJSONObject(Items), APath + '[' + IntToStr(Index) + ']', AIssues);
+      end;
+    end;
   end;
 end;
 
@@ -251,16 +319,22 @@ begin
     begin
       Properties := TJSONObject(Schema).GetValue('properties');
       if Properties is TJSONObject then
+      begin
         for Index := 0 to Root.Count - 1 do
         begin
           Pair := Root.Pairs[Index];
           Field := TJSONObject(Properties).GetValue(Pair.JsonString.Value);
           if not (Field is TJSONObject) then
+          begin
             Continue;
+          end;
           Scope := TJSONObject(Field).GetValue('x-scope');
           if IsText(Scope) and not SameText(Scope.Value, AScope) and not SameText(Scope.Value, 'both') then
+          begin
             Add(AIssues, Pair.JsonString.Value, 'gehört in die Einstellungen "' + Scope.Value + '"');
+          end;
         end;
+      end;
     end;
     Result := Length(AIssues) = 0;
   finally

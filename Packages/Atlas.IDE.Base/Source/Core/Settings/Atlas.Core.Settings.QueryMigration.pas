@@ -60,10 +60,14 @@ uses
 function TAtlasSettingsQueryMigration.LogLine: string;
 begin
   if Moved then
+  begin
     Result := Format('Einstellung %s ist jetzt die Abfrage „%s“ in %s', [OldKey,
-      TAtlasSettingsQueryMigrations.StandardName, TAtlasSettingsQueryMigrations.Path])
+      TAtlasSettingsQueryMigrations.StandardName, TAtlasSettingsQueryMigrations.Path]);
+  end
   else
+  begin
     Result := Format('Einstellung %s entfällt (%s gilt)', [OldKey, TAtlasSettingsQueryMigrations.Path]);
+  end;
 end;
 
 { TAtlasSettingsQueryMigrations }
@@ -74,10 +78,14 @@ var
 begin
   Result := '';
   if not (AItem is TJSONObject) then
+  begin
     Exit;
+  end;
   mValue := TJSONObject(AItem).GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := Trim(TJSONString(mValue).Value);
+  end;
 end;
 
 /// <summary>Eine gültige Zeile „Standard“ (wie TAtlasTrackerQueries.Read: Name und Abfrage nicht leer).</summary>
@@ -98,20 +106,28 @@ begin
   // Einzeilig wie TAtlasTrackerQuery.Create: der Anbieter hängt die Abfrage an die Adresse.
   mQuery := Trim(ALegacyQuery.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' '));
   if mQuery = '' then
+  begin
     Exit;
+  end;
   mParts := TArray<string>.Create('{"name": ' + TAtlasJsonText.Quote(StandardName) + ', "query": ' +
     TAtlasJsonText.Quote(mQuery) + '}');
   mRoot := nil;
   if Trim(AJson) <> '' then
+  begin
     mRoot := TJSONObject.ParseJSONValue(AJson);
+  end;
   try
     if mRoot is TJSONArray then
+    begin
       for mItem in TJSONArray(mRoot) do
       begin
         if IsStandard(mItem) then
+        begin
           Exit;
+        end;
         mParts := mParts + [mItem.ToJSON([])];
       end;
+    end;
   finally
     mRoot.Free;
   end;
@@ -136,13 +152,17 @@ begin
     mLegacy := ALegacy.ReadString(OlderLegacyName, '');
   end
   else
+  begin
     Exit;
+  end;
   Result.Found := True;
   mBefore := ATarget.ReadString(SettingName, '[]');
   mAfter := WithLegacy(mBefore, mLegacy);
   Result.Moved := mAfter <> mBefore;
   if Result.Moved then
+  begin
     ATarget.WriteString(SettingName, mAfter);
+  end;
 end;
 
 class procedure TAtlasSettingsQueryMigrations.RemoveLegacy(const ALegacyNames: IAtlasSettingsNames);

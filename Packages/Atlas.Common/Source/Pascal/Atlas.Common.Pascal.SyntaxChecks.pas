@@ -71,6 +71,14 @@ type
     procedure CheckClassOperator(AHeader: TSyntaxNode);
     procedure CheckGoto(AGoto: TSyntaxNode);
     function LabelsOf(AScope: TSyntaxNode): TArray<string>;
+    /// <summary>Knoten, deren Kinder Marken-Abschnitte von AScope sein können.</summary>
+    function LabelContainers(AScope: TSyntaxNode): TArray<TSyntaxNode>;
+    /// <summary>Hängt die Marken des Abschnitts ASection an AResult an.</summary>
+    procedure AddSectionLabels(ASection: TSyntaxNode; var AResult: TArray<string>);
+    /// <summary>Routine oder Datei, in der AGoto steht; nil in anonymen Methoden.</summary>
+    function GotoScope(AGoto: TSyntaxNode): TSyntaxNode;
+    /// <summary>Ist die Marke AKey in AScope oder einer umgebenden Routine deklariert?</summary>
+    function LabelVisible(AScope: TSyntaxNode; const AKey: string): Boolean;
   public
     constructor Create(const ATokens: TArray<TPascalToken>);
     destructor Destroy; override;
@@ -453,90 +461,104 @@ begin
     [FTokens[mIndex].Text]), FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
 end;
 
-function TTreeChecker.LabelsOf(AScope: TSyntaxNode): TArray<string>;
+function TTreeChecker.LabelContainers(AScope: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index, Inner, TokenIndex: Integer;
-  Section, Container: TSyntaxNode;
-  Containers: TArray<TSyntaxNode>;
+  mIndex: Integer;
 begin
-  Result := nil;
-  Containers := [AScope];
+  Result := [AScope];
   // Auf Datei-Ebene stehen die Marken in den Abschnitten.
-  if AScope.Kind <> TSyntaxKind.RoutineDecl then
+  if AScope.Kind = TSyntaxKind.RoutineDecl then
   begin
-    for Index := 0 to AScope.ChildCount - 1 do
+    Exit;
+  end;
+  for mIndex := 0 to AScope.ChildCount - 1 do
+  begin
+    if AScope[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
     begin
-      if AScope[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
-      begin
-        Containers := Containers + [AScope[Index]];
-      end;
+      Result := Result + [AScope[mIndex]];
     end;
   end;
-  for Container in Containers do
+end;
+
+procedure TTreeChecker.AddSectionLabels(ASection: TSyntaxNode; var AResult: TArray<string>);
+var
+  mTokenIndex: Integer;
+begin
+  mTokenIndex := IndexAt(ASection.StartOffset);
+  if mTokenIndex < 0 then
+  begin
+    Exit;
+  end;
+  mTokenIndex := NextCode(mTokenIndex);
+  while (mTokenIndex >= 0) and (FTokens[mTokenIndex].Offset < ASection.EndOffset) do
+  begin
+    if FTokens[mTokenIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
+    begin
+      AResult := AResult + [LabelKey(FTokens[mTokenIndex].Text)];
+    end;
+    mTokenIndex := NextCode(mTokenIndex);
+  end;
+end;
+
+function TTreeChecker.LabelsOf(AScope: TSyntaxNode): TArray<string>;
+var
+  Inner: Integer;
+  Container: TSyntaxNode;
+begin
+  Result := nil;
+  for Container in LabelContainers(AScope) do
   begin
     for Inner := 0 to Container.ChildCount - 1 do
     begin
-      Section := Container[Inner];
-      if Section.Kind <> TSyntaxKind.LabelSection then
+      if Container[Inner].Kind = TSyntaxKind.LabelSection then
       begin
-        Continue;
-      end;
-      TokenIndex := IndexAt(Section.StartOffset);
-      if TokenIndex < 0 then
-      begin
-        Continue;
-      end;
-      TokenIndex := NextCode(TokenIndex);
-      while (TokenIndex >= 0) and (FTokens[TokenIndex].Offset < Section.EndOffset) do
-      begin
-        if FTokens[TokenIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number] then
-        begin
-          Result := Result + [LabelKey(FTokens[TokenIndex].Text)];
-        end;
-        TokenIndex := NextCode(TokenIndex);
+        AddSectionLabels(Container[Inner], Result);
       end;
     end;
   end;
 end;
 
+function TTreeChecker.GotoScope(AGoto: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AGoto.Parent;
+  while (Result <> nil) and (Result.Parent <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    // Marken anonymer Methoden kennt der Baum nicht sicher genug.
+    if Result.Kind = TSyntaxKind.AnonymousMethod then
+    begin
+      Exit(nil);
+    end;
+    Result := Result.Parent;
+  end;
+end;
+
+function TTreeChecker.LabelVisible(AScope: TSyntaxNode; const AKey: string): Boolean;
+var
+  mOuter: TSyntaxNode;
+begin
+  Result := IndexStr(AKey, LabelsOf(AScope)) >= 0;
+  // In einer umgebenden Routine deklariert: das meldet label-misuse genauer (E2093, #995).
+  mOuter := AScope.Parent;
+  while not Result and (mOuter <> nil) do
+  begin
+    Result := (mOuter.Kind = TSyntaxKind.RoutineDecl) and (IndexStr(AKey, LabelsOf(mOuter)) >= 0);
+    mOuter := mOuter.Parent;
+  end;
+end;
+
 procedure TTreeChecker.CheckGoto(AGoto: TSyntaxNode);
 var
-  Scope, Outer: TSyntaxNode;
+  Scope: TSyntaxNode;
   NameIndex: Integer;
-  Labels: TArray<string>;
 begin
   if AGoto.Name = '' then
   begin
     Exit;
   end;
-  Scope := AGoto.Parent;
-  while (Scope <> nil) and (Scope.Parent <> nil) and (Scope.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    // Marken anonymer Methoden kennt der Baum nicht sicher genug.
-    if Scope.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      Exit;
-    end;
-    Scope := Scope.Parent;
-  end;
-  if Scope = nil then
+  Scope := GotoScope(AGoto);
+  if (Scope = nil) or LabelVisible(Scope, LabelKey(AGoto.Name)) then
   begin
     Exit;
-  end;
-  Labels := LabelsOf(Scope);
-  if IndexStr(LabelKey(AGoto.Name), Labels) >= 0 then
-  begin
-    Exit;
-  end;
-  // In einer umgebenden Routine deklariert: das meldet label-misuse genauer (E2093, #995).
-  Outer := Scope.Parent;
-  while Outer <> nil do
-  begin
-    if (Outer.Kind = TSyntaxKind.RoutineDecl) and (IndexStr(LabelKey(AGoto.Name), LabelsOf(Outer)) >= 0) then
-    begin
-      Exit;
-    end;
-    Outer := Outer.Parent;
   end;
   NameIndex := IndexAt(AGoto.StartOffset);
   if NameIndex >= 0 then

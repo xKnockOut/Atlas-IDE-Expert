@@ -204,6 +204,10 @@ type
     FBlockedAt: Int64;
     function Now_: Int64;
     function PendingIndex(const AFileName: string): Integer;
+    function OutcomeOf(const ASettings: TAtlasReleaseSettings; const AOptions: TAtlasReleaseOptions;
+      const AFindings: TAtlasReleaseFindings): TAtlasReleaseOutcome;
+    procedure DropPending(const AFileName: string);
+    procedure AddPending(const AOptions: TAtlasReleaseOptions);
   public
     /// <summary>AClock nil = Uhr des Systems (ms).</summary>
     constructor Create(const ASettings: TAtlasReleaseSettingsFunc; const ARead: TAtlasReleaseReadFunc;
@@ -334,222 +338,276 @@ begin
   Result := TTextChars.IsIdentChar(AChar) or (AChar = '.');
 end;
 
-class function TAtlasReleaseGuard.LeakReportLine(const ASource: string): Integer;
+type
+  /// <summary>Durchlauf durch den Projektquelltext für die Leck-Prüfung: Kommentare, Zeichenketten und
+  /// bedingte Blöcke ({$IFDEF DEBUG} …) werden übersprungen und ihre Zeilen mitgezählt.</summary>
+  TLeakScanner = record
+  private
+    FSource: string;
+    FIndex: Integer;
+    FLength: Integer;
+    FLine: Integer;
+    FFrames: TArray<TGuardFrame>;
+    function Guarded: Boolean;
+    function NextIs(AChar: Char): Boolean;
+    procedure CountLines(AFrom, ATo: Integer);
+    procedure PushFrame(AKind: TGuardKind);
+    procedure HandleDirective(const AText: string);
+    procedure SkipBlanks;
+    procedure SkipLineComment;
+    procedure SkipComment(const AClose: string; AOpenLength: Integer);
+    procedure SkipString;
+    function ReadQualified: string;
+    function ScanWord: Integer;
+    function Step: Integer;
+  public
+    /// <summary>Zeile der ersten ungeschützten Zuweisung True; 0 ohne.</summary>
+    function Run(const ASource: string): Integer;
+  end;
+
+function TLeakScanner.Guarded: Boolean;
 var
-  Index, Length_, Line, Start, Found, FoundLine: Integer;
-  Frames: TArray<TGuardFrame>;
+  Item: TGuardFrame;
+begin
+  Result := False;
+  for Item in FFrames do
+  begin
+    if FrameGuarded(Item) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TLeakScanner.NextIs(AChar: Char): Boolean;
+begin
+  Result := (FIndex < FLength) and (FSource[FIndex + 1] = AChar);
+end;
+
+procedure TLeakScanner.CountLines(AFrom, ATo: Integer);
+var
+  Position: Integer;
+begin
+  for Position := AFrom to ATo do
+  begin
+    if FSource[Position] = #10 then
+    begin
+      Inc(FLine);
+    end;
+  end;
+end;
+
+procedure TLeakScanner.PushFrame(AKind: TGuardKind);
+var
   Frame: TGuardFrame;
-  Directive, Name, Argument, Word: string;
+begin
+  Frame.InElse := False;
+  Frame.Kind := AKind;
+  FFrames := FFrames + [Frame];
+end;
 
-  function Guarded: Boolean;
-  var
-    Item: TGuardFrame;
+/// <summary>Art des Blocks zu {$IFDEF X}/{$IFNDEF X}: DEBUG schützt, alles andere ist neutral.</summary>
+function DefineKind(const AArgument: string; ADebugKind: TGuardKind): TGuardKind;
+begin
+  if SameText(AArgument, 'DEBUG') then
   begin
-    Result := False;
-    for Item in Frames do
-    begin
-      if FrameGuarded(Item) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  procedure CountLines(AFrom, ATo: Integer);
-  var
-    Position: Integer;
+    Result := ADebugKind;
+  end
+  else
   begin
-    for Position := AFrom to ATo do
-    begin
-      if ASource[Position] = #10 then
-      begin
-        Inc(Line);
-      end;
-    end;
+    Result := TGuardKind.Neutral;
   end;
+end;
 
-  procedure HandleDirective(const AText: string);
-  var
-    Space: Integer;
+procedure TLeakScanner.HandleDirective(const AText: string);
+var
+  Space: Integer;
+  Name, Argument: string;
+begin
+  Space := Pos(' ', AText + ' ');
+  Name := UpperCase(Copy(AText, 1, Space - 1));
+  Argument := Trim(Copy(AText, Space + 1, MaxInt));
+  if Name = 'IFDEF' then
   begin
-    Space := Pos(' ', AText + ' ');
-    Name := UpperCase(Copy(AText, 1, Space - 1));
-    Argument := Trim(Copy(AText, Space + 1, MaxInt));
-    if Name = 'IFDEF' then
-    begin
-      Frame.InElse := False;
-      if SameText(Argument, 'DEBUG') then
-      begin
-        Frame.Kind := TGuardKind.IfDebug;
-      end
-      else
-      begin
-        Frame.Kind := TGuardKind.Neutral;
-      end;
-      Frames := Frames + [Frame];
-    end
-    else if Name = 'IFNDEF' then
-    begin
-      Frame.InElse := False;
-      if SameText(Argument, 'DEBUG') then
-      begin
-        Frame.Kind := TGuardKind.IfNotDebug;
-      end
-      else
-      begin
-        Frame.Kind := TGuardKind.Neutral;
-      end;
-      Frames := Frames + [Frame];
-    end
-    else if (Name = 'IF') or (Name = 'IFOPT') then
-    begin
-      Frame.InElse := False;
-      Frame.Kind := DirectiveKind(Argument);
-      if Name = 'IFOPT' then
-      begin
-        Frame.Kind := TGuardKind.Neutral;
-      end;
-      Frames := Frames + [Frame];
-    end
-    else if (Name = 'ELSEIF') and (System.Length(Frames) > 0) then
-    begin
-      Frames[High(Frames)].Kind := DirectiveKind(Argument);
-      Frames[High(Frames)].InElse := False;
-    end
-    else if (Name = 'ELSE') and (System.Length(Frames) > 0) then
-    begin
-      Frames[High(Frames)].InElse := True;
-    end
-    else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (System.Length(Frames) > 0) then
-    begin
-      SetLength(Frames, System.Length(Frames) - 1);
-    end;
-  end;
-
-  procedure SkipBlanks;
+    PushFrame(DefineKind(Argument, TGuardKind.IfDebug));
+  end
+  else if Name = 'IFNDEF' then
   begin
-    while (Index <= Length_) and CharInSet(ASource[Index], [' ', #9, #13, #10]) do
-    begin
-      if ASource[Index] = #10 then
-      begin
-        Inc(Line);
-      end;
-      Inc(Index);
-    end;
+    PushFrame(DefineKind(Argument, TGuardKind.IfNotDebug));
+  end
+  else if Name = 'IF' then
+  begin
+    PushFrame(DirectiveKind(Argument));
+  end
+  else if Name = 'IFOPT' then
+  begin
+    PushFrame(TGuardKind.Neutral);
+  end
+  else if System.Length(FFrames) = 0 then
+  begin
+    Exit;
+  end
+  else if Name = 'ELSEIF' then
+  begin
+    FFrames[High(FFrames)].Kind := DirectiveKind(Argument);
+    FFrames[High(FFrames)].InElse := False;
+  end
+  else if Name = 'ELSE' then
+  begin
+    FFrames[High(FFrames)].InElse := True;
+  end
+  else if (Name = 'ENDIF') or (Name = 'IFEND') then
+  begin
+    SetLength(FFrames, System.Length(FFrames) - 1);
   end;
+end;
 
+procedure TLeakScanner.SkipBlanks;
+begin
+  while (FIndex <= FLength) and CharInSet(FSource[FIndex], [' ', #9, #13, #10]) do
+  begin
+    if FSource[FIndex] = #10 then
+    begin
+      Inc(FLine);
+    end;
+    Inc(FIndex);
+  end;
+end;
+
+procedure TLeakScanner.SkipLineComment;
+begin
+  while (FIndex <= FLength) and (FSource[FIndex] <> #10) do
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+/// <summary>Kommentar ab FIndex bis AClose; mit $ direkt nach der Öffnung eine Compileranweisung.</summary>
+procedure TLeakScanner.SkipComment(const AClose: string; AOpenLength: Integer);
+var
+  Start, Found: Integer;
+begin
+  Start := FIndex;
+  Found := Pos(AClose, FSource, FIndex + AOpenLength);
+  if Found = 0 then
+  begin
+    Found := FLength;
+  end;
+  if (FIndex + AOpenLength <= FLength) and (FSource[FIndex + AOpenLength] = '$') then
+  begin
+    HandleDirective(Trim(Copy(FSource, FIndex + AOpenLength + 1, Found - FIndex - AOpenLength - 1)));
+  end;
+  CountLines(Start, Found);
+  FIndex := Found + System.Length(AClose);
+end;
+
+procedure TLeakScanner.SkipString;
+begin
+  Inc(FIndex);
+  while (FIndex <= FLength) and (FSource[FIndex] <> '''') and (FSource[FIndex] <> #10) do
+  begin
+    Inc(FIndex);
+  end;
+  // Das Zeilenende zählt die Hauptschleife.
+  if (FIndex <= FLength) and (FSource[FIndex] = '''') then
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+function TLeakScanner.ReadQualified: string;
+var
+  Start: Integer;
+begin
+  Start := FIndex;
+  while (FIndex <= FLength) and IsQualifiedChar(FSource[FIndex]) do
+  begin
+    Inc(FIndex);
+  end;
+  Result := Copy(FSource, Start, FIndex - Start);
+end;
+
+/// <summary>Bezeichner ab FIndex; bei ungeschütztem „ReportMemoryLeaksOnShutdown := True“ dessen Zeile,
+/// sonst 0.</summary>
+function TLeakScanner.ScanWord: Integer;
+var
+  Word: string;
+  FoundLine: Integer;
 begin
   Result := 0;
-  Frames := nil;
-  Frame := Default(TGuardFrame);
-  Length_ := System.Length(ASource);
-  Line := 1;
-  Index := 1;
-  while Index <= Length_ do
+  Word := UpperCase(ReadQualified);
+  if (Word <> 'REPORTMEMORYLEAKSONSHUTDOWN') and (Word <> 'SYSTEM.REPORTMEMORYLEAKSONSHUTDOWN') then
   begin
-    case ASource[Index] of
-      #10:
-        begin
-          Inc(Line);
-          Inc(Index);
-        end;
-      '/':
-        if (Index < Length_) and (ASource[Index + 1] = '/') then
-        begin
-          while (Index <= Length_) and (ASource[Index] <> #10) do
-          begin
-            Inc(Index);
-          end;
-        end
-        else
-        begin
-          Inc(Index);
-        end;
-      '{':
-        begin
-          Start := Index;
-          Found := Pos('}', ASource, Index + 1);
-          if Found = 0 then
-          begin
-            Found := Length_;
-          end;
-          if (Index < Length_) and (ASource[Index + 1] = '$') then
-          begin
-            Directive := Trim(Copy(ASource, Index + 2, Found - Index - 2));
-            HandleDirective(Directive);
-          end;
-          CountLines(Start, Found);
-          Index := Found + 1;
-        end;
-      '(':
-        if (Index < Length_) and (ASource[Index + 1] = '*') then
-        begin
-          Start := Index;
-          Found := Pos('*)', ASource, Index + 2);
-          if Found = 0 then
-          begin
-            Found := Length_;
-          end;
-          if (Index + 2 <= Length_) and (ASource[Index + 2] = '$') then
-          begin
-            Directive := Trim(Copy(ASource, Index + 3, Found - Index - 3));
-            HandleDirective(Directive);
-          end;
-          CountLines(Start, Found);
-          Index := Found + 2;
-        end
-        else
-        begin
-          Inc(Index);
-        end;
-      '''':
-        begin
-          Inc(Index);
-          while (Index <= Length_) and (ASource[Index] <> '''') and (ASource[Index] <> #10) do
-          begin
-            Inc(Index);
-          end;
-          // Das Zeilenende zählt die Hauptschleife.
-          if (Index <= Length_) and (ASource[Index] = '''') then
-          begin
-            Inc(Index);
-          end;
-        end;
-    else
-      if IsQualifiedChar(ASource[Index]) then
-      begin
-        Start := Index;
-        while (Index <= Length_) and IsQualifiedChar(ASource[Index]) do
-        begin
-          Inc(Index);
-        end;
-        Word := UpperCase(Copy(ASource, Start, Index - Start));
-        if (Word = 'REPORTMEMORYLEAKSONSHUTDOWN') or (Word = 'SYSTEM.REPORTMEMORYLEAKSONSHUTDOWN') then
-        begin
-          FoundLine := Line;
-          SkipBlanks;
-          if (Index < Length_) and (ASource[Index] = ':') and (ASource[Index + 1] = '=') then
-          begin
-            Inc(Index, 2);
-            SkipBlanks;
-            Start := Index;
-            while (Index <= Length_) and IsQualifiedChar(ASource[Index]) do
-            begin
-              Inc(Index);
-            end;
-            if SameText(Copy(ASource, Start, Index - Start), 'True') and not Guarded then
-            begin
-              Exit(FoundLine);
-            end;
-          end;
-        end;
-      end
-      else
-      begin
-        Inc(Index);
-      end;
+    Exit;
+  end;
+  FoundLine := FLine;
+  SkipBlanks;
+  if (FIndex < FLength) and (FSource[FIndex] = ':') and (FSource[FIndex + 1] = '=') then
+  begin
+    Inc(FIndex, 2);
+    SkipBlanks;
+    if SameText(ReadQualified, 'True') and not Guarded then
+    begin
+      Result := FoundLine;
     end;
   end;
+end;
+
+/// <summary>Ein Schritt ab FIndex; liefert die Zeile der Fundstelle oder 0.</summary>
+function TLeakScanner.Step: Integer;
+begin
+  Result := 0;
+  if FSource[FIndex] = #10 then
+  begin
+    Inc(FLine);
+    Inc(FIndex);
+  end
+  else if (FSource[FIndex] = '/') and NextIs('/') then
+  begin
+    SkipLineComment;
+  end
+  else if FSource[FIndex] = '{' then
+  begin
+    SkipComment('}', 1);
+  end
+  else if (FSource[FIndex] = '(') and NextIs('*') then
+  begin
+    SkipComment('*)', 2);
+  end
+  else if FSource[FIndex] = '''' then
+  begin
+    SkipString;
+  end
+  else if IsQualifiedChar(FSource[FIndex]) then
+  begin
+    Result := ScanWord;
+  end
+  else
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+function TLeakScanner.Run(const ASource: string): Integer;
+begin
+  Result := 0;
+  FSource := ASource;
+  FFrames := nil;
+  FLength := System.Length(ASource);
+  FLine := 1;
+  FIndex := 1;
+  while (Result = 0) and (FIndex <= FLength) do
+  begin
+    Result := Step;
+  end;
+end;
+
+class function TAtlasReleaseGuard.LeakReportLine(const ASource: string): Integer;
+var
+  Scanner: TLeakScanner;
+begin
+  Scanner := Default(TLeakScanner);
+  Result := Scanner.Run(ASource);
 end;
 
 function Finding(AIssue: TAtlasReleaseIssue; ACheck: TAtlasReleaseCheck; const AValue: string;
@@ -586,13 +644,9 @@ var
     end;
   end;
 
-var
-  Define, Version, Output: string;
-  Line: Integer;
-  Item: TAtlasReleaseFinding;
-begin
-  Findings := nil;
-  if Enabled(TAtlasReleaseCheck.DebugDefine) then
+  procedure CheckDefines;
+  var
+    Define: string;
   begin
     for Define in AOptions.Defines do
     begin
@@ -603,6 +657,59 @@ begin
         Break;
       end;
     end;
+  end;
+
+  procedure CheckLeaks;
+  var
+    Line: Integer;
+    Item: TAtlasReleaseFinding;
+  begin
+    Line := LeakReportLine(AOptions.Source);
+    if Line > 0 then
+    begin
+      Item := Finding(TAtlasReleaseIssue.MemoryLeaks, TAtlasReleaseCheck.MemoryLeaks,
+        'ReportMemoryLeaksOnShutdown := True', False);
+      Item.FileName := AOptions.SourceFile;
+      Item.Line := Line;
+      Findings := Findings + [Item];
+    end;
+  end;
+
+  procedure CheckVersion;
+  var
+    Version: string;
+  begin
+    Version := VersionOf(AOptions);
+    if (Version = '') or (Version = '0.0.0.0') then
+    begin
+      Findings := Findings + [Finding(TAtlasReleaseIssue.VersionMissing, TAtlasReleaseCheck.VersionInfo, Version,
+        False)];
+    end
+    else if (AOptions.LastVersion <> '') and SameText(Version, AOptions.LastVersion) and
+      not IsOn(AOptions.AutoIncrementVersion, False) then
+    begin
+      Findings := Findings + [Finding(TAtlasReleaseIssue.VersionUnchanged, TAtlasReleaseCheck.VersionInfo, Version,
+        False)];
+    end;
+  end;
+
+  procedure CheckOutput;
+  var
+    Output: string;
+  begin
+    Output := ResolveFolder(AOptions.OutputFolder, AOptions.Configuration, AOptions.Platform);
+    if SameText(Output, ResolveFolder(AOptions.DebugOutputFolder, DebugConfiguration, AOptions.Platform)) then
+    begin
+      Findings := Findings + [Finding(TAtlasReleaseIssue.OutputFolder, TAtlasReleaseCheck.OutputFolder, Output,
+        False)];
+    end;
+  end;
+
+begin
+  Findings := nil;
+  if Enabled(TAtlasReleaseCheck.DebugDefine) then
+  begin
+    CheckDefines;
   end;
   Option(TAtlasReleaseIssue.DebugInfo, TAtlasReleaseCheck.DebugInfo, AOptions.DebugInformation, True);
   // „Mit Debug-Informationen linken“ zählt nur, wenn keine Debug-Informationen gewollt sind.
@@ -618,40 +725,16 @@ begin
   Option(TAtlasReleaseIssue.OverflowChecks, TAtlasReleaseCheck.OverflowChecks, AOptions.OverflowChecks, False);
   if Enabled(TAtlasReleaseCheck.MemoryLeaks) and not AOptions.IsPackage and (AOptions.Source <> '') then
   begin
-    Line := LeakReportLine(AOptions.Source);
-    if Line > 0 then
-    begin
-      Item := Finding(TAtlasReleaseIssue.MemoryLeaks, TAtlasReleaseCheck.MemoryLeaks,
-        'ReportMemoryLeaksOnShutdown := True', False);
-      Item.FileName := AOptions.SourceFile;
-      Item.Line := Line;
-      Findings := Findings + [Item];
-    end;
+    CheckLeaks;
   end;
   if Enabled(TAtlasReleaseCheck.VersionInfo) then
   begin
-    Version := VersionOf(AOptions);
-    if (Version = '') or (Version = '0.0.0.0') then
-    begin
-      Findings := Findings + [Finding(TAtlasReleaseIssue.VersionMissing, TAtlasReleaseCheck.VersionInfo, Version,
-        False)];
-    end
-    else if (AOptions.LastVersion <> '') and SameText(Version, AOptions.LastVersion) and
-      not IsOn(AOptions.AutoIncrementVersion, False) then
-    begin
-      Findings := Findings + [Finding(TAtlasReleaseIssue.VersionUnchanged, TAtlasReleaseCheck.VersionInfo, Version,
-        False)];
-    end;
+    CheckVersion;
   end;
   if Enabled(TAtlasReleaseCheck.OutputFolder) and not AOptions.IsPackage and AOptions.HasDebugConfiguration and
     not SameText(AOptions.Configuration, DebugConfiguration) then
   begin
-    Output := ResolveFolder(AOptions.OutputFolder, AOptions.Configuration, AOptions.Platform);
-    if SameText(Output, ResolveFolder(AOptions.DebugOutputFolder, DebugConfiguration, AOptions.Platform)) then
-    begin
-      Findings := Findings + [Finding(TAtlasReleaseIssue.OutputFolder, TAtlasReleaseCheck.OutputFolder, Output,
-        False)];
-    end;
+    CheckOutput;
   end;
   Result := Findings;
 end;
@@ -714,6 +797,58 @@ begin
   Result := -1;
 end;
 
+/// <summary>Ausgang der Prüfung; mit build.gate = block lässt derselbe Befund kurz nach dem Abbruch den
+/// zweiten Versuch durch (bewusst übergangen).</summary>
+function TAtlasReleaseGuardParticipant.OutcomeOf(const ASettings: TAtlasReleaseSettings;
+  const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings): TAtlasReleaseOutcome;
+var
+  Key: string;
+begin
+  if Length(AFindings) = 0 then
+  begin
+    Exit(TAtlasReleaseOutcome.Passed);
+  end;
+  if ASettings.Gate <> TAtlasBuildGate.Block then
+  begin
+    Exit(TAtlasReleaseOutcome.Reported);
+  end;
+  Key := TAtlasReleaseGuard.FindingsKey(AOptions, AFindings);
+  if (Key = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasReleaseGuard.OverrideMs) then
+  begin
+    Result := TAtlasReleaseOutcome.Overridden;
+    FBlockedKey := '';
+  end
+  else
+  begin
+    Result := TAtlasReleaseOutcome.Blocked;
+    FBlockedKey := Key;
+    FBlockedAt := Now_;
+  end;
+end;
+
+procedure TAtlasReleaseGuardParticipant.DropPending(const AFileName: string);
+var
+  Index: Integer;
+begin
+  Index := PendingIndex(AFileName);
+  if Index >= 0 then
+  begin
+    FPending.Delete(Index);
+  end;
+end;
+
+procedure TAtlasReleaseGuardParticipant.AddPending(const AOptions: TAtlasReleaseOptions);
+var
+  Pending: TPending;
+begin
+  Pending.Options := AOptions;
+  Pending.Version := TAtlasReleaseGuard.VersionOf(AOptions);
+  if Pending.Version <> '' then
+  begin
+    FPending.Add(Pending);
+  end;
+end;
+
 function TAtlasReleaseGuardParticipant.CancelCompile(const AProject: TAtlasCompileProject;
   out AReason: string): Boolean;
 var
@@ -721,9 +856,7 @@ var
   Options: TAtlasReleaseOptions;
   Findings: TAtlasReleaseFindings;
   Outcome: TAtlasReleaseOutcome;
-  Key, Reason: string;
-  Index: Integer;
-  Pending: TPending;
+  Reason: string;
 begin
   AReason := '';
   Result := False;
@@ -737,46 +870,15 @@ begin
     Options.Project := AProject.FileName;
   end;
   Findings := TAtlasReleaseGuard.Evaluate(Settings, Options);
-  if Length(Findings) = 0 then
-  begin
-    Outcome := TAtlasReleaseOutcome.Passed;
-  end
-  else if Settings.Gate <> TAtlasBuildGate.Block then
-  begin
-    Outcome := TAtlasReleaseOutcome.Reported;
-  end
-  else
-  begin
-    Key := TAtlasReleaseGuard.FindingsKey(Options, Findings);
-    if (Key = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasReleaseGuard.OverrideMs) then
-    begin
-      Outcome := TAtlasReleaseOutcome.Overridden;
-      FBlockedKey := '';
-    end
-    else
-    begin
-      Outcome := TAtlasReleaseOutcome.Blocked;
-      FBlockedKey := Key;
-      FBlockedAt := Now_;
-    end;
-  end;
+  Outcome := OutcomeOf(Settings, Options, Findings);
   Reason := FReport(Options, Findings, Outcome);
-  Index := PendingIndex(Options.Project);
-  if Index >= 0 then
-  begin
-    FPending.Delete(Index);
-  end;
+  DropPending(Options.Project);
   if Outcome = TAtlasReleaseOutcome.Blocked then
   begin
     AReason := Reason;
     Exit(True);
   end;
-  Pending.Options := Options;
-  Pending.Version := TAtlasReleaseGuard.VersionOf(Options);
-  if Pending.Version <> '' then
-  begin
-    FPending.Add(Pending);
-  end;
+  AddPending(Options);
 end;
 
 procedure TAtlasReleaseGuardParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;

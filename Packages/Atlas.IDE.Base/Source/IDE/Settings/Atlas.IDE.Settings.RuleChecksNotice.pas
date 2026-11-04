@@ -75,7 +75,9 @@ var
 begin
   mOwner := FOwner;
   if (mOwner = nil) or (NotifyCode <> ofnFileOpened) or not IsProjectFile(FileName) then
+  begin
     Exit;
+  end;
   mName := FileName;
   // Keine Exception an die IDE (#493).
   TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -116,7 +118,9 @@ begin
   begin
     mGroup := mModules.MainProjectGroup;
     if (mGroup <> nil) and (mGroup.ActiveProject <> nil) then
+    begin
       Opened(mGroup.ActiveProject.FileName);
+    end;
   end;
 end;
 
@@ -126,9 +130,13 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if FNotifier <> nil then
+  begin
     FNotifier.FOwner := nil;
+  end;
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
     mServices.RemoveNotifier(FNotifierIndex);
+  end;
   FNotifierRef := nil;
   FToast.Free;
   FCore.Free;
@@ -155,10 +163,14 @@ var
 begin
   // Ist das Modul an, nicht einmal die Datei lesen.
   if TAtlasIdeSettings.ModuleOn(cModule) then
+  begin
     Exit;
+  end;
   mConfig := TAtlasRuleChecksNotice.ConfigFor(TPath.GetFullPath(AFileName), ConfigExists);
   if mConfig = '' then
+  begin
     Exit;
+  end;
   try
     mText := TAtlasTextFile.Load(mConfig).Text;
   except
@@ -166,14 +178,18 @@ begin
       Exit;
   end;
   if FCore.Wanted(mConfig, mText, TAtlasIdeSettings.ModuleOn(cModule)) then
+  begin
     Show(AFileName);
+  end;
 end;
 
 class procedure TAtlasIdeRuleChecksNotice.TurnOn;
 begin
   // Schon eingeschaltet (z. B. über die Optionsseite): nicht wieder ausschalten.
   if not TAtlasIdeSettings.ModuleOn(cModule) then
+  begin
     TAtlasIdeQuickToggles.Switch(cSwitchKey);
+  end;
 end;
 
 procedure TAtlasIdeRuleChecksNotice.Show(const AProjectFile: string);
@@ -186,7 +202,9 @@ begin
   mCaption := TAtlasStrings.Text(TAtlasTextId.RuleChecksTurnOn);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.RuleChecks, TAtlasNotificationSeverity.Info,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, TurnOn)]) <> TAtlasNotificationMode.Show then
+  begin
     Exit;
+  end;
   if FToast = nil then
   begin
     FToast := TAtlasNoticeWindow.Create(nil);
@@ -194,12 +212,16 @@ begin
       procedure(AIndex: Integer)
       begin
         if AIndex = 0 then
+        begin
           TurnOn;
+        end;
       end;
   end;
   mArea := Screen.WorkAreaRect;
   if Application.MainForm <> nil then
+  begin
     mArea := Application.MainForm.BoundsRect;
+  end;
   FToast.Colors := TAtlasIdeStyle.Colors;
   FToast.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
   FToast.ShowNotice(mTitle, mText, [mCaption], mArea);

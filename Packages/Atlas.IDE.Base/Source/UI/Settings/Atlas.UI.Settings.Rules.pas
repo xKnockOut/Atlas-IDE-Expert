@@ -210,8 +210,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(TAtlasRuleTable.GroupIds) do
+  begin
     if SameText(TAtlasRuleTable.GroupIds[Index], AGroup) then
+    begin
       Exit(TAtlasStrings.Text(GroupTexts[Index]));
+    end;
+  end;
   Result := AGroup;
 end;
 
@@ -369,10 +373,14 @@ begin
   LineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
   Bars := ssHorizontal;
   if AMemo.Lines.Count > MaxLines then
+  begin
     Bars := ssBoth;
+  end;
   // Nur bei Änderung: ScrollBars legt das Fenster des Memos neu an.
   if AMemo.ScrollBars <> Bars then
+  begin
     AMemo.ScrollBars := Bars;
+  end;
   // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
   AMemo.Height := Max(MinMemoHeight, Lines * LineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
 end;
@@ -432,7 +440,9 @@ begin
   // Auswahllisten und Tabelle brauchen ein Fenster.
   FillChoices;
   if FDirty then
+  begin
     Refill;
+  end;
 end;
 
 procedure TAtlasRulesEditor.SetFixedGroup(const AValue: string);
@@ -441,12 +451,18 @@ begin
   // Fester Knoten einer Gruppe: keine Suche und keine Gruppenauswahl; die Spalte zeigt die Kategorie.
   FTopBar.Visible := AValue = '';
   if AValue <> '' then
-    FList.Columns[2].Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCategory)
+  begin
+    FList.Columns[2].Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsColumnCategory);
+  end
   else
+  begin
     FList.Columns[2].Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnGroup);
+  end;
   FDirty := True;
   if HandleAllocated then
+  begin
     Refill;
+  end;
 end;
 
 procedure TAtlasRulesEditor.SetRules(ACatalog: TJSONValue; const ARulesJson, AOtherRulesJson: string);
@@ -458,7 +474,9 @@ begin
   FLoaded := True;
   FDirty := True;
   if HandleAllocated then
+  begin
     Refill;
+  end;
 end;
 
 procedure TAtlasRulesEditor.ShowLoading;
@@ -474,7 +492,9 @@ begin
   Result := FFixedGroup;
   if (Result = '') and (FGroupChoice.ItemIndex > 0) and
     (FGroupChoice.ItemIndex <= Length(TAtlasRuleTable.GroupIds)) then
+  begin
     Result := TAtlasRuleTable.GroupIds[FGroupChoice.ItemIndex - 1];
+  end;
 end;
 
 function TAtlasRulesEditor.GroupOff: Boolean;
@@ -487,8 +507,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FRows) do
+  begin
     if SameText(FRows[Index].Id, AId) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -501,7 +525,9 @@ function TAtlasRulesEditor.SelectedRow: Integer;
 begin
   Result := -1;
   if (FList.Selected <> nil) and (FList.Selected.Index <= High(FVisible)) then
+  begin
     Result := FVisible[FList.Selected.Index];
+  end;
 end;
 
 function TAtlasRulesEditor.RowShown(ARow: Integer): Boolean;
@@ -509,8 +535,12 @@ var
   Index: Integer;
 begin
   for Index in TAtlasRuleTable.Filter(FRows, Group, FSearch.Text) do
+  begin
     if Index = ARow then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -522,28 +552,46 @@ end;
 function TAtlasRulesEditor.SeverityCaption(const ASeverity: string): string;
 begin
   if SameText(ASeverity, 'error') then
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityError)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityError);
+  end
   else if SameText(ASeverity, 'warning') then
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityWarning)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityWarning);
+  end
   else if SameText(ASeverity, 'info') or SameText(ASeverity, 'information') then
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityInfo)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityInfo);
+  end
   else if SameText(ASeverity, 'hint') then
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityHint)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityHint);
+  end
   else if SameText(ASeverity, 'off') then
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityOff)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityOff);
+  end
   else
+  begin
     Result := ASeverity;
+  end;
 end;
 
 function TAtlasRulesEditor.SeverityColumn(const ARow: TAtlasRuleRow): string;
 begin
   // Eingestellt, sonst „Vorgabe (…)“; ein Wert der anderen Ebene steht dahinter als „(global: …)“.
   if ARow.Severity <> '' then
-    Result := SeverityCaption(ARow.Severity)
+  begin
+    Result := SeverityCaption(ARow.Severity);
+  end
   else
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, [SeverityCaption(ARow.DefaultSeverity)]);
+  end;
   if ARow.GlobalSeverity <> '' then
+  begin
     Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
+  end;
 end;
 
 procedure TAtlasRulesEditor.FillItem(AItem: TListItem; const ARow: TAtlasRuleRow);
@@ -554,9 +602,13 @@ begin
   AItem.SubItems.Clear;
   AItem.SubItems.Add(ARow.Name);
   if FFixedGroup <> '' then
-    Third := ARow.Category
+  begin
+    Third := ARow.Category;
+  end
   else
+  begin
     Third := GroupCaption(ARow.Group);
+  end;
   AItem.SubItems.Add(Third);
   AItem.SubItems.Add(SeverityColumn(ARow));
   AItem.SubItems.Add(TAtlasRuleTable.ListText(ARow.Exclude));
@@ -574,18 +626,28 @@ begin
     try
       FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
       for Index := 0 to High(TAtlasRuleTable.GroupIds) do
+      begin
         FGroupChoice.Items.Add(GroupCaption(TAtlasRuleTable.GroupIds[Index]));
+      end;
     finally
       FGroupChoice.Items.EndUpdate;
     end;
     FGroupChoice.ItemIndex := 0;
   end;
   if FSeverity.Items.Count = 0 then
+  begin
     for Value in SeverityValues do
+    begin
       if Value = '' then
-        FSeverity.Items.Add(TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, ['']))
+      begin
+        FSeverity.Items.Add(TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, ['']));
+      end
       else
+      begin
         FSeverity.Items.Add(SeverityCaption(Value));
+      end;
+    end;
+  end;
 end;
 
 procedure TAtlasRulesEditor.Refill;
@@ -606,7 +668,9 @@ begin
     FStatus.Visible := True;
   end;
   if SelectedRow >= 0 then
+  begin
     FSelectedId := FRows[SelectedRow].Id;
+  end;
   FVisible := TAtlasRuleTable.Filter(FRows, Group, FSearch.Text);
   if FLoaded and (Length(FVisible) = 0) and (FCatalog <> nil) then
   begin
@@ -623,7 +687,9 @@ begin
       Item := FList.Items.Add;
       FillItem(Item, FRows[FVisible[Index]]);
       if SameText(FRows[FVisible[Index]].Id, FSelectedId) then
+      begin
         Selected := Index;
+      end;
     end;
   finally
     FList.Items.EndUpdate;
@@ -648,7 +714,9 @@ begin
   FMaster.Visible := Group <> '';
   FTypeLevel.Visible := SameText(Group, TAtlasRuleTable.CompilerGroup);
   if Group = '' then
+  begin
     Exit;
+  end;
   FMaster.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesGroupMaster, [GroupCaption(Group)]);
   FFilling := True;
   try
@@ -667,8 +735,12 @@ procedure TAtlasRulesEditor.UpdateEnabled;
   begin
     AControl.Enabled := AEnabled;
     if AControl is TWinControl then
+    begin
       for Index := 0 to TWinControl(AControl).ControlCount - 1 do
+      begin
         SetTree(TWinControl(AControl).Controls[Index], AEnabled);
+      end;
+    end;
   end;
 
 var
@@ -702,7 +774,9 @@ begin
       FDescription.Caption := '';
       FExclude.Text := '';
       if FSeverity.Items.Count > 0 then
+      begin
         FSeverity.ItemIndex := -1;
+      end;
       BuildOptions(Default(TAtlasRuleRow));
       FBad.Lines.Text := '';
       FGood.Lines.Text := '';
@@ -712,23 +786,31 @@ begin
       Row := FRows[Index];
       FTitle.Caption := Row.Id;
       if Row.Name <> '' then
+      begin
         FTitle.Caption := Row.Name + '  ·  ' + Row.Id;
+      end;
       FMark.Visible := Row.Experimental;
       FDescription.Caption := Row.Description;
       // Gegenregel an (#1025): z. B. redundant-begin-end schweigt, solange missing-begin-end an ist.
       Overriding := TAtlasRuleTable.OverridingRule(FRows, Row);
       if Overriding <> '' then
+      begin
         FDescription.Caption := Trim(Row.Description + sLineBreak + sLineBreak +
           TAtlasStrings.Fmt(TAtlasTextId.RulesOverriddenBy, [Overriding]));
+      end;
       if FSeverity.Items.Count > 0 then
       begin
         FSeverity.Items[0] := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault,
           [SeverityCaption(Row.DefaultSeverity)]);
         Choice := 0;
         for Value := 1 to High(SeverityValues) do
+        begin
           if SameText(SeverityValues[Value], Row.Severity) or
             (SameText(Row.Severity, 'information') and (SeverityValues[Value] = 'info')) then
+          begin
             Choice := Value;
+          end;
+        end;
         FSeverity.ItemIndex := Choice;
       end;
       FExclude.Text := TAtlasRuleTable.ListText(Row.Exclude);
@@ -761,7 +843,9 @@ var
   Control: TControl;
 begin
   for Control in FOptionControls do
+  begin
     Control.Parent.Free;
+  end;
   FOptionControls := nil;
   FOptionsTitle.Visible := Length(ARow.Options) > 0;
   for Index := 0 to High(ARow.Options) do
@@ -850,8 +934,12 @@ begin
     mGrid.ColWidths[mCol] := 120;
   end;
   for mRow := 0 to High(mCells) do
+  begin
     for mCol := 0 to High(mCells[mRow]) do
+    begin
       mGrid.Cells[mCol, mRow + 1] := mCells[mRow][mCol];
+    end;
+  end;
   mGrid.OnSetEditText := OptionTableEdit;
   mGrid.Tag := AIndex;
   Result := mGrid;
@@ -870,7 +958,9 @@ begin
     begin
       Index := FVisible[mVisible];
       if (Index <= High(FRows)) and (mVisible < FList.Items.Count) then
+      begin
         FillItem(FList.Items[mVisible], FRows[Index]);
+      end;
     end;
   finally
     FFilling := False;
@@ -878,7 +968,9 @@ begin
   UpdateMaster;
   UpdateEnabled;
   if Assigned(FOnChange) then
+  begin
     FOnChange(Self);
+  end;
 end;
 
 function TAtlasRulesEditor.SelectRule(const AId: string): Boolean;
@@ -888,7 +980,9 @@ begin
   Row := RowOf(AId);
   Result := Row >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   FSelectedId := FRows[Row].Id;
   if HandleAllocated then
   begin
@@ -905,15 +999,19 @@ begin
     end;
     Refill;
     for Index := 0 to High(FVisible) do
+    begin
       if FVisible[Index] = Row then
       begin
         FList.Items[Index].Selected := True;
         FList.Items[Index].Focused := True;
         FList.Items[Index].MakeVisible(False);
       end;
+    end;
   end
   else
+  begin
     FDirty := True;
+  end;
 end;
 
 procedure TAtlasRulesEditor.SetSeverity(const ASeverity: string);
@@ -922,7 +1020,9 @@ var
 begin
   Row := SelectedRow;
   if Row < 0 then
+  begin
     Exit;
+  end;
   Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, ASeverity));
   ShowDetails;
 end;
@@ -934,28 +1034,38 @@ begin
   Row := RowOf(AId);
   Result := Row >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, ASeverity));
   if Row = SelectedRow then
+  begin
     ShowDetails;
+  end;
 end;
 
 procedure TAtlasRulesEditor.SearchChange(Sender: TObject);
 begin
   if not FFilling then
+  begin
     Refill;
+  end;
 end;
 
 procedure TAtlasRulesEditor.GroupChoiceChange(Sender: TObject);
 begin
   if not FFilling then
+  begin
     Refill;
+  end;
 end;
 
 procedure TAtlasRulesEditor.MasterClick(Sender: TObject);
 begin
   if FFilling or (Group = '') then
+  begin
     Exit;
+  end;
   Apply(TAtlasRuleTable.WithGroup(FRulesJson, Group, FMaster.Checked));
 end;
 
@@ -964,19 +1074,27 @@ var
   Value: string;
 begin
   if FFilling or (Group = '') then
+  begin
     Exit;
+  end;
   Value := '';
   if not FTypeLevel.Checked then
+  begin
     Value := 'off';
+  end;
   Apply(TAtlasRuleTable.WithGroupOption(FRulesJson, Group, 'typeLevel', Value));
 end;
 
 procedure TAtlasRulesEditor.ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
   if FFilling then
+  begin
     Exit;
+  end;
   if SelectedRow >= 0 then
+  begin
     FSelectedId := FRows[SelectedRow].Id;
+  end;
   ShowDetails;
 end;
 
@@ -986,27 +1104,37 @@ var
   Severity: string;
 begin
   if FFilling or (Item = nil) or (Item.Index > High(FVisible)) then
+  begin
     Exit;
+  end;
   Row := FVisible[Item.Index];
   if Item.Checked = FRows[Row].Enabled then
+  begin
     Exit;
+  end;
   // Aus: "off". An: Vorgabe, wenn sie meldet; sonst Warnung.
   Severity := 'off';
   if Item.Checked then
   begin
     Severity := '';
     if SameText(FRows[Row].DefaultSeverity, 'off') or SameText(FRows[Row].GlobalSeverity, 'off') then
+    begin
       Severity := 'warning';
+    end;
   end;
   Apply(TAtlasRuleTable.WithSeverity(FRulesJson, FRows[Row].Id, Severity));
   if Row = SelectedRow then
+  begin
     ShowDetails;
+  end;
 end;
 
 procedure TAtlasRulesEditor.SeverityChange(Sender: TObject);
 begin
   if FFilling or (FSeverity.ItemIndex < 0) or (FSeverity.ItemIndex > High(SeverityValues)) then
+  begin
     Exit;
+  end;
   SetSeverity(SeverityValues[FSeverity.ItemIndex]);
 end;
 
@@ -1016,7 +1144,9 @@ var
 begin
   Row := SelectedRow;
   if FFilling or (Row < 0) then
+  begin
     Exit;
+  end;
   Apply(TAtlasRuleTable.WithExclude(FRulesJson, FRows[Row].Id, TAtlasRuleTable.ParseList(FExclude.Text)));
 end;
 
@@ -1028,19 +1158,27 @@ var
 begin
   Row := SelectedRow;
   if FFilling or (Row < 0) or not (Sender is TControl) then
+  begin
     Exit;
+  end;
   Index := TControl(Sender).Tag;
   if (Index < 0) or (Index > High(FRows[Row].Options)) then
+  begin
     Exit;
+  end;
   Option := FRows[Row].Options[Index];
   if Sender is TCheckBox then
   begin
     mText := 'false';
     if TCheckBox(Sender).Checked then
+    begin
       mText := 'true';
+    end;
   end
   else
+  begin
     mText := TEdit(Sender).Text;
+  end;
   // Ungültige Eingabe bleibt im Feld stehen, wird aber nicht übernommen.
   if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
@@ -1059,7 +1197,9 @@ begin
   end;
   // Gleich der Vorgabe: Option entfernen.
   if Json = Option.DefaultJson then
+  begin
     Json := '';
+  end;
   Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[Row].Id, Option.Name, Json));
 end;
 
@@ -1074,27 +1214,37 @@ var
 begin
   mRuleRow := SelectedRow;
   if FFilling or (mRuleRow < 0) or not (Sender is TStringGrid) then
+  begin
     Exit;
+  end;
   mGrid := TStringGrid(Sender);
   mIndex := mGrid.Tag;
   if (mIndex < 0) or (mIndex > High(FRows[mRuleRow].Options)) then
+  begin
     Exit;
+  end;
   mOption := FRows[mRuleRow].Options[mIndex];
   // Unten bleibt immer eine leere Zeile für den nächsten Eintrag.
   if (ARow = mGrid.RowCount - 1) and (Trim(AValue) <> '') then
+  begin
     mGrid.RowCount := mGrid.RowCount + 1;
+  end;
   mCells := nil;
   for mRow := mGrid.FixedRows to mGrid.RowCount - 1 do
   begin
     mLine := nil;
     for mCol := 0 to mGrid.ColCount - 1 do
+    begin
       mLine := mLine + [mGrid.Cells[mCol, mRow]];
+    end;
     mCells := mCells + [mLine];
   end;
   mJson := TAtlasRuleTable.TableJson(mOption, mCells);
   // Gleich der Vorgabe: Option entfernen.
   if mJson = mOption.DefaultJson then
+  begin
     mJson := '';
+  end;
   FInvalid.Visible := False;
   Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[mRuleRow].Id, mOption.Name, mJson));
 end;

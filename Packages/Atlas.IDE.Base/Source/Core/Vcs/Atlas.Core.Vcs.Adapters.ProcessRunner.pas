@@ -69,14 +69,20 @@ var
   Capacity: Integer;
 begin
   if ACount <= 0 then
+  begin
     Exit;
+  end;
   Capacity := Length(Data);
   if Count + ACount > Capacity then
   begin
     if Capacity < 4096 then
+    begin
       Capacity := 4096;
+    end;
     while Capacity < Count + ACount do
+    begin
       Capacity := Capacity * 2;
+    end;
     SetLength(Data, Capacity);
   end;
   Move(ABuffer, Data[Count], ACount);
@@ -100,17 +106,27 @@ begin
   begin
     Available := 0;
     if not PeekNamedPipe(APipe, nil, 0, nil, @Available, nil) then
+    begin
       Exit(False);
+    end;
     if Available = 0 then
+    begin
       Exit;
+    end;
     ToRead := Available;
     if ToRead > SizeOf(Chunk) then
+    begin
       ToRead := SizeOf(Chunk);
+    end;
     if not ReadFile(APipe, Chunk, ToRead, BytesRead, nil) or (BytesRead = 0) then
+    begin
       Exit(False);
+    end;
     // Über der Grenze weiterlesen, aber verwerfen: Der Prozess soll nicht an einer vollen Pipe hängen.
     if ABuffer.Count < ALimit then
+    begin
       ABuffer.Append(Chunk, Integer(BytesRead));
+    end;
   end;
 end;
 
@@ -122,7 +138,9 @@ begin
   Result := nil;
   mBlock := GetEnvironmentStrings;
   if mBlock = nil then
+  begin
     Exit;
+  end;
   try
     mEntry := mBlock;
     while mEntry^ <> #0 do
@@ -149,11 +167,15 @@ begin
     begin
       Result := CompareText(TAtlasVcsServerAccess.VariableName(ALeft), TAtlasVcsServerAccess.VariableName(ARight));
       if Result = 0 then
+      begin
         Result := CompareStr(ALeft, ARight);
+      end;
     end));
   Result := '';
   for mEntry in mEntries do
+  begin
     Result := Result + mEntry + #0;
+  end;
   Result := Result + #0;
 end;
 
@@ -176,7 +198,9 @@ begin
   // CheckTerminated wirft im Hauptthread und in fremden Threads; dort gibt es nichts abzubrechen.
   Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
   if not Result and Assigned(FCancelled) then
+  begin
     Result := FCancelled();
+  end;
 end;
 
 class function TAtlasVcsProcessRunner.QuoteArgument(const AArgument: string): string;
@@ -184,17 +208,23 @@ var
   Index, Backslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
+  begin
     Exit(AArgument);
+  end;
   Result := '"';
   Backslashes := 0;
   for Index := 1 to Length(AArgument) do
   begin
     if AArgument[Index] = '\' then
-      Inc(Backslashes)
+    begin
+      Inc(Backslashes);
+    end
     else
     begin
       if AArgument[Index] = '"' then
+      begin
         Result := Result + StringOfChar('\', Backslashes + 1);
+      end;
       Backslashes := 0;
     end;
     Result := Result + AArgument[Index];
@@ -219,11 +249,17 @@ var
 begin
   Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
   if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.MainThread, -1, nil));
+  end;
   if (AExecutable = '') or not FileExists(AExecutable) then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.ToolMissing, -1, nil));
+  end;
   if IsCancelled then
+  begin
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Cancelled, -1, nil));
+  end;
 
   Security.nLength := SizeOf(Security);
   Security.lpSecurityDescriptor := nil;
@@ -236,7 +272,9 @@ begin
   FillChar(Process, SizeOf(Process), 0);
   try
     if not CreatePipe(OutRead, OutWrite, @Security, 0) or not CreatePipe(ErrRead, ErrWrite, @Security, 0) then
+    begin
       Exit;
+    end;
     // Nur die Schreibenden erbt der Kindprozess.
     SetHandleInformation(OutRead, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(ErrRead, HANDLE_FLAG_INHERIT, 0);
@@ -247,17 +285,25 @@ begin
     Startup.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
     Startup.wShowWindow := SW_HIDE;
     if NullInput <> INVALID_HANDLE_VALUE then
+    begin
       Startup.hStdInput := NullInput;
+    end;
     Startup.hStdOutput := OutWrite;
     Startup.hStdError := ErrWrite;
     CommandLine := QuoteArgument(AExecutable);
     for Argument in AArguments do
+    begin
       CommandLine := CommandLine + ' ' + QuoteArgument(Argument);
+    end;
     UniqueString(CommandLine);
     if AWorkingDir <> '' then
-      WorkingDir := PChar(AWorkingDir)
+    begin
+      WorkingDir := PChar(AWorkingDir);
+    end
     else
+    begin
       WorkingDir := nil;
+    end;
     Environment := NoPromptBlock;
     if not CreateProcess(PChar(AExecutable), PChar(CommandLine), nil, nil, True,
       CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, PChar(Environment), WorkingDir, Startup, Process) then
@@ -281,11 +327,17 @@ begin
       Drain(OutRead, Output, MaxOutputBytes + 1);
       Drain(ErrRead, Errors, MaxErrorBytes);
       if WaitForSingleObject(Process.hProcess, SliceMs) = WAIT_OBJECT_0 then
+      begin
         Break;
+      end;
       if IsCancelled then
-        Outcome := TAtlasVcsOutcome.Cancelled
+      begin
+        Outcome := TAtlasVcsOutcome.Cancelled;
+      end
       else if TThread.GetTickCount64 >= Deadline then
+      begin
         Outcome := TAtlasVcsOutcome.TimedOut;
+      end;
       if Outcome <> TAtlasVcsOutcome.Ok then
       begin
         TerminateProcess(Process.hProcess, 1);
@@ -297,29 +349,51 @@ begin
     Drain(OutRead, Output, MaxOutputBytes + 1);
     Drain(ErrRead, Errors, MaxErrorBytes);
     if not GetExitCodeProcess(Process.hProcess, ExitCode) then
+    begin
       ExitCode := $FFFFFFFF;
+    end;
     if (Outcome = TAtlasVcsOutcome.Ok) and (Output.Count > MaxOutputBytes) then
+    begin
       Outcome := TAtlasVcsOutcome.Failed;
+    end;
     Result := TAtlasVcsRunResult.Make(Outcome, Integer(ExitCode), nil);
     if Outcome = TAtlasVcsOutcome.Ok then
+    begin
       Result.Output := Output.Bytes;
+    end;
     if Errors.Count > 0 then
+    begin
       Result.ErrorText := Trim(TEncoding.UTF8.GetString(Errors.Data, 0, Errors.Count));
+    end;
   finally
     if Process.hThread <> 0 then
+    begin
       CloseHandle(Process.hThread);
+    end;
     if Process.hProcess <> 0 then
+    begin
       CloseHandle(Process.hProcess);
+    end;
     if NullInput <> INVALID_HANDLE_VALUE then
+    begin
       CloseHandle(NullInput);
+    end;
     if OutRead <> 0 then
+    begin
       CloseHandle(OutRead);
+    end;
     if OutWrite <> 0 then
+    begin
       CloseHandle(OutWrite);
+    end;
     if ErrRead <> 0 then
+    begin
       CloseHandle(ErrRead);
+    end;
     if ErrWrite <> 0 then
+    begin
       CloseHandle(ErrWrite);
+    end;
   end;
 end;
 

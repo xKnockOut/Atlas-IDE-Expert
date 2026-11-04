@@ -45,9 +45,13 @@ uses
 function TAtlasSettingIssue.Text: string;
 begin
   if Line >= 0 then
-    Result := Format('Zeile %d: %s', [Line + 1, Message])
+  begin
+    Result := Format('Zeile %d: %s', [Line + 1, Message]);
+  end
   else
+  begin
     Result := Message;
+  end;
 end;
 
 { TAtlasSettingsValidation }
@@ -62,15 +66,21 @@ begin
   AValid := False;
   Result := False;
   if not (AAnswer is TJSONObject) then
+  begin
     Exit;
+  end;
   Valid := TJSONObject(AAnswer).GetValue('valid');
   if not (Valid is TJSONBool) then
+  begin
     Exit;
+  end;
   Result := True;
   AValid := TJSONBool(Valid).AsBoolean;
   Items := TJSONObject(AAnswer).GetValue('issues');
   if Items is TJSONArray then
+  begin
     for Item in TJSONArray(Items) do
+    begin
       if Item is TJSONObject then
       begin
         Issue := Default(TAtlasSettingIssue);
@@ -81,6 +91,8 @@ begin
         Issue.Error := (Error is TJSONBool) and TJSONBool(Error).AsBoolean;
         AIssues := AIssues + [Issue];
       end;
+    end;
+  end;
 end;
 
 class function TAtlasSettingsValidation.Syntax(const AText: string; out AIssues: TArray<TAtlasSettingIssue>): Boolean;
@@ -90,7 +102,9 @@ var
 begin
   AIssues := nil;
   if Trim(AText) = '' then
+  begin
     Exit(True);
+  end;
   Root := TAtlasJsonText.Parse(AText);
   Result := Root <> nil;
   Root.Free;
@@ -111,11 +125,19 @@ var
 begin
   Result := nil;
   for Issue in AIssues do
+  begin
     if Issue.Error then
+    begin
       Result := Result + [Issue.Text];
+    end;
+  end;
   for Issue in AIssues do
+  begin
     if not Issue.Error then
+    begin
       Result := Result + [Issue.Text];
+    end;
+  end;
 end;
 
 end.

@@ -70,9 +70,13 @@ uses
 class function TAtlasAvJson.PointerSize(const APlatform: string): Integer;
 begin
   if StartsText('win64', Trim(APlatform)) then
-    Result := 8
+  begin
+    Result := 8;
+  end
   else
+  begin
     Result := 4;
+  end;
 end;
 
 class function TAtlasAvJson.Params(const AFileName: string; ALine, APointerSize: Integer): TJSONObject;
@@ -86,15 +90,25 @@ end;
 function KindOf(const AName: string): TAtlasAvLinkKind;
 begin
   if AName = 'class' then
-    Result := TAtlasAvLinkKind.ClassRef
+  begin
+    Result := TAtlasAvLinkKind.ClassRef;
+  end
   else if AName = 'interface' then
-    Result := TAtlasAvLinkKind.InterfaceRef
+  begin
+    Result := TAtlasAvLinkKind.InterfaceRef;
+  end
   else if AName = 'pointer' then
-    Result := TAtlasAvLinkKind.Pointer
+  begin
+    Result := TAtlasAvLinkKind.Pointer;
+  end
   else if AName = 'dynArray' then
-    Result := TAtlasAvLinkKind.DynArray
+  begin
+    Result := TAtlasAvLinkKind.DynArray;
+  end
   else
+  begin
     Result := TAtlasAvLinkKind.Unknown;
+  end;
 end;
 
 procedure ReadPosition(AObject: TJSONObject; const AName: string; out ALine, ACharacter: Integer);
@@ -134,13 +148,17 @@ begin
   end;
   ReadPosition(AItem, 'namePosition', Result.NameLine, Result.NameCharacter);
   if AItem.TryGetValue<TJSONValue>('fields', Value) and (Value is TJSONArray) then
+  begin
     for Entry in TJSONArray(Value) do
+    begin
       if Entry is TJSONObject then
       begin
         Field.Name := TJSONObject(Entry).GetValue<string>('name', '');
         Field.Offset := TJSONObject(Entry).GetValue<Integer>('offset', -1);
         Result.Fields := Result.Fields + [Field];
       end;
+    end;
+  end;
 end;
 
 class function TAtlasAvJson.Parse(const AValue: TJSONValue): TAtlasAvChains;
@@ -151,24 +169,38 @@ var
 begin
   Result := Default(TAtlasAvChains);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Response := TJSONObject(AValue);
   Result.Found := True;
   Result.Statements := Response.GetValue<Integer>('statements', 0);
   if not (Response.TryGetValue<TJSONValue>('chains', Value) and (Value is TJSONArray)) then
+  begin
     Exit;
+  end;
   for Entry in TJSONArray(Value) do
   begin
     if not (Entry is TJSONObject) then
+    begin
       Continue;
+    end;
     Chain := Default(TAtlasAvChain);
     Chain.Text := TJSONObject(Entry).GetValue<string>('text', '');
     if TJSONObject(Entry).TryGetValue<TJSONValue>('links', LinkValue) and (LinkValue is TJSONArray) then
+    begin
       for LinkValue in TJSONArray(LinkValue) do
+      begin
         if LinkValue is TJSONObject then
+        begin
           Chain.Links := Chain.Links + [ReadLink(TJSONObject(LinkValue))];
+        end;
+      end;
+    end;
     if Chain.Links <> nil then
+    begin
       Result.Chains := Result.Chains + [Chain];
+    end;
   end;
 end;
 

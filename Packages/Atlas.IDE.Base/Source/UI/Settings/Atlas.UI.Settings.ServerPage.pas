@@ -184,42 +184,58 @@ begin
   FSuppressionsRefresh.Enabled := Assigned(FOnSuppressions);
   FCacheClear.Enabled := Assigned(FOnClearCache);
   if Assigned(FOnBaselineInfo) then
-    FBaselineInfo.Caption := FOnBaselineInfo()
+  begin
+    FBaselineInfo.Caption := FOnBaselineInfo();
+  end
   else
+  begin
     FBaselineInfo.Caption := '';
+  end;
 end;
 
 function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
 begin
   if Assigned(FConfirm) then
-    Result := FConfirm(AQuestion)
+  begin
+    Result := FConfirm(AQuestion);
+  end
   else
+  begin
     Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  end;
 end;
 
 procedure TAtlasServerPage.EditGlobalClick(Sender: TObject);
 begin
   if Assigned(FOnEditGlobal) then
+  begin
     FOnEditGlobal();
+  end;
 end;
 
 procedure TAtlasServerPage.EditProjectClick(Sender: TObject);
 begin
   if Assigned(FOnEditProject) then
+  begin
     FOnEditProject();
+  end;
 end;
 
 procedure TAtlasServerPage.BaselineUpdateClick(Sender: TObject);
 begin
   if Assigned(FOnBaselineUpdate) then
+  begin
     FBaselineInfo.Caption := FOnBaselineUpdate();
+  end;
 end;
 
 procedure TAtlasServerPage.BaselineDeleteClick(Sender: TObject);
 begin
   if Assigned(FOnBaselineDelete) and
     Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm)) then
+  begin
     FBaselineInfo.Caption := FOnBaselineDelete();
+  end;
 end;
 
 procedure TAtlasServerPage.SuppressionsClick(Sender: TObject);
@@ -227,12 +243,16 @@ var
   Line: string;
 begin
   if not Assigned(FOnSuppressions) then
+  begin
     Exit;
+  end;
   FSuppressions.Items.BeginUpdate;
   try
     FSuppressions.Items.Clear;
     for Line in FOnSuppressions() do
+    begin
       FSuppressions.Items.Add(Line);
+    end;
   finally
     FSuppressions.Items.EndUpdate;
   end;
@@ -241,7 +261,9 @@ end;
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
   if Assigned(FOnClearCache) and Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheConfirm)) then
+  begin
     FCacheInfo.Caption := FOnClearCache();
+  end;
 end;
 
 end.

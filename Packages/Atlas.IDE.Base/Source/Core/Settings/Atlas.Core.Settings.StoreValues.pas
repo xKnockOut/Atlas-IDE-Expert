@@ -67,7 +67,9 @@ begin
   Result := '';
   mIndex := ACatalog.IndexOfKey(AKey);
   if (mIndex >= 0) and (ACatalog[mIndex].Source = asPlugin) then
+  begin
     Result := ACatalog[mIndex].Name;
+  end;
 end;
 
 function TAtlasSettingsStoreValues.NameOf(const AKey: string; AKind: TAtlasSettingKind): string;
@@ -76,9 +78,13 @@ var
 begin
   mIndex := FCatalog.IndexOfKey(AKey);
   if (mIndex < 0) or (FCatalog[mIndex].Source <> asPlugin) then
+  begin
     raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist keine Plugin-Einstellung', [AKey]);
+  end;
   if FCatalog[mIndex].Kind <> AKind then
+  begin
     raise EAtlasSettingsKey.CreateFmt('Einstellung %s hat eine andere Art', [AKey]);
+  end;
   Result := FCatalog[mIndex].Name;
 end;
 
@@ -88,7 +94,9 @@ var
 begin
   mIndex := FCatalog.IndexOfKey(AKey);
   if (mIndex >= 0) and (FCatalog[mIndex].Kind = akJson) then
+  begin
     Exit(NameOf(AKey, akJson));
+  end;
   Result := NameOf(AKey, akString);
 end;
 
@@ -127,9 +135,13 @@ end;
 procedure TAtlasSettingsStoreValues.WriteBoolean(const AKey: string; AValue: Boolean);
 begin
   if AValue then
-    FStore.WriteInteger(NameOf(AKey, akBoolean), 1)
+  begin
+    FStore.WriteInteger(NameOf(AKey, akBoolean), 1);
+  end
   else
+  begin
     FStore.WriteInteger(NameOf(AKey, akBoolean), 0);
+  end;
 end;
 
 procedure TAtlasSettingsStoreValues.WriteInteger(const AKey: string; AValue: Integer);
@@ -148,11 +160,17 @@ var
 begin
   mName := PluginName(FCatalog, AKey);
   if mName = '' then
+  begin
     raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist keine Plugin-Einstellung', [AKey]);
+  end;
   if FDefaults.HasInteger(mName) then
-    FStore.WriteInteger(mName, FDefaults.ReadInteger(mName, 0))
+  begin
+    FStore.WriteInteger(mName, FDefaults.ReadInteger(mName, 0));
+  end
   else
+  begin
     FStore.WriteString(mName, FDefaults.ReadString(mName, ''));
+  end;
 end;
 
 function TAtlasSettingsStoreValues.StoredKeys: TArray<string>;
@@ -167,7 +185,9 @@ begin
     begin
       mIndex := FCatalog.IndexOfName(mName);
       if mIndex >= 0 then
+      begin
         mKeys.Add(FCatalog[mIndex].Key);
+      end;
     end;
     mKeys.Sort(TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer

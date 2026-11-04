@@ -126,11 +126,12 @@ begin
     Options.ResolveWith :=
       function(AWith: TSyntaxNode; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
       var
-        Action: TCodeAction;
+        Resolved: TWithResolved;
       begin
         Result := TWithResolution.Resolve(Text, Tree, AWith, TLspRefactorings.WithLookup(Resolver, Tree,
-          Context.FileName), TLspRefactorings.ExtractOptions(Context), Action, AReason);
-        AEdits := Action.Edits;
+          Context.FileName), TLspRefactorings.ExtractOptions(Context), Resolved);
+        AEdits := Resolved.Action.Edits;
+        AReason := Resolved.Reason;
       end;
   end;
   Result := ToJson(TUnwrap.Candidates(AText, ATree, APosition, Options));

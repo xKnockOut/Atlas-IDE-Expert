@@ -92,14 +92,18 @@ begin
       Exit('');
   end;
   if (Result <> '') and (Result[1] = #$FEFF) then
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 function LocalAppData: string;
 begin
   Result := GetEnvironmentVariable('LOCALAPPDATA');
   if Result = '' then
+  begin
     Result := TPath.GetTempPath;
+  end;
 end;
 
 { TAtlasIdeCommandUsage }
@@ -127,7 +131,9 @@ end;
 destructor TAtlasIdeCommandUsage.Destroy;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   FreeAndNil(FSaveTimer);
   try
     FUsage.SaveToFiles(TipsFile, UsageFile);
@@ -161,13 +167,19 @@ var
 begin
   Result := '';
   if APluginDir = '' then
+  begin
     Exit;
+  end;
   Candidate := IncludeTrailingPathDelimiter(APluginDir);
   if FileExists(Candidate + TAtlasTipCatalog.FileName) then
+  begin
     Exit(Candidate);
+  end;
   Candidate := IncludeTrailingPathDelimiter(ExpandFileName(Candidate + '..'));
   if FileExists(Candidate + TAtlasTipCatalog.FileName) then
+  begin
     Result := Candidate;
+  end;
 end;
 
 class function TAtlasIdeCommandUsage.UsageOf(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
@@ -185,7 +197,9 @@ begin
     FInstance.FUsage.ResetCounts;
     FInstance.SaveNow;
     if Assigned(FInstance.FOnReset) then
+    begin
       FInstance.FOnReset();
+    end;
   end
   else
   begin
@@ -210,7 +224,9 @@ end;
 procedure TAtlasIdeCommandUsage.Changed;
 begin
   if FSaveTimer = nil then
+  begin
     Exit;
+  end;
   // Gesammelt speichern: nicht bei jedem Klick auf die Platte.
   FSaveTimer.Enabled := False;
   FSaveTimer.Enabled := True;
@@ -219,7 +235,9 @@ end;
 procedure TAtlasIdeCommandUsage.SaveNow;
 begin
   if FSaveTimer <> nil then
+  begin
     FSaveTimer.Enabled := False;
+  end;
   FUsage.SaveToFiles(TipsFile, UsageFile);
 end;
 
@@ -239,7 +257,9 @@ begin
   FTips := nil;
   FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
   if FFolder <> '' then
+  begin
     FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.FileName));
+  end;
   // Anonym: nur die Zahl.
   TAtlasGuard.Log(Format('Tipps (#757): %d aus tips.json', [Length(FTips)]));
 end;
@@ -247,14 +267,18 @@ end;
 function TAtlasIdeCommandUsage.Tips: TAtlasTips;
 begin
   if not FTipsLoaded then
+  begin
     LoadTips;
+  end;
   Result := FTips;
 end;
 
 function TAtlasIdeCommandUsage.Folder: string;
 begin
   if not FTipsLoaded then
+  begin
     LoadTips;
+  end;
   Result := FFolder;
 end;
 
