@@ -24,7 +24,6 @@ uses
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.TextDocumentSync,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Lsp.Formatting,
@@ -46,9 +45,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Baseline,
-  Shell.Composition.Editing,
   Shell.Composition.Status,
-  Shell.Composition.Slash,
   Shell.Composition.Contract,
   Shell.Composition.Workspaces,
   Shell.Composition.FileChanges,
@@ -63,6 +60,7 @@ uses
   Shell.Composition.Protocol,
   Shell.Composition.Session,
   Shell.Composition.IdeArea,
+  Shell.Composition.EditingArea,
   Shell.Composition.ServerCommands,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
@@ -113,18 +111,16 @@ type
     FTextDocumentSync: TLspTextDocumentSync;
     /// <summary>Teilwurzel Diagnosen: Syntaxprüfung, Pull-Diagnosen und Projektprüfung.</summary>
     FDiagnosticsArea: TShellDiagnosticsArea;
-    /// <summary>Bearbeiten: Gliederung, Falt- und Auswahlbereiche, Formatieren, Erzeugen-Menü (#719).</summary>
-    FEditing: TShellEditing;
     /// <summary>Teilwurzel Code: Navigation, Refactorings, Vervollständigung, Code-Aktionen und Testunits.</summary>
     FCodeArea: TShellCodeArea;
     /// <summary>Teilwurzel Befehle: workspace/executeCommand mit allen Befehlen.</summary>
     FCommandArea: TShellCommandArea;
     /// <summary>Teilwurzel Analyse: Analysen, Übersichten, Baselines und betroffene Tests.</summary>
     FAnalysisArea: TShellAnalysisArea;
-    /// <summary>Host der Schnellbefehle (#297) mit seinen Quellen.</summary>
-    FSlash: TShellSlash;
     /// <summary>Teilwurzel IDE: Nachrichten aus der IDE, Dateiänderungen und Projektwahl.</summary>
     FIdeArea: TShellIdeArea;
+    /// <summary>Teilwurzel Bearbeiten: Gliederung, Formatieren, Erzeugen-Menü und Host der Schnellbefehle.</summary>
+    FEditingArea: TShellEditingArea;
     /// <summary>Letzte Logzeilen für den Fehlerbericht (#108); nil ohne CreateForStdio.</summary>
     FRecentLog: IRecentLogLines;
     FWorkspaceFolders: TLspWorkspaceFolders;
@@ -161,10 +157,6 @@ type
     procedure WireCompile;
     /// <summary>Teil von Create (S-02): Dokumentbezogene Funktionen ohne Index: Symbole, Faltung, Formatierung, Schnellbefehle.</summary>
     procedure WireEditing;
-    /// <summary>Teil von WireEditing: Gliederung, Falt- und Auswahlbereiche, Formatieren, Erzeugen-Menü.</summary>
-    procedure WireEditors;
-    /// <summary>Arbeitsbereich der Datei für die Schnellbefehle.</summary>
-    function SlashWorkspaceOf(const AUri: string): TShellWorkspace;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
     procedure WireWorkspaces;
     /// <summary>Teil von WireWorkspaces: Ereignisse des Dokumentspeichers (Shell.Composition.DocumentEvents).</summary>
@@ -222,8 +214,6 @@ type
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
     /// <summary>Beenden: gibt Features, Ordner und Index frei.</summary>
     procedure FreeFeatures;
-    /// <summary>Teil von FreeFeatures: Editor-Features von Gliederung bis Verweise.</summary>
-    procedure FreeEditorFeatures;
     /// <summary>Teil von FreeFeatures: Analyse, Übersichten und Baselines.</summary>
     procedure FreeAnalysisFeatures;
     /// <summary>Teil von FreeFeatures: Vervollständigung, Code-Aktionen, Befehle, IDE und Protokoll.</summary>
@@ -469,24 +459,30 @@ end;
 
 procedure TServerComposition.WireEditing;
 var
-  mServices: TShellSlashServices;
+  mServices: TShellEditingAreaServices;
 begin
-  WireEditors;
-  mServices := Default(TShellSlashServices);
-  mServices.Transport := FTransport;
-  mServices.Logger := FLogger;
-  mServices.Dispatcher := FProtocol.Dispatcher;
-  mServices.WorkspaceOf := SlashWorkspaceOf;
-  mServices.ReadText := ReadSourceText;
+  mServices := Default(TShellEditingAreaServices);
+  // Closure: Der Kern entsteht erst nach dem Bearbeiten (WireWorkspaces).
+  mServices.Core :=
+    function: TShellCore
+    begin
+      Result := FCore;
+    end;
+  mServices.Editing.Documents := FDocuments;
+  mServices.Editing.ReadText := ReadSourceText;
+  mServices.Slash.Transport := FTransport;
+  mServices.Slash.Logger := FLogger;
+  mServices.Slash.Dispatcher := FProtocol.Dispatcher;
+  mServices.Slash.ReadText := ReadSourceText;
   // Die .dproj geht über das Plugin in die IDE, wenn der Client applyEdit kann (#397).
-  mServices.ClientAppliesEdits :=
+  mServices.Slash.ClientAppliesEdits :=
     function: Boolean
     begin
       Result := TLspApplyEdit.ClientSupports(FProtocol.Lifecycle.InitializeParams);
     end;
   // Neu laden nur im Thread der Nachrichtenschleife (Code-Review A-03); FConnection liest die Closure
   // erst beim Aufruf.
-  mServices.RunInLoop :=
+  mServices.Slash.RunInLoop :=
     procedure(const AWork: TProc)
     begin
       if (FConnection = nil) or not FConnection.Queue(AWork) then
@@ -494,72 +490,9 @@ begin
         FLogger.Warning('Schnellbefehl: Projekt nicht neu geladen, die Verbindung ist beendet');
       end;
     end;
-  mServices.SettingsFor :=
-    function(const AUri: string): TServerSettings
-    begin
-      Result := FCore.Settings.SettingsFor(AUri);
-    end;
-  mServices.WorkspaceSettingsOf :=
-    function(const AUri: string; out ASettings: TServerSettings): Boolean
-    begin
-      Result := FCore.Settings.WorkspaceSettingsOf(AUri, ASettings);
-    end;
-  mServices.TestUnitContextFor := TestUnitContextFor;
-  mServices.RuleContextFor :=
-    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
-    begin
-      Result := FCore.RuleContext.RuleContextFor(AUri, AContext);
-    end;
-  mServices.UsesContextFor := UsesContextFor;
-  FSlash := TShellSlash.Create(mServices);
-  FEditing.UseSlashHost(FSlash.Host);
-end;
-
-procedure TServerComposition.WireEditors;
-var
-  mServices: TShellEditingServices;
-begin
-  mServices := Default(TShellEditingServices);
-  mServices.Documents := FDocuments;
-  mServices.FormatStyleFor :=
-    function(const AUri: string): TFormatStyle
-    begin
-      Result := FCore.FileOptions.FormatStyleFor(AUri);
-    end;
-  mServices.ResolvedFormatStyleFor :=
-    function(const AUri: string): TFormatStyle
-    begin
-      Result := FCore.FileOptions.ResolvedFormatStyleFor(AUri);
-    end;
-  // Closure: Der Kern entsteht erst nach dem Editor (WireWorkspaces).
-  mServices.SlashCommandsFor :=
-    function(const AUri: string; out ADisabled: TArray<string>): Boolean
-    begin
-      Result := FCore.FileOptions.SlashCommandsFor(AUri, ADisabled);
-    end;
-  mServices.LanguageLevelFor :=
-    function(const AUri: string): string
-    begin
-      Result := FCore.FileOptions.LanguageLevelFor(AUri);
-    end;
-  mServices.DocCommentsFor :=
-    function(const AUri: string): Boolean
-    begin
-      Result := FCore.FileOptions.DocCommentsFor(AUri);
-    end;
-  mServices.ReadText := ReadSourceText;
-  FEditing := TShellEditing.Create(mServices);
-  FEditing.Attach(FProtocol.Dispatcher);
-end;
-
-function TServerComposition.SlashWorkspaceOf(const AUri: string): TShellWorkspace;
-begin
-  TMonitor.Enter(FCore.Workspaces.Lock);
-  try
-    Result := FCore.Workspaces.Pick(TDocumentUris.ToPath(AUri));
-  finally
-    TMonitor.Exit(FCore.Workspaces.Lock);
-  end;
+  mServices.Slash.TestUnitContextFor := TestUnitContextFor;
+  mServices.Slash.UsesContextFor := UsesContextFor;
+  FEditingArea := TShellEditingArea.Create(mServices);
 end;
 
 procedure TServerComposition.WireWorkspaces;
@@ -720,7 +653,7 @@ begin
       end;
       Result := False;
     end);
-  FEditing.UseIndex(FIndex);
+  FEditingArea.Editing.UseIndex(FIndex);
   WireSession;
 end;
 
@@ -754,11 +687,11 @@ begin
   mServices.Dispatcher := FProtocol.Dispatcher;
   mServices.Documents := FDocuments;
   mServices.Index := FIndex;
-  mServices.Editing := FEditing;
+  mServices.Editing := FEditingArea.Editing;
   mServices.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
-      Result := FSlash.RuleIdsAt(AUri, AText, ALine, AIds);
+      Result := FEditingArea.Slash.RuleIdsAt(AUri, AText, ALine, AIds);
     end;
   mServices.MessagesFor :=
     function(const AFileName: string): TArray<TCompilerMessage>
@@ -810,7 +743,7 @@ begin
   CommandServer(mServices.Server);
   mServices.Editor.Documents := FDocuments;
   mServices.Editor.Index := FIndex;
-  mServices.Editor.ResourceStringWrite := FSlash.ResourceStringWrite;
+  mServices.Editor.ResourceStringWrite := FEditingArea.Slash.ResourceStringWrite;
   mServices.UnitSearch.Index := FIndex;
   mServices.UnitSearch.UsesContextFor := UsesContextFor;
   mServices.UnitSearch.Process :=
@@ -818,7 +751,7 @@ begin
     begin
       Result := FCompilerProcess;
     end;
-  FCommandArea := TShellCommandArea.Create(FCore, FCodeArea, FAnalysisArea, FEditing, mServices);
+  FCommandArea := TShellCommandArea.Create(FCore, FCodeArea, FAnalysisArea, FEditingArea.Editing, mServices);
 end;
 
 procedure TServerComposition.CommandStatus(var AServices: TShellStatusServices);
@@ -1082,14 +1015,8 @@ begin
   FreeAndNil(FUsesGraph);
   FIndex := nil;
   // Danach die Features in umgekehrter Reihenfolge ihrer Gruppen; Protokoll und Absturzfälle zuletzt.
-  FreeEditorFeatures;
   FreeAnalysisFeatures;
   FreeCodeFeatures;
-end;
-
-procedure TServerComposition.FreeEditorFeatures;
-begin
-  FreeAndNil(FEditing);
 end;
 
 procedure TServerComposition.FreeAnalysisFeatures;
@@ -1102,7 +1029,7 @@ begin
   FreeAndNil(FCodeArea);
   FreeAndNil(FCommandArea);
   // Nach allen Nutzern des Hosts der Schnellbefehle: Er ruft dessen Methoden.
-  FreeAndNil(FSlash);
+  FreeAndNil(FEditingArea);
   FreeAndNil(FCompile);
   FCompilerProcess := nil;
   FreeAndNil(FIdeArea);
