@@ -302,6 +302,7 @@ uses
   Atlas.Common.Editing.AssignmentSwap.Tests in 'Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas',
   Atlas.Common.Editing.ChangeSignature.Tests in 'Common\Editing\Atlas.Common.Editing.ChangeSignature.Tests.pas',
   Atlas.Common.Editing.GenericLists.Tests in 'Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas',
+  Atlas.Common.Editing.GenericLists.Parts.Tests in 'Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas',
   Atlas.Common.Editing.StringLiterals.Tests in 'Common\Editing\Atlas.Common.Editing.StringLiterals.Tests.pas',
   Atlas.Common.Editing.ExpressionText.Tests in 'Common\Editing\Atlas.Common.Editing.ExpressionText.Tests.pas',
   Atlas.Common.Editing.StatementText.Tests in 'Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas',
