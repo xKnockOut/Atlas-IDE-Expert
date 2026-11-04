@@ -1,5 +1,12 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Befunde in Configuration, Mcp, Index, Projects, Query (03.–04.11.2026, Branch `claude/project-thread-g1tunh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common/Source/Configuration`, `Mcp`, `Index`, `Projects`, `Query` (und `Rules` ohne Builtin) beheben, ohne Grenzwerte zu ändern. Ergebnis: alle Units dieser fünf Ordner 0 Befunde. PRs #1529 (Query), #1541 (Projects), #1555 (Index), #1595 (Mcp Teil 2; Teil 1 kam als #1587 aus dem Common-Thread), #1618 (Configuration.Contract, Scopes), #1635 (Parser, JsonTree, Forbidden).
+- `Rules` ohne Builtin übernimmt der Thread „Atlas-Befunde in Atlas.Common“ (abgesprochen); Stand 04.11.2026 06:10: noch `Rules.Baseline` 14, `Rules.Catalog` 9, `Rules.Engine` 7, `Rules.Catalog.Data` 1.
+- **Parser von atlas.json:** Jeder Schlüssel der obersten Ebene ist ein `TConfigurationSection` (`Section`, `Read`, `Take`) in einer der Units `Atlas.Common.Configuration.Internals.*Options` (General, Rule, Mcp, Editor, Refactoring, Workflow, Analysis, Project). Gemeinsames in `Internals.Reader` (`TConfigurationReader`, `ReadObject` mit `TFlagOption`/`TChoiceOption`/`TMemberOption`). `Parser.pas` verteilt nur noch; `ParseLayered` ruft je Dateischlüssel `Take`. **Neue Einstellung:** Abschnitt bzw. Glied in der passenden Options-Unit eintragen; `Update-ConfigDoc.ps1` prüft die Schlüssel jetzt über `Section: '…'`.
+- Falle: Unter FPC zeigt `PString` auf einen AnsiString; deshalb eigener Typ `PSettingText = ^string`.
+- Offen: Delphi-Build (Win64-Gruppe). FPC: Konfigurationstests und die Regel-/Profil-/Engine-Tests, die den Parser nutzen, grün.
+
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
 - Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
