@@ -175,26 +175,38 @@ begin
   Count := Length(FRows);
   FRows := nil;
   if FSource <> nil then
+  begin
     FRows := FSource.Rows;
+  end;
   // Knöpfe nach den Zeilen: „Jetzt aktualisieren“ nur mit Update.
   for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  begin
     Wanted[Kind] := False;
+  end;
   for Kind in TAtlasWelcomeState.Buttons(FRows) do
+  begin
     Wanted[Kind] := True;
+  end;
   Changed := False;
   for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  begin
     if FButtons[Kind].Visible <> Wanted[Kind] then
     begin
       FButtons[Kind].Visible := Wanted[Kind];
       Changed := True;
     end;
+  end;
   if Changed then
+  begin
     BarResize(FBar);
+  end;
   FHintRow := -1;
   FBox.Invalidate;
   inherited;
   if Count <> Length(FRows) then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeStateFrame.RowTop(ARow: Integer): Integer;
@@ -232,7 +244,9 @@ begin
     for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
     begin
       if not FButtons[Kind].Visible then
+      begin
         Continue;
+      end;
       mWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
       // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
       if (mLeft > ScaleValue(Indent)) and (Right > 0) and (mLeft + mWidth > Right) then
@@ -255,7 +269,9 @@ var
 begin
   BarRows := LayoutButtons;
   if BarRows = FBarRows then
+  begin
     Exit;
+  end;
   // Mehr oder weniger Reihen Knöpfe: Der Frame „Atlas“ ordnet die Spalten neu.
   FBarRows := BarRows;
   FBar.Height := BarHeight;
@@ -280,7 +296,9 @@ end;
 class function TAtlasWelcomeStateFrame.RowText(const ARow: TAtlasStateRow): string;
 begin
   if ARow.Present and (ARow.Text <> '') then
+  begin
     Exit(ARow.Text);
+  end;
   case ARow.Kind of
     TAtlasStateRowKind.Server:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateServerMissing);
@@ -299,7 +317,9 @@ class function TAtlasWelcomeStateFrame.DetailText(const ARow: TAtlasStateRow): s
 begin
   Result := '';
   if ARow.Present then
+  begin
     Result := ARow.Detail;
+  end;
 end;
 
 procedure TAtlasWelcomeStateFrame.BoxPaint(Sender: TObject);
@@ -343,9 +363,13 @@ begin
     end;
     Canvas.Font.Color := TextColor;
     if Row.HasAction then
-      Canvas.Font.Style := [fsUnderline]
+    begin
+      Canvas.Font.Style := [fsUnderline];
+    end
     else
+    begin
       Canvas.Font.Style := [];
+    end;
     mText := RowText(Row);
     TextRect := Rect(mLeft, TextTop, Max(mLeft, Right - DetailWidth), TextTop + Canvas.TextHeight('Wg'));
     Canvas.TextRect(TextRect, mText, [tfLeft, tfSingleLine, tfEndEllipsis, tfNoPrefix]);
@@ -357,10 +381,14 @@ function TAtlasWelcomeStateFrame.HitTest(Y: Integer): Integer;
 begin
   Result := -1;
   if (Y < RowTop(0)) or (Length(FRows) = 0) then
+  begin
     Exit;
+  end;
   Result := (Y - RowTop(0)) div ScaleValue(RowHeight);
   if Result > High(FRows) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasWelcomeStateFrame.ClickRow(ARow: Integer);
@@ -369,7 +397,9 @@ var
   Id: string;
 begin
   if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) or not FRows[ARow].HasAction then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Id := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
@@ -385,7 +415,9 @@ var
   mSource: IAtlasStateSource;
 begin
   if FSource = nil then
+  begin
     Exit;
+  end;
   mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
@@ -405,16 +437,26 @@ var
 begin
   Row := HitTest(Y);
   if (Row >= 0) and FRows[Row].HasAction then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if Row = FHintRow then
+  begin
     Exit;
+  end;
   FHintRow := Row;
   if (Row >= 0) and FRows[Row].Present then
-    FBox.Hint := FRows[Row].Hint
+  begin
+    FBox.Hint := FRows[Row].Hint;
+  end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -422,7 +464,9 @@ procedure TAtlasWelcomeStateFrame.BoxMouseUp(Sender: TObject; Button: TMouseButt
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickRow(HitTest(Y));
+  end;
 end;
 
 end.

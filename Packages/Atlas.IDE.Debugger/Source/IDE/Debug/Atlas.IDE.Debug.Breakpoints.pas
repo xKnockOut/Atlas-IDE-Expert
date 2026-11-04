@@ -42,7 +42,9 @@ implementation
 class function TAtlasIdeBreakpoints.Debugger: IOTADebuggerServices;
 begin
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TAtlasIdeBreakpoints.CurrentProcess: IOTAProcess;
@@ -52,7 +54,9 @@ begin
   Result := nil;
   Services := Debugger;
   if (Services <> nil) and (Services.ProcessCount > 0) then
+  begin
     Result := Services.CurrentProcess;
+  end;
 end;
 
 class function TAtlasIdeBreakpoints.IsStopped(const AProcess: IOTAProcess): Boolean;
@@ -64,7 +68,9 @@ class function TAtlasIdeBreakpoints.StoppedProcess: IOTAProcess;
 begin
   Result := CurrentProcess;
   if not IsStopped(Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TAtlasIdeBreakpoints.Position(const AThread: IOTAThread; out AFileName: string;
@@ -73,7 +79,9 @@ begin
   AFileName := '';
   ALine := -1;
   if AThread = nil then
+  begin
     Exit(False);
+  end;
   AFileName := AThread.CurrentFile;
   ALine := Integer(AThread.CurrentLine) - 1;
   Result := (AFileName <> '') and (ALine >= 0);
@@ -88,12 +96,16 @@ begin
   Result := False;
   Services := Debugger;
   if Services = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.SourceBkptCount - 1 do
   begin
     Existing := Services.SourceBkpts[Index];
     if (Existing <> nil) and SameText(Existing.FileName, AFileName) and (Existing.LineNumber = ALine + 1) then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -104,7 +116,9 @@ begin
   Result := nil;
   Services := Debugger;
   if (Services = nil) or (AFileName = '') or (ALine < 0) or Exists(AFileName, ALine) then
+  begin
     Exit;
+  end;
   try
     Result := Services.NewSourceBreakpoint(AFileName, ALine + 1, nil);
   except
@@ -118,7 +132,9 @@ class function TAtlasIdeBreakpoints.Add(const AFileName: string; ALine: Integer;
 begin
   Result := Add(AFileName, ALine);
   if Result = nil then
+  begin
     Exit;
+  end;
   try
     Result.GroupName := AGroup;
   except
@@ -136,7 +152,9 @@ begin
   Services := Debugger;
   try
     if Services <> nil then
+    begin
       for Breakpoint in ABreakpoints do
+      begin
         if Breakpoint <> nil then
           try
             Services.RemoveBreakpoint(Breakpoint);
@@ -145,6 +163,8 @@ begin
             on Exception do
               ;
           end;
+      end;
+    end;
   finally
     ABreakpoints := nil;
   end;

@@ -98,7 +98,7 @@ begin
   Indent := Copy(Line, 1, Index - 1);
   LineEnd := TTextLines.LineBreakOf(Document.Text);
   Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, Indent, False, AMultiline,
-    ASettings.LineBreak, ASettings.MaxLineLength, LineEnd));
+    ASettings, LineEnd));
 end;
 
 end.

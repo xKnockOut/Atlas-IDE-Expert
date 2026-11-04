@@ -261,7 +261,9 @@ begin
   FPressed := -1;
   FDragging := False;
   if HandleAllocated then
+  begin
     Measure;
+  end;
   Invalidate;
 end;
 
@@ -270,8 +272,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FParts) do
+  begin
     if (FParts[Index].Kind = AKind) and ((AValue = '') or SameText(FParts[Index].Value, AValue)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -291,7 +297,9 @@ begin
   begin
     W := Canvas.TextWidth(FParts[Index].Caption);
     if FParts[Index].Kind <> TAtlasArrangePartKind.Text then
+    begin
       Inc(W, 2 * Pad);
+    end;
     if (X + W > ClientWidth - Gap) and (X > Margin + Gap) then
     begin
       X := Margin + Gap;
@@ -308,18 +316,26 @@ var
 begin
   Result := ScaleValue(PartHeight + 8);
   if not HandleAllocated then
+  begin
     Exit;
+  end;
   Measure;
   for Part in FParts do
+  begin
     if Part.Rect.Bottom + ScaleValue(4) > Result then
+    begin
       Result := Part.Rect.Bottom + ScaleValue(4);
+    end;
+  end;
 end;
 
 procedure TAtlasArrangeStrip.Resize;
 begin
   inherited;
   if HandleAllocated then
+  begin
     Measure;
+  end;
 end;
 
 function TAtlasArrangeStrip.PartAt(X, Y: Integer): Integer;
@@ -327,8 +343,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FParts) do
+  begin
     if (FParts[Index].Kind <> TAtlasArrangePartKind.Text) and FParts[Index].Rect.Contains(Point(X, Y)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -368,9 +388,13 @@ begin
     else
     begin
       if Index = FHot then
-        Canvas.Pen.Color := AccentColor
+      begin
+        Canvas.Pen.Color := AccentColor;
+      end
       else
+      begin
         Canvas.Pen.Color := LineColor;
+      end;
       Canvas.Font.Color := TextColor;
     end;
     Canvas.RoundRect(Part.Rect.Left, Part.Rect.Top, Part.Rect.Right, Part.Rect.Bottom, Radius, Radius);
@@ -383,7 +407,9 @@ end;
 procedure TAtlasArrangeStrip.ClickPart(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FParts)) or (FParts[AIndex].Kind = TAtlasArrangePartKind.Text) then
+  begin
     Exit;
+  end;
   if Assigned(FOnClick) then
     try
       FOnClick(FParts[AIndex]);
@@ -397,7 +423,9 @@ procedure TAtlasArrangeStrip.MouseDown(Button: TMouseButton; Shift: TShiftState;
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   FPressed := PartAt(X, Y);
   FPressPoint := Point(X, Y);
   FDragging := False;
@@ -417,10 +445,14 @@ begin
       FDragging := True;
       Screen.Cursor := crDrag;
       if Assigned(FOnDragStart) then
+      begin
         FOnDragStart(FParts[FPressed]);
+      end;
     end;
     if FDragging and Assigned(FOnDragMove) then
+    begin
       FOnDragMove(ClientToScreen(Point(X, Y)));
+    end;
     Exit;
   end;
   Hot := PartAt(X, Y);
@@ -429,7 +461,9 @@ begin
     FHot := Hot;
     Hint := '';
     if Hot >= 0 then
+    begin
       Hint := FParts[Hot].Hint;
+    end;
     Application.CancelHint;
     Invalidate;
   end;
@@ -442,7 +476,9 @@ var
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   Pressed := FPressed;
   Dragging := FDragging;
   FPressed := -1;
@@ -451,11 +487,15 @@ begin
   begin
     Screen.Cursor := crDefault;
     if Assigned(FOnDragEnd) then
+    begin
       FOnDragEnd(not PtInRect(ClientRect, Point(X, Y)));
+    end;
     Exit;
   end;
   if (Pressed >= 0) and (Pressed = PartAt(X, Y)) then
+  begin
     ClickPart(Pressed);
+  end;
 end;
 
 procedure TAtlasArrangeStrip.CMMouseLeave(var Message: TMessage);
@@ -493,15 +533,25 @@ begin
   mLeft := (ClientWidth - 3 * Size) div 2;
   mTop := (ClientHeight - 5 * Size) div 2;
   if Focused then
-    Canvas.Brush.Color := StyleColor(Self, clHighlight)
+  begin
+    Canvas.Brush.Color := StyleColor(Self, clHighlight);
+  end
   else
+  begin
     Canvas.Brush.Color := StyleColor(Self, clGrayText);
+  end;
   for Row := 0 to 2 do
+  begin
     for Column := 0 to 1 do
+    begin
       Canvas.FillRect(TRect.Create(mLeft + Column * 2 * Size, mTop + Row * 2 * Size,
         mLeft + Column * 2 * Size + Size, mTop + Row * 2 * Size + Size));
+    end;
+  end;
   if Focused then
+  begin
     Canvas.DrawFocusRect(ClientRect);
+  end;
 end;
 
 procedure TAtlasWelcomeGrip.DoEnter;
@@ -533,7 +583,9 @@ begin
     Exit(True);
   end;
   if not (ssCtrl in AShift) or (ssAlt in AShift) or not Assigned(FOnMove) then
+  begin
     Exit;
+  end;
   case AKey of
     VK_UP:
       Direction := TAtlasWelcomeMove.Up;
@@ -571,9 +623,13 @@ procedure TAtlasWelcomeGrip.MouseDown(Button: TMouseButton; Shift: TShiftState; 
 begin
   inherited;
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   if CanFocus and (GetParentForm(Self) <> nil) and GetParentForm(Self).Visible then
+  begin
     SetFocus;
+  end;
   FPressed := True;
   FDragging := False;
   FPressPoint := Point(X, Y);
@@ -583,16 +639,22 @@ procedure TAtlasWelcomeGrip.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
   if not FPressed or not (ssLeft in Shift) then
+  begin
     Exit;
+  end;
   if not FDragging and ((Abs(X - FPressPoint.X) > ScaleValue(TAtlasArrangeStrip.DragDistance)) or
     (Abs(Y - FPressPoint.Y) > ScaleValue(TAtlasArrangeStrip.DragDistance))) then
   begin
     FDragging := True;
     if Assigned(FOnDragStart) then
+    begin
       FOnDragStart(FSectionId);
+    end;
   end;
   if FDragging and Assigned(FOnDragMove) then
+  begin
     FOnDragMove(ClientToScreen(Point(X, Y)));
+  end;
 end;
 
 procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);
@@ -603,16 +665,22 @@ begin
   FPressed := False;
   FDragging := False;
   if MouseCapture then
+  begin
     MouseCapture := False;
+  end;
   if Was and Assigned(FOnDragEnd) then
+  begin
     FOnDragEnd(ADrop);
+  end;
 end;
 
 procedure TAtlasWelcomeGrip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
   if Button = mbLeft then
+  begin
     EndDrag(True);
+  end;
 end;
 
 { TAtlasWelcomeSectionTools }
@@ -628,11 +696,17 @@ end;
 function TAtlasWelcomeSectionTools.ToolAt(X: Integer): TAtlasWelcomeTool;
 begin
   if (X < 0) or (X >= ClientWidth) then
-    Result := TAtlasWelcomeTool.None
+  begin
+    Result := TAtlasWelcomeTool.None;
+  end
   else if X < ClientWidth div 2 then
-    Result := TAtlasWelcomeTool.Width
+  begin
+    Result := TAtlasWelcomeTool.Width;
+  end
   else
+  begin
     Result := TAtlasWelcomeTool.Eye;
+  end;
 end;
 
 procedure TAtlasWelcomeSectionTools.Paint;
@@ -648,9 +722,13 @@ begin
   Size := ScaleValue(12);
   // Breite: ein bzw. zwei Rechtecke nebeneinander; gefüllt, was der Bereich gerade belegt.
   if FHot = TAtlasWelcomeTool.Width then
-    Color_ := StyleColor(Self, clHighlight)
+  begin
+    Color_ := StyleColor(Self, clHighlight);
+  end
   else
+  begin
     Color_ := StyleColor(Self, clWindowText);
+  end;
   Canvas.Pen.Color := Color_;
   Canvas.Brush.Color := Color_;
   mLeft := (Half - Size) div 2;
@@ -659,7 +737,9 @@ begin
   Canvas.FillRect(Area);
   Area.Offset(Size div 2 + ScaleValue(1), 0);
   if FWide then
-    Canvas.FillRect(Area)
+  begin
+    Canvas.FillRect(Area);
+  end
   else
   begin
     Canvas.Brush.Style := bsClear;
@@ -667,9 +747,13 @@ begin
   end;
   // Auge: Ellipse mit Pupille.
   if FHot = TAtlasWelcomeTool.Eye then
-    Color_ := StyleColor(Self, clHighlight)
+  begin
+    Color_ := StyleColor(Self, clHighlight);
+  end
   else
+  begin
     Color_ := StyleColor(Self, clWindowText);
+  end;
   Canvas.Pen.Color := Color_;
   Canvas.Brush.Style := bsClear;
   Mid := Half + Half div 2;
@@ -687,14 +771,20 @@ begin
   inherited;
   Hot := ToolAt(X);
   if Hot = FHot then
+  begin
     Exit;
+  end;
   FHot := Hot;
   case Hot of
     TAtlasWelcomeTool.Width:
       if FWide then
-        Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNarrow)
+      begin
+        Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeNarrow);
+      end
       else
+      begin
         Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeWide);
+      end;
     TAtlasWelcomeTool.Eye:
       Hint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeArrangeEye);
   else
@@ -718,13 +808,17 @@ procedure TAtlasWelcomeSectionTools.MouseUp(Button: TMouseButton; Shift: TShiftS
 begin
   inherited;
   if Button = mbLeft then
+  begin
     Click(ToolAt(X));
+  end;
 end;
 
 procedure TAtlasWelcomeSectionTools.Click(ATool: TAtlasWelcomeTool);
 begin
   if (ATool = TAtlasWelcomeTool.None) or not Assigned(FOnTool) then
+  begin
     Exit;
+  end;
   try
     FOnTool(FSectionId, ATool);
   except

@@ -125,7 +125,9 @@ begin
   FEntries := TAtlasKeyEntry.FromSettings(TAtlasPluginSettings.Defaults);
   SetLength(FRows, Length(FEntries));
   for Index := 0 to High(FEntries) do
+  begin
     AddRow(Index);
+  end;
   FForeign := TLabel.Create(Self);
   FForeign.Parent := Self;
   FForeign.Align := alTop;
@@ -205,7 +207,9 @@ begin
   FRows[AIndex].Key.Tag := AIndex;
   // Leer bei Vervollständigung und Parameter-Hint: die Taste der IDE.
   if FEntries[AIndex].IdeKey <> 0 then
+  begin
     FRows[AIndex].Key.TextHint := ShortCutToText(TShortCut(FEntries[AIndex].IdeKey));
+  end;
   FRows[AIndex].Key.OnChange := KeyChange;
   FRows[AIndex].Choice := TAtlasChoiceBox.Create(Self);
   FRows[AIndex].Choice.Parent := Panel;
@@ -272,7 +276,9 @@ begin
   end;
   mOwner := '';
   if Assigned(FOwnerOf) and (FEntries[AIndex].Key <> 0) then
+  begin
     mOwner := FOwnerOf(FEntries[AIndex].Key);
+  end;
   Status := FEntries[AIndex].Status(mOwner);
   FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], mOwner);
   FUpdating := True;
@@ -290,7 +296,9 @@ var
   Index: Integer;
 begin
   if FUpdating then
+  begin
     Exit;
+  end;
   Index := TEdit(Sender).Tag;
   FEntries[Index].Key := Word(TextToShortCut(Trim(TEdit(Sender).Text)));
   UpdateRow(Index);
@@ -303,7 +311,9 @@ var
   Key: TEdit;
 begin
   if FUpdating or (TAtlasChoiceBox(Sender).Choice < 0) then
+  begin
     Exit;
+  end;
   Index := TAtlasChoiceBox(Sender).Tag;
   Choice := TAtlasKeyChoice(TAtlasChoiceBox(Sender).Choice);
   FEntries[Index].Choose(Choice);
@@ -312,7 +322,9 @@ begin
   try
     // „Atlas verwenden“ ohne eigene Taste übernimmt die Taste der IDE.
     if (FEntries[Index].Key <> 0) and (Trim(Key.Text) = '') then
+    begin
       Key.Text := ShortCutToText(TShortCut(FEntries[Index].Key));
+    end;
   finally
     FUpdating := False;
   end;
@@ -330,7 +342,9 @@ var
 begin
   FOwnerOf := AValue;
   for Index := 0 to High(FRows) do
+  begin
     UpdateRow(Index);
+  end;
 end;
 
 procedure TAtlasKeysPage.LoadFrom(const ASettings: TAtlasPluginSettings);
@@ -341,15 +355,23 @@ begin
   FUpdating := True;
   try
     for Index := 0 to High(FRows) do
+    begin
       if FEntries[Index].Key = 0 then
-        FRows[Index].Key.Text := ''
+      begin
+        FRows[Index].Key.Text := '';
+      end
       else
+      begin
         FRows[Index].Key.Text := ShortCutToText(TShortCut(FEntries[Index].Key));
+      end;
+    end;
   finally
     FUpdating := False;
   end;
   for Index := 0 to High(FRows) do
+  begin
     UpdateRow(Index);
+  end;
   FOverview.Checked := ASettings.KeyOverview;
   FStartupCheck.Checked := ASettings.KeyStartupCheck;
 end;
@@ -365,9 +387,13 @@ end;
 procedure TAtlasKeysPage.ShowForeignCompletions(const ANames: TArray<string>);
 begin
   if Length(ANames) = 0 then
-    FForeign.Caption := TAtlasStrings.Text(TAtlasTextId.KeysForeignNone)
+  begin
+    FForeign.Caption := TAtlasStrings.Text(TAtlasTextId.KeysForeignNone);
+  end
   else
+  begin
     FForeign.Caption := TAtlasStrings.Fmt(TAtlasTextId.KeysForeign, [string.Join(', ', ANames)]);
+  end;
 end;
 
 function TAtlasKeysPage.KeyEdit(AIndex: Integer): TEdit;

@@ -95,8 +95,12 @@ var
   Item: Integer;
 begin
   for Item in AList do
+  begin
     if Item = AValue then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -116,7 +120,9 @@ var
 begin
   Result.Folders := nil;
   for Folder in AFolders do
+  begin
     Result.AddFolder(Folder);
+  end;
 end;
 
 procedure TAtlasDebugOwnCode.AddFolder(const AFolder: string);
@@ -125,10 +131,16 @@ var
 begin
   Folder := NormalFolder(AFolder);
   if Folder = '' then
+  begin
     Exit;
+  end;
   for Known in Folders do
+  begin
     if SameText(Known, Folder) then
+    begin
       Exit;
+    end;
+  end;
   Folders := Folders + [Folder];
 end;
 
@@ -148,11 +160,17 @@ var
 begin
   Path := NormalPath(APath);
   if Path = '' then
+  begin
     Exit(False);
+  end;
   for Folder in Folders do
+  begin
     // Nur ganze Ordner: „C:\Projekt“ umfasst nicht „C:\Projekt2\A.pas“.
     if SameText(Copy(Path, 1, Length(Folder) + 1), Folder + '\') then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -161,8 +179,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AFrames) do
+  begin
     if AFrames[Index].Own and AFrames[Index].HasSource then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -170,20 +192,28 @@ class function TAtlasDebugOwnCode.LocationIndex(const AFrames: TAtlasDebugFrames
 begin
   Result := -1;
   if AJustMyCode then
+  begin
     Result := FirstOwn(AFrames);
+  end;
   if Result < 0 then
+  begin
     Result := TAtlasDebugCallStack.FirstWithSource(AFrames);
+  end;
 end;
 
 class function TAtlasDebugOwnCode.JumpIndex(const AFrames: TAtlasDebugFrames; AJustMyCode: Boolean): Integer;
 begin
   Result := -1;
   if not AJustMyCode then
+  begin
     Exit;
+  end;
   Result := FirstOwn(AFrames);
   // Oberster Rahmen schon eigener Code: Die IDE steht dort.
   if Result = 0 then
+  begin
     Result := -1;
+  end;
 end;
 
 class function TAtlasDebugOwnCode.ShouldReturn(AJustMyCode, AStepping: Boolean; const AFrames: TAtlasDebugFrames;
@@ -211,12 +241,20 @@ begin
     end;
     Stop := Index;
     while (Stop <= High(AFrames)) and not AFrames[Stop].Own do
+    begin
       Inc(Stop);
+    end;
     if (Stop - Index >= GroupFrom) and not Contains(AExpanded, Index) then
-      Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, Index, Stop - Index, True)]
+    begin
+      Result := Result + [Row(TAtlasDebugStackRowKind.LibraryGroup, Index, Stop - Index, True)];
+    end
     else
+    begin
       for Inner := Index to Stop - 1 do
+      begin
         Result := Result + [Row(TAtlasDebugStackRowKind.Frame, Inner, 1, True)];
+      end;
+    end;
     Index := Stop;
   end;
 end;
