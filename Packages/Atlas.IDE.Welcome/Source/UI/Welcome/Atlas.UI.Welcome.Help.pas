@@ -138,11 +138,15 @@ begin
   OldHeight := FContentHeight;
   Keys := (FSource <> nil) and FSource.KeysAvailable;
   for Kind := Low(TAtlasHelpButton) to High(TAtlasHelpButton) do
+  begin
     FButtons[Kind].Enabled := (FSource <> nil) and TAtlasHelp.Enabled(Kind, Keys);
+  end;
   Arrange;
   inherited;
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
@@ -153,7 +157,9 @@ begin
   Arrange;
   // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
   if OldHeight <> FContentHeight then
+  begin
     HeightChanged;
+  end;
 end;
 
 procedure TAtlasWelcomeHelpFrame.Arrange;
@@ -164,7 +170,9 @@ var
 begin
   // Ohne Fenster lässt sich kein Text messen; CreateWnd holt UpdateContent nach.
   if FArranging or (FNote = nil) or not HasWindow then
+  begin
     Exit;
+  end;
   FArranging := True;
   try
     // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
@@ -208,7 +216,9 @@ var
   mSource: IAtlasHelpSource;
 begin
   if (FSource = nil) or not FButtons[AButton].Enabled then
+  begin
     Exit;
+  end;
   mSource := FSource;
   // Nicht im Klick des Knopfs: „Problem melden“ zeigt einen modalen Dialog.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,

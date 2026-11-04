@@ -128,6 +128,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.TypeChecks,
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
+  Atlas.Common.Rules.Builtin.TypeChecks.Hresult,
+  Atlas.Common.Rules.Builtin.TypeChecks.VarArguments,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -269,65 +272,29 @@ begin
     '{"rules": {"dynamic-array-misuse": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
-procedure TDynamicArrayMisuseTests.RuleIsRegistered;
+/// <summary>Ob eine der eingebauten Regeln die ID ARuleId trägt.</summary>
+function IsBuiltin(const ARuleId: string): Boolean;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
+  Result := False;
+  for mRule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DynamicArrayMisuseRuleId then
+    if mRule.Descriptor.Id = ARuleId then
     begin
-      Found := True;
+      Exit(True);
     end;
   end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = LocalRoutineAsCallbackRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = HresultIntegerMixRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = InvalidVarArgumentRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = ConditionNotBooleanRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found);
-  Found := False;
-  for Rule in BuiltinRules do
-  begin
-    if Rule.Descriptor.Id = ForInNotEnumerableRuleId then
-    begin
-      Found := True;
-    end;
-  end;
-  Assert.IsTrue(Found);
+end;
+
+procedure TDynamicArrayMisuseTests.RuleIsRegistered;
+begin
+  Assert.IsTrue(IsBuiltin(DynamicArrayMisuseRuleId), DynamicArrayMisuseRuleId);
+  Assert.IsTrue(IsBuiltin(LocalRoutineAsCallbackRuleId), LocalRoutineAsCallbackRuleId);
+  Assert.IsTrue(IsBuiltin(HresultIntegerMixRuleId), HresultIntegerMixRuleId);
+  Assert.IsTrue(IsBuiltin(InvalidVarArgumentRuleId), InvalidVarArgumentRuleId);
+  Assert.IsTrue(IsBuiltin(ConditionNotBooleanRuleId), ConditionNotBooleanRuleId);
+  Assert.IsTrue(IsBuiltin(ForInNotEnumerableRuleId), ForInNotEnumerableRuleId);
 end;
 
 { THresultIntegerMixTests }

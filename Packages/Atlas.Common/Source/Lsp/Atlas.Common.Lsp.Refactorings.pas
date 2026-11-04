@@ -9,7 +9,7 @@
 //     und die Typableitung der Inlay Hints (#453), mit eigener
 //     Namensauflösung je Probe (der Probebaum lebt nur kurz).
 //   - Aufzählungswerte über TLspCompletion.CaseValues (#448).
-//   - Herkunft über TNameResolver.WithMember.
+//   - Herkunft über TNameResolver.Queries.WithMember.
 // Dazu „Methode aus Aufruf anlegen“ (#472): Typen der Argumente über
 // denselben Probetext, Rückgabetyp über den erwarteten Typ (#417), Zielklasse
 // über den Typ des Qualifizierers; Klassen aus Bibliotheken bekommen nichts.
@@ -255,14 +255,13 @@ begin
   Result :=
     function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
     var
-      Owner: TSyntaxNode;
-      Unknown: Boolean;
+      mWith: TResolvedWithMember;
     begin
       AElement := -1;
-      if AResolver.WithMember(ATree, FileName, AIdentifier.Name, AIdentifier.StartOffset, Owner, AElement,
-        Unknown) then
+      if AResolver.Queries.WithMember(ATree, FileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
       begin
-        if Owner = AWith then
+        AElement := mWith.Element;
+        if mWith.Statement = AWith then
         begin
           Result := TWithOwner.Element;
         end
@@ -271,7 +270,7 @@ begin
           Result := TWithOwner.Other;
         end;
       end
-      else if Unknown then
+      else if mWith.Unknown then
       begin
         Result := TWithOwner.Unknown;
       end
@@ -289,9 +288,7 @@ var
   OfPos: TTextPosition;
   Values: TArray<string>;
   Prefix: string;
-  Edits: TArray<TTextEdit>;
-  Count: Integer;
-  HasElse: Boolean;
+  Completion: TCaseCompletionEdits;
 begin
   AAction := Default(TCodeAction);
   Result := False;
@@ -299,22 +296,22 @@ begin
   if (CaseNode = nil) or not TCaseCompletion.OfPosition(ATree, CaseNode, OfPos) or
     not TLspCompletion.CaseValues(AResolver, AContext.Index, ATree, AText, AContext.FileName, OfPos,
     AContext.ReadText, Values, Prefix) or
-    not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Edits, Count, HasElse) then
+    not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Completion) then
   begin
     Exit;
   end;
-  if HasElse then
+  if Completion.HasElse then
   begin
     AAction.Title := 'Fehlende Werte vor else ergänzen';
   end
   else
   begin
-    AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Count]);
+    AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Completion.Count]);
     AAction.IsPreferred := True;
   end;
   AAction.Kind := RewriteKind;
   AAction.Tag := CaseCompleteTag;
-  AAction.Edits := Edits;
+  AAction.Edits := Completion.Edits;
   Result := True;
 end;
 

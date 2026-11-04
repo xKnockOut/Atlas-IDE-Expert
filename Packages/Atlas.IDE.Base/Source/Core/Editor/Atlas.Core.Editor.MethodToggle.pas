@@ -102,6 +102,64 @@ type
     HasParameters: Boolean;
   end;
 
+  /// <summary>Zerlegt den Text in Token; nur aktive Zweige der bedingten Übersetzung.</summary>
+  TLexer = class
+  private
+    FTokens: TArray<TToken>;
+    FCount: Integer;
+    FConditionals: TAtlasConditionals;
+    FText: string;
+    FLen: Integer;
+    FI: Integer;
+    FLine: Integer;
+    FLineStart: Integer;
+    procedure AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
+    function CharAt(AIndex: Integer): Char;
+    procedure LexNewLine;
+    procedure SkipChar;
+    function RestOfLineBlank(AFrom: Integer): Boolean;
+    function AtTripleQuote(AIndex: Integer): Boolean;
+    function LexBlank: Boolean;
+    function LexComment: Boolean;
+    procedure SkipMultilineString;
+    procedure SkipQuotedString;
+    function LexString: Boolean;
+    function LexCharCode: Boolean;
+    function LexIdent: Boolean;
+    function LexNumber: Boolean;
+    function IsTwoCharSymbol: Boolean;
+    procedure LexSymbol;
+    function LexSkipped: Boolean;
+    function LexLiteral: Boolean;
+    procedure Lex(const AText: string);
+  public
+    function Run(const AText: string; const ADefines: TArray<string>): TArray<TToken>;
+  end;
+
+  /// <summary>Liest die Parametertypen einer Parameterliste Token für Token.</summary>
+  TSignatureReader = record
+  private
+    FDepth: Integer;
+    FNames: Integer;
+    FTypeText: string;
+    FInType: Boolean;
+    FInDefault: Boolean;
+    FTyped: Boolean;
+    class function IsSymbolIn(const AToken: TToken; const ASymbols: string): Boolean; static;
+    class function IsModifier(const AToken: TToken): Boolean; static;
+    procedure AppendType(const AToken: TToken);
+    procedure Flush;
+    procedure EndGroup;
+    procedure FeedTopLevel(const AToken: TToken);
+  public
+    /// <summary>Typen, klein, durch Komma getrennt.</summary>
+    Text: string;
+    Count: Integer;
+    procedure Init;
+    procedure Feed(const AToken: TToken);
+    procedure Finish;
+  end;
+
   TParser = class
   private
     FTokens: TArray<TToken>;
@@ -110,13 +168,11 @@ type
     FEof: TToken;
     FPlaces: TArray<TAtlasMethodPlace>;
     FPlaceCount: Integer;
-    FConditionals: TAtlasConditionals;
-    procedure Lex(const AText: string);
-    procedure AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
     function Tok(AOffset: Integer): TToken;
     function Kw(AOffset: Integer; const AWord: string): Boolean;
+    function KwIn(AOffset: Integer; const AWords: array of string): Boolean;
     function Sym(AOffset: Integer; const ASymbol: string): Boolean;
-    function IsRoutineWord(AOffset: Integer): Boolean;
+    function BracketDelta: Integer;
     function IsRoutineStart: Boolean;
     function IsSectionEnd: Boolean;
     function IsDirective: Boolean;
@@ -126,21 +182,32 @@ type
     procedure SkipDeclarations;
     procedure SkipCompound;
     procedure SkipHelper;
+    procedure SkipProperty;
+    procedure SkipVariantCase;
     function ParseHeading(out AHeading: THeading): Boolean;
     procedure SkipDirectives(out AForward, AExternal: Boolean);
     function Signature(AFirst, ALast: Integer; out ACount: Integer): string;
     function ParseBlockBody: Integer;
+    function ReadTypeName(const AOwner: string; out APath: string): Boolean;
+    procedure ParseStructBody(const APath: string; ACollect: Boolean);
+    procedure ParseClassType(const APath: string; ACollect: Boolean);
+    procedure ParseRecordType(const APath: string; ACollect: Boolean);
+    procedure ParseInterfaceType(const APath: string; ACollect: Boolean);
+    procedure ParseTypeValue(const APath: string; ACollect: Boolean);
     procedure ParseTypeSection(const AOwner: string; ACollect: Boolean);
+    procedure ParseStructItem(const AOwner: string; ACollect: Boolean);
     procedure ParseStruct(const AOwner: string; ACollect: Boolean);
     procedure ParseRoutine(const AOwner: string; AInInterface, ACollect: Boolean);
+    procedure ParseTopLevelItem(var AInInterface: Boolean);
+    procedure ParseTopLevel;
     procedure AddPlace(const AName: string; const AHeading: THeading; AFirst, ALast: Integer; AIsBody: Boolean);
   public
     function Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
   end;
 
-{ TParser }
+{ TLexer }
 
-procedure TParser.AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
+procedure TLexer.AddToken(const AText: string; AKind: TTokenKind; ALine, ACharacter: Integer; AEscaped: Boolean);
 var
   Token: TToken;
 begin
@@ -164,196 +231,411 @@ begin
   Inc(FCount);
 end;
 
-procedure TParser.Lex(const AText: string);
-var
-  I, Len, Line, LineStart, Start, StartLine, StartChar: Integer;
-  C: Char;
-  Escaped: Boolean;
-
-  procedure NewLine;
-  begin
-    Inc(Line);
-    LineStart := I + 1;
-  end;
-
-  function RestOfLineBlank(AFrom: Integer): Boolean;
-  var
-    K: Integer;
-  begin
-    Result := True;
-    K := AFrom;
-    while (K <= Len) and (AText[K] <> #10) do
-    begin
-      if not CharInSet(AText[K], [' ', #9, #13]) then
-      begin
-        Exit(False);
-      end;
-      Inc(K);
-    end;
-  end;
-
+function TLexer.CharAt(AIndex: Integer): Char;
 begin
-  FTokens := nil;
-  FCount := 0;
-  Len := Length(AText);
-  Line := 0;
-  LineStart := 1;
-  I := 1;
-  while I <= Len do
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= FLen) then
   begin
-    C := AText[I];
-    if C = #10 then
+    Result := FText[AIndex];
+  end;
+end;
+
+procedure TLexer.LexNewLine;
+begin
+  Inc(FLine);
+  FLineStart := FI + 1;
+end;
+
+procedure TLexer.SkipChar;
+begin
+  if CharAt(FI) = #10 then
+  begin
+    LexNewLine;
+  end;
+  Inc(FI);
+end;
+
+function TLexer.RestOfLineBlank(AFrom: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  mIndex := AFrom;
+  while Result and (mIndex <= FLen) and (FText[mIndex] <> #10) do
+  begin
+    Result := CharInSet(FText[mIndex], [' ', #9, #13]);
+    Inc(mIndex);
+  end;
+end;
+
+function TLexer.LexBlank: Boolean;
+var
+  mChar: Char;
+begin
+  mChar := CharAt(FI);
+  Result := True;
+  if CharInSet(mChar, [#10, ' ', #9, #13, #12]) then
+  begin
+    SkipChar;
+  end
+  else if (mChar = '/') and (CharAt(FI + 1) = '/') then
+  begin
+    while (FI <= FLen) and (FText[FI] <> #10) do
     begin
-      NewLine;
-      Inc(I);
-    end
-    else if CharInSet(C, [' ', #9, #13, #12]) then
+      Inc(FI);
+    end;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TLexer.LexComment: Boolean;
+var
+  mStart: Integer;
+begin
+  mStart := FI;
+  Result := True;
+  if CharAt(FI) = '{' then
+  begin
+    while (FI <= FLen) and (FText[FI] <> '}') do
     begin
-      Inc(I);
-    end
-    else if (C = '/') and (I < Len) and (AText[I + 1] = '/') then
+      SkipChar;
+    end;
+    if CharAt(mStart + 1) = '$' then
     begin
-      while (I <= Len) and (AText[I] <> #10) do
-      begin
-        Inc(I);
-      end;
-    end
-    else if C = '{' then
+      FConditionals.Handle(Copy(FText, mStart + 2, FI - mStart - 2));
+    end;
+    Inc(FI);
+  end
+  else if (CharAt(FI) = '(') and (CharAt(FI + 1) = '*') then
+  begin
+    Inc(FI, 2);
+    while (FI <= FLen) and not ((FText[FI] = '*') and (CharAt(FI + 1) = ')')) do
     begin
-      Start := I;
-      while (I <= Len) and (AText[I] <> '}') do
-      begin
-        if AText[I] = #10 then
-        begin
-          NewLine;
-        end;
-        Inc(I);
-      end;
-      if (Start < Len) and (AText[Start + 1] = '$') then
-      begin
-        FConditionals.Handle(Copy(AText, Start + 2, I - Start - 2));
-      end;
-      Inc(I);
-    end
-    else if (C = '(') and (I < Len) and (AText[I + 1] = '*') then
+      SkipChar;
+    end;
+    if CharAt(mStart + 2) = '$' then
     begin
-      Start := I;
-      Inc(I, 2);
-      while (I <= Len) and not ((AText[I] = '*') and (I < Len) and (AText[I + 1] = ')')) do
-      begin
-        if AText[I] = #10 then
-        begin
-          NewLine;
-        end;
-        Inc(I);
-      end;
-      if (Start + 2 <= Len) and (AText[Start + 2] = '$') then
-      begin
-        FConditionals.Handle(Copy(AText, Start + 3, I - Start - 3));
-      end;
-      Inc(I, 2);
-    end
-    else if C = '''' then
+      FConditionals.Handle(Copy(FText, mStart + 3, FI - mStart - 3));
+    end;
+    Inc(FI, 2);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TLexer.AtTripleQuote(AIndex: Integer): Boolean;
+begin
+  Result := (CharAt(AIndex) = '''') and (CharAt(AIndex + 1) = '''') and (CharAt(AIndex + 2) = '''');
+end;
+
+procedure TLexer.SkipMultilineString;
+begin
+  // Mehrzeiliger String (Delphi 12): bis zur nächsten Zeile mit '''.
+  Inc(FI, 3);
+  while (FI <= FLen) and not AtTripleQuote(FI) do
+  begin
+    SkipChar;
+  end;
+  Inc(FI, 3);
+  while CharAt(FI) = '''' do
+  begin
+    Inc(FI);
+  end;
+end;
+
+procedure TLexer.SkipQuotedString;
+var
+  mDone: Boolean;
+begin
+  Inc(FI);
+  mDone := False;
+  while not mDone and (FI <= FLen) and (FText[FI] <> #10) do
+  begin
+    if (FText[FI] = '''') and (CharAt(FI + 1) = '''') then
     begin
-      StartLine := Line;
-      StartChar := I - LineStart;
-      Start := I;
-      if (I + 2 <= Len) and (AText[I + 1] = '''') and (AText[I + 2] = '''') and RestOfLineBlank(I + 3) then
-      begin
-        // Mehrzeiliger String (Delphi 12): bis zur nächsten Zeile mit '''.
-        Inc(I, 3);
-        while (I <= Len) and not ((AText[I] = '''') and (I + 2 <= Len) and (AText[I + 1] = '''') and
-          (AText[I + 2] = '''')) do
-        begin
-          if AText[I] = #10 then
-          begin
-            NewLine;
-          end;
-          Inc(I);
-        end;
-        Inc(I, 3);
-        while (I <= Len) and (AText[I] = '''') do
-        begin
-          Inc(I);
-        end;
-      end
-      else
-      begin
-        Inc(I);
-        while (I <= Len) and (AText[I] <> #10) do
-        begin
-          if AText[I] = '''' then
-          begin
-            if (I < Len) and (AText[I + 1] = '''') then
-            begin
-              Inc(I, 2);
-            end
-            else
-            begin
-              Inc(I);
-              Break;
-            end;
-          end
-          else
-          begin
-            Inc(I);
-          end;
-        end;
-      end;
-      AddToken(Copy(AText, Start, I - Start), tkString, StartLine, StartChar, False);
-    end
-    else if C = '#' then
-    begin
-      Start := I;
-      Inc(I);
-      while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or (AText[I] = '$')) do
-      begin
-        Inc(I);
-      end;
-      AddToken(Copy(AText, Start, I - Start), tkString, Line, Start - LineStart, False);
-    end
-    else if TTextChars.IsIdentStart(C) or ((C = '&') and (I < Len) and TTextChars.IsIdentStart(AText[I + 1])) then
-    begin
-      // &begin und Sprungmarken wie @@End (#861) sind keine Schlüsselwörter.
-      Escaped := (C = '&') or (I > 1) and (AText[I - 1] = '@');
-      if C = '&' then
-      begin
-        Inc(I);
-      end;
-      Start := I;
-      while (I <= Len) and TTextChars.IsIdentChar(AText[I]) do
-      begin
-        Inc(I);
-      end;
-      AddToken(Copy(AText, Start, I - Start), tkIdent, Line, Start - LineStart, Escaped);
-    end
-    else if CharInSet(C, ['0'..'9', '$', '%']) then
-    begin
-      Start := I;
-      Inc(I);
-      while (I <= Len) and (TTextChars.IsIdentChar(AText[I]) or
-        ((AText[I] = '.') and (I < Len) and CharInSet(AText[I + 1], ['0'..'9']))) do
-      begin
-        Inc(I);
-      end;
-      AddToken(Copy(AText, Start, I - Start), tkNumber, Line, Start - LineStart, False);
+      Inc(FI, 2);
     end
     else
     begin
-      Start := I;
-      if (I < Len) and (((C = ':') and (AText[I + 1] = '=')) or ((C = '.') and (AText[I + 1] = '.')) or
-        ((C = '<') and CharInSet(AText[I + 1], ['=', '>'])) or ((C = '>') and (AText[I + 1] = '='))) then
-      begin
-        Inc(I, 2);
-      end
-      else
-      begin
-        Inc(I);
-      end;
-      AddToken(Copy(AText, Start, I - Start), tkSymbol, Line, Start - LineStart, False);
+      mDone := FText[FI] = '''';
+      Inc(FI);
     end;
   end;
 end;
+
+function TLexer.LexString: Boolean;
+var
+  mStart, mStartLine, mStartChar: Integer;
+begin
+  Result := CharAt(FI) = '''';
+  if not Result then
+  begin
+    Exit;
+  end;
+  mStartLine := FLine;
+  mStartChar := FI - FLineStart;
+  mStart := FI;
+  if AtTripleQuote(FI) and RestOfLineBlank(FI + 3) then
+  begin
+    SkipMultilineString;
+  end
+  else
+  begin
+    SkipQuotedString;
+  end;
+  AddToken(Copy(FText, mStart, FI - mStart), tkString, mStartLine, mStartChar, False);
+end;
+
+function TLexer.LexCharCode: Boolean;
+var
+  mStart: Integer;
+begin
+  Result := CharAt(FI) = '#';
+  if not Result then
+  begin
+    Exit;
+  end;
+  mStart := FI;
+  Inc(FI);
+  while (FI <= FLen) and (TTextChars.IsIdentChar(FText[FI]) or (FText[FI] = '$')) do
+  begin
+    Inc(FI);
+  end;
+  AddToken(Copy(FText, mStart, FI - mStart), tkString, FLine, mStart - FLineStart, False);
+end;
+
+function TLexer.LexIdent: Boolean;
+var
+  mStart: Integer;
+  mChar: Char;
+  mEscaped: Boolean;
+begin
+  mChar := CharAt(FI);
+  Result := TTextChars.IsIdentStart(mChar) or ((mChar = '&') and TTextChars.IsIdentStart(CharAt(FI + 1)));
+  if not Result then
+  begin
+    Exit;
+  end;
+  // &begin und Sprungmarken wie @@End (#861) sind keine Schlüsselwörter.
+  mEscaped := (mChar = '&') or (CharAt(FI - 1) = '@');
+  if mChar = '&' then
+  begin
+    Inc(FI);
+  end;
+  mStart := FI;
+  while (FI <= FLen) and TTextChars.IsIdentChar(FText[FI]) do
+  begin
+    Inc(FI);
+  end;
+  AddToken(Copy(FText, mStart, FI - mStart), tkIdent, FLine, mStart - FLineStart, mEscaped);
+end;
+
+function TLexer.LexNumber: Boolean;
+var
+  mStart: Integer;
+begin
+  Result := CharInSet(CharAt(FI), ['0'..'9', '$', '%']);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mStart := FI;
+  Inc(FI);
+  while (FI <= FLen) and (TTextChars.IsIdentChar(FText[FI]) or
+    ((FText[FI] = '.') and CharInSet(CharAt(FI + 1), ['0'..'9']))) do
+  begin
+    Inc(FI);
+  end;
+  AddToken(Copy(FText, mStart, FI - mStart), tkNumber, FLine, mStart - FLineStart, False);
+end;
+
+function TLexer.IsTwoCharSymbol: Boolean;
+var
+  mPair: string;
+begin
+  mPair := FText[FI] + CharAt(FI + 1);
+  Result := (mPair = ':=') or (mPair = '..') or (mPair = '<=') or (mPair = '<>') or (mPair = '>=');
+end;
+
+procedure TLexer.LexSymbol;
+var
+  mStart: Integer;
+begin
+  mStart := FI;
+  if IsTwoCharSymbol then
+  begin
+    Inc(FI, 2);
+  end
+  else
+  begin
+    Inc(FI);
+  end;
+  AddToken(Copy(FText, mStart, FI - mStart), tkSymbol, FLine, mStart - FLineStart, False);
+end;
+
+function TLexer.LexSkipped: Boolean;
+begin
+  Result := LexBlank or LexComment;
+end;
+
+function TLexer.LexLiteral: Boolean;
+begin
+  Result := LexString or LexCharCode or LexIdent or LexNumber;
+end;
+
+procedure TLexer.Lex(const AText: string);
+begin
+  FTokens := nil;
+  FCount := 0;
+  FText := AText;
+  FLen := Length(AText);
+  FLine := 0;
+  FLineStart := 1;
+  FI := 1;
+  while FI <= FLen do
+  begin
+    if not (LexSkipped or LexLiteral) then
+    begin
+      LexSymbol;
+    end;
+  end;
+  FText := '';
+end;
+
+function TLexer.Run(const AText: string; const ADefines: TArray<string>): TArray<TToken>;
+var
+  mDefines: TArray<string>;
+begin
+  mDefines := ADefines;
+  if mDefines = nil then
+  begin
+    mDefines := TTextDefines.Predefined('Win32', CompilerVersion);
+  end;
+  FConditionals := TAtlasConditionals.Create(mDefines, CompilerVersion);
+  try
+    Lex(AText);
+  finally
+    FreeAndNil(FConditionals);
+  end;
+  SetLength(FTokens, FCount);
+  Result := FTokens;
+end;
+
+{ TSignatureReader }
+
+procedure TSignatureReader.Init;
+begin
+  Self := Default(TSignatureReader);
+end;
+
+class function TSignatureReader.IsSymbolIn(const AToken: TToken; const ASymbols: string): Boolean;
+begin
+  Result := (AToken.Kind = tkSymbol) and (Length(AToken.Text) = 1) and (Pos(AToken.Text, ASymbols) > 0);
+end;
+
+class function TSignatureReader.IsModifier(const AToken: TToken): Boolean;
+begin
+  Result := not AToken.Escaped and ((AToken.Lower = 'const') or (AToken.Lower = 'var') or (AToken.Lower = 'out') or
+    (AToken.Lower = 'constref'));
+end;
+
+procedure TSignatureReader.AppendType(const AToken: TToken);
+begin
+  if FInType and not FInDefault then
+  begin
+    FTypeText := FTypeText + AToken.Lower;
+  end;
+end;
+
+procedure TSignatureReader.Flush;
+var
+  mIndex: Integer;
+  mType: string;
+begin
+  mType := '';
+  if FTyped then
+  begin
+    mType := FTypeText;
+  end;
+  for mIndex := 1 to FNames do
+  begin
+    if Text <> '' then
+    begin
+      Text := Text + ',';
+    end;
+    Text := Text + mType;
+    Inc(Count);
+  end;
+end;
+
+procedure TSignatureReader.EndGroup;
+begin
+  Flush;
+  FNames := 0;
+  FTypeText := '';
+  FInType := False;
+  FInDefault := False;
+  FTyped := False;
+end;
+
+procedure TSignatureReader.FeedTopLevel(const AToken: TToken);
+begin
+  if IsSymbolIn(AToken, ';') then
+  begin
+    EndGroup;
+  end
+  else if IsSymbolIn(AToken, ':') and not FInType then
+  begin
+    FInType := True;
+    FTyped := True;
+  end
+  else if IsSymbolIn(AToken, '=') and FInType then
+  begin
+    FInDefault := True;
+  end
+  else if FInType then
+  begin
+    AppendType(AToken);
+  end
+  else if (AToken.Kind = tkIdent) and not ((FNames = 0) and IsModifier(AToken)) then
+  begin
+    Inc(FNames);
+  end;
+end;
+
+procedure TSignatureReader.Feed(const AToken: TToken);
+begin
+  if IsSymbolIn(AToken, '([<') then
+  begin
+    Inc(FDepth);
+    AppendType(AToken);
+  end
+  else if IsSymbolIn(AToken, ')]>') then
+  begin
+    Dec(FDepth);
+    AppendType(AToken);
+  end
+  else if FDepth = 0 then
+  begin
+    FeedTopLevel(AToken);
+  end
+  else
+  begin
+    AppendType(AToken);
+  end;
+end;
+
+procedure TSignatureReader.Finish;
+begin
+  Flush;
+end;
+
+{ TParser }
 
 function TParser.Tok(AOffset: Integer): TToken;
 begin
@@ -383,15 +665,11 @@ begin
   Result := (Token.Kind = tkSymbol) and (Token.Text = ASymbol);
 end;
 
-function TParser.IsRoutineWord(AOffset: Integer): Boolean;
-begin
-  Result := Kw(AOffset, 'procedure') or Kw(AOffset, 'function') or Kw(AOffset, 'constructor') or
-    Kw(AOffset, 'destructor') or Kw(AOffset, 'operator');
-end;
-
 function TParser.IsRoutineStart: Boolean;
+const
+  cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
 begin
-  Result := IsRoutineWord(0) or (Kw(0, 'class') and IsRoutineWord(1));
+  Result := KwIn(0, cRoutineWords) or (Kw(0, 'class') and KwIn(1, cRoutineWords));
 end;
 
 function TParser.IsSectionEnd: Boolean;
@@ -492,22 +770,38 @@ begin
   end;
 end;
 
+function TParser.KwIn(AOffset: Integer; const AWords: array of string): Boolean;
+var
+  mWord: string;
+begin
+  Result := False;
+  for mWord in AWords do
+  begin
+    Result := Result or Kw(AOffset, mWord);
+  end;
+end;
+
+function TParser.BracketDelta: Integer;
+begin
+  Result := 0;
+  if Sym(0, '(') or Sym(0, '[') then
+  begin
+    Result := 1;
+  end
+  else if Sym(0, ')') or Sym(0, ']') then
+  begin
+    Result := -1;
+  end;
+end;
+
 procedure TParser.SkipToSemicolon;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   while Tok(0).Kind <> tkEof do
   begin
-    if Sym(0, '(') or Sym(0, '[') then
-    begin
-      Inc(Depth);
-    end
-    else if Sym(0, ')') or Sym(0, ']') then
-    begin
-      Dec(Depth);
-    end
-    else if Depth <= 0 then
+    if (mDepth <= 0) and (BracketDelta = 0) then
     begin
       if Sym(0, ';') then
       begin
@@ -526,6 +820,7 @@ begin
         Continue;
       end;
     end;
+    Inc(mDepth, BracketDelta);
     Inc(FPos);
   end;
 end;
@@ -604,96 +899,17 @@ end;
 
 function TParser.Signature(AFirst, ALast: Integer; out ACount: Integer): string;
 var
-  Index, Depth, Names: Integer;
-  Token: TToken;
-  TypeText: string;
-  InType, InDefault, Typed: Boolean;
-
-  procedure Flush;
-  var
-    K: Integer;
-  begin
-    if Names = 0 then
-    begin
-      Exit;
-    end;
-    if not Typed then
-    begin
-      TypeText := '';
-    end;
-    for K := 1 to Names do
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ',';
-      end;
-      Result := Result + TypeText;
-      Inc(ACount);
-    end;
-  end;
-
+  mIndex: Integer;
+  mReader: TSignatureReader;
 begin
-  Result := '';
-  ACount := 0;
-  Depth := 0;
-  Names := 0;
-  TypeText := '';
-  InType := False;
-  InDefault := False;
-  Typed := False;
-  Index := AFirst;
-  while Index <= ALast do
+  mReader.Init;
+  for mIndex := AFirst to ALast do
   begin
-    Token := FTokens[Index];
-    if (Token.Kind = tkSymbol) and ((Token.Text = '(') or (Token.Text = '[') or (Token.Text = '<')) then
-    begin
-      Inc(Depth);
-      if InType and not InDefault then
-      begin
-        TypeText := TypeText + Token.Lower;
-      end;
-    end
-    else if (Token.Kind = tkSymbol) and ((Token.Text = ')') or (Token.Text = ']') or (Token.Text = '>')) then
-    begin
-      Dec(Depth);
-      if InType and not InDefault then
-      begin
-        TypeText := TypeText + Token.Lower;
-      end;
-    end
-    else if (Depth = 0) and (Token.Kind = tkSymbol) and (Token.Text = ';') then
-    begin
-      Flush;
-      Names := 0;
-      TypeText := '';
-      InType := False;
-      InDefault := False;
-      Typed := False;
-    end
-    else if (Depth = 0) and (Token.Kind = tkSymbol) and (Token.Text = ':') and not InType then
-    begin
-      InType := True;
-      Typed := True;
-    end
-    else if (Depth = 0) and (Token.Kind = tkSymbol) and (Token.Text = '=') and InType then
-    begin
-      InDefault := True;
-    end
-    else if InType then
-    begin
-      if not InDefault then
-      begin
-        TypeText := TypeText + Token.Lower;
-      end;
-    end
-    else if (Depth = 0) and (Token.Kind = tkIdent) and not ((Names = 0) and not Token.Escaped and
-      ((Token.Lower = 'const') or (Token.Lower = 'var') or (Token.Lower = 'out') or (Token.Lower = 'constref'))) then
-    begin
-      Inc(Names);
-    end;
-    Inc(Index);
+    mReader.Feed(FTokens[mIndex]);
   end;
-  Flush;
+  mReader.Finish;
+  ACount := mReader.Count;
+  Result := mReader.Text;
 end;
 
 function TParser.ParseHeading(out AHeading: THeading): Boolean;
@@ -891,37 +1107,27 @@ begin
   end;
 end;
 
-procedure TParser.ParseTypeSection(const AOwner: string; ACollect: Boolean);
-var
-  Path: string;
-  Before: Integer;
+function TParser.ReadTypeName(const AOwner: string; out APath: string): Boolean;
 begin
-  while Tok(0).Kind <> tkEof do
+  APath := '';
+  Result := (Tok(0).Kind = tkIdent) and (Sym(1, '=') or Sym(1, '<'));
+  if not Result then
   begin
-    Before := FPos;
-    if Sym(0, '[') then
-    begin
-      SkipBrackets;
-      Continue;
-    end;
-    if (Tok(0).Kind <> tkIdent) or not (Sym(1, '=') or Sym(1, '<')) then
-    begin
-      Exit;
-    end;
-    Path := Tok(0).Text;
-    if AOwner <> '' then
-    begin
-      Path := AOwner + '.' + Path;
-    end;
-    Inc(FPos);
-    if Sym(0, '<') then
-    begin
-      SkipAngles;
-    end;
-    if not Sym(0, '=') then
-    begin
-      Exit;
-    end;
+    Exit;
+  end;
+  APath := Tok(0).Text;
+  if AOwner <> '' then
+  begin
+    APath := AOwner + '.' + APath;
+  end;
+  Inc(FPos);
+  if Sym(0, '<') then
+  begin
+    SkipAngles;
+  end;
+  Result := Sym(0, '=');
+  if Result then
+  begin
     Inc(FPos);
     if Kw(0, 'type') then
     begin
@@ -931,139 +1137,245 @@ begin
     begin
       Inc(FPos);
     end;
-    if Kw(0, 'class') then
+  end;
+end;
+
+procedure TParser.ParseStructBody(const APath: string; ACollect: Boolean);
+begin
+  ParseStruct(APath, ACollect);
+  SkipToSemicolon;
+end;
+
+procedure TParser.ParseClassType(const APath: string; ACollect: Boolean);
+begin
+  if Kw(0, 'of') or Sym(0, ';') then
+  begin
+    SkipToSemicolon;
+    Exit;
+  end;
+  if Kw(0, 'helper') then
+  begin
+    SkipHelper;
+  end;
+  while Kw(0, 'abstract') or Kw(0, 'sealed') do
+  begin
+    Inc(FPos);
+  end;
+  if Sym(0, '(') then
+  begin
+    SkipBrackets;
+  end;
+  if Sym(0, ';') then
+  begin
+    Inc(FPos);
+  end
+  else
+  begin
+    ParseStructBody(APath, ACollect);
+  end;
+end;
+
+procedure TParser.ParseRecordType(const APath: string; ACollect: Boolean);
+begin
+  if Kw(0, 'helper') then
+  begin
+    SkipHelper;
+  end;
+  if Sym(0, '(') then
+  begin
+    SkipBrackets;
+  end;
+  ParseStructBody(APath, ACollect);
+end;
+
+procedure TParser.ParseInterfaceType(const APath: string; ACollect: Boolean);
+begin
+  if Sym(0, '(') then
+  begin
+    SkipBrackets;
+  end;
+  if Sym(0, ';') then
+  begin
+    Inc(FPos);
+    Exit;
+  end;
+  if Sym(0, '[') then
+  begin
+    SkipBrackets;
+  end;
+  ParseStructBody(APath, ACollect);
+end;
+
+procedure TParser.ParseTypeValue(const APath: string; ACollect: Boolean);
+begin
+  if Kw(0, 'class') then
+  begin
+    Inc(FPos);
+    ParseClassType(APath, ACollect);
+  end
+  else if KwIn(0, ['record', 'object']) then
+  begin
+    Inc(FPos);
+    ParseRecordType(APath, ACollect);
+  end
+  else if KwIn(0, ['interface', 'dispinterface']) then
+  begin
+    Inc(FPos);
+    ParseInterfaceType(APath, ACollect);
+  end
+  else
+  begin
+    SkipToSemicolon;
+  end;
+end;
+
+procedure TParser.ParseTypeSection(const AOwner: string; ACollect: Boolean);
+var
+  mPath: string;
+  mBefore: Integer;
+begin
+  while Tok(0).Kind <> tkEof do
+  begin
+    mBefore := FPos;
+    if Sym(0, '[') then
     begin
-      Inc(FPos);
-      if Kw(0, 'of') or Sym(0, ';') then
-      begin
-        SkipToSemicolon;
-      end
-      else
-      begin
-        if Kw(0, 'helper') then
-        begin
-          SkipHelper;
-        end;
-        while Kw(0, 'abstract') or Kw(0, 'sealed') do
-        begin
-          Inc(FPos);
-        end;
-        if Sym(0, '(') then
-        begin
-          SkipBrackets;
-        end;
-        if Sym(0, ';') then
-        begin
-          Inc(FPos);
-        end
-        else
-        begin
-          ParseStruct(Path, ACollect);
-          SkipToSemicolon;
-        end;
-      end;
-    end
-    else if Kw(0, 'record') or Kw(0, 'object') then
-    begin
-      Inc(FPos);
-      if Kw(0, 'helper') then
-      begin
-        SkipHelper;
-      end;
-      if Sym(0, '(') then
-      begin
-        SkipBrackets;
-      end;
-      ParseStruct(Path, ACollect);
-      SkipToSemicolon;
-    end
-    else if Kw(0, 'interface') or Kw(0, 'dispinterface') then
-    begin
-      Inc(FPos);
-      if Sym(0, '(') then
-      begin
-        SkipBrackets;
-      end;
-      if Sym(0, ';') then
-      begin
-        Inc(FPos);
-      end
-      else
-      begin
-        if Sym(0, '[') then
-        begin
-          SkipBrackets;
-        end;
-        ParseStruct(Path, ACollect);
-        SkipToSemicolon;
-      end;
-    end
-    else
-    begin
-      SkipToSemicolon;
+      SkipBrackets;
+      Continue;
     end;
-    if FPos = Before then
+    if not ReadTypeName(AOwner, mPath) then
+    begin
+      Exit;
+    end;
+    ParseTypeValue(mPath, ACollect);
+    if FPos = mBefore then
     begin
       Inc(FPos);
     end;
   end;
 end;
 
+procedure TParser.SkipProperty;
+begin
+  SkipToSemicolon;
+  if Kw(0, 'default') and Sym(1, ';') then
+  begin
+    Inc(FPos, 2);
+  end;
+end;
+
+procedure TParser.SkipVariantCase;
+begin
+  while (Tok(0).Kind <> tkEof) and not Kw(0, 'of') do
+  begin
+    Inc(FPos);
+  end;
+  Inc(FPos);
+end;
+
+procedure TParser.ParseStructItem(const AOwner: string; ACollect: Boolean);
+begin
+  if Sym(0, '[') then
+  begin
+    SkipBrackets;
+  end
+  else if KwIn(0, ['private', 'protected', 'public', 'published', 'automated', 'strict']) then
+  begin
+    Inc(FPos);
+  end
+  else if IsRoutineStart then
+  begin
+    ParseRoutine(AOwner, True, ACollect);
+  end
+  else if KwIn(0, ['class', 'var', 'const', 'threadvar']) then
+  begin
+    Inc(FPos);
+  end
+  else if Kw(0, 'property') then
+  begin
+    SkipProperty;
+  end
+  else if Kw(0, 'type') then
+  begin
+    Inc(FPos);
+    ParseTypeSection(AOwner, ACollect);
+  end
+  else if Kw(0, 'case') then
+  begin
+    SkipVariantCase;
+  end
+  else
+  begin
+    SkipToSemicolon;
+  end;
+end;
+
 procedure TParser.ParseStruct(const AOwner: string; ACollect: Boolean);
 var
-  Before: Integer;
+  mBefore: Integer;
 begin
   while Tok(0).Kind <> tkEof do
   begin
-    Before := FPos;
+    mBefore := FPos;
     if Kw(0, 'end') then
     begin
       Inc(FPos);
       Exit;
-    end
-    else if Sym(0, '[') then
-    begin
-      SkipBrackets;
-    end
-    else if Kw(0, 'private') or Kw(0, 'protected') or Kw(0, 'public') or Kw(0, 'published') or
-      Kw(0, 'automated') or Kw(0, 'strict') then
-    begin
-      Inc(FPos);
-    end
-    else if IsRoutineStart then
-    begin
-      ParseRoutine(AOwner, True, ACollect);
-    end
-    else if Kw(0, 'class') or Kw(0, 'var') or Kw(0, 'const') or Kw(0, 'threadvar') then
-    begin
-      Inc(FPos);
-    end
-    else if Kw(0, 'property') then
-    begin
-      SkipToSemicolon;
-      if Kw(0, 'default') and Sym(1, ';') then
-      begin
-        Inc(FPos, 2);
-      end;
-    end
-    else if Kw(0, 'type') then
-    begin
-      Inc(FPos);
-      ParseTypeSection(AOwner, ACollect);
-    end
-    else if Kw(0, 'case') then
-    begin
-      while (Tok(0).Kind <> tkEof) and not Kw(0, 'of') do
-      begin
-        Inc(FPos);
-      end;
-      Inc(FPos);
-    end
-    else
-    begin
-      SkipToSemicolon;
     end;
-    if FPos = Before then
+    ParseStructItem(AOwner, ACollect);
+    if FPos = mBefore then
+    begin
+      Inc(FPos);
+    end;
+  end;
+end;
+
+procedure TParser.ParseTopLevelItem(var AInInterface: Boolean);
+begin
+  if KwIn(0, ['unit', 'program', 'library', 'package', 'uses', 'contains', 'requires', 'exports']) then
+  begin
+    SkipToSemicolon;
+  end
+  else if KwIn(0, ['interface', 'implementation']) then
+  begin
+    AInInterface := Kw(0, 'interface');
+    Inc(FPos);
+  end
+  else if Kw(0, 'type') then
+  begin
+    Inc(FPos);
+    ParseTypeSection('', True);
+  end
+  else if KwIn(0, ['var', 'const', 'threadvar', 'resourcestring', 'label']) then
+  begin
+    Inc(FPos);
+    SkipDeclarations;
+  end
+  else if IsRoutineStart then
+  begin
+    ParseRoutine('', AInInterface, True);
+  end
+  else if Sym(0, '[') then
+  begin
+    SkipBrackets;
+  end
+  else
+  begin
+    Inc(FPos);
+  end;
+end;
+
+procedure TParser.ParseTopLevel;
+var
+  mInInterface: Boolean;
+  mBefore: Integer;
+begin
+  // Programme und Bibliotheken haben keinen interface-Teil.
+  mInInterface := False;
+  while (Tok(0).Kind <> tkEof) and not KwIn(0, ['initialization', 'finalization', 'begin', 'end']) do
+  begin
+    mBefore := FPos;
+    ParseTopLevelItem(mInInterface);
+    if FPos = mBefore then
     begin
       Inc(FPos);
     end;
@@ -1072,77 +1384,21 @@ end;
 
 function TParser.Run(const AText: string; const ADefines: TArray<string>): TArray<TAtlasMethodPlace>;
 var
-  InInterface: Boolean;
-  Before: Integer;
-  Defines: TArray<string>;
+  mLexer: TLexer;
 begin
   FEof.Kind := tkEof;
   FEof.Line := MaxInt;
   FPlaces := nil;
   FPlaceCount := 0;
-  Defines := ADefines;
-  if Defines = nil then
-  begin
-    Defines := TTextDefines.Predefined('Win32', CompilerVersion);
-  end;
-  FConditionals := TAtlasConditionals.Create(Defines, CompilerVersion);
+  mLexer := TLexer.Create;
   try
-    Lex(AText);
+    FTokens := mLexer.Run(AText, ADefines);
   finally
-    FreeAndNil(FConditionals);
+    mLexer.Free;
   end;
+  FCount := Length(FTokens);
   FPos := 0;
-  // Programme und Bibliotheken haben keinen interface-Teil.
-  InInterface := False;
-  while Tok(0).Kind <> tkEof do
-  begin
-    Before := FPos;
-    if Kw(0, 'unit') or Kw(0, 'program') or Kw(0, 'library') or Kw(0, 'package') or Kw(0, 'uses') or
-      Kw(0, 'contains') or Kw(0, 'requires') or Kw(0, 'exports') then
-    begin
-      SkipToSemicolon;
-    end
-    else if Kw(0, 'interface') then
-    begin
-      InInterface := True;
-      Inc(FPos);
-    end
-    else if Kw(0, 'implementation') then
-    begin
-      InInterface := False;
-      Inc(FPos);
-    end
-    else if Kw(0, 'type') then
-    begin
-      Inc(FPos);
-      ParseTypeSection('', True);
-    end
-    else if Kw(0, 'var') or Kw(0, 'const') or Kw(0, 'threadvar') or Kw(0, 'resourcestring') or Kw(0, 'label') then
-    begin
-      Inc(FPos);
-      SkipDeclarations;
-    end
-    else if IsRoutineStart then
-    begin
-      ParseRoutine('', InInterface, True);
-    end
-    else if Kw(0, 'initialization') or Kw(0, 'finalization') or Kw(0, 'begin') or Kw(0, 'end') then
-    begin
-      Break;
-    end
-    else if Sym(0, '[') then
-    begin
-      SkipBrackets;
-    end
-    else
-    begin
-      Inc(FPos);
-    end;
-    if FPos = Before then
-    begin
-      Inc(FPos);
-    end;
-  end;
+  ParseTopLevel;
   SetLength(FPlaces, FPlaceCount);
   Result := FPlaces;
 end;

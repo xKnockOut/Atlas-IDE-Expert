@@ -169,8 +169,8 @@ begin
   AEdits := nil;
   Phantom := PhantomText(AText, ALine, ACommand);
   Line := ALine + 1;
-  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, AContext.Namespaces, nil, AContext.Index,
-    AContext.DelphiVersion, AContext.Uri, AContext.Host, AContext.Style, Edits, Reason);
+  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, TSlashEnvironment.Create(AContext.Namespaces, nil,
+    AContext.Index, AContext.DelphiVersion, AContext.Uri, AContext.Host).WithStyle(AContext.Style), Edits, Reason);
   if not Result then
   begin
     Exit;
@@ -223,98 +223,140 @@ begin
   Result := False;
 end;
 
+type
+  /// <summary>Eigenschaft ohne read und write: "property Name: Typ; // Kommentar".</summary>
+  TBareProperty = record
+    Indent: string;
+    Name: string;
+    TypeName: string;
+    /// <summary>Zeilenkommentar dahinter; '' ohne.</summary>
+    Comment: string;
+  end;
+
+function ParseBareProperty(const ALine: string; out AProperty: TBareProperty): Boolean;
+var
+  mMatch: TMatch;
+begin
+  AProperty := Default(TBareProperty);
+  mMatch := TRegEx.Match(ALine, '^(\s*)property\s+(\w+)\s*:\s*([^;]+?)\s*;\s*(//.*|)$', [roIgnoreCase]);
+  Result := mMatch.Success and not TRegEx.IsMatch(mMatch.Groups[3].Value,
+    '\b(read|write|index|default|stored|nodefault|implements)\b', [roIgnoreCase]);
+  if Result then
+  begin
+    AProperty.Indent := mMatch.Groups[1].Value;
+    AProperty.Name := mMatch.Groups[2].Value;
+    AProperty.TypeName := mMatch.Groups[3].Value;
+    AProperty.Comment := mMatch.Groups[4].Value;
+  end;
+end;
+
+/// <summary>Deklarationen und Rümpfe der Mitglieder F&lt;Name&gt;, Get&lt;Name&gt; und Set&lt;Name&gt;, die der Klasse
+/// AClass noch fehlen.</summary>
+procedure MissingAccessors(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClass: TIndexSymbol;
+  const AProperty: TBareProperty; out ADeclarations, ABodies: string);
+var
+  mLB, mIndent, mField, mGetter, mSetter: string;
+begin
+  mLB := ASource.LineBreak;
+  mIndent := ASource.Indent(AClass.Range.EndPos.Line) + '  ';
+  mField := 'F' + AProperty.Name;
+  mGetter := 'Get' + AProperty.Name;
+  mSetter := 'Set' + AProperty.Name;
+  ADeclarations := '';
+  ABodies := '';
+  if not HasMember(ASource.UnitIndex, AClass.Name, mField) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('%s: %s;', [mField, AProperty.TypeName]) + mLB;
+  end;
+  if not HasMember(ASource.UnitIndex, AClass.Name, mGetter) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('function %s: %s;', [mGetter, AProperty.TypeName]) + mLB;
+    ABodies := Format('function %s.%s: %s;', [AClass.Name, mGetter, AProperty.TypeName]) + mLB + 'begin' + mLB +
+      '  Result := ' + mField + ';' + mLB + 'end;';
+  end;
+  if not HasMember(ASource.UnitIndex, AClass.Name, mSetter) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('procedure %s(const Value: %s);', [mSetter,
+      AProperty.TypeName]) + mLB;
+    if ABodies <> '' then
+    begin
+      ABodies := ABodies + mLB + mLB;
+    end;
+    // Derselbe Setter wie bei /prop: nur bei Änderung, mit Benachrichtigung.
+    ABodies := ABodies + Format('procedure %s.%s(const Value: %s);', [AClass.Name, mSetter, AProperty.TypeName]) +
+      mLB + TSetterGenerator.Body(mField, 'Value', TSetterGenerator.NotifyCall(ASource, AIndex, AClass), mLB);
+  end;
+end;
+
+/// <summary>Ersatz der Eigenschaftszeile ALine: Feld und Zugriffsmethoden davor, denn Delphi verlangt sie vor ihrer
+/// Verwendung, und Felder stehen in einem Abschnitt vor den Methoden. Danach geht der Abschnitt der Eigenschaft
+/// weiter.</summary>
+function PropertyReplacement(ASource: TCommandSource; const AClass: TIndexSymbol; ALine: Integer;
+  const AProperty: TBareProperty; const ADeclarations: string): string;
+var
+  mLB, mIndent, mSection, mComment: string;
+begin
+  mLB := ASource.LineBreak;
+  mIndent := ASource.Indent(AClass.Range.EndPos.Line);
+  mSection := TInterfaceStubs.LastSection(ASource.Tree.Tokens, AClass.Range.StartPos.Line, ALine);
+  if mSection = '' then
+  begin
+    mSection := 'public';
+  end;
+  mComment := AProperty.Comment;
+  if mComment <> '' then
+  begin
+    mComment := ' ' + mComment;
+  end;
+  Result := mIndent + 'private' + mLB + ADeclarations + mIndent + mSection + mLB + AProperty.Indent +
+    Format('property %s: %s read Get%s write Set%s;', [AProperty.Name, AProperty.TypeName, AProperty.Name,
+    AProperty.Name]) + mComment;
+end;
+
 { TClassActions }
 
 class function TClassActions.PropertyAccessors(const AText: string; ALine: Integer;
   const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
 var
-  Lines: TArray<string>;
-  Match: TMatch;
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Name, TypeName, Field, Getter, Setter, LB, Indent, Section, Declarations, Bodies, Comment: string;
-  Edits: TArray<TTextEdit>;
+  mLines: TArray<string>;
+  mProperty: TBareProperty;
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mDeclarations, mBodies: string;
+  mEdits: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
   Result := False;
-  Lines := TTextLines.SplitLines(AText);
-  if (ALine < 0) or (ALine > High(Lines)) then
+  mLines := TTextLines.SplitLines(AText);
+  if (ALine < 0) or (ALine > High(mLines)) or not ParseBareProperty(mLines[ALine], mProperty) then
   begin
     Exit;
   end;
-  Match := TRegEx.Match(Lines[ALine], '^(\s*)property\s+(\w+)\s*:\s*([^;]+?)\s*;\s*(//.*|)$', [roIgnoreCase]);
-  if not Match.Success or TRegEx.IsMatch(Match.Groups[3].Value,
-    '\b(read|write|index|default|stored|nodefault|implements)\b', [roIgnoreCase]) then
-  begin
-    Exit;
-  end;
-  Name := Match.Groups[2].Value;
-  TypeName := Match.Groups[3].Value;
-  Comment := Match.Groups[4].Value;
-  Field := 'F' + Name;
-  Getter := 'Get' + Name;
-  Setter := 'Set' + Name;
   // Die Property-Zeile gilt als Befehlszeile: Der Baum sieht sie nicht, sie wird ohnehin ersetzt.
-  Source := TCommandSource.Create(SlashContext(AText, ALine, AContext));
+  mSource := TCommandSource.Create(SlashContext(AText, ALine, AContext));
   try
-    if not Source.ClassAt(ClassSymbol) or (ClassSymbol.Range.StartPos.Line >= ALine) or
-      (ClassSymbol.Range.EndPos.Line <= ALine) then
+    if not mSource.ClassAt(mClass) or (mClass.Range.StartPos.Line >= ALine) or
+      (mClass.Range.EndPos.Line <= ALine) then
     begin
       Exit;
     end;
-    LB := Source.LineBreak;
-    Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
-    Section := TInterfaceStubs.LastSection(Source.Tree.Tokens, ClassSymbol.Range.StartPos.Line, ALine);
-    if Section = '' then
-    begin
-      Section := 'public';
-    end;
-    // Feld und Zugriffsmethoden vor der Property: Delphi verlangt sie vor ihrer Verwendung, und Felder stehen in
-    // einem Abschnitt vor den Methoden. Danach geht der Abschnitt der Property weiter.
-    Declarations := '';
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Field) then
-    begin
-      Declarations := Declarations + Indent + '  ' + Format('%s: %s;', [Field, TypeName]) + LB;
-    end;
-    Bodies := '';
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Getter) then
-    begin
-      Declarations := Declarations + Indent + '  ' + Format('function %s: %s;', [Getter, TypeName]) + LB;
-      Bodies := Format('function %s.%s: %s;', [ClassSymbol.Name, Getter, TypeName]) + LB + 'begin' + LB +
-        '  Result := ' + Field + ';' + LB + 'end;';
-    end;
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Setter) then
-    begin
-      Declarations := Declarations + Indent + '  ' + Format('procedure %s(const Value: %s);', [Setter, TypeName]) + LB;
-      if Bodies <> '' then
-      begin
-        Bodies := Bodies + LB + LB;
-      end;
-      // Derselbe Setter wie bei /prop: nur bei Änderung, mit Benachrichtigung.
-      Bodies := Bodies + Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB +
-        TSetterGenerator.Body(Field, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol), LB);
-    end;
-    if Declarations = '' then
+    MissingAccessors(mSource, AContext.Index, mClass, mProperty, mDeclarations, mBodies);
+    if mDeclarations = '' then
     begin
       Exit;
     end;
-    if Comment <> '' then
+    mEdits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, Length(mLines[ALine])),
+      PropertyReplacement(mSource, mClass, ALine, mProperty, mDeclarations))];
+    if mBodies <> '' then
     begin
-      Comment := ' ' + Comment;
-    end;
-    Edits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, Length(Lines[ALine])),
-      Indent + 'private' + LB + Declarations + Indent + Section + LB + Match.Groups[1].Value +
-      Format('property %s: %s read %s write %s;', [Name, TypeName, Getter, Setter]) + Comment)];
-    if Bodies <> '' then
-    begin
-      Edits := Edits + [Source.AddBody(ClassSymbol.Name, Bodies)];
+      mEdits := mEdits + [mSource.AddBody(mClass.Name, mBodies)];
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
-  AAction.Title := Format('Getter, Setter und Feld für %s erzeugen', [Name]);
+  AAction.Title := Format('Getter, Setter und Feld für %s erzeugen', [mProperty.Name]);
   AAction.Kind := RewriteKind;
-  AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
+  AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
   Result := True;
 end;
 

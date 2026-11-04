@@ -283,10 +283,14 @@ var
 begin
   Result := Default(TAtlasConfidence);
   if not (AItem is TJSONObject) then
+  begin
     Exit;
+  end;
   Value := TJSONObject(AItem).GetValue('atlasConfidence');
   if not (Value is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Inferred := TJSONObject(Value).GetValue<string>('level', '') = 'inferred';
   if Result.Inferred then
   begin
@@ -303,8 +307,12 @@ var
 begin
   Result := nil;
   for Index := 0 to High(Places) do
+  begin
     if Places[Index].Cause = ACause then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 function TAtlasImpact.LevelCount(ALevel: Integer): Integer;
@@ -313,8 +321,12 @@ var
 begin
   Result := 0;
   for Place in Places do
+  begin
     if Place.Level = ALevel then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasImpact.CountFrom(ALevel: Integer): Integer;
@@ -323,8 +335,12 @@ var
 begin
   Result := 0;
   for Place in Places do
+  begin
     if Place.Level >= ALevel then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TAtlasImpact.RunNames: TArray<string>;
@@ -335,12 +351,16 @@ begin
   Result := nil;
   Seen := '|';
   for Test in Tests do
+  begin
     for Name in Test.RunNames do
+    begin
       if Pos('|' + UpperCase(Name) + '|', Seen) = 0 then
       begin
         Seen := Seen + UpperCase(Name) + '|';
         Result := Result + [Name];
       end;
+    end;
+  end;
 end;
 
 function TAtlasImpact.Found: Boolean;
@@ -369,13 +389,19 @@ begin
   begin
     Stop := Pos(')', Copy(Result, Start, MaxInt)) + Start - 1;
     if Stop < Start then
+    begin
       Break;
+    end;
     Inner := Copy(Result, Start + Length(Opening), Stop - Start - Length(Opening));
     // Nur Codes wie E2034, W1000–W1007 und Trenner; anderer Text in Klammern bleibt.
     Codes := Inner <> '';
     for Index := 1 to Length(Inner) do
+    begin
       if not CharInSet(Inner[Index], ['A'..'Z', '0'..'9', ',', ' ']) and (Inner[Index] <> #$2013) then
+      begin
         Codes := False;
+      end;
+    end;
     if Codes then
     begin
       Delete(Result, Start, Stop - Start + 1);
@@ -385,7 +411,9 @@ begin
     begin
       Index := Pos(Opening, Copy(Result, Stop + 1, MaxInt));
       if Index = 0 then
+      begin
         Break;
+      end;
       Start := Stop + Index;
     end;
   end;
@@ -394,11 +422,17 @@ end;
 function TAtlasProblem.CompilerCodeText: string;
 begin
   if Confirmed then
-    Result := ConfirmedCode
+  begin
+    Result := ConfirmedCode;
+  end
   else if IsCompiler then
-    Result := Code
+  begin
+    Result := Code;
+  end
   else
+  begin
     Result := string.Join(', ', CompilerCodes);
+  end;
 end;
 
 function TAtlasProblem.IsUses: Boolean;
@@ -411,19 +445,27 @@ var
   Last: Integer;
 begin
   if (ALine < StartLine) or (ALine > EndLine) then
+  begin
     Exit(False);
+  end;
   Last := EndCharacter;
   if (StartLine = EndLine) and (EndCharacter <= StartCharacter) then
+  begin
     Last := StartCharacter + 1;
+  end;
   Result := ((ALine > StartLine) or (ACharacter >= StartCharacter)) and ((ALine < EndLine) or (ACharacter <= Last));
 end;
 
 function TAtlasProblem.Caption: string;
 begin
   if Code = '' then
-    Result := Message
+  begin
+    Result := Message;
+  end
   else
+  begin
     Result := Format('%s (%s)', [Message, Code]);
+  end;
 end;
 
 function TAtlasProblem.CanSuppress: Boolean;
@@ -436,96 +478,177 @@ var
   Platform, Config: string;
 begin
   if InactiveCondition = '' then
+  begin
     Exit(AFallback);
+  end;
   Result := Format(AConditionFormat, [InactiveCondition]);
   if (InactivePlatform = '') and (InactiveConfig = '') then
+  begin
     Exit;
+  end;
   Platform := InactivePlatform;
   Config := InactiveConfig;
   if Platform = '' then
+  begin
     Platform := '?';
+  end;
   if Config = '' then
+  begin
     Config := '?';
+  end;
   Result := Result + Format(ATargetFormat, [Platform, Config]);
 end;
 
-class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
+/// <summary>LSP-Schweregrad (1 Fehler … 4 Hinweis); Unbekanntes gilt als Fehler.</summary>
+function ProblemSeverityOf(AValue: Integer): TAtlasProblemSeverity;
+begin
+  case AValue of
+    2:
+      Result := TAtlasProblemSeverity.Warning;
+    3:
+      Result := TAtlasProblemSeverity.Information;
+    4:
+      Result := TAtlasProblemSeverity.Hint;
+  else
+    Result := TAtlasProblemSeverity.Error;
+  end;
+end;
+
+/// <summary>Code eines Befunds als Text oder Zahl, '' ohne.</summary>
+function ProblemCodeOf(AValue: TJSONValue): string;
+begin
+  Result := '';
+  if AValue is TJSONString then
+  begin
+    Result := TJSONString(AValue).Value;
+  end
+  else if AValue is TJSONNumber then
+  begin
+    Result := TJSONNumber(AValue).ToString;
+  end;
+end;
+
+/// <summary>Die Zeichenketten eines JSON-Arrays; anderes wird übergangen.</summary>
+function ProblemStringsOf(AValue: TJSONValue): TArray<string>;
 var
-  Tags, CodeValue, Data, Inactive, UsesData, Codes, RelatedItems: TJSONValue;
-  Tag, Item: TJSONValue;
+  Item: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for Item in TJSONArray(AValue) do
+  begin
+    if Item is TJSONString then
+    begin
+      Result := Result + [TJSONString(Item).Value];
+    end;
+  end;
+end;
+
+/// <summary>Liest data.inactive und data.uses eines Befunds.</summary>
+procedure ReadProblemContext(var AProblem: TAtlasProblem; AData: TJSONObject);
+var
+  Inactive, UsesData: TJSONValue;
+begin
+  Inactive := AData.GetValue('inactive');
+  if Inactive is TJSONObject then
+  begin
+    AProblem.InactiveCondition := TJSONObject(Inactive).GetValue<string>('condition', '');
+    AProblem.InactivePlatform := TJSONObject(Inactive).GetValue<string>('platform', '');
+    AProblem.InactiveConfig := TJSONObject(Inactive).GetValue<string>('config', '');
+  end;
+  UsesData := AData.GetValue('uses');
+  if UsesData is TJSONObject then
+  begin
+    AProblem.UsesUnit := TJSONObject(UsesData).GetValue<string>('unit', '');
+    AProblem.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
+  end;
+end;
+
+/// <summary>Liest das Feld data eines Befunds (Angaben von Atlas).</summary>
+procedure ReadProblemData(var AProblem: TAtlasProblem; AData: TJSONValue);
+var
+  Data: TJSONObject;
+begin
+  if not (AData is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Data := TJSONObject(AData);
+  AProblem.Confidence := Data.GetValue<string>('confidence', '');
+  AProblem.Category := Data.GetValue<string>('category', '');
+  AProblem.Group := Data.GetValue<string>('group', '');
+  AProblem.FixTitle := Data.GetValue<string>('fix', '');
+  AProblem.CompilerCodes := ProblemStringsOf(Data.GetValue('compilerCodes'));
+  AProblem.Details := Data.GetValue<string>('details', '');
+  ReadProblemContext(AProblem, Data);
+end;
+
+/// <summary>Verweise aus relatedInformation; Einträge ohne URI fallen weg.</summary>
+function ProblemRelatedOf(AItems: TJSONValue): TArray<TAtlasProblemRelated>;
+var
+  Item: TJSONValue;
   Related: TAtlasProblemRelated;
+begin
+  Result := nil;
+  if not (AItems is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for Item in TJSONArray(AItems) do
+  begin
+    if not (Item is TJSONObject) then
+    begin
+      Continue;
+    end;
+    Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
+    Related.Line := TJSONObject(Item).GetValue<Integer>('location.range.start.line', 0);
+    Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
+    Related.Message := TJSONObject(Item).GetValue<string>('message', '');
+    if Related.Uri <> '' then
+    begin
+      Result := Result + [Related];
+    end;
+  end;
+end;
+
+/// <summary>Liest tags (1 unnötig, 2 veraltet).</summary>
+procedure ReadProblemTags(var AProblem: TAtlasProblem; ATags: TJSONValue);
+var
+  Tag: TJSONValue;
+begin
+  if not (ATags is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for Tag in TJSONArray(ATags) do
+  begin
+    if Tag is TJSONNumber then
+      case TJSONNumber(Tag).AsInt of
+        1:
+          AProblem.Unnecessary := True;
+        2:
+          AProblem.Deprecated := True;
+      end;
+  end;
+end;
+
+class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := AItem.GetValue<Integer>('range.start.line', 0);
   Result.StartCharacter := AItem.GetValue<Integer>('range.start.character', 0);
   Result.EndLine := AItem.GetValue<Integer>('range.end.line', Result.StartLine);
   Result.EndCharacter := AItem.GetValue<Integer>('range.end.character', Result.StartCharacter);
-  case AItem.GetValue<Integer>('severity', 1) of
-    2:
-      Result.Severity := TAtlasProblemSeverity.Warning;
-    3:
-      Result.Severity := TAtlasProblemSeverity.Information;
-    4:
-      Result.Severity := TAtlasProblemSeverity.Hint;
-  else
-    Result.Severity := TAtlasProblemSeverity.Error;
-  end;
-  CodeValue := AItem.GetValue('code');
-  if CodeValue is TJSONString then
-    Result.Code := TJSONString(CodeValue).Value
-  else if CodeValue is TJSONNumber then
-    Result.Code := TJSONNumber(CodeValue).ToString;
+  Result.Severity := ProblemSeverityOf(AItem.GetValue<Integer>('severity', 1));
+  Result.Code := ProblemCodeOf(AItem.GetValue('code'));
   Result.Source := AItem.GetValue<string>('source', '');
   Result.Message := AItem.GetValue<string>('message', '');
-  Data := AItem.GetValue('data');
-  if Data is TJSONObject then
-  begin
-    Result.Confidence := TJSONObject(Data).GetValue<string>('confidence', '');
-    Result.Category := TJSONObject(Data).GetValue<string>('category', '');
-    Result.Group := TJSONObject(Data).GetValue<string>('group', '');
-    Result.FixTitle := TJSONObject(Data).GetValue<string>('fix', '');
-    Codes := TJSONObject(Data).GetValue('compilerCodes');
-    if Codes is TJSONArray then
-      for Item in TJSONArray(Codes) do
-        if Item is TJSONString then
-          Result.CompilerCodes := Result.CompilerCodes + [TJSONString(Item).Value];
-    Result.Details := TJSONObject(Data).GetValue<string>('details', '');
-    Inactive := TJSONObject(Data).GetValue('inactive');
-    if Inactive is TJSONObject then
-    begin
-      Result.InactiveCondition := TJSONObject(Inactive).GetValue<string>('condition', '');
-      Result.InactivePlatform := TJSONObject(Inactive).GetValue<string>('platform', '');
-      Result.InactiveConfig := TJSONObject(Inactive).GetValue<string>('config', '');
-    end;
-    UsesData := TJSONObject(Data).GetValue('uses');
-    if UsesData is TJSONObject then
-    begin
-      Result.UsesUnit := TJSONObject(UsesData).GetValue<string>('unit', '');
-      Result.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
-    end;
-  end;
-  RelatedItems := AItem.GetValue('relatedInformation');
-  if RelatedItems is TJSONArray then
-    for Item in TJSONArray(RelatedItems) do
-      if Item is TJSONObject then
-      begin
-        Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
-        Related.Line := TJSONObject(Item).GetValue<Integer>('location.range.start.line', 0);
-        Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
-        Related.Message := TJSONObject(Item).GetValue<string>('message', '');
-        if Related.Uri <> '' then
-          Result.Related := Result.Related + [Related];
-      end;
-  Tags := AItem.GetValue('tags');
-  if Tags is TJSONArray then
-    for Tag in TJSONArray(Tags) do
-      if Tag is TJSONNumber then
-        case TJSONNumber(Tag).AsInt of
-          1:
-            Result.Unnecessary := True;
-          2:
-            Result.Deprecated := True;
-        end;
+  ReadProblemData(Result, AItem.GetValue('data'));
+  Result.Related := ProblemRelatedOf(AItem.GetValue('relatedInformation'));
+  ReadProblemTags(Result, AItem.GetValue('tags'));
 end;
 
 class function TAtlasProblem.ListFromJson(const AItems: TJSONArray): TArray<TAtlasProblem>;
@@ -534,10 +657,16 @@ var
 begin
   Result := nil;
   if AItems = nil then
+  begin
     Exit;
+  end;
   for Item in AItems do
+  begin
     if Item is TJSONObject then
+    begin
       Result := Result + [FromJson(TJSONObject(Item))];
+    end;
+  end;
 end;
 
 { TAtlasInlineValueRef }

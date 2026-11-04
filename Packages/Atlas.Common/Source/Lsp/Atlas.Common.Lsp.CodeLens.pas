@@ -37,6 +37,24 @@ type
     Range: TTextRange;
   end;
 
+  /// <summary>Vorfahr, dessen Routine eine Methode überschreibt.</summary>
+  TCodeLensOverride = record
+    /// <summary>Name des Vorfahren.</summary>
+    Owner: string;
+    /// <summary>Deklaration der Routine im Vorfahren.</summary>
+    Target: TCodeLensLocation;
+  end;
+
+  /// <summary>Unit, deren Linsen gesucht werden, samt allem, was zum Auflösen der Namen nötig ist.</summary>
+  TCodeLensSource = record
+    Resolver: TNameResolver;
+    Index: ISymbolIndex;
+    Tree: TSyntaxTree;
+    FileName: string;
+    /// <summary>Quelltext anderer Units; darf nil sein.</summary>
+    ReadText: TReferenceReadText;
+  end;
+
   TCodeLensEntry = record
     Kind: TCodeLensKind;
     /// <summary>Name des Symbols; die Linse steht über dieser Zeile.</summary>
@@ -76,8 +94,7 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     class function Capability: TJSONObject; static;
     /// <summary>Alle Linsen der Datei; Referenzen noch ohne Titel.</summary>
-    class function Lenses(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>; static;
+    class function Lenses(const ASource: TCodeLensSource): TArray<TCodeLensEntry>; static;
     /// <summary>Metrik-Linse über dem Namen jeder implementierten Methode (#66), über jeder Klasse (Member), über
     /// dem Unit-Namen (Zeilen) und über dem ersten uses (Units im uses, #939); der Aufbau zuerst.</summary>
     class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
@@ -87,19 +104,16 @@ type
     class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits; const AIndex: ISymbolIndex;
       const AFileName: string): TArray<TCodeLensEntry>; overload; static;
     /// <summary>Nächster Vorfahr von AType, der die Routine AName deklariert (auch für die Zeilenleiste #768);
-    /// AOwner ist sein Name, ATarget die Deklaration. False, wenn keiner im Index steht.</summary>
+    /// AFound nennt ihn und die Deklaration. False, wenn keiner im Index steht.</summary>
     class function OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-      const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string; out AOwner: string;
-      out ATarget: TCodeLensLocation): Boolean; static;
+      const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string;
+      out AFound: TCodeLensOverride): Boolean; static;
     /// <summary>Zählt die Referenzen auf das Symbol der Linse.</summary>
-    class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
-      overload; static;
+    class function ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
+      const AFiles: TArray<string>; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry; overload; static;
     /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
-    class function ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText): TCodeLensEntry; overload; static;
+    class function ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
+      const AFiles: TArray<string>): TCodeLensEntry; overload; static;
     /// <summary>CodeLens des LSP; ohne Titel mit data für codeLens/resolve. Der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -165,7 +179,7 @@ end;
 
 /// <summary>Nächster Vorfahr, der AName deklariert; False, wenn keiner im Index steht.</summary>
 function FindOverridden(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex;
-  const AType: TIndexSymbol; const AName: string; out AOwner: string; out ATarget: TCodeLensLocation): Boolean;
+  const AType: TIndexSymbol; const AName: string; out AFound: TCodeLensOverride): Boolean;
 var
   Ancestors: TArray<string>;
   FromUnit, OwnerUnit: TUnitIndex;
@@ -194,14 +208,30 @@ begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Ancestor.QualifiedName) and
         SameText(Symbol.Name, AName) then
       begin
-        AOwner := Ancestor.Name;
-        ATarget := Location(OwnerUnit.FileName, Symbol.SelectionRange);
+        AFound.Owner := Ancestor.Name;
+        AFound.Target := Location(OwnerUnit.FileName, Symbol.SelectionRange);
         Exit(True);
       end;
     end;
     FromUnit := OwnerUnit;
     Ancestors := Ancestor.Ancestors;
   end;
+end;
+
+function IsRoutineKeyword(const AToken: TPascalToken): Boolean;
+const
+  cKeywords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
+var
+  mKeyword: string;
+begin
+  for mKeyword in cKeywords do
+  begin
+    if AToken.IsKeyword(mKeyword) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Namen in Köpfen von Implementierungen (procedure TFoo.Bar): keine Verwendungen.</summary>
@@ -223,10 +253,7 @@ begin
     begin
       Dec(Back, 2);
     end;
-    if (Back >= 1) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and
-      (Tokens[Back - 1].IsKeyword('procedure') or Tokens[Back - 1].IsKeyword('function') or
-      Tokens[Back - 1].IsKeyword('constructor') or Tokens[Back - 1].IsKeyword('destructor') or
-      Tokens[Back - 1].IsKeyword('operator')) then
+    if (Back >= 1) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and IsRoutineKeyword(Tokens[Back - 1]) then
     begin
       Result.AddOrSetValue(PositionKey(Tokens[Index].StartPos), True);
     end;
@@ -274,116 +301,148 @@ begin
   Result.AddPair('resolveProvider', TJSONBool.Create(True));
 end;
 
-class function TLspCodeLens.Lenses(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const AReadText: TReferenceReadText): TArray<TCodeLensEntry>;
-var
-  Current: TUnitIndex;
-  Symbol, TypeSymbol: TIndexSymbol;
-  Types: TDictionary<string, TIndexSymbol>;
-  Headers: TDictionary<string, Boolean>;
-  List: TList<TCodeLensEntry>;
-  Entry: TCodeLensEntry;
-  Descendants: TArray<TSymbolLocation>;
-  Descendant: TSymbolLocation;
-  Owner: string;
-  Target: TCodeLensLocation;
-  Overview: TMessageOverview;
-  Handler: TMessageHandler;
+function NewEntry(AKind: TCodeLensKind; const ARange: TTextRange; const ATitle: string): TCodeLensEntry;
 begin
-  Current := TIndexExtractor.Extract(ATree, AFileName);
-  List := TList<TCodeLensEntry>.Create;
-  Types := TDictionary<string, TIndexSymbol>.Create;
-  // Rümpfe (procedure TFoo.Bar) bekommen keine eigene Linse.
-  Headers := HeaderNames(ATree);
-  try
-    for Symbol in Current.Symbols do
-    begin
-      if Symbol.Kind in LensTypeKinds then
-      begin
-        Types.AddOrSetValue(UpperCase(Symbol.QualifiedName), Symbol);
-      end;
-    end;
+  Result := Default(TCodeLensEntry);
+  Result.Kind := AKind;
+  Result.Range := ARange;
+  Result.Title := ATitle;
+end;
 
-    for Symbol in Current.Symbols do
+/// <summary>Nachfahren einer Klasse oder eines Interfaces.</summary>
+procedure AddDescendantLens(const AIndex: ISymbolIndex; const ASymbol: TIndexSymbol; AList: TList<TCodeLensEntry>);
+var
+  mDescendants: TArray<TSymbolLocation>;
+  mDescendant: TSymbolLocation;
+  mEntry: TCodeLensEntry;
+begin
+  mDescendants := AIndex.Descendants(ASymbol.QualifiedName);
+  if Length(mDescendants) = 0 then
+  begin
+    Exit;
+  end;
+  mEntry := NewEntry(TCodeLensKind.Descendants, ASymbol.SelectionRange,
+    Plural(Length(mDescendants), 'Nachfahre', 'Nachfahren'));
+  for mDescendant in mDescendants do
+  begin
+    mEntry.Targets := mEntry.Targets + [Location(mDescendant.FileName, mDescendant.Symbol.SelectionRange)];
+  end;
+  AList.Add(mEntry);
+end;
+
+/// <summary>Nachrichtenbehandlung einer Klasse auf oberster Ebene.</summary>
+procedure AddMessageLens(const ASource: TCodeLensSource; const ASymbol: TIndexSymbol; AList: TList<TCodeLensEntry>);
+var
+  mReadText: TReferenceReadText;
+  mOverview: TMessageOverview;
+  mHandler: TMessageHandler;
+  mEntry: TCodeLensEntry;
+begin
+  mReadText := ASource.ReadText;
+  mOverview := TMessageHandlers.Overview(ASource.Resolver, ASource.Tree, ASource.FileName, ASymbol.Name,
+    function(const AName: string; out AText: string): Boolean
     begin
-      if Headers.ContainsKey(PositionKey(Symbol.SelectionRange.StartPos)) then
+      Result := Assigned(mReadText) and mReadText(AName, AText);
+    end);
+  if not mOverview.Found then
+  begin
+    Exit;
+  end;
+  mEntry := NewEntry(TCodeLensKind.Messages, ASymbol.SelectionRange, mOverview.Title);
+  for mHandler in mOverview.Own do
+  begin
+    mEntry.Targets := mEntry.Targets + [Location(mHandler.FileName, mHandler.SelectionRange)];
+  end;
+  AList.Add(mEntry);
+end;
+
+procedure AddTypeLenses(const ASource: TCodeLensSource; const ASymbol: TIndexSymbol; AList: TList<TCodeLensEntry>);
+begin
+  AList.Add(NewEntry(TCodeLensKind.References, ASymbol.SelectionRange, ''));
+  if ASymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType] then
+  begin
+    AddDescendantLens(ASource.Index, ASymbol, AList);
+  end;
+  if (ASymbol.Kind = TIndexSymbolKind.ClassType) and (ASymbol.Container = '') then
+  begin
+    AddMessageLens(ASource, ASymbol, AList);
+  end;
+end;
+
+procedure AddRoutineLenses(const ASource: TCodeLensSource; const ACurrent: TUnitIndex;
+  const AType, ASymbol: TIndexSymbol; AList: TList<TCodeLensEntry>);
+var
+  mFound: TCodeLensOverride;
+  mEntry: TCodeLensEntry;
+begin
+  AList.Add(NewEntry(TCodeLensKind.References, ASymbol.SelectionRange, ''));
+  if FindOverridden(ASource.Resolver, ASource.Index, ACurrent, AType, ASymbol.Name, mFound) then
+  begin
+    mEntry := NewEntry(TCodeLensKind.Overrides, ASymbol.SelectionRange,
+      'überschreibt ' + mFound.Owner + '.' + ASymbol.Name);
+    mEntry.Targets := [mFound.Target];
+    AList.Add(mEntry);
+  end;
+end;
+
+/// <summary>Typen der Unit, die Linsen bekommen, nach großgeschriebenem qualifiziertem Namen.</summary>
+function LensTypes(const ACurrent: TUnitIndex): TDictionary<string, TIndexSymbol>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := TDictionary<string, TIndexSymbol>.Create;
+  for mSymbol in ACurrent.Symbols do
+  begin
+    if mSymbol.Kind in LensTypeKinds then
+    begin
+      Result.AddOrSetValue(UpperCase(mSymbol.QualifiedName), mSymbol);
+    end;
+  end;
+end;
+
+class function TLspCodeLens.Lenses(const ASource: TCodeLensSource): TArray<TCodeLensEntry>;
+var
+  mCurrent: TUnitIndex;
+  mSymbol, mTypeSymbol: TIndexSymbol;
+  mTypes: TDictionary<string, TIndexSymbol>;
+  mHeaders: TDictionary<string, Boolean>;
+  mList: TList<TCodeLensEntry>;
+begin
+  mCurrent := TIndexExtractor.Extract(ASource.Tree, ASource.FileName);
+  mList := TList<TCodeLensEntry>.Create;
+  mTypes := LensTypes(mCurrent);
+  // Rümpfe (procedure TFoo.Bar) bekommen keine eigene Linse.
+  mHeaders := HeaderNames(ASource.Tree);
+  try
+    for mSymbol in mCurrent.Symbols do
+    begin
+      if mHeaders.ContainsKey(PositionKey(mSymbol.SelectionRange.StartPos)) then
       begin
         Continue;
       end;
-      if Symbol.Kind in LensTypeKinds then
+      if mSymbol.Kind in LensTypeKinds then
       begin
-        Entry := Default(TCodeLensEntry);
-        Entry.Kind := TCodeLensKind.References;
-        Entry.Range := Symbol.SelectionRange;
-        List.Add(Entry);
-        if Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType] then
-        begin
-          Descendants := AIndex.Descendants(Symbol.QualifiedName);
-          if Length(Descendants) > 0 then
-          begin
-            Entry := Default(TCodeLensEntry);
-            Entry.Kind := TCodeLensKind.Descendants;
-            Entry.Range := Symbol.SelectionRange;
-            Entry.Title := Plural(Length(Descendants), 'Nachfahre', 'Nachfahren');
-            for Descendant in Descendants do
-            begin
-              Entry.Targets := Entry.Targets + [Location(Descendant.FileName, Descendant.Symbol.SelectionRange)];
-            end;
-            List.Add(Entry);
-          end;
-        end;
-        if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') then
-        begin
-          Overview := TMessageHandlers.Overview(AResolver, ATree, AFileName, Symbol.Name,
-            function(const AName: string; out AText: string): Boolean
-            begin
-              Result := Assigned(AReadText) and AReadText(AName, AText);
-            end);
-          if Overview.Found then
-          begin
-            Entry := Default(TCodeLensEntry);
-            Entry.Kind := TCodeLensKind.Messages;
-            Entry.Range := Symbol.SelectionRange;
-            Entry.Title := Overview.Title;
-            for Handler in Overview.Own do
-            begin
-              Entry.Targets := Entry.Targets + [Location(Handler.FileName, Handler.SelectionRange)];
-            end;
-            List.Add(Entry);
-          end;
-        end;
+        AddTypeLenses(ASource, mSymbol, mList);
       end
-      else if (Symbol.Kind in RoutineKinds) and (Symbol.Container <> '') and
-        Types.TryGetValue(UpperCase(Symbol.Container), TypeSymbol) then
+      else if (mSymbol.Kind in RoutineKinds) and (mSymbol.Container <> '') and
+        mTypes.TryGetValue(UpperCase(mSymbol.Container), mTypeSymbol) then
       begin
-        Entry := Default(TCodeLensEntry);
-        Entry.Kind := TCodeLensKind.References;
-        Entry.Range := Symbol.SelectionRange;
-        List.Add(Entry);
-        if FindOverridden(AResolver, AIndex, Current, TypeSymbol, Symbol.Name, Owner, Target) then
-        begin
-          Entry := Default(TCodeLensEntry);
-          Entry.Kind := TCodeLensKind.Overrides;
-          Entry.Range := Symbol.SelectionRange;
-          Entry.Title := 'überschreibt ' + Owner + '.' + Symbol.Name;
-          Entry.Targets := [Target];
-          List.Add(Entry);
-        end;
+        AddRoutineLenses(ASource, mCurrent, mTypeSymbol, mSymbol, mList);
       end;
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    Headers.Free;
-    Types.Free;
-    List.Free;
+    mHeaders.Free;
+    mTypes.Free;
+    mList.Free;
   end;
 end;
 
 class function TLspCodeLens.OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string; out AOwner: string;
-  out ATarget: TCodeLensLocation): Boolean;
+  const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string;
+  out AFound: TCodeLensOverride): Boolean;
 begin
-  Result := FindOverridden(AResolver, AIndex, ACurrent, AType, AName, AOwner, ATarget);
+  Result := FindOverridden(AResolver, AIndex, ACurrent, AType, AName, AFound);
 end;
 
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
@@ -428,34 +487,33 @@ begin
   end;
 end;
 
-class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText): TCodeLensEntry;
+class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
+  const AFiles: TArray<string>): TCodeLensEntry;
 begin
-  Result := ResolveReferences(AResolver, AIndex, ATree, AFileName, AEntry, AFiles, AReadText, nil);
+  Result := ResolveReferences(ASource, AEntry, AFiles, nil);
 end;
 
-class function TLspCodeLens.ResolveReferences(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AFileName: string; const AEntry: TCodeLensEntry; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
+class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
+  const AFiles: TArray<string>; const ACancellation: IJsonRpcCancellationToken): TCodeLensEntry;
 var
-  Found: TReferenceLocation;
-  Headers: TDictionary<string, Boolean>;
+  mFound: TReferenceLocation;
+  mHeaders: TDictionary<string, Boolean>;
 begin
   Result := AEntry;
   Result.Targets := nil;
-  Headers := HeaderNames(ATree);
+  mHeaders := HeaderNames(ASource.Tree);
   try
-    for Found in TLspReferences.Find(AResolver, AIndex, ATree, AFileName, AEntry.Range.StartPos, False, AFiles,
-      AReadText, ACancellation) do
+    for mFound in TLspReferences.Find(ASource.Resolver, ASource.Index, ASource.Tree, ASource.FileName,
+      AEntry.Range.StartPos, False, AFiles, ASource.ReadText, ACancellation) do
     begin
-      if not (SameText(Found.FileName, AFileName) and Headers.ContainsKey(PositionKey(Found.Range.StartPos))) then
+      if not (SameText(mFound.FileName, ASource.FileName) and
+        mHeaders.ContainsKey(PositionKey(mFound.Range.StartPos))) then
       begin
-        Result.Targets := Result.Targets + [Location(Found.FileName, Found.Range)];
+        Result.Targets := Result.Targets + [Location(mFound.FileName, mFound.Range)];
       end;
     end;
   finally
-    Headers.Free;
+    mHeaders.Free;
   end;
   Result.Title := Plural(Length(Result.Targets), 'Referenz', 'Referenzen');
 end;
@@ -516,96 +574,109 @@ end;
 
 function TLspCodeLens.HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri, FileName: string;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Entry: TCodeLensEntry;
-  Limits: TMetricLimits;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mSource: TCodeLensSource;
+  mEntry: TCodeLensEntry;
+  mLimits: TMetricLimits;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  FileName := TDocumentUris.ToPath(Uri);
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := NewResolver;
+  mSource.Index := FIndex;
+  mSource.Tree := mShared.Tree;
+  mSource.FileName := TDocumentUris.ToPath(mUri);
+  mSource.ReadText := FReadText;
+  mSource.Resolver := NewResolver;
   try
     Result := TJSONArray.Create;
-    for Entry in Lenses(Resolver, FIndex, Tree, FileName, FReadText) do
+    for mEntry in Lenses(mSource) do
     begin
-      TJSONArray(Result).AddElement(ToJson(Entry, FileName));
+      TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
     end;
-    if Assigned(FMetricsFor) and FMetricsFor(Uri, Limits) then
+    if Assigned(FMetricsFor) and FMetricsFor(mUri, mLimits) then
     begin
-      for Entry in MetricLenses(Tree, Limits, FIndex, FileName) do
+      for mEntry in MetricLenses(mSource.Tree, mLimits, FIndex, mSource.FileName) do
       begin
-        TJSONArray(Result).AddElement(ToJson(Entry, FileName));
+        TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
       end;
     end;
   finally
-    Resolver.Free;
+    mSource.Resolver.Free;
   end;
+end;
+
+/// <summary>Stelle APrefix.line/APrefix.character in data der Linse.</summary>
+function DataPosition(AParams: TJSONObject; const ALine, ACharacter: string; out APosition: TTextPosition): Boolean;
+var
+  mLine, mCharacter: Integer;
+begin
+  Result := AParams.TryGetValue<Integer>(ALine, mLine) and AParams.TryGetValue<Integer>(ACharacter, mCharacter);
+  if Result then
+  begin
+    APosition := TTextPosition.Create(mLine, mCharacter);
+  end;
+end;
+
+/// <summary>Linse aus data von codeLens/resolve; EJsonRpcError, wenn data fehlt oder unvollständig ist.</summary>
+function ResolveEntry(const AParams: TJSONValue; out AUri: string): TCodeLensEntry;
+var
+  mStart, mEnd: TTextPosition;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('data.uri', AUri) and
+    DataPosition(TJSONObject(AParams), 'data.line', 'data.character', mStart) and
+    DataPosition(TJSONObject(AParams), 'data.endLine', 'data.endCharacter', mEnd)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "data" der Linse fehlt oder ist unvollständig');
+  end;
+  Result := NewEntry(TCodeLensKind.References, TTextRange.Create(mStart, mEnd), '');
 end;
 
 function TLspCodeLens.HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri, FileName: string;
-  Line, Character, EndLine, EndCharacter: Integer;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Entry: TCodeLensEntry;
-  Files: TArray<string>;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mSource: TCodeLensSource;
+  mEntry: TCodeLensEntry;
+  mFiles: TArray<string>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('data.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<Integer>('data.line', Line) and
-    TJSONObject(AParams).TryGetValue<Integer>('data.character', Character) and
-    TJSONObject(AParams).TryGetValue<Integer>('data.endLine', EndLine) and
-    TJSONObject(AParams).TryGetValue<Integer>('data.endCharacter', EndCharacter)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "data" der Linse fehlt oder ist unvollständig');
-  end;
-  Entry := Default(TCodeLensEntry);
-  Entry.Kind := TCodeLensKind.References;
-  Entry.Range := TTextRange.Create(TTextPosition.Create(Line, Character), TTextPosition.Create(EndLine, EndCharacter));
-  FileName := TDocumentUris.ToPath(Uri);
+  mEntry := ResolveEntry(AParams, mUri);
+  mSource := Default(TCodeLensSource);
+  mSource.FileName := TDocumentUris.ToPath(mUri);
+  mFiles := nil;
   if Assigned(FFiles) then
   begin
-    Files := FFiles();
-  end
-  else
-  begin
-    Files := nil;
+    mFiles := FFiles();
   end;
-  if FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
-    Cancellation := TRequestCancellation.Create(ACancellation);
-    Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-    Tree := Shared.Tree;
-    Resolver := NewResolver;
-    try
-      Entry := ResolveReferences(Resolver, FIndex, Tree, FileName, Entry, Files, FReadText, ACancellation);
-    finally
-      Resolver.Free;
-    end;
-  end
-  else
-  begin
-    Entry.Title := Plural(0, 'Referenz', 'Referenzen');
+    mEntry.Title := Plural(0, 'Referenz', 'Referenzen');
+    Exit(ToJson(mEntry, mSource.FileName));
   end;
-  Result := ToJson(Entry, FileName);
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mSource.Index := FIndex;
+  mSource.Tree := mShared.Tree;
+  mSource.ReadText := FReadText;
+  mSource.Resolver := NewResolver;
+  try
+    mEntry := ResolveReferences(mSource, mEntry, mFiles, ACancellation);
+  finally
+    mSource.Resolver.Free;
+  end;
+  Result := ToJson(mEntry, mSource.FileName);
 end;
 
 end.

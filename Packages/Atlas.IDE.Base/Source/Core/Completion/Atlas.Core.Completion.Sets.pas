@@ -52,8 +52,12 @@ var
 begin
   Result := nil;
   for Item in AItems do
+  begin
     if (Item.SetOf <> '') and Item.Checked then
+    begin
       Result := Result + [Item];
+    end;
+  end;
   for Index := 1 to High(Result) do
   begin
     Moved := Result[Index];
@@ -78,8 +82,12 @@ var
   Item: TAtlasCompletionItem;
 begin
   for Item in AItems do
+  begin
     if Item.SetOf <> '' then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -89,8 +97,12 @@ var
 begin
   Result := 0;
   for Item in AItems do
+  begin
     if (Item.SetOf <> '') and Item.Checked then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasCompletionSets.Text(const AItems: TAtlasCompletionItems): string;
@@ -103,11 +115,17 @@ begin
   for Index := 0 to High(Chosen) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     if Chosen[Index].InsertText <> '' then
-      Result := Result + Chosen[Index].InsertText
+    begin
+      Result := Result + Chosen[Index].InsertText;
+    end
     else
+    begin
       Result := Result + Chosen[Index].Name;
+    end;
   end;
   Result := '[' + Result + ']';
 end;
@@ -125,11 +143,13 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameRange(Result[Index], Edit) then
       begin
         Found := Index;
         Break;
       end;
+    end;
     if Found < 0 then
     begin
       Result := Result + [Edit];
@@ -151,7 +171,9 @@ var
 begin
   Result := nil;
   if not AItem.HasTextEdit then
+  begin
     Exit;
+  end;
   Range := AItem.TextEdit;
   Range.NewText := '';
   Insert := Range;
@@ -160,7 +182,9 @@ begin
   // Überschrift mit dem Typ des Ausdrucks.
   Title := AItem.Signature;
   if Title = '' then
+  begin
     Title := AItem.Name;
+  end;
   SetLength(Result, Length(AItem.Assignments));
   for Index := 0 to High(AItem.Assignments) do
   begin
@@ -191,6 +215,7 @@ begin
   Result := Default(TAtlasCompletionItem);
   // Interface implementieren (#466): das getippte Wort weg, die Änderungen der angehakten Methoden dazu.
   for Item in AItems do
+  begin
     if Item.Batch then
     begin
       Result.Name := Item.SetOf;
@@ -202,14 +227,18 @@ begin
       Result.TextEdit.NewText := '';
       Edits := nil;
       for Chosen in CheckedInOrder(AItems) do
+      begin
         Edits := Edits + Chosen.AdditionalEdits;
+      end;
       Result.AdditionalEdits := Merge(Edits);
       Exit;
     end;
+  end;
   Result.Name := Text(AItems);
   Result.Kind := TAtlasItemKind.EnumMember;
   Result.InsertText := Result.Name;
   for Item in AItems do
+  begin
     if Item.SetOf <> '' then
     begin
       Result.HasTextEdit := True;
@@ -217,6 +246,7 @@ begin
       Result.TextEdit.NewText := Result.Name;
       Break;
     end;
+  end;
 end;
 
 end.

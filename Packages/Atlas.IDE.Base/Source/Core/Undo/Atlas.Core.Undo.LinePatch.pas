@@ -56,91 +56,118 @@ begin
   Result := TTextDiff.Hunks(AOld, ANew);
 end;
 
-class function TAtlasLinePatch.Rebase(const ASource, ATarget, ACurrent: string; out AResult: string): Boolean;
-var
-  SourceLines, TargetLines, CurrentLines: TArray<string>;
-  Step, Later: TArray<TAtlasLineHunk>;
-  A, B: TAtlasLineHunk;
-  StepIndex, LaterIndex, Line, Index: Integer;
-  Builder: TStringBuilder;
-
-  function Touches(const AFirst, ASecond: TAtlasLineHunk): Boolean;
-  begin
-    // Überlappend oder direkt angrenzend; leere Blöcke (Einfügungen) an derselben Stelle auch.
-    Result := Max(AFirst.OldStart, ASecond.OldStart) <=
-      Min(AFirst.OldStart + AFirst.OldCount, ASecond.OldStart + ASecond.OldCount);
-  end;
-
+/// <summary>Überlappend oder direkt angrenzend; leere Blöcke (Einfügungen) an derselben Stelle auch.</summary>
+function Touches(const AFirst, ASecond: TAtlasLineHunk): Boolean;
 begin
-  AResult := '';
-  if ACurrent = ASource then
+  Result := Max(AFirst.OldStart, ASecond.OldStart) <=
+    Min(AFirst.OldStart + AFirst.OldCount, ASecond.OldStart + ASecond.OldCount);
+end;
+
+function HasConflict(const AStep, ALater: TArray<TAtlasLineHunk>): Boolean;
+var
+  mA, mB: TAtlasLineHunk;
+begin
+  Result := False;
+  for mA in AStep do
   begin
-    AResult := ATarget;
-    Exit(True);
-  end;
-  if ACurrent = ATarget then
-  begin
-    // Schon im Zielstand (z. B. von Hand genauso zurückgenommen).
-    AResult := ATarget;
-    Exit(True);
-  end;
-  SourceLines := SplitLines(ASource);
-  TargetLines := SplitLines(ATarget);
-  CurrentLines := SplitLines(ACurrent);
-  Step := Hunks(SourceLines, TargetLines);
-  Later := Hunks(SourceLines, CurrentLines);
-  for A in Step do
-  begin
-    for B in Later do
+    for mB in ALater do
     begin
-      if Touches(A, B) then
-      begin
-        Exit(False);
-      end;
+      Result := Result or Touches(mA, mB);
     end;
   end;
-  // Beide Blocklisten sind disjunkt: den Ausgangstext durchlaufen und je Block die passende Seite einsetzen.
-  Builder := TStringBuilder.Create(Length(ACurrent));
-  try
-    StepIndex := 0;
-    LaterIndex := 0;
-    Line := 0;
-    while (Line < Length(SourceLines)) or (StepIndex < Length(Step)) or (LaterIndex < Length(Later)) do
+end;
+
+type
+  /// <summary>Eine Seite beim Zusammenführen: ihre Blöcke, ihre Zeilen und der nächste Block.</summary>
+  TPatchSide = record
+    Hunks: TArray<TAtlasLineHunk>;
+    Lines: TArray<string>;
+    Next: Integer;
+    function HasMore: Boolean;
+    /// <summary>Beginnt der nächste Block an ALine, hängt er seine Zeilen an und rückt ALine hinter sich.</summary>
+    function TakeAt(var ALine: Integer; ABuilder: TStringBuilder): Boolean;
+  end;
+
+function TPatchSide.HasMore: Boolean;
+begin
+  Result := Next < Length(Hunks);
+end;
+
+function TPatchSide.TakeAt(var ALine: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := HasMore and (Hunks[Next].OldStart = ALine);
+  if Result then
+  begin
+    for mIndex := Hunks[Next].NewStart to Hunks[Next].NewStart + Hunks[Next].NewCount - 1 do
     begin
-      if (StepIndex < Length(Step)) and (Step[StepIndex].OldStart = Line) then
+      ABuilder.Append(Lines[mIndex]);
+    end;
+    Inc(ALine, Hunks[Next].OldCount);
+    Inc(Next);
+  end;
+end;
+
+function PatchSide(const AHunks: TArray<TAtlasLineHunk>; const ALines: TArray<string>): TPatchSide;
+begin
+  Result.Hunks := AHunks;
+  Result.Lines := ALines;
+  Result.Next := 0;
+end;
+
+/// <summary>Beide Blocklisten sind disjunkt: den Ausgangstext durchlaufen und je Block die passende Seite
+/// einsetzen.</summary>
+function Merged(const ASourceLines: TArray<string>; AStep, ALater: TPatchSide; ACapacity: Integer): string;
+var
+  mBuilder: TStringBuilder;
+  mLine: Integer;
+begin
+  mBuilder := TStringBuilder.Create(ACapacity);
+  try
+    mLine := 0;
+    while (mLine < Length(ASourceLines)) or AStep.HasMore or ALater.HasMore do
+    begin
+      if AStep.TakeAt(mLine, mBuilder) or ALater.TakeAt(mLine, mBuilder) then
       begin
-        A := Step[StepIndex];
-        for Index := A.NewStart to A.NewStart + A.NewCount - 1 do
-        begin
-          Builder.Append(TargetLines[Index]);
-        end;
-        Inc(Line, A.OldCount);
-        Inc(StepIndex);
         Continue;
       end;
-      if (LaterIndex < Length(Later)) and (Later[LaterIndex].OldStart = Line) then
-      begin
-        B := Later[LaterIndex];
-        for Index := B.NewStart to B.NewStart + B.NewCount - 1 do
-        begin
-          Builder.Append(CurrentLines[Index]);
-        end;
-        Inc(Line, B.OldCount);
-        Inc(LaterIndex);
-        Continue;
-      end;
-      if Line >= Length(SourceLines) then
+      if mLine >= Length(ASourceLines) then
       begin
         Break;
       end;
-      Builder.Append(SourceLines[Line]);
-      Inc(Line);
+      mBuilder.Append(ASourceLines[mLine]);
+      Inc(mLine);
     end;
-    AResult := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
-  Result := True;
+end;
+
+class function TAtlasLinePatch.Rebase(const ASource, ATarget, ACurrent: string; out AResult: string): Boolean;
+var
+  mSourceLines, mTargetLines, mCurrentLines: TArray<string>;
+  mStep, mLater: TArray<TAtlasLineHunk>;
+begin
+  AResult := '';
+  // Schon im Zielstand (z. B. von Hand genauso zurückgenommen) ist das Ergebnis ebenfalls der Zieltext.
+  if (ACurrent = ASource) or (ACurrent = ATarget) then
+  begin
+    AResult := ATarget;
+    Exit(True);
+  end;
+  mSourceLines := SplitLines(ASource);
+  mTargetLines := SplitLines(ATarget);
+  mCurrentLines := SplitLines(ACurrent);
+  mStep := Hunks(mSourceLines, mTargetLines);
+  mLater := Hunks(mSourceLines, mCurrentLines);
+  Result := not HasConflict(mStep, mLater);
+  if Result then
+  begin
+    AResult := Merged(mSourceLines, PatchSide(mStep, mTargetLines), PatchSide(mLater, mCurrentLines),
+      Length(ACurrent));
+  end;
 end;
 
 end.

@@ -42,7 +42,7 @@
 //   Protokoll.
 // Abschaltbar über bookmarks.quick und bookmarks.quick.gutter, ausblendbar am
 // Element (#628). Sicherung über TAtlasFeature.QuickBookmarks (#493). Nur im
-// Hauptthread.
+// Hauptthread. Tooltip und Menü stehen in Atlas.IDE.Bookmarks.QuickPopups.
 
 interface
 
@@ -54,17 +54,12 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.Graphics,
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
-  Vcl.Menus,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Bookmarks.Store,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.IDE.Bookmarks.QuickPopups;
 
 type
   TAtlasIdeQuickColumn = class
@@ -91,6 +86,55 @@ type
       EditorLine: Integer;
       Rect: TRect;
     end;
+    /// <summary>Die angeforderte Spalte der Rinne.</summary>
+    TSlot = record
+      Column: Integer;
+      Width: Integer;
+      WantedWidth: Integer;
+      /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).
+      /// </summary>
+      Handle: Integer;
+    end;
+    /// <summary>Wo die Spalte gezeichnet wurde.</summary>
+    TArea = record
+      /// <summary>Je Editorfenster die zuletzt gezeichnete Zeile der Spalte.</summary>
+      Rows: TDictionary<HWND, TPainted>;
+      /// <summary>Kleinste und größte gezeichnete Editorzeile: Nur dazwischen fragt die Trefferprüfung die IDE.
+      /// </summary>
+      FirstLine: Integer;
+      LastLine: Integer;
+    end;
+    /// <summary>Oberer Editor und Tipp-Pause.</summary>
+    TTrack = record
+      FileName: string;
+      Text: string;
+      ChangedAt: UInt64;
+      Done: Boolean;
+    end;
+    /// <summary>Überfahrene Zeile.</summary>
+    THover = record
+      Row: TRow;
+      Hovering: Boolean;
+      Since: UInt64;
+      ScreenRect: TRect;
+    end;
+    /// <summary>Geschlucktes Drücken: nach ihm auch das Loslassen schlucken (WM_LBUTTONUP, WM_RBUTTONUP); beim
+    /// rechten öffnet dann das Menü zur Zeile.</summary>
+    TPress = record
+      SwallowUp: Cardinal;
+      Row: TRow;
+    end;
+    /// <summary>Spalte wirklich gezeichnet (#1281) und was das Protokoll schon gemeldet hat.</summary>
+    TLog = record
+      Painted: Boolean;
+      RequestedAt: UInt64;
+      NoServices: Boolean;
+      NotPainted: Boolean;
+      /// <summary>Zeitpunkt des letzten über OnMessage genommenen Linksklicks (#1281).</summary>
+      ClickedAt: UInt64;
+      EditorClick: Boolean;
+      Miss: Boolean;
+    end;
   private const
     HoverMs = 400;
     /// <summary>Tipp-Pause, bevor die Lesezeichen der Datei wiedergefunden werden.</summary>
@@ -98,65 +142,27 @@ type
     /// <summary>So lange nach dem Anfordern darf die Spalte ungezeichnet bleiben, bevor das Protokoll es meldet.
     /// </summary>
     PaintWaitMs = 5000;
-    MenuName = 20;
-    MenuRemove = 21;
-    MenuRemoveFile = 22;
-    MenuWindow = 23;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
-    FColumn: Integer;
-    FWidth: Integer;
-    FWantedWidth: Integer;
+    FSlot: TSlot;
     FTimer: TTimer;
-    /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
-    FColumnsHandle: Integer;
-    FTip: TAtlasTitledTip;
+    FTip: TAtlasIdeQuickTip;
+    FMenu: TAtlasIdeQuickMenu;
     FAppEvents: TApplicationEvents;
-    FMenu: TPopupMenu;
-    FMenuRow: TRow;
-    /// <summary>Je Editorfenster die zuletzt gezeichnete Zeile der Spalte.</summary>
-    FPaintedRows: TDictionary<HWND, TPainted>;
-    /// <summary>Kleinste und größte gezeichnete Editorzeile: Nur dazwischen fragt die Trefferprüfung die IDE.
-    /// </summary>
-    FFirstEditorLine: Integer;
-    FLastEditorLine: Integer;
-    /// <summary>Nach einem geschluckten Drücken auch das Loslassen schlucken (WM_LBUTTONUP, WM_RBUTTONUP).
-    /// </summary>
-    FSwallowUp: Cardinal;
-    // Oberer Editor und Tipp-Pause.
-    FFileName: string;
-    FText: string;
-    FChangedAt: UInt64;
-    FTracked: Boolean;
-    // Überfahren.
-    FHover: TRow;
-    FHovering: Boolean;
-    FHoverSince: UInt64;
-    FHoverScreen: TRect;
-    // Spalte wirklich gezeichnet (#1281) und Protokoll dazu.
-    FPainted: Boolean;
-    FRequestedAt: UInt64;
-    FLoggedNoServices: Boolean;
-    FLoggedNotPainted: Boolean;
-    /// <summary>Zeitpunkt des letzten über OnMessage genommenen Linksklicks (#1281).</summary>
-    FClickedAt: UInt64;
-    FLoggedEditorClick: Boolean;
-    FLoggedMiss: Boolean;
+    FArea: TArea;
+    FTrack: TTrack;
+    FHover: THover;
+    FPress: TPress;
+    FLog: TLog;
     function Active: Boolean;
     function Shown: Boolean;
-    function TopView: IOTAEditView;
-    function Services: INTACodeEditorServices280;
     procedure EnsureColumn;
     procedure DropColumn;
     procedure Tick(Sender: TObject);
     procedure Track;
     procedure CheckPainted;
-    /// <summary>Marker der Zeile, wie die Spalte sie zeigt: nur, solange die Zeile zum Anker passt und das
-    /// Element dort nicht ausgeblendet ist.</summary>
-    function VisibleMarks(const AFileName: string; ALine: Integer; const ALineText: string;
-      AHasText: Boolean): TArray<TAtlasBookmark>;
     /// <summary>Zeile der Spalte unter X, Y im Editorfenster AWnd, aus dem aktuellen Zustand des Editors.
     /// </summary>
     function RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean; overload;
@@ -167,27 +173,21 @@ type
     /// <summary>Protokoll (einmal je Sitzung): Klick auf Höhe der Spalte, aber keine Zeile gefunden.</summary>
     procedure LogMiss(AWnd: HWND; const APoint: TPoint);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors; ABack: TAtlasColor);
-    procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors; ABack: TAtlasColor;
-      ANumber: Integer);
-    procedure PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer; const AColors: TAtlasColors);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    /// <summary>Eine Zeile der Spalte zeichnen und ihre Lage merken.</summary>
+    procedure PaintRow(const ARect: TRect; AStage: TPaintGutterStage; const AContext: INTACodeEditorPaintContext);
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
+    /// <summary>Drücken auf die Spalte: rechts das eigene Menü, links (mit gutterClick) Lesezeichen setzen bzw.
+    /// entfernen; beides an der IDE vorbei.</summary>
+    procedure TakePress(var Msg: TMsg; var Handled: Boolean);
     procedure CheckHover;
     procedure HideTip;
     procedure SetHover(const ARow: TRow; AOn: Boolean);
-    procedure ShowTip(const ARow: TRow);
-    procedure ShowMenu(const ARow: TRow; const APoint: TPoint);
-    procedure MenuClick(Sender: TObject);
-    function AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
   public
     constructor Create;
     destructor Destroy; override;
-    /// <summary>Text des Tooltips zu den Markern einer Zeile; AJumpKey: Grundtaste für Strg+1 (0 = keine).
-    /// </summary>
-    class procedure TipText(const AMarks: TArray<TAtlasBookmark>; AJumpKey: Word; out ATitle, AText: string); static;
   end;
 
 implementation
@@ -195,42 +195,367 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
+  Vcl.Graphics,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Bookmarks.Quick,
-  Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Foundation.EditorRefresh;
+
+type
+  /// <summary>Ergebnis der Prüfung einer Editorzeile: daneben, getroffen, oder getroffen ohne gültige Zeile.
+  /// </summary>
+  TLineHit = (Miss, Found, Stop);
+  /// <summary>Ein Editorfenster mit Zustand und Ansicht.</summary>
+  TEditorPlace = record
+    Control: TWinControl;
+    State: INTACodeEditorState;
+    View: IOTAEditView;
+  end;
 
 procedure InvalidateTop;
 var
-  Editors: INTACodeEditorServices;
+  mEditors: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
+  end;
+end;
+
+function Services: INTACodeEditorServices280;
+begin
+  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TopView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
   end;
 end;
 
 function SampleBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
-  Sample: COLORREF;
+  mSample: COLORREF;
 begin
   // Farben aus dem Grund der Rinne: hell oder dunkel wie das Thema der IDE.
-  Sample := GetPixel(ACanvas.Handle, ARect.Left + 1, ARect.Top + 1);
-  if Sample = CLR_INVALID then
+  mSample := GetPixel(ACanvas.Handle, ARect.Left + 1, ARect.Top + 1);
+  if mSample = CLR_INVALID then
   begin
     Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end
   else
   begin
-    Result := TAtlasColor(Sample);
+    Result := TAtlasColor(mSample);
   end;
+end;
+
+/// <summary>Ziffer auf dem Marker: Schwarz oder Weiß, je nachdem, was sich stärker von AFill abhebt.</summary>
+function DigitColor(AFill: TAtlasColor): TAtlasColor;
+const
+  Black = TAtlasColor($000000);
+  White = TAtlasColor($FFFFFF);
+begin
+  Result := Black;
+  if TAtlasColorMath.Contrast(White, AFill) > TAtlasColorMath.Contrast(Black, AFill) then
+  begin
+    Result := White;
+  end;
+end;
+
+/// <summary>Band mit Kerbe unten wie bei den benannten Lesezeichen (#622); liefert die Höhe der Kerbe.</summary>
+function PaintBand(ACanvas: TCanvas; const ABand: TRect; AFill, ALine: TAtlasColor): Integer;
+begin
+  Result := Max(2, ABand.Height div 5);
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := TColor(AFill);
+  ACanvas.Pen.Color := TColor(ALine);
+  ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Polygon([Point(ABand.Left, ABand.Top), Point(ABand.Right - 1, ABand.Top),
+    Point(ABand.Right - 1, ABand.Bottom - 1), Point((ABand.Left + ABand.Right) div 2, ABand.Bottom - 1 - Result),
+    Point(ABand.Left, ABand.Bottom - 1)]);
+end;
+
+/// <summary>Ziffer ANumber mittig über der Kerbe des Bands in AColor.</summary>
+procedure PaintDigit(ACanvas: TCanvas; const ABand: TRect; ANotch, ANumber: Integer; AColor: TAtlasColor);
+var
+  mDigit: string;
+  mSize: TSize;
+  mOldFont: TFont;
+begin
+  mDigit := IntToStr(ANumber);
+  mOldFont := TFont.Create;
+  try
+    mOldFont.Assign(ACanvas.Font);
+    ACanvas.Font.Style := [fsBold];
+    ACanvas.Font.Height := -Max(7, (ABand.Height - ANotch) * 4 div 5);
+    ACanvas.Font.Color := TColor(AColor);
+    ACanvas.Brush.Style := bsClear;
+    mSize := ACanvas.TextExtent(mDigit);
+    ACanvas.TextOut(ABand.Left + (ABand.Width - mSize.cx) div 2,
+      ABand.Top + Max(0, (ABand.Height - ANotch - mSize.cy) div 2), mDigit);
+  finally
+    ACanvas.Font.Assign(mOldFont);
+    mOldFont.Free;
+  end;
+end;
+
+procedure PaintMarks(ACanvas: TCanvas; const ARow: TAtlasIdeQuickColumn.TRow; const AColors: TAtlasColors;
+  ABack: TAtlasColor);
+var
+  mBand: TRect;
+  mNotch, mCorner: Integer;
+begin
+  // Band mit Kerbe unten wie bei den benannten Lesezeichen (#622), etwas breiter für die Ziffer.
+  mBand := ARow.Rect;
+  InflateRect(mBand, -1, -1);
+  mNotch := PaintBand(ACanvas, mBand, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85), AColors.Warn);
+  // Mehr als ein Marker: gefüllte Ecke oben rechts.
+  if Length(ARow.Marks) > 1 then
+  begin
+    mCorner := Max(3, mBand.Width div 3);
+    ACanvas.Brush.Color := TColor(AColors.Warn);
+    ACanvas.Polygon([Point(mBand.Right - 1 - mCorner, mBand.Top), Point(mBand.Right - 1, mBand.Top),
+      Point(mBand.Right - 1, mBand.Top + mCorner)]);
+  end;
+  if ARow.Marks[0].Number > 0 then
+  begin
+    PaintDigit(ACanvas, mBand, mNotch, ARow.Marks[0].Number,
+      DigitColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85)));
+  end;
+end;
+
+procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors; ABack: TAtlasColor;
+  ANumber: Integer);
+var
+  mFill: TAtlasColor;
+  mBand: TRect;
+  mNotch: Integer;
+begin
+  // Vorschau (Marco 28.10.2026): blasser Marker wie PaintMarks, mit der Nummer, die ein Klick hier vergäbe; sind
+  // alle neun belegt, ohne Nummer.
+  mBand := ARect;
+  InflateRect(mBand, -1, -1);
+  mFill := TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15);
+  mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
+  if ANumber > 0 then
+  begin
+    PaintDigit(ACanvas, mBand, mNotch, ANumber, TAtlasColorMath.Mix(DigitColor(mFill), mFill, 0.7));
+  end;
+end;
+
+procedure PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer; const AColors: TAtlasColors);
+var
+  mNumber: string;
+  mArea: TRect;
+begin
+  // Zahl hell auf dem Grund der Rinne neu zeichnen; Schrift ist die, mit der die IDE die Zahlen zeichnet.
+  mNumber := IntToStr(ALine + 1);
+  if ACanvas.TextWidth(mNumber) > ARect.Width then
+  begin
+    Exit;
+  end;
+  mArea := ARect;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := TColor(AColors.Gutter);
+  ACanvas.FillRect(mArea);
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Color := TColor(AColors.Text);
+  Dec(mArea.Right, 2);
+  DrawText(ACanvas.Handle, PChar(mNumber), Length(mNumber), mArea, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or
+    DT_NOPREFIX);
+end;
+
+/// <summary>Zeilennummer ALine hell nachzeichnen; Pinsel und Schrift bleiben danach wie vorher.</summary>
+procedure RepaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer);
+var
+  mOldBrush: TBrush;
+  mOldFont: TFont;
+  mBack: TAtlasColor;
+  mColors: TAtlasColors;
+begin
+  mOldBrush := TBrush.Create;
+  mOldFont := TFont.Create;
+  try
+    mOldBrush.Assign(ACanvas.Brush);
+    mOldFont.Assign(ACanvas.Font);
+    mBack := SampleBack(ACanvas, ARect);
+    mColors := TAtlasColors.ForBackground(mBack);
+    mColors.Gutter := mBack;
+    PaintLineNumber(ACanvas, ARect, ALine, mColors);
+  finally
+    ACanvas.Brush.Assign(mOldBrush);
+    ACanvas.Font.Assign(mOldFont);
+    mOldFont.Free;
+    mOldBrush.Free;
+  end;
+end;
+
+/// <summary>Marker der Zeile bzw. (ohne Marker) der blasse Vorschlag; Pinsel und Stift bleiben wie vorher.
+/// </summary>
+procedure PaintRowMarks(ACanvas: TCanvas; const ARow: TAtlasIdeQuickColumn.TRow);
+var
+  mBack: TAtlasColor;
+  mColors: TAtlasColors;
+  mOldBrush: TBrush;
+  mOldPen: TPen;
+begin
+  mBack := SampleBack(ACanvas, ARow.Rect);
+  mColors := TAtlasColors.ForBackground(mBack);
+  mOldBrush := TBrush.Create;
+  mOldPen := TPen.Create;
+  try
+    mOldBrush.Assign(ACanvas.Brush);
+    mOldPen.Assign(ACanvas.Pen);
+    if Length(ARow.Marks) > 0 then
+    begin
+      PaintMarks(ACanvas, ARow, mColors, mBack);
+    end
+    else
+    begin
+      PaintFree(ACanvas, ARow.Rect, mColors, mBack, TAtlasIdeQuickBookmarks.NextNumber(ARow.FileName));
+    end;
+  finally
+    ACanvas.Brush.Assign(mOldBrush);
+    ACanvas.Pen.Assign(mOldPen);
+    mOldPen.Free;
+    mOldBrush.Free;
+  end;
+end;
+
+/// <summary>Stufe der Zeilennummern: die, deren Rechteck ARect rechts an die Spalte AColumn grenzt.</summary>
+function IsLineNumberStage(AStage: TPaintGutterStage; const ARect, AColumn: TRect): Boolean;
+begin
+  Result := (AStage <> Low(TPaintGutterStage)) and (ARect.Left >= AColumn.Right - 1) and
+    (ARect.Left <= AColumn.Right + 2) and (ARect.Width > 0);
+end;
+
+/// <summary>Zeigt die Zeile ARow den blassen Vorschlag (überfahren, Klick setzt ein Lesezeichen)?</summary>
+function HoverShowsFree(const AHover: TAtlasIdeQuickColumn.THover; const ARow: TAtlasIdeQuickColumn.TRow): Boolean;
+begin
+  Result := AHover.Hovering and TAtlasIdeSettings.Current.QuickBookmarksGutterClick and (AHover.Row.Wnd = ARow.Wnd) and
+    (AHover.Row.Line = ARow.Line) and SameText(AHover.Row.FileName, ARow.FileName);
+end;
+
+/// <summary>Marker der Zeile, wie die Spalte sie zeigt: nur, solange die Zeile zum Anker passt und das
+/// Element dort nicht ausgeblendet ist.</summary>
+function VisibleMarks(const AFileName: string; ALine: Integer; const ALineText: string;
+  AHasText: Boolean): TArray<TAtlasBookmark>;
+begin
+  Result := TAtlasIdeQuickBookmarks.ColumnMarksAt(AFileName, ALine);
+  // Nur, wenn die Zeile im Editor noch zum Anker passt; nach dem Tippen folgt das Wiederfinden.
+  if (Length(Result) > 0) and AHasText and (TAtlasLineAnchors.Normalize(ALineText) <> Result[0].Anchor.Text) then
+  begin
+    Result := nil;
+  end;
+  // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
+  if (Length(Result) > 0) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.QuickBookmarks, AFileName, ALineText) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Editorzustand und Ansicht des Editorfensters AWnd; False ohne Datei.</summary>
+function EditorAt(AWnd: HWND; out APlace: TEditorPlace): Boolean;
+var
+  mEditors: INTACodeEditorServices;
+begin
+  APlace := Default(TEditorPlace);
+  APlace.Control := FindControl(AWnd);
+  Result := (APlace.Control <> nil) and Supports(BorlandIDEServices, INTACodeEditorServices, mEditors);
+  if Result then
+  begin
+    APlace.State := mEditors.EditorState[APlace.Control];
+  end;
+  if APlace.State <> nil then
+  begin
+    APlace.View := APlace.State.View;
+  end;
+  Result := Result and (APlace.View <> nil) and (APlace.View.Buffer <> nil) and (APlace.View.Buffer.FileName <> '');
+end;
+
+/// <summary>Editorzeile ALine prüfen: Liegt APoint in ihrer Spalte AColumn, steht in ARow die Zeile (ohne Wnd).
+/// </summary>
+function LineRow(const APlace: TEditorPlace; AColumn, ALine: Integer; const APoint: TPoint;
+  out ARow: TAtlasIdeQuickColumn.TRow): TLineHit;
+var
+  mColumnRect: TRect;
+  mLineState: INTACodeEditorLineState;
+  mLogical: Integer;
+begin
+  ARow := Default(TAtlasIdeQuickColumn.TRow);
+  mColumnRect := APlace.State.GetGutterColumnRect(APlace.Control, ALine, AColumn);
+  if mColumnRect.IsEmpty or not PtInRect(mColumnRect, APoint) then
+  begin
+    Exit(TLineHit.Miss);
+  end;
+  mLineState := APlace.State.LineState[ALine];
+  mLogical := 0;
+  if mLineState <> nil then
+  begin
+    mLogical := mLineState.LogicalLineNum;
+  end;
+  if (mLogical <= 0) or (mLogical > APlace.View.Buffer.GetLinesInBuffer) then
+  begin
+    Exit(TLineHit.Stop);
+  end;
+  ARow.FileName := APlace.View.Buffer.FileName;
+  ARow.Line := mLogical - 1;
+  ARow.Rect := mColumnRect;
+  ARow.TopRow := APlace.View.TopRow;
+  ARow.Marks := VisibleMarks(ARow.FileName, ARow.Line, mLineState.Text, True);
+  Result := TLineHit.Found;
+end;
+
+/// <summary>Gehört die Nachricht an AWnd zum Editorfenster AEditor (dasselbe, ein Kind oder ein Vorfahr)?
+/// </summary>
+function Related(AEditor, AWnd: HWND): Boolean;
+begin
+  Result := (AWnd = AEditor) or IsChild(AEditor, AWnd) or IsChild(AWnd, AEditor);
+end;
+
+/// <summary>Menü erst nach dem Loslassen öffnen (eingereiht).</summary>
+procedure QueueMenu(AMenu: TAtlasIdeQuickMenu; const ARow: TAtlasIdeQuickColumn.TRow; const APoint: TPoint);
+var
+  mMenu: TAtlasIdeQuickMenu;
+  mRow: TAtlasIdeQuickColumn.TRow;
+  mPoint: TPoint;
+begin
+  mMenu := AMenu;
+  mRow := ARow;
+  mPoint := APoint;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
+        procedure
+        begin
+          mMenu.Show(mRow.FileName, mRow.Line, mRow.Marks, mPoint);
+        end);
+    end);
+end;
+
+function IsPress(AMessage: Cardinal): Boolean;
+begin
+  Result := (AMessage = WM_LBUTTONDOWN) or (AMessage = WM_LBUTTONDBLCLK) or (AMessage = WM_RBUTTONDOWN);
 end;
 
 { TAtlasIdeQuickColumn.TEvents }
@@ -250,25 +575,24 @@ end;
 
 constructor TAtlasIdeQuickColumn.Create;
 var
-  Editors: INTACodeEditorServices;
+  mEditors: INTACodeEditorServices;
 begin
   inherited Create;
   FIndex := -1;
-  FColumn := -1;
-  FPaintedRows := TDictionary<HWND, TPainted>.Create;
-  FFirstEditorLine := MaxInt;
-  FLastEditorLine := -1;
-  FTip := TAtlasTitledTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.QuickBookmarks;
-  FMenu := TPopupMenu.Create(nil);
+  FSlot.Column := -1;
+  FArea.Rows := TDictionary<HWND, TPainted>.Create;
+  FArea.FirstLine := MaxInt;
+  FArea.LastLine := -1;
+  FTip := TAtlasIdeQuickTip.Create;
+  FMenu := TAtlasIdeQuickMenu.Create;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintGutter := PaintGutter;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
   begin
-    FIndex := Editors.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mEditors.AddEditorEventsNotifier(FEventsRef);
   end;
   if FIndex < 0 then
   begin
@@ -276,7 +600,7 @@ begin
   end;
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
-  FColumnsHandle := TAtlasIdeGutterColumns.Register(
+  FSlot.Handle := TAtlasIdeGutterColumns.Register(
     procedure
     begin
       DropColumn;
@@ -289,10 +613,10 @@ end;
 
 destructor TAtlasIdeQuickColumn.Destroy;
 var
-  Editors: INTACodeEditorServices;
+  mEditors: INTACodeEditorServices;
 begin
   FTimer.Free;
-  TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
+  TAtlasIdeGutterColumns.Unregister(FSlot.Handle);
   if FAppEvents <> nil then
   begin
     FAppEvents.OnMessage := nil;
@@ -300,9 +624,9 @@ begin
   end;
   // Erst Spalte und Notifier abmelden, dann freigeben (#493).
   DropColumn;
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
   begin
-    Editors.RemoveEditorEventsNotifier(FIndex);
+    mEditors.RemoveEditorEventsNotifier(FIndex);
   end;
   if FEvents <> nil then
   begin
@@ -313,18 +637,10 @@ begin
   FEventsRef := nil;
   FMenu.Free;
   FTip.Free;
-  FPaintedRows.Free;
-  FMenuRow := Default(TRow);
-  FHover := Default(TRow);
+  FArea.Rows.Free;
+  FPress := Default(TPress);
+  FHover := Default(THover);
   inherited Destroy;
-end;
-
-function TAtlasIdeQuickColumn.Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
 end;
 
 function TAtlasIdeQuickColumn.Active: Boolean;
@@ -335,41 +651,30 @@ end;
 
 function TAtlasIdeQuickColumn.Shown: Boolean;
 begin
-  Result := Active and TAtlasIdeSettings.Current.QuickBookmarksGutter and (FColumn >= 0);
-end;
-
-function TAtlasIdeQuickColumn.TopView: IOTAEditView;
-var
-  Editors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-  begin
-    Result := Editors.TopView;
-  end;
+  Result := Active and TAtlasIdeSettings.Current.QuickBookmarksGutter and (FSlot.Column >= 0);
 end;
 
 procedure TAtlasIdeQuickColumn.EnsureColumn;
 var
-  Editors: INTACodeEditorServices280;
+  mEditors: INTACodeEditorServices280;
 begin
-  if FWantedWidth <= 0 then
+  if FSlot.WantedWidth <= 0 then
   begin
-    FWantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(20, Screen.PixelsPerInch, 96));
+    FSlot.WantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(20, Screen.PixelsPerInch, 96));
   end;
-  if (FColumn >= 0) and (FWidth = FWantedWidth) then
+  if (FSlot.Column >= 0) and (FSlot.Width = FSlot.WantedWidth) then
   begin
     Exit;
   end;
-  Editors := Services;
-  if Editors = nil then
+  mEditors := Services;
+  if mEditors = nil then
   begin
-    if not FLoggedNoServices then
+    if not FLog.NoServices then
     begin
       TAtlasGuard.Log('Schnelle Lesezeichen: Die IDE bietet keine eigenen Spalten der Zeilenleiste ' +
         '(INTACodeEditorServices280), die Spalte bleibt aus');
     end;
-    FLoggedNoServices := True;
+    FLog.NoServices := True;
     Exit;
   end;
   // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
@@ -380,34 +685,35 @@ begin
   DropColumn;
   // Hinter den Haltepunkten, also weiterhin links der Zahlen. gclBeforeLineNumbers überzeichnete die IDE in
   // Delphi 13 mit den Zeilennummern; sichtbar war die Spalte nur in frisch eingefügten Zeilen (#1281).
-  FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterBreakPoint);
-  FWidth := FWantedWidth;
-  FRequestedAt := TThread.GetTickCount64;
-  FLoggedNotPainted := False;
-  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte angefordert (Spalte %d, Breite %d)', [FColumn, FWidth]));
-  FPaintedRows.Clear;
-  TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+  FSlot.Column := mEditors.RequestGutterColumn(FIndex, FSlot.WantedWidth, gclAfterBreakPoint);
+  FSlot.Width := FSlot.WantedWidth;
+  FLog.RequestedAt := TThread.GetTickCount64;
+  FLog.NotPainted := False;
+  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte angefordert (Spalte %d, Breite %d)',
+    [FSlot.Column, FSlot.Width]));
+  FArea.Rows.Clear;
+  TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
 end;
 
 procedure TAtlasIdeQuickColumn.DropColumn;
 var
-  Editors: INTACodeEditorServices280;
+  mEditors: INTACodeEditorServices280;
 begin
-  if FColumn < 0 then
+  if FSlot.Column < 0 then
   begin
     Exit;
   end;
-  Editors := Services;
-  if Editors <> nil then
+  mEditors := Services;
+  if mEditors <> nil then
   begin
-    Editors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
+    mEditors.RemoveGutterColumn(FSlot.Column);
+    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
   end;
-  FColumn := -1;
-  FPaintedRows.Clear;
-  if FPainted then
+  FSlot.Column := -1;
+  FArea.Rows.Clear;
+  if FLog.Painted then
   begin
-    FPainted := False;
+    FLog.Painted := False;
     TAtlasIdeBookmarks.ColumnPainted(False);
   end;
 end;
@@ -415,20 +721,20 @@ end;
 procedure TAtlasIdeQuickColumn.CheckPainted;
 begin
   // Dem Dienst melden, ob die Spalte zeichnet; erst dann übernimmt er die IDE-Lesezeichen (#1281).
-  TAtlasIdeBookmarks.ColumnPainted(FPainted);
-  if FPainted then
+  TAtlasIdeBookmarks.ColumnPainted(FLog.Painted);
+  if FLog.Painted then
   begin
-    TAtlasIdeBookmarks.ImportIde(FFileName);
+    TAtlasIdeQuickBookmarks.ImportIde(FTrack.FileName);
     Exit;
   end;
-  if (FColumn < 0) or FLoggedNotPainted or (FFileName = '') or
-    (TThread.GetTickCount64 - FRequestedAt < PaintWaitMs) then
+  if (FSlot.Column < 0) or FLog.NotPainted or (FTrack.FileName = '') or
+    (TThread.GetTickCount64 - FLog.RequestedAt < PaintWaitMs) then
   begin
     Exit;
   end;
-  FLoggedNotPainted := True;
+  FLog.NotPainted := True;
   TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte %d seit %d ms angefordert, die IDE hat sie aber noch nie ' +
-    'gezeichnet', [FColumn, PaintWaitMs]));
+    'gezeichnet', [FSlot.Column, PaintWaitMs]));
 end;
 
 procedure TAtlasIdeQuickColumn.Tick(Sender: TObject);
@@ -439,8 +745,8 @@ begin
     begin
       SetHover(Default(TRow), False);
       DropColumn;
-      FFileName := '';
-      FText := '';
+      FTrack.FileName := '';
+      FTrack.Text := '';
       Exit;
     end;
     Track;
@@ -463,330 +769,55 @@ end;
 
 procedure TAtlasIdeQuickColumn.Track;
 var
-  View: IOTAEditView;
-  Text: string;
+  mView: IOTAEditView;
+  mText: string;
 begin
-  View := TopView;
-  if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
+  mView := TopView;
+  if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(View.Buffer);
-  if not SameText(FFileName, View.Buffer.FileName) then
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  if not SameText(FTrack.FileName, mView.Buffer.FileName) then
   begin
     // Neue Datei vorn: gleich wiederfinden und einmal je Sitzung die IDE-Lesezeichen übernehmen.
-    FFileName := View.Buffer.FileName;
-    FText := Text;
-    TAtlasIdeBookmarks.Track(FFileName, FText);
+    FTrack.FileName := mView.Buffer.FileName;
+    FTrack.Text := mText;
+    TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
     // Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte zeichnet (#1281).
-    FTracked := True;
+    FTrack.Done := True;
     InvalidateTop;
     Exit;
   end;
-  if FText <> Text then
+  if FTrack.Text <> mText then
   begin
-    FText := Text;
-    FChangedAt := TThread.GetTickCount64;
-    FTracked := False;
+    FTrack.Text := mText;
+    FTrack.ChangedAt := TThread.GetTickCount64;
+    FTrack.Done := False;
     Exit;
   end;
-  if FTracked or (TThread.GetTickCount64 - FChangedAt < QuietMs) then
+  if FTrack.Done or (TThread.GetTickCount64 - FTrack.ChangedAt < QuietMs) then
   begin
     Exit;
   end;
-  FTracked := True;
-  if TAtlasIdeBookmarks.Track(FFileName, FText) then
+  FTrack.Done := True;
+  if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
   begin
     InvalidateTop;
   end;
-end;
-
-class procedure TAtlasIdeQuickColumn.TipText(const AMarks: TArray<TAtlasBookmark>; AJumpKey: Word;
-  out ATitle, AText: string);
-var
-  Mark: TAtlasBookmark;
-  Line: string;
-  Key: Word;
-begin
-  ATitle := '';
-  AText := '';
-  if Length(AMarks) = 0 then
-  begin
-    Exit;
-  end;
-  if Length(AMarks) > 1 then
-  begin
-    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipMore, [Length(AMarks)]);
-  end
-  else if AMarks[0].Number > 0 then
-  begin
-    ATitle := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipTitle, [AMarks[0].Number]);
-  end
-  else
-  begin
-    ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipUnnumbered);
-  end;
-  for Mark in AMarks do
-  begin
-    Line := Mark.DisplayName;
-    if Mark.Number > 0 then
-    begin
-      Line := IntToStr(Mark.Number) + ' · ' + Line;
-      Key := TAtlasQuickBookmarks.KeyFor(AJumpKey, Mark.Number);
-      if Key <> 0 then
-      begin
-        Line := Line + ' — ' + TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkTipJump,
-          [ShortCutToText(TShortCut(Key))]);
-      end;
-    end;
-    if AText <> '' then
-    begin
-      AText := AText + #10;
-    end;
-    AText := AText + Line;
-  end;
-end;
-
-/// <summary>Ziffer auf dem Marker: Schwarz oder Weiß, je nachdem, was sich stärker von AFill abhebt.</summary>
-function DigitColor(AFill: TAtlasColor): TAtlasColor;
-const
-  Black = TAtlasColor($000000);
-  White = TAtlasColor($FFFFFF);
-begin
-  Result := Black;
-  if TAtlasColorMath.Contrast(White, AFill) > TAtlasColorMath.Contrast(Black, AFill) then
-  begin
-    Result := White;
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors;
-  ABack: TAtlasColor);
-var
-  Band: TRect;
-  Notch, Corner: Integer;
-  Digit: string;
-  Size: TSize;
-  OldFont: TFont;
-begin
-  // Band mit Kerbe unten wie bei den benannten Lesezeichen (#622), etwas breiter für die Ziffer.
-  Band := ARow.Rect;
-  InflateRect(Band, -1, -1);
-  Notch := Max(2, Band.Height div 5);
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85));
-  ACanvas.Pen.Color := TColor(AColors.Warn);
-  ACanvas.Pen.Style := psSolid;
-  ACanvas.Pen.Width := 1;
-  ACanvas.Polygon([Point(Band.Left, Band.Top), Point(Band.Right - 1, Band.Top), Point(Band.Right - 1, Band.Bottom - 1),
-    Point((Band.Left + Band.Right) div 2, Band.Bottom - 1 - Notch), Point(Band.Left, Band.Bottom - 1)]);
-  // Mehr als ein Marker: gefüllte Ecke oben rechts.
-  if Length(ARow.Marks) > 1 then
-  begin
-    Corner := Max(3, Band.Width div 3);
-    ACanvas.Brush.Color := TColor(AColors.Warn);
-    ACanvas.Polygon([Point(Band.Right - 1 - Corner, Band.Top), Point(Band.Right - 1, Band.Top),
-      Point(Band.Right - 1, Band.Top + Corner)]);
-  end;
-  if ARow.Marks[0].Number <= 0 then
-  begin
-    Exit;
-  end;
-  Digit := IntToStr(ARow.Marks[0].Number);
-  OldFont := TFont.Create;
-  try
-    OldFont.Assign(ACanvas.Font);
-    ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Height := -Max(7, (Band.Height - Notch) * 4 div 5);
-    ACanvas.Font.Color := TColor(DigitColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85)));
-    ACanvas.Brush.Style := bsClear;
-    Size := ACanvas.TextExtent(Digit);
-    ACanvas.TextOut(Band.Left + (Band.Width - Size.cx) div 2, Band.Top + Max(0, (Band.Height - Notch - Size.cy) div 2),
-      Digit);
-  finally
-    ACanvas.Font.Assign(OldFont);
-    OldFont.Free;
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors;
-  ABack: TAtlasColor; ANumber: Integer);
-var
-  Fill: TAtlasColor;
-  Band: TRect;
-  Notch: Integer;
-  Digit: string;
-  Size: TSize;
-  OldFont: TFont;
-begin
-  // Vorschau (Marco 28.10.2026): blasser Marker wie PaintMarks, mit der Nummer, die ein Klick hier vergäbe; sind
-  // alle neun belegt, ohne Nummer.
-  Band := ARect;
-  InflateRect(Band, -1, -1);
-  Notch := Max(2, Band.Height div 5);
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15));
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
-  ACanvas.Pen.Style := psSolid;
-  ACanvas.Pen.Width := 1;
-  ACanvas.Polygon([Point(Band.Left, Band.Top), Point(Band.Right - 1, Band.Top), Point(Band.Right - 1, Band.Bottom - 1),
-    Point((Band.Left + Band.Right) div 2, Band.Bottom - 1 - Notch), Point(Band.Left, Band.Bottom - 1)]);
-  if ANumber <= 0 then
-  begin
-    Exit;
-  end;
-  Digit := IntToStr(ANumber);
-  OldFont := TFont.Create;
-  try
-    OldFont.Assign(ACanvas.Font);
-    ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Height := -Max(7, (Band.Height - Notch) * 4 div 5);
-    Fill := TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15);
-    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(DigitColor(Fill), Fill, 0.7));
-    ACanvas.Brush.Style := bsClear;
-    Size := ACanvas.TextExtent(Digit);
-    ACanvas.TextOut(Band.Left + (Band.Width - Size.cx) div 2, Band.Top + Max(0, (Band.Height - Notch - Size.cy) div 2),
-      Digit);
-  finally
-    ACanvas.Font.Assign(OldFont);
-    OldFont.Free;
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer;
-  const AColors: TAtlasColors);
-var
-  Number: string;
-  Area: TRect;
-begin
-  // Zahl hell auf dem Grund der Rinne neu zeichnen; Schrift ist die, mit der die IDE die Zahlen zeichnet.
-  Number := IntToStr(ALine + 1);
-  if ACanvas.TextWidth(Number) > ARect.Width then
-  begin
-    Exit;
-  end;
-  Area := ARect;
-  ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := TColor(AColors.Gutter);
-  ACanvas.FillRect(Area);
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Font.Color := TColor(AColors.Text);
-  Dec(Area.Right, 2);
-  DrawText(ACanvas.Handle, PChar(Number), Length(Number), Area, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or
-    DT_NOPREFIX);
 end;
 
 procedure TAtlasIdeQuickColumn.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  Row: TRow;
-  LineState: INTACodeEditorLineState;
-  LineText: string;
-  HasText: Boolean;
-  Canvas: TCanvas;
-  Back: TAtlasColor;
-  Colors: TAtlasColors;
-  OldBrush: TBrush;
-  OldPen: TPen;
-  OldFont: TFont;
-  Marks: TArray<TAtlasBookmark>;
-  ColumnRect: TRect;
-  Painted: TPainted;
 begin
-  if BeforeEvent or (FColumn < 0) or (Context = nil) or (Context.EditView = nil) or
-    (Context.EditorState = nil) or (Context.EditControl = nil) then
+  if BeforeEvent or (FSlot.Column < 0) or (Context = nil) then
   begin
     Exit;
   end;
   try
-    if not Shown then
+    if (Context.EditView <> nil) and (Context.EditorState <> nil) and (Context.EditControl <> nil) and Shown then
     begin
-      Exit;
-    end;
-    ColumnRect := Context.EditorState.GetGutterColumnRect(Context.EditControl, Context.EditorLineNum, FColumn);
-    if ColumnRect.IsEmpty or (Context.LogicalLineNum <= 0) then
-    begin
-      Exit;
-    end;
-    // Die IDE zeichnet die Spalte; der Zeitgeber meldet es dem Dienst (#1281).
-    FPainted := True;
-    LineState := Context.LineState;
-    HasText := LineState <> nil;
-    LineText := '';
-    if HasText then
-    begin
-      LineText := LineState.Text;
-    end;
-    Marks := VisibleMarks(Context.FileName, Context.LogicalLineNum - 1, LineText, HasText);
-    Canvas := Context.Canvas;
-    if Stage <> High(TPaintGutterStage) then
-    begin
-      // Zeilennummern: die Stufe, deren Rechteck rechts an die Spalte grenzt.
-      if (Length(Marks) > 0) and (Stage <> Low(TPaintGutterStage)) and (Rect.Left >= ColumnRect.Right - 1) and
-        (Rect.Left <= ColumnRect.Right + 2) and (Rect.Width > 0) then
-      begin
-        OldBrush := TBrush.Create;
-        OldFont := TFont.Create;
-        try
-          OldBrush.Assign(Canvas.Brush);
-          OldFont.Assign(Canvas.Font);
-          Back := SampleBack(Canvas, Rect);
-          Colors := TAtlasColors.ForBackground(Back);
-          Colors.Gutter := Back;
-          PaintLineNumber(Canvas, Rect, Context.LogicalLineNum - 1, Colors);
-        finally
-          Canvas.Brush.Assign(OldBrush);
-          Canvas.Font.Assign(OldFont);
-          OldFont.Free;
-          OldBrush.Free;
-        end;
-      end;
-      // Nicht aussteigen: Delphi 13 übermalt die Spalte in späteren Stufen; nur die zuletzt gezeichnete bleibt
-      // stehen (#1281: sichtbar und anklickbar war sie nur in einzeln neu gezeichneten Zeilen).
-    end;
-    Row := Default(TRow);
-    Row.Wnd := Context.EditControl.Handle;
-    Row.FileName := Context.FileName;
-    Row.Line := Context.LogicalLineNum - 1;
-    Row.TopRow := Context.EditView.TopRow;
-    Row.Rect := ColumnRect;
-    Row.Marks := Marks;
-    // Für die Trefferprüfung nur die Lage der Spalte; Zeile und Datei fragt sie beim Klick neu ab.
-    Painted.EditorLine := Context.EditorLineNum;
-    Painted.Rect := ColumnRect;
-    FPaintedRows.AddOrSetValue(Row.Wnd, Painted);
-    FFirstEditorLine := Min(FFirstEditorLine, Context.EditorLineNum);
-    FLastEditorLine := Max(FLastEditorLine, Context.EditorLineNum);
-    if (Length(Marks) = 0) and not (FHovering and TAtlasIdeSettings.Current.QuickBookmarksGutterClick and
-      (FHover.Wnd = Row.Wnd) and (FHover.Line = Row.Line) and SameText(FHover.FileName, Row.FileName)) then
-    begin
-      Exit;
-    end;
-    Back := SampleBack(Canvas, Row.Rect);
-    Colors := TAtlasColors.ForBackground(Back);
-    OldBrush := TBrush.Create;
-    OldPen := TPen.Create;
-    try
-      OldBrush.Assign(Canvas.Brush);
-      OldPen.Assign(Canvas.Pen);
-      if Length(Marks) > 0 then
-      begin
-        PaintMarks(Canvas, Row, Colors, Back);
-      end
-      else
-      begin
-        PaintFree(Canvas, Row.Rect, Colors, Back, TAtlasIdeBookmarks.NextNumber(Context.FileName));
-      end;
-    finally
-      Canvas.Brush.Assign(OldBrush);
-      Canvas.Pen.Assign(OldPen);
-      OldPen.Free;
-      OldBrush.Free;
-    end;
-    if Length(Marks) > 0 then
-    begin
-      TAtlasIdeElements.Painted(TAtlasDrawnElement.QuickBookmarks, Context.FileName, Row.Line, LineText, Row.Rect,
-        Row.TopRow, Row.Rect.Height);
+      PaintRow(Rect, Stage, Context);
     end;
   except
     // Zeichnen darf die IDE nie stören.
@@ -795,19 +826,59 @@ begin
   end;
 end;
 
-function TAtlasIdeQuickColumn.VisibleMarks(const AFileName: string; ALine: Integer; const ALineText: string;
-  AHasText: Boolean): TArray<TAtlasBookmark>;
+procedure TAtlasIdeQuickColumn.PaintRow(const ARect: TRect; AStage: TPaintGutterStage;
+  const AContext: INTACodeEditorPaintContext);
+var
+  mRow: TRow;
+  mLineState: INTACodeEditorLineState;
+  mLineText: string;
+  mColumnRect: TRect;
+  mPainted: TPainted;
 begin
-  Result := TAtlasIdeBookmarks.ColumnMarksAt(AFileName, ALine);
-  // Nur, wenn die Zeile im Editor noch zum Anker passt; nach dem Tippen folgt das Wiederfinden.
-  if (Length(Result) > 0) and AHasText and (TAtlasLineAnchors.Normalize(ALineText) <> Result[0].Anchor.Text) then
+  mColumnRect := AContext.EditorState.GetGutterColumnRect(AContext.EditControl, AContext.EditorLineNum,
+    FSlot.Column);
+  if mColumnRect.IsEmpty or (AContext.LogicalLineNum <= 0) then
   begin
-    Result := nil;
+    Exit;
   end;
-  // In .atlas ausgeblendet (#628): ganze Datei oder diese Codezeile.
-  if (Length(Result) > 0) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.QuickBookmarks, AFileName, ALineText) then
+  // Die IDE zeichnet die Spalte; der Zeitgeber meldet es dem Dienst (#1281).
+  FLog.Painted := True;
+  mLineState := AContext.LineState;
+  mLineText := '';
+  if mLineState <> nil then
   begin
-    Result := nil;
+    mLineText := mLineState.Text;
+  end;
+  mRow := Default(TRow);
+  mRow.Wnd := AContext.EditControl.Handle;
+  mRow.FileName := AContext.FileName;
+  mRow.Line := AContext.LogicalLineNum - 1;
+  mRow.TopRow := AContext.EditView.TopRow;
+  mRow.Rect := mColumnRect;
+  mRow.Marks := VisibleMarks(AContext.FileName, mRow.Line, mLineText, mLineState <> nil);
+  // Zeilennummern: die Stufe, deren Rechteck rechts an die Spalte grenzt. Nicht aussteigen: Delphi 13 übermalt
+  // die Spalte in späteren Stufen; nur die zuletzt gezeichnete bleibt stehen (#1281: sichtbar und anklickbar war
+  // sie nur in einzeln neu gezeichneten Zeilen).
+  if (AStage <> High(TPaintGutterStage)) and (Length(mRow.Marks) > 0) and
+    IsLineNumberStage(AStage, ARect, mColumnRect) then
+  begin
+    RepaintLineNumber(AContext.Canvas, ARect, mRow.Line);
+  end;
+  // Für die Trefferprüfung nur die Lage der Spalte; Zeile und Datei fragt sie beim Klick neu ab.
+  mPainted.EditorLine := AContext.EditorLineNum;
+  mPainted.Rect := mColumnRect;
+  FArea.Rows.AddOrSetValue(mRow.Wnd, mPainted);
+  FArea.FirstLine := Min(FArea.FirstLine, AContext.EditorLineNum);
+  FArea.LastLine := Max(FArea.LastLine, AContext.EditorLineNum);
+  if (Length(mRow.Marks) = 0) and not HoverShowsFree(FHover, mRow) then
+  begin
+    Exit;
+  end;
+  PaintRowMarks(AContext.Canvas, mRow);
+  if Length(mRow.Marks) > 0 then
+  begin
+    TAtlasIdeElements.Painted(TAtlasDrawnElement.QuickBookmarks, AContext.FileName, mRow.Line, mLineText,
+      mRow.Rect, mRow.TopRow, mRow.Rect.Height);
   end;
 end;
 
@@ -816,90 +887,63 @@ const
   /// <summary>Geschätzte Zeile zuerst, dann die Nachbarn (Rundung an der Zeilengrenze).</summary>
   Steps: array[0..2] of Integer = (0, -1, 1);
 var
-  Painted: TPainted;
-  Control: TWinControl;
-  Editors: INTACodeEditorServices;
-  State: INTACodeEditorState;
-  View: IOTAEditView;
-  LineState: INTACodeEditorLineState;
-  Guess, Step, Candidate, Logical: Integer;
-  ColumnRect: TRect;
+  mPainted: TPainted;
+  mPlace: TEditorPlace;
+  mGuess, mStep, mCandidate: Integer;
 begin
   ARow := Default(TRow);
   Result := False;
-  if (FColumn < 0) or not FPaintedRows.TryGetValue(AWnd, Painted) then
-  begin
-    Exit;
-  end;
-  Control := FindControl(AWnd);
-  if (Control = nil) or not Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
-  begin
-    Exit;
-  end;
-  State := Editors.EditorState[Control];
-  if State = nil then
-  begin
-    Exit;
-  end;
-  View := State.View;
-  if (View = nil) or (View.Buffer = nil) or (View.Buffer.FileName = '') then
+  if (FSlot.Column < 0) or not FArea.Rows.TryGetValue(AWnd, mPainted) or
+    not EditorAt(AWnd, mPlace) then
   begin
     Exit;
   end;
   // Die Zeile schätzt die Zeilenhöhe der zuletzt gezeichneten; ob der Punkt wirklich in der Spalte dieser
   // Zeile liegt, sagt die IDE (auch nach dem Scrollen oder bei geänderter Breite der Rinne).
-  Guess := TAtlasQuickBookmarks.RowGuess(Painted.EditorLine, Painted.Rect.Top, Painted.Rect.Height, Y);
-  for Step in Steps do
+  mGuess := TAtlasQuickBookmarks.RowGuess(mPainted.EditorLine, mPainted.Rect.Top, mPainted.Rect.Height, Y);
+  for mStep in Steps do
   begin
-    Candidate := Guess + Step;
-    if (Candidate < FFirstEditorLine) or (Candidate > FLastEditorLine) then
+    mCandidate := mGuess + mStep;
+    if (mCandidate < FArea.FirstLine) or (mCandidate > FArea.LastLine) then
     begin
       Continue;
     end;
-    ColumnRect := State.GetGutterColumnRect(Control, Candidate, FColumn);
-    if ColumnRect.IsEmpty or not PtInRect(ColumnRect, Point(X, Y)) then
-    begin
-      Continue;
+    case LineRow(mPlace, FSlot.Column, mCandidate, Point(X, Y), ARow) of
+      TLineHit.Miss:
+        ;
+      TLineHit.Found:
+        begin
+          ARow.Wnd := AWnd;
+          Exit(True);
+        end;
+      TLineHit.Stop:
+        begin
+          ARow := Default(TRow);
+          Exit;
+        end;
     end;
-    LineState := State.LineState[Candidate];
-    if LineState = nil then
-    begin
-      Exit;
-    end;
-    Logical := LineState.LogicalLineNum;
-    if (Logical <= 0) or (Logical > View.Buffer.GetLinesInBuffer) then
-    begin
-      Exit;
-    end;
-    ARow.Wnd := AWnd;
-    ARow.FileName := View.Buffer.FileName;
-    ARow.Line := Logical - 1;
-    ARow.Rect := ColumnRect;
-    ARow.TopRow := View.TopRow;
-    ARow.Marks := VisibleMarks(ARow.FileName, ARow.Line, LineState.Text, True);
-    Exit(True);
   end;
 end;
 
 function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean;
 var
-  Wnd: HWND;
-  Local: TPoint;
+  mWnd: HWND;
+  mLocal: TPoint;
 begin
   ARow := Default(TRow);
   Result := False;
-  for Wnd in FPaintedRows.Keys do
+  for mWnd in FArea.Rows.Keys do
   begin
-    if (Wnd = 0) or not ((AWnd = Wnd) or IsChild(Wnd, AWnd) or IsChild(AWnd, Wnd)) then
+    if (mWnd = 0) or not Related(mWnd, AWnd) then
     begin
       Continue;
     end;
-    Local := APoint;
-    if not Winapi.Windows.ScreenToClient(Wnd, Local) then
+    mLocal := APoint;
+    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) then
     begin
       Continue;
     end;
-    if RowAt(Wnd, Local.X, Local.Y, ARow) then
+    if RowAt(mWnd, mLocal.X, mLocal.Y, ARow) then
     begin
       Exit(True);
     end;
@@ -908,49 +952,49 @@ end;
 
 procedure TAtlasIdeQuickColumn.LogMiss(AWnd: HWND; const APoint: TPoint);
 var
-  Wnd: HWND;
-  Local: TPoint;
-  Painted: TPainted;
+  mWnd: HWND;
+  mLocal: TPoint;
+  mPainted: TPainted;
 begin
-  if FLoggedMiss then
+  if FLog.Miss then
   begin
     Exit;
   end;
-  for Wnd in FPaintedRows.Keys do
+  for mWnd in FArea.Rows.Keys do
   begin
-    if not ((AWnd = Wnd) or IsChild(Wnd, AWnd) or IsChild(AWnd, Wnd)) then
+    if not Related(mWnd, AWnd) then
     begin
       Continue;
     end;
-    Local := APoint;
-    if not Winapi.Windows.ScreenToClient(Wnd, Local) or not FPaintedRows.TryGetValue(Wnd, Painted) or
-      (Local.X < Painted.Rect.Left) or (Local.X >= Painted.Rect.Right) then
+    mLocal := APoint;
+    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) or not FArea.Rows.TryGetValue(mWnd, mPainted) or
+      (mLocal.X < mPainted.Rect.Left) or (mLocal.X >= mPainted.Rect.Right) then
     begin
       Continue;
     end;
-    FLoggedMiss := True;
+    FLog.Miss := True;
     TAtlasGuard.Log(Format('Schnelle Lesezeichen: Klick in die Spalte (%d, %d) ohne Zeile; zuletzt gezeichnet ' +
-      'Editorzeile %d bei %d..%d, gezeichnet %d..%d', [Local.X, Local.Y, Painted.EditorLine, Painted.Rect.Top,
-      Painted.Rect.Bottom, FFirstEditorLine, FLastEditorLine]));
+      'Editorzeile %d bei %d..%d, gezeichnet %d..%d', [mLocal.X, mLocal.Y, mPainted.EditorLine, mPainted.Rect.Top,
+      mPainted.Rect.Bottom, FArea.FirstLine, FArea.LastLine]));
     Exit;
   end;
 end;
 
 procedure TAtlasIdeQuickColumn.ClickRow(const ARow: TRow);
 var
-  FileName: string;
-  Line: Integer;
+  mFileName: string;
+  mLine: Integer;
 begin
   HideTip;
-  FileName := ARow.FileName;
-  Line := ARow.Line;
+  mFileName := ARow.FileName;
+  mLine := ARow.Line;
   TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
         procedure
         begin
-          TAtlasIdeBookmarks.ColumnClick(FileName, Line);
+          TAtlasIdeQuickBookmarks.ColumnClick(mFileName, mLine);
         end);
     end);
 end;
@@ -958,23 +1002,26 @@ end;
 procedure TAtlasIdeQuickColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Row: TRow;
+  mRow: TRow;
 begin
   try
-    // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
-    if (Button <> mbLeft) or not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
-      (Editor = nil) or not Editor.HandleAllocated or (TThread.GetTickCount64 - FClickedAt < 500) or
-      not RowAt(Editor.Handle, X, Y, Row) then
+    if (Button <> mbLeft) or (Editor = nil) or not Editor.HandleAllocated then
     begin
       Exit;
     end;
-    if not FLoggedEditorClick then
+    // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
+    if not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
+      (TThread.GetTickCount64 - FLog.ClickedAt < 500) or not RowAt(Editor.Handle, X, Y, mRow) then
+    begin
+      Exit;
+    end;
+    if not FLog.EditorClick then
     begin
       TAtlasGuard.Log('Schnelle Lesezeichen: Klick in die Spalte kam nicht über Application.OnMessage, ' +
         'sondern über das Mausereignis des Editors');
     end;
-    FLoggedEditorClick := True;
-    ClickRow(Row);
+    FLog.EditorClick := True;
+    ClickRow(mRow);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
@@ -983,37 +1030,39 @@ end;
 
 procedure TAtlasIdeQuickColumn.SetHover(const ARow: TRow; AOn: Boolean);
 var
-  Changed: Boolean;
+  mChanged: Boolean;
 begin
-  Changed := AOn <> FHovering;
-  if AOn and FHovering then
+  mChanged := AOn <> FHover.Hovering;
+  if AOn and FHover.Hovering then
   begin
-    Changed := (ARow.Wnd <> FHover.Wnd) or (ARow.Line <> FHover.Line) or not SameText(ARow.FileName, FHover.FileName);
+    mChanged := (ARow.Wnd <> FHover.Row.Wnd) or (ARow.Line <> FHover.Row.Line) or
+      not SameText(ARow.FileName, FHover.Row.FileName);
   end;
-  if not Changed then
+  if not mChanged then
   begin
     Exit;
   end;
   HideTip;
-  FHovering := AOn;
-  FHover := ARow;
-  FHoverSince := TThread.GetTickCount64;
+  FHover.Hovering := AOn;
+  FHover.Row := ARow;
+  FHover.Since := TThread.GetTickCount64;
   // Umriss auf freiem Platz folgt der Maus.
   InvalidateTop;
 end;
 
 procedure TAtlasIdeQuickColumn.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
-  Row: TRow;
+  mRow: TRow;
 begin
   try
-    if not Shown or (Editor = nil) or not Editor.HandleAllocated or not RowAt(Editor.Handle, X, Y, Row) then
+    if not Shown or (Editor = nil) or not Editor.HandleAllocated or not RowAt(Editor.Handle, X, Y, mRow) then
     begin
       SetHover(Default(TRow), False);
       Exit;
     end;
-    SetHover(Row, True);
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(Row.Rect.TopLeft), Editor.ClientToScreen(Row.Rect.BottomRight));
+    SetHover(mRow, True);
+    FHover.ScreenRect := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft),
+      Editor.ClientToScreen(mRow.Rect.BottomRight));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
@@ -1022,63 +1071,37 @@ end;
 
 procedure TAtlasIdeQuickColumn.CheckHover;
 begin
-  if not FHovering then
+  if not FHover.Hovering then
   begin
     Exit;
   end;
   // Maus hat die Spalte verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-  if not PtInRect(FHoverScreen, Mouse.CursorPos) and not (FTip.IsShown and PtInRect(FTip.BoundsRect,
-    Mouse.CursorPos)) then
+  if not PtInRect(FHover.ScreenRect, Mouse.CursorPos) and not FTip.Contains(Mouse.CursorPos) then
   begin
     SetHover(Default(TRow), False);
     Exit;
   end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= HoverMs) then
+  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= HoverMs) then
   begin
-    ShowTip(FHover);
+    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
   end;
 end;
 
 procedure TAtlasIdeQuickColumn.HideTip;
 begin
-  if (FTip <> nil) and FTip.IsShown then
+  if FTip <> nil then
   begin
-    FTip.HidePopup;
+    FTip.Hide;
   end;
-end;
-
-procedure TAtlasIdeQuickColumn.ShowTip(const ARow: TRow);
-var
-  Title, Text: string;
-  JumpKey: Word;
-begin
-  JumpKey := 0;
-  if TAtlasIdeSettings.Current.QuickBookmarksNumberedKeys then
-  begin
-    JumpKey := Word(TAtlasIdeSettings.Current.QuickBookmarkJumpKey);
-  end;
-  TipText(ARow.Marks, JumpKey, Title, Text);
-  if Length(ARow.Marks) = 0 then
-  begin
-    if not TAtlasIdeSettings.Current.QuickBookmarksGutterClick then
-    begin
-      Exit;
-    end;
-    Text := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipFree);
-  end;
-  FTip.ShowNote(Title, Text, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
 end;
 
 procedure TAtlasIdeQuickColumn.AppMessage(var Msg: TMsg; var Handled: Boolean);
-var
-  Row: TRow;
-  Where: TPoint;
 begin
   try
-    if (Msg.message = FSwallowUp) and (FSwallowUp <> 0) then
+    if (Msg.message = FPress.SwallowUp) and (FPress.SwallowUp <> 0) then
     begin
       // Loslassen zum geschluckten Drücken: Ohne Drücken darf auch es nicht an den Editor.
-      FSwallowUp := 0;
+      FPress.SwallowUp := 0;
       Handled := True;
       if GetCapture = Msg.hwnd then
       begin
@@ -1086,133 +1109,47 @@ begin
       end;
       if Msg.message = WM_RBUTTONUP then
       begin
-        Row := FMenuRow;
-        Where := Mouse.CursorPos;
-        TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
-          procedure
-          begin
-            TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-              procedure
-              begin
-                ShowMenu(Row, Where);
-              end);
-          end);
+        QueueMenu(FMenu, FPress.Row, Mouse.CursorPos);
       end;
-      Exit;
-    end;
-    if not ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_LBUTTONDBLCLK) or
-      (Msg.message = WM_RBUTTONDOWN)) then
+    end
+    else if IsPress(Msg.message) and Shown and (FArea.Rows.Count > 0) then
     begin
-      Exit;
+      TakePress(Msg, Handled);
     end;
-    if not Shown or (FPaintedRows.Count = 0) then
-    begin
-      Exit;
-    end;
-    // Bildschirmpunkt der Nachricht, nicht lParam: Die Rinne kann in einem anderen Fenster liegen (#1281).
-    if not RowAt(Msg.hwnd, Msg.pt, Row) then
-    begin
-      LogMiss(Msg.hwnd, Msg.pt);
-      Exit;
-    end;
-    if Msg.message = WM_RBUTTONDOWN then
-    begin
-      // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.
-      Handled := True;
-      FSwallowUp := WM_RBUTTONUP;
-      FMenuRow := Row;
-      HideTip;
-      Exit;
-    end;
-    // Linksklick nur mit bookmarks.quick.gutterClick; sonst bekommt ihn die IDE wie bisher.
-    if not TAtlasIdeSettings.Current.QuickBookmarksGutterClick then
-    begin
-      Exit;
-    end;
-    Handled := True;
-    FSwallowUp := WM_LBUTTONUP;
-    FClickedAt := TThread.GetTickCount64;
-    ClickRow(Row);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
   end;
 end;
 
-function TAtlasIdeQuickColumn.AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
-begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  AParent.Add(Result);
-end;
-
-procedure TAtlasIdeQuickColumn.ShowMenu(const ARow: TRow; const APoint: TPoint);
+procedure TAtlasIdeQuickColumn.TakePress(var Msg: TMsg; var Handled: Boolean);
 var
-  Numbers, Item: TMenuItem;
-  Targets: TArray<string>;
-  Number, Current: Integer;
+  mRow: TRow;
 begin
-  FMenu.Items.Clear;
-  FMenuRow := ARow;
-  Current := 0;
-  if Length(ARow.Marks) > 0 then
+  // Bildschirmpunkt der Nachricht, nicht lParam: Die Rinne kann in einem anderen Fenster liegen (#1281).
+  if not RowAt(Msg.hwnd, Msg.pt, mRow) then
   begin
-    Current := ARow.Marks[0].Number;
+    LogMiss(Msg.hwnd, Msg.pt);
+    Exit;
   end;
-  Targets := TAtlasIdeBookmarks.NumberTargets(ARow.FileName);
-  Numbers := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuNumber), 0);
-  Numbers.OnClick := nil;
-  for Number := 1 to TAtlasQuickBookmarks.MaxNumber do
+  if Msg.message = WM_RBUTTONDOWN then
   begin
-    // Belegte Nummern zeigen ihr Ziel; die eigene ist abgehakt (Klick nimmt sie weg).
-    if (Number < Length(Targets)) and (Targets[Number] <> '') and (Number <> Current) then
-    begin
-      Item := AddMenuItem(Numbers, TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkMenuNumberUsed,
-        [Number, Targets[Number]]), Number);
-    end
-    else
-    begin
-      Item := AddMenuItem(Numbers, '&' + IntToStr(Number), Number);
-    end;
-    Item.Checked := Number = Current;
+    // Das eigene Menü ersetzt das Kontextmenü der IDE; es öffnet beim Loslassen.
+    Handled := True;
+    FPress.SwallowUp := WM_RBUTTONUP;
+    FPress.Row := mRow;
+    HideTip;
+    Exit;
   end;
-  AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuName), MenuName);
-  Item := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemove),
-    MenuRemove);
-  Item.Enabled := Length(ARow.Marks) > 0;
-  Item := AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemoveFile),
-    MenuRemoveFile);
-  Item.Enabled := TAtlasIdeBookmarks.HasColumnMarks(ARow.FileName);
-  AddMenuItem(FMenu.Items, '-', -1).OnClick := nil;
-  AddMenuItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuWindow), MenuWindow);
-  FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasIdeQuickColumn.MenuClick(Sender: TObject);
-var
-  Command: Integer;
-  Row: TRow;
-begin
-  Command := TMenuItem(Sender).Tag;
-  Row := FMenuRow;
-  TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-    procedure
-    begin
-      case Command of
-        1..TAtlasQuickBookmarks.MaxNumber:
-          TAtlasIdeBookmarks.ColumnAssign(Row.FileName, Row.Line, Command);
-        MenuName:
-          TAtlasIdeBookmarks.ColumnName(Row.FileName, Row.Line);
-        MenuRemove:
-          TAtlasIdeBookmarks.ColumnRemove(Row.FileName, Row.Line);
-        MenuRemoveFile:
-          TAtlasIdeBookmarks.ColumnRemoveFile(Row.FileName);
-        MenuWindow:
-          TAtlasIdeBookmarks.ShowWindow;
-      end;
-    end);
+  // Linksklick nur mit bookmarks.quick.gutterClick; sonst bekommt ihn die IDE wie bisher.
+  if not TAtlasIdeSettings.Current.QuickBookmarksGutterClick then
+  begin
+    Exit;
+  end;
+  Handled := True;
+  FPress.SwallowUp := WM_LBUTTONUP;
+  FLog.ClickedAt := TThread.GetTickCount64;
+  ClickRow(mRow);
 end;
 
 end.

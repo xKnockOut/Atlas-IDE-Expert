@@ -287,11 +287,13 @@ type
 procedure TEditorNotifier.WindowShow(const EditWindow: INTAEditWindow; Show, LoadedFromDesktop: Boolean);
 begin
   if Show then
+  begin
     TAtlasGuard.Run(TAtlasFeature.EditorCommands,
       procedure
       begin
         TAtlasIdeEditorCommands.EnsureContextMenus;
       end);
+  end;
 end;
 
 procedure TEditorNotifier.WindowNotification(const EditWindow: INTAEditWindow; Operation: TOperation);
@@ -348,7 +350,9 @@ begin
     end);
   // Module (#1455), z. B. „Gezielt hineinspringen“: Listen gehören zur bisherigen Ansicht.
   for mFailure in TAtlasModuleContributions.EditorViewActivated(AtlasModuleRegistry) do
+  begin
     TAtlasGuard.Log('Ansichtswechsel im Modul: ' + mFailure);
+  end;
   // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
   TAtlasGuard.Run(TAtlasFeature.ExpressionType,
     procedure
@@ -459,7 +463,9 @@ begin
     begin
       Result := 0;
       if TAtlasIdeSettings.Current.GenerateMenu then
+      begin
         Result := TAtlasIdeSettings.Current.GenerateMenuKey;
+      end;
     end,
     procedure
     begin
@@ -509,7 +515,9 @@ begin
     begin
       Result := 0;
       if TAtlasIdeSettings.Current.MethodToggle then
+      begin
         Result := TAtlasIdeSettings.Current.MethodToggleUpKey;
+      end;
     end,
     procedure
     begin
@@ -540,7 +548,9 @@ begin
     begin
       Result := 0;
       if TAtlasIdeSettings.Current.FormatCode then
+      begin
         Result := TAtlasIdeSettings.Current.FormatCodeKey;
+      end;
     end,
     procedure
     begin
@@ -563,12 +573,14 @@ begin
   // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
   // nächsten Start; Palette und Menü Atlas folgen sofort.
   if TAtlasIdeResults.CallDiagramAllowed then
+  begin
     FContextMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
       TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
       procedure
       begin
         TAtlasIdeResults.ShowCallDiagram;
       end);
+  end;
   // Auswirkungen anzeigen (#1120), nur mit navigation.impact.
   FContextMenu.AddWhen(TAtlasFeature.Results, 'Atlas.Impact', TAtlasStrings.Text(TAtlasTextId.ImpactCommand), nil,
     procedure
@@ -664,7 +676,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Editors.RemoveNotifier(FNotifierIndex);
+  end;
   FNotifierIndex := -1;
   FNotifier := nil;
   FreeAndNil(FContextMenu);
@@ -679,26 +693,34 @@ end;
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
 begin
   if FContextMenu <> nil then
+  begin
     FContextMenu.EnsureAll;
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.UpdateContextMenus;
 begin
   if FContextMenu <> nil then
+  begin
     FContextMenu.UpdateVisibility;
+  end;
 end;
 
 class function TAtlasIdeEditorCommands.Session: TLspSession;
 begin
   Result := nil;
   if Assigned(FSessionOf) then
+  begin
     Result := FSessionOf();
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.Say(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 class function TAtlasIdeEditorCommands.Current(out AView: IOTAEditView; out AFileName: string;
@@ -717,7 +739,9 @@ var
   begin
     LineText := '';
     if (ARow >= 1) and (ARow <= Length(ALines)) then
+    begin
       LineText := ALines[ARow - 1];
+    end;
     Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineText, AColumn, TabWidth));
   end;
 
@@ -734,7 +758,9 @@ begin
     Exit;
   end;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     AView := Editors.TopView;
+  end;
   if (AView = nil) or (AView.Buffer = nil) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
@@ -764,7 +790,9 @@ var
 begin
   LineText := '';
   if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
+  begin
     LineText := ALines[APosition.Line];
+  end;
   Result.Line := APosition.Line + 1;
   Result.Col := TLspSession.IndexToColumn(LineText, APosition.Character, ATabWidth);
 end;
@@ -796,7 +824,9 @@ var
   Moved: Boolean;
 begin
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   // Erstes Erweitern an dieser Stelle: Der Cursor wird zum Anker.
   if Selection.IsEmpty and AExpand then
   begin
@@ -814,11 +844,17 @@ begin
     end;
   end;
   if AExpand then
-    Moved := TAtlasSelectionSteps.Expand(Chain, Selection, Next)
+  begin
+    Moved := TAtlasSelectionSteps.Expand(Chain, Selection, Next);
+  end
   else
+  begin
     Moved := TAtlasSelectionSteps.Shrink(Chain, Selection, Next);
+  end;
   if Moved then
+  begin
     Select(View, Lines, Next);
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.ExpandSelection;
@@ -840,7 +876,9 @@ var
   Found: TArray<TLspLocation>;
 begin
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   try
     Found := Session.TypeDefinition(FileName, Selection.StartPos.Line, Selection.StartPos.Character);
   except
@@ -867,7 +905,9 @@ var
 begin
   Result := nil;
   if TAtlasIdeBuildTarget.Read(Target) then
+  begin
     Result := TTextDefines.Predefined(Target.Platform, CompilerVersion) + Target.Defines;
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.SafeDelete;
@@ -878,7 +918,9 @@ var
   Selection: TLspRange;
 begin
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   TAtlasIdeSafeDelete.Execute(Session, TAtlasSafeDelete.Arguments(TLspSession.PathToUri(FileName),
     Selection.StartPos.Line, Selection.StartPos.Character),
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
@@ -900,10 +942,14 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
@@ -911,10 +957,14 @@ begin
   Row := Cursor.Line - 1;
   LineText := '';
   if (Row >= 0) and (Row < Length(Lines)) then
+  begin
     LineText := Lines[Row];
+  end;
   if not TAtlasMethodToggle.Counterpart(Text, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
     Target, ProjectDefines) then
+  begin
     Exit;
+  end;
   View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
   View.MoveViewToCursor;
   View.Paint;
@@ -932,12 +982,18 @@ var
   Target, Start, Stop: TAtlasMatchSpot;
 begin
   if not TAtlasIdeSettings.Current.JumpToMatch then
+  begin
     Exit;
+  end;
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   Lines := Text.Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
@@ -945,16 +1001,22 @@ begin
   Row := Cursor.Line - 1;
   LineText := '';
   if (Row >= 0) and (Row < Length(Lines)) then
+  begin
     LineText := Lines[Row];
+  end;
   Character := TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth);
   if ASelect then
   begin
     if TAtlasJumpToMatch.Selection(Text, Row, Character, Start, Stop) then
+    begin
       Select(View, Lines, TLspRange.Create(Start.Line, Start.Character, Stop.Line, Stop.Character));
+    end;
     Exit;
   end;
   if not TAtlasJumpToMatch.Target(Text, Row, Character, Target) then
+  begin
     Exit;
+  end;
   View.CursorPos := EditPos(Lines, TLspTextPosition.Create(Target.Line, Target.Character), TabWidth);
   View.MoveViewToCursor;
   View.Paint;
@@ -972,22 +1034,32 @@ var
   TabWidth, Row: Integer;
 begin
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   if Assigned(FStepList) and FStepList(AForward) then
+  begin
     Exit;
+  end;
   Problems := nil;
   if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then
+  begin
     Problems := FProblemsOf(View.Buffer.FileName);
+  end;
   Lines := TAtlasEditorBuffer.Text(View.Buffer).Split([#13#10, #10]);
   TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
   Cursor := View.CursorPos;
   Row := Cursor.Line - 1;
   LineText := '';
   if (Row >= 0) and (Row < Length(Lines)) then
+  begin
     LineText := Lines[Row];
+  end;
   if not TAtlasInlineDiagnostics.Next(Problems, Row, TLspSession.ColumnToIndex(LineText, Cursor.Col, TabWidth),
     AForward, Target) then
   begin
@@ -1015,40 +1087,60 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Exit;
+  end;
   View := Editors.TopView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Block := View.Block;
   if (Block = nil) or not Block.IsValid or (Block.Size = 0) or (Block.StartingRow <> Block.EndingRow) then
+  begin
     Exit;
+  end;
   Needle := Block.Text;
   if (Needle = '') or (Pos(#10, Needle) > 0) or (Pos(#13, Needle) > 0) then
+  begin
     Exit;
+  end;
   // Gleichen Text hervorheben (#709): F3 springt zwischen dessen Treffern, mit denselben Optionen.
   Matching := TAtlasIdeSettings.SelectionMatchesOn(Options, NavigateF3) and
     TAtlasSelectionMatches.Term(Needle, Options, Term);
   if Matching and not NavigateF3 then
+  begin
     Exit;
+  end;
   Lines := TAtlasEditorBuffer.Text(View.Buffer).Split([#13#10, #10]);
   Row := Block.StartingRow - 1;
   if (Row < 0) or (Row >= Length(Lines)) then
+  begin
     Exit;
+  end;
   LineText := Lines[Row];
   TabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
   StartIndex := TLspSession.ColumnToIndex(LineText, Block.StartingColumn, TabWidth);
   EndIndex := TLspSession.ColumnToIndex(LineText, Block.EndingColumn, TabWidth);
   if ABackward then
-    From := TLspTextPosition.Create(Row, StartIndex)
+  begin
+    From := TLspTextPosition.Create(Row, StartIndex);
+  end
   else
+  begin
     From := TLspTextPosition.Create(Row, EndIndex);
+  end;
   if Matching then
   begin
     if not TAtlasSelectionMatches.Next(Lines, Needle, Options, From, ABackward, Found) then
+    begin
       Exit;
+    end;
   end
   else if not TAtlasSelectionSearch.Find(Lines, Needle, From, ABackward, Found) then
+  begin
     Exit;
+  end;
   // Suchtext der IDE: Strg+F und „Erneut suchen“ ohne Markierung machen damit weiter.
   try
     View.Position.SearchOptions.SearchText := Needle;
@@ -1063,13 +1155,17 @@ end;
 class procedure TAtlasIdeEditorCommands.ToggleMethod;
 begin
   if not TryToggleMethod then
+  begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.ApplySettings;
 begin
   if FContextMenu <> nil then
+  begin
     FContextMenu.UpdateVisibility;
+  end;
 end;
 
 class function TAtlasIdeEditorCommands.FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean;
@@ -1084,7 +1180,9 @@ begin
   AName := '';
   Result := False;
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(FileName));
@@ -1106,7 +1204,9 @@ begin
   end;
   try
     if Answer is TJSONString then
+    begin
       AName := Answer.Value;
+    end;
     Result := True;
   finally
     Answer.Free;
@@ -1123,7 +1223,9 @@ var
   Name: string;
 begin
   if not FetchQualifiedName(AWithParameters, Name) then
+  begin
     Exit;
+  end;
   if Name = '' then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
@@ -1150,14 +1252,20 @@ begin
     Exit;
   end;
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   // Breite einer Ebene aus dem Editor; .editorconfig und atlas.json gehen beim Server vor.
   Indent := TAtlasEditorBuffer.BlockIndent(View.Buffer);
   try
     if Selection.IsEmpty then
-      Edits := Session.Formatting(FileName, Indent, True, CommandTimeoutMs)
+    begin
+      Edits := Session.Formatting(FileName, Indent, True, CommandTimeoutMs);
+    end
     else
+    begin
       Edits := Session.Formatting(FileName, Selection, Indent, True, CommandTimeoutMs);
+    end;
   except
     on E: ELspClientError do
     begin
@@ -1177,7 +1285,9 @@ begin
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.WriteToDisk,
     TAtlasStrings.Text(TAtlasTextId.UndoActionFormat));
   if Outcome.Error <> '' then
+  begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.SwitchTestUnit;
@@ -1193,7 +1303,9 @@ var
   Outcome: TAtlasWorkspaceEditResult;
 begin
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   Values := TJSONArray.Create;
   try
     Values.Add(TLspSession.PathToUri(FileName));
@@ -1251,13 +1363,21 @@ end;
 function KindCaption(const AKind: string): string;
 begin
   if AKind.StartsWith('quickfix') then
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindFix)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindFix);
+  end
   else if AKind.StartsWith('refactor') then
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindRefactor)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindRefactor);
+  end
   else if AKind.StartsWith('source') then
-    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindSource)
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.EditorKindSource);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.CodeActions;
@@ -1275,7 +1395,9 @@ var
   Area: TRect;
 begin
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   Screen.Cursor := crHourGlass;
   try
     try
@@ -1293,15 +1415,27 @@ begin
   // Bevorzugte zuerst, sonst die Reihenfolge des Servers; gesperrte entfallen.
   Usable := nil;
   for Action in Found do
+  begin
     if Action.Preferred and (Action.Disabled = '') then
+    begin
       Usable := Usable + [Action];
+    end;
+  end;
   for Action in Found do
+  begin
     if not Action.Preferred and (Action.Disabled = '') then
+    begin
       Usable := Usable + [Action];
+    end;
+  end;
   // Hinweis statt Aktion (#663): am Ende, wählen nennt den Grund.
   for Action in Found do
+  begin
     if Action.Disabled <> '' then
+    begin
       Usable := Usable + [Action];
+    end;
+  end;
   if Length(Usable) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
@@ -1315,9 +1449,13 @@ begin
     Command.Caption := Usable[Index].Title;
     Command.Path := KindCaption(Usable[Index].Kind);
     if Usable[Index].Disabled <> '' then
+    begin
       Command.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
+    end;
     if Usable[Index].Preferred then
+    begin
       Command.ShortCut := '★';
+    end;
     Commands := Commands + [Command];
   end;
   Window := TAtlasPaletteWindow.CreatePalette(Application, Commands, nil, TAtlasIdeStyle.Colors);
@@ -1329,18 +1467,26 @@ begin
     begin
       Chosen := StrToIntDef(ACommand.Id, -1);
       if (Chosen >= 0) and (Chosen <= High(Usable)) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.EditorCommands,
           procedure
           begin
             Apply(Usable[Chosen]);
           end);
+      end;
     end;
   if Screen.ActiveForm <> nil then
-    Area := Screen.ActiveForm.BoundsRect
+  begin
+    Area := Screen.ActiveForm.BoundsRect;
+  end
   else if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   Window.ShowOver(Area);
 end;
 
@@ -1360,7 +1506,9 @@ var
 begin
   // Current gleicht den Text ab; der Bereich stammt aus den Diagnosen desselben Stands.
   if not Current(View, FileName, Lines, Selection) then
+  begin
     Exit;
+  end;
   try
     Found := Session.CodeActions(FileName, ARange);
   except
@@ -1371,11 +1519,13 @@ begin
     end;
   end;
   for Action in Found do
+  begin
     if SameText(Action.Tag, ATag) and (Action.Disabled = '') then
     begin
       Apply(Action);
       Exit;
     end;
+  end;
   Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
 end;
 
@@ -1410,7 +1560,9 @@ begin
   if not AAction.Edit.IsEmpty then
   begin
     if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+    begin
       Exit;
+    end;
     Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       AAction.Title);
@@ -1420,12 +1572,18 @@ begin
       Exit;
     end;
     if Outcome.Written > 0 then
+    begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+    end;
   end;
   if AAction.Edit.Unsupported > 0 then
+  begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [AAction.Edit.Unsupported]));
+  end;
   if AAction.Command <> '' then
+  begin
     RunCommand(AAction.Command, AAction.ArgumentsJson);
+  end;
 end;
 
 class procedure TAtlasIdeEditorCommands.RunCommand(const ACommand, AArgumentsJson: string);
@@ -1455,7 +1613,9 @@ begin
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 0) then
+      begin
         TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(TJSONArray(Arguments).Items[0].Value), 0, 0);
+      end;
     finally
       Arguments.Free;
     end;
@@ -1467,8 +1627,10 @@ begin
     Arguments := TJSONObject.ParseJSONValue(AArgumentsJson);
     try
       if (Arguments is TJSONArray) and (TJSONArray(Arguments).Count > 1) then
+      begin
         TAtlasIdeNavigation.GoToPosition(StrToIntDef(TJSONArray(Arguments).Items[0].Value, 0),
           StrToIntDef(TJSONArray(Arguments).Items[1].Value, 0));
+      end;
     finally
       Arguments.Free;
     end;
@@ -1484,7 +1646,9 @@ begin
         TAtlasIdeNavigation.GoToPosition(StrToIntDef(TJSONArray(Arguments).Items[0].Value, 0),
           StrToIntDef(TJSONArray(Arguments).Items[1].Value, 0));
         if Assigned(FOnSignatureHelp) then
+        begin
           FOnSignatureHelp();
+        end;
       end;
     finally
       Arguments.Free;
@@ -1495,7 +1659,9 @@ begin
   begin
     // Client-Befehl: „Graph zeigen“ an einem Unit-Zyklus (#896).
     if Assigned(FOnUnitRelations) then
+    begin
       FOnUnitRelations();
+    end;
     Exit;
   end;
   if ACommand = TAtlasIdeChangeSignature.ClientCommand then
@@ -1694,7 +1860,9 @@ begin
         const AExpansion: TAtlasSnippetExpansion)
       begin
         if Assigned(FOnPlaceholders) then
+        begin
           FOnPlaceholders(AView, ABefore, AOffset, AExpansion);
+        end;
       end);
     Exit;
   end;
@@ -1754,7 +1922,9 @@ begin
     // Eine Antwort als Text zeigen.
     try
       if (Answer is TJSONString) and (Answer.Value <> '') then
+      begin
         Say(Answer.Value);
+      end;
     finally
       Answer.Free;
     end;
@@ -1773,14 +1943,18 @@ var
 begin
   if (AView = nil) or (AView.Buffer = nil) or not TAtlasIdeSettings.Current.Enabled or
     not TAtlasIdeSettings.Current.SlashCommands then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
   Before := Copy(LineText, 1, TLspSession.ColumnToIndex(LineText, Cursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer)));
   Previous := '';
   if Cursor.Line > 1 then
+  begin
     Previous := TAtlasEditorBuffer.LineText(AView, Cursor.Line - 1);
+  end;
   Kind := TAtlasSlashTrigger.Detect(Previous, Before);
   if Kind = TAtlasSlashKind.None then
   begin
@@ -1790,7 +1964,9 @@ begin
   FileName := AView.Buffer.FileName;
   Key := TAtlasSlashTrigger.Key(FileName, Cursor.Line, Kind, Previous);
   if Key = FLastSlash then
+  begin
     Exit;
+  end;
   FLastSlash := Key;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat; nie im Notifier.
   View := AView;
@@ -1821,7 +1997,9 @@ var
 begin
   Running := Session;
   if (Running = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   FileName := AView.Buffer.FileName;
   Text := TAtlasEditorBuffer.Text(AView.Buffer);
   Running.Sync(FileName, Text);
@@ -1829,11 +2007,13 @@ begin
   Cursor := AView.CursorPos;
   Line := Cursor.Line - 1;
   if (Line < 0) or (Line >= Length(Lines)) then
+  begin
     Exit;
+  end;
   Character := TLspSession.ColumnToIndex(Lines[Line], Cursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
   try
     Edits := Running.OnTypeFormatting(FileName, Line, Character, TAtlasSlashTrigger.TriggerChar(AKind),
-      TAtlasEditorBuffer.BlockIndent(AView.Buffer), True, SlashTimeoutMs);
+      TLspFormatOptions.Create(TAtlasEditorBuffer.BlockIndent(AView.Buffer), True), SlashTimeoutMs);
   except
     on E: ELspClientError do
     begin
@@ -1843,7 +2023,9 @@ begin
     end;
   end;
   if Length(Edits) = 0 then
+  begin
     Exit;
+  end;
   Edit := Default(TLspWorkspaceEdit);
   Edit.Files := [Default(TLspFileEdits)];
   Edit.Files[0].FileName := FileName;
@@ -1856,12 +2038,16 @@ begin
     Exit;
   end;
   if AKind <> TAtlasSlashKind.DocComment then
+  begin
     Exit;
+  end;
   // ///-Gerüst: Platzhalter-Modus über die Beschreibungen. Das Gerüst ist die erste Änderung; über einer
   // Methodenimplementierung steht es weiter oben, das Löschen der "///"-Zeile darunter verschiebt es nicht.
   Expansion := TAtlasSlashTrigger.DocCommentExpansion(Edits[0].NewText);
   if not Expansion.HasPlaceholders then
+  begin
     Exit;
+  end;
   Document := TAtlasEditorBuffer.Text(AView.Buffer);
   if Assigned(FOnPlaceholders) then
   begin

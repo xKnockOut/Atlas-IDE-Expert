@@ -31,20 +31,30 @@ uses
 class function TAtlasWelcomeGreeting.DayTimeOf(AHour: Integer): TAtlasDayTime;
 begin
   if (AHour >= 5) and (AHour <= 10) then
-    Result := TAtlasDayTime.Morning
+  begin
+    Result := TAtlasDayTime.Morning;
+  end
   else if (AHour >= 11) and (AHour <= 17) then
-    Result := TAtlasDayTime.Day
+  begin
+    Result := TAtlasDayTime.Day;
+  end
   else if (AHour >= 18) and (AHour <= 23) then
-    Result := TAtlasDayTime.Evening
+  begin
+    Result := TAtlasDayTime.Evening;
+  end
   else
+  begin
     Result := TAtlasDayTime.Night;
+  end;
 end;
 
 function Capitalized(const AText: string): string;
 begin
   Result := AText;
   if Result <> '' then
+  begin
     Result := UpperCase(Copy(Result, 1, 1)) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Erstes Wort bis zu einem der Trennzeichen.</summary>
@@ -55,9 +65,15 @@ var
 begin
   Result := Trim(AText);
   for Index := 1 to Length(Result) do
+  begin
     for Ch in ASeparators do
+    begin
       if Result[Index] = Ch then
+      begin
         Exit(Copy(Result, 1, Index - 1));
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeGreeting.FirstName(const ADisplayName, AUserName: string): string;
@@ -71,17 +87,25 @@ begin
     // „Nachname, Vorname“ (Active Directory).
     Comma := Pos(',', Name);
     if Comma > 0 then
+    begin
       Name := Trim(Copy(Name, Comma + 1, MaxInt));
+    end;
     Result := FirstWord(Name, [' ']);
     if Result <> '' then
+    begin
       Exit;
+    end;
   end;
   Name := Trim(AUserName);
   // Domäne bzw. UPN abschneiden.
   if LastDelimiter('\', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('\', Name) + 1, MaxInt);
+  end;
   if Pos('@', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('@', Name) - 1);
+  end;
   Result := Capitalized(FirstWord(Name, ['.', '_', '-', ' ']));
 end;
 

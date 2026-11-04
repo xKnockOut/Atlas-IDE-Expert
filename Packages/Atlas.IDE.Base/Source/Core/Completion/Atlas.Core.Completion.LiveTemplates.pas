@@ -96,7 +96,9 @@ end;
 function TXmlNode.Attribute(const AName: string): string;
 begin
   if not Attributes.TryGetValue(LowerCase(AName), Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function TXmlNode.Child(const AName: string): TXmlNode;
@@ -104,8 +106,12 @@ var
   Node: TXmlNode;
 begin
   for Node in FChildren do
+  begin
     if SameText(Node.Name, AName) then
+    begin
       Exit(Node);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -115,9 +121,13 @@ var
 begin
   Node := Child(AName);
   if Node = nil then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := Node.Text;
+  end;
 end;
 
 /// <summary>Liest AXml in einen Baum unter einem künstlichen Wurzelknoten; EXmlError bei kaputtem Aufbau.</summary>
@@ -155,7 +165,9 @@ begin
         begin
           Close := Index;
           while (Close <= Length(AXml)) and (AXml[Close] <> '<') do
+          begin
             Inc(Close);
+          end;
           Current.Text := Current.Text + TTextEntities.Decode(Copy(AXml, Index, Close - Index));
           Index := Close;
           Continue;
@@ -164,7 +176,9 @@ begin
         begin
           Close := Pos(']]>', AXml, Index + 9);
           if Close = 0 then
+          begin
             raise EXmlError.Create('CDATA ohne Ende');
+          end;
           Current.Text := Current.Text + Copy(AXml, Index + 9, Close - Index - 9);
           Index := Close + 3;
           Continue;
@@ -173,69 +187,97 @@ begin
         begin
           Close := Pos('-->', AXml, Index + 4);
           if Close = 0 then
+          begin
             raise EXmlError.Create('Kommentar ohne Ende');
+          end;
           Index := Close + 3;
           Continue;
         end;
         Close := Pos('>', AXml, Index + 1);
         if Close = 0 then
+        begin
           raise EXmlError.Create('Tag ohne Ende');
+        end;
         Tag := Copy(AXml, Index + 1, Close - Index - 1);
         Index := Close + 1;
         // Verarbeitungsanweisung und DOCTYPE
         if (Tag <> '') and ((Tag[1] = '?') or (Tag[1] = '!')) then
+        begin
           Continue;
+        end;
         if (Tag <> '') and (Tag[1] = '/') then
         begin
           if (Stack.Count <= 1) or not SameText(Trim(Copy(Tag, 2, MaxInt)), Current.Name) then
+          begin
             raise EXmlError.Create('Unerwartetes Ende-Tag');
+          end;
           Stack.Delete(Stack.Count - 1);
           Continue;
         end;
         SelfClosing := (Tag <> '') and (Tag[Length(Tag)] = '/');
         if SelfClosing then
+        begin
           Delete(Tag, Length(Tag), 1);
+        end;
         Position := 1;
         while (Position <= Length(Tag)) and not IsSpace(Tag[Position]) do
+        begin
           Inc(Position);
+        end;
         Node := TXmlNode.Create(Copy(Tag, 1, Position - 1));
         Current.Children.Add(Node);
         // Attribute: name="wert" bzw. name='wert'
         while Position <= Length(Tag) do
         begin
           while (Position <= Length(Tag)) and IsSpace(Tag[Position]) do
+          begin
             Inc(Position);
+          end;
           Close := Position;
           while (Close <= Length(Tag)) and (Tag[Close] <> '=') and not IsSpace(Tag[Close]) do
+          begin
             Inc(Close);
+          end;
           Name := LowerCase(Copy(Tag, Position, Close - Position));
           Position := Close;
           while (Position <= Length(Tag)) and IsSpace(Tag[Position]) do
+          begin
             Inc(Position);
+          end;
           Value := '';
           if (Position <= Length(Tag)) and (Tag[Position] = '=') then
           begin
             Inc(Position);
             while (Position <= Length(Tag)) and IsSpace(Tag[Position]) do
+            begin
               Inc(Position);
+            end;
             if (Position <= Length(Tag)) and ((Tag[Position] = '"') or (Tag[Position] = '''')) then
             begin
               Quote := Tag[Position];
               Close := Position + 1;
               while (Close <= Length(Tag)) and (Tag[Close] <> Quote) do
+              begin
                 Inc(Close);
+              end;
               Value := TTextEntities.Decode(Copy(Tag, Position + 1, Close - Position - 1));
               Position := Close + 1;
             end;
           end;
           if Name <> '' then
+          begin
             Node.Attributes.AddOrSetValue(Name, Value);
+          end;
         end;
         if not SelfClosing then
+        begin
           Stack.Add(Node);
+        end;
       end;
       if Stack.Count <> 1 then
+      begin
         raise EXmlError.Create('Element ohne Ende');
+      end;
     except
       Result.Free;
       raise;
@@ -272,6 +314,7 @@ begin
   ABody := '';
   Code := nil;
   for Node in ATemplate.Children do
+  begin
     if SameText(Node.Name, 'code') then
     begin
       // Nur Delphi; ohne Angabe gilt Delphi.
@@ -282,18 +325,28 @@ begin
       end;
     end
     else if SameText(Node.Name, 'script') then
+    begin
       Inc(AStats.Scripts);
+    end;
+  end;
   if (Code = nil) or (Trim(Code.Text) = '') then
+  begin
     Exit;
+  end;
   Text := Code.Text;
   if Code.Attribute('delimiter') <> '' then
-    Delimiter := Code.Attribute('delimiter')[1]
+  begin
+    Delimiter := Code.Attribute('delimiter')[1];
+  end
   else
+  begin
     Delimiter := '|';
+  end;
   Points := TDictionary<string, TTemplatePoint>.Create;
   Builder := TStringBuilder.Create;
   try
     for Node in ATemplate.Children do
+    begin
       if SameText(Node.Name, 'point') and (Node.Attribute('name') <> '') then
       begin
         // Die IDE schreibt den Vorgabetext eingerückt auf eigene Zeilen.
@@ -302,8 +355,11 @@ begin
         Point.Number := 0;
         Points.AddOrSetValue(LowerCase(Node.Attribute('name')), Point);
         if Node.Child('script') <> nil then
+        begin
           Inc(AStats.Scripts);
+        end;
       end;
+    end;
     Next := 1;
     // Zeilenumbrüche vereinheitlichen; Leerraum am Anfang und Ende (auch um CDATA) gehört nicht zur Vorlage.
     Text := StringReplace(StringReplace(Text, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]);
@@ -319,7 +375,9 @@ begin
       end;
       Close := Index + 1;
       while (Close <= Length(Text)) and (Text[Close] <> Delimiter) and (Text[Close] <> #10) do
+      begin
         Inc(Close);
+      end;
       if (Close > Length(Text)) or (Text[Close] <> Delimiter) then
       begin
         // Einzelnes Trennzeichen ohne Gegenstück: als Text übernehmen.
@@ -331,13 +389,19 @@ begin
       Key := LowerCase(Name);
       Index := Close + 1;
       if Name = '' then
-        Builder.Append(Escape(Delimiter))
+      begin
+        Builder.Append(Escape(Delimiter));
+      end
       else if Key = 'end' then
-        Builder.Append('$0')
+      begin
+        Builder.Append('$0');
+      end
       else if Key = 'selected' then
         // Atlas setzt Vorlagen ohne Auswahl ein.
       else if Key = '*' then
-        Builder.Append('  ')
+      begin
+        Builder.Append('  ');
+      end
       else
       begin
         if not Points.TryGetValue(Key, Point) then
@@ -348,9 +412,13 @@ begin
           Point.Number := 0;
         end;
         if not Point.Editable then
-          Builder.Append(Escape(Point.Default))
+        begin
+          Builder.Append(Escape(Point.Default));
+        end
         else if Point.Number > 0 then
-          Builder.Append('${' + IntToStr(Point.Number) + '}')
+        begin
+          Builder.Append('${' + IntToStr(Point.Number) + '}');
+        end
         else
         begin
           Point.Number := Next;
@@ -382,6 +450,7 @@ class function TAtlasLiveTemplates.Parse(const AXml, AFileName: string;
     Body: string;
   begin
     for Node in ANode.Children do
+    begin
       if SameText(Node.Name, 'template') then
       begin
         if (Trim(Node.Attribute('name')) <> '') and ConvertCode(Node, Body, AStats) then
@@ -391,7 +460,9 @@ class function TAtlasLiveTemplates.Parse(const AXml, AFileName: string;
           Snippet.Description := Trim(Node.ChildText('description'));
           Snippet.Name := Snippet.Description;
           if Snippet.Name = '' then
+          begin
             Snippet.Name := Snippet.Prefix;
+          end;
           Snippet.Body := Body;
           Snippet.Origin := TAtlasSnippetOrigin.Ide;
           Snippet.FileName := AFileName;
@@ -399,10 +470,15 @@ class function TAtlasLiveTemplates.Parse(const AXml, AFileName: string;
           Inc(AStats.Templates);
         end
         else
+        begin
           Inc(AStats.Skipped);
+        end;
       end
       else
+      begin
         Collect(Node);
+      end;
+    end;
   end;
 
 var
@@ -434,7 +510,9 @@ begin
   Result := nil;
   AStats := Default(TAtlasLiveTemplateStats);
   if (APath = '') or not TDirectory.Exists(APath) then
+  begin
     Exit;
+  end;
   for FileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
   begin
     try
@@ -467,12 +545,16 @@ var
 begin
   Result := '';
   if (APath = '') or not TDirectory.Exists(APath) then
+  begin
     Exit;
+  end;
   Result := '+';
   for FileName in TDirectory.GetFiles(APath, '*.xml', TSearchOption.soAllDirectories) do
   begin
     if not FileAge(FileName, Age) then
+    begin
       Age := 0;
+    end;
     Result := Result + FileName + '|' + FloatToStr(Age, TFormatSettings.Invariant) + ';';
   end;
 end;
@@ -481,7 +563,9 @@ class function TAtlasLiveTemplates.Folder(const ABdsVersion: string): string;
 begin
   Result := GetEnvironmentVariable('APPDATA');
   if (Result = '') or (ABdsVersion = '') then
+  begin
     Exit('');
+  end;
   Result := IncludeTrailingPathDelimiter(Result) + 'Embarcadero\BDS\' + ABdsVersion + '\code_templates';
 end;
 

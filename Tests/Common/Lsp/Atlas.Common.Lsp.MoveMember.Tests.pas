@@ -185,17 +185,27 @@ begin
   end;
 end;
 
+/// <summary>Context mit der Richtung ADirection.</summary>
+function ContextFor(const AIndex: ISymbolIndex; const ADirection: string): TMoveMemberContext;
+begin
+  Result := Context(AIndex);
+  Result.Direction := ADirection;
+end;
+
 function Run(const AIndex: ISymbolIndex; const AFileName: string; ALine: Integer; const ADirection: string;
   ARequest: TJSONObject): TJSONObject;
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  mContext: TMoveMemberContext;
 begin
+  mContext := ContextFor(AIndex, ADirection);
+  mContext.Request := ARequest;
   Tree := TPascalParser.Parse(TextOf(AFileName));
   Resolver := TNameResolver.Create(AIndex, nil);
   try
     Result := TLspMoveMember.Execute(Resolver, Tree, AFileName, TextOf(AFileName), TTextPosition.Create(ALine, 6),
-      ADirection, ARequest, Context(AIndex));
+      mContext);
   finally
     Resolver.Free;
     Tree.Free;
@@ -234,7 +244,7 @@ var
 begin
   Tree := TPascalParser.Parse(UnitKind);
   try
-    Actions := TLspMoveMember.Actions(True, Tree, UnitKind, KindFile, 'file:///C:/P/Kind.pas',
+    Actions := TLspMoveMember.Actions(Tree, UnitKind, KindFile, 'file:///C:/P/Kind.pas',
       TTextPosition.Create(12, 6), FIndex);
     try
       // TChild hat einen Vorfahren im Projekt, aber keine Nachfahren.
@@ -245,19 +255,17 @@ begin
     finally
       FreeAll(Actions);
     end;
-    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(False, Tree, UnitKind, KindFile, 'u',
-      TTextPosition.Create(12, 6), FIndex))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(True, Tree, UnitKind, KindFile, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(Tree, UnitKind, KindFile, 'u',
       TTextPosition.Create(7, 4), FIndex))), 'Kopfzeile');
     // THelper hat weder Vorfahren noch Nachfahren im Projekt; leere Klasse: nichts.
-    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(True, Tree, UnitKind, KindFile, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(Tree, UnitKind, KindFile, 'u',
       TTextPosition.Create(5, 4), FIndex))), 'THelper');
   finally
     Tree.Free;
   end;
   Tree := TPascalParser.Parse(UnitBasis);
   try
-    Actions := TLspMoveMember.Actions(True, Tree, UnitBasis, BasisFile, 'u', TTextPosition.Create(5, 6), FIndex);
+    Actions := TLspMoveMember.Actions(Tree, UnitBasis, BasisFile, 'u', TTextPosition.Create(5, 6), FIndex);
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('„Show“ in Nachfahren verschieben …', Actions[0].GetValue('title').Value);
@@ -278,7 +286,7 @@ begin
   Tree := TPascalParser.Parse(UnitKind);
   Answer := nil;
   try
-    Answer := TLspMoveMember.Prepare(Tree, UnitKind, KindFile, TTextPosition.Create(12, 6), 'up', Context(FIndex));
+    Answer := TLspMoveMember.Prepare(Tree, UnitKind, KindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'up'));
     Assert.AreEqual('TChild', Answer.GetValue('className').Value);
     Assert.AreEqual('Fill', Answer.GetValue('member').Value);
     Targets := Answer.GetValue('targets') as TJSONArray;
@@ -293,7 +301,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveMember.Prepare(Tree, UnitKind, KindFile, TTextPosition.Create(12, 6), 'down', Context(FIndex)).Free;
+        TLspMoveMember.Prepare(Tree, UnitKind, KindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'down')).Free;
       end, EJsonRpcError);
   finally
     Answer.Free;

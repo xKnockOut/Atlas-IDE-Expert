@@ -88,6 +88,328 @@ begin
   end;
 end;
 
+type
+  /// <summary>Liest die Platzhalter eines Formatstrings nacheinander (TFormatString.Parse).</summary>
+  TFormatParser = record
+  private
+    FText: string;
+    FPos: Integer;
+    /// <summary>Nächstes Argument ohne Index.</summary>
+    FNext: Integer;
+    /// <summary>Index "*" gelesen: Zuordnung ab hier unbekannt.</summary>
+    FDynamic: Boolean;
+    function AtEnd: Boolean;
+    /// <summary>Steht AChar an der aktuellen Stelle?</summary>
+    function At(AChar: Char): Boolean;
+    /// <summary>Ziffern oder "*" ab FPos; AStar: "*" gelesen.</summary>
+    function ReadNumber(out AValue: Integer; out AStar: Boolean): Boolean;
+    /// <summary>Breite bzw. Genauigkeit aus der Argumentliste: verbraucht ein Argument.</summary>
+    function TakeArgument: Integer;
+    /// <summary>Index, "-" und Breite; liefert, ob die Breite "*" ist.</summary>
+    function ReadIndexAndWidth(var ASpec: TFormatSpec): Boolean;
+    procedure ReadPrecision(var ASpec: TFormatSpec);
+    procedure ReadType(var ASpec: TFormatSpec);
+    /// <summary>Platzhalter ab dem "%" an AStart; FPos steht dahinter.</summary>
+    function ReadSpec(AStart: Integer): TFormatSpec;
+  public
+    procedure Init(const AText: string);
+    /// <summary>Nächster Platzhalter; False am Ende des Texts.</summary>
+    function Next(out ASpec: TFormatSpec): Boolean;
+  end;
+
+  /// <summary>Liest ein Pascal-Stringliteral aus Teilen in Hochkommas und Zeichencodes
+  /// (TFormatString.LiteralOffsets).</summary>
+  TLiteralReader = record
+  private
+    FText: string;
+    FPos: Integer;
+    procedure Add(AChar: Char; AOffset: Integer);
+    /// <summary>Teil in Hochkommas ab FPos; False, wenn er nicht endet.</summary>
+    function ReadQuoted: Boolean;
+    /// <summary>Ziffern eines Zeichencodes ab FPos; False ohne Ziffern oder bei Codes über $FFFF.</summary>
+    function ReadCodeDigits(AHex: Boolean; out ACode: Integer): Boolean;
+    /// <summary>Zeichencode #13 bzw. #$0A ab FPos; False bei ungültigem Code.</summary>
+    function ReadCode: Boolean;
+  public
+    Value: string;
+    Offsets: TArray<Integer>;
+    procedure Init(const AText: string);
+    /// <summary>Liest den ganzen Text; False bei anderem Text als Literalteilen und Leerraum.</summary>
+    function Read: Boolean;
+  end;
+
+{ TFormatParser }
+
+procedure TFormatParser.Init(const AText: string);
+begin
+  FText := AText;
+  FPos := 1;
+  FNext := 0;
+  FDynamic := False;
+end;
+
+function TFormatParser.AtEnd: Boolean;
+begin
+  Result := FPos > Length(FText);
+end;
+
+function TFormatParser.At(AChar: Char): Boolean;
+begin
+  Result := not AtEnd and (FText[FPos] = AChar);
+end;
+
+function TFormatParser.ReadNumber(out AValue: Integer; out AStar: Boolean): Boolean;
+var
+  mFrom: Integer;
+begin
+  AValue := 0;
+  AStar := At('*');
+  if AStar then
+  begin
+    Inc(FPos);
+    Exit(True);
+  end;
+  mFrom := FPos;
+  while not AtEnd and CharInSet(FText[FPos], ['0'..'9']) do
+  begin
+    if AValue < 100000 then
+    begin
+      AValue := AValue * 10 + Ord(FText[FPos]) - Ord('0');
+    end;
+    Inc(FPos);
+  end;
+  Result := FPos > mFrom;
+end;
+
+function TFormatParser.TakeArgument: Integer;
+begin
+  Result := FNext;
+  Inc(FNext);
+end;
+
+function TFormatParser.ReadIndexAndWidth(var ASpec: TFormatSpec): Boolean;
+var
+  mValue: Integer;
+  mStar, mHasNumber: Boolean;
+begin
+  // Index oder Breite.
+  mHasNumber := ReadNumber(mValue, mStar);
+  if mHasNumber and At(':') then
+  begin
+    Inc(FPos);
+    ASpec.ExplicitIndex := True;
+    if mStar then
+    begin
+      FDynamic := True;
+    end
+    else
+    begin
+      FNext := mValue;
+    end;
+    if At('-') then
+    begin
+      Inc(FPos);
+    end;
+    mHasNumber := ReadNumber(mValue, mStar);
+  end
+  else if not mHasNumber and At('-') then
+  begin
+    Inc(FPos);
+    mHasNumber := ReadNumber(mValue, mStar);
+  end;
+  Result := mHasNumber and mStar;
+end;
+
+procedure TFormatParser.ReadPrecision(var ASpec: TFormatSpec);
+var
+  mValue: Integer;
+  mStar: Boolean;
+begin
+  if not At('.') then
+  begin
+    Exit;
+  end;
+  Inc(FPos);
+  if ReadNumber(mValue, mStar) and mStar then
+  begin
+    ASpec.PrecisionArgument := TakeArgument;
+  end;
+end;
+
+procedure TFormatParser.ReadType(var ASpec: TFormatSpec);
+begin
+  if AtEnd then
+  begin
+    ASpec.Kind := TFormatSpecKind.Incomplete;
+    Exit;
+  end;
+  if CharInSet(LowerChar(FText[FPos]), cTypeChars) then
+  begin
+    ASpec.TypeChar := LowerChar(FText[FPos]);
+    ASpec.Argument := TakeArgument;
+  end
+  else if ASpec.ExplicitIndex and not CharInSet(FText[FPos], ['a'..'z', 'A'..'Z']) then
+  begin
+    ASpec.Kind := TFormatSpecKind.IndexWithoutType;
+  end
+  else
+  begin
+    ASpec.Kind := TFormatSpecKind.UnknownType;
+  end;
+  Inc(FPos);
+end;
+
+function TFormatParser.ReadSpec(AStart: Integer): TFormatSpec;
+begin
+  Result := Default(TFormatSpec);
+  Result.Offset := AStart;
+  Result.Argument := -1;
+  Result.WidthArgument := -1;
+  Result.PrecisionArgument := -1;
+  if ReadIndexAndWidth(Result) then
+  begin
+    Result.WidthArgument := TakeArgument;
+  end;
+  ReadPrecision(Result);
+  Result.Dynamic := FDynamic;
+  ReadType(Result);
+  Result.Text := Copy(FText, AStart, FPos - AStart);
+  if FDynamic then
+  begin
+    Result.Argument := -1;
+    Result.WidthArgument := -1;
+    Result.PrecisionArgument := -1;
+  end;
+end;
+
+function TFormatParser.Next(out ASpec: TFormatSpec): Boolean;
+var
+  mStart: Integer;
+begin
+  while not AtEnd do
+  begin
+    if FText[FPos] <> '%' then
+    begin
+      Inc(FPos);
+      Continue;
+    end;
+    mStart := FPos;
+    Inc(FPos);
+    if At('%') then
+    begin
+      Inc(FPos);
+      Continue;
+    end;
+    ASpec := ReadSpec(mStart);
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+{ TLiteralReader }
+
+procedure TLiteralReader.Init(const AText: string);
+begin
+  FText := AText;
+  FPos := 1;
+  Value := '';
+  Offsets := nil;
+end;
+
+procedure TLiteralReader.Add(AChar: Char; AOffset: Integer);
+begin
+  Value := Value + AChar;
+  Offsets := Offsets + [AOffset];
+end;
+
+function TLiteralReader.ReadQuoted: Boolean;
+begin
+  Inc(FPos);
+  while FPos <= Length(FText) do
+  begin
+    if FText[FPos] <> '''' then
+    begin
+      Add(FText[FPos], FPos - 1);
+      Inc(FPos);
+    end
+    else if (FPos < Length(FText)) and (FText[FPos + 1] = '''') then
+    begin
+      Add('''', FPos - 1);
+      Inc(FPos, 2);
+    end
+    else
+    begin
+      Inc(FPos);
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TLiteralReader.ReadCodeDigits(AHex: Boolean; out ACode: Integer): Boolean;
+var
+  mDigits: Integer;
+begin
+  ACode := 0;
+  mDigits := 0;
+  while (FPos <= Length(FText)) and (CharInSet(FText[FPos], ['0'..'9']) or AHex and
+    CharInSet(FText[FPos], ['a'..'f', 'A'..'F'])) do
+  begin
+    if AHex then
+    begin
+      ACode := ACode * 16 + StrToInt('$' + FText[FPos]);
+    end
+    else
+    begin
+      ACode := ACode * 10 + Ord(FText[FPos]) - Ord('0');
+    end;
+    if ACode > $FFFF then
+    begin
+      Exit(False);
+    end;
+    Inc(mDigits);
+    Inc(FPos);
+  end;
+  Result := mDigits > 0;
+end;
+
+function TLiteralReader.ReadCode: Boolean;
+var
+  mStart, mCode: Integer;
+  mHex: Boolean;
+begin
+  mStart := FPos;
+  Inc(FPos);
+  mHex := (FPos <= Length(FText)) and (FText[FPos] = '$');
+  if mHex then
+  begin
+    Inc(FPos);
+  end;
+  Result := ReadCodeDigits(mHex, mCode);
+  if Result then
+  begin
+    Add(Char(mCode), mStart - 1);
+  end;
+end;
+
+function TLiteralReader.Read: Boolean;
+begin
+  Result := True;
+  while Result and (FPos <= Length(FText)) do
+  begin
+    case FText[FPos] of
+      '''':
+        Result := ReadQuoted;
+      '#':
+        Result := ReadCode;
+      ' ', #9, #10, #13:
+        Inc(FPos);
+    else
+      Result := False;
+    end;
+  end;
+end;
+
 { TFormatString }
 
 function TFormatString.Valid: Boolean;
@@ -165,141 +487,13 @@ end;
 
 class function TFormatString.Parse(const AFormat: string): TFormatString;
 var
-  mPos, mStart, mNext: Integer;
-  mDynamic: Boolean;
+  mParser: TFormatParser;
   mSpec: TFormatSpec;
-
-  function AtEnd: Boolean;
-  begin
-    Result := mPos > Length(AFormat);
-  end;
-
-  /// <summary>Ziffern oder "*" ab mPos; AStar: "*" gelesen.</summary>
-  function ReadNumber(out AValue: Integer; out AStar: Boolean): Boolean;
-  var
-    mFrom: Integer;
-  begin
-    AValue := 0;
-    AStar := False;
-    if not AtEnd and (AFormat[mPos] = '*') then
-    begin
-      AStar := True;
-      Inc(mPos);
-      Exit(True);
-    end;
-    mFrom := mPos;
-    while not AtEnd and CharInSet(AFormat[mPos], ['0'..'9']) do
-    begin
-      if AValue < 100000 then
-      begin
-        AValue := AValue * 10 + Ord(AFormat[mPos]) - Ord('0');
-      end;
-      Inc(mPos);
-    end;
-    Result := mPos > mFrom;
-  end;
-
-  /// <summary>Breite bzw. Genauigkeit aus der Argumentliste: verbraucht ein Argument.</summary>
-  function TakeArgument: Integer;
-  begin
-    Result := mNext;
-    Inc(mNext);
-  end;
-
-var
-  mValue: Integer;
-  mStar, mHasNumber: Boolean;
 begin
   Result.Specs := nil;
-  mPos := 1;
-  mNext := 0;
-  mDynamic := False;
-  while mPos <= Length(AFormat) do
+  mParser.Init(AFormat);
+  while mParser.Next(mSpec) do
   begin
-    if AFormat[mPos] <> '%' then
-    begin
-      Inc(mPos);
-      Continue;
-    end;
-    mStart := mPos;
-    Inc(mPos);
-    if not AtEnd and (AFormat[mPos] = '%') then
-    begin
-      Inc(mPos);
-      Continue;
-    end;
-    mSpec := Default(TFormatSpec);
-    mSpec.Offset := mStart;
-    mSpec.Argument := -1;
-    mSpec.WidthArgument := -1;
-    mSpec.PrecisionArgument := -1;
-    // Index oder Breite.
-    mHasNumber := ReadNumber(mValue, mStar);
-    if mHasNumber and not AtEnd and (AFormat[mPos] = ':') then
-    begin
-      Inc(mPos);
-      mSpec.ExplicitIndex := True;
-      if mStar then
-      begin
-        mDynamic := True;
-      end
-      else
-      begin
-        mNext := mValue;
-      end;
-      if not AtEnd and (AFormat[mPos] = '-') then
-      begin
-        Inc(mPos);
-      end;
-      mHasNumber := ReadNumber(mValue, mStar);
-    end
-    else if not mHasNumber and not AtEnd and (AFormat[mPos] = '-') then
-    begin
-      Inc(mPos);
-      mHasNumber := ReadNumber(mValue, mStar);
-    end;
-    if mHasNumber and mStar then
-    begin
-      mSpec.WidthArgument := TakeArgument;
-    end;
-    if not AtEnd and (AFormat[mPos] = '.') then
-    begin
-      Inc(mPos);
-      if ReadNumber(mValue, mStar) and mStar then
-      begin
-        mSpec.PrecisionArgument := TakeArgument;
-      end;
-    end;
-    mSpec.Dynamic := mDynamic;
-    if AtEnd then
-    begin
-      mSpec.Kind := TFormatSpecKind.Incomplete;
-    end
-    else if CharInSet(LowerChar(AFormat[mPos]), cTypeChars) then
-    begin
-      mSpec.TypeChar := LowerChar(AFormat[mPos]);
-      mSpec.Argument := TakeArgument;
-      Inc(mPos);
-    end
-    else
-    begin
-      if mSpec.ExplicitIndex and not CharInSet(AFormat[mPos], ['a'..'z', 'A'..'Z']) then
-      begin
-        mSpec.Kind := TFormatSpecKind.IndexWithoutType;
-      end
-      else
-      begin
-        mSpec.Kind := TFormatSpecKind.UnknownType;
-      end;
-      Inc(mPos);
-    end;
-    mSpec.Text := Copy(AFormat, mStart, mPos - mStart);
-    if mDynamic then
-    begin
-      mSpec.Argument := -1;
-      mSpec.WidthArgument := -1;
-      mSpec.PrecisionArgument := -1;
-    end;
     Result.Specs := Result.Specs + [mSpec];
   end;
 end;
@@ -314,91 +508,22 @@ end;
 class function TFormatString.LiteralOffsets(const AText: string; out AValue: string;
   out AOffsets: TArray<Integer>): Boolean;
 var
-  mPos, mCode, mDigits, mStart: Integer;
-  mHex: Boolean;
-
-  procedure Add(AChar: Char; AOffset: Integer);
-  begin
-    AValue := AValue + AChar;
-    AOffsets := AOffsets + [AOffset];
-  end;
-
+  mReader: TLiteralReader;
 begin
   AValue := '';
   AOffsets := nil;
-  Result := False;
   // Mehrzeiliges Literal: ''' und ein Zeilenende (Delphi 12).
   if (AText = '') or AText.StartsWith('''''''') and (Length(AText) > 3) and CharInSet(AText[4], [#10, #13]) then
   begin
-    Exit;
+    Exit(False);
   end;
-  mPos := 1;
-  while mPos <= Length(AText) do
-    case AText[mPos] of
-      '''':
-        begin
-          Inc(mPos);
-          repeat
-            if mPos > Length(AText) then
-            begin
-              Exit;
-            end;
-            if AText[mPos] = '''' then
-            begin
-              if (mPos < Length(AText)) and (AText[mPos + 1] = '''') then
-              begin
-                Add('''', mPos - 1);
-                Inc(mPos, 2);
-                Continue;
-              end;
-              Inc(mPos);
-              Break;
-            end;
-            Add(AText[mPos], mPos - 1);
-            Inc(mPos);
-          until False;
-        end;
-      '#':
-        begin
-          mStart := mPos;
-          Inc(mPos);
-          mHex := (mPos <= Length(AText)) and (AText[mPos] = '$');
-          if mHex then
-          begin
-            Inc(mPos);
-          end;
-          mCode := 0;
-          mDigits := 0;
-          while (mPos <= Length(AText)) and (CharInSet(AText[mPos], ['0'..'9']) or mHex and
-            CharInSet(AText[mPos], ['a'..'f', 'A'..'F'])) do
-          begin
-            if mHex then
-            begin
-              mCode := mCode * 16 + StrToInt('$' + AText[mPos]);
-            end
-            else
-            begin
-              mCode := mCode * 10 + Ord(AText[mPos]) - Ord('0');
-            end;
-            if mCode > $FFFF then
-            begin
-              Exit;
-            end;
-            Inc(mDigits);
-            Inc(mPos);
-          end;
-          if mDigits = 0 then
-          begin
-            Exit;
-          end;
-          Add(Char(mCode), mStart - 1);
-        end;
-      ' ', #9, #10, #13:
-        Inc(mPos);
-    else
-      Exit;
-    end;
-  Result := True;
+  mReader.Init(AText);
+  Result := mReader.Read;
+  if Result then
+  begin
+    AValue := mReader.Value;
+    AOffsets := mReader.Offsets;
+  end;
 end;
 
 class function TFormatString.ExpressionValue(const AText: string; out AValue: string): Boolean;
@@ -444,6 +569,16 @@ begin
   Result := ExpressionValue(Trim(Copy(ASignature, mEqual + 1, MaxInt)), AValue);
 end;
 
+/// <summary>Art einer Zahl ohne Vorzeichen: Float mit "." oder Exponent (nicht bei $-Zahlen), sonst Integer_.</summary>
+function NumberClass(const AText: string): TFormatArgumentClass;
+begin
+  Result := TFormatArgumentClass.Integer_;
+  if (AText[1] <> '$') and ((Pos('.', AText) > 0) or (Pos('e', LowerCase(AText)) > 0)) then
+  begin
+    Result := TFormatArgumentClass.Float;
+  end;
+end;
+
 class function TFormatString.LiteralClass(const AText: string; out ATypeName: string): TFormatArgumentClass;
 var
   mText, mValue: string;
@@ -462,20 +597,16 @@ begin
   if CharInSet(mText[1], ['''', '#']) and LiteralValue(mText, mValue) then
   begin
     ATypeName := 'ein String';
+    Result := TFormatArgumentClass.Text;
     if Length(mValue) = 1 then
     begin
-      Exit(TFormatArgumentClass.Character);
+      Result := TFormatArgumentClass.Character;
     end;
-    Exit(TFormatArgumentClass.Text);
-  end;
-  if CharInSet(mText[1], ['0'..'9', '$']) then
+  end
+  else if CharInSet(mText[1], ['0'..'9', '$']) then
   begin
     ATypeName := 'eine Zahl';
-    if (mText[1] <> '$') and ((Pos('.', mText) > 0) or (Pos('e', LowerCase(mText)) > 0)) then
-    begin
-      Exit(TFormatArgumentClass.Float);
-    end;
-    Exit(TFormatArgumentClass.Integer_);
+    Result := NumberClass(mText);
   end;
 end;
 

@@ -112,10 +112,25 @@ type
     function Term: Int64;
     function Factor: Int64;
     function Primary: Int64;
-    function CharValue(const AText: string; out AValue: Int64): Boolean;
-    function StringValue(const AText: string; out AValue: Int64): Boolean;
+    /// <summary>Wert des Tokens AToken am Anfang eines Operanden.</summary>
+    function TokenValue(const AToken: TPascalToken): Int64;
+    /// <summary>Nach einem Zeichen: AKnown sonst Fehler; 'a'#13 und #13#10 sind Strings, keine Zeichen.</summary>
+    procedure EndCharacter(AKnown: Boolean);
+    function Parenthesized: Int64;
+    /// <summary>Name, Namenskette oder Funktionsaufruf ab dem Token an AStart.</summary>
+    function NamedValue(AStart: Integer; const AName: string): Int64;
+    /// <summary>SizeOf, High und Low eines Typs fester Größe; False, wenn es keins davon ist.</summary>
+    function TypeQuery(const AName: string; out AValue: Int64): Boolean;
+    /// <summary>Ord, Chr, Succ, Pred und Typumwandlungen.</summary>
+    function FunctionValue(const AName: string): Int64;
+    /// <summary>Kette A.B.C ab AName über FLookup, sonst True, False, MaxInt und MaxLongint.</summary>
+    function ChainValue(AStart: Integer; const AName: string): Int64;
+    function AtTermOperator: Boolean;
+    function ApplyTerm(const AOperation: string; ALeft, ARight: Int64): Int64;
     function Arguments: Int64;
     function Cast(const ATypeName: string; AValue: Int64): Int64;
+    /// <summary>Umwandlung in NativeInt, LongInt, NativeUInt, LongWord: 32 oder 64 Bit je Plattform.</summary>
+    procedure CheckPlatformCast(const ATypeName: string; AValue: Int64);
   public
     constructor Create(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
       const ALookup: TOrdinalNameLookup);
@@ -200,52 +215,74 @@ begin
   FFailed := True;
 end;
 
-function TEvaluator.Arith(const AOperation: string; ALeft, ARight: Int64): Int64;
-var
-  Estimate: Double;
+/// <summary>Grobe Schätzung des Ergebnisses als Gleitkommazahl.</summary>
+function Estimate(const AOperation: string; ALeft, ARight: Int64): Double;
 begin
-  // Erst grob schätzen: Liegt das Ergebnis sicher außerhalb dessen, was Delphi rechnet, ist es ein Überlauf.
-  Result := 0;
   if AOperation = '+' then
   begin
-    Estimate := ALeft + Double(ARight);
+    Result := ALeft + Double(ARight);
   end
   else if AOperation = '-' then
   begin
-    Estimate := ALeft - Double(ARight);
+    Result := ALeft - Double(ARight);
   end
   else
   begin
-    Estimate := ALeft * Double(ARight);
+    Result := ALeft * Double(ARight);
   end;
-  if (Estimate < OverflowBelow) or (Estimate > OverflowAbove) then
+end;
+
+/// <summary>Ergebnis sicher unter Low(Int64)? Exakt geprüft: Double hat dort zu wenig Stellen
+/// (Low(Int64) - 10 ergäbe wieder Low(Int64)).</summary>
+function BelowLowest(const AOperation: string; ALeft, ARight: Int64): Boolean;
+begin
+  if AOperation = '+' then
+  begin
+    Result := (ARight < 0) and (ALeft < Low(Int64) - ARight);
+  end
+  else if AOperation = '-' then
+  begin
+    Result := (ARight > 0) and (ALeft < Low(Int64) + ARight);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Exaktes Ergebnis; knapp an den Grenzen meldet die Überlaufprüfung EIntOverflow.</summary>
+function Exact(const AOperation: string; ALeft, ARight: Int64): Int64;
+begin
+  if AOperation = '+' then
+  begin
+    Result := ALeft + ARight;
+  end
+  else if AOperation = '-' then
+  begin
+    Result := ALeft - ARight;
+  end
+  else
+  begin
+    Result := ALeft * ARight;
+  end;
+end;
+
+function TEvaluator.Arith(const AOperation: string; ALeft, ARight: Int64): Int64;
+var
+  mEstimate: Double;
+begin
+  // Erst grob schätzen: Liegt das Ergebnis sicher außerhalb dessen, was Delphi rechnet, ist es ein Überlauf.
+  Result := 0;
+  mEstimate := Estimate(AOperation, ALeft, ARight);
+  if (mEstimate < OverflowBelow) or (mEstimate > OverflowAbove) or BelowLowest(AOperation, ALeft, ARight) then
   begin
     FailWith(TOrdinalStatus.Overflow);
     Exit;
   end;
-  // Unter Low(Int64) ist es sicher ein Überlauf. Exakt prüfen: Double hat dort zu wenig Stellen
-  // (Low(Int64) - 10 ergäbe wieder Low(Int64)).
-  if ((AOperation = '+') and (ARight < 0) and (ALeft < Low(Int64) - ARight)) or
-    ((AOperation = '-') and (ARight > 0) and (ALeft < Low(Int64) + ARight)) then
-  begin
-    FailWith(TOrdinalStatus.Overflow);
-    Exit;
-  end;
-  // Knapp an den Grenzen meldet die Überlaufprüfung EIntOverflow. Mit lauter vorzeichenbehafteten Operanden
-  // rechnet dcc in Int64 und meldet E2099 (#1372); mit einem möglichen UInt64-Operanden bleibt es unbekannt.
+  // Mit lauter vorzeichenbehafteten Operanden rechnet dcc in Int64 und meldet E2099 (#1372); mit einem möglichen
+  // UInt64-Operanden bleibt es unbekannt.
   try
-    if AOperation = '+' then
-    begin
-      Result := ALeft + ARight;
-    end
-    else if AOperation = '-' then
-    begin
-      Result := ALeft - ARight;
-    end
-    else
-    begin
-      Result := ALeft * ARight;
-    end;
+    Result := Exact(AOperation, ALeft, ARight);
   except
     on EIntOverflow do
     begin
@@ -339,58 +376,81 @@ begin
   end;
 end;
 
+const
+  // Operatoren der Stufe von *, als Wörter.
+  cTermWords: array[0..4] of string = ('div', 'mod', 'and', 'shl', 'shr');
+
+function TEvaluator.AtTermOperator: Boolean;
+var
+  mWord: string;
+begin
+  if IsSym('*') then
+  begin
+    Exit(True);
+  end;
+  for mWord in cTermWords do
+  begin
+    if IsWord(mWord) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TEvaluator.ApplyTerm(const AOperation: string; ALeft, ARight: Int64): Int64;
+begin
+  Result := ALeft;
+  if AOperation = '*' then
+  begin
+    Result := Arith('*', ALeft, ARight);
+  end
+  else if ((AOperation = 'div') or (AOperation = 'mod')) and (ARight = 0) then
+  begin
+    FailWith(TOrdinalStatus.DivisionByZero);
+  end
+  else if AOperation = 'div' then
+  begin
+    Result := ALeft div ARight;
+  end
+  else if AOperation = 'mod' then
+  begin
+    Result := ALeft mod ARight;
+  end
+  else if AOperation = 'and' then
+  begin
+    Result := ALeft and ARight;
+  end
+  else if (ARight < 0) or (ARight > 63) then
+  begin
+    Fail;
+  end
+  else if AOperation = 'shl' then
+  begin
+    Result := ALeft shl ARight;
+  end
+  else
+  begin
+    Result := ALeft shr ARight;
+  end;
+end;
+
 function TEvaluator.Term: Int64;
 var
-  Right: Int64;
-  Operation: string;
+  mRight: Int64;
+  mOperation: string;
 begin
   Result := Factor;
-  while not FFailed and (IsSym('*') or IsWord('div') or IsWord('mod') or IsWord('and') or IsWord('shl') or
-    IsWord('shr')) do
+  while not FFailed and AtTermOperator do
   begin
-    Operation := LowerCase(Current.Text);
+    mOperation := LowerCase(Current.Text);
     Advance;
-    Right := Factor;
+    mRight := Factor;
     if FFailed then
     begin
       Exit;
     end;
-    if Operation = '*' then
-    begin
-      Result := Arith('*', Result, Right);
-    end
-    else if (Operation = 'div') or (Operation = 'mod') then
-    begin
-      if Right = 0 then
-      begin
-        FailWith(TOrdinalStatus.DivisionByZero);
-        Exit;
-      end;
-      if Operation = 'div' then
-      begin
-        Result := Result div Right;
-      end
-      else
-      begin
-        Result := Result mod Right;
-      end;
-    end
-    else if Operation = 'and' then
-    begin
-      Result := Result and Right;
-    end
-    else if (Right < 0) or (Right > 63) then
-    begin
-      Fail;
-    end
-    else if Operation = 'shl' then
-    begin
-      Result := Result shl Right;
-    end
-    else
-    begin
-      Result := Result shr Right;
-    end;
+    Result := ApplyTerm(mOperation, Result, mRight);
   end;
 end;
 
@@ -436,12 +496,48 @@ begin
   Advance;
 end;
 
+procedure TEvaluator.CheckPlatformCast(const ATypeName: string; AValue: Int64);
+var
+  mLow, mHigh: Int64;
+begin
+  // Werte, die in 32 Bit passen, bleiben überall gleich; sonst hängt das Ergebnis von der Plattform ab.
+  if MatchText(ATypeName, ['NativeInt', 'LongInt']) then
+  begin
+    mLow := -2147483648;
+    mHigh := 2147483647;
+  end
+  else
+  begin
+    mLow := 0;
+    mHigh := 4294967295;
+  end;
+  if (AValue < mLow) or (AValue > mHigh) then
+  begin
+    Fail;
+  end;
+end;
+
+/// <summary>AValue auf den Bereich ALow..AHigh eines Typs unter 8 Byte abgeschnitten.</summary>
+function Truncated(AValue, ALow, AHigh: Int64): Int64;
+var
+  mBits: UInt64;
+begin
+  mBits := UInt64(AValue) and (UInt64(AHigh - ALow));
+  if (ALow < 0) and (mBits > UInt64(AHigh)) then
+  begin
+    Result := Int64(mBits) + ALow * 2;
+  end
+  else
+  begin
+    Result := Int64(mBits);
+  end;
+end;
+
 function TEvaluator.Cast(const ATypeName: string; AValue: Int64): Int64;
 var
   mLow, mHigh: Int64;
   mHighKnown: Boolean;
   mSize: Integer;
-  mBits: UInt64;
 begin
   // Umwandlung eines konstanten Werts (#1324): Delphi schneidet auf die Größe des Zieltyps ab.
   Result := AValue;
@@ -455,41 +551,19 @@ begin
   end;
   if not TOrdinalConstants.FixedType(ATypeName, mLow, mHigh, mHighKnown, mSize) then
   begin
-    // NativeInt, LongInt, NativeUInt, LongWord: 32 oder 64 Bit je Plattform. Werte, die in 32 Bit passen,
-    // bleiben überall gleich; sonst hängt das Ergebnis von der Plattform ab.
-    if MatchText(ATypeName, ['NativeInt', 'LongInt']) then
-    begin
-      mLow := -2147483648;
-      mHigh := 2147483647;
-    end
-    else
-    begin
-      mLow := 0;
-      mHigh := 4294967295;
-    end;
-    if (AValue < mLow) or (AValue > mHigh) then
-    begin
-      Fail;
-    end;
-    Exit;
-  end;
-  if mSize >= 8 then
+    CheckPlatformCast(ATypeName, AValue);
+  end
+  // UInt64(-1) liegt über High(Int64) und lässt sich als Int64 nicht darstellen.
+  else if mSize >= 8 then
   begin
-    // UInt64(-1) liegt über High(Int64) und lässt sich als Int64 nicht darstellen.
     if not mHighKnown and (AValue < 0) then
     begin
       Fail;
     end;
-    Exit;
-  end;
-  mBits := UInt64(AValue) and (UInt64(mHigh - mLow));
-  if (mLow < 0) and (mBits > UInt64(mHigh)) then
-  begin
-    Result := Int64(mBits) + mLow * 2;
   end
   else
   begin
-    Result := Int64(mBits);
+    Result := Truncated(AValue, mLow, mHigh);
   end;
 end;
 
@@ -522,44 +596,217 @@ begin
   Result := True;
 end;
 
-function TEvaluator.CharValue(const AText: string; out AValue: Int64): Boolean;
+/// <summary>Wert eines Zeichens #13, #$0D.</summary>
+function CharValue(const AText: string; out AValue: Int64): Boolean;
 var
-  Digits: string;
+  mDigits: string;
 begin
-  // #13, #$0D
-  Digits := Copy(AText, 2, MaxInt);
-  Result := (Digits <> '') and TOrdinalConstants.TryNumber(Digits, AValue);
+  mDigits := Copy(AText, 2, MaxInt);
+  AValue := 0;
+  Result := (mDigits <> '') and TOrdinalConstants.TryNumber(mDigits, AValue);
 end;
 
-function TEvaluator.StringValue(const AText: string; out AValue: Int64): Boolean;
+/// <summary>Wert eines Strings aus genau einem Zeichen: 'a' bzw. '''' für das Hochkomma.</summary>
+function StringValue(const AText: string; out AValue: Int64): Boolean;
 var
-  Inner: string;
+  mInner: string;
 begin
-  // Genau ein Zeichen: 'a' bzw. '''' für das Hochkomma.
-  Result := False;
   AValue := 0;
-  if (Length(AText) < 3) or (AText[1] <> '''') or (AText[Length(AText)] <> '''') then
+  mInner := '';
+  if (Length(AText) >= 3) and (AText[1] = '''') and (AText[Length(AText)] = '''') then
+  begin
+    mInner := StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]);
+  end;
+  Result := Length(mInner) = 1;
+  if Result then
+  begin
+    AValue := Ord(mInner[1]);
+  end;
+end;
+
+procedure TEvaluator.EndCharacter(AKnown: Boolean);
+begin
+  if not AKnown then
+  begin
+    Fail;
+  end;
+  Advance;
+  if not AtEnd and (Current.Kind in [TPascalTokenKind.CharLiteral, TPascalTokenKind.StringLiteral]) then
+  begin
+    Fail;
+  end;
+end;
+
+function TEvaluator.Parenthesized: Int64;
+begin
+  Advance;
+  Result := Expression;
+  if not IsSym(')') then
+  begin
+    Fail;
+  end
+  else
+  begin
+    Advance;
+  end;
+end;
+
+function TEvaluator.TypeQuery(const AName: string; out AValue: Int64): Boolean;
+var
+  mTypeName: string;
+  mLowest, mHighest: Int64;
+  mHighKnown: Boolean;
+  mSize: Integer;
+begin
+  AValue := 0;
+  Result := MatchText(AName, ['SizeOf', 'High', 'Low']) and TypeArgument(mTypeName);
+  if not Result then
   begin
     Exit;
   end;
-  Inner := StringReplace(Copy(AText, 2, Length(AText) - 2), '''''', '''', [rfReplaceAll]);
-  if Length(Inner) <> 1 then
+  if not SameText(AName, 'SizeOf') and UnsignedWide(mTypeName) then
   begin
-    Exit;
+    FMaybeUnsigned := True;
   end;
-  AValue := Ord(Inner[1]);
+  if not TOrdinalConstants.FixedType(mTypeName, mLowest, mHighest, mHighKnown, mSize) or
+    (SameText(AName, 'High') and not mHighKnown) then
+  begin
+    Fail;
+  end
+  else if SameText(AName, 'SizeOf') then
+  begin
+    AValue := mSize;
+  end
+  else if SameText(AName, 'High') then
+  begin
+    AValue := mHighest;
+  end
+  else
+  begin
+    AValue := mLowest;
+  end;
+end;
+
+function TEvaluator.FunctionValue(const AName: string): Int64;
+begin
+  Result := 0;
+  if SameText(AName, 'Succ') then
+  begin
+    Result := Arguments + 1;
+  end
+  else if SameText(AName, 'Pred') then
+  begin
+    Result := Arguments - 1;
+  end
+  else if SameText(AName, 'Chr') then
+  begin
+    Result := Arguments;
+  end
+  else if IndexText(AName, OrdinalCasts) >= 0 then
+  begin
+    Result := Cast(AName, Arguments);
+  end
+  else
+  begin
+    Fail;
+  end;
+end;
+
+/// <summary>Wert der eingebauten Namen True und False und der Konstanten aus System mit festem Wert auf allen
+/// Plattformen (#1083); False bei anderen Namen.</summary>
+function BuiltinValue(const AName: string; out AValue: Int64): Boolean;
+begin
   Result := True;
+  AValue := 0;
+  if SameText(AName, 'True') then
+  begin
+    AValue := 1;
+  end
+  else if MatchText(AName, ['MaxInt', 'MaxLongint']) then
+  begin
+    AValue := 2147483647;
+  end
+  else
+  begin
+    Result := SameText(AName, 'False');
+  end;
+end;
+
+function TEvaluator.ChainValue(AStart: Integer; const AName: string): Int64;
+var
+  mNames: TArray<string>;
+begin
+  Result := 0;
+  mNames := TArray<string>.Create(AName);
+  while IsSym('.') do
+  begin
+    Advance;
+    if AtEnd or not (Current.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    begin
+      Fail;
+      Exit;
+    end;
+    mNames := mNames + [Current.Text];
+    Advance;
+  end;
+  if Assigned(FLookup) and FLookup(mNames, AStart, Result) then
+  begin
+    // Der Typ einer Konstanten ist unbekannt; sie könnte UInt64 sein.
+    FMaybeUnsigned := True;
+  end
+  else if (Length(mNames) <> 1) or not BuiltinValue(AName, Result) then
+  begin
+    Result := 0;
+    Fail;
+  end;
+end;
+
+function TEvaluator.NamedValue(AStart: Integer; const AName: string): Int64;
+begin
+  Advance;
+  if not IsSym('(') then
+  begin
+    Result := ChainValue(AStart, AName);
+  end
+  else if not TypeQuery(AName, Result) then
+  begin
+    Result := FunctionValue(AName);
+  end;
+end;
+
+function TEvaluator.TokenValue(const AToken: TPascalToken): Int64;
+begin
+  Result := 0;
+  case AToken.Kind of
+    TPascalTokenKind.Number:
+      begin
+        if not TOrdinalConstants.TryNumber(AToken.Text, Result) then
+        begin
+          Fail;
+        end;
+        Advance;
+      end;
+    TPascalTokenKind.CharLiteral:
+      EndCharacter(CharValue(AToken.Text, Result));
+    TPascalTokenKind.StringLiteral:
+      EndCharacter(StringValue(AToken.Text, Result));
+    TPascalTokenKind.Symbol:
+      if AToken.IsSymbol('(') then
+      begin
+        Result := Parenthesized;
+      end
+      else
+      begin
+        Fail;
+      end;
+    TPascalTokenKind.Identifier, TPascalTokenKind.Keyword:
+      Result := NamedValue(FIndex, AToken.Text);
+  else
+    Fail;
+  end;
 end;
 
 function TEvaluator.Primary: Int64;
-var
-  Token: TPascalToken;
-  Names: TArray<string>;
-  Start: Integer;
-  Name, TypeName: string;
-  Lowest, Highest: Int64;
-  HighKnown: Boolean;
-  Size: Integer;
 begin
   Result := 0;
   if AtEnd or FFailed then
@@ -572,156 +819,10 @@ begin
     if FDepth > MaxDepth then
     begin
       Fail;
-      Exit;
-    end;
-    Token := Current;
-    case Token.Kind of
-      TPascalTokenKind.Number:
-        begin
-          if not TOrdinalConstants.TryNumber(Token.Text, Result) then
-          begin
-            Fail;
-          end;
-          Advance;
-        end;
-      TPascalTokenKind.CharLiteral:
-        begin
-          if not CharValue(Token.Text, Result) then
-          begin
-            Fail;
-          end;
-          Advance;
-          // 'a'#13 und #13#10 sind Strings, keine Zeichen.
-          if not AtEnd and (Current.Kind in [TPascalTokenKind.CharLiteral, TPascalTokenKind.StringLiteral]) then
-          begin
-            Fail;
-          end;
-        end;
-      TPascalTokenKind.StringLiteral:
-        begin
-          if not StringValue(Token.Text, Result) then
-          begin
-            Fail;
-          end;
-          Advance;
-          if not AtEnd and (Current.Kind in [TPascalTokenKind.CharLiteral, TPascalTokenKind.StringLiteral]) then
-          begin
-            Fail;
-          end;
-        end;
-      TPascalTokenKind.Symbol:
-        if Token.IsSymbol('(') then
-        begin
-          Advance;
-          Result := Expression;
-          if not IsSym(')') then
-          begin
-            Fail;
-          end
-          else
-          begin
-            Advance;
-          end;
-        end
-        else
-        begin
-          Fail;
-        end;
-      TPascalTokenKind.Identifier, TPascalTokenKind.Keyword:
-        begin
-          Start := FIndex;
-          Name := Token.Text;
-          Advance;
-          if IsSym('(') then
-          begin
-            // SizeOf, High und Low eines Typs fester Größe.
-            if (SameText(Name, 'SizeOf') or SameText(Name, 'High') or SameText(Name, 'Low')) and
-              TypeArgument(TypeName) then
-            begin
-              if not SameText(Name, 'SizeOf') and UnsignedWide(TypeName) then
-              begin
-                FMaybeUnsigned := True;
-              end;
-              if not TOrdinalConstants.FixedType(TypeName, Lowest, Highest, HighKnown, Size) or
-                (SameText(Name, 'High') and not HighKnown) then
-              begin
-                Fail;
-              end
-              else if SameText(Name, 'SizeOf') then
-              begin
-                Result := Size;
-              end
-              else if SameText(Name, 'High') then
-              begin
-                Result := Highest;
-              end
-              else
-              begin
-                Result := Lowest;
-              end;
-              Exit;
-            end;
-            // Ord, Chr, Succ, Pred und Typumwandlungen.
-            if SameText(Name, 'Succ') then
-            begin
-              Result := Arguments + 1;
-            end
-            else if SameText(Name, 'Pred') then
-            begin
-              Result := Arguments - 1;
-            end
-            else if SameText(Name, 'Chr') then
-            begin
-              Result := Arguments;
-            end
-            else if IndexText(Name, OrdinalCasts) >= 0 then
-            begin
-              Result := Cast(Name, Arguments);
-            end
-            else
-            begin
-              Fail;
-            end;
-            Exit;
-          end;
-          Names := [Name];
-          while IsSym('.') do
-          begin
-            Advance;
-            if AtEnd or not (Current.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-            begin
-              Fail;
-              Exit;
-            end;
-            Names := Names + [Current.Text];
-            Advance;
-          end;
-          if Assigned(FLookup) and FLookup(Names, Start, Result) then
-          begin
-            // Der Typ einer Konstanten ist unbekannt; sie könnte UInt64 sein.
-            FMaybeUnsigned := True;
-            Exit;
-          end;
-          if (Length(Names) = 1) and SameText(Name, 'True') then
-          begin
-            Result := 1;
-          end
-          else if (Length(Names) = 1) and SameText(Name, 'False') then
-          begin
-            Result := 0;
-          end
-          // Konstanten aus System mit festem Wert auf allen Plattformen (#1083).
-          else if (Length(Names) = 1) and (SameText(Name, 'MaxInt') or SameText(Name, 'MaxLongint')) then
-          begin
-            Result := 2147483647;
-          end
-          else
-          begin
-            Fail;
-          end;
-        end;
+    end
     else
-      Fail;
+    begin
+      Result := TokenValue(Current);
     end;
   finally
     Dec(FDepth);
@@ -730,140 +831,140 @@ end;
 
 { TOrdinalConstants }
 
+type
+  TFixedTypeInfo = record
+    Name: string;
+    LowValue: Int64;
+    HighValue: Int64;
+    Size: Integer;
+    HighKnown: Boolean;
+  end;
+
+const
+  // Gleitkomma hat nur eine Größe, keinen ordinalen Bereich; die Obergrenze von UInt64 passt nicht in Int64.
+  // Der letzte Eintrag ohne Namen steht für unbekannte Typen.
+  cFixedTypes: array[0..26] of TFixedTypeInfo = (
+    (Name: 'byte'; LowValue: 0; HighValue: 255; Size: 1; HighKnown: True),
+    (Name: 'uint8'; LowValue: 0; HighValue: 255; Size: 1; HighKnown: True),
+    (Name: 'ansichar'; LowValue: 0; HighValue: 255; Size: 1; HighKnown: True),
+    (Name: 'shortint'; LowValue: -128; HighValue: 127; Size: 1; HighKnown: True),
+    (Name: 'int8'; LowValue: -128; HighValue: 127; Size: 1; HighKnown: True),
+    (Name: 'word'; LowValue: 0; HighValue: 65535; Size: 2; HighKnown: True),
+    (Name: 'uint16'; LowValue: 0; HighValue: 65535; Size: 2; HighKnown: True),
+    (Name: 'char'; LowValue: 0; HighValue: 65535; Size: 2; HighKnown: True),
+    (Name: 'widechar'; LowValue: 0; HighValue: 65535; Size: 2; HighKnown: True),
+    (Name: 'smallint'; LowValue: -32768; HighValue: 32767; Size: 2; HighKnown: True),
+    (Name: 'int16'; LowValue: -32768; HighValue: 32767; Size: 2; HighKnown: True),
+    (Name: 'integer'; LowValue: -2147483648; HighValue: 2147483647; Size: 4; HighKnown: True),
+    (Name: 'int32'; LowValue: -2147483648; HighValue: 2147483647; Size: 4; HighKnown: True),
+    (Name: 'fixedint'; LowValue: -2147483648; HighValue: 2147483647; Size: 4; HighKnown: True),
+    (Name: 'cardinal'; LowValue: 0; HighValue: 4294967295; Size: 4; HighKnown: True),
+    (Name: 'uint32'; LowValue: 0; HighValue: 4294967295; Size: 4; HighKnown: True),
+    (Name: 'dword'; LowValue: 0; HighValue: 4294967295; Size: 4; HighKnown: True),
+    (Name: 'fixeduint'; LowValue: 0; HighValue: 4294967295; Size: 4; HighKnown: True),
+    (Name: 'int64'; LowValue: Low(Int64); HighValue: High(Int64); Size: 8; HighKnown: True),
+    (Name: 'uint64'; LowValue: 0; HighValue: 0; Size: 8; HighKnown: False),
+    (Name: 'boolean'; LowValue: 0; HighValue: 1; Size: 1; HighKnown: True),
+    (Name: 'bytebool'; LowValue: 0; HighValue: 1; Size: 1; HighKnown: True),
+    (Name: 'single'; LowValue: 0; HighValue: 0; Size: 4; HighKnown: False),
+    (Name: 'double'; LowValue: 0; HighValue: 0; Size: 8; HighKnown: False),
+    (Name: 'currency'; LowValue: 0; HighValue: 0; Size: 8; HighKnown: False),
+    (Name: 'comp'; LowValue: 0; HighValue: 0; Size: 8; HighKnown: False),
+    (Name: ''; LowValue: 0; HighValue: 0; Size: 0; HighKnown: False));
+
 class function TOrdinalConstants.FixedType(const ATypeName: string; out ALow, AHigh: Int64;
   out AHighKnown: Boolean; out ASize: Integer): Boolean;
-
-  procedure Put(ALowValue, AHighValue: Int64; ASizeValue: Integer);
-  begin
-    ALow := ALowValue;
-    AHigh := AHighValue;
-    ASize := ASizeValue;
-  end;
-
 var
-  Name: string;
+  mName: string;
+  mIndex: Integer;
 begin
-  Result := True;
-  AHighKnown := True;
-  Name := LowerCase(ATypeName);
-  if StartsText('system.', Name) then
+  mName := LowerCase(ATypeName);
+  if StartsText('system.', mName) then
   begin
-    Name := Copy(Name, Length('system.') + 1, MaxInt);
+    mName := Copy(mName, Length('system.') + 1, MaxInt);
   end;
-  if (Name = 'byte') or (Name = 'uint8') or (Name = 'ansichar') then
+  mIndex := 0;
+  while (mIndex < High(cFixedTypes)) and (cFixedTypes[mIndex].Name <> mName) do
   begin
-    Put(0, 255, 1);
-  end
-  else if (Name = 'shortint') or (Name = 'int8') then
+    Inc(mIndex);
+  end;
+  ALow := cFixedTypes[mIndex].LowValue;
+  AHigh := cFixedTypes[mIndex].HighValue;
+  ASize := cFixedTypes[mIndex].Size;
+  AHighKnown := cFixedTypes[mIndex].HighKnown;
+  Result := mIndex < High(cFixedTypes);
+end;
+
+/// <summary>Basis nach dem Präfix von AText ($, %, &amp;), das dabei entfernt wird; sonst 10.</summary>
+function NumberBase(var AText: string): Integer;
+begin
+  Result := 10;
+  if AText = '' then
   begin
-    Put(-128, 127, 1);
-  end
-  else if (Name = 'word') or (Name = 'uint16') or (Name = 'char') or (Name = 'widechar') then
+    Exit;
+  end;
+  case AText[1] of
+    '$':
+      Result := 16;
+    '%':
+      Result := 2;
+    '&':
+      Result := 8;
+  end;
+  if Result <> 10 then
   begin
-    Put(0, 65535, 2);
-  end
-  else if (Name = 'smallint') or (Name = 'int16') then
-  begin
-    Put(-32768, 32767, 2);
-  end
-  else if (Name = 'integer') or (Name = 'int32') or (Name = 'fixedint') then
-  begin
-    Put(-2147483648, 2147483647, 4);
-  end
-  else if (Name = 'cardinal') or (Name = 'uint32') or (Name = 'dword') or (Name = 'fixeduint') then
-  begin
-    Put(0, 4294967295, 4);
-  end
-  else if Name = 'int64' then
-  begin
-    Put(Low(Int64), High(Int64), 8);
-  end
-  else if Name = 'uint64' then
-  begin
-    Put(0, 0, 8);
-    AHighKnown := False;
-  end
-  else if (Name = 'boolean') or (Name = 'bytebool') then
-  begin
-    Put(0, 1, 1);
-  end
-  else if Name = 'single' then
-  begin
-    Put(0, 0, 4);
-  end
-  else if (Name = 'double') or (Name = 'currency') or (Name = 'comp') then
-  begin
-    Put(0, 0, 8);
-  end
+    AText := Copy(AText, 2, MaxInt);
+  end;
+end;
+
+/// <summary>Wert der Ziffer AChar; -1 bei anderen Zeichen.</summary>
+function DigitOf(AChar: Char): Integer;
+begin
+  case AChar of
+    '0'..'9':
+      Result := Ord(AChar) - Ord('0');
+    'a'..'f':
+      Result := Ord(AChar) - Ord('a') + 10;
+    'A'..'F':
+      Result := Ord(AChar) - Ord('A') + 10;
   else
-  begin
-    Put(0, 0, 0);
-    AHighKnown := False;
-    Result := False;
+    Result := -1;
   end;
-  // Gleitkomma hat nur eine Größe, keinen ordinalen Bereich.
-  if (Name = 'single') or (Name = 'double') or (Name = 'currency') or (Name = 'comp') then
+end;
+
+/// <summary>Ziffern ADigits zur Basis ABase; False bei fremden Zeichen und mehr, als Int64 fasst.</summary>
+function DigitsValue(const ADigits: string; ABase: Integer; out AValue: UInt64): Boolean;
+var
+  mIndex, mDigit: Integer;
+begin
+  AValue := 0;
+  for mIndex := 1 to Length(ADigits) do
   begin
-    AHighKnown := False;
+    mDigit := DigitOf(ADigits[mIndex]);
+    if (mDigit < 0) or (mDigit >= ABase) or
+      (AValue > (UInt64(High(Int64)) - UInt64(mDigit)) div UInt64(ABase)) then
+    begin
+      Exit(False);
+    end;
+    AValue := AValue * UInt64(ABase) + UInt64(mDigit);
   end;
+  Result := ADigits <> '';
 end;
 
 class function TOrdinalConstants.TryNumber(const AText: string; out AValue: Int64): Boolean;
 var
-  Base, Digit, Index: Integer;
-  Text: string;
-  Value: UInt64;
+  mText: string;
+  mBase: Integer;
+  mValue: UInt64;
 begin
   AValue := 0;
-  Result := False;
-  Text := StringReplace(AText, '_', '', [rfReplaceAll]);
-  if Text = '' then
+  mText := StringReplace(AText, '_', '', [rfReplaceAll]);
+  mBase := NumberBase(mText);
+  Result := DigitsValue(mText, mBase, mValue);
+  if Result then
   begin
-    Exit;
+    AValue := Int64(mValue);
   end;
-  Base := 10;
-  case Text[1] of
-    '$':
-      Base := 16;
-    '%':
-      Base := 2;
-    '&':
-      Base := 8;
-  end;
-  if Base <> 10 then
-  begin
-    Text := Copy(Text, 2, MaxInt);
-  end;
-  if Text = '' then
-  begin
-    Exit;
-  end;
-  Value := 0;
-  for Index := 1 to Length(Text) do
-  begin
-    case Text[Index] of
-      '0'..'9':
-        Digit := Ord(Text[Index]) - Ord('0');
-      'a'..'f':
-        Digit := Ord(Text[Index]) - Ord('a') + 10;
-      'A'..'F':
-        Digit := Ord(Text[Index]) - Ord('A') + 10;
-    else
-      Exit;
-    end;
-    if Digit >= Base then
-    begin
-      Exit;
-    end;
-    // Mehr als Int64 fasst: nicht auswertbar.
-    if Value > (UInt64(High(Int64)) - UInt64(Digit)) div UInt64(Base) then
-    begin
-      Exit;
-    end;
-    Value := Value * UInt64(Base) + UInt64(Digit);
-  end;
-  AValue := Int64(Value);
-  Result := True;
 end;
 
 class function TOrdinalConstants.Check(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;

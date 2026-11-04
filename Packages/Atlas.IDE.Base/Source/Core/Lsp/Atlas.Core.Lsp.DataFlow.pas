@@ -102,7 +102,9 @@ var
 begin
   Result := Default(TAtlasDataFlowSymbol);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.Name := TJSONObject(AValue).GetValue<string>('name', '');
   Result.FileName := UriToPath(TJSONObject(AValue).GetValue<string>('uri', ''));
   Result.Line := TJSONObject(AValue).GetValue<Integer>('line', 0);
@@ -110,18 +112,26 @@ begin
   Result.Key := TJSONObject(AValue).GetValue<string>('key', '');
   Leaf := TJSONObject(AValue).GetValue<string>('leaf', '');
   if Leaf = 'constant' then
-    Result.Leaf := TAtlasDataFlowLeaf.Constant
+  begin
+    Result.Leaf := TAtlasDataFlowLeaf.Constant;
+  end
   else if Leaf = 'outside' then
-    Result.Leaf := TAtlasDataFlowLeaf.Outside
+  begin
+    Result.Leaf := TAtlasDataFlowLeaf.Outside;
+  end
   else if Leaf = 'cycle' then
+  begin
     Result.Leaf := TAtlasDataFlowLeaf.Cycle;
+  end;
 end;
 
 function ReadPlace(const AValue: TJSONValue): TAtlasDataFlowPlace;
 begin
   Result := Default(TAtlasDataFlowPlace);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Result.FileName := UriToPath(TJSONObject(AValue).GetValue<string>('uri', ''));
   Result.Line := TJSONObject(AValue).GetValue<Integer>('line', 0);
   Result.Character := TJSONObject(AValue).GetValue<Integer>('character', 0);
@@ -140,6 +150,50 @@ begin
   Result.Character := ACharacter;
 end;
 
+/// <summary>Array AName von AItem, nil ohne.</summary>
+function ArrayOf(AItem: TJSONObject; const AName: string): TJSONArray;
+var
+  Value: TJSONValue;
+begin
+  Result := nil;
+  if AItem.TryGetValue<TJSONValue>(AName, Value) and (Value is TJSONArray) then
+  begin
+    Result := TJSONArray(Value);
+  end;
+end;
+
+/// <summary>Liest einen Knoten; False, wenn er keinen Fundort hat.</summary>
+function ReadNode(AItem: TJSONObject; out ANode: TAtlasDataFlowNode): Boolean;
+var
+  List: TJSONArray;
+  Entry: TJSONValue;
+begin
+  ANode := Default(TAtlasDataFlowNode);
+  ANode.Kind := TAtlasDataFlowJson.KindOf(AItem.GetValue<string>('kind', ''));
+  ANode.Detail := AItem.GetValue<string>('detail', '');
+  ANode.Via := AItem.GetValue<string>('via', '');
+  ANode.Literal := AItem.GetValue<Boolean>('literal', False);
+  ANode.Unsafe := AItem.GetValue<Boolean>('unsafe', False);
+  ANode.UnsafeReason := AItem.GetValue<string>('unsafeReason', '');
+  List := ArrayOf(AItem, 'places');
+  if List <> nil then
+  begin
+    for Entry in List do
+    begin
+      ANode.Places := ANode.Places + [ReadPlace(Entry)];
+    end;
+  end;
+  List := ArrayOf(AItem, 'sources');
+  if List <> nil then
+  begin
+    for Entry in List do
+    begin
+      ANode.Sources := ANode.Sources + [ReadSymbol(Entry)];
+    end;
+  end;
+  Result := Length(ANode.Places) > 0;
+end;
+
 { TAtlasDataFlowJson }
 
 class function TAtlasDataFlowJson.KindOf(const AName: string): TAtlasDataFlowKind;
@@ -151,8 +205,12 @@ var
   Kind: TAtlasDataFlowKind;
 begin
   for Kind := Low(TAtlasDataFlowKind) to Pred(TAtlasDataFlowKind.Unknown) do
+  begin
     if SameText(Names[Kind], AName) then
+    begin
       Exit(Kind);
+    end;
+  end;
   Result := TAtlasDataFlowKind.Unknown;
 end;
 
@@ -169,63 +227,55 @@ begin
   Position.AddPair('character', TJSONNumber.Create(ARequest.Character));
   Result.AddPair('position', Position);
   if ARequest.Direction = TAtlasDataFlowDirection.Targets then
-    Result.AddPair('direction', 'targets')
+  begin
+    Result.AddPair('direction', 'targets');
+  end
   else
+  begin
     Result.AddPair('direction', 'sources');
+  end;
   Result.AddPair('excludeTests', TJSONBool.Create(ARequest.ExcludeTests));
   Result.AddPair('onlyProject', TJSONBool.Create(ARequest.OnlyProject));
   Path := TJSONArray.Create;
   for Key in ARequest.Path do
+  begin
     Path.Add(Key);
+  end;
   Result.AddPair('path', Path);
 end;
 
 class function TAtlasDataFlowJson.Parse(const AValue: TJSONValue): TAtlasDataFlowResult;
 var
-  Response, Item: TJSONObject;
-  Nodes, List: TJSONArray;
-  Value, Entry: TJSONValue;
+  Response: TJSONObject;
+  Value: TJSONValue;
   Node: TAtlasDataFlowNode;
 begin
   Result := Default(TAtlasDataFlowResult);
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Response := TJSONObject(AValue);
   Result.Found := Response.GetValue<Boolean>('found', False);
   if not Result.Found then
-    Exit;
-  if Response.TryGetValue<TJSONValue>('symbol', Value) then
-    Result.Symbol := ReadSymbol(Value);
-  if not (Response.TryGetValue<TJSONValue>('nodes', Value) and (Value is TJSONArray)) then
-    Exit;
-  Nodes := TJSONArray(Value);
-  for Value in Nodes do
   begin
-    if not (Value is TJSONObject) then
-      Continue;
-    Item := TJSONObject(Value);
-    Node := Default(TAtlasDataFlowNode);
-    Node.Kind := KindOf(Item.GetValue<string>('kind', ''));
-    Node.Detail := Item.GetValue<string>('detail', '');
-    Node.Via := Item.GetValue<string>('via', '');
-    Node.Literal := Item.GetValue<Boolean>('literal', False);
-    Node.Unsafe := Item.GetValue<Boolean>('unsafe', False);
-    Node.UnsafeReason := Item.GetValue<string>('unsafeReason', '');
-    if Item.TryGetValue<TJSONValue>('places', Entry) and (Entry is TJSONArray) then
-    begin
-      List := TJSONArray(Entry);
-      for Entry in List do
-        Node.Places := Node.Places + [ReadPlace(Entry)];
-    end;
-    if Item.TryGetValue<TJSONValue>('sources', Entry) and (Entry is TJSONArray) then
-    begin
-      List := TJSONArray(Entry);
-      for Entry in List do
-        Node.Sources := Node.Sources + [ReadSymbol(Entry)];
-    end;
+    Exit;
+  end;
+  if Response.TryGetValue<TJSONValue>('symbol', Value) then
+  begin
+    Result.Symbol := ReadSymbol(Value);
+  end;
+  if not (Response.TryGetValue<TJSONValue>('nodes', Value) and (Value is TJSONArray)) then
+  begin
+    Exit;
+  end;
+  for Value in TJSONArray(Value) do
+  begin
     // Eine Stelle ohne Fundort lässt sich weder zeigen noch anspringen.
-    if Length(Node.Places) > 0 then
+    if (Value is TJSONObject) and ReadNode(TJSONObject(Value), Node) then
+    begin
       Result.Nodes := Result.Nodes + [Node];
+    end;
   end;
 end;
 

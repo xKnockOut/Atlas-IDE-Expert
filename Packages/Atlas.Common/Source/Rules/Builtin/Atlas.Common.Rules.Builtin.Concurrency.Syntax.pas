@@ -1,0 +1,342 @@
+﻿unit Atlas.Common.Rules.Builtin.Concurrency.Syntax;
+
+// Gemeinsame Bausteine der Nebenläufigkeitsregeln (Atlas.Common.Rules.Builtin.Concurrency und ihre Teil-Units):
+// Methodenaufrufe als Anweisung, Quelltext und Bereiche von Knoten, Anweisungslisten, Thread-Klassen der Unit,
+// eingebaute Sperrpaare und VCL-Namen.
+
+interface
+
+uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Contract;
+
+type
+  /// <summary>Aufruf X.M, X.M(…) oder M(…) als Anweisung.</summary>
+  TMethodCall = record
+    Method: string;
+    /// <summary>Ausdruck vor dem Punkt, nil bei M(…).</summary>
+    Receiver: TSyntaxNode;
+    /// <summary>Knoten mit dem Methodennamen (MemberAccess oder Identifier).</summary>
+    Member: TSyntaxNode;
+    /// <summary>Aufruf mit Argumenten, sonst nil.</summary>
+    Call: TSyntaxNode;
+  end;
+
+const
+  BuiltinLockPairs: array[0..5, 0..1] of string = (('Enter', 'Leave'), ('Enter', 'Exit'), ('Acquire', 'Release'),
+    ('BeginRead', 'EndRead'), ('BeginWrite', 'EndWrite'), ('EnterCriticalSection', 'LeaveCriticalSection'));
+  VclGlobals: array[0..1] of string = ('Application', 'Screen');
+  VclDialogs: array[0..4] of string = ('ShowMessage', 'ShowMessageFmt', 'ShowMessagePos', 'MessageDlg',
+    'InputBox');
+
+function InList(const AItems: array of string; const AText: string): Boolean;
+
+function SourceText(const AText: string; ANode: TSyntaxNode): string;
+
+function NodeText(const AText: string; ANode: TSyntaxNode): string;
+
+function TryMethodCall(AStatement: TSyntaxNode; out ACall: TMethodCall): Boolean;
+
+/// <summary>Bereich des Namens am Ende von ANode (MemberAccess oder Identifier).</summary>
+function NameRange(ANode: TSyntaxNode): TTextRange;
+
+function NodeRange(ANode: TSyntaxNode): TTextRange;
+
+/// <summary>Bezeichner der Variablen in X oder Self.X, sonst ''.</summary>
+function VariableName(ANode: TSyntaxNode): string;
+
+function IsStatementList(ANode: TSyntaxNode): Boolean;
+
+/// <summary>Anweisungslisten in ARoot in Baumreihenfolge. Iterativ gesammelt (Bericht M1), damit die Regeln sie
+/// ohne eigene Rekursion prüfen.</summary>
+function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
+
+/// <summary>True, wenn ANode oder ein Nachfahre den Bezeichner AName benutzt.</summary>
+function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
+
+/// <summary>Klassenteil eines Routinennamens: "TA" in "TA.Destroy", sonst ''.</summary>
+function ClassPart(const ARoutineName: string): string;
+
+function MethodPart(const ARoutineName: string): string;
+
+/// <summary>Klassen der Unit, die direkt oder über Klassen der Unit von TThread erben.</summary>
+function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
+
+/// <summary>ThreadClasses der geprüften Datei, je Lauf einmal berechnet (Review P-03).</summary>
+function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
+
+/// <summary>Bereich einer ganzen Anweisung samt Semikolon und Zeilenende, wenn sie allein in ihrer Zeile steht.</summary>
+function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  System.StrUtils,
+  Atlas.Text.Lines,
+  System.Generics.Collections,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Rules.Derived;
+
+function InList(const AItems: array of string; const AText: string): Boolean;
+var
+  Item: string;
+begin
+  for Item in AItems do
+  begin
+    if SameText(Item, AText) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function SourceText(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function NodeText(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := LowerCase(SourceText(AText, ANode));
+end;
+
+function TryMethodCall(AStatement: TSyntaxNode; out ACall: TMethodCall): Boolean;
+var
+  Target: TSyntaxNode;
+begin
+  Result := False;
+  ACall := Default(TMethodCall);
+  if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  Target := AStatement[0];
+  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  begin
+    ACall.Call := Target;
+    Target := Target[0];
+  end;
+  if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount > 0) then
+  begin
+    ACall.Receiver := Target[0];
+  end
+  else if (Target.Kind <> TSyntaxKind.Identifier) or (ACall.Call = nil) then
+  begin
+    Exit;
+  end;
+  ACall.Method := Target.Name;
+  ACall.Member := Target;
+  Result := True;
+end;
+
+function NameRange(ANode: TSyntaxNode): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.EndPos.Line, ANode.EndPos.Character - Length(ANode.Name),
+    ANode.EndPos.Line, ANode.EndPos.Character);
+end;
+
+function NodeRange(ANode: TSyntaxNode): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+end;
+
+function VariableName(ANode: TSyntaxNode): string;
+begin
+  if ANode = nil then
+  begin
+    Result := '';
+  end
+  else if ANode.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := ANode.Name;
+  end
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+  begin
+    Result := ANode.Name;
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function IsStatementList(ANode: TSyntaxNode): Boolean;
+begin
+  Result := ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
+    TSyntaxKind.ExceptBlock, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
+end;
+
+function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  Found: TList<TSyntaxNode>;
+begin
+  Found := TList<TSyntaxNode>.Create;
+  try
+    ARoot.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if IsStatementList(ANode) then
+        begin
+          Found.Add(ANode);
+        end;
+        Result := True;
+      end);
+    Result := Found.ToArray;
+  finally
+    Found.Free;
+  end;
+end;
+
+function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Name := AName;
+  // Iterativ (Bericht M1).
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+      begin
+        Exit(TSyntaxSearchStep.Found);
+      end;
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
+end;
+
+function ClassPart(const ARoutineName: string): string;
+var
+  Dot: Integer;
+begin
+  Dot := LastDelimiter('.', ARoutineName);
+  if Dot > 0 then
+  begin
+    Result := Copy(ARoutineName, 1, Dot - 1);
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function MethodPart(const ARoutineName: string): string;
+begin
+  Result := Copy(ARoutineName, LastDelimiter('.', ARoutineName) + 1, MaxInt);
+end;
+
+function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
+var
+  Names, Parents: TArray<string>;
+  Index: Integer;
+  Changed: Boolean;
+begin
+  Result := nil;
+  Names := nil;
+  Parents := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      ClassNode, Ancestor: TSyntaxNode;
+    begin
+      Result := ANode.Kind <> TSyntaxKind.TypeDecl;
+      if Result then
+      begin
+        Exit;
+      end;
+      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
+      if ClassNode = nil then
+      begin
+        Exit;
+      end;
+      Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
+      if Ancestor = nil then
+      begin
+        Exit;
+      end;
+      Names := Names + [ANode.Name];
+      Parents := Parents + [Ancestor.Name];
+    end);
+  // Fixpunkt über Zwischenklassen der Unit.
+  repeat
+    Changed := False;
+    for Index := 0 to High(Names) do
+    begin
+      if not InList(Result, Names[Index]) and
+        (SameText(Parents[Index], 'TThread') or SameText(Parents[Index], 'System.Classes.TThread') or
+        InList(Result, Parents[Index])) then
+      begin
+        Result := Result + [Names[Index]];
+        Changed := True;
+      end;
+    end;
+  until not Changed;
+end;
+
+function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
+var
+  Cache: IRuleDerivedCache;
+  Root: TSyntaxNode;
+begin
+  Cache := TRuleDerived.Open(AContext);
+  Root := AContext.Tree.Root;
+  Result := TRuleDerived.Get<TRuleDerivedValue<TArray<string>>>(Cache, 'concurrency.threadClasses',
+    function: TRuleDerivedValue<TArray<string>>
+    begin
+      Result := TRuleDerivedValue<TArray<string>>.Create(ThreadClasses(Root));
+    end).Value;
+end;
+
+function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
+var
+  Index: Integer;
+  Alone: Boolean;
+begin
+  Alone := True;
+  Index := AStatement.StartOffset;
+  while (Index > 0) and (AText[Index] <> #10) do
+  begin
+    if not CharInSet(AText[Index], [' ', #9]) then
+    begin
+      Alone := False;
+    end;
+    Dec(Index);
+  end;
+  Index := AStatement.EndOffset + 1;
+  if (Index <= Length(AText)) and (AText[Index] = ';') then
+  begin
+    Inc(Index);
+  end;
+  while (Index <= Length(AText)) and not CharInSet(AText[Index], [#10, #13]) do
+  begin
+    if not CharInSet(AText[Index], [' ', #9]) then
+    begin
+      Alone := False;
+    end;
+    Inc(Index);
+  end;
+  if Alone then
+  begin
+    Result := TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0);
+  end
+  else
+  begin
+    Result := NodeRange(AStatement);
+  end;
+end;
+
+end.

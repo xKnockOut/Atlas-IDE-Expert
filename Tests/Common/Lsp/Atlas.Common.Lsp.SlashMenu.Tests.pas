@@ -335,16 +335,42 @@ begin
   end;
 end;
 
-procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
+/// <summary>Führt „implementieren“ mit AArgs aus und prüft, dass IFlush.Flush in TExporter landet.</summary>
+procedure AssertImplementsFlush(AMenu: TLspSlashMenu; AArgs: TJSONArray);
+var
+  mAnswer, mItem: TJSONValue;
+  mEdits: TJSONArray;
+  mNewText: string;
+  mFirstLine: Integer;
+begin
+  mAnswer := AMenu.ExecuteRun(AArgs);
+  try
+    Assert.AreEqual('', Field(mAnswer, 'reason'));
+    mEdits := List(mAnswer, 'edits');
+    mNewText := '';
+    for mItem in mEdits do
+    begin
+      mNewText := mNewText + mItem.GetValue<string>('newText');
+    end;
+    Assert.IsTrue(Pos('procedure Flush;', mNewText) > 0, mNewText);
+    Assert.IsTrue(Pos('procedure TExporter.Flush;', mNewText) > 0, mNewText);
+    // Die Deklaration kommt vor das end der Klasse (Zeile 7 ohne die gedachte Zeile).
+    mFirstLine := mEdits.Items[0].GetValue<Integer>('range.start.line');
+    Assert.AreEqual(7, mFirstLine);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
 const
-  UnitBasis =
+  cImplementsMissingUnitBasis =
     'unit Basis;'#10'interface'#10'type'#10 +
     '  IFlush = interface'#10 +
     '    procedure Flush;'#10 +
     '  end;'#10 +
     'implementation'#10'end.';
-  HauptFile = 'C:\P\Haupt.pas';
-  Haupt =
+  cImplementsMissingHauptFile = 'C:\P\Haupt.pas';
+  cImplementsMissingHaupt =
     'unit Haupt;'#10 +                                   // 0
     'interface'#10 +                                     // 1
     'uses Basis;'#10 +                                   // 2
@@ -355,26 +381,25 @@ const
     '  end;'#10 +                                        // 7
     'implementation'#10 +                                // 8
     'end.';
+
+procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
 var
   Index: ISymbolIndex;
   Completion: TLspCompletion;
   Args, Position: TJSONArray;
   Answer: TJSONValue;
-  Item: TJSONValue;
-  NewText, Names_: string;
-  Edits: TJSONArray;
+  Names_: string;
   Spot: TJSONObject;
-  FirstLine: Integer;
 begin
   Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
-  FStore.Open(TDocumentUris.FromPath(HauptFile), 'pascal', 1, Haupt);
+  Index.AddUnit(TIndexExtractor.ExtractText(cImplementsMissingUnitBasis, 'C:\P\Basis.pas', nil));
+  FStore.Open(TDocumentUris.FromPath(cImplementsMissingHauptFile), 'pascal', 1, cImplementsMissingHaupt);
   Completion := TLspCompletion.Create(FStore, Index, nil);
   try
     Completion.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin
-        AText := UnitBasis;
+        AText := cImplementsMissingUnitBasis;
         Result := SameText(AFileName, 'C:\P\Basis.pas');
       end;
     FMenu.Index := Index;
@@ -383,7 +408,7 @@ begin
     Spot.AddPair('line', TJSONNumber.Create(6));
     Spot.AddPair('character', TJSONNumber.Create(4));
     Position := TJSONArray.Create;
-    Position.Add(TDocumentUris.FromPath(HauptFile));
+    Position.Add(TDocumentUris.FromPath(cImplementsMissingHauptFile));
     Position.AddElement(Spot);
     Position.Add(-1);
     try
@@ -406,23 +431,7 @@ begin
           Answer.Free;
         end;
         Args.Add('');
-        Answer := FMenu.ExecuteRun(Args);
-        try
-          Assert.AreEqual('', Field(Answer, 'reason'));
-          Edits := List(Answer, 'edits');
-          NewText := '';
-          for Item in Edits do
-          begin
-            NewText := NewText + Item.GetValue<string>('newText');
-          end;
-          Assert.IsTrue(Pos('procedure Flush;', NewText) > 0, NewText);
-          Assert.IsTrue(Pos('procedure TExporter.Flush;', NewText) > 0, NewText);
-          // Die Deklaration kommt vor das end der Klasse (Zeile 7 ohne die gedachte Zeile).
-          FirstLine := Edits.Items[0].GetValue<Integer>('range.start.line');
-          Assert.AreEqual(7, FirstLine);
-        finally
-          Answer.Free;
-        end;
+        AssertImplementsFlush(FMenu, Args);
       finally
         Args.Free;
       end;

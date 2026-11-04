@@ -57,6 +57,13 @@ type
     procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintInline(const Rect: TRect; const Context: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+    /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
+    /// während der Tipp-Pause in der Cursorzeile.</summary>
+    function LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer; out AText: string;
+      out ATabWidth: Integer; out ABusy: Boolean): Boolean;
+    /// <summary>Wellen, Punkte und Durchstreichungen der Probleme AProblems.</summary>
+    procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+      const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
   public
@@ -118,7 +125,9 @@ begin
   FTimer.Interval := TAtlasInlineDiagnostics.PauseMs;
   FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasProblemsPainter.Destroy;
@@ -127,7 +136,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   FreeAndNil(FTimer);
@@ -157,7 +168,9 @@ begin
     FCursorText := AText;
     FTypedAt := GetTickCount;
     if FTypedAt = 0 then
+    begin
       FTypedAt := 1;
+    end;
     // Nach der Pause einmal neu zeichnen.
     FTimer.Enabled := False;
     FTimer.Enabled := True;
@@ -171,7 +184,9 @@ var
 begin
   Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
   if Key = FFontKey then
+  begin
     Exit;
+  end;
   FFont.Assign(AEditorFont);
   FFont.Style := [fsItalic];
   FFontKey := Key;
@@ -182,7 +197,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
@@ -210,11 +227,15 @@ begin
   Mode := TAtlasIdeSettings.InlineDiagnosticsMode;
   if (Mode = TAtlasInlineDiagnosticsMode.Off) or
     not TAtlasInlineDiagnostics.Pick(AProblems, Context.LogicalLineNum - 1, Mode, Found) then
+  begin
     Exit;
+  end;
   Caption := TAtlasInlineDiagnostics.Caption(Found);
   // In .atlas ausgeblendet (#628): an dieser Codezeile oder in der Datei.
   if (Caption = '') or TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, AText) then
+  begin
     Exit;
+  end;
   // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
   Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
     Context.EditorLineNum);
@@ -224,7 +245,9 @@ begin
   // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts), nicht das IDE-Thema.
   Sample := GetPixel(DC, Rect.Right - 2, Rect.Top + 1);
   if Sample = CLR_INVALID then
+  begin
     Sample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
+  end;
   Front := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, Found.Problem), TAtlasColor(Sample), Strength);
   EnsureFont(Context.Canvas.Font);
   Saved := SaveDC(DC);
@@ -243,137 +266,202 @@ begin
     TRect.Create(X, Top, X + Size.cx, Top + Size.cy), Context.EditView.TopRow, Rect.Height);
 end;
 
+/// <summary>Zeichenbereich [AFrom, ATill) des Problems in der Zeile ALine; leer wird ein Zeichen, am Zeilenende
+/// das letzte.</summary>
+procedure CharRange(const AProblem: TAtlasProblem; ALine: Integer; const AText: string; out AFrom, ATill: Integer);
+begin
+  AFrom := 0;
+  ATill := Length(AText);
+  if ALine = AProblem.StartLine then
+  begin
+    AFrom := AProblem.StartCharacter;
+  end;
+  if ALine = AProblem.EndLine then
+  begin
+    ATill := AProblem.EndCharacter;
+  end;
+  AFrom := EnsureRange(AFrom, 0, Length(AText));
+  ATill := EnsureRange(ATill, 0, Length(AText));
+  if ATill <= AFrom then
+  begin
+    if AFrom >= Length(AText) then
+    begin
+      AFrom := Max(0, Length(AText) - 1);
+    end;
+    ATill := AFrom + 1;
+  end;
+end;
+
+/// <summary>Gepunktete Linie (Hinweis).</summary>
+procedure DrawDots(ADC: HDC; ALeft, ARight, AY: Integer);
+var
+  mX: Integer;
+begin
+  mX := ALeft;
+  while mX < ARight do
+  begin
+    MoveToEx(ADC, mX, AY, nil);
+    LineTo(ADC, mX + 2, AY);
+    Inc(mX, 4);
+  end;
+end;
+
+/// <summary>Welle: je 2 Pixel auf und ab.</summary>
+procedure DrawWave(ADC: HDC; ALeft, ARight, AY: Integer);
+var
+  mX: Integer;
+  mUp: Boolean;
+begin
+  mX := ALeft;
+  mUp := False;
+  MoveToEx(ADC, mX, AY, nil);
+  while mX < ARight do
+  begin
+    Inc(mX, 2);
+    mUp := not mUp;
+    if mUp then
+    begin
+      LineTo(ADC, mX, AY - 2);
+    end
+    else
+    begin
+      LineTo(ADC, mX, AY);
+    end;
+  end;
+end;
+
+/// <summary>Markierung des Problems zwischen ALeft und ARight in der Zeile ARect.</summary>
+procedure DrawMark(ADC: HDC; AColor: TColor; const AProblem: TAtlasProblem; ALeft, ARight: Integer;
+  const ARect: TRect);
+var
+  mPen, mOld: HGDIOBJ;
+begin
+  mPen := CreatePen(PS_SOLID, 1, ColorToRGB(AColor));
+  mOld := SelectObject(ADC, mPen);
+  try
+    if AProblem.Deprecated then
+    begin
+      // Veraltetes Symbol (#38): durchgestrichen.
+      MoveToEx(ADC, ALeft, ARect.Top + ARect.Height div 2, nil);
+      LineTo(ADC, ARight, ARect.Top + ARect.Height div 2);
+    end
+    else if AProblem.Severity = TAtlasProblemSeverity.Hint then
+    begin
+      DrawDots(ADC, ALeft, ARight, ARect.Bottom - 2);
+    end
+    else
+    begin
+      DrawWave(ADC, ALeft, ARight, ARect.Bottom - 2);
+    end;
+  finally
+    SelectObject(ADC, mOld);
+    DeleteObject(mPen);
+  end;
+end;
+
+/// <summary>Befund mit Regel des Servers: Kommentar über der ersten Zeile; sonst Eintrag für diese Codezeile.
+/// </summary>
+function HideTargetOf(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
+  const AText: string): TAtlasHideTarget;
+begin
+  if not AProblem.IsCompiler and (AProblem.Code <> '') then
+  begin
+    Result := TAtlasHideTarget.Finding(AFileName, AProblem.StartLine, AProblem.Code, AText);
+  end
+  else
+  begin
+    Result := TAtlasHideTarget.Finding(AFileName, ALine, '', AText);
+  end;
+  Result.Caption := AProblem.Caption;
+end;
+
+function TAtlasProblemsPainter.LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer;
+  out AText: string; out ATabWidth: Integer; out ABusy: Boolean): Boolean;
+var
+  mLineState: INTACodeEditorLineState;
+begin
+  AText := '';
+  ATabWidth := 0;
+  ABusy := False;
+  mLineState := AContext.LineState;
+  Result := (mLineState <> nil) and (AContext.EditView <> nil) and (AContext.EditView.Buffer <> nil) and
+    FStore.LineText(AContext.FileName, ALine, AText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ATabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
+  // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
+  ABusy := (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
+    Typing(AContext.FileName, ALine, mLineState.Text);
+  // Nur, wenn die Zeile im Editor der im Speicher entspricht; nicht in .atlas ausgeblendet (#628).
+  Result := (TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
+    TrimRight(TAtlasPairs.DisplayLine(AText, ATabWidth))) and
+    not TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, AContext.FileName, AText);
+end;
+
+procedure TAtlasProblemsPainter.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+  const AProblems: TArray<TAtlasProblem>; const AText: string; ATabWidth: Integer);
+var
+  mProblem: TAtlasProblem;
+  mLine, mFrom, mTill, mLeft, mRight: Integer;
+  mColors: TAtlasColors;
+  mCode, mFirst, mLast: TRect;
+  mDC: HDC;
+  mSaved: Integer;
+begin
+  mLine := AContext.LogicalLineNum - 1;
+  mColors := TAtlasIdeStyle.Colors;
+  mCode := AContext.LineState.CodeRect;
+  mDC := AContext.Canvas.Handle;
+  mSaved := SaveDC(mDC);
+  try
+    if mCode.Right > mCode.Left then
+    begin
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
+    end;
+    for mProblem in AProblems do
+    begin
+      CharRange(mProblem, mLine, AText, mFrom, mTill);
+      mFirst := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mFrom, ATabWidth), AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mTill, ATabWidth), AContext.EditorLineNum);
+      mLeft := mFirst.Left;
+      mRight := Max(mLast.Left, mLeft + Max(4, mFirst.Width));
+      DrawMark(mDC, TColor(ProblemColor(mColors, mProblem)), mProblem, mLeft, mRight, ARect);
+      TAtlasIdeElements.Painted(HideTargetOf(AContext.FileName, mProblem, mLine, AText),
+        TRect.Create(mLeft, ARect.Top, mRight, ARect.Bottom), AContext.EditView.TopRow, ARect.Height);
+    end;
+  finally
+    RestoreDC(mDC, mSaved);
+  end;
+end;
+
 procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  Problems: TArray<TAtlasProblem>;
-  Problem: TAtlasProblem;
-  LineState: INTACodeEditorLineState;
-  Line, TabWidth, From, Till, Left, Right, X, Y, Cell: Integer;
-  Text, Stored: string;
-  Colors: TAtlasColors;
-  Code, First, Last: TRect;
-  DC: HDC;
-  Saved: Integer;
-  Pen, Old: HGDIOBJ;
-  Up, Busy: Boolean;
-  Target: TAtlasHideTarget;
+  mProblems: TArray<TAtlasProblem>;
+  mLine, mTabWidth: Integer;
+  mText: string;
+  mBusy: Boolean;
 begin
   // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
     Exit;
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
-    Exit;
+  end;
   try
-    Line := Context.LogicalLineNum - 1;
-    Problems := FStore.OnLine(Context.FileName, Line);
-    if Length(Problems) = 0 then
-      Exit;
-    // Erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
-    if not TAtlasIdeSettings.ProblemMarksOn then
-      Exit;
-    LineState := Context.LineState;
-    if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
-      not FStore.LineText(Context.FileName, Line, Stored) then
-      Exit;
-    TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
-    Text := Stored;
-    // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
-    Busy := (Context.EditView.CursorPos.Line = Context.LogicalLineNum) and
-      Typing(Context.FileName, Line, LineState.Text);
-    // Nur, wenn die Zeile im Editor der im Speicher entspricht.
-    if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
-      TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth)) then
-      Exit;
-    // In .atlas ausgeblendet (#628): diese Codezeile oder die ganze Datei.
-    if TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, Context.FileName, Text) then
-      Exit;
-    Colors := TAtlasIdeStyle.Colors;
-    Code := LineState.CodeRect;
-    DC := Context.Canvas.Handle;
-    Saved := SaveDC(DC);
-    try
-      if Code.Right > Code.Left then
-        IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
-      for Problem in Problems do
+    mLine := Context.LogicalLineNum - 1;
+    mProblems := FStore.OnLine(Context.FileName, mLine);
+    // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
+    if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
+      LineToPaint(Context, mLine, mText, mTabWidth, mBusy) then
+    begin
+      PaintMarks(Rect, Context, mProblems, mText, mTabWidth);
+      if not mBusy then
       begin
-        if Line = Problem.StartLine then
-          From := Problem.StartCharacter
-        else
-          From := 0;
-        if Line = Problem.EndLine then
-          Till := Problem.EndCharacter
-        else
-          Till := Length(Text);
-        From := EnsureRange(From, 0, Length(Text));
-        Till := EnsureRange(Till, 0, Length(Text));
-        // Leerer Bereich: ein Zeichen, am Zeilenende das letzte.
-        if Till <= From then
-        begin
-          if From >= Length(Text) then
-            From := Max(0, Length(Text) - 1);
-          Till := From + 1;
-        end;
-        First := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, From, TabWidth), Context.EditorLineNum);
-        Last := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, Till, TabWidth), Context.EditorLineNum);
-        Cell := Max(4, First.Width);
-        Left := First.Left;
-        Right := Max(Last.Left, Left + Cell);
-        Y := Rect.Bottom - 2;
-        Pen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(ProblemColor(Colors, Problem))));
-        Old := SelectObject(DC, Pen);
-        try
-          if Problem.Deprecated then
-          begin
-            // Veraltetes Symbol (#38): durchgestrichen.
-            MoveToEx(DC, Left, Rect.Top + Rect.Height div 2, nil);
-            LineTo(DC, Right, Rect.Top + Rect.Height div 2);
-          end
-          else if Problem.Severity = TAtlasProblemSeverity.Hint then
-          begin
-            // Hinweis: gepunktet.
-            X := Left;
-            while X < Right do
-            begin
-              MoveToEx(DC, X, Y, nil);
-              LineTo(DC, X + 2, Y);
-              Inc(X, 4);
-            end;
-          end
-          else
-          begin
-            // Welle: je 2 Pixel auf und ab.
-            X := Left;
-            Up := False;
-            MoveToEx(DC, X, Y, nil);
-            while X < Right do
-            begin
-              Inc(X, 2);
-              Up := not Up;
-              if Up then
-                LineTo(DC, X, Y - 2)
-              else
-                LineTo(DC, X, Y);
-            end;
-          end;
-        finally
-          SelectObject(DC, Old);
-          DeleteObject(Pen);
-        end;
-        // Befund mit Regel des Servers: Kommentar über der ersten Zeile; sonst Eintrag für diese Codezeile.
-        if not Problem.IsCompiler and (Problem.Code <> '') then
-          Target := TAtlasHideTarget.Finding(Context.FileName, Problem.StartLine, Problem.Code, Text)
-        else
-          Target := TAtlasHideTarget.Finding(Context.FileName, Line, '', Text);
-        Target.Caption := Problem.Caption;
-        TAtlasIdeElements.Painted(Target, TRect.Create(Left, Rect.Top, Right, Rect.Bottom), Context.EditView.TopRow,
-          Rect.Height);
+        PaintInline(Rect, Context, mProblems, mText, mTabWidth);
       end;
-    finally
-      RestoreDC(DC, Saved);
     end;
-    if not Busy then
-      PaintInline(Rect, Context, Problems, Text, TabWidth);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

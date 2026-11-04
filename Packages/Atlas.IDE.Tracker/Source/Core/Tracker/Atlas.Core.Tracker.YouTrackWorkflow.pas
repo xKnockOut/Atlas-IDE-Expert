@@ -18,8 +18,8 @@
 //   nur einen anderen Wert einer zusammengefassten Spalte erlaubt), folgt der
 //   nächste; bei anderen Fehlern nicht.
 // Welcher Übergang in welche Spalte führt, entscheidet TAtlasBoardTransitions
-// (Atlas.Core.Tracker.Board). Fehler aus Antworten von YouTrack liest
-// TAtlasYouTrackErrors (auch für TAtlasYouTrackTracker).
+// (Atlas.Core.Tracker.Board); Befehle, Status und Fehlertexte über
+// TAtlasYouTrackApi.
 
 interface
 
@@ -31,28 +31,6 @@ uses
   Atlas.Core.Tracker.Board;
 
 type
-  /// <summary>Fehler aus Antworten von YouTrack.</summary>
-  TAtlasYouTrackErrors = class
-  public
-    /// <summary>Fehler zu einem HTTP-Status außer 200.</summary>
-    class function OfStatus(AStatus: Integer): TAtlasCiFetchError; static;
-    /// <summary>Fehlertext aus einer Antwort ("error_description", sonst "error"), gekürzt; '' ohne.</summary>
-    class function Message(const AJson: string): string; static;
-  end;
-
-  /// <summary>Was beim Verschieben einer Karte geschrieben wird.</summary>
-  TAtlasYouTrackMove = record
-    Target: TAtlasTrackerTarget;
-    /// <summary>Muss IAtlasCiSend können.</summary>
-    Transport: IAtlasCiTransport;
-    /// <summary>Schreibweg für Befehl und Kommentar (TAtlasYouTrackTracker, #1266).</summary>
-    Writer: IAtlasTrackerWriter;
-    /// <summary>'' = kein Kommentar.</summary>
-    Comment: string;
-    /// <summary>Zeitgrenze für alle Anfragen zusammen.</summary>
-    TimeoutMs: Integer;
-  end;
-
   TAtlasYouTrackWorkflow = class
   public const
     /// <summary>$type eines Feldes unter einer Zustandsmaschine.</summary>
@@ -71,15 +49,15 @@ type
     class function FieldUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFieldId: string): string; static;
     /// <summary>Inhalt des POST, der ATransition am Feld AFieldId auslöst.</summary>
     class function EventJson(const AFieldId: string; const ATransition: TAtlasBoardTransition): string; static;
-    /// <summary>ACard in die Spalte AColumn von ASnapshot verschieben (Ablauf siehe Kopf der Unit).</summary>
-    class function Move(const AMove: TAtlasYouTrackMove; const ASnapshot: TAtlasBoardSnapshot;
-      const ACard: TAtlasBoardCard; AColumn: Integer): TAtlasTrackerWriteResult; static;
-    /// <summary>Übergang ATransition der Zustandsmaschine von ACard auslösen, Kommentar vorher.</summary>
-    class function Fire(const AMove: TAtlasYouTrackMove; const ACard: TAtlasBoardCard;
-      ATransition: Integer): TAtlasTrackerWriteResult; static;
-    /// <summary>Feld AField von AKey per Befehl auf einen Wert von AColumn setzen, der Reihe nach, bis YouTrack
-    /// einen annimmt oder anders als mit 400 ablehnt; Kommentar im selben Befehl.</summary>
-    class function SetValue(const AMove: TAtlasYouTrackMove; const AField, AKey: string;
+    /// <summary>AMove.Card in die Spalte AMove.Column von ASnapshot verschieben (Ablauf siehe Kopf der Unit).
+    /// </summary>
+    class function Move(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
+      static;
+    /// <summary>Übergang ATransition der Zustandsmaschine von AMove.Card auslösen, Kommentar vorher.</summary>
+    class function Fire(const AMove: TAtlasBoardMove; ATransition: Integer): TAtlasTrackerWriteResult; static;
+    /// <summary>Feld AField von AMove.Card per Befehl auf einen Wert von AColumn setzen, der Reihe nach, bis
+    /// YouTrack einen annimmt oder anders als mit 400 ablehnt; Kommentar im selben Befehl.</summary>
+    class function SetValue(const AMove: TAtlasBoardMove; const AField: string;
       const AColumn: TAtlasBoardColumn): TAtlasTrackerWriteResult; static;
   end;
 
@@ -87,11 +65,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.Diagnostics;
-
-const
-  /// <summary>Höchstlänge eines Fehlertextes.</summary>
-  cMaxMessage = 300;
+  System.Diagnostics,
+  Atlas.Core.Tracker.YouTrackApi;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
@@ -127,47 +102,6 @@ begin
   if mRest > 0 then
   begin
     Result := Integer(mRest);
-  end;
-end;
-
-{ TAtlasYouTrackErrors }
-
-class function TAtlasYouTrackErrors.OfStatus(AStatus: Integer): TAtlasCiFetchError;
-begin
-  case AStatus of
-    401, 403:
-      Result := TAtlasCiFetchError.Unauthorized;
-    404:
-      Result := TAtlasCiFetchError.NotFound;
-    400:
-      Result := TAtlasCiFetchError.Invalid;
-  else
-    Result := TAtlasCiFetchError.Server;
-  end;
-end;
-
-class function TAtlasYouTrackErrors.Message(const AJson: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    if mValue is TJSONObject then
-    begin
-      Result := TextOf(TJSONObject(mValue), 'error_description');
-      if Result = '' then
-      begin
-        Result := TextOf(TJSONObject(mValue), 'error');
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-  Result := Trim(StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(Result) > cMaxMessage then
-  begin
-    Result := Copy(Result, 1, cMaxMessage - 1) + '…';
   end;
 end;
 
@@ -249,40 +183,40 @@ begin
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.Move(const AMove: TAtlasYouTrackMove; const ASnapshot: TAtlasBoardSnapshot;
-  const ACard: TAtlasBoardCard; AColumn: Integer): TAtlasTrackerWriteResult;
+class function TAtlasYouTrackWorkflow.Move(const AMove: TAtlasBoardMove;
+  const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
 var
   mTransition: Integer;
 begin
   Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
-  if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) or (Length(ASnapshot.Columns[AColumn].Values) = 0) then
+  if (AMove.Column < 0) or (AMove.Column > High(ASnapshot.Columns))
+    or (Length(ASnapshot.Columns[AMove.Column].Values) = 0) then
   begin
     Exit;
   end;
-  mTransition := TAtlasBoardTransitions.Into(ACard, ASnapshot.Columns[AColumn]);
-  if ACard.Workflow.StateMachine and (mTransition >= 0) and (ACard.Workflow.FieldId <> '') then
+  mTransition := TAtlasBoardTransitions.Into(AMove.Card, ASnapshot.Columns[AMove.Column]);
+  if AMove.Card.Workflow.StateMachine and (mTransition >= 0) and (AMove.Card.Workflow.FieldId <> '') then
   begin
-    Result := Fire(AMove, ACard, mTransition);
+    Result := Fire(AMove, mTransition);
   end
   else
   begin
-    Result := SetValue(AMove, ASnapshot.Field, ACard.Key, ASnapshot.Columns[AColumn]);
+    Result := SetValue(AMove, ASnapshot.Field, ASnapshot.Columns[AMove.Column]);
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.Fire(const AMove: TAtlasYouTrackMove; const ACard: TAtlasBoardCard;
+class function TAtlasYouTrackWorkflow.Fire(const AMove: TAtlasBoardMove;
   ATransition: Integer): TAtlasTrackerWriteResult;
 var
   mWatch: TStopwatch;
   mSend: IAtlasCiSend;
   mChange: TAtlasTrackerWrite;
-  mUrl, mAnswer: string;
-  mStatus: Integer;
-  mError: TAtlasCiFetchError;
+  mUrl: string;
+  mResponse: TAtlasCiResponse;
 begin
   Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
-  mUrl := FieldUrl(AMove.Target, ACard.Key, ACard.Workflow.FieldId);
-  if (mUrl = '') or (AMove.Writer = nil) or not Supports(AMove.Transport, IAtlasCiSend, mSend) then
+  mUrl := FieldUrl(AMove.Target, AMove.Card.Key, AMove.Card.Workflow.FieldId);
+  if (mUrl = '') or not Supports(AMove.Transport, IAtlasCiSend, mSend) then
   begin
     Exit;
   end;
@@ -292,36 +226,32 @@ begin
   begin
     mChange := TAtlasTrackerWrite.Empty;
     mChange.Comment := AMove.Comment;
-    Result := AMove.Writer.Apply(AMove.Target, AMove.Transport, ACard.Key, mChange, AMove.TimeoutMs);
+    Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange, AMove.TimeoutMs);
   end;
   if not Result.Succeeded then
   begin
     Exit;
   end;
-  if not mSend.Send('POST', mUrl, EventJson(ACard.Workflow.FieldId, ACard.Workflow.Transitions[ATransition]),
-    Rest(mWatch, AMove.TimeoutMs), mStatus, mAnswer, mError) then
+  if not mSend.Send('POST', mUrl, EventJson(AMove.Card.Workflow.FieldId,
+    AMove.Card.Workflow.Transitions[ATransition]), Rest(mWatch, AMove.TimeoutMs), mResponse) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(mError, 0, '');
+    Result := TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, '');
   end
-  else if (mStatus < 200) or (mStatus > 299) then
+  else if (mResponse.Status < 200) or (mResponse.Status > 299) then
   begin
-    Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackErrors.OfStatus(mStatus), mStatus,
-      TAtlasYouTrackErrors.Message(mAnswer));
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
+      TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
   end;
 end;
 
-class function TAtlasYouTrackWorkflow.SetValue(const AMove: TAtlasYouTrackMove; const AField, AKey: string;
+class function TAtlasYouTrackWorkflow.SetValue(const AMove: TAtlasBoardMove; const AField: string;
   const AColumn: TAtlasBoardColumn): TAtlasTrackerWriteResult;
 var
   mWatch: TStopwatch;
   mChange: TAtlasTrackerWrite;
   mValue: string;
 begin
-  Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '');
-  if AMove.Writer = nil then
-  begin
-    Exit;
-  end;
+  Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
   mWatch := TStopwatch.StartNew;
   for mValue in AColumn.Values do
   begin
@@ -329,7 +259,8 @@ begin
     mChange.StateField := AField;
     mChange.State := mValue;
     mChange.Comment := AMove.Comment;
-    Result := AMove.Writer.Apply(AMove.Target, AMove.Transport, AKey, mChange, Rest(mWatch, AMove.TimeoutMs));
+    Result := TAtlasYouTrackApi.ApplyChange(AMove.Target, AMove.Transport, AMove.Card.Key, mChange,
+      Rest(mWatch, AMove.TimeoutMs));
     if Result.Succeeded or (Result.Error <> TAtlasCiFetchError.Invalid) then
     begin
       Break;

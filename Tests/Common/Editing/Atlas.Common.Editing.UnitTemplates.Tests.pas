@@ -74,13 +74,18 @@ end;
 procedure TUnitTemplatesTests.FormUnitParses;
 var
   Text: string;
+  Spec: TFormUnitSpec;
 begin
-  Text := TUnitTemplates.FormUnit('KundenForm', 'TKundenForm', '', '', TFormKind.Form, True, #13#10);
+  Spec := TFormUnitSpec.Create('KundenForm', 'TKundenForm', TFormKind.Form);
+  Spec.GlobalVariable := True;
+  Text := TUnitTemplates.FormUnit(Spec, #13#10);
   Assert.IsTrue(Parses(Text), Text);
   Assert.IsTrue(Pos('  TKundenForm = class(TForm)'#13#10, Text) > 0, Text);
   Assert.IsTrue(Pos('var'#13#10'  KundenForm: TKundenForm;', Text) > 0, Text);
   Assert.IsTrue(Pos('{$R *.dfm}', Text) > 0, Text);
-  Text := TUnitTemplates.FormUnit('Daten', 'TDM', '', '', TFormKind.DataModule, True, #10);
+  Spec := TFormUnitSpec.Create('Daten', 'TDM', TFormKind.DataModule);
+  Spec.GlobalVariable := True;
+  Text := TUnitTemplates.FormUnit(Spec, #10);
   Assert.IsTrue(Pos('uses'#10'  System.SysUtils, System.Classes;', Text) > 0, Text);
   Assert.IsTrue(Parses(Text), Text);
 end;
@@ -88,8 +93,12 @@ end;
 procedure TUnitTemplatesTests.FormUnitWithoutVariable;
 var
   Text: string;
+  Spec: TFormUnitSpec;
 begin
-  Text := TUnitTemplates.FormUnit('Kunde', 'TKundeForm', 'TBasisForm', 'BasisForm', TFormKind.Form, False, #10);
+  Spec := TFormUnitSpec.Create('Kunde', 'TKundeForm', TFormKind.Form);
+  Spec.Ancestor := 'TBasisForm';
+  Spec.AncestorUnit := 'BasisForm';
+  Text := TUnitTemplates.FormUnit(Spec, #10);
   Assert.AreEqual(0, Pos('var', Text), Text);
   Assert.IsTrue(Pos('class(TBasisForm)', Text) > 0, Text);
   Assert.IsTrue(Pos('Vcl.Dialogs,'#10'  BasisForm;', Text) > 0, Text);

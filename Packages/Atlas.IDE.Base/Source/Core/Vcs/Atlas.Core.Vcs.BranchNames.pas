@@ -42,30 +42,46 @@ var
 begin
   Result := False;
   if (AName = '') or CharInSet(AName[1], ['/', '-', '.']) or CharInSet(AName[Length(AName)], ['/', '.']) then
+  begin
     Exit;
+  end;
   if (Pos('..', AName) > 0) or (Pos('@{', AName) > 0) or (Pos('//', AName) > 0) or (AName = '@') then
+  begin
     Exit;
+  end;
   for mIndex := 1 to Length(AName) do
     case AName[mIndex] of
       #0..' ', '~', '^', ':', '?', '*', '[', '\', #127:
         Exit;
     end;
   for mPart in AName.Split(['/']) do
+  begin
     if (mPart = '') or (mPart[1] = '.') or SameText(Copy(mPart, Length(mPart) - 4, 5), '.lock') then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
 class function TAtlasVcsBranchNames.Bases(ASvn: Boolean; const ABranchBase, AMainBranch: string): TArray<string>;
 begin
   if Trim(ABranchBase) <> '' then
-    Result := TArray<string>.Create(Trim(ABranchBase))
+  begin
+    Result := TArray<string>.Create(Trim(ABranchBase));
+  end
   else if Trim(AMainBranch) <> '' then
-    Result := TArray<string>.Create(Trim(AMainBranch))
+  begin
+    Result := TArray<string>.Create(Trim(AMainBranch));
+  end
   else if ASvn then
-    Result := TArray<string>.Create(SvnBase)
+  begin
+    Result := TArray<string>.Create(SvnBase);
+  end
   else
+  begin
     Result := TArray<string>.Create(GitBase, GitBaseFallback);
+  end;
 end;
 
 end.

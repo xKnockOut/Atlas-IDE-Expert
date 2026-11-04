@@ -170,21 +170,43 @@ type
     function CardColumn(ACard: Integer): Integer;
   end;
 
+  /// <summary>Anfrage an IAtlasTrackerBoards.LoadBoard: Board BoardId ('' = das erste zum Projekt des Ziels) mit
+  /// Sprint SprintId ('' = aktueller), insgesamt höchstens TimeoutMs.</summary>
+  TAtlasBoardRequest = record
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    BoardId: string;
+    SprintId: string;
+    TimeoutMs: Integer;
+    class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest; static;
+  end;
+
+  /// <summary>Auftrag an IAtlasTrackerBoards.MoveCard: Card in die Spalte Column, mit Kommentar Comment
+  /// ('' = keiner), höchstens TimeoutMs.</summary>
+  TAtlasBoardMove = record
+    Target: TAtlasTrackerTarget;
+    Transport: IAtlasCiTransport;
+    Card: TAtlasBoardCard;
+    Column: Integer;
+    Comment: string;
+    TimeoutMs: Integer;
+    class function Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string; ATimeoutMs: Integer): TAtlasBoardMove;
+      static;
+  end;
+
   /// <summary>Board lesen und Karten verschieben (#1272); optional neben IAtlasTrackerProvider. Im Hintergrund;
-  /// zum Verschieben muss ATransport IAtlasCiSend können.</summary>
+  /// zum Verschieben muss der Transport IAtlasCiSend können.</summary>
   IAtlasTrackerBoards = interface
     ['{4E7B2A93-5C1D-4F68-A0E2-9B3D6C8F1A57}']
-    /// <summary>Board ABoardId ('' = das erste zum Projekt des Ziels) mit Sprint ASprintId ('' = aktueller) und
-    /// dessen Karten, insgesamt höchstens ATimeoutMs. False mit AError, wenn nichts gelesen werden konnte.
-    /// </summary>
-    function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
+    /// <summary>Board und Sprint nach ARequest mit den Karten des Sprints. False mit AError, wenn nichts gelesen
+    /// werden konnte.</summary>
+    function LoadBoard(const ARequest: TAtlasBoardRequest; out ASnapshot: TAtlasBoardSnapshot;
       out AError: TAtlasCiFetchError): Boolean;
-    /// <summary>ACard in die Spalte AColumn von ASnapshot verschieben, mit Kommentar AComment ('' = keiner).
-    /// YouTrack: ein Befehl; GitHub: Kommentar, dann Feld „Status“ bzw. Zustand des Issues.</summary>
-    function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-      const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
-      ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    /// <summary>Karte nach AMove in eine Spalte von ASnapshot verschieben. YouTrack: ein Befehl; GitHub:
+    /// Kommentar, dann Feld „Status“ bzw. Zustand des Issues.</summary>
+    function MoveCard(const AMove: TAtlasBoardMove; const ASnapshot: TAtlasBoardSnapshot): TAtlasTrackerWriteResult;
   end;
 
   TAtlasTrackerBoard = class
@@ -276,6 +298,27 @@ uses
   System.JSON,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueCache;
+
+class function TAtlasBoardRequest.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest;
+begin
+  Result.Target := ATarget;
+  Result.Transport := ATransport;
+  Result.BoardId := ABoardId;
+  Result.SprintId := ASprintId;
+  Result.TimeoutMs := ATimeoutMs;
+end;
+
+class function TAtlasBoardMove.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string; ATimeoutMs: Integer): TAtlasBoardMove;
+begin
+  Result.Target := ATarget;
+  Result.Transport := ATransport;
+  Result.Card := ACard;
+  Result.Column := AColumn;
+  Result.Comment := AComment;
+  Result.TimeoutMs := ATimeoutMs;
+end;
 
 { TAtlasBoardColumn }
 
@@ -740,14 +783,86 @@ begin
   Result.AddPair('archived', TJSONBool.Create(ASprint.Archived));
 end;
 
+function BoardsJson(const ABoards: TArray<TAtlasBoardRef>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mBoard: TAtlasBoardRef;
+begin
+  Result := TJSONArray.Create;
+  for mBoard in ABoards do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('id', mBoard.Id);
+    mItem.AddPair('name', mBoard.Name);
+    Result.AddElement(mItem);
+  end;
+end;
+
+function ColumnsJson(const AColumns: TArray<TAtlasBoardColumn>): TJSONArray;
+var
+  mItem: TJSONObject;
+  mColumn: TAtlasBoardColumn;
+begin
+  Result := TJSONArray.Create;
+  for mColumn in AColumns do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mColumn.Name);
+    mItem.AddPair('values', Texts(mColumn.Values));
+    mItem.AddPair('optionId', mColumn.OptionId);
+    mItem.AddPair('resolved', TJSONBool.Create(mColumn.Resolved));
+    Result.AddElement(mItem);
+  end;
+end;
+
+function SprintsJson(const ASprints: TArray<TAtlasBoardSprint>): TJSONArray;
+var
+  mSprint: TAtlasBoardSprint;
+begin
+  Result := TJSONArray.Create;
+  for mSprint in ASprints do
+  begin
+    Result.AddElement(SprintJson(mSprint));
+  end;
+end;
+
+function CardJson(const ACard: TAtlasBoardCard): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('key', ACard.Key);
+  Result.AddPair('number', TJSONNumber.Create(ACard.Number));
+  Result.AddPair('title', ACard.Title);
+  Result.AddPair('state', ACard.State);
+  Result.AddPair('assignee', ACard.Assignee);
+  Result.AddPair('logins', Texts(ACard.Logins));
+  Result.AddPair('priority', ACard.Priority);
+  Result.AddPair('priorityColor', ACard.PriorityColor);
+  Result.AddPair('done', TJSONNumber.Create(ACard.Checklist.Done));
+  Result.AddPair('total', TJSONNumber.Create(ACard.Checklist.Total));
+  Result.AddPair('locked', TJSONBool.Create(ACard.Locked));
+  Result.AddPair('itemId', ACard.ItemId);
+  Result.AddPair('page', ACard.Page);
+  Result.AddPair('resolvedAt', TAtlasTrackerBoard.TimeText(ACard.ResolvedAt));
+  if ACard.HasPoints then
+  begin
+    Result.AddPair('points', TJSONNumber.Create(ACard.Points));
+  end;
+end;
+
+function CardsJson(const ACards: TArray<TAtlasBoardCard>): TJSONArray;
+var
+  mCard: TAtlasBoardCard;
+begin
+  Result := TJSONArray.Create;
+  for mCard in ACards do
+  begin
+    Result.AddElement(CardJson(mCard));
+  end;
+end;
+
 class function TAtlasTrackerBoard.ToJson(const ASnapshot: TAtlasBoardSnapshot): string;
 var
-  mRoot, mItem: TJSONObject;
-  mList: TJSONArray;
-  mBoard: TAtlasBoardRef;
-  mColumn: TAtlasBoardColumn;
-  mSprint: TAtlasBoardSprint;
-  mCard: TAtlasBoardCard;
+  mRoot: TJSONObject;
 begin
   mRoot := TJSONObject.Create;
   try
@@ -762,58 +877,11 @@ begin
     mRoot.AddPair('field', ASnapshot.Field);
     mRoot.AddPair('projectId', ASnapshot.ProjectId);
     mRoot.AddPair('fieldId', ASnapshot.FieldId);
-    mList := TJSONArray.Create;
-    for mBoard in ASnapshot.Boards do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('id', mBoard.Id);
-      mItem.AddPair('name', mBoard.Name);
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('boards', mList);
-    mList := TJSONArray.Create;
-    for mColumn in ASnapshot.Columns do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('name', mColumn.Name);
-      mItem.AddPair('values', Texts(mColumn.Values));
-      mItem.AddPair('optionId', mColumn.OptionId);
-      mItem.AddPair('resolved', TJSONBool.Create(mColumn.Resolved));
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('columns', mList);
-    mList := TJSONArray.Create;
-    for mSprint in ASnapshot.Sprints do
-    begin
-      mList.AddElement(SprintJson(mSprint));
-    end;
-    mRoot.AddPair('sprints', mList);
+    mRoot.AddPair('boards', BoardsJson(ASnapshot.Boards));
+    mRoot.AddPair('columns', ColumnsJson(ASnapshot.Columns));
+    mRoot.AddPair('sprints', SprintsJson(ASnapshot.Sprints));
     mRoot.AddPair('sprint', SprintJson(ASnapshot.Sprint));
-    mList := TJSONArray.Create;
-    for mCard in ASnapshot.Cards do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('key', mCard.Key);
-      mItem.AddPair('number', TJSONNumber.Create(mCard.Number));
-      mItem.AddPair('title', mCard.Title);
-      mItem.AddPair('state', mCard.State);
-      mItem.AddPair('assignee', mCard.Assignee);
-      mItem.AddPair('logins', Texts(mCard.Logins));
-      mItem.AddPair('priority', mCard.Priority);
-      mItem.AddPair('priorityColor', mCard.PriorityColor);
-      mItem.AddPair('done', TJSONNumber.Create(mCard.Checklist.Done));
-      mItem.AddPair('total', TJSONNumber.Create(mCard.Checklist.Total));
-      mItem.AddPair('locked', TJSONBool.Create(mCard.Locked));
-      mItem.AddPair('itemId', mCard.ItemId);
-      mItem.AddPair('page', mCard.Page);
-      mItem.AddPair('resolvedAt', TimeText(mCard.ResolvedAt));
-      if mCard.HasPoints then
-      begin
-        mItem.AddPair('points', TJSONNumber.Create(mCard.Points));
-      end;
-      mList.AddElement(mItem);
-    end;
-    mRoot.AddPair('cards', mList);
+    mRoot.AddPair('cards', CardsJson(ASnapshot.Cards));
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
@@ -887,12 +955,109 @@ begin
   Result.Archived := FlagOf(mObject, 'archived');
 end;
 
+function BoardsOf(AValue: TJSONValue): TArray<TAtlasBoardRef>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if mItem is TJSONObject then
+      begin
+        Result := Result + [TAtlasBoardRef.Create(TextOf(TJSONObject(mItem), 'id'),
+          TextOf(TJSONObject(mItem), 'name'))];
+      end;
+    end;
+  end;
+end;
+
+function ColumnsOf(AValue: TJSONValue): TArray<TAtlasBoardColumn>;
+var
+  mItem: TJSONValue;
+  mObject: TJSONObject;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      if mItem is TJSONObject then
+      begin
+        mObject := TJSONObject(mItem);
+        Result := Result + [TAtlasBoardColumn.Create(TextOf(mObject, 'name'), TextsOf(mObject, 'values'),
+          TextOf(mObject, 'optionId'), FlagOf(mObject, 'resolved'))];
+      end;
+    end;
+  end;
+end;
+
+function SprintsOf(AValue: TJSONValue): TArray<TAtlasBoardSprint>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+  begin
+    for mItem in TJSONArray(AValue) do
+    begin
+      Result := Result + [SprintOf(mItem)];
+    end;
+  end;
+end;
+
+function CardOf(AObject: TJSONObject): TAtlasBoardCard;
+begin
+  Result := Default(TAtlasBoardCard);
+  Result.Key := TextOf(AObject, 'key');
+  Result.Number := IntOf(AObject, 'number');
+  Result.Title := TextOf(AObject, 'title');
+  Result.State := TextOf(AObject, 'state');
+  Result.Assignee := TextOf(AObject, 'assignee');
+  Result.Logins := TextsOf(AObject, 'logins');
+  Result.Priority := TextOf(AObject, 'priority');
+  Result.PriorityColor := TextOf(AObject, 'priorityColor');
+  Result.Checklist := TAtlasChecklistProgress.Create(IntOf(AObject, 'done'), IntOf(AObject, 'total'));
+  Result.Locked := FlagOf(AObject, 'locked');
+  Result.ItemId := TextOf(AObject, 'itemId');
+  Result.Page := TextOf(AObject, 'page');
+  Result.ResolvedAt := TAtlasTrackerBoard.TimeValue(TextOf(AObject, 'resolvedAt'));
+  Result.HasPoints := AObject.Values['points'] is TJSONNumber;
+  if Result.HasPoints then
+  begin
+    Result.Points := TJSONNumber(AObject.Values['points']).AsDouble;
+  end;
+end;
+
+/// <summary>Karten mit Kennung, höchstens MaxCards.</summary>
+function CardsOf(AValue: TJSONValue): TArray<TAtlasBoardCard>;
+var
+  mItem: TJSONValue;
+  mCard: TAtlasBoardCard;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AValue) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mCard := CardOf(TJSONObject(mItem));
+      if (mCard.Key <> '') and (Length(Result) < TAtlasBoardSnapshot.MaxCards) then
+      begin
+        Result := Result + [mCard];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasTrackerBoard.FromJson(const AJson: string; out ASnapshot: TAtlasBoardSnapshot): Boolean;
 var
-  mValue, mItem: TJSONValue;
-  mRoot, mObject: TJSONObject;
-  mColumn: TAtlasBoardColumn;
-  mCard: TAtlasBoardCard;
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
   ASnapshot := TAtlasBoardSnapshot.Empty;
   Result := False;
@@ -916,72 +1081,11 @@ begin
     ASnapshot.Field := TextOf(mRoot, 'field');
     ASnapshot.ProjectId := TextOf(mRoot, 'projectId');
     ASnapshot.FieldId := TextOf(mRoot, 'fieldId');
-    if mRoot.Values['boards'] is TJSONArray then
-    begin
-      for mItem in TJSONArray(mRoot.Values['boards']) do
-      begin
-        if mItem is TJSONObject then
-        begin
-          ASnapshot.Boards := ASnapshot.Boards + [TAtlasBoardRef.Create(TextOf(TJSONObject(mItem), 'id'),
-            TextOf(TJSONObject(mItem), 'name'))];
-        end;
-      end;
-    end;
-    if mRoot.Values['columns'] is TJSONArray then
-    begin
-      for mItem in TJSONArray(mRoot.Values['columns']) do
-      begin
-        if mItem is TJSONObject then
-        begin
-          mObject := TJSONObject(mItem);
-          mColumn := TAtlasBoardColumn.Create(TextOf(mObject, 'name'), TextsOf(mObject, 'values'),
-            TextOf(mObject, 'optionId'), FlagOf(mObject, 'resolved'));
-          ASnapshot.Columns := ASnapshot.Columns + [mColumn];
-        end;
-      end;
-    end;
-    if mRoot.Values['sprints'] is TJSONArray then
-    begin
-      for mItem in TJSONArray(mRoot.Values['sprints']) do
-      begin
-        ASnapshot.Sprints := ASnapshot.Sprints + [SprintOf(mItem)];
-      end;
-    end;
+    ASnapshot.Boards := BoardsOf(mRoot.Values['boards']);
+    ASnapshot.Columns := ColumnsOf(mRoot.Values['columns']);
+    ASnapshot.Sprints := SprintsOf(mRoot.Values['sprints']);
     ASnapshot.Sprint := SprintOf(mRoot.Values['sprint']);
-    if mRoot.Values['cards'] is TJSONArray then
-    begin
-      for mItem in TJSONArray(mRoot.Values['cards']) do
-      begin
-        if not (mItem is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mObject := TJSONObject(mItem);
-        mCard := Default(TAtlasBoardCard);
-        mCard.Key := TextOf(mObject, 'key');
-        mCard.Number := IntOf(mObject, 'number');
-        mCard.Title := TextOf(mObject, 'title');
-        mCard.State := TextOf(mObject, 'state');
-        mCard.Assignee := TextOf(mObject, 'assignee');
-        mCard.Logins := TextsOf(mObject, 'logins');
-        mCard.Priority := TextOf(mObject, 'priority');
-        mCard.PriorityColor := TextOf(mObject, 'priorityColor');
-        mCard.Checklist := TAtlasChecklistProgress.Create(IntOf(mObject, 'done'), IntOf(mObject, 'total'));
-        mCard.Locked := FlagOf(mObject, 'locked');
-        mCard.ItemId := TextOf(mObject, 'itemId');
-        mCard.Page := TextOf(mObject, 'page');
-        mCard.ResolvedAt := TimeValue(TextOf(mObject, 'resolvedAt'));
-        mCard.HasPoints := mObject.Values['points'] is TJSONNumber;
-        if mCard.HasPoints then
-        begin
-          mCard.Points := TJSONNumber(mObject.Values['points']).AsDouble;
-        end;
-        if (mCard.Key <> '') and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.MaxCards) then
-        begin
-          ASnapshot.Cards := ASnapshot.Cards + [mCard];
-        end;
-      end;
-    end;
+    ASnapshot.Cards := CardsOf(mRoot.Values['cards']);
     Result := True;
   finally
     mValue.Free;

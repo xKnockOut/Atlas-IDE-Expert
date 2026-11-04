@@ -85,7 +85,7 @@ begin
   mContext.Files := ProjectFiles;
   mResolver := NewResolver;
   try
-    Result := TLspInvertBoolean.Actions(True, mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TLspInvertBoolean.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), AUri, APosition, mContext);
   finally
     mResolver.Free;
@@ -110,11 +110,11 @@ begin
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
+  mContext.NewName := Trim(AArguments.Items[2].Value);
   mResolver := NewResolver;
   try
     mAnswer := TLspInvertBoolean.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      Trim(AArguments.Items[2].Value), mContext);
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;
@@ -159,6 +159,7 @@ var
   mShared: ISharedSyntaxTree;
   mResolver: TNameResolver;
   mAnswer: TJSONObject;
+  mContext: TPromoteVariableContext;
 begin
   // Argumente: URI, Position, Name.
   Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
@@ -171,9 +172,11 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
+      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mContext.Style := FormatStyle(mUri);
+      mContext.NewName := Trim(AArguments.Items[2].Value);
       mAnswer := TLspPromoteVariable.Execute(mShared.Tree, mDocument.Text, mUri,
-        TLspPositions.ReadPosition(AArguments.Items[1]), Trim(AArguments.Items[2].Value),
-        TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader), FormatStyle(mUri));
+        TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
     finally
       mResolver.UnpinTree;
     end;
@@ -193,6 +196,7 @@ var
   mResolver: TNameResolver;
   mSettings: TRefactoringSettings;
   mFileName: string;
+  mRequest: TAnonymousMethodRequest;
 begin
   Result := nil;
   mSettings := Settings(AUri);
@@ -206,9 +210,14 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      Result := TLspAnonymousMethods.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
-        TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader),
-        TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture), FormatStyle(AUri));
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := AUri;
+      mRequest.Position := APosition;
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(AUri);
+      Result := TLspAnonymousMethods.Actions(mRequest);
     finally
       mResolver.UnpinTree;
     end;
@@ -225,6 +234,7 @@ var
   mResolver: TNameResolver;
   mAnswer: TJSONObject;
   mSettings: TRefactoringSettings;
+  mRequest: TAnonymousMethodRequest;
 begin
   // Argumente: URI, Position, Name.
   Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
@@ -238,10 +248,14 @@ begin
   try
     mResolver.PinTree(mShared.Tree, mFileName);
     try
-      mAnswer := TLspAnonymousMethods.Execute(mShared.Tree, mDocument.Text, mUri,
-        TLspPositions.ReadPosition(AArguments.Items[1]), Trim(AArguments.Items[2].Value),
-        TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader),
-        TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture), FormatStyle(mUri));
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := mUri;
+      mRequest.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(mUri);
+      mAnswer := TLspAnonymousMethods.Execute(mRequest, Trim(AArguments.Items[2].Value));
     finally
       mResolver.UnpinTree;
     end;
@@ -302,11 +316,12 @@ begin
   mContext.Files := ProjectFiles;
   mContext.ReadText := Reader;
   mContext.WithStatic := mSettings.MethodKindStatic;
+  mContext.Conversion := Trim(AArguments.Items[2].Value);
+  mContext.Style := FormatStyle(mUri);
   mResolver := NewResolver;
   try
     mAnswer := TLspMethodWithoutSelf.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      Trim(AArguments.Items[2].Value), mContext, FormatStyle(mUri));
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
   end;

@@ -189,24 +189,36 @@ begin
   Result := nil;
   Parent := AControl.Parent;
   if Parent = nil then
+  begin
     Exit;
+  end;
   // Zeile mit Beschriftung links und Feld (AddNumber, AddChoice, AddKey).
   for Index := 0 to Parent.ControlCount - 1 do
+  begin
     if (Parent.Controls[Index] is TLabel) and (Parent.Controls[Index] <> AControl) then
+    begin
       Exit(TLabel(Parent.Controls[Index]));
+    end;
+  end;
   // Feld in eigener Zeile unter seiner Beschriftung (AddTextLine): die Zeile direkt darüber.
   if Parent.Parent = nil then
+  begin
     Exit;
+  end;
   Above := nil;
   for Index := 0 to Parent.Parent.ControlCount - 1 do
   begin
     Candidate := Parent.Parent.Controls[Index];
     if (Candidate is TWinControl) and (Candidate <> Parent) and (Candidate.Top < Parent.Top) and
       ((Above = nil) or (Candidate.Top > Above.Top)) then
+    begin
       Above := TWinControl(Candidate);
+    end;
   end;
   if (Above <> nil) and (Above.ControlCount = 1) and (Above.Controls[0] is TLabel) then
+  begin
     Result := TLabel(Above.Controls[0]);
+  end;
 end;
 
 procedure TAtlasSettingsMarks.Bind(AControl: TControl; const ANames: array of string);
@@ -220,11 +232,15 @@ var
   mName: string;
 begin
   if AControl = nil then
+  begin
     Exit;
+  end;
   Binding := Default(TAtlasSettingsBinding);
   Binding.Control := AControl;
   for mName in ANames do
+  begin
     Binding.Names := Binding.Names + [mName];
+  end;
   Binding.Mark := AMark;
   if AControl is TCheckBox then
   begin
@@ -256,10 +272,14 @@ begin
       TEdit(AControl).OnChange := ControlChanged;
     end
     else
+    begin
       TControlAccess(AControl).PopupMenu := FMenu;
+    end;
     // Die Zeile (nicht der rollbare Reiter selbst) bekommt das Menü mit.
     if (AControl.Parent <> nil) and not (AControl.Parent is TScrollingWinControl) then
+    begin
       TControlAccess(AControl.Parent).PopupMenu := FMenu;
+    end;
   end;
   FBindings.Add(Binding);
 end;
@@ -271,17 +291,25 @@ var
 begin
   Result := -1;
   if AControl = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to FBindings.Count - 1 do
   begin
     Binding := FBindings[Index];
     if (Binding.Control = AControl) or ((Binding.Caption <> nil) and (Binding.Caption = AControl)) then
+    begin
       Exit(Index);
+    end;
   end;
   // Zeile: erste Bindung, deren Element darin liegt.
   for Index := 0 to FBindings.Count - 1 do
+  begin
     if FBindings[Index].Control.Parent = AControl then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsMarks.ControlChanged(Sender: TObject);
@@ -294,10 +322,14 @@ begin
   begin
     Handler := FBindings[Index].Changed;
     if Assigned(Handler) then
+    begin
       Handler(Sender);
+    end;
   end;
   if (FLoading = 0) and Assigned(FOnChanged) then
+  begin
     FOnChanged(Self);
+  end;
 end;
 
 procedure TAtlasSettingsMarks.Apply(AIndex: Integer; AMarked: Boolean);
@@ -306,7 +338,9 @@ var
 begin
   Binding := FBindings[AIndex];
   if Binding.Marked = AMarked then
+  begin
     Exit;
+  end;
   Binding.Marked := AMarked;
   FBindings[AIndex] := Binding;
   Render(AIndex);
@@ -321,7 +355,9 @@ begin
   Text := Binding.Text;
   Hint := Binding.Hint;
   if Binding.Experimental then
+  begin
     Text := Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+  end;
   if Binding.Marked then
   begin
     Text := Dot + Text;
@@ -351,10 +387,18 @@ begin
   begin
     Marked := False;
     if AEnabled and FBindings[Index].Mark then
+    begin
       for mName in FBindings[Index].Names do
+      begin
         for Modified in AModified do
+        begin
           if SameText(mName, Modified) then
+          begin
             Marked := True;
+          end;
+        end;
+      end;
+    end;
     Apply(Index, Marked);
   end;
 end;
@@ -369,9 +413,13 @@ begin
   begin
     Parent := Binding.Control.Parent;
     while (Parent <> nil) and (Parent <> AParent) do
+    begin
       Parent := Parent.Parent;
+    end;
     if Parent <> nil then
+    begin
       Result := Result + Binding.Names;
+    end;
   end;
 end;
 
@@ -382,7 +430,9 @@ var
 begin
   Parent := AControl;
   while (Parent <> nil) and (Parent <> AParent) do
+  begin
     Parent := Parent.Parent;
+  end;
   Result := Parent <> nil;
 end;
 
@@ -392,8 +442,12 @@ var
 begin
   Result := nil;
   for Binding in FBindings do
+  begin
     if Inside(Binding.Control, AControl) then
+    begin
       Result := Result + Binding.Names;
+    end;
+  end;
 end;
 
 function TAtlasSettingsMarks.ControlOfName(const AName: string): TControl;
@@ -403,9 +457,15 @@ var
 begin
   Result := nil;
   for Binding in FBindings do
+  begin
     for mName in Binding.Names do
+    begin
       if SameText(mName, AName) then
+      begin
         Exit(Binding.Control);
+      end;
+    end;
+  end;
 end;
 
 function TAtlasSettingsMarks.TextOfName(const AName: string): string;
@@ -415,9 +475,15 @@ var
 begin
   Result := '';
   for Binding in FBindings do
+  begin
     for mName in Binding.Names do
+    begin
       if SameText(mName, AName) then
+      begin
         Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
+      end;
+    end;
+  end;
 end;
 
 function TAtlasSettingsMarks.HasMatch(AParent: TWinControl): Boolean;
@@ -425,8 +491,12 @@ var
   Binding: TAtlasSettingsBinding;
 begin
   for Binding in FBindings do
+  begin
     if Inside(Binding.Control, AParent) and Matches(Binding, FFilter) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -435,15 +505,21 @@ var
   Binding: TAtlasSettingsBinding;
 begin
   for Binding in FBindings do
+  begin
     if Binding.Marked and Inside(Binding.Control, AParent) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 procedure TAtlasSettingsMarks.Pin(AControl: TControl);
 begin
   if (AControl <> nil) and not FPinned.Contains(AControl) then
+  begin
     FPinned.Add(AControl);
+  end;
 end;
 
 function TAtlasSettingsMarks.NamesOf(AControl: TObject): TArray<string>;
@@ -453,7 +529,9 @@ begin
   Result := nil;
   Index := IndexOfControl(AControl);
   if Index >= 0 then
+  begin
     Result := FBindings[Index].Names;
+  end;
 end;
 
 function TAtlasSettingsMarks.IsMarked(AControl: TControl): Boolean;
@@ -476,11 +554,19 @@ begin
     Binding := FBindings[Index];
     Found := False;
     for mName in Binding.Names do
+    begin
       for Experimental in ANames do
+      begin
         if SameText(mName, Experimental) then
+        begin
           Found := True;
+        end;
+      end;
+    end;
     if Found = Binding.Experimental then
+    begin
       Continue;
+    end;
     Binding.Experimental := Found;
     FBindings[Index] := Binding;
     Render(Index);
@@ -492,8 +578,12 @@ var
   Binding: TAtlasSettingsBinding;
 begin
   for Binding in FBindings do
+  begin
     if Binding.Experimental then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -526,7 +616,9 @@ procedure TAtlasSettingsMarks.ApplyFilter(AFilter: TAtlasSettingsFilter);
     Result := AControl;
     while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) and
       not (Result.Parent is TAtlasSettingsGroup) do
+    begin
       Result := Result.Parent;
+    end;
   end;
 
 var
@@ -539,7 +631,9 @@ begin
   Restore;
   FFilter := AFilter;
   if AFilter = sfAll then
+  begin
     Exit;
+  end;
   Shown := TList<TControl>.Create;
   Containers := TList<TControl>.Create;
   try
@@ -548,15 +642,21 @@ begin
     begin
       Row := RowOf(Binding.Control);
       if (Row = nil) or (Row.Parent = nil) then
+      begin
         Continue;
+      end;
       if not Containers.Contains(Row.Parent) then
+      begin
         Containers.Add(Row.Parent);
+      end;
       if Matches(Binding, AFilter) then
       begin
         Shown.Add(Row);
         // Beschriftung in eigener Zeile darüber (AddTextLine) bleibt mit sichtbar.
         if Binding.Caption <> nil then
+        begin
           Shown.Add(RowOf(Binding.Caption));
+        end;
       end;
     end;
     for Index := 0 to Containers.Count - 1 do
@@ -564,7 +664,9 @@ begin
       Container := TWinControl(Containers[Index]);
       // Lage im nicht gerollten Zustand merken. Position braucht das Fenster; ohne Fenster ist nichts gerollt.
       if (Container is TScrollingWinControl) and Container.HandleAllocated then
+      begin
         TScrollingWinControl(Container).VertScrollBar.Position := 0;
+      end;
       for Child := 0 to Container.ControlCount - 1 do
       begin
         FTops.AddOrSetValue(Container.Controls[Child], Container.Controls[Child].Top);
@@ -589,13 +691,21 @@ var
 begin
   // Vorher ausgeblendete Zeilen wieder zeigen (sie waren beim Filtern sichtbar) und an ihren Platz rücken.
   for Row in FHidden do
+  begin
     Row.Visible := True;
+  end;
   FHidden.Clear;
   for Pair in FTops do
+  begin
     if (Pair.Key.Parent is TScrollingWinControl) and Pair.Key.Parent.HandleAllocated then
+    begin
       TScrollingWinControl(Pair.Key.Parent).VertScrollBar.Position := 0;
+    end;
+  end;
   for Pair in FTops do
+  begin
     Pair.Key.Top := Pair.Value;
+  end;
   FTops.Clear;
 end;
 
@@ -610,8 +720,12 @@ begin
   Tops := TList<Integer>.Create;
   try
     for Child := 0 to AContainer.ControlCount - 1 do
+    begin
       if not Tops.Contains(FTops[AContainer.Controls[Child]]) then
+      begin
         Tops.Add(FTops[AContainer.Controls[Child]]);
+      end;
+    end;
     Tops.Sort;
     Shift := 0;
     for Index := 0 to Tops.Count - 1 do
@@ -619,13 +733,17 @@ begin
       Top := Tops[Index];
       Visible := False;
       for Child := 0 to AContainer.ControlCount - 1 do
+      begin
         if (FTops[AContainer.Controls[Child]] = Top) and AContainer.Controls[Child].Visible then
         begin
           Visible := True;
           AContainer.Controls[Child].Top := Top - Shift;
         end;
+      end;
       if not Visible and (Index < Tops.Count - 1) then
+      begin
         Inc(Shift, Tops[Index + 1] - Top);
+      end;
     end;
   finally
     Tops.Free;
@@ -640,7 +758,9 @@ end;
 procedure TAtlasSettingsMarks.EndLoad;
 begin
   if FLoading > 0 then
+  begin
     Dec(FLoading);
+  end;
 end;
 
 procedure TAtlasSettingsMarks.MenuPopup(Sender: TObject);
@@ -652,13 +772,17 @@ end;
 procedure TAtlasSettingsMarks.ResetClick(Sender: TObject);
 begin
   if (FMenuIndex >= 0) and (FMenuIndex < FBindings.Count) and Assigned(FOnReset) then
+  begin
     FOnReset(FBindings[FMenuIndex].Names);
+  end;
 end;
 
 procedure TAtlasSettingsMarks.ResetPageClick(Sender: TObject);
 begin
   if Assigned(FOnResetPage) then
+  begin
     FOnResetPage(Self);
+  end;
 end;
 
 end.

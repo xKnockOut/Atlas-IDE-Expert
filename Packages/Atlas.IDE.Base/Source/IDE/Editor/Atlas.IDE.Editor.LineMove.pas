@@ -116,6 +116,99 @@ begin
   TAtlasLineMover.MapPosition(AMove, Result.Line, Result.Character);
 end;
 
+type
+  /// <summary>Stand im Editor beim Tastendruck: Text, Cursor, Markierung und die berührten Zeilen.</summary>
+  TMoveState = record
+    Text: string;
+    LineBreak: string;
+    Lines: TArray<string>;
+    TabWidth: Integer;
+    Cursor: TOTAEditPos;
+    CursorAt: TPosition;
+    SelectionStart: TPosition;
+    SelectionEnd: TPosition;
+    HasSelection: Boolean;
+    First: Integer;
+    Last: Integer;
+    /// <summary>Zeile der Methode, die ohne Markierung ganz wandert; -1 mit Markierung.</summary>
+    MethodLine: Integer;
+  end;
+
+function ReadState(const AView: IOTAEditView): TMoveState;
+var
+  mBlock: IOTAEditBlock;
+begin
+  Result.Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  Result.LineBreak := #10;
+  if Pos(#13#10, Result.Text) > 0 then
+  begin
+    Result.LineBreak := #13#10;
+  end;
+  Result.Lines := Result.Text.Split([#13#10, #10]);
+  Result.TabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
+  Result.Cursor := AView.CursorPos;
+  Result.CursorAt := PositionOf(Result.Lines, Result.Cursor.Line, Result.Cursor.Col, Result.TabWidth);
+  mBlock := AView.Block;
+  Result.HasSelection := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
+  Result.SelectionStart := Result.CursorAt;
+  Result.SelectionEnd := Result.CursorAt;
+  Result.MethodLine := Result.CursorAt.Line;
+  if Result.HasSelection then
+  begin
+    Result.SelectionStart := PositionOf(Result.Lines, mBlock.StartingRow, mBlock.StartingColumn, Result.TabWidth);
+    Result.SelectionEnd := PositionOf(Result.Lines, mBlock.EndingRow, mBlock.EndingColumn, Result.TabWidth);
+    Result.MethodLine := -1;
+  end;
+  Result.First := Result.SelectionStart.Line;
+  Result.Last := Result.SelectionEnd.Line;
+  // Eine Markierung, die am Anfang einer Zeile endet, berührt diese Zeile nicht.
+  if Result.HasSelection and (Result.Last > Result.First) and (Result.SelectionEnd.Character = 0) then
+  begin
+    Dec(Result.Last);
+  end;
+end;
+
+/// <summary>Text, auf den der Schritt geschrieben wird. Direkt auf den vorigen Schritt: diesen zurücknehmen, damit
+/// die ganze Folge ein Schritt wird. False, wenn sich der Stand danach nicht wiederherstellen lässt.</summary>
+function Rewind(const ABuffer: IOTAEditBuffer; const AState: TMoveState; out ABefore: string): Boolean;
+begin
+  ABefore := AState.Text;
+  Result := True;
+  if not SameText(TAtlasIdeLineMove.FFileName, ABuffer.FileName) or (AState.Text <> TAtlasIdeLineMove.FAfter) or
+    (AState.Cursor.Line <> TAtlasIdeLineMove.FCursorLine) or
+    (AState.Cursor.Col <> TAtlasIdeLineMove.FCursorColumn) then
+  begin
+    Exit;
+  end;
+  if ABuffer.Undo and (TAtlasEditorBuffer.Text(ABuffer) = TAtlasIdeLineMove.FBefore) then
+  begin
+    ABefore := TAtlasIdeLineMove.FBefore;
+    Exit;
+  end;
+  if TAtlasEditorBuffer.Text(ABuffer) <> AState.Text then
+  begin
+    ABuffer.Redo;
+  end;
+  // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
+  Result := TAtlasEditorBuffer.Text(ABuffer) = AState.Text;
+end;
+
+/// <summary>Cursor und Markierung wandern mit dem Block.</summary>
+procedure PlaceCursor(const AView: IOTAEditView; const AMove: TAtlasLineMove; const ANewLines: TArray<string>;
+  const AState: TMoveState);
+begin
+  if not AState.HasSelection then
+  begin
+    AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.CursorAt, AState.Last), AState.TabWidth);
+    Exit;
+  end;
+  AView.Block.Style := btNonInclusive;
+  AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.SelectionStart, AState.Last), AState.TabWidth);
+  AView.Block.BeginBlock;
+  AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.SelectionEnd, AState.Last), AState.TabWidth);
+  AView.Block.EndBlock;
+end;
+
 { TAtlasIdeLineMove }
 
 class procedure TAtlasIdeLineMove.Install(const AMessage: TProc<string>);
@@ -138,124 +231,46 @@ end;
 
 class procedure TAtlasIdeLineMove.Run(AKind: TAtlasLineMoveKind);
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Block: IOTAEditBlock;
-  Cursor: TOTAEditPos;
-  Text, Before, NewText, LineBreak, Insert: string;
-  Lines, NewLines: TArray<string>;
-  TabWidth, First, Last, MethodLine, Start, OldLength: Integer;
-  CursorAt, SelectionStart, SelectionEnd: TPosition;
-  HasSelection, Grouped: Boolean;
-  Move: TAtlasLineMove;
+  mView: IOTAEditView;
+  mState: TMoveState;
+  mBefore, mInsert: string;
+  mNewLines: TArray<string>;
+  mStart, mOldLength: Integer;
+  mMove: TAtlasLineMove;
 begin
-  if not Enabled then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
   begin
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
+  mState := ReadState(mView);
+  if not TAtlasLineMover.Compute(mState.Text, TAtlasLineSelection.Create(mState.First, mState.Last,
+    mState.MethodLine), AKind, TAtlasEditorBuffer.BlockIndent(mView.Buffer), mMove) then
   begin
-    Exit;
-  end;
-  Buffer := View.Buffer;
-  if Buffer.IsReadOnly then
-  begin
-    Exit;
-  end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
-  begin
-    LineBreak := #13#10;
-  end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  Cursor := View.CursorPos;
-  CursorAt := PositionOf(Lines, Cursor.Line, Cursor.Col, TabWidth);
-  Block := View.Block;
-  HasSelection := (Block <> nil) and Block.IsValid and (Block.Size > 0);
-  SelectionStart := CursorAt;
-  SelectionEnd := CursorAt;
-  if HasSelection then
-  begin
-    SelectionStart := PositionOf(Lines, Block.StartingRow, Block.StartingColumn, TabWidth);
-    SelectionEnd := PositionOf(Lines, Block.EndingRow, Block.EndingColumn, TabWidth);
-  end;
-  First := SelectionStart.Line;
-  Last := SelectionEnd.Line;
-  // Eine Markierung, die am Anfang einer Zeile endet, berührt diese Zeile nicht.
-  if HasSelection and (Last > First) and (SelectionEnd.Character = 0) then
-  begin
-    Dec(Last);
-  end;
-  MethodLine := -1;
-  if not HasSelection then
-  begin
-    MethodLine := CursorAt.Line;
-  end;
-  if not TAtlasLineMover.Compute(Text, First, Last, MethodLine, AKind, TAtlasEditorBuffer.BlockIndent(Buffer),
-    Move) then
-  begin
-    if Move.Method and Assigned(FMessage) then
+    if mMove.Method and Assigned(FMessage) then
     begin
       FMessage(TAtlasStrings.Text(TAtlasTextId.MoveLinesNoNeighbour));
     end;
     Exit;
   end;
-  NewLines := TAtlasLineMover.Apply(Lines, Move);
-  NewText := string.Join(LineBreak, NewLines);
-  // Direkt auf den vorigen Schritt: zurücknehmen und die ganze Folge als einen Schritt schreiben.
-  Before := Text;
-  Grouped := SameText(FFileName, Buffer.FileName) and (Text = FAfter) and (Cursor.Line = FCursorLine) and
-    (Cursor.Col = FCursorColumn);
-  if Grouped then
+  mNewLines := TAtlasLineMover.Apply(mState.Lines, mMove);
+  if not Rewind(mView.Buffer, mState, mBefore) then
   begin
-    if Buffer.Undo and (TAtlasEditorBuffer.Text(Buffer) = FBefore) then
-    begin
-      Before := FBefore;
-    end
-    else
-    begin
-      if TAtlasEditorBuffer.Text(Buffer) <> Text then
-      begin
-        Buffer.Redo;
-      end;
-      // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
-      if TAtlasEditorBuffer.Text(Buffer) <> Text then
-      begin
-        FFileName := '';
-        Exit;
-      end;
-    end;
+    FFileName := '';
+    Exit;
   end;
-  if TAtlasLineMover.Difference(Before, NewText, Start, OldLength, Insert) then
+  if TAtlasLineMover.Difference(mBefore, string.Join(mState.LineBreak, mNewLines), mStart, mOldLength, mInsert) then
   begin
-    WriteBuffer(Buffer, Before, Start, OldLength, Insert);
+    WriteBuffer(mView.Buffer, mBefore, mStart, mOldLength, mInsert);
   end;
-  // Cursor und Markierung mit dem Block.
-  CursorAt := Mapped(Move, CursorAt, Last);
-  if HasSelection then
-  begin
-    SelectionStart := Mapped(Move, SelectionStart, Last);
-    SelectionEnd := Mapped(Move, SelectionEnd, Last);
-    View.Block.Style := btNonInclusive;
-    View.CursorPos := EditPos(NewLines, SelectionStart, TabWidth);
-    View.Block.BeginBlock;
-    View.CursorPos := EditPos(NewLines, SelectionEnd, TabWidth);
-    View.Block.EndBlock;
-  end
-  else
-  begin
-    View.CursorPos := EditPos(NewLines, CursorAt, TabWidth);
-  end;
-  View.MoveViewToCursor;
-  View.Paint;
-  FFileName := Buffer.FileName;
-  FBefore := Before;
-  FAfter := TAtlasEditorBuffer.Text(Buffer);
-  FCursorLine := View.CursorPos.Line;
-  FCursorColumn := View.CursorPos.Col;
+  PlaceCursor(mView, mMove, mNewLines, mState);
+  mView.MoveViewToCursor;
+  mView.Paint;
+  FFileName := mView.Buffer.FileName;
+  FBefore := mBefore;
+  FAfter := TAtlasEditorBuffer.Text(mView.Buffer);
+  FCursorLine := mView.CursorPos.Line;
+  FCursorColumn := mView.CursorPos.Col;
 end;
 
 end.

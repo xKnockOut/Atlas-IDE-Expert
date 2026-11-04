@@ -3,9 +3,43 @@
 ## Board: Verschieben nach den Workflow-Regeln von YouTrack (04.11.2026, Branch `claude/project-thread-lsf779` auf `Pilot-2.0.0-beta.1`)
 - Anlass (Marco 03.11.2026): Im Atlas-Board ließen sich Karten wegen der im YouTrack-Board hinterlegten Regeln nicht verschieben.
 - **Ursache:** Atlas schickte beim Ziehen immer einen Befehl `<Feld> <erster Wert der Zielspalte>`. Steuert ein Workflow mit Zustandsmaschine das Spaltenfeld (`StateMachineIssueCustomField`), erlaubt YouTrack ab dem aktuellen Wert nur bestimmte Übergänge (`possibleEvents`); das Board von YouTrack löst den passenden Übergang aus. Atlas kannte die Übergänge nicht, nahm bei zusammengefassten Spalten („Offen, Nachgefragt“) stur den ersten Wert und meldete nur „ungültige Anfrage“.
-- **Korrektur:** Karten lesen `id` und `possibleEvents(id,presentation)` ihres Spaltenfeldes (`TAtlasYouTrackBoards.CardFields`, `TAtlasBoardCard.Workflow`). Neue Root-Unit `Atlas.Core.Tracker.YouTrackWorkflow`: `TAtlasYouTrackWorkflow.Move` löst einen passenden Übergang aus (POST `/api/issues/<Kennung>/fields/<Feld-ID>` mit `event`, Kommentar vorher), sonst Befehl je Wert der Spalte, bei 400 der nächste Wert; `TAtlasYouTrackErrors` (Status und Fehlertext, `TAtlasYouTrackTracker.ErrorOfStatus`/`ErrorMessage` leiten dorthin weiter). `TAtlasBoardTransitions` (Board): Übergang zur Spalte nach Name bzw. Kennung, `Known` (alle Übergänge nach Spalten benannt, dann steht fest, was erreichbar ist), `Allowed`, `Names`. Board-Fenster: Zielspalten, die der Workflow sicher ausschließt, leuchten nicht auf; Loslassen dort meldet die erlaubten Übergänge ohne Serveranfrage; lehnt YouTrack ab, hängt die Meldung die erlaubten Übergänge an (Texte `BoardMoveNoTransition`, `BoardMoveNotAllowed`, `BoardMoveTransitions`).
+- **Korrektur:** Karten lesen `id` und `possibleEvents(id,presentation)` ihres Spaltenfeldes (`TAtlasYouTrackBoards.CardFields`, `TAtlasBoardCard.Workflow`). Neue Root-Unit `Atlas.Core.Tracker.YouTrackWorkflow`: `TAtlasYouTrackWorkflow.Move` löst einen passenden Übergang aus (POST `/api/issues/<Kennung>/fields/<Feld-ID>` mit `event`, Kommentar vorher), sonst Befehl je Wert der Spalte über `TAtlasYouTrackApi.ApplyChange`, bei 400 der nächste Wert; `TAtlasYouTrackBoards.MoveCard` leitet dorthin weiter. `TAtlasBoardTransitions` (Board): Übergang zur Spalte nach Name bzw. Kennung, `Known` (alle Übergänge nach Spalten benannt, dann steht fest, was erreichbar ist), `Allowed`, `Names`. Board-Fenster: Zielspalten, die der Workflow sicher ausschließt, leuchten nicht auf; Loslassen dort meldet die erlaubten Übergänge ohne Serveranfrage; lehnt YouTrack ab, hängt die Meldung die erlaubten Übergänge an (Texte `BoardMoveNoTransition`, `BoardMoveNotAllowed`, `BoardMoveTransitions`).
 - Rolle: Die Unit ist Root, nicht Providers (Providers dürfen keine eigenen Providers importieren) und nicht Internals (Internals dürfen das eigene Root `Board` nicht importieren).
-- **Geprüft (Cloud):** FPC trunk über Convert-ForFpc: `Core.Tracker.Board.Tests` neu `TransitionsDecideColumns`, `SprintCardsReadWorkflow`, `MoveFiresTransition`, `MoveTriesNextValueOfColumn`, `WorkflowUrlAndEventJson` grün; Board, Sprint und Tracker zusammen 104/110, die 6 übrigen scheitern ebenso auf dem Ausgangsstand (Umlaute im FPC-JSON, ohne Datei-Adapter unter Linux). `AtlasServer --check` mit allen `metric-*` an über die geänderten Units: keine neuen Befunde, neue Unit 0; Unit-Länge von `Providers.YouTrack` 3193 → 3171. Alle Prüfskripte grün. Nicht mit Delphi übersetzt. Handtests BO25–BO30 in `docs/Atlas-Testfaelle.md`.
+- **Geprüft (Cloud):** FPC trunk über Convert-ForFpc: `Core.Tracker.Board.Tests` neu `TransitionsDecideColumns`, `SprintCardsReadWorkflow`, `MoveFiresTransition`, `MoveTriesNextValueOfColumn`, `WorkflowUrlAndEventJson` grün; Board, Sprint und Tracker zusammen 104/110, die 6 übrigen scheitern ebenso auf dem Ausgangsstand (Umlaute im FPC-JSON, ohne Datei-Adapter unter Linux). `AtlasServer --check` mit allen `metric-*` an über die geänderten Units: keine neuen Befunde, neue Unit 0; Alle Prüfskripte grün. Nicht mit Delphi übersetzt. Handtests BO25–BO30 in `docs/Atlas-Testfaelle.md`.
+
+## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
+- Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
+- Einzige Ausnahme: `// lsp-ignore: metric-parameter-count` an `PaintText` in Pairs (Signatur der Open Tools API).
+- Offen: Delphi-Build (IDE- und UI-Units übersetzen nur mit Delphi) und Handtests, vor allem Mehrere Einfügemarken (Tasten samt Strg+K, Alt+Klick, Rückgängig), Änderungsmarken und Zeilenhistorie, Bezeichner mitziehen, Minimap, Mitglieder herauslösen.
+
+## Atlas-Befunde in den Tests (03.–04.11.2026, Branch `claude/project-thread-sd4zkh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Befunde in `Tests/**` (Metriken an, Grenzwerte unverändert). Stand: 0 Befunde außer den Golden-Dateien (`*Golden.pas`, 9 × `unused-public-member`, 1 × `missing-begin-end` in `PropertyGolden`): Das sind erwartete Ausgaben der Codeaktionen, sie bleiben so. Die absichtlich kaputten Vorlagen (`Compilermeldungen/Faelle`, `Referenzprojekt`, `DccFaelle`) sind nicht Teil der Prüfung.
+- PRs #1566 und #1578 (Methodenlängen, Parameterzahlen), Folge-PR mit den Aufteilungen: große Testklassen nach Themen in zweite Fixtures derselben Unit; lange Units in Themen-Units (Willkommen: eine Testunit je Bereich, z. B. `Atlas.UI.Welcome.Setup.Tests`; Einstellungen `.Views/.Editing/.BuildDebug/.Issues.Tests`; Einstellungsseite `.Build/.Editor/.Vcs/.Dialog.Tests`; `Atlas.Core.Lsp.Adapters.ServerProcess.Tests`, `.TextChanges.Tests`; `Atlas.Common.Lsp.Completion.Proposals.Tests`; `Atlas.Common.Configuration.Features.Tests`; `Atlas.Core.Vcs.Internals.GitParser/SvnParser.Tests`).
+- Gemeinsame Hilfen liegen in `<Bereich>.TestSupport` (nicht `.Tests`, daher keine eigene Testunit nötig, aber in `.dpr`/`.dproj`). Wo eine TestSupport-Unit feste Pfade enthält, bindet sie `DUnitX.TestFramework` ein, damit Atlas sie als Testcode erkennt (`TUsesClauses.IsTestUnit`).
+- Vervollständigung: Basisklasse `TLspCompletionTestCase` (Index, Auflöser, `ItemsAt` als Überladung); jede Fixture hat eigenes `[Setup]`/`[TearDown]`, das `Prepare`/`Release` ruft.
+- FPC: Regel-, Konfigurations- und Vervollständigungstests grün (Vervollständigung: 3 Fehlschläge wie auf der Basis). VCL-Tests nur mit Atlas geprüft. uses der neuen Units wurden per Skript ausgedünnt; Delphi-Build (auch H2443) offen.
+
+## NameResolver in Teile zerlegt (04.11.2026, Branch `claude/project-thread-ehlyuz` auf `Pilot-2.0.0-beta.1`)
+- Ziel: `Atlas.Common.Semantics.NameResolver` (5421 Zeilen, Klasse mit 166 Elementen, 78 Atlas-Befunde) ohne Befunde mit Metriken, ohne Grenzwerte zu ändern. Jetzt 14 Units `Atlas.Common.Semantics.NameResolver.*`, alle 0 Befunde.
+- Aufbau: `TNameResolver` ist Fassade (37 Elemente) über `TResolverCore` (`.Core`), der die Teile in Reihenfolge anlegt und rückwärts freigibt: `Place`, `Units`, `Lookup`, `Typing`, `Members`, `Locals`, `Expressions`, `Chains`, `Candidates`, `Queries`. Gemeinsame Teile reicht der Record `TResolverParts` (`.Expressions`) weiter; `Typing.Infer` setzt der Kern als Closure auf die Ausdrücke. Typen und Konstanten in `.Symbols`.
+- API für Aufrufer: Kandidatenabfragen über `Resolver.Candidates.X` (`ScopeCandidates`, `MemberCandidates`, `InheritedCandidates`, `LocalOverloads`, `NameFilter` …), sonstige Abfragen über `Resolver.Queries.X` (`MissingInterfaceMembers`, `AccessorCandidates`, `OverridableMembers`, `TypeDescendsFrom`, `ScopedEnumValue` …), Textfunktionen statisch in `TResolverText` (`IsBuiltinTypeName`, `ArgumentFits`, `LooksLikeException` …). `SymbolFrom` heißt `TResolvedSymbol.FromIndex`. `ChainType` liefert `out TResolvedChainType` (`Owner`, `TypeInfo`, `TypeFound`), `WithMember` liefert `out TResolvedWithMember` (`Statement`, `Element`, `Unknown`). 41 Aufrufer angepasst, ihre Befunde vorher/nachher gleich (886 = 886, je Datei und Regel).
+- Falle: Ein Element eines Arrays als const-Record übergeben, während dasselbe Array out-Parameter ist (`FollowChain`), gibt einen hängenden Verweis; erst in eine lokale Variable kopieren.
+- Tests: neue Unit `Tests/Common/Semantics/Atlas.Common.Semantics.NameResolver.Parts.Tests.pas` (16 Tests je Teil, in `Atlas.Tests.dpr`/`.dproj`). FPC: NameResolver und Stage2 46/46, Semantics-Tests 222 von 223 (bekannte Abweichung `TRecursionAnalysisTests.CommandJson` wie auf dem Basiszweig), Parts 16/16. Delphi-Build offen.
+
+## Atlas-Befunde in Builtin Unicode bis XmlDoc (04.11.2026, Branch `claude/project-thread-i109zh` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Rules.Builtin.Unicode`, `Units`, `Unresolved`, `Unused`, `Visibility` und `XmlDoc` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen diesen Units und ihren Teilunits (PRs #1598, #1610 und der PR für Unicode und XmlDoc).
+- Muster: geschachtelte Routinen der großen `Check`-Methoden wurden zu Arbeitsklassen im implementation-Teil (`T<Regel>Check` mit Feldern statt eingefangener Locals), lange Bedingungen und Schleifen zu eigenen Funktionen.
+- Aufgeteilt: `Builtin.Unused` in `Unused.Shared` (gemeinsame Hilfen, auch für Naming und Inheritance), `Unused.Duplicates` (duplicate-assignment) und `Unused.EmptyRoutines` (empty-routine); `Builtin.XmlDoc` in `XmlDoc.Scanner` (strenger XML-Scanner `TDocScanner`, eigene Tests `TDocScannerTests`). Registriert wird weiter über `RegisterUnusedRules` bzw. `RegisterXmlDocRules`, in derselben Reihenfolge.
+- Unicode: `TRunBuilder` fasst Treffer für Unit und Formulardatei zusammen, `TFormRunScanner` liest die Formulardatei, `TFormCharCheck` meldet dort; `LatinOf` liest die Tabelle `cConfusableChars`/`cConfusableLatin` statt eines case.
+- Getestet: FPC (Convert-ForFpc) Unicode 41/41, XmlDoc 13/13, Unused samt Flow 87/87, Visibility 17/17, Unresolved samt UnresolvedNames 43/43, Units 24/24, Naming samt Inheritance 66/66. Nicht mit Delphi übersetzt; Prüfskripte (pwsh) laufen nur in der CI.
+- Offen: Naming und Inheritance haben eigene Metrik-Befunde, die zu anderen Threads gehören.
+
+## Atlas-Befunde in Atlas.Common/Source/Pascal (02.–04.11.2026, Branch `claude/project-thread-00efjt` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle 127 Befunde (Metriken an, Grenzwerte unverändert) in `Packages/Atlas.Common/Source/Pascal`; Stand jetzt 0 Befunde in allen 26 Units. PRs #1546 (kleine Units), #1572 (CompilerSwitches, Lexer, XmlDoc, Präprozessor), Parser im Folge-PR.
+- Präprozessor: `$IF`-Auswerter in `Pascal.Preprocessor.Expressions` (`TExpressionEvaluator` mit eigenen `TExpressionSettings`); `TConditionValue`, `TConditionPart`, `TDeclaredFunc` stehen jetzt in `Pascal.Contract`.
+- Parser: `TParser` ist eine Klassenkette über fünf Units: `Parser.Cursor` (`TParserCursor` Token und Knoten, `TParserBase` Diagnosen und Wiederaufsetzen, `TParserFix` für Korrekturen), `Parser.Expressions` (`TExpressionParser`), `Parser.Declarations` (`TDeclarationParser`), `Parser.Types` (`TTypeParser`), `Parser` (`TParser`: Datei, Abschnitte, Anweisungen; `TPascalParser` unverändert). Aufrufe nach oben (`ParseType`, `ParseTypeReference`, `ParseAnonymousMethod`, `ParseRoutineBody`) sind abstrakte virtuelle Methoden der unteren Schicht. Neue Parse-Methoden gehören in die Schicht ihrer Art; die Klassen haben noch Luft bis 40 Member.
+- Geprüft: FPC trunk `Tests/Common/Pascal` mit denselben 11 Abweichungen wie der Basiszweig (Include-Tests, Regex-UTF-8). Nicht mit Delphi übersetzt.
 
 ## Speicherkorrekturen in der Rollenstruktur von 2.0 (02.11.2026, Branch `claude/project-thread-3ck2sf` auf `Pilot-2.0.0-beta.1`)
 - Ziel: Die übernommenen Korrekturen (PR #1482) liegen in Atlas.Common bzw. in Atlas.IDE.Base (Fenster „Atlas-Server“), nicht in einem Modul; alle berührten Units haben jetzt 0 Atlas-Befunde mit Metriken, ohne Grenzwerte zu ändern.
@@ -429,7 +463,6 @@
 - Einstellungen auf der Seite *Allgemein › Hotspots* (eine Seite „Analyse“, wie im Issue genannt, gibt es nicht).
 - Unter FPC getestet (Common, LSP, Shell mit echtem git, Parser, CLI, MCP); `Atlas.UI.Hotspots.Frame.Tests` läuft nur unter Delphi. Delphi-Build und Handtests HS1–HS16 offen; SVN-Vergleich (HS12) braucht `svn` und `svnadmin`, im Test sonst übersprungen.
 
-
 ## Fenster „Atlas-Server“ (#1356, 29.10.2026, Branch `claude/project-thread-gxtcpz`)
 - **Server:** `atlas.server.status` liefert zusätzlich `process` (PID, Version, Laufzeit, Zustand), `memory` je Bereich gegen das Budget, `checkRun` (langsamste Units und Regeln des letzten Prüflaufs), `queue` und `cacheHits`; alte Felder bleiben. MCP-Werkzeug `get_server_status` (27 Werkzeuge), Statusdatei `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json`, Befehl `atlas.server.diagnosticPackage` (Status, Protokoll der Sitzung, Trace der letzten Minuten; Zugangsdaten immer entfernt).
 - **`--timings [<Datei>]` statt `--profile`:** `--profile` ist seit #146 die Auswahl des Regelprofils; die Zeitmessung von `--check` heißt deshalb `--timings`.
@@ -442,7 +475,6 @@
 - Plattform im Syntaxbaum: `TSyntaxTree.Platform` setzt `ParseActive` aus den Defines (`TPascalPreprocessor.PlatformOf`); leer heißt unbekannt, plattformabhängige Regeln schweigen dann. Testhilfe `TRuleAssert.PlatformFindings`.
 - Vergleich mit dem Linux-Server über alle Compilermeldungen-Fälle: keine neuen zusätzlichen Treffer gegenüber Prep-v1.2.0. Offen bei anderen Threads: E2037 in Cm.E2404 (.NET-`add`-Syntax, #1382), E2181 (#1373), E2591-Fehlalarm bei external stdcall varargs (#1383).
 - dcc-Minimalfälle: `Tests/DccFaelle/DccDeklarationen` (DK1–DK11, still) und `DccDeklarationenGegen` (DG1–DG7). Noch nicht mit dcc gebaut.
-
 
 ## Fundament-Units (#1365, AG2, 29.10.2026, Branch `feature/1365-fundament` auf `feature/1364-nachteilen`)
 - `TAnalysis.SeparateFoundations` nach dem ersten Lauf: Kandidaten = Rolle Fundament; ihre Verteilung zählt in einem Lauf **ohne** die Kandidaten (im ersten Lauf ziehen sie ihre Abhängigen ja zusammen, die Regel „nach dem ersten Lauf“ aus dem Issue hätte den Testgraphen nie erkannt); übergreifend bei Abhängigen in mindestens 3 Gemeinschaften oder höchstens 60 % in der größten (ganzzahlig verglichen: FPC rechnet 0,6·10 in Extended knapp unter 6).
@@ -469,7 +501,6 @@
 - **Cloud-Abgleich:** `Tools/Linux/Build-AtlasServer.sh` baut den Server mit FPC trunk aus dem Release; `--check` auf `Tests/Compilermeldungen` (wie `Build-Compilermeldungen.ps1`, Profile strict und standard samt .dpr/.dpk) und `Compare-Compilermeldungen.py` gegen `Ergebnisse/dcc.tsv` laufen unter Linux. Ohne RTL im Index weichen die Gesamtzahlen von Windows ab (218 statt 228 erkannt); verglichen wird deshalb vorher/nachher: alle 14 Meldungen W1055 (11), H2243, H2244, H2445 jetzt erkannt, keine neuen Einträge unter „zusätzlich“.
 - **Offen:** Delphi-Build (Win64-Gruppe, Win32-Plugin) und Handtests CR1–CR8.
 
-
 ## Formatieren ohne IDE (#1358, 29.10.2026, Branch `feature/1358-formatieren-ohne-ide`)
 - **Was:** `--check <Ziel> --format-check` bzw. `--format-write` (Shell.Linter `TLinterShell.Formatting`), Ausgabe `Atlas.Common.Rules.FormatOutput` (Text, JSON, Diff über `TTextDiff.Unified`), Kern `Atlas.Common.Editing.FormatCheck` (Bereiche für `--changed-lines`, Abweichungen je Zeile, Syntaxfehler, Stabilität), MCP `format_code` (`TMcpEditTools.FormatCode`, schreibt über `Apply` wie `apply_code_action`). `// atlas-format: off` … `on` kennt jetzt der Formatierer selbst (`KeepProtected` in `Atlas.Common.Editing.Formatter`), also auch das Plugin.
 - **Ursache nebenbei behoben:** `Formatter.Layout.Place` hängte `begin` nicht an eine schon angehängte Zeile; mit `beginPlacement`/`elsePlacement` = `sameLine` wurde `end`/`else`/`begin` erst im zweiten Lauf eine Zeile.
@@ -477,7 +508,6 @@
 - **Einstellungen:** wie `ResolvedFormatStyleFor` im Server (`format.*` über `.editorconfig` über Vorgaben, ohne IDE-Optionen). Keine neuen Schlüssel.
 - **Geprüft:** FPC-trunk-Harness 106 Tests grün (Formatter, Layout, Indent, FormatCheck samt Referenzprojekt-Stabilität, FormatOutput, Diff, FileEncoding); Shell.Linter-, Shell.CommandLine- und Mcp.EditTools-Tests nur geschrieben (Harness übersetzt die Shell-Units nicht), dafür Linux-Server gebaut und Kommandozeile sowie MCP von Hand durchgespielt. Alle Check-Skripte grün. Mit Delphi nicht gebaut; Handtests FK1–FK14.
 - **Harness-Falle:** `mk.py` aus `werkzeuge/fpc-harness` indiziert auch `Output/Linux64/Fpc/Src` (vom Server-Bau) und nimmt dann die schon umgewandelten Units; `'/Output'` ausschließen. Qualifizierte Aufrufe wie `System.SysUtils.Format` übersetzt der Harness nicht.
-
 
 ## MCP-Prompts und Ressourcen mit Vorlage (#1357, 29.10.2026, Branch `feature/1357-mcp-prompts`)
 - Neue Unit `Atlas.Common.Mcp.Prompts` (eingebaute und eigene Prompts, Vorlagen `delphi://unit|form|findings/{…}`, `delphi://build/last`); `TMcpServer` kann `prompts/list`, `prompts/get`, `resources/templates/list` und `InvokeTool` (gleiche Regeln wie `tools/call`). Verdrahtung in `Shell.Mcp.pas` (UnitFileOf, ChangesOf).
@@ -805,7 +835,6 @@
 - #492: Fortschritt im Menütitel, Index-Status/Neuaufbau (ef1b32d6); Tipp-Pause-Index (04bbde94, a92bd2f6, 0f14d324) vom User bestätigt; offen: geteilter Bibliotheks-Index, #470, #476.
 - Fehlersuche: Registry HKCU\Software\Atlas\IdePlugin ServerArguments="--log <datei> --log-level debug" und Diagnose=1 (danach wieder entfernen).
 
-
 ## #616 Vervollständigung zu langsam (12.10.2026, Branch `feature/616-completion-langsam`)
 
 - **Ursache (Codeanalyse, nicht gemessen):** Der Server meldete im unscharfen Modus immer `isIncomplete`. Bei jedem Tastendruck schickte das Plugin daher den vollen Text, und der Server baute für alle sichtbaren Symbole (alle uses-Units) vollständige Records, sortierte und kürzte erst dann auf 1000. Dazu kam ein quadratisches Einlesen im Plugin.
@@ -831,7 +860,6 @@
   - Nicht gebaut und nicht getestet (Cloud). Neue Tests: `CachedIncludeUnitReusedUntilIncludeChanges`, `EnsureUnitDoesNotWaitForOtherRequests`, `TImportNameIndexTests`.
   - Cache-Format 10: Zeilen mit Tabulator-Feldern statt JSON (`TIndexCache`, Kopf `ATLAS-INDEX`), ein Durchlauf ohne JSON-Baum. Der erste Start danach liest alles neu. Dateiname bleibt `index-*.json`.
   - Punkt 9 (dauerhafter Server) verworfen (Marco). Punkt 2 (Bibliothek je Version) besteht weitgehend seit #492.
-
 
 ## Critical-Issues (14.10.2026, Branch `claude/critical-issues-ygbl9i` von main)
 
@@ -1671,7 +1699,6 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Nach dem Merge zu tun:** Setup-Skript in der Cloud-Umgebung eintragen (Marco), prüfen, dass der Workflow das Release `cloud-linux` anlegt, dann in einem neuen Thread `claude mcp list` bzw. die Fehlermeldung beim Start prüfen.
 - **Ungeprüft:** ob das Setup-Skript schon die Klone sieht (sonst greift nur der SessionStart-Hook, und der MCP-Server fehlt in der ersten Sitzung trotzdem); ob der Proxy im Setup-Skript Release-Dateien des privaten Repositorys lädt.
 - **Ebenfalls auf dem Branch (Commit fc56a8e), weitergeführt in eigenen Threads:** MCP-Werkzeug `hook_check` mit Plugin-Hook, Skill `/atlas:bauen`, Repo-Hook `nach-bearbeitung.sh` (Thread „Hooks und Bauen-Befehl im Atlas-Plugin“), `Tools/Start-McpInspector.ps1` (Thread „MCP Inspector für Atlas-Tools“). Delphi-Bau steht für beides aus.
-
 
 ## Sprachstand minDelphiVersion und Claude-Code-Hook (#1126, 23.10.2026, Branch `claude/project-thread-ay4hwo`)
 - Aufbauend auf `claude/project-thread-e74he2` (fc56a8e, Hook `hook_check`, `/atlas:bauen`, Repo-Hook `nach-bearbeitung.sh`). Ungebaut mit Delphi; unter FPC übersetzt und probiert.

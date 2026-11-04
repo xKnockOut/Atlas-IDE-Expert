@@ -83,6 +83,13 @@ begin
   Result := ExpandFileName(PathDelim + 'Projekte' + PathDelim + 'Kasse');
 end;
 
+/// <summary>Vorgaben mit Name feature/13-y, Kennung ATL-13 und AOptions für Git.</summary>
+function GitSetup(const AOptions: TAtlasVcsGitBranchOptions; AOfferNeverAsk: Boolean): TAtlasBranchDialogSetup;
+begin
+  Result := TAtlasBranchDialogSetup.Make('feature/13-y', '', 'ATL-13', AOfferNeverAsk);
+  Result.Git := AOptions;
+end;
+
 function GitOptions(ABase: TAtlasVcsGitBaseOption; APushNow: Boolean; AUncommitted: TAtlasVcsGitUncommitted;
   AWorktree: Boolean; const AFolder: string): TAtlasVcsGitBranchOptions;
 begin
@@ -178,26 +185,26 @@ begin
   mDialog := TAtlasBranchDialog.CreateDialog(nil, GitFacts, 'feature/13-y', '', False);
   try
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchTitle), mDialog.Caption);
-    Assert.AreEqual(3, Integer(mDialog.BaseBox.Items.Count));
-    Assert.AreEqual(1, Integer(mDialog.BaseBox.ItemIndex), 'Vorgabe: lokaler Hauptbranch');
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseLocal, ['main']), mDialog.BaseBox.Items[1]);
-    Assert.AreEqual(1, Integer(mDialog.StepsMemo.Lines.Count));
+    Assert.AreEqual(3, Integer(mDialog.Names.BaseBox.Items.Count));
+    Assert.AreEqual(1, Integer(mDialog.Names.BaseBox.ItemIndex), 'Vorgabe: lokaler Hauptbranch');
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseLocal, ['main']), mDialog.Names.BaseBox.Items[1]);
+    Assert.AreEqual(1, Integer(mDialog.Steps.Memo.Lines.Count));
     Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/heads/main --',
-      mDialog.StepsMemo.Lines[0]);
-    Assert.IsFalse(mDialog.ServerHint.Visible, 'kein Schritt auf dem Server');
-    Assert.IsFalse(mDialog.MessagePanel.Visible, 'Nachricht nur bei SVN');
-    Assert.IsFalse(mDialog.ExternalsBox.Visible);
+      mDialog.Steps.Memo.Lines[0]);
+    Assert.IsFalse(mDialog.Steps.ServerHint.Visible, 'kein Schritt auf dem Server');
+    Assert.IsFalse(mDialog.Svn.MessagePanel.Visible, 'Nachricht nur bei SVN');
+    Assert.IsFalse(mDialog.Externals.Box.Visible);
     Assert.IsFalse(mDialog.NeverAsk.Visible, 'nur bei „Beginnen“');
     // Git-Gruppe mit den Werten vor #1289: kein Abruf, beim ersten Push, umschalten.
-    Assert.IsTrue(mDialog.GitBox.Visible);
-    Assert.IsFalse(mDialog.FetchCheck.Checked);
-    Assert.IsFalse(mDialog.FetchCheck.Enabled, 'Abruf nur mit Basis vom Server');
-    Assert.AreEqual(0, Integer(mDialog.PushBox.ItemIndex));
-    Assert.AreEqual(0, Integer(mDialog.PlaceBox.ItemIndex));
-    Assert.IsFalse(mDialog.UncommittedPanel.Visible, 'ohne geänderte Dateien');
-    Assert.IsFalse(mDialog.WorktreePanel.Visible);
-    Assert.IsFalse(mDialog.GitError.Visible);
-    Assert.IsFalse(mDialog.NameError.Visible);
+    Assert.IsTrue(mDialog.Git.Box.Visible);
+    Assert.IsFalse(mDialog.Git.FetchCheck.Checked);
+    Assert.IsFalse(mDialog.Git.FetchCheck.Enabled, 'Abruf nur mit Basis vom Server');
+    Assert.AreEqual(0, Integer(mDialog.Git.PushBox.ItemIndex));
+    Assert.AreEqual(0, Integer(mDialog.Git.PlaceBox.ItemIndex));
+    Assert.IsFalse(mDialog.Git.UncommittedPanel.Visible, 'ohne geänderte Dateien');
+    Assert.IsFalse(mDialog.Git.WorktreePanel.Visible);
+    Assert.IsFalse(mDialog.Git.Error.Visible);
+    Assert.IsFalse(mDialog.Names.NameError.Visible);
     Assert.IsFalse(mDialog.InfoLabel.Visible);
     Assert.IsTrue(mDialog.CanCreate);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
@@ -219,23 +226,23 @@ begin
   mDialog := TAtlasBranchDialog.CreateDialog(nil, GitFacts, '', '', True);
   try
     Assert.IsTrue(mDialog.NeverAsk.Visible, 'angeboten');
-    Assert.IsTrue(mDialog.NameError.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchNameMissing), mDialog.NameError.Caption);
+    Assert.IsTrue(mDialog.Names.NameError.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchNameMissing), mDialog.Names.NameError.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    Assert.AreEqual(0, Integer(mDialog.StepsMemo.Lines.Count));
+    Assert.AreEqual(0, Integer(mDialog.Steps.Memo.Lines.Count));
     // Leerzeichen am Rand, verbotene Zeichen, „..“.
-    mDialog.NameEdit.Text := ' feature/13-y';
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchNameInvalid), mDialog.NameError.Caption);
+    mDialog.Names.NameEdit.Text := ' feature/13-y';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchNameInvalid), mDialog.Names.NameError.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.NameEdit.Text := 'feature/13~y';
+    mDialog.Names.NameEdit.Text := 'feature/13~y';
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.NameEdit.Text := 'feature/13..y';
+    mDialog.Names.NameEdit.Text := 'feature/13..y';
     Assert.IsFalse(mDialog.CanCreate);
-    mDialog.NameEdit.Text := 'feature/13-y';
-    Assert.IsFalse(mDialog.NameError.Visible);
+    mDialog.Names.NameEdit.Text := 'feature/13-y';
+    Assert.IsFalse(mDialog.Names.NameError.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
     // Klick bei gesperrtem Zustand schließt nicht.
-    mDialog.NameEdit.Text := '';
+    mDialog.Names.NameEdit.Text := '';
     mDialog.CreateButton.OnClick(mDialog.CreateButton);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult));
   finally
@@ -249,17 +256,17 @@ var
 begin
   mDialog := TAtlasBranchDialog.CreateDialog(nil, GitFacts, 'feature/13-y', '', False);
   try
-    mDialog.BaseBox.ItemIndex := 0;
-    mDialog.BaseBox.OnChange(mDialog.BaseBox);
+    mDialog.Names.BaseBox.ItemIndex := 0;
+    mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
     Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/remotes/origin/main --',
-      mDialog.StepsMemo.Lines[0]);
+      mDialog.Steps.Memo.Lines[0]);
     Assert.IsTrue(mDialog.Request.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
-    mDialog.BaseBox.ItemIndex := 2;
-    mDialog.BaseBox.OnChange(mDialog.BaseBox);
+    mDialog.Names.BaseBox.ItemIndex := 2;
+    mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
     Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/heads/feature/12-x --',
-      mDialog.StepsMemo.Lines[0]);
+      mDialog.Steps.Memo.Lines[0]);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseCurrent, ['feature/12-x']),
-      mDialog.BaseBox.Items[2]);
+      mDialog.Names.BaseBox.Items[2]);
   finally
     mDialog.Free;
   end;
@@ -273,31 +280,31 @@ begin
   mFacts := SvnFacts;
   mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', '', True);
   try
-    Assert.IsTrue(mDialog.MessagePanel.Visible, 'svn copy hat eine Nachricht');
-    Assert.IsFalse(mDialog.GitBox.Visible, 'Git-Optionen nur unter Git');
-    Assert.IsTrue(mDialog.ExternalsBox.Visible, 'Hinweis auf svn:externals');
+    Assert.IsTrue(mDialog.Svn.MessagePanel.Visible, 'svn copy hat eine Nachricht');
+    Assert.IsFalse(mDialog.Git.Box.Visible, 'Git-Optionen nur unter Git');
+    Assert.IsTrue(mDialog.Externals.Box.Visible, 'Hinweis auf svn:externals');
     Assert.IsTrue(mDialog.InfoLabel.Visible);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchLoading), mDialog.InfoLabel.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled, 'gesperrt, bis der Server geantwortet hat');
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHead, ['trunk']), mDialog.BaseBox.Items[0]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHead, ['trunk']), mDialog.Names.BaseBox.Items[0]);
     mFacts.ServerChecked := True;
     mFacts.HeadRevision := '48230';
     mDialog.ServerLoaded(mFacts);
     Assert.IsFalse(mDialog.InfoLabel.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
-    Assert.AreEqual(0, Integer(mDialog.BaseBox.ItemIndex));
+    Assert.AreEqual(0, Integer(mDialog.Names.BaseBox.ItemIndex));
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHeadRevision, ['trunk', '48230']),
-      mDialog.BaseBox.Items[0]);
-    Assert.AreEqual(2, Integer(mDialog.StepsMemo.Lines.Count));
+      mDialog.Names.BaseBox.Items[0]);
+    Assert.AreEqual(2, Integer(mDialog.Steps.Memo.Lines.Count));
     Assert.AreEqual('1. svn copy ^/trunk@48230 ^/branches/ATL-123-kasse@ --parents -m "Branch ATL-123-kasse"   ' +
-      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.StepsMemo.Lines[0]);
-    Assert.AreEqual('2. svn switch ^/branches/ATL-123-kasse@ .', mDialog.StepsMemo.Lines[1]);
-    Assert.IsTrue(mDialog.ServerHint.Visible);
+      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.Steps.Memo.Lines[0]);
+    Assert.AreEqual('2. svn switch ^/branches/ATL-123-kasse@ .', mDialog.Steps.Memo.Lines[1]);
+    Assert.IsTrue(mDialog.Steps.ServerHint.Visible);
     // Eigene Nachricht landet im copy.
-    mDialog.MessageEdit.Text := 'ATL-123';
+    mDialog.Svn.MessageEdit.Text := 'ATL-123';
     Assert.AreEqual('ATL-123', mDialog.Request.Message);
     Assert.AreEqual('1. svn copy ^/trunk@48230 ^/branches/ATL-123-kasse@ --parents -m ATL-123   ' +
-      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.StepsMemo.Lines[0]);
+      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.Steps.Memo.Lines[0]);
     // Server nicht erreichbar: Hinweis, Kopie von HEAD zum Zeitpunkt des Kopierens bleibt möglich.
     mFacts.HeadRevision := '';
     mFacts.ServerOutcome := TAtlasVcsOutcome.LoginNeeded;
@@ -309,6 +316,51 @@ begin
     mDialog.Free;
   end;
   mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+/// <summary>Ohne erkennbares Layout und frisch auschecken.</summary>
+procedure AssertSvnLayoutAndCheckout(const AFacts: TAtlasVcsBranchFacts; const ASvn: TAtlasVcsSvnBranchOptions);
+var
+  mDialog: TAtlasBranchDialog;
+  mFacts: TAtlasVcsBranchFacts;
+  mSvn: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+begin
+  mFacts := AFacts;
+  mSvn := ASvn;
+  // Ohne erkennbares Layout: Ort leer, Hinweis, nichts anzulegen.
+  mFacts.LayoutKnown := False;
+  mFacts.ProjectRoot := '';
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  try
+    Assert.AreEqual('', mDialog.Svn.LocationEdit.Text);
+    Assert.IsTrue(mDialog.Svn.LocationError.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationMissing), mDialog.Svn.LocationError.Caption);
+    Assert.IsFalse(mDialog.CreateButton.Enabled);
+    mDialog.Svn.LocationEdit.Text := '^/Kasse/branches/ATL-123-kasse';
+    Assert.IsFalse(mDialog.Svn.LocationError.Visible);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
+  finally
+    mDialog.Free;
+  end;
+  // Frisch auschecken: Ordner neben der Arbeitskopie, Schritt checkout statt switch.
+  mFacts.LayoutKnown := True;
+  mFacts.ProjectRoot := 'Kasse';
+  mSvn.After := TAtlasVcsSvnAfter.Checkout;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  try
+    Assert.IsTrue(mDialog.Svn.FolderPanel.Visible);
+    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mDialog.Svn.FolderEdit.Text);
+    mRequest := mDialog.Request;
+    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Checkout);
+    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mRequest.CheckoutFolder);
+    Assert.Contains(mDialog.Steps.Memo.Lines[1], 'svn checkout ^/Kasse/branches/ATL-123-kasse@');
+  finally
+    mDialog.Free;
+  end;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 procedure TAtlasBranchDialogTests.SvnOptionsFollowName;
@@ -332,70 +384,86 @@ begin
   mSvn.Source := TAtlasVcsSvnSource.WorkingCopy;
   mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
   try
-    Assert.IsTrue(mDialog.LocationPanel.Visible);
-    Assert.IsTrue(mDialog.AfterPanel.Visible);
-    Assert.IsFalse(mDialog.FolderPanel.Visible, 'nur bei „frisch auschecken“');
-    Assert.AreEqual('^/Kasse/branches/ATL-123-kasse', mDialog.LocationEdit.Text);
-    Assert.IsFalse(mDialog.LocationError.Visible);
+    Assert.IsTrue(mDialog.Svn.LocationPanel.Visible);
+    Assert.IsTrue(mDialog.Svn.AfterPanel.Visible);
+    Assert.IsFalse(mDialog.Svn.FolderPanel.Visible, 'nur bei „frisch auschecken“');
+    Assert.AreEqual('^/Kasse/branches/ATL-123-kasse', mDialog.Svn.LocationEdit.Text);
+    Assert.IsFalse(mDialog.Svn.LocationError.Visible);
     // Quelle Arbeitskopie: vorausgewählt, gemischte Revision gewarnt.
-    Assert.AreEqual(1, Integer(mDialog.BaseBox.ItemIndex));
-    Assert.IsTrue(mDialog.MixedLabel.Visible);
+    Assert.AreEqual(1, Integer(mDialog.Names.BaseBox.ItemIndex));
+    Assert.IsTrue(mDialog.Svn.MixedLabel.Visible);
     mRequest := mDialog.Request;
     Assert.AreEqual('Kasse/branches/ATL-123-kasse', mRequest.Location);
     Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
     Assert.AreEqual('', mRequest.CheckoutFolder);
-    Assert.Contains(mDialog.StepsMemo.Lines[0], '^/Kasse/branches/ATL-123-kasse@');
+    Assert.Contains(mDialog.Steps.Memo.Lines[0], '^/Kasse/branches/ATL-123-kasse@');
     // Name ändern: Ort folgt.
-    mDialog.NameEdit.Text := 'ATL-123-bon';
-    Assert.AreEqual('^/Kasse/branches/ATL-123-bon', mDialog.LocationEdit.Text);
+    mDialog.Names.NameEdit.Text := 'ATL-123-bon';
+    Assert.AreEqual('^/Kasse/branches/ATL-123-bon', mDialog.Svn.LocationEdit.Text);
     // Basis HEAD: keine Warnung.
-    mDialog.BaseBox.ItemIndex := 0;
-    mDialog.BaseBox.OnChange(mDialog.BaseBox);
-    Assert.IsFalse(mDialog.MixedLabel.Visible);
+    mDialog.Names.BaseBox.ItemIndex := 0;
+    mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
+    Assert.IsFalse(mDialog.Svn.MixedLabel.Visible);
     // Von Hand geändert: bleibt, auch wenn sich der Name ändert; ungültig gesperrt.
-    mDialog.LocationEdit.Text := '^/Kasse/branches/eigener';
-    mDialog.NameEdit.Text := 'ATL-123-kasse';
-    Assert.AreEqual('^/Kasse/branches/eigener', mDialog.LocationEdit.Text);
+    mDialog.Svn.LocationEdit.Text := '^/Kasse/branches/eigener';
+    mDialog.Names.NameEdit.Text := 'ATL-123-kasse';
+    Assert.AreEqual('^/Kasse/branches/eigener', mDialog.Svn.LocationEdit.Text);
     Assert.AreEqual('Kasse/branches/eigener', mDialog.Request.Location);
-    mDialog.LocationEdit.Text := 'Kasse/branches/eigener';
-    Assert.IsTrue(mDialog.LocationError.Visible, 'ohne ^/');
+    mDialog.Svn.LocationEdit.Text := 'Kasse/branches/eigener';
+    Assert.IsTrue(mDialog.Svn.LocationError.Visible, 'ohne ^/');
     Assert.IsFalse(mDialog.CreateButton.Enabled);
   finally
     mDialog.Free;
   end;
-  // Ohne erkennbares Layout: Ort leer, Hinweis, nichts anzulegen.
-  mFacts.LayoutKnown := False;
-  mFacts.ProjectRoot := '';
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  AssertSvnLayoutAndCheckout(mFacts, mSvn);
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mRequest := Default(TAtlasVcsBranchRequest);
+end;
+
+/// <summary>onBranch = ask sperrt bis alles gewählt ist; nicht lesbare Externals zeigen nur den Hinweis.</summary>
+procedure AssertExternalsAskAndUnreadable(const AFacts: TAtlasVcsBranchFacts; const ASvn: TAtlasVcsSvnBranchOptions);
+var
+  mDialog: TAtlasBranchDialog;
+  mFacts: TAtlasVcsBranchFacts;
+  mSvn: TAtlasVcsSvnBranchOptions;
+begin
+  mFacts := AFacts;
+  mSvn := ASvn;
+  // onBranch = ask: keine Vorauswahl, „Anlegen“ gesperrt mit Hinweis, bis alles gewählt ist.
+  mSvn.ExternalsOnBranch := TAtlasVcsExternalAction.Ask;
+  mSvn.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
   try
-    Assert.AreEqual('', mDialog.LocationEdit.Text);
-    Assert.IsTrue(mDialog.LocationError.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationMissing), mDialog.LocationError.Caption);
+    mDialog.HandleNeeded;
+    Assert.AreEqual(-1, Integer(mDialog.Externals.Boxes[0].ItemIndex));
+    Assert.IsTrue(mDialog.Externals.Hint.Visible);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.LocationEdit.Text := '^/Kasse/branches/ATL-123-kasse';
-    Assert.IsFalse(mDialog.LocationError.Visible);
+    mDialog.Externals.Boxes[0].ItemIndex := 0;
+    mDialog.Externals.Boxes[0].OnChange(mDialog.Externals.Boxes[0]);
+    mDialog.Externals.Boxes[1].ItemIndex := 1;
+    mDialog.Externals.Boxes[1].OnChange(mDialog.Externals.Boxes[1]);
+    Assert.IsFalse(mDialog.CreateButton.Enabled, 'Lieferant fehlt noch');
+    mDialog.Externals.Boxes[3].ItemIndex := 1;
+    mDialog.Externals.Boxes[3].OnChange(mDialog.Externals.Boxes[3]);
+    Assert.IsFalse(mDialog.Externals.Hint.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
   finally
     mDialog.Free;
   end;
-  // Frisch auschecken: Ordner neben der Arbeitskopie, Schritt checkout statt switch.
-  mFacts.LayoutKnown := True;
-  mFacts.ProjectRoot := 'Kasse';
-  mSvn.After := TAtlasVcsSvnAfter.Checkout;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  // Externals nicht lesbar: nur der Hinweis wie vor #1291.
+  mFacts.SvnExternals := nil;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
   try
-    Assert.IsTrue(mDialog.FolderPanel.Visible);
-    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mDialog.FolderEdit.Text);
-    mRequest := mDialog.Request;
-    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Checkout);
-    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mRequest.CheckoutFolder);
-    Assert.Contains(mDialog.StepsMemo.Lines[1], 'svn checkout ^/Kasse/branches/ATL-123-kasse@');
+    Assert.IsTrue(mDialog.Externals.Box.Visible);
+    Assert.AreEqual(0, Integer(Length(mDialog.Externals.Boxes)));
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsKept), mDialog.Externals.Hint.Caption);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
   finally
     mDialog.Free;
   end;
   mFacts := TAtlasVcsBranchFacts.Empty;
   mSvn := TAtlasVcsSvnBranchOptions.Default;
-  mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 procedure TAtlasBranchDialogTests.ExternalsChoicePerRow;
@@ -412,19 +480,19 @@ begin
   mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
   try
     mDialog.HandleNeeded;
-    Assert.IsTrue(mDialog.ExternalsBox.Visible);
-    Assert.AreEqual('Externals (4)', mDialog.ExternalsBox.Caption);
-    Assert.AreEqual(4, Integer(Length(mDialog.ExternalBoxes)));
+    Assert.IsTrue(mDialog.Externals.Box.Visible);
+    Assert.AreEqual('Externals (4)', mDialog.Externals.Box.Caption);
+    Assert.AreEqual(4, Integer(Length(mDialog.Externals.Boxes)));
     // Basis: festschreiben auf die Revision der Arbeitskopie, drei Einträge.
-    Assert.AreEqual(3, Integer(mDialog.ExternalBoxes[0].Items.Count));
-    Assert.AreEqual('festschreiben (r48190)', mDialog.ExternalBoxes[0].Text);
+    Assert.AreEqual(3, Integer(mDialog.Externals.Boxes[0].Items.Count));
+    Assert.AreEqual('festschreiben (r48190)', mDialog.Externals.Boxes[0].Text);
     // Drucken: lokale Änderungen, „mitverzweigen“ vorgeschlagen.
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalBranch), mDialog.ExternalBoxes[1].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalBranch), mDialog.Externals.Boxes[1].Text);
     // Kunden: feste Revision, keine Auswahl.
-    Assert.IsTrue(mDialog.ExternalBoxes[2] = nil);
+    Assert.IsTrue(mDialog.Externals.Boxes[2] = nil);
     // Fremdes Repository: festschreiben oder unverändert.
-    Assert.AreEqual(2, Integer(mDialog.ExternalBoxes[3].Items.Count));
-    Assert.IsFalse(mDialog.ExternalsHint.Visible);
+    Assert.AreEqual(2, Integer(mDialog.Externals.Boxes[3].Items.Count));
+    Assert.IsFalse(mDialog.Externals.Hint.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
     mRequest := mDialog.Request;
     Assert.IsTrue(mRequest.ExternalActions[0] = TAtlasVcsExternalAction.Pin);
@@ -432,54 +500,52 @@ begin
     Assert.IsTrue(mRequest.ExternalActions[2] = TAtlasVcsExternalAction.Keep);
     Assert.AreEqual('Packages/Drucken/branches/KASSE-42-bon', mRequest.ExternalLocations[1]);
     // Reihenfolge: Package kopieren, Projekt kopieren, umschreiben, umschalten.
-    mText := mDialog.StepsMemo.Lines.Text;
-    Assert.Contains(mDialog.StepsMemo.Lines[0], '^/Packages/Drucken/trunk@48211 ^/Packages/Drucken/branches/KASSE-42-bon');
-    Assert.Contains(mDialog.StepsMemo.Lines[1], '^/Kasse/branches/KASSE-42-bon');
+    mText := mDialog.Steps.Memo.Lines.Text;
+    Assert.Contains(mDialog.Steps.Memo.Lines[0], '^/Packages/Drucken/trunk@48211 ^/Packages/Drucken/branches/KASSE-42-bon');
+    Assert.Contains(mDialog.Steps.Memo.Lines[1], '^/Kasse/branches/KASSE-42-bon');
     Assert.Contains(mText, 'svn propset svn:externals');
     // Drucken unverändert: kein Package-Schritt mehr; Basis und Lieferant schreibt Atlas selbst fest.
-    mDialog.ExternalBoxes[1].ItemIndex := 1;
-    mDialog.ExternalBoxes[1].OnChange(mDialog.ExternalBoxes[1]);
+    mDialog.Externals.Boxes[1].ItemIndex := 1;
+    mDialog.Externals.Boxes[1].OnChange(mDialog.Externals.Boxes[1]);
     Assert.IsTrue(mDialog.Request.ExternalActions[1] = TAtlasVcsExternalAction.Keep);
-    Assert.IsFalse(mDialog.StepsMemo.Lines.Text.Contains('Packages/Drucken/branches'));
+    Assert.IsFalse(mDialog.Steps.Memo.Lines.Text.Contains('Packages/Drucken/branches'));
   finally
     mDialog.Free;
   end;
-  // onBranch = ask: keine Vorauswahl, „Anlegen“ gesperrt mit Hinweis, bis alles gewählt ist.
-  mSvn.ExternalsOnBranch := TAtlasVcsExternalAction.Ask;
-  mSvn.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
-  try
-    mDialog.HandleNeeded;
-    Assert.AreEqual(-1, Integer(mDialog.ExternalBoxes[0].ItemIndex));
-    Assert.IsTrue(mDialog.ExternalsHint.Visible);
-    Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.ExternalBoxes[0].ItemIndex := 0;
-    mDialog.ExternalBoxes[0].OnChange(mDialog.ExternalBoxes[0]);
-    mDialog.ExternalBoxes[1].ItemIndex := 1;
-    mDialog.ExternalBoxes[1].OnChange(mDialog.ExternalBoxes[1]);
-    Assert.IsFalse(mDialog.CreateButton.Enabled, 'Lieferant fehlt noch');
-    mDialog.ExternalBoxes[3].ItemIndex := 1;
-    mDialog.ExternalBoxes[3].OnChange(mDialog.ExternalBoxes[3]);
-    Assert.IsFalse(mDialog.ExternalsHint.Visible);
-    Assert.IsTrue(mDialog.CreateButton.Enabled);
-  finally
-    mDialog.Free;
-  end;
-  // Externals nicht lesbar: nur der Hinweis wie vor #1291.
-  mFacts.SvnExternals := nil;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
-  try
-    Assert.IsTrue(mDialog.ExternalsBox.Visible);
-    Assert.AreEqual(0, Integer(Length(mDialog.ExternalBoxes)));
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsKept), mDialog.ExternalsHint.Caption);
-    Assert.IsTrue(mDialog.CreateButton.Enabled);
-  finally
-    mDialog.Free;
-  end;
+  AssertExternalsAskAndUnreadable(mFacts, mSvn);
   mFacts := TAtlasVcsBranchFacts.Empty;
   mSvn := TAtlasVcsSvnBranchOptions.Default;
   mRequest := Default(TAtlasVcsBranchRequest);
   mText := '';
+end;
+
+/// <summary>Mitnehmen, später pushen, lokale Basis; zurück zur Basis vom Server ohne Abruf.</summary>
+procedure AssertGitLocalBaseSteps(const ADialog: TAtlasBranchDialog);
+var
+  mDialog: TAtlasBranchDialog;
+  mRequest: TAtlasVcsBranchRequest;
+begin
+  mDialog := ADialog;
+    // Mitnehmen, später pushen, lokale Basis: kein Abruf, nur checkout.
+    mDialog.Git.UncommittedBox.ItemIndex := 0;
+    mDialog.Git.UncommittedBox.OnChange(mDialog.Git.UncommittedBox);
+    mDialog.Git.PushBox.ItemIndex := 0;
+    mDialog.Git.PushBox.OnChange(mDialog.Git.PushBox);
+    mDialog.Names.BaseBox.ItemIndex := 1;
+    mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
+    Assert.IsFalse(mDialog.Git.FetchCheck.Enabled);
+    Assert.AreEqual(1, Integer(mDialog.Steps.Memo.Lines.Count));
+    mRequest := mDialog.Request;
+    Assert.IsFalse(mRequest.Fetch, 'Abruf nur mit Basis vom Server');
+    Assert.IsFalse(mRequest.Stash);
+    Assert.IsFalse(mRequest.PushNow);
+    // Zurück zur Basis vom Server, Abruf abgewählt: ohne fetch.
+    mDialog.Names.BaseBox.ItemIndex := 0;
+    mDialog.Names.BaseBox.OnChange(mDialog.Names.BaseBox);
+    mDialog.Git.FetchCheck.Checked := False;
+    Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/remotes/origin/main --',
+      mDialog.Steps.Memo.Lines[0]);
+  mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 procedure TAtlasBranchDialogTests.GitOptionsPreset;
@@ -492,59 +558,41 @@ begin
   mFacts.Remote := 'origin';
   mFacts.LocalChanges := 3;
   mFacts.Root := RepoRoot;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'feature/13-y', '', 'ATL-13',
-    GitOptions(TAtlasVcsGitBaseOption.Remote, True, TAtlasVcsGitUncommitted.Ask, False, ''), True);
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, GitSetup(GitOptions(TAtlasVcsGitBaseOption.Remote, True,
+    TAtlasVcsGitUncommitted.Ask, False, ''), True));
   try
-    Assert.AreEqual(0, Integer(mDialog.BaseBox.ItemIndex), 'Vorgabe: Stand auf dem Server');
-    Assert.IsTrue(mDialog.FetchCheck.Checked);
-    Assert.IsTrue(mDialog.FetchCheck.Enabled);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetch, ['origin', 'main']), mDialog.FetchCheck.Caption);
-    Assert.AreEqual(1, Integer(mDialog.PushBox.ItemIndex));
+    Assert.AreEqual(0, Integer(mDialog.Names.BaseBox.ItemIndex), 'Vorgabe: Stand auf dem Server');
+    Assert.IsTrue(mDialog.Git.FetchCheck.Checked);
+    Assert.IsTrue(mDialog.Git.FetchCheck.Enabled);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetch, ['origin', 'main']), mDialog.Git.FetchCheck.Caption);
+    Assert.AreEqual(1, Integer(mDialog.Git.PushBox.ItemIndex));
     // „nachfragen“: Anzahl sichtbar, keine Wahl, „Anlegen“ gesperrt.
-    Assert.IsTrue(mDialog.UncommittedPanel.Visible);
-    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedCount, [3]), mDialog.UncommittedCount.Caption);
-    Assert.AreEqual(-1, Integer(mDialog.UncommittedBox.ItemIndex));
-    Assert.IsTrue(mDialog.GitError.Visible);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommittedChoose), mDialog.GitError.Caption);
+    Assert.IsTrue(mDialog.Git.UncommittedPanel.Visible);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedCount, [3]), mDialog.Git.UncommittedCount.Caption);
+    Assert.AreEqual(-1, Integer(mDialog.Git.UncommittedBox.ItemIndex));
+    Assert.IsTrue(mDialog.Git.Error.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommittedChoose), mDialog.Git.Error.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
     // Beiseitelegen gewählt: fetch, stash, checkout, push (auf dem Server).
-    mDialog.UncommittedBox.ItemIndex := 1;
-    mDialog.UncommittedBox.OnChange(mDialog.UncommittedBox);
-    Assert.IsFalse(mDialog.GitError.Visible);
+    mDialog.Git.UncommittedBox.ItemIndex := 1;
+    mDialog.Git.UncommittedBox.OnChange(mDialog.Git.UncommittedBox);
+    Assert.IsFalse(mDialog.Git.Error.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
-    Assert.AreEqual(4, Integer(mDialog.StepsMemo.Lines.Count));
-    Assert.AreEqual('1. git fetch --quiet --no-tags origin main', mDialog.StepsMemo.Lines[0]);
+    Assert.AreEqual(4, Integer(mDialog.Steps.Memo.Lines.Count));
+    Assert.AreEqual('1. git fetch --quiet --no-tags origin main', mDialog.Steps.Memo.Lines[0]);
     Assert.AreEqual('2. git stash push --include-untracked --quiet -m "Atlas: vor feature/13-y"',
-      mDialog.StepsMemo.Lines[1]);
+      mDialog.Steps.Memo.Lines[1]);
     Assert.AreEqual('3. git checkout --quiet --no-track -b feature/13-y refs/remotes/origin/main --',
-      mDialog.StepsMemo.Lines[2]);
+      mDialog.Steps.Memo.Lines[2]);
     Assert.AreEqual('4. git push --set-upstream origin refs/heads/feature/13-y:refs/heads/feature/13-y   ' +
-      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.StepsMemo.Lines[3]);
-    Assert.IsTrue(mDialog.ServerHint.Visible);
+      TAtlasStrings.Text(TAtlasTextId.VcsBranchOnServer), mDialog.Steps.Memo.Lines[3]);
+    Assert.IsTrue(mDialog.Steps.ServerHint.Visible);
     mRequest := mDialog.Request;
     Assert.IsTrue(mRequest.Fetch);
     Assert.IsTrue(mRequest.PushNow);
     Assert.IsTrue(mRequest.Stash);
     Assert.AreEqual('', mRequest.WorktreeFolder);
-    // Mitnehmen, später pushen, lokale Basis: kein Abruf, nur checkout.
-    mDialog.UncommittedBox.ItemIndex := 0;
-    mDialog.UncommittedBox.OnChange(mDialog.UncommittedBox);
-    mDialog.PushBox.ItemIndex := 0;
-    mDialog.PushBox.OnChange(mDialog.PushBox);
-    mDialog.BaseBox.ItemIndex := 1;
-    mDialog.BaseBox.OnChange(mDialog.BaseBox);
-    Assert.IsFalse(mDialog.FetchCheck.Enabled);
-    Assert.AreEqual(1, Integer(mDialog.StepsMemo.Lines.Count));
-    mRequest := mDialog.Request;
-    Assert.IsFalse(mRequest.Fetch, 'Abruf nur mit Basis vom Server');
-    Assert.IsFalse(mRequest.Stash);
-    Assert.IsFalse(mRequest.PushNow);
-    // Zurück zur Basis vom Server, Abruf abgewählt: ohne fetch.
-    mDialog.BaseBox.ItemIndex := 0;
-    mDialog.BaseBox.OnChange(mDialog.BaseBox);
-    mDialog.FetchCheck.Checked := False;
-    Assert.AreEqual('1. git checkout --quiet --no-track -b feature/13-y refs/remotes/origin/main --',
-      mDialog.StepsMemo.Lines[0]);
+    AssertGitLocalBaseSteps(mDialog);
   finally
     mDialog.Free;
   end;
@@ -562,35 +610,35 @@ begin
   mFacts.LocalChanges := 2;
   mFacts.Root := RepoRoot;
   mParent := ExtractFileDir(RepoRoot);
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'feature/13-y', '', 'ATL-13',
-    GitOptions(TAtlasVcsGitBaseOption.Local, False, TAtlasVcsGitUncommitted.Ask, True, '..\{repo}-{name}'), False);
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, GitSetup(GitOptions(TAtlasVcsGitBaseOption.Local, False,
+    TAtlasVcsGitUncommitted.Ask, True, '..\{repo}-{name}'), False));
   try
-    Assert.AreEqual(1, Integer(mDialog.PlaceBox.ItemIndex));
-    Assert.IsTrue(mDialog.WorktreePanel.Visible);
-    Assert.IsFalse(mDialog.UncommittedPanel.Visible, 'die Arbeitskopie bleibt unberührt');
-    Assert.AreEqual(mParent + PathDelim + 'Kasse-feature-13-y', mDialog.WorktreeEdit.Text);
+    Assert.AreEqual(1, Integer(mDialog.Git.PlaceBox.ItemIndex));
+    Assert.IsTrue(mDialog.Git.WorktreePanel.Visible);
+    Assert.IsFalse(mDialog.Git.UncommittedPanel.Visible, 'die Arbeitskopie bleibt unberührt');
+    Assert.AreEqual(mParent + PathDelim + 'Kasse-feature-13-y', mDialog.Git.WorktreeEdit.Text);
     Assert.AreEqual('1. git worktree add --quiet --no-track -b feature/13-y ' + mParent + PathDelim +
-      'Kasse-feature-13-y refs/heads/main', mDialog.StepsMemo.Lines[0]);
+      'Kasse-feature-13-y refs/heads/main', mDialog.Steps.Memo.Lines[0]);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
     // Der Ordner folgt dem Namen.
-    mDialog.NameEdit.Text := 'feature/14-z';
-    Assert.AreEqual(mParent + PathDelim + 'Kasse-feature-14-z', mDialog.WorktreeEdit.Text);
+    mDialog.Names.NameEdit.Text := 'feature/14-z';
+    Assert.AreEqual(mParent + PathDelim + 'Kasse-feature-14-z', mDialog.Git.WorktreeEdit.Text);
     Assert.AreEqual(mParent + PathDelim + 'Kasse-feature-14-z', mDialog.Request.WorktreeFolder);
     // Von Hand geändert: folgt nicht mehr; relativ bzw. vorhanden sperrt „Anlegen“.
-    mDialog.WorktreeEdit.Text := 'relativ';
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchFolderInvalid), mDialog.GitError.Caption);
+    mDialog.Git.WorktreeEdit.Text := 'relativ';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchFolderInvalid), mDialog.Git.Error.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.WorktreeEdit.Text := ExcludeTrailingPathDelimiter(GetCurrentDir);
+    mDialog.Git.WorktreeEdit.Text := ExcludeTrailingPathDelimiter(GetCurrentDir);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderExists, [ExcludeTrailingPathDelimiter(GetCurrentDir)]),
-      mDialog.GitError.Caption);
+      mDialog.Git.Error.Caption);
     Assert.IsFalse(mDialog.CreateButton.Enabled);
-    mDialog.NameEdit.Text := 'feature/15-a';
-    Assert.AreEqual(ExcludeTrailingPathDelimiter(GetCurrentDir), mDialog.WorktreeEdit.Text, 'Handänderung bleibt');
+    mDialog.Names.NameEdit.Text := 'feature/15-a';
+    Assert.AreEqual(ExcludeTrailingPathDelimiter(GetCurrentDir), mDialog.Git.WorktreeEdit.Text, 'Handänderung bleibt');
     // Zurück zu „umschalten“: offene Änderungen wieder gefragt, Ordner ohne Wirkung.
-    mDialog.PlaceBox.ItemIndex := 0;
-    mDialog.PlaceBox.OnChange(mDialog.PlaceBox);
-    Assert.IsFalse(mDialog.WorktreePanel.Visible);
-    Assert.IsTrue(mDialog.UncommittedPanel.Visible);
+    mDialog.Git.PlaceBox.ItemIndex := 0;
+    mDialog.Git.PlaceBox.OnChange(mDialog.Git.PlaceBox);
+    Assert.IsFalse(mDialog.Git.WorktreePanel.Visible);
+    Assert.IsTrue(mDialog.Git.UncommittedPanel.Visible);
     Assert.AreEqual('', mDialog.Request.WorktreeFolder);
     Assert.IsFalse(mDialog.CreateButton.Enabled, 'nachfragen: erst wählen');
   finally

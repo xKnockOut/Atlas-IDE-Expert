@@ -103,8 +103,8 @@ var
   Edits: TArray<TRuleEdit>;
 begin
   AText := Source(ACommand, AStatement);
-  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(11, 0), nil, nil, Edits, nil,
-    AVersion);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(11, 0), TSlashEnvironment.Create(nil,
+    nil, nil, AVersion, '', nil), Edits);
   if Result then
   begin
     AText := Apply(AText, Edits);

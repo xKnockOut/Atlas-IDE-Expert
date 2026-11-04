@@ -5,24 +5,14 @@
 // nach „gesamt abhängig“), uses-Kanten als Linien (implementation
 // gestrichelt), Ausreißer mit Ring in Warnfarbe. Lage aus den Daten des
 // Servers (TArchitectureLayouter), Farben aus dem IDE-Thema (TAtlasColors) und
-// der Palette der HTML-Karte. Wie in der HTML-Karte:
-// - „Zyklen markieren“ (MarkCycles) zeichnet Kanten und Units der Zyklen in
-//   Fehlerfarbe,
-// - Teilsysteme lassen sich aus- und einblenden (SubsystemVisible), ihre
-//   Units und Kanten verschwinden dann,
-// - implementation-uses ein und aus (ShowImplementation), Namen ein und aus,
-// - Umschalt+Klick zeigt den kürzesten Weg über uses von der gewählten Unit
-//   zur angeklickten (ShowPath, TAtlasArchitectureModel.ShortestPath), alles
-//   andere tritt zurück; Esc hebt ihn auf (OnPathChanged),
-// - „Änderungen zum Stand“ (ShowChanges, #1121): Mit einem Vergleich stehen
-//   neue uses-Kanten grün, entfernte (zwischen Units, die es noch gibt) rot
-//   gestrichelt.
-// - ShowRoute markiert einen festen Weg aus „Weg zwischen Symbolen“ (#1117)
-//   ebenso; er bleibt, bis Esc, ein Umschalt+Klick oder neue Daten ihn
-//   aufheben.
-// - Hinweis (#1368): Über einer Unit steht ihre Zuordnung (Kanten je
-//   Teilsystem, TAtlasArchitectureAssignment), wenn der Server sie mitschickt
-//   (architecture.explainAssignment) und ShowAssignment an ist.
+// der Palette der HTML-Karte. Was die Karte zeigt, steht in State
+// (TAtlasArchitectureMapState, getestet im Kern): Schalter (TAtlasArchMapFlag:
+// Namen, implementation-uses, Zyklen markieren, Änderungen zum Stand #1121,
+// Fundament-Kanten, Zuordnung #1368), ausgeblendete Teilsysteme, Filter,
+// Auswahl und der Weg (Umschalt+Klick: kürzester Weg über uses von der
+// gewählten Unit zur angeklickten; ShowRoute: fester Weg aus „Weg zwischen
+// Symbolen“ #1117; Esc hebt ihn auf). Die Karte zeichnet nur und setzt
+// Maus und Tasten in Aufrufe an State und View um.
 // Bedienung sonst: Mausrad zoomt um den Mauszeiger, Ziehen verschiebt, Klick
 // wählt eine Unit (OnSelect; ihre Kanten werden hervorgehoben), Doppelklick
 // oder Enter öffnet sie (OnOpen), + und − zoomen, 0 passt ein. Namen
@@ -37,71 +27,33 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Architecture.Model;
+  Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.View,
+  Atlas.Core.Architecture.MapState;
 
 type
   TAtlasArchitectureMap = class(TCustomControl)
+  private type
+    /// <summary>Ziehen mit der Maus.</summary>
+    TDrag = record
+      Dragging: Boolean;
+      Moved: Boolean;
+      X: Integer;
+      Y: Integer;
+    end;
+
+    THandlers = record
+      OnSelect: TProc<Integer>;
+      OnOpen: TProc<Integer>;
+    end;
   private
-    FModel: TAtlasArchitectureModel;
+    FState: TAtlasArchitectureMapState;
     FView: TAtlasArchitectureView;
     FFitted: Boolean;
-    FSelected: Integer;
-    FFilter: string;
-    FShowNames: Boolean;
-    FShowImplementation: Boolean;
-    FMarkCycles: Boolean;
-    FShowChanges: Boolean;
-    FShowFoundationEdges: Boolean;
-    /// <summary>Je Kante in Model.Edges: neu gegenüber dem gespeicherten Stand.</summary>
-    FAddedEdges: TArray<Boolean>;
-    FCentral: TArray<Boolean>;
-    FCycleEdges: TDictionary<Int64, Boolean>;
-    /// <summary>Ausgeblendete Teilsysteme, je Teilsystem.</summary>
-    FHidden: TArray<Boolean>;
-    FPathFrom: Integer;
-    FPathTo: Integer;
-    FPathFound: Boolean;
-    /// <summary>Kanten des Wegs (Nummern in Model.Edges).</summary>
-    FPath: TArray<Integer>;
-    FPathEdges: TArray<Boolean>;
-    FPathNodes: TArray<Boolean>;
-    /// <summary>Units eines festen Wegs (ShowRoute); nil = Weg aus ShortestPath.</summary>
-    FRoute: TArray<Integer>;
-    /// <summary>Unit unter dem Mauszeiger (Hinweis mit Zuordnung, #1368); -1 ohne.</summary>
-    FHover: Integer;
-    FShowAssignment: Boolean;
-    FDragging: Boolean;
-    FMoved: Boolean;
-    FDragX: Integer;
-    FDragY: Integer;
-    FOnSelect: TProc<Integer>;
-    FOnOpen: TProc<Integer>;
-    FOnPathChanged: TProc;
-    function EdgeKey(ASource, ATarget: Integer): Int64;
-    function Px(AValue: Double): Integer;
-    function HasPath: Boolean;
-    function UnitVisible(AUnit: Integer): Boolean;
-    function EdgeVisible(const AEdge: TAtlasArchEdge): Boolean;
-    function GetSubsystemVisible(ASubsystem: Integer): Boolean;
-    procedure SetSubsystemVisible(ASubsystem: Integer; AValue: Boolean);
-    procedure SetFilter(const AValue: string);
-    procedure SetShowNames(AValue: Boolean);
-    procedure SetShowImplementation(AValue: Boolean);
-    procedure SetMarkCycles(AValue: Boolean);
-    procedure SetShowChanges(AValue: Boolean);
-    procedure SetShowFoundationEdges(AValue: Boolean);
-    function HasChanges: Boolean;
-    procedure ComputePath;
-    procedure PathChanged;
-    procedure DrawEdge(const AEdge: TAtlasArchEdge);
-    procedure PaintNames(const AColors: TAtlasColors; APathing, AFiltered: Boolean);
-    procedure PaintHover(const AColors: TAtlasColors);
-    procedure SetHover(AUnit: Integer);
-    procedure SetShowAssignment(AValue: Boolean);
+    FDrag: TDrag;
+    FHandlers: THandlers;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure Paint; override;
@@ -115,52 +67,19 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    /// <summary>Neue Daten; die Auswahl bleibt, wenn die Unit noch da ist (nach Name), sonst keine. Ein Weg
-    /// wird aufgehoben, ausgeblendete Teilsysteme werden wieder sichtbar.</summary>
+    /// <summary>Neue Daten (TAtlasArchitectureMapState.SetModel) und einpassen.</summary>
     procedure SetModel(const AModel: TAtlasArchitectureModel);
     /// <summary>Alle Teilsysteme einpassen.</summary>
     procedure FitView;
     procedure ZoomBy(AFactor: Double);
     /// <summary>Unit wählen (-1 = keine); ACenter verschiebt die Karte zu ihr.</summary>
     procedure SelectUnit(AUnit: Integer; ACenter: Boolean);
-    /// <summary>Kürzesten Weg über uses von AFrom nach ATo zeigen; False ohne Weg (PathFrom und PathTo
-    /// stehen trotzdem, PathFound ist False). Meldet OnPathChanged.</summary>
-    function ShowPath(AFrom, ATo: Integer): Boolean;
-    /// <summary>Weg aufheben; meldet OnPathChanged, wenn einer bestand.</summary>
-    procedure ClearPath;
-    /// <summary>Festen Weg markieren (#1117): AUnits in Reihenfolge, AEdges Nummern in Model.Edges (aus
-    /// TAtlasArchitectureModel.RouteOf). Blendet ausgeblendete Teilsysteme der Units ein und meldet
-    /// OnPathChanged.</summary>
-    procedure ShowRoute(const AUnits, AEdges: TArray<Integer>);
-    /// <summary>Alle Teilsysteme wieder einblenden.</summary>
-    procedure ShowAllSubsystems;
-    property Model: TAtlasArchitectureModel read FModel;
+    /// <summary>Daten, Auswahl, Filter, Schalter, ausgeblendete Teilsysteme und Weg; Änderungen zeichnen die
+    /// Karte neu.</summary>
+    property State: TAtlasArchitectureMapState read FState;
     property View: TAtlasArchitectureView read FView;
-    property Selected: Integer read FSelected;
-    /// <summary>Units, deren Name nicht passt (TAtlasArchitectureModel.Matches), treten zurück.</summary>
-    property Filter: string read FFilter write SetFilter;
-    property ShowNames: Boolean read FShowNames write SetShowNames;
-    property ShowImplementation: Boolean read FShowImplementation write SetShowImplementation;
-    property MarkCycles: Boolean read FMarkCycles write SetMarkCycles;
-    /// <summary>Geänderte Kanten des Vergleichs zeigen (wirkt nur mit Model.Comparison.Present).</summary>
-    property ShowChanges: Boolean read FShowChanges write SetShowChanges;
-    /// <summary>Kanten zum Teilsystem „Fundament“ (#1365) blass zeigen; aus = ausgeblendet.</summary>
-    property ShowFoundationEdges: Boolean read FShowFoundationEdges write SetShowFoundationEdges;
-    /// <summary>Hinweis mit der Zuordnung der Unit unter dem Mauszeiger (#1368).</summary>
-    property ShowAssignment: Boolean read FShowAssignment write SetShowAssignment;
-    /// <summary>Unit unter dem Mauszeiger, -1 ohne.</summary>
-    property Hover: Integer read FHover;
-    property SubsystemVisible[ASubsystem: Integer]: Boolean read GetSubsystemVisible write SetSubsystemVisible;
-    /// <summary>Start und Ziel des Wegs, -1 ohne Weg.</summary>
-    property PathFrom: Integer read FPathFrom;
-    property PathTo: Integer read FPathTo;
-    property PathFound: Boolean read FPathFound;
-    property Path: TArray<Integer> read FPath;
-    /// <summary>Units eines festen Wegs aus ShowRoute, nil sonst.</summary>
-    property Route: TArray<Integer> read FRoute;
-    property OnSelect: TProc<Integer> read FOnSelect write FOnSelect;
-    property OnOpen: TProc<Integer> read FOnOpen write FOnOpen;
-    property OnPathChanged: TProc read FOnPathChanged write FOnPathChanged;
+    property OnSelect: TProc<Integer> read FHandlers.OnSelect write FHandlers.OnSelect;
+    property OnOpen: TProc<Integer> read FHandlers.OnOpen write FHandlers.OnOpen;
   end;
 
 implementation
@@ -170,6 +89,7 @@ uses
   System.Math,
   Vcl.Themes,
   Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.UI.Architecture.Assignment;
 
 const
@@ -180,12 +100,363 @@ const
   /// <summary>Anteil der eigenen Farbe bei Units, die hinter einem Weg oder Filter zurücktreten.</summary>
   DimAlpha = 0.3;
 
+type
+  /// <summary>Was die Teile der Zeichnung brauchen.</summary>
+  TMapPaint = record
+    Canvas: TCanvas;
+    State: TAtlasArchitectureMapState;
+    View: TAtlasArchitectureView;
+    Colors: TAtlasColors;
+    /// <summary>ScaleValue(2) und ScaleValue(3) der Karte.</summary>
+    Thick: Integer;
+    Thicker: Integer;
+    Pathing: Boolean;
+    Changes: Boolean;
+  end;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
 end;
 
+function Px(AValue: Double): Integer;
+begin
+  Result := Round(AValue);
+end;
+
+procedure DrawEdge(const APaint: TMapPaint; const AEdge: TAtlasArchEdge);
+var
+  mSource, mTarget: TAtlasArchUnit;
+begin
+  mSource := APaint.State.Model.Units[AEdge.Source];
+  mTarget := APaint.State.Model.Units[AEdge.Target];
+  APaint.Canvas.MoveTo(Px(APaint.View.ScreenX(mSource.X)), Px(APaint.View.ScreenY(mSource.Y)));
+  APaint.Canvas.LineTo(Px(APaint.View.ScreenX(mTarget.X)), Px(APaint.View.ScreenY(mTarget.Y)));
+end;
+
+/// <summary>Teilsystem AIndex: gestrichelter Kreis in seiner Farbe, Name oben; das Fundament (#1365) deutlicher
+/// gestrichelt.</summary>
+procedure PaintSubsystem(const APaint: TMapPaint; AIndex, AMinRadius: Integer);
+var
+  mSubsystem: TAtlasArchSubsystem;
+  mX, mY, mRadius: Integer;
+  mSize: TSize;
+  mCanvas: TCanvas;
+begin
+  mCanvas := APaint.Canvas;
+  mSubsystem := APaint.State.Model.Subsystems[AIndex];
+  mX := Px(APaint.View.ScreenX(mSubsystem.X));
+  mY := Px(APaint.View.ScreenY(mSubsystem.Y));
+  mRadius := Max(AMinRadius, Px(mSubsystem.R * APaint.View.Scale));
+  if mSubsystem.Foundation then
+  begin
+    mCanvas.Pen.Style := psDash;
+    mCanvas.Pen.Width := APaint.Thick;
+  end
+  else
+  begin
+    mCanvas.Pen.Style := psDot;
+    mCanvas.Pen.Width := 1;
+  end;
+  mCanvas.Pen.Color := TColor(APaint.State.Model.SubsystemColor(AIndex, APaint.Colors.IsDark));
+  mCanvas.Brush.Style := bsClear;
+  mCanvas.Ellipse(mX - mRadius, mY - mRadius, mX + mRadius + 1, mY + mRadius + 1);
+  mSize := mCanvas.TextExtent(mSubsystem.Name);
+  mCanvas.Font.Color := TColor(APaint.State.Model.SubsystemColor(AIndex, APaint.Colors.IsDark));
+  mCanvas.Font.Style := [fsBold];
+  mCanvas.TextOut(mX - mSize.cx div 2, mY - mRadius - mSize.cy - APaint.Thick, mSubsystem.Name);
+  mCanvas.Font.Style := [];
+end;
+
+/// <summary>Kante wird gezeichnet: beide Units sichtbar, implementation-uses nur mit Schalter.</summary>
+function EdgeShown(const APaint: TMapPaint; const AEdge: TAtlasArchEdge): Boolean;
+begin
+  Result := APaint.State.EdgeVisible(AEdge)
+    and (AEdge.Interface_ or APaint.State.Has(TAtlasArchMapFlag.ShowImplementation));
+end;
+
+/// <summary>Kante AIndex berührt die gewählte Unit (nicht, solange ein Weg gezeigt wird).</summary>
+function TouchesSelected(const APaint: TMapPaint; const AEdge: TAtlasArchEdge): Boolean;
+var
+  mSelected: Integer;
+begin
+  mSelected := APaint.State.Selected;
+  Result := not APaint.Pathing and (mSelected >= 0) and ((AEdge.Source = mSelected) or (AEdge.Target = mSelected));
+end;
+
+/// <summary>Kante AIndex wird hervorgehoben: Zyklus, gewählte Unit oder neu gegenüber dem Stand.</summary>
+function Emphasized(const APaint: TMapPaint; AIndex: Integer; const AEdge: TAtlasArchEdge): Boolean;
+begin
+  Result := APaint.State.MarksCycle(AEdge) or TouchesSelected(APaint, AEdge)
+    or (APaint.Changes and APaint.State.IsAdded(AIndex));
+end;
+
+/// <summary>Gewöhnliche Kante; Kanten zum Fundament (#1365) blass und gepunktet, abschaltbar.</summary>
+procedure PaintPlainEdge(const APaint: TMapPaint; const AEdge: TAtlasArchEdge);
+var
+  mCanvas: TCanvas;
+begin
+  mCanvas := APaint.Canvas;
+  mCanvas.Pen.Width := 1;
+  if APaint.State.Model.TouchesFoundation(AEdge) then
+  begin
+    if not APaint.State.Has(TAtlasArchMapFlag.ShowFoundationEdges) then
+    begin
+      Exit;
+    end;
+    mCanvas.Pen.Style := psDot;
+    mCanvas.Pen.Color := ToColor(TAtlasColorMath.Mix(APaint.Colors.Line, APaint.Colors.Surface, 0.4));
+  end
+  else
+  begin
+    if AEdge.Interface_ then
+    begin
+      mCanvas.Pen.Style := psSolid;
+    end
+    else
+    begin
+      mCanvas.Pen.Style := psDot;
+    end;
+    mCanvas.Pen.Color := ToColor(APaint.Colors.Line);
+  end;
+  DrawEdge(APaint, AEdge);
+end;
+
+/// <summary>Hervorgehobene Kante; wie die HTML-Karte: Zyklus vor gewählt vor neu.</summary>
+procedure PaintEmphasizedEdge(const APaint: TMapPaint; const AEdge: TAtlasArchEdge);
+var
+  mCanvas: TCanvas;
+begin
+  mCanvas := APaint.Canvas;
+  mCanvas.Pen.Style := psSolid;
+  mCanvas.Pen.Width := APaint.Thick;
+  if APaint.State.MarksCycle(AEdge) then
+  begin
+    mCanvas.Pen.Color := ToColor(APaint.Colors.Error);
+  end
+  else if TouchesSelected(APaint, AEdge) then
+  begin
+    mCanvas.Pen.Color := ToColor(APaint.Colors.Accent);
+  end
+  else
+  begin
+    mCanvas.Pen.Color := ToColor(APaint.Colors.Add);
+  end;
+  DrawEdge(APaint, AEdge);
+end;
+
+/// <summary>Kanten: zuerst die gewöhnlichen (AEmphasized False), darüber Zyklen, die Kanten der gewählten Unit und
+/// neue; Kanten des Wegs zeichnet PaintPath.</summary>
+procedure PaintEdges(const APaint: TMapPaint; AEmphasized: Boolean);
+var
+  mIndex: Integer;
+  mEdge: TAtlasArchEdge;
+begin
+  for mIndex := 0 to High(APaint.State.Model.Edges) do
+  begin
+    mEdge := APaint.State.Model.Edges[mIndex];
+    if not EdgeShown(APaint, mEdge) or (APaint.Pathing and APaint.State.Path.IsEdge(mIndex))
+      or (Emphasized(APaint, mIndex, mEdge) <> AEmphasized) then
+    begin
+      Continue;
+    end;
+    if AEmphasized then
+    begin
+      PaintEmphasizedEdge(APaint, mEdge);
+    end
+    else
+    begin
+      PaintPlainEdge(APaint, mEdge);
+    end;
+  end;
+end;
+
+/// <summary>Entfernte Kanten gibt es in Edges nicht mehr: rot gestrichelt zwischen den Units, die noch da sind.
+/// </summary>
+procedure PaintDroppedEdges(const APaint: TMapPaint);
+var
+  mEdge: TAtlasArchEdge;
+begin
+  if not APaint.Changes then
+  begin
+    Exit;
+  end;
+  for mEdge in APaint.State.Model.Comparison.DroppedEdges do
+  begin
+    if EdgeShown(APaint, mEdge) then
+    begin
+      APaint.Canvas.Pen.Style := psDash;
+      APaint.Canvas.Pen.Width := 1;
+      APaint.Canvas.Pen.Color := ToColor(APaint.Colors.Error);
+      DrawEdge(APaint, mEdge);
+    end;
+  end;
+end;
+
+procedure PaintPath(const APaint: TMapPaint; AWidth: Integer);
+var
+  mIndex: Integer;
+  mEdge: TAtlasArchEdge;
+begin
+  if not APaint.Pathing then
+  begin
+    Exit;
+  end;
+  for mIndex in APaint.State.Path.Edges do
+  begin
+    mEdge := APaint.State.Model.Edges[mIndex];
+    if mEdge.Interface_ then
+    begin
+      APaint.Canvas.Pen.Style := psSolid;
+    end
+    else
+    begin
+      APaint.Canvas.Pen.Style := psDash;
+    end;
+    APaint.Canvas.Pen.Width := AWidth;
+    APaint.Canvas.Pen.Color := ToColor(APaint.Colors.Accent);
+    DrawEdge(APaint, mEdge);
+  end;
+end;
+
+/// <summary>Rand der Unit: Ausreißer in Warnfarbe, Zyklus in Fehlerfarbe, gewählte und Enden des Wegs kräftig.
+/// </summary>
+procedure SetUnitPen(const APaint: TMapPaint; AIndex, AWidest: Integer);
+var
+  mItem: TAtlasArchUnit;
+  mPen: TPen;
+begin
+  mItem := APaint.State.Model.Units[AIndex];
+  mPen := APaint.Canvas.Pen;
+  mPen.Width := 1;
+  mPen.Color := ToColor(APaint.Colors.Surface);
+  if mItem.Outlier then
+  begin
+    mPen.Width := APaint.Thick;
+    mPen.Color := ToColor(APaint.Colors.Warn);
+  end;
+  if APaint.State.Has(TAtlasArchMapFlag.MarkCycles) and mItem.OnCycle then
+  begin
+    mPen.Width := APaint.Thick;
+    mPen.Color := ToColor(APaint.Colors.Error);
+  end;
+  if (AIndex = APaint.State.Selected)
+    or (APaint.Pathing and ((AIndex = APaint.State.Path.From) or (AIndex = APaint.State.Path.To_))) then
+  begin
+    mPen.Width := AWidest;
+    mPen.Color := ToColor(APaint.Colors.Text);
+  end;
+end;
+
+procedure PaintUnits(const APaint: TMapPaint; AWidest: Integer);
+var
+  mIndex, mX, mY, mRadius: Integer;
+  mItem: TAtlasArchUnit;
+  mFill: TAtlasColor;
+begin
+  APaint.Canvas.Pen.Style := psSolid;
+  for mIndex := 0 to High(APaint.State.Model.Units) do
+  begin
+    if not APaint.State.UnitVisible(mIndex) then
+    begin
+      Continue;
+    end;
+    mItem := APaint.State.Model.Units[mIndex];
+    mX := Px(APaint.View.ScreenX(mItem.X));
+    mY := Px(APaint.View.ScreenY(mItem.Y));
+    mRadius := Max(APaint.Thick, Px(APaint.State.Model.NodeRadius(mIndex) * APaint.View.Scale));
+    mFill := TAtlasColor(APaint.State.Model.SubsystemColor(mItem.Subsystem, APaint.Colors.IsDark));
+    if not APaint.State.Highlighted(mIndex) then
+    begin
+      mFill := TAtlasColorMath.Mix(mFill, APaint.Colors.Surface, DimAlpha);
+    end;
+    APaint.Canvas.Brush.Style := bsSolid;
+    APaint.Canvas.Brush.Color := ToColor(mFill);
+    SetUnitPen(APaint, mIndex, AWidest);
+    APaint.Canvas.Ellipse(mX - mRadius, mY - mRadius, mX + mRadius + 1, mY + mRadius + 1);
+  end;
+end;
+
+/// <summary>Namen erscheinen erst ab einer lesbaren Größe; zentrale, gewählte, gefilterte und die des Wegs
+/// immer.</summary>
+function NameShown(const APaint: TMapPaint; AIndex: Integer; AFiltered: Boolean): Boolean;
+var
+  mHighlighted, mMajor: Boolean;
+begin
+  mHighlighted := APaint.State.Highlighted(AIndex);
+  mMajor := APaint.State.IsCentral(AIndex) or (AIndex = APaint.State.Selected)
+    or ((APaint.Pathing or AFiltered) and mHighlighted);
+  Result := mMajor or ((APaint.View.Scale >= AllNamesScale) and mHighlighted);
+end;
+
+procedure PaintNames(const APaint: TMapPaint);
+var
+  mIndex, mRadius: Integer;
+  mItem: TAtlasArchUnit;
+  mFiltered: Boolean;
+begin
+  APaint.Canvas.Brush.Style := bsClear;
+  mFiltered := Trim(APaint.State.Filter) <> '';
+  for mIndex := 0 to High(APaint.State.Model.Units) do
+  begin
+    if not APaint.State.UnitVisible(mIndex) or not NameShown(APaint, mIndex, mFiltered) then
+    begin
+      Continue;
+    end;
+    mItem := APaint.State.Model.Units[mIndex];
+    if APaint.State.Highlighted(mIndex) then
+    begin
+      APaint.Canvas.Font.Color := ToColor(APaint.Colors.Text);
+    end
+    else
+    begin
+      APaint.Canvas.Font.Color := ToColor(APaint.Colors.Muted);
+    end;
+    mRadius := Max(2, Px(APaint.State.Model.NodeRadius(mIndex) * APaint.View.Scale));
+    APaint.Canvas.TextOut(Px(APaint.View.ScreenX(mItem.X)) + mRadius + 3,
+      Px(APaint.View.ScreenY(mItem.Y)) - APaint.Canvas.TextHeight('Ag') div 2, mItem.Name);
+  end;
+end;
+
+/// <summary>Hinweis mit der Zuordnung (#1368) rechts unter der Unit, am Rand der Karte nach innen geklappt.
+/// </summary>
+procedure PaintHover(const APaint: TMapPaint; const AClient: TRect; APpi: Integer);
+var
+  mSize: TSize;
+  mX, mY, mRadius, mHover: Integer;
+  mItem: TAtlasArchUnit;
+begin
+  mHover := APaint.State.Hover;
+  mSize := TAtlasArchitectureAssignment.Measure(APaint.Canvas, APaint.State.Model, mHover, APpi);
+  mItem := APaint.State.Model.Units[mHover];
+  mRadius := Max(2, Px(APaint.State.Model.NodeRadius(mHover) * APaint.View.Scale));
+  mX := Px(APaint.View.ScreenX(mItem.X)) + mRadius + 4;
+  mY := Px(APaint.View.ScreenY(mItem.Y)) + mRadius + 4;
+  if mX + mSize.cx > AClient.Right then
+  begin
+    mX := Px(APaint.View.ScreenX(mItem.X)) - mRadius - 4 - mSize.cx;
+  end;
+  if mY + mSize.cy > AClient.Bottom then
+  begin
+    mY := Px(APaint.View.ScreenY(mItem.Y)) - mRadius - 4 - mSize.cy;
+  end;
+  mX := Max(0, mX);
+  mY := Max(0, mY);
+  TAtlasArchitectureAssignment.Draw(APaint.Canvas, Rect(mX, mY, mX + mSize.cx, mY + mSize.cy),
+    APaint.State.Model, mHover, APpi, APaint.Colors);
+end;
+
 { TAtlasArchitectureMap }
+
+/// <summary>Neu zeichnen, wenn sich der Zustand ändert.</summary>
+function InvalidateHandler(AMap: TAtlasArchitectureMap): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      AMap.Invalidate;
+    end;
+end;
 
 constructor TAtlasArchitectureMap.Create(AOwner: TComponent);
 begin
@@ -193,156 +464,32 @@ begin
   ControlStyle := ControlStyle + [csOpaque];
   DoubleBuffered := True;
   TabStop := True;
-  FSelected := -1;
-  FHover := -1;
-  FShowAssignment := True;
-  FPathFrom := -1;
-  FPathTo := -1;
-  FShowNames := True;
-  FShowImplementation := True;
-  FShowFoundationEdges := True;
-  FShowChanges := True;
+  FState := TAtlasArchitectureMapState.Create;
+  FState.OnChange := InvalidateHandler(Self);
   FView := Default(TAtlasArchitectureView);
   FView.Scale := 1;
-  FCycleEdges := TDictionary<Int64, Boolean>.Create;
 end;
 
 destructor TAtlasArchitectureMap.Destroy;
 begin
-  FCycleEdges.Free;
+  FState.Free;
   inherited Destroy;
 end;
 
-function TAtlasArchitectureMap.EdgeKey(ASource, ATarget: Integer): Int64;
-begin
-  Result := Int64(ASource) shl 32 or Cardinal(ATarget);
-end;
-
-function TAtlasArchitectureMap.Px(AValue: Double): Integer;
-begin
-  Result := Round(AValue);
-end;
-
-function TAtlasArchitectureMap.HasPath: Boolean;
-begin
-  // Ein fester Weg (#1117) kann aus einer einzigen Unit bestehen.
-  Result := FPathFound and ((Length(FPath) > 0) or (Length(FRoute) > 0));
-end;
-
-function TAtlasArchitectureMap.UnitVisible(AUnit: Integer): Boolean;
-begin
-  Result := not FModel.IsHidden(AUnit, FHidden);
-end;
-
-function TAtlasArchitectureMap.EdgeVisible(const AEdge: TAtlasArchEdge): Boolean;
-begin
-  Result := UnitVisible(AEdge.Source) and UnitVisible(AEdge.Target);
-end;
-
-function TAtlasArchitectureMap.GetSubsystemVisible(ASubsystem: Integer): Boolean;
-begin
-  Result := not ((ASubsystem >= 0) and (ASubsystem < Length(FHidden)) and FHidden[ASubsystem]);
-end;
-
-procedure TAtlasArchitectureMap.SetSubsystemVisible(ASubsystem: Integer; AValue: Boolean);
-begin
-  if (ASubsystem < 0) or (ASubsystem >= Length(FHidden)) or (FHidden[ASubsystem] = not AValue) then
-  begin
-    Exit;
-  end;
-  FHidden[ASubsystem] := not AValue;
-  if FModel.IsHidden(FSelected, FHidden) then
-  begin
-    FSelected := -1;
-  end;
-  // Wie die HTML-Karte: Ein bestehender Weg wird ohne das Teilsystem neu gesucht.
-  if FPathFrom >= 0 then
-  begin
-    ComputePath;
-    PathChanged;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.ShowAllSubsystems;
-var
-  Index: Integer;
-begin
-  for Index := 0 to High(FHidden) do
-  begin
-    SetSubsystemVisible(Index, True);
-  end;
-end;
-
 procedure TAtlasArchitectureMap.SetModel(const AModel: TAtlasArchitectureModel);
-var
-  SelectedName: string;
-  Member: Integer;
-  Cycle: TAtlasArchCycle;
-  Link: TAtlasArchLink;
-  HadPath: Boolean;
 begin
-  SelectedName := '';
-  if (FSelected >= 0) and (FSelected <= High(FModel.Units)) then
-  begin
-    SelectedName := FModel.Units[FSelected].Name;
-  end;
-  HadPath := FPathFrom >= 0;
-  FModel := AModel;
-  FCentral := nil;
-  SetLength(FCentral, Length(FModel.Units));
-  for Member in FModel.Central do
-  begin
-    FCentral[Member] := True;
-  end;
-  FCycleEdges.Clear;
-  for Cycle in FModel.Cycles do
-  begin
-    for Link in Cycle.Edges do
-    begin
-      FCycleEdges.AddOrSetValue(EdgeKey(Link.Source, Link.Target), True);
-    end;
-  end;
-  FAddedEdges := nil;
-  SetLength(FAddedEdges, Length(FModel.Edges));
-  for Member in FModel.Comparison.AddedEdges do
-  begin
-    if (Member >= 0) and (Member <= High(FAddedEdges)) then
-    begin
-      FAddedEdges[Member] := True;
-    end;
-  end;
-  FHidden := nil;
-  SetLength(FHidden, Length(FModel.Subsystems));
-  FPathFrom := -1;
-  FPathTo := -1;
-  FPathFound := False;
-  FPath := nil;
-  FPathEdges := nil;
-  FPathNodes := nil;
-  FRoute := nil;
-  FSelected := -1;
-  FHover := -1;
-  if SelectedName <> '' then
-  begin
-    FSelected := FModel.IndexOf(SelectedName);
-  end;
   FFitted := False;
+  FState.SetModel(AModel);
   if (ClientWidth > 0) and (ClientHeight > 0) then
   begin
     FitView;
   end;
-  if HadPath then
-  begin
-    PathChanged;
-  end;
-  Invalidate;
 end;
 
 procedure TAtlasArchitectureMap.FitView;
 begin
-  FView.Fit(FModel, ClientWidth, ClientHeight);
-  FFitted := Length(FModel.Subsystems) > 0;
+  FView.Fit(FState.Model, ClientWidth, ClientHeight);
+  FFitted := Length(FState.Model.Subsystems) > 0;
   Invalidate;
 end;
 
@@ -353,193 +500,17 @@ begin
 end;
 
 procedure TAtlasArchitectureMap.SelectUnit(AUnit: Integer; ACenter: Boolean);
-begin
-  if (AUnit < 0) or (AUnit > High(FModel.Units)) then
-  begin
-    AUnit := -1;
-  end;
-  FSelected := AUnit;
-  if ACenter and (AUnit >= 0) then
-  begin
-    FView.Pan(ClientWidth / 2 - FView.ScreenX(FModel.Units[AUnit].X),
-      ClientHeight / 2 - FView.ScreenY(FModel.Units[AUnit].Y));
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.ComputePath;
 var
-  Edge, Unit_: Integer;
+  mUnit: Integer;
 begin
-  FPathEdges := nil;
-  FPathNodes := nil;
-  if Length(FRoute) > 0 then
+  FState.SelectUnit(AUnit);
+  mUnit := FState.Selected;
+  if ACenter and (mUnit >= 0) then
   begin
-    // Fester Weg (#1117): bleibt, auch wenn implementation-uses aus sind.
-    FPathFound := True;
-    SetLength(FPathEdges, Length(FModel.Edges));
-    SetLength(FPathNodes, Length(FModel.Units));
-    for Unit_ in FRoute do
-    begin
-      FPathNodes[Unit_] := True;
-    end;
-    for Edge in FPath do
-    begin
-      FPathEdges[Edge] := True;
-    end;
-    Exit;
+    FView.Pan(ClientWidth / 2 - FView.ScreenX(FState.Model.Units[mUnit].X),
+      ClientHeight / 2 - FView.ScreenY(FState.Model.Units[mUnit].Y));
+    Invalidate;
   end;
-  FPathFound := FModel.ShortestPath(FPathFrom, FPathTo, FShowImplementation, FHidden, FPath);
-  if not FPathFound then
-  begin
-    Exit;
-  end;
-  SetLength(FPathEdges, Length(FModel.Edges));
-  SetLength(FPathNodes, Length(FModel.Units));
-  FPathNodes[FPathFrom] := True;
-  for Edge in FPath do
-  begin
-    FPathEdges[Edge] := True;
-    FPathNodes[FModel.Edges[Edge].Target] := True;
-  end;
-end;
-
-procedure TAtlasArchitectureMap.PathChanged;
-begin
-  if Assigned(FOnPathChanged) then
-  begin
-    FOnPathChanged();
-  end;
-end;
-
-function TAtlasArchitectureMap.ShowPath(AFrom, ATo: Integer): Boolean;
-begin
-  if (AFrom < 0) or (AFrom > High(FModel.Units)) or (ATo < 0) or (ATo > High(FModel.Units)) then
-  begin
-    ClearPath;
-    Exit(False);
-  end;
-  FPathFrom := AFrom;
-  FPathTo := ATo;
-  FRoute := nil;
-  ComputePath;
-  Result := FPathFound;
-  Invalidate;
-  PathChanged;
-end;
-
-procedure TAtlasArchitectureMap.ShowRoute(const AUnits, AEdges: TArray<Integer>);
-var
-  Unit_, Edge: Integer;
-begin
-  for Unit_ in AUnits do
-  begin
-    if (Unit_ < 0) or (Unit_ > High(FModel.Units)) then
-    begin
-      ClearPath;
-      Exit;
-    end;
-  end;
-  for Edge in AEdges do
-  begin
-    if (Edge < 0) or (Edge > High(FModel.Edges)) then
-    begin
-      ClearPath;
-      Exit;
-    end;
-  end;
-  if Length(AUnits) = 0 then
-  begin
-    ClearPath;
-    Exit;
-  end;
-  // Ein Teilsystem des Wegs ausgeblendet: wieder einblenden, sonst wäre der Weg lückenhaft.
-  for Unit_ in AUnits do
-  begin
-    if FModel.IsHidden(Unit_, FHidden) then
-    begin
-      FHidden[FModel.Units[Unit_].Subsystem] := False;
-    end;
-  end;
-  FRoute := AUnits;
-  FPath := AEdges;
-  FPathFrom := AUnits[0];
-  FPathTo := AUnits[High(AUnits)];
-  ComputePath;
-  Invalidate;
-  PathChanged;
-end;
-
-procedure TAtlasArchitectureMap.ClearPath;
-begin
-  if FPathFrom < 0 then
-  begin
-    Exit;
-  end;
-  FPathFrom := -1;
-  FPathTo := -1;
-  FPathFound := False;
-  FPath := nil;
-  FPathEdges := nil;
-  FPathNodes := nil;
-  FRoute := nil;
-  Invalidate;
-  PathChanged;
-end;
-
-procedure TAtlasArchitectureMap.SetFilter(const AValue: string);
-begin
-  if FFilter = AValue then
-  begin
-    Exit;
-  end;
-  FFilter := AValue;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SetShowNames(AValue: Boolean);
-begin
-  FShowNames := AValue;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SetShowImplementation(AValue: Boolean);
-begin
-  if FShowImplementation = AValue then
-  begin
-    Exit;
-  end;
-  FShowImplementation := AValue;
-  // Der Weg hängt davon ab, ob implementation-uses zählen.
-  if FPathFrom >= 0 then
-  begin
-    ComputePath;
-    PathChanged;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SetMarkCycles(AValue: Boolean);
-begin
-  FMarkCycles := AValue;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SetShowFoundationEdges(AValue: Boolean);
-begin
-  FShowFoundationEdges := AValue;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SetShowChanges(AValue: Boolean);
-begin
-  FShowChanges := AValue;
-  Invalidate;
-end;
-
-function TAtlasArchitectureMap.HasChanges: Boolean;
-begin
-  Result := FShowChanges and FModel.Comparison.Present;
 end;
 
 procedure TAtlasArchitectureMap.Resize;
@@ -551,324 +522,53 @@ begin
   end;
 end;
 
-procedure TAtlasArchitectureMap.DrawEdge(const AEdge: TAtlasArchEdge);
-begin
-  Canvas.MoveTo(Px(FView.ScreenX(FModel.Units[AEdge.Source].X)), Px(FView.ScreenY(FModel.Units[AEdge.Source].Y)));
-  Canvas.LineTo(Px(FView.ScreenX(FModel.Units[AEdge.Target].X)), Px(FView.ScreenY(FModel.Units[AEdge.Target].Y)));
-end;
-
 procedure TAtlasArchitectureMap.Paint;
 var
-  Colors: TAtlasColors;
-  Dark, Touches, OnCycle, Visible, Pathing, Changes, Added: Boolean;
-  Index: Integer;
-  Subsystem: TAtlasArchSubsystem;
-  Edge: TAtlasArchEdge;
-  Item: TAtlasArchUnit;
-  X, Y, Radius: Integer;
-  Caption: string;
-  TextSize: TSize;
-  Filtered: Boolean;
-  Fill: TAtlasColor;
+  mPaint: TMapPaint;
+  mIndex: Integer;
 begin
-  Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
-  Dark := Colors.IsDark;
+  mPaint.Canvas := Canvas;
+  mPaint.State := FState;
+  mPaint.View := FView;
+  mPaint.Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mPaint.Thick := ScaleValue(2);
+  mPaint.Thicker := ScaleValue(3);
+  mPaint.Pathing := FState.Path.Shown;
+  mPaint.Changes := FState.HasChanges and not mPaint.Pathing;
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.Brush.Color := ToColor(mPaint.Colors.Surface);
   Canvas.FillRect(ClientRect);
   Canvas.Font.Assign(Font);
-  Canvas.Font.Color := ToColor(Colors.Text);
-  Filtered := Trim(FFilter) <> '';
-  Pathing := HasPath;
-  Changes := HasChanges and not Pathing;
-  // Teilsysteme: gestrichelter Kreis in ihrer Farbe, Name oben.
-  for Index := 0 to High(FModel.Subsystems) do
+  Canvas.Font.Color := ToColor(mPaint.Colors.Text);
+  for mIndex := 0 to High(FState.Model.Subsystems) do
   begin
-    if not GetSubsystemVisible(Index) then
+    if FState.SubsystemVisible[mIndex] then
     begin
-      Continue;
-    end;
-    Subsystem := FModel.Subsystems[Index];
-    X := Px(FView.ScreenX(Subsystem.X));
-    Y := Px(FView.ScreenY(Subsystem.Y));
-    Radius := Max(ScaleValue(2), Px(Subsystem.R * FView.Scale));
-    // Das Fundament (#1365) deutlicher gestrichelt.
-    if Subsystem.Foundation then
-    begin
-      Canvas.Pen.Style := psDash;
-      Canvas.Pen.Width := ScaleValue(2);
-    end
-    else
-    begin
-      Canvas.Pen.Style := psDot;
-      Canvas.Pen.Width := 1;
-    end;
-    Canvas.Pen.Color := TColor(FModel.SubsystemColor(Index, Dark));
-    Canvas.Brush.Style := bsClear;
-    Canvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);
-    Caption := Subsystem.Name;
-    TextSize := Canvas.TextExtent(Caption);
-    Canvas.Font.Color := TColor(FModel.SubsystemColor(Index, Dark));
-    Canvas.Font.Style := [fsBold];
-    Canvas.TextOut(X - TextSize.cx div 2, Y - Radius - TextSize.cy - ScaleValue(2), Caption);
-    Canvas.Font.Style := [];
-  end;
-  // Kanten: zuerst die gewöhnlichen, darüber Zyklen, die Kanten der gewählten Unit und der Weg.
-  for Index := 0 to High(FModel.Edges) do
-  begin
-    Edge := FModel.Edges[Index];
-    if not EdgeVisible(Edge) or (not Edge.Interface_ and not FShowImplementation) then
-    begin
-      Continue;
-    end;
-    OnCycle := FMarkCycles and FCycleEdges.ContainsKey(EdgeKey(Edge.Source, Edge.Target));
-    Touches := not Pathing and (FSelected >= 0) and ((Edge.Source = FSelected) or (Edge.Target = FSelected));
-    Added := Changes and FAddedEdges[Index];
-    if OnCycle or Touches or Added or (Pathing and FPathEdges[Index]) then
-    begin
-      Continue;
-    end;
-    Canvas.Pen.Width := 1;
-    // Kanten zum Fundament (#1365) blass und gepunktet, abschaltbar.
-    if FModel.TouchesFoundation(Edge) then
-    begin
-      if not FShowFoundationEdges then
-      begin
-        Continue;
-      end;
-      Canvas.Pen.Style := psDot;
-      Canvas.Pen.Color := ToColor(TAtlasColorMath.Mix(Colors.Line, Colors.Surface, 0.4));
-    end
-    else
-    begin
-      if Edge.Interface_ then
-      begin
-        Canvas.Pen.Style := psSolid;
-      end
-      else
-      begin
-        Canvas.Pen.Style := psDot;
-      end;
-      Canvas.Pen.Color := ToColor(Colors.Line);
-    end;
-    DrawEdge(Edge);
-  end;
-  for Index := 0 to High(FModel.Edges) do
-  begin
-    Edge := FModel.Edges[Index];
-    if not EdgeVisible(Edge) or (not Edge.Interface_ and not FShowImplementation) then
-    begin
-      Continue;
-    end;
-    OnCycle := FMarkCycles and FCycleEdges.ContainsKey(EdgeKey(Edge.Source, Edge.Target));
-    Touches := not Pathing and (FSelected >= 0) and ((Edge.Source = FSelected) or (Edge.Target = FSelected));
-    Added := Changes and FAddedEdges[Index];
-    if not (OnCycle or Touches or Added) or (Pathing and FPathEdges[Index]) then
-    begin
-      Continue;
-    end;
-    Canvas.Pen.Style := psSolid;
-    Canvas.Pen.Width := ScaleValue(2);
-    // Wie die HTML-Karte: Zyklus vor gewählt vor neu.
-    if OnCycle then
-    begin
-      Canvas.Pen.Color := ToColor(Colors.Error);
-    end
-    else if Touches then
-    begin
-      Canvas.Pen.Color := ToColor(Colors.Accent);
-    end
-    else
-    begin
-      Canvas.Pen.Color := ToColor(Colors.Add);
-    end;
-    DrawEdge(Edge);
-  end;
-  // Entfernte Kanten gibt es in Edges nicht mehr: rot gestrichelt zwischen den Units, die noch da sind.
-  if Changes then
-  begin
-    for Edge in FModel.Comparison.DroppedEdges do
-    begin
-      if not EdgeVisible(Edge) or (not Edge.Interface_ and not FShowImplementation) then
-      begin
-        Continue;
-      end;
-      Canvas.Pen.Style := psDash;
-      Canvas.Pen.Width := 1;
-      Canvas.Pen.Color := ToColor(Colors.Error);
-      DrawEdge(Edge);
+      PaintSubsystem(mPaint, mIndex, mPaint.Thick);
     end;
   end;
-  if Pathing then
-  begin
-    for Index in FPath do
-    begin
-      Edge := FModel.Edges[Index];
-      if Edge.Interface_ then
-      begin
-        Canvas.Pen.Style := psSolid;
-      end
-      else
-      begin
-        Canvas.Pen.Style := psDash;
-      end;
-      Canvas.Pen.Width := ScaleValue(3);
-      Canvas.Pen.Color := ToColor(Colors.Accent);
-      DrawEdge(Edge);
-    end;
-  end;
-  // Units.
-  Canvas.Pen.Style := psSolid;
-  for Index := 0 to High(FModel.Units) do
-  begin
-    if not UnitVisible(Index) then
-    begin
-      Continue;
-    end;
-    Item := FModel.Units[Index];
-    X := Px(FView.ScreenX(Item.X));
-    Y := Px(FView.ScreenY(Item.Y));
-    Radius := Max(ScaleValue(2), Px(FModel.NodeRadius(Index) * FView.Scale));
-    if Pathing then
-    begin
-      Visible := FPathNodes[Index];
-    end
-    else
-    begin
-      Visible := not Filtered or FModel.Matches(Index, FFilter);
-    end;
-    Fill := TAtlasColor(FModel.SubsystemColor(Item.Subsystem, Dark));
-    if not Visible then
-    begin
-      Fill := TAtlasColorMath.Mix(Fill, Colors.Surface, DimAlpha);
-    end;
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Fill);
-    Canvas.Pen.Width := 1;
-    Canvas.Pen.Color := ToColor(Colors.Surface);
-    if Item.Outlier then
-    begin
-      Canvas.Pen.Width := ScaleValue(2);
-      Canvas.Pen.Color := ToColor(Colors.Warn);
-    end;
-    if FMarkCycles and Item.OnCycle then
-    begin
-      Canvas.Pen.Width := ScaleValue(2);
-      Canvas.Pen.Color := ToColor(Colors.Error);
-    end;
-    if (Index = FSelected) or (Pathing and ((Index = FPathFrom) or (Index = FPathTo))) then
-    begin
-      Canvas.Pen.Width := ScaleValue(3);
-      Canvas.Pen.Color := ToColor(Colors.Text);
-    end;
-    Canvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);
-  end;
+  PaintEdges(mPaint, False);
+  PaintEdges(mPaint, True);
+  PaintDroppedEdges(mPaint);
+  PaintPath(mPaint, mPaint.Thicker);
+  PaintUnits(mPaint, mPaint.Thicker);
   // Namen zuletzt, damit keine Linie sie durchstreicht; darüber der Hinweis (#1368).
-  if FShowNames then
+  if FState.Has(TAtlasArchMapFlag.ShowNames) then
   begin
-    PaintNames(Colors, Pathing, Filtered);
+    PaintNames(mPaint);
   end;
-  PaintHover(Colors);
-end;
-
-procedure TAtlasArchitectureMap.PaintNames(const AColors: TAtlasColors; APathing, AFiltered: Boolean);
-var
-  Index, Radius: Integer;
-  Item: TAtlasArchUnit;
-  Visible, Major: Boolean;
-begin
-  Canvas.Brush.Style := bsClear;
-  for Index := 0 to High(FModel.Units) do
+  if FState.Has(TAtlasArchMapFlag.ShowAssignment) and not FDrag.Dragging
+    and TAtlasArchitectureAssignment.Available(FState.Model, FState.Hover) then
   begin
-    if not UnitVisible(Index) then
-    begin
-      Continue;
-    end;
-    Item := FModel.Units[Index];
-    if APathing then
-    begin
-      Visible := FPathNodes[Index];
-    end
-    else
-    begin
-      Visible := not AFiltered or FModel.Matches(Index, FFilter);
-    end;
-    Major := FCentral[Index] or (Index = FSelected) or (APathing and Visible) or (AFiltered and Visible);
-    if not Major and not ((FView.Scale >= AllNamesScale) and Visible) then
-    begin
-      Continue;
-    end;
-    if Visible then
-    begin
-      Canvas.Font.Color := ToColor(AColors.Text);
-    end
-    else
-    begin
-      Canvas.Font.Color := ToColor(AColors.Muted);
-    end;
-    Radius := Max(2, Px(FModel.NodeRadius(Index) * FView.Scale));
-    Canvas.TextOut(Px(FView.ScreenX(Item.X)) + Radius + 3, Px(FView.ScreenY(Item.Y)) - Canvas.TextHeight('Ag') div 2,
-      Item.Name);
+    Canvas.Font.Assign(Font);
+    PaintHover(mPaint, ClientRect, CurrentPPI);
   end;
-end;
-
-procedure TAtlasArchitectureMap.PaintHover(const AColors: TAtlasColors);
-var
-  mSize: TSize;
-  mX, mY, mRadius: Integer;
-  mRect: TRect;
-begin
-  if not FShowAssignment or FDragging or not TAtlasArchitectureAssignment.Available(FModel, FHover) then
-  begin
-    Exit;
-  end;
-  Canvas.Font.Assign(Font);
-  mSize := TAtlasArchitectureAssignment.Measure(Canvas, FModel, FHover, CurrentPPI);
-  // Rechts unter der Unit, am Rand der Karte nach innen geklappt.
-  mRadius := Max(2, Px(FModel.NodeRadius(FHover) * FView.Scale));
-  mX := Px(FView.ScreenX(FModel.Units[FHover].X)) + mRadius + 4;
-  mY := Px(FView.ScreenY(FModel.Units[FHover].Y)) + mRadius + 4;
-  if mX + mSize.cx > ClientWidth then
-  begin
-    mX := Px(FView.ScreenX(FModel.Units[FHover].X)) - mRadius - 4 - mSize.cx;
-  end;
-  if mY + mSize.cy > ClientHeight then
-  begin
-    mY := Px(FView.ScreenY(FModel.Units[FHover].Y)) - mRadius - 4 - mSize.cy;
-  end;
-  mX := Max(0, mX);
-  mY := Max(0, mY);
-  mRect := Rect(mX, mY, mX + mSize.cx, mY + mSize.cy);
-  TAtlasArchitectureAssignment.Draw(Canvas, mRect, FModel, FHover, CurrentPPI, AColors);
-end;
-
-procedure TAtlasArchitectureMap.SetHover(AUnit: Integer);
-begin
-  if AUnit = FHover then
-  begin
-    Exit;
-  end;
-  FHover := AUnit;
-  if FShowAssignment and FModel.HasAssignment then
-  begin
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasArchitectureMap.SetShowAssignment(AValue: Boolean);
-begin
-  if AValue = FShowAssignment then
-  begin
-    Exit;
-  end;
-  FShowAssignment := AValue;
-  Invalidate;
 end;
 
 procedure TAtlasArchitectureMap.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  SetHover(-1);
+  FState.SetHover(-1);
 end;
 
 procedure TAtlasArchitectureMap.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -882,65 +582,65 @@ begin
   begin
     Exit;
   end;
-  FDragging := True;
-  FMoved := False;
-  FDragX := X;
-  FDragY := Y;
+  FDrag.Dragging := True;
+  FDrag.Moved := False;
+  FDrag.X := X;
+  FDrag.Y := Y;
 end;
 
 procedure TAtlasArchitectureMap.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseMove(Shift, X, Y);
-  if not FDragging then
+  if not FDrag.Dragging then
   begin
-    SetHover(FView.UnitAt(FModel, X, Y, FHidden));
+    FState.SetHover(FView.UnitAt(FState.Model, X, Y, FState.Hidden));
     Exit;
   end;
-  if not FMoved and (Abs(X - FDragX) <= DragThreshold) and (Abs(Y - FDragY) <= DragThreshold) then
+  if not FDrag.Moved and (Abs(X - FDrag.X) <= DragThreshold) and (Abs(Y - FDrag.Y) <= DragThreshold) then
   begin
     Exit;
   end;
-  FMoved := True;
-  FView.Pan(X - FDragX, Y - FDragY);
-  FDragX := X;
-  FDragY := Y;
+  FDrag.Moved := True;
+  FView.Pan(X - FDrag.X, Y - FDrag.Y);
+  FDrag.X := X;
+  FDrag.Y := Y;
   Invalidate;
 end;
 
 procedure TAtlasArchitectureMap.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Hit: Integer;
+  mHit: Integer;
 begin
   inherited MouseUp(Button, Shift, X, Y);
-  if (Button <> mbLeft) or not FDragging then
+  if (Button <> mbLeft) or not FDrag.Dragging then
   begin
     Exit;
   end;
-  FDragging := False;
-  if FMoved then
+  FDrag.Dragging := False;
+  if FDrag.Moved then
   begin
     Exit;
   end;
-  Hit := FView.UnitAt(FModel, X, Y, FHidden);
+  mHit := FView.UnitAt(FState.Model, X, Y, FState.Hidden);
   // Umschalt+Klick: Weg von der gewählten Unit hierher (wie die HTML-Karte).
-  if (ssShift in Shift) and (FSelected >= 0) and (Hit >= 0) and (Hit <> FSelected) then
+  if (ssShift in Shift) and (FState.Selected >= 0) and (mHit >= 0) and (mHit <> FState.Selected) then
   begin
-    ShowPath(FSelected, Hit);
+    FState.ShowPath(FState.Selected, mHit);
     Exit;
   end;
-  SelectUnit(Hit, False);
-  if Assigned(FOnSelect) then
+  SelectUnit(mHit, False);
+  if Assigned(FHandlers.OnSelect) then
   begin
-    FOnSelect(Hit);
+    FHandlers.OnSelect(mHit);
   end;
 end;
 
 procedure TAtlasArchitectureMap.DblClick;
 begin
   inherited DblClick;
-  if (FSelected >= 0) and Assigned(FOnOpen) then
+  if (FState.Selected >= 0) and Assigned(FHandlers.OnOpen) then
   begin
-    FOnOpen(FSelected);
+    FHandlers.OnOpen(FState.Selected);
   end;
 end;
 
@@ -955,14 +655,14 @@ begin
     Ord('0'), VK_NUMPAD0:
       FitView;
     VK_RETURN:
-      if (FSelected >= 0) and Assigned(FOnOpen) then
+      if (FState.Selected >= 0) and Assigned(FHandlers.OnOpen) then
       begin
-        FOnOpen(FSelected);
+        FHandlers.OnOpen(FState.Selected);
       end;
     VK_ESCAPE:
-      if FPathFrom >= 0 then
+      if FState.Path.From >= 0 then
       begin
-        ClearPath;
+        FState.ClearPath;
       end
       else
       begin
@@ -976,17 +676,17 @@ end;
 
 function TAtlasArchitectureMap.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 var
-  Local: TPoint;
+  mLocal: TPoint;
 begin
   Result := True;
-  Local := ScreenToClient(MousePos);
+  mLocal := ScreenToClient(MousePos);
   if WheelDelta > 0 then
   begin
-    FView.ZoomAt(1.15, Local.X, Local.Y);
+    FView.ZoomAt(1.15, mLocal.X, mLocal.Y);
   end
   else
   begin
-    FView.ZoomAt(1 / 1.15, Local.X, Local.Y);
+    FView.ZoomAt(1 / 1.15, mLocal.X, mLocal.Y);
   end;
   Invalidate;
 end;

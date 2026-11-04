@@ -42,6 +42,16 @@ type
     function TypeMatches(const AName: string): TArray<TSymbolLocation>;
     procedure AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
       AVisited: TDictionary<string, Boolean>);
+    function AddSimilar(ALines: TStrings; const AQuery: string): Boolean;
+    procedure AddDeclaration(ALines, ASource: TStrings; const ALocation: TSymbolLocation;
+      const AOptions: TRationaleOptions);
+    function SymbolRationale(const AName: string; const AOptions: TRationaleOptions): string;
+    function UnitRationale(const AUnitOrFile: string; const AOptions: TRationaleOptions): string;
+    function AncestorLine(const AFound: TSymbolLocation): string;
+    function PaletteLine(const AFound: TSymbolLocation): string;
+    function PackageLine(const AUnitName: string): string;
+    procedure AddMembers(ALines: TStrings; const AClassName: string);
+    procedure AddAncestors(ALines: TStrings; const AFound: TSymbolLocation);
   public
     /// <summary>AReadText darf nil sein; dann liefert Declaration nur Fundstellen.</summary>
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TMcpReadText);
@@ -80,6 +90,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Math,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Dfm.FormInfo;
@@ -201,61 +212,78 @@ begin
   end;
 end;
 
+/// <summary>Die exakten Treffer AFound, höchstens MaxResults.</summary>
+procedure AddExact(ALines: TStrings; const AFound: TArray<TSymbolLocation>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AFound) do
+  begin
+    if mIndex >= TMcpIndexTools.MaxResults then
+    begin
+      ALines.Add(Format('… %d weitere', [Length(AFound) - mIndex]));
+      Break;
+    end;
+    ALines.Add(Describe(AFound[mIndex]));
+  end;
+end;
+
+function TMcpIndexTools.AddSimilar(ALines: TStrings; const AQuery: string): Boolean;
+var
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  // Kein exakter Treffer: Teilstring im Namen, z. B. "Customer" findet TCustomerList.
+  for mUnit in FIndex.Units do
+  begin
+    for mSymbol in mUnit.Symbols do
+    begin
+      if not ContainsText(mSymbol.Name, AQuery) then
+      begin
+        Continue;
+      end;
+      if ALines.Count >= MaxResults then
+      begin
+        ALines.Add('… weitere Treffer, Suche genauer fassen');
+        Exit(False);
+      end;
+      mLocation.UnitName := mUnit.UnitName;
+      mLocation.FileName := mUnit.FileName;
+      mLocation.Symbol := mSymbol;
+      ALines.Add(Describe(mLocation));
+    end;
+  end;
+  Result := True;
+end;
+
 function TMcpIndexTools.FindSymbol(const AQuery: string): string;
 var
-  Lines: TStringList;
-  Found: TArray<TSymbolLocation>;
-  Location: TSymbolLocation;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Count: Integer;
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Found := Matches(AQuery);
-    if Length(Found) > 0 then
+    mFound := Matches(AQuery);
+    if Length(mFound) > 0 then
     begin
-      Count := 0;
-      for Location in Found do
-      begin
-        Lines.Add(Describe(Location));
-        Inc(Count);
-        if Count >= MaxResults then
-        begin
-          Lines.Add(Format('… %d weitere', [Length(Found) - Count]));
-          Break;
-        end;
-      end;
-      Exit(JoinLines(Lines));
-    end;
-    // Kein exakter Treffer: Teilstring im Namen, z. B. "Customer" findet TCustomerList.
-    Count := 0;
-    for UnitIndex in FIndex.Units do
+      AddExact(mLines, mFound);
+      Result := JoinLines(mLines);
+    end
+    else if not AddSimilar(mLines, AQuery) then
     begin
-      for Symbol in UnitIndex.Symbols do
-      begin
-        if ContainsText(Symbol.Name, AQuery) then
-        begin
-          if Count >= MaxResults then
-          begin
-            Lines.Add('… weitere Treffer, Suche genauer fassen');
-            Exit(JoinLines(Lines));
-          end;
-          Location.UnitName := UnitIndex.UnitName;
-          Location.FileName := UnitIndex.FileName;
-          Location.Symbol := Symbol;
-          Lines.Add(Describe(Location));
-          Inc(Count);
-        end;
-      end;
-    end;
-    if Lines.Count = 0 then
+      Result := JoinLines(mLines);
+    end
+    else if mLines.Count = 0 then
     begin
-      Exit(Format('Kein Symbol "%s" im Index (%d Units).', [AQuery, FIndex.UnitCount]));
+      Result := Format('Kein Symbol "%s" im Index (%d Units).', [AQuery, FIndex.UnitCount]);
+    end
+    else
+    begin
+      Result := 'Kein exakter Treffer, ähnliche Namen:' + sLineBreak + JoinLines(mLines);
     end;
-    Result := 'Kein exakter Treffer, ähnliche Namen:' + sLineBreak + JoinLines(Lines);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
@@ -294,144 +322,179 @@ begin
   end;
 end;
 
+procedure TMcpIndexTools.AddDeclaration(ALines, ASource: TStrings; const ALocation: TSymbolLocation;
+  const AOptions: TRationaleOptions);
+var
+  mText: string;
+  mLine: Integer;
+  mEntries: TArray<TRationaleEntry>;
+begin
+  if ALines.Count > 0 then
+  begin
+    ALines.Add('');
+  end;
+  ALines.Add('// ' + Describe(ALocation));
+  if Assigned(FReadText) and FReadText(ALocation.FileName, mText) then
+  begin
+    ASource.Text := mText;
+    for mLine := Max(ALocation.Symbol.Range.StartPos.Line, 0) to Min(ALocation.Symbol.Range.EndPos.Line,
+      ASource.Count - 1) do
+    begin
+      ALines.Add(ASource[mLine]);
+    end;
+  end;
+  // Begründungen (#1123): über der Deklaration und im Rumpf der Implementierung.
+  mEntries := TLspRationale.Select(EntriesOf(FIndex, ALocation), AOptions);
+  if Length(mEntries) > 0 then
+  begin
+    ALines.Add('Begründungen:');
+    AddEntries(ALines, mEntries);
+  end;
+end;
+
 function TMcpIndexTools.Declaration(const AQuery: string): string;
 var
-  Lines, Source: TStringList;
-  Location: TSymbolLocation;
-  Text: string;
-  Line, Count: Integer;
-  Options: TRationaleOptions;
-  Entries: TArray<TRationaleEntry>;
+  mLines, mSource: TStringList;
+  mLocation: TSymbolLocation;
+  mCount: Integer;
+  mOptions: TRationaleOptions;
 begin
-  Options := RationaleOptions;
-  Lines := TStringList.Create;
-  Source := TStringList.Create;
+  mOptions := RationaleOptions;
+  mLines := TStringList.Create;
+  mSource := TStringList.Create;
   try
-    Count := 0;
-    for Location in Matches(AQuery) do
+    mCount := 0;
+    for mLocation in Matches(AQuery) do
     begin
-      if Count >= MaxDeclarations then
+      if mCount >= MaxDeclarations then
       begin
-        Lines.Add('… weitere Deklarationen, Namen genauer fassen (TFoo.Bar)');
+        mLines.Add('… weitere Deklarationen, Namen genauer fassen (TFoo.Bar)');
         Break;
       end;
-      Inc(Count);
-      if Lines.Count > 0 then
-      begin
-        Lines.Add('');
-      end;
-      Lines.Add('// ' + Describe(Location));
-      if Assigned(FReadText) and FReadText(Location.FileName, Text) then
-      begin
-        Source.Text := Text;
-        for Line := Location.Symbol.Range.StartPos.Line to Location.Symbol.Range.EndPos.Line do
-        begin
-          if (Line >= 0) and (Line < Source.Count) then
-          begin
-            Lines.Add(Source[Line]);
-          end;
-        end;
-      end;
-      // Begründungen (#1123): über der Deklaration und im Rumpf der Implementierung.
-      Entries := TLspRationale.Select(EntriesOf(FIndex, Location), Options);
-      if Length(Entries) > 0 then
-      begin
-        Lines.Add('Begründungen:');
-        AddEntries(Lines, Entries);
-      end;
+      Inc(mCount);
+      AddDeclaration(mLines, mSource, mLocation, mOptions);
     end;
-    if Count = 0 then
+    if mCount = 0 then
     begin
       Exit(Format('Kein Symbol "%s" im Index.', [AQuery]));
     end;
-    Result := JoinLines(Lines);
+    Result := JoinLines(mLines);
   finally
-    Source.Free;
-    Lines.Free;
+    mSource.Free;
+    mLines.Free;
+  end;
+end;
+
+function TMcpIndexTools.SymbolRationale(const AName: string; const AOptions: TRationaleOptions): string;
+var
+  mLines: TStringList;
+  mLocation: TSymbolLocation;
+  mEntries: TArray<TRationaleEntry>;
+  mCount: Integer;
+begin
+  mLines := TStringList.Create;
+  try
+    mCount := 0;
+    for mLocation in Matches(AName) do
+    begin
+      mEntries := TLspRationale.ByMarkers(EntriesOf(FIndex, mLocation), AOptions);
+      if Length(mEntries) = 0 then
+      begin
+        Continue;
+      end;
+      if mCount >= MaxDeclarations then
+      begin
+        mLines.Add('… weitere Symbole, Namen genauer fassen (TFoo.Bar)');
+        Break;
+      end;
+      Inc(mCount);
+      if mLines.Count > 0 then
+      begin
+        mLines.Add('');
+      end;
+      mLines.Add(Describe(mLocation));
+      AddEntries(mLines, mEntries);
+    end;
+    Result := JoinLines(mLines);
+    if mCount = 0 then
+    begin
+      Result := Format('Keine Begründungen zu "%s".', [AName]);
+    end;
+  finally
+    mLines.Free;
+  end;
+end;
+
+/// <summary>Begründungen der Unit selbst und je Symbol nur die eigenen Einträge: Deklaration und Implementierung
+/// stehen mit ihrer Fundstelle getrennt. Liefert die Zahl der Einträge.</summary>
+function AddUnitEntries(ALines: TStrings; const AUnit: TUnitIndex; const AOptions: TRationaleOptions): Integer;
+var
+  mEntries: TArray<TRationaleEntry>;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  Result := 0;
+  mEntries := TLspRationale.ByMarkers(TRationale.DecodeAll(AUnit.Rationale), AOptions);
+  if Length(mEntries) > 0 then
+  begin
+    ALines.Add('Unit:');
+    AddEntries(ALines, mEntries);
+    Inc(Result, Length(mEntries));
+  end;
+  for mSymbol in AUnit.Symbols do
+  begin
+    mEntries := TLspRationale.ByMarkers(TRationale.DecodeAll(mSymbol.Rationale), AOptions);
+    if Length(mEntries) > 0 then
+    begin
+      mLocation.UnitName := AUnit.UnitName;
+      mLocation.FileName := AUnit.SymbolFile(mSymbol);
+      mLocation.Symbol := mSymbol;
+      ALines.Add(Describe(mLocation));
+      AddEntries(ALines, mEntries);
+      Inc(Result, Length(mEntries));
+    end;
+  end;
+end;
+
+function TMcpIndexTools.UnitRationale(const AUnitOrFile: string; const AOptions: TRationaleOptions): string;
+var
+  mLines: TStringList;
+  mUnit: TUnitIndex;
+begin
+  if not FIndex.FindUnit(AUnitOrFile, mUnit) and not FIndex.FindFile(AUnitOrFile, mUnit) then
+  begin
+    Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+  end;
+  mLines := TStringList.Create;
+  try
+    mLines.Add(Format('unit %s – %s', [mUnit.UnitName, mUnit.FileName]));
+    if AddUnitEntries(mLines, mUnit, AOptions) = 0 then
+    begin
+      Result := Format('Keine Begründungen in Unit %s.', [mUnit.UnitName]);
+    end
+    else
+    begin
+      Result := JoinLines(mLines);
+    end;
+  finally
+    mLines.Free;
   end;
 end;
 
 function TMcpIndexTools.Rationale(const AUnitOrFile, AName: string): string;
-var
-  Lines: TStringList;
-  Options: TRationaleOptions;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Entries: TArray<TRationaleEntry>;
-  Count: Integer;
 begin
+  // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
   if (Trim(AUnitOrFile) = '') = (Trim(AName) = '') then
   begin
-    Exit('Genau eins von "unit" und "name" angeben.');
-  end;
-  // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
-  Options := RationaleOptions;
-  Lines := TStringList.Create;
-  try
-    Count := 0;
-    if Trim(AName) <> '' then
-    begin
-      for Location in Matches(AName) do
-      begin
-        Entries := TLspRationale.ByMarkers(EntriesOf(FIndex, Location), Options);
-        if Length(Entries) = 0 then
-        begin
-          Continue;
-        end;
-        if Count >= MaxDeclarations then
-        begin
-          Lines.Add('… weitere Symbole, Namen genauer fassen (TFoo.Bar)');
-          Break;
-        end;
-        Inc(Count);
-        if Lines.Count > 0 then
-        begin
-          Lines.Add('');
-        end;
-        Lines.Add(Describe(Location));
-        AddEntries(Lines, Entries);
-      end;
-      if Count = 0 then
-      begin
-        Exit(Format('Keine Begründungen zu "%s".', [AName]));
-      end;
-      Exit(JoinLines(Lines));
-    end;
-    if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
-    begin
-      Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
-    end;
-    Lines.Add(Format('unit %s – %s', [UnitIndex.UnitName, UnitIndex.FileName]));
-    Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(UnitIndex.Rationale), Options);
-    if Length(Entries) > 0 then
-    begin
-      Lines.Add('Unit:');
-      AddEntries(Lines, Entries);
-      Inc(Count, Length(Entries));
-    end;
-    // Je Symbol nur die eigenen Einträge: Deklaration und Implementierung stehen mit ihrer Fundstelle getrennt.
-    for Symbol in UnitIndex.Symbols do
-    begin
-      Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(Symbol.Rationale), Options);
-      if Length(Entries) = 0 then
-      begin
-        Continue;
-      end;
-      Location.UnitName := UnitIndex.UnitName;
-      Location.FileName := UnitIndex.SymbolFile(Symbol);
-      Location.Symbol := Symbol;
-      Lines.Add(Describe(Location));
-      AddEntries(Lines, Entries);
-      Inc(Count, Length(Entries));
-    end;
-    if Count = 0 then
-    begin
-      Exit(Format('Keine Begründungen in Unit %s.', [UnitIndex.UnitName]));
-    end;
-    Result := JoinLines(Lines);
-  finally
-    Lines.Free;
+    Result := 'Genau eins von "unit" und "name" angeben.';
+  end
+  else if Trim(AName) <> '' then
+  begin
+    Result := SymbolRationale(AName, RationaleOptions);
+  end
+  else
+  begin
+    Result := UnitRationale(AUnitOrFile, RationaleOptions);
   end;
 end;
 
@@ -532,208 +595,252 @@ begin
   end;
 end;
 
+/// <summary>" (aus TBasis)", wenn AMember nicht in AClassName selbst deklariert ist.</summary>
+function InheritedNote(const AMember: TPublishedMember; const AClassName: string): string;
+begin
+  Result := '';
+  if not SameText(AMember.DeclaringClass, AClassName) then
+  begin
+    Result := ' (aus ' + AMember.DeclaringClass + ')';
+  end;
+end;
+
+function TMcpIndexTools.AncestorLine(const AFound: TSymbolLocation): string;
+var
+  mCurrent: TSymbolLocation;
+  mParents: TArray<TSymbolLocation>;
+  mChain: TList<string>;
+begin
+  // Vorfahrenkette über die jeweils erste Basisklasse.
+  Result := AFound.Symbol.Name;
+  mCurrent := AFound;
+  mChain := TList<string>.Create;
+  try
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < MaxDepth) and
+      not mChain.Contains(LowerCase(mCurrent.Symbol.Ancestors[0])) do
+    begin
+      mChain.Add(LowerCase(mCurrent.Symbol.Ancestors[0]));
+      Result := Result + ' → ' + mCurrent.Symbol.Ancestors[0];
+      mParents := TypeMatches(mCurrent.Symbol.Ancestors[0]);
+      if Length(mParents) = 0 then
+      begin
+        Break;
+      end;
+      mCurrent := mParents[0];
+    end;
+  finally
+    mChain.Free;
+  end;
+end;
+
+/// <summary>Palettenseiten von AClassName aus den RegisterComponents-Aufrufen in AText, an APages angehängt.
+/// </summary>
+procedure AddPages(var APages: string; const AText, AClassName: string);
+var
+  mRegistration: TComponentRegistration;
+begin
+  for mRegistration in TMcpIndexTools.Registrations(AText) do
+  begin
+    if SameText(mRegistration.ClassName, AClassName) and (Pos(mRegistration.Page, APages) = 0) then
+    begin
+      if APages <> '' then
+      begin
+        APages := APages + ', ';
+      end;
+      APages := APages + mRegistration.Page;
+    end;
+  end;
+end;
+
+function TMcpIndexTools.PaletteLine(const AFound: TSymbolLocation): string;
+var
+  mFiles: TList<string>;
+  mRoutine: TSymbolLocation;
+  mFileName, mText: string;
+begin
+  // Palettenseite: RegisterComponents in der Unit der Klasse und in allen Register-Routinen.
+  Result := '';
+  mFiles := TList<string>.Create;
+  try
+    mFiles.Add(AFound.FileName);
+    for mRoutine in FIndex.FindSymbols('Register') do
+    begin
+      if (mRoutine.Symbol.Container = '') and not mFiles.Contains(mRoutine.FileName) then
+      begin
+        mFiles.Add(mRoutine.FileName);
+      end;
+    end;
+    for mFileName in mFiles do
+    begin
+      if Assigned(FReadText) and FReadText(mFileName, mText) then
+      begin
+        AddPages(Result, mText, AFound.Symbol.Name);
+      end;
+    end;
+  finally
+    mFiles.Free;
+  end;
+  if Result = '' then
+  begin
+    Result := 'keine';
+  end;
+end;
+
+function TMcpIndexTools.PackageLine(const AUnitName: string): string;
+begin
+  Result := '';
+  if Assigned(FPackageOf) then
+  begin
+    Result := FPackageOf(AUnitName);
+  end;
+  if Result = '' then
+  begin
+    Result := 'unbekannt';
+  end;
+end;
+
+procedure TMcpIndexTools.AddMembers(ALines: TStrings; const AClassName: string);
+var
+  mReadText: TMemberReadText;
+  mMembers: TArray<TPublishedMember>;
+  mMember: TPublishedMember;
+  mLine, mTail: string;
+begin
+  mReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FReadText(AFileName, AText);
+    end;
+  mMembers := TPublishedMembers.Collect(FIndex, AClassName, mReadText);
+  ALines.Add('Properties:');
+  for mMember in mMembers do
+  begin
+    if not mMember.IsEvent then
+    begin
+      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
+      if TPublishedMembers.DefaultText(mMember) <> '' then
+      begin
+        mLine := mLine + ' ' + TPublishedMembers.DefaultText(mMember);
+      end;
+      ALines.Add(mLine + InheritedNote(mMember, AClassName));
+    end;
+  end;
+  ALines.Add('Ereignisse:');
+  for mMember in mMembers do
+  begin
+    if mMember.IsEvent then
+    begin
+      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
+      if TPublishedMembers.EventTail(FIndex, mReadText, AClassName, mMember.Name, mTail) then
+      begin
+        mLine := mLine + ' – Signatur ' + mTail;
+      end;
+      ALines.Add(mLine + InheritedNote(mMember, AClassName));
+    end;
+  end;
+end;
+
 function TMcpIndexTools.ComponentInfo(const AClassName: string): string;
 var
-  Lines: TStringList;
-  Found, Parents, Routines: TArray<TSymbolLocation>;
-  Current, Routine: TSymbolLocation;
-  Members: TArray<TPublishedMember>;
-  Member: TPublishedMember;
-  Registration: TComponentRegistration;
-  Chain: TList<string>;
-  Text, Tail, Pages, Package, Line: string;
-  ReadText: TMemberReadText;
-  Files: TList<string>;
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
 begin
-  Found := TypeMatches(AClassName);
-  if Length(Found) = 0 then
+  mFound := TypeMatches(AClassName);
+  if Length(mFound) = 0 then
   begin
     Exit(Format('Keine Quellen zu "%s" im Index; nur der Name ist bekannt (z. B. nur als .dcu vorhanden).',
       [AClassName]));
   end;
-  Lines := TStringList.Create;
-  Chain := TList<string>.Create;
-  Files := TList<string>.Create;
+  mLines := TStringList.Create;
   try
-    Current := Found[0];
-    Lines.Add(Describe(Current));
-    // Vorfahrenkette über die jeweils erste Basisklasse.
-    Line := Current.Symbol.Name;
-    while (Length(Current.Symbol.Ancestors) > 0) and (Chain.Count < MaxDepth) and
-      not Chain.Contains(LowerCase(Current.Symbol.Ancestors[0])) do
+    mLines.Add(Describe(mFound[0]));
+    mLines.Add('Vorfahren: ' + AncestorLine(mFound[0]));
+    mLines.Add('Registrierung (Palettenseite): ' + PaletteLine(mFound[0]));
+    mLines.Add('Package: ' + PackageLine(mFound[0].UnitName));
+    if Assigned(FReadText) then
     begin
-      Chain.Add(LowerCase(Current.Symbol.Ancestors[0]));
-      Line := Line + ' → ' + Current.Symbol.Ancestors[0];
-      Parents := TypeMatches(Current.Symbol.Ancestors[0]);
-      if Length(Parents) = 0 then
+      AddMembers(mLines, mFound[0].Symbol.Name);
+    end;
+    Result := JoinLines(mLines);
+  finally
+    mLines.Free;
+  end;
+end;
+
+procedure TMcpIndexTools.AddAncestors(ALines: TStrings; const AFound: TSymbolLocation);
+var
+  mCurrent: TSymbolLocation;
+  mParents: TArray<TSymbolLocation>;
+  mChain: TList<string>;
+  mName: string;
+begin
+  // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
+  ALines.Add('Vorfahren:');
+  mCurrent := AFound;
+  mChain := TList<string>.Create;
+  try
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < MaxDepth) do
+    begin
+      mName := mCurrent.Symbol.Ancestors[0];
+      if mChain.Contains(LowerCase(mName)) then
       begin
         Break;
       end;
-      Current := Parents[0];
-    end;
-    Lines.Add('Vorfahren: ' + Line);
-    // Palettenseite: RegisterComponents in der Unit der Klasse und in allen Register-Routinen.
-    Files.Add(Found[0].FileName);
-    Routines := FIndex.FindSymbols('Register');
-    for Routine in Routines do
-    begin
-      if (Routine.Symbol.Container = '') and not Files.Contains(Routine.FileName) then
+      mChain.Add(LowerCase(mName));
+      mParents := TypeMatches(mName);
+      if Length(mParents) = 0 then
       begin
-        Files.Add(Routine.FileName);
+        ALines.Add('  - ' + mName + ' (nicht im Index)');
+        Break;
       end;
+      mCurrent := mParents[0];
+      ALines.Add('  - ' + Describe(mCurrent));
     end;
-    Pages := '';
-    if Assigned(FReadText) then
+    if mChain.Count = 0 then
     begin
-      for Line in Files do
-      begin
-        if FReadText(Line, Text) then
-        begin
-          for Registration in Registrations(Text) do
-          begin
-            if SameText(Registration.ClassName, Found[0].Symbol.Name) and (Pos(Registration.Page, Pages) = 0) then
-            begin
-              if Pages <> '' then
-              begin
-                Pages := Pages + ', ';
-              end;
-              Pages := Pages + Registration.Page;
-            end;
-          end;
-        end;
-      end;
+      ALines.Add('  (keine)');
     end;
-    if Pages = '' then
-    begin
-      Pages := 'keine';
-    end;
-    Lines.Add('Registrierung (Palettenseite): ' + Pages);
-    Package := '';
-    if Assigned(FPackageOf) then
-    begin
-      Package := FPackageOf(Found[0].UnitName);
-    end;
-    if Package = '' then
-    begin
-      Package := 'unbekannt';
-    end;
-    Lines.Add('Package: ' + Package);
-    if not Assigned(FReadText) then
-    begin
-      Exit(JoinLines(Lines));
-    end;
-    ReadText :=
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        Result := FReadText(AFileName, AText);
-      end;
-    Members := TPublishedMembers.Collect(FIndex, Found[0].Symbol.Name, ReadText);
-    Lines.Add('Properties:');
-    for Member in Members do
-    begin
-      if not Member.IsEvent then
-      begin
-        Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
-        if TPublishedMembers.DefaultText(Member) <> '' then
-        begin
-          Line := Line + ' ' + TPublishedMembers.DefaultText(Member);
-        end;
-        if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
-        begin
-          Line := Line + ' (aus ' + Member.DeclaringClass + ')';
-        end;
-        Lines.Add(Line);
-      end;
-    end;
-    Lines.Add('Ereignisse:');
-    for Member in Members do
-    begin
-      if Member.IsEvent then
-      begin
-        Line := Format('  %s: %s', [Member.Name, Member.TypeName]);
-        if TPublishedMembers.EventTail(FIndex, ReadText, Found[0].Symbol.Name, Member.Name, Tail) then
-        begin
-          Line := Line + ' – Signatur ' + Tail;
-        end;
-        if not SameText(Member.DeclaringClass, Found[0].Symbol.Name) then
-        begin
-          Line := Line + ' (aus ' + Member.DeclaringClass + ')';
-        end;
-        Lines.Add(Line);
-      end;
-    end;
-    Result := JoinLines(Lines);
   finally
-    Files.Free;
-    Chain.Free;
-    Lines.Free;
+    mChain.Free;
   end;
 end;
 
 function TMcpIndexTools.TypeHierarchy(const ATypeName: string): string;
 var
-  Lines: TStringList;
-  Found, Parents: TArray<TSymbolLocation>;
-  Current: TSymbolLocation;
-  Visited: TDictionary<string, Boolean>;
-  Chain: TList<string>;
-  Index: Integer;
-  Name: string;
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
+  mVisited: TDictionary<string, Boolean>;
+  mIndex: Integer;
 begin
-  Found := TypeMatches(ATypeName);
-  if Length(Found) = 0 then
+  mFound := TypeMatches(ATypeName);
+  if Length(mFound) = 0 then
   begin
     Exit(Format('Kein Typ "%s" im Index.', [ATypeName]));
   end;
-  Lines := TStringList.Create;
-  Chain := TList<string>.Create;
-  Visited := TDictionary<string, Boolean>.Create;
+  mLines := TStringList.Create;
+  mVisited := TDictionary<string, Boolean>.Create;
   try
-    Current := Found[0];
-    Lines.Add(Describe(Current));
-    if Length(Current.Symbol.Ancestors) > 1 then
+    mLines.Add(Describe(mFound[0]));
+    if Length(mFound[0].Symbol.Ancestors) > 1 then
     begin
-      Lines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(Current.Symbol.Ancestors, 1, MaxInt)));
+      mLines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(mFound[0].Symbol.Ancestors, 1, MaxInt)));
     end;
-    // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
-    Lines.Add('Vorfahren:');
-    while (Length(Current.Symbol.Ancestors) > 0) and (Chain.Count < MaxDepth) do
+    AddAncestors(mLines, mFound[0]);
+    mLines.Add('Nachfahren:');
+    mIndex := mLines.Count;
+    AddDescendants(mLines, mFound[0].Symbol.Name, 1, mVisited);
+    if mLines.Count = mIndex then
     begin
-      Name := Current.Symbol.Ancestors[0];
-      if Chain.Contains(LowerCase(Name)) then
-      begin
-        Break;
-      end;
-      Chain.Add(LowerCase(Name));
-      Parents := TypeMatches(Name);
-      if Length(Parents) = 0 then
-      begin
-        Lines.Add('  - ' + Name + ' (nicht im Index)');
-        Break;
-      end;
-      Current := Parents[0];
-      Lines.Add('  - ' + Describe(Current));
+      mLines.Add('  (keine im Index)');
     end;
-    if Chain.Count = 0 then
+    if Length(mFound) > 1 then
     begin
-      Lines.Add('  (keine)');
+      mLines.Add(Format('Hinweis: %d Typen dieses Namens, gezeigt wird der erste.', [Length(mFound)]));
     end;
-    Lines.Add('Nachfahren:');
-    Index := Lines.Count;
-    AddDescendants(Lines, Found[0].Symbol.Name, 1, Visited);
-    if Lines.Count = Index then
-    begin
-      Lines.Add('  (keine im Index)');
-    end;
-    if Length(Found) > 1 then
-    begin
-      Lines.Add(Format('Hinweis: %d Typen dieses Namens, gezeigt wird der erste.', [Length(Found)]));
-    end;
-    Result := JoinLines(Lines);
+    Result := JoinLines(mLines);
   finally
-    Visited.Free;
-    Chain.Free;
-    Lines.Free;
+    mVisited.Free;
+    mLines.Free;
   end;
 end;
 

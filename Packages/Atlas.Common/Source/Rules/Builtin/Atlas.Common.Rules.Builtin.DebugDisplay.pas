@@ -50,6 +50,92 @@ begin
     'Wertdarstellung nennt unbekanntes Mitglied');
 end;
 
+/// <summary>Vorlage der Wertdarstellung; False (gemeldet), wenn sie ungültig ist. Ohne Vorlage eine leere.
+/// </summary>
+function ReadTemplate(const ALines: TArray<string>; const ASource: TDebugDisplaySource; const AReport: IRuleReport;
+  out ATemplate: TDebugDisplayTemplate): Boolean;
+var
+  Segment: TDebugDisplaySegment;
+  Column: Integer;
+begin
+  ATemplate := Default(TDebugDisplayTemplate);
+  Result := True;
+  if not ASource.HasTemplate then
+  begin
+    Exit;
+  end;
+  ATemplate := TDebugDisplayTemplate.Parse(ASource.Template);
+  Result := ATemplate.Valid;
+  if not Result then
+  begin
+    Segment := Default(TDebugDisplaySegment);
+    Segment.Offset := ATemplate.ErrorOffset;
+    Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
+    AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + 1),
+      Format('Ungültige Wertdarstellung: %s.', [ATemplate.Error]));
+  end;
+end;
+
+/// <summary>Meldet Platzhalter, deren erster Name kein Mitglied des Typs ATypeName ist.</summary>
+procedure CheckPlaceholders(const ALines: TArray<string>; const ASource: TDebugDisplaySource;
+  const ATemplate: TDebugDisplayTemplate; const AMembers: TArray<TTypeMember>; const ATypeName: string;
+  const AReport: IRuleReport);
+var
+  Segment: TDebugDisplaySegment;
+  Root: string;
+  Column: Integer;
+begin
+  for Segment in ATemplate.Placeholders do
+  begin
+    Root := Segment.Root;
+    if (Root = '') or SameText(Root, 'Self') or TTypeMembers.Contains(AMembers, Root) then
+    begin
+      Continue;
+    end;
+    Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
+    AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + Length(Root)),
+      Format('%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.',
+      [ATypeName, Root, Segment.Text]));
+  end;
+end;
+
+/// <summary>Spalte (ab 1) des Namens AName in der children-Zeile ALine; 1, wenn er fehlt.</summary>
+function ChildColumn(const ALine, AName: string): Integer;
+begin
+  Result := Pos(LowerCase(TDebugDisplayText.ChildrenKey), LowerCase(ALine));
+  if Result > 0 then
+  begin
+    Result := Result + Length(TDebugDisplayText.ChildrenKey);
+  end
+  else
+  begin
+    Result := Pos('(', ALine) + 1;
+  end;
+  Result := Pos(LowerCase(AName), LowerCase(ALine), Result);
+  if Result = 0 then
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Meldet Namen in children, die der Typ ATypeName nicht hat.</summary>
+procedure CheckChildren(const ALines: TArray<string>; const ASource: TDebugDisplaySource;
+  const AMembers: TArray<TTypeMember>; const ATypeName: string; const AReport: IRuleReport);
+var
+  Name: string;
+  Found: Integer;
+begin
+  for Name in ASource.Children do
+  begin
+    if not TTypeMembers.Contains(AMembers, Name) then
+    begin
+      Found := ChildColumn(ALines[ASource.ChildrenLine], Name);
+      AReport.Add(TTextRange.Create(ASource.ChildrenLine, Found - 1, ASource.ChildrenLine, Found - 1 + Length(Name)),
+        Format('%s hat kein Mitglied „%s“ für die Unterelemente.', [ATypeName, Name]));
+    end;
+  end;
+end;
+
 procedure TDebugDisplayPlaceholderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Local: TUnitIndex;
@@ -57,10 +143,7 @@ var
   Symbol: TIndexSymbol;
   Source: TDebugDisplaySource;
   Template: TDebugDisplayTemplate;
-  Segment: TDebugDisplaySegment;
   Members: TArray<TTypeMember>;
-  Line, Name, Root: string;
-  Column, Found: Integer;
 begin
   if (AContext.Tree = nil) or not (ContainsText(AContext.Text, 'atlas-debug')
     or ContainsText(AContext.Text, 'AtlasDebug')) then
@@ -76,60 +159,11 @@ begin
     begin
       Continue;
     end;
-    Template := Default(TDebugDisplayTemplate);
-    if Source.HasTemplate then
+    if ReadTemplate(Lines, Source, AReport, Template) and
+      TTypeMembers.Collect(Local, AContext.Index, Symbol, Members) then
     begin
-      Line := Lines[Source.TemplateLine];
-      Template := TDebugDisplayTemplate.Parse(Source.Template);
-      if not Template.Valid then
-      begin
-        Segment := Default(TDebugDisplaySegment);
-        Segment.Offset := Template.ErrorOffset;
-        Column := TDebugDisplayText.SourceColumn(Line, Source.TemplateColumn, Segment);
-        AReport.Add(TTextRange.Create(Source.TemplateLine, Column, Source.TemplateLine, Column + 1),
-          Format('Ungültige Wertdarstellung: %s.', [Template.Error]));
-        Continue;
-      end;
-    end;
-    if not TTypeMembers.Collect(Local, AContext.Index, Symbol, Members) then
-    begin
-      Continue;
-    end;
-    for Segment in Template.Placeholders do
-    begin
-      Root := Segment.Root;
-      if (Root = '') or SameText(Root, 'Self') or TTypeMembers.Contains(Members, Root) then
-      begin
-        Continue;
-      end;
-      Column := TDebugDisplayText.SourceColumn(Lines[Source.TemplateLine], Source.TemplateColumn, Segment);
-      AReport.Add(TTextRange.Create(Source.TemplateLine, Column, Source.TemplateLine, Column + Length(Root)),
-        Format('%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.',
-        [Symbol.Name, Root, Segment.Text]));
-    end;
-    for Name in Source.Children do
-    begin
-      if TTypeMembers.Contains(Members, Name) then
-      begin
-        Continue;
-      end;
-      Line := Lines[Source.ChildrenLine];
-      Found := Pos(LowerCase(TDebugDisplayText.ChildrenKey), LowerCase(Line));
-      if Found > 0 then
-      begin
-        Found := Found + Length(TDebugDisplayText.ChildrenKey);
-      end
-      else
-      begin
-        Found := Pos('(', Line) + 1;
-      end;
-      Found := Pos(LowerCase(Name), LowerCase(Line), Found);
-      if Found = 0 then
-      begin
-        Found := 1;
-      end;
-      AReport.Add(TTextRange.Create(Source.ChildrenLine, Found - 1, Source.ChildrenLine, Found - 1 + Length(Name)),
-        Format('%s hat kein Mitglied „%s“ für die Unterelemente.', [Symbol.Name, Name]));
+      CheckPlaceholders(Lines, Source, Template, Members, Symbol.Name, AReport);
+      CheckChildren(Lines, Source, Members, Symbol.Name, AReport);
     end;
   end;
 end;

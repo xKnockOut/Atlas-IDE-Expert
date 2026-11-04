@@ -61,11 +61,32 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 const
   DefaultItems: array[0..14] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
     TAtlasToolbarItems.Separator, 'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit',
     TAtlasToolbarItems.Separator, 'Atlas.UnitSearch', TAtlasToolbarItems.FindMethod, TAtlasToolbarItems.Separator,
     'Atlas.CodeActions', 'Atlas.FormatCode', 'Atlas.ProblemsWindow', TAtlasToolbarItems.CommandPalette);
+
+/// <summary>AItem kommt in die bereinigte Liste AResult: nicht leer, kein Trennstrich am Anfang oder doppelt,
+/// kein Eintrag doppelt.</summary>
+function Keeps(const AResult: TArray<string>; const AItem: string): Boolean;
+begin
+  if Trim(AItem) = '' then
+  begin
+    Result := False;
+  end
+  else if TAtlasToolbarItems.IsSeparator(AItem) then
+  begin
+    Result := (Length(AResult) > 0) and not TAtlasToolbarItems.IsSeparator(AResult[High(AResult)]);
+  end
+  else
+  begin
+    Result := not MatchText(AItem, AResult);
+  end;
+end;
 
 class function TAtlasToolbarItems.Parse(const AText: string): TArray<string>;
 var
@@ -73,8 +94,12 @@ var
 begin
   Result := nil;
   for Part in AText.Split([Delimiter]) do
+  begin
     if Trim(Part) <> '' then
+    begin
       Result := Result + [Trim(Part)];
+    end;
+  end;
 end;
 
 class function TAtlasToolbarItems.Format(const AItems: TArray<string>): string;
@@ -89,34 +114,20 @@ end;
 
 class function TAtlasToolbarItems.Clean(const AItems: TArray<string>): TArray<string>;
 var
-  Item: string;
-  Index: Integer;
-  Seen: Boolean;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if Trim(Item) = '' then
-      Continue;
-    if IsSeparator(Item) then
+    if Keeps(Result, mItem) then
     begin
-      // Kein Trennstrich am Anfang und keiner doppelt.
-      if (Length(Result) = 0) or IsSeparator(Result[High(Result)]) then
-        Continue;
-    end
-    else
-    begin
-      Seen := False;
-      for Index := 0 to High(Result) do
-        if SameText(Result[Index], Item) then
-          Seen := True;
-      if Seen then
-        Continue;
+      Result := Result + [Trim(mItem)];
     end;
-    Result := Result + [Trim(Item)];
   end;
   if (Length(Result) > 0) and IsSeparator(Result[High(Result)]) then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TAtlasToolbarItems.Normalize(const AText: string): string;
@@ -130,7 +141,9 @@ var
 begin
   SetLength(Result, Length(DefaultItems));
   for Index := 0 to High(DefaultItems) do
+  begin
     Result[Index] := DefaultItems[Index];
+  end;
 end;
 
 class function TAtlasToolbarItems.DefaultText: string;
@@ -148,7 +161,9 @@ class function TAtlasToolbarItems.PinnedCount(const AItems: TArray<string>): Int
 begin
   Result := 0;
   while (Result <= High(AItems)) and IsSection(AItems[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TAtlasToolbarItems.Add(var AItems: TArray<string>; const AId: string; AIndex: Integer): Integer;
@@ -157,13 +172,23 @@ var
 begin
   Result := -1;
   if Trim(AId) = '' then
+  begin
     Exit;
+  end;
   if not IsSeparator(AId) then
+  begin
     for Index := 0 to High(AItems) do
+    begin
       if SameText(AItems[Index], AId) then
+      begin
         Exit;
+      end;
+    end;
+  end;
   if (AIndex < 0) or (AIndex > Length(AItems)) then
+  begin
     AIndex := Length(AItems);
+  end;
   Insert(AId, AItems, AIndex);
   Result := AIndex;
 end;
@@ -172,7 +197,9 @@ class function TAtlasToolbarItems.Remove(var AItems: TArray<string>; AIndex: Int
 begin
   Result := (AIndex >= 0) and (AIndex <= High(AItems));
   if Result then
+  begin
     Delete(AItems, AIndex, 1);
+  end;
 end;
 
 class function TAtlasToolbarItems.Move(var AItems: TArray<string>; AIndex, ADelta: Integer): Integer;
@@ -183,7 +210,9 @@ begin
   Result := AIndex;
   Target := AIndex + ADelta;
   if (AIndex < 0) or (AIndex > High(AItems)) or (Target < 0) or (Target > High(AItems)) then
+  begin
     Exit;
+  end;
   Item := AItems[AIndex];
   AItems[AIndex] := AItems[Target];
   AItems[Target] := Item;

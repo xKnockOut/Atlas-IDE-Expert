@@ -198,13 +198,70 @@ begin
   end;
 end;
 
+/// <summary>Nicht offene Datei mit OpenInEditor im Editor öffnen; ein Formular würde Atlas mit dem Designer öffnen,
+/// dessen Text passt nicht zu den Positionen. True, wenn sie jetzt offen ist.</summary>
+function OpenUnopened(const AEntry: TAtlasPlannedEdit; APolicy: TAtlasUnopenedPolicy): Boolean;
+var
+  mActions: IOTAActionServices;
+begin
+  Result := (APolicy = TAtlasUnopenedPolicy.OpenInEditor) and not TAtlasIdeFiles.IsFormFile(AEntry.FileName) and
+    not TAtlasIdeFiles.IsProjectSource(AEntry.FileName) and FileExists(AEntry.FileName) and
+    Supports(BorlandIDEServices, IOTAActionServices, mActions) and mActions.OpenFile(AEntry.FileName);
+end;
+
+/// <summary>Offener Puffer: Bereiche und Änderung rechnen; schreibgeschützt bricht ab.</summary>
+procedure PrepareBuffer(const AEntry: TAtlasPlannedEdit; var AFile: TPreparedFile);
+var
+  mFinalText: string;
+begin
+  if AFile.Buffer.IsReadOnly then
+  begin
+    raise ELspEditError.Create('schreibgeschützt');
+  end;
+  AFile.Text := TAtlasEditorBuffer.Text(AFile.Buffer);
+  if AEntry.HasBase then
+  begin
+    // Ersetzt: ein Bereich über den ganzen Puffer.
+    mFinalText := TLspEdits.Apply(AEntry.Base, AEntry.Edits);
+    AFile.Ranges := nil;
+    SetLength(AFile.Ranges, 1);
+    AFile.Ranges[0].StartOffset := 0;
+    AFile.Ranges[0].EndOffset := Length(AFile.Text);
+    AFile.Ranges[0].NewText := mFinalText;
+  end
+  else
+  begin
+    AFile.Ranges := TLspEdits.Ordered(AFile.Text, AEntry.Edits);
+    mFinalText := TLspEdits.Apply(AFile.Text, AEntry.Edits);
+  end;
+  AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, Content(AEntry.FileName, AFile.Text),
+    Content(AEntry.FileName, mFinalText));
+end;
+
+/// <summary>Datei auf der Platte: laden und den neuen Stand rechnen; fehlt sie, bricht das ab.</summary>
+procedure PrepareDisk(const AEntry: TAtlasPlannedEdit; var AFile: TPreparedFile);
+var
+  mBase: string;
+begin
+  if not FileExists(AEntry.FileName) then
+  begin
+    raise ELspEditError.Create('Datei nicht gefunden');
+  end;
+  // Vorgabe-Kodierung aus atlas.json wie beim Server (#121); binäre Formulare brechen hier ab.
+  AFile.Disk := TAtlasTextFile.Load(AEntry.FileName, TAtlasEncodingDefault.CodePageFor(AEntry.FileName));
+  AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, AFile.Disk, AFile.Disk);
+  mBase := AEntry.Base;
+  if not AEntry.HasBase then
+  begin
+    mBase := AFile.Disk.Text;
+  end;
+  AFile.Disk.Text := TLspEdits.Apply(mBase, AEntry.Edits);
+  AFile.Change.After := AFile.Disk;
+end;
+
 /// <summary>Puffer, Projektdatei oder Platte; ELspEditError und Fehler beim Lesen brechen ab.</summary>
 procedure PrepareText(const AEntry: TAtlasPlannedEdit; APolicy: TAtlasUnopenedPolicy; var AFile: TPreparedFile);
-var
-  Actions: IOTAActionServices;
-  Base, FinalText: string;
 begin
-  Base := AEntry.Base;
   if TAtlasIdeFiles.IsProjectFile(AEntry.FileName) then
   begin
     // Projektdatei: nie als Text öffnen; ungespeicherte Projektänderungen nicht verwerfen.
@@ -214,53 +271,18 @@ begin
       raise ELspEditError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
     end;
   end
-  // Ein Formular würde Atlas mit dem Designer öffnen; dessen Text passt nicht zu den Positionen.
-  else if (AFile.Buffer = nil) and (APolicy = TAtlasUnopenedPolicy.OpenInEditor) and
-    not TAtlasIdeFiles.IsFormFile(AEntry.FileName) and not TAtlasIdeFiles.IsProjectSource(AEntry.FileName) and
-    FileExists(AEntry.FileName) and Supports(BorlandIDEServices, IOTAActionServices, Actions) and
-    Actions.OpenFile(AEntry.FileName) then
+  else if (AFile.Buffer = nil) and OpenUnopened(AEntry, APolicy) then
   begin
     AFile.Buffer := TAtlasIdeFiles.BufferOf(AEntry.FileName);
   end;
   if AFile.Buffer <> nil then
   begin
-    if AFile.Buffer.IsReadOnly then
-    begin
-      raise ELspEditError.Create('schreibgeschützt');
-    end;
-    AFile.Text := TAtlasEditorBuffer.Text(AFile.Buffer);
-    if AEntry.HasBase then
-    begin
-      // Ersetzt: ein Bereich über den ganzen Puffer.
-      FinalText := TLspEdits.Apply(Base, AEntry.Edits);
-      AFile.Ranges := nil;
-      SetLength(AFile.Ranges, 1);
-      AFile.Ranges[0].StartOffset := 0;
-      AFile.Ranges[0].EndOffset := Length(AFile.Text);
-      AFile.Ranges[0].NewText := FinalText;
-    end
-    else
-    begin
-      AFile.Ranges := TLspEdits.Ordered(AFile.Text, AEntry.Edits);
-      FinalText := TLspEdits.Apply(AFile.Text, AEntry.Edits);
-    end;
-    AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, Content(AEntry.FileName, AFile.Text),
-      Content(AEntry.FileName, FinalText));
-    Exit;
-  end;
-  if not FileExists(AEntry.FileName) then
+    PrepareBuffer(AEntry, AFile);
+  end
+  else
   begin
-    raise ELspEditError.Create('Datei nicht gefunden');
+    PrepareDisk(AEntry, AFile);
   end;
-  // Vorgabe-Kodierung aus atlas.json wie beim Server (#121); binäre Formulare brechen hier ab.
-  AFile.Disk := TAtlasTextFile.Load(AEntry.FileName, TAtlasEncodingDefault.CodePageFor(AEntry.FileName));
-  AFile.Change := TAtlasFileChange.Modified(AEntry.FileName, AFile.Disk, AFile.Disk);
-  if not AEntry.HasBase then
-  begin
-    Base := AFile.Disk.Text;
-  end;
-  AFile.Disk.Text := TLspEdits.Apply(Base, AEntry.Edits);
-  AFile.Change.After := AFile.Disk;
 end;
 
 /// <summary>Jede vorhandene Datei prüfen und vorbereiten (Puffer öffnen, Bereiche rechnen); noch nichts
@@ -315,107 +337,153 @@ begin
   end;
 end;
 
+/// <summary>Neue Dateien anlegen; False mit AResult.Error beim ersten Fehler.</summary>
+function CreateFiles(const APlan: TAtlasEditPlan; const ATarget: IAtlasUndoTarget;
+  ARecorded: TList<TAtlasFileChange>; var AResult: TAtlasWorkspaceEditResult): Boolean;
+var
+  mPlanned: TAtlasPlannedOperation;
+begin
+  Result := False;
+  for mPlanned in APlan.Creates do
+  begin
+    try
+      ATarget.CreateFile(mPlanned.FileName, mPlanned.Project, mPlanned.Content);
+    except
+      on E: Exception do
+      begin
+        AResult.Error := Failure(mPlanned.FileName, E.Message);
+        Exit;
+      end;
+    end;
+    ARecorded.Add(TAtlasFileChange.Created(mPlanned.FileName, mPlanned.Project, mPlanned.Content));
+    Inc(AResult.Files);
+    Inc(AResult.Written);
+  end;
+  Result := True;
+end;
+
+/// <summary>Eine Unit oder Datei schreiben: in den Puffer bzw. auf die Platte.</summary>
+procedure WriteFile(const APrepared: TPreparedFile; var AResult: TAtlasWorkspaceEditResult);
+var
+  mActions: IOTAActionServices;
+begin
+  if APrepared.Buffer <> nil then
+  begin
+    TAtlasIdeWorkspaceEdit.WriteBuffer(APrepared.Buffer, APrepared.Text, APrepared.Ranges);
+    Exit;
+  end;
+  TAtlasTextFile.Save(APrepared.FileName, APrepared.Disk);
+  Inc(AResult.Written);
+  // Geladenes Projekt neu einlesen, sonst schreibt die IDE beim Speichern ihren alten Stand zurück.
+  if (APrepared.Project <> nil) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    mActions.ReloadFile(APrepared.FileName);
+  end;
+end;
+
+/// <summary>Units und Dateien schreiben; False mit AResult.Error beim ersten Fehler.</summary>
+function WriteFiles(const AFiles: TArray<TPreparedFile>; ARecorded: TList<TAtlasFileChange>;
+  var AResult: TAtlasWorkspaceEditResult): Boolean;
+var
+  mPrepared: TPreparedFile;
+begin
+  Result := False;
+  for mPrepared in AFiles do
+  begin
+    if mPrepared.IsForm then
+    begin
+      Continue;
+    end;
+    try
+      WriteFile(mPrepared, AResult);
+    except
+      on E: Exception do
+      begin
+        // Was schon geschrieben ist, bleibt (je Datei rückgängig zu machen); der Rest fehlt.
+        AResult.Error := Failure(mPrepared.FileName, E.Message);
+        Exit;
+      end;
+    end;
+    ARecorded.Add(mPrepared.Change);
+    Inc(AResult.Files);
+  end;
+  Result := True;
+end;
+
+/// <summary>Formulare im Designer ändern; False mit AResult.Error beim ersten Fehler.</summary>
+function ApplyForms(const AFiles: TArray<TPreparedFile>; ARecorded: TList<TAtlasFileChange>;
+  var AResult: TAtlasWorkspaceEditResult): Boolean;
+var
+  mPrepared: TPreparedFile;
+  mError: string;
+begin
+  Result := True;
+  for mPrepared in AFiles do
+  begin
+    if Result and mPrepared.IsForm then
+    begin
+      mError := TAtlasIdeForms.Apply(mPrepared.FileName, mPrepared.FormChanges, mPrepared.FormProperties);
+      // Die Units sind schon geändert (je Datei rückgängig zu machen); das Formular blieb, wie es war.
+      Result := mError = '';
+      if not Result then
+      begin
+        AResult.Error := Failure(mPrepared.FileName, mError);
+      end
+      else
+      begin
+        if mPrepared.Change.FileName <> '' then
+        begin
+          ARecorded.Add(mPrepared.Change);
+        end;
+        Inc(AResult.Files);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Dateien entfernen (schließen, austragen, Papierkorb; der Inhalt steht im Änderungsprotokoll).</summary>
+procedure RemoveFiles(const APlan: TAtlasEditPlan; const ATarget: IAtlasUndoTarget;
+  ARecorded: TList<TAtlasFileChange>; var AResult: TAtlasWorkspaceEditResult);
+var
+  mPlanned: TAtlasPlannedOperation;
+begin
+  for mPlanned in APlan.Removes do
+  begin
+    try
+      ATarget.RemoveFile(mPlanned.FileName, mPlanned.Project, TAtlasNewFilesMode.RecycleBin);
+    except
+      on E: Exception do
+      begin
+        AResult.Error := Failure(mPlanned.FileName, E.Message);
+        Exit;
+      end;
+    end;
+    ARecorded.Add(TAtlasFileChange.Deleted(mPlanned.FileName, mPlanned.Project, mPlanned.Content));
+    Inc(AResult.Files);
+  end;
+end;
+
 /// <summary>Anwenden: neue Dateien, dann Units und Dateien, dann die Formulare im Designer, zuletzt entfernen.
 /// Was geschrieben ist, kommt als ein Satz ins Änderungsprotokoll, auch nach einem Fehler.</summary>
 procedure Execute(const APlan: TAtlasEditPlan; const AFiles: TArray<TPreparedFile>; const AAction: string;
   const ATarget: IAtlasUndoTarget; var AResult: TAtlasWorkspaceEditResult);
 var
-  Recorded: TList<TAtlasFileChange>;
-  Planned: TAtlasPlannedOperation;
-  Prepared: TPreparedFile;
-  Actions: IOTAActionServices;
-  Error: string;
+  mRecorded: TList<TAtlasFileChange>;
 begin
-  Recorded := TList<TAtlasFileChange>.Create;
+  mRecorded := TList<TAtlasFileChange>.Create;
   try
     try
-      for Planned in APlan.Creates do
+      if CreateFiles(APlan, ATarget, mRecorded, AResult) and WriteFiles(AFiles, mRecorded, AResult) and
+        ApplyForms(AFiles, mRecorded, AResult) then
       begin
-        try
-          ATarget.CreateFile(Planned.FileName, Planned.Project, Planned.Content);
-        except
-          on E: Exception do
-          begin
-            AResult.Error := Failure(Planned.FileName, E.Message);
-            Exit;
-          end;
-        end;
-        Recorded.Add(TAtlasFileChange.Created(Planned.FileName, Planned.Project, Planned.Content));
-        Inc(AResult.Files);
-        Inc(AResult.Written);
-      end;
-      for Prepared in AFiles do
-      begin
-        if Prepared.IsForm then
-        begin
-          Continue;
-        end;
-        try
-          if Prepared.Buffer <> nil then
-          begin
-            TAtlasIdeWorkspaceEdit.WriteBuffer(Prepared.Buffer, Prepared.Text, Prepared.Ranges);
-          end
-          else
-          begin
-            TAtlasTextFile.Save(Prepared.FileName, Prepared.Disk);
-            Inc(AResult.Written);
-            // Geladenes Projekt neu einlesen, sonst schreibt die IDE beim Speichern ihren alten Stand zurück.
-            if (Prepared.Project <> nil) and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
-            begin
-              Actions.ReloadFile(Prepared.FileName);
-            end;
-          end;
-        except
-          on E: Exception do
-          begin
-            // Was schon geschrieben ist, bleibt (je Datei rückgängig zu machen); der Rest fehlt.
-            AResult.Error := Failure(Prepared.FileName, E.Message);
-            Exit;
-          end;
-        end;
-        Recorded.Add(Prepared.Change);
-        Inc(AResult.Files);
-      end;
-      for Prepared in AFiles do
-      begin
-        if not Prepared.IsForm then
-        begin
-          Continue;
-        end;
-        Error := TAtlasIdeForms.Apply(Prepared.FileName, Prepared.FormChanges, Prepared.FormProperties);
-        if Error <> '' then
-        begin
-          // Die Units sind schon geändert (je Datei rückgängig zu machen); das Formular blieb, wie es war.
-          AResult.Error := Failure(Prepared.FileName, Error);
-          Exit;
-        end;
-        if Prepared.Change.FileName <> '' then
-        begin
-          Recorded.Add(Prepared.Change);
-        end;
-        Inc(AResult.Files);
-      end;
-      for Planned in APlan.Removes do
-      begin
-        try
-          // Schließen, austragen, Papierkorb; der Inhalt steht im Änderungsprotokoll.
-          ATarget.RemoveFile(Planned.FileName, Planned.Project, TAtlasNewFilesMode.RecycleBin);
-        except
-          on E: Exception do
-          begin
-            AResult.Error := Failure(Planned.FileName, E.Message);
-            Exit;
-          end;
-        end;
-        Recorded.Add(TAtlasFileChange.Deleted(Planned.FileName, Planned.Project, Planned.Content));
-        Inc(AResult.Files);
+        RemoveFiles(APlan, ATarget, mRecorded, AResult);
       end;
     finally
       // Auch nach einem Fehler: Was schon geschrieben ist, lässt sich so gemeinsam zurücknehmen.
-      TAtlasIdeUndo.Add(AAction, Recorded.ToArray);
+      TAtlasIdeUndo.Add(AAction, mRecorded.ToArray);
     end;
   finally
-    Recorded.Free;
+    mRecorded.Free;
   end;
 end;
 

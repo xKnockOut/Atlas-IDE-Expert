@@ -94,7 +94,9 @@ begin
     end;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeOutlineWindow.ExistingFrame <> nil then
+  begin
     Wire(TAtlasIdeOutlineWindow.ExistingFrame);
+  end;
 end;
 
 destructor TOutlineState.Destroy;
@@ -164,10 +166,14 @@ var
 begin
   Frame := TAtlasIdeOutlineWindow.ExistingFrame;
   if (Frame = nil) or (ANode < 0) or (ANode > High(Frame.Nodes)) or (FFileName = '') then
+  begin
     Exit;
+  end;
   Target := ANode;
   if AImplementation and (Frame.Nodes[ANode].Body >= 0) then
+  begin
     Target := Frame.Nodes[ANode].Body;
+  end;
   TAtlasIdeNavigation.GoToLocation(FFileName, Frame.Nodes[Target].NameLine, Frame.Nodes[Target].NameCharacter);
 end;
 
@@ -179,14 +185,20 @@ var
 begin
   Frame := TAtlasIdeOutlineWindow.ExistingFrame;
   if (Frame = nil) or not Frame.FollowCursor or (AView = nil) or (AView.Buffer = nil) then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   if Cursor.Line < 1 then
+  begin
     Exit;
+  end;
   Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, Cursor.Line), Cursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   if (Cursor.Line - 1 = FCursorLine) and (Character = FCursorCharacter) then
+  begin
     Exit;
+  end;
   FCursorLine := Cursor.Line - 1;
   FCursorCharacter := Character;
   Frame.HighlightAt(FCursorLine, FCursorCharacter);
@@ -201,7 +213,9 @@ var
 begin
   Frame := TAtlasIdeOutlineWindow.ExistingFrame;
   if Frame = nil then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   Snapshot := TAtlasIdeOutlineCache.Refresh(View);
   Changed := not FShown or (Snapshot.Status <> FStatus) or not SameText(Snapshot.FileName, FFileName) or
@@ -225,13 +239,17 @@ begin
     end;
   end;
   if Snapshot.Status = TAtlasOutlineStatus.Ready then
+  begin
     Follow(View);
+  end;
 end;
 
 procedure TOutlineState.Tick(Sender: TObject);
 begin
   if not Active or not TAtlasIdeOutlineWindow.Visible then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.Outline,
     procedure
     begin
@@ -258,14 +276,20 @@ var
   Frame: TAtlasOutlineFrame;
 begin
   if (FState = nil) or not Active then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeOutlineWindow.Show;
   if Frame = nil then
+  begin
     Exit;
+  end;
   TOutlineState(FState).Reset;
   TOutlineState(FState).Update;
   if Frame.Search.CanFocus then
+  begin
     Frame.Search.SetFocus;
+  end;
 end;
 
 class procedure TAtlasIdeOutline.ApplySettings;
@@ -273,7 +297,9 @@ var
   Frame: TAtlasOutlineFrame;
 begin
   if FState = nil then
+  begin
     Exit;
+  end;
   if not Active then
   begin
     TAtlasIdeOutlineWindow.Hide;
@@ -281,7 +307,9 @@ begin
   end;
   Frame := TAtlasIdeOutlineWindow.ExistingFrame;
   if Frame = nil then
+  begin
     Exit;
+  end;
   Frame.Alphabetical := TAtlasIdeSettings.Current.OutlineAlphabetical;
   Frame.FollowCursor := TAtlasIdeSettings.Current.OutlineFollowCursor;
   Frame.ShowConditions := TAtlasIdeSettings.Current.OutlineConditions;

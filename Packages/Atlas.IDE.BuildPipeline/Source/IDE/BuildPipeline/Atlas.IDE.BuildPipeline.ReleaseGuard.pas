@@ -329,65 +329,57 @@ begin
   end;
 end;
 
-class function TAtlasIdeReleaseGuard.Report(const AFolder: string; const AOptions: TAtlasReleaseOptions;
-  const AFindings: TAtlasReleaseFindings; AOutcome: TAtlasReleaseOutcome): string;
+/// <summary>Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.</summary>
+procedure RecordSummary(const AFolder: string; const AOptions: TAtlasReleaseOptions; ACount: Integer;
+  ABlocked: Boolean; const ARules: TArray<string>);
+var
+  Options: TAtlasReleaseOptions;
+  Stamp: TDateTime;
+begin
+  Options := AOptions;
+  Stamp := NowUtc;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasProjectSummaries.Update(AFolder, Options.Project,
+        procedure(var ASummary: TAtlasProjectSummary)
+        begin
+          ASummary.Release.Known := True;
+          ASummary.Release.CheckedAt := Stamp;
+          ASummary.Release.Configuration := Options.Configuration;
+          ASummary.Release.Platform := Options.Platform;
+          ASummary.Release.Findings := ACount;
+          ASummary.Release.Blocked := ABlocked;
+          ASummary.Release.Rules := ARules;
+        end);
+    end);
+end;
+
+/// <summary>Befunde in der Meldungsansicht; ohne Befund nichts.</summary>
+procedure ShowFindings(const AOptions: TAtlasReleaseOptions; const AFindings: TAtlasReleaseFindings;
+  AOutcome: TAtlasReleaseOutcome);
 var
   Messages: IOTAMessageServices;
   Group: IOTAMessageGroup;
   LineRef: Pointer;
   Finding: TAtlasReleaseFinding;
-  Rules: TArray<string>;
-  Options: TAtlasReleaseOptions;
-  Count: Integer;
-  Blocked: Boolean;
-  Stamp: TDateTime;
 begin
-  Result := '';
-  Rules := RulesOf(AFindings);
-  Count := Length(AFindings);
-  Blocked := AOutcome = TAtlasReleaseOutcome.Blocked;
-  if Blocked then
-  begin
-    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseBlockReason,
-      [Count]) + ': ' + string.Join(', ', Rules);
-  end;
-  // Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.
-  Options := AOptions;
-  Stamp := NowUtc;
-  if AFolder <> '' then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Build,
-      procedure
-      begin
-        TAtlasProjectSummaries.Update(AFolder, Options.Project,
-          procedure(var ASummary: TAtlasProjectSummary)
-          begin
-            ASummary.Release.Known := True;
-            ASummary.Release.CheckedAt := Stamp;
-            ASummary.Release.Configuration := Options.Configuration;
-            ASummary.Release.Platform := Options.Platform;
-            ASummary.Release.Findings := Count;
-            ASummary.Release.Blocked := Blocked;
-            ASummary.Release.Rules := Rules;
-          end);
-      end);
-  end;
-  if (Count = 0) or not MessageServices(Messages, Group) then
+  if (Length(AFindings) = 0) or not MessageServices(Messages, Group) then
   begin
     Exit;
   end;
-  Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseFindings, [Count,
-    ExtractFileName(AOptions.Project), AOptions.Configuration, AOptions.Platform]), Group);
+  Messages.AddTitleMessage(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseFindings,
+    [Length(AFindings), ExtractFileName(AOptions.Project), AOptions.Configuration, AOptions.Platform]), Group);
   for Finding in AFindings do
   begin
     if (Finding.FileName <> '') and (Finding.Line > 0) then
     begin
-      Messages.AddToolMessage(Finding.FileName, FindingText(AOptions, Finding), 'Atlas', Finding.Line, 1, nil,
-        LineRef, Group);
+      Messages.AddToolMessage(Finding.FileName, TAtlasIdeReleaseGuard.FindingText(AOptions, Finding), 'Atlas',
+        Finding.Line, 1, nil, LineRef, Group);
     end
     else
     begin
-      Messages.AddTitleMessage('  ' + FindingText(AOptions, Finding), Group);
+      Messages.AddTitleMessage('  ' + TAtlasIdeReleaseGuard.FindingText(AOptions, Finding), Group);
     end;
   end;
   case AOutcome of
@@ -399,6 +391,27 @@ begin
     // Übrige Werte bewusst ohne Wirkung.
   end;
   Messages.ShowMessageView(Group);
+end;
+
+class function TAtlasIdeReleaseGuard.Report(const AFolder: string; const AOptions: TAtlasReleaseOptions;
+  const AFindings: TAtlasReleaseFindings; AOutcome: TAtlasReleaseOutcome): string;
+var
+  Rules: TArray<string>;
+  Blocked: Boolean;
+begin
+  Result := '';
+  Rules := RulesOf(AFindings);
+  Blocked := AOutcome = TAtlasReleaseOutcome.Blocked;
+  if Blocked then
+  begin
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.ReleaseBlockReason,
+      [Length(AFindings)]) + ': ' + string.Join(', ', Rules);
+  end;
+  if AFolder <> '' then
+  begin
+    RecordSummary(AFolder, AOptions, Length(AFindings), Blocked, Rules);
+  end;
+  ShowFindings(AOptions, AFindings, AOutcome);
 end;
 
 class procedure TAtlasIdeReleaseGuard.Remember(const AFolder: string; const AOptions: TAtlasReleaseOptions;

@@ -95,6 +95,9 @@
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Atlas.IDE.Contracts.dcp"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
         <DCCReference Include="Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
         <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
         <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>

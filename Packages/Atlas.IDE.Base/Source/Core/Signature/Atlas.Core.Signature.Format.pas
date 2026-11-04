@@ -68,12 +68,142 @@ begin
   Result := Kind in [TAtlasFormatLineKind.Problem, TAtlasFormatLineKind.Unused];
 end;
 
+/// <summary>Zeile bei einem Problem des Formats.</summary>
+procedure ProblemLine(const AFormat: TAtlasSignatureFormat; var ALine: TAtlasFormatLine);
+begin
+  ALine.Kind := TAtlasFormatLineKind.Problem;
+  ALine.Problem := AFormat.Problem;
+  ALine.Placeholder := AFormat.ProblemPlaceholder;
+  ALine.Argument := AFormat.ProblemArgument;
+  ALine.ProblemKind := AFormat.ProblemKind;
+  if (ALine.Placeholder >= 0) and (ALine.Placeholder < ALine.Count) then
+  begin
+    ALine.TypeChar := AFormat.Placeholders[ALine.Placeholder].TypeChar;
+    ALine.PlaceholderText := AFormat.Placeholders[ALine.Placeholder].Text;
+    // Konflikt beim "*": Breite bzw. Genauigkeit erwartet eine Ganzzahl.
+    if (AFormat.Problem = TAtlasFormatProblem.TypeConflict) and
+      (AFormat.Placeholders[ALine.Placeholder].Argument <> ALine.Argument) then
+    begin
+      ALine.TypeChar := '*';
+    end;
+  end;
+end;
+
+/// <summary>Was AArgument für APlaceholder liefert; None, wenn nichts.</summary>
+function RoleOf(const APlaceholder: TAtlasFormatPlaceholder; AArgument: Integer): TAtlasFormatLineKind;
+begin
+  if APlaceholder.Argument = AArgument then
+  begin
+    Result := TAtlasFormatLineKind.Placeholder;
+  end
+  else if APlaceholder.WidthArgument = AArgument then
+  begin
+    Result := TAtlasFormatLineKind.Width;
+  end
+  else if APlaceholder.PrecisionArgument = AArgument then
+  begin
+    Result := TAtlasFormatLineKind.Precision;
+  end
+  else
+  begin
+    Result := TAtlasFormatLineKind.None;
+  end;
+end;
+
+/// <summary>Zeile zum Eintrag AArgument ohne Problem: sein Platzhalter oder (bei bekannter Zuordnung) Unused.
+/// </summary>
+procedure ArgumentLine(const AFormat: TAtlasSignatureFormat; AArgument: Integer; var ALine: TAtlasFormatLine);
+var
+  mIndex: Integer;
+  mKind: TAtlasFormatLineKind;
+begin
+  for mIndex := 0 to High(AFormat.Placeholders) do
+  begin
+    mKind := RoleOf(AFormat.Placeholders[mIndex], AArgument);
+    if mKind <> TAtlasFormatLineKind.None then
+    begin
+      ALine.Kind := mKind;
+      ALine.Placeholder := mIndex;
+      ALine.PlaceholderText := AFormat.Placeholders[mIndex].Text;
+      ALine.TypeChar := '*';
+      if mKind = TAtlasFormatLineKind.Placeholder then
+      begin
+        ALine.TypeChar := AFormat.Placeholders[mIndex].TypeChar;
+      end;
+      Exit;
+    end;
+  end;
+  // Kein Platzhalter für diesen Eintrag (bei bekannter Zuordnung).
+  if AFormat.ArgumentCount >= 0 then
+  begin
+    ALine.Kind := TAtlasFormatLineKind.Unused;
+  end;
+end;
+
+/// <summary>Platzhalter, dessen Farbe ein Argument bekommt; -1 ohne. Erst der Wert, dann Breite und
+/// Genauigkeit: ein Argument bekommt die Farbe des Platzhalters, den es füllt.</summary>
+function SlotsOf(const AFormat: TAtlasSignatureFormat): TArray<Integer>;
+
+  procedure Take(var ASlots: TArray<Integer>; AArgument, APlaceholder: Integer);
+  begin
+    if (AArgument >= 0) and (AArgument <= High(ASlots)) and (ASlots[AArgument] < 0) then
+    begin
+      ASlots[AArgument] := APlaceholder;
+    end;
+  end;
+
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AFormat.Arguments));
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := -1;
+  end;
+  for mIndex := 0 to High(AFormat.Placeholders) do
+  begin
+    Take(Result, AFormat.Placeholders[mIndex].Argument, mIndex);
+  end;
+  for mIndex := 0 to High(AFormat.Placeholders) do
+  begin
+    Take(Result, AFormat.Placeholders[mIndex].WidthArgument, mIndex);
+    Take(Result, AFormat.Placeholders[mIndex].PrecisionArgument, mIndex);
+  end;
+end;
+
+/// <summary>Nur einzeilige, nicht leere Stellen.</summary>
+procedure AddMark(var AMarks: TArray<TAtlasFormatMark>; const ARange: TAtlasFormatRange; ASlot: Integer);
+var
+  mMark: TAtlasFormatMark;
+begin
+  if (ARange.StartLine <> ARange.EndLine) or (ARange.StartCharacter >= ARange.EndCharacter) or
+    (ARange.StartLine < 0) then
+  begin
+    Exit;
+  end;
+  mMark.Line := ARange.StartLine;
+  mMark.Start := ARange.StartCharacter;
+  mMark.Stop := ARange.EndCharacter;
+  mMark.Slot := ASlot mod TAtlasSignatureFormats.SlotCount;
+  AMarks := AMarks + [mMark];
+end;
+
+function MarkOrder(const A, B: TAtlasFormatMark): Integer;
+begin
+  Result := A.Line - B.Line;
+  if Result = 0 then
+  begin
+    Result := A.Start - B.Start;
+  end;
+  if Result = 0 then
+  begin
+    Result := A.Stop - B.Stop;
+  end;
+end;
+
 { TAtlasSignatureFormats }
 
 class function TAtlasSignatureFormats.Line(const AFormat: TAtlasSignatureFormat; AArgument: Integer): TAtlasFormatLine;
-var
-  Index: Integer;
-  Placeholder: TAtlasFormatPlaceholder;
 begin
   Result := Default(TAtlasFormatLine);
   Result.Placeholder := -1;
@@ -85,154 +215,42 @@ begin
   end;
   if AFormat.Problem <> TAtlasFormatProblem.None then
   begin
-    Result.Kind := TAtlasFormatLineKind.Problem;
-    Result.Problem := AFormat.Problem;
-    Result.Placeholder := AFormat.ProblemPlaceholder;
-    Result.Argument := AFormat.ProblemArgument;
-    Result.ProblemKind := AFormat.ProblemKind;
-    if (Result.Placeholder >= 0) and (Result.Placeholder < Result.Count) then
-    begin
-      Result.TypeChar := AFormat.Placeholders[Result.Placeholder].TypeChar;
-      Result.PlaceholderText := AFormat.Placeholders[Result.Placeholder].Text;
-      // Konflikt beim "*": Breite bzw. Genauigkeit erwartet eine Ganzzahl.
-      if (AFormat.Problem = TAtlasFormatProblem.TypeConflict) and
-        (AFormat.Placeholders[Result.Placeholder].Argument <> Result.Argument) then
-      begin
-        Result.TypeChar := '*';
-      end;
-    end;
-    Exit;
-  end;
-  if AArgument < 0 then
+    ProblemLine(AFormat, Result);
+  end
+  else if AArgument >= 0 then
   begin
-    Exit;
-  end;
-  for Index := 0 to High(AFormat.Placeholders) do
-  begin
-    Placeholder := AFormat.Placeholders[Index];
-    if Placeholder.Argument = AArgument then
-    begin
-      Result.Kind := TAtlasFormatLineKind.Placeholder;
-    end
-    else if Placeholder.WidthArgument = AArgument then
-    begin
-      Result.Kind := TAtlasFormatLineKind.Width;
-    end
-    else if Placeholder.PrecisionArgument = AArgument then
-    begin
-      Result.Kind := TAtlasFormatLineKind.Precision;
-    end
-    else
-    begin
-      Continue;
-    end;
-    Result.Placeholder := Index;
-    Result.PlaceholderText := Placeholder.Text;
-    if Result.Kind = TAtlasFormatLineKind.Placeholder then
-    begin
-      Result.TypeChar := Placeholder.TypeChar;
-    end
-    else
-    begin
-      Result.TypeChar := '*';
-    end;
-    Exit;
-  end;
-  // Kein Platzhalter für diesen Eintrag (bei bekannter Zuordnung).
-  if AFormat.ArgumentCount >= 0 then
-  begin
-    Result.Kind := TAtlasFormatLineKind.Unused;
+    ArgumentLine(AFormat, AArgument, Result);
   end;
 end;
 
 class function TAtlasSignatureFormats.Marks(const AFormat: TAtlasSignatureFormat): TArray<TAtlasFormatMark>;
 var
-  List: TList<TAtlasFormatMark>;
-  Index: Integer;
-  Placeholder: TAtlasFormatPlaceholder;
-  Slots: TArray<Integer>;
-  Range: TAtlasFormatRange;
-
-  procedure Add(const ARange: TAtlasFormatRange; ASlot: Integer);
-  var
-    Mark: TAtlasFormatMark;
-  begin
-    if (ARange.StartLine <> ARange.EndLine) or (ARange.StartCharacter >= ARange.EndCharacter) or
-      (ARange.StartLine < 0) then
-    begin
-      Exit;
-    end;
-    Mark.Line := ARange.StartLine;
-    Mark.Start := ARange.StartCharacter;
-    Mark.Stop := ARange.EndCharacter;
-    Mark.Slot := ASlot mod SlotCount;
-    List.Add(Mark);
-  end;
-
-  procedure Take(AArgument, APlaceholder: Integer);
-  begin
-    if (AArgument >= 0) and (AArgument <= High(Slots)) and (Slots[AArgument] < 0) then
-    begin
-      Slots[AArgument] := APlaceholder;
-    end;
-  end;
-
+  mIndex: Integer;
+  mPlaceholder: TAtlasFormatPlaceholder;
+  mSlots: TArray<Integer>;
 begin
   Result := nil;
   if not AFormat.Found then
   begin
     Exit;
   end;
-  SetLength(Slots, Length(AFormat.Arguments));
-  for Index := 0 to High(Slots) do
+  mSlots := SlotsOf(AFormat);
+  for mIndex := 0 to High(AFormat.Placeholders) do
   begin
-    Slots[Index] := -1;
-  end;
-  // Erst der Wert, dann Breite und Genauigkeit: ein Argument bekommt die Farbe des Platzhalters, den es füllt.
-  for Index := 0 to High(AFormat.Placeholders) do
-  begin
-    Take(AFormat.Placeholders[Index].Argument, Index);
-  end;
-  for Index := 0 to High(AFormat.Placeholders) do
-  begin
-    Take(AFormat.Placeholders[Index].WidthArgument, Index);
-    Take(AFormat.Placeholders[Index].PrecisionArgument, Index);
-  end;
-  List := TList<TAtlasFormatMark>.Create;
-  try
-    for Index := 0 to High(AFormat.Placeholders) do
+    mPlaceholder := AFormat.Placeholders[mIndex];
+    if mPlaceholder.Valid and mPlaceholder.HasRange then
     begin
-      Placeholder := AFormat.Placeholders[Index];
-      if Placeholder.Valid and Placeholder.HasRange then
-      begin
-        Add(Placeholder.Range, Index);
-      end;
+      AddMark(Result, mPlaceholder.Range, mIndex);
     end;
-    for Index := 0 to High(AFormat.Arguments) do
-    begin
-      Range := AFormat.Arguments[Index];
-      if Slots[Index] >= 0 then
-      begin
-        Add(Range, Slots[Index]);
-      end;
-    end;
-    List.Sort(TComparer<TAtlasFormatMark>.Construct(
-      function(const A, B: TAtlasFormatMark): Integer
-      begin
-        Result := A.Line - B.Line;
-        if Result = 0 then
-        begin
-          Result := A.Start - B.Start;
-        end;
-        if Result = 0 then
-        begin
-          Result := A.Stop - B.Stop;
-        end;
-      end));
-    Result := List.ToArray;
-  finally
-    List.Free;
   end;
+  for mIndex := 0 to High(AFormat.Arguments) do
+  begin
+    if mSlots[mIndex] >= 0 then
+    begin
+      AddMark(Result, AFormat.Arguments[mIndex], mSlots[mIndex]);
+    end;
+  end;
+  TArray.Sort<TAtlasFormatMark>(Result, TComparer<TAtlasFormatMark>.Construct(MarkOrder));
 end;
 
 end.

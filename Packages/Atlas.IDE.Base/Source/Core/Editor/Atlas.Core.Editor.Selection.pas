@@ -46,64 +46,78 @@ uses
   System.SysUtils,
   System.StrUtils;
 
+/// <summary>Zeile des Schritts AStep ab ALine, vorwärts oder rückwärts im Kreis über ACount Zeilen.</summary>
+function RowOfStep(ALine, AStep, ACount: Integer; ABackward: Boolean): Integer;
+begin
+  if ABackward then
+  begin
+    Result := ((ALine - AStep) mod ACount + ACount) mod ACount;
+  end
+  else
+  begin
+    Result := (ALine + AStep) mod ACount;
+  end;
+end;
+
+/// <summary>Letztes Vorkommen von ANeedle in ALine, das bis ALimit endet (1-basiert); 0 ohne.</summary>
+function LastIndexBefore(const ANeedle, ALine: string; ALimit: Integer): Integer;
+var
+  mLast: Integer;
+begin
+  Result := 0;
+  mLast := Pos(ANeedle, ALine);
+  while (mLast > 0) and (mLast - 1 + Length(ANeedle) <= ALimit) do
+  begin
+    Result := mLast;
+    mLast := PosEx(ANeedle, ALine, mLast + 1);
+  end;
+end;
+
+/// <summary>Treffer in ALine (großgeschrieben) für Schritt AStep; in der Ausgangszeile (AStep = 0) ab bzw. vor
+/// ACharacter. 1-basiert, 0 ohne.</summary>
+function IndexInLine(const ANeedle, ALine: string; AStep, ACharacter: Integer; ABackward: Boolean): Integer;
+begin
+  if ABackward and (AStep = 0) then
+  begin
+    // Letztes Vorkommen, das vor AFrom endet.
+    Result := LastIndexBefore(ANeedle, ALine, ACharacter);
+  end
+  else if ABackward then
+  begin
+    Result := LastIndexBefore(ANeedle, ALine, Length(ALine));
+  end
+  else if AStep = 0 then
+  begin
+    Result := PosEx(ANeedle, ALine, ACharacter + 1);
+  end
+  else
+  begin
+    Result := Pos(ANeedle, ALine);
+  end;
+end;
+
 class function TAtlasSelectionSearch.Find(const ALines: TArray<string>; const ANeedle: string;
   const AFrom: TLspTextPosition; ABackward: Boolean; out AFound: TLspRange): Boolean;
 var
-  Needle, Line: string;
-  Count, Step, Row, Index, Last, Limit: Integer;
+  mNeedle: string;
+  mCount, mStep, mRow, mIndex: Integer;
 begin
   Result := False;
   AFound := TLspRange.Create(AFrom.Line, AFrom.Character, AFrom.Line, AFrom.Character);
-  Count := Length(ALines);
-  if (ANeedle = '') or (Count = 0) then
-  begin
-    Exit;
-  end;
-  Needle := AnsiUpperCase(ANeedle);
+  mCount := Length(ALines);
+  mNeedle := AnsiUpperCase(ANeedle);
+  mStep := 0;
   // Einmal um die Datei; die Ausgangszeile kommt am Ende noch einmal ganz dran.
-  for Step := 0 to Count do
+  while (ANeedle <> '') and not Result and (mStep <= mCount) and (mCount > 0) do
   begin
-    if ABackward then
+    mRow := RowOfStep(AFrom.Line, mStep, mCount, ABackward);
+    mIndex := IndexInLine(mNeedle, AnsiUpperCase(ALines[mRow]), mStep, AFrom.Character, ABackward);
+    if mIndex > 0 then
     begin
-      Row := ((AFrom.Line - Step) mod Count + Count) mod Count;
-    end
-    else
-    begin
-      Row := (AFrom.Line + Step) mod Count;
+      AFound := TLspRange.Create(mRow, mIndex - 1, mRow, mIndex - 1 + Length(ANeedle));
+      Result := True;
     end;
-    Line := AnsiUpperCase(ALines[Row]);
-    if not ABackward then
-    begin
-      if Step = 0 then
-      begin
-        Index := PosEx(Needle, Line, AFrom.Character + 1);
-      end
-      else
-      begin
-        Index := Pos(Needle, Line);
-      end;
-    end
-    else
-    begin
-      // Letztes Vorkommen, das vor AFrom endet (in der Ausgangszeile) bzw. irgendwo in der Zeile.
-      Limit := Length(Line);
-      if Step = 0 then
-      begin
-        Limit := AFrom.Character;
-      end;
-      Index := 0;
-      Last := Pos(Needle, Line);
-      while (Last > 0) and (Last - 1 + Length(Needle) <= Limit) do
-      begin
-        Index := Last;
-        Last := PosEx(Needle, Line, Last + 1);
-      end;
-    end;
-    if Index > 0 then
-    begin
-      AFound := TLspRange.Create(Row, Index - 1, Row, Index - 1 + Length(ANeedle));
-      Exit(True);
-    end;
+    Inc(mStep);
   end;
 end;
 
