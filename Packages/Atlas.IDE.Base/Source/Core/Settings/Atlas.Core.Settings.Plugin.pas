@@ -55,6 +55,9 @@ type
     MaxPanelWidth = 600;
     MinHangThreshold = 100;
     MaxHangThreshold = 10000;
+    /// <summary>Wie TAtlasPluginRecorder.cMinThresholdMs/cMaxThresholdMs (Diagnose-Fenster).</summary>
+    MinSlowThreshold = 1;
+    MaxSlowThreshold = 1000;
     /// <summary>Wie TAtlasTimeLimit.MinMs/MaxMs (#493).</summary>
     MinProviderTimeLimit = 50;
     MaxProviderTimeLimit = 5000;
@@ -781,6 +784,12 @@ type
     /// anderen Atlas-Tasten (#494).</summary>
     DiagnosticModeKey: Integer;
     DiagnosticModeKeyPriority: Boolean;
+    /// <summary>Zeiten des Plugins im Diagnosefenster (diagnosticMode.pluginTimings): Hauptthread je
+    /// Funktion, Server-Anfragen, Quellen im Hintergrund, Hänger; Vorgabe an, wirkt nur im Diagnosemodus.</summary>
+    DiagnosticPluginTimings: Boolean;
+    /// <summary>Ab so vielen ms eigener Zeit gilt ein Aufruf als langsam (diagnosticMode.slowThresholdMs,
+    /// 1 bis 1000); Vorgabe 16, ein Bild bei 60 Hz.</summary>
+    DiagnosticSlowMs: Integer;
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
@@ -2115,6 +2124,8 @@ begin
   Result.DiagnosticMode := False;
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
+  Result.DiagnosticPluginTimings := True;
+  Result.DiagnosticSlowMs := 16;
   Result.DiagnosticsProcesses := True;
   Result.ServerStatusWindow := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
@@ -2618,6 +2629,7 @@ begin
   SignatureKey := EnsureRange(SignatureKey, 0, $FFFF);
   QuickToggleKey := EnsureRange(QuickToggleKey, 0, $FFFF);
   DiagnosticModeKey := EnsureRange(DiagnosticModeKey, 0, $FFFF);
+  DiagnosticSlowMs := EnsureRange(DiagnosticSlowMs, MinSlowThreshold, MaxSlowThreshold);
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
   if SameText(Trim(StatusFieldToggles), 'rightClick') then
@@ -3029,6 +3041,9 @@ begin
   DiagnosticModeKey := AStore.ReadInteger('DiagnosticModeKey', Default.DiagnosticModeKey);
   DiagnosticModeKeyPriority :=
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
+  DiagnosticPluginTimings :=
+    AStore.ReadInteger('DiagnosticPluginTimings', BoolValue(Default.DiagnosticPluginTimings)) <> 0;
+  DiagnosticSlowMs := AStore.ReadInteger('DiagnosticSlowMs', Default.DiagnosticSlowMs);
   DiagnosticsProcesses :=
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
   ServerStatusWindow := AStore.ReadInteger('ServerStatusWindow', BoolValue(Default.ServerStatusWindow)) <> 0;
@@ -3655,6 +3670,8 @@ begin
   AStore.WriteInteger('DiagnosticMode', BoolValue(DiagnosticMode));
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
+  AStore.WriteInteger('DiagnosticPluginTimings', BoolValue(DiagnosticPluginTimings));
+  AStore.WriteInteger('DiagnosticSlowMs', DiagnosticSlowMs);
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
   AStore.WriteInteger('ServerStatusWindow', BoolValue(ServerStatusWindow));
   AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));

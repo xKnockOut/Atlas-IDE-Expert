@@ -271,6 +271,9 @@ type
     FProblemsStatusCounter: TCheckBox;
     FStatusField: TCheckBox;
     FDiagnosticMode: TCheckBox;
+    /// <summary>Zeiten des Plugins im Diagnosefenster und Schwelle für langsame Aufrufe.</summary>
+    FDiagnosticPluginTimings: TCheckBox;
+    FDiagnosticSlowMs: TEdit;
     /// <summary>„Prozesse am Projekt…“ (#62).</summary>
     FDiagnosticsProcesses: TCheckBox;
     /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
@@ -1973,6 +1976,9 @@ begin
   FStatusHidden.Width := 180;
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
+  // Diagnose-Fenster: Zeiten des Plugins (Reiter Hauptthread, Server, Hintergrund, Hänger).
+  FDiagnosticPluginTimings := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticPluginTimings));
+  FDiagnosticSlowMs := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticSlowMs));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
   // Fenster „Atlas-Server“ (#1356).
@@ -4485,6 +4491,8 @@ begin
   FMarks.Bind(FProblemsStatusCounter, ['ProblemsStatusCounter']);
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
+  FMarks.Bind(FDiagnosticPluginTimings, ['DiagnosticPluginTimings']);
+  FMarks.Bind(FDiagnosticSlowMs, ['DiagnosticSlowMs']);
   FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
   FMarks.Bind(FServerStatusWindow, ['ServerStatusWindow']);
   FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
@@ -6724,6 +6732,8 @@ begin
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
+  FDiagnosticPluginTimings.Checked := ASettings.DiagnosticPluginTimings;
+  FDiagnosticSlowMs.Text := IntToStr(ASettings.DiagnosticSlowMs);
   FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
   FServerStatusWindow.Checked := ASettings.ServerStatusWindow;
   FArchitecture.Checked := ASettings.ArchitectureEnabled;
@@ -7248,6 +7258,8 @@ begin
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
+  ASettings.DiagnosticPluginTimings := FDiagnosticPluginTimings.Checked;
+  ASettings.DiagnosticSlowMs := StrToIntDef(FDiagnosticSlowMs.Text, ASettings.DiagnosticSlowMs);
   ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
   ASettings.ServerStatusWindow := FServerStatusWindow.Checked;
   ASettings.ArchitectureEnabled := FArchitecture.Checked;

@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6501] of string = (
+  Lines: array[0..6525] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -392,6 +392,31 @@ const
     '      "x-caption": "Diagnosemodus",',
     '      "x-captionEn": "Diagnostic mode",',
     '      "x-issue": "#479"',
+    '    },',
+    '    "DiagnosticPluginTimings": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Zeiten des Plugins im Diagnosefenster: Hauptthread je Funktion mit den langsamen Aufrufen, Server-Anfragen, Quellen im Hintergrund und Hänger; aus = nur der Reiter „Vervollständi' +
+      'gung“, kein Messpunkt läuft. Wirkt nur im Diagnosemodus.",',
+    '      "x-key": "diagnosticMode.pluginTimings",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-parent": "diagnosticMode.enabled",',
+    '      "x-caption": "Zeiten des Plugins messen",',
+    '      "x-captionEn": "Measure plugin timings"',
+    '    },',
+    '    "DiagnosticSlowMs": {',
+    '      "type": "integer",',
+    '      "default": 16,',
+    '      "minimum": 1,',
+    '      "maximum": 1000,',
+    '      "description": "Ab so vielen ms eigener Zeit gilt ein Aufruf im Hauptthread als langsam und landet in der Liste der langsamen Aufrufe; 16 ms = ein Bild bei 60 Hz.",',
+    '      "x-key": "diagnosticMode.slowThresholdMs",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-parent": "diagnosticMode.enabled",',
+    '      "x-caption": "Langsam ab (ms)",',
+    '      "x-captionEn": "Slow from (ms)"',
     '    },',
     '    "DiagnosticsProcesses": {',
     '      "type": "boolean",',
