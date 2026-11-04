@@ -61,9 +61,13 @@ begin
   Result := nil;
   Value := TJSONObject.ParseJSONValue(AJson);
   if Value is TJSONArray then
-    Result := TJSONArray(Value)
+  begin
+    Result := TJSONArray(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 { TAtlasSearchPathRequest }
@@ -78,13 +82,19 @@ begin
   try
     Result := (Arguments <> nil) and (Arguments.Count >= 2);
     if not Result then
+    begin
       Exit;
+    end;
     ARequest.ProjectFile := Arguments.Items[0].Value;
     ARequest.Folder := Trim(Arguments.Items[1].Value);
     if Arguments.Count > 2 then
+    begin
       ARequest.Config := Trim(Arguments.Items[2].Value);
+    end;
     if SameText(ARequest.Config, TAtlasSearchPaths.BaseConfig) then
+    begin
       ARequest.Config := '';
+    end;
     Result := (ARequest.ProjectFile <> '') and (ARequest.Folder <> '') and (Pos(';', ARequest.Folder) = 0);
   finally
     Arguments.Free;
@@ -103,7 +113,9 @@ begin
   try
     Result := (Arguments <> nil) and (Arguments.Count >= 2);
     if not Result then
+    begin
       Exit;
+    end;
     ARequest.ProjectFile := Arguments.Items[0].Value;
     ARequest.FileName := Arguments.Items[1].Value;
     Result := (ARequest.ProjectFile <> '') and SameText(ExtractFileExt(ARequest.FileName), '.pas');
@@ -122,7 +134,9 @@ begin
   Arguments := ArgumentsOf(AArgumentsJson);
   try
     if (Arguments <> nil) and (Arguments.Count > 0) then
+    begin
       AText := Arguments.Items[0].Value;
+    end;
   finally
     Arguments.Free;
   end;
@@ -133,7 +147,9 @@ function Normalized(const AFolder: string): string;
 begin
   Result := Trim(AFolder);
   while (Length(Result) > 1) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasSearchPaths.Contains(const AValue, AFolder: string): Boolean;
@@ -141,19 +157,29 @@ var
   Item: string;
 begin
   for Item in AValue.Split([';']) do
+  begin
     if SameText(Normalized(Item), Normalized(AFolder)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
 class function TAtlasSearchPaths.WithFolder(const ARaw, AFolder: string; ABase: Boolean): string;
 begin
   if Trim(ARaw) <> '' then
-    Result := AFolder + ';' + Trim(ARaw)
+  begin
+    Result := AFolder + ';' + Trim(ARaw);
+  end
   else if ABase then
-    Result := AFolder
+  begin
+    Result := AFolder;
+  end
   else
+  begin
     Result := AFolder + ';' + Inherited_;
+  end;
 end;
 
 end.

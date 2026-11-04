@@ -394,7 +394,9 @@ const
 procedure ReportFailure(AFeature: TAtlasFeature; E: Exception);
 begin
   if not (E is ELspClientError) then
+  begin
     TAtlasGuard.Report(AFeature, E);
+  end;
 end;
 
 /// <summary>Öffnet den Schlüssel der Einstellungen, ersatzweise den früheren; liefert den
@@ -403,11 +405,17 @@ function OpenSettingsKey(ARegistry: TRegistry): string;
 begin
   ARegistry.RootKey := HKEY_CURRENT_USER;
   if ARegistry.OpenKeyReadOnly(RegistryKey) then
-    Result := RegistryKey
+  begin
+    Result := RegistryKey;
+  end
   else if ARegistry.OpenKeyReadOnly(LegacyRegistryKey) then
-    Result := LegacyRegistryKey
+  begin
+    Result := LegacyRegistryKey;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 { TAtlasCodeInsightManager }
@@ -436,7 +444,9 @@ begin
     begin
       // Start nur im Hauptthread (Probleme-Takt); EnsureSession kehrt sonst sofort zurück (A-01).
       if AStart then
+      begin
         EnsureSession;
+      end;
       Result := RunningSession;
     end,
     procedure(const AMessage: string)
@@ -447,9 +457,13 @@ begin
     function: TLspSession
     begin
       if EnsureSession then
-        Result := RunningSession
+      begin
+        Result := RunningSession;
+      end
       else
+      begin
         Result := nil;
+      end;
     end,
     procedure(const AMessage: string)
     begin
@@ -458,9 +472,13 @@ begin
     function(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>
     begin
       if FProblems <> nil then
-        Result := FProblems.ProblemsAt(AFileName, ALine, ACharacter)
+      begin
+        Result := FProblems.ProblemsAt(AFileName, ALine, ACharacter);
+      end
       else
+      begin
         Result := nil;
+      end;
     end,
     function(const AFileName: string): Boolean
     begin
@@ -471,27 +489,39 @@ begin
     function: TLspSession
     begin
       if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
-        Result := FSession
+      begin
+        Result := FSession;
+      end
       else
+      begin
         Result := nil;
+      end;
     end);
   // Code Lens zur Testunit (#189); startet ebenfalls keinen Server.
   FTestUnitLens := TAtlasEditorTestUnitLens.Create(
     function: TLspSession
     begin
       if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
-        Result := FSession
+      begin
+        Result := FSession;
+      end
       else
+      begin
         Result := nil;
+      end;
     end);
   // Code Lens mit Code-Metriken (#66); startet ebenfalls keinen Server.
   FMetricsLens := TAtlasEditorMetricsLens.Create(
     function: TLspSession
     begin
       if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
-        Result := FSession
+      begin
+        Result := FSession;
+      end
       else
+      begin
         Result := nil;
+      end;
     end);
 end;
 
@@ -511,11 +541,15 @@ end;
 procedure TAtlasCodeInsightManager.Shutdown;
 begin
   if FShutDown then
+  begin
     Exit;
+  end;
   FShutDown := True;
   FEnabled := False;
   if LiveManager = Self then
+  begin
     LiveManager := nil;
+  end;
   // Hält die Beobachter-Threads an; erst danach darf der Sammler weg.
   FFolderWatcher := nil;
   FreeAndNil(FFileChanges);
@@ -535,7 +569,9 @@ begin
   // Die Threads geben sich nicht selbst frei: Erst wenn sie beendet sind, läuft nichts mehr im Code des Plugins,
   // auch nicht das Freigeben ihrer anonymen Methode (#886). Sie nutzen bis zuletzt die Ereignisse aus Destroy.
   if not FThreads.StopAll(TAtlasShutdown.StopMs) then
+  begin
     Diagnose('Manager abgebaut, während ein Hintergrund-Thread noch lief');
+  end;
 end;
 
 class function TAtlasCodeInsightManager.DiagnoseEnabled: Boolean;
@@ -548,7 +584,9 @@ begin
   try
     if (OpenSettingsKey(Registry) <> '') and Registry.ValueExists('Diagnose') and
       (Registry.GetDataType('Diagnose') = rdInteger) then
+    begin
       Result := Registry.ReadInteger('Diagnose') <> 0;
+    end;
   finally
     Registry.Free;
   end;
@@ -585,18 +623,26 @@ begin
     if Key <> '' then
     begin
       if Registry.ValueExists('ServerPath') then
+      begin
         Result := Registry.ReadString('ServerPath');
+      end;
       if Registry.ValueExists('ServerArguments') then
+      begin
         AArguments := Registry.ReadString('ServerArguments');
+      end;
     end;
   finally
     Registry.Free;
   end;
   // Der alte Schlüssel zeigt meist noch auf BetterDelphiLSP.exe; fehlt sie, gelten die Vorgaben.
   if (Key = LegacyRegistryKey) and (Result <> '') and not FileExists(Result) then
+  begin
     Result := '';
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   Result := DefaultServerPath;
 end;
 
@@ -607,14 +653,20 @@ begin
   PluginDir := ExtractFilePath(GetModuleName(HInstance));
   Result := PluginDir + 'AtlasServer.exe';
   if FileExists(Result) then
+  begin
     Exit;
+  end;
   // Release-Paket (#495, ADR 0016): BPL in <Ziel>\Win32 bzw. \Win64, der Server eine Ebene darüber.
   if FileExists(ExpandFileName(PluginDir + '..\AtlasServer.exe')) then
+  begin
     Exit(ExpandFileName(PluginDir + '..\AtlasServer.exe'));
+  end;
   // Ausgabeordner des Repos: Win64 bevorzugt, sonst ein Win32-Bau des Servers.
   Result := ExpandFileName(PluginDir + '..\..\..\Win64\Debug\Bin\AtlasServer.exe');
   if not FileExists(Result) and FileExists(ExpandFileName(PluginDir + '..\..\..\Win32\Debug\Bin\AtlasServer.exe')) then
+  begin
     Result := ExpandFileName(PluginDir + '..\..\..\Win32\Debug\Bin\AtlasServer.exe');
+  end;
 end;
 
 /// <summary>Pfade und Benutzername aus einer Zeile des Diagnoselogs (#647); Meldungen wie
@@ -626,14 +678,18 @@ begin
   Result := TRegEx.Replace(AText, '(?:\b[A-Za-z]:|\\\\)[\\/]\S*|file:\S+|\S*\\\S*', '<pfad>');
   UserName := GetEnvironmentVariable('USERNAME');
   if Length(UserName) >= 3 then
+  begin
     Result := StringReplace(Result, UserName, '<benutzer>', [rfReplaceAll, rfIgnoreCase]);
+  end;
 end;
 
 function TAtlasCodeInsightManager.LogActions: TArray<TAtlasNotificationAction>;
 begin
   Result := nil;
   if Assigned(FOnOpenLog) then
+  begin
     Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusOpenLog), FOnOpenLog)];
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.ReportError(const AMessage: string);
@@ -644,22 +700,30 @@ begin
   Diagnose('Fehler: ' + AMessage);
   // Jede Meldung nur einmal, sonst flutet ein fehlender Server das Meldungsfenster.
   if AMessage = FLastError then
+  begin
     Exit;
+  end;
   FLastError := AMessage;
   // Benachrichtigungszentrale (#601): bei „nur sammeln“ oder „aus“ keine Zeile im Meldungsfenster.
   Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server,
     TAtlasNotificationSeverity.Error, TAtlasStrings.Text(TAtlasTextId.NotificationsServerError), AMessage,
     LogActions);
   if Mode <> TAtlasNotificationMode.Show then
+  begin
     Exit;
+  end;
   if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Messages.AddTitleMessage('Atlas: ' + AMessage);
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.Diagnose(const AMessage: string);
 begin
   if not FDiagnose then
+  begin
     Exit;
+  end;
   try
     TFile.AppendAllText(DiagnoseLog, FormatDateTime('hh":"nn":"ss.zzz', Now) + ' ' + WithoutPaths(AMessage) + sLineBreak,
       TEncoding.UTF8);
@@ -672,7 +736,9 @@ procedure TAtlasCodeInsightManager.StopSession;
 begin
   // Nur im Hauptthread (A-01); verschachtelt (CheckSynchronize beim Warten) nichts tun.
   if not TAtlasMainThread.IsMain or FStopping then
+  begin
     Exit;
+  end;
   FStopping := True;
   try
     StopSessionNow;
@@ -686,26 +752,42 @@ begin
   Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
   // Laufende Anfragen der Vervollständigung nutzen die Sitzung noch.
   if FCompletion <> nil then
+  begin
     FCompletion.Shutdown;
+  end;
   if FSignature <> nil then
+  begin
     FSignature.Shutdown;
+  end;
   // Probleme: Threads anhalten, Verbindung schließen (laufende Anfragen kehren sofort zurück), warten.
   if FProblems <> nil then
+  begin
     FProblems.BeginShutdown;
+  end;
   if FSession <> nil then
+  begin
     FSession.SetOnProgress(nil);
+  end;
   if FServer <> nil then
+  begin
     FServer.Client.Close;
+  end;
   // Hover-Anfragen halten die Sitzung als rohen Zeiger; nach Close kehren sie sofort zurück (Code-Review A-07).
   if FHover <> nil then
+  begin
     FHover.Shutdown;
+  end;
   if FProblems <> nil then
+  begin
     FProblems.WaitShutdown;
+  end;
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
   FQueryIdle.WaitFor(5000);
   // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken (A-01, A-13).
   if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.StopMs) then
+  begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
+  end;
   FCommandIdle.WaitFor(5000);
   FServerCommandsIdle.WaitFor(5000);
   FreeAndNil(FSession);
@@ -723,20 +805,26 @@ var
 begin
   // Ein beendeter Server bleibt beendet, bis er wieder startet; der Zeitpunkt bleibt der erste.
   if (APhase <> FPhase) or (AEnded <> FPhaseEnded) then
+  begin
     FPhaseSince := Now;
+  end;
   FPhase := APhase;
   FPhaseError := AError;
   FPhaseEnded := (APhase = TAtlasServerPhase.Stopped) and AEnded;
   Changed := FOnServerChanged;
   if Assigned(Changed) then
+  begin
     Changed();
+  end;
 end;
 
 function TAtlasCodeInsightManager.ServerRestarts: Integer;
 begin
   Result := AtomicCmpExchange(FStarts, 0, 0) - 1;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 function TAtlasCodeInsightManager.ServerInfo: TAtlasServerInfo;
@@ -750,11 +838,17 @@ begin
   Result.AverageMs := 0;
   Result.Samples := 0;
   if (FSession <> nil) and FSession.Initialized then
+  begin
     Result.Version := FSession.ServerVersion;
+  end;
   if FServer <> nil then
+  begin
     Result.AverageMs := FServer.Client.AverageMs(Result.Samples);
+  end;
   if (FCrashSkips <> nil) and (FPhase = TAtlasServerPhase.Running) then
+  begin
     Result.Skipped := FCrashSkips.Count;
+  end;
 end;
 
 function TAtlasCodeInsightManager.ServerIndexing(out APercent: Integer): Boolean;
@@ -775,7 +869,9 @@ end;
 procedure TAtlasCodeInsightManager.AllowStart;
 begin
   if FCrashes.Held then
+  begin
     TAtlasGuard.Log('Server: Start von Hand nach wiederholtem Absturz');
+  end;
   FCrashes.Reset;
 end;
 
@@ -788,27 +884,37 @@ var
 begin
   Code := TAtlasServerExits.Unknown;
   if AInfo.ExitKnown then
+  begin
     Code := AInfo.ExitCode;
+  end;
   Line := TAtlasServerExits.Line(Code, AInfo.RuntimeMs, AInfo.LastMethod, AInfo.OpenMethods, AInfo.ErrorLines);
   // atlas.log für den Fehlerbericht, das Diagnoseprotokoll für den zeitlichen Zusammenhang mit den Aufrufen.
   TAtlasGuard.Log(Line);
   Report(Line);
   Continues := FCrashes.Crashed(Code);
   if not Continues then
+  begin
     TAtlasGuard.Log(Format('Server: zweimal %s innerhalb von %d min, kein weiterer Start ohne Zutun',
       [TAtlasServerExits.Describe(Code), TAtlasServerCrashes.WindowMinutes]));
+  end;
   Manager := Self;
   // Statusfeld und Benachrichtigung im Hauptthread: FPhaseError ist ein String, den der Hauptthread liest.
   TAtlasMainThread.Queue(TAtlasFeature.Server,
     procedure
     begin
       if LiveManager <> Manager then
+      begin
         Exit;
+      end;
       if not Continues then
-        Manager.ServerHeld(Code)
+      begin
+        Manager.ServerHeld(Code);
+      end
       // Inzwischen neu gestartet oder von Atlas beendet: Die Ursache gehört nicht mehr ins Statusfeld.
       else if (Manager.FPhase = TAtlasServerPhase.Stopped) and not Manager.FPhaseEnded then
+      begin
         Manager.SetPhase(TAtlasServerPhase.Stopped, TAtlasServerExits.Describe(Code));
+      end;
     end);
 end;
 
@@ -821,7 +927,9 @@ var
 begin
   // Von Hand neu gestartet, bevor dieser Eintrag dran war: nichts mehr zu melden.
   if not FCrashes.Held then
+  begin
     Exit;
+  end;
   Cause := TAtlasServerExits.Describe(ACode);
   SetPhase(TAtlasServerPhase.Stopped, TAtlasStrings.Fmt(TAtlasTextId.ServerHeldPhase, [Cause]));
   Manager := Self;
@@ -829,12 +937,16 @@ begin
     procedure
     begin
       if LiveManager = Manager then
+      begin
         Manager.RestartServer;
+      end;
     end;
   Actions := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.StatusRestartServer), Restart)];
   if Assigned(FOnBugReport) then
+  begin
     Actions := Actions + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.BugReportMenu),
       FOnBugReport)];
+  end;
   Actions := Actions + LogActions;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Error,
     TAtlasStrings.Text(TAtlasTextId.ServerHeldTitle),
@@ -848,7 +960,9 @@ var
 begin
   Result := False;
   if FQueryRunning or (FServer = nil) or not FServer.Running or (FSession = nil) or not FSession.Initialized then
+  begin
     Exit;
+  end;
   FQueryRunning := True;
   FQueryIdle.ResetEvent;
   Session := FSession;
@@ -865,12 +979,16 @@ begin
           Answer := Session.ExecuteCommand(TAtlasStatusLines.StatusCommand, 5000);
           try
             if Answer <> nil then
+            begin
               Json := Answer.ToJSON;
+            end;
           finally
             Answer.Free;
           end;
           if Assigned(ADone) then
+          begin
             ADone(Json);
+          end;
         except
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
           on Exception do
@@ -895,7 +1013,9 @@ begin
     procedure(AAnswers: TArray<string>)
     begin
       if Assigned(Done) then
+      begin
         Done(AAnswers[0]);
+      end;
     end);
 end;
 
@@ -910,10 +1030,14 @@ var
 begin
   Result := False;
   if (Length(ACommands) = 0) or (Length(ACommands) <> Length(AArgumentsJson)) then
+  begin
     Exit;
+  end;
   if FCommandRunning or (FServer = nil) or not FServer.Running or (FSession = nil) or
     not FSession.Initialized then
+  begin
     Exit;
+  end;
   FCommandRunning := True;
   FCommandIdle.ResetEvent;
   Session := FSession;
@@ -945,13 +1069,17 @@ begin
             end;
             try
               if Answer <> nil then
+              begin
                 Answers[Index] := Answer.ToJSON;
+              end;
             finally
               Answer.Free;
             end;
           end;
           if Assigned(Done) then
+          begin
             Done(Answers);
+          end;
         except
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
           on Exception do
@@ -971,14 +1099,20 @@ begin
   // Start und Stopp gehören dem Hauptthread (A-01): Zeitlimit-Arbeiter, Lese-Thread und Hintergrund-Threads
   // bekommen nur, was schon läuft.
   if not TAtlasMainThread.IsMain then
+  begin
     Exit(RunningSession <> nil);
+  end;
   // Abgebaut, aber von der IDE noch gehalten (#886): keinen Server mehr starten.
   if FShutDown then
+  begin
     Exit(False);
+  end;
   // Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
   // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
   if FStopping or FStarting then
+  begin
     Exit(RunningSession <> nil);
+  end;
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
   begin
     RefreshContexts;
@@ -988,7 +1122,9 @@ begin
   end;
   // Zweimal gleich abgestürzt (Bericht H5): kein stiller Neustart; „Server neu starten“ hebt das auf.
   if FCrashes.Held then
+  begin
     Exit(False);
+  end;
   FStarting := True;
   try
     Result := StartSession;
@@ -1023,7 +1159,9 @@ begin
   // der neue Server sofort wieder, nicht erst bei der nächsten Anfrage je Datei (#393).
   Documents := nil;
   if FSession <> nil then
+  begin
     Documents := FSession.OpenDocuments;
+  end;
   StopSession;
   Path := ServerPath(Arguments);
   Diagnose('Starte Server: ' + Path);
@@ -1048,7 +1186,9 @@ begin
         SetPhase(TAtlasServerPhase.Stopped, '', Ended);
         // Erst danach: Die Ursache aus ServerEnded setzt der Hauptthread nur auf einen abgestürzten Server.
         if not Ended then
+        begin
           ServerEnded(Client.CloseInfo);
+        end;
       end;
     FSession := TLspSession.Create(FServer.Client);
     FContextsChecked := 0;
@@ -1067,7 +1207,9 @@ begin
       begin
         Changed := FOnServerChanged;
         if Assigned(Changed) then
+        begin
           Changed();
+        end;
       end);
     FProjectsChecked := GetTickCount;
     FSession.Initialize;
@@ -1087,25 +1229,37 @@ begin
     begin
       Text := '';
       if Crashed and FCrashes.LastCode(Code) then
-        Text := TAtlasStrings.Fmt(TAtlasTextId.ServerCrashedCause, [TAtlasServerExits.Describe(Code)])
+      begin
+        Text := TAtlasStrings.Fmt(TAtlasTextId.ServerCrashedCause, [TAtlasServerExits.Describe(Code)]);
+      end
       else if Crashed then
+      begin
         Text := TAtlasStrings.Text(TAtlasTextId.NotificationsServerCrashed);
+      end;
       if Length(Documents) > 0 then
+      begin
         Text := Trim(Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsServerReopened, [Length(Documents)]));
+      end;
       // Absturzfall des abgestürzten Servers (#1355): Methode, Datei, Zeile und Ausnahme statt nur des Codes. Mit
       // server.crashCases aus schreibt der Server keinen, dann bleibt es beim Code.
       HasCase := Crashed and (PreviousStart > 0) and
         TAtlasCrashCases.Newest(TAtlasCrashCases.DefaultRoot, PreviousStart, CrashCase);
       if HasCase then
+      begin
         TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
           TAtlasStrings.Text(TAtlasTextId.CrashRestartedTitle), TAtlasCrashCases.SummaryText(CrashCase) + ' ' + Text,
-          CrashActions(CrashCase))
+          CrashActions(CrashCase));
+      end
       else if Crashed then
+      begin
         TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
-          TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions)
+          TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions);
+      end
       else
+      begin
         TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Info,
           TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions);
+      end;
     end;
   except
     on E: Exception do
@@ -1128,21 +1282,31 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Group := Modules.MainProjectGroup;
   if Group = nil then
+  begin
     Exit;
+  end;
   Active := Group.ActiveProject;
   if (Active <> nil) and SameText(ExtractFileExt(Active.FileName), '.dproj') and FileExists(Active.FileName) then
+  begin
     Result := [Active.FileName];
+  end;
   for Index := 0 to Group.ProjectCount - 1 do
   begin
     FileName := Group.Projects[Index].FileName;
     // Nur gespeicherte Delphi-Projekte; neue, noch namenlose Projekte haben keinen Ordner.
     if not SameText(ExtractFileExt(FileName), '.dproj') or not FileExists(FileName) then
+    begin
       Continue;
+    end;
     if (Active <> nil) and SameText(FileName, Active.FileName) then
+    begin
       Continue;
+    end;
     Result := Result + [FileName];
   end;
 end;
@@ -1166,10 +1330,14 @@ begin
         begin
           // Manager weg oder neue Sitzung: Die alte Verbindung gibt es nicht mehr, nicht antworten.
           if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
+          begin
             Exit;
+          end;
           Applied := False;
           if AEdit.Unsupported > 0 then
-            Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'
+          begin
+            Reason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.';
+          end
           else
             try
               Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
@@ -1202,7 +1370,9 @@ begin
     begin
       // Information und Protokoll gehören ins Diagnoseprotokoll, nicht ins Meldungsfenster.
       if AType > 2 then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.Server,
         procedure
         var
@@ -1211,22 +1381,34 @@ begin
           Severity: TAtlasNotificationSeverity;
         begin
           if (LiveManager <> Manager) or (Manager.FSession <> ASession) then
+          begin
             Exit;
+          end;
           Manager.Diagnose('window/showMessage: ' + AMessage);
           // Benachrichtigungszentrale (#601): Fehler (1) rot, Warnung (2) gelb; Meldungsfenster nur bei Show.
           if AType = 1 then
-            Severity := TAtlasNotificationSeverity.Error
+          begin
+            Severity := TAtlasNotificationSeverity.Error;
+          end
           else
+          begin
             Severity := TAtlasNotificationSeverity.Warning;
+          end;
           if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, Severity,
             TAtlasStrings.Text(TAtlasTextId.NotificationsServerMessage), AMessage, Manager.LogActions) <>
             TAtlasNotificationMode.Show then
+          begin
             Exit;
+          end;
           if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+          begin
             Exit;
+          end;
           Group := Messages.GetGroup('Atlas');
           if Group = nil then
+          begin
             Group := Messages.AddMessageGroup('Atlas');
+          end;
           Messages.AddTitleMessage('Atlas: ' + AMessage, Group);
         end);
     end;
@@ -1247,21 +1429,29 @@ begin
       if AMethod = TAtlasCrashCases.CaseNotification then
       begin
         if not TAtlasCrashCases.ParseCase(AParams, CrashCase) then
+        begin
           Exit;
+        end;
         TAtlasMainThread.Queue(TAtlasFeature.Server,
           procedure
           begin
             if (LiveManager = Manager) and (Manager.FSession = ASession) then
+            begin
               Manager.CrashCaseSaved(CrashCase);
+            end;
           end);
       end
       else if TAtlasCrashCases.ParseSkip(AParams, Skip) then
+      begin
         TAtlasMainThread.Queue(TAtlasFeature.Server,
           procedure
           begin
             if (LiveManager = Manager) and (Manager.FSession = ASession) then
+            begin
               Manager.CrashSkipChanged(Skip);
+            end;
           end);
+      end;
     end;
 end;
 
@@ -1278,14 +1468,18 @@ begin
     procedure
     begin
       if DirectoryExists(Folder) then
+      begin
         ShellExecute(0, 'open', 'explorer.exe', PChar('"' + Folder + '"'), nil, SW_SHOWNORMAL);
+      end;
     end)];
   if Assigned(Issue) then
+  begin
     Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashCreateIssue),
       procedure
       begin
         Issue(CrashCase);
       end)];
+  end;
   // Ausblenden: nur den Eintrag schließen, der Fall bleibt im Ordner.
   Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashHide),
     procedure
@@ -1309,13 +1503,18 @@ var
 begin
   Manager := Self;
   if not FCrashSkips.Apply(ASkip) then
+  begin
     Exit;
+  end;
   UpdateCrashProblems;
   Name := ExtractFileName(ASkip.FileName);
   if Name = '' then
+  begin
     Name := ASkip.Uri;
+  end;
   Uri := ASkip.Uri;
   if ASkip.Active then
+  begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
       TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipText,
       [ASkip.Method, Name, ASkip.Crashes, ASkip.ExceptionClass]),
@@ -1326,21 +1525,28 @@ begin
       begin
         // Die Meldung kann den Manager überleben (Entladen).
         if LiveManager <> Manager then
+        begin
           Exit;
+        end;
         Arguments := TAtlasCrashCases.RetryArguments(Uri);
         try
           Manager.RunServerCommandAsync(TAtlasCrashCases.RetryCommand, Arguments.ToJSON, 5000, nil);
         finally
           Arguments.Free;
         end;
-      end)])
+      end)]);
+  end
   else
+  begin
     TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Info,
       TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipEnded,
       [ASkip.Method, Name]), LogActions);
+  end;
   Changed := FOnServerChanged;
   if Assigned(Changed) then
+  begin
     Changed();
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.UpdateCrashProblems;
@@ -1352,12 +1558,16 @@ var
 begin
   Store := TAtlasProblemsController.Current;
   if Store = nil then
+  begin
     Exit;
+  end;
   Problems := nil;
   for Skip in FCrashSkips.Items do
   begin
     if Skip.FileName = '' then
+    begin
       Continue;
+    end;
     Problem := Default(TAtlasProblem);
     Problem.EndCharacter := 1;
     Problem.Severity := TAtlasProblemSeverity.Warning;
@@ -1368,9 +1578,13 @@ begin
     Problems := Problems + [TPair<string, TAtlasProblem>.Create(Skip.FileName, Problem)];
   end;
   if Length(Problems) = 0 then
-    Store.ClearTask(TAtlasCrashCases.ProblemSource)
+  begin
+    Store.ClearTask(TAtlasCrashCases.ProblemSource);
+  end
   else
+  begin
     Store.SetTaskProblems(TAtlasCrashCases.ProblemSource, Problems);
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.RefreshProjects;
@@ -1379,7 +1593,9 @@ var
 begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or (GetTickCount - FProjectsChecked < 2000) then
+  begin
     Exit;
+  end;
   FProjectsChecked := GetTickCount;
   try
     Projects := GroupProjects;
@@ -1399,16 +1615,22 @@ begin
   // Open Tools API nur im Hauptthread.
   if (GetCurrentThreadId <> MainThreadID) or
     ((FContextsChecked <> 0) and (GetTickCount - FContextsChecked < 1000)) then
+  begin
     Exit;
+  end;
   FContextsChecked := GetTickCount;
   try
     // Mit Diagnose=1 prüfbar, ob die geerbten Optionen ankommen (#396).
     Changed := FSession.SetProjectContexts(TAtlasIdeProjectContext.Group);
     for Context in Changed do
+    begin
       Diagnose('Projektkontext: ' + Context.Describe);
+    end;
     // Andere Plattform oder Konfiguration: andere aktive {$IFDEF}-Zweige, Gliederung neu holen (#845).
     if Length(Changed) > 0 then
+    begin
       TAtlasIdeOutlineCache.InvalidateAll;
+    end;
   except
     on E: Exception do
       Diagnose('Projektkontext nicht gemeldet: ' + E.Message);
@@ -1435,10 +1657,14 @@ var
   Changes: TArray<TAtlasFileChange>;
 begin
   if GetCurrentThreadId <> MainThreadID then
+  begin
     Exit;
+  end;
   Changes := FFileChanges.Take(GetTickCount);
   if Changes = nil then
+  begin
     Exit;
+  end;
   try
     FSession.FilesChanged(Changes);
     Diagnose(Format('Änderungen außerhalb der IDE gemeldet: %d Dateien', [Length(Changes)]));
@@ -1454,17 +1680,25 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTACodeInsightServices, Services) then
+  begin
     Services.GetEditView(Result);
+  end;
   if Result = nil then
+  begin
     Result := (BorlandIDEServices as IOTAEditorServices).TopView;
+  end;
 end;
 
 function TAtlasCodeInsightManager.SessionOrNil: TLspSession;
 begin
   if EnsureSession then
-    Result := FSession
+  begin
+    Result := FSession;
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 function TAtlasCodeInsightManager.ActiveSession: TLspSession;
@@ -1487,17 +1721,25 @@ begin
   Result := nil;
   // Während StopSession nie: Die Sitzung wird gleich freigegeben (A-01). Aus jedem Thread aufrufbar.
   if FStopping then
+  begin
     Exit;
+  end;
   if (FServer <> nil) and FServer.Running and (FSession <> nil) and FSession.Initialized then
+  begin
     Result := FSession;
+  end;
 end;
 
 function TAtlasCodeInsightManager.ServerProgress: string;
 begin
   if (FSession <> nil) and FSession.Initialized then
-    Result := FSession.ProgressText
+  begin
+    Result := FSession.ProgressText;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
@@ -1563,12 +1805,16 @@ begin
   if Session = nil then
   begin
     if Assigned(Done) then
+    begin
       Done(nil);
+    end;
     Exit;
   end;
   Work := AWork;
   if AtomicIncrement(FServerCommands) = 1 then
+  begin
     FServerCommandsIdle.ResetEvent;
+  end;
   Idle := FServerCommandsIdle;
   FThreads.Start(
     procedure
@@ -1582,7 +1828,9 @@ begin
         try
           Answer := Work(Session);
           if Answer <> nil then
+          begin
             Json := Answer.ToJSON;
+          end;
         except
           // Fehler, Zeitlimit oder geschlossene Verbindung: Antwort „keine“.
           on Exception do
@@ -1597,10 +1845,14 @@ begin
           begin
             Value := nil;
             if Json <> '' then
+            begin
               Value := TJSONObject.ParseJSONValue(Json);
+            end;
             try
               if Assigned(Done) then
+              begin
                 Done(Value);
+              end;
             finally
               Value.Free;
             end;
@@ -1608,7 +1860,9 @@ begin
       finally
         // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
         if AtomicDecrement(FServerCommands) = 0 then
+        begin
           Idle.SetEvent;
+        end;
       end;
     end);
 end;
@@ -1621,7 +1875,9 @@ begin
   Result := nil;
   Session := RunningSession;
   if Session = nil then
+  begin
     Exit;
+  end;
   try
     Result := Session.RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
   except
@@ -1633,6 +1889,7 @@ end;
 function TAtlasCodeInsightManager.Signature: TAtlasEditorSignature;
 begin
   if FSignature = nil then
+  begin
     FSignature := TAtlasEditorSignature.Create(
       FAdapters.NewSignatureSource(
         function: TLspSession
@@ -1648,6 +1905,7 @@ begin
       begin
         Diagnose(AMessage);
       end);
+  end;
   Result := FSignature;
 end;
 
@@ -1688,19 +1946,27 @@ begin
   Result := '';
   // Durch die Sicherung abgeschaltet (#493, Code-Review S-05).
   if TAtlasGuard.Disabled(TAtlasFeature.Hover) then
+  begin
     Exit;
+  end;
   Diagnose(Format('GetHintText(%d, %d) aufgerufen', [HintLine, HintCol]));
   // Eigener Tooltip (#442): die IDE zeigt keinen zweiten.
   if TAtlasIdeSettings.Current.HoverTooltip then
+  begin
     Exit;
+  end;
   try
     View := CurrentEditView;
     if (View = nil) or (View.Buffer = nil) or not EnsureSession then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     Lines := Text.Split([#13#10, #10]);
     if (HintLine < 1) or (HintLine > Length(Lines)) then
+    begin
       Exit;
+    end;
     Character := TLspSession.ColumnToIndex(Lines[HintLine - 1], HintCol, TAtlasEditorBuffer.TabWidth(View.Buffer));
     Result := FSession.Hover(View.Buffer.FileName, Text, HintLine - 1, Character);
     // Wert im angehaltenen Debugger (#891) vor dem Hover-Text; nur sofort verfügbare Werte, die IDE wartet nicht.
@@ -1709,9 +1975,13 @@ begin
       DebugText := TAtlasIdeDebugValues.EvaluateNow(TAtlasDebugExpression.AtCharacter(Lines[HintLine - 1],
         Character), View.Buffer.FileName, HintLine).PlainText;
       if (DebugText <> '') and (Result <> '') then
-        Result := DebugText + #13#10#13#10 + Result
+      begin
+        Result := DebugText + #13#10#13#10 + Result;
+      end
       else if DebugText <> '' then
+      begin
         Result := DebugText;
+      end;
     end;
     Diagnose(Format('Hover (%s), Zeile %d, Spalte %d (Cursor %d/%d): %d Zeichen', [ExtractFileExt(View.Buffer.FileName),
       HintLine, HintCol, View.CursorPos.Line, View.CursorPos.Col, Length(Result)]));
@@ -1749,7 +2019,9 @@ begin
   Result := True;
   // Durch die Sicherung abgeschaltet (#493, Code-Review S-05); AFileName = '' bricht still ab.
   if TAtlasGuard.Disabled(TAtlasFeature.GoToDefinition) then
+  begin
     Exit;
+  end;
   Diagnose(Format('GotoDefinition(Index %d) aufgerufen', [Index]));
   try
     View := CurrentEditView;
@@ -1759,7 +2031,9 @@ begin
       Exit;
     end;
     if not EnsureSession then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     Lines := Text.Split([#13#10, #10]);
     // Die synchrone Schnittstelle übergibt keine Klickposition; maßgeblich ist der Cursor.
@@ -1845,14 +2119,18 @@ begin
   FEnabled := Value;
   Diagnose('SetEnabled(' + BoolToStr(Value, True) + ')');
   if not Value then
+  begin
     StopSession;
+  end;
 end;
 
 function TAtlasCodeInsightManager.EditorTokenValidChars(PreValidating: Boolean): TSysCharSet;
 begin
   Result := ['A'..'Z', 'a'..'z', '0'..'9', '_', '&'];
   if PreValidating then
+  begin
     Include(Result, '.');
+  end;
 end;
 
 procedure TAtlasCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Key: Char);
@@ -1912,7 +2190,9 @@ begin
     Path := ServerPath(Arguments);
     FServerFound := FileExists(Path);
     if not FServerFound then
+    begin
       ReportError('Server nicht gefunden: ' + Path + ' (die eingebaute Code Insight bleibt aktiv)');
+    end;
   end;
   Result := FServerFound;
 end;
@@ -1923,7 +2203,9 @@ var
 begin
   // Nach Shutdown (abgemeldet, die IDE hält den Manager noch): nichts mehr übernehmen (#886).
   if FShutDown then
+  begin
     Exit(False);
+  end;
   Extension := LowerCase(ExtractFileExt(AFileName));
   // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
   Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and
@@ -1971,7 +2253,9 @@ begin
   View := CurrentEditView;
   Result := False;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Line := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
   Result := TDebugDisplayText.CommentTemplate(Line, Template, Column) or
     TDebugDisplayText.AttributeTemplate(Line, Template, Column) or TDebugDisplayText.CommentChildren(Line, Names) or
@@ -1987,7 +2271,9 @@ begin
   Result := False;
   View := CurrentEditView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Line := TAtlasEditorBuffer.LineText(View, View.CursorPos.Line);
   Character := TLspSession.ColumnToIndex(Line, View.CursorPos.Col, TAtlasEditorBuffer.TabWidth(View.Buffer));
   Result := TAtlasWord.InDataNameString(Line, Character);
@@ -2061,7 +2347,9 @@ begin
       // Platzhalter in Wertdarstellungen (#854): die Mitglieder des Typs kommen vom Server.
     else if (AChar = '<') or ((CodeInsightType in [citCodeInsight, citParameterCodeInsight]) and
       ((AElement = atComment) or (AElement = atString))) then
+    begin
       CodeInsightType := citNone;
+    end;
     Diagnose(Format('GetCodeInsightType(#%d, Element %d) = %d', [Ord(AChar), AElement, Ord(CodeInsightType)]));
   except
     on E: Exception do
@@ -2098,7 +2386,9 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Signature) then
+  begin
     Exit(False);
+  end;
   Activity := TAtlasActivity.Scope('Parameterhilfe');
   // False: Die IDE zeigt keine eigene Parameterhilfe; unser Hint übernimmt (#436).
   Result := False;
@@ -2119,7 +2409,9 @@ end;
 procedure TAtlasCodeInsightManager.OpenCompletion;
 begin
   if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Completion) or not ServerAvailable then
+  begin
     Exit;
+  end;
   Diagnose('Vervollständigung über eigene Taste');
   try
     // Start nur hier im Hauptthread (A-01).
@@ -2137,7 +2429,9 @@ end;
 procedure TAtlasCodeInsightManager.OpenSignature;
 begin
   if not FEnabled or TAtlasGuard.Disabled(TAtlasFeature.Signature) or not ServerAvailable then
+  begin
     Exit;
+  end;
   Diagnose('Parameterhilfe über eigene Taste');
   try
     // Start nur hier im Hauptthread (A-01).
@@ -2175,7 +2469,9 @@ end;
 procedure TAtlasCodeInsightManager.NotifySaved(const AFileName: string);
 begin
   if (FSession = nil) or not FSession.Initialized then
+  begin
     Exit;
+  end;
   try
     FSession.Saved(AFileName);
   except

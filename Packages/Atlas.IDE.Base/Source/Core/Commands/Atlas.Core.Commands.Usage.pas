@@ -238,11 +238,17 @@ begin
   Result := 0;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else if Value is TJSONString then
+  begin
     Result := StrToIntDef(TJSONString(Value).Value, 0);
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -252,7 +258,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := TJSONString(Value).Value;
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -262,7 +270,9 @@ begin
   Result := False;
   Value := AObject.GetValue(AName);
   if Value is TJSONBool then
+  begin
     Result := SameText(Value.Value, 'true');
+  end;
 end;
 
 /// <summary>Text einer vorhandenen Datei, ohne das atomare Ersetzen durch eine zweite IDE zu blockieren;
@@ -270,7 +280,9 @@ end;
 function ReadText(const AFileName: string): string;
 begin
   if not TAtlasDataFile.TryRead(AFileName, Result) then
+  begin
     raise EInOutError.Create('Datendatei nicht lesbar');
+  end;
 end;
 
 /// <summary>JSON-Objekt aus AJson; nil bei kaputtem Text oder anderem Wert. Gehört dem Aufrufer.</summary>
@@ -281,7 +293,9 @@ begin
   Result := nil;
   // Kein Objekt: gar nicht erst parsen.
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
+  begin
     Exit;
+  end;
   try
     Value := TJSONObject.ParseJSONValue(AJson);
   except
@@ -289,9 +303,13 @@ begin
       Value := nil;
   end;
   if Value is TJSONObject then
-    Result := TJSONObject(Value)
+  begin
+    Result := TJSONObject(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 /// <summary>Format in einer vorhandenen Datei ist höher als diese Fassung kennt.</summary>
@@ -301,7 +319,9 @@ var
 begin
   Result := False;
   if not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   Root := ParseObject(ReadText(AFileName));
   try
     Result := (Root <> nil) and (NumberOf(Root, 'format') > TAtlasCommandUsage.FormatVersion);
@@ -359,7 +379,9 @@ var
 begin
   Result := '';
   if ATime <= 0 then
+  begin
     Exit;
+  end;
   DecodeDate(ATime, Year, Month, Day);
   DecodeTime(ATime, Hour, Minute, Second, MSec);
   Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2d', [Year, Month, Day, Hour, Minute, Second]);
@@ -375,7 +397,9 @@ begin
   Text := Trim(AText);
   if (Length(Text) < 19) or (Text[5] <> '-') or (Text[8] <> '-') or not CharInSet(Text[11], ['T', 't', ' ']) or
     (Text[14] <> ':') or (Text[17] <> ':') then
+  begin
     Exit;
+  end;
   Year := StrToIntDef(Copy(Text, 1, 4), -1);
   Month := StrToIntDef(Copy(Text, 6, 2), -1);
   Day := StrToIntDef(Copy(Text, 9, 2), -1);
@@ -383,9 +407,13 @@ begin
   Minute := StrToIntDef(Copy(Text, 15, 2), -1);
   Second := StrToIntDef(Copy(Text, 18, 2), -1);
   if (Year < 1) or (Month < 1) or (Day < 1) or (Hour < 0) or (Minute < 0) or (Second < 0) then
+  begin
     Exit;
+  end;
   if not TryEncodeDate(Year, Month, Day, DatePart) or not TryEncodeTime(Hour, Minute, Second, 0, TimePart) then
+  begin
     Exit;
+  end;
   Result := DatePart + TimePart;
 end;
 
@@ -413,9 +441,13 @@ begin
     Entry.Keyboard := 0;
     Entry.LastUsed := 0;
     if Entry.HasTipState then
-      FEntries[Key] := Entry
+    begin
+      FEntries[Key] := Entry;
+    end
     else
+    begin
       FEntries.Remove(Key);
+    end;
   end;
 end;
 
@@ -425,8 +457,12 @@ var
 begin
   Result := False;
   for Entry in FEntries.Values do
+  begin
     if Entry.HasCounts then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasCommandUsage.Parse(const AJson: string): Boolean;
@@ -441,7 +477,9 @@ begin
   Root := ParseObject(AJson);
   try
     if Root = nil then
+    begin
       Exit;
+    end;
     if NumberOf(Root, 'format') > FormatVersion then
     begin
       // Eine neuere Fassung hat geschrieben: nichts lesen, nichts überschreiben.
@@ -454,10 +492,14 @@ begin
       begin
         Pair := Root.Pairs[Index];
         if (Pair.JsonString.Value <> 'format') and (Pair.JsonString.Value <> 'commands') then
+        begin
           Extra.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+        end;
       end;
       if Extra.Count > 0 then
+      begin
         FExtra := Extra.ToJSON;
+      end;
     finally
       Extra.Free;
     end;
@@ -468,7 +510,9 @@ begin
       begin
         Pair := Commands.Pairs[Index];
         if (Trim(Pair.JsonString.Value) = '') or not (Pair.JsonValue is TJSONObject) then
+        begin
           Continue;
+        end;
         Item := TJSONObject(Pair.JsonValue);
         Entry := TAtlasCommandUsageEntry.Create(Trim(Pair.JsonString.Value));
         // Zähler nur aus älteren Fassungen von #600; heute stehen sie in usage.json.
@@ -503,13 +547,19 @@ begin
     begin
       // Zähler gehören nach usage.json.
       if not Entry.HasTipState then
+      begin
         Continue;
+      end;
       Item := TJSONObject.Create;
       Commands.AddPair(Entry.Id, Item);
       if Entry.LastTip > 0 then
+      begin
         Item.AddPair('lastTip', TimeText(Entry.LastTip));
+      end;
       if Entry.Never then
+      begin
         Item.AddPair('never', TJSONBool.Create(True));
+      end;
     end;
     // Unbekannte Felder oberster Ebene behalten (Erweiterungen, z. B. "discover" von #757).
     if FExtra <> '' then
@@ -517,11 +567,13 @@ begin
       Extra := ParseObject(FExtra);
       try
         if Extra <> nil then
+        begin
           for Index := 0 to Extra.Count - 1 do
           begin
             Pair := Extra.Pairs[Index];
             Root.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
           end;
+        end;
       finally
         Extra.Free;
       end;
@@ -543,7 +595,9 @@ begin
   Root := ParseObject(AJson);
   try
     if Root = nil then
+    begin
       Exit;
+    end;
     if NumberOf(Root, 'format') > FormatVersion then
     begin
       // Neuere Fassung: Zähler nicht lesen und usage.json nicht überschreiben.
@@ -559,10 +613,14 @@ begin
       begin
         Pair := Commands.Pairs[Index];
         if (Trim(Pair.JsonString.Value) = '') or not (Pair.JsonValue is TJSONObject) then
+        begin
           Continue;
+        end;
         Item := TJSONObject(Pair.JsonValue);
         if not FEntries.TryGetValue(KeyOf(Pair.JsonString.Value), Entry) then
+        begin
           Entry := TAtlasCommandUsageEntry.Create(Trim(Pair.JsonString.Value));
+        end;
         Entry.Mouse := NumberOf(Item, 'mouse');
         Entry.Keyboard := NumberOf(Item, 'keyboard');
         Entry.LastUsed := TimeOf(TextOf(Item, 'lastUsed'));
@@ -589,13 +647,17 @@ begin
     for Entry in Entries do
     begin
       if not Entry.HasCounts then
+      begin
         Continue;
+      end;
       Item := TJSONObject.Create;
       Commands.AddPair(Entry.Id, Item);
       Item.AddPair('mouse', TJSONNumber.Create(Entry.Mouse));
       Item.AddPair('keyboard', TJSONNumber.Create(Entry.Keyboard));
       if Entry.LastUsed > 0 then
+      begin
         Item.AddPair('lastUsed', TimeText(Entry.LastUsed));
+      end;
     end;
     Result := Root.ToJSON;
   finally
@@ -610,7 +672,9 @@ begin
   Clear;
   Result := False;
   if AFileName = '' then
+  begin
     Exit;
+  end;
   Load := TAtlasDataFile.Load(AFileName, 'Tastenkürzel-Tipps',
     function(const AText: string): Boolean
     begin
@@ -632,14 +696,18 @@ begin
   LoadFromFile(ATipsFile);
   Counts := TAtlasDataLoad.Missing;
   if AUsageFile <> '' then
+  begin
     Counts := TAtlasDataFile.Load(AUsageFile, 'Befehlsnutzung',
       function(const AText: string): Boolean
       begin
         // Höheres Format ist nicht unbrauchbar, nur nicht zu überschreiben (ParseCounts setzt CountsWritable).
         Result := ParseCounts(AText) or not FCountsWritable;
       end);
+  end;
   if Counts = TAtlasDataLoad.Kept then
-    FCountsWritable := False
+  begin
+    FCountsWritable := False;
+  end
   else if (Counts <> TAtlasDataLoad.Loaded) and HasAnyCounts then
   begin
     // Ältere shortcut-tips.json mit Zählern: beim nächsten Speichern nach usage.json umziehen.
@@ -654,7 +722,9 @@ var
 begin
   Result := False;
   if (AFileName = '') or not FWritable then
+  begin
     Exit;
+  end;
   try
     // Eine neuere Fassung hat die Datei inzwischen geschrieben: nicht überschreiben.
     if FileExists(AFileName) then
@@ -685,7 +755,9 @@ function TAtlasCommandUsage.SaveCountsToFile(const AFileName: string): Boolean;
 begin
   Result := False;
   if (AFileName = '') or not FCountsWritable then
+  begin
     Exit;
+  end;
   try
     if NewerFormat(AFileName) then
     begin
@@ -705,16 +777,22 @@ end;
 procedure TAtlasCommandUsage.SaveToFiles(const ATipsFile, AUsageFile: string);
 begin
   if FCountsChanged then
+  begin
     SaveCountsToFile(AUsageFile);
+  end;
   if FTipsChanged then
+  begin
     SaveToFile(ATipsFile);
+  end;
 end;
 
 function TAtlasCommandUsage.Find(const AId: string; out AEntry: TAtlasCommandUsageEntry): Boolean;
 begin
   Result := FEntries.TryGetValue(KeyOf(AId), AEntry);
   if not Result then
+  begin
     AEntry := TAtlasCommandUsageEntry.Create(Trim(AId));
+  end;
 end;
 
 function TAtlasCommandUsage.Entry(const AId: string): TAtlasCommandUsageEntry;
@@ -727,14 +805,20 @@ var
   Entry, Old: TAtlasCommandUsageEntry;
 begin
   if Trim(AEntry.Id) = '' then
+  begin
     Exit;
+  end;
   Entry := AEntry;
   Entry.Id := Trim(Entry.Id);
   Find(Entry.Id, Old);
   if (Old.Mouse <> Entry.Mouse) or (Old.Keyboard <> Entry.Keyboard) or (Old.LastUsed <> Entry.LastUsed) then
+  begin
     FCountsChanged := True;
+  end;
   if (Old.LastTip <> Entry.LastTip) or (Old.Never <> Entry.Never) then
+  begin
     FTipsChanged := True;
+  end;
   FEntries.AddOrSetValue(KeyOf(Entry.Id), Entry);
 end;
 
@@ -744,12 +828,18 @@ var
 begin
   // tips.usageTracking aus: nichts zählen (#757).
   if not FTracking or (Trim(AId) = '') then
+  begin
     Exit;
+  end;
   Find(AId, Entry);
   if AInput = TAtlasCommandInput.Keyboard then
-    Inc(Entry.Keyboard)
+  begin
+    Inc(Entry.Keyboard);
+  end
   else
+  begin
     Inc(Entry.Mouse);
+  end;
   Entry.LastUsed := ANow;
   Put(Entry);
 end;
@@ -778,13 +868,17 @@ begin
   List := TList<TAtlasCommandUsageEntry>.Create;
   try
     for Entry in FEntries.Values do
+    begin
       List.Add(Entry);
+    end;
     List.Sort(TComparer<TAtlasCommandUsageEntry>.Construct(
       function(const A, B: TAtlasCommandUsageEntry): Integer
       begin
         Result := CompareText(A.Id, B.Id);
         if Result = 0 then
+        begin
           Result := CompareStr(A.Id, B.Id);
+        end;
       end));
     Result := List.ToArray;
   finally
@@ -799,14 +893,20 @@ var
 begin
   Result := '';
   if FExtra = '' then
+  begin
     Exit;
+  end;
   Extra := ParseObject(FExtra);
   try
     if Extra = nil then
+    begin
       Exit;
+    end;
     Value := Extra.GetValue(AName);
     if Value <> nil then
+    begin
       Result := Value.ToJSON;
+    end;
   finally
     Extra.Free;
   end;
@@ -819,7 +919,9 @@ var
   Pair: TJSONPair;
 begin
   if (Trim(AName) = '') or (AName = 'format') or (AName = 'commands') then
+  begin
     Exit;
+  end;
   Value := nil;
   if AJson <> '' then
   begin
@@ -831,13 +933,19 @@ begin
     end;
     // Kaputter Text: nichts ändern.
     if Value = nil then
+    begin
       Exit;
+    end;
   end;
   Extra := nil;
   if FExtra <> '' then
+  begin
     Extra := ParseObject(FExtra);
+  end;
   if Extra = nil then
+  begin
     Extra := TJSONObject.Create;
+  end;
   try
     Pair := Extra.RemovePair(AName);
     Pair.Free;
@@ -847,9 +955,13 @@ begin
       Value := nil;
     end;
     if Extra.Count > 0 then
-      FExtra := Extra.ToJSON
+    begin
+      FExtra := Extra.ToJSON;
+    end
     else
+    begin
       FExtra := '';
+    end;
     FTipsChanged := True;
   finally
     Value.Free;

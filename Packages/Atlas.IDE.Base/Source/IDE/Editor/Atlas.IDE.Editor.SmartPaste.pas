@@ -169,9 +169,15 @@ var
 begin
   Result := nil;
   if AValue is TJSONArray then
+  begin
     for Item in TJSONArray(AValue) do
+    begin
       if Item is TJSONString then
+      begin
         Result := Result + [Item.Value];
+      end;
+    end;
+  end;
 end;
 
 { TAtlasIdeSmartPaste }
@@ -209,7 +215,9 @@ class procedure TAtlasIdeSmartPaste.Install(const ABusy: TFunc<Boolean>; const A
   const AMessage: TProc<string>);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeSmartPaste.Create(ABusy, ASession, AMessage);
+  end;
 end;
 
 class procedure TAtlasIdeSmartPaste.Uninstall;
@@ -224,7 +232,9 @@ begin
   Settings := TAtlasIdeSettings.Current;
   Result := TAtlasPasteMode.Off;
   if Settings.Enabled then
+  begin
     Result := TAtlasSmartPaste.ModeOf(Settings.SmartPaste);
+  end;
 end;
 
 class function TAtlasIdeSmartPaste.Enabled: Boolean;
@@ -240,23 +250,33 @@ end;
 class procedure TAtlasIdeSmartPaste.Dismiss;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Inc(FInstance.FRequest);
   FInstance.FArmed := True;
   if FInstance.FWindow <> nil then
+  begin
     FInstance.FWindow.Dismiss;
+  end;
 end;
 
 class procedure TAtlasIdeSmartPaste.EditorModified;
 begin
   if (FInstance = nil) or FInstance.FWriting then
+  begin
     Exit;
+  end;
   // Jede Änderung verwirft ein offenes Fenster und eine laufende Anfrage.
   Inc(FInstance.FRequest);
   if FInstance.FWindow <> nil then
+  begin
     FInstance.FWindow.Dismiss;
+  end;
   if not FInstance.FArmed or not Enabled then
+  begin
     Exit;
+  end;
   FInstance.FTimer.Enabled := False;
   FInstance.FTimer.Enabled := True;
 end;
@@ -271,14 +291,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 procedure TAtlasIdeSmartPaste.TimerTick(Sender: TObject);
@@ -302,7 +326,9 @@ begin
     FClipText := '';
     try
       if Clipboard.HasFormat(CF_UNICODETEXT) then
+      begin
         FClipText := Clipboard.AsText;
+      end;
     except
       // Zwischenablage gerade von einem anderen Programm gesperrt: beim nächsten Mal.
       FClipSequence := 0;
@@ -324,24 +350,36 @@ var
 begin
   Mode := WantedMode;
   if (Mode = TAtlasPasteMode.Off) or not FArmed or IsBusy then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly or not IsPascal(View.Buffer.FileName) then
+  begin
     Exit;
+  end;
   if not ReadClipboard then
+  begin
     Exit;
+  end;
   Cursor := View.CursorPos;
   Line := Cursor.Line - 1;
   if Line + 1 < Length(FClipLines) then
+  begin
     Exit;
+  end;
   Tab := TAtlasEditorBuffer.TabWidth(View.Buffer);
   CaretLine := TAtlasEditorBuffer.LineText(View, Line + 1);
   Character := Min(TLspSession.ColumnToIndex(CaretLine, Cursor.Col, Tab), Length(CaretLine));
   SetLength(Lines, Length(FClipLines));
   for Index := 0 to High(Lines) do
+  begin
     Lines[Index] := TAtlasEditorBuffer.LineText(View, Line - High(Lines) + Index + 1);
+  end;
   if not TAtlasSmartPaste.Match(Lines, Character, FClipLines, Start) then
+  begin
     Exit;
+  end;
   // Behandelt: Eigene Änderungen und der Cursor danach zählen nicht noch einmal.
   FArmed := False;
   FFileName := View.Buffer.FileName;
@@ -350,9 +388,13 @@ begin
   FEndLine := Line;
   FEndCharacter := Character;
   if TAtlasSmartPaste.WantsIndent(Mode) then
+  begin
     Indent(View, FStartLine, FStartCharacter, FEndCharacter);
+  end;
   if TAtlasSmartPaste.WantsUses(Mode) and HasUses(FFileName) then
+  begin
     Ask(View);
+  end;
 end;
 
 procedure TAtlasIdeSmartPaste.Indent(const AView: IOTAEditView; AStartLine: Integer; var AStartCharacter,
@@ -375,10 +417,14 @@ begin
   begin
     Above := TAtlasEditorBuffer.LineText(AView, Index + 1);
     if Trim(Above) <> '' then
+    begin
       Break;
+    end;
   end;
   if not TAtlasSmartPaste.Reindent(Prefix, Above, FClipLines, Tab, TAtlasEditorBuffer.BlockIndent(Buffer), Edits) then
+  begin
     Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(Buffer);
   FWriting := True;
   try
@@ -390,7 +436,9 @@ begin
       Writer.DeleteTo(TAtlasEditorBuffer.ByteOffset(Text, AStartLine + Edit.Line, Edit.Remove));
       Utf8 := UTF8Encode(Edit.Indent);
       if Utf8 <> '' then
+      begin
         Writer.Insert(PAnsiChar(Utf8));
+      end;
     end;
     Writer := nil;
   finally
@@ -400,9 +448,13 @@ begin
   for Edit in Edits do
   begin
     if Edit.Line = 0 then
+    begin
       AStartCharacter := Length(Edit.Indent);
+    end;
     if Edit.Line = High(FClipLines) then
+    begin
       AEndCharacter := AEndCharacter + Length(Edit.Indent) - Edit.Remove;
+    end;
   end;
   // Cursor ans Ende des eingefügten Blocks.
   LastLine := TAtlasEditorBuffer.LineText(AView, AStartLine + High(FClipLines) + 1);
@@ -423,10 +475,14 @@ var
   Worker: TThread;
 begin
   if not Assigned(FSession) then
+  begin
     Exit;
+  end;
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   FText := TAtlasEditorBuffer.Text(AView.Buffer);
   Session.Sync(FFileName, FText);
@@ -458,12 +514,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.SmartPaste,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.Answered(Request, Analysis);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -479,10 +539,14 @@ begin
   // Nur die jüngste Antwort zählt; jede Änderung dazwischen hat sie verworfen.
   if (ARequest <> FRequest) or not AAnalysis.Valid or
     ((Length(AAnalysis.Units) = 0) and (Length(AAnalysis.Choices) = 0)) or IsBusy then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFileName) then
+  begin
     Exit;
+  end;
   if FWindow = nil then
   begin
     FWindow := TAtlasSmartPasteWindow.Create(nil);
@@ -493,7 +557,9 @@ begin
           procedure
           begin
             if FInstance <> nil then
+            begin
               FInstance.Accept;
+            end;
           end);
       end;
   end;
@@ -514,15 +580,21 @@ var
 begin
   Units := TAtlasSmartPaste.Selected(FWindow.Analysis);
   if Length(Units) = 0 then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   // Nur auf den Stand, für den die Antwort gilt.
   if (Session = nil) or (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, FFileName) or
     (TAtlasEditorBuffer.Text(View.Buffer) <> FText) then
+  begin
     Exit;
+  end;
   Edit := TLspWorkspaceEdit.FromJson(nil);
   Added := nil;
   Moved := nil;
@@ -544,12 +616,16 @@ begin
     on E: Exception do
     begin
       if Assigned(FMessage) then
+      begin
         FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteFailed, [E.Message]));
+      end;
       Exit;
     end;
   end;
   if Edit.IsEmpty then
+  begin
     Exit;
+  end;
   FWriting := True;
   try
     Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, TAtlasUnopenedPolicy.OpenInEditor,
@@ -558,7 +634,9 @@ begin
     FWriting := False;
   end;
   if not Assigned(FMessage) then
+  begin
     Exit;
+  end;
   if Outcome.Error <> '' then
   begin
     FMessage(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Outcome.Error]));
@@ -566,7 +644,9 @@ begin
   end;
   FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteDone, [string.Join(', ', Added)]));
   if Length(Moved) > 0 then
+  begin
     FMessage(TAtlasStrings.Fmt(TAtlasTextId.SmartPasteImplementation, [string.Join(', ', Moved)]));
+  end;
 end;
 
 procedure TAtlasIdeSmartPaste.KeyDown(const Msg: TMsg; var Handled: Boolean);
@@ -575,7 +655,9 @@ var
 begin
   Key := Word(Msg.wParam);
   if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  begin
     Exit;
+  end;
   if (FWindow <> nil) and FWindow.IsShown and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
     case Key of
       VK_RETURN:
@@ -617,26 +699,36 @@ begin
     end;
   // Jede andere Taste schließt das Fenster und erlaubt das nächste Einfügen.
   if FWindow <> nil then
+  begin
     FWindow.Dismiss;
+  end;
   FArmed := True;
 end;
 
 procedure TAtlasIdeSmartPaste.AppMessage(var Msg: TMsg; var Handled: Boolean);
 begin
   if TAtlasGuard.Disabled(TAtlasFeature.SmartPaste) then
+  begin
     Exit;
+  end;
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
         if IsEditorWindow(Msg.hwnd) then
+        begin
           KeyDown(Msg, Handled);
+        end;
       WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
         if (FWindow = nil) or not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
         begin
           if FWindow <> nil then
+          begin
             FWindow.Dismiss;
+          end;
           if IsEditorWindow(Msg.hwnd) then
+          begin
             FArmed := True;
+          end;
         end;
     end;
   except

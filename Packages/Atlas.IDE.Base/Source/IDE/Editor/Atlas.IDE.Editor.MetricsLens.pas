@@ -139,7 +139,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -152,11 +154,15 @@ var
   Services: INTACodeEditorServices;
 begin
   if FCurrent = Self then
+  begin
     FCurrent := nil;
+  end;
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   inherited Destroy;
@@ -167,7 +173,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 class function TAtlasEditorMetricsLens.Formats: TAtlasMetricFormats;
@@ -213,7 +221,9 @@ begin
   AMetrics := Default(TAtlasFileMetrics);
   Result := (FCurrent <> nil) and (FCurrent.FFetchedFile <> '') and SameText(FCurrent.FFetchedFile, AFileName);
   if Result then
+  begin
     AMetrics := FCurrent.FMetrics;
+  end;
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -252,9 +262,13 @@ begin
     end;
     View := nil;
     if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    begin
       View := Editors.TopView;
+    end;
     if (View = nil) or (View.Buffer = nil) or not IsSource(View.Buffer.FileName) then
+    begin
       Exit;
+    end;
     Text := TAtlasEditorBuffer.Text(View.Buffer);
     if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
     begin
@@ -265,10 +279,14 @@ begin
     end;
     Moment := GetTickCount;
     if (Moment - FChangedAt < QuietMs) or (Moment < FRetryAt) then
+    begin
       Exit;
+    end;
     // Gleicher Stand schon gefragt: nur ab und zu neu (Grenzwerte in atlas.json geändert).
     if SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (Moment - FFetchedAt < RefreshMs) then
+    begin
       Exit;
+    end;
     Fetch;
   except
     on E: Exception do
@@ -287,7 +305,9 @@ var
 begin
   Session := FSession();
   if Session = nil then
+  begin
     Exit;
+  end;
   // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
   if Session.Indexing(Percent) then
   begin
@@ -326,7 +346,9 @@ begin
   FShowing := Metrics.Enabled and ((Length(Metrics.Methods) > 0) or (Length(Metrics.Structures) > 0));
   // Nur für die Statusleiste geholt: Der Editor zeigt nichts davon.
   if Wanted(TAtlasIdeSettings.Current) then
+  begin
     Invalidate;
+  end;
 end;
 
 procedure TAtlasEditorMetricsLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -352,15 +374,23 @@ var
   X: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
+  begin
     Exit;
+  end;
   try
     if not Wanted(TAtlasIdeSettings.Current) then
+    begin
       Exit;
+    end;
     if not SameText(Context.FileName, FFetchedFile) then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) then
+    begin
       Exit;
+    end;
     Index := FMetrics.IndexAt(Context.LogicalLineNum - 1);
     if Index >= 0 then
     begin
@@ -376,24 +406,36 @@ begin
       // uses über uses.
       Structures := FMetrics.StructuresAt(Context.LogicalLineNum - 1);
       if Structures = nil then
+      begin
         Exit;
+      end;
       LensName := Structures[0].Name;
       if Structures[0].Kind = TAtlasStructureMetric.UsesCount then
+      begin
         LensName := 'uses';
+      end;
       Text := TAtlasMetricsLens.StructureCaption(Structures, FStructureFormats,
         TAtlasStrings.Text(TAtlasTextId.MetricsLensInheritanceAtLeast),
         TAtlasStrings.Text(TAtlasTextId.MetricsLensLimit));
       Over := False;
       for Structure in Structures do
+      begin
         if Structure.Value > Structure.Limit then
+        begin
           Over := True;
+        end;
+      end;
     end;
     Line := LineState.Text;
     // Nur, wenn die Zeile noch den Namen trägt (Text kann seit dem Abruf verschoben sein).
     if not TAtlasMetricsLens.LineMatches(Line, LensName) then
+    begin
       Exit;
+    end;
     if TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensMetrics, Context.FileName, LensName) then
+    begin
       Exit;
+    end;
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Column := Length(TrimRight(TAtlasPairs.DisplayLine(Line, TabWidth))) + 1;
     Cell := Context.EditorState.GetCharacterPosPx(Column + 3, Context.EditorLineNum);
@@ -402,13 +444,19 @@ begin
     Canvas := Context.Canvas;
     Sample := GetPixel(Canvas.Handle, Cell.Left, Rect.Top + 1);
     if Sample = CLR_INVALID then
-      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color))
+    begin
+      Back := TAtlasColor(ColorToRGB(Canvas.Brush.Color));
+    end
     else
+    begin
       Back := TAtlasColor(Sample);
+    end;
     Colors := TAtlasColors.ForBackground(Back);
     Tone := Colors.Muted;
     if Over then
+    begin
       Tone := Colors.Warn;
+    end;
     OldFont := TFont.Create;
     OldBrush := TBrush.Create;
     OldPen := TPen.Create;

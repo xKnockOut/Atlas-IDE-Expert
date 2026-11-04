@@ -201,7 +201,9 @@ end;
 procedure TAtlasTimingFrame.CopyClick(Sender: TObject);
 begin
   if Assigned(FOnCopy) then
+  begin
     FOnCopy(FFileNames.Checked);
+  end;
 end;
 
 procedure TAtlasTimingFrame.GridPaint(Sender: TObject);
@@ -231,9 +233,13 @@ var
     else
     begin
       if AHeader then
-        Canvas.Font.Color := ToColor(FColors.Muted)
+      begin
+        Canvas.Font.Color := ToColor(FColors.Muted);
+      end
       else
+      begin
         Canvas.Font.Color := ToColor(FColors.Text);
+      end;
       Canvas.Font.Style := [];
     end;
     Canvas.Brush.Style := bsClear;
@@ -241,9 +247,13 @@ var
     InflateRect(R, -Scale(4), 0);
     Flags := TextFlags;
     if ARight then
-      Flags := Flags or DT_RIGHT
+    begin
+      Flags := Flags or DT_RIGHT;
+    end
     else
+    begin
       Flags := Flags or DT_LEFT;
+    end;
     DrawText(Canvas.Handle, PChar(AText), Length(AText), R, Flags);
   end;
 
@@ -265,10 +275,14 @@ begin
   for Column := 0 to 4 do
   begin
     if Column = 0 then
-      Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight)
+    begin
+      Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight);
+    end
     else
+    begin
       Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
         mTop + RowHeight);
+    end;
     DrawCell(Cell, Texts[Column], False, Column > 0, True);
   end;
   Inc(mTop, RowHeight);
@@ -301,13 +315,19 @@ begin
     for Column := 0 to 4 do
     begin
       if Column = 0 then
-        Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight)
+      begin
+        Cell := Rect(Bounds.Left, mTop, Bounds.Right - 4 * ValueWidth, mTop + RowHeight);
+      end
       else
+      begin
         Cell := Rect(Bounds.Right - (5 - Column) * ValueWidth, mTop, Bounds.Right - (4 - Column) * ValueWidth,
           mTop + RowHeight);
+      end;
       // Quellen eingerückt unter dem Kontext.
       if (Column = 0) and (Row.Kind = TAtlasTimingRowKind.Provider) then
+      begin
         Inc(Cell.Left, Scale(12));
+      end;
       DrawCell(Cell, Texts[Column], Warns[Column], Column > 0, Column = 4);
     end;
     Inc(mTop, RowHeight);

@@ -140,7 +140,9 @@ class procedure TAtlasIdeCompilerSwitches.Start(const ASession: TAtlasCompilerSw
   const AStatus: TAtlasCompilerSwitchesStatusProc);
 begin
   if FInstance = nil then
+  begin
     FInstance := TAtlasIdeCompilerSwitches.Create(ASession, AStatus);
+  end;
   TAtlasIdeBuildSwitchesWindow.OnFrame :=
     procedure(AFrame: TAtlasBuildSwitchesFrame)
     begin
@@ -154,7 +156,9 @@ var
   Instance: TAtlasIdeCompilerSwitches;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   Instance := FInstance;
   FInstance := nil;
   // Statusfeld entfernen, solange der Empfänger noch da ist.
@@ -162,7 +166,9 @@ begin
   begin
     Instance.FStatusText := '';
     if Assigned(Instance.FStatus) then
+    begin
       Instance.FStatus('', '');
+    end;
   end;
   TAtlasIdeBuildSwitchesWindow.Release;
   Instance.Free;
@@ -176,7 +182,9 @@ end;
 class procedure TAtlasIdeCompilerSwitches.ApplySettings;
 begin
   if FInstance = nil then
+  begin
     Exit;
+  end;
   if not Enabled then
   begin
     TAtlasIdeBuildSwitchesWindow.Hide;
@@ -197,7 +205,9 @@ var
   Frame: TAtlasBuildSwitchesFrame;
 begin
   if (FInstance = nil) or not Enabled then
+  begin
     Exit;
+  end;
   Frame := TAtlasIdeBuildSwitchesWindow.Show;
   if Frame <> nil then
   begin
@@ -245,11 +255,15 @@ var
 begin
   Project := GetActiveProject;
   if (Project = nil) or (Project.ProjectOptions = nil) then
+  begin
     Exit;
+  end;
   Project.ProjectOptions.EditOptions;
   // Geänderte Optionen: gleich neu fragen.
   if FInstance <> nil then
+  begin
     FInstance.FFollow.Invalidate;
+  end;
 end;
 
 function TAtlasIdeCompilerSwitches.Wanted: Boolean;
@@ -261,7 +275,9 @@ procedure TAtlasIdeCompilerSwitches.Tick(Sender: TObject);
 begin
   ReapWorkers(False);
   if not Enabled or TAtlasGuard.Disabled(TAtlasFeature.Build) then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
     var
@@ -280,7 +296,9 @@ begin
       View := TAtlasEditorBuffer.ActiveView;
       FileName := '';
       if (View <> nil) and (View.Buffer <> nil) then
+      begin
         FileName := View.Buffer.FileName;
+      end;
       if not TAtlasSwitchFollow.Applies(FileName) then
       begin
         if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
@@ -293,12 +311,16 @@ begin
       end;
       Cursor := View.CursorPos;
       if Cursor.Line < 1 then
+      begin
         Exit;
+      end;
       Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(View, Cursor.Line), Cursor.Col,
         TAtlasEditorBuffer.TabWidth(View.Buffer));
       FFollow.Moved(FileName, Cursor.Line - 1, Character, GetTickCount64);
       if FFollow.Due(GetTickCount64) then
+      begin
         Ask;
+      end;
     end);
 end;
 
@@ -313,7 +335,9 @@ var
 begin
   Session := nil;
   if Assigned(FSession) then
+  begin
     Session := FSession();
+  end;
   if Session = nil then
   begin
     FHasView := False;
@@ -322,17 +346,23 @@ begin
   end;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) then
+  begin
     Exit;
+  end;
   Buffer := View.Buffer;
   FileName := FFollow.FileName;
   Line := FFollow.Line;
   Character := FFollow.Character;
   if not SameText(Buffer.FileName, FileName) then
+  begin
     Exit;
+  end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   Session.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
   if not FHasView then
+  begin
     ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
+  end;
   Inc(FRequest);
   Request := FRequest;
   Worker := TThread.CreateAnonymousThread(
@@ -347,12 +377,16 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.Build,
               procedure
               begin
                 if FInstance <> nil then
+                begin
                   FInstance.Accept(Request, FileName, Line, Answer, Known);
+                end;
               end);
+          end;
         end);
     end);
   Worker.FreeOnTerminate := False;
@@ -387,7 +421,9 @@ var
 begin
   // Nur die jüngste Antwort.
   if (ARequest <> FRequest) or not Enabled then
+  begin
     Exit;
+  end;
   if not AKnown then
   begin
     // Datei dem Server unbekannt oder Server zu langsam: Hinweis, beim nächsten Halt des Cursors wieder.
@@ -401,16 +437,22 @@ begin
   FViewLine := ALine;
   Frame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
   if Frame <> nil then
+  begin
     Fill(Frame);
+  end;
   UpdateStatus;
 end;
 
 procedure TAtlasIdeCompilerSwitches.Fill(AFrame: TAtlasBuildSwitchesFrame);
 begin
   if FHasView then
-    AFrame.SetView(FView, FViewFile, FViewLine)
+  begin
+    AFrame.SetView(FView, FViewFile, FViewLine);
+  end
   else
+  begin
     AFrame.SetMessage(FMessage);
+  end;
 end;
 
 procedure TAtlasIdeCompilerSwitches.ShowMessageText(const AText: string);
@@ -420,7 +462,9 @@ begin
   FMessage := AText;
   Frame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
   if Frame <> nil then
+  begin
     Fill(Frame);
+  end;
   UpdateStatus;
 end;
 
@@ -436,10 +480,14 @@ begin
     Hint := StatusHint(FView);
   end;
   if Text = FStatusText then
+  begin
     Exit;
+  end;
   FStatusText := Text;
   if Assigned(FStatus) then
+  begin
     FStatus(Text, Hint);
+  end;
 end;
 
 procedure TAtlasIdeCompilerSwitches.ReapWorkers(AWait: Boolean);
@@ -447,14 +495,18 @@ var
   Index: Integer;
 begin
   if FWorkers = nil then
+  begin
     Exit;
+  end;
   for Index := FWorkers.Count - 1 downto 0 do
+  begin
     if AWait or FWorkers[Index].Finished then
     begin
       FWorkers[Index].WaitFor;
       FWorkers[Index].Free;
       FWorkers.Delete(Index);
     end;
+  end;
 end;
 
 end.

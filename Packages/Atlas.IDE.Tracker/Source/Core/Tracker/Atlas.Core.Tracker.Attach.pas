@@ -247,9 +247,13 @@ begin
   Result.Kind := AKind;
   Result.Name := SafeName(AName);
   if SameText(ExtractFileExt(Result.Name), '.md') then
-    Result.MimeType := 'text/markdown; charset=utf-8'
+  begin
+    Result.MimeType := 'text/markdown; charset=utf-8';
+  end
   else
+  begin
     Result.MimeType := 'text/plain; charset=utf-8';
+  end;
   Result.Data := TEncoding.UTF8.GetBytes(AText);
 end;
 
@@ -272,14 +276,18 @@ function TAtlasAttachFile.Text: string;
 begin
   Result := '';
   if not IsImage then
+  begin
     Result := TEncoding.UTF8.GetString(Data);
+  end;
 end;
 
 function TAtlasAttachFile.DisplayName: string;
 begin
   Result := Caption;
   if Result = '' then
+  begin
     Result := Name;
+  end;
 end;
 
 class function TAtlasAttachFile.SafeName(const AName: string): string;
@@ -290,10 +298,16 @@ begin
   Result := TAtlasIssuePreview.SafeFileName(AName);
   // … dazu Zeichen, die einen Markdown-Verweis ![](Name) beenden; Leerzeichen trennen dort die Adresse vom Titel.
   for mIndex := 1 to Length(Result) do
+  begin
     if CharInSet(Result[mIndex], ['(', ')', '[', ']']) then
-      Result[mIndex] := '_'
+    begin
+      Result[mIndex] := '_';
+    end
     else if Result[mIndex] = ' ' then
+    begin
       Result[mIndex] := '-';
+    end;
+  end;
 end;
 
 class function TAtlasAttachFile.UniqueNames(const AFiles: TArray<TAtlasAttachFile>): TArray<TAtlasAttachFile>;
@@ -350,7 +364,9 @@ var
   begin
     mBytes := TEncoding.UTF8.GetBytes(AText);
     if Length(mBytes) > 0 then
+    begin
       mStream.WriteBuffer(mBytes[0], Length(mBytes));
+    end;
   end;
 
 begin
@@ -363,7 +379,9 @@ begin
         mFile.Name) + '"' + #13#10);
       Put('Content-Type: ' + mFile.MimeType + #13#10#13#10);
       if Length(mFile.Data) > 0 then
+      begin
         mStream.WriteBuffer(mFile.Data[0], Length(mFile.Data));
+      end;
       Put(#13#10);
     end;
     Put('--' + ABoundary + '--' + #13#10);
@@ -384,10 +402,14 @@ begin
   mLast := High(mLines);
   // Ein Zeilenumbruch am Ende ergibt keine eigene Zeile.
   if (mLast >= 0) and (mLines[mLast] = '') then
+  begin
     Dec(mLast);
+  end;
   mFirst := 0;
   if (ACount > 0) and (mLast + 1 > ACount) then
+  begin
     mFirst := mLast + 1 - ACount;
+  end;
   Result := TTextLines.JoinLines(Copy(mLines, mFirst, mLast - mFirst + 1), #13#10);
 end;
 
@@ -405,9 +427,13 @@ begin
       Result := TEncoding.BigEndianUnicode.GetString(ABytes, mStart, Length(ABytes) - mStart);
   else
     if TTextEncodingProbe.IsValidUtf8(ABytes, mStart) then
-      Result := TEncoding.UTF8.GetString(ABytes, mStart, Length(ABytes) - mStart)
+    begin
+      Result := TEncoding.UTF8.GetString(ABytes, mStart, Length(ABytes) - mStart);
+    end
     else
+    begin
       Result := TTextEncodingProbe.DecodeCp1252(ABytes, mStart);
+    end;
   end;
 end;
 
@@ -465,14 +491,22 @@ begin
       begin
         mName := Copy(APattern, mStart + 2, mEnd - mStart - 2);
         if SameText(mName, 'ProjectDir') then
-          mValue := ExcludeTrailingPathDelimiter(ExtractFilePath(AProjectFile))
+        begin
+          mValue := ExcludeTrailingPathDelimiter(ExtractFilePath(AProjectFile));
+        end
         else if SameText(mName, 'ProjectName') then
-          mValue := ChangeFileExt(ExtractFileName(AProjectFile), '')
+        begin
+          mValue := ChangeFileExt(ExtractFileName(AProjectFile), '');
+        end
         else
+        begin
           mValue := TAtlasTrackerFiles.Files.Environment(mName);
+        end;
         // Ohne Wert bleibt der Platzhalter stehen: Die Datei gibt es dann nicht, statt eines falschen Pfads.
         if mValue = '' then
+        begin
           mValue := Copy(APattern, mStart, mEnd - mStart + 1);
+        end;
         Result := Result + mValue;
         mStart := mEnd + 1;
         Continue;
@@ -526,12 +560,16 @@ begin
     begin
       mPath := Trim(Expand(Trim(mEntry), AProjectFile));
       if mPath = '' then
+      begin
         Continue;
+      end;
       // Ohne TPath: IsPathRooted und Combine lehnen * und ? als ungültige Zeichen ab.
       if (ExtractFileDrive(mPath) = '') and not mPath.StartsWith(PathDelim) then
       begin
         if mFolder = '' then
+        begin
           Continue;
+        end;
         mPath := IncludeTrailingPathDelimiter(mFolder) + mPath;
       end;
       if (Pos('*', mPath) > 0) or (Pos('?', mPath) > 0) then
@@ -543,7 +581,9 @@ begin
         mPath := '';
       end;
       if (mPath = '') or mSeen.ContainsKey(LowerCase(mPath)) then
+      begin
         Continue;
+      end;
       mSeen.Add(LowerCase(mPath), True);
       Result := Result + [mPath];
     end;
@@ -563,16 +603,24 @@ begin
   ANewHeight := AHeight;
   mMax := AMaxWidth;
   if mMax < MinWidth then
+  begin
     mMax := MinWidth;
+  end;
   if mMax > MaxWidth then
+  begin
     mMax := MaxWidth;
+  end;
   Result := (AWidth > mMax) and (AHeight > 0);
   if not Result then
+  begin
     Exit;
+  end;
   ANewWidth := mMax;
   ANewHeight := Round(Int64(AHeight) * mMax / AWidth);
   if ANewHeight < 1 then
+  begin
     ANewHeight := 1;
+  end;
 end;
 
 { TAtlasAttachComment }
@@ -585,12 +633,20 @@ begin
   mLines := TStringBuilder.Create;
   try
     if Trim(AComment) <> '' then
+    begin
       mLines.Append(Trim(AComment)).Append(#13#10#13#10);
+    end;
     for mFile in AFiles do
+    begin
       if mFile.IsImage then
-        mLines.Append('![](').Append(mFile.Name).Append(')').Append(#13#10)
+      begin
+        mLines.Append('![](').Append(mFile.Name).Append(')').Append(#13#10);
+      end
       else
+      begin
         mLines.Append('[').Append(mFile.DisplayName).Append('](').Append(mFile.Name).Append(')').Append(#13#10);
+      end;
+    end;
     Result := TrimRight(mLines.ToString);
   finally
     mLines.Free;
@@ -605,13 +661,17 @@ var
 begin
   Result := AText;
   if Length(Result) <= AMax then
+  begin
     Exit;
+  end;
   if ATail then
   begin
     Result := Copy(Result, Length(Result) - AMax + 1, AMax);
     mBreak := Pos(#10, Result);
     if (mBreak > 0) and (mBreak < Length(Result)) then
+    begin
       Result := Copy(Result, mBreak + 1, MaxInt);
+    end;
     Result := '…' + #13#10 + Result;
   end
   else
@@ -619,7 +679,9 @@ begin
     Result := Copy(Result, 1, AMax);
     mBreak := LastDelimiter(#10, Result);
     if mBreak > 1 then
+    begin
       Result := Copy(Result, 1, mBreak - 1);
+    end;
     Result := TrimRight(Result) + #13#10 + '…';
   end;
 end;
@@ -636,35 +698,49 @@ begin
   mFiles := nil;
   mTexts := nil;
   for mFile in AFiles do
+  begin
     if not mFile.IsImage then
     begin
       mFiles := mFiles + [mFile];
       mTexts := mTexts + [TrimRight(mFile.Text)];
     end;
+  end;
   // Zu lang: jedem Text gleich viel lassen (mindestens MinTextLength).
   mTotal := Length(AComment);
   for mIndex := 0 to High(mTexts) do
+  begin
     Inc(mTotal, Length(mTexts[mIndex]) + Length(mFiles[mIndex].DisplayName) + 32);
+  end;
   if (AMaxLength > 0) and (mTotal > AMaxLength) and (Length(mTexts) > 0) then
   begin
     mBudget := (AMaxLength - Length(AComment)) div Length(mTexts) - Length(mTexts) * 64;
     if mBudget < MinTextLength then
+    begin
       mBudget := MinTextLength;
+    end;
     for mIndex := 0 to High(mTexts) do
+    begin
       mTexts[mIndex] := Clip(mTexts[mIndex], mBudget, not mFiles[mIndex].IsMarkdown);
+    end;
   end;
   mLines := TStringBuilder.Create;
   try
     if Trim(AComment) <> '' then
+    begin
       mLines.Append(Trim(AComment)).Append(#13#10#13#10);
+    end;
     for mIndex := 0 to High(mFiles) do
     begin
       mLines.Append('**').Append(mFiles[mIndex].DisplayName).Append('**').Append(#13#10#13#10);
       if mFiles[mIndex].IsMarkdown then
-        mLines.Append(mTexts[mIndex])
+      begin
+        mLines.Append(mTexts[mIndex]);
+      end
       else
+      begin
         mLines.Append('```text').Append(#13#10).Append(TTextAnonymizer.FenceSafe(mTexts[mIndex])).Append(#13#10)
           .Append('```');
+      end;
       mLines.Append(#13#10#13#10);
     end;
     Result := TrimRight(mLines.ToString);
@@ -709,7 +785,9 @@ begin
   Result.Error := TAtlasCiFetchError.NotConfigured;
   if (AProvider = nil) or (ATransport = nil) or (ARequest.Key = '') or
     not Supports(AProvider, IAtlasTrackerAttach, mAttach) or not Supports(ATransport, IAtlasCiPost, mSend) then
+  begin
     Exit;
+  end;
   mFiles := TAtlasAttachFile.UniqueNames(ARequest.Files);
   Result.Error := TAtlasCiFetchError.None;
   if mAttach.CanUpload then
@@ -740,10 +818,16 @@ begin
   Result.Page := AProvider.IssuePage(ARequest.Target, ARequest.Key);
   mTexts := nil;
   for mFile in mFiles do
+  begin
     if mFile.IsImage then
-      Result.Images := Result.Images + [mFile]
+    begin
+      Result.Images := Result.Images + [mFile];
+    end
     else
+    begin
       mTexts := mTexts + [mFile];
+    end;
+  end;
   if (Length(mTexts) > 0) or (ARequest.WithComment and (Trim(ARequest.Comment) <> '')) then
   begin
     if not mAttach.Comment(ARequest.Target, mSend, ARequest.Key, mAttach.CommentText(ARequest.Comment, mTexts),
@@ -765,7 +849,9 @@ begin
   AStatus := 0;
   AError := TAtlasCiFetchError.NotConfigured;
   if (AUrl = '') or (ASend = nil) then
+  begin
     Exit;
+  end;
   if not ASend.Post(AUrl, AContentType, ABody, ATimeoutMs, AStatus, mText, AError) then
   begin
     AStatus := 0;
@@ -827,7 +913,9 @@ end;
 procedure TAtlasAttachTemp.Cleanup;
 begin
   if FFolder = '' then
+  begin
     Exit;
+  end;
   // Eine Datei ist noch offen (z. B. im Bildbetrachter): PruneStale räumt beim nächsten Start auf.
   TAtlasTrackerFiles.Files.DeleteFolder(FFolder);
   FFolder := '';

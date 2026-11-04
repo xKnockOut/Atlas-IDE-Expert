@@ -205,7 +205,9 @@ begin
   FNote.WordWrap := True;
   FNote.Caption := '';
   if AMode = TAtlasTimeBookMode.Comment then
+  begin
     ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookLocalOnly), False);
+  end;
 
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
@@ -235,8 +237,12 @@ begin
   // Unter das bisher unterste Element (alTop stapelt nach Top).
   mTop := 0;
   for mIndex := 0 to ControlCount - 1 do
+  begin
     if Controls[mIndex].Top + Controls[mIndex].Height + 1 > mTop then
+    begin
       mTop := Controls[mIndex].Top + Controls[mIndex].Height + 1;
+    end;
+  end;
   Result := TPanel.Create(Self);
   Result.Parent := Self;
   Result.Align := alTop;
@@ -277,9 +283,13 @@ end;
 procedure TAtlasTrackerTimeDialog.ShowNote(const AText: string; AError: Boolean);
 begin
   if AError then
-    FNote.Font.Color := clRed
+  begin
+    FNote.Font.Color := clRed;
+  end
   else
+  begin
     FNote.Font.Color := clWindowText;
+  end;
   FNote.Caption := AText;
 end;
 
@@ -303,7 +313,9 @@ var
 begin
   // Die Frage folgt der eingegebenen Dauer.
   if TAtlasTimeRounding.ParseDuration(FDuration.Text, mMinutes) then
+  begin
     FQuestion.Caption := QuestionText(FKey, mMinutes);
+  end;
 end;
 
 function TAtlasTrackerTimeDialog.Item(out AItem: TAtlasTrackerWorkItem): Boolean;
@@ -314,7 +326,9 @@ begin
   Result := TAtlasTimeRounding.ParseDuration(FDuration.Text, mMinutes);
   mType := '';
   if FMode = TAtlasTimeBookMode.WorkItem then
+  begin
     mType := FWorkType.Value;
+  end;
   AItem := TAtlasTrackerWorkItem.Create(mMinutes, FDate, mType,
     Trim(StringReplace(FText.Text, #13#10, #10, [rfReplaceAll])));
 end;
@@ -336,7 +350,9 @@ var
   mDialog: TAtlasTrackerTimeDialog;
 begin
   if FSending or FTrackingOff then
+  begin
     Exit;
+  end;
   if not Item(FItem) then
   begin
     ShowNote(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.TimeBookInvalid), True);
@@ -382,7 +398,9 @@ end;
 procedure TAtlasTrackerTimeDialog.DiscardClick(Sender: TObject);
 begin
   if FSending then
+  begin
     Exit;
+  end;
   FDecision := TAtlasTimeDecision.Discarded;
   ModalResult := mrAbort;
 end;
@@ -403,7 +421,9 @@ begin
   try
     mDialog.OnBook := AOnBook;
     if Assigned(APrepare) then
+    begin
       APrepare(mDialog);
+    end;
     mDialog.ShowModal;
     Result := mDialog.Decision;
     AItem := mDialog.BookedItem;

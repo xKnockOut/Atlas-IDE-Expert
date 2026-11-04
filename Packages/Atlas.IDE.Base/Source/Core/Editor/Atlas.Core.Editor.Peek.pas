@@ -206,9 +206,13 @@ begin
       begin
         Text := FLines[FLine];
         while (FPos <= Length(Text)) and (Text[FPos] <> '}') do
+        begin
           Inc(FPos);
+        end;
         if FPos <= Length(Text) then
+        begin
           Break;
+        end;
         Inc(FLine);
         FPos := 1;
       end;
@@ -222,9 +226,13 @@ begin
       begin
         Text := FLines[FLine];
         while (FPos < Length(Text)) and not ((Text[FPos] = '*') and (Text[FPos + 1] = ')')) do
+        begin
           Inc(FPos);
+        end;
         if FPos < Length(Text) then
+        begin
           Break;
+        end;
         Inc(FLine);
         FPos := 1;
       end;
@@ -240,7 +248,9 @@ begin
     begin
       Inc(FPos);
       while (FPos <= Length(Text)) and (Text[FPos] <> '''') do
+      begin
         Inc(FPos);
+      end;
       Inc(FPos);
       Continue;
     end;
@@ -250,7 +260,9 @@ begin
       Start := FPos;
       Inc(FPos);
       while (FPos <= Length(Text)) and TTextChars.IsIdentChar(Text[FPos]) do
+      begin
         Inc(FPos);
+      end;
       AToken := LowerCase(Copy(Text, Start, FPos - Start));
     end
     else
@@ -283,8 +295,12 @@ var
   Word: string;
 begin
   for Word in Directives do
+  begin
     if Word = AToken then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -302,16 +318,24 @@ begin
   begin
     Result := Line;
     if (Token = '(') or (Token = '[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if (Token = ')') or (Token = ']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Token = 'external') or (Token = 'forward') then
-      AHasBody := False
+    begin
+      AHasBody := False;
+    end
     else if (Token = ';') and (Depth <= 0) then
     begin
       // Direktiven nach dem ";": "procedure A; overload; virtual;" oder in den Folgezeilen.
       if not AScanner.Peek(Following) or not IsDirective(Following) then
+      begin
         Exit;
+      end;
     end;
   end;
 end;
@@ -341,9 +365,13 @@ begin
   begin
     Text := Trim(ALines[Result - 1]);
     if (Copy(Text, 1, 3) = '///') or ((Text <> '') and (Text[1] = '[') and (Text[Length(Text)] = ']')) then
-      Dec(Result)
+    begin
+      Dec(Result);
+    end
     else
+    begin
       Break;
+    end;
   end;
 end;
 
@@ -355,7 +383,9 @@ var
   HasBody: Boolean;
 begin
   if (ALine < 0) or (ALine > High(ALines)) then
+  begin
     Exit(ALine);
+  end;
   Scanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
   Result := ALine;
   Previous := '';
@@ -365,13 +395,19 @@ begin
   begin
     Result := Line;
     if (Token = '(') or (Token = '[') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if (Token = ')') or (Token = ']') then
-      Dec(Parens)
+    begin
+      Dec(Parens);
+    end
     else if (Token = ';') and (Parens <= 0) then
     begin
       if not Scanner.Peek(Following) or not IsDirective(Following) then
+      begin
         Exit;
+      end;
       // Direktiven: wie ein Routinenkopf weiter.
       Exit(HeaderEnd(Scanner, Line, HasBody));
     end
@@ -379,13 +415,21 @@ begin
       (Token = 'interface') or (Token = 'dispinterface') or (Token = 'object') or (Token = 'packed')) then
     begin
       if Token = 'packed' then
+      begin
         if not Scanner.Next(Token, Line) then
+        begin
           Exit;
+        end;
+      end;
       // "class of", "class;" und "class(TBase);" sind keine Blöcke.
       if not Scanner.Peek(Following) then
+      begin
         Exit;
+      end;
       if (Following = 'of') or (Following = ';') then
+      begin
         Exit(HeaderEnd(Scanner, Line, HasBody));
+      end;
       if Following = '(' then
       begin
         Depth := 0;
@@ -393,16 +437,22 @@ begin
         begin
           Result := Line;
           if Token = '(' then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Token = ')' then
           begin
             Dec(Depth);
             if Depth = 0 then
+            begin
               Break;
+            end;
           end;
         end;
         if Scanner.Peek(Following) and (Following = ';') then
+        begin
           Exit(HeaderEnd(Scanner, Line, HasBody));
+        end;
       end;
       // Block bis zum passenden end; darin zählen nur weitere record und "= class/interface".
       Depth := 1;
@@ -416,16 +466,22 @@ begin
           if Depth = 0 then
           begin
             if Scanner.Peek(Following) and (Following = ';') then
+            begin
               Scanner.Next(Token, Result);
+            end;
             Exit;
           end;
         end
         else if Token = 'record' then
-          Inc(Depth)
+        begin
+          Inc(Depth);
+        end
         else if (Previous = '=') and ((Token = 'class') or (Token = 'interface') or (Token = 'object')) then
         begin
           if Scanner.Peek(Following) and (Following <> 'of') and (Following <> ';') and (Following <> '(') then
-            Inc(Depth)
+          begin
+            Inc(Depth);
+          end
           else if Following = '(' then
           begin
             // Verschachtelte Klasse mit Vorfahr: Block, außer "class(TBase);".
@@ -433,16 +489,22 @@ begin
             while Scanner.Next(Token, Line) do
             begin
               if Token = '(' then
-                Inc(Parens)
+              begin
+                Inc(Parens);
+              end
               else if Token = ')' then
               begin
                 Dec(Parens);
                 if Parens = 0 then
+                begin
                   Break;
+                end;
               end;
             end;
             if Scanner.Peek(Following) and (Following <> ';') then
+            begin
               Inc(Depth);
+            end;
           end;
         end;
         Previous := Token;
@@ -461,11 +523,15 @@ var
   HasBody, Started: Boolean;
 begin
   if (ALine < 0) or (ALine > High(ALines)) then
+  begin
     Exit(ALine);
+  end;
   Scanner.Init(ALines, ALine, ALine + MaxBlockLines - 1);
   Result := HeaderEnd(Scanner, ALine, HasBody);
   if not HasBody then
+  begin
     Exit;
+  end;
   Depth := 0;
   // Lokale Routinen vor dem Rumpf: Ihr end bringt die Tiefe auf 0, beendet aber nicht den Rumpf.
   Pending := 0;
@@ -481,14 +547,18 @@ begin
       // Lokale Routine: ihren Kopf überspringen; external/forward hat keinen eigenen Rumpf.
       HeaderEnd(Scanner, Line, HasBody);
       if HasBody then
+      begin
         Inc(Pending);
+      end;
       Previous := ';';
       Continue;
     end;
     if (Token = 'begin') or (Token = 'asm') or (Token = 'try') or (Token = 'case') or (Token = 'record') then
     begin
       if (Depth = 0) and ((Token = 'begin') or (Token = 'asm')) and (Pending = 0) then
+      begin
         Started := True;
+      end;
       Inc(Depth);
     end
     else if Token = 'end' then
@@ -500,11 +570,15 @@ begin
         if Started then
         begin
           if Scanner.Peek(Token) and (Token = ';') then
+          begin
             Scanner.Next(Token, Result);
+          end;
           Exit;
         end;
         if Pending > 0 then
+        begin
           Dec(Pending);
+        end;
       end;
     end;
     Previous := Token;
@@ -520,8 +594,12 @@ var
   Kind: Integer;
 begin
   for Kind in RoutineKinds do
+  begin
     if Kind = AKind then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -543,7 +621,9 @@ begin
   end;
   AOwner := LowerCase(AOwner);
   if (AOwner = 'interface') or (AOwner = 'implementation') then
+  begin
     AOwner := '';
+  end;
 end;
 
 class function TAtlasPeek.Overloads(const ASymbols: TArray<TAtlasSymbol>; ALine: Integer): TArray<TAtlasPeekPlace>;
@@ -555,28 +635,40 @@ begin
   Result := nil;
   Found := -1;
   for Index := 0 to High(ASymbols) do
+  begin
     if (ASymbols[Index].Line = ALine) and IsRoutine(ASymbols[Index].Kind) then
     begin
       Found := Index;
       Break;
     end;
+  end;
   if Found < 0 then
+  begin
     Exit;
+  end;
   SplitName(ASymbols[Found], Name, Owner);
   for Index := 0 to High(ASymbols) do
   begin
     if not IsRoutine(ASymbols[Index].Kind) then
+    begin
       Continue;
+    end;
     SplitName(ASymbols[Index], OtherName, OtherOwner);
     if not SameText(OtherName, Name) or (OtherOwner <> Owner) then
+    begin
       Continue;
+    end;
     Place := TAtlasPeekPlace.Create(ASymbols[Index].FileName, ASymbols[Index].Line, ASymbols[Index].Character);
     // Nach Zeile einsortieren, doppelte Zeilen nur einmal.
     Other := Length(Result);
     while (Other > 0) and (Result[Other - 1].Line > Place.Line) do
+    begin
       Dec(Other);
+    end;
     if (Other > 0) and (Result[Other - 1].Line = Place.Line) then
+    begin
       Continue;
+    end;
     Insert(Place, Result, Other);
   end;
 end;
@@ -596,7 +688,9 @@ begin
   for Index := 0 to High(APlaces) do
   begin
     if Used[Index] then
+    begin
       Continue;
+    end;
     Used[Index] := True;
     Target.Place := APlaces[Index];
     Target.HasBody := False;
@@ -607,6 +701,7 @@ begin
       Target.HasBody := True;
       Target.Body := Resolved;
       for Other := 0 to High(APlaces) do
+      begin
         if APlaces[Other].SameLine(Resolved) then
         begin
           Target.HasBody := not Used[Other];
@@ -617,6 +712,7 @@ begin
           end;
           Break;
         end;
+      end;
     end;
     Result[Count] := Target;
     Inc(Count);
@@ -631,15 +727,23 @@ var
   Width: Integer;
 begin
   if Pos(#9, AText) = 0 then
+  begin
     Exit(AText);
+  end;
   Width := Max(1, ATabWidth);
   Builder := TStringBuilder.Create;
   try
     for Ch in AText do
+    begin
       if Ch = #9 then
-        Builder.Append(' ', Width - Builder.Length mod Width)
+      begin
+        Builder.Append(' ', Width - Builder.Length mod Width);
+      end
       else
+      begin
         Builder.Append(Ch);
+      end;
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -650,7 +754,9 @@ class function TAtlasPeek.Excerpt(const ALine: string): string;
 begin
   Result := Trim(StringReplace(ALine, #9, ' ', [rfReplaceAll]));
   if Length(Result) > MaxExcerpt then
+  begin
     Result := Copy(Result, 1, MaxExcerpt - 1) + '…';
+  end;
 end;
 
 function CodeRow(const AFileName: string; const ALines: TArray<string>; ALine, ATabWidth: Integer;
@@ -668,13 +774,19 @@ begin
   Result.NameStart := -1;
   Result.NameStop := -1;
   if not Result.Target then
+  begin
     Exit;
+  end;
   First := Max(0, Min(ATarget.Character, Length(Original)));
   Last := First;
   while (First > 0) and TTextChars.IsIdentChar(Original[First]) do
+  begin
     Dec(First);
+  end;
   while (Last < Length(Original)) and TTextChars.IsIdentChar(Original[Last + 1]) do
+  begin
     Inc(Last);
+  end;
   if Last > First then
   begin
     Result.NameStart := Length(TAtlasPeek.ExpandTabs(Copy(Original, 1, First), ATabWidth));
@@ -730,12 +842,16 @@ var
 begin
   Result := nil;
   if (APlace.Line < 0) or (APlace.Line > High(ALines)) then
+  begin
     Exit;
+  end;
   First := Max(0, APlace.Line - ReferenceBefore);
   Last := Min(High(ALines), APlace.Line + ReferenceAfter);
   SetLength(Result, Last - First + 1);
   for Line := First to Last do
+  begin
     Result[Line - First] := CodeRow(APlace.FileName, ALines, Line, ATabWidth, APlace, True);
+  end;
 end;
 
 { TAtlasPeekView }
@@ -770,7 +886,9 @@ end;
 procedure TAtlasPeekView.Select(AIndex: Integer);
 begin
   if Count = 0 then
+  begin
     Exit;
+  end;
   FSelected := EnsureRange(AIndex, 0, Count - 1);
   FTop := 0;
 end;
@@ -778,20 +896,26 @@ end;
 procedure TAtlasPeekView.SelectNext;
 begin
   if FSelected < Count - 1 then
+  begin
     Select(FSelected + 1);
+  end;
 end;
 
 procedure TAtlasPeekView.SelectPrevious;
 begin
   if FSelected > 0 then
+  begin
     Select(FSelected - 1);
+  end;
 end;
 
 function TAtlasPeekView.MaxTop: Integer;
 begin
   Result := 0;
   if Count > 0 then
+  begin
     Result := Max(0, Length(Current.Rows) - FPageRows);
+  end;
 end;
 
 procedure TAtlasPeekView.SetTop(AValue: Integer);
@@ -827,19 +951,27 @@ var
 begin
   Result := Default(TAtlasPeekPlace);
   if Count = 0 then
+  begin
     Exit;
+  end;
   Result := Current.Target.Place;
   Rows := Current.Rows;
   // Zeigt der Ausschnitt die Zielzeile nicht mehr, öffnet Enter die oberste sichtbare Zeile.
   for Index := FTop to Min(High(Rows), FTop + FPageRows - 1) do
+  begin
     if Rows[Index].Target then
+    begin
       Exit;
+    end;
+  end;
   for Index := FTop to High(Rows) do
+  begin
     if Rows[Index].Kind = TAtlasPeekRowKind.Code then
     begin
       Result := TAtlasPeekPlace.Create(Rows[Index].FileName, Rows[Index].Line, 0);
       Exit;
     end;
+  end;
 end;
 
 end.

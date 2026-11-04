@@ -90,7 +90,9 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Exit;
+  end;
   Key := Services.GetBaseRegistryKey + ASubKey;
   Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
   try
@@ -99,15 +101,21 @@ begin
       // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
       State.Enabled := True;
       if Registry.OpenKey(Key, True) and Registry.ValueExists(AValueName) then
+      begin
         State.Enabled := SameText(Registry.ReadString(AValueName), 'True');
+      end;
       Registry.CloseKey;
       State.DisabledByAtlas := False;
       if Registry.OpenKey(AtlasRegistryKey, True) then
       begin
         if Registry.ValueExists(AMarker) then
-          State.DisabledByAtlas := Registry.ReadInteger(AMarker) <> 0
+        begin
+          State.DisabledByAtlas := Registry.ReadInteger(AMarker) <> 0;
+        end
         else if (ALegacyMarker <> '') and Registry.ValueExists(ALegacyMarker) then
+        begin
           State.DisabledByAtlas := Registry.ReadInteger(ALegacyMarker) <> 0;
+        end;
       end;
       Registry.CloseKey;
       Next := TAtlasGuides.Switch(State, AOwn);
@@ -116,9 +124,13 @@ begin
         if Registry.OpenKey(Key, True) then
         begin
           if Next.Enabled then
-            Registry.WriteString(AValueName, 'True')
+          begin
+            Registry.WriteString(AValueName, 'True');
+          end
           else
+          begin
             Registry.WriteString(AValueName, 'False');
+          end;
           Result := True;
         end;
         Registry.CloseKey;
@@ -127,9 +139,13 @@ begin
       if Registry.OpenKey(AtlasRegistryKey, True) then
       begin
         if (Next.DisabledByAtlas <> State.DisabledByAtlas) or not Registry.ValueExists(AMarker) then
+        begin
           Registry.WriteInteger(AMarker, Ord(Next.DisabledByAtlas));
+        end;
         if (ALegacyMarker <> '') and Registry.ValueExists(ALegacyMarker) then
+        begin
           Registry.DeleteValue(ALegacyMarker);
+        end;
         Registry.CloseKey;
       end;
     except
@@ -148,7 +164,9 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result := Services.GetBaseRegistryKey;
+  end;
 end;
 
 /// <summary>Unterschlüssel von Code Insight, die AValueName schon tragen (#1246).</summary>
@@ -160,21 +178,27 @@ var
 begin
   Result := nil;
   if BaseKey = '' then
+  begin
     Exit;
+  end;
   mRegistry := TRegistry.Create(KEY_READ);
   mNames := TStringList.Create;
   try
     mRegistry.RootKey := HKEY_CURRENT_USER;
     try
       if not mRegistry.OpenKeyReadOnly(BaseKey + TAtlasCodeInsightKeys.cRoot) then
+      begin
         Exit;
+      end;
       mRegistry.GetKeyNames(mNames);
       mRegistry.CloseKey;
       for mName in mNames do
       begin
         if mRegistry.OpenKeyReadOnly(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mName) and
           mRegistry.ValueExists(AValueName) then
+        begin
           Result := Result + [mName];
+        end;
         mRegistry.CloseKey;
       end;
     except
@@ -193,7 +217,9 @@ function LegacyMarker(const AMarker, ASubKey: string): string;
 begin
   Result := '';
   if TAtlasCodeInsightKeys.UsesLegacyMarker(BaseKey, ASubKey) then
+  begin
     Result := AMarker;
+  end;
 end;
 
 class function TAtlasIdeStructureSwitch.ApplyCodeInsight(const AValueName, AMarker: string; AOwn: Boolean): Boolean;
@@ -202,9 +228,13 @@ var
 begin
   Result := False;
   for mSubKey in TAtlasCodeInsightKeys.Targets(BaseKey, KeysWithValue(AValueName)) do
+  begin
     if ApplySwitch(TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, AValueName,
       TAtlasCodeInsightKeys.Marker(AMarker, BaseKey, mSubKey), LegacyMarker(AMarker, mSubKey), AOwn) then
+    begin
       Result := True;
+    end;
+  end;
 end;
 
 class function TAtlasIdeStructureSwitch.Apply(AOwnGuides: Boolean): Boolean;
@@ -231,14 +261,18 @@ begin
   // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
   Result := True;
   if BaseKey = '' then
+  begin
     Exit;
+  end;
   Registry := TRegistry.Create(KEY_READ);
   try
     Registry.RootKey := HKEY_CURRENT_USER;
     // Die IDE liest nur den Ort ihrer Version (#1246); bei unbekannter Version der erste bekannte.
     if Registry.OpenKeyReadOnly(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' +
       TAtlasCodeInsightKeys.Targets(BaseKey, nil)[0]) and Registry.ValueExists(ErrorInsightValue) then
+    begin
       Result := not SameText(Registry.ReadString(ErrorInsightValue), 'False');
+    end;
   finally
     Registry.Free;
   end;
@@ -248,7 +282,9 @@ class function TAtlasIdeStructureSwitch.ErrorInsight: Boolean;
 begin
   Result := ReadErrorInsight;
   if ErrorInsightAtStart < 0 then
+  begin
     ErrorInsightAtStart := Ord(Result);
+  end;
 end;
 
 class function TAtlasIdeStructureSwitch.ErrorInsightChanged: Boolean;
@@ -263,7 +299,9 @@ var
 begin
   Result := False;
   if BaseKey = '' then
+  begin
     Exit;
+  end;
   // Stand vor der Änderung merken, falls noch nicht gelesen.
   ErrorInsight;
   Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
@@ -276,15 +314,21 @@ begin
         if Registry.OpenKey(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, True) then
         begin
           if AEnabled then
-            Registry.WriteString(ErrorInsightValue, 'True')
+          begin
+            Registry.WriteString(ErrorInsightValue, 'True');
+          end
           else
+          begin
             Registry.WriteString(ErrorInsightValue, 'False');
+          end;
           Result := True;
         end;
         Registry.CloseKey;
       end;
       if Result and Registry.OpenKey(AtlasRegistryKey, True) then
+      begin
         Registry.WriteInteger(ErrorInsightMarker, Ord(not AEnabled));
+      end;
       Registry.CloseKey;
     except
       // Ohne Schreibrecht bleibt die IDE, wie sie ist.
@@ -307,22 +351,42 @@ begin
   OwnTooltip := Settings.Enabled and Settings.HoverTooltip;
   Texts := nil;
   if Apply(Own) then
+  begin
     if Own then
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.PairGuidesIdeOff)]
+    begin
+      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.PairGuidesIdeOff)];
+    end
     else
+    begin
       Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.PairGuidesIdeOn)];
+    end;
+  end;
   if ApplyHelpInsight(OwnTooltip) then
+  begin
     if OwnTooltip then
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOff)]
+    begin
+      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOff)];
+    end
     else
+    begin
       Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.HelpInsightIdeOn)];
+    end;
+  end;
   if ApplyTooltipWatches(OwnTooltip and Settings.DebugHoverValues) then
+  begin
     if OwnTooltip and Settings.DebugHoverValues then
-      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOff)]
+    begin
+      Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOff)];
+    end
     else
+    begin
       Texts := Texts + [TAtlasStrings.Text(TAtlasTextId.TooltipWatchesIdeOn)];
+    end;
+  end;
   if Length(Texts) = 0 then
+  begin
     Exit;
+  end;
   // Beim Laden des Plugins ist das Meldungsfenster noch nicht bereit.
   TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
     procedure
@@ -331,8 +395,12 @@ begin
       Text: string;
     begin
       if Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+      begin
         for Text in Texts do
+        begin
           Messages.AddTitleMessage(Text);
+        end;
+      end;
     end);
 end;
 

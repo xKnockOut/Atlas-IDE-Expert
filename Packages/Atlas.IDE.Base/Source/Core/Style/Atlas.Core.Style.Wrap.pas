@@ -30,7 +30,9 @@ var
   procedure Add(AStart, AStop: Integer);
   begin
     if Count = Length(Result) then
+    begin
       SetLength(Result, 2 * Count + 4);
+    end;
     Result[Count] := Point(AStart, AStop);
     Inc(Count);
   end;
@@ -43,9 +45,13 @@ var
   procedure Consider(ACandidate: Integer);
   begin
     if Count = 0 then
-      Limit := AWidth
+    begin
+      Limit := AWidth;
+    end
     else
+    begin
       Limit := AWidth - AIndent;
+    end;
     if (Last > LineStart) and (Width(LineStart, ACandidate) > Limit) then
     begin
       Add(LineStart, Last);
@@ -58,19 +64,25 @@ begin
   Result := nil;
   Count := 0;
   if Length(ACum) < Length(AText) + 1 then
+  begin
     Exit;
+  end;
   LineStart := 0;
   Last := -1;
   // Kandidaten wie bisher: hinter jedem Leerzeichen (außer dem letzten Zeichen) und das Textende.
   for Index := 1 to Length(AText) - 1 do
+  begin
     if AText[Index] = ' ' then
     begin
       Candidate := Index;
       Consider(Candidate);
     end;
+  end;
   Consider(Length(AText));
   if LineStart < Length(AText) then
+  begin
     Add(LineStart, Length(AText));
+  end;
   SetLength(Result, Count);
 end;
 

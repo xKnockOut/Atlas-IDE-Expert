@@ -79,7 +79,9 @@ function StringOf(const AObject: TJSONObject; const AName: string): string;
 begin
   Result := '';
   if AObject.GetValue(AName) is TJSONString then
+  begin
     Result := AObject.GetValue(AName).Value;
+  end;
 end;
 
 function UsagesOf(const AObject: TJSONObject; const AName: string): TArray<TAtlasSafeDeleteUsage>;
@@ -89,11 +91,15 @@ var
 begin
   Result := nil;
   if not (AObject.GetValue(AName) is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AObject.GetValue(AName)) do
   begin
     if not (Item is TJSONObject) then
+    begin
       Continue;
+    end;
     Usage := Default(TAtlasSafeDeleteUsage);
     Usage.FileName := StringOf(TJSONObject(Item), 'file');
     TJSONObject(Item).TryGetValue<Integer>('line', Usage.Line);
@@ -110,8 +116,12 @@ var
 begin
   Result := nil;
   if AObject.GetValue(AName) is TJSONArray then
+  begin
     for Item in TJSONArray(AObject.GetValue(AName)) do
+    begin
       Result := Result + [Item.Value];
+    end;
+  end;
 end;
 
 { TAtlasSafeDeleteInfo }
@@ -124,7 +134,9 @@ begin
   Result.CascadeMode := 'ask';
   Result.OverridesMode := 'ask';
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Answer := TJSONObject(AValue);
   Result.Kind := StringOf(Answer, 'kind');
   Result.Name := StringOf(Answer, 'name');
@@ -136,9 +148,13 @@ begin
   Result.PreviewWhenUnused := (Answer.GetValue('previewWhenUnused') is TJSONBool) and
     TJSONBool(Answer.GetValue('previewWhenUnused')).AsBoolean;
   if StringOf(Answer, 'cascadeMode') <> '' then
+  begin
     Result.CascadeMode := StringOf(Answer, 'cascadeMode');
+  end;
   if StringOf(Answer, 'overridesMode') <> '' then
+  begin
     Result.OverridesMode := StringOf(Answer, 'overridesMode');
+  end;
 end;
 
 function TAtlasSafeDeleteInfo.IsUnit: Boolean;
@@ -150,7 +166,9 @@ function TAtlasSafeDeleteInfo.Blocking(AIncludeOverrides: Boolean): TArray<TAtla
 begin
   Result := Usages;
   if not AIncludeOverrides then
+  begin
     Result := Result + Overrides;
+  end;
 end;
 
 function TAtlasSafeDeleteInfo.NeedsPreview(AForced: Boolean): Boolean;
@@ -193,9 +211,13 @@ begin
       try
         // Nur uri und Position übernehmen, die Antworten kommen frisch dazu.
         if TJSONArray(Parsed).Count > 0 then
+        begin
           List.AddElement(TJSONArray(Parsed).Items[0].Clone as TJSONValue);
+        end;
         if TJSONArray(Parsed).Count > 1 then
+        begin
           List.AddElement(TJSONArray(Parsed).Items[1].Clone as TJSONValue);
+        end;
         Choices := TJSONObject.Create;
         Choices.AddPair('overrides', TJSONBool.Create(AOverrides));
         Choices.AddPair('cascade', TJSONBool.Create(ACascade));
@@ -207,7 +229,9 @@ begin
       end;
     end
     else
+    begin
       Result := AArgumentsJson;
+    end;
   finally
     Parsed.Free;
   end;
@@ -216,11 +240,17 @@ end;
 class function TAtlasSafeDelete.AnswerOf(const AMode: string): TAtlasSafeDeleteAnswer;
 begin
   if SameText(AMode, 'always') then
-    Result := TAtlasSafeDeleteAnswer.Always
+  begin
+    Result := TAtlasSafeDeleteAnswer.Always;
+  end
   else if SameText(AMode, 'never') then
-    Result := TAtlasSafeDeleteAnswer.Never
+  begin
+    Result := TAtlasSafeDeleteAnswer.Never;
+  end
   else
+  begin
     Result := TAtlasSafeDeleteAnswer.Ask;
+  end;
 end;
 
 class function TAtlasSafeDelete.Listing(const AItems: TArray<string>; AMax: Integer; const AMore: string): string;
@@ -236,7 +266,9 @@ begin
       Break;
     end;
     if Result <> '' then
+    begin
       Result := Result + sLineBreak;
+    end;
     Result := Result + AItems[Index];
   end;
 end;

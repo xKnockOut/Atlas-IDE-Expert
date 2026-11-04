@@ -235,52 +235,65 @@ begin
   end;
 end;
 
+/// <summary>Quellen von ANode als "Quelle/leaf,…".</summary>
+function SourcesText(const ANode: TDataFlowNode): string;
+var
+  mSource: TDataFlowSymbol;
+begin
+  Result := '';
+  for mSource in ANode.Sources do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + mSource.Name;
+    if mSource.Leaf <> TDataFlowLeaf.None then
+    begin
+      Result := Result + '/' + TLspDataFlow.LeafName(mSource.Leaf);
+    end;
+  end;
+end;
+
+/// <summary>ANode als "kind[detail](via)xN!lit!grund&lt;-Quellen".</summary>
+function NodeText(const ANode: TDataFlowNode): string;
+begin
+  Result := TLspDataFlow.KindName(ANode.Kind) + '[' + ANode.Detail + ']';
+  if ANode.Via <> '' then
+  begin
+    Result := Result + '(' + ANode.Via + ')';
+  end;
+  if Length(ANode.Places) > 1 then
+  begin
+    Result := Result + 'x' + IntToStr(Length(ANode.Places));
+  end;
+  if ANode.Literal then
+  begin
+    Result := Result + '!lit';
+  end;
+  if ANode.Unsafe then
+  begin
+    Result := Result + '!' + ANode.UnsafeReason;
+  end;
+  if Length(ANode.Sources) > 0 then
+  begin
+    Result := Result + '<-' + SourcesText(ANode);
+  end;
+end;
+
 function TLspDataFlowTests.Describe(const AResult: TDataFlowResult): string;
 var
   Node: TDataFlowNode;
-  Source: TDataFlowSymbol;
-  Line: string;
 begin
   // "kind[detail](via)xN<-Quelle/leaf,…" je Knoten, mit "; " verbunden.
   Result := '';
   for Node in AResult.Nodes do
   begin
-    Line := TLspDataFlow.KindName(Node.Kind) + '[' + Node.Detail + ']';
-    if Node.Via <> '' then
-    begin
-      Line := Line + '(' + Node.Via + ')';
-    end;
-    if Length(Node.Places) > 1 then
-    begin
-      Line := Line + 'x' + IntToStr(Length(Node.Places));
-    end;
-    if Node.Literal then
-    begin
-      Line := Line + '!lit';
-    end;
-    if Node.Unsafe then
-    begin
-      Line := Line + '!' + Node.UnsafeReason;
-    end;
-    if Length(Node.Sources) > 0 then
-    begin
-      Line := Line + '<-';
-      for Source in Node.Sources do
-      begin
-        Line := Line + Source.Name;
-        if Source.Leaf <> TDataFlowLeaf.None then
-        begin
-          Line := Line + '/' + TLspDataFlow.LeafName(Source.Leaf);
-        end;
-        Line := Line + ',';
-      end;
-      SetLength(Line, Length(Line) - 1);
-    end;
     if Result <> '' then
     begin
       Result := Result + '; ';
     end;
-    Result := Result + Line;
+    Result := Result + NodeText(Node);
   end;
 end;
 

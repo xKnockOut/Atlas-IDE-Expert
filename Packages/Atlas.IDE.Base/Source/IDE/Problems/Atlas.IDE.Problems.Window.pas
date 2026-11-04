@@ -103,14 +103,20 @@ var
   Frame: TAtlasProblemsFrame;
 begin
   if not (AFrame is TAtlasProblemsFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasProblemsFrame(AFrame);
   TAtlasIdeProblemsWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeProblemsWindow.OnFrame) then
+  begin
     TAtlasIdeProblemsWindow.OnFrame(Frame);
+  end;
 end;
 
 function TProblemsDock.GetMenuActionList: TCustomActionList;
@@ -144,7 +150,9 @@ end;
 procedure TProblemsDock.SaveWindowState(Desktop: TCustomIniFile; const Section: string; IsProject: Boolean);
 begin
   if Assigned(TAtlasIdeProblemsWindow.OnSave) then
+  begin
     TAtlasIdeProblemsWindow.OnSave();
+  end;
 end;
 
 procedure TProblemsDock.LoadWindowState(Desktop: TCustomIniFile; const Section: string);
@@ -164,7 +172,9 @@ end;
 procedure EnsureHost;
 begin
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TProblemsDock.Create, True);
+  end;
 end;
 
 { TAtlasIdeProblemsWindow }
@@ -177,7 +187,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -185,7 +197,9 @@ class function TAtlasIdeProblemsWindow.ExistingFrame: TAtlasProblemsFrame;
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasProblemsFrame) then
+  begin
     Result := TAtlasProblemsFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeProblemsWindow.Visible: Boolean;
@@ -197,7 +211,9 @@ end;
 class procedure TAtlasIdeProblemsWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeProblemsWindow.UpdateIcon;
@@ -205,7 +221,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -221,7 +239,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

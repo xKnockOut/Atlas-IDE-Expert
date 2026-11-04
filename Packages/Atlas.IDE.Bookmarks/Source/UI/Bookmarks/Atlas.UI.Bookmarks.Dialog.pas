@@ -111,7 +111,9 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   if Result.Width < ScaleValue(90) then
+  begin
     Result.Width := ScaleValue(90);
+  end;
   Result.Top := ScaleValue(Gap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
@@ -130,7 +132,9 @@ end;
 procedure TAtlasBookmarkDialog.OkClick(Sender: TObject);
 begin
   if BookmarkName = '' then
+  begin
     Exit;
+  end;
   ModalResult := mrOk;
 end;
 
@@ -147,7 +151,9 @@ begin
   try
     Result := (Dialog.ShowModal = mrOk) and (Dialog.BookmarkName <> '');
     if Result then
+    begin
       AName := Dialog.BookmarkName;
+    end;
   finally
     Dialog.Free;
   end;

@@ -355,13 +355,75 @@ begin
     APair.Shared, Round(APair.Ratio * 100), APair.FirstChanges, APair.SecondChanges]);
 end;
 
+/// <summary>Textteil "Änderungskopplung" mit höchstens ALimit Paaren.</summary>
+procedure AppendCouplingText(ABuilder: TStringBuilder; const AResult: THotspotResult; ALimit: Integer);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append(Format('Änderungskopplung (%s): Paare ohne uses-Kante, die fast immer zusammen geändert ' +
+    'werden, %d von %d:', [THotspotReport.RangeText(AResult), Min(ALimit, Length(AResult.Coupling)),
+    Length(AResult.Coupling)])).Append(cLineBreak);
+  for mIndex := 0 to Min(ALimit, Length(AResult.Coupling)) - 1 do
+  begin
+    ABuilder.Append('- ').Append(CouplingLine(AResult.Coupling[mIndex])).Append(cLineBreak);
+  end;
+  if Length(AResult.Coupling) = 0 then
+  begin
+    ABuilder.Append('Keine Paare.').Append(cLineBreak);
+  end;
+end;
+
+/// <summary>Eine Zeile der Rangliste im Text, AIndex 0-basiert.</summary>
+function EntryLine(AIndex: Integer; const AEntry: THotspotEntry): string;
+var
+  mTrend, mChurn: string;
+begin
+  mTrend := TrendText(AEntry);
+  if mTrend <> '' then
+  begin
+    mTrend := ' · Trend ' + mTrend;
+  end;
+  mChurn := ChurnText(AEntry.Changes);
+  if mChurn <> '' then
+  begin
+    mChurn := ' · ' + mChurn + ' Zeilen';
+  end;
+  Result := Format('%d. %s: Wert %s · %d Änderungen · %d Autoren · kognitiv %d · %d Zeilen%s%s · ' +
+    'zuletzt %s', [AIndex + 1, THotspotReport.EntryName(AEntry), ScoreText(AEntry.Score), AEntry.Changes.Changes,
+    Length(AEntry.Changes.Authors), AEntry.Complexity, AEntry.Lines, mChurn, mTrend,
+    DateText(AEntry.Changes.LastChange)]);
+end;
+
+/// <summary>Textteil Rangliste (Units bzw. Methoden) mit höchstens ALimit Einträgen.</summary>
+procedure AppendEntriesText(ABuilder: TStringBuilder; const AResult: THotspotResult; ALimit: Integer);
+var
+  mEntries: TArray<THotspotEntry>;
+  mIndex: Integer;
+  mLevel: string;
+begin
+  mEntries := THotspotReport.Entries(AResult);
+  mLevel := 'Units';
+  if AResult.Level = THotspotLevel.Methods then
+  begin
+    mLevel := 'Methoden';
+  end;
+  ABuilder.Append(Format('Hotspots (%s), %s, %d von %d; Wert = normierte Änderungen × normierte kognitive ' +
+    'Komplexität:', [THotspotReport.RangeText(AResult), mLevel, Min(ALimit, Length(mEntries)), Length(mEntries)]))
+    .Append(cLineBreak);
+  for mIndex := 0 to Min(ALimit, Length(mEntries)) - 1 do
+  begin
+    ABuilder.Append(EntryLine(mIndex, mEntries[mIndex])).Append(cLineBreak);
+  end;
+  if Length(mEntries) = 0 then
+  begin
+    ABuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
+  end;
+end;
+
 class function THotspotReport.Text(const AResult: THotspotResult; ASection: THotspotSection; ALimit: Integer): string;
 var
   mBuilder: TStringBuilder;
-  mEntries: TArray<THotspotEntry>;
-  mEntry: THotspotEntry;
-  mIndex, mLimit: Integer;
-  mLevel, mTrend, mChurn: string;
+  mLimit: Integer;
 begin
   mLimit := ALimit;
   if mLimit <= 0 then
@@ -372,54 +434,11 @@ begin
   try
     if ASection = THotspotSection.Coupling then
     begin
-      mBuilder.Append(Format('Änderungskopplung (%s): Paare ohne uses-Kante, die fast immer zusammen geändert ' +
-        'werden, %d von %d:', [RangeText(AResult), Min(mLimit, Length(AResult.Coupling)),
-        Length(AResult.Coupling)])).Append(cLineBreak);
-      for mIndex := 0 to Min(mLimit, Length(AResult.Coupling)) - 1 do
-      begin
-        mBuilder.Append('- ').Append(CouplingLine(AResult.Coupling[mIndex])).Append(cLineBreak);
-      end;
-      if Length(AResult.Coupling) = 0 then
-      begin
-        mBuilder.Append('Keine Paare.').Append(cLineBreak);
-      end;
+      AppendCouplingText(mBuilder, AResult, mLimit);
     end
     else
     begin
-      mEntries := Entries(AResult);
-      if AResult.Level = THotspotLevel.Methods then
-      begin
-        mLevel := 'Methoden';
-      end
-      else
-      begin
-        mLevel := 'Units';
-      end;
-      mBuilder.Append(Format('Hotspots (%s), %s, %d von %d; Wert = normierte Änderungen × normierte kognitive ' +
-        'Komplexität:', [RangeText(AResult), mLevel, Min(mLimit, Length(mEntries)), Length(mEntries)]))
-        .Append(cLineBreak);
-      for mIndex := 0 to Min(mLimit, Length(mEntries)) - 1 do
-      begin
-        mEntry := mEntries[mIndex];
-        mTrend := TrendText(mEntry);
-        if mTrend <> '' then
-        begin
-          mTrend := ' · Trend ' + mTrend;
-        end;
-        mChurn := ChurnText(mEntry.Changes);
-        if mChurn <> '' then
-        begin
-          mChurn := ' · ' + mChurn + ' Zeilen';
-        end;
-        mBuilder.Append(Format('%d. %s: Wert %s · %d Änderungen · %d Autoren · kognitiv %d · %d Zeilen%s%s · ' +
-          'zuletzt %s', [mIndex + 1, EntryName(mEntry), ScoreText(mEntry.Score), mEntry.Changes.Changes,
-          Length(mEntry.Changes.Authors), mEntry.Complexity, mEntry.Lines, mChurn, mTrend,
-          DateText(mEntry.Changes.LastChange)])).Append(cLineBreak);
-      end;
-      if Length(mEntries) = 0 then
-      begin
-        mBuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
-      end;
+      AppendEntriesText(mBuilder, AResult, mLimit);
     end;
     Result := mBuilder.ToString;
   finally
@@ -614,67 +633,77 @@ begin
   ABuilder.Append('</tbody></table>').Append(cLineBreak);
 end;
 
+/// <summary>Kopf der HTML-Seite bis zur Erläuterung unter dem Titel.</summary>
+procedure HtmlHead(ABuilder: TStringBuilder; const AResult: THotspotResult);
+begin
+  ABuilder.Append('<!DOCTYPE html>').Append(cLineBreak).Append('<html lang="de"><head><meta charset="utf-8">')
+    .Append('<meta name="viewport" content="width=device-width, initial-scale=1">')
+    .Append('<title>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</title>').Append(cLineBreak);
+  ABuilder.Append('<style>:root{color-scheme:light dark;--fg:#1f2328;--bg:#fff;--line:#d0d7de;--muted:#656d76}' +
+    '@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--bg:#0d1117;--line:#30363d;--muted:#8d96a0}}' +
+    'body{font:14px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--fg);background:var(--bg);margin:24px;' +
+    'max-width:1100px}h1{font-size:22px}h2{font-size:17px;margin-top:28px}.chart{width:100%;max-width:760px;' +
+    'border:1px solid var(--line);border-radius:6px}.axis{stroke:var(--muted)}.label{fill:var(--muted);' +
+    'font-size:12px}circle{fill-opacity:.7;stroke:var(--bg)}table{border-collapse:collapse;width:100%}' +
+    'th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}th:nth-child(2),' +
+    'td:nth-child(2){text-align:left}.path{color:var(--muted);font-size:12px}.note{color:var(--muted)}' +
+    '</style></head><body>').Append(cLineBreak);
+  ABuilder.Append('<h1>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</h1>').Append(cLineBreak);
+  ABuilder.Append('<p class="note">').Append(HtmlEscape(THotspotReport.RangeText(AResult))).Append('. Wert = ' +
+    'normierte Änderungen × normierte kognitive Komplexität (0–1); Blasengröße = Zeilen; Trend gegenüber dem ' +
+    'Stand vor 3 Monaten.</p>').Append(cLineBreak);
+end;
+
+/// <summary>Abschnitt mit Überschrift ATitle und Tabelle bzw. AEmpty ohne Einträge.</summary>
+procedure HtmlSection(ABuilder: TStringBuilder; const ATitle, AEmpty: string; const AEntries: TArray<THotspotEntry>;
+  AMethods: Boolean);
+begin
+  ABuilder.Append('<h2>').Append(ATitle).Append('</h2>').Append(cLineBreak);
+  if Length(AEntries) = 0 then
+  begin
+    ABuilder.Append('<p>').Append(AEmpty).Append('</p>').Append(cLineBreak);
+  end
+  else
+  begin
+    HtmlTable(ABuilder, AEntries, AMethods);
+  end;
+end;
+
+/// <summary>Abschnitt "Änderungskopplung" der HTML-Seite.</summary>
+procedure HtmlCoupling(ABuilder: TStringBuilder; const ACoupling: TArray<THotspotCoupling>);
+var
+  mPair: THotspotCoupling;
+begin
+  ABuilder.Append('<h2>Änderungskopplung</h2>').Append(cLineBreak);
+  ABuilder.Append('<p class="note">Paare ohne uses-Kante, die fast immer zusammen geändert werden.</p>')
+    .Append(cLineBreak);
+  if Length(ACoupling) = 0 then
+  begin
+    ABuilder.Append('<p>Keine Paare.</p>').Append(cLineBreak);
+    Exit;
+  end;
+  ABuilder.Append('<ul>');
+  for mPair in ACoupling do
+  begin
+    ABuilder.Append('<li>').Append(HtmlEscape(CouplingLine(mPair))).Append('</li>');
+  end;
+  ABuilder.Append('</ul>').Append(cLineBreak);
+end;
+
 class function THotspotReport.Html(const AResult: THotspotResult): string;
 var
   mBuilder: TStringBuilder;
-  mPair: THotspotCoupling;
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('<!DOCTYPE html>').Append(cLineBreak).Append('<html lang="de"><head><meta charset="utf-8">')
-      .Append('<meta name="viewport" content="width=device-width, initial-scale=1">')
-      .Append('<title>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</title>').Append(cLineBreak);
-    mBuilder.Append('<style>:root{color-scheme:light dark;--fg:#1f2328;--bg:#fff;--line:#d0d7de;--muted:#656d76}' +
-      '@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--bg:#0d1117;--line:#30363d;--muted:#8d96a0}}' +
-      'body{font:14px/1.45 "Segoe UI",system-ui,sans-serif;color:var(--fg);background:var(--bg);margin:24px;' +
-      'max-width:1100px}h1{font-size:22px}h2{font-size:17px;margin-top:28px}.chart{width:100%;max-width:760px;' +
-      'border:1px solid var(--line);border-radius:6px}.axis{stroke:var(--muted)}.label{fill:var(--muted);' +
-      'font-size:12px}circle{fill-opacity:.7;stroke:var(--bg)}table{border-collapse:collapse;width:100%}' +
-      'th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:right}th:nth-child(2),' +
-      'td:nth-child(2){text-align:left}.path{color:var(--muted);font-size:12px}.note{color:var(--muted)}' +
-      '</style></head><body>').Append(cLineBreak);
-    mBuilder.Append('<h1>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</h1>').Append(cLineBreak);
-    mBuilder.Append('<p class="note">').Append(HtmlEscape(RangeText(AResult))).Append('. Wert = normierte ' +
-      'Änderungen × normierte kognitive Komplexität (0–1); Blasengröße = Zeilen; Trend gegenüber dem Stand vor ' +
-      '3 Monaten.</p>').Append(cLineBreak);
+    HtmlHead(mBuilder, AResult);
     HtmlChart(mBuilder, Entries(AResult));
-    mBuilder.Append('<h2>Units</h2>').Append(cLineBreak);
-    if Length(AResult.Units) = 0 then
-    begin
-      mBuilder.Append('<p>Keine geänderten Units im Zeitraum.</p>').Append(cLineBreak);
-    end
-    else
-    begin
-      HtmlTable(mBuilder, AResult.Units, False);
-    end;
+    HtmlSection(mBuilder, 'Units', 'Keine geänderten Units im Zeitraum.', AResult.Units, False);
     if AResult.Level = THotspotLevel.Methods then
     begin
-      mBuilder.Append('<h2>Methoden</h2>').Append(cLineBreak);
-      if Length(AResult.Methods) = 0 then
-      begin
-        mBuilder.Append('<p>Keine geänderten Methoden im Zeitraum.</p>').Append(cLineBreak);
-      end
-      else
-      begin
-        HtmlTable(mBuilder, AResult.Methods, True);
-      end;
+      HtmlSection(mBuilder, 'Methoden', 'Keine geänderten Methoden im Zeitraum.', AResult.Methods, True);
     end;
-    mBuilder.Append('<h2>Änderungskopplung</h2>').Append(cLineBreak);
-    mBuilder.Append('<p class="note">Paare ohne uses-Kante, die fast immer zusammen geändert werden.</p>')
-      .Append(cLineBreak);
-    if Length(AResult.Coupling) = 0 then
-    begin
-      mBuilder.Append('<p>Keine Paare.</p>').Append(cLineBreak);
-    end
-    else
-    begin
-      mBuilder.Append('<ul>');
-      for mPair in AResult.Coupling do
-      begin
-        mBuilder.Append('<li>').Append(HtmlEscape(CouplingLine(mPair))).Append('</li>');
-      end;
-      mBuilder.Append('</ul>').Append(cLineBreak);
-    end;
+    HtmlCoupling(mBuilder, AResult.Coupling);
     mBuilder.Append('</body></html>').Append(cLineBreak);
     Result := mBuilder.ToString;
   finally

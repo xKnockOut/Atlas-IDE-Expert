@@ -95,14 +95,18 @@ begin
   Handler.Enabled := AEnabled;
   Handler.Run := AHandler;
   for Index := 0 to High(FHandlers) do
+  begin
     if SameText(FHandlers[Index].Name, AName) then
     begin
       FHandlers[Index] := Handler;
       Exit;
     end;
+  end;
   FHandlers := FHandlers + [Handler];
   if FInstance = nil then
+  begin
     FInstance := TAtlasEnterWatch.Create;
+  end;
 end;
 
 class procedure TAtlasEnterWatch.Remove(const AName: string);
@@ -110,8 +114,12 @@ var
   Index: Integer;
 begin
   for Index := High(FHandlers) downto 0 do
+  begin
     if SameText(FHandlers[Index].Name, AName) then
+    begin
       Delete(FHandlers, Index, 1);
+    end;
+  end;
   if Length(FHandlers) = 0 then
   begin
     FHandlers := nil;
@@ -125,8 +133,12 @@ var
 begin
   Result := False;
   for Handler in FHandlers do
+  begin
     if not Assigned(Handler.Enabled) or Handler.Enabled() then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TAtlasEnterWatch.AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -134,16 +146,22 @@ var
   View: IOTAEditView;
 begin
   if (Msg.message <> WM_KEYDOWN) or (Msg.wParam <> VK_RETURN) then
+  begin
     Exit;
+  end;
   try
     FPendingFile := '';
     // Strg+Enter und Alt+Enter sind Befehle, kein Zeilenumbruch; nur im Editor selbst.
     if not AnyEnabled or (GetKeyState(VK_CONTROL) < 0) or (GetKeyState(VK_MENU) < 0) or
       (Screen.ActiveControl = nil) or not Screen.ActiveControl.ClassNameIs('TEditControl') then
+    begin
       Exit;
+    end;
     View := TAtlasEditorBuffer.ActiveView;
     if (View = nil) or (View.Buffer = nil) then
+    begin
       Exit;
+    end;
     FPendingFile := View.Buffer.FileName;
     FPendingLines := View.Buffer.GetLinesInBuffer;
     FPendingAt := TThread.GetTickCount64;
@@ -161,21 +179,29 @@ var
   View: IOTAEditView;
 begin
   if (FInstance = nil) or (FInstance.FPendingFile = '') then
+  begin
     Exit;
+  end;
   FileName := FInstance.FPendingFile;
   // Nur die erste Änderung nach dem Tastendruck zählt.
   FInstance.FPendingFile := '';
   if (AView = nil) or (AView.Buffer = nil) or not SameText(FileName, AView.Buffer.FileName) or
     (TThread.GetTickCount64 - FInstance.FPendingAt > PendingMs) or
     (AView.Buffer.GetLinesInBuffer <> FInstance.FPendingLines + 1) then
+  begin
     Exit;
+  end;
   Cursor := AView.CursorPos;
   if Cursor.Line <= 1 then
+  begin
     Exit;
+  end;
   LineText := TAtlasEditorBuffer.LineText(AView, Cursor.Line);
   if Trim(Copy(LineText, 1, TLspSession.ColumnToIndex(LineText, Cursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer)))) <> '' then
+  begin
     Exit;
+  end;
   // Erst nach der Änderung, wenn die IDE den Cursor gesetzt hat.
   View := AView;
   TAtlasMainThread.ForceQueue(TAtlasFeature.ContinueLines,
@@ -197,8 +223,12 @@ begin
   // Eine Kopie: Ein Handler darf sich abmelden.
   Handlers := Copy(FHandlers);
   for Handler in Handlers do
+  begin
     if (not Assigned(Handler.Enabled) or Handler.Enabled()) and Handler.Run(AView) then
+    begin
       Exit;
+    end;
+  end;
 end;
 
 end.

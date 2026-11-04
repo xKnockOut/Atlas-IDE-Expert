@@ -335,6 +335,33 @@ begin
   end;
 end;
 
+/// <summary>Führt „implementieren“ mit AArgs aus und prüft, dass IFlush.Flush in TExporter landet.</summary>
+procedure AssertImplementsFlush(AMenu: TLspSlashMenu; AArgs: TJSONArray);
+var
+  mAnswer, mItem: TJSONValue;
+  mEdits: TJSONArray;
+  mNewText: string;
+  mFirstLine: Integer;
+begin
+  mAnswer := AMenu.ExecuteRun(AArgs);
+  try
+    Assert.AreEqual('', Field(mAnswer, 'reason'));
+    mEdits := List(mAnswer, 'edits');
+    mNewText := '';
+    for mItem in mEdits do
+    begin
+      mNewText := mNewText + mItem.GetValue<string>('newText');
+    end;
+    Assert.IsTrue(Pos('procedure Flush;', mNewText) > 0, mNewText);
+    Assert.IsTrue(Pos('procedure TExporter.Flush;', mNewText) > 0, mNewText);
+    // Die Deklaration kommt vor das end der Klasse (Zeile 7 ohne die gedachte Zeile).
+    mFirstLine := mEdits.Items[0].GetValue<Integer>('range.start.line');
+    Assert.AreEqual(7, mFirstLine);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
 procedure TLspSlashMenuTests.ImplementsMissingInterfaceMethods;
 const
   UnitBasis =
@@ -360,11 +387,8 @@ var
   Completion: TLspCompletion;
   Args, Position: TJSONArray;
   Answer: TJSONValue;
-  Item: TJSONValue;
-  NewText, Names_: string;
-  Edits: TJSONArray;
+  Names_: string;
   Spot: TJSONObject;
-  FirstLine: Integer;
 begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(TIndexExtractor.ExtractText(UnitBasis, 'C:\P\Basis.pas', nil));
@@ -406,23 +430,7 @@ begin
           Answer.Free;
         end;
         Args.Add('');
-        Answer := FMenu.ExecuteRun(Args);
-        try
-          Assert.AreEqual('', Field(Answer, 'reason'));
-          Edits := List(Answer, 'edits');
-          NewText := '';
-          for Item in Edits do
-          begin
-            NewText := NewText + Item.GetValue<string>('newText');
-          end;
-          Assert.IsTrue(Pos('procedure Flush;', NewText) > 0, NewText);
-          Assert.IsTrue(Pos('procedure TExporter.Flush;', NewText) > 0, NewText);
-          // Die Deklaration kommt vor das end der Klasse (Zeile 7 ohne die gedachte Zeile).
-          FirstLine := Edits.Items[0].GetValue<Integer>('range.start.line');
-          Assert.AreEqual(7, FirstLine);
-        finally
-          Answer.Free;
-        end;
+        AssertImplementsFlush(FMenu, Args);
       finally
         Args.Free;
       end;

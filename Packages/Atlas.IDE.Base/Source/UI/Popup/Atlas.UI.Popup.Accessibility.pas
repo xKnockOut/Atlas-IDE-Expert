@@ -270,11 +270,15 @@ var
   Module: HMODULE;
 begin
   if Loaded then
+  begin
     Exit;
+  end;
   Loaded := True;
   Module := LoadLibrary('UIAutomationCore.dll');
   if Module = 0 then
+  begin
     Exit;
+  end;
   @ReturnRawElementProvider := GetProcAddress(Module, 'UiaReturnRawElementProvider');
   @HostProviderFromHwnd := GetProcAddress(Module, 'UiaHostProviderFromHwnd');
   @RaiseNotificationEvent := GetProcAddress(Module, 'UiaRaiseNotificationEvent');
@@ -343,9 +347,13 @@ begin
   ARetVal := nil;
   Load;
   if (FWindow <> 0) and Assigned(HostProviderFromHwnd) then
-    Result := HostProviderFromHwnd(FWindow, ARetVal)
+  begin
+    Result := HostProviderFromHwnd(FWindow, ARetVal);
+  end
   else
+  begin
     Result := S_OK;
+  end;
 end;
 
 procedure TAtlasAccessibleElement.Detach;
@@ -369,14 +377,18 @@ begin
     Result := S_OK;
   end
   else
+  begin
     Result := inherited GetPatternProvider(APatternId, ARetVal);
+  end;
 end;
 
 function TAtlasAccessibleList.Item(APosition: Integer): IAtlasRawElementProvider;
 begin
   Result := nil;
   if (FSource <> nil) and (APosition >= 0) and (APosition < FSource.AccessibleCount) then
+  begin
     Result := TAtlasAccessibleItem.Create(Self, APosition);
+  end;
 end;
 
 function TAtlasAccessibleList.Navigate(ADirection: Integer; out ARetVal: IAtlasRawElementFragment): HResult;
@@ -387,10 +399,14 @@ begin
   Result := S_OK;
   // Eltern und Geschwister der Liste liefert der Host (das Fenster).
   if (FSource = nil) or ((ADirection <> UiaNavigateFirstChild) and (ADirection <> UiaNavigateLastChild)) then
+  begin
     Exit;
+  end;
   Target := TAtlasAccessibility.NavigateTarget(ADirection, -1, FSource.AccessibleCount);
   if Target >= 0 then
+  begin
     ARetVal := Item(Target) as IAtlasRawElementFragment;
+  end;
 end;
 
 function TAtlasAccessibleList.GetRuntimeId(out ARetVal: Pointer): HResult;
@@ -433,14 +449,18 @@ begin
   ARetVal := nil;
   Result := S_OK;
   if FSource = nil then
+  begin
     Exit;
+  end;
   for Position := 0 to FSource.AccessibleCount - 1 do
+  begin
     if FSource.AccessibleBounds(Position, Bounds) and (AX >= Bounds.Left) and (AX < Bounds.Right) and
       (AY >= Bounds.Top) and (AY < Bounds.Bottom) then
     begin
       ARetVal := Item(Position) as IAtlasRawElementFragment;
       Exit;
     end;
+  end;
 end;
 
 function TAtlasAccessibleList.GetFocus(out ARetVal: IAtlasRawElementFragment): HResult;
@@ -457,7 +477,9 @@ begin
   ARetVal := nil;
   Result := S_OK;
   if FSource = nil then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   Selected := Item(FSource.AccessibleSelected);
   if (Selected = nil) or FSource.AccessibleIsHeader(FSource.AccessibleSelected) then
   begin
@@ -467,7 +489,9 @@ begin
   ARetVal := SafeArrayCreateVector(VarTypeUnknown, 0, 1);
   Index := 0;
   if ARetVal <> nil then
+  begin
     Result := SafeArrayPutElement(ARetVal, Index, Pointer(Selected));
+  end;
 end;
 
 function TAtlasAccessibleList.get_CanSelectMultiple(out ARetVal: BOOL): HResult;
@@ -493,18 +517,26 @@ var
   Selected: IAtlasRawElementProvider;
 begin
   if (FSource = nil) or not TAtlasAccessibility.Listening or not Assigned(RaiseAutomationEvent) then
+  begin
     Exit;
+  end;
   if FSource.AccessibleIsHeader(FSource.AccessibleSelected) then
+  begin
     Exit;
+  end;
   Selected := Item(FSource.AccessibleSelected);
   if Selected <> nil then
+  begin
     RaiseAutomationEvent(Selected, UiaElementSelectedEvent);
+  end;
 end;
 
 procedure TAtlasAccessibleList.ItemsChanged;
 begin
   if (FSource = nil) or not TAtlasAccessibility.Listening or not Assigned(RaiseStructureChangedEvent) then
+  begin
     Exit;
+  end;
   RaiseStructureChangedEvent(Self, StructureChangeChildrenInvalidated, nil, 0);
 end;
 
@@ -527,16 +559,22 @@ begin
   Result := -1;
   Source := FList.Source;
   if Source = nil then
+  begin
     Exit;
+  end;
   // Meist steht der Eintrag noch an derselben Stelle; nach dem Filtern wird er gesucht.
   if (FPosition < Source.AccessibleCount) and (Source.AccessibleId(FPosition) = FId) then
+  begin
     Exit(FPosition);
+  end;
   for Index := 0 to Source.AccessibleCount - 1 do
+  begin
     if Source.AccessibleId(Index) = FId then
     begin
       FPosition := Index;
       Exit(Index);
     end;
+  end;
 end;
 
 function TAtlasAccessibleItem.get_ProviderOptions(out ARetVal: Integer): HResult;
@@ -552,9 +590,13 @@ begin
   ARetVal := nil;
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   if (APatternId = UiaSelectionItemPatternId) and not FList.Source.AccessibleIsHeader(Current) then
+  begin
     ARetVal := IAtlasSelectionItemProvider(Self);
+  end;
   Result := S_OK;
 end;
 
@@ -567,22 +609,32 @@ begin
   ARetVal := Unassigned;
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   Source := FList.Source;
   case APropertyId of
     UiaControlTypeProperty:
       if Source.AccessibleIsHeader(Current) then
-        ARetVal := UiaTextControlType
+      begin
+        ARetVal := UiaTextControlType;
+      end
       else
+      begin
         ARetVal := UiaListItemControlType;
+      end;
     UiaNameProperty:
       ARetVal := Source.AccessibleName(Current);
     UiaHelpTextProperty:
       if Source.AccessibleHelp(Current) <> '' then
+      begin
         ARetVal := Source.AccessibleHelp(Current);
+      end;
     UiaItemStatusProperty:
       if Source.AccessibleStatus(Current) <> '' then
+      begin
         ARetVal := Source.AccessibleStatus(Current);
+      end;
     UiaIsKeyboardFocusableProperty, UiaHasKeyboardFocusProperty:
       ARetVal := False;
     UiaIsEnabledProperty:
@@ -613,7 +665,9 @@ begin
   ARetVal := nil;
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   Result := S_OK;
   if ADirection = UiaNavigateParent then
   begin
@@ -622,7 +676,9 @@ begin
   end;
   Target := TAtlasAccessibility.NavigateTarget(ADirection, Current, FList.Source.AccessibleCount);
   if Target >= 0 then
+  begin
     ARetVal := FList.Item(Target) as IAtlasRawElementFragment;
+  end;
 end;
 
 function TAtlasAccessibleItem.GetRuntimeId(out ARetVal: Pointer): HResult;
@@ -632,7 +688,9 @@ begin
   ARetVal := SafeArrayCreateVector(VarTypeInteger, 0, 2);
   Result := S_OK;
   if ARetVal = nil then
+  begin
     Exit(E_OUTOFMEMORY);
+  end;
   Index := 0;
   Value := UiaAppendRuntimeId;
   SafeArrayPutElement(ARetVal, Index, @Value);
@@ -649,9 +707,13 @@ begin
   ARetVal := EmptyUiaRect;
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   if FList.Source.AccessibleBounds(Current, Bounds) then
+  begin
     ARetVal := UiaRect(Bounds);
+  end;
   Result := S_OK;
 end;
 
@@ -678,9 +740,13 @@ var
 begin
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   if not FList.Source.AccessibleIsHeader(Current) then
+  begin
     FList.Source.AccessibleSelect(Current);
+  end;
   Result := S_OK;
 end;
 
@@ -703,7 +769,9 @@ begin
   ARetVal := False;
   Current := Position;
   if Current < 0 then
+  begin
     Exit(UiaElementNotAvailable);
+  end;
   ARetVal := FList.Source.AccessibleSelected = Current;
   Result := S_OK;
 end;
@@ -721,17 +789,23 @@ class function TAtlasAccessibility.Answer(AWindow: HWND; AWParam: WPARAM; ALPara
 begin
   Result := 0;
   if (Integer(ALParam) <> UiaRootObjectId) or (AElement = nil) then
+  begin
     Exit;
+  end;
   Load;
   if Assigned(ReturnRawElementProvider) then
+  begin
     Result := ReturnRawElementProvider(AWindow, AWParam, ALParam, AElement);
+  end;
 end;
 
 class procedure TAtlasAccessibility.Release(AWindow: HWND);
 begin
   Load;
   if Assigned(ReturnRawElementProvider) then
+  begin
     ReturnRawElementProvider(AWindow, 0, 0, nil);
+  end;
 end;
 
 class function TAtlasAccessibility.Listening: Boolean;
@@ -743,7 +817,9 @@ end;
 class procedure TAtlasAccessibility.Announce(const AElement: IAtlasRawElementProvider; const AText: string);
 begin
   if (AElement = nil) or (AText = '') or not Listening then
+  begin
     Exit;
+  end;
   RaiseNotificationEvent(AElement, NotificationKindOther, NotificationProcessingImportantMostRecent,
     PWideChar(AText), 'Atlas');
 end;
@@ -752,20 +828,30 @@ class function TAtlasAccessibility.NavigateTarget(ADirection, AFrom, ACount: Int
 begin
   Result := -1;
   if ACount <= 0 then
+  begin
     Exit;
+  end;
   case ADirection of
     UiaNavigateFirstChild:
       if AFrom < 0 then
+      begin
         Result := 0;
+      end;
     UiaNavigateLastChild:
       if AFrom < 0 then
+      begin
         Result := ACount - 1;
+      end;
     UiaNavigateNextSibling:
       if (AFrom >= 0) and (AFrom < ACount - 1) then
+      begin
         Result := AFrom + 1;
+      end;
     UiaNavigatePreviousSibling:
       if (AFrom > 0) and (AFrom < ACount) then
+      begin
         Result := AFrom - 1;
+      end;
   end;
 end;
 

@@ -139,11 +139,13 @@ begin
         procedure
         begin
           if FInstance <> nil then
+          begin
             TAtlasGuard.Run(TAtlasFeature.Hide,
               procedure
               begin
                 FInstance.Choose(AChoice);
               end);
+          end;
         end);
     end;
 end;
@@ -158,7 +160,9 @@ end;
 class procedure TAtlasIdeHide.Start;
 begin
   if FInstance <> nil then
+  begin
     Exit;
+  end;
   FInstance := TAtlasIdeHide.Create;
   TAtlasIdeElements.OnOverlayMenu :=
     procedure(const ATargets: TArray<TAtlasHideTarget>; const AScreen: TPoint)
@@ -180,7 +184,9 @@ end;
 class procedure TAtlasIdeHide.ShowMenu(const ATargets: TArray<TAtlasHideTarget>; const APoint: TPoint);
 begin
   if (FInstance = nil) or (Length(ATargets) = 0) then
+  begin
     Exit;
+  end;
   FInstance.FWhere := APoint;
   FInstance.FMenu.Build(ATargets);
   FInstance.FMenu.Popup(APoint);
@@ -207,9 +213,13 @@ var
 begin
   Result := nil;
   if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  begin
     Result := Editors.TopView;
+  end;
   if (Result <> nil) and (Result.Buffer = nil) then
+  begin
     Result := nil;
+  end;
 end;
 
 class function TAtlasIdeHide.ShowForCaret: Boolean;
@@ -220,10 +230,14 @@ begin
   Result := False;
   View := TopView;
   if (FInstance = nil) or (View = nil) then
+  begin
     Exit;
+  end;
   Targets := TAtlasIdeElements.OnLine(View.Buffer.FileName, View.CursorPos.Line - 1);
   if Length(Targets) = 0 then
+  begin
     Exit;
+  end;
   ShowMenu(Targets, CaretPoint);
   Result := True;
 end;
@@ -235,14 +249,18 @@ var
 begin
   View := TopView;
   if (FInstance = nil) or (View = nil) then
+  begin
     Exit;
+  end;
   if TAtlasIdeElements.TakeClick(View.Buffer.FileName, Targets) then
   begin
     ShowMenu(Targets, Mouse.CursorPos);
     Exit;
   end;
   if ShowForCaret then
+  begin
     Exit;
+  end;
   FInstance.FWhere := CaretPoint;
   FInstance.Refused(TAtlasStrings.Text(TAtlasTextId.HideNoElement));
 end;
@@ -250,7 +268,9 @@ end;
 class procedure TAtlasIdeHide.ShowSetting(const AKey: string);
 begin
   if Assigned(FOnShowSetting) then
+  begin
     FOnShowSetting(AKey);
+  end;
 end;
 
 class function TAtlasIdeHide.HideSetting(const AKey: string; const APoint: TPoint): Boolean;
@@ -260,19 +280,27 @@ var
 begin
   Result := False;
   if FInstance = nil then
+  begin
     Exit;
+  end;
   FInstance.FWhere := APoint;
   Result := FInstance.RunSetting(AKey, Step, Detail);
   if Result then
-    FInstance.Done(Step, Detail)
+  begin
+    FInstance.Done(Step, Detail);
+  end
   else
+  begin
     FInstance.Refused(Detail);
+  end;
 end;
 
 class procedure TAtlasIdeHide.Undo;
 begin
   if FInstance <> nil then
+  begin
     FInstance.NoticeUndo(nil);
+  end;
 end;
 
 class function TAtlasIdeHide.RefusalText(ARefusal: TAtlasHideRefusal): string;
@@ -292,9 +320,13 @@ var
   Toggle: TAtlasQuickToggle;
 begin
   if TAtlasQuickToggles.Find(TAtlasIdeSettings.QuickToggles, AKey, Toggle) and (Toggle.Caption <> '') then
-    Result := Toggle.Caption
+  begin
+    Result := Toggle.Caption;
+  end
   else
+  begin
     Result := AKey;
+  end;
 end;
 
 class function TAtlasIdeHide.TeamFolder(out AFileName: string): string;
@@ -337,9 +369,13 @@ begin
     Exit;
   end;
   if Run(AChoice, Step, Detail) then
-    Done(Step, Detail)
+  begin
+    Done(Step, Detail);
+  end
   else
+  begin
     Refused(Detail);
+  end;
 end;
 
 function TAtlasIdeHide.Run(const AChoice: TAtlasHideChoice; out AStep: TStep; out ADetail: string): Boolean;
@@ -354,7 +390,9 @@ begin
   Text := '';
   View := TopView;
   if (View <> nil) and AnsiSameText(View.Buffer.FileName, AChoice.Target.FileName) then
+  begin
     Text := TAtlasEditorBuffer.Text(View.Buffer);
+  end;
   Folder := TeamFolder(TeamFile);
   Result := TAtlasHide.Plan(AChoice.Target, AChoice.Scope, Text, Folder, Plan, Refusal);
   if not Result then
@@ -381,9 +419,13 @@ begin
   Writer := ABuffer.CreateUndoableWriter;
   Writer.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AFrom)));
   if ATill > AFrom then
+  begin
     Writer.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, ATill)));
+  end;
   if ANew <> '' then
+  begin
     Writer.Insert(PAnsiChar(UTF8Encode(ANew)));
+  end;
   Writer := nil;
   // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu (P-04).
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
@@ -416,7 +458,9 @@ begin
   Lines := TTextLines.SplitLines(Changed);
   ADetail := '';
   if (APlan.Insert.Line >= 0) and (APlan.Insert.Line <= High(Lines)) then
+  begin
     ADetail := TAtlasStrings.Fmt(TAtlasTextId.HideDoneLineComment, [Trim(Lines[APlan.Insert.Line])]);
+  end;
   Result := True;
 end;
 
@@ -440,7 +484,9 @@ begin
   end;
   try
     if FileExists(FileName) then
-      Content := TAtlasTextFile.Load(FileName)
+    begin
+      Content := TAtlasTextFile.Load(FileName);
+    end
     else
     begin
       // Neue Datei wie „Projektdatei öffnen“: UTF-8 ohne BOM.
@@ -494,7 +540,9 @@ begin
     Exit(False);
   end;
   if AStep.Changed then
+  begin
     TAtlasIdeSettings.Update(Stored);
+  end;
   // Ein Schnellschalter „an für diese Sitzung“ hielte das Element sonst sichtbar.
   if AStep.HadSession then
   begin
@@ -522,17 +570,23 @@ begin
       begin
         View := TopView;
         if (View = nil) or not AnsiSameText(View.Buffer.FileName, AStep.FileName) then
+        begin
           Exit;
+        end;
         Text := TAtlasEditorBuffer.Text(View.Buffer);
         if not AStep.Insert.RevertIn(Text, Reverted) then
+        begin
           Exit;
+        end;
         Offset := AStep.Insert.OffsetIn(Text);
         WriteRange(View.Buffer, Text, Offset, Offset + Length(AStep.Insert.Text), '');
       end;
     TAtlasHideKind.TeamFile:
       begin
         if not FileExists(AStep.FileName) then
+        begin
           Exit;
+        end;
         Content := TAtlasTextFile.Load(AStep.FileName);
         Updated := TAtlasHiddenPlaces.RemoveFrom(Content.Text, AStep.Place);
         if Updated <> Content.Text then
@@ -569,7 +623,9 @@ begin
   Step := FStep;
   FStep := Default(TStep);
   if not Step.Valid then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.Hide,
     procedure
     var
@@ -585,9 +641,13 @@ begin
         end;
       end;
       if Ok then
-        Notice('', TAtlasStrings.Text(TAtlasTextId.HideUndone), False)
+      begin
+        Notice('', TAtlasStrings.Text(TAtlasTextId.HideUndone), False);
+      end
       else
+      begin
         Notice('', TAtlasStrings.Text(TAtlasTextId.HideUndoFailed), False);
+      end;
     end);
 end;
 
@@ -631,16 +691,22 @@ begin
   Mode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Hidden, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.HideNotice), ADetail, [Action]);
   if Mode = TAtlasNotificationMode.Show then
+  begin
     Notice(TAtlasStrings.Text(TAtlasTextId.HideNotice), ADetail, True);
+  end;
 end;
 
 procedure TAtlasIdeHide.Refused(const AText: string);
 begin
   if AText = '' then
+  begin
     Exit;
+  end;
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Hidden, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.HideElementCommand), AText) = TAtlasNotificationMode.Show then
+  begin
     Notice('', AText, False);
+  end;
 end;
 
 end.

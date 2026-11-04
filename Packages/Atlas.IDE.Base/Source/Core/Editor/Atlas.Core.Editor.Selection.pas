@@ -56,29 +56,41 @@ begin
   AFound := TLspRange.Create(AFrom.Line, AFrom.Character, AFrom.Line, AFrom.Character);
   Count := Length(ALines);
   if (ANeedle = '') or (Count = 0) then
+  begin
     Exit;
+  end;
   Needle := AnsiUpperCase(ANeedle);
   // Einmal um die Datei; die Ausgangszeile kommt am Ende noch einmal ganz dran.
   for Step := 0 to Count do
   begin
     if ABackward then
-      Row := ((AFrom.Line - Step) mod Count + Count) mod Count
+    begin
+      Row := ((AFrom.Line - Step) mod Count + Count) mod Count;
+    end
     else
+    begin
       Row := (AFrom.Line + Step) mod Count;
+    end;
     Line := AnsiUpperCase(ALines[Row]);
     if not ABackward then
     begin
       if Step = 0 then
-        Index := PosEx(Needle, Line, AFrom.Character + 1)
+      begin
+        Index := PosEx(Needle, Line, AFrom.Character + 1);
+      end
       else
+      begin
         Index := Pos(Needle, Line);
+      end;
     end
     else
     begin
       // Letztes Vorkommen, das vor AFrom endet (in der Ausgangszeile) bzw. irgendwo in der Zeile.
       Limit := Length(Line);
       if Step = 0 then
+      begin
         Limit := AFrom.Character;
+      end;
       Index := 0;
       Last := Pos(Needle, Line);
       while (Last > 0) and (Last - 1 + Length(Needle) <= Limit) do
@@ -101,11 +113,13 @@ var
   Range: TLspRange;
 begin
   for Range in AChain do
+  begin
     if Range.Contains(ACurrent) and not Range.Same(ACurrent) then
     begin
       ANext := Range;
       Exit(True);
     end;
+  end;
   ANext := ACurrent;
   Result := False;
 end;
@@ -117,14 +131,18 @@ var
 begin
   ANext := ACurrent;
   if ACurrent.IsEmpty then
+  begin
     Exit(False);
+  end;
   // Von außen nach innen: der erste Bereich, der echt in der Auswahl liegt.
   for Index := High(AChain) downto 0 do
+  begin
     if ACurrent.Contains(AChain[Index]) and not AChain[Index].Same(ACurrent) and not AChain[Index].IsEmpty then
     begin
       ANext := AChain[Index];
       Exit(True);
     end;
+  end;
   ANext.EndPos := ACurrent.StartPos;
   Result := True;
 end;
@@ -136,11 +154,15 @@ var
 begin
   Result := ACurrent.StartPos;
   if not AHasAnchor then
+  begin
     Exit;
+  end;
   Anchor.StartPos := AAnchor;
   Anchor.EndPos := AAnchor;
   if ACurrent.Contains(Anchor) then
+  begin
     Result := AAnchor;
+  end;
 end;
 
 end.

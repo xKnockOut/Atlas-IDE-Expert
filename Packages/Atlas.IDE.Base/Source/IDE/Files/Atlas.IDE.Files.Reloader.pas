@@ -117,7 +117,9 @@ begin
   AStamp := 0;
   Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @Data);
   if Result then
+  begin
     AStamp := Int64(Data.ftLastWriteTime.dwHighDateTime) shl 32 or Data.ftLastWriteTime.dwLowDateTime;
+  end;
 end;
 
 class function TAtlasFileReloader.SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor;
@@ -134,15 +136,21 @@ begin
     if Supports(Editor, IOTASourceEditor, Result) then
     begin
       if SameText(Editor.FileName, AModule.FileName) then
+      begin
         Exit;
+      end;
       if First = nil then
+      begin
         First := Result;
+      end;
     end;
     Result := nil;
   end;
   // Projekte (.dproj): ihr Quelltext ist die .dpr bzw. .dpk.
   if Supports(AModule, IOTAProject) then
+  begin
     Result := First;
+  end;
 end;
 
 class function TAtlasFileReloader.FindModule(const AFileName: string): IOTAModule;
@@ -153,13 +161,17 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   // Über den Quelltexteditor: Die .dpr gehört zum Projektmodul (.dproj).
   for Index := 0 to Services.ModuleCount - 1 do
   begin
     Editor := SourceEditorOf(Services.Modules[Index]);
     if (Editor <> nil) and SameText(Editor.FileName, AFileName) then
+    begin
       Exit(Services.Modules[Index]);
+    end;
   end;
 end;
 
@@ -174,14 +186,18 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ModuleCount - 1 do
   begin
     Module := Services.Modules[Index];
     // Nur Quelltexte im Editor; Projekte und Gruppen verwaltet die IDE selbst.
     Editor := SourceEditorOf(Module);
     if Editor = nil then
+    begin
       Continue;
+    end;
     Exists := DiskStamp(Editor.FileName, Stamp);
     Result := Result + [TAtlasObservedFile.Create(Editor.FileName, Exists, Stamp, Editor.Modified)];
   end;
@@ -191,13 +207,17 @@ procedure TAtlasFileReloader.Tick(Sender: TObject);
 begin
   // Beobachtet wird immer (Speichern erkennen, #548); neu geladen nur mit der Einstellung.
   if FBusy then
+  begin
     Exit;
+  end;
   FBusy := True;
   try
     try
       FChanges.Observe(OpenFiles, NowMs);
       if FChanges.Due(NowMs) then
+      begin
         Process(FChanges.TakeBatch);
+      end;
     except
       // Keine Exception an die IDE (#493); im nächsten Takt neu versuchen.
       on E: Exception do
@@ -215,7 +235,9 @@ var
 begin
   Result := False;
   if not Supports(AEditor, IOTAEditBuffer, Buffer) then
+  begin
     Exit;
+  end;
   Current := TAtlasEditorBuffer.Text(Buffer).Replace(#13, '');
   try
     Disk := DiskText(AFileName).Replace(#13, '');
@@ -242,19 +264,27 @@ begin
   Result := False;
   Module := FindModule(AFileName);
   if Module = nil then
+  begin
     Exit;
+  end;
   Editor := SourceEditorOf(Module);
   if (Editor = nil) or Editor.Modified then
+  begin
     Exit;
+  end;
   // Nur der Zeitstempel (eigenes Speichern, Touch): nichts neu laden, Rückgängig bleibt.
   if SameAsDisk(Editor, AFileName) then
   begin
     if Assigned(FOnSaved) then
+    begin
       FOnSaved(AFileName);
+    end;
     Exit;
   end;
   if not TAtlasIdeSettings.Current.ReloadExternal then
+  begin
     Exit;
+  end;
   SetLength(States, Editor.EditViewCount);
   for Index := 0 to High(States) do
   begin
@@ -268,7 +298,9 @@ begin
   TAtlasEditorSnapshots.Invalidate(AFileName);
   Editor := SourceEditorOf(Module);
   if Editor <> nil then
+  begin
     for Index := 0 to Editor.EditViewCount - 1 do
+    begin
       if Index <= High(States) then
       begin
         View := Editor.EditViews[Index];
@@ -276,6 +308,8 @@ begin
         View.CursorPos := States[Index].Cursor;
         View.Paint;
       end;
+    end;
+  end;
   Result := True;
 end;
 
@@ -296,9 +330,13 @@ begin
   Module := FindModule(AFileName);
   Editor := nil;
   if Module <> nil then
+  begin
     Editor := SourceEditorOf(Module);
+  end;
   if not Supports(Editor, IOTAEditBuffer, Buffer) then
+  begin
     Exit;
+  end;
   try
     Disk := DiskText(AFileName);
   except
@@ -307,15 +345,25 @@ begin
   end;
   Lines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(Buffer), Disk);
   if Length(Lines) = 0 then
+  begin
     Exit;
+  end;
   AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
   for Index := 0 to High(Lines) do
+  begin
     if Index < MaxDiffLines then
+    begin
       AddMessage('    ' + Lines[Index]);
+    end;
+  end;
   if Length(Lines) > MaxDiffLines then
+  begin
     AddMessage('    …');
+  end;
   if AShow and Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Messages.ShowMessageView(Messages.GetGroup('Atlas'));
+  end;
 end;
 
 class procedure TAtlasFileReloader.AddMessage(const AText: string);
@@ -324,10 +372,14 @@ var
   Group: IOTAMessageGroup;
 begin
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+  begin
     Exit;
+  end;
   Group := Messages.GetGroup('Atlas');
   if Group = nil then
+  begin
     Group := Messages.AddMessageGroup('Atlas');
+  end;
   Messages.AddTitleMessage(AText, Group);
 end;
 
@@ -353,14 +405,20 @@ begin
   Center := TAtlasNotificationCenter.Default;
   Reloaded := nil;
   if Assigned(FReport) and TAtlasIdeSettings.Current.ReloadExternal then
+  begin
     for Decision in ADecisions do
+    begin
       FReport(Format('Extern geändert: %s (%s)', [Decision.FileName,
         TAtlasExternalChanges.ActionText(Decision.Action)]));
+    end;
+  end;
   for Decision in ADecisions do
     case Decision.Action of
       TAtlasReloadAction.Reload:
         if Reload(Decision.FileName) then
+        begin
           Reloaded := Reloaded + [Decision.FileName];
+        end;
       TAtlasReloadAction.KeepModified:
         if TAtlasIdeSettings.Current.ReloadExternal then
         begin
@@ -383,7 +441,9 @@ begin
           if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Warning,
             TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [Name]), Decision.FileName) =
             TAtlasNotificationMode.Show then
+          begin
             AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [Name]));
+          end;
         end;
     end;
   if Length(Reloaded) > 0 then
@@ -392,7 +452,9 @@ begin
     for Name in Reloaded do
     begin
       if Names <> '' then
+      begin
         Names := Names + ', ';
+      end;
       Names := Names + ExtractFileName(Name);
     end;
     if Center.Notify(TAtlasNotificationSources.Reload, TAtlasNotificationSeverity.Info,
@@ -401,7 +463,9 @@ begin
     begin
       AddMessage(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(Reloaded)]));
       for Name in Reloaded do
+      begin
         AddMessage('    ' + Name);
+      end;
     end;
   end;
 end;

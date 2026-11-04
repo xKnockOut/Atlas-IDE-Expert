@@ -209,15 +209,21 @@ begin
   Hide := TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar;
   FToolbarByIde := TAtlasIdeNavigationOption.Apply(Hide);
   if FToolbarByIde or not Hide then
+  begin
     FToolbars.RestoreAll;
+  end;
 end;
 
 function BarColors: TAtlasColors;
 begin
   if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-    Result := TAtlasIdeStyle.ChromeColors
+  begin
+    Result := TAtlasIdeStyle.ChromeColors;
+  end
   else
+  begin
     Result := TAtlasIdeStyle.Colors;
+  end;
 end;
 
 procedure TBreadcrumbsState.ApplyTheme;
@@ -236,9 +242,13 @@ end;
 procedure TBreadcrumbsState.ApplyToolbar(AParent: TWinControl);
 begin
   if FToolbarByIde then
+  begin
     Exit;
+  end;
   if TAtlasIdeSettings.Current.BreadcrumbsHideIdeToolbar then
+  begin
     FToolbars.Apply(AParent, True);
+  end;
 end;
 
 procedure TBreadcrumbsState.EnsureBars;
@@ -248,11 +258,17 @@ var
 begin
   FHost.Ensure;
   if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+  begin
     Exit;
+  end;
   // Die IDE legt die Navigationsleiste je Fenster an; neue Fenster beim nächsten Takt.
   for Index := 0 to Services.EditWindowCount - 1 do
+  begin
     if TAtlasEditorBarHost.EditorOf(Services.EditWindow[Index]) <> nil then
+    begin
       ApplyToolbar(Services.EditWindow[Index].Form);
+    end;
+  end;
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -316,7 +332,9 @@ end;
 procedure TBreadcrumbsState.Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
 begin
   if ABar.Parent = AParent then
+  begin
     Exit;
+  end;
   // Über dem Editor: zuerst ganz oben einhängen, dann oben ausrichten.
   ABar.Top := 0;
   ABar.Align := alTop;
@@ -340,14 +358,18 @@ begin
   EnsureBars;
   Bar := ActiveBar;
   if Bar = nil then
+  begin
     Exit;
+  end;
   View := TAtlasEditorBuffer.ActiveView;
   Snapshot := TAtlasIdeOutlineCache.Refresh(View);
   ShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
   Changed := not FShown or (Bar <> FActiveBar) or (Snapshot.Status <> FStatus) or
     not SameText(Snapshot.FileName, FFileName) or (Snapshot.Stamp <> FStamp) or (ShowUnit <> FShowUnit);
   if Changed and (Snapshot.Stamp <> FStamp) then
+  begin
     FLines := TTextLines.SplitLines(Snapshot.Text);
+  end;
   FShown := True;
   FActiveBar := Bar;
   FStatus := Snapshot.Status;
@@ -375,11 +397,15 @@ begin
   end;
   Cursor := View.CursorPos;
   if Cursor.Line < 1 then
+  begin
     Exit;
+  end;
   Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(View, Cursor.Line), Cursor.Col,
     TAtlasEditorBuffer.TabWidth(View.Buffer));
   if not Changed and (Cursor.Line - 1 = FLine) and (Character = FCharacter) then
+  begin
     Exit;
+  end;
   FLine := Cursor.Line - 1;
   FCharacter := Character;
   Bar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
@@ -401,7 +427,9 @@ begin
     Command.Caption := TAtlasBreadcrumbs.ShortName(ANodes[Node].Name);
     Command.Path := ANodes[Node].Detail;
     if Node = ACurrent then
+    begin
       Command.ShortCut := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCurrent);
+    end;
     Result := Result + [Command];
   end;
 end;
@@ -411,7 +439,9 @@ var
   Crumb: TAtlasCrumb;
 begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
+  begin
     Exit;
+  end;
   Crumb := ABar.Crumbs[AIndex];
   OpenList(ABar, Crumb.Text, Crumb.Siblings, Crumb.Node, APoint);
 end;
@@ -422,12 +452,16 @@ var
   Current: Integer;
 begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) then
+  begin
     Exit;
+  end;
   Crumb := ABar.Crumbs[AIndex];
   // Vorgewählt ist das Kind, in dem der Caret steht (das nächste Glied).
   Current := -1;
   if AIndex < High(ABar.Crumbs) then
+  begin
     Current := ABar.Crumbs[AIndex + 1].Node;
+  end;
   OpenList(ABar, Crumb.Text + ' ›', Crumb.Children, Current, APoint);
 end;
 
@@ -455,7 +489,9 @@ begin
   Window.Presorted := True;
   Window.QueryDelay := 0;
   if ACurrent >= 0 then
+  begin
     Window.InitialId := IntToStr(ACurrent);
+  end;
   Window.OnQuery :=
     function(APattern: string): TArray<TAtlasCommand>
     begin
@@ -468,11 +504,15 @@ begin
     begin
       Node := StrToIntDef(ACommand.Id, -1);
       if (Node < 0) or (Node > High(Nodes)) then
+      begin
         Exit;
+      end;
       // Enter zur Implementierung, Umschalt+Enter zur Deklaration.
       Target := TAtlasBreadcrumbs.Target(Nodes, Node, not AShifted);
       if Target < 0 then
+      begin
         Exit;
+      end;
       TAtlasIdeNavigation.GoToLocation(FileName, Nodes[Target].NameLine, Nodes[Target].NameCharacter);
     end;
   Window.ShowAt(APoint, MulDiv(MenuWidth, ABar.CurrentPPI, 96));
@@ -484,19 +524,25 @@ var
   Target: Integer;
 begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FFileName = '') then
+  begin
     Exit;
+  end;
   Crumb := ABar.Crumbs[AIndex];
   TAtlasGuard.Log(Format('Brotkrumen: Sprung zu Glied %d', [AIndex]));
   if Crumb.Node < 0 then
   begin
     // Unit-Glied: an den Anfang der Datei.
     if Crumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
+    begin
       TAtlasIdeNavigation.GoToLocation(FFileName, 0, 0);
+    end;
     Exit;
   end;
   Target := TAtlasBreadcrumbs.Target(FNodes, Crumb.Node, not ADeclaration);
   if Target < 0 then
+  begin
     Exit;
+  end;
   TAtlasIdeNavigation.GoToLocation(FFileName, FNodes[Target].NameLine, FNodes[Target].NameCharacter);
 end;
 
@@ -516,7 +562,9 @@ begin
     procedure
     begin
       if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FHost.Contains(Bar) then
+      begin
         Exit;
+      end;
       Action();
     end);
 end;
@@ -529,7 +577,9 @@ end;
 procedure TBreadcrumbsState.Tick(Sender: TObject);
 begin
   if not TAtlasIdeSettings.Current.Breadcrumbs then
+  begin
     Exit;
+  end;
   if TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs) then
   begin
     ShowDisabled;
@@ -557,7 +607,9 @@ end;
 procedure TBreadcrumbsState.ShowDisabled;
 begin
   if FDisabled then
+  begin
     Exit;
+  end;
   FDisabled := True;
   TAtlasGuard.Log('Brotkrumen: durch die Sicherung abgeschaltet');
   // Je Leiste abgesichert (Host): Läuft außerhalb von TAtlasGuard.Run, nichts darf in die IDE durchschlagen.
@@ -579,7 +631,9 @@ begin
   while (AControl <> nil) and (Depth < 8) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' < ';
+    end;
     Result := Result + AControl.ClassName + ' ' + AControl.Name;
     AControl := AControl.Parent;
     Inc(Depth);
@@ -607,20 +661,26 @@ var
 begin
   Bar := FActiveBar;
   if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing then
+  begin
     Exit;
+  end;
   Problem := Bar.WindowProblem;
   if Problem <> FProblem then
   begin
     FProblem := Problem;
     if Problem <> '' then
+    begin
       TAtlasGuard.Log(Format('Brotkrumen: %s (in %s)', [Problem, ControlChain(Bar.Parent)]));
+    end;
   end;
   if Problem <> '' then
   begin
     // Netz (siehe oben). Ein Fenster eines fremden Threads lässt sich von hier nicht zerstören (DestroyWindow
     // schlägt fehl); nur protokollieren, damit die Ursache feststeht.
     if GetWindowThreadProcessId(Bar.Handle, nil) <> MainThreadID then
+    begin
       Exit;
+    end;
     if (Bar.Parent = nil) or not Bar.Parent.HandleAllocated or (GetParent(Bar.Handle) <> Bar.Parent.Handle) then
     begin
       Bar.Free;
@@ -632,7 +692,9 @@ begin
       EnableWindow(Bar.Handle, True);
     end;
     if GetWindowLongPtr(Bar.Handle, GWL_STYLE) and WS_VISIBLE = 0 then
+    begin
       ShowWindow(Bar.Handle, SW_SHOWNA);
+    end;
     Exit;
   end;
   if not GetCursorPos(Cursor) or not PtInRect(Bar.ClientRect, Bar.ScreenToClient(Cursor)) then
@@ -643,7 +705,9 @@ begin
   end;
   Window := WindowFromPoint(Cursor);
   if Window = FProbed then
+  begin
     Exit;
+  end;
   FProbed := Window;
   if Window = Bar.Handle then
   begin
@@ -652,21 +716,31 @@ begin
   end;
   // Ein Fenster eines anderen Formulars (Dialog, Popup) liegt zu Recht darüber.
   if GetAncestor(Window, GA_ROOT) <> GetAncestor(Bar.Handle, GA_ROOT) then
+  begin
     Exit;
+  end;
   WindowClass[0] := #0;
   GetClassName(Window, WindowClass, Length(WindowClass));
   Control := FindControl(Window);
   Name := '';
   if Control <> nil then
+  begin
     Name := ControlChain(Control);
+  end;
   Ancestor := IsChild(Window, Bar.Handle);
   if Ancestor then
-    Relation := 'Vorfahr der Leiste; lege die Leiste neu an'
+  begin
+    Relation := 'Vorfahr der Leiste; lege die Leiste neu an';
+  end
   else
+  begin
     Relation := 'kein Vorfahr; hole die Leiste nach vorn';
+  end;
   Cause := Bar.HitProblem(Cursor);
   if Cause = '' then
+  begin
     Cause := 'am Fenster der Leiste keine erkennbar';
+  end;
   TAtlasGuard.Log(Format('Brotkrumen: Maus landet bei %s (%s, %s) statt bei der Leiste (in %s); Ursache: %s',
     [string(WindowClass), Name, Relation, ControlChain(Bar.Parent), Cause]));
   // Netz (siehe oben).
@@ -690,10 +764,14 @@ begin
   FreeAndNil(FState);
   // Auch bei ausgelöster Sicherung: Die Leiste zeigt dann den Hinweis (ShowDisabled).
   if Enabled then
-    FState := TBreadcrumbsState.Create
+  begin
+    FState := TBreadcrumbsState.Create;
+  end
   else
+  begin
     // Hatte Atlas die Navigationsleiste ausgeblendet und die IDE endete ohne Entladen: wieder zeigen.
     TAtlasIdeNavigationOption.Apply(False);
+  end;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.Uninstall;
@@ -710,15 +788,21 @@ begin
     Exit;
   end;
   if FState = nil then
-    FState := TBreadcrumbsState.Create
+  begin
+    FState := TBreadcrumbsState.Create;
+  end
   else
+  begin
     TBreadcrumbsState(FState).Reset;
+  end;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.ThemeChanged;
 begin
   if FState <> nil then
+  begin
     TBreadcrumbsState(FState).ApplyTheme;
+  end;
 end;
 
 class procedure TAtlasIdeBreadcrumbs.Focus;
@@ -726,11 +810,15 @@ var
   Bar: TAtlasBreadcrumbBar;
 begin
   if (FState = nil) or not Active then
+  begin
     Exit;
+  end;
   TBreadcrumbsState(FState).Update;
   Bar := TBreadcrumbsState(FState).ActiveBar;
   if Bar <> nil then
+  begin
     Bar.FocusLast;
+  end;
 end;
 
 end.
