@@ -46,6 +46,9 @@ type
     FNamespaces: TArray<string>;
     FSettingsFor: THighlightSettingsProvider;
     function HandleHighlight(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    /// <summary>Vorkommen des Bezeichners an APosition in ATree der Datei AUri.</summary>
+    function IdentifierHighlights(ATree: TSyntaxTree; const AUri: string; const APosition: TTextPosition;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
@@ -123,6 +126,62 @@ begin
   Result := SameText(A.FileName, B.FileName) and (A.SelectionRange.StartPos = B.SelectionRange.StartPos);
 end;
 
+/// <summary>Index des nächsten Tokens nach AIndex, das kein Kommentar und keine Direktive ist.</summary>
+function NextCodeToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Art des Vorkommens ATokens[AIndex] von AWanted: Deklaration, Zuweisung oder Lesen.</summary>
+function KindAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AWanted: TDefinitionTarget;
+  const AFileName: string): THighlightKind;
+var
+  mNext: Integer;
+begin
+  if SameText(AWanted.FileName, AFileName) and (AWanted.SelectionRange.StartPos = ATokens[AIndex].StartPos) then
+  begin
+    Exit(THighlightKind.Text);
+  end;
+  Result := THighlightKind.Read;
+  mNext := NextCodeToken(ATokens, AIndex);
+  if (mNext <= High(ATokens)) and (ATokens[mNext].Kind = TPascalTokenKind.Symbol) and (ATokens[mNext].Text = ':=') then
+  begin
+    Result := THighlightKind.Write;
+  end;
+end;
+
+/// <summary>Zusammengehörige Schlüsselwörter als Vorkommen der Art Text.</summary>
+function KeywordFound(const ARanges: TArray<TTextRange>): TArray<TDocumentHighlight>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ARanges));
+  for mIndex := 0 to High(ARanges) do
+  begin
+    Result[mIndex].Range := ARanges[mIndex];
+    Result[mIndex].Kind := THighlightKind.Text;
+  end;
+end;
+
+function HighlightsJson(const AFound: TArray<TDocumentHighlight>): TJSONArray;
+var
+  mHighlight: TDocumentHighlight;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mHighlight in AFound do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mHighlight.Range));
+    mItem.AddPair('kind', TJSONNumber.Create(Ord(mHighlight.Kind)));
+    Result.AddElement(mItem);
+  end;
+end;
+
 { TLspDocumentHighlights }
 
 function TLspDocumentHighlights.GetNamespaces: TArray<string>;
@@ -165,7 +224,7 @@ class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const
   const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
 var
   Tokens: TArray<TPascalToken>;
-  Index, Next: Integer;
+  Index: Integer;
   Name: string;
   Wanted, Candidate: TArray<TDefinitionTarget>;
   Highlight: TDocumentHighlight;
@@ -204,23 +263,7 @@ begin
         Continue;
       end;
       Highlight.Range := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
-      if SameText(Wanted[0].FileName, AFileName) and (Wanted[0].SelectionRange.StartPos = Tokens[Index].StartPos) then
-      begin
-        Highlight.Kind := THighlightKind.Text;
-      end
-      else
-      begin
-        Highlight.Kind := THighlightKind.Read;
-        Next := Index + 1;
-        while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-        begin
-          Inc(Next);
-        end;
-        if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Symbol) and (Tokens[Next].Text = ':=') then
-        begin
-          Highlight.Kind := THighlightKind.Write;
-        end;
-      end;
+      Highlight.Kind := KindAt(Tokens, Index, Wanted[0], AFileName);
       // Liste statt Result := Result + [...] (Code-Review P-08).
       Found.Add(Highlight);
     end;
@@ -231,75 +274,61 @@ begin
   end;
 end;
 
+function TLspDocumentHighlights.IdentifierHighlights(ATree: TSyntaxTree; const AUri: string;
+  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
+var
+  mResolver: TNameResolver;
+begin
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := Highlights(mResolver, FIndex, ATree, TDocumentUris.ToPath(AUri), APosition, ACancellation);
+  finally
+    mResolver.Free;
+  end;
+end;
+
 function TLspDocumentHighlights.HandleHighlight(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Found: TArray<TDocumentHighlight>;
-  Highlight: TDocumentHighlight;
-  Item: TJSONObject;
-  Settings: THighlightSettings;
-  Ranges: TArray<TTextRange>;
-  Index: Integer;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mFound: TArray<TDocumentHighlight>;
+  mSettings: THighlightSettings;
+  mRanges: TArray<TTextRange>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Felder "textDocument.uri" und "position" fehlen in ' + Method);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
   ACancellation.ThrowIfCancellationRequested;
   // Zuerst zusammengehörige Schlüsselwörter (#307), sonst Bezeichner.
+  mSettings := THighlightSettings.Default;
   if Assigned(FSettingsFor) then
   begin
-    Settings := FSettingsFor(Uri);
+    mSettings := FSettingsFor(mUri);
+  end;
+  if TKeywordHighlights.Find(mShared.Tree, TLspPositions.ReadPosition(mPositionValue), mSettings, mRanges) then
+  begin
+    mFound := KeywordFound(mRanges);
   end
   else
   begin
-    Settings := THighlightSettings.Default;
+    mFound := IdentifierHighlights(mShared.Tree, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation);
   end;
-  if TKeywordHighlights.Find(Tree, TLspPositions.ReadPosition(PositionValue), Settings, Ranges) then
-  begin
-    SetLength(Found, Length(Ranges));
-    for Index := 0 to High(Ranges) do
-    begin
-      Found[Index].Range := Ranges[Index];
-      Found[Index].Kind := THighlightKind.Text;
-    end;
-  end
-  else
-  begin
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := Namespaces;
-      Found := Highlights(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), ACancellation);
-    finally
-      Resolver.Free;
-    end;
-  end;
-  Result := TJSONArray.Create;
-  for Highlight in Found do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Highlight.Range));
-    Item.AddPair('kind', TJSONNumber.Create(Ord(Highlight.Kind)));
-    TJSONArray(Result).AddElement(Item);
-  end;
+  Result := HighlightsJson(mFound);
 end;
 
 end.

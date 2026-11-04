@@ -57,6 +57,169 @@ begin
   Result := not (Before(A.EndPos, B.StartPos) or Before(B.EndPos, A.StartPos));
 end;
 
+/// <summary>True, wenn kein Edit aus AEdits einen aus ATaken überlappt.</summary>
+function FitsBeside(const AEdits, ATaken: TArray<TRuleEdit>): Boolean;
+var
+  mEdit, mTaken: TRuleEdit;
+begin
+  for mEdit in AEdits do
+  begin
+    for mTaken in ATaken do
+    begin
+      if Overlaps(mEdit.Range, mTaken.Range) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Ein Eintrag von documentChanges für AFileName mit den Änderungen AEdits.</summary>
+function DocumentChange(const AFileName: string; const AEdits: TArray<TRuleEdit>;
+  const AAnnotationId: string): TJSONObject;
+var
+  mEdit: TRuleEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+begin
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', TDocumentUris.FromPath(AFileName));
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', AAnnotationId);
+    mItems.AddElement(mItem);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
+end;
+
+/// <summary>changeAnnotations mit der Bestätigung für AEdits Änderungen in AFiles Dateien.</summary>
+function ChangeAnnotations(const AAnnotationId: string; AFiles, AEdits: Integer): TJSONObject;
+var
+  mAnnotation: TJSONObject;
+begin
+  mAnnotation := TJSONObject.Create;
+  mAnnotation.AddPair('label', 'Eigenschaftsregeln anwenden');
+  mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+  mAnnotation.AddPair('description', Format('%d Änderungen in %d Formulardateien', [AEdits, AFiles]));
+  Result := TJSONObject.Create;
+  Result.AddPair(AAnnotationId, mAnnotation);
+end;
+
+type
+  /// <summary>Sammelt die Korrekturen je Formulardatei in der Reihenfolge ihres ersten Auftretens.</summary>
+  TDfmEditCollector = class
+  private
+    FOrder: TList<string>;
+    FEdits: TDictionary<string, TArray<TRuleEdit>>;
+    FSeen: TDictionary<string, Boolean>;
+    procedure AddFix(const AFix: TRuleFix);
+    procedure AddFinding(const AFinding: TRuleFinding);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddUnit(const AUnitFile: string; const ACheck: TDfmRulesCheckFunc);
+    function Changes(out AFiles, AEdits: Integer): TJSONArray;
+  end;
+
+constructor TDfmEditCollector.Create;
+begin
+  inherited Create;
+  FOrder := TList<string>.Create;
+  FEdits := TDictionary<string, TArray<TRuleEdit>>.Create;
+  FSeen := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TDfmEditCollector.Destroy;
+begin
+  FSeen.Free;
+  FEdits.Free;
+  FOrder.Free;
+  inherited;
+end;
+
+procedure TDfmEditCollector.AddFix(const AFix: TRuleFix);
+var
+  mExisting: TArray<TRuleEdit>;
+begin
+  if not FEdits.TryGetValue(UpperCase(AFix.FileName), mExisting) then
+  begin
+    mExisting := nil;
+    FOrder.Add(AFix.FileName);
+  end;
+  if FitsBeside(AFix.Edits, mExisting) then
+  begin
+    mExisting := mExisting + AFix.Edits;
+  end;
+  FEdits.AddOrSetValue(UpperCase(AFix.FileName), mExisting);
+end;
+
+procedure TDfmEditCollector.AddFinding(const AFinding: TRuleFinding);
+var
+  mFix: TRuleFix;
+begin
+  // Nur Korrekturen in der Formulardatei; die erste je Treffer.
+  for mFix in AFinding.Fixes do
+  begin
+    if mFix.FileName <> '' then
+    begin
+      AddFix(mFix);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TDfmEditCollector.AddUnit(const AUnitFile: string; const ACheck: TDfmRulesCheckFunc);
+var
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+begin
+  if FSeen.ContainsKey(UpperCase(AUnitFile)) then
+  begin
+    Exit;
+  end;
+  FSeen.Add(UpperCase(AUnitFile), True);
+  if not ACheck(AUnitFile, mFindings) then
+  begin
+    Exit;
+  end;
+  for mFinding in mFindings do
+  begin
+    if SameText(mFinding.RuleId, TLspDfmPropertyRules.RuleId) then
+    begin
+      AddFinding(mFinding);
+    end;
+  end;
+end;
+
+function TDfmEditCollector.Changes(out AFiles, AEdits: Integer): TJSONArray;
+var
+  mFileName: string;
+  mExisting: TArray<TRuleEdit>;
+begin
+  AFiles := 0;
+  AEdits := 0;
+  Result := TJSONArray.Create;
+  for mFileName in FOrder do
+  begin
+    mExisting := FEdits[UpperCase(mFileName)];
+    if Length(mExisting) = 0 then
+    begin
+      Continue;
+    end;
+    Result.AddElement(DocumentChange(mFileName, mExisting, TLspDfmPropertyRules.AnnotationId));
+    Inc(AFiles);
+    Inc(AEdits, Length(mExisting));
+  end;
+end;
+
 { TLspDfmPropertyRules }
 
 class function TLspDfmPropertyRules.UnitOf(const AFileName: string): string;
@@ -74,115 +237,23 @@ end;
 class function TLspDfmPropertyRules.BuildEdit(const AUnits: TArray<string>; const ACheck: TDfmRulesCheckFunc;
   out AFiles, AEdits: Integer): TJSONObject;
 var
-  Order: TList<string>;
-  Edits: TDictionary<string, TArray<TRuleEdit>>;
-  Seen: TDictionary<string, Boolean>;
-  UnitFile, FileName: string;
-  Findings: TArray<TRuleFinding>;
-  Finding: TRuleFinding;
-  Fix: TRuleFix;
-  Edit, Taken: TRuleEdit;
-  Existing: TArray<TRuleEdit>;
-  Fits: Boolean;
-  Changes, Items: TJSONArray;
-  Document, Item, Entry, Annotations, Annotation: TJSONObject;
+  mCollector: TDfmEditCollector;
+  mUnitFile: string;
+  mChanges: TJSONArray;
 begin
-  AFiles := 0;
-  AEdits := 0;
-  Order := TList<string>.Create;
-  Edits := TDictionary<string, TArray<TRuleEdit>>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mCollector := TDfmEditCollector.Create;
   try
-    for UnitFile in AUnits do
+    for mUnitFile in AUnits do
     begin
-      if Seen.ContainsKey(UpperCase(UnitFile)) then
-      begin
-        Continue;
-      end;
-      Seen.Add(UpperCase(UnitFile), True);
-      if not ACheck(UnitFile, Findings) then
-      begin
-        Continue;
-      end;
-      for Finding in Findings do
-      begin
-        if not SameText(Finding.RuleId, RuleId) then
-        begin
-          Continue;
-        end;
-        for Fix in Finding.Fixes do
-        begin
-          // Nur Korrekturen in der Formulardatei; die erste je Treffer.
-          if Fix.FileName = '' then
-          begin
-            Continue;
-          end;
-          if not Edits.TryGetValue(UpperCase(Fix.FileName), Existing) then
-          begin
-            Existing := nil;
-            Order.Add(Fix.FileName);
-          end;
-          Fits := True;
-          for Edit in Fix.Edits do
-          begin
-            for Taken in Existing do
-            begin
-              if Overlaps(Edit.Range, Taken.Range) then
-              begin
-                Fits := False;
-              end;
-            end;
-          end;
-          if Fits then
-          begin
-            Existing := Existing + Fix.Edits;
-          end;
-          Edits.AddOrSetValue(UpperCase(Fix.FileName), Existing);
-          Break;
-        end;
-      end;
+      mCollector.AddUnit(mUnitFile, ACheck);
     end;
-    Changes := TJSONArray.Create;
-    for FileName in Order do
-    begin
-      Existing := Edits[UpperCase(FileName)];
-      if Length(Existing) = 0 then
-      begin
-        Continue;
-      end;
-      Document := TJSONObject.Create;
-      Document.AddPair('uri', TDocumentUris.FromPath(FileName));
-      Document.AddPair('version', TJSONNull.Create);
-      Items := TJSONArray.Create;
-      for Edit in Existing do
-      begin
-        Item := TJSONObject.Create;
-        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-        Item.AddPair('newText', Edit.NewText);
-        Item.AddPair('annotationId', AnnotationId);
-        Items.AddElement(Item);
-      end;
-      Entry := TJSONObject.Create;
-      Entry.AddPair('textDocument', Document);
-      Entry.AddPair('edits', Items);
-      Changes.AddElement(Entry);
-      Inc(AFiles);
-      Inc(AEdits, Length(Existing));
-    end;
+    mChanges := mCollector.Changes(AFiles, AEdits);
   finally
-    Seen.Free;
-    Edits.Free;
-    Order.Free;
+    mCollector.Free;
   end;
-  Annotation := TJSONObject.Create;
-  Annotation.AddPair('label', 'Eigenschaftsregeln anwenden');
-  Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%d Änderungen in %d Formulardateien', [AEdits, AFiles]));
-  Annotations := TJSONObject.Create;
-  Annotations.AddPair(AnnotationId, Annotation);
   Result := TJSONObject.Create;
-  Result.AddPair('documentChanges', Changes);
-  Result.AddPair('changeAnnotations', Annotations);
+  Result.AddPair('documentChanges', mChanges);
+  Result.AddPair('changeAnnotations', ChangeAnnotations(AnnotationId, AFiles, AEdits));
 end;
 
 end.
