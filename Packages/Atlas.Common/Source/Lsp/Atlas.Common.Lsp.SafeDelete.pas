@@ -40,15 +40,6 @@ type
   /// <summary>uses-Kontext einer Datei (wie die uses-Aktionen).</summary>
   TSafeDeleteUsesFunc = reference to function(const AFileName: string): TUsesContext;
 
-  TSafeDeleteContext = record
-    Index: ISymbolIndex;
-    /// <summary>Dateien des Projekts für die Referenzsuche, Nachfahren und uses.</summary>
-    Files: TArray<string>;
-    ReadText: TReferenceReadText;
-    /// <summary>Für uses-Folgeschritte und das Löschen einer Unit; nil: ohne diese Prüfungen.</summary>
-    UsesFor: TSafeDeleteUsesFunc;
-  end;
-
   TSafeDeleteChoices = record
     /// <summary>Überschreibungen in Nachfahren mitlöschen.</summary>
     Overrides: Boolean;
@@ -57,6 +48,17 @@ type
     /// <summary>Trotz Verwendungen löschen.</summary>
     Force: Boolean;
     class function FromJson(AValue: TJSONValue): TSafeDeleteChoices; static;
+  end;
+
+  TSafeDeleteContext = record
+    Index: ISymbolIndex;
+    /// <summary>Dateien des Projekts für die Referenzsuche, Nachfahren und uses.</summary>
+    Files: TArray<string>;
+    ReadText: TReferenceReadText;
+    /// <summary>Für uses-Folgeschritte und das Löschen einer Unit; nil: ohne diese Prüfungen.</summary>
+    UsesFor: TSafeDeleteUsesFunc;
+    /// <summary>Antworten auf die Rückfragen; nur Execute wertet sie aus.</summary>
+    Choices: TSafeDeleteChoices;
   end;
 
   TLspSafeDelete = class
@@ -77,11 +79,10 @@ type
     class function Prepare(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
       const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject; static;
     /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "deleted": n, "edits": n, "files": n}; EJsonRpcError
-    /// bei Verwendungen ohne AChoices.Force oder wenn das Ergebnis nicht parst. Der Aufrufer übernimmt das
-    /// Objekt.</summary>
+    /// bei Verwendungen ohne AContext.Choices.Force oder wenn das Ergebnis nicht parst. Der Aufrufer übernimmt
+    /// das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; const AChoices: TSafeDeleteChoices; const AContext: TSafeDeleteContext):
-      TJSONObject; static;
+      const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject; static;
   end;
 
 implementation
@@ -146,6 +147,12 @@ type
     function NewlyUnused(const ANewText: string): TArray<string>;
     function UnitEdits(const AText: string; AFileTree: TSyntaxTree; const AUnits: TArray<string>;
       out AEdits: TArray<TTextEdit>): Boolean;
+    /// <summary>Baum von AFileName: der eigene oder ein neu gelesener, den der Plan freigibt.</summary>
+    function FileTreeOf(const AFileName, AText: string): TSyntaxTree;
+    /// <summary>True, wenn das Mitglied AIndex außerhalb der gelöschten Zeilen verwendet wird.</summary>
+    function UsedElsewhere(ALayout: TClassLayout; AIndex: Integer): Boolean;
+    procedure DeleteUnit(AChanges: TWorkspaceChanges);
+    procedure DeleteOverrides(AChanges: TWorkspaceChanges);
   public
     Target: TSafeDeleteTarget;
     OwnSpans: TArray<TLineSpan>;
@@ -411,84 +418,105 @@ begin
   end;
 end;
 
+/// <summary>Überschreibungen von AName mit den Parametern AParameters in der Klasse ALocation des Baums
+/// AFileTree.</summary>
+function OverridesIn(AFileTree: TSyntaxTree; const AText: string; const ALocation: TSymbolLocation;
+  const AName, AParameters: string): TArray<TSafeDeleteOverride>;
+var
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mIndex: Integer;
+  mHit: TSafeDeleteOverride;
+begin
+  Result := nil;
+  mDecl := TClassLayout.DeclNamed(AFileTree, ALocation.Symbol.Name);
+  if mDecl = nil then
+  begin
+    Exit;
+  end;
+  mLayout := TClassLayout.Read(AFileTree, AText, mDecl);
+  try
+    for mIndex in mLayout.Find(AName) do
+    begin
+      if mLayout.Members[mIndex].HasDirective('override') and (mLayout.Members[mIndex].Parameters = AParameters) then
+      begin
+        mHit.FileName := ALocation.FileName;
+        mHit.ClassName := mLayout.Name;
+        mHit.Member := mIndex;
+        mHit.Position := mLayout.Members[mIndex].Node.StartPos;
+        Result := Result + [mHit];
+      end;
+    end;
+  finally
+    mLayout.Free;
+  end;
+end;
+
+function TSafeDeletePlan.FileTreeOf(const AFileName, AText: string): TSyntaxTree;
+begin
+  if SameText(AFileName, FFileName) then
+  begin
+    Exit(FTree);
+  end;
+  Result := TSyntaxTreeCache.Parse(AText);
+  FTrees.Add(Result);
+end;
+
 procedure TSafeDeletePlan.FindOverrides(ALayout: TClassLayout);
 var
-  Queue, Seen: TArray<string>;
-  Current, Text: string;
-  Location: TSymbolLocation;
-  FileTree: TSyntaxTree;
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Index: Integer;
-  Hit: TSafeDeleteOverride;
-  Parameters: string;
+  mQueue, mSeen: TArray<string>;
+  mCurrent, mText, mParameters: string;
+  mLocation: TSymbolLocation;
 begin
   if (Target.Kind <> TSafeDeleteKind.Method) or not Target.IsVirtual or (FContext.Index = nil) then
   begin
     Exit;
   end;
-  Parameters := ALayout.Members[Target.Member].Parameters;
-  Queue := [ALayout.Name];
-  Seen := [ALayout.Name];
-  while Queue <> nil do
+  mParameters := ALayout.Members[Target.Member].Parameters;
+  mQueue := [ALayout.Name];
+  mSeen := [ALayout.Name];
+  while mQueue <> nil do
   begin
-    Current := Queue[0];
-    Delete(Queue, 0, 1);
-    for Location in FContext.Index.Descendants(Current) do
+    mCurrent := mQueue[0];
+    Delete(mQueue, 0, 1);
+    for mLocation in FContext.Index.Descendants(mCurrent) do
     begin
-      if IndexText(Location.Symbol.Name, Seen) >= 0 then
+      if IndexText(mLocation.Symbol.Name, mSeen) >= 0 then
       begin
         Continue;
       end;
-      Seen := Seen + [Location.Symbol.Name];
-      Queue := Queue + [Location.Symbol.Name];
-      if not ReadFile(Location.FileName, Text) then
+      mSeen := mSeen + [mLocation.Symbol.Name];
+      mQueue := mQueue + [mLocation.Symbol.Name];
+      if ReadFile(mLocation.FileName, mText) then
       begin
-        Continue;
-      end;
-      if SameText(Location.FileName, FFileName) then
-      begin
-        FileTree := FTree;
-      end
-      else
-      begin
-        FileTree := TSyntaxTreeCache.Parse(Text);
-        FTrees.Add(FileTree);
-      end;
-      Decl := TClassLayout.DeclNamed(FileTree, Location.Symbol.Name);
-      if Decl = nil then
-      begin
-        Continue;
-      end;
-      Layout := TClassLayout.Read(FileTree, Text, Decl);
-      try
-        for Index in Layout.Find(Target.Name) do
-        begin
-          if Layout.Members[Index].HasDirective('override') and (Layout.Members[Index].Parameters = Parameters) then
-          begin
-            Hit.FileName := Location.FileName;
-            Hit.ClassName := Layout.Name;
-            Hit.Member := Index;
-            Hit.Position := Layout.Members[Index].Node.StartPos;
-            Overrides := Overrides + [Hit];
-          end;
-        end;
-      finally
-        Layout.Free;
+        Overrides := Overrides + OverridesIn(FileTreeOf(mLocation.FileName, mText), mText, mLocation, Target.Name,
+          mParameters);
       end;
     end;
   end;
 end;
 
+function TSafeDeletePlan.UsedElsewhere(ALayout: TClassLayout; AIndex: Integer): Boolean;
+var
+  mSpans: TArray<TLineSpan>;
+  mLocation: TReferenceLocation;
+begin
+  mSpans := TSafeDelete.OwnLines(FTree, FText, TSafeDelete.ForMember(ALayout, AIndex)) + OwnSpans;
+  for mLocation in References(TSafeDelete.ForMember(ALayout, AIndex).NameRange.StartPos) do
+  begin
+    if not SameText(mLocation.FileName, FFileName) or not InSpans(mSpans, mLocation.Range.StartPos.Line) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TSafeDeletePlan.FindCascade(ALayout: TClassLayout);
 var
-  Member: TClassMember;
-  Accessors: TArray<string>;
-  Accessor: string;
-  Index: Integer;
-  Location: TReferenceLocation;
-  Spans: TArray<TLineSpan>;
-  Used: Boolean;
+  mMember: TClassMember;
+  mAccessor: string;
+  mIndex: Integer;
 begin
   Freed := TSafeDelete.FreedMembers(ALayout, [Target.Member]);
   if Target.Kind <> TSafeDeleteKind.Property_ then
@@ -496,99 +524,96 @@ begin
     Exit;
   end;
   // Getter und Setter, die nicht privat sind: frei, wenn die Referenzsuche nur die Property findet.
-  Member := ALayout.Members[Target.Member];
-  Accessors := [Member.ReadAccessor, Member.WriteAccessor];
-  for Accessor in Accessors do
+  mMember := ALayout.Members[Target.Member];
+  for mAccessor in TArray<string>.Create(mMember.ReadAccessor, mMember.WriteAccessor) do
   begin
-    for Index in ALayout.Find(Accessor) do
+    for mIndex in ALayout.Find(mAccessor) do
     begin
-      if TMemberTransfer.Has(Freed, Index) or (ALayout.Members[Index].Kind <> TClassMemberKind.Method) or
-        ALayout.Members[Index].IsVirtual then
+      if not TMemberTransfer.Has(Freed, mIndex) and (ALayout.Members[mIndex].Kind = TClassMemberKind.Method) and
+        not ALayout.Members[mIndex].IsVirtual and not UsedElsewhere(ALayout, mIndex) then
       begin
-        Continue;
-      end;
-      Spans := TSafeDelete.OwnLines(FTree, FText, TSafeDelete.ForMember(ALayout, Index)) + OwnSpans;
-      Used := False;
-      for Location in References(TSafeDelete.ForMember(ALayout, Index).NameRange.StartPos) do
-      begin
-        if not SameText(Location.FileName, FFileName) or not InSpans(Spans, Location.Range.StartPos.Line) then
-        begin
-          Used := True;
-        end;
-      end;
-      if not Used then
-      begin
-        Freed := Freed + [Index];
+        Freed := Freed + [mIndex];
       end;
     end;
   end;
 end;
 
+/// <summary>True, wenn ein Bezeichner in ATokens AUnitName heißt.</summary>
+function NamesUnit(const ATokens: TArray<TPascalToken>; const AUnitName: string): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in ATokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AUnitName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Ungenutzte uses-Einträge in ATokens, wenn AUnitName samt initialization wegfällt (dieselbe Analyse
+/// wie "ungenutzte uses"); leer ohne Auskunft über Units.</summary>
+function UnusedWithout(const AUses: TUsesContext; const ATokens: TArray<TPascalToken>;
+  const AUnitName: string): TArray<string>;
+var
+  mInfo: TUsesUnitInfoFunc;
+  mUnitName: string;
+begin
+  Result := nil;
+  mInfo := AUses.Info;
+  if not Assigned(mInfo) then
+  begin
+    Exit;
+  end;
+  mUnitName := AUnitName;
+  Result := TUsesActions.UnusedUnits(ATokens,
+    function(const AName: string): TUsesUnitInfo
+    begin
+      Result := mInfo(AName);
+      // Ihre initialization verschwindet mit ihr.
+      if SameText(AName, mUnitName) then
+      begin
+        Result.HasInitialization := False;
+      end;
+    end, nil);
+end;
+
 procedure TSafeDeletePlan.FindUnitUsers;
 var
-  FileName, Text: string;
-  FileTree: TSyntaxTree;
-  Uses_: TUsesContext;
-  Info: TUsesUnitInfoFunc;
-  UnitName: string;
-  Unused: TArray<string>;
-  Token: TPascalToken;
-  Found: Boolean;
+  mFileName, mText, mUnitName: string;
+  mFileTree: TSyntaxTree;
 begin
-  UnitName := Target.Name;
-  for FileName in FContext.Files do
+  mUnitName := Target.Name;
+  for mFileName in FContext.Files do
   begin
-    if SameText(FileName, FFileName) or not SameText(ExtractFileExt(FileName), '.pas') or
-      not ReadFile(FileName, Text) or not ContainsText(Text, UnitName) then
+    if SameText(mFileName, FFileName) or not SameText(ExtractFileExt(mFileName), '.pas') or
+      not ReadFile(mFileName, mText) or not ContainsText(mText, mUnitName) then
     begin
       Continue;
     end;
-    FileTree := TSyntaxTreeCache.Parse(Text);
-    FTrees.Add(FileTree);
+    mFileTree := FileTreeOf(mFileName, mText);
     // Steht die Unit in einer uses-Liste?
-    Found := False;
-    for Token in FileTree.Tokens do
-    begin
-      if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, UnitName) then
-      begin
-        Found := True;
-      end;
-    end;
-    if not Found then
+    if not NamesUnit(mFileTree.Tokens, mUnitName) then
     begin
       Continue;
     end;
-    if not Assigned(FContext.UsesFor) then
+    // Nur der uses-Eintrag fällt mit weg; sonst ist es eine Verwendung.
+    if Assigned(FContext.UsesFor) and (IndexText(mUnitName, UnusedWithout(FContext.UsesFor(mFileName),
+      mFileTree.Tokens, mUnitName)) >= 0) then
     begin
-      AddUsage(FileName, TTextPosition.Create(0, 0), Format('%s bindet %s ein.', [ExtractFileName(FileName),
-        UnitName]), 'uses');
-      Continue;
-    end;
-    // Nur der uses-Eintrag (dieselbe Analyse wie "ungenutzte uses"): fällt mit weg. Sonst eine Verwendung.
-    Uses_ := FContext.UsesFor(FileName);
-    Info := Uses_.Info;
-    Unused := nil;
-    if Assigned(Info) then
+      UsesFiles := UsesFiles + [mFileName];
+    end
+    else if Assigned(FContext.UsesFor) then
     begin
-      Unused := TUsesActions.UnusedUnits(FileTree.Tokens,
-        function(const AName: string): TUsesUnitInfo
-        begin
-          Result := Info(AName);
-          // Ihre initialization verschwindet mit ihr.
-          if SameText(AName, UnitName) then
-          begin
-            Result.HasInitialization := False;
-          end;
-        end, nil);
-    end;
-    if IndexText(UnitName, Unused) >= 0 then
-    begin
-      UsesFiles := UsesFiles + [FileName];
+      AddUsage(mFileName, TTextPosition.Create(0, 0), Format('%s benutzt Symbole aus %s.',
+        [ExtractFileName(mFileName), mUnitName]), 'uses');
     end
     else
     begin
-      AddUsage(FileName, TTextPosition.Create(0, 0), Format('%s benutzt Symbole aus %s.', [ExtractFileName(FileName),
-        UnitName]), 'uses');
+      AddUsage(mFileName, TTextPosition.Create(0, 0), Format('%s bindet %s ein.', [ExtractFileName(mFileName),
+        mUnitName]), 'uses');
     end;
   end;
 end;
@@ -692,39 +717,49 @@ begin
   end;
 end;
 
+/// <summary>Ziele der Überschreibungen AOverrides in der Datei AFileName mit dem Baum AFileTree.</summary>
+function OverrideTargets(AFileTree: TSyntaxTree; const AText, AFileName: string;
+  const AOverrides: TArray<TSafeDeleteOverride>): TArray<TSafeDeleteTarget>;
+var
+  mHit: TSafeDeleteOverride;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+begin
+  Result := nil;
+  for mHit in AOverrides do
+  begin
+    if not SameText(mHit.FileName, AFileName) then
+    begin
+      Continue;
+    end;
+    mDecl := TClassLayout.DeclNamed(AFileTree, mHit.ClassName);
+    if mDecl = nil then
+    begin
+      Continue;
+    end;
+    mLayout := TClassLayout.Read(AFileTree, AText, mDecl);
+    try
+      Result := Result + [TSafeDelete.ForMember(mLayout, mHit.Member)];
+    finally
+      mLayout.Free;
+    end;
+  end;
+end;
+
 function TSafeDeletePlan.NewText(AOverrides, ACascade: Boolean): string;
 var
-  Targets: TArray<TSafeDeleteTarget>;
-  Hit: TSafeDeleteOverride;
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
+  mTargets: TArray<TSafeDeleteTarget>;
 begin
-  Targets := [Target];
+  mTargets := [Target];
   if ACascade then
   begin
-    Targets := Targets + CascadeTargets;
+    mTargets := mTargets + CascadeTargets;
   end;
   if AOverrides then
   begin
-    for Hit in Overrides do
-    begin
-      if SameText(Hit.FileName, FFileName) then
-      begin
-        Decl := TClassLayout.DeclNamed(FTree, Hit.ClassName);
-        if Decl = nil then
-        begin
-          Continue;
-        end;
-        Layout := TClassLayout.Read(FTree, FText, Decl);
-        try
-          Targets := Targets + [TSafeDelete.ForMember(Layout, Hit.Member)];
-        finally
-          Layout.Free;
-        end;
-      end;
-    end;
+    mTargets := mTargets + OverrideTargets(FTree, FText, FFileName, Overrides);
   end;
-  Result := TTextChanges.Apply(FText, TSafeDelete.Edits(FTree, FText, Targets));
+  Result := TTextChanges.Apply(FText, TSafeDelete.Edits(FTree, FText, mTargets));
 end;
 
 function TSafeDeletePlan.NewlyUnused(const ANewText: string): TArray<string>;
@@ -773,115 +808,106 @@ begin
   Result := TUsesActions.RemoveUnits(AFileTree.Tokens, AText, AUnits, LineBreak, AEdits);
 end;
 
-procedure TSafeDeletePlan.Build(const AChoices: TSafeDeleteChoices; AChanges: TWorkspaceChanges);
-
-  procedure Check(const AFileName, AOld, ANew: string);
-  var
-    Before, After: TSyntaxTree;
-  begin
-    Before := TSyntaxTreeCache.Parse(AOld);
-    After := TSyntaxTreeCache.Parse(ANew);
-    try
-      if Length(After.Diagnostics) > Length(Before.Diagnostics) then
-      begin
-        raise Fail(Format('Nach dem Löschen parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-          [ExtractFileName(AFileName), After.Diagnostics[0].StartPos.Line + 1, After.Diagnostics[0].Message]));
-      end;
-    finally
-      After.Free;
-      Before.Free;
-    end;
-  end;
-
+/// <summary>EJsonRpcError, wenn ANew mehr Parserfehler hat als AOld.</summary>
+procedure CheckParses(const AFileName, AOld, ANew: string);
 var
-  Text, Changed, FileName, Form: string;
-  FileTree: TSyntaxTree;
-  Edits: TArray<TTextEdit>;
-  Hit, Other: TSafeDeleteOverride;
-  Done: TArray<string>;
-  Targets: TArray<TSafeDeleteTarget>;
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
+  mBefore, mAfter: TSyntaxTree;
 begin
-  if Target.Kind = TSafeDeleteKind.Unit_ then
-  begin
-    for FileName in UsesFiles do
+  mBefore := TSyntaxTreeCache.Parse(AOld);
+  mAfter := TSyntaxTreeCache.Parse(ANew);
+  try
+    if Length(mAfter.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      if not ReadFile(FileName, Text) then
-      begin
-        Continue;
-      end;
-      FileTree := TSyntaxTreeCache.Parse(Text);
-      FTrees.Add(FileTree);
-      if UnitEdits(Text, FileTree, [Target.Name], Edits) then
-      begin
-        AChanges.Add(FileName, Edits);
-      end
-      else
-      begin
-        AChanges.Warn(Format('Der uses-Eintrag in %s ließ sich nicht entfernen.', [ExtractFileName(FileName)]));
-      end;
+      raise Fail(Format('Nach dem Löschen parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
+        [ExtractFileName(AFileName), mAfter.Diagnostics[0].StartPos.Line + 1, mAfter.Diagnostics[0].Message]));
     end;
-    AChanges.DeleteFile(FFileName);
-    for Form in TFormFiles.FormFiles(FFileName, FText) do
-    begin
-      if ReadFile(Form, Text) then
-      begin
-        AChanges.DeleteFile(Form);
-      end;
-    end;
-    Exit;
+  finally
+    mAfter.Free;
+    mBefore.Free;
   end;
-  Changed := NewText(AChoices.Overrides, AChoices.Cascade);
-  if AChoices.Cascade and (FreedUnits <> nil) then
+end;
+
+procedure TSafeDeletePlan.DeleteUnit(AChanges: TWorkspaceChanges);
+var
+  mFileName, mText, mForm: string;
+  mEdits: TArray<TTextEdit>;
+begin
+  for mFileName in UsesFiles do
   begin
-    FileTree := TSyntaxTreeCache.Parse(Changed);
-    FTrees.Add(FileTree);
-    if UnitEdits(Changed, FileTree, FreedUnits, Edits) then
-    begin
-      Changed := TTextChanges.Apply(Changed, Edits);
-    end;
-  end;
-  Check(FFileName, FText, Changed);
-  AChanges.Add(FFileName, TTextChanges.Diff(FText, Changed));
-  if not AChoices.Overrides then
-  begin
-    Exit;
-  end;
-  // Überschreibungen in anderen Dateien, je Datei in einem Schritt.
-  Done := nil;
-  for Hit in Overrides do
-  begin
-    if SameText(Hit.FileName, FFileName) or (IndexText(Hit.FileName, Done) >= 0) or
-      not ReadFile(Hit.FileName, Text) then
+    if not ReadFile(mFileName, mText) then
     begin
       Continue;
     end;
-    Done := Done + [Hit.FileName];
-    FileTree := TSyntaxTreeCache.Parse(Text);
-    FTrees.Add(FileTree);
-    Targets := nil;
-    for Other in Overrides do
+    if UnitEdits(mText, FileTreeOf(mFileName, mText), [Target.Name], mEdits) then
     begin
-      if not SameText(Other.FileName, Hit.FileName) then
-      begin
-        Continue;
-      end;
-      Decl := TClassLayout.DeclNamed(FileTree, Other.ClassName);
-      if Decl = nil then
-      begin
-        Continue;
-      end;
-      Layout := TClassLayout.Read(FileTree, Text, Decl);
-      try
-        Targets := Targets + [TSafeDelete.ForMember(Layout, Other.Member)];
-      finally
-        Layout.Free;
-      end;
+      AChanges.Add(mFileName, mEdits);
+    end
+    else
+    begin
+      AChanges.Warn(Format('Der uses-Eintrag in %s ließ sich nicht entfernen.', [ExtractFileName(mFileName)]));
     end;
-    Changed := TTextChanges.Apply(Text, TSafeDelete.Edits(FileTree, Text, Targets));
-    Check(Hit.FileName, Text, Changed);
-    AChanges.Add(Hit.FileName, TTextChanges.Diff(Text, Changed));
+  end;
+  AChanges.DeleteFile(FFileName);
+  for mForm in TFormFiles.FormFiles(FFileName, FText) do
+  begin
+    if ReadFile(mForm, mText) then
+    begin
+      AChanges.DeleteFile(mForm);
+    end;
+  end;
+end;
+
+procedure TSafeDeletePlan.DeleteOverrides(AChanges: TWorkspaceChanges);
+var
+  mHit: TSafeDeleteOverride;
+  mDone: TArray<string>;
+  mText, mChanged: string;
+  mFileTree: TSyntaxTree;
+begin
+  // Überschreibungen in anderen Dateien, je Datei in einem Schritt.
+  mDone := nil;
+  for mHit in Overrides do
+  begin
+    if SameText(mHit.FileName, FFileName) or (IndexText(mHit.FileName, mDone) >= 0) or
+      not ReadFile(mHit.FileName, mText) then
+    begin
+      Continue;
+    end;
+    mDone := mDone + [mHit.FileName];
+    mFileTree := FileTreeOf(mHit.FileName, mText);
+    mChanged := TTextChanges.Apply(mText, TSafeDelete.Edits(mFileTree, mText, OverrideTargets(mFileTree, mText,
+      mHit.FileName, Overrides)));
+    CheckParses(mHit.FileName, mText, mChanged);
+    AChanges.Add(mHit.FileName, TTextChanges.Diff(mText, mChanged));
+  end;
+end;
+
+procedure TSafeDeletePlan.Build(const AChoices: TSafeDeleteChoices; AChanges: TWorkspaceChanges);
+var
+  mChanged: string;
+  mFileTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
+begin
+  if Target.Kind = TSafeDeleteKind.Unit_ then
+  begin
+    DeleteUnit(AChanges);
+    Exit;
+  end;
+  mChanged := NewText(AChoices.Overrides, AChoices.Cascade);
+  if AChoices.Cascade and (FreedUnits <> nil) then
+  begin
+    mFileTree := TSyntaxTreeCache.Parse(mChanged);
+    FTrees.Add(mFileTree);
+    if UnitEdits(mChanged, mFileTree, FreedUnits, mEdits) then
+    begin
+      mChanged := TTextChanges.Apply(mChanged, mEdits);
+    end;
+  end;
+  CheckParses(FFileName, FText, mChanged);
+  AChanges.Add(FFileName, TTextChanges.Diff(FText, mChanged));
+  if AChoices.Overrides then
+  begin
+    DeleteOverrides(AChanges);
   end;
 end;
 
@@ -978,68 +1004,85 @@ begin
   end;
 end;
 
-class function TLspSafeDelete.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
-  AText: string; const APosition: TTextPosition; const AChoices: TSafeDeleteChoices;
-  const AContext: TSafeDeleteContext): TJSONObject;
+/// <summary>Was gegen das Löschen spricht: Verwendungen und ohne AOverrides die Überschreibungen.</summary>
+function BlockingOf(APlan: TSafeDeletePlan; AOverrides: Boolean): TArray<string>;
 var
-  Plan: TSafeDeletePlan;
-  Changes: TWorkspaceChanges;
-  Blocking: TArray<string>;
-  Usage: TSafeDeleteUsage;
-  Hit: TSafeDeleteOverride;
-  Warning: string;
-  Deleted: Integer;
+  mUsage: TSafeDeleteUsage;
+  mHit: TSafeDeleteOverride;
 begin
-  Plan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
-  Changes := TWorkspaceChanges.Create;
+  Result := nil;
+  for mUsage in APlan.Usages do
+  begin
+    Result := Result + [Format('%s:%d %s', [ExtractFileName(mUsage.FileName), mUsage.Position.Line + 1,
+      mUsage.Text])];
+  end;
+  if AOverrides then
+  begin
+    Exit;
+  end;
+  for mHit in APlan.Overrides do
+  begin
+    Result := Result + [Format('%s:%d überschreibt %s', [ExtractFileName(mHit.FileName), mHit.Position.Line + 1,
+      APlan.Target.Name])];
+  end;
+end;
+
+/// <summary>Zahl der gelöschten Symbole nach AChoices.</summary>
+function DeletedCount(APlan: TSafeDeletePlan; const AChoices: TSafeDeleteChoices): Integer;
+begin
+  Result := 1;
+  if AChoices.Cascade then
+  begin
+    Inc(Result, Length(APlan.Freed) + Length(APlan.FreedUnits));
+  end;
+  if AChoices.Overrides then
+  begin
+    Inc(Result, Length(APlan.Overrides));
+  end;
+end;
+
+/// <summary>Antwort von atlas.server.safeDelete.</summary>
+function ExecuteJson(AChanges: TWorkspaceChanges; ADeleted: Integer): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.AnnotationId, 'Sicher löschen', Format('%d Symbole, %d Dateien',
+    [ADeleted, AChanges.FileCount])));
+  Result.AddPair('warnings', AChanges.WarningsJson);
+  Result.AddPair('deleted', TJSONNumber.Create(ADeleted));
+  Result.AddPair('edits', TJSONNumber.Create(AChanges.EditCount));
+  Result.AddPair('files', TJSONNumber.Create(AChanges.FileCount));
+end;
+
+class function TLspSafeDelete.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  AText: string; const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject;
+var
+  mPlan: TSafeDeletePlan;
+  mChanges: TWorkspaceChanges;
+  mBlocking: TArray<string>;
+  mWarning: string;
+begin
+  mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
+  mChanges := TWorkspaceChanges.Create;
   try
-    Plan.Analyze(APosition);
-    Blocking := nil;
-    for Usage in Plan.Usages do
+    mPlan.Analyze(APosition);
+    mBlocking := BlockingOf(mPlan, AContext.Choices.Overrides);
+    if (mBlocking <> nil) and not AContext.Choices.Force then
     begin
-      Blocking := Blocking + [Format('%s:%d %s', [ExtractFileName(Usage.FileName), Usage.Position.Line + 1,
-        Usage.Text])];
+      raise Fail(Format('%s wird noch verwendet: %s', [mPlan.Target.Name, string.Join('; ', mBlocking)]));
     end;
-    if not AChoices.Overrides then
+    for mWarning in mPlan.Warnings do
     begin
-      for Hit in Plan.Overrides do
-      begin
-        Blocking := Blocking + [Format('%s:%d überschreibt %s', [ExtractFileName(Hit.FileName), Hit.Position.Line + 1,
-          Plan.Target.Name])];
-      end;
+      mChanges.Warn(mWarning);
     end;
-    if (Blocking <> nil) and not AChoices.Force then
+    if mBlocking <> nil then
     begin
-      raise Fail(Format('%s wird noch verwendet: %s', [Plan.Target.Name, string.Join('; ', Blocking)]));
+      mChanges.Warn(Format('Trotz %d Verwendungen gelöscht.', [Length(mBlocking)]));
     end;
-    for Warning in Plan.Warnings do
-    begin
-      Changes.Warn(Warning);
-    end;
-    if Blocking <> nil then
-    begin
-      Changes.Warn(Format('Trotz %d Verwendungen gelöscht.', [Length(Blocking)]));
-    end;
-    Plan.Build(AChoices, Changes);
-    Deleted := 1;
-    if AChoices.Cascade then
-    begin
-      Inc(Deleted, Length(Plan.Freed) + Length(Plan.FreedUnits));
-    end;
-    if AChoices.Overrides then
-    begin
-      Inc(Deleted, Length(Plan.Overrides));
-    end;
-    Result := TJSONObject.Create;
-    Result.AddPair('edit', Changes.ToJson(AnnotationId, 'Sicher löschen', Format('%d Symbole, %d Dateien',
-      [Deleted, Changes.FileCount])));
-    Result.AddPair('warnings', Changes.WarningsJson);
-    Result.AddPair('deleted', TJSONNumber.Create(Deleted));
-    Result.AddPair('edits', TJSONNumber.Create(Changes.EditCount));
-    Result.AddPair('files', TJSONNumber.Create(Changes.FileCount));
+    mPlan.Build(AContext.Choices, mChanges);
+    Result := ExecuteJson(mChanges, DeletedCount(mPlan, AContext.Choices));
   finally
-    Changes.Free;
-    Plan.Free;
+    mChanges.Free;
+    mPlan.Free;
   end;
 end;
 

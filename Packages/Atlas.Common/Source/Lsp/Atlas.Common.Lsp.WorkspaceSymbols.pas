@@ -66,6 +66,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
+  System.Math,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.FuzzyMatch;
@@ -100,93 +101,115 @@ begin
   Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
-class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer;
-  const ACancellation: IJsonRpcCancellationToken): TArray<TWorkspaceSymbol>;
+/// <summary>Deklaration und Implementierung derselben Routine nur einmal: True, wenn ASymbol schon in ASeen
+/// steht; sonst wird es eingetragen.</summary>
+function IsRepeat(ASeen: TDictionary<string, Boolean>; const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): Boolean;
 var
-  Query: string;
-  Candidates: TList<TCandidate>;
-  Seen: TDictionary<string, Boolean>;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Candidate: TCandidate;
-  Rank, Index: Integer;
-  Key: string;
+  mKey: string;
 begin
-  Result := nil;
-  Query := LowerCase(Trim(AQuery));
-  if Query = '' then
+  Result := False;
+  if not (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) then
   begin
     Exit;
   end;
-  Candidates := TList<TCandidate>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mKey := LowerCase(AUnit.FileName + '|' + ASymbol.Container + '|' + ASymbol.Name + '|' +
+    IntToStr(Ord(ASymbol.Kind)));
+  Result := ASeen.ContainsKey(mKey);
+  if not Result then
+  begin
+    ASeen.Add(mKey, True);
+  end;
+end;
+
+/// <summary>Treffer ASymbol mit der Güte ARank; höhere Punktzahl zuerst, bei Gleichstand Typen vor anderen
+/// Symbolen.</summary>
+function NewCandidate(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol; ARank: Integer): TCandidate;
+begin
+  Result.Item.Symbol := ASymbol;
+  Result.Item.UnitName := AUnit.UnitName;
+  Result.Item.FileName := AUnit.FileName;
+  Result.Item.Bookmark := False;
+  Result.Rank := -ARank * 2;
+  if not (ASymbol.Kind in TypeKinds) then
+  begin
+    Inc(Result.Rank);
+  end;
+end;
+
+/// <summary>Treffer der Unit AUnit für AQuery (klein geschrieben) an ACandidates anhängen.</summary>
+procedure AddUnitCandidates(ACandidates: TList<TCandidate>; ASeen: TDictionary<string, Boolean>;
+  const AUnit: TUnitIndex; const AQuery: string);
+var
+  mSymbol: TIndexSymbol;
+  mRank: Integer;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    mRank := TFuzzyMatch.Score(mSymbol.Name, AQuery);
+    if (mRank <> TFuzzyMatch.NoMatch) and not IsRepeat(ASeen, AUnit, mSymbol) then
+    begin
+      ACandidates.Add(NewCandidate(AUnit, mSymbol, mRank));
+    end;
+  end;
+end;
+
+/// <summary>Reihenfolge: Güte, Name, Klasse, Unit.</summary>
+function CompareCandidates(const A, B: TCandidate): Integer;
+begin
+  Result := A.Rank - B.Rank;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.Symbol.Container, B.Item.Symbol.Container);
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.UnitName, B.Item.UnitName);
+  end;
+end;
+
+class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer;
+  const ACancellation: IJsonRpcCancellationToken): TArray<TWorkspaceSymbol>;
+var
+  mQuery: string;
+  mCandidates: TList<TCandidate>;
+  mSeen: TDictionary<string, Boolean>;
+  mUnit: TUnitIndex;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mQuery := LowerCase(Trim(AQuery));
+  if mQuery = '' then
+  begin
+    Exit;
+  end;
+  mCandidates := TList<TCandidate>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for UnitIndex in AIndex.Units do
+    for mUnit in AIndex.Units do
     begin
       if ACancellation <> nil then
       begin
         ACancellation.ThrowIfCancellationRequested;
       end;
-      for Symbol in UnitIndex.Symbols do
-      begin
-        Rank := TFuzzyMatch.Score(Symbol.Name, Query);
-        if Rank = TFuzzyMatch.NoMatch then
-        begin
-          Continue;
-        end;
-        // Deklaration und Implementierung derselben Routine nur einmal.
-        Key := LowerCase(UnitIndex.FileName + '|' + Symbol.Container + '|' + Symbol.Name + '|' +
-          IntToStr(Ord(Symbol.Kind)));
-        if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) then
-        begin
-          if Seen.ContainsKey(Key) then
-          begin
-            Continue;
-          end;
-          Seen.Add(Key, True);
-        end;
-        Candidate.Item.Symbol := Symbol;
-        Candidate.Item.UnitName := UnitIndex.UnitName;
-        Candidate.Item.FileName := UnitIndex.FileName;
-        Candidate.Item.Bookmark := False;
-        // Höhere Punktzahl zuerst; bei Gleichstand Typen vor anderen Symbolen.
-        Candidate.Rank := -Rank * 2;
-        if not (Symbol.Kind in TypeKinds) then
-        begin
-          Inc(Candidate.Rank);
-        end;
-        Candidates.Add(Candidate);
-      end;
+      AddUnitCandidates(mCandidates, mSeen, mUnit, mQuery);
     end;
-    Candidates.Sort(TComparer<TCandidate>.Construct(
+    mCandidates.Sort(TComparer<TCandidate>.Construct(
       function(const A, B: TCandidate): Integer
       begin
-        Result := A.Rank - B.Rank;
-        if Result = 0 then
-        begin
-          Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(A.Item.Symbol.Container, B.Item.Symbol.Container);
-        end;
-        if Result = 0 then
-        begin
-          Result := CompareText(A.Item.UnitName, B.Item.UnitName);
-        end;
+        Result := CompareCandidates(A, B);
       end));
-    if Candidates.Count < AMax then
+    SetLength(Result, Min(AMax, mCandidates.Count));
+    for mIndex := 0 to High(Result) do
     begin
-      AMax := Candidates.Count;
-    end;
-    SetLength(Result, AMax);
-    for Index := 0 to AMax - 1 do
-    begin
-      Result[Index] := Candidates[Index].Item;
+      Result[mIndex] := mCandidates[mIndex].Item;
     end;
   finally
-    Seen.Free;
-    Candidates.Free;
+    mSeen.Free;
+    mCandidates.Free;
   end;
 end;
 
