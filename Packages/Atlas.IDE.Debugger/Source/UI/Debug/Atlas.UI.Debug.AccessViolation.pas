@@ -39,6 +39,33 @@ implementation
 uses
   Atlas.UI.Debug.Strings;
 
+/// <summary>Zusatz zu „X ist nil“: Zugriff auf die VMT, das Feld (genau bzw. geschätzt) oder der Versatz nahe nil;
+/// '' ohne.</summary>
+function NilDetail(const AVerdict: TAtlasAvVerdict; const AMessage: TAtlasAvMessage): string;
+begin
+  Result := '';
+  if AVerdict.VmtAccess then
+  begin
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvVmt);
+  end
+  else if (AVerdict.Field <> '') and AVerdict.FieldExact then
+  begin
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvField, [AVerdict.Field,
+      TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
+  end
+  else if AVerdict.Field <> '' then
+  begin
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFieldEstimated, [AVerdict.Field,
+      TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
+  end
+  else if AMessage.AddressKnown and (AMessage.Address > 0) and
+    (AMessage.Address < TAtlasAvAnalysis.NearNil) then
+  begin
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOffset,
+      [TAtlasAvTexts.OffsetText(Integer(AMessage.Address))]);
+  end;
+end;
+
 function HeadlineOf(const AVerdict: TAtlasAvVerdict; const AMessage: TAtlasAvMessage; APointerSize: Integer;
   out ADetail: string): string;
 begin
@@ -47,26 +74,7 @@ begin
     TAtlasAvVerdictKind.NilLink:
       begin
         Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvNil, [AVerdict.Culprit.Expression]);
-        if AVerdict.VmtAccess then
-        begin
-          ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvVmt);
-        end
-        else if (AVerdict.Field <> '') and AVerdict.FieldExact then
-        begin
-          ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvField, [AVerdict.Field,
-            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
-        end
-        else if AVerdict.Field <> '' then
-        begin
-          ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFieldEstimated, [AVerdict.Field,
-            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
-        end
-        else if AMessage.AddressKnown and (AMessage.Address > 0) and
-          (AMessage.Address < TAtlasAvAnalysis.NearNil) then
-        begin
-          ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOffset,
-            [TAtlasAvTexts.OffsetText(Integer(AMessage.Address))]);
-        end;
+        ADetail := NilDetail(AVerdict, AMessage);
       end;
     TAtlasAvVerdictKind.Freed:
       begin
