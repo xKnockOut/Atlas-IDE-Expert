@@ -167,16 +167,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
 
-/// <summary>Ergebnis eines Abrufs fürs Log: "geladen" oder "nicht geladen (Fehlerkennung)".</summary>
-function LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
-begin
-  Result := 'geladen';
-  if not ASucceeded then
-  begin
-    Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
-  end;
-end;
-
 function StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
 var
   mWhen: string;
@@ -952,7 +942,7 @@ begin
   mProvider := FContext.ProviderOf(AEntry.Target);
   if mProvider <> nil then
   begin
-    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, LoadState(ASucceeded, AError)]));
+    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, TAtlasIdeIssueContext.LoadState(ASucceeded, AError)]));
   end;
   // Ein anderer Wunsch wartet: der zählt.
   if FLoad.HasPending then

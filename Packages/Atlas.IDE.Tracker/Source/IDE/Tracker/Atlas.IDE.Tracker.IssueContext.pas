@@ -13,6 +13,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.PaletteSearch,
@@ -54,6 +55,8 @@ type
     /// <summary>Transport für AProvider und ATarget; nil ohne Hook oder ohne Token.</summary>
     function TransportOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
     class function NowUtc: TDateTime; static;
+    /// <summary>Ergebnis eines Abrufs fürs Log: "geladen" oder "nicht geladen (Fehlerkennung)".</summary>
+    class function LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string; static;
     /// <summary>Angemeldet: alten Zwischenspeicher aufräumen, zuletzt geöffnete laden.</summary>
     procedure Start;
     /// <summary>Abgemeldet: neue Generation, keine Hooks mehr.</summary>
@@ -147,6 +150,15 @@ end;
 class function TAtlasIdeIssueContext.NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
+end;
+
+class function TAtlasIdeIssueContext.LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
+begin
+  Result := 'geladen';
+  if not ASucceeded then
+  begin
+    Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  end;
 end;
 
 procedure TAtlasIdeIssueContext.Start;
