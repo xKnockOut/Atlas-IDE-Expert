@@ -223,86 +223,118 @@ begin
   Result := Locate(ALines, AAnchor, 0, High(ALines), ALine);
 end;
 
+function NormalizedLines(const ALines: TArray<string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(ALines));
+  for mIndex := 0 to High(ALines) do
+  begin
+    Result[mIndex] := TAtlasLineAnchors.Normalize(ALines[mIndex]);
+  end;
+end;
+
+/// <summary>Zeile AIndex mit dem Inhalt des Ankers; AScore: passende Nachbarn. Eine leere Zeile gibt es oft; sie
+/// zählt nur mit passendem Nachbarn.</summary>
+function IsCandidate(const ANorm: TArray<string>; const AAnchor: TAtlasLineAnchor; AIndex: Integer;
+  out AScore: Integer): Boolean;
+begin
+  AScore := 0;
+  Result := ANorm[AIndex] = AAnchor.Text;
+  if Result then
+  begin
+    AScore := ContextScore(ANorm, AAnchor, AIndex);
+    Result := (AAnchor.Text <> '') or (AScore > 0);
+  end;
+end;
+
+/// <summary>Zeile mit gleichem Inhalt und den meisten passenden Nachbarn (bei Gleichstand die nächste); -1 ohne.
+/// Mehrere gleiche Zeilen ohne passenden Nachbarn: nur die bisherige Stelle ist eindeutig.</summary>
+function SameContent(const ANorm: TArray<string>; const AAnchor: TAtlasLineAnchor; AFirst, ALast: Integer):
+  Integer;
+var
+  mIndex, mScore, mBestScore, mCount: Integer;
+begin
+  Result := -1;
+  mBestScore := -1;
+  mCount := 0;
+  for mIndex := AFirst to ALast do
+  begin
+    if IsCandidate(ANorm, AAnchor, mIndex, mScore) then
+    begin
+      Inc(mCount);
+      if (mScore > mBestScore) or ((mScore = mBestScore) and Closer(mIndex, Result, AAnchor.Line)) then
+      begin
+        Result := mIndex;
+        mBestScore := mScore;
+      end;
+    end;
+  end;
+  if (Result >= 0) and (mCount > 1) and (mBestScore = 0) and (Result <> AAnchor.Line) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Inhalt geändert: nächste Zeile, um die alle Nachbarn noch passen; -1 ohne.</summary>
+function ChangedContent(const ANorm: TArray<string>; const AAnchor: TAtlasLineAnchor; AFirst, ALast: Integer):
+  Integer;
+var
+  mIndex, mFull: Integer;
+begin
+  Result := -1;
+  mFull := Length(AAnchor.Before) + Length(AAnchor.After);
+  if (mFull > 0) and HasSolidContext(AAnchor) then
+  begin
+    for mIndex := AFirst to ALast do
+    begin
+      if (ContextScore(ANorm, AAnchor, mIndex) = mFull) and Closer(mIndex, Result, AAnchor.Line) then
+      begin
+        Result := mIndex;
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasLineAnchors.Locate(const ALines: TArray<string>; const AAnchor: TAtlasLineAnchor;
   AFirst, ALast: Integer; out ALine: Integer): TAtlasLineMatch;
 var
-  Norm: TArray<string>;
-  Index, Best, BestScore, Score, Count, Full: Integer;
+  mNorm: TArray<string>;
+  mFirst, mLast, mBest: Integer;
 begin
   ALine := AAnchor.Line;
-  Result := TAtlasLineMatch.Orphaned;
-  if AFirst < 0 then
+  mFirst := AFirst;
+  if mFirst < 0 then
   begin
-    AFirst := 0;
+    mFirst := 0;
   end;
-  if ALast > High(ALines) then
+  mLast := ALast;
+  if mLast > High(ALines) then
   begin
-    ALast := High(ALines);
+    mLast := High(ALines);
   end;
-  SetLength(Norm, Length(ALines));
-  for Index := 0 to High(ALines) do
-  begin
-    Norm[Index] := Normalize(ALines[Index]);
-  end;
+  mNorm := NormalizedLines(ALines);
   // 1. Gleicher Inhalt.
-  Best := -1;
-  BestScore := -1;
-  Count := 0;
-  for Index := AFirst to ALast do
+  mBest := SameContent(mNorm, AAnchor, mFirst, mLast);
+  if mBest >= 0 then
   begin
-    if Norm[Index] <> AAnchor.Text then
-    begin
-      Continue;
-    end;
-    Score := ContextScore(Norm, AAnchor, Index);
-    // Eine leere Zeile gibt es oft; sie zählt nur mit passendem Nachbarn.
-    if (AAnchor.Text = '') and (Score = 0) then
-    begin
-      Continue;
-    end;
-    Inc(Count);
-    if (Score > BestScore) or ((Score = BestScore) and Closer(Index, Best, AAnchor.Line)) then
-    begin
-      Best := Index;
-      BestScore := Score;
-    end;
-  end;
-  // Mehrere gleiche Zeilen ohne passenden Nachbarn: nur die bisherige Stelle ist eindeutig.
-  if (Best >= 0) and (Count > 1) and (BestScore = 0) and (Best <> AAnchor.Line) then
-  begin
-    Best := -1;
-  end;
-  if Best >= 0 then
-  begin
-    ALine := Best;
-    if Best = AAnchor.Line then
+    ALine := mBest;
+    Result := TAtlasLineMatch.Moved;
+    if mBest = AAnchor.Line then
     begin
       Result := TAtlasLineMatch.Same;
-    end
-    else
-    begin
-      Result := TAtlasLineMatch.Moved;
     end;
-    Exit;
-  end;
-  // 2. Inhalt geändert: alle Nachbarn passen noch um eine Stelle.
-  Full := Length(AAnchor.Before) + Length(AAnchor.After);
-  if (Full = 0) or not HasSolidContext(AAnchor) then
+  end
+  else
   begin
-    Exit;
-  end;
-  Best := -1;
-  for Index := AFirst to ALast do
-  begin
-    if (ContextScore(Norm, AAnchor, Index) = Full) and Closer(Index, Best, AAnchor.Line) then
+    // 2. Inhalt geändert: alle Nachbarn passen noch um eine Stelle.
+    Result := TAtlasLineMatch.Orphaned;
+    mBest := ChangedContent(mNorm, AAnchor, mFirst, mLast);
+    if mBest >= 0 then
     begin
-      Best := Index;
+      ALine := mBest;
+      Result := TAtlasLineMatch.Changed;
     end;
-  end;
-  if Best >= 0 then
-  begin
-    ALine := Best;
-    Result := TAtlasLineMatch.Changed;
   end;
 end;
 
