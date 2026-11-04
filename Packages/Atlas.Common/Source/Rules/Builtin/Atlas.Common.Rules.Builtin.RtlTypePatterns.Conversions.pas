@@ -334,16 +334,6 @@ begin
   end;
 end;
 
-/// <summary>Ist AStatement die Zuweisung "X := ACall" direkt in einer Anweisungsliste?</summary>
-function IsListedAssignment(AStatement, ACall: TSyntaxNode): Boolean;
-begin
-  Result := (AStatement <> nil) and (AStatement.Kind = TSyntaxKind.AssignStatement) and
-    (AStatement.ChildCount = 2) and (AStatement[1] = ACall) and (AStatement.Parent <> nil);
-  Result := Result and (AStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
-    TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement,
-    TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection]);
-end;
-
 procedure TUncheckedConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Functions, Sources: TArray<string>;
