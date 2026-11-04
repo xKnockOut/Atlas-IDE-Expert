@@ -28,19 +28,21 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Rename;
+  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Lsp.ChangeSignature.Collector;
 
 type
   {$SCOPEDENUMS ON}
   TNewParameterMode = (Overload, UpdateCallers);
   {$SCOPEDENUMS OFF}
+
+  /// <summary>Wo „Signatur ändern“ ansetzt: Auflöser, Index, Baum, Datei, Position, Projektdateien, Lesen,
+  /// Abbruch.</summary>
+  TChangeSignatureSource = TSignatureSource;
 
   /// <summary>True, wenn die Datei schreibgeschützt ist.</summary>
   TChangeSignatureReadOnly = reference to function(const AFileName: string): Boolean;
@@ -122,20 +124,13 @@ type
     class function Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
       const AFileName, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>; static;
     /// <summary>Parameter und Einschränkungen; EJsonRpcError, wenn die Signatur nicht änderbar ist.</summary>
-    class function Prepare(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TChangeSignatureInfo;
-      static;
+    class function Prepare(const ASource: TChangeSignatureSource): TChangeSignatureInfo; static;
     /// <summary>Alle Änderungen; EJsonRpcError in den Abbruchfällen.</summary>
-    class function Execute(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const ARequest: TChangeSignatureRequest;
-      const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AIsReadOnly: TChangeSignatureReadOnly;
-      const ACancellation: IJsonRpcCancellationToken): TChangeSignatureOutcome; static;
+    class function Execute(const ASource: TChangeSignatureSource; const ARequest: TChangeSignatureRequest;
+      const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome; static;
     /// <summary>Köpfe und Aufrufe der Routine an APosition samt Überschreibungen und Interfaces (für „Boolean
     /// umkehren“, #715); EJsonRpcError, wenn dort keine Routine des Projekts steht.</summary>
-    class function Family(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TRoutineFamily; static;
+    class function Family(const ASource: TChangeSignatureSource): TRoutineFamily; static;
     /// <summary>Antwort auf PrepareCommand. Der Aufrufer übernimmt das Objekt.</summary>
     class function InfoToJson(const AInfo: TChangeSignatureInfo; AMode: TNewParameterMode;
       AVirtualOverload: Boolean): TJSONObject; static;
@@ -153,54 +148,20 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Index.Extractor,
-  Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines;
 
-const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-    TIndexSymbolKind.HelperType];
-  MaxDepth = 32;
-  MaxMembers = 500;
-
 type
   {$SCOPEDENUMS ON}
-  TMemberKind = (Method, InterfaceMethod, Routine, EventType);
   TEditKind = (Header, Rename, Call, Insert);
   {$SCOPEDENUMS OFF}
-
-  TSourceFile = class
-  public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    Symbols: TArray<TIndexSymbol>;
-    destructor Destroy; override;
-    function Tokens: TArray<TPascalToken>;
-  end;
-
-  TMember = record
-    Kind: TMemberKind;
-    FileName: string;
-    Container: string;
-    Name: string;
-    Decl: TSignatureHeader;
-    HasBody: Boolean;
-    /// <summary>Rumpf und Deklaration sind derselbe Kopf (Routine nur im implementation-Teil).</summary>
-    DeclIsBody: Boolean;
-    Body: TSignatureHeader;
-    BodyLast: Integer;
-    IsRoot: Boolean;
-  end;
 
   TFileEdit = record
     Kind: TEditKind;
@@ -211,78 +172,41 @@ type
     Values: TArray<string>;
   end;
 
-  TCallSite = record
-    FileName: string;
-    NamePos: TTextPosition;
-    /// <summary>inherited Name(...) im Rumpf einer Überschreibung: neue Parameter mit ihrem Namen.</summary>
-    InheritedInMember: Boolean;
-  end;
+  TEditList = TDictionary<string, TArray<TFileEdit>>;
 
-  /// <summary>Sammelt Mitglieder und Verwendungen; hält die gelesenen Dateien.</summary>
-  TSignatureCollector = class
+  /// <summary>Baut aus den gesammelten Mitgliedern und Aufrufen die Änderungen je Datei.</summary>
+  TSignatureEditor = class
   private
-    FResolver: TNameResolver;
-    FIndex: ISymbolIndex;
-    FFiles: TArray<string>;
-    FReadText: TReferenceReadText;
-    FCancellation: IJsonRpcCancellationToken;
-    FCurrentFile: string;
-    FSources: TObjectDictionary<string, TSourceFile>;
-    FSeen: TDictionary<string, Boolean>;
+    FCollector: TSignatureCollector;
+    FRequest: TChangeSignatureRequest;
+    FRoot: TMember;
+    FRootNames: TArray<string>;
+    FEdits: TEditList;
+    FUseOverload: Boolean;
+    FOutcome: TChangeSignatureOutcome;
+    function AddsParameters: Boolean;
+    function ChangesTypes: Boolean;
+    procedure CheckRestrictions;
+    procedure CheckRemovedUnused(const AMember: TMember);
+    procedure ChooseMode;
+    procedure CheckCollision;
+    procedure AddHeaderEdits(AUnit: TSourceFile; const AMember: TMember);
+    procedure AddRenameEdits(AUnit: TSourceFile; const AMember: TMember; const AChange: TParameterChange);
+    procedure AddDocRemovals(AUnit: TSourceFile; const AMember: TMember);
+    procedure AddMemberEdits(const AMember: TMember);
+    procedure AddOverloadDeclaration(AUnit: TSourceFile; const ALineBreak: string);
+    procedure AddOverloadBody(AUnit: TSourceFile; const ALineBreak: string);
+    procedure MarkOverridesOverload;
+    procedure AddOverload;
+    procedure AddCallEdit(const ASite: TCallSite);
+    function FileOfKey(const AKey: string): string;
+    procedure CheckParses(AUnit: TSourceFile; const AName: string; const AFinal: TArray<TFileEdit>);
+    procedure FinishFile(const AKey: string; const AIsReadOnly: TChangeSignatureReadOnly);
   public
-    Members: TArray<TMember>;
-    Calls: TArray<TCallSite>;
-    Warnings: TArray<string>;
-    Accessors: TArray<string>;
-    BoundEvent: string;
-    EventFixed: Boolean;
-    InterfaceMethod: Boolean;
-    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken; const ACurrentFile: string);
+    constructor Create(ACollector: TSignatureCollector; const ARequest: TChangeSignatureRequest);
     destructor Destroy; override;
-    function Source(const AFileName: string): TSourceFile;
-    function InProject(const AFileName: string): Boolean;
-    procedure Collect(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition);
-    function Root: TMember;
-  private
-    function FindTarget(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
-      out AFile: string; out ADecl: TIndexSymbol): Boolean;
-    function DeclaredIn(const ATypeName: string; const AName: string; const AParamTypes: TArray<string>;
-      out AFile: string; out ADecl: TIndexSymbol): Boolean;
-    function TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
-    function AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol; AIsRoot: Boolean): Boolean;
-    procedure CollectHierarchy(const AFile: string; const ADecl: TIndexSymbol);
-    procedure CollectUses(const ADecl: TIndexSymbol);
-    procedure CollectFormBinding(const AFormFile: string; const APosition: TTextPosition);
-    function IsHeaderName(const AFileName: string; const APosition: TTextPosition): Boolean;
-    function InMemberBody(const AFileName: string; ATokenIndex: Integer): Boolean;
-    function EventTypeOf(const AClassName, AProperty: string): string;
+    function Run(const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
   end;
-
-function SameTypes(const A, B: TArray<string>): Boolean;
-var
-  Index: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for Index := 0 to High(A) do
-    begin
-      if not SameText(StringReplace(A[Index], ' ', '', [rfReplaceAll]), StringReplace(B[Index], ' ', '',
-        [rfReplaceAll])) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
-function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
-begin
-  Result := ((ARange.StartPos.Line < APosition.Line) or ((ARange.StartPos.Line = APosition.Line) and
-    (ARange.StartPos.Character <= APosition.Character))) and ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character <= ARange.EndPos.Character)));
-end;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -300,796 +224,26 @@ begin
   Result := Before(A.StartPos, B.EndPos) and Before(B.StartPos, A.EndPos);
 end;
 
-function Fail(const AMessage: string): EJsonRpcError;
-begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
-end;
-
-function TypeKey(const AName: string): string;
-begin
-  Result := UpperCase(AName);
-end;
-
-{ TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  Tree.Free;
-  inherited;
-end;
-
-function TSourceFile.Tokens: TArray<TPascalToken>;
-begin
-  Result := Tree.Tokens;
-end;
-
-{ TSignatureCollector }
-
-constructor TSignatureCollector.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken;
-  const ACurrentFile: string);
-begin
-  inherited Create;
-  FResolver := AResolver;
-  FIndex := AIndex;
-  FFiles := AFiles;
-  FReadText := AReadText;
-  FCancellation := ACancellation;
-  FCurrentFile := ACurrentFile;
-  FSources := TObjectDictionary<string, TSourceFile>.Create([doOwnsValues]);
-  FSeen := TDictionary<string, Boolean>.Create;
-end;
-
-destructor TSignatureCollector.Destroy;
-begin
-  FSeen.Free;
-  FSources.Free;
-  inherited;
-end;
-
-function TSignatureCollector.InProject(const AFileName: string): Boolean;
-begin
-  Result := SameText(AFileName, FCurrentFile) or (IndexText(AFileName, FFiles) >= 0);
-end;
-
-function TSignatureCollector.Source(const AFileName: string): TSourceFile;
-var
-  Text: string;
-begin
-  if FSources.TryGetValue(UpperCase(AFileName), Result) then
-  begin
-    Exit;
-  end;
-  Result := nil;
-  if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
-  begin
-    Exit;
-  end;
-  Result := TSourceFile.Create;
-  Result.FileName := AFileName;
-  Result.Text := Text;
-  if SameText(ExtractFileExt(AFileName), '.pas') or SameText(ExtractFileExt(AFileName), '.dpr') or
-    SameText(ExtractFileExt(AFileName), '.inc') then
-  begin
-    Result.Tree := TSyntaxTreeCache.Parse(Text);
-    Result.Symbols := TIndexExtractor.Extract(Result.Tree, AFileName).Symbols;
-  end;
-  FSources.Add(UpperCase(AFileName), Result);
-end;
-
-function TSignatureCollector.FindTarget(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
-  out AFile: string; out ADecl: TIndexSymbol): Boolean;
-var
-  Resolved: TResolvedSymbol;
-  Current: TSourceFile;
-  Symbol, Candidate: TIndexSymbol;
-  Position: TTextPosition;
-  Found: Boolean;
-begin
-  Result := False;
-  AFile := '';
-  Position := Default(TTextPosition);
-  Found := False;
-  Resolved := FResolver.Resolve(ATree, AFileName, APosition);
-  if (Resolved.Kind = TResolvedKind.Symbol) and (Resolved.SymbolKind in RoutineKinds) then
-  begin
-    AFile := Resolved.FileName;
-    Position := Resolved.SelectionRange.StartPos;
-    Found := True;
-  end
-  else
-  begin
-    // Auf dem Namen einer Deklaration bzw. eines Rumpfs.
-    Current := Source(AFileName);
-    if Current <> nil then
-    begin
-      for Symbol in Current.Symbols do
-      begin
-        if (Symbol.Kind in RoutineKinds) and Within(APosition, Symbol.SelectionRange) then
-        begin
-          AFile := AFileName;
-          Position := Symbol.SelectionRange.StartPos;
-          Found := True;
-          Break;
-        end;
-      end;
-    end;
-  end;
-  if not Found then
-  begin
-    Exit;
-  end;
-  Current := Source(AFile);
-  if Current = nil then
-  begin
-    Exit;
-  end;
-  for Symbol in Current.Symbols do
-  begin
-    if (Symbol.Kind in RoutineKinds) and (Symbol.SelectionRange.StartPos = Position) then
-    begin
-      // Vom Rumpf zur Deklaration: die erste Fundstelle mit denselben Parametern.
-      ADecl := Symbol;
-      for Candidate in Current.Symbols do
-      begin
-        if (Candidate.Kind in RoutineKinds) and SameText(Candidate.Container, Symbol.Container) and
-          SameText(Candidate.Name, Symbol.Name) and (SameTypes(Candidate.ParamTypes, Symbol.ParamTypes) or
-          (Length(Symbol.ParamTypes) = 0)) then
-        begin
-          ADecl := Candidate;
-          Break;
-        end;
-      end;
-      Exit(True);
-    end;
-  end;
-end;
-
-function TSignatureCollector.TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
-var
-  Location: TSymbolLocation;
-  Name: string;
-begin
-  Name := ATypeName;
-  if LastDelimiter('.', Name) > 0 then
-  begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  end;
-  for Location in FIndex.FindSymbols(Name) do
-  begin
-    if (Location.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) and
-      (SameText(Location.Symbol.QualifiedName, ATypeName) or SameText(Location.Symbol.Name, ATypeName)) then
-    begin
-      ALocation := Location;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.DeclaredIn(const ATypeName: string; const AName: string;
-  const AParamTypes: TArray<string>; out AFile: string; out ADecl: TIndexSymbol): Boolean;
-var
-  Location: TSymbolLocation;
-  Unit_: TSourceFile;
-  Symbol: TIndexSymbol;
-begin
-  Result := False;
-  if not TypeSymbol(ATypeName, Location) then
-  begin
-    Exit;
-  end;
-  AFile := Location.FileName;
-  Unit_ := Source(AFile);
-  if (Unit_ = nil) or (Unit_.Tree = nil) then
-  begin
-    Exit;
-  end;
-  for Symbol in Unit_.Symbols do
-  begin
-    if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
-      SameText(Symbol.Name, AName) and SameTypes(Symbol.ParamTypes, AParamTypes) then
-    begin
-      ADecl := Symbol;
-      Exit(True);
-    end;
-  end;
-end;
-
-function TSignatureCollector.AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol;
-  AIsRoot: Boolean): Boolean;
-var
-  Unit_: TSourceFile;
-  Member: TMember;
-  Symbol: TIndexSymbol;
-  Token, Index: Integer;
-  Header: TSignatureHeader;
-  Key: string;
-begin
-  Result := False;
-  Key := UpperCase(AFileName + '|' + ADecl.Container + '|' + ADecl.Name + '|' +
-    IntToStr(ADecl.SelectionRange.StartPos.Line));
-  if FSeen.ContainsKey(Key) then
-  begin
-    Exit(True);
-  end;
-  FSeen.Add(Key, True);
-  if Length(Members) >= MaxMembers then
-  begin
-    Exit;
-  end;
-  if not InProject(AFileName) then
-  begin
-    raise Fail(Format('%s steht außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ändern.',
-      [ADecl.QualifiedName, ExtractFileName(AFileName)]));
-  end;
-  Unit_ := Source(AFileName);
-  if (Unit_ = nil) or (Unit_.Tree = nil) then
-  begin
-    raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
-  end;
-  Member := Default(TMember);
-  Member.Kind := AKind;
-  Member.FileName := AFileName;
-  Member.Container := ADecl.Container;
-  Member.Name := ADecl.Name;
-  Member.IsRoot := AIsRoot;
-  Member.BodyLast := -1;
-  Token := TChangeSignature.NameTokenAt(Unit_.Tokens, ADecl.SelectionRange.StartPos);
-  if not TChangeSignature.ReadHeader(Unit_.Text, Unit_.Tokens, Token, Member.Decl) then
-  begin
-    raise Fail(Format('Der Kopf von %s lässt sich nicht lesen.', [ADecl.QualifiedName]));
-  end;
-  // Routine nur im implementation-Teil: der Kopf des Rumpfs ist die Deklaration.
-  Index := TChangeSignature.BodyEnd(Unit_.Tree, Member.Decl);
-  if Index >= 0 then
-  begin
-    Member.DeclIsBody := True;
-    Member.HasBody := True;
-    Member.Body := Member.Decl;
-    Member.BodyLast := Index;
-  end
-  else if AKind <> TMemberKind.InterfaceMethod then
-  begin
-    for Symbol in Unit_.Symbols do
-    begin
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, ADecl.Container) and
-        SameText(Symbol.Name, ADecl.Name) and (Symbol.SelectionRange.StartPos <> ADecl.SelectionRange.StartPos) then
-      begin
-        Token := TChangeSignature.NameTokenAt(Unit_.Tokens, Symbol.SelectionRange.StartPos);
-        if not TChangeSignature.ReadHeader(Unit_.Text, Unit_.Tokens, Token, Header) then
-        begin
-          Continue;
-        end;
-        // Überladungen: gleiche Parameter; ein Rumpf ohne Parameterliste gehört zur einzigen Deklaration.
-        if not (SameTypes(Header.ParamTypes, Member.Decl.ParamTypes) or
-          ((Header.OpenToken < 0) and (Length(Member.Decl.Parameters) > 0))) then
-        begin
-          Continue;
-        end;
-        Index := TChangeSignature.BodyEnd(Unit_.Tree, Header);
-        if Index < 0 then
-        begin
-          Continue;
-        end;
-        Member.HasBody := True;
-        Member.Body := Header;
-        Member.BodyLast := Index;
-        Break;
-      end;
-    end;
-  end;
-  Members := Members + [Member];
-  Result := True;
-end;
-
-procedure TSignatureCollector.CollectHierarchy(const AFile: string; const ADecl: TIndexSymbol);
-var
-  Pending: TQueue<TPair<string, Integer>>;
-  Visited: TDictionary<string, Boolean>;
-  Current: TPair<string, Integer>;
-  RootFile, MemberFile, Ancestor, Climb: string;
-  Root, Found, Inherited_: TIndexSymbol;
-  Location, Owner: TSymbolLocation;
-  Types: TArray<string>;
-  IsInterface, Declares: Boolean;
-  Index: Integer;
-begin
-  Root := ADecl;
-  RootFile := AFile;
-  Types := ADecl.ParamTypes;
-  // Zur Methode, die die Kette beginnt: über override nach oben.
-  while Root.HasDirective('override') do
-  begin
-    if not TypeSymbol(Root.Container, Owner) or (Length(Owner.Symbol.Ancestors) = 0) then
-    begin
-      raise Fail(Format('%s überschreibt eine Methode, deren Vorfahr nicht im Index steht.', [Root.QualifiedName]));
-    end;
-    Ancestor := Owner.Symbol.Ancestors[0];
-    Found := Default(TIndexSymbol);
-    MemberFile := '';
-    Climb := Ancestor;
-    Index := 0;
-    while (Climb <> '') and (Index < MaxDepth) and not DeclaredIn(Climb, Root.Name, Types, MemberFile, Found) do
-    begin
-      Inc(Index);
-      if TypeSymbol(Climb, Owner) and (Length(Owner.Symbol.Ancestors) > 0) then
-      begin
-        Climb := Owner.Symbol.Ancestors[0];
-      end
-      else
-      begin
-        Climb := '';
-      end;
-    end;
-    if Found.Name = '' then
-    begin
-      raise Fail(Format('Die überschriebene Methode von %s steht nicht im Index.', [Root.QualifiedName]));
-    end;
-    if not InProject(MemberFile) then
-    begin
-      raise Fail(Format('%s überschreibt %s außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ' +
-        'ändern.', [Root.QualifiedName, Found.QualifiedName, ExtractFileName(MemberFile)]));
-    end;
-    Root := Found;
-    RootFile := MemberFile;
-  end;
-  if Root.Container = '' then
-  begin
-    AddMember(TMemberKind.Routine, RootFile, Root, True);
-    Exit;
-  end;
-  IsInterface := TypeSymbol(Root.Container, Owner) and (Owner.Symbol.Kind = TIndexSymbolKind.InterfaceType);
-  if IsInterface then
-  begin
-    InterfaceMethod := True;
-    AddMember(TMemberKind.InterfaceMethod, RootFile, Root, True);
-  end
-  else
-  begin
-    AddMember(TMemberKind.Method, RootFile, Root, True);
-  end;
-
-  // Nachfahren, implementierende Klassen und implementierte Interfaces.
-  Pending := TQueue<TPair<string, Integer>>.Create;
-  Visited := TDictionary<string, Boolean>.Create;
-  try
-    Pending.Enqueue(TPair<string, Integer>.Create(Root.Container, 0));
-    Visited.Add(TypeKey(Root.Container), True);
-    while Pending.Count > 0 do
-    begin
-      if Assigned(FCancellation) then
-      begin
-        FCancellation.ThrowIfCancellationRequested;
-      end;
-      Current := Pending.Dequeue;
-      if Current.Value >= MaxDepth then
-      begin
-        Continue;
-      end;
-      if not TypeSymbol(Current.Key, Owner) then
-      begin
-        Continue;
-      end;
-      IsInterface := Owner.Symbol.Kind = TIndexSymbolKind.InterfaceType;
-      Declares := DeclaredIn(Current.Key, Root.Name, Types, MemberFile, Found);
-      if Declares and not SameText(Found.QualifiedName, Root.QualifiedName) then
-      begin
-        if IsInterface then
-        begin
-          InterfaceMethod := True;
-          AddMember(TMemberKind.InterfaceMethod, MemberFile, Found, False);
-        end
-        else if Found.HasDirective('override') or InterfaceMethod then
-        begin
-          AddMember(TMemberKind.Method, MemberFile, Found, False);
-        end;
-      end;
-      // Interfaces in der Vorfahrenliste einer Klasse.
-      if not IsInterface then
-      begin
-        for Index := 1 to High(Owner.Symbol.Ancestors) do
-        begin
-          Ancestor := Owner.Symbol.Ancestors[Index];
-          if Visited.ContainsKey(TypeKey(Ancestor)) then
-          begin
-            Continue;
-          end;
-          if TypeSymbol(Ancestor, Location) and (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
-            DeclaredIn(Ancestor, Root.Name, Types, MemberFile, Found) then
-          begin
-            Visited.Add(TypeKey(Ancestor), True);
-            Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
-          end;
-        end;
-      end;
-      for Location in FIndex.Descendants(Owner.Symbol.Name) do
-      begin
-        if not (Location.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) then
-        begin
-          Continue;
-        end;
-        if Visited.ContainsKey(TypeKey(Location.Symbol.QualifiedName)) then
-        begin
-          Continue;
-        end;
-        Visited.Add(TypeKey(Location.Symbol.QualifiedName), True);
-        // Eine Klasse, die das Interface über eine geerbte Methode erfüllt: deren Klasse gehört dazu.
-        if IsInterface and (Location.Symbol.Kind <> TIndexSymbolKind.InterfaceType) and
-          not DeclaredIn(Location.Symbol.QualifiedName, Root.Name, Types, MemberFile, Found) then
-        begin
-          Climb := '';
-          if Length(Location.Symbol.Ancestors) > 0 then
-          begin
-            Climb := Location.Symbol.Ancestors[0];
-          end;
-          Index := 0;
-          while (Climb <> '') and (Index < MaxDepth) do
-          begin
-            Inc(Index);
-            if DeclaredIn(Climb, Root.Name, Types, MemberFile, Inherited_) then
-            begin
-              if not Visited.ContainsKey(TypeKey(Inherited_.Container)) then
-              begin
-                Visited.Add(TypeKey(Inherited_.Container), True);
-                AddMember(TMemberKind.Method, MemberFile, Inherited_, False);
-                Pending.Enqueue(TPair<string, Integer>.Create(Inherited_.Container, Current.Value + 1));
-              end;
-              Break;
-            end;
-            if TypeSymbol(Climb, Owner) and (Length(Owner.Symbol.Ancestors) > 0) then
-            begin
-              Climb := Owner.Symbol.Ancestors[0];
-            end
-            else
-            begin
-              Climb := '';
-            end;
-          end;
-        end;
-        Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
-      end;
-    end;
-  finally
-    Visited.Free;
-    Pending.Free;
-  end;
-end;
-
-function TSignatureCollector.IsHeaderName(const AFileName: string; const APosition: TTextPosition): Boolean;
-var
-  Member: TMember;
-  Unit_: TSourceFile;
-begin
-  for Member in Members do
-  begin
-    if not SameText(Member.FileName, AFileName) then
-    begin
-      Continue;
-    end;
-    Unit_ := Source(Member.FileName);
-    if Unit_.Tokens[Member.Decl.NameToken].StartPos = APosition then
-    begin
-      Exit(True);
-    end;
-    if Member.HasBody and (Unit_.Tokens[Member.Body.NameToken].StartPos = APosition) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.InMemberBody(const AFileName: string; ATokenIndex: Integer): Boolean;
-var
-  Member: TMember;
-begin
-  for Member in Members do
-  begin
-    if SameText(Member.FileName, AFileName) and Member.HasBody and (ATokenIndex > Member.Body.LastToken) and
-      (ATokenIndex <= Member.BodyLast) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TSignatureCollector.EventTypeOf(const AClassName, AProperty: string): string;
-var
-  Climb: string;
-  Owner: TSymbolLocation;
-  Unit_: TSourceFile;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Symbols: TArray<TIndexSymbol>;
-  Depth: Integer;
-begin
-  Result := '';
-  Climb := AClassName;
-  Depth := 0;
-  while (Climb <> '') and (Depth < MaxDepth) do
-  begin
-    Inc(Depth);
-    if not TypeSymbol(Climb, Owner) then
-    begin
-      Exit;
-    end;
-    Unit_ := Source(Owner.FileName);
-    if (Unit_ <> nil) and (Unit_.Tree <> nil) then
-    begin
-      Symbols := Unit_.Symbols;
-    end
-    else if FIndex.FindFile(Owner.FileName, UnitIndex) then
-    begin
-      Symbols := UnitIndex.Symbols;
-    end
-    else
-    begin
-      Symbols := nil;
-    end;
-    for Symbol in Symbols do
-    begin
-      if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, Owner.Symbol.QualifiedName) and
-        SameText(Symbol.Name, AProperty) and (Symbol.TypeName <> '') then
-      begin
-        Exit(Symbol.TypeName);
-      end;
-    end;
-    if Length(Owner.Symbol.Ancestors) = 0 then
-    begin
-      Exit;
-    end;
-    Climb := Owner.Symbol.Ancestors[0];
-  end;
-end;
-
-procedure TSignatureCollector.CollectFormBinding(const AFormFile: string; const APosition: TTextPosition);
-var
-  Form: TSourceFile;
-  Document: TDfmDocument;
-  ComponentClass, PropertyName, EventType: string;
-  Location: TSymbolLocation;
-  Symbol: TIndexSymbol;
-  Unit_: TSourceFile;
-  Member: TMember;
-  Token: Integer;
-
-  function Search(AObject: TDfmObject): Boolean;
-  var
-    Item: TDfmProperty;
-    Child: TDfmObject;
-  begin
-    for Item in AObject.Properties do
-    begin
-      if Item.IsEvent and (Item.ValueRange.StartPos = APosition) then
-      begin
-        ComponentClass := AObject.TypeName;
-        PropertyName := Item.Name;
-        Exit(True);
-      end;
-    end;
-    for Child in AObject.Children do
-    begin
-      if Search(Child) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-begin
-  Form := Source(AFormFile);
-  if Form = nil then
-  begin
-    Exit;
-  end;
-  Document := TDfmParser.Parse(Form.Text);
-  try
-    if (Document.Root = nil) or not Search(Document.Root) then
-    begin
-      Exit;
-    end;
-  finally
-    Document.Free;
-  end;
-  EventType := EventTypeOf(ComponentClass, PropertyName);
-  if EventType = '' then
-  begin
-    BoundEvent := PropertyName;
-    EventFixed := True;
-    Exit;
-  end;
-  BoundEvent := EventType;
-  // Ereignistyp im Projekt: seine Parameterliste ändert sich mit.
-  for Location in FIndex.FindSymbols(EventType) do
-  begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and InProject(Location.FileName) then
-    begin
-      Unit_ := Source(Location.FileName);
-      if (Unit_ = nil) or (Unit_.Tree = nil) then
-      begin
-        Continue;
-      end;
-      for Symbol in Unit_.Symbols do
-      begin
-        if (Symbol.Kind = TIndexSymbolKind.TypeAlias) and SameText(Symbol.Name, EventType) then
-        begin
-          Member := Default(TMember);
-          Member.Kind := TMemberKind.EventType;
-          Member.FileName := Location.FileName;
-          Member.Name := EventType;
-          Member.BodyLast := -1;
-          Token := TChangeSignature.NameTokenAt(Unit_.Tokens, Symbol.SelectionRange.StartPos);
-          if TChangeSignature.ReadProcedureType(Unit_.Text, Unit_.Tokens, Token, Member.Decl) then
-          begin
-            if not FSeen.ContainsKey('EVENT|' + UpperCase(EventType)) then
-            begin
-              FSeen.Add('EVENT|' + UpperCase(EventType), True);
-              Members := Members + [Member];
-              Warnings := Warnings + [Format('Der Ereignistyp %s ändert sich mit; weitere Handler dieses Typs und ' +
-                'Aufrufe über das Ereignis passt Atlas nicht an.', [EventType])];
-            end;
-            Exit;
-          end;
-        end;
-      end;
-    end;
-  end;
-  EventFixed := True;
-end;
-
-procedure TSignatureCollector.CollectUses(const ADecl: TIndexSymbol);
-var
-  Member: TMember;
-  Unit_, Other: TSourceFile;
-  Location: TReferenceLocation;
-  Seen: TDictionary<string, Boolean>;
-  Key, Extension: string;
-  Token, Previous: Integer;
-  Use: TSignatureUse;
-  Site: TCallSite;
-  HasRequired: Boolean;
-  Parameter: TSignatureParameter;
-  Snapshot: TArray<TMember>;
-begin
-  HasRequired := False;
-  for Parameter in Root.Decl.Parameters do
-  begin
-    if Parameter.DefaultValue = '' then
-    begin
-      HasRequired := True;
-    end;
-  end;
-  Seen := TDictionary<string, Boolean>.Create;
-  try
-    Snapshot := Members;
-    for Member in Snapshot do
-    begin
-      if Member.Kind = TMemberKind.EventType then
-      begin
-        Continue;
-      end;
-      Unit_ := Source(Member.FileName);
-      for Location in TLspReferences.Find(FResolver, FIndex, Unit_.Tree, Member.FileName,
-        Unit_.Tokens[Member.Decl.NameToken].StartPos, True, FFiles, FReadText, FCancellation) do
-      begin
-        Key := UpperCase(Location.FileName) + '|' + IntToStr(Location.Range.StartPos.Line) + ':' +
-          IntToStr(Location.Range.StartPos.Character);
-        if Seen.ContainsKey(Key) then
-        begin
-          Continue;
-        end;
-        Seen.Add(Key, True);
-        if IsHeaderName(Location.FileName, Location.Range.StartPos) then
-        begin
-          Continue;
-        end;
-        Extension := LowerCase(ExtractFileExt(Location.FileName));
-        if (Extension = '.dfm') or (Extension = '.fmx') then
-        begin
-          CollectFormBinding(Location.FileName, Location.Range.StartPos);
-          Continue;
-        end;
-        Other := Source(Location.FileName);
-        if (Other = nil) or (Other.Tree = nil) then
-        begin
-          Continue;
-        end;
-        Token := TChangeSignature.NameTokenAt(Other.Tokens, Location.Range.StartPos);
-        if Token < 0 then
-        begin
-          Continue;
-        end;
-        Use := TChangeSignature.UseOf(Other.Tokens, Token, HasRequired);
-        case Use of
-          TSignatureUse.Accessor:
-            Accessors := Accessors + [Format('%s, Zeile %d', [ExtractFileName(Location.FileName),
-              Location.Range.StartPos.Line + 1])];
-          TSignatureUse.Pointer_:
-            Warnings := Warnings + [Format('%s, Zeile %d: %s wird als Methodenzeiger verwendet; Aufrufe darüber ' +
-              'findet Atlas nicht.', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line + 1,
-              ADecl.Name])];
-        else
-          Site.FileName := Location.FileName;
-          Site.NamePos := Location.Range.StartPos;
-          Previous := Token - 1;
-          while (Previous >= 0) and (Other.Tokens[Previous].Kind in [TPascalTokenKind.Comment,
-            TPascalTokenKind.Directive]) do
-          begin
-            Dec(Previous);
-          end;
-          Site.InheritedInMember := (Previous >= 0) and Other.Tokens[Previous].IsKeyword('inherited') and
-            InMemberBody(Location.FileName, Token);
-          Calls := Calls + [Site];
-        end;
-      end;
-    end;
-  finally
-    Seen.Free;
-  end;
-  if BoundEvent <> '' then
-  begin
-    Warnings := Warnings + ['Die Methode ist in einer Formulardatei gebunden; Aufrufe über das Ereignis findet ' +
-      'Atlas nicht.'];
-  end;
-end;
-
-function TSignatureCollector.Root: TMember;
-var
-  Member: TMember;
-begin
-  for Member in Members do
-  begin
-    if Member.IsRoot then
-    begin
-      Exit(Member);
-    end;
-  end;
-  Result := Members[0];
-end;
-
-procedure TSignatureCollector.Collect(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition);
-var
-  DeclFile: string;
-  Decl: TIndexSymbol;
-begin
-  if not FindTarget(ATree, AFileName, APosition, DeclFile, Decl) then
-  begin
-    raise Fail('Hier steht keine Routine.');
-  end;
-  if not InProject(DeclFile) then
-  begin
-    raise Fail(Format('"%s" ist außerhalb des Projekts deklariert (%s).', [Decl.Name, ExtractFileName(DeclFile)]));
-  end;
-  CollectHierarchy(DeclFile, Decl);
-  CollectUses(Decl);
-end;
-
 { Bearbeitungen je Datei }
-
-type
-  TEditList = TDictionary<string, TArray<TFileEdit>>;
 
 procedure AddEdit(AEdits: TEditList; const AFileName: string; const AEdit: TFileEdit);
 var
-  List: TArray<TFileEdit>;
-  Existing: TFileEdit;
+  mList: TArray<TFileEdit>;
+  mExisting: TFileEdit;
 begin
-  if not AEdits.TryGetValue(UpperCase(AFileName), List) then
+  if not AEdits.TryGetValue(UpperCase(AFileName), mList) then
   begin
-    List := nil;
+    mList := nil;
   end;
-  for Existing in List do
+  for mExisting in mList do
   begin
-    if (Existing.Range.StartPos = AEdit.Range.StartPos) and (Existing.Range.EndPos = AEdit.Range.EndPos) and
-      (Existing.Kind = AEdit.Kind) and (Existing.NewText = AEdit.NewText) then
+    if (mExisting.Range.StartPos = AEdit.Range.StartPos) and (mExisting.Range.EndPos = AEdit.Range.EndPos) and
+      (mExisting.Kind = AEdit.Kind) and (mExisting.NewText = AEdit.NewText) then
     begin
       Exit;
     end;
   end;
-  AEdits.AddOrSetValue(UpperCase(AFileName), List + [AEdit]);
+  AEdits.AddOrSetValue(UpperCase(AFileName), mList + [AEdit]);
 end;
 
 function MakeEdit(AKind: TEditKind; const ARange: TTextRange; const ANewText: string): TFileEdit;
@@ -1100,14 +254,136 @@ begin
   Result.NewText := ANewText;
 end;
 
+/// <summary>Einfügung von ANewText direkt hinter dem Token AToken.</summary>
+function InsertAfter(AUnit: TSourceFile; AToken: Integer; const ANewText: string): TFileEdit;
+begin
+  Result := MakeEdit(TEditKind.Insert, TTextRange.Create(AUnit.Tokens[AToken].EndPos, AUnit.Tokens[AToken].EndPos),
+    ANewText);
+end;
+
+/// <summary>Ersetzt das Token AToken durch ANewText.</summary>
+function ReplaceToken(AUnit: TSourceFile; AToken: Integer; const ANewText: string): TFileEdit;
+begin
+  Result := MakeEdit(TEditKind.Rename, TTextRange.Create(AUnit.Tokens[AToken].StartPos, AUnit.Tokens[AToken].EndPos),
+    ANewText);
+end;
+
 function ToTextEdits(const AEdits: TArray<TFileEdit>): TArray<TTextEdit>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   SetLength(Result, Length(AEdits));
-  for Index := 0 to High(AEdits) do
+  for mIndex := 0 to High(AEdits) do
   begin
-    Result[Index] := TTextEdit.Create(AEdits[Index].Range, AEdits[Index].NewText);
+    Result[mIndex] := TTextEdit.Create(AEdits[mIndex].Range, AEdits[mIndex].NewText);
+  end;
+end;
+
+function EditSize(const AEdit: TFileEdit): Integer;
+begin
+  Result := (AEdit.Range.EndPos.Line - AEdit.Range.StartPos.Line) * 100000 + AEdit.Range.EndPos.Character -
+    AEdit.Range.StartPos.Character;
+end;
+
+/// <summary>Indizes von AEdits, kleinste Änderung zuerst.</summary>
+function SmallestFirst(const AEdits: TArray<TFileEdit>): TArray<Integer>;
+var
+  mIndex, mOther, mSwap: Integer;
+begin
+  SetLength(Result, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
+  begin
+    Result[mIndex] := mIndex;
+  end;
+  for mIndex := 0 to High(Result) - 1 do
+  begin
+    for mOther := mIndex + 1 to High(Result) do
+    begin
+      if EditSize(AEdits[Result[mOther]]) < EditSize(AEdits[Result[mIndex]]) then
+      begin
+        mSwap := Result[mIndex];
+        Result[mIndex] := Result[mOther];
+        Result[mOther] := mSwap;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Liegt AEdits[AInner] in AEdits[AOuter], ohne in einer anderen offenen Änderung darin zu stecken?</summary>
+function IsOutermostIn(const AEdits: TArray<TFileEdit>; const ADone: TArray<Boolean>; AOuter, AInner: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AEdits) do
+  begin
+    if (mIndex <> AInner) and (mIndex <> AOuter) and not ADone[mIndex] and
+      Contains(AEdits[AOuter].Range, AEdits[mIndex].Range) and Contains(AEdits[mIndex].Range, AEdits[AInner].Range) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Die äußersten offenen Änderungen in AEdits[AOuter]; deren Inneres steckt schon in ihnen.</summary>
+function InnerEdits(const AEdits: TArray<TFileEdit>; const ADone: TArray<Boolean>; AOuter: Integer): TArray<TFileEdit>;
+var
+  mOther: Integer;
+begin
+  Result := nil;
+  for mOther := 0 to High(AEdits) do
+  begin
+    if (mOther <> AOuter) and not ADone[mOther] and Contains(AEdits[AOuter].Range, AEdits[mOther].Range) and
+      IsOutermostIn(AEdits, ADone, AOuter, mOther) then
+    begin
+      Result := Result + [AEdits[mOther]];
+    end;
+  end;
+end;
+
+procedure MarkContained(const AEdits: TArray<TFileEdit>; var ADone: TArray<Boolean>; AOuter: Integer);
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to High(AEdits) do
+  begin
+    if (mOther <> AOuter) and Contains(AEdits[AOuter].Range, AEdits[mOther].Range) then
+    begin
+      ADone[mOther] := True;
+    end;
+  end;
+end;
+
+/// <summary>Bildet den Aufruf AEdit auf dem Text mit den inneren Änderungen neu.</summary>
+procedure RebuildCall(const AText: string; var AEdit: TFileEdit; const AInner: TArray<TFileEdit>;
+  const AOld: TArray<TSignatureParameter>; const AChanges: TArray<TParameterChange>);
+var
+  mModified: string;
+  mTokens: TArray<TPascalToken>;
+  mToken: Integer;
+  mRebuilt: TTextEdit;
+begin
+  mModified := TChangeSignature.ApplyEdits(AText, ToTextEdits(AInner));
+  mTokens := TPascalLexer.Tokenize(mModified);
+  mToken := TChangeSignature.NameTokenAt(mTokens, AEdit.NamePos);
+  if (mToken >= 0) and TChangeSignature.CallEdit(mModified, mTokens, mToken, AOld, AChanges, AEdit.Values,
+    mRebuilt) then
+  begin
+    AEdit.NewText := mRebuilt.NewText;
+  end;
+end;
+
+function OpenEdits(const AEdits: TArray<TFileEdit>; const ADone: TArray<Boolean>): TArray<TFileEdit>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AEdits) do
+  begin
+    if not ADone[mIndex] then
+    begin
+      Result := Result + [AEdits[mIndex]];
+    end;
   end;
 end;
 
@@ -1116,118 +392,649 @@ end;
 function ResolveNesting(const AText: string; const AEdits: TArray<TFileEdit>; const AOld: TArray<TSignatureParameter>;
   const AChanges: TArray<TParameterChange>): TArray<TFileEdit>;
 var
-  Order: TArray<Integer>;
-  Done: TArray<Boolean>;
-  Inner: TArray<TFileEdit>;
-  Index, Other, Swap, I, J: Integer;
-  Edit: TFileEdit;
-  Modified: string;
-  Tokens: TArray<TPascalToken>;
-  Token: Integer;
-  Rebuilt: TTextEdit;
-  Maximal: Boolean;
-
-  function Size(const AEdit: TFileEdit): Integer;
-  begin
-    Result := (AEdit.Range.EndPos.Line - AEdit.Range.StartPos.Line) * 100000 + AEdit.Range.EndPos.Character -
-      AEdit.Range.StartPos.Character;
-  end;
-
+  mDone: TArray<Boolean>;
+  mInner, mEdits: TArray<TFileEdit>;
+  mIndex: Integer;
 begin
-  SetLength(Order, Length(AEdits));
-  for Index := 0 to High(AEdits) do
-  begin
-    Order[Index] := Index;
-  end;
+  mEdits := Copy(AEdits);
+  SetLength(mDone, Length(mEdits));
   // Kleinste zuerst, damit innere Aufrufe fertig sind, bevor der äußere sie aufnimmt.
-  for I := 0 to High(Order) - 1 do
+  for mIndex in SmallestFirst(mEdits) do
   begin
-    for J := I + 1 to High(Order) do
-    begin
-      if Size(AEdits[Order[J]]) < Size(AEdits[Order[I]]) then
-      begin
-        Swap := Order[I];
-        Order[I] := Order[J];
-        Order[J] := Swap;
-      end;
-    end;
-  end;
-  Result := Copy(AEdits);
-  SetLength(Done, Length(AEdits));
-  for Index in Order do
-  begin
-    Edit := Result[Index];
-    Inner := nil;
-    for Other := 0 to High(Result) do
-    begin
-      if (Other <> Index) and not Done[Other] and Contains(Edit.Range, Result[Other].Range) then
-      begin
-        // Nur die äußersten der enthaltenen Änderungen; deren Inneres steckt schon in ihnen.
-        Maximal := True;
-        for J := 0 to High(Result) do
-        begin
-          if (J <> Other) and (J <> Index) and not Done[J] and Contains(Edit.Range, Result[J].Range) and
-            Contains(Result[J].Range, Result[Other].Range) then
-          begin
-            Maximal := False;
-          end;
-        end;
-        if Maximal then
-        begin
-          Inner := Inner + [Result[Other]];
-        end;
-      end;
-    end;
-    if Length(Inner) = 0 then
+    mInner := InnerEdits(mEdits, mDone, mIndex);
+    if Length(mInner) = 0 then
     begin
       Continue;
     end;
-    for Other := 0 to High(Result) do
+    MarkContained(mEdits, mDone, mIndex);
+    if mEdits[mIndex].Kind = TEditKind.Call then
     begin
-      if (Other <> Index) and Contains(Edit.Range, Result[Other].Range) then
-      begin
-        Done[Other] := True;
-      end;
-    end;
-    if Edit.Kind = TEditKind.Call then
-    begin
-      Modified := TChangeSignature.ApplyEdits(AText, ToTextEdits(Inner));
-      Tokens := TPascalLexer.Tokenize(Modified);
-      Token := TChangeSignature.NameTokenAt(Tokens, Edit.NamePos);
-      if (Token >= 0) and TChangeSignature.CallEdit(Modified, Tokens, Token, AOld, AChanges, Edit.Values, Rebuilt) then
-      begin
-        Result[Index].NewText := Rebuilt.NewText;
-      end;
+      RebuildCall(AText, mEdits[mIndex], mInner, AOld, AChanges);
     end;
   end;
-  Inner := nil;
-  for Index := 0 to High(Result) do
-  begin
-    if not Done[Index] then
-    begin
-      Inner := Inner + [Result[Index]];
-    end;
-  end;
-  Result := Inner;
+  Result := OpenEdits(mEdits, mDone);
 end;
 
 /// <summary>Zeilen mit /// direkt über dem Token AStart.</summary>
 function DocComments(const ATokens: TArray<TPascalToken>; AStart: Integer): TArray<Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := AStart - 1;
-  while (Index >= 0) and (ATokens[Index].Kind = TPascalTokenKind.Comment) and StartsStr('///', ATokens[Index].Text) do
+  mIndex := AStart - 1;
+  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Comment) and StartsStr('///', ATokens[mIndex].Text) do
   begin
-    Result := [Index] + Result;
-    Dec(Index);
+    Result := [mIndex] + Result;
+    Dec(mIndex);
   end;
 end;
 
-function IndentAt(const AText: string; ALine: Integer): string;
+/// <summary>Stellen im Rumpf, an denen der Parameter AName steht.</summary>
+function BodyUses(AUnit: TSourceFile; const AMember: TMember; const AName: string): TArray<Integer>;
 begin
-  Result := TTextLines.IndentOf(AText, ALine);
+  Result := nil;
+  if AMember.HasBody then
+  begin
+    Result := TChangeSignature.Uses_(AUnit.Tokens, AMember.Body.LastToken + 1, AMember.BodyLast, AName);
+  end;
+end;
+
+/// <summary>Bleibt der Parameter an Stelle AIndex der alten Liste erhalten?</summary>
+function IsKept(const AChanges: TArray<TParameterChange>; AIndex: Integer): Boolean;
+var
+  mChange: TParameterChange;
+begin
+  for mChange in AChanges do
+  begin
+    if mChange.Origin = AIndex then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function ParameterNames(const AParameters: TArray<TSignatureParameter>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AParameters));
+  for mIndex := 0 to High(AParameters) do
+  begin
+    Result[mIndex] := AParameters[mIndex].Name;
+  end;
+end;
+
+function ParameterTypes(const AParameters: TArray<TSignatureParameter>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AParameters));
+  for mIndex := 0 to High(AParameters) do
+  begin
+    Result[mIndex] := AParameters[mIndex].TypeName;
+  end;
+end;
+
+/// <summary>Werte für neue Parameter eines inherited-Aufrufs: ihr Name.</summary>
+function InheritedValues(const AChanges: TArray<TParameterChange>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AChanges));
+  for mIndex := 0 to High(AChanges) do
+  begin
+    if AChanges[mIndex].Origin < 0 then
+    begin
+      Result[mIndex] := AChanges[mIndex].Name;
+    end;
+  end;
+end;
+
+/// <summary>Ändert eine der Bearbeitungen einen Kopf (nicht nur Aufrufe)?</summary>
+function HasHeaderEdit(const AEdits: TArray<TFileEdit>): Boolean;
+var
+  mEdit: TFileEdit;
+begin
+  for mEdit in AEdits do
+  begin
+    if mEdit.Kind in [TEditKind.Header, TEditKind.Insert, TEditKind.Rename] then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure CheckOverlaps(const AName: string; const AEdits: TArray<TFileEdit>);
+var
+  mIndex, mOther: Integer;
+begin
+  for mIndex := 0 to High(AEdits) do
+  begin
+    for mOther := mIndex + 1 to High(AEdits) do
+    begin
+      if Overlaps(AEdits[mIndex].Range, AEdits[mOther].Range) then
+      begin
+        raise SignatureError(Format('Die Änderungen in %s überschneiden sich (Zeile %d).', [ExtractFileName(AName),
+          AEdits[mIndex].Range.StartPos.Line + 1]));
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Qualifizierter Name der Weiterleitung im implementation-Teil.</summary>
+function QualifiedBodyName(const ARoot: TMember): string;
+begin
+  if ARoot.HasBody then
+  begin
+    Result := ARoot.Body.QualifiedName;
+  end
+  else if ARoot.Container <> '' then
+  begin
+    Result := ARoot.Container + '.' + ARoot.Name;
+  end
+  else
+  begin
+    Result := ARoot.Name;
+  end;
+end;
+
+/// <summary>Position des Namens je Parameter zwischen den Klammern; Line -1, wenn nicht gefunden.</summary>
+function ParameterPositions(const ATokens: TArray<TPascalToken>; const AHeader: TSignatureHeader): TArray<TTextPosition>;
+var
+  mIndex, mToken: Integer;
+  mPosition: TTextPosition;
+begin
+  Result := nil;
+  mToken := AHeader.OpenToken;
+  for mIndex := 0 to High(AHeader.Parameters) do
+  begin
+    mPosition := TTextPosition.Create(-1, 0);
+    while (mToken >= 0) and (mToken < AHeader.CloseToken) and (mToken <= High(ATokens)) do
+    begin
+      Inc(mToken);
+      if (ATokens[mToken].Kind = TPascalTokenKind.Identifier) and
+        SameText(ATokens[mToken].Text, AHeader.Parameters[mIndex].Name) then
+      begin
+        mPosition := ATokens[mToken].StartPos;
+        Break;
+      end;
+    end;
+    Result := Result + [mPosition];
+  end;
+end;
+
+/// <summary>Kopf für TRoutineFamily; False, wenn die Datei fehlt oder der Kopf keinen Namen hat.</summary>
+function FamilyHeader(AUnit: TSourceFile; const AHeader: TSignatureHeader; AIsBody: Boolean;
+  out AResult: TRoutineFamilyHeader): Boolean;
+begin
+  AResult := Default(TRoutineFamilyHeader);
+  Result := (AUnit <> nil) and (AHeader.NameToken >= 0);
+  if Result then
+  begin
+    AResult.FileName := AUnit.FileName;
+    AResult.NamePos := AUnit.Tokens[AHeader.NameToken].StartPos;
+    AResult.IsBody := AIsBody;
+    AResult.Parameters := AHeader.Parameters;
+    // Die Namen stehen in der Reihenfolge der Parameter zwischen den Klammern.
+    AResult.ParameterPos := ParameterPositions(AUnit.Tokens, AHeader);
+  end;
+end;
+
+{ TSignatureEditor }
+
+constructor TSignatureEditor.Create(ACollector: TSignatureCollector; const ARequest: TChangeSignatureRequest);
+begin
+  inherited Create;
+  FCollector := ACollector;
+  FRequest := ARequest;
+  FRoot := ACollector.Root;
+  FRootNames := ParameterNames(FRoot.Decl.Parameters);
+  FEdits := TEditList.Create;
+  FOutcome := Default(TChangeSignatureOutcome);
+end;
+
+destructor TSignatureEditor.Destroy;
+begin
+  FEdits.Free;
+  inherited;
+end;
+
+function TSignatureEditor.AddsParameters: Boolean;
+var
+  mChange: TParameterChange;
+begin
+  for mChange in FRequest.Changes do
+  begin
+    if mChange.Origin < 0 then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TSignatureEditor.ChangesTypes: Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(FRequest.Changes) <> Length(FRoot.Decl.Parameters);
+  for mIndex := 0 to High(FRequest.Changes) do
+  begin
+    if FRequest.Changes[mIndex].Origin <> mIndex then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.CheckRestrictions;
+var
+  mError: string;
+begin
+  mError := TChangeSignature.Validate(FRoot.Decl.Parameters, FRequest.Changes);
+  if (mError = '') and ChangesTypes then
+  begin
+    if FCollector.EventFixed then
+    begin
+      mError := Format('Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus ' +
+        'dem Projekt. Die Parameter lassen sich nur umbenennen.', [FCollector.BoundEvent]);
+    end
+    else if Length(FCollector.Accessors) > 0 then
+    begin
+      mError := Format('Die Methode ist Zugriffsmethode einer Property (%s); die Parameter lassen sich nur ' +
+        'umbenennen.', [FCollector.Accessors[0]]);
+    end;
+  end;
+  if mError <> '' then
+  begin
+    raise SignatureError(mError);
+  end;
+end;
+
+procedure TSignatureEditor.CheckRemovedUnused(const AMember: TMember);
+var
+  mUnit: TSourceFile;
+  mIndex: Integer;
+  mFound: TArray<Integer>;
+begin
+  // Entfernte Parameter dürfen im Rumpf nicht mehr vorkommen.
+  mUnit := FCollector.Source(AMember.FileName);
+  for mIndex := 0 to High(AMember.Decl.Parameters) do
+  begin
+    if IsKept(FRequest.Changes, mIndex) then
+    begin
+      Continue;
+    end;
+    mFound := BodyUses(mUnit, AMember, AMember.Decl.Parameters[mIndex].Name);
+    if Length(mFound) > 0 then
+    begin
+      raise SignatureError(Format('Der Parameter "%s" wird in %s, Zeile %d noch verwendet; erst die Verwendung ' +
+        'entfernen.', [AMember.Decl.Parameters[mIndex].Name, ExtractFileName(AMember.FileName),
+        mUnit.Tokens[mFound[0]].StartPos.Line + 1]));
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.ChooseMode;
+begin
+  FUseOverload := AddsParameters and (FRequest.Mode = TNewParameterMode.Overload);
+  if FUseOverload and (FCollector.InterfaceMethod or (FCollector.BoundEvent <> '')) then
+  begin
+    FUseOverload := False;
+    FCollector.Warnings := FCollector.Warnings + ['Interface-Methoden und gebundene Handler: Eine Überladung ' +
+      'erfüllt das Interface bzw. den Ereignistyp nicht; alle Aufrufer übergeben den neuen Wert.'];
+  end;
+  FOutcome.Mode := TNewParameterMode.UpdateCallers;
+  if FUseOverload then
+  begin
+    FOutcome.Mode := TNewParameterMode.Overload;
+  end;
+end;
+
+procedure TSignatureEditor.CheckCollision;
+var
+  mNewTypes: TArray<string>;
+  mSymbol: TIndexSymbol;
+begin
+  // Kollision mit einer vorhandenen Überladung.
+  mNewTypes := ParameterTypes(TChangeSignature.NewParameters(FRoot.Decl.Parameters, FRequest.Changes, FRootNames,
+    True));
+  for mSymbol in FCollector.Source(FRoot.FileName).Symbols do
+  begin
+    if (mSymbol.Kind in SignatureRoutineKinds) and SameText(mSymbol.Container, FRoot.Container) and
+      SameText(mSymbol.Name, FRoot.Name) and SameParamTypes(mSymbol.ParamTypes, mNewTypes) and
+      not SameParamTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
+    begin
+      raise SignatureError(Format('Die neue Signatur kollidiert mit einer vorhandenen Überladung von %s (Zeile %d).',
+        [FRoot.Name, mSymbol.SelectionRange.StartPos.Line + 1]));
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.AddHeaderEdits(AUnit: TSourceFile; const AMember: TMember);
+var
+  mText: string;
+  mEdit: TFileEdit;
+begin
+  mText := TChangeSignature.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
+    FRootNames, True), True);
+  mEdit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(AUnit.Tokens, AMember.Decl, mText).Range, mText);
+  if mText <> TChangeSignature.ParameterList(AMember.Decl.Parameters, True) then
+  begin
+    AddEdit(FEdits, AMember.FileName, mEdit);
+  end;
+  if not AMember.HasBody or AMember.DeclIsBody then
+  begin
+    Exit;
+  end;
+  mText := TChangeSignature.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
+    FRootNames, False), False);
+  mEdit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(AUnit.Tokens, AMember.Body, mText).Range, mText);
+  if ((AMember.Body.OpenToken < 0) or (mText <> TChangeSignature.ParameterList(AMember.Body.Parameters, False))) and
+    ((mText <> '') or (AMember.Body.OpenToken >= 0)) then
+  begin
+    AddEdit(FEdits, AMember.FileName, mEdit);
+  end;
+end;
+
+procedure TSignatureEditor.AddRenameEdits(AUnit: TSourceFile; const AMember: TMember; const AChange: TParameterChange);
+var
+  mOldName, mNewName, mComment: string;
+  mToken: Integer;
+begin
+  mOldName := AMember.Decl.Parameters[AChange.Origin].Name;
+  mNewName := TChangeSignature.NewParameters(AMember.Decl.Parameters, [AChange], FRootNames, False)[0].Name;
+  if SameStr(mOldName, mNewName) then
+  begin
+    Exit;
+  end;
+  for mToken in BodyUses(AUnit, AMember, mOldName) do
+  begin
+    AddEdit(FEdits, AMember.FileName, ReplaceToken(AUnit, mToken, mNewName));
+  end;
+  // <param name="Alt"> in den ///-Zeilen über der Deklaration.
+  for mToken in DocComments(AUnit.Tokens, AMember.Decl.StartToken) do
+  begin
+    mComment := AUnit.Tokens[mToken].Text;
+    if ContainsText(mComment, 'name="' + mOldName + '"') then
+    begin
+      AddEdit(FEdits, AMember.FileName, ReplaceToken(AUnit, mToken, StringReplace(mComment, 'name="' + mOldName +
+        '"', 'name="' + mNewName + '"', [rfIgnoreCase])));
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.AddDocRemovals(AUnit: TSourceFile; const AMember: TMember);
+var
+  mIndex, mToken, mLine: Integer;
+  mComment: string;
+begin
+  // Doku entfernter Parameter: einzeilige <param>-Zeilen löschen.
+  for mIndex := 0 to High(AMember.Decl.Parameters) do
+  begin
+    if IsKept(FRequest.Changes, mIndex) then
+    begin
+      Continue;
+    end;
+    for mToken in DocComments(AUnit.Tokens, AMember.Decl.StartToken) do
+    begin
+      mComment := AUnit.Tokens[mToken].Text;
+      if ContainsText(mComment, '<param name="' + AMember.Decl.Parameters[mIndex].Name + '"') and
+        ContainsText(mComment, '</param>') then
+      begin
+        mLine := AUnit.Tokens[mToken].StartPos.Line;
+        AddEdit(FEdits, AMember.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(mLine, 0, mLine + 1, 0), ''));
+      end;
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.AddMemberEdits(const AMember: TMember);
+var
+  mUnit: TSourceFile;
+  mChange: TParameterChange;
+begin
+  // Köpfe, Umbenennungen im Rumpf, Doku-Kommentare.
+  mUnit := FCollector.Source(AMember.FileName);
+  AddHeaderEdits(mUnit, AMember);
+  for mChange in FRequest.Changes do
+  begin
+    if (mChange.Origin >= 0) and (mChange.Origin <= High(AMember.Decl.Parameters)) then
+    begin
+      AddRenameEdits(mUnit, AMember, mChange);
+    end;
+  end;
+  AddDocRemovals(mUnit, AMember);
+end;
+
+procedure TSignatureEditor.AddOverloadDeclaration(AUnit: TSourceFile; const ALineBreak: string);
+var
+  mText, mIndent: string;
+  mVirtual: Boolean;
+begin
+  mVirtual := FRequest.VirtualOverload and (FRoot.Decl.HasDirective('virtual') or
+    FRoot.Decl.HasDirective('dynamic') or FRoot.Decl.HasDirective('abstract'));
+  mIndent := TTextLines.IndentOf(AUnit.Text, AUnit.Tokens[FRoot.Decl.StartToken].StartPos.Line);
+  mText := '';
+  if not FRoot.DeclIsBody then
+  begin
+    mText := ALineBreak + mIndent + TChangeSignature.HeaderText(FRoot.Decl, FRoot.Name, FRoot.Decl.Parameters, True) +
+      TChangeSignature.OverloadDirectives(FRoot.Decl, mVirtual);
+  end;
+  // Ohne weitere Direktiven fallen beide Einfügungen auf dieselbe Stelle: ein Edit, feste Reihenfolge.
+  if not FRoot.Decl.HasDirective('overload') then
+  begin
+    if FRoot.Decl.LastToken = FRoot.Decl.EndToken then
+    begin
+      mText := ' overload;' + mText;
+    end
+    else
+    begin
+      AddEdit(FEdits, FRoot.FileName, InsertAfter(AUnit, FRoot.Decl.EndToken, ' overload;'));
+    end;
+  end;
+  if mText <> '' then
+  begin
+    AddEdit(FEdits, FRoot.FileName, InsertAfter(AUnit, FRoot.Decl.LastToken, mText));
+  end;
+end;
+
+procedure TSignatureEditor.AddOverloadBody(AUnit: TSourceFile; const ALineBreak: string);
+var
+  mBody: string;
+  mRebuilt: TTextEdit;
+begin
+  mBody := TChangeSignature.HeaderText(FRoot.Decl, QualifiedBodyName(FRoot), FRoot.Decl.Parameters, False);
+  if FRoot.DeclIsBody then
+  begin
+    mBody := mBody + TChangeSignature.OverloadDirectives(FRoot.Decl, False);
+  end;
+  mBody := mBody + ALineBreak + 'begin' + ALineBreak + '  ' + TChangeSignature.ForwardCall(FRoot.Decl,
+    FRoot.Decl.Parameters, FRequest.Changes) + ALineBreak + 'end;';
+  if FRoot.HasBody then
+  begin
+    AddEdit(FEdits, FRoot.FileName, InsertAfter(AUnit, FRoot.BodyLast, ALineBreak + ALineBreak + mBody));
+  end
+  else if TClassCompletion.BodyEdit(AUnit.Tree, AUnit.Text, FRoot.Container, mBody, mRebuilt) then
+  begin
+    AddEdit(FEdits, FRoot.FileName, MakeEdit(TEditKind.Insert, mRebuilt.Range, mRebuilt.NewText));
+  end
+  else
+  begin
+    raise SignatureError(Format('Für die Überladung von %s fehlt ein Platz im implementation-Teil.', [FRoot.Name]));
+  end;
+end;
+
+procedure TSignatureEditor.MarkOverridesOverload;
+var
+  mMember: TMember;
+begin
+  // Überschreibungen bekommen overload, sonst verdecken sie die alte Überladung des Vorfahren.
+  for mMember in FCollector.Members do
+  begin
+    if not mMember.IsRoot and (mMember.Kind = TMemberKind.Method) and not mMember.Decl.HasDirective('overload') then
+    begin
+      AddEdit(FEdits, mMember.FileName, InsertAfter(FCollector.Source(mMember.FileName), mMember.Decl.EndToken,
+        ' overload;'));
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.AddOverload;
+var
+  mUnit: TSourceFile;
+  mLineBreak: string;
+begin
+  // Alte Signatur als Überladung, die weiterreicht.
+  mUnit := FCollector.Source(FRoot.FileName);
+  mLineBreak := TTextLines.LineBreakOf(mUnit.Text);
+  AddOverloadDeclaration(mUnit, mLineBreak);
+  AddOverloadBody(mUnit, mLineBreak);
+  MarkOverridesOverload;
+end;
+
+procedure TSignatureEditor.AddCallEdit(const ASite: TCallSite);
+var
+  mUnit: TSourceFile;
+  mValues: TArray<string>;
+  mRebuilt: TTextEdit;
+  mEdit: TFileEdit;
+begin
+  mUnit := FCollector.Source(ASite.FileName);
+  mValues := nil;
+  if ASite.InheritedInMember then
+  begin
+    mValues := InheritedValues(FRequest.Changes);
+  end;
+  if TChangeSignature.CallEdit(mUnit.Text, mUnit.Tokens, TChangeSignature.NameTokenAt(mUnit.Tokens, ASite.NamePos),
+    FRoot.Decl.Parameters, FRequest.Changes, mValues, mRebuilt) then
+  begin
+    mEdit := MakeEdit(TEditKind.Call, mRebuilt.Range, mRebuilt.NewText);
+    mEdit.NamePos := ASite.NamePos;
+    mEdit.Values := mValues;
+    AddEdit(FEdits, ASite.FileName, mEdit);
+  end;
+end;
+
+function TSignatureEditor.FileOfKey(const AKey: string): string;
+var
+  mMember: TMember;
+  mSite: TCallSite;
+begin
+  Result := '';
+  for mMember in FCollector.Members do
+  begin
+    if SameText(UpperCase(mMember.FileName), AKey) then
+    begin
+      Result := mMember.FileName;
+    end;
+  end;
+  for mSite in FCollector.Calls do
+  begin
+    if (Result = '') and SameText(UpperCase(mSite.FileName), AKey) then
+    begin
+      Result := mSite.FileName;
+    end;
+  end;
+end;
+
+procedure TSignatureEditor.CheckParses(AUnit: TSourceFile; const AName: string; const AFinal: TArray<TFileEdit>);
+var
+  mTree: TSyntaxTree;
+  mDiagnostic: TSyntaxDiagnostic;
+begin
+  if AUnit.Tree = nil then
+  begin
+    Exit;
+  end;
+  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AUnit.Text, ToTextEdits(AFinal)));
+  try
+    if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
+    begin
+      mDiagnostic := mTree.Diagnostics[0];
+      raise SignatureError(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
+        [ExtractFileName(AName), mDiagnostic.StartPos.Line + 1, mDiagnostic.Message]));
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSignatureEditor.FinishFile(const AKey: string; const AIsReadOnly: TChangeSignatureReadOnly);
+var
+  mName: string;
+  mUnit: TSourceFile;
+  mFinal: TArray<TFileEdit>;
+  mEdit: TFileEdit;
+  mRenameEdit: TRenameEdit;
+begin
+  // Verschachtelung auflösen, Schreibschutz, Ergebnis parsen.
+  mName := FileOfKey(AKey);
+  mUnit := FCollector.Source(mName);
+  mFinal := ResolveNesting(mUnit.Text, FEdits[AKey], FRoot.Decl.Parameters, FRequest.Changes);
+  CheckOverlaps(mName, mFinal);
+  if not FCollector.InProject(mName) or (Assigned(AIsReadOnly) and AIsReadOnly(mName)) then
+  begin
+    if HasHeaderEdit(mFinal) then
+    begin
+      raise SignatureError(Format('%s ist schreibgeschützt bzw. nicht im Projekt; dort steht eine Deklaration der ' +
+        'Methode.', [ExtractFileName(mName)]));
+    end;
+    FOutcome.Warnings := FOutcome.Warnings + [Format('%s ist schreibgeschützt bzw. nicht im Projekt; %d Aufrufe ' +
+      'dort bleiben unverändert.', [ExtractFileName(mName), Length(mFinal)])];
+    Exit;
+  end;
+  CheckParses(mUnit, mName, mFinal);
+  for mEdit in mFinal do
+  begin
+    mRenameEdit.FileName := mName;
+    mRenameEdit.Range := mEdit.Range;
+    mRenameEdit.NewText := mEdit.NewText;
+    FOutcome.Edits := FOutcome.Edits + [mRenameEdit];
+  end;
+end;
+
+function TSignatureEditor.Run(const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
+var
+  mMember: TMember;
+  mSite: TCallSite;
+  mKey: string;
+begin
+  CheckRestrictions;
+  for mMember in FCollector.Members do
+  begin
+    CheckRemovedUnused(mMember);
+  end;
+  ChooseMode;
+  CheckCollision;
+  for mMember in FCollector.Members do
+  begin
+    AddMemberEdits(mMember);
+  end;
+  if FUseOverload then
+  begin
+    AddOverload;
+  end;
+  // Aufrufer: im Modus overload nur inherited-Aufrufe in den Rümpfen (sonst riefe die Überschreibung sich
+  // über die alte Überladung selbst auf).
+  for mSite in FCollector.Calls do
+  begin
+    if mSite.InheritedInMember or not FUseOverload then
+    begin
+      AddCallEdit(mSite);
+    end;
+  end;
+  for mKey in FEdits.Keys.ToArray do
+  begin
+    if Length(FEdits[mKey]) > 0 then
+    begin
+      FinishFile(mKey, AIsReadOnly);
+    end;
+  end;
+  FOutcome.Warnings := FCollector.Warnings + FOutcome.Warnings;
+  Result := FOutcome;
 end;
 
 { TLspChangeSignature }
@@ -1263,29 +1070,29 @@ end;
 class function TLspChangeSignature.IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): Boolean;
 var
-  Token: Integer;
-  Header: TSignatureHeader;
-  Resolved: TResolvedSymbol;
-  Text: string;
+  mToken: Integer;
+  mHeader: TSignatureHeader;
+  mResolved: TResolvedSymbol;
+  mText: string;
 begin
   Result := False;
   if (ATree = nil) or (AResolver = nil) then
   begin
     Exit;
   end;
-  Token := TChangeSignature.NameTokenAt(ATree.Tokens, APosition);
-  if Token < 0 then
+  mToken := TChangeSignature.NameTokenAt(ATree.Tokens, APosition);
+  if mToken < 0 then
   begin
     Exit;
   end;
   // Kopf einer Routine: ohne Namensauflösung. Den Text braucht ReadHeader nur für die Parameter.
-  Text := '';
-  if TChangeSignature.ReadHeader(Text, ATree.Tokens, Token, Header) then
+  mText := '';
+  if TChangeSignature.ReadHeader(mText, ATree.Tokens, mToken, mHeader) then
   begin
     Exit(True);
   end;
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
-  Result := (Resolved.Kind = TResolvedKind.Symbol) and (Resolved.SymbolKind in RoutineKinds);
+  mResolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Result := (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in SignatureRoutineKinds);
 end;
 
 class function TLspChangeSignature.ActionJson(const AUri: string; const APosition: TTextPosition): TJSONObject;
@@ -1315,537 +1122,96 @@ begin
     Result := [ActionJson(AUri, APosition)];
   end;
 end;
-
-class function TLspChangeSignature.Prepare(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TChangeSignatureInfo;
+class function TLspChangeSignature.Prepare(const ASource: TChangeSignatureSource): TChangeSignatureInfo;
 var
-  Collector: TSignatureCollector;
-  Root: TMember;
+  mCollector: TSignatureCollector;
+  mRoot: TMember;
 begin
   Result := Default(TChangeSignatureInfo);
-  Collector := TSignatureCollector.Create(AResolver, AIndex, AFiles, AReadText, ACancellation, AFileName);
+  mCollector := TSignatureCollector.Create(ASource);
   try
-    Collector.Collect(ATree, AFileName, APosition);
-    Root := Collector.Root;
-    Result.Name := Root.Name;
-    Result.Container := Root.Container;
-    Result.Keyword := Root.Decl.Keyword;
-    Result.ResultType := Root.Decl.ResultType;
-    Result.Parameters := Root.Decl.Parameters;
-    Result.Members := Length(Collector.Members);
-    Result.InterfaceMethod := Collector.InterfaceMethod;
-    Result.BoundEvent := Collector.BoundEvent;
-    Result.EventFixed := Collector.EventFixed;
-    Result.Warnings := Collector.Warnings;
-    if Length(Collector.Accessors) > 0 then
+    mCollector.Collect;
+    mRoot := mCollector.Root;
+    Result.Name := mRoot.Name;
+    Result.Container := mRoot.Container;
+    Result.Keyword := mRoot.Decl.Keyword;
+    Result.ResultType := mRoot.Decl.ResultType;
+    Result.Parameters := mRoot.Decl.Parameters;
+    Result.Members := Length(mCollector.Members);
+    Result.InterfaceMethod := mCollector.InterfaceMethod;
+    Result.BoundEvent := mCollector.BoundEvent;
+    Result.EventFixed := mCollector.EventFixed;
+    Result.Warnings := mCollector.Warnings;
+    if Length(mCollector.Accessors) > 0 then
     begin
       Result.Warnings := Result.Warnings + [Format('Zugriffsmethode einer Property (%s): Parameter lassen sich nur ' +
-        'umbenennen.', [Collector.Accessors[0]])];
+        'umbenennen.', [mCollector.Accessors[0]])];
     end;
   finally
-    Collector.Free;
+    mCollector.Free;
   end;
 end;
 
-class function TLspChangeSignature.Family(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TRoutineFamily;
+class function TLspChangeSignature.Family(const ASource: TChangeSignatureSource): TRoutineFamily;
 var
-  Collector: TSignatureCollector;
-  Member: TMember;
-  Site: TCallSite;
-  Call: TRoutineFamilyCall;
-
-  procedure AddHeader(const AFile: string; const AHeader: TSignatureHeader; AIsBody: Boolean);
-  var
-    Unit_: TSourceFile;
-    Header: TRoutineFamilyHeader;
-    Tokens: TArray<TPascalToken>;
-    Index, Token: Integer;
-    Position: TTextPosition;
-  begin
-    Unit_ := Collector.Source(AFile);
-    if (Unit_ = nil) or (AHeader.NameToken < 0) then
-    begin
-      Exit;
-    end;
-    Tokens := Unit_.Tokens;
-    Header.FileName := AFile;
-    Header.NamePos := Tokens[AHeader.NameToken].StartPos;
-    Header.IsBody := AIsBody;
-    Header.Parameters := AHeader.Parameters;
-    Header.ParameterPos := nil;
-    // Die Namen stehen in der Reihenfolge der Parameter zwischen den Klammern.
-    Token := AHeader.OpenToken;
-    for Index := 0 to High(AHeader.Parameters) do
-    begin
-      Position := TTextPosition.Create(-1, 0);
-      if Token >= 0 then
-      begin
-        while (Token < AHeader.CloseToken) and (Token <= High(Tokens)) do
-        begin
-          Inc(Token);
-          if (Tokens[Token].Kind = TPascalTokenKind.Identifier) and
-            SameText(Tokens[Token].Text, AHeader.Parameters[Index].Name) then
-          begin
-            Position := Tokens[Token].StartPos;
-            Break;
-          end;
-        end;
-      end;
-      Header.ParameterPos := Header.ParameterPos + [Position];
-    end;
-    Result.Headers := Result.Headers + [Header];
-  end;
-
+  mCollector: TSignatureCollector;
+  mMember: TMember;
+  mSite: TCallSite;
+  mCall: TRoutineFamilyCall;
+  mHeader: TRoutineFamilyHeader;
 begin
   Result := Default(TRoutineFamily);
-  Collector := TSignatureCollector.Create(AResolver, AIndex, AFiles, AReadText, ACancellation, AFileName);
+  mCollector := TSignatureCollector.Create(ASource);
   try
-    Collector.Collect(ATree, AFileName, APosition);
-    Result.Name := Collector.Root.Name;
-    for Member in Collector.Members do
+    mCollector.Collect;
+    Result.Name := mCollector.Root.Name;
+    for mMember in mCollector.Members do
     begin
-      if Member.Kind = TMemberKind.EventType then
+      if mMember.Kind = TMemberKind.EventType then
       begin
         Continue;
       end;
-      AddHeader(Member.FileName, Member.Decl, Member.DeclIsBody);
-      if Member.HasBody and not Member.DeclIsBody then
+      if FamilyHeader(mCollector.Source(mMember.FileName), mMember.Decl, mMember.DeclIsBody, mHeader) then
       begin
-        AddHeader(Member.FileName, Member.Body, True);
+        Result.Headers := Result.Headers + [mHeader];
+      end;
+      if mMember.HasBody and not mMember.DeclIsBody and FamilyHeader(mCollector.Source(mMember.FileName),
+        mMember.Body, True, mHeader) then
+      begin
+        Result.Headers := Result.Headers + [mHeader];
       end;
     end;
-    for Site in Collector.Calls do
+    for mSite in mCollector.Calls do
     begin
-      Call.FileName := Site.FileName;
-      Call.NamePos := Site.NamePos;
-      Result.Calls := Result.Calls + [Call];
+      mCall.FileName := mSite.FileName;
+      mCall.NamePos := mSite.NamePos;
+      Result.Calls := Result.Calls + [mCall];
     end;
-    Result.Accessors := Collector.Accessors;
-    Result.Warnings := Collector.Warnings;
-    Result.BoundEvent := Collector.BoundEvent;
+    Result.Accessors := mCollector.Accessors;
+    Result.Warnings := mCollector.Warnings;
+    Result.BoundEvent := mCollector.BoundEvent;
   finally
-    Collector.Free;
+    mCollector.Free;
   end;
 end;
 
-/// <summary>Stellen im Rumpf, an denen der Parameter AName steht.</summary>
-function BodyUses(AUnit: TSourceFile; const AMember: TMember; const AName: string): TArray<Integer>;
-begin
-  Result := nil;
-  if AMember.HasBody then
-  begin
-    Result := TChangeSignature.Uses_(AUnit.Tokens, AMember.Body.LastToken + 1, AMember.BodyLast, AName);
-  end;
-end;
-
-class function TLspChangeSignature.Execute(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ARequest: TChangeSignatureRequest;
-  const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AIsReadOnly: TChangeSignatureReadOnly;
-  const ACancellation: IJsonRpcCancellationToken): TChangeSignatureOutcome;
+class function TLspChangeSignature.Execute(const ASource: TChangeSignatureSource;
+  const ARequest: TChangeSignatureRequest; const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
 var
-  Collector: TSignatureCollector;
-  Root, Member: TMember;
-  Unit_: TSourceFile;
-  Changes: TArray<TParameterChange>;
-  Change: TParameterChange;
-  RootNames, Values, NewTypes, Keys: TArray<string>;
-  Error, Name, OldName, NewName, Text, LineBreak, Indent, Body, Qualified, Comment, Key: string;
-  Index, Token, Line: Integer;
-  Added, TypesChanged, UseOverload, Kept, HeaderInFile, Virtual_: Boolean;
-  Found: TArray<Integer>;
-  Edits: TEditList;
-  Edit: TFileEdit;
-  Rebuilt: TTextEdit;
-  Site: TCallSite;
-  Symbol: TIndexSymbol;
-  NewParameters, OldParameters: TArray<TSignatureParameter>;
-  FileEdits: TArray<TFileEdit>;
-  Final: TArray<TFileEdit>;
-  Tree: TSyntaxTree;
-  Diagnostic: TSyntaxDiagnostic;
-  Before_: Integer;
-  RenameEdit: TRenameEdit;
-  Removed: Boolean;
+  mCollector: TSignatureCollector;
+  mEditor: TSignatureEditor;
 begin
-  Result := Default(TChangeSignatureOutcome);
-  Collector := TSignatureCollector.Create(AResolver, AIndex, AFiles, AReadText, ACancellation, AFileName);
-  Edits := TEditList.Create;
+  mCollector := TSignatureCollector.Create(ASource);
   try
-    Collector.Collect(ATree, AFileName, APosition);
-    Root := Collector.Root;
-    Changes := ARequest.Changes;
-    Error := TChangeSignature.Validate(Root.Decl.Parameters, Changes);
-    if Error <> '' then
-    begin
-      raise Fail(Error);
+    mCollector.Collect;
+    mEditor := TSignatureEditor.Create(mCollector, ARequest);
+    try
+      Result := mEditor.Run(AIsReadOnly);
+    finally
+      mEditor.Free;
     end;
-    SetLength(RootNames, Length(Root.Decl.Parameters));
-    for Index := 0 to High(Root.Decl.Parameters) do
-    begin
-      RootNames[Index] := Root.Decl.Parameters[Index].Name;
-    end;
-    Added := False;
-    TypesChanged := Length(Changes) <> Length(Root.Decl.Parameters);
-    for Index := 0 to High(Changes) do
-    begin
-      if Changes[Index].Origin < 0 then
-      begin
-        Added := True;
-      end;
-      if Changes[Index].Origin <> Index then
-      begin
-        TypesChanged := True;
-      end;
-    end;
-    if TypesChanged and Collector.EventFixed then
-    begin
-      raise Fail(Format('Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus ' +
-        'dem Projekt. Die Parameter lassen sich nur umbenennen.', [Collector.BoundEvent]));
-    end;
-    if TypesChanged and (Length(Collector.Accessors) > 0) then
-    begin
-      raise Fail(Format('Die Methode ist Zugriffsmethode einer Property (%s); die Parameter lassen sich nur ' +
-        'umbenennen.', [Collector.Accessors[0]]));
-    end;
-    // Entfernte Parameter dürfen im Rumpf nicht mehr vorkommen.
-    for Member in Collector.Members do
-    begin
-      Unit_ := Collector.Source(Member.FileName);
-      for Index := 0 to High(Member.Decl.Parameters) do
-      begin
-        Kept := False;
-        for Change in Changes do
-        begin
-          if Change.Origin = Index then
-          begin
-            Kept := True;
-          end;
-        end;
-        if Kept then
-        begin
-          Continue;
-        end;
-        Found := BodyUses(Unit_, Member, Member.Decl.Parameters[Index].Name);
-        if Length(Found) > 0 then
-        begin
-          raise Fail(Format('Der Parameter "%s" wird in %s, Zeile %d noch verwendet; erst die Verwendung entfernen.',
-            [Member.Decl.Parameters[Index].Name, ExtractFileName(Member.FileName),
-            Unit_.Tokens[Found[0]].StartPos.Line + 1]));
-        end;
-      end;
-    end;
-    UseOverload := Added and (ARequest.Mode = TNewParameterMode.Overload);
-    if UseOverload and (Collector.InterfaceMethod or (Collector.BoundEvent <> '')) then
-    begin
-      UseOverload := False;
-      Collector.Warnings := Collector.Warnings + ['Interface-Methoden und gebundene Handler: Eine Überladung erfüllt ' +
-        'das Interface bzw. den Ereignistyp nicht; alle Aufrufer übergeben den neuen Wert.'];
-    end;
-    if UseOverload then
-    begin
-      Result.Mode := TNewParameterMode.Overload;
-    end
-    else
-    begin
-      Result.Mode := TNewParameterMode.UpdateCallers;
-    end;
-    // Kollision mit einer vorhandenen Überladung.
-    NewParameters := TChangeSignature.NewParameters(Root.Decl.Parameters, Changes, RootNames, True);
-    SetLength(NewTypes, Length(NewParameters));
-    for Index := 0 to High(NewParameters) do
-    begin
-      NewTypes[Index] := NewParameters[Index].TypeName;
-    end;
-    Unit_ := Collector.Source(Root.FileName);
-    for Symbol in Unit_.Symbols do
-    begin
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Root.Container) and
-        SameText(Symbol.Name, Root.Name) and SameTypes(Symbol.ParamTypes, NewTypes) and
-        not SameTypes(Symbol.ParamTypes, Root.Decl.ParamTypes) then
-      begin
-        raise Fail(Format('Die neue Signatur kollidiert mit einer vorhandenen Überladung von %s (Zeile %d).',
-          [Root.Name, Symbol.SelectionRange.StartPos.Line + 1]));
-      end;
-    end;
-
-    // Köpfe, Umbenennungen im Rumpf, Doku-Kommentare.
-    for Member in Collector.Members do
-    begin
-      Unit_ := Collector.Source(Member.FileName);
-      NewParameters := TChangeSignature.NewParameters(Member.Decl.Parameters, Changes, RootNames, True);
-      Text := TChangeSignature.ParameterList(NewParameters, True);
-      Edit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(Unit_.Tokens, Member.Decl, Text).Range, Text);
-      if Text <> TChangeSignature.ParameterList(Member.Decl.Parameters, True) then
-      begin
-        AddEdit(Edits, Member.FileName, Edit);
-      end;
-      if Member.HasBody and not Member.DeclIsBody then
-      begin
-        NewParameters := TChangeSignature.NewParameters(Member.Decl.Parameters, Changes, RootNames, False);
-        Text := TChangeSignature.ParameterList(NewParameters, False);
-        Edit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(Unit_.Tokens, Member.Body, Text).Range, Text);
-        if (Member.Body.OpenToken < 0) or (Text <> TChangeSignature.ParameterList(Member.Body.Parameters, False)) then
-        begin
-          if (Text <> '') or (Member.Body.OpenToken >= 0) then
-          begin
-            AddEdit(Edits, Member.FileName, Edit);
-          end;
-        end;
-      end;
-      for Change in Changes do
-      begin
-        if (Change.Origin < 0) or (Change.Origin > High(Member.Decl.Parameters)) then
-        begin
-          Continue;
-        end;
-        OldName := Member.Decl.Parameters[Change.Origin].Name;
-        NewName := TChangeSignature.NewParameters(Member.Decl.Parameters, [Change], RootNames, False)[0].Name;
-        if SameStr(OldName, NewName) then
-        begin
-          Continue;
-        end;
-        for Token in BodyUses(Unit_, Member, OldName) do
-        begin
-          AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(Unit_.Tokens[Token].StartPos,
-            Unit_.Tokens[Token].EndPos), NewName));
-        end;
-        // <param name="Alt"> in den ///-Zeilen über der Deklaration.
-        for Token in DocComments(Unit_.Tokens, Member.Decl.StartToken) do
-        begin
-          Comment := Unit_.Tokens[Token].Text;
-          if ContainsText(Comment, 'name="' + OldName + '"') then
-          begin
-            AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(Unit_.Tokens[Token].StartPos,
-              Unit_.Tokens[Token].EndPos), StringReplace(Comment, 'name="' + OldName + '"', 'name="' + NewName + '"',
-              [rfIgnoreCase])));
-          end;
-        end;
-      end;
-      // Doku entfernter Parameter: einzeilige <param>-Zeilen löschen.
-      for Index := 0 to High(Member.Decl.Parameters) do
-      begin
-        Removed := True;
-        for Change in Changes do
-        begin
-          if Change.Origin = Index then
-          begin
-            Removed := False;
-          end;
-        end;
-        if not Removed then
-        begin
-          Continue;
-        end;
-        for Token in DocComments(Unit_.Tokens, Member.Decl.StartToken) do
-        begin
-          Comment := Unit_.Tokens[Token].Text;
-          if ContainsText(Comment, '<param name="' + Member.Decl.Parameters[Index].Name + '"') and
-            ContainsText(Comment, '</param>') then
-          begin
-            Line := Unit_.Tokens[Token].StartPos.Line;
-            AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Rename, TTextRange.Create(Line, 0, Line + 1, 0), ''));
-          end;
-        end;
-      end;
-    end;
-
-    // Alte Signatur als Überladung, die weiterreicht.
-    if UseOverload then
-    begin
-      Unit_ := Collector.Source(Root.FileName);
-      LineBreak := TTextLines.LineBreakOf(Unit_.Text);
-      OldParameters := Root.Decl.Parameters;
-      Virtual_ := ARequest.VirtualOverload and (Root.Decl.HasDirective('virtual') or
-        Root.Decl.HasDirective('dynamic') or Root.Decl.HasDirective('abstract'));
-      Indent := IndentAt(Unit_.Text, Unit_.Tokens[Root.Decl.StartToken].StartPos.Line);
-      Text := '';
-      if not Root.DeclIsBody then
-      begin
-        Text := LineBreak + Indent + TChangeSignature.HeaderText(Root.Decl, Root.Name, OldParameters, True) +
-          TChangeSignature.OverloadDirectives(Root.Decl, Virtual_);
-      end;
-      // Ohne weitere Direktiven fallen beide Einfügungen auf dieselbe Stelle: ein Edit, feste Reihenfolge.
-      if not Root.Decl.HasDirective('overload') then
-      begin
-        if Root.Decl.LastToken = Root.Decl.EndToken then
-        begin
-          Text := ' overload;' + Text;
-        end
-        else
-        begin
-          AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
-            Unit_.Tokens[Root.Decl.EndToken].EndPos, Unit_.Tokens[Root.Decl.EndToken].EndPos), ' overload;'));
-        end;
-      end;
-      if Text <> '' then
-      begin
-        AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
-          Unit_.Tokens[Root.Decl.LastToken].EndPos, Unit_.Tokens[Root.Decl.LastToken].EndPos), Text));
-      end;
-      if Root.HasBody then
-      begin
-        Qualified := Root.Body.QualifiedName;
-      end
-      else if Root.Container <> '' then
-      begin
-        Qualified := Root.Container + '.' + Root.Name;
-      end
-      else
-      begin
-        Qualified := Root.Name;
-      end;
-      Body := TChangeSignature.HeaderText(Root.Decl, Qualified, OldParameters, False);
-      if Root.DeclIsBody then
-      begin
-        Body := Body + TChangeSignature.OverloadDirectives(Root.Decl, False);
-      end;
-      Body := Body + LineBreak + 'begin' + LineBreak + '  ' + TChangeSignature.ForwardCall(Root.Decl, OldParameters,
-        Changes) + LineBreak + 'end;';
-      if Root.HasBody then
-      begin
-        AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
-          Unit_.Tokens[Root.BodyLast].EndPos, Unit_.Tokens[Root.BodyLast].EndPos), LineBreak + LineBreak + Body));
-      end
-      else if TClassCompletion.BodyEdit(Unit_.Tree, Unit_.Text, Root.Container, Body, Rebuilt) then
-      begin
-        AddEdit(Edits, Root.FileName, MakeEdit(TEditKind.Insert, Rebuilt.Range, Rebuilt.NewText));
-      end
-      else
-      begin
-        raise Fail(Format('Für die Überladung von %s fehlt ein Platz im implementation-Teil.', [Root.Name]));
-      end;
-      // Überschreibungen bekommen overload, sonst verdecken sie die alte Überladung des Vorfahren.
-      for Member in Collector.Members do
-      begin
-        if not Member.IsRoot and (Member.Kind = TMemberKind.Method) and not Member.Decl.HasDirective('overload') then
-        begin
-          Unit_ := Collector.Source(Member.FileName);
-          AddEdit(Edits, Member.FileName, MakeEdit(TEditKind.Insert, TTextRange.Create(
-            Unit_.Tokens[Member.Decl.EndToken].EndPos, Unit_.Tokens[Member.Decl.EndToken].EndPos), ' overload;'));
-        end;
-      end;
-    end;
-
-    // Aufrufer: im Modus overload nur inherited-Aufrufe in den Rümpfen (sonst riefe die Überschreibung sich
-    // über die alte Überladung selbst auf).
-    for Site in Collector.Calls do
-    begin
-      if UseOverload and not Site.InheritedInMember then
-      begin
-        Continue;
-      end;
-      Unit_ := Collector.Source(Site.FileName);
-      Token := TChangeSignature.NameTokenAt(Unit_.Tokens, Site.NamePos);
-      Values := nil;
-      if Site.InheritedInMember then
-      begin
-        SetLength(Values, Length(Changes));
-        for Index := 0 to High(Changes) do
-        begin
-          if Changes[Index].Origin < 0 then
-          begin
-            Values[Index] := Changes[Index].Name;
-          end;
-        end;
-      end;
-      if not TChangeSignature.CallEdit(Unit_.Text, Unit_.Tokens, Token, Root.Decl.Parameters, Changes, Values,
-        Rebuilt) then
-      begin
-        Continue;
-      end;
-      Edit := MakeEdit(TEditKind.Call, Rebuilt.Range, Rebuilt.NewText);
-      Edit.NamePos := Site.NamePos;
-      Edit.Values := Values;
-      AddEdit(Edits, Site.FileName, Edit);
-    end;
-
-    // Je Datei: Verschachtelung auflösen, Schreibschutz, Ergebnis parsen.
-    Keys := Edits.Keys.ToArray;
-    for Key in Keys do
-    begin
-      FileEdits := Edits[Key];
-      if Length(FileEdits) = 0 then
-      begin
-        Continue;
-      end;
-      Name := '';
-      for Member in Collector.Members do
-      begin
-        if SameText(UpperCase(Member.FileName), Key) then
-        begin
-          Name := Member.FileName;
-        end;
-      end;
-      for Site in Collector.Calls do
-      begin
-        if (Name = '') and SameText(UpperCase(Site.FileName), Key) then
-        begin
-          Name := Site.FileName;
-        end;
-      end;
-      Unit_ := Collector.Source(Name);
-      Final := ResolveNesting(Unit_.Text, FileEdits, Root.Decl.Parameters, Changes);
-      for Index := 0 to High(Final) do
-      begin
-        for Token := Index + 1 to High(Final) do
-        begin
-          if Overlaps(Final[Index].Range, Final[Token].Range) then
-          begin
-            raise Fail(Format('Die Änderungen in %s überschneiden sich (Zeile %d).', [ExtractFileName(Name),
-              Final[Index].Range.StartPos.Line + 1]));
-          end;
-        end;
-      end;
-      HeaderInFile := False;
-      for Edit in Final do
-      begin
-        if Edit.Kind in [TEditKind.Header, TEditKind.Insert, TEditKind.Rename] then
-        begin
-          HeaderInFile := True;
-        end;
-      end;
-      if not Collector.InProject(Name) or (Assigned(AIsReadOnly) and AIsReadOnly(Name)) then
-      begin
-        if HeaderInFile then
-        begin
-          raise Fail(Format('%s ist schreibgeschützt bzw. nicht im Projekt; dort steht eine Deklaration der Methode.',
-            [ExtractFileName(Name)]));
-        end;
-        Result.Warnings := Result.Warnings + [Format('%s ist schreibgeschützt bzw. nicht im Projekt; %d Aufrufe dort ' +
-          'bleiben unverändert.', [ExtractFileName(Name), Length(Final)])];
-        Continue;
-      end;
-      if Unit_.Tree <> nil then
-      begin
-        Text := TChangeSignature.ApplyEdits(Unit_.Text, ToTextEdits(Final));
-        Tree := TSyntaxTreeCache.Parse(Text);
-        try
-          Before_ := Length(Unit_.Tree.Diagnostics);
-          if Length(Tree.Diagnostics) > Before_ then
-          begin
-            Diagnostic := Tree.Diagnostics[0];
-            raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-              [ExtractFileName(Name), Diagnostic.StartPos.Line + 1, Diagnostic.Message]));
-          end;
-        finally
-          Tree.Free;
-        end;
-      end;
-      for Edit in Final do
-      begin
-        RenameEdit.FileName := Name;
-        RenameEdit.Range := Edit.Range;
-        RenameEdit.NewText := Edit.NewText;
-        Result.Edits := Result.Edits + [RenameEdit];
-      end;
-    end;
-    Result.Warnings := Collector.Warnings + Result.Warnings;
   finally
-    Edits.Free;
-    Collector.Free;
+    mCollector.Free;
   end;
 end;
 

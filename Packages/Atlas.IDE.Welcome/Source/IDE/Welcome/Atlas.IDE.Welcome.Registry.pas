@@ -39,7 +39,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ABytes) do
+  begin
     Result := Result + IntToHex(ABytes[Index], 2);
+  end;
 end;
 
 function BytesOf(const AHex: string): TBytes;
@@ -48,7 +50,9 @@ var
 begin
   SetLength(Result, Length(AHex) div 2);
   for Index := 0 to High(Result) do
+  begin
     Result[Index] := StrToIntDef('$' + Copy(AHex, Index * 2 + 1, 2), 0);
+  end;
 end;
 
 /// <summary>Rohdaten eines Werts (für REG_MULTI_SZ und REG_QWORD, die TRegistry nicht direkt liest).</summary>
@@ -59,10 +63,14 @@ begin
   Result := nil;
   Size := 0;
   if RegQueryValueEx(AKey, PChar(AName), nil, @AType, nil, @Size) <> ERROR_SUCCESS then
+  begin
     Exit;
+  end;
   SetLength(Result, Size);
   if (Size > 0) and (RegQueryValueEx(AKey, PChar(AName), nil, @AType, PByte(Result), @Size) <> ERROR_SUCCESS) then
+  begin
     Result := nil;
+  end;
 end;
 
 function MultiLines(const ABytes: TBytes): TArray<string>;
@@ -72,21 +80,29 @@ var
 begin
   Result := nil;
   if Length(ABytes) < SizeOf(Char) then
+  begin
     Exit;
+  end;
   SetString(Text, PChar(@ABytes[0]), Length(ABytes) div SizeOf(Char));
   // Abschließende Nullen: eine je Eintrag plus eine am Ende.
   while (Text <> '') and (Text[Length(Text)] = #0) do
+  begin
     Delete(Text, Length(Text), 1);
+  end;
   if Text = '' then
+  begin
     Exit;
+  end;
   // Von Hand teilen: TStrings.DelimitedText bricht an #0 ab.
   Start := 1;
   for Index := 1 to Length(Text) do
+  begin
     if Text[Index] = #0 then
     begin
       Result := Result + [Copy(Text, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := Result + [Copy(Text, Start, MaxInt)];
 end;
 
@@ -102,7 +118,9 @@ var
   QWord: UInt64;
 begin
   if not ARegistry.OpenKeyReadOnly('\' + APath) then
+  begin
     Exit;
+  end;
   Names := TStringList.Create;
   try
     ARegistry.GetValueNames(Names);
@@ -120,7 +138,9 @@ begin
           begin
             QWord := 0;
             if Length(Raw) >= SizeOf(QWord) then
+            begin
               Move(Raw[0], QWord, SizeOf(QWord));
+            end;
             Value := TAtlasRegValue.Create(Name, TAtlasRegKind.Number64, UIntToStr(QWord));
           end;
         REG_MULTI_SZ:
@@ -141,7 +161,9 @@ begin
     ARegistry.CloseKey;
   end;
   for Index := 0 to High(Sub) do
+  begin
     ReadKey(ARegistry, APath + '\' + Sub[Index], AKey.AddKey(Sub[Index]));
+  end;
 end;
 
 function TAtlasIdeRegistryAccess.Read(const APath: string): TAtlasRegKey;
@@ -153,7 +175,9 @@ begin
   try
     Registry.RootKey := HKEY_CURRENT_USER;
     if not Registry.KeyExists('\' + APath) then
+    begin
       Exit;
+    end;
     Result := TAtlasRegKey.Create(ExtractFileName(APath));
     ReadKey(Registry, APath, Result);
   finally
@@ -171,7 +195,9 @@ var
   Child: TAtlasRegKey;
 begin
   if not ARegistry.OpenKey('\' + APath, True) then
+  begin
     raise ERegistryException.CreateFmt('Schlüssel %s nicht beschreibbar', [APath]);
+  end;
   try
     for Value in AKey.Values do
       case Value.Kind of
@@ -190,7 +216,9 @@ begin
           begin
             Text := '';
             for Line in Value.Lines do
+            begin
               Text := Text + Line + #0;
+            end;
             Text := Text + #0;
             RegSetValueEx(ARegistry.CurrentKey, PChar(Value.Name), 0, REG_MULTI_SZ, PChar(Text),
               Length(Text) * SizeOf(Char));
@@ -199,16 +227,22 @@ begin
         begin
           Bytes := BytesOf(Value.Data);
           if Length(Bytes) > 0 then
-            ARegistry.WriteBinaryData(Value.Name, Bytes[0], Length(Bytes))
+          begin
+            ARegistry.WriteBinaryData(Value.Name, Bytes[0], Length(Bytes));
+          end
           else
+          begin
             RegSetValueEx(ARegistry.CurrentKey, PChar(Value.Name), 0, REG_BINARY, nil, 0);
+          end;
         end;
       end;
   finally
     ARegistry.CloseKey;
   end;
   for Child in AKey.Keys do
+  begin
     WriteKey(ARegistry, APath + '\' + Child.Name, Child);
+  end;
 end;
 
 procedure TAtlasIdeRegistryAccess.Replace(const APath: string; AKey: TAtlasRegKey);
@@ -220,9 +254,13 @@ begin
     Registry.RootKey := HKEY_CURRENT_USER;
     // DeleteKey löscht unter Windows auch Unterschlüssel (RegDeleteTree).
     if Registry.KeyExists('\' + APath) then
+    begin
       Registry.DeleteKey('\' + APath);
+    end;
     if AKey <> nil then
+    begin
       WriteKey(Registry, APath, AKey);
+    end;
   finally
     Registry.Free;
   end;
@@ -234,9 +272,13 @@ var
 begin
   Result := '';
   if Supports(BorlandIDEServices, IOTAServices, Services) then
+  begin
     Result := Services.GetBaseRegistryKey;
+  end;
   while (Result <> '') and (Result[1] = '\') do
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 end.

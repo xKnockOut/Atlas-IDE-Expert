@@ -67,11 +67,15 @@ var
 begin
   Result := False;
   if not TrimLeft(ALineBefore).StartsWith('///') then
+  begin
     Exit;
+  end;
   // Angefangenen Tagnamen überspringen, dann muss "<" stehen.
   Index := Length(ALineBefore);
   while (Index > 0) and CharInSet(ALineBefore[Index], ['A'..'Z', 'a'..'z']) do
+  begin
     Dec(Index);
+  end;
   Result := (Index > 0) and (ALineBefore[Index] = '<');
 end;
 
@@ -88,7 +92,9 @@ begin
   begin
     Line := Trim(All[Index]);
     if Line.StartsWith('///') or ((Result = '') and ((Line = '') or Line.StartsWith('['))) then
+    begin
       Continue;
+    end;
     Result := Result + ' ' + Line;
     for Position := 1 to Length(Line) do
       case Line[Position] of
@@ -96,7 +102,9 @@ begin
         ')': Dec(Depth);
         ';':
           if Depth <= 0 then
+          begin
             Exit(Trim(Result));
+          end;
       end;
   end;
   Result := Trim(Result);
@@ -110,7 +118,9 @@ begin
   Result := nil;
   Open := Pos('(', ADeclaration);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Close := Open;
   Index := 0;
   repeat
@@ -126,14 +136,24 @@ begin
     // "const A, B: string = ''" → A, B
     Names := Group;
     if Pos(':', Names) > 0 then
+    begin
       Names := Copy(Names, 1, Pos(':', Names) - 1);
+    end;
     Names := Trim(Names);
     for Name in ['const ', 'var ', 'out ', 'constref '] do
+    begin
       if StartsText(Name, Names) then
+      begin
         Names := Trim(Copy(Names, Length(Name) + 1, MaxInt));
+      end;
+    end;
     for Name in Names.Split([',']) do
+    begin
       if Trim(Name) <> '' then
+      begin
         Result := Result + [Trim(Name)];
+      end;
+    end;
   end;
 end;
 
@@ -152,7 +172,9 @@ begin
   end;
   IsFunction := StartsText('function ', TrimLeft(ADeclaration)) or StartsText('class function ', TrimLeft(ADeclaration));
   if IsFunction then
+  begin
     Result := Result + [Tag('returns', 'returns>$0</returns>', Rank + 1)];
+  end;
   Result := Result + [Tag('remarks', 'remarks>$0</remarks>', Rank + 2),
     Tag('exception cref=""', 'exception cref="$0"></exception>', Rank + 3),
     Tag('see cref=""', 'see cref="$0"/>', Rank + 4), Tag('value', 'value>$0</value>', Rank + 5),
@@ -177,9 +199,13 @@ begin
   Result := nil;
   All := Lines(AContext.Text);
   if (AContext.Line < 0) or (AContext.Line > High(All)) then
+  begin
     Exit;
+  end;
   if not TAtlasXmlDoc.IsTagContext(Copy(All[AContext.Line], 1, AContext.Character)) then
+  begin
     Exit;
+  end;
   Result := TAtlasXmlDoc.TagItems(TAtlasXmlDoc.FollowingDeclaration(AContext.Text, AContext.Line));
 end;
 

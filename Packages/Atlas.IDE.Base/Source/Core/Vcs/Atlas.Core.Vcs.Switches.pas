@@ -44,13 +44,21 @@ implementation
 class function TAtlasVcsSwitches.Compare(const AOld, ANew: TAtlasVcsHead): TAtlasVcsSwitch;
 begin
   if (AOld.Branch = '') and (AOld.Revision = '') and not AOld.Detached then
+  begin
     Exit(TAtlasVcsSwitch.None);
+  end;
   if (AOld.Branch <> ANew.Branch) or (AOld.Detached <> ANew.Detached) then
-    Result := TAtlasVcsSwitch.Branch
+  begin
+    Result := TAtlasVcsSwitch.Branch;
+  end
   else if AOld.Revision <> ANew.Revision then
-    Result := TAtlasVcsSwitch.Revision
+  begin
+    Result := TAtlasVcsSwitch.Revision;
+  end
   else
+  begin
     Result := TAtlasVcsSwitch.None;
+  end;
 end;
 
 { TAtlasVcsWatch }
@@ -70,11 +78,17 @@ begin
   Result := TAtlasVcsSwitch.None;
   Marker := FVcs.ChangeMarker;
   if FKnown and (Marker <> '') and (Marker = FMarker) then
+  begin
     Exit;
+  end;
   if FVcs.Head(Current) <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   if FKnown then
+  begin
     Result := TAtlasVcsSwitches.Compare(FHead, Current);
+  end;
   FHead := Current;
   FMarker := Marker;
   FKnown := True;

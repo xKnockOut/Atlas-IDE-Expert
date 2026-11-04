@@ -109,7 +109,9 @@ begin
   Result := '';
   Value := AObject.GetValue(AName);
   if Value is TJSONString then
+  begin
     Result := Trim(TJSONString(Value).Value);
+  end;
 end;
 
 function Number(AObject: TJSONObject; const AName: string): Integer;
@@ -119,11 +121,17 @@ begin
   Result := 0;
   Value := AObject.GetValue(AName);
   if Value is TJSONNumber then
-    Result := TJSONNumber(Value).AsInt
+  begin
+    Result := TJSONNumber(Value).AsInt;
+  end
   else if Value is TJSONString then
+  begin
     Result := StrToIntDef(TJSONString(Value).Value, 0);
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
 end;
 
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
@@ -153,23 +161,33 @@ begin
   List := TList<TAtlasWhatsNewVersion>.Create;
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Versions := TJSONObject(Root).GetValue('versions');
     if not (Versions is TJSONArray) then
+    begin
       Exit;
+    end;
     for VersionValue in TJSONArray(Versions) do
     begin
       if not (VersionValue is TJSONObject) then
+      begin
         Continue;
+      end;
       Version := Default(TAtlasWhatsNewVersion);
       Version.Version := Text(TJSONObject(VersionValue), 'version');
       Items := TJSONObject(VersionValue).GetValue('items');
       if (Version.Version = '') or not (Items is TJSONArray) then
+      begin
         Continue;
+      end;
       for ItemValue in TJSONArray(Items) do
       begin
         if not (ItemValue is TJSONObject) then
+        begin
           Continue;
+        end;
         Item := Default(TAtlasWhatsNewItem);
         Item.Title := Text(TJSONObject(ItemValue), 'title');
         Item.Text := Text(TJSONObject(ItemValue), 'text');
@@ -180,10 +198,14 @@ begin
         Item.Line := Number(TJSONObject(ItemValue), 'line');
         Item.Experimental := Flag(TJSONObject(ItemValue), 'experimental');
         if Item.Title <> '' then
+        begin
           Version.Items := Version.Items + [Item];
+        end;
       end;
       if Length(Version.Items) > 0 then
+      begin
         List.Add(Version);
+      end;
     end;
     List.Sort(TComparer<TAtlasWhatsNewVersion>.Construct(
       function(const A, B: TAtlasWhatsNewVersion): Integer
@@ -206,10 +228,14 @@ var
 begin
   Value := Trim(AVersion);
   if (Value <> '') and CharInSet(Value[1], ['v', 'V']) then
+  begin
     Delete(Value, 1, 1);
+  end;
   At := Pos('+', Value);
   if At > 0 then
+  begin
     Value := Copy(Value, 1, At - 1);
+  end;
   At := Pos('-', Value);
   if At > 0 then
   begin
@@ -229,8 +255,12 @@ var
 begin
   Result := AText <> '';
   for Index := 1 to Length(AText) do
+  begin
     if not CharInSet(AText[Index], ['0'..'9']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function CompareParts(const A, B: TArray<string>; ANumbersOnly: Boolean): Integer;
@@ -241,23 +271,37 @@ begin
   for Index := 0 to Length(A) - 1 do
   begin
     if Index > High(B) then
+    begin
       Exit(1);
+    end;
     Left := A[Index];
     Right := B[Index];
     if ANumbersOnly or (IsNumber(Left) and IsNumber(Right)) then
-      Result := StrToIntDef(Left, 0) - StrToIntDef(Right, 0)
+    begin
+      Result := StrToIntDef(Left, 0) - StrToIntDef(Right, 0);
+    end
     else if IsNumber(Left) then
+    begin
       // SemVer: Zahlen vor Text.
-      Result := -1
+      Result := -1;
+    end
     else if IsNumber(Right) then
-      Result := 1
+    begin
+      Result := 1;
+    end
     else
+    begin
       Result := CompareStr(Left, Right);
+    end;
     if Result <> 0 then
+    begin
       Exit;
+    end;
   end;
   if Length(B) > Length(A) then
+  begin
     Exit(-1);
+  end;
   Result := 0;
 end;
 
@@ -267,30 +311,48 @@ var
   PartsA, PartsB: TArray<string>;
 begin
   if Trim(A) = Trim(B) then
+  begin
     Exit(0);
+  end;
   if Trim(A) = '' then
+  begin
     Exit(-1);
+  end;
   if Trim(B) = '' then
+  begin
     Exit(1);
+  end;
   SplitVersion(A, CoreA, PreA);
   SplitVersion(B, CoreB, PreB);
   PartsA := CoreA.Split(['.']);
   PartsB := CoreB.Split(['.']);
   // "1.1" und "1.1.0" sind gleich.
   while Length(PartsA) < 3 do
+  begin
     PartsA := PartsA + ['0'];
+  end;
   while Length(PartsB) < 3 do
+  begin
     PartsB := PartsB + ['0'];
+  end;
   Result := CompareParts(PartsA, PartsB, True);
   if Result <> 0 then
+  begin
     Exit;
+  end;
   if (PreA = '') and (PreB = '') then
+  begin
     Exit(0);
+  end;
   // Vorabversion vor der fertigen Version.
   if PreA = '' then
+  begin
     Exit(1);
+  end;
   if PreB = '' then
+  begin
     Exit(-1);
+  end;
   Result := CompareParts(PreA.Split(['.']), PreB.Split(['.']), False);
 end;
 
@@ -301,8 +363,12 @@ var
 begin
   Result := nil;
   for Version in AVersions do
+  begin
     if (CompareVersions(Version.Version, ASeen) > 0) and (CompareVersions(Version.Version, ACurrent) <= 0) then
+    begin
       Result := Result + [Version];
+    end;
+  end;
 end;
 
 class function TAtlasWhatsNew.UpTo(const AVersions: TAtlasWhatsNewVersions;
@@ -312,8 +378,12 @@ var
 begin
   Result := nil;
   for Version in AVersions do
+  begin
     if CompareVersions(Version.Version, ACurrent) <= 0 then
+    begin
       Result := Result + [Version];
+    end;
+  end;
 end;
 
 class function TAtlasWhatsNew.Latest(const AVersions: TAtlasWhatsNewVersions;
@@ -324,7 +394,9 @@ begin
   All := UpTo(AVersions, ACurrent);
   Result := nil;
   if Length(All) > 0 then
+  begin
     Result := [All[0]];
+  end;
 end;
 
 class function TAtlasWhatsNew.WithItems(const AVersions: TAtlasWhatsNewVersions; const AVersion: string;
@@ -337,11 +409,17 @@ var
 begin
   Result := Copy(AVersions);
   if (AVersion = '') or (Length(AItems) = 0) then
+  begin
     Exit;
+  end;
   Target := -1;
   for Index := 0 to High(Result) do
+  begin
     if CompareVersions(Result[Index].Version, AVersion) = 0 then
+    begin
       Target := Index;
+    end;
+  end;
   if Target < 0 then
   begin
     Added.Version := AVersion;
@@ -349,24 +427,36 @@ begin
     // Neueste zuerst: vor die erste ältere Version.
     Target := Length(Result);
     for Index := High(Result) downto 0 do
+    begin
       if CompareVersions(Result[Index].Version, AVersion) < 0 then
+      begin
         Target := Index;
+      end;
+    end;
     Insert(Added, Result, Target);
   end;
   Result[Target].Items := Copy(Result[Target].Items);
   for Item in AItems do
   begin
     if Item.Title = '' then
+    begin
       Continue;
+    end;
     Found := False;
     for Known in Result[Target].Items do
+    begin
       Found := Found or SameText(Known.Title, Item.Title);
+    end;
     if not Found then
+    begin
       Result[Target].Items := Result[Target].Items + [Item];
+    end;
   end;
   // Eine neu angelegte Version ohne Einträge gäbe es in Parse nicht.
   if Length(Result[Target].Items) = 0 then
+  begin
     Delete(Result, Target, 1);
+  end;
 end;
 
 class function TAtlasWhatsNew.Ordered(const AItems: TArray<TAtlasWhatsNewItem>): TArray<TAtlasWhatsNewItem>;
@@ -377,21 +467,33 @@ begin
   Result := nil;
   Later := nil;
   for Item in AItems do
+  begin
     if Item.Experimental then
-      Later := Later + [Item]
+    begin
+      Later := Later + [Item];
+    end
     else
+    begin
       Result := Result + [Item];
+    end;
+  end;
   Result := Result + Later;
 end;
 
 class function TAtlasWhatsNew.ModeOf(const AValue: string): TAtlasWhatsNewMode;
 begin
   if SameText(Trim(AValue), ModeOff) then
-    Result := TAtlasWhatsNewMode.Off
+  begin
+    Result := TAtlasWhatsNewMode.Off;
+  end
   else if SameText(Trim(AValue), ModeAlways) then
-    Result := TAtlasWhatsNewMode.Always
+  begin
+    Result := TAtlasWhatsNewMode.Always;
+  end
   else
+  begin
     Result := TAtlasWhatsNewMode.AfterUpdate;
+  end;
 end;
 
 class function TAtlasWhatsNew.ModeName(AMode: TAtlasWhatsNewMode): string;
@@ -411,11 +513,17 @@ class function TAtlasWhatsNew.ViewFor(AMode: TAtlasWhatsNewMode; const AVersions
 begin
   Result := TAtlasWhatsNewView.Hidden;
   if AMode = TAtlasWhatsNewMode.Off then
+  begin
     Exit;
+  end;
   if (ASeen <> '') and (Length(Between(AVersions, ASeen, ACurrent)) > 0) then
+  begin
     Exit(TAtlasWhatsNewView.Unread);
+  end;
   if (AMode = TAtlasWhatsNewMode.Always) and (Length(Latest(AVersions, ACurrent)) > 0) then
+  begin
     Result := TAtlasWhatsNewView.Current;
+  end;
 end;
 
 class function TAtlasWhatsNew.VersionsFor(AView: TAtlasWhatsNewView; const AVersions: TAtlasWhatsNewVersions;
@@ -437,7 +545,9 @@ class function TAtlasWhatsNew.SeenAfterStart(const ASeen, ACurrent: string): str
 begin
   Result := ASeen;
   if Result = '' then
+  begin
     Result := ACurrent;
+  end;
 end;
 
 end.

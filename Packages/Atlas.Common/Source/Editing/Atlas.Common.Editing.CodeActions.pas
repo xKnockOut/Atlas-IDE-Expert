@@ -793,8 +793,7 @@ begin
   Action.Title := 'Als String-Literal';
   Action.Kind := RewriteKind;
   Action.Edits := [TTextEdit.Create(TTextRange.Create(First, 0, Last, Length(Lines[Last])),
-    TStringLiterals.ToLiteral(Plain, Indent, True, AMultiline, ASettings.LineBreak, ASettings.MaxLineLength,
-    TTextLines.LineBreakOf(AText)))];
+    TStringLiterals.ToLiteral(Plain, Indent, True, AMultiline, ASettings, TTextLines.LineBreakOf(AText)))];
   Result := [Action];
 end;
 

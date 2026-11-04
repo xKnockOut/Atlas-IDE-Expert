@@ -110,7 +110,9 @@ function TAtlasAsyncCompletionProvider.ProviderName: string;
 begin
   Result := FName;
   if Result = '' then
+  begin
     Result := ClassName;
+  end;
 end;
 
 function TAtlasAsyncCompletionProvider.IsFailure(E: Exception): Boolean;
@@ -122,7 +124,9 @@ procedure TAtlasAsyncCompletionProvider.Failed(E: Exception);
 begin
   try
     if IsFailure(E) then
+    begin
       TAtlasGuard.ReportProvider(ProviderName, E);
+    end;
   except
     // Melden darf den Hintergrund-Thread nicht beenden.
   end;
@@ -166,11 +170,13 @@ begin
   FLock.Enter;
   try
     for Index := FWorkers.Count - 1 downto 0 do
+    begin
       if FWorkers[Index].Finished then
       begin
         FWorkers[Index].Free;
         FWorkers.Delete(Index);
       end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -243,7 +249,9 @@ begin
               procedure(const AItems: TAtlasCompletionItems)
               begin
                 if (Length(AItems) > 0) and IsCurrent(Generation) then
+                begin
                   Sink.AddItems(AItems);
+                end;
               end, State);
           except
             // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
@@ -258,9 +266,13 @@ begin
           begin
             Sink.AddItems(Items);
             if State.Incomplete then
+            begin
               Sink.MarkIncomplete;
+            end;
             if State.Syntax.Trust <> TAtlasSyntaxTrust.Sure then
+            begin
               Sink.MarkSyntax(State.Syntax);
+            end;
             Sink.Complete;
           end;
         end);
@@ -273,7 +285,9 @@ begin
   end;
   // Überholt: Die Senken verwerfen veraltete Aufrufe; Composite erwartet je Teil ein Complete.
   if Worker = nil then
+  begin
     ASink.Complete;
+  end;
 end;
 
 end.

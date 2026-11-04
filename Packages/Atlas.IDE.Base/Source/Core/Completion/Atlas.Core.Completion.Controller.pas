@@ -280,9 +280,13 @@ begin
     Result := 'Bezeichner';
   end;
   if AContext.Automatic then
-    Result := Result + ', automatisch'
+  begin
+    Result := Result + ', automatisch';
+  end
   else
+  begin
     Result := Result + ', Strg+Leer';
+  end;
 end;
 
 { TAtlasCompletionController.TControllerSink }
@@ -315,11 +319,13 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
             Controller.ItemsArrived(Generation, Items);
           end);
+      end;
     end);
 end;
 
@@ -338,11 +344,13 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
             Controller.IncompleteArrived(Generation);
           end);
+      end;
     end);
 end;
 
@@ -363,11 +371,13 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
             Controller.SyntaxArrived(Generation, Notice);
           end);
+      end;
     end);
 end;
 
@@ -386,11 +396,13 @@ begin
     procedure
     begin
       if Flag.Alive and (FlagRef <> nil) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Completion,
           procedure
           begin
             Controller.Completed(Generation);
           end);
+      end;
     end);
 end;
 
@@ -429,28 +441,42 @@ begin
   // Nächster Eintrag ab APosition in Richtung ADirection, sonst in der Gegenrichtung; -1 ohne.
   Result := APosition;
   while (Result >= 0) and (Result <= High(FOrder)) and TAtlasRanking.IsHeader(FOrder[Result]) do
+  begin
     Inc(Result, ADirection);
+  end;
   if (Result >= 0) and (Result <= High(FOrder)) then
+  begin
     Exit;
+  end;
   Result := APosition;
   while (Result >= 0) and (Result <= High(FOrder)) and TAtlasRanking.IsHeader(FOrder[Result]) do
+  begin
     Dec(Result, ADirection);
+  end;
   if (Result < 0) or (Result > High(FOrder)) then
+  begin
     Result := -1;
+  end;
 end;
 
 procedure TAtlasCompletionController.ShowChips;
 begin
   if FChipsEnabled then
-    FView.ShowChips(TAtlasRanking.ChipCounts(FItems, FPrefix), FChip, Length(FItems) > 0)
+  begin
+    FView.ShowChips(TAtlasRanking.ChipCounts(FItems, FPrefix), FChip, Length(FItems) > 0);
+  end
   else
+  begin
     FView.ShowChips(Default(TAtlasChipCounts), TAtlasChip.All, False);
+  end;
 end;
 
 procedure TAtlasCompletionController.SelectChip(AChip: TAtlasChip);
 begin
   if not FActive or (AChip = FChip) then
+  begin
     Exit;
+  end;
   FChip := AChip;
   Refresh(True);
 end;
@@ -463,6 +489,7 @@ begin
   // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
   Counts := TAtlasRanking.ChipCounts(FItems, FPrefix);
   for mChip := Low(TAtlasChip) to High(TAtlasChip) do
+  begin
     if (mChip = TAtlasChip.All) or (Counts[mChip] > 0) then
     begin
       if AIndex = 0 then
@@ -472,6 +499,7 @@ begin
       end;
       Dec(AIndex);
     end;
+  end;
 end;
 
 function TAtlasCompletionController.Dismissed(const AContext: TAtlasContext): Boolean;
@@ -492,7 +520,9 @@ procedure TAtlasCompletionController.Start(const AContext: TAtlasContext);
 begin
   Close;
   if AContext.Automatic and Dismissed(AContext) then
+  begin
     Exit;
+  end;
   // Ein anderes Wort oder Strg+Leer hebt die Sperre auf.
   FDismissedLine := -1;
   FWordFile := AContext.FileName;
@@ -512,7 +542,9 @@ begin
   FSelected := -1;
   FEmpty := False;
   if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
+  begin
     TAtlasQueryTimings.Shared.BeginQuery(AContext.Started, TimingKind(AContext), ExtractFileName(AContext.FileName));
+  end;
   Query(AContext);
 end;
 
@@ -546,13 +578,17 @@ end;
 procedure TAtlasCompletionController.IncompleteArrived(AGeneration: Integer);
 begin
   if FActive and (AGeneration = FGeneration) then
+  begin
     FIncomplete := True;
+  end;
 end;
 
 procedure TAtlasCompletionController.SyntaxArrived(AGeneration: Integer; const ANotice: TAtlasSyntaxNotice);
 begin
   if not FActive or (AGeneration <> FGeneration) then
+  begin
     Exit;
+  end;
   FPendingSyntax := ANotice;
   FSyntax := ANotice;
   ShowSyntax;
@@ -563,7 +599,9 @@ var
   View: IAtlasCompletionSyntaxView;
 begin
   if Supports(FView, IAtlasCompletionSyntaxView, View) then
+  begin
     View.ShowSyntax(FSyntax);
+  end;
 end;
 
 procedure TAtlasCompletionController.SelectByName(const AName: string);
@@ -571,17 +609,21 @@ var
   Position: Integer;
 begin
   for Position := 0 to High(FOrder) do
+  begin
     if not TAtlasRanking.IsHeader(FOrder[Position]) and (FItems[FOrder[Position]].Name = AName) then
     begin
       FSelected := Position;
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasCompletionController.Close;
 begin
   if not FActive then
+  begin
     Exit;
+  end;
   FActive := False;
   FLoading := False;
   FIncomplete := False;
@@ -605,13 +647,17 @@ var
   SelectedName: string;
 begin
   if not FActive or (AGeneration <> FGeneration) or (Length(AItems) = 0) then
+  begin
     Exit;
+  end;
   if FReplace then
   begin
     // Neue Liste nach Requery: ersetzen, die Auswahl bleibt auf demselben Eintrag.
     SelectedName := '';
     if SelectedItem(Item) then
+    begin
       SelectedName := Item.Name;
+    end;
     FReplace := False;
     FItems := AItems;
     MarkItems(0);
@@ -635,7 +681,9 @@ begin
   for Index := Max(0, AFrom) to High(FItems) do
   begin
     if FUsage <> nil then
+    begin
       FItems[Index].Usage := FUsage.Mark(FItems[Index]);
+    end;
     FItems[Index].Favorite := (FFavorites <> nil) and FFavorites.IsFavorite(FItems[Index]);
   end;
 end;
@@ -647,11 +695,15 @@ begin
   AItem := Default(TAtlasCompletionItem);
   if (FFavorites = nil) or not FActive or (APosition < 0) or (APosition > High(FOrder)) or
     TAtlasRanking.IsHeader(FOrder[APosition]) then
+  begin
     Exit;
+  end;
   AItem := FItems[FOrder[APosition]];
   Result := FFavorites.Toggle(AItem);
   if (Result <> TAtlasFavoriteToggle.Added) and (Result <> TAtlasFavoriteToggle.Removed) then
+  begin
     Exit;
+  end;
   // Alle Einträge neu markieren: Derselbe Member kann aus mehreren Quellen kommen.
   MarkItems(0);
   AItem.Favorite := Result = TAtlasFavoriteToggle.Added;
@@ -661,14 +713,18 @@ end;
 function TAtlasCompletionController.ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
 begin
   if not SelectedItem(AItem) then
+  begin
     Exit(TAtlasFavoriteToggle.NotAllowed);
+  end;
   Result := ToggleFavorite(FSelected, AItem);
 end;
 
 procedure TAtlasCompletionController.Completed(AGeneration: Integer);
 begin
   if not FActive or (AGeneration <> FGeneration) then
+  begin
     Exit;
+  end;
   FLoading := False;
   // Der Hinweis gilt für die Liste dieser Abfrage (#457).
   FSyntax := FPendingSyntax;
@@ -687,7 +743,9 @@ begin
   end;
   // Nichts gefunden: leerer Zustand statt kommentarlos zu verschwinden (#423).
   if Length(FItems) = 0 then
+  begin
     Refresh(False);
+  end;
 end;
 
 procedure TAtlasCompletionController.Refresh(AKeepSelection: Boolean);
@@ -709,13 +767,19 @@ begin
   end;
   SelectedIndex := -1;
   if AKeepSelection and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder)) then
+  begin
     SelectedIndex := FOrder[FSelected];
+  end;
   Options := TAtlasRankOptions.Defaults;
   Options.GroupInherited := FGroupInherited;
   if FChipsEnabled then
+  begin
     Options.Chip := FChip;
+  end;
   if FMembers or (FListScope = TAtlasListScope.Everywhere) then
+  begin
     Options.ListMode := FListMode;
+  end;
   if FUsage <> nil then
   begin
     mUsage := FUsage;
@@ -731,8 +795,12 @@ begin
   begin
     Shown := 0;
     for Position := 0 to High(FOrder) do
+    begin
       if not TAtlasRanking.IsHeader(FOrder[Position]) then
+      begin
         Inc(Shown);
+      end;
+    end;
     Timings.FilterSorted(TAtlasQueryTimings.MsSince(Stamp), Length(FItems), Shown);
   end;
   FSelected := FirstItemFrom(0, 1);
@@ -740,34 +808,50 @@ begin
   Position := FSelected;
   while (Position >= 0) and (Position <= High(FOrder)) and (TAtlasRanking.IsHeader(FOrder[Position]) or
     FItems[FOrder[Position]].Hint) do
+  begin
     Inc(Position);
+  end;
   if (FSelected >= 0) and (Position <= High(FOrder)) then
+  begin
     FSelected := Position;
+  end;
   ShowChips;
   if SelectedIndex >= 0 then
+  begin
     for Position := 0 to High(FOrder) do
+    begin
       if FOrder[Position] = SelectedIndex then
       begin
         FSelected := Position;
         Break;
       end;
+    end;
+  end;
   FEmpty := False;
   // Nur Deklarationen (#471): sichtbar, aber nicht gewählt, solange niemand eine Pfeiltaste drückt.
   // Ebenso, wenn oben kein Treffer steht, nur der Rest (#497).
   FPassive := (FSelected >= 0) and ((FItems[FOrder[FSelected]].Unknown <> '') or FItems[FOrder[FSelected]].Hint or
     ((FRestStart >= 0) and (FSelected >= FRestStart))) and ((SelectedIndex < 0) or (FOrder[FSelected] <> SelectedIndex));
   if (Timings <> nil) and (FSelected >= 0) then
+  begin
     Timings.ListShown;
+  end;
   if FPassive then
-    FView.ShowList(FItems, FOrder, -1, FPrefix)
+  begin
+    FView.ShowList(FItems, FOrder, -1, FPrefix);
+  end
   else if FSelected >= 0 then
-    FView.ShowList(FItems, FOrder, FSelected, FPrefix)
+  begin
+    FView.ShowList(FItems, FOrder, FSelected, FPrefix);
+  end
   else
   begin
     FSelected := -1;
     // Solange noch nichts da ist, nichts zeigen; sonst den leeren Zustand.
     if FLoading and (Length(FItems) = 0) then
-      FView.HideList
+    begin
+      FView.HideList;
+    end
     else
     begin
       FEmpty := True;
@@ -779,7 +863,9 @@ end;
 procedure TAtlasCompletionController.UpdatePrefix(const APrefix: string);
 begin
   if not FActive or (APrefix = FPrefix) then
+  begin
     Exit;
+  end;
   // Weitertippen verwirft das Angebot „Mit try…finally absichern“ (#489).
   if (APrefix <> '') and TAtlasItemPresentation.Guarding(FItems) then
   begin
@@ -807,7 +893,9 @@ begin
   // Überschriften (#419) werden übersprungen.
   APosition := FirstItemFrom(EnsureRange(APosition, 0, High(FOrder)), ADirection);
   if (APosition < 0) or (APosition = FSelected) then
+  begin
     Exit;
+  end;
   FSelected := APosition;
   FView.ShowList(FItems, FOrder, FSelected, FPrefix);
 end;
@@ -823,7 +911,9 @@ begin
     Exit(True);
   end;
   if not GetVisible then
+  begin
     Exit(False);
+  end;
   Result := True;
   Page := Max(1, FView.PageSize - 1);
   case AKey of
@@ -846,16 +936,24 @@ begin
         Result := False;
       end
       else if SetMode then
-        CommitSet
+      begin
+        CommitSet;
+      end
       else
+      begin
         CommitSelected;
+      end;
     TAtlasNavigationKey.Cancel:
       Dismiss;
     TAtlasNavigationKey.Toggle:
       if SetMode then
-        ToggleSelected
+      begin
+        ToggleSelected;
+      end
       else
+      begin
         Result := False;
+      end;
   end;
 end;
 
@@ -869,7 +967,9 @@ var
   Index: Integer;
 begin
   if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
+  begin
     Exit;
+  end;
   Index := FOrder[FSelected];
   FItems[Index].Checked := not FItems[Index].Checked;
   FToggled := True;
@@ -883,26 +983,36 @@ begin
   // Ohne Leertaste: Enter übernimmt den gewählten Wert zusätzlich zu den vorhandenen.
   if not FToggled and (FSelected >= 0) and (FSelected <= High(FOrder)) and
     not TAtlasRanking.IsHeader(FOrder[FSelected]) then
+  begin
     FItems[FOrder[FSelected]].Checked := True;
+  end;
   Item := TAtlasCompletionSets.CommitItem(FItems);
   Close;
   if Assigned(FOnCommit) then
+  begin
     FOnCommit(Item);
+  end;
 end;
 
 procedure TAtlasCompletionController.Select(APosition: Integer);
 begin
   if GetVisible then
+  begin
     MoveSelection(APosition);
+  end;
 end;
 
 function TAtlasCompletionController.SelectedItem(out AItem: TAtlasCompletionItem): Boolean;
 begin
   Result := GetVisible and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder));
   if Result then
-    AItem := FItems[FOrder[FSelected]]
+  begin
+    AItem := FItems[FOrder[FSelected]];
+  end
   else
+  begin
     AItem := Default(TAtlasCompletionItem);
+  end;
 end;
 
 function TAtlasCompletionController.CanCommitOnCharacter: Boolean;
@@ -924,7 +1034,9 @@ var
   Item: TAtlasCompletionItem;
 begin
   if not SelectedItem(Item) then
+  begin
     Exit;
+  end;
   // Alle Felder zuweisen mit vielen Feldern (#491): erst die Liste mit Kontrollkästchen, Enter übernimmt.
   if Length(Item.Assignments) > 0 then
   begin
@@ -940,10 +1052,14 @@ begin
     Exit;
   end;
   if FUsage <> nil then
+  begin
     FUsage.Record_(Item);
+  end;
   Close;
   if Assigned(FOnCommit) then
+  begin
     FOnCommit(Item);
+  end;
 end;
 
 end.
