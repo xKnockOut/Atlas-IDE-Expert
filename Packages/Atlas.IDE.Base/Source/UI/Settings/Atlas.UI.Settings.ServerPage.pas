@@ -26,6 +26,18 @@ uses
   Atlas.UI.Strings;
 
 type
+  /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
+  TAtlasServerPageHooks = record
+    EditGlobal: TProc;
+    EditProject: TProc;
+    BaselineInfo: TFunc<string>;
+    BaselineUpdate: TFunc<string>;
+    BaselineDelete: TFunc<string>;
+    Suppressions: TFunc<TArray<string>>;
+    ClearCache: TFunc<string>;
+    Confirm: TFunc<string, Boolean>;
+  end;
+
   TAtlasServerPage = class(TFrame)
   private
     FNextTop: Integer;
@@ -38,14 +50,7 @@ type
     FSuppressionsRefresh: TButton;
     FCacheInfo: TLabel;
     FCacheClear: TButton;
-    FOnEditGlobal: TProc;
-    FOnEditProject: TProc;
-    FOnBaselineInfo: TFunc<string>;
-    FOnBaselineUpdate: TFunc<string>;
-    FOnBaselineDelete: TFunc<string>;
-    FOnSuppressions: TFunc<TArray<string>>;
-    FOnClearCache: TFunc<string>;
-    FConfirm: TFunc<string, Boolean>;
+    FHooks: TAtlasServerPageHooks;
     function AddPanel(AHeight: Integer): TPanel;
     function AddTitle(const ACaption: string): TLabel;
     function AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
@@ -69,17 +74,17 @@ type
     property SuppressionsRefresh: TButton read FSuppressionsRefresh;
     property CacheInfo: TLabel read FCacheInfo;
     property CacheClear: TButton read FCacheClear;
-    property OnEditGlobal: TProc read FOnEditGlobal write FOnEditGlobal;
-    property OnEditProject: TProc read FOnEditProject write FOnEditProject;
+    property OnEditGlobal: TProc read FHooks.EditGlobal write FHooks.EditGlobal;
+    property OnEditProject: TProc read FHooks.EditProject write FHooks.EditProject;
     /// <summary>Text zur Baseline des aktiven Projekts.</summary>
-    property OnBaselineInfo: TFunc<string> read FOnBaselineInfo write FOnBaselineInfo;
+    property OnBaselineInfo: TFunc<string> read FHooks.BaselineInfo write FHooks.BaselineInfo;
     /// <summary>Aktionen; Ergebnis als Meldung unter dem Abschnitt.</summary>
-    property OnBaselineUpdate: TFunc<string> read FOnBaselineUpdate write FOnBaselineUpdate;
-    property OnBaselineDelete: TFunc<string> read FOnBaselineDelete write FOnBaselineDelete;
-    property OnSuppressions: TFunc<TArray<string>> read FOnSuppressions write FOnSuppressions;
-    property OnClearCache: TFunc<string> read FOnClearCache write FOnClearCache;
+    property OnBaselineUpdate: TFunc<string> read FHooks.BaselineUpdate write FHooks.BaselineUpdate;
+    property OnBaselineDelete: TFunc<string> read FHooks.BaselineDelete write FHooks.BaselineDelete;
+    property OnSuppressions: TFunc<TArray<string>> read FHooks.Suppressions write FHooks.Suppressions;
+    property OnClearCache: TFunc<string> read FHooks.ClearCache write FHooks.ClearCache;
     /// <summary>Rückfrage vor dem Löschen; Standard: Dialog mit Ja/Nein.</summary>
-    property Confirm: TFunc<string, Boolean> read FConfirm write FConfirm;
+    property Confirm: TFunc<string, Boolean> read FHooks.Confirm write FHooks.Confirm;
   end;
 
 implementation
@@ -177,15 +182,15 @@ end;
 
 procedure TAtlasServerPage.Refresh;
 begin
-  FEditGlobal.Enabled := Assigned(FOnEditGlobal);
-  FEditProject.Enabled := Assigned(FOnEditProject);
-  FBaselineUpdate.Enabled := Assigned(FOnBaselineUpdate);
-  FBaselineDelete.Enabled := Assigned(FOnBaselineDelete);
-  FSuppressionsRefresh.Enabled := Assigned(FOnSuppressions);
-  FCacheClear.Enabled := Assigned(FOnClearCache);
-  if Assigned(FOnBaselineInfo) then
+  FEditGlobal.Enabled := Assigned(FHooks.EditGlobal);
+  FEditProject.Enabled := Assigned(FHooks.EditProject);
+  FBaselineUpdate.Enabled := Assigned(FHooks.BaselineUpdate);
+  FBaselineDelete.Enabled := Assigned(FHooks.BaselineDelete);
+  FSuppressionsRefresh.Enabled := Assigned(FHooks.Suppressions);
+  FCacheClear.Enabled := Assigned(FHooks.ClearCache);
+  if Assigned(FHooks.BaselineInfo) then
   begin
-    FBaselineInfo.Caption := FOnBaselineInfo();
+    FBaselineInfo.Caption := FHooks.BaselineInfo();
   end
   else
   begin
@@ -195,9 +200,9 @@ end;
 
 function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
 begin
-  if Assigned(FConfirm) then
+  if Assigned(FHooks.Confirm) then
   begin
-    Result := FConfirm(AQuestion);
+    Result := FHooks.Confirm(AQuestion);
   end
   else
   begin
@@ -207,34 +212,34 @@ end;
 
 procedure TAtlasServerPage.EditGlobalClick(Sender: TObject);
 begin
-  if Assigned(FOnEditGlobal) then
+  if Assigned(FHooks.EditGlobal) then
   begin
-    FOnEditGlobal();
+    FHooks.EditGlobal();
   end;
 end;
 
 procedure TAtlasServerPage.EditProjectClick(Sender: TObject);
 begin
-  if Assigned(FOnEditProject) then
+  if Assigned(FHooks.EditProject) then
   begin
-    FOnEditProject();
+    FHooks.EditProject();
   end;
 end;
 
 procedure TAtlasServerPage.BaselineUpdateClick(Sender: TObject);
 begin
-  if Assigned(FOnBaselineUpdate) then
+  if Assigned(FHooks.BaselineUpdate) then
   begin
-    FBaselineInfo.Caption := FOnBaselineUpdate();
+    FBaselineInfo.Caption := FHooks.BaselineUpdate();
   end;
 end;
 
 procedure TAtlasServerPage.BaselineDeleteClick(Sender: TObject);
 begin
-  if Assigned(FOnBaselineDelete) and
+  if Assigned(FHooks.BaselineDelete) and
     Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm)) then
   begin
-    FBaselineInfo.Caption := FOnBaselineDelete();
+    FBaselineInfo.Caption := FHooks.BaselineDelete();
   end;
 end;
 
@@ -242,14 +247,14 @@ procedure TAtlasServerPage.SuppressionsClick(Sender: TObject);
 var
   Line: string;
 begin
-  if not Assigned(FOnSuppressions) then
+  if not Assigned(FHooks.Suppressions) then
   begin
     Exit;
   end;
   FSuppressions.Items.BeginUpdate;
   try
     FSuppressions.Items.Clear;
-    for Line in FOnSuppressions() do
+    for Line in FHooks.Suppressions() do
     begin
       FSuppressions.Items.Add(Line);
     end;
@@ -260,9 +265,9 @@ end;
 
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
-  if Assigned(FOnClearCache) and Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheConfirm)) then
+  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheConfirm)) then
   begin
-    FCacheInfo.Caption := FOnClearCache();
+    FCacheInfo.Caption := FHooks.ClearCache();
   end;
 end;
 

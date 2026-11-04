@@ -38,6 +38,12 @@ type
     // Felder werden gerade aus dem Katalog gefüllt: Änderungen nicht zurückschreiben.
     FFilling: Boolean;
     function AddField(AParent: TWinControl; const ACaption: string; ATop: Integer): TEdit;
+    /// <summary>Leiste unten mit „Neu“, „Kopieren“ und „Löschen“.</summary>
+    procedure CreateButtons;
+    /// <summary>Liste der Vorlagen links.</summary>
+    procedure CreateList;
+    /// <summary>Felder der gewählten Vorlage rechts.</summary>
+    procedure CreateEditor;
     procedure FillList(ASelect: Integer);
     procedure ShowEntry;
     function Selected: Integer;
@@ -62,38 +68,47 @@ implementation
 
 { TAtlasSnippetsPage }
 
+/// <summary>Knopf ACaption in der Leiste APanel an der Stelle ALeft mit der Breite AWidth.</summary>
+function NewButton(APanel: TPanel; const ACaption: string; ALeft, AWidth: Integer; AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(APanel.Owner);
+  Result.Parent := APanel;
+  Result.SetBounds(ALeft, 4, AWidth, 25);
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+end;
+
 constructor TAtlasSnippetsPage.Create(AOwner: TComponent);
-var
-  Buttons, Editor: TPanel;
-  Column: TListColumn;
-  mCaption: TLabel;
 begin
   inherited Create(AOwner);
   Name := 'AtlasSnippetsPage';
   Width := 560;
   Height := 420;
-  Buttons := TPanel.Create(Self);
-  Buttons.Parent := Self;
-  Buttons.Align := alBottom;
-  Buttons.BevelOuter := bvNone;
-  Buttons.Height := 34;
-  Buttons.ParentBackground := True;
-  FNew := TButton.Create(Self);
-  FNew.Parent := Buttons;
-  FNew.SetBounds(4, 4, 90, 25);
-  FNew.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsNew);
-  FNew.OnClick := NewClick;
-  FCopy := TButton.Create(Self);
-  FCopy.Parent := Buttons;
-  FCopy.SetBounds(100, 4, 150, 25);
-  FCopy.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsCopy);
-  FCopy.OnClick := CopyClick;
-  FDelete := TButton.Create(Self);
-  FDelete.Parent := Buttons;
-  FDelete.SetBounds(256, 4, 90, 25);
-  FDelete.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsDelete);
-  FDelete.OnClick := DeleteClick;
+  CreateButtons;
+  CreateList;
+  CreateEditor;
+  ShowEntry;
+end;
 
+procedure TAtlasSnippetsPage.CreateButtons;
+var
+  mButtons: TPanel;
+begin
+  mButtons := TPanel.Create(Self);
+  mButtons.Parent := Self;
+  mButtons.Align := alBottom;
+  mButtons.BevelOuter := bvNone;
+  mButtons.Height := 34;
+  mButtons.ParentBackground := True;
+  FNew := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsNew), 4, 90, NewClick);
+  FCopy := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsCopy), 100, 150, CopyClick);
+  FDelete := NewButton(mButtons, TAtlasStrings.Text(TAtlasTextId.SnippetsDelete), 256, 90, DeleteClick);
+end;
+
+procedure TAtlasSnippetsPage.CreateList;
+var
+  mColumn: TListColumn;
+begin
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alLeft;
@@ -103,29 +118,35 @@ begin
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix);
-  Column.Width := 90;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsName);
-  Column.Width := 130;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix);
+  mColumn.Width := 90;
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsName);
+  mColumn.Width := 130;
   FList.OnSelectItem := ListSelect;
+end;
 
-  Editor := TPanel.Create(Self);
-  Editor.Parent := Self;
-  Editor.Align := alClient;
-  Editor.BevelOuter := bvNone;
-  Editor.ParentBackground := True;
-  FPrefix := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix), 4);
-  FName := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsName), 32);
-  FDescription := AddField(Editor, TAtlasStrings.Text(TAtlasTextId.SnippetsDescription), 60);
+procedure TAtlasSnippetsPage.CreateEditor;
+var
+  mEditor: TPanel;
+  mCaption: TLabel;
+begin
+  mEditor := TPanel.Create(Self);
+  mEditor.Parent := Self;
+  mEditor.Align := alClient;
+  mEditor.BevelOuter := bvNone;
+  mEditor.ParentBackground := True;
+  FPrefix := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsPrefix), 4);
+  FName := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsName), 32);
+  FDescription := AddField(mEditor, TAtlasStrings.Text(TAtlasTextId.SnippetsDescription), 60);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := Editor;
+  mCaption.Parent := mEditor;
   mCaption.SetBounds(4, 92, 300, 15);
   mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsBody);
   FBody := TMemo.Create(Self);
-  FBody.Parent := Editor;
-  FBody.SetBounds(4, 110, Editor.Width - 8, 200);
+  FBody.Parent := mEditor;
+  FBody.SetBounds(4, 110, mEditor.Width - 8, 200);
   FBody.Anchors := [akLeft, akTop, akRight, akBottom];
   FBody.ScrollBars := ssBoth;
   FBody.WordWrap := False;
@@ -133,13 +154,12 @@ begin
   FBody.Font.Name := 'Consolas';
   FBody.OnChange := FieldChange;
   FReadOnlyHint := TLabel.Create(Self);
-  FReadOnlyHint.Parent := Editor;
+  FReadOnlyHint.Parent := mEditor;
   FReadOnlyHint.Align := alBottom;
   FReadOnlyHint.AlignWithMargins := True;
   FReadOnlyHint.WordWrap := True;
   FReadOnlyHint.Font.Color := clGrayText;
   FReadOnlyHint.Caption := TAtlasStrings.Text(TAtlasTextId.SnippetsReadOnly);
-  ShowEntry;
 end;
 
 destructor TAtlasSnippetsPage.Destroy;
