@@ -2,7 +2,8 @@
 
 // Andockbares Fenster „Atlas-Diagnose“ (#479): klein, verankerbar wie das
 // Ergebnisfenster (#400) über INTAServices.CreateDockableForm, Inhalt
-// TAtlasTimingFrame, IDE-Thema, Atlas-Symbol (#751) im Fenstertitel. OnFrame
+// TAtlasDiagnosticsFrame (Reiter Hauptthread, Server, Hintergrund, Hänger und
+// Vervollständigung), IDE-Thema, Atlas-Symbol (#751) im Fenstertitel. OnFrame
 // meldet einen neuen Frame, damit TAtlasIdeDiagnosticMode ihn füllt.
 
 interface
@@ -11,18 +12,18 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.UI.Diagnostics.TimingFrame;
+  Atlas.UI.Diagnostics.PluginFrame;
 
 type
   TAtlasIdeTimingWindow = class
   public class var
     /// <summary>Ein neuer Frame ist entstanden; setzt der Diagnosemodus.</summary>
-    OnFrame: TProc<TAtlasTimingFrame>;
+    OnFrame: TProc<TAtlasDiagnosticsFrame>;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
-    class function Show: TAtlasTimingFrame; static;
+    class function Show: TAtlasDiagnosticsFrame; static;
     /// <summary>Frame, falls das Fenster existiert; legt nichts an.</summary>
-    class function ExistingFrame: TAtlasTimingFrame; static;
+    class function ExistingFrame: TAtlasDiagnosticsFrame; static;
     class function Visible: Boolean; static;
     class procedure Hide; static;
     class procedure UpdateIcon; static;
@@ -88,14 +89,14 @@ end;
 
 function TTimingDock.GetFrameClass: TCustomFrameClass;
 begin
-  Result := TAtlasTimingFrame;
+  Result := TAtlasDiagnosticsFrame;
 end;
 
 procedure TTimingDock.FrameCreated(AFrame: TCustomFrame);
 var
-  Frame: TAtlasTimingFrame;
+  Frame: TAtlasDiagnosticsFrame;
 begin
-  if not (AFrame is TAtlasTimingFrame) then
+  if not (AFrame is TAtlasDiagnosticsFrame) then
   begin
     Exit;
   end;
@@ -103,7 +104,7 @@ begin
   begin
     Host.FrameCreated(AFrame);
   end;
-  Frame := TAtlasTimingFrame(AFrame);
+  Frame := TAtlasDiagnosticsFrame(AFrame);
   TAtlasIdeTimingWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeTimingWindow.OnFrame) then
@@ -169,7 +170,7 @@ end;
 
 { TAtlasIdeTimingWindow }
 
-class function TAtlasIdeTimingWindow.Show: TAtlasTimingFrame;
+class function TAtlasIdeTimingWindow.Show: TAtlasDiagnosticsFrame;
 var
   Created: Boolean;
 begin
@@ -183,12 +184,12 @@ begin
   Result := ExistingFrame;
 end;
 
-class function TAtlasIdeTimingWindow.ExistingFrame: TAtlasTimingFrame;
+class function TAtlasIdeTimingWindow.ExistingFrame: TAtlasDiagnosticsFrame;
 begin
   Result := nil;
-  if (Host <> nil) and (Host.Frame is TAtlasTimingFrame) then
+  if (Host <> nil) and (Host.Frame is TAtlasDiagnosticsFrame) then
   begin
-    Result := TAtlasTimingFrame(Host.Frame);
+    Result := TAtlasDiagnosticsFrame(Host.Frame);
   end;
 end;
 
@@ -225,7 +226,7 @@ end;
 
 class procedure TAtlasIdeTimingWindow.ApplyTheme;
 var
-  Frame: TAtlasTimingFrame;
+  Frame: TAtlasDiagnosticsFrame;
 begin
   Frame := ExistingFrame;
   if Frame <> nil then

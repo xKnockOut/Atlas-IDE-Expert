@@ -187,6 +187,8 @@ type
     /// <summary>Dateinamen der Abfragen aufnehmen (nur auf Wunsch).</summary>
     FileNames: Boolean;
     Created: TDateTime;
+    /// <summary>Abschnitt „Plugin-Zeiten“ (TAtlasPluginReport) vor den Einstellungen; '' ohne.</summary>
+    Plugin: string;
   end;
 
   TAtlasTimingReport = record
@@ -783,12 +785,23 @@ begin
   end;
 end;
 
+/// <summary>Tabelle „Schritt | letzte | Mittel | Maximum | Budget“ des Berichts.</summary>
+procedure AddStepTable(ALines: TStrings; const AQueries: TArray<TAtlasQueryTiming>);
+var
+  mRow: TAtlasTimingRow;
+begin
+  ALines.Add('Schritt | letzte | Mittel | Maximum | Budget');
+  ALines.Add('--- | --- | --- | --- | ---');
+  for mRow in TAtlasTimingRows.Build(AQueries) do
+  begin
+    ALines.Add(RowLine(mRow));
+  end;
+end;
+
 class function TAtlasTimingReport.Build(const AQueries: TArray<TAtlasQueryTiming>;
   const AInput: TAtlasTimingReportInput): string;
 var
   Lines: TStringList;
-  Rows: TArray<TAtlasTimingRow>;
-  Row: TAtlasTimingRow;
   Index: Integer;
   Settings: string;
 begin
@@ -806,13 +819,7 @@ begin
     Lines.Add(Format('## Zeiten in ms: letzte Abfrage, Mittelwert und Maximum der letzten %d',
       [Length(AQueries)]));
     Lines.Add('');
-    Lines.Add('Schritt | letzte | Mittel | Maximum | Budget');
-    Lines.Add('--- | --- | --- | --- | ---');
-    Rows := TAtlasTimingRows.Build(AQueries);
-    for Row in Rows do
-    begin
-      Lines.Add(RowLine(Row));
-    end;
+    AddStepTable(Lines, AQueries);
     Lines.Add('');
     Lines.Add('## Abfragen, neueste zuerst');
     Lines.Add('');
@@ -825,6 +832,10 @@ begin
       Lines.Add('Noch keine Abfrage gemessen.');
     end;
     Lines.Add('');
+    if AInput.Plugin <> '' then
+    begin
+      Lines.Add(AInput.Plugin);
+    end;
     Lines.Add('## Einstellungen');
     Lines.Add('');
     // Pfade (Serverpfad u. a.) wie im Fehlerbericht kürzen; Benutzer- und Rechnername ersetzen.

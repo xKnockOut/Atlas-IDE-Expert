@@ -24,6 +24,13 @@
 //   zur Sicherung (früher schaltete ein beschäftigter Rechner so Quellen ab).
 //   ReportProviderSlow schreibt je Quelle höchstens eine Zeile je
 //   SlowLogSeconds mit der Zahl der übergangenen Meldungen.
+// - Zeitmessung (Diagnose-Fenster, Reiter „Hauptthread“): Ist Timing gesetzt,
+//   meldet Run Beginn und Ende jedes Aufrufs, ReportProviderSlow jede langsame
+//   Quelle. Ohne Diagnosemodus ist Timing nil, und Run prüft nur dieses Feld.
+//   Timing ist eine abstrakte Klasse, damit diese Unit den Rekorder
+//   (Atlas.Core.Diagnostics.PluginTimings) nicht kennen muss.
+// - Disable schaltet ein Feature wie die Sicherung ab, auf Wunsch aus dem
+//   Diagnose-Fenster; wieder an wie nach der Sicherung (Menü Atlas).
 // - TAtlasRotatingLog: Protokoll unter %LOCALAPPDATA%\Atlas\Logs, höchstens
 //   5 Dateien à 1 MB. Jede Fehlerzeile nennt Atlas-Version, Feature bzw.
 //   Quelle, Fehlerklasse, Meldung (eine Zeile, gekürzt) und den Stack-Trace;
@@ -156,6 +163,8 @@ type
     function Tripped(AFeature: TAtlasFeature): Boolean;
     function TrippedSet: TAtlasFeatures;
     procedure Reset(AFeature: TAtlasFeature);
+    /// <summary>Feature abschalten wie nach dem Auslösen, ohne Fehler zu zählen.</summary>
+    procedure Trip(AFeature: TAtlasFeature);
     /// <summary>Wie Failed, für eine einzelne Quelle (Name ohne Groß-/Kleinschreibung).</summary>
     function ProviderFailed(const AName: string): Boolean;
     function ProviderTripped(const AName: string): Boolean;
@@ -175,6 +184,18 @@ type
   /// <summary>Sicherung eines Features hat ausgelöst; AMessage ist die letzte Fehlermeldung (gekürzt).</summary>
   TAtlasGuardTripped = reference to procedure(AFeature: TAtlasFeature; const AMessage: string);
 
+  /// <summary>Messpunkte von Run und ReportProviderSlow; der Rekorder des Diagnose-Fensters leitet hiervon ab.
+  /// </summary>
+  TAtlasGuardTiming = class
+  public
+    /// <summary>Beginn eines Aufrufs; das Ergebnis geht unverändert an Leave.</summary>
+    function Enter: Integer; virtual; abstract;
+    /// <summary>Ende des Aufrufs, der mit Enter begann (auch nach einem Fehler).</summary>
+    procedure Leave(AFeature: TAtlasFeature; AToken: Integer); virtual; abstract;
+    /// <summary>Die Quelle AName war zu langsam (Zeitlimit oder vorige Anfrage läuft noch).</summary>
+    procedure ProviderSlow(const AName: string); virtual; abstract;
+  end;
+
   TAtlasGuard = class
   private class var
     FFuse: TAtlasFuse;
@@ -183,6 +204,7 @@ type
     FOnFailure: TProc<TAtlasFeature>;
     FStackOf: TAtlasGuardStackFunc;
     FOnTripped: TAtlasGuardTripped;
+    FTiming: TAtlasGuardTiming;
     class procedure Warn(const AText: string); static;
     class function ErrorLine(const AWhere: string; E: Exception): string; static;
     /// <summary>Klasse und Stelle (ExceptAddr) des gerade behandelten Fehlers; ohne Stelle Klasse und Meldung.
@@ -201,6 +223,9 @@ type
     class function Disabled(AFeature: TAtlasFeature): Boolean; static;
     class procedure Enable(AFeature: TAtlasFeature); static;
     class procedure EnableAll; static;
+    /// <summary>Feature bis zum Neustart (oder bis Enable) abschalten, ohne Fehler; aus dem Diagnose-Fenster.
+    /// </summary>
+    class procedure Disable(AFeature: TAtlasFeature); static;
     class function DisabledSet: TAtlasFeatures; static;
     /// <summary>Protokolliert eine Zeile ins rotierende Protokoll.</summary>
     class procedure Log(const AText: string); static;
@@ -229,6 +254,8 @@ type
     /// </summary>
     class property OnTripped: TAtlasGuardTripped read FOnTripped write FOnTripped;
     class property Fuse: TAtlasFuse read FFuse;
+    /// <summary>Messpunkte des Diagnose-Fensters; nil (Vorgabe) misst nichts. Gehört dem Setzenden.</summary>
+    class property Timing: TAtlasGuardTiming read FTiming write FTiming;
     class property RotatingLog: TAtlasRotatingLog read FLog;
   end;
 
@@ -658,6 +685,16 @@ begin
   end;
 end;
 
+procedure TAtlasFuse.Trip(AFeature: TAtlasFeature);
+begin
+  FLock.Enter;
+  try
+    Include(FTripped, AFeature);
+  finally
+    FLock.Leave;
+  end;
+end;
+
 procedure TAtlasFuse.ResetAll;
 var
   Feature: TAtlasFeature;
@@ -882,7 +919,13 @@ class procedure TAtlasGuard.ReportProviderSlow(const AName, AText: string);
 var
   Skipped: Integer;
   Suffix: string;
+  mTiming: TAtlasGuardTiming;
 begin
+  mTiming := FTiming;
+  if mTiming <> nil then
+  begin
+    mTiming.ProviderSlow(AName);
+  end;
   if (FFuse = nil) or not FFuse.ProviderSlow(AName, Skipped) then
   begin
     Exit;
@@ -941,12 +984,8 @@ begin
   end;
 end;
 
-class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
+function RunGuarded(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 begin
-  if Disabled(AFeature) then
-  begin
-    Exit(False);
-  end;
   try
     AProc();
     Result := True;
@@ -955,9 +994,32 @@ begin
       Result := False;
     on E: Exception do
     begin
-      Report(AFeature, E);
+      TAtlasGuard.Report(AFeature, E);
       Result := False;
     end;
+  end;
+end;
+
+class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
+var
+  mTiming: TAtlasGuardTiming;
+  mToken: Integer;
+begin
+  if Disabled(AFeature) then
+  begin
+    Exit(False);
+  end;
+  // Einmal lesen: Schaltet der Diagnosemodus mitten im Aufruf um, endet der Aufruf beim selben Rekorder.
+  mTiming := FTiming;
+  if mTiming = nil then
+  begin
+    Exit(RunGuarded(AFeature, AProc));
+  end;
+  mToken := mTiming.Enter;
+  try
+    Result := RunGuarded(AFeature, AProc);
+  finally
+    mTiming.Leave(AFeature, mToken);
   end;
 end;
 
@@ -976,6 +1038,15 @@ begin
   begin
     Result := FFuse.TrippedSet;
   end;
+end;
+
+class procedure TAtlasGuard.Disable(AFeature: TAtlasFeature);
+begin
+  if FFuse <> nil then
+  begin
+    FFuse.Trip(AFeature);
+  end;
+  Log(Format('%s im Diagnose-Fenster bis zum Neustart ausgeschaltet', [FeatureName(AFeature)]));
 end;
 
 class procedure TAtlasGuard.Enable(AFeature: TAtlasFeature);

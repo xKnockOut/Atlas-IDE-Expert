@@ -37,6 +37,10 @@ type
   IAtlasSettingsNames = Atlas.Core.Settings.Plugin.Store.IAtlasSettingsNames;
 
   TAtlasPluginSettings = record
+  public const
+    /// <summary>Wie TAtlasPluginRecorder.cMinThresholdMs/cMaxThresholdMs (Diagnose-Fenster).</summary>
+    MinSlowThreshold = 1;
+    MaxSlowThreshold = 1000;
   private
     FCompletion: TAtlasPluginCompletionSettings;
     FEditingKeys: TAtlasPluginEditingKeysSettings;
@@ -446,6 +450,9 @@ type
     property QuickToggleKeyPriority: Boolean read FKeyPriorities.QuickToggleKeyPriority
       write FKeyPriorities.QuickToggleKeyPriority;
     property DiagnosticMode: Boolean read FGeneralServer.DiagnosticMode write FGeneralServer.DiagnosticMode;
+    property DiagnosticPluginTimings: Boolean read FGeneralServer.DiagnosticPluginTimings
+      write FGeneralServer.DiagnosticPluginTimings;
+    property DiagnosticSlowMs: Integer read FGeneralServer.DiagnosticSlowMs write FGeneralServer.DiagnosticSlowMs;
     property DiagnosticModeKey: Integer read FEditingKeys.DiagnosticModeKey write FEditingKeys.DiagnosticModeKey;
     property DiagnosticModeKeyPriority: Boolean read FKeyPriorities.DiagnosticModeKeyPriority
       write FKeyPriorities.DiagnosticModeKeyPriority;
