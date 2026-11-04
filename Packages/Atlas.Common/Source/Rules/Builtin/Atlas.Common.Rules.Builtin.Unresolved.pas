@@ -191,106 +191,192 @@ begin
   Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 end;
 
-class function TUsesUnitNotFoundRule.Entries(const ATokens: TArray<TPascalToken>): TArray<TUsesListEntry>;
+/// <summary>Beginnt der Quelltext mit "package"? contains und requires gibt es nur dort. In einer Unit sind es
+/// Bezeichner, etwa Felder eines Records ("Requires: TArray&lt;TPackageEntry&gt;;" nach einem Semikolon).
+/// </summary>
+function IsPackageSource(const ATokens: TArray<TPascalToken>): Boolean;
 var
-  Index, Previous, First, Last: Integer;
-  Kind: TUsesListKind;
-  Entry: TUsesListEntry;
-  Name, InPath: string;
-  AfterIn: Boolean;
-  IsPackage: Boolean;
+  mToken: TPascalToken;
 begin
-  Result := nil;
-  // contains und requires gibt es nur in einer Package-Quelle (beginnt mit "package"). In einer Unit sind es
-  // Bezeichner, etwa Felder eines Records ("Requires: TArray<TPackageEntry>;" nach einem Semikolon).
-  IsPackage := False;
-  for Index := 0 to High(ATokens) do
+  for mToken in ATokens do
   begin
-    if IsCode(ATokens[Index]) then
+    if IsCode(mToken) then
     begin
-      IsPackage := SameText(ATokens[Index].Text, 'package');
-      Break;
+      Exit(SameText(mToken.Text, 'package'));
     end;
   end;
-  Index := 0;
-  Previous := -1;
-  while Index <= High(ATokens) do
+  Result := False;
+end;
+
+type
+  /// <summary>Eintrag einer Liste, der gerade gelesen wird.</summary>
+  TUsesEntryDraft = record
+    Name: string;
+    InPath: string;
+    First: Integer;
+    Last: Integer;
+    AfterIn: Boolean;
+    procedure Reset;
+  end;
+
+  /// <summary>Liest die Einträge aus uses, contains und requires.</summary>
+  TUsesListScanner = class
+  private
+    FTokens: TArray<TPascalToken>;
+    FIndex: Integer;
+    FPrevious: Integer;
+    FIsPackage: Boolean;
+    FDraft: TUsesEntryDraft;
+    FEntries: TArray<TUsesListEntry>;
+    function StartsStatement(const AWord: string): Boolean;
+    function ListKind(out AKind: TUsesListKind): Boolean;
+    procedure Flush(AKind: TUsesListKind);
+    procedure ReadToken(AIndex: Integer);
+    procedure ReadList(AKind: TUsesListKind);
+  public
+    constructor Create(const ATokens: TArray<TPascalToken>);
+    function Scan: TArray<TUsesListEntry>;
+  end;
+
+procedure TUsesEntryDraft.Reset;
+begin
+  Name := '';
+  InPath := '';
+  First := -1;
+  Last := -1;
+  AfterIn := False;
+end;
+
+constructor TUsesListScanner.Create(const ATokens: TArray<TPascalToken>);
+begin
+  inherited Create;
+  FTokens := ATokens;
+end;
+
+/// <summary>Steht AWord in einem Package am Anfang einer Anweisung (sonst ein Bezeichner)?</summary>
+function TUsesListScanner.StartsStatement(const AWord: string): Boolean;
+begin
+  Result := FIsPackage and (FTokens[FIndex].Kind = TPascalTokenKind.Identifier) and (FPrevious >= 0);
+  Result := Result and FTokens[FPrevious].IsSymbol(';') and SameText(FTokens[FIndex].Text, AWord);
+end;
+
+function TUsesListScanner.ListKind(out AKind: TUsesListKind): Boolean;
+begin
+  Result := True;
+  // uses überall; contains und requires nur in Packages am Anfang einer Anweisung.
+  if FTokens[FIndex].IsKeyword('uses') then
   begin
-    if not IsCode(ATokens[Index]) then
+    AKind := TUsesListKind.UsedUnit;
+  end
+  else if StartsStatement('contains') then
+  begin
+    AKind := TUsesListKind.ContainedUnit;
+  end
+  else if StartsStatement('requires') then
+  begin
+    AKind := TUsesListKind.RequiredPackage;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TUsesListScanner.Flush(AKind: TUsesListKind);
+var
+  mEntry: TUsesListEntry;
+begin
+  if FDraft.Name <> '' then
+  begin
+    mEntry.Kind := AKind;
+    mEntry.Name := FDraft.Name;
+    mEntry.InPath := FDraft.InPath;
+    mEntry.Range := TTextRange.Create(FTokens[FDraft.First].StartPos, FTokens[FDraft.Last].EndPos);
+    FEntries := FEntries + [mEntry];
+  end;
+  FDraft.Reset;
+end;
+
+procedure TUsesListScanner.ReadToken(AIndex: Integer);
+var
+  mToken: TPascalToken;
+begin
+  mToken := FTokens[AIndex];
+  if mToken.IsKeyword('in') then
+  begin
+    FDraft.AfterIn := True;
+  end
+  else if FDraft.AfterIn and (mToken.Kind = TPascalTokenKind.StringLiteral) then
+  begin
+    FDraft.InPath := Unquoted(mToken.Text);
+  end
+  else if not FDraft.AfterIn and ((mToken.Kind = TPascalTokenKind.Identifier) or mToken.IsSymbol('.')) then
+  begin
+    if FDraft.First < 0 then
     begin
-      Inc(Index);
-      Continue;
+      FDraft.First := AIndex;
     end;
-    // uses überall; contains und requires nur in Packages am Anfang einer Anweisung (sonst ein Bezeichner).
-    if ATokens[Index].IsKeyword('uses') then
+    FDraft.Last := AIndex;
+    FDraft.Name := FDraft.Name + mToken.Text;
+  end;
+end;
+
+/// <summary>Liest die Liste hinter dem Schlüsselwort bei FIndex bis zum Semikolon (FIndex steht danach dort).
+/// </summary>
+procedure TUsesListScanner.ReadList(AKind: TUsesListKind);
+begin
+  FDraft.Reset;
+  Inc(FIndex);
+  while FIndex <= High(FTokens) do
+  begin
+    if FTokens[FIndex].IsSymbol(';') or FTokens[FIndex].IsSymbol(',') then
     begin
-      Kind := TUsesListKind.UsedUnit;
-    end
-    else if IsPackage and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
-      ATokens[Previous].IsSymbol(';') and SameText(ATokens[Index].Text, 'contains') then
-    begin
-      Kind := TUsesListKind.ContainedUnit;
-    end
-    else if IsPackage and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
-      ATokens[Previous].IsSymbol(';') and SameText(ATokens[Index].Text, 'requires') then
-    begin
-      Kind := TUsesListKind.RequiredPackage;
+      Flush(AKind);
+      if FTokens[FIndex].IsSymbol(';') then
+      begin
+        Break;
+      end;
     end
     else
     begin
-      Previous := Index;
-      Inc(Index);
-      Continue;
+      ReadToken(FIndex);
     end;
-    Name := '';
-    InPath := '';
-    First := -1;
-    Last := -1;
-    AfterIn := False;
-    Inc(Index);
-    while Index <= High(ATokens) do
+    Inc(FIndex);
+  end;
+end;
+
+function TUsesListScanner.Scan: TArray<TUsesListEntry>;
+var
+  mKind: TUsesListKind;
+begin
+  FEntries := nil;
+  FIsPackage := IsPackageSource(FTokens);
+  FIndex := 0;
+  FPrevious := -1;
+  while FIndex <= High(FTokens) do
+  begin
+    if IsCode(FTokens[FIndex]) then
     begin
-      if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
+      if ListKind(mKind) then
       begin
-        if Name <> '' then
-        begin
-          Entry.Kind := Kind;
-          Entry.Name := Name;
-          Entry.InPath := InPath;
-          Entry.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
-          Result := Result + [Entry];
-        end;
-        Name := '';
-        InPath := '';
-        First := -1;
-        AfterIn := False;
-        if ATokens[Index].IsSymbol(';') then
-        begin
-          Break;
-        end;
-      end
-      else if ATokens[Index].IsKeyword('in') then
-      begin
-        AfterIn := True;
-      end
-      else if AfterIn and (ATokens[Index].Kind = TPascalTokenKind.StringLiteral) then
-      begin
-        InPath := Unquoted(ATokens[Index].Text);
-      end
-      else if not AfterIn and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
-        ATokens[Index].IsSymbol('.')) then
-      begin
-        if First < 0 then
-        begin
-          First := Index;
-        end;
-        Last := Index;
-        Name := Name + ATokens[Index].Text;
+        ReadList(mKind);
       end;
-      Inc(Index);
+      FPrevious := FIndex;
     end;
-    Previous := Index;
-    Inc(Index);
+    Inc(FIndex);
+  end;
+  Result := FEntries;
+end;
+
+class function TUsesUnitNotFoundRule.Entries(const ATokens: TArray<TPascalToken>): TArray<TUsesListEntry>;
+var
+  mScanner: TUsesListScanner;
+begin
+  mScanner := TUsesListScanner.Create(ATokens);
+  try
+    Result := mScanner.Scan;
+  finally
+    mScanner.Free;
   end;
 end;
 
@@ -300,75 +386,91 @@ type
     Name: string;
   end;
 
+const
+  cMaxSuggestions = 3;
+  cMaxDistance = 2;
+
 function Scored(AScore: Integer; const AName: string): TScoredName;
 begin
   Result.Score := AScore;
   Result.Name := AName;
 end;
 
-class function TUsesUnitNotFoundRule.Suggestions(const AName: string; const AKnown: TArray<string>): TArray<string>;
-const
-  MaxSuggestions = 3;
-  MaxDistance = 2;
+/// <summary>Teilt die bekannten Units in solche mit Namespace vor AName und ähnlich geschriebene.</summary>
+procedure CollectSuggestions(const AName: string; const AKnown: TArray<string>; AQualified: TList<string>;
+  ASimilar: TList<TScoredName>);
 var
-  Qualified: TList<string>;
-  Similar: TList<TScoredName>;
-  Known: string;
-  Score: Integer;
-  Item: TScoredName;
-  Order: IComparer<TScoredName>;
+  mKnown: string;
+  mScore: Integer;
+begin
+  for mKnown in AKnown do
+  begin
+    if SameText(mKnown, AName) then
+    begin
+      Continue;
+    end;
+    if EndsText('.' + AName, mKnown) then
+    begin
+      AQualified.Add(mKnown);
+    end
+    else
+    begin
+      mScore := TTextFuzzy.EditDistance(AName, mKnown, cMaxDistance);
+      if mScore <= cMaxDistance then
+      begin
+        ASimilar.Add(Scored(mScore, mKnown));
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Nach Abstand, bei Gleichstand nach Namen.</summary>
+function ScoredOrder: IComparer<TScoredName>;
+begin
+  Result := TComparer<TScoredName>.Construct(
+    function(const ALeft, ARight: TScoredName): Integer
+    begin
+      Result := ALeft.Score - ARight.Score;
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.Name, ARight.Name);
+      end;
+    end);
+end;
+
+procedure AppendSuggestion(var AResult: TArray<string>; const AName: string);
+begin
+  if Length(AResult) < cMaxSuggestions then
+  begin
+    AResult := AResult + [AName];
+  end;
+end;
+
+class function TUsesUnitNotFoundRule.Suggestions(const AName: string; const AKnown: TArray<string>): TArray<string>;
+var
+  mQualified: TList<string>;
+  mSimilar: TList<TScoredName>;
+  mKnown: string;
+  mItem: TScoredName;
 begin
   Result := nil;
-  Qualified := TList<string>.Create;
-  Similar := TList<TScoredName>.Create;
+  mQualified := TList<string>.Create;
+  mSimilar := TList<TScoredName>.Create;
   try
-    for Known in AKnown do
+    CollectSuggestions(AName, AKnown, mQualified, mSimilar);
+    mQualified.Sort;
+    mSimilar.Sort(ScoredOrder);
+    for mKnown in mQualified do
     begin
-      if SameText(Known, AName) then
-      begin
-        Continue;
-      end;
-      if EndsText('.' + AName, Known) then
-      begin
-        Qualified.Add(Known);
-      end
-      else
-      begin
-        Score := TTextFuzzy.EditDistance(AName, Known, MaxDistance);
-        if Score <= MaxDistance then
-        begin
-          Similar.Add(Scored(Score, Known));
-        end;
-      end;
+      AppendSuggestion(Result, mKnown);
     end;
-    Qualified.Sort;
-    Order := TComparer<TScoredName>.Construct(
-      function(const ALeft, ARight: TScoredName): Integer
-      begin
-        Result := ALeft.Score - ARight.Score;
-        if Result = 0 then
-        begin
-          Result := CompareText(ALeft.Name, ARight.Name);
-        end;
-      end);
-    Similar.Sort(Order);
-    for Known in Qualified do
+    for mItem in mSimilar do
     begin
-      if Length(Result) < MaxSuggestions then
-      begin
-        Result := Result + [Known];
-      end;
-    end;
-    for Item in Similar do
-    begin
-      if Length(Result) < MaxSuggestions then
-      begin
-        Result := Result + [Item.Name];
-      end;
+      AppendSuggestion(Result, mItem.Name);
     end;
   finally
-    Similar.Free;
-    Qualified.Free;
+    mSimilar.Free;
+    mQualified.Free;
   end;
 end;
 
@@ -433,56 +535,162 @@ begin
   end;
 end;
 
+/// <summary>Mehrere gleichwertige Vorschläge: keiner bevorzugt.</summary>
+procedure MarkAlternatives(var AFixes: TArray<TRuleFix>);
+var
+  mIndex: Integer;
+begin
+  if Length(AFixes) > 1 then
+  begin
+    for mIndex := 0 to High(AFixes) do
+    begin
+      AFixes[mIndex].Alternative := True;
+    end;
+  end;
+end;
+
+/// <summary>Je Unit in AUnits die Korrektur "uses Unit ergänzen" an der Stelle AOffset.</summary>
+function UsesFixes(const ATokens: TArray<TPascalToken>; AOffset: Integer; const AUnits: TArray<string>;
+  const ALineBreak: string): TArray<TRuleFix>;
+var
+  mUnitName: string;
+  mEdit: TTextEdit;
+begin
+  Result := nil;
+  for mUnitName in AUnits do
+  begin
+    if TUsesClauses.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
+    begin
+      Result := Result + [TRuleFix.Create(Format('uses %s ergänzen', [mUnitName]), [mEdit])];
+    end;
+  end;
+  MarkAlternatives(Result);
+end;
+
+/// <summary>Beginnt die Anweisung AText ({$IF…} in Großbuchstaben) einen bedingten Block?</summary>
+function OpensCondition(const AText: string): Boolean;
+begin
+  Result := StartsStr('{$IF', AText) or StartsStr('(*$IF', AText);
+end;
+
+/// <summary>Schließt die Anweisung AText einen bedingten Block?</summary>
+function ClosesCondition(const AText: string): Boolean;
+begin
+  Result := StartsStr('{$ENDIF', AText) or StartsStr('{$IFEND', AText) or StartsStr('(*$ENDIF', AText) or
+    StartsStr('(*$IFEND', AText);
+end;
+
+procedure MarkLines(var ALines: TArray<Boolean>; AFirst, ALast: Integer);
+var
+  mLine: Integer;
+begin
+  for mLine := AFirst to ALast do
+  begin
+    ALines[mLine] := True;
+  end;
+end;
+
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
 function ConditionalLines(const ATokens: TArray<TPascalToken>): TArray<Boolean>;
 var
-  Token: TPascalToken;
-  Text: string;
-  Depth, Line, LastLine, StartLine: Integer;
+  mToken: TPascalToken;
+  mText: string;
+  mDepth, mLastLine, mStartLine: Integer;
 begin
-  LastLine := 0;
-  for Token in ATokens do
+  mLastLine := 0;
+  if ATokens <> nil then
   begin
-    LastLine := Token.EndPos.Line;
+    mLastLine := ATokens[High(ATokens)].EndPos.Line;
   end;
-  SetLength(Result, LastLine + 1);
-  Depth := 0;
-  StartLine := 0;
-  for Token in ATokens do
+  SetLength(Result, mLastLine + 1);
+  mDepth := 0;
+  mStartLine := 0;
+  for mToken in ATokens do
   begin
-    if Token.Kind <> TPascalTokenKind.Directive then
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
       Continue;
     end;
-    Text := UpperCase(Token.Text);
-    if StartsStr('{$IF', Text) or StartsStr('(*$IF', Text) then
+    mText := UpperCase(mToken.Text);
+    if OpensCondition(mText) then
     begin
-      if Depth = 0 then
+      if mDepth = 0 then
       begin
-        StartLine := Token.StartPos.Line;
+        mStartLine := mToken.StartPos.Line;
       end;
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (Depth > 0) and (StartsStr('{$ENDIF', Text) or StartsStr('{$IFEND', Text) or
-      StartsStr('(*$ENDIF', Text) or StartsStr('(*$IFEND', Text)) then
+    else if (mDepth > 0) and ClosesCondition(mText) then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        for Line := StartLine to Token.EndPos.Line do
-        begin
-          Result[Line] := True;
-        end;
+        MarkLines(Result, mStartLine, mToken.EndPos.Line);
       end;
     end;
   end;
-  if Depth > 0 then
+  if mDepth > 0 then
   begin
-    for Line := StartLine to LastLine do
+    MarkLines(Result, mStartLine, mLastLine);
+  end;
+end;
+
+/// <summary>Liegt die Zeile ALine in einem bedingten Block (ConditionalLines)?</summary>
+function InCondition(const ALines: TArray<Boolean>; ALine: Integer): Boolean;
+begin
+  Result := (ALine <= High(ALines)) and ALines[ALine];
+end;
+
+/// <summary>Mit Include-Dateien kann ein Name dort deklariert sein: dann nur mittlere Sicherheit.</summary>
+function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
+var
+  mToken: TPascalToken;
+begin
+  Result := TRuleConfidence.High;
+  for mToken in ATokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
+      StartsText('{$INCLUDE ', mToken.Text)) then
     begin
-      Result[Line] := True;
+      Result := TRuleConfidence.Medium;
     end;
   end;
+end;
+
+/// <summary>Sind Index und alle verwendeten Units bekannt, sodass ein fehlender Name sicher fehlt?</summary>
+function NamesCheckable(const AContext: TRuleContext): Boolean;
+begin
+  Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
+  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+    AContext.Namespaces, AContext.EnsureUnit);
+end;
+
+/// <summary>Kandidaten ohne die, die eine andere Kandidatin im interface einbinden und den Typ weiterreichen
+/// (Fassade vor Quelle); sortiert.</summary>
+function WithoutForwarders(const AIndex: ISymbolIndex; ACandidates: TList<string>): TArray<string>;
+var
+  mName, mOther: string;
+  mFound: TUnitIndex;
+  mUsed: Boolean;
+begin
+  Result := nil;
+  for mName in ACandidates do
+  begin
+    mUsed := False;
+    for mOther in ACandidates do
+    begin
+      if not SameText(mOther, mName) and AIndex.FindUnit(mOther, mFound) and
+        (IndexText(mName, mFound.InterfaceUses) >= 0) then
+      begin
+        mUsed := True;
+      end;
+    end;
+    if not mUsed then
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+  TArray.Sort<string>(Result);
 end;
 
 /// <summary>Quelle der Suche aus der Option searchPaths: project (Vorgabe), atlas oder both.</summary>
@@ -505,141 +713,214 @@ begin
   end;
 end;
 
+type
+  /// <summary>Ein Lauf von uses-unit-not-found über eine Datei.</summary>
+  TUsesUnitCheck = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FEntries: TArray<TUsesListEntry>;
+    FLines: TArray<Boolean>;
+    FOwn: string;
+    FSources: TRuleUnitSources;
+    FKnown: TArray<string>;
+    FHasKnown: Boolean;
+    function Known: TArray<string>;
+    procedure ReportSelfUse;
+    procedure ReportMissingFiles;
+    function LibraryMissing: Boolean;
+    procedure AddSearchPathFix(const AFolder: string; var AFixes: TArray<TRuleFix>);
+    procedure ReportMissingUnit(const AEntry: TUsesListEntry);
+    procedure CheckEntry(const AEntry: TUsesListEntry);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+constructor TUsesUnitCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+/// <summary>Bekannte Units, erst bei Bedarf gelesen.</summary>
+function TUsesUnitCheck.Known: TArray<string>;
+begin
+  if not FHasKnown then
+  begin
+    FKnown := FContext.Units.KnownUnits(FSources);
+    FHasKnown := True;
+  end;
+  Result := FKnown;
+end;
+
+/// <summary>F2092: eine Unit, die sich selbst einbindet; braucht keine Pfade.</summary>
+procedure TUsesUnitCheck.ReportSelfUse;
+var
+  mEntry: TUsesListEntry;
+begin
+  for mEntry in FEntries do
+  begin
+    if (mEntry.Kind <> TUsesListKind.RequiredPackage) and (FOwn <> '') and SameText(mEntry.Name, FOwn) then
+    begin
+      FReport.Add(mEntry.Range, Format('%s verwendet sich selbst (wie F2092).', [mEntry.Name]));
+    end;
+  end;
+end;
+
+/// <summary>F1026 auch ohne Projekt (#1379, Fall CmF1026): "in '…'" gilt nur relativ zur verwendenden Datei,
+/// dafür braucht es keine Suchpfade.</summary>
+procedure TUsesUnitCheck.ReportMissingFiles;
+var
+  mEntry: TUsesListEntry;
+begin
+  if not Assigned(FContext.FileExists) then
+  begin
+    Exit;
+  end;
+  for mEntry in FEntries do
+  begin
+    if (mEntry.Kind <> TUsesListKind.RequiredPackage) and (mEntry.InPath <> '') and
+      not InCondition(FLines, mEntry.Range.StartPos.Line) and not FContext.FileExists(mEntry.InPath) then
+    begin
+      FReport.Add(mEntry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [mEntry.InPath,
+        mEntry.Name]));
+    end;
+  end;
+end;
+
+/// <summary>F1027: Ohne System fehlt der Bibliothekspfad; dann eine Meldung statt einer je Unit.</summary>
+function TUsesUnitCheck.LibraryMissing: Boolean;
+begin
+  Result := FContext.Units.Find('System', '', FContext.FileName, [TRuleUnitSource.Project]) =
+    TRuleUnitAnswer.Missing;
+  if Result and (Length(FEntries) > 0) then
+  begin
+    FReport.Add(FEntries[0].Range, 'Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt ' +
+      '(wie F1027).');
+  end;
+end;
+
+/// <summary>Ordner unter dem Projekt, der in keinem Suchpfad steht: in DCC_UnitSearchPath der Basis aufnehmen.
+/// </summary>
+procedure TUsesUnitCheck.AddSearchPathFix(const AFolder: string; var AFixes: TArray<TRuleFix>);
+var
+  mProjectFile, mProjectText, mNewText, mKey: string;
+  mFix: TRuleFix;
+begin
+  if (AFolder = '') or not FContext.Units.ReadProject(mProjectFile, mProjectText) then
+  begin
+    Exit;
+  end;
+  mKey := TDprojEditor.ConfigKey(mProjectText, 'Base');
+  if (mKey <> '') and (TDprojEditor.AddToList(mProjectText, mKey, 'DCC_UnitSearchPath', AFolder, mNewText) =
+    TDprojEditResult.Added) then
+  begin
+    mFix := TRuleFix.Create(Format('Ordner %s in den Suchpfad aufnehmen', [AFolder]),
+      [TUsesUnitNotFoundRule.DiffEdit(mProjectText, mNewText)]);
+    mFix.FileName := mProjectFile;
+    AFixes := [mFix] + AFixes;
+  end;
+end;
+
+procedure TUsesUnitCheck.ReportMissingUnit(const AEntry: TUsesListEntry);
+var
+  mSuggested: TArray<string>;
+  mSuggestion, mFolder: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  mSuggested := TUsesUnitNotFoundRule.Suggestions(AEntry.Name, Known);
+  mFixes := nil;
+  for mSuggestion in mSuggested do
+  begin
+    mFixes := mFixes + [TRuleFix.Create(Format('%s verwenden', [mSuggestion]),
+      [TTextEdit.Create(AEntry.Range, mSuggestion)])];
+  end;
+  mFolder := FContext.Units.FolderOutsidePaths(AEntry.Name);
+  AddSearchPathFix(mFolder, mFixes);
+  MarkAlternatives(mFixes);
+  if mFolder <> '' then
+  begin
+    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden; sie liegt in %s außerhalb der Suchpfade ' +
+      '(wie F2613).', [AEntry.Name, mFolder]), TRuleConfidence.High, mFixes);
+  end
+  else if Length(mSuggested) > 0 then
+  begin
+    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden; ähnlich: %s (wie F2613).',
+      [AEntry.Name, Alternatives(mSuggested)]), TRuleConfidence.High, mFixes);
+  end
+  else
+  begin
+    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden (wie F2613).', [AEntry.Name]));
+  end;
+end;
+
+procedure TUsesUnitCheck.CheckEntry(const AEntry: TUsesListEntry);
+begin
+  if InCondition(FLines, AEntry.Range.StartPos.Line) or ((FOwn <> '') and SameText(AEntry.Name, FOwn)) then
+  begin
+    Exit;
+  end;
+  if AEntry.Kind = TUsesListKind.RequiredPackage then
+  begin
+    if FContext.Units.FindPackage(AEntry.Name) = TRuleUnitAnswer.Missing then
+    begin
+      FReport.Add(AEntry.Range, Format('Package %s nicht gefunden (wie E2202).', [AEntry.Name]));
+    end;
+    Exit;
+  end;
+  if FContext.Units.Find(AEntry.Name, AEntry.InPath, FContext.FileName, FSources) <> TRuleUnitAnswer.Missing then
+  begin
+    Exit;
+  end;
+  if AEntry.InPath <> '' then
+  begin
+    FReport.Add(AEntry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [AEntry.InPath, AEntry.Name]));
+  end
+  else
+  begin
+    ReportMissingUnit(AEntry);
+  end;
+end;
+
+procedure TUsesUnitCheck.Run;
+var
+  mEntry: TUsesListEntry;
+begin
+  FEntries := TUsesUnitNotFoundRule.Entries(FContext.Tree.Tokens);
+  FLines := ConditionalLines(FContext.Tree.Tokens);
+  FOwn := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  ReportSelfUse;
+  if FContext.Units = nil then
+  begin
+    ReportMissingFiles;
+    Exit;
+  end;
+  FSources := SourcesOf(FContext.Options);
+  if LibraryMissing then
+  begin
+    Exit;
+  end;
+  for mEntry in FEntries do
+  begin
+    CheckEntry(mEntry);
+  end;
+end;
+
 procedure TUsesUnitNotFoundRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  List: TArray<TUsesListEntry>;
-  Entry: TUsesListEntry;
-  Lines: TArray<Boolean>;
-  Own, Folder, ProjectFile, ProjectText, NewText, Key, Suggestion: string;
-  Index: Integer;
-  Sources: TRuleUnitSources;
-  Known, Suggested: TArray<string>;
-  HasKnown: Boolean;
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
-  Edit: TTextEdit;
+  mCheck: TUsesUnitCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  List := Entries(AContext.Tree.Tokens);
-  Lines := ConditionalLines(AContext.Tree.Tokens);
-  // F2092: eine Unit, die sich selbst einbindet; braucht keine Pfade.
-  Own := TUsesClauses.OwnName(AContext.Tree.Tokens);
-  for Entry in List do
-  begin
-    if (Entry.Kind <> TUsesListKind.RequiredPackage) and (Own <> '') and SameText(Entry.Name, Own) then
-    begin
-      AReport.Add(Entry.Range, Format('%s verwendet sich selbst (wie F2092).', [Entry.Name]));
-    end;
-  end;
-  if AContext.Units = nil then
-  begin
-    // F1026 auch ohne Projekt (#1379, Fall CmF1026): "in '…'" gilt nur relativ zur verwendenden Datei, dafür
-    // braucht es keine Suchpfade.
-    if Assigned(AContext.FileExists) then
-    begin
-      for Entry in List do
-      begin
-        if (Entry.Kind <> TUsesListKind.RequiredPackage) and (Entry.InPath <> '') and
-          not ((Entry.Range.StartPos.Line <= High(Lines)) and Lines[Entry.Range.StartPos.Line]) and
-          not AContext.FileExists(Entry.InPath) then
-        begin
-          AReport.Add(Entry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [Entry.InPath, Entry.Name]));
-        end;
-      end;
-    end;
-    Exit;
-  end;
-  Sources := SourcesOf(AContext.Options);
-  // F1027: Ohne System fehlt der Bibliothekspfad; dann eine Meldung statt einer je Unit.
-  if AContext.Units.Find('System', '', AContext.FileName, [TRuleUnitSource.Project]) = TRuleUnitAnswer.Missing then
-  begin
-    if Length(List) > 0 then
-    begin
-      AReport.Add(List[0].Range, 'Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt ' +
-        '(wie F1027).');
-    end;
-    Exit;
-  end;
-  HasKnown := False;
-  Known := nil;
-  for Entry in List do
-  begin
-    if (Entry.Range.StartPos.Line <= High(Lines)) and Lines[Entry.Range.StartPos.Line] then
-    begin
-      Continue;
-    end;
-    if (Own <> '') and SameText(Entry.Name, Own) then
-    begin
-      Continue;
-    end;
-    if Entry.Kind = TUsesListKind.RequiredPackage then
-    begin
-      if AContext.Units.FindPackage(Entry.Name) = TRuleUnitAnswer.Missing then
-      begin
-        AReport.Add(Entry.Range, Format('Package %s nicht gefunden (wie E2202).', [Entry.Name]));
-      end;
-      Continue;
-    end;
-    if AContext.Units.Find(Entry.Name, Entry.InPath, AContext.FileName, Sources) <> TRuleUnitAnswer.Missing then
-    begin
-      Continue;
-    end;
-    if Entry.InPath <> '' then
-    begin
-      AReport.Add(Entry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [Entry.InPath, Entry.Name]));
-      Continue;
-    end;
-    if not HasKnown then
-    begin
-      Known := AContext.Units.KnownUnits(Sources);
-      HasKnown := True;
-    end;
-    Suggested := Suggestions(Entry.Name, Known);
-    Fixes := nil;
-    for Suggestion in Suggested do
-    begin
-      Fixes := Fixes + [TRuleFix.Create(Format('%s verwenden', [Suggestion]),
-        [TTextEdit.Create(Entry.Range, Suggestion)])];
-    end;
-    // Ordner unter dem Projekt, der in keinem Suchpfad steht: in DCC_UnitSearchPath der Basis aufnehmen.
-    Folder := AContext.Units.FolderOutsidePaths(Entry.Name);
-    if (Folder <> '') and AContext.Units.ReadProject(ProjectFile, ProjectText) then
-    begin
-      Key := TDprojEditor.ConfigKey(ProjectText, 'Base');
-      if (Key <> '') and (TDprojEditor.AddToList(ProjectText, Key, 'DCC_UnitSearchPath', Folder, NewText) =
-        TDprojEditResult.Added) then
-      begin
-        Edit := DiffEdit(ProjectText, NewText);
-        Fix := TRuleFix.Create(Format('Ordner %s in den Suchpfad aufnehmen', [Folder]), [Edit]);
-        Fix.FileName := ProjectFile;
-        Fixes := [Fix] + Fixes;
-      end;
-    end;
-    // Mehrere gleichwertige Vorschläge: keiner bevorzugt.
-    if Length(Fixes) > 1 then
-    begin
-      for Index := 0 to High(Fixes) do
-      begin
-        Fixes[Index].Alternative := True;
-      end;
-    end;
-    if Folder <> '' then
-    begin
-      AReport.Add(Entry.Range, Format('Unit %s nicht gefunden; sie liegt in %s außerhalb der Suchpfade (wie F2613).',
-        [Entry.Name, Folder]), TRuleConfidence.High, Fixes);
-    end
-    else if Length(Suggested) > 0 then
-    begin
-      AReport.Add(Entry.Range, Format('Unit %s nicht gefunden; ähnlich: %s (wie F2613).',
-        [Entry.Name, Alternatives(Suggested)]), TRuleConfidence.High, Fixes);
-    end
-    else
-    begin
-      AReport.Add(Entry.Range, Format('Unit %s nicht gefunden (wie F2613).', [Entry.Name]));
-    end;
+  mCheck := TUsesUnitCheck.Create(AContext, AReport);
+  try
+    mCheck.Run;
+  finally
+    mCheck.Free;
   end;
 end;
 
@@ -661,52 +942,39 @@ begin
     'Attribut nicht gefunden und vom Compiler still ignoriert (wie W1074)');
 end;
 
+/// <summary>Ist ALocation ein Typ auf oberster Ebene, der eine Attributklasse sein kann?</summary>
+function IsAttributeType(const ALocation: TSymbolLocation): Boolean;
+begin
+  Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in [TIndexSymbolKind.ClassType,
+    TIndexSymbolKind.TypeAlias]);
+end;
+
 class function TUnresolvedAttributeRule.DeclaringUnits(const AIndex: ISymbolIndex; const AName: string): TArray<string>;
 var
-  Candidates: TList<string>;
-  Location: TSymbolLocation;
-  Name, Other: string;
-  Found: TUnitIndex;
-  Used: Boolean;
+  mCandidates: TList<string>;
+  mLocation: TSymbolLocation;
+  mName: string;
 begin
   Result := nil;
   if AIndex = nil then
   begin
     Exit;
   end;
-  Candidates := TList<string>.Create;
+  mCandidates := TList<string>.Create;
   try
-    for Name in TAttributes.ClassNames(AName) do
+    for mName in TAttributes.ClassNames(AName) do
     begin
-      for Location in AIndex.FindSymbols(Name) do
+      for mLocation in AIndex.FindSymbols(mName) do
       begin
-        if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
-          TIndexSymbolKind.TypeAlias]) and not Candidates.Contains(Location.UnitName) then
+        if IsAttributeType(mLocation) and not mCandidates.Contains(mLocation.UnitName) then
         begin
-          Candidates.Add(Location.UnitName);
+          mCandidates.Add(mLocation.UnitName);
         end;
       end;
     end;
-    // Fassade vor Quelle: eine Unit, die eine andere Kandidatin im interface einbindet, reicht den Typ weiter.
-    for Name in Candidates do
-    begin
-      Used := False;
-      for Other in Candidates do
-      begin
-        if not SameText(Other, Name) and AIndex.FindUnit(Other, Found) and
-          (IndexText(Name, Found.InterfaceUses) >= 0) then
-        begin
-          Used := True;
-        end;
-      end;
-      if not Used then
-      begin
-        Result := Result + [Name];
-      end;
-    end;
-    TArray.Sort<string>(Result);
+    Result := WithoutForwarders(AIndex, mCandidates);
   finally
-    Candidates.Free;
+    mCandidates.Free;
   end;
 end;
 
@@ -725,214 +993,244 @@ begin
   Result := 0;
 end;
 
-procedure TUnresolvedAttributeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  Resolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  Lines: TArray<Boolean>;
-  LineBreak: string;
-  Level: TRuleConfidence;
-  // {$WARN UNKNOWN_CUSTOM_ATTRIBUTE …} außerhalb bedingter Blöcke: Offset und ob ERROR (#1379).
-  mSwitchOffsets: TArray<Integer>;
-  mSwitchErrors: TArray<Boolean>;
-
-  procedure ReadSwitches;
-  var
-    mToken: TPascalToken;
-    mWords: TArray<string>;
-  begin
-    mSwitchOffsets := nil;
-    mSwitchErrors := nil;
-    for mToken in AContext.Tree.Tokens do
-    begin
-      if (mToken.Kind <> TPascalTokenKind.Directive) or
-        ((mToken.StartPos.Line <= High(Lines)) and Lines[mToken.StartPos.Line]) then
-      begin
-        Continue;
-      end;
-      mWords := TDirectiveNames.Body(mToken.Text).Split([' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty);
-      if (Length(mWords) >= 3) and SameText(mWords[0], 'WARN') and
-        SameText(mWords[1], 'UNKNOWN_CUSTOM_ATTRIBUTE') then
-      begin
-        mSwitchOffsets := mSwitchOffsets + [mToken.Offset];
-        mSwitchErrors := mSwitchErrors + [SameText(mWords[2], 'ERROR')];
-      end;
-    end;
-  end;
-
-  /// <summary>Mit {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} davor meldet dcc E1074 statt W1074 (#1379).</summary>
-  function CodeAt(AOffset: Integer): string;
-  var
-    mIndex: Integer;
-  begin
-    Result := 'W1074';
-    for mIndex := 0 to High(mSwitchOffsets) do
-    begin
-      if mSwitchOffsets[mIndex] < AOffset then
-      begin
-        if mSwitchErrors[mIndex] then
-        begin
-          Result := 'E1074';
-        end
-        else
-        begin
-          Result := 'W1074';
-        end;
-      end;
-    end;
-  end;
-
-  procedure CheckItem(AItem: TSyntaxNode);
-  var
-    NameNode: TSyntaxNode;
-    Use: TAttributeUse;
-    Names: TArray<string>;
-    Resolved: TResolvedSymbol;
-    Units: TArray<string>;
-    UnitName, Message, Bare: string;
-    Fixes: TArray<TRuleFix>;
-    Fix: TRuleFix;
-    Edit: TTextEdit;
-    Index: Integer;
-  begin
-    NameNode := AItem;
-    if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
-    begin
-      NameNode := AItem[0];
-    end;
-    if not (NameNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-      not TAttributes.At(AContext.Tree, NameNode.StartPos, Use) then
-    begin
-      Exit;
-    end;
-    Bare := Copy(Use.Name, LastDelimiter('.', Use.Name) + 1, MaxInt);
-    if MatchText(Bare, CompilerAttributes) or MatchText(Bare + 'Attribute', CompilerAttributes) then
-    begin
-      Exit;
-    end;
-    // Zuerst NameAttribute, dann Name, wie der Compiler.
-    Names := Use.Name.Split(['.']);
-    Names[High(Names)] := Names[High(Names)] + 'Attribute';
-    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Names, NameNode.StartOffset);
-    if Resolved.Found or Resolver.HasUnknownAncestor then
-    begin
-      Exit;
-    end;
-    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Use.Name.Split(['.']),
-      NameNode.StartOffset);
-    if Resolved.Found or Resolver.HasUnknownAncestor or Resolver.IsUnitPrefix(Use.Name) then
-    begin
-      Exit;
-    end;
-    Units := DeclaringUnits(AContext.Index, Bare);
-    if (Length(Units) = 0) and MatchText(Bare, DUnitXAttributes) then
-    begin
-      Units := [DUnitXUnit];
-    end;
-    Message := Format('Attribut %s nicht gefunden und wird ignoriert', [Use.Name]);
-    if MatchText(Bare, DUnitXAttributes) or ((Length(Units) > 0) and StartsText('DUnitX', Units[0])) then
-    begin
-      Message := Message + '; die Tests laufen nicht';
-    end;
-    Message := Message + Format(' (wie %s).', [CodeAt(NameNode.StartOffset)]);
-    if Length(Units) = 1 then
-    begin
-      Message := Message + Format(' Unit %s fehlt.', [Units[0]]);
-    end
-    else if Length(Units) > 1 then
-    begin
-      Message := Message + Format(' In Frage kommen %s.', [Alternatives(Units)]);
-    end;
-    Fixes := nil;
-    for UnitName in Units do
-    begin
-      if TUsesClauses.AddUnit(AContext.Tree.Tokens, OffsetAt(AContext.Tree.Tokens, NameNode.StartPos), UnitName,
-        LineBreak, Edit) then
-      begin
-        Fix := TRuleFix.Create(Format('uses %s ergänzen', [UnitName]), [Edit]);
-        Fixes := Fixes + [Fix];
-      end;
-    end;
-    if Length(Fixes) > 1 then
-    begin
-      for Index := 0 to High(Fixes) do
-      begin
-        Fixes[Index].Alternative := True;
-      end;
-    end;
-    AReport.Add(Use.NameRange, Message, Level, Fixes);
-  end;
-
-  // Iterativ (Bericht M1).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-  begin
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.Attribute then
-        begin
-          if (Node.StartPos.Line <= High(Lines)) and Lines[Node.StartPos.Line] then
-          begin
-            Continue;
-          end;
-          for Index := 0 to Node.ChildCount - 1 do
-          begin
-            CheckItem(Node[Index]);
-          end;
-          Continue;
-        end;
-        // In Anweisungen gibt es keine Attribute.
-        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
-        begin
-          Continue;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-var
-  Token: TPascalToken;
+/// <summary>Kennt der Compiler das Attribut ABare (oder ABareAttribute) selbst?</summary>
+function CompilerAttribute(const ABare: string): Boolean;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
-    not TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
-    AContext.Namespaces, AContext.EnsureUnit) then
+  Result := MatchText(ABare, CompilerAttributes) or MatchText(ABare + 'Attribute', CompilerAttributes);
+end;
+
+/// <summary>Knoten mit dem Namen eines Attributs (bei Test(1) der Name vor der Klammer).</summary>
+function AttributeNameNode(AItem: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AItem;
+  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
+  begin
+    Result := AItem[0];
+  end;
+end;
+
+/// <summary>Units, die das Attribut ABare deklarieren; für DUnitX-Attribute ohne Index DUnitX.TestFramework.
+/// </summary>
+function AttributeUnits(const AIndex: ISymbolIndex; const ABare: string): TArray<string>;
+begin
+  Result := TUnresolvedAttributeRule.DeclaringUnits(AIndex, ABare);
+  if (Length(Result) = 0) and MatchText(ABare, DUnitXAttributes) then
+  begin
+    Result := [DUnitXUnit];
+  end;
+end;
+
+/// <summary>Meldung für das fehlende Attribut AName mit dem Code ACode und den Kandidaten AUnits.</summary>
+function AttributeMessage(const AName, ABare, ACode: string; const AUnits: TArray<string>): string;
+begin
+  Result := Format('Attribut %s nicht gefunden und wird ignoriert', [AName]);
+  if MatchText(ABare, DUnitXAttributes) or ((Length(AUnits) > 0) and StartsText('DUnitX', AUnits[0])) then
+  begin
+    Result := Result + '; die Tests laufen nicht';
+  end;
+  Result := Result + Format(' (wie %s).', [ACode]);
+  if Length(AUnits) = 1 then
+  begin
+    Result := Result + Format(' Unit %s fehlt.', [AUnits[0]]);
+  end
+  else if Length(AUnits) > 1 then
+  begin
+    Result := Result + Format(' In Frage kommen %s.', [Alternatives(AUnits)]);
+  end;
+end;
+
+type
+  /// <summary>Ein Lauf von unresolved-attribute über eine Datei.</summary>
+  TUnresolvedAttributeCheck = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FCache: IRuleDerivedCache;
+    FResolver: TNameResolver;
+    FLines: TArray<Boolean>;
+    FLineBreak: string;
+    FLevel: TRuleConfidence;
+    // {$WARN UNKNOWN_CUSTOM_ATTRIBUTE …} außerhalb bedingter Blöcke: Offset und ob ERROR (#1379).
+    FSwitchOffsets: TArray<Integer>;
+    FSwitchErrors: TArray<Boolean>;
+    procedure ReadSwitches;
+    function CodeAt(AOffset: Integer): string;
+    function Resolves(ANameNode: TSyntaxNode; const AUse: TAttributeUse): Boolean;
+    procedure CheckItem(AItem: TSyntaxNode);
+    procedure CheckAttribute(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+constructor TUnresolvedAttributeCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+procedure TUnresolvedAttributeCheck.ReadSwitches;
+var
+  mToken: TPascalToken;
+  mWords: TArray<string>;
+begin
+  FSwitchOffsets := nil;
+  FSwitchErrors := nil;
+  for mToken in FContext.Tree.Tokens do
+  begin
+    if (mToken.Kind <> TPascalTokenKind.Directive) or InCondition(FLines, mToken.StartPos.Line) then
+    begin
+      Continue;
+    end;
+    mWords := TDirectiveNames.Body(mToken.Text).Split([' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty);
+    if (Length(mWords) >= 3) and SameText(mWords[0], 'WARN') and
+      SameText(mWords[1], 'UNKNOWN_CUSTOM_ATTRIBUTE') then
+    begin
+      FSwitchOffsets := FSwitchOffsets + [mToken.Offset];
+      FSwitchErrors := FSwitchErrors + [SameText(mWords[2], 'ERROR')];
+    end;
+  end;
+end;
+
+/// <summary>Mit {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} davor meldet dcc E1074 statt W1074 (#1379).</summary>
+function TUnresolvedAttributeCheck.CodeAt(AOffset: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := 'W1074';
+  for mIndex := 0 to High(FSwitchOffsets) do
+  begin
+    if (FSwitchOffsets[mIndex] < AOffset) and FSwitchErrors[mIndex] then
+    begin
+      Result := 'E1074';
+    end
+    else if FSwitchOffsets[mIndex] < AOffset then
+    begin
+      Result := 'W1074';
+    end;
+  end;
+end;
+
+/// <summary>Findet die Auflösung das Attribut (zuerst NameAttribute, dann Name, wie der Compiler) oder kann es
+/// nicht sicher beurteilen?</summary>
+function TUnresolvedAttributeCheck.Resolves(ANameNode: TSyntaxNode; const AUse: TAttributeUse): Boolean;
+var
+  mNames: TArray<string>;
+  mResolved: TResolvedSymbol;
+begin
+  mNames := AUse.Name.Split(['.']);
+  mNames[High(mNames)] := mNames[High(mNames)] + 'Attribute';
+  mResolved := FResolver.ResolveChain(FContext.Tree, FContext.RelativePath, mNames, ANameNode.StartOffset);
+  Result := mResolved.Found or FResolver.HasUnknownAncestor;
+  if Result then
   begin
     Exit;
   end;
-  Lines := ConditionalLines(AContext.Tree.Tokens);
-  ReadSwitches;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  // Mit Include-Dateien kann das Attribut dort deklariert sein.
-  Level := TRuleConfidence.High;
-  for Token in AContext.Tree.Tokens do
+  mResolved := FResolver.ResolveChain(FContext.Tree, FContext.RelativePath, AUse.Name.Split(['.']),
+    ANameNode.StartOffset);
+  Result := mResolved.Found or FResolver.HasUnknownAncestor or FResolver.IsUnitPrefix(AUse.Name);
+end;
+
+procedure TUnresolvedAttributeCheck.CheckItem(AItem: TSyntaxNode);
+var
+  mNameNode: TSyntaxNode;
+  mUse: TAttributeUse;
+  mUnits: TArray<string>;
+  mBare: string;
+begin
+  mNameNode := AttributeNameNode(AItem);
+  if not (mNameNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+    not TAttributes.At(FContext.Tree, mNameNode.StartPos, mUse) then
   begin
-    if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
-      StartsText('{$INCLUDE ', Token.Text)) then
+    Exit;
+  end;
+  mBare := Copy(mUse.Name, LastDelimiter('.', mUse.Name) + 1, MaxInt);
+  if CompilerAttribute(mBare) or Resolves(mNameNode, mUse) then
+  begin
+    Exit;
+  end;
+  mUnits := AttributeUnits(FContext.Index, mBare);
+  FReport.Add(mUse.NameRange, AttributeMessage(mUse.Name, mBare, CodeAt(mNameNode.StartOffset), mUnits), FLevel,
+    UsesFixes(FContext.Tree.Tokens, OffsetAt(FContext.Tree.Tokens, mNameNode.StartPos), mUnits, FLineBreak));
+end;
+
+procedure TUnresolvedAttributeCheck.CheckAttribute(ANode: TSyntaxNode);
+var
+  mIndex: Integer;
+begin
+  if not InCondition(FLines, ANode.StartPos.Line) then
+  begin
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      Level := TRuleConfidence.Medium;
+      CheckItem(ANode[mIndex]);
     end;
   end;
-  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-  mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, AContext.RelativePath);
+end;
+
+// Iterativ (Bericht M1).
+procedure TUnresolvedAttributeCheck.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Visit(AContext.Tree.Root);
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.Attribute then
+      begin
+        CheckAttribute(mNode);
+      end
+      // In Anweisungen gibt es keine Attribute.
+      else if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock]) then
+      begin
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
   finally
-    Resolver.UnpinTree;
+    mPending.Free;
+  end;
+end;
+
+procedure TUnresolvedAttributeCheck.Run;
+begin
+  FLines := ConditionalLines(FContext.Tree.Tokens);
+  ReadSwitches;
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  // Mit Include-Dateien kann das Attribut dort deklariert sein.
+  FLevel := IncludeConfidence(FContext.Tree.Tokens);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  FCache := TRuleDerived.Open(FContext);
+  FResolver := TRuleDerived.Resolver(FCache, FContext);
+  FResolver.PinTree(FContext.Tree, FContext.RelativePath);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
+procedure TUnresolvedAttributeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mCheck: TUnresolvedAttributeCheck;
+begin
+  if not NamesCheckable(AContext) then
+  begin
+    Exit;
+  end;
+  mCheck := TUnresolvedAttributeCheck.Create(AContext, AReport);
+  try
+    mCheck.Run;
+  finally
+    mCheck.Free;
   end;
 end;
 
@@ -970,287 +1268,324 @@ begin
   Result := TRuleDescriptor.Create('unresolved-type', TRuleSeverity.Error, 'Typ in einer Deklaration nicht gefunden');
 end;
 
+/// <summary>Zahl der Typparameter von ASymbol.</summary>
+function TypeArity(const ASymbol: TIndexSymbol): Integer;
+begin
+  Result := 0;
+  if ASymbol.TypeParams <> '' then
+  begin
+    Result := Length(ASymbol.TypeParams.Split([',']));
+  end;
+end;
+
+/// <summary>Ist ALocation ein Typ im interface einer anderen Unit als AOwnUnit mit AArity Typparametern?</summary>
+function IsForeignType(const ALocation: TSymbolLocation; const AOwnUnit: string; AArity: Integer): Boolean;
+begin
+  Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in TypeKinds) and
+    ALocation.Symbol.InInterface;
+  Result := Result and not SameText(ALocation.UnitName, AOwnUnit) and (TypeArity(ALocation.Symbol) = AArity);
+end;
+
 class function TUnresolvedTypeRule.DeclaringUnits(const AIndex: ISymbolIndex; const AName, AOwnUnit: string;
   AArity: Integer): TArray<string>;
 var
-  Candidates: TList<string>;
-  Location: TSymbolLocation;
-  Name, Other: string;
-  Found: TUnitIndex;
-  Used: Boolean;
-  Arity: Integer;
+  mCandidates: TList<string>;
+  mLocation: TSymbolLocation;
 begin
   Result := nil;
   if AIndex = nil then
   begin
     Exit;
   end;
-  Candidates := TList<string>.Create;
+  mCandidates := TList<string>.Create;
   try
-    for Location in AIndex.FindSymbols(AName) do
+    for mLocation in AIndex.FindSymbols(AName) do
     begin
-      if (Location.Symbol.Container <> '') or not (Location.Symbol.Kind in TypeKinds) or
-        not Location.Symbol.InInterface or SameText(Location.UnitName, AOwnUnit) or
-        Candidates.Contains(Location.UnitName) then
+      if IsForeignType(mLocation, AOwnUnit, AArity) and not mCandidates.Contains(mLocation.UnitName) then
       begin
-        Continue;
-      end;
-      Arity := 0;
-      if Location.Symbol.TypeParams <> '' then
-      begin
-        Arity := Length(Location.Symbol.TypeParams.Split([',']));
-      end;
-      if Arity = AArity then
-      begin
-        Candidates.Add(Location.UnitName);
+        mCandidates.Add(mLocation.UnitName);
       end;
     end;
     // Fassade vor Quelle wie bei unresolved-attribute.
-    for Name in Candidates do
+    Result := WithoutForwarders(AIndex, mCandidates);
+  finally
+    mCandidates.Free;
+  end;
+end;
+
+/// <summary>Zahl der Typargumente der Typreferenz ANode.</summary>
+function GenericArity(ANode: TSyntaxNode): Integer;
+var
+  mArgs: TSyntaxNode;
+begin
+  Result := 0;
+  mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
+  if mArgs <> nil then
+  begin
+    Result := mArgs.ChildCount;
+  end;
+end;
+
+/// <summary>Ist ANode keine Typreferenz im Sinn der Regel? Der Anfang eines Teilbereichs (MinWert..MaxWert) ist
+/// ein Ausdruck, kein Typ.</summary>
+function IgnoredReference(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Name = '') or MatchText(ANode.Name, ['string', 'file', 'const']) or
+    ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.SubrangeType));
+end;
+
+/// <summary>Bereich des Namens selbst, ohne Typargumente.</summary>
+function ReferenceNameRange(ANode: TSyntaxNode): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
+    ANode.StartPos.Character + Length(ANode.Name)));
+end;
+
+/// <summary>Meldung für den nicht deklarierten Typ ANode mit den Kandidaten AUnits.</summary>
+function MissingTypeMessage(ANode: TSyntaxNode; const AUnits: TArray<string>): string;
+begin
+  Result := Format('Typ %s ist nicht deklariert', [ANode.Name]);
+  if Length(AUnits) = 1 then
+  begin
+    Result := Result + Format('; %s fehlt in uses', [AUnits[0]]);
+  end
+  else if Length(AUnits) > 1 then
+  begin
+    Result := Result + Format('; in Frage kommen %s', [Alternatives(AUnits)]);
+  end;
+  // Ziel eines Zeigertyps (PFoo = ^TFoo) meldet der Compiler als undefinierten Typ.
+  if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.PointerType) then
+  begin
+    Result := Result + ' (wie E2564).';
+  end
+  else
+  begin
+    Result := Result + ' (wie E2003).';
+  end;
+end;
+
+/// <summary>Ist der gefundene Name AResolved ein Wert statt eines Typs (Variable, Konstante, Routine)? Lokale
+/// Namen zählen nicht: In hWnd: HWND meint HWND den Typ, der Parametername gilt dort noch nicht (Watchdog,
+/// KeyHook).</summary>
+function IsValueSymbol(const AResolved: TResolvedSymbol): Boolean;
+begin
+  Result := (AResolved.Kind = TResolvedKind.Symbol) and not AResolved.IsType;
+  Result := Result and (AResolved.SymbolKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant,
+    TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+    TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]);
+end;
+
+type
+  /// <summary>Ein Lauf von unresolved-type über eine Datei.</summary>
+  TUnresolvedTypeCheck = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FResolver: TNameResolver;
+    FLines: TArray<Boolean>;
+    FLineBreak: string;
+    FOwnUnit: string;
+    FLevel: TRuleConfidence;
+    // Typnamen und Typparameter der Datei: gelten als bekannt.
+    FDeclared: TDictionary<string, Boolean>;
+    procedure CollectNode(ANode: TSyntaxNode);
+    procedure Collect(ARoot: TSyntaxNode);
+    function NestedSomewhere(const AName: string): Boolean;
+    function KnownName(const ABare: string): Boolean;
+    function Unclear(ANode: TSyntaxNode; const ABare: string): Boolean;
+    procedure CheckReference(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
+    procedure Run;
+  end;
+
+constructor TUnresolvedTypeCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FDeclared := TDictionary<string, Boolean>.Create;
+  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+end;
+
+destructor TUnresolvedTypeCheck.Destroy;
+begin
+  FResolver.Free;
+  FDeclared.Free;
+  inherited Destroy;
+end;
+
+procedure TUnresolvedTypeCheck.CollectNode(ANode: TSyntaxNode);
+var
+  mIndex: Integer;
+begin
+  if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ForwardType]) and (ANode.Name <> '') then
+  begin
+    FDeclared.AddOrSetValue(LowerCase(ANode.Name), True);
+  end
+  else if ANode.Kind = TSyntaxKind.GenericParams then
+  begin
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      Used := False;
-      for Other in Candidates do
+      FDeclared.AddOrSetValue(LowerCase(ANode[mIndex].Name), True);
+    end;
+  end;
+end;
+
+// Iterativ (Bericht M1).
+procedure TUnresolvedTypeCheck.Collect(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      CollectNode(mNode);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        if not SameText(Other, Name) and AIndex.FindUnit(Other, Found) and
-          (IndexText(Name, Found.InterfaceUses) >= 0) then
-        begin
-          Used := True;
-        end;
-      end;
-      if not Used then
-      begin
-        Result := Result + [Name];
+        mPending.Push(mNode[mIndex]);
       end;
     end;
-    TArray.Sort<string>(Result);
   finally
-    Candidates.Free;
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Kennt der Index AName als verschachtelten Typ (geerbte innere Typen sind ohne Präfix sichtbar)?
+/// </summary>
+function TUnresolvedTypeCheck.NestedSomewhere(const AName: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  for mLocation in FContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in TypeKinds) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Typen, die der Compiler kennt, ohne dass System.pas sie deklariert (TextFile, Real48 …, #1382), und
+/// Typen der Datei.</summary>
+function TUnresolvedTypeCheck.KnownName(const ABare: string): Boolean;
+begin
+  Result := TResolverText.IsBuiltinTypeName(ABare) or TSystemIntrinsics.IsType(ABare) or
+    FDeclared.ContainsKey(LowerCase(ABare));
+end;
+
+/// <summary>Kann die Regel nicht sicher sagen, dass der Typ fehlt?</summary>
+function TUnresolvedTypeCheck.Unclear(ANode: TSyntaxNode; const ABare: string): Boolean;
+begin
+  Result := FResolver.HasUnknownAncestor or FResolver.IsUnitPrefix(ANode.Name) or NestedSomewhere(ABare);
+end;
+
+procedure TUnresolvedTypeCheck.CheckReference(ANode: TSyntaxNode);
+var
+  mNames, mUnits: TArray<string>;
+  mBare: string;
+  mResolved: TResolvedSymbol;
+  mRange: TTextRange;
+begin
+  if IgnoredReference(ANode) then
+  begin
+    Exit;
+  end;
+  mNames := ANode.Name.Split(['.']);
+  mBare := mNames[High(mNames)];
+  if KnownName(mBare) then
+  begin
+    Exit;
+  end;
+  mResolved := FResolver.ResolveChain(FContext.Tree, FContext.RelativePath, mNames, ANode.StartOffset);
+  mRange := ReferenceNameRange(ANode);
+  // Gefunden, aber kein Typ: Variable, Konstante, Routine.
+  if mResolved.Found and IsValueSymbol(mResolved) then
+  begin
+    FReport.Add(mRange, NotATypeMessage(ANode.Name, Length(mNames) > 1, mResolved.SymbolKind), FLevel);
+  end;
+  if mResolved.Found or Unclear(ANode, mBare) then
+  begin
+    Exit;
+  end;
+  mUnits := nil;
+  if Length(mNames) = 1 then
+  begin
+    mUnits := TUnresolvedTypeRule.DeclaringUnits(FContext.Index, mBare, FOwnUnit, GenericArity(ANode));
+  end;
+  FReport.Add(mRange, MissingTypeMessage(ANode, mUnits), FLevel, UsesFixes(FContext.Tree.Tokens, ANode.StartOffset,
+    mUnits, FLineBreak));
+end;
+
+// Iterativ (Bericht M1).
+procedure TUnresolvedTypeCheck.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement, TSyntaxKind.Error] then
+      begin
+        Continue;
+      end;
+      if (mNode.Kind = TSyntaxKind.TypeReference) and not InCondition(FLines, mNode.StartPos.Line) then
+      begin
+        CheckReference(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TUnresolvedTypeCheck.Run;
+begin
+  FLines := ConditionalLines(FContext.Tree.Tokens);
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  FOwnUnit := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  // Mit Include-Dateien kann der Typ dort deklariert sein.
+  FLevel := IncludeConfidence(FContext.Tree.Tokens);
+  Collect(FContext.Tree.Root);
+  FResolver.Namespaces := FContext.Namespaces;
+  FResolver.PinTree(FContext.Tree, FContext.RelativePath);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FResolver.UnpinTree;
   end;
 end;
 
 procedure TUnresolvedTypeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
-  Lines: TArray<Boolean>;
-  LineBreak, OwnUnit: string;
-  Level: TRuleConfidence;
-  // Typnamen und Typparameter der Datei: gelten als bekannt.
-  Declared: TDictionary<string, Boolean>;
-
-  // Iterativ (Bericht M1).
-  procedure Collect(ARoot: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-  begin
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ForwardType]) and (Node.Name <> '') then
-        begin
-          Declared.AddOrSetValue(LowerCase(Node.Name), True);
-        end
-        else if Node.Kind = TSyntaxKind.GenericParams then
-        begin
-          for Index := 0 to Node.ChildCount - 1 do
-          begin
-            Declared.AddOrSetValue(LowerCase(Node[Index].Name), True);
-          end;
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-  /// <summary>Kennt der Index AName als verschachtelten Typ (geerbte innere Typen sind ohne Präfix sichtbar)?
-  /// </summary>
-  function NestedSomewhere(const AName: string): Boolean;
-  var
-    Location: TSymbolLocation;
-  begin
-    for Location in AContext.Index.FindSymbols(AName) do
-    begin
-      if (Location.Symbol.Container <> '') and (Location.Symbol.Kind in TypeKinds) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure CheckReference(ANode: TSyntaxNode);
-  var
-    Names: TArray<string>;
-    Bare, Message, UnitName: string;
-    Resolved: TResolvedSymbol;
-    Units: TArray<string>;
-    Fixes: TArray<TRuleFix>;
-    Fix: TRuleFix;
-    Edit: TTextEdit;
-    Args: TSyntaxNode;
-    Arity, Index: Integer;
-    Range: TTextRange;
-  begin
-    // Der Anfang eines Teilbereichs (MinWert..MaxWert) ist ein Ausdruck, kein Typ.
-    if (ANode.Name = '') or MatchText(ANode.Name, ['string', 'file', 'const']) or
-      ((ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.SubrangeType)) then
-    begin
-      Exit;
-    end;
-    Names := ANode.Name.Split(['.']);
-    Bare := Names[High(Names)];
-    // Typen, die der Compiler kennt, ohne dass System.pas sie deklariert (TextFile, Real48 …, #1382).
-    if TResolverText.IsBuiltinTypeName(Bare) or TSystemIntrinsics.IsType(Bare) or
-      Declared.ContainsKey(LowerCase(Bare)) then
-    begin
-      Exit;
-    end;
-    Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Names, ANode.StartOffset);
-    // Den Namen selbst markieren, ohne Typargumente.
-    Range := TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-      ANode.StartPos.Character + Length(ANode.Name)));
-    if Resolved.Found then
-    begin
-      // Gefunden, aber kein Typ: Variable, Konstante, Routine. Lokale Namen zählen nicht: In hWnd: HWND meint
-      // HWND den Typ, der Parametername gilt dort noch nicht (Watchdog, KeyHook).
-      if (Resolved.Kind = TResolvedKind.Symbol) and not Resolved.IsType and
-        (Resolved.SymbolKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
-        TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
-        TIndexSymbolKind.Routine]) then
-      begin
-        AReport.Add(Range, NotATypeMessage(ANode.Name, Length(Names) > 1, Resolved.SymbolKind), Level);
-      end;
-      Exit;
-    end;
-    if Resolver.HasUnknownAncestor or Resolver.IsUnitPrefix(ANode.Name) or NestedSomewhere(Bare) then
-    begin
-      Exit;
-    end;
-    Arity := 0;
-    Args := ANode.FindChild(TSyntaxKind.GenericArgs);
-    if Args <> nil then
-    begin
-      Arity := Args.ChildCount;
-    end;
-    Units := nil;
-    if Length(Names) = 1 then
-    begin
-      Units := DeclaringUnits(AContext.Index, Bare, OwnUnit, Arity);
-    end;
-    Message := Format('Typ %s ist nicht deklariert', [ANode.Name]);
-    if Length(Units) = 1 then
-    begin
-      Message := Message + Format('; %s fehlt in uses', [Units[0]]);
-    end
-    else if Length(Units) > 1 then
-    begin
-      Message := Message + Format('; in Frage kommen %s', [Alternatives(Units)]);
-    end;
-    // Ziel eines Zeigertyps (PFoo = ^TFoo) meldet der Compiler als undefinierten Typ.
-    if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.PointerType) then
-    begin
-      Message := Message + ' (wie E2564).';
-    end
-    else
-    begin
-      Message := Message + ' (wie E2003).';
-    end;
-    Fixes := nil;
-    for UnitName in Units do
-    begin
-      if TUsesClauses.AddUnit(AContext.Tree.Tokens, ANode.StartOffset, UnitName, LineBreak, Edit) then
-      begin
-        Fix := TRuleFix.Create(Format('uses %s ergänzen', [UnitName]), [Edit]);
-        Fixes := Fixes + [Fix];
-      end;
-    end;
-    if Length(Fixes) > 1 then
-    begin
-      for Index := 0 to High(Fixes) do
-      begin
-        Fixes[Index].Alternative := True;
-      end;
-    end;
-    AReport.Add(Range, Message, Level, Fixes);
-  end;
-
-  // Iterativ (Bericht M1).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-  begin
-    Pending := TStack<TSyntaxNode>.Create;
-    try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
-      begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement, TSyntaxKind.Error] then
-        begin
-          Continue;
-        end;
-        if (Node.Kind = TSyntaxKind.TypeReference) and not ((Node.StartPos.Line <= High(Lines)) and
-          Lines[Node.StartPos.Line]) then
-        begin
-          CheckReference(Node);
-        end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
-      end;
-    finally
-      Pending.Free;
-    end;
-  end;
-
-var
-  Token: TPascalToken;
+  mCheck: TUnresolvedTypeCheck;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not TUnresolvedNames.Available(AContext.Index) or
-    not TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
-    AContext.Namespaces, AContext.EnsureUnit) then
+  if not NamesCheckable(AContext) then
   begin
     Exit;
   end;
-  Lines := ConditionalLines(AContext.Tree.Tokens);
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  OwnUnit := TUsesClauses.OwnName(AContext.Tree.Tokens);
-  // Mit Include-Dateien kann der Typ dort deklariert sein.
-  Level := TRuleConfidence.High;
-  for Token in AContext.Tree.Tokens do
-  begin
-    if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
-      StartsText('{$INCLUDE ', Token.Text)) then
-    begin
-      Level := TRuleConfidence.Medium;
-    end;
-  end;
-  Declared := TDictionary<string, Boolean>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  mCheck := TUnresolvedTypeCheck.Create(AContext, AReport);
   try
-    Collect(AContext.Tree.Root);
-    Resolver.Namespaces := AContext.Namespaces;
-    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
-    try
-      Visit(AContext.Tree.Root);
-    finally
-      Resolver.UnpinTree;
-    end;
+    mCheck.Run;
   finally
-    Resolver.Free;
-    Declared.Free;
+    mCheck.Free;
   end;
 end;
 

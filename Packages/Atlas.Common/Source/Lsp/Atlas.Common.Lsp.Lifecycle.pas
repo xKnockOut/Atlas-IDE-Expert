@@ -76,29 +76,43 @@ begin
   ADispatcher.Guard := CheckState;
 end;
 
-procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
+/// <summary>Fehler für AMethod im Zustand AState; '' = erlaubt. exit ist in jedem Zustand erlaubt.</summary>
+function StateError(AState: TLspServerState; const AMethod: string; out ACode: Integer): string;
 begin
-  // exit ist in jedem Zustand erlaubt.
+  Result := '';
+  ACode := TJsonRpcErrorCode.InvalidRequest;
   if AMethod = TLspLifecycleMethod.ExitNotification then
   begin
     Exit;
   end;
-
-  case FState of
+  case AState of
     TLspServerState.Uninitialized:
       if AMethod <> TLspLifecycleMethod.InitializeRequest then
       begin
-        raise EJsonRpcError.Create(TLspErrorCode.ServerNotInitialized, 'Server ist noch nicht initialisiert');
+        ACode := TLspErrorCode.ServerNotInitialized;
+        Result := 'Server ist noch nicht initialisiert';
       end;
     TLspServerState.Running:
       if AMethod = TLspLifecycleMethod.InitializeRequest then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server ist bereits initialisiert');
+        Result := 'Server ist bereits initialisiert';
       end;
     TLspServerState.ShuttingDown:
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server wird beendet');
+      Result := 'Server wird beendet';
     TLspServerState.Exited:
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server ist beendet');
+      Result := 'Server ist beendet';
+  end;
+end;
+
+procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
+var
+  mCode: Integer;
+  mMessage: string;
+begin
+  mMessage := StateError(FState, AMethod, mCode);
+  if mMessage <> '' then
+  begin
+    raise EJsonRpcError.Create(mCode, mMessage);
   end;
 end;
 

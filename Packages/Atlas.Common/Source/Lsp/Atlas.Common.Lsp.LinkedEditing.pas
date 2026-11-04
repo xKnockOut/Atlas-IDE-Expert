@@ -33,7 +33,7 @@ type
   /// zusammenstieße (#658).</summary>
   TLinkedConflict = record
     Name: string;
-    /// <summary>Wie TNameResolver.ShadowText, z. B. "Feld TKunde.Total".</summary>
+    /// <summary>Wie TResolvedSymbol.ShadowText, z. B. "Feld TKunde.Total".</summary>
     Detail: string;
   end;
 
@@ -239,75 +239,78 @@ begin
   end;
 end;
 
-class function TLspLinkedEditing.LocalRanges(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
-  out AConflicts: TArray<TLinkedConflict>): TArray<TTextRange>;
+/// <summary>Lokale Variable oder Konstante der Datei AFileName, die man verknüpft umbenennen kann. Result gehört
+/// zur Funktion, lokale Typen und Routinen bleiben beim Umbenennen über den Server (#30).</summary>
+function IsLinkableLocal(const ASymbol: TResolvedSymbol; const AFileName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TResolvedKind.Local) and
+    (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
+    not SameText(ASymbol.Name, 'Result') and SameText(ASymbol.FileName, AFileName);
+end;
+
+/// <summary>Token der Deklaration von ASymbol und die innerste Routine darum; False ohne eine.</summary>
+function DeclarationRoutine(ATree: TSyntaxTree; const ASymbol: TResolvedSymbol; out ADeclaration: Integer;
+  out ARoutine: TSyntaxNode): Boolean;
+begin
+  ARoutine := nil;
+  ADeclaration := TokenStartingAt(ATree.Tokens, ASymbol.SelectionRange.StartPos);
+  if ADeclaration >= 0 then
+  begin
+    ARoutine := InnermostRoutine(ATree.Root, ATree.Tokens[ADeclaration].Offset);
+  end;
+  Result := ARoutine <> nil;
+end;
+
+/// <summary>Stellen aus AHighlights innerhalb von ARoutine.</summary>
+function RangesIn(const AHighlights: TArray<TDocumentHighlight>; ARoutine: TSyntaxNode): TArray<TTextRange>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Declaration, Probe: Integer;
-  Symbol, Candidate: TResolvedSymbol;
-  Routine: TSyntaxNode;
   Highlight: TDocumentHighlight;
-  Found: TList<TTextRange>;
-  Offsets: TList<Integer>;
-  Conflicts: TList<TLinkedConflict>;
-  Seen: TDictionary<string, Boolean>;
-  Conflict: TLinkedConflict;
 begin
   Result := nil;
-  AConflicts := nil;
-  Tokens := ATree.Tokens;
-  Index := IdentifierAt(Tokens, APosition);
-  if Index < 0 then
+  for Highlight in AHighlights do
   begin
-    Exit;
+    if not Before(Highlight.Range.StartPos, ARoutine.StartPos) and not Before(ARoutine.EndPos, Highlight.Range.EndPos)
+    then
+    begin
+      Result := Result + [Highlight.Range];
+    end;
   end;
-  Found := TList<TTextRange>.Create;
-  Offsets := TList<Integer>.Create;
-  Conflicts := TList<TLinkedConflict>.Create;
+end;
+
+/// <summary>Offsets, an denen sichtbare Namen geprüft werden: die Deklaration ADeclaration, dann Vorkommen aus
+/// ARanges bis ConflictProbes.</summary>
+function ProbeOffsets(const ATokens: TArray<TPascalToken>; const ARanges: TArray<TTextRange>;
+  ADeclaration: Integer): TArray<Integer>;
+var
+  Range: TTextRange;
+  Probe: Integer;
+begin
+  Result := [ATokens[ADeclaration].Offset];
+  for Range in ARanges do
+  begin
+    Probe := TokenStartingAt(ATokens, Range.StartPos);
+    if (Probe >= 0) and (Length(Result) < TLspLinkedEditing.ConflictProbes) and (Probe <> ADeclaration) then
+    begin
+      Result := Result + [ATokens[Probe].Offset];
+    end;
+  end;
+end;
+
+/// <summary>Namen, die an AOffsets sichtbar sind, ohne AName selbst: Ohne neuen Namen gibt es keinen Konflikt.
+/// </summary>
+function ScopeConflicts(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AName: string;
+  const AOffsets: TArray<Integer>): TArray<TLinkedConflict>;
+var
+  Seen: TDictionary<string, Boolean>;
+  Candidate: TResolvedSymbol;
+  Conflict: TLinkedConflict;
+  Probe: Integer;
+begin
+  Result := nil;
   Seen := TDictionary<string, Boolean>.Create;
-  AResolver.PinTree(ATree, AFileName);
   try
-    Symbol := AResolver.Resolve(ATree, AFileName, Tokens[Index].StartPos);
-    // Result gehört zur Funktion, lokale Typen und Routinen bleiben beim Umbenennen über den Server (#30).
-    if (Symbol.Kind <> TResolvedKind.Local) or
-      not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) or
-      SameText(Symbol.Name, 'Result') or not SameText(Symbol.FileName, AFileName) then
-    begin
-      Exit;
-    end;
-    Declaration := TokenStartingAt(Tokens, Symbol.SelectionRange.StartPos);
-    if Declaration < 0 then
-    begin
-      Exit;
-    end;
-    Routine := InnermostRoutine(ATree.Root, Tokens[Declaration].Offset);
-    if Routine = nil then
-    begin
-      Exit;
-    end;
-    Offsets.Add(Tokens[Declaration].Offset);
-    for Highlight in TLspDocumentHighlights.Highlights(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos) do
-    begin
-      if not Before(Highlight.Range.StartPos, Routine.StartPos) and not Before(Routine.EndPos, Highlight.Range.EndPos)
-      then
-      begin
-        Found.Add(Highlight.Range);
-        Probe := TokenStartingAt(Tokens, Highlight.Range.StartPos);
-        if (Probe >= 0) and (Offsets.Count < ConflictProbes) and (Probe <> Declaration) then
-        begin
-          Offsets.Add(Tokens[Probe].Offset);
-        end;
-      end;
-    end;
-    if Found.Count = 0 then
-    begin
-      Exit;
-    end;
-    Result := Found.ToArray;
-    // Gleichnamige zählen nicht: Ohne neuen Namen gibt es keinen Konflikt.
-    Seen.Add(LowerCase(Symbol.Name), True);
-    for Probe in Offsets do
+    Seen.Add(LowerCase(AName), True);
+    for Probe in AOffsets do
     begin
       for Candidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, Probe) do
       begin
@@ -316,17 +319,45 @@ begin
           Seen.Add(LowerCase(Candidate.Name), True);
           Conflict.Name := Candidate.Name;
           Conflict.Detail := Candidate.ShadowText;
-          Conflicts.Add(Conflict);
+          Result := Result + [Conflict];
         end;
       end;
     end;
-    AConflicts := Conflicts.ToArray;
+  finally
+    Seen.Free;
+  end;
+end;
+
+class function TLspLinkedEditing.LocalRanges(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out AConflicts: TArray<TLinkedConflict>): TArray<TTextRange>;
+var
+  Index, Declaration: Integer;
+  Symbol: TResolvedSymbol;
+  Routine: TSyntaxNode;
+begin
+  Result := nil;
+  AConflicts := nil;
+  Index := IdentifierAt(ATree.Tokens, APosition);
+  if Index < 0 then
+  begin
+    Exit;
+  end;
+  AResolver.PinTree(ATree, AFileName);
+  try
+    Symbol := AResolver.Resolve(ATree, AFileName, ATree.Tokens[Index].StartPos);
+    if IsLinkableLocal(Symbol, AFileName) and DeclarationRoutine(ATree, Symbol, Declaration, Routine) then
+    begin
+      Result := RangesIn(TLspDocumentHighlights.Highlights(AResolver, AIndex, ATree, AFileName,
+        ATree.Tokens[Index].StartPos), Routine);
+    end;
+    if Result <> nil then
+    begin
+      AConflicts := ScopeConflicts(AResolver, ATree, AFileName, Symbol.Name, ProbeOffsets(ATree.Tokens, Result,
+        Declaration));
+    end;
   finally
     AResolver.UnpinTree;
-    Seen.Free;
-    Conflicts.Free;
-    Offsets.Free;
-    Found.Free;
   end;
 end;
 

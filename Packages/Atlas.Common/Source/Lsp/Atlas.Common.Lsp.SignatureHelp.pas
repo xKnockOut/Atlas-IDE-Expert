@@ -7,7 +7,7 @@
 // einem Bezeichner; Kommas auf derselben Ebene zählen den aktiven Parameter.
 // Überladungen nach Argumenttypen (#498): Jedes bisherige Argument bekommt einen Typ (Literale: Zeichen, String,
 // Zahl, Boolean, nil, Menge; Bezeichner über die Namensauflösung, Aufzählungswerte über ihren Typ) und wird mit dem
-// Parametertyp verglichen (TNameResolver.ArgumentFits). Unbekannte Typen gelten als verträglich. Jede Signatur
+// Parametertyp verglichen (TResolverText.ArgumentFits). Unbekannte Typen gelten als verträglich. Jede Signatur
 // trägt das Ergebnis in data.fits und data.mismatch (erstes unverträgliches Argument, -1); vorgewählt wird die
 // erste verträgliche mit genug Parametern.
 // Formatroutinen (#451): Ist die Routine Format oder eine andere Formatroutine (Pascal.FormatRoutines, dazu eigene

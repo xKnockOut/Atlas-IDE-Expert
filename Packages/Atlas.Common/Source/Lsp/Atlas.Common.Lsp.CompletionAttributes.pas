@@ -2,7 +2,7 @@
 
 // Attribute nach "[" (#465, ARG-066): Steht der Cursor auf dem Namen in einer Attributklammer vor einer
 // Deklaration (TAttributes.InBracket), bleiben nur Attributklassen (Nachfahren von TCustomAttribute,
-// TNameResolver.AttributeClassOf), gezeigt ohne die Endung Attribute.
+// TNameResolver.Queries.AttributeClassOf), gezeigt ohne die Endung Attribute.
 // - Bekannte Attribute zuerst, in dieser Reihenfolge: DUnitX (Test, TestCase, TestFixture, Setup, TearDown),
 //   JSONName, JSONMarshalled und die Compiler-Attribute weak, unsafe, volatile, Ref; die übrigen danach wie
 //   gesammelt. Die Compiler-Attribute haben keine Klasse und kommen immer dazu, wenn sie zum Getippten passen.
