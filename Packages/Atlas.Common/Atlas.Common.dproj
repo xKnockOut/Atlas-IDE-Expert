@@ -733,6 +733,12 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Types.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Syntax.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Files.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Base.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Sources.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepFilter.pas"/>
         <BuildConfiguration Include="Base">
