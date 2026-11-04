@@ -45,6 +45,10 @@ type
     FBodies: TObjectDictionary<string, TDictionary<string, TEventHandlerBody>>;
     function BodiesOf(const AFileName: string): TDictionary<string, TEventHandlerBody>;
     function ResolveInAncestors(var AHandler: TEventHandler): Boolean;
+    /// <summary>Die .pas-Dateien aus AFiles, ohne Angabe die Projekt-Units des Index.</summary>
+    function SourceFiles(const AFiles: TArray<string>): TArray<string>;
+    /// <summary>Lesbare Formulardateien zur Unit AFileName mit dem Text AText.</summary>
+    function FormsOf(const AFileName, AText: string): TArray<TEventHandlerForm>;
   public
     constructor Create(const ASourceFor: TLspMetricsSourceFunc; const AReadText: TMetricsReadText);
     destructor Destroy; override;
@@ -152,67 +156,80 @@ begin
   end;
 end;
 
+function TLspEventHandlers.SourceFiles(const AFiles: TArray<string>): TArray<string>;
+var
+  mFileName: string;
+  mUnit: TUnitIndex;
+begin
+  Result := nil;
+  if Length(AFiles) > 0 then
+  begin
+    for mFileName in AFiles do
+    begin
+      if SameText(ExtractFileExt(mFileName), '.pas') then
+      begin
+        Result := Result + [mFileName];
+      end;
+    end;
+    Exit;
+  end;
+  if FIndex = nil then
+  begin
+    Exit;
+  end;
+  for mUnit in FIndex.Units do
+  begin
+    if not mUnit.Library_ then
+    begin
+      Result := Result + [mUnit.FileName];
+    end;
+  end;
+end;
+
+function TLspEventHandlers.FormsOf(const AFileName, AText: string): TArray<TEventHandlerForm>;
+var
+  mFormFile: string;
+  mForm: TEventHandlerForm;
+begin
+  Result := nil;
+  for mFormFile in TFormFiles.FormFiles(AFileName, AText) do
+  begin
+    mForm := Default(TEventHandlerForm);
+    mForm.FileName := mFormFile;
+    if FReadText(mFormFile, mForm.Text) then
+    begin
+      Result := Result + [mForm];
+    end;
+  end;
+end;
+
 function TLspEventHandlers.Collect(const AFiles: TArray<string>; out AUnresolved: Integer): TArray<TEventHandler>;
 var
-  Files: TArray<string>;
-  UnitIndex: TUnitIndex;
-  FileName, Text, FormFile: string;
-  Forms: TArray<TEventHandlerForm>;
-  Form: TEventHandlerForm;
-  Found, Handler: TEventHandler;
+  mFileName, mText: string;
+  mFound, mHandler: TEventHandler;
 begin
   Result := nil;
   AUnresolved := 0;
   FBodies.Clear;
-  Files := nil;
-  if Length(AFiles) > 0 then
-  begin
-    for FileName in AFiles do
-    begin
-      if SameText(ExtractFileExt(FileName), '.pas') then
-      begin
-        Files := Files + [FileName];
-      end;
-    end;
-  end
-  else if FIndex <> nil then
-  begin
-    for UnitIndex in FIndex.Units do
-    begin
-      if not UnitIndex.Library_ then
-      begin
-        Files := Files + [UnitIndex.FileName];
-      end;
-    end;
-  end;
   if not Assigned(FReadText) then
   begin
     Exit;
   end;
-  for FileName in Files do
+  for mFileName in SourceFiles(AFiles) do
   begin
-    if not FReadText(FileName, Text) then
+    if not FReadText(mFileName, mText) then
     begin
       Continue;
     end;
-    Forms := nil;
-    for FormFile in TFormFiles.FormFiles(FileName, Text) do
+    for mFound in TEventHandlers.Collect(mFileName, mText, FormsOf(mFileName, mText)) do
     begin
-      Form.FileName := FormFile;
-      if FReadText(FormFile, Form.Text) then
-      begin
-        Forms := Forms + [Form];
-      end;
-    end;
-    for Found in TEventHandlers.Collect(FileName, Text, Forms) do
-    begin
-      Handler := Found;
-      if (Handler.Line < 0) and not ResolveInAncestors(Handler) then
+      mHandler := mFound;
+      if (mHandler.Line < 0) and not ResolveInAncestors(mHandler) then
       begin
         Inc(AUnresolved);
         Continue;
       end;
-      Result := Result + [Handler];
+      Result := Result + [mHandler];
     end;
   end;
   FBodies.Clear;

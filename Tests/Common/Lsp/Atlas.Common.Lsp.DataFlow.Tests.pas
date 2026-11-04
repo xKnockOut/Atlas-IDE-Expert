@@ -223,15 +223,23 @@ function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TD
   const AOptions: TDataFlowOptions): TDataFlowResult;
 var
   Text: string;
-  Tree: TSyntaxTree;
+  mRequest: TDataFlowRequest;
 begin
   ReadFile(AFileName, Text);
-  Tree := TSyntaxTreeCache.Parse(Text);
+  mRequest := Default(TDataFlowRequest);
+  mRequest.Resolver := FResolver;
+  mRequest.Index := FIndex;
+  mRequest.FileName := AFileName;
+  mRequest.Position := PositionOf(Text, AMarker);
+  mRequest.Direction := ADirection;
+  mRequest.Options := AOptions;
+  mRequest.Files := TArray<string>.Create(DatenFile, HauptFile, PruefFile);
+  mRequest.ReadText := ReadFile;
+  mRequest.Tree := TSyntaxTreeCache.Parse(Text);
   try
-    Result := TLspDataFlow.Analyze(FResolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker), ADirection, AOptions,
-      TArray<string>.Create(DatenFile, HauptFile, PruefFile), ReadFile, nil);
+    Result := TLspDataFlow.Analyze(mRequest);
   finally
-    Tree.Free;
+    mRequest.Tree.Free;
   end;
 end;
 

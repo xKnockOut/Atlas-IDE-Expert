@@ -192,8 +192,8 @@ var
 begin
   Tree := TSyntaxTreeCache.Parse(UnitHaupt);
   try
-    Result := TLspHover.InfoAt(FResolver, FIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      ReadText);
+    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, ReadText), Tree, UnitHaupt, HauptFile,
+      PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;

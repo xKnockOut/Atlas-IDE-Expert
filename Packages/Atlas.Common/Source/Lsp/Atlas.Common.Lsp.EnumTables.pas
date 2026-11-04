@@ -39,6 +39,17 @@ type
     ResourceStrings: Boolean;
   end;
 
+  /// <summary>Datei und Stelle, an der eine Tabelle angelegt oder nachgezogen wird.</summary>
+  TEnumTablesDocument = record
+    Tree: TSyntaxTree;
+    FileName: string;
+    Text: string;
+    /// <summary>Stelle des Typnamens.</summary>
+    Position: TTextPosition;
+    class function Create(ATree: TSyntaxTree; const AFileName, AText: string;
+      const APosition: TTextPosition): TEnumTablesDocument; static;
+  end;
+
   TLspEnumTables = class
   public const
     ClientCommand = 'atlas.enumTable';
@@ -56,11 +67,11 @@ type
     class function Actions(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>; static;
     /// <summary>Antwort auf atlas.server.enumTable; EJsonRpcError mit dem Grund, wenn es nicht geht.</summary>
-    class function Execute(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
-      const AName, APlacement: string; const AContext: TEnumTablesContext): TJSONObject; static;
+    class function Execute(const ADocument: TEnumTablesDocument; const AName, APlacement: string;
+      const AContext: TEnumTablesContext): TJSONObject; static;
     /// <summary>Antwort auf atlas.server.enumTablesSync.</summary>
-    class function Sync(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; const AContext: TEnumTablesContext): TJSONObject; static;
+    class function Sync(AResolver: TNameResolver; const ADocument: TEnumTablesDocument;
+      const AContext: TEnumTablesContext): TJSONObject; static;
   end;
 
 implementation
@@ -119,57 +130,85 @@ begin
     TLspEnumTables.ClientCommand, Arguments);
 end;
 
+type
+  /// <summary>Baum einer Datei samt Namensauflösung, in der Tabellen und case-Anweisungen gesucht werden.</summary>
+  TEnumSource = record
+    Resolver: TNameResolver;
+    Tree: TSyntaxTree;
+    FileName: string;
+    class function Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string): TEnumSource;
+      static;
+  end;
+
+class function TEnumSource.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string):
+  TEnumSource;
+begin
+  Result.Resolver := AResolver;
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+end;
+
+{ TEnumTablesDocument }
+
+class function TEnumTablesDocument.Create(ATree: TSyntaxTree; const AFileName, AText: string;
+  const APosition: TTextPosition): TEnumTablesDocument;
+begin
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Text := AText;
+  Result.Position := APosition;
+end;
+
 /// <summary>Elemente des Indextyps der Tabelle ATable über die Namensauflösung; AUnit: Unit des Typs.</summary>
-function IndexNames(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const ATable: TEnumTable; out ANames: TArray<string>; out AUnit: string): Boolean;
+function IndexNames(const ASource: TEnumSource; const AIndex: ISymbolIndex; const ATable: TEnumTable;
+  out ANames: TArray<string>; out AUnit: string): Boolean;
 var
-  Resolved: TResolvedSymbol;
-  Values: TConstantValues;
+  mResolved: TResolvedSymbol;
+  mValues: TConstantValues;
 begin
   ANames := nil;
   AUnit := '';
-  Resolved := AResolver.ResolveType(ATree, AFileName, ATable.IndexType.StartPos);
-  if not Resolved.Found or (Resolved.SymbolKind <> TIndexSymbolKind.EnumType) then
+  mResolved := ASource.Resolver.ResolveType(ASource.Tree, ASource.FileName, ATable.IndexType.StartPos);
+  if not mResolved.Found or (mResolved.SymbolKind <> TIndexSymbolKind.EnumType) then
   begin
     Exit(False);
   end;
-  AUnit := Resolved.UnitName;
-  Values := TConstantValues.Create(ATree, AFileName, AIndex, AResolver);
+  AUnit := mResolved.UnitName;
+  mValues := TConstantValues.Create(ASource.Tree, ASource.FileName, AIndex, ASource.Resolver);
   try
-    Result := Values.EnumMembers(Resolved, ANames);
+    Result := mValues.EnumMembers(mResolved, ANames);
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 /// <summary>Art neuer Einträge für die Tabelle ATable: nach dem Namen, sonst über die Namensauflösung.</summary>
-function ValuesOf(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const ATable: TEnumTable): TEnumTableValues;
+function ValuesOf(const ASource: TEnumSource; const ATable: TEnumTable): TEnumTableValues;
 var
-  Name: string;
-  Element: TEnumTableElement;
-  Resolved: TResolvedSymbol;
+  mName: string;
+  mElement: TEnumTableElement;
+  mResolved: TResolvedSymbol;
 begin
-  Name := '';
+  mName := '';
   if ATable.ElementType.Kind = TSyntaxKind.TypeReference then
   begin
-    Name := ATable.ElementType.Name;
+    mName := ATable.ElementType.Name;
   end;
-  Element := TEnumTables.ElementOf(Name);
-  if (Element = TEnumTableElement.Other) and (Name <> '') then
+  mElement := TEnumTables.ElementOf(mName);
+  if (mElement = TEnumTableElement.Other) and (mName <> '') then
   begin
-    Resolved := AResolver.ResolveType(ATree, AFileName, ATable.ElementType.StartPos);
-    if Resolved.Found then
-      case Resolved.SymbolKind of
+    mResolved := ASource.Resolver.ResolveType(ASource.Tree, ASource.FileName, ATable.ElementType.StartPos);
+    if mResolved.Found then
+      case mResolved.SymbolKind of
         TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
-          Element := TEnumTableElement.Pointer_;
+          mElement := TEnumTableElement.Pointer_;
         TIndexSymbolKind.EnumType:
-          Element := TEnumTableElement.Enum;
+          mElement := TEnumTableElement.Enum;
       else
         // Übrige Arten: nichts zu tun.
       end;
   end;
-  Result := TEnumTableValues.Create(Element, Name, ATable.IndexType.Name);
+  Result := TEnumTableValues.Create(mElement, mName, ATable.IndexType.Name);
 end;
 
 class function TLspEnumTables.Actions(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -182,6 +221,7 @@ var
   Repair: TEnumTableRepair;
   Arguments: TJSONArray;
   Action: TJSONObject;
+  Source: TEnumSource;
 begin
   Result := nil;
   FileName := TDocumentUris.ToPath(AUri);
@@ -199,9 +239,9 @@ begin
       SyncClientCommand, Arguments)];
     Exit;
   end;
-  if not TEnumTables.TableAt(ATree, APosition, Table) or
-    not IndexNames(AResolver, AIndex, ATree, FileName, Table, Names, UnitName) or
-    not TEnumTables.Repair(AText, ATree, Table.Value, Names, ValuesOf(AResolver, ATree, FileName, Table), Repair) then
+  Source := TEnumSource.Create(AResolver, ATree, FileName);
+  if not TEnumTables.TableAt(ATree, APosition, Table) or not IndexNames(Source, AIndex, Table, Names, UnitName) or
+    not TEnumTables.Repair(AText, ATree, Table.Value, Names, ValuesOf(Source, Table), Repair) then
   begin
     Exit;
   end;
@@ -276,38 +316,41 @@ begin
   Result.AddPair('preview', APreview);
 end;
 
-class function TLspEnumTables.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
-  const APosition: TTextPosition; const AName, APlacement: string; const AContext: TEnumTablesContext): TJSONObject;
-var
-  Placement: TEnumTablePlacement;
-  Edits: TArray<TTextEdit>;
-  Reason: string;
-  Target: TEnumTarget;
-  Files: TArray<TFileEdits>;
+/// <summary>Stelle der neuen Tabelle zum Namen APlacement; EJsonRpcError bei unbekanntem Namen.</summary>
+function PlacementOf(const APlacement: string): TEnumTablePlacement;
 begin
-  if SameText(APlacement, AfterTypeName) then
+  if SameText(APlacement, TLspEnumTables.AfterTypeName) then
   begin
-    Placement := TEnumTablePlacement.AfterType;
-  end
-  else if SameText(APlacement, ImplementationName) then
-  begin
-    Placement := TEnumTablePlacement.InImplementation;
-  end
-  else
+    Exit(TEnumTablePlacement.AfterType);
+  end;
+  if not SameText(APlacement, TLspEnumTables.ImplementationName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Stelle "%s"', [APlacement]));
   end;
-  if not TEnumTables.Target(ATree, APosition, Target, Reason) or
-    not TEnumTables.CreateTable(AText, ATree, APosition,
-    TEnumTableRequest.Create(Trim(AName), Placement, AContext.ResourceStrings), Edits, Reason) then
+  Result := TEnumTablePlacement.InImplementation;
+end;
+
+class function TLspEnumTables.Execute(const ADocument: TEnumTablesDocument; const AName, APlacement: string;
+  const AContext: TEnumTablesContext): TJSONObject;
+var
+  mPlacement: TEnumTablePlacement;
+  mEdits: TArray<TTextEdit>;
+  mReason: string;
+  mTarget: TEnumTarget;
+  mFiles: TArray<TFileEdits>;
+begin
+  mPlacement := PlacementOf(APlacement);
+  if not TEnumTables.Target(ADocument.Tree, ADocument.Position, mTarget, mReason) or
+    not TEnumTables.CreateTable(ADocument.Text, ADocument.Tree, ADocument.Position,
+    TEnumTableRequest.Create(Trim(AName), mPlacement, AContext.ResourceStrings), mEdits, mReason) then
   begin
-    raise Fail('Namenstabelle geht nicht: ' + Reason);
+    raise Fail('Namenstabelle geht nicht: ' + mReason);
   end;
-  SetLength(Files, 1);
-  Files[0].FileName := AFileName;
-  Files[0].Edits := Edits;
-  Result := AnswerJson(Files, nil, 1, Format(TEnumTables.CreateTitle, [Target.TypeName]),
-    Format('%s: %s mit %d Einträgen.', [Target.TypeName, Trim(AName), Length(Target.Names)]));
+  SetLength(mFiles, 1);
+  mFiles[0].FileName := ADocument.FileName;
+  mFiles[0].Edits := mEdits;
+  Result := AnswerJson(mFiles, nil, 1, Format(TEnumTables.CreateTitle, [mTarget.TypeName]),
+    Format('%s: %s mit %d Einträgen.', [mTarget.TypeName, Trim(AName), Length(mTarget.Names)]));
 end;
 
 type
@@ -335,215 +378,331 @@ begin
   Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), TLineTable.Build(AText).PositionAt(AOffset).Line + 1]);
 end;
 
+type
+  /// <summary>Prüft die Marken einer case-Anweisung gegen die Namen einer Aufzählung.</summary>
+  TCaseLabels = record
+    TypeName: string;
+    Names: TArray<string>;
+    /// <summary>"TypeName." bei qualifizierten Marken.</summary>
+    Prefix: string;
+    /// <summary>Die erste Marke.</summary>
+    First: TSyntaxNode;
+    /// <summary>Alle bisher geprüften Marken sind Werte aus Names.</summary>
+    Matching: Boolean;
+    procedure Check(ALabel: TSyntaxNode);
+    procedure CheckRange(ARange: TSyntaxNode);
+    procedure CheckItem(AItem: TSyntaxNode);
+  end;
+
+procedure TCaseLabels.Check(ALabel: TSyntaxNode);
+begin
+  if ALabel.Kind = TSyntaxKind.MemberAccess then
+  begin
+    Prefix := TypeName + '.';
+  end
+  else if ALabel.Kind <> TSyntaxKind.Identifier then
+  begin
+    Matching := False;
+  end;
+  if IndexText(ALabel.Name, Names) < 0 then
+  begin
+    Matching := False;
+  end;
+  if First = nil then
+  begin
+    First := ALabel;
+  end;
+end;
+
+procedure TCaseLabels.CheckRange(ARange: TSyntaxNode);
+begin
+  if ARange.ChildCount <> 2 then
+  begin
+    Matching := False;
+    Exit;
+  end;
+  Check(ARange[0]);
+  Check(ARange[1]);
+end;
+
+procedure TCaseLabels.CheckItem(AItem: TSyntaxNode);
+var
+  mLabel: Integer;
+begin
+  for mLabel := 0 to AItem.ChildCount - 1 do
+  begin
+    if AItem[mLabel].Kind = TSyntaxKind.RangeExpr then
+    begin
+      CheckRange(AItem[mLabel]);
+    end
+    else if not (AItem[mLabel].Kind in StatementKinds) then
+    begin
+      Check(AItem[mLabel]);
+    end;
+  end;
+end;
+
 /// <summary>Sind alle Marken der case-Anweisung ACase (ohne else) Werte aus ANames? APrefix: "ATypeName." bei
 /// qualifizierten Marken; AFirst: die erste Marke.</summary>
 function CaseMatches(ACase: TSyntaxNode; const ATypeName: string; const ANames: TArray<string>; out APrefix: string;
   out AFirst: TSyntaxNode): Boolean;
 var
-  Item, Label_: Integer;
-  Matching: Boolean;
-  Prefix: string;
-  First: TSyntaxNode;
-
-  procedure Check(ALabel: TSyntaxNode);
-  begin
-    if ALabel.Kind = TSyntaxKind.MemberAccess then
-    begin
-      Prefix := ATypeName + '.';
-    end
-    else if ALabel.Kind <> TSyntaxKind.Identifier then
-    begin
-      Matching := False;
-    end;
-    if IndexText(ALabel.Name, ANames) < 0 then
-    begin
-      Matching := False;
-    end;
-    if First = nil then
-    begin
-      First := ALabel;
-    end;
-  end;
-
+  mItem: Integer;
+  mLabels: TCaseLabels;
 begin
-  Matching := ACase.FindChild(TSyntaxKind.CaseElse) = nil;
-  Prefix := '';
-  First := nil;
-  for Item := 1 to ACase.ChildCount - 1 do
+  mLabels := Default(TCaseLabels);
+  mLabels.TypeName := ATypeName;
+  mLabels.Names := ANames;
+  mLabels.Matching := ACase.FindChild(TSyntaxKind.CaseElse) = nil;
+  for mItem := 1 to ACase.ChildCount - 1 do
   begin
-    if ACase[Item].Kind = TSyntaxKind.CaseItem then
+    if ACase[mItem].Kind = TSyntaxKind.CaseItem then
     begin
-      for Label_ := 0 to ACase[Item].ChildCount - 1 do
-      begin
-        if ACase[Item][Label_].Kind = TSyntaxKind.RangeExpr then
-        begin
-          if ACase[Item][Label_].ChildCount <> 2 then
-          begin
-            Matching := False;
-          end
-          else
-          begin
-            Check(ACase[Item][Label_][0]);
-            Check(ACase[Item][Label_][1]);
-          end;
-        end
-        else if not (ACase[Item][Label_].Kind in StatementKinds) then
-        begin
-          Check(ACase[Item][Label_]);
-        end;
-      end;
+      mLabels.CheckItem(ACase[mItem]);
     end;
   end;
-  APrefix := Prefix;
-  AFirst := First;
-  Result := Matching and (First <> nil);
+  APrefix := mLabels.Prefix;
+  AFirst := mLabels.First;
+  Result := mLabels.Matching and (mLabels.First <> nil);
 end;
 
-/// <summary>case-Anweisungen in ATree über ANames ohne else, deren erste Marke AResolver zu AUnit auflöst.
-/// </summary>
-function CaseStatements(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, ATypeName, AUnit: string;
-  const ANames: TArray<string>; out APrefixes: TArray<string>): TArray<TSyntaxNode>;
+/// <summary>Alle case-Anweisungen in ATree.</summary>
+function AllCases(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
-  Cases, Found: TArray<TSyntaxNode>;
-  Prefixes: TArray<string>;
-  Node, First: TSyntaxNode;
-  Prefix: string;
+  mCases: TArray<TSyntaxNode>;
 begin
-  Cases := nil;
+  mCases := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.CaseStatement then
       begin
-        Cases := Cases + [ANode];
+        mCases := mCases + [ANode];
       end;
       Result := True;
     end);
-  Found := nil;
-  Prefixes := nil;
-  for Node in Cases do
-  begin
-    if CaseMatches(Node, ATypeName, ANames, Prefix, First) and
-      SameText(AResolver.Resolve(ATree, AFileName, First.StartPos).UnitName, AUnit) then
-    begin
-      Found := Found + [Node];
-      Prefixes := Prefixes + [Prefix];
-    end;
-  end;
-  APrefixes := Prefixes;
-  Result := Found;
+  Result := mCases;
 end;
 
-class function TLspEnumTables.Sync(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-  const APosition: TTextPosition; const AContext: TEnumTablesContext): TJSONObject;
+/// <summary>case-Anweisungen in ASource über ANames ohne else, deren erste Marke zu AUnit auflöst.</summary>
+function CaseStatements(const ASource: TEnumSource; const ATypeName, AUnit: string; const ANames: TArray<string>;
+  out APrefixes: TArray<string>): TArray<TSyntaxNode>;
 var
-  Target: TEnumTarget;
-  Reason, OwnUnit, FileName, Text, UnitName: string;
-  SyncFiles: TArray<TSyncFile>;
-  SyncFile: TSyncFile;
-  Table: TEnumTable;
-  Names, Prefixes, Warnings, Preview: TArray<string>;
-  Repair: TEnumTableRepair;
-  Cases: TArray<TSyntaxNode>;
-  Completion: TCaseCompletionEdits;
-  Index, Places, TableCount, CaseCount: Integer;
-  Files: TArray<TFileEdits>;
-  Item: TFileEdits;
+  mNode, mFirst: TSyntaxNode;
+  mPrefix: string;
 begin
-  if not TEnumTables.Target(ATree, APosition, Target, Reason) then
+  Result := nil;
+  APrefixes := nil;
+  for mNode in AllCases(ASource.Tree) do
   begin
-    raise Fail('Nachziehen geht nicht: ' + Reason);
+    if CaseMatches(mNode, ATypeName, ANames, mPrefix, mFirst) and
+      SameText(ASource.Resolver.Resolve(ASource.Tree, ASource.FileName, mFirst.StartPos).UnitName, AUnit) then
+    begin
+      Result := Result + [mNode];
+      APrefixes := APrefixes + [mPrefix];
+    end;
   end;
-  OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
-  SyncFiles := nil;
-  Files := nil;
-  Warnings := nil;
-  Preview := nil;
-  Places := 0;
-  TableCount := 0;
-  CaseCount := 0;
+end;
+
+type
+  /// <summary>Ein Lauf von „Tabellen nachziehen“: sammelt die Dateien, ändert Tabellen und case-Anweisungen.
+  /// </summary>
+  TEnumSync = class
+  private
+    FResolver: TNameResolver;
+    FContext: TEnumTablesContext;
+    FTarget: TEnumTarget;
+    FOwnUnit: string;
+    FFiles: TArray<TSyncFile>;
+    FEdits: TArray<TFileEdits>;
+    FWarnings: TArray<string>;
+    FPreview: TArray<string>;
+    FPlaces: Integer;
+    FTableCount: Integer;
+    FCaseCount: Integer;
+    procedure AddFile(const AFileName, AText: string; ATree: TSyntaxTree; AOwnsTree: Boolean);
+    function MentionsTarget(const AText: string): Boolean;
+    function ReadsCandidate(const AFileName, AOwnFile: string; out AText: string): Boolean;
+    function BelongsToTarget(const ASource: TEnumSource; const ATable: TEnumTable): Boolean;
+    procedure SyncTables(AFile: TSyncFile; var AItem: TFileEdits);
+    procedure SyncCases(AFile: TSyncFile; var AItem: TFileEdits);
+    procedure SyncFile(AFile: TSyncFile);
+  public
+    constructor Create(AResolver: TNameResolver; const AContext: TEnumTablesContext; const ATarget: TEnumTarget;
+      const AOwnUnit: string);
+    destructor Destroy; override;
+    procedure Run(const ADocument: TEnumTablesDocument);
+    function Answer: TJSONObject;
+  end;
+
+constructor TEnumSync.Create(AResolver: TNameResolver; const AContext: TEnumTablesContext;
+  const ATarget: TEnumTarget; const AOwnUnit: string);
+begin
+  inherited Create;
+  FResolver := AResolver;
+  FContext := AContext;
+  FTarget := ATarget;
+  FOwnUnit := AOwnUnit;
+end;
+
+destructor TEnumSync.Destroy;
+var
+  mFile: TSyncFile;
+begin
+  for mFile in FFiles do
+  begin
+    mFile.Free;
+  end;
+  inherited;
+end;
+
+procedure TEnumSync.AddFile(const AFileName, AText: string; ATree: TSyntaxTree; AOwnsTree: Boolean);
+var
+  mFile: TSyncFile;
+begin
+  mFile := TSyncFile.Create;
+  FFiles := FFiles + [mFile];
+  mFile.FileName := AFileName;
+  mFile.Text := AText;
+  mFile.Tree := ATree;
+  mFile.OwnsTree := AOwnsTree;
+end;
+
+function TEnumSync.MentionsTarget(const AText: string): Boolean;
+begin
+  Result := ContainsText(AText, FTarget.TypeName) or ContainsText(AText, FTarget.Names[0]);
+end;
+
+function TEnumSync.ReadsCandidate(const AFileName, AOwnFile: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := not SameText(AFileName, AOwnFile) and MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr']) and
+    Assigned(FContext.ReadText) and FContext.ReadText(AFileName, AText) and MentionsTarget(AText);
+end;
+
+function TEnumSync.BelongsToTarget(const ASource: TEnumSource; const ATable: TEnumTable): Boolean;
+var
+  mNames: TArray<string>;
+  mUnit: string;
+begin
+  Result := SameText(Copy(ATable.IndexType.Name, LastDelimiter('.', ATable.IndexType.Name) + 1, MaxInt),
+    FTarget.TypeName) and IndexNames(ASource, FContext.Index, ATable, mNames, mUnit) and SameText(mUnit, FOwnUnit);
+end;
+
+procedure TEnumSync.SyncTables(AFile: TSyncFile; var AItem: TFileEdits);
+var
+  mSource: TEnumSource;
+  mTable: TEnumTable;
+  mRepair: TEnumTableRepair;
+  mWhere: string;
+begin
+  mSource := TEnumSource.Create(FResolver, AFile.Tree, AFile.FileName);
+  for mTable in TEnumTables.Tables(AFile.Tree) do
+  begin
+    // Die Elemente aus dem Baum der eigenen Unit: Er ist neuer als der Index.
+    if not BelongsToTarget(mSource, mTable) or not TEnumTables.Repair(AFile.Text, AFile.Tree, mTable.Value,
+      FTarget.Names, ValuesOf(mSource, mTable), mRepair) then
+    begin
+      Continue;
+    end;
+    AItem.Edits := AItem.Edits + mRepair.Edits;
+    Inc(FTableCount);
+    mWhere := Where(AFile.FileName, AFile.Text, mTable.Decl.StartOffset);
+    FPreview := FPreview + [Format('%s: %s: %s', [mWhere, mTable.Decl.Name, mRepair.Title])];
+    if mRepair.Uncertain then
+    begin
+      FWarnings := FWarnings + [Format('%s: %s', [mWhere, TEnumTables.UncertainNote])];
+    end;
+  end;
+end;
+
+procedure TEnumSync.SyncCases(AFile: TSyncFile; var AItem: TFileEdits);
+var
+  mCases: TArray<TSyntaxNode>;
+  mPrefixes: TArray<string>;
+  mCompletion: TCaseCompletionEdits;
+  mIndex: Integer;
+begin
+  mCases := CaseStatements(TEnumSource.Create(FResolver, AFile.Tree, AFile.FileName), FTarget.TypeName, FOwnUnit,
+    FTarget.Names, mPrefixes);
+  for mIndex := 0 to High(mCases) do
+  begin
+    if TCaseCompletion.Complete(AFile.Text, AFile.Tree, mCases[mIndex], FTarget.Names, mPrefixes[mIndex],
+      mCompletion) then
+    begin
+      AItem.Edits := AItem.Edits + mCompletion.Edits;
+      Inc(FCaseCount);
+      FPreview := FPreview + [Format('%s: case: %d Zweige ergänzt', [Where(AFile.FileName, AFile.Text,
+        mCases[mIndex].StartOffset), mCompletion.Count])];
+    end;
+  end;
+end;
+
+procedure TEnumSync.SyncFile(AFile: TSyncFile);
+var
+  mItem: TFileEdits;
+begin
+  mItem := Default(TFileEdits);
+  mItem.FileName := AFile.FileName;
+  FResolver.PinTree(AFile.Tree, AFile.FileName);
   try
-    SyncFile := TSyncFile.Create;
-    SyncFile.FileName := AFileName;
-    SyncFile.Text := AText;
-    SyncFile.Tree := ATree;
-    SyncFiles := SyncFiles + [SyncFile];
-    // Andere Units nur, wenn ihr Text den Typ- oder einen Elementnamen nennt.
-    for FileName in AContext.Files do
-    begin
-      if not SameText(FileName, AFileName) and MatchText(ExtractFileExt(FileName), ['.pas', '.dpr']) and
-        Assigned(AContext.ReadText) and AContext.ReadText(FileName, Text) and (ContainsText(Text, Target.TypeName) or
-        ContainsText(Text, Target.Names[0])) then
-      begin
-        SyncFile := TSyncFile.Create;
-        SyncFiles := SyncFiles + [SyncFile];
-        SyncFile.FileName := FileName;
-        SyncFile.Text := Text;
-        SyncFile.Tree := TSyntaxTreeCache.Parse(Text);
-        SyncFile.OwnsTree := True;
-      end;
-    end;
-    for SyncFile in SyncFiles do
-    begin
-      Item := Default(TFileEdits);
-      Item.FileName := SyncFile.FileName;
-      AResolver.PinTree(SyncFile.Tree, SyncFile.FileName);
-      try
-        for Table in TEnumTables.Tables(SyncFile.Tree) do
-        begin
-          if not SameText(Copy(Table.IndexType.Name, LastDelimiter('.', Table.IndexType.Name) + 1, MaxInt),
-            Target.TypeName) or not IndexNames(AResolver, AContext.Index, SyncFile.Tree, SyncFile.FileName, Table,
-            Names, UnitName) or not SameText(UnitName, OwnUnit) then
-          begin
-            Continue;
-          end;
-          // Die Elemente aus dem Baum der eigenen Unit: Er ist neuer als der Index.
-          if not TEnumTables.Repair(SyncFile.Text, SyncFile.Tree, Table.Value, Target.Names,
-            ValuesOf(AResolver, SyncFile.Tree, SyncFile.FileName, Table), Repair) then
-          begin
-            Continue;
-          end;
-          Item.Edits := Item.Edits + Repair.Edits;
-          Inc(TableCount);
-          Preview := Preview + [Format('%s: %s: %s', [Where(SyncFile.FileName, SyncFile.Text,
-            Table.Decl.StartOffset), Table.Decl.Name, Repair.Title])];
-          if Repair.Uncertain then
-          begin
-            Warnings := Warnings + [Format('%s: %s', [Where(SyncFile.FileName, SyncFile.Text,
-              Table.Decl.StartOffset), TEnumTables.UncertainNote])];
-          end;
-        end;
-        Cases := CaseStatements(AResolver, SyncFile.Tree, SyncFile.FileName, Target.TypeName, OwnUnit,
-          Target.Names, Prefixes);
-        for Index := 0 to High(Cases) do
-        begin
-          if TCaseCompletion.Complete(SyncFile.Text, SyncFile.Tree, Cases[Index], Target.Names, Prefixes[Index],
-            Completion) then
-          begin
-            Item.Edits := Item.Edits + Completion.Edits;
-            Inc(CaseCount);
-            Preview := Preview + [Format('%s: case: %d Zweige ergänzt', [Where(SyncFile.FileName, SyncFile.Text,
-              Cases[Index].StartOffset), Completion.Count])];
-          end;
-        end;
-      finally
-        AResolver.UnpinTree;
-      end;
-      if Item.Edits <> nil then
-      begin
-        Files := Files + [Item];
-        Inc(Places, Length(Item.Edits));
-      end;
-    end;
+    SyncTables(AFile, mItem);
+    SyncCases(AFile, mItem);
   finally
-    for SyncFile in SyncFiles do
+    FResolver.UnpinTree;
+  end;
+  if mItem.Edits <> nil then
+  begin
+    FEdits := FEdits + [mItem];
+    Inc(FPlaces, Length(mItem.Edits));
+  end;
+end;
+
+procedure TEnumSync.Run(const ADocument: TEnumTablesDocument);
+var
+  mFileName, mText: string;
+  mFile: TSyncFile;
+begin
+  AddFile(ADocument.FileName, ADocument.Text, ADocument.Tree, False);
+  // Andere Units nur, wenn ihr Text den Typ- oder einen Elementnamen nennt.
+  for mFileName in FContext.Files do
+  begin
+    if ReadsCandidate(mFileName, ADocument.FileName, mText) then
     begin
-      SyncFile.Free;
+      AddFile(mFileName, mText, TSyntaxTreeCache.Parse(mText), True);
     end;
   end;
-  Result := AnswerJson(Files, Warnings, Places, Format(TEnumTables.SyncTitle, [Target.TypeName]),
-    Format('%s: %d Tabellen und %d case-Anweisungen in %d Dateien.', [Target.TypeName, TableCount, CaseCount,
-    Length(Files)]) + sLineBreak + string.Join(sLineBreak, Preview));
+  for mFile in FFiles do
+  begin
+    SyncFile(mFile);
+  end;
+end;
+
+function TEnumSync.Answer: TJSONObject;
+begin
+  Result := AnswerJson(FEdits, FWarnings, FPlaces, Format(TEnumTables.SyncTitle, [FTarget.TypeName]),
+    Format('%s: %d Tabellen und %d case-Anweisungen in %d Dateien.', [FTarget.TypeName, FTableCount, FCaseCount,
+    Length(FEdits)]) + sLineBreak + string.Join(sLineBreak, FPreview));
+end;
+
+class function TLspEnumTables.Sync(AResolver: TNameResolver; const ADocument: TEnumTablesDocument;
+  const AContext: TEnumTablesContext): TJSONObject;
+var
+  mTarget: TEnumTarget;
+  mReason: string;
+  mSync: TEnumSync;
+begin
+  if not TEnumTables.Target(ADocument.Tree, ADocument.Position, mTarget, mReason) then
+  begin
+    raise Fail('Nachziehen geht nicht: ' + mReason);
+  end;
+  mSync := TEnumSync.Create(AResolver, AContext, mTarget, TUsesClauses.OwnName(ADocument.Tree.Tokens));
+  try
+    mSync.Run(ADocument);
+    Result := mSync.Answer;
+  finally
+    mSync.Free;
+  end;
 end;
 
 end.

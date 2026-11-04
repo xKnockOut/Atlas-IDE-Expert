@@ -533,7 +533,7 @@ function TShellStructureRefactorings.ExtractInterface(const AArguments: TJSONArr
 var
   mUri: string;
   mDocument: ITextDocument;
-  mResolver: TNameResolver;
+  mContext: TExtractInterfaceContext;
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, {name, unit, members}.
@@ -541,13 +541,13 @@ begin
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).ExtractInterface, cExtractInterfaceOff);
   Require(AArguments, 3, cExtractMissing);
-  mResolver := NewResolver;
+  mContext := ExtractInterfaceContextOf(mUri);
+  mContext.Resolver := NewResolver;
   try
-    mAnswer := TLspExtractInterface.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      AArguments.Items[2], ExtractInterfaceContextOf(mUri));
+    mAnswer := TLspExtractInterface.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
+      mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2], mContext);
   finally
-    mResolver.Free;
+    mContext.Resolver.Free;
   end;
   Log(Format('Interface herauslösen: %d Methoden', [Number(mAnswer, 'methods')]));
   Result := mAnswer;
@@ -599,7 +599,7 @@ function TShellStructureRefactorings.ExtractSuperclass(const AArguments: TJSONAr
 var
   mUri: string;
   mDocument: ITextDocument;
-  mResolver: TNameResolver;
+  mContext: TExtractSuperclassContext;
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, {name, unit, members, abstract}.
@@ -607,13 +607,13 @@ begin
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).ExtractSuperclass, cExtractSuperclassOff);
   Require(AArguments, 3, cExtractMissing);
-  mResolver := NewResolver;
+  mContext := ExtractSuperclassContextOf(mUri);
+  mContext.Resolver := NewResolver;
   try
-    mAnswer := TLspExtractSuperclass.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
-      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
-      AArguments.Items[2], ExtractSuperclassContextOf(mUri));
+    mAnswer := TLspExtractSuperclass.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
+      mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2], mContext);
   finally
-    mResolver.Free;
+    mContext.Resolver.Free;
   end;
   Log(Format('Basisklasse herauslösen: %d Mitglieder', [Number(mAnswer, 'moved')]));
   Result := mAnswer;
