@@ -209,6 +209,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeKinds.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeMismatch.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.Tests.pas',
   Atlas.Common.Rules.Builtin.Constants.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Tests.pas',
+  Atlas.Common.Rules.Builtin.Constants.Types.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.Types.Tests.pas',
   Atlas.Common.Rules.Builtin.Database.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Tests.pas',
   Atlas.Common.Rules.Builtin.Database.Statements.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.Statements.Tests.pas',
   Atlas.Common.Rules.Builtin.DllExports.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DllExports.Tests.pas',
