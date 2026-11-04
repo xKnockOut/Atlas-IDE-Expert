@@ -80,7 +80,9 @@ var
 begin
   SkipSpace(APos);
   if APos > Length(Text) then
+  begin
     Exit;
+  end;
   if Text[APos] = '"' then
   begin
     SkipString(APos);
@@ -121,7 +123,9 @@ begin
   end;
   // Zahl, true, false, null.
   while (APos <= Length(Text)) and not CharInSet(Text[APos], [',', '}', ']', ' ', #9, #10, #13, '/']) do
+  begin
     Inc(APos);
+  end;
 end;
 
 function TScanner.ReadKey(var APos: Integer): string;
@@ -134,9 +138,13 @@ begin
   Value := TJSONObject.ParseJSONValue(Copy(Text, Start, APos - Start));
   try
     if Value is TJSONString then
-      Result := TJSONString(Value).Value
+    begin
+      Result := TJSONString(Value).Value;
+    end
     else
+    begin
       Result := Copy(Text, Start + 1, APos - Start - 2);
+    end;
   finally
     Value.Free;
   end;
@@ -160,7 +168,9 @@ begin
   begin
     SkipSpace(Pos);
     if Pos > Length(Text) then
+    begin
       Break;
+    end;
     if Text[Pos] = '}' then
     begin
       AClose := Pos;
@@ -172,12 +182,16 @@ begin
       Continue;
     end;
     if Text[Pos] <> '"' then
+    begin
       Break;
+    end;
     Member.KeyStart := Pos;
     Key := ReadKey(Pos);
     SkipSpace(Pos);
     if (Pos <= Length(Text)) and (Text[Pos] = ':') then
+    begin
       Inc(Pos);
+    end;
     SkipSpace(Pos);
     Member.ValueStart := Pos;
     SkipValue(Pos);
@@ -189,10 +203,14 @@ begin
       Result := True;
     end
     else if not Result then
+    begin
       APrevious := Member;
+    end;
   end;
   if Result and (APrevious.KeyStart = 0) then
+  begin
     APrevious.KeyStart := -1;
+  end;
 end;
 
 function TScanner.LineIndent(APos: Integer): string;
@@ -201,10 +219,14 @@ var
 begin
   Start := APos;
   while (Start > 1) and not CharInSet(Text[Start - 1], [#10, #13]) do
+  begin
     Dec(Start);
+  end;
   Stop := Start;
   while (Stop <= Length(Text)) and CharInSet(Text[Stop], [' ', #9]) do
+  begin
     Inc(Stop);
+  end;
   Result := Copy(Text, Start, Stop - Start);
 end;
 
@@ -222,7 +244,9 @@ end;
 function Nested(const ASegments: TArray<string>; AFrom: Integer; const AJson, AIndent, AStep, ALineBreak: string): string;
 begin
   if AFrom = High(ASegments) then
+  begin
     Exit(TAtlasJsonText.Quote(ASegments[AFrom]) + ': ' + AJson);
+  end;
   Result := TAtlasJsonText.Quote(ASegments[AFrom]) + ': {' + ALineBreak + AIndent + AStep +
     Nested(ASegments, AFrom + 1, AJson, AIndent + AStep, AStep, ALineBreak) + ALineBreak + AIndent + '}';
 end;
@@ -253,12 +277,18 @@ var
 begin
   Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(StripComments(AText));
   if Value is TJSONObject then
-    Result := TJSONObject(Value)
+  begin
+    Result := TJSONObject(Value);
+  end
   else
+  begin
     Value.Free;
+  end;
 end;
 
 class function TAtlasJsonText.ValueAt(ARoot: TJSONObject; const APath: string): string;
@@ -271,10 +301,14 @@ begin
   for Segment in Segments(APath) do
   begin
     if not (Current is TJSONObject) then
+    begin
       Exit;
+    end;
     Current := TJSONObject(Current).GetValue(Segment);
     if Current = nil then
+    begin
       Exit;
+    end;
   end;
   Result := Current.ToJSON;
 end;
@@ -291,20 +325,26 @@ var
 begin
   Result := AText;
   if Trim(Result) = '' then
+  begin
     Result := '{' + sLineBreak + '}' + sLineBreak;
+  end;
   Scanner.Text := Result;
   LB := Scanner.LineBreak;
   Parts := Segments(APath);
   Open := 1;
   Scanner.SkipSpace(Open);
   if (Open > Length(Result)) or (Result[Open] <> '{') then
+  begin
     raise EArgumentException.Create('atlas.json beginnt nicht mit einem Objekt');
+  end;
   for Index := 0 to High(Parts) do
   begin
     if Scanner.Find(Open, Parts[Index], Member, Previous, Close, Count) then
     begin
       if Index = High(Parts) then
+      begin
         Exit(Copy(Result, 1, Member.ValueStart - 1) + AJson + Copy(Result, Member.ValueStop, MaxInt));
+      end;
       if Result[Member.ValueStart] = '{' then
       begin
         Open := Member.ValueStart;
@@ -317,7 +357,9 @@ begin
     end;
     // Fehlt: ans Ende des Objekts.
     if Close < 0 then
+    begin
       raise EArgumentException.Create('atlas.json: Objekt nicht geschlossen');
+    end;
     if Count > 0 then
     begin
       // Letztes Glied suchen (kein Schlüssel heißt #0): Einrückung und Einfügestelle.
@@ -328,7 +370,9 @@ begin
       Pos := Dummy.ValueStop;
       Scanner.SkipSpace(Pos);
       if (Pos <= Length(Result)) and (Result[Pos] = ',') then
+      begin
         Exit(Copy(Result, 1, Pos) + LB + Indent + Insert + Copy(Result, Pos + 1, MaxInt));
+      end;
       Exit(Copy(Result, 1, Dummy.ValueStop - 1) + ',' + LB + Indent + Insert + Copy(Result, Dummy.ValueStop, MaxInt));
     end;
     Indent := Scanner.LineIndent(Open);
@@ -344,10 +388,16 @@ var
 begin
   Result := AText;
   for Change in AChanges do
+  begin
     if Change.Value = '' then
-      Result := Remove(Result, Change.Key)
+    begin
+      Result := Remove(Result, Change.Key);
+    end
     else
+    begin
       Result := SetValue(Result, Change.Key, Change.Value);
+    end;
+  end;
 end;
 
 class function TAtlasJsonText.Remove(const AText, APath: string): string;
@@ -363,15 +413,21 @@ begin
   Open := 1;
   Scanner.SkipSpace(Open);
   if (Open > Length(AText)) or (AText[Open] <> '{') then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Parts) do
   begin
     if not Scanner.Find(Open, Parts[Index], Member, Previous, Close, Count) then
+    begin
       Exit;
+    end;
     if Index < High(Parts) then
     begin
       if AText[Member.ValueStart] <> '{' then
+      begin
         Exit;
+      end;
       Open := Member.ValueStart;
       Continue;
     end;
@@ -382,13 +438,21 @@ begin
       Scanner.SkipSpace(Comma);
       LineStart := Member.KeyStart;
       while (LineStart > 1) and CharInSet(AText[LineStart - 1], [' ', #9]) do
+      begin
         Dec(LineStart);
+      end;
       if (LineStart > 1) and (AText[LineStart - 1] = #10) then
+      begin
         Dec(LineStart);
+      end;
       if (LineStart > 1) and (AText[LineStart - 1] = #13) then
+      begin
         Dec(LineStart);
+      end;
       if (Comma > Length(AText)) or (AText[Comma] <> ',') or (LineStart <= Comma) then
+      begin
         Exit(Copy(AText, 1, Previous.ValueStop - 1) + Copy(AText, Member.ValueStop, MaxInt));
+      end;
       Exit(Copy(AText, 1, Comma - 1) + Copy(AText, Comma + 1, LineStart - Comma - 1) +
         Copy(AText, Member.ValueStop, MaxInt));
     end;

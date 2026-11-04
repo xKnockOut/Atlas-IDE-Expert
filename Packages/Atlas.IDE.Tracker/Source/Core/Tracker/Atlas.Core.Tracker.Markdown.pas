@@ -118,6 +118,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Math,
   Atlas.Text.Chars,
   Atlas.Text.Entities;
 
@@ -305,62 +306,79 @@ begin
   end;
 end;
 
+/// <summary>Zeichen AIndex fehlt oder ist ein Leerzeichen bzw. Tabulator (Ende einer Listenmarke).</summary>
+function EndsMarker(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (Length(AText) < AIndex) or CharInSet(AText[AIndex], [' ', #9]);
+end;
+
+/// <summary>Marke am Anfang von AText ("•" für -, *, + bzw. "1." für 1. und 1)) und der Text danach.</summary>
+function ListMarkerOf(const AText: string; out AMarker, ARest: string): Boolean;
+var
+  mDigits: Integer;
+begin
+  Result := False;
+  if CharInSet(AText[1], ['-', '*', '+']) then
+  begin
+    Result := EndsMarker(AText, 2);
+    AMarker := cBullet;
+    ARest := Trim(Copy(AText, 2, MaxInt));
+    Exit;
+  end;
+  mDigits := 0;
+  while (mDigits < Length(AText)) and (mDigits < 9) and CharInSet(AText[mDigits + 1], ['0'..'9']) do
+  begin
+    Inc(mDigits);
+  end;
+  if (mDigits = 0) or (mDigits >= Length(AText)) or not CharInSet(AText[mDigits + 1], ['.', ')']) then
+  begin
+    Exit;
+  end;
+  Result := EndsMarker(AText, mDigits + 2);
+  AMarker := Copy(AText, 1, mDigits) + '.';
+  ARest := Trim(Copy(AText, mDigits + 2, MaxInt));
+end;
+
+/// <summary>Aufgabenliste: "- [ ] offen", "- [x] erledigt", auch nummeriert (#1273); AText ohne Kästchen.
+/// </summary>
+function TaskOf(var AText: string): TAtlasMarkdownTask;
+begin
+  Result := TAtlasMarkdownTask.None;
+  if StartsText('[ ] ', AText + ' ') then
+  begin
+    Result := TAtlasMarkdownTask.Open;
+  end
+  else if StartsText('[x] ', AText + ' ') then
+  begin
+    Result := TAtlasMarkdownTask.Done;
+  end;
+  if Result <> TAtlasMarkdownTask.None then
+  begin
+    AText := Trim(Copy(AText, 4, MaxInt));
+  end;
+end;
+
 /// <summary>Listenpunkt: AMarker "•" bzw. "1.", ATask das Aufgabenkästchen davor (Text ohne Kästchen).</summary>
 function ListItemOf(const ALine: string; out AIndent: Integer; out AMarker, AText: string;
   out ATask: TAtlasMarkdownTask): Boolean; overload;
 var
   mText: string;
-  mDigits: Integer;
 begin
-  Result := False;
   AMarker := '';
   AText := '';
   ATask := TAtlasMarkdownTask.None;
   AIndent := Indent(ALine);
   mText := TrimLeft(ALine);
-  if mText = '' then
+  Result := (mText <> '') and ListMarkerOf(mText, AMarker, AText);
+  if Result then
   begin
-    Exit;
-  end;
-  if CharInSet(mText[1], ['-', '*', '+']) then
-  begin
-    if (Length(mText) > 1) and (mText[2] <> ' ') and (mText[2] <> #9) then
-    begin
-      Exit;
-    end;
-    AMarker := cBullet;
-    AText := Trim(Copy(mText, 2, MaxInt));
+    ATask := TaskOf(AText);
   end
   else
   begin
-    mDigits := 0;
-    while (mDigits < Length(mText)) and (mDigits < 9) and CharInSet(mText[mDigits + 1], ['0'..'9']) do
-    begin
-      Inc(mDigits);
-    end;
-    if (mDigits = 0) or (mDigits >= Length(mText)) or not CharInSet(mText[mDigits + 1], ['.', ')']) then
-    begin
-      Exit;
-    end;
-    if (Length(mText) > mDigits + 1) and (mText[mDigits + 2] <> ' ') and (mText[mDigits + 2] <> #9) then
-    begin
-      Exit;
-    end;
-    AMarker := Copy(mText, 1, mDigits) + '.';
-    AText := Trim(Copy(mText, mDigits + 2, MaxInt));
+    AMarker := '';
+    AText := '';
   end;
-  // Aufgabenliste: "- [ ] offen", "- [x] erledigt", auch nummeriert (#1273).
-  if StartsText('[ ] ', AText + ' ') then
-  begin
-    ATask := TAtlasMarkdownTask.Open;
-    AText := Trim(Copy(AText, 4, MaxInt));
-  end
-  else if StartsText('[x] ', AText + ' ') then
-  begin
-    ATask := TAtlasMarkdownTask.Done;
-    AText := Trim(Copy(AText, 4, MaxInt));
-  end;
-  Result := True;
 end;
 
 function ListItemOf(const ALine: string; out AIndent: Integer; out AMarker, AText: string): Boolean; overload;
@@ -370,58 +388,73 @@ begin
   Result := ListItemOf(ALine, AIndent, AMarker, AText, mTask);
 end;
 
+/// <summary>AText ohne "|" am Anfang und ohne unmaskiertes "|" am Ende.</summary>
+function RowBody(const ALine: string): string;
+begin
+  Result := Trim(ALine);
+  if (Result <> '') and (Result[1] = '|') then
+  begin
+    Delete(Result, 1, 1);
+  end;
+  if (Result <> '') and (Result[Length(Result)] = '|') and
+    ((Length(Result) < 2) or (Result[Length(Result) - 1] <> '\')) then
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
+type
+  /// <summary>Zellen einer Tabellenzeile: "\|" ist ein Zeichen, in `Code` trennt "|" nicht.</summary>
+  TRowSplitter = record
+    Cells: TArray<string>;
+    Cell: string;
+    Escaped: Boolean;
+    InCode: Boolean;
+    procedure Take(AChar: Char);
+  end;
+
+procedure TRowSplitter.Take(AChar: Char);
+begin
+  if Escaped then
+  begin
+    if AChar <> '|' then
+    begin
+      Cell := Cell + '\';
+    end;
+    Cell := Cell + AChar;
+    Escaped := False;
+  end
+  else if AChar = '\' then
+  begin
+    Escaped := True;
+  end
+  else if (AChar = '|') and not InCode then
+  begin
+    Cells := Cells + [Trim(Cell)];
+    Cell := '';
+  end
+  else
+  begin
+    if AChar = '`' then
+    begin
+      InCode := not InCode;
+    end;
+    Cell := Cell + AChar;
+  end;
+end;
+
 function SplitRow(const ALine: string): TArray<string>;
 var
-  mText, mCell: string;
-  mIndex: Integer;
-  mEscaped, mInCode: Boolean;
+  mSplitter: TRowSplitter;
+  mChar: Char;
 begin
-  Result := nil;
-  mText := Trim(ALine);
-  if (mText <> '') and (mText[1] = '|') then
+  mSplitter := Default(TRowSplitter);
+  mSplitter.Cells := nil;
+  for mChar in RowBody(ALine) do
   begin
-    Delete(mText, 1, 1);
+    mSplitter.Take(mChar);
   end;
-  if (mText <> '') and (mText[Length(mText)] = '|') and ((Length(mText) < 2) or (mText[Length(mText) - 1] <> '\'))
-    then
-  begin
-    Delete(mText, Length(mText), 1);
-  end;
-  mCell := '';
-  mEscaped := False;
-  mInCode := False;
-  for mIndex := 1 to Length(mText) do
-  begin
-    if mEscaped then
-    begin
-      if mText[mIndex] <> '|' then
-      begin
-        mCell := mCell + '\';
-      end;
-      mCell := mCell + mText[mIndex];
-      mEscaped := False;
-      Continue;
-    end;
-    if mText[mIndex] = '\' then
-    begin
-      mEscaped := True;
-      Continue;
-    end;
-    if mText[mIndex] = '`' then
-    begin
-      mInCode := not mInCode;
-    end;
-    if (mText[mIndex] = '|') and not mInCode then
-    begin
-      Result := Result + [Trim(mCell)];
-      mCell := '';
-    end
-    else
-    begin
-      mCell := mCell + mText[mIndex];
-    end;
-  end;
-  Result := Result + [Trim(mCell)];
+  Result := mSplitter.Cells + [Trim(mSplitter.Cell)];
 end;
 
 function IsTableSeparator(const ALine: string): Boolean;
@@ -500,44 +533,44 @@ begin
   end;
 end;
 
+/// <summary>Zeile ist genau ein &lt;img … src=…&gt;.</summary>
+function HtmlImageOf(const AText: string; out AAlt, AUrl: string): Boolean;
+begin
+  AAlt := '';
+  AUrl := '';
+  Result := StartsText('<img', AText) and (AText[Length(AText)] = '>') and (Pos('>', AText) = Length(AText));
+  if Result then
+  begin
+    AUrl := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(AText, 'src'));
+    AAlt := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(AText, 'alt'));
+    Result := AUrl <> '';
+  end;
+end;
+
 /// <summary>Zeile ist genau ein Bild: ![alt](url) (YouTrack auch mit {width=…}) bzw. &lt;img … src=…&gt;.</summary>
 function ImageLineOf(const ALine: string; out AAlt, AUrl: string): Boolean;
 var
   mText: string;
-  mClose, mOpen, mStop: Integer;
+  mClose, mStop: Integer;
 begin
-  Result := False;
-  AAlt := '';
-  AUrl := '';
   mText := Trim(ALine);
-  if StartsText('<img', mText) and (mText[Length(mText)] = '>') and (Pos('>', mText) = Length(mText)) then
+  if HtmlImageOf(mText, AAlt, AUrl) or not StartsStr('![', mText) then
   begin
-    AUrl := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(mText, 'src'));
-    AAlt := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(mText, 'alt'));
     Exit(AUrl <> '');
   end;
-  if not StartsStr('![', mText) then
-  begin
-    Exit;
-  end;
   mClose := Pos('](', mText);
-  if mClose = 0 then
+  mStop := 0;
+  if mClose > 0 then
   begin
-    Exit;
-  end;
-  mOpen := mClose + 1;
-  mStop := PosEx(')', mText, mOpen + 1);
-  if mStop = 0 then
-  begin
-    Exit;
+    mStop := PosEx(')', mText, mClose + 2);
   end;
   // Danach nur noch Attribute in geschweiften Klammern.
-  if (mStop < Length(mText)) and ((mText[mStop + 1] <> '{') or (mText[Length(mText)] <> '}')) then
+  if (mStop = 0) or ((mStop < Length(mText)) and ((mText[mStop + 1] <> '{') or (mText[Length(mText)] <> '}'))) then
   begin
-    Exit;
+    Exit(False);
   end;
   AAlt := Copy(mText, 3, mClose - 3);
-  AUrl := Trim(Copy(mText, mOpen + 1, mStop - mOpen - 1));
+  AUrl := Trim(Copy(mText, mClose + 2, mStop - mClose - 2));
   // Titel nach der Adresse: ![a](bild.png "Titel").
   if Pos(' ', AUrl) > 0 then
   begin
@@ -575,191 +608,317 @@ begin
     or IsTableStart(ALines, AIndex) or ImageLineOf(ALines[AIndex], mText, mMarker);
 end;
 
+/// <summary>"☐" bzw. "☑" bei Aufgaben, sonst die Listenmarke.</summary>
+function TaskMarker(ATask: TAtlasMarkdownTask; const AListMarker: string): string;
+begin
+  case ATask of
+    TAtlasMarkdownTask.Open:
+      Result := cTaskOpen;
+    TAtlasMarkdownTask.Done:
+      Result := cTaskDone;
+  else
+    Result := AListMarker;
+  end;
+end;
+
+/// <summary>Bis zu ACount Leerzeichen am Anfang entfernen.</summary>
+function Dedented(const ALine: string; ACount: Integer): string;
+var
+  mRemoved: Integer;
+begin
+  Result := ALine;
+  mRemoved := 0;
+  while (mRemoved < ACount) and (Result <> '') and (Result[1] = ' ') do
+  begin
+    Delete(Result, 1, 1);
+    Inc(mRemoved);
+  end;
+end;
+
+procedure AppendLine(var ACode: string; const ALine: string);
+begin
+  if ACode <> '' then
+  begin
+    ACode := ACode + #10;
+  end;
+  ACode := ACode + ALine;
+end;
+
+type
+  /// <summary>Zerlegt die Zeilen in Blöcke; jedes Try… liest einen Block ab Index und liefert True, wenn er dort
+  /// beginnt.</summary>
+  TBlockReader = record
+    Lines: TArray<string>;
+    Index: Integer;
+    /// <summary>Einzüge der offenen Liste.</summary>
+    Indents: TArray<Integer>;
+    Blocks: TArray<TAtlasMarkdownBlock>;
+    function CurrentLine: string;
+    function HasLine: Boolean;
+    procedure Add(const ABlock: TAtlasMarkdownBlock);
+    function LevelOf(AIndent: Integer): Integer;
+    function TryFence: Boolean;
+    function TryHeading: Boolean;
+    function TryRule: Boolean;
+    function TryQuote: Boolean;
+    function TryBullet: Boolean;
+    function TryTable: Boolean;
+    function TryImage: Boolean;
+    function TryIndentedCode: Boolean;
+    procedure ReadParagraph;
+    function TryStructured: Boolean;
+    function TryListLike: Boolean;
+    procedure Step;
+  end;
+
+function TBlockReader.CurrentLine: string;
+begin
+  Result := Lines[Index];
+end;
+
+function TBlockReader.HasLine: Boolean;
+begin
+  Result := Index <= High(Lines);
+end;
+
+procedure TBlockReader.Add(const ABlock: TAtlasMarkdownBlock);
+begin
+  Blocks := Blocks + [ABlock];
+end;
+
+function TBlockReader.LevelOf(AIndent: Integer): Integer;
+begin
+  // Ebene aus den Einzügen der offenen Liste: tiefer eingerückt = eine Ebene tiefer.
+  while (Length(Indents) > 0) and (Indents[High(Indents)] > AIndent) do
+  begin
+    SetLength(Indents, Length(Indents) - 1);
+  end;
+  if (Length(Indents) = 0) or (Indents[High(Indents)] < AIndent) then
+  begin
+    Indents := Indents + [AIndent];
+  end;
+  Result := Min(Length(Indents), TAtlasTrackerMarkdown.MaxListLevel);
+end;
+
+/// <summary>Codeblock mit Zaun; ohne schließenden Zaun bis zum Ende.</summary>
+function TBlockReader.TryFence: Boolean;
+var
+  mFence, mLanguage, mCode: string;
+  mBase: Integer;
+  mBlock: TAtlasMarkdownBlock;
+begin
+  Result := FenceOf(CurrentLine, mFence, mLanguage);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mBase := Indent(CurrentLine);
+  mCode := '';
+  Inc(Index);
+  while HasLine and not ClosesFence(CurrentLine, mFence) do
+  begin
+    // Einzug des Zauns entfernen.
+    AppendLine(mCode, Dedented(CurrentLine, mBase));
+    Inc(Index);
+  end;
+  Inc(Index);
+  mBlock := NewBlock(TAtlasMarkdownBlockKind.Code, mCode);
+  mBlock.Info := mLanguage;
+  Add(mBlock);
+end;
+
+function TBlockReader.TryHeading: Boolean;
+var
+  mLevel: Integer;
+  mText: string;
+  mBlock: TAtlasMarkdownBlock;
+begin
+  Result := HeadingOf(CurrentLine, mLevel, mText);
+  if Result then
+  begin
+    mBlock := NewBlock(TAtlasMarkdownBlockKind.Heading, mText);
+    mBlock.Level := mLevel;
+    Add(mBlock);
+    Inc(Index);
+  end;
+end;
+
+/// <summary>Vor den Listen: "- - -" und "***" sind Trennlinien.</summary>
+function TBlockReader.TryRule: Boolean;
+begin
+  Result := IsRule(CurrentLine);
+  if Result then
+  begin
+    Add(NewBlock(TAtlasMarkdownBlockKind.Rule, ''));
+    Inc(Index);
+  end;
+end;
+
+function TBlockReader.TryQuote: Boolean;
+var
+  mText, mCode: string;
+begin
+  Result := QuoteOf(CurrentLine, mText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mCode := mText;
+  Inc(Index);
+  while HasLine and QuoteOf(CurrentLine, mText) do
+  begin
+    mCode := mCode + #10 + mText;
+    Inc(Index);
+  end;
+  Add(NewBlock(TAtlasMarkdownBlockKind.Quote, Trim(mCode)));
+end;
+
+function TBlockReader.TryBullet: Boolean;
+var
+  mIndent: Integer;
+  mMarker, mText: string;
+  mTask: TAtlasMarkdownTask;
+  mBlock: TAtlasMarkdownBlock;
+begin
+  Result := ListItemOf(CurrentLine, mIndent, mMarker, mText, mTask);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mBlock := NewBlock(TAtlasMarkdownBlockKind.Bullet, mText);
+  mBlock.ListMarker := mMarker;
+  mBlock.Task := mTask;
+  mBlock.Marker := TaskMarker(mTask, mMarker);
+  mBlock.Level := LevelOf(mIndent);
+  mBlock.Line := Index;
+  Inc(Index);
+  // Fortsetzungszeilen: eingerückt, kein neuer Punkt, kein anderer Block.
+  while HasLine and not IsBlank(CurrentLine) and (Indent(CurrentLine) > mIndent) and
+    not StartsBlock(Lines, Index) do
+  begin
+    mBlock.Text := mBlock.Text + #10 + Trim(CurrentLine);
+    Inc(Index);
+  end;
+  mBlock.LastLine := Index - 1;
+  Add(mBlock);
+end;
+
+function TBlockReader.TryTable: Boolean;
+var
+  mBlock: TAtlasMarkdownBlock;
+begin
+  Result := IsTableStart(Lines, Index);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mBlock := NewBlock(TAtlasMarkdownBlockKind.Table, '');
+  mBlock.Rows := TArray<TArray<string>>.Create(SplitRow(CurrentLine));
+  Inc(Index, 2);
+  while HasLine and not IsBlank(CurrentLine) and (Pos('|', CurrentLine) > 0) do
+  begin
+    mBlock.Rows := mBlock.Rows + [SplitRow(CurrentLine)];
+    Inc(Index);
+  end;
+  Add(mBlock);
+end;
+
+function TBlockReader.TryImage: Boolean;
+var
+  mText, mUrl: string;
+  mBlock: TAtlasMarkdownBlock;
+begin
+  Result := ImageLineOf(CurrentLine, mText, mUrl);
+  if Result then
+  begin
+    mBlock := NewBlock(TAtlasMarkdownBlockKind.Image, mText);
+    mBlock.Info := mUrl;
+    Add(mBlock);
+    Inc(Index);
+  end;
+end;
+
+/// <summary>Eingerückter Code (vier Leerzeichen) außerhalb von Absätzen.</summary>
+function TBlockReader.TryIndentedCode: Boolean;
+var
+  mCode: string;
+begin
+  Result := Indent(CurrentLine) >= 4;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mCode := '';
+  while HasLine and (IsBlank(CurrentLine) or (Indent(CurrentLine) >= 4)) do
+  begin
+    AppendLine(mCode, Copy(CurrentLine, 5, MaxInt));
+    Inc(Index);
+  end;
+  Add(NewBlock(TAtlasMarkdownBlockKind.Code, TrimRight(mCode)));
+end;
+
+/// <summary>Absatz bis zur Leerzeile oder bis zu einem anderen Block.</summary>
+procedure TBlockReader.ReadParagraph;
+var
+  mCode: string;
+begin
+  mCode := Trim(CurrentLine);
+  Inc(Index);
+  while HasLine and not IsBlank(CurrentLine) and not StartsBlock(Lines, Index) do
+  begin
+    mCode := mCode + #10 + Trim(CurrentLine);
+    Inc(Index);
+  end;
+  Add(NewBlock(TAtlasMarkdownBlockKind.Paragraph, mCode));
+end;
+
+function TBlockReader.TryStructured: Boolean;
+begin
+  Result := TryFence or TryHeading or TryRule or TryQuote;
+end;
+
+function TBlockReader.TryListLike: Boolean;
+begin
+  Result := TryBullet or TryTable or TryImage or TryIndentedCode;
+end;
+
+procedure TBlockReader.Step;
+var
+  mIndent: Integer;
+  mMarker, mText: string;
+begin
+  if IsBlank(CurrentLine) or IsHtmlComment(CurrentLine) then
+  begin
+    Inc(Index);
+    Exit;
+  end;
+  if not ListItemOf(CurrentLine, mIndent, mMarker, mText) then
+  begin
+    Indents := nil;
+  end;
+  if not (TryStructured or TryListLike) then
+  begin
+    ReadParagraph;
+  end;
+end;
+
 { TAtlasTrackerMarkdown }
 
 class function TAtlasTrackerMarkdown.Blocks(const AText: string): TArray<TAtlasMarkdownBlock>;
 var
-  mLines, mCells: TArray<string>;
-  mIndex, mLevel, mIndent, mBase: Integer;
-  mLine, mFence, mLanguage, mText, mMarker, mCode, mUrl: string;
-  mBlock: TAtlasMarkdownBlock;
-  mIndents: TArray<Integer>;
-  mTask: TAtlasMarkdownTask;
-
-  procedure Add(const ABlock: TAtlasMarkdownBlock);
-  begin
-    Result := Result + [ABlock];
-  end;
-
-  function LevelOf(AIndent: Integer): Integer;
-  var
-    mProbe: Integer;
-  begin
-    // Ebene aus den Einzügen der offenen Liste: tiefer eingerückt = eine Ebene tiefer.
-    while (Length(mIndents) > 0) and (mIndents[High(mIndents)] > AIndent) do
-    begin
-      SetLength(mIndents, Length(mIndents) - 1);
-    end;
-    if (Length(mIndents) = 0) or (mIndents[High(mIndents)] < AIndent) then
-    begin
-      mIndents := mIndents + [AIndent];
-    end;
-    mProbe := Length(mIndents);
-    if mProbe > MaxListLevel then
-    begin
-      mProbe := MaxListLevel;
-    end;
-    Result := mProbe;
-  end;
-
+  mReader: TBlockReader;
 begin
-  Result := nil;
-  mIndents := nil;
-  mLines := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #13, #10, [rfReplaceAll]).Split([#10]);
-  mIndex := 0;
-  while mIndex <= High(mLines) do
+  mReader := Default(TBlockReader);
+  mReader.Indents := nil;
+  mReader.Blocks := nil;
+  mReader.Lines := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #13, #10,
+    [rfReplaceAll]).Split([#10]);
+  mReader.Index := 0;
+  while mReader.HasLine do
   begin
-    mLine := mLines[mIndex];
-    if IsBlank(mLine) or IsHtmlComment(mLine) then
-    begin
-      Inc(mIndex);
-      Continue;
-    end;
-    if not ListItemOf(mLine, mIndent, mMarker, mText) then
-    begin
-      mIndents := nil;
-    end;
-    // Codeblock mit Zaun; ohne schließenden Zaun bis zum Ende.
-    if FenceOf(mLine, mFence, mLanguage) then
-    begin
-      mBase := Indent(mLine);
-      mCode := '';
-      Inc(mIndex);
-      while (mIndex <= High(mLines)) and not ClosesFence(mLines[mIndex], mFence) do
-      begin
-        mText := mLines[mIndex];
-        // Einzug des Zauns entfernen.
-        mLevel := 0;
-        while (mLevel < mBase) and (mText <> '') and (mText[1] = ' ') do
-        begin
-          Delete(mText, 1, 1);
-          Inc(mLevel);
-        end;
-        if mCode <> '' then
-        begin
-          mCode := mCode + #10;
-        end;
-        mCode := mCode + mText;
-        Inc(mIndex);
-      end;
-      Inc(mIndex);
-      mBlock := NewBlock(TAtlasMarkdownBlockKind.Code, mCode);
-      mBlock.Info := mLanguage;
-      Add(mBlock);
-      Continue;
-    end;
-    if HeadingOf(mLine, mLevel, mText) then
-    begin
-      mBlock := NewBlock(TAtlasMarkdownBlockKind.Heading, mText);
-      mBlock.Level := mLevel;
-      Add(mBlock);
-      Inc(mIndex);
-      Continue;
-    end;
-    // Vor den Listen: "- - -" und "***" sind Trennlinien.
-    if IsRule(mLine) then
-    begin
-      Add(NewBlock(TAtlasMarkdownBlockKind.Rule, ''));
-      Inc(mIndex);
-      Continue;
-    end;
-    if QuoteOf(mLine, mText) then
-    begin
-      mCode := mText;
-      Inc(mIndex);
-      while (mIndex <= High(mLines)) and QuoteOf(mLines[mIndex], mText) do
-      begin
-        mCode := mCode + #10 + mText;
-        Inc(mIndex);
-      end;
-      Add(NewBlock(TAtlasMarkdownBlockKind.Quote, Trim(mCode)));
-      Continue;
-    end;
-    if ListItemOf(mLine, mIndent, mMarker, mText, mTask) then
-    begin
-      mBlock := NewBlock(TAtlasMarkdownBlockKind.Bullet, mText);
-      mBlock.ListMarker := mMarker;
-      mBlock.Task := mTask;
-      case mTask of
-        TAtlasMarkdownTask.Open:
-          mBlock.Marker := cTaskOpen;
-        TAtlasMarkdownTask.Done:
-          mBlock.Marker := cTaskDone;
-      else
-        mBlock.Marker := mMarker;
-      end;
-      mBlock.Level := LevelOf(mIndent);
-      mBlock.Line := mIndex;
-      Inc(mIndex);
-      // Fortsetzungszeilen: eingerückt, kein neuer Punkt, kein anderer Block.
-      while (mIndex <= High(mLines)) and not IsBlank(mLines[mIndex]) and (Indent(mLines[mIndex]) > mIndent) and
-        not StartsBlock(mLines, mIndex) do
-      begin
-        mBlock.Text := mBlock.Text + #10 + Trim(mLines[mIndex]);
-        Inc(mIndex);
-      end;
-      mBlock.LastLine := mIndex - 1;
-      Add(mBlock);
-      Continue;
-    end;
-    if IsTableStart(mLines, mIndex) then
-    begin
-      mBlock := NewBlock(TAtlasMarkdownBlockKind.Table, '');
-      mBlock.Rows := TArray<TArray<string>>.Create(SplitRow(mLine));
-      Inc(mIndex, 2);
-      while (mIndex <= High(mLines)) and not IsBlank(mLines[mIndex]) and (Pos('|', mLines[mIndex]) > 0) do
-      begin
-        mCells := SplitRow(mLines[mIndex]);
-        mBlock.Rows := mBlock.Rows + [mCells];
-        Inc(mIndex);
-      end;
-      Add(mBlock);
-      Continue;
-    end;
-    if ImageLineOf(mLine, mText, mUrl) then
-    begin
-      mBlock := NewBlock(TAtlasMarkdownBlockKind.Image, mText);
-      mBlock.Info := mUrl;
-      Add(mBlock);
-      Inc(mIndex);
-      Continue;
-    end;
-    // Eingerückter Code (vier Leerzeichen) außerhalb von Absätzen.
-    if Indent(mLine) >= 4 then
-    begin
-      mCode := '';
-      while (mIndex <= High(mLines)) and (IsBlank(mLines[mIndex]) or (Indent(mLines[mIndex]) >= 4)) do
-      begin
-        if mCode <> '' then
-        begin
-          mCode := mCode + #10;
-        end;
-        mCode := mCode + Copy(mLines[mIndex], 5, MaxInt);
-        Inc(mIndex);
-      end;
-      Add(NewBlock(TAtlasMarkdownBlockKind.Code, TrimRight(mCode)));
-      Continue;
-    end;
-    // Absatz bis zur Leerzeile oder bis zu einem anderen Block.
-    mCode := Trim(mLine);
-    Inc(mIndex);
-    while (mIndex <= High(mLines)) and not IsBlank(mLines[mIndex]) and not StartsBlock(mLines, mIndex) do
-    begin
-      mCode := mCode + #10 + Trim(mLines[mIndex]);
-      Inc(mIndex);
-    end;
-    Add(NewBlock(TAtlasMarkdownBlockKind.Paragraph, mCode));
+    mReader.Step;
   end;
+  Result := mReader.Blocks;
 end;
 
 class function TAtlasTrackerMarkdown.DecodeHtml(const AText: string): string;
@@ -919,239 +1078,477 @@ begin
   Result := False;
 end;
 
+type
+  /// <summary>Liest einen Absatz Zeichen für Zeichen; jedes Try… verarbeitet ein Stück an Index und liefert True,
+  /// wenn es das Stück erkannt hat.</summary>
+  TInlineParser = record
+    Builder: TInlineBuilder;
+    Source: string;
+    Index: Integer;
+    function CharAt(AIndex: Integer): Char;
+    function Current: Char;
+    function Next: Char;
+    function Prev: Char;
+    function TryEscape: Boolean;
+    function TryBreak: Boolean;
+    function TryCode: Boolean;
+    function TryImage: Boolean;
+    function TryLink: Boolean;
+    procedure AddAnchor(AStop: Integer; const ATag: string);
+    function TryHtmlTag(AStop: Integer; const ATag: string): Boolean;
+    function TryTag: Boolean;
+    function TryBareUrl: Boolean;
+    function TryStrike: Boolean;
+    function IsIntraword(const ADelimiter: string): Boolean;
+    function ToggleBold(const ADelimiter: string): Boolean;
+    function ToggleItalic(const ADelimiter: string): Boolean;
+    function TryEmphasis: Boolean;
+    function TryEntity: Boolean;
+    function TryMarkup: Boolean;
+    function TryOther: Boolean;
+    procedure Step;
+  end;
+
+function TInlineParser.CharAt(AIndex: Integer): Char;
+begin
+  Result := #0;
+  if (AIndex >= 1) and (AIndex <= Length(Source)) then
+  begin
+    Result := Source[AIndex];
+  end;
+end;
+
+function TInlineParser.Current: Char;
+begin
+  Result := Source[Index];
+end;
+
+function TInlineParser.Next: Char;
+begin
+  Result := CharAt(Index + 1);
+end;
+
+function TInlineParser.Prev: Char;
+begin
+  Result := ' ';
+  if Index > 1 then
+  begin
+    Result := Source[Index - 1];
+  end;
+end;
+
+/// <summary>Maskiert: \* \_ \` \[ …</summary>
+function TInlineParser.TryEscape: Boolean;
+begin
+  Result := (Current = '\') and (Next <> #0) and CharInSet(Next, ['\', '`', '*', '_', '{', '}', '[', ']', '(', ')',
+    '#', '+', '-', '.', '!', '|', '<', '>', '~']);
+  if Result then
+  begin
+    Builder.Text := Builder.Text + Next;
+    Inc(Index, 2);
+  end;
+end;
+
+/// <summary>Umbruch; Zeile mit "\" bzw. zwei Leerzeichen am Ende ist derselbe Umbruch.</summary>
+function TInlineParser.TryBreak: Boolean;
+begin
+  Result := Current = #10;
+  if not Result then
+  begin
+    Exit;
+  end;
+  Builder.Text := TrimRight(Builder.Text);
+  if EndsStr('\', Builder.Text) then
+  begin
+    Delete(Builder.Text, Length(Builder.Text), 1);
+  end;
+  Builder.AddBreak;
+  Inc(Index);
+end;
+
+/// <summary>Code im Fließtext: gleich viele Backticks schließen.</summary>
+function TInlineParser.TryCode: Boolean;
+var
+  mTicks, mClose: Integer;
+begin
+  Result := Current = '`';
+  if not Result then
+  begin
+    Exit;
+  end;
+  mTicks := 0;
+  while (Index + mTicks <= Length(Source)) and (Source[Index + mTicks] = '`') do
+  begin
+    Inc(mTicks);
+  end;
+  mClose := PosEx(StringOfChar('`', mTicks), Source, Index + mTicks);
+  if mClose > 0 then
+  begin
+    Builder.AddCode(Trim(StringReplace(Copy(Source, Index + mTicks, mClose - Index - mTicks), #10, ' ',
+      [rfReplaceAll])));
+    Index := mClose + mTicks;
+  end
+  else
+  begin
+    Builder.Text := Builder.Text + StringOfChar('`', mTicks);
+    Inc(Index, mTicks);
+  end;
+end;
+
+/// <summary>Bild im Fließtext: als Link mit dem Alternativtext.</summary>
+function TInlineParser.TryImage: Boolean;
+var
+  mStop: Integer;
+  mLabel, mUrl: string;
+begin
+  Result := False;
+  if (Current <> '!') or (Next <> '[') then
+  begin
+    Exit;
+  end;
+  mStop := LinkEnd(Source, Index + 1, mLabel, mUrl);
+  if mStop = 0 then
+  begin
+    Exit;
+  end;
+  if mLabel = '' then
+  begin
+    mLabel := Copy(mUrl, LastDelimiter('/\', mUrl) + 1, MaxInt);
+  end;
+  Builder.AddLink(mLabel, mUrl);
+  Index := mStop + 1;
+  Result := True;
+end;
+
+function TInlineParser.TryLink: Boolean;
+var
+  mStop: Integer;
+  mLabel, mUrl: string;
+begin
+  Result := False;
+  if Current <> '[' then
+  begin
+    Exit;
+  end;
+  mStop := LinkEnd(Source, Index, mLabel, mUrl);
+  if mStop = 0 then
+  begin
+    Exit;
+  end;
+  // Hervorhebungen im Linktext entfallen.
+  mLabel := StringReplace(StringReplace(mLabel, '**', '', [rfReplaceAll]), '`', '', [rfReplaceAll]);
+  Builder.AddLink(TAtlasTrackerMarkdown.DecodeHtml(mLabel), mUrl);
+  Index := mStop + 1;
+  Result := True;
+end;
+
+/// <summary>&lt;a href="…"&gt;Text&lt;/a&gt;: Text als Link; ohne &lt;/a&gt; entfällt nur das Tag.</summary>
+procedure TInlineParser.AddAnchor(AStop: Integer; const ATag: string);
+var
+  mClose: Integer;
+begin
+  mClose := PosEx('</a>', LowerCase(Source), AStop + 1);
+  if mClose > 0 then
+  begin
+    Builder.AddLink(TAtlasTrackerMarkdown.DecodeHtml(Copy(Source, AStop + 1, mClose - AStop - 1)),
+      TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(ATag, 'href')));
+    Index := mClose + 4;
+  end;
+end;
+
+/// <summary>HTML-Tag ATag, das bei AStop endet: entfällt; &lt;br&gt; wird Umbruch, &lt;img&gt; und &lt;a&gt; Link.
+/// </summary>
+function TInlineParser.TryHtmlTag(AStop: Integer; const ATag: string): Boolean;
+begin
+  Result := (ATag <> '') and CharInSet(ATag[1], ['a'..'z', 'A'..'Z', '/', '!']) and (Pos(#10, ATag) = 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Index := AStop + 1;
+  if SameText(ATag.TrimRight(['/', ' ']), 'br') then
+  begin
+    Builder.AddBreak;
+  end
+  else if StartsText('img', ATag) and (AttributeOf(ATag, 'src') <> '') then
+  begin
+    Builder.AddLink(TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(ATag, 'alt')),
+      TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(ATag, 'src')));
+  end
+  else if StartsText('a ', ATag) and (AttributeOf(ATag, 'href') <> '') then
+  begin
+    AddAnchor(AStop, ATag);
+  end;
+end;
+
+/// <summary>&lt;https://…&gt; bzw. HTML-Tag.</summary>
+function TInlineParser.TryTag: Boolean;
+var
+  mStop: Integer;
+  mTag: string;
+begin
+  Result := False;
+  if Current <> '<' then
+  begin
+    Exit;
+  end;
+  mStop := PosEx('>', Source, Index + 1);
+  if mStop = 0 then
+  begin
+    Exit;
+  end;
+  mTag := Copy(Source, Index + 1, mStop - Index - 1);
+  if StartsText('http://', mTag) or StartsText('https://', mTag) then
+  begin
+    Builder.AddLink(mTag, mTag);
+    Index := mStop + 1;
+    Exit(True);
+  end;
+  Result := TryHtmlTag(mStop, mTag);
+end;
+
+/// <summary>Nackte Adresse (GitHub verlinkt sie).</summary>
+function TInlineParser.TryBareUrl: Boolean;
+var
+  mStop: Integer;
+  mUrl: string;
+begin
+  Result := CharInSet(Current, ['h', 'H']) and not TTextChars.IsIdentChar(Prev) and
+    (StartsText('https://', Copy(Source, Index, 8)) or StartsText('http://', Copy(Source, Index, 7)));
+  if not Result then
+  begin
+    Exit;
+  end;
+  mStop := BareUrlEnd(Source, Index);
+  mUrl := Copy(Source, Index, mStop - Index + 1);
+  Builder.AddLink(mUrl, mUrl);
+  Index := mStop + 1;
+end;
+
+/// <summary>Durchgestrichen: Zeichen entfallen.</summary>
+function TInlineParser.TryStrike: Boolean;
+begin
+  Result := (Current = '~') and (Next = '~');
+  if Result then
+  begin
+    Inc(Index, 2);
+  end;
+end;
+
+/// <summary>"_" mitten in einem Wort (snake_case) hebt nichts hervor.</summary>
+function TInlineParser.IsIntraword(const ADelimiter: string): Boolean;
+begin
+  Result := (Current = '_') and TTextChars.IsIdentChar(Prev) and (Index + Length(ADelimiter) <= Length(Source)) and
+    TTextChars.IsIdentChar(Source[Index + Length(ADelimiter)]);
+end;
+
+function TInlineParser.ToggleBold(const ADelimiter: string): Boolean;
+begin
+  if Builder.Bold and not CharInSet(Prev, [' ', #9]) then
+  begin
+    Builder.Flush;
+    Builder.Bold := False;
+    Inc(Index, 2);
+    Exit(True);
+  end;
+  Result := not Builder.Bold and (Index + 2 <= Length(Source)) and not CharInSet(Source[Index + 2], [' ', #9, #10])
+    and HasCloser(Source, ADelimiter, Index + 3);
+  if Result then
+  begin
+    Builder.Flush;
+    Builder.Bold := True;
+    Inc(Index, 2);
+  end;
+end;
+
+function TInlineParser.ToggleItalic(const ADelimiter: string): Boolean;
+begin
+  if Builder.Italic and not CharInSet(Prev, [' ', #9]) then
+  begin
+    Builder.Flush;
+    Builder.Italic := False;
+    Inc(Index);
+    Exit(True);
+  end;
+  Result := not Builder.Italic and (Next <> #0) and not CharInSet(Next, [' ', #9, #10]) and
+    HasCloser(Source, ADelimiter, Index + 2);
+  if Result then
+  begin
+    Builder.Flush;
+    Builder.Italic := True;
+    Inc(Index);
+  end;
+end;
+
+/// <summary>Fett und kursiv: ** bzw. __, * bzw. _; "_" nur an Wortgrenzen (snake_case bleibt).</summary>
+function TInlineParser.TryEmphasis: Boolean;
+var
+  mDelimiter: string;
+  mToggled: Boolean;
+begin
+  Result := CharInSet(Current, ['*', '_']);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mDelimiter := Current;
+  if Next = Current then
+  begin
+    mDelimiter := mDelimiter + Current;
+  end;
+  mToggled := False;
+  if not IsIntraword(mDelimiter) then
+  begin
+    if Length(mDelimiter) = 2 then
+    begin
+      mToggled := ToggleBold(mDelimiter);
+    end
+    else
+    begin
+      mToggled := ToggleItalic(mDelimiter);
+    end;
+  end;
+  if not mToggled then
+  begin
+    Builder.Text := Builder.Text + mDelimiter;
+    Inc(Index, Length(mDelimiter));
+  end;
+end;
+
+function TInlineParser.TryEntity: Boolean;
+var
+  mStop: Integer;
+begin
+  Result := False;
+  if Current <> '&' then
+  begin
+    Exit;
+  end;
+  mStop := PosEx(';', Source, Index + 1);
+  Result := (mStop > 0) and (mStop - Index <= 8);
+  if Result then
+  begin
+    Builder.Text := Builder.Text + TAtlasTrackerMarkdown.DecodeHtml(Copy(Source, Index, mStop - Index + 1));
+    Index := mStop + 1;
+  end;
+end;
+
+function TInlineParser.TryMarkup: Boolean;
+begin
+  Result := TryEscape or TryBreak or TryCode or TryImage or TryLink;
+end;
+
+function TInlineParser.TryOther: Boolean;
+begin
+  Result := TryTag or TryBareUrl or TryStrike or TryEmphasis or TryEntity;
+end;
+
+procedure TInlineParser.Step;
+begin
+  if not (TryMarkup or TryOther) then
+  begin
+    Builder.Text := Builder.Text + Current;
+    Inc(Index);
+  end;
+end;
+
 class function TAtlasTrackerMarkdown.InlineRuns(const AText: string; ABold, AItalic: Boolean): TAtlasDocRuns;
 var
-  mBuilder: TInlineBuilder;
-  mText, mLabel, mUrl, mTag, mDelimiter: string;
-  mIndex, mStop, mTicks, mClose: Integer;
-  mChar, mNext, mPrev: Char;
+  mParser: TInlineParser;
 begin
-  mBuilder := Default(TInlineBuilder);
-  mBuilder.Runs := nil;
-  mBuilder.BaseBold := ABold;
-  mBuilder.BaseItalic := AItalic;
-  mText := AText;
-  mIndex := 1;
-  while mIndex <= Length(mText) do
+  mParser := Default(TInlineParser);
+  mParser.Builder.Runs := nil;
+  mParser.Builder.BaseBold := ABold;
+  mParser.Builder.BaseItalic := AItalic;
+  mParser.Source := AText;
+  mParser.Index := 1;
+  while mParser.Index <= Length(mParser.Source) do
   begin
-    mChar := mText[mIndex];
-    if mIndex < Length(mText) then
-    begin
-      mNext := mText[mIndex + 1];
-    end
-    else
-    begin
-      mNext := #0;
-    end;
-    if mIndex > 1 then
-    begin
-      mPrev := mText[mIndex - 1];
-    end
-    else
-    begin
-      mPrev := ' ';
-    end;
-    // Maskiert: \* \_ \` \[ …
-    if (mChar = '\') and (mNext <> #0) and CharInSet(mNext, ['\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '#',
-      '+', '-', '.', '!', '|', '<', '>', '~']) then
-    begin
-      mBuilder.Text := mBuilder.Text + mNext;
-      Inc(mIndex, 2);
-      Continue;
-    end;
-    // Umbruch; Zeile mit "\" bzw. zwei Leerzeichen am Ende ist derselbe Umbruch.
-    if mChar = #10 then
-    begin
-      mBuilder.Text := TrimRight(mBuilder.Text);
-      if EndsStr('\', mBuilder.Text) then
-      begin
-        Delete(mBuilder.Text, Length(mBuilder.Text), 1);
-      end;
-      mBuilder.AddBreak;
-      Inc(mIndex);
-      Continue;
-    end;
-    // Code im Fließtext: gleich viele Backticks schließen.
-    if mChar = '`' then
-    begin
-      mTicks := 0;
-      while (mIndex + mTicks <= Length(mText)) and (mText[mIndex + mTicks] = '`') do
-      begin
-        Inc(mTicks);
-      end;
-      mClose := PosEx(StringOfChar('`', mTicks), mText, mIndex + mTicks);
-      if mClose > 0 then
-      begin
-        mBuilder.AddCode(Trim(StringReplace(Copy(mText, mIndex + mTicks, mClose - mIndex - mTicks), #10, ' ',
-          [rfReplaceAll])));
-        mIndex := mClose + mTicks;
-        Continue;
-      end;
-      mBuilder.Text := mBuilder.Text + StringOfChar('`', mTicks);
-      Inc(mIndex, mTicks);
-      Continue;
-    end;
-    // Bild im Fließtext: als Link mit dem Alternativtext.
-    if (mChar = '!') and (mNext = '[') then
-    begin
-      mStop := LinkEnd(mText, mIndex + 1, mLabel, mUrl);
-      if mStop > 0 then
-      begin
-        if mLabel = '' then
-        begin
-          mLabel := Copy(mUrl, LastDelimiter('/\', mUrl) + 1, MaxInt);
-        end;
-        mBuilder.AddLink(mLabel, mUrl);
-        mIndex := mStop + 1;
-        Continue;
-      end;
-    end;
-    if mChar = '[' then
-    begin
-      mStop := LinkEnd(mText, mIndex, mLabel, mUrl);
-      if mStop > 0 then
-      begin
-        // Hervorhebungen im Linktext entfallen.
-        mLabel := StringReplace(StringReplace(mLabel, '**', '', [rfReplaceAll]), '`', '', [rfReplaceAll]);
-        mBuilder.AddLink(DecodeHtml(mLabel), mUrl);
-        mIndex := mStop + 1;
-        Continue;
-      end;
-    end;
-    // <https://…> bzw. HTML-Tag.
-    if mChar = '<' then
-    begin
-      mStop := PosEx('>', mText, mIndex + 1);
-      if mStop > 0 then
-      begin
-        mTag := Copy(mText, mIndex + 1, mStop - mIndex - 1);
-        if StartsText('http://', mTag) or StartsText('https://', mTag) then
-        begin
-          mBuilder.AddLink(mTag, mTag);
-          mIndex := mStop + 1;
-          Continue;
-        end;
-        if (mTag <> '') and (CharInSet(mTag[1], ['a'..'z', 'A'..'Z', '/', '!'])) and (Pos(#10, mTag) = 0) then
-        begin
-          if SameText(mTag.TrimRight(['/', ' ']), 'br') then
-          begin
-            mBuilder.AddBreak;
-          end
-          else if StartsText('img', mTag) and (AttributeOf(mTag, 'src') <> '') then
-          begin
-            mBuilder.AddLink(DecodeHtml(AttributeOf(mTag, 'alt')), DecodeHtml(AttributeOf(mTag, 'src')));
-          end
-          else if StartsText('a ', mTag) and (AttributeOf(mTag, 'href') <> '') then
-          begin
-            // <a href="…">Text</a>: Text als Link.
-            mClose := PosEx('</a>', LowerCase(mText), mStop + 1);
-            if mClose > 0 then
-            begin
-              mBuilder.AddLink(DecodeHtml(Copy(mText, mStop + 1, mClose - mStop - 1)),
-                DecodeHtml(AttributeOf(mTag, 'href')));
-              mIndex := mClose + 4;
-              Continue;
-            end;
-          end;
-          mIndex := mStop + 1;
-          Continue;
-        end;
-      end;
-    end;
-    // Nackte Adresse (GitHub verlinkt sie).
-    if ((mChar = 'h') or (mChar = 'H')) and not TTextChars.IsIdentChar(mPrev) and (StartsText('https://', Copy(mText, mIndex, 8))
-      or StartsText('http://', Copy(mText, mIndex, 7))) then
-    begin
-      mStop := BareUrlEnd(mText, mIndex);
-      mUrl := Copy(mText, mIndex, mStop - mIndex + 1);
-      mBuilder.AddLink(mUrl, mUrl);
-      mIndex := mStop + 1;
-      Continue;
-    end;
-    // Durchgestrichen: Zeichen entfallen.
-    if (mChar = '~') and (mNext = '~') then
-    begin
-      Inc(mIndex, 2);
-      Continue;
-    end;
-    // Fett und kursiv: ** bzw. __, * bzw. _; "_" nur an Wortgrenzen (snake_case bleibt).
-    if (mChar = '*') or (mChar = '_') then
-    begin
-      if mNext = mChar then
-      begin
-        mDelimiter := mChar + mChar;
-      end
-      else
-      begin
-        mDelimiter := mChar;
-      end;
-      if (mChar = '_') and TTextChars.IsIdentChar(mPrev) and (mIndex + Length(mDelimiter) <= Length(mText)) and
-        TTextChars.IsIdentChar(mText[mIndex + Length(mDelimiter)]) then
-      begin
-        mBuilder.Text := mBuilder.Text + mDelimiter;
-        Inc(mIndex, Length(mDelimiter));
-        Continue;
-      end;
-      if Length(mDelimiter) = 2 then
-      begin
-        if mBuilder.Bold and not CharInSet(mPrev, [' ', #9]) then
-        begin
-          mBuilder.Flush;
-          mBuilder.Bold := False;
-          Inc(mIndex, 2);
-          Continue;
-        end;
-        if not mBuilder.Bold and (mIndex + 2 <= Length(mText)) and not CharInSet(mText[mIndex + 2], [' ', #9, #10])
-          and HasCloser(mText, mDelimiter, mIndex + 3) then
-        begin
-          mBuilder.Flush;
-          mBuilder.Bold := True;
-          Inc(mIndex, 2);
-          Continue;
-        end;
-      end
-      else
-      begin
-        if mBuilder.Italic and not CharInSet(mPrev, [' ', #9]) then
-        begin
-          mBuilder.Flush;
-          mBuilder.Italic := False;
-          Inc(mIndex);
-          Continue;
-        end;
-        if not mBuilder.Italic and (mNext <> #0) and not CharInSet(mNext, [' ', #9, #10]) and
-          HasCloser(mText, mDelimiter, mIndex + 2) then
-        begin
-          mBuilder.Flush;
-          mBuilder.Italic := True;
-          Inc(mIndex);
-          Continue;
-        end;
-      end;
-      mBuilder.Text := mBuilder.Text + mDelimiter;
-      Inc(mIndex, Length(mDelimiter));
-      Continue;
-    end;
-    if mChar = '&' then
-    begin
-      mStop := PosEx(';', mText, mIndex + 1);
-      if (mStop > 0) and (mStop - mIndex <= 8) then
-      begin
-        mBuilder.Text := mBuilder.Text + DecodeHtml(Copy(mText, mIndex, mStop - mIndex + 1));
-        mIndex := mStop + 1;
-        Continue;
-      end;
-    end;
-    mBuilder.Text := mBuilder.Text + mChar;
-    Inc(mIndex);
+    mParser.Step;
   end;
-  mBuilder.Flush;
-  Result := mBuilder.Runs;
+  mParser.Builder.Flush;
+  Result := mParser.Builder.Runs;
 end;
 
 class function TAtlasTrackerMarkdown.InlineRuns(const AText: string): TAtlasDocRuns;
 begin
   Result := InlineRuns(AText, False, False);
+end;
+
+function ParagraphRun: TAtlasDocRun;
+begin
+  Result := TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '');
+end;
+
+/// <summary>Läufe eines Listenpunkts; ATaskIndex wie bei BlockRuns.</summary>
+function BulletRuns(const ABlock: TAtlasMarkdownBlock; ANextIsBullet: Boolean; ATasks: TAtlasMarkdownTasks;
+  var ATaskIndex: Integer): TAtlasDocRuns;
+var
+  mRun: TAtlasDocRun;
+  mText: string;
+begin
+  mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, ABlock.Marker);
+  mRun.Level := ABlock.Level;
+  mText := ABlock.Text;
+  if ABlock.Task <> TAtlasMarkdownTask.None then
+  begin
+    case ATasks of
+      // Wie geschrieben: Listenmarke und "[ ]" bzw. "[x]" als Text.
+      TAtlasMarkdownTasks.Plain:
+        begin
+          mRun.Text := ABlock.ListMarker;
+          if ABlock.Task = TAtlasMarkdownTask.Done then
+          begin
+            mText := '[x] ' + mText;
+          end
+          else
+          begin
+            mText := '[ ] ' + mText;
+          end;
+        end;
+      TAtlasMarkdownTasks.Clickable:
+        mRun.Target := TAtlasTrackerMarkdown.TaskTarget(ATaskIndex);
+      TAtlasMarkdownTasks.Boxes: ;
+    end;
+    Inc(ATaskIndex);
+  end;
+  Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(mText);
+  // Nach dem letzten Punkt einer Liste ein Absatz (Abstand und Ende des hängenden Einzugs).
+  if not ANextIsBullet then
+  begin
+    Result := Result + [ParagraphRun];
+  end;
+end;
+
+/// <summary>Zweispaltig wie die Tabellen der XMLDoc: erste Zelle, dann die übrigen mit Trennern.</summary>
+function TableRuns(const ABlock: TAtlasMarkdownBlock): TAtlasDocRuns;
+var
+  mRun: TAtlasDocRun;
+  mRow: TArray<string>;
+  mRowIndex, mCell: Integer;
+begin
+  Result := nil;
+  for mRowIndex := 0 to High(ABlock.Rows) do
+  begin
+    mRow := ABlock.Rows[mRowIndex];
+    if Length(mRow) = 0 then
+    begin
+      Continue;
+    end;
+    mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, '');
+    mRun.Level := 1;
+    Result := Result + [mRun] + TAtlasTrackerMarkdown.InlineRuns(mRow[0], mRowIndex = 0, False) +
+      [TAtlasDocRun.Create(TAtlasDocRunKind.Cell, '')];
+    for mCell := 1 to High(mRow) do
+    begin
+      if mCell > 1 then
+      begin
+        Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Cell, '')];
+      end;
+      Result := Result + TAtlasTrackerMarkdown.InlineRuns(mRow[mCell], mRowIndex = 0, False);
+    end;
+  end;
+  Result := Result + [ParagraphRun];
 end;
 
 /// <summary>Läufe eines Blocks (ohne Bild) samt Absatz am Ende. ATaskIndex: Nummer des nächsten Aufgabenpunkts;
@@ -1160,91 +1557,30 @@ function BlockRuns(const ABlock: TAtlasMarkdownBlock; ANextIsBullet: Boolean; AT
   var ATaskIndex: Integer): TAtlasDocRuns;
 var
   mRun: TAtlasDocRun;
-  mRow: TArray<string>;
-  mRowIndex, mCell: Integer;
-  mText: string;
 begin
   Result := nil;
   case ABlock.Kind of
     TAtlasMarkdownBlockKind.Paragraph:
-      Result := TAtlasTrackerMarkdown.InlineRuns(ABlock.Text) +
-        [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+      Result := TAtlasTrackerMarkdown.InlineRuns(ABlock.Text) + [ParagraphRun];
     TAtlasMarkdownBlockKind.Heading:
-      Result := TAtlasTrackerMarkdown.InlineRuns(ABlock.Text, True, False) +
-        [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+      Result := TAtlasTrackerMarkdown.InlineRuns(ABlock.Text, True, False) + [ParagraphRun];
     TAtlasMarkdownBlockKind.Bullet:
-      begin
-        mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, ABlock.Marker);
-        mRun.Level := ABlock.Level;
-        mText := ABlock.Text;
-        if ABlock.Task <> TAtlasMarkdownTask.None then
-        begin
-          case ATasks of
-            // Wie geschrieben: Listenmarke und "[ ]" bzw. "[x]" als Text.
-            TAtlasMarkdownTasks.Plain:
-              begin
-                mRun.Text := ABlock.ListMarker;
-                if ABlock.Task = TAtlasMarkdownTask.Done then
-                begin
-                  mText := '[x] ' + mText;
-                end
-                else
-                begin
-                  mText := '[ ] ' + mText;
-                end;
-              end;
-            TAtlasMarkdownTasks.Clickable:
-              mRun.Target := TAtlasTrackerMarkdown.TaskTarget(ATaskIndex);
-            TAtlasMarkdownTasks.Boxes: ;
-          end;
-          Inc(ATaskIndex);
-        end;
-        Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(mText);
-        // Nach dem letzten Punkt einer Liste ein Absatz (Abstand und Ende des hängenden Einzugs).
-        if not ANextIsBullet then
-        begin
-          Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
-        end;
-      end;
+      Result := BulletRuns(ABlock, ANextIsBullet, ATasks, ATaskIndex);
     TAtlasMarkdownBlockKind.Quote:
       begin
         mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, cQuoteMarker);
         mRun.Level := 1;
         Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(ABlock.Text, False, True) +
-          [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+          [ParagraphRun];
       end;
     TAtlasMarkdownBlockKind.Code:
       Result := [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, ABlock.Text, ABlock.Info)];
     TAtlasMarkdownBlockKind.Table:
-      begin
-        // Zweispaltig wie die Tabellen der XMLDoc: erste Zelle, dann die übrigen mit Trennern.
-        for mRowIndex := 0 to High(ABlock.Rows) do
-        begin
-          mRow := ABlock.Rows[mRowIndex];
-          if Length(mRow) = 0 then
-          begin
-            Continue;
-          end;
-          mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, '');
-          mRun.Level := 1;
-          Result := Result + [mRun] + TAtlasTrackerMarkdown.InlineRuns(mRow[0], mRowIndex = 0, False) +
-            [TAtlasDocRun.Create(TAtlasDocRunKind.Cell, '')];
-          for mCell := 1 to High(mRow) do
-          begin
-            if mCell > 1 then
-            begin
-              Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Cell, '')];
-            end;
-            Result := Result + TAtlasTrackerMarkdown.InlineRuns(mRow[mCell], mRowIndex = 0, False);
-          end;
-        end;
-        Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
-      end;
+      Result := TableRuns(ABlock);
     TAtlasMarkdownBlockKind.Rule:
-      Result := [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+      Result := [ParagraphRun];
     TAtlasMarkdownBlockKind.Image:
-      Result := [TAtlasDocRun.Create(TAtlasDocRunKind.Link, ABlock.Text, ABlock.Info),
-        TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
+      Result := [TAtlasDocRun.Create(TAtlasDocRunKind.Link, ABlock.Text, ABlock.Info), ParagraphRun];
   end;
   if (ABlock.Kind = TAtlasMarkdownBlockKind.Image) and (Result[0].Text = '') then
   begin

@@ -91,14 +91,22 @@ var
   mHost: string;
 begin
   if Kind = TAtlasVcsKind.Svn then
+  begin
     Exit(Url);
+  end;
   if Remote = '' then
+  begin
     Exit('');
+  end;
   mHost := TAtlasVcsServerChecks.HostOf(Url);
   if mHost = '' then
+  begin
     mHost := Url;
+  end;
   if mHost = '' then
+  begin
     Exit(Remote);
+  end;
   Result := Remote + ' · ' + mHost;
 end;
 
@@ -118,15 +126,21 @@ begin
   Result := Trim(AUrl);
   mStart := Pos('://', Result);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   Inc(mStart, 3);
   mEnd := Pos('/', Result, mStart);
   if mEnd = 0 then
+  begin
     mEnd := Length(Result) + 1;
+  end;
   // Bis zum letzten „@“ vor dem Pfad stehen Benutzer und Kennwort.
   mAuthority := Copy(Result, mStart, mEnd - mStart);
   if LastDelimiter('@', mAuthority) = 0 then
+  begin
     Exit;
+  end;
   Result := Copy(Result, 1, mStart - 1) + Copy(mAuthority, LastDelimiter('@', mAuthority) + 1, MaxInt) +
     Copy(Result, mEnd, MaxInt);
 end;
@@ -139,32 +153,46 @@ begin
   mText := Trim(AUrl);
   Result := '';
   if mText = '' then
+  begin
     Exit;
+  end;
   mScheme := Pos('://', mText);
   if mScheme > 0 then
   begin
     if SameText(Copy(mText, 1, mScheme - 1), 'file') then
+    begin
       Exit;
+    end;
     mText := Copy(mText, mScheme + 3, MaxInt);
     mEnd := Pos('/', mText);
     if mEnd > 0 then
+    begin
       mText := Copy(mText, 1, mEnd - 1);
+    end;
     mAt := LastDelimiter('@', mText);
     if mAt > 0 then
+    begin
       mText := Copy(mText, mAt + 1, MaxInt);
+    end;
     // Port abschneiden (IPv6 in eckigen Klammern behalten).
     mColon := LastDelimiter(':', mText);
     if (mColon > 0) and (mColon > LastDelimiter(']', mText)) then
+    begin
       mText := Copy(mText, 1, mColon - 1);
+    end;
     Exit(LowerCase(mText));
   end;
   // scp-Form: [benutzer@]host:pfad; ein Laufwerk wie C:\ ist kein Rechner.
   mColon := Pos(':', mText);
   if (mColon <= 2) or ((Pos('\', mText) > 0) and (Pos('\', mText) < mColon)) then
+  begin
     Exit;
+  end;
   mText := Copy(mText, 1, mColon - 1);
   if Pos('/', mText) > 0 then
+  begin
     Exit;
+  end;
   mAt := LastDelimiter('@', mText);
   Result := LowerCase(Copy(mText, mAt + 1, MaxInt));
 end;
@@ -175,16 +203,28 @@ var
 begin
   Result := '';
   for mRemote in ARemotes do
+  begin
     if (mRemote <> '') and (Length(mRemote) > Length(Result)) and
       (Copy(AUpstream, 1, Length(mRemote) + 1) = mRemote + '/') then
+    begin
       Result := mRemote;
+    end;
+  end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   for mRemote in ARemotes do
+  begin
     if mRemote = 'origin' then
+    begin
       Exit(mRemote);
+    end;
+  end;
   if Length(ARemotes) > 0 then
+  begin
     Result := ARemotes[0];
+  end;
 end;
 
 class function TAtlasVcsServerChecks.SafeRemote(const AName: string): Boolean;
@@ -193,17 +233,25 @@ var
 begin
   Result := (AName <> '') and (AName[1] <> '-');
   for mIndex := 1 to Length(AName) do
+  begin
     if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '.', '_', '-', '/']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasVcsServerChecks.ProbeArguments(AKind: TAtlasVcsKind; const ARemote: string): TArray<string>;
 begin
   if AKind = TAtlasVcsKind.Svn then
-    Result := TArray<string>.Create('info', '--non-interactive', '^/')
+  begin
+    Result := TArray<string>.Create('info', '--non-interactive', '^/');
+  end
   else
+  begin
     Result := TArray<string>.Create('-c', 'credential.interactive=never', '-c', 'core.askPass=', 'ls-remote',
       '--heads', ARemote);
+  end;
 end;
 
 class function TAtlasVcsServerChecks.LoginCommandLine(const AShell, AExecutable: string; AKind: TAtlasVcsKind;
@@ -213,14 +261,22 @@ var
 begin
   Result := '';
   if (AShell = '') or (AExecutable = '') or (Pos('"', AExecutable) > 0) then
+  begin
     Exit;
+  end;
   if AKind = TAtlasVcsKind.Svn then
+  begin
     // In Anführungszeichen ist ^ für cmd kein Fluchtzeichen.
-    mCommand := '"' + AExecutable + '" info "^/"'
+    mCommand := '"' + AExecutable + '" info "^/"';
+  end
   else if (AKind = TAtlasVcsKind.Git) and SafeRemote(ARemote) then
-    mCommand := '"' + AExecutable + '" fetch ' + ARemote
+  begin
+    mCommand := '"' + AExecutable + '" fetch ' + ARemote;
+  end
   else
+  begin
     Exit;
+  end;
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg; /k: das Fenster bleibt offen.
   Result := '"' + AShell + '" /s /k "' + mCommand + '"';
 end;
@@ -233,7 +289,9 @@ begin
   mText := VcsUtf8(AOutput);
   mEnd := Pos(#10, mText);
   if mEnd > 0 then
+  begin
     mText := Copy(mText, 1, mEnd - 1);
+  end;
   Result := Trim(mText);
 end;
 
@@ -243,8 +301,12 @@ var
 begin
   Result := nil;
   for mLine in VcsUtf8(AOutput).Split([#10]) do
+  begin
     if Trim(mLine) <> '' then
+    begin
       Result := Result + [Trim(mLine)];
+    end;
+  end;
 end;
 
 class function TAtlasVcsServerChecks.Check(const ARunner: IAtlasVcsRunner; AKind: TAtlasVcsKind;
@@ -277,7 +339,9 @@ begin
     begin
       Result.State := TAtlasVcsServerAccess.State(AKind, mAnswer);
       if Result.State = TAtlasVcsServerState.Failed then
+      begin
         Result.State := TAtlasVcsServerState.NoServer;
+      end;
       Exit;
     end;
     Result.Url := TAtlasVcsServerChecks.WithoutCredentials(FirstLine(mAnswer.Output));
@@ -301,7 +365,9 @@ begin
     mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('rev-parse', '--abbrev-ref', '--symbolic-full-name',
       '@{u}'), ARoot, ATimeoutMs);
     if (mAnswer.Outcome = TAtlasVcsOutcome.Ok) and (mAnswer.ExitCode = 0) then
+    begin
       mUpstream := FirstLine(mAnswer.Output);
+    end;
     Result.Remote := RemoteFor(mUpstream, mRemotes);
     if Result.Remote = '' then
     begin
@@ -316,7 +382,9 @@ begin
     mAnswer := ARunner.Run(AExecutable, TArray<string>.Create('remote', 'get-url', Result.Remote), ARoot,
       ATimeoutMs);
     if (mAnswer.Outcome = TAtlasVcsOutcome.Ok) and (mAnswer.ExitCode = 0) then
+    begin
       Result.Url := WithoutCredentials(FirstLine(mAnswer.Output));
+    end;
   end;
   // Die eigentliche Prüfung: einmal mit dem Server sprechen.
   mAnswer := ARunner.Run(AExecutable, ProbeArguments(AKind, Result.Remote), ARoot, ATimeoutMs);

@@ -127,13 +127,17 @@ var
 begin
   // Nur, solange Atlas auf den Dialog wartet; ShowModal hat das Fenster noch nicht gezeigt.
   if not FArmed or (FHidden <> nil) or not Assigned(FMayHide) then
+  begin
     Exit;
+  end;
   try
     for Index := 0 to Screen.CustomFormCount - 1 do
     begin
       Form := Screen.CustomForms[Index];
       if Form.Visible or (Form = Application.MainForm) or (fsModal in Form.FormState) then
+      begin
         Continue;
+      end;
       if ScanForm(Form) then
       begin
         if FMayHide(FScan) then
@@ -164,7 +168,9 @@ procedure TAtlasIdeExceptionDialog.SafetyTick(Sender: TObject);
 begin
   // Der Dialog steht noch (nichts hat ihn geschlossen): wieder zeigen, damit die IDE bedienbar bleibt.
   if FHidden <> nil then
+  begin
     TAtlasGuard.Log('Exception-Dialog: nach dem Ausblenden nicht geschlossen; wieder sichtbar');
+  end;
   Unhide;
 end;
 
@@ -174,15 +180,19 @@ var
 begin
   FSafety.Enabled := False;
   if FHidden = nil then
+  begin
     Exit;
+  end;
   // Nur ein noch angemeldetes Formular anfassen.
   for Index := 0 to Screen.CustomFormCount - 1 do
+  begin
     if Screen.CustomForms[Index] = FHidden then
     begin
       TFormAccess(FHidden).AlphaBlend := False;
       TFormAccess(FHidden).AlphaBlendValue := 255;
       Break;
     end;
+  end;
   FHidden := nil;
 end;
 
@@ -190,7 +200,9 @@ destructor TAtlasIdeExceptionDialog.Destroy;
 begin
   Cancel;
   if FSafety <> nil then
+  begin
     Unhide;
+  end;
   FreeAndNil(FEvents);
   FreeAndNil(FSafety);
   FreeAndNil(FTimer);
@@ -235,7 +247,9 @@ procedure TAtlasIdeExceptionDialog.Cancel;
 begin
   FArmed := False;
   if FTimer <> nil then
+  begin
     FTimer.Enabled := False;
+  end;
   FOnFound := nil;
   FOnTimeout := nil;
   FForm := nil;
@@ -254,7 +268,9 @@ begin
   begin
     Child := AControl.Controls[Index];
     if not Child.Visible then
+    begin
       Continue;
+    end;
     if Child is TButtonControl then
     begin
       AButtons := AButtons + [TControlAccess(Child).Caption];
@@ -264,16 +280,22 @@ begin
     begin
       Text := TControlAccess(Child).Caption;
       if Text <> '' then
+      begin
         ATexts := ATexts + [Text];
+      end;
     end
     else if Child is TCustomEdit then
     begin
       Text := TControlAccess(Child).Text;
       if Text <> '' then
+      begin
         ATexts := ATexts + [Text];
+      end;
     end;
     if Child is TWinControl then
+    begin
       Collect(TWinControl(Child), ATexts, AButtons, AButtonControls);
+    end;
   end;
 end;
 
@@ -290,7 +312,9 @@ begin
   Scan := TAtlasDebugExceptionDialog.Recognize(Texts, Buttons);
   Result := Scan.HasException;
   if not Result then
+  begin
     Exit;
+  end;
   FForm := AForm;
   FScan := Scan;
   FButtons := Controls;
@@ -310,15 +334,21 @@ var
   Timeout: TProc;
 begin
   if not FTimer.Enabled then
+  begin
     Exit;
+  end;
   for Index := 0 to Screen.CustomFormCount - 1 do
   begin
     Form := Screen.CustomForms[Index];
     if not Form.Visible or (Form = Application.MainForm) then
+    begin
       Continue;
+    end;
     // Bereit (Programm läuft): nur modale Fenster, damit der Takt die IDE nicht durchsucht.
     if FArmed and not (fsModal in Form.FormState) then
+    begin
       Continue;
+    end;
     if ScanForm(Form) then
     begin
       FTimer.Enabled := False;
@@ -327,11 +357,13 @@ begin
       FOnFound := nil;
       FOnTimeout := nil;
       if Assigned(Found) then
+      begin
         TAtlasGuard.Run(TAtlasFeature.Debugger,
           procedure
           begin
             Found(FScan);
           end);
+      end;
       Exit;
     end;
   end;
@@ -342,7 +374,9 @@ begin
     FOnFound := nil;
     FOnTimeout := nil;
     if Assigned(Timeout) then
+    begin
       TAtlasGuard.Run(TAtlasFeature.Debugger, Timeout);
+    end;
   end;
 end;
 
@@ -364,7 +398,9 @@ var
 begin
   Result := False;
   if (FForm = nil) or (AIndex < 0) or (AIndex > High(FButtons)) then
+  begin
     Exit;
+  end;
   // Das Fenster kann inzwischen zu sein; nur ein noch angemeldetes, sichtbares zählt.
   Alive := False;
   for Index := 0 to Screen.CustomFormCount - 1 do
@@ -377,7 +413,9 @@ begin
     end;
   end;
   if not Alive then
+  begin
     Exit;
+  end;
   if FButtons[AIndex] is TButton then
   begin
     TButton(FButtons[AIndex]).Click;

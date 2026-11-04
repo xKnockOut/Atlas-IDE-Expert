@@ -48,26 +48,38 @@ begin
       begin
         Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvNil, [AVerdict.Culprit.Expression]);
         if AVerdict.VmtAccess then
-          ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvVmt)
+        begin
+          ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvVmt);
+        end
         else if (AVerdict.Field <> '') and AVerdict.FieldExact then
+        begin
           ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvField, [AVerdict.Field,
-            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)])
+            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
+        end
         else if AVerdict.Field <> '' then
+        begin
           ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFieldEstimated, [AVerdict.Field,
-            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)])
+            TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
+        end
         else if AMessage.AddressKnown and (AMessage.Address > 0) and
           (AMessage.Address < TAtlasAvAnalysis.NearNil) then
+        begin
           ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOffset,
             [TAtlasAvTexts.OffsetText(Integer(AMessage.Address))]);
+        end;
       end;
     TAtlasAvVerdictKind.Freed:
       begin
         Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreed, [AVerdict.Culprit.Expression]);
         if TAtlasAvAnalysis.IsFreedPattern(AVerdict.Value, APointerSize) then
+        begin
           ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreedPattern,
-            [TAtlasAvAnalysis.HexText(AVerdict.Value)])
+            [TAtlasAvAnalysis.HexText(AVerdict.Value)]);
+        end
         else
+        begin
           ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvFreedHeader);
+        end;
       end;
     TAtlasAvVerdictKind.FreedMemory:
       begin
@@ -85,9 +97,13 @@ begin
     begin
       Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguous);
       if AVerdict.Causes > 1 then
-        ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvAmbiguousSeveral, [AVerdict.Causes])
+      begin
+        ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvAmbiguousSeveral, [AVerdict.Causes]);
+      end
       else
+      begin
         ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguousNone);
+      end;
     end;
   end;
 end;
@@ -99,14 +115,20 @@ var
 begin
   Parts := TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyHeader), AExplanation.Headline);
   if AExplanation.Detail <> '' then
+  begin
     Parts := Parts + [AExplanation.Detail];
+  end;
   if AHeader <> '' then
+  begin
     Parts := Parts + [AHeader];
+  end;
   if AExplanation.Lines <> nil then
   begin
     Parts := Parts + [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyChecked)];
     for Line in AExplanation.Lines do
+    begin
       Parts := Parts + ['  ' + TAtlasDebugBannerLine.MarkText(Line.Mark) + ' ' + Line.Text];
+    end;
   end;
   Result := string.Join(sLineBreak, Parts);
 end;
@@ -144,7 +166,9 @@ begin
   Check := AAnalysis.Checks[AIndex];
   Value := Check.Value;
   if Check.State = TAtlasAvCheckState.NilValue then
+  begin
     Value := 'nil';
+  end;
   case Check.State of
     TAtlasAvCheckState.Ok:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok, Check.Expression + ' = ' + Value);
@@ -168,11 +192,15 @@ begin
   else
     // Nicht ausgewertet: wegen eines Aufrufs ohne allowCalls oder weil die Prüfung abbrach.
     if AAnalysis.LinkOf(AIndex).Call and not AAnalysis.AllowCalls then
+    begin
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall))
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall));
+    end
     else
+    begin
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, Check.Expression + ': ' +
         TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotEvaluated));
+    end;
   end;
 end;
 
@@ -190,26 +218,46 @@ begin
   Result.Headline := HeadlineOf(Verdict, AAnalysis.AccessMessage, 8, Detail);
   Result.Detail := Detail;
   if Verdict.HasCulprit or (Verdict.Kind = TAtlasAvVerdictKind.FreedMemory) then
-    Result.HeadlineMark := TAtlasDebugBannerMark.Bad
+  begin
+    Result.HeadlineMark := TAtlasDebugBannerMark.Bad;
+  end
   else
+  begin
     Result.HeadlineMark := TAtlasDebugBannerMark.Neutral;
+  end;
   if (AAnalysis.Chains.Statements > 1) and not Verdict.HasCulprit then
+  begin
     if Result.Detail <> '' then
+    begin
       Result.Detail := Result.Detail + ' ' + #$00B7 + ' ' +
-        TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements])
+        TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
+    end
     else
+    begin
       Result.Detail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
+    end;
+  end;
   for Index := 0 to High(AAnalysis.Checks) do
+  begin
     Result.Lines := Result.Lines + [CheckLine(AAnalysis, Index)];
+  end;
   // „Wo wird X zugewiesen?“ nur für ein benanntes Glied; Self wird nicht zugewiesen.
   if ACanWhere and Verdict.HasCulprit and (Verdict.Culprit.Name <> '') and
     not SameText(Verdict.Culprit.Name, 'Self') then
+  begin
     Result.WhereName := Verdict.Culprit.Name;
+  end;
   if ACanEvaluate then
+  begin
     if Verdict.HasCulprit then
-      Result.EvaluateExpression := Verdict.Culprit.Expression
+    begin
+      Result.EvaluateExpression := Verdict.Culprit.Expression;
+    end
     else if AAnalysis.Chains.Chains <> nil then
+    begin
       Result.EvaluateExpression := AAnalysis.Chains.Chains[0].Text;
+    end;
+  end;
   Result.CopyText := CopyTextOf(Result, AHeader);
 end;
 
@@ -221,10 +269,14 @@ var
 begin
   Text := AExplanation.Headline;
   if AExplanation.Detail <> '' then
+  begin
     Text := Text + ' ' + #$00B7 + ' ' + AExplanation.Detail;
+  end;
   Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, Text]));
   for Line in AExplanation.Lines do
+  begin
     Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(Line.Mark) + ' ' + Line.Text];
+  end;
 end;
 
 end.

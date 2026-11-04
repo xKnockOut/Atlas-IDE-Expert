@@ -114,39 +114,61 @@ begin
               Inc(Depth);
               // Nur der erste Eintrag zählt.
               if Depth = 1 then
+              begin
                 Result.Revision := Reader.Attr('revision');
+              end;
             end;
             if not Reader.EmptyElement then
+            begin
               Element := Reader.Name;
+            end;
           end;
         TAtlasVcsXmlNode.EndTag:
           begin
             Element := '';
             if Reader.Name = 'entry' then
+            begin
               Break;
+            end;
           end;
         TAtlasVcsXmlNode.Text:
           if Element = 'wcroot-abspath' then
-            Result.Root := VcsNormalizeDir(Reader.Value)
+          begin
+            Result.Root := VcsNormalizeDir(Reader.Value);
+          end
           else if Element = 'relative-url' then
-            Result.RelativeUrl := Trim(Reader.Value)
+          begin
+            Result.RelativeUrl := Trim(Reader.Value);
+          end
           else if Element = 'url' then
-            Url := Trim(Reader.Value)
+          begin
+            Url := Trim(Reader.Value);
+          end
           else if Element = 'root' then
+          begin
             RepositoryRoot := Trim(Reader.Value);
+          end;
       end;
   finally
     Reader.Free;
   end;
   if Depth = 0 then
+  begin
     raise EAtlasVcsParse.Create('svn info: kein Eintrag');
+  end;
   // svn vor 1.8 kennt relative-url nicht: aus url und root bilden.
   if (Result.RelativeUrl = '') and (RepositoryRoot <> '') and (Copy(Url, 1, Length(RepositoryRoot)) = RepositoryRoot) then
+  begin
     Result.RelativeUrl := '^' + Copy(Url, Length(RepositoryRoot) + 1, MaxInt);
+  end;
   if Copy(Result.RelativeUrl, 1, 1) = '^' then
+  begin
     Delete(Result.RelativeUrl, 1, 1);
+  end;
   while Copy(Result.RelativeUrl, 1, 1) = '/' do
+  begin
     Delete(Result.RelativeUrl, 1, 1);
+  end;
 end;
 
 class function TAtlasSvnParser.BranchOf(const ARelativeUrl: string): string;
@@ -160,9 +182,13 @@ begin
   begin
     Part := LowerCase(Parts[Index]);
     if Part = 'trunk' then
+    begin
       Exit(Parts[Index]);
+    end;
     if ((Part = 'branches') or (Part = 'tags')) and (Index < High(Parts)) then
+    begin
       Exit(Parts[Index] + '/' + Parts[Index + 1]);
+    end;
   end;
   Result := string.Join('/', Parts);
 end;
@@ -171,26 +197,46 @@ class function TAtlasSvnParser.KindOf(const AItem, AProps: string; out AKind: TA
 begin
   Result := True;
   if AItem = 'modified' then
-    AKind := TAtlasVcsChangeKind.Modified
+  begin
+    AKind := TAtlasVcsChangeKind.Modified;
+  end
   else if AItem = 'added' then
-    AKind := TAtlasVcsChangeKind.Added
+  begin
+    AKind := TAtlasVcsChangeKind.Added;
+  end
   else if AItem = 'deleted' then
-    AKind := TAtlasVcsChangeKind.Deleted
+  begin
+    AKind := TAtlasVcsChangeKind.Deleted;
+  end
   else if AItem = 'replaced' then
-    AKind := TAtlasVcsChangeKind.Replaced
+  begin
+    AKind := TAtlasVcsChangeKind.Replaced;
+  end
   else if AItem = 'unversioned' then
-    AKind := TAtlasVcsChangeKind.Untracked
+  begin
+    AKind := TAtlasVcsChangeKind.Untracked;
+  end
   else if (AItem = 'conflicted') or (AProps = 'conflicted') then
-    AKind := TAtlasVcsChangeKind.Conflicted
+  begin
+    AKind := TAtlasVcsChangeKind.Conflicted;
+  end
   else if (AItem = 'missing') or (AItem = 'incomplete') then
-    AKind := TAtlasVcsChangeKind.Missing
+  begin
+    AKind := TAtlasVcsChangeKind.Missing;
+  end
   else if AItem = 'obstructed' then
-    AKind := TAtlasVcsChangeKind.TypeChanged
+  begin
+    AKind := TAtlasVcsChangeKind.TypeChanged;
+  end
   else if AItem = 'merged' then
-    AKind := TAtlasVcsChangeKind.Modified
+  begin
+    AKind := TAtlasVcsChangeKind.Modified;
+  end
   else if AProps = 'modified' then
+  begin
     // Nur Eigenschaften geändert (svn:eol-style und ähnliche).
-    AKind := TAtlasVcsChangeKind.Modified
+    AKind := TAtlasVcsChangeKind.Modified;
+  end
   else
   begin
     // normal, none, ignored, external
@@ -228,9 +274,13 @@ begin
             begin
               // Absolute Pfade (bei absolutem Ziel) bleiben, relative gelten unter der Wurzel.
               if (Pos(':', Path) = 2) or (Copy(Path, 1, 1) = '/') or (Copy(Path, 1, 2) = '\\') then
-                Change.Path := VcsNormalizeDir(Path)
+              begin
+                Change.Path := VcsNormalizeDir(Path);
+              end
               else
+              begin
                 Change.Path := VcsFullPath(ARoot, Path);
+              end;
               Change.OldPath := '';
               Change.Kind := Kind;
               Change.Staged := False;
@@ -242,7 +292,9 @@ begin
           end;
         TAtlasVcsXmlNode.EndTag:
           if Reader.Name = 'entry' then
+          begin
             InEntry := False;
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -268,11 +320,17 @@ begin
     mPart := LowerCase(mParts[mIndex]);
     mStart := -1;
     if mPart = 'trunk' then
-      mStart := mIndex + 1
+    begin
+      mStart := mIndex + 1;
+    end
     else if ((mPart = 'branches') or (mPart = 'tags')) and (mIndex < High(mParts)) then
+    begin
       mStart := mIndex + 2;
+    end;
     if mStart < 0 then
+    begin
       Continue;
+    end;
     AProject := string.Join('/', Copy(mParts, 0, mIndex));
     ABranch := string.Join('/', Copy(mParts, mIndex, mStart - mIndex));
     ARest := string.Join('/', Copy(mParts, mStart, Length(mParts) - mStart));
@@ -287,30 +345,46 @@ var
 begin
   Result := '';
   if not SplitLayout(ARepositoryPath, mProject, mBranch, mRest) then
+  begin
     Exit;
+  end;
   if not SplitLayout(ARelativeUrl, mWcProject, mWcBranch, mWcRest) or not SameText(mProject, mWcProject) then
+  begin
     Exit;
+  end;
   // Arbeitskopie eines Unterordners: nur Dateien darunter, relativ dazu.
   if mWcRest <> '' then
   begin
     if not SameText(Copy(mRest, 1, Length(mWcRest) + 1), mWcRest + '/') then
+    begin
       Exit;
+    end;
     mRest := Copy(mRest, Length(mWcRest) + 2, MaxInt);
   end;
   if mRest <> '' then
+  begin
     Result := VcsFullPath(ARoot, mRest);
+  end;
 end;
 
 function ActionKind(const AAction: string): TAtlasVcsChangeKind;
 begin
   if AAction = 'A' then
-    Result := TAtlasVcsChangeKind.Added
+  begin
+    Result := TAtlasVcsChangeKind.Added;
+  end
   else if AAction = 'D' then
-    Result := TAtlasVcsChangeKind.Deleted
+  begin
+    Result := TAtlasVcsChangeKind.Deleted;
+  end
   else if AAction = 'R' then
-    Result := TAtlasVcsChangeKind.Replaced
+  begin
+    Result := TAtlasVcsChangeKind.Replaced;
+  end
   else
+  begin
     Result := TAtlasVcsChangeKind.Modified;
+  end;
 end;
 
 class function TAtlasSvnParser.ParseLog(const AText, ARoot, ARelativeUrl: string): TArray<TAtlasVcsLogEntry>;
@@ -342,11 +416,15 @@ begin
             mEntry := Default(TAtlasVcsLogEntry);
             mEntry.Revision := mReader.Attr('revision');
             if mEntry.Revision = '' then
+            begin
               raise EAtlasVcsParse.Create('svn log: revision fehlt');
+            end;
             mFiles.Clear;
             mInEntry := not mReader.EmptyElement;
             if not mInEntry then
+            begin
               mEntries.Add(mEntry);
+            end;
           end
           else if mInEntry and (mReader.Name = 'path') then
           begin
@@ -354,10 +432,14 @@ begin
             mFile.Kind := ActionKind(mReader.Attr('action'));
             mKind := mReader.Attr('kind');
             if not mReader.EmptyElement then
+            begin
               mElement := 'path';
+            end;
           end
           else if not mReader.EmptyElement then
+          begin
             mElement := mReader.Name;
+          end;
         TAtlasVcsXmlNode.EndTag:
           begin
             if mInEntry and (mReader.Name = 'path') and (mFile.RepositoryPath <> '') and (mKind <> 'dir') then
@@ -375,21 +457,33 @@ begin
           end;
         TAtlasVcsXmlNode.Text:
           if mInEntry then
+          begin
             if mElement = 'author' then
-              mEntry.Author := mReader.Value
+            begin
+              mEntry.Author := mReader.Value;
+            end
             else if (mElement = 'date') and VcsParseIsoDate(mReader.Value, mDate) then
-              mEntry.Date := mDate
+            begin
+              mEntry.Date := mDate;
+            end
             else if mElement = 'path' then
-              mFile.RepositoryPath := Trim(mReader.Value)
+            begin
+              mFile.RepositoryPath := Trim(mReader.Value);
+            end
             else if mElement = 'msg' then
             begin
               mEntry.Message := StringReplace(mReader.Value, #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
               mBreak := Pos(#10, mEntry.Message);
               if mBreak > 0 then
-                mEntry.Summary := Copy(mEntry.Message, 1, mBreak - 1)
+              begin
+                mEntry.Summary := Copy(mEntry.Message, 1, mBreak - 1);
+              end
               else
+              begin
                 mEntry.Summary := mEntry.Message;
+              end;
             end;
+          end;
       end;
     Result := mEntries.ToArray;
   finally
@@ -424,7 +518,9 @@ begin
             mInEntry := (mReader.Attr('kind') = 'dir') and not mReader.EmptyElement;
           end
           else if not mReader.EmptyElement then
+          begin
             mElement := mReader.Name;
+          end;
         TAtlasVcsXmlNode.EndTag:
           begin
             if mInEntry and (mReader.Name = 'entry') then
@@ -441,10 +537,16 @@ begin
           end;
         TAtlasVcsXmlNode.Text:
           if mInEntry then
+          begin
             if mElement = 'name' then
-              mRef.Name := Trim(mReader.Value)
+            begin
+              mRef.Name := Trim(mReader.Value);
+            end
             else if (mElement = 'date') and VcsParseIsoDate(mReader.Value, mDate) then
+            begin
               mRef.TipDate := mDate;
+            end;
+          end;
       end;
   finally
     mReader.Free;
@@ -474,7 +576,9 @@ begin
           begin
             Item := Default(TAtlasVcsBlameLine);
             if not TryStrToInt(Reader.Attr('line-number'), Number) then
+            begin
               raise EAtlasVcsParse.Create('svn blame: line-number fehlt');
+            end;
             Item.Line := Number;
             InEntry := True;
             if Reader.EmptyElement then
@@ -484,16 +588,24 @@ begin
             end;
           end
           else if Reader.Name = 'merged' then
-            InMerged := not Reader.EmptyElement
+          begin
+            InMerged := not Reader.EmptyElement;
+          end
           else if (Reader.Name = 'commit') and InEntry and not InMerged then
-            Item.Revision := Reader.Attr('revision')
+          begin
+            Item.Revision := Reader.Attr('revision');
+          end
           else if not Reader.EmptyElement then
+          begin
             Element := Reader.Name;
+          end;
         TAtlasVcsXmlNode.EndTag:
           begin
             Element := '';
             if Reader.Name = 'merged' then
-              InMerged := False
+            begin
+              InMerged := False;
+            end
             else if (Reader.Name = 'entry') and InEntry then
             begin
               Result := Result + [Item];
@@ -502,10 +614,16 @@ begin
           end;
         TAtlasVcsXmlNode.Text:
           if InEntry and not InMerged then
+          begin
             if Element = 'author' then
-              Item.Author := Reader.Value
+            begin
+              Item.Author := Reader.Value;
+            end
             else if (Element = 'date') and VcsParseIsoDate(Reader.Value, Date) then
+            begin
               Item.Date := Date;
+            end;
+          end;
       end;
   finally
     Reader.Free;
@@ -534,13 +652,19 @@ begin
             mItem := Default(TAtlasVcsLineCommit);
             mItem.Revision := mReader.Attr('revision');
             if mItem.Revision = '' then
+            begin
               raise EAtlasVcsParse.Create('svn log: revision fehlt');
+            end;
             mInEntry := not mReader.EmptyElement;
             if not mInEntry then
+            begin
               Result := Result + [mItem];
+            end;
           end
           else if not mReader.EmptyElement then
+          begin
             mElement := mReader.Name;
+          end;
         TAtlasVcsXmlNode.EndTag:
           begin
             mElement := '';
@@ -553,12 +677,20 @@ begin
           end;
         TAtlasVcsXmlNode.Text:
           if mInEntry then
+          begin
             if mElement = 'author' then
-              mItem.Author := mReader.Value
+            begin
+              mItem.Author := mReader.Value;
+            end
             else if (mElement = 'date') and VcsParseIsoDate(mReader.Value, mDate) then
-              mItem.Date := mDate
+            begin
+              mItem.Date := mDate;
+            end
             else if mElement = 'msg' then
+            begin
               mItem.Message := mItem.Message + mReader.Value;
+            end;
+          end;
       end;
   finally
     mReader.Free;
@@ -576,19 +708,31 @@ begin
   mBar := Pos(' | ', ALine);
   Result := (Length(ALine) > 1) and (ALine[1] = 'r') and (mBar > 2);
   if not Result then
+  begin
     Exit;
+  end;
   ARevision := Copy(ALine, 2, mBar - 2);
   for mPos := 1 to Length(ARevision) do
+  begin
     if not CharInSet(ARevision[mPos], ['0'..'9']) then
+    begin
       Exit(False);
+    end;
+  end;
   mLast := ALine;
   while Pos(' | ', mLast) > 0 do
+  begin
     mLast := Copy(mLast, Pos(' | ', mLast) + 3, MaxInt);
+  end;
   mPos := 1;
   while (mPos <= Length(mLast)) and CharInSet(mLast[mPos], ['0'..'9']) do
+  begin
     Inc(mPos);
+  end;
   if (mPos = 1) or (mPos > 7) or not TryStrToInt(Copy(mLast, 1, mPos - 1), ALines) then
+  begin
     ALines := 0;
+  end;
 end;
 
 class function TAtlasSvnParser.ParseLogDiff(const AText: string): TArray<TAtlasSvnLogDiff>;
@@ -602,7 +746,9 @@ var
   procedure Add(const ALine: string);
   begin
     if mCount = Length(mPatch) then
+    begin
       SetLength(mPatch, mCount * 2 + 16);
+    end;
     mPatch[mCount] := ALine;
     Inc(mCount);
   end;
@@ -613,23 +759,33 @@ begin
   mFound := 0;
   mLines := AText.Split([#10]);
   for mIndex := 0 to High(mLines) do
+  begin
     mLines[mIndex] := mLines[mIndex].TrimRight([#13]);
+  end;
   mIndex := 0;
   while (mIndex <= High(mLines)) and (mLines[mIndex] <> LogSeparator) do
+  begin
     Inc(mIndex);
+  end;
   while mIndex <= High(mLines) do
   begin
     // mLines[mIndex] ist eine Trennzeile; danach ein Kopf oder das Ende.
     Inc(mIndex);
     if (mIndex > High(mLines)) or (mLines[mIndex] = '') then
+    begin
       Break;
+    end;
     mItem := Default(TAtlasSvnLogDiff);
     if not ReadLogHeader(mLines[mIndex], mItem.Revision, mMessage) then
+    begin
       raise EAtlasVcsParse.Create('svn log --diff: Kopf erwartet');
+    end;
     Inc(mIndex);
     // Leerzeile, dann die Nachricht.
     if (mIndex <= High(mLines)) and (mLines[mIndex] = '') then
+    begin
       Inc(mIndex);
+    end;
     Inc(mIndex, mMessage);
     mPatch := nil;
     mCount := 0;
@@ -638,10 +794,14 @@ begin
       mLine := mLines[mIndex];
       Inc(mIndex);
       if (mCount = 0) and (mLine = '') then
+      begin
         Continue;
+      end;
       Add(mLine);
       if not TAtlasVcsLineTrace.ParseHunkHeader(mLine, mHunk) then
+      begin
         Continue;
+      end;
       // Block nach seinen Größen lesen: Auch "-----…" ist hier eine Zeile des Unterschieds.
       mOld := mHunk.OldCount;
       mNew := mHunk.NewCount;
@@ -649,7 +809,9 @@ begin
       begin
         mLine := mLines[mIndex];
         if mLine = '' then
+        begin
           mLine := ' ';
+        end;
         case mLine[1] of
           ' ':
             begin
@@ -670,11 +832,15 @@ begin
       end;
     end;
     while (mCount > 0) and (mPatch[mCount - 1] = '') do
+    begin
       Dec(mCount);
+    end;
     SetLength(mPatch, mCount);
     mItem.Patch := mPatch;
     if mFound = Length(Result) then
+    begin
       SetLength(Result, mFound * 2 + 4);
+    end;
     Result[mFound] := mItem;
     Inc(mFound);
   end;

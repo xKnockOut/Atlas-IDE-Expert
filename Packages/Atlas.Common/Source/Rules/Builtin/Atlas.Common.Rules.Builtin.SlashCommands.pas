@@ -71,6 +71,19 @@ begin
   Result := False;
 end;
 
+/// <summary>Token des Kontexts: aus dem Syntaxbaum oder neu zerlegt.</summary>
+function ContextTokens(const AContext: TRuleContext): TArray<TPascalToken>;
+begin
+  if AContext.Tree <> nil then
+  begin
+    Result := AContext.Tree.Tokens;
+  end
+  else
+  begin
+    Result := TPascalLexer.Tokenize(AContext.Text);
+  end;
+end;
+
 procedure TSlashCommandRule.CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
   const ARanIds: TArray<string>; const AReport: IRuleReport);
 var
@@ -100,14 +113,7 @@ begin
     end;
     if Tokens = nil then
     begin
-      if AContext.Tree <> nil then
-      begin
-        Tokens := AContext.Tree.Tokens;
-      end
-      else
-      begin
-        Tokens := TPascalLexer.Tokenize(AContext.Text);
-      end;
+      Tokens := ContextTokens(AContext);
     end;
     if TSlashCommandRegistry.IsCodeLine(Tokens, Index) then
     begin

@@ -47,7 +47,9 @@ uses
 class procedure TAtlasIdeDebugSources.Clear;
 begin
   if FCache <> nil then
+  begin
     FCache.Clear;
+  end;
   FOwnCodeReady := False;
   FOwnCode.Folders := nil;
 end;
@@ -69,16 +71,22 @@ var
 begin
   Result := '';
   if AFileName = '' then
+  begin
     Exit;
+  end;
   if TPath.IsPathRooted(AFileName) and FileExists(AFileName) then
+  begin
     Exit(AFileName);
+  end;
   if FCache = nil then
   begin
     FCache := TStringList.Create;
     FCache.CaseSensitive := False;
   end;
   if FCache.IndexOfName(AFileName) >= 0 then
+  begin
     Exit(FCache.Values[AFileName]);
+  end;
   Name := ExtractFileName(AFileName);
   if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
   begin
@@ -86,6 +94,7 @@ begin
     Files := TStringList.Create;
     try
       if Group <> nil then
+      begin
         for ProjectIndex := 0 to Group.ProjectCount - 1 do
         begin
           Files.Clear;
@@ -100,8 +109,11 @@ begin
             end;
           end;
           if Result <> '' then
+          begin
             Break;
+          end;
         end;
+      end;
     finally
       Files.Free;
     end;
@@ -123,8 +135,12 @@ begin
     begin
       Group := Modules.MainProjectGroup;
       if Group <> nil then
+      begin
         for Index := 0 to Group.ProjectCount - 1 do
+        begin
           FOwnCode.AddFolder(ExtractFileDir(Group.Projects[Index].FileName));
+        end;
+      end;
     end;
     FOwnCodeReady := True;
   end;
@@ -142,7 +158,9 @@ begin
   begin
     Path := Resolve(AFrames[Index].FileName);
     if Path <> '' then
+    begin
       AFrames[Index].FileName := Path;
+    end;
     AFrames[Index].Own := Own.IsOwnFile(Path);
   end;
 end;

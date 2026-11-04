@@ -117,21 +117,29 @@ begin
   Result := nil;
   mIndex := 1;
   while (mIndex <= Length(ALine)) and IsBlank(ALine[mIndex]) do
+  begin
     Inc(mIndex);
+  end;
   AIndent := Copy(ALine, 1, mIndex - 1);
   while mIndex <= Length(ALine) do
   begin
     while (mIndex <= Length(ALine)) and IsBlank(ALine[mIndex]) do
+    begin
       Inc(mIndex);
+    end;
     if mIndex > Length(ALine) then
+    begin
       Break;
+    end;
     mStart := mIndex;
     mToken.Value := '';
     mQuote := #0;
     while mIndex <= Length(ALine) do
     begin
       if (mQuote = #0) and IsBlank(ALine[mIndex]) then
+      begin
         Break;
+      end;
       if (ALine[mIndex] = '\') and (mIndex < Length(ALine)) and
         CharInSet(ALine[mIndex + 1], [' ', #9, '"', '''', '\']) then
       begin
@@ -140,11 +148,17 @@ begin
         Continue;
       end;
       if (mQuote = #0) and CharInSet(ALine[mIndex], ['"', '''']) then
-        mQuote := ALine[mIndex]
+      begin
+        mQuote := ALine[mIndex];
+      end
       else if (mQuote <> #0) and (ALine[mIndex] = mQuote) then
-        mQuote := #0
+      begin
+        mQuote := #0;
+      end
       else
+      begin
         mToken.Value := mToken.Value + ALine[mIndex];
+      end;
       Inc(mIndex);
     end;
     mToken.Raw := Copy(ALine, mStart, mIndex - mStart);
@@ -170,7 +184,9 @@ begin
   Result.OldFormat := False;
   Result.Tokens := Tokenize(ALine, Result.Indent);
   if (Length(Result.Tokens) = 0) or (Copy(Result.Tokens[0].Raw, 1, 1) = '#') then
+  begin
     Exit;
+  end;
   mOthers := nil;
   mIndex := 0;
   while mIndex <= High(Result.Tokens) do
@@ -183,13 +199,19 @@ begin
       Continue;
     end;
     if (Length(mText) > 2) and (Copy(mText, 1, 2) = '-r') then
-      Result.Revision := Copy(mText, 3, MaxInt)
+    begin
+      Result.Revision := Copy(mText, 3, MaxInt);
+    end
     else
+    begin
       mOthers := mOthers + [mIndex];
+    end;
     Inc(mIndex);
   end;
   if (Length(mOthers) <> 2) or ((Result.Revision <> '') and (StrToIntDef(Result.Revision, -1) < 0)) then
+  begin
     Exit;
+  end;
   if IsUrlish(Result.Tokens[mOthers[0]].Value) then
   begin
     Result.UrlIndex := mOthers[0];
@@ -210,10 +232,14 @@ var
 begin
   mStart := Pos('://', AUrl);
   if mStart = 0 then
+  begin
     Exit('');
+  end;
   mIndex := mStart + 3;
   while (mIndex <= Length(AUrl)) and (AUrl[mIndex] <> '/') do
+  begin
     Inc(mIndex);
+  end;
   Result := Copy(AUrl, 1, mIndex - 1);
 end;
 
@@ -225,27 +251,39 @@ var
 begin
   mServer := ServerOf(AUrl);
   if mServer = '' then
+  begin
     Exit(AUrl);
+  end;
   mParts := Copy(AUrl, Length(mServer) + 1, MaxInt).Split(['/'], TStringSplitOptions.ExcludeEmpty);
   mOut := nil;
   for mPart in mParts do
+  begin
     if mPart = '..' then
     begin
       if Length(mOut) > 0 then
+      begin
         SetLength(mOut, Length(mOut) - 1);
+      end;
     end
     else if mPart <> '.' then
+    begin
       mOut := mOut + [mPart];
+    end;
+  end;
   Result := mServer;
   for mPart in mOut do
+  begin
     Result := Result + '/' + mPart;
+  end;
 end;
 
 function WithoutSlash(const AText: string): string;
 begin
   Result := Trim(AText);
   while (Result <> '') and (Result[Length(Result)] = '/') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 { TAtlasSvnExternals }
@@ -266,7 +304,9 @@ begin
       case mReader.Node of
         TAtlasVcsXmlNode.StartTag:
           if mReader.Name = 'target' then
-            mPath := mReader.Attr('path')
+          begin
+            mPath := mReader.Attr('path');
+          end
           else if (mReader.Name = 'property') and (mReader.Attr('name') = 'svn:externals') and
             not mReader.EmptyElement then
           begin
@@ -283,18 +323,26 @@ begin
             begin
               // Die Wurzel selbst gehört dazu (Owner '').
               if not VcsRelativeOrRoot(ARoot, mPath, mRelative) then
+              begin
                 Continue;
+              end;
             end
             else if Copy(mRelative, 1, 2) = './' then
+            begin
               Delete(mRelative, 1, 2);
+            end;
             if mRelative = '.' then
+            begin
               mRelative := '';
+            end;
             Result := Result + [TAtlasVcsSvnExternalDefinition.Make(WithoutSlash(mRelative),
               StringReplace(mText, #13#10, #10, [rfReplaceAll]))];
           end;
         TAtlasVcsXmlNode.Text:
           if mInProperty then
+          begin
             mText := mText + mReader.Value;
+          end;
       end;
   finally
     mReader.Free;
@@ -308,7 +356,9 @@ var
   mChar: TBytes;
 begin
   if Pos('%', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   mChar := TEncoding.UTF8.GetBytes(AText);
   SetLength(mBytes, Length(mChar));
   mCount := 0;
@@ -349,9 +399,13 @@ begin
     Exit(Normalized(mScheme + ':' + AUrl));
   end;
   if Copy(AUrl, 1, 1) = '/' then
+  begin
     Exit(Normalized(ServerOf(AOwnerUrl) + AUrl));
+  end;
   if Copy(AUrl, 1, 3) = '../' then
+  begin
     Exit(Normalized(WithoutSlash(AOwnerUrl) + '/' + AUrl));
+  end;
   Result := Normalized(AUrl);
 end;
 
@@ -371,7 +425,9 @@ begin
   begin
     mLine := ParseLine(mLines[mIndex]);
     if mLine.UrlIndex < 0 then
+    begin
       Continue;
+    end;
     mItem := Default(TAtlasVcsSvnExternal);
     mItem.Owner := ADefinition.Owner;
     mItem.Line := mIndex;
@@ -390,9 +446,13 @@ begin
     mItem.FullUrl := ResolveUrl(mUrl, AOwnerUrl, mRoot);
     mItem.Foreign := (mRoot = '') or not SameText(Copy(mItem.FullUrl, 1, Length(mRoot) + 1), mRoot + '/');
     if not mItem.Foreign then
+    begin
       mItem.Source := UrlDecode(Copy(mItem.FullUrl, Length(mRoot) + 2, MaxInt));
+    end;
     if mItem.Folder <> '' then
+    begin
       Result := Result + [mItem];
+    end;
   end;
 end;
 
@@ -407,7 +467,9 @@ begin
   begin
     mOwnerUrl := WithoutSlash(ARootUrl);
     if mDefinition.Owner <> '' then
+    begin
       mOwnerUrl := mOwnerUrl + '/' + StringReplace(mDefinition.Owner, ' ', '%20', [rfReplaceAll]);
+    end;
     Result := Result + Parse(mDefinition, mOwnerUrl, ARepositoryRoot);
   end;
 end;
@@ -423,7 +485,9 @@ begin
   while mLine < ALine do
   begin
     if mIndex > Length(AText) then
+    begin
       Exit(AText);
+    end;
     if AText[mIndex] = #10 then
     begin
       Inc(mLine);
@@ -433,7 +497,9 @@ begin
   end;
   mIndex := mStart;
   while (mIndex <= Length(AText)) and not CharInSet(AText[mIndex], [#10, #13]) do
+  begin
     Inc(mIndex);
+  end;
   Result := Copy(AText, 1, mStart - 1) + ANewLine + Copy(AText, mIndex, MaxInt);
 end;
 
@@ -457,13 +523,19 @@ var
 begin
   Result := '';
   if not LineOf(AText, AExternal.Line, mLine) then
+  begin
     Exit;
+  end;
   if mLine.OldFormat then
+  begin
     Result := mLine.Indent + mLine.Tokens[mLine.FolderIndex].Raw + ' -r' + ARevision + ' ' +
-      mLine.Tokens[mLine.UrlIndex].Raw
+      mLine.Tokens[mLine.UrlIndex].Raw;
+  end
   else
+  begin
     Result := mLine.Indent + '-r ' + ARevision + ' ' + mLine.Tokens[mLine.UrlIndex].Raw + ' ' +
       mLine.Tokens[mLine.FolderIndex].Raw;
+  end;
 end;
 
 class function TAtlasSvnExternals.RetargetedLine(const AText: string; const AExternal: TAtlasVcsSvnExternal;
@@ -473,14 +545,20 @@ var
 begin
   Result := '';
   if not LineOf(AText, AExternal.Line, mLine) then
+  begin
     Exit;
+  end;
   // Altes Format kennt keine relativen URLs: vollständig schreiben.
   if mLine.OldFormat then
+  begin
     Result := mLine.Indent + mLine.Tokens[mLine.FolderIndex].Raw + ' ' + WithoutSlash(ARepositoryRoot) + '/' +
-      StringReplace(APath, ' ', '%20', [rfReplaceAll])
+      StringReplace(APath, ' ', '%20', [rfReplaceAll]);
+  end
   else
+  begin
     Result := mLine.Indent + '^/' + StringReplace(APath, ' ', '%20', [rfReplaceAll]) + ' ' +
       mLine.Tokens[mLine.FolderIndex].Raw;
+  end;
 end;
 
 class function TAtlasSvnExternals.VersionState(const ASvnVersion: string; out ARevision: string; out AMixed,
@@ -496,7 +574,9 @@ begin
   while (mText <> '') and CharInSet(mText[Length(mText)], ['M', 'S', 'P']) do
   begin
     if mText[Length(mText)] = 'M' then
+    begin
       AModified := True;
+    end;
     Delete(mText, Length(mText), 1);
   end;
   if Pos(':', mText) > 0 then
@@ -506,7 +586,9 @@ begin
   end;
   Result := (mText <> '') and (StrToIntDef(mText, -1) >= 0);
   if Result then
-    ARevision := mText
+  begin
+    ARevision := mText;
+  end
   else
   begin
     AMixed := False;
@@ -524,14 +606,20 @@ begin
   mText := Trim(AVersion);
   mIndex := 1;
   while (mIndex <= Length(mText)) and not CharInSet(mText[mIndex], ['0'..'9']) do
+  begin
     Inc(mIndex);
+  end;
   mStart := mIndex;
   while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], ['0'..'9', '.']) do
+  begin
     Inc(mIndex);
+  end;
   mParts := Copy(mText, mStart, mIndex - mStart).Split(['.']);
   Result := False;
   if (Length(mParts) < 2) or not TryStrToInt(mParts[0], mMajor) or not TryStrToInt(mParts[1], mMinor) then
+  begin
     Exit;
+  end;
   Result := (mMajor > 1) or ((mMajor = 1) and (mMinor >= 9));
 end;
 
@@ -553,7 +641,9 @@ begin
   begin
     mSource := WithoutSlash(mRule.Source);
     if Length(mSource) <= Length(mBest) then
+    begin
       Continue;
+    end;
     if (not AExternal.Foreign and PrefixOf(mSource, '^/' + AExternal.Source)) or
       PrefixOf(mSource, AExternal.FullUrl) then
     begin
@@ -586,14 +676,22 @@ var
 begin
   // Mit Revision behält ein External sie immer.
   if AExternal.Fixed then
+  begin
     Exit(TAtlasVcsExternalAction.Keep);
+  end;
   if MatchRule(AExternal, AOptions.ExternalsRules, mAction) and Allowed(AExternal, mAction) then
+  begin
     Exit(mAction);
+  end;
   if AExternal.CanBranch and ((AOptions.ExternalsSuggest = TAtlasVcsExternalSuggest.Always) or
     ((AOptions.ExternalsSuggest = TAtlasVcsExternalSuggest.Modified) and AExternal.Modified)) then
+  begin
     Exit(TAtlasVcsExternalAction.Branch);
+  end;
   if AOptions.ExternalsOnBranch = TAtlasVcsExternalAction.Branch then
+  begin
     Exit(TAtlasVcsExternalAction.Pin);
+  end;
   Result := AOptions.ExternalsOnBranch;
 end;
 

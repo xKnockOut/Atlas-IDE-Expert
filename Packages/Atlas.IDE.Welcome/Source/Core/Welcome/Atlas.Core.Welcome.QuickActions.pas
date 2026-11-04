@@ -185,8 +185,12 @@ var
 begin
   Result := '';
   for Index := Length(AFileName) downto 1 do
+  begin
     if (AFileName[Index] = '\') or (AFileName[Index] = '/') then
+    begin
       Exit(Copy(AFileName, 1, Index - 1));
+    end;
+  end;
 end;
 
 function NameOf(const AFileName: string): string;
@@ -195,8 +199,12 @@ var
 begin
   Result := AFileName;
   for Index := Length(AFileName) downto 1 do
+  begin
     if (AFileName[Index] = '\') or (AFileName[Index] = '/') then
+    begin
       Exit(Copy(AFileName, Index + 1, MaxInt));
+    end;
+  end;
 end;
 
 function BaseNameOf(const AFileName: string): string;
@@ -205,8 +213,12 @@ var
 begin
   Result := NameOf(AFileName);
   for Index := Length(Result) downto 1 do
+  begin
     if Result[Index] = '.' then
+    begin
       Exit(Copy(Result, 1, Index - 1));
+    end;
+  end;
 end;
 
 function ExtensionOf(const AFileName: string): string;
@@ -217,8 +229,12 @@ begin
   Result := '';
   Name := NameOf(AFileName);
   for Index := Length(Name) downto 1 do
+  begin
     if Name[Index] = '.' then
+    begin
       Exit(LowerCase(Copy(Name, Index, MaxInt)));
+    end;
+  end;
 end;
 
 function WithExtension(const AFileName, AExtension: string): string;
@@ -229,8 +245,12 @@ begin
   Name := NameOf(AFileName);
   Result := AFileName;
   for Index := Length(Name) downto 1 do
+  begin
     if Name[Index] = '.' then
+    begin
       Exit(Copy(AFileName, 1, Length(AFileName) - Length(Name) + Index - 1) + AExtension);
+    end;
+  end;
   Result := AFileName + AExtension;
 end;
 
@@ -240,8 +260,12 @@ var
 begin
   Result := False;
   for Item in AItems do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Wert des Attributs bzw. Inhalts zwischen AStart (ab APos) und ADelimiter; '' ohne.</summary>
@@ -252,11 +276,15 @@ begin
   AValue := '';
   Start := Pos(AStart, AText, APos);
   if Start = 0 then
+  begin
     Exit(False);
+  end;
   Inc(Start, Length(AStart));
   Stop := Pos(ADelimiter, AText, Start);
   if Stop = 0 then
+  begin
     Exit(False);
+  end;
   AValue := Copy(AText, Start, Stop - Start);
   APos := Stop + Length(ADelimiter);
   Result := True;
@@ -296,7 +324,9 @@ function TAtlasQuickActionState.ElapsedSeconds(ANowMs: UInt64): Integer;
 begin
   Result := 0;
   if (StartedMs = 0) or (ANowMs <= StartedMs) then
+  begin
     Exit;
+  end;
   Result := Integer((ANowMs - StartedMs) div 1000);
 end;
 
@@ -321,9 +351,15 @@ var
 begin
   Result := [];
   for Part in AText.Split([',', ';', ' ']) do
+  begin
     for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+    begin
       if SameText(Trim(Part), Names[Action]) then
+      begin
         Include(Result, Action);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.ItemsText(AItems: TAtlasQuickActions): string;
@@ -332,12 +368,16 @@ var
 begin
   Result := '';
   for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
+  begin
     if Action in AItems then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + Names[Action];
     end;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.NormalizedItems(const AText: string): string;
@@ -349,18 +389,26 @@ class function TAtlasWelcomeQuickActions.NormalizedConsole(const AText: string):
 begin
   Result := Trim(AText);
   if Result = '' then
+  begin
     Result := DefaultConsole;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.PullBlock(const AVcs: TAtlasProjectVcs): TAtlasPullBlock;
 begin
   Result := TAtlasPullBlock.None;
   if not AVcs.Known then
+  begin
     Exit;
+  end;
   if SameText(AVcs.Kind, 'none') then
+  begin
     Exit(TAtlasPullBlock.NoWorkingCopy);
+  end;
   if AVcs.InWorkingCopy and (AVcs.Changed > 0) then
+  begin
     Result := TAtlasPullBlock.LocalChanges;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.IsUpdate(const AVcs: TAtlasProjectVcs): Boolean;
@@ -390,7 +438,9 @@ begin
   for Action := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
   begin
     if not (Action in AItems) then
+    begin
       Continue;
+    end;
     Button := Default(TAtlasQuickActionButton);
     Button.Action := Action;
     Button.Block := TAtlasPullBlock.None;
@@ -398,7 +448,9 @@ begin
     Button.Enabled := not ABusy or (Action = TAtlasQuickAction.Folder) or (Action = TAtlasQuickAction.Console);
     // Die IDE öffnet immer nur ein Projekt zur Zeit.
     if AIdeBusy and UsesIde(Action) then
+    begin
       Button.Enabled := False;
+    end;
     Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run) or
       (Action = TAtlasQuickAction.Tasks);
     if Action = TAtlasQuickAction.Pull then
@@ -406,7 +458,9 @@ begin
       Button.Update := IsUpdate(AVcs);
       Button.Block := PullBlock(AVcs);
       if (Button.Block = TAtlasPullBlock.None) and ABusy then
+      begin
         Button.Block := TAtlasPullBlock.Busy;
+      end;
       Button.Enabled := Button.Block = TAtlasPullBlock.None;
     end;
     Result := Result + [Button];
@@ -420,8 +474,12 @@ var
 begin
   Result := -1;
   for Index := 0 to High(AButtons) do
+  begin
     if AButtons[Index].Action = AAction then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.ActionForKey(AShortCut, ABuildKey, ATestKey: Integer;
@@ -430,7 +488,9 @@ begin
   AAction := TAtlasQuickAction.Build;
   Result := False;
   if AShortCut = 0 then
+  begin
     Exit;
+  end;
   if (AShortCut = ABuildKey) and (TAtlasQuickAction.Build in AItems) then
   begin
     AAction := TAtlasQuickAction.Build;
@@ -446,14 +506,22 @@ end;
 class function TAtlasWelcomeQuickActions.MoveRow(ARow, ADelta, ACount: Integer): Integer;
 begin
   if ACount <= 0 then
+  begin
     Exit(-1);
+  end;
   Result := ARow + ADelta;
   if ARow < 0 then
+  begin
     Result := 0;
+  end;
   if Result < 0 then
+  begin
     Result := 0;
+  end;
   if Result > ACount - 1 then
+  begin
     Result := ACount - 1;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.MoveButton(const AButtons: TAtlasQuickActionButtons; ACurrent,
@@ -463,18 +531,26 @@ var
 begin
   Result := ACurrent;
   if (ADelta = 0) or (Length(AButtons) = 0) then
+  begin
     Exit;
+  end;
   Step := 1;
   if ADelta < 0 then
+  begin
     Step := -1;
+  end;
   Index := ACurrent + Step;
   // Ohne gewählten Knopf beginnt „links“ beim letzten.
   if (ACurrent < 0) and (Step < 0) then
+  begin
     Index := High(AButtons);
+  end;
   while (Index >= 0) and (Index <= High(AButtons)) do
   begin
     if AButtons[Index].Enabled then
+    begin
       Exit(Index);
+    end;
     Inc(Index, Step);
   end;
 end;
@@ -489,19 +565,29 @@ begin
   Folder := Trim(AFolder);
   Result := Folder <> '';
   if not Result then
+  begin
     Exit;
+  end;
   // Ein Backslash vor dem schließenden Anführungszeichen würde es maskieren („C:\“ → „C:\.“).
   Quoted := Folder;
   if (Quoted[Length(Quoted)] = '\') or (Quoted[Length(Quoted)] = '/') then
+  begin
     Quoted := Quoted + '.';
+  end;
   Base := LowerCase(BaseNameOf(AFileName));
   if Base = 'wt' then
-    AParameters := '-d "' + Quoted + '"'
+  begin
+    AParameters := '-d "' + Quoted + '"';
+  end
   else if Base = 'cmd' then
-    AParameters := '/K cd /d "' + Quoted + '"'
+  begin
+    AParameters := '/K cd /d "' + Quoted + '"';
+  end
   else if (Base = 'powershell') or (Base = 'pwsh') then
+  begin
     AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(Quoted, '''', '''''',
       [rfReplaceAll]) + '''';
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.ReadTargets(const AText: string): TAtlasProjectTargets;
@@ -516,7 +602,9 @@ begin
   begin
     Value := Trim(XmlDecoded(Value));
     if (Value <> '') and not SameText(Value, 'Base') and not ContainsText(Result.Configurations, Value) then
+    begin
       Result.Configurations := Result.Configurations + [Value];
+    end;
   end;
   Position := 1;
   while NextValue(AText, '<Platform value="', '"', Position, Value) do
@@ -535,7 +623,9 @@ begin
     end;
     Value := Trim(XmlDecoded(Value));
     if (Value <> '') and SameText(Trim(Content), 'True') and not ContainsText(Result.Platforms, Value) then
+    begin
       Result.Platforms := Result.Platforms + [Value];
+    end;
   end;
 end;
 
@@ -548,11 +638,19 @@ begin
   APlatform := '';
   // Schreibweise der Datei, damit die IDE die Konfiguration sicher findet.
   for Name in ATargets.Configurations do
+  begin
     if SameText(Name, ALastConfiguration) then
+    begin
       AConfiguration := Name;
+    end;
+  end;
   for Name in ATargets.Platforms do
+  begin
     if SameText(Name, ALastPlatform) then
+    begin
       APlatform := Name;
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.CombinePath(const AFolder, ARelative: string): string;
@@ -563,13 +661,17 @@ begin
   Joined := StringReplace(ARelative, '/', Delimiter, [rfReplaceAll]);
   // Absoluter Pfad (Laufwerk oder UNC) bleibt, sonst relativ zu AFolder.
   if not ((Length(Joined) > 1) and ((Joined[2] = ':') or (Copy(Joined, 1, 2) = '\\'))) then
+  begin
     Joined := StringReplace(AFolder, '/', Delimiter, [rfReplaceAll]) + Delimiter + Joined;
+  end;
   Kept := nil;
   Parts := Joined.Split([Delimiter]);
   for Part in Parts do
   begin
     if (Part = '.') or ((Part = '') and (Length(Kept) > 0)) then
+    begin
       Continue;
+    end;
     if (Part = '..') and (Length(Kept) > 1) and (Kept[High(Kept)] <> '..') then
     begin
       SetLength(Kept, Length(Kept) - 1);
@@ -580,7 +682,9 @@ begin
   Result := string.Join(Delimiter, Kept);
   // UNC: zwei führende Trenner.
   if Copy(Joined, 1, 2) = '\\' then
+  begin
     Result := Delimiter + Result;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.GroupProjects(const AText, AFolder: string): TArray<string>;
@@ -594,10 +698,14 @@ begin
   begin
     Value := Trim(XmlDecoded(Value));
     if Value = '' then
+    begin
       Continue;
+    end;
     Path := CombinePath(AFolder, Value);
     if not ContainsText(Result, Path) then
+    begin
       Result := Result + [Path];
+    end;
   end;
 end;
 
@@ -617,17 +725,27 @@ begin
   Name := BaseNameOf(AProject);
   Folder := FolderOf(AProject);
   if Name = '' then
+  begin
     Exit;
+  end;
   for Sub in Folders do
+  begin
     for Pattern in Patterns do
     begin
       if Sub = '' then
-        Path := CombinePath(Folder, Format(Pattern, [Name]))
+      begin
+        Path := CombinePath(Folder, Format(Pattern, [Name]));
+      end
       else
+      begin
         Path := CombinePath(Folder, Sub + Delimiter + Format(Pattern, [Name]));
+      end;
       if not SameText(Path, AProject) and not ContainsText(Result, Path) then
+      begin
         Result := Result + [Path];
+      end;
     end;
+  end;
 end;
 
 class function TAtlasWelcomeQuickActions.TestProjectFor(const AProject: string;
@@ -651,21 +769,35 @@ begin
   Result := '';
   ACandidates := nil;
   if (AProject = '') or not Assigned(AExists) or not Assigned(AReadLines) then
+  begin
     Exit;
+  end;
   if IsGroup(AProject) then
   begin
     if not AReadLines(AProject, Lines) then
+    begin
       Exit;
+    end;
     for Candidate in GroupProjects(string.Join(#10, Lines), FolderOf(AProject)) do
+    begin
       if IsTestProject(Candidate) then
+      begin
         ACandidates := ACandidates + [Candidate];
+      end;
+    end;
     if Length(ACandidates) = 1 then
+    begin
       Exit(ACandidates[0]);
+    end;
     // Mehrere: das nach der Gruppe benannte, sonst fragt die IDE.
     Group := BaseNameOf(AProject);
     for Candidate in ACandidates do
+    begin
       if SameText(BaseNameOf(Candidate), Group + '.Tests') or SameText(BaseNameOf(Candidate), Group + 'Tests') then
+      begin
         Exit(Candidate);
+      end;
+    end;
     Exit;
   end;
   if IsTestProject(AProject) then
@@ -674,10 +806,16 @@ begin
     Exit(AProject);
   end;
   for Candidate in TestCandidates(AProject) do
+  begin
     if AExists(Candidate) and IsTestProject(Candidate) then
+    begin
       ACandidates := ACandidates + [Candidate];
+    end;
+  end;
   if Length(ACandidates) > 0 then
+  begin
     Result := ACandidates[0];
+  end;
 end;
 
 class procedure TAtlasWelcomeQuickActions.AskExternals(var AButtons: TAtlasQuickActionButtons);
@@ -685,11 +823,13 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AButtons) do
+  begin
     if (AButtons[mIndex].Action = TAtlasQuickAction.Pull) and AButtons[mIndex].Update then
     begin
       AButtons[mIndex].AskExternals := True;
       AButtons[mIndex].HasMenu := True;
     end;
+  end;
 end;
 
 end.

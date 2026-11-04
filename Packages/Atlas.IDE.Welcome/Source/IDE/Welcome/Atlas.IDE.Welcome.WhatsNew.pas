@@ -107,7 +107,9 @@ begin
       Exit('');
   end;
   if (Result <> '') and (Result[1] = #$FEFF) then
+  begin
     Delete(Result, 1, 1);
+  end;
 end;
 
 { TAtlasIdeWhatsNew }
@@ -130,13 +132,19 @@ var
 begin
   Result := '';
   if APluginDir = '' then
+  begin
     Exit;
+  end;
   Candidate := IncludeTrailingPathDelimiter(APluginDir);
   if FileExists(Candidate + TAtlasWhatsNew.FileName) then
+  begin
     Exit(Candidate);
+  end;
   Candidate := IncludeTrailingPathDelimiter(ExpandFileName(Candidate + '..'));
   if FileExists(Candidate + TAtlasWhatsNew.FileName) then
+  begin
     Result := Candidate;
+  end;
 end;
 
 class function TAtlasIdeWhatsNew.SamplePath(const AFolder, ASample: string): string;
@@ -145,7 +153,9 @@ begin
   // Nur Dateien im Installationsordner: whatsnew.json ist Teil der Installation, aber kein Ort für fremde Pfade.
   if (AFolder = '') or (ASample = '') or (Pos('..', ASample) > 0) or (Pos(':', ASample) > 0) or
     CharInSet(ASample[1], ['\', '/']) then
+  begin
     Exit;
+  end;
   Result := IncludeTrailingPathDelimiter(AFolder) + StringReplace(ASample, '/', PathDelim, [rfReplaceAll]);
 end;
 
@@ -157,7 +167,9 @@ begin
   FFolder := FindFolder(TAtlasIdeHost.InstallFolder);
   FVersions := nil;
   if FFolder <> '' then
+  begin
     FVersions := TAtlasWhatsNew.Parse(ReadText(FFolder + TAtlasWhatsNew.FileName));
+  end;
   Stored := TAtlasIdeSettings.Stored;
   FSeen := Stored.WhatsNewSeen;
   if TAtlasWhatsNew.SeenAfterStart(FSeen, FCurrent) <> FSeen then
@@ -172,7 +184,9 @@ begin
       begin
         Next := TAtlasIdeSettings.Stored;
         if Next.WhatsNewSeen <> '' then
+        begin
           Exit;
+        end;
         Next.WhatsNewSeen := Current;
         TAtlasIdeSettings.Update(Next);
       end);
@@ -208,9 +222,13 @@ end;
 function TAtlasIdeWhatsNew.View: TAtlasWhatsNewView;
 begin
   if not Active then
+  begin
     Exit(TAtlasWhatsNewView.Hidden);
+  end;
   if FManual then
+  begin
     Exit(FManualView);
+  end;
   Result := TAtlasWhatsNew.ViewFor(Mode, FVersions, FSeen, FCurrent);
 end;
 
@@ -230,7 +248,9 @@ var
 begin
   Position := Order;
   if OnTop then
+  begin
     Position := 0;
+  end;
   Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.News,
     TAtlasWelcomeWhatsNewFrame.TitleFor(View, Versions), Position, TAtlasWelcomeColumn.Right,
     function: Boolean
@@ -246,7 +266,9 @@ begin
   Next := Section;
   // Nur bei Änderung neu anmelden: Add meldet allen Beobachtern, und die rufen wieder Refresh.
   if (Next.Title = FTitle) and (Next.Order = FOrderShown) then
+  begin
     Exit;
+  end;
   FTitle := Next.Title;
   FOrderShown := Next.Order;
   TAtlasWelcomeSections.Default.Add(Next);
@@ -255,7 +277,9 @@ end;
 procedure TAtlasIdeWhatsNew.Announce(const AItems: TArray<TAtlasWhatsNewItem>);
 begin
   if Length(AItems) = 0 then
+  begin
     Exit;
+  end;
   FVersions := TAtlasWhatsNew.WithItems(FVersions, FCurrent, AItems);
   Changed;
 end;
@@ -271,7 +295,9 @@ end;
 procedure TAtlasIdeWhatsNew.Report(const AText: string);
 begin
   if Assigned(FMessage) then
+  begin
     FMessage(AText);
+  end;
 end;
 
 function TAtlasIdeWhatsNew.SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
@@ -281,11 +307,17 @@ begin
   // Gespeicherte Werte wie die Optionsseite: Der Schalter ändert genau diese.
   Result := TAtlasWhatsNewSwitch.None;
   if not TAtlasQuickToggles.GetFlag(TAtlasIdeSettings.Stored, ASetting, Value) then
+  begin
     Exit;
+  end;
   if Value then
-    Result := TAtlasWhatsNewSwitch.On
+  begin
+    Result := TAtlasWhatsNewSwitch.On;
+  end
   else
+  begin
     Result := TAtlasWhatsNewSwitch.Off;
+  end;
 end;
 
 function TAtlasIdeWhatsNew.KeyText(const AKey: string): string;
@@ -295,13 +327,17 @@ begin
   Result := '';
   Store := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current);
   if Store.HasInteger(AKey) and (Store.ReadInteger(AKey, 0) > 0) then
+  begin
     Result := ShortCutToText(TShortCut(Store.ReadInteger(AKey, 0)));
+  end;
 end;
 
 function TAtlasIdeWhatsNew.CanTry(const AItem: TAtlasWhatsNewItem): Boolean;
 begin
   if AItem.Command <> '' then
+  begin
     Exit(Assigned(FCommandExists) and FCommandExists(AItem.Command));
+  end;
   Result := (SamplePath(FFolder, AItem.Sample) <> '') and FileExists(SamplePath(FFolder, AItem.Sample));
 end;
 
@@ -314,7 +350,9 @@ begin
     begin
       Next := TAtlasIdeSettings.Stored;
       if not TAtlasQuickToggles.SetFlag(Next, ASetting, AOn) then
+      begin
         Exit;
+      end;
       // Update meldet OnChanged: Die Funktion wirkt sofort, die Optionsseite zeigt denselben Wert.
       TAtlasIdeSettings.Update(Next);
       TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.News);
@@ -332,9 +370,13 @@ begin
       if AItem.Command <> '' then
       begin
         if Assigned(FCommandExists) and FCommandExists(AItem.Command) and Assigned(FRun) then
-          FRun(AItem.Command)
+        begin
+          FRun(AItem.Command);
+        end
         else
+        begin
           Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoCommand, [AItem.Command]));
+        end;
         Exit;
       end;
       FileName := SamplePath(FFolder, AItem.Sample);
@@ -346,7 +388,9 @@ begin
       // whatsnew.json zählt Zeilen ab 1, der Editor ab 0.
       Line := AItem.Line - 1;
       if Line < 0 then
+      begin
         Line := 0;
+      end;
       TAtlasIdeResults.Open(FileName, Line, 0);
     end);
 end;
@@ -383,7 +427,9 @@ begin
     procedure
     begin
       if not Active then
+      begin
         Exit;
+      end;
       if Length(TAtlasWhatsNew.VersionsFor(AView, FVersions, FSeen, FCurrent)) = 0 then
       begin
         Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsMissing, [TAtlasWhatsNew.FileName]));
