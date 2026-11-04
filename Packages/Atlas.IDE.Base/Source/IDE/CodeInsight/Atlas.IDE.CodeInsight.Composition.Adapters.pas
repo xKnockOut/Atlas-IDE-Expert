@@ -9,7 +9,7 @@ interface
 
 uses
   Atlas.Core.Updates.Contract,
-  Atlas.IDE.CodeInsight.Manager,
+  Atlas.IDE.CodeInsight.Manager.State,
   Atlas.IDE.Vcs.Service;
 
 /// <summary>Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und Parameter-Hint aus dem Kern.

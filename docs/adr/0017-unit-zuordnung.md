@@ -397,6 +397,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.CodeInsight.Composition.Status` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Status.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Composition.Tools` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Tools.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Commands` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Commands.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Crashes` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Crashes.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Editors` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Editors.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Handlers` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Handlers.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Paths` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Paths.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Queries` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Queries.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.Session` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Session.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Manager.State` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.State.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.Commands.Bindings` | `IDE/Commands/Atlas.IDE.Commands.Bindings.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.ContextMenu` | `IDE/Commands/Atlas.IDE.Commands.ContextMenu.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.Editor` | `IDE/Commands/Atlas.IDE.Commands.Editor.pas` | Ordner `IDE/Commands` |

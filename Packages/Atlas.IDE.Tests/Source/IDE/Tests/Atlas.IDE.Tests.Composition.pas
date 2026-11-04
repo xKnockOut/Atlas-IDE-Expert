@@ -76,7 +76,7 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.CodeInsight.Manager,
+  Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Composition.Hooks,
@@ -176,7 +176,7 @@ function ServerPath: string;
 var
   mArguments: string;
 begin
-  Result := TAtlasCodeInsightManager.ServerPath(mArguments);
+  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
 end;
 
 function AffectedHooks: TAtlasAffectedTestsHooks;

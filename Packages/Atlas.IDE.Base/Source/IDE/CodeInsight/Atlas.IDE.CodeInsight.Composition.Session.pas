@@ -102,6 +102,7 @@ procedure AddCommand(APalette: TAtlasIdePalette; const AId: string; ATextId: TAt
 implementation
 
 uses
+  Atlas.IDE.CodeInsight.Manager.Paths,
   ToolsAPI,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -211,7 +212,7 @@ function ServerPath: string;
 var
   mArguments: string;
 begin
-  Result := TAtlasCodeInsightManager.ServerPath(mArguments);
+  Result := TAtlasCodeInsightPaths.ServerPath(mArguments);
 end;
 
 procedure LogLine(const AText: string);
@@ -379,7 +380,7 @@ procedure OpenLog;
 var
   mFileName: string;
 begin
-  mFileName := TAtlasCodeInsightManager.DiagnoseLog;
+  mFileName := TAtlasCodeInsightPaths.DiagnoseLog;
   if not FileExists(mFileName) and (TAtlasGuard.RotatingLog <> nil) then
   begin
     mFileName := TAtlasGuard.RotatingLog.FileName;
