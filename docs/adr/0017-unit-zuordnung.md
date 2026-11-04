@@ -418,6 +418,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.MetricsLens` | `IDE/Editor/Atlas.IDE.Editor.MetricsLens.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Lens` | `IDE/Editor/Atlas.IDE.Editor.Lens.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Minimap` | `IDE/Editor/Atlas.IDE.Editor.Minimap.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.MinimapFolds` | `IDE/Editor/Atlas.IDE.Editor.MinimapFolds.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.MinimapNotice` | `IDE/Editor/Atlas.IDE.Editor.MinimapNotice.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MissingUnit` | `IDE/Editor/Atlas.IDE.Editor.MissingUnit.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MoveClass` | `IDE/Editor/Atlas.IDE.Editor.MoveClass.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MoveMember` | `IDE/Editor/Atlas.IDE.Editor.MoveMember.pas` | Ordner `IDE/Editor` |
