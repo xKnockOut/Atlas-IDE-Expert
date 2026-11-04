@@ -621,6 +621,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.StepInto` | `IDE/Debug/Atlas.IDE.Debug.StepInto.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Trace` | `IDE/Debug/Atlas.IDE.Debug.Trace.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Unavailable` | `IDE/Debug/Atlas.IDE.Debug.Unavailable.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.UnavailableFixes` | `IDE/Debug/Atlas.IDE.Debug.UnavailableFixes.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
