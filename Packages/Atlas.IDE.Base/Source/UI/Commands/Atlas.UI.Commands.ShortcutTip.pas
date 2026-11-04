@@ -137,7 +137,9 @@ var
     begin
       Canvas.Font.Style := [];
       if FHot = ALink then
+      begin
         Canvas.Font.Style := [fsUnderline];
+      end;
       Canvas.Font.Color := ToColor(Colors.Accent);
       Canvas.Brush.Style := bsClear;
       Canvas.TextOut(X, Y, AText);
@@ -153,7 +155,9 @@ begin
   CapHeight := TextHeight + Scale(2 * CapPadY);
   RowHeight := CapHeight;
   for Kind := Low(TAtlasShortcutTipLink) to High(TAtlasShortcutTipLink) do
+  begin
     FLinks[Kind] := TRect.Empty;
+  end;
   // Erste Zeile: „Tipp:“, Tastenkappen, Befehl.
   X := Scale(Pad);
   Y := Scale(Pad);
@@ -245,7 +249,9 @@ begin
   try
     // Wer gerade auf den Tipp zeigt, will klicken: noch einmal so lange.
     if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
+    begin
       Exit;
+    end;
     Dismiss;
   except
     on E: Exception do
@@ -259,8 +265,12 @@ var
 begin
   Result := TAtlasShortcutTipLink.None;
   for Link := TAtlasShortcutTipLink.Never to TAtlasShortcutTipLink.AllKeys do
+  begin
     if not FLinks[Link].IsEmpty and PtInRect(FLinks[Link], Point(AX, AY)) then
+    begin
       Exit(Link);
+    end;
+  end;
 end;
 
 function TAtlasShortcutTipWindow.LinkRect(ALink: TAtlasShortcutTipLink): TRect;
@@ -273,10 +283,14 @@ begin
   case ALink of
     TAtlasShortcutTipLink.Never:
       if Assigned(FOnNever) then
+      begin
         FOnNever(Self);
+      end;
     TAtlasShortcutTipLink.AllKeys:
       if Assigned(FOnAllKeys) then
+      begin
         FOnAllKeys(Self);
+      end;
   else
     Exit;
   end;
@@ -296,7 +310,9 @@ procedure TAtlasShortcutTipWindow.MouseDown(Button: TMouseButton; Shift: TShiftS
 begin
   inherited;
   if Button = mbLeft then
+  begin
     ClickLink(LinkAt(X, Y));
+  end;
 end;
 
 procedure TAtlasShortcutTipWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
@@ -306,9 +322,13 @@ begin
   inherited;
   Hot := LinkAt(X, Y);
   if Hot <> TAtlasShortcutTipLink.None then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   if Hot <> FHot then
   begin
     FHot := Hot;

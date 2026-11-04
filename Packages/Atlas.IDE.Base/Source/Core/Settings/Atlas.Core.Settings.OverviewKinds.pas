@@ -47,9 +47,15 @@ var
 begin
   Result := [];
   for Part in AText.Split([',', ';', ' ']) do
+  begin
     for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+    begin
       if SameText(Trim(Part), Names[Kind]) then
+      begin
         Include(Result, Kind);
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasOverviewKindNames.Text(AKinds: TAtlasOverviewKinds): string;
@@ -58,12 +64,16 @@ var
 begin
   Result := '';
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  begin
     if Kind in AKinds then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + Names[Kind];
     end;
+  end;
 end;
 
 class function TAtlasOverviewKindNames.Normalize(const AText: string): string;

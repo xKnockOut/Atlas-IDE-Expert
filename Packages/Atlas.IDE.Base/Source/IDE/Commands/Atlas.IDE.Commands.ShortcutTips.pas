@@ -183,11 +183,17 @@ function CurrentModifiers: Word;
 begin
   Result := 0;
   if GetKeyState(VK_SHIFT) < 0 then
+  begin
     Result := Result or TAtlasKeyConflicts.scShift;
+  end;
   if GetKeyState(VK_CONTROL) < 0 then
+  begin
     Result := Result or TAtlasKeyConflicts.scCtrl;
+  end;
   if GetKeyState(VK_MENU) < 0 then
+  begin
     Result := Result or TAtlasKeyConflicts.scAlt;
+  end;
 end;
 
 /// <summary>Der Benutzer hat gerade etwas eingegeben (Maus oder Tastatur, auch im Menü).</summary>
@@ -198,7 +204,9 @@ begin
   Info.cbSize := SizeOf(Info);
   Info.dwTime := 0;
   if not GetLastInputInfo(Info) then
+  begin
     Exit(True);
+  end;
   Result := DWORD(GetTickCount - Info.dwTime) < DWORD(TAtlasIdeShortcutTips.UserInputMs);
 end;
 
@@ -210,7 +218,9 @@ var
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  begin
     Exit;
+  end;
   Process := Debugger.CurrentProcess;
   Result := (Process <> nil) and (Process.ProcessState in [psStopped, psFault, psException]);
 end;
@@ -221,8 +231,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to Screen.FormCount - 1 do
+  begin
     if Screen.Forms[Index].Visible and (fsModal in Screen.Forms[Index].FormState) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := (Application.MainForm <> nil) and Application.MainForm.HandleAllocated and
     not IsWindowEnabled(Application.MainForm.Handle);
 end;
@@ -235,11 +249,17 @@ var
 begin
   Result := nil;
   if (AName = '') or not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ActionList.ActionCount - 1 do
+  begin
     if (Services.ActionList.Actions[Index] is TCustomAction) and
       SameText(Services.ActionList.Actions[Index].Name, AName) then
+    begin
       Exit(TCustomAction(Services.ActionList.Actions[Index]));
+    end;
+  end;
 end;
 
 /// <summary>Aktion gehört Atlas (eigene Aktionslisten, Kategorie „Atlas“); die melden sich selbst.</summary>
@@ -263,12 +283,18 @@ begin
     begin
       Text := TAtlasShortcutTips.KeyTextOfCaption(Child.Caption);
       if (Text = '') and (Child.ShortCut <> 0) then
+      begin
         Text := ShortCutToText(Child.ShortCut);
+      end;
       if (Text <> '') and not AResult.ContainsKey(Child.Action) then
+      begin
         AResult.Add(Child.Action, Text);
+      end;
     end;
     if Child.Count > 0 then
+    begin
       CollectMenuKeys(Child, AResult);
+    end;
   end;
 end;
 
@@ -283,15 +309,25 @@ var
 begin
   Result := TDictionary<TBasicAction, string>.Create;
   if Supports(BorlandIDEServices, INTAServices, Services) and (Services.MainMenu <> nil) then
+  begin
     CollectMenuKeys(Services.MainMenu.Items, Result);
+  end;
   if not AEditorMenus or not Supports(BorlandIDEServices, INTAEditorServices, Editor) then
+  begin
     Exit;
+  end;
   Window := Editor.TopEditWindow;
   if (Window = nil) or (Window.Form = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Window.Form.ComponentCount - 1 do
+  begin
     if Window.Form.Components[Index] is TPopupMenu then
+    begin
       CollectMenuKeys(TPopupMenu(Window.Form.Components[Index]).Items, Result);
+    end;
+  end;
 end;
 
 /// <summary>Kürzel einer Aktion als Text: Haupttaste, sonst die erste Zweittaste, sonst ein Kürzel aus einem Menü
@@ -302,14 +338,22 @@ var
   Index: Integer;
 begin
   if AAction.ShortCut <> 0 then
+  begin
     Exit(ShortCutToText(AAction.ShortCut));
+  end;
   for Index := 0 to AAction.SecondaryShortCuts.Count - 1 do
+  begin
     if AAction.SecondaryShortCuts.ShortCuts[Index] <> 0 then
+    begin
       Exit(ShortCutToText(AAction.SecondaryShortCuts.ShortCuts[Index]));
+    end;
+  end;
   Keys := MenuKeys(True);
   try
     if not Keys.TryGetValue(AAction, Result) then
+    begin
       Result := '';
+    end;
   finally
     Keys.Free;
   end;
@@ -323,10 +367,14 @@ begin
   Result := AAction.Caption;
   Tab := Pos(#9, Result);
   if Tab > 0 then
+  begin
     Result := Copy(Result, 1, Tab - 1);
+  end;
   Result := TAtlasCommandPalette.CleanCaption(Result);
   if Result = '' then
+  begin
     Result := AAction.Name;
+  end;
 end;
 
 /// <summary>Taste der Atlas-Funktion als Text, wenn Atlas sie hält (frei oder mit Vorrang, #494); sonst '', auch
@@ -338,14 +386,18 @@ var
 begin
   Result := '';
   for Entry in TAtlasIdeKeyMap.AtlasEntries do
+  begin
     if Entry.Func = AFunc then
     begin
       // Das Suchfeld der Willkommensseite hat immer Vorrang; dort gibt es keinen Aufruf per Maus.
       if (Entry.Key <> 0) and not Entry.Disabled and
         TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
+      begin
         Result := ShortCutToText(TShortCut(Entry.Key));
+      end;
       Exit;
     end;
+  end;
 end;
 
 /// <summary>Taste eines Atlas-Befehls: unter mehreren Tasten für denselben Befehl (#775 zwei Tasten, #777 eigene
@@ -356,6 +408,7 @@ var
 begin
   Result := '';
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  begin
     if SameText(TAtlasShortcutTips.AtlasCommandId(Func), Trim(AId)) then
     begin
       Result := AtlasKeyText(Func);
@@ -365,6 +418,7 @@ begin
         Exit;
       end;
     end;
+  end;
 end;
 
 /// <summary>Fläche für den Tipp: das Editorfenster (Editor-Steuerelement, sonst das Fenster), sonst das
@@ -384,15 +438,23 @@ begin
     begin
       Editor := TAtlasEditorBarHost.EditorOf(Window);
       if (Editor <> nil) and Editor.Showing then
-        Control := Editor
+      begin
+        Control := Editor;
+      end
       else
+      begin
         Control := Window.Form;
+      end;
     end;
   end;
   if (Control = nil) and (Application.MainForm <> nil) then
+  begin
     Control := Application.MainForm;
+  end;
   if (Control = nil) or not Control.HandleAllocated then
+  begin
     Exit(Screen.WorkAreaRect);
+  end;
   Result.TopLeft := Control.ClientToScreen(Point(0, 0));
   Result.BottomRight := Control.ClientToScreen(Point(Control.ClientWidth, Control.ClientHeight));
 end;
@@ -413,7 +475,9 @@ end;
 destructor TAtlasIdeShortcutTips.Destroy;
 begin
   if FInstance = Self then
+  begin
     FInstance := nil;
+  end;
   // Erst abmelden, dann freigeben (#493).
   FreeAndNil(FEvents);
   FreeAndNil(FWindow);
@@ -439,14 +503,18 @@ var
 begin
   Result := '';
   if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, Tip) then
+  begin
     Result := Tip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
+  end;
 end;
 
 class procedure TAtlasIdeShortcutTips.Invoked(const AId: string);
 begin
   if (FInstance = nil) or not FInstance.FActive or (Trim(AId) = '') or
     TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) then
+  begin
     Exit;
+  end;
   try
     FInstance.FExplicitId := AId;
     FInstance.FExplicitAt := Ticks;
@@ -465,17 +533,23 @@ begin
   AKeyText := '';
   Result := TAtlasShortcutTips.IsKeyOnly(AId, Func);
   if not Result then
+  begin
     Exit;
+  end;
   AKeyText := AtlasKeyText(Func);
   if AKeyText <> '' then
+  begin
     Exit;
+  end;
   // Vervollständigung und Parameter-Hint ohne eigene Taste laufen über Code Insight mit der Taste der IDE.
   for Entry in TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current) do
+  begin
     if (Entry.Func = Func) and (Entry.Key = 0) and (Entry.IdeKey <> 0) then
     begin
       AKeyText := ShortCutToText(TShortCut(Entry.IdeKey));
       Exit;
     end;
+  end;
 end;
 
 procedure TAtlasIdeShortcutTips.UpdateActive;
@@ -485,7 +559,9 @@ begin
   Active := (TAtlasIdeSettings.Current.ShortcutTips or FCountAlways) and
     not TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips);
   if Active = FActive then
+  begin
     Exit;
+  end;
   FActive := Active;
   if FActive then
   begin
@@ -497,7 +573,9 @@ begin
     FEvents.OnMessage := nil;
     FEvents.OnActionExecute := nil;
     if FWindow <> nil then
+    begin
       FWindow.Dismiss;
+    end;
   end;
   // Anonym: nur der Zustand.
   TAtlasGuard.Log(Format('Tastenkürzel-Tipps (#600): Beobachtung %s', [BoolToStr(FActive, True)]));
@@ -514,7 +592,9 @@ begin
   FKeysBuiltAt := 0;
   UpdateActive;
   if (FWindow <> nil) and not TAtlasIdeSettings.Current.ShortcutTips then
+  begin
     FWindow.Dismiss;
+  end;
 end;
 
 procedure TAtlasIdeShortcutTips.KeysChanged;
@@ -548,10 +628,14 @@ var
   Ids: TArray<string>;
 begin
   if (AShortCut = 0) or (AId = '') then
+  begin
     Exit;
+  end;
   Key := TAtlasShortcutTips.StepsKey([AShortCut]);
   if not FKeys.TryGetValue(Key, Ids) then
+  begin
     Ids := nil;
+  end;
   FKeys.AddOrSetValue(Key, Ids + [AId]);
 end;
 
@@ -563,10 +647,14 @@ var
 begin
   Steps := TAtlasShortcutTips.ParseSteps(AKeyText);
   if (Length(Steps) = 0) or (AId = '') then
+  begin
     Exit;
+  end;
   Key := TAtlasShortcutTips.StepsKey(Steps);
   if not FKeys.TryGetValue(Key, Ids) then
+  begin
     Ids := nil;
+  end;
   FKeys.AddOrSetValue(Key, Ids + [AId]);
 end;
 
@@ -582,39 +670,57 @@ var
   Key: Word;
 begin
   if (FKeysBuiltAt <> 0) and (Ticks - FKeysBuiltAt < KeysMaxAgeMs) then
+  begin
     Exit;
+  end;
   FKeysBuiltAt := Ticks;
   FKeys.Clear;
   // Atlas-Tasten, die Atlas tatsächlich hält.
   for Func := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  begin
     AddKeys(AtlasKeyText(Func), TAtlasShortcutTips.AtlasCommandId(Func));
+  end;
   // Beim Aufruf gelernte Kürzel (Aktionen des Editor-Kontextmenüs).
   for Learned in FLearned do
+  begin
     AddKeys(Learned.Value, Learned.Key);
+  end;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
+  begin
     Exit;
+  end;
   for Index := 0 to Services.ActionList.ActionCount - 1 do
   begin
     if not (Services.ActionList.Actions[Index] is TCustomAction) then
+    begin
       Continue;
+    end;
     Action := TCustomAction(Services.ActionList.Actions[Index]);
     if (Action.Name = '') or IsAtlasAction(Action) then
+    begin
       Continue;
+    end;
     AddKeys(Word(Action.ShortCut), Action.Name);
     for Secondary := 0 to Action.SecondaryShortCuts.Count - 1 do
     begin
       Key := Word(Action.SecondaryShortCuts.ShortCuts[Secondary]);
       if Key <> Word(Action.ShortCut) then
+      begin
         AddKeys(Key, Action.Name);
+      end;
     end;
   end;
   // Kürzel mit zwei Schritten stehen nur in den Menübeschriftungen.
   Menu := MenuKeys(False);
   try
     for Pair in Menu do
+    begin
       if (Pair.Key is TCustomAction) and (TCustomAction(Pair.Key).Name <> '') and
         (TCustomAction(Pair.Key).ShortCut = 0) and not IsAtlasAction(TCustomAction(Pair.Key)) then
+      begin
         AddKeys(Pair.Value, TCustomAction(Pair.Key).Name);
+      end;
+    end;
   finally
     Menu.Free;
   end;
@@ -629,18 +735,26 @@ begin
   EnsureKeys;
   Ids := nil;
   if AChordOnly or not FKeys.TryGetValue(TAtlasShortcutTips.StepsKey([AShortCut]), Ids) then
+  begin
     Ids := nil;
+  end;
   // Zweiter Schritt eines Kürzels mit zwei Schritten.
   if (FPrevKey <> 0) and (Ticks - FPrevAt < TAtlasShortcutTips.ChordMs) and
     FKeys.ContainsKey(TAtlasShortcutTips.StepsKey([FPrevKey, AShortCut])) then
+  begin
     Ids := Ids + FKeys[TAtlasShortcutTips.StepsKey([FPrevKey, AShortCut])];
+  end;
   FPrevKey := AShortCut;
   FPrevAt := Ticks;
   if Length(Ids) = 0 then
+  begin
     Exit;
+  end;
   Now_ := Now;
   for Id in Ids do
+  begin
     Usage.Count(Id, TAtlasCommandInput.Keyboard, Now_);
+  end;
   Changed;
 end;
 
@@ -650,29 +764,43 @@ var
   ShortCut: Word;
 begin
   if (Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN) then
+  begin
     Exit;
+  end;
   // Von der Sicherung abgeschaltet (#493): nichts mehr beobachten.
   if TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) then
+  begin
     Exit;
+  end;
   try
     // Jede Taste schließt den Tipp.
     if (FWindow <> nil) and FWindow.IsShown then
+    begin
       FWindow.Dismiss;
+    end;
     // Wiederholung beim Festhalten zählt nicht.
     if (Msg.lParam and $40000000) <> 0 then
+    begin
       Exit;
+    end;
     Key := Word(Msg.wParam);
     if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) or (Key = VK_LWIN) or (Key = VK_RWIN) or
       (Key = VK_CAPITAL) then
+    begin
       Exit;
+    end;
     ShortCut := (Key and $FF) or CurrentModifiers;
     if not TAtlasShortcutTips.IsShortCutStroke(ShortCut) then
     begin
       // Zweiter Schritt ohne Umschalttaste („Strg+K, D“).
       if (FPrevKey <> 0) and (Ticks - FPrevAt < TAtlasShortcutTips.ChordMs) then
-        KeyStroke(ShortCut, True)
+      begin
+        KeyStroke(ShortCut, True);
+      end
       else
+      begin
         FPrevKey := 0;
+      end;
       Exit;
     end;
     KeyStroke(ShortCut, False);
@@ -693,10 +821,14 @@ function ViaShortCut(AAction: TCustomAction; APrevKey: Word; APrevAge: UInt64): 
   begin
     Result := False;
     if AShortCut = 0 then
+    begin
       Exit;
+    end;
     Key := AShortCut and $FF;
     if (GetKeyState(Key) < 0) and ((AShortCut and TAtlasKeyMap.ModifierMask) = CurrentModifiers) then
+    begin
       Exit(True);
+    end;
     Result := (APrevKey = AShortCut) and (APrevAge < TAtlasShortcutTips.ChordMs);
   end;
 
@@ -704,10 +836,16 @@ var
   Index: Integer;
 begin
   if Matches(Word(AAction.ShortCut)) then
+  begin
     Exit(True);
+  end;
   for Index := 0 to AAction.SecondaryShortCuts.Count - 1 do
+  begin
     if Matches(Word(AAction.SecondaryShortCuts.ShortCuts[Index])) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -717,23 +855,35 @@ var
 begin
   // Handled bleibt False: Die Aktion läuft wie immer.
   if TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) then
+  begin
     Exit;
+  end;
   try
     if not (Action is TCustomAction) then
+    begin
       Exit;
+    end;
     Item := TCustomAction(Action);
     // Namenlose Aktionen und die von Atlas (Kontextmenü, #399) melden sich selbst bzw. zählen nicht.
     if (Item.Name = '') or IsAtlasAction(Item) then
+    begin
       Exit;
+    end;
     // Von der Befehlspalette schon gemeldet.
     if SameText(Item.Name, FExplicitId) and (Ticks - FExplicitAt < ExplicitMs) then
+    begin
       Exit;
+    end;
     // Über das Kürzel: zählt schon AppMessage.
     if ViaShortCut(Item, FPrevKey, Ticks - FPrevAt) then
+    begin
       Exit;
+    end;
     // Aufrufe der IDE aus dem Programm heraus, ohne Eingabe des Benutzers, zählen nicht.
     if not UserJustActed then
+    begin
       Exit;
+    end;
     // Kürzel und Beschriftung jetzt, von der Aktion selbst: Sie steht nicht immer in INTAServices.ActionList.
     MouseUse(Item.Name, ActionKeyText(Item), ActionCaption(Item));
   except
@@ -768,7 +918,9 @@ var
   Known: Boolean;
 begin
   if not TAtlasIdeSettings.Current.ShortcutTips then
+  begin
     Exit;
+  end;
   // Erst nach der Aktion: Sie kann einen modalen Dialog öffnen (dann kein Tipp) oder das Editorfenster wechseln.
   Id := AId;
   KeyText := AKeyText;
@@ -781,11 +933,17 @@ begin
         procedure
         begin
           if FInstance = nil then
+          begin
             Exit;
+          end;
           if Known then
-            FInstance.Consider(Id, KeyText, Caption, False)
+          begin
+            FInstance.Consider(Id, KeyText, Caption, False);
+          end
           else
+          begin
             FInstance.Consider(Id);
+          end;
         end);
     end);
 end;
@@ -802,16 +960,22 @@ begin
     Consider(AId, KeyText, TAtlasKeyMapWindow.FunctionCaption(Func), True);
   end
   else if AId.StartsWith('Atlas.', True) then
+  begin
     // Befehl von Atlas ohne eigene Taste: kein Tipp, aber dieselbe Prüfung.
-    Consider(AId, '', '', True)
+    Consider(AId, '', '', True);
+  end
   else
   begin
     // Aktion der IDE aus der Befehlspalette.
     Action := FindAction(AId);
     if Action <> nil then
-      Consider(AId, ActionKeyText(Action), ActionCaption(Action), IsAtlasAction(Action))
+    begin
+      Consider(AId, ActionKeyText(Action), ActionCaption(Action), IsAtlasAction(Action));
+    end
     else
+    begin
       Consider(AId, '', '', False);
+    end;
   end;
 end;
 
@@ -827,9 +991,13 @@ begin
   // Dieselbe Tippquelle wie „Atlas entdecken“ (#757): Titel aus tips.json, sonst der Aktion.
   Caption := TipTitle(AId);
   if Caption = '' then
+  begin
     Caption := ACaption;
+  end;
   if Caption = '' then
+  begin
     Caption := AId;
+  end;
   Situation := TAtlasTipSituation.Create(Settings.ShortcutTips, TAtlasShortcutTips.ScopeOf(Settings.ShortcutTipsScope),
     AIsAtlas, KeyText, Now);
   Situation.LastTipAt := FLastTipAt;
@@ -841,25 +1009,33 @@ begin
   end;
   Verdict := TAtlasShortcutTips.Decide(Usage.Entry(AId), Situation);
   if Verdict = TAtlasTipVerdict.Show then
+  begin
     ShowTip(AId, KeyText, Caption);
+  end;
 end;
 
 class function TAtlasIdeShortcutTips.TipActions(const AId: string): TArray<TAtlasNotificationAction>;
 begin
   Result := nil;
   if TAtlasIdeSettings.Current.KeyOverview then
+  begin
     Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipAllKeys),
       procedure
       begin
         if TAtlasIdeKeyMap.Instance <> nil then
+        begin
           TAtlasIdeKeyMap.Instance.ShowAll;
+        end;
       end)];
+  end;
   Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.ShortcutTipNever),
     procedure
     begin
       // Die Tipps können inzwischen beendet sein: nur über die laufende Instanz.
       if FInstance <> nil then
+      begin
         FInstance.SetNever(AId);
+      end;
     end)];
 end;
 
@@ -877,7 +1053,9 @@ begin
     TAtlasNotificationSeverity.Info, TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipTitle, [AKeyText]),
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
   if Mode = TAtlasNotificationMode.Off then
+  begin
     Exit;
+  end;
   if Mode = TAtlasNotificationMode.Show then
   begin
     if FWindow = nil then
@@ -923,7 +1101,9 @@ begin
     procedure
     begin
       if Id = '' then
+      begin
         Exit;
+      end;
       Entry := Usage.Entry(Id);
       Entry.Never := True;
       Usage.Put(Entry);
@@ -938,7 +1118,9 @@ begin
     procedure
     begin
       if TAtlasIdeKeyMap.Instance <> nil then
+      begin
         TAtlasIdeKeyMap.Instance.ShowAll;
+      end;
     end);
 end;
 

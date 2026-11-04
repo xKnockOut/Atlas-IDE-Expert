@@ -242,45 +242,77 @@ begin
   begin
     mCopy := cBranchMark + mCopy;
     for mLevel := 2 to ARow.Depth do
+    begin
       mCopy := cIndent + mCopy;
+    end;
   end;
   // Pfad: SVN ^/…, fremde Repositories mit URL; Git der Branch der Wurzel.
   mPath := '';
   if ARow.Url <> '' then
-    mPath := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesForeign, [ARow.Url])
+  begin
+    mPath := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesForeign, [ARow.Url]);
+  end
   else if (ARow.RepositoryPath <> '') and (AKind = TAtlasVcsKind.Svn) then
-    mPath := '^/' + ARow.RepositoryPath
+  begin
+    mPath := '^/' + ARow.RepositoryPath;
+  end
   else
+  begin
     mPath := ARow.RepositoryPath;
+  end;
   if not ARow.Loaded then
-    mRevision := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading)
+  begin
+    mRevision := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading);
+  end
   else
   begin
     mRevision := ARow.Revision;
     if (mRevision = '') and ARow.Fixed then
+    begin
       mRevision := ARow.FixedRevision;
+    end;
     if (mRevision <> '') and (AKind = TAtlasVcsKind.Svn) then
+    begin
       mRevision := 'r' + mRevision;
+    end;
     if ARow.Fixed then
+    begin
       mRevision := TAtlasStrings.Fmt(TAtlasTextId.VcsWorkingCopiesFixed, [mRevision]);
+    end;
   end;
   if ARow.Changed >= 0 then
-    mChanged := IntToStr(ARow.Changed)
+  begin
+    mChanged := IntToStr(ARow.Changed);
+  end
   else if ARow.Loaded then
-    mChanged := ''
+  begin
+    mChanged := '';
+  end
   else
+  begin
     mChanged := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading);
+  end;
   // Nur auf Klick: Bis dahin steht, dass der Server noch nicht gefragt wurde.
   if AChecking then
-    mIncoming := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesChecking)
+  begin
+    mIncoming := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesChecking);
+  end
   else if ARow.Incoming >= 0 then
-    mIncoming := IntToStr(ARow.Incoming)
+  begin
+    mIncoming := IntToStr(ARow.Incoming);
+  end
   else if ARow.Outcome <> TAtlasVcsOutcome.Ok then
-    mIncoming := AtlasVcsOutcomeName(ARow.Outcome)
+  begin
+    mIncoming := AtlasVcsOutcomeName(ARow.Outcome);
+  end
   else if (AKind = TAtlasVcsKind.Svn) and (ARow.RepositoryPath <> '') then
-    mIncoming := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNotChecked)
+  begin
+    mIncoming := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNotChecked);
+  end
   else
+  begin
     mIncoming := '';
+  end;
   Result := TArray<string>.Create(mCopy, mPath, mRevision, mChanged, mIncoming);
 end;
 
@@ -292,25 +324,33 @@ begin
   if not FView.HandleAllocated then
   begin
     if not HandleAllocated then
+    begin
       Exit;
+    end;
     FView.HandleNeeded;
   end;
   FView.Items.BeginUpdate;
   try
     FView.Items.Clear;
     if FHasList then
+    begin
       for mIndex := 0 to High(FList.Rows) do
       begin
         FView.Items.Add;
         FillRow(mIndex);
-      end
+      end;
+    end
     else
+    begin
       FView.Items.Add.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesLoading);
+    end;
   finally
     FView.Items.EndUpdate;
   end;
   if FView.Items.Count > 0 then
+  begin
     FView.Items[0].Selected := True;
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.FillRow(AIndex: Integer);
@@ -321,7 +361,9 @@ var
   mChecking: Boolean;
 begin
   if not FView.HandleAllocated or (AIndex < 0) or (AIndex >= FView.Items.Count) or (AIndex > High(FList.Rows)) then
+  begin
     Exit;
+  end;
   mChecking := (AIndex <= High(FChecking)) and FChecking[AIndex];
   mCells := Cells(FList.Kind, FList.Rows[AIndex], FName, mChecking);
   mItem := FView.Items[AIndex];
@@ -330,7 +372,9 @@ begin
   try
     mItem.SubItems.Clear;
     for mColumn := 1 to High(mCells) do
+    begin
       mItem.SubItems.Add(mCells[mColumn]);
+    end;
   finally
     mItem.SubItems.EndUpdate;
   end;
@@ -346,9 +390,13 @@ begin
   FCheckButton.Visible := IsSvn;
   FUpdateOnlyButton.Visible := IsSvn and FList.Several;
   if IsSvn then
-    FUpdateAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesUpdateAll)
+  begin
+    FUpdateAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesUpdateAll);
+  end
   else
+  begin
     FUpdateAllButton.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+  end;
   Fill;
   UpdateButtons;
 end;
@@ -356,7 +404,9 @@ end;
 procedure TAtlasWorkingCopiesDialog.SetRow(AIndex: Integer; const ARow: TAtlasVcsWorkingCopyRow);
 begin
   if (AIndex < 0) or (AIndex > High(FList.Rows)) then
+  begin
     Exit;
+  end;
   FList.Rows[AIndex] := ARow;
   FillRow(AIndex);
 end;
@@ -364,7 +414,9 @@ end;
 procedure TAtlasWorkingCopiesDialog.SetChecking(AIndex: Integer; AChecking: Boolean);
 begin
   if (AIndex < 0) or (AIndex > High(FChecking)) then
+  begin
     Exit;
+  end;
   FChecking[AIndex] := AChecking;
   FillRow(AIndex);
 end;
@@ -389,7 +441,9 @@ function TAtlasWorkingCopiesDialog.Selected: Integer;
 begin
   Result := -1;
   if FHasList and (FView.Selected <> nil) and (FView.Selected.Index <= High(FList.Rows)) then
+  begin
     Result := FView.Selected.Index;
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.MenuPopup(Sender: TObject);
@@ -410,49 +464,65 @@ end;
 procedure TAtlasWorkingCopiesDialog.ViewDblClick(Sender: TObject);
 begin
   if (Selected >= 0) and Assigned(FOnOpenFolder) then
+  begin
     FOnOpenFolder(Self, Selected);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.CheckClick(Sender: TObject);
 begin
   if not FBusy and Assigned(FOnCheckServer) then
+  begin
     FOnCheckServer(Self);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.UpdateAllClick(Sender: TObject);
 begin
   if not FBusy and FHasList and Assigned(FOnUpdate) then
+  begin
     FOnUpdate(Self, 0, False);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.UpdateOnlyClick(Sender: TObject);
 begin
   if not FBusy and FHasList and Assigned(FOnUpdate) then
+  begin
     FOnUpdate(Self, 0, True);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.UpdateItemClick(Sender: TObject);
 begin
   if not FBusy and (Selected >= 0) and Assigned(FOnUpdate) then
+  begin
     FOnUpdate(Self, Selected, False);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.UpdateOnlyItemClick(Sender: TObject);
 begin
   if not FBusy and (Selected >= 0) and Assigned(FOnUpdate) then
+  begin
     FOnUpdate(Self, Selected, True);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.PinItemClick(Sender: TObject);
 begin
   if not FBusy and (Selected >= 0) and FList.Rows[Selected].CanPin and Assigned(FOnPin) then
+  begin
     FOnPin(Self, Selected);
+  end;
 end;
 
 procedure TAtlasWorkingCopiesDialog.OpenItemClick(Sender: TObject);
 begin
   if (Selected >= 0) and Assigned(FOnOpenFolder) then
+  begin
     FOnOpenFolder(Self, Selected);
+  end;
 end;
 
 end.

@@ -82,9 +82,13 @@ var
 begin
   Start := 0;
   if (Length(ABytes) >= 3) and (ABytes[0] = $EF) and (ABytes[1] = $BB) and (ABytes[2] = $BF) then
+  begin
     Start := 3;
+  end;
   if Length(ABytes) <= Start then
+  begin
     Exit('');
+  end;
   Result := TEncoding.UTF8.GetString(ABytes, Start, Length(ABytes) - Start);
 end;
 
@@ -99,23 +103,41 @@ begin
   begin
     mByte := ABytes[mIndex];
     if mByte < $80 then
-      mFollow := 0
+    begin
+      mFollow := 0;
+    end
     else if (mByte >= $C2) and (mByte <= $DF) then
-      mFollow := 1
+    begin
+      mFollow := 1;
+    end
     else if (mByte >= $E0) and (mByte <= $EF) then
-      mFollow := 2
+    begin
+      mFollow := 2;
+    end
     else if (mByte >= $F0) and (mByte <= $F4) then
-      mFollow := 3
+    begin
+      mFollow := 3;
+    end
     else
+    begin
       Exit(False);
+    end;
     if mIndex + mFollow >= Length(ABytes) then
+    begin
       Exit(False);
+    end;
     for mStep := 1 to mFollow do
+    begin
       if (ABytes[mIndex + mStep] and $C0) <> $80 then
+      begin
         Exit(False);
+      end;
+    end;
     // Überlange Folgen für drei und vier Bytes.
     if ((mByte = $E0) and (ABytes[mIndex + 1] < $A0)) or ((mByte = $F0) and (ABytes[mIndex + 1] < $90)) then
+    begin
       Exit(False);
+    end;
     Inc(mIndex, mFollow + 1);
   end;
 end;
@@ -123,20 +145,28 @@ end;
 function VcsConsoleText(const ABytes: TBytes): string;
 begin
   if VcsIsUtf8(ABytes) then
-    Result := VcsUtf8(ABytes)
+  begin
+    Result := VcsUtf8(ABytes);
+  end
   else
+  begin
     Result := TEncoding.ANSI.GetString(ABytes);
+  end;
 end;
 
 function VcsNormalizeDir(const ADir: string): string;
 begin
   Result := Trim(ADir);
   if PathDelim = '\' then
+  begin
     Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  end;
   // Laufwerkswurzel ("C:\") und Unix-Wurzel ("/") behalten ihren Trenner.
   while (Length(Result) > 1) and (Result[Length(Result)] = PathDelim) and
     not ((Length(Result) = 3) and (Result[2] = ':')) do
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 function VcsRelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
@@ -148,14 +178,22 @@ begin
   Root := VcsNormalizeDir(ARoot);
   FileName := VcsNormalizeDir(AFileName);
   if (Root = '') or (FileName = '') then
+  begin
     Exit(False);
+  end;
   Prefix := IncludeTrailingPathDelimiter(Root);
   if PathDelim = '\' then
-    Matches := SameText(Copy(FileName, 1, Length(Prefix)), Prefix)
+  begin
+    Matches := SameText(Copy(FileName, 1, Length(Prefix)), Prefix);
+  end
   else
+  begin
     Matches := Copy(FileName, 1, Length(Prefix)) = Prefix;
+  end;
   if not Matches then
+  begin
     Exit(False);
+  end;
   ARelative := StringReplace(Copy(FileName, Length(Prefix) + 1, MaxInt), '\', '/', [rfReplaceAll]);
   Result := ARelative <> '';
 end;
@@ -168,7 +206,9 @@ begin
   Root := VcsNormalizeDir(ARoot);
   FileName := VcsNormalizeDir(AFileName);
   if (Root <> '') and ((PathDelim = '\') and SameText(Root, FileName) or (Root = FileName)) then
+  begin
     Exit(True);
+  end;
   Result := VcsRelativePath(ARoot, AFileName, ARelative);
 end;
 
@@ -178,13 +218,21 @@ var
 begin
   Relative := StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
   if PathDelim = '/' then
+  begin
     Relative := StringReplace(Relative, '\', '/', [rfReplaceAll]);
+  end;
   while (Relative <> '') and (Relative[1] = PathDelim) do
+  begin
     Delete(Relative, 1, 1);
+  end;
   if (Relative = '') or (Relative = '.') then
+  begin
     Exit(VcsNormalizeDir(ARoot));
+  end;
   if (Length(Relative) > 2) and (Relative[1] = '.') and (Relative[2] = PathDelim) then
+  begin
     Delete(Relative, 1, 2);
+  end;
   Result := IncludeTrailingPathDelimiter(VcsNormalizeDir(ARoot)) + Relative;
 end;
 
@@ -194,11 +242,15 @@ var
 begin
   AValue := 0;
   if AStart + ACount - 1 > Length(AText) then
+  begin
     Exit(False);
+  end;
   for Index := AStart to AStart + ACount - 1 do
   begin
     if (AText[Index] < '0') or (AText[Index] > '9') then
+    begin
       Exit(False);
+    end;
     AValue := AValue * 10 + Ord(AText[Index]) - Ord('0');
   end;
   Result := True;
@@ -215,12 +267,18 @@ begin
   // JJJJ-MM-TTTHH:MM:SS
   if (Length(Text) < 19) or (Text[5] <> '-') or (Text[8] <> '-') or ((Text[11] <> 'T') and (Text[11] <> ' ')) or
     (Text[14] <> ':') or (Text[17] <> ':') then
+  begin
     Exit(False);
+  end;
   if not (Digits(Text, 1, 4, Year) and Digits(Text, 6, 2, Month) and Digits(Text, 9, 2, Day) and
     Digits(Text, 12, 2, Hour) and Digits(Text, 15, 2, Minute) and Digits(Text, 18, 2, Second)) then
+  begin
     Exit(False);
+  end;
   if not TryEncodeDate(Year, Month, Day, Date) or not TryEncodeTime(Hour, Minute, Second, 0, Time) then
+  begin
     Exit(False);
+  end;
   ADate := Date + Time;
   // Bruchteile der Sekunde: auf Millisekunden gerundet.
   Index := 20;
@@ -254,15 +312,23 @@ var
 begin
   Result := False;
   if (AName = '') or (AName[1] = '-') or (AName[1] = '/') then
+  begin
     Exit;
+  end;
   if (AName[Length(AName)] = '/') or (AName[Length(AName)] = '.') then
+  begin
     Exit;
+  end;
   if (Pos('..', AName) > 0) or (Pos('@{', AName) > 0) or (Pos('//', AName) > 0) then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(AName) do
   begin
     if Ord(AName[Index]) <= 32 then
+    begin
       Exit;
+    end;
     case AName[Index] of
       '\', '^', '~', ':', '?', '*', '[', #127:
         Exit;
@@ -277,7 +343,9 @@ var
   Entity: string;
 begin
   if Pos('&', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   Result := '';
   Index := 1;
   while Index <= Length(AText) do
@@ -290,7 +358,9 @@ begin
     end;
     Stop := Index + 1;
     while (Stop <= Length(AText)) and (AText[Stop] <> ';') and (Stop - Index < 12) do
+    begin
       Inc(Stop);
+    end;
     if (Stop > Length(AText)) or (AText[Stop] <> ';') then
     begin
       Result := Result + '&';
@@ -299,22 +369,38 @@ begin
     end;
     Entity := Copy(AText, Index + 1, Stop - Index - 1);
     if Entity = 'amp' then
-      Result := Result + '&'
+    begin
+      Result := Result + '&';
+    end
     else if Entity = 'lt' then
-      Result := Result + '<'
+    begin
+      Result := Result + '<';
+    end
     else if Entity = 'gt' then
-      Result := Result + '>'
+    begin
+      Result := Result + '>';
+    end
     else if Entity = 'quot' then
-      Result := Result + '"'
+    begin
+      Result := Result + '"';
+    end
     else if Entity = 'apos' then
-      Result := Result + ''''
+    begin
+      Result := Result + '''';
+    end
     else if (Length(Entity) > 2) and (Entity[1] = '#') and ((Entity[2] = 'x') or (Entity[2] = 'X')) and
       TryStrToInt('$' + Copy(Entity, 3, MaxInt), Code) then
-      Result := Result + Char(Code)
+    begin
+      Result := Result + Char(Code);
+    end
     else if (Length(Entity) > 1) and (Entity[1] = '#') and TryStrToInt(Copy(Entity, 2, MaxInt), Code) then
-      Result := Result + Char(Code)
+    begin
+      Result := Result + Char(Code);
+    end
     else
+    begin
       Result := Result + '&' + Entity + ';';
+    end;
     Index := Stop + 1;
   end;
 end;
@@ -333,8 +419,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FAttrNames) do
+  begin
     if FAttrNames[Index] = AName then
+    begin
       Exit(FAttrValues[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -359,19 +449,29 @@ begin
     Inc(FPos);
   end
   else
+  begin
     FNode := TAtlasVcsXmlNode.StartTag;
+  end;
   Start := FPos;
   while (FPos <= Length(FText)) and not IsSpace(FText[FPos]) and (FText[FPos] <> '>') and (FText[FPos] <> '/') do
+  begin
     Inc(FPos);
+  end;
   FName := Copy(FText, Start, FPos - Start);
   if FName = '' then
+  begin
     raise EAtlasVcsParse.Create('XML: Element ohne Namen');
+  end;
   while FPos <= Length(FText) do
   begin
     while (FPos <= Length(FText)) and IsSpace(FText[FPos]) do
+    begin
       Inc(FPos);
+    end;
     if FPos > Length(FText) then
+    begin
       Break;
+    end;
     if FText[FPos] = '>' then
     begin
       Inc(FPos);
@@ -385,24 +485,38 @@ begin
     end;
     Start := FPos;
     while (FPos <= Length(FText)) and (FText[FPos] <> '=') and not IsSpace(FText[FPos]) and (FText[FPos] <> '>') do
+    begin
       Inc(FPos);
+    end;
     AttrName := Copy(FText, Start, FPos - Start);
     while (FPos <= Length(FText)) and IsSpace(FText[FPos]) do
+    begin
       Inc(FPos);
+    end;
     if (FPos > Length(FText)) or (FText[FPos] <> '=') then
+    begin
       raise EAtlasVcsParse.CreateFmt('XML: Attribut %s ohne Wert', [AttrName]);
+    end;
     Inc(FPos);
     while (FPos <= Length(FText)) and IsSpace(FText[FPos]) do
+    begin
       Inc(FPos);
+    end;
     if (FPos > Length(FText)) or ((FText[FPos] <> '"') and (FText[FPos] <> '''')) then
+    begin
       raise EAtlasVcsParse.CreateFmt('XML: Attribut %s ohne Anführungszeichen', [AttrName]);
+    end;
     Quote := FText[FPos];
     Inc(FPos);
     Start := FPos;
     while (FPos <= Length(FText)) and (FText[FPos] <> Quote) do
+    begin
       Inc(FPos);
+    end;
     if FPos > Length(FText) then
+    begin
       raise EAtlasVcsParse.Create('XML: Attribut nicht abgeschlossen');
+    end;
     FAttrNames := FAttrNames + [AttrName];
     FAttrValues := FAttrValues + [VcsXmlDecode(Copy(FText, Start, FPos - Start))];
     Inc(FPos);
@@ -420,10 +534,14 @@ begin
     begin
       Start := FPos;
       while (FPos <= Length(FText)) and (FText[FPos] <> '<') do
+      begin
         Inc(FPos);
+      end;
       FValue := VcsXmlDecode(Copy(FText, Start, FPos - Start));
       if Trim(FValue) = '' then
+      begin
         Continue;
+      end;
       FNode := TAtlasVcsXmlNode.Text;
       FName := '';
       FEmpty := False;
@@ -434,7 +552,9 @@ begin
     begin
       Stop := Pos('-->', Copy(FText, FPos + 4, MaxInt));
       if Stop = 0 then
+      begin
         raise EAtlasVcsParse.Create('XML: Kommentar nicht abgeschlossen');
+      end;
       FPos := FPos + 4 + Stop + 2;
       Continue;
     end;
@@ -442,7 +562,9 @@ begin
     begin
       Stop := Pos(']]>', Copy(FText, FPos + 9, MaxInt));
       if Stop = 0 then
+      begin
         raise EAtlasVcsParse.Create('XML: CDATA nicht abgeschlossen');
+      end;
       FValue := Copy(FText, FPos + 9, Stop - 1);
       FPos := FPos + 9 + Stop + 2;
       FNode := TAtlasVcsXmlNode.Text;
@@ -453,7 +575,9 @@ begin
     if (Copy(FText, FPos, 2) = '<?') or (Copy(FText, FPos, 2) = '<!') then
     begin
       while (FPos <= Length(FText)) and (FText[FPos] <> '>') do
+      begin
         Inc(FPos);
+      end;
       Inc(FPos);
       Continue;
     end;

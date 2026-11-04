@@ -77,19 +77,29 @@ begin
   begin
     APoint.SetValue(TAtlasTrendSeries.Warnings, (ASummary.Build.Warnings + ASummary.Build.Hints) * 10);
     if ASummary.Build.DurationMs > 0 then
+    begin
       APoint.SetValue(TAtlasTrendSeries.Duration, (ASummary.Build.DurationMs + 50) div 100);
+    end;
   end;
   // Regeltreffer nur mit gültiger Baseline: ohne sie wären alle Treffer „neu“, das ist kein Verlauf.
   BaselineUsable := ASummary.Baseline.Known and ASummary.Baseline.Exists and ASummary.Baseline.Valid;
   if ASummary.Baseline.Known and SameStamp(ASummary.Baseline.At, AAtUtc) and not BaselineUsable then
-    APoint.Clear(TAtlasTrendSeries.RuleHits)
+  begin
+    APoint.Clear(TAtlasTrendSeries.RuleHits);
+  end
   else if BaselineUsable and ASummary.Rules.Known and SameStamp(ASummary.Rules.At, AAtUtc) then
+  begin
     APoint.SetValue(TAtlasTrendSeries.RuleHits, ASummary.Rules.NewHits * 10);
+  end;
   if ASummary.Todos.Known and SameStamp(ASummary.Todos.At, AAtUtc) then
+  begin
     APoint.SetValue(TAtlasTrendSeries.Todos, ASummary.Todos.Open * 10);
+  end;
   // Mittelwert steht schon in Zehnteln; ohne Methoden ist er bedeutungslos.
   if ASummary.Metrics.Known and SameStamp(ASummary.Metrics.At, AAtUtc) and (ASummary.Metrics.Methods > 0) then
+  begin
     APoint.SetValue(TAtlasTrendSeries.MethodLength, ASummary.Metrics.AverageTenths[0]);
+  end;
   if ASummary.Vcs.InWorkingCopy then
   begin
     APoint.Branch := ASummary.Vcs.Branch;
@@ -103,8 +113,12 @@ var
 begin
   // Von hinten: Nachträge betreffen fast immer den letzten Punkt.
   for Index := High(ATrends.Points) downto 0 do
+  begin
     if SameStamp(ATrends.Points[Index].At, AAtUtc) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -115,7 +129,9 @@ var
   Point: TAtlasTrendPoint;
 begin
   if AAtUtc <= 0 then
+  begin
     Exit;
+  end;
   if not ASummary.Trends.Known then
   begin
     ASummary.Trends := TAtlasProjectTrends.Empty;
@@ -123,7 +139,9 @@ begin
   end;
   Index := High(ASummary.Trends.Points);
   if (Index >= 0) and SameStamp(ASummary.Trends.Points[Index].At, AAtUtc) then
-    Point := ASummary.Trends.Points[Index]
+  begin
+    Point := ASummary.Trends.Points[Index];
+  end
   else
   begin
     Inc(ASummary.Trends.Builds);
@@ -135,7 +153,9 @@ begin
   ASummary.Trends.Points[Index] := Point;
   Limit := EnsureRange(ALimit, MinPoints, MaxPoints);
   if Length(ASummary.Trends.Points) > Limit then
+  begin
     ASummary.Trends.Points := Copy(ASummary.Trends.Points, Length(ASummary.Trends.Points) - Limit, Limit);
+  end;
 end;
 
 class function TAtlasProjectTrendLog.Fill(var ASummary: TAtlasProjectSummary; AAtUtc: TDateTime): Boolean;
@@ -146,7 +166,9 @@ begin
   Index := IndexOf(ASummary.Trends, AAtUtc);
   Result := Index >= 0;
   if not Result then
+  begin
     Exit;
+  end;
   Point := ASummary.Trends.Points[Index];
   Measure(ASummary, AAtUtc, Point);
   ASummary.Trends.Points[Index] := Point;

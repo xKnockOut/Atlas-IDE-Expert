@@ -1711,8 +1711,12 @@ var
   Name: string;
 begin
   for Name in TasksBeforeBuildNames do
+  begin
     if SameText(Trim(AText), Name) then
+    begin
       Exit(Name);
+    end;
+  end;
   Result := TasksBeforeBuildNames[0];
 end;
 
@@ -1725,19 +1729,31 @@ var
   Wanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
 begin
   for Index := Low(Wanted) to High(Wanted) do
+  begin
     Wanted[Index] := False;
+  end;
   for Part in AText.Split([',', ';', ' ']) do
+  begin
     for Index := Low(QuickActionNames) to High(QuickActionNames) do
+    begin
       if SameText(Trim(Part), QuickActionNames[Index]) then
+      begin
         Wanted[Index] := True;
+      end;
+    end;
+  end;
   Result := '';
   for Index := Low(QuickActionNames) to High(QuickActionNames) do
+  begin
     if Wanted[Index] then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + QuickActionNames[Index];
     end;
+  end;
 end;
 
 /// <summary>Programm für „Konsole“ getrimmt; leer = wt.exe.</summary>
@@ -1745,7 +1761,9 @@ function NormalizedQuickActionConsole(const AText: string): string;
 begin
   Result := Trim(AText);
   if Result = '' then
+  begin
     Result := QuickActionsDefaultConsole;
+  end;
 end;
 
 /// <summary>Bekannter CI-Anbieter in Kleinbuchstaben; sonst die Vorgabe.</summary>
@@ -1754,8 +1772,12 @@ var
   Name: string;
 begin
   for Name in CiProviders do
+  begin
     if SameText(Trim(AText), Name) then
+    begin
       Exit(Name);
+    end;
+  end;
   Result := TAtlasPluginSettings.DefaultCiProvider;
 end;
 
@@ -1764,25 +1786,37 @@ function NormalizedIssuesTracker(const AText: string): string;
 begin
   Result := LowerCase(Trim(AText));
   if (Result <> 'github') and (Result <> 'youtrack') then
+  begin
     Result := '';
+  end;
 end;
 
 function NormalizedIssuesNotifyScope(const AText: string): string;
 begin
   if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyAssigned) then
-    Result := TAtlasPluginSettings.IssuesNotifyAssigned
+  begin
+    Result := TAtlasPluginSettings.IssuesNotifyAssigned;
+  end
   else if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyWatched) then
-    Result := TAtlasPluginSettings.IssuesNotifyWatched
+  begin
+    Result := TAtlasPluginSettings.IssuesNotifyWatched;
+  end
   else
+  begin
     Result := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
+  end;
 end;
 
 function NormalizedIssuesStart(const AText: string): string;
 begin
   if SameText(Trim(AText), TAtlasPluginSettings.IssuesStartRemember) then
-    Result := TAtlasPluginSettings.IssuesStartRemember
+  begin
+    Result := TAtlasPluginSettings.IssuesStartRemember;
+  end
   else
+  begin
     Result := TAtlasPluginSettings.IssuesStartBranch;
+  end;
 end;
 
 /// <summary>Präfix für Blockkommentare (#696): Steuerzeichen werden Leerzeichen, höchstens acht Zeichen; Leerraum
@@ -1793,11 +1827,17 @@ var
 begin
   Result := Copy(AText, 1, 8);
   for Index := 1 to Length(Result) do
+  begin
     if Ord(Result[Index]) < 32 then
+    begin
       Result[Index] := ' ';
+    end;
+  end;
   // Nur Leerraum ist kein Präfix.
   if Trim(Result) = '' then
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Ohne Zeilenumbrüche und Steuerzeichen, höchstens MaxIssuesText Zeichen; ATrim kürzt Leerraum am Rand.
@@ -1808,12 +1848,20 @@ var
 begin
   Result := AText;
   for Index := 1 to Length(Result) do
+  begin
     if Ord(Result[Index]) < 32 then
+    begin
       Result[Index] := ' ';
+    end;
+  end;
   if ATrim then
+  begin
     Result := Trim(Result);
+  end;
   if Length(Result) > TAtlasPluginSettings.MaxIssuesText then
+  begin
     Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesText);
+  end;
 end;
 
 /// <summary>Kommentarvorlage bzw. Liste (#1266): einzeilig (Zeilenumbruch als "\n"), außen ohne Leerraum,
@@ -1824,11 +1872,17 @@ var
 begin
   Result := StringReplace(StringReplace(AText, #13#10, '\n', [rfReplaceAll]), #10, '\n', [rfReplaceAll]);
   for mIndex := 1 to Length(Result) do
+  begin
     if Ord(Result[mIndex]) < 32 then
+    begin
       Result[mIndex] := ' ';
+    end;
+  end;
   Result := Trim(Result);
   if Length(Result) > TAtlasPluginSettings.MaxIssuesTemplate then
+  begin
     Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesTemplate);
+  end;
 end;
 
 function NormalizedTrendSeries(const AText: string): string;
@@ -1839,20 +1893,32 @@ var
   Wanted: array[0..4] of Boolean;
 begin
   for Index := Low(Wanted) to High(Wanted) do
+  begin
     Wanted[Index] := False;
+  end;
   Parts := AText.Split([',', ';', ' ']);
   for Part in Parts do
+  begin
     for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+    begin
       if SameText(Trim(Part), TrendSeriesNames[Index]) then
+      begin
         Wanted[Index] := True;
+      end;
+    end;
+  end;
   Result := '';
   for Index := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+  begin
     if Wanted[Index] then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + TrendSeriesNames[Index];
     end;
+  end;
 end;
 
 /// <summary>http:// oder https:// mit etwas danach, ohne Leer- und Steuerzeichen (#766).</summary>
@@ -1863,10 +1929,16 @@ begin
   Result := (StartsText('https://', AValue) and (Length(AValue) > 8)) or
     (StartsText('http://', AValue) and (Length(AValue) > 7));
   if not Result then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(AValue) do
+  begin
     if Ord(AValue[Index]) <= 32 then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 // Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).
@@ -1875,9 +1947,13 @@ var
   Pairs: TAtlasPairColors;
 begin
   if TAtlasColors.ParsePairs(AText, Pairs) then
-    Result := TAtlasColors.PairsText(Pairs)
+  begin
+    Result := TAtlasColors.PairsText(Pairs);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>AValue, wenn er (ohne Groß-/Kleinschreibung) unter AAllowed steht, in deren Schreibweise;
@@ -1887,17 +1963,25 @@ var
   Item: string;
 begin
   for Item in AAllowed do
+  begin
     if SameText(Trim(AValue), Item) then
+    begin
       Exit(Item);
+    end;
+  end;
   Result := AAllowed[0];
 end;
 
 function BoolValue(AValue: Boolean): Integer;
 begin
   if AValue then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 { TAtlasPluginSettings }
@@ -2479,7 +2563,9 @@ begin
   DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
   if ListWidth <> 0 then
+  begin
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
+  end;
   PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
@@ -2496,7 +2582,9 @@ begin
   BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
+  begin
     CompileOnSave := False;
+  end;
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
@@ -2539,13 +2627,19 @@ begin
   IssuesAttachLogFiles := Trim(IssuesAttachLogFiles);
   IssuesAttachMaxImageWidth := EnsureRange(IssuesAttachMaxImageWidth, MinAttachImageWidth, MaxAttachImageWidth);
   if IssuesConnections = '' then
+  begin
     IssuesConnections := '[]';
+  end;
   IssuesProjects := Trim(IssuesProjects);
   if IssuesProjects = '' then
+  begin
     IssuesProjects := '[]';
+  end;
   IssuesQueries := Trim(IssuesQueries);
   if IssuesQueries = '' then
+  begin
     IssuesQueries := '[]';
+  end;
   VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
   VcsGitPath := Trim(VcsGitPath);
   VcsSvnPath := Trim(VcsSvnPath);
@@ -2553,41 +2647,59 @@ begin
     MaxIssuesBlameMaxRevisions);
   // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
   if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
+  begin
     VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  end;
   VcsProjects := Trim(VcsProjects);
   if VcsProjects = '' then
+  begin
     VcsProjects := '[]';
+  end;
   // Ort beginnt mit {projektwurzel} oder ^/ (#1290); sonst die Vorgabe.
   VcsBranchSvnLocation := Trim(VcsBranchSvnLocation);
   if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
     (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
+  begin
     VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  end;
   VcsBranchSvnSource := Choice(VcsBranchSvnSource, ['head', 'workingCopy']);
   VcsBranchSvnAfter := Choice(VcsBranchSvnAfter, ['switch', 'checkout', 'none']);
   VcsBranchSvnCheckoutFolder := Trim(VcsBranchSvnCheckoutFolder);
   if VcsBranchSvnCheckoutFolder = '' then
+  begin
     VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  end;
   VcsBranchSvnMessage := NormalizedIssuesText(VcsBranchSvnMessage, True);
   if VcsBranchSvnMessage = '' then
+  begin
     VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  end;
   VcsExternalsOnBranch := Choice(VcsExternalsOnBranch, ['pin', 'keep', 'ask']);
   VcsExternalsSuggestBranch := Choice(VcsExternalsSuggestBranch, ['modified', 'never', 'always']);
   VcsExternalsRules := Trim(VcsExternalsRules);
   if VcsExternalsRules = '' then
+  begin
     VcsExternalsRules := '[]';
+  end;
   VcsExternalsUpdate := Choice(VcsExternalsUpdate, ['with', 'without', 'ask']);
   VcsBranchGitBase := Choice(LowerCase(Trim(VcsBranchGitBase)), ['remote', 'local', 'current']);
   VcsBranchGitPush := Choice(LowerCase(Trim(VcsBranchGitPush)), ['later', 'now']);
   VcsBranchGitUncommitted := Choice(LowerCase(Trim(VcsBranchGitUncommitted)), ['carry', 'stash', 'ask']);
   VcsBranchGitWorktreeFolder := Trim(VcsBranchGitWorktreeFolder);
   if VcsBranchGitWorktreeFolder = '' then
+  begin
     VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
+  end;
   IssuesStateField := NormalizedIssuesText(IssuesStateField, True);
   if IssuesStateField = '' then
+  begin
     IssuesStateField := DefaultIssuesStateField;
+  end;
   IssuesAssigneeField := NormalizedIssuesText(IssuesAssigneeField, True);
   if IssuesAssigneeField = '' then
+  begin
     IssuesAssigneeField := DefaultIssuesAssigneeField;
+  end;
   IssuesStartState := NormalizedIssuesText(IssuesStartState, True);
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
@@ -2597,7 +2709,9 @@ begin
   // Leer heißt: keine Textbausteine (die Vorgaben kommen nur, wenn der Wert fehlt).
   IssuesCommentSnippets := Trim(IssuesCommentSnippets);
   if IssuesCommentSnippets = '' then
+  begin
     IssuesCommentSnippets := '[]';
+  end;
   IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, MinIssuesNotifyMinutes,
     MaxIssuesNotifyMinutes);
   IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
@@ -2605,7 +2719,9 @@ begin
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
   if WelcomePageActiveLayout = '' then
+  begin
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
+  end;
   BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
   TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
   BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.GateMinTimeoutMs,
@@ -2621,32 +2737,56 @@ begin
   SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
   SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
   if SameText(Trim(StatusFieldToggles), 'rightClick') then
-    StatusFieldToggles := 'rightClick'
+  begin
+    StatusFieldToggles := 'rightClick';
+  end
   else if SameText(Trim(StatusFieldToggles), 'doubleClick') then
-    StatusFieldToggles := 'doubleClick'
+  begin
+    StatusFieldToggles := 'doubleClick';
+  end
   else
+  begin
     StatusFieldToggles := 'both';
+  end;
   if SameText(Trim(IndexProgressPlace), 'menu') then
-    IndexProgressPlace := 'menu'
+  begin
+    IndexProgressPlace := 'menu';
+  end
   else if SameText(Trim(IndexProgressPlace), 'off') then
-    IndexProgressPlace := 'off'
+  begin
+    IndexProgressPlace := 'off';
+  end
   else
+  begin
     IndexProgressPlace := 'statusField';
+  end;
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
+  begin
     SafeStartupKey := 'shift';
+  end;
   UndoMultiFileDepth := EnsureRange(UndoMultiFileDepth, MinUndoDepth, MaxUndoDepth);
   UndoMultiFileMaxSizeMb := EnsureRange(UndoMultiFileMaxSizeMb, MinUndoMaxSizeMb, MaxUndoMaxSizeMb);
   if SameText(Trim(UndoMultiFileOnConflict), 'abort') then
-    UndoMultiFileOnConflict := 'abort'
+  begin
+    UndoMultiFileOnConflict := 'abort';
+  end
   else
+  begin
     UndoMultiFileOnConflict := 'partial';
+  end;
   if SameText(Trim(UndoMultiFileNewFiles), 'delete') then
-    UndoMultiFileNewFiles := 'delete'
+  begin
+    UndoMultiFileNewFiles := 'delete';
+  end
   else if SameText(Trim(UndoMultiFileNewFiles), 'keep') then
-    UndoMultiFileNewFiles := 'keep'
+  begin
+    UndoMultiFileNewFiles := 'keep';
+  end
   else
+  begin
     UndoMultiFileNewFiles := 'recycleBin';
+  end;
   UndoKey := EnsureRange(UndoKey, 0, $FFFF);
   RedoKey := EnsureRange(RedoKey, 0, $FFFF);
   MethodToggleUpKey := EnsureRange(MethodToggleUpKey, 0, $FFFF);
@@ -2763,24 +2903,40 @@ begin
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
   if SameText(Trim(WelcomePageLayout), 'atlas') then
-    WelcomePageLayout := 'atlas'
+  begin
+    WelcomePageLayout := 'atlas';
+  end
   else
+  begin
     WelcomePageLayout := 'off';
+  end;
   if SameText(Trim(WelcomePageWhatsNew), 'off') then
-    WelcomePageWhatsNew := 'off'
+  begin
+    WelcomePageWhatsNew := 'off';
+  end
   else if SameText(Trim(WelcomePageWhatsNew), 'always') then
-    WelcomePageWhatsNew := 'always'
+  begin
+    WelcomePageWhatsNew := 'always';
+  end
   else
+  begin
     WelcomePageWhatsNew := 'afterUpdate';
+  end;
   WhatsNewSeen := Trim(WhatsNewSeen);
   if SameText(Trim(ShortcutTipsScope), 'atlas') then
-    ShortcutTipsScope := 'atlas'
+  begin
+    ShortcutTipsScope := 'atlas';
+  end
   else
+  begin
     ShortcutTipsScope := 'all';
+  end;
   // Nur Webadressen: „Issue-Seite öffnen“ übergibt das Ziel dem Browser (#766).
   WelcomePageHelpReportUrl := Trim(WelcomePageHelpReportUrl);
   if not IsWebAddress(WelcomePageHelpReportUrl) then
+  begin
     WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  end;
   WelcomePageHelpReportFolder := Trim(WelcomePageHelpReportFolder);
   NotificationsSources := TAtlasNotificationSources.Normalize(NotificationsSources);
   NotificationsMaxEntries := EnsureRange(NotificationsMaxEntries, MinNotificationEntries, MaxNotificationEntries);

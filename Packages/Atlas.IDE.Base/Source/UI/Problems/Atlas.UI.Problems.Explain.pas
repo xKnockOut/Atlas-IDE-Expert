@@ -97,7 +97,9 @@ begin
   FTitle := AddLabel(AExplanation.Name);
   FTitle.Font.Style := [fsBold];
   if AExplanation.Name = '' then
+  begin
     FTitle.Caption := AExplanation.Id;
+  end;
   FMark := AddLabel(TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
   FMark.Font.Color := $000080C0;
   FMark.Visible := AExplanation.Experimental;

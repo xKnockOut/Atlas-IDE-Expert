@@ -306,42 +306,49 @@ begin
   Result := True;
 end;
 
+/// <summary>Ordnet AChild dem Abschnitt ASection zu, wenn es dort beginnt. False, wenn es darüber hinausreicht.
+/// </summary>
+function ClassifyMember(var ASection: TSection; AChild: TSyntaxNode): Boolean;
+begin
+  Result := True;
+  if (AChild.StartPos.Line < ASection.First) or (AChild.StartPos.Line > ASection.Last) then
+  begin
+    Exit;
+  end;
+  if not (AChild.Kind in MemberKinds) then
+  begin
+    ASection.Nested := True;
+  end
+  else if AChild.Kind = TSyntaxKind.Field then
+  begin
+    ASection.HasFields := True;
+  end;
+  Result := AChild.EndPos.Line <= ASection.Last;
+end;
+
 /// <summary>Ordnet die Kindknoten den Abschnitten zu (Nested, HasFields); Unbekanntes gilt als verschachtelte
 /// Deklaration. False, wenn ein Mitglied über mehrere Abschnitte reicht.</summary>
 function ClassifyMembers(var ASections: TArray<TSection>; AClass: TSyntaxNode; AHeader: Integer): Boolean;
 var
-  Index, SectionIndex: Integer;
-  Child: TSyntaxNode;
+  mIndex, mSectionIndex: Integer;
+  mChild: TSyntaxNode;
 begin
-  Result := False;
-  for Index := 0 to AClass.ChildCount - 1 do
+  Result := True;
+  for mIndex := 0 to AClass.ChildCount - 1 do
   begin
-    Child := AClass[Index];
-    if (Child.Kind in IgnoredKinds) or (Child.StartPos.Line <= AHeader) then
+    mChild := AClass[mIndex];
+    if (mChild.Kind in IgnoredKinds) or (mChild.StartPos.Line <= AHeader) then
     begin
       Continue;
     end;
-    for SectionIndex := 0 to High(ASections) do
+    for mSectionIndex := 0 to High(ASections) do
     begin
-      if (Child.StartPos.Line >= ASections[SectionIndex].First) and
-        (Child.StartPos.Line <= ASections[SectionIndex].Last) then
+      if not ClassifyMember(ASections[mSectionIndex], mChild) then
       begin
-        if not (Child.Kind in MemberKinds) then
-        begin
-          ASections[SectionIndex].Nested := True;
-        end
-        else if Child.Kind = TSyntaxKind.Field then
-        begin
-          ASections[SectionIndex].HasFields := True;
-        end;
-        if Child.EndPos.Line > ASections[SectionIndex].Last then
-        begin
-          Exit;
-        end;
+        Exit(False);
       end;
     end;
   end;
-  Result := True;
 end;
 
 /// <summary>Dürfen Abschnitte verschoben werden? Nein bei verschachtelten Deklarationen oder bei Feldern in
@@ -530,6 +537,16 @@ begin
   end;
 end;
 
+/// <summary>Klasse an Zeile ALine, wenn der Text keine packed-Ausrichtung hat; sonst nil.</summary>
+function SortableClass(const AText: string; ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
+begin
+  Result := nil;
+  if (ATree <> nil) and (ATree.Root <> nil) and not HasPackedAlignment(AText) then
+  begin
+    Result := FindClass(ATree.Root, ALine);
+  end;
+end;
+
 class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean;
 var
@@ -540,11 +557,7 @@ var
   Output: TList<string>;
 begin
   Result := False;
-  if (ATree = nil) or (ATree.Root = nil) or HasPackedAlignment(AText) then
-  begin
-    Exit;
-  end;
-  ClassNode := FindClass(ATree.Root, ALine);
+  ClassNode := SortableClass(AText, ATree, ALine);
   if ClassNode = nil then
   begin
     Exit;

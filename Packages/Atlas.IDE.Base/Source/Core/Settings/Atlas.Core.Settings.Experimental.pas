@@ -60,12 +60,20 @@ begin
   // Wahrheitswerte stehen im Speicher als 0/1, im Katalog als false/true.
   Result := AStore.Text(AEntry.Name);
   if AEntry.Kind = akBoolean then
+  begin
     if Result = '0' then
-      Result := 'false'
+    begin
+      Result := 'false';
+    end
     else if Result <> '' then
+    begin
       Result := 'true';
+    end;
+  end;
   if AEntry.Kind = akString then
+  begin
     Result := TJSONString.Create(Result).ToJSON;
+  end;
 end;
 
 procedure WriteDefault(const AStore: IAtlasMemorySettingsStore; const AEntry: TAtlasCatalogEntry);
@@ -77,16 +85,26 @@ begin
     if Value is TJSONBool then
     begin
       if TJSONBool(Value).AsBoolean then
-        AStore.WriteInteger(AEntry.Name, 1)
+      begin
+        AStore.WriteInteger(AEntry.Name, 1);
+      end
       else
+      begin
         AStore.WriteInteger(AEntry.Name, 0);
+      end;
     end
     else if Value is TJSONNumber then
-      AStore.WriteInteger(AEntry.Name, TJSONNumber(Value).AsInt)
+    begin
+      AStore.WriteInteger(AEntry.Name, TJSONNumber(Value).AsInt);
+    end
     else if Value is TJSONString then
-      AStore.WriteString(AEntry.Name, TJSONString(Value).Value)
+    begin
+      AStore.WriteString(AEntry.Name, TJSONString(Value).Value);
+    end
     else if AEntry.Kind = akBoolean then
+    begin
       AStore.WriteInteger(AEntry.Name, 0);
+    end;
   finally
     Value.Free;
   end;
@@ -100,7 +118,9 @@ var
 begin
   Index := ACatalog.IndexOfKey(AKey);
   if Index < 0 then
+  begin
     Index := ACatalog.IndexOfName(AKey);
+  end;
   Result := (Index >= 0) and ACatalog[Index].Experimental;
 end;
 
@@ -110,8 +130,12 @@ var
 begin
   Result := nil;
   for Index := 0 to ACatalog.Count - 1 do
+  begin
     if ACatalog[Index].Experimental then
+    begin
       Result := Result + [ACatalog[Index].Key];
+    end;
+  end;
 end;
 
 class function TAtlasExperimental.PluginEntries(ACatalog: TAtlasSettingsCatalog): TArray<TAtlasCatalogEntry>;
@@ -120,8 +144,12 @@ var
 begin
   Result := nil;
   for Index := 0 to ACatalog.Count - 1 do
+  begin
     if ACatalog[Index].Experimental and (ACatalog[Index].Source = asPlugin) then
+    begin
       Result := Result + [ACatalog[Index]];
+    end;
+  end;
 end;
 
 class function TAtlasExperimental.PluginNames(ACatalog: TAtlasSettingsCatalog): TArray<string>;
@@ -130,7 +158,9 @@ var
 begin
   Result := nil;
   for Entry in PluginEntries(ACatalog) do
+  begin
     Result := Result + [Entry.Name];
+  end;
 end;
 
 class function TAtlasExperimental.Apply(const ASettings: TAtlasPluginSettings;
@@ -147,10 +177,14 @@ var
 begin
   Result := ASettings;
   if ASettings.ExperimentalEnabled or (Length(AEntries) = 0) then
+  begin
     Exit;
+  end;
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   for Entry in AEntries do
+  begin
     WriteDefault(Store, Entry);
+  end;
   Result.Load(Store);
 end;
 
@@ -165,7 +199,9 @@ var
 begin
   Result := nil;
   if not ASettings.ExperimentalEnabled then
+  begin
     Exit;
+  end;
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   Root := TAtlasJsonText.Parse(AGlobalText);
   try
@@ -173,15 +209,25 @@ begin
     begin
       Entry := ACatalog[Index];
       if not Entry.Experimental then
+      begin
         Continue;
+      end;
       if Entry.Source = asPlugin then
-        Value := StoredText(Store, Entry)
+      begin
+        Value := StoredText(Store, Entry);
+      end
       else if Root <> nil then
-        Value := TAtlasJsonText.ValueAt(Root, Entry.Key)
+      begin
+        Value := TAtlasJsonText.ValueAt(Root, Entry.Key);
+      end
       else
+      begin
         Value := '';
+      end;
       if (Value <> '') and not TAtlasJsonValues.Same(Value, Entry.DefaultJson) then
+      begin
         Result := Result + [Entry.Key];
+      end;
     end;
   finally
     Root.Free;
@@ -192,11 +238,17 @@ class function TAtlasExperimental.Summary(const AKeys: TArray<string>; AEnglish:
 begin
   Result := '';
   if Length(AKeys) = 0 then
+  begin
     Exit;
+  end;
   if AEnglish then
-    Result := 'Experimental on: ' + string.Join(', ', AKeys)
+  begin
+    Result := 'Experimental on: ' + string.Join(', ', AKeys);
+  end
   else
+  begin
     Result := 'Experimentell an: ' + string.Join(', ', AKeys);
+  end;
 end;
 
 end.
