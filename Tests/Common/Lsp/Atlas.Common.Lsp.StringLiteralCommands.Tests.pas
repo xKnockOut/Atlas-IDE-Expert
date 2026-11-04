@@ -153,7 +153,7 @@ end;
 procedure TStringLiteralCommandsTests.ToLiteralMultiline;
 begin
   Assert.AreEqual(TStringLiterals.ToLiteral('select *'#10'from Kunde', '    ', False, True,
-    TStringLiteralBreak.SLineBreak, 0, #10), ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
+    TStringLiteralSettings.Default, #10), ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
   Assert.StartsWith('''''''', ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
 end;
 
