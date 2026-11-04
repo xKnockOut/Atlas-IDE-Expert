@@ -111,6 +111,81 @@ begin
   Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineOf(ALines, ARow), AColumn, ATabWidth));
 end;
 
+/// <summary>AView hat einen beschreibbaren Puffer und eine Markierung.</summary>
+function WritableSelection(const AView: IOTAEditView): Boolean;
+var
+  mBlock: IOTAEditBlock;
+begin
+  Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly;
+  if Result then
+  begin
+    mBlock := AView.Block;
+    Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
+  end;
+end;
+
+/// <summary>Bereiche der Markierung ABlock in ALines: einer, im Spaltenblock je Zeile der Ausschnitt zwischen den
+/// Spalten (zu kurze Zeilen bleiben, wie sie sind).</summary>
+function BlockRanges(const ABlock: IOTAEditBlock; const ALines: TArray<string>; ATabWidth: Integer):
+  TArray<TLspRange>;
+var
+  mRow, mFirstColumn, mLastColumn: Integer;
+  mStart, mStop: TLspTextPosition;
+begin
+  if ABlock.Style <> btColumn then
+  begin
+    mStart := PositionOf(ALines, ABlock.StartingRow, ABlock.StartingColumn, ATabWidth);
+    mStop := PositionOf(ALines, ABlock.EndingRow, ABlock.EndingColumn, ATabWidth);
+    Result := [TLspRange.Create(mStart.Line, mStart.Character, mStop.Line, mStop.Character)];
+    Exit;
+  end;
+  Result := nil;
+  mFirstColumn := Min(ABlock.StartingColumn, ABlock.EndingColumn);
+  mLastColumn := Max(ABlock.StartingColumn, ABlock.EndingColumn);
+  for mRow := ABlock.StartingRow to ABlock.EndingRow do
+  begin
+    mStart := PositionOf(ALines, mRow, mFirstColumn, ATabWidth);
+    mStop := PositionOf(ALines, mRow, mLastColumn, ATabWidth);
+    if mStart.Character < Length(LineOf(ALines, mRow)) then
+    begin
+      Result := Result + [TLspRange.Create(mStart.Line, mStart.Character, mStop.Line, mStop.Character)];
+    end;
+  end;
+end;
+
+/// <summary>Schreibt AWrapped in den Puffer von AView (Text AText) und legt die Markierung wieder auf den
+/// ursprünglichen Text, als Spaltenblock, wenn AColumn.</summary>
+procedure WriteWrapped(const AView: IOTAEditView; const AText: string; const AWrapped: TAtlasWrapResult;
+  AColumn: Boolean; ATabWidth: Integer);
+var
+  mLineBreak, mInsert: string;
+  mStart, mOldLength: Integer;
+begin
+  mLineBreak := #10;
+  if Pos(#13#10, AText) > 0 then
+  begin
+    mLineBreak := #13#10;
+  end;
+  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, AWrapped.Lines), mStart, mOldLength, mInsert) then
+  begin
+    WriteBuffer(AView.Buffer, AText, mStart, mOldLength, mInsert);
+  end;
+  if AColumn then
+  begin
+    AView.Block.Style := btColumn;
+  end
+  else
+  begin
+    AView.Block.Style := btNonInclusive;
+  end;
+  AView.CursorPos := EditPos(AWrapped.Lines, AWrapped.Selections[0].StartPos, ATabWidth);
+  AView.Block.BeginBlock;
+  AView.CursorPos := EditPos(AWrapped.Lines, AWrapped.Selections[High(AWrapped.Selections)].EndPos, ATabWidth);
+  AView.Block.EndBlock;
+  AView.MoveViewToCursor;
+  AView.Paint;
+end;
+
 { TAtlasIdeWrapSelection }
 
 constructor TAtlasIdeWrapSelection.Create(const ABusy: TFunc<Boolean>);
@@ -185,88 +260,29 @@ end;
 
 class function TAtlasIdeWrapSelection.Run(AOpen: Char): Boolean;
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Block: IOTAEditBlock;
-  Text, NewText, LineBreak, Insert: string;
-  Lines: TArray<string>;
-  Ranges: TArray<TLspRange>;
-  Wrapped: TAtlasWrapResult;
-  TabWidth, Row, FirstColumn, LastColumn, Start, OldLength: Integer;
-  StartPos, StopPos: TLspTextPosition;
-  Column: Boolean;
+  mView: IOTAEditView;
+  mText: string;
+  mLines: TArray<string>;
+  mWrapped: TAtlasWrapResult;
+  mTabWidth: Integer;
+  mColumn: Boolean;
 begin
   Result := False;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  Buffer := View.Buffer;
-  Block := View.Block;
+  mView := TAtlasEditorBuffer.ActiveView;
   // Ohne Markierung bleibt alles wie in der IDE.
-  if Buffer.IsReadOnly or (Block = nil) or not Block.IsValid or (Block.Size = 0) then
+  if not WritableSelection(mView) then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
+  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mLines := mText.Split([#13#10, #10]);
+  mTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+  mColumn := mView.Block.Style = btColumn;
+  Result := TAtlasWrapSelection.Wrap(mLines, BlockRanges(mView.Block, mLines, mTabWidth), AOpen, Chars, mWrapped);
+  if Result then
   begin
-    LineBreak := #13#10;
+    WriteWrapped(mView, mText, mWrapped, mColumn, mTabWidth);
   end;
-  Lines := Text.Split([#13#10, #10]);
-  TabWidth := TAtlasEditorBuffer.TabWidth(Buffer);
-  Column := Block.Style = btColumn;
-  Ranges := nil;
-  if Column then
-  begin
-    // Spaltenblock: je Zeile der Ausschnitt zwischen den Spalten; zu kurze Zeilen bleiben, wie sie sind.
-    FirstColumn := Min(Block.StartingColumn, Block.EndingColumn);
-    LastColumn := Max(Block.StartingColumn, Block.EndingColumn);
-    for Row := Block.StartingRow to Block.EndingRow do
-    begin
-      StartPos := PositionOf(Lines, Row, FirstColumn, TabWidth);
-      StopPos := PositionOf(Lines, Row, LastColumn, TabWidth);
-      if StartPos.Character < Length(LineOf(Lines, Row)) then
-      begin
-        Ranges := Ranges + [TLspRange.Create(StartPos.Line, StartPos.Character, StopPos.Line, StopPos.Character)];
-      end;
-    end;
-  end
-  else
-  begin
-    StartPos := PositionOf(Lines, Block.StartingRow, Block.StartingColumn, TabWidth);
-    StopPos := PositionOf(Lines, Block.EndingRow, Block.EndingColumn, TabWidth);
-    Ranges := [TLspRange.Create(StartPos.Line, StartPos.Character, StopPos.Line, StopPos.Character)];
-  end;
-  if not TAtlasWrapSelection.Wrap(Lines, Ranges, AOpen, Chars, Wrapped) then
-  begin
-    Exit;
-  end;
-  NewText := string.Join(LineBreak, Wrapped.Lines);
-  if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
-  begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
-  end;
-  // Markierung wieder auf dem ursprünglichen Text.
-  StartPos := Wrapped.Selections[0].StartPos;
-  StopPos := Wrapped.Selections[High(Wrapped.Selections)].EndPos;
-  if Column then
-  begin
-    View.Block.Style := btColumn;
-  end
-  else
-  begin
-    View.Block.Style := btNonInclusive;
-  end;
-  View.CursorPos := EditPos(Wrapped.Lines, StartPos, TabWidth);
-  View.Block.BeginBlock;
-  View.CursorPos := EditPos(Wrapped.Lines, StopPos, TabWidth);
-  View.Block.EndBlock;
-  View.MoveViewToCursor;
-  View.Paint;
-  Result := True;
 end;
 
 end.

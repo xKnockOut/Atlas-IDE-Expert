@@ -78,6 +78,11 @@ type
     FFiles: TLspBaselineFiles;
     FOnWritten: TProc<string>;
     function FileIn(const ARoot, AName: string): string;
+    /// <summary>Zustand der bisherigen Baseline in ARoot: 'none', 'valid' oder 'invalid'. AOld: gelesene Baseline
+    /// oder nil; ASetAsideFile: wohin eine unbrauchbare kam, sonst ''.</summary>
+    function ReadPrevious(const ARoot: string; out AOld: IRuleBaseline; out ASetAsideFile: string): string;
+    /// <summary>Prüft AFiles; ASkipped zählt die nicht lesbaren.</summary>
+    function CheckedSources(const AFiles: TArray<string>; out ASkipped: Integer): TArray<TBaselineSource>;
   public
     constructor Create(const ASourceFor: TLspMetricsSourceFunc; const ACheck: TLspBaselineCheckFunc;
       const AFiles: TLspBaselineFiles);
@@ -114,85 +119,97 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + AName;
 end;
 
+function TLspBaseline.ReadPrevious(const ARoot: string; out AOld: IRuleBaseline; out ASetAsideFile: string): string;
+var
+  mFileName, mText: string;
+begin
+  AOld := nil;
+  ASetAsideFile := '';
+  Result := 'none';
+  // Bisherige Baseline: neuer Name, sonst der frühere (#403); nur für die Zähler.
+  mFileName := FileIn(ARoot, BaselineFileName);
+  if not FFiles.Exists(mFileName) and FFiles.Exists(FileIn(ARoot, LegacyBaselineFileName)) then
+  begin
+    mFileName := FileIn(ARoot, LegacyBaselineFileName);
+  end;
+  if not (FFiles.Exists(mFileName) and FFiles.Read(mFileName, mText)) then
+  begin
+    Exit;
+  end;
+  try
+    AOld := TRuleBaseline.FromJson(mText);
+    Result := 'valid';
+  except
+    // Unbrauchbar: Die Zähler gelten wie ohne Baseline.
+    on ERuleBaseline do
+      Result := 'invalid';
+    on EJSONException do
+      Result := 'invalid';
+  end;
+  // Nicht still ersetzen (Bericht N3): Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
+  if (Result = 'invalid') and Assigned(FFiles.SetAside) and not FFiles.SetAside(mFileName, ASetAsideFile) then
+  begin
+    ASetAsideFile := '';
+  end;
+end;
+
+function TLspBaseline.CheckedSources(const AFiles: TArray<string>; out ASkipped: Integer): TArray<TBaselineSource>;
+var
+  mFileName: string;
+  mCheck: TLspBaselineCheck;
+  mSource: TBaselineSource;
+begin
+  Result := nil;
+  ASkipped := 0;
+  for mFileName in AFiles do
+  begin
+    if not FCheck(mFileName, mCheck) then
+    begin
+      Inc(ASkipped);
+      Continue;
+    end;
+    mSource.Path := mCheck.RelativePath;
+    mSource.Text := mCheck.Text;
+    mSource.Findings := mCheck.Findings;
+    Result := Result + [mSource];
+  end;
+end;
+
 function TLspBaseline.Update(const ASource: TLspMetricsSource): string;
 var
-  FileName, Text, Previous, SetAsideFile: string;
-  Old: IRuleBaseline;
-  Sources: TArray<TBaselineSource>;
-  Source: TBaselineSource;
-  Check: TLspBaselineCheck;
-  Skipped: Integer;
-  Outcome: TBaselineUpdate;
-  Root: string;
+  mFileName, mPrevious, mSetAsideFile, mRoot: string;
+  mOld: IRuleBaseline;
+  mSources: TArray<TBaselineSource>;
+  mSkipped: Integer;
+  mOutcome: TBaselineUpdate;
 begin
   if Length(ASource.Files) = 0 then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
       'Keine Projektdateien: Baseline nicht geschrieben (Projekt noch nicht geladen?)');
   end;
-  Root := ASource.Root;
-  // Bisherige Baseline: neuer Name, sonst der frühere (#403); nur für die Zähler.
-  FileName := FileIn(Root, BaselineFileName);
-  if not FFiles.Exists(FileName) and FFiles.Exists(FileIn(Root, LegacyBaselineFileName)) then
-  begin
-    FileName := FileIn(Root, LegacyBaselineFileName);
-  end;
-  Old := nil;
-  Previous := 'none';
-  SetAsideFile := '';
-  if FFiles.Exists(FileName) and FFiles.Read(FileName, Text) then
-    try
-      Old := TRuleBaseline.FromJson(Text);
-      Previous := 'valid';
-    except
-      // Unbrauchbar: Die Zähler gelten wie ohne Baseline; die Datei kommt unten beiseite.
-      on ERuleBaseline do
-        Previous := 'invalid';
-      on EJSONException do
-        Previous := 'invalid';
-    end;
-  // Nicht still ersetzen (Bericht N3): Die alte Datei bleibt als .defekt zum Nachsehen, die Antwort nennt sie.
-  if (Previous = 'invalid') and Assigned(FFiles.SetAside) then
-  begin
-    if not FFiles.SetAside(FileName, SetAsideFile) then
-    begin
-      SetAsideFile := '';
-    end;
-  end;
-  Sources := nil;
-  Skipped := 0;
-  for FileName in ASource.Files do
-  begin
-    if not FCheck(FileName, Check) then
-    begin
-      Inc(Skipped);
-      Continue;
-    end;
-    Source.Path := Check.RelativePath;
-    Source.Text := Check.Text;
-    Source.Findings := Check.Findings;
-    Sources := Sources + [Source];
-  end;
-  Outcome := TRuleBaseline.Update(Old, Sources,
+  mRoot := ASource.Root;
+  mPrevious := ReadPrevious(mRoot, mOld, mSetAsideFile);
+  mSources := CheckedSources(ASource.Files, mSkipped);
+  mOutcome := TRuleBaseline.Update(mOld, mSources,
     function(const APath: string): Boolean
     begin
-      Result := FFiles.Exists(FileIn(Root, StringReplace(APath, '/', PathDelim, [rfReplaceAll])));
+      Result := FFiles.Exists(FileIn(mRoot, StringReplace(APath, '/', PathDelim, [rfReplaceAll])));
     end);
-  FileName := FileIn(Root, BaselineFileName);
-  FFiles.Write(FileName, Outcome.Json);
+  mFileName := FileIn(mRoot, BaselineFileName);
+  FFiles.Write(mFileName, mOutcome.Json);
   if Assigned(FOnWritten) then
   begin
-    FOnWritten(FileName);
+    FOnWritten(mFileName);
   end;
   // Die Zähler stehen in CountersJson als eigenes Objekt; hier mit Kopf zusammengesetzt.
-  Text := Outcome.CountersJson;
-  Result := '{"format": ' + IntToStr(Format) + ', "file": ' + TFindingsOutput.JsonString(FileName) +
-    ', "previous": ' + TFindingsOutput.JsonString(Previous) + ', ';
-  if SetAsideFile <> '' then
+  Result := '{"format": ' + IntToStr(Format) + ', "file": ' + TFindingsOutput.JsonString(mFileName) +
+    ', "previous": ' + TFindingsOutput.JsonString(mPrevious) + ', ';
+  if mSetAsideFile <> '' then
   begin
-    Result := Result + '"setAside": ' + TFindingsOutput.JsonString(SetAsideFile) + ', ';
+    Result := Result + '"setAside": ' + TFindingsOutput.JsonString(mSetAsideFile) + ', ';
   end;
-  Result := Result + '"skipped": ' + IntToStr(Skipped) + ', ' + Copy(Text, 2, MaxInt);
+  Result := Result + '"skipped": ' + IntToStr(mSkipped) + ', ' + Copy(mOutcome.CountersJson, 2, MaxInt);
 end;
 
 function TLspBaseline.Execute(const AArguments: TJSONArray): TJSONValue;

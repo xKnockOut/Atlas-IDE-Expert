@@ -191,6 +191,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
+  System.Math,
   Atlas.Core.Tracker.Files;
 
 { TAtlasTrackerNotice }
@@ -441,122 +442,139 @@ begin
   end;
 end;
 
+/// <summary>Älteste zuerst; bei Gleichstand nach Kennung und Art (TArray.Sort ist nicht stabil).</summary>
+function ChangeOrder: IComparer<TAtlasTrackerChange>;
+begin
+  Result := TComparer<TAtlasTrackerChange>.Construct(
+    function(const ALeft, ARight: TAtlasTrackerChange): Integer
+    begin
+      Result := CompareValue(ALeft.Time, ARight.Time);
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
+      end;
+      if Result = 0 then
+      begin
+        Result := Ord(ALeft.Kind) - Ord(ARight.Kind);
+      end;
+    end);
+end;
+
+/// <summary>Neueste Meldung zuerst; bei Gleichstand nach Kennung.</summary>
+function NoticeOrder: IComparer<TAtlasTrackerNotice>;
+begin
+  Result := TComparer<TAtlasTrackerNotice>.Construct(
+    function(const ALeft, ARight: TAtlasTrackerNotice): Integer
+    begin
+      Result := CompareValue(ARight.Time, ALeft.Time);
+      if Result = 0 then
+      begin
+        Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
+      end;
+    end);
+end;
+
+/// <summary>Stelle der Meldung zum Issue von AChange; eine neue, wenn es noch keine gibt.</summary>
+function NoticeFor(var ANotices: TArray<TAtlasTrackerNotice>; const AChange: TAtlasTrackerChange): Integer;
+var
+  mIndex: Integer;
+  mNotice: TAtlasTrackerNotice;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ANotices) do
+  begin
+    if ANotices[mIndex].Matches(AChange.Key, AChange.Project) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+  if Result < 0 then
+  begin
+    mNotice := Default(TAtlasTrackerNotice);
+    mNotice.Key := AChange.Key;
+    mNotice.Project := AChange.Project;
+    mNotice.CommentAuthors := nil;
+    mNotice.Other := True;
+    ANotices := ANotices + [mNotice];
+    Result := High(ANotices);
+  end;
+end;
+
+procedure AddComment(var ANotice: TAtlasTrackerNotice; const AChange: TAtlasTrackerChange);
+var
+  mAuthor: string;
+  mKnown: Boolean;
+begin
+  Inc(ANotice.Comments);
+  if ANotice.Anchor = 0 then
+  begin
+    ANotice.Anchor := AChange.Time;
+  end;
+  mKnown := AChange.Who = '';
+  for mAuthor in ANotice.CommentAuthors do
+  begin
+    if SameText(mAuthor, AChange.Who) then
+    begin
+      mKnown := True;
+    end;
+  end;
+  if not mKnown then
+  begin
+    ANotice.CommentAuthors := ANotice.CommentAuthors + [AChange.Who];
+  end;
+end;
+
+/// <summary>AChange in die Meldung seines Issues übernehmen.</summary>
+procedure ApplyChange(var ANotice: TAtlasTrackerNotice; const AChange: TAtlasTrackerChange);
+begin
+  if AChange.Title <> '' then
+  begin
+    ANotice.Title := AChange.Title;
+  end;
+  if AChange.Time > ANotice.Time then
+  begin
+    ANotice.Time := AChange.Time;
+  end;
+  if AChange.Kind <> TAtlasTrackerChangeKind.Other then
+  begin
+    ANotice.Other := False;
+  end;
+  case AChange.Kind of
+    TAtlasTrackerChangeKind.Comment:
+      AddComment(ANotice, AChange);
+    TAtlasTrackerChangeKind.Assigned:
+      begin
+        ANotice.AssignedToMe := AChange.ToMe;
+        ANotice.AssignedTo := '';
+        if not AChange.ToMe then
+        begin
+          ANotice.AssignedTo := AChange.Value;
+        end;
+      end;
+    TAtlasTrackerChangeKind.State:
+      ANotice.State := AChange.Value;
+    TAtlasTrackerChangeKind.Other: ;
+  end;
+end;
+
 class function TAtlasTrackerNotify.Summarize(const AChanges: TArray<TAtlasTrackerChange>; AMax: Integer;
   out ARest: Integer): TArray<TAtlasTrackerNotice>;
 var
   mSorted: TArray<TAtlasTrackerChange>;
   mChange: TAtlasTrackerChange;
   mAll: TArray<TAtlasTrackerNotice>;
-  mNotice: TAtlasTrackerNotice;
-  mIndex, mFound: Integer;
-  mWho: string;
-  mKnown: Boolean;
+  mFound: Integer;
 begin
-  // Älteste zuerst, damit Zustand und Zuständiger am Ende der letzte Stand sind; bei Gleichstand nach Kennung
-  // und Art (TArray.Sort ist nicht stabil).
+  // Älteste zuerst, damit Zustand und Zuständiger am Ende der letzte Stand sind.
   mSorted := Copy(AChanges);
-  TArray.Sort<TAtlasTrackerChange>(mSorted, TComparer<TAtlasTrackerChange>.Construct(
-    function(const ALeft, ARight: TAtlasTrackerChange): Integer
-    begin
-      if ALeft.Time < ARight.Time then
-      begin
-        Exit(-1);
-      end;
-      if ALeft.Time > ARight.Time then
-      begin
-        Exit(1);
-      end;
-      Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
-      if Result = 0 then
-      begin
-        Result := Ord(ALeft.Kind) - Ord(ARight.Kind);
-      end;
-    end));
+  TArray.Sort<TAtlasTrackerChange>(mSorted, ChangeOrder());
   mAll := nil;
   for mChange in mSorted do
   begin
-    mFound := -1;
-    for mIndex := 0 to High(mAll) do
-    begin
-      if mAll[mIndex].Matches(mChange.Key, mChange.Project) then
-      begin
-        mFound := mIndex;
-      end;
-    end;
-    if mFound < 0 then
-    begin
-      mNotice := Default(TAtlasTrackerNotice);
-      mNotice.Key := mChange.Key;
-      mNotice.Project := mChange.Project;
-      mNotice.CommentAuthors := nil;
-      mNotice.Other := True;
-      mAll := mAll + [mNotice];
-      mFound := High(mAll);
-    end;
-    if mChange.Title <> '' then
-    begin
-      mAll[mFound].Title := mChange.Title;
-    end;
-    if mChange.Time > mAll[mFound].Time then
-    begin
-      mAll[mFound].Time := mChange.Time;
-    end;
-    if mChange.Kind <> TAtlasTrackerChangeKind.Other then
-    begin
-      mAll[mFound].Other := False;
-    end;
-    case mChange.Kind of
-      TAtlasTrackerChangeKind.Comment:
-        begin
-          Inc(mAll[mFound].Comments);
-          if mAll[mFound].Anchor = 0 then
-          begin
-            mAll[mFound].Anchor := mChange.Time;
-          end;
-          mWho := mChange.Who;
-          mKnown := mWho = '';
-          for mIndex := 0 to High(mAll[mFound].CommentAuthors) do
-          begin
-            if SameText(mAll[mFound].CommentAuthors[mIndex], mWho) then
-            begin
-              mKnown := True;
-            end;
-          end;
-          if not mKnown then
-          begin
-            mAll[mFound].CommentAuthors := mAll[mFound].CommentAuthors + [mWho];
-          end;
-        end;
-      TAtlasTrackerChangeKind.Assigned:
-        if mChange.ToMe then
-        begin
-          mAll[mFound].AssignedToMe := True;
-          mAll[mFound].AssignedTo := '';
-        end
-        else
-        begin
-          mAll[mFound].AssignedToMe := False;
-          mAll[mFound].AssignedTo := mChange.Value;
-        end;
-      TAtlasTrackerChangeKind.State:
-        mAll[mFound].State := mChange.Value;
-      TAtlasTrackerChangeKind.Other: ;
-    end;
+    mFound := NoticeFor(mAll, mChange);
+    ApplyChange(mAll[mFound], mChange);
   end;
-  // Neueste Meldung zuerst; bei Gleichstand nach Kennung.
-  TArray.Sort<TAtlasTrackerNotice>(mAll, TComparer<TAtlasTrackerNotice>.Construct(
-    function(const ALeft, ARight: TAtlasTrackerNotice): Integer
-    begin
-      if ALeft.Time > ARight.Time then
-      begin
-        Exit(-1);
-      end;
-      if ALeft.Time < ARight.Time then
-      begin
-        Exit(1);
-      end;
-      Result := CompareText(ALeft.Project + '#' + ALeft.Key, ARight.Project + '#' + ARight.Key);
-    end));
+  TArray.Sort<TAtlasTrackerNotice>(mAll, NoticeOrder());
   ARest := 0;
   if (AMax >= 0) and (Length(mAll) > AMax) then
   begin
@@ -716,67 +734,90 @@ begin
   end;
 end;
 
-class function TAtlasTrackerNotify.FromJson(const AJson: string; out AFile: TAtlasTrackerNotifyFile): Boolean;
+/// <summary>Ungesehene Issues einer Verbindung aus "unseen"; doppelte und leere Kennungen entfallen.</summary>
+procedure ReadUnseen(AList: TJSONValue; var AConnection: TAtlasTrackerNotifyConnection);
 var
-  mValue, mItem, mEntry, mList: TJSONValue;
-  mRoot, mObject: TJSONObject;
-  mConnection: TAtlasTrackerNotifyConnection;
+  mEntry: TJSONValue;
   mUnseen: TAtlasTrackerUnseen;
+begin
+  if not (AList is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(AList) do
+  begin
+    if not (mEntry is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mUnseen.Key := Trim(TextOf(TJSONObject(mEntry), 'key'));
+    mUnseen.Project := Trim(TextOf(TJSONObject(mEntry), 'project'));
+    mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
+    if (mUnseen.Key <> '') and (AConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
+    begin
+      AConnection.Unseen := AConnection.Unseen + [mUnseen];
+    end;
+  end;
+end;
+
+/// <summary>Verbindung aus einem Element von "connections"; False ohne Kennung oder Zeitpunkt.</summary>
+function ConnectionOf(AItem: TJSONValue; out AConnection: TAtlasTrackerNotifyConnection): Boolean;
+var
+  mObject: TJSONObject;
+begin
+  Result := AItem is TJSONObject;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mObject := TJSONObject(AItem);
+  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TextOf(mObject, 'id')), TimeOf(mObject, 'since'));
+  Result := (AConnection.Id <> '') and (AConnection.Since <> 0);
+  if Result then
+  begin
+    AConnection.Me := TextOf(mObject, 'me');
+    AConnection.LastModified := TextOf(mObject, 'lastModified');
+    ReadUnseen(mObject.Values['unseen'], AConnection);
+  end;
+end;
+
+function HasNotifyVersion(AValue: TJSONValue): Boolean;
+var
   mVersion: Integer;
 begin
+  Result := (AValue is TJSONObject) and (TJSONObject(AValue).Values['version'] is TJSONNumber) and
+    TryStrToInt(TJSONNumber(TJSONObject(AValue).Values['version']).Value, mVersion) and
+    (mVersion = TAtlasTrackerNotify.Version);
+end;
+
+class function TAtlasTrackerNotify.FromJson(const AJson: string; out AFile: TAtlasTrackerNotifyFile): Boolean;
+var
+  mValue, mItem, mList: TJSONValue;
+  mRoot: TJSONObject;
+  mConnection: TAtlasTrackerNotifyConnection;
+begin
   AFile := TAtlasTrackerNotifyFile.Empty;
-  Result := False;
   mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (mValue is TJSONObject) then
+    Result := HasNotifyVersion(mValue);
+    if not Result then
     begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if not (mRoot.Values['version'] is TJSONNumber) or
-      not TryStrToInt(TJSONNumber(mRoot.Values['version']).Value, mVersion) or (mVersion <> Version) then
+    AFile.Enabled := (mRoot.Values['enabled'] is TJSONBool) and TJSONBool(mRoot.Values['enabled']).AsBoolean;
+    mList := mRoot.Values['connections'];
+    if not (mList is TJSONArray) then
     begin
       Exit;
     end;
-    AFile.Enabled := (mRoot.Values['enabled'] is TJSONBool) and TJSONBool(mRoot.Values['enabled']).AsBoolean;
-    mList := mRoot.Values['connections'];
-    if mList is TJSONArray then
+    for mItem in TJSONArray(mList) do
     begin
-      for mItem in TJSONArray(mList) do
+      if ConnectionOf(mItem, mConnection) and (AFile.IndexOf(mConnection.Id) < 0) then
       begin
-        if not (mItem is TJSONObject) then
-        begin
-          Continue;
-        end;
-        mObject := TJSONObject(mItem);
-        mConnection := TAtlasTrackerNotifyConnection.Create(Trim(TextOf(mObject, 'id')), TimeOf(mObject, 'since'));
-        if (mConnection.Id = '') or (mConnection.Since = 0) or (AFile.IndexOf(mConnection.Id) >= 0) then
-        begin
-          Continue;
-        end;
-        mConnection.Me := TextOf(mObject, 'me');
-        mConnection.LastModified := TextOf(mObject, 'lastModified');
-        if mObject.Values['unseen'] is TJSONArray then
-        begin
-          for mEntry in TJSONArray(mObject.Values['unseen']) do
-          begin
-            if not (mEntry is TJSONObject) then
-            begin
-              Continue;
-            end;
-            mUnseen.Key := Trim(TextOf(TJSONObject(mEntry), 'key'));
-            mUnseen.Project := Trim(TextOf(TJSONObject(mEntry), 'project'));
-            mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
-            if (mUnseen.Key <> '') and (mConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
-            begin
-              mConnection.Unseen := mConnection.Unseen + [mUnseen];
-            end;
-          end;
-        end;
         AFile.Connections := AFile.Connections + [mConnection];
       end;
     end;
-    Result := True;
   finally
     mValue.Free;
   end;

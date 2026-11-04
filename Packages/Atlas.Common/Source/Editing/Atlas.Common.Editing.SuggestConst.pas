@@ -73,45 +73,72 @@ begin
   Result := True;
 end;
 
+/// <summary>Anweisung der (letzten) schreibenden Stelle von ASymbol; nil ohne.</summary>
+function WritingStatement(const ASymbol: TReassignedSymbol): TSyntaxNode;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := nil;
+  for mOccurrence in ASymbol.Occurrences do
+  begin
+    if mOccurrence.Write = TReassignedWrite.Write then
+    begin
+      Result := mOccurrence.Node.Parent;
+    end;
+  end;
+end;
+
+/// <summary>Liegen alle Stellen von ASymbol in ABody, und liest keine vor dem Ende von AStatement?</summary>
+function OccurrencesAfter(const ASymbol: TReassignedSymbol; ABody, AStatement: TSyntaxNode): Boolean;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := True;
+  for mOccurrence in ASymbol.Occurrences do
+  begin
+    if (mOccurrence.Node <> nil) and ((mOccurrence.Offset < ABody.StartOffset) or
+      (mOccurrence.Offset > ABody.EndOffset) or ((mOccurrence.Write = TReassignedWrite.None) and
+      (mOccurrence.Offset < AStatement.EndOffset))) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+/// <summary>Die eine Zuweisung an ASymbol, wenn sie eine Anweisung direkt im Rumpf ist und keine Stelle davor
+/// den Namen liest; sonst nil.</summary>
+function ConstStatement(const ASymbol: TReassignedSymbol): TSyntaxNode;
+var
+  mBody: TSyntaxNode;
+begin
+  Result := nil;
+  mBody := TRoutineBody.BodyOf(ASymbol.Routine);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  Result := WritingStatement(ASymbol);
+  if (Result <> nil) and ((Result.Kind <> TSyntaxKind.AssignStatement) or (Result.Parent <> mBody) or
+    not OccurrencesAfter(ASymbol, mBody, Result)) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function SectionAction(const AText: string; ATree: TSyntaxTree; const ASymbol: TReassignedSymbol;
   out AAction: TCodeAction): Boolean;
 var
   Tokens: TArray<TPascalToken>;
-  Body, Statement: TSyntaxNode;
-  Occurrence: TReassignedOccurrence;
+  Statement: TSyntaxNode;
   Assign: Integer;
   TypeText: string;
   Edits: TArray<TTextEdit>;
 begin
   Result := False;
-  Body := TRoutineBody.BodyOf(ASymbol.Routine);
-  if Body = nil then
+  Statement := ConstStatement(ASymbol);
+  if Statement = nil then
   begin
     Exit;
-  end;
-  Statement := nil;
-  for Occurrence in ASymbol.Occurrences do
-  begin
-    if Occurrence.Write = TReassignedWrite.Write then
-    begin
-      Statement := Occurrence.Node.Parent;
-    end;
-  end;
-  // Die eine Zuweisung muss eine Anweisung direkt im Rumpf sein.
-  if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.Parent <> Body) then
-  begin
-    Exit;
-  end;
-  for Occurrence in ASymbol.Occurrences do
-  begin
-    if Occurrence.Node <> nil then
-    begin
-      if (Occurrence.Offset < Body.StartOffset) or (Occurrence.Offset > Body.EndOffset) or
-        ((Occurrence.Write = TReassignedWrite.None) and (Occurrence.Offset < Statement.EndOffset)) then
-      begin
-        Exit;
-      end;
-    end;
   end;
   TypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
   if TypeText = '' then

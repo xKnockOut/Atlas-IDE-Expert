@@ -118,6 +118,15 @@ type
       const AWorktreeFolder: string): TAtlasVcsGitBranchOptions; static;
   end;
 
+  /// <summary>Git- und SVN-Vorgaben zusammen (für „Beginnen“ ohne Dialog): je nach Art der Arbeitskopie gilt die
+  /// eine oder die andere Gruppe.</summary>
+  TAtlasVcsBranchOptions = record
+    Git: TAtlasVcsGitBranchOptions;
+    Svn: TAtlasVcsSvnBranchOptions;
+    class function Make(const AGit: TAtlasVcsGitBranchOptions;
+      const ASvn: TAtlasVcsSvnBranchOptions): TAtlasVcsBranchOptions; static;
+  end;
+
 TAtlasVcsBranchBase = record
     Kind: TAtlasVcsBranchBaseKind;
     /// <summary>Git: Branch ohne "origin/" ('' = losgelöster HEAD); SVN: Pfad im Repository wie "trunk".
@@ -235,16 +244,6 @@ TAtlasVcsBranchBase = record
   TAtlasVcsBranchProgress = reference to procedure(AIndex, ACount: Integer; const AStep: TAtlasVcsBranchStep);
 
   TAtlasVcsBranchPlan = class
-  private
-    /// <summary>Git: Remote des lokalen Hauptbranchs; liegt der Hauptbranch dort, RemoteMain.</summary>
-    class procedure InspectRemote(const AVcs: IAtlasVersionControl; var AFacts: TAtlasVcsBranchFacts); static;
-    class function GitSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>; static;
-    /// <summary>Platzhalterwert für einen Ordnernamen: Trenner und unter Windows verbotene Zeichen werden „-“.
-    /// </summary>
-    class function FolderPart(const AText: string): string; static;
-    /// <summary>Vorgabe-Basis: Git nach AGit, SVN nach ASource.</summary>
-    class function PreferredBase(const AFacts: TAtlasVcsBranchFacts; const AGit: TAtlasVcsGitBranchOptions;
-      ASource: TAtlasVcsSvnSource; out ABase: TAtlasVcsBranchBase): Boolean; static;
   public
     /// <summary>Lokaler Stand für den Plan (ohne Server): aktueller Branch bzw. Pfad und Revision, Hauptbranch
     /// aus ACandidates (Git: der erste, den es lokal oder auf origin gibt), SVN svn:externals. Ohne Git oder
@@ -282,8 +281,7 @@ TAtlasVcsBranchBase = record
     /// <summary>Wie oben mit Git- und SVN-Optionen: je nach Art der Arbeitskopie gilt die eine oder die andere
     /// Gruppe (für „Beginnen“ ohne Dialog).</summary>
     class function DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage, AKey: string;
-      const AGit: TAtlasVcsGitBranchOptions; const ASvn: TAtlasVcsSvnBranchOptions;
-      out ARequest: TAtlasVcsBranchRequest): Boolean; overload; static;
+      const AOptions: TAtlasVcsBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean; overload; static;
     /// <summary>Ordner für git worktree (#1289): APattern ('' = Vorgabe) mit {repo} (Ordnername von ARoot),
     /// {name} (AName) und {kennung} (AKey, ohne Issue AName); relativ zu ARoot, vollständig. '' ohne ARoot.
     /// </summary>
@@ -343,18 +341,6 @@ TAtlasVcsBranchBase = record
     class function ChangesExternals(const ARequest: TAtlasVcsBranchRequest): Boolean; static;
     /// <summary>Text für die Auswahl im Dialog: Revision der External-Arbeitskopie bzw. feste Revision.</summary>
     class function ExternalRevision(const AExternal: TAtlasVcsSvnExternal): string; static;
-    /// <summary>Regeln aus vcs.externals.rules (JSON-Liste mit source und onBranch = pin, keep, branch). Einträge
-    /// ohne Quelle, mit anderer Behandlung oder doppelter Quelle fallen weg.</summary>
-    class function RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>; static;
-    /// <summary>ARules als JSON-Liste für vcs.externals.rules; '[]' ohne Regeln.</summary>
-    class function RulesJson(const ARules: TArray<TAtlasVcsExternalRule>): string; static;
-    /// <summary>ARules als Text für die Einstellungsseite: eine Regel je Zeile „Quelle = Behandlung“.</summary>
-    class function RulesText(const ARules: TArray<TAtlasVcsExternalRule>): string; static;
-    /// <summary>Regeln aus dem Text der Einstellungsseite; leere Zeilen und Zeilen mit # zählen nicht. False mit
-    /// der ersten ungültigen Zeile in AInvalid (ohne „=“, ohne Quelle, andere Behandlung als pin, keep, branch).
-    /// Eine doppelte Quelle gilt einmal (die letzte Zeile gewinnt).</summary>
-    class function RulesOfText(const AText: string; out ARules: TArray<TAtlasVcsExternalRule>;
-      out AInvalid: string): Boolean; static;
     /// <summary>Name taugt für git und svn (nicht leer, keine Option, kein „..“, keine Leer- und Steuerzeichen).
     /// Die strengere Prüfung nach Git-Regeln macht der Dialog (TAtlasVcsBranchNames.Valid).</summary>
     class function SafeName(const AName: string): Boolean; static;
@@ -387,6 +373,24 @@ TAtlasVcsBranchBase = record
       ADone: Integer): TArray<TAtlasVcsBranchStep>; static;
   end;
 
+  /// <summary>Regeln für SVN-Externals beim Anlegen eines Branchs (#1291): vcs.externals.rules als JSON und als
+  /// Text der Einstellungsseite.</summary>
+  TAtlasVcsExternalRules = class
+  public
+    /// <summary>Regeln aus vcs.externals.rules (JSON-Liste mit source und onBranch = pin, keep, branch). Einträge
+    /// ohne Quelle, mit anderer Behandlung oder doppelter Quelle fallen weg.</summary>
+    class function RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>; static;
+    /// <summary>ARules als JSON-Liste für vcs.externals.rules; '[]' ohne Regeln.</summary>
+    class function RulesJson(const ARules: TArray<TAtlasVcsExternalRule>): string; static;
+    /// <summary>ARules als Text für die Einstellungsseite: eine Regel je Zeile „Quelle = Behandlung“.</summary>
+    class function RulesText(const ARules: TArray<TAtlasVcsExternalRule>): string; static;
+    /// <summary>Regeln aus dem Text der Einstellungsseite; leere Zeilen und Zeilen mit # zählen nicht. False mit
+    /// der ersten ungültigen Zeile in AInvalid (ohne „=“, ohne Quelle, andere Behandlung als pin, keep, branch).
+    /// Eine doppelte Quelle gilt einmal (die letzte Zeile gewinnt).</summary>
+    class function RulesOfText(const AText: string; out ARules: TArray<TAtlasVcsExternalRule>;
+      out AInvalid: string): Boolean; static;
+  end;
+
 implementation
 
 uses
@@ -416,19 +420,38 @@ class function TAtlasVcsGitBranchOptions.FromSettings(const ABase, APush, AUncom
 begin
   Result.Base := TAtlasVcsGitBaseOption.Remote;
   if SameText(Trim(ABase), 'local') then
-    Result.Base := TAtlasVcsGitBaseOption.Local
+  begin
+    Result.Base := TAtlasVcsGitBaseOption.Local;
+  end
   else if SameText(Trim(ABase), 'current') then
+  begin
     Result.Base := TAtlasVcsGitBaseOption.Current;
+  end;
   Result.PushNow := SameText(Trim(APush), 'now');
   Result.Uncommitted := TAtlasVcsGitUncommitted.Carry;
   if SameText(Trim(AUncommitted), 'stash') then
-    Result.Uncommitted := TAtlasVcsGitUncommitted.Stash
+  begin
+    Result.Uncommitted := TAtlasVcsGitUncommitted.Stash;
+  end
   else if SameText(Trim(AUncommitted), 'ask') then
+  begin
     Result.Uncommitted := TAtlasVcsGitUncommitted.Ask;
+  end;
   Result.Worktree := AWorktree;
   Result.WorktreeFolder := Trim(AWorktreeFolder);
   if Result.WorktreeFolder = '' then
+  begin
     Result.WorktreeFolder := DefaultWorktreeFolder;
+  end;
+end;
+
+{ TAtlasVcsBranchOptions }
+
+class function TAtlasVcsBranchOptions.Make(const AGit: TAtlasVcsGitBranchOptions;
+  const ASvn: TAtlasVcsSvnBranchOptions): TAtlasVcsBranchOptions;
+begin
+  Result.Git := AGit;
+  Result.Svn := ASvn;
 end;
 
 { TAtlasVcsBranchBase }
@@ -452,7 +475,9 @@ function TAtlasVcsBranchBase.RemoteName: string;
 begin
   Result := Remote;
   if Result = '' then
+  begin
     Result := cDefaultRemote;
+  end;
 end;
 
 { TAtlasVcsBranchFacts }
@@ -529,10 +554,14 @@ var
   mMixed, mModified: Boolean;
 begin
   if ASvn.ToolVersion(mVersion) = TAtlasVcsOutcome.Ok then
+  begin
     AFacts.SvnVersion := mVersion;
+  end;
   if (ASvn.ExternalsXml(mXml) <> TAtlasVcsOutcome.Ok) or (ASvn.RepositoryRoot(mRepository) <> TAtlasVcsOutcome.Ok) or
     (mRepository = '') then
+  begin
     Exit;
+  end;
   try
     AFacts.SvnDefinitions := TAtlasSvnExternals.Definitions(mXml, AFacts.Root);
   except
@@ -556,85 +585,8 @@ begin
   AFacts.Externals := Length(AFacts.SvnExternals) > 0;
 end;
 
-class function TAtlasVcsBranchPlan.Inspect(const AVcs: IAtlasVersionControl;
-  const ACandidates: TArray<string>): TAtlasVcsBranchFacts;
-var
-  mBranching: IAtlasVcsBranching;
-  mSvn: IAtlasVcsSvnWorkingCopy;
-  mHead: TAtlasVcsHead;
-  mCandidate, mPath, mText, mRevision: string;
-  mLocal, mRemote, mMixed: Boolean;
-begin
-  Result := TAtlasVcsBranchFacts.Empty;
-  if (AVcs = nil) or not Supports(AVcs, IAtlasVcsBranching, mBranching) then
-    Exit;
-  Result.Kind := AVcs.Kind;
-  if (Result.Kind <> TAtlasVcsKind.Git) and (Result.Kind <> TAtlasVcsKind.Svn) then
-    Exit;
-  Result.Outcome := AVcs.Head(mHead);
-  if Result.Outcome <> TAtlasVcsOutcome.Ok then
-    Exit;
-  Result.Root := AVcs.WorkingCopy.Root;
-  Result.Current := mHead.Branch;
-  if Result.Kind = TAtlasVcsKind.Svn then
-  begin
-    Result.Revision := mHead.Revision;
-    // Voller Pfad ("Kasse/trunk"): Head.Branch kürzt auf "trunk", die Kopie braucht den ganzen. Aus ihm die
-    // Projektwurzel für Ort und Hauptbranch (#1290).
-    if (mBranching.RepositoryPath(mPath) = TAtlasVcsOutcome.Ok) and (mPath <> '') then
-    begin
-      Result.Current := mPath;
-      Result.LayoutKnown := TAtlasSvnLayout.ProjectRoot(mPath, Result.ProjectRoot);
-    end;
-    // Gemischte Arbeitskopie (#1290): die höchste Revision, der Dialog warnt. Ohne svnversion die der Wurzel.
-    if not Supports(AVcs, IAtlasVcsSvnWorkingCopy, mSvn) then
-      mSvn := nil;
-    if (mSvn <> nil) and (mSvn.WorkingRevisions(mText) = TAtlasVcsOutcome.Ok) and
-      TAtlasSvnLayout.WorkingRevision(mText, mRevision, mMixed) then
-    begin
-      Result.Revision := mRevision;
-      Result.MixedRevision := mMixed;
-    end;
-    for mCandidate in ACandidates do
-    begin
-      // "trunk" liegt unter der Projektwurzel ("Kasse/trunk"), nicht an der Wurzel des Repositorys.
-      mPath := TAtlasSvnLayout.MainPath(mCandidate, Result.LayoutKnown, Result.ProjectRoot);
-      if SafeName(mPath) then
-      begin
-        Result.MainBranch := mPath;
-        Break;
-      end;
-    end;
-    // Externals (#1291): Zeilen samt Zustand; ein Fehler hier hält das Anlegen nicht auf (Externals bleiben dann,
-    // wie sie sind).
-    if mSvn <> nil then
-      InspectExternals(mSvn, Result);
-    if (Length(Result.SvnExternals) = 0) and (mBranching.HasExternals(Result.Externals) <> TAtlasVcsOutcome.Ok) then
-      Result.Externals := False;
-    Exit;
-  end;
-  for mCandidate in ACandidates do
-  begin
-    if not SafeName(mCandidate) then
-      Continue;
-    Result.Outcome := mBranching.BranchExists(mCandidate, mLocal);
-    if Result.Outcome <> TAtlasVcsOutcome.Ok then
-      Exit;
-    Result.Outcome := mBranching.RemoteBranchExists(mCandidate, mRemote);
-    if Result.Outcome <> TAtlasVcsOutcome.Ok then
-      Exit;
-    if mLocal or mRemote then
-    begin
-      Result.MainBranch := mCandidate;
-      Result.LocalMain := mLocal;
-      Result.RemoteMain := mRemote;
-      Break;
-    end;
-  end;
-  InspectRemote(AVcs, Result);
-end;
-
-class procedure TAtlasVcsBranchPlan.InspectRemote(const AVcs: IAtlasVersionControl;
+/// <summary>Git: Remote des lokalen Hauptbranchs; liegt der Hauptbranch dort, RemoteMain.</summary>
+procedure InspectRemote(const AVcs: IAtlasVersionControl;
   var AFacts: TAtlasVcsBranchFacts);
 var
   mLocalWork: IAtlasVcsLocalWork;
@@ -647,14 +599,269 @@ begin
   // Nur ein Hinweis für Abruf und Push: Fehler hier lassen origin stehen.
   if not AFacts.LocalMain or not Supports(AVcs, IAtlasVcsLocalWork, mLocalWork) or
     (mLocalWork.Branches(mBranches) <> TAtlasVcsOutcome.Ok) then
+  begin
     Exit;
+  end;
   for mBranch in mBranches do
-    if (mBranch.Name = AFacts.MainBranch) and SafeName(mBranch.Remote) then
+  begin
+    if (mBranch.Name = AFacts.MainBranch) and TAtlasVcsBranchPlan.SafeName(mBranch.Remote) then
+    begin
       AFacts.Remote := mBranch.Remote;
+    end;
+  end;
   // RemoteBranchExists kennt nur origin: bei einem anderen Remote dessen Stand des letzten Abrufs.
   if (AFacts.Remote <> cDefaultRemote) and Supports(AVcs, IAtlasVcsIncoming, mIncoming) then
+  begin
     AFacts.RemoteMain := mIncoming.Resolve('refs/remotes/' + AFacts.Remote + '/' + AFacts.MainBranch,
       mRevision) = TAtlasVcsOutcome.Ok;
+  end;
+end;
+
+function GitSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
+var
+  mRemote: string;
+begin
+  Result := nil;
+  mRemote := ARequest.Base.RemoteName;
+  // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
+  if ((ARequest.Base.Name <> '') and not TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name)) or not TAtlasVcsBranchPlan.SafeName(mRemote) then
+  begin
+    Exit;
+  end;
+  if (ARequest.WorktreeFolder <> '') and not TAtlasVcsBranchPlan.SafeFolder(ARequest.WorktreeFolder) then
+  begin
+    Exit;
+  end;
+  // Basis vom Server (#1289): vorher genau den Hauptbranch abrufen; ohne Rückfrage nach Zugangsdaten.
+  if ARequest.Fetch and (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) then
+  begin
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('fetch', '--quiet', '--no-tags', mRemote,
+      ARequest.Base.Name), True, False)];
+  end;
+  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der (erste) Push.
+  if ARequest.WorktreeFolder <> '' then
+  begin
+    // Eigener Ordner: die Arbeitskopie bleibt, wie sie ist; offene Änderungen bleiben dort.
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('worktree', 'add', '--quiet', '--no-track',
+      '-b', ARequest.Name, ARequest.WorktreeFolder, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base)), False, False)];
+  end
+  else
+  begin
+    if ARequest.Stash then
+    begin
+      Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('stash', 'push', '--include-untracked',
+        '--quiet', '-m', TAtlasVcsBranchPlan.StashMessage(ARequest.Name)), False, False)];
+    end;
+    // "--" am Ende: der Startpunkt ist eine Revision, nie ein Dateiname.
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '--quiet', '--no-track', '-b',
+      ARequest.Name, TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Git, ARequest.Base), '--'), False, False)];
+  end;
+  if ARequest.PushNow then
+  begin
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('push', '--set-upstream', mRemote,
+      'refs/heads/' + ARequest.Name + ':refs/heads/' + ARequest.Name), True, True)];
+  end;
+end;
+
+/// <summary>Platzhalterwert für einen Ordnernamen: Trenner und unter Windows verbotene Zeichen werden „-“.
+/// </summary>
+function FolderPart(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AText);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if (Ord(Result[mIndex]) < 32) or CharInSet(Result[mIndex], ['/', '\', ':', '*', '?', '"', '<', '>', '|']) then
+    begin
+      Result[mIndex] := '-';
+    end;
+  end;
+end;
+
+/// <summary>Vorgabe-Basis: Git nach AGit, SVN nach ASource.</summary>
+function PreferredBase(const AFacts: TAtlasVcsBranchFacts;
+  const AGit: TAtlasVcsGitBranchOptions; ASource: TAtlasVcsSvnSource; out ABase: TAtlasVcsBranchBase): Boolean;
+var
+  mBase: TAtlasVcsBranchBase;
+  mBases: TArray<TAtlasVcsBranchBase>;
+  mPreferred: TArray<TAtlasVcsBranchBaseKind>;
+  mKind: TAtlasVcsBranchBaseKind;
+begin
+  ABase := TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, '', '');
+  mBases := TAtlasVcsBranchPlan.Bases(AFacts);
+  if AFacts.Kind = TAtlasVcsKind.Svn then
+  begin
+    // SVN der Hauptbranch, mit vcs.branch.svn.source = workingCopy die Arbeitskopie (#1290).
+    if ASource = TAtlasVcsSvnSource.WorkingCopy then
+    begin
+      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.WorkingCopy,
+        TAtlasVcsBranchBaseKind.Head);
+    end
+    else
+    begin
+      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.Head);
+    end;
+  end
+  else
+    case AGit.Base of
+      TAtlasVcsGitBaseOption.Remote:
+        mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.RemoteMain,
+          TAtlasVcsBranchBaseKind.LocalMain);
+      // Der aktuelle Branch ausdrücklich gewählt; steht er schon als lokaler Hauptbranch da, dieser.
+      TAtlasVcsGitBaseOption.Current:
+        mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.Current,
+          TAtlasVcsBranchBaseKind.LocalMain);
+    else
+      // Wie „Beginnen“ bisher (#765): lokal vor origin.
+      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.LocalMain,
+        TAtlasVcsBranchBaseKind.RemoteMain);
+    end;
+  for mKind in mPreferred do
+  begin
+    for mBase in mBases do
+    begin
+      if mBase.Kind = mKind then
+      begin
+        ABase := mBase;
+        Exit(True);
+      end;
+    end;
+  end;
+  // Ohne Hauptbranch keine Vorgabe: wie bisher bei „Beginnen“ scheitern statt still vom aktuellen Branch
+  // abzuzweigen.
+  Result := False;
+end;
+
+/// <summary>SVN: höchste Revision einer gemischten Arbeitskopie (#1290), der Dialog warnt; ohne svnversion bleibt
+/// die der Wurzel.</summary>
+procedure InspectSvnRevision(const ASvn: IAtlasVcsSvnWorkingCopy; var AFacts: TAtlasVcsBranchFacts);
+var
+  mText, mRevision: string;
+  mMixed: Boolean;
+begin
+  if (ASvn <> nil) and (ASvn.WorkingRevisions(mText) = TAtlasVcsOutcome.Ok) and
+    TAtlasSvnLayout.WorkingRevision(mText, mRevision, mMixed) then
+  begin
+    AFacts.Revision := mRevision;
+    AFacts.MixedRevision := mMixed;
+  end;
+end;
+
+/// <summary>SVN: Hauptbranch aus ACandidates; "trunk" liegt unter der Projektwurzel ("Kasse/trunk"), nicht an der
+/// Wurzel des Repositorys.</summary>
+procedure InspectSvnMain(const ACandidates: TArray<string>; var AFacts: TAtlasVcsBranchFacts);
+var
+  mCandidate, mPath: string;
+begin
+  for mCandidate in ACandidates do
+  begin
+    mPath := TAtlasSvnLayout.MainPath(mCandidate, AFacts.LayoutKnown, AFacts.ProjectRoot);
+    if TAtlasVcsBranchPlan.SafeName(mPath) then
+    begin
+      AFacts.MainBranch := mPath;
+      Break;
+    end;
+  end;
+end;
+
+procedure InspectSvn(const AVcs: IAtlasVersionControl; const ABranching: IAtlasVcsBranching;
+  const ACandidates: TArray<string>; const AHead: TAtlasVcsHead; var AFacts: TAtlasVcsBranchFacts);
+var
+  mSvn: IAtlasVcsSvnWorkingCopy;
+  mPath: string;
+begin
+  AFacts.Revision := AHead.Revision;
+  // Voller Pfad ("Kasse/trunk"): Head.Branch kürzt auf "trunk", die Kopie braucht den ganzen. Aus ihm die
+  // Projektwurzel für Ort und Hauptbranch (#1290).
+  if (ABranching.RepositoryPath(mPath) = TAtlasVcsOutcome.Ok) and (mPath <> '') then
+  begin
+    AFacts.Current := mPath;
+    AFacts.LayoutKnown := TAtlasSvnLayout.ProjectRoot(mPath, AFacts.ProjectRoot);
+  end;
+  if not Supports(AVcs, IAtlasVcsSvnWorkingCopy, mSvn) then
+  begin
+    mSvn := nil;
+  end;
+  InspectSvnRevision(mSvn, AFacts);
+  InspectSvnMain(ACandidates, AFacts);
+  // Externals (#1291): Zeilen samt Zustand; ein Fehler hier hält das Anlegen nicht auf (Externals bleiben dann,
+  // wie sie sind).
+  if mSvn <> nil then
+  begin
+    InspectExternals(mSvn, AFacts);
+  end;
+  if (Length(AFacts.SvnExternals) = 0) and (ABranching.HasExternals(AFacts.Externals) <> TAtlasVcsOutcome.Ok) then
+  begin
+    AFacts.Externals := False;
+  end;
+end;
+
+/// <summary>Git: der erste Kandidat, den es lokal oder auf origin gibt, als Hauptbranch; danach sein Remote.
+/// </summary>
+procedure InspectGit(const AVcs: IAtlasVersionControl; const ABranching: IAtlasVcsBranching;
+  const ACandidates: TArray<string>; var AFacts: TAtlasVcsBranchFacts);
+var
+  mCandidate: string;
+  mLocal, mRemote: Boolean;
+begin
+  for mCandidate in ACandidates do
+  begin
+    if not TAtlasVcsBranchPlan.SafeName(mCandidate) then
+    begin
+      Continue;
+    end;
+    AFacts.Outcome := ABranching.BranchExists(mCandidate, mLocal);
+    if AFacts.Outcome = TAtlasVcsOutcome.Ok then
+    begin
+      AFacts.Outcome := ABranching.RemoteBranchExists(mCandidate, mRemote);
+    end;
+    if AFacts.Outcome <> TAtlasVcsOutcome.Ok then
+    begin
+      Exit;
+    end;
+    if mLocal or mRemote then
+    begin
+      AFacts.MainBranch := mCandidate;
+      AFacts.LocalMain := mLocal;
+      AFacts.RemoteMain := mRemote;
+      Break;
+    end;
+  end;
+  InspectRemote(AVcs, AFacts);
+end;
+
+class function TAtlasVcsBranchPlan.Inspect(const AVcs: IAtlasVersionControl;
+  const ACandidates: TArray<string>): TAtlasVcsBranchFacts;
+var
+  mBranching: IAtlasVcsBranching;
+  mHead: TAtlasVcsHead;
+begin
+  Result := TAtlasVcsBranchFacts.Empty;
+  if (AVcs = nil) or not Supports(AVcs, IAtlasVcsBranching, mBranching) then
+  begin
+    Exit;
+  end;
+  Result.Kind := AVcs.Kind;
+  if not (Result.Kind in [TAtlasVcsKind.Git, TAtlasVcsKind.Svn]) then
+  begin
+    Exit;
+  end;
+  Result.Outcome := AVcs.Head(mHead);
+  if Result.Outcome <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  Result.Root := AVcs.WorkingCopy.Root;
+  Result.Current := mHead.Branch;
+  if Result.Kind = TAtlasVcsKind.Svn then
+  begin
+    InspectSvn(AVcs, mBranching, ACandidates, mHead, Result);
+  end
+  else
+  begin
+    InspectGit(AVcs, mBranching, ACandidates, Result);
+  end;
 end;
 
 class procedure TAtlasVcsBranchPlan.InspectServer(const AVcs: IAtlasVersionControl;
@@ -666,7 +873,9 @@ begin
   AFacts.ServerChecked := True;
   AFacts.ServerOutcome := TAtlasVcsOutcome.Ok;
   if (AFacts.Kind <> TAtlasVcsKind.Svn) or (AFacts.Outcome <> TAtlasVcsOutcome.Ok) or (AFacts.MainBranch = '') then
+  begin
     Exit;
+  end;
   if (AVcs = nil) or not Supports(AVcs, IAtlasVcsBranching, mBranching) then
   begin
     AFacts.ServerOutcome := TAtlasVcsOutcome.NoWorkingCopy;
@@ -674,36 +883,50 @@ begin
   end;
   AFacts.ServerOutcome := mBranching.ServerRevision(AFacts.MainBranch, mRevision);
   if AFacts.ServerOutcome = TAtlasVcsOutcome.Ok then
+  begin
     AFacts.HeadRevision := mRevision;
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.Bases(const AFacts: TAtlasVcsBranchFacts): TArray<TAtlasVcsBranchBase>;
 begin
   Result := nil;
   if AFacts.Outcome <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   if AFacts.Kind = TAtlasVcsKind.Git then
   begin
     // Remote an jeder Basis: Abruf und Push gehen an den Remote des Hauptbranchs.
     if AFacts.RemoteMain then
+    begin
       Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.RemoteMain, AFacts.MainBranch, '',
         AFacts.Remote)];
+    end;
     if AFacts.LocalMain then
+    begin
       Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, AFacts.MainBranch, '',
         AFacts.Remote)];
+    end;
     // Der aktuelle Branch nur, wenn er nicht schon als lokaler Hauptbranch dasteht.
     if not AFacts.LocalMain or (AFacts.Current <> AFacts.MainBranch) then
+    begin
       Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, AFacts.Current, '',
         AFacts.Remote)];
+    end;
   end
   else if AFacts.Kind = TAtlasVcsKind.Svn then
   begin
     if AFacts.MainBranch <> '' then
+    begin
       Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Head, AFacts.MainBranch,
         AFacts.HeadRevision)];
+    end;
     if (AFacts.Current <> '') and (AFacts.Revision <> '') then
+    begin
       Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.WorkingCopy, AFacts.Current,
         AFacts.Revision)];
+    end;
   end;
 end;
 
@@ -726,51 +949,6 @@ begin
   Result := PreferredBase(AFacts, AOptions, TAtlasVcsSvnSource.Head, ABase);
 end;
 
-class function TAtlasVcsBranchPlan.PreferredBase(const AFacts: TAtlasVcsBranchFacts;
-  const AGit: TAtlasVcsGitBranchOptions; ASource: TAtlasVcsSvnSource; out ABase: TAtlasVcsBranchBase): Boolean;
-var
-  mBase: TAtlasVcsBranchBase;
-  mBases: TArray<TAtlasVcsBranchBase>;
-  mPreferred: TArray<TAtlasVcsBranchBaseKind>;
-  mKind: TAtlasVcsBranchBaseKind;
-begin
-  ABase := TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, '', '');
-  mBases := Bases(AFacts);
-  if AFacts.Kind = TAtlasVcsKind.Svn then
-  begin
-    // SVN der Hauptbranch, mit vcs.branch.svn.source = workingCopy die Arbeitskopie (#1290).
-    if ASource = TAtlasVcsSvnSource.WorkingCopy then
-      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.WorkingCopy,
-        TAtlasVcsBranchBaseKind.Head)
-    else
-      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.Head);
-  end
-  else
-    case AGit.Base of
-      TAtlasVcsGitBaseOption.Remote:
-        mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.RemoteMain,
-          TAtlasVcsBranchBaseKind.LocalMain);
-      // Der aktuelle Branch ausdrücklich gewählt; steht er schon als lokaler Hauptbranch da, dieser.
-      TAtlasVcsGitBaseOption.Current:
-        mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.Current,
-          TAtlasVcsBranchBaseKind.LocalMain);
-    else
-      // Wie „Beginnen“ bisher (#765): lokal vor origin.
-      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.LocalMain,
-        TAtlasVcsBranchBaseKind.RemoteMain);
-    end;
-  for mKind in mPreferred do
-    for mBase in mBases do
-      if mBase.Kind = mKind then
-      begin
-        ABase := mBase;
-        Exit(True);
-      end;
-  // Ohne Hauptbranch keine Vorgabe: wie bisher bei „Beginnen“ scheitern statt still vom aktuellen Branch
-  // abzuzweigen.
-  Result := False;
-end;
-
 class function TAtlasVcsBranchPlan.DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName,
   AMessage: string; out ARequest: TAtlasVcsBranchRequest): Boolean;
 var
@@ -783,41 +961,64 @@ end;
 class function TAtlasVcsBranchPlan.DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName,
   AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean;
 begin
-  Result := DefaultRequest(AFacts, AName, AMessage, '', TAtlasVcsGitBranchOptions.Classic, ASvn, ARequest);
+  Result := DefaultRequest(AFacts, AName, AMessage, '', TAtlasVcsBranchOptions.Make(TAtlasVcsGitBranchOptions.Classic,
+    ASvn), ARequest);
 end;
 
 class function TAtlasVcsBranchPlan.DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
   AKey: string; const AOptions: TAtlasVcsGitBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean;
 begin
-  Result := DefaultRequest(AFacts, AName, AMessage, AKey, AOptions, TAtlasVcsSvnBranchOptions.Default, ARequest);
+  Result := DefaultRequest(AFacts, AName, AMessage, AKey, TAtlasVcsBranchOptions.Make(AOptions,
+    TAtlasVcsSvnBranchOptions.Default), ARequest);
+end;
+
+/// <summary>Git (#1289): Abruf, Push, worktree-Ordner bzw. Stash aus AGit in ARequest.</summary>
+procedure ApplyGit(var ARequest: TAtlasVcsBranchRequest; const AFacts: TAtlasVcsBranchFacts;
+  const AGit: TAtlasVcsGitBranchOptions; const AKey: string);
+begin
+  ARequest.Fetch := (AGit.Base = TAtlasVcsGitBaseOption.Remote) and
+    (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+  ARequest.PushNow := AGit.PushNow;
+  if AGit.Worktree then
+  begin
+    ARequest.WorktreeFolder := TAtlasVcsBranchPlan.WorktreePath(AFacts.Root, AGit.WorktreeFolder, ARequest.Name,
+      AKey);
+  end
+  else
+  begin
+    ARequest.Stash := AGit.Uncommitted = TAtlasVcsGitUncommitted.Stash;
+  end;
+end;
+
+/// <summary>Ist für jedes External eine Behandlung gewählt (keine Ask)?</summary>
+function ActionsChosen(const AActions: TArray<TAtlasVcsExternalAction>): Boolean;
+var
+  mAction: TAtlasVcsExternalAction;
+begin
+  for mAction in AActions do
+  begin
+    if mAction = TAtlasVcsExternalAction.Ask then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
 end;
 
 class function TAtlasVcsBranchPlan.DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
-  AKey: string; const AGit: TAtlasVcsGitBranchOptions; const ASvn: TAtlasVcsSvnBranchOptions;
-  out ARequest: TAtlasVcsBranchRequest): Boolean;
+  AKey: string; const AOptions: TAtlasVcsBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean;
 var
   mBase: TAtlasVcsBranchBase;
-  mAction: TAtlasVcsExternalAction;
 begin
-  Result := PreferredBase(AFacts, AGit, ASvn.Source, mBase);
+  Result := PreferredBase(AFacts, AOptions.Git, AOptions.Svn.Source, mBase);
   ARequest := TAtlasVcsBranchRequest.Make(AFacts.Kind, AName, mBase, AMessage);
   if AFacts.Kind = TAtlasVcsKind.Git then
   begin
-    ARequest.Fetch := (AGit.Base = TAtlasVcsGitBaseOption.Remote) and
-      (mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
-    ARequest.PushNow := AGit.PushNow;
-    if AGit.Worktree then
-      ARequest.WorktreeFolder := WorktreePath(AFacts.Root, AGit.WorktreeFolder, AName, AKey)
-    else
-      ARequest.Stash := AGit.Uncommitted = TAtlasVcsGitUncommitted.Stash;
+    ApplyGit(ARequest, AFacts, AOptions.Git, AKey);
     Exit;
   end;
-  if not ApplySvn(ARequest, AFacts, ASvn) then
-    Result := False;
   // vcs.externals.onBranch = ask: ohne Dialog gibt es keine Wahl (#1291).
-  for mAction in ARequest.ExternalActions do
-    if mAction = TAtlasVcsExternalAction.Ask then
-      Result := False;
+  Result := ApplySvn(ARequest, AFacts, AOptions.Svn) and Result and ActionsChosen(ARequest.ExternalActions);
 end;
 
 class function TAtlasVcsBranchPlan.SvnLocation(const AFacts: TAtlasVcsBranchFacts;
@@ -844,13 +1045,17 @@ var
 begin
   Result := True;
   if ARequest.Kind <> TAtlasVcsKind.Svn then
+  begin
     Exit;
+  end;
   Result := SvnLocation(AFacts, ASvn, ARequest.Name, mPath);
   ARequest.Location := mPath;
   ARequest.After := ASvn.After;
   ARequest.CheckoutFolder := '';
   if ASvn.After = TAtlasVcsSvnAfter.Checkout then
+  begin
     ARequest.CheckoutFolder := SvnCheckoutFolder(AFacts, ASvn, ARequest.Name);
+  end;
   ApplyExternals(ARequest, AFacts, ASvn, DefaultActions(AFacts, ASvn));
 end;
 
@@ -861,7 +1066,9 @@ var
 begin
   SetLength(Result, Length(AFacts.SvnExternals));
   for mIndex := 0 to High(AFacts.SvnExternals) do
+  begin
     Result[mIndex] := TAtlasSvnExternals.DefaultAction(AFacts.SvnExternals[mIndex], ASvn);
+  end;
 end;
 
 class procedure TAtlasVcsBranchPlan.ApplyExternals(var ARequest: TAtlasVcsBranchRequest;
@@ -872,7 +1079,9 @@ var
   mPath, mFolder: string;
 begin
   if ARequest.Kind <> TAtlasVcsKind.Svn then
+  begin
     Exit;
+  end;
   ARequest.Externals := AFacts.SvnExternals;
   ARequest.Definitions := AFacts.SvnDefinitions;
   ARequest.RepositoryRoot := AFacts.RepositoryRoot;
@@ -883,11 +1092,15 @@ begin
   begin
     ARequest.ExternalActions[mIndex] := TAtlasVcsExternalAction.Keep;
     if mIndex <= High(AActions) then
+    begin
       ARequest.ExternalActions[mIndex] := AActions[mIndex];
+    end;
     ARequest.ExternalLocations[mIndex] := '';
     if (ARequest.ExternalActions[mIndex] = TAtlasVcsExternalAction.Branch) and
       ExternalLocation(ARequest.Externals[mIndex], ASvn, ARequest.Name, mPath) then
+    begin
       ARequest.ExternalLocations[mIndex] := mPath;
+    end;
   end;
   // Arbeitsordner je Branch-Name: ein Rest eines abgebrochenen Laufs wird vor dem Ausführen gelöscht.
   mFolder := StringReplace(StringReplace(ARequest.Name, '/', '-', [rfReplaceAll]), '\', '-', [rfReplaceAll]);
@@ -904,7 +1117,9 @@ begin
   // Ein fester Ort (^/branches/{name}) läge für jedes Package auf demselben Pfad wie das Projekt.
   mPattern := ASvn.Location;
   if not TAtlasSvnLayout.NeedsRoot(mPattern) then
+  begin
     mPattern := TAtlasVcsSvnBranchOptions.Default.Location;
+  end;
   mLayout := TAtlasSvnLayout.ProjectRoot(AExternal.Source, mRoot);
   Result := AExternal.CanBranch and TAtlasSvnLayout.Resolve(mPattern, mLayout, mRoot, AName, ASvn.Key, APath);
 end;
@@ -915,15 +1130,21 @@ var
 begin
   Result := TAtlasSvnExternals.PinExternalsSupported(ARequest.SvnVersion);
   if not Result then
+  begin
     Exit;
+  end;
   Result := False;
   for mIndex := 0 to High(ARequest.Externals) do
   begin
     if ARequest.Externals[mIndex].Fixed then
+    begin
       Continue;
+    end;
     if (mIndex > High(ARequest.ExternalActions)) or
       (ARequest.ExternalActions[mIndex] <> TAtlasVcsExternalAction.Pin) then
+    begin
       Exit(False);
+    end;
     Result := True;
   end;
 end;
@@ -934,32 +1155,50 @@ var
 begin
   Result := False;
   if (ARequest.Kind <> TAtlasVcsKind.Svn) or (ARequest.After <> TAtlasVcsSvnAfter.Switch) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to High(ARequest.ExternalActions) do
+  begin
     if (mIndex <= High(ARequest.Externals)) and not ARequest.Externals[mIndex].Fixed and
       (ARequest.ExternalActions[mIndex] in [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Branch]) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.ExternalRevision(const AExternal: TAtlasVcsSvnExternal): string;
 begin
   if AExternal.Revision <> '' then
-    Result := AExternal.Revision
+  begin
+    Result := AExternal.Revision;
+  end
   else if AExternal.Peg <> '' then
-    Result := AExternal.Peg
+  begin
+    Result := AExternal.Peg;
+  end
   else
+  begin
     Result := AExternal.WorkingRevision;
+  end;
 end;
 
 function RuleAction(const AText: string; out AAction: TAtlasVcsExternalAction): Boolean;
 begin
   Result := True;
   if SameText(Trim(AText), 'pin') then
-    AAction := TAtlasVcsExternalAction.Pin
+  begin
+    AAction := TAtlasVcsExternalAction.Pin;
+  end
   else if SameText(Trim(AText), 'keep') then
-    AAction := TAtlasVcsExternalAction.Keep
+  begin
+    AAction := TAtlasVcsExternalAction.Keep;
+  end
   else if SameText(Trim(AText), 'branch') then
-    AAction := TAtlasVcsExternalAction.Branch
+  begin
+    AAction := TAtlasVcsExternalAction.Branch;
+  end
   else
   begin
     AAction := TAtlasVcsExternalAction.Ask;
@@ -972,8 +1211,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(ARules) do
+  begin
     if SameText(ARules[mIndex].Source, ASource) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -985,7 +1228,9 @@ begin
   mValue := AObject.GetValue(AName);
   // TJSONNumber erbt von TJSONString: Zahlen zählen nicht als Text.
   if (mValue is TJSONString) and not (mValue is TJSONNumber) then
+  begin
     Result := Trim(TJSONString(mValue).Value);
+  end;
 end;
 
 function JsonQuoted(const AText: string): string;
@@ -1000,7 +1245,7 @@ begin
   end;
 end;
 
-class function TAtlasVcsBranchPlan.RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>;
+class function TAtlasVcsExternalRules.RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>;
 var
   mRoot, mItem: TJSONValue;
   mSource: string;
@@ -1008,19 +1253,27 @@ var
 begin
   Result := nil;
   if Trim(AJson) = '' then
+  begin
     Exit;
+  end;
   mRoot := TJSONObject.ParseJSONValue(AJson);
   try
     if not (mRoot is TJSONArray) then
+    begin
       Exit;
+    end;
     for mItem in TJSONArray(mRoot) do
     begin
       if not (mItem is TJSONObject) then
+      begin
         Continue;
+      end;
       mSource := JsonText(TJSONObject(mItem), 'source');
       if (mSource = '') or not RuleAction(JsonText(TJSONObject(mItem), 'onBranch'), mAction) or
         (RuleIndex(Result, mSource) >= 0) then
+      begin
         Continue;
+      end;
       Result := Result + [TAtlasVcsExternalRule.Make(mSource, mAction)];
     end;
   finally
@@ -1028,32 +1281,40 @@ begin
   end;
 end;
 
-class function TAtlasVcsBranchPlan.RulesJson(const ARules: TArray<TAtlasVcsExternalRule>): string;
+class function TAtlasVcsExternalRules.RulesJson(const ARules: TArray<TAtlasVcsExternalRule>): string;
 var
   mRule: TAtlasVcsExternalRule;
   mParts: TArray<string>;
 begin
   mParts := nil;
   for mRule in ARules do
+  begin
     if (mRule.Source <> '') and (mRule.Action <> TAtlasVcsExternalAction.Ask) then
+    begin
       mParts := mParts + ['{"source": ' + JsonQuoted(mRule.Source) + ', "onBranch": ' +
         JsonQuoted(AtlasVcsExternalActionText(mRule.Action)) + '}'];
+    end;
+  end;
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
-class function TAtlasVcsBranchPlan.RulesText(const ARules: TArray<TAtlasVcsExternalRule>): string;
+class function TAtlasVcsExternalRules.RulesText(const ARules: TArray<TAtlasVcsExternalRule>): string;
 var
   mRule: TAtlasVcsExternalRule;
   mLines: TArray<string>;
 begin
   mLines := nil;
   for mRule in ARules do
+  begin
     if (mRule.Source <> '') and (mRule.Action <> TAtlasVcsExternalAction.Ask) then
+    begin
       mLines := mLines + [mRule.Source + ' = ' + AtlasVcsExternalActionText(mRule.Action)];
+    end;
+  end;
   Result := string.Join(sLineBreak, mLines);
 end;
 
-class function TAtlasVcsBranchPlan.RulesOfText(const AText: string; out ARules: TArray<TAtlasVcsExternalRule>;
+class function TAtlasVcsExternalRules.RulesOfText(const AText: string; out ARules: TArray<TAtlasVcsExternalRule>;
   out AInvalid: string): Boolean;
 var
   mLine, mSource: string;
@@ -1065,12 +1326,16 @@ begin
   for mLine in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
   begin
     if (Trim(mLine) = '') or (Copy(Trim(mLine), 1, 1) = '#') then
+    begin
       Continue;
+    end;
     // Das letzte „=“ trennt: Quellen dürfen kein „=“ enthalten, Behandlungen erst recht nicht.
     mIndex := mLine.LastIndexOf('=');
     mSource := '';
     if mIndex > 0 then
+    begin
       mSource := Trim(Copy(mLine, 1, mIndex));
+    end;
     if (mSource = '') or not RuleAction(Copy(mLine, mIndex + 2, MaxInt), mAction) then
     begin
       AInvalid := Trim(mLine);
@@ -1079,21 +1344,15 @@ begin
     end;
     mIndex := RuleIndex(ARules, mSource);
     if mIndex >= 0 then
-      ARules[mIndex].Action := mAction
+    begin
+      ARules[mIndex].Action := mAction;
+    end
     else
+    begin
       ARules := ARules + [TAtlasVcsExternalRule.Make(mSource, mAction)];
+    end;
   end;
   Result := True;
-end;
-
-class function TAtlasVcsBranchPlan.FolderPart(const AText: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := Trim(AText);
-  for mIndex := 1 to Length(Result) do
-    if (Ord(Result[mIndex]) < 32) or CharInSet(Result[mIndex], ['/', '\', ':', '*', '?', '"', '<', '>', '|']) then
-      Result[mIndex] := '-';
 end;
 
 class function TAtlasVcsBranchPlan.WorktreePath(const ARoot, APattern, AName, AKey: string): string;
@@ -1102,21 +1361,29 @@ var
 begin
   mRoot := ExcludeTrailingPathDelimiter(Trim(ARoot));
   if mRoot = '' then
+  begin
     Exit('');
+  end;
   Result := Trim(APattern);
   if Result = '' then
+  begin
     Result := TAtlasVcsGitBranchOptions.DefaultWorktreeFolder;
+  end;
   mKey := FolderPart(AKey);
   // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.
   if mKey = '' then
+  begin
     mKey := FolderPart(AName);
+  end;
   Result := StringReplace(Result, '{repo}', FolderPart(ExtractFileName(mRoot)), [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{name}', FolderPart(AName), [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{kennung}', mKey, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
   // Vollständig: Laufwerk, UNC bzw. Wurzel; sonst relativ zur Wurzel der Arbeitskopie.
   if not ((Length(Result) > 1) and (Result[2] = ':')) and not ((Result <> '') and (Result[1] = PathDelim)) then
+  begin
     Result := mRoot + PathDelim + Result;
+  end;
   Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
 end;
 
@@ -1127,10 +1394,16 @@ begin
   Result := (AFolder <> '') and (AFolder[1] <> '-') and (AFolder = Trim(AFolder)) and
     (((Length(AFolder) > 1) and (AFolder[2] = ':')) or (AFolder[1] = PathDelim));
   if not Result then
+  begin
     Exit;
+  end;
   for mIndex := 1 to Length(AFolder) do
+  begin
     if Ord(AFolder[mIndex]) < 32 then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.ProjectInFolder(const AProject, ARoot, AFolder: string): string;
@@ -1140,7 +1413,9 @@ begin
   Result := '';
   mRoot := IncludeTrailingPathDelimiter(ExcludeTrailingPathDelimiter(Trim(ARoot)));
   if (Trim(ARoot) = '') or (AFolder = '') or not SameText(Copy(AProject, 1, Length(mRoot)), mRoot) then
+  begin
     Exit;
+  end;
   Result := IncludeTrailingPathDelimiter(AFolder) + Copy(AProject, Length(mRoot) + 1, MaxInt);
 end;
 
@@ -1186,7 +1461,9 @@ begin
   Result.Fetch := False;
   if (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) and
     DefaultBase(AFacts, TAtlasVcsGitBranchOptions.Classic, mBase) then
+  begin
     Result.Base := mBase;
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.SafeName(const AName: string): Boolean;
@@ -1197,7 +1474,9 @@ end;
 class function TAtlasVcsBranchPlan.BaseRef(AKind: TAtlasVcsKind; const ABase: TAtlasVcsBranchBase): string;
 begin
   if AKind = TAtlasVcsKind.Svn then
+  begin
     Exit('^/' + ABase.Name + '@' + ABase.Revision);
+  end;
   case ABase.Kind of
     TAtlasVcsBranchBaseKind.RemoteMain:
       Result := 'refs/remotes/' + ABase.RemoteName + '/' + ABase.Name;
@@ -1205,9 +1484,13 @@ begin
       Result := 'refs/heads/' + ABase.Name;
   else
     if ABase.Name = '' then
-      Result := 'HEAD'
+    begin
+      Result := 'HEAD';
+    end
     else
+    begin
       Result := 'refs/heads/' + ABase.Name;
+    end;
   end;
 end;
 
@@ -1217,13 +1500,210 @@ begin
   if AKind = TAtlasVcsKind.Svn then
   begin
     if ABase.Revision <> '' then
+    begin
       Result := Result + '@' + ABase.Revision;
+    end;
     Exit;
   end;
   if ABase.Kind = TAtlasVcsBranchBaseKind.RemoteMain then
-    Result := ABase.RemoteName + '/' + Result
+  begin
+    Result := ABase.RemoteName + '/' + Result;
+  end
   else if Result = '' then
+  begin
     Result := 'HEAD';
+  end;
+end;
+
+type
+  /// <summary>Baut die Schritte für die Externals (#1291) aus einer Anfrage.</summary>
+  TExternalStepBuilder = class
+  strict private
+    FRequest: TAtlasVcsBranchRequest;
+    FMessage: string;
+    FPin: Boolean;
+    /// <summary>Text je Definition mit den geänderten Zeilen.</summary>
+    FTexts: TArray<string>;
+    /// <summary>Hinweis je Definition für die Anzeige (", Ordner -r 12").</summary>
+    FNotes: TArray<string>;
+    /// <summary>Schon vergebene Orte, je mit "|" umschlossen.</summary>
+    FUsed: string;
+    function ActionOf(AIndex: Integer): TAtlasVcsExternalAction;
+    function DefinitionOf(const AOwner: string): Integer;
+    function PinnedLine(const AExternal: TAtlasVcsSvnExternal; ADefinition: Integer): string;
+    function BranchedLine(AIndex, ADefinition: Integer): string;
+    function AddExternal(AIndex: Integer): Boolean;
+    function RewriteSteps(ADefinition: Integer): TArray<TAtlasVcsBranchStep>;
+  public
+    Packages: TArray<TAtlasVcsBranchStep>;
+    Rewrites: TArray<TAtlasVcsBranchStep>;
+    constructor Create(const ARequest: TAtlasVcsBranchRequest; const AMessage: string);
+    /// <summary>False, wenn eine Wahl fehlt (Ask) oder nicht taugt.</summary>
+    function Build: Boolean;
+  end;
+
+constructor TExternalStepBuilder.Create(const ARequest: TAtlasVcsBranchRequest; const AMessage: string);
+var
+  mDefinition: Integer;
+begin
+  inherited Create;
+  FRequest := ARequest;
+  FMessage := AMessage;
+  FPin := TAtlasVcsBranchPlan.UsesPinExternals(ARequest);
+  SetLength(FTexts, Length(ARequest.Definitions));
+  SetLength(FNotes, Length(ARequest.Definitions));
+  for mDefinition := 0 to High(ARequest.Definitions) do
+  begin
+    FTexts[mDefinition] := ARequest.Definitions[mDefinition].Text;
+    FNotes[mDefinition] := '';
+  end;
+  FUsed := '|' + ARequest.Location + '|';
+end;
+
+function TExternalStepBuilder.ActionOf(AIndex: Integer): TAtlasVcsExternalAction;
+begin
+  Result := TAtlasVcsExternalAction.Keep;
+  if AIndex <= High(FRequest.ExternalActions) then
+  begin
+    Result := FRequest.ExternalActions[AIndex];
+  end;
+end;
+
+function TExternalStepBuilder.DefinitionOf(const AOwner: string): Integer;
+begin
+  Result := 0;
+  while (Result <= High(FRequest.Definitions)) and (FRequest.Definitions[Result].Owner <> AOwner) do
+  begin
+    Inc(Result);
+  end;
+  if Result > High(FRequest.Definitions) then
+  begin
+    Result := -1;
+  end;
+end;
+
+function TExternalStepBuilder.PinnedLine(const AExternal: TAtlasVcsSvnExternal; ADefinition: Integer): string;
+var
+  mRevision: string;
+begin
+  // Festschreiben auf die Revision, die die External-Arbeitskopie gerade hat.
+  Result := '';
+  mRevision := AExternal.WorkingRevision;
+  if StrToIntDef(mRevision, -1) < 0 then
+  begin
+    Exit;
+  end;
+  Result := TAtlasSvnExternals.PinnedLine(FRequest.Definitions[ADefinition].Text, AExternal, mRevision);
+  FNotes[ADefinition] := FNotes[ADefinition] + ', ' + AExternal.Folder + ' -r ' + mRevision;
+end;
+
+function TExternalStepBuilder.BranchedLine(AIndex, ADefinition: Integer): string;
+var
+  mExternal: TAtlasVcsSvnExternal;
+  mLocation, mRevision: string;
+begin
+  // Mitverzweigen: eigener Ort je Package, nie derselbe wie das Projekt oder ein anderes Package.
+  Result := '';
+  mExternal := FRequest.Externals[AIndex];
+  if AIndex > High(FRequest.ExternalLocations) then
+  begin
+    Exit;
+  end;
+  mLocation := FRequest.ExternalLocations[AIndex];
+  mRevision := mExternal.WorkingRevision;
+  if not VcsSafeBranchName(mLocation) or not VcsSafeBranchName(mExternal.Source) or
+    (Pos('|' + mLocation + '|', FUsed) > 0) or ((mRevision <> '') and (StrToIntDef(mRevision, -1) < 0)) then
+  begin
+    Exit;
+  end;
+  FUsed := FUsed + mLocation + '|';
+  Packages := Packages + [TAtlasVcsBranchStep.Make(TArray<string>.Create('copy', '^/' + mExternal.Source + '@' +
+    mRevision, '^/' + mLocation + '@', '--parents', '-m', FMessage), True, True)];
+  Result := TAtlasSvnExternals.RetargetedLine(FRequest.Definitions[ADefinition].Text, mExternal, mLocation,
+    FRequest.RepositoryRoot);
+  FNotes[ADefinition] := FNotes[ADefinition] + ', ' + mExternal.Folder + ' → ^/' + mLocation;
+end;
+
+function TExternalStepBuilder.AddExternal(AIndex: Integer): Boolean;
+var
+  mExternal: TAtlasVcsSvnExternal;
+  mAction: TAtlasVcsExternalAction;
+  mDefinition: Integer;
+  mLine: string;
+begin
+  mExternal := FRequest.Externals[AIndex];
+  mAction := ActionOf(AIndex);
+  if (mAction = TAtlasVcsExternalAction.Keep) or ((mAction = TAtlasVcsExternalAction.Pin) and FPin) then
+  begin
+    Exit(True);
+  end;
+  mDefinition := DefinitionOf(mExternal.Owner);
+  if (mAction = TAtlasVcsExternalAction.Ask) or not TAtlasSvnExternals.Allowed(mExternal, mAction) or
+    (mDefinition < 0) then
+  begin
+    Exit(False);
+  end;
+  if mAction = TAtlasVcsExternalAction.Pin then
+  begin
+    mLine := PinnedLine(mExternal, mDefinition);
+  end
+  else
+  begin
+    mLine := BranchedLine(AIndex, mDefinition);
+  end;
+  // Zeilennummern beziehen sich auf die Definition; ReplaceLine ändert die Zahl der Zeilen nicht.
+  Result := mLine <> '';
+  if Result then
+  begin
+    FTexts[mDefinition] := TAtlasSvnExternals.ReplaceLine(FTexts[mDefinition], mExternal.Line, mLine);
+  end;
+end;
+
+function TExternalStepBuilder.RewriteSteps(ADefinition: Integer): TArray<TAtlasVcsBranchStep>;
+var
+  mDir, mUrl: string;
+  mStep: TAtlasVcsBranchStep;
+begin
+  // Schlanke Arbeitskopie nur des Ordners mit der Eigenschaft, im neuen Branch.
+  mDir := TPath.Combine(FRequest.WorkFolder, 'p' + IntToStr(ADefinition));
+  mUrl := '^/' + FRequest.Location;
+  if FRequest.Definitions[ADefinition].Owner <> '' then
+  begin
+    mUrl := mUrl + '/' + FRequest.Definitions[ADefinition].Owner;
+  end;
+  mStep := TAtlasVcsBranchStep.Make(TArray<string>.Create('propset', 'svn:externals', '-F', mDir + '.txt', mDir),
+    False, False);
+  mStep.InputFile := mDir + '.txt';
+  mStep.InputText := FTexts[ADefinition];
+  mStep.Note := 'svn:externals: ' + Copy(FNotes[ADefinition], 3, MaxInt);
+  Result := [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', mUrl + '@', mDir, '--depth', 'empty'), True,
+    False), mStep, TAtlasVcsBranchStep.Make(TArray<string>.Create('commit', mDir, '-m', FMessage), True, True)];
+end;
+
+function TExternalStepBuilder.Build: Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FRequest.Externals) do
+  begin
+    if not AddExternal(mIndex) then
+    begin
+      Exit(False);
+    end;
+  end;
+  for mIndex := 0 to High(FRequest.Definitions) do
+  begin
+    if FTexts[mIndex] = FRequest.Definitions[mIndex].Text then
+    begin
+      Continue;
+    end;
+    if Trim(FRequest.WorkFolder) = '' then
+    begin
+      Exit(False);
+    end;
+    Rewrites := Rewrites + RewriteSteps(mIndex);
+  end;
+  Result := True;
 end;
 
 /// <summary>Schritte für die Externals (#1291): APackages vor der Kopie des Projekts (mitverzweigte Packages),
@@ -1232,181 +1712,93 @@ end;
 function ExternalSteps(const ARequest: TAtlasVcsBranchRequest; const AMessage: string;
   out APackages, ARewrites: TArray<TAtlasVcsBranchStep>): Boolean;
 var
-  mIndex, mDefinition: Integer;
-  mExternal: TAtlasVcsSvnExternal;
-  mAction: TAtlasVcsExternalAction;
-  mTexts: TArray<string>;
-  mNotes: TArray<string>;
-  mLine, mRevision, mDir, mUrl, mUsed: string;
-  mPin: Boolean;
-  mStep: TAtlasVcsBranchStep;
+  mBuilder: TExternalStepBuilder;
 begin
-  Result := False;
   APackages := nil;
   ARewrites := nil;
-  mPin := TAtlasVcsBranchPlan.UsesPinExternals(ARequest);
-  SetLength(mTexts, Length(ARequest.Definitions));
-  SetLength(mNotes, Length(ARequest.Definitions));
-  for mDefinition := 0 to High(ARequest.Definitions) do
-  begin
-    mTexts[mDefinition] := ARequest.Definitions[mDefinition].Text;
-    mNotes[mDefinition] := '';
-  end;
-  mUsed := '|' + ARequest.Location + '|';
-  for mIndex := 0 to High(ARequest.Externals) do
-  begin
-    mExternal := ARequest.Externals[mIndex];
-    mAction := TAtlasVcsExternalAction.Keep;
-    if mIndex <= High(ARequest.ExternalActions) then
-      mAction := ARequest.ExternalActions[mIndex];
-    if mAction = TAtlasVcsExternalAction.Ask then
-      Exit;
-    if (mAction = TAtlasVcsExternalAction.Keep) or ((mAction = TAtlasVcsExternalAction.Pin) and mPin) then
-      Continue;
-    if not TAtlasSvnExternals.Allowed(mExternal, mAction) then
-      Exit;
-    mDefinition := 0;
-    while (mDefinition <= High(ARequest.Definitions)) and (ARequest.Definitions[mDefinition].Owner <> mExternal.Owner) do
-      Inc(mDefinition);
-    if mDefinition > High(ARequest.Definitions) then
-      Exit;
-    if mAction = TAtlasVcsExternalAction.Pin then
+  mBuilder := TExternalStepBuilder.Create(ARequest, AMessage);
+  try
+    Result := mBuilder.Build;
+    if Result then
     begin
-      // Festschreiben auf die Revision, die die External-Arbeitskopie gerade hat.
-      mRevision := mExternal.WorkingRevision;
-      if StrToIntDef(mRevision, -1) < 0 then
-        Exit;
-      mLine := TAtlasSvnExternals.PinnedLine(ARequest.Definitions[mDefinition].Text, mExternal, mRevision);
-      mNotes[mDefinition] := mNotes[mDefinition] + ', ' + mExternal.Folder + ' -r ' + mRevision;
-    end
-    else
-    begin
-      // Mitverzweigen: eigener Ort je Package, nie derselbe wie das Projekt oder ein anderes Package.
-      if (mIndex > High(ARequest.ExternalLocations)) or not VcsSafeBranchName(ARequest.ExternalLocations[mIndex]) or
-        not VcsSafeBranchName(mExternal.Source) or (Pos('|' + ARequest.ExternalLocations[mIndex] + '|', mUsed) > 0) then
-        Exit;
-      mUsed := mUsed + ARequest.ExternalLocations[mIndex] + '|';
-      mRevision := mExternal.WorkingRevision;
-      if (mRevision <> '') and (StrToIntDef(mRevision, -1) < 0) then
-        Exit;
-      APackages := APackages + [TAtlasVcsBranchStep.Make(TArray<string>.Create('copy', '^/' + mExternal.Source + '@' +
-        mRevision, '^/' + ARequest.ExternalLocations[mIndex] + '@', '--parents', '-m', AMessage), True, True)];
-      mLine := TAtlasSvnExternals.RetargetedLine(ARequest.Definitions[mDefinition].Text, mExternal,
-        ARequest.ExternalLocations[mIndex], ARequest.RepositoryRoot);
-      mNotes[mDefinition] := mNotes[mDefinition] + ', ' + mExternal.Folder + ' → ^/' +
-        ARequest.ExternalLocations[mIndex];
+      APackages := mBuilder.Packages;
+      ARewrites := mBuilder.Rewrites;
     end;
-    if mLine = '' then
-      Exit;
-    // Zeilennummern beziehen sich auf die Definition; ReplaceLine ändert die Zahl der Zeilen nicht.
-    mTexts[mDefinition] := TAtlasSvnExternals.ReplaceLine(mTexts[mDefinition], mExternal.Line, mLine);
+  finally
+    mBuilder.Free;
   end;
-  for mDefinition := 0 to High(ARequest.Definitions) do
-  begin
-    if mTexts[mDefinition] = ARequest.Definitions[mDefinition].Text then
-      Continue;
-    if Trim(ARequest.WorkFolder) = '' then
-      Exit;
-    // Schlanke Arbeitskopie nur des Ordners mit der Eigenschaft, im neuen Branch.
-    mDir := TPath.Combine(ARequest.WorkFolder, 'p' + IntToStr(mDefinition));
-    mUrl := '^/' + ARequest.Location;
-    if ARequest.Definitions[mDefinition].Owner <> '' then
-      mUrl := mUrl + '/' + ARequest.Definitions[mDefinition].Owner;
-    ARewrites := ARewrites + [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', mUrl + '@', mDir, '--depth',
-      'empty'), True, False)];
-    mStep := TAtlasVcsBranchStep.Make(TArray<string>.Create('propset', 'svn:externals', '-F', mDir + '.txt', mDir),
-      False, False);
-    mStep.InputFile := mDir + '.txt';
-    mStep.InputText := mTexts[mDefinition];
-    mStep.Note := 'svn:externals: ' + Copy(mNotes[mDefinition], 3, MaxInt);
-    ARewrites := ARewrites + [mStep];
-    ARewrites := ARewrites + [TAtlasVcsBranchStep.Make(TArray<string>.Create('commit', mDir, '-m', AMessage), True,
-      True)];
-  end;
-  Result := True;
 end;
 
-class function TAtlasVcsBranchPlan.Steps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
+/// <summary>Taugen Basis, Ort und Ordner einer SVN-Anfrage für die Befehle?</summary>
+function SvnRequestUsable(const ARequest: TAtlasVcsBranchRequest): Boolean;
+begin
+  Result := TAtlasVcsBranchPlan.SafeName(ARequest.Base.Name) and TAtlasVcsBranchPlan.SafeName(ARequest.Location) and
+    ((ARequest.Base.Revision = '') or (StrToIntDef(ARequest.Base.Revision, -1) >= 0));
+  // Auschecken braucht einen Ordner, der keine Option ist.
+  if Result and (ARequest.After = TAtlasVcsSvnAfter.Checkout) then
+  begin
+    Result := (Trim(ARequest.CheckoutFolder) <> '') and (ARequest.CheckoutFolder[1] <> '-');
+  end;
+end;
+
+/// <summary>Schritt nach dem Anlegen: Arbeitskopie umstellen, frisch auschecken oder nichts.</summary>
+function SvnAfterSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
+begin
+  case ARequest.After of
+    TAtlasVcsSvnAfter.Switch:
+      Result := [TAtlasVcsBranchStep.Make(TArray<string>.Create('switch', '^/' + ARequest.Location + '@', '.'), True,
+        False, True)];
+    TAtlasVcsSvnAfter.Checkout:
+      Result := [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '^/' + ARequest.Location + '@',
+        ARequest.CheckoutFolder), True, False, True)];
+  else
+    // None: nur anlegen, die Arbeitskopie bleibt.
+    Result := nil;
+  end;
+end;
+
+function SvnSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
 var
   mMessage: string;
   mCopy: TArray<string>;
   mPackages, mRewrites: TArray<TAtlasVcsBranchStep>;
 begin
   Result := nil;
-  if not SafeName(ARequest.Name) then
+  mMessage := Trim(ARequest.Message);
+  if mMessage = '' then
+  begin
+    mMessage := 'Branch ' + ARequest.Name;
+  end;
+  // Externals (#1291): erst die Packages, dann das Projekt, dann die Zeilen im neuen Branch.
+  if not SvnRequestUsable(ARequest) or not ExternalSteps(ARequest, mMessage, mPackages, mRewrites) then
+  begin
     Exit;
+  end;
+  // "@" am Ende des Ziels: ein "@" im Namen ist dann keine Revision.
+  mCopy := TArray<string>.Create('copy', TAtlasVcsBranchPlan.BaseRef(TAtlasVcsKind.Svn, ARequest.Base),
+    '^/' + ARequest.Location + '@', '--parents', '-m', mMessage);
+  if TAtlasVcsBranchPlan.UsesPinExternals(ARequest) then
+  begin
+    mCopy := mCopy + ['--pin-externals'];
+  end;
+  Result := mPackages + [TAtlasVcsBranchStep.Make(mCopy, True, True)] + mRewrites + SvnAfterSteps(ARequest);
+end;
+
+class function TAtlasVcsBranchPlan.Steps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
+begin
+  Result := nil;
+  if not SafeName(ARequest.Name) then
+  begin
+    Exit;
+  end;
   case ARequest.Kind of
     TAtlasVcsKind.Git:
       Result := GitSteps(ARequest);
     TAtlasVcsKind.Svn:
-      begin
-        if not SafeName(ARequest.Base.Name) or not SafeName(ARequest.Location) or
-          ((ARequest.Base.Revision <> '') and (StrToIntDef(ARequest.Base.Revision, -1) < 0)) then
-          Exit;
-        // Auschecken braucht einen Ordner, der keine Option ist.
-        if (ARequest.After = TAtlasVcsSvnAfter.Checkout) and
-          ((Trim(ARequest.CheckoutFolder) = '') or (ARequest.CheckoutFolder[1] = '-')) then
-          Exit;
-        mMessage := Trim(ARequest.Message);
-        if mMessage = '' then
-          mMessage := 'Branch ' + ARequest.Name;
-        // Externals (#1291): erst die Packages, dann das Projekt, dann die Zeilen im neuen Branch.
-        if not ExternalSteps(ARequest, mMessage, mPackages, mRewrites) then
-          Exit;
-        mCopy := TArray<string>.Create('copy', BaseRef(TAtlasVcsKind.Svn, ARequest.Base), '^/' + ARequest.Location +
-          '@', '--parents', '-m', mMessage);
-        if UsesPinExternals(ARequest) then
-          mCopy := mCopy + ['--pin-externals'];
-        // "@" am Ende des Ziels: ein "@" im Namen ist dann keine Revision.
-        Result := mPackages + [TAtlasVcsBranchStep.Make(mCopy, True, True)] + mRewrites;
-        case ARequest.After of
-          TAtlasVcsSvnAfter.Switch:
-            Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('switch', '^/' + ARequest.Location +
-              '@', '.'), True, False, True)];
-          TAtlasVcsSvnAfter.Checkout:
-            Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '^/' +
-              ARequest.Location + '@', ARequest.CheckoutFolder), True, False, True)];
-        else
-          // None: nur anlegen, die Arbeitskopie bleibt.
-        end;
-      end;
+      Result := SvnSteps(ARequest);
   else
     // Ohne Git oder SVN gibt es nichts anzulegen.
   end;
-end;
-
-class function TAtlasVcsBranchPlan.GitSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
-var
-  mRemote: string;
-begin
-  Result := nil;
-  mRemote := ARequest.Base.RemoteName;
-  // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
-  if ((ARequest.Base.Name <> '') and not SafeName(ARequest.Base.Name)) or not SafeName(mRemote) then
-    Exit;
-  if (ARequest.WorktreeFolder <> '') and not SafeFolder(ARequest.WorktreeFolder) then
-    Exit;
-  // Basis vom Server (#1289): vorher genau den Hauptbranch abrufen; ohne Rückfrage nach Zugangsdaten.
-  if ARequest.Fetch and (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) then
-    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('fetch', '--quiet', '--no-tags', mRemote,
-      ARequest.Base.Name), True, False)];
-  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der (erste) Push.
-  if ARequest.WorktreeFolder <> '' then
-    // Eigener Ordner: die Arbeitskopie bleibt, wie sie ist; offene Änderungen bleiben dort.
-    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('worktree', 'add', '--quiet', '--no-track',
-      '-b', ARequest.Name, ARequest.WorktreeFolder, BaseRef(TAtlasVcsKind.Git, ARequest.Base)), False, False)]
-  else
-  begin
-    if ARequest.Stash then
-      Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('stash', 'push', '--include-untracked',
-        '--quiet', '-m', StashMessage(ARequest.Name)), False, False)];
-    // "--" am Ende: der Startpunkt ist eine Revision, nie ein Dateiname.
-    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '--quiet', '--no-track', '-b',
-      ARequest.Name, BaseRef(TAtlasVcsKind.Git, ARequest.Base), '--'), False, False)];
-  end;
-  if ARequest.PushNow then
-    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('push', '--set-upstream', mRemote,
-      'refs/heads/' + ARequest.Name + ':refs/heads/' + ARequest.Name), True, True)];
 end;
 
 class function TAtlasVcsBranchPlan.StepText(AKind: TAtlasVcsKind; const AStep: TAtlasVcsBranchStep): string;
@@ -1414,17 +1806,29 @@ var
   mArgument: string;
 begin
   if AKind = TAtlasVcsKind.Svn then
-    Result := 'svn'
+  begin
+    Result := 'svn';
+  end
   else
+  begin
     Result := 'git';
+  end;
   for mArgument in AStep.Arguments do
+  begin
     if (mArgument = '') or (Pos(' ', mArgument) > 0) or (Pos('"', mArgument) > 0) then
-      Result := Result + ' "' + StringReplace(mArgument, '"', '\"', [rfReplaceAll]) + '"'
+    begin
+      Result := Result + ' "' + StringReplace(mArgument, '"', '\"', [rfReplaceAll]) + '"';
+    end
     else
+    begin
       Result := Result + ' ' + mArgument;
+    end;
+  end;
   // Was die Datei für propset enthält (#1291), in Klartext.
   if AStep.Note <> '' then
+  begin
     Result := Result + '   (' + AStep.Note + ')';
+  end;
 end;
 
 class function TAtlasVcsBranchPlan.Execute(const ABranching: IAtlasVcsBranching;
@@ -1456,7 +1860,9 @@ begin
   for mIndex := 0 to High(ASteps) do
   begin
     if Assigned(AProgress) then
+    begin
       AProgress(mIndex, Length(ASteps), ASteps[mIndex]);
+    end;
     Result.Outcome := ABranching.RunStep(ASteps[mIndex]);
     if Result.Outcome <> TAtlasVcsOutcome.Ok then
     begin
@@ -1474,7 +1880,9 @@ class function TAtlasVcsBranchPlan.Execute(const ABranching: IAtlasVcsBranching;
   procedure Clean;
   begin
     if (ARequest.WorkFolder = '') or not TDirectory.Exists(ARequest.WorkFolder) then
+    begin
       Exit;
+    end;
     try
       TDirectory.Delete(ARequest.WorkFolder, True);
     except
@@ -1502,7 +1910,9 @@ begin
   Result := '';
   mRoot := VcsNormalizeDir(ARoot);
   if (mRoot = '') or (Trim(AFolder) = '') or not VcsRelativePath(mRoot, AFile, mRelative) then
+  begin
     Exit;
+  end;
   Result := VcsFullPath(AFolder, mRelative);
 end;
 
@@ -1513,8 +1923,12 @@ var
 begin
   Result := nil;
   for mIndex := 0 to ADone - 1 do
+  begin
     if (mIndex <= High(ASteps)) and ASteps[mIndex].ChangesServer then
+    begin
       Result := Result + [ASteps[mIndex]];
+    end;
+  end;
 end;
 
 end.

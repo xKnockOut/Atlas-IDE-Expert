@@ -420,14 +420,15 @@ begin
     Options.ResolveWith :=
       function(AWith: TSyntaxNode; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
       var
-        Action: TCodeAction;
+        Resolved: TWithResolved;
       begin
         Result := TWithResolution.Resolve(Text, Tree, AWith,
           function(AOwnerWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
           begin
             Result := Owners(AIdentifier, AElement);
-          end, TExtractOptions.Default, Action, AReason);
-        AEdits := Action.Edits;
+          end, TExtractOptions.Default, Resolved);
+        AEdits := Resolved.Action.Edits;
+        AReason := Resolved.Reason;
       end;
     Found := TUnwrap.Candidates(Text, Tree, At(Body, 'X;'), Options);
   finally

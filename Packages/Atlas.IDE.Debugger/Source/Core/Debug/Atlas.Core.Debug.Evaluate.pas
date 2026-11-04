@@ -340,56 +340,67 @@ begin
   end;
 end;
 
+/// <summary>Zeichen „#65“ bzw. „#$41“ ab AIndex (auf „#“); AIndex steht danach hinter den
+/// Ziffern.</summary>
+function DecodeCharCode(const AText: string; var AIndex: Integer; out AChar: Char): Boolean;
+var
+  mDigits: string;
+  mCode: Integer;
+begin
+  AChar := #0;
+  Inc(AIndex);
+  mDigits := '';
+  if (AIndex <= Length(AText)) and (AText[AIndex] = '$') then
+  begin
+    mDigits := '$';
+    Inc(AIndex);
+  end;
+  while (AIndex <= Length(AText)) and (CharInSet(AText[AIndex], ['0'..'9']) or
+    ((mDigits <> '') and (mDigits[1] = '$') and CharInSet(AText[AIndex], ['a'..'f', 'A'..'F']))) do
+  begin
+    mDigits := mDigits + AText[AIndex];
+    Inc(AIndex);
+  end;
+  Result := TryStrToInt(mDigits, mCode) and (mCode >= 0) and (mCode <= $FFFF);
+  if Result then
+  begin
+    AChar := Char(mCode);
+  end;
+end;
+
 class function TAtlasEvalText.TryDecodeString(const AValue: string; out AText: string): Boolean;
 var
   Text: string;
-  Index, Stop, Code: Integer;
-  Digits: string;
+  Index, Stop: Integer;
+  Code: Char;
 begin
   AText := '';
   Text := Trim(AValue);
   Result := (Text <> '') and CharInSet(Text[1], ['''', '#']);
-  if not Result then
-  begin
-    Exit;
-  end;
   Index := 1;
-  while Index <= Length(Text) do
+  while Result and (Index <= Length(Text)) do
   begin
     if Text[Index] = '''' then
     begin
       Stop := SkipString(Text, Index);
-      if Stop = 0 then
+      Result := Stop <> 0;
+      if Result then
       begin
-        Exit(False);
+        AText := AText + StringReplace(Copy(Text, Index + 1, Stop - Index - 2), '''''', '''', [rfReplaceAll]);
+        Index := Stop;
       end;
-      AText := AText + StringReplace(Copy(Text, Index + 1, Stop - Index - 2), '''''', '''', [rfReplaceAll]);
-      Index := Stop;
     end
     else if Text[Index] = '#' then
     begin
-      Inc(Index);
-      Digits := '';
-      if (Index <= Length(Text)) and (Text[Index] = '$') then
+      Result := DecodeCharCode(Text, Index, Code);
+      if Result then
       begin
-        Digits := '$';
-        Inc(Index);
+        AText := AText + Code;
       end;
-      while (Index <= Length(Text)) and (CharInSet(Text[Index], ['0'..'9']) or
-        ((Digits <> '') and (Digits[1] = '$') and CharInSet(Text[Index], ['a'..'f', 'A'..'F']))) do
-      begin
-        Digits := Digits + Text[Index];
-        Inc(Index);
-      end;
-      if not TryStrToInt(Digits, Code) or (Code < 0) or (Code > $FFFF) then
-      begin
-        Exit(False);
-      end;
-      AText := AText + Char(Code);
     end
     else
     begin
-      Exit(False);
+      Result := False;
     end;
   end;
 end;
@@ -582,29 +593,54 @@ begin
   end;
 end;
 
+procedure AppendJsonLine(ABuilder: TStringBuilder; ADepth: Integer);
+begin
+  ABuilder.Append(sLineBreak).Append(StringOfChar(' ', ADepth * 2));
+end;
+
+/// <summary>Zeichenkette ab AIndex (auf dem öffnenden „"“) bis zum schließenden übernehmen; AIndex steht danach
+/// auf dem schließenden.</summary>
+procedure AppendJsonString(ABuilder: TStringBuilder; const ASource: string; var AIndex: Integer);
+begin
+  ABuilder.Append(ASource[AIndex]);
+  Inc(AIndex);
+  while AIndex <= Length(ASource) do
+  begin
+    ABuilder.Append(ASource[AIndex]);
+    if ASource[AIndex] = '"' then
+    begin
+      Exit;
+    end;
+    if (ASource[AIndex] = '\') and (AIndex < Length(ASource)) then
+    begin
+      Inc(AIndex);
+      ABuilder.Append(ASource[AIndex]);
+    end;
+    Inc(AIndex);
+  end;
+end;
+
+function IsJsonContainer(const ASource: string): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue(ASource);
+  try
+    Result := (mValue is TJSONObject) or (mValue is TJSONArray);
+  finally
+    mValue.Free;
+  end;
+end;
+
 class function TAtlasEvalText.TryFormatJson(const AText: string; out AFormatted: string): Boolean;
 var
-  Value: TJSONValue;
   Builder: TStringBuilder;
   Index, Depth: Integer;
-  C: Char;
-  InString: Boolean;
   Source: string;
-
-  procedure NewLine;
-  begin
-    Builder.Append(sLineBreak).Append(StringOfChar(' ', Depth * 2));
-  end;
-
 begin
   AFormatted := '';
   Source := Trim(AText);
-  Value := TJSONObject.ParseJSONValue(Source);
-  try
-    Result := (Value is TJSONObject) or (Value is TJSONArray);
-  finally
-    Value.Free;
-  end;
+  Result := IsJsonContainer(Source);
   if not Result then
   begin
     Exit;
@@ -612,58 +648,36 @@ begin
   Builder := TStringBuilder.Create;
   try
     Depth := 0;
-    InString := False;
     Index := 1;
     while Index <= Length(Source) do
     begin
-      C := Source[Index];
-      if InString then
-      begin
-        Builder.Append(C);
-        if C = '\' then
-        begin
-          Inc(Index);
-          if Index <= Length(Source) then
+      case Source[Index] of
+        '"':
+          AppendJsonString(Builder, Source, Index);
+        '{', '[':
           begin
             Builder.Append(Source[Index]);
+            Inc(Depth);
+            AppendJsonLine(Builder, Depth);
           end;
-        end
-        else if C = '"' then
-        begin
-          InString := False;
-        end;
-      end
+        '}', ']':
+          begin
+            Dec(Depth);
+            AppendJsonLine(Builder, Depth);
+            Builder.Append(Source[Index]);
+          end;
+        ',':
+          begin
+            Builder.Append(',');
+            AppendJsonLine(Builder, Depth);
+          end;
+        ':':
+          Builder.Append(': ');
+        ' ', #9, #10, #13:
+          ;
       else
-        case C of
-          '"':
-            begin
-              InString := True;
-              Builder.Append(C);
-            end;
-          '{', '[':
-            begin
-              Builder.Append(C);
-              Inc(Depth);
-              NewLine;
-            end;
-          '}', ']':
-            begin
-              Dec(Depth);
-              NewLine;
-              Builder.Append(C);
-            end;
-          ',':
-            begin
-              Builder.Append(C);
-              NewLine;
-            end;
-          ':':
-            Builder.Append(': ');
-          ' ', #9, #10, #13:
-            ;
-        else
-          Builder.Append(C);
-        end;
+        Builder.Append(Source[Index]);
+      end;
       Inc(Index);
     end;
     AFormatted := Builder.ToString;

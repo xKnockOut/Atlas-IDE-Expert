@@ -178,79 +178,106 @@ end;
 
 { TAtlasIssuePaletteSearch }
 
-class function TAtlasIssuePaletteSearch.Parse(const ATarget: TAtlasTrackerTarget;
-  const APattern: string): TAtlasIssueSearchQuery;
-var
-  mPattern, mRest, mPrefix: string;
-  mGitHub: Boolean;
+function SearchQuery(AKind: TAtlasIssueSearchKind; const AKey, AText: string): TAtlasIssueSearchQuery;
 begin
-  Result := TAtlasIssueSearchQuery.None;
-  mPattern := TrimLeft(APattern);
-  if (mPattern = '') or (ATarget.Provider = '') then
+  Result.Kind := AKind;
+  Result.Key := AKey;
+  Result.Text := AText;
+end;
+
+/// <summary>Nummer ANumber als Kennung: "#42" bei GitHub, "ATL-42" bei YouTrack mit Projekt; sonst ''.</summary>
+function NumberKey(const ATarget: TAtlasTrackerTarget; const ANumber: string): string;
+begin
+  Result := '';
+  if not IsDigits(ANumber) or (StrToIntDef(ANumber, 0) <= 0) then
   begin
     Exit;
   end;
-  mGitHub := SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub);
-  if mPattern[1] = '#' then
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) then
   begin
-    mRest := Trim(Copy(mPattern, 2, MaxInt));
-    if mRest = '' then
-    begin
-      Result.Kind := TAtlasIssueSearchKind.Recent;
-      Exit;
-    end;
-    // "#42": GitHub-Nummer bzw. bei YouTrack die Nummer im Projekt.
-    if IsDigits(mRest) and (StrToIntDef(mRest, 0) > 0) then
-    begin
-      if mGitHub then
-      begin
-        Result.Kind := TAtlasIssueSearchKind.Key;
-        Result.Key := '#' + IntToStr(StrToIntDef(mRest, 0));
-        Exit;
-      end;
-      if ATarget.Project <> '' then
-      begin
-        Result.Kind := TAtlasIssueSearchKind.Key;
-        Result.Key := UpperCase(ATarget.Project) + '-' + IntToStr(StrToIntDef(mRest, 0));
-        Exit;
-      end;
-    end;
-    // "#ATL-12" bei YouTrack: die Kennung.
-    if not mGitHub and (ATarget.Project <> '') and StartsText(ATarget.Project + '-', mRest) and
-      IsDigits(Copy(mRest, Length(ATarget.Project) + 2, MaxInt)) then
-    begin
-      Result.Kind := TAtlasIssueSearchKind.Key;
-      Result.Key := UpperCase(mRest);
-      Exit;
-    end;
-    Result.Kind := TAtlasIssueSearchKind.Text;
-    Result.Text := mRest;
-    Exit;
-  end;
-  // Projektkürzel mit "-" gibt es nur bei YouTrack (GitHub: "owner/repo").
-  if mGitHub or (ATarget.Project = '') or (Pos(' ', ATarget.Project) > 0) then
-  begin
-    Exit;
-  end;
-  mPrefix := ATarget.Project + '-';
-  if not StartsText(mPrefix, mPattern) then
-  begin
-    Exit;
-  end;
-  mRest := Trim(Copy(mPattern, Length(mPrefix) + 1, MaxInt));
-  if mRest = '' then
-  begin
-    Result.Kind := TAtlasIssueSearchKind.Recent;
+    Result := '#' + IntToStr(StrToIntDef(ANumber, 0));
   end
-  else if IsDigits(mRest) and (StrToIntDef(mRest, 0) > 0) then
+  else if ATarget.Project <> '' then
   begin
-    Result.Kind := TAtlasIssueSearchKind.Key;
-    Result.Key := UpperCase(ATarget.Project) + '-' + IntToStr(StrToIntDef(mRest, 0));
+    Result := UpperCase(ATarget.Project) + '-' + IntToStr(StrToIntDef(ANumber, 0));
+  end;
+end;
+
+/// <summary>ARest ist eine Kennung des YouTrack-Projekts ("ATL-12").</summary>
+function IsProjectKey(const ATarget: TAtlasTrackerTarget; const ARest: string): Boolean;
+begin
+  Result := not SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) and (ATarget.Project <> '') and
+    StartsText(ATarget.Project + '-', ARest) and IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
+end;
+
+/// <summary>Suche nach "#": leer die letzten Issues, "#42" die Nummer, "#ATL-12" die Kennung, sonst Text.</summary>
+function ParseHash(const ATarget: TAtlasTrackerTarget; const ARest: string): TAtlasIssueSearchQuery;
+var
+  mKey: string;
+begin
+  mKey := NumberKey(ATarget, ARest);
+  if ARest = '' then
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Recent, '', '');
+  end
+  else if mKey <> '' then
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Key, mKey, '');
+  end
+  else if IsProjectKey(ATarget, ARest) then
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Key, UpperCase(ARest), '');
   end
   else
   begin
-    Result.Kind := TAtlasIssueSearchKind.Text;
-    Result.Text := mRest;
+    Result := SearchQuery(TAtlasIssueSearchKind.Text, '', ARest);
+  end;
+end;
+
+/// <summary>Suche mit Projektkürzel und "-" (nur YouTrack; GitHub: "owner/repo").</summary>
+function ParseProjectPrefix(const ATarget: TAtlasTrackerTarget; const APattern: string): TAtlasIssueSearchQuery;
+var
+  mPrefix, mRest: string;
+begin
+  Result := TAtlasIssueSearchQuery.None;
+  mPrefix := ATarget.Project + '-';
+  if SameText(ATarget.Provider, TAtlasTrackerTarget.GitHub) or (ATarget.Project = '') or
+    (Pos(' ', ATarget.Project) > 0) or not StartsText(mPrefix, APattern) then
+  begin
+    Exit;
+  end;
+  mRest := Trim(Copy(APattern, Length(mPrefix) + 1, MaxInt));
+  if mRest = '' then
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Recent, '', '');
+  end
+  else if NumberKey(ATarget, mRest) <> '' then
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Key, NumberKey(ATarget, mRest), '');
+  end
+  else
+  begin
+    Result := SearchQuery(TAtlasIssueSearchKind.Text, '', mRest);
+  end;
+end;
+
+class function TAtlasIssuePaletteSearch.Parse(const ATarget: TAtlasTrackerTarget;
+  const APattern: string): TAtlasIssueSearchQuery;
+var
+  mPattern: string;
+begin
+  mPattern := TrimLeft(APattern);
+  if (mPattern = '') or (ATarget.Provider = '') then
+  begin
+    Result := TAtlasIssueSearchQuery.None;
+  end
+  else if mPattern[1] = '#' then
+  begin
+    Result := ParseHash(ATarget, Trim(Copy(mPattern, 2, MaxInt)));
+  end
+  else
+  begin
+    Result := ParseProjectPrefix(ATarget, mPattern);
   end;
 end;
 

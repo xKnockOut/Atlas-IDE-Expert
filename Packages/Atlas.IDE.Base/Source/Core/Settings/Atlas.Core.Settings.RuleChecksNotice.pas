@@ -54,11 +54,15 @@ begin
   Result := False;
   mRoot := TAtlasJsonText.Parse(AJsonText);
   if mRoot = nil then
+  begin
     Exit;
+  end;
   try
     mValue := mRoot.GetValue('rules');
     if (mValue is TJSONObject) and (TJSONObject(mValue).Count > 0) then
+    begin
       Exit(True);
+    end;
     mValue := mRoot.GetValue('profile');
     Result := (mValue is TJSONString) and (Trim(mValue.Value) <> '');
   finally
@@ -73,16 +77,22 @@ var
 begin
   Result := '';
   if (AProjectFile = '') or not Assigned(AExists) then
+  begin
     Exit;
+  end;
   mFolder := ExtractFileDir(AProjectFile.Replace('/', PathDelim));
   while mFolder <> '' do
   begin
     mFile := IncludeTrailingPathDelimiter(mFolder) + ConfigName;
     if AExists(mFile) then
+    begin
       Exit(mFile);
+    end;
     mParent := ExtractFileDir(ExcludeTrailingPathDelimiter(mFolder));
     if SameText(mParent, mFolder) then
+    begin
       Exit;
+    end;
     mFolder := mParent;
   end;
 end;
@@ -93,15 +103,21 @@ var
 begin
   Result := False;
   for mFile in FShown do
+  begin
     if SameText(mFile, AConfigFile) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasRuleChecksNotice.Wanted(const AConfigFile, AJsonText: string; AModuleOn: Boolean): Boolean;
 begin
   Result := False;
   if AModuleOn or (AConfigFile = '') or WasShown(AConfigFile) or not HasRules(AJsonText) then
+  begin
     Exit;
+  end;
   FShown := FShown + [AConfigFile];
   Result := True;
 end;

@@ -61,6 +61,12 @@ type
       static;
     /// <summary>Steht der Cursor der oberen Ansicht noch dort, wo der Vorschlag gezeigt wird?</summary>
     class function AtSuggestion: Boolean; static;
+    /// <summary>Atlas an, Vorschau da, keine Vervollständigung offen und AView beschreibbar?</summary>
+    class function CanSuggest(const AView: IOTAEditView): Boolean; static;
+    /// <summary>Merkt ASuggestion für den Cursor ACursor in AFileName und zeigt den Schattentext; ACurrent ist die
+    /// neue, noch leere Zeile.</summary>
+    class procedure ShowGhost(const AFileName: string; const ACursor: TOTAEditPos; const ACurrent: string;
+      const ASuggestion: TAtlasPatternSuggestion); static;
     class procedure Accept; static;
   public
     /// <summary>ASessionOf liefert die Sitzung oder nil; ACompletionVisible: ist die Vervollständigung offen?
@@ -275,127 +281,145 @@ begin
   end;
 end;
 
+/// <summary>Enter am Zeilenende: Zeile ALine (0-basiert) ist leer oder nur eingerückt, und Spalte AColumn steht an
+/// ihrem Ende.</summary>
+function AtEmptyNewLine(const ALines: TArray<string>; ALine, AColumn, ATabWidth: Integer): Boolean;
+begin
+  Result := (ALine >= 1) and (ALine <= High(ALines)) and (Trim(ALines[ALine]) = '') and
+    (TLspSession.ColumnToIndex(ALines[ALine], AColumn, ATabWidth) >= Length(ALines[ALine]));
+end;
+
+/// <summary>Ersetzt Zeile ALine (0-basiert) im Puffer ABuffer (Text AText) durch ANewLine; False, wenn es die Zeile
+/// nicht gibt.</summary>
+function WriteLine(const ABuffer: IOTAEditBuffer; const AText: string; ALine: Integer; const ANewLine: string):
+  Boolean;
+var
+  mLineBreak, mInsert: string;
+  mLines: TArray<string>;
+  mStart, mOldLength: Integer;
+begin
+  mLineBreak := #10;
+  if Pos(#13#10, AText) > 0 then
+  begin
+    mLineBreak := #13#10;
+  end;
+  mLines := AText.Split([#13#10, #10]);
+  Result := (ALine >= 0) and (ALine <= High(mLines));
+  if not Result then
+  begin
+    Exit;
+  end;
+  mLines[ALine] := ANewLine;
+  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, mLines), mStart, mOldLength, mInsert) then
+  begin
+    WriteBuffer(ABuffer, AText, mStart, mOldLength, mInsert);
+  end;
+end;
+
+class function TAtlasIdePatternContinuation.CanSuggest(const AView: IOTAEditView): Boolean;
+begin
+  Result := Enabled and (AView <> nil) and (AView.Buffer <> nil) and (FPreview <> nil);
+  if Result and Assigned(FCompletionVisible) then
+  begin
+    Result := not FCompletionVisible();
+  end;
+  Result := Result and not AView.Buffer.IsReadOnly;
+end;
+
+class procedure TAtlasIdePatternContinuation.ShowGhost(const AFileName: string; const ACursor: TOTAEditPos;
+  const ACurrent: string; const ASuggestion: TAtlasPatternSuggestion);
+var
+  mGhost: string;
+begin
+  // Schattentext ab dem Cursor: was am Einzug noch fehlt, dann die Zeile.
+  mGhost := ASuggestion.Text;
+  if ASuggestion.Indent.StartsWith(ACurrent) then
+  begin
+    mGhost := Copy(ASuggestion.Indent, Length(ACurrent) + 1, MaxInt) + mGhost;
+  end;
+  FFileName := AFileName;
+  FLine := ACursor.Line;
+  FColumn := ACursor.Col;
+  FSuggestion := ASuggestion;
+  TAtlasKeyHook.Add(FKeys);
+  FPreview.Show(AFileName, ACursor.Line, ACursor.Col, mGhost);
+end;
+
 class function TAtlasIdePatternContinuation.Run(const AView: IOTAEditView): Boolean;
 var
-  Buffer: IOTAEditBuffer;
-  FileName, Text, Current, Ghost: string;
-  Lines: TArray<string>;
-  Cursor: TOTAEditPos;
-  Line, Character: Integer;
-  Suggestion: TAtlasPatternSuggestion;
+  mFileName, mText: string;
+  mLines: TArray<string>;
+  mCursor: TOTAEditPos;
+  mLine: Integer;
+  mSuggestion: TAtlasPatternSuggestion;
 begin
   Result := False;
   Dismiss;
-  if not Enabled or (AView = nil) or (AView.Buffer = nil) or (FPreview = nil) then
+  if not CanSuggest(AView) then
   begin
     Exit;
   end;
-  if Assigned(FCompletionVisible) and FCompletionVisible() then
+  mFileName := AView.Buffer.FileName;
+  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  mLines := mText.Split([#13#10, #10]);
+  mCursor := AView.CursorPos;
+  mLine := mCursor.Line - 1;
+  if not AtEmptyNewLine(mLines, mLine, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)) then
   begin
     Exit;
   end;
-  Buffer := AView.Buffer;
-  if Buffer.IsReadOnly then
-  begin
-    Exit;
-  end;
-  FileName := Buffer.FileName;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  Lines := Text.Split([#13#10, #10]);
-  Cursor := AView.CursorPos;
-  Line := Cursor.Line - 1;
-  if (Line < 1) or (Line > High(Lines)) then
-  begin
-    Exit;
-  end;
-  // Enter am Zeilenende: die neue Zeile ist leer oder nur eingerückt, der Cursor steht an ihrem Ende.
-  Current := Lines[Line];
-  Character := TLspSession.ColumnToIndex(Current, Cursor.Col, TAtlasEditorBuffer.TabWidth(Buffer));
-  if (Trim(Current) <> '') or (Character < Length(Current)) then
-  begin
-    Exit;
-  end;
-  if not TAtlasPatternContinuation.Suggest(Lines, Line, TAtlasIdeSettings.Current.ContinuePatternMinLines,
+  if not TAtlasPatternContinuation.Suggest(mLines, mLine, TAtlasIdeSettings.Current.ContinuePatternMinLines,
     function(const AMember: string; ALine, ACharacter: Integer): TArray<string>
     begin
-      Result := EnumValues(FileName, Text, AMember, ALine, ACharacter);
+      Result := EnumValues(mFileName, mText, AMember, ALine, ACharacter);
     end,
     function(const AName: string): Boolean
     begin
-      Result := TAtlasPatternContinuation.ContainsWord(Text, AName);
-    end, Suggestion) then
+      Result := TAtlasPatternContinuation.ContainsWord(mText, AName);
+    end, mSuggestion) then
   begin
     Exit;
   end;
-  // Schattentext ab dem Cursor: was am Einzug noch fehlt, dann die Zeile.
-  Ghost := Suggestion.Text;
-  if Suggestion.Indent.StartsWith(Current) then
-  begin
-    Ghost := Copy(Suggestion.Indent, Length(Current) + 1, MaxInt) + Ghost;
-  end;
-  FFileName := FileName;
-  FLine := Cursor.Line;
-  FColumn := Cursor.Col;
-  FSuggestion := Suggestion;
-  TAtlasKeyHook.Add(FKeys);
-  FPreview.Show(FileName, Cursor.Line, Cursor.Col, Ghost);
+  ShowGhost(mFileName, mCursor, mLines[mLine], mSuggestion);
   // Den Zeilenumbruch hat die IDE schon geschrieben; „übernommen“ heißt hier nur: nichts weiter versuchen.
   Result := True;
 end;
 
 class procedure TAtlasIdePatternContinuation.Accept;
 var
-  View: IOTAEditView;
-  Buffer: IOTAEditBuffer;
-  Text, LineBreak, NewText, Insert, NewLine: string;
-  Lines: TArray<string>;
-  Suggestion: TAtlasPatternSuggestion;
-  Target: TOTAEditPos;
-  Line, Start, OldLength, Character: Integer;
+  mView: IOTAEditView;
+  mBuffer: IOTAEditBuffer;
+  mNewLine: string;
+  mSuggestion: TAtlasPatternSuggestion;
+  mTarget: TOTAEditPos;
+  mLine, mCharacter: Integer;
 begin
   if not Visible or not AtSuggestion then
   begin
     Dismiss;
     Exit;
   end;
-  Suggestion := FSuggestion;
-  Line := FLine - 1;
+  mSuggestion := FSuggestion;
+  mLine := FLine - 1;
   // Erst verwerfen: Das Schreiben ist selbst eine Änderung.
   Dismiss;
-  View := TAtlasEditorBuffer.ActiveView;
-  Buffer := View.Buffer;
-  if Buffer.IsReadOnly then
+  mView := TAtlasEditorBuffer.ActiveView;
+  mBuffer := mView.Buffer;
+  mNewLine := mSuggestion.Indent + mSuggestion.Text;
+  if mBuffer.IsReadOnly or not WriteLine(mBuffer, TAtlasEditorBuffer.Text(mBuffer), mLine, mNewLine) then
   begin
     Exit;
   end;
-  Text := TAtlasEditorBuffer.Text(Buffer);
-  LineBreak := #10;
-  if Pos(#13#10, Text) > 0 then
+  mCharacter := Length(mNewLine);
+  if Length(mSuggestion.Fields) > 0 then
   begin
-    LineBreak := #13#10;
+    mCharacter := Length(mSuggestion.Indent) + mSuggestion.Fields[0];
   end;
-  Lines := Text.Split([#13#10, #10]);
-  if (Line < 0) or (Line > High(Lines)) then
-  begin
-    Exit;
-  end;
-  NewLine := Suggestion.Indent + Suggestion.Text;
-  Lines[Line] := NewLine;
-  NewText := string.Join(LineBreak, Lines);
-  if TAtlasLineMover.Difference(Text, NewText, Start, OldLength, Insert) then
-  begin
-    WriteBuffer(Buffer, Text, Start, OldLength, Insert);
-  end;
-  Character := Length(NewLine);
-  if Length(Suggestion.Fields) > 0 then
-  begin
-    Character := Length(Suggestion.Indent) + Suggestion.Fields[0];
-  end;
-  Target.Line := Line + 1;
-  Target.Col := TLspSession.IndexToColumn(NewLine, Character, TAtlasEditorBuffer.TabWidth(Buffer));
-  View.CursorPos := Target;
-  View.MoveViewToCursor;
-  View.Paint;
+  mTarget.Line := mLine + 1;
+  mTarget.Col := TLspSession.IndexToColumn(mNewLine, mCharacter, TAtlasEditorBuffer.TabWidth(mBuffer));
+  mView.CursorPos := mTarget;
+  mView.MoveViewToCursor;
+  mView.Paint;
 end;
 
 end.

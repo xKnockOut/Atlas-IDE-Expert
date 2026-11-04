@@ -30,6 +30,17 @@ uses
   Atlas.Common.Lsp.References;
 
 type
+  /// <summary>Stelle im Dokument und wie umgewandelt wird.</summary>
+  TAnonymousMethodRequest = record
+    Tree: TSyntaxTree;
+    Text: string;
+    Uri: string;
+    Position: TTextPosition;
+    Lookup: TAnonymousLookup;
+    Capture: TDeferredCapture;
+    Style: TFormatStyle;
+  end;
+
   TLspAnonymousMethods = class
   public const
     ClientCommand = 'atlas.anonymousMethod';
@@ -42,14 +53,10 @@ type
     /// <summary>"fields" bzw. sonst Forward.</summary>
     class function CaptureOf(const ASetting: string): TDeferredCapture; static;
     /// <summary>Die Code-Aktionen an APosition. Der Aufrufer übernimmt die Objekte.</summary>
-    class function Actions(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
-      const ALookup: TAnonymousLookup; ACapture: TDeferredCapture; const AStyle: TFormatStyle): TArray<TJSONObject>;
-      static;
+    class function Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>; static;
     /// <summary>Antwort auf atlas.server.anonymousMethod; EJsonRpcError mit dem Grund, wenn es nicht geht. Der
     /// Aufrufer übernimmt das Objekt.</summary>
-    class function Execute(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
-      const AName: string; const ALookup: TAnonymousLookup; ACapture: TDeferredCapture;
-      const AStyle: TFormatStyle): TJSONObject; static;
+    class function Execute(const ARequest: TAnonymousMethodRequest; const AName: string): TJSONObject; static;
   end;
 
 implementation
@@ -135,90 +142,122 @@ begin
   end;
 end;
 
-/// <summary>Art des Typs, an den der Wert AValue geht.</summary>
-function TargetKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+/// <summary>Art des Typs links einer Zuweisung, an die der Wert AValue geht.</summary>
+function AssignTargetKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   AValue: TSyntaxNode): TProcTypeKind;
 var
-  Parent: TSyntaxNode;
-  Symbol, TypeSymbol: TResolvedSymbol;
-  TypeFound: Boolean;
-  Candidates: TArray<TResolvedSymbol>;
-  Candidate: TResolvedSymbol;
-  Index: Integer;
-  Kind: TProcTypeKind;
-  TypeText: string;
+  mSymbol, mTypeSymbol: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mTypeText: string;
 begin
   Result := TProcTypeKind.Unknown;
-  Parent := AValue.Parent;
-  if Parent = nil then
+  if not AResolver.NodeType(ATree, AFileName, AValue.Parent[0], mSymbol, mTypeSymbol, mTypeFound) then
   begin
     Exit;
   end;
-  case Parent.Kind of
+  if mTypeFound then
+  begin
+    Result := KindOfType(AResolver, ATree, AFileName, mTypeSymbol.Name, AValue.StartOffset);
+  end;
+  if (Result = TProcTypeKind.Unknown) and (mSymbol.TypeName <> '') then
+  begin
+    mTypeText := mSymbol.TypeName;
+    if mSymbol.TypeArgs <> '' then
+    begin
+      mTypeText := mTypeText + '<' + mSymbol.TypeArgs + '>';
+    end;
+    Result := KindOfType(AResolver, ATree, AFileName, mTypeText, AValue.StartOffset);
+  end;
+end;
+
+/// <summary>Art des angegebenen Typs der Inline-Variablen, deren Wert AValue ist.</summary>
+function InlineVarTargetKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  AValue: TSyntaxNode): TProcTypeKind;
+var
+  mVar: TSyntaxNode;
+begin
+  Result := TProcTypeKind.Unknown;
+  mVar := AValue.Parent;
+  if mVar.ChildCount <= 1 then
+  begin
+    Exit;
+  end;
+  if mVar[0].Kind = TSyntaxKind.TypeReference then
+  begin
+    Result := KindOfType(AResolver, ATree, AFileName, mVar[0].Name, AValue.StartOffset);
+  end
+  else if mVar[0].Kind = TSyntaxKind.ProcedureType then
+  begin
+    Result := KindOfProcedureType(ATree.Tokens, mVar[0]);
+  end;
+end;
+
+/// <summary>Stelle von AValue unter den Argumenten von ACall (1 = erstes Argument); 0 = keines davon.</summary>
+function ArgumentIndex(ACall, AValue: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := 1 to ACall.ChildCount - 1 do
+  begin
+    if ACall[mIndex] = AValue then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+/// <summary>Art des Parametertyps, an den das Argument AValue geht. Alle Überladungen müssen dasselbe sagen.
+/// </summary>
+function CallTargetKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  AValue: TSyntaxNode): TProcTypeKind;
+var
+  mArgument: Integer;
+  mCandidate: TResolvedSymbol;
+  mKind: TProcTypeKind;
+begin
+  Result := TProcTypeKind.Unknown;
+  mArgument := ArgumentIndex(AValue.Parent, AValue) - 1;
+  if mArgument < 0 then
+  begin
+    Exit;
+  end;
+  for mCandidate in AResolver.CallCandidates(ATree, AFileName, AValue.Parent[0]) do
+  begin
+    if mArgument > High(mCandidate.ParamTypes) then
+    begin
+      Continue;
+    end;
+    mKind := KindOfType(AResolver, ATree, AFileName, mCandidate.ParamTypes[mArgument], AValue.StartOffset);
+    if (mKind = TProcTypeKind.Unknown) or ((Result <> TProcTypeKind.Unknown) and (mKind <> Result)) then
+    begin
+      Exit(TProcTypeKind.Unknown);
+    end;
+    Result := mKind;
+  end;
+end;
+
+/// <summary>Art des Typs, an den der Wert AValue geht.</summary>
+function TargetKind(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  AValue: TSyntaxNode): TProcTypeKind;
+begin
+  Result := TProcTypeKind.Unknown;
+  if AValue.Parent = nil then
+  begin
+    Exit;
+  end;
+  case AValue.Parent.Kind of
     TSyntaxKind.AssignStatement:
-      begin
-        if not AResolver.NodeType(ATree, AFileName, Parent[0], Symbol, TypeSymbol, TypeFound) then
-        begin
-          Exit;
-        end;
-        if TypeFound then
-        begin
-          Result := KindOfType(AResolver, ATree, AFileName, TypeSymbol.Name, AValue.StartOffset);
-        end;
-        if (Result = TProcTypeKind.Unknown) and (Symbol.TypeName <> '') then
-        begin
-          TypeText := Symbol.TypeName;
-          if Symbol.TypeArgs <> '' then
-          begin
-            TypeText := TypeText + '<' + Symbol.TypeArgs + '>';
-          end;
-          Result := KindOfType(AResolver, ATree, AFileName, TypeText, AValue.StartOffset);
-        end;
-      end;
+      Result := AssignTargetKind(AResolver, ATree, AFileName, AValue);
     TSyntaxKind.InlineVar:
-      if (Parent.ChildCount > 1) and (Parent[0].Kind = TSyntaxKind.TypeReference) then
-      begin
-        Result := KindOfType(AResolver, ATree, AFileName, Parent[0].Name, AValue.StartOffset);
-      end
-      else if (Parent.ChildCount > 1) and (Parent[0].Kind = TSyntaxKind.ProcedureType) then
-      begin
-        Result := KindOfProcedureType(ATree.Tokens, Parent[0]);
-      end;
+      Result := InlineVarTargetKind(AResolver, ATree, AFileName, AValue);
     TSyntaxKind.Call:
-      begin
-        Index := 1;
-        while (Index < Parent.ChildCount) and (Parent[Index] <> AValue) do
-        begin
-          Inc(Index);
-        end;
-        if Index >= Parent.ChildCount then
-        begin
-          Exit;
-        end;
-        Candidates := AResolver.CallCandidates(ATree, AFileName, Parent[0]);
-        // Alle Überladungen müssen dasselbe sagen.
-        for Candidate in Candidates do
-        begin
-          if Index - 1 > High(Candidate.ParamTypes) then
-          begin
-            Continue;
-          end;
-          Kind := KindOfType(AResolver, ATree, AFileName, Candidate.ParamTypes[Index - 1], AValue.StartOffset);
-          if Kind = TProcTypeKind.Unknown then
-          begin
-            Exit(TProcTypeKind.Unknown);
-          end;
-          if (Result <> TProcTypeKind.Unknown) and (Kind <> Result) then
-          begin
-            Exit(TProcTypeKind.Unknown);
-          end;
-          Result := Kind;
-        end;
-      end;
+      Result := CallTargetKind(AResolver, ATree, AFileName, AValue);
   else
     // Übrige Arten: nichts zu tun.
   end;
 end;
+
 
 class function TLspAnonymousMethods.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TAnonymousLookup;
@@ -254,9 +293,7 @@ begin
   end;
 end;
 
-class function TLspAnonymousMethods.Actions(ATree: TSyntaxTree; const AText, AUri: string;
-  const APosition: TTextPosition; const ALookup: TAnonymousLookup; ACapture: TDeferredCapture;
-  const AStyle: TFormatStyle): TArray<TJSONObject>;
+class function TLspAnonymousMethods.Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>;
 var
   Target: TAnonymousTarget;
   Reason: string;
@@ -265,11 +302,12 @@ var
   Embedded: TCodeAction;
 begin
   Result := nil;
-  if TAnonymousMethods.Target(AText, ATree, APosition, ALookup, ACapture, Target, Reason) then
+  if TAnonymousMethods.Target(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Capture,
+    Target, Reason) then
   begin
     Arguments := TJSONArray.Create;
-    Arguments.Add(AUri);
-    Arguments.AddElement(TLspPositions.PositionToJson(APosition));
+    Arguments.Add(ARequest.Uri);
+    Arguments.AddElement(TLspPositions.PositionToJson(ARequest.Position));
     Arguments.Add(Target.Suggested);
     Command := TJSONObject.Create;
     Command.AddPair('title', Target.Title);
@@ -281,21 +319,21 @@ begin
     Action.AddPair('command', Command);
     Result := Result + [Action];
   end;
-  if TAnonymousMethods.Embed(AText, ATree, APosition, ALookup, AStyle, Embedded, Reason) then
+  if TAnonymousMethods.Embed(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Style,
+    Embedded, Reason) then
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(AUri, Embedded)];
+    Result := Result + [TLspCodeActions.ActionToJson(ARequest.Uri, Embedded)];
   end;
 end;
 
-class function TLspAnonymousMethods.Execute(ATree: TSyntaxTree; const AText, AUri: string;
-  const APosition: TTextPosition; const AName: string; const ALookup: TAnonymousLookup; ACapture: TDeferredCapture;
-  const AStyle: TFormatStyle): TJSONObject;
+class function TLspAnonymousMethods.Execute(const ARequest: TAnonymousMethodRequest; const AName: string): TJSONObject;
 var
   Converted: TAnonymousResult;
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TAnonymousMethods.Execute(AText, ATree, APosition, ALookup, ACapture, AStyle, AName, Converted, Reason) then
+  if not TAnonymousMethods.Execute(ARequest.Text, ARequest.Tree, ARequest.Position, ARequest.Lookup, ARequest.Capture,
+    ARequest.Style, AName, Converted, Reason) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
   end;
@@ -305,7 +343,7 @@ begin
     Warnings.Add(Warning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Converted.Edits));
+  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(ARequest.Uri, Converted.Edits));
   Result.AddPair('warnings', Warnings);
   Result.AddPair('places', TJSONNumber.Create(Length(Converted.Edits)));
   Result.AddPair('files', TJSONNumber.Create(1));
