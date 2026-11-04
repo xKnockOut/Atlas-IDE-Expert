@@ -22,6 +22,12 @@ type
     procedure InitializeParamsMergesSettingsAndContexts;
     [Test]
     procedure InitializeParamsWithoutOptionsHasNoInitializationOptions;
+    /// <summary>#1458: Sprache der Oberfläche als initializationOptions.locale und locale.</summary>
+    [Test]
+    procedure InitializeParamsCarriesLocale;
+    /// <summary>#1458: Angaben nur mit Sprache, ohne Einstellungen.</summary>
+    [Test]
+    procedure InitializeOptionsForLocale;
     [Test]
     procedure ApplyEditAnswerOmitsEmptyReason;
     /// <summary>#621: data.tag einer CodeAction landet in Tag.</summary>
@@ -124,6 +130,35 @@ begin
     Assert.IsNull(Params.GetValue('workspaceFolders'));
   finally
     Params.Free;
+  end;
+end;
+
+procedure TLspInitializeParamsTests.InitializeOptionsForLocale;
+var
+  mOptions: TLspInitializeOptions;
+begin
+  mOptions := TLspInitializeOptions.ForLocale('de');
+  Assert.AreEqual('de', mOptions.Locale);
+  Assert.AreEqual('', mOptions.Settings);
+end;
+
+procedure TLspInitializeParamsTests.InitializeParamsCarriesLocale;
+var
+  mParams: TJSONObject;
+begin
+  mParams := TLspSession.InitializeParams(nil, '', nil, False, 'en');
+  try
+    Assert.AreEqual('en', mParams.GetValue<string>('initializationOptions.locale'));
+    Assert.AreEqual('en', mParams.GetValue<string>('locale'));
+  finally
+    mParams.Free;
+  end;
+  mParams := TLspSession.InitializeParams(nil, '', nil, False, '');
+  try
+    Assert.IsNull(mParams.GetValue('locale'));
+    Assert.IsNull(mParams.GetValue('initializationOptions'));
+  finally
+    mParams.Free;
   end;
 end;
 

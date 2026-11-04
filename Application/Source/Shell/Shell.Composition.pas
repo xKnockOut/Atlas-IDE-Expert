@@ -1046,6 +1046,8 @@ begin
     // Absturzfälle nennen den Client (#1355).
     FProtocol.CrashCases.Client := Trim(FSession.ClientName + ' ' + AParams.GetValue<string>('clientInfo.version', ''));
   end;
+  // Sprache des Clients (#1458) vor SetEditorSettings, das die Sprache der Texte wählt.
+  FCore.Settings.SetClientLocale(TLspClientLocale.FromInitialize(AParams));
   // Der neue Client erfährt, was nach Abstürzen übersprungen wird.
   FProtocol.CrashCases.Announce;
   // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem

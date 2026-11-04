@@ -68,6 +68,14 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Sprache wie die IDE, Fundament (#1458, 01.11.2026 auf `release/1.2`, 04.11.2026 nach `Pilot-2.0.0-beta.1` übernommen)
+- Sprache: `TAtlasLocale` in `Atlas.Common.Localization.Texts` (global, Startwert Deutsch für Tests). Server: `Resolve(language, Client-Locale)` nach `initialize` (Shell.Composition), `--check` über `TShellBootstrap.UseTextLanguage(--locale)`. Plugin schickt `locale` (CodeInsight.Manager → `TLspSession.Locale`).
+- Texte: je Unit `cTexts: array[TXyzText] of TAtlasText = ((De: …; En: …), …)` im implementation-Teil, Aufruf `cTexts[TXyzText.Id].Text`/`.Fmt([…])`, Anmeldung `TAtlasTextTables.Add('<Unit>', cTexts)` im initialization-Teil; der Test `AllTablesComplete` prüft alle angemeldeten Tabellen. Umgestellt: Rules.Catalog (Erklärung), Rules.Engine. Benutzertexte des Katalogs über `TRuleCatalog.Localized`; SARIF bleibt bei `Shared` (englisch).
+- Schema: jede `description` hat `x-description-en` (Wächter in Update-ConfigDoc, erzeugt `docs/en/Configuration.md`); Plugin über `TAtlasSettingField.DescriptionFor(AEnglish)`. whatsnew: `titleEn`/`textEn` Pflicht.
+- `Tools/Check-GermanText.ps1` mit Altliste `Tools/GermanText.baseline.json` (5051 Literale in 491 Dateien); nach dem Umstellen einer Gruppe `-Update`.
+- Falle für die Folgestufen: Deprecated-Regel prüft `ContainsStr(AMessage, '(wie W1000).')`, Pascal.Parser/SyntaxChecks `' (wie %s).'`: diese Textabhängigkeit beim Umstellen durch eine Kennung ersetzen.
+- Offen: Regeln, Code-Aktionen, Hover, Vorschauen, Servermeldungen gruppenweise; englische Seitennamen (`x-page`) im Plugin; Delphi-Build 0/0/0.
+
 ## Modulgrenzen im Prüfskript (#1455, 01.11.2026, Branch `claude/project-thread-jz4idl` von `claude/project-thread-rc7rg9`)
 
 - `Tools/Check-PackageDependencies.ps1` liest `docs/adr/0017-unit-zuordnung.md` als Daten: Ordnertabelle, Einzelzeilen je Package und den neuen Abschnitt „Grenzen zwischen Base, Modulen und Verträgen“. Verboten sind Base → Modul, Base → Contracts, Modul → anderes Modul und Contracts → Base oder Modul.
