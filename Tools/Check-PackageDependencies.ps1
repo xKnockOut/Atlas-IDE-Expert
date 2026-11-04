@@ -528,7 +528,8 @@ if (Test-Path $PluginSource) {
             }
             continue
         }
-        if ($CompositionRoots -contains $ownUnit) { continue }
+        # Die Wurzel und ihre Teile Atlas.IDE.CodeInsight.Composition.<Teil> verbinden alle Features.
+        if (@($CompositionRoots | Where-Object { $ownUnit -eq $_ -or $ownUnit -like "$_.*" }).Count -gt 0) { continue }
         $from = Get-PluginFeature $ownUnit
         if ($null -eq $from) { continue }
         foreach ($unit in $entries) {

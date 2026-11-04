@@ -376,6 +376,26 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Build.Notifier` | `IDE/Build/Atlas.IDE.Build.Notifier.pas` | Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern |
 | `Atlas.IDE.Build.Target` | `IDE/Build/Atlas.IDE.Build.Target.pas` | Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455 |
 | `Atlas.IDE.CodeInsight.Composition` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Adapters` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Adapters.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Appearance` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Appearance.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Background` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Background.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Build` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Build.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Drawing` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Drawing.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Editing` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Editing.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.EditorBars` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.EditorBars.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Features` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Features.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Keys` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Keys.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Leftovers` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Leftovers.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Navigation` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Navigation.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Palette` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Palette.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.PaletteEditing` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.PaletteEditing.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.PaletteNavigation` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.PaletteNavigation.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Services` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Services.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Session` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Session.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Settings` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Settings.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Startup` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Startup.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Status` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Status.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.Composition.Tools` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Tools.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.Commands.Bindings` | `IDE/Commands/Atlas.IDE.Commands.Bindings.pas` | Ordner `IDE/Commands` |
 | `Atlas.IDE.Commands.ContextMenu` | `IDE/Commands/Atlas.IDE.Commands.ContextMenu.pas` | Ordner `IDE/Commands` |
