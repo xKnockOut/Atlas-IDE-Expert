@@ -119,6 +119,14 @@ type
     procedure OffAndExclude;
   end;
 
+  /// <summary>Hilfsfunktionen für Typtexte aus Builtin.TypeChecks.Types.</summary>
+  [TestFixture]
+  TTypeCheckTypesTests = class
+  public
+    [Test]
+    procedure NormalizedTypeAndDynamicArrayText;
+  end;
+
 implementation
 
 uses
@@ -128,6 +136,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.TypeChecks,
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Rules.Builtin.TypeChecks.Hresult,
   Atlas.Common.Rules.Builtin.TypeChecks.VarArguments,
   Atlas.Common.Index.Contract,
@@ -908,6 +917,19 @@ begin
     '{"rules": {"for-in-not-enumerable": {"exclude": ["Source/*.pas"]}}}', 'Source/Schleifen.pas'))));
 end;
 
+{ TTypeCheckTypesTests }
+
+procedure TTypeCheckTypesTests.NormalizedTypeAndDynamicArrayText;
+begin
+  Assert.AreEqual('TArray<Integer>', NormalizedType(' TArray <Integer> '));
+  Assert.IsTrue(IsDynamicArrayText('array of Double'));
+  Assert.IsTrue(IsDynamicArrayText('TArray < string >'));
+  Assert.IsTrue(IsDynamicArrayText('System.TArray<Byte>'));
+  Assert.IsFalse(IsDynamicArrayText('array of const'));
+  Assert.IsFalse(IsDynamicArrayText('array[0..1] of Integer'));
+  Assert.IsFalse(IsDynamicArrayText('TList<Integer>'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TDynamicArrayMisuseTests);
   TDUnitX.RegisterTestFixture(TLocalRoutineAsCallbackTests);
@@ -915,5 +937,6 @@ initialization
   TDUnitX.RegisterTestFixture(TInvalidVarArgumentTests);
   TDUnitX.RegisterTestFixture(TConditionNotBooleanTests);
   TDUnitX.RegisterTestFixture(TForInNotEnumerableTests);
+  TDUnitX.RegisterTestFixture(TTypeCheckTypesTests);
 
 end.
