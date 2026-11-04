@@ -760,6 +760,37 @@ function Pascal-Lines([string] $Name, [string] $Source) {
     }
     return $Result
 }
+# Eingebettete Texte (Schemata): mehrere Zeilen je Element, damit die Unit kurz bleibt (metric-unit-length);
+# je Element eine Zeile mit höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+function Pascal-Chunks([string] $Name, [string] $Source) {
+    $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
+    $Elements = New-Object System.Collections.Generic.List[string]
+    $Current = ''
+    $CurrentSize = 0
+    foreach ($Line in $Lines) {
+        $Tokens = @()
+        for ($At = 0; $At -lt $Line.Length; $At += 200) {
+            $Tokens += "'" + $Line.Substring($At, [Math]::Min(200, $Line.Length - $At)).Replace("'", "''") + "'"
+        }
+        $Tokens += '#10'
+        $Text = $Tokens -join ' + '
+        $Size = [Text.Encoding]::UTF8.GetByteCount($Text)
+        if ($Size -gt 990) {
+            if ($Current -ne '') { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
+            $Elements.Add($Tokens -join " +`r`n      ")
+            continue
+        }
+        if (($Current -ne '') -and ($CurrentSize + 3 + $Size -gt 990)) { $Elements.Add($Current); $Current = ''; $CurrentSize = 0 }
+        if ($Current -eq '') { $Current = $Text; $CurrentSize = $Size } else { $Current = $Current + ' + ' + $Text; $CurrentSize += 3 + $Size }
+    }
+    if ($Current -ne '') { $Elements.Add($Current) }
+    $Result = @("  $Name`: array[0..$($Elements.Count - 1)] of string = (")
+    for ($Index = 0; $Index -lt $Elements.Count; $Index++) {
+        $End = if ($Index -eq $Elements.Count - 1) { ');' } else { ',' }
+        $Result += '    ' + $Elements[$Index] + $End
+    }
+    return $Result
+}
 function Sync-Unit([string] $Path, [string[]] $Lines) {
     $Text = ($Lines -join "`r`n") + "`r`n"
     $Current = if (Test-Path $Path) { [IO.File]::ReadAllText($Path, $Utf8).TrimStart([char]0xFEFF) } else { '' }
@@ -772,9 +803,9 @@ function Sync-Unit([string] $Path, [string[]] $Lines) {
 }
 function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [string] $FunctionName, [string] $Source) {
     return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
-        'implementation', '', 'const') + (Pascal-Lines 'Lines' $Source) +
-        @('', "function $FunctionName`: string;", 'var', '  Line: string;', 'begin', "  Result := '';",
-        '  for Line in Lines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '', 'end.')
+        'implementation', '', 'const') + (Pascal-Chunks 'Chunks' $Source) +
+        @('', "function $FunctionName`: string;", 'var', '  mChunk: string;', 'begin', "  Result := '';",
+        '  for mChunk in Chunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
 }
 $SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
