@@ -195,6 +195,14 @@ begin
   end;
 end;
 
+/// <summary>AContext mit dem Auflöser AResolver für Execute.</summary>
+function WithResolver(const AContext: TExtractSuperclassContext;
+  AResolver: TNameResolver): TExtractSuperclassContext;
+begin
+  Result := AContext;
+  Result.Resolver := AResolver;
+end;
+
 function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObject;
   const AContext: TExtractSuperclassContext): TJSONObject;
 var
@@ -204,8 +212,8 @@ begin
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractSuperclass.Execute(Resolver, Tree, AusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
-      AContext);
+    Result := TLspExtractSuperclass.Execute(Tree, AusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
+      WithResolver(AContext, Resolver));
   finally
     Resolver.Free;
     Tree.Free;
@@ -369,8 +377,8 @@ begin
       Resolver := TNameResolver.Create(Index, nil);
       Body := Request('TExportBase', 'ExportBase', [1]);
       try
-        TLspExtractSuperclass.Execute(Resolver, Tree, AusgabeFile, Text, TTextPosition.Create(6, 2), Body,
-          Context(Index)).Free;
+        TLspExtractSuperclass.Execute(Tree, AusgabeFile, Text, TTextPosition.Create(6, 2), Body,
+          WithResolver(Context(Index), Resolver)).Free;
       finally
         Body.Free;
         Resolver.Free;

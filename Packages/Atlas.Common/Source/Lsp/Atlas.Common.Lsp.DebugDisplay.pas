@@ -165,95 +165,139 @@ begin
   end;
 end;
 
-class function TLspDebugDisplay.InheritsOf(const AIndex: ISymbolIndex; const AUnits: TArray<TUnitIndex>;
-  const ARules: TArray<TLspDebugDisplayRule>; const AExternal: TArray<string>): TArray<TLspDebugDisplayInherit>;
+/// <summary>Kurzname (klein) → Herkunft der Regel; eigene Regeln vor externen. Der Aufrufer gibt frei.</summary>
+function RuleOwners(const ARules: TArray<TLspDebugDisplayRule>;
+  const AExternal: TArray<string>): TDictionary<string, string>;
 var
-  Owners: TDictionary<string, string>;
-  Rule: TLspDebugDisplayRule;
-  Name, Ancestor, From: string;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Inherit: TLspDebugDisplayInherit;
-  Depth: Integer;
-  Next: Boolean;
+  mName: string;
+  mRule: TLspDebugDisplayRule;
 begin
-  Result := nil;
-  // Kurzname (klein) → Herkunft der Regel; eigene Regeln vor externen.
-  Owners := TDictionary<string, string>.Create;
-  try
-    for Name in AExternal do
+  Result := TDictionary<string, string>.Create;
+  for mName in AExternal do
+  begin
+    if TLspDebugDisplay.ShortName(mName) <> '' then
     begin
-      if ShortName(Name) <> '' then
-      begin
-        Owners.AddOrSetValue(LowerCase(ShortName(Name)), Name);
-      end;
+      Result.AddOrSetValue(LowerCase(TLspDebugDisplay.ShortName(mName)), mName);
     end;
-    for Rule in ARules do
+  end;
+  for mRule in ARules do
+  begin
+    Result.AddOrSetValue(LowerCase(TLspDebugDisplay.ShortName(mRule.Name)), mRule.TypeName);
+  end;
+end;
+
+/// <summary>Vorfahr der Klasse AName laut Index; '' ohne Index, ohne Klasse oder ohne Vorfahr.</summary>
+function AncestorInIndex(const AIndex: ISymbolIndex; const AName: string): string;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := '';
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in AIndex.FindSymbols(AName) do
+  begin
+    if mLocation.Symbol.Kind in ClassKinds then
     begin
-      Owners.AddOrSetValue(LowerCase(ShortName(Rule.Name)), Rule.TypeName);
+      Exit(FirstAncestor(mLocation.Symbol));
     end;
-    if Owners.Count = 0 then
+  end;
+end;
+
+/// <summary>Herkunft der Regel, die ASymbol über seine Vorfahren erbt; '' ohne.</summary>
+function InheritedOrigin(const AIndex: ISymbolIndex; AOwners: TDictionary<string, string>;
+  const ASymbol: TIndexSymbol): string;
+var
+  mAncestor: string;
+  mDepth: Integer;
+begin
+  Result := '';
+  mAncestor := FirstAncestor(ASymbol);
+  mDepth := 0;
+  while (mAncestor <> '') and (mDepth < TLspDebugDisplay.MaxDepth) do
+  begin
+    if AOwners.TryGetValue(LowerCase(mAncestor), Result) then
     begin
       Exit;
     end;
-    for UnitIndex in AUnits do
+    Inc(mDepth);
+    mAncestor := AncestorInIndex(AIndex, mAncestor);
+  end;
+  Result := '';
+end;
+
+class function TLspDebugDisplay.InheritsOf(const AIndex: ISymbolIndex; const AUnits: TArray<TUnitIndex>;
+  const ARules: TArray<TLspDebugDisplayRule>; const AExternal: TArray<string>): TArray<TLspDebugDisplayInherit>;
+var
+  mOwners: TDictionary<string, string>;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mInherit: TLspDebugDisplayInherit;
+begin
+  Result := nil;
+  mOwners := RuleOwners(ARules, AExternal);
+  try
+    if mOwners.Count = 0 then
     begin
-      for Symbol in UnitIndex.Symbols do
+      Exit;
+    end;
+    for mUnit in AUnits do
+    begin
+      for mSymbol in mUnit.Symbols do
       begin
-        if not (Symbol.Kind in ClassKinds) or Owners.ContainsKey(LowerCase(Symbol.Name)) then
+        if not (mSymbol.Kind in ClassKinds) or mOwners.ContainsKey(LowerCase(mSymbol.Name)) then
         begin
           Continue;
         end;
-        Ancestor := FirstAncestor(Symbol);
-        From := '';
-        Depth := 0;
-        while (Ancestor <> '') and (Depth < MaxDepth) do
-        begin
-          if Owners.TryGetValue(LowerCase(Ancestor), From) then
-          begin
-            Break;
-          end;
-          Inc(Depth);
-          Next := False;
-          if AIndex <> nil then
-          begin
-            for Location in AIndex.FindSymbols(Ancestor) do
-            begin
-              if Location.Symbol.Kind in ClassKinds then
-              begin
-                Ancestor := FirstAncestor(Location.Symbol);
-                Next := True;
-                Break;
-              end;
-            end;
-          end;
-          if not Next then
-          begin
-            Ancestor := '';
-          end;
-        end;
-        if From = '' then
+        mInherit.From := InheritedOrigin(AIndex, mOwners, mSymbol);
+        if mInherit.From = '' then
         begin
           Continue;
         end;
-        Inherit.Name := Symbol.QualifiedName;
-        Inherit.TypeName := UnitIndex.UnitName + '.' + Inherit.Name;
-        Inherit.From := From;
-        Result := Result + [Inherit];
+        mInherit.Name := mSymbol.QualifiedName;
+        mInherit.TypeName := mUnit.UnitName + '.' + mInherit.Name;
+        Result := Result + [mInherit];
       end;
     end;
   finally
-    Owners.Free;
+    mOwners.Free;
+  end;
+end;
+
+/// <summary>Units zu AFiles (nur .pas im Index); leer = alle Projekt-Units des Index.</summary>
+function UnitsOf(const AIndex: ISymbolIndex; const AFiles: TArray<string>): TArray<TUnitIndex>;
+var
+  mUnit: TUnitIndex;
+  mFileName: string;
+begin
+  Result := nil;
+  if Length(AFiles) = 0 then
+  begin
+    for mUnit in AIndex.Units do
+    begin
+      if not mUnit.Library_ then
+      begin
+        Result := Result + [mUnit];
+      end;
+    end;
+    Exit;
+  end;
+  for mFileName in AFiles do
+  begin
+    if SameText(ExtractFileExt(mFileName), '.pas') and AIndex.FindFile(mFileName, mUnit) then
+    begin
+      Result := Result + [mUnit];
+    end;
   end;
 end;
 
 function TLspDebugDisplay.Collect(const AFiles, AExternal: TArray<string>;
   out AInherits: TArray<TLspDebugDisplayInherit>): TArray<TLspDebugDisplayRule>;
 var
-  Units: TArray<TUnitIndex>;
-  UnitIndex: TUnitIndex;
-  FileName, Text: string;
+  mUnits: TArray<TUnitIndex>;
+  mUnit: TUnitIndex;
+  mText: string;
 begin
   Result := nil;
   AInherits := nil;
@@ -261,35 +305,15 @@ begin
   begin
     Exit;
   end;
-  Units := nil;
-  if Length(AFiles) > 0 then
+  mUnits := UnitsOf(FIndex, AFiles);
+  for mUnit in mUnits do
   begin
-    for FileName in AFiles do
+    if Assigned(FReadText) and FReadText(mUnit.FileName, mText) then
     begin
-      if SameText(ExtractFileExt(FileName), '.pas') and FIndex.FindFile(FileName, UnitIndex) then
-      begin
-        Units := Units + [UnitIndex];
-      end;
-    end;
-  end
-  else
-  begin
-    for UnitIndex in FIndex.Units do
-    begin
-      if not UnitIndex.Library_ then
-      begin
-        Units := Units + [UnitIndex];
-      end;
+      Result := Result + RulesOfUnit(mUnit, mText);
     end;
   end;
-  for UnitIndex in Units do
-  begin
-    if Assigned(FReadText) and FReadText(UnitIndex.FileName, Text) then
-    begin
-      Result := Result + RulesOfUnit(UnitIndex, Text);
-    end;
-  end;
-  AInherits := InheritsOf(FIndex, Units, Result, AExternal);
+  AInherits := InheritsOf(FIndex, mUnits, Result, AExternal);
 end;
 
 class function TLspDebugDisplay.ToJson(const ARules: TArray<TLspDebugDisplayRule>;
