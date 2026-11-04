@@ -84,6 +84,7 @@ uses
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.UI.Search.Strings,
+  Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -604,7 +605,6 @@ begin
   mSearch.Window := TAtlasUnitSearchWindow.CreateSearch(Application, mOptions, mSearch.State,
     TAtlasIdeStyle.Colors);
   Current := mSearch;
-  mSearch.Window.Loading := True;
   WireEvents(mSearch);
   mSearch.Window.ShowOver(Screen.MonitorFromWindow(GetForegroundWindow).WorkareaRect);
   LoadLater(mSearch, mOptions.ActiveProject);

@@ -126,6 +126,14 @@ type
     property OnChanged: TConfigurationChangedEvent read FOnChanged write FOnChanged;
   end;
 
+  /// <summary>Sprache des Clients aus den initialize-Parametern (#1458).</summary>
+  TLspClientLocale = record
+  public
+    /// <summary>initializationOptions.locale (IDE-Plugin), sonst locale (LSP 3.16); '' ohne Angabe. Gewählt wird
+    /// mit TAtlasLocale.Resolve.</summary>
+    class function FromInitialize(const AParams: TJSONValue): string; static;
+  end;
+
 implementation
 
 uses
@@ -283,6 +291,29 @@ begin
   if Section is TJSONObject then
   begin
     Result := Section.ToJSON;
+  end;
+end;
+
+{ TLspClientLocale }
+
+class function TLspClientLocale.FromInitialize(const AParams: TJSONValue): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  if not (AParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mValue := TJSONObject(AParams).FindValue('initializationOptions.locale');
+  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
+  begin
+    Exit(Trim(TJSONString(mValue).Value));
+  end;
+  mValue := TJSONObject(AParams).GetValue('locale');
+  if mValue is TJSONString then
+  begin
+    Result := Trim(TJSONString(mValue).Value);
   end;
 end;
 

@@ -42,6 +42,9 @@ type
     procedure LoadGlobalSettings_File_ReturnsText;
     [Test]
     procedure ProjectSettings_NoFile_Defaults;
+    /// <summary>#1458: --locale vor language aus settings.json vor Englisch.</summary>
+    [Test]
+    procedure TextLanguage_LocaleThenSettingThenEnglish;
     [Test]
     procedure ProjectSettings_McpGlobalSettingsOff;
   end;
@@ -54,6 +57,7 @@ uses
   System.IOUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Localization.Texts,
   Shell.Bootstrap;
 
 type
@@ -231,6 +235,14 @@ begin
   TDirectory.CreateDirectory(ExtractFileDir(FileName));
   TFile.WriteAllText(FileName, '{"mcp": {"disabledTools": ["rename_symbol"]}}', TEncoding.UTF8);
   Assert.AreEqual('{"mcp": {"disabledTools": ["rename_symbol"]}}', TShellBootstrap.LoadGlobalSettings(FileName, nil));
+end;
+
+procedure TShellBootstrapTests.TextLanguage_LocaleThenSettingThenEnglish;
+begin
+  Assert.IsTrue(TShellBootstrap.TextLanguage('de', '{"language": "en"}') = TTextLanguage.German);
+  Assert.IsTrue(TShellBootstrap.TextLanguage('', '{"language": "de"}') = TTextLanguage.German);
+  Assert.IsTrue(TShellBootstrap.TextLanguage('', '{"language": ""}') = TTextLanguage.English);
+  Assert.IsTrue(TShellBootstrap.TextLanguage('', '') = TTextLanguage.English);
 end;
 
 procedure TShellBootstrapTests.ProjectSettings_NoFile_Defaults;

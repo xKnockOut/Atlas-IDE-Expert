@@ -13,7 +13,8 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
-  Atlas.Common.Configuration.Contract;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Localization.Texts;
 
 type
   TShellBootstrap = class
@@ -35,6 +36,12 @@ type
     /// <summary>Einstellungen aus atlas.json (oder der früheren Datei) in ARoot, ohne globale Datei und
     /// Editor; ohne Datei die Vorgaben.</summary>
     class function ProjectSettings(const ARoot: string): TServerSettings; static;
+    /// <summary>Sprache der Texte ohne Client (#1458): ALocale (--locale), sonst language aus der globalen
+    /// settings.json (AGlobalText), sonst Englisch.</summary>
+    class function TextLanguage(const ALocale, AGlobalText: string): TTextLanguage; static;
+    /// <summary>Setzt die Sprache nach TextLanguage mit der globalen settings.json; eine unlesbare Datei zählt
+    /// als leer. Der LSP-Server wählt nach initialize mit der Sprache des Clients neu.</summary>
+    class procedure UseTextLanguage(const ALocale: string); static;
   end;
 
 implementation
@@ -150,6 +157,26 @@ begin
     Exit(TServerSettings.Default);
   end;
   Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(Text, TConfigurationScope.Project), Issues);
+end;
+
+class function TShellBootstrap.TextLanguage(const ALocale, AGlobalText: string): TTextLanguage;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Result := TAtlasLocale.Resolve(ALocale, TConfigurationParser.Parse(AGlobalText, mIssues).Language);
+end;
+
+class procedure TShellBootstrap.UseTextLanguage(const ALocale: string);
+var
+  mGlobal: string;
+begin
+  try
+    mGlobal := LoadGlobalSettings(nil);
+  except
+    on Exception do
+      mGlobal := '';
+  end;
+  TAtlasLocale.Use(TextLanguage(ALocale, mGlobal));
 end;
 
 end.

@@ -36,72 +36,78 @@ uses
   Atlas.Core.Undo.Journal,
   Atlas.UI.Strings;
 
-class function TAtlasUndoMessages.Report(const AReport: TAtlasUndoReport): TArray<string>;
-var
-  Problem: TAtlasUndoProblem;
-  Problems: TArray<TAtlasUndoProblem>;
-  Line, Text: string;
-  Done, Count: Integer;
+/// <summary>Kopfzeile des Berichts für ein abgebrochenes oder ausgeführtes Zurücknehmen bzw. Wiederherstellen
+/// mit ACount Problemen.</summary>
+function OutcomeLine(const AReport: TAtlasUndoReport; ACount: Integer): string;
+const
+  cAborted: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoAborted, TAtlasTextId.RedoAborted);
+  cDone: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoDone, TAtlasTextId.RedoDone);
+  cPartial: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoPartial, TAtlasTextId.RedoPartial);
 begin
-  // Ohne verschachtelte Array-Literale ([Fmt(…, […])]): An solchen hing dcc64 (Delphi 13) beim Übersetzen.
-  Result := nil;
-  Problems := AReport.Conflicts + AReport.Errors;
-  Done := Length(AReport.Done);
-  Count := Length(Problems);
-  if AReport.Disabled then
+  if AReport.Aborted then
   begin
-    Line := TAtlasStrings.Text(TAtlasTextId.UndoDisabled);
+    Result := TAtlasStrings.Fmt(cAborted[AReport.Redo], [AReport.Action, ACount]);
   end
-  else if AReport.NotFound and AReport.Redo then
+  else if ACount = 0 then
   begin
-    Line := TAtlasStrings.Text(TAtlasTextId.RedoNothing);
-  end
-  else if AReport.NotFound then
-  begin
-    Line := TAtlasStrings.Text(TAtlasTextId.UndoNothing);
-  end
-  else if AReport.Aborted and AReport.Redo then
-  begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoAborted, [AReport.Action, Count]);
-  end
-  else if AReport.Aborted then
-  begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoAborted, [AReport.Action, Count]);
-  end
-  else if (Count = 0) and AReport.Redo then
-  begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoDone, [AReport.Action, Done]);
-  end
-  else if Count = 0 then
-  begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoDone, [AReport.Action, Done]);
-  end
-  else if AReport.Redo then
-  begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.RedoPartial, [AReport.Action, Done, Count]);
+    Result := TAtlasStrings.Fmt(cDone[AReport.Redo], [AReport.Action, Length(AReport.Done)]);
   end
   else
   begin
-    Line := TAtlasStrings.Fmt(TAtlasTextId.UndoPartial, [AReport.Action, Done, Count]);
+    Result := TAtlasStrings.Fmt(cPartial[AReport.Redo], [AReport.Action, Length(AReport.Done), ACount]);
   end;
-  Result := Result + [Line];
+end;
+
+/// <summary>Erste Zeile des Berichts: abgeschaltet, nichts gefunden oder das Ergebnis.</summary>
+function HeadLine(const AReport: TAtlasUndoReport; ACount: Integer): string;
+const
+  cNothing: array[Boolean] of TAtlasTextId = (TAtlasTextId.UndoNothing, TAtlasTextId.RedoNothing);
+begin
+  if AReport.Disabled then
+  begin
+    Result := TAtlasStrings.Text(TAtlasTextId.UndoDisabled);
+  end
+  else if AReport.NotFound then
+  begin
+    Result := TAtlasStrings.Text(cNothing[AReport.Redo]);
+  end
+  else
+  begin
+    Result := OutcomeLine(AReport, ACount);
+  end;
+end;
+
+/// <summary>Zeile zu einer Datei, die blieb, mit dem Grund.</summary>
+function ProblemLine(const AProblem: TAtlasUndoProblem): string;
+begin
+  case AProblem.Kind of
+    TAtlasUndoProblemKind.ChangedSince:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictChanged, [AProblem.FileName]);
+    TAtlasUndoProblemKind.Exists:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictExists, [AProblem.FileName]);
+    TAtlasUndoProblemKind.Missing:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictMissing, [AProblem.FileName]);
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.UndoFailed, [AProblem.FileName, AProblem.Message]);
+  end;
+end;
+
+class function TAtlasUndoMessages.Report(const AReport: TAtlasUndoReport): TArray<string>;
+var
+  mProblem: TAtlasUndoProblem;
+  mProblems: TArray<TAtlasUndoProblem>;
+begin
+  // Ohne verschachtelte Array-Literale ([Fmt(…, […])]): An solchen hing dcc64 (Delphi 13) beim Übersetzen.
+  mProblems := AReport.Conflicts + AReport.Errors;
+  Result := nil;
+  Result := Result + [HeadLine(AReport, Length(mProblems))];
   if AReport.Disabled or AReport.NotFound then
   begin
     Exit;
   end;
-  for Problem in Problems do
+  for mProblem in mProblems do
   begin
-    case Problem.Kind of
-      TAtlasUndoProblemKind.ChangedSince:
-        Text := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictChanged, [Problem.FileName]);
-      TAtlasUndoProblemKind.Exists:
-        Text := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictExists, [Problem.FileName]);
-      TAtlasUndoProblemKind.Missing:
-        Text := TAtlasStrings.Fmt(TAtlasTextId.UndoConflictMissing, [Problem.FileName]);
-    else
-      Text := TAtlasStrings.Fmt(TAtlasTextId.UndoFailed, [Problem.FileName, Problem.Message]);
-    end;
-    Result := Result + [Text];
+    Result := Result + [ProblemLine(mProblem)];
   end;
 end;
 

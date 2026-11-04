@@ -495,7 +495,7 @@ begin
   mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.PillPadding),
     ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.PillHeight));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TAtlasQuickActionsBar.StateColor(mState);
+  Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(mState);
   Canvas.Pen.Color := Canvas.Brush.Color;
   Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, FRadius, FRadius);
   Canvas.Brush.Style := bsClear;
@@ -565,7 +565,7 @@ begin
   FQuick.OnOpenRow := QuickOpenRow;
   FQuick.OnSelectRow := QuickSelectRow;
   FQuick.OnRowMenu := QuickRowMenu;
-  FQuick.AttachMenu(FMenu);
+  FQuick.Menus.Attach(FMenu);
 end;
 
 function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;
@@ -1022,7 +1022,7 @@ begin
   FMenu.WorkingCopiesItem.Enabled := FMenu.CreateBranchItem.Enabled;
   FMenu.RemoveItem.Enabled := mRow >= 0;
   // Schnellaktionen der Zeile (#764): nur eingestellte Knöpfe, gesperrte grau.
-  FQuick.PrepareMenu(mRow);
+  FQuick.Menus.Prepare(mRow);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.MenuAction(AAction: TAtlasProjectsMenuAction);

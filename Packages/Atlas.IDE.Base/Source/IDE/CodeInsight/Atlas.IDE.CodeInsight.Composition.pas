@@ -1651,9 +1651,10 @@ begin
   TAtlasIdeServerWindow.Install(mHooks);
 end;
 
-procedure RegisterStatusField;
+/// <summary>Quellen der festen Statuszeilen (#591).</summary>
+function StatusLineSources: TAtlasStatusLineSources;
 begin
-  StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
+  Result.ServerInfo :=
     function: TAtlasServerInfo
     begin
       if Manager <> nil then
@@ -1664,26 +1665,35 @@ begin
       begin
         Result := Default(TAtlasServerInfo);
       end;
-    end,
+    end;
+  Result.Indexing :=
     function(out APercent: Integer): Boolean
     begin
       APercent := -1;
       Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
-    end,
+    end;
+  Result.Query :=
     function(const ADone: TProc<string>): Boolean
     begin
       Result := (Manager <> nil) and Manager.QueryStatusAsync(ADone);
-    end,
+    end;
+  Result.Report :=
     procedure(AText: string)
     begin
       GuardWarning(AText);
-    end,
-    // Klick auf die Zeile „Server“: Fenster „Atlas-Server“ (#1356), nur mit server.statusWindow.
-    ShowServerWindow,
+    end;
+  // Klick auf die Zeile „Server“: Fenster „Atlas-Server“ (#1356), nur mit server.statusWindow.
+  Result.ServerAction := ShowServerWindow;
+  Result.ServerActionEnabled :=
     function: Boolean
     begin
       Result := TAtlasIdeServerWindow.Enabled;
-    end);
+    end;
+end;
+
+procedure RegisterStatusField;
+begin
+  StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default, StatusLineSources);
   InstallServerWindow;
   StatusField := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
   StatusField.OnRefresh :=
