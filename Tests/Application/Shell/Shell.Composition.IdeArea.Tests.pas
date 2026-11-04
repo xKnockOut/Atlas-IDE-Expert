@@ -30,6 +30,9 @@ type
     /// <summary>Die IDE hört am Verteiler auf atlas/projectContext.</summary>
     [Test]
     procedure ProjectContextReachesIde;
+    /// <summary>Ohne Ordner und Projekt gelten die vorgegebenen Formatfunktionen.</summary>
+    [Test]
+    procedure FormatRoutinesWithoutWorkspaceAreDefaults;
   end;
 
 implementation
@@ -39,6 +42,8 @@ uses
   Atlas.Common.Index.Contract,
   System.JSON,
   Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Pascal.FormatRoutines,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Shell.Composition.Compile,
@@ -129,6 +134,12 @@ begin
     mMessage.Free;
   end;
   Assert.AreEqual(cProject, FArea.Ide.Project.ActiveProject);
+end;
+
+procedure TShellIdeAreaTests.FormatRoutinesWithoutWorkspaceAreDefaults;
+begin
+  Assert.AreEqual(Integer(Length(TFormatRoutines.Defaults)),
+    Integer(Length(FArea.FormatRoutinesFor(TDocumentUris.FromPath('C:\Projekt\Lose.pas')))));
 end;
 
 initialization
