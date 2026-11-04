@@ -97,19 +97,15 @@ begin
   Assert.AreEqual('uKundenForm,uRepoIntf,uKundenRepo', string.Join(',', Units));
 end;
 
-procedure TAtlasSymbolPathModelTests.ParsesServerAnswer;
+/// <summary>Wegsuche über zwei Units: uA verwendet uB.</summary>
+function CreateUsesPathService: TLspSymbolPath;
 var
-  Index: ISymbolIndex;
-  Service: TLspSymbolPath;
-  Args: TJSONArray;
-  Value: TJSONValue;
-  Answer: TAtlasSymbolPathAnswer;
+  mIndex: ISymbolIndex;
 begin
-  // Dasselbe Format wie der Server liefert: Weg uA → uB über uses.
-  Index := TSymbolIndex.Create;
-  Index.AddUnit(TIndexExtractor.ExtractText(AText, AFile, nil));
-  Index.AddUnit(TIndexExtractor.ExtractText(BText, BFile, nil));
-  Service := TLspSymbolPath.Create(Index,
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFile, nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(BText, BFile, nil));
+  Result := TLspSymbolPath.Create(mIndex,
     function(const AFileName: string; out AContent: string): Boolean
     begin
       Result := True;
@@ -142,6 +138,17 @@ begin
       ANamespaces := nil;
       Result := True;
     end);
+end;
+
+procedure TAtlasSymbolPathModelTests.ParsesServerAnswer;
+var
+  Service: TLspSymbolPath;
+  Args: TJSONArray;
+  Value: TJSONValue;
+  Answer: TAtlasSymbolPathAnswer;
+begin
+  // Dasselbe Format wie der Server liefert: Weg uA → uB über uses.
+  Service := CreateUsesPathService;
   try
     Args := TJSONArray.Create;
     try

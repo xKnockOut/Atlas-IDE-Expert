@@ -107,83 +107,101 @@ begin
   end;
 end;
 
+/// <summary>Anfang des Namens der aufgerufenen Routine ACallee; False bei anderer Knotenart.</summary>
+function CalleeOffset(ACallee: TSyntaxNode; out AOffset: Integer): Boolean;
+begin
+  Result := True;
+  if ACallee.Kind = TSyntaxKind.Identifier then
+  begin
+    AOffset := ACallee.StartOffset;
+  end
+  else if ACallee.Kind = TSyntaxKind.MemberAccess then
+  begin
+    AOffset := ACallee.EndOffset - Length(ACallee.Name);
+  end
+  else
+  begin
+    AOffset := -1;
+    Result := False;
+  end;
+end;
+
+/// <summary>Art des Parameters AArgument eines aufgelösten Kandidaten; Unknown, wenn nicht sicher.</summary>
+function SymbolMode(const ASymbol: TResolvedSymbol; AArgument: Integer): TFlowArgumentMode;
+var
+  mModes: TArray<string>;
+begin
+  if not ASymbol.Found then
+  begin
+    Result := TFlowArgumentMode.Unknown;
+  end
+  else if ASymbol.IsType then
+  begin
+    Result := TFlowArgumentMode.Value;
+  end
+  // Weitere Varianten derselben Datei: nicht sicher, welche gemeint ist.
+  else if (Length(ASymbol.Overloads) > 0) or (Length(ASymbol.VariantParams) > 1) or
+    not TResolvedSignatures.SignatureModes(ASymbol.Signature, mModes) or (AArgument >= Length(mModes)) then
+  begin
+    Result := TFlowArgumentMode.Unknown;
+  end
+  else if mModes[AArgument] = 'out' then
+  begin
+    Result := TFlowArgumentMode.Output;
+  end
+  else if mModes[AArgument] = 'var' then
+  begin
+    Result := TFlowArgumentMode.Reference;
+  end
+  else
+  begin
+    Result := TFlowArgumentMode.Value;
+  end;
+end;
+
+/// <summary>Gemeinsame Art aller gleich guten Kandidaten; Unknown, wenn sie nicht übereinstimmen.</summary>
+function CommonMode(const ASymbols: TArray<TResolvedSymbol>; AArgument: Integer): TFlowArgumentMode;
+var
+  mIndex: Integer;
+  mFound: TFlowArgumentMode;
+begin
+  Result := TFlowArgumentMode.Unknown;
+  for mIndex := 0 to High(ASymbols) do
+  begin
+    mFound := SymbolMode(ASymbols[mIndex], AArgument);
+    if (mFound = TFlowArgumentMode.Unknown) or ((mIndex > 0) and (mFound <> Result)) then
+    begin
+      Exit(TFlowArgumentMode.Unknown);
+    end;
+    Result := mFound;
+  end;
+end;
+
 class function TResolvedSignatures.Mode(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
 var
-  Callee: TSyntaxNode;
-  Offset, Token, Index: Integer;
-  Symbols: TArray<TResolvedSymbol>;
-  Symbol: TResolvedSymbol;
-  Modes: TArray<string>;
-  Found: TFlowArgumentMode;
+  mCallee: TSyntaxNode;
+  mOffset, mToken: Integer;
 begin
   Result := TFlowArgumentMode.Unknown;
   if (ACall = nil) or (ACall.ChildCount = 0) or (ATree = nil) then
   begin
     Exit;
   end;
-  Callee := ACall[0];
-  if (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, ValueCasts) then
+  mCallee := ACall[0];
+  if (mCallee.Kind = TSyntaxKind.Identifier) and MatchText(mCallee.Name, ValueCasts) then
   begin
     Exit(TFlowArgumentMode.Value);
   end;
-  if AResolver = nil then
+  if (AResolver = nil) or not CalleeOffset(mCallee, mOffset) then
   begin
     Exit;
   end;
-  if Callee.Kind = TSyntaxKind.Identifier then
+  mToken := TokenStartingAt(ATree.Tokens, mOffset);
+  if (mToken >= 0) and SameText(ATree.Tokens[mToken].Text, mCallee.Name) then
   begin
-    Offset := Callee.StartOffset;
-  end
-  else if Callee.Kind = TSyntaxKind.MemberAccess then
-  begin
-    Offset := Callee.EndOffset - Length(Callee.Name);
-  end
-  else
-  begin
-    Exit;
-  end;
-  Token := TokenStartingAt(ATree.Tokens, Offset);
-  if (Token < 0) or not SameText(ATree.Tokens[Token].Text, Callee.Name) then
-  begin
-    Exit;
-  end;
-  // Alle gleich guten Kandidaten: Ist die Überladung nicht eindeutig, zählt die Art nur, wenn alle übereinstimmen.
-  Symbols := AResolver.ResolveAll(ATree, AFileName, ATree.Tokens[Token].StartPos);
-  for Index := 0 to High(Symbols) do
-  begin
-    Symbol := Symbols[Index];
-    if not Symbol.Found then
-    begin
-      Exit(TFlowArgumentMode.Unknown);
-    end;
-    if Symbol.IsType then
-    begin
-      Found := TFlowArgumentMode.Value;
-    end
-    // Weitere Varianten derselben Datei: nicht sicher, welche gemeint ist.
-    else if (Length(Symbol.Overloads) > 0) or (Length(Symbol.VariantParams) > 1) or
-      not SignatureModes(Symbol.Signature, Modes) or (AArgument >= Length(Modes)) then
-    begin
-      Exit(TFlowArgumentMode.Unknown);
-    end
-    else if Modes[AArgument] = 'out' then
-    begin
-      Found := TFlowArgumentMode.Output;
-    end
-    else if Modes[AArgument] = 'var' then
-    begin
-      Found := TFlowArgumentMode.Reference;
-    end
-    else
-    begin
-      Found := TFlowArgumentMode.Value;
-    end;
-    if (Index > 0) and (Found <> Result) then
-    begin
-      Exit(TFlowArgumentMode.Unknown);
-    end;
-    Result := Found;
+    // Alle gleich guten Kandidaten: Ist die Überladung nicht eindeutig, zählt die Art nur, wenn alle übereinstimmen.
+    Result := CommonMode(AResolver.ResolveAll(ATree, AFileName, ATree.Tokens[mToken].StartPos), AArgument);
   end;
 end;
 

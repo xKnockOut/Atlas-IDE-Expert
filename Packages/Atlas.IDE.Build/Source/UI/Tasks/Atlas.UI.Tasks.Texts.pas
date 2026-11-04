@@ -141,7 +141,7 @@ begin
   begin
     Exit(TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksNever));
   end;
-  Time := FormatDateTime('hh:nn', ALast.FinishedAt);
+  Time := FormatDateTime('hh:nn', ALast.FinishedAt, FormatSettings);
   if ALast.Outcome <> TAtlasTaskOutcome.Finished then
   begin
     Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksNotRun, [Time]);
