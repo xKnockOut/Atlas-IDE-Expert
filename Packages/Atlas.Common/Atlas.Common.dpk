@@ -479,6 +479,7 @@ contains
   Atlas.Common.Rules.Builtin.FreeFields in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FreeFields.pas',
   Atlas.Common.Rules.Builtin.TrivialAccessor in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TrivialAccessor.pas',
   Atlas.Common.Rules.Builtin.Expressions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas',
+  Atlas.Common.Rules.Builtin.Expressions.Tokens in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tokens.pas',
   Atlas.Common.Rules.Builtin.Statements in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas',
   Atlas.Common.Rules.Builtin.TypeChecks in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.pas',
   Atlas.Common.Rules.Builtin.TypeKinds in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas',
