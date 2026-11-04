@@ -283,8 +283,8 @@ begin
     FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mCell.Left, mText,
       TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, 0.35, 0.12, [fsUnderline]));
     FLensTopRow := Context.EditView.TopRow;
-    TAtlasIdeElements.Painted(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName, FLine, '', FLensRect,
-      FLensTopRow, Rect.Height);
+    TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName,
+      FLine, ''), FLensRect, FLensTopRow, Rect.Height);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

@@ -262,8 +262,9 @@ begin
     RestoreDC(DC, Saved);
   end;
   TAtlasLineTail.Finish(Self, Key, X + Size.cx);
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, Context.LogicalLineNum - 1, AText,
-    TRect.Create(X, Top, X + Size.cx, Top + Size.cy), Context.EditView.TopRow, Rect.Height);
+  TAtlasIdeElements.Painted(
+    TAtlasIdeElements.Target(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, Context.LogicalLineNum - 1,
+    AText), TRect.Create(X, Top, X + Size.cx, Top + Size.cy), Context.EditView.TopRow, Rect.Height);
 end;
 
 /// <summary>Zeichenbereich [AFrom, ATill) des Problems in der Zeile ALine; leer wird ein Zeichen, am Zeilenende

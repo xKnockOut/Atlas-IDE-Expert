@@ -435,8 +435,8 @@ begin
     RestoreDC(DC, Saved);
   end;
   TAtlasLineTail.Finish(Self, Key, Mark.Right);
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.SelectionMatches, Context.FileName, FState.SelectionLine, AText, Mark,
-    Context.EditView.TopRow, Rect.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.SelectionMatches, Context.FileName,
+    FState.SelectionLine, AText), Mark, Context.EditView.TopRow, Rect.Height);
 end;
 
 procedure TAtlasIdeSelectionMatches.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

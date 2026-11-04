@@ -653,8 +653,8 @@ begin
     RestoreDC(DC, Saved);
   end;
   TAtlasLineTail.Finish(Self, Key, Mark.Right);
-  TAtlasIdeElements.Painted(TAtlasDrawnElement.ExitPoints, Context.FileName, FSet.RoutineLine, AText, Mark,
-    Context.EditView.TopRow, Rect.Height);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.ExitPoints, Context.FileName,
+    FSet.RoutineLine, AText), Mark, Context.EditView.TopRow, Rect.Height);
 end;
 
 procedure TAtlasIdeExitPoints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
