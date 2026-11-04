@@ -76,7 +76,8 @@ var
   Edit: TTextEdit;
 begin
   Tokens := TPascalLexer.Tokenize(AText);
-  if TChangeSignature.CallEdit(AText, Tokens, TokenOf(Tokens, AName, AOccurrence), AOld, AChanges, nil, Edit) then
+  if TChangeSignature.CallEdit(AText, Tokens, TokenOf(Tokens, AName, AOccurrence),
+    TCallChange.Create(AOld, AChanges, nil), Edit) then
   begin
     Result := TChangeSignature.ApplyEdits(AText, [Edit]);
   end

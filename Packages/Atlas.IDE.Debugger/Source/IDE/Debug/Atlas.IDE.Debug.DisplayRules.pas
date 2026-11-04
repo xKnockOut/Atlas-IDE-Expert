@@ -102,6 +102,7 @@ type
 implementation
 
 uses
+  System.Types,
   System.Generics.Collections,
   Winapi.Windows,
   System.JSON,
@@ -221,7 +222,7 @@ begin
   Result := nil;
   try
     Result := TAtlasIdeViewerUpdater.Create(TAtlasViewerGroup.DisplayRules, DisplaySource(), Expression, TypeName,
-      EvalResult, SuggestedLeft, SuggestedTop);
+      EvalResult, Point(SuggestedLeft, SuggestedTop));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);

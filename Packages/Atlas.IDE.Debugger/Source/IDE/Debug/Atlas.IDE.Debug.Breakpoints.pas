@@ -144,6 +144,22 @@ begin
   end;
 end;
 
+/// <summary>ABreakpoint entfernen; schon vom Benutzer gelöscht ist kein Fehler.</summary>
+procedure RemoveQuietly(const AServices: IOTADebuggerServices; const ABreakpoint: IOTABreakpoint);
+begin
+  if ABreakpoint = nil then
+  begin
+    Exit;
+  end;
+  try
+    AServices.RemoveBreakpoint(ABreakpoint);
+  except
+    // Schon vom Benutzer gelöscht: nichts mehr zu tun.
+    on Exception do
+      ;
+  end;
+end;
+
 class procedure TAtlasIdeBreakpoints.RemoveAll(var ABreakpoints: TArray<IOTABreakpoint>);
 var
   Services: IOTADebuggerServices;
@@ -155,14 +171,7 @@ begin
     begin
       for Breakpoint in ABreakpoints do
       begin
-        if Breakpoint <> nil then
-          try
-            Services.RemoveBreakpoint(Breakpoint);
-          except
-            // Schon vom Benutzer gelöscht: nichts mehr zu tun.
-            on Exception do
-              ;
-          end;
+        RemoveQuietly(Services, Breakpoint);
       end;
     end;
   finally

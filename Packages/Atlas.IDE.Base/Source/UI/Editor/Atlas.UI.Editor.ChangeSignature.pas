@@ -42,8 +42,14 @@ type
     FOk: TButton;
     FCancel: TButton;
     FUpdating: Boolean;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-    function AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer; AControl: TWinControl): Integer;
+    /// <summary>Knöpfe unten, darüber Hinweise, Fehler und Vorschau.</summary>
+    procedure CreateBottom;
+    /// <summary>Wahl für neue Parameter (Überladung oder alle Aufrufer).</summary>
+    procedure CreateOptions;
+    /// <summary>Felder der gewählten Zeile.</summary>
+    procedure CreateFields;
+    /// <summary>Knöpfe rechts neben der Liste.</summary>
+    procedure CreateSide;
     function Selected: Integer;
     procedure FillList(ASelect: Integer);
     procedure ShowRow;
@@ -75,15 +81,102 @@ const
   DialogWidth = 640;
   DialogHeight = 520;
 
+/// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite (schon skaliert).
+/// </summary>
+function AddPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
+begin
+  Result := TPanel.Create(AParent);
+  Result.Parent := AParent;
+  Result.Align := AAlign;
+  if AAlign in [alLeft, alRight] then
+  begin
+    Result.Width := ASize;
+  end
+  else
+  begin
+    Result.Height := ASize;
+  end;
+  Result.BevelOuter := bvNone;
+end;
+
+/// <summary>Mehrzeilige Beschriftung unten in AForm mit den Rändern Gap und oben ATopMargin.</summary>
+function AddNoteLabel(AForm: TForm; ATopMargin: Integer): TLabel;
+begin
+  Result := TLabel.Create(AForm);
+  Result.Parent := AForm;
+  Result.Align := alBottom;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(Gap, ATopMargin, Gap, Gap div 2);
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+end;
+
+function AddButton(ADialog: TAtlasChangeSignatureDialog; AParent: TWinControl; const ACaption: string;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(ADialog);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  Result.Width := ADialog.ScaleValue(100);
+  Result.Top := ADialog.ScaleValue(Gap);
+  Result.Height := ADialog.ScaleValue(28);
+  Result.Anchors := [akTop, akRight];
+end;
+
+/// <summary>Beschriftung ACaption und AControl in einer Zeile ab ATop; liefert den Beginn der nächsten Zeile.
+/// </summary>
+function AddLabeled(ADialog: TAtlasChangeSignatureDialog; AParent: TWinControl; const ACaption: string;
+  ATop: Integer; AControl: TWinControl): Integer;
+var
+  mCaption: TLabel;
+begin
+  mCaption := TLabel.Create(ADialog);
+  mCaption.Parent := AParent;
+  mCaption.Caption := ACaption;
+  mCaption.SetBounds(ADialog.ScaleValue(Gap), ATop + ADialog.ScaleValue(3), ADialog.ScaleValue(190),
+    ADialog.ScaleValue(20));
+  mCaption.FocusControl := AControl;
+  AControl.Parent := AParent;
+  AControl.SetBounds(ADialog.ScaleValue(200), ATop, ADialog.ScaleValue(DialogWidth - 200 - Gap),
+    ADialog.ScaleValue(23));
+  AControl.Anchors := [akLeft, akTop, akRight];
+  Result := ATop + ADialog.ScaleValue(28);
+end;
+
+/// <summary>Spalte ACaption mit der Breite AWidth (schon skaliert).</summary>
+procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
+var
+  mColumn: TListColumn;
+begin
+  mColumn := AList.Columns.Add;
+  mColumn.Caption := ACaption;
+  mColumn.Width := AWidth;
+end;
+
+/// <summary>Hinweise zum Modell: festes Ereignis und Warnungen des Servers, je eine Zeile.</summary>
+function NotesOf(AModel: TAtlasSignatureModel): string;
+var
+  mWarning: string;
+begin
+  Result := '';
+  if AModel.EventFixed then
+  begin
+    Result := TAtlasStrings.Fmt(TAtlasTextId.SigEventFixed, [AModel.BoundEvent]);
+  end;
+  for mWarning in AModel.Warnings do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + sLineBreak;
+    end;
+    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [mWarning]);
+  end;
+end;
+
 { TAtlasChangeSignatureDialog }
 
 constructor TAtlasChangeSignatureDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasSignatureModel);
-var
-  Bottom, Right, Fields, Options: TPanel;
-  Column: TListColumn;
-  mTop: Integer;
-  Notes: string;
-  Warning: string;
 begin
   inherited CreateNew(AOwner);
   FModel := AModel;
@@ -95,130 +188,11 @@ begin
   Font.Size := 9;
   ClientWidth := ScaleValue(DialogWidth);
   ClientHeight := ScaleValue(DialogHeight);
-
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.Height := ScaleValue(44);
-  Bottom.BevelOuter := bvNone;
-  FCancel := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.SigCancel), nil);
-  FCancel.Cancel := True;
-  FCancel.ModalResult := mrCancel;
-  FCancel.Left := Bottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
-  FOk := AddButton(Bottom, TAtlasStrings.Text(TAtlasTextId.SigPreviewButton), OkClick);
-  FOk.Default := True;
-  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
-
-  // Hinweise, Fehler und Vorschau über den Knöpfen.
-  FNotes := TLabel.Create(Self);
-  FNotes.Parent := Self;
-  FNotes.Align := alBottom;
-  FNotes.AlignWithMargins := True;
-  FNotes.Margins.SetBounds(Gap, 0, Gap, Gap div 2);
-  FNotes.WordWrap := True;
-  FNotes.ShowAccelChar := False;
-  Notes := '';
-  if AModel.EventFixed then
-  begin
-    Notes := TAtlasStrings.Fmt(TAtlasTextId.SigEventFixed, [AModel.BoundEvent]);
-  end;
-  for Warning in AModel.Warnings do
-  begin
-    if Notes <> '' then
-    begin
-      Notes := Notes + sLineBreak;
-    end;
-    Notes := Notes + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [Warning]);
-  end;
-  FNotes.Caption := Notes;
-  FError := TLabel.Create(Self);
-  FError.Parent := Self;
-  FError.Align := alBottom;
-  FError.AlignWithMargins := True;
-  FError.Margins.SetBounds(Gap, 0, Gap, Gap div 2);
-  FError.WordWrap := True;
-  FError.ShowAccelChar := False;
-  FError.Font.Color := clRed;
-  FPreview := TLabel.Create(Self);
-  FPreview.Parent := Self;
-  FPreview.Align := alBottom;
-  FPreview.AlignWithMargins := True;
-  FPreview.Margins.SetBounds(Gap, Gap div 2, Gap, Gap div 2);
-  FPreview.WordWrap := True;
-  FPreview.ShowAccelChar := False;
-  FPreview.Font.Name := 'Consolas';
-
-  Options := TPanel.Create(Self);
-  Options.Parent := Self;
-  Options.Align := alBottom;
-  Options.Height := ScaleValue(72);
-  Options.BevelOuter := bvNone;
-  FOverload := TRadioButton.Create(Self);
-  FOverload.Parent := Options;
-  FOverload.SetBounds(ScaleValue(Gap), ScaleValue(4), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
-  FOverload.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeOverload);
-  FOverload.OnClick := ModeClick;
-  FCallers := TRadioButton.Create(Self);
-  FCallers.Parent := Options;
-  FCallers.SetBounds(ScaleValue(Gap), ScaleValue(26), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
-  FCallers.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeCallers);
-  FCallers.OnClick := ModeClick;
-  FVirtual := TCheckBox.Create(Self);
-  FVirtual.Parent := Options;
-  FVirtual.SetBounds(ScaleValue(Gap + 16), ScaleValue(48), ScaleValue(DialogWidth - 2 * Gap - 16), ScaleValue(20));
-  FVirtual.Caption := TAtlasStrings.Text(TAtlasTextId.SigVirtual);
-  FVirtual.Checked := AModel.VirtualOverload;
-  FVirtual.OnClick := ModeClick;
-  if not AModel.OverloadPossible then
-  begin
-    FOverload.Enabled := False;
-    FOverload.Caption := FOverload.Caption + ' – ' + TAtlasStrings.Text(TAtlasTextId.SigModeForced);
-  end;
-  FOverload.Checked := AModel.UseOverload;
-  FCallers.Checked := not AModel.UseOverload;
-
-  // Felder der gewählten Zeile.
-  Fields := TPanel.Create(Self);
-  Fields.Parent := Self;
-  Fields.Align := alBottom;
-  Fields.Height := ScaleValue(118);
-  Fields.BevelOuter := bvNone;
-  FName := TEdit.Create(Self);
-  FType := TEdit.Create(Self);
-  FModifier := TComboBox.Create(Self);
-  FValue := TEdit.Create(Self);
-  mTop := ScaleValue(4);
-  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldName), mTop, FName);
-  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldType), mTop, FType);
-  mTop := AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldModifier), mTop, FModifier);
-  AddLabeled(Fields, TAtlasStrings.Text(TAtlasTextId.SigFieldValue), mTop, FValue);
-  FModifier.Style := csDropDownList;
-  FName.OnChange := FieldChange;
-  FType.OnChange := FieldChange;
-  FModifier.OnChange := FieldChange;
-  FValue.OnChange := FieldChange;
-
-  // Knöpfe rechts neben der Liste.
-  Right := TPanel.Create(Self);
-  Right.Parent := Self;
-  Right.Align := alRight;
-  Right.Width := ScaleValue(120);
-  Right.BevelOuter := bvNone;
-  FAdd := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.SigAdd), AddClick);
-  FRemove := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.SigRemove), RemoveClick);
-  FUp := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.SigUp), UpClick);
-  FDown := AddButton(Right, TAtlasStrings.Text(TAtlasTextId.SigDown), DownClick);
-  FAdd.Top := ScaleValue(Gap);
-  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
-  FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(Gap * 2);
-  FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
-  for mTop := 0 to Right.ControlCount - 1 do
-  begin
-    Right.Controls[mTop].Left := ScaleValue(Gap);
-    Right.Controls[mTop].Width := Right.Width - ScaleValue(2 * Gap);
-    Right.Controls[mTop].Anchors := [akLeft, akTop];
-  end;
-
+  // Reihenfolge zählt: Was zuerst unten ausgerichtet wird, steht zuunterst.
+  CreateBottom;
+  CreateOptions;
+  CreateFields;
+  CreateSide;
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
@@ -229,48 +203,105 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SigColName);
-  Column.Width := ScaleValue(130);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SigColType);
-  Column.Width := ScaleValue(140);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SigColModifier);
-  Column.Width := ScaleValue(80);
-  Column := FList.Columns.Add;
-  Column.Caption := TAtlasStrings.Text(TAtlasTextId.SigColValue);
-  Column.Width := ScaleValue(140);
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColName), ScaleValue(130));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColType), ScaleValue(140));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColModifier), ScaleValue(80));
+  AddColumn(FList, TAtlasStrings.Text(TAtlasTextId.SigColValue), ScaleValue(140));
   ActiveControl := FList;
 end;
 
-function TAtlasChangeSignatureDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
+procedure TAtlasChangeSignatureDialog.CreateBottom;
+var
+  mBottom: TPanel;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Result.Width := ScaleValue(100);
-  Result.Top := ScaleValue(Gap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
+  mBottom := AddPanel(Self, alBottom, ScaleValue(44));
+  FCancel := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigCancel), nil);
+  FCancel.Cancel := True;
+  FCancel.ModalResult := mrCancel;
+  FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(Gap);
+  FOk := AddButton(Self, mBottom, TAtlasStrings.Text(TAtlasTextId.SigPreviewButton), OkClick);
+  FOk.Default := True;
+  FOk.Left := FCancel.Left - FOk.Width - ScaleValue(Gap);
+  FNotes := AddNoteLabel(Self, 0);
+  FNotes.Caption := NotesOf(FModel);
+  FError := AddNoteLabel(Self, 0);
+  FError.Font.Color := clRed;
+  FPreview := AddNoteLabel(Self, Gap div 2);
+  FPreview.Font.Name := 'Consolas';
 end;
 
-function TAtlasChangeSignatureDialog.AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer;
-  AControl: TWinControl): Integer;
+procedure TAtlasChangeSignatureDialog.CreateOptions;
 var
-  mCaption: TLabel;
+  mOptions: TPanel;
 begin
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := AParent;
-  mCaption.Caption := ACaption;
-  mCaption.SetBounds(ScaleValue(Gap), ATop + ScaleValue(3), ScaleValue(190), ScaleValue(20));
-  mCaption.FocusControl := AControl;
-  AControl.Parent := AParent;
-  AControl.SetBounds(ScaleValue(200), ATop, ScaleValue(DialogWidth - 200 - Gap), ScaleValue(23));
-  AControl.Anchors := [akLeft, akTop, akRight];
-  Result := ATop + ScaleValue(28);
+  mOptions := AddPanel(Self, alBottom, ScaleValue(72));
+  FOverload := TRadioButton.Create(Self);
+  FOverload.Parent := mOptions;
+  FOverload.SetBounds(ScaleValue(Gap), ScaleValue(4), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
+  FOverload.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeOverload);
+  FOverload.OnClick := ModeClick;
+  FCallers := TRadioButton.Create(Self);
+  FCallers.Parent := mOptions;
+  FCallers.SetBounds(ScaleValue(Gap), ScaleValue(26), ScaleValue(DialogWidth - 2 * Gap), ScaleValue(20));
+  FCallers.Caption := TAtlasStrings.Text(TAtlasTextId.SigModeCallers);
+  FCallers.OnClick := ModeClick;
+  FVirtual := TCheckBox.Create(Self);
+  FVirtual.Parent := mOptions;
+  FVirtual.SetBounds(ScaleValue(Gap + 16), ScaleValue(48), ScaleValue(DialogWidth - 2 * Gap - 16), ScaleValue(20));
+  FVirtual.Caption := TAtlasStrings.Text(TAtlasTextId.SigVirtual);
+  FVirtual.Checked := FModel.VirtualOverload;
+  FVirtual.OnClick := ModeClick;
+  if not FModel.OverloadPossible then
+  begin
+    FOverload.Enabled := False;
+    FOverload.Caption := FOverload.Caption + ' – ' + TAtlasStrings.Text(TAtlasTextId.SigModeForced);
+  end;
+  FOverload.Checked := FModel.UseOverload;
+  FCallers.Checked := not FModel.UseOverload;
+end;
+
+procedure TAtlasChangeSignatureDialog.CreateFields;
+var
+  mFields: TPanel;
+  mTop: Integer;
+begin
+  mFields := AddPanel(Self, alBottom, ScaleValue(118));
+  FName := TEdit.Create(Self);
+  FType := TEdit.Create(Self);
+  FModifier := TComboBox.Create(Self);
+  FValue := TEdit.Create(Self);
+  mTop := ScaleValue(4);
+  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldName), mTop, FName);
+  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldType), mTop, FType);
+  mTop := AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldModifier), mTop, FModifier);
+  AddLabeled(Self, mFields, TAtlasStrings.Text(TAtlasTextId.SigFieldValue), mTop, FValue);
+  FModifier.Style := csDropDownList;
+  FName.OnChange := FieldChange;
+  FType.OnChange := FieldChange;
+  FModifier.OnChange := FieldChange;
+  FValue.OnChange := FieldChange;
+end;
+
+procedure TAtlasChangeSignatureDialog.CreateSide;
+var
+  mRight: TPanel;
+  mIndex: Integer;
+begin
+  mRight := AddPanel(Self, alRight, ScaleValue(120));
+  FAdd := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigAdd), AddClick);
+  FRemove := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigRemove), RemoveClick);
+  FUp := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigUp), UpClick);
+  FDown := AddButton(Self, mRight, TAtlasStrings.Text(TAtlasTextId.SigDown), DownClick);
+  FAdd.Top := ScaleValue(Gap);
+  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
+  FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(Gap * 2);
+  FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
+  for mIndex := 0 to mRight.ControlCount - 1 do
+  begin
+    mRight.Controls[mIndex].Left := ScaleValue(Gap);
+    mRight.Controls[mIndex].Width := mRight.Width - ScaleValue(2 * Gap);
+    mRight.Controls[mIndex].Anchors := [akLeft, akTop];
+  end;
 end;
 
 procedure TAtlasChangeSignatureDialog.DoShow;

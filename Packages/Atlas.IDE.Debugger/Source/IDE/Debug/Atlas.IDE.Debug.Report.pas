@@ -72,14 +72,74 @@ begin
   Result.NoLocation := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteNoLocation);
 end;
 
+/// <summary>Aufrufstapel des Halts mit eigenem Code markiert, dazu die Routine des obersten Rahmens.</summary>
+procedure AddFrames(var AData: TAtlasDebugNoteData; const AThread: IOTAThread);
+var
+  mFrames: TAtlasDebugFrames;
+begin
+  if TAtlasIdeDebugSession.ReadStack(AThread, TAtlasDebugNote.MaxFrames, mFrames) <> TAtlasDebugStackRead.Ready then
+  begin
+    Exit;
+  end;
+  TAtlasIdeDebugSources.MarkFrames(mFrames);
+  AData.Frames := mFrames;
+  if Length(mFrames) > 0 then
+  begin
+    AData.Routine := TAtlasDebugCallStack.RoutineOf(mFrames[0].Header);
+  end;
+end;
+
+/// <summary>Ausschnitt von der Platte; ohne Datei bleibt der Ort ohne Code.</summary>
+procedure AddSource(var AData: TAtlasDebugNoteData);
+var
+  mFile: string;
+begin
+  if AData.FileName = '' then
+  begin
+    Exit;
+  end;
+  mFile := TAtlasIdeDebugSources.Resolve(AData.FileName);
+  if mFile = '' then
+  begin
+    Exit;
+  end;
+  try
+    // Kodierung wie die IDE: BOM, sonst UTF-8, sonst ANSI des Systems.
+    AData.Source := TTextLines.SplitLines(TAtlasTextFile.Decode(TFile.ReadAllBytes(mFile)).Text);
+    AData.SourceFirstLine := 1;
+  except
+    on E: EInOutError do
+      AData.Source := nil;
+    on E: EFileStreamError do
+      AData.Source := nil;
+    on E: EAtlasTextFileError do
+      AData.Source := nil;
+  end;
+end;
+
+/// <summary>Neueste Exception der Sitzung.</summary>
+procedure AddException(var AData: TAtlasDebugNoteData);
+var
+  mHistory: TAtlasDebugExceptionHistory;
+  mNewest: TArray<Integer>;
+begin
+  mHistory := TAtlasIdeDebugExceptions.History;
+  if mHistory = nil then
+  begin
+    Exit;
+  end;
+  mNewest := mHistory.Filter('', '');
+  if Length(mNewest) > 0 then
+  begin
+    AData.HasException := True;
+    AData.Exception := mHistory[mNewest[0]];
+  end;
+end;
+
 function TAtlasIdeDebugReport.DebugNote(out AMarkdown, AFileName: string): Boolean;
 var
   mThread: IOTAThread;
   mData: TAtlasDebugNoteData;
-  mFrames: TAtlasDebugFrames;
-  mHistory: TAtlasDebugExceptionHistory;
-  mNewest: TArray<Integer>;
-  mFile: string;
 begin
   AMarkdown := '';
   AFileName := '';
@@ -94,47 +154,13 @@ begin
   mData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
   mData.Time := Now;
   mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
-    TAtlasIdeDebugSession.ThreadName(mThread), '', 0, '').ThreadText(
+    TAtlasIdeDebugSession.ThreadName(mThread)).ThreadText(
     TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread));
   mData.FileName := mThread.CurrentFile;
   mData.Line := Integer(mThread.CurrentLine);
-  if TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugNote.MaxFrames, mFrames) = TAtlasDebugStackRead.Ready then
-  begin
-    TAtlasIdeDebugSources.MarkFrames(mFrames);
-    mData.Frames := mFrames;
-    if Length(mFrames) > 0 then
-    begin
-      mData.Routine := TAtlasDebugCallStack.RoutineOf(mFrames[0].Header);
-    end;
-  end;
-  // Ausschnitt von der Platte; ohne Datei bleibt der Ort ohne Code.
-  if mData.FileName <> '' then
-  begin
-    mFile := TAtlasIdeDebugSources.Resolve(mData.FileName);
-    if mFile <> '' then
-      try
-        // Kodierung wie die IDE: BOM, sonst UTF-8, sonst ANSI des Systems.
-        mData.Source := TTextLines.SplitLines(TAtlasTextFile.Decode(TFile.ReadAllBytes(mFile)).Text);
-        mData.SourceFirstLine := 1;
-      except
-        on E: EInOutError do
-          mData.Source := nil;
-        on E: EFileStreamError do
-          mData.Source := nil;
-        on E: EAtlasTextFileError do
-          mData.Source := nil;
-      end;
-  end;
-  mHistory := TAtlasIdeDebugExceptions.History;
-  if mHistory <> nil then
-  begin
-    mNewest := mHistory.Filter('', '');
-    if Length(mNewest) > 0 then
-    begin
-      mData.HasException := True;
-      mData.Exception := mHistory[mNewest[0]];
-    end;
-  end;
+  AddFrames(mData, mThread);
+  AddSource(mData);
+  AddException(mData);
   AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
   AFileName := TAtlasDebugNote.FileName(mData.Time);
   Result := True;

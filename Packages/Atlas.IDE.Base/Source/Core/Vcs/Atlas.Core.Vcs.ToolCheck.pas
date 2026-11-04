@@ -69,69 +69,62 @@ begin
   end;
 end;
 
+/// <summary>Erste nicht leere Zeile, getrimmt; '' ohne.</summary>
+function FirstLine(const AOutput: string): string;
+var
+  mLine: string;
+begin
+  for mLine in AOutput.Replace(#13, '').Split([#10]) do
+  begin
+    if Trim(mLine) <> '' then
+    begin
+      Exit(Trim(mLine));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Nur die ersten drei Zahlen ("2.47.1.windows.1" → "2.47.1"); '' ohne Ziffer am Anfang.</summary>
+function VersionNumber(const AText: string): string;
+var
+  mIndex, mDots: Integer;
+begin
+  Result := '';
+  if (AText = '') or not CharInSet(AText[1], ['0'..'9']) then
+  begin
+    Exit;
+  end;
+  mDots := 0;
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and (mDots < 3) and CharInSet(AText[mIndex], ['0'..'9', '.']) do
+  begin
+    if AText[mIndex] = '.' then
+    begin
+      Inc(mDots);
+    end;
+    Inc(mIndex);
+  end;
+  // Der dritte Punkt gehört nicht dazu.
+  Result := Copy(AText, 1, mIndex - 1).TrimRight(['.']);
+end;
+
 class function TAtlasVcsToolChecks.ParseVersion(AKind: TAtlasVcsKind; const AOutput: string): string;
 const
   cGitPrefix = 'git version ';
 var
   mLine, mNumber: string;
-  mLines: TArray<string>;
-  mIndex, mDots: Integer;
 begin
   Result := '';
-  mLines := AOutput.Replace(#13, '').Split([#10]);
-  mLine := '';
-  for mIndex := 0 to High(mLines) do
+  mLine := FirstLine(AOutput);
+  mNumber := '';
+  if (AKind = TAtlasVcsKind.Git) and mLine.StartsWith(cGitPrefix, True) then
   begin
-    if Trim(mLines[mIndex]) <> '' then
-    begin
-      mLine := Trim(mLines[mIndex]);
-      Break;
-    end;
-  end;
-  if mLine = '' then
-  begin
-    Exit;
-  end;
-  if AKind = TAtlasVcsKind.Git then
-  begin
-    if not mLine.StartsWith(cGitPrefix, True) then
-    begin
-      Exit;
-    end;
-    mNumber := Trim(Copy(mLine, Length(cGitPrefix) + 1, MaxInt));
+    mNumber := VersionNumber(Trim(Copy(mLine, Length(cGitPrefix) + 1, MaxInt)));
   end
   else if AKind = TAtlasVcsKind.Svn then
   begin
-    mNumber := mLine;
-  end
-  else
-  begin
-    Exit;
+    mNumber := VersionNumber(mLine);
   end;
-  // Nur die ersten drei Zahlen ("2.47.1.windows.1" → "2.47.1"); ohne Ziffer am Anfang keine Version.
-  if (mNumber = '') or not CharInSet(mNumber[1], ['0'..'9']) then
-  begin
-    Exit;
-  end;
-  mDots := 0;
-  for mIndex := 1 to Length(mNumber) do
-  begin
-    if mNumber[mIndex] = '.' then
-    begin
-      Inc(mDots);
-      if mDots = 3 then
-      begin
-        mNumber := Copy(mNumber, 1, mIndex - 1);
-        Break;
-      end;
-    end
-    else if not CharInSet(mNumber[mIndex], ['0'..'9']) then
-    begin
-      mNumber := Copy(mNumber, 1, mIndex - 1);
-      Break;
-    end;
-  end;
-  mNumber := mNumber.TrimRight(['.']);
   if mNumber = '' then
   begin
     Exit;

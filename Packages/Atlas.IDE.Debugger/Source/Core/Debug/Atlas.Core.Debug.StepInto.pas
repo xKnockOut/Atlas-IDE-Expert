@@ -88,6 +88,13 @@ type
     MaxDigit = 9;
   private
     class function KindOf(const AText: string): TAtlasStepKind; static;
+    /// <summary>Ziele eines Aufrufs aus "targets"; ohne Datei oder Zeile fällt ein Eintrag weg.</summary>
+    class function ReadTargets(AItem: TJSONObject): TArray<TAtlasStepTarget>; static;
+    /// <summary>Ein Aufruf aus einem Eintrag von "calls".</summary>
+    class function ReadCall(AItem: TJSONObject): TAtlasStepCall; static;
+    /// <summary>Das Ziel aus ACall.Targets, dessen Klasse AName heißt.</summary>
+    class function MatchTarget(const ACall: TAtlasStepCall; const AName: string;
+      out ATarget: TAtlasStepTarget): Boolean; static;
     class function RowOf(const AAnswer: TAtlasStepAnswer; ACall: Integer; const ATarget: TAtlasStepTarget;
       AHasTarget: Boolean; const ACanBreak: TAtlasStepCanBreak): TAtlasStepRow; static;
   public
@@ -170,13 +177,57 @@ begin
   end;
 end;
 
+class function TAtlasStepInto.ReadTargets(AItem: TJSONObject): TArray<TAtlasStepTarget>;
+var
+  mTargets: TJSONArray;
+  mTargetItem: TJSONObject;
+  mIndex: Integer;
+  mTarget: TAtlasStepTarget;
+begin
+  Result := nil;
+  if not AItem.TryGetValue<TJSONArray>('targets', mTargets) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mTargets.Count - 1 do
+  begin
+    if mTargets.Items[mIndex] is TJSONObject then
+    begin
+      mTargetItem := TJSONObject(mTargets.Items[mIndex]);
+      mTarget.Container := mTargetItem.GetValue<string>('container', '');
+      mTarget.Name := mTargetItem.GetValue<string>('name', '');
+      mTarget.FileName := mTargetItem.GetValue<string>('file', '');
+      mTarget.Line := mTargetItem.GetValue<Integer>('line', -1);
+      if (mTarget.FileName <> '') and (mTarget.Line >= 0) then
+      begin
+        Result := Result + [mTarget];
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasStepInto.ReadCall(AItem: TJSONObject): TAtlasStepCall;
+begin
+  Result := Default(TAtlasStepCall);
+  Result.Name := AItem.GetValue<string>('name', '');
+  Result.Container := AItem.GetValue<string>('container', '');
+  Result.Kind := KindOf(AItem.GetValue<string>('kind', ''));
+  Result.Text := AItem.GetValue<string>('text', '');
+  Result.Receiver := AItem.GetValue<string>('receiver', '');
+  Result.ReceiverSimple := AItem.GetValue<Boolean>('receiverSimple', False);
+  Result.ReceiverInterface := AItem.GetValue<Boolean>('receiverInterface', False);
+  Result.IsVirtual := AItem.GetValue<Boolean>('virtual', False);
+  Result.DeclFile := AItem.GetValue<string>('declFile', '');
+  Result.DeclLine := AItem.GetValue<Integer>('declLine', -1);
+  Result.Targets := ReadTargets(AItem);
+end;
+
 class function TAtlasStepInto.ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasStepAnswer): Boolean;
 var
-  Root, Item, TargetItem: TJSONObject;
-  Calls, Targets: TJSONArray;
-  Index, TargetIndex: Integer;
+  Root: TJSONObject;
+  Calls: TJSONArray;
+  Index: Integer;
   Call: TAtlasStepCall;
-  Target: TAtlasStepTarget;
 begin
   AAnswer := Default(TAtlasStepAnswer);
   AAnswer.FollowLine := -1;
@@ -202,36 +253,7 @@ begin
     begin
       Continue;
     end;
-    Item := TJSONObject(Calls.Items[Index]);
-    Call := Default(TAtlasStepCall);
-    Call.Name := Item.GetValue<string>('name', '');
-    Call.Container := Item.GetValue<string>('container', '');
-    Call.Kind := KindOf(Item.GetValue<string>('kind', ''));
-    Call.Text := Item.GetValue<string>('text', '');
-    Call.Receiver := Item.GetValue<string>('receiver', '');
-    Call.ReceiverSimple := Item.GetValue<Boolean>('receiverSimple', False);
-    Call.ReceiverInterface := Item.GetValue<Boolean>('receiverInterface', False);
-    Call.IsVirtual := Item.GetValue<Boolean>('virtual', False);
-    Call.DeclFile := Item.GetValue<string>('declFile', '');
-    Call.DeclLine := Item.GetValue<Integer>('declLine', -1);
-    if Item.TryGetValue<TJSONArray>('targets', Targets) then
-    begin
-      for TargetIndex := 0 to Targets.Count - 1 do
-      begin
-        if Targets.Items[TargetIndex] is TJSONObject then
-        begin
-          TargetItem := TJSONObject(Targets.Items[TargetIndex]);
-          Target.Container := TargetItem.GetValue<string>('container', '');
-          Target.Name := TargetItem.GetValue<string>('name', '');
-          Target.FileName := TargetItem.GetValue<string>('file', '');
-          Target.Line := TargetItem.GetValue<Integer>('line', -1);
-          if (Target.FileName <> '') and (Target.Line >= 0) then
-          begin
-            Call.Targets := Call.Targets + [Target];
-          end;
-        end;
-      end;
-    end;
+    Call := ReadCall(TJSONObject(Calls.Items[Index]));
     if Call.Name <> '' then
     begin
       AAnswer.Calls := AAnswer.Calls + [Call];
@@ -290,43 +312,48 @@ begin
   Result := Result + '.ClassName';
 end;
 
+class function TAtlasStepInto.MatchTarget(const ACall: TAtlasStepCall; const AName: string;
+  out ATarget: TAtlasStepTarget): Boolean;
+var
+  mTarget: TAtlasStepTarget;
+begin
+  Result := False;
+  for mTarget in ACall.Targets do
+  begin
+    if SameText(ShortName(mTarget.Container), ShortName(AName)) then
+    begin
+      ATarget := mTarget;
+      Exit(True);
+    end;
+  end;
+end;
+
 class function TAtlasStepInto.PickTarget(const ACall: TAtlasStepCall; const AEvaluate: TAtlasStepEvaluate;
   out ATarget: TAtlasStepTarget): Boolean;
 var
   Depth: Integer;
   Expression, Value, Name: string;
-  Target: TAtlasStepTarget;
+  Done: Boolean;
 begin
   Result := False;
   if not Assigned(AEvaluate) then
   begin
     Exit;
   end;
-  for Depth := 0 to MaxAncestors do
+  Depth := 0;
+  Done := False;
+  while not Done and (Depth <= MaxAncestors) do
   begin
     Expression := ClassExpression(ACall, Depth);
-    if (Expression = '') or not AEvaluate(Expression, Value) then
+    Name := '';
+    if (Expression <> '') and AEvaluate(Expression, Value) then
     begin
-      Exit;
+      Name := Unquote(Value);
     end;
-    Name := Unquote(Value);
-    if Name = '' then
-    begin
-      Exit;
-    end;
-    // Die nächste Klasse mit eigenem Rumpf gewinnt.
-    for Target in ACall.Targets do
-    begin
-      if SameText(ShortName(Target.Container), ShortName(Name)) then
-      begin
-        ATarget := Target;
-        Exit(True);
-      end;
-    end;
-    if SameText(Name, 'TObject') then
-    begin
-      Exit;
-    end;
+    // Die nächste Klasse mit eigenem Rumpf gewinnt; ohne Namen oder bei TObject endet die Suche.
+    Result := (Name <> '') and MatchTarget(ACall, Name, ATarget);
+    Done := Result or (Name = '') or SameText(Name, 'TObject');
+    Inc(Depth);
   end;
 end;
 
