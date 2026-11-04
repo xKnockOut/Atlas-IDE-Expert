@@ -6,7 +6,7 @@
 //   Beobachtern für Änderungen. Default ist die Zentrale des Plugins; Tests
 //   legen eigene mit eigener Uhr an.
 // - Zusammenfassen: Ein Hinweis mit derselben Quelle und demselben Titel
-//   innerhalb von MergeSeconds (10 s) nach dem letzten gleichartigen erhöht
+//   innerhalb von cMergeSeconds (10 s) nach dem letzten gleichartigen erhöht
 //   dessen Zähler („3 × Server neu gestartet“), übernimmt Text, Aktionen und
 //   die höhere Schwere, wird wieder ungelesen und rückt nach oben.
 // - Verhalten je Quelle (notifications.sources): Show (Vorgabe) und Collect
@@ -31,8 +31,6 @@ type
     DefaultMaxEntries = 200;
     MinEntries = 10;
     MaxMaxEntries = 1000;
-    /// <summary>Gleichartige Hinweise innerhalb dieser Sekunden werden zusammengefasst.</summary>
-    MergeSeconds = 10;
   private type
     TEntry = class(TInterfacedObject, IAtlasNotification)
     private
@@ -69,14 +67,6 @@ type
     FMaxEntries: Integer;
     FEnabled: Boolean;
     FClock: TAtlasNotificationClock;
-    class var FDefault: IAtlasNotificationCenter;
-    class var FDefaultObject: TAtlasNotificationCenter;
-    function Now_: TDateTime;
-    function IndexOf(AId: Integer): Integer;
-    function ModeLocked(const ASource: string): TAtlasNotificationMode;
-    procedure Trim_;
-    procedure Notify_;
-    class function Copy_(const AEntry: IAtlasNotification): TEntry; static;
     procedure SetEnabled(AValue: Boolean);
     function GetEnabled: Boolean;
   public
@@ -117,10 +107,6 @@ type
     class function DefaultCenter: TAtlasNotificationCenter; static;
     /// <summary>Gibt die Zentrale des Plugins frei (Entladen).</summary>
     class procedure ReleaseDefault; static;
-    /// <summary>Höhere der beiden Schweren.</summary>
-    class function Worse(ALeft, ARight: TAtlasNotificationSeverity): TAtlasNotificationSeverity; static;
-    /// <summary>"3 × Titel" ab ACount = 2, sonst ATitle.</summary>
-    class function CaptionOf(const ATitle: string; ACount: Integer): string; static;
     /// <summary>Aktion mit Beschriftung.</summary>
     class function Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction; static;
   end;
@@ -130,6 +116,41 @@ implementation
 uses
   System.Math,
   Atlas.Core.Notifications.Sources;
+
+const
+  /// <summary>Gleichartige Hinweise innerhalb dieser Sekunden werden zusammengefasst.</summary>
+  cMergeSeconds = 10;
+
+var
+  /// <summary>Zentrale des Plugins (Default) und dieselbe als Objekt (DefaultCenter).</summary>
+  GDefaultCenter: IAtlasNotificationCenter;
+  GDefaultCenterObject: TAtlasNotificationCenter;
+
+/// <summary>Höhere der beiden Schweren.</summary>
+function Worse(ALeft, ARight: TAtlasNotificationSeverity): TAtlasNotificationSeverity;
+begin
+  if Ord(ARight) > Ord(ALeft) then
+  begin
+    Result := ARight;
+  end
+  else
+  begin
+    Result := ALeft;
+  end;
+end;
+
+/// <summary>"3 × Titel" ab ACount = 2, sonst ATitle.</summary>
+function CaptionOf(const ATitle: string; ACount: Integer): string;
+begin
+  if ACount > 1 then
+  begin
+    Result := IntToStr(ACount) + ' × ' + ATitle;
+  end
+  else
+  begin
+    Result := ATitle;
+  end;
+end;
 
 { TAtlasNotificationCenter.TEntry }
 
@@ -180,7 +201,7 @@ end;
 
 function TAtlasNotificationCenter.TEntry.Caption: string;
 begin
-  Result := TAtlasNotificationCenter.CaptionOf(FTitle, FCount);
+  Result := CaptionOf(FTitle, FCount);
 end;
 
 { TAtlasNotificationCenter }
@@ -213,50 +234,26 @@ end;
 
 class function TAtlasNotificationCenter.Default: IAtlasNotificationCenter;
 begin
-  if FDefault = nil then
+  if GDefaultCenter = nil then
   begin
-    FDefaultObject := TAtlasNotificationCenter.Create;
+    GDefaultCenterObject := TAtlasNotificationCenter.Create;
     // Bis das Plugin sie nach seinen Einstellungen einschaltet, verhält sich alles wie vor #601.
-    FDefaultObject.FEnabled := False;
-    FDefault := FDefaultObject;
+    GDefaultCenterObject.FEnabled := False;
+    GDefaultCenter := GDefaultCenterObject;
   end;
-  Result := FDefault;
+  Result := GDefaultCenter;
 end;
 
 class function TAtlasNotificationCenter.DefaultCenter: TAtlasNotificationCenter;
 begin
   Default;
-  Result := FDefaultObject;
+  Result := GDefaultCenterObject;
 end;
 
 class procedure TAtlasNotificationCenter.ReleaseDefault;
 begin
-  FDefaultObject := nil;
-  FDefault := nil;
-end;
-
-class function TAtlasNotificationCenter.Worse(ALeft, ARight: TAtlasNotificationSeverity): TAtlasNotificationSeverity;
-begin
-  if Ord(ARight) > Ord(ALeft) then
-  begin
-    Result := ARight;
-  end
-  else
-  begin
-    Result := ALeft;
-  end;
-end;
-
-class function TAtlasNotificationCenter.CaptionOf(const ATitle: string; ACount: Integer): string;
-begin
-  if ACount > 1 then
-  begin
-    Result := IntToStr(ACount) + ' × ' + ATitle;
-  end
-  else
-  begin
-    Result := ATitle;
-  end;
+  GDefaultCenterObject := nil;
+  GDefaultCenter := nil;
 end;
 
 class function TAtlasNotificationCenter.Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction;
@@ -265,9 +262,9 @@ begin
   Result.Run := ARun;
 end;
 
-class function TAtlasNotificationCenter.Copy_(const AEntry: IAtlasNotification): TEntry;
+function Copy_(const AEntry: IAtlasNotification): TAtlasNotificationCenter.TEntry;
 begin
-  Result := TEntry.Create;
+  Result := TAtlasNotificationCenter.TEntry.Create;
   Result.FId := AEntry.Id;
   Result.FSource := AEntry.Source;
   Result.FSeverity := AEntry.Severity;
@@ -279,11 +276,11 @@ begin
   Result.FActions := AEntry.Actions;
 end;
 
-function TAtlasNotificationCenter.Now_: TDateTime;
+function ClockNow(const AClock: TAtlasNotificationClock): TDateTime;
 begin
-  if Assigned(FClock) then
+  if Assigned(AClock) then
   begin
-    Result := FClock();
+    Result := AClock();
   end
   else
   begin
@@ -291,13 +288,13 @@ begin
   end;
 end;
 
-function TAtlasNotificationCenter.IndexOf(AId: Integer): Integer;
+function IndexOfId(AItems: TList<IAtlasNotification>; AId: Integer): Integer;
 var
   Index: Integer;
 begin
-  for Index := 0 to FItems.Count - 1 do
+  for Index := 0 to AItems.Count - 1 do
   begin
-    if FItems[Index].Id = AId then
+    if AItems[Index].Id = AId then
     begin
       Exit(Index);
     end;
@@ -305,33 +302,35 @@ begin
   Result := -1;
 end;
 
-function TAtlasNotificationCenter.ModeLocked(const ASource: string): TAtlasNotificationMode;
+function ModeIn(AEnabled: Boolean; AModes: TDictionary<string, TAtlasNotificationMode>;
+  const ASource: string): TAtlasNotificationMode;
 begin
-  if not FEnabled or not FModes.TryGetValue(LowerCase(ASource), Result) then
+  if not AEnabled or not AModes.TryGetValue(LowerCase(ASource), Result) then
   begin
     Result := TAtlasNotificationMode.Show;
   end;
 end;
 
-procedure TAtlasNotificationCenter.Trim_;
+procedure TrimTo(AItems: TList<IAtlasNotification>; AMax: Integer);
 begin
-  while FItems.Count > FMaxEntries do
+  while AItems.Count > AMax do
   begin
-    FItems.Delete(FItems.Count - 1);
+    AItems.Delete(AItems.Count - 1);
   end;
 end;
 
-procedure TAtlasNotificationCenter.Notify_;
+/// <summary>Version erhöhen und die Beobachter von ACenter rufen.</summary>
+procedure NotifyChanged(ACenter: TAtlasNotificationCenter);
 var
   Listeners: TArray<TProc>;
   Listener: TProc;
 begin
-  FLock.Enter;
+  ACenter.FLock.Enter;
   try
-    Inc(FVersion);
-    Listeners := FListeners.Values.ToArray;
+    Inc(ACenter.FVersion);
+    Listeners := ACenter.FListeners.Values.ToArray;
   finally
-    FLock.Leave;
+    ACenter.FLock.Leave;
   end;
   // Außerhalb der Sperre: Beobachter dürfen die Zentrale lesen.
   for Listener in Listeners do
@@ -358,16 +357,16 @@ var
   Entry: TEntry;
   Existing: IAtlasNotification;
 begin
-  Stamp := Now_;
+  Stamp := ClockNow(FClock);
   FLock.Enter;
   try
-    Result := ModeLocked(ASource);
+    Result := ModeIn(FEnabled, FModes, ASource);
     if not FEnabled or (Result = TAtlasNotificationMode.Off) then
     begin
       Exit;
     end;
     // Gleichartig: dieselbe Quelle und derselbe Titel, letzte Meldung höchstens MergeSeconds zurück.
-    Limit := Stamp - MergeSeconds / SecsPerDay;
+    Limit := Stamp - cMergeSeconds / SecsPerDay;
     Found := -1;
     for Index := 0 to FItems.Count - 1 do
     begin
@@ -400,18 +399,18 @@ begin
     Entry.FRead := False;
     Entry.FActions := Copy(AActions);
     FItems.Insert(0, Entry);
-    Trim_;
+    TrimTo(FItems, FMaxEntries);
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 function TAtlasNotificationCenter.ModeOf(const ASource: string): TAtlasNotificationMode;
 begin
   FLock.Enter;
   try
-    Result := ModeLocked(ASource);
+    Result := ModeIn(FEnabled, FModes, ASource);
   finally
     FLock.Leave;
   end;
@@ -436,7 +435,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 procedure TAtlasNotificationCenter.ApplyModes(const ASpec: string);
@@ -456,7 +455,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 function TAtlasNotificationCenter.Items: TArray<IAtlasNotification>;
@@ -494,7 +493,7 @@ begin
   Result := nil;
   FLock.Enter;
   try
-    Index := IndexOf(AId);
+    Index := IndexOfId(FItems, AId);
     if Index >= 0 then
     begin
       Result := FItems[Index];
@@ -535,7 +534,7 @@ var
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
+    Index := IndexOfId(FItems, AId);
     if (Index < 0) or FItems[Index].Read then
     begin
       Exit;
@@ -546,7 +545,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 procedure TAtlasNotificationCenter.MarkAllRead;
@@ -573,7 +572,7 @@ begin
   end;
   if Changed then
   begin
-    Notify_;
+    NotifyChanged(Self);
   end;
 end;
 
@@ -585,7 +584,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 function TAtlasNotificationCenter.RunAction(AId, AIndex: Integer): Boolean;
@@ -680,7 +679,7 @@ begin
   try
     Before := FItems.Count;
     FMaxEntries := EnsureRange(AValue, MinEntries, MaxMaxEntries);
-    Trim_;
+    TrimTo(FItems, FMaxEntries);
     if FItems.Count = Before then
     begin
       Exit;
@@ -688,7 +687,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 function TAtlasNotificationCenter.Version: Integer;
@@ -750,7 +749,7 @@ begin
   finally
     FLock.Leave;
   end;
-  Notify_;
+  NotifyChanged(Self);
 end;
 
 end.

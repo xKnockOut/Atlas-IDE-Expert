@@ -606,7 +606,8 @@ begin
       InsertLine := Outer.EndPos.Line + 1;
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
         LineBreak + Moved + LineBreak)];
-      if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, 'private', Declaration, AStyle, Edit) then
+      if not TRoutineBody.MemberDeclaration(AText, ATree, TypeBody, TMemberEntry.Create('private', Declaration),
+        AStyle, Edit) then
       begin
         Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
       end;
