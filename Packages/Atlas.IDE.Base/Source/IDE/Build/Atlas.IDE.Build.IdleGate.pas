@@ -58,26 +58,34 @@ uses
 procedure TAtlasIdeBuildIdleGate.TNotifier.ProjectCompileStarted(const Project: IOTAProject; Mode: TOTACompileMode);
 begin
   if FOwner <> nil then
+  begin
     FOwner.FGate.ProjectStarted(TAtlasIdeBuildIdleGate.Now);
+  end;
 end;
 
 procedure TAtlasIdeBuildIdleGate.TNotifier.ProjectCompileFinished(const Project: IOTAProject;
   Result: TOTACompileResult);
 begin
   if FOwner <> nil then
+  begin
     FOwner.FGate.ProjectFinished(TAtlasIdeBuildIdleGate.Now);
+  end;
 end;
 
 procedure TAtlasIdeBuildIdleGate.TNotifier.ProjectGroupCompileStarted(Mode: TOTACompileMode);
 begin
   if FOwner <> nil then
+  begin
     FOwner.FGate.GroupStarted(TAtlasIdeBuildIdleGate.Now);
+  end;
 end;
 
 procedure TAtlasIdeBuildIdleGate.TNotifier.ProjectGroupCompileFinished(Result: TOTACompileResult);
 begin
   if FOwner <> nil then
+  begin
     FOwner.FGate.GroupFinished(TAtlasIdeBuildIdleGate.Now);
+  end;
 end;
 
 { TAtlasIdeBuildIdleGate }
@@ -111,9 +119,13 @@ begin
   // Erst abmelden, dann freigeben (#493); die IDE hält den Notifier evtl. noch.
   FreeAndNil(FTimer);
   if FNotifier <> nil then
+  begin
     FNotifier.FOwner := nil;
+  end;
   if (FNotifierIndex >= 0) and Supports(BorlandIDEServices, IOTACompileServices, Services) then
+  begin
     Services.RemoveNotifier(FNotifierIndex);
+  end;
   FNotifierRef := nil;
   FPending.Free;
   FGate.Free;
@@ -137,12 +149,16 @@ var
   Proc: TProc;
 begin
   if not FGate.Idle(Now) then
+  begin
     Exit;
+  end;
   FTimer.Enabled := False;
   Procs := FPending.ToArray;
   FPending.Clear;
   for Proc in Procs do
+  begin
     TAtlasGuard.Run(FFeature, Proc);
+  end;
 end;
 
 end.

@@ -99,14 +99,20 @@ var
   Frame: TAtlasSearchReplaceFrame;
 begin
   if not (AFrame is TAtlasSearchReplaceFrame) then
+  begin
     Exit;
+  end;
   if Host <> nil then
+  begin
     Host.FrameCreated(AFrame);
+  end;
   Frame := TAtlasSearchReplaceFrame(AFrame);
   TAtlasIdeSearchReplaceWindow.UpdateIcon;
   Theme(Frame);
   if Assigned(TAtlasIdeSearchReplaceWindow.OnFrame) then
+  begin
     TAtlasIdeSearchReplaceWindow.OnFrame(Frame);
+  end;
 end;
 
 function TReplaceDock.GetMenuActionList: TCustomActionList;
@@ -159,7 +165,9 @@ procedure EnsureHost;
 begin
   // Nicht im Desktop: Die Suchleiste öffnet das Fenster selbst.
   if Host = nil then
+  begin
     Host := TAtlasIdeDockWindow.Create(TReplaceDock.Create, False);
+  end;
 end;
 
 { TAtlasIdeSearchReplaceWindow }
@@ -172,7 +180,9 @@ begin
   EnsureHost;
   Host.Show(Created);
   if Created then
+  begin
     UpdateIcon;
+  end;
   Result := ExistingFrame;
 end;
 
@@ -180,7 +190,9 @@ class function TAtlasIdeSearchReplaceWindow.ExistingFrame: TAtlasSearchReplaceFr
 begin
   Result := nil;
   if (Host <> nil) and (Host.Frame is TAtlasSearchReplaceFrame) then
+  begin
     Result := TAtlasSearchReplaceFrame(Host.Frame);
+  end;
 end;
 
 class function TAtlasIdeSearchReplaceWindow.Visible: Boolean;
@@ -192,7 +204,9 @@ end;
 class procedure TAtlasIdeSearchReplaceWindow.Hide;
 begin
   if Host <> nil then
+  begin
     Host.Hide;
+  end;
 end;
 
 class procedure TAtlasIdeSearchReplaceWindow.UpdateIcon;
@@ -200,7 +214,9 @@ var
   Icon: TIcon;
 begin
   if (Host = nil) or (Host.Form = nil) then
+  begin
     Exit;
+  end;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
@@ -216,7 +232,9 @@ var
 begin
   Frame := ExistingFrame;
   if Frame <> nil then
+  begin
     Theme(Frame);
+  end;
   UpdateIcon;
 end;
 

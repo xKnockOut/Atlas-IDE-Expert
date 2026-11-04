@@ -217,45 +217,52 @@ begin
   inherited;
 end;
 
-function TArchitectureService.Compute(const ARequest: TArchitectureRequest; AGeneration: Int64): TArchitectureOverview;
+/// <summary>Units des Index, die in die Karte gehören: ohne Packages, Projekt-Units nur aus AFiles (leer = alle).
+/// </summary>
+function SelectUnits(const AUnits: TArray<TUnitIndex>; const AFiles: TArray<string>): TArray<TUnitIndex>;
 var
-  Units, Selected: TArray<TUnitIndex>;
-  Item: TUnitIndex;
-  InScope: TDictionary<string, Boolean>;
-  FileName: string;
-  Options: TUsesGraphOptions;
-  Graph: TUsesGraph;
-  Count: Integer;
+  mItem: TUnitIndex;
+  mInScope: TDictionary<string, Boolean>;
+  mFileName: string;
+  mCount: Integer;
 begin
-  Units := FIndex.Units;
-  InScope := TDictionary<string, Boolean>.Create;
+  mInScope := TDictionary<string, Boolean>.Create;
   try
-    for FileName in ARequest.Files do
+    for mFileName in AFiles do
     begin
-      InScope.AddOrSetValue(LowerCase(FileName), True);
+      mInScope.AddOrSetValue(LowerCase(mFileName), True);
     end;
-    SetLength(Selected, Length(Units));
-    Count := 0;
-    for Item in Units do
+    SetLength(Result, Length(AUnits));
+    mCount := 0;
+    for mItem in AUnits do
     begin
       // Packages (.dpk) kennen nur requires und contains, keine uses: in der Karte stünden sie als Unit ohne
       // Beziehung.
-      if SameText(ExtractFileExt(Item.FileName), '.dpk') then
+      if SameText(ExtractFileExt(mItem.FileName), '.dpk') then
       begin
         Continue;
       end;
       // Bibliotheks-Units zählt der Graph je nach IncludeLibrary; die Dateiliste betrifft nur Projekt-Units.
-      if not Item.Library_ and (InScope.Count > 0) and not InScope.ContainsKey(LowerCase(Item.FileName)) then
+      if not mItem.Library_ and (mInScope.Count > 0) and not mInScope.ContainsKey(LowerCase(mItem.FileName)) then
       begin
         Continue;
       end;
-      Selected[Count] := Item;
-      Inc(Count);
+      Result[mCount] := mItem;
+      Inc(mCount);
     end;
-    SetLength(Selected, Count);
+    SetLength(Result, mCount);
   finally
-    InScope.Free;
+    mInScope.Free;
   end;
+end;
+
+function TArchitectureService.Compute(const ARequest: TArchitectureRequest; AGeneration: Int64): TArchitectureOverview;
+var
+  Selected: TArray<TUnitIndex>;
+  Options: TUsesGraphOptions;
+  Graph: TUsesGraph;
+begin
+  Selected := SelectUnits(FIndex.Units, ARequest.Files);
   Options := TUsesGraphOptions.Default;
   Options.IncludeLibrary := ARequest.IncludeLibrary;
   Options.Exclude := ARequest.Exclude;

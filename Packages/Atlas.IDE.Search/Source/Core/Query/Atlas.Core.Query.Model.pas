@@ -170,11 +170,15 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if (mValue <> nil) and not (mValue is TJSONNull) and not (mValue is TJSONObject) and
     not (mValue is TJSONArray) then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 function IntegerOf(AObject: TJSONObject; const AName: string): Int64;
@@ -183,10 +187,14 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsInt64;
+  end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
@@ -195,10 +203,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONBool then
+  begin
     Result := TJSONBool(mValue).AsBoolean;
+  end;
 end;
 
 function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
@@ -207,10 +219,14 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONArray then
+  begin
     Result := TJSONArray(mValue);
+  end;
 end;
 
 function ObjectOf(AObject: TJSONObject; const AName: string): TJSONObject;
@@ -219,17 +235,23 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONObject then
+  begin
     Result := TJSONObject(mValue);
+  end;
 end;
 
 function CellOf(AValue: TJSONValue): TAtlasQueryCell;
 begin
   Result := Default(TAtlasQueryCell);
   if (AValue = nil) or (AValue is TJSONNull) then
+  begin
     Exit;
+  end;
   Result.HasValue := True;
   if AValue is TJSONNumber then
   begin
@@ -240,20 +262,30 @@ begin
   else if AValue is TJSONBool then
   begin
     if TJSONBool(AValue).AsBoolean then
-      Result.Text := 'ja'
+    begin
+      Result.Text := 'ja';
+    end
     else
+    begin
       Result.Text := 'nein';
+    end;
   end
   else
+  begin
     Result.Text := AValue.Value;
+  end;
 end;
 
 function CsvCell(const AText: string): string;
 begin
   if (Pos(';', AText) > 0) or (Pos('"', AText) > 0) or (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) then
-    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"'
+  begin
+    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"';
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 { TAtlasQueryAnswer }
@@ -268,8 +300,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(Columns) do
+  begin
     if SameText(Columns[mIndex], AName) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -286,12 +322,16 @@ begin
   try
     Result := mValue is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     AAnswer.Enabled := FlagOf(mRoot, 'enabled');
     mData := ObjectOf(mRoot, 'data');
     if mData = nil then
+    begin
       Exit;
+    end;
     AAnswer.Query := StringOf(mData, 'query');
     mError := ObjectOf(mData, 'error');
     if mError <> nil then
@@ -308,11 +348,17 @@ begin
     AAnswer.Truncated := FlagOf(mData, 'truncated');
     mColumns := ArrayOf(mData, 'columns');
     if mColumns <> nil then
+    begin
       for mIndex := 0 to mColumns.Count - 1 do
+      begin
         AAnswer.Columns := AAnswer.Columns + [mColumns.Items[mIndex].Value];
+      end;
+    end;
     mRows := ArrayOf(mData, 'rows');
     if mRows = nil then
+    begin
       Exit;
+    end;
     SetLength(AAnswer.Rows, mRows.Count);
     for mIndex := 0 to mRows.Count - 1 do
     begin
@@ -330,8 +376,12 @@ begin
         mValues := ObjectOf(mRowObject, 'values');
         SetLength(mRow.Cells, Length(AAnswer.Columns));
         for mColumn := 0 to High(AAnswer.Columns) do
+        begin
           if mValues <> nil then
+          begin
             mRow.Cells[mColumn] := CellOf(mValues.GetValue(AAnswer.Columns[mColumn]));
+          end;
+        end;
       end;
       AAnswer.Rows[mIndex] := mRow;
     end;
@@ -361,30 +411,48 @@ begin
         if mLeft.HasValue <> mRight.HasValue then
         begin
           if mLeft.HasValue then
+          begin
             Exit(-1);
+          end;
           Exit(1);
         end;
         if mLeft.IsNumber and mRight.IsNumber then
         begin
           if mLeft.Number < mRight.Number then
-            Result := -1
+          begin
+            Result := -1;
+          end
           else if mLeft.Number > mRight.Number then
+          begin
             Result := 1;
+          end;
         end
         else
+        begin
           Result := CompareText(mLeft.Text, mRight.Text);
+        end;
         if mDescending then
+        begin
           Result := -Result;
+        end;
       end;
       // Eindeutig weitersortieren: TArray.Sort ist nicht stabil.
       if Result = 0 then
+      begin
         Result := CompareText(ALeft.Path, ARight.Path);
+      end;
       if Result = 0 then
+      begin
         Result := ALeft.Line - ARight.Line;
+      end;
       if Result = 0 then
+      begin
         Result := ALeft.Character - ARight.Character;
+      end;
       if Result = 0 then
+      begin
         Result := ALeft.Order - ARight.Order;
+      end;
     end));
 end;
 
@@ -397,18 +465,28 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     for mIndex := 0 to High(Columns) do
+    begin
       mBuilder.Append(CsvCell(Columns[mIndex])).Append(';');
+    end;
     mBuilder.Append('path;inferred').Append(sLineBreak);
     for mRow in Rows do
     begin
       for mIndex := 0 to High(Columns) do
+      begin
         if mIndex <= High(mRow.Cells) then
-          mBuilder.Append(CsvCell(mRow.Cells[mIndex].Text)).Append(';')
+        begin
+          mBuilder.Append(CsvCell(mRow.Cells[mIndex].Text)).Append(';');
+        end
         else
+        begin
           mBuilder.Append(';');
+        end;
+      end;
       mBuilder.Append(CsvCell(mRow.Path)).Append(';');
       if mRow.Inferred then
+      begin
         mBuilder.Append('erschlossen');
+      end;
       mBuilder.Append(sLineBreak);
     end;
     Result := mBuilder.ToString;
@@ -426,8 +504,11 @@ var
 begin
   Result := nil;
   if AArray = nil then
+  begin
     Exit;
+  end;
   for mIndex := 0 to AArray.Count - 1 do
+  begin
     if AArray.Items[mIndex] is TJSONObject then
     begin
       mField.Name := StringOf(TJSONObject(AArray.Items[mIndex]), 'name');
@@ -435,6 +516,7 @@ begin
       mField.Description := StringOf(TJSONObject(AArray.Items[mIndex]), 'description');
       Result := Result + [mField];
     end;
+  end;
 end;
 
 class function TAtlasQueryCatalog.Parse(const AJson: string; out ACatalog: TAtlasQueryCatalog): Boolean;
@@ -451,15 +533,21 @@ begin
   try
     Result := mValue is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     mRoot := TJSONObject(mValue);
     ACatalog.Enabled := FlagOf(mRoot, 'enabled');
     mCatalog := ObjectOf(mRoot, 'catalog');
     if mCatalog = nil then
+    begin
       Exit;
+    end;
     mItems := ArrayOf(mCatalog, 'entities');
     if mItems <> nil then
+    begin
       for mIndex := 0 to mItems.Count - 1 do
+      begin
         if mItems.Items[mIndex] is TJSONObject then
         begin
           mItem := TJSONObject(mItems.Items[mIndex]);
@@ -469,13 +557,21 @@ begin
           mEntity.Predicates := FieldsOf(ArrayOf(mItem, 'predicates'));
           ACatalog.Entities := ACatalog.Entities + [mEntity];
         end;
+      end;
+    end;
     mItems := ArrayOf(mCatalog, 'keywords');
     if mItems <> nil then
+    begin
       for mIndex := 0 to mItems.Count - 1 do
+      begin
         ACatalog.Keywords := ACatalog.Keywords + [mItems.Items[mIndex].Value];
+      end;
+    end;
     mItems := ArrayOf(mCatalog, 'queries');
     if mItems <> nil then
+    begin
       for mIndex := 0 to mItems.Count - 1 do
+      begin
         if mItems.Items[mIndex] is TJSONObject then
         begin
           mItem := TJSONObject(mItems.Items[mIndex]);
@@ -485,6 +581,8 @@ begin
           mSaved.FailIfAny := FlagOf(mItem, 'failIfAny');
           ACatalog.Saved := ACatalog.Saved + [mSaved];
         end;
+      end;
+    end;
   finally
     mValue.Free;
   end;
@@ -495,11 +593,13 @@ var
   mEntity: TAtlasQueryEntity;
 begin
   for mEntity in Entities do
+  begin
     if SameText(mEntity.Name, AName) then
     begin
       AEntity := mEntity;
       Exit(True);
     end;
+  end;
   AEntity := Default(TAtlasQueryEntity);
   Result := False;
 end;
@@ -509,11 +609,13 @@ var
   mSaved: TAtlasSavedQuery;
 begin
   for mSaved in Saved do
+  begin
     if SameText(mSaved.Name, AName) then
     begin
       AQuery := mSaved;
       Exit(True);
     end;
+  end;
   AQuery := Default(TAtlasSavedQuery);
   Result := False;
 end;
@@ -542,7 +644,9 @@ begin
       mStart := mIndex;
       Inc(mIndex);
       while (mIndex <= APosition) and (AText[mIndex] <> mChar) do
+      begin
         Inc(mIndex);
+      end;
       Result := Result + [Copy(AText, mStart, mIndex - mStart + 1)];
       Inc(mIndex);
     end
@@ -550,20 +654,26 @@ begin
     begin
       mStart := mIndex;
       while (mIndex <= APosition) and IsWordChar(AText[mIndex]) do
+      begin
         Inc(mIndex);
+      end;
       Result := Result + [LowerCase(Copy(AText, mStart, mIndex - mStart))];
     end
     else if CharInSet(mChar, ['=', '<', '>', '!']) then
     begin
       mStart := mIndex;
       while (mIndex <= APosition) and CharInSet(AText[mIndex], ['=', '<', '>', '!']) do
+      begin
         Inc(mIndex);
+      end;
       Result := Result + [Copy(AText, mStart, mIndex - mStart)];
     end
     else
     begin
       if CharInSet(mChar, ['(', ')']) then
+      begin
         Result := Result + [string(mChar)];
+      end;
       Inc(mIndex);
     end;
   end;
@@ -610,7 +720,9 @@ var
     mName: string;
   begin
     for mName in ANames do
+    begin
       Add(mName, '');
+    end;
   end;
 
 begin
@@ -618,13 +730,19 @@ begin
   mAll := nil;
   mCursor := ACursor;
   if mCursor > Length(AText) then
+  begin
     mCursor := Length(AText);
+  end;
   if mCursor < 0 then
+  begin
     mCursor := 0;
+  end;
   // Anfang des Worts an der Schreibmarke (1-basiert in mBegin).
   mBegin := mCursor;
   while (mBegin > 0) and IsWordChar(AText[mBegin]) do
+  begin
     Dec(mBegin);
+  end;
   AStart := mBegin;
   mPrefix := Copy(AText, mBegin + 1, mCursor - mBegin);
   mWords := WordsBefore(AText, mBegin);
@@ -632,57 +750,85 @@ begin
   begin
     // Am Anfang: Mengen und gespeicherte Abfragen.
     for mEntity in ACatalog.Entities do
+    begin
       Add(mEntity.Name, mEntity.Caption);
+    end;
     for mSaved in ACatalog.Saved do
+    begin
       Add('@' + mSaved.Name, mSaved.Description);
+    end;
   end
   else
   begin
     mHasEntity := ACatalog.TryEntity(mWords[0], mEntity);
     mLast := mWords[High(mWords)];
     if mLast = 'order' then
-      AddKeywords(['by'])
+    begin
+      AddKeywords(['by']);
+    end
     else if (mLast = 'by') and mHasEntity then
     begin
       for mField in mEntity.Fields do
+      begin
         Add(mField.Name, mField.Description);
+      end;
     end
     else if (mLast = 'asc') or (mLast = 'desc') then
-      AddKeywords(['limit'])
+    begin
+      AddKeywords(['limit']);
+    end
     else if (Length(mWords) = 1) and mHasEntity then
-      AddKeywords(['where', 'order', 'limit'])
+    begin
+      AddKeywords(['where', 'order', 'limit']);
+    end
     else if ((mLast = 'where') or (mLast = 'and') or (mLast = 'or') or (mLast = 'not') or (mLast = '(')) and
       mHasEntity then
     begin
       for mField in mEntity.Fields do
+      begin
         Add(mField.Name, mField.Description);
+      end;
       for mField in mEntity.Predicates do
+      begin
         Add(mField.Name, mField.Description);
+      end;
       if mLast <> 'not' then
+      begin
         AddKeywords(['not']);
+      end;
     end
     else if IsSymbolPredicate(mLast) and (mLast <> 'uses') then
       // Symbolname: Vorschläge über SymbolPredicate aus der Symbolsuche.
     else if mLast = 'has' then
-      AddKeywords(['attribute'])
+    begin
+      AddKeywords(['attribute']);
+    end
     else if mHasEntity and (Length(mWords) >= 2) and IsComparison(mWords[High(mWords)]) then
       // Nach einem Vergleich steht ein Wert: nichts aus dem Katalog.
     else if mHasEntity and (Length(mWords) >= 2) and not IsComparison(mLast) then
     begin
       // Nach einem Feld: Vergleich; nach einem Wert: Verknüpfung, Sortierung, Grenze.
       for mField in mEntity.Fields do
+      begin
         if SameText(mField.Name, mLast) then
         begin
           AddKeywords(['=', '<>', '<', '>', '<=', '>=', 'like', 'not like']);
           Break;
         end;
+      end;
       if Length(mAll) = 0 then
+      begin
         AddKeywords(['and', 'or', 'order', 'limit']);
+      end;
     end;
   end;
   for mItem in mAll do
+  begin
     if (mPrefix = '') or StartsText(mPrefix, mItem.Text) then
+    begin
       Result := Result + [mItem];
+    end;
+  end;
 end;
 
 { TAtlasSavedQueries }
@@ -693,8 +839,12 @@ var
 begin
   Result := AName <> '';
   for mChar in AName do
+  begin
     if not CharInSet(mChar, ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasSavedQueries.WithQuery(const AExisting: string; const AQuery: TAtlasSavedQuery;
@@ -710,36 +860,54 @@ begin
   try
     mValue := nil;
     if Trim(AExisting) <> '' then
+    begin
       mValue := TJSONObject.ParseJSONValue(AExisting);
+    end;
     try
       mEntry := TJSONObject.Create;
       mEntry.AddPair('name', AQuery.Name);
       mEntry.AddPair('query', AQuery.Query);
       if AQuery.Description <> '' then
+      begin
         mEntry.AddPair('description', AQuery.Description);
+      end;
       if AQuery.FailIfAny then
+      begin
         mEntry.AddPair('failIfAny', TJSONBool.Create(True));
+      end;
       if ASeverity <> '' then
+      begin
         mEntry.AddPair('severity', ASeverity);
+      end;
       if AMessage <> '' then
+      begin
         mEntry.AddPair('message', AMessage);
+      end;
       mReplaced := False;
       if mValue is TJSONArray then
       begin
         mList := TJSONArray(mValue);
         for mIndex := 0 to mList.Count - 1 do
+        begin
           if (mList.Items[mIndex] is TJSONObject) and
             SameText(StringOf(TJSONObject(mList.Items[mIndex]), 'name'), AQuery.Name) then
           begin
             if not mReplaced then
+            begin
               mResult.AddElement(mEntry);
+            end;
             mReplaced := True;
           end
           else
+          begin
             mResult.AddElement(TJSONValue(mList.Items[mIndex].Clone));
+          end;
+        end;
       end;
       if not mReplaced then
+      begin
         mResult.AddElement(mEntry);
+      end;
     finally
       mValue.Free;
     end;
@@ -788,12 +956,18 @@ var
 begin
   mCursor := ACursor;
   if mCursor > Length(AText) then
+  begin
     mCursor := Length(AText);
+  end;
   if mCursor < 0 then
+  begin
     mCursor := 0;
+  end;
   mBegin := mCursor;
   while (mBegin > 0) and IsWordChar(AText[mBegin]) do
+  begin
     Dec(mBegin);
+  end;
   AStart := mBegin;
   APrefix := Copy(AText, mBegin + 1, mCursor - mBegin);
   APredicate := '';
@@ -801,7 +975,9 @@ begin
   // Das erste Wort ist die Menge (units hat ein Feld uses, aber „uses“ als erstes Wort gibt es nicht).
   Result := (Length(mWords) >= 2) and IsSymbolPredicate(mWords[High(mWords)]);
   if Result then
+  begin
     APredicate := mWords[High(mWords)];
+  end;
 end;
 
 class function TAtlasQueryCompletion.SymbolNames(const APredicate: string;
@@ -822,17 +998,29 @@ begin
   for mSymbol in ASymbols do
   begin
     if APredicate = 'inherits' then
-      mFits := (mSymbol.Kind = cClass) or (mSymbol.Kind = cStruct) or (mSymbol.Kind = cInterface)
+    begin
+      mFits := (mSymbol.Kind = cClass) or (mSymbol.Kind = cStruct) or (mSymbol.Kind = cInterface);
+    end
     else if APredicate = 'implements' then
-      mFits := mSymbol.Kind = cInterface
+    begin
+      mFits := mSymbol.Kind = cInterface;
+    end
     else if APredicate = 'calls' then
-      mFits := (mSymbol.Kind = cMethod) or (mSymbol.Kind = cConstructor) or (mSymbol.Kind = cFunction)
+    begin
+      mFits := (mSymbol.Kind = cMethod) or (mSymbol.Kind = cConstructor) or (mSymbol.Kind = cFunction);
+    end
     else if APredicate = 'attribute' then
-      mFits := (mSymbol.Kind = cClass) and EndsText('Attribute', mSymbol.Name)
+    begin
+      mFits := (mSymbol.Kind = cClass) and EndsText('Attribute', mSymbol.Name);
+    end
     else
+    begin
       mFits := False;
+    end;
     if mFits and (mSymbol.Name <> '') then
+    begin
       Result := Result + [mSymbol.Name];
+    end;
   end;
 end;
 

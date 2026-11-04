@@ -146,12 +146,78 @@ begin
   end;
 end;
 
+procedure AppendMarkdownHead(ABuilder: TStringBuilder; const AResult: TQueryResult);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append(sLineBreak).Append('|');
+  for mIndex := 0 to High(AResult.Columns) do
+  begin
+    ABuilder.Append(' ').Append(AResult.Columns[mIndex]).Append(' |');
+  end;
+  ABuilder.Append(' Datei |').Append(sLineBreak).Append('|');
+  for mIndex := 0 to High(AResult.Columns) + 1 do
+  begin
+    ABuilder.Append('---|');
+  end;
+  ABuilder.Append(sLineBreak);
+end;
+
+procedure AppendMarkdownRow(ABuilder: TStringBuilder; const AResult: TQueryResult; const ARow: TQueryRow);
+var
+  mIndex: Integer;
+  mCell: string;
+begin
+  ABuilder.Append('|');
+  for mIndex := 0 to High(AResult.Columns) do
+  begin
+    mCell := MarkdownCell(TQueryResult.CellText(ARow, mIndex));
+    if (mIndex = 0) and ARow.Inferred then
+    begin
+      mCell := mCell + ' (erschlossen)';
+    end;
+    ABuilder.Append(' ').Append(mCell).Append(' |');
+  end;
+  ABuilder.Append(' ').Append(MarkdownCell(ARow.Path));
+  if AResult.Entity <> 'units' then
+  begin
+    ABuilder.Append(':').Append(ARow.Range.StartPos.Line + 1);
+  end;
+  ABuilder.Append(' |').Append(sLineBreak);
+end;
+
+function HasInferredRow(const AResult: TQueryResult): Boolean;
+var
+  mRow: TQueryRow;
+begin
+  Result := False;
+  for mRow in AResult.Rows do
+  begin
+    if mRow.Inferred then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure AppendMarkdownNotes(ABuilder: TStringBuilder; const AResult: TQueryResult);
+begin
+  if AResult.Truncated then
+  begin
+    ABuilder.Append(sLineBreak).Append(Format('Weitere %d Treffer nicht gezeigt (limit).',
+      [AResult.Total - Length(AResult.Rows)])).Append(sLineBreak);
+  end;
+  if HasInferredRow(AResult) then
+  begin
+    ABuilder.Append(sLineBreak).Append('Erschlossen heißt: Ein Aufruf zählt mit, den die Namensauflösung nicht ' +
+      'sicher zuordnet (Interface, virtuelle Methode, Überladung; siehe get_call_hierarchy).').Append(sLineBreak);
+  end;
+end;
+
 class function TQueryOutput.Markdown(const AResult: TQueryResult): string;
 var
   mBuilder: TStringBuilder;
   mRow: TQueryRow;
-  mIndex: Integer;
-  mFirst: string;
 begin
   if AResult.Failed then
   begin
@@ -160,57 +226,14 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.Append('`').Append(AResult.Query).Append('`: ').Append(Summary(AResult)).Append(sLineBreak);
-    if Length(AResult.Rows) = 0 then
+    if Length(AResult.Rows) > 0 then
     begin
-      Exit(mBuilder.ToString);
-    end;
-    mBuilder.Append(sLineBreak).Append('|');
-    for mIndex := 0 to High(AResult.Columns) do
-    begin
-      mBuilder.Append(' ').Append(AResult.Columns[mIndex]).Append(' |');
-    end;
-    mBuilder.Append(' Datei |').Append(sLineBreak).Append('|');
-    for mIndex := 0 to High(AResult.Columns) + 1 do
-    begin
-      mBuilder.Append('---|');
-    end;
-    mBuilder.Append(sLineBreak);
-    for mRow in AResult.Rows do
-    begin
-      mBuilder.Append('|');
-      for mIndex := 0 to High(AResult.Columns) do
+      AppendMarkdownHead(mBuilder, AResult);
+      for mRow in AResult.Rows do
       begin
-        mFirst := MarkdownCell(TQueryResult.CellText(mRow, mIndex));
-        if (mIndex = 0) and mRow.Inferred then
-        begin
-          mFirst := mFirst + ' (erschlossen)';
-        end;
-        mBuilder.Append(' ').Append(mFirst).Append(' |');
+        AppendMarkdownRow(mBuilder, AResult, mRow);
       end;
-      if AResult.Entity <> 'units' then
-      begin
-        mBuilder.Append(' ').Append(MarkdownCell(mRow.Path)).Append(':').Append(mRow.Range.StartPos.Line + 1)
-          .Append(' |');
-      end
-      else
-      begin
-        mBuilder.Append(' ').Append(MarkdownCell(mRow.Path)).Append(' |');
-      end;
-      mBuilder.Append(sLineBreak);
-    end;
-    if AResult.Truncated then
-    begin
-      mBuilder.Append(sLineBreak).Append(Format('Weitere %d Treffer nicht gezeigt (limit).',
-        [AResult.Total - Length(AResult.Rows)])).Append(sLineBreak);
-    end;
-    for mRow in AResult.Rows do
-    begin
-      if mRow.Inferred then
-      begin
-        mBuilder.Append(sLineBreak).Append('Erschlossen heißt: Ein Aufruf zählt mit, den die Namensauflösung nicht ' +
-          'sicher zuordnet (Interface, virtuelle Methode, Überladung; siehe get_call_hierarchy).').Append(sLineBreak);
-        Break;
-      end;
+      AppendMarkdownNotes(mBuilder, AResult);
     end;
     Result := mBuilder.ToString;
   finally
@@ -239,11 +262,69 @@ begin
   end;
 end;
 
+procedure AppendJsonColumns(ABuilder: TStringBuilder; const AColumns: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append('[');
+  for mIndex := 0 to High(AColumns) do
+  begin
+    if mIndex > 0 then
+    begin
+      ABuilder.Append(', ');
+    end;
+    ABuilder.Append(TMetricsReport.JsonString(AColumns[mIndex]));
+  end;
+  ABuilder.Append(']');
+end;
+
+procedure AppendJsonValues(ABuilder: TStringBuilder; const AColumns: TArray<string>; const ARow: TQueryRow);
+var
+  mColumn: Integer;
+begin
+  ABuilder.Append('{');
+  for mColumn := 0 to High(AColumns) do
+  begin
+    if mColumn > 0 then
+    begin
+      ABuilder.Append(', ');
+    end;
+    ABuilder.Append(TMetricsReport.JsonString(AColumns[mColumn])).Append(': ');
+    if mColumn <= High(ARow.Values) then
+    begin
+      ABuilder.Append(JsonValue(ARow.Values[mColumn]));
+    end
+    else
+    begin
+      ABuilder.Append('null');
+    end;
+  end;
+  ABuilder.Append('}');
+end;
+
+procedure AppendJsonRow(ABuilder: TStringBuilder; const AColumns: TArray<string>; const ARow: TQueryRow);
+begin
+  ABuilder.Append('{"name": ').Append(TMetricsReport.JsonString(ARow.Name))
+    .Append(', "container": ').Append(TMetricsReport.JsonString(ARow.Container))
+    .Append(', "unit": ').Append(TMetricsReport.JsonString(ARow.UnitName))
+    .Append(', "path": ').Append(TMetricsReport.JsonString(ARow.Path))
+    .Append(', "file": ').Append(TMetricsReport.JsonString(ARow.FileName))
+    .Append(', "line": ').Append(ARow.Range.StartPos.Line + 1)
+    .Append(', "character": ').Append(ARow.Range.StartPos.Character + 1)
+    .Append(', "inferred": ').Append(LowerCase(BoolToStr(ARow.Inferred, True)));
+  if ARow.Inferred then
+  begin
+    ABuilder.Append(', "inferredDetail": ').Append(TMetricsReport.JsonString(ARow.InferredDetail));
+  end;
+  ABuilder.Append(', "values": ');
+  AppendJsonValues(ABuilder, AColumns, ARow);
+  ABuilder.Append('}');
+end;
+
 class function TQueryOutput.Json(const AResult: TQueryResult): string;
 var
   mBuilder: TStringBuilder;
-  mRow: TQueryRow;
-  mIndex, mColumn: Integer;
+  mIndex: Integer;
 begin
   mBuilder := TStringBuilder.Create;
   try
@@ -255,55 +336,18 @@ begin
         .Append(', "suggestion": ').Append(TMetricsReport.JsonString(AResult.Suggestion)).Append('}}');
       Exit(mBuilder.ToString);
     end;
-    mBuilder.Append(', "entity": ').Append(TMetricsReport.JsonString(AResult.Entity)).Append(', "columns": [');
-    for mIndex := 0 to High(AResult.Columns) do
-    begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append(TMetricsReport.JsonString(AResult.Columns[mIndex]));
-    end;
-    mBuilder.Append('], "total": ').Append(AResult.Total).Append(', "truncated": ')
+    mBuilder.Append(', "entity": ').Append(TMetricsReport.JsonString(AResult.Entity)).Append(', "columns": ');
+    AppendJsonColumns(mBuilder, AResult.Columns);
+    mBuilder.Append(', "total": ').Append(AResult.Total).Append(', "truncated": ')
       .Append(LowerCase(BoolToStr(AResult.Truncated, True))).Append(', "inferred": ').Append(AResult.InferredCount)
       .Append(', "elapsedMs": ').Append(AResult.ElapsedMs).Append(', "rows": [');
     for mIndex := 0 to High(AResult.Rows) do
     begin
-      mRow := AResult.Rows[mIndex];
       if mIndex > 0 then
       begin
         mBuilder.Append(', ');
       end;
-      mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mRow.Name))
-        .Append(', "container": ').Append(TMetricsReport.JsonString(mRow.Container))
-        .Append(', "unit": ').Append(TMetricsReport.JsonString(mRow.UnitName))
-        .Append(', "path": ').Append(TMetricsReport.JsonString(mRow.Path))
-        .Append(', "file": ').Append(TMetricsReport.JsonString(mRow.FileName))
-        .Append(', "line": ').Append(mRow.Range.StartPos.Line + 1)
-        .Append(', "character": ').Append(mRow.Range.StartPos.Character + 1)
-        .Append(', "inferred": ').Append(LowerCase(BoolToStr(mRow.Inferred, True)));
-      if mRow.Inferred then
-      begin
-        mBuilder.Append(', "inferredDetail": ').Append(TMetricsReport.JsonString(mRow.InferredDetail));
-      end;
-      mBuilder.Append(', "values": {');
-      for mColumn := 0 to High(AResult.Columns) do
-      begin
-        if mColumn > 0 then
-        begin
-          mBuilder.Append(', ');
-        end;
-        mBuilder.Append(TMetricsReport.JsonString(AResult.Columns[mColumn])).Append(': ');
-        if mColumn <= High(mRow.Values) then
-        begin
-          mBuilder.Append(JsonValue(mRow.Values[mColumn]));
-        end
-        else
-        begin
-          mBuilder.Append('null');
-        end;
-      end;
-      mBuilder.Append('}}');
+      AppendJsonRow(mBuilder, AResult.Columns, AResult.Rows[mIndex]);
     end;
     mBuilder.Append(']}');
     Result := mBuilder.ToString;
@@ -431,14 +475,75 @@ begin
   end;
 end;
 
+procedure AppendCatalogFields(ABuilder: TStringBuilder; AEntity: TQueryEntity);
+var
+  mField: TQueryFieldInfo;
+  mFirst: Boolean;
+begin
+  ABuilder.Append('[');
+  mFirst := True;
+  for mField in TQueryCatalog.FieldsOf(AEntity) do
+  begin
+    if not mFirst then
+    begin
+      ABuilder.Append(', ');
+    end;
+    mFirst := False;
+    ABuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mField.Name))
+      .Append(', "type": ').Append(TMetricsReport.JsonString(TQueryCatalog.FieldTypeName(mField.FieldType)))
+      .Append(', "description": ').Append(TMetricsReport.JsonString(mField.Description)).Append('}');
+  end;
+  ABuilder.Append(']');
+end;
+
+procedure AppendCatalogPredicates(ABuilder: TStringBuilder; AEntity: TQueryEntity);
+var
+  mKind: TQueryPredicateKind;
+  mFirst: Boolean;
+begin
+  ABuilder.Append('[');
+  mFirst := True;
+  for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
+  begin
+    if not (AEntity in TQueryCatalog.PredicateEntities(mKind)) then
+    begin
+      Continue;
+    end;
+    if not mFirst then
+    begin
+      ABuilder.Append(', ');
+    end;
+    mFirst := False;
+    ABuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateName(mKind)))
+      .Append(', "description": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateDescription(mKind)))
+      .Append('}');
+  end;
+  ABuilder.Append(']');
+end;
+
+procedure AppendCatalogQueries(ABuilder: TStringBuilder; const AQueries: TArray<TSavedQuery>);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append('[');
+  for mIndex := 0 to High(AQueries) do
+  begin
+    if mIndex > 0 then
+    begin
+      ABuilder.Append(', ');
+    end;
+    ABuilder.Append('{"name": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Name))
+      .Append(', "query": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Query))
+      .Append(', "description": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Description))
+      .Append(', "failIfAny": ').Append(JsonFlag(AQueries[mIndex].FailIfAny)).Append('}');
+  end;
+  ABuilder.Append(']');
+end;
+
 class function TQueryOutput.CatalogJson(const AQueries: TArray<TSavedQuery>): string;
 var
   mBuilder: TStringBuilder;
   mEntity: TQueryEntity;
-  mField: TQueryFieldInfo;
-  mKind: TQueryPredicateKind;
-  mFirst: Boolean;
-  mIndex: Integer;
 begin
   mBuilder := TStringBuilder.Create;
   try
@@ -451,50 +556,15 @@ begin
       end;
       mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityName(mEntity)))
         .Append(', "caption": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityCaption(mEntity)))
-        .Append(', "fields": [');
-      mFirst := True;
-      for mField in TQueryCatalog.FieldsOf(mEntity) do
-      begin
-        if not mFirst then
-        begin
-          mBuilder.Append(', ');
-        end;
-        mFirst := False;
-        mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mField.Name))
-          .Append(', "type": ').Append(TMetricsReport.JsonString(TQueryCatalog.FieldTypeName(mField.FieldType)))
-          .Append(', "description": ').Append(TMetricsReport.JsonString(mField.Description)).Append('}');
-      end;
-      mBuilder.Append('], "predicates": [');
-      mFirst := True;
-      for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
-      begin
-        if mEntity in TQueryCatalog.PredicateEntities(mKind) then
-        begin
-          if not mFirst then
-          begin
-            mBuilder.Append(', ');
-          end;
-          mFirst := False;
-          mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateName(mKind)))
-            .Append(', "description": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateDescription(mKind)))
-            .Append('}');
-        end;
-      end;
-      mBuilder.Append(']}');
+        .Append(', "fields": ');
+      AppendCatalogFields(mBuilder, mEntity);
+      mBuilder.Append(', "predicates": ');
+      AppendCatalogPredicates(mBuilder, mEntity);
+      mBuilder.Append('}');
     end;
-    mBuilder.Append('], "keywords": ').Append(JsonStrings(TQueryCatalog.Keywords)).Append(', "queries": [');
-    for mIndex := 0 to High(AQueries) do
-    begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Name))
-        .Append(', "query": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Query))
-        .Append(', "description": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Description))
-        .Append(', "failIfAny": ').Append(JsonFlag(AQueries[mIndex].FailIfAny)).Append('}');
-    end;
-    mBuilder.Append(']}');
+    mBuilder.Append('], "keywords": ').Append(JsonStrings(TQueryCatalog.Keywords)).Append(', "queries": ');
+    AppendCatalogQueries(mBuilder, AQueries);
+    mBuilder.Append('}');
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;

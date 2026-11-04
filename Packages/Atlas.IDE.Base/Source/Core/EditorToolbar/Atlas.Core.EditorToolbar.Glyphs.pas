@@ -55,7 +55,9 @@ var
 begin
   SetLength(Result.Points, Length(APoints));
   for Index := 0 to High(APoints) do
+  begin
     Result.Points[Index] := APoints[Index];
+  end;
   Result.Closed := False;
   Result.Filled := False;
 end;
@@ -113,6 +115,7 @@ var
 begin
   Points := nil;
   for Arc := 0 to High(Arcs) do
+  begin
     for Step := 0 to Steps - 1 do
     begin
       T := Step / Steps;
@@ -121,6 +124,7 @@ begin
         T * T * T * Arcs[Arc, 3, 0], U * U * U * Arcs[Arc, 0, 1] + 3 * U * U * T * Arcs[Arc, 1, 1] +
         3 * U * T * T * Arcs[Arc, 2, 1] + T * T * T * Arcs[Arc, 3, 1])];
     end;
+  end;
   Result.Points := Points;
   Result.Closed := True;
   Result.Filled := False;
@@ -162,10 +166,14 @@ var
 begin
   Result := nil;
   for Index := 0 to High(A) do
+  begin
     Result := Result + [A[Index]];
+  end;
   Result := Result + B;
   for Index := 0 to High(C) do
+  begin
     Result := Result + [C[Index]];
+  end;
 end;
 
 function Shape(const APoints: TArray<TAtlasGlyphPoint>; AClosed, AFilled: Boolean): TAtlasGlyphShape;

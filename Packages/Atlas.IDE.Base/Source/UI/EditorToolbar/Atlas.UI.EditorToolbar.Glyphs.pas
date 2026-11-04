@@ -50,7 +50,9 @@ begin
   ACanvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Radius, Radius);
   Text := UpperCase(Copy(Trim(ALetter), 1, 1));
   if Text = '' then
+  begin
     Text := '?';
+  end;
   ACanvas.Font.Color := AFore;
   ACanvas.Font.Style := [fsBold];
   ACanvas.Font.Height := -Round(Box.Height * 0.7);
@@ -101,7 +103,9 @@ begin
       begin
         SetLength(Points, Length(Shape.Points));
         for Index := 0 to High(Shape.Points) do
+        begin
           Points[Index] := Point(Round(Shape.Points[Index].X * Scale), Round(Shape.Points[Index].Y * Scale));
+        end;
         if Shape.Filled then
         begin
           SelectObject(Bitmap.Canvas.Handle, Fill);
@@ -109,9 +113,13 @@ begin
           SelectObject(Bitmap.Canvas.Handle, GetStockObject(NULL_BRUSH));
         end
         else if Shape.Closed then
-          Polygon(Bitmap.Canvas.Handle, Points[0], Length(Points))
+        begin
+          Polygon(Bitmap.Canvas.Handle, Points[0], Length(Points));
+        end
         else
+        begin
           Polyline(Bitmap.Canvas.Handle, Points[0], Length(Points));
+        end;
       end;
     finally
       SelectObject(Bitmap.Canvas.Handle, OldBrush);

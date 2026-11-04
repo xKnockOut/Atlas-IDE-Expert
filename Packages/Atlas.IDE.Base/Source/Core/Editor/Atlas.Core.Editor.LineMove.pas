@@ -88,8 +88,12 @@ var
 begin
   Result := AText.Split([#10]);
   for Index := 0 to High(Result) do
+  begin
     if Result[Index].EndsWith(#13) then
+    begin
       Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+    end;
+  end;
 end;
 
 /// <summary>Blöcke über mehrere Zeilen, die in ALine beginnen, weniger die, die dort enden.</summary>
@@ -99,13 +103,19 @@ var
 begin
   Result := 0;
   for Block in ABlocks do
+  begin
     if Block.OpenLine <> Block.CloseLine then
     begin
       if Block.OpenLine = ALine then
+      begin
         Inc(Result);
+      end;
       if Block.CloseLine = ALine then
+      begin
         Dec(Result);
+      end;
     end;
+  end;
 end;
 
 function LineRange(const ALines: TArray<string>; AFirst, ALast: Integer): TArray<string>;
@@ -115,7 +125,9 @@ begin
   Result := nil;
   SetLength(Result, ALast - AFirst + 1);
   for Index := AFirst to ALast do
+  begin
     Result[Index - AFirst] := ALines[Index];
+  end;
 end;
 
 function Joined(const ALines: TArray<string>; AFirst, ALast: Integer): string;
@@ -126,7 +138,9 @@ begin
   for Index := AFirst to ALast do
   begin
     if Index > AFirst then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + ALines[Index];
   end;
 end;
@@ -142,35 +156,53 @@ begin
   while Index <= Count do
   begin
     if CharInSet(AText[Index], [' ', #9, #10, #13]) then
-      Inc(Index)
+    begin
+      Inc(Index);
+    end
     else if (AText[Index] = '/') and (Index < Count) and (AText[Index + 1] = '/') then
     begin
       while (Index <= Count) and (AText[Index] <> #10) do
+      begin
         Inc(Index);
+      end;
     end
     else if AText[Index] = '{' then
     begin
       if (Index < Count) and (AText[Index + 1] = '$') then
+      begin
         Exit(False);
+      end;
       while (Index <= Count) and (AText[Index] <> '}') do
+      begin
         Inc(Index);
+      end;
       if Index > Count then
+      begin
         Exit(False);
+      end;
       Inc(Index);
     end
     else if (AText[Index] = '(') and (Index < Count) and (AText[Index + 1] = '*') then
     begin
       if (Index + 1 < Count) and (AText[Index + 2] = '$') then
+      begin
         Exit(False);
+      end;
       Inc(Index, 2);
       while (Index < Count) and not ((AText[Index] = '*') and (AText[Index + 1] = ')')) do
+      begin
         Inc(Index);
+      end;
       if Index >= Count then
+      begin
         Exit(False);
+      end;
       Inc(Index, 2);
     end
     else
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
@@ -181,12 +213,16 @@ var
 begin
   Result := ALine;
   if (ALevels = 0) or (Trim(ALine) = '') then
+  begin
     Exit;
+  end;
   if ALevels > 0 then
   begin
     // Mit Tabulator eingerückte Zeilen bekommen Tabulatoren.
     if ALine.StartsWith(#9) then
+    begin
       Exit(StringOfChar(#9, ALevels) + ALine);
+    end;
     Exit(StringOfChar(' ', ALevels * AIndent) + ALine);
   end;
   Need := -ALevels * AIndent;
@@ -195,9 +231,13 @@ begin
   while (Index <= Length(ALine)) and (Removed < Need) and CharInSet(ALine[Index], [' ', #9]) do
   begin
     if ALine[Index] = #9 then
-      Inc(Removed, AIndent)
+    begin
+      Inc(Removed, AIndent);
+    end
     else
+    begin
       Inc(Removed);
+    end;
     Inc(Index);
   end;
   Result := Copy(ALine, Index, MaxInt);
@@ -227,7 +267,9 @@ var
     while (Line >= 0) and (Line >= APlace.FirstLine - MaxCommentLines) and (Trim(Lines[Line]) <> '') do
     begin
       if IsCommentOnly(Joined(Lines, Line, APlace.FirstLine - 1)) then
+      begin
         Result.First := Line;
+      end;
       Dec(Line);
     end;
   end;
@@ -237,9 +279,13 @@ begin
   Result := False;
   Lines := LinesOf(AText);
   if AIndent < 1 then
+  begin
     AIndent := 2;
+  end;
   if (AFirst < 0) or (ALast < AFirst) or (ALast > High(Lines)) then
+  begin
     Exit;
+  end;
   // Ganze Methode, wenn der Cursor ohne Markierung auf ihrem Kopf steht.
   if (AMethodLine >= 0) and (AKind in [TAtlasLineMoveKind.MoveUp, TAtlasLineMoveKind.MoveDown]) then
   begin
@@ -247,22 +293,32 @@ begin
     Bodies := nil;
     Current := -1;
     for Place in Places do
+    begin
       if Place.IsBody then
       begin
         if (AMethodLine >= Place.FirstLine) and (AMethodLine <= Place.Line) then
+        begin
           Current := Length(Bodies);
+        end;
         Bodies := Bodies + [Place];
       end;
+    end;
     if Current >= 0 then
     begin
       // Auch ohne Nachbarmethode gesetzt: Der Aufrufer meldet dann, warum nichts passiert.
       AMove.Method := True;
       if AKind = TAtlasLineMoveKind.MoveUp then
-        Neighbor := Current - 1
+      begin
+        Neighbor := Current - 1;
+      end
       else
+      begin
         Neighbor := Current + 1;
+      end;
       if (Neighbor < 0) or (Neighbor > High(Bodies)) then
+      begin
         Exit;
+      end;
       if Neighbor < Current then
       begin
         Upper := SpanOf(Bodies[Neighbor]);
@@ -276,7 +332,9 @@ begin
       // Dazwischen nur Leerzeilen und Kommentare, sonst würde die Methode über Code wandern.
       if (Lower.First <= Upper.Last) or
         ((Lower.First - Upper.Last > 1) and not IsCommentOnly(Joined(Lines, Upper.Last + 1, Lower.First - 1))) then
+      begin
         Exit;
+      end;
       AMove.StartLine := Upper.First;
       AMove.OldCount := Lower.Last - Upper.First + 1;
       AMove.Lines := LineRange(Lines, Lower.First, Lower.Last) + LineRange(Lines, Upper.Last + 1, Lower.First - 1) +
@@ -323,15 +381,23 @@ begin
   else
     begin
       if AKind = TAtlasLineMoveKind.MoveUp then
-        Neighbor := AFirst - 1
+      begin
+        Neighbor := AFirst - 1;
+      end
       else
+      begin
         Neighbor := ALast + 1;
+      end;
       if (Neighbor < 0) or (Neighbor > High(Lines)) then
+      begin
         Exit;
+      end;
       TAtlasPairs.Analyze(AText, Blocks);
       Levels := NetDepth(Blocks, Neighbor);
       if AKind = TAtlasLineMoveKind.MoveUp then
+      begin
         Levels := -Levels;
+      end;
       for Index := 0 to Count - 1 do
       begin
         Block[Index] := Reindent(Block[Index], Levels, AIndent);
@@ -369,11 +435,15 @@ var
 begin
   Offset := ALine - AMove.OldFirstLine;
   if (Offset < 0) or (Offset > High(AMove.IndentShift)) then
+  begin
     Exit;
+  end;
   ALine := ALine + AMove.LineShift;
   ACharacter := ACharacter + AMove.IndentShift[Offset];
   if ACharacter < 0 then
+  begin
     ACharacter := 0;
+  end;
 end;
 
 class function TAtlasLineMover.Difference(const AOld, ANew: string; out AStart, AOldLength: Integer;
@@ -385,21 +455,33 @@ begin
   AOldLength := 0;
   AInsert := '';
   if AOld = ANew then
+  begin
     Exit(False);
+  end;
   Limit := Length(AOld);
   if Length(ANew) < Limit then
+  begin
     Limit := Length(ANew);
+  end;
   Prefix := 0;
   while (Prefix < Limit) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  begin
     Inc(Prefix);
+  end;
   // Zurück an den Zeilenanfang: Ersetzt werden ganze Zeilen, nie ein halbes #13#10.
   while (Prefix > 0) and (AOld[Prefix] <> #10) do
+  begin
     Dec(Prefix);
+  end;
   Suffix := 0;
   while (Suffix < Limit - Prefix) and (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  begin
     Inc(Suffix);
+  end;
   while (Suffix > 0) and (AOld[Length(AOld) - Suffix] <> #10) do
+  begin
     Dec(Suffix);
+  end;
   AStart := Prefix;
   AOldLength := Length(AOld) - Suffix - Prefix;
   AInsert := Copy(ANew, Prefix + 1, Length(ANew) - Suffix - Prefix);

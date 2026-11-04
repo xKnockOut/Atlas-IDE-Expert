@@ -129,10 +129,18 @@ var
   Bold, Italic, Small: Boolean;
 begin
   for Font := Low(TAtlasDocFont) to High(TAtlasDocFont) do
+  begin
     for Bold := False to True do
+    begin
       for Italic := False to True do
+      begin
         for Small := False to True do
+        begin
           FreeAndNil(FFonts[Font, Bold, Italic, Small]);
+        end;
+      end;
+    end;
+  end;
 end;
 
 function TAtlasDocView.Scale(AValue: Integer): Integer;
@@ -146,32 +154,50 @@ var
 begin
   Result := FFonts[AFace.Font, AFace.Bold, AFace.Italic, AFace.Small];
   if Result <> nil then
+  begin
     Exit;
+  end;
   Result := TFont.Create;
   if AFace.Font = TAtlasDocFont.Mono then
-    Result.Assign(FMono)
+  begin
+    Result.Assign(FMono);
+  end
   else
+  begin
     Result.Assign(FUI);
+  end;
   Style := [];
   if AFace.Bold then
+  begin
     Include(Style, fsBold);
+  end;
   if AFace.Italic then
+  begin
     Include(Style, fsItalic);
+  end;
   Result.Style := Style;
   // Überschriften in Kapitälchen: Großbuchstaben etwas kleiner.
   if AFace.Small then
+  begin
     Result.Height := MulDiv(Result.Height, 85, 100);
+  end;
   FFonts[AFace.Font, AFace.Bold, AFace.Italic, AFace.Small] := Result;
 end;
 
 function TAtlasDocView.FaceHeight(const AFace: TAtlasDocFace): Integer;
 begin
   if AFace.Font = TAtlasDocFont.Mono then
-    Result := FMonoHeight
+  begin
+    Result := FMonoHeight;
+  end
   else if AFace.Small then
-    Result := FSmallHeight
+  begin
+    Result := FSmallHeight;
+  end
   else
+  begin
     Result := FUIHeight;
+  end;
 end;
 
 function TAtlasDocView.TextWidth(ACanvas: TCanvas; const AText: string; const AFace: TAtlasDocFace): Integer;
@@ -180,7 +206,9 @@ var
   Old: HGDIOBJ;
 begin
   if AText = '' then
+  begin
     Exit(0);
+  end;
   Old := SelectObject(ACanvas.Handle, FontOf(AFace).Handle);
   try
     GetTextExtentPoint32(ACanvas.Handle, PChar(AText), Length(AText), Size);
@@ -275,9 +303,13 @@ function TAtlasDocView.FitHeight(AMaxLines, AMaxHeight: Integer): Integer;
 begin
   FViewport := FLayout.Height;
   if AMaxLines > 0 then
+  begin
     FViewport := Min(FViewport, FLayout.HeightOfLines(AMaxLines));
+  end;
   if AMaxHeight > 0 then
+  begin
     FViewport := Min(FViewport, Max(AMaxHeight, FLayout.HeightOfLines(3)));
+  end;
   ClampScroll;
   Result := FViewport;
 end;
@@ -310,7 +342,9 @@ end;
 function TAtlasDocView.LinkAt(AX, AY: Integer): Integer;
 begin
   if (AY < 0) or (AY >= FViewport) or (AX < 0) or (AX >= FWidth) then
+  begin
     Exit(-1);
+  end;
   Result := FLayout.LinkAt(AX, AY + FScroll);
 end;
 
@@ -329,11 +363,17 @@ end;
 procedure TAtlasDocView.ExtendSelection(ACanvas: TCanvas; AX, AY: Integer);
 begin
   if not FSelecting then
+  begin
     Exit;
+  end;
   if AY < 0 then
-    ScrollBy(-(FUIHeight + Scale(2)))
+  begin
+    ScrollBy(-(FUIHeight + Scale(2)));
+  end
   else if AY >= FViewport then
+  begin
     ScrollBy(FUIHeight + Scale(2));
+  end;
   FCaret := FLayout.PositionAt(AX, AY + FScroll, MeasureOn(ACanvas));
 end;
 
@@ -357,9 +397,13 @@ end;
 function TAtlasDocView.SelectedText: string;
 begin
   if HasSelection then
-    Result := FLayout.Selected(FAnchor, FCaret)
+  begin
+    Result := FLayout.Selected(FAnchor, FCaret);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ColorOf(const AColors: TAtlasColors; AColor: TAtlasDocColor): TAtlasColor;
@@ -395,7 +439,9 @@ var
   Selected: Boolean;
 begin
   if FLayout.IsEmpty or (FViewport <= 0) then
+  begin
     Exit;
+  end;
   Measure := MeasureOn(ACanvas);
   Selected := HasSelection;
   From := Min(FAnchor, FCaret);
@@ -409,7 +455,9 @@ begin
       Line := FLayout.Lines[Index];
       Y := ATop + Line.Top - FScroll;
       if (Y + Line.Height + Pad < ATop) or (Y - Pad > ATop + FViewport) then
+      begin
         Continue;
+      end;
       // Codefläche: schattiert und gerahmt über aufeinanderfolgende Codezeilen.
       if Line.Shaded then
       begin
@@ -417,12 +465,18 @@ begin
         LastShaded := (Index = High(FLayout.Lines)) or not FLayout.Lines[Index + 1].Shaded;
         ShadeTop := Y;
         if FirstShaded then
+        begin
           Dec(ShadeTop, Pad);
+        end;
         ShadeBottom := Y + Line.Height;
         if LastShaded then
-          Inc(ShadeBottom, Pad)
+        begin
+          Inc(ShadeBottom, Pad);
+        end
         else
+        begin
           ShadeBottom := ATop + FLayout.Lines[Index + 1].Top - FScroll;
+        end;
         ACanvas.Brush.Style := bsSolid;
         ACanvas.Brush.Color := ToColor(AColors.Gutter);
         ACanvas.FillRect(Rect(ALeft + Line.ShadeLeft, ShadeTop, ALeft + FWidth, ShadeBottom));
@@ -480,9 +534,13 @@ begin
           ACanvas.Pen.Style := psSolid;
           ACanvas.Pen.Color := ToColor(ColorOf(AColors, Span.Color));
           if (Span.Link >= 0) and (Span.Link = FHotLink) then
-            ACanvas.Pen.Width := Max(2, Scale(2))
+          begin
+            ACanvas.Pen.Width := Max(2, Scale(2));
+          end
           else
+          begin
             ACanvas.Pen.Width := 1;
+          end;
           ACanvas.MoveTo(ALeft + Span.Left, SpanTop + FaceHeight(Span.Face));
           ACanvas.LineTo(ALeft + Span.Right, SpanTop + FaceHeight(Span.Face));
           ACanvas.Pen.Width := 1;

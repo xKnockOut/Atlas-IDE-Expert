@@ -229,7 +229,9 @@ var
 begin
   Result := Self;
   if ParsePairs(ACustom, Custom) then
+  begin
     Result.Pairs := Custom;
+  end;
 end;
 
 class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
@@ -240,10 +242,14 @@ begin
   Result := False;
   Parts := AText.Split([',']);
   if Length(Parts) <> Length(APairs) then
+  begin
     Exit;
+  end;
   try
     for Index := 0 to High(Parts) do
+    begin
       APairs[Index] := Hex(Trim(Parts[Index]));
+    end;
   except
     on EConvertError do
       Exit;
@@ -259,7 +265,9 @@ begin
   for Index := 0 to High(APairs) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TAtlasColorMath.ToHex(APairs[Index]);
   end;
 end;
@@ -267,9 +275,13 @@ end;
 class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;
 begin
   if TAtlasColorMath.IsDark(ABackground) then
-    Result := Dark
+  begin
+    Result := Dark;
+  end
   else
+  begin
     Result := Light;
+  end;
 end;
 
 class function TAtlasColors.ForChrome(AFace, AText: TAtlasColor): TAtlasColors;
@@ -281,9 +293,13 @@ begin
   Result.Muted := TAtlasColorMath.Mix(AText, AFace, AtlasMixChromeMuted);
   Result.Line := TAtlasColorMath.Mix(AText, AFace, AtlasMixChromeLine);
   if Result.IsDark then
-    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.25)
+  begin
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.25);
+  end
   else
+  begin
     Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, 0.15);
+  end;
 end;
 
 class function TAtlasColors.InlayHint(ABack: TAtlasColor): TAtlasHintColors;

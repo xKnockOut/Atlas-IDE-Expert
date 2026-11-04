@@ -68,11 +68,15 @@ begin
     Exit;
   end;
   if not TAtlasDisableWarningRequest.TryParse(AArgumentsJson, Request) then
+  begin
     Exit;
+  end;
   Reason := '';
   if Request.AskReason and not InputQuery(TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle),
     TAtlasStrings.Text(TAtlasTextId.DisableWarningReasonPrompt), Reason) then
+  begin
     Exit;
+  end;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   AllWarnings := False;
   try
@@ -95,7 +99,9 @@ begin
     end;
   end;
   if Edit.IsEmpty then
+  begin
     Exit;
+  end;
   // Ein Rückgängig-Schritt: beide Schalter in einer Änderung der Datei.
   Outcome := TAtlasIdeWorkspaceEdit.Apply(Edit, APolicy, TAtlasStrings.Text(TAtlasTextId.DisableWarningTitle));
   if Outcome.Error <> '' then
@@ -106,9 +112,13 @@ begin
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningDone, [Request.Code,
     ExtractFileName(TLspSession.UriToPath(Request.Uri))]));
   if AllWarnings then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningAllWarnings, [Request.Code]));
+  end;
   if Outcome.Written > 0 then
+  begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [Outcome.Written]));
+  end;
 end;
 
 class procedure TAtlasIdeDisableWarning.ExecuteProject(const AArgumentsJson: string; const AMessage: TProc<string>);
@@ -120,7 +130,9 @@ var
   Base: IOTABuildConfiguration;
 begin
   if not TAtlasDisableWarningProject.TryParse(AArgumentsJson, Request) then
+  begin
     Exit;
+  end;
   FileName := TLspSession.UriToPath(Request.Uri);
   Project := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ProjectOfFile(FileName));
   if Project = nil then
@@ -130,10 +142,14 @@ begin
   end;
   if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectConfirm, [Request.Code, Request.Identifier,
     ExtractFileName(Project.FileName), Request.OptionName]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
     Exit;
+  end;
   Base := nil;
   if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+  begin
     Base := Configurations.BaseConfiguration;
+  end;
   if Base = nil then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DisableWarningProjectFailed, [Request.Code,

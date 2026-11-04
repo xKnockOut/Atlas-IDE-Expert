@@ -84,11 +84,13 @@ var
   Check: TAtlasReleaseCheck;
 begin
   for Check := Low(TAtlasReleaseCheck) to High(TAtlasReleaseCheck) do
+  begin
     if SameText(AName, TAtlasBuildPipelineSettings.CheckNames[Check]) then
     begin
       ACheck := Check;
       Exit(True);
     end;
+  end;
   ACheck := TAtlasReleaseCheck.DebugDefine;
   Result := False;
 end;
@@ -118,10 +120,14 @@ begin
       Name := Trim(Copy(Name, 1, Equals - 1));
     end;
     if not CheckOf(Name, Check) then
+    begin
       Continue;
+    end;
     Result.Items[Check].Enabled := Enabled;
     if TAtlasBuildPipelineSettings.HasTarget[Check] and (Target <> '') then
+    begin
       Result.Items[Check].Expected := SameText(Target, 'on') or SameText(Target, 'true') or (Target = '1');
+    end;
   end;
 end;
 
@@ -137,11 +143,17 @@ begin
   begin
     Item := TAtlasBuildPipelineSettings.CheckNames[Check];
     if not Items[Check].Enabled then
+    begin
       Item := '-' + Item;
+    end;
     if TAtlasBuildPipelineSettings.HasTarget[Check] then
+    begin
       Item := Item + Targets[Items[Check].Expected];
+    end;
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Item;
   end;
 end;
@@ -156,8 +168,12 @@ var
   Gate: TAtlasBuildGate;
 begin
   for Gate := Low(TAtlasBuildGate) to High(TAtlasBuildGate) do
+  begin
     if SameText(Trim(AText), GateNames[Gate]) then
+    begin
       Exit(Gate);
+    end;
+  end;
   Result := TAtlasBuildGate.Off;
 end;
 
@@ -174,13 +190,21 @@ begin
     Name := Trim(StringReplace(StringReplace(StringReplace(Name, '"', '', [rfReplaceAll]), '[', '',
       [rfReplaceAll]), ']', '', [rfReplaceAll]));
     if Name = '' then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in Result do
+    begin
       if SameText(Known, Name) then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 

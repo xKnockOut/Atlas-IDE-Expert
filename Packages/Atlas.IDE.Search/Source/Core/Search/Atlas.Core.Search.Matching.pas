@@ -164,15 +164,25 @@ end;
 class function TAtlasSearchPos.Compare(const A, B: TAtlasSearchPos): Integer;
 begin
   if A.Line < B.Line then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if A.Line > B.Line then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if A.Character < B.Character then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if A.Character > B.Character then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 { TAtlasSearchArea }
@@ -187,9 +197,13 @@ end;
 class function TAtlasSearchArea.Whole(const ALines: TArray<string>): TAtlasSearchArea;
 begin
   if Length(ALines) = 0 then
-    Result := Create(0, 0, 0, 0)
+  begin
+    Result := Create(0, 0, 0, 0);
+  end
   else
+  begin
     Result := Create(0, 0, High(ALines), Length(ALines[High(ALines)]));
+  end;
 end;
 
 function TAtlasSearchArea.IsEmpty: Boolean;
@@ -240,7 +254,9 @@ function CleanLine(const ALine: string): string;
 begin
   Result := ALine;
   if (Result <> '') and (Result[Length(Result)] = #13) then
+  begin
     SetLength(Result, Length(Result) - 1);
+  end;
 end;
 
 class function TAtlasTextSearch.HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
@@ -249,9 +265,13 @@ const
 begin
   Result := '';
   if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
+  begin
     Result := Trim(CleanLine(ALines[AHit.Line]).Replace(#9, ' '));
+  end;
   if Length(Result) > MaxText then
+  begin
     Result := Copy(Result, 1, MaxText) + '…';
+  end;
 end;
 
 class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
@@ -273,8 +293,12 @@ var
 begin
   Lower := LowerCase(AWord);
   for Word in Words do
+  begin
     if Word = Lower then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -288,14 +312,22 @@ begin
   // 0-basiert → 1-basiert; steht der Cursor direkt hinter dem Wort, zählt es auch.
   First := ACharacter + 1;
   if (First > Length(Line)) or ((First >= 1) and not TTextChars.IsIdentChar(Line[First])) then
+  begin
     Dec(First);
+  end;
   if (First < 1) or (First > Length(Line)) or not TTextChars.IsIdentChar(Line[First]) then
+  begin
     Exit;
+  end;
   Last := First;
   while (First > 1) and TTextChars.IsIdentChar(Line[First - 1]) do
+  begin
     Dec(First);
+  end;
   while (Last < Length(Line)) and TTextChars.IsIdentChar(Line[Last + 1]) do
+  begin
     Inc(Last);
+  end;
   Result := Copy(Line, First, Last - First + 1);
 end;
 
@@ -331,8 +363,10 @@ begin
     Stop := At + Length(Needle);
     Whole := True;
     if AOptions.WholeWord then
+    begin
       Whole := ((At = 1) or not TTextChars.IsIdentChar(Line[At - 1])) and
         ((Stop > Length(Line)) or not TTextChars.IsIdentChar(Line[Stop]));
+    end;
     Hit := TAtlasSearchHit.Create(ALineIndex, At - 1, Length(Needle));
     if Whole and AArea.Covers(Hit.StartPos, Hit.StopPos) then
     begin
@@ -340,7 +374,9 @@ begin
       At := Pos(Needle, Haystack, Stop);
     end
     else
+    begin
       At := Pos(Needle, Haystack, At + 1);
+    end;
   end;
 end;
 
@@ -358,8 +394,12 @@ var
   begin
     Result := True;
     for K := AFrom to Length(Line) do
+    begin
       if not Line[K].IsWhiteSpace then
+      begin
         Exit(False);
+      end;
+    end;
   end;
 
   procedure Mask(AFrom, ATo: Integer);
@@ -367,8 +407,12 @@ var
     K: Integer;
   begin
     for K := AFrom to ATo do
+    begin
       if (K >= 1) and (K <= Count) then
+      begin
         Line[K] := CodeMask;
+      end;
+    end;
   end;
 
 begin
@@ -386,7 +430,9 @@ begin
         TState.Brace:
           begin
             if Line[I] = '}' then
+            begin
               State := TState.Code;
+            end;
             Mask(I, I);
             Inc(I);
             Continue;
@@ -436,7 +482,9 @@ begin
             Inc(I, 2);
           end
           else
+          begin
             Inc(I);
+          end;
         '/':
           if (I < Count) and (Line[I + 1] = '/') then
           begin
@@ -444,7 +492,9 @@ begin
             Break;
           end
           else
+          begin
             Inc(I);
+          end;
         '''':
           begin
             // Mehrzeiliger String: ''' und dahinter nichts mehr in der Zeile.
@@ -461,7 +511,9 @@ begin
               if Line[I] = '''' then
               begin
                 if (I < Count) and (Line[I + 1] = '''') then
-                  Inc(I, 2)
+                begin
+                  Inc(I, 2);
+                end
                 else
                 begin
                   Inc(I);
@@ -469,7 +521,9 @@ begin
                 end;
               end
               else
+              begin
                 Inc(I);
+              end;
             end;
             Mask(Start, I - 1);
           end;
@@ -494,19 +548,31 @@ var
 begin
   Needle := ANeedle;
   if (Needle <> '') and (Needle[1] = '&') then
+  begin
     Delete(Needle, 1, 1);
+  end;
   if Needle = '' then
+  begin
     Exit;
+  end;
   for I := 1 to Length(Needle) do
+  begin
     if not TTextChars.IsIdentChar(Needle[I]) then
+    begin
       Exit;
+    end;
+  end;
   if Needle[1].IsDigit then
+  begin
     Exit;
+  end;
   Code := TAtlasTextSearch.CodeOnly(ALines);
   for LineIndex := AArea.Start.Line to AArea.Stop.Line do
   begin
     if (LineIndex < 0) or (LineIndex > High(Code)) then
+    begin
       Continue;
+    end;
     Line := Code[LineIndex];
     Count := Length(Line);
     I := 1;
@@ -518,29 +584,41 @@ begin
             // Zeichenkonstante, Hex-, Binärzahl oder Zahl: Ziffern und Buchstaben gehören dazu ($FF, 1E5).
             Inc(I);
             while (I <= Count) and TTextChars.IsIdentChar(Line[I]) do
+            begin
               Inc(I);
+            end;
           end;
       else
         if (Line[I] = '&') or TTextChars.IsIdentChar(Line[I]) then
         begin
           Escaped := Line[I] = '&';
           if Escaped then
+          begin
             Inc(I);
+          end;
           First := I;
           while (I <= Count) and TTextChars.IsIdentChar(Line[I]) do
+          begin
             Inc(I);
+          end;
           if I = First then
+          begin
             Continue;
+          end;
           Name := Copy(Line, First, I - First);
           if SameText(Name, Needle) and (Escaped or not TAtlasTextSearch.IsReserved(Name)) then
           begin
             Hit := TAtlasSearchHit.Create(LineIndex, First - 1, I - First);
             if AArea.Covers(Hit.StartPos, Hit.StopPos) then
+            begin
               AHits.Add(Hit);
+            end;
           end;
         end
         else
+        begin
           Inc(I);
+        end;
       end;
     end;
   end;
@@ -561,7 +639,9 @@ begin
   for LineIndex := AArea.Start.Line to AArea.Stop.Line do
   begin
     if (LineIndex < 0) or (LineIndex > High(ALines)) then
+    begin
       Continue;
+    end;
     Line := CleanLine(ALines[LineIndex]);
     Found := Expression.Match(Line);
     while Found.Success do
@@ -573,13 +653,19 @@ begin
         Stop := At + Found.Length;
         Keep := True;
         if AOptions.WholeWord then
+        begin
           Keep := ((At = 1) or not TTextChars.IsIdentChar(Line[At - 1])) and
             ((Stop > Length(Line)) or not TTextChars.IsIdentChar(Line[Stop]));
+        end;
         if Keep and (ACode <> nil) then
+        begin
           Keep := Pos(TAtlasTextSearch.CodeMask, Copy(ACode[LineIndex], At, Found.Length)) = 0;
+        end;
         Hit := TAtlasSearchHit.Create(LineIndex, At - 1, Found.Length);
         if Keep and AArea.Covers(Hit.StartPos, Hit.StopPos) then
+        begin
           AHits.Add(Hit);
+        end;
       end;
       Found := Found.NextMatch;
     end;
@@ -596,7 +682,9 @@ var
 begin
   Result := nil;
   if (ANeedle = '') or AArea.IsEmpty then
+  begin
     Exit;
+  end;
   // Liste statt Array + [Hit] (#1227): Das Anhängen kopierte jedes Mal alle Treffer; ein Buchstabe in einer großen
   // Unit (Zehntausende Treffer) kostete so Sekunden je Tastendruck.
   Hits := TList<TAtlasSearchHit>.Create;
@@ -604,18 +692,30 @@ begin
     if AOptions.Regex then
     begin
       if not TAtlasSearchRegex.Check(ANeedle, Error) then
+      begin
         Exit;
+      end;
       Code := nil;
       if AOptions.Identifier then
+      begin
         Code := CodeOnly(ALines);
+      end;
       FindPattern(ALines, Code, ANeedle, AOptions, AArea, Hits);
     end
     else if AOptions.Identifier then
-      FindIdentifiers(ALines, Trim(ANeedle), AArea, Hits)
+    begin
+      FindIdentifiers(ALines, Trim(ANeedle), AArea, Hits);
+    end
     else
+    begin
       for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+      begin
         if (LineIndex >= 0) and (LineIndex <= High(ALines)) then
+        begin
           FindInLine(ALines[LineIndex], LineIndex, ANeedle, AOptions, AArea, Hits);
+        end;
+      end;
+    end;
     Result := Hits.ToArray;
   finally
     Hits.Free;
@@ -630,20 +730,30 @@ begin
   AWrapped := False;
   Result := -1;
   if Length(AHits) = 0 then
+  begin
     Exit;
+  end;
   if ABackward then
   begin
     for Index := High(AHits) downto 0 do
+    begin
       if TAtlasSearchPos.Compare(AHits[Index].StartPos, AFrom) < 0 then
+      begin
         Exit(Index);
+      end;
+    end;
     AWrapped := True;
     Result := High(AHits);
   end
   else
   begin
     for Index := 0 to High(AHits) do
+    begin
       if TAtlasSearchPos.Compare(AHits[Index].StartPos, AFrom) >= 0 then
+      begin
         Exit(Index);
+      end;
+    end;
     AWrapped := True;
     Result := 0;
   end;
@@ -655,7 +765,9 @@ class function TAtlasSearchRegex.Options(const AOptions: TAtlasSearchOptions): T
 begin
   Result := [];
   if not AOptions.CaseSensitive then
+  begin
     Include(Result, roIgnoreCase);
+  end;
 end;
 
 class function TAtlasSearchRegex.Check(const APattern: string; out AError: string): Boolean;
@@ -664,7 +776,9 @@ var
 begin
   AError := '';
   if APattern = '' then
+  begin
     Exit(True);
+  end;
   try
     // Übersetzt wird beim ersten Vergleich; erst dann meldet die Engine einen Fehler.
     Expression := TRegEx.Create(APattern);

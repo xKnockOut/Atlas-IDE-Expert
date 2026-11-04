@@ -117,8 +117,12 @@ var
   Outcome: TAtlasCiOutcome;
 begin
   for Outcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
+  begin
     if SameText(OutcomeKeys[Outcome], AKey) then
+    begin
       Exit(Outcome);
+    end;
+  end;
   Result := TAtlasCiOutcome.Unknown;
 end;
 
@@ -132,10 +136,16 @@ var
   Error: TAtlasCiFetchError;
 begin
   if AKey = '' then
+  begin
     Exit(TAtlasCiFetchError.None);
+  end;
   for Error := Succ(Low(TAtlasCiFetchError)) to High(TAtlasCiFetchError) do
+  begin
     if SameText(ErrorKeys[Error], AKey) then
+    begin
       Exit(Error);
+    end;
+  end;
   // Unbekannte Kennung aus einer neueren Fassung: als Netzfehler zeigen.
   Result := TAtlasCiFetchError.Network;
 end;
@@ -148,12 +158,18 @@ begin
   Result.Provider := LowerCase(Trim(AProvider));
   Result.Url := Trim(AUrl);
   while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
+  begin
     Delete(Result.Url, Length(Result.Url), 1);
+  end;
   Result.Job := Trim(AJob);
   while (Result.Job <> '') and (Result.Job[1] = '/') do
+  begin
     Delete(Result.Job, 1, 1);
+  end;
   while (Result.Job <> '') and (Result.Job[Length(Result.Job)] = '/') do
+  begin
     Delete(Result.Job, Length(Result.Job), 1);
+  end;
   Result.Multibranch := AMultibranch;
   Result.Branch := Trim(ABranch);
 end;
@@ -167,7 +183,9 @@ function TAtlasCiJob.JobBranch: string;
 begin
   Result := '';
   if Multibranch then
+  begin
     Result := Branch;
+  end;
 end;
 
 function TAtlasCiJob.Key: string;
@@ -183,18 +201,28 @@ var
 begin
   Result := '';
   if SameText(Copy(Url, 1, 8), 'https://') then
-    Scheme := 'https://'
+  begin
+    Scheme := 'https://';
+  end
   else if SameText(Copy(Url, 1, 7), 'http://') then
-    Scheme := 'http://'
+  begin
+    Scheme := 'http://';
+  end
   else
+  begin
     Exit;
+  end;
   Rest := Copy(Url, Length(Scheme) + 1, MaxInt);
   Index := Pos('/', Rest);
   if Index > 0 then
+  begin
     Rest := Copy(Rest, 1, Index - 1);
+  end;
   // Benutzer in der Adresse („user@host“) lässt .atlas nicht zu; hier trotzdem nie übernehmen.
   if (Rest = '') or (Pos('@', Rest) > 0) or (Pos(' ', Rest) > 0) then
+  begin
     Exit;
+  end;
   Result := LowerCase(Scheme + Rest);
 end;
 
@@ -202,7 +230,9 @@ function TAtlasCiJob.CredentialTarget: string;
 begin
   Result := '';
   if Server <> '' then
+  begin
     Result := 'Atlas:ci:' + Server;
+  end;
 end;
 
 function TAtlasCiJob.Secure: Boolean;

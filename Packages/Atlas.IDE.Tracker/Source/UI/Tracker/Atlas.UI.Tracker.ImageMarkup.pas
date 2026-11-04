@@ -177,7 +177,9 @@ var
   mShape: TAtlasMarkupShape;
 begin
   for mShape in AShapes do
+  begin
     Draw(ABitmap.Canvas, mShape, 1);
+  end;
 end;
 
 { TAtlasImageMarkupForm }
@@ -273,7 +275,9 @@ begin
   try
     Result := (mForm.ShowModal = mrOk) and (Length(mForm.Shapes) > 0);
     if Result then
+    begin
       mForm.ApplyTo(ABitmap);
+    end;
   finally
     mForm.Free;
   end;
@@ -283,7 +287,9 @@ function TAtlasImageMarkupForm.Scale: Double;
 begin
   Result := 1;
   if (FBitmap.Width = 0) or (FBitmap.Height = 0) or (FBox.Width <= 0) or (FBox.Height <= 0) then
+  begin
     Exit;
+  end;
   // Nur verkleinern, nie vergrößern.
   Result := Min(1, Min(FBox.Width / FBitmap.Width, FBox.Height / FBitmap.Height));
 end;
@@ -308,16 +314,22 @@ begin
   SetStretchBltMode(FBox.Canvas.Handle, HALFTONE);
   FBox.Canvas.StretchDraw(mTarget, FBitmap);
   for mShape in FShapes do
+  begin
     TAtlasImageMarkup.Draw(FBox.Canvas, mShape, mScale);
+  end;
   if FDragging then
+  begin
     TAtlasImageMarkup.Draw(FBox.Canvas, FDrag, mScale);
+  end;
 end;
 
 procedure TAtlasImageMarkupForm.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
   Y: Integer);
 begin
   if Button <> mbLeft then
+  begin
     Exit;
+  end;
   FDragging := True;
   FDrag := TAtlasMarkupShape.Create(FTool, ToImage(X, Y), ToImage(X, Y));
 end;
@@ -325,7 +337,9 @@ end;
 procedure TAtlasImageMarkupForm.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   if not FDragging then
+  begin
     Exit;
+  end;
   FDrag.EndPoint := ToImage(X, Y);
   FBox.Invalidate;
 end;
@@ -334,7 +348,9 @@ procedure TAtlasImageMarkupForm.BoxMouseUp(Sender: TObject; Button: TMouseButton
   Y: Integer);
 begin
   if not FDragging then
+  begin
     Exit;
+  end;
   FDragging := False;
   FDrag.EndPoint := ToImage(X, Y);
   AddShape(FDrag);
@@ -343,7 +359,9 @@ end;
 procedure TAtlasImageMarkupForm.AddShape(const AShape: TAtlasMarkupShape);
 begin
   if not AShape.Tiny then
+  begin
     FShapes := FShapes + [AShape];
+  end;
   UpdateButtons;
   FBox.Invalidate;
 end;
@@ -351,7 +369,9 @@ end;
 procedure TAtlasImageMarkupForm.Undo;
 begin
   if Length(FShapes) > 0 then
+  begin
     SetLength(FShapes, Length(FShapes) - 1);
+  end;
   UpdateButtons;
   FBox.Invalidate;
 end;
@@ -378,10 +398,16 @@ var
 begin
   // Das gewählte Werkzeug fett.
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
+  begin
     if mTool = FTool then
-      FToolButtons[mTool].Font.Style := [fsBold]
+    begin
+      FToolButtons[mTool].Font.Style := [fsBold];
+    end
     else
+    begin
       FToolButtons[mTool].Font.Style := [];
+    end;
+  end;
   FUndo.Enabled := Length(FShapes) > 0;
 end;
 

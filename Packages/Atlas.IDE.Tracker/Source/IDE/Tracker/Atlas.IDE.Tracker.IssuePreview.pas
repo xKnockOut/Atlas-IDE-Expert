@@ -313,9 +313,13 @@ uses
 function LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
 begin
   if ASucceeded then
-    Result := 'geladen'
+  begin
+    Result := 'geladen';
+  end
   else
+  begin
     Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  end;
 end;
 
 { TAtlasIdeIssuePreview }
@@ -334,14 +338,18 @@ begin
   FReadOnly.Duplicates := dupIgnore;
   FRecent := TAtlasRecentIssues.Create;
   if ACacheFolder <> '' then
+  begin
     FRecentFile := TPath.Combine(ACacheFolder, 'recent.json');
+  end;
   CreateDevelopment;
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
   if FDevelopment <> nil then
+  begin
     FDevelopment.Stop;
+  end;
   FDevelopment := nil;
   FDevelopmentRef := nil;
   ReleaseThreads(True);
@@ -373,14 +381,18 @@ begin
     begin
       Result := nil;
       if Assigned(mOwner.FHooks.Transport) then
+      begin
         Result := mOwner.FHooks.Transport(AProvider, ATarget);
+      end;
     end;
   mHooks.Project :=
     function: string
     begin
       Result := '';
       if Assigned(mOwner.FHooks.Project) then
+      begin
         Result := mOwner.FHooks.Project();
+      end;
     end;
   mHooks.Browse :=
     procedure(AUrl: string)
@@ -412,7 +424,9 @@ var
   mOwner: TAtlasIdeIssuePreview;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
   mKeep := Self;
   mOwner := Self;
@@ -420,7 +434,9 @@ begin
     procedure(AFrame: TAtlasIssueFrame)
     begin
       if (mKeep <> nil) and mOwner.FStarted then
+      begin
         mOwner.Wire(AFrame);
+      end;
     end;
   FDevelopment.Start;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
@@ -428,14 +444,18 @@ begin
   FCache.Prune(NowUtc);
   // Fehlt, unbrauchbar oder gesperrt: leer anfangen (TAtlasDataFile protokolliert).
   if FRecentFile <> '' then
+  begin
     FRecent.LoadFromFile(FRecentFile);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
 begin
   FRecent.Add(ATarget, AIssue);
   if FRecentFile = '' then
+  begin
     Exit;
+  end;
   try
     FRecent.SaveToFile(FRecentFile);
   except
@@ -453,7 +473,9 @@ end;
 procedure TAtlasIdeIssuePreview.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   Inc(FGeneration);
   CancelLoad;
@@ -473,18 +495,26 @@ var
   mWait: TArray<TThread>;
 begin
   if FThread <> nil then
+  begin
     FWorkers.Add(FThread);
+  end;
   if FImageThread <> nil then
+  begin
     FWorkers.Add(FImageThread);
+  end;
   FThread := nil;
   FImageThread := nil;
   if AWait then
   begin
     mWait := nil;
     for mIndex := 0 to FWorkers.Count - 1 do
+    begin
       mWait := mWait + [FWorkers[mIndex]];
+    end;
     if Length(mWait) > 0 then
+    begin
       TAtlasShutdown.WaitForThreads(mWait);
+    end;
   end;
   for mIndex := FWorkers.Count - 1 downto 0 do
   begin
@@ -538,19 +568,25 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.GoBack;
+      end;
     end;
   AFrame.OnForward :=
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.GoForward;
+      end;
     end;
   AFrame.OnRefresh :=
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.Refresh;
+      end;
     end;
   AFrame.OnCancel :=
     procedure
@@ -579,7 +615,9 @@ begin
     begin
       mFrame := mOwner.Frame;
       if (mKeep <> nil) and (mFrame <> nil) and mFrame.HasDetails and Assigned(mOwner.FHooks.Start) then
+      begin
         mOwner.FHooks.Start(mFrame.Details.Issue);
+      end;
     end;
   AFrame.OnBrowse :=
     procedure
@@ -596,21 +634,29 @@ begin
     begin
       mFrame := mOwner.Frame;
       if (mKeep <> nil) and (mFrame <> nil) and mFrame.HasDetails then
+      begin
         Clipboard.AsText := mFrame.Details.Key;
+      end;
     end;
   AFrame.OnFix :=
     procedure(AFix: TAtlasIssueFix)
     begin
       if mKeep <> nil then
+      begin
         mOwner.Fix(AFix);
+      end;
     end;
   AFrame.OnOpenLink :=
     procedure(ALink: TAtlasTrackerLink)
     begin
       if (mKeep = nil) or not mOwner.FHasCurrent then
+      begin
         Exit;
+      end;
       if ALink.Local then
-        mOwner.Show(mOwner.FCurrent.Target, ALink.Key)
+      begin
+        mOwner.Show(mOwner.FCurrent.Target, ALink.Key);
+      end
       else
       begin
         TAtlasIssuePreview.Browse(ALink.Page);
@@ -620,7 +666,9 @@ begin
     procedure(AAttachment: TAtlasTrackerAttachment)
     begin
       if mKeep <> nil then
+      begin
         mOwner.OpenAttachment(AAttachment);
+      end;
     end;
   AFrame.OnOpenUrl :=
     procedure(AUrl: string)
@@ -632,52 +680,70 @@ begin
     procedure(AUrls: TArray<string>)
     begin
       if mKeep <> nil then
+      begin
         mOwner.LoadImages(AUrls);
+      end;
     end;
   AFrame.OnEnd :=
     procedure
     begin
       if (mKeep <> nil) and mOwner.FHasCurrent and Assigned(mOwner.FHooks.EndIssue) then
+      begin
         mOwner.FHooks.EndIssue(mOwner.FCurrent.Key);
+      end;
     end;
   AFrame.OnComment :=
     procedure(AText: string)
     begin
       if mKeep <> nil then
+      begin
         mOwner.SendComment(AText);
+      end;
     end;
   AFrame.OnToggleTask :=
     procedure(AIndex: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.ToggleTask(AIndex);
+      end;
     end;
   AFrame.OnAddTask :=
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.AddTask;
+      end;
     end;
   AFrame.OnCreateSubtask :=
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.CreateSubtask;
+      end;
     end;
   AFrame.OnAddLink :=
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.AddLink;
+      end;
     end;
   AFrame.OnAttach :=
     procedure
     begin
       if (mKeep <> nil) and mOwner.FHasCurrent and Assigned(mOwner.FHooks.Attach) then
+      begin
         mOwner.FHooks.Attach(mOwner.FCurrent.Target, mOwner.FCurrent.Key);
+      end;
     end;
   if Assigned(FHooks.CanStart) then
+  begin
     AFrame.CanStart := FHooks.CanStart();
+  end;
   FDevelopment.Wire(AFrame);
   AFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
   ShowCurrent;
@@ -687,7 +753,9 @@ function TAtlasIdeIssuePreview.ProviderOf(const ATarget: TAtlasTrackerTarget): I
 begin
   Result := nil;
   if Assigned(FHooks.Provider) then
+  begin
     Result := FHooks.Provider(ATarget.Provider);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.UpdateHistory;
@@ -696,7 +764,9 @@ var
 begin
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.SetHistory(FHistory.CanBack, FHistory.CanForward);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.Show(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -709,7 +779,9 @@ var
   mEntry: TAtlasIssueHistoryEntry;
 begin
   if not FStarted or not Active or (Trim(AKey) = '') then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -730,7 +802,9 @@ end;
 procedure TAtlasIdeIssuePreview.Refresh;
 begin
   if not FHasCurrent then
+  begin
     Exit;
+  end;
   FDevelopment.Refresh;
   Load(FCurrent);
 end;
@@ -740,7 +814,9 @@ var
   mEntry: TAtlasIssueHistoryEntry;
 begin
   if FHistory.GoBack(mEntry) then
+  begin
     Load(mEntry);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.GoForward;
@@ -748,20 +824,26 @@ var
   mEntry: TAtlasIssueHistoryEntry;
 begin
   if FHistory.GoForward(mEntry) then
+  begin
     Load(mEntry);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.CancelLoad;
 begin
   FHasPending := False;
   if FCancel <> nil then
+  begin
     FCancel.Cancel;
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.CancelImages;
 begin
   if FImageCancel <> nil then
+  begin
     FImageCancel.Cancel;
+  end;
 end;
 
 function TAtlasIdeIssuePreview.StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
@@ -770,9 +852,13 @@ var
 begin
   mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched));
   if AReason = '' then
-    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen])
+  begin
+    Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStale, [mWhen]);
+  end
   else
+  begin
     Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.UpdateWrite;
@@ -782,7 +868,9 @@ var
 begin
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   mWrite := FStarted and FHasCurrent and Assigned(FHooks.CanWrite) and FHooks.CanWrite(FCurrent.Target);
   mFrame.CanWrite := mWrite;
   mFrame.CanEnd := mWrite and Assigned(FHooks.IsActive) and FHooks.IsActive(FCurrent.Key);
@@ -798,11 +886,15 @@ var
 begin
   mKey := '';
   if AWrite then
+  begin
     mKey := TAtlasCommentDrafts.TrackerKey(FCurrent.Target) + '|' + FCurrent.Key;
+  end;
   mActive := TAtlasIdeSettings.Current.IssuesCommentEditor;
   // Dasselbe Issue mit derselben Einstellung: die Bindung (und der getippte Text) bleibt.
   if SameText(mKey, FBoundKey) and (mActive = FBoundActive) then
+  begin
     Exit;
+  end;
   mEditor := AFrame.CommentEditor;
   // Der Entwurf des bisherigen Issues bleibt gespeichert; das Feld beginnt leer. Ohne Bindung (Editor aus)
   // bleibt der Text wie bisher stehen.
@@ -815,7 +907,9 @@ begin
   FBoundActive := mActive;
   mAssist := nil;
   if (mKey <> '') and mActive and Assigned(FHooks.CommentAssist) then
+  begin
     mAssist := FHooks.CommentAssist(FCurrent.Target, FCurrent.Key);
+  end;
   mEditor.Enhanced := mAssist <> nil;
   mEditor.Bind(mAssist);
 end;
@@ -830,7 +924,9 @@ var
 begin
   mFrame := Frame;
   if (mFrame = nil) or not FStarted or not FHasCurrent or not Assigned(FHooks.Comment) then
+  begin
     Exit;
+  end;
   mKeep := Self;
   mOwner := Self;
   mKey := FCurrent.Key;
@@ -842,24 +938,34 @@ begin
       mDone: TAtlasIssueFrame;
     begin
       if (mKeep = nil) or not mOwner.FStarted then
+      begin
         Exit;
+      end;
       mDone := mOwner.Frame;
       // Zeigt das Feld inzwischen ein anderes Issue, gehört sein Text nicht zum gesendeten Kommentar.
       if mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
       begin
         if mDone <> nil then
+        begin
           mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+        end;
       end
       else
       begin
         if mDone <> nil then
+        begin
           mDone.SetCommentSending(False);
+        end;
         if AResult.Succeeded and Assigned(mOwner.FHooks.CommentSent) then
+        begin
           mOwner.FHooks.CommentSent(mTarget, mKey);
+        end;
       end;
       // Den neuen Kommentar zeigen: dasselbe Issue neu laden.
       if AResult.Succeeded and mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
+      begin
         mOwner.Refresh;
+      end;
     end);
 end;
 
@@ -870,15 +976,23 @@ var
 begin
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   UpdateHistory;
   UpdateWrite;
   if FHasCurrent then
+  begin
     PrepareFrame(mFrame, FCurrent);
+  end;
   if FHasCurrent and FCache.Get(FCurrent.Target, FCurrent.Key, NowUtc, mDetails) then
-    ShowOn(mFrame, mDetails, '')
+  begin
+    ShowOn(mFrame, mDetails, '');
+  end
   else if not FHasCurrent then
+  begin
     mFrame.ShowEmpty;
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -894,7 +1008,9 @@ var
   mTransport: IAtlasCiTransport;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   // Eine Abfrage zur Zeit: die laufende abbrechen, dieser Wunsch folgt ihr.
   ReleaseThreads(False);
   if FThread <> nil then
@@ -902,7 +1018,9 @@ begin
     FPending := AEntry;
     FHasPending := True;
     if FCancel <> nil then
+    begin
       FCancel.Cancel;
+    end;
     Exit;
   end;
   CancelImages;
@@ -943,7 +1061,9 @@ begin
     Exit;
   end;
   if not Supports(mTransport, IAtlasCiCancel, FCancel) then
+  begin
     FCancel := nil;
+  end;
   FThread := TThread.CreateAnonymousThread(
     procedure
     var
@@ -968,12 +1088,16 @@ begin
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if mKeep <> nil then
+          begin
             mOwner.Loaded(mGeneration, AEntry, mOk, mResult, mError);
+          end;
         end);
     end);
   FThread.FreeOnTerminate := False;
@@ -990,10 +1114,14 @@ begin
   FCancel := nil;
   ReleaseThreads(False);
   if not FStarted then
+  begin
     Exit;
+  end;
   mProvider := ProviderOf(AEntry.Target);
   if mProvider <> nil then
+  begin
     TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, LoadState(ASucceeded, AError)]));
+  end;
   // Ein anderer Wunsch wartet: der zählt.
   if FHasPending then
   begin
@@ -1002,7 +1130,9 @@ begin
     Exit;
   end;
   if AGeneration <> FGeneration then
+  begin
     Exit;
+  end;
   mFrame := Frame;
   if ASucceeded then
   begin
@@ -1014,7 +1144,9 @@ begin
     begin
       mFrame.SetLoading(False);
       if Assigned(FHooks.CanStart) then
+      begin
         mFrame.CanStart := FHooks.CanStart();
+      end;
       mFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
       PrepareFrame(mFrame, AEntry);
       // Meldung nach dem Anlegen bzw. Verknüpfen (#1279) über dem frischen Stand.
@@ -1022,7 +1154,9 @@ begin
       UpdateWrite;
       // Nach einem abgewiesenen Abhaken (Beschreibung geändert): Hinweis über dem neuen Stand.
       if FPendingNotice <> '' then
+      begin
         mFrame.ShowNotice(FPendingNotice);
+      end;
     end;
     FPendingNotice := '';
     FNotice := '';
@@ -1030,16 +1164,24 @@ begin
   end;
   FPendingNotice := '';
   if mFrame = nil then
+  begin
     Exit;
+  end;
   mFrame.SetLoading(False);
   // Abgebrochen (Knopf oder Fenster zu): nichts melden.
   if AError = TAtlasCiFetchError.Cancelled then
+  begin
     Exit;
+  end;
   // Ohne Netz der letzte Stand mit Grund, kein Dialog.
   if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mCached) then
-    ShowOn(mFrame, mCached, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)))
+  begin
+    ShowOn(mFrame, mCached, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)));
+  end
   else
+  begin
     mFrame.ShowError(TAtlasIssueTip.ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
+  end;
 end;
 
 function TAtlasIdeIssuePreview.ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
@@ -1066,10 +1208,14 @@ begin
   mFrame := Frame;
   if not FStarted or not FHasCurrent or FWriting or (mFrame = nil) or not mFrame.HasDetails or
     mFrame.ChecklistReadOnly then
+  begin
     Exit;
+  end;
   // Der Punkt, wie er angezeigt wurde; ChangeChecklist vergleicht ihn mit dem aktuellen Text.
   if TAtlasTrackerChecklist.Find(mFrame.Details.Description, AIndex, mItem) then
+  begin
     ChangeChecklist(TChecklistChange.Toggle, mItem, '');
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.AddTask;
@@ -1080,14 +1226,20 @@ begin
   mFrame := Frame;
   if not FStarted or not FHasCurrent or FWriting or (mFrame = nil) or not mFrame.HasDetails or
     mFrame.ChecklistReadOnly then
+  begin
     Exit;
+  end;
   mText := '';
   if not InputQuery(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAdd),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
+  begin
     Exit;
+  end;
   // Während des Dialogs kann das Fenster gewechselt haben.
   if FStarted and FHasCurrent and not FWriting then
+  begin
     ChangeChecklist(TChecklistChange.Append, Default(TAtlasChecklistItem), mText);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.ChangeChecklist(AChange: TChecklistChange; const AItem: TAtlasChecklistItem;
@@ -1111,7 +1263,9 @@ begin
   end;
   mTransport := nil;
   if Assigned(FHooks.Transport) then
+  begin
     mTransport := FHooks.Transport(mProvider, mEntry.Target);
+  end;
   // Ohne Token darf Atlas nicht schreiben: wie eine Ablehnung des Trackers.
   if mTransport = nil then
   begin
@@ -1121,7 +1275,9 @@ begin
   FWriting := True;
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.SetChecklistBusy(True);
+  end;
   ReleaseThreads(False);
   mKeep := Self;
   mOwner := Self;
@@ -1143,9 +1299,13 @@ begin
           mError) then
         begin
           if AChange = TChecklistChange.Toggle then
-            mOk := TAtlasTrackerChecklist.Toggle(mCurrent, AItem, mNew)
+          begin
+            mOk := TAtlasTrackerChecklist.Toggle(mCurrent, AItem, mNew);
+          end
           else
+          begin
             mOk := TAtlasTrackerChecklist.Append(mCurrent, AText, mNew);
+          end;
           if not mOk then
           begin
             mChanged := True;
@@ -1153,10 +1313,14 @@ begin
           end
           else if mEditor.UpdateDescription(mEntry.Target, mTransport, mEntry.Key, mNew,
             TAtlasIssuePreview.TimeoutMs, mError) then
-            mApplied := True
+          begin
+            mApplied := True;
+          end
           else
+          begin
             // Nur eine Ablehnung beim Schreiben heißt „keine Schreibrechte“; Lesefehler nicht.
             mDenied := mError = TAtlasCiFetchError.Unauthorized;
+          end;
         end;
       except
         on E: Exception do
@@ -1169,12 +1333,16 @@ begin
       mTransport := nil;
       mEditor := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if mKeep <> nil then
+          begin
             mOwner.ChecklistWritten(mEntry, mApplied, mChanged, mDenied, mError, mNew);
+          end;
         end);
     end);
   mWorker.FreeOnTerminate := False;
@@ -1194,16 +1362,26 @@ begin
   FWriting := False;
   ReleaseThreads(False);
   if not FStarted then
+  begin
     Exit;
+  end;
   mProvider := ProviderOf(AEntry.Target);
   if AApplied then
-    mResult := 'geschrieben'
+  begin
+    mResult := 'geschrieben';
+  end
   else if AChanged then
-    mResult := 'Beschreibung geändert'
+  begin
+    mResult := 'Beschreibung geändert';
+  end
   else
+  begin
     mResult := 'nicht geschrieben (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  end;
   if mProvider <> nil then
+  begin
     TAtlasGuard.Log(Format('Issue-Vorschau: Checkliste bei %s %s', [mProvider.Name, mResult]));
+  end;
   if AApplied and FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
   begin
     // Der geschriebene Text ist der neue Stand, auch fürs Statusfeld.
@@ -1212,15 +1390,23 @@ begin
     FCache.Put(AEntry.Target, mDetails);
   end;
   if ADenied then
+  begin
     FReadOnly.Add(ReadOnlyKey(AEntry));
+  end;
   mFrame := Frame;
   mCurrent := FHasCurrent and FCurrent.SameAs(AEntry);
   if mFrame <> nil then
+  begin
     mFrame.SetChecklistBusy(False);
+  end;
   if (mFrame = nil) or not mCurrent then
+  begin
     Exit;
+  end;
   if AApplied then
-    mFrame.ReplaceDescription(AText)
+  begin
+    mFrame.ReplaceDescription(AText);
+  end
   else if AChanged then
   begin
     // Nichts angewendet: neu laden, danach der Hinweis.
@@ -1233,8 +1419,10 @@ begin
     mFrame.ShowNotice(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueChecklistDenied));
   end
   else if AError <> TAtlasCiFetchError.Cancelled then
+  begin
     mFrame.ShowNotice(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueChecklistFailed,
       [TAtlasIssueTip.ErrorText(AError, AEntry.Key)]));
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -1244,7 +1432,9 @@ begin
   Show(ATarget, AKey);
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.RevealChecklist;
+  end;
 end;
 
 function TAtlasIdeIssuePreview.ChecklistProgress(const ATarget: TAtlasTrackerTarget; const AKey: string;
@@ -1255,7 +1445,9 @@ begin
   AProgress := TAtlasChecklistProgress.Create(0, 0);
   Result := (Trim(AKey) <> '') and FCache.Get(ATarget, AKey, NowUtc, mDetails);
   if Result then
+  begin
     AProgress := TAtlasTrackerChecklist.Progress(mDetails.Description);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.Prefetch(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -1271,23 +1463,33 @@ var
   mWorker: TThread;
 begin
   if not FStarted or FPrefetching or (Trim(AKey) = '') or not Assigned(FHooks.Transport) then
+  begin
     Exit;
+  end;
   mEntry := TAtlasIssueHistoryEntry.Create(ATarget, AKey);
   mKey := ReadOnlyKey(mEntry);
   // Frischer Stand im Zwischenspeicher, oder diese Kennung wurde eben erst versucht.
   if FCache.Get(ATarget, mEntry.Key, NowUtc, mDetails) and
     (NowUtc - mDetails.Fetched < PrefetchMinutes / MinsPerDay) then
+  begin
     Exit;
+  end;
   if SameText(FPrefetchKey, mKey) and (NowUtc - FPrefetchAt < PrefetchMinutes / MinsPerDay) then
+  begin
     Exit;
+  end;
   FPrefetchKey := mKey;
   FPrefetchAt := NowUtc;
   mProvider := ProviderOf(ATarget);
   if mProvider = nil then
+  begin
     Exit;
+  end;
   mTransport := FHooks.Transport(mProvider, ATarget);
   if mTransport = nil then
+  begin
     Exit;
+  end;
   mComments := TAtlasIdeSettings.Current.IssuesPreviewComments;
   FPrefetching := True;
   ReleaseThreads(False);
@@ -1311,12 +1513,16 @@ begin
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if mKeep <> nil then
+          begin
             mOwner.Prefetched(mEntry, mOk, mResult);
+          end;
         end);
     end);
   mWorker.FreeOnTerminate := False;
@@ -1332,7 +1538,9 @@ begin
   FPrefetching := False;
   ReleaseThreads(False);
   if not FStarted or not ASucceeded then
+  begin
     Exit;
+  end;
   mDetails := ADetails;
   mDetails.Fetched := NowUtc;
   FCache.Put(AEntry.Target, mDetails);
@@ -1346,7 +1554,9 @@ begin
   // Baum oder Liste (#1279); die Knöpfe nur, wenn der Anbieter schreiben kann.
   mProvider := nil;
   if FHasCurrent then
+  begin
     mProvider := ProviderOf(FCurrent.Target);
+  end;
   AFrame.LinksAsTree := TAtlasIdeSettings.Current.IssuesPreviewLinks;
   AFrame.CanWriteLinks := AFrame.LinksAsTree and Supports(mProvider, IAtlasTrackerLinkWriter);
   AFrame.ShowDetails(ADetails, NowUtc, AStatus, not TAtlasIdeSettings.Current.IssuesPreviewComments);
@@ -1360,7 +1570,9 @@ begin
   Result := '';
   mAt := LastDelimiter('-', AKey);
   if mAt > 1 then
+  begin
     Result := Copy(AKey, 1, mAt - 1);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.CreateSubtask;
@@ -1373,15 +1585,21 @@ var
 begin
   mFrame := Frame;
   if not FStarted or not FHasCurrent or (mFrame = nil) or not mFrame.HasDetails then
+  begin
     Exit;
+  end;
   mTarget := FCurrent.Target;
   mParent := mFrame.Details.Key;
   // Vorbelegt: das Projekt des übergeordneten Issues (GitHub owner/repo, YouTrack Kürzel).
   mProject := mTarget.Project;
   if mProject = '' then
+  begin
     mProject := ProjectOfKey(mParent);
+  end;
   if not TAtlasSubtaskDialog.Execute(mParent, mProject, mTitle, mDescription) then
+  begin
     Exit;
+  end;
   mKeep := Self;
   mOwner := Self;
   RunWrite(mTarget,
@@ -1394,16 +1612,24 @@ begin
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
     begin
       if mKeep = nil then
+      begin
         Exit;
+      end;
       if ASucceeded then
-        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskCreated, [AKey]))
+      begin
+        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskCreated, [AKey]));
+      end
       else if AKey <> '' then
+      begin
         mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskNotLinked, [AKey,
-          TAtlasIssueTip.ErrorText(AError, mParent)]), AError)
+          TAtlasIssueTip.ErrorText(AError, mParent)]), AError);
+      end
       else
+      begin
         mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueSubtaskFailed,
           [TAtlasIssueTip.ErrorText(AError, mParent)]),
           AError);
+      end;
     end);
 end;
 
@@ -1418,11 +1644,15 @@ var
 begin
   mFrame := Frame;
   if not FStarted or not FHasCurrent or (mFrame = nil) or not mFrame.HasDetails then
+  begin
     Exit;
+  end;
   mTarget := FCurrent.Target;
   mKey := mFrame.Details.Key;
   if not TAtlasIssueLinkDialog.Execute(mKey, mTarget.Provider, mKind, mOther) then
+  begin
     Exit;
+  end;
   mKeep := Self;
   mOwner := Self;
   RunWrite(mTarget,
@@ -1435,13 +1665,19 @@ begin
     procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
     begin
       if mKeep = nil then
+      begin
         Exit;
+      end;
       if ASucceeded then
-        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkAdded, [mKey, mOther]))
+      begin
+        mOwner.Written(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkAdded, [mKey, mOther]));
+      end
       else
+      begin
         mOwner.WriteFailed(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssueLinkFailed,
           [TAtlasIssueTip.ErrorText(AError, mOther)]),
           AError);
+      end;
     end);
 end;
 
@@ -1469,7 +1705,9 @@ begin
   end;
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.ShowError(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkWorking), TAtlasIssueFix.None);
+  end;
   ReleaseThreads(False);
   mThread := TThread.CreateAnonymousThread(
     procedure
@@ -1495,7 +1733,9 @@ begin
       mTransport := nil;
       mWriter := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
@@ -1510,7 +1750,9 @@ end;
 procedure TAtlasIdeIssuePreview.Written(const AText: string);
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   TAtlasGuard.Log('Issue-Vorschau: Verknüpfung geschrieben');
   // Neu laden: Der Baum zeigt die neue Unteraufgabe bzw. Verknüpfung, die Meldung steht darüber.
   FNotice := AText;
@@ -1522,11 +1764,15 @@ var
   mFrame: TAtlasIssueFrame;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   TAtlasGuard.Log('Issue-Vorschau: Schreiben nicht möglich (' + TAtlasCiBuild.ErrorKey(AError) + ')');
   mFrame := Frame;
   if mFrame <> nil then
+  begin
     mFrame.ShowError(AText, TAtlasIssuePreview.FixOf(AError));
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.CheckBlocked(const ATarget: TAtlasTrackerTarget; const AKey: string;
@@ -1545,9 +1791,13 @@ begin
   mProvider := nil;
   mTransport := nil;
   if FStarted then
+  begin
     mProvider := ProviderOf(ATarget);
+  end;
   if (mProvider <> nil) and Assigned(FHooks.Transport) then
+  begin
     mTransport := FHooks.Transport(mProvider, ATarget);
+  end;
   if mTransport = nil then
   begin
     ADone(mKnown, mCached);
@@ -1576,15 +1826,21 @@ begin
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           // Ohne Antwort der letzte Stand aus dem Zwischenspeicher.
           if mOk then
-            ADone(True, mDetails)
+          begin
+            ADone(True, mDetails);
+          end
           else
+          begin
             ADone(mKnown, mCached);
+          end;
         end);
     end);
   mThread.FreeOnTerminate := False;
@@ -1613,17 +1869,23 @@ var
   mProvider: IAtlasTrackerProvider;
 begin
   if not FHasCurrent then
+  begin
     Exit;
+  end;
   case AFix of
     TAtlasIssueFix.EnterToken:
       begin
         mProvider := ProviderOf(FCurrent.Target);
         if (mProvider <> nil) and Assigned(FHooks.Credentials) and FHooks.Credentials(mProvider, FCurrent.Target) then
+        begin
           Refresh;
+        end;
       end;
     TAtlasIssueFix.Settings:
       if Assigned(FHooks.Settings) then
+      begin
         FHooks.Settings();
+      end;
     TAtlasIssueFix.Browser:
       // Nur die Seite aus der eingetragenen Adresse, nie eine aus der Antwort.
       TAtlasIssuePreview.BrowseIssue(ProviderOf(FCurrent.Target), FCurrent.Target, FCurrent.Key);
@@ -1664,7 +1926,9 @@ var
   mWorker: TThread;
 begin
   if not FStarted or (Trim(AKey) = '') or not Assigned(ADone) then
+  begin
     Exit;
+  end;
   mId := LookupId(ATarget, AKey);
   // Kürzlich nicht gefunden: nicht erneut fragen.
   if FMissing.TryGetValue(mId, mAt) then
@@ -1727,12 +1991,16 @@ begin
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.IssueLinks,
         procedure
         begin
           if mKeep <> nil then
+          begin
             mOwner.LookedUp(mId, ATarget, mOk, mResult, mError);
+          end;
         end);
     end);
   mWorker.FreeOnTerminate := False;
@@ -1749,7 +2017,9 @@ var
 begin
   ReleaseThreads(False);
   if not FStarted or not FLookups.TryGetValue(AId, mWaiting) then
+  begin
     Exit;
+  end;
   FLookups.Remove(AId);
   mDetails := ADetails;
   if ASucceeded then
@@ -1765,11 +2035,15 @@ begin
     FCache.Put(ATarget, mDetails);
   end
   else if AError = TAtlasCiFetchError.NotFound then
+  begin
     FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
+  end;
   // Anonym: nie Kennung oder Titel.
   TAtlasGuard.Log('Issue-Kennung: ' + LoadState(ASucceeded, AError));
   for mDone in mWaiting do
+  begin
     Deliver(mDone, ASucceeded, mDetails, AError);
+  end;
 end;
 
 class procedure TAtlasIdeIssuePreview.Deliver(const ADone: TAtlasIssueLookupDone; ASucceeded: Boolean;
@@ -1796,26 +2070,40 @@ var
   mOwner: TAtlasIdeIssuePreview;
 begin
   if not FStarted or not FHasCurrent or not Assigned(FHooks.Transport) then
+  begin
     Exit;
+  end;
   CancelImages;
   ReleaseThreads(False);
   mProvider := ProviderOf(FCurrent.Target);
   if mProvider = nil then
+  begin
     Exit;
+  end;
   // Nur Bilder vom Server, an den das Token geht; alles andere bleibt ein Link.
   mServer := mProvider.ApiServer(FCurrent.Target);
   mUrls := nil;
   for mUrl in AUrls do
+  begin
     if TAtlasIssuePreview.MayLoad(mUrl, mServer) and (Length(mUrls) < MaxImages) and
       (IndexText(mUrl, mUrls) < 0) then
+    begin
       mUrls := mUrls + [mUrl];
+    end;
+  end;
   if Length(mUrls) = 0 then
+  begin
     Exit;
+  end;
   mTransport := FHooks.Transport(mProvider, FCurrent.Target);
   if not Supports(mTransport, IAtlasCiDownload, mDownload) then
+  begin
     Exit;
+  end;
   if not Supports(mTransport, IAtlasCiCancel, FImageCancel) then
+  begin
     FImageCancel := nil;
+  end;
   mGeneration := FGeneration;
   mKeep := Self;
   mOwner := Self;
@@ -1830,7 +2118,9 @@ begin
       for mIndex := 0 to High(mUrls) do
       begin
         if TAtlasShutdown.Signalled then
+        begin
           Exit;
+        end;
         mImageUrl := mUrls[mIndex];
         mBytes := nil;
         try
@@ -1838,11 +2128,15 @@ begin
             mStatus, mBytes, mError) then
           begin
             if mError = TAtlasCiFetchError.Cancelled then
+            begin
               Exit;
+            end;
             Continue;
           end;
           if mStatus <> 200 then
+          begin
             Continue;
+          end;
         except
           on Exception do
             Continue;
@@ -1851,7 +2145,9 @@ begin
           procedure
           begin
             if mKeep <> nil then
+            begin
               mOwner.ImageLoaded(mGeneration, mImageUrl, mBytes);
+            end;
           end);
       end;
       mDownload := nil;
@@ -1867,10 +2163,14 @@ var
   mImage: TWICImage;
 begin
   if not FStarted or (AGeneration <> FGeneration) or (Length(ABytes) = 0) then
+  begin
     Exit;
+  end;
   mFrame := Frame;
   if mFrame = nil then
+  begin
     Exit;
+  end;
   // PNG, JPEG, GIF, BMP und TIFF über WIC; Unlesbares bleibt ein Link.
   mImage := TWICImage.Create;
   mStream := TBytesStream.Create(ABytes);
@@ -1885,7 +2185,9 @@ begin
     mStream.Free;
   end;
   if mImage <> nil then
+  begin
     mFrame.SetImage(AUrl, mImage);
+  end;
 end;
 
 procedure TAtlasIdeIssuePreview.OpenAttachment(const AAttachment: TAtlasTrackerAttachment);
@@ -1899,10 +2201,14 @@ var
   mWorker: TThread;
 begin
   if not FStarted or not FHasCurrent then
+  begin
     Exit;
+  end;
   mProvider := ProviderOf(FCurrent.Target);
   if mProvider = nil then
+  begin
     Exit;
+  end;
   mUrl := AAttachment.Url;
   // Dateien anderer Server (GitHub) bzw. ohne Token: im Browser.
   if AAttachment.External or not TAtlasIssuePreview.MayLoad(mUrl, mProvider.ApiServer(FCurrent.Target)) or
@@ -1913,7 +2219,9 @@ begin
   end;
   mTransport := FHooks.Transport(mProvider, FCurrent.Target);
   if not Supports(mTransport, IAtlasCiDownload, mDownload) then
+  begin
     Exit;
+  end;
   mFolder := TPath.Combine(TPath.Combine(TPath.Combine(TPath.GetTempPath, 'Atlas'), 'issues'),
     TAtlasTrackerIssueCache.SafeName(FCurrent.Key));
   mName := TAtlasIssuePreview.SafeFileName(AAttachment.Name);
@@ -1943,12 +2251,16 @@ begin
       end;
       mDownload := nil;
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
         procedure
         begin
           if mKeep <> nil then
+          begin
             mOwner.AttachmentLoaded(mFile, mOk, mName);
+          end;
         end);
     end);
   mWorker.FreeOnTerminate := False;
@@ -1963,13 +2275,17 @@ var
 begin
   ReleaseThreads(False);
   if not FStarted then
+  begin
     Exit;
+  end;
   if not ASucceeded then
   begin
     mFrame := Frame;
     if mFrame <> nil then
+    begin
       mFrame.ShowError(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewAttachmentFailed, [AName]),
         TAtlasIssueFix.None);
+    end;
     Exit;
   end;
   // Ausführbares nie starten: im Explorer zeigen.

@@ -75,10 +75,14 @@ begin
   for Index := 0 to AOwner.ComponentCount - 1 do
   begin
     if Pos(TreeNamePart, UpperCase(AOwner.Components[Index].Name)) > 0 then
+    begin
       Exit(AOwner.Components[Index]);
+    end;
     Result := FindTree(AOwner.Components[Index]);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -87,8 +91,12 @@ var
   Method: TRttiMethod;
 begin
   for Method in AType.GetMethods(AName) do
+  begin
     if Length(Method.GetParameters) = AParamCount then
+    begin
       Exit(Method);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -106,11 +114,15 @@ var
 begin
   Result := False;
   if (APointer = nil) or (VirtualQuery(APointer, Info, SizeOf(Info)) = 0) or (Info.State <> MEM_COMMIT) then
+  begin
     Exit;
+  end;
   ClassPtr := PPointer(APointer)^;
   if (ClassPtr = nil) or (VirtualQuery(PByte(ClassPtr) + vmtSelfPtr, Info, SizeOf(Info)) = 0) or
     (Info.State <> MEM_COMMIT) then
+  begin
     Exit;
+  end;
   Result := PPointer(PByte(ClassPtr) + vmtSelfPtr)^ = ClassPtr;
 end;
 
@@ -122,7 +134,9 @@ begin
   while ClassType <> nil do
   begin
     if SameText(ClassType.ClassName, AClassName) then
+    begin
       Exit(True);
+    end;
     ClassType := ClassType.ClassParent;
   end;
   Result := False;
@@ -134,16 +148,22 @@ var
 begin
   Prop := AContext.GetType(AObject.ClassType).GetProperty(AName);
   if (Prop = nil) or not Prop.IsReadable then
+  begin
     Exit(TValue.Empty);
+  end;
   Result := Prop.GetValue(AObject);
 end;
 
 function AsInt(const AValue: TValue): Integer;
 begin
   if AValue.IsOrdinal then
-    Result := AValue.AsOrdinal
+  begin
+    Result := AValue.AsOrdinal;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 { TAtlasMessageViewReader }
@@ -164,7 +184,9 @@ begin
   FSucceeded := ASucceeded;
   // Ein Lesen je Lauf: Gruppe und Projekte melden das Ende kurz nacheinander.
   if FPending then
+  begin
     Exit;
+  end;
   FPending := True;
   TAtlasMainThread.ForceQueue(TAtlasFeature.Build,
     procedure
@@ -183,7 +205,9 @@ begin
           Info := Info + '; ' + E.ClassName + ': ' + E.Message;
       end;
       if Assigned(FOnMessages) then
+      begin
         FOnMessages(Messages, FProject, FSucceeded, Info, Readable);
+      end;
     end);
 end;
 
@@ -222,8 +246,12 @@ begin
   AMessages := nil;
   Form := nil;
   for Index := 0 to Screen.FormCount - 1 do
+  begin
     if SameText(Screen.Forms[Index].ClassName, FormClass) then
+    begin
       Form := Screen.Forms[Index];
+    end;
+  end;
   if Form = nil then
   begin
     AInfo := FormClass + ' nicht gefunden';
@@ -241,10 +269,14 @@ begin
     // Je nach Version mit oder ohne ConsiderChildrenAbove.
     GetFirst := MethodWith(TreeType, 'GetFirst', 1);
     if GetFirst = nil then
+    begin
       GetFirst := MethodWith(TreeType, 'GetFirst', 0);
+    end;
     GetNext := MethodWith(TreeType, 'GetNext', 2);
     if GetNext = nil then
+    begin
       GetNext := MethodWith(TreeType, 'GetNext', 1);
+    end;
     GetNodeData := MethodWith(TreeType, 'GetNodeData', 1);
     if (GetFirst = nil) or (GetNext = nil) or (GetNodeData = nil) then
     begin
@@ -253,9 +285,13 @@ begin
       Exit;
     end;
     if Length(GetFirst.GetParameters) = 1 then
-      Node := GetFirst.Invoke(Tree, [False]).AsType<Pointer>
+    begin
+      Node := GetFirst.Invoke(Tree, [False]).AsType<Pointer>;
+    end
     else
+    begin
       Node := GetFirst.Invoke(Tree, []).AsType<Pointer>;
+    end;
     Count := 0;
     while (Node <> nil) and (Count < MaxNodes) do
     begin
@@ -269,13 +305,19 @@ begin
             PropValue(Context, Line, 'Message').ToString, PropValue(Context, Line, 'FileName').ToString,
             AsInt(PropValue(Context, Line, 'Line')), AsInt(PropValue(Context, Line, 'Column')));
           if Message.Severity <> TAtlasCompilerSeverity.Info then
+          begin
             AMessages := AMessages + [Message];
+          end;
         end;
       end;
       if Length(GetNext.GetParameters) = 2 then
-        Node := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], Node), False]).AsType<Pointer>
+      begin
+        Node := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], Node), False]).AsType<Pointer>;
+      end
       else
+      begin
         Node := GetNext.Invoke(Tree, [PointerArg(GetNext.GetParameters[0], Node)]).AsType<Pointer>;
+      end;
       Inc(Count);
     end;
     AInfo := Format('%d Knoten, %d Meldungen', [Count, Length(AMessages)]);

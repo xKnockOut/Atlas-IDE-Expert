@@ -142,7 +142,9 @@ procedure TAtlasIdeSafeMode.Notification(AComponent: TComponent; Operation: TOpe
 begin
   inherited;
   if (Operation = opRemove) and (AComponent = FNotice) then
+  begin
     FNotice := nil;
+  end;
 end;
 
 class function TAtlasIdeSafeMode.DefaultFolder: string;
@@ -173,14 +175,18 @@ var
 begin
   Process := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, AProcessId);
   if Process = 0 then
+  begin
     // Kein Zugriff heißt: Den Prozess gibt es (andere Anmeldung); sonst ist er beendet.
     Exit(GetLastError = ERROR_ACCESS_DENIED);
+  end;
   try
     Result := GetExitCodeProcess(Process, Code) and (Code = STILL_ACTIVE);
     // Später gestartet als die Marke: Die Nummer gehört einem neuen Prozess.
     if Result and GetProcessTimes(Process, Creation, ExitTime, KernelTime, UserTime) and
       FileTimeToSystemTime(Creation, Started) then
+    begin
       Result := SystemTimeToDateTime(Started) <= AStartedAt;
+    end;
   finally
     CloseHandle(Process);
   end;
@@ -192,10 +198,14 @@ begin
   case AKey of
     TAtlasStartupKey.Shift:
       if GetAsyncKeyState(VK_SHIFT) < 0 then
+      begin
         Result := AKey;
+      end;
     TAtlasStartupKey.Ctrl:
       if GetAsyncKeyState(VK_CONTROL) < 0 then
+      begin
         Result := AKey;
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -208,7 +218,9 @@ var
 begin
   Args := nil;
   for Index := 1 to ParamCount do
+  begin
     Args := Args + [ParamStr(Index)];
+  end;
   Result := TAtlasSafeMode.IsForced(GetEnvironmentVariable(TAtlasSafeMode.EnvironmentName), Args);
 end;
 
@@ -221,8 +233,12 @@ begin
   Result := nil;
   Settings := TAtlasIdeSettings.Current;
   for Toggle in TAtlasIdeSettings.QuickToggles do
+  begin
     if TAtlasQuickToggles.GetFlag(Settings, Toggle.Key, Value) and Value then
+    begin
       Result := Result + [Toggle.Key];
+    end;
+  end;
 end;
 
 class procedure TAtlasIdeSafeMode.Warn(const AText: string);
@@ -232,13 +248,17 @@ begin
   TAtlasGuard.Log(AText);
   Warning := TAtlasGuard.OnWarning;
   if Assigned(Warning) then
+  begin
     Warning(AText);
+  end;
 end;
 
 procedure TAtlasIdeSafeMode.WriteMarker;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   try
     TAtlasSessionFiles.WriteMarker(FFolder, FMarker);
   except
@@ -296,7 +316,9 @@ begin
       ;
   end;
   if FLevel <> TAtlasSafeLevel.Normal then
+  begin
     TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
+  end;
   FMarker := TAtlasSessionMarker.Create(GetCurrentProcessId, TAtlasPluginVersion.Version, StartedAt);
   FMarker.Level := FLevel;
   FMarker.Features := EnabledFeatures;
@@ -306,7 +328,9 @@ begin
     GetEnumName(TypeInfo(TAtlasSafeLevel), Ord(FLevel)),
     GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason))]));
   if FLevel = TAtlasSafeLevel.Normal then
+  begin
     Exit;
+  end;
   ShowLine;
   // Erst wenn die IDE steht: Das Hauptfenster gibt es beim Laden der Packages evtl. noch nicht.
   Show :=
@@ -320,7 +344,9 @@ end;
 procedure TAtlasIdeSafeMode.Loaded(ALoadMs: Int64);
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FLock.Enter;
   try
     FMarker.Loaded := True;
@@ -336,10 +362,14 @@ var
   State: TAtlasSafeState;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   if FNotice <> nil then
+  begin
     FreeAndNil(FNotice);
+  end;
   HideLine;
   try
     TAtlasSessionFiles.DeleteMarker(FFolder, FMarker.ProcessId);
@@ -383,7 +413,9 @@ var
   Action: TProc;
 begin
   if (FRegistry = nil) or (FLineRef <> nil) then
+  begin
     Exit;
+  end;
   Action :=
     procedure
     begin
@@ -399,10 +431,14 @@ end;
 procedure TAtlasIdeSafeMode.HideLine;
 begin
   if FLineRef = nil then
+  begin
     Exit;
+  end;
   FLine.Detach;
   if FRegistry <> nil then
+  begin
     FRegistry.Remove(StatusId);
+  end;
   FLine := nil;
   FLineRef := nil;
 end;
@@ -410,11 +446,15 @@ end;
 procedure TAtlasIdeSafeMode.Leave;
 begin
   if FLevel = TAtlasSafeLevel.Normal then
+  begin
     Exit;
+  end;
   FLevel := TAtlasSafeLevel.Normal;
   FAnswered := True;
   if FNotice <> nil then
+  begin
     FNotice.Close;
+  end;
   HideLine;
   // Die Composition meldet über OnChanged der Einstellungen alles Weitere an.
   TAtlasIdeSettings.SetSession(Default(TAtlasToggleSession));
@@ -425,7 +465,9 @@ end;
 function TAtlasIdeSafeMode.NoticeText(AKind: TAtlasSafeNoticeKind): string;
 begin
   if AKind = TAtlasSafeNoticeKind.Ask then
+  begin
     Exit(TAtlasStrings.Text(TAtlasTextId.SafeAskText));
+  end;
   case FDecision.Reason of
     TAtlasSafeReason.StartupKey:
       Result := TAtlasStrings.Fmt(TAtlasTextId.SafeMinimalText, [TAtlasStrings.Text(TAtlasTextId.SafeReasonKey)]);
@@ -449,14 +491,22 @@ var
 begin
   Result := '';
   if not FDecision.Crashed then
+  begin
     Exit;
+  end;
   Toggles := TAtlasIdeSettings.QuickToggles;
   Names := nil;
   for Key in TAtlasSafeMode.Suggest(Toggles, FChangedKeys, FCrashed) do
+  begin
     if TAtlasQuickToggles.Find(Toggles, Key, Toggle) then
+    begin
       Names := Names + [Toggle.Caption];
+    end;
+  end;
   if Length(Names) > 0 then
+  begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.SafeSuggest, [string.Join(', ', Names)]);
+  end;
 end;
 
 function TAtlasIdeSafeMode.RestoreCaption: string;
@@ -464,8 +514,10 @@ begin
   Result := '';
   try
     if TAtlasIdeSettings.History.Count > 0 then
+    begin
       Result := TAtlasStrings.Fmt(TAtlasTextId.SafeRestore,
         [DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings)]);
+    end;
   except
     on Exception do
       Result := '';
@@ -477,7 +529,9 @@ var
   At: string;
 begin
   if TAtlasIdeSettings.History.Count = 0 then
+  begin
     Exit;
+  end;
   At := DateTimeToStr(TTimeZone.Local.ToLocalTime(TAtlasIdeSettings.History[0].ChangedAt), FormatSettings);
   TAtlasIdeSettings.Restore(0);
   UpdateFeatures;
@@ -489,7 +543,9 @@ begin
   Result := nil;
   try
     if TFile.Exists(AFileName) then
+    begin
       Result := TFile.ReadAllLines(AFileName, TEncoding.UTF8);
+    end;
   except
     on Exception do
       Result := nil;
@@ -505,12 +561,16 @@ begin
   if not FHasCrashed then
   begin
     if FDecision.Crashed then
+    begin
       Result := Result + [TAtlasStrings.Text(TAtlasTextId.SafeNoDetails)];
+    end;
     Exit;
   end;
   Result := TAtlasSafeMode.Details(FCrashed);
   if TAtlasGuard.RotatingLog = nil then
+  begin
     Exit;
+  end;
   // Die Sitzung kann über eine Rotation reichen: erst die ältere Datei, dann die aktuelle.
   Folder := ExtractFileDir(TAtlasGuard.RotatingLog.FileName);
   Log := ReadLog(TPath.Combine(Folder, 'atlas.1.log')) + ReadLog(TAtlasGuard.RotatingLog.FileName);
@@ -519,7 +579,9 @@ begin
   Result := Result + ['', TAtlasStrings.Text(TAtlasTextId.SafeLogTitle)];
   // Anonym (#647): Pfade und Namen fallen weg.
   for Line in Lines do
+  begin
     Result := Result + [TAtlasGuard.SafeMessage(Line)];
+  end;
 end;
 
 procedure TAtlasIdeSafeMode.ShowNotice;
@@ -528,16 +590,22 @@ var
   Area: TRect;
 begin
   if FLevel = TAtlasSafeLevel.Normal then
+  begin
     Exit;
+  end;
   if FNotice <> nil then
   begin
     FNotice.BringToFront;
     Exit;
   end;
   if FAnswered then
-    Kind := TAtlasSafeNoticeKind.Safe
+  begin
+    Kind := TAtlasSafeNoticeKind.Safe;
+  end
   else
+  begin
     Kind := TAtlasSafeNoticeKind.Ask;
+  end;
   FNotice := TAtlasSafeModeNotice.CreateNotice(Self, Kind, NoticeText(Kind), Suggestion, RestoreCaption,
     DetailLines);
   FNotice.OnSafe :=
@@ -562,9 +630,13 @@ begin
   FNotice.OnExportLog := FOnExportLog;
   FNotice.OnBugReport := FOnBugReport;
   if Application.MainForm <> nil then
-    Area := Application.MainForm.BoundsRect
+  begin
+    Area := Application.MainForm.BoundsRect;
+  end
   else
+  begin
     Area := Screen.WorkAreaRect;
+  end;
   FNotice.ShowIn(Area);
 end;
 

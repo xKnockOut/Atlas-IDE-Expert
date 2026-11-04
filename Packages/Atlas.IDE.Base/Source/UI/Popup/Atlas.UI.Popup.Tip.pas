@@ -45,9 +45,13 @@ begin
   mHeight := Canvas.TextHeight('Wg') + Scale(10);
   Bounds := TRect.Create(APoint, mWidth, mHeight);
   if Bounds.Right > Area.Right then
+  begin
     Bounds.SetLocation(Max(Area.Left, Area.Right - mWidth), Bounds.Top);
+  end;
   if Bounds.Bottom > Area.Bottom then
+  begin
     Bounds.SetLocation(Bounds.Left, Area.Bottom - mHeight);
+  end;
   ShowAt(Bounds);
   Invalidate;
 end;

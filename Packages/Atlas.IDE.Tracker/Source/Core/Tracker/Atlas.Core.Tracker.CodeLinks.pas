@@ -202,13 +202,21 @@ begin
       mProject := UpperCase(Trim(mPart));
       mValid := (mProject <> '') and IsAsciiLetter(mProject[1]);
       for mIndex := 1 to Length(mProject) do
+      begin
         if not (IsAsciiLetter(mProject[mIndex]) or IsDigit(mProject[mIndex]) or (mProject[mIndex] = '_')) then
+        begin
           mValid := False;
+        end;
+      end;
       if mValid then
+      begin
         Result.Projects := Result.Projects + [mProject];
+      end;
     end;
     if Length(Result.Projects) > 0 then
+    begin
       Result.Provider := TAtlasTrackerTarget.YouTrack;
+    end;
   end;
 end;
 
@@ -227,16 +235,22 @@ end;
 function TAtlasIssueKeyMatch.IssueKey: string;
 begin
   if Repository <> '' then
-    Result := '#' + IntToStr(Number)
+  begin
+    Result := '#' + IntToStr(Number);
+  end
   else
+  begin
     Result := Key;
+  end;
 end;
 
 function TAtlasIssueKeyMatch.IssueTarget(const ATarget: TAtlasTrackerTarget): TAtlasTrackerTarget;
 begin
   Result := ATarget;
   if Repository <> '' then
+  begin
     Result.Project := Repository;
+  end;
 end;
 
 { TAtlasCodeLinks }
@@ -252,20 +266,31 @@ begin
   AMatch := Default(TAtlasIssueKeyMatch);
   mEnd := AIndex;
   while (mEnd <= ALast) and (IsAsciiLetter(AText[mEnd]) or IsDigit(AText[mEnd]) or (AText[mEnd] = '_')) do
+  begin
     Inc(mEnd);
+  end;
   if (mEnd > ALast) or (AText[mEnd] <> '-') then
+  begin
     Exit;
+  end;
   mPrefix := UpperCase(Copy(AText, AIndex, mEnd - AIndex));
   mNumberEnd := mEnd + 1;
   while (mNumberEnd <= ALast) and IsDigit(AText[mNumberEnd]) do
+  begin
     Inc(mNumberEnd);
+  end;
   mDigits := mNumberEnd - mEnd - 1;
   if (mDigits < 1) or (mDigits > TAtlasCodeLinks.MaxDigits) then
+  begin
     Exit;
+  end;
   // Hinter der Nummer eine Wortgrenze, auch über das Ende des Bereichs hinaus.
   if (mNumberEnd <= Length(AText)) and IsWordChar(AText[mNumberEnd]) then
+  begin
     Exit;
+  end;
   for mProject in APattern.Projects do
+  begin
     if mProject = mPrefix then
     begin
       AMatch.Character := AIndex - 1;
@@ -275,6 +300,7 @@ begin
       Result := AMatch.Number > 0;
       Exit;
     end;
+  end;
 end;
 
 /// <summary>GitHub-Kennung mit dem „#“ an AIndex (1-basiert); AFirst ist der Anfang des Bereichs. Erkennt auch
@@ -289,24 +315,34 @@ begin
   AMatch := Default(TAtlasIssueKeyMatch);
   mNumberEnd := AIndex + 1;
   while (mNumberEnd <= ALast) and IsDigit(AText[mNumberEnd]) do
+  begin
     Inc(mNumberEnd);
+  end;
   mDigits := mNumberEnd - AIndex - 1;
   if (mDigits < 1) or (mDigits > TAtlasCodeLinks.MaxDigits) then
+  begin
     Exit;
+  end;
   if (mNumberEnd <= Length(AText)) and (IsWordChar(AText[mNumberEnd]) or (AText[mNumberEnd] = '#') or
     (AText[mNumberEnd] = '$')) then
+  begin
     Exit;
+  end;
   mStart := AIndex;
   mRepository := '';
   // owner/repo davor?
   mRepoStart := AIndex;
   while (mRepoStart > AFirst) and IsRepoChar(AText[mRepoStart - 1]) do
+  begin
     Dec(mRepoStart);
+  end;
   if (mRepoStart < AIndex) and (mRepoStart > AFirst) and (AText[mRepoStart - 1] = '/') then
   begin
     mOwnerStart := mRepoStart - 1;
     while (mOwnerStart > AFirst) and IsOwnerChar(AText[mOwnerStart - 1]) do
+    begin
       Dec(mOwnerStart);
+    end;
     if (mOwnerStart < mRepoStart - 1) and ((mOwnerStart = AFirst) or not (IsWordChar(AText[mOwnerStart - 1]) or
       (AText[mOwnerStart - 1] = '/') or (AText[mOwnerStart - 1] = '.') or (AText[mOwnerStart - 1] = '-'))) then
     begin
@@ -314,14 +350,20 @@ begin
       mRepository := LowerCase(Copy(AText, mOwnerStart, AIndex - mOwnerStart));
     end
     else
+    begin
       Exit;
+    end;
   end
   else if mRepoStart < AIndex then
+  begin
     // Direkt vor dem „#“ steht ein Wort ohne „/“ (etwa „Nr#12“ oder „C#7“): keine Kennung.
-    Exit
+    Exit;
+  end
   else if (AIndex > AFirst) and ((AText[AIndex - 1] = '&') or (AText[AIndex - 1] = '#') or (AText[AIndex - 1] = '$') or
     (AText[AIndex - 1] = '/')) then
+  begin
     Exit;
+  end;
   AMatch.Character := mStart - 1;
   AMatch.Length := mNumberEnd - mStart;
   AMatch.Number := StrToIntDef(Copy(AText, AIndex + 1, mDigits), 0);
@@ -331,7 +373,9 @@ begin
     AMatch.Key := Copy(AText, mStart, AIndex - mStart) + '#' + IntToStr(AMatch.Number);
   end
   else
+  begin
     AMatch.Key := '#' + IntToStr(AMatch.Number);
+  end;
   Result := AMatch.Number > 0;
 end;
 
@@ -350,13 +394,19 @@ var
 begin
   Result := nil;
   if not APattern.Active then
+  begin
     Exit;
+  end;
   mFirst := AStart + 1;
   if mFirst < 1 then
+  begin
     mFirst := 1;
+  end;
   mLast := AStop;
   if mLast > Length(AText) then
+  begin
     mLast := Length(AText);
+  end;
   mGitHub := APattern.Provider = TAtlasTrackerTarget.GitHub;
   mYouTrack := APattern.Provider = TAtlasTrackerTarget.YouTrack;
   mIndex := mFirst;
@@ -373,7 +423,9 @@ begin
       end;
       // Rest des Worts überspringen.
       while (mIndex <= mLast) and IsWordChar(AText[mIndex]) do
+      begin
         Inc(mIndex);
+      end;
       Continue;
     end;
     if mGitHub and (AText[mIndex] = '#') and GitHubAt(APattern, AText, mIndex, mFirst, mLast, mMatch) then
@@ -396,7 +448,9 @@ procedure Scan(const ALine: string; var AState: TAtlasCodeLinkState; ACollect: B
     mRange: TAtlasCodeLinkRange;
   begin
     if not ACollect or (AStop <= AStart) then
+    begin
       Exit;
+    end;
     mRange.Start := AStart;
     mRange.Stop := AStop;
     mRange.Place := APlace;
@@ -417,11 +471,17 @@ begin
           mStart := mIndex;
           mClose := mIndex;
           while (mClose <= mLength) and (ALine[mClose] <> '}') do
+          begin
             Inc(mClose);
+          end;
           if AState = TAtlasCodeLinkState.BraceComment then
+          begin
             Add(mStart - 1, mClose - 1, TAtlasCodeLinkPlace.Comment);
+          end;
           if mClose > mLength then
+          begin
             Exit;
+          end;
           AState := TAtlasCodeLinkState.Code;
           mIndex := mClose + 1;
         end;
@@ -430,15 +490,21 @@ begin
           mStart := mIndex;
           mClose := mIndex;
           while (mClose < mLength) and not ((ALine[mClose] = '*') and (ALine[mClose + 1] = ')')) do
+          begin
             Inc(mClose);
+          end;
           if (mClose >= mLength) or not ((ALine[mClose] = '*') and (ALine[mClose + 1] = ')')) then
           begin
             if AState = TAtlasCodeLinkState.ParenComment then
+            begin
               Add(mStart - 1, mLength, TAtlasCodeLinkPlace.Comment);
+            end;
             Exit;
           end;
           if AState = TAtlasCodeLinkState.ParenComment then
+          begin
             Add(mStart - 1, mClose - 1, TAtlasCodeLinkPlace.Comment);
+          end;
           AState := TAtlasCodeLinkState.Code;
           mIndex := mClose + 2;
         end;
@@ -451,26 +517,38 @@ begin
             Exit;
           end
           else
+          begin
             Inc(mIndex);
+          end;
         '{':
           begin
             if (mIndex < mLength) and (ALine[mIndex + 1] = '$') then
-              AState := TAtlasCodeLinkState.BraceDirective
+            begin
+              AState := TAtlasCodeLinkState.BraceDirective;
+            end
             else
+            begin
               AState := TAtlasCodeLinkState.BraceComment;
+            end;
             Inc(mIndex);
           end;
         '(':
           if (mIndex < mLength) and (ALine[mIndex + 1] = '*') then
           begin
             if (mIndex + 1 < mLength) and (ALine[mIndex + 2] = '$') then
-              AState := TAtlasCodeLinkState.ParenDirective
+            begin
+              AState := TAtlasCodeLinkState.ParenDirective;
+            end
             else
+            begin
               AState := TAtlasCodeLinkState.ParenComment;
+            end;
             Inc(mIndex, 2);
           end
           else
+          begin
             Inc(mIndex);
+          end;
         '''':
           begin
             // Literal bis zum schließenden Hochkomma; '' ist ein Hochkomma im Text. Offen am Zeilenende: endet dort.
@@ -481,12 +559,18 @@ begin
               if ALine[mClose] = '''' then
               begin
                 if (mClose < mLength) and (ALine[mClose + 1] = '''') then
-                  Inc(mClose, 2)
+                begin
+                  Inc(mClose, 2);
+                end
                 else
+                begin
                   Break;
+                end;
               end
               else
+              begin
                 Inc(mClose);
+              end;
             end;
             Add(mStart - 1, mClose - 1, TAtlasCodeLinkPlace.Literal);
             mIndex := mClose + 1;
@@ -535,7 +619,9 @@ begin
   Result := ACommitPattern;
   mCut := Pos('{kurztitel}', LowerCase(Result));
   if mCut > 0 then
+  begin
     Result := Copy(Result, 1, mCut - 1);
+  end;
   Result := StringReplace(Result, '{kennung}', AMatch.Key, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '{nummer}', IntToStr(AMatch.Number), [rfReplaceAll, rfIgnoreCase]);
   Result := TrimRight(Result);
@@ -562,18 +648,28 @@ var
 begin
   Result := nil;
   if not APattern.Active or (ALine = '') then
+  begin
     Exit;
+  end;
   mRanges := Ranges(ALine, AState);
   for mRange in mRanges do
+  begin
     if mRange.Place = TAtlasCodeLinkPlace.Comment then
-      Result := Result + FindKeys(APattern, ALine, mRange.Start, mRange.Stop, TAtlasCodeLinkPlace.Comment)
+    begin
+      Result := Result + FindKeys(APattern, ALine, mRange.Start, mRange.Stop, TAtlasCodeLinkPlace.Comment);
+    end
     else if Trim(ACommitPattern) <> '' then
     begin
       mLiteral := Copy(ALine, mRange.Start + 1, mRange.Stop - mRange.Start);
       for mMatch in FindKeys(APattern, ALine, mRange.Start, mRange.Stop, TAtlasCodeLinkPlace.Literal) do
+      begin
         if LiteralAllowed(mLiteral, ACommitPattern, mMatch) then
+        begin
           Result := Result + [mMatch];
+        end;
+      end;
     end;
+  end;
 end;
 
 class function TAtlasCodeLinks.Find(const APattern: TAtlasIssueKeyPattern; const ALines: TArray<string>;
@@ -586,15 +682,19 @@ var
 begin
   Result := nil;
   if not APattern.Active then
+  begin
     Exit;
+  end;
   mStates := States(ALines);
   for mIndex := 0 to High(ALines) do
+  begin
     for mMatch in LineMatches(APattern, ALines[mIndex], mStates[mIndex], ACommitPattern) do
     begin
       mItem.Line := mIndex;
       mItem.Match := mMatch;
       Result := Result + [mItem];
     end;
+  end;
 end;
 
 class function TAtlasCodeLinks.MatchAt(const AMatches: TArray<TAtlasIssueKeyMatch>; ACharacter: Integer): Integer;
@@ -602,9 +702,13 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(AMatches) do
+  begin
     if (ACharacter >= AMatches[mIndex].Character) and
       (ACharacter < AMatches[mIndex].Character + AMatches[mIndex].Length) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -619,10 +723,16 @@ begin
   begin
     mKnown := False;
     for mSeen in Result do
+    begin
       if SameText(mSeen.Key, mMatch.Key) then
+      begin
         mKnown := True;
+      end;
+    end;
     if not mKnown then
+    begin
       Result := Result + [mMatch];
+    end;
   end;
 end;
 

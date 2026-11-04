@@ -198,17 +198,25 @@ destructor TAtlasIdeStatusLines.Destroy;
 begin
   FreeAndNil(FPoll);
   if FServer <> nil then
+  begin
     FServer.Detach;
+  end;
   if FIndex <> nil then
+  begin
     FIndex.Detach;
+  end;
   if FFile <> nil then
+  begin
     FFile.Detach;
+  end;
   FRegistry.Remove(TAtlasStatusLines.ServerId);
   FRegistry.Remove(TAtlasStatusLines.IndexId);
   FRegistry.Remove(TAtlasStatusLines.FileId);
   // Lief der Server bis jetzt, gilt sein letzter Stand als „Stand vom …“ beim nächsten Start.
   if FTracker.Observe(False, False, -1, Now) then
+  begin
     TAtlasIndexStore.Save(FIndexFile, FTracker.Snapshot);
+  end;
   FreeAndNil(FTracker);
   FreeAndNil(FMenu);
   FTargets.Free;
@@ -255,10 +263,14 @@ begin
     begin
       // Im Hintergrund-Thread; Holder hält das Ergebnis am Leben.
       if Holder = nil then
+      begin
         Exit;
+      end;
       Count := TAtlasStatusLines.UnitsOf(AJson);
       if Count >= 0 then
+      begin
         AtomicExchange(Units.Value, Count);
+      end;
       if AJson <> '' then
       begin
         TMonitor.Enter(Units);
@@ -270,11 +282,13 @@ begin
       end;
       Registry.Changed;
       if Assigned(Done) then
+      begin
         TAtlasMainThread.Queue(TAtlasFeature.Status,
           procedure
           begin
             Done();
           end);
+      end;
     end);
 end;
 
@@ -316,10 +330,14 @@ begin
   Indexing := Running and FIndexing(Percent);
   Units := -1;
   if Running then
+  begin
     Units := FUnits.Value;
+  end;
   // Letzten Stand merken; geschrieben wird nur bei einer Änderung und wenn der Server aufhört (#754).
   if FTracker.Observe(Running, Indexing, Units, Now) then
+  begin
     TAtlasIndexStore.Save(FIndexFile, FTracker.Snapshot);
+  end;
   // Ohne laufenden Server die gespeicherten Werte mit „Stand vom …“.
   Info := FTracker.Info(Running, Indexing, Percent, Units);
   FIndex.Update(TAtlasStatusLines.IndexText(Info), TAtlasStatusLines.IndexState(Info),
@@ -333,10 +351,14 @@ var
 begin
   Result := '';
   if not Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  begin
     Exit;
+  end;
   Buffer := Editor.TopBuffer;
   if Buffer <> nil then
+  begin
     Result := Buffer.FileName;
+  end;
 end;
 
 function TAtlasIdeStatusLines.DiskFormat(const AFileName: string; out AFormat: TAtlasFileFormat): Boolean;
@@ -346,7 +368,9 @@ var
 begin
   Result := (AFileName <> '') and FileExists(AFileName);
   if not Result then
+  begin
     Exit;
+  end;
   Stamp := TFile.GetLastWriteTime(AFileName);
   if FCache.TryGetValue(Key(AFileName), Cached) and (Cached.Stamp = Stamp) then
   begin
@@ -397,7 +421,9 @@ var
 begin
   FMenuFile := ActiveFile;
   if not DiskFormat(FMenuFile, Current) then
+  begin
     Exit;
+  end;
   FTargets.TryGetValue(Key(FMenuFile), Current);
   FreeAndNil(FMenu);
   FMenu := TPopupMenu.Create(nil);
@@ -424,7 +450,9 @@ begin
   Targets := TAtlasFileFormats.Targets;
   Index := (Sender as TMenuItem).Tag;
   if (Index < 0) or (Index > High(Targets)) or (FMenuFile = '') then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.Status,
     procedure
     begin
@@ -438,10 +466,14 @@ var
   Losses: Integer;
 begin
   if (AFileName = '') or not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
   if TAtlasFileFormats.Satisfies(Bytes, ATarget) then
-    FTargets.Remove(Key(AFileName))
+  begin
+    FTargets.Remove(Key(AFileName));
+  end
   else
   begin
     FTargets.AddOrSetValue(Key(AFileName), ATarget);
@@ -450,8 +482,10 @@ begin
       Losses := TAtlasFileFormats.AnsiLosses(TAtlasFileFormats.Decode(Bytes,
         TAtlasFileFormats.Detect(Bytes).Encoding));
       if (Losses > 0) and Assigned(FReport) then
+      begin
         FReport(System.SysUtils.Format('%s: %d Zeichen lassen sich in ANSI nicht darstellen und werden zu „?“',
           [ExtractFileName(AFileName), Losses]));
+      end;
     end;
     // Die IDE soll speichern wollen: gewählt ist eine Änderung der Datei.
     MarkModified(AFileName);
@@ -467,14 +501,22 @@ var
   Index: Integer;
 begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  begin
     Exit;
+  end;
   Module := Modules.FindModule(AFileName);
   if Module = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Module.ModuleFileCount - 1 do
+  begin
     if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Source) and
       SameText(Source.FileName, AFileName) then
+    begin
       Source.MarkModified;
+    end;
+  end;
 end;
 
 procedure TAtlasIdeStatusLines.Saved(const AFileName: string);
@@ -484,7 +526,9 @@ var
   Stamp: TDateTime;
 begin
   if not FTargets.TryGetValue(Key(AFileName), Target) or not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
   if not TAtlasFileFormats.Satisfies(Bytes, Target) then
   begin
@@ -495,10 +539,14 @@ begin
     TFile.SetLastWriteTime(AFileName, Stamp);
     FCache.Remove(Key(AFileName));
     if Assigned(FReport) then
+    begin
       FReport(Format('%s gespeichert als %s', [ExtractFileName(AFileName), Target.Text]));
+    end;
   end;
   if SameText(AFileName, FActiveFile) then
+  begin
     RefreshFile;
+  end;
 end;
 
 end.

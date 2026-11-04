@@ -109,7 +109,9 @@ begin
     Builder.Append('# Atlas-Fehlerbericht').Append(sLineBreak).Append(sLineBreak);
     Builder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
     if AInput.Anonymize then
+    begin
       Builder.Append(' · anonymisiert');
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
     Builder.Append('Quelltext steht nicht in diesem Bericht. Issue anlegen: ').Append(IssuesUrl);
     Builder.Append(sLineBreak).Append(sLineBreak);
@@ -120,15 +122,21 @@ begin
     Builder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak);
     Builder.Append('- Experimentell: ');
     if Length(AInput.Experimental) = 0 then
-      Builder.Append('keine')
+    begin
+      Builder.Append('keine');
+    end
     else
+    begin
       Builder.Append(string.Join(', ', AInput.Experimental));
+    end;
     Builder.Append(sLineBreak).Append(sLineBreak);
 
     Builder.Append('### Einstellungen').Append(sLineBreak).Append(sLineBreak);
     Text := AInput.Settings;
     if AInput.Anonymize then
+    begin
       Text := AnonymizePaths(Text, AInput.Roots, AInput.Identity);
+    end;
     Builder.Append('```json').Append(sLineBreak).Append(Text.TrimRight).Append(sLineBreak).Append('```');
     Builder.Append(sLineBreak).Append(sLineBreak);
 
@@ -138,7 +146,9 @@ begin
     begin
       Text := Line;
       if AInput.Anonymize then
+      begin
         Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
+      end;
       Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
     end;
     Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
@@ -153,7 +163,9 @@ begin
       begin
         Text := Line;
         if AInput.Anonymize then
+        begin
           Text := AnonymizeLogLine(Text, AInput.Roots, AInput.Identity);
+        end;
         Builder.Append(TTextAnonymizer.FenceSafe(Text)).Append(sLineBreak);
       end;
       Builder.Append('```').Append(sLineBreak).Append(sLineBreak);
@@ -165,12 +177,16 @@ begin
       Text := AInput.ServerReport;
       Text := StringReplace(Text, sLineBreak + '## ', sLineBreak + '### ', [rfReplaceAll]);
       if Text.StartsWith('# ') then
+      begin
         Text := '#' + Text;
+      end;
       Builder.Append(Text.TrimRight).Append(sLineBreak);
     end
     else
+    begin
       Builder.Append('## Server').Append(sLineBreak).Append(sLineBreak).Append(AInput.ServerMissing)
         .Append(sLineBreak);
+    end;
     Result := Builder.ToString;
   finally
     Builder.Free;
@@ -185,7 +201,9 @@ var
 begin
   Result := nil;
   if not TFile.Exists(AFileName) then
+  begin
     Exit;
+  end;
   Lines := TStringList.Create;
   try
     // Das Protokoll kann gerade beschrieben werden: lesend ohne Sperre öffnen.
@@ -197,10 +215,14 @@ begin
     end;
     First := Lines.Count - ACount;
     if First < 0 then
+    begin
       First := 0;
+    end;
     SetLength(Result, Lines.Count - First);
     for Index := First to Lines.Count - 1 do
+    begin
       Result[Index - First] := Lines[Index];
+    end;
   finally
     Lines.Free;
   end;
