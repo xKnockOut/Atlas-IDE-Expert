@@ -40,6 +40,8 @@ type
     Keep: TArray<string>;
     /// <summary>Unit-Namespaces des Projekts (System für SysUtils).</summary>
     Namespaces: TArray<string>;
+    /// <summary>Inaktive Zweige, deren uses bei der Prüfung nicht zählen (#621); nil = keine.</summary>
+    Inactive: TArray<TTextRange>;
   end;
 
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
