@@ -478,6 +478,9 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.FieldFreeWithoutNil.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.HandleLeak.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Flow.OutParamRead.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unused.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Declarations.Shared.Tests.pas"/>

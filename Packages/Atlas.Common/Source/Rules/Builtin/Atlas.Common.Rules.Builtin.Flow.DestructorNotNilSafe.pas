@@ -25,6 +25,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Text.Lines,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
@@ -120,7 +121,7 @@ begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-  FLineBreak := LineBreakOf(AContext.Text);
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
 end;
 
 destructor TDestructorCheck.Destroy;
