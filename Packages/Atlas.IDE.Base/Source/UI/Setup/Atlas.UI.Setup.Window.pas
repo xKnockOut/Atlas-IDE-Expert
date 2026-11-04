@@ -29,53 +29,9 @@ uses
   Atlas.Core.Setup.Checklist;
 
 type
-  TAtlasSetupWindow = class(TForm)
-  private type
-    /// <summary>Gezeichnete Zeile: Prüfung (AProject = -1) oder Projekt darunter.</summary>
-    TLine = record
-      Result_: Integer;
-      Project: Integer;
-      Top: Integer;
-      Height: Integer;
-    end;
-  private
-    FColors: TAtlasColors;
-    FResults: TArray<TAtlasSetupResult>;
-    FLines: TArray<TLine>;
-    FFixButtons: TArray<TButton>;
-    FCopyButton: TButton;
-    FRecheckButton: TButton;
-    FCloseButton: TButton;
-    FShowAtStart: TCheckBox;
-    FTryKey: string;
-    FNote: string;
-    FNoteTop: Integer;
-    FNoteHeight: Integer;
-    FFooterTop: Integer;
-    FUpdating: Boolean;
-    FOnFix: TProc<TAtlasSetupResult>;
-    FOnCopy: TProc;
-    FOnRecheck: TProc;
-    FOnShowAtStart: TProc<Boolean>;
-    function RowHeight: Integer;
-    function SubRowHeight: Integer;
-    function HeaderHeight: Integer;
-    function ButtonsHeight: Integer;
-    function FixButton(AIndex: Integer): TButton;
-    procedure Layout;
-    procedure DrawDot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
-    procedure FixClick(Sender: TObject);
-    procedure CopyClick(Sender: TObject);
-    procedure RecheckClick(Sender: TObject);
-    procedure CloseClick(Sender: TObject);
-    procedure ShowAtStartClick(Sender: TObject);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
-  protected
-    procedure Paint; override;
-    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    procedure Resize; override;
+  /// <summary>Texte der Einrichtung in der Sprache der IDE aus Befund und Werten der Prüfung.</summary>
+  TAtlasSetupTexts = class
   public
-    constructor CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Hauptzeile einer Prüfung, z. B. „Server gefunden, gestartet, Version passt“.</summary>
     class function ResultText(const AResult: TAtlasSetupResult): string; static;
     /// <summary>Gedämpfte Einzelheit hinter dem Text, z. B. „AtlasServer 0.1.0“; '' ohne.</summary>
@@ -91,6 +47,59 @@ type
     class function ProgressText(const AResults: TArray<TAtlasSetupResult>): string; static;
     /// <summary>Zeilen für den Bericht (#108): je Prüfung Text mit Einzelheit, darunter die Projekte.</summary>
     class function ReportLines(const AResults: TArray<TAtlasSetupResult>): TArray<TAtlasSetupReportLine>; static;
+  end;
+
+  /// <summary>Gezeichnete Zeile: Prüfung (Project = -1) oder Projekt darunter.</summary>
+  TAtlasSetupLine = record
+    Result_: Integer;
+    Project: Integer;
+    Top: Integer;
+    Height: Integer;
+  end;
+
+  /// <summary>Lage nach dem Layout: Zeilen, Hinweis und Fußzeile.</summary>
+  TAtlasSetupGeometry = record
+    Lines: TArray<TAtlasSetupLine>;
+    NoteTop: Integer;
+    NoteHeight: Integer;
+    FooterTop: Integer;
+  end;
+
+  TAtlasSetupEvents = record
+    Fix: TProc<TAtlasSetupResult>;
+    Copy: TProc;
+    Recheck: TProc;
+    ShowAtStart: TProc<Boolean>;
+  end;
+
+  TAtlasSetupWindow = class(TForm)
+  private
+    FColors: TAtlasColors;
+    FResults: TArray<TAtlasSetupResult>;
+    FGeometry: TAtlasSetupGeometry;
+    FFixButtons: TArray<TButton>;
+    FCopyButton: TButton;
+    FRecheckButton: TButton;
+    FCloseButton: TButton;
+    FShowAtStart: TCheckBox;
+    FTryKey: string;
+    FNote: string;
+    FUpdating: Boolean;
+    FEvents: TAtlasSetupEvents;
+    function FixButton(AIndex: Integer): TButton;
+    function NewButton(const ACaption: string): TButton;
+    procedure Layout;
+    procedure FixClick(Sender: TObject);
+    /// <summary>Kopieren, Erneut prüfen und Schließen.</summary>
+    procedure FooterClick(Sender: TObject);
+    procedure ShowAtStartClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  protected
+    procedure Paint; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure Resize; override;
+  public
+    constructor CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Prüfungen setzen (auch bei offenem Fenster); Knöpfe und Höhe folgen.</summary>
     procedure SetResults(const AResults: TArray<TAtlasSetupResult>);
     procedure SetColors(const AColors: TAtlasColors);
@@ -110,10 +119,10 @@ type
     property CloseButton: TButton read FCloseButton;
     property ShowAtStartBox: TCheckBox read FShowAtStart;
     /// <summary>Knopf einer Prüfung außer „Warum?“ (das erklärt das Fenster selbst).</summary>
-    property OnFix: TProc<TAtlasSetupResult> read FOnFix write FOnFix;
-    property OnCopy: TProc read FOnCopy write FOnCopy;
-    property OnRecheck: TProc read FOnRecheck write FOnRecheck;
-    property OnShowAtStart: TProc<Boolean> read FOnShowAtStart write FOnShowAtStart;
+    property OnFix: TProc<TAtlasSetupResult> read FEvents.Fix write FEvents.Fix;
+    property OnCopy: TProc read FEvents.Copy write FEvents.Copy;
+    property OnRecheck: TProc read FEvents.Recheck write FEvents.Recheck;
+    property OnShowAtStart: TProc<Boolean> read FEvents.ShowAtStart write FEvents.ShowAtStart;
   end;
 
 implementation
@@ -121,6 +130,23 @@ implementation
 uses
   System.Math,
   Atlas.UI.Strings;
+
+const
+  /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
+  cResultTexts: array[TAtlasSetupFinding] of TAtlasTextId = (TAtlasTextId.SetupServerReady,
+    TAtlasTextId.SetupServerMissing, TAtlasTextId.SetupServerNotStarted, TAtlasTextId.SetupServerStarting,
+    TAtlasTextId.SetupServerStopped, TAtlasTextId.SetupServerFailed, TAtlasTextId.SetupServerVersionUnknown,
+    TAtlasTextId.SetupServerVersionMismatch, TAtlasTextId.SetupDelphiReady, TAtlasTextId.SetupDelphiNoProject,
+    TAtlasTextId.SetupDelphiUnknown, TAtlasTextId.SetupIndexReady, TAtlasTextId.SetupIndexBuilding,
+    TAtlasTextId.SetupIndexIncomplete, TAtlasTextId.SetupIndexNoServer, TAtlasTextId.SetupIndexNoProjects,
+    TAtlasTextId.SetupLibraryReady, TAtlasTextId.SetupLibraryMissing, TAtlasTextId.SetupLibraryPending,
+    TAtlasTextId.SetupLibraryUnknown, TAtlasTextId.SetupErrorInsightAtlas, TAtlasTextId.SetupErrorInsightIde,
+    TAtlasTextId.SetupErrorInsightDuplicate, TAtlasTextId.SetupErrorInsightNone,
+    TAtlasTextId.SetupErrorInsightRestart, TAtlasTextId.SetupKeysReady, TAtlasTextId.SetupKeysConflict);
+  /// <summary>Befunde, deren Hauptzeile Werte der Prüfung einsetzt.</summary>
+  cFormattedResults = [TAtlasSetupFinding.ServerVersionMismatch, TAtlasSetupFinding.DelphiReady,
+    TAtlasSetupFinding.DelphiNoProject, TAtlasSetupFinding.IndexReady, TAtlasSetupFinding.IndexBuilding,
+    TAtlasSetupFinding.IndexIncomplete, TAtlasSetupFinding.KeysConflict];
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -136,122 +162,43 @@ begin
   end;
 end;
 
-{ TAtlasSetupWindow }
-
-constructor TAtlasSetupWindow.CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
+/// <summary>Text der Hauptzeile; AFormatted, wenn er Werte der Prüfung einsetzt.</summary>
+function ResultTextId(const AResult: TAtlasSetupResult; out AFormatted: Boolean): TAtlasTextId;
 begin
-  inherited CreateNew(AOwner);
-  FColors := AColors;
-  Caption := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
-  BorderStyle := bsSingle;
-  BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  KeyPreview := True;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  OnClose := FormClose;
-  FCopyButton := TButton.Create(Self);
-  FCopyButton.Parent := Self;
-  FCopyButton.Caption := TAtlasStrings.Text(TAtlasTextId.SetupCopy);
-  FCopyButton.OnClick := CopyClick;
-  FRecheckButton := TButton.Create(Self);
-  FRecheckButton.Parent := Self;
-  FRecheckButton.Caption := TAtlasStrings.Text(TAtlasTextId.SetupRecheck);
-  FRecheckButton.OnClick := RecheckClick;
-  FCloseButton := TButton.Create(Self);
-  FCloseButton.Parent := Self;
-  FCloseButton.Caption := TAtlasStrings.Text(TAtlasTextId.SetupClose);
-  FCloseButton.Cancel := True;
-  FCloseButton.OnClick := CloseClick;
-  FShowAtStart := TCheckBox.Create(Self);
-  FShowAtStart.Parent := Self;
-  FShowAtStart.Caption := TAtlasStrings.Text(TAtlasTextId.SetupShowAtStart);
-  FShowAtStart.Checked := True;
-  FShowAtStart.OnClick := ShowAtStartClick;
-  FTryKey := 'Strg+Leertaste';
-  Layout;
-end;
-
-class function TAtlasSetupWindow.ResultText(const AResult: TAtlasSetupResult): string;
-begin
-  case AResult.Finding of
-    TAtlasSetupFinding.ServerReady:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerReady);
-    TAtlasSetupFinding.ServerMissing:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerMissing);
-    TAtlasSetupFinding.ServerNotStarted:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerNotStarted);
-    TAtlasSetupFinding.ServerStarting:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerStarting);
-    TAtlasSetupFinding.ServerStopped:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerStopped);
-    TAtlasSetupFinding.ServerFailed:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerFailed);
-    TAtlasSetupFinding.ServerVersionUnknown:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupServerVersionUnknown);
-    TAtlasSetupFinding.ServerVersionMismatch:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupServerVersionMismatch, [Arg(AResult, 0), Arg(AResult, 1)]);
-    TAtlasSetupFinding.DelphiReady:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupDelphiReady, [Arg(AResult, 0)]);
-    TAtlasSetupFinding.DelphiNoProject:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupDelphiNoProject, [Arg(AResult, 0)]);
-    TAtlasSetupFinding.DelphiUnknown:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupDelphiUnknown);
-    TAtlasSetupFinding.IndexReady:
-      if Arg(AResult, 1) <> '' then
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexReadyUnits, [Arg(AResult, 0), Arg(AResult, 1)]);
-      end
-      else
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexReady, [Arg(AResult, 0)]);
-      end;
-    TAtlasSetupFinding.IndexBuilding:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexBuilding, [Arg(AResult, 0), Arg(AResult, 1)]);
-    TAtlasSetupFinding.IndexIncomplete:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.SetupIndexIncomplete, [Arg(AResult, 0), Arg(AResult, 1),
-        Arg(AResult, 2)]);
-    TAtlasSetupFinding.IndexNoServer:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupIndexNoServer);
-    TAtlasSetupFinding.IndexNoProjects:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupIndexNoProjects);
-    TAtlasSetupFinding.LibraryReady:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupLibraryReady);
-    TAtlasSetupFinding.LibraryMissing:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupLibraryMissing);
-    TAtlasSetupFinding.LibraryPending:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupLibraryPending);
-    TAtlasSetupFinding.LibraryUnknown:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupLibraryUnknown);
-    TAtlasSetupFinding.ErrorInsightAtlas:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightAtlas);
-    TAtlasSetupFinding.ErrorInsightIde:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightIde);
-    TAtlasSetupFinding.ErrorInsightDuplicate:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightDuplicate);
-    TAtlasSetupFinding.ErrorInsightNone:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightNone);
-    TAtlasSetupFinding.ErrorInsightRestart:
-      Result := TAtlasStrings.Text(TAtlasTextId.SetupErrorInsightRestart);
-    TAtlasSetupFinding.KeysReady:
-      if StrToIntDef(Arg(AResult, 0), 0) > 0 then
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SetupKeysReadyWins, [Arg(AResult, 0)]);
-      end
-      else
-      begin
-        Result := TAtlasStrings.Text(TAtlasTextId.SetupKeysReady);
-      end;
-  else
-    Result := TAtlasStrings.Fmt(TAtlasTextId.SetupKeysConflict, [Arg(AResult, 0), Arg(AResult, 1), Arg(AResult, 2)]);
+  Result := cResultTexts[AResult.Finding];
+  AFormatted := AResult.Finding in cFormattedResults;
+  if (AResult.Finding = TAtlasSetupFinding.IndexReady) and (Arg(AResult, 1) <> '') then
+  begin
+    Result := TAtlasTextId.SetupIndexReadyUnits;
+  end
+  else if (AResult.Finding = TAtlasSetupFinding.KeysReady) and (StrToIntDef(Arg(AResult, 0), 0) > 0) then
+  begin
+    Result := TAtlasTextId.SetupKeysReadyWins;
+    AFormatted := True;
   end;
 end;
 
-class function TAtlasSetupWindow.DetailText(const AResult: TAtlasSetupResult): string;
+{ TAtlasSetupTexts }
+
+class function TAtlasSetupTexts.ResultText(const AResult: TAtlasSetupResult): string;
 var
-  Bytes: Int64;
+  mId: TAtlasTextId;
+  mFormatted: Boolean;
+begin
+  mId := ResultTextId(AResult, mFormatted);
+  if mFormatted then
+  begin
+    Result := TAtlasStrings.Fmt(mId, [Arg(AResult, 0), Arg(AResult, 1), Arg(AResult, 2)]);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(mId);
+  end;
+end;
+
+class function TAtlasSetupTexts.DetailText(const AResult: TAtlasSetupResult): string;
+var
+  mBytes: Int64;
 begin
   Result := '';
   case AResult.Finding of
@@ -268,16 +215,16 @@ begin
       end;
     TAtlasSetupFinding.LibraryReady:
       begin
-        Bytes := StrToInt64Def(Arg(AResult, 0), 0);
+        mBytes := StrToInt64Def(Arg(AResult, 0), 0);
         Result := TAtlasStrings.Fmt(TAtlasTextId.SetupLibrarySize,
-          [FormatFloat('0.0', Bytes / (1024 * 1024), FormatSettings)]);
+          [FormatFloat('0.0', mBytes / (1024 * 1024), FormatSettings)]);
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
 end;
 
-class function TAtlasSetupWindow.ProjectText(const AProject: TAtlasSetupProject): string;
+class function TAtlasSetupTexts.ProjectText(const AProject: TAtlasSetupProject): string;
 begin
   case AProject.State of
     TAtlasSetupProjectState.Done:
@@ -289,7 +236,7 @@ begin
   end;
 end;
 
-class function TAtlasSetupWindow.ProjectState(const AProject: TAtlasSetupProject): TAtlasStatusState;
+class function TAtlasSetupTexts.ProjectState(const AProject: TAtlasSetupProject): TAtlasStatusState;
 begin
   case AProject.State of
     TAtlasSetupProjectState.Done:
@@ -301,7 +248,7 @@ begin
   end;
 end;
 
-class function TAtlasSetupWindow.FixCaption(AFix: TAtlasSetupFix): string;
+class function TAtlasSetupTexts.FixCaption(AFix: TAtlasSetupFix): string;
 begin
   case AFix of
     TAtlasSetupFix.Explain:
@@ -327,7 +274,7 @@ begin
   end;
 end;
 
-class function TAtlasSetupWindow.WhyText(const AResult: TAtlasSetupResult): string;
+class function TAtlasSetupTexts.WhyText(const AResult: TAtlasSetupResult): string;
 begin
   case AResult.Finding of
     TAtlasSetupFinding.ServerStarting:
@@ -351,57 +298,348 @@ begin
   end;
 end;
 
-class function TAtlasSetupWindow.ProgressText(const AResults: TArray<TAtlasSetupResult>): string;
+class function TAtlasSetupTexts.ProgressText(const AResults: TArray<TAtlasSetupResult>): string;
 var
-  Done, Total: Integer;
+  mDone, mTotal: Integer;
 begin
-  TAtlasSetupChecklist.Progress(AResults, Done, Total);
-  Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProgress, [Done, Total]);
+  TAtlasSetupChecklist.Progress(AResults, mDone, mTotal);
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SetupProgress, [mDone, mTotal]);
 end;
 
-class function TAtlasSetupWindow.ReportLines(const AResults: TArray<TAtlasSetupResult>):
+class function TAtlasSetupTexts.ReportLines(const AResults: TArray<TAtlasSetupResult>):
   TArray<TAtlasSetupReportLine>;
 var
-  Item: TAtlasSetupResult;
-  Project: TAtlasSetupProject;
+  mItem: TAtlasSetupResult;
+  mProject: TAtlasSetupProject;
   mText: string;
 begin
   Result := nil;
-  for Item in AResults do
+  for mItem in AResults do
   begin
-    mText := ResultText(Item);
-    if DetailText(Item) <> '' then
+    mText := ResultText(mItem);
+    if DetailText(mItem) <> '' then
     begin
-      mText := mText + ' (' + DetailText(Item) + ')';
+      mText := mText + ' (' + DetailText(mItem) + ')';
     end;
-    Result := Result + [TAtlasSetupReportLine.Create(Item.State, mText, False)];
-    for Project in Item.Projects do
+    Result := Result + [TAtlasSetupReportLine.Create(mItem.State, mText, False)];
+    for mProject in mItem.Projects do
     begin
-      Result := Result + [TAtlasSetupReportLine.Create(ProjectState(Project), ProjectText(Project), True)];
+      Result := Result + [TAtlasSetupReportLine.Create(ProjectState(mProject), ProjectText(mProject), True)];
     end;
   end;
 end;
 
-function TAtlasSetupWindow.RowHeight: Integer;
+type
+  /// <summary>Höhen der Zeilen in der Fensterschrift.</summary>
+  TAtlasSetupMetrics = record
+    Window: TAtlasSetupWindow;
+    function RowHeight: Integer;
+    function SubRowHeight: Integer;
+    function HeaderHeight: Integer;
+    function ButtonsHeight: Integer;
+  end;
+
+  /// <summary>Layout: Knöpfe und Zeilen je Prüfung, Hinweis, Fußzeile.</summary>
+  TAtlasSetupArranger = record
+    Window: TAtlasSetupWindow;
+    Metrics: TAtlasSetupMetrics;
+    procedure EnsureFixButtons;
+    /// <summary>Zeilen ab ATop; liefert die Unterkante.</summary>
+    function Lines(ATop: Integer): Integer;
+    procedure Note(ATop: Integer);
+    procedure Footer;
+  end;
+
+  /// <summary>Zeichnen: Kopf, Zeilen, Hinweis und Einstieg „Probier es aus“.</summary>
+  TAtlasSetupPainter = record
+    Window: TAtlasSetupWindow;
+    Metrics: TAtlasSetupMetrics;
+    procedure Dot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
+    procedure Header;
+    procedure ProjectLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
+    procedure ResultLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
+    procedure Note;
+    procedure TryIt;
+  end;
+
+{ TAtlasSetupMetrics }
+
+function TAtlasSetupMetrics.RowHeight: Integer;
 begin
-  Canvas.Font := Font;
-  Result := Max(Canvas.TextHeight('Wg') + ScaleValue(12), ScaleValue(31));
+  Window.Canvas.Font := Window.Font;
+  Result := Max(Window.Canvas.TextHeight('Wg') + Window.ScaleValue(12), Window.ScaleValue(31));
 end;
 
-function TAtlasSetupWindow.SubRowHeight: Integer;
+function TAtlasSetupMetrics.SubRowHeight: Integer;
 begin
-  Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + ScaleValue(4);
+  Window.Canvas.Font := Window.Font;
+  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(4);
 end;
 
-function TAtlasSetupWindow.HeaderHeight: Integer;
+function TAtlasSetupMetrics.HeaderHeight: Integer;
 begin
-  Result := RowHeight + ScaleValue(4);
+  Result := RowHeight + Window.ScaleValue(4);
 end;
 
-function TAtlasSetupWindow.ButtonsHeight: Integer;
+function TAtlasSetupMetrics.ButtonsHeight: Integer;
 begin
-  Result := ScaleValue(44);
+  Result := Window.ScaleValue(44);
+end;
+
+{ TAtlasSetupArranger }
+
+procedure TAtlasSetupArranger.EnsureFixButtons;
+var
+  mButton: TButton;
+  mIndex: Integer;
+begin
+  // Je Prüfung ein Knopf; überzählige ausblenden.
+  while Length(Window.FFixButtons) < Length(Window.FResults) do
+  begin
+    mButton := TButton.Create(Window);
+    mButton.Parent := Window;
+    mButton.Tag := Length(Window.FFixButtons);
+    mButton.OnClick := Window.FixClick;
+    Window.FFixButtons := Window.FFixButtons + [mButton];
+  end;
+  for mIndex := 0 to High(Window.FFixButtons) do
+  begin
+    Window.FFixButtons[mIndex].Visible := False;
+  end;
+end;
+
+function TAtlasSetupArranger.Lines(ATop: Integer): Integer;
+var
+  mIndex, mProject, mWidth: Integer;
+  mLine: TAtlasSetupLine;
+  mButton: TButton;
+  mText: string;
+begin
+  Window.FGeometry.Lines := nil;
+  Result := ATop;
+  for mIndex := 0 to High(Window.FResults) do
+  begin
+    mLine.Result_ := mIndex;
+    mLine.Project := -1;
+    mLine.Top := Result;
+    mLine.Height := Metrics.RowHeight;
+    Window.FGeometry.Lines := Window.FGeometry.Lines + [mLine];
+    mButton := Window.FFixButtons[mIndex];
+    mText := TAtlasSetupTexts.FixCaption(Window.FResults[mIndex].Fix);
+    mButton.Caption := mText;
+    mButton.Visible := mText <> '';
+    mWidth := Max(Window.Canvas.TextWidth(mText) + Window.ScaleValue(24), Window.ScaleValue(90));
+    mButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(12),
+      Result + (mLine.Height - Window.ScaleValue(25)) div 2, mWidth, Window.ScaleValue(25));
+    Inc(Result, mLine.Height);
+    for mProject := 0 to High(Window.FResults[mIndex].Projects) do
+    begin
+      mLine.Project := mProject;
+      mLine.Top := Result;
+      mLine.Height := Metrics.SubRowHeight;
+      Window.FGeometry.Lines := Window.FGeometry.Lines + [mLine];
+      Inc(Result, mLine.Height);
+    end;
+  end;
+end;
+
+procedure TAtlasSetupArranger.Note(ATop: Integer);
+var
+  mArea: TRect;
+begin
+  // Erklärung bzw. Hinweis, umbrochen.
+  Window.FGeometry.NoteTop := ATop + Window.ScaleValue(4);
+  Window.FGeometry.NoteHeight := 0;
+  if Window.FNote <> '' then
+  begin
+    mArea := Rect(0, 0, Window.ClientWidth - Window.ScaleValue(40), 0);
+    DrawText(Window.Canvas.Handle, PChar(Window.FNote), -1, mArea, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+    Window.FGeometry.NoteHeight := mArea.Height + Window.ScaleValue(8);
+  end;
+  Window.FGeometry.FooterTop := Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight + Window.ScaleValue(4);
+end;
+
+procedure TAtlasSetupArranger.Footer;
+var
+  mBottom, mWidth, mHeight: Integer;
+begin
+  Window.ClientHeight := Window.FGeometry.FooterTop + Metrics.RowHeight + Metrics.ButtonsHeight;
+  mBottom := Window.ClientHeight - Metrics.ButtonsHeight + Window.ScaleValue(10);
+  mHeight := Window.ScaleValue(25);
+  mWidth := Max(Max(Window.Canvas.TextWidth(Window.FCopyButton.Caption),
+    Window.Canvas.TextWidth(Window.FRecheckButton.Caption)), Window.Canvas.TextWidth(Window.FCloseButton.Caption)) +
+    Window.ScaleValue(24);
+  Window.FCloseButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(12), mBottom, mWidth, mHeight);
+  Window.FRecheckButton.SetBounds(Window.FCloseButton.Left - mWidth - Window.ScaleValue(8), mBottom, mWidth,
+    mHeight);
+  Window.FCopyButton.SetBounds(Window.FRecheckButton.Left - mWidth - Window.ScaleValue(8), mBottom, mWidth, mHeight);
+  Window.FShowAtStart.SetBounds(Window.ScaleValue(12), mBottom + Window.ScaleValue(4), Max(Window.ScaleValue(80),
+    Window.FCopyButton.Left - Window.ScaleValue(24)), Window.ScaleValue(19));
+end;
+
+{ TAtlasSetupPainter }
+
+procedure TAtlasSetupPainter.Dot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
+begin
+  // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
+  Window.Canvas.Pen.Color := ToColor(Window.FColors.Signals.ForStatus(AState).Ring);
+  Window.Canvas.Brush.Color := ToColor(Window.FColors.Signals.ForStatus(AState).Fill);
+  Window.Canvas.Brush.Style := bsSolid;
+  Window.Canvas.Ellipse(ACenter.X - ARadius, ACenter.Y - ARadius, ACenter.X + ARadius + 1, ACenter.Y + ARadius + 1);
+end;
+
+procedure TAtlasSetupPainter.Header;
+var
+  mPart: TRect;
+  mText: string;
+begin
+  // Kopf: Titel und Fortschritt.
+  Window.Canvas.Brush.Style := bsClear;
+  mPart := Rect(Window.ScaleValue(12), 0, Window.ClientWidth - Window.ScaleValue(12), Metrics.HeaderHeight);
+  Window.Canvas.Font.Style := [fsBold];
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
+  mText := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  Window.Canvas.Font.Style := [];
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
+  mText := TAtlasSetupTexts.ProgressText(Window.FResults);
+  DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
+  Window.Canvas.Pen.Color := ToColor(Window.FColors.Line);
+  Window.Canvas.MoveTo(0, Metrics.HeaderHeight - Window.ScaleValue(2));
+  Window.Canvas.LineTo(Window.ClientWidth, Metrics.HeaderHeight - Window.ScaleValue(2));
+end;
+
+procedure TAtlasSetupPainter.ProjectLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
+var
+  mPart: TRect;
+  mText: string;
+begin
+  // Unterzeile je Projekt (#619): kleiner Punkt, gedämpfter Text.
+  Dot(Point(Window.ScaleValue(40), ALine.Top + ALine.Height div 2), Window.ScaleValue(3),
+    TAtlasSetupTexts.ProjectState(AItem.Projects[ALine.Project]));
+  Window.Canvas.Brush.Style := bsClear;
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
+  mPart := Rect(Window.ScaleValue(50), ALine.Top, Window.ClientWidth - Window.ScaleValue(12), ALine.Top + ALine.Height);
+  mText := TAtlasSetupTexts.ProjectText(AItem.Projects[ALine.Project]);
+  DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+end;
+
+procedure TAtlasSetupPainter.ResultLine(const ALine: TAtlasSetupLine; const AItem: TAtlasSetupResult);
+var
+  mPart: TRect;
+  mText, mDetail: string;
+  mRight: Integer;
+  mButton: TButton;
+begin
+  Dot(Point(Window.ScaleValue(20), ALine.Top + ALine.Height div 2), Window.ScaleValue(5), AItem.State);
+  Window.Canvas.Brush.Style := bsClear;
+  mRight := Window.ClientWidth - Window.ScaleValue(12);
+  mButton := Window.FixButton(ALine.Result_);
+  if (mButton <> nil) and mButton.Visible then
+  begin
+    mRight := mButton.Left - Window.ScaleValue(8);
+  end;
+  mPart := Rect(Window.ScaleValue(34), ALine.Top, mRight, ALine.Top + ALine.Height);
+  mText := TAtlasSetupTexts.ResultText(AItem);
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
+  DrawText(Window.Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  mDetail := TAtlasSetupTexts.DetailText(AItem);
+  mPart.Left := mPart.Left + Window.Canvas.TextWidth(mText) + Window.ScaleValue(10);
+  if (mDetail <> '') and (mPart.Left < mPart.Right) then
+  begin
+    Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
+    DrawText(Window.Canvas.Handle, PChar(mDetail), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+  end;
+end;
+
+procedure TAtlasSetupPainter.Note;
+var
+  mPart: TRect;
+begin
+  // Erklärung bzw. Hinweis.
+  if Window.FNote = '' then
+  begin
+    Exit;
+  end;
+  mPart := Rect(Window.ScaleValue(20), Window.FGeometry.NoteTop + Window.ScaleValue(4),
+    Window.ClientWidth - Window.ScaleValue(20), Window.FGeometry.NoteTop + Window.FGeometry.NoteHeight);
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Muted);
+  DrawText(Window.Canvas.Handle, PChar(Window.FNote), -1, mPart, DT_WORDBREAK or DT_NOPREFIX);
+end;
+
+procedure TAtlasSetupPainter.TryIt;
+var
+  mPart: TRect;
+  mText, mBefore, mAfter, mKey: string;
+  mKeyAt, mTop: Integer;
+begin
+  // Einstieg: „Probier es aus: Strg+Leertaste in einer Methode“, die Taste fett.
+  mTop := Window.FGeometry.FooterTop;
+  mKey := Window.FTryKey;
+  Window.Canvas.Pen.Color := ToColor(Window.FColors.Line);
+  Window.Canvas.MoveTo(0, mTop);
+  Window.Canvas.LineTo(Window.ClientWidth, mTop);
+  mText := TAtlasStrings.Fmt(TAtlasTextId.SetupTryIt, [mKey]);
+  mKeyAt := Pos(mKey, mText);
+  mBefore := mText;
+  mAfter := '';
+  if mKeyAt > 0 then
+  begin
+    mBefore := Copy(mText, 1, mKeyAt - 1);
+    mAfter := Copy(mText, mKeyAt + Length(mKey), MaxInt);
+  end;
+  mPart := Rect(Window.ScaleValue(12), mTop, Window.ClientWidth - Window.ScaleValue(12), mTop + Metrics.RowHeight);
+  Window.Canvas.Font.Color := ToColor(Window.FColors.Text);
+  DrawText(Window.Canvas.Handle, PChar(mBefore), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  if mKeyAt > 0 then
+  begin
+    mPart.Left := mPart.Left + Window.Canvas.TextWidth(mBefore);
+    Window.Canvas.Font.Style := [fsBold];
+    DrawText(Window.Canvas.Handle, PChar(mKey), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+    mPart.Left := mPart.Left + Window.Canvas.TextWidth(mKey);
+    Window.Canvas.Font.Style := [];
+    DrawText(Window.Canvas.Handle, PChar(mAfter), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+  end;
+end;
+
+{ TAtlasSetupWindow }
+
+constructor TAtlasSetupWindow.CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
+begin
+  inherited CreateNew(AOwner);
+  FColors := AColors;
+  Caption := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
+  BorderStyle := bsSingle;
+  BorderIcons := [biSystemMenu];
+  Position := poMainFormCenter;
+  KeyPreview := True;
+  DoubleBuffered := True;
+  Color := ToColor(FColors.Surface);
+  Font.Name := 'Segoe UI';
+  Font.Size := 9;
+  OnClose := FormClose;
+  FCopyButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupCopy));
+  FRecheckButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupRecheck));
+  FCloseButton := NewButton(TAtlasStrings.Text(TAtlasTextId.SetupClose));
+  FCloseButton.Cancel := True;
+  FShowAtStart := TCheckBox.Create(Self);
+  FShowAtStart.Parent := Self;
+  FShowAtStart.Caption := TAtlasStrings.Text(TAtlasTextId.SetupShowAtStart);
+  FShowAtStart.Checked := True;
+  FShowAtStart.OnClick := ShowAtStartClick;
+  FTryKey := 'Strg+Leertaste';
+  Layout;
+end;
+
+function TAtlasSetupWindow.NewButton(const ACaption: string): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := Self;
+  Result.Caption := ACaption;
+  Result.OnClick := FooterClick;
 end;
 
 function TAtlasSetupWindow.FixButton(AIndex: Integer): TButton;
@@ -415,73 +653,15 @@ end;
 
 procedure TAtlasSetupWindow.Layout;
 var
-  Index, Project, Top_, ButtonWidth, NoteWidth, Bottom: Integer;
-  Line: TLine;
-  Button: TButton;
-  Area: TRect;
-  mText: string;
+  mArranger: TAtlasSetupArranger;
 begin
+  mArranger.Window := Self;
+  mArranger.Metrics.Window := Self;
   Canvas.Font := Font;
   ClientWidth := ScaleValue(620);
-  // Je Prüfung ein Knopf; überzählige ausblenden.
-  while Length(FFixButtons) < Length(FResults) do
-  begin
-    Button := TButton.Create(Self);
-    Button.Parent := Self;
-    Button.Tag := Length(FFixButtons);
-    Button.OnClick := FixClick;
-    FFixButtons := FFixButtons + [Button];
-  end;
-  FLines := nil;
-  Top_ := HeaderHeight;
-  for Index := 0 to High(FFixButtons) do
-  begin
-    FFixButtons[Index].Visible := False;
-  end;
-  for Index := 0 to High(FResults) do
-  begin
-    Line.Result_ := Index;
-    Line.Project := -1;
-    Line.Top := Top_;
-    Line.Height := RowHeight;
-    FLines := FLines + [Line];
-    Button := FFixButtons[Index];
-    mText := FixCaption(FResults[Index].Fix);
-    Button.Caption := mText;
-    Button.Visible := mText <> '';
-    ButtonWidth := Max(Canvas.TextWidth(mText) + ScaleValue(24), ScaleValue(90));
-    Button.SetBounds(ClientWidth - ButtonWidth - ScaleValue(12), Top_ + (Line.Height - ScaleValue(25)) div 2,
-      ButtonWidth, ScaleValue(25));
-    Inc(Top_, Line.Height);
-    for Project := 0 to High(FResults[Index].Projects) do
-    begin
-      Line.Project := Project;
-      Line.Top := Top_;
-      Line.Height := SubRowHeight;
-      FLines := FLines + [Line];
-      Inc(Top_, Line.Height);
-    end;
-  end;
-  // Erklärung bzw. Hinweis, umbrochen.
-  FNoteTop := Top_ + ScaleValue(4);
-  FNoteHeight := 0;
-  if FNote <> '' then
-  begin
-    NoteWidth := ClientWidth - ScaleValue(40);
-    Area := Rect(0, 0, NoteWidth, 0);
-    DrawText(Canvas.Handle, PChar(FNote), -1, Area, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
-    FNoteHeight := Area.Height + ScaleValue(8);
-  end;
-  FFooterTop := FNoteTop + FNoteHeight + ScaleValue(4);
-  ClientHeight := FFooterTop + RowHeight + ButtonsHeight;
-  Bottom := ClientHeight - ButtonsHeight + ScaleValue(10);
-  ButtonWidth := Max(Max(Canvas.TextWidth(FCopyButton.Caption), Canvas.TextWidth(FRecheckButton.Caption)),
-    Canvas.TextWidth(FCloseButton.Caption)) + ScaleValue(24);
-  FCloseButton.SetBounds(ClientWidth - ButtonWidth - ScaleValue(12), Bottom, ButtonWidth, ScaleValue(25));
-  FRecheckButton.SetBounds(FCloseButton.Left - ButtonWidth - ScaleValue(8), Bottom, ButtonWidth, ScaleValue(25));
-  FCopyButton.SetBounds(FRecheckButton.Left - ButtonWidth - ScaleValue(8), Bottom, ButtonWidth, ScaleValue(25));
-  FShowAtStart.SetBounds(ScaleValue(12), Bottom + ScaleValue(4), Max(ScaleValue(80),
-    FCopyButton.Left - ScaleValue(24)), ScaleValue(19));
+  mArranger.EnsureFixButtons;
+  mArranger.Note(mArranger.Lines(mArranger.Metrics.HeaderHeight));
+  mArranger.Footer;
   Invalidate;
 end;
 
@@ -532,54 +712,52 @@ end;
 
 procedure TAtlasSetupWindow.FixClick(Sender: TObject);
 var
-  Index: Integer;
-  Item: TAtlasSetupResult;
+  mIndex: Integer;
+  mItem: TAtlasSetupResult;
 begin
-  Index := TButton(Sender).Tag;
-  if (Index < 0) or (Index > High(FResults)) then
+  mIndex := TButton(Sender).Tag;
+  if (mIndex < 0) or (mIndex > High(FResults)) then
   begin
     Exit;
   end;
-  Item := FResults[Index];
-  if Item.Fix = TAtlasSetupFix.Explain then
+  mItem := FResults[mIndex];
+  if mItem.Fix = TAtlasSetupFix.Explain then
   begin
-    ShowNote(WhyText(Item));
+    ShowNote(TAtlasSetupTexts.WhyText(mItem));
     Exit;
   end;
   ShowNote('');
-  if Assigned(FOnFix) then
+  if Assigned(FEvents.Fix) then
   begin
-    FOnFix(Item);
+    FEvents.Fix(mItem);
   end;
 end;
 
-procedure TAtlasSetupWindow.CopyClick(Sender: TObject);
+procedure TAtlasSetupWindow.FooterClick(Sender: TObject);
 begin
-  if Assigned(FOnCopy) then
+  if Sender = FCloseButton then
   begin
-    FOnCopy();
-  end;
-end;
-
-procedure TAtlasSetupWindow.RecheckClick(Sender: TObject);
-begin
-  ShowNote('');
-  if Assigned(FOnRecheck) then
+    Close;
+  end
+  else if Sender = FRecheckButton then
   begin
-    FOnRecheck();
+    ShowNote('');
+    if Assigned(FEvents.Recheck) then
+    begin
+      FEvents.Recheck();
+    end;
+  end
+  else if Assigned(FEvents.Copy) then
+  begin
+    FEvents.Copy();
   end;
-end;
-
-procedure TAtlasSetupWindow.CloseClick(Sender: TObject);
-begin
-  Close;
 end;
 
 procedure TAtlasSetupWindow.ShowAtStartClick(Sender: TObject);
 begin
-  if not FUpdating and Assigned(FOnShowAtStart) then
+  if not FUpdating and Assigned(FEvents.ShowAtStart) then
   begin
-    FOnShowAtStart(FShowAtStart.Checked);
+    FEvents.ShowAtStart(FShowAtStart.Checked);
   end;
 end;
 
@@ -600,115 +778,34 @@ begin
   inherited;
 end;
 
-procedure TAtlasSetupWindow.DrawDot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
-begin
-  // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Canvas.Pen.Color := ToColor(FColors.Signals.ForStatus(AState).Ring);
-  Canvas.Brush.Color := ToColor(FColors.Signals.ForStatus(AState).Fill);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Ellipse(ACenter.X - ARadius, ACenter.Y - ARadius, ACenter.X + ARadius + 1, ACenter.Y + ARadius + 1);
-end;
-
 procedure TAtlasSetupWindow.Paint;
 var
-  Line: TLine;
-  Item: TAtlasSetupResult;
-  Part: TRect;
-  mText, Detail, Before, After: string;
-  Right_, KeyAt, X: Integer;
+  mPainter: TAtlasSetupPainter;
+  mLine: TAtlasSetupLine;
 begin
+  mPainter.Window := Self;
+  mPainter.Metrics.Window := Self;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.FillRect(ClientRect);
-  // Kopf: Titel und Fortschritt.
-  Canvas.Brush.Style := bsClear;
-  Part := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(12), HeaderHeight);
-  Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(FColors.Text);
-  mText := TAtlasStrings.Text(TAtlasTextId.SetupTitle);
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  Canvas.Font.Style := [];
-  Canvas.Font.Color := ToColor(FColors.Muted);
-  mText := ProgressText(FResults);
-  DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_NOPREFIX);
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, HeaderHeight - ScaleValue(2));
-  Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(2));
-  for Line in FLines do
+  mPainter.Header;
+  for mLine in FGeometry.Lines do
   begin
-    Item := FResults[Line.Result_];
-    if Line.Project >= 0 then
+    if mLine.Project >= 0 then
     begin
-      // Unterzeile je Projekt (#619): kleiner Punkt, gedämpfter Text.
-      DrawDot(Point(ScaleValue(40), Line.Top + Line.Height div 2), ScaleValue(3),
-        ProjectState(Item.Projects[Line.Project]));
-      Canvas.Brush.Style := bsClear;
-      Canvas.Font.Color := ToColor(FColors.Muted);
-      Part := Rect(ScaleValue(50), Line.Top, ClientWidth - ScaleValue(12), Line.Top + Line.Height);
-      mText := ProjectText(Item.Projects[Line.Project]);
-      DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-      Continue;
-    end;
-    DrawDot(Point(ScaleValue(20), Line.Top + Line.Height div 2), ScaleValue(5), Item.State);
-    Canvas.Brush.Style := bsClear;
-    Right_ := ClientWidth - ScaleValue(12);
-    if (FixButton(Line.Result_) <> nil) and FixButton(Line.Result_).Visible then
+      mPainter.ProjectLine(mLine, FResults[mLine.Result_]);
+    end
+    else
     begin
-      Right_ := FixButton(Line.Result_).Left - ScaleValue(8);
-    end;
-    Part := Rect(ScaleValue(34), Line.Top, Right_, Line.Top + Line.Height);
-    mText := ResultText(Item);
-    Canvas.Font.Color := ToColor(FColors.Text);
-    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-    Detail := DetailText(Item);
-    if Detail <> '' then
-    begin
-      Part.Left := Part.Left + Canvas.TextWidth(mText) + ScaleValue(10);
-      if Part.Left < Part.Right then
-      begin
-        Canvas.Font.Color := ToColor(FColors.Muted);
-        DrawText(Canvas.Handle, PChar(Detail), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
-          DT_END_ELLIPSIS);
-      end;
+      mPainter.ResultLine(mLine, FResults[mLine.Result_]);
     end;
   end;
-  // Erklärung bzw. Hinweis.
-  if FNote <> '' then
-  begin
-    Part := Rect(ScaleValue(20), FNoteTop + ScaleValue(4), ClientWidth - ScaleValue(20), FNoteTop + FNoteHeight);
-    Canvas.Font.Color := ToColor(FColors.Muted);
-    DrawText(Canvas.Handle, PChar(FNote), -1, Part, DT_WORDBREAK or DT_NOPREFIX);
-  end;
-  // Einstieg: „Probier es aus: Strg+Leertaste in einer Methode“, die Taste fett.
+  mPainter.Note;
+  mPainter.TryIt;
   Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, FFooterTop);
-  Canvas.LineTo(ClientWidth, FFooterTop);
-  mText := TAtlasStrings.Fmt(TAtlasTextId.SetupTryIt, [FTryKey]);
-  KeyAt := Pos(FTryKey, mText);
-  Before := mText;
-  After := '';
-  if KeyAt > 0 then
-  begin
-    Before := Copy(mText, 1, KeyAt - 1);
-    After := Copy(mText, KeyAt + Length(FTryKey), MaxInt);
-  end;
-  X := ScaleValue(12);
-  Part := Rect(X, FFooterTop, ClientWidth - ScaleValue(12), FFooterTop + RowHeight);
-  Canvas.Font.Color := ToColor(FColors.Text);
-  DrawText(Canvas.Handle, PChar(Before), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  if KeyAt > 0 then
-  begin
-    Part.Left := Part.Left + Canvas.TextWidth(Before);
-    Canvas.Font.Style := [fsBold];
-    DrawText(Canvas.Handle, PChar(FTryKey), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-    Part.Left := Part.Left + Canvas.TextWidth(FTryKey);
-    Canvas.Font.Style := [];
-    DrawText(Canvas.Handle, PChar(After), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
-  end;
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, ClientHeight - ButtonsHeight);
-  Canvas.LineTo(ClientWidth, ClientHeight - ButtonsHeight);
+  Canvas.MoveTo(0, ClientHeight - mPainter.Metrics.ButtonsHeight);
+  Canvas.LineTo(ClientWidth, ClientHeight - mPainter.Metrics.ButtonsHeight);
   Canvas.Brush.Style := bsSolid;
 end;
 
