@@ -39,91 +39,117 @@ begin
   Result := (AStatus = 301) or (AStatus = 302) or (AStatus = 303) or (AStatus = 307) or (AStatus = 308);
 end;
 
+/// <summary>Holt AUrl in AContent; False, wenn das Abbruchsignal kommt oder die Zeit (ab AWatch) abläuft.
+/// </summary>
+function AwaitGet(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; const AWatch: TStopwatch;
+  ATimeoutMs: Integer; out AResponse: IHTTPResponse): Boolean;
+var
+  mAsync: IAsyncResult;
+  mWait: TStopwatch;
+begin
+  AResponse := nil;
+  AContent.Clear;
+  mAsync := AClient.BeginGet(AUrl, AContent);
+  Result := True;
+  while Result and not mAsync.IsCompleted do
+  begin
+    Result := not TAtlasShutdown.Wait(SliceMs) and (AWatch.ElapsedMilliseconds <= ATimeoutMs);
+  end;
+  if Result then
+  begin
+    AResponse := THTTPClient.EndAsyncHTTP(mAsync);
+  end
+  else
+  begin
+    mAsync.Cancel;
+    // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
+    mWait := TStopwatch.StartNew;
+    while not mAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+    begin
+      Sleep(10);
+    end;
+  end;
+end;
+
+/// <summary>Holt AUrl und folgt Weiterleitungen (höchstens MaxRedirects, nur auf https); AError sonst.</summary>
+function FollowRedirects(AClient: THTTPClient; const AUrl: string; AContent: TBytesStream; ATimeoutMs: Integer;
+  out AResponse: IHTTPResponse; out AError: string): Boolean;
+var
+  mWatch: TStopwatch;
+  mUrl: string;
+  mRedirects: Integer;
+begin
+  AError := '';
+  mUrl := AUrl;
+  mRedirects := 0;
+  mWatch := TStopwatch.StartNew;
+  repeat
+    if not mUrl.StartsWith('https://', True) then
+    begin
+      AError := 'nur https';
+    end
+    else if not AwaitGet(AClient, mUrl, AContent, mWatch, ATimeoutMs, AResponse) then
+    begin
+      AError := 'abgebrochen';
+    end
+    else if IsRedirect(AResponse.StatusCode) then
+    begin
+      Inc(mRedirects);
+      mUrl := AResponse.HeaderValue['Location'];
+      if mRedirects > MaxRedirects then
+      begin
+        AError := 'zu viele Weiterleitungen';
+      end;
+    end;
+  until (AError <> '') or not IsRedirect(AResponse.StatusCode);
+  Result := AError = '';
+end;
+
 function TAtlasHttpVersionSource.Fetch(const AUrl: string; ATimeoutMs: Integer; out AText,
   AError: string): Boolean;
 var
-  Client: THTTPClient;
-  Content: TBytesStream;
-  Async: IAsyncResult;
-  Response: IHTTPResponse;
-  Watch: TStopwatch;
-  Url: string;
-  Redirects: Integer;
+  mClient: THTTPClient;
+  mContent: TBytesStream;
+  mResponse: IHTTPResponse;
 begin
   Result := False;
   AText := '';
   AError := '';
-  Client := THTTPClient.Create;
-  Content := TBytesStream.Create;
+  mClient := THTTPClient.Create;
+  mContent := TBytesStream.Create;
   try
-    Client.ConnectionTimeout := ATimeoutMs;
-    Client.ResponseTimeout := ATimeoutMs;
-    Client.HandleRedirects := False;
-    Client.AllowCookies := False;
-    Client.UserAgent := 'Atlas';
-    Url := AUrl;
-    Redirects := 0;
-    Watch := TStopwatch.StartNew;
+    mClient.ConnectionTimeout := ATimeoutMs;
+    mClient.ResponseTimeout := ATimeoutMs;
+    mClient.HandleRedirects := False;
+    mClient.AllowCookies := False;
+    mClient.UserAgent := 'Atlas';
     try
-      while True do
+      if not FollowRedirects(mClient, AUrl, mContent, ATimeoutMs, mResponse, AError) then
       begin
-        if not Url.StartsWith('https://', True) then
-        begin
-          AError := 'nur https';
-          Exit;
-        end;
-        Content.Clear;
-        Async := Client.BeginGet(Url, Content);
-        while not Async.IsCompleted do
-        begin
-          if TAtlasShutdown.Wait(SliceMs) or (Watch.ElapsedMilliseconds > ATimeoutMs) then
-          begin
-            Async.Cancel;
-            // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
-            Watch := TStopwatch.StartNew;
-            while not Async.IsCompleted and (Watch.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
-            begin
-              Sleep(10);
-            end;
-            AError := 'abgebrochen';
-            Exit;
-          end;
-        end;
-        Response := THTTPClient.EndAsyncHTTP(Async);
-        if not IsRedirect(Response.StatusCode) then
-        begin
-          Break;
-        end;
-        Inc(Redirects);
-        if Redirects > MaxRedirects then
-        begin
-          AError := 'zu viele Weiterleitungen';
-          Exit;
-        end;
-        Url := Response.HeaderValue['Location'];
-      end;
-      if Response.StatusCode <> 200 then
-      begin
-        AError := Format('HTTP %d', [Response.StatusCode]);
         Exit;
       end;
-      if Content.Size > MaxBytes then
+      if mResponse.StatusCode <> 200 then
+      begin
+        AError := Format('HTTP %d', [mResponse.StatusCode]);
+      end
+      else if mContent.Size > MaxBytes then
       begin
         AError := 'Antwort zu groß';
-        Exit;
+      end
+      else
+      begin
+        AText := TEncoding.UTF8.GetString(mContent.Bytes, 0, mContent.Size);
+        Result := True;
       end;
-      AText := TEncoding.UTF8.GetString(Content.Bytes, 0, Content.Size);
-      Result := True;
     except
       on E: Exception do
         AError := E.ClassName;
     end;
   finally
-    // Erst die Schnittstellen lösen, sie verweisen auf den Client.
-    Response := nil;
-    Async := nil;
-    Content.Free;
-    Client.Free;
+    // Erst die Schnittstelle lösen, sie verweist auf den Client.
+    mResponse := nil;
+    mContent.Free;
+    mClient.Free;
   end;
 end;
 

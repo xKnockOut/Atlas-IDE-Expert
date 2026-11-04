@@ -55,6 +55,8 @@ type
     constructor Create(const ASession: TAtlasCompilerSwitchesSessionFunc;
       const AStatus: TAtlasCompilerSwitchesStatusProc);
     procedure Tick(Sender: TObject);
+    /// <summary>Stelle im Editor verfolgen und bei Bedarf fragen (im Hauptthread).</summary>
+    procedure Follow;
     /// <summary>Fenster sichtbar oder Statusfeld an.</summary>
     function Wanted: Boolean;
     procedure Ask;
@@ -280,118 +282,117 @@ begin
   end;
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
-    var
-      View: IOTAEditView;
-      FileName: string;
-      Cursor: TOTAEditPos;
-      Character: Integer;
     begin
-      if not Wanted then
-      begin
-        // Fenster zu, Statusfeld aus: nichts fragen, beim Öffnen sofort.
-        FFollow.Invalidate;
-        UpdateStatus;
-        Exit;
-      end;
-      View := TAtlasEditorBuffer.ActiveView;
-      FileName := '';
-      if (View <> nil) and (View.Buffer <> nil) then
-      begin
-        FileName := View.Buffer.FileName;
-      end;
-      if not TAtlasSwitchFollow.Applies(FileName) then
-      begin
-        if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
-        begin
-          FHasView := False;
-          Inc(FRequest);
-          ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty));
-        end;
-        Exit;
-      end;
-      Cursor := View.CursorPos;
-      if Cursor.Line < 1 then
-      begin
-        Exit;
-      end;
-      Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(View, Cursor.Line), Cursor.Col,
-        TAtlasEditorBuffer.TabWidth(View.Buffer));
-      FFollow.Moved(FileName, Cursor.Line - 1, Character, GetTickCount64);
-      if FFollow.Due(GetTickCount64) then
-      begin
-        Ask;
-      end;
+      Follow;
     end);
 end;
 
-procedure TAtlasIdeCompilerSwitches.Ask;
+procedure TAtlasIdeCompilerSwitches.Follow;
 var
-  Session: TLspSession;
-  Buffer: IOTAEditBuffer;
-  View: IOTAEditView;
-  FileName: string;
-  Line, Character, Request: Integer;
-  Worker: TThread;
+  mView: IOTAEditView;
+  mFileName: string;
+  mCursor: TOTAEditPos;
 begin
-  Session := nil;
-  if Assigned(FSession) then
+  if not Wanted then
   begin
-    Session := FSession();
-  end;
-  if Session = nil then
-  begin
-    FHasView := False;
-    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
+    // Fenster zu, Statusfeld aus: nichts fragen, beim Öffnen sofort.
+    FFollow.Invalidate;
+    UpdateStatus;
     Exit;
   end;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  mFileName := '';
+  if (mView <> nil) and (mView.Buffer <> nil) then
+  begin
+    mFileName := mView.Buffer.FileName;
+  end;
+  if not TAtlasSwitchFollow.Applies(mFileName) then
+  begin
+    if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
+    begin
+      FHasView := False;
+      Inc(FRequest);
+      ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty));
+    end;
+    Exit;
+  end;
+  mCursor := mView.CursorPos;
+  if mCursor.Line < 1 then
   begin
     Exit;
   end;
-  Buffer := View.Buffer;
-  FileName := FFollow.FileName;
-  Line := FFollow.Line;
-  Character := FFollow.Character;
-  if not SameText(Buffer.FileName, FileName) then
+  FFollow.Moved(mFileName, mCursor.Line - 1, TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(mView,
+    mCursor.Line), mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer)), GetTickCount64);
+  if FFollow.Due(GetTickCount64) then
   begin
-    Exit;
+    Ask;
   end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  Session.Sync(FileName, TAtlasEditorBuffer.Text(Buffer));
-  if not FHasView then
-  begin
-    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
-  end;
-  Inc(FRequest);
-  Request := FRequest;
-  Worker := TThread.CreateAnonymousThread(
+end;
+
+/// <summary>Thread, der die Schalter an der Stelle holt und die Antwort im Hauptthread an die Instanz gibt.
+/// </summary>
+function FetchThread(ASession: TLspSession; const AFileName: string; ALine, ACharacter,
+  ARequest: Integer): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
     procedure
     var
-      Answer: TAtlasCompilerSwitchView;
-      Known: Boolean;
+      mAnswer: TAtlasCompilerSwitchView;
+      mKnown: Boolean;
     begin
-      Known := Fetch(Session, FileName, Line, Character, Answer);
+      mKnown := TAtlasIdeCompilerSwitches.Fetch(ASession, AFileName, ALine, ACharacter, mAnswer);
       // Atlas gehört der Eintrag: beim Entladen verworfen (Code-Review A-02).
       TAtlasMainThread.Queue(TAtlasFeature.Build,
         procedure
         begin
-          if FInstance <> nil then
+          if TAtlasIdeCompilerSwitches.FInstance <> nil then
           begin
             TAtlasGuard.Run(TAtlasFeature.Build,
               procedure
               begin
-                if FInstance <> nil then
+                if TAtlasIdeCompilerSwitches.FInstance <> nil then
                 begin
-                  FInstance.Accept(Request, FileName, Line, Answer, Known);
+                  TAtlasIdeCompilerSwitches.FInstance.Accept(ARequest, AFileName, ALine, mAnswer, mKnown);
                 end;
               end);
           end;
         end);
     end);
-  Worker.FreeOnTerminate := False;
-  FWorkers.Add(Worker);
-  Worker.Start;
+end;
+
+procedure TAtlasIdeCompilerSwitches.Ask;
+var
+  mSession: TLspSession;
+  mView: IOTAEditView;
+  mWorker: TThread;
+begin
+  mSession := nil;
+  if Assigned(FSession) then
+  begin
+    mSession := FSession();
+  end;
+  if mSession = nil then
+  begin
+    FHasView := False;
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
+    Exit;
+  end;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFollow.FileName) then
+  begin
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(FFollow.FileName, TAtlasEditorBuffer.Text(mView.Buffer));
+  if not FHasView then
+  begin
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
+  end;
+  Inc(FRequest);
+  mWorker := FetchThread(mSession, FFollow.FileName, FFollow.Line, FFollow.Character, FRequest);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
 end;
 
 class function TAtlasIdeCompilerSwitches.Fetch(ASession: TLspSession; const AFileName: string;

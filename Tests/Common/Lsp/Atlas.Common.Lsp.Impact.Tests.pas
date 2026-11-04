@@ -764,9 +764,10 @@ begin
     end;
 end;
 
-procedure TImpactAnalysisTests.LongChainStaysFast;
 const
-  Count = 60;
+  cLongChainCount = 60;
+
+procedure TImpactAnalysisTests.LongChainStaysFast;
 var
   Texts: TArray<string>;
   Files: TArray<string>;
@@ -780,10 +781,10 @@ var
   Settings: TImpactOptions;
 begin
   // Kette Stufe1 ← Stufe2 ← … über Count Units: Tiefe 5 geht fünf Units weit.
-  SetLength(Texts, Count);
-  SetLength(Files, Count);
+  SetLength(Texts, cLongChainCount);
+  SetLength(Files, cLongChainCount);
   Big := TSymbolIndex.Create;
-  for Index := 0 to Count - 1 do
+  for Index := 0 to cLongChainCount - 1 do
   begin
     Files[Index] := Format('C:\B\Stufe%d.pas', [Index]);
     Texts[Index] := ChainText(Index);

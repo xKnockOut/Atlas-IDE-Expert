@@ -320,7 +320,7 @@ begin
   Result := Format('Umbenennen in "%s" würde die Bedeutung ändern: In %s, Zeile %d, meinte "%s" danach %s ' +
     'statt %s. Bitte einen anderen Namen wählen oder dort "Self." ergänzen.',
     [ANewName, ExtractFileName(AFileName), AToken.StartPos.Line + 1, ANewName,
-    TNameResolver.ShadowText(AAfter), TNameResolver.ShadowText(ABefore)]);
+    AAfter.ShadowText, ABefore.ShadowText]);
 end;
 
 class function TLspRename.Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;

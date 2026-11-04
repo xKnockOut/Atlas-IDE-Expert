@@ -456,115 +456,135 @@ begin
   end;
 end;
 
-class function TAtlasSetupChecklist.CheckIndex(const AInput: TAtlasSetupInput): TAtlasSetupResult;
+function WorkspaceState(const AWorkspace: TAtlasSetupWorkspace): TAtlasSetupProjectState;
+begin
+  if AWorkspace.Done then
+  begin
+    Result := TAtlasSetupProjectState.Done;
+  end
+  else
+  begin
+    Result := TAtlasSetupProjectState.Building;
+  end;
+end;
+
+/// <summary>Zustand des Projekts AName nach der Antwort des Servers.</summary>
+function ProjectStateOf(const AStatus: TAtlasSetupServerStatus; const AName: string): TAtlasSetupProjectState;
+var
+  mWorkspace: TAtlasSetupWorkspace;
+begin
+  // Vor der ersten Antwort des Servers gilt jedes Projekt als „wird aufgebaut“.
+  Result := TAtlasSetupProjectState.Missing;
+  if not AStatus.Known then
+  begin
+    Result := TAtlasSetupProjectState.Building;
+  end;
+  for mWorkspace in AStatus.Workspaces do
+  begin
+    if SameName(mWorkspace.Name, AName) then
+    begin
+      Result := WorkspaceState(mWorkspace);
+    end;
+  end;
+end;
+
+type
+  /// <summary>Zählung von CheckIndex: Projekte mit Zustand, fertige und fehlende.</summary>
+  TIndexTally = record
+    Projects: TArray<TAtlasSetupProject>;
+    DoneCount: Integer;
+    MissingCount: Integer;
+    Missing: string;
+    Building: Boolean;
+    procedure Add(const AName: string; AState: TAtlasSetupProjectState);
+    function Verdict(const AInput: TAtlasSetupInput): TAtlasSetupResult;
+  end;
+
+procedure TIndexTally.Add(const AName: string; AState: TAtlasSetupProjectState);
+begin
+  case AState of
+    TAtlasSetupProjectState.Done:
+      Inc(DoneCount);
+    TAtlasSetupProjectState.Building:
+      Building := True;
+  else
+    begin
+      Inc(MissingCount);
+      if Missing <> '' then
+      begin
+        Missing := Missing + ', ';
+      end;
+      Missing := Missing + AName;
+    end;
+  end;
+  Projects := Projects + [TAtlasSetupProject.Create(AName, AState)];
+end;
+
+function TIndexTally.Verdict(const AInput: TAtlasSetupInput): TAtlasSetupResult;
 const
   C = TAtlasSetupCheck.Index;
 var
-  Projects: TArray<TAtlasSetupProject>;
-  Name, Missing, Units, Percent: string;
-  Workspace: TAtlasSetupWorkspace;
-  Found, Building: Boolean;
-  State: TAtlasSetupProjectState;
-  DoneCount, MissingCount, Total: Integer;
+  mTotal: Integer;
+  mText: string;
 begin
-  if AInput.Server.Phase <> TAtlasServerPhase.Running then
-  begin
-    Exit(Make(C, TAtlasSetupFinding.IndexNoServer, TAtlasStatusState.Yellow, TAtlasSetupFix.StartServer, True, nil));
-  end;
-  Projects := nil;
-  DoneCount := 0;
-  MissingCount := 0;
-  Missing := '';
-  Building := AInput.Indexing or not AInput.Status.Known;
-  for Name in AInput.Projects do
-  begin
-    Found := False;
-    State := TAtlasSetupProjectState.Missing;
-    for Workspace in AInput.Status.Workspaces do
-    begin
-      if SameName(Workspace.Name, Name) then
-      begin
-        Found := True;
-        if Workspace.Done then
-        begin
-          State := TAtlasSetupProjectState.Done;
-        end
-        else
-        begin
-          State := TAtlasSetupProjectState.Building;
-        end;
-      end;
-    end;
-    // Vor der ersten Antwort des Servers gilt jedes Projekt als „wird aufgebaut“.
-    if not Found and not AInput.Status.Known then
-    begin
-      State := TAtlasSetupProjectState.Building;
-    end;
-    case State of
-      TAtlasSetupProjectState.Done:
-        Inc(DoneCount);
-      TAtlasSetupProjectState.Building:
-        Building := True;
-    else
-      begin
-        Inc(MissingCount);
-        if Missing <> '' then
-        begin
-          Missing := Missing + ', ';
-        end;
-        Missing := Missing + Name;
-      end;
-    end;
-    Projects := Projects + [TAtlasSetupProject.Create(Name, State)];
-  end;
-  // Ohne Projektgruppe: die Arbeitsbereiche, die der Server aus geöffneten Dateien abgeleitet hat.
-  if Length(AInput.Projects) = 0 then
-  begin
-    for Workspace in AInput.Status.Workspaces do
-    begin
-      if Workspace.Done then
-      begin
-        Inc(DoneCount);
-        Projects := Projects + [TAtlasSetupProject.Create(Workspace.Name, TAtlasSetupProjectState.Done)];
-      end
-      else
-      begin
-        Building := True;
-        Projects := Projects + [TAtlasSetupProject.Create(Workspace.Name, TAtlasSetupProjectState.Building)];
-      end;
-    end;
-  end;
-  Total := Length(Projects);
+  mTotal := Length(Projects);
   if Building then
   begin
-    Percent := '';
+    mText := '';
     if AInput.Indexing and (AInput.IndexPercent >= 0) then
     begin
-      Percent := IntToStr(AInput.IndexPercent);
+      mText := IntToStr(AInput.IndexPercent);
     end;
     Result := Make(C, TAtlasSetupFinding.IndexBuilding, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True,
-      [IntToStr(DoneCount), IntToStr(Total), Percent]);
+      [IntToStr(DoneCount), IntToStr(mTotal), mText]);
   end
-  else if Total = 0 then
+  else if mTotal = 0 then
   begin
     Result := Make(C, TAtlasSetupFinding.IndexNoProjects, TAtlasStatusState.Yellow, TAtlasSetupFix.Explain, True, nil);
   end
   else if MissingCount > 0 then
   begin
     Result := Make(C, TAtlasSetupFinding.IndexIncomplete, TAtlasStatusState.Yellow, TAtlasSetupFix.RebuildIndex,
-      False, [IntToStr(MissingCount), IntToStr(Total), Missing]);
+      False, [IntToStr(MissingCount), IntToStr(mTotal), Missing]);
   end
   else
   begin
-    Units := '';
+    mText := '';
     if AInput.Status.Units >= 0 then
     begin
-      Units := IntToStr(AInput.Status.Units);
+      mText := IntToStr(AInput.Status.Units);
     end;
     Result := Make(C, TAtlasSetupFinding.IndexReady, TAtlasStatusState.Green, TAtlasSetupFix.None, False,
-      [IntToStr(Total), Units]);
+      [IntToStr(mTotal), mText]);
   end;
-  Result.Projects := Projects;
+end;
+class function TAtlasSetupChecklist.CheckIndex(const AInput: TAtlasSetupInput): TAtlasSetupResult;
+var
+  mTally: TIndexTally;
+  mName: string;
+  mWorkspace: TAtlasSetupWorkspace;
+begin
+  if AInput.Server.Phase <> TAtlasServerPhase.Running then
+  begin
+    Exit(Make(TAtlasSetupCheck.Index, TAtlasSetupFinding.IndexNoServer, TAtlasStatusState.Yellow,
+      TAtlasSetupFix.StartServer, True, nil));
+  end;
+  mTally := Default(TIndexTally);
+  mTally.Building := AInput.Indexing or not AInput.Status.Known;
+  for mName in AInput.Projects do
+  begin
+    mTally.Add(mName, ProjectStateOf(AInput.Status, mName));
+  end;
+  // Ohne Projektgruppe: die Arbeitsbereiche, die der Server aus geöffneten Dateien abgeleitet hat.
+  if Length(AInput.Projects) = 0 then
+  begin
+    for mWorkspace in AInput.Status.Workspaces do
+    begin
+      mTally.Add(mWorkspace.Name, WorkspaceState(mWorkspace));
+    end;
+  end;
+  Result := mTally.Verdict(AInput);
+  Result.Projects := mTally.Projects;
 end;
 
 class function TAtlasSetupChecklist.CheckLibraryCache(const AInput: TAtlasSetupInput): TAtlasSetupResult;
@@ -757,13 +777,39 @@ begin
   end;
 end;
 
+/// <summary>Namen ab zwei Zeichen, längere zuerst: Sonst bliebe vom Rechnernamen „WS-MARCO“ nach dem Benutzer
+/// „marco“ ein Rest stehen.</summary>
+function LongestFirst(const AIdentity: TArray<string>): TArray<string>;
+var
+  mIdentity, mSwap: string;
+  mIndex, mOther: Integer;
+begin
+  Result := nil;
+  for mIdentity in AIdentity do
+  begin
+    if Length(Trim(mIdentity)) >= 2 then
+    begin
+      Result := Result + [Trim(mIdentity)];
+    end;
+  end;
+  for mIndex := 0 to High(Result) - 1 do
+  begin
+    for mOther := mIndex + 1 to High(Result) do
+    begin
+      if Length(Result[mOther]) > Length(Result[mIndex]) then
+      begin
+        mSwap := Result[mIndex];
+        Result[mIndex] := Result[mOther];
+        Result[mOther] := mSwap;
+      end;
+    end;
+  end;
+end;
 class function TAtlasSetupChecklist.Report(const AInput: TAtlasSetupReportInput): string;
 var
   Builder: TStringBuilder;
   Line: TAtlasSetupReportLine;
-  Identity, Versions, Swap: string;
-  Identities: TArray<string>;
-  Index, Other: Integer;
+  Identity, Versions: string;
 begin
   Builder := TStringBuilder.Create;
   try
@@ -795,29 +841,8 @@ begin
   finally
     Builder.Free;
   end;
-  // Keine Namen von Benutzer, Rechner oder Domäne (#108); Pfade enthalten die Zeilen nicht. Längere Namen
-  // zuerst, sonst bliebe vom Rechnernamen „WS-MARCO“ nach dem Benutzer „marco“ ein Rest stehen.
-  Identities := nil;
-  for Identity in AInput.Identity do
-  begin
-    if Length(Trim(Identity)) >= 2 then
-    begin
-      Identities := Identities + [Trim(Identity)];
-    end;
-  end;
-  for Index := 0 to High(Identities) - 1 do
-  begin
-    for Other := Index + 1 to High(Identities) do
-    begin
-      if Length(Identities[Other]) > Length(Identities[Index]) then
-      begin
-        Swap := Identities[Index];
-        Identities[Index] := Identities[Other];
-        Identities[Other] := Swap;
-      end;
-    end;
-  end;
-  for Identity in Identities do
+  // Keine Namen von Benutzer, Rechner oder Domäne (#108); Pfade enthalten die Zeilen nicht.
+  for Identity in LongestFirst(AInput.Identity) do
   begin
     Result := StringReplace(Result, Identity, IdentityMark, [rfReplaceAll, rfIgnoreCase]);
   end;

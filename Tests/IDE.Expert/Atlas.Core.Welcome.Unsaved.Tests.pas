@@ -784,13 +784,69 @@ begin
   AssertNear(EncodeDate(2026, 10, 16), TAtlasWelcomeUnsaved.Tomorrow(EncodeDate(2026, 10, 15)), 1E-9, '');
 end;
 
+/// <summary>Der gelesene Abschnitt trägt alle Einträge.</summary>
+procedure AssertUnsavedRead(const AParsed: TAtlasProjectSummary);
+var
+  mRead: TAtlasUnsavedState;
+  mFound: TAtlasUnsavedItem;
+begin
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(AParsed, mRead));
+  Assert.IsTrue(mRead.Known);
+  Assert.AreEqual('git', mRead.Kind);
+  Assert.AreEqual(Root, mRead.Root);
+  Assert.AreEqual('main', mRead.Branch);
+  AssertNear(NowUtc, mRead.At, 1E-6, '');
+  Assert.AreEqual(3, Integer(Length(mRead.Items)));
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.Changes, mFound));
+  Assert.AreEqual(4, Integer(mFound.Count));
+  Assert.AreEqual(2, mFound.Modified);
+  Assert.AreEqual(1, mFound.Added);
+  Assert.AreEqual(1, mFound.Deleted);
+  AssertNear(HoursAgo(48), mFound.Since, 1 / (24 * 3600), '');
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.NoUpstream, mFound));
+  Assert.AreEqual(2, mFound.Commits);
+  Assert.AreEqual('feature/x', mFound.Branches[0]);
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.Stashes, mFound));
+  Assert.AreEqual('WIP „Hover“', mFound.Name);
+  Assert.AreEqual('abc', mFound.Ref);
+  Assert.IsTrue(mRead.IgnoredUntil(TAtlasUnsavedKind.Stashes) > NowUtc);
+end;
+
+/// <summary>Zweimal schreiben, neue Zusammenfassung und unbekannte Arten.</summary>
+procedure AssertUnsavedRewrite(const AParsed: TAtlasProjectSummary; const AState: TAtlasUnsavedState);
+var
+  mSummary: TAtlasProjectSummary;
+  mParsed: TAtlasProjectSummary;
+  mState: TAtlasUnsavedState;
+  mRead: TAtlasUnsavedState;
+begin
+  mParsed := AParsed;
+  mState := AState;
+  // Zweimal schreiben ersetzt den Abschnitt.
+  mState.Items := nil;
+  TAtlasWelcomeUnsaved.Write(mParsed, mState);
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(mParsed, mRead));
+  Assert.AreEqual(0, Integer(Length(mRead.Items)));
+  // Neue Zusammenfassung ohne Datei.
+  mSummary := TAtlasProjectSummary.Create('C:\Neu\Neu.dproj');
+  Assert.IsFalse(TAtlasWelcomeUnsaved.Read(mSummary, mRead));
+  TAtlasWelcomeUnsaved.Write(mSummary, GitState(Root, nil));
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(mSummary), mParsed));
+  Assert.AreEqual('C:\Neu\Neu.dproj', mParsed.Project);
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(mParsed, mRead));
+  // Unbekannte Arten einer späteren Fassung werden übergangen.
+  Assert.IsTrue(TAtlasWelcomeUnsaved.FromJson('{"kind":"git","items":[{"kind":"neu","count":1},' +
+    '{"kind":"stashes","count":2}]}', mRead));
+  Assert.AreEqual(1, Integer(Length(mRead.Items)));
+  Assert.IsFalse(TAtlasWelcomeUnsaved.FromJson('kein json', mRead));
+end;
+
 procedure TAtlasWelcomeUnsavedTests.SectionRoundTripKeepsSummary;
 var
   Summary, Parsed: TAtlasProjectSummary;
-  State, Read_: TAtlasUnsavedState;
+  State: TAtlasUnsavedState;
   Lonely: TAtlasUnsavedItem;
   Changes: TAtlasUnsavedItem;
-  Found: TAtlasUnsavedItem;
   Json: string;
 begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"format":1,"project":"C:\\Repo\\Demo.dproj","hidden":true,' +
@@ -812,43 +868,8 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Parsed));
   Assert.IsTrue(Parsed.Hidden, 'bekannte Felder bleiben');
   Assert.AreEqual('main', Parsed.Vcs.Branch);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  Assert.IsTrue(Read_.Known);
-  Assert.AreEqual('git', Read_.Kind);
-  Assert.AreEqual(Root, Read_.Root);
-  Assert.AreEqual('main', Read_.Branch);
-  AssertNear(NowUtc, Read_.At, 1E-6, '');
-  Assert.AreEqual(3, Integer(Length(Read_.Items)));
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(4, Integer(Found.Count));
-  Assert.AreEqual(2, Found.Modified);
-  Assert.AreEqual(1, Found.Added);
-  Assert.AreEqual(1, Found.Deleted);
-  AssertNear(HoursAgo(48), Found.Since, 1 / (24 * 3600), '');
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.NoUpstream, Found));
-  Assert.AreEqual(2, Found.Commits);
-  Assert.AreEqual('feature/x', Found.Branches[0]);
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.Stashes, Found));
-  Assert.AreEqual('WIP „Hover“', Found.Name);
-  Assert.AreEqual('abc', Found.Ref);
-  Assert.IsTrue(Read_.IgnoredUntil(TAtlasUnsavedKind.Stashes) > NowUtc);
-  // Zweimal schreiben ersetzt den Abschnitt.
-  State.Items := nil;
-  TAtlasWelcomeUnsaved.Write(Parsed, State);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  Assert.AreEqual(0, Integer(Length(Read_.Items)));
-  // Neue Zusammenfassung ohne Datei.
-  Summary := TAtlasProjectSummary.Create('C:\Neu\Neu.dproj');
-  Assert.IsFalse(TAtlasWelcomeUnsaved.Read(Summary, Read_));
-  TAtlasWelcomeUnsaved.Write(Summary, GitState(Root, nil));
-  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Parsed));
-  Assert.AreEqual('C:\Neu\Neu.dproj', Parsed.Project);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  // Unbekannte Arten einer späteren Fassung werden übergangen.
-  Assert.IsTrue(TAtlasWelcomeUnsaved.FromJson('{"kind":"git","items":[{"kind":"neu","count":1},' +
-    '{"kind":"stashes","count":2}]}', Read_));
-  Assert.AreEqual(1, Integer(Length(Read_.Items)));
-  Assert.IsFalse(TAtlasWelcomeUnsaved.FromJson('kein json', Read_));
+  AssertUnsavedRead(Parsed);
+  AssertUnsavedRewrite(Parsed, State);
 end;
 
 procedure TAtlasWelcomeUnsavedTests.PushPlansForCommitsAndBranchesWithoutUpstream;

@@ -157,7 +157,8 @@ begin
   Assert.StartsWith('''''''', ToLiteral(StoreWith(UnitLf), 5, 'select *'#10'from Kunde', True));
 end;
 
-procedure TStringLiteralCommandsTests.RejectsBadArguments;
+/// <summary>Ohne Position und mit nicht geöffnetem Dokument.</summary>
+procedure AssertRejectsMissingPositionOrDocument;
 begin
   // Ohne Position.
   Assert.WillRaise(
@@ -189,6 +190,11 @@ begin
         Args.Free;
       end;
     end, EJsonRpcError);
+end;
+
+/// <summary>textToLiteral ohne Text oder mit einem Objekt statt Text.</summary>
+procedure AssertToLiteralRejectsNonText;
+begin
   // textToLiteral ohne Text bzw. mit einem Objekt statt Text.
   Assert.WillRaise(
     procedure
@@ -217,6 +223,12 @@ begin
         Args.Free;
       end;
     end, EJsonRpcError);
+end;
+
+procedure TStringLiteralCommandsTests.RejectsBadArguments;
+begin
+  AssertRejectsMissingPositionOrDocument;
+  AssertToLiteralRejectsNonText;
   // Eine Zahl ist kein Text, obwohl TJSONNumber von TJSONString erbt.
   Assert.WillRaise(
     procedure
