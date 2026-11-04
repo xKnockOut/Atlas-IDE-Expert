@@ -273,9 +273,8 @@ begin
     begin
       Host.Disabled(ASender);
     end;
-  Bar.ItemCaptions := ItemCaptions;
-  Bar.CustomizeCaption := TAtlasStrings.Text(TAtlasTextId.StatusBarCustomize);
-  Bar.HideCaption := TAtlasStrings.Text(TAtlasTextId.StatusBarHide);
+  Bar.Texts := TAtlasStatusBarTexts.Create(ItemCaptions,
+    TAtlasStrings.Text(TAtlasTextId.StatusBarCustomize), TAtlasStrings.Text(TAtlasTextId.StatusBarHide));
   WireStatus(Bar);
   WireItems(Bar);
   Result := Bar;
