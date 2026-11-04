@@ -364,8 +364,6 @@ begin
   end;
 end;
 
-/// <summary>Spaltenwert, Zuständige (Anmeldename), Prioritätsfarbe und Schätzung (APoints) aus customFields.
-/// </summary>
 /// <summary>Zuständig (Anmeldename) bzw. Farbe der Priorität aus dem Wert eines Felds.</summary>
 procedure ReadObjectField(const AName: string; AValue: TJSONObject; var ACard: TAtlasBoardCard);
 var
@@ -407,6 +405,8 @@ begin
   end;
 end;
 
+/// <summary>Spaltenwert, Zuständige (Anmeldename), Prioritätsfarbe und Schätzung (APoints) aus customFields.
+/// </summary>
 procedure ReadFields(AIssue: TJSONObject; const AField, APoints: string; var ACard: TAtlasBoardCard);
 var
   mItem: TJSONValue;
