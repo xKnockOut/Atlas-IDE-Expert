@@ -413,13 +413,53 @@ begin
   RefreshList('');
 end;
 
+// Projekt der Liste: das der Datei im Editor, sonst das aktive. Auch aus Palette und Menü, wenn der Fokus nicht
+// im Editor liegt.
+function ListProject: string;
+var
+  mView: IOTAEditView;
+begin
+  Result := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
+  begin
+    Result := TAtlasIdeNotes.ResolveProject(mView.Buffer.FileName);
+  end;
+  if Result = '' then
+  begin
+    Result := TAtlasIdeNotes.ActiveProject;
+  end;
+end;
+
+// Notizen aller Dateien des Notizbuchs an den aktuellen Text anpassen; True, wenn sich etwas geändert hat.
+function RelocateBook(var ABook: TAtlasNoteBook; const AProject: string): Boolean;
+var
+  mFileName, mText: string;
+begin
+  Result := False;
+  for mFileName in ABook.Files do
+  begin
+    mText := TAtlasIdeWorkspaceEdit.CurrentText(mFileName);
+    // Leer heißt: Datei fehlt (oder ist leer); ihre Notizen sind dann nicht zuordenbar.
+    if mText = '' then
+    begin
+      Result := ABook.OrphanFile(mFileName) or Result;
+    end
+    else
+    begin
+      Result := ABook.Relocate(mFileName, TAtlasLineAnchors.Lines(mText)) or Result;
+    end;
+    if TAtlasIdeNotes.FProjectOf <> nil then
+    begin
+      TAtlasIdeNotes.FProjectOf.AddOrSetValue(TAtlasIdeNotes.Key(mFileName), AProject);
+    end;
+  end;
+end;
+
 class procedure TAtlasIdeNotes.ShowList;
 var
-  View: IOTAEditView;
-  Project, FileName: string;
+  Project: string;
   Current: TAtlasNoteBook;
-  Changed: Boolean;
-  Text: string;
 begin
   if FBooks = nil then
   begin
@@ -430,42 +470,14 @@ begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDisabled));
     Exit;
   end;
-  Project := '';
-  // Auch aus Palette und Menü, wenn der Fokus nicht im Editor liegt.
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View <> nil) and (View.Buffer <> nil) and (View.Buffer.FileName <> '') then
-  begin
-    Project := ResolveProject(View.Buffer.FileName);
-  end;
-  if Project = '' then
-  begin
-    Project := ActiveProject;
-  end;
+  Project := ListProject;
   if Project = '' then
   begin
     Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesNoProject));
     Exit;
   end;
   Current := Book(Project);
-  Changed := False;
-  for FileName in Current.Files do
-  begin
-    Text := TAtlasIdeWorkspaceEdit.CurrentText(FileName);
-    // Leer heißt: Datei fehlt (oder ist leer); ihre Notizen sind dann nicht zuordenbar.
-    if Text = '' then
-    begin
-      Changed := Current.OrphanFile(FileName) or Changed;
-    end
-    else
-    begin
-      Changed := Current.Relocate(FileName, TAtlasLineAnchors.Lines(Text)) or Changed;
-    end;
-    if FProjectOf <> nil then
-    begin
-      FProjectOf.AddOrSetValue(Key(FileName), Project);
-    end;
-  end;
-  if Changed then
+  if RelocateBook(Current, Project) then
   begin
     Store(Current);
   end

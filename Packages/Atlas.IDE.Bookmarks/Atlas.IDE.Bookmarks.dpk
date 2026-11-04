@@ -58,10 +58,13 @@ contains
   Atlas.UI.Bookmarks.Frame in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas' {AtlasBookmarksFrame: TFrame},
   Atlas.IDE.Bookmarks.Window in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas',
   Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
+  Atlas.IDE.Bookmarks.QuickService in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickService.pas',
   Atlas.IDE.Bookmarks.SavedPlaces in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.SavedPlaces.pas',
   Atlas.IDE.Bookmarks.Composition in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas',
+  Atlas.IDE.Bookmarks.Composition.Todos in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.Todos.pas',
   Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas',
   Atlas.IDE.Bookmarks.QuickColumn in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickColumn.pas',
+  Atlas.IDE.Bookmarks.QuickPopups in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickPopups.pas',
   Atlas.IDE.Bookmarks.QuickChord in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas';
 
 end.
