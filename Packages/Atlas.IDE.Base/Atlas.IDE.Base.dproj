@@ -206,6 +206,7 @@
         <DCCReference Include="Source\IDE\Generate\Atlas.IDE.Generate.NewFile.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.Rename.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ChangeSignature.pas"/>
+        <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ClassExtraction.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.MoveClass.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExtractInterface.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.ExtractSuperclass.pas"/>
