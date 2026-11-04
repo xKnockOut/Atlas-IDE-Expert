@@ -551,7 +551,6 @@ var
       [mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
 
-  /// <summary>TObject(FStrom).Free: Umwandlung einer Klasse in eine Klasse nur für Free.</summary>
   /// <summary>Ist ANode der Name in einem Aufruf Free(…) mit Argumenten? Der ist nicht TObject.Free.</summary>
   function FreeWithArguments(ANode: TSyntaxNode): Boolean;
   begin
