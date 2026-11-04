@@ -99,7 +99,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused;
+  Atlas.Common.Rules.Builtin.Unused.Shared;
 
 const
   OptionKeys: array[TRuleNamingKind] of string = ('local', 'field', 'parameter', 'constant');
