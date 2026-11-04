@@ -780,7 +780,8 @@ begin
       Inc(mCount);
     end;
   end;
-  if (mCount = 1) and TInlineRefactoring.InlineMethod(ASource, APosition, ACallee, mRoutine, AOptions, mAction) then
+  if (mCount = 1) and TInlineRefactoring.InlineMethod(ASource, APosition, TInlineCallee.Create(ACallee, mRoutine),
+    AOptions, mAction) then
   begin
     Result := [mAction];
   end;

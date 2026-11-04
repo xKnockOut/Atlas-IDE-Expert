@@ -38,6 +38,8 @@ type
     FModified: Boolean;
     function UniquePrefix(const ABase: string): string;
     function TargetFile(const AFolder: string; AIndex: Integer): string;
+    /// <summary>Hat eine eigene Vorlage vor AIndex das Kürzel APrefix?</summary>
+    function HasEarlierPrefix(AIndex: Integer; const APrefix: string): Boolean;
   public
     /// <summary>Reihenfolge der Liste: eigene, dann IDE, dann mitgelieferte.</summary>
     constructor Create(const ABuiltIn, AIde, AOwn: TAtlasSnippetList);
@@ -70,6 +72,21 @@ uses
   System.IOUtils,
   Atlas.Text.Chars,
   Atlas.Core.Files.TextFile;
+
+/// <summary>Besteht das Kürzel nur aus ASCII-Bezeichnerzeichen?</summary>
+function IsValidPrefix(const APrefix: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  for mPosition := 1 to Length(APrefix) do
+  begin
+    if not TTextChars.IsAsciiIdentChar(APrefix[mPosition]) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
 
 { TAtlasSnippetCatalog }
 
@@ -244,62 +261,66 @@ begin
   FModified := True;
 end;
 
+function TAtlasSnippetCatalog.HasEarlierPrefix(AIndex: Integer; const APrefix: string): Boolean;
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to AIndex - 1 do
+  begin
+    if Editable(mOther) and SameText(FEntries[mOther].Snippet.Prefix, APrefix) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TAtlasSnippetCatalog.Validate(out AProblems: TArray<TAtlasSnippetProblem>): Boolean;
 var
-  Index, Other, Position: Integer;
-  Snippet: TAtlasSnippet;
-  Problem: TAtlasSnippetProblem;
-  Invalid: Boolean;
+  mIndex: Integer;
+  mSnippet: TAtlasSnippet;
+  mProblems: TArray<TAtlasSnippetProblem>;
 
   procedure Add(AKind: TAtlasSnippetProblemKind);
+  var
+    mProblem: TAtlasSnippetProblem;
   begin
-    Problem.Index := Index;
-    Problem.Kind := AKind;
-    AProblems := AProblems + [Problem];
+    mProblem.Index := mIndex;
+    mProblem.Kind := AKind;
+    mProblems := mProblems + [mProblem];
   end;
 
 begin
-  AProblems := nil;
-  for Index := 0 to FEntries.Count - 1 do
+  mProblems := nil;
+  for mIndex := 0 to FEntries.Count - 1 do
   begin
-    if not Editable(Index) then
+    if not Editable(mIndex) then
     begin
       Continue;
     end;
-    Snippet := FEntries[Index].Snippet;
-    if Trim(Snippet.Prefix) = '' then
+    mSnippet := FEntries[mIndex].Snippet;
+    if Trim(mSnippet.Prefix) = '' then
     begin
       Add(TAtlasSnippetProblemKind.PrefixMissing);
     end
     else
     begin
-      Invalid := False;
-      for Position := 1 to Length(Snippet.Prefix) do
-      begin
-        if not TTextChars.IsAsciiIdentChar(Snippet.Prefix[Position]) then
-        begin
-          Invalid := True;
-        end;
-      end;
-      if Invalid then
+      if not IsValidPrefix(mSnippet.Prefix) then
       begin
         Add(TAtlasSnippetProblemKind.PrefixInvalid);
       end;
       // Zwei eigene mit demselben Kürzel: einmal melden, bei der zweiten.
-      for Other := 0 to Index - 1 do
+      if HasEarlierPrefix(mIndex, mSnippet.Prefix) then
       begin
-        if Editable(Other) and SameText(FEntries[Other].Snippet.Prefix, Snippet.Prefix) then
-        begin
-          Add(TAtlasSnippetProblemKind.PrefixTwice);
-          Break;
-        end;
+        Add(TAtlasSnippetProblemKind.PrefixTwice);
       end;
     end;
-    if Trim(Snippet.Body) = '' then
+    if Trim(mSnippet.Body) = '' then
     begin
       Add(TAtlasSnippetProblemKind.BodyMissing);
     end;
   end;
+  AProblems := mProblems;
   Result := Length(AProblems) = 0;
 end;
 

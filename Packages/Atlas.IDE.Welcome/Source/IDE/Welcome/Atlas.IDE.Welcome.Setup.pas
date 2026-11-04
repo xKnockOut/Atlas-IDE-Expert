@@ -33,6 +33,7 @@
 //   welcomePage.newFromTemplate aus fehlen nur die Knöpfe „Neu mit Atlas“.
 // Jeder Schritt läuft nur auf Klick. Meldungen mit Pfaden nur in die
 // Meldungsansicht; ins Protokoll kommt nur, was ohne Pfade auskommt.
+// Pfadprüfung, Gruppen und Lesen von Dateien: Atlas.IDE.Welcome.Setup.Paths.
 
 interface
 
@@ -41,13 +42,10 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Atlas.Core.Welcome.Sections,
-  Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Setup,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.PathCheck,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
-  Atlas.UI.Welcome.Setup;
+  Atlas.UI.Welcome.Setup,
+  Atlas.IDE.Welcome.Setup.Paths;
 
 type
   /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
@@ -59,22 +57,37 @@ type
     const ADone: TAtlasSetupBaselineDone): string;
   TAtlasSetupNewFile = reference to procedure(AKind: TAtlasNewFileKind);
 
-  /// <summary>Ergebnis der Pfadprüfung eines Projekts (bei einer Gruppe eins je Projekt).</summary>
-  TAtlasSetupPathRun = record
-    Project: string;
-    Check: TAtlasPathCheckResult;
-    /// <summary>Grund, wenn die Prüfung dieses Projekts abbrach; '' sonst.</summary>
-    Error: string;
-  end;
-
   TAtlasIdeSetup = class(TInterfacedObject, IAtlasSetupSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: vor „Projekte“.</summary>
     Order = 15;
+  private type
+    /// <summary>Was die Komposition hereinreicht.</summary>
+    THooks = record
+      Message: TProc<string>;
+      StartBaseline: TAtlasSetupBaselineStart;
+      NewFile: TAtlasSetupNewFile;
+    end;
+
+    /// <summary>Baseline-Lauf dieser Sitzung (gilt nur für sein Projekt).</summary>
+    TBaselineRun = record
+      Project: string;
+      Run: TAtlasSetupRun;
+      Started: UInt64;
+      Total: Integer;
+      Files: Integer;
+      Error: string;
+    end;
+
+    /// <summary>Pfadprüfung dieser Sitzung (gilt nur für ihr Projekt).</summary>
+    TPathsRun = record
+      Project: string;
+      Run: TAtlasSetupRun;
+      Started: UInt64;
+      Error: string;
+    end;
   private
-    FMessage: TProc<string>;
-    FStartBaseline: TAtlasSetupBaselineStart;
-    FNewFile: TAtlasSetupNewFile;
+    FHooks: THooks;
     FStarted: Boolean;
     FTitle: string;
     FShown: Boolean;
@@ -83,25 +96,15 @@ type
     /// <summary>Wechsel des aktiven Projekts meldet die IDE nicht: einmal je Sekunde vergleichen.</summary>
     FWatch: TTimer;
     FWatched: string;
-    FBaselineProject: string;
-    FBaseline: TAtlasSetupRun;
-    FBaselineStarted: UInt64;
-    FBaselineTotal: Integer;
-    FBaselineFiles: Integer;
-    FBaselineError: string;
-    FPathsProject: string;
-    FPaths: TAtlasSetupRun;
-    FPathsStarted: UInt64;
-    FPathsError: string;
+    FBaseline: TBaselineRun;
+    FPaths: TPathsRun;
     FThread: TThread;
     procedure WatchTick(Sender: TObject);
-    procedure Report(const AText: string);
     procedure ProjectsChanged(const AId: string);
     procedure BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
       const AError: string);
     procedure PathsFinished(const AProject: string; const ARuns: TArray<TAtlasSetupPathRun>);
     function ShouldShow: Boolean;
-    class function ReadText(const AFileName: string; out AText: string): Boolean; static;
   public
     /// <summary>AMessage: Zeile in die Meldungsansicht; AStartBaseline: atlas.updateBaseline (#97);
     /// ANewFile: Erzeugen-Menü mit den Dateivorlagen.</summary>
@@ -120,13 +123,6 @@ type
     procedure Ask;
     /// <summary>welcomePage.enabled und welcomePage.projectSetup an?</summary>
     class function Active: Boolean; static;
-    /// <summary>Ziel der Karte; AOpen = es ist in der IDE geöffnet. '' ohne Projekt.</summary>
-    class function Target(out AOpen: Boolean): string; static;
-    /// <summary>Dateien neben AProject und Abschnitte der Zusammenfassung.</summary>
-    class function FactsOf(const AProject: string; out ASummary: TAtlasProjectSummary): TAtlasSetupFacts; static;
-    /// <summary>Projekte, deren Prüfung zu AProject gehört: bei einer .groupproj ihre Projekte, bei einem Projekt
-    /// der geöffneten Gruppe mit mehreren Projekten alle Projekte der Gruppe; sonst leer.</summary>
-    class function GroupOf(const AProject: string): TArray<string>; static;
     { IAtlasSetupSource }
     function Card: TAtlasSetupCard;
     procedure CreateConfig(ATemplate: TAtlasSetupTemplate);
@@ -141,49 +137,320 @@ type
 implementation
 
 uses
-  System.IOUtils,
-  System.RegularExpressions,
   ToolsAPI,
-  Atlas.Text.Defines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Files.DataFile,
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Setup,
+  Atlas.Core.Projects.PathCheck,
   Atlas.Core.Projects.Baseline,
-  Atlas.Core.Projects.Contract,
   Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.SetupPreview,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Projects.Context,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.Projects,
-  Atlas.Core.Files.TextFile,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host;
+
+type
+  /// <summary>Summe der Funde aller Projekte einer Pfadprüfung (nur Zahlen, fürs Protokoll).</summary>
+  TPathTotals = record
+    Files: Integer;
+    Units: Integer;
+    Defines: Integer;
+    Uncertain: Integer;
+  end;
+
+{ Hilfen }
 
 function FileThere(const AFileName: string): Boolean;
 begin
   Result := FileExists(AFileName);
 end;
 
-/// <summary>Offenes Projekt zur Projektdatei AFileName (.dproj); nil, wenn es nicht geöffnet ist.</summary>
-function OpenProjectOf(const AFileName: string): IOTAProject;
-var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
+procedure Report(ASelf: TAtlasIdeSetup; const AText: string);
 begin
-  Result := nil;
-  if (AFileName = '') or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if Assigned(ASelf.FHooks.Message) then
+  begin
+    ASelf.FHooks.Message(AText);
+  end;
+end;
+
+/// <summary>Projektdatei eines Eintrags aus „Wieder öffnen“; '' fehlt sie oder ist sie ausgeblendet.</summary>
+function RecentTarget(const ARecent: string): string;
+var
+  mSummary: TAtlasProjectSummary;
+begin
+  Result := TAtlasIdeProjectSummaries.ProjectFileOf(ARecent);
+  // „Aus Liste entfernen“ (#592) gilt auch hier.
+  if not FileExists(Result) or (TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Result, mSummary) and
+    mSummary.Hidden) then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Ziel der Karte; AOpen = es ist in der IDE geöffnet. '' ohne Projekt.</summary>
+function Target(out AOpen: Boolean): string;
+var
+  mProject: IOTAProject;
+  mRecent: string;
+begin
+  Result := '';
+  AOpen := False;
+  mProject := GetActiveProject;
+  if mProject <> nil then
+  begin
+    // Noch nie gespeichert: kein Ordner für atlas.json, keine Karte.
+    Result := TAtlasIdeProjectSummaries.ProjectFileOf(mProject.FileName);
+    AOpen := FileExists(Result);
+    if not AOpen then
+    begin
+      Result := '';
+    end;
+    Exit;
+  end;
+  try
+    for mRecent in TAtlasIdeWelcomeSearch.ClosedProjects do
+    begin
+      Result := RecentTarget(mRecent);
+      if Result <> '' then
+      begin
+        AOpen := TAtlasIdeSetupPaths.OpenProjectOf(Result) <> nil;
+        Exit;
+      end;
+    end;
+  except
+    // Registry nicht lesbar: ohne Ziel statt eines Fehlers in der Willkommensseite.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+  end;
+  Result := '';
+end;
+
+/// <summary>Ziel der Karte; '' mit Meldung, wenn es keins gibt.</summary>
+function TargetOrReport(ASelf: TAtlasIdeSetup; out AOpen: Boolean): string;
+begin
+  Result := Target(AOpen);
+  if Result = '' then
+  begin
+    Report(ASelf, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
+  end;
+end;
+
+/// <summary>Dateien neben AProject und Abschnitte der Zusammenfassung.</summary>
+function FactsOf(const AProject: string; out ASummary: TAtlasProjectSummary): TAtlasSetupFacts;
+begin
+  Result := Default(TAtlasSetupFacts);
+  Result.Setup := TAtlasProjectSetup.Empty;
+  ASummary := TAtlasProjectSummary.Create(AProject);
+  if AProject = '' then
   begin
     Exit;
   end;
-  Module := Modules.FindModule(AFileName);
-  if Module <> nil then
+  Result.Project := AProject;
+  Result.ConfigExists := TAtlasProjectSetups.ExistingConfig(AProject, FileThere) <> '';
+  Result.BaselineExists := TAtlasProjectBaselines.FileIn(ExtractFileDir(AProject),
+    function(const AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end) <> '';
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, ASummary) then
   begin
-    Supports(Module, IOTAProject, Result);
+    Result.Setup := ASummary.Setup;
   end;
+end;
+
+/// <summary>Projektgruppe: Prüfung je Projekt, die Karte fasst sie zusammen.</summary>
+procedure CombineGroup(var ACard: TAtlasSetupCard; const AMembers: TArray<string>);
+var
+  mOther: TAtlasProjectSummary;
+  mMember: string;
+  mItem: TAtlasSetupMember;
+  mCombined: TArray<TAtlasSetupMember>;
+begin
+  mCombined := nil;
+  for mMember in AMembers do
+  begin
+    mItem.Project := mMember;
+    mItem.Setup := TAtlasProjectSetup.Empty;
+    if SameText(mMember, ACard.Project) then
+    begin
+      mItem.Setup := ACard.Facts.Setup;
+    end
+    else if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, mMember, mOther) then
+    begin
+      mItem.Setup := mOther.Setup;
+    end;
+    mCombined := mCombined + [mItem];
+  end;
+  ACard.GroupProjects := Length(AMembers);
+  ACard.Facts.Setup := TAtlasWelcomeSetup.Combined(ACard.Project, ACard.Facts.Setup, mCombined, ACard.GroupChecked);
+end;
+
+/// <summary>Läufe dieser Sitzung gelten nur für ihr Projekt.</summary>
+procedure AddRuns(ASelf: TAtlasIdeSetup; var ACard: TAtlasSetupCard);
+begin
+  if SameText(ASelf.FBaseline.Project, ACard.Project) then
+  begin
+    ACard.Baseline := ASelf.FBaseline.Run;
+    ACard.BaselineStarted := ASelf.FBaseline.Started;
+    ACard.BaselineTotal := ASelf.FBaseline.Total;
+    ACard.BaselineFiles := ASelf.FBaseline.Files;
+    ACard.BaselineError := ASelf.FBaseline.Error;
+  end;
+  if SameText(ASelf.FPaths.Project, ACard.Project) then
+  begin
+    ACard.Paths := ASelf.FPaths.Run;
+    ACard.PathsStarted := ASelf.FPaths.Started;
+    ACard.PathsError := ASelf.FPaths.Error;
+  end;
+end;
+
+/// <summary>Text der Vorlage ATemplate (Ordner der Installation, sonst die eingebaute Fassung), gegen das Schema
+/// geprüft und mit CRLF; False mit Meldung, wenn auch die eingebaute nicht passt.</summary>
+function ConfigText(ASelf: TAtlasIdeSetup; ATemplate: TAtlasSetupTemplate; out AText: string): Boolean;
+var
+  mFolder: string;
+  mIssues: TArray<string>;
+begin
+  mFolder := TAtlasProjectSetups.TemplateFolder(TAtlasIdeHost.InstallFolder, FileThere);
+  AText := TAtlasProjectSetups.TemplateText(ATemplate, mFolder,
+    function(const AFileName: string; out AContent: string): Boolean
+    begin
+      Result := TAtlasIdeSetupPaths.ReadText(AFileName, AContent);
+    end);
+  Result := TAtlasProjectSetups.ValidTemplate(AText, AtlasSchemaJson, mIssues);
+  if not Result then
+  begin
+    // Beschädigte oder veraltete Datei der Installation: die eingebaute Fassung.
+    TAtlasGuard.Log('Einrichtung: Vorlage ' + TAtlasProjectSetups.TemplateId(ATemplate) +
+      ' passt nicht zum Schema, eingebaute Fassung');
+    AText := TAtlasProjectSetups.BuiltIn(ATemplate);
+    Result := TAtlasProjectSetups.ValidTemplate(AText, AtlasSchemaJson, mIssues);
+  end;
+  if not Result then
+  begin
+    Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
+      [TAtlasSetupTexts.TemplateCaption(ATemplate), string.Join('; ', mIssues)]));
+    Exit;
+  end;
+  // CRLF wie die übrigen Dateien eines Delphi-Projekts.
+  AText := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #10, #13#10, [rfReplaceAll]);
+end;
+
+/// <summary>False mit Meldung, wenn es neben AProject schon eine atlas.json gibt.</summary>
+function ConfigMissing(ASelf: TAtlasIdeSetup; const AProject: string): Boolean;
+var
+  mExisting: string;
+begin
+  mExisting := TAtlasProjectSetups.ExistingConfig(AProject, FileThere);
+  Result := mExisting = '';
+  if not Result then
+  begin
+    Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [mExisting]));
+    ASelf.Refresh;
+  end;
+end;
+
+/// <summary>atlas.json schreiben: UTF-8 ohne BOM, wie atlas.json im Repository; atomar (Bericht N3).</summary>
+function WriteConfig(ASelf: TAtlasIdeSetup; const AConfigFile, AText: string): Boolean;
+begin
+  Result := True;
+  try
+    TAtlasDataFile.Write(AConfigFile, AText);
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Einrichtung: atlas.json nicht geschrieben (' + E.ClassName + ')');
+      Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigFailed, [AConfigFile,
+        E.Message]));
+      Result := False;
+    end;
+  end;
+end;
+
+/// <summary>Ziel für einen Schritt, der das geöffnete Projekt braucht; ist es zu, wird es geöffnet und das
+/// Ergebnis ist ''.</summary>
+function OpenTarget(ASelf: TAtlasIdeSetup): string;
+var
+  mOpen: Boolean;
+begin
+  Result := '';
+  mOpen := False;
+  if Active then
+  begin
+    Result := TargetOrReport(ASelf, mOpen);
+  end;
+  if (Result <> '') and (not mOpen or (TAtlasIdeSetupPaths.OpenProjectOf(Result) = nil)) then
+  begin
+    ASelf.OpenProject;
+    Result := '';
+  end;
+end;
+
+/// <summary>Im Hauptthread: Optionen der aktiven Konfiguration, Dateien und Makros; bei einer Gruppe je Projekt.
+/// </summary>
+function JobsFor(const AProject: string): TArray<TAtlasSetupPathJob>;
+var
+  mMember: string;
+  mIde: IOTAProject;
+begin
+  Result := nil;
+  for mMember in TAtlasIdeSetupPaths.GroupOf(AProject) do
+  begin
+    mIde := TAtlasIdeSetupPaths.OpenProjectOf(mMember);
+    if mIde <> nil then
+    begin
+      Result := Result + [TAtlasIdeSetupPaths.JobOf(mIde)];
+    end;
+  end;
+  if Length(Result) = 0 then
+  begin
+    Result := [TAtlasIdeSetupPaths.JobOf(TAtlasIdeSetupPaths.OpenProjectOf(AProject))];
+  end;
+end;
+
+/// <summary>Im Hintergrund: Pfade auflösen, .dproj und alle Dateien lesen, ein Projekt nach dem anderen; nil beim
+/// Entladen.</summary>
+function RunJobs(const AJobs: TArray<TAtlasSetupPathJob>; out ARuns: TArray<TAtlasSetupPathRun>): Boolean;
+var
+  mJob: TAtlasSetupPathJob;
+begin
+  ARuns := nil;
+  for mJob in AJobs do
+  begin
+    if TAtlasShutdown.Signalled then
+    begin
+      Exit(False);
+    end;
+    ARuns := ARuns + [TAtlasIdeSetupPaths.Run(mJob)];
+  end;
+  Result := not TAtlasShutdown.Signalled;
+end;
+
+/// <summary>Funde des Projekts in dessen Zusammenfassung; die Karte einer Gruppe fasst sie zusammen.</summary>
+procedure StoreRun(const ARun: TAtlasSetupPathRun; AStamp: TDateTime; var ATotals: TPathTotals);
+var
+  mCheck: TAtlasPathCheckResult;
+  mMember: string;
+begin
+  // Kopien: Der Parameter darf nicht in die anonyme Methode.
+  mCheck := ARun.Check;
+  mMember := ARun.Project;
+  TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, mMember,
+    procedure(var ASummary: TAtlasProjectSummary)
+    begin
+      ASummary.Setup := TAtlasWelcomeSetup.Checked(ASummary.Setup, mMember, mCheck, AStamp);
+    end);
+  Inc(ATotals.Files, mCheck.Files);
+  Inc(ATotals.Units, Length(mCheck.MissingUnits));
+  Inc(ATotals.Defines, Length(mCheck.UndefinedDefines));
+  Inc(ATotals.Uncertain, TAtlasPathCheckResult.UncertainIn(mCheck.MissingUnits) +
+    TAtlasPathCheckResult.UncertainIn(mCheck.UndefinedDefines));
 end;
 
 { TAtlasIdeSetup }
@@ -192,9 +459,9 @@ constructor TAtlasIdeSetup.Create(const AMessage: TProc<string>; const AStartBas
   const ANewFile: TAtlasSetupNewFile);
 begin
   inherited Create;
-  FMessage := AMessage;
-  FStartBaseline := AStartBaseline;
-  FNewFile := ANewFile;
+  FHooks.Message := AMessage;
+  FHooks.StartBaseline := AStartBaseline;
+  FHooks.NewFile := ANewFile;
   FListener := -1;
 end;
 
@@ -207,31 +474,6 @@ end;
 class function TAtlasIdeSetup.Active: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageProjectSetup;
-end;
-
-class function TAtlasIdeSetup.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  AText := '';
-  // Abbruch beim Entladen: Die Prüfung liest dann nichts mehr.
-  if TAtlasShutdown.Signalled or not FileExists(AFileName) then
-  begin
-    Exit(False);
-  end;
-  try
-    AText := TAtlasTextFile.LoadText(AFileName);
-    Result := True;
-  except
-    on Exception do
-      Result := False;
-  end;
-end;
-
-procedure TAtlasIdeSetup.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeSetup.Start;
@@ -393,138 +635,11 @@ begin
     end);
 end;
 
-class function TAtlasIdeSetup.Target(out AOpen: Boolean): string;
-var
-  Project: IOTAProject;
-  Recent: string;
-  Summary: TAtlasProjectSummary;
-begin
-  Result := '';
-  AOpen := False;
-  Project := GetActiveProject;
-  if Project <> nil then
-  begin
-    // Noch nie gespeichert: kein Ordner für atlas.json, keine Karte.
-    Result := TAtlasIdeProjectSummaries.ProjectFileOf(Project.FileName);
-    AOpen := FileExists(Result);
-    if not AOpen then
-    begin
-      Result := '';
-    end;
-    Exit;
-  end;
-  try
-    for Recent in TAtlasIdeWelcomeSearch.ClosedProjects do
-    begin
-      Result := TAtlasIdeProjectSummaries.ProjectFileOf(Recent);
-      if not FileExists(Result) then
-      begin
-        Continue;
-      end;
-      // „Aus Liste entfernen“ (#592) gilt auch hier.
-      if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Result, Summary) and Summary.Hidden then
-      begin
-        Continue;
-      end;
-      AOpen := OpenProjectOf(Result) <> nil;
-      Exit;
-    end;
-  except
-    // Registry nicht lesbar: ohne Ziel statt eines Fehlers in der Willkommensseite.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-  end;
-  Result := '';
-end;
-
-class function TAtlasIdeSetup.FactsOf(const AProject: string; out ASummary: TAtlasProjectSummary): TAtlasSetupFacts;
-begin
-  Result := Default(TAtlasSetupFacts);
-  Result.Setup := TAtlasProjectSetup.Empty;
-  ASummary := TAtlasProjectSummary.Create(AProject);
-  if AProject = '' then
-  begin
-    Exit;
-  end;
-  Result.Project := AProject;
-  Result.ConfigExists := TAtlasProjectSetups.ExistingConfig(AProject, FileThere) <> '';
-  Result.BaselineExists := TAtlasProjectBaselines.FileIn(ExtractFileDir(AProject),
-    function(const AFileName: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-    end) <> '';
-  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, ASummary) then
-  begin
-    Result.Setup := ASummary.Setup;
-  end;
-end;
-
-class function TAtlasIdeSetup.GroupOf(const AProject: string): TArray<string>;
-var
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-  Text, Member, FileName: string;
-  Index: Integer;
-  Inside: Boolean;
-begin
-  Result := nil;
-  if AProject = '' then
-  begin
-    Exit;
-  end;
-  if TAtlasWelcomeSetup.IsGroup(AProject) then
-  begin
-    // Geschlossene Gruppe: Projekte aus der .groupproj.
-    if ReadText(AProject, Text) then
-    begin
-      for Member in TAtlasWelcomeSaved.GroupProjects(AProject, Text) do
-      begin
-        if SameText(ExtractFileExt(Member), '.dproj') and FileExists(Member) then
-        begin
-          Result := Result + [Member];
-        end;
-      end;
-    end;
-    Exit;
-  end;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Exit;
-  end;
-  Group := Modules.MainProjectGroup;
-  if (Group = nil) or (Group.ProjectCount < 2) then
-  begin
-    Exit;
-  end;
-  Inside := False;
-  for Index := 0 to Group.ProjectCount - 1 do
-  begin
-    FileName := Group.Projects[Index].FileName;
-    // Nur gespeicherte .dproj (wie TAtlasIdeProjectContext.Read).
-    if not SameText(ExtractFileExt(FileName), '.dproj') or not FileExists(FileName) then
-    begin
-      Continue;
-    end;
-    Result := Result + [FileName];
-    if SameText(FileName, AProject) then
-    begin
-      Inside := True;
-    end;
-  end;
-  if not Inside or (Length(Result) < 2) then
-  begin
-    Result := nil;
-  end;
-end;
-
 function TAtlasIdeSetup.Card: TAtlasSetupCard;
 var
-  Open: Boolean;
-  Summary, Other: TAtlasProjectSummary;
-  Members: TArray<string>;
-  Member: string;
-  Item: TAtlasSetupMember;
-  Combined: TArray<TAtlasSetupMember>;
+  mOpen: Boolean;
+  mSummary: TAtlasProjectSummary;
+  mMembers: TArray<string>;
 begin
   Result := TAtlasSetupCard.Empty;
   if not FStarted or not Active then
@@ -533,132 +648,58 @@ begin
   end;
   Result.ShowNew := TAtlasWelcomeSetup.ShowNew(True, TAtlasIdeSettings.Current.WelcomePageNewFromTemplate,
     GetActiveProject <> nil);
-  Result.Project := Target(Open);
+  Result.Project := Target(mOpen);
   if Result.Project = '' then
   begin
     Exit;
   end;
-  Result.ProjectOpen := Open;
+  Result.ProjectOpen := mOpen;
   Result.ProjectName := TAtlasWelcomeSetup.NameOf(Result.Project);
-  Result.Facts := FactsOf(Result.Project, Summary);
-  // Projektgruppe: Prüfung je Projekt, die Karte fasst sie zusammen.
-  Members := GroupOf(Result.Project);
-  if Length(Members) > 0 then
+  Result.Facts := FactsOf(Result.Project, mSummary);
+  mMembers := TAtlasIdeSetupPaths.GroupOf(Result.Project);
+  if Length(mMembers) > 0 then
   begin
-    Combined := nil;
-    for Member in Members do
-    begin
-      Item.Project := Member;
-      Item.Setup := TAtlasProjectSetup.Empty;
-      if SameText(Member, Result.Project) then
-      begin
-        Item.Setup := Result.Facts.Setup;
-      end
-      else if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, Member, Other) then
-      begin
-        Item.Setup := Other.Setup;
-      end;
-      Combined := Combined + [Item];
-    end;
-    Result.GroupProjects := Length(Members);
-    Result.Facts.Setup := TAtlasWelcomeSetup.Combined(Result.Project, Result.Facts.Setup, Combined,
-      Result.GroupChecked);
+    CombineGroup(Result, mMembers);
   end;
   Result.ConfigName := ExtractFileName(TAtlasProjectSetups.ExistingConfig(Result.Project, FileThere));
   Result.ShowCard := TAtlasWelcomeSetup.ShowCard(True, Result.Facts);
-  if Summary.Rules.Known then
+  if mSummary.Rules.Known then
   begin
-    Result.BaselineNewHits := Summary.Rules.NewHits;
+    Result.BaselineNewHits := mSummary.Rules.NewHits;
   end;
-  // Läufe dieser Sitzung gelten nur für ihr Projekt.
-  if SameText(FBaselineProject, Result.Project) then
-  begin
-    Result.Baseline := FBaseline;
-    Result.BaselineStarted := FBaselineStarted;
-    Result.BaselineTotal := FBaselineTotal;
-    Result.BaselineFiles := FBaselineFiles;
-    Result.BaselineError := FBaselineError;
-  end;
-  if SameText(FPathsProject, Result.Project) then
-  begin
-    Result.Paths := FPaths;
-    Result.PathsStarted := FPathsStarted;
-    Result.PathsError := FPathsError;
-  end;
+  AddRuns(Self, Result);
 end;
 
 procedure TAtlasIdeSetup.CreateConfig(ATemplate: TAtlasSetupTemplate);
 var
-  Template: TAtlasSetupTemplate;
+  mTemplate: TAtlasSetupTemplate;
 begin
-  Template := ATemplate;
+  mTemplate := ATemplate;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Project, Existing, Folder, Text, ConfigFile: string;
-      Issues: TArray<string>;
-      Open: Boolean;
+      mProject, mText, mConfigFile: string;
+      mOpen: Boolean;
     begin
       if not Active then
       begin
         Exit;
       end;
-      Project := Target(Open);
-      if Project = '' then
-      begin
-        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
-        Exit;
-      end;
-      Existing := TAtlasProjectSetups.ExistingConfig(Project, FileThere);
-      if Existing <> '' then
-      begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [Existing]));
-        Refresh;
-        Exit;
-      end;
-      Folder := TAtlasProjectSetups.TemplateFolder(TAtlasIdeHost.InstallFolder, FileThere);
-      Text := TAtlasProjectSetups.TemplateText(Template, Folder, ReadText);
-      if not TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues) then
-      begin
-        // Beschädigte oder veraltete Datei der Installation: die eingebaute Fassung.
-        TAtlasGuard.Log('Einrichtung: Vorlage ' + TAtlasProjectSetups.TemplateId(Template) +
-          ' passt nicht zum Schema, eingebaute Fassung');
-        Text := TAtlasProjectSetups.BuiltIn(Template);
-        if not TAtlasProjectSetups.ValidTemplate(Text, AtlasSchemaJson, Issues) then
-        begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
-            [TAtlasSetupTexts.TemplateCaption(Template), string.Join('; ', Issues)]));
-          Exit;
-        end;
-      end;
-      // CRLF wie die übrigen Dateien eines Delphi-Projekts.
-      Text := StringReplace(StringReplace(Text, #13#10, #10, [rfReplaceAll]), #10, #13#10, [rfReplaceAll]);
-      ConfigFile := TAtlasProjectSetups.ConfigTarget(Project);
-      if not TAtlasSetupPreviewDialog.Confirm(ExtractFileName(ConfigFile), ExtractFileName(Project),
-        TAtlasSetupTexts.TemplateCaption(Template), Text, nil) then
+      mProject := TargetOrReport(Self, mOpen);
+      if (mProject = '') or not ConfigMissing(Self, mProject) or not ConfigText(Self, mTemplate, mText) then
       begin
         Exit;
       end;
+      mConfigFile := TAtlasProjectSetups.ConfigTarget(mProject);
       // Während der Vorschau angelegt (etwa im Editor): nicht überschreiben.
-      if TAtlasProjectSetups.ExistingConfig(Project, FileThere) <> '' then
+      if not TAtlasSetupPreviewDialog.Confirm(ExtractFileName(mConfigFile), ExtractFileName(mProject),
+        TAtlasSetupTexts.TemplateCaption(mTemplate), mText, nil) or not ConfigMissing(Self, mProject) or
+        not WriteConfig(Self, mConfigFile, mText) then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [ConfigFile]));
-        Refresh;
         Exit;
       end;
-      try
-        // UTF-8 ohne BOM, wie atlas.json im Repository; atomar (Bericht N3).
-        TAtlasDataFile.Write(ConfigFile, Text);
-      except
-        on E: Exception do
-        begin
-          TAtlasGuard.Log('Einrichtung: atlas.json nicht geschrieben (' + E.ClassName + ')');
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigFailed, [ConfigFile, E.Message]));
-          Exit;
-        end;
-      end;
-      TAtlasGuard.Log('Einrichtung: atlas.json angelegt (Vorlage ' + TAtlasProjectSetups.TemplateId(Template) + ')');
-      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigWritten, [ConfigFile]));
+      TAtlasGuard.Log('Einrichtung: atlas.json angelegt (Vorlage ' + TAtlasProjectSetups.TemplateId(mTemplate) + ')');
+      Report(Self, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigWritten, [mConfigFile]));
       // Abnahme: Schritt 2 ist danach abgehakt.
       Refresh;
     end);
@@ -669,52 +710,39 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Project, Reason: string;
-      Open: Boolean;
-      Keep: IAtlasSetupSource;
+      mProject, mReason: string;
+      mKeep: IAtlasSetupSource;
     begin
-      if not Active or not Assigned(FStartBaseline) then
+      if not Assigned(FHooks.StartBaseline) then
       begin
         Exit;
       end;
-      Project := Target(Open);
-      if Project = '' then
-      begin
-        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
-        Exit;
-      end;
-      if not Open then
-      begin
-        OpenProject;
-        Exit;
-      end;
-      if (FBaseline = TAtlasSetupRun.Running) and SameText(FBaselineProject, Project) then
+      mProject := OpenTarget(Self);
+      if (mProject = '') or ((FBaseline.Run = TAtlasSetupRun.Running) and SameText(FBaseline.Project, mProject)) then
       begin
         Exit;
       end;
-      FBaselineProject := Project;
-      FBaselineTotal := 0;
-      FBaselineFiles := 0;
-      FBaselineError := '';
+      FBaseline := Default(TBaselineRun);
+      FBaseline.Project := mProject;
       // Keep hält die Quelle bis zur Antwort des Servers.
-      Keep := Self;
-      Reason := FStartBaseline(Project,
+      mKeep := Self;
+      mReason := FHooks.StartBaseline(mProject,
         procedure(ASucceeded: Boolean; ATotal, AFiles: Integer; const AError: string)
         begin
-          if Keep <> nil then
+          if mKeep <> nil then
           begin
-            BaselineFinished(Project, ASucceeded, ATotal, AFiles, AError);
+            BaselineFinished(mProject, ASucceeded, ATotal, AFiles, AError);
           end;
         end);
-      if Reason <> '' then
+      if mReason <> '' then
       begin
-        FBaseline := TAtlasSetupRun.Failed;
-        FBaselineError := Reason;
+        FBaseline.Run := TAtlasSetupRun.Failed;
+        FBaseline.Error := mReason;
       end
       else
       begin
-        FBaseline := TAtlasSetupRun.Running;
-        FBaselineStarted := TThread.GetTickCount64;
+        FBaseline.Run := TAtlasSetupRun.Running;
+        FBaseline.Started := TThread.GetTickCount64;
       end;
       Refresh;
     end);
@@ -739,185 +767,22 @@ begin
         TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, Stamp);
       end);
   end;
-  if not SameText(FBaselineProject, AProject) then
+  if not SameText(FBaseline.Project, AProject) then
   begin
     Exit;
   end;
-  FBaselineTotal := ATotal;
-  FBaselineFiles := AFiles;
-  FBaselineError := AError;
+  FBaseline.Total := ATotal;
+  FBaseline.Files := AFiles;
+  FBaseline.Error := AError;
   if ASucceeded then
   begin
-    FBaseline := TAtlasSetupRun.Done;
+    FBaseline.Run := TAtlasSetupRun.Done;
   end
   else
   begin
-    FBaseline := TAtlasSetupRun.Failed;
+    FBaseline.Run := TAtlasSetupRun.Failed;
   end;
   Refresh;
-end;
-
-type
-  /// <summary>Was die Prüfung eines Projekts im Hintergrund braucht; im Hauptthread gesammelt.</summary>
-  TAtlasSetupPathJob = record
-    Project: string;
-    Input: TAtlasPathCheckInput;
-    /// <summary>Such- und Bibliothekspfade wie in den Optionen, mit $(…).</summary>
-    SearchPaths: TArray<string>;
-    LibraryPaths: TArray<string>;
-    Macros: TAtlasPathMacros;
-  end;
-
-/// <summary>Optionen, Dateien und Makros eines geöffneten Projekts (nur im Hauptthread).</summary>
-function PathJobOf(const AIde: IOTAProject): TAtlasSetupPathJob;
-var
-  Context: TAtlasProjectContext;
-  Index: Integer;
-  Main, Name, GroupDir: string;
-  Version: Double;
-  Modules: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-begin
-  Result := Default(TAtlasSetupPathJob);
-  Result.Project := TAtlasIdeProjectSummaries.ProjectFileOf(AIde.FileName);
-  Context := TAtlasIdeProjectContext.Read(AIde);
-  Result.Input.Project := Result.Project;
-  // Hauptdatei: .dpr bei Programmen und Bibliotheken, .dpk bei Packages.
-  Main := ChangeFileExt(Result.Project, '.dpr');
-  if not FileExists(Main) then
-  begin
-    Main := ChangeFileExt(Result.Project, '.dpk');
-  end;
-  if not FileExists(Main) then
-  begin
-    Main := '';
-  end;
-  if Main <> '' then
-  begin
-    Result.Input.Sources := [Main];
-  end;
-  for Index := 0 to AIde.GetModuleCount - 1 do
-  begin
-    Name := AIde.GetModule(Index).FileName;
-    if SameText(ExtractFileExt(Name), '.pas') then
-    begin
-      Result.Input.Sources := Result.Input.Sources + [Name];
-    end;
-  end;
-  Result.Input.Namespaces := Context.Namespaces;
-  // Projekte der Gruppe: ihre Packages erfüllen requires (#759).
-  GroupDir := ExtractFileDir(Result.Project);
-  if Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Group := Modules.MainProjectGroup;
-    if Group <> nil then
-    begin
-      if Group.FileName <> '' then
-      begin
-        GroupDir := ExtractFileDir(Group.FileName);
-      end;
-      for Index := 0 to Group.ProjectCount - 1 do
-      begin
-        if Group.Projects[Index] <> nil then
-        begin
-          Result.Input.GroupProjects := Result.Input.GroupProjects +
-            [TAtlasIdeProjectSummaries.ProjectFileOf(Group.Projects[Index].FileName)];
-        end;
-      end;
-    end;
-  end;
-  // Build-Skripte (-dX) neben dem Projekt, neben der Gruppe und in üblichen Unterordnern der Gruppe.
-  Result.Input.ScriptFolders := [ExtractFileDir(Result.Project), GroupDir, TPath.Combine(GroupDir, 'tools'),
-    TPath.Combine(GroupDir, 'scripts'), TPath.Combine(GroupDir, 'build')];
-  Version := TTextDefines.CompilerVersionOfBds(StrToFloatDef(Context.BdsVersion, 0, TFormatSettings.Invariant));
-  Result.Input.ActiveDefines := Context.Defines + TTextDefines.Predefined(Context.Platform, Version);
-  Result.SearchPaths := Context.SearchPaths;
-  Result.LibraryPaths := Context.LibraryPaths;
-  // Makros der IDE (Umgebungsvariablen der Optionen, BDS-Ordner, Projekt), danach der Prozess.
-  if Context.Project = '' then
-  begin
-    Context.Project := Result.Project;
-  end;
-  Result.Macros := TAtlasIdeProjectContext.Macros(Context);
-end;
-
-/// <summary>Prüft ein Projekt; im Hintergrundthread.</summary>
-function RunPathJob(const AJob: TAtlasSetupPathJob): TAtlasSetupPathRun;
-var
-  Input: TAtlasPathCheckInput;
-  Folder, Dproj, Member, Other, Output, Each: string;
-  Match: TMatch;
-  Variable: TAtlasPathVariable;
-  Skipped: TArray<string>;
-begin
-  Result := Default(TAtlasSetupPathRun);
-  Result.Project := AJob.Project;
-  try
-    Input := AJob.Input;
-    Folder := ExtractFileDir(AJob.Project);
-    // Mit (): Variable liefert eine Funktion; ohne Klammern wäre es die Methode selbst.
-    Variable := AJob.Macros.Variable();
-    // Pfade mit unbekanntem Makro fallen weg; ihre Makros machen die Funde unsicher.
-    Skipped := nil;
-    Input.SearchPaths := TAtlasPathCheck.ExpandPaths(AJob.SearchPaths, Folder, Variable, Skipped);
-    Input.LibraryPaths := TAtlasPathCheck.ExpandPaths(AJob.LibraryPaths, Folder, Variable, Skipped);
-    Input.SkippedMacros := Skipped;
-    if TAtlasIdeSetup.ReadText(AJob.Project, Dproj) then
-    begin
-      Input.ProjectDefines := TAtlasPathCheck.DprojDefines(Dproj);
-    end;
-    // Projekte der Gruppe, die in einen Ordner des Suchpfads übersetzen (DCC_DcuOutput).
-    for Member in Input.GroupProjects do
-    begin
-      if not SameText(Member, AJob.Project) and TAtlasIdeSetup.ReadText(Member, Other) then
-      begin
-        Match := TRegEx.Match(Other, '<DCC_DcuOutput>([^<]*)</DCC_DcuOutput>', [roIgnoreCase]);
-        if Match.Success then
-        begin
-          Output := TAtlasPathCheck.ExpandPath(Match.Groups[1].Value, ExtractFileDir(Member), Variable);
-          for Each in Input.SearchPaths do
-          begin
-            if (Output <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(Output)) then
-            begin
-              Input.ProducedBy := Input.ProducedBy + [Member];
-              Break;
-            end;
-          end;
-        end;
-      end;
-    end;
-    Result.Check := TAtlasPathCheck.Run(Input,
-      function(const AFileName: string; out AText: string): Boolean
-      begin
-        Result := TAtlasIdeSetup.ReadText(AFileName, AText);
-      end,
-      function(const AFolder: string): TArray<string>
-      var
-        Item: string;
-      begin
-        Result := nil;
-        if TAtlasShutdown.Signalled or not TDirectory.Exists(AFolder) then
-        begin
-          Exit;
-        end;
-        try
-          for Item in TDirectory.GetFiles(AFolder) do
-          begin
-            Result := Result + [ExtractFileName(Item)];
-          end;
-        except
-          on Exception do
-            Result := nil;
-        end;
-      end);
-  except
-    on E: Exception do
-    begin
-      // Ins Protokoll nur die Klasse: Die Meldung kann Pfade enthalten.
-      TAtlasGuard.Log('Einrichtung: Prüfung der Suchpfade abgebrochen (' + E.ClassName + ')');
-      Result.Error := E.Message;
-    end;
-  end;
 end;
 
 procedure TAtlasIdeSetup.CheckPaths;
@@ -925,82 +790,39 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Project, Member: string;
-      Open: Boolean;
-      Ide: IOTAProject;
-      Jobs: TArray<TAtlasSetupPathJob>;
-      Keep: IAtlasSetupSource;
+      mProject: string;
+      mJobs: TArray<TAtlasSetupPathJob>;
+      mKeep: IAtlasSetupSource;
     begin
-      if not Active then
+      mProject := OpenTarget(Self);
+      if (mProject = '') or ((FThread <> nil) and not FThread.Finished) then
       begin
         Exit;
       end;
-      Project := Target(Open);
-      if Project = '' then
-      begin
-        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
-        Exit;
-      end;
-      Ide := OpenProjectOf(Project);
-      if not Open or (Ide = nil) then
-      begin
-        OpenProject;
-        Exit;
-      end;
-      if FThread <> nil then
-      begin
-        if not FThread.Finished then
-        begin
-          Exit;
-        end;
-        FreeAndNil(FThread);
-      end;
-      // Im Hauptthread: Optionen der aktiven Konfiguration, Dateien und Makros; bei einer Gruppe je Projekt.
-      Jobs := nil;
-      for Member in GroupOf(Project) do
-      begin
-        if OpenProjectOf(Member) <> nil then
-        begin
-          Jobs := Jobs + [PathJobOf(OpenProjectOf(Member))];
-        end;
-      end;
-      if Length(Jobs) = 0 then
-      begin
-        Jobs := [PathJobOf(Ide)];
-      end;
-      FPathsProject := Project;
-      FPaths := TAtlasSetupRun.Running;
-      FPathsStarted := TThread.GetTickCount64;
-      FPathsError := '';
+      FreeAndNil(FThread);
+      mJobs := JobsFor(mProject);
+      FPaths := Default(TPathsRun);
+      FPaths.Project := mProject;
+      FPaths.Run := TAtlasSetupRun.Running;
+      FPaths.Started := TThread.GetTickCount64;
       Refresh;
       // Keep hält die Quelle, bis das Ergebnis im Hauptthread angekommen ist.
-      Keep := Self;
-      // Im Hintergrund: Pfade auflösen, .dproj und alle Dateien lesen, ein Projekt nach dem anderen.
+      mKeep := Self;
       FThread := TThread.CreateAnonymousThread(
         procedure
         var
-          Runs: TArray<TAtlasSetupPathRun>;
-          Job: TAtlasSetupPathJob;
+          mRuns: TArray<TAtlasSetupPathRun>;
         begin
-          Runs := nil;
-          for Job in Jobs do
-          begin
-            if TAtlasShutdown.Signalled then
-            begin
-              Exit;
-            end;
-            Runs := Runs + [RunPathJob(Job)];
-          end;
-          if TAtlasShutdown.Signalled then
+          if not RunJobs(mJobs, mRuns) then
           begin
             Exit;
           end;
           TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
             procedure
             begin
-              if Keep <> nil then
+              if mKeep <> nil then
               begin
-                PathsFinished(Project, Runs);
+                PathsFinished(mProject, mRuns);
               end;
             end);
         end);
@@ -1011,60 +833,39 @@ end;
 
 procedure TAtlasIdeSetup.PathsFinished(const AProject: string; const ARuns: TArray<TAtlasSetupPathRun>);
 var
-  Run: TAtlasSetupPathRun;
-  Check: TAtlasPathCheckResult;
-  Stamp: TDateTime;
-  Error, Member: string;
-  Units, Defines, Uncertain, Files: Integer;
+  mRun: TAtlasSetupPathRun;
+  mStamp: TDateTime;
+  mError: string;
+  mTotals: TPathTotals;
 begin
   if not FStarted then
   begin
     Exit;
   end;
-  Error := '';
-  Units := 0;
-  Defines := 0;
-  Uncertain := 0;
-  Files := 0;
-  Stamp := TAtlasIdeProjectSummaries.StampUtc;
-  for Run in ARuns do
+  mError := '';
+  mTotals := Default(TPathTotals);
+  mStamp := TAtlasIdeProjectSummaries.StampUtc;
+  for mRun in ARuns do
   begin
-    if Run.Error <> '' then
+    if mRun.Error = '' then
     begin
-      if Error = '' then
-      begin
-        Error := Run.Error;
-      end;
-      Continue;
+      StoreRun(mRun, mStamp, mTotals);
+    end
+    else if mError = '' then
+    begin
+      mError := mRun.Error;
     end;
-    // Kopien: Die Laufvariable darf nicht in die anonyme Methode.
-    Check := Run.Check;
-    Member := Run.Project;
-    // Funde je Projekt in dessen Zusammenfassung; die Karte einer Gruppe fasst sie zusammen.
-    TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Member,
-      procedure(var ASummary: TAtlasProjectSummary)
-      begin
-        ASummary.Setup := TAtlasWelcomeSetup.Checked(ASummary.Setup, Member, Check, Stamp);
-      end);
-    Inc(Files, Check.Files);
-    Inc(Units, Length(Check.MissingUnits));
-    Inc(Defines, Length(Check.UndefinedDefines));
-    Inc(Uncertain, TAtlasPathCheckResult.UncertainIn(Check.MissingUnits) +
-      TAtlasPathCheckResult.UncertainIn(Check.UndefinedDefines));
   end;
   // Anonym: nur Zahlen, keine Pfade und keine Makronamen.
   TAtlasGuard.Log(Format('Einrichtung: %d Projekte, %d Dateien geprüft, %d Units fehlen, %d Defines ohne Quelle, ' +
-    '%d davon unsicher', [Length(ARuns), Files, Units, Defines, Uncertain]));
-  if SameText(FPathsProject, AProject) then
+    '%d davon unsicher', [Length(ARuns), mTotals.Files, mTotals.Units, mTotals.Defines, mTotals.Uncertain]));
+  if SameText(FPaths.Project, AProject) then
   begin
-    if Error = '' then
+    FPaths.Run := TAtlasSetupRun.Done;
+    if mError <> '' then
     begin
-      FPaths := TAtlasSetupRun.Done;
-    end
-    else
-    begin
-      FPaths := TAtlasSetupRun.Failed;
-      FPathsError := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsFailed, [Error]);
+      FPaths.Run := TAtlasSetupRun.Failed;
+      FPaths.Error := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsFailed, [mError]);
     end;
   end;
   Refresh;
@@ -1080,7 +881,7 @@ begin
       Ide: IOTAProject;
     begin
       Project := Target(Open);
-      Ide := OpenProjectOf(Project);
+      Ide := TAtlasIdeSetupPaths.OpenProjectOf(Project);
       if Ide = nil then
       begin
         OpenProject;
@@ -1104,13 +905,8 @@ begin
       Open: Boolean;
       Actions: IOTAActionServices;
     begin
-      Project := Target(Open);
-      if Project = '' then
-      begin
-        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
-        Exit;
-      end;
-      if not Open and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
+      Project := TargetOrReport(Self, Open);
+      if (Project <> '') and not Open and Supports(BorlandIDEServices, IOTAActionServices, Actions) then
       begin
         Actions.OpenProject(Project, True);
       end;
@@ -1152,10 +948,9 @@ begin
       Project: string;
       Open: Boolean;
     begin
-      Project := Target(Open);
+      Project := TargetOrReport(Self, Open);
       if Project = '' then
       begin
-        Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
         Exit;
       end;
       TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
@@ -1177,11 +972,11 @@ begin
     procedure
     begin
       // Abnahme: newFromTemplate aus schaltet nur die Knöpfe ab, projectSetup aus alles.
-      if not Active or not TAtlasIdeSettings.Current.WelcomePageNewFromTemplate or not Assigned(FNewFile) then
+      if not Active or not TAtlasIdeSettings.Current.WelcomePageNewFromTemplate or not Assigned(FHooks.NewFile) then
       begin
         Exit;
       end;
-      FNewFile(Kind);
+      FHooks.NewFile(Kind);
     end);
 end;
 
