@@ -432,6 +432,10 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.RtlTypePatterns.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Exceptions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Tokens.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.LineLength.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.Declarations.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Style.BeginEnd.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.DynamicArrays.pas"/>
@@ -471,6 +475,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Reassigned.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ExpressionTypes.RecordSizes.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ResolvedSignatures.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SuggestConst.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.VarBlock.pas"/>
@@ -546,7 +551,15 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.Tokens.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Tokens.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Loops.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Cases.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Datasets.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.Properties.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.Types.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.Hresult.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.VarArguments.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeMismatch.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>

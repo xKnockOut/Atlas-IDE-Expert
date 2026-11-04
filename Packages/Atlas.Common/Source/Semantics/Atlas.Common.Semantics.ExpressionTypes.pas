@@ -109,24 +109,27 @@ type
     FConversions: TArray<TExpressionConversion>;
     FOverload: string;
     FDepth: Integer;
-    function NodeText(ANode: TSyntaxNode): string;
-    function Short(ANode: TSyntaxNode): string;
     function TypeNode(ANode: TSyntaxNode): TTyped;
     function TypeLeaf(ANode: TSyntaxNode): TTyped;
+    function LeafResolved(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
+    function MemberOf(ANode: TSyntaxNode; const AOwner: TTyped; out ATyped: TTyped): Boolean;
+    function LeafMember(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
     function TypeBinary(ANode: TSyntaxNode): TTyped;
+    function TypeComparison(ANode: TSyntaxNode; const AOperator: string): TTyped;
+    function TypeOperation(ANode: TSyntaxNode; const AOperator: string): TTyped;
     function TypeUnary(ANode: TSyntaxNode): TTyped;
     function TypeSet(ANode: TSyntaxNode): TTyped;
-    function TypeAnonymous(ANode: TSyntaxNode): TTyped;
-    function TypeIntrinsic(ANode: TSyntaxNode; const AName: string; out ATyped: TTyped): Boolean;
+    function TypeIntrinsic(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
+    function ArrayText(const ASymbol, ATypeInfo: TResolvedSymbol; ATypeFound: Boolean): string;
     function TypeElement(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
     function TypeDereference(ANode: TSyntaxNode): TTyped;
     function FromText(const ATypeText: string; const AOwner: TResolvedSymbol): TTyped;
     function FromSymbol(const ASymbol, AType: TResolvedSymbol; ATypeFound: Boolean): TTyped;
     procedure NoteArguments(ANode: TSyntaxNode; const ARoutine: TResolvedSymbol);
     procedure NoteOperand(ANode: TSyntaxNode; const AOperand, AResult: TTyped; AWhole: Boolean);
+    function BinaryOperands(ANode: TSyntaxNode; out ALeft, ARight: Int64): Boolean;
     function Evaluate(ANode: TSyntaxNode; out AValue: Int64): Boolean;
-    function RecordSize(const ATypeName: string; out ASize, AAlign: Integer): Boolean;
-    function FieldSize(const ATypeText: string; out ASize, AAlign: Integer): Boolean;
+    procedure DescribeFound(ANode: TSyntaxNode; const AFound: TTyped; var AInfo: TExpressionTypeInfo);
   public
     /// <summary>AResolver muss ATree (AFileName) gepinnt haben; AText ist der Text des Baums. AIndex darf nil sein
     /// (dann keine Werte über Konstanten anderer Units).</summary>
@@ -153,14 +156,28 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Math,
-  System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Semantics.ExpressionTypes.RecordSizes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Semantics.TypeIdentity;
+
+type
+  /// <summary>Kategorie, Breite (Rang bei Gleitkomma) und Vorzeichen eines eingebauten Typnamens.</summary>
+  TBuiltinCategory = record
+    Name: string;
+    Category: TExpressionCategory;
+    Width: Integer;
+    Signed: Boolean;
+  end;
+
+  /// <summary>Ergebnistyp eines Intrinsics, der nicht vom Argument abhängt.</summary>
+  TIntrinsicResult = record
+    Name: string;
+    TypeName: string;
+  end;
 
 const
   MaxDepth = 64;
@@ -169,8 +186,75 @@ const
     TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.InheritedExpr,
     TSyntaxKind.AnonymousMethod, TSyntaxKind.IfExpr];
   ComparisonOperators: array[0..8] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'not in');
-  FloatNames: array[0..5] of string = ('Single', 'Real48', 'Double', 'Real', 'Comp', 'Extended');
-  FloatRanks: array[0..5] of Integer = (1, 2, 3, 3, 3, 4);
+  cArithmeticOperators: array[0..9] of string = ('+', '-', '*', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor');
+  cSectionKeywords: array[0..4] of string = ('begin', 'var', 'const', 'type', 'label');
+  cBuiltinCategories: array[0..51] of TBuiltinCategory = (
+    (Name: 'ShortInt'; Category: TExpressionCategory.Integer_; Width: 1; Signed: True),
+    (Name: 'Int8'; Category: TExpressionCategory.Integer_; Width: 1; Signed: True),
+    (Name: 'Byte'; Category: TExpressionCategory.Integer_; Width: 1; Signed: False),
+    (Name: 'UInt8'; Category: TExpressionCategory.Integer_; Width: 1; Signed: False),
+    (Name: 'SmallInt'; Category: TExpressionCategory.Integer_; Width: 2; Signed: True),
+    (Name: 'Int16'; Category: TExpressionCategory.Integer_; Width: 2; Signed: True),
+    (Name: 'Word'; Category: TExpressionCategory.Integer_; Width: 2; Signed: False),
+    (Name: 'UInt16'; Category: TExpressionCategory.Integer_; Width: 2; Signed: False),
+    (Name: 'Integer'; Category: TExpressionCategory.Integer_; Width: 4; Signed: True),
+    (Name: 'LongInt'; Category: TExpressionCategory.Integer_; Width: 4; Signed: True),
+    (Name: 'Int32'; Category: TExpressionCategory.Integer_; Width: 4; Signed: True),
+    (Name: 'FixedInt'; Category: TExpressionCategory.Integer_; Width: 4; Signed: True),
+    (Name: 'Cardinal'; Category: TExpressionCategory.Integer_; Width: 4; Signed: False),
+    (Name: 'LongWord'; Category: TExpressionCategory.Integer_; Width: 4; Signed: False),
+    (Name: 'UInt32'; Category: TExpressionCategory.Integer_; Width: 4; Signed: False),
+    (Name: 'FixedUInt'; Category: TExpressionCategory.Integer_; Width: 4; Signed: False),
+    (Name: 'DWORD'; Category: TExpressionCategory.Integer_; Width: 4; Signed: False),
+    (Name: 'Int64'; Category: TExpressionCategory.Integer_; Width: 8; Signed: True),
+    (Name: 'NativeInt'; Category: TExpressionCategory.Integer_; Width: 8; Signed: True),
+    (Name: 'IntPtr'; Category: TExpressionCategory.Integer_; Width: 8; Signed: True),
+    (Name: 'UInt64'; Category: TExpressionCategory.Integer_; Width: 8; Signed: False),
+    (Name: 'NativeUInt'; Category: TExpressionCategory.Integer_; Width: 8; Signed: False),
+    (Name: 'UIntPtr'; Category: TExpressionCategory.Integer_; Width: 8; Signed: False),
+    (Name: 'Single'; Category: TExpressionCategory.Float; Width: 1; Signed: False),
+    (Name: 'Real48'; Category: TExpressionCategory.Float; Width: 2; Signed: False),
+    (Name: 'Double'; Category: TExpressionCategory.Float; Width: 3; Signed: False),
+    (Name: 'Real'; Category: TExpressionCategory.Float; Width: 3; Signed: False),
+    (Name: 'Comp'; Category: TExpressionCategory.Float; Width: 3; Signed: False),
+    (Name: 'Extended'; Category: TExpressionCategory.Float; Width: 4; Signed: False),
+    (Name: 'Currency'; Category: TExpressionCategory.Currency_; Width: 0; Signed: False),
+    (Name: 'Boolean'; Category: TExpressionCategory.Boolean_; Width: 0; Signed: False),
+    (Name: 'ByteBool'; Category: TExpressionCategory.Boolean_; Width: 0; Signed: False),
+    (Name: 'WordBool'; Category: TExpressionCategory.Boolean_; Width: 0; Signed: False),
+    (Name: 'LongBool'; Category: TExpressionCategory.Boolean_; Width: 0; Signed: False),
+    (Name: 'Char'; Category: TExpressionCategory.Char_; Width: 0; Signed: False),
+    (Name: 'WideChar'; Category: TExpressionCategory.Char_; Width: 0; Signed: False),
+    (Name: 'AnsiChar'; Category: TExpressionCategory.Char_; Width: 0; Signed: False),
+    (Name: 'string'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'UnicodeString'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'AnsiString'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'WideString'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'ShortString'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'RawByteString'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'UTF8String'; Category: TExpressionCategory.String_; Width: 0; Signed: False),
+    (Name: 'Variant'; Category: TExpressionCategory.Variant_; Width: 0; Signed: False),
+    (Name: 'OleVariant'; Category: TExpressionCategory.Variant_; Width: 0; Signed: False),
+    (Name: 'Pointer'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
+    (Name: 'PChar'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
+    (Name: 'PWideChar'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
+    (Name: 'PAnsiChar'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
+    (Name: 'PByte'; Category: TExpressionCategory.Pointer_; Width: 0; Signed: False),
+    (Name: 'nil'; Category: TExpressionCategory.Nil_; Width: 0; Signed: False));
+  cIntrinsicResults: array[0..25] of TIntrinsicResult = (
+    (Name: 'Length'; TypeName: 'Integer'), (Name: 'SizeOf'; TypeName: 'Integer'),
+    (Name: 'Pos'; TypeName: 'Integer'), (Name: 'Integer'; TypeName: 'Integer'),
+    (Name: 'Round'; TypeName: 'Int64'), (Name: 'Trunc'; TypeName: 'Int64'),
+    (Name: 'Chr'; TypeName: 'Char'), (Name: 'UpCase'; TypeName: 'Char'),
+    (Name: 'Assigned'; TypeName: 'Boolean'), (Name: 'Odd'; TypeName: 'Boolean'),
+    (Name: 'Eof'; TypeName: 'Boolean'), (Name: 'Eoln'; TypeName: 'Boolean'),
+    (Name: 'IsManagedType'; TypeName: 'Boolean'), (Name: 'Sqrt'; TypeName: 'Extended'),
+    (Name: 'Sin'; TypeName: 'Extended'), (Name: 'Cos'; TypeName: 'Extended'),
+    (Name: 'Exp'; TypeName: 'Extended'), (Name: 'Ln'; TypeName: 'Extended'),
+    (Name: 'ArcTan'; TypeName: 'Extended'), (Name: 'Frac'; TypeName: 'Extended'),
+    (Name: 'Int'; TypeName: 'Extended'), (Name: 'Pi'; TypeName: 'Extended'),
+    (Name: 'Concat'; TypeName: 'string'), (Name: 'Addr'; TypeName: 'Pointer'),
+    (Name: 'TypeInfo'; TypeName: 'Pointer'), (Name: 'Ptr'; TypeName: 'Pointer'));
 
 function TExpressionTypeInfo.Found: Boolean;
 begin
@@ -279,36 +363,50 @@ begin
   // Eingebaute Aliase (LongInt = Integer, Real = Double …) und Unit-Präfixe wie überall (#1324).
   Result := TTypeIdentity.Same(A, B);
 end;
-
 function IsNumeric(const AType: TExpressionTypes.TTyped): Boolean;
 begin
   Result := AType.Category in [TExpressionCategory.Integer_, TExpressionCategory.Float, TExpressionCategory.Currency_];
+end;
+
+/// <summary>Mindestens eine Seite hat die Kategorie ACategory.</summary>
+function HasCategory(const ALeft, ARight: TExpressionTypes.TTyped; ACategory: TExpressionCategory): Boolean;
+begin
+  Result := (ALeft.Category = ACategory) or (ARight.Category = ACategory);
+end;
+
+/// <summary>Beide Seiten haben die Kategorie ACategory.</summary>
+function BothCategory(const ALeft, ARight: TExpressionTypes.TTyped; ACategory: TExpressionCategory): Boolean;
+begin
+  Result := (ALeft.Category = ACategory) and (ARight.Category = ACategory);
+end;
+
+/// <summary>Ganzzahl der Breite AWidth ohne Vorzeichen.</summary>
+function IsUnsigned(const AType: TExpressionTypes.TTyped; AWidth: Integer): Boolean;
+begin
+  Result := (AType.Width = AWidth) and not AType.Signed;
 end;
 
 /// <summary>Ergebnis einer ganzzahligen Rechnung (Delphi): mindestens Integer; Int64 bzw. UInt64, wenn eine Seite
 /// 64 Bit hat; Cardinal nur, wenn beide Seiten 32 Bit ohne Vorzeichen sind, mit Vorzeichen Int64.</summary>
 function IntegerResult(const ALeft, ARight: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
 begin
-  if (ALeft.Width = 8) or (ARight.Width = 8) then
+  if ((ALeft.Width = 8) or (ARight.Width = 8)) and SameText(ALeft.Name, ARight.Name) then
   begin
-    if SameText(ALeft.Name, ARight.Name) then
-    begin
-      Result := Typed(ALeft.Name);
-    end
-    else if ((ALeft.Width = 8) and not ALeft.Signed) or ((ARight.Width = 8) and not ARight.Signed) then
-    begin
-      Result := Typed('UInt64');
-    end
-    else
-    begin
-      Result := Typed('Int64');
-    end;
+    Result := Typed(ALeft.Name);
   end
-  else if (ALeft.Width = 4) and (ARight.Width = 4) and not ALeft.Signed and not ARight.Signed then
+  else if IsUnsigned(ALeft, 8) or IsUnsigned(ARight, 8) then
+  begin
+    Result := Typed('UInt64');
+  end
+  else if (ALeft.Width = 8) or (ARight.Width = 8) then
+  begin
+    Result := Typed('Int64');
+  end
+  else if IsUnsigned(ALeft, 4) and IsUnsigned(ARight, 4) then
   begin
     Result := Typed('Cardinal');
   end
-  else if ((ALeft.Width = 4) and not ALeft.Signed) or ((ARight.Width = 4) and not ARight.Signed) then
+  else if IsUnsigned(ALeft, 4) or IsUnsigned(ARight, 4) then
   begin
     Result := Typed('Int64');
   end
@@ -318,31 +416,21 @@ begin
   end;
 end;
 
-/// <summary>Ergebnis von + - * mit mindestens einer Gleitkomma- oder Currency-Seite.</summary>
+/// <summary>Ergebnis von + - * mit mindestens einer Gleitkomma- oder Currency-Seite: Currency mit Ganzzahl bleibt
+/// Currency, mit Gleitkomma Extended; sonst die breitere Gleitkommaseite.</summary>
 function RealResult(const ALeft, ARight: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
 begin
-  if (ALeft.Category = TExpressionCategory.Currency_) and (ARight.Category <> TExpressionCategory.Float) then
+  if HasCategory(ALeft, ARight, TExpressionCategory.Currency_) and
+    HasCategory(ALeft, ARight, TExpressionCategory.Float) then
   begin
-    Exit(Typed('Currency'));
-  end;
-  if (ARight.Category = TExpressionCategory.Currency_) and (ALeft.Category <> TExpressionCategory.Float) then
-  begin
-    Exit(Typed('Currency'));
-  end;
-  if (ALeft.Category = TExpressionCategory.Currency_) or (ARight.Category = TExpressionCategory.Currency_) then
-  begin
-    Exit(Typed('Extended'));
-  end;
-  // Die breitere Gleitkommaseite.
-  if ARight.Category <> TExpressionCategory.Float then
-  begin
-    Result := Typed(ALeft.Name);
+    Result := Typed('Extended');
   end
-  else if ALeft.Category <> TExpressionCategory.Float then
+  else if HasCategory(ALeft, ARight, TExpressionCategory.Currency_) then
   begin
-    Result := Typed(ARight.Name);
+    Result := Typed('Currency');
   end
-  else if ARight.Width > ALeft.Width then
+  else if (ARight.Category = TExpressionCategory.Float) and
+    ((ALeft.Category <> TExpressionCategory.Float) or (ARight.Width > ALeft.Width)) then
   begin
     Result := Typed(ARight.Name);
   end
@@ -352,37 +440,770 @@ begin
   end;
 end;
 
-/// <summary>Deklaration "ATypeName = record" im Baum; nil ohne.</summary>
-function FindRecord(ARoot: TSyntaxNode; const ATypeName: string): TSyntaxNode;
-var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+/// <summary>Operator passt nicht zu den Operanden; Detail "Operator|Links|Rechts".</summary>
+function Mismatch(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
 begin
-  Result := nil;
-  if ARoot = nil then
+  Result := Failed(TExpressionErrorKind.OperatorMismatch, AOperator + '|' + ALeft.Name + '|' + ARight.Name);
+end;
+
+/// <summary>Zeichen oder string.</summary>
+function IsText(const AType: TExpressionTypes.TTyped): Boolean;
+begin
+  Result := AType.Category in [TExpressionCategory.String_, TExpressionCategory.Char_];
+end;
+
+/// <summary>Verkettung mit +: der string-Typ einer Seite, aus zwei Zeichen ein string.</summary>
+function ConcatResult(const ALeft, ARight: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if ALeft.Category = TExpressionCategory.String_ then
+  begin
+    Result := Typed(ALeft.Name);
+  end
+  else if ARight.Category = TExpressionCategory.String_ then
+  begin
+    Result := Typed(ARight.Name);
+  end
+  else
+  begin
+    Result := Typed('string');
+  end;
+end;
+
+/// <summary>+ - * mit einer Menge: die Mengenseite; rechts genügt ein Mengenkonstruktor.</summary>
+function SetResult(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped;
+  ARightIsSet: Boolean): TExpressionTypes.TTyped;
+begin
+  if (ALeft.Category = TExpressionCategory.Set_) and ((ARight.Category = TExpressionCategory.Set_) or ARightIsSet) then
+  begin
+    Result := ALeft;
+  end
+  else if ARight.Category = TExpressionCategory.Set_ then
+  begin
+    Result := ARight;
+  end
+  else
+  begin
+    Result := Mismatch(AOperator, ALeft, ARight);
+  end;
+end;
+
+/// <summary>+ - * ohne Zahlen und Strings: Mengen, Zeiger ± Zahl, Zeiger - Zeiger.</summary>
+function PointerOrSetResult(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped;
+  ARightIsSet: Boolean): TExpressionTypes.TTyped;
+begin
+  if HasCategory(ALeft, ARight, TExpressionCategory.Set_) then
+  begin
+    Result := SetResult(AOperator, ALeft, ARight, ARightIsSet);
+  end
+  else if (ALeft.Category = TExpressionCategory.Pointer_) and (ARight.Category = TExpressionCategory.Integer_) and
+    (AOperator <> '*') then
+  begin
+    Result := ALeft;
+  end
+  else if BothCategory(ALeft, ARight, TExpressionCategory.Pointer_) and (AOperator = '-') then
+  begin
+    Result := Typed('NativeInt');
+  end
+  else
+  begin
+    Result := Mismatch(AOperator, ALeft, ARight);
+  end;
+end;
+
+/// <summary>Ergebnis von + - *; ANoted, wenn die Operanden umgewandelt werden können (Zahlen, Strings).</summary>
+function AdditiveResult(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped; ARightIsSet: Boolean;
+  out ANoted: Boolean): TExpressionTypes.TTyped;
+begin
+  ANoted := True;
+  if BothCategory(ALeft, ARight, TExpressionCategory.Integer_) then
+  begin
+    Result := IntegerResult(ALeft, ARight);
+  end
+  else if IsNumeric(ALeft) and IsNumeric(ARight) then
+  begin
+    Result := RealResult(ALeft, ARight);
+  end
+  else if (AOperator = '+') and IsText(ALeft) and IsText(ARight) then
+  begin
+    Result := ConcatResult(ALeft, ARight);
+  end
+  else
+  begin
+    ANoted := False;
+    Result := PointerOrSetResult(AOperator, ALeft, ARight, ARightIsSet);
+  end;
+end;
+
+/// <summary>shl/shr: ein 64-Bit-Operand bleibt, sonst wie Integer.</summary>
+function ShiftResult(const ALeft: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if ALeft.Width = 8 then
+  begin
+    Result := Typed(ALeft.Name);
+  end
+  else
+  begin
+    Result := IntegerResult(ALeft, Typed('Integer'));
+  end;
+end;
+
+/// <summary>Ergebnis von /, div, mod, ganzzahligem and/or/xor, shl, shr; Error Unknown ohne Detail bei unbekanntem
+/// Operator.</summary>
+function OtherResult(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if (AOperator = '/') and IsNumeric(ALeft) and IsNumeric(ARight) then
+  begin
+    Result := Typed('Extended');
+  end
+  else if AOperator = '/' then
+  begin
+    Result := Mismatch(AOperator, ALeft, ARight);
+  end
+  else if not MatchStr(AOperator, ['div', 'mod', 'and', 'or', 'xor', 'shl', 'shr']) then
+  begin
+    Result := Failed(TExpressionErrorKind.Unknown, '');
+  end
+  else if not BothCategory(ALeft, ARight, TExpressionCategory.Integer_) then
+  begin
+    Result := Mismatch(AOperator, ALeft, ARight);
+  end
+  else if MatchStr(AOperator, ['shl', 'shr']) then
+  begin
+    Result := ShiftResult(ALeft);
+  end
+  else
+  begin
+    Result := IntegerResult(ALeft, ARight);
+  end;
+end;
+
+/// <summary>Ergebnis eines zweistelligen Operators außer Vergleich und as; ANoted, wenn die Operanden als
+/// Umwandlung vermerkt werden.</summary>
+function OperationResult(const AOperator: string; const ALeft, ARight: TExpressionTypes.TTyped;
+  ARightIsSet: Boolean; out ANoted: Boolean): TExpressionTypes.TTyped;
+begin
+  ANoted := False;
+  if HasCategory(ALeft, ARight, TExpressionCategory.Variant_) then
+  begin
+    Result := Typed('Variant');
+  end
+  else if MatchStr(AOperator, ['+', '-', '*']) then
+  begin
+    Result := AdditiveResult(AOperator, ALeft, ARight, ARightIsSet, ANoted);
+  end
+  else if MatchStr(AOperator, ['and', 'or', 'xor']) and BothCategory(ALeft, ARight, TExpressionCategory.Boolean_) then
+  begin
+    Result := Typed('Boolean');
+  end
+  else
+  begin
+    Result := OtherResult(AOperator, ALeft, ARight);
+    ANoted := Result.Known;
+  end;
+end;
+
+/// <summary>not: Boolean, Ganzzahl und Variant bleiben.</summary>
+function NotResult(const AOperand: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if AOperand.Category in [TExpressionCategory.Boolean_, TExpressionCategory.Integer_,
+    TExpressionCategory.Variant_] then
+  begin
+    Result := AOperand;
+  end
+  else
+  begin
+    Result := Failed(TExpressionErrorKind.OperatorMismatch, 'not||' + AOperand.Name);
+  end;
+end;
+
+/// <summary>Ergebnis eines einstelligen Operators (@, not, Vorzeichen) mit bekanntem Operanden.</summary>
+function UnaryResult(const AOperator: string; const AOperand: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if AOperator = '@' then
+  begin
+    Result := Typed('Pointer');
+  end
+  else if SameText(AOperator, 'not') then
+  begin
+    Result := NotResult(AOperand);
+  end
+  else if not (IsNumeric(AOperand) or (AOperand.Category = TExpressionCategory.Variant_)) then
+  begin
+    Result := Failed(TExpressionErrorKind.OperatorMismatch, AOperator + '||' + AOperand.Name);
+  end
+  else if (AOperand.Category = TExpressionCategory.Integer_) and (AOperand.Width < 4) then
+  begin
+    // -Byte rechnet als Integer.
+    Result := Typed('Integer');
+  end
+  else
+  begin
+    Result := AOperand;
+  end;
+end;
+
+/// <summary>Ein Alias (TPreis = Currency) ist keine Umwandlung.</summary>
+function IsAliasOf(const AOperand, AResult: TExpressionTypes.TTyped): Boolean;
+begin
+  Result := SameType(AOperand.Name, AResult.Name) or SameType(AOperand.Base, AResult.Name) or
+    SameType(AOperand.Name, AResult.Base);
+end;
+
+/// <summary>Literale und Zwischenergebnisse (A * B) nur als ganzer Ausdruck; sonst steht der Grund weiter innen.
+/// </summary>
+function OperandShown(ANode: TSyntaxNode; AWhole: Boolean): Boolean;
+begin
+  Result := AWhole or not (ANode.Kind in [TSyntaxKind.Literal, TSyntaxKind.BinaryExpr, TSyntaxKind.ParenExpr]);
+end;
+
+/// <summary>Art der Umwandlung von AOperand nach AResult: Zahlen werden erweitert, Variant und Char umgewandelt.
+/// </summary>
+function ConversionKind(const AOperand, AResult: TExpressionTypes.TTyped;
+  out AKind: TExpressionConversionKind): Boolean;
+begin
+  Result := True;
+  AKind := TExpressionConversionKind.Widen;
+  if IsNumeric(AOperand) and IsNumeric(AResult) then
+  begin
+    AKind := TExpressionConversionKind.Widen;
+  end
+  else if (AOperand.Category in [TExpressionCategory.Variant_, TExpressionCategory.Char_]) and
+    (AResult.Category in [TExpressionCategory.String_, TExpressionCategory.Integer_, TExpressionCategory.Float,
+    TExpressionCategory.Currency_, TExpressionCategory.Boolean_]) then
+  begin
+    AKind := TExpressionConversionKind.Convert;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function NodeTextOf(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+/// <summary>Text von ANode in einer Zeile, auf MaxExpressionLength gekürzt.</summary>
+function ShortText(const AText: string; ANode: TSyntaxNode): string;
+var
+  mIndex: Integer;
+begin
+  Result := NodeTextOf(AText, ANode);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if CharInSet(Result[mIndex], [#9, #10, #13]) then
+    begin
+      Result[mIndex] := ' ';
+    end;
+  end;
+  while Pos('  ', Result) > 0 do
+  begin
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
+  Result := Trim(Result);
+  if Length(Result) > TExpressionTypes.MaxExpressionLength then
+  begin
+    Result := Copy(Result, 1, TExpressionTypes.MaxExpressionLength - 1) + #$2026;
+  end;
+end;
+
+/// <summary>#13 bzw. #$41 ohne weitere Teile.</summary>
+function IsCharCode(const AText: string): Boolean;
+begin
+  Result := (AText[1] = '#') and (Pos('''', AText) = 0) and (Pos('#', Copy(AText, 2, MaxInt)) = 0);
+end;
+
+/// <summary>'a', '''' und #13 sind Zeichen, alles Längere ein string.</summary>
+function QuotedType(const AText: string): string;
+begin
+  if ((Length(AText) = 3) and (AText[1] = '''')) or (AText = '''''''''') or IsCharCode(AText) then
+  begin
+    Result := 'Char';
+  end
+  else
+  begin
+    Result := 'string';
+  end;
+end;
+
+/// <summary>Ganzzahl-Literal: Integer, außerhalb seines Bereichs Int64.</summary>
+function IntegerLiteral(AValue: Int64): string;
+begin
+  if (AValue < Low(Integer)) or (AValue > High(Integer)) then
+  begin
+    Result := 'Int64';
+  end
+  else
+  begin
+    Result := 'Integer';
+  end;
+end;
+
+/// <summary>Typ eines Literals (Zeichen, string, Zahl, nil); False bei unbekannter Form.</summary>
+function LiteralType(const AText: string; out ATyped: TExpressionTypes.TTyped): Boolean;
+var
+  mValue: Int64;
+begin
+  Result := True;
+  ATyped := Default(TExpressionTypes.TTyped);
+  if (AText <> '') and CharInSet(AText[1], ['''', '#', '^']) then
+  begin
+    ATyped := Typed(QuotedType(AText));
+  end
+  else if TOrdinalConstants.TryNumber(AText, mValue) then
+  begin
+    ATyped := Typed(IntegerLiteral(mValue));
+  end
+  else if (AText <> '') and CharInSet(AText[1], ['0'..'9']) then
+  begin
+    ATyped := Typed('Extended');
+  end
+  else if SameText(AText, 'nil') then
+  begin
+    ATyped := Typed('nil');
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Literal oder die Namen nil, True und False; AText ist der Text des Baums.</summary>
+function ConstantLeaf(ANode: TSyntaxNode; const AText: string; out ATyped: TExpressionTypes.TTyped): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  ATyped := Default(TExpressionTypes.TTyped);
+  mText := ANode.Name;
+  if ANode.Kind = TSyntaxKind.Literal then
+  begin
+    if mText = '' then
+    begin
+      mText := NodeTextOf(AText, ANode);
+    end;
+    Result := LiteralType(mText, ATyped);
+  end
+  else if (ANode.Kind = TSyntaxKind.Identifier) and SameText(mText, 'nil') then
+  begin
+    ATyped := Typed('nil');
+    Result := True;
+  end
+  else if (ANode.Kind = TSyntaxKind.Identifier) and (SameText(mText, 'True') or SameText(mText, 'False')) then
+  begin
+    ATyped := Typed('Boolean');
+    Result := True;
+  end;
+end;
+
+/// <summary>Aufruf eines Namens: Name(...).</summary>
+function IsNamedCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Identifier);
+end;
+
+/// <summary>SizeOf(Name) mit einem Namen als Argument.</summary>
+function IsSizeOfCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := IsNamedCall(ANode) and SameText(ANode[0].Name, 'SizeOf') and (ANode.ChildCount = 2) and
+    (ANode[1].Kind = TSyntaxKind.Identifier);
+end;
+
+/// <summary>Ergebnistyp eines Intrinsics, der nicht vom Argument abhängt; '' sonst.</summary>
+function FixedIntrinsic(const AName: string): string;
+var
+  mEntry: TIntrinsicResult;
+begin
+  Result := '';
+  for mEntry in cIntrinsicResults do
+  begin
+    if SameText(mEntry.Name, AName) then
+    begin
+      Result := mEntry.TypeName;
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>High/Low: Ordinalwert bzw. -typ bleibt, Array und string ergeben Integer.</summary>
+function BoundResult(const AArgument: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if (AArgument.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) or
+    ((AArgument.Symbol.Name <> '') and (AArgument.Symbol.SymbolKind = TIndexSymbolKind.EnumType)) then
+  begin
+    Result := AArgument;
+  end
+  else
+  begin
+    Result := Typed('Integer');
+  end;
+end;
+
+/// <summary>Copy: string, bei einem Array dessen Typ.</summary>
+function CopyResult(const AArgument: TExpressionTypes.TTyped): TExpressionTypes.TTyped;
+begin
+  if AArgument.Known and (AArgument.Category <> TExpressionCategory.String_) then
+  begin
+    Result := AArgument;
+  end
+  else
+  begin
+    Result := Typed('string');
+  end;
+end;
+
+/// <summary>Ord: Integer, Ord eines Int64 bleibt Int64; Random: ohne Argument Extended, sonst Integer.</summary>
+function NumberIntrinsic(const AName: string; const AArgument: TExpressionTypes.TTyped;
+  ACount: Integer): TExpressionTypes.TTyped;
+begin
+  if SameText(AName, 'Ord') and (AArgument.Width = 8) then
+  begin
+    Result := Typed('Int64');
+  end
+  else if SameText(AName, 'Random') and (ACount = 0) then
+  begin
+    Result := Typed('Extended');
+  end
+  else
+  begin
+    Result := Typed('Integer');
+  end;
+end;
+
+/// <summary>Intrinsics, deren Typ vom ersten Argument abhängt; False bei unbekanntem Namen oder Argument.</summary>
+function ArgumentIntrinsic(const AName: string; const AArgument: TExpressionTypes.TTyped; ACount: Integer;
+  out ATyped: TExpressionTypes.TTyped): Boolean;
+begin
+  Result := True;
+  ATyped := Default(TExpressionTypes.TTyped);
+  if MatchText(AName, ['Ord', 'Random']) then
+  begin
+    ATyped := NumberIntrinsic(AName, AArgument, ACount);
+  end
+  else if MatchText(AName, ['High', 'Low']) then
+  begin
+    ATyped := BoundResult(AArgument);
+  end
+  else if MatchText(AName, ['Succ', 'Pred', 'Abs', 'Sqr', 'Swap', 'Default']) then
+  begin
+    ATyped := AArgument;
+    Result := AArgument.Known;
+  end
+  else if SameText(AName, 'Copy') then
+  begin
+    ATyped := CopyResult(AArgument);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Typ von SomeType.Create ohne eigenen Konstruktor im Index (aus TObject).</summary>
+function IsDefaultConstructor(const AName: string; const AOwner: TExpressionTypes.TTyped): Boolean;
+begin
+  Result := SameText(AName, 'Create') and AOwner.Symbol.IsType and
+    (AOwner.Symbol.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType]);
+end;
+
+/// <summary>Typ eines aufgelösten Symbols mit eingesetzten Typargumenten.</summary>
+function SymbolTyped(AResolver: TNameResolver; const ASymbol: TResolvedSymbol): TExpressionTypes.TTyped;
+begin
+  Result := Typed(WithArguments(AResolver, ASymbol.Name, ASymbol.Bindings));
+  Result.Symbol := ASymbol;
+end;
+
+/// <summary>Ein Typname, den die Namensauflösung bestimmen soll (kein eingebauter Typ, kein Array).</summary>
+function IsDeclaredType(const ATyped: TExpressionTypes.TTyped; const AText: string): Boolean;
+begin
+  Result := (ATyped.Category = TExpressionCategory.Other) and (AText <> '') and not StartsText('array', AText);
+end;
+
+/// <summary>Mengen- und Zeigertypen aus der Signatur (TFarben = set of TFarbe, PKunde = ^TKunde); ACategory sonst.
+/// </summary>
+function SignatureCategory(const ASignature: string; ACategory: TExpressionCategory): TExpressionCategory;
+var
+  mBody: string;
+begin
+  Result := ACategory;
+  if Pos('=', ASignature) > 0 then
+  begin
+    mBody := Trim(Copy(ASignature, Pos('=', ASignature) + 1, MaxInt));
+    if StartsText('set of', mBody) then
+    begin
+      Result := TExpressionCategory.Set_;
+    end
+    else if StartsStr('^', mBody) then
+    begin
+      Result := TExpressionCategory.Pointer_;
+    end;
+  end;
+end;
+
+/// <summary>Alias: Grundtyp dazu; TZahl = Integer rechnet wie Integer.</summary>
+procedure AddAliasBase(AResolver: TNameResolver; const AResolved: TResolvedSymbol;
+  var ATyped: TExpressionTypes.TTyped);
+var
+  mFollowed: TResolvedSymbol;
+begin
+  if not AResolved.Builtin and (AResolved.SymbolKind = TIndexSymbolKind.TypeAlias) and
+    AResolver.TypeOf(AResolved, mFollowed) and not SameType(mFollowed.Name, AResolved.Name) then
+  begin
+    ATyped.Base := WithArguments(AResolver, mFollowed.Name, mFollowed.Bindings);
+    if mFollowed.Builtin then
+    begin
+      ATyped.Category := TExpressionTypes.CategoryOf(mFollowed.Name, ATyped.Width, ATyped.Signed);
+    end;
+  end;
+end;
+
+/// <summary>AText ohne abschließendes Semikolon.</summary>
+function WithoutSemicolon(const AText: string): string;
+begin
+  Result := AText;
+  if EndsStr(';', Result) then
+  begin
+    Result := Copy(Result, 1, Length(Result) - 1);
+  end;
+end;
+
+/// <summary>array … oder TArray&lt;…&gt;.</summary>
+function IsArrayText(const AText: string): Boolean;
+begin
+  Result := StartsText('array', AText) or StartsText('TArray<', AText);
+end;
+
+/// <summary>array [..] of T.</summary>
+function IsArrayOf(const AText: string): Boolean;
+begin
+  Result := StartsText('array', AText) and (Pos(' of ', LowerCase(AText)) > 0);
+end;
+
+/// <summary>Elementtyp hinter " of ".</summary>
+function AfterOf(const AText: string): string;
+begin
+  Result := Copy(AText, Pos(' of ', LowerCase(AText)) + 4, MaxInt);
+end;
+
+/// <summary>Elementtyp eines Array-Typtexts nach ADepth weiteren Indizes (array of array); False ohne Array.
+/// </summary>
+function ElementOf(const AText: string; ADepth: Integer; out AElement: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  if IsArrayOf(AText) then
+  begin
+    AElement := AfterOf(AText);
+  end
+  else if StartsText('TArray<', AText) and EndsStr('>', AText) then
+  begin
+    AElement := Copy(AText, 8, Length(AText) - 8);
+  end
+  else
+  begin
+    AElement := '';
+    Result := False;
+  end;
+  for mIndex := 1 to ADepth do
+  begin
+    if IsArrayOf(Trim(AElement)) then
+    begin
+      AElement := AfterOf(AElement);
+    end;
+  end;
+end;
+
+/// <summary>Zieltyp der eingebauten Zeigertypen (PChar → Char); '' sonst.</summary>
+function BuiltinTarget(const AName: string): string;
+begin
+  if MatchText(AName, ['PChar', 'PWideChar']) then
+  begin
+    Result := 'Char';
+  end
+  else if SameText(AName, 'PAnsiChar') then
+  begin
+    Result := 'AnsiChar';
+  end
+  else if SameText(AName, 'PByte') then
+  begin
+    Result := 'Byte';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Zieltyp von ^T bzw. eines Zeigertyps PKunde = ^TKunde; False ohne.</summary>
+function PointerTarget(const AInner: TExpressionTypes.TTyped; out AText: string): Boolean;
+var
+  mSignature: string;
+begin
+  Result := True;
+  mSignature := AInner.Symbol.Signature;
+  if StartsStr('^', AInner.Name) then
+  begin
+    AText := Copy(AInner.Name, 2, MaxInt);
+  end
+  else if Pos('^', mSignature) > 0 then
+  begin
+    AText := WithoutSemicolon(Trim(Copy(mSignature, Pos('^', mSignature) + 1, MaxInt)));
+  end
+  else
+  begin
+    AText := '';
+    Result := False;
+  end;
+end;
+
+/// <summary>Änderung der Klammertiefe durch AToken.</summary>
+function DepthChange(const AToken: TPascalToken): Integer;
+begin
+  Result := 0;
+  if AToken.IsSymbol('(') then
+  begin
+    Result := 1;
+  end
+  else if AToken.IsSymbol(')') then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>begin bzw. ein Deklarationsabschnitt beendet den Kopf einer anonymen Methode.</summary>
+function IsSectionStart(const AToken: TPascalToken): Boolean;
+var
+  mKeyword: string;
+begin
+  Result := False;
+  for mKeyword in cSectionKeywords do
+  begin
+    if AToken.IsKeyword(mKeyword) then
+    begin
+      Result := True;
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>: , ; – nach ihnen folgt ein Leerzeichen.</summary>
+function IsSeparator(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(':') or AToken.IsSymbol(',') or AToken.IsSymbol(';');
+end;
+
+/// <summary>AHeader mit AToken; Leerzeichen zwischen Wörtern, nicht vor Klammern und Trennzeichen.</summary>
+function HeaderWith(const AHeader: string; const AToken: TPascalToken): string;
+begin
+  Result := AHeader;
+  if (Result <> '') and not IsSeparator(AToken) and not AToken.IsSymbol('(') and not AToken.IsSymbol(')') and
+    not EndsStr('(', Result) then
+  begin
+    Result := Result + ' ';
+  end;
+  Result := Result + AToken.Text;
+  if IsSeparator(AToken) then
+  begin
+    Result := Result + ' ';
+  end;
+end;
+
+/// <summary>Typ einer anonymen Methode: "reference to" mit dem Kopf bis zum ersten begin bzw.
+/// Deklarationsabschnitt außerhalb der Klammern.</summary>
+function AnonymousType(ATree: TSyntaxTree; ANode: TSyntaxNode): TExpressionTypes.TTyped;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex, mDepth: Integer;
+  mHeader: string;
+begin
+  mTokens := ATree.Tokens;
+  mHeader := '';
+  mDepth := 0;
+  for mIndex := TSyntaxTree.FirstTokenOf(mTokens, ANode.StartOffset) to High(mTokens) do
+  begin
+    if mTokens[mIndex].Offset >= ANode.EndOffset then
+    begin
+      Break;
+    end;
+    if (mTokens[mIndex].Offset >= ANode.StartOffset) and
+      not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      mDepth := mDepth + DepthChange(mTokens[mIndex]);
+      if (mDepth = 0) and IsSectionStart(mTokens[mIndex]) then
+      begin
+        Break;
+      end;
+      mHeader := HeaderWith(mHeader, mTokens[mIndex]);
+    end;
+  end;
+  mHeader := StringReplace(Trim(mHeader), '  ', ' ', [rfReplaceAll]);
+  Result := Typed('reference to ' + mHeader);
+end;
+
+/// <summary>Rechnet zwei Konstanten; False bei unbekanntem Operator, Division durch 0 und Überlauf.</summary>
+function Arithmetic(const AOperator: string; ALeft, ARight: Int64; out AValue: Int64): Boolean;
+begin
+  AValue := 0;
+  Result := MatchStr(AOperator, cArithmeticOperators) and not ((ARight = 0) and MatchStr(AOperator, ['div', 'mod']));
+  if not Result then
   begin
     Exit;
   end;
-  // Iterativ (Bericht M1); auch lokale Typen in Routinen zählen.
-  Pending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
-    begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, ATypeName) and
-        (Node.FindChild(TSyntaxKind.RecordType) <> nil) then
-      begin
-        Exit(Node);
-      end;
-      for Index := Node.ChildCount - 1 downto 0 do
-      begin
-        Pending.Push(Node[Index]);
-      end;
+    case IndexStr(AOperator, cArithmeticOperators) of
+      0: AValue := ALeft + ARight;
+      1: AValue := ALeft - ARight;
+      2: AValue := ALeft * ARight;
+      3: AValue := ALeft div ARight;
+      4: AValue := ALeft mod ARight;
+      5: AValue := ALeft shl ARight;
+      6: AValue := ALeft shr ARight;
+      7: AValue := ALeft and ARight;
+      8: AValue := ALeft or ARight;
+      9: AValue := ALeft xor ARight;
+    else
+      Result := False;
     end;
-  finally
-    Pending.Free;
+  except
+    on EIntOverflow do
+    begin
+      Result := False;
+    end;
+  end;
+end;
+
+/// <summary>ANode ist die rechte Seite von "Ziel := Wert".</summary>
+function IsAssignedValue(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
+    (ANode.Parent.ChildCount = 2) and (ANode.Parent[1] = ANode);
+end;
+
+/// <summary>Fundort der Typdeklaration; nicht für eingebaute Typen.</summary>
+procedure SetTypeLocation(const ASymbol: TResolvedSymbol; var AInfo: TExpressionTypeInfo);
+begin
+  if (ASymbol.Name <> '') and not ASymbol.Builtin and (ASymbol.FileName <> '') then
+  begin
+    AInfo.TypeFile := ASymbol.FileName;
+    AInfo.TypeLine := ASymbol.SelectionRange.StartPos.Line;
+    AInfo.TypeCharacter := ASymbol.SelectionRange.StartPos.Character;
+  end;
+end;
+
+/// <summary>Fehler statt Typ: Art Unknown ohne genauere Art, Detail der Ausdruck ohne genaueres Detail.</summary>
+procedure DescribeError(const AFound: TExpressionTypes.TTyped; var AInfo: TExpressionTypeInfo);
+begin
+  AInfo.Error := AFound.Error;
+  if AInfo.Error = TExpressionErrorKind.None then
+  begin
+    AInfo.Error := TExpressionErrorKind.Unknown;
+  end;
+  AInfo.ErrorDetail := AFound.ErrorDetail;
+  if AInfo.ErrorDetail = '' then
+  begin
+    AInfo.ErrorDetail := AInfo.Expression;
   end;
 end;
 
@@ -492,226 +1313,97 @@ end;
 class function TExpressionTypes.CategoryOf(const ATypeName: string; out AWidth: Integer;
   out ASigned: Boolean): TExpressionCategory;
 var
-  Name: string;
-  Index: Integer;
+  mName: string;
+  mEntry: TBuiltinCategory;
 begin
   AWidth := 0;
   ASigned := False;
-  Name := ATypeName;
-  if StartsText('System.', Name) then
+  mName := ATypeName;
+  if StartsText('System.', mName) then
   begin
-    Name := Copy(Name, 8, MaxInt);
+    mName := Copy(mName, 8, MaxInt);
   end;
   Result := TExpressionCategory.Other;
-  if Name = '' then
+  if mName = '' then
   begin
-    Exit(TExpressionCategory.Unknown);
-  end;
-  if MatchText(Name, ['ShortInt', 'Int8']) then
-  begin
-    AWidth := 1;
-    ASigned := True;
+    Result := TExpressionCategory.Unknown;
   end
-  else if MatchText(Name, ['Byte', 'UInt8']) then
+  else if StartsStr('^', mName) then
   begin
-    AWidth := 1;
+    Result := TExpressionCategory.Pointer_;
   end
-  else if MatchText(Name, ['SmallInt', 'Int16']) then
+  else if StartsText('set of ', mName) then
   begin
-    AWidth := 2;
-    ASigned := True;
-  end
-  else if MatchText(Name, ['Word', 'UInt16']) then
-  begin
-    AWidth := 2;
-  end
-  else if MatchText(Name, ['Integer', 'LongInt', 'Int32', 'FixedInt']) then
-  begin
-    AWidth := 4;
-    ASigned := True;
-  end
-  else if MatchText(Name, ['Cardinal', 'LongWord', 'UInt32', 'FixedUInt', 'DWORD']) then
-  begin
-    AWidth := 4;
-  end
-  else if MatchText(Name, ['Int64', 'NativeInt', 'IntPtr']) then
-  begin
-    AWidth := 8;
-    ASigned := True;
-  end
-  else if MatchText(Name, ['UInt64', 'NativeUInt', 'UIntPtr']) then
-  begin
-    AWidth := 8;
+    Result := TExpressionCategory.Set_;
   end;
-  if AWidth > 0 then
+  for mEntry in cBuiltinCategories do
   begin
-    Exit(TExpressionCategory.Integer_);
-  end;
-  Index := IndexText(Name, FloatNames);
-  if Index >= 0 then
-  begin
-    AWidth := FloatRanks[Index];
-    Exit(TExpressionCategory.Float);
-  end;
-  if SameText(Name, 'Currency') then
-  begin
-    Exit(TExpressionCategory.Currency_);
-  end;
-  if MatchText(Name, ['Boolean', 'ByteBool', 'WordBool', 'LongBool']) then
-  begin
-    Exit(TExpressionCategory.Boolean_);
-  end;
-  if MatchText(Name, ['Char', 'WideChar', 'AnsiChar']) then
-  begin
-    Exit(TExpressionCategory.Char_);
-  end;
-  if MatchText(Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString', 'RawByteString',
-    'UTF8String']) then
-  begin
-    Exit(TExpressionCategory.String_);
-  end;
-  if MatchText(Name, ['Variant', 'OleVariant']) then
-  begin
-    Exit(TExpressionCategory.Variant_);
-  end;
-  if MatchText(Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar', 'PByte']) or StartsStr('^', Name) then
-  begin
-    Exit(TExpressionCategory.Pointer_);
-  end;
-  if SameText(Name, 'nil') then
-  begin
-    Exit(TExpressionCategory.Nil_);
-  end;
-  if StartsText('set of ', Name) then
-  begin
-    Exit(TExpressionCategory.Set_);
-  end;
-end;
-
-function TExpressionTypes.NodeText(ANode: TSyntaxNode): string;
-begin
-  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-end;
-
-function TExpressionTypes.Short(ANode: TSyntaxNode): string;
-var
-  Index: Integer;
-begin
-  Result := NodeText(ANode);
-  for Index := 1 to Length(Result) do
-  begin
-    if CharInSet(Result[Index], [#9, #10, #13]) then
+    if SameText(mEntry.Name, mName) then
     begin
-      Result[Index] := ' ';
+      AWidth := mEntry.Width;
+      ASigned := mEntry.Signed;
+      Result := mEntry.Category;
+      Break;
     end;
-  end;
-  while Pos('  ', Result) > 0 do
-  begin
-    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
-  end;
-  Result := Trim(Result);
-  if Length(Result) > MaxExpressionLength then
-  begin
-    Result := Copy(Result, 1, MaxExpressionLength - 1) + #$2026;
   end;
 end;
 
 function TExpressionTypes.FromText(const ATypeText: string; const AOwner: TResolvedSymbol): TTyped;
 var
-  FromUnit: TUnitIndex;
-  Resolved, Followed: TResolvedSymbol;
-  Text, Body: string;
+  mFromUnit: TUnitIndex;
+  mResolved: TResolvedSymbol;
+  mText: string;
 begin
-  Text := Trim(ATypeText);
-  Result := Typed(FResolver.Queries.UnqualifyType(Text));
-  if (Result.Category <> TExpressionCategory.Other) or (Text = '') then
+  mText := Trim(ATypeText);
+  Result := Typed(FResolver.Queries.UnqualifyType(mText));
+  if IsDeclaredType(Result, mText) and (AOwner.Name <> '') and FResolver.DeclaringUnit(AOwner, mFromUnit) and
+    FResolver.ResolveTypeTextFrom(mFromUnit, mText, mResolved) then
   begin
-    Exit;
-  end;
-  if StartsText('array', Text) then
-  begin
-    Exit;
-  end;
-  if (AOwner.Name <> '') and FResolver.DeclaringUnit(AOwner, FromUnit) and
-    FResolver.ResolveTypeTextFrom(FromUnit, Text, Resolved) then
-  begin
-    Result.Symbol := Resolved;
-    // Mengen- und Zeigertypen erkennt die Signatur: TFarben = set of TFarbe, PKunde = ^TKunde.
-    Body := Trim(Copy(Resolved.Signature, Pos('=', Resolved.Signature) + 1, MaxInt));
-    if (Pos('=', Resolved.Signature) > 0) and StartsText('set of', Body) then
-    begin
-      Result.Category := TExpressionCategory.Set_;
-    end
-    else if (Pos('=', Resolved.Signature) > 0) and StartsStr('^', Body) then
-    begin
-      Result.Category := TExpressionCategory.Pointer_;
-    end;
-    // Alias: Grundtyp dazu; TZahl = Integer rechnet wie Integer.
-    if not Resolved.Builtin and (Resolved.SymbolKind = TIndexSymbolKind.TypeAlias) and
-      FResolver.TypeOf(Resolved, Followed) and not SameType(Followed.Name, Resolved.Name) then
-    begin
-      Result.Base := WithArguments(FResolver, Followed.Name, Followed.Bindings);
-      if Followed.Builtin then
-      begin
-        Result.Category := CategoryOf(Followed.Name, Result.Width, Result.Signed);
-      end;
-    end;
+    Result.Symbol := mResolved;
+    Result.Category := SignatureCategory(mResolved.Signature, Result.Category);
+    AddAliasBase(FResolver, mResolved, Result);
   end;
 end;
 
 function TExpressionTypes.FromSymbol(const ASymbol, AType: TResolvedSymbol; ATypeFound: Boolean): TTyped;
-var
-  Declared: string;
 begin
   if ASymbol.IsType then
   begin
     // Typumwandlung TFoo(X) bzw. der Typ selbst.
-    Result := Typed(WithArguments(FResolver, ASymbol.Name, ASymbol.Bindings));
-    Result.Symbol := ASymbol;
-    Exit;
-  end;
-  if (ASymbol.SymbolKind = TIndexSymbolKind.Constructor_) then
+    Result := SymbolTyped(FResolver, ASymbol);
+  end
+  else if (ASymbol.SymbolKind = TIndexSymbolKind.Constructor_) and ATypeFound then
   begin
-    if ATypeFound then
-    begin
-      Result := Typed(WithArguments(FResolver, AType.Name, AType.Bindings));
-      Result.Symbol := AType;
-    end
-    else
-    begin
-      Result := Typed(ASymbol.Container);
-    end;
-    Exit;
-  end;
-  if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
+    Result := SymbolTyped(FResolver, AType);
+  end
+  else if ASymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
+  begin
+    Result := Typed(ASymbol.Container);
+  end
+  else if ASymbol.SymbolKind = TIndexSymbolKind.EnumMember then
   begin
     Result := FromText(ASymbol.Container, ASymbol);
-    Exit;
-  end;
-  Declared := ASymbol.TypeName;
-  if (Declared = '') and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+  end
+  else if ASymbol.TypeName <> '' then
   begin
-    Exit(Failed(TExpressionErrorKind.NoResult, ASymbol.Name));
-  end;
-  if Declared = '' then
+    Result := FromText(Substitute(ASymbol.TypeName, Unqualified(FResolver, ASymbol.Bindings)), ASymbol);
+    if (Result.Symbol.Name = '') and ATypeFound and not AType.Builtin then
+    begin
+      Result.Symbol := AType;
+    end;
+  end
+  else if ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
+  begin
+    Result := Failed(TExpressionErrorKind.NoResult, ASymbol.Name);
+  end
+  else if ATypeFound then
   begin
     // Inline-Variable ohne Typ: der aufgelöste Typ.
-    if ATypeFound then
-    begin
-      Result := Typed(WithArguments(FResolver, AType.Name, AType.Bindings));
-      Result.Symbol := AType;
-    end
-    else
-    begin
-      Result := Default(TTyped);
-    end;
-    Exit;
-  end;
-  Declared := Substitute(Declared, Unqualified(FResolver, ASymbol.Bindings));
-  Result := FromText(Declared, ASymbol);
-  if (Result.Symbol.Name = '') and ATypeFound and not AType.Builtin then
+    Result := SymbolTyped(FResolver, AType);
+  end
+  else
   begin
-    Result.Symbol := AType;
+    Result := Default(TTyped);
   end;
 end;
 
@@ -741,7 +1433,7 @@ begin
       TSyntaxKind.SetConstructor:
         Result := TypeSet(ANode);
       TSyntaxKind.AnonymousMethod:
-        Result := TypeAnonymous(ANode);
+        Result := AnonymousType(FTree, ANode);
       TSyntaxKind.IfExpr:
         if ANode.ChildCount >= 2 then
         begin
@@ -760,529 +1452,269 @@ begin
 end;
 
 function TExpressionTypes.TypeLeaf(ANode: TSyntaxNode): TTyped;
-var
-  Symbol, TypeInfo, OwnerType, Member: TResolvedSymbol;
-  Owner: TTyped;
-  TypeFound: Boolean;
-  Text, Name: string;
-  Value: Int64;
-  Candidates: TArray<TResolvedSymbol>;
 begin
-  Result := Default(TTyped);
-  if ANode.Kind = TSyntaxKind.Literal then
-  begin
-    Text := ANode.Name;
-    if Text = '' then
-    begin
-      Text := NodeText(ANode);
-    end;
-    if (Text <> '') and CharInSet(Text[1], ['''', '#', '^']) then
-    begin
-      // 'a' und #13 sind Zeichen, alles Längere ein string.
-      if ((Length(Text) = 3) and (Text[1] = '''')) or (Text = '''''''''') or
-        ((Text[1] = '#') and (Pos('''', Text) = 0) and (Pos('#', Copy(Text, 2, MaxInt)) = 0)) then
-      begin
-        Exit(Typed('Char'));
-      end;
-      Exit(Typed('string'));
-    end;
-    if TOrdinalConstants.TryNumber(Text, Value) then
-    begin
-      if (Value < Low(Integer)) or (Value > High(Integer)) then
-      begin
-        Exit(Typed('Int64'));
-      end;
-      Exit(Typed('Integer'));
-    end;
-    if (Text <> '') and CharInSet(Text[1], ['0'..'9']) then
-    begin
-      Exit(Typed('Extended'));
-    end;
-    if SameText(Text, 'nil') then
-    begin
-      Exit(Typed('nil'));
-    end;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Name := ANode.Name;
-    if SameText(Name, 'nil') then
-    begin
-      Exit(Typed('nil'));
-    end;
-    if SameText(Name, 'True') or SameText(Name, 'False') then
-    begin
-      Exit(Typed('Boolean'));
-    end;
-  end;
-  // Intrinsics der Unit System, sofern der Name nicht anders deklariert ist.
-  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Identifier) then
-  begin
-    Candidates := FResolver.CallCandidates(FTree, FFileName, ANode[0]);
-    if ((Length(Candidates) = 0) or SameText(Candidates[0].UnitName, 'System')) and
-      TypeIntrinsic(ANode, ANode[0].Name, Result) then
-    begin
-      Exit;
-    end;
-  end;
-  if FResolver.NodeType(FTree, FFileName, ANode, Symbol, TypeInfo, TypeFound) and
-    (Symbol.Kind <> TResolvedKind.UnitName) then
-  begin
-    Result := FromSymbol(Symbol, TypeInfo, TypeFound);
-    if Result.Known and (ANode.Kind = TSyntaxKind.Call) and
-      (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) then
-    begin
-      NoteArguments(ANode, Symbol);
-    end;
-    if Result.Known or (Result.Error <> TExpressionErrorKind.None) then
-    begin
-      Exit;
-    end;
-    // Untypisierte Konstante: aus ihrem Wert.
-    if (Symbol.SymbolKind = TIndexSymbolKind.Constant) and Evaluate(ANode, Value) then
-    begin
-      Exit(Typed('Integer'));
-    end;
-  end;
-  if (ANode.Kind = TSyntaxKind.IndexAccess) and TypeElement(ANode, Result) then
+  if ConstantLeaf(ANode, FText, Result) or TypeIntrinsic(ANode, Result) or LeafResolved(ANode, Result) or
+    TypeElement(ANode, Result) or LeafMember(ANode, Result) then
   begin
     Exit;
   end;
-  // P^.Name und andere Empfänger, die die Namensauflösung nicht kennt: Mitglied am selbst bestimmten Typ.
-  if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) and
-    (ANode.FindChild(TSyntaxKind.GenericArgs) = nil) then
+  if (ANode.Kind = TSyntaxKind.Identifier) and (Length(FResolver.CallCandidates(FTree, FFileName, ANode)) = 0) then
   begin
-    Owner := TypeNode(ANode[0]);
-    if not Owner.Known then
-    begin
-      Exit(Owner);
-    end;
-    if (Owner.Symbol.Name <> '') and FResolver.TypeOf(Owner.Symbol, OwnerType) and
-      FResolver.FindMember(OwnerType, ANode.Name, Member) then
-    begin
-      Result := FromSymbol(Member, Default(TResolvedSymbol), False);
-      if Result.Known or (Result.Error <> TExpressionErrorKind.None) then
-      begin
-        Exit;
-      end;
-    end;
-    // TKunde.Create ohne eigenen Konstruktor im Index (aus TObject): ein TKunde.
-    if SameText(ANode.Name, 'Create') and Owner.Symbol.IsType and
-      (Owner.Symbol.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType]) then
-    begin
-      Exit(Owner);
-    end;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Candidates := FResolver.CallCandidates(FTree, FFileName, ANode);
-    if Length(Candidates) = 0 then
-    begin
-      Exit(Failed(TExpressionErrorKind.UnknownName, ANode.Name));
-    end;
-  end;
-  Result := Failed(TExpressionErrorKind.Unknown, Short(ANode));
-end;
-
-function TExpressionTypes.TypeIntrinsic(ANode: TSyntaxNode; const AName: string; out ATyped: TTyped): Boolean;
-var
-  Argument: TTyped;
-  Count: Integer;
-begin
-  Result := True;
-  Count := ANode.ChildCount - 1;
-  Argument := Default(TTyped);
-  if Count >= 1 then
-  begin
-    Argument := TypeNode(ANode[1]);
-  end;
-  if MatchText(AName, ['Length', 'SizeOf', 'Pos', 'Ord', 'Integer']) then
-  begin
-    ATyped := Typed('Integer');
-    // Ord eines Int64 bleibt Int64.
-    if SameText(AName, 'Ord') and (Argument.Width = 8) then
-    begin
-      ATyped := Typed('Int64');
-    end;
-  end
-  else if MatchText(AName, ['High', 'Low']) then
-  begin
-    // High(Ordinalwert bzw. -typ) ist dieser Typ, High(Array/string) Integer.
-    if Argument.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_] then
-    begin
-      ATyped := Argument;
-    end
-    else if (Argument.Symbol.Name <> '') and (Argument.Symbol.SymbolKind = TIndexSymbolKind.EnumType) then
-    begin
-      ATyped := Argument;
-    end
-    else
-    begin
-      ATyped := Typed('Integer');
-    end;
-  end
-  else if MatchText(AName, ['Succ', 'Pred', 'Abs', 'Sqr', 'Swap']) then
-  begin
-    if not Argument.Known then
-    begin
-      Exit(False);
-    end;
-    ATyped := Argument;
-  end
-  else if MatchText(AName, ['Round', 'Trunc']) then
-  begin
-    ATyped := Typed('Int64');
-  end
-  else if MatchText(AName, ['Chr', 'UpCase']) then
-  begin
-    ATyped := Typed('Char');
-  end
-  else if MatchText(AName, ['Assigned', 'Odd', 'Eof', 'Eoln', 'IsManagedType']) then
-  begin
-    ATyped := Typed('Boolean');
-  end
-  else if MatchText(AName, ['Sqrt', 'Sin', 'Cos', 'Exp', 'Ln', 'ArcTan', 'Frac', 'Int', 'Pi']) then
-  begin
-    ATyped := Typed('Extended');
-  end
-  else if SameText(AName, 'Random') then
-  begin
-    if Count = 0 then
-    begin
-      ATyped := Typed('Extended');
-    end
-    else
-    begin
-      ATyped := Typed('Integer');
-    end;
-  end
-  else if SameText(AName, 'Concat') then
-  begin
-    ATyped := Typed('string');
-  end
-  else if SameText(AName, 'Copy') then
-  begin
-    if Argument.Known and (Argument.Category <> TExpressionCategory.String_) then
-    begin
-      ATyped := Argument;
-    end
-    else
-    begin
-      ATyped := Typed('string');
-    end;
-  end
-  else if MatchText(AName, ['Addr', 'TypeInfo', 'Ptr']) then
-  begin
-    ATyped := Typed('Pointer');
-  end
-  else if SameText(AName, 'Default') then
-  begin
-    if not Argument.Known then
-    begin
-      Exit(False);
-    end;
-    ATyped := Argument;
+    Result := Failed(TExpressionErrorKind.UnknownName, ANode.Name);
   end
   else
   begin
-    Result := False;
+    Result := Failed(TExpressionErrorKind.Unknown, ShortText(FText, ANode));
   end;
+end;
+
+function TExpressionTypes.LeafResolved(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mValue: Int64;
+begin
+  ATyped := Default(TTyped);
+  Result := FResolver.NodeType(FTree, FFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.Kind <> TResolvedKind.UnitName);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ATyped := FromSymbol(mSymbol, mTypeInfo, mTypeFound);
+  if ATyped.Known and (ANode.Kind = TSyntaxKind.Call) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) then
+  begin
+    NoteArguments(ANode, mSymbol);
+  end;
+  if not ATyped.Known and (ATyped.Error = TExpressionErrorKind.None) then
+  begin
+    // Untypisierte Konstante: aus ihrem Wert.
+    Result := (mSymbol.SymbolKind = TIndexSymbolKind.Constant) and Evaluate(ANode, mValue);
+    if Result then
+    begin
+      ATyped := Typed('Integer');
+    end;
+  end;
+end;
+
+function TExpressionTypes.MemberOf(ANode: TSyntaxNode; const AOwner: TTyped; out ATyped: TTyped): Boolean;
+var
+  mOwnerType, mMember: TResolvedSymbol;
+begin
+  ATyped := Default(TTyped);
+  Result := (AOwner.Symbol.Name <> '') and FResolver.TypeOf(AOwner.Symbol, mOwnerType) and
+    FResolver.FindMember(mOwnerType, ANode.Name, mMember);
+  if Result then
+  begin
+    ATyped := FromSymbol(mMember, Default(TResolvedSymbol), False);
+    Result := ATyped.Known or (ATyped.Error <> TExpressionErrorKind.None);
+  end;
+end;
+
+function TExpressionTypes.LeafMember(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
+var
+  mOwner: TTyped;
+begin
+  // P^.Name und andere Empfänger, die die Namensauflösung nicht kennt: Mitglied am selbst bestimmten Typ.
+  ATyped := Default(TTyped);
+  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) and
+    (ANode.FindChild(TSyntaxKind.GenericArgs) = nil);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mOwner := TypeNode(ANode[0]);
+  ATyped := mOwner;
+  if mOwner.Known and not MemberOf(ANode, mOwner, ATyped) then
+  begin
+    // TKunde.Create ohne eigenen Konstruktor im Index (aus TObject): ein TKunde.
+    ATyped := mOwner;
+    Result := IsDefaultConstructor(ANode.Name, mOwner);
+  end;
+end;
+
+function TExpressionTypes.TypeIntrinsic(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
+var
+  mCandidates: TArray<TResolvedSymbol>;
+  mArgument: TTyped;
+  mFixed: string;
+begin
+  // Intrinsics der Unit System, sofern der Name nicht anders deklariert ist.
+  ATyped := Default(TTyped);
+  Result := IsNamedCall(ANode);
+  if Result then
+  begin
+    mCandidates := FResolver.CallCandidates(FTree, FFileName, ANode[0]);
+    Result := (Length(mCandidates) = 0) or SameText(mCandidates[0].UnitName, 'System');
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mArgument := Default(TTyped);
+  if ANode.ChildCount > 1 then
+  begin
+    mArgument := TypeNode(ANode[1]);
+  end;
+  mFixed := FixedIntrinsic(ANode[0].Name);
+  if mFixed <> '' then
+  begin
+    ATyped := Typed(mFixed);
+  end
+  else
+  begin
+    Result := ArgumentIntrinsic(ANode[0].Name, mArgument, ANode.ChildCount - 1, ATyped);
+  end;
+end;
+
+function TExpressionTypes.ArrayText(const ASymbol, ATypeInfo: TResolvedSymbol; ATypeFound: Boolean): string;
+begin
+  Result := Substitute(ASymbol.TypeName, Unqualified(FResolver, ASymbol.Bindings));
+  if (Result = '') and SameText(ASymbol.FileName, FFileName) then
+  begin
+    Result := LocalArrayText(FTree, FText, ASymbol);
+  end;
+  if ATypeFound and not IsArrayText(Result) and (Pos('=', ATypeInfo.Signature) > 0) then
+  begin
+    // Eigener Array-Typ: TZeilen = array of string.
+    Result := Trim(Copy(ATypeInfo.Signature, Pos('=', ATypeInfo.Signature) + 1, MaxInt));
+  end;
+  Result := WithoutSemicolon(Result);
 end;
 
 function TExpressionTypes.TypeElement(ANode: TSyntaxNode; out ATyped: TTyped): Boolean;
 var
-  Symbol, TypeInfo: TResolvedSymbol;
-  TypeFound: Boolean;
-  Text, Element: string;
-  Depth, Index: Integer;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mElement: string;
 begin
-  Result := False;
   ATyped := Default(TTyped);
-  if (ANode.ChildCount = 0) or not FResolver.NodeType(FTree, FFileName, ANode[0], Symbol, TypeInfo, TypeFound) then
+  Result := (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount > 0) and
+    FResolver.NodeType(FTree, FFileName, ANode[0], mSymbol, mTypeInfo, mTypeFound) and
+    ElementOf(ArrayText(mSymbol, mTypeInfo, mTypeFound), ANode.ChildCount - 2, mElement);
+  if Result then
   begin
-    Exit;
+    ATyped := FromText(mElement, mSymbol);
+    Result := ATyped.Known;
   end;
-  Text := Substitute(Symbol.TypeName, Unqualified(FResolver, Symbol.Bindings));
-  if (Text = '') and SameText(Symbol.FileName, FFileName) then
-  begin
-    Text := LocalArrayText(FTree, FText, Symbol);
-  end;
-  if TypeFound and not StartsText('array', Text) and not StartsText('TArray<', Text) and
-    (TypeInfo.Signature <> '') and (Pos('=', TypeInfo.Signature) > 0) then
-  begin
-    // Eigener Array-Typ: TZeilen = array of string.
-    Text := Trim(Copy(TypeInfo.Signature, Pos('=', TypeInfo.Signature) + 1, MaxInt));
-  end;
-  if EndsStr(';', Text) then
-  begin
-    Text := Copy(Text, 1, Length(Text) - 1);
-  end;
-  Element := '';
-  if StartsText('array', Text) and (Pos(' of ', LowerCase(Text)) > 0) then
-  begin
-    Element := Copy(Text, Pos(' of ', LowerCase(Text)) + 4, MaxInt);
-  end
-  else if StartsText('TArray<', Text) and EndsStr('>', Text) then
-  begin
-    Element := Copy(Text, 8, Length(Text) - 8);
-  end
-  else
-  begin
-    Exit;
-  end;
-  // Mehrere Indizes bei array of array: je Index eine Stufe.
-  Depth := ANode.ChildCount - 2;
-  for Index := 1 to Depth do
-  begin
-    if StartsText('array', Trim(Element)) and (Pos(' of ', LowerCase(Element)) > 0) then
-    begin
-      Element := Copy(Element, Pos(' of ', LowerCase(Element)) + 4, MaxInt);
-    end;
-  end;
-  ATyped := FromText(Element, Symbol);
-  Result := ATyped.Known;
 end;
 
 function TExpressionTypes.TypeDereference(ANode: TSyntaxNode): TTyped;
 var
-  Inner: TTyped;
-  Text: string;
+  mInner: TTyped;
+  mTarget: string;
 begin
   Result := Default(TTyped);
   if ANode.ChildCount = 0 then
   begin
     Exit;
   end;
-  Inner := TypeNode(ANode[0]);
-  if not Inner.Known then
+  mInner := TypeNode(ANode[0]);
+  if not mInner.Known then
   begin
-    Exit(Inner);
-  end;
-  if SameText(Inner.Name, 'PChar') or SameText(Inner.Name, 'PWideChar') then
+    Result := mInner;
+  end
+  else if BuiltinTarget(mInner.Name) <> '' then
   begin
-    Exit(Typed('Char'));
-  end;
-  if SameText(Inner.Name, 'PAnsiChar') then
+    Result := Typed(BuiltinTarget(mInner.Name));
+  end
+  else if PointerTarget(mInner, mTarget) then
   begin
-    Exit(Typed('AnsiChar'));
-  end;
-  if SameText(Inner.Name, 'PByte') then
+    Result := FromText(mTarget, mInner.Symbol);
+  end
+  else
   begin
-    Exit(Typed('Byte'));
+    // Objekt^ bzw. unbekannt: der Typ selbst bleibt unbestimmt.
+    Result := Failed(TExpressionErrorKind.Unknown, ShortText(FText, ANode));
   end;
-  if StartsStr('^', Inner.Name) then
-  begin
-    Exit(FromText(Copy(Inner.Name, 2, MaxInt), Inner.Symbol));
-  end;
-  // PKunde = ^TKunde.
-  Text := Inner.Symbol.Signature;
-  if Pos('^', Text) > 0 then
-  begin
-    Text := Trim(Copy(Text, Pos('^', Text) + 1, MaxInt));
-    if EndsStr(';', Text) then
-    begin
-      Text := Copy(Text, 1, Length(Text) - 1);
-    end;
-    Exit(FromText(Text, Inner.Symbol));
-  end;
-  // Objekt^ bzw. unbekannt: der Typ selbst bleibt unbestimmt.
-  Result := Failed(TExpressionErrorKind.Unknown, Short(ANode));
 end;
 
 function TExpressionTypes.TypeBinary(ANode: TSyntaxNode): TTyped;
 var
-  Operator, Detail: string;
-  Left, Right: TTyped;
+  mOperator: string;
 begin
   Result := Default(TTyped);
   if ANode.ChildCount <> 2 then
   begin
     Exit;
   end;
-  Operator := LowerCase(ANode.Name);
-  if MatchText(Operator, ComparisonOperators) then
+  mOperator := LowerCase(ANode.Name);
+  if MatchText(mOperator, ComparisonOperators) then
   begin
-    // Operanden trotzdem prüfen: ein unbekannter Name ist ein Fehler.
-    Left := TypeNode(ANode[0]);
-    if Left.Error = TExpressionErrorKind.UnknownName then
-    begin
-      Exit(Left);
-    end;
-    if Operator <> 'is' then
-    begin
-      Right := TypeNode(ANode[1]);
-      if Right.Error = TExpressionErrorKind.UnknownName then
-      begin
-        Exit(Right);
-      end;
-    end;
-    Exit(Typed('Boolean'));
-  end;
-  if Operator = 'as' then
-  begin
-    Exit(TypeNode(ANode[1]));
-  end;
-  Left := TypeNode(ANode[0]);
-  if not Left.Known then
-  begin
-    Exit(Left);
-  end;
-  Right := TypeNode(ANode[1]);
-  if not Right.Known then
-  begin
-    Exit(Right);
-  end;
-  Detail := Operator + '|' + Left.Name + '|' + Right.Name;
-  if (Left.Category = TExpressionCategory.Variant_) or (Right.Category = TExpressionCategory.Variant_) then
-  begin
-    Result := Typed('Variant');
-    Exit;
-  end;
-  if (Operator = '+') or (Operator = '-') or (Operator = '*') then
-  begin
-    if (Left.Category = TExpressionCategory.Integer_) and (Right.Category = TExpressionCategory.Integer_) then
-    begin
-      Result := IntegerResult(Left, Right);
-    end
-    else if IsNumeric(Left) and IsNumeric(Right) then
-    begin
-      Result := RealResult(Left, Right);
-    end
-    else if (Operator = '+') and (Left.Category in [TExpressionCategory.String_, TExpressionCategory.Char_]) and
-      (Right.Category in [TExpressionCategory.String_, TExpressionCategory.Char_]) then
-    begin
-      if Left.Category = TExpressionCategory.String_ then
-      begin
-        Result := Typed(Left.Name);
-      end
-      else if Right.Category = TExpressionCategory.String_ then
-      begin
-        Result := Typed(Right.Name);
-      end
-      else
-      begin
-        Result := Typed('string');
-      end;
-    end
-    else if (Left.Category = TExpressionCategory.Set_) or (Right.Category = TExpressionCategory.Set_) then
-    begin
-      if (Left.Category = TExpressionCategory.Set_) and ((Right.Category = TExpressionCategory.Set_) or
-        (ANode[1].Kind = TSyntaxKind.SetConstructor)) then
-      begin
-        Result := Left;
-      end
-      else if Right.Category = TExpressionCategory.Set_ then
-      begin
-        Result := Right;
-      end
-      else
-      begin
-        Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-      end;
-      Exit;
-    end
-    else if (Left.Category = TExpressionCategory.Pointer_) and (Right.Category = TExpressionCategory.Integer_) and
-      (Operator <> '*') then
-    begin
-      Exit(Left);
-    end
-    else if (Left.Category = TExpressionCategory.Pointer_) and (Right.Category = TExpressionCategory.Pointer_) and
-      (Operator = '-') then
-    begin
-      Exit(Typed('NativeInt'));
-    end
-    else
-    begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-    end;
+    Result := TypeComparison(ANode, mOperator);
   end
-  else if Operator = '/' then
+  else if mOperator = 'as' then
   begin
-    if not (IsNumeric(Left) and IsNumeric(Right)) then
-    begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-    end;
-    Result := Typed('Extended');
-  end
-  else if (Operator = 'div') or (Operator = 'mod') then
-  begin
-    if (Left.Category <> TExpressionCategory.Integer_) or (Right.Category <> TExpressionCategory.Integer_) then
-    begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-    end;
-    Result := IntegerResult(Left, Right);
-  end
-  else if (Operator = 'and') or (Operator = 'or') or (Operator = 'xor') then
-  begin
-    if (Left.Category = TExpressionCategory.Boolean_) and (Right.Category = TExpressionCategory.Boolean_) then
-    begin
-      Exit(Typed('Boolean'));
-    end;
-    if (Left.Category <> TExpressionCategory.Integer_) or (Right.Category <> TExpressionCategory.Integer_) then
-    begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-    end;
-    Result := IntegerResult(Left, Right);
-  end
-  else if (Operator = 'shl') or (Operator = 'shr') then
-  begin
-    if (Left.Category <> TExpressionCategory.Integer_) or (Right.Category <> TExpressionCategory.Integer_) then
-    begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, Detail));
-    end;
-    if Left.Width = 8 then
-    begin
-      Result := Typed(Left.Name);
-    end
-    else
-    begin
-      Result := IntegerResult(Left, Typed('Integer'));
-    end;
+    Result := TypeNode(ANode[1]);
   end
   else
   begin
-    Exit(Failed(TExpressionErrorKind.Unknown, Short(ANode)));
+    Result := TypeOperation(ANode, mOperator);
   end;
-  NoteOperand(ANode[0], Left, Result, False);
-  NoteOperand(ANode[1], Right, Result, False);
+end;
+
+function TExpressionTypes.TypeComparison(ANode: TSyntaxNode; const AOperator: string): TTyped;
+var
+  mLeft, mRight: TTyped;
+begin
+  // Operanden trotzdem prüfen: ein unbekannter Name ist ein Fehler.
+  Result := Typed('Boolean');
+  mLeft := TypeNode(ANode[0]);
+  if mLeft.Error = TExpressionErrorKind.UnknownName then
+  begin
+    Result := mLeft;
+  end
+  else if AOperator <> 'is' then
+  begin
+    mRight := TypeNode(ANode[1]);
+    if mRight.Error = TExpressionErrorKind.UnknownName then
+    begin
+      Result := mRight;
+    end;
+  end;
+end;
+
+function TExpressionTypes.TypeOperation(ANode: TSyntaxNode; const AOperator: string): TTyped;
+var
+  mLeft, mRight: TTyped;
+  mNoted: Boolean;
+begin
+  mLeft := TypeNode(ANode[0]);
+  if not mLeft.Known then
+  begin
+    Exit(mLeft);
+  end;
+  mRight := TypeNode(ANode[1]);
+  if not mRight.Known then
+  begin
+    Exit(mRight);
+  end;
+  Result := OperationResult(AOperator, mLeft, mRight, ANode[1].Kind = TSyntaxKind.SetConstructor, mNoted);
+  if Result.Error = TExpressionErrorKind.Unknown then
+  begin
+    Result.ErrorDetail := ShortText(FText, ANode);
+  end;
+  if mNoted then
+  begin
+    NoteOperand(ANode[0], mLeft, Result, False);
+    NoteOperand(ANode[1], mRight, Result, False);
+  end;
 end;
 
 procedure TExpressionTypes.NoteOperand(ANode: TSyntaxNode; const AOperand, AResult: TTyped; AWhole: Boolean);
 var
-  Conversion: TExpressionConversion;
+  mConversion: TExpressionConversion;
 begin
-  // Ein Alias (TPreis = Currency) ist keine Umwandlung.
-  if not FOptions.Conversions or (Length(FConversions) >= MaxConversions) or SameType(AOperand.Name, AResult.Name) or
-    SameType(AOperand.Base, AResult.Name) or SameType(AOperand.Name, AResult.Base) or
-    (not AWhole and (ANode.Kind = TSyntaxKind.Literal)) then
+  mConversion := Default(TExpressionConversion);
+  if FOptions.Conversions and (Length(FConversions) < MaxConversions) and OperandShown(ANode, AWhole) and
+    not IsAliasOf(AOperand, AResult) and ConversionKind(AOperand, AResult, mConversion.Kind) then
   begin
-    Exit;
+    mConversion.Expression := ShortText(FText, ANode);
+    mConversion.FromType := AOperand.Name;
+    mConversion.ToType := AResult.Name;
+    FConversions := FConversions + [mConversion];
   end;
-  Conversion := Default(TExpressionConversion);
-  if IsNumeric(AOperand) and IsNumeric(AResult) then
-  begin
-    Conversion.Kind := TExpressionConversionKind.Widen;
-  end
-  else if (AOperand.Category in [TExpressionCategory.Variant_, TExpressionCategory.Char_]) and
-    (AResult.Category in [TExpressionCategory.String_, TExpressionCategory.Integer_, TExpressionCategory.Float,
-    TExpressionCategory.Currency_, TExpressionCategory.Boolean_]) then
-  begin
-    Conversion.Kind := TExpressionConversionKind.Convert;
-  end
-  else
-  begin
-    Exit;
-  end;
-  // Zwischenergebnisse einer Rechnung (A * B) nur, wenn sie selbst ein Name sind; sonst steht der Grund weiter
-  // innen schon da.
-  if not AWhole and (ANode.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.ParenExpr]) then
-  begin
-    Exit;
-  end;
-  Conversion.Expression := Short(ANode);
-  Conversion.FromType := AOperand.Name;
-  Conversion.ToType := AResult.Name;
-  FConversions := FConversions + [Conversion];
 end;
 
 procedure TExpressionTypes.NoteArguments(ANode: TSyntaxNode; const ARoutine: TResolvedSymbol);
@@ -1326,41 +1758,18 @@ end;
 
 function TExpressionTypes.TypeUnary(ANode: TSyntaxNode): TTyped;
 var
-  Operand: TTyped;
+  mOperand: TTyped;
 begin
   Result := Default(TTyped);
-  if ANode.ChildCount <> 1 then
+  if ANode.ChildCount = 1 then
   begin
-    Exit;
-  end;
-  Operand := TypeNode(ANode[0]);
-  if not Operand.Known then
-  begin
-    Exit(Operand);
-  end;
-  if ANode.Name = '@' then
-  begin
-    Exit(Typed('Pointer'));
-  end;
-  if SameText(ANode.Name, 'not') then
-  begin
-    if not (Operand.Category in [TExpressionCategory.Boolean_, TExpressionCategory.Integer_,
-      TExpressionCategory.Variant_]) then
+    mOperand := TypeNode(ANode[0]);
+    Result := mOperand;
+    if mOperand.Known then
     begin
-      Exit(Failed(TExpressionErrorKind.OperatorMismatch, 'not||' + Operand.Name));
+      Result := UnaryResult(ANode.Name, mOperand);
     end;
-    Exit(Operand);
   end;
-  if not (IsNumeric(Operand) or (Operand.Category = TExpressionCategory.Variant_)) then
-  begin
-    Exit(Failed(TExpressionErrorKind.OperatorMismatch, ANode.Name + '||' + Operand.Name));
-  end;
-  // -Byte rechnet als Integer.
-  if (Operand.Category = TExpressionCategory.Integer_) and (Operand.Width < 4) then
-  begin
-    Exit(Typed('Integer'));
-  end;
-  Result := Operand;
 end;
 
 function TExpressionTypes.TypeSet(ANode: TSyntaxNode): TTyped;
@@ -1391,203 +1800,20 @@ begin
   Result.Category := TExpressionCategory.Set_;
 end;
 
-function TExpressionTypes.TypeAnonymous(ANode: TSyntaxNode): TTyped;
-var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth: Integer;
-  Header: string;
+function TExpressionTypes.BinaryOperands(ANode: TSyntaxNode; out ALeft, ARight: Int64): Boolean;
 begin
-  // Kopf bis zum ersten begin bzw. Deklarationsabschnitt außerhalb der Klammern.
-  Tokens := FTree.Tokens;
-  Header := '';
-  Depth := 0;
-  for Index := TSyntaxTree.FirstTokenOf(Tokens, ANode.StartOffset) to High(Tokens) do
-  begin
-    if Tokens[Index].Offset < ANode.StartOffset then
-    begin
-      Continue;
-    end;
-    if Tokens[Index].Offset >= ANode.EndOffset then
-    begin
-      Break;
-    end;
-    if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Continue;
-    end;
-    if Tokens[Index].IsSymbol('(') then
-    begin
-      Inc(Depth);
-    end
-    else if Tokens[Index].IsSymbol(')') then
-    begin
-      Dec(Depth);
-    end;
-    if (Depth = 0) and (Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('var') or
-      Tokens[Index].IsKeyword('const') or Tokens[Index].IsKeyword('type') or Tokens[Index].IsKeyword('label')) then
-    begin
-      Break;
-    end;
-    if (Header <> '') and not Tokens[Index].IsSymbol('(') and not Tokens[Index].IsSymbol(')') and
-      not Tokens[Index].IsSymbol(',') and not Tokens[Index].IsSymbol(';') and not Tokens[Index].IsSymbol(':') and
-      not EndsStr('(', Header) then
-    begin
-      Header := Header + ' ';
-    end;
-    if Tokens[Index].IsSymbol(':') or Tokens[Index].IsSymbol(',') or Tokens[Index].IsSymbol(';') then
-    begin
-      Header := Header + Tokens[Index].Text + ' ';
-    end
-    else
-    begin
-      Header := Header + Tokens[Index].Text;
-    end;
-  end;
-  Header := StringReplace(Trim(Header), '  ', ' ', [rfReplaceAll]);
-  Result := Typed('reference to ' + Header);
-end;
-
-function TExpressionTypes.FieldSize(const ATypeText: string; out ASize, AAlign: Integer): Boolean;
-var
-  Lowest, Highest: Int64;
-  HighKnown: Boolean;
-  Name: string;
-begin
-  Name := Trim(ATypeText);
-  if SameText(Name, 'Double') or SameText(Name, 'Int64') or SameText(Name, 'UInt64') or
-    SameText(Name, 'Currency') or SameText(Name, 'Comp') then
-  begin
-    ASize := 8;
-    AAlign := 8;
-    Exit(True);
-  end;
-  if SameText(Name, 'Single') then
-  begin
-    ASize := 4;
-    AAlign := 4;
-    Exit(True);
-  end;
-  if TOrdinalConstants.FixedType(Name, Lowest, Highest, HighKnown, ASize) then
-  begin
-    AAlign := ASize;
-    Exit(True);
-  end;
-  Result := RecordSize(Name, ASize, AAlign);
-end;
-
-function TExpressionTypes.RecordSize(const ATypeName: string; out ASize, AAlign: Integer): Boolean;
-var
-  Decl, Body: TSyntaxNode;
-  IsPacked, Failed_: Boolean;
-  Size, Align: Integer;
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-
-  procedure AddFields(AParent: TSyntaxNode);
-  var
-    Child, TypeRef: TSyntaxNode;
-    Names: TArray<string>;
-    FieldBytes, FieldAlign, Count, ChildIndex: Integer;
-  begin
-    for ChildIndex := 0 to AParent.ChildCount - 1 do
-    begin
-      Child := AParent[ChildIndex];
-      if Failed_ then
-      begin
-        Exit;
-      end;
-      case Child.Kind of
-        TSyntaxKind.Visibility:
-          AddFields(Child);
-        TSyntaxKind.Field:
-          begin
-            TypeRef := Child.FindChild(TSyntaxKind.TypeReference);
-            if (TypeRef = nil) or (FDepth > MaxDepth) then
-            begin
-              Failed_ := True;
-              Exit;
-            end;
-            Inc(FDepth);
-            try
-              if not FieldSize(TIndexExtractor.TypeText(TypeRef), FieldBytes, FieldAlign) then
-              begin
-                Failed_ := True;
-                Exit;
-              end;
-            finally
-              Dec(FDepth);
-            end;
-            Names := Child.Name.Split([',']);
-            for Count := 1 to Length(Names) do
-            begin
-              if IsPacked then
-              begin
-                FieldAlign := 1;
-              end;
-              if (FieldAlign > 1) and (Size mod FieldAlign <> 0) then
-              begin
-                Inc(Size, FieldAlign - Size mod FieldAlign);
-              end;
-              Inc(Size, FieldBytes);
-              Align := Max(Align, FieldAlign);
-            end;
-          end;
-        TSyntaxKind.VariantPart:
-          Failed_ := True;
-      else
-        // Übrige Arten: nichts zu tun.
-      end;
-    end;
-  end;
-
-begin
-  Result := False;
-  ASize := 0;
-  AAlign := 1;
-  Decl := FindRecord(FTree.Root, ATypeName);
-  if Decl = nil then
-  begin
-    Exit;
-  end;
-  Body := Decl.FindChild(TSyntaxKind.RecordType);
-  // packed record: das Token vor record.
-  IsPacked := False;
-  Tokens := FTree.Tokens;
-  for Index := 1 to High(Tokens) do
-  begin
-    if (Tokens[Index].Offset >= Body.StartOffset) and Tokens[Index].IsKeyword('record') then
-    begin
-      IsPacked := (Index > 0) and Tokens[Index - 1].IsKeyword('packed');
-      Break;
-    end;
-  end;
-  Size := 0;
-  Align := 1;
-  Failed_ := False;
-  AddFields(Body);
-  if Failed_ or (Size = 0) then
-  begin
-    Exit;
-  end;
-  if not IsPacked and (Size mod Align <> 0) then
-  begin
-    Inc(Size, Align - Size mod Align);
-  end;
-  ASize := Size;
-  AAlign := Align;
-  if IsPacked then
-  begin
-    AAlign := 1;
-  end;
-  Result := True;
+  ALeft := 0;
+  ARight := 0;
+  Result := (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.ChildCount = 2) and
+    MatchStr(LowerCase(ANode.Name), cArithmeticOperators) and Evaluate(ANode[0], ALeft) and
+    Evaluate(ANode[1], ARight);
 end;
 
 function TExpressionTypes.Evaluate(ANode: TSyntaxNode; out AValue: Int64): Boolean;
 var
-  Values: TConstantValues;
-  Left, Right: Int64;
-  Size, Align: Integer;
-  Operator: string;
+  mValues: TConstantValues;
+  mLeft, mRight: Int64;
+  mSize: Integer;
 begin
   Result := False;
   AValue := 0;
@@ -1597,92 +1823,72 @@ begin
   end;
   Inc(FDepth);
   try
-    // SizeOf eines Records derselben Unit.
-    if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and
-      SameText(ANode[0].Name, 'SizeOf') and (ANode[1].Kind = TSyntaxKind.Identifier) and
-      RecordSize(ANode[1].Name, Size, Align) then
+    if IsSizeOfCall(ANode) and TRecordSizes.Measure(FTree, FDepth, ANode[1].Name, mSize) then
     begin
-      AValue := Size;
-      Exit(True);
-    end;
-    if (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) then
+      // SizeOf eines Records derselben Unit.
+      AValue := mSize;
+      Result := True;
+    end
+    else if (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) then
     begin
-      Exit(Evaluate(ANode[0], AValue));
-    end;
-    if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.ChildCount = 2) then
+      Result := Evaluate(ANode[0], AValue);
+    end
+    else if BinaryOperands(ANode, mLeft, mRight) then
     begin
-      Operator := LowerCase(ANode.Name);
-      if MatchStr(Operator, ['+', '-', '*', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']) and
-        Evaluate(ANode[0], Left) and Evaluate(ANode[1], Right) then
-      begin
-        try
-          if Operator = '+' then
-          begin
-            AValue := Left + Right;
-          end
-          else if Operator = '-' then
-          begin
-            AValue := Left - Right;
-          end
-          else if Operator = '*' then
-          begin
-            AValue := Left * Right;
-          end
-          else if (Operator = 'div') and (Right <> 0) then
-          begin
-            AValue := Left div Right;
-          end
-          else if (Operator = 'mod') and (Right <> 0) then
-          begin
-            AValue := Left mod Right;
-          end
-          else if Operator = 'shl' then
-          begin
-            AValue := Left shl Right;
-          end
-          else if Operator = 'shr' then
-          begin
-            AValue := Left shr Right;
-          end
-          else if Operator = 'and' then
-          begin
-            AValue := Left and Right;
-          end
-          else if Operator = 'or' then
-          begin
-            AValue := Left or Right;
-          end
-          else if Operator = 'xor' then
-          begin
-            AValue := Left xor Right;
-          end
-          else
-          begin
-            Exit(False);
-          end;
-        except
-          on EIntOverflow do
-            Exit(False);
-        end;
-        Exit(True);
+      Result := Arithmetic(LowerCase(ANode.Name), mLeft, mRight, AValue);
+    end
+    else
+    begin
+      mValues := TConstantValues.Create(FTree, FFileName, FIndex, FResolver);
+      try
+        Result := mValues.EvaluateNode(ANode, AValue);
+      finally
+        mValues.Free;
       end;
-    end;
-    Values := TConstantValues.Create(FTree, FFileName, FIndex, FResolver);
-    try
-      Result := Values.EvaluateNode(ANode, AValue);
-    finally
-      Values.Free;
     end;
   finally
     Dec(FDepth);
   end;
 end;
 
+procedure TExpressionTypes.DescribeFound(ANode: TSyntaxNode; const AFound: TTyped; var AInfo: TExpressionTypeInfo);
+var
+  mSaved: TArray<TExpressionConversion>;
+  mTarget: TTyped;
+  mValue: Int64;
+begin
+  AInfo.TypeName := AFound.Name;
+  AInfo.BaseName := AFound.Base;
+  SetTypeLocation(AFound.Symbol, AInfo);
+  // Rechte Seite einer Zuweisung: Umwandlung in den Typ des Ziels (Variant → string).
+  if FOptions.Conversions and IsAssignedValue(ANode) then
+  begin
+    mSaved := FConversions;
+    mTarget := TypeNode(ANode.Parent[0]);
+    FConversions := mSaved;
+    if mTarget.Known then
+    begin
+      NoteOperand(ANode, AFound, mTarget, True);
+    end;
+  end;
+  AInfo.Conversions := FConversions;
+  AInfo.Overload := FOverload;
+  // Wert nur für Rechnungen und Namen, nicht für das Literal selbst.
+  if FOptions.ConstValue and (ANode.Kind <> TSyntaxKind.Literal) and
+    (AFound.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) then
+  begin
+    FDepth := 0;
+    AInfo.HasValue := Evaluate(ANode, mValue);
+    if AInfo.HasValue then
+    begin
+      AInfo.Value := mValue;
+    end;
+  end;
+end;
+
 function TExpressionTypes.Describe(ANode: TSyntaxNode): TExpressionTypeInfo;
 var
-  Found, Target: TTyped;
-  Saved: TArray<TExpressionConversion>;
-  Value: Int64;
+  mFound: TTyped;
 begin
   Result := Default(TExpressionTypeInfo);
   if ANode = nil then
@@ -1694,54 +1900,15 @@ begin
   FOverload := '';
   FDepth := 0;
   Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-  Result.Expression := Short(ANode);
-  Found := TypeNode(ANode);
-  if not Found.Known then
+  Result.Expression := ShortText(FText, ANode);
+  mFound := TypeNode(ANode);
+  if mFound.Known then
   begin
-    Result.Error := Found.Error;
-    if Result.Error = TExpressionErrorKind.None then
-    begin
-      Result.Error := TExpressionErrorKind.Unknown;
-    end;
-    Result.ErrorDetail := Found.ErrorDetail;
-    if Result.ErrorDetail = '' then
-    begin
-      Result.ErrorDetail := Result.Expression;
-    end;
-    Exit;
-  end;
-  Result.TypeName := Found.Name;
-  Result.BaseName := Found.Base;
-  if (Found.Symbol.Name <> '') and not Found.Symbol.Builtin and (Found.Symbol.FileName <> '') then
+    DescribeFound(ANode, mFound, Result);
+  end
+  else
   begin
-    Result.TypeFile := Found.Symbol.FileName;
-    Result.TypeLine := Found.Symbol.SelectionRange.StartPos.Line;
-    Result.TypeCharacter := Found.Symbol.SelectionRange.StartPos.Character;
-  end;
-  // Rechte Seite einer Zuweisung: Umwandlung in den Typ des Ziels (Variant → string).
-  if FOptions.Conversions and (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.AssignStatement) and
-    (ANode.Parent.ChildCount = 2) and (ANode.Parent[1] = ANode) then
-  begin
-    Saved := FConversions;
-    Target := TypeNode(ANode.Parent[0]);
-    FConversions := Saved;
-    if Target.Known then
-    begin
-      NoteOperand(ANode, Found, Target, True);
-    end;
-  end;
-  Result.Conversions := FConversions;
-  Result.Overload := FOverload;
-  // Wert nur für Rechnungen und Namen, nicht für das Literal selbst.
-  if FOptions.ConstValue and (ANode.Kind <> TSyntaxKind.Literal) and
-    (Found.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_, TExpressionCategory.Boolean_]) then
-  begin
-    FDepth := 0;
-    Result.HasValue := Evaluate(ANode, Value);
-    if Result.HasValue then
-    begin
-      Result.Value := Value;
-    end;
+    DescribeError(mFound, Result);
   end;
 end;
 

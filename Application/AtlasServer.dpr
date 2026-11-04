@@ -57,6 +57,7 @@ uses
   Shell.Composition.DiagnosticsArea in 'Source\Shell\Shell.Composition.DiagnosticsArea.pas',
   Shell.Composition.DocumentEvents in 'Source\Shell\Shell.Composition.DocumentEvents.pas',
   Shell.Composition.Protocol in 'Source\Shell\Shell.Composition.Protocol.pas',
+  Shell.Composition.Session in 'Source\Shell\Shell.Composition.Session.pas',
   Shell.Composition.Refactorings in 'Source\Shell\Shell.Composition.Refactorings.pas',
   Shell.CommandLine in 'Source\Shell\Shell.CommandLine.pas',
   Shell.Workspace in 'Source\Shell\Shell.Workspace.pas',

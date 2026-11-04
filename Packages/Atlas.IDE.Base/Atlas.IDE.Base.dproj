@@ -114,6 +114,9 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.CrashCases.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Base.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Requests.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Uris.pas"/>
@@ -636,6 +639,7 @@
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Glyphs.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Bar.pas"/>
         <DCCReference Include="Source\UI\EditorToolbar\Atlas.UI.EditorToolbar.Customize.pas"/>
+        <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.FindMethod.pas"/>
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
         <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
