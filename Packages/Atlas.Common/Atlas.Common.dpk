@@ -235,6 +235,7 @@ contains
   Atlas.Common.Lsp.ApplyEdit in 'Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas',
   Atlas.Common.Lsp.DfmPropertyRules in 'Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas',
   Atlas.Common.Lsp.ChangeSignature in 'Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas',
+  Atlas.Common.Lsp.ChangeSignature.Collector in 'Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas',
   Atlas.Common.Lsp.MoveClass in 'Source\Lsp\Atlas.Common.Lsp.MoveClass.pas',
   Atlas.Common.Lsp.UnitRename in 'Source\Lsp\Atlas.Common.Lsp.UnitRename.pas',
   Atlas.Common.Lsp.SmartPaste in 'Source\Lsp\Atlas.Common.Lsp.SmartPaste.pas',

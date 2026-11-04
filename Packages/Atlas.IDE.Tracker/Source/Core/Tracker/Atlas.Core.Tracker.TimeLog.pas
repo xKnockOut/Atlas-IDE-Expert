@@ -134,6 +134,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
+  System.Math,
+  System.StrUtils,
   Atlas.Core.Tracker.Files;
 
 const
@@ -251,11 +253,54 @@ begin
   Result.Entries := nil;
 end;
 
+/// <summary>Eintrag aus einem Element von "entries"; False bei unvollständigen Einträgen.</summary>
+function EntryOf(AItem: TJSONValue; out AEntry: TAtlasTimeEntry): Boolean;
+var
+  mObject: TJSONObject;
+  mSeconds: TJSONValue;
+begin
+  AEntry := Default(TAtlasTimeEntry);
+  Result := False;
+  if not (AItem is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mObject := TJSONObject(AItem);
+  AEntry.Issue := TAtlasTimeIssue.Create(TextOf(mObject, 'provider'), TextOf(mObject, 'url'),
+    TextOf(mObject, 'project'), TextOf(mObject, 'key'));
+  mSeconds := mObject.Values['seconds'];
+  if AEntry.Issue.IsEmpty or not (mSeconds is TJSONNumber) or not ParseDay(TextOf(mObject, 'date'), AEntry.Day) then
+  begin
+    Exit;
+  end;
+  AEntry.Seconds := TJSONNumber(mSeconds).AsInt64;
+  if AEntry.Seconds < 0 then
+  begin
+    AEntry.Seconds := 0;
+  end;
+  if not ParseTime(TextOf(mObject, 'last'), AEntry.Last) then
+  begin
+    AEntry.Last := 0;
+  end;
+  Result := True;
+end;
+
+function HasVersion(AValue: TJSONValue): Boolean;
+var
+  mVersion: TJSONValue;
+begin
+  Result := AValue is TJSONObject;
+  if Result then
+  begin
+    mVersion := TJSONObject(AValue).Values['version'];
+    Result := (mVersion is TJSONNumber) and (TJSONNumber(mVersion).AsInt = TAtlasTimeLog.Version);
+  end;
+end;
+
 class function TAtlasTimeLog.Parse(const AJson: string; out ALog: TAtlasTimeLog): Boolean;
 var
-  mValue, mItems, mItem, mSeconds, mVersion: TJSONValue;
+  mValue, mItems, mItem: TJSONValue;
   mEntry: TAtlasTimeEntry;
-  mObject: TJSONObject;
   mText: string;
 begin
   ALog := Empty;
@@ -272,51 +317,23 @@ begin
   Result := False;
   mValue := TJSONObject.ParseJSONValue(mText);
   try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mVersion := TJSONObject(mValue).Values['version'];
-    if not (mVersion is TJSONNumber) or (TJSONNumber(mVersion).AsInt <> Version) then
+    if not HasVersion(mValue) then
     begin
       Exit;
     end;
     mItems := TJSONObject(mValue).Values['entries'];
-    if (mItems <> nil) and not (mItems is TJSONArray) then
-    begin
-      Exit;
-    end;
-    Result := True;
-    if mItems = nil then
+    Result := (mItems = nil) or (mItems is TJSONArray);
+    if not (mItems is TJSONArray) then
     begin
       Exit;
     end;
     for mItem in TJSONArray(mItems) do
     begin
-      if not (mItem is TJSONObject) then
-      begin
-        Continue;
-      end;
-      mObject := TJSONObject(mItem);
-      mEntry.Issue := TAtlasTimeIssue.Create(TextOf(mObject, 'provider'), TextOf(mObject, 'url'),
-        TextOf(mObject, 'project'), TextOf(mObject, 'key'));
-      mSeconds := mObject.Values['seconds'];
       // Unvollständige Einträge fallen weg, der Rest bleibt.
-      if mEntry.Issue.IsEmpty or not (mSeconds is TJSONNumber) or
-        not ParseDay(TextOf(mObject, 'date'), mEntry.Day) then
+      if EntryOf(mItem, mEntry) then
       begin
-        Continue;
+        ALog.Entries := ALog.Entries + [mEntry];
       end;
-      mEntry.Seconds := TJSONNumber(mSeconds).AsInt64;
-      if mEntry.Seconds < 0 then
-      begin
-        mEntry.Seconds := 0;
-      end;
-      if not ParseTime(TextOf(mObject, 'last'), mEntry.Last) then
-      begin
-        mEntry.Last := 0;
-      end;
-      ALog.Entries := ALog.Entries + [mEntry];
     end;
   finally
     mValue.Free;
@@ -521,44 +538,52 @@ begin
   Prune(AIssue);
 end;
 
+/// <summary>Stelle des Issues AIssue in AOpen; -1 ohne.</summary>
+function IndexOfOpen(const AOpen: TArray<TAtlasTimeOpen>; const AIssue: TAtlasTimeIssue): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(AOpen) do
+  begin
+    if AOpen[mIndex].Issue.Same(AIssue) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>AEntry zur offenen Zeit seines Issues zählen; neues Issue hinten anfügen.</summary>
+procedure AddOpen(var AOpen: TArray<TAtlasTimeOpen>; const AEntry: TAtlasTimeEntry);
+var
+  mFound: Integer;
+  mItem: TAtlasTimeOpen;
+begin
+  mFound := IndexOfOpen(AOpen, AEntry.Issue);
+  if mFound < 0 then
+  begin
+    mItem.Issue := AEntry.Issue;
+    mItem.Seconds := 0;
+    mItem.FirstDay := AEntry.Day;
+    mItem.LastDay := AEntry.Day;
+    AOpen := AOpen + [mItem];
+    mFound := High(AOpen);
+  end;
+  Inc(AOpen[mFound].Seconds, AEntry.Seconds);
+  AOpen[mFound].FirstDay := Min(AOpen[mFound].FirstDay, AEntry.Day);
+  AOpen[mFound].LastDay := Max(AOpen[mFound].LastDay, AEntry.Day);
+end;
+
 function TAtlasTimeLog.Open: TArray<TAtlasTimeOpen>;
 var
   mEntry: TAtlasTimeEntry;
-  mIndex, mFound: Integer;
-  mItem: TAtlasTimeOpen;
 begin
   Result := nil;
   for mEntry in Entries do
   begin
-    if mEntry.Seconds <= 0 then
+    if mEntry.Seconds > 0 then
     begin
-      Continue;
-    end;
-    mFound := -1;
-    for mIndex := 0 to High(Result) do
-    begin
-      if Result[mIndex].Issue.Same(mEntry.Issue) then
-      begin
-        mFound := mIndex;
-      end;
-    end;
-    if mFound < 0 then
-    begin
-      mItem.Issue := mEntry.Issue;
-      mItem.Seconds := 0;
-      mItem.FirstDay := mEntry.Day;
-      mItem.LastDay := mEntry.Day;
-      Result := Result + [mItem];
-      mFound := High(Result);
-    end;
-    Inc(Result[mFound].Seconds, mEntry.Seconds);
-    if mEntry.Day < Result[mFound].FirstDay then
-    begin
-      Result[mFound].FirstDay := mEntry.Day;
-    end;
-    if mEntry.Day > Result[mFound].LastDay then
-    begin
-      Result[mFound].LastDay := mEntry.Day;
+      AddOpen(Result, mEntry);
     end;
   end;
   // Sort ist nicht stabil: bei gleichem Tag nach Kennung weiter.
@@ -687,88 +712,110 @@ begin
   Result := (AText <> '') and TryStrToFloat(StringReplace(AText, ',', '.', []), AValue, mFormat) and (AValue >= 0);
 end;
 
-class function TAtlasTimeRounding.ParseDuration(const AText: string; out AMinutes: Integer): Boolean;
+/// <summary>"1:30": Stunden und Minuten (0–59) um den Doppelpunkt an AColon.</summary>
+function ParseClock(const AText: string; AColon: Integer; out AMinutes: Integer): Boolean;
 var
-  mText, mNumber, mUnit: string;
-  mIndex, mColon, mHours, mRest: Integer;
-  mValue, mTotal: Double;
-  mAny: Boolean;
+  mHours, mRest: Integer;
 begin
   AMinutes := 0;
-  Result := False;
-  mText := LowerCase(Trim(AText));
-  if mText = '' then
+  Result := TryStrToInt(Trim(Copy(AText, 1, AColon - 1)), mHours) and
+    TryStrToInt(Trim(Copy(AText, AColon + 1, MaxInt)), mRest) and (mHours >= 0) and (mRest >= 0) and (mRest <= 59);
+  if Result then
   begin
-    Exit;
+    AMinutes := mHours * 60 + mRest;
   end;
+end;
+
+/// <summary>Zeichen ab AIndex, solange sie in AChars liegen (AInSet) bzw. nicht darin liegen; AIndex dahinter.
+/// </summary>
+function TakeChars(const AText: string; var AIndex: Integer; const AChars: TSysCharSet; AInSet: Boolean): string;
+begin
+  Result := '';
+  while (AIndex <= Length(AText)) and (CharInSet(AText[AIndex], AChars) = AInSet) do
+  begin
+    Result := Result + AText[AIndex];
+    Inc(AIndex);
+  end;
+end;
+
+procedure SkipSpaces(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and (AText[AIndex] = ' ') do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Minuten je Einheit: h, std, stunden 60; ohne Einheit, m, min, minuten 1.</summary>
+function UnitFactor(const AUnit: string; out AFactor: Double): Boolean;
+begin
+  AFactor := 0;
+  if MatchStr(AUnit, ['h', 'std', 'std.', 'stunde', 'stunden']) then
+  begin
+    AFactor := 60;
+  end
+  else if (AUnit = '') or MatchStr(AUnit, ['m', 'min', 'min.', 'minuten']) then
+  begin
+    AFactor := 1;
+  end;
+  Result := AFactor > 0;
+end;
+
+/// <summary>Zahl mit Einheit, mehrfach ("1h 30m", "1,5 std"); eine Zahl ohne Einheit sind Minuten.</summary>
+function ParseUnits(const AText: string; out ATotal: Double): Boolean;
+var
+  mIndex: Integer;
+  mValue, mFactor: Double;
+  mAny: Boolean;
+begin
+  ATotal := 0;
+  Result := False;
+  mAny := False;
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    SkipSpaces(AText, mIndex);
+    if mIndex > Length(AText) then
+    begin
+      Break;
+    end;
+    if not ParseNumber(TakeChars(AText, mIndex, ['0'..'9', ',', '.'], True), mValue) then
+    begin
+      Exit;
+    end;
+    SkipSpaces(AText, mIndex);
+    if not UnitFactor(TakeChars(AText, mIndex, ['0'..'9', ',', '.', ' '], False), mFactor) then
+    begin
+      Exit;
+    end;
+    ATotal := ATotal + mValue * mFactor;
+    mAny := True;
+  end;
+  Result := mAny and (ATotal <= TAtlasTimeRounding.MaxMinutes);
+end;
+
+class function TAtlasTimeRounding.ParseDuration(const AText: string; out AMinutes: Integer): Boolean;
+var
+  mText: string;
+  mColon: Integer;
+  mTotal: Double;
+begin
+  AMinutes := 0;
+  mText := LowerCase(Trim(AText));
   mColon := Pos(':', mText);
   if mColon > 0 then
   begin
-    if not TryStrToInt(Trim(Copy(mText, 1, mColon - 1)), mHours) or
-      not TryStrToInt(Trim(Copy(mText, mColon + 1, MaxInt)), mRest) or (mHours < 0) or (mRest < 0) or
-      (mRest > 59) then
-    begin
-      Exit;
-    end;
-    AMinutes := mHours * 60 + mRest;
+    Result := ParseClock(mText, mColon, AMinutes);
   end
   else
   begin
-    // Zahl mit Einheit (h, std, stunden; m, min, minuten), mehrfach; eine Zahl ohne Einheit sind Minuten.
-    mTotal := 0;
-    mAny := False;
-    mIndex := 1;
-    while mIndex <= Length(mText) do
+    Result := ParseUnits(mText, mTotal);
+    if Result then
     begin
-      while (mIndex <= Length(mText)) and (mText[mIndex] = ' ') do
-      begin
-        Inc(mIndex);
-      end;
-      if mIndex > Length(mText) then
-      begin
-        Break;
-      end;
-      mNumber := '';
-      while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], ['0'..'9', ',', '.']) do
-      begin
-        mNumber := mNumber + mText[mIndex];
-        Inc(mIndex);
-      end;
-      if not ParseNumber(mNumber, mValue) then
-      begin
-        Exit;
-      end;
-      while (mIndex <= Length(mText)) and (mText[mIndex] = ' ') do
-      begin
-        Inc(mIndex);
-      end;
-      mUnit := '';
-      while (mIndex <= Length(mText)) and not CharInSet(mText[mIndex], ['0'..'9', ',', '.', ' ']) do
-      begin
-        mUnit := mUnit + mText[mIndex];
-        Inc(mIndex);
-      end;
-      if (mUnit = 'h') or (mUnit = 'std') or (mUnit = 'std.') or (mUnit = 'stunde') or (mUnit = 'stunden') then
-      begin
-        mTotal := mTotal + mValue * 60;
-      end
-      else if (mUnit = '') or (mUnit = 'm') or (mUnit = 'min') or (mUnit = 'min.') or (mUnit = 'minuten') then
-      begin
-        mTotal := mTotal + mValue;
-      end
-      else
-      begin
-        Exit;
-      end;
-      mAny := True;
+      AMinutes := Trunc(mTotal + 0.5);
     end;
-    if not mAny or (mTotal > MaxMinutes) then
-    begin
-      Exit;
-    end;
-    AMinutes := Trunc(mTotal + 0.5);
   end;
-  Result := (AMinutes > 0) and (AMinutes <= MaxMinutes);
+  Result := Result and (AMinutes > 0) and (AMinutes <= MaxMinutes);
   if not Result then
   begin
     AMinutes := 0;

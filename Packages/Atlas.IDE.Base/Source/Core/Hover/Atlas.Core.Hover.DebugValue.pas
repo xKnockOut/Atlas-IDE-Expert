@@ -169,141 +169,196 @@ begin
   Result := MatchText(AWord, ReservedWords);
 end;
 
+type
+  /// <summary>Lesezustand beim Gang durch eine Zeile.</summary>
+  TLineState = (lsCode, lsString, lsBrace, lsParen, lsLineComment);
+
+function NextIs(const ALine: string; AIndex: Integer; AChar: Char): Boolean;
+begin
+  Result := (AIndex < Length(ALine)) and (ALine[AIndex + 1] = AChar);
+end;
+
+/// <summary>Zustand nach dem Zeichen AIndex im Code; überspringt das zweite Zeichen von „(*“.</summary>
+function CodeState(const ALine: string; var AIndex: Integer): TLineState;
+begin
+  Result := lsCode;
+  case ALine[AIndex] of
+    '''':
+      Result := lsString;
+    '{':
+      Result := lsBrace;
+    '(':
+      if NextIs(ALine, AIndex, '*') then
+      begin
+        Result := lsParen;
+        Inc(AIndex);
+      end;
+    '/':
+      if NextIs(ALine, AIndex, '/') then
+      begin
+        Result := lsLineComment;
+      end;
+  end;
+end;
+
+function StepState(const ALine: string; var AIndex: Integer; AState: TLineState): TLineState;
+begin
+  Result := AState;
+  case AState of
+    lsCode:
+      Result := CodeState(ALine, AIndex);
+    lsString:
+      if ALine[AIndex] = '''' then
+      begin
+        Result := lsCode;
+      end;
+    lsBrace:
+      if ALine[AIndex] = '}' then
+      begin
+        Result := lsCode;
+      end;
+    lsParen:
+      if (ALine[AIndex] = '*') and NextIs(ALine, AIndex, ')') then
+      begin
+        Result := lsCode;
+        Inc(AIndex);
+      end;
+    lsLineComment:
+      Result := lsLineComment;
+  end;
+end;
+
 class function TAtlasDebugExpression.InStringOrComment(const ALine: string; AIndex: Integer): Boolean;
 var
-  Index: Integer;
-  InString, InBrace, InParen: Boolean;
+  mIndex: Integer;
+  mState: TLineState;
 begin
   // Zustand am Anfang der Zeile: außerhalb; mehrzeilige Kommentare davor kennt die Zeile nicht.
-  InString := False;
-  InBrace := False;
-  InParen := False;
-  Index := 1;
-  while (Index <= AIndex) and (Index <= Length(ALine)) do
+  mState := lsCode;
+  mIndex := 1;
+  while (mIndex <= AIndex) and (mIndex <= Length(ALine)) and (mState <> lsLineComment) do
   begin
-    if InString then
+    mState := StepState(ALine, mIndex, mState);
+    Inc(mIndex);
+  end;
+  Result := mState <> lsCode;
+end;
+
+/// <summary>Von „]“ an APos (1-basiert) zur passenden öffnenden Klammer und davor; False bei Klammern oder
+/// Strings darin (Aufruf) oder ohne passende Klammer.</summary>
+function SkipIndexBrackets(const ALine: string; var APos: Integer): Boolean;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  repeat
+    case ALine[APos] of
+      ']':
+        Inc(mDepth);
+      '[':
+        Dec(mDepth);
+      '(', ')', '''':
+        Exit(False);
+    end;
+    Dec(APos);
+  until (mDepth = 0) or (APos = 0);
+  Result := mDepth = 0;
+end;
+
+/// <summary>„^“ und „[…]“ links von APos überspringen; False, wenn nicht auszuwerten.</summary>
+function SkipDerefAndIndex(const ALine: string; var APos: Integer): Boolean;
+begin
+  Result := True;
+  while Result and (APos > 0) and CharInSet(ALine[APos], ['^', ']']) do
+  begin
+    if ALine[APos] = '^' then
     begin
-      InString := ALine[Index] <> '''';
-    end
-    else if InBrace then
-    begin
-      InBrace := ALine[Index] <> '}';
-    end
-    else if InParen then
-    begin
-      if (ALine[Index] = '*') and (Index < Length(ALine)) and (ALine[Index + 1] = ')') then
-      begin
-        InParen := False;
-        Inc(Index);
-      end;
+      Dec(APos);
     end
     else
-      case ALine[Index] of
-        '''':
-          InString := True;
-        '{':
-          InBrace := True;
-        '(':
-          if (Index < Length(ALine)) and (ALine[Index + 1] = '*') then
-          begin
-            InParen := True;
-            Inc(Index);
-          end;
-        '/':
-          if (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
-          begin
-            Exit(True);
-          end;
-      end;
-    Inc(Index);
+    begin
+      Result := SkipIndexBrackets(ALine, APos);
+    end;
   end;
-  Result := InString or InBrace or InParen;
+end;
+
+/// <summary>Name des Qualifizierers, der an APos (1-basiert) endet; AStart ist der Index vor ihm (vor einem &amp;).
+/// False: nicht auswerten (Klammer vor dem Punkt, reserviertes Wort, Zahl).</summary>
+function QualifierStart(const ALine: string; APos: Integer; out AStart: Integer): Boolean;
+var
+  mNameStart: Integer;
+  mName: string;
+begin
+  AStart := 0;
+  // Klammer vor dem Punkt: Aufruf oder Typumwandlung, nicht auswerten (auch nicht nur den Rest).
+  if (APos = 0) or not IsIdentifierChar(ALine[APos]) then
+  begin
+    Exit(False);
+  end;
+  mNameStart := APos;
+  while (mNameStart > 1) and IsIdentifierChar(ALine[mNameStart - 1]) do
+  begin
+    Dec(mNameStart);
+  end;
+  mName := Copy(ALine, mNameStart, APos - mNameStart + 1);
+  AStart := mNameStart - 1;
+  if (AStart > 0) and (ALine[AStart] = '&') then
+  begin
+    Dec(AStart);
+  end
+  else if TAtlasDebugExpression.IsReserved(mName) then
+  begin
+    Exit(False);
+  end;
+  Result := not CharInSet(mName[1], ['0'..'9']);
+end;
+
+/// <summary>Qualifizierer links von AStart: „Name.“, „Name[…].“, „Name^.“; AExpressionStart ist der 1-basierte
+/// Index vor dem ganzen Ausdruck. False: nicht auswerten.</summary>
+function ExpressionStart(const ALine: string; AStart: Integer; out AExpressionStart: Integer): Boolean;
+var
+  mPos: Integer;
+begin
+  AExpressionStart := AStart;
+  Result := True;
+  while Result and (AExpressionStart > 0) and (ALine[AExpressionStart] = '.') do
+  begin
+    mPos := AExpressionStart - 1;
+    // Bereich „0..Count“: kein Qualifizierer.
+    if (mPos > 0) and (ALine[mPos] = '.') then
+    begin
+      Break;
+    end;
+    Result := SkipDerefAndIndex(ALine, mPos) and QualifierStart(ALine, mPos, AExpressionStart);
+  end;
 end;
 
 class function TAtlasDebugExpression.At(const ALine: string; AStart, AStop: Integer): string;
 var
-  Word, Name: string;
-  Start, Pos, Depth, NameStart: Integer;
+  mWord: string;
+  mStart, mExpressionStart: Integer;
 begin
   Result := '';
   if (AStart < 0) or (AStop <= AStart) or (AStop > Length(ALine)) then
   begin
     Exit;
   end;
-  Word := Copy(ALine, AStart + 1, AStop - AStart);
+  mWord := Copy(ALine, AStart + 1, AStop - AStart);
   // Escapter Bezeichner (&Type) zählt mit dem & und ist kein reserviertes Wort.
-  Start := AStart;
-  if (Start > 0) and (ALine[Start] = '&') then
+  mStart := AStart;
+  if (mStart > 0) and (ALine[mStart] = '&') then
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  if CharInSet(Word[1], ['0'..'9']) or ((Start = AStart) and IsReserved(Word)) or
+  if CharInSet(mWord[1], ['0'..'9']) or ((mStart = AStart) and IsReserved(mWord)) or
     InStringOrComment(ALine, AStart) then
   begin
     Exit;
   end;
-  // Qualifizierer links davon: „Name.“, „Name[…].“, „Name^.“; Pos ist der 1-basierte Index vor Start.
-  while (Start > 0) and (ALine[Start] = '.') do
+  if ExpressionStart(ALine, mStart, mExpressionStart) then
   begin
-    Pos := Start - 1;
-    // Bereich „0..Count“: kein Qualifizierer.
-    if (Pos > 0) and (ALine[Pos] = '.') then
-    begin
-      Break;
-    end;
-    while (Pos > 0) and CharInSet(ALine[Pos], ['^', ']']) do
-    begin
-      if ALine[Pos] = '^' then
-      begin
-        Dec(Pos);
-      end
-      else
-      begin
-        // Passende öffnende Klammer; Klammern darin hießen Aufruf.
-        Depth := 0;
-        repeat
-          case ALine[Pos] of
-            ']':
-              Inc(Depth);
-            '[':
-              Dec(Depth);
-            '(', ')', '''':
-              Exit('');
-          end;
-          Dec(Pos);
-        until (Depth = 0) or (Pos = 0);
-        if Depth <> 0 then
-        begin
-          Exit('');
-        end;
-      end;
-    end;
-    // Klammer vor dem Punkt: Aufruf oder Typumwandlung, nicht auswerten (auch nicht nur den Rest).
-    if (Pos = 0) or not IsIdentifierChar(ALine[Pos]) then
-    begin
-      Exit('');
-    end;
-    NameStart := Pos;
-    while (NameStart > 1) and IsIdentifierChar(ALine[NameStart - 1]) do
-    begin
-      Dec(NameStart);
-    end;
-    Name := Copy(ALine, NameStart, Pos - NameStart + 1);
-    Start := NameStart - 1;
-    if (Start > 0) and (ALine[Start] = '&') then
-    begin
-      Dec(Start);
-    end
-    else if IsReserved(Name) then
-    begin
-      Exit('');
-    end;
-    if CharInSet(Name[1], ['0'..'9']) then
-    begin
-      Exit('');
-    end;
+    Result := Copy(ALine, mExpressionStart + 1, AStop - mExpressionStart);
   end;
-  Result := Copy(ALine, Start + 1, AStop - Start);
 end;
 
 class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;

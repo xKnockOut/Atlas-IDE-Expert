@@ -137,120 +137,133 @@ begin
   end;
 end;
 
+/// <summary>Familie aus dem Namen des Linktyps; ohne bekannten Namen bei AAggregation Subtask.</summary>
+function FamilyByName(const AName: string; AAggregation: Boolean): TFamily;
+begin
+  Result := TFamily.None;
+  if IsOneOf(AName, DependNames) then
+  begin
+    Result := TFamily.Depend;
+  end
+  else if IsOneOf(AName, SubtaskNames) then
+  begin
+    Result := TFamily.Subtask;
+  end
+  else if IsOneOf(AName, DuplicateNames) then
+  begin
+    Result := TFamily.Duplicate;
+  end
+  else if IsOneOf(AName, RelatesNames) then
+  begin
+    Result := TFamily.Relates;
+  end
+  else if AAggregation then
+  begin
+    Result := TFamily.Subtask;
+  end;
+end;
+
+/// <summary>Eine der Beschriftungen gehört zu ASource bzw. ATarget, auf welcher Seite auch immer.</summary>
+function EitherSide(const ASourceToTarget, ATargetToSource: string; const ASource, ATarget: array of string):
+  Boolean;
+begin
+  Result := IsOneOf(ASourceToTarget, ASource) or IsOneOf(ATargetToSource, ATarget) or
+    IsOneOf(ASourceToTarget, ATarget) or IsOneOf(ATargetToSource, ASource);
+end;
+
+/// <summary>Familie aus den Beschriftungen (eigene Linktypen).</summary>
+function FamilyByPhrases(const ASourceToTarget, ATargetToSource: string): TFamily;
+begin
+  Result := TFamily.None;
+  if EitherSide(ASourceToTarget, ATargetToSource, DependSource, DependTarget) then
+  begin
+    Result := TFamily.Depend;
+  end
+  else if EitherSide(ASourceToTarget, ATargetToSource, SubtaskSource, SubtaskTarget) then
+  begin
+    Result := TFamily.Subtask;
+  end
+  else if EitherSide(ASourceToTarget, ATargetToSource, DuplicateSource, DuplicateTarget) then
+  begin
+    Result := TFamily.Duplicate;
+  end
+  else if IsOneOf(ASourceToTarget, RelatesPhrases) or IsOneOf(ATargetToSource, RelatesPhrases) then
+  begin
+    Result := TFamily.Relates;
+  end;
+end;
+
+/// <summary>Eigener Typ mit vertauschten Beschriftungen ("depends on" auf der Seite der Quelle).</summary>
+function Reversed(AFamily: TFamily; const ASourceToTarget: string): Boolean;
+begin
+  Result := False;
+  case AFamily of
+    TFamily.Depend:
+      Result := IsOneOf(ASourceToTarget, DependTarget) and not IsOneOf(ASourceToTarget, DependSource);
+    TFamily.Subtask:
+      Result := IsOneOf(ASourceToTarget, SubtaskTarget) and not IsOneOf(ASourceToTarget, SubtaskSource);
+    TFamily.Duplicate:
+      Result := IsOneOf(ASourceToTarget, DuplicateTarget) and not IsOneOf(ASourceToTarget, DuplicateSource);
+    TFamily.None, TFamily.Relates: ;
+  end;
+end;
+
+/// <summary>OUTWARD und INWARD vertauscht, alles andere unverändert.</summary>
+function Flipped(const ADirection: string): string;
+begin
+  Result := ADirection;
+  if ADirection = 'OUTWARD' then
+  begin
+    Result := 'INWARD';
+  end
+  else if ADirection = 'INWARD' then
+  begin
+    Result := 'OUTWARD';
+  end;
+end;
+
+/// <summary>AInward bzw. AOutward nach der Richtung; ohne Richtung Relates.</summary>
+function Directed(const ADirection: string; AInward, AOutward: TAtlasTrackerLinkKind): TAtlasTrackerLinkKind;
+begin
+  Result := TAtlasTrackerLinkKind.Relates;
+  if ADirection = 'INWARD' then
+  begin
+    Result := AInward;
+  end
+  else if ADirection = 'OUTWARD' then
+  begin
+    Result := AOutward;
+  end;
+end;
+
 class function TAtlasTrackerLinks.YouTrackKind(const AName, ASourceToTarget, ATargetToSource, ADirection: string;
   AAggregation: Boolean): TAtlasTrackerLinkKind;
 var
   mFamily: TFamily;
-  mReversed: Boolean;
   mDirection: string;
 begin
-  mFamily := TFamily.None;
-  mReversed := False;
-  if IsOneOf(AName, DependNames) then
+  mFamily := FamilyByName(AName, AAggregation);
+  if mFamily = TFamily.None then
   begin
-    mFamily := TFamily.Depend;
-  end
-  else if IsOneOf(AName, SubtaskNames) then
-  begin
-    mFamily := TFamily.Subtask;
-  end
-  else if IsOneOf(AName, DuplicateNames) then
-  begin
-    mFamily := TFamily.Duplicate;
-  end
-  else if IsOneOf(AName, RelatesNames) then
-  begin
-    mFamily := TFamily.Relates;
-  end
-  else if AAggregation then
-  begin
-    mFamily := TFamily.Subtask;
-  end
-  else if IsOneOf(ASourceToTarget, DependSource) or IsOneOf(ATargetToSource, DependTarget) or
-    IsOneOf(ASourceToTarget, DependTarget) or IsOneOf(ATargetToSource, DependSource) then
-  begin
-    mFamily := TFamily.Depend;
-  end
-  else if IsOneOf(ASourceToTarget, SubtaskSource) or IsOneOf(ATargetToSource, SubtaskTarget) or
-    IsOneOf(ASourceToTarget, SubtaskTarget) or IsOneOf(ATargetToSource, SubtaskSource) then
-  begin
-    mFamily := TFamily.Subtask;
-  end
-  else if IsOneOf(ASourceToTarget, DuplicateSource) or IsOneOf(ATargetToSource, DuplicateTarget) or
-    IsOneOf(ASourceToTarget, DuplicateTarget) or IsOneOf(ATargetToSource, DuplicateSource) then
-  begin
-    mFamily := TFamily.Duplicate;
-  end
-  else if IsOneOf(ASourceToTarget, RelatesPhrases) or IsOneOf(ATargetToSource, RelatesPhrases) then
-  begin
-    mFamily := TFamily.Relates;
-  end;
-  // Eigener Typ mit vertauschten Beschriftungen ("depends on" auf der Seite der Quelle): Richtung umdrehen.
-  case mFamily of
-    TFamily.Depend:
-      mReversed := IsOneOf(ASourceToTarget, DependTarget) and not IsOneOf(ASourceToTarget, DependSource);
-    TFamily.Subtask:
-      mReversed := IsOneOf(ASourceToTarget, SubtaskTarget) and not IsOneOf(ASourceToTarget, SubtaskSource);
-    TFamily.Duplicate:
-      mReversed := IsOneOf(ASourceToTarget, DuplicateTarget) and not IsOneOf(ASourceToTarget, DuplicateSource);
-    TFamily.None, TFamily.Relates: ;
+    mFamily := FamilyByPhrases(ASourceToTarget, ATargetToSource);
   end;
   mDirection := UpperCase(Trim(ADirection));
-  if mReversed then
+  // Vertauschte Beschriftungen: Richtung umdrehen.
+  if Reversed(mFamily, ASourceToTarget) then
   begin
-    if mDirection = 'OUTWARD' then
-    begin
-      mDirection := 'INWARD';
-    end
-    else if mDirection = 'INWARD' then
-    begin
-      mDirection := 'OUTWARD';
-    end;
+    mDirection := Flipped(mDirection);
   end;
-  Result := TAtlasTrackerLinkKind.Other;
   case mFamily of
     TFamily.Depend:
-      if mDirection = 'INWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.DependsOn;
-      end
-      else if mDirection = 'OUTWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.Blocks;
-      end
-      else
-      begin
-        Result := TAtlasTrackerLinkKind.Relates;
-      end;
+      Result := Directed(mDirection, TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks);
     TFamily.Subtask:
-      if mDirection = 'OUTWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.Subtask;
-      end
-      else if mDirection = 'INWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.Parent;
-      end
-      else
-      begin
-        Result := TAtlasTrackerLinkKind.Relates;
-      end;
+      Result := Directed(mDirection, TAtlasTrackerLinkKind.Parent, TAtlasTrackerLinkKind.Subtask);
     TFamily.Duplicate:
-      if mDirection = 'INWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.Duplicates;
-      end
-      else if mDirection = 'OUTWARD' then
-      begin
-        Result := TAtlasTrackerLinkKind.DuplicatedBy;
-      end
-      else
-      begin
-        Result := TAtlasTrackerLinkKind.Relates;
-      end;
+      Result := Directed(mDirection, TAtlasTrackerLinkKind.Duplicates, TAtlasTrackerLinkKind.DuplicatedBy);
     TFamily.Relates:
       Result := TAtlasTrackerLinkKind.Relates;
-    TFamily.None: ;
+  else
+    Result := TAtlasTrackerLinkKind.Other;
   end;
 end;
 
@@ -367,12 +380,66 @@ begin
   end;
 end;
 
+/// <summary>Ab APos: Trenner bis zur nächsten Nummer (",", ";", "*", Leerraum, "und", "and").</summary>
+function SkipNumberSeparators(const ALine: string; APos: Integer): Integer;
+begin
+  Result := APos;
+  while Result <= Length(ALine) do
+  begin
+    if CharInSet(ALine[Result], [',', ';', '*', ' ', #9]) then
+    begin
+      Inc(Result);
+    end
+    else if SameText(Copy(ALine, Result, 4), 'und ') or SameText(Copy(ALine, Result, 4), 'and ') then
+    begin
+      Inc(Result, 4);
+    end
+    else
+    begin
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>Nummer nach dem "#" ab APos; APos dahinter. False ohne Nummer und bei "#12a" bzw. "#12-…" (Anker,
+/// Kennungen anderer Art).</summary>
+function ReadNumber(const ALine: string; var APos: Integer; out ANumber: Integer): Boolean;
+var
+  mFrom: Integer;
+begin
+  mFrom := APos;
+  while (APos <= Length(ALine)) and CharInSet(ALine[APos], ['0'..'9']) do
+  begin
+    Inc(APos);
+  end;
+  Result := (APos > mFrom) and TryStrToInt(Copy(ALine, mFrom, APos - mFrom), ANumber) and (ANumber > 0) and
+    not ((APos <= Length(ALine)) and CharInSet(ALine[APos], ['A'..'Z', 'a'..'z', '0'..'9', '_', '-']));
+end;
+
+/// <summary>ANumber anfügen, wenn neu; False, wenn die Liste schon voll ist.</summary>
+function AddNumber(var ANumbers: TArray<Integer>; ANumber: Integer): Boolean;
+var
+  mKnown: Integer;
+begin
+  for mKnown in ANumbers do
+  begin
+    if mKnown = ANumber then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := Length(ANumbers) < TAtlasTrackerLinks.MaxTextDependencies;
+  if Result then
+  begin
+    ANumbers := ANumbers + [ANumber];
+  end;
+end;
+
 /// <summary>Ab AStart (1-basiert) in ALine: "#12, #13 und #14" lesen; Trenner davor (":", "*", "_", Leerraum)
 /// werden übersprungen.</summary>
 procedure ReadNumbers(const ALine: string; AStart: Integer; var ANumbers: TArray<Integer>);
 var
-  mPos, mFrom, mNumber, mIndex: Integer;
-  mKnown: Boolean;
+  mPos, mNumber: Integer;
 begin
   mPos := AStart;
   while (mPos <= Length(ALine)) and CharInSet(ALine[mPos], [':', '*', '_', ' ', #9]) do
@@ -382,80 +449,44 @@ begin
   while (mPos <= Length(ALine)) and (ALine[mPos] = '#') do
   begin
     Inc(mPos);
-    mFrom := mPos;
-    while (mPos <= Length(ALine)) and CharInSet(ALine[mPos], ['0'..'9']) do
-    begin
-      Inc(mPos);
-    end;
-    if (mPos = mFrom) or not TryStrToInt(Copy(ALine, mFrom, mPos - mFrom), mNumber) or (mNumber <= 0) then
+    if not ReadNumber(ALine, mPos, mNumber) or not AddNumber(ANumbers, mNumber) then
     begin
       Exit;
     end;
-    // Kein "#12a" und kein "#12-…" (Anker, Kennungen anderer Art).
-    if (mPos <= Length(ALine)) and CharInSet(ALine[mPos], ['A'..'Z', 'a'..'z', '0'..'9', '_', '-']) then
+    mPos := SkipNumberSeparators(ALine, mPos);
+  end;
+end;
+
+/// <summary>Im Fließtext: "depends on #12", nur als eigenes Wort ("independs on" zählt nicht).</summary>
+procedure ReadInline(const ALine, ALower: string; var ANumbers: TArray<Integer>);
+var
+  mPhrase: string;
+  mAt: Integer;
+begin
+  for mPhrase in InlinePhrases do
+  begin
+    mAt := Pos(mPhrase, ALower);
+    while mAt > 0 do
     begin
-      Exit;
-    end;
-    mKnown := False;
-    for mIndex := 0 to High(ANumbers) do
-    begin
-      if ANumbers[mIndex] = mNumber then
+      if (mAt = 1) or not CharInSet(ALower[mAt - 1], ['a'..'z', '0'..'9', '_']) then
       begin
-        mKnown := True;
+        ReadNumbers(ALine, mAt + Length(mPhrase), ANumbers);
       end;
-    end;
-    if not mKnown then
-    begin
-      if Length(ANumbers) >= TAtlasTrackerLinks.MaxTextDependencies then
-      begin
-        Exit;
-      end;
-      ANumbers := ANumbers + [mNumber];
-    end;
-    // Trenner bis zur nächsten Nummer: ",", ";", "*", Leerraum, "und", "and".
-    while mPos <= Length(ALine) do
-    begin
-      if CharInSet(ALine[mPos], [',', ';', '*', ' ', #9]) then
-      begin
-        Inc(mPos);
-      end
-      else if SameText(Copy(ALine, mPos, 4), 'und ') or SameText(Copy(ALine, mPos, 4), 'and ') then
-      begin
-        Inc(mPos, 4);
-      end
-      else
-      begin
-        Break;
-      end;
+      mAt := PosEx(mPhrase, ALower, mAt + Length(mPhrase));
     end;
   end;
 end;
 
 class function TAtlasTrackerLinks.TextDependencies(const AText: string): TArray<Integer>;
 var
-  mLines: TArray<string>;
-  mLine, mLower, mPhrase, mLead: string;
-  mAt, mStart: Integer;
+  mLine, mLower, mLead: string;
+  mStart: Integer;
 begin
   Result := nil;
-  mLines := AText.Replace(#13, '').Split([#10]);
-  for mLine in mLines do
+  for mLine in AText.Replace(#13, '').Split([#10]) do
   begin
     mLower := AnsiLowerCase(mLine);
-    // Im Fließtext: "depends on #12".
-    for mPhrase in InlinePhrases do
-    begin
-      mAt := Pos(mPhrase, mLower);
-      while mAt > 0 do
-      begin
-        // Nur als eigenes Wort ("independs on" zählt nicht).
-        if (mAt = 1) or not CharInSet(mLower[mAt - 1], ['a'..'z', '0'..'9', '_']) then
-        begin
-          ReadNumbers(mLine, mAt + Length(mPhrase), Result);
-        end;
-        mAt := PosEx(mPhrase, mLower, mAt + Length(mPhrase));
-      end;
-    end;
+    ReadInline(mLine, mLower, Result);
     // Am Zeilenanfang (nach Aufzählungszeichen und Fettdruck): "- **Benötigt:** #765, #1264".
     mStart := 1;
     while (mStart <= Length(mLower)) and CharInSet(mLower[mStart], [' ', #9, '-', '*', '_', '>']) do
