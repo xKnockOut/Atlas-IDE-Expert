@@ -543,163 +543,205 @@ begin
   end;
 end;
 
+function UnitFlags(const AUnit: TUnitIndex): Integer;
+begin
+  Result := 0;
+  if AUnit.Library_ then
+  begin
+    Result := Result or FlagLibrary;
+  end;
+  if AUnit.Compact then
+  begin
+    Result := Result or FlagCompact;
+  end;
+  if AUnit.HasInitialization then
+  begin
+    Result := Result or FlagInitialization;
+  end;
+  if AUnit.UsagesIndexed then
+  begin
+    Result := Result or FlagUsages;
+  end;
+end;
+
+/// <summary>Kopf einer Unit: Namen, Stempel, Flags, uses, Includes, Namenszählung und Hinweise.</summary>
+procedure WriteUnitHeader(AWriter: TCacheWriter; ATable: TStringTable; const AUnit: TUnitIndex);
+var
+  mKind: TNamingKind;
+  mStamp: Int64;
+begin
+  AWriter.WriteVar(ATable.IndexOf(AUnit.UnitName));
+  AWriter.WriteVar(ATable.IndexOf(AUnit.FileName));
+  AWriter.WriteInt(AUnit.Stamp);
+  AWriter.WriteVar(ATable.IndexOf(AUnit.Hash));
+  AWriter.WriteVar(UnitFlags(AUnit));
+  WriteList(AWriter, ATable, AUnit.InterfaceUses);
+  WriteList(AWriter, ATable, AUnit.ImplementationUses);
+  WriteList(AWriter, ATable, AUnit.Includes);
+  AWriter.WriteVar(Length(AUnit.IncludeStamps));
+  for mStamp in AUnit.IncludeStamps do
+  begin
+    AWriter.WriteInt(mStamp);
+  end;
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
+  begin
+    AWriter.WriteVar(AUnit.Naming[mKind].Total);
+    AWriter.WriteVar(AUnit.Naming[mKind].Prefixed);
+  end;
+  WriteList(AWriter, ATable, AUnit.Directives);
+  AWriter.WriteVar(ATable.IndexOf(AUnit.DeprecatedText));
+  WriteList(AWriter, ATable, AUnit.Rationale);
+end;
+
+/// <summary>Symbole und Verwendungen einer Unit, jeweils als Block mit seiner Länge davor (über ABlock gesammelt).
+/// </summary>
+procedure WriteUnitBody(AWriter, ABlock: TCacheWriter; ATable: TStringTable; const AUnit: TUnitIndex);
+var
+  mSymbol: TIndexSymbol;
+  mUsage: TIndexUsage;
+begin
+  AWriter.WriteVar(Length(AUnit.Symbols));
+  AWriter.WriteVar(Length(AUnit.Unavailable));
+  ABlock.FLength := 0;
+  for mSymbol in AUnit.Symbols do
+  begin
+    WriteSymbol(ABlock, ATable, mSymbol);
+  end;
+  for mSymbol in AUnit.Unavailable do
+  begin
+    WriteSymbol(ABlock, ATable, mSymbol);
+  end;
+  AWriter.WriteVar(ABlock.Length_);
+  AWriter.WriteBytes(ABlock.FData, 0, ABlock.Length_);
+  ABlock.FLength := 0;
+  for mUsage in AUnit.Usages do
+  begin
+    WriteUsage(ABlock, ATable, mUsage);
+  end;
+  AWriter.WriteVar(Length(AUnit.Usages));
+  AWriter.WriteVar(ABlock.Length_);
+  AWriter.WriteBytes(ABlock.FData, 0, ABlock.Length_);
+end;
+
 /// <summary>Alle Units hinter der String-Tabelle. ATable vergibt die Nummern; ein zweiter Lauf über dieselben
 /// Units findet alle Texte schon vor und schreibt dieselben Nummern.</summary>
 procedure WriteUnits(AWriter: TCacheWriter; ATable: TStringTable; const AUnits: TArray<TUnitIndex>);
 var
-  Block: TCacheWriter;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Usage: TIndexUsage;
-  Flags: Integer;
-  Kind: TNamingKind;
-  Stamp: Int64;
+  mBlock: TCacheWriter;
+  mUnit: TUnitIndex;
 begin
   if AWriter.FCounting then
   begin
-    Block := TCacheWriter.Counter;
+    mBlock := TCacheWriter.Counter;
   end
   else
   begin
-    Block := TCacheWriter.Create(64 * 1024);
+    mBlock := TCacheWriter.Create(64 * 1024);
   end;
   try
     AWriter.WriteVar(Length(AUnits));
-    for UnitIndex in AUnits do
+    for mUnit in AUnits do
     begin
-      Flags := 0;
-      if UnitIndex.Library_ then
-      begin
-        Flags := Flags or FlagLibrary;
-      end;
-      if UnitIndex.Compact then
-      begin
-        Flags := Flags or FlagCompact;
-      end;
-      if UnitIndex.HasInitialization then
-      begin
-        Flags := Flags or FlagInitialization;
-      end;
-      if UnitIndex.UsagesIndexed then
-      begin
-        Flags := Flags or FlagUsages;
-      end;
-      AWriter.WriteVar(ATable.IndexOf(UnitIndex.UnitName));
-      AWriter.WriteVar(ATable.IndexOf(UnitIndex.FileName));
-      AWriter.WriteInt(UnitIndex.Stamp);
-      AWriter.WriteVar(ATable.IndexOf(UnitIndex.Hash));
-      AWriter.WriteVar(Flags);
-      WriteList(AWriter, ATable, UnitIndex.InterfaceUses);
-      WriteList(AWriter, ATable, UnitIndex.ImplementationUses);
-      WriteList(AWriter, ATable, UnitIndex.Includes);
-      AWriter.WriteVar(Length(UnitIndex.IncludeStamps));
-      for Stamp in UnitIndex.IncludeStamps do
-      begin
-        AWriter.WriteInt(Stamp);
-      end;
-      for Kind := Low(TNamingKind) to High(TNamingKind) do
-      begin
-        AWriter.WriteVar(UnitIndex.Naming[Kind].Total);
-        AWriter.WriteVar(UnitIndex.Naming[Kind].Prefixed);
-      end;
-      WriteList(AWriter, ATable, UnitIndex.Directives);
-      AWriter.WriteVar(ATable.IndexOf(UnitIndex.DeprecatedText));
-      WriteList(AWriter, ATable, UnitIndex.Rationale);
-      AWriter.WriteVar(Length(UnitIndex.Symbols));
-      AWriter.WriteVar(Length(UnitIndex.Unavailable));
+      WriteUnitHeader(AWriter, ATable, mUnit);
       // Block erst sammeln, damit seine Länge davor stehen kann.
-      Block.FLength := 0;
-      for Symbol in UnitIndex.Symbols do
-      begin
-        WriteSymbol(Block, ATable, Symbol);
-      end;
-      for Symbol in UnitIndex.Unavailable do
-      begin
-        WriteSymbol(Block, ATable, Symbol);
-      end;
-      AWriter.WriteVar(Block.Length_);
-      AWriter.WriteBytes(Block.FData, 0, Block.Length_);
-      Block.FLength := 0;
-      for Usage in UnitIndex.Usages do
-      begin
-        WriteUsage(Block, ATable, Usage);
-      end;
-      AWriter.WriteVar(Length(UnitIndex.Usages));
-      AWriter.WriteVar(Block.Length_);
-      AWriter.WriteBytes(Block.FData, 0, Block.Length_);
+      WriteUnitBody(AWriter, mBlock, ATable, mUnit);
     end;
   finally
-    Block.Free;
+    mBlock.Free;
+  end;
+end;
+
+/// <summary>Größe der Datei: Kopf, String-Tabelle und die gezählten Units.</summary>
+function SerializedSize(ATable: TStringTable; ACounter: TCacheWriter): Int64;
+var
+  mValue: string;
+  mSize: Integer;
+begin
+  Result := Int64(Length(Magic)) + VarSize(TIndexCache.FormatVersion) + ChecksumSize +
+    VarSize(ATable.Items.Count) + ACounter.Length_;
+  for mValue in ATable.Items do
+  begin
+    mSize := TEncoding.UTF8.GetByteCount(mValue);
+    Inc(Result, VarSize(mSize) + mSize);
+  end;
+end;
+
+/// <summary>Kopf mit Platz für die Prüfsumme und die String-Tabelle; liefert die Stelle der Prüfsumme.</summary>
+function WriteHead(AOutput: TCacheWriter; ATable: TStringTable): Integer;
+var
+  mIndex: Integer;
+  mValue: string;
+  mBytes: TBytes;
+begin
+  for mIndex := Low(Magic) to High(Magic) do
+  begin
+    AOutput.WriteByte(Magic[mIndex]);
+  end;
+  AOutput.WriteVar(TIndexCache.FormatVersion);
+  // Platz für die Prüfsumme; sie wird zuletzt über alles dahinter berechnet.
+  Result := AOutput.Length_;
+  for mIndex := 1 to ChecksumSize do
+  begin
+    AOutput.WriteByte(0);
+  end;
+  AOutput.WriteVar(ATable.Items.Count);
+  for mValue in ATable.Items do
+  begin
+    mBytes := TEncoding.UTF8.GetBytes(mValue);
+    AOutput.WriteVar(Length(mBytes));
+    AOutput.WriteBytes(mBytes, 0, Length(mBytes));
+  end;
+end;
+
+procedure StoreChecksum(var AData: TBytes; AChecksumAt: Integer);
+var
+  mChecksum: Cardinal;
+  mIndex: Integer;
+begin
+  mChecksum := ChecksumOf(AData, AChecksumAt + ChecksumSize, Length(AData));
+  for mIndex := 0 to ChecksumSize - 1 do
+  begin
+    AData[AChecksumAt + mIndex] := Byte(mChecksum shr (8 * mIndex));
   end;
 end;
 
 class function TIndexCache.Serialize(const AUnits: TArray<TUnitIndex>): TBytes;
 var
-  Table: TStringTable;
-  Counter, Output: TCacheWriter;
-  MagicIndex, ChecksumAt, TextCount, Size: Integer;
-  Capacity: Int64;
-  Value: string;
-  Bytes: TBytes;
-  Checksum: Cardinal;
+  mTable: TStringTable;
+  mCounter, mOutput: TCacheWriter;
+  mChecksumAt, mTextCount: Integer;
+  mCapacity: Int64;
 begin
   // Speicher (Rückmeldung 22.10.2026, 3 GB bei acht Projekten): Früher wuchs der Rumpf in einem eigenen
   // Puffer bis auf das Doppelte, wurde hinter die Tabelle kopiert und am Ende noch einmal kopiert; das
   // kostete kurzzeitig das Vier- bis Fünffache der Datei. Jetzt zählt ein erster Lauf nur die Bytes und
   // füllt die Tabelle, der zweite schreibt in einen Puffer genau passender Größe, der ohne Kopie das
   // Ergebnis wird.
-  Table := TStringTable.Create;
-  Counter := TCacheWriter.Counter;
-  Output := nil;
+  mTable := TStringTable.Create;
+  mCounter := TCacheWriter.Counter;
+  mOutput := nil;
   try
-    WriteUnits(Counter, Table, AUnits);
-    TextCount := Table.Items.Count;
-    Capacity := Int64(Length(Magic)) + VarSize(FormatVersion) + ChecksumSize + VarSize(TextCount) +
-      Counter.Length_;
-    for Value in Table.Items do
-    begin
-      Size := TEncoding.UTF8.GetByteCount(Value);
-      Inc(Capacity, VarSize(Size) + Size);
-    end;
-    if Capacity > MaxInt then
+    WriteUnits(mCounter, mTable, AUnits);
+    mTextCount := mTable.Items.Count;
+    mCapacity := SerializedSize(mTable, mCounter);
+    if mCapacity > MaxInt then
     begin
       raise ECacheFormat.Create('Index-Cache zu groß');
     end;
-    Output := TCacheWriter.Create(Integer(Capacity));
-    for MagicIndex := Low(Magic) to High(Magic) do
-    begin
-      Output.WriteByte(Magic[MagicIndex]);
-    end;
-    Output.WriteVar(FormatVersion);
-    // Platz für die Prüfsumme; sie wird zuletzt über alles dahinter berechnet.
-    ChecksumAt := Output.Length_;
-    for MagicIndex := 1 to ChecksumSize do
-    begin
-      Output.WriteByte(0);
-    end;
-    Output.WriteVar(TextCount);
-    for Value in Table.Items do
-    begin
-      Bytes := TEncoding.UTF8.GetBytes(Value);
-      Output.WriteVar(Length(Bytes));
-      Output.WriteBytes(Bytes, 0, Length(Bytes));
-    end;
-    WriteUnits(Output, Table, AUnits);
+    mOutput := TCacheWriter.Create(Integer(mCapacity));
+    mChecksumAt := WriteHead(mOutput, mTable);
+    WriteUnits(mOutput, mTable, AUnits);
     // Beide Läufe müssen dieselben Texte in derselben Reihenfolge sehen.
-    if (Table.Items.Count <> TextCount) or (Output.Length_ <> Capacity) then
+    if (mTable.Items.Count <> mTextCount) or (mOutput.Length_ <> mCapacity) then
     begin
       raise EInvalidOpException.Create('Index-Cache: Größe weicht von der Vorabzählung ab');
     end;
-    Result := Output.TakeBytes;
-    Checksum := ChecksumOf(Result, ChecksumAt + ChecksumSize, Length(Result));
-    for MagicIndex := 0 to ChecksumSize - 1 do
-    begin
-      Result[ChecksumAt + MagicIndex] := Byte(Checksum shr (8 * MagicIndex));
-    end;
+    Result := mOutput.TakeBytes;
+    StoreChecksum(Result, mChecksumAt);
   finally
-    Output.Free;
-    Counter.Free;
-    Table.Free;
+    mOutput.Free;
+    mCounter.Free;
+    mTable.Free;
   end;
 end;
 
@@ -783,15 +825,152 @@ begin
   Result := ReadEntries(AData, Reason);
 end;
 
+function HasMagic(const AData: TBytes): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(AData) >= Length(Magic);
+  for mIndex := Low(Magic) to High(Magic) do
+  begin
+    if not Result then
+    begin
+      Break;
+    end;
+    Result := AData[mIndex] = Magic[mIndex];
+  end;
+end;
+
+/// <summary>Liest die gespeicherte Prüfsumme und vergleicht sie mit dem Rest der Datei.</summary>
+function ChecksumMatches(var AReader: TCacheReader; const AData: TBytes): Boolean;
+var
+  mStored: Cardinal;
+  mIndex: Integer;
+begin
+  if AReader.Position + ChecksumSize > AReader.Limit then
+  begin
+    Fail;
+  end;
+  mStored := 0;
+  for mIndex := ChecksumSize - 1 downto 0 do
+  begin
+    mStored := (mStored shl 8) or AData[AReader.Position + mIndex];
+  end;
+  Inc(AReader.Position, ChecksumSize);
+  Result := mStored = ChecksumOf(AData, AReader.Position, Length(AData));
+end;
+
+/// <summary>Die Länge davor und Platz dahinter prüfen; liefert die Länge.</summary>
+function ReadBlockSize(var AReader: TCacheReader): Integer;
+begin
+  Result := AReader.ReadCount;
+  if AReader.Position + Result > AReader.Limit then
+  begin
+    Fail;
+  end;
+end;
+
+function ReadStringTable(var AReader: TCacheReader; const AData: TBytes): TArray<string>;
+var
+  mIndex, mSize: Integer;
+begin
+  SetLength(Result, AReader.ReadCount);
+  for mIndex := 0 to High(Result) do
+  begin
+    mSize := ReadBlockSize(AReader);
+    Result[mIndex] := TEncoding.UTF8.GetString(AData, AReader.Position, mSize);
+    Inc(AReader.Position, mSize);
+  end;
+end;
+
+function ReadUnitHeader(var AReader: TCacheReader; const AStrings: TArray<string>): TUnitIndex;
+var
+  mFlags, mIndex: Integer;
+  mKind: TNamingKind;
+begin
+  Result := Default(TUnitIndex);
+  Result.UnitName := AReader.ReadString(AStrings);
+  Result.FileName := AReader.ReadString(AStrings);
+  Result.Stamp := AReader.ReadInt;
+  Result.Hash := AReader.ReadString(AStrings);
+  mFlags := AReader.ReadCount;
+  Result.Library_ := (mFlags and FlagLibrary) <> 0;
+  Result.Compact := (mFlags and FlagCompact) <> 0;
+  Result.HasInitialization := (mFlags and FlagInitialization) <> 0;
+  Result.UsagesIndexed := (mFlags and FlagUsages) <> 0;
+  Result.InterfaceUses := AReader.ReadList(AStrings);
+  Result.ImplementationUses := AReader.ReadList(AStrings);
+  Result.Includes := AReader.ReadList(AStrings);
+  SetLength(Result.IncludeStamps, AReader.ReadCount);
+  for mIndex := 0 to High(Result.IncludeStamps) do
+  begin
+    Result.IncludeStamps[mIndex] := AReader.ReadInt;
+  end;
+  // Zahlen, keine Längen: ReadCount begrenzte sie auf die Dateigröße.
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
+  begin
+    Result.Naming[mKind].Total := AReader.ReadNumber;
+    Result.Naming[mKind].Prefixed := AReader.ReadNumber;
+  end;
+  Result.Directives := AReader.ReadList(AStrings);
+  Result.DeprecatedText := AReader.ReadString(AStrings);
+  Result.Rationale := AReader.ReadList(AStrings);
+end;
+
+function ReadEntry(var AReader: TCacheReader; const AData: TBytes; const AStrings: TArray<string>): TIndexCacheEntry;
+var
+  mSize: Integer;
+begin
+  Result := Default(TIndexCacheEntry);
+  Result.Header := ReadUnitHeader(AReader, AStrings);
+  Result.SymbolCount := AReader.ReadCount;
+  Result.UnavailableCount := AReader.ReadCount;
+  mSize := ReadBlockSize(AReader);
+  Result.Data := AData;
+  Result.Strings := AStrings;
+  Result.SymbolOffset := AReader.Position;
+  Result.SymbolEnd := AReader.Position + mSize;
+  Inc(AReader.Position, mSize);
+  Result.UsageCount := AReader.ReadCount;
+  mSize := ReadBlockSize(AReader);
+  Result.UsageOffset := AReader.Position;
+  Result.UsageEnd := AReader.Position + mSize;
+  Inc(AReader.Position, mSize);
+  if Result.Header.FileName = '' then
+  begin
+    Fail;
+  end;
+end;
+
+/// <summary>Liest den Inhalt hinter Kopf und Version; '' in AReason, wenn alles stimmt.</summary>
+function ReadBody(var AReader: TCacheReader; const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
+var
+  mStrings: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
+  if not ChecksumMatches(AReader, AData) then
+  begin
+    AReason := 'Prüfsumme stimmt nicht';
+    Exit;
+  end;
+  mStrings := ReadStringTable(AReader, AData);
+  SetLength(Result, AReader.ReadCount);
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := ReadEntry(AReader, AData, mStrings);
+  end;
+  if AReader.Position <> AReader.Limit then
+  begin
+    Fail;
+  end;
+  AReason := '';
+end;
+
 class function TIndexCache.ReadEntries(const AData: TBytes; out AReason: string): TArray<TIndexCacheEntry>;
 var
-  Reader: TCacheReader;
-  Strings: TArray<string>;
-  Index, Count, StampIndex, Flags, Size: Integer;
-  Kind: TNamingKind;
-  Entry: TIndexCacheEntry;
-  Version: UInt64;
-  Stored: Cardinal;
+  mReader: TCacheReader;
+  mVersion: UInt64;
 begin
   Result := nil;
   AReason := '';
@@ -800,118 +979,23 @@ begin
     Exit;
   end;
   AReason := 'kein Atlas-Index (Kopf fehlt)';
-  if Length(AData) < Length(Magic) then
+  if not HasMagic(AData) then
   begin
     Exit;
   end;
-  for Index := Low(Magic) to High(Magic) do
-  begin
-    if AData[Index] <> Magic[Index] then
-    begin
-      Exit;
-    end;
-  end;
-  Reader.Data := AData;
-  Reader.Position := Length(Magic);
-  Reader.Limit := Length(AData);
+  mReader.Data := AData;
+  mReader.Position := Length(Magic);
+  mReader.Limit := Length(AData);
   try
-    Version := Reader.ReadVar;
-    if Version <> FormatVersion then
+    mVersion := mReader.ReadVar;
+    if mVersion <> FormatVersion then
     begin
-      AReason := Format('Formatversion %d statt %d', [Version, FormatVersion]);
-      Exit;
-    end;
-    // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
-    if Reader.Position + ChecksumSize > Reader.Limit then
+      AReason := Format('Formatversion %d statt %d', [mVersion, FormatVersion]);
+    end
+    else
     begin
-      Fail;
+      Result := ReadBody(mReader, AData, AReason);
     end;
-    Stored := 0;
-    for Index := ChecksumSize - 1 downto 0 do
-    begin
-      Stored := (Stored shl 8) or AData[Reader.Position + Index];
-    end;
-    Inc(Reader.Position, ChecksumSize);
-    if Stored <> ChecksumOf(AData, Reader.Position, Length(AData)) then
-    begin
-      AReason := 'Prüfsumme stimmt nicht';
-      Exit;
-    end;
-    Count := Reader.ReadCount;
-    SetLength(Strings, Count);
-    for Index := 0 to Count - 1 do
-    begin
-      Size := Reader.ReadCount;
-      if Reader.Position + Size > Reader.Limit then
-      begin
-        Fail;
-      end;
-      Strings[Index] := TEncoding.UTF8.GetString(AData, Reader.Position, Size);
-      Inc(Reader.Position, Size);
-    end;
-    Count := Reader.ReadCount;
-    SetLength(Result, Count);
-    for Index := 0 to Count - 1 do
-    begin
-      Entry := Default(TIndexCacheEntry);
-      Entry.Header.UnitName := Reader.ReadString(Strings);
-      Entry.Header.FileName := Reader.ReadString(Strings);
-      Entry.Header.Stamp := Reader.ReadInt;
-      Entry.Header.Hash := Reader.ReadString(Strings);
-      Flags := Reader.ReadCount;
-      Entry.Header.Library_ := (Flags and FlagLibrary) <> 0;
-      Entry.Header.Compact := (Flags and FlagCompact) <> 0;
-      Entry.Header.HasInitialization := (Flags and FlagInitialization) <> 0;
-      Entry.Header.UsagesIndexed := (Flags and FlagUsages) <> 0;
-      Entry.Header.InterfaceUses := Reader.ReadList(Strings);
-      Entry.Header.ImplementationUses := Reader.ReadList(Strings);
-      Entry.Header.Includes := Reader.ReadList(Strings);
-      SetLength(Entry.Header.IncludeStamps, Reader.ReadCount);
-      for StampIndex := 0 to High(Entry.Header.IncludeStamps) do
-      begin
-        Entry.Header.IncludeStamps[StampIndex] := Reader.ReadInt;
-      end;
-      // Zahlen, keine Längen: ReadCount begrenzte sie auf die Dateigröße.
-      for Kind := Low(TNamingKind) to High(TNamingKind) do
-      begin
-        Entry.Header.Naming[Kind].Total := Reader.ReadNumber;
-        Entry.Header.Naming[Kind].Prefixed := Reader.ReadNumber;
-      end;
-      Entry.Header.Directives := Reader.ReadList(Strings);
-      Entry.Header.DeprecatedText := Reader.ReadString(Strings);
-      Entry.Header.Rationale := Reader.ReadList(Strings);
-      Entry.SymbolCount := Reader.ReadCount;
-      Entry.UnavailableCount := Reader.ReadCount;
-      Size := Reader.ReadCount;
-      if Reader.Position + Size > Reader.Limit then
-      begin
-        Fail;
-      end;
-      Entry.Data := AData;
-      Entry.Strings := Strings;
-      Entry.SymbolOffset := Reader.Position;
-      Entry.SymbolEnd := Reader.Position + Size;
-      Inc(Reader.Position, Size);
-      Entry.UsageCount := Reader.ReadCount;
-      Size := Reader.ReadCount;
-      if Reader.Position + Size > Reader.Limit then
-      begin
-        Fail;
-      end;
-      Entry.UsageOffset := Reader.Position;
-      Entry.UsageEnd := Reader.Position + Size;
-      Inc(Reader.Position, Size);
-      if Entry.Header.FileName = '' then
-      begin
-        Fail;
-      end;
-      Result[Index] := Entry;
-    end;
-    if Reader.Position <> Reader.Limit then
-    begin
-      Fail;
-    end;
-    AReason := '';
   except
     on ECacheFormat do
     begin
