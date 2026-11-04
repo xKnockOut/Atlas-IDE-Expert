@@ -42,8 +42,7 @@ uses
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Builtin.SharedState,
-  Atlas.Common.Rules.Builtin.Conditions,
-  Atlas.Common.Rules.Builtin.Platform;
+  Atlas.Common.Rules.Builtin.Conditions;
 
 procedure RegisterBuiltinRules2(const ARegistry: TRuleRegistry);
 begin
@@ -76,7 +75,6 @@ begin
   RegisterFormRules(ARegistry);
   RegisterSharedStateRules(ARegistry);
   RegisterConditionRules(ARegistry);
-  RegisterPlatformRules(ARegistry);
 end;
 
 end.
