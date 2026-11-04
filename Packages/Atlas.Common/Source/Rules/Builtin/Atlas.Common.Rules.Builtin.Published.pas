@@ -392,7 +392,6 @@ begin
 end;
 
 /// <summary>Art des Typs mit Namen AName (Aliase werden bis ADepth = 8 verfolgt).</summary>
-/// <summary>Art des Typs mit Namen AName (Aliase werden bis ADepth = 8 verfolgt).</summary>
 function TPublishedScan.NamedKind(const AName: string; const AWildcards: TArray<string>; ADepth: Integer): TPublishKind;
 var
   mBare: string;
@@ -495,8 +494,6 @@ begin
   end;
 end;
 
-/// <summary>Art einer Menge über ABase ("TFarbe", "(a, b)", "0..40", "Byte"): Simple bis 4 Byte, LargeSet
-/// darüber, sonst Unknown.</summary>
 /// <summary>Art einer Menge über ABase ("TFarbe", "(a, b)", "0..40", "Byte"): Simple bis 4 Byte, LargeSet
 /// darüber, sonst Unknown.</summary>
 function TPublishedScan.SetKind(const ABase: string; ADepth: Integer): TPublishKind;
