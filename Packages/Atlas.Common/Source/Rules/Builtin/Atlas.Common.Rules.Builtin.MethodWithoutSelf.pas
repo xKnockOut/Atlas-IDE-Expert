@@ -113,16 +113,38 @@ begin
   end;
 end;
 
+/// <summary>Korrektur „als class-Methode“ für die geprüfte Datei; leer, wenn die Umformung scheitert.</summary>
+function ClassMethodFixes(const AContext: TRuleContext; const AFileName: string; const ATarget: TMethodTarget;
+  const ALookup: TMethodLookup): TArray<TRuleFix>;
+var
+  mConverted: TMethodResult;
+  mReason: string;
+  mItem: TMethodFileEdits;
+begin
+  Result := nil;
+  if not TMethodWithoutSelf.Execute(TMethodSource.Create(AFileName, AContext.Text, AContext.Tree,
+    NameOffsets(AContext.Tree, ATarget.Name)), nil, ATarget.NamePosition, TMethodConversion.ClassMethod,
+    AContext.MethodKindStatic, ALookup, AContext.Formatting, mConverted, mReason) then
+  begin
+    Exit;
+  end;
+  for mItem in mConverted.Files do
+  begin
+    if SameText(mItem.FileName, AFileName) and (mItem.Edits <> nil) then
+    begin
+      Result := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, mItem.Edits, False)];
+    end;
+  end;
+end;
+
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName, FormText, Reason: string;
+  FileName, FormText: string;
   Lookup: TMethodLookup;
   Target: TMethodTarget;
-  Converted: TMethodResult;
   Fixes: TArray<TRuleFix>;
-  Item: TMethodFileEdits;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or AContext.NoMethodKind then
   begin
@@ -144,19 +166,7 @@ begin
       end;
     for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
     begin
-      Fixes := nil;
-      if TMethodWithoutSelf.Execute(TMethodSource.Create(FileName, AContext.Text, AContext.Tree,
-        NameOffsets(AContext.Tree, Target.Name)), nil, Target.NamePosition, TMethodConversion.ClassMethod,
-        AContext.MethodKindStatic, Lookup, AContext.Formatting, Converted, Reason) then
-      begin
-        for Item in Converted.Files do
-        begin
-          if SameText(Item.FileName, FileName) and (Item.Edits <> nil) then
-          begin
-            Fixes := [TRuleFix.Create(TMethodWithoutSelf.ClassMethodTitle, Item.Edits, False)];
-          end;
-        end;
-      end;
+      Fixes := ClassMethodFixes(AContext, FileName, Target, Lookup);
       // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
       AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
         Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
