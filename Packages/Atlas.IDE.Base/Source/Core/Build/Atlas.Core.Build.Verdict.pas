@@ -86,6 +86,22 @@ type
     /// <summary>Zeitlimit der Frage nach der Basislinie; danach zählt alles.</summary>
     ClassifyTimeoutMs = 5000;
     AddTimeoutMs = 30000;
+  private type
+    /// <summary>Erste Meldungen mit Datei je Art; -1 ohne.</summary>
+    TFirsts = record
+      Error: Integer;
+      Promoted: Integer;
+      Counted: Integer;
+    end;
+  private
+    /// <summary>AIndex als AFirst merken, wenn noch keine Meldung mit Datei gemerkt ist.</summary>
+    class procedure Remember(var AFirst: Integer; AIndex: Integer; const AMessage: TAtlasCompilerMessage); static;
+    /// <summary>Zählt eine Warnung bzw. einen Hinweis außerhalb der Basislinie.</summary>
+    class procedure CountCounted(var AVerdict: TAtlasBuildVerdict; var AFirsts: TFirsts; AIndex: Integer;
+      const AMessage: TAtlasCompilerMessage; const ASettings: TAtlasBuildVerdictSettings); static;
+    /// <summary>Grund aus den Zählern; None = erfolgreich.</summary>
+    class function ReasonOf(const AVerdict: TAtlasBuildVerdict;
+      const ASettings: TAtlasBuildVerdictSettings): TAtlasBuildVerdictReason; static;
   public
     /// <summary>Codes aus einer Liste wie "W1035, h2164; W1036": groß, ohne Doppelte, nur gültige Codes von
     /// Warnungen und Hinweisen (Buchstabe W oder H, vier Ziffern).</summary>
@@ -208,90 +224,106 @@ begin
   end;
 end;
 
+class procedure TAtlasBuildVerdicts.Remember(var AFirst: Integer; AIndex: Integer;
+  const AMessage: TAtlasCompilerMessage);
+begin
+  if (AFirst < 0) and (AMessage.FileName <> '') then
+  begin
+    AFirst := AIndex;
+  end;
+end;
+
+class procedure TAtlasBuildVerdicts.CountCounted(var AVerdict: TAtlasBuildVerdict; var AFirsts: TFirsts;
+  AIndex: Integer; const AMessage: TAtlasCompilerMessage; const ASettings: TAtlasBuildVerdictSettings);
+begin
+  if AMessage.Severity = TAtlasCompilerSeverity.Warning then
+  begin
+    Inc(AVerdict.Warnings);
+  end
+  else
+  begin
+    Inc(AVerdict.Hints);
+  end;
+  Remember(AFirsts.Counted, AIndex, AMessage);
+  if IndexText(AMessage.Code, ASettings.WarningsAsErrors) < 0 then
+  begin
+    Exit;
+  end;
+  Inc(AVerdict.Promoted);
+  if AVerdict.PromotedCode = '' then
+  begin
+    AVerdict.PromotedCode := UpperCase(AMessage.Code);
+  end;
+  Remember(AFirsts.Promoted, AIndex, AMessage);
+end;
+
+class function TAtlasBuildVerdicts.ReasonOf(const AVerdict: TAtlasBuildVerdict;
+  const ASettings: TAtlasBuildVerdictSettings): TAtlasBuildVerdictReason;
+begin
+  if not AVerdict.Succeeded or (AVerdict.Errors > 0) then
+  begin
+    Result := TAtlasBuildVerdictReason.CompilerFailed;
+  end
+  else if AVerdict.Promoted > 0 then
+  begin
+    Result := TAtlasBuildVerdictReason.WarningsAsErrors;
+  end
+  else if ASettings.ZeroHints and (AVerdict.Warnings + AVerdict.Hints > 0) then
+  begin
+    Result := TAtlasBuildVerdictReason.ZeroHints;
+  end
+  else
+  begin
+    Result := TAtlasBuildVerdictReason.None;
+  end;
+end;
+
 class function TAtlasBuildVerdicts.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
   const ABaselined: TArray<Boolean>; ASucceeded: Boolean;
   const ASettings: TAtlasBuildVerdictSettings): TAtlasBuildVerdict;
 var
-  Index, FirstError, FirstPromoted, FirstCounted: Integer;
-  Message: TAtlasCompilerMessage;
+  mIndex: Integer;
+  mMessage: TAtlasCompilerMessage;
+  mFirsts: TFirsts;
 begin
   Result := Default(TAtlasBuildVerdict);
   Result.Succeeded := ASucceeded;
   Result.BaselineChecked := ABaselined <> nil;
-  FirstError := -1;
-  FirstPromoted := -1;
-  FirstCounted := -1;
-  for Index := 0 to High(AMessages) do
+  mFirsts.Error := -1;
+  mFirsts.Promoted := -1;
+  mFirsts.Counted := -1;
+  for mIndex := 0 to High(AMessages) do
   begin
-    Message := AMessages[Index];
-    case Message.Severity of
+    mMessage := AMessages[mIndex];
+    case mMessage.Severity of
       TAtlasCompilerSeverity.Error, TAtlasCompilerSeverity.Fatal:
         begin
           Inc(Result.Errors);
-          if (FirstError < 0) and (Message.FileName <> '') then
-          begin
-            FirstError := Index;
-          end;
+          Remember(mFirsts.Error, mIndex, mMessage);
         end;
       TAtlasCompilerSeverity.Warning, TAtlasCompilerSeverity.Hint:
         begin
-          if (Index <= High(ABaselined)) and ABaselined[Index] and Baselinable(Message) then
+          if (mIndex <= High(ABaselined)) and ABaselined[mIndex] and Baselinable(mMessage) then
           begin
             Inc(Result.Baselined);
-            Continue;
-          end;
-          if Message.Severity = TAtlasCompilerSeverity.Warning then
-          begin
-            Inc(Result.Warnings);
           end
           else
           begin
-            Inc(Result.Hints);
-          end;
-          if (FirstCounted < 0) and (Message.FileName <> '') then
-          begin
-            FirstCounted := Index;
-          end;
-          if IndexText(Message.Code, ASettings.WarningsAsErrors) >= 0 then
-          begin
-            Inc(Result.Promoted);
-            if Result.PromotedCode = '' then
-            begin
-              Result.PromotedCode := UpperCase(Message.Code);
-            end;
-            if (FirstPromoted < 0) and (Message.FileName <> '') then
-            begin
-              FirstPromoted := Index;
-            end;
+            CountCounted(Result, mFirsts, mIndex, mMessage, ASettings);
           end;
         end;
       TAtlasCompilerSeverity.Info: ;
     end;
   end;
-  if not ASucceeded or (Result.Errors > 0) then
-  begin
-    Result.Reason := TAtlasBuildVerdictReason.CompilerFailed;
-  end
-  else if Result.Promoted > 0 then
-  begin
-    Result.Reason := TAtlasBuildVerdictReason.WarningsAsErrors;
-  end
-  else if ASettings.ZeroHints and (Result.Warnings + Result.Hints > 0) then
-  begin
-    Result.Reason := TAtlasBuildVerdictReason.ZeroHints;
-  end
-  else
-  begin
-    Result.Reason := TAtlasBuildVerdictReason.None;
-  end;
-  Result.First := FirstError;
+  Result.Reason := ReasonOf(Result, ASettings);
+  Result.First := mFirsts.Error;
   if Result.First < 0 then
   begin
-    Result.First := FirstPromoted;
+    Result.First := mFirsts.Promoted;
   end;
   if Result.First < 0 then
   begin
-    Result.First := FirstCounted;
+    Result.First := mFirsts.Counted;
   end;
 end;
 
