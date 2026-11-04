@@ -147,11 +147,17 @@ end;
 function TAtlasTaskDefinition.BeforeBuildFor(AGlobal: TAtlasTaskBeforeBuild): TAtlasTaskBeforeBuild;
 begin
   if HasBeforeBuild then
-    Result := BeforeBuild
+  begin
+    Result := BeforeBuild;
+  end
   else if Group = TAtlasTaskGroup.Check then
-    Result := AGlobal
+  begin
+    Result := AGlobal;
+  end
   else
+  begin
     Result := TAtlasTaskBeforeBuild.Off;
+  end;
 end;
 
 function TAtlasTaskDefinition.CommandLine: string;
@@ -160,10 +166,16 @@ var
 begin
   Result := Command;
   for Arg in Args do
+  begin
     if Pos(' ', Arg) > 0 then
-      Result := Result + ' "' + Arg + '"'
+    begin
+      Result := Result + ' "' + Arg + '"';
+    end
     else
+    begin
       Result := Result + ' ' + Arg;
+    end;
+  end;
 end;
 
 { TAtlasTaskVariables }
@@ -172,7 +184,9 @@ function TAtlasTaskVariables.Expand(const AText: string): string;
 begin
   Result := AText;
   if Pos('${', Result) = 0 then
+  begin
     Exit;
+  end;
   Result := StringReplace(Result, '${projectDir}', ProjectDir, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '${groupDir}', GroupDir, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '${fileDir}', ExtractFileDir(FileName), [rfReplaceAll, rfIgnoreCase]);
@@ -189,11 +203,13 @@ var
   Group: TAtlasTaskGroup;
 begin
   for Group := Low(TAtlasTaskGroup) to High(TAtlasTaskGroup) do
+  begin
     if SameText(Trim(AText), GroupNames[Group]) then
     begin
       AGroup := Group;
       Exit(True);
     end;
+  end;
   AGroup := TAtlasTaskGroup.Other;
   Result := False;
 end;
@@ -203,11 +219,13 @@ var
   Value: TAtlasTaskBeforeBuild;
 begin
   for Value := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  begin
     if SameText(Trim(AText), BeforeBuildNames[Value]) then
     begin
       AValue := Value;
       Exit(True);
     end;
+  end;
   AValue := TAtlasTaskBeforeBuild.Off;
   Result := False;
 end;
@@ -225,15 +243,19 @@ var
   Severity: TAtlasTaskSeverity;
 begin
   for Severity := Low(TAtlasTaskSeverity) to High(TAtlasTaskSeverity) do
+  begin
     if SameText(Trim(AText), SeverityNames[Severity]) then
     begin
       ASeverity := Severity;
       Exit(True);
     end;
+  end;
   // Übliche andere Schreibweisen.
   Result := True;
   if SameText(Trim(AText), 'information') or SameText(Trim(AText), 'hint') then
-    ASeverity := TAtlasTaskSeverity.Info
+  begin
+    ASeverity := TAtlasTaskSeverity.Info;
+  end
   else
   begin
     ASeverity := TAtlasTaskSeverity.Error;
@@ -255,30 +277,46 @@ begin
   Result := 0;
   Parts := Trim(AText).Split(['+']);
   if Length(Parts) = 0 then
+  begin
     Exit;
+  end;
   Modifiers := 0;
   for Index := 0 to High(Parts) - 1 do
   begin
     Part := Trim(Parts[Index]);
     if SameText(Part, 'Ctrl') or SameText(Part, 'Strg') or SameText(Part, 'Control') then
-      Modifiers := Modifiers or CtrlBit
+    begin
+      Modifiers := Modifiers or CtrlBit;
+    end
     else if SameText(Part, 'Shift') or SameText(Part, 'Umschalt') then
-      Modifiers := Modifiers or ShiftBit
+    begin
+      Modifiers := Modifiers or ShiftBit;
+    end
     else if SameText(Part, 'Alt') then
-      Modifiers := Modifiers or AltBit
+    begin
+      Modifiers := Modifiers or AltBit;
+    end
     else
+    begin
       Exit;
+    end;
   end;
   Name := UpperCase(Trim(Parts[High(Parts)]));
   Key := 0;
   if (Length(Name) = 1) and CharInSet(Name[1], ['A'..'Z', '0'..'9']) then
-    Key := Ord(Name[1])
+  begin
+    Key := Ord(Name[1]);
+  end
   else if (Length(Name) >= 2) and (Name[1] = 'F') and TryStrToInt(Copy(Name, 2, MaxInt), Number) and
     (Number >= 1) and (Number <= 24) then
+  begin
     Key := $6F + Number;
+  end;
   // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
   if (Key = 0) or ((Modifiers and (CtrlBit or AltBit) = 0) and (Key < $70)) then
+  begin
     Exit;
+  end;
   Result := Modifiers or Key;
 end;
 
@@ -290,7 +328,9 @@ begin
   Value := AObject.GetValue(AName);
   Result := Value is TJSONString;
   if Result then
+  begin
     AValue := TJSONString(Value).Value;
+  end;
 end;
 
 function ParseMatcher(AValue: TJSONValue; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
@@ -304,14 +344,22 @@ var
 begin
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None);
   if AValue = nil then
+  begin
     Exit;
+  end;
   if AValue is TJSONString then
   begin
     for Kind := TAtlasTaskMatcherKind.Dcc to TAtlasTaskMatcherKind.Generic do
+    begin
       if SameText(Trim(AValue.Value), TAtlasTasks.MatcherNames[Kind]) then
+      begin
         Exit(TAtlasTaskMatcher.Create(Kind));
+      end;
+    end;
     if (Trim(AValue.Value) <> '') and not SameText(Trim(AValue.Value), 'none') then
+    begin
       AIssues := AIssues + [Format('%s: unbekanntes Muster "%s", Ausgabe ohne Befunde', [AName, AValue.Value])];
+    end;
     Exit;
   end;
   if not (AValue is TJSONObject) then
@@ -328,18 +376,26 @@ begin
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.Custom);
   Result.Regex := Text;
   if StringOf(Item, 'severity', Text) and TAtlasTasks.TrySeverity(Text, Severity) then
+  begin
     Result.DefaultSeverity := Severity;
+  end;
   Map := Item.GetValue('severityMap');
   if Map is TJSONObject then
+  begin
     for Pair in TJSONObject(Map) do
+    begin
       if (Pair.JsonValue is TJSONString) and TAtlasTasks.TrySeverity(Pair.JsonValue.Value, Severity) then
       begin
         Result.SeverityWords := Result.SeverityWords + [AnsiLowerCase(Pair.JsonString.Value)];
         Result.SeverityValues := Result.SeverityValues + [Severity];
       end
       else
+      begin
         AIssues := AIssues + [Format('%s: severityMap "%s" ist weder error, warning noch info',
           [AName, Pair.JsonString.Value])];
+      end;
+    end;
+  end;
 end;
 
 function ParseTask(AItem: TJSONObject; AIndex: Integer; AGlobal: Boolean; out ATask: TAtlasTaskDefinition;
@@ -372,47 +428,71 @@ begin
   if Value is TJSONArray then
   begin
     for Element in TJSONArray(Value) do
+    begin
       if Element is TJSONString then
-        ATask.Args := ATask.Args + [Element.Value]
+      begin
+        ATask.Args := ATask.Args + [Element.Value];
+      end
       else if Element is TJSONNumber then
-        ATask.Args := ATask.Args + [Element.ToString]
+      begin
+        ATask.Args := ATask.Args + [Element.ToString];
+      end
       else
+      begin
         AIssues := AIssues + [Format('%s: args enthält einen Wert, der kein Text ist', [Where])];
+      end;
+    end;
   end
   else if Value <> nil then
+  begin
     AIssues := AIssues + [Format('%s: args muss eine Liste sein', [Where])];
+  end;
   StringOf(AItem, 'cwd', ATask.Cwd);
   Value := AItem.GetValue('env');
   if Value is TJSONObject then
+  begin
     for Pair in TJSONObject(Value) do
+    begin
       if Pair.JsonValue is TJSONString then
       begin
         ATask.EnvNames := ATask.EnvNames + [Pair.JsonString.Value];
         ATask.EnvValues := ATask.EnvValues + [Pair.JsonValue.Value];
       end;
+    end;
+  end;
   if StringOf(AItem, 'group', Text) and not TAtlasTasks.TryGroup(Text, ATask.Group) then
+  begin
     AIssues := AIssues + [Format('%s: unbekannte group "%s", gilt als other', [Where, Text])];
+  end;
   ATask.Matcher := ParseMatcher(AItem.GetValue('matcher'), Where, AIssues);
   if StringOf(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
   begin
     ATask.Key := TAtlasTasks.ParseKey(ATask.KeyText);
     if ATask.Key = 0 then
+    begin
       AIssues := AIssues + [Format('%s: Taste "%s" nicht lesbar', [Where, ATask.KeyText])];
+    end;
   end;
   Value := AItem.GetValue('timeoutSec');
   if (Value is TJSONNumber) and TryStrToInt(Value.ToString, Number) and (Number >= 0) then
   begin
     if Number > TAtlasTasks.MaxTimeoutSec then
+    begin
       Number := TAtlasTasks.MaxTimeoutSec;
+    end;
     ATask.TimeoutSec := Number;
   end
   else if Value <> nil then
+  begin
     AIssues := AIssues + [Format('%s: timeoutSec muss eine ganze Zahl ab 0 sein', [Where])];
+  end;
   if StringOf(AItem, 'beforeBuild', Text) then
   begin
     ATask.HasBeforeBuild := TAtlasTasks.TryBeforeBuild(Text, ATask.BeforeBuild);
     if not ATask.HasBeforeBuild then
+    begin
       AIssues := AIssues + [Format('%s: beforeBuild "%s" ist weder off, warn noch block', [Where, Text])];
+    end;
   end;
   Result := True;
 end;
@@ -427,10 +507,14 @@ var
 begin
   Result := nil;
   if ARoot = nil then
+  begin
     Exit;
+  end;
   Value := ARoot.GetValue('tasks');
   if Value = nil then
+  begin
     Exit;
+  end;
   if not (Value is TJSONArray) then
   begin
     AIssues := AIssues + ['tasks muss eine Liste sein'];
@@ -445,7 +529,9 @@ begin
       Continue;
     end;
     if not ParseTask(TJSONObject(Items.Items[Index]), Index, AGlobal, Task, AIssues) then
+    begin
       Continue;
+    end;
     if IndexOf(Result, Task.Name) >= 0 then
     begin
       AIssues := AIssues + [Format('%s: Name doppelt, die erste Aufgabe gilt', [Task.Name])];
@@ -462,10 +548,14 @@ var
 begin
   Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   Root := TAtlasJsonText.Parse(AText);
   if Root = nil then
+  begin
     Exit;
+  end;
   try
     Result := Parse(Root, AGlobal, AIssues);
   finally
@@ -479,8 +569,12 @@ var
 begin
   Result := Copy(AProject);
   for Task in AGlobal do
+  begin
     if IndexOf(AProject, Task.Name) < 0 then
+    begin
       Result := Result + [Task];
+    end;
+  end;
 end;
 
 class function TAtlasTasks.IndexOf(const ATasks: TAtlasTaskDefinitions; const AName: string): Integer;
@@ -488,8 +582,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ATasks) do
+  begin
     if SameText(ATasks[Index].Name, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -500,8 +598,12 @@ var
 begin
   Result := nil;
   for Task in ATasks do
+  begin
     if Task.Group = AGroup then
+    begin
       Result := Result + [Task];
+    end;
+  end;
 end;
 
 class function TAtlasTasks.BeforeBuild(const ATasks: TAtlasTaskDefinitions;
@@ -511,8 +613,12 @@ var
 begin
   Result := nil;
   for Task in ATasks do
+  begin
     if Task.BeforeBuildFor(AGlobal) <> TAtlasTaskBeforeBuild.Off then
+    begin
       Result := Result + [Task];
+    end;
+  end;
 end;
 
 /// <summary>Absoluter Pfad: Laufwerk („C:“), UNC oder mit Trenner vorn.</summary>
@@ -530,21 +636,31 @@ begin
   Result.Command := AVariables.Expand(ATask.Command);
   Result.Args := Copy(ATask.Args);
   for Index := 0 to High(Result.Args) do
+  begin
     Result.Args[Index] := AVariables.Expand(Result.Args[Index]);
+  end;
   Result.Cwd := Trim(AVariables.Expand(ATask.Cwd));
   if Result.Cwd = '' then
-    Result.Cwd := AVariables.ProjectDir
+  begin
+    Result.Cwd := AVariables.ProjectDir;
+  end
   else if not IsRooted(Result.Cwd) and (AVariables.ProjectDir <> '') then
   begin
     // Das Plugin läuft unter Windows: immer „\“.
     if CharInSet(AVariables.ProjectDir[Length(AVariables.ProjectDir)], ['\', '/']) then
-      Result.Cwd := AVariables.ProjectDir + Result.Cwd
+    begin
+      Result.Cwd := AVariables.ProjectDir + Result.Cwd;
+    end
     else
+    begin
       Result.Cwd := AVariables.ProjectDir + '\' + Result.Cwd;
+    end;
   end;
   Result.EnvValues := Copy(ATask.EnvValues);
   for Index := 0 to High(Result.EnvValues) do
+  begin
     Result.EnvValues[Index] := AVariables.Expand(Result.EnvValues[Index]);
+  end;
 end;
 
 end.

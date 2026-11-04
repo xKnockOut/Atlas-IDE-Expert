@@ -197,7 +197,9 @@ var
 begin
   mMinimized := IsIconic(Application.Handle);
   if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
+  begin
     mMinimized := mMinimized or IsIconic(Application.MainForm.Handle);
+  end;
   mIdle := 0;
   mInput.cbSize := SizeOf(mInput);
   // Zähler in Millisekunden (32 Bit, läuft nach 49 Tagen über): über den Überlauf hinweg gerechnet.
@@ -205,9 +207,13 @@ begin
   begin
     mNow := GetTickCount;
     if mNow >= mInput.dwTime then
-      mIdle := mNow - mInput.dwTime
+    begin
+      mIdle := mNow - mInput.dwTime;
+    end
     else
+    begin
       mIdle := UInt64(High(DWORD)) - mInput.dwTime + mNow + 1;
+    end;
   end;
   Result := TAtlasTrackerNotify.UserActive(mMinimized, mIdle);
 end;
@@ -215,7 +221,9 @@ end;
 procedure TAtlasIdeIssueNotify.Start;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
@@ -226,7 +234,9 @@ end;
 procedure TAtlasIdeIssueNotify.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   FreeAndNil(FTimer);
   FreeAndNil(FToast);
@@ -240,11 +250,17 @@ end;
 procedure TAtlasIdeIssueNotify.ReleaseThread(AWait: Boolean);
 begin
   if FThread = nil then
+  begin
     Exit;
+  end;
   if AWait and not FThread.Finished then
+  begin
     TAtlasShutdown.WaitForThreads([FThread]);
+  end;
   if FThread.Finished then
-    FreeAndNil(FThread)
+  begin
+    FreeAndNil(FThread);
+  end
   else if AWait then
   begin
     FThread.FreeOnTerminate := True;
@@ -255,7 +271,9 @@ end;
 procedure TAtlasIdeIssueNotify.EnsureLoaded;
 begin
   if FLoaded then
+  begin
     Exit;
+  end;
   FLoaded := True;
   FFile := TAtlasTrackerNotify.Load(FFolder);
 end;
@@ -263,7 +281,9 @@ end;
 procedure TAtlasIdeIssueNotify.SaveFile;
 begin
   if not TAtlasTrackerNotify.Save(FFolder, FFile) then
+  begin
     TAtlasGuard.Log('Issue-Meldungen: Stand nicht gespeichert');
+  end;
 end;
 
 function TAtlasIdeIssueNotify.SyncEnabled: Boolean;
@@ -274,7 +294,9 @@ begin
   EnsureLoaded;
   Result := Active;
   if Result = FFile.Enabled then
+  begin
     Exit;
+  end;
   // Eingeschaltet: Was vorher geschah, ist nicht neu. Ausgeschaltet: Punkte verschwinden mit der Funktion.
   mNow := NowUtc;
   for mIndex := 0 to High(FFile.Connections) do
@@ -288,13 +310,17 @@ begin
   Inc(FGeneration);
   SaveFile;
   if Assigned(FHooks.Changed) then
+  begin
     FHooks.Changed();
+  end;
 end;
 
 function TAtlasIdeIssueNotify.ScheduleOf(const AId: string): TAtlasTrackerNotifySchedule;
 begin
   if not FSchedules.TryGetValue(AId, Result) then
+  begin
     Result := Default(TAtlasTrackerNotifySchedule);
+  end;
 end;
 
 procedure TAtlasIdeIssueNotify.TimerTick(Sender: TObject);
@@ -309,14 +335,18 @@ end;
 procedure TAtlasIdeIssueNotify.Refresh;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   Poll(False);
 end;
 
 procedure TAtlasIdeIssueNotify.PollNow;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   Poll(True);
 end;
 
@@ -333,7 +363,9 @@ var
 begin
   Result := nil;
   if not Assigned(FHooks.Targets) or not Assigned(FHooks.Provider) then
+  begin
     Exit;
+  end;
   mSettings := TAtlasIdeSettings.Current;
   mNowMs := GetTickCount64;
   mActive := UserIsActive;
@@ -345,18 +377,28 @@ begin
       mJob := Default(TJob);
       mJob.Id := TAtlasTrackerNotify.ConnectionId(mTarget);
       if (mJob.Id = '') or mIds.Contains(mJob.Id) then
+      begin
         Continue;
+      end;
       mIds.Add(mJob.Id);
       mSchedule := ScheduleOf(mJob.Id);
       if AOnDemand then
-        mDue := mSchedule.DueOnDemand(mNowMs)
+      begin
+        mDue := mSchedule.DueOnDemand(mNowMs);
+      end
       else
+      begin
         mDue := mSchedule.Due(mNowMs, mActive, mSettings.IssuesNotifyIntervalMinutes);
+      end;
       if not mDue then
+      begin
         Continue;
+      end;
       mJob.Provider := FHooks.Provider(mTarget.Provider);
       if mJob.Provider = nil then
+      begin
         Continue;
+      end;
       mJob.Target := mTarget;
       mJob.Generation := FGeneration;
       // Neue Verbindung: ab jetzt.
@@ -378,7 +420,9 @@ begin
     mIds.Free;
   end;
   if mAdded then
+  begin
     SaveFile;
+  end;
 end;
 
 procedure TAtlasIdeIssueNotify.Poll(AOnDemand: Boolean);
@@ -386,14 +430,20 @@ var
   mJobs: TArray<TJob>;
 begin
   if not FStarted or not SyncEnabled then
+  begin
     Exit;
+  end;
   // Eine Abfrage zur Zeit; was fällig bleibt, kommt mit dem nächsten Takt.
   ReleaseThread(False);
   if FThread <> nil then
+  begin
     Exit;
+  end;
   mJobs := Jobs(AOnDemand);
   if Length(mJobs) = 0 then
+  begin
     Exit;
+  end;
   FThread := TThread.CreateAnonymousThread(Worker(Self, Self, mJobs, FHooks.Transport));
   FThread.FreeOnTerminate := False;
   FThread.Start;
@@ -416,7 +466,9 @@ begin
       for mJob in AJobs do
       begin
         if TAtlasShutdown.Signalled then
+        begin
           Exit;
+        end;
         mOutcome := Default(TOutcome);
         mOutcome.Job := mJob;
         mOutcome.Changes := nil;
@@ -425,16 +477,22 @@ begin
           // Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Netz.
           mTransport := nil;
           if Assigned(ATransport) then
+          begin
             mTransport := ATransport(mJob.Provider, mJob.Target);
+          end;
           if mTransport = nil then
-            mOutcome.Skipped := True
+          begin
+            mOutcome.Skipped := True;
+          end
           else
           begin
             // Anmeldename einmal je Verbindung: eigene Änderungen und „dir zugewiesen“.
             if (mOutcome.Job.Poll.Me = '') and (mJob.Provider.ProbeUrl(mJob.Target) <> '') and
               mTransport.Get(mJob.Provider.ProbeUrl(mJob.Target), TAtlasTrackerNotify.TimeoutMs, mStatus, mText,
               mIgnored) and (mStatus = 200) then
+            begin
               mOutcome.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
+            end;
             mOutcome.Succeeded := mJob.Provider.Changes(mJob.Target, mTransport, TAtlasTrackerNotify.TimeoutMs,
               mOutcome.Job.Poll, mOutcome.Changes, mOutcome.Error);
           end;
@@ -449,7 +507,9 @@ begin
         end;
         mTransport := nil;
         if TAtlasShutdown.Signalled then
+        begin
           Exit;
+        end;
         Deliver(AKeep, AOwner, mOutcome);
       end;
     end;
@@ -462,7 +522,9 @@ begin
     procedure
     begin
       if AKeep <> nil then
+      begin
         AOwner.Delivered(AOutcome);
+      end;
     end);
 end;
 
@@ -474,14 +536,18 @@ var
   mRest: Integer;
 begin
   if not FStarted or not FFile.Enabled or AOutcome.Skipped or (AOutcome.Job.Generation <> FGeneration) then
+  begin
     Exit;
+  end;
   mSchedule := ScheduleOf(AOutcome.Job.Id);
   if not AOutcome.Succeeded then
   begin
     TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s)', [AOutcome.Job.Target.Provider,
       TAtlasCiBuild.ErrorKey(AOutcome.Error)]));
     if mSchedule.Failed and (AOutcome.Error <> TAtlasCiFetchError.Cancelled) then
+    begin
       NotifyError(AOutcome.Job, AOutcome.Error);
+    end;
     FSchedules.AddOrSetValue(AOutcome.Job.Id, mSchedule);
     Exit;
   end;
@@ -500,12 +566,18 @@ begin
   TAtlasGuard.Log(Format('Issue-Meldungen: %s, %d Issues geändert', [AOutcome.Job.Target.Provider,
     Length(mNotices) + mRest]));
   if Length(mNotices) = 0 then
+  begin
     Exit;
+  end;
   Notify(AOutcome.Job, mNotices, mRest);
   if Assigned(FHooks.Changed) then
+  begin
     FHooks.Changed();
+  end;
   if Assigned(FHooks.Updated) then
+  begin
     FHooks.Updated();
+  end;
 end;
 
 class function TAtlasIdeIssueNotify.OpenAction(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
@@ -516,7 +588,9 @@ begin
     procedure
     begin
       if AKeep <> nil then
+      begin
         AOwner.OpenIssue(ATarget, AKey, AAnchor);
+      end;
     end;
 end;
 
@@ -526,7 +600,9 @@ begin
     procedure
     begin
       if (AKeep <> nil) and AOwner.FStarted and Assigned(AOwner.FHooks.Settings) then
+      begin
         AOwner.FHooks.Settings();
+      end;
     end;
 end;
 
@@ -543,8 +619,10 @@ begin
   mCenter := TAtlasNotificationCenter.Default;
   mCaption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyOpen);
   if ARest > 0 then
+  begin
     mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info,
       TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueNotifyMoreText));
+  end;
   // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
   for mIndex := High(ANotices) downto 0 do
   begin
@@ -552,13 +630,17 @@ begin
     mTarget := AJob.Target;
     // GitHub: das Repository der Meldung, nicht das des Projekts.
     if mNotice.Project <> '' then
+    begin
       mTarget.Project := mNotice.Project;
+    end;
     mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mNotice.Anchor);
     mTitle := TAtlasTrackerNoticeText.Title(mNotice);
     mMode := mCenter.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
       [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
     if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
+    begin
       ShowToast(mTitle, mNotice.Title, mCaption, mOpen);
+    end;
   end;
 end;
 
@@ -573,7 +655,9 @@ begin
   mRun := SettingsAction(Self, Self);
   if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Issues, TAtlasNotificationSeverity.Warning,
     mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then
+  begin
     ShowToast(mTitle, mText, mCaption, mRun);
+  end;
 end;
 
 procedure TAtlasIdeIssueNotify.ShowToast(const ATitle, AText, AAction: string; const ARun: TProc);
@@ -587,13 +671,17 @@ begin
       procedure(AIndex: Integer)
       begin
         if (AIndex = 0) and Assigned(FToastOpen) then
+        begin
           FToastOpen();
+        end;
       end;
   end;
   FToastOpen := ARun;
   mArea := Screen.WorkAreaRect;
   if Application.MainForm <> nil then
+  begin
     mArea := Application.MainForm.BoundsRect;
+  end;
   FToast.Colors := TAtlasIdeStyle.Colors;
   FToast.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
   FToast.ShowNotice(ATitle, AText, [AAction], mArea);
@@ -604,11 +692,15 @@ var
   mAnchor: TDateTime;
 begin
   if not FStarted or not Assigned(FHooks.Open) then
+  begin
     Exit;
+  end;
   // Der älteste ungesehene Kommentar, falls seit der Meldung weitere kamen.
   mAnchor := AnchorOf(ATarget, AKey);
   if mAnchor = 0 then
+  begin
     mAnchor := AAnchor;
+  end;
   Seen(ATarget, AKey);
   FHooks.Open(ATarget, AKey, mAnchor);
 end;
@@ -620,13 +712,21 @@ var
 begin
   Result := nil;
   if not FStarted or not Active then
+  begin
     Exit;
+  end;
   EnsureLoaded;
   if not FFile.Enabled or not FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  begin
     Exit;
+  end;
   for mItem in mConnection.Unseen do
+  begin
     if SameText(mItem.Project, TAtlasTrackerNotify.UnseenProject(ATarget)) then
+    begin
       Result := Result + [mItem.Key];
+    end;
+  end;
 end;
 
 function TAtlasIdeIssueNotify.AnchorOf(const ATarget: TAtlasTrackerTarget; const AKey: string): TDateTime;
@@ -637,10 +737,14 @@ begin
   Result := 0;
   EnsureLoaded;
   if not FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  begin
     Exit;
+  end;
   mIndex := mConnection.IndexOfUnseen(AKey, TAtlasTrackerNotify.UnseenProject(ATarget));
   if mIndex >= 0 then
+  begin
     Result := mConnection.Unseen[mIndex].Anchor;
+  end;
 end;
 
 procedure TAtlasIdeIssueNotify.Seen(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -648,15 +752,21 @@ var
   mConnection: TAtlasTrackerNotifyConnection;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   EnsureLoaded;
   if not FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) or
     not TAtlasTrackerNotify.Seen(mConnection, AKey, TAtlasTrackerNotify.UnseenProject(ATarget)) then
+  begin
     Exit;
+  end;
   FFile.Put(mConnection);
   SaveFile;
   if Assigned(FHooks.Changed) then
+  begin
     FHooks.Changed();
+  end;
 end;
 
 end.

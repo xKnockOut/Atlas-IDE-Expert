@@ -72,7 +72,9 @@ begin
   Result := '';
   mProject := GetActiveProject;
   if mProject <> nil then
+  begin
     Result := mProject.FileName;
+  end;
 end;
 
 /// <summary>Einträge ohne Datei als Zeilen „Pfad (n Treffer)“, höchstens OrphanLines.</summary>
@@ -104,15 +106,21 @@ begin
   begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateOrphans, [AUpdate.OrphanCount]));
     for mLine in OrphanText(AUpdate.Orphans) do
+    begin
       TAtlasIdeHost.Message(mLine);
+    end;
   end;
   TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateDone, [AUpdate.FileName, AUpdate.Total,
     AUpdate.Files, AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
+  begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateCompleted, [AUpdate.Completed]));
+  end;
   // Bericht N3: Die unbrauchbare bisherige Datei wurde nicht still ersetzt.
   if AUpdate.SetAside <> '' then
+  begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateSetAside, [AUpdate.SetAside]));
+  end;
 end;
 
 /// <summary>Neuer Stand der Baseline in die Projekt-Zusammenfassung (Projektverlauf #758).</summary>
@@ -120,23 +128,27 @@ procedure NotifyUpdated(const AProject: string; const AUpdate: TAtlasBaselineUpd
   const AState: TAtlasBaselineState);
 begin
   if TAtlasIdeProjectSummaries.Current <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Palette,
       procedure
       begin
         TAtlasIdeProjectSummaries.Current.RecordBaseline(AProject, AState, AUpdate,
           TAtlasIdeProjectSummaries.StampUtc);
       end);
+  end;
 end;
 
 /// <summary>Der Server schrieb außerhalb des Projektordners: nur der Stand im Projektordner.</summary>
 procedure NotifyMeasured(const AProject: string; const AState: TAtlasBaselineState);
 begin
   if TAtlasIdeProjectSummaries.Current <> nil then
+  begin
     TAtlasGuard.Run(TAtlasFeature.Palette,
       procedure
       begin
         TAtlasIdeProjectSummaries.Current.RecordBaseline(AProject, AState, TAtlasIdeProjectSummaries.StampUtc);
       end);
+  end;
 end;
 
 /// <summary>Antwort von atlas.updateBaseline auswerten (Hauptthread).</summary>
@@ -149,7 +161,9 @@ begin
   begin
     TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
     if Assigned(ADone) then
+    begin
       ADone(False, 0, 0, TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
+    end;
     Exit;
   end;
   ReportUpdate(mUpdate);
@@ -163,13 +177,17 @@ begin
     mState := TAtlasProjectBaselines.StateOnDisk(ExtractFileDir(AProject));
     NotifyMeasured(AProject, mState);
     if Assigned(ADone) then
+    begin
       ADone(False, 0, 0, TAtlasRulesStrings.Text(TAtlasRulesTextId.WelcomeSetupBaselineElsewhere));
+    end;
     Exit;
   end;
   mState := TAtlasProjectBaselines.StateOnDisk(ExtractFileDir(mUpdate.FileName));
   NotifyUpdated(AProject, mUpdate, mState);
   if Assigned(ADone) then
+  begin
     ADone(True, mUpdate.Total, mUpdate.Files, '');
+  end;
 end;
 
 /// <summary>Rückruf für die Antwort; eigene Routine, damit der Rahmen nur Projekt und ADone hält.</summary>
@@ -212,12 +230,16 @@ begin
   Result := '';
   // Startet den Server bei Bedarf; der Befehl selbst läuft im Hintergrund.
   if (FScope = nil) or (TAtlasIdeHost.ActiveSession = nil) then
+  begin
     Exit(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateFailed));
+  end;
   if not TAtlasIdeHost.RunCommandAsync(FScope, TAtlasFeature.Menu, TAtlasProjectBaselines.Command,
     TAtlasProjectBaselines.Arguments(TLspSession.PathToUri(AProject)), TAtlasProjectBaselines.TimeoutMs,
     UpdateAnswer(AProject, ADone)) then
+  begin
     // Ein Befehl im Hintergrund läuft schon (etwa die Werte nach einem Build): später noch einmal.
     Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateBusy);
+  end;
 end;
 
 class procedure TAtlasIdeRulesBaseline.UpdateActiveProject;
@@ -227,7 +249,9 @@ var
 begin
   // Abgeschaltet: auch über Tastenkürzel oder „Ausprobieren“ nichts tun.
   if not Enabled then
+  begin
     Exit;
+  end;
   mFileName := ActiveProjectFile;
   if mFileName = '' then
   begin
@@ -244,12 +268,18 @@ begin
   if (mState.OrphanCount > 0) and (MessageDlg(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.BaselineUpdateConfirm,
     [mState.OrphanCount, sLineBreak + string.Join(sLineBreak, OrphanText(mState.Orphans)) + sLineBreak +
     sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+  begin
     Exit;
+  end;
   mReason := StartUpdate(mFileName, nil);
   if mReason = '' then
-    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateRunning))
+  begin
+    TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.BaselineUpdateRunning));
+  end
   else
+  begin
     TAtlasIdeHost.Warning(mReason);
+  end;
 end;
 
 /// <summary>Antwort von atlas.baselineCompilerMessages (#530) in der Meldungsansicht.</summary>
@@ -261,7 +291,9 @@ var
 begin
   mValue := nil;
   if AAnswer <> '' then
+  begin
     mValue := TJSONValue.ParseJSONValue(AAnswer);
+  end;
   try
     mValid := TAtlasCompilerBaselineAdd.FromServer(mValue, mAdded);
   finally
@@ -275,7 +307,9 @@ begin
   TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.CompilerBaselineDone, [mAdded.FileName, mAdded.Total,
     mAdded.Added, mAdded.Removed, mAdded.Unchanged]));
   if mAdded.Skipped > 0 then
+  begin
     TAtlasIdeHost.Message(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.CompilerBaselineSkipped, [mAdded.Skipped]));
+  end;
 end;
 
 class procedure TAtlasIdeRulesBaseline.AddCompilerMessages;
@@ -286,7 +320,9 @@ var
 begin
   mSummary := TAtlasIdeLastBuildMessages.Current;
   if (FScope = nil) or (mSummary = nil) or not Enabled then
+  begin
     Exit;
+  end;
   mFileName := ActiveProjectFile;
   if mFileName = '' then
   begin
@@ -303,7 +339,9 @@ begin
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Menu,
     TAtlasBuildVerdicts.AddCommand, TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(mFileName), mMessages),
     TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline) then
+  begin
     TAtlasIdeHost.Warning(TAtlasRulesStrings.Text(TAtlasRulesTextId.CompilerBaselineFailed));
+  end;
 end;
 
 end.

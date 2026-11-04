@@ -179,9 +179,13 @@ begin
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW or CS_SAVEBITS;
   // Besitzer: Hauptfenster der IDE, damit das Popup mit ihr minimiert wird und über ihr bleibt.
   if Application.MainFormHandle <> 0 then
-    Params.WndParent := Application.MainFormHandle
+  begin
+    Params.WndParent := Application.MainFormHandle;
+  end
   else
+  begin
     Params.WndParent := Application.Handle;
+  end;
 end;
 
 procedure TAtlasPopupWindow.CreateWnd;
@@ -246,13 +250,17 @@ procedure TAtlasPopupWindow.WMGetObject(var Message: TMessage);
 begin
   Message.Result := TAtlasAccessibility.Answer(Handle, Message.WParam, Message.LParam, Accessible);
   if Message.Result = 0 then
+  begin
     inherited;
+  end;
 end;
 
 procedure TAtlasPopupWindow.Announce(const AText: string);
 begin
   if (AText = FAnnounced) or not IsShown then
+  begin
     Exit;
+  end;
   FAnnounced := AText;
   TAtlasAccessibility.Announce(Accessible, AText);
 end;
@@ -263,23 +271,29 @@ var
 begin
   // Schon während inherited CreateWnd kommt WM_SIZE; eine Region mit der Größe von dann bliebe sonst stehen.
   if not HandleAllocated or not FCornersKnown then
+  begin
     Exit;
+  end;
   if FSystemCorners then
   begin
     Border := DWORD(FBorderColor);
     DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, @Border, SizeOf(Border));
   end
   else
+  begin
     // Ältere Windows-Versionen: Region mit runden Ecken; das Fenster übernimmt sie.
     SetWindowRgn(Handle, CreateRoundRectRgn(0, 0, Width + 1, Height + 1, Scale(2 * CornerRadius),
       Scale(2 * CornerRadius)), IsWindowVisible(Handle));
+  end;
 end;
 
 procedure TAtlasPopupWindow.Resize;
 begin
   inherited Resize;
   if not FSystemCorners then
+  begin
     UpdateCorners;
+  end;
 end;
 
 procedure TAtlasPopupWindow.WMMouseActivate(var Message: TWMMouseActivate);
@@ -296,7 +310,9 @@ procedure TAtlasPopupWindow.CMFontChanged(var Message: TMessage);
 begin
   inherited;
   if FUIFont = nil then
+  begin
     Exit;
+  end;
   // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
   FUIFont.Name := Screen.MessageFont.Name;
   FUIFont.PixelsPerInch := Font.PixelsPerInch;
@@ -315,7 +331,9 @@ end;
 procedure TAtlasPopupWindow.SetBorderColor(AValue: TAtlasColor);
 begin
   if FBorderColor = AValue then
+  begin
     Exit;
+  end;
   FBorderColor := AValue;
   UpdateCorners;
   Invalidate;
@@ -341,7 +359,9 @@ procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor;
   AFill: TColor);
 begin
   if AFill = clNone then
-    Canvas.Brush.Style := bsClear
+  begin
+    Canvas.Brush.Style := bsClear;
+  end
   else
   begin
     Canvas.Brush.Style := bsSolid;
@@ -357,7 +377,9 @@ procedure TAtlasPopupWindow.PaintBorder;
 begin
   // Unter Windows 11 zeichnet der Fenstermanager den Rahmen (DWMWA_BORDER_COLOR).
   if FSystemCorners then
+  begin
     Exit;
+  end;
   FrameRounded(ClientRect, FBorderColor, CornerRadius);
 end;
 
@@ -378,7 +400,9 @@ procedure TAtlasPopupWindow.HidePopup;
 begin
   FAnnounced := '';
   if HandleAllocated and IsWindowVisible(Handle) then
+  begin
     ShowWindow(Handle, SW_HIDE);
+  end;
 end;
 
 function TAtlasPopupWindow.IsShown: Boolean;
@@ -391,7 +415,9 @@ procedure TAtlasPopupWindow.SetScaling(AMonitorPPI: Integer; AZoom: Double; cons
 begin
   FPPI := Max(48, Round(AMonitorPPI * AZoom));
   if AFontName <> '' then
+  begin
     Font.Name := AFontName;
+  end;
   Font.PixelsPerInch := FPPI;
   // Erst nach PixelsPerInch: Size rechnet mit der neuen Dichte in die Höhe um.
   Font.Size := AFontSize;
@@ -404,9 +430,13 @@ var
 begin
   Monitor := Screen.MonitorFromPoint(APoint, mdNearest);
   if Monitor <> nil then
-    Result := Monitor.PixelsPerInch
+  begin
+    Result := Monitor.PixelsPerInch;
+  end
   else
+  begin
     Result := Screen.PixelsPerInch;
+  end;
 end;
 
 class function TAtlasPopupWindow.WorkAreaAt(const APoint: TPoint): TRect;
@@ -415,9 +445,13 @@ var
 begin
   Monitor := Screen.MonitorFromPoint(APoint, mdNearest);
   if Monitor <> nil then
-    Result := Monitor.WorkareaRect
+  begin
+    Result := Monitor.WorkareaRect;
+  end
   else
+  begin
     Result := Screen.WorkAreaRect;
+  end;
 end;
 
 end.

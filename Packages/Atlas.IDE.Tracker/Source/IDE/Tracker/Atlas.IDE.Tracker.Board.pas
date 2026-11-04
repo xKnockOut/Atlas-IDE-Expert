@@ -161,7 +161,9 @@ var
   mOwner: TAtlasIdeBoard;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
   mKeep := Self;
   mOwner := Self;
@@ -169,7 +171,9 @@ begin
     procedure(AFrame: TAtlasBoardFrame)
     begin
       if (mKeep <> nil) and mOwner.FStarted then
+      begin
         mOwner.Wire(AFrame);
+      end;
     end;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeBoardWindow.Prepare;
@@ -178,7 +182,9 @@ end;
 procedure TAtlasIdeBoard.Stop;
 begin
   if not FStarted then
+  begin
     Exit;
+  end;
   FStarted := False;
   Inc(FGeneration);
   CancelLoad;
@@ -195,21 +201,27 @@ end;
 procedure TAtlasIdeBoard.Report(const AText: string);
 begin
   if Assigned(FHooks.Message) then
+  begin
     FHooks.Message(AText);
+  end;
 end;
 
 function TAtlasIdeBoard.ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
 begin
   Result := nil;
   if Assigned(FHooks.Provider) then
+  begin
     Result := FHooks.Provider(ATarget.Provider);
+  end;
 end;
 
 class function TAtlasIdeBoard.BoardsOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerBoards;
 begin
   // Der Anbieter kommt über die Hooks aus der Komposition; ein Board bietet er als weitere Fähigkeit an.
   if not Supports(AProvider, IAtlasTrackerBoards, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 procedure TAtlasIdeBoard.Wire(AFrame: TAtlasBoardFrame);
@@ -230,69 +242,91 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.Load(mOwner.FBoardId, mOwner.FSprintId);
+      end;
     end;
   AFrame.OnBoard :=
     procedure(AId: string)
     begin
       if mKeep <> nil then
+      begin
         mOwner.Load(AId, '');
+      end;
     end;
   AFrame.OnSprint :=
     procedure(AId: string)
     begin
       if mKeep <> nil then
+      begin
         mOwner.Load(mOwner.FBoardId, AId);
+      end;
     end;
   AFrame.OnOnlyMine :=
     procedure(AValue: Boolean)
     begin
       if mKeep <> nil then
+      begin
         mOwner.FOnlyMine := AValue;
+      end;
     end;
   AFrame.OnMove :=
     procedure(ACard, AColumn: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.Move(ACard, AColumn);
+      end;
     end;
   AFrame.OnOpen :=
     procedure(ACard: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.OpenCard(ACard);
+      end;
     end;
   AFrame.OnStart :=
     procedure(ACard: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.StartCard(ACard);
+      end;
     end;
   AFrame.OnBrowse :=
     procedure(ACard: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.BrowseCard(ACard);
+      end;
     end;
   AFrame.OnAssign :=
     procedure(ACard: Integer)
     begin
       if mKeep <> nil then
+      begin
         mOwner.AssignCard(ACard);
+      end;
     end;
   AFrame.OnHidden :=
     procedure
     begin
       // Fenster geschlossen: Laden abbrechen.
       if mKeep <> nil then
+      begin
         mOwner.CancelLoad;
+      end;
     end;
 end;
 
 procedure TAtlasIdeBoard.Show;
 begin
   if not FStarted or not Active then
+  begin
     Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -300,7 +334,9 @@ begin
     begin
       mFrame := TAtlasIdeBoardWindow.Show;
       if mFrame <> nil then
+      begin
         TAtlasIdeBoardWindow.ApplyTheme;
+      end;
       Load(FBoardId, FSprintId);
     end);
 end;
@@ -308,7 +344,9 @@ end;
 procedure TAtlasIdeBoard.Refresh;
 begin
   if FStarted and Active and TAtlasIdeBoardWindow.Visible and not FLoading and not FMoving then
+  begin
     Load(FBoardId, FSprintId);
+  end;
 end;
 
 procedure TAtlasIdeBoard.UpdateActive;
@@ -317,7 +355,9 @@ var
 begin
   mFrame := Frame;
   if (mFrame <> nil) and Assigned(FHooks.ActiveKey) then
+  begin
     mFrame.SetActiveKey(FHooks.ActiveKey());
+  end;
 end;
 
 procedure TAtlasIdeBoard.UpdateSettings;
@@ -332,7 +372,9 @@ end;
 procedure TAtlasIdeBoard.CancelLoad;
 begin
   if FCancel <> nil then
+  begin
     FCancel.Cancel;
+  end;
 end;
 
 function TAtlasIdeBoard.ErrorText(AError: TAtlasCiFetchError): string;
@@ -371,13 +413,17 @@ var
 begin
   mFrame := Frame;
   if not FStarted or (mFrame = nil) then
+  begin
     Exit;
+  end;
   CancelLoad;
   Inc(FGeneration);
   mGeneration := FGeneration;
   mTarget := Default(TAtlasTrackerTarget);
   if Assigned(FHooks.Target) then
+  begin
     mTarget := FHooks.Target();
+  end;
   // Anderer Tracker (Projektwechsel): Auswahl von Board und Sprint und der gezeigte Stand gelten nicht mehr.
   if not SameText(mTarget.Key, FTarget.Key) then
   begin
@@ -406,19 +452,25 @@ begin
   end;
   // Sofort der letzte Stand; frisch geladen ersetzt ihn.
   if not mFrame.HasSnapshot and TAtlasTrackerBoard.Load(FCacheFolder, mTarget, mCached) then
+  begin
     mFrame.SetSnapshot(mCached, '');
+  end;
   mFrame.SetLoading(True);
   FLoading := True;
   mTransport := nil;
   if Assigned(FHooks.Transport) then
+  begin
     mTransport := FHooks.Transport(mProvider, mTarget);
+  end;
   if mTransport = nil then
   begin
     Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, TAtlasCiFetchError.Unauthorized, False);
     Exit;
   end;
   if not Supports(mTransport, IAtlasCiCancel, FCancel) then
+  begin
     FCancel := nil;
+  end;
   // Ziehen nur mit Schreibweg.
   mWrite := Supports(mTransport, IAtlasCiSend);
   mKeep := Self;
@@ -446,9 +498,13 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.Loaded(mGeneration, mTarget, mOk, mSnapshot, mError, mWrite);
+      end;
     end) then
+  begin
     Loaded(mGeneration, mTarget, False, TAtlasBoardSnapshot.Empty, TAtlasCiFetchError.Cancelled, False);
+  end;
 end;
 
 procedure TAtlasIdeBoard.Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
@@ -459,12 +515,16 @@ var
   mWhen: string;
 begin
   if AGeneration <> FGeneration then
+  begin
     Exit;
+  end;
   FCancel := nil;
   FLoading := False;
   mFrame := Frame;
   if not FStarted or (mFrame = nil) then
+  begin
     Exit;
+  end;
   mFrame.SetLoading(False);
   TAtlasGuard.Log('Atlas-Board: ' + ATarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
   if ASucceeded then
@@ -478,9 +538,13 @@ begin
     FCanWrite := AWrite;
     // GitHub: Ohne Recht auf Projekte zeigt das Board Offen/Geschlossen und sagt warum.
     if mSnapshot.ProjectsDenied then
-      mFrame.SetSnapshot(mSnapshot, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardErrorScopes))
+    begin
+      mFrame.SetSnapshot(mSnapshot, TAtlasTrackerStrings.Text(TAtlasTrackerTextId.BoardErrorScopes));
+    end
     else
+    begin
       mFrame.SetSnapshot(mSnapshot, '');
+    end;
     mFrame.SetCanDrag(AWrite);
     UpdateActive;
     Exit;
@@ -519,7 +583,9 @@ var
 begin
   mFrame := Frame;
   if not FStarted or (mFrame = nil) or FMoving then
+  begin
     Exit;
+  end;
   // Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
   if not FOnline or not FCanWrite then
   begin
@@ -528,14 +594,18 @@ begin
   end;
   mSnapshot := mFrame.Snapshot;
   if not TAtlasTrackerBoard.CanMove(mSnapshot, ACard, AColumn) then
+  begin
     Exit;
+  end;
   mCard := mSnapshot.Cards[ACard];
   mColumnName := mFrame.ColumnCaption(AColumn);
   mComment := '';
   if TAtlasIdeSettings.Current.IssuesBoardConfirmMove then
   begin
     if not TAtlasBoardMoveDialog.Execute(mCard.Key, mColumnName, mComment, mDontAsk) then
+    begin
       Exit;
+    end;
     if mDontAsk then
     begin
       mNext := TAtlasIdeSettings.Stored;
@@ -548,7 +618,9 @@ begin
   mBoards := BoardsOf(mProvider);
   mTransport := nil;
   if (mProvider <> nil) and Assigned(FHooks.Transport) then
+  begin
     mTransport := FHooks.Transport(mProvider, mTarget);
+  end;
   if (mBoards = nil) or (mTransport = nil) then
   begin
     mFrame.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardMoveFailed, [mCard.Key,
@@ -580,9 +652,13 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.Moved(mCard.Key, mColumnName, mOld, mResult);
+      end;
     end) then
+  begin
     Moved(mCard.Key, mColumnName, mOld, TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+  end;
 end;
 
 procedure TAtlasIdeBoard.Moved(const AKey, AColumn, AOldState: string; const AResult: TAtlasTrackerWriteResult);
@@ -592,7 +668,9 @@ begin
   FMoving := False;
   mFrame := Frame;
   if not FStarted or (mFrame = nil) then
+  begin
     Exit;
+  end;
   TAtlasGuard.Log('Atlas-Board: verschoben, ' + TAtlasCiBuild.ErrorKey(AResult.Error));
   if not AResult.Succeeded then
   begin
@@ -613,15 +691,23 @@ var
 begin
   mFrame := Frame;
   if (mFrame = nil) or (ACard < 0) then
+  begin
     Exit;
+  end;
   mCard := mFrame.Card(ACard);
   if mCard.Key = '' then
+  begin
     Exit;
+  end;
   // Aus einem anderen Repository (GitHub "owner/repo#12"): die Seite im Browser.
   if (Pos('/', mCard.Key) > 0) or not Assigned(FHooks.Preview) then
-    BrowseCard(ACard)
+  begin
+    BrowseCard(ACard);
+  end
   else
+  begin
     FHooks.Preview(FTarget, mCard.Key);
+  end;
 end;
 
 procedure TAtlasIdeBoard.StartCard(ACard: Integer);
@@ -631,12 +717,18 @@ var
 begin
   mFrame := Frame;
   if (mFrame = nil) or (ACard < 0) or not Assigned(FHooks.Start) then
+  begin
     Exit;
+  end;
   mCard := mFrame.Card(ACard);
   if (mCard.Key = '') or (Pos('/', mCard.Key) > 0) then
+  begin
     Exit;
+  end;
   if Assigned(FHooks.CanStart) and not FHooks.CanStart() then
+  begin
     Exit;
+  end;
   FHooks.Start(mCard.Issue);
 end;
 
@@ -648,13 +740,17 @@ var
 begin
   mFrame := Frame;
   if (mFrame = nil) or (ACard < 0) then
+  begin
     Exit;
+  end;
   mPage := mFrame.Card(ACard).Page;
   // Seite aus der eingetragenen Adresse, sonst die aus der Antwort, aber nur als Web-Adresse ohne Benutzer.
   mProvider := ProviderOf(FTarget);
   if (Pos('/', mFrame.Card(ACard).Key) = 0) and (mProvider <> nil) and
     (mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key) <> '') then
+  begin
     mPage := mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key);
+  end;
   TAtlasIssuePreview.Browse(mPage);
 end;
 
@@ -667,10 +763,14 @@ var
 begin
   mFrame := Frame;
   if (mFrame = nil) or (ACard < 0) or not Assigned(FHooks.Assign) then
+  begin
     Exit;
+  end;
   mKey := mFrame.Card(ACard).Key;
   if (mKey = '') or (Pos('/', mKey) > 0) then
+  begin
     Exit;
+  end;
   mKeep := Self;
   mOwner := Self;
   FHooks.Assign(FTarget, mKey,
@@ -679,7 +779,9 @@ begin
       mCurrent: TAtlasBoardFrame;
     begin
       if (mKeep = nil) or not mOwner.FStarted then
+      begin
         Exit;
+      end;
       mCurrent := mOwner.Frame;
       if AResult.Succeeded then
       begin
@@ -687,8 +789,10 @@ begin
         mOwner.Load(mOwner.FBoardId, mOwner.FSprintId);
       end
       else if mCurrent <> nil then
+      begin
         mCurrent.SetStatus(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.BoardAssignFailed, [mKey,
           TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
+      end;
     end);
 end;
 

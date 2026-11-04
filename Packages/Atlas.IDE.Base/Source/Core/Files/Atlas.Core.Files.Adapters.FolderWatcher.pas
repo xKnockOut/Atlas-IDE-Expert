@@ -82,7 +82,9 @@ end;
 procedure TAtlasFolderWatcher.TWatchThread.Stop;
 begin
   if Finished then
+  begin
     Exit;
+  end;
   Terminate;
   SetEvent(FStopEvent);
   WaitFor;
@@ -101,7 +103,9 @@ begin
     SetString(Name, PWideChar(@Entry^.FileName[0]), Entry^.FileNameLength div SizeOf(WideChar));
     FChanges.Add(FRoot + PathDelim + Name, Entry^.Action, Stamp);
     if Entry^.NextEntryOffset = 0 then
+    begin
       Break;
+    end;
     Entry := PFileNotifyInformation(PByte(Entry) + Entry^.NextEntryOffset);
   end;
 end;
@@ -119,7 +123,9 @@ begin
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
     FILE_FLAG_BACKUP_SEMANTICS or FILE_FLAG_OVERLAPPED, 0);
   if Directory = INVALID_HANDLE_VALUE then
+  begin
     Exit;
+  end;
   try
     SetLength(Buffer, BufferBytes);
     FillChar(Overlapped, SizeOf(Overlapped), 0);
@@ -132,7 +138,9 @@ begin
         ResetEvent(Overlapped.hEvent);
         if not ReadDirectoryChangesW(Directory, @Buffer[0], BufferBytes, True, NotifyFilter, nil,
           @Overlapped, nil) then
+        begin
           Break;
+        end;
         if WaitForMultipleObjects(2, @Handles[0], False, INFINITE) <> WAIT_OBJECT_0 then
         begin
           // Stop: laufendes Lesen abbrechen und dessen Ende abwarten, bevor der Puffer frei wird.
@@ -141,7 +149,9 @@ begin
           Break;
         end;
         if GetOverlappedResult(Directory, Overlapped, Bytes, False) and (Bytes > 0) then
+        begin
           Report(@Buffer[0]);
+        end;
       end;
     finally
       CloseHandle(Overlapped.hEvent);
@@ -173,7 +183,9 @@ var
 begin
   Result := nil;
   for Thread in FThreads do
+  begin
     Result := Result + [Thread.Root];
+  end;
 end;
 
 procedure TAtlasFolderWatcher.SetRoots(const ARoots: TArray<string>);
@@ -187,26 +199,38 @@ var
     Candidate: string;
   begin
     for Candidate in ARoots do
+    begin
       if SameText(ExcludeTrailingPathDelimiter(Candidate), APath) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   for Index := FThreads.Count - 1 downto 0 do
+  begin
     if not Wanted(FThreads[Index].Root) then
+    begin
       FThreads.Delete(Index);
+    end;
+  end;
   for Root in ARoots do
   begin
     Known := False;
     for Index := 0 to FThreads.Count - 1 do
+    begin
       if SameText(FThreads[Index].Root, ExcludeTrailingPathDelimiter(Root)) then
       begin
         Known := True;
         Break;
       end;
+    end;
     if not Known and DirectoryExists(Root) then
+    begin
       FThreads.Add(TWatchThread.Create(Root, FChanges));
+    end;
   end;
 end;
 

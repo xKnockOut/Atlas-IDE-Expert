@@ -262,7 +262,9 @@ var
 begin
   Result := 0;
   for mGroup in Units do
+  begin
     Inc(Result, Length(mGroup.Units));
+  end;
 end;
 
 { TAtlasIssueDevelopmentQuery }
@@ -279,7 +281,9 @@ var
 begin
   mIndex := APos - 1;
   while (mIndex >= 1) and (IsAlnum(AText[mIndex]) or CharInSet(AText[mIndex], ['.', '_', '-'])) do
+  begin
     Dec(mIndex);
+  end;
   Result := (mIndex >= 1) and (mIndex < APos - 1) and (AText[mIndex] = '/');
 end;
 
@@ -291,7 +295,9 @@ begin
   Result := False;
   mKey := UpperCase(Trim(AKey));
   if mKey = '' then
+  begin
     Exit;
+  end;
   mText := UpperCase(AText);
   mIndex := Pos(mKey, mText);
   while mIndex > 0 do
@@ -301,7 +307,9 @@ begin
     // ("owner/repo#12"); danach keine Ziffer.
     if ((mIndex = 1) or not IsAlnum(mText[mIndex - 1]) or ((mKey[1] = '#') and AfterRepository(mText, mIndex))) and
       ((mStop > Length(mText)) or not CharInSet(mText[mStop], ['0'..'9'])) then
+    begin
       Exit(True);
+    end;
     mIndex := Pos(mKey, mText, mIndex + 1);
   end;
 end;
@@ -314,7 +322,9 @@ begin
   // GitHub: das Projekt ist "owner/repo" und spielt für die Nummer keine Rolle.
   mProject := '';
   if SameText(ARequest.Provider, TAtlasTrackerTarget.YouTrack) then
+  begin
     mProject := ARequest.Project;
+  end;
   Result := (ARequest.Key <> '') and
     SameText(TAtlasTrackerNaming.KeyOfBranch(ARequest.Provider, mProject, ABranch), ARequest.Key);
 end;
@@ -328,8 +338,12 @@ begin
   mList := TList<TAtlasVcsLogEntry>.Create;
   try
     for mEntry in AEntries do
+    begin
       if MentionsKey(AKey, mEntry.Message) then
+      begin
         mList.Add(mEntry);
+      end;
+    end;
     Result := mList.ToArray;
   finally
     mList.Free;
@@ -350,35 +364,57 @@ begin
   mRemote := TDictionary<string, Boolean>.Create;
   try
     for mRef in ARefs do
+    begin
       if mRef.Remote then
-        mRemote.AddOrSetValue(LowerCase(mRef.Name), True)
+      begin
+        mRemote.AddOrSetValue(LowerCase(mRef.Name), True);
+      end
       else
+      begin
         mLocal.AddOrSetValue(LowerCase(mRef.Name), True);
+      end;
+    end;
     // Basis: der erste Kandidat, den es gibt, lokal vor origin/<Name>.
     mBase := '';
     for mCandidate in ARequest.Bases do
     begin
       if Trim(mCandidate) = '' then
+      begin
         Continue;
+      end;
       if mLocal.ContainsKey(LowerCase(mCandidate)) then
-        mBase := mCandidate
+      begin
+        mBase := mCandidate;
+      end
       else if mRemote.ContainsKey(LowerCase('origin/' + mCandidate)) then
+      begin
         mBase := 'origin/' + mCandidate;
+      end;
       if mBase <> '' then
+      begin
         Break;
+      end;
     end;
     for mRef in ARefs do
     begin
       if not BranchMatches(ARequest, mRef.LocalName) then
+      begin
         Continue;
+      end;
       mFound := -1;
       for mIndex := 0 to High(Result) do
+      begin
         if SameText(Result[mIndex].Name, mRef.LocalName) then
+        begin
           mFound := mIndex;
+        end;
+      end;
       if mFound < 0 then
       begin
         if Length(Result) >= TAtlasIssueDevelopmentRequest.MaxBranches then
+        begin
           Continue;
+        end;
         mBranch := Default(TAtlasIssueBranch);
         mBranch.Name := mRef.LocalName;
         mBranch.Ahead := -1;
@@ -393,11 +429,17 @@ begin
         Result[mFound].RemoteName := mRef.Name;
       end
       else
+      begin
         Result[mFound].Local := True;
+      end;
       if mRef.Current then
+      begin
         Result[mFound].Current := True;
+      end;
       if mRef.TipDate > Result[mFound].TipDate then
+      begin
         Result[mFound].TipDate := mRef.TipDate;
+      end;
     end;
   finally
     mLocal.Free;
@@ -431,7 +473,9 @@ begin
     begin
       Result := CompareText(ALeft.Name, ARight.Name);
       if Result = 0 then
+      begin
         Result := CompareText(ALeft.FileName, ARight.FileName);
+      end;
     end));
   mFiles := TDictionary<string, TAtlasIssueUnit>.Create;
   mOrder := TList<string>.Create;
@@ -440,15 +484,24 @@ begin
   try
     // Datei → erstes Projekt (nach Name), das sie enthält.
     for mIndex := 0 to High(mProjects) do
+    begin
       for mMember in mProjects[mIndex].Files do
+      begin
         if not mMembers.ContainsKey(LowerCase(mMember)) then
+        begin
           mMembers.Add(LowerCase(mMember), mIndex);
+        end;
+      end;
+    end;
     // Commits kommen neueste zuerst: Der erste Eintrag einer Datei ist ihr jüngster Stand.
     for mEntry in ACommits do
+    begin
       for mFile in mEntry.Files do
       begin
         if mFile.Path = '' then
+        begin
           Continue;
+        end;
         mKey := LowerCase(mFile.Path);
         if mFiles.TryGetValue(mKey, mUnit) then
         begin
@@ -463,12 +516,17 @@ begin
         mFiles.Add(mKey, mUnit);
         mOrder.Add(mKey);
       end;
+    end;
     if mOrder.Count = 0 then
+    begin
       Exit;
+    end;
     // Eine Liste je Projekt und eine für „ohne Projekt“ (letzte).
     SetLength(mByGroup, Length(mProjects) + 1);
     for mIndex := 0 to High(mByGroup) do
+    begin
       mByGroup[mIndex] := TList<TAtlasIssueUnit>.Create;
+    end;
     try
       for mKey in mOrder do
       begin
@@ -477,27 +535,41 @@ begin
         mExt := LowerCase(ExtractFileExt(mPath));
         if not mMembers.TryGetValue(mKey, mBest) and (((mExt <> '.dfm') and (mExt <> '.fmx')) or
           not mMembers.TryGetValue(LowerCase(ChangeFileExt(mPath, '.pas')), mBest)) then
+        begin
           mBest := -1;
+        end;
         if mBest < 0 then
+        begin
           for mIndex := 0 to High(mProjects) do
+          begin
             if SameOrUnder(mProjects[mIndex].Folder, mPath) and
               ((mBest < 0) or (Length(mProjects[mIndex].Folder) > Length(mProjects[mBest].Folder))) then
+            begin
               mBest := mIndex;
+            end;
+          end;
+        end;
         if mBest < 0 then
+        begin
           mBest := Length(mProjects);
+        end;
         mByGroup[mBest].Add(mUnit);
       end;
       for mGroupIndex := 0 to High(mByGroup) do
       begin
         mUnits := mByGroup[mGroupIndex];
         if mUnits.Count = 0 then
+        begin
           Continue;
+        end;
         mUnits.Sort(TComparer<TAtlasIssueUnit>.Construct(
           function(const ALeft, ARight: TAtlasIssueUnit): Integer
           begin
             Result := CompareText(ALeft.Path, ARight.Path);
             if Result = 0 then
+            begin
               Result := CompareStr(ALeft.Path, ARight.Path);
+            end;
           end));
         mGroup := Default(TAtlasIssueUnitGroup);
         if mGroupIndex < Length(mProjects) then
@@ -510,7 +582,9 @@ begin
       end;
     finally
       for mIndex := 0 to High(mByGroup) do
+      begin
         mByGroup[mIndex].Free;
+      end;
     end;
     Result := mGroups.ToArray;
   finally
@@ -533,7 +607,9 @@ begin
   ADevelopment := TAtlasIssueDevelopment.Empty;
   ADevelopment.Key := ARequest.Key;
   if (AVcs = nil) or not Supports(AVcs, IAtlasVcsHistory, mHistory) then
+  begin
     Exit(TAtlasVcsOutcome.NoWorkingCopy);
+  end;
   ADevelopment.VcsKind := AVcs.Kind;
   if ARequest.Key = '' then
   begin
@@ -542,25 +618,35 @@ begin
   end;
   mMax := ARequest.MaxCommits;
   if mMax < 1 then
+  begin
     mMax := TAtlasIssueDevelopmentRequest.DefaultMaxCommits;
+  end;
   Result := mHistory.SearchLog(SearchText(ARequest.Key), mMax, mEntries);
   ADevelopment.VcsOutcome := Result;
   if Result <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   ADevelopment.Truncated := Length(mEntries) >= mMax;
   ADevelopment.Commits := Matching(ARequest.Key, mEntries);
   ADevelopment.Units := GroupUnits(ADevelopment.Commits, ARequest.Projects);
   // Branches gehören dazu, scheitern aber nicht die ganze Abfrage (SVN ohne ^/branches).
   if mHistory.AllBranches(mRefs) <> TAtlasVcsOutcome.Ok then
+  begin
     Exit;
+  end;
   ADevelopment.Branches := BranchesOf(ARequest, mRefs);
   for mIndex := 0 to High(ADevelopment.Branches) do
   begin
     if ADevelopment.Branches[mIndex].Base = '' then
+    begin
       Continue;
+    end;
     mFrom := ADevelopment.Branches[mIndex].Name;
     if not ADevelopment.Branches[mIndex].Local then
+    begin
       mFrom := ADevelopment.Branches[mIndex].RemoteName;
+    end;
     if mHistory.Distance(mFrom, ADevelopment.Branches[mIndex].Base, mAhead, mBehind) = TAtlasVcsOutcome.Ok then
     begin
       ADevelopment.Branches[mIndex].Ahead := mAhead;
@@ -577,12 +663,18 @@ begin
   mOld := TTextLines.SplitLines(AOld);
   mNew := TTextLines.SplitLines(ANew);
   for mIndex := 0 to High(mNew) do
+  begin
     if (mIndex > High(mOld)) or (mOld[mIndex] <> mNew[mIndex]) then
+    begin
       Exit(mIndex + 1);
+    end;
+  end;
   // Gleich oder nur hinten gekürzt: die letzte Zeile.
   Result := Length(mNew);
   if Result < 1 then
+  begin
     Result := 1;
+  end;
 end;
 
 class function TAtlasIssueDevelopmentQuery.OpenTarget(const AEntry: TAtlasVcsLogEntry;
@@ -591,17 +683,21 @@ var
   mFile: TAtlasVcsLogFile;
 begin
   for mFile in AEntry.Files do
+  begin
     if (mFile.Path <> '') and (mFile.Kind <> TAtlasVcsChangeKind.Deleted) and IsPascalFile(mFile.Path) then
     begin
       AFile := mFile;
       Exit(True);
     end;
+  end;
   for mFile in AEntry.Files do
+  begin
     if (mFile.Path <> '') and (mFile.Kind <> TAtlasVcsChangeKind.Deleted) then
     begin
       AFile := mFile;
       Exit(True);
     end;
+  end;
   AFile := Default(TAtlasVcsLogFile);
   Result := False;
 end;
@@ -616,9 +712,13 @@ begin
   begin
     mLines := TAtlasTextDiff.Lines(mFile.Before, mFile.After);
     if Length(mLines) = 0 then
+    begin
       Continue;
+    end;
     if Length(Result) > 0 then
+    begin
       Result := Result + [''];
+    end;
     Result := Result + ['=== ' + mFile.Caption + ' ==='] + mLines;
   end;
 end;

@@ -150,10 +150,14 @@ begin
   Result.SyncState := ASyncState;
   Result.StateField := Trim(AStateField);
   if Result.StateField = '' then
+  begin
     Result.StateField := TAtlasTrackerWorkflow.DefaultStateField;
+  end;
   Result.AssigneeField := Trim(AAssigneeField);
   if Result.AssigneeField = '' then
+  begin
     Result.AssigneeField := TAtlasTrackerWorkflow.DefaultAssigneeField;
+  end;
   Result.StartState := Trim(AStartState);
   Result.AssignOnStart := AAssignOnStart;
   Result.StartComment := AStartComment;
@@ -189,13 +193,21 @@ begin
     [rfReplaceAll]), #10, ',', [rfReplaceAll]).Split([',']) do
   begin
     if Trim(mPart) = '' then
+    begin
       Continue;
+    end;
     mFound := False;
     for mItem in Result do
+    begin
       if SameText(mItem, Trim(mPart)) then
+      begin
         mFound := True;
+      end;
+    end;
     if not mFound then
+    begin
       Result := Result + [Trim(mPart)];
+    end;
   end;
 end;
 
@@ -218,20 +230,32 @@ begin
   Result := AOptions;
   mServer := ATarget.Server;
   if mServer = '' then
+  begin
     Exit;
+  end;
   for mConnection in AConnections do
   begin
     if not SameText(mConnection.Provider, ATarget.Provider) or
       not SameText(mConnection.Target.Server, mServer) then
+    begin
       Continue;
+    end;
     if mConnection.StateField <> '' then
+    begin
       Result.StateField := mConnection.StateField;
+    end;
     if mConnection.AssigneeField <> '' then
+    begin
       Result.AssigneeField := mConnection.AssigneeField;
+    end;
     if mConnection.StartState <> '' then
+    begin
       Result.StartState := mConnection.StartState;
+    end;
     if Length(mConnection.EndStates) > 0 then
+    begin
       Result.EndStates := Copy(mConnection.EndStates);
+    end;
     Exit;
   end;
 end;
@@ -251,7 +275,9 @@ begin
   Result := StringReplace(Result, '{key}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
   // Leere Platzhalter am Ende lassen keine Leerzeilen zurück.
   while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ', #9]) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function IsKeyChar(AChar: Char): Boolean;
@@ -267,7 +293,9 @@ begin
   Result := False;
   mKey := UpperCase(Trim(AKey));
   if mKey = '' then
+  begin
     Exit;
+  end;
   mText := UpperCase(ASummary);
   mPos := Pos(mKey, mText);
   while mPos > 0 do
@@ -276,7 +304,9 @@ begin
     // Eigenes Wort: davor und danach kein Buchstabe, keine Ziffer ("ATL-12" nicht in "ATL-123").
     if ((mPos = 1) or not IsKeyChar(mText[mPos - 1]) or (mKey[1] = '#')) and
       ((mEnd > Length(mText)) or not IsKeyChar(mText[mEnd])) then
+    begin
       Exit(True);
+    end;
     mPos := PosEx(mKey, mText, mPos + 1);
   end;
 end;
@@ -291,11 +321,15 @@ begin
   for mIndex := High(ACommits) downto 0 do
   begin
     if not MentionsKey(ACommits[mIndex].Summary, AKey) then
+    begin
       Continue;
+    end;
     mLines := mLines + [ACommits[mIndex].ShortHash + ' ' + Trim(ACommits[mIndex].Summary)];
     Inc(mCount);
     if mCount >= MaxCommits then
+    begin
       Break;
+    end;
   end;
   Result := string.Join(#10, mLines);
 end;
@@ -311,9 +345,13 @@ begin
   begin
     mSpace := Pos(' ', Trim(mLine));
     if mSpace > 0 then
-      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))]
+    begin
+      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))];
+    end
     else if Trim(mLine) <> '' then
+    begin
       mLines := mLines + [Trim(mLine)];
+    end;
   end;
   Result := string.Join(#10, mLines);
 end;
@@ -321,9 +359,13 @@ end;
 class function TAtlasTrackerWorkflow.CommitBases(const ABranchBase: string): TArray<string>;
 begin
   if Trim(ABranchBase) <> '' then
-    Result := TArray<string>.Create(Trim(ABranchBase))
+  begin
+    Result := TArray<string>.Create(Trim(ABranchBase));
+  end
   else
+  begin
     Result := TArray<string>.Create(TAtlasVcsBranchNames.GitBase, TAtlasVcsBranchNames.GitBaseFallback);
+  end;
 end;
 
 class function TAtlasTrackerWorkflow.CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase,
@@ -334,12 +376,20 @@ var
 begin
   Result := '';
   if (AWork = nil) or (Trim(ABranch) = '') then
+  begin
     Exit;
+  end;
   for mBase in CommitBases(ABranchBase) do
+  begin
     if SameText(mBase, ABranch) then
-      Exit
+    begin
+      Exit;
+    end
     else if AWork.Outgoing(ABranch, mBase, MaxLog, mCommits) = TAtlasVcsOutcome.Ok then
+    begin
       Exit(CommitLines(mCommits, AKey));
+    end;
+  end;
 end;
 
 class function TAtlasTrackerWorkflow.StartChange(const AOptions: TAtlasTrackerSyncOptions;
@@ -347,14 +397,20 @@ class function TAtlasTrackerWorkflow.StartChange(const AOptions: TAtlasTrackerSy
 begin
   Result := TAtlasTrackerWrite.Empty;
   if not AOptions.SyncState then
+  begin
     Exit;
+  end;
   Result.StateField := AOptions.StateField;
   Result.AssigneeField := AOptions.AssigneeField;
   Result.State := AOptions.StartState;
   if AOptions.AssignOnStart then
+  begin
     Result.Assign := TAtlasTrackerAssign.Me;
+  end;
   if Trim(AOptions.StartComment) <> '' then
+  begin
     Result.Comment := Fill(AOptions.StartComment, AValues);
+  end;
 end;
 
 class function TAtlasTrackerWorkflow.EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState,
@@ -377,11 +433,17 @@ class function TAtlasTrackerWorkflow.DurationText(AMinutes: Integer): string;
 begin
   Result := '';
   if AMinutes <= 0 then
+  begin
     Exit;
+  end;
   if AMinutes < 60 then
+  begin
     Exit(Format('%d min', [AMinutes]));
+  end;
   if AMinutes mod 60 = 0 then
+  begin
     Exit(Format('%d h', [AMinutes div 60]));
+  end;
   Result := Format('%d h %d min', [AMinutes div 60, AMinutes mod 60]);
 end;
 
@@ -402,15 +464,21 @@ begin
   end;
   mField := Trim(AStateField);
   if mField = '' then
+  begin
     mField := DefaultStateField;
+  end;
   Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.States, mField, WriteTimeoutMs,
     Result.States);
   if Result.Outcome.Succeeded then
+  begin
     Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.StateFields, '', WriteTimeoutMs,
       Result.StateFields);
+  end;
   if Result.Outcome.Succeeded then
+  begin
     Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', WriteTimeoutMs,
       Result.UserFields);
+  end;
 end;
 
 end.

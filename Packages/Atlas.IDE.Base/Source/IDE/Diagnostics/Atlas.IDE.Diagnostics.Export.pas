@@ -44,7 +44,9 @@ begin
   Info := TAtlasDiagnosticExport.Info(TAtlasPluginVersion.Version, TAtlasUpdates.IdeVersion, Platform);
   Files := TAtlasDiagnosticExport.Files(TAtlasDiagnosticExport.DefaultFolder, TAtlasDiagnosticExport.DefaultDays, Now);
   if FileExists(TAtlasIdeDiagnosticMode.LastDataFile) then
+  begin
     Files := Files + [TAtlasIdeDiagnosticMode.LastDataFile];
+  end;
   if Length(Files) = 0 then
   begin
     AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportEmpty, [TAtlasDiagnosticExport.DefaultDays]));
@@ -53,7 +55,9 @@ begin
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasStrings.Fmt(TAtlasTextId.DiagExportHint,
     [TAtlasDiagnosticExport.DefaultDays]), TAtlasDiagnosticExport.Preview(Files, Info), Target,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
+  begin
     Exit;
+  end;
   TAtlasDiagnosticExport.WriteZip(Files, Target, Info);
   AMessage(TAtlasStrings.Fmt(TAtlasTextId.DiagExportDone, [Target]));
 end;

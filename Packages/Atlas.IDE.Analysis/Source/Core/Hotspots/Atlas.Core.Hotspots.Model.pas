@@ -170,10 +170,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := mValue.Value;
+  end;
 end;
 
 function IntOf(const AObject: TJSONObject; const AName: string; ADefault: Integer): Integer;
@@ -182,10 +186,14 @@ var
 begin
   Result := ADefault;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsInt;
+  end;
 end;
 
 function FloatOf(const AObject: TJSONObject; const AName: string): Double;
@@ -194,10 +202,14 @@ var
 begin
   Result := 0;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONNumber then
+  begin
     Result := TJSONNumber(mValue).AsDouble;
+  end;
 end;
 
 function FlagOf(const AObject: TJSONObject; const AName: string): Boolean;
@@ -206,10 +218,14 @@ var
 begin
   Result := False;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONBool then
+  begin
     Result := TJSONBool(mValue).AsBoolean;
+  end;
 end;
 
 function ArrayOf(const AObject: TJSONObject; const AName: string): TJSONArray;
@@ -218,10 +234,14 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONArray then
+  begin
     Result := TJSONArray(mValue);
+  end;
 end;
 
 function ObjectOf(const AObject: TJSONObject; const AName: string): TJSONObject;
@@ -230,17 +250,23 @@ var
 begin
   Result := nil;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONObject then
+  begin
     Result := TJSONObject(mValue);
+  end;
 end;
 
 /// <summary>Vollständiger Pfad aus Wurzel und relativem Pfad mit "/".</summary>
 function FullPath(const ARoot, APath: string): string;
 begin
   if ARoot = '' then
+  begin
     Exit(APath);
+  end;
   Result := IncludeTrailingPathDelimiter(ARoot) + StringReplace(APath, '/', PathDelim, [rfReplaceAll]);
 end;
 
@@ -253,7 +279,9 @@ var
 begin
   Result := nil;
   if AArray = nil then
+  begin
     Exit;
+  end;
   SetLength(Result, AArray.Count);
   for mIndex := 0 to AArray.Count - 1 do
   begin
@@ -271,9 +299,15 @@ begin
       mEntry.Authors := IntOf(mItem, 'authors', 0);
       mNames := ArrayOf(mItem, 'authorNames');
       if mNames <> nil then
+      begin
         for mInner := 0 to mNames.Count - 1 do
+        begin
           if mNames.Items[mInner] is TJSONString then
+          begin
             mEntry.AuthorNames := mEntry.AuthorNames + [mNames.Items[mInner].Value];
+          end;
+        end;
+      end;
       mEntry.Added := IntOf(mItem, 'added', -1);
       mEntry.Deleted := IntOf(mItem, 'deleted', -1);
       mEntry.LastChange := TextOf(mItem, 'lastChange');
@@ -290,7 +324,9 @@ begin
         begin
           mEntry.History[mInner] := Default(TAtlasHotspotCommit);
           if not (mHistory.Items[mInner] is TJSONObject) then
+          begin
             Continue;
+          end;
           mCommit := TJSONObject(mHistory.Items[mInner]);
           mEntry.History[mInner].Revision := TextOf(mCommit, 'revision');
           mEntry.History[mInner].Author := TextOf(mCommit, 'author');
@@ -310,9 +346,13 @@ end;
 function TAtlasHotspotCommit.ShortRevision(const AVcs: string): string;
 begin
   if SameText(AVcs, 'svn') then
-    Result := 'r' + Revision
+  begin
+    Result := 'r' + Revision;
+  end
   else
+  begin
     Result := Copy(Revision, 1, 7);
+  end;
 end;
 
 { TAtlasHotspotEntry }
@@ -320,9 +360,13 @@ end;
 function TAtlasHotspotEntry.Caption: string;
 begin
   if Method <> '' then
-    Result := Method
+  begin
+    Result := Method;
+  end
   else
+  begin
     Result := UnitName;
+  end;
 end;
 
 { TAtlasHotspotModel }
@@ -343,13 +387,19 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AAnswer);
   try
     if not (mRoot is TJSONObject) then
+    begin
       Exit;
+    end;
     mAnswer := TJSONObject(mRoot);
     if not (mAnswer.GetValue('enabled') is TJSONBool) then
+    begin
       Exit;
+    end;
     AEnabled := FlagOf(mAnswer, 'enabled');
     if not AEnabled then
+    begin
       Exit(True);
+    end;
     AHasVcs := FlagOf(mAnswer, 'vcs');
     if not AHasVcs then
     begin
@@ -364,7 +414,9 @@ begin
     end;
     mData := ObjectOf(mAnswer, 'data');
     if (mData = nil) or (IntOf(mData, 'format', 0) <> Format) then
+    begin
       Exit;
+    end;
     AModel.Title := TextOf(mData, 'title');
     AModel.Vcs := TextOf(mData, 'vcs');
     AModel.Head := TextOf(mData, 'head');
@@ -382,7 +434,9 @@ begin
       begin
         AModel.Coupling[mIndex] := Default(TAtlasHotspotPair);
         if not (mItems.Items[mIndex] is TJSONObject) then
+        begin
           Continue;
+        end;
         mItem := TJSONObject(mItems.Items[mIndex]);
         mFirst := ObjectOf(mItem, 'first');
         mSecond := ObjectOf(mItem, 'second');
@@ -407,9 +461,13 @@ end;
 function TAtlasHotspotModel.Entries: TArray<TAtlasHotspotEntry>;
 begin
   if SameText(Level, 'method') then
-    Result := Methods
+  begin
+    Result := Methods;
+  end
   else
+  begin
     Result := Units;
+  end;
 end;
 
 function TAtlasHotspotModel.Filter(const AText: string): TArray<Integer>;
@@ -422,9 +480,13 @@ begin
   mText := LowerCase(Trim(AText));
   mEntries := Entries;
   for mIndex := 0 to High(mEntries) do
+  begin
     if (mText = '') or (Pos(mText, LowerCase(mEntries[mIndex].UnitName)) > 0) or
       (Pos(mText, LowerCase(mEntries[mIndex].Method)) > 0) then
+    begin
       Result := Result + [mIndex];
+    end;
+  end;
 end;
 
 function TAtlasHotspotModel.FilterCoupling(const AText: string): TArray<Integer>;
@@ -435,9 +497,13 @@ begin
   Result := nil;
   mText := LowerCase(Trim(AText));
   for mIndex := 0 to High(Coupling) do
+  begin
     if (mText = '') or (Pos(mText, LowerCase(Coupling[mIndex].FirstUnit)) > 0) or
       (Pos(mText, LowerCase(Coupling[mIndex].SecondUnit)) > 0) then
+    begin
       Result := Result + [mIndex];
+    end;
+  end;
 end;
 
 { TAtlasHotspotChart }
@@ -466,17 +532,23 @@ var
 begin
   Result := nil;
   if (AWidth <= 0) or (AHeight <= 0) or (Length(AShown) = 0) then
+  begin
     Exit;
+  end;
   Extent(AEntries, AShown, mMaxChanges, mMaxComplexity);
   mMaxLines := 1;
   for mIndex := 0 to Min(Length(AShown), Limit) - 1 do
+  begin
     mMaxLines := Max(mMaxLines, AEntries[AShown[mIndex]].Lines);
+  end;
   mLeft := Round(MarginLeft * AScale);
   mBottom := AHeight - Round(MarginBottom * AScale);
   mTop := Round(MarginTop * AScale);
   mRight := AWidth - Round(MarginRight * AScale);
   if (mRight <= mLeft) or (mBottom <= mTop) then
+  begin
     Exit;
+  end;
   mList := TList<TAtlasHotspotBubble>.Create;
   try
     for mIndex := 0 to Min(Length(AShown), Limit) - 1 do
@@ -494,7 +566,9 @@ begin
       begin
         Result := ARight.Radius - ALeft.Radius;
         if Result = 0 then
+        begin
           Result := ARight.Entry - ALeft.Entry;
+        end;
       end));
     Result := mList.ToArray;
   finally
@@ -555,7 +629,9 @@ begin
     mOption.AddPair('level', ALevel);
     mOption.AddPair('format', 'json');
     if ARefresh then
+    begin
       mOption.AddPair('refresh', TJSONBool.Create(True));
+    end;
     mItems.AddElement(mOption);
     Result := mItems.ToJSON;
   finally
@@ -589,7 +665,9 @@ begin
   mRoot := TJSONObject.ParseJSONValue(AAnswer);
   try
     if mRoot is TJSONObject then
+    begin
       Result := TextOf(TJSONObject(mRoot), 'file');
+    end;
   finally
     mRoot.Free;
   end;
@@ -621,9 +699,13 @@ begin
   mName := Trim(AName);
   mDot := mName.LastIndexOf('.');
   if mDot >= 0 then
+  begin
     mName := mName.Substring(mDot + 1);
+  end;
   if mName = '' then
+  begin
     Exit;
+  end;
   mLine := LowerCase(ALineText);
   mName := LowerCase(mName);
   mFrom := 0;
@@ -631,10 +713,14 @@ begin
   begin
     mFound := mLine.IndexOf(mName, mFrom);
     if mFound < 0 then
+    begin
       Exit;
+    end;
     if ((mFound = 0) or not IsNameChar(mLine.Chars[mFound - 1])) and
       ((mFound + Length(mName) >= Length(mLine)) or not IsNameChar(mLine.Chars[mFound + Length(mName)])) then
+    begin
       Exit(mFound);
+    end;
     mFrom := mFound + 1;
   end;
 end;

@@ -80,7 +80,9 @@ begin
   Result.Argument := AArgument;
   Result.Count := Length(AFormat.Placeholders);
   if not AFormat.Found then
+  begin
     Exit;
+  end;
   if AFormat.Problem <> TAtlasFormatProblem.None then
   begin
     Result.Kind := TAtlasFormatLineKind.Problem;
@@ -95,34 +97,52 @@ begin
       // Konflikt beim "*": Breite bzw. Genauigkeit erwartet eine Ganzzahl.
       if (AFormat.Problem = TAtlasFormatProblem.TypeConflict) and
         (AFormat.Placeholders[Result.Placeholder].Argument <> Result.Argument) then
+      begin
         Result.TypeChar := '*';
+      end;
     end;
     Exit;
   end;
   if AArgument < 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to High(AFormat.Placeholders) do
   begin
     Placeholder := AFormat.Placeholders[Index];
     if Placeholder.Argument = AArgument then
-      Result.Kind := TAtlasFormatLineKind.Placeholder
+    begin
+      Result.Kind := TAtlasFormatLineKind.Placeholder;
+    end
     else if Placeholder.WidthArgument = AArgument then
-      Result.Kind := TAtlasFormatLineKind.Width
+    begin
+      Result.Kind := TAtlasFormatLineKind.Width;
+    end
     else if Placeholder.PrecisionArgument = AArgument then
-      Result.Kind := TAtlasFormatLineKind.Precision
+    begin
+      Result.Kind := TAtlasFormatLineKind.Precision;
+    end
     else
+    begin
       Continue;
+    end;
     Result.Placeholder := Index;
     Result.PlaceholderText := Placeholder.Text;
     if Result.Kind = TAtlasFormatLineKind.Placeholder then
-      Result.TypeChar := Placeholder.TypeChar
+    begin
+      Result.TypeChar := Placeholder.TypeChar;
+    end
     else
+    begin
       Result.TypeChar := '*';
+    end;
     Exit;
   end;
   // Kein Platzhalter für diesen Eintrag (bei bekannter Zuordnung).
   if AFormat.ArgumentCount >= 0 then
+  begin
     Result.Kind := TAtlasFormatLineKind.Unused;
+  end;
 end;
 
 class function TAtlasSignatureFormats.Marks(const AFormat: TAtlasSignatureFormat): TArray<TAtlasFormatMark>;
@@ -139,7 +159,9 @@ var
   begin
     if (ARange.StartLine <> ARange.EndLine) or (ARange.StartCharacter >= ARange.EndCharacter) or
       (ARange.StartLine < 0) then
+    begin
       Exit;
+    end;
     Mark.Line := ARange.StartLine;
     Mark.Start := ARange.StartCharacter;
     Mark.Stop := ARange.EndCharacter;
@@ -150,19 +172,27 @@ var
   procedure Take(AArgument, APlaceholder: Integer);
   begin
     if (AArgument >= 0) and (AArgument <= High(Slots)) and (Slots[AArgument] < 0) then
+    begin
       Slots[AArgument] := APlaceholder;
+    end;
   end;
 
 begin
   Result := nil;
   if not AFormat.Found then
+  begin
     Exit;
+  end;
   SetLength(Slots, Length(AFormat.Arguments));
   for Index := 0 to High(Slots) do
+  begin
     Slots[Index] := -1;
+  end;
   // Erst der Wert, dann Breite und Genauigkeit: ein Argument bekommt die Farbe des Platzhalters, den es füllt.
   for Index := 0 to High(AFormat.Placeholders) do
+  begin
     Take(AFormat.Placeholders[Index].Argument, Index);
+  end;
   for Index := 0 to High(AFormat.Placeholders) do
   begin
     Take(AFormat.Placeholders[Index].WidthArgument, Index);
@@ -174,22 +204,30 @@ begin
     begin
       Placeholder := AFormat.Placeholders[Index];
       if Placeholder.Valid and Placeholder.HasRange then
+      begin
         Add(Placeholder.Range, Index);
+      end;
     end;
     for Index := 0 to High(AFormat.Arguments) do
     begin
       Range := AFormat.Arguments[Index];
       if Slots[Index] >= 0 then
+      begin
         Add(Range, Slots[Index]);
+      end;
     end;
     List.Sort(TComparer<TAtlasFormatMark>.Construct(
       function(const A, B: TAtlasFormatMark): Integer
       begin
         Result := A.Line - B.Line;
         if Result = 0 then
+        begin
           Result := A.Start - B.Start;
+        end;
         if Result = 0 then
+        begin
           Result := A.Stop - B.Stop;
+        end;
       end));
     Result := List.ToArray;
   finally

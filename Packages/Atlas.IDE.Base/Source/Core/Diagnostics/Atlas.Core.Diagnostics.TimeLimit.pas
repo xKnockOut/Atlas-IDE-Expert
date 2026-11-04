@@ -110,16 +110,22 @@ begin
     if TAtlasShutdown.WaitFor(FStart, 1000) <> wrSignaled then
     begin
       if TAtlasShutdown.Signalled then
+      begin
         Exit;
+      end;
       Continue;
     end;
     if Terminated then
+    begin
       Exit;
+    end;
     Proc := FProc;
     Error := '';
     try
       if Assigned(Proc) then
+      begin
         Proc();
+      end;
     except
       on E: Exception do
         Error := E.ClassName + ': ' + E.Message;
@@ -127,7 +133,9 @@ begin
     Proc := nil;
     // StopAll hat aufgegeben (Entladen): nichts mehr anfassen, was dem Vorrat gehört.
     if Terminated then
+    begin
       Exit;
+    end;
     TAtlasTimeLimit.FLock.Enter;
     try
       FProc := nil;
@@ -141,7 +149,9 @@ begin
     end;
     // Der Aufrufer hat aufgegeben: Erst jetzt ist der Arbeiter wieder frei.
     if Abandoned then
+    begin
       TAtlasTimeLimit.Release(Self);
+    end;
   end;
 end;
 
@@ -168,9 +178,13 @@ end;
 class procedure TAtlasTimeLimit.SetLimitMs(AValue: Integer);
 begin
   if AValue < MinMs then
+  begin
     AValue := MinMs;
+  end;
   if AValue > MaxMs then
+  begin
     AValue := MaxMs;
+  end;
   FLimitMs := AValue;
 end;
 
@@ -237,9 +251,13 @@ begin
     Exit(TAtlasTimedOutcome.Failed);
   end;
   if ALimitMs < 0 then
-    Limit := FLimitMs
+  begin
+    Limit := FLimitMs;
+  end
   else
+  begin
     Limit := ALimitMs;
+  end;
   Worker := Take;
   Worker.FProc := AProc;
   Worker.FStart.SetEvent;
@@ -248,19 +266,29 @@ begin
   try
     Finished := Worker.FFinished;
     if Finished then
-      AError := Worker.FError
+    begin
+      AError := Worker.FError;
+    end
     else
+    begin
       Worker.FAbandoned := True;
+    end;
   finally
     FLock.Leave;
   end;
   if not Finished then
+  begin
     Exit(TAtlasTimedOutcome.TimedOut);
+  end;
   Release(Worker);
   if AError <> '' then
-    Result := TAtlasTimedOutcome.Failed
+  begin
+    Result := TAtlasTimedOutcome.Failed;
+  end
   else
+  begin
     Result := TAtlasTimedOutcome.Done;
+  end;
 end;
 
 class function TAtlasTimeLimit.BusyCount: Integer;
@@ -279,14 +307,18 @@ var
   Left: Int64;
 begin
   if (FLock = nil) or (FReleased = nil) then
+  begin
     Exit(True);
+  end;
   Watch := TStopwatch.StartNew;
   Result := BusyCount = 0;
   while not Result do
   begin
     Left := Int64(AMs) - Watch.ElapsedMilliseconds;
     if Left <= 0 then
+    begin
       Exit;
+    end;
     // Auto-Reset: Ein Release zwischen Prüfung und Warten bleibt gesetzt und weckt sofort.
     FReleased.WaitFor(Cardinal(Left));
     Result := BusyCount = 0;
@@ -306,7 +338,9 @@ var
   Hung: Integer;
 begin
   if FLock = nil then
+  begin
     Exit(True);
+  end;
   FLock.Enter;
   try
     Workers := FAll.ToArray;
@@ -327,8 +361,12 @@ begin
   begin
     Hung := 0;
     for Worker in Workers do
+    begin
       if not Worker.Finished then
+      begin
         Inc(Hung);
+      end;
+    end;
     // Ein Aufruf steckt in nicht abbrechbarem Code (A-13). Kehrt er erst nach dem Entladen zurück, läuft er in
     // nicht mehr geladenem Code: protokollieren und noch etwas warten.
     TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
@@ -336,8 +374,11 @@ begin
     Result := TAtlasShutdown.WaitForThreads(Threads, HangGraceMs);
   end;
   for Worker in Workers do
+  begin
     if Worker.Finished then
-      Worker.Free
+    begin
+      Worker.Free;
+    end
     else
     begin
       TAtlasGuard.Log('Zeitlimit: Arbeiter hängt weiter; er gibt sich bei Rückkehr selbst frei');
@@ -346,9 +387,12 @@ begin
       // nie eine Doppelfreigabe.
       Worker.FreeOnTerminate := True;
     end;
+  end;
   // WaitIdle nicht länger warten lassen: Die Arbeiter gehören nicht mehr zum Vorrat.
   if FReleased <> nil then
+  begin
     FReleased.SetEvent;
+  end;
 end;
 
 end.

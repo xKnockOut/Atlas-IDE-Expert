@@ -142,8 +142,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FItems) do
+  begin
     if PtInRect(RowRect(Index), APoint) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -155,7 +159,9 @@ begin
   Canvas.Font := Font;
   Width_ := ScaleValue(280);
   for Item in FItems do
+  begin
     Width_ := Max(Width_, Canvas.TextWidth(Item.Text) + ScaleValue(44));
+  end;
   Width_ := Min(Width_, ScaleValue(720));
   ButtonWidth := Max(Canvas.TextWidth(FLogButton.Caption), Canvas.TextWidth(FRestartButton.Caption)) +
     ScaleValue(24);
@@ -171,10 +177,14 @@ procedure TAtlasStatusWindow.SetItems(const AItems: TArray<IAtlasStatusItem>);
 begin
   FItems := AItems;
   if FHot > High(FItems) then
+  begin
     FHot := -1;
+  end;
   Layout;
   if Visible then
+  begin
     SetBounds(FAnchor.X, FAnchor.Y - Height, Width, Height);
+  end;
   Invalidate;
 end;
 
@@ -196,7 +206,9 @@ end;
 procedure TAtlasStatusWindow.Dismiss;
 begin
   if FClosing then
+  begin
     Exit;
+  end;
   FClosing := True;
   Close;
   Release;
@@ -205,15 +217,19 @@ end;
 procedure TAtlasStatusWindow.CloseAndRun(const AProc: TProc);
 begin
   if FClosing then
+  begin
     Exit;
+  end;
   Dismiss;
   // Erst nach dem Schließen ausführen: die Aktion öffnet evtl. ein Menü oder einen Dialog.
   if Assigned(AProc) then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
       procedure
       begin
         AProc();
       end);
+  end;
 end;
 
 procedure TAtlasStatusWindow.FormDeactivate(Sender: TObject);
@@ -249,11 +265,17 @@ begin
   inherited;
   Row := RowAt(Point(X, Y));
   if (Row >= 0) and not FItems[Row].HasAction then
+  begin
     Row := -1;
+  end;
   if Row >= 0 then
-    Cursor := crHandPoint
+  begin
+    Cursor := crHandPoint;
+  end
   else
+  begin
     Cursor := crDefault;
+  end;
   if Row <> FHot then
   begin
     FHot := Row;
@@ -280,16 +302,22 @@ begin
   inherited;
   Row := RowAt(Point(X, Y));
   if (Button <> mbLeft) or (Row < 0) or not FItems[Row].HasAction then
+  begin
     Exit;
+  end;
   Item := FItems[Row];
   Handler := FOnItem;
   CloseAndRun(
     procedure
     begin
       if Assigned(Handler) then
-        Handler(Item)
+      begin
+        Handler(Item);
+      end
       else
+      begin
         Item.Execute;
+      end;
     end);
 end;
 
@@ -342,9 +370,13 @@ begin
     Canvas.Brush.Style := bsClear;
     Part := Rect(Row.Left + ScaleValue(24), Row.Top, Row.Right - ScaleValue(4), Row.Bottom);
     if Item.HasAction then
-      Canvas.Font.Color := ToColor(FColors.Accent)
+    begin
+      Canvas.Font.Color := ToColor(FColors.Accent);
+    end
     else
+    begin
       Canvas.Font.Color := ToColor(FColors.Text);
+    end;
     mText := Item.Text;
     DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;

@@ -147,13 +147,17 @@ end;
 procedure TAtlasUndoJournal.Log(const AText: string);
 begin
   if Assigned(FOnLog) then
+  begin
     FOnLog(AText);
+  end;
 end;
 
 procedure TAtlasUndoJournal.Changed;
 begin
   if Assigned(FOnChanged) then
+  begin
     FOnChanged();
+  end;
 end;
 
 procedure TAtlasUndoJournal.SetOptions(const AValue: TAtlasUndoOptions);
@@ -171,13 +175,17 @@ begin
   while FSets.Count > FOptions.Depth do
   begin
     if FStore <> nil then
+    begin
       FStore.Delete(FSets[0].Id);
+    end;
     FRedoStack.Remove(FSets[0].Id);
     FSets.Delete(0);
     Dropped := True;
   end;
   if Dropped then
+  begin
     Changed;
+  end;
 end;
 
 function TAtlasUndoJournal.Add(const AAction: string; const AFiles: TArray<TAtlasFileChange>): Integer;
@@ -194,22 +202,30 @@ var
 begin
   Result := 0;
   if not FOptions.Enabled then
+  begin
     Exit;
+  end;
   ChangeSet := Default(TAtlasChangeSet);
   FileOps := False;
   for Change in AFiles do
   begin
     if (Change.Kind = TAtlasFileChangeKind.Modified) and (Change.Before.Text = Change.After.Text) and
       (Change.Before.Encoding = Change.After.Encoding) then
+    begin
       Continue;
+    end;
     if Change.Kind <> TAtlasFileChangeKind.Modified then
+    begin
       FileOps := True;
+    end;
     ChangeSet.Files := ChangeSet.Files + [Change];
     ChangeSet.Files[High(ChangeSet.Files)].Undone := False;
   end;
   // Eine einzelne geänderte Datei nimmt Strg+Z im Puffer zurück.
   if (Length(ChangeSet.Files) = 0) or ((Length(ChangeSet.Files) = 1) and not FileOps) then
+  begin
     Exit;
+  end;
   ChangeSet.Id := FNextId;
   Inc(FNextId);
   ChangeSet.Action := AAction;
@@ -217,7 +233,9 @@ begin
   FSets.Add(ChangeSet);
   FRedoStack.Clear;
   if FStore <> nil then
+  begin
     FStore.Save(ChangeSet);
+  end;
   Log(Format('Atlas-Änderung #%d protokolliert: %d Dateien', [ChangeSet.Id, Length(ChangeSet.Files)]));
   Trim;
   Changed;
@@ -229,8 +247,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to FSets.Count - 1 do
+  begin
     if FSets[Index].Id = AId then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -240,7 +262,9 @@ var
 begin
   SetLength(Result, FSets.Count);
   for Index := 0 to FSets.Count - 1 do
+  begin
     Result[Index] := FSets[FSets.Count - 1 - Index];
+  end;
 end;
 
 function TAtlasUndoJournal.Find(AId: Integer; out ASet: TAtlasChangeSet): Boolean;
@@ -250,9 +274,13 @@ begin
   Index := SetIndex(AId);
   Result := Index >= 0;
   if Result then
-    ASet := FSets[Index]
+  begin
+    ASet := FSets[Index];
+  end
   else
+  begin
     ASet := Default(TAtlasChangeSet);
+  end;
 end;
 
 function TAtlasUndoJournal.Count: Integer;
@@ -265,8 +293,12 @@ var
   Index: Integer;
 begin
   for Index := FSets.Count - 1 downto 0 do
+  begin
     if FSets[Index].State <> TAtlasChangeSetState.Undone then
+    begin
       Exit(FSets[Index].Id);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -276,8 +308,12 @@ var
   ChangeSet: TAtlasChangeSet;
 begin
   for Index := FRedoStack.Count - 1 downto 0 do
+  begin
     if Find(FRedoStack[Index], ChangeSet) and (ChangeSet.State <> TAtlasChangeSetState.Applied) then
+    begin
       Exit(ChangeSet.Id);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -304,9 +340,13 @@ end;
 function Verb(ARedo: Boolean): string;
 begin
   if ARedo then
-    Result := 'wiederhergestellt'
+  begin
+    Result := 'wiederhergestellt';
+  end
   else
+  begin
     Result := 'zurückgenommen';
+  end;
 end;
 
 function SameEncoding(const A, B: TAtlasTextFileContent): Boolean;
@@ -364,7 +404,9 @@ begin
         begin
           // Schon genau so da (z. B. von Hand wiederhergestellt): nichts zu tun.
           if Current.Text = Target.Text then
+          begin
             Exit(True);
+          end;
           AProblem.Kind := TAtlasUndoProblemKind.Exists;
           Exit(False);
         end;
@@ -374,7 +416,9 @@ begin
     TAtlasFileChangeKind.Deleted:
       begin
         if not Exists then
+        begin
           Exit(True);
+        end;
         // Die ganze Datei ist die Änderung: Jede spätere Änderung ist ein Konflikt.
         if Current.Text <> Source.Text then
         begin
@@ -403,7 +447,9 @@ begin
         APlan.Content.CodePage := Target.CodePage;
       end;
       if (Text <> Current.Text) or not SameEncoding(APlan.Content, Current) then
+      begin
         APlan.Kind := TPlanKind.Write;
+      end;
     end;
   end;
   Result := True;
@@ -443,13 +489,21 @@ begin
     Change := ChangeSet.Files[Index];
     // Zurücknehmen betrifft die noch angewendeten Dateien, Wiederherstellen die zurückgenommenen.
     if Change.Undone <> ARedo then
+    begin
       Continue;
+    end;
     if Plan(Change, Index, ARedo, Planned, Problem) then
-      Plans := Plans + [Planned]
+    begin
+      Plans := Plans + [Planned];
+    end
     else if Problem.Kind = TAtlasUndoProblemKind.Failed then
-      Result.Errors := Result.Errors + [Problem]
+    begin
+      Result.Errors := Result.Errors + [Problem];
+    end
     else
+    begin
       Result.Conflicts := Result.Conflicts + [Problem];
+    end;
   end;
   if (Length(Plans) = 0) and (Length(Result.Conflicts) = 0) and (Length(Result.Errors) = 0) then
   begin
@@ -481,7 +535,9 @@ begin
             Mode := FOptions.NewFiles;
             // Eine beim Wiederherstellen erneut gelöschte Datei bleibt nie liegen; ihr Inhalt steht im Satz.
             if ARedo and (Mode = TAtlasNewFilesMode.Keep) then
+            begin
               Mode := TAtlasNewFilesMode.RecycleBin;
+            end;
             FTarget.RemoveFile(Change.FileName, Change.Project, Mode);
           end;
       end;
@@ -505,15 +561,21 @@ begin
   begin
     FRedoStack.Remove(AId);
     if not ARedo or (ChangeSet.State <> TAtlasChangeSetState.Applied) then
+    begin
       FRedoStack.Add(AId);
+    end;
     if FStore <> nil then
+    begin
       FStore.Save(ChangeSet);
+    end;
   end;
   Log(Format('Atlas-Änderung #%d %s: %d Dateien, %d Konflikte, %d Fehler',
     [AId, Verb(ARedo), Length(Result.Done), Length(Result.Conflicts),
     Length(Result.Errors)]));
   if Touched then
+  begin
     Changed;
+  end;
 end;
 
 procedure TAtlasUndoJournal.Load;
@@ -522,7 +584,9 @@ var
   ChangeSet: TAtlasChangeSet;
 begin
   if FStore = nil then
+  begin
     Exit;
+  end;
   Loaded := FStore.Load;
   FSets.Clear;
   FRedoStack.Clear;
@@ -541,7 +605,9 @@ begin
   FSets.Clear;
   FRedoStack.Clear;
   if FStore <> nil then
+  begin
     FStore.Clear;
+  end;
   Changed;
 end;
 

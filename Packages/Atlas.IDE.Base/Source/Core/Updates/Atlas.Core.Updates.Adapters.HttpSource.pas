@@ -75,19 +75,25 @@ begin
         Content.Clear;
         Async := Client.BeginGet(Url, Content);
         while not Async.IsCompleted do
+        begin
           if TAtlasShutdown.Wait(SliceMs) or (Watch.ElapsedMilliseconds > ATimeoutMs) then
           begin
             Async.Cancel;
             // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
             Watch := TStopwatch.StartNew;
             while not Async.IsCompleted and (Watch.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+            begin
               Sleep(10);
+            end;
             AError := 'abgebrochen';
             Exit;
           end;
+        end;
         Response := THTTPClient.EndAsyncHTTP(Async);
         if not IsRedirect(Response.StatusCode) then
+        begin
           Break;
+        end;
         Inc(Redirects);
         if Redirects > MaxRedirects then
         begin
