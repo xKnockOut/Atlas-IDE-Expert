@@ -68,7 +68,11 @@ type
     FPreview: Integer;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
+    function ListKey(AKey: Word): Boolean;
     procedure Execute;
+    function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
+    function Ask(ASession: TLspSession; const AView: IOTAEditView; out AEntries: TArray<TAtlasUnwrapEntry>): Boolean;
+    procedure CreateWindow;
     procedure Preview(AIndex: Integer);
     procedure Accept(AIndex: Integer);
     procedure Close;
@@ -107,7 +111,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Window,
@@ -115,7 +118,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.PaintedLine;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
@@ -290,112 +294,130 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUnwrap.Execute;
-var
-  View: IOTAEditView;
-  Session: TLspSession;
-  Cursor: TOTAEditPos;
-  Line, Character: Integer;
-  CaretLine, Arguments: string;
-  Answer: TJSONValue;
-  Entries: TArray<TAtlasUnwrapEntry>;
-  Point: TPoint;
+function TAtlasIdeUnwrap.Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
 begin
-  Close;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (View = nil) or (View.Buffer = nil) or View.Buffer.IsReadOnly or not IsPascal(View.Buffer.FileName) then
+  ASession := nil;
+  AView := TAtlasEditorBuffer.ActiveView;
+  Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
+    IsPascal(AView.Buffer.FileName);
+  if Result and Assigned(FSession) then
   begin
-    Exit;
+    ASession := FSession();
   end;
-  Session := nil;
-  if Assigned(FSession) then
-  begin
-    Session := FSession();
-  end;
-  if Session = nil then
+  if Result and (ASession = nil) then
   begin
     Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
+    Result := False;
   end;
-  FFileName := View.Buffer.FileName;
-  FText := TAtlasEditorBuffer.Text(View.Buffer);
+end;
+
+function TAtlasIdeUnwrap.Ask(ASession: TLspSession; const AView: IOTAEditView;
+  out AEntries: TArray<TAtlasUnwrapEntry>): Boolean;
+var
+  mCursor: TOTAEditPos;
+  mLine, mCharacter: Integer;
+  mCaretLine, mArguments: string;
+  mAnswer: TJSONValue;
+begin
+  Result := False;
+  AEntries := nil;
+  FFileName := AView.Buffer.FileName;
+  FText := TAtlasEditorBuffer.Text(AView.Buffer);
   FLines := TTextLines.SplitLines(FText);
-  FTabWidth := TAtlasEditorBuffer.TabWidth(View.Buffer);
-  Cursor := View.CursorPos;
-  Line := Cursor.Line - 1;
-  CaretLine := '';
-  if (Line >= 0) and (Line < Length(FLines)) then
+  FTabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
+  mCursor := AView.CursorPos;
+  mLine := mCursor.Line - 1;
+  mCaretLine := '';
+  if (mLine >= 0) and (mLine < Length(FLines)) then
   begin
-    CaretLine := FLines[Line];
+    mCaretLine := FLines[mLine];
   end;
-  Character := Min(TLspSession.ColumnToIndex(CaretLine, Cursor.Col, FTabWidth), Length(CaretLine));
-  Arguments := TAtlasUnwrap.Arguments(TLspSession.PathToUri(FFileName), Line, Character,
-    TAtlasEditorBuffer.BlockIndent(View.Buffer));
+  mCharacter := Min(TLspSession.ColumnToIndex(mCaretLine, mCursor.Col, FTabWidth), Length(mCaretLine));
+  mArguments := TAtlasUnwrap.Arguments(TLspSession.PathToUri(FFileName), mLine, mCharacter,
+    TAtlasEditorBuffer.BlockIndent(AView.Buffer));
   try
-    Session.Sync(FFileName, FText);
-    Answer := Session.RunCommand(TAtlasUnwrap.Command, Arguments, TimeoutMs);
+    ASession.Sync(FFileName, FText);
+    mAnswer := ASession.RunCommand(TAtlasUnwrap.Command, mArguments, TimeoutMs);
     try
-      Entries := TAtlasUnwrap.ReadEntries(Answer);
+      AEntries := TAtlasUnwrap.ReadEntries(mAnswer);
     finally
-      Answer.Free;
+      mAnswer.Free;
+    end;
+    Result := Length(AEntries) > 0;
+    if not Result then
+    begin
+      Report(TAtlasStrings.Text(TAtlasTextId.UnwrapNothing));
     end;
   except
     on E: ELspClientError do
     begin
       Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapFailed, [E.Message]));
-      Exit;
     end;
   end;
-  if Length(Entries) = 0 then
+end;
+
+procedure TAtlasIdeUnwrap.CreateWindow;
+begin
+  FWindow := TAtlasUnwrapWindow.Create(nil);
+  FWindow.OnSelect :=
+    procedure(AIndex: Integer)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Unwrap,
+        procedure
+        begin
+          if FInstance <> nil then
+          begin
+            FInstance.Preview(AIndex);
+          end;
+        end);
+    end;
+  FWindow.OnAccept :=
+    procedure(AIndex: Integer)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Unwrap,
+        procedure
+        begin
+          if FInstance <> nil then
+          begin
+            FInstance.Accept(AIndex);
+          end;
+        end);
+    end;
+  FWindow.OnCancel :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Unwrap,
+        procedure
+        begin
+          if FInstance <> nil then
+          begin
+            FInstance.Close;
+          end;
+        end);
+    end;
+end;
+
+procedure TAtlasIdeUnwrap.Execute;
+var
+  mView: IOTAEditView;
+  mSession: TLspSession;
+  mEntries: TArray<TAtlasUnwrapEntry>;
+  mPoint: TPoint;
+begin
+  Close;
+  if not Ready(mView, mSession) or not Ask(mSession, mView, mEntries) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.UnwrapNothing));
     Exit;
   end;
-  FEntries := Entries;
+  FEntries := mEntries;
   if FWindow = nil then
   begin
-    FWindow := TAtlasUnwrapWindow.Create(nil);
-    FWindow.OnSelect :=
-      procedure(AIndex: Integer)
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Unwrap,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.Preview(AIndex);
-            end;
-          end);
-      end;
-    FWindow.OnAccept :=
-      procedure(AIndex: Integer)
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Unwrap,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.Accept(AIndex);
-            end;
-          end);
-      end;
-    FWindow.OnCancel :=
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Unwrap,
-          procedure
-          begin
-            if FInstance <> nil then
-            begin
-              FInstance.Close;
-            end;
-          end);
-      end;
+    CreateWindow;
   end;
-  Point := CaretPoint;
+  mPoint := CaretPoint;
   FWindow.Colors := TAtlasIdeStyle.Colors;
-  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(Point), 1, '', 10);
-  FWindow.ShowFor(FEntries, Point);
+  FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
+  FWindow.ShowFor(FEntries, mPoint);
 end;
 
 procedure TAtlasIdeUnwrap.Preview(AIndex: Integer);
@@ -454,48 +476,51 @@ begin
   Report(TAtlasStrings.Fmt(TAtlasTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(Entry)]));
 end;
 
+/// <summary>Führt AKey in der Liste aus (Eingabe, Escape, Pfeile ohne Strg/Alt); False für jede andere Taste.
+/// </summary>
+function TAtlasIdeUnwrap.ListKey(AKey: Word): Boolean;
+begin
+  Result := (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_RETURN:
+      FWindow.Accept;
+    VK_ESCAPE:
+      FWindow.Cancel;
+    VK_UP:
+      FWindow.MoveRow(-1);
+    VK_DOWN:
+      FWindow.MoveRow(1);
+  else
+    Result := False;
+  end;
+end;
+
 procedure TAtlasIdeUnwrap.KeyDown(const Msg: TMsg; var Handled: Boolean);
 var
-  Key: Word;
+  mKey: Word;
 begin
   if (FWindow = nil) or not FWindow.IsShown then
   begin
     Exit;
   end;
-  Key := Word(Msg.wParam);
-  if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  mKey := Word(Msg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
-  if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
-    case Key of
-      VK_RETURN:
-        begin
-          FWindow.Accept;
-          Handled := True;
-          Exit;
-        end;
-      VK_ESCAPE:
-        begin
-          FWindow.Cancel;
-          Handled := True;
-          Exit;
-        end;
-      VK_UP:
-        begin
-          FWindow.MoveRow(-1);
-          Handled := True;
-          Exit;
-        end;
-      VK_DOWN:
-        begin
-          FWindow.MoveRow(1);
-          Handled := True;
-          Exit;
-        end;
-    end;
-  // Jede andere Taste schließt ohne Änderung und geht an den Editor.
-  Close;
+  if ListKey(mKey) then
+  begin
+    Handled := True;
+  end
+  else
+  begin
+    // Jede andere Taste schließt ohne Änderung und geht an den Editor.
+    Close;
+  end;
 end;
 
 procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -527,91 +552,100 @@ begin
   end;
 end;
 
+/// <summary>Bereich von ASpan in der Zeile AText; False, wenn er leer ist.</summary>
+function SpanArea(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
+  const ASpan: TAtlasUnwrapSpan; ATabWidth: Integer; out AArea: TRect): Boolean;
+var
+  mStop: Integer;
+  mFirst, mLast: TRect;
+begin
+  mStop := Min(ASpan.Stop, Length(AText));
+  Result := mStop > ASpan.Start;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, ASpan.Start, ATabWidth),
+    AContext.EditorLineNum);
+  mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mStop, ATabWidth),
+    AContext.EditorLineNum);
+  AArea := TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom);
+end;
+
+/// <summary>Hinterlegt AArea grün (bleibt) oder rot und durchgestrichen (fällt weg).</summary>
+procedure MarkSpan(ADC: HDC; const AArea: TRect; AKeep: Boolean; const AColors: TAtlasColors; APen: HPEN);
+var
+  mMiddle: Integer;
+  mOldPen: HPEN;
+begin
+  if AKeep then
+  begin
+    TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Add))), TAtlasIdeUnwrap.KeepAlpha);
+    Exit;
+  end;
+  TAtlasIdeStyle.Blend(ADC, AArea, COLORREF(ColorToRGB(TColor(AColors.Error))), TAtlasIdeUnwrap.RemoveAlpha);
+  // Durchgestrichen: Linie auf halber Höhe.
+  mMiddle := (AArea.Top + AArea.Bottom) div 2;
+  mOldPen := SelectObject(ADC, APen);
+  MoveToEx(ADC, AArea.Left, mMiddle, nil);
+  LineTo(ADC, AArea.Right, mMiddle);
+  SelectObject(ADC, mOldPen);
+end;
+
+/// <summary>Vorschau für die Teile ASpans der Zeile AText.</summary>
+procedure PaintSpans(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
+  const ASpans: TArray<TAtlasUnwrapSpan>; ATabWidth: Integer);
+var
+  mSpan: TAtlasUnwrapSpan;
+  mCode, mArea: TRect;
+  mColors: TAtlasColors;
+  mDC: HDC;
+  mPen: HPEN;
+  mSaved: Integer;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Right - 2, ARect.Top + 1));
+  mDC := AContext.Canvas.Handle;
+  mCode := AContext.LineState.CodeRect;
+  mSaved := SaveDC(mDC);
+  mPen := CreatePen(PS_SOLID, Max(1, (ARect.Bottom - ARect.Top) div 14), COLORREF(ColorToRGB(TColor(mColors.Error))));
+  try
+    if mCode.Right > mCode.Left then
+    begin
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
+    end;
+    for mSpan in ASpans do
+    begin
+      if SpanArea(ARect, AContext, AText, mSpan, ATabWidth, mArea) then
+      begin
+        MarkSpan(mDC, mArea, mSpan.Keep, mColors, mPen);
+      end;
+    end;
+  finally
+    DeleteObject(mPen);
+    RestoreDC(mDC, mSaved);
+  end;
+end;
+
 procedure TAtlasIdeUnwrap.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Spans: TArray<TAtlasUnwrapSpan>;
-  Span: TAtlasUnwrapSpan;
-  Text: string;
-  Line, Stop, Middle, Saved: Integer;
-  First, Last, Code, Area: TRect;
-  Colors: TAtlasColors;
-  DC: HDC;
-  Pen, OldPen: HPEN;
+  mSpans: TArray<TAtlasUnwrapSpan>;
+  mLine: Integer;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FPreview < 0) or (FPreview > High(FEntries)) or
-    TAtlasGuard.Disabled(TAtlasFeature.Unwrap) then
+  if (FPreview < 0) or (FPreview > High(FEntries)) or TAtlasGuard.Disabled(TAtlasFeature.Unwrap) then
   begin
     Exit;
   end;
   try
-    if not SameText(Context.FileName, FFileName) then
-    begin
-      Exit;
-    end;
-    LineState := Context.LineState;
-    if LineState = nil then
-    begin
-      Exit;
-    end;
-    Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line >= Length(FLines)) then
-    begin
-      Exit;
-    end;
-    Spans := TAtlasUnwrap.SpansOnLine(FEntries[FPreview], Line);
-    if Length(Spans) = 0 then
-    begin
-      Exit;
-    end;
-    Text := FLines[Line];
     // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
-    if TrimRight(LineState.Text) <> TrimRight(Text) then
+    if not TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FFileName, FLines, mLine) then
     begin
       Exit;
     end;
-    Colors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2, Rect.Top + 1));
-    DC := Context.Canvas.Handle;
-    Code := LineState.CodeRect;
-    Saved := SaveDC(DC);
-    Pen := CreatePen(PS_SOLID, Max(1, (Rect.Bottom - Rect.Top) div 14),
-      COLORREF(ColorToRGB(TColor(Colors.Error))));
-    try
-      if Code.Right > Code.Left then
-      begin
-        IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
-      end;
-      for Span in Spans do
-      begin
-        Stop := Min(Span.Stop, Length(Text));
-        if Stop <= Span.Start then
-        begin
-          Continue;
-        end;
-        First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Span.Start, FTabWidth),
-          Context.EditorLineNum);
-        Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(Text, Stop, FTabWidth),
-          Context.EditorLineNum);
-        Area := TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom);
-        if Span.Keep then
-        begin
-          TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Add))), KeepAlpha);
-        end
-        else
-        begin
-          TAtlasIdeStyle.Blend(DC, Area, COLORREF(ColorToRGB(TColor(Colors.Error))), RemoveAlpha);
-          // Durchgestrichen: Linie auf halber Höhe.
-          Middle := (Area.Top + Area.Bottom) div 2;
-          OldPen := SelectObject(DC, Pen);
-          MoveToEx(DC, Area.Left, Middle, nil);
-          LineTo(DC, Area.Right, Middle);
-          SelectObject(DC, OldPen);
-        end;
-      end;
-    finally
-      DeleteObject(Pen);
-      RestoreDC(DC, Saved);
+    mSpans := TAtlasUnwrap.SpansOnLine(FEntries[FPreview], mLine);
+    if Length(mSpans) > 0 then
+    begin
+      PaintSpans(Rect, Context, FLines[mLine], mSpans, FTabWidth);
     end;
   except
     on E: Exception do
