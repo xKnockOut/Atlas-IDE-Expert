@@ -66,17 +66,16 @@
 // Die Willkommensseite startet keinen Server und liest nur lokale Daten;
 // einzige Ausnahme ist die Abfrage beim Build-Server (#763,
 // welcomePage.tests.ci, Vorgabe aus).
+// Die Quellen der Bereiche hält Atlas.IDE.Welcome.Areas, das Layout der
+// Willkommensseite der IDE Atlas.IDE.Welcome.IdeLayout, den Beobachter für
+// welcomePage.openWhenNoProject Atlas.IDE.Welcome.ProjectWatch.
 
 interface
 
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Welcome.Sections,
-  Atlas.Core.Welcome.Backup,
-  Atlas.Core.Files.DataFile,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
@@ -84,119 +83,67 @@ uses
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Welcome.Page,
   Atlas.IDE.Welcome.Search,
-  Atlas.IDE.Welcome.WhatsNew,
-  Atlas.IDE.Welcome.Projects,
-  Atlas.IDE.Welcome.QuickActions,
-  Atlas.IDE.Welcome.Trends,
-  Atlas.IDE.Welcome.Unsaved,
-  Atlas.IDE.Welcome.Continue,
-  Atlas.IDE.Welcome.State,
-  Atlas.IDE.Welcome.Discover,
-  Atlas.IDE.Welcome.Help,
-  Atlas.IDE.Welcome.Setup,
-  Atlas.IDE.Welcome.Layouts;
+  Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Welcome.Areas,
+  Atlas.IDE.Welcome.IdeLayout,
+  Atlas.IDE.Welcome.ProjectWatch;
 
 type
   TAtlasIdeWelcome = class
+  private type
+    /// <summary>Was die Komposition hereinreicht (siehe Create).</summary>
+    THooks = record
+      ServerInfo: TFunc<TAtlasServerInfo>;
+      Indexing: TAtlasIndexingFunc;
+      Units: TFunc<Integer>;
+      Message: TProc<string>;
+    end;
+
+    /// <summary>Kennungen der Beobachter bei den Bereichen und beim Statusfeld.</summary>
+    TListeners = record
+      Sections: Integer;
+      Status: Integer;
+    end;
+
+    /// <summary>Geänderte Bereiche, die der eingereihte Flush zeichnet.</summary>
+    TDirty = record
+      Ids: TArray<string>;
+      Queued: Boolean;
+    end;
+
+    /// <summary>Stand des letzten Sync.</summary>
+    TSyncState = record
+      /// <summary>Erster Sync gelaufen (welcomePage.openOnStart wirkt nur beim Start).</summary>
+      Started: Boolean;
+      /// <summary>Plugins auf der Willkommensseite der IDE beim letzten Sync gewollt.</summary>
+      ShownIde: Boolean;
+      /// <summary>Zuletzt gesehenes welcomePage.layout; '' vor dem ersten Sync.</summary>
+      LastLayout: string;
+    end;
   private
-    FServerInfo: TFunc<TAtlasServerInfo>;
-    FIndexing: TAtlasIndexingFunc;
-    FUnits: TFunc<Integer>;
-    FMessage: TProc<string>;
-    FSectionsListener: Integer;
-    FStatusListener: Integer;
-    FQueued: Boolean;
-    FDirty: TArray<string>;
-    // Erster Sync gelaufen (welcomePage.openOnStart wirkt nur beim Start).
-    FStarted: Boolean;
-    // Plugins auf der Willkommensseite der IDE beim letzten Sync gewollt.
-    FShownIde: Boolean;
-    // Zuletzt gesehenes welcomePage.layout; '' vor dem ersten Sync.
-    FLastLayout: string;
-    // Beobachter für geschlossene Projekte (welcomePage.openWhenNoProject); die IDE hält ihn.
-    FProjectWatch: TObject;
-    FProjectWatchIndex: Integer;
-    // Prüfung „noch ein Projekt offen?“ ist eingereiht.
-    FNoProjectQueued: Boolean;
-    FAccess: IAtlasRegistryAccess;
+    FHooks: THooks;
+    FListeners: TListeners;
+    FDirty: TDirty;
+    FSync: TSyncState;
+    FIdeLayout: TAtlasIdeWelcomeIdeLayout;
+    FProjectWatch: TAtlasIdeWelcomeProjectWatch;
     FSearch: TAtlasIdeWelcomeSearch;
-    FWhatsNew: TAtlasIdeWhatsNew;
-    // Hält die Quelle der Karte am Leben; die Frames halten sie ebenfalls als Schnittstelle.
-    FWhatsNewRef: IInterface;
-    FProjects: TAtlasIdeProjects;
-    // Hält die Quelle des Bereichs „Projekte“ am Leben; die Frames halten sie ebenfalls.
-    FProjectsRef: IInterface;
-    FQuickActions: TAtlasIdeQuickActions;
-    // Hält die Quelle der Schnellaktionen am Leben; Bereiche und Frames halten sie ebenfalls.
-    FQuickActionsRef: IInterface;
-    FTrends: TAtlasIdeTrends;
-    // Hält die Quelle des Bereichs „Projektverlauf“ am Leben; die Frames halten sie ebenfalls.
-    FTrendsRef: IInterface;
-    FUnsaved: TAtlasIdeUnsaved;
-    // Hält die Quelle des Bereichs „Nicht gesichert“ am Leben; die Frames halten sie ebenfalls.
-    FUnsavedRef: IInterface;
-    FContinue: TAtlasIdeContinue;
-    // Hält die Quelle des Bereichs „Weiterarbeiten“ am Leben; die Frames halten sie ebenfalls.
-    FContinueRef: IInterface;
-    FState: TAtlasIdeWelcomeState;
-    // Hält die Quelle der Zustandskachel am Leben; die Frames halten sie ebenfalls.
-    FStateRef: IInterface;
-    FDiscover: TAtlasIdeDiscover;
-    // Hält die Quelle der Karte „Atlas entdecken“ am Leben; die Frames halten sie ebenfalls.
-    FDiscoverRef: IInterface;
-    FHelp: TAtlasIdeHelp;
-    // Hält die Quelle des Bereichs „Hilfe und Rückmeldung“ am Leben; die Frames halten sie ebenfalls.
-    FHelpRef: IInterface;
-    FSetup: TAtlasIdeSetup;
-    // Hält die Quelle des Bereichs „Projekt für Atlas einrichten“ am Leben; die Frames halten sie ebenfalls.
-    FSetupRef: IInterface;
+    FAreas: TAtlasIdeWelcomeAreas;
     FLayouts: TAtlasIdeWelcomeLayouts;
     // Hält die Quelle für „Seite anpassen“ am Leben; die Tafeln halten sie ebenfalls.
     FLayoutsRef: IInterface;
     procedure Announce(const AIds: TArray<string>);
-    procedure SetWhatsNew(AValue: TAtlasIdeWhatsNew);
-    procedure SetState(AValue: TAtlasIdeWelcomeState);
-    procedure SetDiscover(AValue: TAtlasIdeDiscover);
-    procedure SetHelp(AValue: TAtlasIdeHelp);
-    procedure SetSetup(AValue: TAtlasIdeSetup);
-    procedure SetProjects(AValue: TAtlasIdeProjects);
-    procedure SetQuickActions(AValue: TAtlasIdeQuickActions);
-    procedure SetTrends(AValue: TAtlasIdeTrends);
-    procedure SetUnsaved(AValue: TAtlasIdeUnsaved);
-    procedure SetContinue(AValue: TAtlasIdeContinue);
     procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
-    function CaptionOf(const APluginId: string): string;
     function CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
     function FactoryOf(const APluginId: string): TAtlasWelcomeClientFactory;
-    procedure UpdateSection(const AId: string);
     procedure RefreshClient(AClient: TAtlasWelcomeFrame);
     /// <summary>Tafel füllen; AFold: Fenster „Atlas-Start“ (Spalten falten, wenn es schmal ist).</summary>
     procedure FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
     procedure FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
     procedure UpdateHeaders;
-    function WelcomeKey: string;
-    function PlaceBoard: Boolean;
-    function BoardPlaced: Boolean;
-    procedure CheckPending;
-    procedure RetireIdeLayout;
     procedure SetLayout(const AValue: string);
-    function Place(AReport: Boolean): Boolean;
-    function Unplace(AReport: Boolean): Boolean;
-    /// <summary>Sollen nach den Einstellungen Atlas-Bereiche auf der Willkommensseite der IDE stehen?</summary>
-    class function IdePageWanted(const ASettings: TAtlasPluginSettings): Boolean; static;
-    procedure WatchProjects;
-    procedure UnwatchProjects;
-    /// <summary>Ein Projekt oder eine Projektgruppe wird geschlossen: danach prüfen, ob noch eines offen ist.
-    /// </summary>
-    procedure ProjectClosing;
-    procedure CheckNoProject;
-    class function OpenProjectCount: Integer; static;
-    class function IdeRunning: Boolean; static;
-    procedure Report(const AText: string);
-    class function AtlasFolder: string; static;
-    class function PendingFile: string; static;
   public
     /// <summary>AServerInfo: Phase und Version des Servers; AIndexing(Prozent): läuft die Indizierung;
     /// AUnits: Units im Index (-1 unbekannt); AMessage: Zeile in die Meldungsansicht.</summary>
@@ -218,39 +165,14 @@ type
     /// Willkommensseite im Fenster „Atlas-Start“ (öffnet es beim Einschalten).</summary>
     procedure Customize;
     procedure ThemeChanged;
-    /// <summary>Wird für Tests ersetzt; Vorgabe: Registry der IDE.</summary>
-    property Access: IAtlasRegistryAccess read FAccess write FAccess;
+    /// <summary>Layout der Willkommensseite der IDE (Registry, Sicherung, Marke).</summary>
+    property IdeLayout: TAtlasIdeWelcomeIdeLayout read FIdeLayout;
     /// <summary>Suchfeld (#760); gehört danach der Steuerung. nil = ohne Suchfeld.</summary>
     property Search: TAtlasIdeWelcomeSearch read FSearch write FSearch;
-    /// <summary>Karte „Neu in Atlas“ (#756); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
-    property WhatsNew: TAtlasIdeWhatsNew read FWhatsNew write SetWhatsNew;
-    /// <summary>Bereich „Projekte“ (#592); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
-    property Projects: TAtlasIdeProjects read FProjects write SetProjects;
-    /// <summary>Schnellaktionen (#764); vor ContinueWork und vor dem ersten Sync setzen, nach Projects.</summary>
-    property QuickActions: TAtlasIdeQuickActions read FQuickActions write SetQuickActions;
-    /// <summary>Bereich „Projektverlauf“ (#758); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
-    /// </summary>
-    property Trends: TAtlasIdeTrends read FTrends write SetTrends;
-    /// <summary>Bereich „Nicht gesichert“ (#762); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
-    property Unsaved: TAtlasIdeUnsaved read FUnsaved write SetUnsaved;
-    /// <summary>Bereich „Weiterarbeiten“ (#755); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
-    /// Nicht „Continue“: Das verdeckte in den Methoden die Prozedur System.Continue.</summary>
-    property ContinueWork: TAtlasIdeContinue read FContinue write SetContinue;
-    /// <summary>Zustandskachel „Atlas“ (#754); gehört danach der Steuerung (Start beim Setzen). nil = ohne.</summary>
-    property State: TAtlasIdeWelcomeState read FState write SetState;
-    /// <summary>Karte „Atlas entdecken“ (#757); gehört danach der Steuerung (Start beim Setzen). nil = ohne.
-    /// </summary>
-    property Discover: TAtlasIdeDiscover read FDiscover write SetDiscover;
-    /// <summary>Bereich „Hilfe und Rückmeldung“ (#766); gehört danach der Steuerung (Start beim Setzen). nil =
-    /// ohne.</summary>
-    property Help: TAtlasIdeHelp read FHelp write SetHelp;
-    /// <summary>Bereich „Projekt für Atlas einrichten“ (#759); gehört danach der Steuerung (Start beim Setzen).
-    /// nil = ohne.</summary>
-    property Setup: TAtlasIdeSetup read FSetup write SetSetup;
+    /// <summary>Quellen der Bereiche; gehören der Steuerung (Start beim Setzen).</summary>
+    property Areas: TAtlasIdeWelcomeAreas read FAreas;
     /// <summary>Quelle für „Seite anpassen“ (#767); gehört der Steuerung.</summary>
     property Layouts: TAtlasIdeWelcomeLayouts read FLayouts;
-    class function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer;
-      AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo; static;
   end;
 
 implementation
@@ -258,35 +180,19 @@ implementation
 uses
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
-  System.IOUtils,
-  Vcl.Forms,
-  ToolsAPI,
   Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Registry,
+  Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts,
   Atlas.Core.Welcome.HostLayout,
-  Atlas.Core.Welcome.Projects,
-  Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.UI.Welcome.Arrange,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Welcome.Registry,
   Atlas.IDE.Welcome.Window;
-
-type
-  // Meldet das Schließen von Projekten und Projektgruppen an die Steuerung (#1114).
-  TAtlasWelcomeProjectWatch = class(TNotifierObject, IOTAIDENotifier)
-  private
-    FOwner: TAtlasIdeWelcome;
-  public
-    procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
-    procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
-    procedure AfterCompile(Succeeded: Boolean); overload;
-  end;
 
 const
   NameDisplay = 3;
@@ -315,47 +221,221 @@ begin
   Result := Trim(Result);
 end;
 
-/// <summary>Textdatei lesen, mit oder ohne Byte-Order-Mark (frühere Fassungen schrieben eines); teilt Löschen,
-/// damit es das atomare Ersetzen nicht blockiert. EInOutError, wenn sie nicht lesbar ist.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  if not TAtlasDataFile.TryRead(AFileName, Result) then
-  begin
-    raise EInOutError.Create('Datei der Willkommensseite nicht lesbar');
-  end;
-end;
-
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
 end;
 
-{ TAtlasWelcomeProjectWatch }
+{ Hilfen }
 
-procedure TAtlasWelcomeProjectWatch.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string;
-  var Cancel: Boolean);
-var
-  Owner: TAtlasIdeWelcome;
+function BoardId: string;
 begin
-  Owner := FOwner;
-  if (Owner = nil) or (NotifyCode <> ofnFileClosing) or not TAtlasWelcomeSearch.IsProjectFile(FileName) then
+  Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board);
+end;
+
+/// <summary>Kopfzeile ohne Gruß: Version des Plugins (die des Servers steht im Statusfeld), Phase, Index.
+/// </summary>
+function HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer):
+  TAtlasWelcomeHeaderInfo;
+begin
+  Result := Default(TAtlasWelcomeHeaderInfo);
+  Result.Version := TAtlasPluginVersion.Version;
+  Result.Phase := AServer.Phase;
+  Result.Units := AUnits;
+  Result.Indexing := AIndexing;
+  Result.Percent := APercent;
+end;
+
+function CaptionOf(const APluginId: string): string;
+var
+  mId: string;
+  mSection: TAtlasWelcomeSection;
+begin
+  mId := TAtlasWelcomeIds.SectionOf(APluginId);
+  if SameText(mId, TAtlasWelcomeIds.Header) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle);
+  end
+  else if SameText(mId, TAtlasWelcomeIds.Board) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeBoardTitle);
+  end
+  else if TAtlasWelcomeSections.Default.Find(mId, mSection) then
+  begin
+    Result := mSection.Title;
+  end
+  else
+  begin
+    Result := APluginId;
+  end;
+end;
+
+procedure UpdateSection(const AId: string);
+var
+  mClient: TAtlasWelcomeFrame;
+  mBoard: TAtlasWelcomeBoardFrame;
+begin
+  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(AId));
+  if mClient <> nil then
+  begin
+    mClient.UpdateContent;
+  end;
+  mClient := TAtlasIdeWelcomePage.Client(BoardId);
+  if mClient is TAtlasWelcomeBoardFrame then
+  begin
+    TAtlasWelcomeBoardFrame(mClient).UpdateSection(AId);
+  end;
+  mBoard := TAtlasIdeWelcomeWindow.ExistingBoard;
+  if mBoard <> nil then
+  begin
+    mBoard.UpdateSection(AId);
+  end;
+end;
+
+function Contains(const AList: TArray<string>; const AValue: string): Boolean;
+var
+  mItem: string;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    Result := Result or SameText(mItem, AValue);
+  end;
+end;
+
+/// <summary>Gewünschte Plugins auf der Willkommensseite der IDE: im Atlas-Layout nur die Tafel, sonst Kopf und
+/// je sichtbarem Bereich eins.</summary>
+function WantedPlugins(const ACurrent: TAtlasPluginSettings; AIdePage: Boolean): TArray<string>;
+var
+  mSection: TAtlasWelcomeSection;
+begin
+  Result := nil;
+  if not AIdePage then
   begin
     Exit;
   end;
-  // Keine Exception an die IDE (#493).
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  if ACurrent.WelcomePageLayout = 'atlas' then
+  begin
+    Result := [BoardId];
+    Exit;
+  end;
+  if ACurrent.WelcomePageHeader then
+  begin
+    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Header)];
+  end;
+  for mSection in TAtlasWelcomeSections.Default.Visible do
+  begin
+    if TAtlasWelcomeViews.Exists(mSection.Id) then
+    begin
+      Result := Result + [TAtlasWelcomeIds.PluginId(mSection.Id)];
+    end;
+  end;
+end;
+
+/// <summary>Plugins der Willkommensseite der IDE auf AWanted bringen; gebliebene neu füllen.</summary>
+procedure SyncPlugins(ASelf: TAtlasIdeWelcome; const AWanted: TArray<string>);
+var
+  mRegistered: TArray<string>;
+  mId, mPlugin: string;
+begin
+  mRegistered := TAtlasIdeWelcomePage.Registered;
+  for mPlugin in mRegistered do
+  begin
+    if not Contains(AWanted, mPlugin) then
+    begin
+      TAtlasIdeWelcomePage.Unregister(mPlugin);
+    end;
+  end;
+  for mId in AWanted do
+  begin
+    if Contains(mRegistered, mId) then
+    begin
+      ASelf.RefreshClient(TAtlasIdeWelcomePage.Client(mId));
+    end
+    else
+    begin
+      // Fabrik je Kennung über FactoryOf: Eine Closure hier sähe nur die letzte Schleifenvariable.
+      TAtlasIdeWelcomePage.Register(mId, CaptionOf(mId), ASelf.FactoryOf(mId));
+    end;
+  end;
+end;
+
+/// <summary>„Atlas-Start“, unabhängig von der Willkommensseite der IDE: beim ersten Sync nach Wunsch öffnen,
+/// danach nur nachführen; aus = schließen.</summary>
+procedure SyncWindow(ASelf: TAtlasIdeWelcome; const ACurrent: TAtlasPluginSettings);
+begin
+  if not ACurrent.WelcomePage then
+  begin
+    TAtlasIdeWelcomeWindow.Hide;
+    Exit;
+  end;
+  if not ASelf.FSync.Started and ACurrent.WelcomePageOpenOnStart then
+  begin
+    TAtlasIdeWelcomeWindow.Show;
+  end;
+  ASelf.FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, True);
+end;
+
+/// <summary>Umschalten in den Optionen: wie die Menübefehle, aber ohne Meldung. Beim Start gilt, was die IDE aus
+/// der Registry liest (CheckPending und Aufräumen im Konstruktor).</summary>
+procedure SyncIdeLayout(ASelf: TAtlasIdeWelcome; const ACurrent: TAtlasPluginSettings; AIdePage: Boolean);
+var
+  mStep: TAtlasIdePageStep;
+begin
+  for mStep in TAtlasIdePageSteps.After(ASelf.FSync.Started, ASelf.FSync.ShownIde, AIdePage, ASelf.FSync.LastLayout,
+    ACurrent.WelcomePageLayout) do
+  begin
+    case mStep of
+      TAtlasIdePageStep.Retire:
+        ASelf.FIdeLayout.Retire;
+      TAtlasIdePageStep.ClearPending:
+        ASelf.FIdeLayout.ClearPending;
+      TAtlasIdePageStep.PlaceBoard:
+        ASelf.FIdeLayout.Place(False);
+      TAtlasIdePageStep.Unplace:
+        ASelf.FIdeLayout.Unplace(False);
+      TAtlasIdePageStep.None: ;
+    end;
+  end;
+end;
+
+/// <summary>Kennung AId vormerken und einmal Flush einreihen (nur im Hauptthread).</summary>
+procedure MarkDirty(const AId: string);
+var
+  mFlush: TThreadProcedure;
+begin
+  if (Instance = nil) or Contains(Instance.FDirty.Ids, AId) then
+  begin
+    Exit;
+  end;
+  Instance.FDirty.Ids := Instance.FDirty.Ids + [AId];
+  if Instance.FDirty.Queued then
+  begin
+    Exit;
+  end;
+  Instance.FDirty.Queued := True;
+  mFlush :=
     procedure
     begin
-      Owner.ProjectClosing;
-    end);
+      if Instance <> nil then
+      begin
+        Instance.Flush;
+      end;
+    end;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, mFlush);
 end;
 
-procedure TAtlasWelcomeProjectWatch.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
+/// <summary>Höhe des Bereichs AId auf der Tafel ABoard; sonst die Vorgabe.</summary>
+function ViewHeight(ABoard: TAtlasWelcomeBoardFrame; const AId: string): Integer;
+var
+  mView: TAtlasWelcomeSectionFrame;
 begin
-end;
-
-procedure TAtlasWelcomeProjectWatch.AfterCompile(Succeeded: Boolean);
-begin
+  mView := ABoard.View(AId);
+  Result := TAtlasWelcomeSectionFrame.DefaultBodyHeight;
+  if mView <> nil then
+  begin
+    Result := mView.Height;
+  end;
 end;
 
 { TAtlasIdeWelcome }
@@ -365,11 +445,12 @@ constructor TAtlasIdeWelcome.Create(const AServerInfo: TFunc<TAtlasServerInfo>;
 begin
   inherited Create;
   Instance := Self;
-  FServerInfo := AServerInfo;
-  FIndexing := AIndexing;
-  FUnits := AUnits;
-  FMessage := AMessage;
-  FAccess := TAtlasIdeRegistryAccess.Create;
+  FHooks.ServerInfo := AServerInfo;
+  FHooks.Indexing := AIndexing;
+  FHooks.Units := AUnits;
+  FHooks.Message := AMessage;
+  FAreas := TAtlasIdeWelcomeAreas.Create;
+  FIdeLayout := TAtlasIdeWelcomeIdeLayout.Create(AMessage);
   FLayouts := TAtlasIdeWelcomeLayouts.Create(
     procedure
     begin
@@ -387,12 +468,12 @@ begin
         Instance.Announce(AIds);
       end;
     end;
-  FSectionsListener := TAtlasWelcomeSections.Default.AddListener(
+  FListeners.Sections := TAtlasWelcomeSections.Default.AddListener(
     procedure(AId: string)
     begin
       SectionChanged(AId);
     end);
-  FStatusListener := TAtlasStatusRegistry.Default.AddListener(
+  FListeners.Status := TAtlasStatusRegistry.Default.AddListener(
     procedure
     begin
       SectionChanged(TAtlasWelcomeIds.Header);
@@ -404,245 +485,40 @@ begin
     end;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeWelcomeWindow.Prepare;
-  CheckPending;
-  if not IdePageWanted(Settings) then
+  FIdeLayout.CheckPending;
+  if not TAtlasIdeWelcomeIdeLayout.Wanted(Settings) then
   begin
-    RetireIdeLayout;
+    FIdeLayout.Retire;
   end;
-  FProjectWatchIndex := -1;
-  WatchProjects;
+  FProjectWatch := TAtlasIdeWelcomeProjectWatch.Create(
+    procedure
+    begin
+      if Instance <> nil then
+      begin
+        Instance.ShowStart;
+      end;
+    end);
 end;
 
 destructor TAtlasIdeWelcome.Destroy;
 begin
   Instance := nil;
-  UnwatchProjects;
+  FreeAndNil(FProjectWatch);
   // Vor den Frames: löst die Suchfelder, die noch leben.
   FreeAndNil(FSearch);
-  TAtlasWelcomeSections.Default.RemoveListener(FSectionsListener);
-  TAtlasStatusRegistry.Default.RemoveListener(FStatusListener);
-  // Vor „Projekte“: Die Schnellaktionen fragen dort nach dem Stand der Versionsverwaltung.
-  if FQuickActions <> nil then
-  begin
-    FQuickActions.Stop;
-  end;
-  if FWhatsNew <> nil then
-  begin
-    FWhatsNew.Stop;
-  end;
-  if FTrends <> nil then
-  begin
-    FTrends.Stop;
-  end;
-  if FProjects <> nil then
-  begin
-    FProjects.Stop;
-  end;
-  if FUnsaved <> nil then
-  begin
-    FUnsaved.Stop;
-  end;
-  // Schreibt den Arbeitsstand des noch offenen Projekts (Beenden der IDE).
-  if FContinue <> nil then
-  begin
-    FContinue.Stop;
-  end;
-  if FState <> nil then
-  begin
-    FState.Stop;
-  end;
-  if FDiscover <> nil then
-  begin
-    FDiscover.Stop;
-  end;
-  if FHelp <> nil then
-  begin
-    FHelp.Stop;
-  end;
-  if FSetup <> nil then
-  begin
-    FSetup.Stop;
-  end;
+  TAtlasWelcomeSections.Default.RemoveListener(FListeners.Sections);
+  TAtlasStatusRegistry.Default.RemoveListener(FListeners.Status);
+  FAreas.Stop;
   // Beim Beenden der IDE: Hat die IDE ihr Layout aus dem Speicher zurückgeschrieben, gilt die Marke weiter.
   TAtlasIdeWelcomePage.RemoveAll;
   TAtlasIdeWelcomeWindow.Release;
-  // Nach den Frames: Sie halten die Quelle der Karte ebenfalls.
-  FWhatsNew := nil;
-  FWhatsNewRef := nil;
-  FProjects := nil;
-  FProjectsRef := nil;
-  FQuickActions := nil;
-  FQuickActionsRef := nil;
-  FTrends := nil;
-  FTrendsRef := nil;
-  FUnsaved := nil;
-  FUnsavedRef := nil;
-  FContinue := nil;
-  FContinueRef := nil;
-  FState := nil;
-  FStateRef := nil;
-  FDiscover := nil;
-  FDiscoverRef := nil;
-  FHelp := nil;
-  FHelpRef := nil;
-  FSetup := nil;
-  FSetupRef := nil;
+  // Nach den Frames: Sie halten die Quellen ebenfalls.
+  FAreas.Release;
+  FreeAndNil(FAreas);
   FLayouts := nil;
   FLayoutsRef := nil;
+  FreeAndNil(FIdeLayout);
   inherited;
-end;
-
-procedure TAtlasIdeWelcome.SetState(AValue: TAtlasIdeWelcomeState);
-begin
-  FState := AValue;
-  FStateRef := AValue;
-  if FState <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FState.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetDiscover(AValue: TAtlasIdeDiscover);
-begin
-  FDiscover := AValue;
-  FDiscoverRef := AValue;
-  if FDiscover <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FDiscover.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetSetup(AValue: TAtlasIdeSetup);
-begin
-  FSetup := AValue;
-  FSetupRef := AValue;
-  if FSetup <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FSetup.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetHelp(AValue: TAtlasIdeHelp);
-begin
-  FHelp := AValue;
-  FHelpRef := AValue;
-  if FHelp <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FHelp.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetUnsaved(AValue: TAtlasIdeUnsaved);
-begin
-  FUnsaved := AValue;
-  FUnsavedRef := AValue;
-  if FUnsaved <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FUnsaved.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetQuickActions(AValue: TAtlasIdeQuickActions);
-begin
-  FQuickActions := AValue;
-  FQuickActionsRef := AValue;
-  // Die Bereiche reichen die Quelle an jeden neuen Frame weiter.
-  if FProjects <> nil then
-  begin
-    FProjects.QuickActions := AValue;
-  end;
-  if FContinue <> nil then
-  begin
-    FContinue.QuickActions := AValue;
-  end;
-  if FQuickActions <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FQuickActions.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetContinue(AValue: TAtlasIdeContinue);
-begin
-  FContinue := AValue;
-  FContinueRef := AValue;
-  if (FContinue <> nil) and (FQuickActions <> nil) then
-  begin
-    FContinue.QuickActions := FQuickActions;
-  end;
-  if FContinue <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FContinue.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetProjects(AValue: TAtlasIdeProjects);
-begin
-  FProjects := AValue;
-  FProjectsRef := AValue;
-  if FProjects <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FProjects.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetTrends(AValue: TAtlasIdeTrends);
-begin
-  FTrends := AValue;
-  FTrendsRef := AValue;
-  if FTrends <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FTrends.Start;
-      end);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.SetWhatsNew(AValue: TAtlasIdeWhatsNew);
-begin
-  FWhatsNew := AValue;
-  FWhatsNewRef := AValue;
-  if FWhatsNew <> nil then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-      procedure
-      begin
-        FWhatsNew.Start;
-      end);
-  end;
 end;
 
 /// <summary>Kontextmenü „Neu in Atlas“ an Frame „Atlas“ bzw. Kopf hängen oder (off) entfernen.</summary>
@@ -659,7 +535,7 @@ begin
   begin
     Menu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
   end;
-  if (FWhatsNew = nil) or not FWhatsNew.Active then
+  if (FAreas.WhatsNew = nil) or not FAreas.WhatsNew.Active then
   begin
     if Menu <> nil then
     begin
@@ -673,68 +549,43 @@ begin
     Menu := TAtlasWhatsNewMenu.Create(AFrame);
     AFrame.PopupMenu := Menu;
   end;
-  Menu.Source := FWhatsNew;
-end;
-
-class function TAtlasIdeWelcome.AtlasFolder: string;
-begin
-  Result := TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas');
-end;
-
-class function TAtlasIdeWelcome.PendingFile: string;
-begin
-  Result := TPath.Combine(AtlasFolder, 'welcomepage-layout-pending');
-end;
-
-function TAtlasIdeWelcome.WelcomeKey: string;
-begin
-  Result := TAtlasWelcomeBackup.WelcomeKey(TAtlasIdeRegistryAccess.IdeBaseKey);
-end;
-
-class function TAtlasIdeWelcome.HeaderInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean;
-  APercent, AUnits: Integer; AHour: Integer; const AFirstName: string; AGreeting: Boolean): TAtlasWelcomeHeaderInfo;
-begin
-  Result.Greeting := AGreeting;
-  Result.Hour := AHour;
-  Result.FirstName := AFirstName;
-  // Version des Plugins; die des Servers steht im Statusfeld.
-  Result.Version := TAtlasPluginVersion.Version;
-  Result.Phase := AServer.Phase;
-  Result.Units := AUnits;
-  Result.Indexing := AIndexing;
-  Result.Percent := APercent;
+  Menu.Source := FAreas.WhatsNew;
 end;
 
 procedure TAtlasIdeWelcome.FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
 var
-  Server: TAtlasServerInfo;
-  Percent, Units: Integer;
-  Indexing: Boolean;
-  Hour, Minute, Second, MSec: Word;
+  mServer: TAtlasServerInfo;
+  mPercent, mUnits: Integer;
+  mIndexing: Boolean;
+  mInfo: TAtlasWelcomeHeaderInfo;
+  mHour, mMinute, mSecond, mMSec: Word;
 begin
   if AHeader = nil then
   begin
     Exit;
   end;
-  Server := Default(TAtlasServerInfo);
-  if Assigned(FServerInfo) then
+  mServer := Default(TAtlasServerInfo);
+  if Assigned(FHooks.ServerInfo) then
   begin
-    Server := FServerInfo();
+    mServer := FHooks.ServerInfo();
   end;
-  Percent := -1;
-  Indexing := False;
-  if Assigned(FIndexing) then
+  mPercent := -1;
+  mIndexing := False;
+  if Assigned(FHooks.Indexing) then
   begin
-    Indexing := FIndexing(Percent);
+    mIndexing := FHooks.Indexing(mPercent);
   end;
-  Units := -1;
-  if Assigned(FUnits) then
+  mUnits := -1;
+  if Assigned(FHooks.Units) then
   begin
-    Units := FUnits();
+    mUnits := FHooks.Units();
   end;
-  DecodeTime(Now, Hour, Minute, Second, MSec);
-  AHeader.ShowInfo(HeaderInfo(Server, Indexing, Percent, Units, Hour,
-    TAtlasWelcomeGreeting.FirstName(DisplayName, GetEnvironmentVariable('USERNAME')), Settings.WelcomePageGreeting));
+  DecodeTime(Now, mHour, mMinute, mSecond, mMSec);
+  mInfo := HeaderInfo(mServer, mIndexing, mPercent, mUnits);
+  mInfo.Greeting := Settings.WelcomePageGreeting;
+  mInfo.Hour := mHour;
+  mInfo.FirstName := TAtlasWelcomeGreeting.FirstName(DisplayName, GetEnvironmentVariable('USERNAME'));
+  AHeader.ShowInfo(mInfo);
   AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
   if (FSearch <> nil) and (AHeader.Search <> nil) then
   begin
@@ -745,42 +596,32 @@ end;
 
 procedure TAtlasIdeWelcome.FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
 var
-  Layout: TAtlasWelcomeLayout;
-  Board: TAtlasWelcomeBoardFrame;
+  mLayout: TAtlasWelcomeLayout;
+  mBoard: TAtlasWelcomeBoardFrame;
 begin
   if ABoard = nil then
   begin
     Exit;
   end;
-  Board := ABoard;
+  mBoard := ABoard;
   // Eigenes Layout (#767) bzw. das feste Atlas-Layout (#753); neue Bereiche nach Höhe in die Spalte mit dem
   // meisten Platz.
-  Layout := FLayouts.BoardLayout(
+  mLayout := FLayouts.BoardLayout(
     function(const AId: string): Integer
-    var
-      View: TAtlasWelcomeSectionFrame;
     begin
-      View := Board.View(AId);
-      if View <> nil then
-      begin
-        Result := View.Height;
-      end
-      else
-      begin
-        Result := TAtlasWelcomeSectionFrame.DefaultBodyHeight;
-      end;
+      Result := ViewHeight(mBoard, AId);
     end);
   // Nach einem Update steht „Neu in Atlas“ oben in der ersten Spalte (#756); beim Anpassen der echte Platz.
-  if (FWhatsNew <> nil) and FWhatsNew.OnTop and not FLayouts.Editing then
+  if (FAreas.WhatsNew <> nil) and FAreas.WhatsNew.OnTop and not FLayouts.Editing then
   begin
-    Layout := Layout.MovedToTop(TAtlasWelcomeIds.News);
+    mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.News);
   end;
   ABoard.Header.Visible := Settings.WelcomePageHeader;
   FillHeader(ABoard.Header);
   AttachMenu(ABoard);
   ABoard.AutoFold := AFold;
   ABoard.Source := FLayouts;
-  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, Layout, Layout.Columns);
+  ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, mLayout, mLayout.Columns);
 end;
 
 procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
@@ -790,7 +631,7 @@ var
   Section: TAtlasWelcomeSection;
   Id: string;
 begin
-  if FWhatsNew = nil then
+  if FAreas.WhatsNew = nil then
   begin
     Exit;
   end;
@@ -808,7 +649,7 @@ begin
     Item.Command := TAtlasIdeWelcomeLayouts.CommandId;
     Items := Items + [Item];
   end;
-  FWhatsNew.Announce(Items);
+  FAreas.WhatsNew.Announce(Items);
 end;
 
 procedure TAtlasIdeWelcome.Customize;
@@ -823,7 +664,7 @@ begin
         Exit;
       end;
       // Ohne Tafel auf der Willkommensseite der IDE (welcomePage.layout = off oder dort aus) im Fenster.
-      Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board));
+      Client := TAtlasIdeWelcomePage.Client(BoardId);
       if not FLayouts.Editing and not (Client is TAtlasWelcomeBoardFrame) then
       begin
         ShowStart;
@@ -832,262 +673,25 @@ begin
     end);
 end;
 
-class function TAtlasIdeWelcome.IdePageWanted(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := ASettings.WelcomePage and ASettings.WelcomePageIdePage;
-end;
-
 procedure TAtlasIdeWelcome.Sync;
-var
-  Current: TAtlasPluginSettings;
-  IdePage: Boolean;
-  Wanted: TArray<string>;
-  Registered: TArray<string>;
-  Keep: Boolean;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Section: TAtlasWelcomeSection;
-      Id, Plugin: string;
-      Step: TAtlasIdePageStep;
+      mCurrent: TAtlasPluginSettings;
+      mIdePage: Boolean;
     begin
-      Current := Settings;
-      // Titel und Reihenfolge der Karte „Neu in Atlas“ nach den Einstellungen (welcomePage.whatsNew).
-      if FWhatsNew <> nil then
-      begin
-        FWhatsNew.Refresh;
-      end;
-      // Karte „Atlas entdecken“: eingeschaltete Funktionen und welcomePage.discover (#757).
-      if FDiscover <> nil then
-      begin
-        FDiscover.Refresh;
-      end;
-      // Bereich „Hilfe und Rückmeldung“: welcomePage.help und keys.overview (#766).
-      if FHelp <> nil then
-      begin
-        FHelp.Refresh;
-      end;
-      // Bereich „Projekt für Atlas einrichten“: welcomePage.projectSetup und .newFromTemplate (#759).
-      if FSetup <> nil then
-      begin
-        FSetup.Refresh;
-      end;
-      // Bereich „Projektverlauf“: welcomePage.trends, .series und .points (#758).
-      if FTrends <> nil then
-      begin
-        FTrends.Refresh;
-      end;
-      // Schnellaktionen: welcomePage.quickActions, .items, .console und Tasten (#764).
-      if FQuickActions <> nil then
-      begin
-        FQuickActions.Refresh;
-      end;
-      IdePage := IdePageWanted(Current) and TAtlasIdeWelcomePage.Available;
-      // Gewünschte Plugins auf der Willkommensseite der IDE.
-      Wanted := nil;
-      if IdePage and (Current.WelcomePageLayout = 'atlas') then
-      begin
-        Wanted := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board)];
-      end
-      else if IdePage then
-      begin
-        if Current.WelcomePageHeader then
-        begin
-          Wanted := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Header)];
-        end;
-        for Section in TAtlasWelcomeSections.Default.Visible do
-        begin
-          if TAtlasWelcomeViews.Exists(Section.Id) then
-          begin
-            Wanted := Wanted + [TAtlasWelcomeIds.PluginId(Section.Id)];
-          end;
-        end;
-      end;
-      Registered := TAtlasIdeWelcomePage.Registered;
-      for Plugin in Registered do
-      begin
-        Keep := False;
-        for Id in Wanted do
-        begin
-          Keep := Keep or SameText(Id, Plugin);
-        end;
-        if not Keep then
-        begin
-          TAtlasIdeWelcomePage.Unregister(Plugin);
-        end;
-      end;
-      for Id in Wanted do
-      begin
-        Keep := False;
-        for Plugin in Registered do
-        begin
-          Keep := Keep or SameText(Id, Plugin);
-        end;
-        if not Keep then
-        begin
-          // Fabrik je Kennung über FactoryOf: Eine Closure hier sähe nur die letzte Schleifenvariable.
-          TAtlasIdeWelcomePage.Register(Id, CaptionOf(Id), FactoryOf(Id));
-        end
-        else
-        begin
-          RefreshClient(TAtlasIdeWelcomePage.Client(Id));
-        end;
-      end;
-      // „Atlas-Start“, unabhängig davon: beim ersten Sync nach Wunsch öffnen, danach nur nachführen; aus =
-      // schließen.
-      if not Current.WelcomePage then
-      begin
-        TAtlasIdeWelcomeWindow.Hide;
-      end
-      else
-      begin
-        if not FStarted and Current.WelcomePageOpenOnStart then
-        begin
-          TAtlasIdeWelcomeWindow.Show;
-        end;
-        FillBoard(TAtlasIdeWelcomeWindow.ExistingBoard, True);
-      end;
-      // Umschalten in den Optionen: wie die Menübefehle, aber ohne Meldung. Beim Start gilt, was die IDE aus der
-      // Registry liest (CheckPending und Aufräumen im Konstruktor).
-      for Step in TAtlasIdePageSteps.After(FStarted, FShownIde, IdePage, FLastLayout, Current.WelcomePageLayout) do
-        case Step of
-          TAtlasIdePageStep.Retire:
-            RetireIdeLayout;
-          TAtlasIdePageStep.ClearPending:
-            System.SysUtils.DeleteFile(PendingFile);
-          TAtlasIdePageStep.PlaceBoard:
-            Place(False);
-          TAtlasIdePageStep.Unplace:
-            Unplace(False);
-          TAtlasIdePageStep.None: ;
-        end;
-      FShownIde := IdePage;
-      FLastLayout := Current.WelcomePageLayout;
-      FStarted := True;
+      mCurrent := Settings;
+      FAreas.Refresh;
+      mIdePage := TAtlasIdeWelcomeIdeLayout.Wanted(mCurrent) and TAtlasIdeWelcomePage.Available;
+      SyncPlugins(Self, WantedPlugins(mCurrent, mIdePage));
+      SyncWindow(Self, mCurrent);
+      SyncIdeLayout(Self, mCurrent, mIdePage);
+      FSync.ShownIde := mIdePage;
+      FSync.LastLayout := mCurrent.WelcomePageLayout;
+      FSync.Started := True;
       UpdateHeaders;
     end);
-end;
-
-procedure TAtlasIdeWelcome.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.WatchProjects;
-var
-  Services: IOTAServices;
-  Watch: TAtlasWelcomeProjectWatch;
-begin
-  if (FProjectWatch <> nil) or not Supports(BorlandIDEServices, IOTAServices, Services) then
-  begin
-    Exit;
-  end;
-  Watch := TAtlasWelcomeProjectWatch.Create;
-  Watch.FOwner := Self;
-  FProjectWatch := Watch;
-  FProjectWatchIndex := Services.AddNotifier(Watch);
-end;
-
-procedure TAtlasIdeWelcome.UnwatchProjects;
-var
-  Services: IOTAServices;
-begin
-  if FProjectWatch = nil then
-  begin
-    Exit;
-  end;
-  TAtlasWelcomeProjectWatch(FProjectWatch).FOwner := nil;
-  // RemoveNotifier gibt die Referenz der IDE frei und damit den Beobachter (#493).
-  if (FProjectWatchIndex >= 0) and Supports(BorlandIDEServices, IOTAServices, Services) then
-  begin
-    Services.RemoveNotifier(FProjectWatchIndex);
-  end;
-  FProjectWatch := nil;
-  FProjectWatchIndex := -1;
-end;
-
-procedure TAtlasIdeWelcome.ProjectClosing;
-begin
-  // ofnFileClosing kommt, bevor das Projekt weg ist; eine Gruppe schließt mehrere Projekte nacheinander.
-  // Darum einmal danach über die Nachrichtenschleife prüfen.
-  if FNoProjectQueued then
-  begin
-    Exit;
-  end;
-  FNoProjectQueued := True;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      if Instance <> nil then
-      begin
-        Instance.CheckNoProject;
-      end;
-    end);
-end;
-
-procedure TAtlasIdeWelcome.CheckNoProject;
-var
-  Current: TAtlasPluginSettings;
-begin
-  FNoProjectQueued := False;
-  Current := Settings;
-  if TAtlasWelcomeAutoOpen.AfterProjectClosed(Current.WelcomePage, Current.WelcomePageOpenWhenNoProject,
-    OpenProjectCount, IdeRunning, TAtlasIdeWelcomeWindow.Visible) then
-  begin
-    ShowStart;
-  end;
-end;
-
-class function TAtlasIdeWelcome.OpenProjectCount: Integer;
-var
-  Services: IOTAModuleServices;
-  Group: IOTAProjectGroup;
-begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
-  begin
-    Exit(-1);
-  end;
-  Group := Services.MainProjectGroup;
-  if Group = nil then
-  begin
-    Exit(0);
-  end;
-  Result := Group.ProjectCount;
-end;
-
-class function TAtlasIdeWelcome.IdeRunning: Boolean;
-begin
-  // Beim Beenden schließt die IDE alle Projekte; dann kein Fenster mehr anlegen.
-  Result := not Application.Terminated and (Application.MainForm <> nil) and Application.MainForm.Visible and
-    not (csDestroying in Application.MainForm.ComponentState);
-end;
-
-function TAtlasIdeWelcome.CaptionOf(const APluginId: string): string;
-var
-  Id: string;
-  Section: TAtlasWelcomeSection;
-begin
-  Id := TAtlasWelcomeIds.SectionOf(APluginId);
-  if SameText(Id, TAtlasWelcomeIds.Header) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle);
-  end
-  else if SameText(Id, TAtlasWelcomeIds.Board) then
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeBoardTitle);
-  end
-  else if TAtlasWelcomeSections.Default.Find(Id, Section) then
-  begin
-    Result := Section.Title;
-  end
-  else
-  begin
-    Result := APluginId;
-  end;
 end;
 
 function TAtlasIdeWelcome.CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
@@ -1137,63 +741,31 @@ end;
 
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
 var
-  Id: string;
-  Collect: TThreadProcedure;
+  mId: string;
+  mCollect: TThreadProcedure;
 begin
-  Id := AId;
+  mId := AId;
   // Beobachter melden auch aus Hintergrund-Threads; gesammelt und gezeichnet wird im Hauptthread.
-  Collect :=
+  mCollect :=
     procedure
-    var
-      Known: string;
-      Flush: TThreadProcedure;
     begin
-      if Instance = nil then
-      begin
-        Exit;
-      end;
-      for Known in Instance.FDirty do
-      begin
-        if SameText(Known, Id) then
-        begin
-          Exit;
-        end;
-      end;
-      Instance.FDirty := Instance.FDirty + [Id];
-      if Instance.FQueued then
-      begin
-        Exit;
-      end;
-      Instance.FQueued := True;
-      Flush :=
-        procedure
-        begin
-          if Instance <> nil then
-          begin
-            Instance.Flush;
-          end;
-        end;
-      TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Flush);
+      MarkDirty(mId);
     end;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Collect);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, mCollect);
 end;
 
 procedure TAtlasIdeWelcome.Flush;
 var
   Ids: TArray<string>;
-  Id: string;
 begin
-  FQueued := False;
-  Ids := FDirty;
-  FDirty := nil;
-  for Id in Ids do
+  FDirty.Queued := False;
+  Ids := FDirty.Ids;
+  FDirty.Ids := nil;
+  // Bereiche kamen hinzu, fielen weg oder wurden ein- oder ausgeschaltet.
+  if Contains(Ids, '') then
   begin
-    if Id = '' then
-    begin
-      // Bereiche kamen hinzu, fielen weg oder wurden ein- oder ausgeschaltet.
-      Sync;
-      Exit;
-    end;
+    Sync;
+    Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
@@ -1231,28 +803,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeWelcome.UpdateSection(const AId: string);
-var
-  Client: TAtlasWelcomeFrame;
-  Board: TAtlasWelcomeBoardFrame;
-begin
-  Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(AId));
-  if Client <> nil then
-  begin
-    Client.UpdateContent;
-  end;
-  Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board));
-  if Client is TAtlasWelcomeBoardFrame then
-  begin
-    TAtlasWelcomeBoardFrame(Client).UpdateSection(AId);
-  end;
-  Board := TAtlasIdeWelcomeWindow.ExistingBoard;
-  if Board <> nil then
-  begin
-    Board.UpdateSection(AId);
-  end;
-end;
-
 procedure TAtlasIdeWelcome.UpdateHeaders;
 var
   Client: TAtlasWelcomeFrame;
@@ -1263,7 +813,7 @@ begin
   begin
     FillHeader(TAtlasWelcomeHeaderFrame(Client));
   end;
-  Client := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board));
+  Client := TAtlasIdeWelcomePage.Client(BoardId);
   if Client is TAtlasWelcomeBoardFrame then
   begin
     TAtlasWelcomeBoardFrame(Client).Header.Visible := Settings.WelcomePageHeader;
@@ -1275,124 +825,6 @@ begin
     Board.Header.Visible := Settings.WelcomePageHeader;
     FillHeader(Board.Header);
   end;
-end;
-
-function TAtlasIdeWelcome.BoardPlaced: Boolean;
-var
-  Key: TAtlasRegKey;
-  Layout: TAtlasHostLayout;
-begin
-  Key := FAccess.Read(WelcomeKey);
-  try
-    Result := (Key <> nil) and TAtlasHostLayout.Read(Key, Layout) and
-      Layout.HasAtlasOnTop(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board), TAtlasWelcomeIds.PluginPrefix);
-  finally
-    Key.Free;
-  end;
-end;
-
-function TAtlasIdeWelcome.PlaceBoard: Boolean;
-var
-  Key: TAtlasRegKey;
-  Layout, Placed: TAtlasHostLayout;
-begin
-  Key := FAccess.Read(WelcomeKey);
-  try
-    if Key = nil then
-    begin
-      Key := TAtlasRegKey.Create('WelcomePage');
-    end;
-    // Ohne Raster in der Registry zeigt die IDE ihre Vorgabe; von der gehen wir aus.
-    if not TAtlasHostLayout.Read(Key, Layout) then
-    begin
-      Layout := TAtlasHostLayout.IdeDefault;
-    end;
-    Result := not Layout.HasAtlasOnTop(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board),
-      TAtlasWelcomeIds.PluginPrefix);
-    if not Result then
-    begin
-      Exit;
-    end;
-    Placed := Layout.WithAtlasOnTop(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board), TAtlasWelcomeIds.PluginPrefix);
-    Placed.WriteTo(Key);
-    FAccess.Replace(WelcomeKey, Key);
-  finally
-    Key.Free;
-  end;
-end;
-
-procedure TAtlasIdeWelcome.CheckPending;
-begin
-  // Die Marke enthält den gewünschten Stand: "atlas" oder den Schlüssel WelcomePage, der gelten soll. Hat die
-  // IDE ihr Layout beim Beenden aus dem Speicher zurückgeschrieben, wird der Stand hier wiederholt; gilt er beim
-  // Start schon, hat die IDE ihn übernommen und die Marke entfällt.
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    var
-      Wanted: string;
-      Current: TAtlasPluginSettings;
-    begin
-      if not FileExists(PendingFile) then
-      begin
-        Exit;
-      end;
-      Wanted := Trim(ReadText(PendingFile));
-      Current := Settings;
-      if Wanted = 'atlas' then
-      begin
-        if not IdePageWanted(Current) or not SameText(Current.WelcomePageLayout, 'atlas') then
-        begin
-          System.SysUtils.DeleteFile(PendingFile);
-        end
-        else if BoardPlaced then
-        begin
-          System.SysUtils.DeleteFile(PendingFile);
-        end
-        else
-        begin
-          PlaceBoard;
-        end;
-      end
-      else if TAtlasWelcomeBackup.Matches(FAccess, Wanted) then
-      begin
-        System.SysUtils.DeleteFile(PendingFile);
-      end
-      else if not TAtlasWelcomeBackup.Restore(FAccess, Wanted) then
-      begin
-        System.SysUtils.DeleteFile(PendingFile);
-      end;
-    end);
-end;
-
-procedure TAtlasIdeWelcome.RetireIdeLayout;
-begin
-  // Atlas-Bereiche von der Willkommensseite der IDE nehmen (#1114, #761); meldet sich nur, wenn es etwas zu tun
-  // gab. Danach ist die Sicherung verbraucht: „Atlas-Layout anwenden“ sichert beim nächsten Mal neu.
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    var
-      Backup, Saved, Snapshot: string;
-      Outcome: TAtlasRetireResult;
-    begin
-      Backup := TAtlasWelcomeBackup.BackupFile(AtlasFolder);
-      Saved := '';
-      if FileExists(Backup) then
-      begin
-        Saved := ReadText(Backup);
-      end;
-      Outcome := TAtlasWelcomeRetire.Run(FAccess, WelcomeKey, Saved, TAtlasWelcomeIds.PluginPrefix, Snapshot);
-      // Die Sicherung hat ausgedient, auch wenn sie nicht mehr lesbar war.
-      if FileExists(Backup) then
-      begin
-        System.SysUtils.DeleteFile(Backup);
-      end;
-      if Outcome = TAtlasRetireResult.Nothing then
-      begin
-        Exit;
-      end;
-      TAtlasDataFile.Write(PendingFile, Snapshot);
-      Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeRetired));
-    end);
 end;
 
 procedure TAtlasIdeWelcome.SetLayout(const AValue: string);
@@ -1410,78 +842,18 @@ begin
   TAtlasIdeSettings.Update(Next);
 end;
 
-function TAtlasIdeWelcome.Place(AReport: Boolean): Boolean;
-var
-  Backup: string;
-begin
-  Result := False;
-  if not TAtlasIdeWelcomePage.Available then
-  begin
-    Exit;
-  end;
-  Backup := TAtlasWelcomeBackup.BackupFile(AtlasFolder);
-  // Nur die erste Sicherung zählt: Sie hält das Layout vor Atlas.
-  if not FileExists(Backup) then
-    try
-      // Atomar (Bericht N3): Eine halb geschriebene Sicherung verlöre das Layout vor Atlas für immer.
-      TAtlasDataFile.Write(Backup, TAtlasWelcomeBackup.Snapshot(FAccess, WelcomeKey));
-    except
-      on E: Exception do
-      begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeBackupFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  PlaceBoard;
-  TAtlasDataFile.Write(PendingFile, 'atlas');
-  Result := True;
-  if AReport then
-  begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeApplied));
-  end;
-end;
-
-function TAtlasIdeWelcome.Unplace(AReport: Boolean): Boolean;
-var
-  Backup, Snapshot: string;
-begin
-  Result := False;
-  Snapshot := '';
-  Backup := TAtlasWelcomeBackup.BackupFile(AtlasFolder);
-  if FileExists(Backup) then
-  begin
-    Snapshot := ReadText(Backup);
-    Result := TAtlasWelcomeBackup.Restore(FAccess, Snapshot);
-  end;
-  if not Result then
-  begin
-    if AReport then
-    begin
-      Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNoBackup));
-    end;
-    Exit;
-  end;
-  // Bis die IDE den Stand übernommen hat, gilt die Sicherung als gewünschter Stand (CheckPending).
-  TAtlasDataFile.Write(PendingFile, Snapshot);
-  System.SysUtils.DeleteFile(Backup);
-  if AReport then
-  begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeResetDone));
-  end;
-end;
-
 procedure TAtlasIdeWelcome.ApplyLayout;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
       // Nur auf der Willkommensseite der IDE; ist sie für Atlas aus, gibt es dort nichts anzuordnen.
-      if not IdePageWanted(Settings) or not Place(True) then
+      if not TAtlasIdeWelcomeIdeLayout.Wanted(Settings) or not FIdeLayout.Place(True) then
       begin
         Exit;
       end;
       // Sync soll nicht ein zweites Mal platzieren.
-      FLastLayout := 'atlas';
+      FSync.LastLayout := 'atlas';
       SetLayout('atlas');
     end);
 end;
@@ -1491,11 +863,11 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      if not Unplace(True) then
+      if not FIdeLayout.Unplace(True) then
       begin
         Exit;
       end;
-      FLastLayout := 'off';
+      FSync.LastLayout := 'off';
       SetLayout('off');
     end);
 end;
@@ -1511,16 +883,16 @@ end;
 
 procedure TAtlasIdeWelcome.ShowWhatsNew(AView: TAtlasWhatsNewView);
 begin
-  if FWhatsNew = nil then
+  if FAreas.WhatsNew = nil then
   begin
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      FWhatsNew.Show(AView);
+      FAreas.WhatsNew.Show(AView);
       // Auf der Willkommensseite der IDE zeigt die Karte sich dort; sonst im Fenster.
-      if not FShownIde then
+      if not FSync.ShownIde then
       begin
         ShowStart;
       end;
