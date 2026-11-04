@@ -217,8 +217,8 @@ begin
     Assert.AreEqual(2, Integer(Length(mFrame.VisibleCards)), 'ATL-1 und ATL-3');
     mFrame.SetOnlyMine(False);
     Assert.AreEqual(4, Integer(Length(mFrame.VisibleCards)));
-    Assert.IsTrue(mFrame.AllButton.Down);
-    mFrame.SearchEdit.Text := 'atl-4';
+    Assert.IsTrue(mFrame.Parts.All.Down);
+    mFrame.Parts.Search.Text := 'atl-4';
     Assert.AreEqual(1, Integer(Length(mFrame.VisibleCards)));
     Assert.AreEqual(3, mFrame.VisibleCards[0]);
     mFrame.SetStatus('');
@@ -283,7 +283,7 @@ begin
     mFrame.ShowNotice('Kein Tracker');
     Assert.IsFalse(mFrame.HasSnapshot);
     Assert.IsFalse(mFrame.View.Visible);
-    Assert.AreEqual('Kein Tracker', mFrame.EmptyLabel.Caption);
+    Assert.AreEqual('Kein Tracker', mFrame.Parts.Empty.Caption);
     Assert.AreEqual(0, Integer(Length(mFrame.VisibleCards)));
   finally
     mFrame.Free;
