@@ -50,11 +50,52 @@ type
     Changed: TNotifyEvent;
   end;
 
-  TAtlasSettingsMarks = class(TComponent)
+  /// <summary>Bindungen der Bedienelemente an ihre Einstellungen mit Punkt und Kennzeichen; Abfragen nach Namen
+  /// und Lage. TAtlasSettingsMarks ergänzt Kontextmenü, Filter und Meldungen.</summary>
+  TAtlasSettingsBindingList = class(TComponent)
   public const
     Dot = '● ';
   private
     FBindings: TList<TAtlasSettingsBinding>;
+    function GetCount: Integer;
+    function GetBinding(AIndex: Integer): TAtlasSettingsBinding;
+    procedure Render(AIndex: Integer);
+  protected
+    /// <summary>Bindung zu AControl (Element, Beschriftung oder Zeile); -1 ohne.</summary>
+    function IndexOfControl(AControl: TObject): Integer;
+    procedure Apply(AIndex: Integer; AMarked: Boolean);
+    property List: TList<TAtlasSettingsBinding> read FBindings;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Punkte nach AModified (Registry-Namen) setzen; AEnabled False nimmt alle weg.</summary>
+    procedure Show(const AModified: TArray<string>; AEnabled: Boolean);
+    /// <summary>Namen aller Bindungen, deren Element in AParent liegt (Reiter der Seite).</summary>
+    function NamesIn(AParent: TWinControl): TArray<string>;
+    /// <summary>Namen aller Bindungen, deren Element AControl selbst ist oder darin liegt (#890).</summary>
+    function NamesWithin(AControl: TControl): TArray<string>;
+    /// <summary>Erstes gebundenes Element mit dem Namen AName; nil ohne.</summary>
+    function ControlOfName(const AName: string): TControl;
+    /// <summary>Beschriftung der Bindung mit dem Namen AName ohne Punkt und Kennzeichen; '' ohne.</summary>
+    function TextOfName(const AName: string): string;
+    /// <summary>Trägt eine Bindung in AParent einen Punkt?</summary>
+    function HasMarked(AParent: TWinControl): Boolean;
+    /// <summary>Namen der Bindung zu AControl (Element, Beschriftung oder Zeile); leer ohne.</summary>
+    function NamesOf(AControl: TObject): TArray<string>;
+    /// <summary>Trägt AControl (oder seine Beschriftung) einen Punkt?</summary>
+    function IsMarked(AControl: TControl): Boolean;
+    /// <summary>Bindungen mit einem Namen aus ANames als experimentell kennzeichnen (#834).</summary>
+    procedure MarkExperimental(const ANames: TArray<string>);
+    /// <summary>Gibt es eine experimentelle Bindung?</summary>
+    function HasExperimental: Boolean;
+    /// <summary>Ist AControl (oder seine Beschriftung) als experimentell gekennzeichnet?</summary>
+    function IsExperimental(AControl: TControl): Boolean;
+    property Count: Integer read GetCount;
+    property Bindings[AIndex: Integer]: TAtlasSettingsBinding read GetBinding;
+  end;
+
+  TAtlasSettingsMarks = class(TAtlasSettingsBindingList)
+  private
     FMenu: TPopupMenu;
     FResetItem: TMenuItem;
     FResetPageItem: TMenuItem;
@@ -71,57 +112,32 @@ type
     FPinned: TList<TControl>;
     procedure Restore;
     procedure Compact(AContainer: TWinControl);
-    function IndexOfControl(AControl: TObject): Integer;
-    procedure Render(AIndex: Integer);
-    function Matches(const ABinding: TAtlasSettingsBinding; AFilter: TAtlasSettingsFilter): Boolean;
+    /// <summary>Zeilen, die AFilter zeigt (samt angehefteten), in AShown; ihre Reiter bzw. Rahmen in
+    /// AContainers.</summary>
+    procedure CollectRows(AFilter: TAtlasSettingsFilter; AShown, AContainers: TList<TControl>);
+    /// <summary>Lage aller Elemente von AContainer merken, die nicht in AShown stehen ausblenden.</summary>
+    procedure HideRows(AContainer: TWinControl; AShown: TList<TControl>);
     function FindCaption(AControl: TControl): TLabel;
     procedure ControlChanged(Sender: TObject);
     procedure MenuPopup(Sender: TObject);
     procedure ResetClick(Sender: TObject);
     procedure ResetPageClick(Sender: TObject);
-    procedure Apply(AIndex: Integer; AMarked: Boolean);
-    function GetCount: Integer;
-    function GetBinding(AIndex: Integer): TAtlasSettingsBinding;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// <summary>Bindet AControl an ANames; mit AMark False nur Kontextmenü und Zurücksetzen, kein Punkt.</summary>
     procedure Bind(AControl: TControl; const ANames: array of string; AMark: Boolean); overload;
     procedure Bind(AControl: TControl; const ANames: array of string); overload;
-    /// <summary>Punkte nach AModified (Registry-Namen) setzen; AEnabled False nimmt alle weg.</summary>
-    procedure Show(const AModified: TArray<string>; AEnabled: Boolean);
-    /// <summary>Namen aller Bindungen, deren Element in AParent liegt (Reiter der Seite).</summary>
-    function NamesIn(AParent: TWinControl): TArray<string>;
-    /// <summary>Namen aller Bindungen, deren Element AControl selbst ist oder darin liegt (#890).</summary>
-    function NamesWithin(AControl: TControl): TArray<string>;
-    /// <summary>Erstes gebundenes Element mit dem Namen AName; nil ohne.</summary>
-    function ControlOfName(const AName: string): TControl;
-    /// <summary>Beschriftung der Bindung mit dem Namen AName ohne Punkt und Kennzeichen; '' ohne.</summary>
-    function TextOfName(const AName: string): string;
     /// <summary>Liegt in AParent eine Bindung, die der aktuelle Filter zeigt (sfAll: irgendeine)?</summary>
     function HasMatch(AParent: TWinControl): Boolean;
-    /// <summary>Trägt eine Bindung in AParent einen Punkt?</summary>
-    function HasMarked(AParent: TWinControl): Boolean;
     /// <summary>AControl bleibt beim Filtern immer sichtbar (Rahmen, Hauptschalter, Grund der Sperre).</summary>
     procedure Pin(AControl: TControl);
-    /// <summary>Namen der Bindung zu AControl (Element, Beschriftung oder Zeile); leer ohne.</summary>
-    function NamesOf(AControl: TObject): TArray<string>;
-    /// <summary>Trägt AControl (oder seine Beschriftung) einen Punkt?</summary>
-    function IsMarked(AControl: TControl): Boolean;
-    /// <summary>Bindungen mit einem Namen aus ANames als experimentell kennzeichnen (#834).</summary>
-    procedure MarkExperimental(const ANames: TArray<string>);
-    /// <summary>Gibt es eine experimentelle Bindung?</summary>
-    function HasExperimental: Boolean;
-    /// <summary>Ist AControl (oder seine Beschriftung) als experimentell gekennzeichnet?</summary>
-    function IsExperimental(AControl: TControl): Boolean;
     /// <summary>Zeilen der Reiter nach AFilter zeigen; sfAll stellt alles wieder her, wie es vorher war.</summary>
     procedure ApplyFilter(AFilter: TAtlasSettingsFilter);
     property Filter: TAtlasSettingsFilter read FFilter;
     /// <summary>Während des Ladens melden Änderungen nichts.</summary>
     procedure BeginLoad;
     procedure EndLoad;
-    property Count: Integer read GetCount;
-    property Bindings[AIndex: Integer]: TAtlasSettingsBinding read GetBinding;
     property Menu: TPopupMenu read FMenu;
     /// <summary>Ein gebundenes Element wurde geändert (nicht während des Ladens).</summary>
     property OnChanged: TNotifyEvent read FOnChanged write FOnChanged;
@@ -139,12 +155,319 @@ uses
 type
   TControlAccess = class(TControl);
 
+/// <summary>Kommt ein Name aus ANames in AOthers vor (ohne Groß-/Kleinschreibung)?</summary>
+function AnyNameIn(const ANames, AOthers: TArray<string>): Boolean;
+var
+  mName, mOther: string;
+begin
+  for mName in ANames do
+  begin
+    for mOther in AOthers do
+    begin
+      if SameText(mName, mOther) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Zeigt AFilter die Bindung?</summary>
+function Matches(const ABinding: TAtlasSettingsBinding; AFilter: TAtlasSettingsFilter): Boolean;
+begin
+  case AFilter of
+    sfModified:
+      Result := ABinding.Marked;
+    sfExperimental:
+      Result := ABinding.Experimental;
+  else
+    Result := True;
+  end;
+end;
+
+/// <summary>Element direkt im Reiter (rollbarer Inhalt) oder im Rahmen einer Funktion, das AControl trägt: die
+/// Zeile oder das Element selbst.</summary>
+function RowOf(AControl: TControl): TControl;
+begin
+  Result := AControl;
+  while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) and
+    not (Result.Parent is TAtlasSettingsGroup) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
+function Inside(AControl, AParent: TControl): Boolean;
+var
+  Parent: TControl;
+begin
+  Parent := AControl;
+  while (Parent <> nil) and (Parent <> AParent) do
+  begin
+    Parent := Parent.Parent;
+  end;
+  Result := Parent <> nil;
+end;
+
+{ TAtlasSettingsBindingList }
+
+constructor TAtlasSettingsBindingList.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FBindings := TList<TAtlasSettingsBinding>.Create;
+end;
+
+destructor TAtlasSettingsBindingList.Destroy;
+begin
+  FBindings.Free;
+  inherited;
+end;
+
+function TAtlasSettingsBindingList.GetCount: Integer;
+begin
+  Result := FBindings.Count;
+end;
+
+function TAtlasSettingsBindingList.GetBinding(AIndex: Integer): TAtlasSettingsBinding;
+begin
+  Result := FBindings[AIndex];
+end;
+
+function TAtlasSettingsBindingList.IndexOfControl(AControl: TObject): Integer;
+var
+  Index: Integer;
+  Binding: TAtlasSettingsBinding;
+begin
+  Result := -1;
+  if AControl = nil then
+  begin
+    Exit;
+  end;
+  for Index := 0 to FBindings.Count - 1 do
+  begin
+    Binding := FBindings[Index];
+    if (Binding.Control = AControl) or ((Binding.Caption <> nil) and (Binding.Caption = AControl)) then
+    begin
+      Exit(Index);
+    end;
+  end;
+  // Zeile: erste Bindung, deren Element darin liegt.
+  for Index := 0 to FBindings.Count - 1 do
+  begin
+    if FBindings[Index].Control.Parent = AControl then
+    begin
+      Exit(Index);
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsBindingList.Apply(AIndex: Integer; AMarked: Boolean);
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  Binding := FBindings[AIndex];
+  if Binding.Marked = AMarked then
+  begin
+    Exit;
+  end;
+  Binding.Marked := AMarked;
+  FBindings[AIndex] := Binding;
+  Render(AIndex);
+end;
+
+procedure TAtlasSettingsBindingList.Render(AIndex: Integer);
+var
+  Binding: TAtlasSettingsBinding;
+  Text, Hint: string;
+begin
+  Binding := FBindings[AIndex];
+  Text := Binding.Text;
+  Hint := Binding.Hint;
+  if Binding.Experimental then
+  begin
+    Text := Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
+  end;
+  if Binding.Marked then
+  begin
+    Text := Dot + Text;
+    Hint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
+  end;
+  if Binding.Control is TCheckBox then
+  begin
+    TCheckBox(Binding.Control).Caption := Text;
+    Binding.Control.Hint := Hint;
+    Binding.Control.ShowHint := Hint <> '';
+  end
+  else if Binding.Caption <> nil then
+  begin
+    Binding.Caption.Caption := Text;
+    Binding.Caption.Hint := Hint;
+    Binding.Caption.ShowHint := Hint <> '';
+  end;
+end;
+
+procedure TAtlasSettingsBindingList.Show(const AModified: TArray<string>; AEnabled: Boolean);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FBindings.Count - 1 do
+  begin
+    Apply(mIndex, AEnabled and FBindings[mIndex].Mark and AnyNameIn(FBindings[mIndex].Names, AModified));
+  end;
+end;
+
+function TAtlasSettingsBindingList.NamesIn(AParent: TWinControl): TArray<string>;
+var
+  Binding: TAtlasSettingsBinding;
+  Parent: TWinControl;
+begin
+  Result := nil;
+  for Binding in FBindings do
+  begin
+    Parent := Binding.Control.Parent;
+    while (Parent <> nil) and (Parent <> AParent) do
+    begin
+      Parent := Parent.Parent;
+    end;
+    if Parent <> nil then
+    begin
+      Result := Result + Binding.Names;
+    end;
+  end;
+end;
+
+function TAtlasSettingsBindingList.NamesWithin(AControl: TControl): TArray<string>;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  Result := nil;
+  for Binding in FBindings do
+  begin
+    if Inside(Binding.Control, AControl) then
+    begin
+      Result := Result + Binding.Names;
+    end;
+  end;
+end;
+
+function TAtlasSettingsBindingList.ControlOfName(const AName: string): TControl;
+var
+  Binding: TAtlasSettingsBinding;
+  mName: string;
+begin
+  Result := nil;
+  for Binding in FBindings do
+  begin
+    for mName in Binding.Names do
+    begin
+      if SameText(mName, AName) then
+      begin
+        Exit(Binding.Control);
+      end;
+    end;
+  end;
+end;
+
+function TAtlasSettingsBindingList.TextOfName(const AName: string): string;
+var
+  Binding: TAtlasSettingsBinding;
+  mName: string;
+begin
+  Result := '';
+  for Binding in FBindings do
+  begin
+    for mName in Binding.Names do
+    begin
+      if SameText(mName, AName) then
+      begin
+        Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
+      end;
+    end;
+  end;
+end;
+
+function TAtlasSettingsBindingList.HasMarked(AParent: TWinControl): Boolean;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  for Binding in FBindings do
+  begin
+    if Binding.Marked and Inside(Binding.Control, AParent) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TAtlasSettingsBindingList.NamesOf(AControl: TObject): TArray<string>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  Index := IndexOfControl(AControl);
+  if Index >= 0 then
+  begin
+    Result := FBindings[Index].Names;
+  end;
+end;
+
+function TAtlasSettingsBindingList.IsMarked(AControl: TControl): Boolean;
+var
+  Index: Integer;
+begin
+  Index := IndexOfControl(AControl);
+  Result := (Index >= 0) and FBindings[Index].Marked;
+end;
+
+procedure TAtlasSettingsBindingList.MarkExperimental(const ANames: TArray<string>);
+var
+  mIndex: Integer;
+  mBinding: TAtlasSettingsBinding;
+  mFound: Boolean;
+begin
+  for mIndex := 0 to FBindings.Count - 1 do
+  begin
+    mBinding := FBindings[mIndex];
+    mFound := AnyNameIn(mBinding.Names, ANames);
+    if mFound <> mBinding.Experimental then
+    begin
+      mBinding.Experimental := mFound;
+      FBindings[mIndex] := mBinding;
+      Render(mIndex);
+    end;
+  end;
+end;
+
+function TAtlasSettingsBindingList.HasExperimental: Boolean;
+var
+  Binding: TAtlasSettingsBinding;
+begin
+  for Binding in FBindings do
+  begin
+    if Binding.Experimental then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TAtlasSettingsBindingList.IsExperimental(AControl: TControl): Boolean;
+var
+  Index: Integer;
+begin
+  Index := IndexOfControl(AControl);
+  Result := (Index >= 0) and FBindings[Index].Experimental;
+end;
+
 { TAtlasSettingsMarks }
 
 constructor TAtlasSettingsMarks.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FBindings := TList<TAtlasSettingsBinding>.Create;
   FHidden := TList<TControl>.Create;
   FTops := TDictionary<TControl, Integer>.Create;
   FPinned := TList<TControl>.Create;
@@ -166,18 +489,7 @@ begin
   FPinned.Free;
   FTops.Free;
   FHidden.Free;
-  FBindings.Free;
   inherited;
-end;
-
-function TAtlasSettingsMarks.GetCount: Integer;
-begin
-  Result := FBindings.Count;
-end;
-
-function TAtlasSettingsMarks.GetBinding(AIndex: Integer): TAtlasSettingsBinding;
-begin
-  Result := FBindings[AIndex];
 end;
 
 function TAtlasSettingsMarks.FindCaption(AControl: TControl): TLabel;
@@ -281,35 +593,7 @@ begin
       TControlAccess(AControl.Parent).PopupMenu := FMenu;
     end;
   end;
-  FBindings.Add(Binding);
-end;
-
-function TAtlasSettingsMarks.IndexOfControl(AControl: TObject): Integer;
-var
-  Index: Integer;
-  Binding: TAtlasSettingsBinding;
-begin
-  Result := -1;
-  if AControl = nil then
-  begin
-    Exit;
-  end;
-  for Index := 0 to FBindings.Count - 1 do
-  begin
-    Binding := FBindings[Index];
-    if (Binding.Control = AControl) or ((Binding.Caption <> nil) and (Binding.Caption = AControl)) then
-    begin
-      Exit(Index);
-    end;
-  end;
-  // Zeile: erste Bindung, deren Element darin liegt.
-  for Index := 0 to FBindings.Count - 1 do
-  begin
-    if FBindings[Index].Control.Parent = AControl then
-    begin
-      Exit(Index);
-    end;
-  end;
+  List.Add(Binding);
 end;
 
 procedure TAtlasSettingsMarks.ControlChanged(Sender: TObject);
@@ -320,7 +604,7 @@ begin
   Index := IndexOfControl(Sender);
   if Index >= 0 then
   begin
-    Handler := FBindings[Index].Changed;
+    Handler := List[Index].Changed;
     if Assigned(Handler) then
     begin
       Handler(Sender);
@@ -332,181 +616,13 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsMarks.Apply(AIndex: Integer; AMarked: Boolean);
-var
-  Binding: TAtlasSettingsBinding;
-begin
-  Binding := FBindings[AIndex];
-  if Binding.Marked = AMarked then
-  begin
-    Exit;
-  end;
-  Binding.Marked := AMarked;
-  FBindings[AIndex] := Binding;
-  Render(AIndex);
-end;
-
-procedure TAtlasSettingsMarks.Render(AIndex: Integer);
-var
-  Binding: TAtlasSettingsBinding;
-  Text, Hint: string;
-begin
-  Binding := FBindings[AIndex];
-  Text := Binding.Text;
-  Hint := Binding.Hint;
-  if Binding.Experimental then
-  begin
-    Text := Text + '  [' + TAtlasStrings.Text(TAtlasTextId.SettingsExperimentalTag) + ']';
-  end;
-  if Binding.Marked then
-  begin
-    Text := Dot + Text;
-    Hint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
-  end;
-  if Binding.Control is TCheckBox then
-  begin
-    TCheckBox(Binding.Control).Caption := Text;
-    Binding.Control.Hint := Hint;
-    Binding.Control.ShowHint := Hint <> '';
-  end
-  else if Binding.Caption <> nil then
-  begin
-    Binding.Caption.Caption := Text;
-    Binding.Caption.Hint := Hint;
-    Binding.Caption.ShowHint := Hint <> '';
-  end;
-end;
-
-procedure TAtlasSettingsMarks.Show(const AModified: TArray<string>; AEnabled: Boolean);
-var
-  Index: Integer;
-  mName, Modified: string;
-  Marked: Boolean;
-begin
-  for Index := 0 to FBindings.Count - 1 do
-  begin
-    Marked := False;
-    if AEnabled and FBindings[Index].Mark then
-    begin
-      for mName in FBindings[Index].Names do
-      begin
-        for Modified in AModified do
-        begin
-          if SameText(mName, Modified) then
-          begin
-            Marked := True;
-          end;
-        end;
-      end;
-    end;
-    Apply(Index, Marked);
-  end;
-end;
-
-function TAtlasSettingsMarks.NamesIn(AParent: TWinControl): TArray<string>;
-var
-  Binding: TAtlasSettingsBinding;
-  Parent: TWinControl;
-begin
-  Result := nil;
-  for Binding in FBindings do
-  begin
-    Parent := Binding.Control.Parent;
-    while (Parent <> nil) and (Parent <> AParent) do
-    begin
-      Parent := Parent.Parent;
-    end;
-    if Parent <> nil then
-    begin
-      Result := Result + Binding.Names;
-    end;
-  end;
-end;
-
-/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
-function Inside(AControl, AParent: TControl): Boolean;
-var
-  Parent: TControl;
-begin
-  Parent := AControl;
-  while (Parent <> nil) and (Parent <> AParent) do
-  begin
-    Parent := Parent.Parent;
-  end;
-  Result := Parent <> nil;
-end;
-
-function TAtlasSettingsMarks.NamesWithin(AControl: TControl): TArray<string>;
-var
-  Binding: TAtlasSettingsBinding;
-begin
-  Result := nil;
-  for Binding in FBindings do
-  begin
-    if Inside(Binding.Control, AControl) then
-    begin
-      Result := Result + Binding.Names;
-    end;
-  end;
-end;
-
-function TAtlasSettingsMarks.ControlOfName(const AName: string): TControl;
-var
-  Binding: TAtlasSettingsBinding;
-  mName: string;
-begin
-  Result := nil;
-  for Binding in FBindings do
-  begin
-    for mName in Binding.Names do
-    begin
-      if SameText(mName, AName) then
-      begin
-        Exit(Binding.Control);
-      end;
-    end;
-  end;
-end;
-
-function TAtlasSettingsMarks.TextOfName(const AName: string): string;
-var
-  Binding: TAtlasSettingsBinding;
-  mName: string;
-begin
-  Result := '';
-  for Binding in FBindings do
-  begin
-    for mName in Binding.Names do
-    begin
-      if SameText(mName, AName) then
-      begin
-        Exit(StringReplace(Binding.Text, '&', '', [rfReplaceAll]));
-      end;
-    end;
-  end;
-end;
-
 function TAtlasSettingsMarks.HasMatch(AParent: TWinControl): Boolean;
 var
   Binding: TAtlasSettingsBinding;
 begin
-  for Binding in FBindings do
+  for Binding in List do
   begin
     if Inside(Binding.Control, AParent) and Matches(Binding, FFilter) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TAtlasSettingsMarks.HasMarked(AParent: TWinControl): Boolean;
-var
-  Binding: TAtlasSettingsBinding;
-begin
-  for Binding in FBindings do
-  begin
-    if Binding.Marked and Inside(Binding.Control, AParent) then
     begin
       Exit(True);
     end;
@@ -522,111 +638,61 @@ begin
   end;
 end;
 
-function TAtlasSettingsMarks.NamesOf(AControl: TObject): TArray<string>;
+procedure TAtlasSettingsMarks.CollectRows(AFilter: TAtlasSettingsFilter; AShown, AContainers: TList<TControl>);
 var
-  Index: Integer;
+  mBinding: TAtlasSettingsBinding;
+  mRow: TControl;
 begin
-  Result := nil;
-  Index := IndexOfControl(AControl);
-  if Index >= 0 then
+  AShown.AddRange(FPinned);
+  for mBinding in List do
   begin
-    Result := FBindings[Index].Names;
-  end;
-end;
-
-function TAtlasSettingsMarks.IsMarked(AControl: TControl): Boolean;
-var
-  Index: Integer;
-begin
-  Index := IndexOfControl(AControl);
-  Result := (Index >= 0) and FBindings[Index].Marked;
-end;
-
-procedure TAtlasSettingsMarks.MarkExperimental(const ANames: TArray<string>);
-var
-  Index: Integer;
-  Binding: TAtlasSettingsBinding;
-  mName, Experimental: string;
-  Found: Boolean;
-begin
-  for Index := 0 to FBindings.Count - 1 do
-  begin
-    Binding := FBindings[Index];
-    Found := False;
-    for mName in Binding.Names do
-    begin
-      for Experimental in ANames do
-      begin
-        if SameText(mName, Experimental) then
-        begin
-          Found := True;
-        end;
-      end;
-    end;
-    if Found = Binding.Experimental then
+    mRow := RowOf(mBinding.Control);
+    if (mRow = nil) or (mRow.Parent = nil) then
     begin
       Continue;
     end;
-    Binding.Experimental := Found;
-    FBindings[Index] := Binding;
-    Render(Index);
-  end;
-end;
-
-function TAtlasSettingsMarks.HasExperimental: Boolean;
-var
-  Binding: TAtlasSettingsBinding;
-begin
-  for Binding in FBindings do
-  begin
-    if Binding.Experimental then
+    if not AContainers.Contains(mRow.Parent) then
     begin
-      Exit(True);
+      AContainers.Add(mRow.Parent);
+    end;
+    if Matches(mBinding, AFilter) then
+    begin
+      AShown.Add(mRow);
+      // Beschriftung in eigener Zeile darüber (AddTextLine) bleibt mit sichtbar.
+      if mBinding.Caption <> nil then
+      begin
+        AShown.Add(RowOf(mBinding.Caption));
+      end;
     end;
   end;
-  Result := False;
 end;
 
-function TAtlasSettingsMarks.IsExperimental(AControl: TControl): Boolean;
+procedure TAtlasSettingsMarks.HideRows(AContainer: TWinControl; AShown: TList<TControl>);
 var
-  Index: Integer;
+  mChild: Integer;
+  mControl: TControl;
 begin
-  Index := IndexOfControl(AControl);
-  Result := (Index >= 0) and FBindings[Index].Experimental;
-end;
-
-function TAtlasSettingsMarks.Matches(const ABinding: TAtlasSettingsBinding; AFilter: TAtlasSettingsFilter): Boolean;
-begin
-  case AFilter of
-    sfModified:
-      Result := ABinding.Marked;
-    sfExperimental:
-      Result := ABinding.Experimental;
-  else
-    Result := True;
+  // Lage im nicht gerollten Zustand merken. Position braucht das Fenster; ohne Fenster ist nichts gerollt.
+  if (AContainer is TScrollingWinControl) and AContainer.HandleAllocated then
+  begin
+    TScrollingWinControl(AContainer).VertScrollBar.Position := 0;
+  end;
+  for mChild := 0 to AContainer.ControlCount - 1 do
+  begin
+    mControl := AContainer.Controls[mChild];
+    FTops.AddOrSetValue(mControl, mControl.Top);
+    if mControl.Visible and not AShown.Contains(mControl) then
+    begin
+      mControl.Visible := False;
+      FHidden.Add(mControl);
+    end;
   end;
 end;
 
 procedure TAtlasSettingsMarks.ApplyFilter(AFilter: TAtlasSettingsFilter);
-
-  // Element direkt im Reiter (rollbarer Inhalt) oder im Rahmen einer Funktion, das AControl trägt: die Zeile oder
-  // das Element selbst.
-  function RowOf(AControl: TControl): TControl;
-  begin
-    Result := AControl;
-    while (Result <> nil) and (Result.Parent <> nil) and not (Result.Parent is TScrollingWinControl) and
-      not (Result.Parent is TAtlasSettingsGroup) do
-    begin
-      Result := Result.Parent;
-    end;
-  end;
-
 var
-  Shown, Containers: TList<TControl>;
-  Binding: TAtlasSettingsBinding;
-  Row: TControl;
-  Container: TWinControl;
-  Index, Child: Integer;
+  mShown, mContainers: TList<TControl>;
+  mContainer: TControl;
 begin
   Restore;
   FFilter := AFilter;
@@ -634,53 +700,18 @@ begin
   begin
     Exit;
   end;
-  Shown := TList<TControl>.Create;
-  Containers := TList<TControl>.Create;
+  mShown := TList<TControl>.Create;
+  mContainers := TList<TControl>.Create;
   try
-    Shown.AddRange(FPinned);
-    for Binding in FBindings do
+    CollectRows(AFilter, mShown, mContainers);
+    for mContainer in mContainers do
     begin
-      Row := RowOf(Binding.Control);
-      if (Row = nil) or (Row.Parent = nil) then
-      begin
-        Continue;
-      end;
-      if not Containers.Contains(Row.Parent) then
-      begin
-        Containers.Add(Row.Parent);
-      end;
-      if Matches(Binding, AFilter) then
-      begin
-        Shown.Add(Row);
-        // Beschriftung in eigener Zeile darüber (AddTextLine) bleibt mit sichtbar.
-        if Binding.Caption <> nil then
-        begin
-          Shown.Add(RowOf(Binding.Caption));
-        end;
-      end;
-    end;
-    for Index := 0 to Containers.Count - 1 do
-    begin
-      Container := TWinControl(Containers[Index]);
-      // Lage im nicht gerollten Zustand merken. Position braucht das Fenster; ohne Fenster ist nichts gerollt.
-      if (Container is TScrollingWinControl) and Container.HandleAllocated then
-      begin
-        TScrollingWinControl(Container).VertScrollBar.Position := 0;
-      end;
-      for Child := 0 to Container.ControlCount - 1 do
-      begin
-        FTops.AddOrSetValue(Container.Controls[Child], Container.Controls[Child].Top);
-        if Container.Controls[Child].Visible and not Shown.Contains(Container.Controls[Child]) then
-        begin
-          Container.Controls[Child].Visible := False;
-          FHidden.Add(Container.Controls[Child]);
-        end;
-      end;
-      Compact(Container);
+      HideRows(TWinControl(mContainer), mShown);
+      Compact(TWinControl(mContainer));
     end;
   finally
-    Containers.Free;
-    Shown.Free;
+    mContainers.Free;
+    mShown.Free;
   end;
 end;
 
@@ -771,9 +802,9 @@ end;
 
 procedure TAtlasSettingsMarks.ResetClick(Sender: TObject);
 begin
-  if (FMenuIndex >= 0) and (FMenuIndex < FBindings.Count) and Assigned(FOnReset) then
+  if (FMenuIndex >= 0) and (FMenuIndex < List.Count) and Assigned(FOnReset) then
   begin
-    FOnReset(FBindings[FMenuIndex].Names);
+    FOnReset(List[FMenuIndex].Names);
   end;
 end;
 

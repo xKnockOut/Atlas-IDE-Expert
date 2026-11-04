@@ -94,18 +94,18 @@ uses
   Atlas.UI.Settings.Page,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerActions,
-  Atlas.IDE.Settings.ServerTool,
   Atlas.IDE.Settings.SubPages,
-  Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Settings.VcsOptions,
+  Atlas.IDE.Settings.PageOptions,
+  Atlas.UI.Settings.Page.General,
+  Atlas.UI.Settings.Page.Completion,
+  Atlas.UI.Settings.Page.Index,
+  Atlas.UI.Settings.Page.Sections,
+  Atlas.UI.Settings.Page.VcsProjects,
   Atlas.UI.Strings,
-  Atlas.Core.Completion.Favorites,
-  Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Settings.TeamFile,
-  Atlas.IDE.Vcs.Service,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Vcs.Service;
 
 type
   TAtlasAddInOptions = class(TInterfacedObject, INTAAddInOptions)
@@ -118,14 +118,8 @@ type
     /// <summary>Führt ACommand im Hintergrund aus; AText macht aus der Antwort (nil ohne Server) den Text für
     /// die Seite.</summary>
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
-    /// <summary>Seite Prüfregeln (#909): Wege zu den Regeln im Projekt- und im globalen Dialog, Baseline.</summary>
-    procedure ConnectRules;
-    /// <summary>Angeheftete Favoriten (#458) und Befehle für „Leiste anpassen …“ (#1101).</summary>
-    procedure ConnectFavorites;
     /// <summary>Symbolindex (#492): vor LoadFrom, das die Kennzahlen gleich anzeigt.</summary>
     procedure ConnectIndex;
-    /// <summary>Projektdatei .atlas (#486), Export, Import und „Alles zurücksetzen“ (#723).</summary>
-    procedure ConnectTransfer;
   public
     function GetArea: string;
     function GetCaption: string;
@@ -341,7 +335,7 @@ begin
   begin
     if FPage <> nil then
     begin
-      FPage.IndexAnswered(mText(nil));
+      FPage.Part<TAtlasSettingsIndexPart>.IndexAnswered(mText(nil));
     end;
     Exit;
   end;
@@ -355,7 +349,7 @@ begin
         TAtlasGuard.Run(TAtlasFeature.Settings,
           procedure
           begin
-            mPage.IndexAnswered(mText(AAnswer));
+            mPage.Part<TAtlasSettingsIndexPart>.IndexAnswered(mText(AAnswer));
           end);
       end;
     end);
@@ -377,71 +371,9 @@ begin
   Result := TAtlasSettingsPage;
 end;
 
-procedure TAtlasAddInOptions.ConnectRules;
-begin
-  // Version der gewählten AtlasServer.exe (#227).
-  FPage.OnServerVersion :=
-    function(APath: string): string
-    begin
-      Result := TAtlasServerTool.FileVersion(APath);
-    end;
-  FPage.OnRulesProject :=
-    procedure
-    begin
-      TAtlasProjectSettings.Execute;
-    end;
-  FPage.OnRulesGlobal :=
-    procedure
-    begin
-      TAtlasProjectSettings.ExecuteGlobal;
-    end;
-  FPage.OnBaselineInfo :=
-    function: string
-    begin
-      Result := TAtlasIdeServerActions.BaselineText;
-    end;
-  FPage.OnBaselineUpdate :=
-    function: string
-    begin
-      Result := TAtlasIdeServerActions.UpdateBaseline;
-    end;
-  FPage.OnBaselineDelete :=
-    function: string
-    begin
-      Result := TAtlasIdeServerActions.DeleteBaseline;
-    end;
-end;
-
-procedure TAtlasAddInOptions.ConnectFavorites;
-begin
-  FPage.OnRemoveFavorites :=
-    procedure(AKeys: TArray<string>)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasIdeFavorites.Remove(AKeys);
-        end);
-    end;
-  FPage.OnFavorites :=
-    function: TArray<TAtlasFavorite>
-    begin
-      Result := TAtlasIdeFavorites.Items;
-    end;
-  FPage.OnToolbarCommands :=
-    function: TArray<TAtlasToolbarCommandInfo>
-    begin
-      Result := nil;
-      if Assigned(Hooks.ToolbarCommands) then
-      begin
-        Result := Hooks.ToolbarCommands();
-      end;
-    end;
-end;
-
 procedure TAtlasAddInOptions.ConnectIndex;
 begin
-  FPage.OnIndexMetrics :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexMetrics :=
     procedure
     begin
       Run('atlas.server.status',
@@ -450,7 +382,7 @@ begin
           Result := TLspIndexStatus.Metrics(AAnswer).Text;
         end);
     end;
-  FPage.OnIndexRebuild :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexRebuild :=
     procedure
     begin
       Run('atlas.server.rebuildIndex',
@@ -459,7 +391,7 @@ begin
           Result := RebuildText(AAnswer);
         end);
     end;
-  FPage.OnIndexClear :=
+  FPage.Part<TAtlasSettingsIndexPart>.OnIndexClear :=
     procedure
     begin
       Run('atlas.server.clearIndex',
@@ -470,67 +402,32 @@ begin
     end;
 end;
 
-procedure TAtlasAddInOptions.ConnectTransfer;
-begin
-  // Werte „aus .atlas“ auch bei noch ausgeschaltetem Schalter; Öffnen legt die Datei an.
-  FPage.OnTeamFile :=
-    function: TAtlasTeamSettings
-    begin
-      Result := TAtlasIdeTeamFile.Read(TAtlasIdeTeamFile.ActiveProject);
-    end;
-  FPage.OnOpenTeamFile :=
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasIdeTeamFile.OpenInEditor;
-        end);
-    end;
-  // Mit den Werten der Seite; Import und Zurücksetzen speichern sofort (mit Sicherung), die Seite lädt danach neu.
-  FPage.OnExportSettings :=
-    procedure(ACurrent: TAtlasPluginSettings)
-    begin
-      TAtlasIdeSettingsTransfer.ExportSettings(ACurrent);
-    end;
-  FPage.OnImportSettings :=
-    function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean; out AResult: TAtlasPluginSettings): Boolean
-    begin
-      Result := TAtlasIdeSettingsTransfer.ImportSettings(ACurrent, AProfile, AResult);
-    end;
-  FPage.OnResetAllSettings :=
-    function(const ACurrent: TAtlasPluginSettings; out AResult: TAtlasPluginSettings): Boolean
-    begin
-      Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
-    end;
-end;
-
 procedure TAtlasAddInOptions.FrameCreated(AFrame: TCustomFrame);
 begin
   Inc(FGeneration);
   FPage := AFrame as TAtlasSettingsPage;
-  FPage.DefaultServerPath := HookText(Hooks.DefaultServerPath);
-  FPage.OnResetHistory := Hooks.ResetHistory;
-  ConnectRules;
+  FPage.Part<TAtlasSettingsGeneralPart>.DefaultServerPath := HookText(Hooks.DefaultServerPath);
+  FPage.Part<TAtlasSettingsCompletionPart>.OnResetHistory := Hooks.ResetHistory;
+  TAtlasPageOptions.ConnectRules(FPage);
   // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
   if PendingReveal <> '' then
   begin
     FPage.Reveal(PendingReveal);
   end;
-  ConnectFavorites;
+  TAtlasPageOptions.ConnectFavorites(FPage, Hooks.ToolbarCommands);
   ConnectIndex;
-  ConnectTransfer;
+  TAtlasPageOptions.ConnectTransfer(FPage);
   TAtlasVcsOptions.Connect(FPage, Alive());
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
   // Vorgabe für den Abschnitt eines Moduls (#1455), z. B. „zuordnen …“ aus „Meine Issues“: nach dem Laden.
   if (PendingReveal <> '') and (PendingArgument <> '') then
   begin
-    FPage.ShowSettingArgument(PendingReveal, PendingArgument);
+    FPage.Part<TAtlasSettingsSectionsPart>.ShowSettingArgument(PendingReveal, PendingArgument);
   end;
   // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
   if PendingVcsServer <> '' then
   begin
-    FPage.RevealVcsServer(PendingVcsServer);
+    FPage.Part<TAtlasSettingsVcsServersPart>.RevealVcsServer(PendingVcsServer);
   end;
 end;
 

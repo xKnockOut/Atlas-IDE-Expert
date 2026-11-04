@@ -45,11 +45,55 @@ begin
   Result := (AChar = '_') or AChar.IsLetterOrDigit;
 end;
 
+/// <summary>Öffnet eine Klammer zwischen Vorlagenbeginn ATemplateColumn und dem Namen ab AStart den Platzhalter?
+/// {{ ist keine.</summary>
+function TemplateOpen(const ALine: string; ATemplateColumn, AStart: Integer): Boolean;
+var
+  mIndex, mOpen: Integer;
+begin
+  mOpen := -1;
+  mIndex := ATemplateColumn + 1;
+  while mIndex <= AStart do
+  begin
+    if (ALine[mIndex] = '{') and (mIndex < AStart) and (ALine[mIndex + 1] = '{') then
+    begin
+      Inc(mIndex);
+    end
+    else if ALine[mIndex] = '{' then
+    begin
+      mOpen := mIndex;
+    end
+    else if ALine[mIndex] = '}' then
+    begin
+      mOpen := -1;
+    end;
+    Inc(mIndex);
+  end;
+  Result := (mOpen > 0) and (mOpen = AStart);
+end;
+
+/// <summary>Steht vor dem Namen ab AStart ein Trenner der Namensliste (Doppelpunkt, Komma, Klammer, Hochkomma)?
+/// </summary>
+function ChildrenSlot(const ALine: string; AStart: Integer): Boolean;
+var
+  mIndex: Integer;
+  mBefore: Char;
+begin
+  mIndex := AStart;
+  while (mIndex > 0) and (ALine[mIndex] = ' ') do
+  begin
+    Dec(mIndex);
+  end;
+  mBefore := #0;
+  if mIndex > 0 then
+  begin
+    mBefore := ALine[mIndex];
+  end;
+  Result := CharInSet(mBefore, [':', ',', '(', '''']);
+end;
+
 class function TCompletionDebugDisplay.PrefixAt(const ALine: string; ACharacter, ATemplateColumn: Integer;
   APlace: TDebugDisplayCompletionPlace; out AStart: Integer; out APrefix: string): Boolean;
-var
-  Index, Open: Integer;
-  Before: Char;
 begin
   AStart := ACharacter;
   APrefix := '';
@@ -66,40 +110,11 @@ begin
   APrefix := Copy(ALine, AStart + 1, ACharacter - AStart);
   if APlace = TDebugDisplayCompletionPlace.Template then
   begin
-    // Offene Klammer zwischen Vorlagenbeginn und Name; {{ ist keine.
-    Open := -1;
-    Index := ATemplateColumn + 1;
-    while Index <= AStart do
-    begin
-      if (ALine[Index] = '{') and (Index < AStart) and (ALine[Index + 1] = '{') then
-      begin
-        Inc(Index);
-      end
-      else if ALine[Index] = '{' then
-      begin
-        Open := Index;
-      end
-      else if ALine[Index] = '}' then
-      begin
-        Open := -1;
-      end;
-      Inc(Index);
-    end;
-    Result := (Open > 0) and (Open = AStart);
+    Result := TemplateOpen(ALine, ATemplateColumn, AStart);
   end
   else if APlace = TDebugDisplayCompletionPlace.Children then
   begin
-    Index := AStart;
-    while (Index > 0) and (ALine[Index] = ' ') do
-    begin
-      Dec(Index);
-    end;
-    Before := #0;
-    if Index > 0 then
-    begin
-      Before := ALine[Index];
-    end;
-    Result := CharInSet(Before, [':', ',', '(', '''']);
+    Result := ChildrenSlot(ALine, AStart);
   end;
 end;
 
@@ -117,89 +132,115 @@ begin
   end;
 end;
 
-class function TCompletionDebugDisplay.Items(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
-var
-  Lines: TArray<string>;
-  Line, Prefix: string;
-  Local: TUnitIndex;
-  Symbol, Target: TIndexSymbol;
-  Source: TDebugDisplaySource;
-  Place: TDebugDisplayCompletionPlace;
-  Members: TArray<TTypeMember>;
-  Member: TTypeMember;
-  Item: TCompletionItem;
-  Start, Column: Integer;
+/// <summary>Deklarationen der Datei der Anfrage, aus dem Baum oder dem Text.</summary>
+function LocalIndex(ARequest: TCompletionRequest): TUnitIndex;
 begin
-  AItems := Default(TCompletionItems);
-  Result := False;
-  Lines := ARequest.Lines;
-  if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(Lines)) then
-  begin
-    Exit;
-  end;
-  Line := Lines[ARequest.Position.Line];
-  if not (ContainsText(Line, 'atlas-debug') or ContainsText(Line, 'AtlasDebug')) then
-  begin
-    Exit;
-  end;
   if ARequest.Tree <> nil then
   begin
-    Local := TIndexExtractor.Extract(ARequest.Tree, ARequest.FileName);
+    Result := TIndexExtractor.Extract(ARequest.Tree, ARequest.FileName);
   end
   else
   begin
-    Local := TIndexExtractor.ExtractText(ARequest.Text, ARequest.FileName, nil);
+    Result := TIndexExtractor.ExtractText(ARequest.Text, ARequest.FileName, nil);
   end;
-  // Der Typ, zu dessen Regel die Zeile gehört.
-  Place := TDebugDisplayCompletionPlace.None;
-  Column := 0;
-  Target := Default(TIndexSymbol);
-  for Symbol in Local.Symbols do
+end;
+
+/// <summary>Wo in der Regel ASource die Zeile ALine liegt: in der Vorlage (AColumn ihr Beginn), in der Namensliste
+/// oder nicht in der Regel.</summary>
+function PlaceIn(const ASource: TDebugDisplaySource; ALine: Integer;
+  out AColumn: Integer): TDebugDisplayCompletionPlace;
+begin
+  AColumn := 0;
+  Result := TDebugDisplayCompletionPlace.None;
+  if ASource.HasTemplate and (ASource.TemplateLine = ALine) then
   begin
-    if not (Symbol.Kind in TTypeMembers.RuleKinds) or (Symbol.FileName <> '') or
-      not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Source) then
-    begin
-      Continue;
-    end;
-    if Source.HasTemplate and (Source.TemplateLine = ARequest.Position.Line) then
-    begin
-      Place := TDebugDisplayCompletionPlace.Template;
-      Column := Source.TemplateColumn;
-    end
-    else if (Source.Children <> nil) and (Source.ChildrenLine = ARequest.Position.Line) then
-    begin
-      Place := TDebugDisplayCompletionPlace.Children;
-    end
-    else
-    begin
-      Continue;
-    end;
-    Target := Symbol;
-    Break;
+    Result := TDebugDisplayCompletionPlace.Template;
+    AColumn := ASource.TemplateColumn;
+  end
+  else if (ASource.Children <> nil) and (ASource.ChildrenLine = ALine) then
+  begin
+    Result := TDebugDisplayCompletionPlace.Children;
   end;
-  if (Place = TDebugDisplayCompletionPlace.None) or
-    not PrefixAt(Line, ARequest.Position.Character, Column, Place, Start, Prefix) then
+end;
+
+/// <summary>Der Typ in ALocal, zu dessen Regel die Zeile ALine gehört, und die Stelle darin; False ohne.</summary>
+function RuleTarget(const ALocal: TUnitIndex; const ALines: TArray<string>; ALine: Integer;
+  out APlace: TDebugDisplayCompletionPlace; out AColumn: Integer; out ATarget: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mSource: TDebugDisplaySource;
+begin
+  APlace := TDebugDisplayCompletionPlace.None;
+  AColumn := 0;
+  ATarget := Default(TIndexSymbol);
+  for mSymbol in ALocal.Symbols do
+  begin
+    if not (mSymbol.Kind in TTypeMembers.RuleKinds) or (mSymbol.FileName <> '') or
+      not TDebugDisplayText.RuleAbove(ALines, mSymbol.Range.StartPos.Line, mSource) then
+    begin
+      Continue;
+    end;
+    APlace := PlaceIn(mSource, ALine, AColumn);
+    if APlace <> TDebugDisplayCompletionPlace.None then
+    begin
+      ATarget := mSymbol;
+      Break;
+    end;
+  end;
+  Result := APlace <> TDebugDisplayCompletionPlace.None;
+end;
+
+/// <summary>Eintrag für AMember; ersetzt den Namen ab Spalte AStart bis zum Cursor.</summary>
+function MemberItem(ARequest: TCompletionRequest; const AMember: TTypeMember; AStart: Integer): TCompletionItem;
+begin
+  Result := Default(TCompletionItem);
+  Result.Name := AMember.Name;
+  Result.Detail := AMember.TypeName;
+  Result.Kind := MemberKind(AMember.Kind);
+  Result.Container := AMember.Container;
+  Result.Depth := AMember.Depth;
+  Result.HasTextEdit := True;
+  Result.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, AStart, ARequest.Position.Line,
+    ARequest.Position.Character), AMember.Name);
+end;
+
+class function TCompletionDebugDisplay.Items(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
+var
+  mLines: TArray<string>;
+  mLine, mPrefix: string;
+  mLocal: TUnitIndex;
+  mTarget: TIndexSymbol;
+  mPlace: TDebugDisplayCompletionPlace;
+  mMembers: TArray<TTypeMember>;
+  mMember: TTypeMember;
+  mStart, mColumn: Integer;
+begin
+  AItems := Default(TCompletionItems);
+  Result := False;
+  mLines := ARequest.Lines;
+  if (ARequest.Position.Line < 0) or (ARequest.Position.Line > High(mLines)) then
+  begin
+    Exit;
+  end;
+  mLine := mLines[ARequest.Position.Line];
+  if not (ContainsText(mLine, 'atlas-debug') or ContainsText(mLine, 'AtlasDebug')) then
+  begin
+    Exit;
+  end;
+  mLocal := LocalIndex(ARequest);
+  if not RuleTarget(mLocal, mLines, ARequest.Position.Line, mPlace, mColumn, mTarget) or
+    not PrefixAt(mLine, ARequest.Position.Character, mColumn, mPlace, mStart, mPrefix) then
   begin
     Exit;
   end;
   Result := True;
-  TTypeMembers.Collect(Local, ARequest.Index, Target, Members);
-  for Member in Members do
+  TTypeMembers.Collect(mLocal, ARequest.Index, mTarget, mMembers);
+  for mMember in mMembers do
   begin
-    if (Prefix <> '') and not StartsText(Prefix, Member.Name) then
+    if (mPrefix = '') or StartsText(mPrefix, mMember.Name) then
     begin
-      Continue;
+      AItems.Items := AItems.Items + [MemberItem(ARequest, mMember, mStart)];
     end;
-    Item := Default(TCompletionItem);
-    Item.Name := Member.Name;
-    Item.Detail := Member.TypeName;
-    Item.Kind := MemberKind(Member.Kind);
-    Item.Container := Member.Container;
-    Item.Depth := Member.Depth;
-    Item.HasTextEdit := True;
-    Item.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, Start, ARequest.Position.Line,
-      ARequest.Position.Character), Member.Name);
-    AItems.Items := AItems.Items + [Item];
   end;
 end;
 

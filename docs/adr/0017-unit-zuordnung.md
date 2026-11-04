@@ -296,6 +296,21 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.PageNames` | `Core/Settings/Atlas.Core.Settings.PageNames.pas` | Englische Seitennamen der Einstellungen, #1458 |
 | `Atlas.Core.Settings.Parts` | `Core/Settings/Atlas.Core.Settings.Parts.pas` | Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3) |
 | `Atlas.Core.Settings.Plugin` | `Core/Settings/Atlas.Core.Settings.Plugin.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Store` | `Core/Settings/Atlas.Core.Settings.Plugin.Store.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Bookmarks` | `Core/Settings/Atlas.Core.Settings.Plugin.Bookmarks.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Build` | `Core/Settings/Atlas.Core.Settings.Plugin.Build.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.CodeActions` | `Core/Settings/Atlas.Core.Settings.Plugin.CodeActions.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Completion` | `Core/Settings/Atlas.Core.Settings.Plugin.Completion.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Debug` | `Core/Settings/Atlas.Core.Settings.Plugin.Debug.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Editor` | `Core/Settings/Atlas.Core.Settings.Plugin.Editor.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.General` | `Core/Settings/Atlas.Core.Settings.Plugin.General.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Highlighting` | `Core/Settings/Atlas.Core.Settings.Plugin.Highlighting.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Issues` | `Core/Settings/Atlas.Core.Settings.Plugin.Issues.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Keys` | `Core/Settings/Atlas.Core.Settings.Plugin.Keys.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Rules` | `Core/Settings/Atlas.Core.Settings.Plugin.Rules.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Snippets` | `Core/Settings/Atlas.Core.Settings.Plugin.Snippets.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Vcs` | `Core/Settings/Atlas.Core.Settings.Plugin.Vcs.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.Plugin.Welcome` | `Core/Settings/Atlas.Core.Settings.Plugin.Welcome.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.PluginSchemaData` | `Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ProfileData` | `Core/Settings/Atlas.Core.Settings.ProfileData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.QueryMigration` | `Core/Settings/Atlas.Core.Settings.QueryMigration.pas` | Ordner `Core/Settings` |
@@ -527,6 +542,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Results.Peek` | `IDE/Results/Atlas.IDE.Results.Peek.pas` | Ordner `IDE/Results` |
 | `Atlas.IDE.Settings.Experimental` | `IDE/Settings/Atlas.IDE.Settings.Experimental.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Options` | `IDE/Settings/Atlas.IDE.Settings.Options.pas` | Ordner `IDE/Settings` |
+| `Atlas.IDE.Settings.PageOptions` | `IDE/Settings/Atlas.IDE.Settings.PageOptions.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.Project` | `IDE/Settings/Atlas.IDE.Settings.Project.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.QuickToggles` | `IDE/Settings/Atlas.IDE.Settings.QuickToggles.pas` | Ordner `IDE/Settings` |
 | `Atlas.IDE.Settings.RuleChecksNotice` | `IDE/Settings/Atlas.IDE.Settings.RuleChecksNotice.pas` | Hinweis „Prüfregeln sind aus“, #1454 |
@@ -608,6 +624,34 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Results.Texts` | `UI/Results/Atlas.UI.Results.Texts.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Results.View` | `UI/Results/Atlas.UI.Results.View.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |
 | `Atlas.UI.Settings.ChoiceBox` | `UI/Settings/Atlas.UI.Settings.ChoiceBox.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Bindings` | `UI/Settings/Atlas.UI.Settings.Bindings.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Sheets` | `UI/Settings/Atlas.UI.Settings.Page.Sheets.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Host` | `UI/Settings/Atlas.UI.Settings.Page.Host.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.General` | `UI/Settings/Atlas.UI.Settings.Page.General.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Completion` | `UI/Settings/Atlas.UI.Settings.Page.Completion.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Transfer` | `UI/Settings/Atlas.UI.Settings.Page.Transfer.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.TeamFile` | `UI/Settings/Atlas.UI.Settings.Page.TeamFile.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.EditorView` | `UI/Settings/Atlas.UI.Settings.Page.EditorView.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.EditorCode` | `UI/Settings/Atlas.UI.Settings.Page.EditorCode.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Colors` | `UI/Settings/Atlas.UI.Settings.Page.Colors.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Index` | `UI/Settings/Atlas.UI.Settings.Page.Index.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Build` | `UI/Settings/Atlas.UI.Settings.Page.Build.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Tasks` | `UI/Settings/Atlas.UI.Settings.Page.Tasks.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Rules` | `UI/Settings/Atlas.UI.Settings.Page.Rules.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Release` | `UI/Settings/Atlas.UI.Settings.Page.Release.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Debug` | `UI/Settings/Atlas.UI.Settings.Page.Debug.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Commands` | `UI/Settings/Atlas.UI.Settings.Page.Commands.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Robustness` | `UI/Settings/Atlas.UI.Settings.Page.Robustness.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Startup` | `UI/Settings/Atlas.UI.Settings.Page.Startup.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Vcs` | `UI/Settings/Atlas.UI.Settings.Page.Vcs.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VcsTools` | `UI/Settings/Atlas.UI.Settings.Page.VcsTools.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VcsProject` | `UI/Settings/Atlas.UI.Settings.Page.VcsProject.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VcsProjects` | `UI/Settings/Atlas.UI.Settings.Page.VcsProjects.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.VcsBranch` | `UI/Settings/Atlas.UI.Settings.Page.VcsBranch.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Parts` | `UI/Settings/Atlas.UI.Settings.Page.Parts.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Sections` | `UI/Settings/Atlas.UI.Settings.Page.Sections.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Nodes` | `UI/Settings/Atlas.UI.Settings.Page.Nodes.pas` | Ordner `UI/Settings` |
+| `Atlas.UI.Settings.Page.Tree` | `UI/Settings/Atlas.UI.Settings.Page.Tree.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Contract` | `UI/Settings/Atlas.UI.Settings.Contract.pas` | Ordner `UI/Settings`; Abschnitte der Module im Optionsdialog (#1455, Entscheidung 3) |
 | `Atlas.UI.Settings.Group` | `UI/Settings/Atlas.UI.Settings.Group.pas` | Ordner `UI/Settings` |
 | `Atlas.UI.Settings.Keys` | `UI/Settings/Atlas.UI.Settings.Keys.pas` | Ordner `UI/Settings` |
