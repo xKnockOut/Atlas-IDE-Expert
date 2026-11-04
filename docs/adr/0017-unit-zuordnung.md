@@ -918,6 +918,14 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Query.Service` | `IDE/Query/Atlas.IDE.Query.Service.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Query.Window` | `IDE/Query/Atlas.IDE.Query.Window.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Search.Commands` | `IDE/Search/Atlas.IDE.Search.Commands.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.AcrossFiles` | `IDE/Search/Atlas.IDE.Search.AcrossFiles.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Counter` | `IDE/Search/Atlas.IDE.Search.Counter.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Editor` | `IDE/Search/Atlas.IDE.Search.Editor.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.HistoryFile` | `IDE/Search/Atlas.IDE.Search.HistoryFile.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Painter` | `IDE/Search/Atlas.IDE.Search.Painter.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Replacing` | `IDE/Search/Atlas.IDE.Search.Replacing.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Session` | `IDE/Search/Atlas.IDE.Search.Session.pas` | Ordner `IDE/Search` |
+| `Atlas.IDE.Search.Stepping` | `IDE/Search/Atlas.IDE.Search.Stepping.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.Composition` | `IDE/Search/Atlas.IDE.Search.Composition.pas` | Anmeldung des Moduls `atlas.search`, #1455 |
 | `Atlas.IDE.Search.FileSearch` | `IDE/Search/Atlas.IDE.Search.FileSearch.pas` | Ordner `IDE/Search` |
 | `Atlas.IDE.Search.MessageList` | `IDE/Search/Atlas.IDE.Search.MessageList.pas` | Ordner `IDE/Search` |
