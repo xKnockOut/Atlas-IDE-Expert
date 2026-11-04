@@ -33,6 +33,16 @@ uses
   Atlas.Common.Lsp.Documentation;
 
 type
+  /// <summary>Woher der Befehl Texte anderer Dateien und die Einstellungen zur Datei bekommt.</summary>
+  TExitPointsReaders = record
+    /// <summary>Text anderer Units für die XMLDoc der aufgerufenen Routinen (nil = keine).</summary>
+    ReadText: TDocReadText;
+    /// <summary>highlight.exitKeywords zur Datei (nil = Standard).</summary>
+    SettingsFor: THighlightSettingsProvider;
+    class function Create(const AReadText: TDocReadText; const ASettingsFor: THighlightSettingsProvider):
+      TExitPointsReaders; static;
+  end;
+
   TLspExitPoints = class
   public const
     Command = 'atlas.server.exitPoints';
@@ -48,11 +58,10 @@ type
     /// <summary>Vererbung über AResolver, sonst wie TExitPoints.TreeClassTest.</summary>
     class function ClassTest(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string):
       TExitPointClassTest; static;
-    /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis. ASettingsFor liefert
-    /// highlight.exitKeywords zur Datei (nil = Standard).</summary>
+    /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocReadText;
-      const ASettingsFor: THighlightSettingsProvider; const AArguments: TJSONArray): TJSONValue; static;
+      const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReaders: TExitPointsReaders;
+      const AArguments: TJSONArray): TJSONValue; static;
   end;
 
 implementation
@@ -72,6 +81,15 @@ const
   KindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
     'handler', 'loop', 'jump');
   QueryNames: array[TExitPointQuery] of string = ('', 'routine', 'result', 'exceptions', 'loop');
+
+{ TExitPointsReaders }
+
+class function TExitPointsReaders.Create(const AReadText: TDocReadText;
+  const ASettingsFor: THighlightSettingsProvider): TExitPointsReaders;
+begin
+  Result.ReadText := AReadText;
+  Result.SettingsFor := ASettingsFor;
+end;
 
 { TLspExitPoints }
 
@@ -194,8 +212,8 @@ begin
 end;
 
 class function TLspExitPoints.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TDocReadText;
-  const ASettingsFor: THighlightSettingsProvider; const AArguments: TJSONArray): TJSONValue;
+  const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReaders: TExitPointsReaders;
+  const AArguments: TJSONArray): TJSONValue;
 var
   Uri, FileName: string;
   Document: ITextDocument;
@@ -216,9 +234,9 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
   end;
   Options := TExitPointOptions.Default;
-  if Assigned(ASettingsFor) then
+  if Assigned(AReaders.SettingsFor) then
   begin
-    Options.Keywords := ASettingsFor(Uri).ExitKeywords;
+    Options.Keywords := AReaders.SettingsFor(Uri).ExitKeywords;
   end
   else
   begin
@@ -246,7 +264,7 @@ begin
     Resolver.Namespaces := ANamespaces;
     Result := Json(TExitPoints.Find(Shared.Tree, TLspPositions.ReadPosition(AArguments.Items[1]), Options,
       ExceptionLookup(Resolver, Shared.Tree, FileName, Lines, TLspDocumentation.Reader(FileName, Document.Text,
-      AReadText)), ClassTest(Resolver, Shared.Tree, FileName)));
+      AReaders.ReadText)), ClassTest(Resolver, Shared.Tree, FileName)));
   finally
     Resolver.Free;
   end;

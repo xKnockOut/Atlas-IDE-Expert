@@ -504,7 +504,8 @@ begin
   end;
   for Candidate in All do
   begin
-    Targets := TLspDefinition.TargetsOf(FResolver, FIndex, ATree, AFileName, APosition, Candidate, True);
+    Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
+      Candidate);
     if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
     begin
       AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
@@ -526,7 +527,8 @@ begin
   Position := ATree.Tokens[ATokenIndex].StartPos;
   Inactive := FSettings.Inferred and RegionAt(AInactive, Position, Condition);
   Resolved := FResolver.Resolve(ATree, AFileName, Position);
-  Targets := TLspDefinition.TargetsOf(FResolver, FIndex, ATree, AFileName, Position, Resolved, True);
+  Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, Position, True),
+    Resolved);
   if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
   begin
     if Inactive then
