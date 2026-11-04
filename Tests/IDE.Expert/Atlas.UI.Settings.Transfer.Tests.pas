@@ -327,8 +327,8 @@ begin
       '"settings":{"notes.enabled":false,"settings.backupBeforeImport":false,"gibt.esNicht":1}}');
     Assert.IsTrue(Source.Valid, Source.Error);
     Preview := TAtlasSettingsTransfer.Preview(Catalog,
-      TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, ''), Source, imMerge, nil,
-      nil, '', '');
+      TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, ''), Source, TAtlasImportOptions.Create(imMerge, nil,
+        nil));
     Dialog := TAtlasImportDialog.CreateDialog(nil, Catalog, 'atlas-settings.json', Preview, nil);
     try
       Dialog.HandleNeeded;
