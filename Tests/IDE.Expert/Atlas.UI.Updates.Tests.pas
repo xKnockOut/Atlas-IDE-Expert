@@ -35,7 +35,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
-  Atlas.UI.Updates.Consent;
+  Atlas.UI.Updates.Consent,
+  Atlas.UI.Settings.Page.Startup;
 
 procedure TAtlasUpdateConsentTests.WarmUpFirstUse;
 begin
@@ -111,7 +112,7 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsFalse(CheckOf(Page, 'UpdatesCheck').Checked, 'Vorgabe aus');
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
-      TAtlasUpdates.IdeVersion]), Page.VersionLabel.Caption);
+      TAtlasUpdates.IdeVersion]), Page.Part<TAtlasSettingsStartupPart>.VersionLabel.Caption);
     CheckOf(Page, 'UpdatesCheck').Checked := True;
     // Fehlerbericht (#108): anonymisiert als Vorgabe, abschaltbar.
     Assert.IsTrue(CheckOf(Page, 'BugReportAnonymize').Checked);

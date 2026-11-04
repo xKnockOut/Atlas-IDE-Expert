@@ -37,7 +37,10 @@ uses
   Atlas.Core.Vcs.ServerCheck,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.UI.Settings.Page.VcsTools,
+  Atlas.UI.Settings.Page.VcsProject,
+  Atlas.UI.Settings.Page.VcsProjects;
 
 /// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dem Abschnitt vcs der .atlas
 /// für die Seite Versionsverwaltung (#1286).</summary>
@@ -64,7 +67,7 @@ end;
 
 class procedure TAtlasVcsOptions.Connect(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
 begin
-  APage.OnVcsContext :=
+  APage.Part<TAtlasSettingsVcsProjectsPart>.OnVcsContext :=
     function: TAtlasVcsProjectContext
     begin
       Result := VcsProjectContext;
@@ -76,12 +79,12 @@ end;
 
 class procedure TAtlasVcsOptions.ConnectTools(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
 begin
-  APage.OnVcsLocate :=
+  APage.Part<TAtlasSettingsVcsToolsPart>.OnVcsLocate :=
     function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
     begin
       Result := TAtlasIdeVcs.Locate(AKind, APath);
     end;
-  APage.OnVcsCheck :=
+  APage.Part<TAtlasSettingsVcsToolsPart>.OnVcsCheck :=
     procedure(AKind: TAtlasVcsKind; const APath: string)
     begin
       if not TAtlasIdeVcs.CheckTool(AKind, APath,
@@ -90,19 +93,20 @@ begin
           // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
           if AAlive() then
           begin
-            APage.VcsCheckDone(ACheck);
+            APage.Part<TAtlasSettingsVcsToolsPart>.VcsCheckDone(ACheck);
           end;
         end) then
       begin
         // Nichts gestartet (Versionsverwaltung noch nicht bereit): Zustand ohne Prozess.
-        APage.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind, TAtlasIdeVcs.Locate(AKind, APath)));
+        APage.Part<TAtlasSettingsVcsToolsPart>.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind,
+          TAtlasIdeVcs.Locate(AKind, APath)));
       end;
     end;
 end;
 
 class procedure TAtlasVcsOptions.ConnectProject(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
 begin
-  APage.OnVcsProject :=
+  APage.Part<TAtlasSettingsVcsProjectPart>.OnVcsProject :=
     procedure
     var
       mProject, mGroup: string;
@@ -119,7 +123,7 @@ begin
         begin
           if AAlive() then
           begin
-            APage.VcsProjectDone(AState);
+            APage.Part<TAtlasSettingsVcsProjectPart>.VcsProjectDone(AState);
           end;
         end);
     end;
@@ -128,17 +132,17 @@ end;
 class procedure TAtlasVcsOptions.ConnectServer(APage: TAtlasSettingsPage; const AAlive: TFunc<Boolean>);
 begin
   // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
-  APage.OnVcsServerState :=
+  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerState :=
     function(AFolder: string): TAtlasVcsServerCheck
     begin
       Result := TAtlasIdeVcs.ServerState(AFolder);
     end;
-  APage.OnVcsServerCheck :=
+  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerCheck :=
     procedure(const AFolder: string)
     begin
       CheckServer(APage, AAlive, AFolder);
     end;
-  APage.OnVcsServerLogin :=
+  APage.Part<TAtlasSettingsVcsServersPart>.OnVcsServerLogin :=
     function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
     var
       mFolder: string;
@@ -168,11 +172,11 @@ begin
       // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
       if AAlive() then
       begin
-        APage.VcsServerDone(mFolder, ACheck);
+        APage.Part<TAtlasSettingsVcsServersPart>.VcsServerDone(mFolder, ACheck);
       end;
     end) then
   begin
-    APage.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
+    APage.Part<TAtlasSettingsVcsServersPart>.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
   end;
 end;
 

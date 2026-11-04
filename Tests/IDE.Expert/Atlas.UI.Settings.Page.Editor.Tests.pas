@@ -62,7 +62,10 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.UI.Settings.Page,
   Vcl.Menus,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Settings.Page.TestSupport,
+  Atlas.UI.Settings.Page.Commands,
+  Atlas.UI.Settings.Page.EditorCode,
+  Atlas.UI.Settings.Page.EditorView;
 
 procedure TAtlasSettingsPageEditorTests.WarmUp;
 begin
@@ -89,17 +92,17 @@ begin
   Assert.IsTrue(CheckOf(APage, 'ExitPointsLoops').Checked);
   Assert.IsTrue(CheckOf(APage, 'ExitPointsBadge').Checked);
   Assert.IsTrue(CheckOf(APage, 'Reassigned').Checked, 'Unterstreichung standardmaessig an (#712)');
-  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.Locals).Checked);
-  Assert.IsFalse(APage.ReassignedTargetCheck(TAtlasReassignedTarget.LoopVars).Checked);
-  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked);
-  Assert.IsFalse(APage.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
-  Assert.AreEqual(0, APage.ReassignedStyleBox.Choice, 'gepunktet');
-  Assert.AreEqual('theme', APage.ReassignedColorEdit.Text);
+  Assert.IsTrue(APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.Locals).Checked);
+  Assert.IsFalse(APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.LoopVars).Checked);
+  Assert.IsTrue(APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked);
+  Assert.IsFalse(APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.Fields).Checked);
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsEditorCodePart>.ReassignedStyleBox.Choice, 'gepunktet');
+  Assert.AreEqual('theme', APage.Part<TAtlasSettingsEditorCodePart>.ReassignedColorEdit.Text);
   Assert.IsTrue(CheckOf(APage, 'ExpressionType').Checked, 'Typ des Ausdrucks standardmaessig an (#689)');
   Assert.IsTrue(CheckOf(APage, 'ExpressionTypeConversions').Checked);
   Assert.IsTrue(CheckOf(APage, 'ExpressionTypeConstValue').Checked);
   Assert.AreEqual(ShortCutToText($6054), EditOf(APage, 'ExpressionTypeKey').Text);
-  Assert.AreEqual(0, APage.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
 end;
 /// <summary>Vorgaben und Änderungen: Atlas-Spalte, gleicher Text, Blockkommentar.</summary>
 procedure EditHideElementSelection(APage: TAtlasSettingsPage);
@@ -113,26 +116,26 @@ begin
   CheckOf(APage, 'GutterColumnOverrides').Checked := False;
   // Gleichen Text hervorheben (#709).
   Assert.IsTrue(CheckOf(APage, 'SelectionMatches').Checked, 'gleichen Text hervorheben standardmäßig an (#709)');
-  Assert.AreEqual('3', APage.SelectionMatchesMinLength.Text);
+  Assert.AreEqual('3', APage.Part<TAtlasSettingsEditorViewPart>.SelectionMatchesMinLength.Text);
   Assert.IsFalse(CheckOf(APage, 'SelectionMatchesCaseSensitive').Checked);
   Assert.IsFalse(CheckOf(APage, 'SelectionMatchesWholeWord').Checked);
   Assert.IsTrue(CheckOf(APage, 'SelectionMatchesNavigateF3').Checked);
-  Assert.AreEqual('1000', APage.SelectionMatchesMaxMatches.Text);
-  APage.SelectionMatchesMinLength.Text := '4';
+  Assert.AreEqual('1000', APage.Part<TAtlasSettingsEditorViewPart>.SelectionMatchesMaxMatches.Text);
+  APage.Part<TAtlasSettingsEditorViewPart>.SelectionMatchesMinLength.Text := '4';
   CheckOf(APage, 'SelectionMatchesWholeWord').Checked := True;
   CheckOf(APage, 'SelectionMatchesNavigateF3').Checked := False;
-  APage.SelectionMatchesMaxMatches.Text := '50';
+  APage.Part<TAtlasSettingsEditorViewPart>.SelectionMatchesMaxMatches.Text := '50';
   // Blockkommentar umschalten (#703).
   Assert.IsTrue(CheckOf(APage, 'ToggleBlockComment').Checked, 'Blockkommentar umschalten standardmäßig an (#703)');
   Assert.AreEqual(ShortCutToText($A041), EditOf(APage, 'ToggleBlockCommentKey').Text);
-  Assert.AreEqual(0, APage.ToggleBlockCommentStyle.Choice);
-  Assert.AreEqual(0, APage.ToggleBlockCommentFallback.Choice);
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentStyle.Choice);
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentFallback.Choice);
   Assert.IsFalse(CheckOf(APage, 'ToggleBlockCommentOwnLines').Checked);
-  Assert.AreEqual(0, APage.ToggleBlockCommentScope.Choice);
-  APage.ToggleBlockCommentStyle.Choice := 1;
-  APage.ToggleBlockCommentFallback.Choice := 1;
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentScope.Choice);
+  APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentStyle.Choice := 1;
+  APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentFallback.Choice := 1;
   CheckOf(APage, 'ToggleBlockCommentOwnLines').Checked := True;
-  APage.ToggleBlockCommentScope.Choice := 1;
+  APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentScope.Choice := 1;
 end;
 /// <summary>Vorgaben und Änderungen: Zeilen, Umschließen, Löschen, Fehlertext, Abschalten.</summary>
 procedure EditHideElementCommands(APage: TAtlasSettingsPage);
@@ -156,7 +159,7 @@ begin
   Assert.AreEqual('([{''', EditOf(APage, 'WrapSelectionChars').Text);
   EditOf(APage, 'WrapSelectionChars').Text := ' ([<';
   // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
-  Assert.AreEqual(1, APage.InlineDiagnostics.Choice, 'nur Fehler');
+  Assert.AreEqual(1, APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice, 'nur Fehler');
   Assert.IsTrue(CheckOf(APage, 'ProblemsStatusCounter').Checked);
   Assert.AreEqual(ShortCutToText($C077), EditOf(APage, 'NextProblemKey').Text);
   CheckOf(APage, 'BlockEndLabels').Checked := False;
@@ -166,15 +169,15 @@ begin
   CheckOf(APage, 'ExitPoints').Checked := False;
   CheckOf(APage, 'ExitPointsBadge').Checked := False;
   CheckOf(APage, 'Reassigned').Checked := False;
-  APage.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked := False;
-  APage.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
-  APage.ReassignedStyleBox.Choice := 1;
-  APage.ReassignedColorEdit.Text := 'rot';
+  APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.ValueParams).Checked := False;
+  APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked := True;
+  APage.Part<TAtlasSettingsEditorCodePart>.ReassignedStyleBox.Choice := 1;
+  APage.Part<TAtlasSettingsEditorCodePart>.ReassignedColorEdit.Text := 'rot';
   CheckOf(APage, 'ExpressionType').Checked := False;
   CheckOf(APage, 'ExpressionTypeConstValue').Checked := False;
   EditOf(APage, 'ExpressionTypeKey').Text := '';
-  APage.MethodPlacementBox.Choice := 2;
-  APage.InlineDiagnostics.Choice := 2;
+  APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice := 2;
+  APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice := 2;
   CheckOf(APage, 'ProblemsStatusCounter').Checked := False;
   EditOf(APage, 'PreviousProblemKey').Text := '';
   EditOf(APage, 'BlockEndLabelsMinLines').Text := '30';
@@ -249,14 +252,14 @@ begin
   Assert.IsFalse(CheckOf(APage, 'ExitPoints').Checked);
   Assert.IsFalse(CheckOf(APage, 'ExitPointsBadge').Checked);
   Assert.IsFalse(CheckOf(APage, 'Reassigned').Checked);
-  Assert.IsTrue(APage.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
-  Assert.AreEqual(1, APage.ReassignedStyleBox.Choice);
+  Assert.IsTrue(APage.Part<TAtlasSettingsEditorCodePart>.ReassignedTargetCheck(TAtlasReassignedTarget.VarParams).Checked);
+  Assert.AreEqual(1, APage.Part<TAtlasSettingsEditorCodePart>.ReassignedStyleBox.Choice);
   Assert.IsFalse(CheckOf(APage, 'ExpressionType').Checked);
   Assert.IsFalse(CheckOf(APage, 'ExpressionTypeConstValue').Checked);
   Assert.IsFalse(CheckOf(APage, 'GutterColumnOverrides').Checked);
   Assert.IsTrue(CheckOf(APage, 'SelectionMatchesWholeWord').Checked);
-  Assert.AreEqual(1, APage.ToggleBlockCommentScope.Choice);
-  Assert.AreEqual(2, APage.InlineDiagnostics.Choice);
+  Assert.AreEqual(1, APage.Part<TAtlasSettingsCommandsPart>.ToggleBlockCommentScope.Choice);
+  Assert.AreEqual(2, APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice);
   Assert.AreEqual('', EditOf(APage, 'HideElementKey').Text);
 end;
 procedure TAtlasSettingsPageEditorTests.HideElementRoundTrip;
@@ -379,10 +382,10 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsTrue(CheckOf(Page, 'ContinueComments').Checked);
     Assert.IsTrue(CheckOf(Page, 'ContinueCommentsLists').Checked);
-    Assert.AreEqual('', Page.ContinueCommentsBlockPrefix.Text);
+    Assert.AreEqual('', Page.Part<TAtlasSettingsEditorCodePart>.ContinueCommentsBlockPrefix.Text);
     CheckOf(Page, 'ContinueComments').Checked := False;
     CheckOf(Page, 'ContinueCommentsLists').Checked := False;
-    Page.ContinueCommentsBlockPrefix.Text := ' * ';
+    Page.Part<TAtlasSettingsEditorCodePart>.ContinueCommentsBlockPrefix.Text := ' * ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.ContinueComments);
@@ -405,12 +408,12 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsTrue(CheckOf(Page, 'CompleteStatement').Checked);
     Assert.AreEqual(ShortCutToText(TShortCut($600D)), EditOf(Page, 'CompleteStatementKey').Text);
-    Assert.AreEqual(1, Page.CompleteStatementBeginEnd.Choice);
-    Assert.AreEqual(0, Page.CompleteStatementTryKind.Choice);
+    Assert.AreEqual(1, Page.Part<TAtlasSettingsEditorCodePart>.CompleteStatementBeginEnd.Choice);
+    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorCodePart>.CompleteStatementTryKind.Choice);
     CheckOf(Page, 'CompleteStatement').Checked := False;
     EditOf(Page, 'CompleteStatementKey').Text := '';
-    Page.CompleteStatementBeginEnd.Choice := 2;
-    Page.CompleteStatementTryKind.Choice := 2;
+    Page.Part<TAtlasSettingsEditorCodePart>.CompleteStatementBeginEnd.Choice := 2;
+    Page.Part<TAtlasSettingsEditorCodePart>.CompleteStatementTryKind.Choice := 2;
     CheckOf(Page, 'CompleteStatementMethodBody').Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
@@ -458,7 +461,7 @@ begin
     Assert.IsFalse(CheckOf(Page, 'MultiCursor').Checked);
     // #658 steht daneben, ebenfalls experimentell und aus.
     Assert.IsFalse(CheckOf(Page, 'LinkedEditing').Checked);
-    Assert.AreEqual(0, Page.MultiCursorModifier.Choice);
+    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorCodePart>.MultiCursorModifier.Choice);
     Assert.AreEqual(ShortCutToText(TShortCut($4044)), EditOf(Page, 'MultiCursorNextKey').Text);
     Assert.AreEqual(ShortCutToText(TShortCut($4044)), EditOf(Page, 'MultiCursorSkipKey').Text);
     Assert.AreEqual(ShortCutToText(TShortCut($A049)), EditOf(Page, 'MultiCursorLineEndsKey').Text);
@@ -466,7 +469,7 @@ begin
     Assert.AreEqual(ShortCutToText(TShortCut($C028)), EditOf(Page, 'MultiCursorBelowKey').Text);
     CheckOf(Page, 'MultiCursor').Checked := True;
     CheckOf(Page, 'LinkedEditing').Checked := True;
-    Page.MultiCursorModifier.Choice := 1;
+    Page.Part<TAtlasSettingsEditorCodePart>.MultiCursorModifier.Choice := 1;
     EditOf(Page, 'MultiCursorNextKey').Text := '';
     EditOf(Page, 'MultiCursorSkipKey').Text := ShortCutToText(TShortCut($4053));
     EditOf(Page, 'MultiCursorLineEndsKey').Text := ShortCutToText(TShortCut($C049));
@@ -499,12 +502,12 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.AreEqual(0, Page.SmartPaste.Choice);
+    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorCodePart>.SmartPaste.Choice);
     for Index := 0 to High(Values) do
     begin
       Settings.SmartPaste := Values[Index];
       Page.LoadFrom(Settings);
-      Assert.AreEqual(Index, Page.SmartPaste.Choice);
+      Assert.AreEqual(Index, Page.Part<TAtlasSettingsEditorCodePart>.SmartPaste.Choice);
       Saved := TAtlasPluginSettings.Defaults;
       Page.SaveTo(Saved);
       Assert.AreEqual(Values[Index], Saved.SmartPaste);
@@ -559,11 +562,11 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.AreEqual(Settings.EditorToolbarItems, Page.EditorToolbarItemsEdit.Text);
-    Assert.AreEqual(0, Page.EditorToolbarPositionBox.Choice);
-    Assert.IsNotNull(Page.EditorToolbarCustomizeButton);
-    Page.EditorToolbarPositionBox.Choice := 2;
-    Page.EditorToolbarItemsEdit.Text := ' Atlas.NavBack , | , | ';
+    Assert.AreEqual(Settings.EditorToolbarItems, Page.Part<TAtlasSettingsEditorViewPart>.EditorToolbarItemsEdit.Text);
+    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorViewPart>.EditorToolbarPositionBox.Choice);
+    Assert.IsNotNull(Page.Part<TAtlasSettingsEditorViewPart>.EditorToolbarCustomizeButton);
+    Page.Part<TAtlasSettingsEditorViewPart>.EditorToolbarPositionBox.Choice := 2;
+    Page.Part<TAtlasSettingsEditorViewPart>.EditorToolbarItemsEdit.Text := ' Atlas.NavBack , | , | ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.AreEqual('inBreadcrumbs', Saved.EditorToolbarPosition);
@@ -584,8 +587,8 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(Settings);
-    Assert.AreEqual('status,findings,liveCheck,method', Page.EditorStatusBarItemsEdit.Text);
-    Page.EditorStatusBarItemsEdit.Text := ' method , foo, status, method ';
+    Assert.AreEqual('status,findings,liveCheck,method', Page.Part<TAtlasSettingsEditorViewPart>.EditorStatusBarItemsEdit.Text);
+    Page.Part<TAtlasSettingsEditorViewPart>.EditorStatusBarItemsEdit.Text := ' method , foo, status, method ';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.AreEqual('method,status', Saved.EditorStatusBarItems);
@@ -628,14 +631,14 @@ begin
     Page.LoadFrom(Settings);
     Assert.IsTrue(CheckOf(Page, 'QuickBookmarks').Checked);
     Assert.IsTrue(CheckOf(Page, 'QuickBookmarksGutter').Checked);
-    Assert.AreEqual('800', Page.QuickBookmarkChordWaitEdit.Text);
-    Assert.AreEqual(0, Page.QuickBookmarksScopeBox.Choice);
+    Assert.AreEqual('800', Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarkChordWaitEdit.Text);
+    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarksScopeBox.Choice);
     Assert.AreEqual('', EditOf(Page, 'NextBookmarkKey').Text);
     CheckOf(Page, 'QuickBookmarksGutterClick').Checked := False;
     CheckOf(Page, 'QuickBookmarksNumberedKeys').Checked := False;
     CheckOf(Page, 'QuickBookmarksImportIde').Checked := False;
-    Page.QuickBookmarkChordWaitEdit.Text := '99999';
-    Page.QuickBookmarksScopeBox.Choice := 1;
+    Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarkChordWaitEdit.Text := '99999';
+    Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarksScopeBox.Choice := 1;
     EditOf(Page, 'QuickBookmarkKey').Text := '';
     EditOf(Page, 'NextBookmarkKey').Text := 'F2';
     Saved := TAtlasPluginSettings.Defaults;
