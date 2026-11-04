@@ -603,6 +603,15 @@
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Parser.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ScopeData.pas"/>
         <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.Forbidden.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.Reader.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.GeneralOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.RuleOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.McpOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.EditorOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.RefactoringOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.WorkflowOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.AnalysisOptions.pas"/>
+        <DCCReference Include="Source\Configuration\Internals\Atlas.Common.Configuration.Internals.ProjectOptions.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.Scopes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Configuration.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SettingsCommands.pas"/>
