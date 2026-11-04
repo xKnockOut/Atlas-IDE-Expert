@@ -118,12 +118,38 @@ begin
   end;
 end;
 
+/// <summary>Zeilen einer geänderten Datei: formatiert, nicht geschrieben oder die ersten Abweichungen.</summary>
+procedure AppendChanged(ABuilder: TStringBuilder; const AFile: TFormattedFile; AWrite: Boolean);
+var
+  mIndex, mCount: Integer;
+begin
+  mCount := Length(AFile.Outcome.Deviations);
+  if AWrite and AFile.Written then
+  begin
+    ABuilder.AppendLine(Format('%s: formatiert (%d Abweichungen)', [AFile.Path, mCount]));
+    Exit;
+  end;
+  if AWrite then
+  begin
+    ABuilder.AppendLine(Format('%s: nicht geschrieben: %s', [AFile.Path, AFile.Error]));
+    Exit;
+  end;
+  ABuilder.AppendLine(Format('%s: %d Abweichungen', [AFile.Path, mCount]));
+  for mIndex := 0 to Min(mCount, TFormatOutput.cShownPerFile) - 1 do
+  begin
+    ABuilder.AppendLine(Format('  Zeile %d: %s', [AFile.Outcome.Deviations[mIndex].Line + 1,
+      AFile.Outcome.Deviations[mIndex].Message]));
+  end;
+  if mCount > TFormatOutput.cShownPerFile then
+  begin
+    ABuilder.AppendLine(Format('  … und %d weitere (alle mit --format json)', [mCount - TFormatOutput.cShownPerFile]));
+  end;
+end;
+
 function RenderText(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): string;
 var
   mBuilder: TStringBuilder;
   mFile: TFormattedFile;
-  mIndex, mCount: Integer;
-  mLine: string;
 begin
   mBuilder := TStringBuilder.Create;
   try
@@ -133,32 +159,9 @@ begin
       begin
         mBuilder.AppendLine(SyntaxLine(mFile));
       end;
-      mCount := Length(mFile.Outcome.Deviations);
       if mFile.Outcome.Changed then
       begin
-        if AWrite and mFile.Written then
-        begin
-          mBuilder.AppendLine(Format('%s: formatiert (%d Abweichungen)', [mFile.Path, mCount]));
-        end
-        else if AWrite then
-        begin
-          mBuilder.AppendLine(Format('%s: nicht geschrieben: %s', [mFile.Path, mFile.Error]));
-        end
-        else
-        begin
-          mBuilder.AppendLine(Format('%s: %d Abweichungen', [mFile.Path, mCount]));
-          for mIndex := 0 to Min(mCount, TFormatOutput.cShownPerFile) - 1 do
-          begin
-            mLine := Format('  Zeile %d: %s', [mFile.Outcome.Deviations[mIndex].Line + 1,
-              mFile.Outcome.Deviations[mIndex].Message]);
-            mBuilder.AppendLine(mLine);
-          end;
-          if mCount > TFormatOutput.cShownPerFile then
-          begin
-            mBuilder.AppendLine(Format('  … und %d weitere (alle mit --format json)',
-              [mCount - TFormatOutput.cShownPerFile]));
-          end;
-        end;
+        AppendChanged(mBuilder, mFile, AWrite);
       end;
       if not mFile.Outcome.Stable then
       begin
@@ -171,18 +174,77 @@ begin
   end;
 end;
 
-function RenderJson(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): string;
+function JsonBool(AValue: Boolean): string;
+begin
+  Result := LowerCase(BoolToStr(AValue, True));
+end;
+
+/// <summary>Eine Datei als JSON-Objekt mit Fehler, Syntaxfehler und allen Abweichungen.</summary>
+procedure AppendJsonFile(ABuilder: TStringBuilder; const AFile: TFormattedFile);
 var
-  mBuilder: TStringBuilder;
-  mFile: TFormattedFile;
   mDeviation: TFormatDeviation;
-  mFirstFile, mFirstDeviation: Boolean;
+  mFirst: Boolean;
+begin
+  ABuilder.Append('{"path":').Append(TFindingsOutput.JsonString(SlashPath(AFile.Path)));
+  ABuilder.Append(',"changed":').Append(JsonBool(AFile.Outcome.Changed));
+  ABuilder.Append(',"stable":').Append(JsonBool(AFile.Outcome.Stable));
+  ABuilder.Append(',"written":').Append(JsonBool(AFile.Written));
+  if AFile.Error <> '' then
+  begin
+    ABuilder.Append(',"error":').Append(TFindingsOutput.JsonString(AFile.Error));
+  end;
+  if AFile.Outcome.HasSyntaxError then
+  begin
+    ABuilder.Append(',"syntaxError":{"line":').Append(AFile.Outcome.SyntaxError.StartPos.Line + 1)
+      .Append(',"column":').Append(AFile.Outcome.SyntaxError.StartPos.Character + 1)
+      .Append(',"message":').Append(TFindingsOutput.JsonString(AFile.Outcome.SyntaxError.Message)).Append('}');
+  end;
+  ABuilder.Append(',"deviations":[');
+  mFirst := True;
+  for mDeviation in AFile.Outcome.Deviations do
+  begin
+    if not mFirst then
+    begin
+      ABuilder.Append(',');
+    end;
+    mFirst := False;
+    ABuilder.Append('{"line":').Append(mDeviation.Line + 1);
+    ABuilder.Append(',"kind":').Append(TFindingsOutput.JsonString(TFormatCheck.KindName(mDeviation.Kind)));
+    ABuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mDeviation.Message)).Append('}');
+  end;
+  ABuilder.Append(']}');
+end;
+
+/// <summary>"summary" mit den Zählern über alle Dateien.</summary>
+procedure AppendJsonSummary(ABuilder: TStringBuilder; const AFiles: TArray<TFormattedFile>);
+var
+  mFile: TFormattedFile;
   mChanged, mSyntax, mUnstable, mWritten: Integer;
 begin
   mChanged := 0;
   mSyntax := 0;
   mUnstable := 0;
   mWritten := 0;
+  for mFile in AFiles do
+  begin
+    Inc(mChanged, Ord(mFile.Outcome.Changed));
+    Inc(mSyntax, Ord(mFile.Outcome.HasSyntaxError));
+    Inc(mUnstable, Ord(not mFile.Outcome.Stable));
+    Inc(mWritten, Ord(mFile.Written));
+  end;
+  ABuilder.Append('"summary":{"files":').Append(Length(AFiles));
+  ABuilder.Append(',"changed":').Append(mChanged);
+  ABuilder.Append(',"syntaxErrors":').Append(mSyntax);
+  ABuilder.Append(',"unstable":').Append(mUnstable);
+  ABuilder.Append(',"written":').Append(mWritten).Append('}');
+end;
+
+function RenderJson(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): string;
+var
+  mBuilder: TStringBuilder;
+  mFile: TFormattedFile;
+  mFirst: Boolean;
+begin
   mBuilder := TStringBuilder.Create;
   try
     if AWrite then
@@ -193,68 +255,22 @@ begin
     begin
       mBuilder.Append('{"mode":"check","files":[');
     end;
-    mFirstFile := True;
+    mFirst := True;
     for mFile in AFiles do
     begin
-      if mFile.Outcome.Changed then
+      if mFile.NeedsAttention then
       begin
-        Inc(mChanged);
-      end;
-      if mFile.Outcome.HasSyntaxError then
-      begin
-        Inc(mSyntax);
-      end;
-      if not mFile.Outcome.Stable then
-      begin
-        Inc(mUnstable);
-      end;
-      if mFile.Written then
-      begin
-        Inc(mWritten);
-      end;
-      if not mFile.NeedsAttention then
-      begin
-        Continue;
-      end;
-      if not mFirstFile then
-      begin
-        mBuilder.Append(',');
-      end;
-      mFirstFile := False;
-      mBuilder.Append('{"path":').Append(TFindingsOutput.JsonString(SlashPath(mFile.Path)));
-      mBuilder.Append(',"changed":').Append(LowerCase(BoolToStr(mFile.Outcome.Changed, True)));
-      mBuilder.Append(',"stable":').Append(LowerCase(BoolToStr(mFile.Outcome.Stable, True)));
-      mBuilder.Append(',"written":').Append(LowerCase(BoolToStr(mFile.Written, True)));
-      if mFile.Error <> '' then
-      begin
-        mBuilder.Append(',"error":').Append(TFindingsOutput.JsonString(mFile.Error));
-      end;
-      if mFile.Outcome.HasSyntaxError then
-      begin
-        mBuilder.Append(',"syntaxError":{"line":').Append(mFile.Outcome.SyntaxError.StartPos.Line + 1)
-          .Append(',"column":').Append(mFile.Outcome.SyntaxError.StartPos.Character + 1)
-          .Append(',"message":').Append(TFindingsOutput.JsonString(mFile.Outcome.SyntaxError.Message)).Append('}');
-      end;
-      mBuilder.Append(',"deviations":[');
-      mFirstDeviation := True;
-      for mDeviation in mFile.Outcome.Deviations do
-      begin
-        if not mFirstDeviation then
+        if not mFirst then
         begin
           mBuilder.Append(',');
         end;
-        mFirstDeviation := False;
-        mBuilder.Append('{"line":').Append(mDeviation.Line + 1);
-        mBuilder.Append(',"kind":').Append(TFindingsOutput.JsonString(TFormatCheck.KindName(mDeviation.Kind)));
-        mBuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mDeviation.Message)).Append('}');
+        mFirst := False;
+        AppendJsonFile(mBuilder, mFile);
       end;
-      mBuilder.Append(']}');
     end;
-    mBuilder.Append('],"summary":{"files":').Append(Length(AFiles));
-    mBuilder.Append(',"changed":').Append(mChanged);
-    mBuilder.Append(',"syntaxErrors":').Append(mSyntax);
-    mBuilder.Append(',"unstable":').Append(mUnstable);
-    mBuilder.Append(',"written":').Append(mWritten).Append('}}');
+    mBuilder.Append('],');
+    AppendJsonSummary(mBuilder, AFiles);
+    mBuilder.Append('}');
     Result := mBuilder.ToString + sLineBreak;
   finally
     mBuilder.Free;
