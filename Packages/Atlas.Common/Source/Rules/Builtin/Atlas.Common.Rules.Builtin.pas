@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin;
 
-// Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter. Die Anmeldung steht in drei Gruppen
-// (Atlas.Common.Rules.Builtin.Registration1 bis 3), damit keine Unit zu viele Units einbindet.
+// Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter. Die Anmeldung steht nach Themen in
+// Atlas.Common.Rules.Builtin.Registration.Declarations, .Statements und .Frameworks, damit keine Unit zu viele
+// Units einbindet.
 
 interface
 
@@ -15,9 +16,9 @@ implementation
 
 uses
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Builtin.Registration1,
-  Atlas.Common.Rules.Builtin.Registration2,
-  Atlas.Common.Rules.Builtin.Registration3;
+  Atlas.Common.Rules.Builtin.Registration.Declarations,
+  Atlas.Common.Rules.Builtin.Registration.Statements,
+  Atlas.Common.Rules.Builtin.Registration.Frameworks;
 
 function BuiltinRules: TArray<IRule>;
 var
@@ -25,9 +26,9 @@ var
 begin
   mRegistry := TRuleRegistry.Create;
   try
-    RegisterBuiltinRules1(mRegistry);
-    RegisterBuiltinRules2(mRegistry);
-    RegisterBuiltinRules3(mRegistry);
+    RegisterBuiltinDeclarationRules(mRegistry);
+    RegisterBuiltinStatementRules(mRegistry);
+    RegisterBuiltinFrameworkRules(mRegistry);
     Result := mRegistry.Rules;
   finally
     mRegistry.Free;

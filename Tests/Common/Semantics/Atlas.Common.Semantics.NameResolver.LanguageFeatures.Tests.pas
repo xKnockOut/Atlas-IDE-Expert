@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Semantics.NameResolverStage2.Tests;
+﻿unit Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests;
 
 // Tests für die Namensauflösung, Ausbaustufe 2 (#263): Überladungen,
 // Generics, Helfer, with, Inline-Variablen, Sichtbarkeit und Ausdrücke
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TNameResolverStage2Tests = class
+  TNameResolverLanguageFeatureTests = class
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
@@ -213,9 +213,9 @@ begin
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
-{ TNameResolverStage2Tests }
+{ TNameResolverLanguageFeatureTests }
 
-procedure TNameResolverStage2Tests.Setup;
+procedure TNameResolverLanguageFeatureTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   AddUnit('C:\Lib\System.pas', UnitSystem);
@@ -225,18 +225,18 @@ begin
   FResolver := TNameResolver.Create(FIndex);
 end;
 
-procedure TNameResolverStage2Tests.TearDown;
+procedure TNameResolverLanguageFeatureTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
 end;
 
-procedure TNameResolverStage2Tests.AddUnit(const AFileName, AText: string);
+procedure TNameResolverLanguageFeatureTests.AddUnit(const AFileName, AText: string);
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
 end;
 
-function TNameResolverStage2Tests.ResolveAllAt(const AText, AMarker: string;
+function TNameResolverLanguageFeatureTests.ResolveAllAt(const AText, AMarker: string;
   AOccurrence: Integer): TArray<TResolvedSymbol>;
 var
   Tree: TSyntaxTree;
@@ -249,7 +249,7 @@ begin
   end;
 end;
 
-function TNameResolverStage2Tests.ResolveAt(const AText, AMarker: string; AOccurrence: Integer): TResolvedSymbol;
+function TNameResolverLanguageFeatureTests.ResolveAt(const AText, AMarker: string; AOccurrence: Integer): TResolvedSymbol;
 var
   Results: TArray<TResolvedSymbol>;
 begin
@@ -264,7 +264,7 @@ begin
   end;
 end;
 
-procedure TNameResolverStage2Tests.ChoosesOverloadByArgumentCount;
+procedure TNameResolverLanguageFeatureTests.ChoosesOverloadByArgumentCount;
 const
   Source = Head + '  S := Format(''%d'', [1]);'#10'  S := Format(''%d'', [1], FS);' + Tail;
 var
@@ -279,7 +279,7 @@ begin
   Assert.AreEqual(1, Integer(Length(ResolveAllAt(Source, 'Format(''%d'', [1], FS)'))));
 end;
 
-procedure TNameResolverStage2Tests.AmbiguousOverloadsGiveAllCandidates;
+procedure TNameResolverLanguageFeatureTests.AmbiguousOverloadsGiveAllCandidates;
 const
   Source = Head + '  S := IntToStr(I);'#10'  S := IntToStr(Name);' + Tail;
 begin
@@ -288,7 +288,7 @@ begin
   Assert.IsTrue(ResolveAt(Source, 'IntToStr(I)').Found);
 end;
 
-procedure TNameResolverStage2Tests.ParameterTypeAliasFitsItsBaseType;
+procedure TNameResolverLanguageFeatureTests.ParameterTypeAliasFitsItsBaseType;
 const
   Source = Head + '  if FileAge(S, Alter) then'#10'    I := FileAge(S);' + Tail;
 var
@@ -305,7 +305,7 @@ begin
   mResults := nil;
 end;
 
-procedure TNameResolverStage2Tests.SubstitutesGenericTypeArguments;
+procedure TNameResolverLanguageFeatureTests.SubstitutesGenericTypeArguments;
 const
   Source = Head + '  S := L.First.Name;'#10'  S := L.Items[0].Name;'#10'  S := L[0].Name;'#10 +
     '  S := L.First.Unbekannt;' + Tail;
@@ -320,7 +320,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Unbekannt').Found);
 end;
 
-procedure TNameResolverStage2Tests.NonGenericTypeBeatsGenericOfSameName;
+procedure TNameResolverLanguageFeatureTests.NonGenericTypeBeatsGenericOfSameName;
 const
   UnitClasses = 'unit System.Classes;'#10'interface'#10'type'#10'  TList = class'#10'  public'#10 +
     '    function Extract(Item: Pointer): Pointer;'#10'  end;'#10'implementation'#10'end.';
@@ -344,7 +344,7 @@ begin
   end;
 end;
 
-procedure TNameResolverStage2Tests.FollowsGenericAncestors;
+procedure TNameResolverLanguageFeatureTests.FollowsGenericAncestors;
 const
   Source = Head + '  S := Liste.First.Name;'#10'  I := Liste.Count;'#10'  S := Liste.FCount;' + Tail;
 begin
@@ -354,7 +354,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'FCount').Found);
 end;
 
-procedure TNameResolverStage2Tests.MissingMembersOfGenericInterfaces;
+procedure TNameResolverLanguageFeatureTests.MissingMembersOfGenericInterfaces;
 const
   UnitListen =
     'unit Listen;'#10'interface'#10'type'#10 +
@@ -390,7 +390,7 @@ begin
   Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Haupt.TKunde', 'Haupt'));
 end;
 
-procedure TNameResolverStage2Tests.BindsGenericMethodArguments;
+procedure TNameResolverLanguageFeatureTests.BindsGenericMethodArguments;
 const
   Source = Head + '  S := L.Map<TKunde>(K).Name;'#10'  S := L.Map<Integer>(1).Name;' + Tail;
 begin
@@ -398,7 +398,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Name;', 2).Found);
 end;
 
-procedure TNameResolverStage2Tests.UsesHelpersForBuiltinAndClassTypes;
+procedure TNameResolverLanguageFeatureTests.UsesHelpersForBuiltinAndClassTypes;
 const
   Source = Head + '  S.Split(['','']);'#10'  S := K.Anrede;'#10'  I.Split(['','']);' + Tail;
 var
@@ -411,7 +411,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Split', 2).Found);
 end;
 
-procedure TNameResolverStage2Tests.VisibleHelperForTypeName;
+procedure TNameResolverLanguageFeatureTests.VisibleHelperForTypeName;
 const
   Source = Head + '  S := '''';' + Tail;
 var
@@ -434,7 +434,7 @@ begin
   end;
 end;
 
-procedure TNameResolverStage2Tests.WithFindsMembersOfExpression;
+procedure TNameResolverLanguageFeatureTests.WithFindsMembersOfExpression;
 const
   Source = Head + '  with L.First do'#10'    S := Kopie.Name;'#10'  with K do'#10'    Name := '''';' + Tail;
 begin
@@ -443,7 +443,7 @@ begin
   Assert.AreEqual('TKunde', ResolveAt(Source, 'Name :=').Container);
 end;
 
-procedure TNameResolverStage2Tests.WithUnknownTypeGivesNoResult;
+procedure TNameResolverLanguageFeatureTests.WithUnknownTypeGivesNoResult;
 const
   Source = Head + '  with Unbekannt do'#10'    Name := 1;'#10'  Name := 2;' + Tail;
 var
@@ -455,7 +455,7 @@ begin
   Assert.IsTrue(R.Kind = TResolvedKind.Local);
 end;
 
-procedure TNameResolverStage2Tests.InfersInlineVarTypes;
+procedure TNameResolverLanguageFeatureTests.InfersInlineVarTypes;
 const
   Source = Head + '  var Neu := TKunde.Create;'#10'  S := Neu.Name;'#10 +
     '  var W := if True then ''a'' else ''b'';'#10'  S := W.ToUpper;'#10 +
@@ -466,7 +466,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'ToUpper', 2).Found);
 end;
 
-procedure TNameResolverStage2Tests.ForVarIsLocalToLoop;
+procedure TNameResolverLanguageFeatureTests.ForVarIsLocalToLoop;
 const
   Source = Head + '  for var Lauf := 0 to 3 do'#10'    I := Lauf;'#10'  I := Lauf;' + Tail;
 var
@@ -477,7 +477,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Lauf;', 2).Found);
 end;
 
-procedure TNameResolverStage2Tests.HidesMembersByVisibility;
+procedure TNameResolverLanguageFeatureTests.HidesMembersByVisibility;
 const
   Source = Head + '  I := K.FIntern;'#10'  I := K.FGeheim;'#10'  K.Schuetzt;'#10'  S := K.Name;' + Tail;
 var
@@ -492,7 +492,7 @@ begin
   Assert.AreEqual('TKunde', R.Container);
 end;
 
-procedure TNameResolverStage2Tests.ResolvesExpressionReceivers;
+procedure TNameResolverLanguageFeatureTests.ResolvesExpressionReceivers;
 const
   Source = Head + '  S := Liefere(1).Name;'#10'  S := (O as TKunde).Name;'#10'  S := L.First.Kopie.Name;'#10 +
     '  S := (O as Unbekannt).Name;' + Tail;
@@ -503,7 +503,7 @@ begin
   Assert.IsFalse(ResolveAt(Source, 'Name;', 4).Found);
 end;
 
-procedure TNameResolverStage2Tests.IndexKeepsSignaturesAndGenerics;
+procedure TNameResolverLanguageFeatureTests.IndexKeepsSignaturesAndGenerics;
 var
   Units: TArray<TUnitIndex>;
   Symbol: TIndexSymbol;
@@ -546,6 +546,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TNameResolverStage2Tests);
+  TDUnitX.RegisterTestFixture(TNameResolverLanguageFeatureTests);
 
 end.
