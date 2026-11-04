@@ -1203,6 +1203,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.MapState.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas"/>

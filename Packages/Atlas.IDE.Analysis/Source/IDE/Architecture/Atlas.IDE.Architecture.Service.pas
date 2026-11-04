@@ -561,11 +561,11 @@ begin
   end;
   if Frame.Model.RouteOf(FRoute, Units, Edges) then
   begin
-    Frame.Map.ShowRoute(Units, Edges);
+    Frame.Map.State.ShowRoute(Units, Edges);
   end
   else
   begin
-    Frame.Map.ClearPath;
+    Frame.Map.State.ClearPath;
   end;
   FRoute := nil;
   // Die Karte zeigen, nicht eine Tabelle.

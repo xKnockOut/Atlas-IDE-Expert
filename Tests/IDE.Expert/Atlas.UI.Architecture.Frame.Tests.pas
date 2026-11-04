@@ -80,6 +80,7 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Atlas.UI.Analysis.Strings,
+  Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Model.Tests,
   Atlas.UI.Architecture.Assignment;
@@ -199,7 +200,7 @@ end;
 procedure TAtlasArchitectureFrameTests.FilterNarrowsEverything;
 begin
   FFrame.Filter.Text := 'cache';
-  Assert.AreEqual('cache', FFrame.Map.Filter);
+  Assert.AreEqual('cache', FFrame.Map.State.Filter);
   Assert.IsTrue(Pos('App.Data.Cache', Joined(FFrame.SubsystemText)) > 0);
   Assert.AreEqual(0, Pos('App.Ui.Form', Joined(FFrame.SubsystemText)));
   Assert.AreEqual(3, Integer(Length(FFrame.CycleText)), 'der Zyklus enthält App.Data.Cache');
@@ -266,18 +267,18 @@ begin
   FFrame.Map.FitView;
   Fitted := FFrame.Map.View.Scale;
   Unit_ := FFrame.Model.IndexOf('App.Main');
-  Assert.AreEqual(Unit_, FFrame.Map.View.UnitAt(FFrame.Map.Model, FFrame.Map.View.ScreenX(FFrame.Model.Units[Unit_].X),
-    FFrame.Map.View.ScreenY(FFrame.Model.Units[Unit_].Y)));
+  Assert.AreEqual(Unit_, FFrame.Map.View.UnitAt(FFrame.Map.State.Model,
+    FFrame.Map.View.ScreenX(FFrame.Model.Units[Unit_].X), FFrame.Map.View.ScreenY(FFrame.Model.Units[Unit_].Y)));
   FFrame.Map.SelectUnit(Unit_, True);
-  Assert.AreEqual(Unit_, FFrame.Map.Selected);
+  Assert.AreEqual(Unit_, FFrame.Map.State.Selected);
   Assert.AreEqual(Double(FFrame.Map.ClientWidth / 2), FFrame.Map.View.ScreenX(FFrame.Model.Units[Unit_].X), 0.5);
   FFrame.Map.SelectUnit(99, False);
-  Assert.AreEqual(-1, FFrame.Map.Selected);
+  Assert.AreEqual(-1, FFrame.Map.State.Selected);
   // „Namen“ blendet die Beschriftungen aus, „Einpassen“ holt die Karte zurück.
   FFrame.NamesCheck.Checked := False;
-  Assert.IsFalse(FFrame.Map.ShowNames);
+  Assert.IsFalse(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowNames));
   FFrame.NamesCheck.Checked := True;
-  Assert.IsTrue(FFrame.Map.ShowNames);
+  Assert.IsTrue(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowNames));
   FFrame.Map.ZoomBy(4);
   FFrame.FitButton.Click;
   Assert.AreEqual(Fitted, FFrame.Map.View.Scale, 0.0001, 'nach dem Einpassen wieder der Maßstab vom Anfang');
@@ -291,40 +292,40 @@ begin
   Cache := FFrame.Model.IndexOf('App.Data.Cache');
   Db := FFrame.Model.IndexOf('App.Data.Db');
   // Weg wie in der HTML-Karte; die Zeile unter der Karte nennt ihn.
-  Assert.IsTrue(FFrame.Map.ShowPath(Main, Cache));
+  Assert.IsTrue(FFrame.Map.State.ShowPath(Main, Cache));
   Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitecturePath, [3,
     'App.Main → App.Data → App.Data.Db → App.Data.Cache']), FFrame.InfoLabel.Caption);
-  Assert.IsFalse(FFrame.Map.ShowPath(Cache, Main));
+  Assert.IsFalse(FFrame.Map.State.ShowPath(Cache, Main));
   Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureNoPath, ['App.Data.Cache', 'App.Main']),
     FFrame.InfoLabel.Caption);
   // Ohne implementation-uses gibt es Cache → Db nicht mehr; der Weg wird neu gesucht.
-  Assert.IsTrue(FFrame.Map.ShowPath(Cache, Db));
+  Assert.IsTrue(FFrame.Map.State.ShowPath(Cache, Db));
   FFrame.ImplementationCheck.Checked := False;
-  Assert.IsFalse(FFrame.Map.ShowImplementation);
-  Assert.IsFalse(FFrame.Map.PathFound);
+  Assert.IsFalse(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowImplementation));
+  Assert.IsFalse(FFrame.Map.State.Path.Found);
   FFrame.ImplementationCheck.Checked := True;
-  Assert.IsTrue(FFrame.Map.PathFound);
+  Assert.IsTrue(FFrame.Map.State.Path.Found);
   // Esc hebt den Weg auf, danach wieder der Hinweis.
-  FFrame.Map.ClearPath;
-  Assert.AreEqual(-1, FFrame.Map.PathFrom);
+  FFrame.Map.State.ClearPath;
+  Assert.AreEqual(-1, FFrame.Map.State.Path.From);
   Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
-  FFrame.Map.ClearPath;
-  Assert.AreEqual(-1, FFrame.Map.PathTo, 'zweimal aufheben schadet nicht');
+  FFrame.Map.State.ClearPath;
+  Assert.AreEqual(-1, FFrame.Map.State.Path.To_, 'zweimal aufheben schadet nicht');
   // Zyklen markieren.
-  Assert.IsFalse(FFrame.Map.MarkCycles);
+  Assert.IsFalse(FFrame.Map.State.Has(TAtlasArchMapFlag.MarkCycles));
   FFrame.MarkCyclesCheck.Checked := True;
-  Assert.IsTrue(FFrame.Map.MarkCycles);
+  Assert.IsTrue(FFrame.Map.State.Has(TAtlasArchMapFlag.MarkCycles));
   // Teilsysteme aus- und einblenden über das Menü.
   FFrame.FillSubsystemsMenu;
   Assert.AreEqual(Integer(Length(FFrame.Model.Subsystems)) + 2, FFrame.SubsystemsMenu.Items.Count);
   FFrame.SubsystemsMenu.Items[FFrame.Model.Units[Cache].Subsystem].Click;
-  Assert.IsFalse(FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
+  Assert.IsFalse(FFrame.Map.State.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
   Assert.IsFalse(FFrame.SubsystemsMenu.Items[FFrame.Model.Units[Cache].Subsystem].Checked);
-  Assert.IsFalse(FFrame.Map.ShowPath(Main, Cache), 'Units ausgeblendeter Teilsysteme sind kein Ziel');
+  Assert.IsFalse(FFrame.Map.State.ShowPath(Main, Cache), 'Units ausgeblendeter Teilsysteme sind kein Ziel');
   FFrame.SubsystemsMenu.Items[FFrame.SubsystemsMenu.Items.Count - 1].Click;
-  Assert.IsTrue(FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
-  Assert.IsTrue(FFrame.Map.PathFound, 'nach dem Einblenden wird der Weg neu gesucht');
-  FFrame.Map.ClearPath;
+  Assert.IsTrue(FFrame.Map.State.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
+  Assert.IsTrue(FFrame.Map.State.Path.Found, 'nach dem Einblenden wird der Weg neu gesucht');
+  FFrame.Map.State.ClearPath;
 end;
 
 procedure TAtlasArchitectureFrameTests.ComparisonTabAndMapChanges;
@@ -349,7 +350,7 @@ begin
     [Model.Comparison.Count]),
     FFrame.StatusLabel.Caption) > 0);
   Assert.IsTrue(FFrame.ChangesCheck.Enabled);
-  Assert.IsTrue(FFrame.Map.ShowChanges);
+  Assert.IsTrue(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowChanges));
   Assert.IsTrue(FFrame.ClearCompareButton.Enabled);
   // Doppelklick auf einen Eintrag öffnet die Unit.
   for Index := 0 to FFrame.ComparisonTree.Items.Count - 1 do
@@ -364,7 +365,7 @@ begin
   Assert.IsTrue(EndsStr('.pas', FOpened), FOpened);
   // Karte ohne Änderungen.
   FFrame.ChangesCheck.Checked := False;
-  Assert.IsFalse(FFrame.Map.ShowChanges);
+  Assert.IsFalse(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowChanges));
   FFrame.ChangesCheck.Checked := True;
   // Filter wirkt auch hier.
   FFrame.Filter.Text := 'old';
@@ -414,29 +415,29 @@ var
 begin
   // Fester Weg aus „Weg zwischen Symbolen“ (#1117): Units und Kanten markiert, Zeile unter der Karte.
   Assert.IsTrue(FFrame.Model.RouteOf(TArray<string>.Create('App.Main', 'App.Data', 'App.Data.Cache'), Units, Edges));
-  FFrame.Map.ShowRoute(Units, Edges);
-  Assert.IsTrue(FFrame.Map.PathFound);
-  Assert.AreEqual(4, Integer(Length(FFrame.Map.Route)));
+  FFrame.Map.State.ShowRoute(Units, Edges);
+  Assert.IsTrue(FFrame.Map.State.Path.Found);
+  Assert.AreEqual(4, Integer(Length(FFrame.Map.State.Path.Route)));
   Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ArchitectureRoute, [4,
     'App.Main → App.Data → App.Data.Db → App.Data.Cache']), FFrame.InfoLabel.Caption);
   // Er bleibt ohne implementation-uses stehen und blendet ein ausgeblendetes Teilsystem wieder ein.
   FFrame.ImplementationCheck.Checked := False;
-  Assert.IsTrue(FFrame.Map.PathFound);
+  Assert.IsTrue(FFrame.Map.State.Path.Found);
   FFrame.ImplementationCheck.Checked := True;
   Cache := FFrame.Model.IndexOf('App.Data.Cache');
-  FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem] := False;
-  FFrame.Map.ShowRoute(Units, Edges);
-  Assert.IsTrue(FFrame.Map.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
+  FFrame.Map.State.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem] := False;
+  FFrame.Map.State.ShowRoute(Units, Edges);
+  Assert.IsTrue(FFrame.Map.State.SubsystemVisible[FFrame.Model.Units[Cache].Subsystem]);
   // Umschalt+Klick (ShowPath) und Esc heben ihn auf.
-  FFrame.Map.ShowPath(Units[0], Units[1]);
-  Assert.AreEqual(0, Integer(Length(FFrame.Map.Route)));
-  FFrame.Map.ShowRoute(Units, Edges);
-  FFrame.Map.ClearPath;
-  Assert.AreEqual(0, Integer(Length(FFrame.Map.Route)));
+  FFrame.Map.State.ShowPath(Units[0], Units[1]);
+  Assert.AreEqual(0, Integer(Length(FFrame.Map.State.Path.Route)));
+  FFrame.Map.State.ShowRoute(Units, Edges);
+  FFrame.Map.State.ClearPath;
+  Assert.AreEqual(0, Integer(Length(FFrame.Map.State.Path.Route)));
   Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint), FFrame.InfoLabel.Caption);
   // Ungültige Nummern: kein Weg.
-  FFrame.Map.ShowRoute(TArray<Integer>.Create(999), nil);
-  Assert.AreEqual(-1, FFrame.Map.PathFrom);
+  FFrame.Map.State.ShowRoute(TArray<Integer>.Create(999), nil);
+  Assert.AreEqual(-1, FFrame.Map.State.Path.From);
 end;
 
 procedure TAtlasArchitectureFrameTests.ResolutionSliderReportsOnRelease;
@@ -526,7 +527,7 @@ begin
   Assert.IsTrue(StartsStr('      ', FFrame.SubsystemsMenu.Items[2].Caption));
   Assert.AreEqual(1, Integer(FFrame.SubsystemsMenu.Items[3].Tag));
   FFrame.SubsystemsMenu.Items[2].Click;
-  Assert.IsFalse(FFrame.Map.SubsystemVisible[mLast]);
+  Assert.IsFalse(FFrame.Map.State.SubsystemVisible[mLast]);
   // Reiter Teilsysteme: „… · Teil von App“, die Teile beieinander (erst das erste Teil mit seinen Units, dann das
   // letzte Teilsystem).
   mFirst := FFrame.SubsystemText[0];
@@ -571,10 +572,10 @@ begin
   Assert.IsNotNull(mToggle);
   Assert.IsTrue(mToggle.Checked);
   mToggle.Click;
-  Assert.IsFalse(FFrame.Map.ShowFoundationEdges);
+  Assert.IsFalse(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowFoundationEdges));
   Assert.IsFalse(mToggle.Checked);
   mToggle.Click;
-  Assert.IsTrue(FFrame.Map.ShowFoundationEdges);
+  Assert.IsTrue(FFrame.Map.State.Has(TAtlasArchMapFlag.ShowFoundationEdges));
 end;
 
 procedure TAtlasArchitectureFrameTests.AssignmentInProfileTreeAndExplanation;
