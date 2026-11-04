@@ -94,7 +94,7 @@ begin
   mData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
   mData.Time := Now;
   mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
-    TAtlasIdeDebugSession.ThreadName(mThread), '', 0, '').ThreadText(
+    TAtlasIdeDebugSession.ThreadName(mThread)).ThreadText(
     TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread));
   mData.FileName := mThread.CurrentFile;
   mData.Line := Integer(mThread.CurrentLine);
