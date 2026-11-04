@@ -50,7 +50,8 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Lines;
 
 type
   /// <summary>Texte der Methoden-Vervollständigung in beiden Sprachen (#1458).</summary>
@@ -504,19 +505,6 @@ begin
   AMethodRef.ResultType := ARequest.Resolver.Queries.UnqualifyType(AMethodRef.ResultType, mUnitName);
 end;
 
-/// <summary>Einrückung (Leerzeichen und Tabulatoren) am Anfang von ALine.</summary>
-function IndentOf(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(ALine, 1, mIndex - 1);
-end;
-
 /// <summary>Text des Gerüsts: als Snippet (Zeilen mit #10, die Einrückung setzt der Editor davor) oder als
 /// Klartext mit der Einrückung der Zeile.</summary>
 procedure SetAnonymousText(ARequest: TCompletionRequest; const AMethodRef: TMethodRef; ASnippets: Boolean;
@@ -529,8 +517,8 @@ begin
   end
   else
   begin
-    AItem.TextEdit.NewText := TCompletionAnonymous.Plain(AMethodRef, IndentOf(ARequest.LineText(ARequest.Position.Line)),
-      ARequest.LineBreak);
+    AItem.TextEdit.NewText := TCompletionAnonymous.Plain(AMethodRef,
+      TTextLines.IndentOf(ARequest.LineText(ARequest.Position.Line)), ARequest.LineBreak);
   end;
 end;
 
