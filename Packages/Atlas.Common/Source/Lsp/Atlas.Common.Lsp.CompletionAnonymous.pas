@@ -246,7 +246,7 @@ begin
   end;
 end;
 
-/// <summary>Typparameter zwischen "<" bei AOpen und ">" bei AClose, ohne Constraints.</summary>
+/// <summary>Typparameter zwischen "&lt;" bei AOpen und "&gt;" bei AClose, ohne Constraints.</summary>
 function TypeParamsIn(const ATokens: TArray<TPascalToken>; AOpen, AClose: Integer): TArray<string>;
 var
   mIndex: Integer;

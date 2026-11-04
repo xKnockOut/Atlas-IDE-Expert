@@ -547,14 +547,24 @@ end;
 /// <summary>Kette "uA → uB → Haupt" ab AUser (Großschreibung).</summary>
 function ChainOf(ANames, ANext: TDictionary<string, string>; const AUser: string): string;
 var
-  mStep: string;
+  mStep, mNextStep: string;
 begin
-  Result := ANames[AUser];
-  mStep := ANext[AUser];
+  if not ANames.TryGetValue(AUser, Result) then
+  begin
+    Result := AUser;
+  end;
+  if not ANext.TryGetValue(AUser, mStep) then
+  begin
+    mStep := '';
+  end;
   while mStep <> '' do
   begin
     Result := Result + ' → ' + mStep;
-    mStep := ANext[UpperCase(mStep)];
+    if not ANext.TryGetValue(UpperCase(mStep), mNextStep) then
+    begin
+      mNextStep := '';
+    end;
+    mStep := mNextStep;
   end;
 end;
 
