@@ -314,7 +314,6 @@ begin
     ((ALine < ANode.EndLine) or ((ALine = ANode.EndLine) and (ACharacter <= ANode.EndCharacter)));
 end;
 
-/// <summary>Geschwister von ANode für das Sprungmenü.</summary>
 /// <summary>Gehört AOther zur selben Gruppe wie ANode: Typen, Routinen bzw. Konstanten und Variablen.</summary>
 function SameGroup(const ANode, AOther: TAtlasOutlineNode): Boolean;
 begin
@@ -356,6 +355,7 @@ begin
   end;
 end;
 
+/// <summary>Geschwister von ANode für das Sprungmenü.</summary>
 function SiblingsOf(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>;
 var
   mParent, mIndex: Integer;
