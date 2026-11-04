@@ -429,6 +429,7 @@ uses
   Atlas.Common.Mcp.IndexTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.IndexTools.Tests.pas',
   Atlas.Common.Mcp.CodeTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.CodeTools.Tests.pas',
   Atlas.Common.Lsp.PullDiagnostics.Tests in 'Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Tests.pas',
+  Atlas.Common.Lsp.PullDiagnostics.Cache.Tests in 'Common\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.Tests.pas',
   Atlas.Common.Lsp.WorkspaceCheck.Tests in 'Common\Lsp\Atlas.Common.Lsp.WorkspaceCheck.Tests.pas',
   Atlas.Common.Lsp.CompactJson.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompactJson.Tests.pas',
   Atlas.Common.Lsp.ApplyEdit.Tests in 'Common\Lsp\Atlas.Common.Lsp.ApplyEdit.Tests.pas',

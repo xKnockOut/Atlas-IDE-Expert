@@ -127,80 +127,104 @@ begin
   Result := AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 end;
 
+/// <summary>Ist AOther eine weitere Deklaration derselben Routine wie ASymbol in der Datei AFile?</summary>
+function IsCounterpart(const AUnit: TUnitIndex; const AOther, ASymbol: TIndexSymbol; const AFile: string): Boolean;
+begin
+  Result := (AOther.Kind = ASymbol.Kind) and SameText(AOther.Name, ASymbol.Name) and
+    SameText(AOther.Container, ASymbol.Container) and
+    not (AOther.SelectionRange.StartPos = ASymbol.SelectionRange.StartPos) and
+    SameText(AUnit.SymbolFile(AOther), AFile);
+end;
+
+/// <summary>ASymbol und das Gegenstück derselben Routine in derselben Datei; bei Überladungen das mit gleichen
+/// Parametertypen.</summary>
+function PartsOf(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TArray<TIndexSymbol>;
+var
+  mCandidates: TArray<TIndexSymbol>;
+  mOther: TIndexSymbol;
+  mFile: string;
+begin
+  Result := [ASymbol];
+  if not IsRoutine(ASymbol.Kind) then
+  begin
+    Exit;
+  end;
+  mFile := AUnit.SymbolFile(ASymbol);
+  mCandidates := nil;
+  for mOther in AUnit.Symbols do
+  begin
+    if IsCounterpart(AUnit, mOther, ASymbol, mFile) then
+    begin
+      mCandidates := mCandidates + [mOther];
+    end;
+  end;
+  if Length(mCandidates) = 1 then
+  begin
+    Result := Result + mCandidates;
+    Exit;
+  end;
+  for mOther in mCandidates do
+  begin
+    if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
+    begin
+      Result := Result + [mOther];
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Steht in AEntries schon ein Eintrag mit Zeile und Marker von AEntry?</summary>
+function HasEntry(const AEntries: TArray<TRationaleEntry>; const AEntry: TRationaleEntry): Boolean;
+var
+  mKnown: TRationaleEntry;
+begin
+  for mKnown in AEntries do
+  begin
+    if (mKnown.Line = AEntry.Line) and (mKnown.Marker = AEntry.Marker) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Nach Zeile; Einfügen hält gleiche Zeilen in ihrer Reihenfolge.</summary>
+procedure SortByLine(var AEntries: TArray<TRationaleEntry>);
+var
+  mIndex, mInner: Integer;
+  mSwap: TRationaleEntry;
+begin
+  for mIndex := 1 to High(AEntries) do
+  begin
+    mSwap := AEntries[mIndex];
+    mInner := mIndex - 1;
+    while (mInner >= 0) and (AEntries[mInner].Line > mSwap.Line) do
+    begin
+      AEntries[mInner + 1] := AEntries[mInner];
+      Dec(mInner);
+    end;
+    AEntries[mInner + 1] := mSwap;
+  end;
+end;
+
 class function TLspRationale.OfSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol):
   TArray<TRationaleEntry>;
 var
-  mCandidates, mParts: TArray<TIndexSymbol>;
-  mOther: TIndexSymbol;
-  mEntry, mKnown: TRationaleEntry;
-  mFile: string;
-  mIndex, mInner: Integer;
-  mDuplicate: Boolean;
-  mSwap: TRationaleEntry;
+  mPart: TIndexSymbol;
+  mEntry: TRationaleEntry;
 begin
-  mParts := [ASymbol];
-  if IsRoutine(ASymbol.Kind) then
-  begin
-    // Gegenstück derselben Routine in derselben Datei; bei Überladungen die mit gleichen Parametertypen.
-    mFile := AUnit.SymbolFile(ASymbol);
-    mCandidates := nil;
-    for mOther in AUnit.Symbols do
-    begin
-      if (mOther.Kind = ASymbol.Kind) and SameText(mOther.Name, ASymbol.Name) and
-        SameText(mOther.Container, ASymbol.Container) and
-        not (mOther.SelectionRange.StartPos = ASymbol.SelectionRange.StartPos) and
-        SameText(AUnit.SymbolFile(mOther), mFile) then
-      begin
-        mCandidates := mCandidates + [mOther];
-      end;
-    end;
-    if Length(mCandidates) = 1 then
-    begin
-      mParts := mParts + mCandidates;
-    end
-    else
-    begin
-      for mOther in mCandidates do
-      begin
-        if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
-        begin
-          mParts := mParts + [mOther];
-          Break;
-        end;
-      end;
-    end;
-  end;
   Result := nil;
-  for mOther in mParts do
+  for mPart in PartsOf(AUnit, ASymbol) do
   begin
-    for mEntry in TRationale.DecodeAll(mOther.Rationale) do
+    for mEntry in TRationale.DecodeAll(mPart.Rationale) do
     begin
-      mDuplicate := False;
-      for mKnown in Result do
-      begin
-        if (mKnown.Line = mEntry.Line) and (mKnown.Marker = mEntry.Marker) then
-        begin
-          mDuplicate := True;
-        end;
-      end;
-      if not mDuplicate then
+      if not HasEntry(Result, mEntry) then
       begin
         Result := Result + [mEntry];
       end;
     end;
   end;
-  // Nach Zeile; Einfügen hält gleiche Zeilen in ihrer Reihenfolge.
-  for mIndex := 1 to High(Result) do
-  begin
-    mSwap := Result[mIndex];
-    mInner := mIndex - 1;
-    while (mInner >= 0) and (Result[mInner].Line > mSwap.Line) do
-    begin
-      Result[mInner + 1] := Result[mInner];
-      Dec(mInner);
-    end;
-    Result[mInner + 1] := mSwap;
-  end;
+  SortByLine(Result);
 end;
 
 class function TLspRationale.Markers(const AHints: THintSettings): TArray<string>;
