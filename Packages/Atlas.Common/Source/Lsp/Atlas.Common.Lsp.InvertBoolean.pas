@@ -121,6 +121,19 @@ begin
   inherited;
 end;
 
+/// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
+function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := AContext.Index;
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Files := AContext.Files;
+  Result.ReadText := AContext.ReadText;
+end;
 function TSourceFile.Offset(const APosition: TTextPosition): Integer;
 begin
   Result := Lines.OffsetAt(APosition);
@@ -893,8 +906,7 @@ begin
   begin
     raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
   end;
-  Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, AFileName, APosition,
-    FContext.Files, FContext.ReadText, nil);
+  Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, AFileName, APosition));
   if AAccessorCheck and (Family.Accessors <> nil) then
   begin
     raise Fail(Format('%s ist Zugriffsmethode einer Property (%s). Bitte die Property umkehren.',
@@ -959,8 +971,7 @@ begin
   begin
     raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
   end;
-  Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, AFileName, APosition,
-    FContext.Files, FContext.ReadText, nil);
+  Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, AFileName, APosition));
   Last := -1;
   for Header in Family.Headers do
   begin
@@ -1075,8 +1086,8 @@ begin
   begin
     raise Fail(Format('Zum Parameter %s fehlt die Routine.', [ASymbol.Name]));
   end;
-  Family := TLspChangeSignature.Family(FResolver, FContext.Index, Origin.Tree, ASymbol.FileName,
-    Tokens[NameToken].StartPos, FContext.Files, FContext.ReadText, nil);
+  Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, ASymbol.FileName,
+    Tokens[NameToken].StartPos));
   if Family.BoundEvent <> '' then
   begin
     raise Fail(Format('%s ist an ein Ereignis gebunden (%s); seine Parameter liegen fest.', [Family.Name,

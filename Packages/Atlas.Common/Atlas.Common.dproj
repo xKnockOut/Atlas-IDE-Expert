@@ -265,6 +265,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ApplyEdit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DfmPropertyRules.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveClass.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRename.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartPaste.pas"/>
