@@ -163,6 +163,9 @@ begin
   FStatusHidden.Width := 180;
   // Diagnosemodus (#479); Taste auf der Seite „Tastenkonflikte“.
   FDiagnosticMode := BindCheck('DiagnosticMode', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode)));
+  // Diagnose-Fenster: Zeiten des Plugins (Reiter Hauptthread, Server, Hintergrund, Hänger).
+  BindCheck('DiagnosticPluginTimings', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticPluginTimings)));
+  BindText('DiagnosticSlowMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticSlowMs)));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   BindCheck('DiagnosticsProcesses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses)));
   // Fenster „Atlas-Server“ (#1356).

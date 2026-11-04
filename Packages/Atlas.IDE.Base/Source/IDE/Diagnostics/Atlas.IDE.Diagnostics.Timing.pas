@@ -21,6 +21,10 @@
 //   Dateinamen in %LOCALAPPDATA%\Atlas\Logs\Diagnose\atlas-diagnosemodus.txt.
 // - „Bericht kopieren“: Zeitwerte, Atlas- und IDE-Version, Einstellungen mit
 //   gekürzten Pfaden, kein Quelltext, Dateinamen nur mit Häkchen.
+// - Plugin-Zeiten (Variante A): Mit dem Modus misst TAtlasIdePluginTimings
+//   auch Hauptthread je Funktion, Server, Hintergrund und Hänger (abschaltbar
+//   mit diagnosticMode.pluginTimings); Bericht und letzte Diagnosedaten
+//   enthalten dann den Abschnitt „Plugin-Zeiten“.
 
 interface
 
@@ -33,7 +37,8 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Build.IdleGate,
-  Atlas.UI.Diagnostics.TimingFrame,
+  Atlas.IDE.Diagnostics.PluginTimings,
+  Atlas.UI.Diagnostics.PluginFrame,
   Atlas.Core.Commands.Palette;
 
 type
@@ -57,12 +62,15 @@ type
     /// <summary>Öffnet das Fenster erst ohne laufenden Compile.</summary>
     FGate: TAtlasIdeBuildIdleGate;
     FActive: Boolean;
+    FPlugin: TAtlasIdePluginTimings;
     FShownVersion: Integer;
     FSavedVersion: Integer;
     FSavedAt: UInt64;
     procedure TimerTick(Sender: TObject);
-    procedure FrameCreated(AFrame: TAtlasTimingFrame);
-    procedure Refresh(AFrame: TAtlasTimingFrame; AForce: Boolean);
+    procedure FrameCreated(AFrame: TAtlasDiagnosticsFrame);
+    procedure Refresh(AFrame: TAtlasDiagnosticsFrame; AForce: Boolean);
+    /// <summary>Stand von Vervollständigung und Plugin-Zeiten; ändert sich mit jeder neuen Messung.</summary>
+    class function DataVersion: Integer; static;
     procedure CopyReport(AFileNames: Boolean);
     procedure AddStatusLine;
     procedure RemoveStatusLine;
@@ -116,13 +124,14 @@ begin
   FRegistry := ARegistry;
   FSavedVersion := -1;
   FShownVersion := -1;
+  FPlugin := TAtlasIdePluginTimings.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := RefreshMs;
   FTimer.OnTimer := TimerTick;
   FGate := TAtlasIdeBuildIdleGate.Create(TAtlasFeature.Settings);
   TAtlasIdeTimingWindow.OnFrame :=
-    procedure(AFrame: TAtlasTimingFrame)
+    procedure(AFrame: TAtlasDiagnosticsFrame)
     begin
       if FInstance <> nil then
       begin
@@ -154,8 +163,10 @@ begin
   end;
   FActive := False;
   TAtlasQueryTimings.Enabled := False;
+  FPlugin.Apply(False, nil);
   RemoveStatusLine;
   TAtlasIdeTimingWindow.Release;
+  FPlugin.Free;
   inherited;
 end;
 
@@ -183,6 +194,8 @@ var
   Wanted: Boolean;
 begin
   Wanted := TAtlasIdeSettings.Current.DiagnosticMode;
+  // Schalter und Schwelle der Plugin-Zeiten gelten auch bei unverändertem Modus.
+  FPlugin.Apply(Wanted, TAtlasIdeTimingWindow.ExistingFrame);
   if Wanted = FActive then
   begin
     Exit;
@@ -255,7 +268,7 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.ShowWindow;
 var
-  Frame: TAtlasTimingFrame;
+  Frame: TAtlasDiagnosticsFrame;
 begin
   Frame := TAtlasIdeTimingWindow.Show;
   if Frame <> nil then
@@ -264,24 +277,48 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDiagnosticMode.FrameCreated(AFrame: TAtlasTimingFrame);
+function CopyHandler: TProc<Boolean>;
 begin
-  AFrame.OnCopy :=
+  // Eigene Routine: Die Methodenreferenz fängt nur AFileNames ein (kein gemeinsamer Rahmen).
+  Result :=
     procedure(AFileNames: Boolean)
+    var
+      mFileNames: Boolean;
     begin
+      mFileNames := AFileNames;
       TAtlasGuard.Run(TAtlasFeature.Settings,
         procedure
         begin
-          if FInstance <> nil then
+          if TAtlasIdeDiagnosticMode.FInstance <> nil then
           begin
-            FInstance.CopyReport(AFileNames);
+            TAtlasIdeDiagnosticMode.FInstance.CopyReport(mFileNames);
           end;
         end);
     end;
+end;
+
+procedure TAtlasIdeDiagnosticMode.FrameCreated(AFrame: TAtlasDiagnosticsFrame);
+var
+  mCopy: TProc<Boolean>;
+begin
+  mCopy := CopyHandler();
+  AFrame.Completion.OnCopy := mCopy;
+  AFrame.Bar.OnCopy :=
+    procedure
+    begin
+      mCopy(False);
+    end;
+  TAtlasIdePluginTimings.Wire(AFrame);
   Refresh(AFrame, True);
 end;
 
-procedure TAtlasIdeDiagnosticMode.Refresh(AFrame: TAtlasTimingFrame; AForce: Boolean);
+class function TAtlasIdeDiagnosticMode.DataVersion: Integer;
+begin
+  // Beide Zähler steigen nur; die Summe ändert sich, sobald sich einer ändert.
+  Result := TAtlasQueryTimings.Shared.Version + TAtlasIdePluginTimings.Version;
+end;
+
+procedure TAtlasIdeDiagnosticMode.Refresh(AFrame: TAtlasDiagnosticsFrame; AForce: Boolean);
 var
   Version: Integer;
 begin
@@ -289,6 +326,7 @@ begin
   begin
     Exit;
   end;
+  FPlugin.Refresh(AFrame, AForce);
   Version := TAtlasQueryTimings.Shared.Version;
   if AForce then
   begin
@@ -299,7 +337,7 @@ begin
     Exit;
   end;
   FShownVersion := Version;
-  AFrame.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
+  AFrame.Completion.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
 end;
 
 procedure TAtlasIdeDiagnosticMode.TimerTick(Sender: TObject);
@@ -311,7 +349,7 @@ begin
       begin
         Refresh(TAtlasIdeTimingWindow.ExistingFrame, False);
       end;
-      if (TAtlasQueryTimings.Shared.Version <> FSavedVersion) and
+      if (DataVersion <> FSavedVersion) and
         (TThread.GetTickCount64 - FSavedAt >= SaveEveryMs) then
       begin
         SaveLastData;
@@ -327,13 +365,14 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.CopyReport(AFileNames: Boolean);
 var
-  Frame: TAtlasTimingFrame;
+  Frame: TAtlasDiagnosticsFrame;
 begin
   Clipboard.AsText := Report(AFileNames);
   Frame := TAtlasIdeTimingWindow.ExistingFrame;
   if Frame <> nil then
   begin
-    Frame.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+    Frame.Completion.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+    Frame.Bar.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
   end;
 end;
 
@@ -386,6 +425,7 @@ begin
     GetEnvironmentVariable('USERDOMAIN')];
   Input.FileNames := AFileNames;
   Input.Created := Now;
+  Input.Plugin := TAtlasIdePluginTimings.Report;
   Result := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
 end;
 
@@ -398,9 +438,10 @@ procedure TAtlasIdeDiagnosticMode.SaveLastData;
 var
   Version: Integer;
 begin
-  Version := TAtlasQueryTimings.Shared.Version;
+  Version := DataVersion;
   FSavedAt := TThread.GetTickCount64;
-  if (Version = FSavedVersion) or (Length(TAtlasQueryTimings.Shared.Snapshot) = 0) then
+  if (Version = FSavedVersion) or ((Length(TAtlasQueryTimings.Shared.Snapshot) = 0) and
+    (TAtlasIdePluginTimings.Version = 0)) then
   begin
     Exit;
   end;

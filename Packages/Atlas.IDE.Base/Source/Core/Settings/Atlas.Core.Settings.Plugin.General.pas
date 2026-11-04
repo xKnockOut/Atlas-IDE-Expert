@@ -53,6 +53,12 @@ type
     /// <summary>Diagnosemodus (#479, diagnosticMode.enabled): Diagnosefenster mit Zeitmessung je Abfrage der
     /// Vervollständigung; Vorgabe aus. Aus heißt: keine Messung, kein Fenster, keine Statuszeile.</summary>
     DiagnosticMode: Boolean;
+    /// <summary>Zeiten des Plugins im Diagnosefenster (diagnosticMode.pluginTimings): Hauptthread je
+    /// Funktion, Server-Anfragen, Quellen im Hintergrund, Hänger; Vorgabe an, wirkt nur im Diagnosemodus.</summary>
+    DiagnosticPluginTimings: Boolean;
+    /// <summary>Ab so vielen ms eigener Zeit gilt ein Aufruf als langsam (diagnosticMode.slowThresholdMs,
+    /// 1 bis 1000); Vorgabe 16, ein Bild bei 60 Hz.</summary>
+    DiagnosticSlowMs: Integer;
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
@@ -213,6 +219,8 @@ begin
   Result.IndexUsages := True;
   Result.MemoryBudgetMb := 768;
   Result.DiagnosticMode := False;
+  Result.DiagnosticPluginTimings := True;
+  Result.DiagnosticSlowMs := 16;
   Result.DiagnosticsProcesses := True;
   Result.ServerStatusWindow := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
@@ -238,6 +246,7 @@ end;
 
 procedure TAtlasPluginGeneralServerSettings.Normalize;
 begin
+  DiagnosticSlowMs := EnsureRange(DiagnosticSlowMs, 1, 1000);
   HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
   ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
@@ -267,6 +276,8 @@ begin
   AIo.Flag('IndexUsages', IndexUsages);
   AIo.Number('MemoryBudgetMb', MemoryBudgetMb);
   AIo.Flag('DiagnosticMode', DiagnosticMode);
+  AIo.Flag('DiagnosticPluginTimings', DiagnosticPluginTimings);
+  AIo.Number('DiagnosticSlowMs', DiagnosticSlowMs);
   AIo.Flag('DiagnosticsProcesses', DiagnosticsProcesses);
   AIo.Flag('ServerStatusWindow', ServerStatusWindow);
   AIo.Flag('ArchitectureEnabled', ArchitectureEnabled);

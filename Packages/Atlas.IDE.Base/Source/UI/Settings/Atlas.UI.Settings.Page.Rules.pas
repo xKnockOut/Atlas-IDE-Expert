@@ -117,7 +117,7 @@ begin
   BindCheck('ProblemsLive', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive)));
   // Sammelkorrektur im Kontextmenü des Fensters (#1352).
   BindCheck('FixBulk', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk)));
-  // Liste âAtlas-Problemeâ im Meldungsfenster (#398), seit #909 nur noch zusÃ¤tzlich zum Fenster.
+  // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
   BindCheck('ProblemsMessageList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList)));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),

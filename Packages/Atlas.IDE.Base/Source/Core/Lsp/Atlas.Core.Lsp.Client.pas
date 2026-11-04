@@ -45,6 +45,10 @@ type
     AId: TJSONValue): Boolean;
 
   ELspClientError = class(Exception);
+  /// <summary>Keine Antwort innerhalb des Zeitlimits.</summary>
+  ELspTimeoutError = class(ELspClientError);
+  /// <summary>Der Aufrufer hat die Anfrage abgebrochen.</summary>
+  ELspCancelledError = class(ELspClientError);
 
   /// <summary>Wie die Verbindung endete (Bericht H5); Exit-Angaben setzt der Transport über CloseWith.</summary>
   TLspCloseInfo = record
@@ -181,7 +185,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Diagnostics.PluginTimings;
 
 const
   HeaderEnd: array[0..3] of Byte = (13, 10, 13, 10);
@@ -453,7 +458,7 @@ begin
     if (Result = wrTimeout) and FCancelled() then
     begin
       FClient.CancelOnServer(FId);
-      raise ELspClientError.CreateFmt('%s abgebrochen', [FMethod]);
+      raise ELspCancelledError.CreateFmt('%s abgebrochen', [FMethod]);
     end;
   until (Result <> wrTimeout) or (Waited >= FTimeoutMs);
 end;
@@ -492,7 +497,7 @@ begin
       end;
       // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
       FClient.CancelOnServer(FId);
-      raise ELspClientError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [FMethod, FTimeoutMs]);
+      raise ELspTimeoutError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [FMethod, FTimeoutMs]);
     end;
   end;
 end;
@@ -571,13 +576,41 @@ end;
 
 function TLspClient.Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
 begin
-  Result := DoRequest(AMethod, AParams, ATimeoutMs, nil);
+  Result := RequestCancellable(AMethod, AParams, ATimeoutMs, nil);
 end;
 
 function TLspClient.RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
   const ACancelled: TFunc<Boolean>): TJSONValue;
+var
+  mWatch: TStopwatch;
+  mOutcome: TAtlasRequestOutcome;
 begin
-  Result := DoRequest(AMethod, AParams, ATimeoutMs, ACancelled);
+  if not TAtlasPluginTimings.Enabled then
+  begin
+    Exit(DoRequest(AMethod, AParams, ATimeoutMs, ACancelled));
+  end;
+  // Diagnose-Fenster, Reiter „Server“: Dauer und Ausgang jeder Anfrage.
+  mWatch := TStopwatch.StartNew;
+  mOutcome := TAtlasRequestOutcome.Failed;
+  try
+    try
+      Result := DoRequest(AMethod, AParams, ATimeoutMs, ACancelled);
+      mOutcome := TAtlasRequestOutcome.Done;
+    except
+      on ELspTimeoutError do
+      begin
+        mOutcome := TAtlasRequestOutcome.TimedOut;
+        raise;
+      end;
+      on ELspCancelledError do
+      begin
+        mOutcome := TAtlasRequestOutcome.Cancelled;
+        raise;
+      end;
+    end;
+  finally
+    TAtlasPluginTimings.NoteRequest(AMethod, mWatch.Elapsed.TotalMilliseconds, mOutcome);
+  end;
 end;
 
 function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
