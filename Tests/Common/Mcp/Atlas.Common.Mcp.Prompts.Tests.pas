@@ -140,6 +140,24 @@ begin
     end, AKind);
 end;
 
+/// <summary>Formular- und Unittext der Prompts nach Dateiendung.</summary>
+function ReadPromptText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := True;
+  if SameText(ExtractFileExt(AFileName), '.dfm') then
+  begin
+    AText := cFormText;
+  end
+  else if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
+    AText := cUnitText;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 procedure TMcpPromptsTests.Setup;
 var
   mName: string;
@@ -182,23 +200,7 @@ begin
       FResolved := APath;
       Result := 'C:\P\' + APath;
     end;
-  FPrompts.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := True;
-      if SameText(ExtractFileExt(AFileName), '.dfm') then
-      begin
-        AText := cFormText;
-      end
-      else if SameText(ExtractFileExt(AFileName), '.pas') then
-      begin
-        AText := cUnitText;
-      end
-      else
-      begin
-        Result := False;
-      end;
-    end;
+  FPrompts.ReadText := ReadPromptText;
   FPrompts.Changes :=
     function(const ABase: string): TMcpChangeSet
     begin

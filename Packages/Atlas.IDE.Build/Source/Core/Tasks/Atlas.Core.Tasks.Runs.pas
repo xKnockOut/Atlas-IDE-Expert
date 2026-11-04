@@ -162,43 +162,44 @@ begin
   FCodePage := ACodePage;
 end;
 
+/// <summary>Letztes Zeichen der Steuerfolge, die bei AIndex mit ESC beginnt: CSI „ESC [ … Buchstabe“,
+/// OSC „ESC ] … BEL“ bzw. „… ESC \“, sonst ESC mit einem Zeichen.</summary>
+function EscapeEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  if (Result <= Length(AText)) and (AText[Result] = '[') then
+  begin
+    Inc(Result);
+    while (Result <= Length(AText)) and not CharInSet(AText[Result], ['@'..'~']) do
+    begin
+      Inc(Result);
+    end;
+  end
+  else if (Result <= Length(AText)) and (AText[Result] = ']') then
+  begin
+    while (Result <= Length(AText)) and (AText[Result] <> #7) and not ((AText[Result] = '\') and
+      (AText[Result - 1] = #27)) do
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TAtlasTaskLines.Clean(const ALine: string): string;
 var
-  Index, Stop: Integer;
+  mIndex: Integer;
 begin
   Result := ALine;
   if (Result <> '') and (Result[Length(Result)] = #13) then
   begin
     SetLength(Result, Length(Result) - 1);
   end;
-  if Pos(#27, Result) = 0 then
+  // Steuerfolgen der Konsole (pwsh färbt Fehler).
+  mIndex := Pos(#27, Result);
+  while mIndex > 0 do
   begin
-    Exit;
-  end;
-  // Steuerfolgen der Konsole (pwsh färbt Fehler): CSI „ESC [ … Buchstabe“,
-  // OSC „ESC ] … BEL“ bzw. „… ESC \“, sonst ESC mit einem Zeichen.
-  Index := Pos(#27, Result);
-  while Index > 0 do
-  begin
-    Stop := Index + 1;
-    if (Stop <= Length(Result)) and (Result[Stop] = '[') then
-    begin
-      Inc(Stop);
-      while (Stop <= Length(Result)) and not CharInSet(Result[Stop], ['@'..'~']) do
-      begin
-        Inc(Stop);
-      end;
-    end
-    else if (Stop <= Length(Result)) and (Result[Stop] = ']') then
-    begin
-      while (Stop <= Length(Result)) and (Result[Stop] <> #7) and not ((Result[Stop] = '\') and
-        (Result[Stop - 1] = #27)) do
-      begin
-        Inc(Stop);
-      end;
-    end;
-    Delete(Result, Index, Stop - Index + 1);
-    Index := Pos(#27, Result);
+    Delete(Result, mIndex, EscapeEnd(Result, mIndex) - mIndex + 1);
+    mIndex := Pos(#27, Result);
   end;
 end;
 
@@ -586,85 +587,109 @@ begin
   end;
 end;
 
+function ReadHidden(AValue: TJSONValue): TArray<string>;
+var
+  mElement: TJSONValue;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mElement in TJSONArray(AValue) do
+  begin
+    if mElement is TJSONString then
+    begin
+      Result := Result + [mElement.Value];
+    end;
+  end;
+end;
+
+function ReadOutcome(AValue: TJSONValue): TAtlasTaskOutcome;
+var
+  mOutcome: TAtlasTaskOutcome;
+begin
+  Result := TAtlasTaskOutcome.Finished;
+  if not (AValue is TJSONString) then
+  begin
+    Exit;
+  end;
+  for mOutcome := Low(TAtlasTaskOutcome) to High(TAtlasTaskOutcome) do
+  begin
+    if SameText(AValue.Value, OutcomeNames[mOutcome]) then
+    begin
+      Result := mOutcome;
+    end;
+  end;
+end;
+
+function ReadRun(const AName: string; AObject: TJSONObject): TAtlasTaskLastRun;
+begin
+  Result := Default(TAtlasTaskLastRun);
+  Result.Name := AName;
+  Result.Outcome := ReadOutcome(AObject.GetValue('outcome'));
+  Result.ExitCode := Integer(IntOf(AObject, 'exitCode'));
+  Result.Counts.Errors := Integer(IntOf(AObject, 'errors'));
+  Result.Counts.Warnings := Integer(IntOf(AObject, 'warnings'));
+  Result.Counts.Infos := Integer(IntOf(AObject, 'infos'));
+  Result.DurationMs := IntOf(AObject, 'durationMs');
+  Result.FinishedAt := DateOf(AObject, 'finished');
+end;
+
+function ReadRuns(AValue: TJSONValue): TArray<TAtlasTaskLastRun>;
+var
+  mPair: TJSONPair;
+begin
+  Result := nil;
+  if not (AValue is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mPair in TJSONObject(AValue) do
+  begin
+    if mPair.JsonValue is TJSONObject then
+    begin
+      Result := Result + [ReadRun(mPair.JsonString.Value, TJSONObject(mPair.JsonValue))];
+    end;
+  end;
+end;
+
 function TAtlasTaskHistory.FromJson(const AText: string): Boolean;
 var
-  Parsed, Projects, Hidden, Last, Element: TJSONValue;
-  Pair, RunPair: TJSONPair;
-  Project: TProject;
-  Run: TAtlasTaskLastRun;
-  Outcome: TAtlasTaskOutcome;
-  RunObject: TJSONObject;
+  mParsed, mProjects: TJSONValue;
+  mPair: TJSONPair;
+  mItem: TJSONObject;
+  mProject: TProject;
 begin
   Clear;
-  Parsed := TJSONObject.ParseJSONValue(AText);
+  mParsed := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Parsed is TJSONObject;
+    Result := mParsed is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    Projects := TJSONObject(Parsed).GetValue('projects');
-    if not (Projects is TJSONObject) then
+    mProjects := TJSONObject(mParsed).GetValue('projects');
+    if not (mProjects is TJSONObject) then
     begin
       Exit;
     end;
-    for Pair in TJSONObject(Projects) do
+    for mPair in TJSONObject(mProjects) do
     begin
-      if not (Pair.JsonValue is TJSONObject) or (FProjects.Count >= MaxProjects) then
+      if not (mPair.JsonValue is TJSONObject) or (FProjects.Count >= MaxProjects) then
       begin
         Continue;
       end;
-      Project := TProject.Create;
-      FProjects.Add(Project);
-      Project.Key := Key(Pair.JsonString.Value);
-      Project.Used := DateOf(TJSONObject(Pair.JsonValue), 'used');
-      Hidden := TJSONObject(Pair.JsonValue).GetValue('hidden');
-      if Hidden is TJSONArray then
-      begin
-        for Element in TJSONArray(Hidden) do
-        begin
-          if Element is TJSONString then
-          begin
-            Project.Hidden := Project.Hidden + [Element.Value];
-          end;
-        end;
-      end;
-      Last := TJSONObject(Pair.JsonValue).GetValue('last');
-      if Last is TJSONObject then
-      begin
-        for RunPair in TJSONObject(Last) do
-        begin
-          if not (RunPair.JsonValue is TJSONObject) then
-          begin
-            Continue;
-          end;
-          RunObject := TJSONObject(RunPair.JsonValue);
-          Run := Default(TAtlasTaskLastRun);
-          Run.Name := RunPair.JsonString.Value;
-          Run.Outcome := TAtlasTaskOutcome.Finished;
-          Element := RunObject.GetValue('outcome');
-          if Element is TJSONString then
-          begin
-            for Outcome := Low(TAtlasTaskOutcome) to High(TAtlasTaskOutcome) do
-            begin
-              if SameText(Element.Value, OutcomeNames[Outcome]) then
-              begin
-                Run.Outcome := Outcome;
-              end;
-            end;
-          end;
-          Run.ExitCode := Integer(IntOf(RunObject, 'exitCode'));
-          Run.Counts.Errors := Integer(IntOf(RunObject, 'errors'));
-          Run.Counts.Warnings := Integer(IntOf(RunObject, 'warnings'));
-          Run.Counts.Infos := Integer(IntOf(RunObject, 'infos'));
-          Run.DurationMs := IntOf(RunObject, 'durationMs');
-          Run.FinishedAt := DateOf(RunObject, 'finished');
-          Project.Last := Project.Last + [Run];
-        end;
-      end;
+      mItem := TJSONObject(mPair.JsonValue);
+      mProject := TProject.Create;
+      FProjects.Add(mProject);
+      mProject.Key := Key(mPair.JsonString.Value);
+      mProject.Used := DateOf(mItem, 'used');
+      mProject.Hidden := ReadHidden(mItem.GetValue('hidden'));
+      mProject.Last := ReadRuns(mItem.GetValue('last'));
     end;
   finally
-    Parsed.Free;
+    mParsed.Free;
   end;
 end;
 

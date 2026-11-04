@@ -354,41 +354,107 @@ begin
   Result := (A.Encoding = B.Encoding) and (A.CodePage = B.CodePage);
 end;
 
+/// <summary>Zurücknehmen: nachher → vorher; Wiederherstellen umgekehrt. Anlegen und Löschen tauschen dabei die
+/// Rollen.</summary>
+function Direction(const AChange: TAtlasFileChange; ARedo: Boolean;
+  out ASource, ATarget: TAtlasTextFileContent): TAtlasFileChangeKind;
+begin
+  if ARedo then
+  begin
+    ASource := AChange.Before;
+    ATarget := AChange.After;
+    Result := AChange.Kind;
+  end
+  else
+  begin
+    ASource := AChange.After;
+    ATarget := AChange.Before;
+    case AChange.Kind of
+      TAtlasFileChangeKind.Created:
+        Result := TAtlasFileChangeKind.Deleted;
+      TAtlasFileChangeKind.Deleted:
+        Result := TAtlasFileChangeKind.Created;
+    else
+      Result := TAtlasFileChangeKind.Modified;
+    end;
+  end;
+end;
+
+function PlanCreate(AExists: Boolean; const ACurrent, ATarget: TAtlasTextFileContent;
+  var APlan: TAtlasUndoJournal.TPlan; var AProblem: TAtlasUndoProblem): Boolean;
+begin
+  // Schon genau so da (z. B. von Hand wiederhergestellt): nichts zu tun.
+  Result := not AExists or (ACurrent.Text = ATarget.Text);
+  if not Result then
+  begin
+    AProblem.Kind := TAtlasUndoProblemKind.Exists;
+  end
+  else if not AExists then
+  begin
+    APlan.Kind := TAtlasUndoJournal.TPlanKind.CreateFile;
+    APlan.Content := ATarget;
+  end;
+end;
+
+function PlanRemove(AExists: Boolean; const ACurrent, ASource: TAtlasTextFileContent;
+  var APlan: TAtlasUndoJournal.TPlan; var AProblem: TAtlasUndoProblem): Boolean;
+begin
+  Result := True;
+  if not AExists then
+  begin
+    Exit;
+  end;
+  // Die ganze Datei ist die Änderung: Jede spätere Änderung ist ein Konflikt.
+  Result := ACurrent.Text = ASource.Text;
+  if Result then
+  begin
+    APlan.Kind := TAtlasUndoJournal.TPlanKind.RemoveFile;
+  end
+  else
+  begin
+    AProblem.Kind := TAtlasUndoProblemKind.ChangedSince;
+  end;
+end;
+
+function PlanModify(const ACurrent, ASource, ATarget: TAtlasTextFileContent;
+  var APlan: TAtlasUndoJournal.TPlan; var AProblem: TAtlasUndoProblem): Boolean;
+var
+  mText: string;
+begin
+  Result := TAtlasLinePatch.Rebase(ASource.Text, ATarget.Text, ACurrent.Text, mText);
+  if not Result then
+  begin
+    AProblem.Kind := TAtlasUndoProblemKind.ChangedSince;
+    Exit;
+  end;
+  APlan.Content := ACurrent;
+  APlan.Content.Text := mText;
+  if not SameEncoding(ASource, ATarget) and SameEncoding(ACurrent, ASource) then
+  begin
+    APlan.Content.Encoding := ATarget.Encoding;
+    APlan.Content.CodePage := ATarget.CodePage;
+  end;
+  if (mText <> ACurrent.Text) or not SameEncoding(APlan.Content, ACurrent) then
+  begin
+    APlan.Kind := TAtlasUndoJournal.TPlanKind.Write;
+  end;
+end;
+
 function TAtlasUndoJournal.Plan(const AChange: TAtlasFileChange; AIndex: Integer; ARedo: Boolean;
   out APlan: TPlan; out AProblem: TAtlasUndoProblem): Boolean;
 var
-  Current, Source, Target: TAtlasTextFileContent;
-  Exists: Boolean;
-  Kind: TAtlasFileChangeKind;
-  Text: string;
+  mCurrent, mSource, mTarget: TAtlasTextFileContent;
+  mExists: Boolean;
+  mKind: TAtlasFileChangeKind;
 begin
   APlan := Default(TPlan);
   APlan.Index := AIndex;
   APlan.Kind := TPlanKind.Nothing;
   AProblem := Default(TAtlasUndoProblem);
   AProblem.FileName := AChange.FileName;
-  // Zurücknehmen: nachher → vorher; Wiederherstellen umgekehrt. Anlegen und Löschen tauschen dabei die Rollen.
-  if ARedo then
-  begin
-    Source := AChange.Before;
-    Target := AChange.After;
-    Kind := AChange.Kind;
-  end
-  else
-  begin
-    Source := AChange.After;
-    Target := AChange.Before;
-    case AChange.Kind of
-      TAtlasFileChangeKind.Created:
-        Kind := TAtlasFileChangeKind.Deleted;
-      TAtlasFileChangeKind.Deleted:
-        Kind := TAtlasFileChangeKind.Created;
-    else
-      Kind := TAtlasFileChangeKind.Modified;
-    end;
-  end;
+  mKind := Direction(AChange, ARedo, mSource, mTarget);
   try
-    Exists := FTarget.Read(AChange.FileName, Current);
+    mExists := FTarget.Read(AChange.FileName, mCurrent);
   except
     on E: Exception do
     begin
@@ -397,182 +463,162 @@ begin
       Exit(False);
     end;
   end;
-  case Kind of
+  case mKind of
     TAtlasFileChangeKind.Created:
-      begin
-        if Exists then
-        begin
-          // Schon genau so da (z. B. von Hand wiederhergestellt): nichts zu tun.
-          if Current.Text = Target.Text then
-          begin
-            Exit(True);
-          end;
-          AProblem.Kind := TAtlasUndoProblemKind.Exists;
-          Exit(False);
-        end;
-        APlan.Kind := TPlanKind.CreateFile;
-        APlan.Content := Target;
-      end;
+      Result := PlanCreate(mExists, mCurrent, mTarget, APlan, AProblem);
     TAtlasFileChangeKind.Deleted:
-      begin
-        if not Exists then
-        begin
-          Exit(True);
-        end;
-        // Die ganze Datei ist die Änderung: Jede spätere Änderung ist ein Konflikt.
-        if Current.Text <> Source.Text then
-        begin
-          AProblem.Kind := TAtlasUndoProblemKind.ChangedSince;
-          Exit(False);
-        end;
-        APlan.Kind := TPlanKind.RemoveFile;
-      end;
+      Result := PlanRemove(mExists, mCurrent, mSource, APlan, AProblem);
   else
+    Result := mExists;
+    if Result then
     begin
-      if not Exists then
-      begin
-        AProblem.Kind := TAtlasUndoProblemKind.Missing;
-        Exit(False);
-      end;
-      if not TAtlasLinePatch.Rebase(Source.Text, Target.Text, Current.Text, Text) then
-      begin
-        AProblem.Kind := TAtlasUndoProblemKind.ChangedSince;
-        Exit(False);
-      end;
-      APlan.Content := Current;
-      APlan.Content.Text := Text;
-      if not SameEncoding(Source, Target) and SameEncoding(Current, Source) then
-      begin
-        APlan.Content.Encoding := Target.Encoding;
-        APlan.Content.CodePage := Target.CodePage;
-      end;
-      if (Text <> Current.Text) or not SameEncoding(APlan.Content, Current) then
-      begin
-        APlan.Kind := TPlanKind.Write;
-      end;
+      Result := PlanModify(mCurrent, mSource, mTarget, APlan, AProblem);
+    end
+    else
+    begin
+      AProblem.Kind := TAtlasUndoProblemKind.Missing;
     end;
   end;
-  Result := True;
+end;
+
+/// <summary>1. Prüfen: alle betroffenen Dateien lesen, noch nichts ändern. Zurücknehmen betrifft die noch
+/// angewendeten Dateien, Wiederherstellen die zurückgenommenen.</summary>
+function CheckFiles(AJournal: TAtlasUndoJournal; const AChangeSet: TAtlasChangeSet; ARedo: Boolean;
+  var AReport: TAtlasUndoReport): TArray<TAtlasUndoJournal.TPlan>;
+var
+  mIndex: Integer;
+  mPlanned: TAtlasUndoJournal.TPlan;
+  mProblem: TAtlasUndoProblem;
+begin
+  Result := nil;
+  for mIndex := 0 to High(AChangeSet.Files) do
+  begin
+    if AChangeSet.Files[mIndex].Undone <> ARedo then
+    begin
+      Continue;
+    end;
+    if AJournal.Plan(AChangeSet.Files[mIndex], mIndex, ARedo, mPlanned, mProblem) then
+    begin
+      Result := Result + [mPlanned];
+    end
+    else if mProblem.Kind = TAtlasUndoProblemKind.Failed then
+    begin
+      AReport.Errors := AReport.Errors + [mProblem];
+    end
+    else
+    begin
+      AReport.Conflicts := AReport.Conflicts + [mProblem];
+    end;
+  end;
+end;
+
+/// <summary>Einen Plan ausführen; Fehler kommen als Ausnahme.</summary>
+procedure ApplyPlan(const ATarget: IAtlasUndoTarget; const APlan: TAtlasUndoJournal.TPlan;
+  const AChange: TAtlasFileChange; ARedo: Boolean; ANewFiles: TAtlasNewFilesMode);
+begin
+  case APlan.Kind of
+    TAtlasUndoJournal.TPlanKind.Write:
+      ATarget.Write(AChange.FileName, APlan.Content);
+    TAtlasUndoJournal.TPlanKind.CreateFile:
+      ATarget.CreateFile(AChange.FileName, AChange.Project, APlan.Content);
+    TAtlasUndoJournal.TPlanKind.RemoveFile:
+      begin
+        // Eine beim Wiederherstellen erneut gelöschte Datei bleibt nie liegen; ihr Inhalt steht im Satz.
+        if ARedo and (ANewFiles = TAtlasNewFilesMode.Keep) then
+        begin
+          ANewFiles := TAtlasNewFilesMode.RecycleBin;
+        end;
+        ATarget.RemoveFile(AChange.FileName, AChange.Project, ANewFiles);
+      end;
+  end;
+end;
+
+/// <summary>2. Schreiben: jede Datei für sich; ein Fehler hält die anderen nicht auf. True, wenn eine Datei
+/// geändert wurde.</summary>
+function ApplyPlans(const ATarget: IAtlasUndoTarget; ANewFiles: TAtlasNewFilesMode;
+  const APlans: TArray<TAtlasUndoJournal.TPlan>; ARedo: Boolean; var AChangeSet: TAtlasChangeSet;
+  var AReport: TAtlasUndoReport): Boolean;
+var
+  mPlanned: TAtlasUndoJournal.TPlan;
+  mChange: TAtlasFileChange;
+  mProblem: TAtlasUndoProblem;
+begin
+  Result := False;
+  for mPlanned in APlans do
+  begin
+    mChange := AChangeSet.Files[mPlanned.Index];
+    try
+      ApplyPlan(ATarget, mPlanned, mChange, ARedo, ANewFiles);
+    except
+      on E: Exception do
+      begin
+        mProblem := Default(TAtlasUndoProblem);
+        mProblem.FileName := mChange.FileName;
+        mProblem.Kind := TAtlasUndoProblemKind.Failed;
+        mProblem.Message := E.Message;
+        AReport.Errors := AReport.Errors + [mProblem];
+        Continue;
+      end;
+    end;
+    AChangeSet.Files[mPlanned.Index].Undone := not ARedo;
+    AReport.Done := AReport.Done + [mChange.FileName];
+    Result := True;
+  end;
 end;
 
 function TAtlasUndoJournal.Run(AId: Integer; ARedo: Boolean): TAtlasUndoReport;
 var
-  SetPosition, Index: Integer;
-  ChangeSet: TAtlasChangeSet;
-  Plans: TArray<TPlan>;
-  Planned: TPlan;
-  Problem: TAtlasUndoProblem;
-  Change: TAtlasFileChange;
-  Mode: TAtlasNewFilesMode;
-  Touched: Boolean;
+  mSetPosition: Integer;
+  mChangeSet: TAtlasChangeSet;
+  mPlans: TArray<TPlan>;
+  mTouched, mTrouble: Boolean;
 begin
   Result := Default(TAtlasUndoReport);
   Result.SetId := AId;
   Result.Redo := ARedo;
-  if not FOptions.Enabled then
+  Result.Disabled := not FOptions.Enabled;
+  mSetPosition := -1;
+  if not Result.Disabled then
   begin
-    Result.Disabled := True;
+    mSetPosition := SetIndex(AId);
+  end;
+  Result.NotFound := not Result.Disabled and (mSetPosition < 0);
+  if Result.Disabled or Result.NotFound then
+  begin
     Exit;
   end;
-  SetPosition := SetIndex(AId);
-  if SetPosition < 0 then
+  mChangeSet := FSets[mSetPosition];
+  Result.Action := mChangeSet.Action;
+  mPlans := CheckFiles(Self, mChangeSet, ARedo, Result);
+  mTrouble := (Length(Result.Conflicts) > 0) or (Length(Result.Errors) > 0);
+  Result.NotFound := (Length(mPlans) = 0) and not mTrouble;
+  Result.Aborted := mTrouble and (FOptions.OnConflict = TAtlasUndoConflictMode.Abort);
+  if Result.Aborted then
   begin
-    Result.NotFound := True;
-    Exit;
-  end;
-  ChangeSet := FSets[SetPosition];
-  Result.Action := ChangeSet.Action;
-  // 1. Prüfen: alle betroffenen Dateien lesen, noch nichts ändern.
-  Plans := nil;
-  for Index := 0 to High(ChangeSet.Files) do
-  begin
-    Change := ChangeSet.Files[Index];
-    // Zurücknehmen betrifft die noch angewendeten Dateien, Wiederherstellen die zurückgenommenen.
-    if Change.Undone <> ARedo then
-    begin
-      Continue;
-    end;
-    if Plan(Change, Index, ARedo, Planned, Problem) then
-    begin
-      Plans := Plans + [Planned];
-    end
-    else if Problem.Kind = TAtlasUndoProblemKind.Failed then
-    begin
-      Result.Errors := Result.Errors + [Problem];
-    end
-    else
-    begin
-      Result.Conflicts := Result.Conflicts + [Problem];
-    end;
-  end;
-  if (Length(Plans) = 0) and (Length(Result.Conflicts) = 0) and (Length(Result.Errors) = 0) then
-  begin
-    Result.NotFound := True;
-    Exit;
-  end;
-  if ((Length(Result.Conflicts) > 0) or (Length(Result.Errors) > 0)) and
-    (FOptions.OnConflict = TAtlasUndoConflictMode.Abort) then
-  begin
-    Result.Aborted := True;
     Log(Format('Atlas-Änderung #%d nicht %s: %d Konflikte, %d Fehler, abgebrochen',
-      [AId, Verb(ARedo), Length(Result.Conflicts),
-      Length(Result.Errors)]));
+      [AId, Verb(ARedo), Length(Result.Conflicts), Length(Result.Errors)]));
+  end;
+  if Result.NotFound or Result.Aborted then
+  begin
     Exit;
   end;
-  // 2. Schreiben: jede Datei für sich; ein Fehler hält die anderen nicht auf.
-  Touched := False;
-  for Planned in Plans do
-  begin
-    Change := ChangeSet.Files[Planned.Index];
-    try
-      case Planned.Kind of
-        TPlanKind.Write:
-          FTarget.Write(Change.FileName, Planned.Content);
-        TPlanKind.CreateFile:
-          FTarget.CreateFile(Change.FileName, Change.Project, Planned.Content);
-        TPlanKind.RemoveFile:
-          begin
-            Mode := FOptions.NewFiles;
-            // Eine beim Wiederherstellen erneut gelöschte Datei bleibt nie liegen; ihr Inhalt steht im Satz.
-            if ARedo and (Mode = TAtlasNewFilesMode.Keep) then
-            begin
-              Mode := TAtlasNewFilesMode.RecycleBin;
-            end;
-            FTarget.RemoveFile(Change.FileName, Change.Project, Mode);
-          end;
-      end;
-    except
-      on E: Exception do
-      begin
-        Problem := Default(TAtlasUndoProblem);
-        Problem.FileName := Change.FileName;
-        Problem.Kind := TAtlasUndoProblemKind.Failed;
-        Problem.Message := E.Message;
-        Result.Errors := Result.Errors + [Problem];
-        Continue;
-      end;
-    end;
-    ChangeSet.Files[Planned.Index].Undone := not ARedo;
-    Result.Done := Result.Done + [Change.FileName];
-    Touched := True;
-  end;
-  FSets[SetPosition] := ChangeSet;
-  if Touched then
+  mTouched := ApplyPlans(FTarget, FOptions.NewFiles, mPlans, ARedo, mChangeSet, Result);
+  FSets[mSetPosition] := mChangeSet;
+  if mTouched then
   begin
     FRedoStack.Remove(AId);
-    if not ARedo or (ChangeSet.State <> TAtlasChangeSetState.Applied) then
+    if not ARedo or (mChangeSet.State <> TAtlasChangeSetState.Applied) then
     begin
       FRedoStack.Add(AId);
     end;
     if FStore <> nil then
     begin
-      FStore.Save(ChangeSet);
+      FStore.Save(mChangeSet);
     end;
   end;
   Log(Format('Atlas-Änderung #%d %s: %d Dateien, %d Konflikte, %d Fehler',
-    [AId, Verb(ARedo), Length(Result.Done), Length(Result.Conflicts),
-    Length(Result.Errors)]));
-  if Touched then
+    [AId, Verb(ARedo), Length(Result.Done), Length(Result.Conflicts), Length(Result.Errors)]));
+  if mTouched then
   begin
     Changed;
   end;

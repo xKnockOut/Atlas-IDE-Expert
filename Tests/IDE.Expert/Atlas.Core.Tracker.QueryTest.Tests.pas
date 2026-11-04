@@ -54,7 +54,8 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.QueryTest,
-  Atlas.Core.Tracker.Templates;
+  Atlas.Core.Tracker.Templates,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (erster Treffer gilt); merkt die Adressen.</summary>
@@ -140,7 +141,7 @@ end;
 /// <summary>Anfang der Adresse der Liste zu ATarget (ohne fields und $top).</summary>
 function ListPrefix(const ATarget: TAtlasTrackerTarget): string;
 begin
-  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(TAtlasYouTrackTracker.FullQuery(ATarget)) +
+  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(TAtlasYouTrackApi.FullQuery(ATarget)) +
     '&';
 end;
 
@@ -395,9 +396,9 @@ begin
   mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://YT.local/', 'ATL', '');
   mTarget.Language := TAtlasTrackerConnections.LanguageOf(mItems, mTarget);
   Assert.AreEqual('de', mTarget.Language);
-  Assert.AreEqual('project: ATL assignee: meine #Ungelöst', TAtlasYouTrackTracker.FullQuery(mTarget));
+  Assert.AreEqual('project: ATL assignee: meine #Ungelöst', TAtlasYouTrackApi.FullQuery(mTarget));
   mTarget.Language := '';
-  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackTracker.FullQuery(mTarget),
+  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackApi.FullQuery(mTarget),
     'ohne erkannte Sprache wie bisher');
   // Abgelehnt: keine Spracherkennung.
   mTransport := TFakeTransport.Create;

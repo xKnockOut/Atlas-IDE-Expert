@@ -310,6 +310,117 @@ begin
   end;
 end;
 
+/// <summary>Tasten für Navigationsverlauf, Formatieren und Blockkommentar.</summary>
+procedure AssertNavigationAndEditKeys(const AEntries: TArray<TAtlasKeyEntry>);
+begin
+  // Navigationsverlauf (#504): Alt+Links/Rechts mit Vorrang (der Verlauf führt die Sprünge der IDE mit),
+  // Strg+Alt+Q mit dem gemeinsamen Vorrang der Editorbefehle.
+  Assert.AreEqual($8025, Integer(EntryOf(AEntries, TAtlasKeyFunction.NavBack).Key));
+  Assert.AreEqual($8027, Integer(EntryOf(AEntries, TAtlasKeyFunction.NavForward).Key));
+  Assert.AreEqual($C051, Integer(EntryOf(AEntries, TAtlasKeyFunction.LastEdit).Key));
+  Assert.IsTrue(EntryOf(AEntries, TAtlasKeyFunction.NavBack).Priority);
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.LastEdit).Priority);
+  Assert.AreEqual('Atlas.NavBack', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NavBack));
+  Assert.AreEqual('Atlas.LastEdit', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.LastEdit));
+  // Definition und Referenzen einblenden (#505): Alt+F12 und Umschalt+Alt+F12.
+  Assert.AreEqual($807B, Integer(EntryOf(AEntries, TAtlasKeyFunction.PeekDefinition).Key));
+  Assert.AreEqual($A07B, Integer(EntryOf(AEntries, TAtlasKeyFunction.PeekReferences).Key));
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.PeekDefinition).Disabled);
+  Assert.AreEqual('Atlas.PeekDefinition', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekDefinition));
+  Assert.AreEqual('Atlas.PeekReferences', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekReferences));
+  // Brotkrumenleiste (#590): Strg+Umschalt+. als Editorbefehl.
+  Assert.AreEqual($60BE, Integer(EntryOf(AEntries, TAtlasKeyFunction.Breadcrumbs).Key));
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.Breadcrumbs).Disabled);
+  Assert.AreEqual('Atlas.Breadcrumbs', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Breadcrumbs));
+  // Sprung zum Gegenstück (#635): Strg+Ü und Strg+Umschalt+Ü.
+  Assert.AreEqual($40BA, Integer(EntryOf(AEntries, TAtlasKeyFunction.JumpToMatch).Key));
+  Assert.AreEqual($60BA, Integer(EntryOf(AEntries, TAtlasKeyFunction.JumpToMatchSelect).Key));
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.JumpToMatchSelect).Disabled);
+  Assert.AreEqual('Atlas.JumpToMatch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatch));
+  Assert.AreEqual('Atlas.JumpToMatchSelect', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatchSelect));
+  // Nächste/vorherige Änderung (#507): Strg+Alt+Bild↓ und Strg+Alt+Bild↑.
+  Assert.AreEqual($C022, Integer(EntryOf(AEntries, TAtlasKeyFunction.NextChange).Key));
+  Assert.AreEqual($C021, Integer(EntryOf(AEntries, TAtlasKeyFunction.PreviousChange).Key));
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.NextChange).Disabled);
+  Assert.AreEqual('Atlas.NextChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextChange));
+  Assert.AreEqual('Atlas.PreviousChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousChange));
+  // Zeilen verschieben und duplizieren (#634): mit Vorrang, die IDE-Belegung steht als Konflikt da.
+  Assert.AreEqual($8026, Integer(EntryOf(AEntries, TAtlasKeyFunction.MoveLinesUp).Key));
+  Assert.AreEqual($A028, Integer(EntryOf(AEntries, TAtlasKeyFunction.DuplicateLinesDown).Key));
+  Assert.IsTrue(EntryOf(AEntries, TAtlasKeyFunction.MoveLinesDown).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(AEntries, TAtlasKeyFunction.MoveLinesUp).Status(
+    TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.MoveLinesUp', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MoveLinesUp));
+  Assert.AreEqual('Atlas.DuplicateLinesDown', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.DuplicateLinesDown));
+  // Anweisung vervollständigen (#697): Strg+Umschalt+Enter mit Vorrang vor „Referenzen suchen“.
+  Assert.AreEqual($600D, Integer(EntryOf(AEntries, TAtlasKeyFunction.CompleteStatement).Key));
+  Assert.IsTrue(EntryOf(AEntries, TAtlasKeyFunction.CompleteStatement).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(AEntries, TAtlasKeyFunction.CompleteStatement).Status(
+    TAtlasKeyConflicts.OwnerOf($600D, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.CompleteStatement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.CompleteStatement));
+  // Formatieren (#43): eigene Taste, weil Strg+D die Mehrfachmarken und Strg+Umschalt+Alt+F die Suche in der
+  // Methode (#877) haben.
+  Assert.AreEqual($E04C, Integer(EntryOf(AEntries, TAtlasKeyFunction.FormatCode).Key));
+  Assert.AreEqual('Atlas.FormatCode', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.FormatCode));
+  // Blockkommentar umschalten (#703): Umschalt+Alt+A.
+  Assert.AreEqual($A041, Integer(EntryOf(AEntries, TAtlasKeyFunction.ToggleBlockComment).Key));
+  Assert.AreEqual('Atlas.ToggleBlockComment', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ToggleBlockComment));
+end;
+
+/// <summary>Tasten ab „Neue Zeile ober- oder unterhalb“ (#700) und Vorrang der Editorbefehle.</summary>
+procedure AssertLineAndBookmarkKeys(const ASettings: TAtlasPluginSettings; const AEntries: TArray<TAtlasKeyEntry>);
+var
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+begin
+  mSettings := ASettings;
+  mEntries := AEntries;
+  // Neue Zeile ober- oder unterhalb (#700): Umschalt+Enter, Strg+Alt+Enter.
+  Assert.AreEqual($200D, Integer(EntryOf(mEntries, TAtlasKeyFunction.NewLineBelow).Key));
+  Assert.AreEqual($C00D, Integer(EntryOf(mEntries, TAtlasKeyFunction.NewLineAbove).Key));
+  Assert.AreEqual('Atlas.NewLineBelow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineBelow));
+  Assert.AreEqual('Atlas.NewLineAbove', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineAbove));
+  // Umschließung entfernen (#657): Strg+Umschalt+Entf.
+  Assert.AreEqual($602E, Integer(EntryOf(mEntries, TAtlasKeyFunction.Unwrap).Key));
+  Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
+  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T mit Vorrang vor „To-Do-Eintrag hinzufügen“.
+  Assert.AreEqual($6054, Integer(EntryOf(mEntries, TAtlasKeyFunction.ExpressionType).Key));
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.ExpressionType).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(mEntries, TAtlasKeyFunction.ExpressionType).Status(
+    TAtlasKeyConflicts.OwnerOf($6054, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.ExpressionType', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ExpressionType));
+  // Sicher löschen (#716): Alt+Entf.
+  Assert.AreEqual($802E, Integer(EntryOf(mEntries, TAtlasKeyFunction.SafeDelete).Key));
+  Assert.AreEqual('Atlas.SafeDelete', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SafeDelete));
+  // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
+  Assert.AreEqual($C050, Integer(EntryOf(mEntries, TAtlasKeyFunction.ProblemsWindow).Key));
+  Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
+  // Abschnittssprünge (#1101): ohne Vorgabetaste, Kennungen wie die Knöpfe der Editorleiste.
+  Assert.AreEqual(0, Integer(EntryOf(mEntries, TAtlasKeyFunction.SectionInterface).Key));
+  Assert.AreEqual(0, Integer(EntryOf(mEntries, TAtlasKeyFunction.SectionImplementation).Key));
+  Assert.AreEqual('Atlas.GotoInterface', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionInterface));
+  Assert.AreEqual('Atlas.GotoImplementation', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionImplementation));
+  // Schnelle Lesezeichen (#1104): Strg+Umschalt+K, Strg+Umschalt+1, Strg+1; nächstes/voriges ohne Vorgabe.
+  Assert.AreEqual($604B, Integer(EntryOf(mEntries, TAtlasKeyFunction.QuickBookmark).Key));
+  Assert.AreEqual($6031, Integer(EntryOf(mEntries, TAtlasKeyFunction.QuickBookmarkSet).Key));
+  Assert.AreEqual($4031, Integer(EntryOf(mEntries, TAtlasKeyFunction.QuickBookmarkJump).Key));
+  Assert.AreEqual(0, Integer(EntryOf(mEntries, TAtlasKeyFunction.NextBookmark).Key));
+  Assert.AreEqual('Atlas.QuickBookmarkToggle', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickBookmark));
+  Assert.AreEqual('Atlas.NextBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextBookmark));
+  Assert.AreEqual('Atlas.PreviousBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousBookmark));
+  // Gezielt hineinspringen (#836): Strg+Alt+F7, aus = Kürzel frei.
+  Assert.AreEqual($C076, Integer(EntryOf(mEntries, TAtlasKeyFunction.StepIntoTarget).Key));
+  Assert.AreEqual('Atlas.StepIntoTarget', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.StepIntoTarget));
+  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
+  mSettings.EditorKeysPriority := True;
+  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.UnitSearch).Priority);
+  // Beide Tasten gleich: Atlas belegt sie nur einmal, also kein doppelter Eintrag.
+  mSettings.MethodToggleDownKey := mSettings.MethodToggleUpKey;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.MethodToggleUp).Disabled);
+  Assert.IsTrue(EntryOf(mEntries, TAtlasKeyFunction.MethodToggleDown).Disabled);
+end;
+
 procedure TAtlasKeyMapTests.NewEditorKeysAreListed;
 var
   Settings: TAtlasPluginSettings;
@@ -368,102 +479,8 @@ begin
   Assert.AreEqual($4050, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Key));
   Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.QuickOpen).Disabled);
   Assert.AreEqual('Atlas.QuickOpen', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickOpen));
-  // Navigationsverlauf (#504): Alt+Links/Rechts mit Vorrang (der Verlauf führt die Sprünge der IDE mit),
-  // Strg+Alt+Q mit dem gemeinsamen Vorrang der Editorbefehle.
-  Assert.AreEqual($8025, Integer(EntryOf(Entries, TAtlasKeyFunction.NavBack).Key));
-  Assert.AreEqual($8027, Integer(EntryOf(Entries, TAtlasKeyFunction.NavForward).Key));
-  Assert.AreEqual($C051, Integer(EntryOf(Entries, TAtlasKeyFunction.LastEdit).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.NavBack).Priority);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.LastEdit).Priority);
-  Assert.AreEqual('Atlas.NavBack', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NavBack));
-  Assert.AreEqual('Atlas.LastEdit', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.LastEdit));
-  // Definition und Referenzen einblenden (#505): Alt+F12 und Umschalt+Alt+F12.
-  Assert.AreEqual($807B, Integer(EntryOf(Entries, TAtlasKeyFunction.PeekDefinition).Key));
-  Assert.AreEqual($A07B, Integer(EntryOf(Entries, TAtlasKeyFunction.PeekReferences).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.PeekDefinition).Disabled);
-  Assert.AreEqual('Atlas.PeekDefinition', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekDefinition));
-  Assert.AreEqual('Atlas.PeekReferences', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PeekReferences));
-  // Brotkrumenleiste (#590): Strg+Umschalt+. als Editorbefehl.
-  Assert.AreEqual($60BE, Integer(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.Breadcrumbs).Disabled);
-  Assert.AreEqual('Atlas.Breadcrumbs', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Breadcrumbs));
-  // Sprung zum Gegenstück (#635): Strg+Ü und Strg+Umschalt+Ü.
-  Assert.AreEqual($40BA, Integer(EntryOf(Entries, TAtlasKeyFunction.JumpToMatch).Key));
-  Assert.AreEqual($60BA, Integer(EntryOf(Entries, TAtlasKeyFunction.JumpToMatchSelect).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.JumpToMatchSelect).Disabled);
-  Assert.AreEqual('Atlas.JumpToMatch', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatch));
-  Assert.AreEqual('Atlas.JumpToMatchSelect', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.JumpToMatchSelect));
-  // Nächste/vorherige Änderung (#507): Strg+Alt+Bild↓ und Strg+Alt+Bild↑.
-  Assert.AreEqual($C022, Integer(EntryOf(Entries, TAtlasKeyFunction.NextChange).Key));
-  Assert.AreEqual($C021, Integer(EntryOf(Entries, TAtlasKeyFunction.PreviousChange).Key));
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.NextChange).Disabled);
-  Assert.AreEqual('Atlas.NextChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextChange));
-  Assert.AreEqual('Atlas.PreviousChange', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousChange));
-  // Zeilen verschieben und duplizieren (#634): mit Vorrang, die IDE-Belegung steht als Konflikt da.
-  Assert.AreEqual($8026, Integer(EntryOf(Entries, TAtlasKeyFunction.MoveLinesUp).Key));
-  Assert.AreEqual($A028, Integer(EntryOf(Entries, TAtlasKeyFunction.DuplicateLinesDown).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MoveLinesDown).Priority);
-  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.MoveLinesUp).Status(
-    TAtlasKeyConflicts.OwnerOf($8026, TAtlasKeyConflicts.KnownIdeKeys))));
-  Assert.AreEqual('Atlas.MoveLinesUp', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.MoveLinesUp));
-  Assert.AreEqual('Atlas.DuplicateLinesDown', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.DuplicateLinesDown));
-  // Anweisung vervollständigen (#697): Strg+Umschalt+Enter mit Vorrang vor „Referenzen suchen“.
-  Assert.AreEqual($600D, Integer(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Priority);
-  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.CompleteStatement).Status(
-    TAtlasKeyConflicts.OwnerOf($600D, TAtlasKeyConflicts.KnownIdeKeys))));
-  Assert.AreEqual('Atlas.CompleteStatement', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.CompleteStatement));
-  // Formatieren (#43): eigene Taste, weil Strg+D die Mehrfachmarken und Strg+Umschalt+Alt+F die Suche in der
-  // Methode (#877) haben.
-  Assert.AreEqual($E04C, Integer(EntryOf(Entries, TAtlasKeyFunction.FormatCode).Key));
-  Assert.AreEqual('Atlas.FormatCode', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.FormatCode));
-  // Blockkommentar umschalten (#703): Umschalt+Alt+A.
-  Assert.AreEqual($A041, Integer(EntryOf(Entries, TAtlasKeyFunction.ToggleBlockComment).Key));
-  Assert.AreEqual('Atlas.ToggleBlockComment', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ToggleBlockComment));
-  // Neue Zeile ober- oder unterhalb (#700): Umschalt+Enter, Strg+Alt+Enter.
-  Assert.AreEqual($200D, Integer(EntryOf(Entries, TAtlasKeyFunction.NewLineBelow).Key));
-  Assert.AreEqual($C00D, Integer(EntryOf(Entries, TAtlasKeyFunction.NewLineAbove).Key));
-  Assert.AreEqual('Atlas.NewLineBelow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineBelow));
-  Assert.AreEqual('Atlas.NewLineAbove', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NewLineAbove));
-  // Umschließung entfernen (#657): Strg+Umschalt+Entf.
-  Assert.AreEqual($602E, Integer(EntryOf(Entries, TAtlasKeyFunction.Unwrap).Key));
-  Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
-  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T mit Vorrang vor „To-Do-Eintrag hinzufügen“.
-  Assert.AreEqual($6054, Integer(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Key));
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Priority);
-  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Status(
-    TAtlasKeyConflicts.OwnerOf($6054, TAtlasKeyConflicts.KnownIdeKeys))));
-  Assert.AreEqual('Atlas.ExpressionType', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ExpressionType));
-  // Sicher löschen (#716): Alt+Entf.
-  Assert.AreEqual($802E, Integer(EntryOf(Entries, TAtlasKeyFunction.SafeDelete).Key));
-  Assert.AreEqual('Atlas.SafeDelete', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SafeDelete));
-  // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
-  Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
-  Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
-  // Abschnittssprünge (#1101): ohne Vorgabetaste, Kennungen wie die Knöpfe der Editorleiste.
-  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.SectionInterface).Key));
-  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.SectionImplementation).Key));
-  Assert.AreEqual('Atlas.GotoInterface', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionInterface));
-  Assert.AreEqual('Atlas.GotoImplementation', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SectionImplementation));
-  // Schnelle Lesezeichen (#1104): Strg+Umschalt+K, Strg+Umschalt+1, Strg+1; nächstes/voriges ohne Vorgabe.
-  Assert.AreEqual($604B, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmark).Key));
-  Assert.AreEqual($6031, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmarkSet).Key));
-  Assert.AreEqual($4031, Integer(EntryOf(Entries, TAtlasKeyFunction.QuickBookmarkJump).Key));
-  Assert.AreEqual(0, Integer(EntryOf(Entries, TAtlasKeyFunction.NextBookmark).Key));
-  Assert.AreEqual('Atlas.QuickBookmarkToggle', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickBookmark));
-  Assert.AreEqual('Atlas.NextBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextBookmark));
-  Assert.AreEqual('Atlas.PreviousBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousBookmark));
-  // Gezielt hineinspringen (#836): Strg+Alt+F7, aus = Kürzel frei.
-  Assert.AreEqual($C076, Integer(EntryOf(Entries, TAtlasKeyFunction.StepIntoTarget).Key));
-  Assert.AreEqual('Atlas.StepIntoTarget', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.StepIntoTarget));
-  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
-  Settings.EditorKeysPriority := True;
-  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
-  // Beide Tasten gleich: Atlas belegt sie nur einmal, also kein doppelter Eintrag.
-  Settings.MethodToggleDownKey := Settings.MethodToggleUpKey;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.MethodToggleUp).Disabled);
-  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.MethodToggleDown).Disabled);
+  AssertNavigationAndEditKeys(Entries);
+  AssertLineAndBookmarkKeys(Settings, Entries);
 end;
 
 procedure TAtlasKeyMapTests.MultiCursorKeys;
@@ -510,39 +527,66 @@ begin
   Assert.AreEqual($A028, Saved.MultiCursorBelowKey);
 end;
 
+/// <summary>Vorgaben mit allen abschaltbaren Tastenfunktionen aus.</summary>
+function SwitchedOffSettings: TAtlasPluginSettings;
+begin
+  Result := TAtlasPluginSettings.Defaults;
+  Result.UnitSearchKey := $C055;
+  Result.MethodToggle := False;
+  Result.UnitSearchEnabled := False;
+  Result.WelcomePageSearch := False;
+  Result.BookmarksNamed := False;
+  Result.GenerateMenu := False;
+  Result.Notifications := False;
+  Result.WelcomePageQuickActions := False;
+  Result.Problems := False;
+  Result.QuickOpen := False;
+  Result.NavHistory := False;
+  Result.Peek := False;
+  Result.Breadcrumbs := False;
+  Result.JumpToMatch := False;
+  Result.GitGutter := False;
+  Result.MoveLines := False;
+  Result.CompleteStatement := False;
+  Result.MultiCursor := False;
+  Result.FormatCode := False;
+  Result.ToggleBlockComment := False;
+  Result.NewLineAround := False;
+  Result.Unwrap := False;
+  Result.SafeDelete := False;
+  Result.ProblemsWindow := False;
+  Result.DebugStepIntoTarget := False;
+  Result.ExpressionType := False;
+end;
+
+/// <summary>Die Taste bleibt eingestellt; nur der Schalter ist aus.</summary>
+procedure AssertSwitchedOffKeysStay(const ASettings: TAtlasPluginSettings; const AEntries: TArray<TAtlasKeyEntry>);
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := ASettings;
+  // Die Taste bleibt eingestellt; nur der Schalter ist aus.
+  Assert.AreEqual(CtrlShiftUp, Integer(EntryOf(AEntries, TAtlasKeyFunction.MethodToggleUp).Key));
+  // Unit ⇄ Testunit (#189) hat keinen eigenen Schalter (abschalten heißt Taste 0), bleibt also an.
+  Assert.IsFalse(EntryOf(AEntries, TAtlasKeyFunction.TestUnit).Disabled);
+  // Das Suchfeld ist auch mit abgeschalteter Willkommensseite aus.
+  mSettings.WelcomePage := False;
+  mSettings.WelcomePageSearch := True;
+  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.WelcomeSearch).Disabled,
+    'Willkommensseite aus');
+  // Ebenso die Schnellaktionen (#764).
+  mSettings.WelcomePageQuickActions := True;
+  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.WelcomeQuickBuild).Disabled,
+    'Willkommensseite aus');
+end;
+
 procedure TAtlasKeyMapTests.SwitchedOffFunctionsAreNoConflict;
 var
   Settings: TAtlasPluginSettings;
   Entries: TArray<TAtlasKeyEntry>;
   Entry: TAtlasKeyEntry;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.UnitSearchKey := $C055;
-  Settings.MethodToggle := False;
-  Settings.UnitSearchEnabled := False;
-  Settings.WelcomePageSearch := False;
-  Settings.BookmarksNamed := False;
-  Settings.GenerateMenu := False;
-  Settings.Notifications := False;
-  Settings.WelcomePageQuickActions := False;
-  Settings.Problems := False;
-  Settings.QuickOpen := False;
-  Settings.NavHistory := False;
-  Settings.Peek := False;
-  Settings.Breadcrumbs := False;
-  Settings.JumpToMatch := False;
-  Settings.GitGutter := False;
-  Settings.MoveLines := False;
-  Settings.CompleteStatement := False;
-  Settings.MultiCursor := False;
-  Settings.FormatCode := False;
-  Settings.ToggleBlockComment := False;
-  Settings.NewLineAround := False;
-  Settings.Unwrap := False;
-  Settings.SafeDelete := False;
-  Settings.ProblemsWindow := False;
-  Settings.DebugStepIntoTarget := False;
-  Settings.ExpressionType := False;
+  Settings := SwitchedOffSettings;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
   begin
@@ -571,19 +615,7 @@ begin
       Assert.IsFalse(Entry.Disabled, 'an: ' + IntToStr(Ord(Entry.Func)));
     end;
   end;
-  // Die Taste bleibt eingestellt; nur der Schalter ist aus.
-  Assert.AreEqual(CtrlShiftUp, Integer(EntryOf(Entries, TAtlasKeyFunction.MethodToggleUp).Key));
-  // Unit ⇄ Testunit (#189) hat keinen eigenen Schalter (abschalten heißt Taste 0), bleibt also an.
-  Assert.IsFalse(EntryOf(Entries, TAtlasKeyFunction.TestUnit).Disabled);
-  // Das Suchfeld ist auch mit abgeschalteter Willkommensseite aus.
-  Settings.WelcomePage := False;
-  Settings.WelcomePageSearch := True;
-  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.WelcomeSearch).Disabled,
-    'Willkommensseite aus');
-  // Ebenso die Schnellaktionen (#764).
-  Settings.WelcomePageQuickActions := True;
-  Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.WelcomeQuickBuild).Disabled,
-    'Willkommensseite aus');
+  AssertSwitchedOffKeysStay(Settings, Entries);
 end;
 
 procedure TAtlasKeyMapTests.UnitSearchTakesOverIdeKey;
