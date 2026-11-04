@@ -252,6 +252,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Colors` | `Core/Problems/Atlas.Core.Problems.Colors.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
