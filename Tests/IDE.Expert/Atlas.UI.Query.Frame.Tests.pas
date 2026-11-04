@@ -103,18 +103,18 @@ begin
   FFrame := TAtlasCodeQueryFrame.Create(FForm);
   FFrame.Parent := FForm;
   FFrame.Align := alClient;
-  FFrame.OnOpenLocation :=
+  FFrame.Events.OnOpenLocation :=
     procedure(AFileName: string; ALine, ACharacter: Integer)
     begin
       FOpened := AFileName;
       FLine := ALine;
     end;
-  FFrame.OnRun :=
+  FFrame.Events.OnRun :=
     procedure(AQuery: string)
     begin
       FRan := AQuery;
     end;
-  FFrame.OnCancel :=
+  FFrame.Events.OnCancel :=
     procedure
     begin
       FCancelled := True;
@@ -150,9 +150,9 @@ begin
   TAtlasQueryCatalog.Parse(QuerySampleCatalog, mCatalog);
   Assert.IsTrue(string(FFrame.HelpMemo.Text).Contains(mCatalog.Entities[0].Name), 'Mengen aus dem Katalog');
   // Knopf schaltet um, auch neben einem Ergebnis.
-  FFrame.HelpButton.Click;
+  FFrame.Toolbar.HelpButton.Click;
   Assert.IsFalse(FFrame.HelpMemo.Visible);
-  FFrame.HelpButton.Click;
+  FFrame.Toolbar.HelpButton.Click;
   Assert.IsTrue(FFrame.HelpMemo.Visible);
 end;
 
@@ -160,7 +160,7 @@ procedure TAtlasCodeQueryFrameTests.ShowsRowsAndStatus;
 var
   mRows: TArray<string>;
 begin
-  mRows := FFrame.RowText;
+  mRows := FFrame.ResultList.RowText;
   Assert.AreEqual(3, Integer(Length(mRows)));
   Assert.AreEqual('TB | U | 9 | 2 | U.pas:9', mRows[0]);
   Assert.AreEqual('TA | U | 4 | 10 | U.pas:4 · ' + TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryInferred),
@@ -170,67 +170,67 @@ begin
   Assert.AreEqual(3, FFrame.ResultList.Items.Count);
   Assert.AreEqual(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusTruncated, [3, 3, 12]) +
     TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryStatusInferred, [1]), FFrame.StatusLabel.Caption);
-  Assert.IsTrue(FFrame.CopyCsvButton.Enabled);
-  Assert.IsFalse(FFrame.ErrorLabel.Visible);
+  Assert.IsTrue(FFrame.Toolbar.CopyCsvButton.Enabled);
+  Assert.IsFalse(FFrame.InputBar.ErrorLabel.Visible);
 end;
 
 procedure TAtlasCodeQueryFrameTests.SortsByColumnClick;
 begin
   // methods: Zahl, zuerst absteigend; ohne Wert zuletzt.
-  FFrame.SortBy(3);
-  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.RowText));
-  Assert.IsTrue(FFrame.SortDescending);
-  FFrame.SortBy(3);
-  Assert.AreEqual('TB,TA,TC;x', FirstCells(FFrame.RowText));
+  FFrame.ResultList.SortBy(3);
+  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.ResultList.RowText));
+  Assert.IsTrue(FFrame.ResultList.SortDescending);
+  FFrame.ResultList.SortBy(3);
+  Assert.AreEqual('TB,TA,TC;x', FirstCells(FFrame.ResultList.RowText));
   // unit: Gleichstand bei TA und TB, weiter nach Pfad und Zeile.
-  FFrame.SortBy(1);
-  Assert.IsFalse(FFrame.SortDescending);
-  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.RowText));
+  FFrame.ResultList.SortBy(1);
+  Assert.IsFalse(FFrame.ResultList.SortDescending);
+  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.ResultList.RowText));
   // „Datei“ sortiert nach Pfad, Zeile und Spalte.
-  FFrame.SortBy(4);
-  Assert.AreEqual(-1, FFrame.SortColumn);
-  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.RowText));
+  FFrame.ResultList.SortBy(4);
+  Assert.AreEqual(-1, FFrame.ResultList.SortColumn);
+  Assert.AreEqual('TA,TB,TC;x', FirstCells(FFrame.ResultList.RowText));
 end;
 
 procedure TAtlasCodeQueryFrameTests.OpensRowAndRuns;
 begin
-  FFrame.OpenRow(0);
+  FFrame.ResultList.OpenRow(0);
   Assert.AreEqual('C:\P\U.pas', FOpened);
   Assert.AreEqual(9, FLine);
-  FFrame.Input.Text := '  classes where methods > 3  ';
+  FFrame.InputBar.Edit.Text := '  classes where methods > 3  ';
   FFrame.Run;
   Assert.AreEqual('classes where methods > 3', FRan);
   FFrame.SetRunning(True);
-  Assert.IsFalse(FFrame.RunButton.Enabled);
-  Assert.IsTrue(FFrame.CancelButton.Enabled);
+  Assert.IsFalse(FFrame.Toolbar.RunButton.Enabled);
+  Assert.IsTrue(FFrame.Toolbar.CancelButton.Enabled);
   Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning), FFrame.StatusLabel.Caption);
   // Während eine Abfrage läuft, startet keine zweite.
   FRan := '';
   FFrame.Run;
   Assert.AreEqual('', FRan);
-  FFrame.CancelButton.Click;
+  FFrame.Toolbar.CancelButton.Click;
   Assert.IsTrue(FCancelled);
   FFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancelled), True);
-  Assert.IsTrue(FFrame.RunButton.Enabled);
-  Assert.IsFalse(FFrame.CancelButton.Enabled);
+  Assert.IsTrue(FFrame.Toolbar.RunButton.Enabled);
+  Assert.IsFalse(FFrame.Toolbar.CancelButton.Enabled);
   // Die bisherigen Treffer bleiben stehen.
-  Assert.AreEqual(3, Integer(Length(FFrame.RowText)));
+  Assert.AreEqual(3, Integer(Length(FFrame.ResultList.RowText)));
 end;
 
 procedure TAtlasCodeQueryFrameTests.ErrorShowsColumnAndSuggestion;
 var
   mAnswer: TAtlasQueryAnswer;
 begin
-  FFrame.Input.Text := 'classes where methds > 3';
+  FFrame.InputBar.Edit.Text := 'classes where methds > 3';
   TAtlasQueryAnswer.Parse('{"enabled": true, "data": {"query": "classes where methds > 3", ' +
     '"error": {"message": "Unbekanntes Feld „methds“", "column": 15, "suggestion": "methods"}}}', mAnswer);
   FFrame.SetAnswer(mAnswer);
-  Assert.IsTrue(FFrame.ErrorLabel.Visible);
+  Assert.IsTrue(FFrame.InputBar.ErrorLabel.Visible);
   Assert.AreEqual(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QueryError, [15, 'Unbekanntes Feld „methds“']) + ' ' +
-    TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, ['methods']), FFrame.ErrorLabel.Caption);
+    TAtlasSearchStrings.Fmt(TAtlasSearchTextId.QuerySuggestion, ['methods']), FFrame.InputBar.ErrorLabel.Caption);
   // Schreibmarke an der Fehlerstelle (Spalte 15 = nach 14 Zeichen).
-  Assert.AreEqual(14, FFrame.Input.SelStart);
-  Assert.AreEqual(0, Integer(Length(FFrame.RowText)));
+  Assert.AreEqual(14, FFrame.InputBar.Edit.SelStart);
+  Assert.AreEqual(0, Integer(Length(FFrame.ResultList.RowText)));
   Assert.AreEqual('', FFrame.StatusLabel.Caption);
 end;
 
@@ -238,59 +238,59 @@ procedure TAtlasCodeQueryFrameTests.CompletesFromCatalogAndSymbols;
 var
   mPredicate: string;
 begin
-  FFrame.Input.Text := 'cl';
-  FFrame.Input.SelStart := 2;
-  FFrame.ShowSuggestions;
-  Assert.AreEqual('classes', Joined(FFrame.Suggestions));
-  Assert.IsTrue(FFrame.SuggestList.Visible);
-  FFrame.AcceptSuggestion(0);
-  Assert.AreEqual('classes ', FFrame.Input.Text);
-  Assert.AreEqual(8, FFrame.Input.SelStart);
-  Assert.IsFalse(FFrame.SuggestList.Visible);
-  FFrame.OnSymbols :=
+  FFrame.InputBar.Edit.Text := 'cl';
+  FFrame.InputBar.Edit.SelStart := 2;
+  FFrame.InputBar.ShowSuggestions;
+  Assert.AreEqual('classes', Joined(FFrame.InputBar.Suggestions));
+  Assert.IsTrue(FFrame.InputBar.SuggestList.Visible);
+  FFrame.InputBar.AcceptSuggestion(0);
+  Assert.AreEqual('classes ', FFrame.InputBar.Edit.Text);
+  Assert.AreEqual(8, FFrame.InputBar.Edit.SelStart);
+  Assert.IsFalse(FFrame.InputBar.SuggestList.Visible);
+  FFrame.Events.OnSymbols :=
     function(const APredicate, APrefix: string): TArray<string>
     begin
       mPredicate := APredicate;
       Result := TArray<string>.Create(APrefix + 'ormBasis', APrefix + 'ormBasis', 'TFrameX');
     end;
-  FFrame.Input.Text := 'classes where inherits TF and methods > 3';
-  FFrame.Input.SelStart := 25;
-  FFrame.ShowSuggestions;
+  FFrame.InputBar.Edit.Text := 'classes where inherits TF and methods > 3';
+  FFrame.InputBar.Edit.SelStart := 25;
+  FFrame.InputBar.ShowSuggestions;
   Assert.AreEqual('inherits', mPredicate);
   // Doppelte Namen nur einmal.
-  Assert.AreEqual('TFormBasis'#10'TFrameX', Joined(FFrame.Suggestions));
-  FFrame.AcceptSuggestion(0);
-  Assert.AreEqual('classes where inherits TFormBasis  and methods > 3', FFrame.Input.Text);
+  Assert.AreEqual('TFormBasis'#10'TFrameX', Joined(FFrame.InputBar.Suggestions));
+  FFrame.InputBar.AcceptSuggestion(0);
+  Assert.AreEqual('classes where inherits TFormBasis  and methods > 3', FFrame.InputBar.Edit.Text);
   // Ein Zeichen reicht nicht für die Symbolsuche.
   mPredicate := '';
-  FFrame.Input.Text := 'classes where inherits T';
-  FFrame.Input.SelStart := 24;
-  FFrame.ShowSuggestions;
+  FFrame.InputBar.Edit.Text := 'classes where inherits T';
+  FFrame.InputBar.Edit.SelStart := 24;
+  FFrame.InputBar.ShowSuggestions;
   Assert.AreEqual('', mPredicate);
-  Assert.IsFalse(FFrame.SuggestList.Visible);
+  Assert.IsFalse(FFrame.InputBar.SuggestList.Visible);
 end;
 
 procedure TAtlasCodeQueryFrameTests.SavedQueryRuns;
 begin
   // Hinweis vorn, dann die gespeicherten Abfragen.
-  Assert.AreEqual(2, FFrame.SavedCombo.Items.Count);
-  Assert.IsTrue(FFrame.SavedCombo.Enabled);
-  FFrame.SavedCombo.ItemIndex := 1;
-  FFrame.SavedCombo.OnChange(FFrame.SavedCombo);
-  Assert.AreEqual('classes where methods > 40', FFrame.Input.Text);
+  Assert.AreEqual(2, FFrame.Toolbar.SavedCombo.Items.Count);
+  Assert.IsTrue(FFrame.Toolbar.SavedCombo.Enabled);
+  FFrame.Toolbar.SavedCombo.ItemIndex := 1;
+  FFrame.Toolbar.SavedCombo.OnChange(FFrame.Toolbar.SavedCombo);
+  Assert.AreEqual('classes where methods > 40', FFrame.InputBar.Edit.Text);
   Assert.AreEqual('classes where methods > 40', FRan);
 end;
 
 procedure TAtlasCodeQueryFrameTests.CsvAndMessage;
 begin
-  Assert.IsTrue(FFrame.CsvText.StartsWith('name;unit;line;methods;path;inferred'), FFrame.CsvText);
+  Assert.IsTrue(FFrame.ResultList.CsvText.StartsWith('name;unit;line;methods;path;inferred'), FFrame.ResultList.CsvText);
   FFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), False);
-  Assert.IsFalse(FFrame.HasAnswer);
-  Assert.AreEqual(0, Integer(Length(FFrame.RowText)));
+  Assert.IsFalse(FFrame.ResultList.HasAnswer);
+  Assert.AreEqual(0, Integer(Length(FFrame.ResultList.RowText)));
   Assert.AreEqual(0, FFrame.ResultList.Items.Count);
-  Assert.IsFalse(FFrame.CopyCsvButton.Enabled);
+  Assert.IsFalse(FFrame.Toolbar.CopyCsvButton.Enabled);
   Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoServer), FFrame.StatusLabel.Caption);
-  Assert.AreEqual('', FFrame.CsvText);
+  Assert.AreEqual('', FFrame.ResultList.CsvText);
 end;
 
 initialization

@@ -30,6 +30,9 @@ type
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
+    /// <summary>language "" folgt dem Client (#1458).</summary>
+    [Test]
+    procedure EmptyLanguageFollowsClient;
     [Test]
     procedure AllowsCommentsAndTrailingCommas;
     [Test]
@@ -414,8 +417,19 @@ var
 begin
   Settings := Parse('{}', Issues);
   Assert.AreEqual<NativeInt>(0, Length(Issues));
-  Assert.AreEqual('de', Settings.Language);
+  Assert.AreEqual('', Settings.Language);
   Assert.AreEqual('', Settings.DelphiVersion);
+end;
+procedure TConfigurationParserTests.EmptyLanguageFollowsClient;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"language": ""}', mIssues);
+  Assert.AreEqual<NativeInt>(0, Length(mIssues));
+  Assert.AreEqual('', mSettings.Language);
+  mSettings := Parse('{"language": "en"}', mIssues);
+  Assert.AreEqual('en', mSettings.Language);
 end;
 procedure TConfigurationParserTests.AllowsCommentsAndTrailingCommas;
 var
@@ -447,7 +461,7 @@ var
 begin
   Settings := Parse('{"language": "fr", "platform": 64, "config": "Debug", "rules": {"a": "laut"}}', Issues);
   Assert.AreEqual<NativeInt>(3, Length(Issues));
-  Assert.AreEqual('de', Settings.Language);
+  Assert.AreEqual('', Settings.Language);
   Assert.AreEqual('', Settings.Platform);
   Assert.AreEqual('Debug', Settings.Config);
   Assert.AreEqual<NativeInt>(0, Length(Settings.Rules));

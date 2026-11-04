@@ -73,6 +73,7 @@
         <DCCReference Include="Atlas.Text.dcp"/>
         <DCCReference Include="Source\Product\Atlas.Common.Product.Version.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
+        <DCCReference Include="Source\Localization\Atlas.Common.Localization.Texts.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
@@ -169,6 +170,13 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En1.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En2.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En3.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En4.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De1.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De2.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.De3.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration1.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration2.pas"/>
@@ -289,6 +297,14 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Kinds.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Syntax.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Source.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.UsesEdits.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.State.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Elements.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Declarations.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Usages.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StringLiterals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>

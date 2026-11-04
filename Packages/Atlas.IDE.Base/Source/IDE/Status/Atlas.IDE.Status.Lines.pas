@@ -44,6 +44,19 @@ type
   TAtlasIndexingFunc = reference to function(out APercent: Integer): Boolean;
   TAtlasStatusQueryFunc = reference to function(const ADone: TProc<string>): Boolean;
 
+  /// <summary>Quellen der Zeilen; eingesetzt von der Kompositionswurzel.</summary>
+  TAtlasStatusLineSources = record
+    ServerInfo: TFunc<TAtlasServerInfo>;
+    Indexing: TAtlasIndexingFunc;
+    Query: TAtlasStatusQueryFunc;
+    /// <summary>Zeile für die Meldungsansicht oder nil.</summary>
+    Report: TProc<string>;
+    /// <summary>Aktion der Zeile „Server“ (Fenster „Atlas-Server“, #1356) oder nil; gilt nur, solange
+    /// ServerActionEnabled True liefert.</summary>
+    ServerAction: TProc;
+    ServerActionEnabled: TFunc<Boolean>;
+  end;
+
   TAtlasIdeStatusLines = class
   private type
     TCached = record
@@ -65,10 +78,7 @@ type
     FServerRef: IAtlasStatusItem;
     FIndexRef: IAtlasStatusItem;
     FFileRef: IAtlasStatusItem;
-    FServerInfo: TFunc<TAtlasServerInfo>;
-    FIndexing: TAtlasIndexingFunc;
-    FQuery: TAtlasStatusQueryFunc;
-    FReport: TProc<string>;
+    FSources: TAtlasStatusLineSources;
     FUnits: TUnits;
     FUnitsRef: IInterface;
     // Letzter Index-Stand (#754); nur im Hauptthread.
@@ -94,14 +104,7 @@ type
     procedure MarkModified(const AFileName: string);
     class function Key(const AFileName: string): string; static;
   public
-    constructor Create(const ARegistry: IAtlasStatusRegistry; const AServerInfo: TFunc<TAtlasServerInfo>;
-      const AIndexing: TAtlasIndexingFunc; const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>);
-      overload;
-    /// <summary>Mit Aktion der Zeile „Server“ (Fenster „Atlas-Server“, #1356), die nur gilt, solange
-    /// AServerActionEnabled True liefert.</summary>
-    constructor Create(const ARegistry: IAtlasStatusRegistry; const AServerInfo: TFunc<TAtlasServerInfo>;
-      const AIndexing: TAtlasIndexingFunc; const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>;
-      const AServerAction: TProc; const AServerActionEnabled: TFunc<Boolean>); overload;
+    constructor Create(const ARegistry: IAtlasStatusRegistry; const ASources: TAtlasStatusLineSources);
     destructor Destroy; override;
     /// <summary>Alle Zeilen nachführen (Hauptthread, vor jedem Zeichnen des Felds).</summary>
     procedure Refresh;
@@ -147,23 +150,11 @@ begin
 end;
 
 constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
-  const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
-  const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>);
-begin
-  Create(ARegistry, AServerInfo, AIndexing, AQuery, AReport, nil, nil);
-end;
-
-constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
-  const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
-  const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>; const AServerAction: TProc;
-  const AServerActionEnabled: TFunc<Boolean>);
+  const ASources: TAtlasStatusLineSources);
 begin
   inherited Create;
   FRegistry := ARegistry;
-  FServerInfo := AServerInfo;
-  FIndexing := AIndexing;
-  FQuery := AQuery;
-  FReport := AReport;
+  FSources := ASources;
   FUnits := TUnits.Create;
   FUnits.Value := -1;
   FUnitsRef := FUnits;
@@ -172,7 +163,7 @@ begin
   FIndexFile := TAtlasIndexStore.DefaultFile;
   FTracker := TAtlasIndexTracker.Create(TAtlasIndexStore.Load(FIndexFile));
   FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder,
-    AServerAction, AServerActionEnabled);
+    ASources.ServerAction, ASources.ServerActionEnabled);
   FServerRef := FServer;
   FIndex := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.IndexId, TAtlasStatusLines.IndexOrder);
   FIndexRef := FIndex;
@@ -256,7 +247,7 @@ begin
   Holder := FUnitsRef;
   Registry := FRegistry;
   Done := ADone;
-  Result := FQuery(
+  Result := FSources.Query(
     procedure(AJson: string)
     var
       Count: Integer;
@@ -303,7 +294,7 @@ procedure TAtlasIdeStatusLines.RefreshServer;
 var
   Info: TAtlasServerInfo;
 begin
-  Info := FServerInfo();
+  Info := FSources.ServerInfo();
   FServer.Update(TAtlasStatusLines.ServerText(Info), TAtlasStatusLines.ServerState(Info),
     TAtlasStatusLines.ServerSummary(Info), TAtlasStatusLines.ServerBrief(Info), TAtlasStatusLines.ServerDetail(Info));
   // Nach einem Neustart sind die Units erst wieder nach der nächsten Abfrage bekannt.
@@ -325,9 +316,9 @@ var
   Running, Indexing: Boolean;
   Percent, Units: Integer;
 begin
-  Running := FServerInfo().Phase = TAtlasServerPhase.Running;
+  Running := FSources.ServerInfo().Phase = TAtlasServerPhase.Running;
   Percent := -1;
-  Indexing := Running and FIndexing(Percent);
+  Indexing := Running and FSources.Indexing(Percent);
   Units := -1;
   if Running then
   begin
@@ -481,9 +472,9 @@ begin
     begin
       Losses := TAtlasFileFormats.AnsiLosses(TAtlasFileFormats.Decode(Bytes,
         TAtlasFileFormats.Detect(Bytes).Encoding));
-      if (Losses > 0) and Assigned(FReport) then
+      if (Losses > 0) and Assigned(FSources.Report) then
       begin
-        FReport(System.SysUtils.Format('%s: %d Zeichen lassen sich in ANSI nicht darstellen und werden zu „?“',
+        FSources.Report(System.SysUtils.Format('%s: %d Zeichen lassen sich in ANSI nicht darstellen und werden zu „?“',
           [ExtractFileName(AFileName), Losses]));
       end;
     end;
@@ -538,9 +529,9 @@ begin
     // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
     TFile.SetLastWriteTime(AFileName, Stamp);
     FCache.Remove(Key(AFileName));
-    if Assigned(FReport) then
+    if Assigned(FSources.Report) then
     begin
-      FReport(Format('%s gespeichert als %s', [ExtractFileName(AFileName), Target.Text]));
+      FSources.Report(Format('%s gespeichert als %s', [ExtractFileName(AFileName), Target.Text]));
     end;
   end;
   if SameText(AFileName, FActiveFile) then
