@@ -460,7 +460,6 @@ begin
 end;
 
 /// <summary>Interfaces der Vorfahrenliste: ab dem zweiten Eintrag alle, der erste, wenn er wie eines heißt.</summary>
-/// <summary>Interfaces der Vorfahrenliste: ab dem zweiten Eintrag alle, der erste, wenn er wie eines heißt.</summary>
 function InterfaceNames(ABody: TSyntaxNode): TArray<string>;
 var
   mIndex, mCount: Integer;
