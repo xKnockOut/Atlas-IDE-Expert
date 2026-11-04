@@ -18,6 +18,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Results.Model,
+  Atlas.UI.Results.View,
   Atlas.UI.Results.Frame;
 
 type
@@ -80,12 +81,12 @@ begin
   end;
   if TAtlasResults.InferredCount(mEntries) > 0 then
   begin
-    AResults.ShowRated(AHint, mEntries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
+    AResults.Entries.ShowRated(AHint, mEntries, TAtlasStrings.Text(TAtlasTextId.RenameChangedGroup),
       TAtlasStrings.Text(TAtlasTextId.RenameUnchangedGroup));
   end
   else
   begin
-    AResults.ShowEntries(AHint, AGroups);
+    AResults.Entries.Show(AHint, AGroups);
   end;
 end;
 

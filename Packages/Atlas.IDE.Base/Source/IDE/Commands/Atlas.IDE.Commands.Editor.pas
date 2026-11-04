@@ -249,7 +249,7 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Results.Model,
-  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview;
 
 const
