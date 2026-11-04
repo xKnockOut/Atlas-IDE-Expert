@@ -225,7 +225,8 @@ begin
   try
     Moved := Context;
     Moved.Index := FIndex;
-    Answer := TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), 'Stock', Moved);
+    Moved.UnitName := 'Stock';
+    Answer := TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved);
     Assert.AreEqual(0, Integer((Answer.GetValue('warnings') as TJSONArray).Count), Answer.ToJSON);
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\Stock.pas'), Answer.GetValue('file').Value);
     Changes := (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
@@ -244,10 +245,11 @@ begin
     end;
     Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
     // Gibt es die Datei schon, bricht der Befehl ab.
+    Moved.UnitName := 'Kasse';
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), 'Kasse', Moved).Free;
+        TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved).Free;
       end);
   finally
     Answer.Free;
@@ -267,11 +269,9 @@ begin
   Resolver := TNameResolver.Create(FIndex, nil);
   Tree := TPascalParser.Parse(UnitLager);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(False, Resolver, Tree, LagerFile, UnitLager, 'u',
-      TTextPosition.Create(8, 4)))));
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, UnitLager, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u',
       TTextPosition.Create(9, 4)))));
-    Actions := TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, UnitLager, 'u', TTextPosition.Create(8, 4));
+    Actions := TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u', TTextPosition.Create(8, 4));
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('Klasse TStock in eigene Unit verschieben …', Actions[0].GetValue('title').Value);
@@ -291,7 +291,7 @@ begin
     'var'#10'  Zaehler: Integer;', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, Text, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, Text, 'u',
       TTextPosition.Create(8, 4)))));
   finally
     Tree.Free;

@@ -720,8 +720,8 @@ begin
   Result := 0;
   AEdits := nil;
   mUnits := MessageUnits(AMessages, 'H2443');
-  if (Length(mUnits) >= 2) and TUsesActions.AddUnits(ATree.Tokens, mUnits, AContext.Declaring,
-    AContext.Namespaces, TTextLines.LineBreakOf(AText), AEdits, mAdded) then
+  if (Length(mUnits) >= 2) and TUsesActions.AddUnits(ATree.Tokens, TUsesAddRequest.Create(mUnits,
+    AContext.Declaring, AContext.Namespaces, TTextLines.LineBreakOf(AText)), AEdits, mAdded) then
   begin
     Result := Length(mAdded);
   end;
