@@ -1,5 +1,10 @@
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
+## Atlas-Suche unter Delphi 12 schaltete sich ab (04.11.2026, PR #1668 nach Pilot-2.0.0-beta.1, PR #1669 nach release/1.2)
+- Log von Marcos Delphi-12-Rechner (1.2.0): jedes Strg+F `EInvalidOperation: Element 'TAtlasSearchBar' hat kein übergeordnetes Fenster`, nach drei Versuchen Sicherung „Atlas-Suche abgeschaltet“.
+- Ursache: `TAtlasIdeSearch.CreateBar` setzt `Features` vor `Place`; `UpdateStates` las `FScope.ItemIndex`/`FLevel.Items.Count`, die ComboBox legt dafür unter Delphi 12 ein Fenster an. Fix: `SelectedScope`/`SelectedLevel` lesen ohne Fenster `FQuery`, Stufen über `FLevels`. Test `FeaturesBeforeWindowNeedNoWindow`.
+- Offen: Delphi-Build 0/0/0 und Handtest unter Delphi 12. Nebenbefund ohne Änderung: Modultasten (Strg+F) laufen unter der Sicherung `EditorCommands`; ist sie ausgelöst, gibt `TBinding.Pressed` trotzdem `krHandled` zurück und Strg+F tut gar nichts (auch nicht die IDE-Suche).
+
 ## Atlas-Befunde in Editor IDE und UI (04.11.2026, Branch `claude/project-thread-y9v3ee` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/IDE/Editor` und `Source/UI/Editor` (anfangs 267), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde in allen 70 Units. PRs #1588, #1594, #1607 und #1624.
 - Neue Units: `Atlas.IDE.Editor.Lens`, `MinimapFolds`, `MinimapNotice`, `GutterColumnState`, `LinkedEditingQuery`, `LineChangesData`, `MultiCursorState`, `Atlas.UI.Editor.MinimapLayers` (alle in `.dpk`, `.dproj` und `docs/adr/0017-unit-zuordnung.md`; MinimapLayers auch in `Tests/Atlas.Tests.dpr`, weil der Minimap-Test sie nutzt).
