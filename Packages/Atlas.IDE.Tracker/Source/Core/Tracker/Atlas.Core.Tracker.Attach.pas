@@ -475,45 +475,59 @@ begin
   AText := LastLines(Decode(mBytes), ALines);
 end;
 
+/// <summary>Ende ")" eines Platzhalters "$(…)" ab AStart; 0, wenn dort keiner beginnt.</summary>
+function PlaceholderEnd(const APattern: string; AStart: Integer): Integer;
+begin
+  Result := 0;
+  if (APattern[AStart] = '$') and (AStart < Length(APattern)) and (APattern[AStart + 1] = '(') then
+  begin
+    Result := PosEx(')', APattern, AStart + 2);
+  end;
+end;
+
+/// <summary>Wert des Platzhalters AName; '' ohne Wert.</summary>
+function PlaceholderValue(const AName, AProjectFile: string): string;
+begin
+  if SameText(AName, 'ProjectDir') then
+  begin
+    Result := ExcludeTrailingPathDelimiter(ExtractFilePath(AProjectFile));
+  end
+  else if SameText(AName, 'ProjectName') then
+  begin
+    Result := ChangeFileExt(ExtractFileName(AProjectFile), '');
+  end
+  else
+  begin
+    Result := TAtlasTrackerFiles.Files.Environment(AName);
+  end;
+end;
+
 class function TAtlasAttachLog.Expand(const APattern, AProjectFile: string): string;
 var
   mStart, mEnd: Integer;
-  mName, mValue: string;
+  mValue: string;
 begin
   Result := '';
   mStart := 1;
   while mStart <= Length(APattern) do
   begin
-    if (APattern[mStart] = '$') and (mStart < Length(APattern)) and (APattern[mStart + 1] = '(') then
+    mEnd := PlaceholderEnd(APattern, mStart);
+    if mEnd > 0 then
     begin
-      mEnd := PosEx(')', APattern, mStart + 2);
-      if mEnd > 0 then
+      mValue := PlaceholderValue(Copy(APattern, mStart + 2, mEnd - mStart - 2), AProjectFile);
+      // Ohne Wert bleibt der Platzhalter stehen: Die Datei gibt es dann nicht, statt eines falschen Pfads.
+      if mValue = '' then
       begin
-        mName := Copy(APattern, mStart + 2, mEnd - mStart - 2);
-        if SameText(mName, 'ProjectDir') then
-        begin
-          mValue := ExcludeTrailingPathDelimiter(ExtractFilePath(AProjectFile));
-        end
-        else if SameText(mName, 'ProjectName') then
-        begin
-          mValue := ChangeFileExt(ExtractFileName(AProjectFile), '');
-        end
-        else
-        begin
-          mValue := TAtlasTrackerFiles.Files.Environment(mName);
-        end;
-        // Ohne Wert bleibt der Platzhalter stehen: Die Datei gibt es dann nicht, statt eines falschen Pfads.
-        if mValue = '' then
-        begin
-          mValue := Copy(APattern, mStart, mEnd - mStart + 1);
-        end;
-        Result := Result + mValue;
-        mStart := mEnd + 1;
-        Continue;
+        mValue := Copy(APattern, mStart, mEnd - mStart + 1);
       end;
+      Result := Result + mValue;
+      mStart := mEnd + 1;
+    end
+    else
+    begin
+      Result := Result + APattern[mStart];
+      Inc(mStart);
     end;
-    Result := Result + APattern[mStart];
-    Inc(mStart);
   end;
 end;
 
@@ -546,6 +560,35 @@ begin
   end;
 end;
 
+/// <summary>APath relativ zu AFolder (Projektordner) ergänzt; '' bei relativem Pfad ohne Ordner.</summary>
+function RootedPath(const APath, AFolder: string): string;
+begin
+  Result := APath;
+  // Ohne TPath: IsPathRooted und Combine lehnen * und ? als ungültige Zeichen ab.
+  if (ExtractFileDrive(APath) = '') and not APath.StartsWith(PathDelim) then
+  begin
+    Result := '';
+    if AFolder <> '' then
+    begin
+      Result := IncludeTrailingPathDelimiter(AFolder) + APath;
+    end;
+  end;
+end;
+
+/// <summary>Vorhandene Datei zu APath; mit * und ? die neueste passende; '' ohne.</summary>
+function ExistingFile(const APath: string): string;
+begin
+  Result := APath;
+  if (Pos('*', APath) > 0) or (Pos('?', APath) > 0) then
+  begin
+    Result := NewestMatch(APath);
+  end
+  else if not TAtlasTrackerFiles.Files.FileExists(APath) then
+  begin
+    Result := '';
+  end;
+end;
+
 class function TAtlasAttachLog.Candidates(const AList, AProjectFile: string): TArray<string>;
 var
   mEntry, mPath, mFolder: string;
@@ -559,33 +602,19 @@ begin
       [rfReplaceAll]).Split([';']) do
     begin
       mPath := Trim(Expand(Trim(mEntry), AProjectFile));
-      if mPath = '' then
+      if mPath <> '' then
       begin
-        Continue;
+        mPath := RootedPath(mPath, mFolder);
       end;
-      // Ohne TPath: IsPathRooted und Combine lehnen * und ? als ungültige Zeichen ab.
-      if (ExtractFileDrive(mPath) = '') and not mPath.StartsWith(PathDelim) then
+      if mPath <> '' then
       begin
-        if mFolder = '' then
-        begin
-          Continue;
-        end;
-        mPath := IncludeTrailingPathDelimiter(mFolder) + mPath;
+        mPath := ExistingFile(mPath);
       end;
-      if (Pos('*', mPath) > 0) or (Pos('?', mPath) > 0) then
+      if (mPath <> '') and not mSeen.ContainsKey(LowerCase(mPath)) then
       begin
-        mPath := NewestMatch(mPath);
-      end
-      else if not TAtlasTrackerFiles.Files.FileExists(mPath) then
-      begin
-        mPath := '';
+        mSeen.Add(LowerCase(mPath), True);
+        Result := Result + [mPath];
       end;
-      if (mPath = '') or mSeen.ContainsKey(LowerCase(mPath)) then
-      begin
-        Continue;
-      end;
-      mSeen.Add(LowerCase(mPath), True);
-      Result := Result + [mPath];
     end;
   finally
     mSeen.Free;
@@ -686,6 +715,21 @@ begin
   end;
 end;
 
+/// <summary>Überschrift und Text einer Datei: Markdown wie er ist, sonst als Code-Block.</summary>
+procedure AppendFileText(ALines: TStringBuilder; const AFile: TAtlasAttachFile; const AText: string);
+begin
+  ALines.Append('**').Append(AFile.DisplayName).Append('**').Append(#13#10#13#10);
+  if AFile.IsMarkdown then
+  begin
+    ALines.Append(AText);
+  end
+  else
+  begin
+    ALines.Append('```text').Append(#13#10).Append(TTextAnonymizer.FenceSafe(AText)).Append(#13#10).Append('```');
+  end;
+  ALines.Append(#13#10#13#10);
+end;
+
 class function TAtlasAttachComment.WithTexts(const AComment: string; const AFiles: TAtlasAttachFiles;
   AMaxLength: Integer): string;
 var
@@ -731,17 +775,7 @@ begin
     end;
     for mIndex := 0 to High(mFiles) do
     begin
-      mLines.Append('**').Append(mFiles[mIndex].DisplayName).Append('**').Append(#13#10#13#10);
-      if mFiles[mIndex].IsMarkdown then
-      begin
-        mLines.Append(mTexts[mIndex]);
-      end
-      else
-      begin
-        mLines.Append('```text').Append(#13#10).Append(TTextAnonymizer.FenceSafe(mTexts[mIndex])).Append(#13#10)
-          .Append('```');
-      end;
-      mLines.Append(#13#10#13#10);
+      AppendFileText(mLines, mFiles[mIndex], mTexts[mIndex]);
     end;
     Result := TrimRight(mLines.ToString);
   finally
@@ -771,14 +805,78 @@ end;
 
 { TAtlasAttachSender }
 
+/// <summary>Kommentar mit AFiles senden; setzt Commented bzw. Error von AOutcome.</summary>
+procedure SendComment(const AAttach: IAtlasTrackerAttach; const ASend: IAtlasCiPost;
+  const ARequest: TAtlasAttachRequest; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer;
+  var AOutcome: TAtlasAttachOutcome);
+var
+  mError: TAtlasCiFetchError;
+begin
+  if AAttach.Comment(ARequest.Target, ASend, ARequest.Key, AAttach.CommentText(ARequest.Comment, AFiles),
+    ATimeoutMs, mError) then
+  begin
+    AOutcome.Commented := True;
+  end
+  else
+  begin
+    AOutcome.Error := mError;
+  end;
+end;
+
+/// <summary>Tracker mit Anhängen (YouTrack): Dateien hochladen, dann der Kommentar.</summary>
+procedure SendUploads(const AAttach: IAtlasTrackerAttach; const ASend: IAtlasCiPost;
+  const ARequest: TAtlasAttachRequest; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer;
+  var AOutcome: TAtlasAttachOutcome);
+var
+  mError: TAtlasCiFetchError;
+begin
+  if Length(AFiles) > 0 then
+  begin
+    if not AAttach.Upload(ARequest.Target, ASend, ARequest.Key, AFiles, ATimeoutMs, mError) then
+    begin
+      AOutcome.Error := mError;
+      Exit;
+    end;
+    AOutcome.Uploaded := Length(AFiles);
+  end;
+  if ARequest.WithComment and ((Length(AFiles) > 0) or (Trim(ARequest.Comment) <> '')) then
+  begin
+    SendComment(AAttach, ASend, ARequest, AFiles, ATimeoutMs, AOutcome);
+  end;
+end;
+
+/// <summary>Rückfall (GitHub): Texte in den Kommentar, Bilder bleiben für die Zwischenablage.</summary>
+procedure SendFallback(const AAttach: IAtlasTrackerAttach; const ASend: IAtlasCiPost;
+  const ARequest: TAtlasAttachRequest; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer;
+  var AOutcome: TAtlasAttachOutcome);
+var
+  mTexts: TAtlasAttachFiles;
+  mFile: TAtlasAttachFile;
+begin
+  mTexts := nil;
+  for mFile in AFiles do
+  begin
+    if mFile.IsImage then
+    begin
+      AOutcome.Images := AOutcome.Images + [mFile];
+    end
+    else
+    begin
+      mTexts := mTexts + [mFile];
+    end;
+  end;
+  if (Length(mTexts) > 0) or (ARequest.WithComment and (Trim(ARequest.Comment) <> '')) then
+  begin
+    SendComment(AAttach, ASend, ARequest, mTexts, ATimeoutMs, AOutcome);
+  end;
+end;
+
 class function TAtlasAttachSender.Send(const AProvider: IAtlasTrackerProvider; const ATransport: IAtlasCiTransport;
   const ARequest: TAtlasAttachRequest; ATimeoutMs: Integer): TAtlasAttachOutcome;
 var
   mAttach: IAtlasTrackerAttach;
   mSend: IAtlasCiPost;
-  mFiles, mTexts: TAtlasAttachFiles;
-  mFile: TAtlasAttachFile;
-  mError: TAtlasCiFetchError;
+  mFiles: TAtlasAttachFiles;
 begin
   Result := Default(TAtlasAttachOutcome);
   Result.Images := nil;
@@ -792,51 +890,13 @@ begin
   Result.Error := TAtlasCiFetchError.None;
   if mAttach.CanUpload then
   begin
-    if Length(mFiles) > 0 then
-    begin
-      if not mAttach.Upload(ARequest.Target, mSend, ARequest.Key, mFiles, ATimeoutMs, mError) then
-      begin
-        Result.Error := mError;
-        Exit;
-      end;
-      Result.Uploaded := Length(mFiles);
-    end;
-    if ARequest.WithComment and ((Length(mFiles) > 0) or (Trim(ARequest.Comment) <> '')) then
-    begin
-      if not mAttach.Comment(ARequest.Target, mSend, ARequest.Key, mAttach.CommentText(ARequest.Comment, mFiles),
-        ATimeoutMs, mError) then
-      begin
-        Result.Error := mError;
-        Exit;
-      end;
-      Result.Commented := True;
-    end;
-    Exit;
-  end;
-  // Rückfall (GitHub): Texte in den Kommentar, Bilder bleiben für die Zwischenablage.
-  Result.Fallback := True;
-  Result.Page := AProvider.IssuePage(ARequest.Target, ARequest.Key);
-  mTexts := nil;
-  for mFile in mFiles do
+    SendUploads(mAttach, mSend, ARequest, mFiles, ATimeoutMs, Result);
+  end
+  else
   begin
-    if mFile.IsImage then
-    begin
-      Result.Images := Result.Images + [mFile];
-    end
-    else
-    begin
-      mTexts := mTexts + [mFile];
-    end;
-  end;
-  if (Length(mTexts) > 0) or (ARequest.WithComment and (Trim(ARequest.Comment) <> '')) then
-  begin
-    if not mAttach.Comment(ARequest.Target, mSend, ARequest.Key, mAttach.CommentText(ARequest.Comment, mTexts),
-      ATimeoutMs, mError) then
-    begin
-      Result.Error := mError;
-      Exit;
-    end;
-    Result.Commented := True;
+    Result.Fallback := True;
+    Result.Page := AProvider.IssuePage(ARequest.Target, ARequest.Key);
+    SendFallback(mAttach, mSend, ARequest, mFiles, ATimeoutMs, Result);
   end;
 end;
 
