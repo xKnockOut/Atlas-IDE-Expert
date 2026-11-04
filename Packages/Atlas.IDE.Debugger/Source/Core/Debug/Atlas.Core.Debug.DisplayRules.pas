@@ -149,10 +149,14 @@ begin
   Result := Trim(ATypeName);
   Angle := Pos('<', Result);
   if Angle > 0 then
+  begin
     Result := Copy(Result, 1, Angle - 1);
+  end;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 procedure TAtlasDisplayRules.MapName(const AKey: string; AIndex: Integer);
@@ -160,12 +164,16 @@ var
   Existing: Integer;
 begin
   if AKey = '' then
+  begin
     Exit;
+  end;
   // Quelltext schlägt Projektdatei; sonst gilt die erste Regel des Namens.
   if FByName.TryGetValue(AKey, Existing) and
     ((FRules[Existing].Origin <> TDebugDisplayOrigin.Project) or
     (FRules[AIndex].Origin = TDebugDisplayOrigin.Project)) then
+  begin
     Exit;
+  end;
   FByName.AddOrSetValue(AKey, AIndex);
 end;
 
@@ -177,9 +185,13 @@ begin
   Rule := ARule;
   Rule.TypeName := Trim(Rule.TypeName);
   if Rule.Name = '' then
+  begin
     Rule.Name := ShortName(Rule.TypeName);
+  end;
   if (Rule.TypeName = '') or (not Rule.HasTemplate and (Rule.Children = nil)) then
+  begin
     Exit;
+  end;
   Index := FRules.Add(Rule);
   MapName(LowerCase(Rule.TypeName), Index);
   MapName(LowerCase(Rule.Name), Index);
@@ -191,13 +203,17 @@ var
   Name: string;
 begin
   if (Trim(ATypeName) = '') or (Trim(AFrom) = '') then
+  begin
     Exit;
+  end;
   for Name in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
+  begin
     if not FInherits.ContainsKey(LowerCase(Name)) or (Name = Trim(ATypeName)) then
     begin
       FInherits.AddOrSetValue(LowerCase(Name), Trim(AFrom));
       FInheritNames.AddOrSetValue(LowerCase(Name), Name);
     end;
+  end;
 end;
 
 function TAtlasDisplayRules.LoadJson(const AJson: string): Boolean;
@@ -214,12 +230,17 @@ begin
   try
     if not (Root is TJSONObject) or not TJSONObject(Root).TryGetValue<Integer>('format', Line) or
       (Line <> ServerFormat) then
+    begin
       Exit;
+    end;
     if TJSONObject(Root).GetValue('rules') is TJSONArray then
+    begin
       for Item in TJSONArray(TJSONObject(Root).GetValue('rules')) do
       begin
         if not (Item is TJSONObject) then
+        begin
           Continue;
+        end;
         Rule := Default(TAtlasDisplayRule);
         Rule.Line := -1;
         TJSONObject(Item).TryGetValue<string>('type', Rule.TypeName);
@@ -227,26 +248,41 @@ begin
         TJSONObject(Item).TryGetValue<string>('template', Rule.Template);
         TJSONObject(Item).TryGetValue<string>('file', Rule.FileName);
         if TJSONObject(Item).TryGetValue<Integer>('line', Line) then
+        begin
           Rule.Line := Line;
+        end;
         Origin := '';
         TJSONObject(Item).TryGetValue<string>('origin', Origin);
         if Origin = 'attribute' then
-          Rule.Origin := TDebugDisplayOrigin.Attribute
+        begin
+          Rule.Origin := TDebugDisplayOrigin.Attribute;
+        end
         else
+        begin
           Rule.Origin := TDebugDisplayOrigin.Comment;
+        end;
         Children := TJSONObject(Item).GetValue('children');
         if Children is TJSONArray then
+        begin
           for Child in TJSONArray(Children) do
+          begin
             if Child is TJSONString then
             begin
               Text := Trim(Child.Value);
               if Text <> '' then
+              begin
                 Rule.Children := Rule.Children + [Text];
+              end;
             end;
+          end;
+        end;
         Add(Rule);
       end;
+    end;
     if TJSONObject(Root).GetValue('inherits') is TJSONArray then
+    begin
       for Item in TJSONArray(TJSONObject(Root).GetValue('inherits')) do
+      begin
         if Item is TJSONObject then
         begin
           Text := '';
@@ -255,6 +291,8 @@ begin
           TJSONObject(Item).TryGetValue<string>('from', Origin);
           AddInherit(Text, Origin);
         end;
+      end;
+    end;
     Result := True;
   finally
     Root.Free;
@@ -276,9 +314,13 @@ begin
   Result := Lookup(ATypeName, Index);
   if not Result and (FInherits.TryGetValue(LowerCase(Trim(ATypeName)), From) or
     FInherits.TryGetValue(LowerCase(ShortName(ATypeName)), From)) then
+  begin
     Result := Lookup(From, Index);
+  end;
   if Result then
+  begin
     ARule := FRules[Index];
+  end;
 end;
 
 function TAtlasDisplayRules.FindChain(const AChain: array of string; out ARule: TAtlasDisplayRule): Boolean;
@@ -286,8 +328,12 @@ var
   Name: string;
 begin
   for Name in AChain do
+  begin
     if (Trim(Name) <> '') and Find(Name, ARule) then
+    begin
       Exit(True);
+    end;
+  end;
   ARule := Default(TAtlasDisplayRule);
   Result := False;
 end;
@@ -318,8 +364,12 @@ begin
       AddName(ShortName(Rule.TypeName));
     end;
     for Name in FInherits.Keys do
+    begin
       if Lookup(FInherits[Name], Index) then
+      begin
         AddName(FInheritNames[Name]);
+      end;
+    end;
   finally
     Seen.Free;
   end;
@@ -341,8 +391,12 @@ var
 begin
   Result := nil;
   for Rule in FRules do
+  begin
     if Rule.Origin = TDebugDisplayOrigin.Project then
+    begin
       Result := Result + [Rule.TypeName];
+    end;
+  end;
 end;
 
 { TAtlasDisplayRender }
@@ -350,9 +404,13 @@ end;
 class function TAtlasDisplayRender.ExpressionOf(const AExpression, APlaceholder: string): string;
 begin
   if (APlaceholder <> '') and (APlaceholder[1] = '[') then
-    Result := '(' + AExpression + ')' + APlaceholder
+  begin
+    Result := '(' + AExpression + ')' + APlaceholder;
+  end
   else
+  begin
     Result := '(' + AExpression + ').' + APlaceholder;
+  end;
 end;
 
 class function TAtlasDisplayRender.Missing(const APlaceholder: string): string;
@@ -367,10 +425,14 @@ var
 begin
   Result := AText;
   if AFormat = '' then
+  begin
     Exit;
+  end;
   Invariant := TFormatSettings.Invariant;
   if TryStrToFloat(Trim(AText), Value, Invariant) then
+  begin
     Result := FormatFloat(AFormat, Value);
+  end;
 end;
 
 class function TAtlasDisplayRender.PlaceholderText(const ASegment: TDebugDisplaySegment;
@@ -381,13 +443,19 @@ var
 begin
   Result := Missing(ASegment.Text);
   if not Assigned(AEval) or (ASegment.NeedsCall and not AOptions.AllowCalls) then
+  begin
     Exit;
+  end;
   // Ohne allowCalls keine Nebenwirkungen: Ein Getter scheitert und zeigt {?…}.
   Evaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
+  begin
     Evaluation := TAtlasVisualizerEvaluation.Calls;
+  end;
   if not AEval(ExpressionOf(AExpression, ASegment.Text), Evaluation, Value) then
+  begin
     Exit;
+  end;
   Result := FormatValue(TAtlasVisualizerFormat.Unquote(Value), ASegment.Format);
 end;
 
@@ -399,15 +467,25 @@ var
 begin
   Result := '';
   if not ARule.HasTemplate then
+  begin
     Exit;
+  end;
   Template := TDebugDisplayTemplate.Parse(ARule.Template);
   if not Template.Valid then
+  begin
     Exit;
+  end;
   for Segment in Template.Segments do
+  begin
     if Segment.Kind = TDebugDisplaySegmentKind.Text then
-      Result := Result + Segment.Text
+    begin
+      Result := Result + Segment.Text;
+    end
     else
+    begin
       Result := Result + PlaceholderText(Segment, AExpression, AOptions, AEval);
+    end;
+  end;
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
@@ -428,24 +506,36 @@ begin
   Unlimited.MaxLength := 0;
   Result.Summary := Render(ARule, AExpression, Unlimited, AEval);
   if Result.Summary = '' then
+  begin
     Result.Summary := AEvalResult;
+  end;
   Evaluation := TAtlasVisualizerEvaluation.Fields;
   if AOptions.AllowCalls then
+  begin
     Evaluation := TAtlasVisualizerEvaluation.Calls;
+  end;
   for Name in ARule.Children do
   begin
     Value := TAtlasDisplayRender.Missing(Name);
     if Assigned(AEval) and AEval(ExpressionOf(AExpression, Name), Evaluation, Raw) then
+    begin
       Value := Raw;
+    end;
     Result.Rows := Result.Rows + [TArray<string>.Create(Name, Value)];
   end;
   // Alle Felder: Feldliste des Debuggers (,r zeigt Objekte mit Feldnamen), sonst der Text der IDE.
   Raw := AEvalResult;
   if Assigned(AEval) and AEval(AExpression + ',r', TAtlasVisualizerEvaluation.Fields, Value) then
+  begin
     Raw := Value;
+  end;
   if TAtlasVisualizerFormat.ParseFields(Raw, Fields) then
+  begin
     for Field in Fields do
+    begin
       Result.AllRows := Result.AllRows + [TArray<string>.Create(Field.Name, Field.Value)];
+    end;
+  end;
   if ARule.Children = nil then
   begin
     Result.Rows := Result.AllRows;

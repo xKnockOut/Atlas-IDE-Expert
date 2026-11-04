@@ -31,6 +31,9 @@ type
     FApply: TButton;
     FCancel: TButton;
     FUpdating: Boolean;
+    procedure CreateSummary;
+    procedure CreateButtons;
+    procedure CreateLists;
     function FileCaption(AIndex: Integer): string;
     procedure ShowDiff;
     procedure UpdateSelection;
@@ -64,9 +67,6 @@ const
 { TAtlasBulkFixDialog }
 
 constructor TAtlasBulkFixDialog.CreateDialog(AOwner: TComponent; APreview: TAtlasBulkFixPreview);
-var
-  mBottom, mTop: TPanel;
-  mSplitter: TSplitter;
 begin
   inherited CreateNew(AOwner);
   FPreview := APreview;
@@ -80,6 +80,17 @@ begin
   ClientWidth := ScaleValue(860);
   ClientHeight := ScaleValue(520);
 
+  CreateSummary;
+  CreateButtons;
+  CreateLists;
+  ActiveControl := FFiles;
+end;
+
+/// <summary>Oben die Zusammenfassung des Servers.</summary>
+procedure TAtlasBulkFixDialog.CreateSummary;
+var
+  mTop: TPanel;
+begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
@@ -93,8 +104,14 @@ begin
   FSummary.Margins.SetBounds(ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap), ScaleValue(Gap div 2));
   FSummary.ShowAccelChar := False;
   FSummary.WordWrap := True;
-  FSummary.Caption := APreview.Summary;
+  FSummary.Caption := FPreview.Summary;
+end;
 
+/// <summary>Unten die Auswahl, „Korrigieren“ und „Abbrechen“.</summary>
+procedure TAtlasBulkFixDialog.CreateButtons;
+var
+  mBottom: TPanel;
+begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
@@ -126,7 +143,13 @@ begin
   FSelection.Left := ScaleValue(Gap);
   FSelection.Top := ScaleValue(Gap + 6);
   FSelection.ShowAccelChar := False;
+end;
 
+/// <summary>Links die Dateien, rechts der Diff der markierten Datei.</summary>
+procedure TAtlasBulkFixDialog.CreateLists;
+var
+  mSplitter: TSplitter;
+begin
   FFiles := TCheckListBox.Create(Self);
   FFiles.Parent := Self;
   FFiles.Align := alLeft;
@@ -149,7 +172,6 @@ begin
   FDiff.WordWrap := False;
   FDiff.Font.Name := 'Consolas';
   FDiff.Font.Size := 9;
-  ActiveControl := FFiles;
 end;
 
 function TAtlasBulkFixDialog.FileCaption(AIndex: Integer): string;

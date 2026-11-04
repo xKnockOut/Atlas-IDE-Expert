@@ -134,7 +134,9 @@ end;
 procedure TAtlasDiscoverState.Block(const AId: string);
 begin
   if (Trim(AId) <> '') and not IsBlocked(AId) then
+  begin
     Blocked := Blocked + [Trim(AId)];
+  end;
 end;
 
 function TAtlasDiscoverState.ToJson: string;
@@ -148,9 +150,13 @@ begin
     List := TJSONArray.Create;
     Root.AddPair('blocked', List);
     for Id in Blocked do
+    begin
       List.Add(Id);
+    end;
     if Last <> '' then
+    begin
       Root.AddPair('last', Last);
+    end;
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -163,7 +169,9 @@ var
 begin
   Result := Default(TAtlasDiscoverState);
   if Copy(TrimLeft(AJson), 1, 1) <> '{' then
+  begin
     Exit;
+  end;
   try
     Root := TJSONObject.ParseJSONValue(AJson);
   except
@@ -172,15 +180,25 @@ begin
   end;
   try
     if not (Root is TJSONObject) then
+    begin
       Exit;
+    end;
     Value := TJSONObject(Root).GetValue('blocked');
     if Value is TJSONArray then
+    begin
       for Item in TJSONArray(Value) do
+      begin
         if Item is TJSONString then
+        begin
           Result.Block(TJSONString(Item).Value);
+        end;
+      end;
+    end;
     Value := TJSONObject(Root).GetValue('last');
     if Value is TJSONString then
+    begin
       Result.Last := Trim(TJSONString(Value).Value);
+    end;
   finally
     Root.Free;
   end;
@@ -193,8 +211,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AList) do
+  begin
     if SameText(AList[Index], Trim(AId)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -207,13 +229,17 @@ begin
   Result := 0;
   ALastUsed := 0;
   if AUsage = nil then
+  begin
     Exit;
+  end;
   for Id in ATip.UsageIds do
   begin
     Entry := AUsage.Entry(Id);
     Inc(Result, Entry.Total);
     if Entry.LastUsed > ALastUsed then
+    begin
       ALastUsed := Entry.LastUsed;
+    end;
   end;
 end;
 
@@ -231,11 +257,19 @@ var
 begin
   Result := nil;
   for Index in AIndexes do
+  begin
     if Index > AAfter then
+    begin
       Result := Result + [Index];
+    end;
+  end;
   for Index in AIndexes do
+  begin
     if Index <= AAfter then
+    begin
       Result := Result + [Index];
+    end;
+  end;
 end;
 
 class function TAtlasDiscover.IsEnabled(const ATip: TAtlasTip; const ASettingOn,
@@ -243,9 +277,13 @@ class function TAtlasDiscover.IsEnabled(const ATip: TAtlasTip; const ASettingOn,
 begin
   // Abgeschaltete Funktion: Einstellung aus (oder unbekannt) bzw. Befehl nicht in der Befehlspalette (#502).
   if (ATip.Setting <> '') and Assigned(ASettingOn) and not ASettingOn(ATip.Setting) then
+  begin
     Exit(False);
+  end;
   if (ATip.Command <> '') and Assigned(ACommandExists) and not ACommandExists(ATip.Command) then
+  begin
     Exit(False);
+  end;
   Result := True;
 end;
 
@@ -255,11 +293,15 @@ var
   Value: string;
 begin
   if Trim(AName) = '' then
+  begin
     Exit(False);
+  end;
   // Über Save statt eines Falls je Feld: jede Einstellung ist ohne Änderung hier erreichbar.
   Store := TAtlasMemorySettingsStore.FromSettings(ASettings);
   if Store.HasInteger(AName) then
+  begin
     Exit(Store.ReadInteger(AName, 0) <> 0);
+  end;
   Value := Trim(Store.Text(AName));
   Result := (Value <> '') and not SameText(Value, 'off');
 end;
@@ -285,43 +327,65 @@ begin
     begin
       // Abgeschaltete Funktionen und gesperrte Tipps kommen nie.
       if AState.IsBlocked(ATips[Index].Id) then
+      begin
         Continue;
+      end;
       if Assigned(AAllowed) and not AAllowed(ATips[Index]) then
+      begin
         Continue;
+      end;
       All := All + [Index];
       if not Tracking then
+      begin
         Continue;
+      end;
       UsageOf(ATips[Index], AUsage, Moment);
       LastUsed[Index] := Moment;
       if NeverUsed(ATips[Index], AUsage) then
-        Fresh := Fresh + [Index]
+      begin
+        Fresh := Fresh + [Index];
+      end
       else
+      begin
         Used.Add(Index);
+      end;
     end;
     After := TAtlasTipCatalog.IndexOf(ATips, AState.Last);
     if not Tracking then
     begin
       // Ohne Zählung der Reihe nach.
       for Index in RotateAfter(All, After) do
+      begin
         Result := Result + [ATips[Index].Id];
+      end;
       Exit;
     end;
     for Index in RotateAfter(Fresh, After) do
+    begin
       Result := Result + [ATips[Index].Id];
+    end;
     // Dann die benutzten: am längsten nicht benutzt zuerst, bei Gleichstand wie in der Datei.
     Used.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         if LastUsed[A] < LastUsed[B] then
-          Result := -1
+        begin
+          Result := -1;
+        end
         else if LastUsed[A] > LastUsed[B] then
-          Result := 1
+        begin
+          Result := 1;
+        end
         else
+        begin
           Result := A - B;
+        end;
       end));
     Known := Used.ToArray;
     for Index in Known do
+    begin
       Result := Result + [ATips[Index].Id];
+    end;
   finally
     Used.Free;
   end;
@@ -332,21 +396,35 @@ var
   Days: Integer;
 begin
   if ALastUsed <= 0 then
+  begin
     Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0));
+  end;
   // Kalendertage: gestern 23 Uhr ist „gestern“, auch wenn erst eine Stunde vergangen ist.
   Days := Trunc(ANow) - Trunc(ALastUsed);
   if Days <= 0 then
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Today, 0)
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Today, 0);
+  end
   else if Days = 1 then
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1)
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1);
+  end
   else if Days < 14 then
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, Days)
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, Days);
+  end
   else if Days < 60 then
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, Days div 7)
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, Days div 7);
+  end
   else if Days < 365 then
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, Days div 30)
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, Days div 30);
+  end
   else
+  begin
     Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, Days div 365);
+  end;
 end;
 
 class function TAtlasDiscover.UsageAge(const ATip: TAtlasTip; AUsage: TAtlasCommandUsage; ATracking: Boolean;
@@ -357,13 +435,19 @@ var
 begin
   // Ohne Zählung weiß Atlas nichts über die Nutzung: kein Hinweis.
   if not ATracking or (AUsage = nil) then
+  begin
     Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0));
+  end;
   Total := UsageOf(ATip, AUsage, LastUsed);
   if (Total = 0) and (LastUsed = 0) then
+  begin
     Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0));
+  end;
   if LastUsed = 0 then
+  begin
     // Gezählt, aber ohne Datum (ältere Datei): benutzt, Zeitpunkt unbekannt.
     Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.None, 0));
+  end;
   Result := AgeOf(LastUsed, ANow);
 end;
 
@@ -373,11 +457,19 @@ var
 begin
   Result := nil;
   for Id in AQueue do
+  begin
     if (IndexIn(AAllowed, Id) >= 0) and (IndexIn(Result, Id) < 0) then
+    begin
       Result := Result + [Id];
+    end;
+  end;
   for Id in AAllowed do
+  begin
     if IndexIn(Result, Id) < 0 then
+    begin
       Result := Result + [Id];
+    end;
+  end;
 end;
 
 class function TAtlasDiscover.Pick(const AQueue, AAllowed: TArray<string>; const ACurrent: string): string;
@@ -389,18 +481,26 @@ begin
   Result := '';
   List := Effective(AQueue, AAllowed);
   if Length(List) = 0 then
+  begin
     Exit;
+  end;
   if IndexIn(List, ACurrent) >= 0 then
+  begin
     Exit(List[IndexIn(List, ACurrent)]);
+  end;
   // Der bisherige Tipp ist weg (gesperrt, Funktion aus): der nächste nach ihm.
   Index := IndexIn(AQueue, ACurrent);
   if Index >= 0 then
+  begin
     for Step := 1 to Length(AQueue) do
     begin
       Candidate := AQueue[(Index + Step) mod Length(AQueue)];
       if IndexIn(List, Candidate) >= 0 then
+      begin
         Exit(List[IndexIn(List, Candidate)]);
+      end;
     end;
+  end;
   Result := List[0];
 end;
 
@@ -412,10 +512,14 @@ begin
   Result := '';
   List := Effective(AQueue, AAllowed);
   if Length(List) = 0 then
+  begin
     Exit;
+  end;
   Index := IndexIn(List, ACurrent);
   if Index < 0 then
+  begin
     Exit(Pick(AQueue, AAllowed, ACurrent));
+  end;
   Result := List[(Index + 1) mod Length(List)];
 end;
 

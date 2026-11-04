@@ -118,7 +118,9 @@ begin
   FTimer.Interval := TAtlasInlineDiagnostics.PauseMs;
   FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+  end;
 end;
 
 destructor TAtlasProblemsPainter.Destroy;
@@ -127,7 +129,9 @@ var
 begin
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     Services.RemoveEditorEventsNotifier(FIndex);
+  end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
   FreeAndNil(FTimer);
@@ -157,7 +161,9 @@ begin
     FCursorText := AText;
     FTypedAt := GetTickCount;
     if FTypedAt = 0 then
+    begin
       FTypedAt := 1;
+    end;
     // Nach der Pause einmal neu zeichnen.
     FTimer.Enabled := False;
     FTimer.Enabled := True;
@@ -171,7 +177,9 @@ var
 begin
   Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
   if Key = FFontKey then
+  begin
     Exit;
+  end;
   FFont.Assign(AEditorFont);
   FFont.Style := [fsItalic];
   FFontKey := Key;
@@ -182,7 +190,9 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  begin
     TAtlasIdeEditorRefresh.InvalidateTop(Services);
+  end;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
@@ -210,11 +220,15 @@ begin
   Mode := TAtlasIdeSettings.InlineDiagnosticsMode;
   if (Mode = TAtlasInlineDiagnosticsMode.Off) or
     not TAtlasInlineDiagnostics.Pick(AProblems, Context.LogicalLineNum - 1, Mode, Found) then
+  begin
     Exit;
+  end;
   Caption := TAtlasInlineDiagnostics.Caption(Found);
   // In .atlas ausgeblendet (#628): an dieser Codezeile oder in der Datei.
   if (Caption = '') or TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlineDiagnostics, Context.FileName, AText) then
+  begin
     Exit;
+  end;
   // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
   Cell := Context.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
     Context.EditorLineNum);
@@ -224,7 +238,9 @@ begin
   // Hintergrund des Editor-Farbschemas am rechten Rand (dort steht nichts), nicht das IDE-Thema.
   Sample := GetPixel(DC, Rect.Right - 2, Rect.Top + 1);
   if Sample = CLR_INVALID then
+  begin
     Sample := COLORREF(ColorToRGB(Context.Canvas.Brush.Color));
+  end;
   Front := TAtlasColorMath.Mix(ProblemColor(TAtlasIdeStyle.Colors, Found.Problem), TAtlasColor(Sample), Strength);
   EnsureFont(Context.Canvas.Font);
   Saved := SaveDC(DC);
@@ -261,21 +277,31 @@ var
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
+  begin
     Exit;
+  end;
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
     Exit;
+  end;
   try
     Line := Context.LogicalLineNum - 1;
     Problems := FStore.OnLine(Context.FileName, Line);
     if Length(Problems) = 0 then
+    begin
       Exit;
+    end;
     // Erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme (P-10).
     if not TAtlasIdeSettings.ProblemMarksOn then
+    begin
       Exit;
+    end;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
       not FStore.LineText(Context.FileName, Line, Stored) then
+    begin
       Exit;
+    end;
     TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     Text := Stored;
     // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
@@ -284,34 +310,50 @@ begin
     // Nur, wenn die Zeile im Editor der im Speicher entspricht.
     if TrimRight(TAtlasPairs.DisplayLine(LineState.Text, TabWidth)) <>
       TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth)) then
+    begin
       Exit;
+    end;
     // In .atlas ausgeblendet (#628): diese Codezeile oder die ganze Datei.
     if TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, Context.FileName, Text) then
+    begin
       Exit;
+    end;
     Colors := TAtlasIdeStyle.Colors;
     Code := LineState.CodeRect;
     DC := Context.Canvas.Handle;
     Saved := SaveDC(DC);
     try
       if Code.Right > Code.Left then
+      begin
         IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      end;
       for Problem in Problems do
       begin
         if Line = Problem.StartLine then
-          From := Problem.StartCharacter
+        begin
+          From := Problem.StartCharacter;
+        end
         else
+        begin
           From := 0;
+        end;
         if Line = Problem.EndLine then
-          Till := Problem.EndCharacter
+        begin
+          Till := Problem.EndCharacter;
+        end
         else
+        begin
           Till := Length(Text);
+        end;
         From := EnsureRange(From, 0, Length(Text));
         Till := EnsureRange(Till, 0, Length(Text));
         // Leerer Bereich: ein Zeichen, am Zeilenende das letzte.
         if Till <= From then
         begin
           if From >= Length(Text) then
+          begin
             From := Max(0, Length(Text) - 1);
+          end;
           Till := From + 1;
         end;
         First := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, From, TabWidth), Context.EditorLineNum);
@@ -351,9 +393,13 @@ begin
               Inc(X, 2);
               Up := not Up;
               if Up then
-                LineTo(DC, X, Y - 2)
+              begin
+                LineTo(DC, X, Y - 2);
+              end
               else
+              begin
                 LineTo(DC, X, Y);
+              end;
             end;
           end;
         finally
@@ -362,9 +408,13 @@ begin
         end;
         // Befund mit Regel des Servers: Kommentar über der ersten Zeile; sonst Eintrag für diese Codezeile.
         if not Problem.IsCompiler and (Problem.Code <> '') then
-          Target := TAtlasHideTarget.Finding(Context.FileName, Problem.StartLine, Problem.Code, Text)
+        begin
+          Target := TAtlasHideTarget.Finding(Context.FileName, Problem.StartLine, Problem.Code, Text);
+        end
         else
+        begin
           Target := TAtlasHideTarget.Finding(Context.FileName, Line, '', Text);
+        end;
         Target.Caption := Problem.Caption;
         TAtlasIdeElements.Painted(Target, TRect.Create(Left, Rect.Top, Right, Rect.Bottom), Context.EditView.TopRow,
           Rect.Height);
@@ -373,7 +423,9 @@ begin
       RestoreDC(DC, Saved);
     end;
     if not Busy then
+    begin
       PaintInline(Rect, Context, Problems, Text, TabWidth);
+    end;
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do

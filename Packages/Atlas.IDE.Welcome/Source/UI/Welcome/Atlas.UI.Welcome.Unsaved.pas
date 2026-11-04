@@ -167,7 +167,9 @@ begin
   FSource := AValue;
   UpdateContent;
   if FSource <> nil then
+  begin
     FSource.Shown;
+  end;
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.UpdateContent;
@@ -177,14 +179,18 @@ begin
   Count := Length(FView.Rows);
   FView := Default(TAtlasUnsavedView);
   if FSource <> nil then
+  begin
     FView := FSource.View;
+  end;
   // Die Rechtecke der Schaltflächen entstehen beim Zeichnen.
   FButtonRects := nil;
   FHintRow := -1;
   FBox.Invalidate;
   inherited;
   if Count <> Length(FView.Rows) then
+  begin
     HeightChanged;
+  end;
 end;
 
 function TAtlasWelcomeUnsavedFrame.BodyHeight: Integer;
@@ -193,7 +199,9 @@ var
 begin
   Rows := Length(FView.Rows);
   if Rows < 1 then
+  begin
     Rows := 1;
+  end;
   Result := Rows * ScaleValue(RowHeight) + ScaleValue(Indent);
 end;
 
@@ -211,14 +219,18 @@ class function TAtlasWelcomeUnsavedFrame.LocalText(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc > 0 then
+  begin
     Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  end;
 end;
 
 function LocalDate(AUtc: TDateTime): string;
 begin
   Result := '';
   if AUtc > 0 then
+  begin
     Result := FormatDateTime('ddddd', TTimeZone.Local.ToLocalTime(AUtc));
+  end;
 end;
 
 function Joined(const AItems: TArray<string>): string;
@@ -230,7 +242,9 @@ class function TAtlasWelcomeUnsavedFrame.TitleText(const ARow: TAtlasUnsavedRow)
 begin
   Result := ARow.Name;
   if ARow.Branch <> '' then
+  begin
     Result := Result + Separator + ARow.Branch;
+  end;
 end;
 
 class function TAtlasWelcomeUnsavedFrame.WhatText(const AItem: TAtlasUnsavedItem): string;
@@ -242,45 +256,69 @@ begin
       if (AItem.Added = 0) and (AItem.Deleted = 0) then
       begin
         if AItem.Count = 1 then
-          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedFileOne)
+        begin
+          Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedFileOne);
+        end
         else
+        begin
           Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFiles, [AItem.Count]);
+        end;
       end
       else
       begin
         Parts := nil;
         if AItem.Modified > 0 then
+        begin
           Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartModified, [AItem.Modified])];
+        end;
         if AItem.Added > 0 then
+        begin
           Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartAdded, [AItem.Added])];
+        end;
         if AItem.Deleted > 0 then
+        begin
           Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPartDeleted, [AItem.Deleted])];
+        end;
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedFilesMixed, [AItem.Count, Joined(Parts)]);
       end;
     TAtlasUnsavedKind.Conflicts:
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedConflicts, [AItem.Count]);
     TAtlasUnsavedKind.Commits:
       if AItem.Count = 1 then
-        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)])
+      begin
+        Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommitOne, [Joined(AItem.Branches)]);
+      end
       else
+      begin
         Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedCommits,
           [AItem.Count, Joined(AItem.Branches)]);
+      end;
     TAtlasUnsavedKind.NoUpstream:
       begin
         if AItem.Count = 1 then
-          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)])
+        begin
+          Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstreamOne, [Joined(AItem.Branches)]);
+        end
         else
+        begin
           Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedNoUpstream,
             [AItem.Count, Joined(AItem.Branches)]);
+        end;
         if AItem.Commits > 0 then
+        begin
           Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedLocalCommits, [Result, AItem.Commits]);
+        end;
       end;
   else
     if AItem.Count = 1 then
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)])
+    begin
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStash, [AItem.Name, LocalDate(AItem.Since)]);
+    end
     else
+    begin
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedStashes, [AItem.Count, AItem.Name,
         LocalDate(AItem.Since)]);
+    end;
   end;
 end;
 
@@ -291,7 +329,9 @@ var
 begin
   Result := '';
   if ASince <= 0 then
+  begin
     Exit;
+  end;
   TAtlasWelcomeUnsaved.Age(ASince, ANowUtc, Value, AgeUnit);
   case AgeUnit of
     TAtlasUnsavedAgeUnit.Minutes:
@@ -300,9 +340,13 @@ begin
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedSinceHours, [Value]);
   else
     if Value = 1 then
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedSinceDayOne)
+    begin
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedSinceDayOne);
+    end
     else
+    begin
       Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedSinceDays, [Value]);
+    end;
   end;
 end;
 
@@ -314,28 +358,42 @@ begin
   // Externals bzw. Submodule (#1292): die Summe mit den Anteilen je Arbeitskopie.
   mPlaces := TAtlasWelcomeUnsaved.PlacesText(ARow.Item, ARow.Name);
   if mPlaces <> '' then
+  begin
     Result := Result + ' (' + mPlaces + ')';
+  end;
   Age := AgeText(ARow.Item.Since, ANowUtc);
   if Age <> '' then
+  begin
     Result := Result + Separator + Age;
+  end;
 end;
 
 class function TAtlasWelcomeUnsavedFrame.ButtonText(const AItem: TAtlasUnsavedItem): string;
 begin
   if AItem.CanPush then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPush)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPush);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedView);
+  end;
 end;
 
 class function TAtlasWelcomeUnsavedFrame.EmptyText(const AView: TAtlasUnsavedView): string;
 begin
   if AView.Hidden > 0 then
-    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHiddenOnly, [AView.Hidden])
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHiddenOnly, [AView.Hidden]);
+  end
   else if AView.Querying and not AView.Known then
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedQuerying)
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedQuerying);
+  end
   else
+  begin
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedClean);
+  end;
 end;
 
 class function TAtlasWelcomeUnsavedFrame.LevelColor(ALevel: TAtlasUnsavedLevel): TColor;
@@ -360,15 +418,25 @@ begin
     Lines.Add(ARow.Project);
     Lines.Add(WhatText(ARow.Item));
     if Length(ARow.Item.Branches) > 0 then
+    begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHintBranches, [Joined(ARow.Item.Branches)]));
+    end;
     if ARow.Item.Since > 0 then
+    begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedHintSince, [LocalText(ARow.Item.Since)]));
+    end;
     if ARow.Stale and (ARow.At > 0) then
+    begin
       Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsStale, [LocalText(ARow.At)]));
+    end;
     if ARow.Item.CanPush then
-      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedHintPush))
+    begin
+      Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedHintPush));
+    end
     else
+    begin
       Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedHintView));
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -468,7 +536,9 @@ begin
   Result.Row := -1;
   Result.Button := False;
   if (Y < RowTop(0)) or (Length(FView.Rows) = 0) then
+  begin
     Exit;
+  end;
   Result.Row := (Y - RowTop(0)) div ScaleValue(RowHeight);
   if Result.Row > High(FView.Rows) then
   begin
@@ -476,7 +546,9 @@ begin
     Exit;
   end;
   if Result.Row <= High(FButtonRects) then
+  begin
     Result.Button := FButtonRects[Result.Row].Contains(Point(X, Y));
+  end;
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.ClickAt(const AHit: TAtlasUnsavedHit);
@@ -485,7 +557,9 @@ var
   Row: TAtlasUnsavedRow;
 begin
   if (FSource = nil) or not AHit.Button or (AHit.Row < 0) or (AHit.Row > High(FView.Rows)) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   Row := FView.Rows[AHit.Row];
   // Die Quelle füllt den Bereich danach neu (und „Push …“ zeigt einen Dialog): nicht im eigenen Mausereignis.
@@ -493,9 +567,13 @@ begin
     procedure
     begin
       if Row.Item.CanPush then
-        mSource.Push(Row)
+      begin
+        mSource.Push(Row);
+      end
       else
+      begin
         mSource.Show(Row);
+      end;
     end);
 end;
 
@@ -505,16 +583,26 @@ var
 begin
   Hit := HitTest(X, Y);
   if Hit.Button then
-    FBox.Cursor := crHandPoint
+  begin
+    FBox.Cursor := crHandPoint;
+  end
   else
+  begin
     FBox.Cursor := crDefault;
+  end;
   if Hit.Row = FHintRow then
+  begin
     Exit;
+  end;
   FHintRow := Hit.Row;
   if Hit.Row >= 0 then
-    FBox.Hint := HintFor(FView.Rows[Hit.Row])
+  begin
+    FBox.Hint := HintFor(FView.Rows[Hit.Row]);
+  end
   else
+  begin
     FBox.Hint := '';
+  end;
   Application.CancelHint;
 end;
 
@@ -522,7 +610,9 @@ procedure TAtlasWelcomeUnsavedFrame.BoxMouseUp(Sender: TObject; Button: TMouseBu
   Y: Integer);
 begin
   if Button = mbLeft then
+  begin
     ClickAt(HitTest(X, Y));
+  end;
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.MenuPopup(Sender: TObject);
@@ -540,7 +630,9 @@ begin
   ARow := Default(TAtlasUnsavedRow);
   Result := (FSource <> nil) and (FMenuRow >= 0) and (FMenuRow <= High(FView.Rows));
   if Result then
+  begin
     ARow := FView.Rows[FMenuRow];
+  end;
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.OpenFolderClick(Sender: TObject);
@@ -549,7 +641,9 @@ var
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
@@ -564,7 +658,9 @@ var
   Row: TAtlasUnsavedRow;
 begin
   if not MenuTarget(Row) then
+  begin
     Exit;
+  end;
   mSource := FSource;
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure

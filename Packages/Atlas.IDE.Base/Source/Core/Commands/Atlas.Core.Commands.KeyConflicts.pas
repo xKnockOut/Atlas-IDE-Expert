@@ -490,35 +490,53 @@ end;
 function TAtlasKeyEntry.Choice: TAtlasKeyChoice;
 begin
   if Priority then
-    Result := TAtlasKeyChoice.UseAtlas
+  begin
+    Result := TAtlasKeyChoice.UseAtlas;
+  end
   else
+  begin
     Result := TAtlasKeyChoice.LeaveOther;
+  end;
 end;
 
 procedure TAtlasKeyEntry.Choose(AChoice: TAtlasKeyChoice);
 begin
   Priority := AChoice = TAtlasKeyChoice.UseAtlas;
   if Priority and (Key = 0) then
+  begin
     Key := IdeKey;
+  end;
 end;
 
 function TAtlasKeyEntry.Status(const AOwner: string): TAtlasKeyStatus;
 begin
   if Disabled then
-    Result := TAtlasKeyStatus.NoKey
+  begin
+    Result := TAtlasKeyStatus.NoKey;
+  end
   else if Key = 0 then
   begin
     if IdeKey <> 0 then
-      Result := TAtlasKeyStatus.IdeKey
+    begin
+      Result := TAtlasKeyStatus.IdeKey;
+    end
     else
+    begin
       Result := TAtlasKeyStatus.NoKey;
+    end;
   end
   else if AOwner = '' then
-    Result := TAtlasKeyStatus.Free
+  begin
+    Result := TAtlasKeyStatus.Free;
+  end
   else if Priority then
-    Result := TAtlasKeyStatus.AtlasWins
+  begin
+    Result := TAtlasKeyStatus.AtlasWins;
+  end
   else
+  begin
     Result := TAtlasKeyStatus.Left;
+  end;
 end;
 
 { TAtlasKeyOwner }
@@ -549,9 +567,11 @@ begin
     TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
   for Digit := 0 to 9 do
+  begin
     Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + Digit),
       'IDE: Lesezeichen ' + IntToStr(Digit) + ' umschalten'), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + Digit),
       'IDE: Zu Lesezeichen ' + IntToStr(Digit) + ' springen')];
+  end;
 end;
 
 class function TAtlasKeyConflicts.OwnerOf(AShortCut: Word; const AKeys: TArray<TAtlasKeyOwner>): string;
@@ -560,10 +580,16 @@ var
 begin
   Result := '';
   if AShortCut = 0 then
+  begin
     Exit;
+  end;
   for Key in AKeys do
+  begin
     if Key.ShortCut = AShortCut then
+    begin
       Exit(Key.Owner);
+    end;
+  end;
 end;
 
 class function TAtlasKeyConflicts.ShouldBind(AShortCut: Word; const AOwner: string; APriority: Boolean): Boolean;
@@ -596,10 +622,14 @@ begin
     begin
       Name := ExtractFileName(Module);
       if Name.StartsWith(Known[Index].Prefix, True) then
+      begin
         Found := True;
+      end;
     end;
     if Found then
+    begin
       Result := Result + [Known[Index].Name];
+    end;
   end;
 end;
 

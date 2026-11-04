@@ -109,8 +109,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if Pos(Word, AText) > 0 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -119,8 +123,12 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     if AText = Word then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -133,20 +141,30 @@ begin
   // Haltepunkt vor Auswerten: „Ausdruck auswerten“ steht auch im Haltepunktdialog, aber nicht im Titel.
   Text := Fold(AClassName + ' ' + ACaption);
   if ContainsAny(Text, BreakpointWords) then
-    Result := TAtlasDebugDialog.Breakpoint
+  begin
+    Result := TAtlasDebugDialog.Breakpoint;
+  end
   else if ContainsAny(Text, WatchWords) then
-    Result := TAtlasDebugDialog.Watch
+  begin
+    Result := TAtlasDebugDialog.Watch;
+  end
   else if ContainsAny(Text, EvaluateWords) then
-    Result := TAtlasDebugDialog.Evaluate
+  begin
+    Result := TAtlasDebugDialog.Evaluate;
+  end
   else
+  begin
     Result := TAtlasDebugDialog.None;
+  end;
 end;
 
 class function TAtlasDebugDialogs.CleanLabel(const ALabel: string): string;
 begin
   Result := Fold(Trim(StringReplace(ALabel, '&', '', [rfReplaceAll])));
   while (Result <> '') and CharInSet(Result[Length(Result)], [':', '.', ' ']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TAtlasDebugDialogs.FieldOf(ADialog: TAtlasDebugDialog; const ALabel: string): TAtlasDebugField;
@@ -158,19 +176,31 @@ begin
   case ADialog of
     TAtlasDebugDialog.Evaluate:
       if (Text = '') or IsAny(Text, ['expression', 'ausdruck']) then
+      begin
         Result := TAtlasDebugField.Expression;
+      end;
     TAtlasDebugDialog.Watch:
       if IsAny(Text, ['expression', 'ausdruck']) then
+      begin
         Result := TAtlasDebugField.Expression;
+      end;
     TAtlasDebugDialog.Breakpoint:
       if IsAny(Text, ['condition', 'bedingung']) then
-        Result := TAtlasDebugField.Condition
+      begin
+        Result := TAtlasDebugField.Condition;
+      end
       else if IsAny(Text, ['eval expression', 'evaluate expression', 'ausdruck auswerten', 'auswertung']) then
-        Result := TAtlasDebugField.LogExpression
+      begin
+        Result := TAtlasDebugField.LogExpression;
+      end
       else if IsAny(Text, ['filename', 'file name', 'dateiname', 'datei']) then
-        Result := TAtlasDebugField.FileName
+      begin
+        Result := TAtlasDebugField.FileName;
+      end
       else if IsAny(Text, ['line number', 'line', 'zeilennummer', 'zeile']) then
+      begin
         Result := TAtlasDebugField.LineNumber;
+      end;
     TAtlasDebugDialog.None: ;
   end;
 end;
@@ -185,9 +215,13 @@ var
   Line: Integer;
 begin
   if TryStrToInt(Trim(ALineText), Line) and (Line >= 1) then
-    Result := Line - 1
+  begin
+    Result := Line - 1;
+  end
   else
+  begin
     Result := -1;
+  end;
 end;
 
 { TAtlasExpressionEdit }
@@ -198,12 +232,18 @@ var
 begin
   Caret := ACaret;
   if Caret > Length(AText) then
+  begin
     Caret := Length(AText);
+  end;
   if Caret < 0 then
+  begin
     Caret := 0;
+  end;
   Start := Caret;
   while (Start > 0) and TTextChars.IsIdentChar(AText[Start]) do
+  begin
     Dec(Start);
+  end;
   Result := Copy(AText, Start + 1, Caret - Start);
 end;
 
@@ -214,13 +254,19 @@ var
 begin
   Result := False;
   if (Length(ANew) <> Length(AOld) + 1) or (ACaret < 1) or (ACaret > Length(ANew)) then
+  begin
     Exit;
+  end;
   // Genau das Zeichen vor der Schreibmarke kam dazu, der Rest ist gleich.
   if Copy(ANew, 1, ACaret - 1) + Copy(ANew, ACaret + 1, MaxInt) <> AOld then
+  begin
     Exit;
+  end;
   Typed := ANew[ACaret];
   if Typed = '.' then
+  begin
     Exit(True);
+  end;
   Prefix := PrefixAt(ANew, ACaret);
   // Erstes Zeichen eines Bezeichners, keine Zahl.
   Result := (Length(Prefix) = 1) and not CharInSet(Typed, ['0'..'9']);
@@ -233,15 +279,23 @@ var
 begin
   Caret := ACaret;
   if Caret > Length(AText) then
+  begin
     Caret := Length(AText);
+  end;
   if Caret < 0 then
+  begin
     Caret := 0;
+  end;
   Start := Caret - APrefixLength;
   if Start < 0 then
+  begin
     Start := 0;
+  end;
   // Den Rest eines Worts hinter der Schreibmarke mit ersetzen, wie im Editor.
   while (Caret < Length(AText)) and TTextChars.IsIdentChar(AText[Caret + 1]) do
+  begin
     Inc(Caret);
+  end;
   ANewText := Copy(AText, 1, Start) + AInsert + Copy(AText, Caret + 1, MaxInt);
   ANewCaret := Start + Length(AInsert);
 end;
@@ -258,7 +312,9 @@ begin
   inherited Create;
   FMax := AMax;
   if FMax < 1 then
+  begin
     FMax := 1;
+  end;
   FProjects := TDictionary<string, TArray<string>>.Create;
 end;
 
@@ -283,16 +339,26 @@ begin
   Expression := Trim(AExpression);
   Result := False;
   if Expression = '' then
+  begin
     Exit;
+  end;
   Key := KeyOf(AProject);
   if not FProjects.TryGetValue(Key, Old) then
+  begin
     Old := nil;
+  end;
   if (Length(Old) > 0) and (Old[0] = Expression) then
+  begin
     Exit;
+  end;
   New := TArray<string>.Create(Expression);
   for Item in Old do
+  begin
     if (Item <> Expression) and (Length(New) < FMax) then
+    begin
       New := New + [Item];
+    end;
+  end;
   FProjects.AddOrSetValue(Key, New);
   Result := True;
 end;
@@ -300,7 +366,9 @@ end;
 function TAtlasExpressionHistory.Items(const AProject: string): TArray<string>;
 begin
   if not FProjects.TryGetValue(KeyOf(AProject), Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TAtlasExpressionHistory.Remove(const AProject, AExpression: string): Boolean;
@@ -312,19 +380,33 @@ begin
   Key := KeyOf(AProject);
   Expression := Trim(AExpression);
   if not FProjects.TryGetValue(Key, Old) then
+  begin
     Exit;
+  end;
   New := nil;
   for Item in Old do
+  begin
     if Item = Expression then
-      Result := True
+    begin
+      Result := True;
+    end
     else
+    begin
       New := New + [Item];
+    end;
+  end;
   if not Result then
+  begin
     Exit;
+  end;
   if Length(New) = 0 then
-    FProjects.Remove(Key)
+  begin
+    FProjects.Remove(Key);
+  end
   else
+  begin
     FProjects.AddOrSetValue(Key, New);
+  end;
 end;
 
 procedure TAtlasExpressionHistory.Clear;
@@ -344,23 +426,35 @@ begin
   try
     Result := Root is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     Projects := TJSONObject(Root).GetValue('projects');
     Result := Projects is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     for Pair in TJSONObject(Projects) do
     begin
       if not (Pair.JsonValue is TJSONArray) then
+      begin
         Continue;
+      end;
       List := nil;
       for Value in TJSONArray(Pair.JsonValue) do
+      begin
         // TJSONNumber erbt von TJSONString.
         if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') and
           (Length(List) < FMax) then
+        begin
           List := List + [Trim(Value.Value)];
+        end;
+      end;
       if Length(List) > 0 then
+      begin
         FProjects.AddOrSetValue(KeyOf(Pair.JsonString.Value), List);
+      end;
     end;
   finally
     Root.Free;
@@ -385,7 +479,9 @@ begin
     begin
       List := TJSONArray.Create;
       for Item in FProjects[Key] do
+      begin
         List.Add(Item);
+      end;
       Projects.AddPair(Key, List);
     end;
     Result := Root.ToJSON;

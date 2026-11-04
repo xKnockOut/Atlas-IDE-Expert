@@ -251,13 +251,36 @@ begin
   end;
 end;
 
+/// <summary>Vorfahren der Klasse ohne Bibliotheksklassen und TObject; AReachedLibrary, wenn eine
+/// Bibliotheksklasse darunter war.</summary>
+function CountAncestors(const AIndex: ISymbolIndex; const AAncestry: TAncestry; const AName: string;
+  out AComplete, AReachedLibrary: Boolean): Integer;
+var
+  mLocation: TSymbolLocation;
+  mObjectMissing: Boolean;
+begin
+  Result := 0;
+  AReachedLibrary := False;
+  for mLocation in AAncestry.Ancestors(AName, AComplete, mObjectMissing) do
+  begin
+    if (mLocation.UnitName <> '') and TLibraryUnits.IsLibrary(AIndex, mLocation.UnitName) then
+    begin
+      AReachedLibrary := True;
+    end
+    else if not SameText(mLocation.Symbol.Name, 'TObject') then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TMetricRules.InheritanceDepths(ATree: TSyntaxTree; const AIndex: ISymbolIndex;
   const ALocal: TUnitIndex): TArray<TStructureMetrics>;
 var
   Ancestry: TAncestry;
   Item, Depth: TStructureMetrics;
   Location: TSymbolLocation;
-  Complete, ObjectMissing, ReachedLibrary: Boolean;
+  Complete, ReachedLibrary: Boolean;
   Count, Index: Integer;
   Seen: TDictionary<string, Integer>;
 begin
@@ -276,19 +299,7 @@ begin
       begin
         Continue;
       end;
-      Count := 0;
-      ReachedLibrary := False;
-      for Location in Ancestry.Ancestors(Item.Name, Complete, ObjectMissing) do
-      begin
-        if (Location.UnitName <> '') and TLibraryUnits.IsLibrary(AIndex, Location.UnitName) then
-        begin
-          ReachedLibrary := True;
-        end
-        else if not SameText(Location.Symbol.Name, 'TObject') then
-        begin
-          Inc(Count);
-        end;
-      end;
+      Count := CountAncestors(AIndex, Ancestry, Item.Name, Complete, ReachedLibrary);
       if Count = 0 then
       begin
         Continue;

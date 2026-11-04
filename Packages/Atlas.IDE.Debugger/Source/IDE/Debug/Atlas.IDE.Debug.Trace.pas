@@ -111,13 +111,17 @@ procedure TAtlasIdeDebugTrace.THook.Notification(AComponent: TComponent; Operati
 begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FAction) then
+  begin
     FAction := nil;
+  end;
 end;
 
 procedure TAtlasIdeDebugTrace.THook.Execute(Sender: TObject);
 begin
   if FBypass or (FAction = nil) then
+  begin
     Exit;
+  end;
   // Melden darf den Schritt nie verhindern; jeder Empfänger läuft unter der Sicherung.
   TAtlasIdeDebugTrace.Notify(FKind, TAtlasTraceOrigin.User);
   if Assigned(FOriginal) then
@@ -132,7 +136,9 @@ begin
     FAction.Execute;
   finally
     if FAction <> nil then
+    begin
       FAction.OnExecute := Execute;
+    end;
     FBypass := False;
   end;
 end;
@@ -148,23 +154,33 @@ var
 begin
   Result := nil;
   if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
     Exit;
+  end;
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
     if SameText(mAction.Name, ActionNames[AKind]) then
+    begin
       Exit(mAction);
+    end;
   end;
   // Ersatz: die Aktion mit dem üblichen Tastenkürzel.
   if AKind = TAtlasTraceKind.TraceInto then
-    mShortCut := ShortCut(VK_F7, [])
+  begin
+    mShortCut := ShortCut(VK_F7, []);
+  end
   else
+  begin
     mShortCut := ShortCut(VK_F7, [ssShift]);
+  end;
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
     if (mAction is TCustomAction) and (TCustomAction(mAction).ShortCut = mShortCut) then
+    begin
       Exit(mAction);
+    end;
   end;
 end;
 
@@ -176,13 +192,19 @@ begin
   for mKind := Low(TAtlasTraceKind) to High(TAtlasTraceKind) do
   begin
     if FHooks[mKind] <> nil then
+    begin
       Continue;
+    end;
     mAction := FindAction(mKind);
     if mAction <> nil then
-      FHooks[mKind] := THook.Create(mKind, mAction)
+    begin
+      FHooks[mKind] := THook.Create(mKind, mAction);
+    end
     else
+    begin
       TAtlasGuard.Log(Format('Debugger: Aktion %s nicht gefunden; der Schritt bleibt unverändert',
         [ActionNames[mKind]]));
+    end;
   end;
 end;
 
@@ -191,7 +213,9 @@ var
   mKind: TAtlasTraceKind;
 begin
   for mKind := Low(TAtlasTraceKind) to High(TAtlasTraceKind) do
+  begin
     FreeAndNil(FHooks[mKind]);
+  end;
 end;
 
 class procedure TAtlasIdeDebugTrace.AddHandler(const AName: string; const AEvent: TAtlasTraceEvent);
@@ -200,11 +224,13 @@ var
   mHandler: THandler;
 begin
   for mIndex := 0 to High(FHandlers) do
+  begin
     if SameText(FHandlers[mIndex].Name, AName) then
     begin
       FHandlers[mIndex].Event := AEvent;
       Exit;
     end;
+  end;
   mHandler.Name := AName;
   mHandler.Event := AEvent;
   FHandlers := FHandlers + [mHandler];
@@ -216,13 +242,17 @@ var
   mIndex: Integer;
 begin
   for mIndex := High(FHandlers) downto 0 do
+  begin
     if SameText(FHandlers[mIndex].Name, AName) then
     begin
       FHandlers[mIndex].Event := nil;
       Delete(FHandlers, mIndex, 1);
     end;
+  end;
   if Length(FHandlers) = 0 then
+  begin
     Unhook;
+  end;
 end;
 
 class procedure TAtlasIdeDebugTrace.Notify(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
@@ -233,12 +263,16 @@ begin
   // Kopie: Ein Empfänger darf sich dabei abmelden.
   mHandlers := Copy(FHandlers);
   for mHandler in mHandlers do
+  begin
     if Assigned(mHandler.Event) then
+    begin
       TAtlasGuard.Run(TAtlasFeature.Debugger,
         procedure
         begin
           mHandler.Event(AKind, AOrigin);
         end);
+    end;
+  end;
 end;
 
 class function TAtlasIdeDebugTrace.Hooked(AKind: TAtlasTraceKind): Boolean;
@@ -250,7 +284,9 @@ class function TAtlasIdeDebugTrace.StepInto: Boolean;
 begin
   Result := TAtlasIdeDebugSession.StoppedThread <> nil;
   if not Result then
+  begin
     Exit;
+  end;
   Notify(TAtlasTraceKind.TraceInto, TAtlasTraceOrigin.Atlas);
   Result := TAtlasIdeDebugSession.RunMode(ormStmtStepInto);
 end;
@@ -260,7 +296,9 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(FHandlers) do
+  begin
     FHandlers[mIndex].Event := nil;
+  end;
   FHandlers := nil;
   Unhook;
 end;

@@ -137,14 +137,20 @@ function TAtlasDebugValue.PlainText: string;
 begin
   Result := '';
   if Expression = '' then
+  begin
     Exit;
+  end;
   if State = TAtlasDebugValueState.Value then
-    Result := Expression + ' = ' + Text
+  begin
+    Result := Expression + ' = ' + Text;
+  end
   else if Explained then
   begin
     Result := Expression + ' = ' + Note.Caption;
     if Note.Reason <> '' then
+    begin
       Result := Result + sLineBreak + Note.Reason;
+    end;
   end;
 end;
 
@@ -176,9 +182,13 @@ begin
   while (Index <= AIndex) and (Index <= Length(ALine)) do
   begin
     if InString then
-      InString := ALine[Index] <> ''''
+    begin
+      InString := ALine[Index] <> '''';
+    end
     else if InBrace then
-      InBrace := ALine[Index] <> '}'
+    begin
+      InBrace := ALine[Index] <> '}';
+    end
     else if InParen then
     begin
       if (ALine[Index] = '*') and (Index < Length(ALine)) and (ALine[Index + 1] = ')') then
@@ -201,7 +211,9 @@ begin
           end;
         '/':
           if (Index < Length(ALine)) and (ALine[Index + 1] = '/') then
+          begin
             Exit(True);
+          end;
       end;
     Inc(Index);
   end;
@@ -215,25 +227,36 @@ var
 begin
   Result := '';
   if (AStart < 0) or (AStop <= AStart) or (AStop > Length(ALine)) then
+  begin
     Exit;
+  end;
   Word := Copy(ALine, AStart + 1, AStop - AStart);
   // Escapter Bezeichner (&Type) zählt mit dem & und ist kein reserviertes Wort.
   Start := AStart;
   if (Start > 0) and (ALine[Start] = '&') then
+  begin
     Dec(Start);
+  end;
   if CharInSet(Word[1], ['0'..'9']) or ((Start = AStart) and IsReserved(Word)) or
     InStringOrComment(ALine, AStart) then
+  begin
     Exit;
+  end;
   // Qualifizierer links davon: „Name.“, „Name[…].“, „Name^.“; Pos ist der 1-basierte Index vor Start.
   while (Start > 0) and (ALine[Start] = '.') do
   begin
     Pos := Start - 1;
     // Bereich „0..Count“: kein Qualifizierer.
     if (Pos > 0) and (ALine[Pos] = '.') then
+    begin
       Break;
+    end;
     while (Pos > 0) and CharInSet(ALine[Pos], ['^', ']']) do
+    begin
       if ALine[Pos] = '^' then
-        Dec(Pos)
+      begin
+        Dec(Pos);
+      end
       else
       begin
         // Passende öffnende Klammer; Klammern darin hießen Aufruf.
@@ -250,22 +273,35 @@ begin
           Dec(Pos);
         until (Depth = 0) or (Pos = 0);
         if Depth <> 0 then
+        begin
           Exit('');
+        end;
       end;
+    end;
     // Klammer vor dem Punkt: Aufruf oder Typumwandlung, nicht auswerten (auch nicht nur den Rest).
     if (Pos = 0) or not IsIdentifierChar(ALine[Pos]) then
+    begin
       Exit('');
+    end;
     NameStart := Pos;
     while (NameStart > 1) and IsIdentifierChar(ALine[NameStart - 1]) do
+    begin
       Dec(NameStart);
+    end;
     Name := Copy(ALine, NameStart, Pos - NameStart + 1);
     Start := NameStart - 1;
     if (Start > 0) and (ALine[Start] = '&') then
-      Dec(Start)
+    begin
+      Dec(Start);
+    end
     else if IsReserved(Name) then
+    begin
       Exit('');
+    end;
     if CharInSet(Name[1], ['0'..'9']) then
+    begin
       Exit('');
+    end;
   end;
   Result := Copy(ALine, Start + 1, AStop - Start);
 end;
@@ -276,13 +312,19 @@ var
 begin
   Result := '';
   if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
+  begin
     Exit;
+  end;
   Start := AIndex;
   while (Start > 0) and IsIdentifierChar(ALine[Start]) do
+  begin
     Dec(Start);
+  end;
   Stop := AIndex + 1;
   while (Stop < Length(ALine)) and IsIdentifierChar(ALine[Stop + 1]) do
+  begin
     Inc(Stop);
+  end;
   Result := At(ALine, Start, Stop);
 end;
 
@@ -290,7 +332,9 @@ class function TAtlasDebugExpression.Shorten(const AText: string; AMaxLength: In
 begin
   Result := AText;
   if (AMaxLength > 0) and (Length(Result) > AMaxLength) then
+  begin
     Result := Copy(Result, 1, AMaxLength) + ' …';
+  end;
 end;
 
 end.
