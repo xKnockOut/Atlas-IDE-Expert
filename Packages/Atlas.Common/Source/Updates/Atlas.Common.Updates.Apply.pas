@@ -68,11 +68,23 @@ implementation
 
 uses
   Atlas.Text.Updates,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Updates.Ides,
   Atlas.Common.Updates.Selection;
 
+type
+{$SCOPEDENUMS ON}
+  TApplyText = (Waiting, KeptForProfile, RollingBack, Installing, Outcome);
+{$SCOPEDENUMS OFF}
+
 const
   cWaitMs = 1000;
+  cTexts: array[TApplyText] of TAtlasText = (
+    (De: 'Warte auf das Ende von:%s (Strg+C bricht ab)'; En: 'Waiting for:%s to exit (Ctrl+C cancels)'),
+    (De: '%s bleibt: ein anderes Profil lädt es.'; En: '%s stays: another profile loads it.'),
+    (De: 'Fehler beim Tausch, nehme alles zurück.'; En: 'Swap failed, rolling everything back.'),
+    (De: 'Installiere Atlas %s'; En: 'Installing Atlas %s'),
+    (De: 'Ergebnis: %s %s %s'; En: 'Result: %s %s %s'));
 
 { TUpdateInstallation }
 
@@ -135,7 +147,7 @@ begin
     if (Length(mUsing) > 0) and (ProcessNames(mUsing) <> mShown) then
     begin
       mShown := ProcessNames(mUsing);
-      FSystem.Log('Warte auf das Ende von:' + mShown + ' (Strg+C bricht ab)');
+      FSystem.Log(cTexts[TApplyText.Waiting].Fmt([mShown]));
     end;
     if Length(mUsing) > 0 then
     begin
@@ -210,7 +222,7 @@ begin
     if TUpdateKnownPackages.UsedElsewhere(FSystem.Registry, mTarget.PackageFile(mCandidate.Name),
       FArgs.RegistryKey) then
     begin
-      FSystem.Log(mCandidate.Name + ' bleibt: ein anderes Profil lädt es.');
+      FSystem.Log(cTexts[TApplyText.KeptForProfile].Fmt([mCandidate.Name]));
       Continue;
     end;
     mFile := FArgs.Platform + '\' + mCandidate.Name + mTarget.Suffix;
@@ -249,7 +261,7 @@ begin
       TUpdateKnownPackages.Apply(FSystem.Registry, FChanges);
       Verify(mSwap);
     except
-      FSystem.Log('Fehler beim Tausch, nehme alles zurück.');
+      FSystem.Log(cTexts[TApplyText.RollingBack].Text);
       TUpdateKnownPackages.Revert(FSystem.Registry, FChanges);
       mSwap.Rollback(FSystem.Log);
       raise;
@@ -315,7 +327,7 @@ begin
     end
     else
     begin
-      FSystem.Log('Installiere Atlas ' + FInput.Version);
+      FSystem.Log(cTexts[TApplyText.Installing].Fmt([FInput.Version]));
       FSwapping := True;
       Swap;
       Finish;
@@ -334,10 +346,13 @@ begin
       Fail(TUpdateErrors.Unexpected, mError.Message);
     end;
   end;
-  FSystem.Log('Ergebnis: ' + TUpdateNames.OutcomeName(FOutcome.Kind) + ' ' + FOutcome.Reason + ' ' +
-    FOutcome.Detail);
+  FSystem.Log(cTexts[TApplyText.Outcome].Fmt([TUpdateNames.OutcomeName(FOutcome.Kind), FOutcome.Reason,
+    FOutcome.Detail]));
   WriteOutcome;
   Result := Ord(FOutcome.Kind <> TUpdateOutcomeKind.Installed);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Updates.Apply', cTexts);
 
 end.

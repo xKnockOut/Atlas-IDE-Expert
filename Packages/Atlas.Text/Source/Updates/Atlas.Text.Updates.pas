@@ -68,6 +68,18 @@ type
     class function IsRequiredPackage(const AName: string): Boolean; static;
   end;
 
+  /// <summary>Versionsdateien je Kanal (updates.channel). „latest“ von GitHub übergeht Vorabversionen; der Kanal
+  /// für Vorabversionen ist deshalb ein fester Release „update-channel“, dessen Datei jeder Release ersetzt.
+  /// </summary>
+  TUpdateChannels = class
+  public const
+    ReleasesUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/releases';
+    StableUrl = ReleasesUrl + '/latest/download/atlas-version.json';
+    PrereleaseUrl = ReleasesUrl + '/download/update-channel/atlas-version-beta.json';
+  public
+    class function UrlOf(APrerelease: Boolean): string; static;
+  end;
+
   TUpdateManifests = class
   public
     /// <summary>False, wenn AJson keine Versionsdatei mit gültiger Version ist. Ungültige Pakete und Quellen
@@ -312,6 +324,20 @@ end;
 class function TUpdateVersions.IsRequiredPackage(const AName: string): Boolean;
 begin
   Result := SameText(AName, BasePackage) or SameText(AName, ContractsPackage);
+end;
+
+{ TUpdateChannels }
+
+class function TUpdateChannels.UrlOf(APrerelease: Boolean): string;
+begin
+  if APrerelease then
+  begin
+    Result := PrereleaseUrl;
+  end
+  else
+  begin
+    Result := StableUrl;
+  end;
 end;
 
 { TUpdateManifests }

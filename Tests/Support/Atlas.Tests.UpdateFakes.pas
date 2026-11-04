@@ -139,7 +139,7 @@ type
     destructor Destroy; override;
     function CanBuild(const ABdsVersion, APlatform: string; out AReason: string): Boolean;
     /// <summary>Schreibt Output\APlatform\Release\Bpl\&lt;Projekt&gt;&lt;Endung der BDS-Version&gt;.bpl.</summary>
-    function Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateBuildLine): Integer;
+    function Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateLog): Integer;
     function Projects: TArray<string>;
     property Available: Boolean read FCanBuild write FCanBuild;
     /// <summary>Projektname, dessen Bau fehlschlägt.</summary>
@@ -759,7 +759,7 @@ begin
   end;
 end;
 
-function TFakeBuilder.Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateBuildLine): Integer;
+function TFakeBuilder.Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateLog): Integer;
 var
   mName, mRoot: string;
 begin

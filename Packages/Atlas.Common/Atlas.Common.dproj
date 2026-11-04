@@ -762,6 +762,15 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.Targets.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepFilter.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Contract.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Ides.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.KnownPackages.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Selection.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Archive.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.SourceBuild.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Prepare.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.FileSwap.pas"/>
+        <DCCReference Include="Source\Updates\Atlas.Common.Updates.Apply.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

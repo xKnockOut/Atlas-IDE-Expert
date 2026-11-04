@@ -13,6 +13,10 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>Eine Zeile für Benutzer und Protokoll; auch die Ausgabe des Compilers. Ein gemeinsamer Typ, weil
+  /// Delphi 12 gleich aufgebaute Methodenreferenzen nicht einander zuweist.</summary>
+  TUpdateLog = reference to procedure(const AText: string);
+
   TUpdateRegistryValue = record
     Name: string;
     Data: string;
@@ -103,18 +107,14 @@ type
     procedure Extract(const AZipFile, AEntry, ATargetFile: string);
   end;
 
-  TUpdateBuildLine = reference to procedure(const ALine: string);
-
   IUpdateBuilder = interface
     ['{4E6A8C0B-2D3F-4F17-B3E5-7C9A1D3B5F60}']
     /// <summary>Kommandozeilen-Compiler der Delphi-Version ABdsVersion für APlatform vorhanden; sonst False mit
-    /// AReason (z. B. Starter-Edition ohne dcc32).</summary>
+    /// AReason = fehlender Compiler (z. B. dcc32.exe; die Starter-Edition hat keinen).</summary>
     function CanBuild(const ABdsVersion, APlatform: string; out AReason: string): Boolean;
     /// <summary>AProject (.dproj) als Release für APlatform bauen; Exit-Code 0 = Erfolg.</summary>
-    function Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateBuildLine): Integer;
+    function Build(const ABdsVersion, APlatform, AProject: string; const AOnLine: TUpdateLog): Integer;
   end;
-
-  TUpdateLog = reference to procedure(const AText: string);
 
   /// <summary>Alle Zugänge zum System zusammen; die Composition setzt sie.</summary>
   TUpdateSystem = record

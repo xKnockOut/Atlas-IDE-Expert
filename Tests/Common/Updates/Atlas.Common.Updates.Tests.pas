@@ -25,6 +25,8 @@ type
     [Test]
     procedure ListsProfilesDefaultFirst;
     [Test]
+    procedure ListsInstalledIdes;
+    [Test]
     procedure PlansKnownPackages;
     [Test]
     procedure PlanRemovesLegacyAndDisabled;
@@ -99,6 +101,7 @@ begin
   Assert.AreEqual('370', TUpdateIdes.PackageSuffix('37.0'));
   Assert.AreEqual('380', TUpdateIdes.PackageSuffix('38.0'));
   Assert.IsFalse(TUpdateIdes.ByCompilerVersion('35.0', mVersion));
+  Assert.AreEqual('37.0', TUpdateIdes.Catalog[0].CompilerVersion);
   Assert.AreEqual('37.0', TUpdateIdes.BdsVersionOf('Software\Embarcadero\BDS\37.0\'));
   Assert.AreEqual('', TUpdateIdes.BdsVersionOf('Software\Embarcadero\BDS'));
   Assert.AreEqual(cKey + '\Known Packages x64', TUpdateIdes.KnownPackagesKey(cKey, 'win64'));
@@ -119,6 +122,24 @@ begin
   Assert.AreEqual(2, Integer(Length(mProfiles)));
   Assert.AreEqual('BDS', mProfiles[0].Profile);
   Assert.AreEqual('Software\Embarcadero\Atlas\37.0', mProfiles[1].RegistryKey);
+end;
+
+procedure TCommonUpdatesTests.ListsInstalledIdes;
+var
+  mChoices: TArray<TUpdateIdeChoice>;
+begin
+  FFake.Registry.WriteValue('Software\Embarcadero\BDS\37.0\Known Packages', 'x', 'y');
+  FFake.Registry.WriteValue('Software\Embarcadero\Atlas\37.0\Known Packages', 'x', 'y');
+  FFake.Registry.WriteValue('Software\Embarcadero\BDS\23.0\Known Packages', 'x', 'y');
+  FFake.Registry.SetRootDir('37.0', 'C:\D13');
+  FFake.Registry.SetRootDir('23.0', 'C:\D12');
+  FFake.Files.WriteText('C:\D13\bin64\bds.exe', '');
+  mChoices := TUpdateIdes.Choices(FFake.Registry, FFake.Files);
+  Assert.AreEqual(5, Integer(Length(mChoices)));
+  Assert.AreEqual('Win64', mChoices[1].Platform);
+  Assert.AreEqual('Delphi 13 Florence (Atlas)', mChoices[2].Caption);
+  Assert.AreEqual('36.0', mChoices[4].CompilerVersion);
+  Assert.AreEqual('Software\Embarcadero\BDS\23.0', mChoices[4].Profile.RegistryKey);
 end;
 
 procedure TCommonUpdatesTests.PlansKnownPackages;

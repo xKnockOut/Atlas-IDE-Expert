@@ -51,7 +51,19 @@ type
 implementation
 
 uses
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TFileSwapText = (NotRestored, StillLocked);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TFileSwapText] of TAtlasText = (
+    (De: 'Rückfall: %s nicht wiederhergestellt (%s)'; En: 'Rollback: %s not restored (%s)'),
+    (De: '%s ist noch gesperrt und wird beim nächsten Update entfernt.';
+    En: '%s is still locked and will be removed by the next update.'));
 
 { TUpdateFileSwap }
 
@@ -145,7 +157,7 @@ begin
     except
       on mError: Exception do
       begin
-        ALog('Rückfall: ' + mStep.Path + ' nicht wiederhergestellt (' + mError.Message + ')');
+        ALog(cTexts[TFileSwapText.NotRestored].Fmt([mStep.Path, mError.Message]));
       end;
     end;
   end;
@@ -165,11 +177,14 @@ begin
       except
         on EInOutError do
         begin
-          ALog(mFile + ' ist noch gesperrt und wird beim nächsten Update entfernt.');
+          ALog(cTexts[TFileSwapText.StillLocked].Fmt([mFile]));
         end;
       end;
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Updates.FileSwap', cTexts);
 
 end.
