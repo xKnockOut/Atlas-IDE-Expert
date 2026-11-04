@@ -1689,6 +1689,12 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IdeArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.EditingArea.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.IndexArea.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Parts.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Capabilities.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Refactorings.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Refactorings.Tests.pas"/>
@@ -1730,6 +1736,12 @@
         <DCCReference Include="Application\Shell\Shell.Composition.IdeArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.EditingArea.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.IndexArea.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.Parts.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.ProtocolWiring.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.CoreWiring.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.FeatureWiring.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.CommandWiring.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.ClientStart.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Capabilities.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
