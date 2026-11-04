@@ -31,6 +31,7 @@ type
   private
     FCounts: TDictionary<string, TSuppressionCount>;
     FFiles: Integer;
+    procedure Count(const AId: string; AFileWide, AUnused: Boolean; ASeen: TList<string>);
   public
     constructor Create;
     destructor Destroy; override;
@@ -86,68 +87,80 @@ begin
   inherited;
 end;
 
+/// <summary>Meldet die Engine den Unterdrückungskommentar in ALine als ungenutzt? (je Kommentar mit Beginn in
+/// seiner Zeile)</summary>
+function IsUnused(const AFindings: TArray<TRuleFinding>; ALine: Integer): Boolean;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := False;
+  for mFinding in AFindings do
+  begin
+    if SameText(mFinding.RuleId, UnusedSuppressionRuleId) and (mFinding.Range.StartPos.Line = ALine) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TSuppressionStats.Count(const AId: string; AFileWide, AUnused: Boolean; ASeen: TList<string>);
+var
+  mCount: TSuppressionCount;
+begin
+  if not FCounts.TryGetValue(AId, mCount) then
+  begin
+    mCount := Default(TSuppressionCount);
+    mCount.RuleId := AId;
+  end;
+  if AFileWide then
+  begin
+    Inc(mCount.FileCount);
+  end
+  else
+  begin
+    Inc(mCount.LineCount);
+  end;
+  if AUnused then
+  begin
+    Inc(mCount.UnusedCount);
+  end;
+  if not ASeen.Contains(AId) then
+  begin
+    ASeen.Add(AId);
+    Inc(mCount.Files);
+  end;
+  FCounts.AddOrSetValue(AId, mCount);
+end;
+
 procedure TSuppressionStats.Add(const AText: string; const AFindings: TArray<TRuleFinding>);
 var
-  Tree: TSyntaxTree;
-  Suppressions: TSuppressions;
-  Entry: TSuppressionEntry;
-  Finding: TRuleFinding;
-  Id: string;
-  Count: TSuppressionCount;
-  Unused: Boolean;
-  Seen: TList<string>;
+  mTree: TSyntaxTree;
+  mSuppressions: TSuppressions;
+  mEntry: TSuppressionEntry;
+  mId: string;
+  mUnused: Boolean;
+  mSeen: TList<string>;
 begin
   Inc(FFiles);
-  Tree := TSyntaxTreeCache.Parse(AText);
-  Seen := TList<string>.Create;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  mSeen := TList<string>.Create;
   try
-    Suppressions := TSuppressions.Create(Tree.Tokens);
+    mSuppressions := TSuppressions.Create(mTree.Tokens);
     try
-      for Entry in Suppressions.Entries do
+      for mEntry in mSuppressions.Entries do
       begin
-        // Ungenutzt meldet die Engine je Kommentar mit Beginn in seiner Zeile.
-        Unused := False;
-        for Finding in AFindings do
+        mUnused := IsUnused(AFindings, mEntry.Range.StartPos.Line);
+        for mId in mEntry.Ids do
         begin
-          if SameText(Finding.RuleId, UnusedSuppressionRuleId) and
-            (Finding.Range.StartPos.Line = Entry.Range.StartPos.Line) then
-          begin
-            Unused := True;
-          end;
-        end;
-        for Id in Entry.Ids do
-        begin
-          if not FCounts.TryGetValue(Id, Count) then
-          begin
-            Count := Default(TSuppressionCount);
-            Count.RuleId := Id;
-          end;
-          if Entry.TargetLine < 0 then
-          begin
-            Inc(Count.FileCount);
-          end
-          else
-          begin
-            Inc(Count.LineCount);
-          end;
-          if Unused then
-          begin
-            Inc(Count.UnusedCount);
-          end;
-          if not Seen.Contains(Id) then
-          begin
-            Seen.Add(Id);
-            Inc(Count.Files);
-          end;
-          FCounts.AddOrSetValue(Id, Count);
+          Count(mId, mEntry.TargetLine < 0, mUnused, mSeen);
         end;
       end;
     finally
-      Suppressions.Free;
+      mSuppressions.Free;
     end;
   finally
-    Seen.Free;
-    Tree.Free;
+    mSeen.Free;
+    mTree.Free;
   end;
 end;
 

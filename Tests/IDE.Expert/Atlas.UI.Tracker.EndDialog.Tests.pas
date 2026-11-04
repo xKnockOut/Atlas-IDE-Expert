@@ -98,20 +98,20 @@ begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-123', Options('Zur Prüfung, Erledigt'), 'Text');
   try
     Assert.AreEqual('ATL-123 beenden', mDialog.Caption);
-    Assert.AreEqual('Zur Prüfung', mDialog.StateBox.Value, 'Vorgabe: der erste Zielzustand');
+    Assert.AreEqual('Zur Prüfung', mDialog.Parts.State.Value, 'Vorgabe: der erste Zielzustand');
     // Werte vom Tracker kommen hinter die eingestellten, ohne doppelte.
     mDialog.SetStates(TArray<string>.Create('erledigt', 'Offen'));
-    Assert.AreEqual(4, Integer(Length(mDialog.StateBox.Values)));
-    Assert.AreEqual('Offen', mDialog.StateBox.Values[3]);
+    Assert.AreEqual(4, Integer(Length(mDialog.Parts.State.Values)));
+    Assert.AreEqual('Offen', mDialog.Parts.State.Values[3]);
     mDialog.SetUsers(TArray<string>.Create('anna', 'bert'));
-    Assert.AreEqual(2, Integer(Length(mDialog.AssigneeBox.Values)));
+    Assert.AreEqual(2, Integer(Length(mDialog.Parts.Assignee.Values)));
   finally
     mDialog.Free;
   end;
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1', Options(''), '');
   try
-    Assert.AreEqual('Zustand nicht ändern', mDialog.StateBox.Value, 'ohne Zielzustände');
-    Assert.IsFalse(mDialog.HandOverCheck.Checked);
+    Assert.AreEqual('Zustand nicht ändern', mDialog.Parts.State.Value, 'ohne Zielzustände');
+    Assert.IsFalse(mDialog.Parts.HandOver.Checked);
   finally
     mDialog.Free;
   end;
@@ -124,9 +124,9 @@ var
 begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-123', Options('Erledigt'), 'Erledigt in x.'#10'abc1234 y');
   try
-    Assert.AreEqual('Erledigt in x.'#13#10'abc1234 y', mDialog.CommentMemo.Text, 'Zeilen für das Memo');
-    mDialog.AssigneeBox.Value := 'anna';
-    mDialog.HandOverCheck.Checked := True;
+    Assert.AreEqual('Erledigt in x.'#13#10'abc1234 y', mDialog.Parts.Comment.Text, 'Zeilen für das Memo');
+    mDialog.Parts.Assignee.Value := 'anna';
+    mDialog.Parts.HandOver.Checked := True;
     mChange := mDialog.Change;
     Assert.AreEqual('Erledigt', mChange.State);
     Assert.AreEqual('Status', mChange.StateField);
@@ -135,13 +135,13 @@ begin
     Assert.AreEqual(Ord(TAtlasTrackerAssign.User), Ord(mChange.Assign));
     Assert.AreEqual('anna', mChange.Assignee);
     // „Zustand nicht ändern“ und ohne Häkchen: nur der Kommentar.
-    mDialog.StateBox.Value := 'Zustand nicht ändern';
-    mDialog.HandOverCheck.Checked := False;
+    mDialog.Parts.State.Value := 'Zustand nicht ändern';
+    mDialog.Parts.HandOver.Checked := False;
     mChange := mDialog.Change;
     Assert.AreEqual('', mChange.State);
     Assert.AreEqual(Ord(TAtlasTrackerAssign.Keep), Ord(mChange.Assign));
     // Zustand von Hand eingetragen.
-    mDialog.StateBox.Value := 'Wartet auf Kunde';
+    mDialog.Parts.State.Value := 'Wartet auf Kunde';
     Assert.AreEqual('Wartet auf Kunde', mDialog.Change.State);
   finally
     mDialog.Free;
@@ -161,7 +161,7 @@ begin
       begin
         Inc(mCalls);
       end;
-    mDialog.SendButton.Click;
+    mDialog.Parts.Send.Click;
     Assert.AreEqual(0, mCalls, 'nichts zu schreiben');
     Assert.IsTrue(mDialog.Sent);
     Assert.AreEqual(Integer(mrOk), Integer(mDialog.ModalResult));
@@ -186,20 +186,20 @@ begin
         Inc(mCalls);
         mPending := ADone;
       end;
-    mDialog.SendButton.Click;
+    mDialog.Parts.Send.Click;
     Assert.AreEqual(1, mCalls);
     Assert.IsTrue(mDialog.Sending);
-    Assert.IsFalse(mDialog.CancelButton.Enabled, 'während des Sendens kein Abbrechen');
-    Assert.IsFalse(mDialog.SendButton.Enabled);
-    mDialog.SendButton.Click;
+    Assert.IsFalse(mDialog.Parts.Cancel.Enabled, 'während des Sendens kein Abbrechen');
+    Assert.IsFalse(mDialog.Parts.Send.Enabled);
+    mDialog.Parts.Send.Click;
     Assert.AreEqual(1, mCalls, 'kein zweites Senden');
     mPending(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Unauthorized, 403, ''));
     Assert.IsFalse(mDialog.Sending);
     Assert.IsFalse(mDialog.Sent);
-    Assert.AreEqual('Keine Schreibrechte für ATL-123 (403).', mDialog.Note.Caption);
+    Assert.AreEqual('Keine Schreibrechte für ATL-123 (403).', mDialog.Parts.Note.Caption);
     Assert.AreEqual(Integer(mrNone), Integer(mDialog.ModalResult), 'Dialog bleibt offen');
     Assert.AreEqual(1, mCalls, 'nichts wird wiederholt');
-    mDialog.SendButton.Click;
+    mDialog.Parts.Send.Click;
     Assert.AreEqual(2, mCalls, 'erneut erst nach Klick');
     mPending(TAtlasTrackerWriteResult.Ok);
     Assert.IsTrue(mDialog.Sent);

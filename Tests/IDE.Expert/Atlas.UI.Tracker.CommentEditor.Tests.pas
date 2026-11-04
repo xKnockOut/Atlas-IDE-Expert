@@ -519,8 +519,8 @@ begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1',
     TAtlasTrackerSyncOptions.Create(True, 'Status', ''), 'Vorlage');
   try
-    Assert.IsTrue(mDialog.CommentMemo = mDialog.CommentEditor.Memo);
-    Assert.AreEqual('Vorlage', mDialog.CommentMemo.Text);
+    Assert.IsTrue(mDialog.Parts.Comment = mDialog.Parts.Editor.Memo);
+    Assert.AreEqual('Vorlage', mDialog.Parts.Comment.Text);
   finally
     mDialog.Free;
   end;
