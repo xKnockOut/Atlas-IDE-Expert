@@ -192,6 +192,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AnonymousMethods.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeAlias.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.TypeAlias.Tests.pas"/>

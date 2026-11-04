@@ -43,49 +43,16 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.PromoteVariable;
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Art eines Namens im Rumpf einer Methode.</summary>
-  TMemberLevel = (NotMember, Instance, ClassLevel, StaticLevel, Unknown);
   /// <summary>Umwandlung: class-Methode, class-Methode samt Aufrufen über die Klasse, freie Routine, Helper.</summary>
   TMethodConversion = (ClassMethod, ClassMethodCalls, Routine, Helper);
   /// <summary>Verwendung der Methode an einer Stelle.</summary>
   TMethodUse = (Call, Value, Pointer, Inherited_, Accessor, Unknown);
 {$SCOPEDENUMS OFF}
-
-  /// <summary>Art des Bezeichners bzw. Typnamens ANode im Rumpf; AVisibility bei Mitgliedern.</summary>
-  TMemberLevelFunc = reference to function(ANode: TSyntaxNode; out AVisibility: TIndexVisibility): TMemberLevel;
-  /// <summary>Hat das Interface ATypeName ein Mitglied AName (sichtbar an AOffset)?</summary>
-  TMethodTypeMemberFunc = reference to function(const ATypeName, AName: string; AOffset: Integer): Boolean;
-  /// <summary>Name des an AOffset sichtbaren Helpers für ATypeName, '' ohne.</summary>
-  TMethodHelperFunc = reference to function(const ATypeName: string; AOffset: Integer): string;
-  /// <summary>Ist der Name AName an AOffset schon sichtbar (Typ einer anderen Unit)?</summary>
-  TMethodNameVisibleFunc = reference to function(const AName: string; AOffset: Integer): Boolean;
-
-  TMethodLookup = record
-    MemberLevel: TMemberLevelFunc;
-    InterfaceMember: TMethodTypeMemberFunc;
-    /// <summary>Steht AName in der Formulardatei? Derselbe Typ wie bei „Variable befördern“, weil
-    /// TLspMethodWithoutSelf.Lookup das Feld von dort übernimmt (Delphi 12 lehnt gleich aufgebaute, aber
-    /// verschieden deklarierte Methodenreferenztypen ab).</summary>
-    InForm: TPromoteInFormFunc;
-    VisibleHelper: TMethodHelperFunc;
-    NameVisible: TMethodNameVisibleFunc;
-    /// <summary>Art der Argumente bekannter Aufrufe (var-Argumente schreiben).</summary>
-    Flow: TFlowSignatureLookup;
-    /// <summary>Ohne Namensauflösung: Mitglieder der Klasse in der Datei; bei einem Vorfahren außer TObject
-    /// sind andere Namen unbekannt.</summary>
-    class function FromTree(ATree: TSyntaxTree): TMethodLookup; static;
-    /// <summary>Über AResolver für ATree der Datei AFileName (Baum festhalten, solange gebraucht).</summary>
-    class function FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
-      const AFileName: string): TMethodLookup; static;
-  end;
 
   /// <summary>Eine Methode ohne Self.</summary>
   TMethodTarget = record
@@ -171,14 +138,13 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.UsesActions;
 
 const
@@ -186,12 +152,6 @@ const
     'WideChar', 'AnsiChar', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
     'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Currency', 'Boolean',
     'TDateTime', 'TDate', 'TTime', 'TGUID');
-  // Helper der RTL (System.SysUtils, System.Character), falls der Index sie nicht kennt.
-  RtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
-    'NativeInt', 'NativeUInt', 'Byte', 'Word', 'ShortInt', 'SmallInt', 'Double', 'Single', 'Boolean');
-  RtlHelpers: array[0..14] of string = ('TStringHelper', 'TStringHelper', 'TIntegerHelper', 'TCardinalHelper',
-    'TInt64Helper', 'TUInt64Helper', 'TNativeIntHelper', 'TNativeUIntHelper', 'TByteHelper', 'TWordHelper',
-    'TShortIntHelper', 'TSmallIntHelper', 'TDoubleHelper', 'TSingleHelper', 'TBooleanHelper');
   // Direktiven, die an einer freien Routine bzw. einem Helper nicht passen.
   DroppedDirectives: array[0..8] of string = ('overload', 'reintroduce', 'final', 'static', 'virtual', 'dynamic',
     'override', 'abstract', 'message');
@@ -211,21 +171,6 @@ begin
   end;
 end;
 
-/// <summary>Erster Teil eines Typ- oder Bezeichnernamens: TInner aus TInner&lt;X&gt;, A aus A.B.</summary>
-function HeadName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  if Pos('.', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('.', Result) - 1);
-  end;
-  Result := Trim(Result);
-end;
-
 function SameTypeName(const A, B: string): Boolean;
 begin
   Result := SameText(A, B) or (MatchText(A, ['string', 'UnicodeString']) and MatchText(B, ['string',
@@ -242,359 +187,6 @@ begin
   begin
     Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), ALine + 1]);
   end;
-end;
-
-{ TMethodLookup }
-
-/// <summary>Klasse bzw. Record, zu dessen Methode ANode gehört; nil außerhalb.</summary>
-function OwnerBody(ATree: TSyntaxTree; ANode: TSyntaxNode): TSyntaxNode;
-var
-  Node: TSyntaxNode;
-begin
-  Result := nil;
-  Node := ANode;
-  while Node <> nil do
-  begin
-    if (Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
-    begin
-      Exit(Node);
-    end;
-    if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.Parent <> nil) and
-      (Node.Parent.Kind = TSyntaxKind.ImplementationSection) then
-    begin
-      if TRoutineBody.QualifierOf(Node.Name) <> '' then
-      begin
-        Result := TRoutineBody.TypeBody(ATree.Root, TRoutineBody.QualifierOf(Node.Name));
-      end;
-      Exit;
-    end;
-    Node := Node.Parent;
-  end;
-end;
-
-/// <summary>Beginnt der Knoten (Abschnitt oder Kopf) mit class?</summary>
-function StartsWithClass(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Boolean;
-var
-  Index: Integer;
-begin
-  Index := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
-  if (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class') then
-  begin
-    Exit(True);
-  end;
-  // class var: Der Abschnitt beginnt erst bei var.
-  Index := TRoutineBody.PreviousToken(ATokens, Index);
-  Result := (Index >= 0) and ATokens[Index].IsKeyword('class');
-end;
-
-function TrimmedNames(const ANames: TArray<string>): TArray<string>;
-var
-  Index: Integer;
-begin
-  Result := Copy(ANames, 0, MaxInt);
-  for Index := 0 to High(Result) do
-  begin
-    Result[Index] := Trim(Result[Index]);
-  end;
-end;
-
-/// <summary>Art des Mitglieds AName, wie es in ABody deklariert ist; False, wenn ABody es nicht deklariert.</summary>
-function DeclaredLevel(const ATokens: TArray<TPascalToken>; ABody: TSyntaxNode; const AName: string;
-  out ALevel: TMemberLevel; out AVisibility: TIndexVisibility): Boolean;
-var
-  Index: Integer;
-  Child: TSyntaxNode;
-  Visibility: string;
-  Names: TArray<string>;
-begin
-  Result := False;
-  Visibility := '';
-  AVisibility := TIndexVisibility.Public;
-  for Index := 0 to ABody.ChildCount - 1 do
-  begin
-    Child := ABody[Index];
-    if Child.Kind = TSyntaxKind.Visibility then
-    begin
-      Visibility := LowerCase(Child.Name);
-      Continue;
-    end;
-    Names := nil;
-    case Child.Kind of
-      TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-        Names := TRoutineParts.ChildNames(Child);
-      TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl:
-        Names := [Child.Name];
-      TSyntaxKind.Field:
-        Names := Child.Name.Split([',']);
-    else
-      // Übrige Arten: nichts zu tun.
-    end;
-    if IndexText(AName, TrimmedNames(Names)) < 0 then
-    begin
-      Continue;
-    end;
-    Result := True;
-    if Visibility = 'strict private' then
-    begin
-      AVisibility := TIndexVisibility.StrictPrivate;
-    end
-    else if Visibility = 'strict protected' then
-    begin
-      AVisibility := TIndexVisibility.StrictProtected;
-    end
-    else if Visibility = 'private' then
-    begin
-      AVisibility := TIndexVisibility.Private;
-    end
-    else if Visibility = 'protected' then
-    begin
-      AVisibility := TIndexVisibility.Protected;
-    end;
-    case Child.Kind of
-      TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-        ALevel := TMemberLevel.StaticLevel;
-      TSyntaxKind.Field:
-        ALevel := TMemberLevel.Instance;
-      TSyntaxKind.VarSection:
-        if StartsWithClass(ATokens, Child) then
-        begin
-          ALevel := TMemberLevel.StaticLevel;
-        end
-        else
-        begin
-          ALevel := TMemberLevel.Instance;
-        end;
-      TSyntaxKind.RoutineHeader:
-        if not StartsWithClass(ATokens, Child) then
-        begin
-          ALevel := TMemberLevel.Instance;
-        end
-        else if TRoutineParts.HasWord(ATokens, Child, ['static']) then
-        begin
-          ALevel := TMemberLevel.StaticLevel;
-        end
-        else
-        begin
-          ALevel := TMemberLevel.ClassLevel;
-        end;
-      TSyntaxKind.PropertyDecl:
-        if StartsWithClass(ATokens, Child) then
-        begin
-          ALevel := TMemberLevel.StaticLevel;
-        end
-        else
-        begin
-          ALevel := TMemberLevel.Instance;
-        end;
-    else
-      // Übrige Arten: nichts zu tun.
-    end;
-    Exit;
-  end;
-end;
-
-/// <summary>Hat der Typ ABody einen Vorfahren außer TObject (dessen Mitglieder die Datei nicht kennt)?</summary>
-function HasUnknownAncestor(ABody: TSyntaxNode): Boolean;
-begin
-  Result := (ABody.Kind = TSyntaxKind.ClassType) and (ABody.ChildCount > 0) and
-    (ABody[0].Kind = TSyntaxKind.TypeReference) and not MatchText(ABody[0].Name, ['TObject', 'System.TObject']);
-end;
-
-class function TMethodLookup.FromTree(ATree: TSyntaxTree): TMethodLookup;
-var
-  Names: TArray<string>;
-begin
-  Result := Default(TMethodLookup);
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  Names := TRoutineParts.UnitNames(ATree.Root);
-  Result.Flow := TNestedRoutineLookup.FromTree(ATree).Flow;
-  Result.MemberLevel :=
-    function(ANode: TSyntaxNode; out AVisibility: TIndexVisibility): TMemberLevel
-    var
-      Body: TSyntaxNode;
-      Name: string;
-    begin
-      AVisibility := TIndexVisibility.Public;
-      Name := HeadName(ANode.Name);
-      Body := OwnerBody(ATree, ANode);
-      if (Body <> nil) and DeclaredLevel(ATree.Tokens, Body, Name, Result, AVisibility) then
-      begin
-        Exit;
-      end;
-      if ANode.Kind = TSyntaxKind.TypeReference then
-      begin
-        Exit(TMemberLevel.NotMember);
-      end;
-      if (IndexText(Name, Names) >= 0) or TSystemIntrinsics.IsKnown(Name) then
-      begin
-        Exit(TMemberLevel.NotMember);
-      end;
-      if (Body <> nil) and HasUnknownAncestor(Body) then
-      begin
-        Exit(TMemberLevel.Unknown);
-      end;
-      Result := TMemberLevel.NotMember;
-    end;
-  Result.InterfaceMember :=
-    function(const ATypeName, AName: string; AOffset: Integer): Boolean
-    var
-      Body: TSyntaxNode;
-      Index: Integer;
-      Name: string;
-    begin
-      Result := False;
-      Name := HeadName(ATypeName);
-      Body := ATree.Root.Search(
-        function(ANode: TSyntaxNode): TSyntaxSearchStep
-        begin
-          Result := TSyntaxSearchStep.Descend;
-          if (ANode.Kind = TSyntaxKind.InterfaceType) and (ANode.Parent <> nil) and SameText(ANode.Parent.Name, Name)
-          then
-          begin
-            Result := TSyntaxSearchStep.Found;
-          end;
-        end);
-      if Body = nil then
-      begin
-        Exit;
-      end;
-      for Index := 0 to Body.ChildCount - 1 do
-      begin
-        if (Body[Index].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) and
-          SameText(Body[Index].Name, AName) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  Result.VisibleHelper :=
-    function(const ATypeName: string; AOffset: Integer): string
-    var
-      Index, Section: Integer;
-      Clause: TSyntaxNode;
-      Used: Boolean;
-    begin
-      Result := '';
-      Index := IndexText(ATypeName, RtlHelpedTypes);
-      if Index < 0 then
-      begin
-        Exit;
-      end;
-      Used := False;
-      for Section := 0 to ATree.Root.ChildCount - 1 do
-      begin
-        Clause := ATree.Root[Section].FindChild(TSyntaxKind.UsesClause);
-        if (Clause <> nil) and ((IndexText('System.SysUtils', TRoutineParts.ChildNames(Clause)) >= 0) or
-          (IndexText('SysUtils', TRoutineParts.ChildNames(Clause)) >= 0)) then
-        begin
-          Used := True;
-        end;
-      end;
-      if Used then
-      begin
-        Result := RtlHelpers[Index];
-      end;
-    end;
-end;
-
-class function TMethodLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName: string): TMethodLookup;
-var
-  FileName: string;
-  Fallback: TMethodLookup;
-begin
-  Fallback := FromTree(ATree);
-  Result := Fallback;
-  FileName := AFileName;
-  Result.MemberLevel :=
-    function(ANode: TSyntaxNode; out AVisibility: TIndexVisibility): TMemberLevel
-    var
-      Resolved: TResolvedSymbol;
-      Name: string;
-      IsClass, IsStatic: Boolean;
-    begin
-      AVisibility := TIndexVisibility.Public;
-      Name := HeadName(ANode.Name);
-      Resolved := AResolver.Resolve(ATree, FileName, ANode.StartPos);
-      if Resolved.Kind = TResolvedKind.None then
-      begin
-        if TSystemIntrinsics.IsKnown(Name) then
-        begin
-          Exit(TMemberLevel.NotMember);
-        end;
-        Exit(TMemberLevel.Unknown);
-      end;
-      if (Resolved.Kind <> TResolvedKind.Symbol) or Resolved.Builtin or (Resolved.Container = '') then
-      begin
-        Exit(TMemberLevel.NotMember);
-      end;
-      AVisibility := Resolved.Visibility;
-      IsClass := IndexText('class', Resolved.Directives) >= 0;
-      IsStatic := IndexText('static', Resolved.Directives) >= 0;
-      case Resolved.SymbolKind of
-        TIndexSymbolKind.Field, TIndexSymbolKind.Property_:
-          if IsClass then
-          begin
-            Result := TMemberLevel.StaticLevel;
-          end
-          else
-          begin
-            Result := TMemberLevel.Instance;
-          end;
-        TIndexSymbolKind.Method:
-          if IsClass and IsStatic then
-          begin
-            Result := TMemberLevel.StaticLevel;
-          end
-          else if IsClass then
-          begin
-            Result := TMemberLevel.ClassLevel;
-          end
-          else
-          begin
-            Result := TMemberLevel.Instance;
-          end;
-        TIndexSymbolKind.Constructor_, TIndexSymbolKind.Variable:
-          Result := TMemberLevel.Instance;
-        TIndexSymbolKind.Routine:
-          Result := TMemberLevel.NotMember;
-      else
-        // Konstanten, Aufzählungswerte und Typen der Klasse.
-        Result := TMemberLevel.StaticLevel;
-      end;
-    end;
-  Result.InterfaceMember :=
-    function(const ATypeName, AName: string; AOffset: Integer): Boolean
-    var
-      Resolved: TResolvedSymbol;
-    begin
-      Resolved := AResolver.ResolveChain(ATree, FileName, HeadName(ATypeName).Split(['.']), AOffset);
-      if not Resolved.Found then
-      begin
-        Exit(Fallback.InterfaceMember(ATypeName, AName, AOffset));
-      end;
-      Result := (Resolved.SymbolKind = TIndexSymbolKind.InterfaceType) and AResolver.ResolveChain(ATree, FileName,
-        [HeadName(ATypeName), AName], AOffset).Found;
-    end;
-  Result.VisibleHelper :=
-    function(const ATypeName: string; AOffset: Integer): string
-    var
-      Helper: TResolvedSymbol;
-    begin
-      if AResolver.VisibleHelper(ATree, FileName, ATypeName, AOffset, Helper) then
-      begin
-        Exit(Helper.Name);
-      end;
-      Result := Fallback.VisibleHelper(ATypeName, AOffset);
-    end;
-  Result.NameVisible :=
-    function(const AName: string; AOffset: Integer): Boolean
-    begin
-      Result := AResolver.ResolveChain(ATree, FileName, [AName], AOffset).Found;
-    end;
 end;
 
 { TMethodTarget }
@@ -903,7 +495,7 @@ begin
       begin
         Continue;
       end;
-      if not InHead and TRoutineParts.Shadowed(Cache, Node, Routine, HeadName(Node.Name), True) then
+      if not InHead and TRoutineParts.Shadowed(Cache, Node, Routine, TMethodLookup.HeadName(Node.Name), True) then
       begin
         Continue;
       end;
@@ -917,7 +509,7 @@ begin
         TMemberLevel.Instance:
           Exit(Fail(Format('benutzt %s (%s)', [Node.Name, Where('', Node.StartPos.Line)]), AReason));
         TMemberLevel.Unknown:
-          Exit(Fail(Format('%s ist unbekannt (%s)', [HeadName(Node.Name), Where('', Node.StartPos.Line)]),
+          Exit(Fail(Format('%s ist unbekannt (%s)', [TMethodLookup.HeadName(Node.Name), Where('', Node.StartPos.Line)]),
             AReason));
         TMemberLevel.ClassLevel, TMemberLevel.StaticLevel:
           begin
@@ -936,7 +528,7 @@ begin
             if (StrictName = '') and (Visible in [TIndexVisibility.StrictPrivate,
               TIndexVisibility.StrictProtected]) then
             begin
-              StrictName := HeadName(Node.Name);
+              StrictName := TMethodLookup.HeadName(Node.Name);
             end;
           end;
         TMemberLevel.NotMember: ;
@@ -1519,7 +1111,7 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       if (ANode.Kind = TSyntaxKind.HelperType) and SameText(ANode.Name, 'record') and (ANode.ChildCount > 0) and
-        (ANode[0].Kind = TSyntaxKind.TypeReference) and SameTypeName(HeadName(ANode[0].Name), TypeName) then
+        (ANode[0].Kind = TSyntaxKind.TypeReference) and SameTypeName(TMethodLookup.HeadName(ANode[0].Name), TypeName) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
