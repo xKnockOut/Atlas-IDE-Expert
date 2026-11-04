@@ -449,6 +449,7 @@ uses
   Atlas.Core.Hover.Declaration in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Declaration.pas',
   Atlas.Core.Hover.History in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.History.pas',
   Atlas.Core.Hover.Layout in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
+  Atlas.Core.Hover.Texts in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
   Atlas.Core.Hover.Declaration.Tests in 'IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas',
   Atlas.Core.Hover.DebugValue in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
