@@ -203,12 +203,14 @@ function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObj
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  mContext: TExtractInterfaceContext;
 begin
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractInterface.Execute(Resolver, Tree, KundenFile, AText, TTextPosition.Create(5, 4), ARequest,
-      AContext);
+    mContext := AContext;
+    mContext.Resolver := Resolver;
+    Result := TLspExtractInterface.Execute(Tree, KundenFile, AText, TTextPosition.Create(5, 4), ARequest, mContext);
   finally
     Resolver.Free;
     Tree.Free;
