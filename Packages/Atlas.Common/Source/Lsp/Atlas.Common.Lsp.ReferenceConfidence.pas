@@ -93,14 +93,25 @@ type
     FDescendants: TDictionary<string, TArray<TSymbolLocation>>;
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
     function ContainerIsInterface(const AContainer: string): Boolean;
+    /// <summary>Ist AResolved dasselbe Mitglied wie das Symbol, aber in einem anderen Typ?</summary>
+    function SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
+    /// <summary>Stammt die Klasse des Symbols von AContainer ab bzw. setzt sie ihn um? AClasses: Klassen unter den
+    /// Nachfahren.</summary>
+    function DescendsFrom(const AContainer: string; out AClasses: Integer): Boolean;
+    function InterfaceConfidence(const AResolved: TResolvedSymbol; AClasses: Integer): TReferenceConfidence;
+    function VirtualConfidence(const AResolved: TResolvedSymbol): TReferenceConfidence;
     function InheritedCall(const AResolved: TResolvedSymbol; out AConfidence: TReferenceConfidence): Boolean;
+    procedure Init(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
+      const AName: string; const ASettings: TReferenceSettings);
     function Ambiguous(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
       AMatched: Boolean; out AConfidence: TReferenceConfidence): Boolean;
   public
-    /// <summary>AName ohne &amp;; ASymbol ist die Deklaration hinter AWanted (AHasSymbol False, wenn sie im Index
-    /// fehlt: dann keine Gründe interface und virtual).</summary>
+    /// <summary>AName ohne &amp;; ASymbol ist die Deklaration hinter AWanted.</summary>
     constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
-      const ASymbol: TIndexSymbol; AHasSymbol: Boolean; const AName: string; const ASettings: TReferenceSettings);
+      const ASymbol: TIndexSymbol; const AName: string; const ASettings: TReferenceSettings); overload;
+    /// <summary>Wie oben ohne Deklaration (fehlt im Index): dann keine Gründe interface und virtual.</summary>
+    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
+      const AName: string; const ASettings: TReferenceSettings); overload;
     destructor Destroy; override;
     /// <summary>Einstufung des Bezeichners ATokenIndex, dessen Name schon passt (auch als Attributname). False:
     /// kein Treffer. AInactive: inaktive Bereiche der Datei (leer ohne references.inferred).</summary>
@@ -119,6 +130,7 @@ type
     class function RegionAt(const AInactive: TArray<TLspInactiveRegion>; const APosition: TTextPosition;
       out ACondition: string): Boolean; static;
     property Settings: TReferenceSettings read FSettings;
+    property Resolver: TNameResolver read FResolver;
   end;
 
 implementation
@@ -258,29 +270,42 @@ end;
 
 { TReferenceClassifier }
 
-constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AWanted: TDefinitionTarget; const ASymbol: TIndexSymbol; AHasSymbol: Boolean; const AName: string;
-  const ASettings: TReferenceSettings);
-var
-  Directive: string;
+procedure TReferenceClassifier.Init(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
 begin
-  inherited Create;
   FResolver := AResolver;
   FIndex := AIndex;
   FWanted := AWanted;
-  FSymbol := ASymbol;
-  FHasSymbol := AHasSymbol;
-  FOverloaded := False;
-  if AHasSymbol then
-  begin
-    for Directive in ASymbol.Directives do
-    begin
-      FOverloaded := FOverloaded or SameText(Directive, 'overload');
-    end;
-  end;
   FName := AName;
   FSettings := ASettings;
   FDescendants := TDictionary<string, TArray<TSymbolLocation>>.Create;
+end;
+
+constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const ASymbol: TIndexSymbol; const AName: string;
+  const ASettings: TReferenceSettings);
+var
+  mDirective: string;
+begin
+  inherited Create;
+  Init(AResolver, AIndex, AWanted, AName, ASettings);
+  FSymbol := ASymbol;
+  FHasSymbol := True;
+  FOverloaded := False;
+  for mDirective in ASymbol.Directives do
+  begin
+    FOverloaded := FOverloaded or SameText(mDirective, 'overload');
+  end;
+end;
+
+constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
+begin
+  inherited Create;
+  Init(AResolver, AIndex, AWanted, AName, ASettings);
+  FSymbol := Default(TIndexSymbol);
+  FHasSymbol := False;
+  FOverloaded := False;
 end;
 
 destructor TReferenceClassifier.Destroy;
@@ -374,71 +399,88 @@ begin
   Result := TLspImplementations.IsInterfaceType(FIndex, AContainer);
 end;
 
+function TReferenceClassifier.SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
+begin
+  Result := FHasSymbol and (FSymbol.Kind in MemberKinds) and (FSymbol.Container <> '');
+  if Result then
+  begin
+    Result := (AResolved.Kind = TResolvedKind.Symbol) and (AResolved.SymbolKind = FSymbol.Kind) and
+      SameText(AResolved.Name, FSymbol.Name) and (AResolved.Container <> '') and
+      not SameText(AResolved.Container, FSymbol.Container);
+  end;
+end;
+
+function TReferenceClassifier.DescendsFrom(const AContainer: string; out AClasses: Integer): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := False;
+  AClasses := 0;
+  for mLocation in Descendants(AContainer) do
+  begin
+    if mLocation.Symbol.Kind in ClassKinds then
+    begin
+      Inc(AClasses);
+    end;
+    if SameText(mLocation.Symbol.QualifiedName, FSymbol.Container) or
+      SameText(mLocation.Symbol.Name, ShortName(FSymbol.Container)) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+function TReferenceClassifier.InterfaceConfidence(const AResolved: TResolvedSymbol;
+  AClasses: Integer): TReferenceConfidence;
+begin
+  if AClasses <= 1 then
+  begin
+    Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
+      Format('Aufruf über %s.%s; %s ist die einzige Umsetzung', [AResolved.Container, AResolved.Name,
+      FSymbol.Container]), False);
+  end
+  else
+  begin
+    Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
+      Format('Aufruf über %s.%s; %s ist eine von %d Umsetzungen', [AResolved.Container, AResolved.Name,
+      FSymbol.Container, AClasses]), False);
+  end;
+  Result.Implementations := AClasses;
+end;
+
+function TReferenceClassifier.VirtualConfidence(const AResolved: TResolvedSymbol): TReferenceConfidence;
+begin
+  Result := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
+    Format('Aufruf von %s.%s; %s.%s überschreibt sie', [AResolved.Container, AResolved.Name, FSymbol.Container,
+    FSymbol.Name]), False);
+  Result.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
+    False);
+end;
+
 function TReferenceClassifier.InheritedCall(const AResolved: TResolvedSymbol;
   out AConfidence: TReferenceConfidence): Boolean;
 var
-  Location: TSymbolLocation;
-  Found: Boolean;
-  Classes: Integer;
+  mClasses: Integer;
 begin
-  Result := False;
-  if not FHasSymbol or not (FSymbol.Kind in MemberKinds) or (FSymbol.Container = '') then
-  begin
-    Exit;
-  end;
-  if (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.SymbolKind <> FSymbol.Kind) or
-    not SameText(AResolved.Name, FSymbol.Name) or (AResolved.Container = '') or
-    SameText(AResolved.Container, FSymbol.Container) then
-  begin
-    Exit;
-  end;
   // Die Klasse des Symbols muss vom Typ des aufgerufenen Mitglieds abstammen bzw. ihn umsetzen.
-  Found := False;
-  Classes := 0;
-  for Location in Descendants(AResolved.Container) do
-  begin
-    if Location.Symbol.Kind in ClassKinds then
-    begin
-      Inc(Classes);
-    end;
-    if SameText(Location.Symbol.QualifiedName, FSymbol.Container) or
-      SameText(Location.Symbol.Name, ShortName(FSymbol.Container)) then
-    begin
-      Found := True;
-    end;
-  end;
-  if not Found then
+  Result := SameMemberElsewhere(AResolved) and DescendsFrom(AResolved.Container, mClasses);
+  if not Result then
   begin
     Exit;
   end;
   if ContainerIsInterface(AResolved.Container) then
   begin
-    if Classes <= 1 then
-    begin
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-        Format('Aufruf über %s.%s; %s ist die einzige Umsetzung', [AResolved.Container, AResolved.Name,
-        FSymbol.Container]), False);
-    end
-    else
-    begin
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-        Format('Aufruf über %s.%s; %s ist eine von %d Umsetzungen', [AResolved.Container, AResolved.Name,
-        FSymbol.Container, Classes]), False);
-    end;
-    AConfidence.Implementations := Classes;
-    Exit(True);
-  end;
-  // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
-  if not AResolved.IsVirtual then
+    AConfidence := InterfaceConfidence(AResolved, mClasses);
+  end
+  else if AResolved.IsVirtual then
   begin
-    Exit;
+    AConfidence := VirtualConfidence(AResolved);
+  end
+  else
+  begin
+    // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
+    Result := False;
   end;
-  AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
-    Format('Aufruf von %s.%s; %s.%s überschreibt sie', [AResolved.Container, AResolved.Name, FSymbol.Container,
-    FSymbol.Name]), False);
-  AConfidence.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
-    False);
-  Result := True;
 end;
 
 function TReferenceClassifier.Ambiguous(ATree: TSyntaxTree; const AFileName: string;

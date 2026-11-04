@@ -232,8 +232,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitKunden);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, Tree, KundenFile, PositionOf(UnitKunden, 'Speichern; override'),
-      True, [KundenFile, HauptFile], ReadText, ASettings, nil);
+    Result := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden,
+      'Speichern; override'), True, [KundenFile, HauptFile], ReadText), ASettings, nil);
   finally
     Tree.Free;
   end;
@@ -340,8 +340,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitWerte);
   try
-    Result := TLspReferences.Find(AResolver, AIndex, Tree, WerteFile, PositionOf(UnitWerte, AMarker), False,
-      TArray<string>.Create(WerteFile), AReadText, ASettings, nil);
+    Result := TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(WerteFile, PositionOf(UnitWerte,
+      AMarker), False, TArray<string>.Create(WerteFile), AReadText), ASettings, nil);
   finally
     Tree.Free;
   end;
@@ -378,14 +378,14 @@ begin
   // Wie im Editor: Der Parser überspringt den Zweig NIE, die Token-Liste enthält ihn.
   Tree := TPascalParser.ParseActive(UnitHaupt, nil);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Speichern;'),
-      False, [KundenFile, HauptFile], ReadText, Settings(True, False), nil);
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt,
+      'Speichern;'), False, [KundenFile, HauptFile], ReadText), Settings(True, False), nil);
     Assert.IsTrue(HitAt(Found, HauptFile, 11, Location), 'Stelle in NIE fehlt: ' + Describe(Found));
     Assert.AreEqual('inactiveBranch', Location.Confidence.ReasonName);
     Assert.IsTrue(Location.Confidence.Renameable);
     // Ohne Einstufung wie vor #1119: sicher.
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Speichern;'),
-      False, [KundenFile, HauptFile], ReadText, Settings(False, False), nil);
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt,
+      'Speichern;'), False, [KundenFile, HauptFile], ReadText), Settings(False, False), nil);
     Assert.IsTrue(HitAt(Found, HauptFile, 11, Location), Describe(Found));
     Assert.IsTrue(Location.Confidence.IsSure);
   finally
@@ -657,14 +657,14 @@ begin
     for Round := 1 to Rounds do
     begin
       Watch := TStopwatch.StartNew;
-      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree, KundenFile,
-        PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile, HauptFile], Read,
-        Settings(False, False), nil))));
+      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree,
+        TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile,
+        HauptFile], Read), Settings(False, False), nil))));
       Inc(Sure, Watch.ElapsedMilliseconds);
       Watch := TStopwatch.StartNew;
-      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree, KundenFile,
-        PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile, HauptFile], Read,
-        Settings(True, True), nil))));
+      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree,
+        TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile,
+        HauptFile], Read), Settings(True, True), nil))));
       Inc(Inferred, Watch.ElapsedMilliseconds);
     end;
   finally

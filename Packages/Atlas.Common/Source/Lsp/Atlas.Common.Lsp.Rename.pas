@@ -529,8 +529,8 @@ begin
       begin
         Continue;
       end;
-      for Location in TLspReferences.Find(AResolver, AIndex, Tree, AChecked.DeclarationFile,
-        Handler.SelectionRange.StartPos, True, AFiles, AReadText, ACancellation) do
+      for Location in TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(AChecked.DeclarationFile,
+        Handler.SelectionRange.StartPos, True, AFiles, AReadText), ACancellation) do
       begin
         Edit.FileName := Location.FileName;
         Edit.Range := Location.Range;
@@ -596,8 +596,8 @@ begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Checked.Error);
   end;
   Result := nil;
-  Found := TLspReferences.Find(AResolver, AIndex, ATree, AFileName, APosition, True, AFiles, AReadText, ASettings,
-    ACancellation);
+  Found := TLspReferences.Find(AResolver, AIndex, ATree, TReferenceSearch.Create(AFileName, APosition, True, AFiles,
+    AReadText), ASettings, ACancellation);
   Locations := nil;
   for Location in Found do
   begin

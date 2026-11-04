@@ -982,9 +982,9 @@ begin
     begin
       Continue;
     end;
-    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, FFileName,
+    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
       NamePosition(FTree, FSource.Members[mId].Node, FSource.Members[mId].Name), False, FContext.Files,
-      FContext.ReadText) do
+      FContext.ReadText)) do
     begin
       if not InRanges(mRanges, mLocation.FileName, mLocation.Range.StartPos.Line) then
       begin

@@ -589,8 +589,8 @@ var
 begin
   for mMethod in AMethods do
   begin
-    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, FFileName, mMethod.NamePos, False,
-      FContext.Files, FContext.ReadText) do
+    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+      mMethod.NamePos, False, FContext.Files, FContext.ReadText)) do
     begin
       AddReference(AItem, mMethod, mLocation);
     end;

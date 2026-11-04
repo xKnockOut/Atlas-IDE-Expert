@@ -138,7 +138,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, AMarker),
+    Result := TLspReferences.Find(FResolver, FIndex, Tree,
+      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, AMarker),
       ADeclaration, [WerkzeugFile, HauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -155,7 +156,7 @@ begin
         begin
           Result := False;
         end;
-      end);
+      end));
   finally
     Tree.Free;
   end;
@@ -241,7 +242,8 @@ begin
   Text := Text + 'end;'#10'end.';
   Tree := TPascalParser.Parse(Text);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, TTextPosition.Create(8, 4), False,
+    Found := TLspReferences.Find(FResolver, FIndex, Tree,
+      TReferenceSearch.Create(HauptFile, TTextPosition.Create(8, 4), False,
       [WerkzeugFile, HauptFile, WerkzeugFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
@@ -250,7 +252,7 @@ begin
         begin
           AText := UnitWerkzeug;
         end;
-      end);
+      end));
   finally
     Tree.Free;
   end;
@@ -278,7 +280,8 @@ begin
     FResolver.PinTree(Tree, HauptFile);
     try
       Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
-      Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Summe(1'), False,
+      Found := TLspReferences.Find(FResolver, FIndex, Tree,
+        TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'Summe(1'), False,
         [WerkzeugFile, HauptFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
@@ -287,7 +290,7 @@ begin
           begin
             AText := UnitWerkzeug;
           end;
-        end);
+        end));
       Assert.AreEqual('Haupt.pas:8:4 Haupt.pas:9:4 Haupt.pas:9:12 Werkzeug.pas:8:18', Describe(Found));
       Again := FResolver.ExtractedUnit(Tree, HauptFile);
       Assert.IsTrue(Pointer(Pinned.Symbols) = Pointer(Again.Symbols));
@@ -295,8 +298,9 @@ begin
       FResolver.UnpinTree;
     end;
     // Ohne Pin des Aufrufers bleibt nach Find nichts gepinnt.
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Summe(1'), True,
-      [HauptFile], nil);
+    Found := TLspReferences.Find(FResolver, FIndex, Tree,
+      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'Summe(1'), True,
+      [HauptFile], nil));
     Assert.AreEqual(3, Integer(Length(Found)));
     Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
     Again := FResolver.ExtractedUnit(Tree, HauptFile);
