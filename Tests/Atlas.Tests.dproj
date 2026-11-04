@@ -1767,6 +1767,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DataFlow.Parts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>

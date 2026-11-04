@@ -1737,6 +1737,7 @@ uses
   Atlas.UI.Debug.EvaluateFrame in '..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateFrame.pas',
   Atlas.UI.Debug.EvaluateFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.EvaluateFrame.Tests.pas',
   Atlas.Common.Lsp.DataFlow.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Tests.pas',
+  Atlas.Common.Lsp.DataFlow.Parts.Tests in 'Common\Lsp\Atlas.Common.Lsp.DataFlow.Parts.Tests.pas',
   Atlas.Core.Lsp.DataFlow in '..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',
   Atlas.Core.Lsp.DataFlow.Tests in 'IDE.Expert\Atlas.Core.Lsp.DataFlow.Tests.pas',
   Atlas.Core.Results.DataFlow in '..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.DataFlow.pas',
