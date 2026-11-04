@@ -290,7 +290,7 @@ begin
   mFrame := FHooks.Frame();
   if mFrame <> nil then
   begin
-    Result := mFrame.Development;
+    Result := mFrame.Parts.Development;
   end;
 end;
 
@@ -368,11 +368,13 @@ procedure TAtlasIdeIssueDevelopment.Wire(AFrame: TAtlasIssueFrame);
 var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
+  mEvents: TAtlasIssueFrameEvents;
 begin
   mKeep := Self;
   mOwner := Self;
-  AFrame.DevelopmentVisible := Active;
-  AFrame.OnDevelopmentShown :=
+  AFrame.SetFlag(TAtlasIssueFlag.Development, Active);
+  mEvents := AFrame.Events;
+  mEvents.DevelopmentShown :=
     procedure
     begin
       if mKeep <> nil then
@@ -380,7 +382,8 @@ begin
         mOwner.Shown;
       end;
     end;
-  AFrame.Development.Events := DevelopmentEvents(Self, mKeep);
+  AFrame.Events := mEvents;
+  AFrame.Parts.Development.Events := DevelopmentEvents(Self, mKeep);
   FShown := False;
 end;
 
@@ -408,7 +411,7 @@ begin
     Exit;
   end;
   // Schalter erst beim nächsten Issue: Der Reiter verschwindet nicht unter der Maus.
-  mFrame.DevelopmentVisible := Active;
+  mFrame.SetFlag(TAtlasIssueFlag.Development, Active);
   if mFrame.DevelopmentActive then
   begin
     Load(False);

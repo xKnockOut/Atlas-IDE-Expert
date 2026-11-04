@@ -810,6 +810,7 @@ uses
   Atlas.Core.Tracker.Attach.Tests in 'IDE.Expert\Atlas.Core.Tracker.Attach.Tests.pas',
   Atlas.UI.Documentation.View in '..\Packages\Atlas.IDE.Base\Source\UI\Documentation\Atlas.UI.Documentation.View.pas',
   Atlas.UI.Tracker.DocBox in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.DocBox.pas',
+  Atlas.UI.Tracker.IssueBoxes in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.IssueBoxes.pas',
   Atlas.UI.Tracker.IssueFrame in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas',
   Atlas.UI.Tracker.IssueFrame.Tests in 'IDE.Expert\Atlas.UI.Tracker.IssueFrame.Tests.pas',
   Atlas.UI.Tracker.IssueTip in '..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.IssueTip.pas',
