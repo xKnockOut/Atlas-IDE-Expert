@@ -268,62 +268,99 @@ begin
     SameText(AToken.Text, 'automated'));
 end;
 
+const
+  // Schlüsselwörter, hinter denen ein Attribut beginnen kann.
+  cAttributeKeywords: array[0..7] of string = ('type', 'var', 'const', 'threadvar', 'class', 'record', 'object',
+    'implementation');
+
+function OpensAt(const ATokens: TArray<TPascalToken>; AOpen, ADepth: Integer): Boolean; forward;
+
+/// <summary>Beginnt hinter dem Schlüsselwort ATokens[APrev] ein Attribut?</summary>
+function OpensAfterKeyword(const ATokens: TArray<TPascalToken>; APrev: Integer): Boolean;
+var
+  mBefore: Integer;
+  mKeyword: string;
+begin
+  // "IFoo = interface [" ist die GUID; "interface" als Abschnitt steht hinter "unit X;".
+  if ATokens[APrev].IsKeyword('interface') or ATokens[APrev].IsKeyword('dispinterface') then
+  begin
+    mBefore := PreviousIndex(ATokens, APrev);
+    Exit((mBefore < 0) or not ATokens[mBefore].IsSymbol('='));
+  end;
+  for mKeyword in cAttributeKeywords do
+  begin
+    if ATokens[APrev].IsKeyword(mKeyword) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>"TFoo = class(TBasis)" und darunter das Attribut eines Felds: ATokens[APrev] ist die ")".</summary>
+function OpensAfterClose(const ATokens: TArray<TPascalToken>; APrev: Integer; ALineStart: Boolean): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := OpeningOf(ATokens, APrev);
+  Result := ALineStart and (mBefore >= 0) and (OpensAncestors(ATokens, mBefore) or OpensParameters(ATokens, mBefore));
+end;
+
+/// <summary>Beginnt an AOpen ein Attribut, wenn davor das Nicht-Schlüsselwort ATokens[APrev] steht?</summary>
+function OpensAfterToken(const ATokens: TArray<TPascalToken>; AOpen, APrev, ADepth: Integer): Boolean;
+var
+  mLineStart: Boolean;
+begin
+  mLineStart := ATokens[APrev].EndPos.Line < ATokens[AOpen].StartPos.Line;
+  if ATokens[APrev].IsSymbol(';') then
+  begin
+    Result := True;
+  end
+  // Parameter: "procedure Foo([Ref] const A".
+  else if ATokens[APrev].IsSymbol('(') then
+  begin
+    Result := OpensParameters(ATokens, APrev);
+  end
+  else if ATokens[APrev].IsSymbol(')') then
+  begin
+    Result := OpensAfterClose(ATokens, APrev, mLineStart);
+  end
+  // Sichtbarkeit und weitere Attribute nur am Zeilenanfang: "Private[0]" und "A[1][2]" sind Indizes.
+  else if not mLineStart then
+  begin
+    Result := False;
+  end
+  else if ATokens[APrev].IsSymbol(']') then
+  begin
+    Result := OpensAt(ATokens, OpeningOf(ATokens, APrev), ADepth + 1);
+  end
+  else
+  begin
+    Result := IsVisibility(ATokens[APrev]);
+  end;
+end;
+
 function OpensAt(const ATokens: TArray<TPascalToken>; AOpen, ADepth: Integer): Boolean;
 var
-  Prev, Before: Integer;
-  LineStart: Boolean;
+  mPrev: Integer;
 begin
   Result := False;
   if (AOpen < 0) or (AOpen > High(ATokens)) or not ATokens[AOpen].IsSymbol('[') or (ADepth > MaxChainedBrackets) then
   begin
     Exit;
   end;
-  Prev := PreviousIndex(ATokens, AOpen);
-  if Prev < 0 then
+  mPrev := PreviousIndex(ATokens, AOpen);
+  if mPrev < 0 then
   begin
-    Exit(True);
-  end;
-  LineStart := ATokens[Prev].EndPos.Line < ATokens[AOpen].StartPos.Line;
-  if ATokens[Prev].IsSymbol(';') then
+    Result := True;
+  end
+  else if ATokens[mPrev].Kind = TPascalTokenKind.Keyword then
   begin
-    Exit(True);
-  end;
-  if ATokens[Prev].Kind = TPascalTokenKind.Keyword then
+    Result := OpensAfterKeyword(ATokens, mPrev);
+  end
+  else
   begin
-    // "IFoo = interface [" ist die GUID; "interface" als Abschnitt steht hinter "unit X;".
-    if ATokens[Prev].IsKeyword('interface') or ATokens[Prev].IsKeyword('dispinterface') then
-    begin
-      Before := PreviousIndex(ATokens, Prev);
-      Exit((Before < 0) or not ATokens[Before].IsSymbol('='));
-    end;
-    Exit(ATokens[Prev].IsKeyword('type') or ATokens[Prev].IsKeyword('var') or ATokens[Prev].IsKeyword('const') or
-      ATokens[Prev].IsKeyword('threadvar') or ATokens[Prev].IsKeyword('class') or
-      ATokens[Prev].IsKeyword('record') or ATokens[Prev].IsKeyword('object') or
-      ATokens[Prev].IsKeyword('implementation'));
-  end;
-  // Parameter: "procedure Foo([Ref] const A".
-  if ATokens[Prev].IsSymbol('(') then
-  begin
-    Exit(OpensParameters(ATokens, Prev));
-  end;
-  // "TFoo = class(TBasis)" und darunter das Attribut eines Felds.
-  if ATokens[Prev].IsSymbol(')') then
-  begin
-    Before := OpeningOf(ATokens, Prev);
-    Exit(LineStart and (Before >= 0) and (OpensAncestors(ATokens, Before) or OpensParameters(ATokens, Before)));
-  end;
-  // Sichtbarkeit und weitere Attribute nur am Zeilenanfang: "Private[0]" und "A[1][2]" sind Indizes.
-  if not LineStart then
-  begin
-    Exit;
-  end;
-  if IsVisibility(ATokens[Prev]) then
-  begin
-    Exit(True);
-  end;
-  if ATokens[Prev].IsSymbol(']') then
-  begin
-    Exit(OpensAt(ATokens, OpeningOf(ATokens, Prev), ADepth + 1));
+    Result := OpensAfterToken(ATokens, AOpen, mPrev, ADepth);
   end;
 end;
 
@@ -332,53 +369,70 @@ begin
   Result := OpensAt(ATokens, AOpen, 0);
 end;
 
-class function TAttributes.InBracket(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean;
-var
-  Index, Depth: Integer;
+/// <summary>Ein Schritt der Suche nach der offenen "[": True beendet die Suche, AOpen sagt, ob AToken sie ist.</summary>
+function BracketScanStops(const AToken: TPascalToken; var ADepth: Integer; out AOpen: Boolean): Boolean;
 begin
+  AOpen := False;
   Result := False;
-  if (ALast < 0) or (ALast > High(ATokens)) then
+  if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
   begin
-    Exit;
+    Inc(ADepth);
+  end
+  else if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Result := ADepth = 0;
+    AOpen := Result and AToken.IsSymbol('[');
+    Dec(ADepth);
+  end
+  else
+  begin
+    Result := (ADepth = 0) and (AToken.IsSymbol(';') or (AToken.Kind = TPascalTokenKind.Keyword));
   end;
-  if ATokens[ALast].IsSymbol('[') then
+end;
+
+/// <summary>Offene "[" vor ALast; -1, wenn vorher eine offene "(" (in den Argumenten) oder ein Satzende steht.</summary>
+function OpenBracketBefore(const ATokens: TArray<TPascalToken>; ALast: Integer): Integer;
+var
+  mDepth: Integer;
+  mOpen: Boolean;
+begin
+  mDepth := 0;
+  Result := PreviousIndex(ATokens, ALast);
+  while Result >= 0 do
   begin
-    Exit(Opens(ATokens, ALast));
-  end;
-  if not ATokens[ALast].IsSymbol(',') then
-  begin
-    Exit;
-  end;
-  // Zur offenen "[" zurück; eine offene "(" davor heißt: in den Argumenten.
-  Depth := 0;
-  Index := PreviousIndex(ATokens, ALast);
-  while Index >= 0 do
-  begin
-    if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    if BracketScanStops(ATokens[Result], mDepth, mOpen) then
     begin
-      Inc(Depth);
-    end
-    else if ATokens[Index].IsSymbol('(') then
-    begin
-      if Depth = 0 then
+      if not mOpen then
       begin
-        Exit;
+        Result := -1;
       end;
-      Dec(Depth);
-    end
-    else if ATokens[Index].IsSymbol('[') then
-    begin
-      if Depth = 0 then
-      begin
-        Exit(Opens(ATokens, Index));
-      end;
-      Dec(Depth);
-    end
-    else if (Depth = 0) and (ATokens[Index].IsSymbol(';') or (ATokens[Index].Kind = TPascalTokenKind.Keyword)) then
-    begin
       Exit;
     end;
-    Index := PreviousIndex(ATokens, Index);
+    Result := PreviousIndex(ATokens, Result);
+  end;
+end;
+
+class function TAttributes.InBracket(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean;
+var
+  mOpen: Integer;
+begin
+  if (ALast < 0) or (ALast > High(ATokens)) then
+  begin
+    Result := False;
+  end
+  else if ATokens[ALast].IsSymbol('[') then
+  begin
+    Result := Opens(ATokens, ALast);
+  end
+  else if ATokens[ALast].IsSymbol(',') then
+  begin
+    // Zur offenen "[" zurück; eine offene "(" davor heißt: in den Argumenten.
+    mOpen := OpenBracketBefore(ATokens, ALast);
+    Result := (mOpen >= 0) and Opens(ATokens, mOpen);
+  end
+  else
+  begin
+    Result := False;
   end;
 end;
 
