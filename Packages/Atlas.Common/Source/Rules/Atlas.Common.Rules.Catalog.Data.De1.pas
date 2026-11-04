@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDe1: array[0..1189] of string = (
+  CatalogLinesDe1: array[0..1188] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -598,7 +598,8 @@ const
     '      "name": "Formatierung abhängig vom Gebietsschema",',
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
-    ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."',
+    ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen' +
+    ' Unit und einer Unit, die in uses nach System.SysUtils steht."',
     '    },',
     '    {',
     '      "id": "format-args",',
@@ -1505,8 +1506,7 @@ const
     '        },',
     '        {',
     '          "name": "okMarker",',
-    '          "description": "Kommentar, der eine Zeile ausnimmt."',
-    '        }');
+    '          "description": "Kommentar, der eine Zeile ausnimmt."');
 
 implementation
 

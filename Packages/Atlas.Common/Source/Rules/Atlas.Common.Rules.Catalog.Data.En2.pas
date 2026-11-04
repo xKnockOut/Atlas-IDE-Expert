@@ -7,6 +7,7 @@ interface
 
 const
   CatalogLinesEn2: array[0..1250] of string = (
+    '          "type": "string-list",',
     '          "default": [',
     '            "TODO",',
     '            "FIXME"',
@@ -1505,8 +1506,7 @@ const
     ' of the try part and Cancel; raise; in the except part.",',
     '      "bad": "tblKunde.Edit;\ntblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\nProtokollieren;",',
     '      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;"',
-    '    },',
-    '    {');
+    '    },');
 
 implementation
 

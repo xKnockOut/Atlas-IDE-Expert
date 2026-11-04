@@ -7,6 +7,7 @@ interface
 
 const
   CatalogLinesEn3: array[0..1236] of string = (
+    '    {',
     '      "id": "transaction-without-rollback",',
     '      "name": "Transaction without Rollback",',
     '      "category": "bug",',
@@ -1505,8 +1506,7 @@ const
     '        "E2175",',
     '        "E2176",',
     '        "E2177",',
-    '        "E2178",',
-    '        "E2179",');
+    '        "E2178",');
 
 implementation
 

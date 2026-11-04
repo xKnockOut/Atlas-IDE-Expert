@@ -251,19 +251,90 @@ begin
   end;
 end;
 
+/// <summary>Steht vor dem Namen an AIndex ein Punkt (SysUtils.Format)?</summary>
+function IsQualified(const ATokens: TTokens; AIndex: Integer): Boolean;
+var
+  mPrev: Integer;
+begin
+  mPrev := PreviousCode(ATokens, AIndex);
+  Result := (mPrev >= 0) and ATokens[mPrev].IsSymbol('.');
+end;
+
+/// <summary>Rang von AUnitName unter den uses von AUnit, höchste Priorität zuerst (die letzten Einträge gewinnen,
+/// implementation vor interface); -1, wenn die Unit nicht in uses steht.</summary>
+function UsesRank(const AUnit: TUnitIndex; const AUnitNames: array of string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := High(AUnit.ImplementationUses) downto 0 do
+  begin
+    if MatchText(AUnit.ImplementationUses[mIndex], AUnitNames) then
+    begin
+      Exit(High(AUnit.ImplementationUses) - mIndex);
+    end;
+  end;
+  for mIndex := High(AUnit.InterfaceUses) downto 0 do
+  begin
+    if MatchText(AUnit.InterfaceUses[mIndex], AUnitNames) then
+    begin
+      Exit(Length(AUnit.ImplementationUses) + High(AUnit.InterfaceUses) - mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Ruft der Name an AIndex eine eigene Routine statt der aus System.SysUtils auf? Aufgelöst wie vom
+/// Compiler: lokale Routinen, Methoden der eigenen Klasse und Routinen der eigenen Unit verdecken die RTL, ebenso
+/// eine Unit, die in uses nach System.SysUtils steht. Unbekannte Namen (ohne Index) gelten als RTL; ebenso eine
+/// fremde Unit, wenn System.SysUtils in uses danach steht, aber nicht im Index ist.</summary>
+function CallsOwnRoutine(const AContext: TRuleContext; var ACache: IRuleDerivedCache; const AToken: TPascalToken):
+  Boolean;
+var
+  mResolved: TResolvedSymbol;
+  mUnit: TUnitIndex;
+  mOwnRank: Integer;
+begin
+  if ACache = nil then
+  begin
+    ACache := TRuleDerived.Open(AContext);
+  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mResolved := TRuleDerived.Resolver(ACache, AContext).ResolveChain(AContext.Tree, AContext.RelativePath,
+    [AToken.Text], AToken.Offset, False);
+  if (mResolved.Kind in [TResolvedKind.None, TResolvedKind.UnitName]) or
+    MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
+  begin
+    Exit(False);
+  end;
+  mUnit := TRuleDerived.UnitIndex(ACache, AContext);
+  if (mResolved.Kind = TResolvedKind.Local) or (mResolved.Container <> '') or
+    SameText(mResolved.UnitName, mUnit.UnitName) then
+  begin
+    Exit(True);
+  end;
+  mOwnRank := UsesRank(mUnit, [mResolved.UnitName]);
+  Result := (mOwnRank < 0) or (UsesRank(mUnit, ['System.SysUtils', 'SysUtils']) < 0) or
+    (mOwnRank < UsesRank(mUnit, ['System.SysUtils', 'SysUtils']));
+end;
+
 procedure TFormatWithoutSettingsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
   Index, Close: Integer;
+  mCache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
+  mCache := nil;
   Tokens := AContext.Tree.Tokens;
   for Index := 0 to High(Tokens) do
   begin
-    if IsLocaleCall(Tokens, Index, Close) then
+    // Erst das Muster, dann die Auflösung: Eine eigene Routine gleichen Namens (auch aus einer anderen Unit) ist
+    // nicht die aus System.SysUtils. SysUtils.Format ist ausdrücklich die RTL.
+    if IsLocaleCall(Tokens, Index, Close) and (IsQualified(Tokens, Index) or
+      not CallsOwnRoutine(AContext, mCache, Tokens[Index])) then
     begin
       AReport.Add(RangeOf(Tokens, Index, Close), Format('%s ohne TFormatSettings hängt vom Gebietsschema ab ' +
         '(Dezimaltrenner, Datumsformat); für Dateien und Protokolle eine feste TFormatSettings übergeben',
