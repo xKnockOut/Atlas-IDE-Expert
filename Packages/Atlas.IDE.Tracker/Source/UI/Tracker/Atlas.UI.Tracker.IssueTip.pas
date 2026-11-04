@@ -30,10 +30,10 @@ type
     class function AgeText(ATime, ANow: TDateTime): string; static;
     /// <summary>Grund, warum das Issue AKey nicht geladen wurde.</summary>
     class function ErrorText(AError: TAtlasCiFetchError; const AKey: string): string; static;
-    /// <summary>Titel und Text des Hovers über AKey. ADetails gilt nur bei Found; AError nur bei Failed;
-    /// APreview: issues.preview an (Strg+Klick öffnet die Vorschau).</summary>
-    class procedure Compose(const AKey: string; AState: TAtlasIssueTipState; const ADetails: TAtlasTrackerDetails;
-      AError: TAtlasCiFetchError; ANow: TDateTime; APreview: Boolean; out ATitle, AText: string); static;
+    /// <summary>Text des Hovers über AKey (sein Titel ist AKey). ADetails gilt nur bei Found; AError nur bei
+    /// Failed; APreview: issues.preview an (Strg+Klick öffnet die Vorschau).</summary>
+    class function Compose(const AKey: string; AState: TAtlasIssueTipState; const ADetails: TAtlasTrackerDetails;
+      AError: TAtlasCiFetchError; ANow: TDateTime; APreview: Boolean): string; static;
     /// <summary>Zeile einer Kennung im Hover der Zeilenhistorie (#1275): "ATL-97 · Titel · Zustand", sonst
     /// "ATL-97 · Wird geladen …" bzw. "ATL-97 · " und der Grund.</summary>
     class function KeyLine(const AKey: string; AState: TAtlasIssueTipState; const ADetails: TAtlasTrackerDetails;
@@ -102,55 +102,55 @@ begin
   end;
 end;
 
-class procedure TAtlasIssueTip.Compose(const AKey: string; AState: TAtlasIssueTipState;
-  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError; ANow: TDateTime; APreview: Boolean;
-  out ATitle, AText: string);
+/// <summary>Titel, darunter Zustand, Zuständig und Alter, soweit bekannt.</summary>
+function FoundText(const ADetails: TAtlasTrackerDetails; ANow: TDateTime): string;
 var
   mFields: TArray<string>;
-  mFooter: string;
 begin
-  ATitle := AKey;
+  Result := ADetails.Title;
+  mFields := nil;
+  if ADetails.State <> '' then
+  begin
+    mFields := mFields
+      + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState) + ': ' + ADetails.State];
+  end;
+  if ADetails.Assignee <> '' then
+  begin
+    mFields := mFields + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee) + ': ' +
+      ADetails.Assignee];
+  end;
+  if ADetails.Updated > 0 then
+  begin
+    mFields := mFields + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
+      [TAtlasIssueTip.AgeText(ADetails.Updated, ANow)])];
+  end;
+  if Length(mFields) > 0 then
+  begin
+    Result := Result + #10 + string.Join(' · ', mFields);
+  end;
+end;
+
+class function TAtlasIssueTip.Compose(const AKey: string; AState: TAtlasIssueTipState;
+  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError; ANow: TDateTime; APreview: Boolean): string;
+begin
   case AState of
     TAtlasIssueTipState.Found:
-      begin
-        AText := ADetails.Title;
-        mFields := nil;
-        if ADetails.State <> '' then
-        begin
-          mFields := mFields
-            + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldState) + ': ' + ADetails.State];
-        end;
-        if ADetails.Assignee <> '' then
-        begin
-          mFields := mFields + [TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewFieldAssignee) + ': ' +
-            ADetails.Assignee];
-        end;
-        if ADetails.Updated > 0 then
-        begin
-          mFields := mFields + [TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewBadgeUpdated,
-            [AgeText(ADetails.Updated, ANow)])];
-        end;
-        if Length(mFields) > 0 then
-        begin
-          AText := AText + #10 + string.Join(' · ', mFields);
-        end;
-      end;
+      Result := FoundText(ADetails, ANow);
     TAtlasIssueTipState.NotFound:
-      AText := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
+      Result := TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.IssuePreviewErrorNotFound, [AKey]);
     TAtlasIssueTipState.Failed:
-      AText := ErrorText(AError, AKey);
+      Result := ErrorText(AError, AKey);
   else
-    AText := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
+    Result := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading);
   end;
   if APreview then
   begin
-    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooter);
+    Result := Result + #10#10 + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooter);
   end
   else
   begin
-    mFooter := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooterBrowser);
+    Result := Result + #10#10 + TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssueLinkTipFooterBrowser);
   end;
-  AText := AText + #10#10 + mFooter;
 end;
 
 class function TAtlasIssueTip.KeyLine(const AKey: string; AState: TAtlasIssueTipState;

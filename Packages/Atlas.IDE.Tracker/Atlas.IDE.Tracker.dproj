@@ -129,6 +129,10 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.GitHubBoards.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.YouTrackJson.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackApi.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackParse.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.YouTrackBoards.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.QueryTest.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.SettingsTables.pas"/>

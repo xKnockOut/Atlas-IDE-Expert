@@ -138,6 +138,26 @@ begin
     end;
 end;
 
+/// <summary>Quellen für find_path ohne Namensräume; Dateien über ReadSourceText, Units über AEnsure.</summary>
+function SymbolPathSourcesOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
+  const AEnsure: TFunc<string, Boolean>): TSymbolPathSources;
+begin
+  Result := Default(TSymbolPathSources);
+  Result.Index := AIndex;
+  Result.Graphs := AGraphs;
+  Result.Locator := ALocator;
+  Result.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
+  Result.EnsureUnit :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := Assigned(AEnsure) and AEnsure(AUnitName);
+    end;
+end;
+
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
@@ -150,6 +170,7 @@ begin
       Options: TUsesGraphOptions;
       Namespaces: TArray<string>;
       Token: IJsonRpcCancellationToken;
+      Sources: TSymbolPathSources;
     begin
       Request := ARequest;
       // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
@@ -162,15 +183,9 @@ begin
         AGraphs.SetOptions(Options);
       end;
       Token := TJsonRpcCurrentRequest.Token;
-      Result := TSymbolPathSearch.Text(TSymbolPathSearch.Run(AIndex, AGraphs, ALocator,
-        function(const AFileName: string; out AText: string): Boolean
-        begin
-          Result := ReadSourceText(AFileName, AText);
-        end,
-        function(const AUnitName: string): Boolean
-        begin
-          Result := Assigned(AEnsure) and AEnsure(AUnitName);
-        end, Namespaces, Request,
+      Sources := SymbolPathSourcesOf(AIndex, AGraphs, ALocator, AEnsure);
+      Sources.Namespaces := Namespaces;
+      Result := TSymbolPathSearch.Text(TSymbolPathSearch.Run(Sources, Request,
         function: Boolean
         begin
           Result := (Token <> nil) and Token.IsCancellationRequested;

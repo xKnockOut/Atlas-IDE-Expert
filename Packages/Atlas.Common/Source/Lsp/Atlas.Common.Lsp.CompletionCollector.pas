@@ -510,7 +510,7 @@ begin
   // Klassen: Nachfahr des erwarteten Typs; je Typname einmal auflösen.
   if not FDescends.TryGetValue(LowerCase(TypeText), Result) then
   begin
-    Result := FRequest.Resolver.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, TypeText,
+    Result := FRequest.Resolver.Queries.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, TypeText,
       FExpected);
     FDescends.Add(LowerCase(TypeText), Result);
   end;
@@ -598,7 +598,7 @@ begin
   EnumType := '';
   if Actual.StartsWith('enum:') then
   begin
-    EnumType := FRequest.Resolver.UnqualifyType(Copy(Actual, 6, MaxInt), FOwnUnit);
+    EnumType := FRequest.Resolver.Queries.UnqualifyType(Copy(Actual, 6, MaxInt), FOwnUnit);
     Actual := '';
   end;
   if Expected.StartsWith('enum:') then
@@ -739,7 +739,7 @@ begin
   for Binding in ASymbol.Bindings do
   begin
     Scored.Item.Bindings := Scored.Item.Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
-      FRequest.Resolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt), FOwnUnit)];
+      FRequest.Resolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt), FOwnUnit)];
   end;
   Scored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, Scored.Item.Bindings);
   Scored.Item.Kind := AKind;
@@ -1043,7 +1043,7 @@ begin
       begin
         Continue;
       end;
-      if Assigned(FAdmit) and not FAdmit(FRequest.Resolver.SymbolFrom(UnitInfo, Symbol)) then
+      if Assigned(FAdmit) and not FAdmit(TResolvedSymbol.FromIndex(UnitInfo, Symbol)) then
       begin
         Continue;
       end;
@@ -1298,7 +1298,7 @@ begin
       Depth := -1;
       for Position := 0 to High(ATypes) do
       begin
-        if TNameResolver.HelperTargets(Helper.Ancestors[High(Helper.Ancestors)], ATypes[Position]) then
+        if TResolverText.HelperTargets(Helper.Ancestors[High(Helper.Ancestors)], ATypes[Position]) then
         begin
           Depth := Position;
           Break;
@@ -1333,7 +1333,7 @@ begin
         begin
           Continue;
         end;
-        Member := FRequest.Resolver.SymbolFrom(UnitInfo, UnitInfo.Symbols[Position]);
+        Member := TResolvedSymbol.FromIndex(UnitInfo, UnitInfo.Symbols[Position]);
         Member.IsHelper := True;
         Member.Depth := Depth;
         if Add(UnitInfo.Symbols[Position].Name, UnitInfo.UnitName + ' (uses ergänzen)',
@@ -1453,11 +1453,11 @@ procedure TCompletionCollector.SetNameFilter(AOn: Boolean);
 begin
   if AOn and (FContext.Prefix <> '') then
   begin
-    FRequest.Resolver.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
+    FRequest.Resolver.Candidates.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
   end
   else
   begin
-    FRequest.Resolver.NameFilter := nil;
+    FRequest.Resolver.Candidates.NameFilter := nil;
   end;
 end;
 
@@ -1483,22 +1483,22 @@ begin
     begin
       Exit;
     end;
-    FRequest.Resolver.NameFilter :=
+    FRequest.Resolver.Candidates.NameFilter :=
       function(const AName: string): Boolean
       begin
         Result := Names.ContainsKey(UpperCase(AName));
       end;
     try
-      Shadows := FRequest.Resolver.UsedScopeShadows;
+      Shadows := FRequest.Resolver.Candidates.UsedScopeShadows;
     finally
-      FRequest.Resolver.NameFilter := nil;
+      FRequest.Resolver.Candidates.NameFilter := nil;
     end;
     for Shadow in Shadows do
     begin
       if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
       begin
         Scored := FList[Index];
-        Text := TNameResolver.ShadowText(Shadow);
+        Text := Shadow.ShadowText;
         if not MatchText(Text, Scored.Item.Hides) then
         begin
           Scored.Item.Hides := Scored.Item.Hides + [Text];

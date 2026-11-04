@@ -36,6 +36,8 @@ type
     FReadText: TTypeInfoReadText;
     FKnown: TDictionary<string, Boolean>;
     function Resolve(const AClassName: string; ADepth: Integer): Boolean;
+    /// <summary>{$M+} bei der Deklaration AFound, sonst beim Vorfahren.</summary>
+    function ResolveDeclared(const AFound: TSymbolLocation; ADepth: Integer): Boolean;
   public
     /// <summary>AIndex und AReadText dürfen nil sein; dann gelten nur die bekannten Klassen.</summary>
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TTypeInfoReadText);
@@ -233,56 +235,66 @@ begin
   Result := SwitchAt(ActiveTokens(AText), APosition);
 end;
 
+/// <summary>Klasse AKey auf oberster Ebene aus AIndex; False ohne.</summary>
+function FindClass(const AIndex: ISymbolIndex; const AKey: string; out AFound: TSymbolLocation): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  for mLocation in AIndex.FindSymbols(AKey) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
+    begin
+      AFound := mLocation;
+      Exit(True);
+    end;
+  end;
+  AFound := Default(TSymbolLocation);
+  Result := False;
+end;
+
+function TTypeInfoClasses.ResolveDeclared(const AFound: TSymbolLocation; ADepth: Integer): Boolean;
+var
+  mText, mFileName: string;
+begin
+  Result := False;
+  // Aus einer Include-Datei (#500) deren Datei, sonst die der Unit.
+  mFileName := AFound.FileName;
+  if AFound.Symbol.FileName <> '' then
+  begin
+    mFileName := AFound.Symbol.FileName;
+  end;
+  if Assigned(FReadText) and FReadText(mFileName, mText) then
+  begin
+    Result := SwitchAt(mText, AFound.Symbol.Range.StartPos);
+  end;
+  if not Result and (Length(AFound.Symbol.Ancestors) > 0) then
+  begin
+    Result := Resolve(AFound.Symbol.Ancestors[0], ADepth + 1);
+  end;
+end;
+
 function TTypeInfoClasses.Resolve(const AClassName: string; ADepth: Integer): Boolean;
 var
-  Key, Text, FileName: string;
-  Location, Found: TSymbolLocation;
-  HasFound: Boolean;
+  mKey: string;
+  mFound: TSymbolLocation;
 begin
-  Key := ShortName(AClassName);
-  if (Key = '') or (Key = 'tobject') or (ADepth > MaxDepth) then
+  mKey := ShortName(AClassName);
+  if (mKey = '') or (mKey = 'tobject') or (ADepth > MaxDepth) then
   begin
     Exit(False);
   end;
-  if FKnown.TryGetValue(Key, Result) then
+  if FKnown.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
   // Gegen Zyklen (A = class(B), B = class(A)): vorläufig nein.
-  FKnown.AddOrSetValue(Key, False);
-  Result := KnownTypeInfoClass(Key);
-  if not Result and (FIndex <> nil) then
+  FKnown.AddOrSetValue(mKey, False);
+  Result := KnownTypeInfoClass(mKey);
+  if not Result and (FIndex <> nil) and FindClass(FIndex, mKey, mFound) then
   begin
-    HasFound := False;
-    for Location in FIndex.FindSymbols(Key) do
-    begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
-      begin
-        Found := Location;
-        HasFound := True;
-        Break;
-      end;
-    end;
-    if HasFound then
-    begin
-      // {$M+} bei der Deklaration, sonst beim Vorfahren.
-      // Aus einer Include-Datei (#500) deren Datei, sonst die der Unit.
-      FileName := Found.FileName;
-      if Found.Symbol.FileName <> '' then
-      begin
-        FileName := Found.Symbol.FileName;
-      end;
-      if Assigned(FReadText) and FReadText(FileName, Text) then
-      begin
-        Result := SwitchAt(Text, Found.Symbol.Range.StartPos);
-      end;
-      if not Result and (Length(Found.Symbol.Ancestors) > 0) then
-      begin
-        Result := Resolve(Found.Symbol.Ancestors[0], ADepth + 1);
-      end;
-    end;
+    Result := ResolveDeclared(mFound, ADepth);
   end;
-  FKnown.AddOrSetValue(Key, Result);
+  FKnown.AddOrSetValue(mKey, Result);
 end;
 
 function TTypeInfoClasses.HasTypeInfo(const AClassName: string): Boolean;

@@ -38,28 +38,35 @@ type
   TAtlasSwitchLines = TArray<TAtlasSwitchLine>;
 
   TAtlasBuildSwitchesFrame = class(TFrame)
+  private type
+    /// <summary>Steuerelemente des Frames.</summary>
+    TParts = record
+      Where: TLabel;
+      List: TListView;
+      Empty: TLabel;
+      Summary: TLabel;
+      Menu: TPopupMenu;
+      JumpItem: TMenuItem;
+      OptionsItem: TMenuItem;
+      CopyItem: TMenuItem;
+    end;
+
+    /// <summary>Rückrufe an die IDE-Schicht.</summary>
+    THandlers = record
+      OnJump: TProc<TAtlasSwitchRow>;
+      OnOptions: TProc;
+      OnCopy: TProc<string>;
+    end;
   private
-    FWhere: TLabel;
-    FList: TListView;
-    FEmpty: TLabel;
-    FSummary: TLabel;
-    FMenu: TPopupMenu;
-    FJumpItem: TMenuItem;
-    FOptionsItem: TMenuItem;
-    FCopyItem: TMenuItem;
+    FParts: TParts;
+    FHandlers: THandlers;
     FView: TAtlasCompilerSwitchView;
     FHasView: Boolean;
     FLines: TAtlasSwitchLines;
     FFileName: string;
     FLine: Integer;
     FMessage: string;
-    FOnJump: TProc<TAtlasSwitchRow>;
-    FOnOptions: TProc;
-    FOnCopy: TProc<string>;
-    function AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
-    function AddMenuItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
     procedure Refill;
-    function ListColor(AColor: TColor): TColor;
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
@@ -93,15 +100,15 @@ type
     class function OriginText(const ARow: TAtlasSwitchRow): string; static;
     /// <summary>Alles als Text mit Tabulatoren (Kopieren).</summary>
     class function AsText(const AView: TAtlasCompilerSwitchView): string; static;
-    property WhereLabel: TLabel read FWhere;
-    property List: TListView read FList;
-    property EmptyLabel: TLabel read FEmpty;
-    property SummaryLabel: TLabel read FSummary;
-    property Menu: TPopupMenu read FMenu;
+    property WhereLabel: TLabel read FParts.Where;
+    property List: TListView read FParts.List;
+    property EmptyLabel: TLabel read FParts.Empty;
+    property SummaryLabel: TLabel read FParts.Summary;
+    property Menu: TPopupMenu read FParts.Menu;
     property ShownLines: TAtlasSwitchLines read FLines;
-    property OnJump: TProc<TAtlasSwitchRow> read FOnJump write FOnJump;
-    property OnOptions: TProc read FOnOptions write FOnOptions;
-    property OnCopy: TProc<string> read FOnCopy write FOnCopy;
+    property OnJump: TProc<TAtlasSwitchRow> read FHandlers.OnJump write FHandlers.OnJump;
+    property OnOptions: TProc read FHandlers.OnOptions write FHandlers.OnOptions;
+    property OnCopy: TProc<string> read FHandlers.OnCopy write FHandlers.OnCopy;
   end;
 
 implementation
@@ -116,6 +123,27 @@ uses
 
 {$R *.dfm}
 
+function AddColumn(AList: TListView; const ACaption: string; AWidth, APPI: Integer): TListColumn;
+begin
+  Result := AList.Columns.Add;
+  Result.Caption := ACaption;
+  Result.Width := MulDiv(AWidth, APPI, 96);
+end;
+
+function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(AMenu);
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  AMenu.Items.Add(Result);
+end;
+
+function ListColor(AList: TListView; AColor: TColor): TColor;
+begin
+  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
+  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
+end;
+
 { TAtlasBuildSwitchesFrame }
 
 constructor TAtlasBuildSwitchesFrame.Create(AOwner: TComponent);
@@ -126,77 +154,65 @@ begin
   FLine := -1;
   FMessage := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty);
 
-  FWhere := TLabel.Create(Self);
-  FWhere.Parent := Self;
-  FWhere.Align := alTop;
-  FWhere.AlignWithMargins := True;
-  FWhere.ShowAccelChar := False;
-  FWhere.Caption := '';
+  FParts.Where := TLabel.Create(Self);
+  FParts.Where.Parent := Self;
+  FParts.Where.Align := alTop;
+  FParts.Where.AlignWithMargins := True;
+  FParts.Where.ShowAccelChar := False;
+  FParts.Where.Caption := '';
 
-  FSummary := TLabel.Create(Self);
-  FSummary.Parent := Self;
-  FSummary.Align := alBottom;
-  FSummary.AlignWithMargins := True;
-  FSummary.ShowAccelChar := False;
-  FSummary.WordWrap := True;
-  FSummary.Font.Color := clGrayText;
-  FSummary.Caption := '';
+  FParts.Summary := TLabel.Create(Self);
+  FParts.Summary.Parent := Self;
+  FParts.Summary.Align := alBottom;
+  FParts.Summary.AlignWithMargins := True;
+  FParts.Summary.ShowAccelChar := False;
+  FParts.Summary.WordWrap := True;
+  FParts.Summary.Font.Color := clGrayText;
+  FParts.Summary.Caption := '';
 
-  FMenu := TPopupMenu.Create(Self);
-  FMenu.OnPopup := MenuPopup;
-  FJumpItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesGoTo), JumpClick);
-  FOptionsItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOptions), OptionsClick);
-  FCopyItem := AddMenuItem(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCopy), CopyClick);
+  FParts.Menu := TPopupMenu.Create(Self);
+  FParts.Menu.OnPopup := MenuPopup;
+  FParts.JumpItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesGoTo),
+    JumpClick);
+  FParts.OptionsItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOptions),
+    OptionsClick);
+  FParts.CopyItem := AddMenuItem(FParts.Menu, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesCopy),
+    CopyClick);
 
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
-  FList.Align := alClient;
-  FList.AlignWithMargins := True;
-  FList.ViewStyle := vsReport;
-  FList.RowSelect := True;
-  FList.HideSelection := False;
-  FList.ReadOnly := True;
-  FList.MultiSelect := False;
-  FList.ColumnClick := False;
-  FList.PopupMenu := FMenu;
-  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnName), 170);
-  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnValue), 60);
-  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnProject), 60);
-  AddColumn(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnOrigin), 220);
-  FList.OnDblClick := ListDblClick;
-  FList.OnKeyDown := ListKeyDown;
-  FList.OnCustomDrawItem := ListCustomDrawItem;
-  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
+  FParts.List := TListView.Create(Self);
+  FParts.List.Parent := Self;
+  FParts.List.Align := alClient;
+  FParts.List.AlignWithMargins := True;
+  FParts.List.ViewStyle := vsReport;
+  FParts.List.RowSelect := True;
+  FParts.List.HideSelection := False;
+  FParts.List.ReadOnly := True;
+  FParts.List.MultiSelect := False;
+  FParts.List.ColumnClick := False;
+  FParts.List.PopupMenu := FParts.Menu;
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnName), 170, CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnValue), 60, CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnProject), 60, CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnOrigin), 220, CurrentPPI);
+  FParts.List.OnDblClick := ListDblClick;
+  FParts.List.OnKeyDown := ListKeyDown;
+  FParts.List.OnCustomDrawItem := ListCustomDrawItem;
+  FParts.List.OnCustomDrawSubItem := ListCustomDrawSubItem;
 
-  FEmpty := TLabel.Create(Self);
-  FEmpty.Parent := Self;
-  FEmpty.Align := alClient;
-  FEmpty.AlignWithMargins := True;
-  FEmpty.WordWrap := True;
-  FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := FMessage;
+  FParts.Empty := TLabel.Create(Self);
+  FParts.Empty.Parent := Self;
+  FParts.Empty.Align := alClient;
+  FParts.Empty.AlignWithMargins := True;
+  FParts.Empty.WordWrap := True;
+  FParts.Empty.ShowAccelChar := False;
+  FParts.Empty.Font.Color := clGrayText;
+  FParts.Empty.Caption := FMessage;
 end;
 
 procedure TAtlasBuildSwitchesFrame.CreateWnd;
 begin
   inherited CreateWnd;
   Refill;
-end;
-
-function TAtlasBuildSwitchesFrame.AddColumn(const ACaption: string; AWidth: Integer): TListColumn;
-begin
-  Result := FList.Columns.Add;
-  Result.Caption := ACaption;
-  Result.Width := MulDiv(AWidth, CurrentPPI, 96);
-end;
-
-function TAtlasBuildSwitchesFrame.AddMenuItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  FMenu.Items.Add(Result);
 end;
 
 class function TAtlasBuildSwitchesFrame.Lines(const AView: TAtlasCompilerSwitchView): TAtlasSwitchLines;
@@ -365,91 +381,110 @@ begin
   Refill;
 end;
 
-procedure TAtlasBuildSwitchesFrame.Refill;
-var
-  Line: TAtlasSwitchLine;
-  Item: TListItem;
-  Texts: TArray<string>;
-  Part, Keep: Integer;
-  Deviations: TAtlasSwitchRows;
-  Row: TAtlasSwitchRow;
-  Names: string;
+function WhereText(const AFileName: string; ALine: Integer): string;
 begin
-  FEmpty.Caption := FMessage;
-  FEmpty.Visible := not FHasView;
-  FList.Visible := FHasView;
-  if not FHasView then
+  Result := '';
+  if AFileName <> '' then
   begin
-    FWhere.Caption := '';
-    FSummary.Caption := '';
-    Exit;
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesAt, [ExtractFileName(AFileName), ALine + 1]);
   end;
-  if FFileName <> '' then
+end;
+
+/// <summary>Kurzfassung der Abweichungen, ohne Projekt mit Hinweis.</summary>
+function SummaryText(const AView: TAtlasCompilerSwitchView): string;
+var
+  mDeviations: TAtlasSwitchRows;
+  mRow: TAtlasSwitchRow;
+  mNames: string;
+begin
+  mDeviations := AView.Deviations;
+  if Length(mDeviations) = 0 then
   begin
-    FWhere.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesAt,
-      [ExtractFileName(FFileName), FLine + 1]);
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoDeviations);
   end
   else
   begin
-    FWhere.Caption := '';
-  end;
-  FLines := Lines(FView);
-  Deviations := FView.Deviations;
-  if Length(Deviations) = 0 then
-  begin
-    FSummary.Caption := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoDeviations);
-  end
-  else
-  begin
-    Names := FView.Summary;
-    if Names = '' then
+    mNames := AView.Summary;
+    if mNames = '' then
     begin
-      for Row in Deviations do
+      for mRow in mDeviations do
       begin
-        Names := Trim(Names + ' ' + Row.Name);
+        mNames := Trim(mNames + ' ' + mRow.Name);
       end;
     end;
-    FSummary.Caption := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesDeviations, [Names]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesDeviations, [mNames]);
   end;
-  if not FView.HasProject then
+  if not AView.HasProject then
   begin
-    FSummary.Caption := FSummary.Caption + sLineBreak + TAtlasBuildStrings.Text(
-      TAtlasBuildTextId.CompilerSwitchesNoProject);
+    Result := Result + sLineBreak + TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoProject);
   end;
-  // Liste erst mit Fenster füllen (TListView.Items braucht eins); CreateWnd holt es nach.
-  if not HandleAllocated then
+end;
+
+procedure AddLine(AList: TListView; const ALine: TAtlasSwitchLine; const AView: TAtlasCompilerSwitchView);
+var
+  mItem: TListItem;
+  mTexts: TArray<string>;
+  mPart: Integer;
+begin
+  mItem := AList.Items.Add;
+  if ALine.Header then
   begin
+    mItem.Caption := TAtlasBuildSwitchesFrame.SectionText(ALine.Section);
     Exit;
   end;
-  Keep := -1;
-  if FList.Selected <> nil then
+  mTexts := TAtlasBuildSwitchesFrame.Cells(AView.Rows[ALine.Row]);
+  mItem.Caption := '  ' + mTexts[0];
+  for mPart := 1 to High(mTexts) do
   begin
-    Keep := FList.Selected.Index;
+    mItem.SubItems.Add(mTexts[mPart]);
   end;
-  FList.Items.BeginUpdate;
+end;
+
+/// <summary>Liste neu füllen; die Auswahl bleibt, soweit möglich.</summary>
+procedure FillList(AList: TListView; const ALines: TAtlasSwitchLines; const AView: TAtlasCompilerSwitchView);
+var
+  mLine: TAtlasSwitchLine;
+  mKeep: Integer;
+begin
+  mKeep := -1;
+  if AList.Selected <> nil then
+  begin
+    mKeep := AList.Selected.Index;
+  end;
+  AList.Items.BeginUpdate;
   try
-    FList.Items.Clear;
-    for Line in FLines do
+    AList.Items.Clear;
+    for mLine in ALines do
     begin
-      Item := FList.Items.Add;
-      if Line.Header then
-      begin
-        Item.Caption := SectionText(Line.Section);
-        Continue;
-      end;
-      Texts := Cells(FView.Rows[Line.Row]);
-      Item.Caption := '  ' + Texts[0];
-      for Part := 1 to High(Texts) do
-      begin
-        Item.SubItems.Add(Texts[Part]);
-      end;
+      AddLine(AList, mLine, AView);
     end;
-    if (Keep >= 0) and (Keep < FList.Items.Count) then
+    if (mKeep >= 0) and (mKeep < AList.Items.Count) then
     begin
-      FList.Items[Keep].Selected := True;
+      AList.Items[mKeep].Selected := True;
     end;
   finally
-    FList.Items.EndUpdate;
+    AList.Items.EndUpdate;
+  end;
+end;
+
+procedure TAtlasBuildSwitchesFrame.Refill;
+begin
+  FParts.Empty.Caption := FMessage;
+  FParts.Empty.Visible := not FHasView;
+  FParts.List.Visible := FHasView;
+  if not FHasView then
+  begin
+    FParts.Where.Caption := '';
+    FParts.Summary.Caption := '';
+    Exit;
+  end;
+  FParts.Where.Caption := WhereText(FFileName, FLine);
+  FLines := Lines(FView);
+  FParts.Summary.Caption := SummaryText(FView);
+  // Liste erst mit Fenster füllen (TListView.Items braucht eins); CreateWnd holt es nach.
+  if HandleAllocated then
+  begin
+    FillList(FParts.List, FLines, FView);
   end;
 end;
 
@@ -458,12 +493,12 @@ var
   Line: TAtlasSwitchLine;
 begin
   ARow := Default(TAtlasSwitchRow);
-  Result := FHasView and (FList.Selected <> nil) and (FList.Selected.Index <= High(FLines));
+  Result := FHasView and (FParts.List.Selected <> nil) and (FParts.List.Selected.Index <= High(FLines));
   if not Result then
   begin
     Exit;
   end;
-  Line := FLines[FList.Selected.Index];
+  Line := FLines[FParts.List.Selected.Index];
   Result := not Line.Header and (Line.Row >= 0) and (Line.Row <= High(FView.Rows));
   if Result then
   begin
@@ -481,29 +516,23 @@ begin
   end;
   if Row.CanJump then
   begin
-    if Assigned(FOnJump) then
+    if Assigned(FHandlers.OnJump) then
     begin
-      FOnJump(Row);
+      FHandlers.OnJump(Row);
     end;
   end
-  else if Row.FromProject and Assigned(FOnOptions) then
+  else if Row.FromProject and Assigned(FHandlers.OnOptions) then
   begin
-    FOnOptions();
+    FHandlers.OnOptions();
   end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.CopyAll;
 begin
-  if FHasView and Assigned(FOnCopy) then
+  if FHasView and Assigned(FHandlers.OnCopy) then
   begin
-    FOnCopy(AsText(FView));
+    FHandlers.OnCopy(AsText(FView));
   end;
-end;
-
-function TAtlasBuildSwitchesFrame.ListColor(AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(FList).GetSystemColor(AColor));
 end;
 
 procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
@@ -532,12 +561,12 @@ begin
   // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
   if cdsSelected in AState then
   begin
-    ACanvas.Brush.Color := ListColor(clHighlight);
-    ACanvas.Font.Color := ListColor(clHighlightText);
+    ACanvas.Brush.Color := ListColor(FParts.List, clHighlight);
+    ACanvas.Font.Color := ListColor(FParts.List, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(FList.Color);
+    ACanvas.Brush.Color := ListColor(FParts.List, FParts.List.Color);
     if Deviates then
     begin
       ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
@@ -545,11 +574,11 @@ begin
     end
     else if (AIndex >= 0) and (AIndex <= High(FLines)) and FLines[AIndex].Header then
     begin
-      ACanvas.Font.Color := ListColor(clGrayText);
+      ACanvas.Font.Color := ListColor(FParts.List, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(FList.Font.Color);
+      ACanvas.Font.Color := ListColor(FParts.List, FParts.List.Font.Color);
     end;
   end;
 end;
@@ -599,26 +628,26 @@ var
   Has: Boolean;
 begin
   Has := TrySelected(Row);
-  FJumpItem.Enabled := Has and Row.CanJump;
-  FOptionsItem.Enabled := Has and Row.FromProject and (Row.Section <> TAtlasSwitchSection.Target);
-  FCopyItem.Enabled := FHasView;
+  FParts.JumpItem.Enabled := Has and Row.CanJump;
+  FParts.OptionsItem.Enabled := Has and Row.FromProject and (Row.Section <> TAtlasSwitchSection.Target);
+  FParts.CopyItem.Enabled := FHasView;
 end;
 
 procedure TAtlasBuildSwitchesFrame.JumpClick(Sender: TObject);
 var
   Row: TAtlasSwitchRow;
 begin
-  if TrySelected(Row) and Row.CanJump and Assigned(FOnJump) then
+  if TrySelected(Row) and Row.CanJump and Assigned(FHandlers.OnJump) then
   begin
-    FOnJump(Row);
+    FHandlers.OnJump(Row);
   end;
 end;
 
 procedure TAtlasBuildSwitchesFrame.OptionsClick(Sender: TObject);
 begin
-  if Assigned(FOnOptions) then
+  if Assigned(FHandlers.OnOptions) then
   begin
-    FOnOptions();
+    FHandlers.OnOptions();
   end;
 end;
 

@@ -540,13 +540,11 @@ end;
 /// </summary>
 function TInaccessibleMemberCheck.Reachable(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
 var
-  mWithNode: TSyntaxNode;
-  mElement: Integer;
-  mUnknown: Boolean;
+  mWith: TResolvedWithMember;
 begin
   // Mitglied eines with-Ausdrucks (with Result do Pfad := …) ist erreichbar.
-  Result := FResolver.WithMember(FContext.Tree, FFileName, ANode.Name, ANode.StartOffset, mWithNode, mElement,
-    mUnknown) or mUnknown;
+  Result := FResolver.Queries.WithMember(FContext.Tree, FFileName, ANode.Name, ANode.StartOffset, mWith) or
+    mWith.Unknown;
   Result := Result or ((ASymbol.SymbolKind = TIndexSymbolKind.Method) and HasClassOverload(ANode));
 end;
 
