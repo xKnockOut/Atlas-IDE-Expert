@@ -1,4 +1,10 @@
-﻿## Atlas-Befunde in Base Lsp und Projects (03.–04.11.2026, Branch `claude/project-thread-jk1s72` auf `Pilot-2.0.0-beta.1`)
+﻿## Atlas-Befunde im Editing-Formatter (04.11.2026, Branch `claude/project-thread-z75bpx` auf `Pilot-2.0.0-beta.1`)
+- Ziel: alle Atlas-Befunde mit Metriken in `Atlas.Common.Editing.Formatter`, `.Formatter.Indent`, `.Formatter.Layout` und `.CommandSource` (anfangs 47), ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde, keine neuen Units.
+- Formatter: Ablauf in `TFormatRun` (Pipeline, geschützte Zeilen, Änderungen), Zeilenformatierung in `TLineFormatting`. Layout: `TBlockPlacing` (begin/else), `TAligning` (Ausrichten), `BreakPosition` (Umbruch). Indent: Stand und Stapel als Record `TIndentState`, Zweige `{$IF}` in `TBranchTracker`, Tokens in `TIndentTokens`, Zeilen in `TIndentLines`; Klassenkette `TIndentCore` → `TStatementIndenter` (Anweisungen) → `TIndenter` (Deklarationen, Durchlauf).
+- API: `Wrap` aus CommandSource nimmt den Rahmen als `TWrapFrame.Create(Kopf, Schluss, Einrückung)` statt drei Parametern; Aufrufer in Collection-, Database-, Refactoring-, Task- und WrapCommands angepasst (betrifft den pausierten Thread Editing H–Z).
+- Geprüft: FPC-Tests aller Editing-, Lsp-Formatting- und Completion-Testunits wie auf dem Basiszweig. Delphi-Build offen.
+
+## Atlas-Befunde in Base Lsp und Projects (03.–04.11.2026, Branch `claude/project-thread-jk1s72` auf `Pilot-2.0.0-beta.1`)
 - Ziel: alle Atlas-Befunde mit Metriken in `Packages/Atlas.IDE.Base/Source/{Core,IDE,UI}/{Lsp,Projects}` beheben, ohne Grenzwerte zu ändern. Ergebnis: 0 Befunde. PRs #1638 (Lsp) und #1674 (Projects).
 - Lsp: `TLspSession` ist eine Klassenkette über vier Units (`Session.Json` → `Session.Base` → `Session.Requests` → `Session`); die Typen stehen als Aliase in `Atlas.Core.Lsp.Session`. `OnTypeFormatting` nimmt `TLspFormatOptions`.
 - Projects: Scanner von PathCheck in `Atlas.Core.Projects.PathCheck.Scan`, Abschnitte setup/tests/release/ci in `Atlas.Core.Projects.Summary.Sections`, Feldleser und Zeiten in `Atlas.Core.Projects.Summary.Json` (Typen als Aliase in den alten Units). `RecordCompile` nimmt `TAtlasProjectCompileRun`.
