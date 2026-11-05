@@ -452,6 +452,15 @@ type
     function NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
   end;
 
+  /// <summary>Regel, die je Datei entscheidet, ob sie prüfen kann (#1135), z. B. unused-uses nicht im Editor und
+  /// nicht ohne Index. Prüft sie nicht, zählt sie nicht als gelaufen: Ein lsp-ignore für sie ist dann nicht
+  /// unused-suppression (dessen sichere Korrektur entfernte den Kommentar sonst beim Speichern).</summary>
+  IRuleCondition = interface
+    ['{8E3B5C17-2A94-4D6F-B0E8-51C7F92A3D60}']
+    /// <summary>False: Die Regel prüft AContext nicht. AContext trägt die Optionen dieser Regel.</summary>
+    function Applies(const AContext: TRuleContext): Boolean;
+  end;
+
   /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),
   /// z. B. /ignore ohne Treffer in der Zeile darunter (#297).</summary>
   IRuleAfterFindings = interface

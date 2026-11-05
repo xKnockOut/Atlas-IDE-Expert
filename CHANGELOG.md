@@ -9,6 +9,12 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ### Neu
 - Plugin: eigenes Tastenkürzel für „Datei jetzt prüfen“ (#1744, `keys.checkFile`, Vorgabe Strg+Umschalt+Alt+P, Seite *Befehle*; leer = keins): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von `problems.update` (im Live-Modus ohne die Wartezeit). Vorrang wie die Editorbefehle; steht in der Tastenkürzel-Übersicht (#520, mit Konflikterkennung), neben dem Befehl in der Befehlspalette und als neuer Eintrag im Atlas-Untermenü des Editor-Kontextmenüs; ohne Prüfregeln bleibt das Kürzel frei.
 
+### Geändert
+- `unused-uses` (#1135): Das Abblenden ungenutzter uses im Editor ist jetzt die Darstellung der Regel. Mit `"unused-uses": "off"` (auch über die Gruppe oder ein Profil), ihrem `exclude`, dem allgemeinen `exclude` und `// lsp-ignore: unused-uses` bleibt auch das Abblenden weg. Neue Option `keep` (Units, die nie als ungenutzt gelten, zusätzlich zu `usesKeep`); sie gilt für die Regel, das Abblenden und „uses aufräumen“.
+
+### Behoben
+- Ein `// lsp-ignore: unused-uses` galt im Editor als unnötig (`unused-suppression`), weil die Regel dort nicht prüft; dessen sichere Korrektur entfernte den Kommentar beim Speichern. Regeln können jetzt je Datei angeben, dass sie nicht prüfen (`IRuleCondition`); dann zählt ihr `lsp-ignore` nicht als unnötig. Dasselbe galt für `uses-cycle` mit `diagnostics.usesCycleLive` aus.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu

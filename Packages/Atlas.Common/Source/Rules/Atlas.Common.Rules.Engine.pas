@@ -110,6 +110,11 @@ type
     /// Die Beschreibung der Gegenregel kommt aus ARules, sonst aus dem Katalog.</summary>
     class function OverridingRule(const ARuleId: string; const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AUnitName: string): string; static;
+    /// <summary>Ist die Regel ARuleId (aus dem Katalog) für die Datei eingeschaltet: nicht ausgeschlossen
+    /// ("exclude" allgemein und der Regel), Schweregrad nicht off? Für Darstellungen einer Regel außerhalb des
+    /// Prüflaufs, z. B. die abgeblendeten uses im Editor (unused-uses, #1135).</summary>
+    class function RuleOn(const ARuleId: string; const ASettings: TServerSettings;
+      const ARelativePath, AUnitName: string): Boolean; static;
     /// <summary>Alle Treffer der Regeln auf AContext, nach Zeile sortiert.</summary>
     class function Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const AContext: TRuleContext): TArray<TRuleFinding>; static;
@@ -617,6 +622,17 @@ begin
   end;
 end;
 
+class function TRuleEngine.RuleOn(const ARuleId: string; const ASettings: TServerSettings;
+  const ARelativePath, AUnitName: string): Boolean;
+var
+  mDescriptor: TRuleDescriptor;
+  mSeverity: TRuleSeverity;
+begin
+  Result := ((ARelativePath = '') or not ASettings.IsExcluded(ARelativePath)) and
+    TryDescriptor(ARuleId, nil, mDescriptor) and SeverityIfOn(mDescriptor, ASettings, ARelativePath, mSeverity) and
+    not IsExceptedByOptions(RuleOptions(mDescriptor.Id, ASettings), ARelativePath, AUnitName);
+end;
+
 class function TRuleEngine.NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TPascalNamePrefixes;
 var
@@ -881,6 +897,7 @@ var
   mDescriptor: TRuleDescriptor;
   mSeverity: TRuleSeverity;
   mContext: TRuleContext;
+  mCondition: IRuleCondition;
   mWatch: TStopwatch;
 begin
   mDescriptor := ARule.Descriptor;
@@ -890,6 +907,11 @@ begin
   end;
   mContext := RuleContext(mDescriptor.Id);
   if TRuleEngine.IsExceptedByOptions(mContext.Options, mContext.RelativePath, mContext.UnitName) then
+  begin
+    Exit;
+  end;
+  // Kann die Regel hier nicht prüfen (#1135), läuft sie nicht: sonst gälte ihr lsp-ignore als unnötig.
+  if Supports(ARule, IRuleCondition, mCondition) and not mCondition.Applies(mContext) then
   begin
     Exit;
   end;
