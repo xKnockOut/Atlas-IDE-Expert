@@ -526,8 +526,7 @@ function Neighbour(const ATokens: TArray<TPascalToken>; AIndex, AStep: Integer):
 begin
   Result := AIndex + AStep;
   while (Result >= 0) and (Result <= High(ATokens)) and
-    (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-      TPascalTokenKind.cTexts[TKeywordReferenceText.Directive].Text]) do
+    (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
     Inc(Result, AStep);
   end;
