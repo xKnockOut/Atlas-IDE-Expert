@@ -30,6 +30,10 @@
 // Lokale Routinen (#1788, NestedRoutines): Farbe aus Tiefe und Verschachtelung der Routine
 // (TAtlasRoutineNesting), gestrichelte Linien in eigener Farbe; mit NestedRoutineBand werden die Zeilen
 // lokaler Routinen nach dem Zeichnen schwach in ihrer Farbe überblendet.
+// Ränder beim Bildlauf: Wo eine Linie am unteren Rand oder unter dem Kopf spitz ausläuft (oder im Rest darunter
+// fehlt), hängt der Strich an der Position im Fenster. Verschiebt der Editor beim Bildlauf die gemalten Pixel
+// (ScrollDC), wanderten diese Zeilen als Bruchstücke mit. Solche Zeilen werden gemerkt und nach einem Bildlauf
+// neu gezeichnet.
 
 interface
 
@@ -123,6 +127,10 @@ type
     FHasBackground: Boolean;
     // Texthöhe der Editorschrift bei 100 %, für die Linienbreite.
     FBaseTextHeight: Integer;
+    // Logische Zeilen (1-basiert), deren Linien beim Zeichnen von der Fensterposition abhingen, und die oberste
+    // Zeile dabei: Nach einem Bildlauf stehen sie verschoben da und werden neu gezeichnet.
+    FEdgeLines: TArray<Integer>;
+    FEdgeTop: Integer;
     /// <summary>Palette zum Hintergrund des Laufs AContext (merkt ihn sich).</summary>
     function PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
     /// <summary>Palette zum zuletzt gemerkten Hintergrund, mit eigenen Paarfarben.</summary>
@@ -159,6 +167,10 @@ type
     procedure PaintBand(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
     /// <summary>True, wenn die Zeile von AContext zur Analyse passt; ACode ist ihr Codebereich.</summary>
     function LineMatches(const AContext: INTACodeEditorPaintContext; ALine: Integer; out ACode: TRect): Boolean;
+    /// <summary>Nach einem Bildlauf die gemerkten Zeilen mit randabhängigen Linien neu zeichnen lassen.</summary>
+    procedure RepaintMovedEdges(const AContext: INTACodeEditorPaintContext);
+    /// <summary>Zeile von AContext merken: Ihre Linien hängen an der Fensterposition.</summary>
+    procedure RememberEdge(const AContext: INTACodeEditorPaintContext);
   public
     constructor Create;
     destructor Destroy; override;
@@ -172,6 +184,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
@@ -452,8 +465,8 @@ begin
   end;
 end;
 
-/// <summary>Eine Blocklinie in der Zeile von APaint.</summary>
-procedure PaintGuide(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide);
+/// <summary>Eine Blocklinie in der Zeile von APaint; liefert, wie sie endet.</summary>
+function PaintGuide(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TGuideEnd;
 var
   mCell: TRect;
   mStroke: TGuideStroke;
@@ -478,7 +491,8 @@ begin
   begin
     mStroke.Color := TAtlasColorMath.Mix(mStroke.Color, APaint.Back, APaint.Opacity / 100);
   end;
-  case GuideEnd(APaint, AGuide) of
+  Result := GuideEnd(APaint, AGuide);
+  case Result of
     geTaperTop:
       PaintTaper(APaint.DC, mStroke, False);
     geTaperBottom:
@@ -489,6 +503,10 @@ begin
       end;
     geLine:
       PaintStroke(APaint.DC, mStroke, AGuide, Max(3, mCell.Width div 2));
+    geSkip:
+      begin
+        // Rest unter der letzten Zeile: keine Linie.
+      end;
   end;
 end;
 
@@ -997,6 +1015,7 @@ begin
     Exit;
   end;
   try
+    RepaintMovedEdges(Context);
     PaintBand(Rect, Context);
     if GuidesLine(Rect, Context, mLine, mCode) then
     begin
@@ -1091,6 +1110,7 @@ var
   mPaint: TGuidePaint;
   mGuide: TLineGuide;
   mSaved: Integer;
+  mEdge: Boolean;
 begin
   if FBaseTextHeight <= 0 then
   begin
@@ -1116,15 +1136,59 @@ begin
     begin
       IntersectClipRect(mPaint.DC, ACode.Left - cGuideMargin, ARect.Top, ARect.Right, ARect.Bottom);
     end;
+    mEdge := False;
     for mGuide in FGuides[ALine] do
     begin
-      PaintGuide(mPaint, mGuide);
+      mEdge := (PaintGuide(mPaint, mGuide) <> geLine) or mEdge;
+    end;
+    if mEdge then
+    begin
+      RememberEdge(AContext);
     end;
   finally
     RestoreDC(mPaint.DC, mSaved);
   end;
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.PairGuides, AContext.FileName, ALine, ''),
     ACode, TopRowOf(AContext), ARect.Height);
+end;
+
+procedure TAtlasEditorPairs.RepaintMovedEdges(const AContext: INTACodeEditorPaintContext);
+var
+  mServices: INTACodeEditorServices;
+  mLine: Integer;
+begin
+  if (Length(FEdgeLines) = 0) or (TopRowOf(AContext) = FEdgeTop) then
+  begin
+    Exit;
+  end;
+  // Danach leeren: Die neu gezeichneten Zeilen merken sich mit der neuen obersten Zeile selbst wieder.
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    for mLine in FEdgeLines do
+    begin
+      TAtlasIdeEditorRefresh.InvalidateTopLine(mServices, mLine);
+    end;
+  end;
+  FEdgeLines := nil;
+end;
+
+procedure TAtlasEditorPairs.RememberEdge(const AContext: INTACodeEditorPaintContext);
+var
+  mLine: Integer;
+begin
+  if TopRowOf(AContext) <> FEdgeTop then
+  begin
+    FEdgeLines := nil;
+    FEdgeTop := TopRowOf(AContext);
+  end;
+  for mLine in FEdgeLines do
+  begin
+    if mLine = AContext.LogicalLineNum then
+    begin
+      Exit;
+    end;
+  end;
+  FEdgeLines := FEdgeLines + [AContext.LogicalLineNum];
 end;
 
 end.
