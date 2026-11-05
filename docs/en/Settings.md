@@ -445,8 +445,8 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `bookmarks.quick.importIde`
 
 - **Code lens and metrics** (`editor.codeLens`)
+  - `codeLens.metrics` – depends on `analysis.enabled`
   - `metrics` – depends on `completion.enabled`
-    - `codeLens.metrics`
   - `codeLens.tests` – depends on `tests.run`
   - `todos.list`
   - `baseline.update` – depends on `ruleChecks.enabled`

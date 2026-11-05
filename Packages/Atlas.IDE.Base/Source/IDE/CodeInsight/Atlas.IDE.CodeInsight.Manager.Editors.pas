@@ -17,7 +17,7 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.InlayHints.Editor,
   Atlas.IDE.Editor.TestUnitLens,
-  Atlas.IDE.Editor.MetricsLens,
+  Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Problems.Controller;
 
 type
@@ -49,7 +49,7 @@ type
     FProblems: TAtlasProblemsController;
     FInlayHints: TAtlasEditorInlayHints;
     FTestUnitLens: TAtlasEditorTestUnitLens;
-    FMetricsLens: TAtlasEditorMetricsLens;
+    FMetricsSource: TAtlasEditorMetricsSource;
     procedure CreateProblems;
     procedure CreateHover;
     procedure CreateLenses;
@@ -179,8 +179,8 @@ begin
     begin
       Result := mReady();
     end);
-  // Code Lens mit Code-Metriken (#66); startet ebenfalls keinen Server.
-  FMetricsLens := TAtlasEditorMetricsLens.Create(
+  // Code-Metriken für Statusleiste und die Lens im Modul Analyse (#66, #1756); startet ebenfalls keinen Server.
+  FMetricsSource := TAtlasEditorMetricsSource.Create(
     function: TLspSession
     begin
       Result := mReady();
@@ -292,7 +292,7 @@ procedure TAtlasCodeInsightEditors.ReleaseViews;
 begin
   FreeAndNil(FInlayHints);
   FreeAndNil(FTestUnitLens);
-  FreeAndNil(FMetricsLens);
+  FreeAndNil(FMetricsSource);
   FreeAndNil(FHover);
   FreeAndNil(FSignature);
   FreeAndNil(FCompletion);

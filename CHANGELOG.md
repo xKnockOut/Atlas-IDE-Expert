@@ -12,6 +12,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - `Tools/Benchmark/ready.mjs` misst die Zeit bis „bereit“ mit mehreren Läufen je Fassung (#1479): ohne IDE über `AtlasServer --check` auf einer Projektgruppe oder aus den Diagnoselogs der IDE-Starts; Ausgabe Median und Spannweite, erster Lauf je Fassung (Umstieg) getrennt.
 
 ### Geändert
+- Plugin: Die Code Lens mit Code-Metriken (#66) gehört zum Modul Analyse (`Atlas.IDE.Analysis`, #1756): Ohne das Modul oder mit `analysis.enabled` aus zeichnet Atlas keine Metrik-Marken; `codeLens.metrics` steht im Abschnitt des Moduls. Zeilen und CC in der Atlas-Statusleiste und der Metrikbericht bleiben in Base; beide Leser teilen sich weiter eine Anfrage je Textstand.
 - `unused-uses` (#1135): Das Abblenden ungenutzter uses im Editor ist jetzt die Darstellung der Regel. Mit `"unused-uses": "off"` (auch über die Gruppe oder ein Profil), ihrem `exclude`, dem allgemeinen `exclude` und `// lsp-ignore: unused-uses` bleibt auch das Abblenden weg. Neue Option `keep` (Units, die nie als ungenutzt gelten, zusätzlich zu `usesKeep`); sie gilt für die Regel, das Abblenden und „uses aufräumen“.
 
 ### Behoben
