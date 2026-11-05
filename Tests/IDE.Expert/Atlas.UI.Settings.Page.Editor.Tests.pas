@@ -47,6 +47,9 @@ type
     /// <summary>#1122: Kontrollkästchen „Aufrufdiagramm“ liest und schreibt callHierarchy.diagram.</summary>
     [Test]
     procedure CallHierarchyDiagramRoundTrip;
+    /// <summary>#1744: Kürzel „Datei jetzt prüfen“ auf der Seite Befehle.</summary>
+    [Test]
+    procedure CheckFileKeyRoundTrip;
   end;
 
 implementation
@@ -416,6 +419,27 @@ begin
     Assert.AreEqual(0, Saved.FormatCodeKey);
   finally
     Page.Free;
+  end;
+end;
+procedure TAtlasSettingsPageEditorTests.CheckFileKeyRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.AreEqual(ShortCutToText(TShortCut($E050)), EditOf(mPage, 'CheckFileKey').Text, 'Strg+Umschalt+Alt+P');
+    EditOf(mPage, 'CheckFileKey').Text := ShortCutToText(TShortCut($C04D));
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual($C04D, mSaved.CheckFileKey, 'Strg+Alt+M');
+    EditOf(mPage, 'CheckFileKey').Text := '';
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual(0, mSaved.CheckFileKey, 'leer = keine Taste');
+  finally
+    mPage.Free;
   end;
 end;
 procedure TAtlasSettingsPageEditorTests.MultiCursorRoundTrip;

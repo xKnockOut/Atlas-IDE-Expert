@@ -155,7 +155,9 @@ const
     // Issue anlegen (#1268): Editorbefehl.
     3,
     // Komponenten suchen (#1442): keine Bindung, TAtlasKeyHook nur im Designer.
-    0);
+    0,
+    // Datei jetzt prüfen (#1744): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

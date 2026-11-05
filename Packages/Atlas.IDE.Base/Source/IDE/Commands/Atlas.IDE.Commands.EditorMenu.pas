@@ -41,6 +41,7 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.EditorActions;
@@ -277,6 +278,21 @@ begin
     procedure
     begin
       TAtlasEditorActionCommands.StepProblem(False);
+    end);
+  // Datei jetzt prüfen (#1744): nur mit Prüfregeln.
+  AMenu.AddWhen(TAtlasFeature.Problems, 'Atlas.CheckFile',
+    TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.CheckFileKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeProblems.CheckFileNow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Problems;
     end);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   AMenu.Add('-', nil, nil);

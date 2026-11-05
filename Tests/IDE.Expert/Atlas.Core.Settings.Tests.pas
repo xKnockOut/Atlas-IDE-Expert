@@ -47,6 +47,9 @@ type
     procedure NotificationOptions;
     [Test]
     procedure CompletionListModeOptions;
+    /// <summary>„Datei jetzt prüfen“ (#1744): Vorgabe, Grenzen, Speichern und Laden.</summary>
+    [Test]
+    procedure CheckFileKeyOption;
   end;
 
   [TestFixture]
@@ -716,6 +719,31 @@ begin
   Assert.AreEqual('ShortcutTips=collect, reload=off', Loaded.NotificationsSources);
   Assert.AreEqual(50, Loaded.NotificationsMaxEntries);
   Assert.AreEqual($C04E, Loaded.NotificationsKey);
+end;
+procedure TAtlasPluginSettingsTests.CheckFileKeyOption;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual($E050, mSettings.CheckFileKey, 'Strg+Umschalt+Alt+P');
+  mSettings.CheckFileKey := -1;
+  mSettings.Normalize;
+  Assert.AreEqual(0, mSettings.CheckFileKey, 'ungültig = keins');
+  mSettings.CheckFileKey := $70000;
+  mSettings.Normalize;
+  Assert.AreEqual($FFFF, mSettings.CheckFileKey);
+  mSettings.CheckFileKey := $4050;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual($4050, mLoaded.CheckFileKey, 'Strg+P');
+  mSettings.CheckFileKey := 0;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual(0, mLoaded.CheckFileKey, 'leer bleibt leer');
 end;
 procedure TAtlasPluginSettingsTests.CompletionListModeOptions;
 var

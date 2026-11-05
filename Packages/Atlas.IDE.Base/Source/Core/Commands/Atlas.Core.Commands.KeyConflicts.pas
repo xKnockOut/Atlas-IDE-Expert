@@ -46,7 +46,7 @@ type
   /// implementation-Teil (#1101). Schnelle Lesezeichen (#1104): QuickBookmark (Strg+Umschalt+K), QuickBookmarkSet
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
   /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
-  /// hineinspringen (#836) nur in der Übersicht. Neue Funktionen
+  /// hineinspringen (#836) nur in der Übersicht. „Datei jetzt prüfen“ (#1744). Neue Funktionen
   /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716).</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
@@ -59,7 +59,7 @@ type
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
-    DesignerSearch);
+    DesignerSearch, CheckFile);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -299,7 +299,9 @@ begin
       ASettings.WelcomePage and ASettings.IssuesCreate),
     // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
     // Willkommensseite).
-    Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar)];
+    Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar),
+    // Datei jetzt prüfen (#1744): in jedem Modus von problems.update; ohne Prüfregeln ist das Kürzel frei.
+    Create(TAtlasKeyFunction.CheckFile, Word(ASettings.CheckFileKey), AShared, ASettings.Problems)];
 end;
 
 /// <summary>Teil 1 von ToSettings: Taste (und Vorrang) von AEntry in ASettings, wenn die Funktion hierher
@@ -528,6 +530,8 @@ begin
       ASettings.CreateIssueKey := AEntry.Key;
     TAtlasKeyFunction.DesignerSearch:
       ASettings.DesignerSearchKey := AEntry.Key;
+    TAtlasKeyFunction.CheckFile:
+      ASettings.CheckFileKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;
