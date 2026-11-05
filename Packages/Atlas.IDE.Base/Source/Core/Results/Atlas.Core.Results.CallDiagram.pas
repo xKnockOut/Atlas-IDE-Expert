@@ -165,7 +165,47 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Results.CallDiagramTemplate;
+  Atlas.Core.Results.CallDiagramTemplate,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Seite (#1458), eingesetzt in die Platzhalter {{T_…}} der Vorlage.</summary>
+  TCallDiagramText = (Caption, ProjectOnly, Fit, ExpandAll, Legend, Hint, Callers, Callees, Loaded, OneImplementation,
+    Implementations);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCallDiagramText] of string = (
+    ('Aufrufdiagramm',
+     'nur Projekt-Units',
+     'Einpassen',
+     'Alle geladenen Ebenen aufklappen',
+     'Gestrichelt: Aufruf über Interface oder virtuelle Methode (Zahl der Umsetzungen); Bogen zurück: Rekursion.',
+     'Ziehen verschiebt, Mausrad zoomt · Klick klappt auf und zu · Doppelklick zeigt die Fundstelle',
+     'Aufrufer',
+     'Aufgerufene',
+     'geladene Einträge',
+     '1 Umsetzung',
+     'Umsetzungen'),
+    ('Call diagram',
+     'project units only',
+     'Fit',
+     'Expand all loaded levels',
+     'Dashed: call via interface or virtual method (number of implementations); arc back: recursion.',
+     'Drag moves, mouse wheel zooms · click expands and collapses · double-click shows the location',
+     'Callers',
+     'Callees',
+     'loaded entries',
+     '1 implementation',
+     'implementations'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCallDiagramText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasCallLayout }
 
@@ -613,9 +653,25 @@ begin
   Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
 end;
 
+/// <summary>Setzt Sprache und Texte der Seite (#1458) in die Platzhalter {{LANG}} und {{T_…}} ein.</summary>
+function Localized(const AHtml: string): string;
+const
+  cKeys: array[TCallDiagramText] of string = ('{{T_CAPTION}}', '{{T_PROJECT}}', '{{T_FIT}}', '{{T_EXPAND}}',
+    '{{T_LEGEND}}', '{{T_HINT}}', '{{T_CALLERS}}', '{{T_CALLEES}}', '{{T_LOADED}}', '{{T_IMPL1}}', '{{T_IMPLS}}');
+  cLang: array[TAtlasLanguage] of string = ('de', 'en');
+var
+  mText: TCallDiagramText;
+begin
+  Result := StringReplace(AHtml, '{{LANG}}', cLang[TAtlasTextLanguage.Current], [rfReplaceAll]);
+  for mText := Low(TCallDiagramText) to High(TCallDiagramText) do
+  begin
+    Result := StringReplace(Result, cKeys[mText], HtmlEscape(UiText(mText)), [rfReplaceAll]);
+  end;
+end;
+
 function TAtlasCallDiagram.Html(const ATitle: string): string;
 begin
-  Result := StringReplace(CallDiagramHtml, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(Localized(CallDiagramHtml), '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
   // Die Daten stehen in einem script-Element: "</" darf es nicht beenden.
   Result := StringReplace(Result, '{{DATA}}', StringReplace(Json(ATitle), '</', '<\/', [rfReplaceAll]), []);
 end;
@@ -695,5 +751,9 @@ begin
   end;
   Result := -1;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Results.CallDiagram', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

@@ -84,6 +84,7 @@ uses
   Atlas.Core.Outline.StickyScroll,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.Guides,
+  Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorStyle,
@@ -133,6 +134,8 @@ type
     Back: TAtlasColor;
     /// <summary>Hintergrund des Kopfs: Dort beginnt die Spitze eingeblendeter Linien.</summary>
     HeadBack: TAtlasColor;
+    /// <summary>Färbung lokaler Routinen wie im Editor (#1788).</summary>
+    Nesting: TAtlasRoutineNesting;
   end;
 
   /// <summary>Werkzeuge der Leinwand, vor dem Zeichnen gesichert und danach zurückgesetzt.</summary>
@@ -701,19 +704,6 @@ const
   // Wie die Blocklinien des Editors (Atlas.IDE.Editor.Pairs).
   GuideMargin = 4;
 
-/// <summary>Paarfarben zu AColors (hell oder dunkel) aus den Einstellungen.</summary>
-function PairPalette(const AColors: TAtlasColors; const ASettings: TAtlasPluginSettings): TAtlasColors;
-begin
-  if AColors.IsDark then
-  begin
-    Result := AColors.WithPairs(ASettings.PairColorsDark);
-  end
-  else
-  begin
-    Result := AColors.WithPairs(ASettings.PairColorsLight);
-  end;
-end;
-
 /// <summary>Ohne Zeilenzustand, Ansicht oder Puffer gibt es keine Blocklinien.</summary>
 function NoEditor(const AContext: INTACodeEditorPaintContext): Boolean;
 begin
@@ -734,7 +724,8 @@ begin
   Result.Colors := TAtlasColors.ForBackground(ABack);
   // Die Spitze eingeblendeter Linien beginnt in der Farbe des Kopfs.
   Result.HeadBack := HeaderBack(Result.Colors, ABack);
-  Result.Colors := PairPalette(Result.Colors, ASettings);
+  Result.Colors := TAtlasRoutineNesting.PairPalette(Result.Colors, ASettings);
+  Result.Nesting := TAtlasRoutineNesting.FromSettings(ASettings);
 end;
 
 /// <summary>Spalte der Linie in Pixeln vor der Zelle ACell; nicht links aus dem Codebereich.</summary>
@@ -747,9 +738,9 @@ begin
   end;
 end;
 
-function GuideColor(const APaint: TGuidePaint; ADepth: Integer): TAtlasColor;
+function GuideColor(const APaint: TGuidePaint; const AGuide: TAtlasGuide): TAtlasColor;
 begin
-  Result := APaint.Colors.Pairs[ADepth mod Length(APaint.Colors.Pairs)];
+  Result := APaint.Nesting.Color(APaint.Colors, AGuide.Depth, AGuide.Routine);
   if APaint.Opacity < 100 then
   begin
     Result := TAtlasColorMath.Mix(Result, APaint.Back, APaint.Opacity / 100);
@@ -824,7 +815,7 @@ begin
   end;
   Cell := APaint.Context.EditorState.GetCharacterPosPx(AGuide.Column, APaint.Context.EditorLineNum);
   X := GuideX(APaint, Cell);
-  LineColor := GuideColor(APaint, AGuide.Depth);
+  LineColor := GuideColor(APaint, AGuide);
   if not Start.FadeIn then
   begin
     if ARowIndex = Start.Row then
@@ -1008,7 +999,8 @@ begin
   end;
 end;
 
-function SpanColor(const ASpan: TAtlasPairSpan; const APairs: TAtlasColors): TColor;
+function SpanColor(const ASpan: TAtlasPairSpan; const APairs: TAtlasColors;
+  const ANesting: TAtlasRoutineNesting): TColor;
 begin
   if ASpan.Unpaired then
   begin
@@ -1016,7 +1008,7 @@ begin
   end
   else
   begin
-    Result := TColor(APairs.Pairs[ASpan.Depth mod Length(APairs.Pairs)]);
+    Result := TColor(ANesting.Color(APairs, ASpan.Depth, ASpan.Routine));
   end;
 end;
 
@@ -1025,12 +1017,14 @@ procedure ApplySpans(const ASpans: TArray<TAtlasPairSpan>; const APairs: TAtlasC
 var
   Span: TAtlasPairSpan;
   Index: Integer;
+  mNesting: TAtlasRoutineNesting;
 begin
+  mNesting := TAtlasRoutineNesting.FromSettings(TAtlasIdeSettings.Current);
   for Span in ASpans do
   begin
     for Index := Span.Start - 1 to Min(High(AColors), Span.Start + Span.Length - 2) do
     begin
-      AColors[Index] := SpanColor(Span, APairs);
+      AColors[Index] := SpanColor(Span, APairs, mNesting);
     end;
   end;
 end;
@@ -1102,7 +1096,7 @@ begin
   Spans := RowSpans(ARow);
   if Length(Spans) > 0 then
   begin
-    ApplySpans(Spans, PairPalette(AColors, TAtlasIdeSettings.Current), CharColors);
+    ApplySpans(Spans, TAtlasRoutineNesting.PairPalette(AColors, TAtlasIdeSettings.Current), CharColors);
   end;
   DrawRuns(ACanvas, ALeft, ATop, ARow.Text, CharColors, CharStyles);
 end;

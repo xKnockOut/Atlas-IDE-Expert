@@ -47,9 +47,12 @@ type
     /// <summary>JSON hin und zurück, leere Einträge fallen weg, ungültiges JSON ergibt die Vorgaben.</summary>
     [Test]
     procedure SnippetsJson;
-    /// <summary>Vorgabe der Einstellung issues.commentSnippets = TAtlasCommentSnippets.Defaults.</summary>
+    /// <summary>Vorgabe der Einstellung issues.commentSnippets = deutsche TAtlasCommentSnippets.Defaults.</summary>
     [Test]
     procedure SnippetDefaultsMatchSetting;
+    /// <summary>Unveränderte Vorgaben folgen der Sprache der Oberfläche, eigene Bausteine bleiben (#1458).</summary>
+    [Test]
+    procedure SnippetDefaultsFollowLanguage;
     /// <summary>Je Tracker, Issue und Feld; nur Leerraum löscht; neueste zuerst, höchstens MaxDrafts.</summary>
     [Test]
     procedure DraftsPutGetDelete;
@@ -354,9 +357,9 @@ begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mSnippets));
   Assert.AreEqual(2, Integer(Length(mSnippets)), 'hin und zurück');
   Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
-  Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]'))), 'leere Liste bleibt leer');
-  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults)),
-    Integer(Length(TAtlasCommentSnippets.Read('kein JSON'))), 'ungültig: Vorgaben');
+  Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]', False))), 'leere Liste bleibt leer');
+  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(False))),
+    Integer(Length(TAtlasCommentSnippets.Read('kein JSON', False))), 'ungültig: Vorgaben');
   Assert.IsFalse(TAtlasCommentSnippets.Parse('{"name":"A"}', mSnippets), 'keine Liste');
   mSnippets := nil;
 end;
@@ -367,7 +370,7 @@ var
   mIndex: Integer;
 begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSetting));
-  mDefaults := TAtlasCommentSnippets.Defaults;
+  mDefaults := TAtlasCommentSnippets.Defaults(False);
   Assert.AreEqual(Integer(Length(mDefaults)), Integer(Length(mSetting)));
   for mIndex := 0 to High(mDefaults) do
   begin
@@ -377,6 +380,27 @@ begin
   Assert.AreEqual('Behoben in {commit}', mDefaults[1].Name);
   mSetting := nil;
   mDefaults := nil;
+end;
+
+procedure TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage;
+var
+  mRead: TArray<TAtlasCommentSnippet>;
+begin
+  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.DefaultIssuesCommentSnippets, True);
+  Assert.AreEqual(2, Integer(Length(mRead)));
+  Assert.AreEqual('Please check with the current build', mRead[0].Name, 'deutsche Vorgabe in englischer IDE');
+  Assert.AreEqual('Fixed in {commit}.', mRead[1].Text);
+  mRead := TAtlasCommentSnippets.Read(TAtlasCommentSnippets.DefaultJson(True), False);
+  Assert.AreEqual('Bitte mit aktuellem Build prüfen', mRead[0].Name, 'englische Vorgabe in deutscher IDE');
+  mRead := TAtlasCommentSnippets.Read(TAtlasCommentSnippets.DefaultJson(True), True);
+  Assert.AreEqual('Please check with the current build', mRead[0].Name, 'englisch bleibt englisch');
+  mRead := TAtlasCommentSnippets.Read('[{"name":"Bitte mit aktuellem Build prüfen","text":"Eigener Text"}]', True);
+  Assert.AreEqual(1, Integer(Length(mRead)), 'geändert: bleibt, wie es ist');
+  Assert.AreEqual('Eigener Text', mRead[0].Text);
+  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(True))),
+    Integer(Length(TAtlasCommentSnippets.Read('kein JSON', True))), 'ungültig: englische Vorgaben');
+  Assert.AreEqual('Fixed in {commit}', TAtlasCommentSnippets.Read('kein JSON', True)[1].Name);
+  mRead := nil;
 end;
 
 procedure TAtlasCommentEditorTests.DraftsPutGetDelete;

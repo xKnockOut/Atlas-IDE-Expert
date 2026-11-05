@@ -37,6 +37,11 @@ type
     /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
     [Test]
     procedure CancelStopsRuleChecks;
+    /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als DocumentWaitMs, antwortet die Anfrage
+    /// mit ServerCancelled statt ins Zeitlimit zu laufen; die Prüfung rechnet zu Ende und legt ab, die nächste
+    /// Anfrage prüft nicht neu.</summary>
+    [Test]
+    procedure SlowOpenDocumentAnswersBeforeTimeout;
     /// <summary>Zwei gleichzeitige Anfragen für denselben Stand prüfen nur einmal.</summary>
     [Test]
     procedure ParallelRequestsForSameStateComputeOnce;
@@ -89,6 +94,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Diagnostics.RequestScope;
@@ -467,15 +473,77 @@ begin
   try
     Runs := 0;
     Source := TJsonRpcCancellation.Create;
+    // Datei von der Platte: Geöffnete Dateien prüft ein eigener Thread zu Ende (#1761).
     Assert.WillRaise(
       procedure
       begin
-        Fixture.Pull.DocumentReport(TDocumentUris.FromPath(OpenFile), '', Source).Free;
+        Fixture.Pull.DocumentReport(TDocumentUris.FromPath(ClosedFile), '', Source).Free;
       end, EJsonRpcRequestCancelled);
     Assert.AreEqual(1, Runs);
     Assert.AreEqual(0, Fixture.Pull.Computed);
   finally
     Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.SlowOpenDocumentAnswersBeforeTimeout;
+var
+  mFixture: TFixture;
+  mRules: TRuleContextProvider;
+  mGo: TEvent;
+  mCode: Integer;
+  mClock: TStopwatch;
+  mReport: TJSONObject;
+  mUri: string;
+begin
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mRules :=
+      function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+      begin
+        AContext := Default(TRuleCheckContext);
+        AContext.Settings := TServerSettings.Default;
+        AContext.Rules := [
+          TCallbackRule.Create('langsam',
+            procedure
+            begin
+              mGo.WaitFor(10000);
+            end)];
+        Result := True;
+      end;
+    mFixture.Init(mRules);
+    try
+      mFixture.Pull.DocumentWaitMs := 50;
+      mUri := TDocumentUris.FromPath(OpenFile);
+      mCode := 0;
+      try
+        mFixture.Pull.DocumentReport(mUri, '', Token).Free;
+      except
+        on E: EJsonRpcError do
+          mCode := E.Code;
+      end;
+      Assert.AreEqual(TLspErrorCode.ServerCancelled, mCode, 'Antwort vor dem Zeitlimit');
+      Assert.AreEqual(0, mFixture.Pull.Computed);
+      // Die Prüfung rechnet weiter und legt ab.
+      mGo.SetEvent;
+      mClock := TStopwatch.StartNew;
+      while (mFixture.Pull.Computed = 0) and (mClock.ElapsedMilliseconds < 10000) do
+      begin
+        Sleep(10);
+      end;
+      Assert.AreEqual(1, mFixture.Pull.Computed);
+      mReport := mFixture.Pull.DocumentReport(mUri, '', Token);
+      try
+        Assert.AreEqual('full', mReport.GetValue<string>('kind'));
+      finally
+        mReport.Free;
+      end;
+      Assert.AreEqual(1, mFixture.Pull.Computed, 'aus dem Speicher');
+    finally
+      mFixture.Done;
+    end;
+  finally
+    mGo.Free;
   end;
 end;
 

@@ -190,6 +190,11 @@ type
     /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput)
       : TJSONObject; overload; static;
+    /// <summary>Wie RuleFindings über ARules.Memo (#1761): Treffer am selben Text aus dem Memo, nach Warten auf
+    /// einen laufenden Lauf am selben Text oder selbst gerechnet und abgelegt. Ohne Memo wie RuleFindings.
+    /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
+    class function SharedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
+      const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>; static;
     /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
     /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
     class function RuleFindings(const AText: string; ATree: TSyntaxTree;
@@ -291,15 +296,10 @@ var
   mFinding: TRuleFinding;
 begin
   try
-    mFindings := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    mFindings := TLspSyntaxDiagnostics.SharedRuleFindings(AText, ATree, ARules, ARules.Cancelled);
   except
     AItems.Free;
     raise;
-  end;
-  // Vollständiger Lauf: Die Glühbirne an diesem Text braucht die Regeln nicht noch einmal.
-  if (ARules.Memo <> nil) and (ARules.FileName <> '') then
-  begin
-    ARules.Memo.Put(ARules.FileName, AText, mFindings);
   end;
   // Routinen aus demselben Baum: Die Baseline braucht sie für ihren Schlüssel.
   if ARules.Baseline <> nil then
@@ -726,6 +726,26 @@ begin
   Result.AddPair('uri', ADocument.Uri);
   Result.AddPair('version', TJSONNumber.Create(ADocument.Version));
   Result.AddPair('diagnostics', mItems);
+end;
+
+/// <summary>Lauf der Prüfregeln für Obtain.</summary>
+function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
+begin
+  Result :=
+    function: TArray<TRuleFinding>
+    begin
+      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    end;
+end;
+
+class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
+begin
+  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
+  begin
+    Exit(RuleFindings(AText, ATree, ARules));
+  end;
+  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
 end;
 
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;

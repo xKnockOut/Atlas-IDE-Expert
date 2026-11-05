@@ -33,6 +33,10 @@ type
     procedure QueriesChoicesNamesAndAdd;
     [Test]
     procedure SnippetsEditAndLimit;
+    /// <summary>Mit English zeigt die Tabelle die unveränderten Vorgaben englisch, „Vorgaben“ setzt englische
+    /// (#1458).</summary>
+    [Test]
+    procedure SnippetsDefaultsInLanguage;
     [Test]
     procedure TablesLoadSaveAndRename;
   end;
@@ -393,6 +397,26 @@ begin
     mTable.Remove;
     Assert.IsTrue(mTable.CanAdd);
     Assert.AreEqual(TAtlasCommentSnippets.MaxSnippets - 2, mTable.Selected);
+  finally
+    mTable.Free;
+  end;
+end;
+
+procedure TAtlasTrackerSettingsTablesTests.SnippetsDefaultsInLanguage;
+var
+  mTable: TAtlasTrackerSnippetTable;
+begin
+  mTable := TAtlasTrackerSnippetTable.Create;
+  try
+    mTable.English := True;
+    mTable.Load(TAtlasCommentSnippets.DefaultJson(False));
+    Assert.AreEqual('Please check with the current build', mTable.Items[0].Name);
+    mTable.Load('[{"name": "Gruß", "text": "Hallo"}]');
+    mTable.Defaults;
+    Assert.AreEqual('Fixed in {commit}', mTable.Items[1].Name);
+    mTable.English := False;
+    mTable.Load(mTable.ToJson);
+    Assert.AreEqual('Behoben in {commit}', mTable.Items[1].Name);
   finally
     mTable.Free;
   end;
