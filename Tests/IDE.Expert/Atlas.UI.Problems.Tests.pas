@@ -60,6 +60,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ComCtrls,
+  Vcl.Buttons,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Settings.ProblemsUpdate,
@@ -116,6 +117,22 @@ begin
   Result.Parent := AHost;
   Result.ApplySettings(TAtlasFindingScope.Group, TAtlasFindingGrouping.ByFile, '', True);
   Result.SetFindings(Sample, 'C:\P\Kunde.pas', nil);
+end;
+
+/// <summary>True, wenn AFrame einen Knopf mit der Beschriftung ACaption besitzt.</summary>
+function HasButton(AFrame: TAtlasProblemsFrame; const ACaption: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to AFrame.ComponentCount - 1 do
+  begin
+    if (AFrame.Components[mIndex] is TSpeedButton) and
+      SameStr(TSpeedButton(AFrame.Components[mIndex]).Caption, ACaption) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasProblemsFrameTests }
@@ -496,20 +513,12 @@ begin
     Frame := NewFrame(Host);
     Frame.SetUpdate(TAtlasProblemsUpdate.Live);
     Assert.AreEqual('● Live', Frame.LiveLabel.Caption);
-    Assert.IsFalse(Frame.CheckFileButton.Visible, 'live: kein Knopf');
     Frame.SetUpdate(TAtlasProblemsUpdate.Save);
     Assert.AreEqual('Beim Speichern', Frame.LiveLabel.Caption);
-    Assert.IsTrue(Frame.CheckFileButton.Visible, 'beim Speichern: Knopf');
     Frame.SetUpdate(TAtlasProblemsUpdate.Manual);
     Assert.AreEqual('Manuell', Frame.LiveLabel.Caption);
-    Assert.AreEqual('Datei jetzt prüfen', Frame.CheckFileButton.Caption);
-    Frame.OnCheckFile :=
-      procedure
-      begin
-        Frame.SetStatus('angefordert');
-      end;
-    Frame.CheckFileButton.Click;
-    Assert.AreEqual('angefordert', Frame.StatusLabel.Caption, 'Klick meldet OnCheckFile');
+    // Die aktuelle Datei prüft die Schaltfläche der Atlas-Statusleiste, das Fenster hat keinen eigenen Knopf.
+    Assert.IsFalse(HasButton(Frame, 'Datei jetzt prüfen'), 'kein Knopf „Datei jetzt prüfen“');
     Frame.SetStatus('3 Befunde in 2 Dateien');
     Assert.AreEqual('3 Befunde in 2 Dateien', Frame.StatusLabel.Caption);
     Frame.SetFindings(nil, '', nil);
