@@ -123,6 +123,8 @@ begin
   BindKey('PreviousProblemKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand)));
   // Fenster „Atlas-Prüfung“ (#909).
   BindKey('ProblemsWindowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand)));
+  // „Datei jetzt prüfen“ (#1744).
+  BindKey('CheckFileKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand)));
   // „Issue anlegen …“ (#1268), ohne Vorgabe.
   BindKey('CreateIssueKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand)));
   BindKey('UndoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu)));

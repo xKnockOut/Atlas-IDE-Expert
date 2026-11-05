@@ -2634,6 +2634,16 @@
       "x-page": "Befehle",
       "x-issue": "#909"
     },
+    "CheckFileKey": {
+      "type": "integer",
+      "default": 57424,
+      "description": "Tastenkürzel für „Datei jetzt prüfen“ (Vorgabe Strg+Umschalt+Alt+P): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von problems.update (im Live-Modus ohne die Wartezeit); 0 = keins.",
+      "x-key": "keys.checkFile",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#1744"
+    },
     "GotoInterfaceKey": {
       "type": "integer",
       "default": 0,

@@ -3,7 +3,7 @@
 // Tasten der Editorbefehle zum Bearbeiten und Springen im Quelltext, ausgelagert
 // aus TAtlasIdeEditorKeys.Rebind (Atlas.IDE.Commands.Bindings, Beschreibung dort):
 // Code-Aktionen, Auswahl, Implementierung, Typdefinition, Deklaration ⇄
-// Implementierung (#775), Ausblenden (#628), Befunde (#509, #909), Testunit
+// Implementierung (#775), Ausblenden (#628), Befunde (#509, #909, #1744), Testunit
 // (#189), Abschnittssprünge (#1101), Formatieren (#43), Blockkommentar (#703),
 // neue Zeile (#700), Umschließung entfernen (#657), F3/Umschalt+F3 (#698),
 // Typ des Ausdrucks (#689), Sicher löschen (#716), Zeilen verschieben (#634),
@@ -174,6 +174,12 @@ begin
   begin
     AKeys.AddKey(TAtlasFeature.Problems, ASettings.ProblemsWindowKey, Text(TAtlasTextId.ProblemsWindowCommand),
       TAtlasIdeProblems.ShowWindow);
+  end;
+  // Datei jetzt prüfen (#1744): in jedem Modus von problems.update, im Live-Modus ohne die Wartezeit.
+  if ASettings.Problems then
+  begin
+    AKeys.AddKey(TAtlasFeature.Problems, ASettings.CheckFileKey, Text(TAtlasTextId.ProblemsCheckFileCommand),
+      TAtlasIdeProblems.CheckFileNow);
   end;
   AKeys.AddKey(TAtlasFeature.EditorCommands, ASettings.TestUnitKey, Text(TAtlasTextId.EditorTestUnit),
     TAtlasIdeEditorCommands.SwitchTestUnit);
