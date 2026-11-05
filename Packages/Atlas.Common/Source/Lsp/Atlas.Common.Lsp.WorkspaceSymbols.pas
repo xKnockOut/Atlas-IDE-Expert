@@ -69,7 +69,20 @@ uses
   System.Math,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.FuzzyMatch;
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWorkspaceSymbolsText = (FieldQueryMissingIn);
+
+const
+  cTexts: array[TWorkspaceSymbolsText] of TAtlasText = (
+    (De: 'Feld "query" fehlt in '; En: 'Field "query" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 type
   TCandidate = record
@@ -338,7 +351,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', Query)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "query" fehlt in ' + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + Method);
   end;
   Found := nil;
   if Assigned(FBookmarksFor) then
@@ -352,5 +366,8 @@ begin
   end;
   Result := ToJson(Found);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WorkspaceSymbols', cTexts);
 
 end.

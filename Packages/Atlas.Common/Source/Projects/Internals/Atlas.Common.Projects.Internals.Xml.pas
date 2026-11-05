@@ -49,7 +49,34 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TXmlText = (XMLErrorAtPosition, Missing, InvalidCharacterReference, AfterMissing, QuotationMarkExpected,
+    AttributeValueNotClosed, ExpectedFound, Missing2, ContentAfterTheRootElement, NameExpected, Expected,
+    UnknownEntity, RootElementExpected);
+
+const
+  cTexts: array[TXmlText] of TAtlasText = (
+    (De: 'XML-Fehler an Position %d: %s'; En: 'XML error at position %d: %s'),
+    (De: '"%s" fehlt'; En: '"%s" missing'),
+    (De: 'Ungültige Zeichenreferenz &%s;'; En: 'Invalid character reference &%s;'),
+    (De: '";" nach "&" fehlt'; En: '";" after "&" missing'),
+    (De: 'Anführungszeichen erwartet'; En: 'Quotation mark expected'),
+    (De: 'Attributwert nicht abgeschlossen'; En: 'Attribute value not closed'),
+    (De: '</%s> erwartet, </%s> gefunden'; En: '</%s> expected, </%s> found'),
+    (De: '</%s> fehlt'; En: '</%s> missing'),
+    (De: 'Inhalt hinter dem Wurzelelement'; En: 'Content after the root element'),
+    (De: 'Name erwartet'; En: 'Name expected'),
+    (De: '"%s" erwartet'; En: '"%s" expected'),
+    (De: 'Unbekannte Entity &%s;'; En: 'Unknown entity &%s;'),
+    (De: 'Wurzelelement erwartet'; En: 'Root element expected'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TParser = class
@@ -165,7 +192,7 @@ end;
 
 procedure TParser.Fail(const AMessage: string);
 begin
-  raise EXmlError.CreateFmt('XML-Fehler an Position %d: %s', [FPos, AMessage]);
+  raise EXmlError.CreateFmt(cTexts[TXmlText.XMLErrorAtPosition].Text, [FPos, AMessage]);
 end;
 
 function TParser.AtEnd: Boolean;
@@ -199,7 +226,7 @@ procedure TParser.Expect(const AValue: string);
 begin
   if not StartsWith(AValue) then
   begin
-    Fail(Format('"%s" erwartet', [AValue]));
+    Fail(cTexts[TXmlText.Expected].Fmt([AValue]));
   end;
   Inc(FPos, Length(AValue));
 end;
@@ -219,7 +246,7 @@ begin
   Found := Pos(ATerminator, FText, FPos);
   if Found = 0 then
   begin
-    Fail(Format('"%s" fehlt', [ATerminator]));
+    Fail(cTexts[TXmlText.Missing].Fmt([ATerminator]));
   end;
   FPos := Found + Length(ATerminator);
 end;
@@ -235,7 +262,7 @@ begin
   end;
   if FPos = Start then
   begin
-    Fail('Name erwartet');
+    Fail(cTexts[TXmlText.NameExpected].Text);
   end;
   Result := Copy(FText, Start, FPos - Start);
 end;
@@ -254,7 +281,7 @@ begin
   end;
   if (mCode < 0) or (mCode > $10FFFF) then
   begin
-    Fail('Ungültige Zeichenreferenz &' + AEntity + ';');
+    Fail(cTexts[TXmlText.InvalidCharacterReference].Fmt([AEntity]));
   end;
   if mCode > $FFFF then
   begin
@@ -282,7 +309,7 @@ begin
   else
     if (AEntity = '') or (AEntity[1] <> '#') then
     begin
-      Fail('Unbekannte Entity &' + AEntity + ';');
+      Fail(cTexts[TXmlText.UnknownEntity].Fmt([AEntity]));
     end;
     Result := CharReference(AEntity);
   end;
@@ -311,7 +338,7 @@ begin
       mSemicolon := Pos(';', AValue, mIndex);
       if mSemicolon = 0 then
       begin
-        Fail('";" nach "&" fehlt');
+        Fail(cTexts[TXmlText.AfterMissing].Text);
       end;
       mBuilder.Append(EntityText(Copy(AValue, mIndex + 1, mSemicolon - mIndex - 1)));
       mIndex := mSemicolon + 1;
@@ -360,7 +387,7 @@ begin
   mQuote := Peek;
   if not CharInSet(mQuote, ['"', '''']) then
   begin
-    Fail('Anführungszeichen erwartet');
+    Fail(cTexts[TXmlText.QuotationMarkExpected].Text);
   end;
   Inc(FPos);
   mStart := FPos;
@@ -370,7 +397,7 @@ begin
   end;
   if AtEnd then
   begin
-    Fail('Attributwert nicht abgeschlossen');
+    Fail(cTexts[TXmlText.AttributeValueNotClosed].Text);
   end;
   AElement.FAttributeNames.Add(mName);
   AElement.FAttributeValues.Add(Decode(Copy(FText, mStart, FPos - mStart)));
@@ -397,7 +424,7 @@ begin
   mName := ReadName;
   if mName <> AElement.Name then
   begin
-    Fail(Format('</%s> erwartet, </%s> gefunden', [AElement.Name, mName]));
+    Fail(cTexts[TXmlText.ExpectedFound].Fmt([AElement.Name, mName]));
   end;
   SkipSpace;
   Expect('>');
@@ -426,7 +453,7 @@ begin
     begin
       if AtEnd then
       begin
-        Fail(Format('</%s> fehlt', [AElement.Name]));
+        Fail(cTexts[TXmlText.Missing2].Fmt([AElement.Name]));
       end;
       if StartsWith('<!--') then
       begin
@@ -479,14 +506,14 @@ begin
   SkipMisc;
   if Peek <> '<' then
   begin
-    Fail('Wurzelelement erwartet');
+    Fail(cTexts[TXmlText.RootElementExpected].Text);
   end;
   Result := ParseElement;
   try
     SkipMisc;
     if not AtEnd then
     begin
-      Fail('Inhalt hinter dem Wurzelelement');
+      Fail(cTexts[TXmlText.ContentAfterTheRootElement].Text);
     end;
   except
     Result.Free;
@@ -507,5 +534,8 @@ begin
     Parser.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.Internals.Xml', cTexts);
 
 end.

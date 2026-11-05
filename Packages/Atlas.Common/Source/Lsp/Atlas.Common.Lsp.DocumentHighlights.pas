@@ -83,7 +83,21 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.KeywordHighlights;
+  Atlas.Common.Lsp.KeywordHighlights,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentHighlightsText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TDocumentHighlightsText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function CleanName(const AText: string): string;
 begin
@@ -304,7 +318,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TDocumentHighlightsText.FieldsTextDocumentUriAndPosition].Text + Method);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -330,5 +344,8 @@ begin
   end;
   Result := HighlightsJson(mFound);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DocumentHighlights', cTexts);
 
 end.

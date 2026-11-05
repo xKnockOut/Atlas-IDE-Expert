@@ -110,7 +110,77 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDirectivesText = (ConditionalTitle, FixTypo, AddEndif, NoIf, RemoveExtra, NoSymbol, BadSymbol, BadAlign,
+    UnknownDirectiveGuess, UnknownDirectiveCode, UnknownWarningGuess, UnknownWarning, NeverClosed, AfterElse,
+    PopWithoutPush, PushWithoutPop, TypoTitle, UnknownMeant, ReplaceWith, UnknownDirective, WarningsOff, HintsOff,
+    RangeOff, OverflowOff, WarningOff, OffTitle, Restore, DirectiveTitle, ResourceMissing, IncludeMissing,
+    RecursiveInclude, MessageWarn, MessageHint, WeakDeny, PackageOnly, ObjTypeName, BadCodepage);
+
+const
+  cTexts: array[TDirectivesText] of TAtlasText = (
+    (De: 'Bedingte Direktiven unvollständig oder unbekannt'; En: 'Conditional directives incomplete or unknown'),
+    (De: 'Tippfehler korrigieren: %s'; En: 'Fix typo: %s'),
+    (De: '{$ENDIF} nach Zeile %d ergänzen'; En: 'Add {$ENDIF} after line %d'),
+    (De: '{$%s} ohne passendes {$IF…} (wie E2279).'; En: '{$%s} without matching {$IF…} (like E2279).'),
+    (De: 'Überzähliges {$%s} entfernen'; En: 'Remove superfluous {$%s}'),
+    (De: '{$%s} ohne Symbol (wie E2173).'; En: '{$%s} without symbol (like E2173).'),
+    (De: '%s ist kein gültiges Symbol für {$%s} (wie E2173).'; En: '%s is not a valid symbol for {$%s} (like E2173).'),
+    (De: 'Ungültiger Wert %s für {$ALIGN}; erlaubt sind ON, OFF, 1, 2, 4, 8 und 16 (wie E2573).';
+     En: 'Invalid value %s for {$ALIGN}; ON, OFF, 1, 2, 4, 8 and 16 are allowed (like E2573).'),
+    (De: 'Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie %s).';
+     En: 'Unknown directive {$%s}; probably {$%s} is meant (like %s).'),
+    (De: 'Unbekannte Direktive {$%s} (wie %s).'; En: 'Unknown directive {$%s} (like %s).'),
+    (De: 'Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie %s).';
+     En: 'Unknown warning %s in {$WARN}; probably %s is meant (like %s).'),
+    (De: 'Unbekannte Warnung %s in {$WARN} (wie %s).'; En: 'Unknown warning %s in {$WARN} (like %s).'),
+    (De: '%s wird nie geschlossen; der Rest der Datei hängt an %s (wie %s).';
+     En: '%s is never closed; the rest of the file depends on %s (like %s).'),
+    (De: '{$%s} nach {$ELSE} von %s aus Zeile %d (wie E2279).';
+     En: '{$%s} after {$ELSE} of %s from line %d (like E2279).'),
+    (De: '{$POPOPT} ohne vorheriges {$PUSHOPT} (wie W1078).';
+     En: '{$POPOPT} without preceding {$PUSHOPT} (like W1078).'),
+    (De: '{$PUSHOPT} ohne passendes {$POPOPT} (wie W1079).'; En: '{$PUSHOPT} without matching {$POPOPT} (like W1079).'),
+    (De: 'Unbekannte Direktive (Tippfehler)'; En: 'Unknown directive (typo)'),
+    (De: 'Unbekannte Direktive %s; gemeint ist %s (wie E2070).'; En: 'Unknown directive %s; %s is meant (like E2070).'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'Unbekannte Direktive %s (wie E2070).'; En: 'Unknown directive %s (like E2070).'),
+    (De: 'WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.';
+     En: 'WARNINGS stays off until the end of the unit; all later warnings are missing.'),
+    (De: 'HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.';
+     En: 'HINTS stays off until the end of the unit; all later hints are missing.'),
+    (De: 'Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.';
+     En: 'Range checking stays off until the end of the unit; out-of-range values go unnoticed.'),
+    (De: 'Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.';
+     En: 'Overflow checking stays off until the end of the unit; overflows go unnoticed.'),
+    (De: 'Die Warnung %s bleibt bis zum Ende der Unit aus.'; En: 'The warning %s stays off until the end of the unit.'),
+    (De: 'Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet';
+     En: 'Compiler warnings or checks switched off until the end of the unit'),
+    (De: 'Nach dem nächsten Block wiederherstellen'; En: 'Restore after the next block'),
+    (De: 'Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt';
+     En: 'Compiler directive invalid or file from {$I}/{$R} missing'),
+    (De: 'Ressourcendatei %s nicht gefunden (wie E1026).'; En: 'Resource file %s not found (like E1026).'),
+    (De: 'Include-Datei %s nicht gefunden (wie F1026).'; En: 'Include file %s not found (like F1026).'),
+    (De: 'Rekursive Include-Datei: %s (wie E2245).'; En: 'Recursive include file: %s (like E2245).'),
+    (De: '{$MESSAGE WARN}: %s (wie W1054).'; En: '{$MESSAGE WARN}: %s (like W1054).'),
+    (De: '{$MESSAGE HINT}: %s (wie H1054).'; En: '{$MESSAGE HINT}: %s (like H1054).'),
+    (De: '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus (wie E2222).';
+     En: '{$WEAKPACKAGEUNIT ON} and {$DENYPACKAGEUNIT ON} exclude each other (like E2222).'),
+    (De: '{$%s} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit (wie E2224).';
+     En: '{$%s} is only allowed in a package (.dpk), not in a unit (like E2224).'),
+    (De: '{$OBJTYPENAME} gilt nicht für den Alias %s; erlaubt sind nur globale Typen, die kein Alias sind (wie E2560).';
+     En: '{$OBJTYPENAME} does not apply to the alias %s; only global types that are not aliases are allowed (like ' +
+      'E2560).'),
+    (De: '%s ist keine Codepage für {$CODEPAGE} (wie E1030).';
+     En: '%s is not a codepage for {$CODEPAGE} (like E1030).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>BDS-Nummer von Delphi 13: ab hier ist eine unbekannte Direktive ein Fehler (E1030, #1382).</summary>
@@ -220,7 +290,7 @@ end;
 function TConditionalDirectiveUnbalancedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ConditionalDirectiveUnbalancedRuleId, TRuleSeverity.Error,
-    'Bedingte Direktiven unvollständig oder unbekannt');
+    cTexts[TDirectivesText.ConditionalTitle].Text);
 end;
 
 procedure TConditionalDirectiveUnbalancedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -257,7 +327,7 @@ var
       Exit;
     end;
     Start := TTextPosition.Create(Tokens[AIndex].StartPos.Line, Tokens[AIndex].StartPos.Character + At - 1);
-    AFix := TRuleFix.Create(Format('Tippfehler korrigieren: %s', [AShown]),
+    AFix := TRuleFix.Create(cTexts[TDirectivesText.FixTypo].Fmt([AShown]),
       [TRuleEdit.Create(TTextRange.Create(Start, TTextPosition.Create(Start.Line, Start.Character + Length(AWord))),
       LikeOriginal(AWord, AReplacement))]);
   end;
@@ -299,7 +369,7 @@ var
       if Tokens[Index].StartPos.Line > Tokens[Index - 1].EndPos.Line + 1 then
       begin
         Line := Tokens[Index - 1].EndPos.Line;
-        AFix := TRuleFix.Create(Format('{$ENDIF} nach Zeile %d ergänzen', [Line + 1]),
+        AFix := TRuleFix.Create(cTexts[TDirectivesText.AddEndif].Fmt([Line + 1]),
           [TRuleEdit.Create(TTextRange.Create(Line + 1, 0, Line + 1, 0),
           StringOfChar(' ', Tokens[AOpen.Opening].StartPos.Character) + '{$ENDIF}' + LineBreak)]);
         Exit(True);
@@ -310,8 +380,8 @@ var
 
   procedure Stray(AIndex: Integer; const AName: string);
   begin
-    AReport.Add(RangeOf(AIndex), Format('{$%s} ohne passendes {$IF…} (wie E2279).', [AName]), TRuleConfidence.High,
-      [RemoveFix(AIndex, Format('Überzähliges {$%s} entfernen', [AName]))]);
+    AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.NoIf].Fmt([AName]), TRuleConfidence.High,
+      [RemoveFix(AIndex, cTexts[TDirectivesText.RemoveExtra].Fmt([AName]))]);
   end;
 
   procedure CheckSymbol(AIndex: Integer; const AName, ARest: string);
@@ -321,11 +391,11 @@ var
     Symbol := FirstWord(ARest);
     if Symbol = '' then
     begin
-      AReport.Add(RangeOf(AIndex), Format('{$%s} ohne Symbol (wie E2173).', [AName]), TRuleConfidence.High);
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.NoSymbol].Fmt([AName]), TRuleConfidence.High);
     end
     else if not IsValidIdent(Symbol) then
     begin
-      AReport.Add(RangeOf(AIndex), Format('%s ist kein gültiges Symbol für {$%s} (wie E2173).', [Symbol, AName]),
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadSymbol].Fmt([Symbol, AName]),
         TRuleConfidence.High);
     end;
   end;
@@ -348,8 +418,7 @@ var
     begin
       Exit;
     end;
-    AReport.Add(RangeOf(AIndex), Format('Ungültiger Wert %s für {$ALIGN}; erlaubt sind ON, OFF, 1, 2, 4, 8 und 16 ' +
-      '(wie E2573).', [AValue]), TRuleConfidence.High);
+    AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadAlign].Fmt([AValue]), TRuleConfidence.High);
   end;
 
   procedure CheckShortSwitches(AIndex: Integer; const ABody: string);
@@ -377,12 +446,12 @@ var
     Closest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
     if (Closest <> '') and ReplaceFix(AIndex, AName, Closest, '{$' + Closest + '}', 1, Fix) then
     begin
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie %s).',
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownDirectiveGuess].Fmt(
         [AName, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
     end
     else
     begin
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s} (wie %s).', [AName, mUnknownCode]),
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownDirectiveCode].Fmt([AName, mUnknownCode]),
         TRuleConfidence.High);
     end;
   end;
@@ -401,12 +470,12 @@ var
     Closest := TTextFuzzy.Closest(Id, TDirectiveNames.Warnings);
     if (Closest <> '') and ReplaceFix(AIndex, Id, Closest, Closest, AFrom, Fix) then
     begin
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie %s).',
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarningGuess].Fmt(
         [Id, Closest, mUnknownCode]), TRuleConfidence.High, [Fix]);
     end
     else
     begin
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN} (wie %s).', [Id, mUnknownCode]),
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.UnknownWarning].Fmt([Id, mUnknownCode]),
         TRuleConfidence.High);
     end;
   end;
@@ -446,7 +515,7 @@ var
     begin
       Code := 'E2280';
     end;
-    Message := Format('%s wird nie geschlossen; der Rest der Datei hängt an %s (wie %s).',
+    Message := cTexts[TDirectivesText.NeverClosed].Fmt(
       [Compact(Tokens[AItem.Opening].Text, 60), AItem.Condition, Code]);
     if ATop and EndifFix(AItem, Fix) then
     begin
@@ -467,7 +536,7 @@ var
     end
     else if Stack[High(Stack)].HadElse then
     begin
-      AReport.Add(RangeOf(AIndex), Format('{$%s} nach {$ELSE} von %s aus Zeile %d (wie E2279).',
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.AfterElse].Fmt(
         [AName, Compact(Tokens[Stack[High(Stack)].Opening].Text, 60),
         Tokens[Stack[High(Stack)].Opening].StartPos.Line + 1]), TRuleConfidence.High);
     end
@@ -573,7 +642,7 @@ var
       end
       else if Pushes = nil then
       begin
-        AReport.Add(RangeOf(Index), '{$POPOPT} ohne vorheriges {$PUSHOPT} (wie W1078).', TRuleConfidence.High);
+        AReport.Add(RangeOf(Index), cTexts[TDirectivesText.PopWithoutPush].Text, TRuleConfidence.High);
       end
       else
       begin
@@ -582,7 +651,7 @@ var
     end;
     for Index in Pushes do
     begin
-      AReport.Add(RangeOf(Index), '{$PUSHOPT} ohne passendes {$POPOPT} (wie W1079).', TRuleConfidence.High);
+      AReport.Add(RangeOf(Index), cTexts[TDirectivesText.PushWithoutPop].Text, TRuleConfidence.High);
     end;
   end;
 
@@ -627,7 +696,7 @@ end;
 
 function TDirectiveTypoRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DirectiveTypoRuleId, TRuleSeverity.Error, 'Unbekannte Direktive (Tippfehler)');
+  Result := TRuleDescriptor.Create(DirectiveTypoRuleId, TRuleSeverity.Error, cTexts[TDirectivesText.TypoTitle].Text);
 end;
 
 /// <summary>Offsets der Token in Zweigen, deren Bedingung (auch umschließend) FPC abfragt.</summary>
@@ -721,13 +790,13 @@ begin
   if mClosest <> '' then
   begin
     mClosest := LikeOriginal(mWord, mClosest);
-    AReport.Add(mRange, Format('Unbekannte Direktive %s; gemeint ist %s (wie E2070).', [mWord, mClosest]),
-      TRuleConfidence.High, [TRuleFix.Create(Format('Durch %s ersetzen', [mClosest]),
+    AReport.Add(mRange, cTexts[TDirectivesText.UnknownMeant].Fmt([mWord, mClosest]),
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TDirectivesText.ReplaceWith].Fmt([mClosest]),
       [TRuleEdit.Create(mRange, mClosest)])]);
   end
   else
   begin
-    AReport.Add(mRange, Format('Unbekannte Direktive %s (wie E2070).', [mWord]), TRuleConfidence.High);
+    AReport.Add(mRange, cTexts[TDirectivesText.UnknownDirective].Fmt([mWord]), TRuleConfidence.High);
   end;
 end;
 
@@ -912,23 +981,23 @@ function SwitchMessage(const AItem: TCompilerSwitch): string;
 begin
   if AItem.Switch = 'WARNINGS' then
   begin
-    Result := 'WARNINGS bleibt bis zum Ende der Unit aus; alle späteren Warnungen fehlen.';
+    Result := cTexts[TDirectivesText.WarningsOff].Text;
   end
   else if AItem.Switch = 'HINTS' then
   begin
-    Result := 'HINTS bleibt bis zum Ende der Unit aus; alle späteren Hinweise fehlen.';
+    Result := cTexts[TDirectivesText.HintsOff].Text;
   end
   else if AItem.Switch = 'RANGECHECKS' then
   begin
-    Result := 'Die Bereichsprüfung bleibt bis zum Ende der Unit aus; Überschreitungen fallen nicht mehr auf.';
+    Result := cTexts[TDirectivesText.RangeOff].Text;
   end
   else if AItem.Switch = 'OVERFLOWCHECKS' then
   begin
-    Result := 'Die Überlaufprüfung bleibt bis zum Ende der Unit aus; Überläufe fallen nicht mehr auf.';
+    Result := cTexts[TDirectivesText.OverflowOff].Text;
   end
   else
   begin
-    Result := Format('Die Warnung %s bleibt bis zum Ende der Unit aus.', [Copy(AItem.Switch, 6, MaxInt)]);
+    Result := cTexts[TDirectivesText.WarningOff].Fmt([Copy(AItem.Switch, 6, MaxInt)]);
   end;
 end;
 
@@ -1000,7 +1069,7 @@ end;
 function TCompilerWarningsDisabledRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CompilerWarningsDisabledRuleId, TRuleSeverity.Warning,
-    'Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet');
+    cTexts[TDirectivesText.OffTitle].Text);
 end;
 
 /// <summary>Schalter AItem aus der Direktive an AIndex in die ausgeschalteten AOffs eintragen.</summary>
@@ -1103,7 +1172,7 @@ begin
   end;
   // Bereichs- und Überlaufprüfung: {$R+} schaltet sie womöglich erst ein, wenn das Projekt sie aus hat;
   // deshalb nur einzeln.
-  Result := [TRuleFix.Create('Nach dem nächsten Block wiederherstellen',
+  Result := [TRuleFix.Create(cTexts[TDirectivesText.Restore].Text,
     [TRuleEdit.Create(TTextRange.Create(mLine, Length(ALines[mLine]), mLine, Length(ALines[mLine])),
     ALineBreak + mIndent + RestoreText(AOff.Item))], not MatchStr(AOff.Item.Switch, ['RANGECHECKS',
     'OVERFLOWCHECKS']))];
@@ -1258,7 +1327,7 @@ end;
 function TCompilerDirectiveInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CompilerDirectiveInvalidRuleId, TRuleSeverity.Error,
-    'Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt');
+    cTexts[TDirectivesText.DirectiveTitle].Text);
 end;
 
 procedure TCompilerDirectiveInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1424,17 +1493,17 @@ var
       end;
       if Locate(FileCandidates(AFile, True)) = TRuleUnitAnswer.Missing then
       begin
-        AReport.Add(RangeOf(AIndex), Format('Ressourcendatei %s nicht gefunden (wie E1026).', [AFile]));
+        AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.ResourceMissing].Fmt([AFile]));
       end;
       Exit;
     end;
     case Locate(FileCandidates(AFile, False)) of
       TRuleUnitAnswer.Missing:
-        AReport.Add(RangeOf(AIndex), Format('Include-Datei %s nicht gefunden (wie F1026).', [AFile]));
+        AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.IncludeMissing].Fmt([AFile]));
       TRuleUnitAnswer.Found:
         if Recursive(AFile, nil, mChain) then
         begin
-          AReport.Add(RangeOf(AIndex), Format('Rekursive Include-Datei: %s (wie E2245).', [mChain]));
+          AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.RecursiveInclude].Fmt([mChain]));
         end;
     end;
   end;
@@ -1452,12 +1521,12 @@ var
     mText := FirstArgument(mText, mAfter);
     if mKind = 'WARN' then
     begin
-      AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE WARN}: %s (wie W1054).', [mText]),
+      AReport.AddWithSeverity(RangeOf(AIndex), cTexts[TDirectivesText.MessageWarn].Fmt([mText]),
         TRuleSeverity.Warning, nil);
     end
     else if mKind = 'HINT' then
     begin
-      AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE HINT}: %s (wie H1054).', [mText]),
+      AReport.AddWithSeverity(RangeOf(AIndex), cTexts[TDirectivesText.MessageHint].Fmt([mText]),
         TRuleSeverity.Hint, nil);
     end;
   end;
@@ -1478,8 +1547,7 @@ var
     begin
       if mOn and mDeny and not mWeak and not mPackageUnknown then
       begin
-        AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
-          '(wie E2222).');
+        AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.WeakDeny].Text);
       end;
       mWeak := mOn;
     end
@@ -1487,8 +1555,7 @@ var
     begin
       if mOn and mWeak and not mDeny and not mPackageUnknown then
       begin
-        AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
-          '(wie E2222).');
+        AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.WeakDeny].Text);
       end;
       mDeny := mOn;
     end;
@@ -1505,8 +1572,7 @@ var
     mValue := UpperCase(FirstArgument(ARest, mAfter));
     if (mValue = '') or (mValue = 'ON') then
     begin
-      AReport.Add(RangeOf(AIndex), Format('{$%s} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit ' +
-        '(wie E2224).', [AName]));
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.PackageOnly].Fmt([AName]));
     end;
   end;
 
@@ -1579,8 +1645,7 @@ var
         Exit;
       end;
     end;
-    AReport.Add(RangeOf(AIndex), Format('{$OBJTYPENAME} gilt nicht für den Alias %s; erlaubt sind nur globale ' +
-      'Typen, die kein Alias sind (wie E2560).', [mName]));
+    AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.ObjTypeName].Fmt([mName]));
   end;
 
   procedure CheckCodePage(AIndex: Integer; const ARest: string);
@@ -1592,7 +1657,7 @@ var
     mValue := FirstArgument(ARest, mAfter);
     if TryStrToInt64(mValue, mNumber) and (mNumber > 65535) then
     begin
-      AReport.Add(RangeOf(AIndex), Format('%s ist keine Codepage für {$CODEPAGE} (wie E1030).', [mValue]));
+      AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadCodepage].Fmt([mValue]));
     end;
   end;
 
@@ -1669,5 +1734,8 @@ begin
   ARegistry.Register(TCompilerWarningsDisabledRule.Create);
   ARegistry.Register(TCompilerDirectiveInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Directives', cTexts);
 
 end.

@@ -59,12 +59,18 @@ type
     /// oder inaktiver Zweig.</summary>
     [Test]
     procedure UsesHintsAreKeptApart;
+    /// <summary>Große Units: Tausende Befunde und 30.000 Zeilen; Ändern und ForFile laufen nach jeder Änderung
+    /// im Hauptthread und dürfen nicht quadratisch wachsen.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure ManyProblemsInLargeUnitStayFast;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   System.JSON,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
@@ -692,6 +698,59 @@ var
 begin
   Colors := TAtlasColors.Light;
   Assert.AreEqual(Colors.Muted, ProblemColor(Colors, Problem(0, 0, 'x', 'Atlas', TAtlasProblemSeverity.Hint)));
+end;
+
+procedure TAtlasProblemsTests.ManyProblemsInLargeUnitStayFast;
+const
+  cLines = 30000;
+  cProblems = 20000;
+var
+  mStore: TAtlasProblemStore;
+  mProblems: TArray<TAtlasProblem>;
+  mBuilder: TStringBuilder;
+  mText: string;
+  mIndex: Integer;
+  mWatch: TStopwatch;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := 0 to cLines - 1 do
+    begin
+      mBuilder.Append('  mWert := mWert + ').Append(mIndex).Append(';').Append(#10);
+    end;
+    mText := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+  // Jeder zweite Befund doppelt (andere Schreibweise): Er fällt weg.
+  SetLength(mProblems, cProblems);
+  for mIndex := 0 to cProblems - 1 do
+  begin
+    mProblems[mIndex] := Problem(mIndex div 2, 2, 'Befund ' + IntToStr(mIndex div 2));
+    if Odd(mIndex) then
+    begin
+      mProblems[mIndex].Message := UpperCase(mProblems[mIndex].Message);
+    end;
+  end;
+  mStore := TAtlasProblemStore.Create;
+  try
+    mStore.Update('C:\P\Gross.pas', mText, True, mProblems, '1', False);
+    mWatch := TStopwatch.StartNew;
+    for mIndex := 1 to 5 do
+    begin
+      mStore.Edit('C:\P\Gross.pas', Copy(mText, 1, 1000) + 'x' + Copy(mText, 1001, MaxInt));
+      mProblems := mStore.ForFile('C:\P\Gross.pas');
+      mStore.Edit('C:\P\Gross.pas', mText);
+      mProblems := mStore.ForFile('C:\P\Gross.pas');
+    end;
+    mWatch.Stop;
+    Assert.AreEqual(cProblems div 2, Integer(Length(mProblems)));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, 'Dauer ' + IntToStr(mWatch.ElapsedMilliseconds) + ' ms');
+  finally
+    mStore.Free;
+  end;
+  mProblems := nil;
+  mText := '';
 end;
 
 initialization

@@ -239,7 +239,25 @@ uses
   System.JSON,
   System.Generics.Defaults,
   Atlas.Text.Json,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TBaselineText = (ObjectExpected, VersionExpected, FindingsMissing, EntryNoObject, EntryIncomplete);
+
+const
+  cTexts: array[TBaselineText] of TAtlasText = (
+    (De: 'Baseline: Objekt erwartet'; En: 'Baseline: object expected'),
+    (De: 'Baseline: Formatversion %d erwartet'; En: 'Baseline: format version %d expected'),
+    (De: 'Baseline: "findings" fehlt'; En: 'Baseline: "findings" is missing'),
+    (De: 'Baseline: Eintrag ist kein Objekt'; En: 'Baseline: entry is not an object'),
+    (De: 'Baseline: Eintrag ohne path, rule oder fingerprint';
+     En: 'Baseline: entry without path, rule or fingerprint'));
+
+{$SCOPEDENUMS OFF}
 
 const
   FormatVersion = 1;
@@ -855,17 +873,17 @@ var
 begin
   if not (ARoot is TJSONObject) then
   begin
-    raise ERuleBaseline.Create('Baseline: Objekt erwartet');
+    raise ERuleBaseline.Create(cTexts[TBaselineText.ObjectExpected].Text);
   end;
   mValue := TJSONObject(ARoot).GetValue('version');
   if not ((mValue is TJSONNumber) and (TJSONNumber(mValue).AsInt = FormatVersion)) then
   begin
-    raise ERuleBaseline.CreateFmt('Baseline: Formatversion %d erwartet', [FormatVersion]);
+    raise ERuleBaseline.CreateFmt(cTexts[TBaselineText.VersionExpected].Text, [FormatVersion]);
   end;
   mValue := TJSONObject(ARoot).GetValue('findings');
   if not (mValue is TJSONArray) then
   begin
-    raise ERuleBaseline.Create('Baseline: "findings" fehlt');
+    raise ERuleBaseline.Create(cTexts[TBaselineText.FindingsMissing].Text);
   end;
   Result := TJSONArray(mValue);
 end;
@@ -894,13 +912,13 @@ var
 begin
   if not (AValue is TJSONObject) then
   begin
-    raise ERuleBaseline.Create('Baseline: Eintrag ist kein Objekt');
+    raise ERuleBaseline.Create(cTexts[TBaselineText.EntryNoObject].Text);
   end;
   mItem := TJSONObject(AValue);
   if not ((mItem.GetValue('path') is TJSONString) and (mItem.GetValue('rule') is TJSONString) and
     (mItem.GetValue('fingerprint') is TJSONString)) then
   begin
-    raise ERuleBaseline.Create('Baseline: Eintrag ohne path, rule oder fingerprint');
+    raise ERuleBaseline.Create(cTexts[TBaselineText.EntryIncomplete].Text);
   end;
   AEntry := Default(TBaselineEntry);
   AEntry.Count := 1;
@@ -1319,5 +1337,8 @@ begin
   Result.Added := mFindings - mMatched;
   Result.Removed := mBefore - mMatched;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Baseline', cTexts);
 
 end.

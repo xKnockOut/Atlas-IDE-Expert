@@ -103,14 +103,84 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens;
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRtlTypePatternsConversionsText = (LocaleTitle, Locale, PassFormatSettings, UncheckedTitle, Unchecked,
+    EnumCastTitle, FromRegistry, FromText, FromDatabase, FromOutside, InvalidValueCode, InsertInRange, EnumCast,
+    GlobalTitle, AllSettings, TheSetting, LocalSettings, Global, NotNumber, NotAmount, NotDate, NotDateTime, NotTime,
+    NotBoolean, CurrencyString, CurrencyFormat, NegCurrFormat, ThousandSeparator, DecimalSeparator, CurrencyDecimals,
+    DateSeparator, ShortDateFormat, LongDateFormat, TimeSeparator, TimeAMString, TimePMString, ShortTimeFormat,
+    LongTimeFormat, ShortMonthNames, LongMonthNames, ShortDayNames, LongDayNames, ListSeparator,
+    TwoDigitYearCenturyWindow, RewriteTry);
+
+const
+  cTexts: array[TRtlTypePatternsConversionsText] of TAtlasText = (
+    (De: 'Formatierung abhängig vom Gebietsschema'; En: 'Formatting depends on the locale'),
+    (De: '%s ohne TFormatSettings hängt vom Gebietsschema ab (Dezimaltrenner, Datumsformat); für Dateien und ' +
+      'Protokolle eine feste TFormatSettings übergeben';
+     En: '%s without TFormatSettings depends on the locale (decimal separator, date format); pass a fixed ' +
+      'TFormatSettings for files and logs'),
+    (De: 'FormatSettings übergeben'; En: 'Pass FormatSettings'),
+    (De: 'Umwandlung einer Benutzereingabe ohne Prüfung'; En: 'Conversion of user input without check'),
+    (De: 'Eingabe aus %s ohne Prüfung umgewandelt; eine Fehleingabe löst EConvertError aus.';
+     En: 'Input from %s converted without check; an invalid input raises EConvertError.'),
+    (De: 'Zahl ungeprüft in Aufzählung umgewandelt'; En: 'Number converted to enumeration without check'),
+    (De: 'aus der Registry bzw. INI-Datei'; En: 'from the registry or INI file'),
+    (De: 'aus einem Text'; En: 'from a text'),
+    (De: 'aus der Datenbank'; En: 'from the database'),
+    (De: 'von außen'; En: 'from outside'),
+    (De: 'raise EConvertError.CreateFmt(''Ungültiger Wert %d für ';
+     En: 'raise EConvertError.CreateFmt(''Invalid value %d for '),
+    (De: 'Prüfung mit InRange davorsetzen'; En: 'Insert a check with InRange before it'),
+    (De: 'Wert %s ungeprüft nach %s umgewandelt; Werte außerhalb %s ergeben keinen gültigen %s-Wert.';
+     En: 'Value %s converted to %s without check; values outside %s give no valid %s value.'),
+    (De: 'Globale FormatSettings wird verändert'; En: 'Global FormatSettings is modified'),
+    (De: 'alle Formateinstellungen'; En: 'all format settings'),
+    (De: 'die Formateinstellung %s'; En: 'the format setting %s'),
+    (De: 'Lokale TFormatSettings anlegen und übergeben'; En: 'Create and pass a local TFormatSettings'),
+    (De: 'Ändert %s für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.';
+     En: 'Changes %s for the whole application and all threads; use a local TFormatSettings.'),
+    (De: 'ist keine Zahl'; En: 'is not a number'),
+    (De: 'ist kein Betrag'; En: 'is not an amount'),
+    (De: 'ist kein Datum'; En: 'is not a date'),
+    (De: 'ist kein Zeitpunkt'; En: 'is not a point in time'),
+    (De: 'ist keine Uhrzeit'; En: 'is not a time of day'),
+    (De: 'ist kein Wahrheitswert'; En: 'is not a truth value'),
+    (De: 'das Währungssymbol'; En: 'the currency symbol'),
+    (De: 'das Währungsformat'; En: 'the currency format'),
+    (De: 'das Format negativer Beträge'; En: 'the format of negative amounts'),
+    (De: 'das Tausendertrennzeichen'; En: 'the thousands separator'),
+    (De: 'den Dezimaltrenner'; En: 'the decimal separator'),
+    (De: 'die Nachkommastellen von Beträgen'; En: 'the decimal places of amounts'),
+    (De: 'das Datumstrennzeichen'; En: 'the date separator'),
+    (De: 'das kurze Datumsformat'; En: 'the short date format'),
+    (De: 'das lange Datumsformat'; En: 'the long date format'),
+    (De: 'das Zeittrennzeichen'; En: 'the time separator'),
+    (De: 'die Vormittagskennung'; En: 'the AM designator'),
+    (De: 'die Nachmittagskennung'; En: 'the PM designator'),
+    (De: 'das kurze Zeitformat'; En: 'the short time format'),
+    (De: 'das lange Zeitformat'; En: 'the long time format'),
+    (De: 'die kurzen Monatsnamen'; En: 'the short month names'),
+    (De: 'die Monatsnamen'; En: 'the month names'),
+    (De: 'die kurzen Tagesnamen'; En: 'the short day names'),
+    (De: 'die Tagesnamen'; En: 'the day names'),
+    (De: 'das Listentrennzeichen'; En: 'the list separator'),
+    (De: 'das Jahrhundertfenster zweistelliger Jahreszahlen'; En: 'the century window of two-digit years'),
+    (De: 'In Try%s mit Fehlerzweig umschreiben'; En: 'Rewrite as Try%s with error branch'));
+
+{$SCOPEDENUMS OFF}
 
 { TFormatWithoutSettingsRule }
 
 function TFormatWithoutSettingsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('format-without-settings', TRuleSeverity.Hint,
-    'Formatierung abhängig vom Gebietsschema');
+    cTexts[TRtlTypePatternsConversionsText.LocaleTitle].Text);
 end;
 
 class function TFormatWithoutSettingsRule.HasLocaleSpecifier(const AFormat: string): Boolean;
@@ -336,9 +406,9 @@ begin
     if IsLocaleCall(Tokens, Index, Close) and (IsQualified(Tokens, Index) or
       not CallsOwnRoutine(AContext, mCache, Tokens[Index])) then
     begin
-      AReport.Add(RangeOf(Tokens, Index, Close), Format('%s ohne TFormatSettings hängt vom Gebietsschema ab ' +
-        '(Dezimaltrenner, Datumsformat); für Dateien und Protokolle eine feste TFormatSettings übergeben',
-        [Tokens[Index].Text]), TRuleConfidence.Medium, [TRuleFix.Create('FormatSettings übergeben',
+      AReport.Add(RangeOf(Tokens, Index, Close), cTexts[TRtlTypePatternsConversionsText.Locale].Fmt(
+        [Tokens[Index].Text]), TRuleConfidence.Medium,
+          [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.PassFormatSettings].Text,
         [TRuleEdit.Create(TTextRange.Create(Tokens[Close].StartPos, Tokens[Close].StartPos),
         ', FormatSettings')])]);
     end;
@@ -352,27 +422,27 @@ type
   TCheckedConversion = record
     Name: string;
     Types: string;
-    Problem: string;
+    Problem: TRtlTypePatternsConversionsText;
   end;
 
 const
   CheckedConversions: array[0..8] of TCheckedConversion = (
-    (Name: 'StrToInt'; Types: ',integer,longint,'; Problem: 'ist keine Zahl'),
-    (Name: 'StrToInt64'; Types: ',int64,'; Problem: 'ist keine Zahl'),
-    (Name: 'StrToFloat'; Types: ',double,extended,single,'; Problem: 'ist keine Zahl'),
-    (Name: 'StrToCurr'; Types: ',currency,'; Problem: 'ist kein Betrag'),
-    (Name: 'StrToDate'; Types: ',tdatetime,'; Problem: 'ist kein Datum'),
-    (Name: 'StrToDateTime'; Types: ',tdatetime,'; Problem: 'ist kein Zeitpunkt'),
-    (Name: 'StrToTime'; Types: ',tdatetime,'; Problem: 'ist keine Uhrzeit'),
-    (Name: 'StrToBool'; Types: ',boolean,'; Problem: 'ist kein Wahrheitswert'),
-    (Name: 'StrToUInt'; Types: ',cardinal,longword,'; Problem: 'ist keine Zahl'));
+    (Name: 'StrToInt'; Types: ',integer,longint,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
+    (Name: 'StrToInt64'; Types: ',int64,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
+    (Name: 'StrToFloat'; Types: ',double,extended,single,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
+    (Name: 'StrToCurr'; Types: ',currency,'; Problem: TRtlTypePatternsConversionsText.NotAmount),
+    (Name: 'StrToDate'; Types: ',tdatetime,'; Problem: TRtlTypePatternsConversionsText.NotDate),
+    (Name: 'StrToDateTime'; Types: ',tdatetime,'; Problem: TRtlTypePatternsConversionsText.NotDateTime),
+    (Name: 'StrToTime'; Types: ',tdatetime,'; Problem: TRtlTypePatternsConversionsText.NotTime),
+    (Name: 'StrToBool'; Types: ',boolean,'; Problem: TRtlTypePatternsConversionsText.NotBoolean),
+    (Name: 'StrToUInt'; Types: ',cardinal,longword,'; Problem: TRtlTypePatternsConversionsText.NotNumber));
   // Hüllen, durch die die Eingabe unverändert geprüft wird: StrToInt(Trim(Edit.Text)).
   TransparentCalls: array[0..3] of string = ('Trim', 'TrimLeft', 'TrimRight', 'Copy');
 
 function TUncheckedConversionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unchecked-conversion', TRuleSeverity.Hint,
-    'Umwandlung einer Benutzereingabe ohne Prüfung');
+    cTexts[TRtlTypePatternsConversionsText.UncheckedTitle].Text);
 end;
 
 /// <summary>ANode ohne umgebende Klammern.</summary>
@@ -494,10 +564,10 @@ var
       Exit;
     end;
     Indent := StringOfChar(' ', Statement.StartPos.Character);
-    Result := [TRuleFix.Create('In Try' + Conversion.Name + ' mit Fehlerzweig umschreiben',
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.RewriteTry].Fmt([Conversion.Name]),
       [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.EndPos), 'if not Try' + Conversion.Name +
       '(' + Text(AArgument) + ', ' + Target.Name + ') then' + LineBreak + Indent + '  raise EConvertError.Create(''' +
-      Target.Name + ' ' + Conversion.Problem + ''')')])];
+      Target.Name + ' ' + cTexts[Conversion.Problem].Text + ''')')])];
   end;
 
   procedure Visit(ANode: TSyntaxNode);
@@ -519,8 +589,8 @@ var
           Source := InputSource(Node[1]);
           if (Source <> nil) and not Caught(Node) then
           begin
-            AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Eingabe aus %s ohne Prüfung ' +
-              'umgewandelt; eine Fehleingabe löst EConvertError aus.', [Text(Source)]), TRuleConfidence.Medium,
+            AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos),
+              cTexts[TRtlTypePatternsConversionsText.Unchecked].Fmt([Text(Source)]), TRuleConfidence.Medium,
               Fixes(Node, Node[1]));
           end;
         end;
@@ -573,27 +643,27 @@ const
 function TUncheckedEnumCastRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unchecked-enum-cast', TRuleSeverity.Hint,
-    'Zahl ungeprüft in Aufzählung umgewandelt');
+    cTexts[TRtlTypePatternsConversionsText.EnumCastTitle].Text);
 end;
 
 class function TUncheckedEnumCastRule.Origin(const ASource: string): string;
 begin
   if MatchText(ASource, ['ReadInteger', 'ReadInt64', 'ReadBinaryData']) then
   begin
-    Result := 'aus der Registry bzw. INI-Datei';
+    Result := cTexts[TRtlTypePatternsConversionsText.FromRegistry].Text;
   end
   else if MatchText(ASource, ['StrToInt', 'StrToInt64', 'StrToIntDef', 'StrToUInt']) then
   begin
-    Result := 'aus einem Text';
+    Result := cTexts[TRtlTypePatternsConversionsText.FromText].Text;
   end
   else if MatchText(ASource, ['FieldByName', 'FindField', 'Fields', 'FieldValues', 'AsInteger', 'AsLargeInt',
     'AsLongWord', 'AsSmallInt', 'ParamByName']) then
   begin
-    Result := 'aus der Datenbank';
+    Result := cTexts[TRtlTypePatternsConversionsText.FromDatabase].Text;
   end
   else
   begin
-    Result := 'von außen';
+    Result := cTexts[TRtlTypePatternsConversionsText.FromOutside].Text;
   end;
 end;
 
@@ -808,7 +878,7 @@ var
       TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + TextOf(AFirst, ALast) + ';' +
       LineBreak + Indent + 'if not InRange(' + Name + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
       '))) then' + LineBreak + Indent + TRoutineBody.IndentUnit(AContext.Formatting) +
-      'raise EConvertError.CreateFmt(''Ungültiger Wert %d für ' + ATypeName + ''', [' + Name + ']);'),
+      cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + Name + ']);'),
       TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Name)];
     // InRange steht in System.Math.
     Used := TUsesClauses.UsedUnits(Tokens);
@@ -825,7 +895,7 @@ var
       end;
       Edits := [UsesEdit] + Edits;
     end;
-    Result := [TRuleFix.Create('Prüfung mit InRange davorsetzen', Edits)];
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.InsertInRange].Text, Edits)];
   end;
 
   procedure CheckCast(APosition: Integer);
@@ -878,14 +948,14 @@ var
     if Direct then
     begin
       AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
-        Format('Wert %s ungeprüft nach %s umgewandelt; Werte außerhalb %s ergeben keinen gültigen %s-Wert.',
+        cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
         [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium,
         Fixes(Routine, TypeName, APosition + 2, Close - 1));
     end
     else
     begin
       AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
-        Format('Wert %s ungeprüft nach %s umgewandelt; Werte außerhalb %s ergeben keinen gültigen %s-Wert.',
+        cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
         [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium);
     end;
   end;
@@ -938,33 +1008,38 @@ end;
 function TGlobalFormatSettingsModifiedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('global-formatsettings-modified', TRuleSeverity.Warning,
-    'Globale FormatSettings wird verändert');
+    cTexts[TRtlTypePatternsConversionsText.GlobalTitle].Text);
 end;
 
 class function TGlobalFormatSettingsModifiedRule.Subject(const AField: string): string;
 const
   // In der Reihenfolge von DeprecatedGlobals.
-  Texts: array[0..19] of string = ('das Währungssymbol', 'das Währungsformat', 'das Format negativer Beträge',
-    'das Tausendertrennzeichen', 'den Dezimaltrenner', 'die Nachkommastellen von Beträgen', 'das Datumstrennzeichen',
-    'das kurze Datumsformat', 'das lange Datumsformat', 'das Zeittrennzeichen', 'die Vormittagskennung',
-    'die Nachmittagskennung', 'das kurze Zeitformat', 'das lange Zeitformat', 'die kurzen Monatsnamen',
-    'die Monatsnamen', 'die kurzen Tagesnamen', 'die Tagesnamen', 'das Listentrennzeichen',
-    'das Jahrhundertfenster zweistelliger Jahreszahlen');
+  Texts: array[0..19] of TRtlTypePatternsConversionsText = (TRtlTypePatternsConversionsText.CurrencyString,
+    TRtlTypePatternsConversionsText.CurrencyFormat, TRtlTypePatternsConversionsText.NegCurrFormat,
+    TRtlTypePatternsConversionsText.ThousandSeparator, TRtlTypePatternsConversionsText.DecimalSeparator,
+    TRtlTypePatternsConversionsText.CurrencyDecimals, TRtlTypePatternsConversionsText.DateSeparator,
+    TRtlTypePatternsConversionsText.ShortDateFormat, TRtlTypePatternsConversionsText.LongDateFormat,
+    TRtlTypePatternsConversionsText.TimeSeparator, TRtlTypePatternsConversionsText.TimeAMString,
+    TRtlTypePatternsConversionsText.TimePMString, TRtlTypePatternsConversionsText.ShortTimeFormat,
+    TRtlTypePatternsConversionsText.LongTimeFormat, TRtlTypePatternsConversionsText.ShortMonthNames,
+    TRtlTypePatternsConversionsText.LongMonthNames, TRtlTypePatternsConversionsText.ShortDayNames,
+    TRtlTypePatternsConversionsText.LongDayNames, TRtlTypePatternsConversionsText.ListSeparator,
+    TRtlTypePatternsConversionsText.TwoDigitYearCenturyWindow);
 var
   Index: Integer;
 begin
   if AField = '' then
   begin
-    Exit('alle Formateinstellungen');
+    Exit(cTexts[TRtlTypePatternsConversionsText.AllSettings].Text);
   end;
   for Index := 0 to High(DeprecatedGlobals) do
   begin
     if SameText(DeprecatedGlobals[Index], AField) then
     begin
-      Exit(Texts[Index]);
+      Exit(cTexts[Texts[Index]].Text);
     end;
   end;
-  Result := Format('die Formateinstellung %s', [AField]);
+  Result := cTexts[TRtlTypePatternsConversionsText.TheSetting].Fmt([AField]);
 end;
 
 type
@@ -1309,7 +1384,7 @@ var
     mEdits := [TRoutineBody.AddVariable(AContext.Text, AItem.Routine, mName, 'TFormatSettings', AContext.Formatting),
       TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), mText)];
     mEdits := mEdits + mCalls;
-    AFix := TRuleFix.Create('Lokale TFormatSettings anlegen und übergeben', mEdits);
+    AFix := TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.LocalSettings].Text, mEdits);
     Result := True;
   end;
 
@@ -1343,9 +1418,11 @@ begin
       Fixes := [Fix];
     end;
     AReport.Add(TTextRange.Create(Item.Statement.StartPos, Item.Statement.EndPos),
-      Format('Ändert %s für die ganze Anwendung und alle Threads; eine lokale TFormatSettings verwenden.',
-      [Subject(Item.Field)]), TRuleConfidence.High, Fixes);
+      cTexts[TRtlTypePatternsConversionsText.Global].Fmt([Subject(Item.Field)]), TRuleConfidence.High, Fixes);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions', cTexts);
 
 end.

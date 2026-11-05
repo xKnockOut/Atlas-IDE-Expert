@@ -153,8 +153,10 @@ end;
 
 procedure TAtlasDebugNoteTests.FileNameHasDateAndTime;
 begin
-  Assert.AreEqual('debug-notiz-2026-10-28-1405.md', TAtlasDebugNote.FileName(EncodeDateTime(2026, 10, 28, 14, 5,
-    9, 0)));
+  Assert.AreEqual('debug-notiz-2026-10-28-1405.md', TAtlasDebugNote.FileName('debug-notiz',
+    EncodeDateTime(2026, 10, 28, 14, 5, 9, 0)));
+  Assert.AreEqual('debug-note-2026-10-28-1405.md', TAtlasDebugNote.FileName('debug-note',
+    EncodeDateTime(2026, 10, 28, 14, 5, 9, 0)));
 end;
 
 procedure TAtlasDebugNoteTests.HistoryTextLimitsAndMasks;

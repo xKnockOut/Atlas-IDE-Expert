@@ -35,13 +35,30 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTextDocumentSyncText = (FieldMissingIn, FieldMissingOrNotA, FieldContentChangesMissingIn, ParametersMissingIn);
+
+const
+  cTexts: array[TTextDocumentSyncText] of TAtlasText = (
+    (De: 'Feld "%s" fehlt in '; En: 'Field "%s" missing in '),
+    (De: 'Feld "%s" fehlt oder ist keine Zahl in '; En: 'Field "%s" missing or not a number in '),
+    (De: 'Feld "contentChanges" fehlt in '; En: 'Field "contentChanges" missing in '),
+    (De: 'Parameter fehlen in '; En: 'Parameters missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function RequireObject(const AValue: TJSONValue; const AContext: string): TJSONObject;
 begin
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Parameter fehlen in ' + AContext);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TTextDocumentSyncText.ParametersMissingIn].Text + AContext);
   end;
   Result := TJSONObject(AValue);
 end;
@@ -51,7 +68,7 @@ begin
   if not AObject.TryGetValue<string>(APath, Result) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "' + APath + '" fehlt in ' + AContext);
+      cTexts[TTextDocumentSyncText.FieldMissingIn].Fmt([APath]) + AContext);
   end;
 end;
 
@@ -60,7 +77,7 @@ begin
   if not AObject.TryGetValue<Integer>(APath, Result) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "' + APath + '" fehlt oder ist keine Zahl in ' + AContext);
+      cTexts[TTextDocumentSyncText.FieldMissingOrNotA].Fmt([APath]) + AContext);
   end;
 end;
 
@@ -75,7 +92,7 @@ begin
   if not AParams.TryGetValue<TJSONArray>('contentChanges', Changes) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "contentChanges" fehlt in ' + TLspTextDocumentMethod.DidChange);
+      cTexts[TTextDocumentSyncText.FieldContentChangesMissingIn].Text + TLspTextDocumentMethod.DidChange);
   end;
   Result := nil;
   for Item in Changes do
@@ -160,5 +177,8 @@ begin
   Params := RequireObject(AParams, TLspTextDocumentMethod.DidClose);
   FStore.Close(RequireString(Params, 'textDocument.uri', TLspTextDocumentMethod.DidClose));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.TextDocumentSync', cTexts);
 
 end.

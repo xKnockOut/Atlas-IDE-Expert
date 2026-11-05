@@ -33,7 +33,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Localization.Texts;
 
 type
   /// <summary>Umgebung, in der ein Schnellbefehl läuft: Namespace-Präfixe für /uses, abgeschaltete Befehle
@@ -60,7 +61,8 @@ type
   private
     FCommands: TList<TSlashCommand>;
     FLock: TObject;
-    class var FShared: TSlashCommandRegistry;
+    /// <summary>Je Sprache ein Register, weil die Beschreibungen beim Eintragen übersetzt werden.</summary>
+    class var FShared: array[TTextLanguage] of TSlashCommandRegistry;
   public
     constructor Create;
     destructor Destroy; override;
@@ -135,6 +137,28 @@ uses
   Atlas.Common.Editing.ErrorCommands,
   Atlas.Text.Lines;
 
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSlashCommandsText = (AddUnitsToTheUses, ExpectedAreUnitNamesE, SlashCommandIsAlreadyRegistered,
+    SlashCommandIsSwitchedOff, SlashCommandsDoNotApply, SlashCommandDoesNotFit, UnknownSlashCommand);
+
+const
+  cTexts: array[TSlashCommandsText] of TAtlasText = (
+    (De: 'Units ins uses des Abschnitts eintragen'; En: 'Add units to the uses of the section'),
+    (De: 'Erwartet werden Unit-Namen, z. B. /uses System.SysUtils, System.Classes';
+     En: 'Expected are unit names, e.g. /uses System.SysUtils, System.Classes'),
+    (De: 'Schnellbefehl /%s ist schon eingetragen'; En: 'Slash command /%s is already registered'),
+    (De: 'Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)';
+     En: 'Slash command /%s is switched off (slashCommands.disabled)'),
+    (De: 'Schnellbefehle gelten nicht in Kommentaren, Strings und asm-Blöcken';
+     En: 'Slash commands do not apply in comments, strings and asm blocks'),
+    (De: 'Schnellbefehl /%s passt hier nicht'; En: 'Slash command /%s does not fit here'),
+    (De: 'Unbekannter Schnellbefehl /%s'; En: 'Unknown slash command /%s'));
+
+{$SCOPEDENUMS OFF}
+
 function IsDisabled(const AName: string; const ADisabled: TArray<string>): Boolean;
 var
   Name: string;
@@ -191,14 +215,19 @@ begin
 end;
 
 class destructor TSlashCommandRegistry.DestroyShared;
+var
+  mLanguage: TTextLanguage;
 begin
-  FreeAndNil(FShared);
+  for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+  begin
+    FreeAndNil(FShared[mLanguage]);
+  end;
 end;
 
 function UsesCommand: TSlashCommand;
 begin
   Result.Name := 'uses';
-  Result.Summary := 'Units ins uses des Abschnitts eintragen';
+  Result.Summary := cTexts[TSlashCommandsText.AddUnitsToTheUses].Text;
   Result.Example := '/uses System.SysUtils, System.Classes';
   Result.Execute :=
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
@@ -208,7 +237,7 @@ begin
         AContext.Namespaces, AEdits);
       if not Result then
       begin
-        AReason := 'Erwartet werden Unit-Namen, z. B. /uses System.SysUtils, System.Classes';
+        AReason := cTexts[TSlashCommandsText.ExpectedAreUnitNamesE].Text;
       end;
     end;
 end;
@@ -227,8 +256,10 @@ class function TSlashCommandRegistry.Shared: TSlashCommandRegistry;
 var
   Created: TSlashCommandRegistry;
   mRegister: TSlashRegister;
+  mLanguage: TTextLanguage;
 begin
-  if FShared = nil then
+  mLanguage := TAtlasLocale.Language;
+  if FShared[mLanguage] = nil then
   begin
     Created := TSlashCommandRegistry.Create;
     mRegister := RegisterInto(Created);
@@ -249,12 +280,12 @@ begin
     RegisterWinApiCommands(mRegister);
     RegisterTaskCommands(mRegister);
     RegisterRecordCommands(mRegister);
-    if AtomicCmpExchange(Pointer(FShared), Pointer(Created), nil) <> nil then
+    if AtomicCmpExchange(Pointer(FShared[mLanguage]), Pointer(Created), nil) <> nil then
     begin
       Created.Free;
     end;
   end;
-  Result := FShared;
+  Result := FShared[mLanguage];
 end;
 
 procedure TSlashCommandRegistry.Register(const ACommand: TSlashCommand);
@@ -263,7 +294,8 @@ var
 begin
   if Find(ACommand.Name, Existing) then
   begin
-    raise EArgumentException.CreateFmt('Schnellbefehl /%s ist schon eingetragen', [ACommand.Name]);
+    raise EArgumentException.CreateFmt(cTexts[TSlashCommandsText.SlashCommandIsAlreadyRegistered].Text,
+      [ACommand.Name]);
   end;
   TMonitor.Enter(FLock);
   try
@@ -517,11 +549,11 @@ begin
   Result := '';
   if not ARegistry.Find(AName, ACommand) then
   begin
-    Result := Format('Unbekannter Schnellbefehl /%s', [AName]);
+    Result := cTexts[TSlashCommandsText.UnknownSlashCommand].Fmt([AName]);
   end
   else if IsDisabled(AName, ADisabled) then
   begin
-    Result := Format('Schnellbefehl /%s ist abgeschaltet (slashCommands.disabled)', [AName]);
+    Result := cTexts[TSlashCommandsText.SlashCommandIsSwitchedOff].Fmt([AName]);
   end;
 end;
 
@@ -533,7 +565,7 @@ begin
   Result := KnownIssue(ARegistry, AContext.Name, ADisabled, ACommand);
   if (Result = '') and not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(AText), AContext.Line) then
   begin
-    Result := 'Schnellbefehle gelten nicht in Kommentaren, Strings und asm-Blöcken';
+    Result := cTexts[TSlashCommandsText.SlashCommandsDoNotApply].Text;
   end;
 end;
 
@@ -561,7 +593,7 @@ begin
       AEdits := nil;
       if AReason = '' then
       begin
-        AReason := Format('Schnellbefehl /%s passt hier nicht', [AContext.Name]);
+        AReason := cTexts[TSlashCommandsText.SlashCommandDoesNotFit].Fmt([AContext.Name]);
       end;
     end;
   finally
@@ -619,7 +651,7 @@ begin
   Result := KnownIssue(ARegistry, AContext.Name, ADisabled, mCommand);
   if (Result = '') and not mCommand.Execute(AContext, mEdits, Result) and (Result = '') then
   begin
-    Result := Format('Schnellbefehl /%s passt hier nicht', [AContext.Name]);
+    Result := cTexts[TSlashCommandsText.SlashCommandDoesNotFit].Fmt([AContext.Name]);
   end;
 end;
 
@@ -683,5 +715,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.SlashCommands', cTexts);
 
 end.

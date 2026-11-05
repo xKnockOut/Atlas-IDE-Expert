@@ -130,7 +130,10 @@ uses
 
 type
   /// <summary>Texte der Erklärung (#300) in beiden Sprachen (#1458).</summary>
-  TCatalogText = (Wrong, Right, CompilerCodes, OverriddenBy, OrSeparator, More);
+  TCatalogText = (Wrong, Right, CompilerCodes, OverriddenBy, OrSeparator, More, NeedsColumns, ColumnNoName,
+    OptionNoObject, OptionNoName, OptionBadType, BadOptions, BadCompilerCodes, BadCompilerCode, BadOverriddenBy,
+    BadCounterRule, ObjectExpected, RulesMissing, BadCategory, BadSeverity, BadGroup, BadLevel, BadSafeFix,
+    EntryNoObject, EntryNoId, Duplicate);
 
 const
   cTexts: array[TCatalogText] of TAtlasText = (
@@ -139,7 +142,30 @@ const
     (De: 'Entspricht der Compilermeldung %s.'; En: 'Corresponds to compiler message %s.'),
     (De: 'Schweigt, solange %s an ist.'; En: 'Silent while %s is on.'),
     (De: ' oder '; En: ' or '),
-    (De: 'Mehr: %s'; En: 'More: %s'));
+    (De: 'Mehr: %s'; En: 'More: %s'),
+    (De: 'Regelkatalog: Option "%s" von "%s" braucht "columns"';
+     En: 'Rule catalog: option "%s" of "%s" needs "columns"'),
+    (De: 'Regelkatalog: Spalte von "%s" in "%s" ohne "name"';
+     En: 'Rule catalog: column of "%s" in "%s" without "name"'),
+    (De: 'Regelkatalog: Option von "%s" ist kein Objekt'; En: 'Rule catalog: option of "%s" is not an object'),
+    (De: 'Regelkatalog: Option von "%s" ohne "name"'; En: 'Rule catalog: option of "%s" without "name"'),
+    (De: 'Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ';
+     En: 'Rule catalog: option "%s" of "%s" has no valid type'),
+    (De: 'Regelkatalog: "%s" hat ungültige "options"'; En: 'Rule catalog: "%s" has invalid "options"'),
+    (De: 'Regelkatalog: "%s" hat ungültige "compilerCodes"'; En: 'Rule catalog: "%s" has invalid "compilerCodes"'),
+    (De: 'Regelkatalog: "%s" hat einen ungültigen Compilercode'; En: 'Rule catalog: "%s" has an invalid compiler code'),
+    (De: 'Regelkatalog: "%s" hat ungültige "overriddenBy"'; En: 'Rule catalog: "%s" has invalid "overriddenBy"'),
+    (De: 'Regelkatalog: "%s" hat eine ungültige Gegenregel'; En: 'Rule catalog: "%s" has an invalid counter rule'),
+    (De: 'Regelkatalog: Objekt erwartet'; En: 'Rule catalog: object expected'),
+    (De: 'Regelkatalog: "rules" fehlt'; En: 'Rule catalog: "rules" is missing'),
+    (De: 'Regelkatalog: "%s" hat keine gültige Kategorie'; En: 'Rule catalog: "%s" has no valid category'),
+    (De: 'Regelkatalog: "%s" hat keinen gültigen Schweregrad'; En: 'Rule catalog: "%s" has no valid severity'),
+    (De: 'Regelkatalog: "%s" hat keine gültige Gruppe'; En: 'Rule catalog: "%s" has no valid group'),
+    (De: 'Regelkatalog: "%s" hat eine ungültige Stufe "%s"'; En: 'Rule catalog: "%s" has an invalid level "%s"'),
+    (De: 'Regelkatalog: "%s" hat ein ungültiges "safeFix"'; En: 'Rule catalog: "%s" has an invalid "safeFix"'),
+    (De: 'Regelkatalog: Eintrag ist kein Objekt'; En: 'Rule catalog: entry is not an object'),
+    (De: 'Regelkatalog: Eintrag ohne "id"'; En: 'Rule catalog: entry without "id"'),
+    (De: 'Regelkatalog: "%s" doppelt'; En: 'Rule catalog: "%s" is duplicated'));
 
 {$SCOPEDENUMS OFF}
 
@@ -203,13 +229,13 @@ begin
   mValue := AItem.GetValue('columns');
   if not (mValue is TJSONArray) or (TJSONArray(mValue).Count = 0) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" braucht "columns"', [AName, AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.NeedsColumns].Text, [AName, AId]);
   end;
   for mItem in TJSONArray(mValue) do
   begin
     if not (mItem is TJSONObject) or (StringOf(TJSONObject(mItem), 'name') = '') then
     begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: Spalte von "%s" in "%s" ohne "name"', [AName, AId]);
+      raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.ColumnNoName].Text, [AName, AId]);
     end;
     mColumn.Name := StringOf(TJSONObject(mItem), 'name');
     mList := TJSONObject(mItem).GetValue('list');
@@ -240,7 +266,7 @@ var
 begin
   if not (AItem is TJSONObject) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ist kein Objekt', [AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.OptionNoObject].Text, [AId]);
   end;
   mObject := TJSONObject(AItem);
   Result := Default(TRuleOption);
@@ -249,11 +275,11 @@ begin
   Result.Description := StringOf(mObject, 'description');
   if Result.Name = '' then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: Option von "%s" ohne "name"', [AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.OptionNoName].Text, [AId]);
   end;
   if not IsOptionKind(Result.Kind) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Result.Name, AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.OptionBadType].Text, [Result.Name, AId]);
   end;
   if Result.Kind = 'object-list' then
   begin
@@ -278,7 +304,7 @@ begin
   end;
   if not (mValue is TJSONArray) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "options"', [AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadOptions].Text, [AId]);
   end;
   for mItem in TJSONArray(mValue) do
   begin
@@ -316,13 +342,13 @@ begin
   end;
   if not (Value is TJSONArray) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "compilerCodes"', [AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCompilerCodes].Text, [AId]);
   end;
   for Item in TJSONArray(Value) do
   begin
     if not (Item is TJSONString) or not IsCompilerCode(TJSONString(Item).Value) then
     begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat einen ungültigen Compilercode', [AId]);
+      raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCompilerCode].Text, [AId]);
     end;
     Result := Result + [TJSONString(Item).Value];
   end;
@@ -340,13 +366,13 @@ begin
   end;
   if not (Value is TJSONArray) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ungültige "overriddenBy"', [AId]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadOverriddenBy].Text, [AId]);
   end;
   for Item in TJSONArray(Value) do
   begin
     if not (Item is TJSONString) or (Item is TJSONNumber) or (TJSONString(Item).Value = '') then
     begin
-      raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Gegenregel', [AId]);
+      raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCounterRule].Text, [AId]);
     end;
     Result := Result + [TJSONString(Item).Value];
   end;
@@ -358,12 +384,12 @@ var
 begin
   if not (ARoot is TJSONObject) then
   begin
-    raise ERuleCatalog.Create('Regelkatalog: Objekt erwartet');
+    raise ERuleCatalog.Create(cTexts[TCatalogText.ObjectExpected].Text);
   end;
   Value := TJSONObject(ARoot).GetValue('rules');
   if not (Value is TJSONArray) then
   begin
-    raise ERuleCatalog.Create('Regelkatalog: "rules" fehlt');
+    raise ERuleCatalog.Create(cTexts[TCatalogText.RulesMissing].Text);
   end;
   Result := TJSONArray(Value);
 end;
@@ -373,16 +399,16 @@ procedure ClassifyEntry(AItem: TJSONObject; var AEntry: TRuleCatalogEntry);
 begin
   if not TRuleCatalog.TryParseCategory(StringOf(AItem, 'category'), AEntry.Category) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Kategorie', [AEntry.Id]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCategory].Text, [AEntry.Id]);
   end;
   if not TryParseSeverity(StringOf(AItem, 'severity'), AEntry.DefaultSeverity) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keinen gültigen Schweregrad', [AEntry.Id]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadSeverity].Text, [AEntry.Id]);
   end;
   AEntry.Group := TRuleCatalog.GroupOfCategory(AEntry.Category);
   if (AItem.GetValue('group') <> nil) and not TRuleCatalog.TryParseGroup(StringOf(AItem, 'group'), AEntry.Group) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat keine gültige Gruppe', [AEntry.Id]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadGroup].Text, [AEntry.Id]);
   end;
 end;
 
@@ -394,13 +420,13 @@ begin
   AEntry.Level := StringOf(AItem, 'level');
   if (AEntry.Level <> '') and (AEntry.Level <> 'A') and (AEntry.Level <> 'B') and (AEntry.Level <> 'T') then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [AEntry.Id, AEntry.Level]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadLevel].Text, [AEntry.Id, AEntry.Level]);
   end;
   mSafeFix := AItem.GetValue('safeFix');
   AEntry.SafeFix := (mSafeFix is TJSONBool) and TJSONBool(mSafeFix).AsBoolean;
   if (mSafeFix <> nil) and not (mSafeFix is TJSONBool) then
   begin
-    raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ein ungültiges "safeFix"', [AEntry.Id]);
+    raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadSafeFix].Text, [AEntry.Id]);
   end;
 end;
 
@@ -411,14 +437,14 @@ var
 begin
   if not (AItem is TJSONObject) then
   begin
-    raise ERuleCatalog.Create('Regelkatalog: Eintrag ist kein Objekt');
+    raise ERuleCatalog.Create(cTexts[TCatalogText.EntryNoObject].Text);
   end;
   mObject := TJSONObject(AItem);
   Result := Default(TRuleCatalogEntry);
   Result.Id := StringOf(mObject, 'id');
   if Result.Id = '' then
   begin
-    raise ERuleCatalog.Create('Regelkatalog: Eintrag ohne "id"');
+    raise ERuleCatalog.Create(cTexts[TCatalogText.EntryNoId].Text);
   end;
   Result.Name := StringOf(mObject, 'name');
   Result.Description := StringOf(mObject, 'description');
@@ -525,7 +551,7 @@ begin
       mEntry := EntryOf(mItem);
       if IndexOf(mEntry.Id) >= 0 then
       begin
-        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" doppelt', [mEntry.Id]);
+        raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.Duplicate].Text, [mEntry.Id]);
       end;
       FEntries.Add(mEntry);
       FPositions.Add(LowerCase(mEntry.Id), FEntries.Count - 1);

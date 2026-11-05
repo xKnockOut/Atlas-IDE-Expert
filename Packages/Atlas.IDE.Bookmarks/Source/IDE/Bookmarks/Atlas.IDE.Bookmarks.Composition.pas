@@ -431,6 +431,13 @@ begin
   Result.Section := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.MenuGroupNotes);
 end;
 
+/// <summary>Eintrag im gleichnamigen Untermenü von Atlas im Kontextmenü des Editors.</summary>
+function NotesContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := NotesMenuEntry(ACommandId);
+  Result.Place := TAtlasMenuPlace.EditorContext;
+end;
+
 function TAtlasBookmarksModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
@@ -446,15 +453,15 @@ begin
     NotesMenuEntry('Atlas.NextBookmark'),
     NotesMenuEntry('Atlas.PreviousBookmark'),
     // Kontextmenü des Editors: nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor; die
-    // Spalte der schnellen Lesezeichen hat ihr eigenes Menü.
-    MenuEntry('-', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.NoteAdd', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.NoteDelete', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.NoteList', TAtlasMenuPlace.EditorContext),
-    MenuEntry('-', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.BookmarkAdd', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.BookmarkGoTo', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.QuickBookmarkToggle', TAtlasMenuPlace.EditorContext)];
+    // Spalte der schnellen Lesezeichen hat ihr eigenes Menü. Eigenes Untermenü, sonst wird das Kontextmenü höher
+    // als der Bildschirm.
+    NotesContextEntry('Atlas.NoteAdd'),
+    NotesContextEntry('Atlas.NoteDelete'),
+    NotesContextEntry('Atlas.NoteList'),
+    NotesContextEntry('-'),
+    NotesContextEntry('Atlas.BookmarkAdd'),
+    NotesContextEntry('Atlas.BookmarkGoTo'),
+    NotesContextEntry('Atlas.QuickBookmarkToggle')];
 end;
 
 function TAtlasBookmarksModule.Keys: TArray<TAtlasModuleKey>;

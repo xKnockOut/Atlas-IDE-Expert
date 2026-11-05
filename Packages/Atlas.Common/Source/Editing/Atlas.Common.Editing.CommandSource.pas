@@ -114,7 +114,23 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCommandSourceText = (TheSelectionForMustLie, AfterThereAreNoStatements, OnlyAppliesInTheBody);
+
+const
+  cTexts: array[TCommandSourceText] of TAtlasText = (
+    (De: 'Die Markierung für /%s muss im selben Block liegen und Anweisungen enthalten';
+     En: 'The selection for /%s must lie in the same block and contain statements'),
+    (De: 'Nach /%s stehen keine Anweisungen im Block'; En: 'After /%s there are no statements in the block'),
+    (De: '/%s gilt nur im Rumpf einer Routine'; En: '/%s only applies in the body of a routine'));
+
+{$SCOPEDENUMS OFF}
 
 constructor TCommandSource.Create(const AContext: TSlashContext);
 var
@@ -545,11 +561,11 @@ function NoStatementsReason(ASource: TCommandSource; const AName: string): strin
 begin
   if ASource.WrapUntil > ASource.Line then
   begin
-    Result := 'Die Markierung für /' + AName + ' muss im selben Block liegen und Anweisungen enthalten';
+    Result := cTexts[TCommandSourceText.TheSelectionForMustLie].Fmt([AName]);
   end
   else
   begin
-    Result := 'Nach /' + AName + ' stehen keine Anweisungen im Block';
+    Result := cTexts[TCommandSourceText.AfterThereAreNoStatements].Fmt([AName]);
   end;
 end;
 
@@ -617,7 +633,7 @@ begin
   AEdits := nil;
   if ASource.RoutineAt = nil then
   begin
-    Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
+    Exit(Fail(cTexts[TCommandSourceText.OnlyAppliesInTheBody].Fmt([AName]), AReason));
   end;
   mStop := BlockEnd(ASource, ASource.Line);
   // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
@@ -701,5 +717,8 @@ begin
     AEdits := AEdits + [Combined];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.CommandSource', cTexts);
 
 end.

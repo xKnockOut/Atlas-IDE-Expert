@@ -103,7 +103,20 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TStateText = (Line);
+
+const
+  cTexts: array[TStateText] of TAtlasText = (
+    (De: 'Zeile %d'; En: 'Line %d'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericListTarget }
 
@@ -196,7 +209,7 @@ end;
 
 function TGenericListState.LineOf(ANode: TSyntaxNode): string;
 begin
-  Result := Format('Zeile %d', [ANode.StartPos.Line + 1]);
+  Result := cTexts[TStateText.Line].Fmt([ANode.StartPos.Line + 1]);
 end;
 
 function TGenericListState.ItemType: string;
@@ -272,5 +285,8 @@ begin
     ATypeText := ASource.NodeText(ACall[0]);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.State', cTexts);
 
 end.

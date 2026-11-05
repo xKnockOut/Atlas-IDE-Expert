@@ -29,7 +29,21 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TUsesEditsText = (IsOnlyInTheImplementation);
+
+const
+  cTexts: array[TUsesEditsText] of TAtlasText = (
+    (De: '%s steht nur im implementation-uses (Liste mit Direktiven)';
+     En: '%s is only in the implementation uses (list with directives)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ein Eintrag einer uses-Liste mit seinem Quelltext; Trennzeichen sind die Kommas.</summary>
@@ -322,7 +336,7 @@ begin
     // Listen mit Direktiven oder Kommentaren bleiben unangetastet; Contnrs bleibt dann stehen.
     if FNeeds.MoveGeneric then
     begin
-      FReason := Format('%s steht nur im implementation-uses (Liste mit Direktiven)', [cGenericListUnit]);
+      FReason := cTexts[TUsesEditsText.IsOnlyInTheImplementation].Fmt([cGenericListUnit]);
     end;
     mKept := mItems;
   end;
@@ -396,5 +410,8 @@ begin
     mEditor.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.UsesEdits', cTexts);
 
 end.

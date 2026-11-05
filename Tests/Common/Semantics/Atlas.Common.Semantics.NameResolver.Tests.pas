@@ -824,9 +824,9 @@ begin
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
-    // Ungepinnt wertet jeder Aufruf neu aus; das Ergebnis bleibt gleich.
+    // Ungepinnt teilt der Aufruf das am Baum hinterlegte Extrakt (kein neues Extrahieren je Anbieter).
     Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.IsFalse(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
     Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);

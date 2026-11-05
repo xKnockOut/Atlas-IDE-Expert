@@ -69,6 +69,29 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TProtocolText = (NoAnswerFromTheServer, TheCommandChangedNothing);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TProtocolText] of string = (
+    ('Keine Antwort des Servers',
+     'Der Befehl hat nichts geändert'),
+    ('No answer from the server',
+     'The command changed nothing'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TProtocolText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 { TAtlasGenerateSpot }
 
 class function TAtlasGenerateSpot.Create(const AUri: string; ALine, ACharacter,
@@ -279,7 +302,7 @@ begin
   Result := False;
   if not (AValue is TJSONObject) then
   begin
-    AReason := 'Keine Antwort des Servers';
+    AReason := UiText(TProtocolText.NoAnswerFromTheServer);
     Exit;
   end;
   Root := TJSONObject(AValue);
@@ -297,7 +320,7 @@ begin
   Result := (AReason = '') and (Length(AEdits) > 0);
   if not Result and (AReason = '') then
   begin
-    AReason := 'Der Befehl hat nichts geändert';
+    AReason := UiText(TProtocolText.TheCommandChangedNothing);
   end;
 end;
 
@@ -352,5 +375,8 @@ begin
     Result := Result + [Entry];
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Generate.Protocol', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

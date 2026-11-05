@@ -185,7 +185,24 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Text.Lines,
-  Atlas.Text.Encoding;
+  Atlas.Text.Encoding,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFileEncodingText = (FileIn, AFormStoredAsBinary, FilesIn, PlainASCII);
+
+const
+  cTexts: array[TFileEncodingText] of TAtlasText = (
+    (De: '1 Datei in '; En: '1 file in '),
+    (De: 'Binär gespeichertes Formular wird nicht geändert; zuerst in Text umwandeln.';
+     En: 'A form stored as binary is not changed; convert it to text first.'),
+    (De: '%d Dateien in %s'; En: '%d files in %s'),
+    (De: 'reinem ASCII'; En: 'plain ASCII'));
+
+{$SCOPEDENUMS OFF}
 
 var
   DefaultsLock: TObject;
@@ -321,11 +338,11 @@ function TEncodingSurvey.Describe: string;
     begin
       if ACount = 1 then
       begin
-        Result := '1 Datei in ' + AName;
+        Result := cTexts[TFileEncodingText.FileIn].Text + AName;
       end
       else
       begin
-        Result := Format('%d Dateien in %s', [ACount, AName]);
+        Result := cTexts[TFileEncodingText.FilesIn].Fmt([ACount, AName]);
       end;
     end
     else
@@ -347,7 +364,7 @@ begin
   end;
   Append(Utf8, 'UTF-8');
   Append(Utf16, 'UTF-16');
-  Append(Ascii, 'reinem ASCII');
+  Append(Ascii, cTexts[TFileEncodingText.PlainASCII].Text);
 end;
 
 function DecodeCp1252(const ABytes: TBytes): string;
@@ -914,7 +931,7 @@ begin
   if IsBinaryFormFile(AFileName) then
   begin
     // Ohne Dateinamen (#647): die Meldung kann im Diagnoseprotokoll landen.
-    raise EFileEncodingError.Create('Binär gespeichertes Formular wird nicht geändert; zuerst in Text umwandeln.');
+    raise EFileEncodingError.Create(cTexts[TFileEncodingText.AFormStoredAsBinary].Text);
   end;
   Bytes := Encode(AText, AFormat);
   Stream := TFileStream.Create(AFileName, fmCreate);
@@ -929,6 +946,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Documents.FileEncoding', cTexts);
   DefaultsLock := TObject.Create;
   DefaultFolders := TDictionary<string, Integer>.Create;
 

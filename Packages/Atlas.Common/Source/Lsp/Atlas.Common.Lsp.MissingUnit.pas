@@ -56,7 +56,30 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspMissingUnitText = (DoesNotExistForOnly, NotFound, AddFolderToTheSearch, AddFolderToTheSearch2,
+    NotFoundShowSearchedLocations, AddToTheProject, Searched, IsIn, From);
+
+const
+  cTexts: array[TLspMissingUnitText] of TAtlasText = (
+    (De: '%s gibt es für %s nicht (nur %s)'; En: '%s does not exist for %s (only %s)'),
+    (De: '%s nicht gefunden'; En: '%s not found'),
+    (De: 'Ordner %s in den Suchpfad von %s aufnehmen%s'; En: 'Add folder %s to the search path of %s%s'),
+    (De: 'Ordner %s in den Suchpfad aller Konfigurationen aufnehmen%s';
+     En: 'Add folder %s to the search path of all configurations%s'),
+    (De: '%s nicht gefunden: durchsuchte Orte anzeigen'; En: '%s not found: show searched locations'),
+    (De: '%s ins Projekt aufnehmen'; En: 'Add %s to the project'),
+    (De: '. Durchsucht: '; En: '. Searched: '),
+    (De: ' (steht in %s)'; En: ' (is in %s)'),
+    (De: ' (aus %s)'; En: ' (from %s)'));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspMissingUnit.Handles(const ACode: string): Boolean;
 begin
@@ -100,15 +123,15 @@ end;
 class function TLspMissingUnit.PlatformText(const AUnitName, APlatform: string;
   const APlatforms: TArray<string>): string;
 begin
-  Result := Format('%s gibt es für %s nicht (nur %s)', [AUnitName, APlatform, string.Join(', ', APlatforms)]);
+  Result := cTexts[TLspMissingUnitText.DoesNotExistForOnly].Fmt([AUnitName, APlatform, string.Join(', ', APlatforms)]);
 end;
 
 class function TLspMissingUnit.NotFoundText(const AUnitName: string; const ASearched: TArray<string>): string;
 begin
-  Result := Format('%s nicht gefunden', [AUnitName]);
+  Result := cTexts[TLspMissingUnitText.NotFound].Fmt([AUnitName]);
   if Length(ASearched) > 0 then
   begin
-    Result := Result + '. Durchsucht: ' + string.Join('; ', ASearched);
+    Result := Result + cTexts[TLspMissingUnitText.Searched].Text + string.Join('; ', ASearched);
   end;
 end;
 
@@ -118,11 +141,11 @@ begin
   Result := '';
   if AHit.Place = TMissingUnitPlace.OtherTarget then
   begin
-    Result := Format(' (steht in %s)', [AHit.Detail]);
+    Result := cTexts[TLspMissingUnitText.IsIn].Fmt([AHit.Detail]);
   end
   else if AHit.Place = TMissingUnitPlace.GroupProject then
   begin
-    Result := Format(' (aus %s)', [AHit.Detail]);
+    Result := cTexts[TLspMissingUnitText.From].Fmt([AHit.Detail]);
   end;
 end;
 
@@ -137,12 +160,12 @@ begin
   Folder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, AHit.Folder);
   if Config <> '' then
   begin
-    Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad von %s aufnehmen%s',
-      [Folder, Config, HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
+    Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch].Fmt([Folder, Config,
+      HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
       Arguments([ASetup.Project.FileName, Folder, Config]), AFirst)];
   end;
-  Result := Result + [CommandAction(Format('Ordner %s in den Suchpfad aller Konfigurationen aufnehmen%s',
-    [Folder, HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
+  Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch2].Fmt([Folder, HitOrigin(AHit)]),
+    TLspMissingUnit.SearchPathCommand,
     Arguments([ASetup.Project.FileName, Folder, '']), AFirst and (Config = ''))];
 end;
 
@@ -157,7 +180,7 @@ begin
   end
   else
   begin
-    Result := [InfoAction(Format('%s nicht gefunden: durchsuchte Orte anzeigen', [ASetup.UnitName]),
+    Result := [InfoAction(cTexts[TLspMissingUnitText.NotFoundShowSearchedLocations].Fmt([ASetup.UnitName]),
       TLspMissingUnit.NotFoundText(ASetup.UnitName, ASearched))];
   end;
 end;
@@ -190,7 +213,8 @@ begin
       if not SourceOffered and SameText(ExtractFileExt(Hit.FileName), '.pas') then
       begin
         SourceOffered := True;
-        Result := Result + [CommandAction(Format('%s ins Projekt aufnehmen', [ExtractFileName(Hit.FileName)]),
+        Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddToTheProject].Fmt([
+          ExtractFileName(Hit.FileName)]),
           AddUnitCommand, Arguments([ASetup.Project.FileName, Hit.FileName]), False)];
       end;
       Inc(Offered);
@@ -240,5 +264,8 @@ begin
     Result := Result + ActionsFor(Setup, Hits, Searched);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MissingUnit', cTexts);
 
 end.

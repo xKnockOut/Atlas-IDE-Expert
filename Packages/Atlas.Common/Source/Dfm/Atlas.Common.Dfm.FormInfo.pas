@@ -36,7 +36,29 @@ uses
   System.StrUtils,
   System.Classes,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormInfoText = (BinaryDataBytes, NoFormFound, ErrorLine, WithoutName, InLineL, More, ImageBytes, InheritedText,
+    Events);
+
+const
+  cTexts: array[TFormInfoText] of TAtlasText = (
+    (De: 'Binärdaten, %d Bytes'; En: 'Binary data, %d bytes'),
+    (De: 'Kein Formular gefunden.'; En: 'No form found.'),
+    (De: 'Fehler Zeile %d: %s'; En: 'Error line %d: %s'),
+    (De: '(ohne Namen)'; En: '(without name)'),
+    (De: '**In %s** ([Zeile %d](%s#L%d))'; En: '**In %s** ([line %d](%s#L%d))'),
+    (De: ' … %d weitere'; En: ' … %d more'),
+    (De: 'Bild, %d Bytes'; En: 'Image, %d bytes'),
+    (De: ' (geerbt)'; En: ' (inherited)'),
+    (De: '    Ereignisse: '; En: '    Events: '));
+
+{$SCOPEDENUMS OFF}
 
 function CountHexBytes(const AValue: string): Integer;
 var
@@ -85,7 +107,7 @@ begin
   end;
   if Length(mItems) > TFormInfo.MaxListLines then
   begin
-    Result := Result + Format(' … %d weitere', [Length(mItems) - TFormInfo.MaxListLines]);
+    Result := Result + cTexts[TFormInfoText.More].Fmt([Length(mItems) - TFormInfo.MaxListLines]);
   end;
   Result := Result + ')';
 end;
@@ -97,11 +119,11 @@ begin
   mValue := Trim(AProperty.Value);
   if StartsStr('{', mValue) and IsPicture(AProperty.Name) then
   begin
-    Result := Format('Bild, %d Bytes', [CountHexBytes(mValue)]);
+    Result := cTexts[TFormInfoText.ImageBytes].Fmt([CountHexBytes(mValue)]);
   end
   else if StartsStr('{', mValue) then
   begin
-    Result := Format('Binärdaten, %d Bytes', [CountHexBytes(mValue)]);
+    Result := cTexts[TFormInfoText.BinaryDataBytes].Fmt([CountHexBytes(mValue)]);
   end
   else if StartsStr('(', mValue) then
   begin
@@ -130,8 +152,10 @@ begin
   end
   else
   begin
-    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name, '(ohne Namen)'),
-      AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, ' (geerbt)', '')]));
+    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name,
+      cTexts[TFormInfoText.WithoutName].Text),
+      AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, cTexts[TFormInfoText.InheritedText].Text,
+        '')]));
   end;
   Events := '';
   for Prop in AObject.Properties do
@@ -147,7 +171,7 @@ begin
   end;
   if Events <> '' then
   begin
-    ALines.Add(Indent + '    Ereignisse: ' + Events);
+    ALines.Add(Indent + cTexts[TFormInfoText.Events].Text + Events);
   end;
   for Child in AObject.Children do
   begin
@@ -166,7 +190,7 @@ begin
   try
     if Document.Root = nil then
     begin
-      Lines.Add('Kein Formular gefunden.');
+      Lines.Add(cTexts[TFormInfoText.NoFormFound].Text);
     end
     else
     begin
@@ -174,7 +198,7 @@ begin
     end;
     for Error in Document.Errors do
     begin
-      Lines.Add(Format('Fehler Zeile %d: %s', [Error.Position.Line + 1, Error.Message]));
+      Lines.Add(cTexts[TFormInfoText.ErrorLine].Fmt([Error.Position.Line + 1, Error.Message]));
     end;
     Result := TrimRight(Lines.Text);
   finally
@@ -188,7 +212,7 @@ class function TFormInfo.ComponentMarkdown(AObject: TDfmObject; const AFormFile:
 var
   Prop: TDfmProperty;
 begin
-  Result := Format('**In %s** ([Zeile %d](%s#L%d))', [ExtractFileName(AFormFile), AObject.Range.StartPos.Line + 1,
+  Result := cTexts[TFormInfoText.InLineL].Fmt([ExtractFileName(AFormFile), AObject.Range.StartPos.Line + 1,
     TDocumentUris.FromPath(AFormFile), AObject.Range.StartPos.Line + 1]);
   for Prop in AObject.Properties do
   begin
@@ -230,5 +254,8 @@ begin
   end;
   Result := SearchByName(ADocument.Root, AName);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Dfm.FormInfo', cTexts);
 
 end.

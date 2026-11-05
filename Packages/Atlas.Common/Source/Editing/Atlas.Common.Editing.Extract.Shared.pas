@@ -164,7 +164,23 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSharedText = (InAnAnonymousMethod, ClassNotInTheFile, ClassDeclarationCannotBeExtended, InAWithBody);
+
+const
+  cTexts: array[TSharedText] of TAtlasText = (
+    (De: 'in einer anonymen Methode'; En: 'in an anonymous method'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'Klassendeklaration nicht erweiterbar'; En: 'class declaration cannot be extended'),
+    (De: 'in einem with-Rumpf'; En: 'in a with body'));
+
+{$SCOPEDENUMS OFF}
 
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin
@@ -247,9 +263,9 @@ begin
   begin
     case mNode.Kind of
       TSyntaxKind.AnonymousMethod:
-        AReason := 'in einer anonymen Methode';
+        AReason := cTexts[TSharedText.InAnAnonymousMethod].Text;
       TSyntaxKind.WithStatement:
-        AReason := 'in einem with-Rumpf';
+        AReason := cTexts[TSharedText.InAWithBody].Text;
       TSyntaxKind.AsmBlock:
         AReason := 'asm';
     else
@@ -441,7 +457,7 @@ begin
   mTypeBody := TRoutineBody.TypeBody(ATree.Root, ClassNameOf(mQualifier));
   if mTypeBody = nil then
   begin
-    Exit(Fail('Klasse ' + ClassNameOf(mQualifier) + ' nicht in der Datei', AHead.Reason));
+    Exit(Fail(cTexts[TSharedText.ClassNotInTheFile].Fmt([ClassNameOf(mQualifier)]), AHead.Reason));
   end;
   mClassDecl := mHeader + mSignature + IfThen(IsStaticRoutine(ATree.Tokens, ARequest.Routine, ARequest.Body),
     ' static;', '');
@@ -449,7 +465,7 @@ begin
     ARequest.Style, mEdit);
   if not Result then
   begin
-    Exit(Fail('Klassendeklaration nicht erweiterbar', AHead.Reason));
+    Exit(Fail(cTexts[TSharedText.ClassDeclarationCannotBeExtended].Text, AHead.Reason));
   end;
   AEdits := AEdits + [mEdit];
   AHead.Text := mIndent + mHeader + mQualifier + '.' + mSignature + TTextLines.LineBreakOf(AText);
@@ -541,5 +557,8 @@ begin
   Result := AHead + Declarations + FIndent + 'begin' + FLineBreak + TRoutineBody.Reindent(ABody, ABodyIndent,
     FIndent + FIndentUnit, FLineBreak) + FLineBreak + FIndent + 'end;' + FLineBreak + FLineBreak;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Extract.Shared', cTexts);
 
 end.

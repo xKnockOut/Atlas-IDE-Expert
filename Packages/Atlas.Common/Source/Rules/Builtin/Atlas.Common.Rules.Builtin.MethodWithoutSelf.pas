@@ -41,14 +41,30 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Editing.MethodWithoutSelf.Lookup;
+  Atlas.Common.Editing.MethodWithoutSelf.Lookup,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TMethodWithoutSelfText = (Title, NoSelf);
+
+const
+  cTexts: array[TMethodWithoutSelfText] of TAtlasText = (
+    (De: 'Methode braucht Self nicht'; En: 'Method does not need Self'),
+    (De: '%s.%s braucht Self nicht: als class-Methode, freie Routine oder Record-Helper möglich.';
+     En: '%s.%s does not need Self: possible as class method, free routine or record helper.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   MethodWithoutSelfRuleId = 'method-without-self';
 
 function TMethodWithoutSelfRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(MethodWithoutSelfRuleId, TRuleSeverity.Hint, 'Methode braucht Self nicht',
+  Result := TRuleDescriptor.Create(MethodWithoutSelfRuleId, TRuleSeverity.Hint,
+    cTexts[TMethodWithoutSelfText.Title].Text,
     True);
 end;
 
@@ -171,8 +187,8 @@ begin
       Fixes := ClassMethodFixes(AContext, FileName, Target, Lookup);
       // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
       AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
-        Target.NamePosition.Character + Length(Target.Name))), Format('%s.%s braucht Self nicht: als ' +
-        'class-Methode, freie Routine oder Record-Helper möglich.', [Target.ClassName, Target.Name]),
+        Target.NamePosition.Character + Length(Target.Name))),
+          cTexts[TMethodWithoutSelfText.NoSelf].Fmt([Target.ClassName, Target.Name]),
         TRuleConfidence.Medium, Fixes);
     end;
   finally
@@ -184,5 +200,8 @@ procedure RegisterMethodWithoutSelfRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMethodWithoutSelfRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.MethodWithoutSelf', cTexts);
 
 end.

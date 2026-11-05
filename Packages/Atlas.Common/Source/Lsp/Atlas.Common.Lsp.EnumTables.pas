@@ -88,7 +88,29 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspEnumTablesText = (NameTableNotPossible, WithEntries, CaseBranchesAdded, TablesAndCaseStatementsIn,
+    UpdateNotPossible, PlacesInFiles, UnknownPlace, Line);
+
+const
+  cTexts: array[TLspEnumTablesText] of TAtlasText = (
+    (De: 'Namenstabelle geht nicht: '; En: 'Name table not possible: '),
+    (De: '%s: %s mit %d Einträgen.'; En: '%s: %s with %d entries.'),
+    (De: '%s: case: %d Zweige ergänzt'; En: '%s: case: %d branches added'),
+    (De: '%s: %d Tabellen und %d case-Anweisungen in %d Dateien.';
+     En: '%s: %d tables and %d case statements in %d files.'),
+    (De: 'Nachziehen geht nicht: '; En: 'Update not possible: '),
+    (De: '%d Stellen in %d Dateien'; En: '%d places in %d files'),
+    (De: 'Unbekannte Stelle "%s"'; En: 'Unknown place "%s"'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Anweisung eines case-Zweigs; die Kinder davor sind Marken.</summary>
@@ -297,7 +319,7 @@ begin
   Annotation := TJSONObject.Create;
   Annotation.AddPair('label', ALabel);
   Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%d Stellen in %d Dateien', [APlaces, Length(AFiles)]));
+  Annotation.AddPair('description', cTexts[TLspEnumTablesText.PlacesInFiles].Fmt([APlaces, Length(AFiles)]));
   Annotations := TJSONObject.Create;
   Annotations.AddPair(TLspEnumTables.AnnotationId, Annotation);
   Edit := TJSONObject.Create;
@@ -325,7 +347,8 @@ begin
   end;
   if not SameText(APlacement, TLspEnumTables.ImplementationName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Stelle "%s"', [APlacement]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspEnumTablesText.UnknownPlace].Fmt([
+      APlacement]));
   end;
   Result := TEnumTablePlacement.InImplementation;
 end;
@@ -344,13 +367,13 @@ begin
     not TEnumTables.CreateTable(ADocument.Text, ADocument.Tree, ADocument.Position,
     TEnumTableRequest.Create(Trim(AName), mPlacement, AContext.ResourceStrings), mEdits, mReason) then
   begin
-    raise Fail('Namenstabelle geht nicht: ' + mReason);
+    raise Fail(cTexts[TLspEnumTablesText.NameTableNotPossible].Text + mReason);
   end;
   SetLength(mFiles, 1);
   mFiles[0].FileName := ADocument.FileName;
   mFiles[0].Edits := mEdits;
   Result := AnswerJson(mFiles, nil, 1, Format(TEnumTables.CreateTitle, [mTarget.TypeName]),
-    Format('%s: %s mit %d Einträgen.', [mTarget.TypeName, Trim(AName), Length(mTarget.Names)]));
+    cTexts[TLspEnumTablesText.WithEntries].Fmt([mTarget.TypeName, Trim(AName), Length(mTarget.Names)]));
 end;
 
 type
@@ -375,7 +398,8 @@ end;
 
 function Where(const AFileName, AText: string; AOffset: Integer): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), TLineTable.Build(AText).PositionAt(AOffset).Line + 1]);
+  Result := cTexts[TLspEnumTablesText.Line].Fmt([ExtractFileName(AFileName),
+    TLineTable.Build(AText).PositionAt(AOffset).Line + 1]);
 end;
 
 type
@@ -632,7 +656,7 @@ begin
     begin
       AItem.Edits := AItem.Edits + mCompletion.Edits;
       Inc(FCaseCount);
-      FPreview := FPreview + [Format('%s: case: %d Zweige ergänzt', [Where(AFile.FileName, AFile.Text,
+      FPreview := FPreview + [cTexts[TLspEnumTablesText.CaseBranchesAdded].Fmt([Where(AFile.FileName, AFile.Text,
         mCases[mIndex].StartOffset), mCompletion.Count])];
     end;
   end;
@@ -681,7 +705,7 @@ end;
 function TEnumSync.Answer: TJSONObject;
 begin
   Result := AnswerJson(FEdits, FWarnings, FPlaces, Format(TEnumTables.SyncTitle, [FTarget.TypeName]),
-    Format('%s: %d Tabellen und %d case-Anweisungen in %d Dateien.', [FTarget.TypeName, FTableCount, FCaseCount,
+    cTexts[TLspEnumTablesText.TablesAndCaseStatementsIn].Fmt([FTarget.TypeName, FTableCount, FCaseCount,
     Length(FEdits)]) + sLineBreak + string.Join(sLineBreak, FPreview));
 end;
 
@@ -694,7 +718,7 @@ var
 begin
   if not TEnumTables.Target(ADocument.Tree, ADocument.Position, mTarget, mReason) then
   begin
-    raise Fail('Nachziehen geht nicht: ' + mReason);
+    raise Fail(cTexts[TLspEnumTablesText.UpdateNotPossible].Text + mReason);
   end;
   mSync := TEnumSync.Create(AResolver, AContext, mTarget, TUsesClauses.OwnName(ADocument.Tree.Tokens));
   try
@@ -704,5 +728,8 @@ begin
     mSync.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.EnumTables', cTexts);
 
 end.

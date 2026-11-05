@@ -19,7 +19,87 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWorkflowOptionsText = (ThereAlreadyIsAMapping, SeverityMapMustBeAnObject, AllowedAreErrorWarningAnd,
+    RegexMustNotBeEmpty, AllowedAreDccPwshMsbuild, MatcherMustBeAName, ArgsMustBeAList, TimeoutSecMustBeAWhole,
+    AllowedAreCheckBuildTest, AllowedAreOffWarnAnd, TheTaskAlreadyExists, InATask, TasksMustBeAList, ATaskIsAnObject,
+    EndStatesMustBeAList, AStateInEndStatesIs, LanguageIsDeOrEn, TheConnectionAlreadyExists, InAConnection,
+    ConnectionsMustBeAList, AConnectionIsAnObject, InAMapping, MappingWithoutMatchPathOf, ProjectsMustBeAList,
+    AMappingIsAnObject, TheQueryAlreadyExists, InAQuery, QueriesMustBeAList, AQueryIsAnObject, AllowedAreAutoGitSvn,
+    ABranchNameContainsNo, VcsProjectsMustBeA, AMappingIsAnObject2, VcsTimeoutSecondsMustBeA,
+    InThePatternAllowedRegex, EnvMustBeAnObject, TaskWithoutName, OnlyHttpsAddressesWithoutUser,
+    ConnectionWithoutName, QueryWithoutName, UnknownEntry, CustomPatternWithoutRegex, TaskWithoutCommand,
+    ConnectionWithoutProvider, ConnectionWithoutUrl, MappingWithoutConnection, QueryWithoutQuery);
+
+const
+  cTexts: array[TWorkflowOptionsText] of TAtlasText = (
+    (De: 'Für diesen Pfad gibt es schon eine Zuordnung'; En: 'There already is a mapping for this path'),
+    (De: '"severityMap" muss ein Objekt Wort → error, warning oder info sein';
+     En: '"severityMap" must be an object word → error, warning or info'),
+    (De: 'Erlaubt sind "error", "warning" und "info"'; En: 'Allowed are "error", "warning" and "info"'),
+    (De: '"regex" darf nicht leer sein'; En: '"regex" must not be empty'),
+    (De: 'Erlaubt sind "dcc", "pwsh", "msbuild", "generic", "none" oder ein Objekt mit "regex"';
+     En: 'Allowed are "dcc", "pwsh", "msbuild", "generic", "none" or an object with "regex"'),
+    (De: '"matcher" muss ein Name oder ein Objekt mit "regex" sein';
+     En: '"matcher" must be a name or an object with "regex"'),
+    (De: '"args" muss eine Liste von Texten sein'; En: '"args" must be a list of texts'),
+    (De: '"timeoutSec" muss eine ganze Zahl von 0 bis 86400 sein';
+     En: '"timeoutSec" must be a whole number from 0 to 86400'),
+    (De: 'Erlaubt sind "check", "build", "test" und "other"'; En: 'Allowed are "check", "build", "test" and "other"'),
+    (De: 'Erlaubt sind "off", "warn" und "block"'; En: 'Allowed are "off", "warn" and "block"'),
+    (De: 'Die Aufgabe "%s" gibt es schon'; En: 'The task "%s" already exists'),
+    (De: 'in einer Aufgabe'; En: 'in a task'),
+    (De: '"tasks" muss eine Liste von Aufgaben sein'; En: '"tasks" must be a list of tasks'),
+    (De: 'Eine Aufgabe ist ein Objekt mit "name" und "command"'; En: 'A task is an object with "name" and "command"'),
+    (De: '"endStates" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]';
+     En: '"endStates" must be a list of states, e.g. ["In Review", "Done"]'),
+    (De: 'Ein Zustand in "endStates" ist ein Text'; En: 'A state in "endStates" is a text'),
+    (De: '"language" ist "de" oder "en"'; En: '"language" is "de" or "en"'),
+    (De: 'Die Verbindung "%s" gibt es schon'; En: 'The connection "%s" already exists'),
+    (De: 'in einer Verbindung'; En: 'in a connection'),
+    (De: '"connections" muss eine Liste von Verbindungen sein'; En: '"connections" must be a list of connections'),
+    (De: 'Eine Verbindung ist ein Objekt mit "name", "provider" und "url"';
+     En: 'A connection is an object with "name", "provider" and "url"'),
+    (De: 'in einer Zuordnung'; En: 'in a mapping'),
+    (De: 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)';
+     En: 'Mapping without "match" (path of a .dproj, .groupproj or a folder)'),
+    (De: '"projects" muss eine Liste von Zuordnungen sein'; En: '"projects" must be a list of mappings'),
+    (De: 'Eine Zuordnung ist ein Objekt mit "match", "connection" und "project"';
+     En: 'A mapping is an object with "match", "connection" and "project"'),
+    (De: 'Die Abfrage "%s" gibt es schon'; En: 'The query "%s" already exists'),
+    (De: 'in einer Abfrage'; En: 'in a query'),
+    (De: '"queries" muss eine Liste von Abfragen sein'; En: '"queries" must be a list of queries'),
+    (De: 'Eine Abfrage ist ein Objekt mit "name" und "query"'; En: 'A query is an object with "name" and "query"'),
+    (De: 'Erlaubt sind "auto", "git", "svn" und "off"'; En: 'Allowed are "auto", "git", "svn" and "off"'),
+    (De: 'Ein Branch-Name enthält keine Leerzeichen'; En: 'A branch name contains no spaces'),
+    (De: '"vcs.projects" muss eine Liste von Zuordnungen sein'; En: '"vcs.projects" must be a list of mappings'),
+    (De: 'Eine Zuordnung ist ein Objekt mit "match", "provider" und "mainBranch"';
+     En: 'A mapping is an object with "match", "provider" and "mainBranch"'),
+    (De: '"vcs.timeoutSeconds" muss eine ganze Zahl von 1 bis 300 sein';
+     En: '"vcs.timeoutSeconds" must be a whole number from 1 to 300'),
+    (De: 'im Muster; erlaubt: regex, severity, severityMap';
+     En: 'in the pattern; allowed: regex, severity, severityMap'),
+    (De: '"env" muss ein Objekt Name → Wert sein'; En: '"env" must be an object name → value'),
+    (De: 'Aufgabe ohne "name"'; En: 'Task without "name"'),
+    (De: 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"';
+     En: 'Only https addresses without user, e.g. "https://youtrack.example.com"'),
+    (De: 'Verbindung ohne "name"'; En: 'Connection without "name"'),
+    (De: 'Abfrage ohne "name"'; En: 'Query without "name"'),
+    (De: 'Unbekannte Angabe "%s" %s'; En: 'Unknown entry "%s" %s'),
+    (De: 'Eigenes Muster ohne "regex"'; En: 'Custom pattern without "regex"'),
+    (De: 'Aufgabe ohne "command"'; En: 'Task without "command"'),
+    (De: 'Verbindung ohne "provider"'; En: 'Connection without "provider"'),
+    (De: 'Verbindung ohne "url"'; En: 'Connection without "url"'),
+    (De: 'Zuordnung ohne "connection"'; En: 'Mapping without "connection"'),
+    (De: 'Abfrage ohne "query"'; En: 'Query without "query"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cSeverityNames: array[0..2] of string = ('error', 'warning', 'info');
@@ -92,7 +172,7 @@ begin
   mText := NormalizedMatch(mText);
   if IndexStr(mText, ASeen) >= 0 then
   begin
-    AReader.ReportNode(AValue, 'Für diesen Pfad gibt es schon eine Zuordnung');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.ThereAlreadyIsAMapping].Text);
   end
   else
   begin
@@ -105,7 +185,7 @@ procedure ReportUnknownEntry(AReader: TConfigurationReader; AItem: TJsonNode; AI
   const AWhere: string);
 begin
   AReader.Report(AItem.KeyStarts[AIndex], AItem.KeyStarts[AIndex] + Length(AItem.Keys[AIndex]) + 2,
-    Format('Unbekannte Angabe "%s" %s', [AItem.Keys[AIndex], AWhere]), False);
+    cTexts[TWorkflowOptionsText.UnknownEntry].Fmt([AItem.Keys[AIndex], AWhere]), False);
 end;
 
 /// <summary>Meldet AMessage an AItem, wenn AHas fehlt.</summary>
@@ -126,12 +206,13 @@ var
 begin
   if AValue.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(AValue, '"severityMap" muss ein Objekt Wort → error, warning oder info sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.SeverityMapMustBeAnObject].Text);
     Exit;
   end;
   for mItem := 0 to AValue.Count - 1 do
   begin
-    CheckAllowed(AReader, AValue[mItem], 'severityMap', cSeverityNames, 'Erlaubt sind "error", "warning" und "info"');
+    CheckAllowed(AReader, AValue[mItem], 'severityMap', cSeverityNames,
+      cTexts[TWorkflowOptionsText.AllowedAreErrorWarningAnd].Text);
   end;
 end;
 
@@ -148,12 +229,13 @@ begin
     Result := AReader.ExpectString(ANode[AIndex], 'regex', mText) and (mText <> '');
     if (ANode[AIndex].Kind = TJsonKind.String_) and (mText = '') then
     begin
-      AReader.ReportNode(ANode[AIndex], '"regex" darf nicht leer sein');
+      AReader.ReportNode(ANode[AIndex], cTexts[TWorkflowOptionsText.RegexMustNotBeEmpty].Text);
     end;
   end
   else if mKey = 'severity' then
   begin
-    CheckAllowed(AReader, ANode[AIndex], 'severity', cSeverityNames, 'Erlaubt sind "error", "warning" und "info"');
+    CheckAllowed(AReader, ANode[AIndex], 'severity', cSeverityNames,
+      cTexts[TWorkflowOptionsText.AllowedAreErrorWarningAnd].Text);
   end
   else if mKey = 'severityMap' then
   begin
@@ -161,7 +243,7 @@ begin
   end
   else
   begin
-    ReportUnknownEntry(AReader, ANode, AIndex, 'im Muster; erlaubt: regex, severity, severityMap');
+    ReportUnknownEntry(AReader, ANode, AIndex, cTexts[TWorkflowOptionsText.InThePatternAllowedRegex].Text);
   end;
 end;
 
@@ -174,13 +256,13 @@ begin
   begin
     if IndexStr(ANode.Value, ['dcc', 'pwsh', 'msbuild', 'generic', 'none']) < 0 then
     begin
-      AReader.ReportNode(ANode, 'Erlaubt sind "dcc", "pwsh", "msbuild", "generic", "none" oder ein Objekt mit "regex"');
+      AReader.ReportNode(ANode, cTexts[TWorkflowOptionsText.AllowedAreDccPwshMsbuild].Text);
     end;
     Exit;
   end;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, '"matcher" muss ein Name oder ein Objekt mit "regex" sein');
+    AReader.ReportNode(ANode, cTexts[TWorkflowOptionsText.MatcherMustBeAName].Text);
     Exit;
   end;
   mHasRegex := False;
@@ -188,7 +270,7 @@ begin
   begin
     mHasRegex := ReadMatcherMember(AReader, ANode, mIndex) or mHasRegex;
   end;
-  RequireEntry(AReader, ANode, mHasRegex, 'Eigenes Muster ohne "regex"');
+  RequireEntry(AReader, ANode, mHasRegex, cTexts[TWorkflowOptionsText.CustomPatternWithoutRegex].Text);
 end;
 
 procedure CheckTaskArgs(AReader: TConfigurationReader; AValue: TJsonNode);
@@ -198,7 +280,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"args" muss eine Liste von Texten sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.ArgsMustBeAList].Text);
     Exit;
   end;
   for mItem := 0 to AValue.Count - 1 do
@@ -217,7 +299,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(AValue, '"env" muss ein Objekt Name → Wert sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.EnvMustBeAnObject].Text);
     Exit;
   end;
   for mItem := 0 to AValue.Count - 1 do
@@ -231,7 +313,7 @@ var
   mSeconds: Integer;
 begin
   mSeconds := 0;
-  AReader.ExpectInteger(AValue, 0, 86400, '"timeoutSec" muss eine ganze Zahl von 0 bis 86400 sein', mSeconds);
+  AReader.ExpectInteger(AValue, 0, 86400, cTexts[TWorkflowOptionsText.TimeoutSecMustBeAWhole].Text, mSeconds);
 end;
 
 /// <summary>Prüft ein Glied einer Aufgabe außer name und command; False für ein unbekanntes.</summary>
@@ -255,11 +337,12 @@ begin
   else if AKey = 'group' then
   begin
     CheckAllowed(AReader, AValue, 'group', ['check', 'build', 'test', 'other'],
-      'Erlaubt sind "check", "build", "test" und "other"');
+      cTexts[TWorkflowOptionsText.AllowedAreCheckBuildTest].Text);
   end
   else if AKey = 'beforeBuild' then
   begin
-    CheckAllowed(AReader, AValue, 'beforeBuild', ['off', 'warn', 'block'], 'Erlaubt sind "off", "warn" und "block"');
+    CheckAllowed(AReader, AValue, 'beforeBuild', ['off', 'warn', 'block'],
+      cTexts[TWorkflowOptionsText.AllowedAreOffWarnAnd].Text);
   end
   else if AKey = 'timeoutSec' then
   begin
@@ -289,7 +372,8 @@ begin
     if mKey = 'name' then
     begin
       // Gleicher Name: Die spätere Aufgabe wäre nie erreichbar (Projekt vor global gilt nur zwischen Dateien).
-      mHasName := ReadUniqueName(AReader, ATask[mInner], 'Die Aufgabe "%s" gibt es schon', ANames) or mHasName;
+      mHasName := ReadUniqueName(AReader, ATask[mInner], cTexts[TWorkflowOptionsText.TheTaskAlreadyExists].Text,
+        ANames) or mHasName;
     end
     else if mKey = 'command' then
     begin
@@ -297,11 +381,11 @@ begin
     end
     else if not CheckTaskOption(AReader, mKey, ATask[mInner]) then
     begin
-      ReportUnknownEntry(AReader, ATask, mInner, 'in einer Aufgabe');
+      ReportUnknownEntry(AReader, ATask, mInner, cTexts[TWorkflowOptionsText.InATask].Text);
     end;
   end;
-  RequireEntry(AReader, ATask, mHasName, 'Aufgabe ohne "name"');
-  RequireEntry(AReader, ATask, mHasCommand, 'Aufgabe ohne "command"');
+  RequireEntry(AReader, ATask, mHasName, cTexts[TWorkflowOptionsText.TaskWithoutName].Text);
+  RequireEntry(AReader, ATask, mHasCommand, cTexts[TWorkflowOptionsText.TaskWithoutCommand].Text);
 end;
 
 procedure ReadTasks(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
@@ -311,7 +395,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"tasks" muss eine Liste von Aufgaben sein');
+    AReader.ReportNode(ANode, cTexts[TWorkflowOptionsText.TasksMustBeAList].Text);
     Exit;
   end;
   ASettings.Tasks := AReader.NodeText(ANode);
@@ -324,7 +408,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(ANode[mIndex], 'Eine Aufgabe ist ein Objekt mit "name" und "command"');
+      AReader.ReportNode(ANode[mIndex], cTexts[TWorkflowOptionsText.ATaskIsAnObject].Text);
     end;
   end;
 end;
@@ -366,7 +450,7 @@ begin
   // Das Token geht nur über https und nie mit Benutzer in der Adresse an den Tracker.
   if Result and not IsTrackerUrl(Trim(mText)) then
   begin
-    AReader.ReportNode(AValue, 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.OnlyHttpsAddressesWithoutUser].Text);
   end;
 end;
 
@@ -376,14 +460,14 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"endStates" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]');
+    AReader.ReportNode(ANode, cTexts[TWorkflowOptionsText.EndStatesMustBeAList].Text);
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
   begin
     if ANode[mIndex].Kind <> TJsonKind.String_ then
     begin
-      AReader.ReportNode(ANode[mIndex], 'Ein Zustand in "endStates" ist ein Text');
+      AReader.ReportNode(ANode[mIndex], cTexts[TWorkflowOptionsText.AStateInEndStatesIs].Text);
     end;
   end;
 end;
@@ -397,7 +481,7 @@ begin
   if AKey = 'language' then
   begin
     // Sprache der Oberfläche (#1263), vom Plugin bei „Prüfen“ erkannt.
-    CheckAllowed(AReader, AValue, 'language', ['de', 'en'], '"language" ist "de" oder "en"');
+    CheckAllowed(AReader, AValue, 'language', ['de', 'en'], cTexts[TWorkflowOptionsText.LanguageIsDeOrEn].Text);
   end
   // Zustand beim Beginnen und Beenden je Verbindung (#1266).
   else if MatchStr(AKey, ['stateField', 'assigneeField', 'startState']) then
@@ -428,7 +512,8 @@ begin
     mKey := AConnection.Keys[mInner];
     if mKey = 'name' then
     begin
-      mHasName := ReadUniqueName(AReader, AConnection[mInner], 'Die Verbindung "%s" gibt es schon', ANames) or
+      mHasName := ReadUniqueName(AReader, AConnection[mInner],
+        cTexts[TWorkflowOptionsText.TheConnectionAlreadyExists].Text, ANames) or
         mHasName;
     end
     else if mKey = 'provider' then
@@ -441,12 +526,12 @@ begin
     end
     else if not CheckConnectionOption(AReader, mKey, AConnection[mInner]) then
     begin
-      ReportUnknownEntry(AReader, AConnection, mInner, 'in einer Verbindung');
+      ReportUnknownEntry(AReader, AConnection, mInner, cTexts[TWorkflowOptionsText.InAConnection].Text);
     end;
   end;
-  RequireEntry(AReader, AConnection, mHasName, 'Verbindung ohne "name"');
-  RequireEntry(AReader, AConnection, mHasProvider, 'Verbindung ohne "provider"');
-  RequireEntry(AReader, AConnection, mHasUrl, 'Verbindung ohne "url"');
+  RequireEntry(AReader, AConnection, mHasName, cTexts[TWorkflowOptionsText.ConnectionWithoutName].Text);
+  RequireEntry(AReader, AConnection, mHasProvider, cTexts[TWorkflowOptionsText.ConnectionWithoutProvider].Text);
+  RequireEntry(AReader, AConnection, mHasUrl, cTexts[TWorkflowOptionsText.ConnectionWithoutUrl].Text);
 end;
 
 procedure ReadConnections(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
@@ -457,7 +542,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"connections" muss eine Liste von Verbindungen sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.ConnectionsMustBeAList].Text);
     Exit;
   end;
   ASettings.IssueConnections := AReader.NodeText(AValue);
@@ -470,7 +555,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mIndex], 'Eine Verbindung ist ein Objekt mit "name", "provider" und "url"');
+      AReader.ReportNode(AValue[mIndex], cTexts[TWorkflowOptionsText.AConnectionIsAnObject].Text);
     end;
   end;
 end;
@@ -502,12 +587,11 @@ begin
     end
     else
     begin
-      ReportUnknownEntry(AReader, AMapping, mInner, 'in einer Zuordnung');
+      ReportUnknownEntry(AReader, AMapping, mInner, cTexts[TWorkflowOptionsText.InAMapping].Text);
     end;
   end;
-  RequireEntry(AReader, AMapping, mHasMatch, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines ' +
-    'Ordners)');
-  RequireEntry(AReader, AMapping, mHasConnection, 'Zuordnung ohne "connection"');
+  RequireEntry(AReader, AMapping, mHasMatch, cTexts[TWorkflowOptionsText.MappingWithoutMatchPathOf].Text);
+  RequireEntry(AReader, AMapping, mHasConnection, cTexts[TWorkflowOptionsText.MappingWithoutConnection].Text);
 end;
 
 procedure ReadIssueProjects(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
@@ -518,7 +602,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"projects" muss eine Liste von Zuordnungen sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.ProjectsMustBeAList].Text);
     Exit;
   end;
   ASettings.IssueProjects := AReader.NodeText(AValue);
@@ -531,7 +615,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mIndex], 'Eine Zuordnung ist ein Objekt mit "match", "connection" und "project"');
+      AReader.ReportNode(AValue[mIndex], cTexts[TWorkflowOptionsText.AMappingIsAnObject].Text);
     end;
   end;
 end;
@@ -552,7 +636,8 @@ begin
     if mKey = 'name' then
     begin
       // Die Klappliste unterscheidet Namen ohne Groß-/Kleinschreibung.
-      mHasName := ReadUniqueName(AReader, AQuery[mInner], 'Die Abfrage "%s" gibt es schon', ANames) or mHasName;
+      mHasName := ReadUniqueName(AReader, AQuery[mInner], cTexts[TWorkflowOptionsText.TheQueryAlreadyExists].Text,
+        ANames) or mHasName;
     end
     else if mKey = 'query' then
     begin
@@ -564,11 +649,11 @@ begin
     end
     else
     begin
-      ReportUnknownEntry(AReader, AQuery, mInner, 'in einer Abfrage');
+      ReportUnknownEntry(AReader, AQuery, mInner, cTexts[TWorkflowOptionsText.InAQuery].Text);
     end;
   end;
-  RequireEntry(AReader, AQuery, mHasName, 'Abfrage ohne "name"');
-  RequireEntry(AReader, AQuery, mHasQuery, 'Abfrage ohne "query"');
+  RequireEntry(AReader, AQuery, mHasName, cTexts[TWorkflowOptionsText.QueryWithoutName].Text);
+  RequireEntry(AReader, AQuery, mHasQuery, cTexts[TWorkflowOptionsText.QueryWithoutQuery].Text);
 end;
 
 procedure ReadIssueQueries(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
@@ -579,7 +664,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"queries" muss eine Liste von Abfragen sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.QueriesMustBeAList].Text);
     Exit;
   end;
   ASettings.IssueQueries := AReader.NodeText(AValue);
@@ -592,7 +677,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mIndex], 'Eine Abfrage ist ein Objekt mit "name" und "query"');
+      AReader.ReportNode(AValue[mIndex], cTexts[TWorkflowOptionsText.AQueryIsAnObject].Text);
     end;
   end;
 end;
@@ -631,22 +716,22 @@ begin
     end
     else if mKey = 'provider' then
     begin
-      CheckAllowed(AReader, AMapping[mInner], 'provider', cProviderNames, 'Erlaubt sind "auto", "git", "svn" und "off"');
+      CheckAllowed(AReader, AMapping[mInner], 'provider', cProviderNames,
+        cTexts[TWorkflowOptionsText.AllowedAreAutoGitSvn].Text);
     end
     else if mKey = 'mainBranch' then
     begin
       if AReader.ExpectString(AMapping[mInner], 'mainBranch', mText) and (Trim(mText).IndexOfAny([' ', #9]) >= 0) then
       begin
-        AReader.ReportNode(AMapping[mInner], 'Ein Branch-Name enthält keine Leerzeichen');
+        AReader.ReportNode(AMapping[mInner], cTexts[TWorkflowOptionsText.ABranchNameContainsNo].Text);
       end;
     end
     else
     begin
-      ReportUnknownEntry(AReader, AMapping, mInner, 'in einer Zuordnung');
+      ReportUnknownEntry(AReader, AMapping, mInner, cTexts[TWorkflowOptionsText.InAMapping].Text);
     end;
   end;
-  RequireEntry(AReader, AMapping, mHasMatch, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines ' +
-    'Ordners)');
+  RequireEntry(AReader, AMapping, mHasMatch, cTexts[TWorkflowOptionsText.MappingWithoutMatchPathOf].Text);
 end;
 
 procedure ReadVcsProjects(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
@@ -657,7 +742,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"vcs.projects" muss eine Liste von Zuordnungen sein');
+    AReader.ReportNode(AValue, cTexts[TWorkflowOptionsText.VcsProjectsMustBeA].Text);
     Exit;
   end;
   ASettings.VcsProjects := AReader.NodeText(AValue);
@@ -670,7 +755,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mIndex], 'Eine Zuordnung ist ein Objekt mit "match", "provider" und "mainBranch"');
+      AReader.ReportNode(AValue[mIndex], cTexts[TWorkflowOptionsText.AMappingIsAnObject2].Text);
     end;
   end;
 end;
@@ -714,7 +799,8 @@ procedure ReadVcsProvider(AReader: TConfigurationReader; AValue: TJsonNode; cons
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cProviderNames, 'Erlaubt sind "auto", "git", "svn" und "off"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cProviderNames, cTexts[TWorkflowOptionsText.AllowedAreAutoGitSvn].Text,
+    mIndex) then
   begin
     ASettings.VcsProvider := cProviderNames[mIndex];
   end;
@@ -723,7 +809,7 @@ end;
 procedure ReadVcsTimeout(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 1, 300, '"vcs.timeoutSeconds" muss eine ganze Zahl von 1 bis 300 sein',
+  AReader.ExpectInteger(AValue, 1, 300, cTexts[TWorkflowOptionsText.VcsTimeoutSecondsMustBeA].Text,
     ASettings.VcsTimeoutSeconds);
 end;
 
@@ -757,5 +843,8 @@ function WorkflowSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.WorkflowOptions', cTexts);
 
 end.

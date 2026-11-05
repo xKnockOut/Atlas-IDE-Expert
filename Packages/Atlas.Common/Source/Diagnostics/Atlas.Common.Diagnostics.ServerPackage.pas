@@ -76,7 +76,27 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Text.Anonymize,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TServerPackageText = (SessionLogAnonymized, SessionLogWithRealNames, TraceOfTheLastMinutes,
+    AnonymizedKeysNumbersAndMethods, LinesWithoutJSONLeftOut);
+
+const
+  cTexts: array[TServerPackageText] of TAtlasText = (
+    (De: '# Protokoll der Sitzung, anonymisiert'; En: '# Session log, anonymized'),
+    (De: '# Protokoll der Sitzung mit Klarnamen (ausdrücklich gewählt)';
+     En: '# Session log with real names (explicitly chosen)'),
+    (De: '# Trace der letzten %d Minuten'; En: '# Trace of the last %d minutes'),
+    (De: ', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)';
+     En: ', anonymized (keys, numbers and methods remain)'),
+    (De: '# %d Zeilen ohne JSON ausgelassen'; En: '# %d lines without JSON left out'));
+
+{$SCOPEDENUMS OFF}
 
 { TServerPackage }
 
@@ -276,11 +296,11 @@ begin
   try
     if AInput.Anonymize then
     begin
-      mBuilder.Append('# Protokoll der Sitzung, anonymisiert').Append(sLineBreak);
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogAnonymized].Text).Append(sLineBreak);
     end
     else
     begin
-      mBuilder.Append('# Protokoll der Sitzung mit Klarnamen (ausdrücklich gewählt)').Append(sLineBreak);
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogWithRealNames].Text).Append(sLineBreak);
     end;
     for mLine in AInput.LogLines do
     begin
@@ -310,10 +330,10 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     mDropped := 0;
-    mBuilder.Append(Format('# Trace der letzten %d Minuten', [AInput.TraceMinutes]));
+    mBuilder.Append(cTexts[TServerPackageText.TraceOfTheLastMinutes].Fmt([AInput.TraceMinutes]));
     if AInput.Anonymize then
     begin
-      mBuilder.Append(', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)');
+      mBuilder.Append(cTexts[TServerPackageText.AnonymizedKeysNumbersAndMethods].Text);
     end;
     mBuilder.Append(sLineBreak);
     for mLine in AInput.TraceLines do
@@ -334,7 +354,7 @@ begin
     end;
     if mDropped > 0 then
     begin
-      mBuilder.Append(Format('# %d Zeilen ohne JSON ausgelassen', [mDropped])).Append(sLineBreak);
+      mBuilder.Append(cTexts[TServerPackageText.LinesWithoutJSONLeftOut].Fmt([mDropped])).Append(sLineBreak);
     end;
     Result := mBuilder.ToString;
   finally
@@ -374,5 +394,8 @@ begin
   end;
   Result.AddPair('files', mFiles);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.ServerPackage', cTexts);
 
 end.

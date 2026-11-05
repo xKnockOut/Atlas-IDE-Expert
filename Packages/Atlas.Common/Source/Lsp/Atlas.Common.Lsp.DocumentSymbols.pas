@@ -79,7 +79,20 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentSymbolsText = (FieldTextDocumentUriMissingIn);
+
+const
+  cTexts: array[TDocumentSymbolsText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Baut die Symbole; kennt die Token für Namensbereiche und Routinenarten.</summary>
@@ -954,7 +967,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TDocumentSymbolsText.FieldTextDocumentUriMissingIn].Text + Method);
   end;
   // Nicht geöffnete Dokumente haben keine Gliederung.
   if not FStore.TryGet(Uri, Document) then
@@ -978,5 +992,8 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Result := BuildSymbols(Tree, Document.Text, FIndex, FReadText, Shared.Conditionals);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DocumentSymbols', cTexts);
 
 end.

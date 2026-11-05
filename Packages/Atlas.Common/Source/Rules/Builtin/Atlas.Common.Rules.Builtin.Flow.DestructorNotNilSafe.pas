@@ -32,7 +32,26 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors;
+  Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowDestructorNotNilSafeText = (WrapInAssigned, Conditional, Raises, Title);
+
+const
+  cTexts: array[TFlowDestructorNotNilSafeText] of TAtlasText = (
+    (De: 'In if Assigned(%s) then einschließen'; En: 'Wrap in if Assigned(%s) then'),
+    (De: '%s wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; %s stürzt dann ab.';
+     En: '%s is created only conditionally in the constructor and can be nil in the destructor; %s then crashes.'),
+    (De: 'Wirft %s, ist %s beim Destruktor noch nil; %s stürzt ab und verdeckt die eigentliche Exception.';
+     En: 'If %s raises, %s is still nil in the destructor; %s crashes and hides the actual exception.'),
+    (De: 'Destruktor benutzt ein Feld, das nach einer Exception im Konstruktor nil ist';
+     En: 'Destructor uses a field that is nil after an exception in the constructor'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Methoden in private- und strict-private-Abschnitten der Klassendeklaration.</summary>
 function PrivateOf(AClass: TSyntaxNode): TArray<string>;
@@ -176,7 +195,7 @@ begin
   begin
     Exit;
   end;
-  Result := [TRuleFix.Create(Format('In if Assigned(%s) then einschließen', [AField]),
+  Result := [TRuleFix.Create(cTexts[TFlowDestructorNotNilSafeText.WrapInAssigned].Fmt([AField]),
     [TRuleEdit.Create(NodeRange(AStatement), Format('if Assigned(%s) then', [AField]) + FLineBreak + Outer +
     '  ' + Trim(Text(AStatement)))])];
 end;
@@ -273,13 +292,11 @@ begin
   Access := Trim(Text(AAccess));
   if AItem.Conditional then
   begin
-    Message := Format('%s wird im Konstruktor nur bedingt angelegt und kann beim Destruktor nil sein; ' +
-      '%s stürzt dann ab.', [AField, Access]);
+    Message := cTexts[TFlowDestructorNotNilSafeText.Conditional].Fmt([AField, Access]);
   end
   else
   begin
-    Message := Format('Wirft %s, ist %s beim Destruktor noch nil; %s stürzt ab und verdeckt die ' +
-      'eigentliche Exception.', [AItem.Raiser, AField, Access]);
+    Message := cTexts[TFlowDestructorNotNilSafeText.Raises].Fmt([AItem.Raiser, AField, Access]);
   end;
   FReport.Add(NodeRange(AAccess), Message, TRuleConfidence.High, GuardFix(AStatement, AField));
 end;
@@ -404,7 +421,7 @@ end;
 function TDestructorNotNilSafeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DestructorNotNilSafeRuleId, TRuleSeverity.Warning,
-    'Destruktor benutzt ein Feld, das nach einer Exception im Konstruktor nil ist');
+    cTexts[TFlowDestructorNotNilSafeText.Title].Text);
 end;
 
 procedure TDestructorNotNilSafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -418,5 +435,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe', cTexts);
 
 end.

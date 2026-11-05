@@ -73,11 +73,31 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspMoveClassText = (ThereIsNoClassAt, UnknownOriginOfTheNew, MoveClass, MoveClassIntoItsOwn, AlreadyExists,
+    IsAlreadyInTheProject);
+
+const
+  cTexts: array[TLspMoveClassText] of TAtlasText = (
+    (De: 'an dieser Stelle steht keine Klasse'; En: 'there is no class at this position'),
+    (De: 'Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.';
+     En: 'Unknown origin of %s: the new unit takes over the uses of the original unit for it.'),
+    (De: 'Klasse verschieben: '; En: 'Move class: '),
+    (De: 'Klasse %s in eigene Unit verschieben …'; En: 'Move class %s into its own unit …'),
+    (De: '%s gibt es schon'; En: '%s already exists'),
+    (De: '%s steht schon im Projekt'; En: '%s is already in the project'));
+
+{$SCOPEDENUMS OFF}
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Klasse verschieben: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspMoveClassText.MoveClass].Text + AMessage);
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -140,7 +160,7 @@ begin
   finally
     AResolver.UnpinTree;
   end;
-  Title := Format('Klasse %s in eigene Unit verschieben …', [Plan.ClassName]);
+  Title := cTexts[TLspMoveClassText.MoveClassIntoItsOwn].Fmt([Plan.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -163,7 +183,7 @@ var
 begin
   if Assigned(AContext.Exists) and AContext.Exists(ANewFile) then
   begin
-    raise Failed(Format('%s gibt es schon', [ExtractFileName(ANewFile)]));
+    raise Failed(cTexts[TLspMoveClassText.AlreadyExists].Fmt([ExtractFileName(ANewFile)]));
   end;
   if not AContext.HasProject then
   begin
@@ -173,7 +193,7 @@ begin
   begin
     if SameText(Item.Name, APlan.NewUnit) then
     begin
-      raise Failed(Format('%s steht schon im Projekt', [APlan.NewUnit]));
+      raise Failed(cTexts[TLspMoveClassText.IsAlreadyInTheProject].Fmt([APlan.NewUnit]));
     end;
   end;
 end;
@@ -253,7 +273,7 @@ begin
   Decl := TMoveClass.ClassAt(ATree, APosition);
   if Decl = nil then
   begin
-    raise Failed('an dieser Stelle steht keine Klasse');
+    raise Failed(cTexts[TLspMoveClassText.ThereIsNoClassAt].Text);
   end;
   AResolver.PinTree(ATree, AFileName);
   try
@@ -280,8 +300,7 @@ begin
     Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, Plan.NewUnit);
     if Plan.Unresolved <> nil then
     begin
-      Changes.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.',
-        [string.Join(', ', Plan.Unresolved)]));
+      Changes.Warn(cTexts[TLspMoveClassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', Plan.Unresolved)]));
     end;
     Result := TJSONObject.Create;
     Result.AddPair('edit', Changes.ToJson);
@@ -291,5 +310,8 @@ begin
     Changes.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MoveClass', cTexts);
 
 end.

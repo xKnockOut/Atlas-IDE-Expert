@@ -19,7 +19,45 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMcpOptionsText = (AnArgumentIsAnObject, NameOfAnArgumentLetter, ArgumentsMustBeAList, IncludeMustBeAList,
+    PlaceholderHasNoArgument, NameOfAPromptLetter, APromptIsAnObject, McpCustomPromptsMustBeA, ThePromptAlreadyExists,
+    DisabledToolsMustBeAList, McpPromptLanguageIsDeOr, UnknownSettingMcp, UnknownEntryInAnArgument,
+    ArgumentWithoutName, UnknownEntryInAPrompt, PromptWithoutName, UnknownContentAllowed);
+
+const
+  cTexts: array[TMcpOptionsText] of TAtlasText = (
+    (De: 'Ein Argument ist ein Objekt mit "name", "description" und "required"';
+     En: 'An argument is an object with "name", "description" and "required"'),
+    (De: 'Name eines Arguments: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-"';
+     En: 'Name of an argument: letter, then letters, digits, "_" or "-"'),
+    (De: '"arguments" muss eine Liste von Argumenten sein'; En: '"arguments" must be a list of arguments'),
+    (De: '"include" muss eine Liste sein, z. B. ["diagnostics", "metrics"]';
+     En: '"include" must be a list, e.g. ["diagnostics", "metrics"]'),
+    (De: 'Platzhalter "{%s}" hat kein Argument'; En: 'Placeholder "{%s}" has no argument'),
+    (De: 'Name eines Prompts: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-"';
+     En: 'Name of a prompt: letter, then letters, digits, "_" or "-"'),
+    (De: 'Ein Prompt ist ein Objekt mit "name", "description", "arguments", "text" und "include"';
+     En: 'A prompt is an object with "name", "description", "arguments", "text" and "include"'),
+    (De: '"mcp.customPrompts" muss eine Liste von Prompts sein'; En: '"mcp.customPrompts" must be a list of prompts'),
+    (De: 'Den Prompt "%s" gibt es schon'; En: 'The prompt "%s" already exists'),
+    (De: '"disabledTools" muss eine Liste von Werkzeugnamen sein';
+     En: '"disabledTools" must be a list of tool names'),
+    (De: '"mcp.promptLanguage" ist "de" oder "en"'; En: '"mcp.promptLanguage" is "de" or "en"'),
+    (De: 'Unbekannte Einstellung "mcp.%s"'; En: 'Unknown setting "mcp.%s"'),
+    (De: 'Unbekannte Angabe "%s" in einem Argument'; En: 'Unknown entry "%s" in an argument'),
+    (De: 'Argument ohne "name"'; En: 'Argument without "name"'),
+    (De: 'Unbekannte Angabe "%s" in einem Prompt'; En: 'Unknown entry "%s" in a prompt'),
+    (De: 'Prompt ohne "name"'; En: 'Prompt without "name"'),
+    (De: 'Unbekannter Inhalt "%s"; erlaubt: %s'; En: 'Unknown content "%s"; allowed: %s'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Name eines Prompts oder Arguments: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-".</summary>
 function IsPromptName(const AName: string): Boolean;
@@ -55,7 +93,7 @@ begin
   AArgument := Default(TMcpCustomPromptArgument);
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, 'Ein Argument ist ein Objekt mit "name", "description" und "required"');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.AnArgumentIsAnObject].Text);
     Exit(False);
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -63,7 +101,7 @@ begin
     mKey := ANode.Keys[mIndex];
     if mKey = 'name' then
     begin
-      ReadPromptName(AReader, ANode[mIndex], 'Name eines Arguments: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-"',
+      ReadPromptName(AReader, ANode[mIndex], cTexts[TMcpOptionsText.NameOfAnArgumentLetter].Text,
         AArgument.Name);
     end
     else if mKey = 'description' then
@@ -77,13 +115,13 @@ begin
     else
     begin
       AReader.Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
-        Format('Unbekannte Angabe "%s" in einem Argument', [mKey]), False);
+        cTexts[TMcpOptionsText.UnknownEntryInAnArgument].Fmt([mKey]), False);
     end;
   end;
   Result := IsPromptName(AArgument.Name);
   if AArgument.Name = '' then
   begin
-    AReader.ReportNode(ANode, 'Argument ohne "name"');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.ArgumentWithoutName].Text);
   end;
 end;
 
@@ -94,7 +132,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"arguments" muss eine Liste von Argumenten sein');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.ArgumentsMustBeAList].Text);
     Exit;
   end;
   for mItem := 0 to ANode.Count - 1 do
@@ -113,7 +151,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"include" muss eine Liste sein, z. B. ["diagnostics", "metrics"]');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.IncludeMustBeAList].Text);
     Exit;
   end;
   for mItem := 0 to ANode.Count - 1 do
@@ -128,8 +166,8 @@ begin
     end
     else
     begin
-      AReader.ReportNode(ANode[mItem], Format('Unbekannter Inhalt "%s"; erlaubt: %s',
-        [mValue, string.Join(', ', TMcpCustomPrompt.KnownIncludes)]));
+      AReader.ReportNode(ANode[mItem], cTexts[TMcpOptionsText.UnknownContentAllowed].Fmt([mValue, string.Join(', ',
+        TMcpCustomPrompt.KnownIncludes)]));
     end;
   end;
 end;
@@ -165,8 +203,8 @@ begin
     mPlaceholder := Copy(APrompt.Text, mStart + 1, mStop - mStart - 1);
     if IsPromptName(mPlaceholder) and not HasArgument(APrompt, mPlaceholder) then
     begin
-      AReader.Report(ATextNode.Start, ATextNode.Stop, Format('Platzhalter "{%s}" hat kein Argument',
-        [mPlaceholder]), False);
+      AReader.Report(ATextNode.Start, ATextNode.Stop, cTexts[TMcpOptionsText.PlaceholderHasNoArgument].Fmt([
+        mPlaceholder]), False);
     end;
     mStart := Pos('{', APrompt.Text, mStop + 1);
   end;
@@ -181,7 +219,7 @@ begin
   mKey := ANode.Keys[AIndex];
   if mKey = 'name' then
   begin
-    ReadPromptName(AReader, ANode[AIndex], 'Name eines Prompts: Buchstabe, dann Buchstaben, Ziffern, "_" oder "-"',
+    ReadPromptName(AReader, ANode[AIndex], cTexts[TMcpOptionsText.NameOfAPromptLetter].Text,
       APrompt.Name);
   end
   else if mKey = 'description' then
@@ -206,7 +244,7 @@ begin
   else
   begin
     AReader.Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(mKey) + 2,
-      Format('Unbekannte Angabe "%s" in einem Prompt', [mKey]), False);
+      cTexts[TMcpOptionsText.UnknownEntryInAPrompt].Fmt([mKey]), False);
   end;
 end;
 
@@ -219,8 +257,7 @@ begin
   mTextNode := nil;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, 'Ein Prompt ist ein Objekt mit "name", "description", "arguments", "text" und ' +
-      '"include"');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.APromptIsAnObject].Text);
     Exit(False);
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -229,7 +266,7 @@ begin
   end;
   if APrompt.Name = '' then
   begin
-    AReader.ReportNode(ANode, 'Prompt ohne "name"');
+    AReader.ReportNode(ANode, cTexts[TMcpOptionsText.PromptWithoutName].Text);
   end;
   if Trim(APrompt.Text) = '' then
   begin
@@ -251,7 +288,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"mcp.customPrompts" muss eine Liste von Prompts sein');
+    AReader.ReportNode(AValue, cTexts[TMcpOptionsText.McpCustomPromptsMustBeA].Text);
     Exit;
   end;
   ASettings.McpCustomPrompts := nil;
@@ -264,7 +301,7 @@ begin
     end;
     if IndexStr(LowerCase(mPrompt.Name), mNames) >= 0 then
     begin
-      AReader.ReportNode(AValue[mIndex], Format('Den Prompt "%s" gibt es schon', [mPrompt.Name]));
+      AReader.ReportNode(AValue[mIndex], cTexts[TMcpOptionsText.ThePromptAlreadyExists].Fmt([mPrompt.Name]));
     end
     else
     begin
@@ -279,7 +316,7 @@ procedure ReadDisabledTools(AReader: TConfigurationReader; AValue: TJsonNode; co
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(AValue, AKey, '"disabledTools" muss eine Liste von Werkzeugnamen sein', mItems) then
+  if AReader.ExpectStrings(AValue, AKey, cTexts[TMcpOptionsText.DisabledToolsMustBeAList].Text, mItems) then
   begin
     ASettings.McpDisabledTools := mItems;
   end;
@@ -300,7 +337,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(AValue, '"mcp.promptLanguage" ist "de" oder "en"');
+    AReader.ReportNode(AValue, cTexts[TMcpOptionsText.McpPromptLanguageIsDeOr].Text);
   end;
 end;
 
@@ -325,7 +362,7 @@ begin
     if not AReader.ReadFlag(ANode, mIndex, mFlags) and
       not AReader.ReadMember(ANode, mIndex, cMcpMembers, ASettings) then
     begin
-      AReader.ReportNode(ANode[mIndex], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[mIndex]]));
+      AReader.ReportNode(ANode[mIndex], cTexts[TMcpOptionsText.UnknownSettingMcp].Fmt([ANode.Keys[mIndex]]));
     end;
   end;
 end;
@@ -376,5 +413,8 @@ function McpSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.McpOptions', cTexts);
 
 end.

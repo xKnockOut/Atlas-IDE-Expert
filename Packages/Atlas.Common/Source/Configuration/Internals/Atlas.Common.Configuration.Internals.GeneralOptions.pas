@@ -21,7 +21,42 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TGeneralOptionsText = (UnknownDelphiVersionExpectedE, UnknownDelphiVersionExpectedE2, AllowedAreDeEnAnd,
+    UnknownEncodingExpectedUtf8, MemoryBudgetMbMustBeAWhole, RequestTimeoutMsMustBeAWhole, AllowedAreDebugInfoWarning,
+    DiagnosticsLogDaysMustBeA, AllowedAreTrueFalseAlphabetic, UsesKeepMustBeAList, DeadCodeMustBeAList,
+    SlashCommandsDisabledMustBeA);
+
+const
+  cTexts: array[TGeneralOptionsText] of TAtlasText = (
+    (De: 'Unbekannte Delphi-Version; erwartet z. B. "13" oder "37.0" für Delphi 13, "12" oder "23.0" für Delphi 12';
+     En: 'Unknown Delphi version; expected e.g. "13" or "37.0" for Delphi 13, "12" or "23.0" for Delphi 12'),
+    (De: 'Unbekannte Delphi-Version; erwartet z. B. "12" oder "23.0" für Delphi 12, "11" oder "22.0" für Delphi 11';
+     En: 'Unknown Delphi version; expected e.g. "12" or "23.0" for Delphi 12, "11" or "22.0" for Delphi 11'),
+    (De: 'Erlaubt sind "de", "en" und "" (wie die IDE)'; En: 'Allowed are "de", "en" and "" (like the IDE)'),
+    (De: 'Unbekannte Kodierung; erwartet "utf-8" oder eine ANSI-Codepage wie "1252" oder "windows-1250"';
+     En: 'Unknown encoding; expected "utf-8" or an ANSI code page like "1252" or "windows-1250"'),
+    (De: '"memoryBudgetMb" muss eine ganze Zahl ab 0 sein'; En: '"memoryBudgetMb" must be a whole number from 0'),
+    (De: '"requestTimeoutMs" muss eine ganze Zahl ab 1000 sein';
+     En: '"requestTimeoutMs" must be a whole number from 1000'),
+    (De: 'Erlaubt sind "debug", "info", "warning" und "error"';
+     En: 'Allowed are "debug", "info", "warning" and "error"'),
+    (De: '"diagnostics.logDays" muss eine ganze Zahl von 1 bis 365 sein';
+     En: '"diagnostics.logDays" must be a whole number from 1 to 365'),
+    (De: 'Erlaubt sind true, false, "alphabetic" und "namespace"';
+     En: 'Allowed are true, false, "alphabetic" and "namespace"'),
+    (De: '"usesKeep" muss eine Liste von Unit-Namen sein'; En: '"usesKeep" must be a list of unit names'),
+    (De: '"deadCode.%s" muss eine Liste von Texten sein'; En: '"deadCode.%s" must be a list of texts'),
+    (De: '"slashCommands.disabled" muss eine Liste von Befehlsnamen sein';
+     En: '"slashCommands.disabled" must be a list of command names'));
+
+{$SCOPEDENUMS OFF}
 
 { delphiVersion, minDelphiVersion }
 
@@ -48,8 +83,8 @@ procedure ReadDelphiVersion(AReader: TConfigurationReader; ANode: TJsonNode; var
 var
   mVersion: string;
 begin
-  if ReadVersion(AReader, ANode, 'delphiVersion', 'Unbekannte Delphi-Version; erwartet z. B. "13" oder "37.0" ' +
-    'für Delphi 13, "12" oder "23.0" für Delphi 12', mVersion) then
+  if ReadVersion(AReader, ANode, 'delphiVersion', cTexts[TGeneralOptionsText.UnknownDelphiVersionExpectedE].Text,
+    mVersion) then
   begin
     ASettings.DelphiVersion := mVersion;
     if mVersion <> '' then
@@ -71,8 +106,8 @@ procedure ReadMinDelphiVersion(AReader: TConfigurationReader; ANode: TJsonNode; 
 var
   mVersion: string;
 begin
-  if ReadVersion(AReader, ANode, 'minDelphiVersion', 'Unbekannte Delphi-Version; erwartet z. B. "12" oder "23.0" ' +
-    'für Delphi 12, "11" oder "22.0" für Delphi 11', mVersion) then
+  if ReadVersion(AReader, ANode, 'minDelphiVersion', cTexts[TGeneralOptionsText.UnknownDelphiVersionExpectedE2].Text,
+    mVersion) then
   begin
     ASettings.MinDelphiVersion := mVersion;
   end;
@@ -100,7 +135,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(ANode, 'Erlaubt sind "de", "en" und "" (wie die IDE)');
+    AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.AllowedAreDeEnAnd].Text);
   end;
 end;
 
@@ -117,8 +152,7 @@ begin
     not TFileEncoding.ParseCodePage(mText, ASettings.DefaultEncoding) then
   begin
     ASettings.DefaultEncoding := TFileEncoding.Utf8CodePage;
-    AReader.ReportNode(ANode, 'Unbekannte Kodierung; erwartet "utf-8" oder eine ANSI-Codepage wie "1252" oder ' +
-      '"windows-1250"');
+    AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.UnknownEncodingExpectedUtf8].Text);
   end;
 end;
 
@@ -178,7 +212,7 @@ end;
 
 procedure ReadMemoryBudget(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(ANode, 0, MaxInt, '"memoryBudgetMb" muss eine ganze Zahl ab 0 sein',
+  AReader.ExpectInteger(ANode, 0, MaxInt, cTexts[TGeneralOptionsText.MemoryBudgetMbMustBeAWhole].Text,
     ASettings.MemoryBudgetMb);
 end;
 
@@ -189,7 +223,7 @@ end;
 
 procedure ReadRequestTimeout(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(ANode, 1000, MaxInt, '"requestTimeoutMs" muss eine ganze Zahl ab 1000 sein',
+  AReader.ExpectInteger(ANode, 1000, MaxInt, cTexts[TGeneralOptionsText.RequestTimeoutMsMustBeAWhole].Text,
     ASettings.RequestTimeoutMs);
 end;
 
@@ -215,7 +249,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(ANode, 'Erlaubt sind "debug", "info", "warning" und "error"');
+    AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.AllowedAreDebugInfoWarning].Text);
   end;
 end;
 
@@ -271,7 +305,7 @@ end;
 procedure ReadLogDays(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 1, 365, '"diagnostics.logDays" muss eine ganze Zahl von 1 bis 365 sein',
+  AReader.ExpectInteger(AValue, 1, 365, cTexts[TGeneralOptionsText.DiagnosticsLogDaysMustBeA].Text,
     ASettings.DiagnosticsLogDays);
 end;
 
@@ -348,7 +382,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(ANode, 'Erlaubt sind true, false, "alphabetic" und "namespace"');
+    AReader.ReportNode(ANode, cTexts[TGeneralOptionsText.AllowedAreTrueFalseAlphabetic].Text);
   end;
 end;
 
@@ -362,7 +396,7 @@ procedure ReadUsesKeep(AReader: TConfigurationReader; ANode: TJsonNode; var ASet
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(ANode, 'usesKeep', '"usesKeep" muss eine Liste von Unit-Namen sein', mItems) then
+  if AReader.ExpectStrings(ANode, 'usesKeep', cTexts[TGeneralOptionsText.UsesKeepMustBeAList].Text, mItems) then
   begin
     ASettings.UsesKeep := mItems;
   end;
@@ -379,7 +413,7 @@ var
   mItems: TArray<string>;
 begin
   if not AReader.ExpectStrings(AValue, 'deadCode.' + AKey,
-    Format('"deadCode.%s" muss eine Liste von Texten sein', [AKey]), mItems) then
+    cTexts[TGeneralOptionsText.DeadCodeMustBeAList].Fmt([AKey]), mItems) then
   begin
     Exit;
   end;
@@ -415,7 +449,7 @@ procedure ReadSlashDisabled(AReader: TConfigurationReader; AValue: TJsonNode; co
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(AValue, AKey, '"slashCommands.disabled" muss eine Liste von Befehlsnamen sein',
+  if AReader.ExpectStrings(AValue, AKey, cTexts[TGeneralOptionsText.SlashCommandsDisabledMustBeA].Text,
     mItems) then
   begin
     ASettings.SlashCommandsDisabled := mItems;
@@ -512,5 +546,8 @@ function GeneralSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.GeneralOptions', cTexts);
 
 end.

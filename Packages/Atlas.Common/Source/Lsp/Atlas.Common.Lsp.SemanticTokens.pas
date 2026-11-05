@@ -94,7 +94,17 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.Reassigned;
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSemanticTokensText = (FieldTextDocumentUriMissing, FieldRangeMissing);
+
+const
+  cTexts: array[TSemanticTokensText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt'; En: 'Field "textDocument.uri" missing'),
+    (De: 'Feld "range" fehlt'; En: 'Field "range" missing'));
 
 const
   TypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
@@ -611,14 +621,15 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TSemanticTokensText.FieldTextDocumentUriMissing].Text);
   end;
   Range := Default(TTextRange);
   if AWithRange then
   begin
     if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TSemanticTokensText.FieldRangeMissing].Text);
     end;
     Range := TLspPositions.ReadRange(RangeValue);
   end;
@@ -662,5 +673,8 @@ function TLspSemanticTokens.HandleRange(const AParams: TJSONValue;
 begin
   Result := Handle(AParams, ACancellation, True);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SemanticTokens', cTexts);
 
 end.

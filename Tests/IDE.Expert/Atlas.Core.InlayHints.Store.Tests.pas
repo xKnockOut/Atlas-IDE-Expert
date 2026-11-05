@@ -272,17 +272,20 @@ var
   Store: TAtlasInlayHintStore;
   Text: string;
   Marks: TArray<TAtlasInlayHint>;
+  Character: Integer;
 begin
   Text := 'implementation' + sLineBreak + 'function TA.Mal(N: Integer): Integer;';
-  Marks := [H(1, 37, 'ohne Self'), H(1, 37, 'ohne Self')];
+  Marks := [H(1, 37, 'braucht kein Self'), H(1, 37, 'braucht kein Self')];
   Marks[0].MethodHint := True;
   Marks[1].MethodHint := True;
   Store := TAtlasInlayHintStore.Create;
   try
     Store.SetText('A.pas', Text);
     Store.Put('A.pas', Text, 0, 1, Marks);
-    Assert.IsTrue(Store.MethodOnLine('A.pas', 1));
-    Assert.IsFalse(Store.MethodOnLine('A.pas', 0));
+    Assert.IsTrue(Store.MethodOnLine('A.pas', 1, Character));
+    // Ziel des Klicks auf die Marke: Ende des Kopfs.
+    Assert.AreEqual(37, Character, 'Stelle der Marke');
+    Assert.IsFalse(Store.MethodOnLine('A.pas', 0, Character));
     Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
     Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 1))), 'keine Typmarken');
   finally

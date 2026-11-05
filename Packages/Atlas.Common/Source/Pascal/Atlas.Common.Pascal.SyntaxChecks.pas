@@ -40,7 +40,39 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSyntaxChecksText = (AProcedureCannotHaveA, TheFunctionNeedsAResult, ParameterTypeMissingFor,
+    SeveralVariablesCannotBeInitialized, LocalVariablesCannotBeInitialized, ClassInterfaceAndObjectTypes,
+    LocalClassInterfaceAndObject, ProcedureFunctionPropertyOrVar, LabelExpectedIsNotDeclared,
+    LabelDeclarationsAreNotAllowed, Like);
+
+const
+  cTexts: array[TSyntaxChecksText] of TAtlasText = (
+    (De: 'Eine Prozedur kann keinen Ergebnistyp haben'; En: 'A procedure cannot have a result type'),
+    (De: 'Die Funktion %s braucht einen Ergebnistyp'; En: 'The function %s needs a result type'),
+    (De: 'Parametertyp fehlt bei %s'; En: 'Parameter type missing for %s'),
+    (De: 'Mehrere Variablen lassen sich nicht gemeinsam initialisieren';
+     En: 'Several variables cannot be initialized together'),
+    (De: 'Lokale Variablen lassen sich im var-Abschnitt nicht initialisieren';
+     En: 'Local variables cannot be initialized in the var section'),
+    (De: 'Klassen-, Interface- und Objekttypen sind nur im type-Abschnitt erlaubt';
+     En: 'Class, interface and object types are only allowed in the type section'),
+    (De: 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt';
+     En: 'Local class, interface and object types are not allowed'),
+    (De: '''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''%s'' gefunden';
+     En: '''procedure'', ''function'', ''property'' or ''var'' expected but ''%s'' found'),
+    (De: 'Marke erwartet: %s ist nicht als label deklariert'; En: 'Label expected: %s is not declared as label'),
+    (De: 'Label-Deklarationen sind im interface-Teil nicht erlaubt';
+     En: 'Label declarations are not allowed in the interface part'),
+    (De: ' (wie %s).'; En: ' (like %s).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTreeChecker = class
@@ -138,7 +170,7 @@ var
   Diagnostic: TSyntaxDiagnostic;
 begin
   Diagnostic := Default(TSyntaxDiagnostic);
-  Diagnostic.Message := AMessage + Format(' (wie %s).', [ACode]);
+  Diagnostic.Message := AMessage + cTexts[TSyntaxChecksText.Like].Fmt([ACode]);
   Diagnostic.StartPos := AStartPos;
   Diagnostic.EndPos := AEndPos;
   Diagnostic.Code := ACode;
@@ -301,7 +333,7 @@ begin
   ResultType := ResultTypeOf(AHeader);
   if (Word = 'procedure') and (ResultType <> nil) then
   begin
-    Add('E2025', 'Eine Prozedur kann keinen Ergebnistyp haben', ResultType.StartPos, ResultType.EndPos);
+    Add('E2025', cTexts[TSyntaxChecksText.AProcedureCannotHaveA].Text, ResultType.StartPos, ResultType.EndPos);
     Exit;
   end;
   // Eine Methodenzuordnung (function IFoo.GetX = MyGetX) hat nie einen Ergebnistyp (#1134).
@@ -326,7 +358,7 @@ begin
   end;
   if Declaration then
   begin
-    Add('E2023', Format('Die Funktion %s braucht einen Ergebnistyp', [AHeader.Name]), AHeader.StartPos,
+    Add('E2023', cTexts[TSyntaxChecksText.TheFunctionNeedsAResult].Fmt([AHeader.Name]), AHeader.StartPos,
       AHeader.EndPos);
   end;
 end;
@@ -339,7 +371,8 @@ begin
   begin
     Exit;
   end;
-  Add('E2067', Format('Parametertyp fehlt bei %s', [StringReplace(AParameter.Name, ',', ', ', [rfReplaceAll])]),
+  Add('E2067', cTexts[TSyntaxChecksText.ParameterTypeMissingFor].Fmt([StringReplace(AParameter.Name, ',', ', ',
+    [rfReplaceAll])]),
     AParameter.StartPos, AParameter.EndPos);
 end;
 
@@ -378,12 +411,12 @@ begin
   end;
   if Pos(',', ADecl.Name) > 0 then
   begin
-    Add('E2196', 'Mehrere Variablen lassen sich nicht gemeinsam initialisieren', FTokens[Equal].StartPos,
+    Add('E2196', cTexts[TSyntaxChecksText.SeveralVariablesCannotBeInitialized].Text, FTokens[Equal].StartPos,
       FTokens[Equal].EndPos);
   end
   else if Local then
   begin
-    Add('E2195', 'Lokale Variablen lassen sich im var-Abschnitt nicht initialisieren', FTokens[Equal].StartPos,
+    Add('E2195', cTexts[TSyntaxChecksText.LocalVariablesCannotBeInitialized].Text, FTokens[Equal].StartPos,
       FTokens[Equal].EndPos);
   end;
 end;
@@ -404,11 +437,11 @@ begin
   end;
   // Delphi 13 meldet für alle drei Arten E2058, in einer Routine zusätzlich E2059 (lokaler Typ). Zwei Meldungen
   // an derselben Stelle fasst der Parser zusammen: E2059 steht deshalb am Namen.
-  Add('E2058', 'Klassen-, Interface- und Objekttypen sind nur im type-Abschnitt erlaubt', TypeNode.StartPos,
+  Add('E2058', cTexts[TSyntaxChecksText.ClassInterfaceAndObjectTypes].Text, TypeNode.StartPos,
     TypeNode.EndPos);
   if InRoutine(ADecl) then
   begin
-    Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos,
+    Add('E2059', cTexts[TSyntaxChecksText.LocalClassInterfaceAndObject].Text, ADecl.StartPos,
       TypeNode.StartPos);
   end;
 end;
@@ -435,7 +468,7 @@ begin
   begin
     Exit;
   end;
-  Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos, ADecl.EndPos);
+  Add('E2059', cTexts[TSyntaxChecksText.LocalClassInterfaceAndObject].Text, ADecl.StartPos, ADecl.EndPos);
 end;
 
 procedure TTreeChecker.CheckClassOperator(AHeader: TSyntaxNode);
@@ -457,8 +490,8 @@ begin
   begin
     Exit;
   end;
-  Add('E2123', Format('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''%s'' gefunden',
-    [FTokens[mIndex].Text]), FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
+  Add('E2123', cTexts[TSyntaxChecksText.ProcedureFunctionPropertyOrVar].Fmt([FTokens[mIndex].Text]),
+    FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
 end;
 
 function TTreeChecker.LabelContainers(AScope: TSyntaxNode): TArray<TSyntaxNode>;
@@ -569,7 +602,7 @@ begin
   begin
     Exit;
   end;
-  Add('E2031', Format('Marke erwartet: %s ist nicht als label deklariert', [AGoto.Name]),
+  Add('E2031', cTexts[TSyntaxChecksText.LabelExpectedIsNotDeclared].Fmt([AGoto.Name]),
     FTokens[NameIndex].StartPos, FTokens[NameIndex].EndPos);
 end;
 
@@ -599,7 +632,7 @@ begin
         TSyntaxKind.LabelSection:
           if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.InterfaceSection) then
           begin
-            Add('E2049', 'Label-Deklarationen sind im interface-Teil nicht erlaubt', ANode.StartPos, ANode.EndPos);
+            Add('E2049', cTexts[TSyntaxChecksText.LabelDeclarationsAreNotAllowed].Text, ANode.StartPos, ANode.EndPos);
           end;
         TSyntaxKind.GotoStatement:
           CheckGoto(ANode);
@@ -628,5 +661,8 @@ begin
     Checker.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.SyntaxChecks', cTexts);
 
 end.
