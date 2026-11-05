@@ -85,8 +85,9 @@ type
     /// <summary>Wie Redact für eine Zeile Pascal: nur nach „:=“ und „=“, denn „Password: string“ ist eine
     /// Deklaration und kein Wert.</summary>
     class function RedactCode(const ALine: string): string; static;
-    /// <summary>„debug-notiz-JJJJ-MM-TT-hhmm.md“.</summary>
-    class function FileName(ATime: TDateTime): string; static;
+    /// <summary>Dateiname „AStem-JJJJ-MM-TT-hhmm.md“; AStem in der Sprache der Oberfläche (debug-notiz, debug-note).
+    /// </summary>
+    class function FileName(const AStem: string; ATime: TDateTime): string; static;
     /// <summary>Exception-Verlauf als Text zum Anhängen: höchstens AMax Einträge (in der Reihenfolge von
     /// AExceptions) wie „Kopieren“ im Fenster, durch Leerzeilen getrennt, Geheimnisse ausgeblendet.</summary>
     class function HistoryText(const AExceptions: TAtlasDebugExceptions; AMax: Integer): string; static;
@@ -291,9 +292,9 @@ begin
   Result := Copy(ALines, mFrom - AFirstLine, mTo - mFrom + 1);
 end;
 
-class function TAtlasDebugNote.FileName(ATime: TDateTime): string;
+class function TAtlasDebugNote.FileName(const AStem: string; ATime: TDateTime): string;
 begin
-  Result := 'debug-notiz-' + FormatDateTime('yyyy-mm-dd-hhnn', ATime) + '.md';
+  Result := AStem + '-' + FormatDateTime('yyyy-mm-dd-hhnn', ATime) + '.md';
 end;
 
 class function TAtlasDebugNote.HistoryText(const AExceptions: TAtlasDebugExceptions; AMax: Integer): string;
