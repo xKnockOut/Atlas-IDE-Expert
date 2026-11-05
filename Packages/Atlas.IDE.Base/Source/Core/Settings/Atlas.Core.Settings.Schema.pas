@@ -361,7 +361,7 @@ end;
 
 function TAtlasSettingField.PicksFile: Boolean;
 begin
-  Result := Pos('Datei wählen', Control) > 0;
+  Result := Pos('Datei wählen', Control) > 0; // german-ok: Wert aus x-control des Schemas
 end;
 
 { TAtlasSettingsSchema }

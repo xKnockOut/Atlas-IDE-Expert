@@ -58,14 +58,38 @@ uses
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Statements.Tokens;
+  Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStatementsCasesText = (Title, AddMissing, Missing, DuplicateTitle, RemoveLater, RemoveBranch, SameLine, InRange,
+    SameValue, Overlaps);
+
+const
+  cTexts: array[TStatementsCasesText] of TAtlasText = (
+    (De: 'case über Aufzählung ohne alle Werte'; En: 'case over enumeration without all values'),
+    (De: 'Fehlende Werte ergänzen (%d)'; En: 'Add missing values (%d)'),
+    (De: 'Fehlende Werte von %s: %s.'; En: 'Missing values of %s: %s.'),
+    (De: 'Doppelte case-Marke'; En: 'Duplicate case label'),
+    (De: 'Doppelten Wert aus dem späteren Zweig entfernen'; En: 'Remove duplicate value from the later branch'),
+    (De: 'Zweig mit doppeltem Wert entfernen'; En: 'Remove branch with duplicate value'),
+    (De: '%s kommt schon in Zeile %d vor (wie %s).'; En: '%s already occurs in line %d (like %s).'),
+    (De: '%s liegt schon in %s aus Zeile %d (wie %s).'; En: '%s already lies in %s from line %d (like %s).'),
+    (De: '%s hat denselben Wert wie %s aus Zeile %d (wie %s).';
+     En: '%s has the same value as %s from line %d (like %s).'),
+    (De: '%s überschneidet sich mit %s aus Zeile %d (wie %s).'; En: '%s overlaps with %s from line %d (like %s).'));
+
+{$SCOPEDENUMS OFF}
 
 { TCaseMissingEnumValueRule }
 
 function TCaseMissingEnumValueRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CaseMissingEnumValueRuleId, TRuleSeverity.Warning,
-    'case über Aufzählung ohne alle Werte');
+    cTexts[TStatementsCasesText.Title].Text);
 end;
 
 /// <summary>Werte der Aufzählung AContainer (qualifizierter Name) in AOwner, in Deklarationsreihenfolge.</summary>
@@ -201,7 +225,7 @@ var
     Result := nil;
     if TCaseCompletion.Complete(AContext.Text, AContext.Tree, ACase, AValues, APrefix, mCompletion) then
     begin
-      Result := [TRuleFix.Create(Format('Fehlende Werte ergänzen (%d)', [mCompletion.Count]), mCompletion.Edits)];
+      Result := [TRuleFix.Create(cTexts[TStatementsCasesText.AddMissing].Fmt([mCompletion.Count]), mCompletion.Edits)];
     end;
   end;
 
@@ -223,7 +247,7 @@ var
     begin
       Exit;
     end;
-    AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), Format('Fehlende Werte von %s: %s.',
+    AReport.Add(TTextRange.Create(ACase[0].StartPos, ACase[0].EndPos), cTexts[TStatementsCasesText.Missing].Fmt(
       [mTypeName, string.Join(', ', mAbsent)]), TRuleConfidence.High,
       CompletionFixes(ACase, mValues, LabelPrefix(mSlot.Labels, mTypeName)));
   end;
@@ -293,7 +317,8 @@ type
 
 function TDuplicateCaseLabelRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DuplicateCaseLabelRuleId, TRuleSeverity.Error, 'Doppelte case-Marke');
+  Result := TRuleDescriptor.Create(DuplicateCaseLabelRuleId, TRuleSeverity.Error,
+    cTexts[TStatementsCasesText.DuplicateTitle].Text);
 end;
 
 procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -458,7 +483,7 @@ var
         Neighbour := ALabel - 1;
         Range := TTextRange.Create(Tokens[ALabels[Neighbour].Last].EndPos, Tokens[Current.Last].EndPos);
       end;
-      Exit(TRuleFix.Create('Doppelten Wert aus dem späteren Zweig entfernen', [TRuleEdit.Create(Range, '')],
+      Exit(TRuleFix.Create(cTexts[TStatementsCasesText.RemoveLater].Text, [TRuleEdit.Create(Range, '')],
         True));
     end;
     // Ganzer Zweig samt Semikolon, ab dem Ende des Codes davor.
@@ -474,7 +499,7 @@ var
       ItemLast := After;
     end;
     Range := TTextRange.Create(Tokens[Before].EndPos, Tokens[ItemLast].EndPos);
-    Result := TRuleFix.Create('Zweig mit doppeltem Wert entfernen', [TRuleEdit.Create(Range, '')], False);
+    Result := TRuleFix.Create(cTexts[TStatementsCasesText.RemoveBranch].Text, [TRuleEdit.Create(Range, '')], False);
   end;
 
   function OverlapMessage(const AEarlier, ALabel: TCaseLabel; const ACode: string): string;
@@ -487,19 +512,19 @@ var
     mLine := Tokens[AEarlier.First].StartPos.Line + 1;
     if AEarlier.Key = ALabel.Key then
     begin
-      Result := Format('%s kommt schon in Zeile %d vor (wie %s).', [mText, mLine, ACode]);
+      Result := cTexts[TStatementsCasesText.SameLine].Fmt([mText, mLine, ACode]);
     end
     else if Covers(AEarlier, ALabel) and AEarlier.IsRange then
     begin
-      Result := Format('%s liegt schon in %s aus Zeile %d (wie %s).', [mText, mOther, mLine, ACode]);
+      Result := cTexts[TStatementsCasesText.InRange].Fmt([mText, mOther, mLine, ACode]);
     end
     else if Covers(AEarlier, ALabel) then
     begin
-      Result := Format('%s hat denselben Wert wie %s aus Zeile %d (wie %s).', [mText, mOther, mLine, ACode]);
+      Result := cTexts[TStatementsCasesText.SameValue].Fmt([mText, mOther, mLine, ACode]);
     end
     else
     begin
-      Result := Format('%s überschneidet sich mit %s aus Zeile %d (wie %s).', [mText, mOther, mLine, ACode]);
+      Result := cTexts[TStatementsCasesText.Overlaps].Fmt([mText, mOther, mLine, ACode]);
     end;
   end;
 
@@ -617,5 +642,8 @@ begin
     Resolver.UnpinTree;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Statements.Cases', cTexts);
 
 end.

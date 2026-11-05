@@ -75,7 +75,45 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
-  Atlas.Common.Rules.Builtin.Performance.ManagedParams;
+  Atlas.Common.Rules.Builtin.Performance.ManagedParams,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPerformanceText = (ConcatTitle, Concat, ConditionTitle, ConditionString, ConditionCall, BeginUpdateTitle,
+    BeginUpdate, SetLengthBefore, SetLengthKnown, SetLengthUnknown, GrowTitle);
+
+const
+  cTexts: array[TPerformanceText] of TAtlasText = (
+    (De: 'String-Verkettung in einer Schleife'; En: 'String concatenation in a loop'),
+    (De: '%s wird in der Schleife schrittweise verlängert; bei vielen Durchläufen ist TStringBuilder schneller';
+     En: '%s is extended step by step in the loop; with many iterations TStringBuilder is faster'),
+    (De: 'Teurer Aufruf in der Schleifenbedingung'; En: 'Expensive call in the loop condition'),
+    (De: '.%s baut bei jeder Prüfung der Bedingung einen neuen String auf; vor der Schleife in eine Variable ' +
+      'übernehmen';
+     En: '.%s builds a new string on every check of the condition; move it into a variable before the loop'),
+    (De: '%s wird bei jeder Prüfung der Bedingung erneut ausgeführt; ändert sich das Ergebnis nicht, vor der ' +
+      'Schleife berechnen';
+     En: '%s is executed again on every check of the condition; if the result does not change, compute it before the ' +
+      'loop'),
+    (De: 'Hinzufügen in einer Schleife ohne BeginUpdate'; En: 'Adding in a loop without BeginUpdate'),
+    (De: 'Jedes %s in der Schleife zeichnet das Steuerelement neu; die Schleife mit %s.BeginUpdate und try … finally ' +
+      '%s.EndUpdate umschließen';
+     En: 'Every %s in the loop repaints the control; enclose the loop with %s.BeginUpdate and try … finally ' +
+      '%s.EndUpdate'),
+    (De: 'Länge von %s vor der Schleife setzen'; En: 'Set the length of %s before the loop'),
+    (De: 'SetLength in der Schleife kopiert %s bei jedem Durchlauf; die Anzahl %s ist vorher bekannt.';
+     En: 'SetLength in the loop copies %s on every iteration; the count %s is known beforehand.'),
+    (De: 'SetLength in der Schleife kopiert %s bei jedem Durchlauf; die Länge vor der Schleife setzen oder die Werte ' +
+      'in einer TList<T> sammeln.';
+     En: 'SetLength in the loop copies %s on every iteration; set the length before the loop or collect the values ' +
+      'in a TList<T>.'),
+    (De: 'Dynamisches Array wächst in einer Schleife um je ein Element';
+     En: 'Dynamic array grows by one element per loop iteration'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -370,7 +408,7 @@ end;
 function TStringConcatInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('string-concat-in-loop', TRuleSeverity.Hint,
-    'String-Verkettung in einer Schleife', True);
+    cTexts[TPerformanceText.ConcatTitle].Text, True);
 end;
 
 procedure TStringConcatInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -415,8 +453,8 @@ begin
         Continue;
       end;
       Last := StatementEnd(Tokens, Index);
-      AReport.Add(RangeOf(Tokens, Index, Last), Format('%s wird in der Schleife schrittweise verlängert; bei ' +
-        'vielen Durchläufen ist TStringBuilder schneller', [Tokens[Index].Text]), TRuleConfidence.Low);
+      AReport.Add(RangeOf(Tokens, Index, Last), cTexts[TPerformanceText.Concat].Fmt([Tokens[Index].Text]),
+        TRuleConfidence.Low);
     end;
   finally
     Types.Free;
@@ -494,7 +532,7 @@ const
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('loop-invariant-call', TRuleSeverity.Hint,
-    'Teurer Aufruf in der Schleifenbedingung', True);
+    cTexts[TPerformanceText.ConditionTitle].Text, True);
 end;
 
 procedure TLoopInvariantCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -521,14 +559,14 @@ begin
       Previous := PreviousCode(Tokens, Index);
       if MatchText(Name, ExpensiveProperties) and (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
       begin
-        AReport.Add(RangeOf(Tokens, Index, Index), Format('.%s baut bei jeder Prüfung der Bedingung einen neuen ' +
-          'String auf; vor der Schleife in eine Variable übernehmen', [Name]), TRuleConfidence.Medium);
+        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionString].Fmt([Name]),
+          TRuleConfidence.Medium);
       end
       else if MatchText(Name, ExpensiveCalls) and StartsDesignator(Tokens, Index) and
         not ArgumentsChange(Tokens, Loop, Index) then
       begin
-        AReport.Add(RangeOf(Tokens, Index, Index), Format('%s wird bei jeder Prüfung der Bedingung erneut ' +
-          'ausgeführt; ändert sich das Ergebnis nicht, vor der Schleife berechnen', [Name]), TRuleConfidence.Medium);
+        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionCall].Fmt([Name]),
+          TRuleConfidence.Medium);
       end;
     end;
   end;
@@ -843,7 +881,7 @@ end;
 function TMissingBeginUpdateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-begin-update', TRuleSeverity.Hint,
-    'Hinzufügen in einer Schleife ohne BeginUpdate', True);
+    cTexts[TPerformanceText.BeginUpdateTitle].Text, True);
 end;
 
 /// <summary>Meldet das Hinzufügen ab AIndex bis ALast.</summary>
@@ -854,8 +892,7 @@ var
 begin
   mReceiverText := Copy(AContext.Text, ATokens[AIndex].Offset + 1,
     ATokens[PreviousCode(ATokens, ALast)].Offset - ATokens[AIndex].Offset);
-  AReport.Add(RangeOf(ATokens, AIndex, ALast), Format('Jedes %s in der Schleife zeichnet das Steuerelement neu; ' +
-    'die Schleife mit %s.BeginUpdate und try … finally %s.EndUpdate umschließen',
+  AReport.Add(RangeOf(ATokens, AIndex, ALast), cTexts[TPerformanceText.BeginUpdate].Fmt(
     [ATokens[ALast].Text, mReceiverText, mReceiverText]), TRuleConfidence.Medium);
 end;
 
@@ -1425,7 +1462,7 @@ begin
   begin
     mEdits := mEdits + StatementEdits(mStart, mStop, mReplaced);
   end;
-  Result := [TRuleFix.Create(Format('Länge von %s vor der Schleife setzen', [FTarget]), mEdits)];
+  Result := [TRuleFix.Create(cTexts[TPerformanceText.SetLengthBefore].Fmt([FTarget]), mEdits)];
 end;
 
 /// <summary>Deklarierter Typ des Arrays bzw. Ergebnistyp bei Result.</summary>
@@ -1442,13 +1479,12 @@ procedure TSetLengthScan.ReportCall(ALoop, AStatement: TSyntaxNode);
 begin
   if FCount <> '' then
   begin
-    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset), Format('SetLength in der Schleife kopiert ' +
-      '%s bei jedem Durchlauf; die Anzahl %s ist vorher bekannt.', [FTarget, FCount]), CountFix(ALoop, AStatement));
+    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset),
+      cTexts[TPerformanceText.SetLengthKnown].Fmt([FTarget, FCount]), CountFix(ALoop, AStatement));
   end
   else
   begin
-    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset), Format('SetLength in der Schleife kopiert ' +
-      '%s bei jedem Durchlauf; die Länge vor der Schleife setzen oder die Werte in einer TList<T> sammeln.',
+    FReport.Add(Range(AStatement.StartOffset, AStatement.EndOffset), cTexts[TPerformanceText.SetLengthUnknown].Fmt(
       [FTarget]));
   end;
 end;
@@ -1504,7 +1540,7 @@ end;
 function TSetLengthInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('setlength-in-loop', TRuleSeverity.Hint,
-    'Dynamisches Array wächst in einer Schleife um je ein Element');
+    cTexts[TPerformanceText.GrowTitle].Text);
 end;
 
 procedure TSetLengthInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1532,5 +1568,8 @@ begin
   ARegistry.Register(TSetLengthInLoopRule.Create);
   ARegistry.Register(TManagedParamWithoutConstRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Performance', cTexts);
 
 end.

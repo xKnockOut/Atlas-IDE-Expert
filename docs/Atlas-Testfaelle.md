@@ -2975,6 +2975,10 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+| ASL19 | Benachrichtigungen an, keine ungelesenen (z. B. nach „Alle gelesen“), hell und dunkel | Hinter dem Status steht eine neutrale Plakette „0“; Tooltip „0 ungelesene Benachrichtigungen; …“ (englisch „0 unread notifications; …“); Klick öffnet die Liste |
+| ASL20 | Build mit Fehlern, dann in der Liste „Alle gelesen“ | Plakette wird rot mit „1“, danach wieder neutral „0“; sie verschwindet nicht |
+| ASL21 | `notifications.enabled` aus (Seite *Allgemein* oder Schnellschalter), danach wieder an | Aus: keine Plakette in der Leiste; an: Plakette „0“ ohne Neustart wieder da |
+| ASL22 | Element „Status“ in „Leiste anpassen“ abwählen | Keine Plakette in der Leiste; im Atlas-Feld der IDE-Statuszeile erscheint sie wie bisher nur mit ungelesenen Einträgen |
 
 ## Projektprüfung als begrenzter Lauf (#1247)
 
@@ -8120,6 +8124,8 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog 
 | AW24 | Während F8 die Werte nachlädt: im Eingabefeld tippen, Pfeiltasten im Baum, Fenster verschieben | Fenster reagiert ohne spürbare Verzögerung (vorher wurde der Baum nach jeder Zeitscheibe neu aufgebaut) |
 | AW25 | Objekt-Zeile zugeklappt, F8 | Aufklappzeichen bleibt beim Neu-Auswerten stehen (kein kurzes Verschwinden) |
 | AW26 | Langer String (z. B. 1 MB `TStringList.Text`) als Ausdruck, Ansicht JSON bzw. Text gewählt, F8 mehrmals | Baumzeile gekürzt mit …, Ansicht unten unverändert ohne Ruckeln; Fenster schließen und wieder andocken: Zeilen, Farben und Auswahl stimmen |
+| AW27 | Fenster frei schwebend öffnen und größer ziehen, dann schmal ziehen und wieder breit; auch angedockt | Kein leerer Streifen unter der Tastenhilfe: Baum (bzw. nach dem Teiler die Ansicht) füllt die Höhe, die Tastenhilfe umbricht schmal auf mehrere Zeilen und wird breit wieder einzeilig |
+| AW28 | Leiste über der Ansicht ansehen | Links Text, Zeilen, JSON, Hex; rechts Ändern …, Festheften, IDE-Dialog (IDE-Dialog ganz rechts) |
 
 ## Werte im Editor beim Debuggen (#508)
 
@@ -9447,6 +9453,43 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
 
+## Tracker-, Willkommens- und Debugger-Texte englisch (#1458, Gruppe E)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); Projekt in einem Git-Repository mit Tracker-Verbindung (YouTrack oder GitHub).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UE1 | Englische Oberfläche (`ui.language` = en), IDE neu starten; Willkommensseite, „My issues“, Board, Issue-Vorschau, Fenster „Evaluate“ und „Exceptions“ öffnen | Alle Überschriften, Knöpfe, Menüs, Hinweise und Meldungen englisch (**Abnahme**) |
+| UE2 | *Tools › Options › Atlas › Issue tracker*, Tabelle „Snippets“ (nie geändert) | Zwei Bausteine „Please check with the current build“ und „Fixed in {commit}“ |
+| UE3 | Im Kommentar-Editor der Issue-Vorschau „Snippet ▾“ | Dieselben englischen Bausteine |
+| UE4 | Feld „Comment when finishing“ (nie geändert); dann ein Issue beenden | Feld zeigt `Done in {branch}.\n{commits}`, der Dialog „Finish …“ schlägt „Done in <Branch>.“ vor |
+| UE5 | Deutsche Oberfläche (`ui.language` = de), UE2 und UE4 | Wieder „Bitte mit aktuellem Build prüfen“, „Behoben in {commit}“ und `Erledigt in {branch}.\n{commits}` |
+| UE6 | Einen Baustein umbenennen, OK, Sprache wechseln | Eigene Bausteine bleiben, wie sie sind |
+| UE7 | Englische Oberfläche: beim Debuggen „Attach to issue …“ mit Debug-Notiz | Anhang heißt `debug-note-JJJJ-MM-TT-hhmm.md` (deutsch `debug-notiz-…`) |
+| UE8 | Englische Oberfläche: Issue beginnen, Git-Hook erlauben; `.git/hooks/prepare-commit-msg` öffnen | Kommentarzeilen englisch („Created by Atlas …“); Commit bekommt das Präfix wie bisher |
+| UE9 | Zeitbuchung „Correct …“ mit `2 hours 30 minutes`, dann `1 hour` | Wird als 2:30 bzw. 1:00 übernommen |
+| UE10 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage`, `TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage`, `TAtlasTrackerSettingsTablesTests.SnippetsDefaultsInLanguage`, `TAtlasCommitHookTests`, `TAtlasDebugNoteTests.FileNameHasDateAndTime` grün |
+
+## Texte von Atlas.IDE.Base englisch (#1458, Gruppe D)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); englische Oberfläche (`ui.language` = en), IDE neu gestartet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BEN1 | Datei mit Encoding UTF-8 ohne BOM öffnen, Statusfeld „Format“ ansehen und anklicken | Format und Menü englisch („UTF-8 without BOM“, „LF“ …), Hinweise beim Speichern englisch („… saved as …“) |
+| BEN2 | Vervollständigung mit Strg+Leertaste in einer Unit, auch mit Code-Vorlagen (`for`, `try`) | Kennzeichen der Einträge, Vorlagennamen und -beschreibungen englisch |
+| BEN3 | *Tools › Options › Keyboard* (Tastaturbelegungen der IDE) | Einträge „Atlas completion“ und „Atlas compiler check“ |
+| BEN4 | Pfad zum Server in den Optionen auf eine nicht vorhandene Datei setzen, IDE neu starten | Meldungsfenster „Server not found: … (the built-in Code Insight stays active)“; Statusfeld „AtlasServer.exe not found“ |
+| BEN5 | Server im Task-Manager beenden | Hinweis zum Ende englisch (z. B. „exit code unknown …“) |
+| BEN6 | Doku-Tooltip über einer Routine mit XML-Doku (Parameter, Rückgabe, Ausnahmen) | Überschriften englisch („Parameters“, „Returns“ …) |
+| BEN7 | Aufrufdiagramm einer Routine öffnen (Rechtsklick › Aufrufhierarchie › Diagramm) | Seitentitel „Call diagram: …“, Schalter, Legende und Hinweis englisch |
+| BEN8 | Umbenennen eines Ereignisses einer Form, die im Designer offen ist, so dass Atlas ablehnt | Grund englisch („open in the designer; there Atlas only changes …“) |
+| BEN9 | Atlas-Änderung rückgängig machen, während das Projekt ungespeichert ist | Grund „project has unsaved changes; please save first“ |
+| BEN10 | Fehlerbericht anlegen (Atlas › Problem melden) und Diagnosefenster öffnen | Texte und Funktionsnamen der Sicherung englisch |
+| BEN11 | Teamdatei `.atlas` neu anlegen (Optionen › Projekt) | Kommentare im Gerüst englisch, Datei gültig |
+| BEN12 | Deutsche Oberfläche (`ui.language` = de), BEN1, BEN3 und BEN7 | Wieder deutsche Texte |
+| BEN13 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTextLanguageTests`, `TAtlasCallDiagramTests.HtmlFollowsLanguage`, `TAtlasServerCrashesTests.DescribesExitCodesInEnglish`, `TAtlasTeamFileTests.SkeletonIsValidInEnglish` grün |
+
 ## Lokale Routinen in Paarfarben und Blocklinien (#1788)
 
 Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Paarfarben und Blocklinien an. Unit mit dieser Routine öffnen:
@@ -9489,3 +9532,36 @@ end;
 | LR11 | Englische Oberfläche | Beschriftungen englisch |
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Kontextmenü Atlas im Editor: Untermenüs und Tastenkürzel (05.11.2026)
+
+Ausgangslage: Das Untermenü *Atlas* im Kontextmenü des Editors war mit rund 40 Einträgen höher als der Bildschirm (oben abgeschnitten), und die Tastenkürzel klebten direkt am Text („FormatierenStrg+Alt+Umsch+L“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EK1 | Rechtsklick im Editor › *Atlas* | Oben „Code-Aktionen“ und „Erzeugen …“, Trennlinie, Untermenüs *Navigation*, *Bearbeiten*, *Suchen und analysieren*, *Befunde*, Trennlinie, *Debuggen*, *Tests*, *Notizen und Lesezeichen*, „Weg von hier nach …“, „Issue anlegen …“, Trennlinie, „Element ausblenden …“; das Menü passt auf den Bildschirm (**Abnahme**) |
+| EK2 | Untermenüs öffnen | Kürzel stehen in einer eigenen Spalte rechtsbündig (z. B. *Bearbeiten › Formatieren* Strg+Alt+Umsch+L, *Befunde › Nächster Befund* Strg+Alt+F8), nicht mehr am Text (**Abnahme**) |
+| EK3 | Jeden Eintrag einmal per Maus wählen (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Debuggen, Tests, Notizen und Lesezeichen) | Jeder Befehl läuft genau einmal |
+| EK4 | Kontextmenü einmal öffnen und schließen, danach im Editor Strg+Alt+Umsch+L, Strg+Alt+K, Alt+Enter, Strg+W drücken | Jeder Befehl läuft genau einmal (kein doppeltes Formatieren, kein zweiter Dialog) (**Abnahme**) |
+| EK5 | Nach EK4: Strg+Umschalt+↑ in einer Methode, dann außerhalb einer Methode; Strg+. auf einer Zeile ohne Element | In der Methode Wechsel Deklaration ⇄ Implementierung; außerhalb die Klassennavigation der IDE bzw. IDE Insight wie ohne Atlas |
+| EK6 | *Tools › Optionen › Atlas › Befehle*: Kürzel für „Formatieren“ ändern, OK, Kontextmenü öffnen | Das neue Kürzel steht im Menü, ohne Neustart |
+| EK7 | Prüfregeln aus (`problems.enabled`), Kontextmenü | *Befunde* zeigt nur „Nächster Befund“ und „Vorheriger Befund“, „Datei jetzt prüfen“ fehlt |
+| EK8 | Module Debugger und Tests über die Modulschalter abschalten, Kontextmenü | Untermenüs *Debuggen* und *Tests* fehlen, keine leeren Untermenüs, keine doppelte Trennlinie; wieder einschalten: sie erscheinen ohne Neustart |
+| EK9 | Englische Oberfläche | Untermenüs *Navigation*, *Edit*, *Search and analyze*, *Findings*, *Debugging*, *Tests*, *Notes and bookmarks*; Kürzel rechtsbündig |
+| EK10 | Rechtsklick in die Rinne einer anderen Zeile › *Atlas › Notizen und Lesezeichen › Notiz an dieser Zeile…* | Dialog nennt die angeklickte Zeile (wie NO6) |
+| EK11 | `Atlas.Tests` bauen und ausführen, Plugin-Packages bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasMenuSlotsTests`, `TAtlasKeyStrokeTests` grün |
+
+## Englische Texte der übrigen Module (#1458, Gruppe F)
+
+Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und Tests gebaut; eigenes Registry-Profil (`bds -r AtlasEnglisch`); Git-Projekt mit Testprojekt. Englisch über `ui.language` = en bzw. englische IDE, Deutsch über `ui.language` = de.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ENF1 | In `atlas.json` des Projekts `"tasks": [{"name": "Lint", "command": "x", "args": 1, "key": "Q"}, {"command": "y"}]` eintragen, Projekt aktivieren; englische Oberfläche | Meldungsansicht (Gruppe Atlas) nennt englisch „Lint: args must be a list“, „Lint: key "Q" not readable“, „tasks[1]: without name“ (**Abnahme**) |
+| ENF2 | Dasselbe mit deutscher Oberfläche | „Lint: args muss eine Liste sein“, „Lint: Taste "Q" nicht lesbar“, „tasks[1]: ohne name“ wie bisher |
+| ENF3 | Englische Oberfläche; in Claude Code `build_project` für ein Projekt, das in der IDE nicht offen ist | Antwort „The project X.dproj is not open in the IDE“ |
+| ENF4 | Englisch; während ein Build in der IDE läuft, `build_project` aufrufen; danach mit laufendem Debugger | „A build or compiler check is already running in the IDE“ bzw. „The debugger is running in the IDE“ |
+| ENF5 | Englisch; `build_project` mit `mode` = `clean` (über die Auftragsdatei im Eingang) | Antwort „Unknown mode "clean"; allowed are make, build and check“ |
+| ENF6 | Englisch; `tests.affectedBeforeCommit` an, Hook anlegen lassen (`.git/hooks/pre-commit` vorher löschen); Datei ändern und in Git Bash committen | Hook-Kommentare englisch; Frage „Atlas: Run the affected tests now (test EXE without a new build)? [y/N]“; `y` startet die Tests, nach Fehlschlag „Atlas: Tests failed. Commit anyway? [y/N]“ |
+| ENF7 | Deutsch; Einstellung aus- und einschalten (Hook neu schreiben), committen | Fragen deutsch mit „[j/N]“; `j` und `y` gelten in beiden Sprachen |
+| ENF8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTaskDefinitionsTests`, `TAtlasTaskTextsTests.IssueInBothLanguages`, `TAtlasBuildInboxTests`, `TAtlasAffectedHookTests` und die Strings-Tests von Build, BuildPipeline und Tests grün |

@@ -99,11 +99,31 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused.Shared;
+  Atlas.Common.Rules.Builtin.Unused.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TNamingText = (Title, MissingPrefix, RenameTo, LocalVariable, FieldKind, ParameterKind, ConstantKind);
+
+const
+  cTexts: array[TNamingText] of TAtlasText = (
+    (De: 'Name ohne das Präfix seiner Art'; En: 'Name without the prefix of its kind'),
+    (De: '%s %s ohne Präfix %s (erwartet: %s)'; En: '%s %s without prefix %s (expected: %s)'),
+    (De: 'In %s umbenennen'; En: 'Rename to %s'),
+    (De: 'Lokale Variable'; En: 'Local variable'),
+    (De: 'Feld'; En: 'Field'),
+    (De: 'Parameter'; En: 'Parameter'),
+    (De: 'Konstante'; En: 'Constant'));
+
+{$SCOPEDENUMS OFF}
 
 const
   OptionKeys: array[TRuleNamingKind] of string = ('local', 'field', 'parameter', 'constant');
-  KindTexts: array[TRuleNamingKind] of string = ('Lokale Variable', 'Feld', 'Parameter', 'Konstante');
+  KindTexts: array[TRuleNamingKind] of TNamingText = (TNamingText.LocalVariable, TNamingText.FieldKind,
+    TNamingText.ParameterKind, TNamingText.ConstantKind);
   TypeBodies = [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
     TSyntaxKind.HelperType];
   // Ohne Index: Komponenten stehen vor dem ersten Sichtbarkeitsabschnitt dieser Klassen.
@@ -212,7 +232,7 @@ end;
 
 function TNamingPrefixRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RuleId, TRuleSeverity.Hint, 'Name ohne das Präfix seiner Art', True);
+  Result := TRuleDescriptor.Create(RuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text, True);
 end;
 
 type
@@ -954,13 +974,13 @@ begin
     Exit;
   end;
   NewName := TNamingConvention.Expected(AName, FConvention.Prefixes[AKind]);
-  Message := Format('%s %s ohne Präfix %s (erwartet: %s)', [KindTexts[AKind], AName, FConvention.Prefixes[AKind],
+  Message := cTexts[TNamingText.MissingPrefix].Fmt([cTexts[KindTexts[AKind]].Text, AName, FConvention.Prefixes[AKind],
     NewName]);
   Fixes := nil;
   // Nur wo umbenannt wird, kann der neue Name kollidieren (ABuf als Parameter einer anderen Methode stört nicht).
   if ACanFix and (Length(AEdits) > 0) and not OccursIn(FTokens, NewName, AScopes) then
   begin
-    Fixes := [TRuleFix.Create(Format('In %s umbenennen', [NewName]), EditsFor(FTokens, AEdits, NewName))];
+    Fixes := [TRuleFix.Create(cTexts[TNamingText.RenameTo].Fmt([NewName]), EditsFor(FTokens, AEdits, NewName))];
   end;
   FReport.Add(TTextRange.Create(FTokens[At].StartPos, FTokens[At].EndPos), Message, TRuleConfidence.High, Fixes);
 end;
@@ -1424,5 +1444,8 @@ procedure RegisterNamingRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TNamingPrefixRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Naming', cTexts);
 
 end.

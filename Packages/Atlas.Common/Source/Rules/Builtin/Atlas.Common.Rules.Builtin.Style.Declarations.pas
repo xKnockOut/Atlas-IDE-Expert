@@ -38,13 +38,33 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStyleDeclarationsText = (PublicFieldTitle, Encapsulate, PublicField, GlobalTitle, Global);
+
+const
+  cTexts: array[TStyleDeclarationsText] of TAtlasText = (
+    (De: 'Öffentliches Feld'; En: 'Public field'),
+    (De: 'Feld kapseln'; En: 'Encapsulate field'),
+    (De: 'Öffentliches Feld %s; eine Property hält die Klasse änderbar.';
+     En: 'Public field %s; a property keeps the class changeable.'),
+    (De: 'Globale Variable im interface'; En: 'Global variable in the interface'),
+    (De: 'Globale Variable %s ist in jeder Unit sichtbar, die diese verwendet.';
+     En: 'Global variable %s is visible in every unit that uses this one.'));
+
+{$SCOPEDENUMS OFF}
 
 { TPublicFieldRule }
 
 function TPublicFieldRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('public-field', TRuleSeverity.Hint, 'Öffentliches Feld', True);
+  Result := TRuleDescriptor.Create('public-field', TRuleSeverity.Hint,
+    cTexts[TStyleDeclarationsText.PublicFieldTitle].Text, True);
 end;
 
 procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -186,7 +206,7 @@ var
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0), MemberText(Name, TypeName, Indent,
       AVisibility))];
-    AFix := TRuleFix.Create('Feld kapseln', Edits);
+    AFix := TRuleFix.Create(cTexts[TStyleDeclarationsText.Encapsulate].Text, Edits);
   end;
 
   // Zählt ein Feld im Abschnitt AVisibility ('' = ohne Sichtbarkeitswort)?
@@ -247,8 +267,8 @@ var
       Fixes := FieldFixes(AType, Child, Section, Visibility, AImplicit);
       for Name in Child.Name.Split([',']) do
       begin
-        AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos), Format('Öffentliches Feld %s; eine Property ' +
-          'hält die Klasse änderbar.', [Trim(Name)]), Fixes);
+        AReport.Add(TTextRange.Create(Child.StartPos, Child.EndPos),
+          cTexts[TStyleDeclarationsText.PublicField].Fmt([Trim(Name)]), Fixes);
       end;
     end;
   end;
@@ -312,7 +332,8 @@ end;
 
 function TGlobalVariableRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('global-variable', TRuleSeverity.Hint, 'Globale Variable im interface', True);
+  Result := TRuleDescriptor.Create('global-variable', TRuleSeverity.Hint,
+    cTexts[TStyleDeclarationsText.GlobalTitle].Text, True);
 end;
 
 procedure TGlobalVariableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -418,8 +439,7 @@ var
       end;
       for Name in Decl.Name.Split([',']) do
       begin
-        AReport.Add(NameRange(Decl, Trim(Name)), Format('Globale Variable %s ist in jeder Unit sichtbar, die ' +
-          'diese verwendet.', [Trim(Name)]));
+        AReport.Add(NameRange(Decl, Trim(Name)), cTexts[TStyleDeclarationsText.Global].Fmt([Trim(Name)]));
       end;
     end;
   end;
@@ -449,5 +469,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Style.Declarations', cTexts);
 
 end.

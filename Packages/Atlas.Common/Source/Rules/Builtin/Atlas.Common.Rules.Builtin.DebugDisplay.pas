@@ -40,14 +40,31 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.TypeMembers,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDebugDisplayRuleText = (Title, Invalid, NoMember, NoChildMember);
+
+const
+  cTexts: array[TDebugDisplayRuleText] of TAtlasText = (
+    (De: 'Wertdarstellung nennt unbekanntes Mitglied'; En: 'Value display names an unknown member'),
+    (De: 'Ungültige Wertdarstellung: %s.'; En: 'Invalid value display: %s.'),
+    (De: '%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.';
+     En: '%s has no member “%s”; the placeholder {%s} stays empty while debugging.'),
+    (De: '%s hat kein Mitglied „%s“ für die Unterelemente.'; En: '%s has no member “%s” for the child elements.'));
+
+{$SCOPEDENUMS OFF}
 
 { TDebugDisplayPlaceholderRule }
 
 function TDebugDisplayPlaceholderRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DebugDisplayPlaceholderRuleId, TRuleSeverity.Warning,
-    'Wertdarstellung nennt unbekanntes Mitglied');
+    cTexts[TDebugDisplayRuleText.Title].Text);
 end;
 
 /// <summary>Vorlage der Wertdarstellung; False (gemeldet), wenn sie ungültig ist. Ohne Vorlage eine leere.
@@ -72,7 +89,7 @@ begin
     Segment.Offset := ATemplate.ErrorOffset;
     Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
     AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + 1),
-      Format('Ungültige Wertdarstellung: %s.', [ATemplate.Error]));
+      cTexts[TDebugDisplayRuleText.Invalid].Fmt([ATemplate.Error]));
   end;
 end;
 
@@ -94,8 +111,7 @@ begin
     end;
     Column := TDebugDisplayText.SourceColumn(ALines[ASource.TemplateLine], ASource.TemplateColumn, Segment);
     AReport.Add(TTextRange.Create(ASource.TemplateLine, Column, ASource.TemplateLine, Column + Length(Root)),
-      Format('%s hat kein Mitglied „%s“; der Platzhalter {%s} bleibt beim Debuggen leer.',
-      [ATypeName, Root, Segment.Text]));
+      cTexts[TDebugDisplayRuleText.NoMember].Fmt([ATypeName, Root, Segment.Text]));
   end;
 end;
 
@@ -131,7 +147,7 @@ begin
     begin
       Found := ChildColumn(ALines[ASource.ChildrenLine], Name);
       AReport.Add(TTextRange.Create(ASource.ChildrenLine, Found - 1, ASource.ChildrenLine, Found - 1 + Length(Name)),
-        Format('%s hat kein Mitglied „%s“ für die Unterelemente.', [ATypeName, Name]));
+        cTexts[TDebugDisplayRuleText.NoChildMember].Fmt([ATypeName, Name]));
     end;
   end;
 end;
@@ -172,5 +188,8 @@ procedure RegisterDebugDisplayRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDebugDisplayPlaceholderRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DebugDisplay', cTexts);
 
 end.

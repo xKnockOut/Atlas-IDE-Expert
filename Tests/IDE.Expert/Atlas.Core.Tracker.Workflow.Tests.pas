@@ -20,6 +20,10 @@ type
     procedure ParseListAndListText;
     [Test]
     procedure FillReplacesPlaceholders;
+    /// <summary>Unveränderte Vorgabe von issues.endComment folgt der Sprache der Oberfläche, eigener Text bleibt
+    /// (#1458); die deutsche Vorgabe ist die des Schemas.</summary>
+    [Test]
+    procedure EndCommentFollowsLanguage;
     [Test]
     procedure MentionsKeyAsOwnWord;
     [Test]
@@ -83,6 +87,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
@@ -312,6 +317,19 @@ begin
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.GitHub), 'GitHub');
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
   Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
+end;
+
+procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
+begin
+  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesEndComment, TAtlasTrackerWorkflow.DefaultEndComment);
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndCommentEn,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, True));
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndCommentEn, False));
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, False));
+  Assert.AreEqual('Fertig: {pr}', TAtlasTrackerWorkflow.EndCommentFor('Fertig: {pr}', True), 'eigener Text');
+  Assert.AreEqual('', TAtlasTrackerWorkflow.EndCommentFor('', True), 'leer = kein Kommentar');
 end;
 
 procedure TAtlasTrackerWorkflowTests.FillReplacesPlaceholders;
