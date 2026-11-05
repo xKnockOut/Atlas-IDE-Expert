@@ -1,7 +1,9 @@
 ﻿unit Atlas.IDE.StatusBar.View;
 
 // Inhalt der Atlas-Statusleiste (#1155) für eine Editoransicht, wie ihn TAtlasIdeStatusBar je Takt setzt:
-// - Status aus dem Atlas-Feld (Text, Zustand, Tooltip) samt Plakette der Benachrichtigungen (#1234).
+// - Status aus dem Atlas-Feld (Text, Zustand, Tooltip) samt Plakette der Benachrichtigungen (#1234) und den
+//   Zusatzfeldern der Module (z. B. „interface-Änderung“ der Unit-Beziehungen), die dann nicht in der Statuszeile
+//   stehen.
 // - Zähler der Befunde der Unit aus dem Speicher der Probleme.
 // - Live-Prüfung: Stand, Ruhe beim Debuggen (#1241), Lauf der Projektprüfung des Servers (#1247) oder bei
 //   älteren Servern Fortschritt aus den Befunden (#1232).
@@ -219,6 +221,29 @@ begin
     TAtlasStrings.Text(TAtlasTextId.StatusBarMethodJump);
 end;
 
+/// <summary>Zusatzfelder des Atlas-Felds, solange es umgezogen ist (TAtlasStatusField.Relocated); sonst stehen sie
+/// in der Statuszeile.</summary>
+procedure ExtrasInto(AField: TAtlasStatusField; var AView: TAtlasStatusBarView);
+var
+  mItems: TArray<TAtlasStatusExtraItem>;
+  mIndex: Integer;
+begin
+  AView.Extras := nil;
+  if not TAtlasStatusField.Relocated then
+  begin
+    Exit;
+  end;
+  mItems := AField.ExtraItems;
+  SetLength(AView.Extras, Length(mItems));
+  for mIndex := 0 to High(mItems) do
+  begin
+    AView.Extras[mIndex].Id := mItems[mIndex].Id;
+    AView.Extras[mIndex].Text := mItems[mIndex].Text;
+    AView.Extras[mIndex].Hint := mItems[mIndex].Hint;
+    AView.Extras[mIndex].Clickable := mItems[mIndex].Clickable;
+  end;
+end;
+
 { TAtlasStatusBarViews }
 
 class function TAtlasStatusBarViews.ProblemsOn(const ASettings: TAtlasPluginSettings): Boolean;
@@ -278,10 +303,11 @@ begin
   end;
   AView.StatusState := AField.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
-  AView.BadgeShown := AField.BadgeShown;
-  AView.BadgeCount := AField.BadgeCount;
-  AView.BadgeState := AField.BadgeState;
-  AView.BadgeHint := AField.BadgeHint;
+  AView.BadgeShown := AField.Badge.Shown;
+  AView.BadgeCount := AField.Badge.Count;
+  AView.BadgeState := AField.Badge.State;
+  AView.BadgeHint := AField.Badge.Hint;
+  ExtrasInto(AField, AView);
 end;
 
 class function TAtlasStatusBarViews.ViewFor(const AView: IOTAEditView; const AItems: TArray<string>;

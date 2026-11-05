@@ -52,7 +52,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.DfmPropertyRules,
-  Shell.Workspace;
+  Shell.Workspace,
+  Shell.Texts;
 
 class procedure TShellDfmPropertyRules.Attach(ACommands: TLspCommands;
   const AServices: TShellDfmPropertyRulesServices);
@@ -76,7 +77,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['uri']));
   end;
   mScope := TLspDfmPropertyRules.ScopeForm;
   if AArguments.Count > 1 then

@@ -50,7 +50,7 @@ function NewLogger(const AOptions: TCommandLineOptions): ILogger;
 var
   mLogger: TLogger;
   mAnonymizer: ILogAnonymizer;
-  mWarning: string;
+  mWarning: TCommandLineWarning;
 begin
   mLogger := TLogger.Create;
   Result := mLogger;
@@ -59,7 +59,7 @@ begin
     AOptions.LogNames, AOptions.LogLevel, mAnonymizer);
   for mWarning in AOptions.Warnings do
   begin
-    Result.Warning(mWarning);
+    Result.Warning(mWarning.Text);
   end;
 end;
 

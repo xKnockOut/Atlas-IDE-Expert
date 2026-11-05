@@ -113,7 +113,28 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Detection,
   Atlas.Core.Vcs.Composition,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TVcsChangesText = (Failed, NotFound, NoSvn, NoWorkingCopy, NoProviderCopy, NoGit, NoMergeBase, SvnStatus);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TVcsChangesText] of TAtlasText = (
+    (De: '%s %s ist fehlgeschlagen (Exit-Code %d): %s'; En: '%s %s failed (exit code %d): %s'),
+    (De: '%s nicht gefunden unter %s (vcs.%s.path)'; En: '%s not found at %s (vcs.%s.path)'),
+    (De: '%s liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert (TortoiseSVN mit ' +
+    'Kommandozeilenwerkzeugen genügt)';
+    En: '%s is in an SVN working copy, but svn is not installed (TortoiseSVN with command-line tools is enough)'),
+    (De: '%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie';
+    En: '%s is neither in a Git repository nor in an SVN working copy'),
+    (De: '%s liegt in keiner Arbeitskopie für vcs.provider = %s';
+    En: '%s is in no working copy for vcs.provider = %s'),
+    (De: 'Kein Git-Repository'; En: 'No Git repository'),
+    (De: 'Keine Merge-Base mit %s'; En: 'No merge base with %s'),
+    (De: 'svn status ist fehlgeschlagen (%s)'; En: 'svn status failed (%s)'));
 
 { TVcsChanges }
 
@@ -156,8 +177,8 @@ begin
     end);
   if ACheck and (AExitCode <> 0) then
   begin
-    raise EVcsChanges.CreateFmt('%s %s ist fehlgeschlagen (Exit-Code %d): %s',
-      [AExecutable, string.Join(' ', AArguments), AExitCode, string.Join(' ', Output)]);
+    raise EVcsChanges.Create(cTexts[TVcsChangesText.Failed].Fmt([AExecutable, string.Join(' ', AArguments),
+      AExitCode, string.Join(' ', Output)]));
   end;
   Result := Output;
 end;
@@ -190,8 +211,9 @@ begin
   end;
   if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
   begin
-    raise EVcsChanges.CreateFmt('%s nicht gefunden unter %s (vcs.%s.path)',
-      [TAtlasVcsTools.ProgramName(AKind), mLocation.Configured, TAtlasVcsTools.ProgramName(AKind)]);
+    raise EVcsChanges.Create(cTexts[TVcsChangesText.NotFound].Fmt([TAtlasVcsTools.ProgramName(AKind),
+      mLocation.Configured,
+      TAtlasVcsTools.ProgramName(AKind)]));
   end;
   Result := mLocation.Executable;
 end;
@@ -228,21 +250,19 @@ begin
         SvnExe := ToolFor(TAtlasVcsKind.Svn, ASvnPath);
         if SvnExe = '' then
         begin
-          raise EVcsChanges.CreateFmt('%s liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert ' +
-            '(TortoiseSVN mit Kommandozeilenwerkzeugen genügt)', [AWorkingDir]);
+          raise EVcsChanges.Create(cTexts[TVcsChangesText.NoSvn].Fmt([AWorkingDir]));
         end;
         Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe, mTimeoutMs * 4);
       end;
   else
     if Provider = TAtlasVcsProvider.Auto then
     begin
-      raise EVcsChanges.CreateFmt('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie',
-        [AWorkingDir]);
+      raise EVcsChanges.Create(cTexts[TVcsChangesText.NoWorkingCopy].Fmt([AWorkingDir]));
     end
     else
     begin
-      raise EVcsChanges.CreateFmt('%s liegt in keiner Arbeitskopie für vcs.provider = %s',
-        [AWorkingDir, AtlasVcsProviderText(Provider)]);
+      raise EVcsChanges.Create(cTexts[TVcsChangesText.NoProviderCopy].Fmt([AWorkingDir,
+        AtlasVcsProviderText(Provider)]));
     end;
   end;
 end;
@@ -289,7 +309,7 @@ begin
   Output := Git(['rev-parse', '--show-toplevel']);
   if Length(Output) = 0 then
   begin
-    raise EVcsChanges.Create('Kein Git-Repository');
+    raise EVcsChanges.Create(cTexts[TVcsChangesText.NoGit].Text);
   end;
   FRepoRoot := ExcludeTrailingPathDelimiter(StringReplace(Trim(Output[0]), '/', PathDelim, [rfReplaceAll]));
   Ref := ARef;
@@ -298,7 +318,7 @@ begin
     Output := Git(['merge-base', ARef, 'HEAD']);
     if Length(Output) = 0 then
     begin
-      raise EVcsChanges.CreateFmt('Keine Merge-Base mit %s', [ARef]);
+      raise EVcsChanges.Create(cTexts[TVcsChangesText.NoMergeBase].Fmt([ARef]));
     end;
     Ref := Trim(Output[0]);
   end;
@@ -414,7 +434,7 @@ begin
     mOutcome := FVcs.Changes(mChanges);
     if mOutcome <> TAtlasVcsOutcome.Ok then
     begin
-      raise EVcsChanges.CreateFmt('svn status ist fehlgeschlagen (%s)', [AtlasVcsOutcomeName(mOutcome)]);
+      raise EVcsChanges.Create(cTexts[TVcsChangesText.SvnStatus].Fmt([AtlasVcsOutcomeName(mOutcome)]));
     end;
   end;
   // SVN kennt keine Merge-Base: --changed ohne eigene Basis vergleicht mit BASE.
@@ -443,5 +463,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.VcsChanges', cTexts);
 
 end.

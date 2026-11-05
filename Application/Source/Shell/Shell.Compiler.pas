@@ -109,7 +109,22 @@ uses
   System.DateUtils,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Compiler.IdeCommand,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TIdeCompilerText = (NoIde, ForeignIde, NoResult);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TIdeCompilerText] of TAtlasText = (
+    (De: 'cc.ps1 start hat keine IDE gestartet (Exit-Code %d)';
+    En: 'cc.ps1 start did not start an IDE (exit code %d)'),
+    (De: 'cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE';
+    En: 'cc.ps1 start named the already running IDE %d; Atlas only builds in an IDE of its own'),
+    (De: 'cc.ps1 build hat kein Ergebnis geliefert (Exit-Code %d)';
+    En: 'cc.ps1 build returned no result (exit code %d)'));
 
 { TShellCompilerEditions }
 
@@ -312,7 +327,7 @@ begin
     TProjectPaths.DirectoryOf(AProject), Output);
   if not TCompilerIdeCommand.ParsePid(Output, mPid) then
   begin
-    AError := Format('cc.ps1 start hat keine IDE gestartet (Exit-Code %d)', [Code]);
+    AError := cTexts[TIdeCompilerText.NoIde].Fmt([Code]);
     Exit(False);
   end;
   for Other in Running do
@@ -320,7 +335,7 @@ begin
     if Other = mPid then
     begin
       // Nie in eine fremde IDE bauen, etwa die des Benutzers (ADR 0007).
-      AError := Format('cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE', [mPid]);
+      AError := cTexts[TIdeCompilerText.ForeignIde].Fmt([mPid]);
       Exit(False);
     end;
   end;
@@ -353,7 +368,7 @@ begin
     begin
       FPid := 0;
     end;
-    AError := Format('cc.ps1 build hat kein Ergebnis geliefert (Exit-Code %d)', [Code]);
+    AError := cTexts[TIdeCompilerText.NoResult].Fmt([Code]);
     Exit(False);
   end;
   Lines := nil;
@@ -395,5 +410,8 @@ begin
   end;
   FPid := 0;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Compiler', cTexts);
 
 end.

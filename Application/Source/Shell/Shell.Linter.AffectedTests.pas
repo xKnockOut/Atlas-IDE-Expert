@@ -46,7 +46,19 @@ uses
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
-  Shell.Linter.Index;
+  Shell.Linter.Index,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterAffectedText = (TurnOn, FormatInvalid);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterAffectedText] of TAtlasText = (
+    (De: '%s; einschalten mit "tests": {"affected": true}'; En: '%s; turn on with "tests": {"affected": true}'),
+    (De: '--affected-tests kennt --format text, json und dunitx, nicht "%s"';
+    En: '--affected-tests knows --format text, json and dunitx, not "%s"'));
 
 /// <summary>Hauptdateien der Projekte der Gruppe AGroupFile.</summary>
 function GroupPrograms(const AGroupFile: string; const ASettings: TServerSettings): TArray<string>;
@@ -152,7 +164,7 @@ begin
   begin
     // Zu viele Namen für eine Befehlszeile: dann ohne --run alle.
     AFound.All := True;
-    AFound.AllReason := 'zu viele Tests für ein --run-Argument';
+    AFound.AllReason := TShellAffectedTests.TooManyForRun;
   end;
   mOutput := TAffectedTests.Render(AFound, AFormat);
   if AFormat = TAffectedFormat.DUnitX then
@@ -183,7 +195,7 @@ begin
   mSettings := TLinterSettings.Load(ATarget.ConfigRoot);
   if not mSettings.Tests.Affected then
   begin
-    TLinterOutput.Error(TShellAffectedTests.OffMessage + '; einschalten mit "tests": {"affected": true}');
+    TLinterOutput.Error(cTexts[TLinterAffectedText.TurnOn].Fmt([TShellAffectedTests.OffMessage]));
     Exit(TFindingsOutput.ExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
@@ -206,8 +218,7 @@ begin
   TLinterOutput.Warnings(AOptions);
   if not TAffectedTests.TryParseFormat(AOptions.FormatText, mFormat) then
   begin
-    TLinterOutput.Error(Format('--affected-tests kennt --format text, json und dunitx, nicht "%s"',
-      [AOptions.FormatText]));
+    TLinterOutput.Error(cTexts[TLinterAffectedText.FormatInvalid].Fmt([AOptions.FormatText]));
     Exit(TFindingsOutput.ExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
@@ -224,5 +235,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.AffectedTests', cTexts);
 
 end.

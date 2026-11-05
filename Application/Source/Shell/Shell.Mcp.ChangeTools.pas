@@ -38,7 +38,58 @@ uses
   Shell.Platform,
   Shell.Bootstrap,
   Shell.AffectedTests,
-  Shell.Hotspots;
+  Shell.Hotspots,
+  Atlas.Common.Localization.Texts,
+  Shell.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpChangeText = (GetAffectedTestsTool, GetAffectedTestsBase, GetAffectedTestsIncludeUncommitted,
+    GetAffectedTestsDepth, GetAffectedTestsFormat, GetHotspotsTool, GetHotspotsLevel, GetHotspotsLimit,
+    GetHotspotsMonths, GetHotspotsSection, GetHotspotsFormat, AllNeeded, NoneAffected, LimitInvalid, HotspotsOff,
+    NoHotspots);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpChangeText] of TAtlasText = (
+    (De: 'Betroffene Tests einer Änderung (#1353): aus dem Unterschied zur Basis (Git oder SVN wie --changed) die ' +
+    'geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen bis zur Tiefe verfolgen (wie ' +
+    'get_impact) und die DUnitX-Testmethoden nennen, die sie erreichen, je mit Grund. Sind mehr als 80 % ' +
+    'einer Fixture betroffen, die ganze Fixture. "run" im Format json passt direkt in run_tests.tests; "all" ' +
+    'heißt, dass alle Tests nötig sind (Grund in "reason").';
+    En: 'Affected tests of a change (#1353): from the difference to the base (Git or SVN like --changed) ' +
+    'determine the changed routines, types and constants, follow their impact up to the depth (like ' +
+    'get_impact) and name the DUnitX test methods that reach them, each with a reason. If more than 80 % of ' +
+    'a fixture is affected, the whole fixture. "run" in format json fits directly into run_tests.tests; ' +
+    '"all" means that all tests are needed (reason in "reason").'),
+    (De: 'Git-Ref (Merge-Base mit HEAD) bzw. SVN-Revision; leer = main bzw. BASE';
+    En: 'Git ref (merge base with HEAD) or SVN revision; empty = main or BASE'),
+    (De: 'Index, Arbeitsverzeichnis und neue Dateien mitzählen'; En: 'Count the index, working tree and new files'),
+    (De: 'Ebenen; leer = tests.affectedDepth'; En: 'Levels; empty = tests.affectedDepth'),
+    (De: 'text (Vorgabe), json oder dunitx (Argument --run:… für die Test-EXE)';
+    En: 'text (default), json or dunitx (argument --run:… for the test EXE)'),
+    (De: 'Hotspots (#1354): Units bzw. Methoden, die im Zeitraum oft geändert wurden und zugleich komplex sind ' +
+    '(Wert = normierte Änderungen × normierte kognitive Komplexität), mit Änderungen, Autoren, Zeilen, Trend ' +
+    'der Komplexität und letzter Änderung aus Git bzw. SVN (vcs.provider). Mit section "coupling" die ' +
+    'Änderungskopplung: Dateien, die fast immer zusammen geändert werden, ohne uses-Kante zwischen ihnen. ' +
+    'Zeitraum und Mindestzahl gemeinsamer Commits aus hotspots.* in atlas.json. Lesend.';
+    En: 'Hotspots (#1354): units or methods that changed often in the period and are complex at the same time ' +
+    '(score = normalized changes × normalized cognitive complexity), with changes, authors, lines, ' +
+    'complexity trend and last change from Git or SVN (vcs.provider). With section "coupling" the change ' +
+    'coupling: files that are almost always changed together without a uses edge between them. Period and ' +
+    'minimum number of shared commits from hotspots.* in atlas.json. Read-only.'),
+    (De: 'Ebene; Vorgabe unit'; En: 'Level; default unit'),
+    (De: 'Länge der Liste; Vorgabe 20'; En: 'Length of the list; default 20'),
+    (De: 'Zeitraum in Monaten; Vorgabe hotspots.months (12)'; En: 'Period in months; default hotspots.months (12)'),
+    (De: 'Abschnitt; Vorgabe hotspots'; En: 'Section; default hotspots'),
+    (De: 'text (Vorgabe), markdown oder json'; En: 'text (default), markdown or json'),
+    (De: 'Alle Tests nötig: %s'; En: 'All tests needed: %s'),
+    (De: 'Keine betroffenen Tests gegenüber %s.'; En: 'No affected tests compared with %s.'),
+    (De: '"limit" ist eine ganze Zahl ab 1'; En: '"limit" is a whole number from 1'),
+    (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are turned off (hotspots.enabled)'),
+    (De: 'Keine Hotspots: %s. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.';
+    En: 'No hotspots: %s. Hotspots need a Git repository or an SVN working copy.'));
+
 /// <summary>Basis, includeUncommitted (Vorgabe True) und Tiefe aus den Argumenten von get_affected_tests.</summary>
 function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TShellAffectedQuery;
 begin
@@ -115,15 +166,15 @@ function DUnitXText(const AFound: TAffectedResult): string;
 begin
   if AFound.All then
   begin
-    Result := 'Alle Tests nötig: ' + AFound.AllReason;
+    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([AFound.AllReason]);
   end
   else if Length(AFound.Tests) = 0 then
   begin
-    Result := Format('Keine betroffenen Tests gegenüber %s.', [AFound.Base]);
+    Result := cTexts[TMcpChangeText.NoneAffected].Fmt([AFound.Base]);
   end
   else if not TAffectedTests.DUnitXArgument(AFound, Result) then
   begin
-    Result := 'Alle Tests nötig: zu viele Tests für ein --run-Argument';
+    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([TShellAffectedTests.TooManyForRun]);
   end;
 end;
 
@@ -141,7 +192,7 @@ begin
   end;
   if not TAffectedTests.TryParseFormat(TMcpServer.OptionalString(AArguments, 'format'), mFormat) then
   begin
-    raise EMcpToolError.Create('"format" ist text, json oder dunitx');
+    raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
   mReadText := AffectedReadText();
   mFound := FindAffected(AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
@@ -158,20 +209,16 @@ end;
 
 procedure AddGetAffectedTests(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('get_affected_tests',
-    'Betroffene Tests einer Änderung (#1353): aus dem Unterschied zur Basis (Git oder SVN wie --changed) die ' +
-    'geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen bis zur Tiefe verfolgen (wie ' +
-    'get_impact) und die DUnitX-Testmethoden nennen, die sie erreichen, je mit Grund. Sind mehr als 80 % einer ' +
-    'Fixture betroffen, die ganze Fixture. "run" im Format json passt direkt in run_tests.tests; "all" heißt, ' +
-    'dass alle Tests nötig sind (Grund in "reason").',
-    '{"type":"object","properties":{' +
-      '"base":{"type":"string","description":"Git-Ref (Merge-Base mit HEAD) bzw. SVN-Revision; leer = main bzw. ' +
-        'BASE"},' +
-      '"includeUncommitted":{"type":"boolean","default":true,"description":"Index, Arbeitsverzeichnis und neue ' +
-        'Dateien mitzählen"},' +
-      '"depth":{"type":"integer","minimum":1,"maximum":5,"description":"Ebenen; leer = tests.affectedDepth"},' +
-      '"format":{"type":"string","enum":["text","json","dunitx"],"description":"text (Vorgabe), json oder ' +
-        'dunitx (Argument --run:… für die Test-EXE)"}}}',
+  AContext.Server.AddTool('get_affected_tests', cTexts[TMcpChangeText.GetAffectedTestsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"base":{"type":"string","description":%s},' +
+      '"includeUncommitted":{"type":"boolean","default":true,"description":%s},' +
+      '"depth":{"type":"integer","minimum":1,"maximum":5,"description":%s},' +
+      '"format":{"type":"string","enum":["text","json","dunitx"],"description":%s}}}',
+      [cTexts[TMcpChangeText.GetAffectedTestsBase].Text,
+      cTexts[TMcpChangeText.GetAffectedTestsIncludeUncommitted].Text,
+      cTexts[TMcpChangeText.GetAffectedTestsDepth].Text,
+      cTexts[TMcpChangeText.GetAffectedTestsFormat].Text]),
     ContextTool(AContext, ToolGetAffectedTests), TMcpToolKind.Process);
 end;
 
@@ -189,7 +236,7 @@ begin
   if (Result <> '') and not SameText(Result, 'text') and not SameText(Result, 'markdown') and
     not SameText(Result, 'json') then
   begin
-    raise EMcpToolError.Create('"format" ist text, markdown oder json');
+    raise EMcpToolError.Create(TShellTexts.Choice('format', ['text', 'markdown', 'json']));
   end;
 end;
 
@@ -202,7 +249,7 @@ begin
   end;
   if Result < 1 then
   begin
-    raise EMcpToolError.Create('"limit" ist eine ganze Zahl ab 1');
+    raise EMcpToolError.Create(cTexts[TMcpChangeText.LimitInvalid].Text);
   end;
 end;
 
@@ -230,7 +277,7 @@ begin
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create('Kein Projekt geladen');
+    raise EMcpToolError.Create(TShellTexts.NoProject);
   end;
 end;
 
@@ -265,11 +312,11 @@ begin
   mSettings := AContext.Group.Main.Configuration.Settings;
   if not mSettings.HotspotsEnabled then
   begin
-    raise EMcpToolError.Create('Hotspots sind ausgeschaltet (hotspots.enabled)');
+    raise EMcpToolError.Create(cTexts[TMcpChangeText.HotspotsOff].Text);
   end;
   if not THotspotReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
   begin
-    raise EMcpToolError.Create('"section" ist hotspots oder coupling');
+    raise EMcpToolError.Create(TShellTexts.Choice('section', ['hotspots', 'coupling']));
   end;
   mFormat := HotspotFormatOf(AArguments);
   mLimit := HotspotLimitOf(AArguments);
@@ -277,7 +324,7 @@ begin
   // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
   if not TShellHotspotVcs.Detect(AContext.Root, mSettings, mVcs, mError) then
   begin
-    Exit('Keine Hotspots: ' + mError + '. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.');
+    Exit(cTexts[TMcpChangeText.NoHotspots].Fmt([mError]));
   end;
   try
     mResult := AContext.Hotspots.Analyze(mRequest, mVcs);
@@ -290,20 +337,18 @@ end;
 
 procedure AddGetHotspots(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('get_hotspots',
-    'Hotspots (#1354): Units bzw. Methoden, die im Zeitraum oft geändert wurden und zugleich komplex sind ' +
-    '(Wert = normierte Änderungen × normierte kognitive Komplexität), mit Änderungen, Autoren, Zeilen, Trend ' +
-    'der Komplexität und letzter Änderung aus Git bzw. SVN (vcs.provider). Mit section "coupling" die ' +
-    'Änderungskopplung: Dateien, die fast immer zusammen geändert werden, ohne uses-Kante zwischen ihnen. ' +
-    'Zeitraum und Mindestzahl gemeinsamer Commits aus hotspots.* in atlas.json. Lesend.',
-    '{"type":"object","properties":{' +
-      '"level":{"type":"string","enum":["unit","method"],"description":"Ebene; Vorgabe unit"},' +
-      '"limit":{"type":"integer","minimum":1,"description":"Länge der Liste; Vorgabe 20"},' +
-      '"months":{"type":"integer","minimum":1,"maximum":60,"description":"Zeitraum in Monaten; Vorgabe ' +
-        'hotspots.months (12)"},' +
-      '"section":{"type":"string","enum":["hotspots","coupling"],"description":"Abschnitt; Vorgabe hotspots"},' +
-      '"format":{"type":"string","enum":["text","markdown","json"],"description":"text (Vorgabe), markdown ' +
-        'oder json"}}}',
+  AContext.Server.AddTool('get_hotspots', cTexts[TMcpChangeText.GetHotspotsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"level":{"type":"string","enum":["unit","method"],"description":%s},' +
+      '"limit":{"type":"integer","minimum":1,"description":%s},' +
+      '"months":{"type":"integer","minimum":1,"maximum":60,"description":%s},' +
+      '"section":{"type":"string","enum":["hotspots","coupling"],"description":%s},' +
+      '"format":{"type":"string","enum":["text","markdown","json"],"description":%s}}}',
+      [cTexts[TMcpChangeText.GetHotspotsLevel].Text,
+      cTexts[TMcpChangeText.GetHotspotsLimit].Text,
+      cTexts[TMcpChangeText.GetHotspotsMonths].Text,
+      cTexts[TMcpChangeText.GetHotspotsSection].Text,
+      cTexts[TMcpChangeText.GetHotspotsFormat].Text]),
     ContextTool(AContext, ToolGetHotspots));
 end;
 
@@ -313,5 +358,8 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 begin
   AddGetHotspots(AContext);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp.ChangeTools', cTexts);
 
 end.
