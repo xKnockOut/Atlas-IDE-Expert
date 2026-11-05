@@ -183,8 +183,9 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Issues := Areas[16];
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), Issues.Text);
+    Issues := Areas[15];
+    // Reiter des Moduls hinter denen von Base (#1456), beschriftet wie der Bereich im Katalog.
+    Assert.AreEqual(Page.Catalog.AreaCaption('issues', TAtlasStrings.Language = TAtlasLanguage.English), Issues.Text);
     // Alle Tracker-Einstellungen auf dem Hauptknoten der Seite Issue-Tracker.
     Tracker := SheetOf(FSection.General.View.Tracker);
     Assert.IsNotNull(Tracker);

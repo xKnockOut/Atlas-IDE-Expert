@@ -18,7 +18,8 @@ type
     DfmRulesPreviewApply, DfmRulesDone, CompilerBaselineCommand, CompilerBaselineNone, CompilerBaselineDone,
     CompilerBaselineSkipped, CompilerBaselineFailed, CompilerBaselineNoProject, ProblemsFixAllNoFiles,
     ProblemsFixAllNothing, ProblemsFixAllDone, ProblemsFixAllFailed, ProblemsFixAllAction, FixPreviewTitle,
-    FixPreviewRejected, FixPreviewSelection, FixPreviewApply, FixPreviewCancel);
+    FixPreviewRejected, FixPreviewSelection, FixPreviewApply, FixPreviewCancel,
+    SettingsBaselineUpdate, SettingsDfmPropertyRules, SettingsFixBulk);
 
   TAtlasRulesStrings = class
   public
@@ -79,7 +80,10 @@ const
      '%s: verworfen, die Korrektur ergäbe neue Syntaxfehler',
      '%d Korrekturen in %d Dateien gewählt',
      'Korrigieren',
-     'Abbrechen'),
+     'Abbrechen',
+     'Befehl „Baseline des Projekts aktualisieren“ in der Befehlspalette',
+     'Befehle „Eigenschaftsregeln anwenden“ in der Befehlspalette',
+     'Sammelkorrektur im Fenster Atlas-Prüfung („Alle sicheren Treffer korrigieren …“)'),
     ('Update project baseline',
      'Update baseline: no active project.',
      'Update baseline: the Atlas server wrote no baseline (project not loaded yet, server not ready or ' +
@@ -124,7 +128,10 @@ const
      '%s: rejected, the fix would cause new syntax errors',
      '%d fixes in %d files selected',
      'Fix',
-     'Cancel'));
+     'Cancel',
+     'Command "Update project baseline" in the command palette',
+     'Commands “Apply property rules” in the command palette',
+     'Bulk fix in the Atlas check window ("Fix all safe findings …")'));
 
 { TAtlasRulesStrings }
 
