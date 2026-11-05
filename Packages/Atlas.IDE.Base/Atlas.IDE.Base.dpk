@@ -423,6 +423,7 @@ contains
   Atlas.Core.Editor.WrapSelection in 'Source\Core\Editor\Atlas.Core.Editor.WrapSelection.pas',
   Atlas.Core.Editor.Unwrap in 'Source\Core\Editor\Atlas.Core.Editor.Unwrap.pas',
   Atlas.Core.Editor.ExpressionType in 'Source\Core\Editor\Atlas.Core.Editor.ExpressionType.pas',
+  Atlas.Core.Editor.FormatLog in 'Source\Core\Editor\Atlas.Core.Editor.FormatLog.pas',
   Atlas.Core.Editor.MethodPlacement in 'Source\Core\Editor\Atlas.Core.Editor.MethodPlacement.pas',
   Atlas.Core.Editor.SafeDelete in 'Source\Core\Editor\Atlas.Core.Editor.SafeDelete.pas',
   Atlas.Core.Problems.Store in 'Source\Core\Problems\Atlas.Core.Problems.Store.pas',
