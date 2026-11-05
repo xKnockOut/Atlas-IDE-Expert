@@ -28,6 +28,8 @@ type
     procedure ButtonsMarkAllReadAndClear;
     [Test]
     procedure CaptionsAndTimes;
+    [Test]
+    procedure SeveritySignalIsStatusBarSignal;
   end;
 
 implementation
@@ -39,6 +41,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
+  Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
@@ -219,10 +223,26 @@ begin
   Day := EncodeDateTime(2026, 10, 16, 14, 3, 0, 0);
   Assert.AreEqual('14:03', TAtlasNotificationTexts.TimeText(Day, IncHour(Day, 2)));
   Assert.AreEqual('16.10. 14:03', TAtlasNotificationTexts.TimeText(Day, IncDay(Day)));
-  Assert.IsTrue(TAtlasNotificationTexts.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Error) =
-    TAtlasColors.Light.Error);
-  Assert.IsTrue(TAtlasNotificationTexts.SeverityColor(TAtlasColors.Light, TAtlasNotificationSeverity.Info) =
-    TAtlasColors.Light.Accent);
+end;
+
+procedure TAtlasNotificationsWindowTests.SeveritySignalIsStatusBarSignal;
+var
+  mDark: TAtlasColors;
+  mLight: TAtlasColors;
+begin
+  // Dieselben kräftigen Signalfarben wie die Plakette der Statusleiste, nicht die blassen Textfarben.
+  mDark := TAtlasColors.Dark;
+  mLight := TAtlasColors.Light;
+  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill =
+    mDark.Signals.ForStatus(TAtlasStatusState.Yellow).Solid, 'Warnung dunkel');
+  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Error).Fill =
+    mDark.Signals.ForStatus(TAtlasStatusState.Red).Solid, 'Fehler dunkel');
+  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill <>
+    mDark.Warn, 'nicht die Textfarbe');
+  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Error).Solid =
+    mLight.Signals.ForStatus(TAtlasStatusState.Red).Solid, 'Fehler hell');
+  Assert.IsTrue(TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Info).Fill =
+    mLight.Signals.Get(TAtlasSignalKind.Info).Fill, 'Info');
 end;
 
 initialization
