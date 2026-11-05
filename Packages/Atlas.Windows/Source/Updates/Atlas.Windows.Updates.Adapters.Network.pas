@@ -97,7 +97,6 @@ function WithRetries(const ATry: TFunc<Integer>): Boolean;
 var
   mAttempt, mStatus: Integer;
 begin
-  Result := False;
   for mAttempt := 1 to cAttempts do
   begin
     mStatus := ATry();
