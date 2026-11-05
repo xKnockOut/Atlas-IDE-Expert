@@ -145,7 +145,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 - [Prüfregeln](docs/Regeln.md) (erzeugt aus dem Regelkatalog mit `pwsh Tools/Update-RuleCatalog.ps1`)
 - [MCP-Werkzeuge](docs/MCP.md) und das [Plugin für Claude Code](Editors/ClaudeCode/README.md)
 - [Schlüsselwörter](docs/Schluesselwoerter.md): Kurzhilfe im Hover zu Schlüsselwörtern und Direktiven
-- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte
+- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte und der Zeit bis „bereit“ einer Projektgruppe (`Tools/Benchmark/ready.mjs`, mehrere Läufe je Fassung, Median und Spannweite)
 
 Englisch gibt es dieselben Seiten unter [docs/en](docs/en/) und [docs/features/en](docs/features/en/): [Installation](docs/en/Installation.md), [IDE-Plugin](docs/en/RAD-Studio.md), [Einstellungen](docs/en/Settings.md), [Konfiguration](docs/en/Configuration.md), [Prüfregeln](docs/en/Rules.md), [Schlüsselwörter](docs/en/Keywords.md), [MCP](docs/en/MCP.md), [Benchmark](docs/en/Benchmark.md), [Claude Code](Editors/ClaudeCode/README.en.md). Jede Seite verlinkt ihr Gegenstück.
 

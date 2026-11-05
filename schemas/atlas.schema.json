@@ -701,6 +701,15 @@
                 "description": "Nur unused-public-member (#1102): Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. TPlugin.* oder *Callback.",
                 "x-description-en": "Only unused-public-member (#1102): name patterns (* and ?) for members that always count as used, e.g. TPlugin.* or *Callback."
               },
+              "keep": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unused-uses (#1135): Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep. Gilt auch für das Abblenden im Editor und „uses aufräumen“.",
+                "x-description-en": "Only unused-uses (#1135): units that never count as unused, in addition to usesKeep. Also applies to the dimming in the editor and to \"Clean up uses\"."
+              },
               "checkUses": {
                 "type": "boolean",
                 "default": true,

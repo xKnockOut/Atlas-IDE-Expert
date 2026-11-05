@@ -32,7 +32,7 @@ Zurück zum [README](../../../README_DE.md)
   - hinter dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)
 - **Rekursion im Rand**
 - **inaktive `{$IFDEF}`-Zweige** abgeschwächt mit Grund im Tooltip
-- **ungenutzte uses** abgeblendet
+- **ungenutzte uses** abgeblendet (Regel `unused-uses`: auch in `--check`, `get_diagnostics` und der Baseline; `off`, `exclude`, `lsp-ignore` und die Option `keep` gelten auch fürs Abblenden)
 - **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
 
 ## Architekturübersicht
