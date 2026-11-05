@@ -1332,6 +1332,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Analysis.MetricsLens.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.UnitRelations.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\SymbolPath\Atlas.Core.SymbolPath.Model.pas"/>
