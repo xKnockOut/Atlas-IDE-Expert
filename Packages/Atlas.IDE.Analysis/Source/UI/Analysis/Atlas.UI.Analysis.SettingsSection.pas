@@ -2,7 +2,8 @@
 
 // Abschnitt „Allgemein“ des Moduls Analyse im Optionsdialog (#1456, ADR 0017 Entscheidung 3; vorher im Teil
 // „Allgemein“ von Base): Modulschalter, Architekturübersicht (#1118) und Hotspots (#1354). Die Unterpunkte
-// „Architektur“ und „Hotspots“ entstehen über x-node.
+// „Architektur“ und „Hotspots“ entstehen über x-node. Auf der Seite „Editor“ (Unterpunkt Code Lens) steht die
+// Code Lens mit Code-Metriken (#66, #1756; vorher im Teil „Editor“ von Base), darum eine zweite Klasse.
 
 interface
 
@@ -14,6 +15,16 @@ type
   public const
     cOwnerId = 'atlas.analysis';
     cAreaId = 'Allgemein';
+  protected
+    procedure BuildRows; override;
+  public
+    function OwnerId: string; override;
+    function AreaId: string; override;
+  end;
+
+  TAtlasAnalysisEditorSection = class(TAtlasSettingsSection)
+  public const
+    cAreaId = 'Editor';
   protected
     procedure BuildRows; override;
   public
@@ -53,6 +64,23 @@ begin
   Switch('hotspots.enabled', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsHotspots));
   Number('hotspots.months', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsHotspotsMonths));
   Number('hotspots.coupling.minCommits', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsHotspotsMinCommits));
+end;
+
+{ TAtlasAnalysisEditorSection }
+
+function TAtlasAnalysisEditorSection.OwnerId: string;
+begin
+  Result := TAtlasAnalysisSettingsSection.cOwnerId;
+end;
+
+function TAtlasAnalysisEditorSection.AreaId: string;
+begin
+  Result := cAreaId;
+end;
+
+procedure TAtlasAnalysisEditorSection.BuildRows;
+begin
+  Switch('codeLens.metrics', TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SettingsCodeLensMetrics));
 end;
 
 end.

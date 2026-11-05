@@ -3,11 +3,12 @@
 // Modul Analyse (#1455, ADR 0017): einzige Unit, die die Fenster
 // „Atlas-Architektur“ (#1118, teuerste Units #554), „Unit-Beziehungen“ (#593,
 // Kosten einer interface-Änderung #554), „Atlas-Hotspots“ (#1354) und den Weg
-// zwischen Symbolen (#1117) einbindet. Sie meldet in ihrer Initialisierung das
+// zwischen Symbolen (#1117) und die Code Lens mit Code-Metriken (#66, #1756)
+// einbindet. Sie meldet in ihrer Initialisierung das
 // Modul „atlas.analysis“ (Modulschalter analysis, #1454) bei der Registry von
 // Base an und stellt über dessen Scope bereit:
-// - die Teile Architecture, UnitRelations, Hotspots und SymbolPath der
-//   Feature-Tabelle,
+// - die Teile Architecture, UnitRelations, Hotspots, SymbolPath und
+//   MetricsLens der Feature-Tabelle,
 // - Befehle (Palette), Einträge im Atlas-Menü, unter Ansicht › Atlas und
 //   „Weg von hier nach …“ im Kontextmenü des Editors,
 // - Hörer für Einstellungen und Thema.
@@ -16,7 +17,9 @@
 // gehen über TAtlasIdeHost: Antworten erreichen das Modul nur, solange es
 // angemeldet ist (Regel 3). Die Darstellung eines Wegs im Ergebnisfenster
 // (Core.SymbolPath.Model, UI.SymbolPath.Chain) liegt in Base, weil das
-// Ergebnisfenster sie zeigt. „Graph zeigen“ an einem Unit-Zyklus (#896) ruft
+// Ergebnisfenster sie zeigt. Die Werte der Metrik-Lens holt Base
+// (Atlas.IDE.Editor.MetricsSource), weil die Atlas-Statusleiste sie ebenfalls
+// liest. „Graph zeigen“ an einem Unit-Zyklus (#896) ruft
 // Base über die Befehls-Id Atlas.UnitDependencies.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
@@ -70,6 +73,7 @@ uses
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.SymbolPath.Service,
+  Atlas.IDE.Analysis.MetricsLens,
   Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings;
 
@@ -83,6 +87,7 @@ var
   GUnitRelationsStarted: Boolean;
   GHotspotsStarted: Boolean;
   GSymbolPathStarted: Boolean;
+  GMetricsLens: TAtlasAnalysisMetricsLens;
 
 { Gemeinsam }
 
@@ -278,6 +283,23 @@ begin
   TAtlasIdeSymbolPath.ShowDialogFrom(mName);
 end;
 
+{ Code Lens mit Code-Metriken (#66, #1756) }
+
+procedure StartMetricsLens;
+begin
+  GMetricsLens := TAtlasAnalysisMetricsLens.Create;
+end;
+
+procedure StopMetricsLens;
+begin
+  FreeAndNil(GMetricsLens);
+end;
+
+function MetricsLensStarted: Boolean;
+begin
+  Result := GMetricsLens <> nil;
+end;
+
 { Befehle }
 
 function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
@@ -429,10 +451,14 @@ end;
 
 procedure TAtlasAnalysisModule.ApplySettings;
 begin
-  // architecture.* (#1118), hotspots.* (#1354).
+  // architecture.* (#1118), hotspots.* (#1354), codeLens.metrics (#66).
   TAtlasIdeArchitecture.ApplySettings;
   TAtlasIdeHotspots.ApplySettings;
   TAtlasIdeUnitRelations.ApplySettings;
+  if GMetricsLens <> nil then
+  begin
+    GMetricsLens.ApplySettings;
+  end;
 end;
 
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
@@ -440,6 +466,7 @@ end;
 procedure ProvideSettingsSections;
 begin
   TAtlasAnalysisSettingsSection.ProvideIn(GScope);
+  TAtlasAnalysisEditorSection.ProvideIn(GScope);
 end;
 
 procedure TAtlasAnalysisModule.ThemeChanged;
@@ -459,7 +486,9 @@ begin
       StopUnitRelations),
     TAtlasFeaturePart.AtLevel('Hotspots', TAtlasSafeLevel.Safe, HotspotsStarted, StartHotspots, StopHotspots),
     TAtlasFeaturePart.AtLevel('SymbolPath', TAtlasSafeLevel.Safe, SymbolPathStarted, StartSymbolPath,
-      StopSymbolPath)];
+      StopSymbolPath),
+    TAtlasFeaturePart.AtLevel('MetricsLens', TAtlasSafeLevel.Safe, MetricsLensStarted, StartMetricsLens,
+      StopMetricsLens)];
 end;
 
 class function TAtlasAnalysisModule.RegisterModule: Boolean;

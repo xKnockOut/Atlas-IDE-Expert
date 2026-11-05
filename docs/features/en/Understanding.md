@@ -30,7 +30,7 @@ In Atlas style instead of Help Insight:
 ### Hints and marks
 
 - **Type hints** after `var X := …` without a type
-- **Code metrics** as a lens:
+- **Code metrics** as a lens (Analysis module, `analysis.enabled`):
   - after each method header: length, depth, cyclomatic and cognitive complexity, parameters, operands of the largest condition, local variables, exits
   - after each class: members, inheritance depth without RTL and VCL
   - the unit name: lines

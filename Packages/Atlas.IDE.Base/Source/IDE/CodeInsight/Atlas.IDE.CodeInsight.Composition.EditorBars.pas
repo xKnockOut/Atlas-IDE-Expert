@@ -26,7 +26,7 @@ uses
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.StatusBar.Service,
-  Atlas.IDE.Editor.MetricsLens,
+  Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Editor.OverviewRuler,
   Atlas.IDE.Editor.Minimap,
   Atlas.IDE.Commands.QuickOpen,
@@ -96,7 +96,24 @@ begin
   end;
 end;
 
-/// <summary>Atlas-Statusleiste (#1155): Atlas-Feld, Metriken aus dem Lens-Abruf (#66) und Meldungen über Hooks.
+const
+  /// <summary>Kennung der Statusleiste beim Abruf der Metriken.</summary>
+  cStatusBarClient = 'atlas.statusBar';
+
+/// <summary>Bedarf der Statusleiste beim Abruf der Metriken: lesen oder keiner.</summary>
+procedure WantStatusMetrics(AOn: Boolean);
+begin
+  if AOn then
+  begin
+    TAtlasEditorMetricsSource.Want(cStatusBarClient, TAtlasMetricsDemand.Read);
+  end
+  else
+  begin
+    TAtlasEditorMetricsSource.Want(cStatusBarClient, TAtlasMetricsDemand.None);
+  end;
+end;
+
+/// <summary>Atlas-Statusleiste (#1155): Atlas-Feld, Metriken aus dem Abruf von Base (#66) und Meldungen über Hooks.
 /// Zeigt die Leiste das Element status, öffnet das Feld Statusfenster und Schnellschalter an der Leiste.</summary>
 procedure StartStatusBar;
 var
@@ -107,13 +124,10 @@ begin
   mHooks.Metrics :=
     function(const AFileName: string; out AMetrics: TAtlasFileMetrics): Boolean
     begin
-      Result := TAtlasEditorMetricsLens.Latest(AFileName, AMetrics);
+      Result := TAtlasEditorMetricsSource.Latest(AFileName, AMetrics);
     end;
   mHooks.WantMetrics :=
-    procedure(AOn: Boolean)
-    begin
-      TAtlasEditorMetricsLens.Want(AOn);
-    end;
+    WantStatusMetrics;
   mHooks.Message := MessageLines();
   mHooks.Recheck := Recheck;
   TAtlasIdeStatusBar.Install(mHooks);

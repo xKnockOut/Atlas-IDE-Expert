@@ -52,7 +52,7 @@ type
     THooks = record
       /// <summary>Atlas-Feld der Statuszeile; nil ohne.</summary>
       Field: TFunc<TAtlasStatusField>;
-      /// <summary>Metriken aus atlas.server.metrics (Lens-Abruf, #66).</summary>
+      /// <summary>Metriken aus atlas.server.metrics (Abruf in Atlas.IDE.Editor.MetricsSource, #66).</summary>
       Metrics: TAtlasStatusMetricsFunc;
       /// <summary>Metriken auch ohne Lens holen (True) bzw. nicht mehr (False).</summary>
       WantMetrics: TProc<Boolean>;

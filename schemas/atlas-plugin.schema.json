@@ -412,7 +412,7 @@
     "AnalysisEnabled": {
       "type": "boolean",
       "default": true,
-      "description": "Modul Analyse (#1454): Architekturübersicht, Unit-Beziehungen, Symbolpfad und Hotspots; aus = keine dieser Fenster, Befehle und Menüeinträge. Die Einzelschalter behalten ihre Werte.",
+      "description": "Modul Analyse (#1454): Architekturübersicht, Unit-Beziehungen, Symbolpfad, Hotspots und Code Lens mit Code-Metriken (#1756); aus = keine dieser Fenster, Befehle, Menüeinträge und Marken im Editor. Die Einzelschalter behalten ihre Werte.",
       "x-key": "analysis.enabled",
       "x-area": "general",
       "x-page": "Allgemein",
@@ -810,7 +810,7 @@
       "x-area": "editor",
       "x-feature": "CodeLens",
       "x-page": "Editor",
-      "x-parent": "metrics",
+      "x-parent": "analysis.enabled",
       "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-drawing": true,

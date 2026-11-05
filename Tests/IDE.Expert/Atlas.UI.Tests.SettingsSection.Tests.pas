@@ -109,7 +109,6 @@ begin
     // Unterpunkte (x-node) der Bereiche von Base nehmen auch die Zeilen des Moduls auf.
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'TestRun')) = mPage.NodeSheet('compiler.tests'), 'Compiler › Tests');
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'CodeLensTests')) = mPage.NodeSheet('editor.codeLens'), 'Editor › Code Lens');
-    Assert.IsTrue(SheetOf(CheckOf(mPage, 'CodeLensMetrics')) = mPage.NodeSheet('editor.codeLens'));
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'TestDebug')) = SheetOf(CheckOf(mPage, 'TestBreakAtStart')));
     Assert.IsFalse(SheetOf(CheckOf(mPage, 'TestDebug')) = SheetOf(CheckOf(mPage, 'TestsEnabled')), 'eigener Reiter');
   finally

@@ -445,8 +445,8 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `bookmarks.quick.importIde`
 
 - **Code Lens und Kennzahlen** (`editor.codeLens`)
+  - `codeLens.metrics` – hängt an `analysis.enabled`
   - `metrics` – hängt an `completion.enabled`
-    - `codeLens.metrics`
   - `codeLens.tests` – hängt an `tests.run`
   - `todos.list`
   - `baseline.update` – hängt an `ruleChecks.enabled`
