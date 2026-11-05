@@ -30,7 +30,23 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowDerefBeforeNilCheckText = (MoveCheck, UsedBeforeCheck, Title);
+
+const
+  cTexts: array[TFlowDerefBeforeNilCheckText] of TAtlasText = (
+    (De: 'Prüfung vor den Zugriff ziehen'; En: 'Move the check before the access'),
+    (De: '%s wird hier benutzt, aber erst in Zeile %d auf nil geprüft.';
+     En: '%s is used here but only checked for nil in line %d.'),
+    (De: 'Erst benutzt, dann auf nil geprüft'; En: 'Used first, checked for nil later'));
+
+{$SCOPEDENUMS OFF}
 
 function IsNilLiteral(ANode: TSyntaxNode): Boolean;
 begin
@@ -475,7 +491,7 @@ begin
   Inner := Outer + '  ';
   Text := 'if ' + Trim(Source(Condition)) + ' then' + FLineBreak + Outer + 'begin' + FLineBreak +
     Inner + Trim(Source(Access)) + ';' + FLineBreak + BodyText(Body, Inner) + Outer + 'end';
-  AFix := TRuleFix.Create('Prüfung vor den Zugriff ziehen',
+  AFix := TRuleFix.Create(cTexts[TFlowDerefBeforeNilCheckText.MoveCheck].Text,
     [TRuleEdit.Create(TTextRange.Create(Access.StartPos, IfNode.EndPos), Text)]);
 end;
 
@@ -489,7 +505,7 @@ begin
   begin
     Fixes := [Fix];
   end;
-  FReport.Add(NodeRange(ADeref), Format('%s wird hier benutzt, aber erst in Zeile %d auf nil geprüft.',
+  FReport.Add(NodeRange(ADeref), cTexts[TFlowDerefBeforeNilCheckText.UsedBeforeCheck].Fmt(
     [APath, ACheck.Syntax.StartPos.Line + 1]), TRuleConfidence.Medium, Fixes);
 end;
 
@@ -582,7 +598,7 @@ end;
 function TDerefBeforeNilCheckRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DerefBeforeNilCheckRuleId, TRuleSeverity.Warning,
-    'Erst benutzt, dann auf nil geprüft');
+    cTexts[TFlowDerefBeforeNilCheckText.Title].Text);
 end;
 
 procedure TDerefBeforeNilCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -596,5 +612,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.DerefBeforeNilCheck', cTexts);
 
 end.

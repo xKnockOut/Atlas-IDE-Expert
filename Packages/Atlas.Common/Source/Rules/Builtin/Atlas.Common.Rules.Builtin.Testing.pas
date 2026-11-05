@@ -44,7 +44,23 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTestingText = (Title, InsertPass, JumpToMethod, ChecksNothing);
+
+const
+  cTexts: array[TTestingText] of TAtlasText = (
+    (De: 'DUnitX-Test ohne Assert'; En: 'DUnitX test without Assert'),
+    (De: 'Assert.Pass; als Platzhalter einfügen'; En: 'Insert Assert.Pass; as placeholder'),
+    (De: 'Zur Methode springen'; En: 'Go to method'),
+    (De: 'Der Test prüft nichts; er ist immer grün.'; En: 'The test checks nothing; it is always green.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   DUnitXTestWithoutAssertRuleId = 'dunitx-test-without-assert';
@@ -369,7 +385,7 @@ end;
 
 function TDUnitXTestWithoutAssertRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DUnitXTestWithoutAssertRuleId, TRuleSeverity.Hint, 'DUnitX-Test ohne Assert');
+  Result := TRuleDescriptor.Create(DUnitXTestWithoutAssertRuleId, TRuleSeverity.Hint, cTexts[TTestingText.Title].Text);
 end;
 
 class function TDUnitXTestWithoutAssertRule.IsAssertion(const AChain: string;
@@ -465,14 +481,14 @@ var
     mBlock := mBody.FindChild(TSyntaxKind.Block);
     if (mBlock <> nil) and PassEdit(mBlock, mEdit) then
     begin
-      mFix := TRuleFix.Create('Assert.Pass; als Platzhalter einfügen', [mEdit]);
+      mFix := TRuleFix.Create(cTexts[TTestingText.InsertPass].Text, [mEdit]);
       mFix.Alternative := True;
       mFixes := mFixes + [mFix];
     end;
-    mFix := TRuleFix.Jump('Zur Methode springen', mBody.StartPos);
+    mFix := TRuleFix.Jump(cTexts[TTestingText.JumpToMethod].Text, mBody.StartPos);
     mFix.Alternative := True;
     mFixes := mFixes + [mFix];
-    AReport.Add(NameRange(AHeader), 'Der Test prüft nichts; er ist immer grün.', mFixes);
+    AReport.Add(NameRange(AHeader), cTexts[TTestingText.ChecksNothing].Text, mFixes);
   end;
 
   // [Test] oder [TestCase], aber nicht [Ignore], [WillRaise] oder [WillRaiseAny].
@@ -585,5 +601,8 @@ procedure RegisterTestingRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDUnitXTestWithoutAssertRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Testing', cTexts);
 
 end.

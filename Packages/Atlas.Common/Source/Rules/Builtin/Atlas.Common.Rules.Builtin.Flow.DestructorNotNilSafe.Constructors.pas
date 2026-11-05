@@ -81,7 +81,20 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDestructorConstructorsText = (TheConstructor);
+
+const
+  cTexts: array[TDestructorConstructorsText] of TAtlasText = (
+    (De: 'der Konstruktor'; En: 'the constructor'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Klassen der RTL, deren Konstruktor ohne Argumente höchstens EOutOfMemory wirft; danach gilt
@@ -553,7 +566,7 @@ begin
   Item.Raiser := ARaiser;
   if not AConditional and (ARaiser = '') then
   begin
-    Item.Raiser := 'der Konstruktor';
+    Item.Raiser := cTexts[TDestructorConstructorsText.TheConstructor].Text;
   end;
   Item.Conditional := AConditional;
   FRisky := FRisky + [Item];
@@ -714,5 +727,8 @@ begin
     ScanStatement(Body[Index]);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors', cTexts);
 
 end.

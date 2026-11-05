@@ -204,6 +204,9 @@ begin
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, ASettings.PairGuideWidth, 'Blocklinien 1 px');
   Assert.AreEqual(75, ASettings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
+  Assert.AreEqual('deeper', ASettings.NestedRoutines, 'lokale Routinen eine Stufe tiefer (#1788)');
+  Assert.IsFalse(ASettings.NestedRoutineBand, 'Band lokaler Routinen standardmäßig aus (#1788)');
+  Assert.AreEqual('', ASettings.NestedRoutineColorDark, 'Farbe der Palette (#1788)');
   Assert.IsFalse(ASettings.ProblemsMessageList, 'Liste „Atlas-Probleme“ seit dem Prüffenster (#909) standardmäßig aus');
   Assert.IsTrue(ASettings.Favorites, 'Favoriten anheften standardmäßig an (#458)');
   Assert.IsTrue(ASettings.Notes, 'Notizen standardmäßig an (#545)');
@@ -334,6 +337,9 @@ begin
   ASettings.PairGuideWidth := 3;
   ASettings.PairGuideOpacity := 80;
   ASettings.PairColorsDark := '#112233, #445566,#778899,#aabbcc,#DDEEFF';
+  ASettings.NestedRoutines := 'color';
+  ASettings.NestedRoutineBand := True;
+  ASettings.NestedRoutineColorLight := ' #a85a00 ';
 end;
 /// <summary>Rundreise: Editor, Code Lens, Tests und Build gelesen.</summary>
 procedure AssertRoundTripEditor(const ALoaded: TAtlasPluginSettings);
@@ -405,6 +411,9 @@ begin
   Assert.AreEqual(3, ALoaded.PairGuideWidth);
   Assert.AreEqual(80, ALoaded.PairGuideOpacity);
   Assert.AreEqual('#112233,#445566,#778899,#AABBCC,#DDEEFF', ALoaded.PairColorsDark, 'einheitlich geschrieben');
+  Assert.AreEqual('color', ALoaded.NestedRoutines);
+  Assert.IsTrue(ALoaded.NestedRoutineBand);
+  Assert.AreEqual('#A85A00', ALoaded.NestedRoutineColorLight, 'einheitlich geschrieben');
   Assert.IsTrue(ALoaded.ProblemsMessageList, 'Liste „Atlas-Probleme“ eingeschaltet');
 end;
 /// <summary>Rundreise: Serverpfad, Tasten, Diagnose, Start und Zurücknehmen gelesen.</summary>
@@ -618,11 +627,15 @@ begin
   Store.WriteInteger('PairGuideWidth', 7);
   Store.WriteInteger('PairGuideOpacity', 0);
   Store.WriteString('PairColorsLight', '#123456,blau');
+  Store.WriteString('NestedRoutines', 'irgendwie');
+  Store.WriteString('NestedRoutineColorDark', 'blau');
   Settings := Default(TAtlasPluginSettings);
   Settings.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MaxPairGuideWidth, Settings.PairGuideWidth);
   Assert.AreEqual(TAtlasPluginSettings.MinPairGuideOpacity, Settings.PairGuideOpacity);
   Assert.AreEqual('', Settings.PairColorsLight, 'ungültige Farben = Standard');
+  Assert.AreEqual('deeper', Settings.NestedRoutines, 'unbekannte Färbung = Vorgabe (#1788)');
+  Assert.AreEqual('', Settings.NestedRoutineColorDark, 'ungültige Farbe = Palette (#1788)');
   Assert.AreEqual(TAtlasPluginSettings.MaxVisibleRows, Settings.VisibleRows);
   Assert.AreEqual(TAtlasPluginSettings.MinListWidth, Settings.ListWidth);
   Assert.AreEqual(TAtlasPluginSettings.MaxPanelWidth, Settings.PanelWidth);

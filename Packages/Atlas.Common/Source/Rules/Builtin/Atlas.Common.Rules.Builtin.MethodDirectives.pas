@@ -59,7 +59,47 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TMethodDirectivesText = (Title, AbstractVirtual, InsertVirtual, AbstractFinal, FinalVirtual, StaticInstance,
+    StaticVirtual, AbstractSealedTitle, AbstractInSealed, SealedNotImplemented, SealedWithAbstract, SealedAbstract,
+    RemoveBody, AbstractBody);
+
+const
+  cTexts: array[TMethodDirectivesText] of TAtlasText = (
+    (De: 'abstract, final oder static falsch kombiniert'; En: 'abstract, final or static combined incorrectly'),
+    (De: 'abstract nur zusammen mit virtual oder dynamic (wie E2167).';
+     En: 'abstract only together with virtual or dynamic (like E2167).'),
+    (De: '"virtual;" vor abstract einfügen'; En: 'Insert "virtual;" before abstract'),
+    (De: '%s ist abstract und final zugleich; eine abstrakte Methode muss sich überschreiben lassen (wie E2371).';
+     En: '%s is abstract and final at the same time; an abstract method must be overridable (like E2371).'),
+    (De: 'final nur an virtuellen Methoden; %s ist nicht virtual, dynamic oder override (wie E2351).';
+     En: 'final only on virtual methods; %s is not virtual, dynamic or override (like E2351).'),
+    (De: 'static nur an Klassenmethoden; %s ist eine Instanzmethode (wie E2376).';
+     En: 'static only on class methods; %s is an instance method (like E2376).'),
+    (De: 'static nur an nicht virtuellen Klassenmethoden; %s ist virtuell (wie E2376).';
+     En: 'static only on non-virtual class methods; %s is virtual (like E2376).'),
+    (De: 'Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).';
+     En: 'A class is either abstract or sealed, not both (like E2383).'),
+    (De: '%s ist abstract, die Klasse %s aber sealed; abstract und sealed schließen sich aus (wie E2383).';
+     En: '%s is abstract, but the class %s is sealed; abstract and sealed exclude each other (like E2383).'),
+    (De: '%s ist sealed und implementiert die abstrakte Methode %s.%s nicht (wie E2539).';
+     En: '%s is sealed and does not implement the abstract method %s.%s (like E2539).'),
+    (De: '%s hat abstrakte Methoden und kann deshalb nicht sealed sein; kein Nachfahre könnte sie implementieren ' +
+      '(wie E2540).';
+     En: '%s has abstract methods and therefore cannot be sealed; no descendant could implement them (like E2540).'),
+    (De: '%s ist abstract und kann deshalb nicht sealed sein (wie E2540).';
+     En: '%s is abstract and therefore cannot be sealed (like E2540).'),
+    (De: 'Rumpf entfernen'; En: 'Remove body'),
+    (De: '%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).';
+     En: '%s.%s is abstract and must not have a body (like E2136).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Methodendeklaration einer Klasse: abstrakt oder nicht, mit Zweig der bedingten Übersetzung.</summary>
@@ -83,7 +123,7 @@ end;
 function TAbstractDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(AbstractDeclarationInvalidRuleId, TRuleSeverity.Error,
-    'abstract, final oder static falsch kombiniert');
+    cTexts[TMethodDirectivesText.Title].Text);
 end;
 
 procedure TAbstractDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -184,31 +224,31 @@ var
     Static := DirectiveToken(AHeader, 'static');
     if (Abstract_ >= 0) and not IsVirtual then
     begin
-      AReport.Add(TokenRange(Abstract_), 'abstract nur zusammen mit virtual oder dynamic (wie E2167).',
-        TRuleConfidence.High, [TRuleFix.Create('"virtual;" vor abstract einfügen',
+      AReport.Add(TokenRange(Abstract_), cTexts[TMethodDirectivesText.AbstractVirtual].Text,
+        TRuleConfidence.High, [TRuleFix.Create(cTexts[TMethodDirectivesText.InsertVirtual].Text,
         [TRuleEdit.Create(TTextRange.Create(Tokens[Abstract_].StartPos, Tokens[Abstract_].StartPos), 'virtual; ')])]);
     end;
     if (Abstract_ >= 0) and (Final >= 0) then
     begin
-      AReport.Add(TokenRange(Final), Format('%s ist abstract und final zugleich; eine abstrakte Methode muss ' +
-        'sich überschreiben lassen (wie E2371).', [AHeader.Name]), TRuleConfidence.High);
+      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.AbstractFinal].Fmt([AHeader.Name]),
+        TRuleConfidence.High);
     end
     else if (Final >= 0) and not IsVirtual then
     begin
-      AReport.Add(TokenRange(Final), Format('final nur an virtuellen Methoden; %s ist nicht virtual, dynamic ' +
-        'oder override (wie E2351).', [AHeader.Name]), TRuleConfidence.High);
+      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.FinalVirtual].Fmt([AHeader.Name]),
+        TRuleConfidence.High);
     end;
     if Static >= 0 then
     begin
       if not IsClassMethod then
       begin
-        AReport.Add(TokenRange(Static), Format('static nur an Klassenmethoden; %s ist eine Instanzmethode ' +
-          '(wie E2376).', [AHeader.Name]), TRuleConfidence.High);
+        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticInstance].Fmt([AHeader.Name]),
+          TRuleConfidence.High);
       end
       else if IsVirtual or (Abstract_ >= 0) then
       begin
-        AReport.Add(TokenRange(Static), Format('static nur an nicht virtuellen Klassenmethoden; %s ist virtuell ' +
-          '(wie E2376).', [AHeader.Name]), TRuleConfidence.High);
+        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticVirtual].Fmt([AHeader.Name]),
+          TRuleConfidence.High);
       end;
     end;
     Method.ClassName := AClassName;
@@ -256,8 +296,7 @@ var
         ASealed := Sealed;
         if Abstract_ and Sealed then
         begin
-          AReport.Add(TokenRange(Index), 'Eine Klasse ist entweder abstract oder sealed, nicht beides ' +
-            '(wie E2383).', TRuleConfidence.High);
+          AReport.Add(TokenRange(Index), cTexts[TMethodDirectivesText.AbstractSealedTitle].Text, TRuleConfidence.High);
           Exit;
         end;
       end;
@@ -293,8 +332,8 @@ var
         mAbstract := DirectiveToken(ABody[mIndex], 'abstract');
         if mAbstract >= 0 then
         begin
-          AReport.Add(TokenRange(mAbstract), Format('%s ist abstract, die Klasse %s aber sealed; abstract und ' +
-            'sealed schließen sich aus (wie E2383).', [ABody[mIndex].Name, AName]), TRuleConfidence.High);
+          AReport.Add(TokenRange(mAbstract), cTexts[TMethodDirectivesText.AbstractInSealed].Fmt([ABody[mIndex].Name,
+            AName]), TRuleConfidence.High);
         end;
       end;
     end;
@@ -325,17 +364,17 @@ var
     end;
     for mIndex := 0 to High(mOpen) do
     begin
-      AReport.Add(TokenRange(mNameToken), Format('%s ist sealed und implementiert die abstrakte Methode %s.%s ' +
-        'nicht (wie E2539).', [mName, mOwners[mIndex], mOpen[mIndex].Name]), TRuleConfidence.High);
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedNotImplemented].Fmt([mName,
+        mOwners[mIndex], mOpen[mIndex].Name]), TRuleConfidence.High);
     end;
     if mOpen <> nil then
     begin
-      AReport.Add(TokenRange(mNameToken), Format('%s hat abstrakte Methoden und kann deshalb nicht sealed sein; ' +
-        'kein Nachfahre könnte sie implementieren (wie E2540).', [mName]), TRuleConfidence.High);
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedWithAbstract].Fmt([mName]),
+        TRuleConfidence.High);
     end
     else if AAbstract then
     begin
-      AReport.Add(TokenRange(mNameToken), Format('%s ist abstract und kann deshalb nicht sealed sein (wie E2540).',
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedAbstract].Fmt(
         [mName]), TRuleConfidence.High);
     end;
   end;
@@ -464,7 +503,8 @@ var
     begin
       EndPos.Line := EndPos.Line + 1;
     end;
-    Result := [TRuleFix.Create('Rumpf entfernen', [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
+    Result := [TRuleFix.Create(cTexts[TMethodDirectivesText.RemoveBody].Text,
+      [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
   end;
 
   /// <summary>Token des Methodennamens AName hinter dem Klassennamen im Kopf AHeader; -1 ohne.</summary>
@@ -523,7 +563,7 @@ var
     mFirst := QualifiedNameToken(mHeader, mName);
     if mFirst >= 0 then
     begin
-      AReport.Add(TokenRange(mFirst), Format('%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).',
+      AReport.Add(TokenRange(mFirst), cTexts[TMethodDirectivesText.AbstractBody].Fmt(
         [mClassName, mName]), TRuleConfidence.High, RemoveBody(ARoutine));
     end;
   end;
@@ -576,5 +616,8 @@ procedure RegisterMethodDirectiveRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TAbstractDeclarationInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.MethodDirectives', cTexts);
 
 end.

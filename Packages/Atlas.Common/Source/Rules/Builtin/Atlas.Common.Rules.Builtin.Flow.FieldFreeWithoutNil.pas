@@ -32,7 +32,22 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowFieldFreeWithoutNilText = (StaysSet, Title);
+
+const
+  cTexts: array[TFlowFieldFreeWithoutNilText] of TAtlasText = (
+    (De: '%s bleibt nach Free gesetzt; ein späterer Zugriff trifft freigegebenen Speicher.';
+     En: '%s stays set after Free; a later access hits freed memory.'),
+    (De: 'Feld freigegeben, Verweis bleibt stehen'; En: 'Field freed, reference remains'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Methoden der Klassendeklaration AClass mit [TearDown] oder [TearDownFixture] (DUnitX).</summary>
 function TearDownMethods(AClass: TSyntaxNode): TArray<string>;
@@ -265,8 +280,8 @@ begin
     Exit;
   end;
   Replacement := Format('FreeAndNil(%s)', [Text(Target)]);
-  FReport.Add(NodeRange(ANode.Syntax), Format('%s bleibt nach Free gesetzt; ein späterer Zugriff trifft ' +
-    'freigegebenen Speicher.', [Path]), TRuleConfidence.Medium,
+  FReport.Add(NodeRange(ANode.Syntax), cTexts[TFlowFieldFreeWithoutNilText.StaysSet].Fmt([Path]),
+    TRuleConfidence.Medium,
     [TRuleFix.Create(Replacement, [TRuleEdit.Create(NodeRange(ANode.Syntax), Replacement)])]);
 end;
 
@@ -340,7 +355,7 @@ end;
 function TFieldFreeWithoutNilRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(FieldFreeWithoutNilRuleId, TRuleSeverity.Warning,
-    'Feld freigegeben, Verweis bleibt stehen');
+    cTexts[TFlowFieldFreeWithoutNilText.Title].Text);
 end;
 
 class function TFieldFreeWithoutNilRule.DefaultIgnoreMethods: TArray<string>;
@@ -359,5 +374,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.FieldFreeWithoutNil', cTexts);
 
 end.

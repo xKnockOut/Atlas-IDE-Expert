@@ -37,6 +37,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.TypInfo,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Tasks.Definitions;
 
@@ -52,6 +53,28 @@ const
     '  ]' + sLineBreak +
     '}';
 
+/// <summary>„Stelle Art Wert“ je verworfenem Eintrag, getrennt durch „|“.</summary>
+function IssueList(const AIssues: TAtlasTaskIssues): string;
+var
+  mIssue: TAtlasTaskIssue;
+  mText: string;
+begin
+  Result := '';
+  for mIssue in AIssues do
+  begin
+    mText := mIssue.Where + ' ' + GetEnumName(TypeInfo(TAtlasTaskIssueKind), Ord(mIssue.Kind));
+    if mIssue.Value <> '' then
+    begin
+      mText := mText + ' ' + mIssue.Value;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + '|';
+    end;
+    Result := Result + mText;
+  end;
+end;
+
 procedure TAtlasTaskDefinitionsTests.BeforeBuildNamesMatchSettings;
 var
   mMode: TAtlasTaskBeforeBuild;
@@ -66,12 +89,12 @@ end;
 procedure TAtlasTaskDefinitionsTests.ExampleOfTheIssueIsRead;
 var
   Tasks: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
 begin
   Issues := nil;
   Tasks := TAtlasTasks.Parse(Example, False, Issues);
   Assert.AreEqual(2, Integer(Length(Tasks)));
-  Assert.AreEqual(0, Integer(Length(Issues)), string.Join('; ', Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)), IssueList(Issues));
   Assert.AreEqual('Delphi-12-Prüfung', Tasks[0].Name);
   Assert.AreEqual('pwsh', Tasks[0].Command);
   Assert.AreEqual('Tools/Check-Delphi12.ps1', string.Join('|', Tasks[0].Args));
@@ -89,7 +112,7 @@ end;
 procedure TAtlasTaskDefinitionsTests.DefaultsAndCustomMatcher;
 var
   Tasks: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
 begin
   Issues := nil;
   Tasks := TAtlasTasks.Parse('{"tasks":[{"name":"Lint","command":"lint.exe","timeoutSec":30,' +
@@ -98,7 +121,7 @@ begin
     '"severityMap":{"BAD":"error","MEH":"warning","FYI":"info"},"severity":"warning"}},' +
     '{"name":"Ohne","command":"x"}]}', True, Issues);
   Assert.AreEqual(2, Integer(Length(Tasks)));
-  Assert.AreEqual(0, Integer(Length(Issues)), string.Join('; ', Issues));
+  Assert.AreEqual(0, Integer(Length(Issues)), IssueList(Issues));
   Assert.AreEqual(30, Tasks[0].TimeoutSec);
   Assert.AreEqual('LINT_MODE|LEVEL', string.Join('|', Tasks[0].EnvNames));
   Assert.AreEqual('strict|${config}', string.Join('|', Tasks[0].EnvValues));
@@ -119,7 +142,7 @@ end;
 procedure TAtlasTaskDefinitionsTests.InvalidEntriesAreDroppedWithReason;
 var
   Tasks: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
 begin
   Issues := nil;
   Tasks := TAtlasTasks.Parse('{"tasks":[{"command":"a"},{"name":"B"},42,' +
@@ -135,13 +158,13 @@ begin
   Assert.IsFalse(Tasks[0].HasBeforeBuild);
   Assert.IsTrue(Tasks[1].Matcher.Kind = TAtlasTaskMatcherKind.None, 'Objekt ohne regex');
   // ohne name, ohne command, kein Objekt, group, matcher, key, timeoutSec, beforeBuild, doppelt, regex.
-  Assert.AreEqual(10, Integer(Length(Issues)), string.Join('; ', Issues));
-  Assert.AreEqual('tasks[0]: ohne name', Issues[0]);
-  Assert.AreEqual('B: ohne command', Issues[1]);
+  Assert.AreEqual('tasks[0] MissingName|B MissingCommand|tasks[2] TaskType|C UnknownGroup lint|' +
+    'C UnknownMatcher gcc|C KeyUnreadable Q|C TimeoutValue|C BeforeBuildValue stop|c DuplicateName|' +
+    'D MatcherWithoutRegex', IssueList(Issues));
   // Kein Array, ungültiger Text.
   Issues := nil;
   Assert.AreEqual(0, Integer(Length(TAtlasTasks.Parse('{"tasks":{}}', False, Issues))));
-  Assert.AreEqual('tasks muss eine Liste sein', Issues[0]);
+  Assert.AreEqual(' TasksType', IssueList(Issues));
   Assert.AreEqual(0, Integer(Length(TAtlasTasks.Parse('{ kaputt', False, Issues))));
   Assert.AreEqual(0, Integer(Length(TAtlasTasks.Parse('', False, Issues))));
 end;
@@ -149,7 +172,7 @@ end;
 procedure TAtlasTaskDefinitionsTests.ProjectWinsOverGlobalByName;
 var
   Project, Global, Merged: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
 begin
   Issues := nil;
   Project := TAtlasTasks.Parse('{"tasks":[{"name":"Prüfen","command":"projekt"}]}', False, Issues);
@@ -167,7 +190,7 @@ end;
 procedure TAtlasTaskDefinitionsTests.VariablesAreExpanded;
 var
   Tasks: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
   Variables: TAtlasTaskVariables;
   Task: TAtlasTaskDefinition;
 begin
@@ -212,7 +235,7 @@ end;
 procedure TAtlasTaskDefinitionsTests.BeforeBuildFollowsTaskThenGlobalForChecks;
 var
   Tasks, Before: TAtlasTaskDefinitions;
-  Issues: TArray<string>;
+  Issues: TAtlasTaskIssues;
 begin
   Issues := nil;
   Tasks := TAtlasTasks.Parse('{"tasks":[{"name":"Prüfung","command":"a","group":"check"},' +

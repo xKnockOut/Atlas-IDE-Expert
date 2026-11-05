@@ -356,22 +356,32 @@ begin
   end;
 end;
 
-/// <summary>Plakette der ungelesenen Benachrichtigungen am Statusfeld; ein Klick öffnet die Liste.</summary>
+/// <summary>Klick auf die Plakette: Liste der Benachrichtigungen an APoint.</summary>
+procedure ShowNotificationList(APoint: TPoint);
+begin
+  if NotificationsInstance <> nil then
+  begin
+    NotificationsInstance.Show(APoint);
+  end;
+end;
+
+/// <summary>Plakette der ungelesenen Benachrichtigungen am Statusfeld; ein Klick öffnet die Liste. Mit
+/// eingeschalteten Benachrichtigungen zeigt die Atlas-Statusleiste sie immer, auch mit 0.</summary>
 procedure ShowBadge(AUnread: Integer; AWorst: TAtlasNotificationSeverity);
+var
+  mBadge: TAtlasStatusBadge;
 begin
   if StatusFieldInstance = nil then
   begin
     Exit;
   end;
-  StatusFieldInstance.SetBadge(AUnread, BadgeState(AWorst),
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]),
-    procedure(APoint: TPoint)
-    begin
-      if NotificationsInstance <> nil then
-      begin
-        NotificationsInstance.Show(APoint);
-      end;
-    end);
+  mBadge := Default(TAtlasStatusBadge);
+  mBadge.Shown := TAtlasIdeNotifications.Active;
+  mBadge.Count := AUnread;
+  mBadge.State := BadgeState(AWorst);
+  mBadge.Hint := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]);
+  mBadge.OnClick := ShowNotificationList;
+  StatusFieldInstance.SetBadge(mBadge);
 end;
 
 procedure StartNotifications;

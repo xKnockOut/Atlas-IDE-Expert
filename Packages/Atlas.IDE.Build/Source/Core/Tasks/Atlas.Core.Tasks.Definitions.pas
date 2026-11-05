@@ -12,7 +12,9 @@
 //   globalen, deren Name (Groß-/Kleinschreibung egal) im Projekt nicht
 //   vorkommt. Doppelte Namen innerhalb einer Datei: die erste gilt.
 // - Ungültige Einträge (ohne name oder command, falscher Typ) fallen weg; der
-//   Grund steht in Issues (die genaue Prüfung der Datei macht der Server).
+//   Grund steht in Issues als Art mit Stelle und Wert; den Text in der Sprache
+//   der Oberfläche setzt Atlas.UI.Build.Strings (#1458). Die genaue Prüfung
+//   der Datei macht der Server.
 // - Variablen in command, args, cwd und env: ${projectDir}, ${groupDir},
 //   ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}; unbekannte bleiben
 //   stehen. Ohne cwd läuft die Aufgabe im Projektordner.
@@ -33,7 +35,24 @@ type
   /// </summary>
   TAtlasTaskMatcherKind = (None, Dcc, Pwsh, MsBuild, Generic, Custom);
   TAtlasTaskSeverity = (Error, Warning, Info);
+  /// <summary>Grund, aus dem ein Eintrag ganz oder teilweise verworfen wurde (#1458: Text erst in der UI).</summary>
+  TAtlasTaskIssueKind = (UnknownMatcher, SeverityMapValue, MatcherWithoutRegex, MatcherType, ArgsValue, ArgsType,
+    KeyUnreadable, TimeoutValue, UnknownGroup, BeforeBuildValue, MissingName, MissingCommand, TasksType, TaskType,
+    DuplicateName);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Ein verworfener Eintrag: Where ist der Name der Aufgabe bzw. „tasks[3]“ ('' bei TasksType), Value
+  /// der beanstandete Wert ('' ohne).</summary>
+  TAtlasTaskIssue = record
+    Kind: TAtlasTaskIssueKind;
+    Where: string;
+    Value: string;
+    class function Create(AKind: TAtlasTaskIssueKind; const AWhere: string): TAtlasTaskIssue; overload; static;
+    class function Create(AKind: TAtlasTaskIssueKind; const AWhere, AValue: string): TAtlasTaskIssue; overload;
+      static;
+  end;
+
+  TAtlasTaskIssues = TArray<TAtlasTaskIssue>;
 
   /// <summary>Muster einer Aufgabe; bei Custom mit regulärem Ausdruck und Zuordnung eigener Wörter.</summary>
   TAtlasTaskMatcher = record
@@ -99,10 +118,10 @@ type
   public
     /// <summary>Aufgaben aus dem Wurzelobjekt einer atlas.json bzw. settings.json; AIssues nennt verworfene
     /// Einträge.</summary>
-    class function Parse(ARoot: TJSONObject; AGlobal: Boolean; var AIssues: TArray<string>): TAtlasTaskDefinitions;
+    class function Parse(ARoot: TJSONObject; AGlobal: Boolean; var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
       overload; static;
     /// <summary>Wie Parse aus dem Text der Datei (Kommentare erlaubt); leer bei ungültigem Text.</summary>
-    class function Parse(const AText: string; AGlobal: Boolean; var AIssues: TArray<string>): TAtlasTaskDefinitions;
+    class function Parse(const AText: string; AGlobal: Boolean; var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
       overload; static;
     /// <summary>Projekt vor global: globale Aufgaben nur, wenn ihr Name im Projekt fehlt.</summary>
     class function Merge(const AProject, AGlobal: TAtlasTaskDefinitions): TAtlasTaskDefinitions; static;
@@ -132,6 +151,21 @@ implementation
 
 uses
   Atlas.Core.Settings.JsonText;
+
+{ TAtlasTaskIssue }
+
+class function TAtlasTaskIssue.Create(AKind: TAtlasTaskIssueKind; const AWhere: string): TAtlasTaskIssue;
+begin
+  Result := Create(AKind, AWhere, '');
+end;
+
+class function TAtlasTaskIssue.Create(AKind: TAtlasTaskIssueKind; const AWhere, AValue: string): TAtlasTaskIssue;
+begin
+  Result := Default(TAtlasTaskIssue);
+  Result.Kind := AKind;
+  Result.Where := AWhere;
+  Result.Value := AValue;
+end;
 
 { TAtlasTaskMatcher }
 
@@ -349,7 +383,7 @@ begin
 end;
 
 /// <summary>Eingebautes Muster nach Name; unbekannte (außer leer und none) melden.</summary>
-function NamedMatcher(const AText, AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+function NamedMatcher(const AText, AName: string; var AIssues: TAtlasTaskIssues): TAtlasTaskMatcher;
 var
   mKind: TAtlasTaskMatcherKind;
 begin
@@ -362,14 +396,14 @@ begin
   end;
   if (Trim(AText) <> '') and not SameText(Trim(AText), 'none') then
   begin
-    AIssues := AIssues + [Format('%s: unbekanntes Muster "%s", Ausgabe ohne Befunde', [AName, AText])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.UnknownMatcher, AName, AText)];
   end;
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None);
 end;
 
 /// <summary>severityMap: eigene Wörter und ihre Schwere; ungültige Einträge melden.</summary>
 procedure ReadSeverityMap(AMap: TJSONObject; const AName: string; var AMatcher: TAtlasTaskMatcher;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 var
   mPair: TJSONPair;
   mSeverity: TAtlasTaskSeverity;
@@ -383,14 +417,14 @@ begin
     end
     else
     begin
-      AIssues := AIssues + [Format('%s: severityMap "%s" ist weder error, warning noch info',
-        [AName, mPair.JsonString.Value])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.SeverityMapValue, AName,
+        mPair.JsonString.Value)];
     end;
   end;
 end;
 
 /// <summary>Eigenes Muster aus { regex, severity, severityMap }; ohne regex keins.</summary>
-function CustomMatcher(AItem: TJSONObject; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+function CustomMatcher(AItem: TJSONObject; const AName: string; var AIssues: TAtlasTaskIssues): TAtlasTaskMatcher;
 var
   mMap: TJSONValue;
   mText: string;
@@ -398,7 +432,7 @@ var
 begin
   if not StringOf(AItem, 'regex', mText) or (mText = '') then
   begin
-    AIssues := AIssues + [Format('%s: matcher ohne regex', [AName])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MatcherWithoutRegex, AName)];
     Exit(TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None));
   end;
   Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.Custom);
@@ -414,7 +448,7 @@ begin
   end;
 end;
 
-function ParseMatcher(AValue: TJSONValue; const AName: string; var AIssues: TArray<string>): TAtlasTaskMatcher;
+function ParseMatcher(AValue: TJSONValue; const AName: string; var AIssues: TAtlasTaskIssues): TAtlasTaskMatcher;
 begin
   if AValue is TJSONString then
   begin
@@ -428,14 +462,14 @@ begin
   begin
     if AValue <> nil then
     begin
-      AIssues := AIssues + [Format('%s: matcher muss Name oder Objekt sein', [AName])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MatcherType, AName)];
     end;
     Result := TAtlasTaskMatcher.Create(TAtlasTaskMatcherKind.None);
   end;
 end;
 
 procedure ReadArgs(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 var
   mValue, mElement: TJSONValue;
 begin
@@ -454,13 +488,13 @@ begin
       end
       else
       begin
-        AIssues := AIssues + [Format('%s: args enthält einen Wert, der kein Text ist', [AWhere])];
+        AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.ArgsValue, AWhere)];
       end;
     end;
   end
   else if mValue <> nil then
   begin
-    AIssues := AIssues + [Format('%s: args muss eine Liste sein', [AWhere])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.ArgsType, AWhere)];
   end;
 end;
 
@@ -485,20 +519,20 @@ begin
 end;
 
 procedure ReadKey(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 begin
   if StringOf(AItem, 'key', ATask.KeyText) and (Trim(ATask.KeyText) <> '') then
   begin
     ATask.Key := TAtlasTasks.ParseKey(ATask.KeyText);
     if ATask.Key = 0 then
     begin
-      AIssues := AIssues + [Format('%s: Taste "%s" nicht lesbar', [AWhere, ATask.KeyText])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.KeyUnreadable, AWhere, ATask.KeyText)];
     end;
   end;
 end;
 
 procedure ReadTimeout(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 var
   mValue: TJSONValue;
   mNumber: Integer;
@@ -514,23 +548,23 @@ begin
   end
   else if mValue <> nil then
   begin
-    AIssues := AIssues + [Format('%s: timeoutSec muss eine ganze Zahl ab 0 sein', [AWhere])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TimeoutValue, AWhere)];
   end;
 end;
 
 procedure ReadGroup(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 var
   mText: string;
 begin
   if StringOf(AItem, 'group', mText) and not TAtlasTasks.TryGroup(mText, ATask.Group) then
   begin
-    AIssues := AIssues + [Format('%s: unbekannte group "%s", gilt als other', [AWhere, mText])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.UnknownGroup, AWhere, mText)];
   end;
 end;
 
 procedure ReadBeforeBuild(AItem: TJSONObject; const AWhere: string; var ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>);
+  var AIssues: TAtlasTaskIssues);
 var
   mText: string;
 begin
@@ -539,13 +573,13 @@ begin
     ATask.HasBeforeBuild := TAtlasTasks.TryBeforeBuild(mText, ATask.BeforeBuild);
     if not ATask.HasBeforeBuild then
     begin
-      AIssues := AIssues + [Format('%s: beforeBuild "%s" ist weder off, warn noch block', [AWhere, mText])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.BeforeBuildValue, AWhere, mText)];
     end;
   end;
 end;
 
 function ParseTask(AItem: TJSONObject; AIndex: Integer; AGlobal: Boolean; out ATask: TAtlasTaskDefinition;
-  var AIssues: TArray<string>): Boolean;
+  var AIssues: TAtlasTaskIssues): Boolean;
 var
   mWhere: string;
 begin
@@ -555,14 +589,14 @@ begin
   ATask.Global := AGlobal;
   if not StringOf(AItem, 'name', ATask.Name) or (Trim(ATask.Name) = '') then
   begin
-    AIssues := AIssues + [Format('%s: ohne name', [Format('tasks[%d]', [AIndex])])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MissingName, Format('tasks[%d]', [AIndex]))];
     Exit(False);
   end;
   ATask.Name := Trim(ATask.Name);
   mWhere := ATask.Name;
   if not StringOf(AItem, 'command', ATask.Command) or (Trim(ATask.Command) = '') then
   begin
-    AIssues := AIssues + [Format('%s: ohne command', [mWhere])];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.MissingCommand, mWhere)];
     Exit(False);
   end;
   ATask.Command := Trim(ATask.Command);
@@ -578,7 +612,7 @@ begin
 end;
 
 class function TAtlasTasks.Parse(ARoot: TJSONObject; AGlobal: Boolean;
-  var AIssues: TArray<string>): TAtlasTaskDefinitions;
+  var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
 var
   Value: TJSONValue;
   Items: TJSONArray;
@@ -597,7 +631,7 @@ begin
   end;
   if not (Value is TJSONArray) then
   begin
-    AIssues := AIssues + ['tasks muss eine Liste sein'];
+    AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TasksType, '')];
     Exit;
   end;
   Items := TJSONArray(Value);
@@ -605,7 +639,7 @@ begin
   begin
     if not (Items.Items[Index] is TJSONObject) then
     begin
-      AIssues := AIssues + [Format('tasks[%d]: kein Objekt', [Index])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TaskType, Format('tasks[%d]', [Index]))];
       Continue;
     end;
     if not ParseTask(TJSONObject(Items.Items[Index]), Index, AGlobal, Task, AIssues) then
@@ -614,7 +648,7 @@ begin
     end;
     if IndexOf(Result, Task.Name) >= 0 then
     begin
-      AIssues := AIssues + [Format('%s: Name doppelt, die erste Aufgabe gilt', [Task.Name])];
+      AIssues := AIssues + [TAtlasTaskIssue.Create(TAtlasTaskIssueKind.DuplicateName, Task.Name)];
       Continue;
     end;
     Result := Result + [Task];
@@ -622,7 +656,7 @@ begin
 end;
 
 class function TAtlasTasks.Parse(const AText: string; AGlobal: Boolean;
-  var AIssues: TArray<string>): TAtlasTaskDefinitions;
+  var AIssues: TAtlasTaskIssues): TAtlasTaskDefinitions;
 var
   Root: TJSONObject;
 begin

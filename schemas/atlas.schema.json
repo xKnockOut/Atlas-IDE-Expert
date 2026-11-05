@@ -1627,8 +1627,8 @@
         "methodKindMarker": {
           "type": "boolean",
           "default": true,
-          "description": "Marke „ohne Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
-          "x-description-en": "Label \"without Self\" at the header of such methods; off = the actions only via Ctrl+.",
+          "description": "Marke „braucht kein Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
+          "x-description-en": "Label \"Self unused\" at the header of such methods; off = the actions only via Ctrl+.",
           "x-issue": "#686"
         },
         "methodKindStatic": {

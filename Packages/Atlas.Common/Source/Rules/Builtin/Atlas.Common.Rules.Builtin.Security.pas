@@ -72,7 +72,46 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSecurityText = (CommandTitle, Command, PathTitle, Path, CryptoTitle, Crypto, TlsTitle, VerifyMode, AcceptsAny,
+    HttpTitle, Http, ToHttps, RandomTitle, Random, SqlTitle, Sql);
+
+const
+  cTexts: array[TSecurityText] of TAtlasText = (
+    (De: 'Befehl aus zusammengesetztem Text (Befehlsinjektion)'; En: 'Command from composed text (command injection)'),
+    (De: '%s mit zusammengesetztem Argument: Eingaben könnten weitere Befehle einschleusen';
+     En: '%s with composed argument: inputs could inject further commands'),
+    (De: 'Dateizugriff mit Pfad aus Eingabedaten (Pfad-Traversal)';
+     En: 'File access with path from input data (path traversal)'),
+    (De: '%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." könnte Dateien außerhalb des erwarteten Ordners ' +
+      'erreichen';
+     En: '%s with a path from input data without check; ".." could reach files outside the expected folder'),
+    (De: 'Schwacher Kryptoalgorithmus (MD5, SHA-1, DES, RC4)'; En: 'Weak crypto algorithm (MD5, SHA-1, DES, RC4)'),
+    (De: '%s ist für Sicherheitszwecke zu schwach; für Kennwörter und Signaturen SHA-256 oder besser verwenden';
+     En: '%s is too weak for security purposes; use SHA-256 or better for passwords and signatures'),
+    (De: 'TLS-Zertifikatsprüfung abgeschaltet'; En: 'TLS certificate check switched off'),
+    (De: 'VerifyMode := [] schaltet die Prüfung des Serverzertifikats ab';
+     En: 'VerifyMode := [] switches off the check of the server certificate'),
+    (De: 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung';
+     En: 'The handler accepts every server certificate without check'),
+    (De: 'Unverschlüsselte http://-URL'; En: 'Unencrypted http:// URL'),
+    (De: 'Unverschlüsselte http://-URL; https:// verwenden'; En: 'Unencrypted http:// URL; use https://'),
+    (De: 'http:// durch https:// ersetzen'; En: 'Replace http:// with https://'),
+    (De: 'Random für sicherheitsrelevante Werte'; En: 'Random for security-relevant values'),
+    (De: 'Random ist vorhersagbar und für %s ungeeignet; einen kryptografischen Zufallsgenerator verwenden';
+     En: 'Random is predictable and unsuitable for %s; use a cryptographic random generator'),
+    (De: 'SQL-Text aus zusammengesetzten Werten (SQL-Injection)'; En: 'SQL text from composed values (SQL injection)'),
+    (De: 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL einschleusen. Parameter verwenden (:Name, ' +
+      'ParamByName)';
+     En: 'SQL text is composed from values: inputs could inject SQL. Use parameters (:Name, ParamByName)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   CommandCalls: array[0..7] of string = ('ShellExecute', 'ShellExecuteA', 'ShellExecuteW', 'ShellExecuteEx',
@@ -370,7 +409,7 @@ end;
 function TSecurityCommandInjectionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-command-injection', TRuleSeverity.Warning,
-    'Befehl aus zusammengesetztem Text (Befehlsinjektion)');
+    cTexts[TSecurityText.CommandTitle].Text);
 end;
 
 /// <summary>Steht bei AIndex ein Aufruf eines Befehls (CommandCalls) mit Klammer?</summary>
@@ -416,8 +455,8 @@ begin
     mClose := MatchingParen(mTokens, mIndex + 1);
     if (mClose >= 0) and HasComposedCommand(mTokens, mIndex, mClose) then
     begin
-      AReport.Add(TokenRange(mTokens[mIndex]), Format('%s mit zusammengesetztem Argument: Eingaben könnten ' +
-        'weitere Befehle einschleusen', [mTokens[mIndex].Text]), TRuleConfidence.Medium);
+      AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.Command].Fmt([mTokens[mIndex].Text]),
+        TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -427,7 +466,7 @@ end;
 function TSecurityPathTraversalRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-path-traversal', TRuleSeverity.Warning,
-    'Dateizugriff mit Pfad aus Eingabedaten (Pfad-Traversal)', True);
+    cTexts[TSecurityText.PathTitle].Text, True);
 end;
 
 /// <summary>Nennt AIndex einen Dateizugriff (FileCalls, TFileStream.Create)?</summary>
@@ -478,8 +517,8 @@ begin
     mClose := MatchingParen(mTokens, mIndex + 1);
     if (mClose >= 0) and UncheckedInput(mTokens, mIndex + 2, mClose - 1) then
     begin
-      AReport.Add(TokenRange(mTokens[mIndex]), Format('%s mit einem Pfad aus Eingabedaten ohne Prüfung; ".." ' +
-        'könnte Dateien außerhalb des erwarteten Ordners erreichen', [mTokens[mIndex].Text]), TRuleConfidence.Medium);
+      AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.Path].Fmt([mTokens[mIndex].Text]),
+        TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -489,7 +528,7 @@ end;
 function TSecurityWeakCryptoRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-weak-crypto', TRuleSeverity.Hint,
-    'Schwacher Kryptoalgorithmus (MD5, SHA-1, DES, RC4)');
+    cTexts[TSecurityText.CryptoTitle].Text);
 end;
 
 procedure TSecurityWeakCryptoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -513,8 +552,7 @@ begin
           Confidence := TRuleConfidence.Medium;
         end;
       end;
-      AReport.Add(TokenRange(Tokens[Index]), Format('%s ist für Sicherheitszwecke zu schwach; für Kennwörter und ' +
-        'Signaturen SHA-256 oder besser verwenden', [Tokens[Index].Text]), Confidence);
+      AReport.Add(TokenRange(Tokens[Index]), cTexts[TSecurityText.Crypto].Fmt([Tokens[Index].Text]), Confidence);
     end;
   end;
 end;
@@ -524,7 +562,7 @@ end;
 function TSecurityTlsVerificationDisabledRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-tls-verification-disabled', TRuleSeverity.Warning,
-    'TLS-Zertifikatsprüfung abgeschaltet');
+    cTexts[TSecurityText.TlsTitle].Text);
 end;
 
 type
@@ -622,14 +660,14 @@ begin
     end;
     if IsClearedVerifyMode(mTokens, mIndex) then
     begin
-      AReport.Add(TokenRange(mTokens[mIndex]), 'VerifyMode := [] schaltet die Prüfung des Serverzertifikats ab',
+      AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.VerifyMode].Text,
         TRuleConfidence.High);
     end
     // Accepted := True bzw. Result := True ohne Bedingung in einem Prüf-Handler.
     else if IsTrueAssignment(mTokens, mIndex) and IsUnconditional(mTokens, mIndex) and
       AcceptsAll(mTokens, mIndex, mTracker.Header) then
     begin
-      AReport.Add(TokenRange(mTokens[mIndex]), 'Der Handler akzeptiert jedes Serverzertifikat ohne Prüfung',
+      AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.AcceptsAny].Text,
         TRuleConfidence.High);
     end;
   end;
@@ -639,7 +677,7 @@ end;
 
 function TSecurityInsecureHttpRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('security-insecure-http', TRuleSeverity.Hint, 'Unverschlüsselte http://-URL');
+  Result := TRuleDescriptor.Create('security-insecure-http', TRuleSeverity.Hint, cTexts[TSecurityText.HttpTitle].Text);
 end;
 
 /// <summary>Gilt das http:// bei AOffset nicht als Ziel (kein Rechnername, Ausnahme aus HttpExceptions)?</summary>
@@ -677,13 +715,13 @@ begin
   // Einzeilige Strings: Spalte des "http://" im Token.
   if AToken.StartPos.Line <> AToken.EndPos.Line then
   begin
-    AReport.Add(TokenRange(AToken), 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium);
+    AReport.Add(TokenRange(AToken), cTexts[TSecurityText.Http].Text, TRuleConfidence.Medium);
     Exit;
   end;
   mStart := TTextPosition.Create(AToken.StartPos.Line, AToken.StartPos.Character + AOffset - 1);
   mRange := TTextRange.Create(mStart.Line, mStart.Character, mStart.Line, mStart.Character + Length('http://'));
-  AReport.Add(mRange, 'Unverschlüsselte http://-URL; https:// verwenden', TRuleConfidence.Medium,
-    [TRuleFix.Create('http:// durch https:// ersetzen', [TRuleEdit.Create(mRange, Copy(AToken.Text, AOffset, 4) +
+  AReport.Add(mRange, cTexts[TSecurityText.Http].Text, TRuleConfidence.Medium,
+    [TRuleFix.Create(cTexts[TSecurityText.ToHttps].Text, [TRuleEdit.Create(mRange, Copy(AToken.Text, AOffset, 4) +
     's://')])]);
 end;
 
@@ -718,7 +756,7 @@ end;
 function TSecurityInsecureRandomRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-insecure-random', TRuleSeverity.Warning,
-    'Random für sicherheitsrelevante Werte');
+    cTexts[TSecurityText.RandomTitle].Text);
 end;
 
 procedure TSecurityInsecureRandomRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -745,8 +783,8 @@ begin
     begin
       if (Tokens[Inner].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Inner].Text, 'Random') then
       begin
-        AReport.Add(TokenRange(Tokens[Inner]), Format('Random ist vorhersagbar und für %s ungeeignet; einen ' +
-          'kryptografischen Zufallsgenerator verwenden', [Tokens[Target].Text]), TRuleConfidence.Medium);
+        AReport.Add(TokenRange(Tokens[Inner]), cTexts[TSecurityText.Random].Fmt([Tokens[Target].Text]),
+          TRuleConfidence.Medium);
         Break;
       end;
     end;
@@ -758,7 +796,7 @@ end;
 function TSecuritySqlInjectionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('security-sql-injection', TRuleSeverity.Warning,
-    'SQL-Text aus zusammengesetzten Werten (SQL-Injection)');
+    cTexts[TSecurityText.SqlTitle].Text);
 end;
 
 const
@@ -1017,8 +1055,7 @@ begin
     begin
       mConfidence := TRuleConfidence.High;
     end;
-    AReport.Add(TokenRange(mTokens[mIndex]), 'SQL-Text wird aus Werten zusammengesetzt: Eingaben könnten SQL ' +
-      'einschleusen. Parameter verwenden (:Name, ParamByName)', mConfidence);
+    AReport.Add(TokenRange(mTokens[mIndex]), cTexts[TSecurityText.Sql].Text, mConfidence);
   end;
 end;
 
@@ -1032,5 +1069,8 @@ begin
   ARegistry.Register(TSecurityInsecureRandomRule.Create);
   ARegistry.Register(TSecuritySqlInjectionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Security', cTexts);
 
 end.

@@ -124,14 +124,78 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants,
   Atlas.Common.Editing.EnumTables,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypedExpressionsText = (AlwaysTitle, NeverEnds, NeverRuns, NeverNegativeTrue, NeverNegativeFalse, AlwaysTrue,
+    AlwaysFalse, OutOfRange, InitTitle, FieldOrder, SortFields, AddPlaceholders, CountMismatch, ValueOne, ValueMany,
+    EntryOne, EntryMany, OrdinalTitle, ToCaseIndexStr, CaseOrdinal, ForOrdinal, AParameter, AVariable, AField,
+    AProperty, ATypedConstant, NotConstant, CaseLabel, ArrayBound, PointerTitle, DeclareString, WideGarbage,
+    AnsiFirstOnly, ConvertTo, UsePointerType, LikeE2072, MissingOne, MissingMany, MissingMore);
+
+const
+  cTexts: array[TTypedExpressionsText] of TAtlasText = (
+    (De: 'Vergleich immer wahr oder immer falsch'; En: 'Comparison always true or always false'),
+    (De: ', die Schleife endet nie'; En: ', the loop never ends'),
+    (De: ', die Schleife läuft nie'; En: ', the loop never runs'),
+    (De: '%s ist nie negativ; %s ist immer wahr%s (dcc meldet das nicht).';
+     En: '%s is never negative; %s is always true%s (dcc does not report this).'),
+    (De: '%s ist nie negativ; %s ist immer falsch%s (dcc meldet das nicht).';
+     En: '%s is never negative; %s is always false%s (dcc does not report this).'),
+    (De: '%s ist %s; %s ist immer wahr%s (wie W1022).'; En: '%s is %s; %s is always true%s (like W1022).'),
+    (De: '%s ist %s; %s ist immer falsch%s (wie W1021).'; En: '%s is %s; %s is always false%s (like W1021).'),
+    (De: '%s liegt außerhalb des Bereichs von %s; der Zweig wird nie ausgeführt (wie W1018).';
+     En: '%s lies outside the range of %s; the branch is never executed (like W1018).'),
+    (De: 'Initialisierung einer Konstanten passt nicht'; En: 'Initialization of a constant does not fit'),
+    (De: '%s steht in %s vor %s; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).';
+     En: '%s is in %s before %s; the fields must be in the order of declaration (like E2083).'),
+    (De: 'Felder in die Reihenfolge der Deklaration bringen'; En: 'Put the fields in the order of declaration'),
+    (De: 'Fehlende Einträge mit Platzhalter ergänzen'; En: 'Add missing entries with placeholder'),
+    (De: '%s hat %s, die Konstante %s'; En: '%s has %s, the constant %s'),
+    (De: 'Wert'; En: 'value'),
+    (De: 'Werte'; En: 'values'),
+    (De: 'Eintrag'; En: 'entry'),
+    (De: 'Einträge'; En: 'entries'),
+    (De: 'case oder for über einen nicht ordinalen Typ'; En: 'case or for over a non-ordinal type'),
+    (De: 'In case IndexStr(…) of umwandeln'; En: 'Convert to case IndexStr(…) of'),
+    (De: 'case braucht einen ordinalen Typ; %s ist %s (wie E2001).';
+     En: 'case needs an ordinal type; %s is %s (like E2001).'),
+    (De: 'for braucht eine ordinale Zählvariable; %s ist %s (wie E2032).';
+     En: 'for needs an ordinal counter variable; %s is %s (like E2032).'),
+    (De: 'ein Parameter'; En: 'a parameter'),
+    (De: 'eine Variable'; En: 'a variable'),
+    (De: 'ein Feld'; En: 'a field'),
+    (De: 'eine Property'; En: 'a property'),
+    (De: 'eine typisierte Konstante'; En: 'a typed constant'),
+    (De: '%s %s ist %s, keine Konstante (wie E2026).'; En: '%s %s is %s, not a constant (like E2026).'),
+    (De: 'Die case-Marke'; En: 'The case label'),
+    (De: 'Die Arraygrenze'; En: 'The array bound'),
+    (De: 'Zeiger und Zeichenbreite eines Strings passen nicht zusammen';
+     En: 'Pointer and character width of a string do not match'),
+    (De: '%s als string deklarieren'; En: 'Declare %s as string'),
+    (De: '%s zeigt auf WideChar, %s ist %s; die API liest Datenmüll (wie W1044).';
+     En: '%s points to WideChar, %s is %s; the API reads garbage (like W1044).'),
+    (De: '%s zeigt auf AnsiChar, %s ist %s; die API liest nur das erste Zeichen (wie W1044).';
+     En: '%s points to AnsiChar, %s is %s; the API reads only the first character (like W1044).'),
+    (De: 'In %s umwandeln: %s(%s(…))'; En: 'Convert to %s: %s(%s(…))'),
+    (De: 'Passenden Zeigertyp verwenden: %s'; En: 'Use matching pointer type: %s'),
+    (De: ' (wie E2072).'; En: ' (like E2072).'),
+    (De: '; %s fehlt'; En: '; %s is missing'),
+    (De: '; %s fehlen'; En: '; %s are missing'),
+    (De: '; %s … fehlen'; En: '; %s … are missing'));
+
+{$SCOPEDENUMS OFF}
 
 { TComparisonAlwaysConstantRule }
 
 function TComparisonAlwaysConstantRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ComparisonAlwaysConstantRuleId, TRuleSeverity.Warning,
-    'Vergleich immer wahr oder immer falsch');
+    cTexts[TTypedExpressionsText.AlwaysTitle].Text);
 end;
 
 class function TComparisonAlwaysConstantRule.Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer;
@@ -249,17 +313,17 @@ var
     begin
       if AAlways then
       begin
-        Result := ', die Schleife endet nie';
+        Result := cTexts[TTypedExpressionsText.NeverEnds].Text;
       end
       else
       begin
-        Result := ', die Schleife läuft nie';
+        Result := cTexts[TTypedExpressionsText.NeverRuns].Text;
       end;
     end
     else if (Node.Parent.Kind = TSyntaxKind.RepeatStatement) and (Node.Parent[Node.Parent.ChildCount - 1] = Node) and
       not AAlways then
     begin
-      Result := ', die Schleife endet nie';
+      Result := cTexts[TTypedExpressionsText.NeverEnds].Text;
     end;
   end;
 
@@ -308,14 +372,14 @@ var
     mNote := LoopNote(ANode, AVerdict = 1);
     if AVerdict = 1 then
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format(
-        '%s ist nie negativ; %s ist immer wahr%s (dcc meldet das nicht).', [Scope.Text(AOperand), Scope.Text(ANode),
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypedExpressionsText.NeverNegativeTrue].Fmt([Scope.Text(AOperand), Scope.Text(ANode),
         mNote]), TRuleConfidence.High);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format(
-        '%s ist nie negativ; %s ist immer falsch%s (dcc meldet das nicht).', [Scope.Text(AOperand), Scope.Text(ANode),
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypedExpressionsText.NeverNegativeFalse].Fmt([Scope.Text(AOperand), Scope.Text(ANode),
         mNote]), TRuleConfidence.High);
     end;
   end;
@@ -327,12 +391,12 @@ var
     mNote := LoopNote(ANode, AVerdict = 1);
     if AVerdict = 1 then
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s ist %s; %s ist immer wahr%s (wie W1022).',
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypedExpressionsText.AlwaysTrue].Fmt(
         [Scope.Text(AOperand), ATypeName, Scope.Text(ANode), mNote]), TRuleConfidence.High);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s ist %s; %s ist immer falsch%s (wie W1021).',
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypedExpressionsText.AlwaysFalse].Fmt(
         [Scope.Text(AOperand), ATypeName, Scope.Text(ANode), mNote]), TRuleConfidence.High);
     end;
   end;
@@ -407,8 +471,7 @@ var
         end;
         if Outside then
         begin
-          AReport.Add(TTextRange.Create(Labeled.StartPos, Labeled.EndPos), Format(
-            '%s liegt außerhalb des Bereichs von %s; der Zweig wird nie ausgeführt (wie W1018).',
+          AReport.Add(TTextRange.Create(Labeled.StartPos, Labeled.EndPos), cTexts[TTypedExpressionsText.OutOfRange].Fmt(
             [Scope.Text(Labeled), TypeName]), TRuleConfidence.High);
         end;
       end;
@@ -464,7 +527,7 @@ end;
 function TConstantInitializerMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ConstantInitializerMismatchRuleId, TRuleSeverity.Error,
-    'Initialisierung einer Konstanten passt nicht');
+    cTexts[TTypedExpressionsText.InitTitle].Text);
 end;
 
 class function TConstantInitializerMismatchRule.Placeholder(const ATypeName: string): string;
@@ -990,10 +1053,10 @@ var
     if mIndex > 0 then
     begin
       // Korrektur: die Paare in der Reihenfolge der Deklaration.
-      AReport.Add(TTextRange.Create(AValue[mIndex * 2].StartPos, AValue[mIndex * 2].EndPos), Format(
-        '%s steht in %s vor %s; die Felder müssen in der Reihenfolge der Deklaration stehen (wie E2083).',
+      AReport.Add(TTextRange.Create(AValue[mIndex * 2].StartPos, AValue[mIndex * 2].EndPos),
+        cTexts[TTypedExpressionsText.FieldOrder].Fmt(
         [mGiven[mIndex], AType.Name, mGiven[mIndex - 1]]), TRuleConfidence.High,
-        [TRuleFix.Create('Felder in die Reihenfolge der Deklaration bringen', [TTextEdit.Create(TTextRange.Create(
+        [TRuleFix.Create(cTexts[TTypedExpressionsText.SortFields].Text, [TTextEdit.Create(TTextRange.Create(
         AValue[0].StartPos, AValue[AValue.ChildCount - 1].EndPos), OrderedText(AValue, mPositions))])]);
     end;
     // Werte der Felder: verschachtelte Records und Arrays sind hier nicht bekannt.
@@ -1023,15 +1086,15 @@ var
     Result := '';
     if Length(ANames) = 1 then
     begin
-      Result := '; ' + ANames[0] + ' fehlt';
+      Result := cTexts[TTypedExpressionsText.MissingOne].Fmt([ANames[0]]);
     end
     else if Length(ANames) > 3 then
     begin
-      Result := '; ' + string.Join(', ', Copy(ANames, 0, 3)) + ' … fehlen';
+      Result := cTexts[TTypedExpressionsText.MissingMore].Fmt([string.Join(', ', Copy(ANames, 0, 3))]);
     end
     else if Length(ANames) > 1 then
     begin
-      Result := '; ' + string.Join(', ', ANames) + ' fehlen';
+      Result := cTexts[TTypedExpressionsText.MissingMany].Fmt([string.Join(', ', ANames)]);
     end;
   end;
 
@@ -1049,7 +1112,7 @@ var
       Exit;
     end;
     mLast := AValue[AValue.ChildCount - 1];
-    Result := [TRuleFix.Create('Fehlende Einträge mit Platzhalter ergänzen', [TTextEdit.Create(TTextRange.Create(
+    Result := [TRuleFix.Create(cTexts[TTypedExpressionsText.AddPlaceholders].Text, [TTextEdit.Create(TTextRange.Create(
       mLast.EndPos, mLast.EndPos), MissingText(AInfo, AValue.ChildCount, mFiller))])];
   end;
 
@@ -1062,8 +1125,10 @@ var
     mRepaired, mInnermost: Boolean;
   begin
     mInnermost := ADimension = AArray.ChildCount - 2;
-    mMessage := Format('%s hat %s, die Konstante %s', [AInfo.Text, Counted(AInfo.Count, 'Wert', 'Werte'),
-      Counted(AValue.ChildCount, 'Eintrag', 'Einträge')]);
+    mMessage := cTexts[TTypedExpressionsText.CountMismatch].Fmt([AInfo.Text, Counted(AInfo.Count,
+      cTexts[TTypedExpressionsText.ValueOne].Text, cTexts[TTypedExpressionsText.ValueMany].Text),
+      Counted(AValue.ChildCount, cTexts[TTypedExpressionsText.EntryOne].Text,
+        cTexts[TTypedExpressionsText.EntryMany].Text)]);
     // Über einer Aufzählung nennt die Zuordnung die wirklich fehlenden Werte, nicht die letzten (#667).
     mRepaired := (Length(AInfo.Names) = AInfo.Count) and mInnermost and
       TEnumTables.Repair(AContext.Text, AContext.Tree, AValue, AInfo.Names,
@@ -1079,7 +1144,8 @@ var
     begin
       mFixes := PlaceholderFix(AArray, AValue, AInfo);
     end;
-    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), mMessage + ' (wie E2072).', TRuleConfidence.High,
+    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), mMessage +
+      cTexts[TTypedExpressionsText.LikeE2072].Text, TRuleConfidence.High,
       mFixes);
   end;
 
@@ -1195,7 +1261,7 @@ end;
 function TCaseSelectorNotOrdinalRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CaseSelectorNotOrdinalRuleId, TRuleSeverity.Error,
-    'case oder for über einen nicht ordinalen Typ');
+    cTexts[TTypedExpressionsText.OrdinalTitle].Text);
 end;
 
 class function TCaseSelectorNotOrdinalRule.NotOrdinal(const ATypeName: string): Boolean;
@@ -1280,7 +1346,7 @@ var
       end;
       Edits := Edits + [UsesEdit];
     end;
-    AFix := TRuleFix.Create('In case IndexStr(…) of umwandeln', Edits);
+    AFix := TRuleFix.Create(cTexts[TTypedExpressionsText.ToCaseIndexStr].Text, Edits);
     Result := True;
   end;
 
@@ -1311,8 +1377,8 @@ var
     begin
       Fixes := [Fix];
     end;
-    AReport.Add(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos), Format(
-      'case braucht einen ordinalen Typ; %s ist %s (wie E2001).', [Scope.Text(ANode[0]), Name]),
+    AReport.Add(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos),
+      cTexts[TTypedExpressionsText.CaseOrdinal].Fmt([Scope.Text(ANode[0]), Name]),
       TRuleConfidence.High, Fixes);
   end;
 
@@ -1393,8 +1459,8 @@ var
     end;
     if mKnown and (mName <> '') then
     begin
-      AReport.Add(TTextRange.Create(mVariable.StartPos, mVariable.EndPos), Format(
-        'for braucht eine ordinale Zählvariable; %s ist %s (wie E2032).', [ANode.Name, mName]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(mVariable.StartPos, mVariable.EndPos),
+        cTexts[TTypedExpressionsText.ForOrdinal].Fmt([ANode.Name, mName]), TRuleConfidence.High);
     end;
   end;
 
@@ -1404,20 +1470,20 @@ var
     Result := '';
     if ASymbol.IsParameter then
     begin
-      Result := 'ein Parameter';
+      Result := cTexts[TTypedExpressionsText.AParameter].Text;
     end
     else
       case ASymbol.SymbolKind of
         TIndexSymbolKind.Variable:
-          Result := 'eine Variable';
+          Result := cTexts[TTypedExpressionsText.AVariable].Text;
         TIndexSymbolKind.Field:
-          Result := 'ein Feld';
+          Result := cTexts[TTypedExpressionsText.AField].Text;
         TIndexSymbolKind.Property_:
-          Result := 'eine Property';
+          Result := cTexts[TTypedExpressionsText.AProperty].Text;
         TIndexSymbolKind.Constant:
           if ASymbol.TypeName <> '' then
           begin
-            Result := 'eine typisierte Konstante';
+            Result := cTexts[TTypedExpressionsText.ATypedConstant].Text;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -1453,7 +1519,7 @@ var
     Kind := NotConstant(Symbol);
     if Kind <> '' then
     begin
-      AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s %s ist %s, keine Konstante (wie E2026).',
+      AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), cTexts[TTypedExpressionsText.NotConstant].Fmt(
         [AWhat, Scope.Text(AExpr), Kind]), TRuleConfidence.High);
     end;
   end;
@@ -1475,12 +1541,12 @@ var
         Labeled := Item[LabelIndex];
         if (Labeled.Kind = TSyntaxKind.RangeExpr) and (Labeled.ChildCount = 2) then
         begin
-          CheckConstant(Unwrapped(Labeled[0]), 'Die case-Marke');
-          CheckConstant(Unwrapped(Labeled[1]), 'Die case-Marke');
+          CheckConstant(Unwrapped(Labeled[0]), cTexts[TTypedExpressionsText.CaseLabel].Text);
+          CheckConstant(Unwrapped(Labeled[1]), cTexts[TTypedExpressionsText.CaseLabel].Text);
         end
         else
         begin
-          CheckConstant(Unwrapped(Labeled), 'Die case-Marke');
+          CheckConstant(Unwrapped(Labeled), cTexts[TTypedExpressionsText.CaseLabel].Text);
         end;
       end;
     end;
@@ -1496,8 +1562,8 @@ var
       Bound := AArray[Index];
       if (Bound.Kind = TSyntaxKind.SubrangeType) and (Bound.ChildCount = 2) then
       begin
-        CheckConstant(Unwrapped(Bound[0]), 'Die Arraygrenze');
-        CheckConstant(Unwrapped(Bound[1]), 'Die Arraygrenze');
+        CheckConstant(Unwrapped(Bound[0]), cTexts[TTypedExpressionsText.ArrayBound].Text);
+        CheckConstant(Unwrapped(Bound[1]), cTexts[TTypedExpressionsText.ArrayBound].Text);
       end;
     end;
   end;
@@ -1557,7 +1623,7 @@ end;
 function TSuspiciousStringPointerCastRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(SuspiciousStringPointerCastRuleId, TRuleSeverity.Warning,
-    'Zeiger und Zeichenbreite eines Strings passen nicht zusammen');
+    cTexts[TTypedExpressionsText.PointerTitle].Text);
 end;
 
 class function TSuspiciousStringPointerCastRule.StringWidth(const ATypeName: string): Integer;
@@ -1652,7 +1718,7 @@ var
     begin
       Exit;
     end;
-    AFix := TRuleFix.Create(Format('%s als string deklarieren', [ASymbol.Name]),
+    AFix := TRuleFix.Create(cTexts[TTypedExpressionsText.DeclareString].Fmt([ASymbol.Name]),
       [TTextEdit.Create(TTextRange.Create(Tokens[mIndex].StartPos, Tokens[mIndex].EndPos), 'string')]);
     Result := True;
   end;
@@ -1669,8 +1735,7 @@ var
     mFixes := nil;
     if CharPointerWidth(ANode.Name) = 2 then
     begin
-      mMessage := Format('%s zeigt auf WideChar, %s ist %s; die API liest Datenmüll (wie W1044).',
-        [ANode.Name, Scope.Text(AArgument), ATypeName]);
+      mMessage := cTexts[TTypedExpressionsText.WideGarbage].Fmt([ANode.Name, Scope.Text(AArgument), ATypeName]);
       if DeclarationFix(ASymbol, AWidth, mFix) then
       begin
         mFixes := [mFix];
@@ -1680,17 +1745,16 @@ var
     end
     else
     begin
-      mMessage := Format('%s zeigt auf AnsiChar, %s ist %s; die API liest nur das erste Zeichen (wie W1044).',
-        [ANode.Name, Scope.Text(AArgument), ATypeName]);
+      mMessage := cTexts[TTypedExpressionsText.AnsiFirstOnly].Fmt([ANode.Name, Scope.Text(AArgument), ATypeName]);
       mConversion := 'AnsiString';
       mOtherPointer := 'PChar';
     end;
-    mFix := TRuleFix.Create(Format('In %s umwandeln: %s(%s(…))', [mConversion, ANode.Name, mConversion]),
+    mFix := TRuleFix.Create(cTexts[TTypedExpressionsText.ConvertTo].Fmt([mConversion, ANode.Name, mConversion]),
       [TTextEdit.Create(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos), Format('%s(%s)', [mConversion,
       Scope.Text(ANode[1])]))]);
     mFix.Alternative := mFixes <> nil;
     mFixes := mFixes + [mFix];
-    mFix := TRuleFix.Create(Format('Passenden Zeigertyp verwenden: %s', [mOtherPointer]),
+    mFix := TRuleFix.Create(cTexts[TTypedExpressionsText.UsePointerType].Fmt([mOtherPointer]),
       [TTextEdit.Create(TTextRange.Create(ANode[0].StartPos, ANode[0].EndPos), mOtherPointer)]);
     mFix.Alternative := True;
     mFixes := mFixes + [mFix];
@@ -1770,5 +1834,8 @@ begin
   ARegistry.Register(TCaseSelectorNotOrdinalRule.Create);
   ARegistry.Register(TSuspiciousStringPointerCastRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypedExpressions', cTexts);
 
 end.

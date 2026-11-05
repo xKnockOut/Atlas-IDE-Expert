@@ -98,9 +98,31 @@ implementation
 
 uses
   System.StrUtils,
-  System.Math;
+  System.Math,
+  Atlas.Common.Localization.Texts;
 
 const
+  /// <summary>Begründungen für den Befund-Hover in beiden Sprachen (#1458); None hat keinen Text.</summary>
+  cTexts: array[TConsideredUsedReason.Directive..TConsideredUsedReason.HelperMember] of TAtlasText = (
+    (De: 'virtuell, überschrieben oder Message-Handler'; En: 'virtual, overridden or message handler'),
+    (De: 'Konstruktor oder Destruktor'; En: 'constructor or destructor'),
+    (De: 'Operator'; En: 'operator'),
+    (De: 'for-in-Enumerator'; En: 'for-in enumerator'),
+    (De: 'Default-Property'; En: 'default property'),
+    (De: 'Property mit implements'; En: 'property with implements'),
+    (De: 'Mitglied mit Attribut (RTTI)'; En: 'member with attribute (RTTI)'),
+    (De: 'Typ mit Attribut aus keepAttributes'; En: 'type with attribute from keepAttributes'),
+    (De: 'Name aus keepPatterns'; En: 'name from keepPatterns'),
+    (De: 'Testklasse'; En: 'test class'),
+    (De: 'setzt eine Interface-Methode um'; En: 'implements an interface method'),
+    (De: 'Vorfahr oder Interface nicht im Index'; En: 'ancestor or interface not in the index'),
+    (De: 'published Property eines TPersistent-Nachfahren (Streaming)';
+     En: 'published property of a TPersistent descendant (streaming)'),
+    (De: 'Zugriffsmethode einer Property'; En: 'accessor of a property'),
+    (De: 'in exports'; En: 'in exports'),
+    (De: 'Mitglied eines Interfaces'; En: 'member of an interface'),
+    (De: 'Mitglied eines Helfers'; En: 'member of a helper'));
+
   KeptDirectives: array[0..5] of string = ('message', 'virtual', 'dynamic', 'abstract', 'override', 'reintroduce');
   EnumeratorNames: array[0..2] of string = ('GetEnumerator', 'MoveNext', 'Current');
   AccessorWords: array[0..4] of string = ('read', 'write', 'stored', 'add', 'remove');
@@ -187,15 +209,12 @@ begin
 end;
 
 class function TConsideredUsed.Explain(AReason: TConsideredUsedReason): string;
-const
-  cTexts: array[TConsideredUsedReason] of string = ('', 'virtuell, überschrieben oder Message-Handler',
-    'Konstruktor oder Destruktor', 'Operator', 'for-in-Enumerator', 'Default-Property', 'Property mit implements',
-    'Mitglied mit Attribut (RTTI)', 'Typ mit Attribut aus keepAttributes', 'Name aus keepPatterns', 'Testklasse',
-    'setzt eine Interface-Methode um', 'Vorfahr oder Interface nicht im Index',
-    'published Property eines TPersistent-Nachfahren (Streaming)', 'Zugriffsmethode einer Property', 'in exports',
-    'Mitglied eines Interfaces', 'Mitglied eines Helfers');
 begin
-  Result := cTexts[AReason];
+  Result := '';
+  if AReason <> TConsideredUsedReason.None then
+  begin
+    Result := cTexts[AReason].Text;
+  end;
 end;
 
 function TConsideredUsed.TokenAt(const APosition: TTextPosition): Integer;
@@ -694,5 +713,8 @@ begin
   end;
   Result := OwnerReason(ASymbol, mOwner);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.ConsideredUsed', cTexts);
 
 end.
