@@ -1,4 +1,9 @@
-﻿## Lokale Routinen abheben (#1788, 05.11.2026, Branch `claude/project-thread-sbmrys` auf `Pilot-2.0.0-beta.1`)
+﻿## Kräftige Farben im Benachrichtigungsfenster (05.11.2026, Branch `claude/project-thread-k5jm1p` auf `Pilot-2.0.0-beta.1`)
+- Anlass Marco: Symbole und Balken im Fenster „Benachrichtigungen“ blasser als die Plakette der Atlas-Statusleiste. Ursache: `TAtlasNotificationTexts.SeverityColor` nahm die Textfarben `Warn`/`Error`/`Accent` (für Text auf der Fläche, im dunklen Design entsättigt), nicht die Signalfarben aus #1255.
+- Jetzt `SeveritySignal` (liefert `TAtlasSignal` aus `TAtlasColors.Signals`): Kreis in `Fill` mit Rand `Ring`, Zeichen in `Mark`, Balken ungelesener Einträge in `Solid` wie die Plakette. Info blau aus den Signalen statt Akzent. Test `SeveritySignalIsStatusBarSignal`.
+- Geprüft: Atlas `--check` mit allen `metric-*` an: 0 Befunde. VCL-Unit, unter FPC nicht übersetzbar. Offen: Delphi-Build, Handtests BN1–BN4.
+
+## Lokale Routinen abheben (#1788, 05.11.2026, Branch `claude/project-thread-sbmrys` auf `Pilot-2.0.0-beta.1`)
 - Anlass Marco: Eine lokale Funktion in einer procedure war nicht andersfarbig. Ursache: `TPairAnalyzer` setzt die Tiefe auf die Zahl offener Blöcke; zwischen den Routinen ist keiner offen, lokale und äußere Routine hatten beide Tiefe 0.
 - Analyse: `TAtlasPairToken`, `TAtlasPairBlock`, `TAtlasPairSpan` und `TAtlasGuide` tragen `Routine` (Verschachtelung, 0 = oberste Ebene), Blöcke zusätzlich `IsRoutine` (Rumpf). Offene Routinenköpfe zählen; Köpfe im interface-Teil werden nicht mehr gesammelt (`FInInterface`). `Depth` unverändert (Paarsuche in `Editor.Match`). Falle: `FResults.List[Emit(...)]` schreibt in das alte Array, wenn Emit die Liste vergrößert (AV unter FPC); erst Index holen.
 - Neue Unit `Atlas.Core.Editor.RoutineNesting`: Arten `outer`/`deeper`/`color`, Farbe aus Tiefe und Verschachtelung, Bänder, `PairPalette` (eigene Paarfarben und Farbe lokaler Routinen, ersetzt die doppelten `WithCustomPairs`/`PairPalette` in Editor.Pairs und StickyScroll). Palette: `NestedRoutine`, `WithNestedRoutine`, `ParseColor`.

@@ -9489,3 +9489,12 @@ end;
 | LR11 | Englische Oberfläche | Beschriftungen englisch |
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Kräftige Farben im Benachrichtigungsfenster
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BN1 | Dunkles Design, Benachrichtigungen mit Warnung und Fehler (z. B. Build mit Warnungen), Glocke in der Atlas-Statusleiste anklicken | Gelbes „!“ und rotes „×“ so kräftig wie die rote/gelbe Plakette unten in der Statusleiste; Zeichen dunkel und gut lesbar (**Abnahme**) |
+| BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
+| BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
+| BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |

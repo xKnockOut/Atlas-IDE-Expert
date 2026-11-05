@@ -34,6 +34,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
   Atlas.Core.Notifications.Contract;
 
 type
@@ -43,8 +44,9 @@ type
   TAtlasNotificationTexts = record
     /// <summary>Name der Quelle in der Sprache der Oberfläche; unbekannte Quellen mit ihrer Kennung.</summary>
     class function SourceCaption(const ASource: string): string; static;
-    /// <summary>Farbe des Symbols: Info Akzent, Warnung gelb, Fehler rot.</summary>
-    class function SeverityColor(const AColors: TAtlasColors; ASeverity: TAtlasNotificationSeverity): TAtlasColor;
+    /// <summary>Signalfarben von Symbol und Balken: Info blau, Warnung gelb, Fehler rot; dieselben kräftigen
+    /// Farben wie Plakette und Zähler der Atlas-Statusleiste (#1255), nicht die Textfarben.</summary>
+    class function SeveritySignal(const AColors: TAtlasColors; ASeverity: TAtlasNotificationSeverity): TAtlasSignal;
       static;
     /// <summary>Uhrzeit "hh:nn"; an einem anderen Tag als ANow mit Datum "dd.mm. hh:nn".</summary>
     class function TimeText(ATime, ANow: TDateTime): string; static;
@@ -273,16 +275,16 @@ begin
   end;
 end;
 
-class function TAtlasNotificationTexts.SeverityColor(const AColors: TAtlasColors;
-  ASeverity: TAtlasNotificationSeverity): TAtlasColor;
+class function TAtlasNotificationTexts.SeveritySignal(const AColors: TAtlasColors;
+  ASeverity: TAtlasNotificationSeverity): TAtlasSignal;
 begin
   case ASeverity of
     TAtlasNotificationSeverity.Warning:
-      Result := AColors.Warn;
+      Result := AColors.Signals.Get(TAtlasSignalKind.Warn);
     TAtlasNotificationSeverity.Error:
-      Result := AColors.Error;
+      Result := AColors.Signals.Get(TAtlasSignalKind.Error);
   else
-    Result := AColors.Accent;
+    Result := AColors.Signals.Get(TAtlasSignalKind.Info);
   end;
 end;
 
@@ -474,10 +476,12 @@ var
   mRadius: Integer;
   mGlyph: string;
   mPart: TRect;
+  mSignal: TAtlasSignal;
 begin
   mRadius := Scale(8);
-  Canvas.Pen.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, ASeverity));
-  Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, ASeverity));
+  mSignal := TAtlasNotificationTexts.SeveritySignal(Colors, ASeverity);
+  Canvas.Pen.Color := ToColor(mSignal.Ring);
+  Canvas.Brush.Color := ToColor(mSignal.Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
   case ASeverity of
@@ -490,7 +494,7 @@ begin
   end;
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(Colors.Surface);
+  Canvas.Font.Color := ToColor(mSignal.Mark);
   mPart := Rect(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
   DrawText(Canvas.Handle, PChar(mGlyph), -1, mPart, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
@@ -507,7 +511,7 @@ begin
   begin
     Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.FillRect(AEntry);
-    Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeverityColor(Colors, mItem.Severity));
+    Canvas.Brush.Color := ToColor(TAtlasNotificationTexts.SeveritySignal(Colors, mItem.Severity).Solid);
     Canvas.FillRect(Rect(AEntry.Left, AEntry.Top, AEntry.Left + Scale(3), AEntry.Bottom));
   end;
   if (AIndex = Window.FRows.Selected) or ((AIndex = Window.FRows.HotRow) and (Window.FRows.HotChip < 0)) then
