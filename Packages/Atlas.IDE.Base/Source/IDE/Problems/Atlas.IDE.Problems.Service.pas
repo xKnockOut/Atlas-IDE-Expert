@@ -571,11 +571,6 @@ end;
 /// <summary>Öffnen, Beheben und Unterdrücken aus der Liste.</summary>
 procedure WireFixes(AFrame: TAtlasProblemsFrame);
 begin
-  AFrame.OnCheckFile :=
-    procedure
-    begin
-      TAtlasIdeProblems.CheckFileNow;
-    end;
   AFrame.OnOpen :=
     procedure(const AFinding: TAtlasFinding)
     begin
