@@ -1657,6 +1657,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Changes.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Mcp.Conventions.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Mcp.Conventions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.SlashHost.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Bootstrap.pas"/>
