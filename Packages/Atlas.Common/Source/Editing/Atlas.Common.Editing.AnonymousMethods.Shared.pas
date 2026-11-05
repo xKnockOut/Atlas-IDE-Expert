@@ -14,8 +14,8 @@ uses
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Editing.RoutineParts;
 
-const
-  cEmbedTitle = 'Als anonyme Methode einbetten';
+/// <summary>Titel der Code-Aktion „Als anonyme Methode einbetten“.</summary>
+function EmbedTitle: string;
 
 type
 {$SCOPEDENUMS ON}
@@ -81,7 +81,25 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSharedText = (EmbedAsAnonymousMethod);
+
+const
+  cTexts: array[TSharedText] of TAtlasText = (
+    (De: 'Als anonyme Methode einbetten'; En: 'Embed as anonymous method'));
+
+{$SCOPEDENUMS OFF}
+
+function EmbedTitle: string;
+begin
+  Result := cTexts[TSharedText.EmbedAsAnonymousMethod].Text;
+end;
 
 { TAnonymousLookup }
 
@@ -171,5 +189,8 @@ begin
   mList := AOwner.FindChild(TSyntaxKind.Parameters);
   Result := (AParameters = nil) and (mList <> nil) and (mList.ChildCount > 0);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.AnonymousMethods.Shared', cTexts);
 
 end.

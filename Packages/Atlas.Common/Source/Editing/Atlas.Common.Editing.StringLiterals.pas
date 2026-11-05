@@ -17,6 +17,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract;
 
 type
@@ -39,7 +40,10 @@ type
     class function PlainText(const AExpression: string; out AText: string): Boolean; static;
     /// <summary>Bereich des (verketteten) Literals an APosition; False ohne.</summary>
     class function LiteralAt(const AText: string; const APosition: TTextPosition; out ARange: TTextRange): Boolean;
-      static;
+      overload; static;
+    /// <summary>Wie oben mit den fertigen Token des Texts (aus dem Syntaxbaum).</summary>
+    class function LiteralAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+      out ARange: TTextRange): Boolean; overload; static;
     /// <summary>Text in ARange, Zeilen mit #10 getrennt.</summary>
     class function TextOf(const AText: string; const ARange: TTextRange): string; static;
   end;
@@ -48,7 +52,6 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Text.Lines;
@@ -414,11 +417,17 @@ end;
 
 class function TStringLiterals.LiteralAt(const AText: string; const APosition: TTextPosition;
   out ARange: TTextRange): Boolean;
+begin
+  Result := LiteralAt(TPascalLexer.Tokenize(AText), APosition, ARange);
+end;
+
+class function TStringLiterals.LiteralAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  out ARange: TTextRange): Boolean;
 var
   mTokens: TArray<TPascalToken>;
   mFirst, mLast, mHit: Integer;
 begin
-  mTokens := TPascalLexer.Tokenize(AText);
+  mTokens := ATokens;
   mHit := HitToken(mTokens, APosition);
   if mHit < 0 then
   begin

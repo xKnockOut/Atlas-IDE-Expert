@@ -31,7 +31,53 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.ResourceStrings;
+  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDeclarationCommandsText = (ExpectedIsVarNameExpression, InlineVariablesExistOnlyFrom, VarOnlyAppliesInThe,
+    ExpectedIsVarNameType, ExpectedIsConstNameValue, ConstOnlyAppliesInThe, ConstNeedsAnImplementationSection,
+    ExpectedIsFieldNameType, FieldOnlyAppliesInA, ExpectedIsPropNameType, PropOnlyAppliesInA,
+    ResstrNeedsAStringLiteral, ResstrNeedsAnImplementationSection, GuidOnlyAppliesInThe, TheInterfaceAlreadyHasA,
+    CreateAConstantInThe, CreateAPropertyWithField, StringLiteralAboveAsResourcestring, InsertAGUIDIntoThe,
+    CreateALocalVariable, VarListTStringList, CreateALocalConstant, CreateAFieldInThe);
+
+const
+  cTexts: array[TDeclarationCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /var Name := Ausdruck'; En: 'Expected is /var Name := Expression'),
+    (De: 'Inline-Variablen gibt es erst ab Delphi 10.3 (eingestellt: %s); /var Name: Typ legt eine lokale Variable an';
+     En: 'Inline variables exist only from Delphi 10.3 on (set: %s); /var Name: Type creates a local variable'),
+    (De: '/var gilt nur im Rumpf einer Routine'; En: '/var only applies in the body of a routine'),
+    (De: 'Erwartet wird /var Name: Typ'; En: 'Expected is /var Name: Type'),
+    (De: 'Erwartet wird /const Name = Wert'; En: 'Expected is /const Name = Value'),
+    (De: '/const gilt nur im Rumpf einer Routine; /const! schreibt in die implementation';
+     En: '/const only applies in the body of a routine; /const! writes into the implementation'),
+    (De: '/const! braucht einen implementation-Abschnitt'; En: '/const! needs an implementation section'),
+    (De: 'Erwartet wird /field Name: Typ'; En: 'Expected is /field Name: Type'),
+    (De: '/field gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/field only applies in a class or one of its methods'),
+    (De: 'Erwartet wird /prop Name: Typ [ro]'; En: 'Expected is /prop Name: Type [ro]'),
+    (De: '/prop gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/prop only applies in a class or one of its methods'),
+    (De: '/resstr braucht ein String-Literal in der Zeile darüber';
+     En: '/resstr needs a string literal in the line above'),
+    (De: '/resstr braucht einen implementation-Abschnitt'; En: '/resstr needs an implementation section'),
+    (De: '/guid gilt nur in der Deklaration eines Interfaces';
+     En: '/guid only applies in the declaration of an interface'),
+    (De: 'Das Interface hat schon eine GUID'; En: 'The interface already has a GUID'),
+    (De: 'Konstante in der implementation anlegen'; En: 'Create a constant in the implementation'),
+    (De: 'Property mit Feld und Setter anlegen'; En: 'Create a property with field and setter'),
+    (De: 'String-Literal darüber als resourcestring'; En: 'String literal above as resourcestring'),
+    (De: 'GUID in die Interface-Deklaration einfügen'; En: 'Insert a GUID into the interface declaration'),
+    (De: 'Lokale Variable anlegen'; En: 'Create a local variable'),
+    (De: '/var Liste: TStringList'; En: '/var List: TStringList'),
+    (De: 'Lokale Konstante anlegen'; En: 'Create a local constant'),
+    (De: 'Feld im private-Abschnitt anlegen'; En: 'Create a field in the private section'));
+
+{$SCOPEDENUMS OFF}
 
 { /var und /const }
 
@@ -52,12 +98,11 @@ begin
   end;
   if (mName = '') or (mValue = '') then
   begin
-    Exit(Fail('Erwartet wird /var Name := Ausdruck', AReason));
+    Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsVarNameExpression].Text, AReason));
   end;
   if not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion) then
   begin
-    Exit(Fail(Format('Inline-Variablen gibt es erst ab Delphi 10.3 (eingestellt: %s); /var Name: Typ legt ' +
-      'eine lokale Variable an', [AContext.DelphiVersion]), AReason));
+    Exit(Fail(cTexts[TDeclarationCommandsText.InlineVariablesExistOnlyFrom].Fmt([AContext.DelphiVersion]), AReason));
   end;
   AEdits := [TTextEdit.Create(TTextRange.Create(ASource.Line, 0, ASource.Line, Length(AContext.LineText)),
     Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) + Format('var %s := %s;', [mName, mValue]))];
@@ -76,7 +121,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/var gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.VarOnlyAppliesInThe].Text, AReason));
     end;
     if Pos(':=', AContext.Arguments) > 0 then
     begin
@@ -84,7 +129,7 @@ begin
     end;
     if not SplitDeclaration(AContext.Arguments, ':', Name, Value) then
     begin
-      Exit(Fail('Erwartet wird /var Name: Typ', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsVarNameType].Text, AReason));
     end;
     AEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Format('%s: %s;', [Name, Value])),
       Source.RemoveCommand];
@@ -105,7 +150,7 @@ begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, '=', Name, Value) then
   begin
-    Exit(Fail('Erwartet wird /const Name = Wert', AReason));
+    Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsConstNameValue].Text, AReason));
   end;
   Declaration := Format('%s = %s;', [Name, Value]);
   Source := TCommandSource.Create(AContext);
@@ -115,14 +160,14 @@ begin
       Routine := Source.RoutineAt;
       if Routine = nil then
       begin
-        Exit(Fail('/const gilt nur im Rumpf einer Routine; /const! schreibt in die implementation', AReason));
+        Exit(Fail(cTexts[TDeclarationCommandsText.ConstOnlyAppliesInThe].Text, AReason));
       end;
       AEdits := [AddLocal(Source, Routine, TSyntaxKind.ConstSection, 'const', Declaration), Source.RemoveCommand];
       Exit(True);
     end;
     if Source.ImplementationStart < 0 then
     begin
-      Exit(Fail('/const! braucht einen implementation-Abschnitt', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.ConstNeedsAnImplementationSection].Text, AReason));
     end;
     // Erster const-Abschnitt direkt in der implementation, sonst ein neuer hinter uses.
     Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
@@ -162,7 +207,7 @@ begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
   begin
-    Exit(Fail('Erwartet wird /field Name: Typ', AReason));
+    Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsFieldNameType].Text, AReason));
   end;
   if not StartsText('F', Name) or (Length(Name) < 2) or not CharInSet(Name[2], ['A'..'Z']) then
   begin
@@ -172,7 +217,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/field gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.FieldOnlyAppliesInA].Text, AReason));
     end;
     Line := Source.PrivateLine(ClassSymbol);
     if Line >= 0 then
@@ -267,13 +312,13 @@ begin
   AEdits := nil;
   if not ParsePropArguments(AContext.Arguments, mSpec) then
   begin
-    Exit(Fail('Erwartet wird /prop Name: Typ [ro]', AReason));
+    Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsPropNameType].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     if not mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/prop gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.PropOnlyAppliesInA].Text, AReason));
     end;
     mLB := mSource.LineBreak;
     mEndLine := mClass.Range.EndPos.Line;
@@ -365,12 +410,12 @@ begin
   try
     if not LiteralAbove(mSource, mLiteral) then
     begin
-      Exit(Fail('/resstr braucht ein String-Literal in der Zeile darüber', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.ResstrNeedsAStringLiteral].Text, AReason));
     end;
     mStart := mSource.ImplementationStart;
     if mStart < 0 then
     begin
-      Exit(Fail('/resstr braucht einen implementation-Abschnitt', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.ResstrNeedsAnImplementationSection].Text, AReason));
     end;
     mValue := mLiteral.Text;
     mName := ResourceName(AContext.Arguments, mValue);
@@ -420,13 +465,13 @@ begin
     end;
     if not Found then
     begin
-      Exit(Fail('/guid gilt nur in der Deklaration eines Interfaces', AReason));
+      Exit(Fail(cTexts[TDeclarationCommandsText.GuidOnlyAppliesInThe].Text, AReason));
     end;
     for Index := Target.Range.StartPos.Line to Target.Range.EndPos.Line do
     begin
       if StartsStr('[''{', Trim(Source.Lines[Index])) then
       begin
-        Exit(Fail('Das Interface hat schon eine GUID', AReason));
+        Exit(Fail(cTexts[TDeclarationCommandsText.TheInterfaceAlreadyHasA].Text, AReason));
       end;
     end;
     CreateGUID(Guid);
@@ -448,21 +493,28 @@ end;
 
 procedure RegisterDeclarationCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('var', 'Lokale Variable anlegen', '/var Liste: TStringList', ExecuteVar));
-  ARegister(Command('const', 'Lokale Konstante anlegen', '/const Max = 10',
+  ARegister(Command('var', cTexts[TDeclarationCommandsText.CreateALocalVariable].Text,
+    cTexts[TDeclarationCommandsText.VarListTStringList].Text, ExecuteVar));
+  ARegister(Command('const', cTexts[TDeclarationCommandsText.CreateALocalConstant].Text, '/const Max = 10',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('const!', 'Konstante in der implementation anlegen', '/const! Max = 10',
+  ARegister(Command('const!', cTexts[TDeclarationCommandsText.CreateAConstantInThe].Text, '/const! Max = 10',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('field', 'Feld im private-Abschnitt anlegen', '/field Name: string', ExecuteField));
-  ARegister(Command('prop', 'Property mit Feld und Setter anlegen', '/prop Name: string', ExecuteProp));
-  ARegister(Command('resstr', 'String-Literal darüber als resourcestring', '/resstr', ExecuteResStr));
-  ARegister(Command('guid', 'GUID in die Interface-Deklaration einfügen', '/guid', ExecuteGuid));
+  ARegister(Command('field', cTexts[TDeclarationCommandsText.CreateAFieldInThe].Text, '/field Name: string',
+    ExecuteField));
+  ARegister(Command('prop', cTexts[TDeclarationCommandsText.CreateAPropertyWithField].Text, '/prop Name: string',
+    ExecuteProp));
+  ARegister(Command('resstr', cTexts[TDeclarationCommandsText.StringLiteralAboveAsResourcestring].Text, '/resstr',
+    ExecuteResStr));
+  ARegister(Command('guid', cTexts[TDeclarationCommandsText.InsertAGUIDIntoThe].Text, '/guid', ExecuteGuid));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.DeclarationCommands', cTexts);
 
 end.

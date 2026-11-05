@@ -156,7 +156,56 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
-  Atlas.Common.Rules.Builtin.Unresolved;
+  Atlas.Common.Rules.Builtin.Unresolved,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnitsText = (NameTitle, ChangeNameTo, NameMismatch, InFileDeclares, ChangeTo, AfterEndTitle, CommentAfterEnd,
+    CodeAfterEnd, RemoveAfterEnd, ExportsTitle, ExportLocal, ExportThreadvar, ExportNotRoutine, RemoveDuplicate,
+    ExportsGlobal, ExportedTwice, CollisionTitle, Reserved, UseName, NoInclude, VariantsTitle, AddToUses, Variants);
+
+const
+  cTexts: array[TUnitsText] of TAtlasText = (
+    (De: 'Unit-Name passt nicht zum Dateinamen (wie E1038)'; En: 'Unit name does not match the file name (like E1038)'),
+    (De: 'Unit-Namen in %s ändern'; En: 'Change unit name to %s'),
+    (De: 'Unit-Name %s passt nicht zur Datei %s.pas (wie E1038).';
+     En: 'Unit name %s does not match the file %s.pas (like E1038).'),
+    (De: '%s in ''%s'': die Datei deklariert die Unit %s (wie E2085).';
+     En: '%s in ''%s'': the file declares the unit %s (like E2085).'),
+    (De: 'In %s ändern'; En: 'Change to %s'),
+    (De: 'Text nach dem abschließenden end. (wie W1011)'; En: 'Text after the final end. (like W1011)'),
+    (De: 'Kommentar nach end. wird nicht übersetzt (wie W1011).';
+     En: 'Comment after end. is not compiled (like W1011).'),
+    (De: 'Code nach end. wird nicht übersetzt (wie W1011).'; En: 'Code after end. is not compiled (like W1011).'),
+    (De: 'Text nach end. entfernen'; En: 'Remove text after end.'),
+    (De: 'exports-Klausel unzulässig (wie E2191, E2276, E2287)';
+     En: 'exports clause invalid (like E2191, E2276, E2287)'),
+    (De: '%s ist mit local deklariert und kann nicht exportiert werden (wie E2276).';
+     En: '%s is declared with local and cannot be exported (like E2276).'),
+    (De: 'Die threadvar %s kann nicht exportiert werden (wie E2276).';
+     En: 'The threadvar %s cannot be exported (like E2276).'),
+    (De: '%s ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).';
+     En: '%s is not a procedure or function and cannot be exported (like E2276).'),
+    (De: 'Doppelten Eintrag entfernen'; En: 'Remove duplicate entry'),
+    (De: 'exports ist nur auf globaler Ebene erlaubt (wie E2191).';
+     En: 'exports is only allowed at global level (like E2191).'),
+    (De: 'Der Name ''%s'' wird zweimal exportiert (wie E2287).'; En: 'The name ''%s'' is exported twice (like E2287).'),
+    (De: 'Unit-Name kollidiert (wie E2272, E2242)'; En: 'Unit name collides (like E2272, E2242)'),
+    (De: 'Der Unit-Name %s ist für den Compiler reserviert (wie E2272).';
+     En: 'The unit name %s is reserved for the compiler (like E2272).'),
+    (De: '%s verwenden'; En: 'Use %s'),
+    (De: '{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).';
+     En: '{$NOINCLUDE %s}: %s is not a known unit (like E2242).'),
+    (De: 'Variant ohne System.Variants in uses (wie W1040)';
+     En: 'Variant without System.Variants in uses (like W1040)'),
+    (De: '%s in uses aufnehmen'; En: 'Add %s to uses'),
+    (De: '%s wird ohne System.Variants in uses verwendet (wie W1040).';
+     En: '%s is used without System.Variants in uses (like W1040).'));
+
+{$SCOPEDENUMS OFF}
 
 function IsCode(const AToken: TPascalToken): Boolean;
 begin
@@ -365,7 +414,7 @@ end;
 function TUnitNameMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnitNameMismatchRuleId, TRuleSeverity.Error,
-    'Unit-Name passt nicht zum Dateinamen (wie E1038)');
+    cTexts[TUnitsText.NameTitle].Text);
 end;
 
 class function TUnitNameMismatchRule.ExpectedName(const APath: string): string;
@@ -410,10 +459,10 @@ begin
   mFixes := nil;
   if IsQualifiedName(mExpected) then
   begin
-    mFixes := [TRuleFix.Create(Format('Unit-Namen in %s ändern', [mExpected]), [TRuleEdit.Create(mRange,
+    mFixes := [TRuleFix.Create(cTexts[TUnitsText.ChangeNameTo].Fmt([mExpected]), [TRuleEdit.Create(mRange,
       mExpected)])];
   end;
-  AReport.Add(mRange, Format('Unit-Name %s passt nicht zur Datei %s.pas (wie E1038).', [mHeader.Name, mExpected]),
+  AReport.Add(mRange, cTexts[TUnitsText.NameMismatch].Fmt([mHeader.Name, mExpected]),
     TRuleConfidence.High, mFixes);
 end;
 
@@ -458,9 +507,9 @@ begin
   begin
     if InPathMismatch(AContext, mTokens, mPaths, mEntry, mUsedName) then
     begin
-      AReport.Add(mEntry.Range, Format('%s in ''%s'': die Datei deklariert die Unit %s (wie E2085).',
+      AReport.Add(mEntry.Range, cTexts[TUnitsText.InFileDeclares].Fmt(
         [mEntry.Name, mEntry.InPath, mUsedName]), TRuleConfidence.High,
-        [TRuleFix.Create(Format('In %s ändern', [mUsedName]), [TRuleEdit.Create(mEntry.Range, mUsedName)])]);
+        [TRuleFix.Create(cTexts[TUnitsText.ChangeTo].Fmt([mUsedName]), [TRuleEdit.Create(mEntry.Range, mUsedName)])]);
     end;
   end;
 end;
@@ -470,7 +519,7 @@ end;
 function TTextAfterFinalEndRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TextAfterFinalEndRuleId, TRuleSeverity.Warning,
-    'Text nach dem abschließenden end. (wie W1011)');
+    cTexts[TUnitsText.AfterEndTitle].Text);
 end;
 
 class function TTextAfterFinalEndRule.FinalDot(const AContext: TRuleContext): Integer;
@@ -547,17 +596,17 @@ begin
   begin
     Exit;
   end;
-  Message := 'Kommentar nach end. wird nicht übersetzt (wie W1011).';
+  Message := cTexts[TUnitsText.CommentAfterEnd].Text;
   for Index := First to High(Tokens) do
   begin
     if IsCode(Tokens[Index]) then
     begin
-      Message := 'Code nach end. wird nicht übersetzt (wie W1011).';
+      Message := cTexts[TUnitsText.CodeAfterEnd].Text;
     end;
   end;
   // Entfernt wird ab dem Ende des Tokens davor, damit keine Leerzeilen stehen bleiben.
   AReport.Add(RangeOf(Tokens, First, High(Tokens)), Message, TRuleConfidence.High,
-    [TRuleFix.Create('Text nach end. entfernen',
+    [TRuleFix.Create(cTexts[TUnitsText.RemoveAfterEnd].Text,
     [TRuleEdit.Create(TTextRange.Create(Tokens[First - 1].EndPos, Tokens[High(Tokens)].EndPos), '')])]);
 end;
 
@@ -566,7 +615,7 @@ end;
 function TExportsInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ExportsInvalidRuleId, TRuleSeverity.Error,
-    'exports-Klausel unzulässig (wie E2191, E2276, E2287)');
+    cTexts[TUnitsText.ExportsTitle].Text);
 end;
 
 /// <summary>Text eines String-Literals ohne Hochkommas ('' wird ').</summary>
@@ -934,17 +983,16 @@ begin
   end
   else if TGlobalKind.LocalRoutine in mKinds then
   begin
-    Result := Format('%s ist mit local deklariert und kann nicht exportiert werden (wie E2276).', [AName]);
+    Result := cTexts[TUnitsText.ExportLocal].Fmt([AName]);
   end
   else if TGlobalKind.ThreadVariable in mKinds then
   begin
-    Result := Format('Die threadvar %s kann nicht exportiert werden (wie E2276).', [AName]);
+    Result := cTexts[TUnitsText.ExportThreadvar].Fmt([AName]);
   end
   // Globale Variablen exportiert dcc (#1383); für einen Typ meldet Delphi 13 E2276, nicht E2121.
   else if mKinds * [TGlobalKind.Constant, TGlobalKind.TypeName] <> [] then
   begin
-    Result := Format('%s ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2276).',
-      [AName]);
+    Result := cTexts[TUnitsText.ExportNotRoutine].Fmt([AName]);
   end;
 end;
 
@@ -1004,7 +1052,7 @@ begin
     mRange := TTextRange.Create(FTokens[AClause.Entries[0].First].StartPos,
       FTokens[AClause.Entries[1].First].StartPos);
   end;
-  Result := TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(mRange, '')]);
+  Result := TRuleFix.Create(cTexts[TUnitsText.RemoveDuplicate].Text, [TRuleEdit.Create(mRange, '')]);
 end;
 
 function TExportsCheck.Exclusive(AFirst, ASecond: Integer): Boolean;
@@ -1025,7 +1073,7 @@ begin
   if Result and InRoutine(ANode) then
   begin
     FReport.Add(RangeOf(FTokens, AClause.First, AClause.First),
-      'exports ist nur auf globaler Ebene erlaubt (wie E2191).', TRuleConfidence.High);
+      cTexts[TUnitsText.ExportsGlobal].Text, TRuleConfidence.High);
     Result := False;
   end;
   if Result then
@@ -1077,8 +1125,8 @@ begin
   end;
   if IsDuplicate(AClauseIndex, AEntryIndex) then
   begin
-    FReport.Add(RangeOf(FTokens, mEntry.First, mEntry.Last), Format('Der Name ''%s'' wird zweimal exportiert ' +
-      '(wie E2287).', [mEntry.ExportName]), TRuleConfidence.High, [RemoveFix(FClauses[AClauseIndex],
+    FReport.Add(RangeOf(FTokens, mEntry.First, mEntry.Last), cTexts[TUnitsText.ExportedTwice].Fmt([mEntry.ExportName]),
+      TRuleConfidence.High, [RemoveFix(FClauses[AClauseIndex],
       AEntryIndex)]);
   end;
 end;
@@ -1152,7 +1200,7 @@ end;
 function TUnitNameConflictRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnitNameConflictRuleId, TRuleSeverity.Error,
-    'Unit-Name kollidiert (wie E2272, E2242)');
+    cTexts[TUnitsText.CollisionTitle].Text);
 end;
 
 procedure TUnitNameConflictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1175,8 +1223,8 @@ begin
   if (Header.Kind = TModuleKind.UnitModule) and MatchText(Header.Name, ['System', 'SysInit']) and
     not ContainsText(Path, 'source/rtl/') then
   begin
-    AReport.Add(RangeOf(Tokens, Header.First, Header.Last), Format('Der Unit-Name %s ist für den Compiler ' +
-      'reserviert (wie E2272).', [Header.Name]), TRuleConfidence.High);
+    AReport.Add(RangeOf(Tokens, Header.First, Header.Last), cTexts[TUnitsText.Reserved].Fmt([Header.Name]),
+      TRuleConfidence.High);
   end;
   // {$NOINCLUDE X} braucht eine Unit, die der Compiler kennt.
   if AContext.Units = nil then
@@ -1205,9 +1253,10 @@ begin
     Fixes := nil;
     for Suggestion in TUsesUnitNotFoundRule.Suggestions(Name, AContext.Units.KnownUnits([TRuleUnitSource.Project])) do
     begin
-      Fixes := Fixes + [TRuleFix.Create(Format('%s verwenden', [Suggestion]), [TRuleEdit.Create(Range, Suggestion)])];
+      Fixes := Fixes + [TRuleFix.Create(cTexts[TUnitsText.UseName].Fmt([Suggestion]), [TRuleEdit.Create(Range,
+        Suggestion)])];
     end;
-    AReport.Add(Range, Format('{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).', [Name, Name]),
+    AReport.Add(Range, cTexts[TUnitsText.NoInclude].Fmt([Name, Name]),
       TRuleConfidence.High, Fixes);
   end;
 end;
@@ -1217,7 +1266,7 @@ end;
 function TImplicitVariantsUnitRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ImplicitVariantsUnitRuleId, TRuleSeverity.Hint,
-    'Variant ohne System.Variants in uses (wie W1040)', True);
+    cTexts[TUnitsText.VariantsTitle].Text, True);
 end;
 
 /// <summary>Nennt die uses-Liste AUsed System.Variants oder Variants?</summary>
@@ -1310,10 +1359,10 @@ begin
   mFixes := nil;
   if TUsesClauses.AddUnit(mTokens, mFirst.StartOffset, mUnitName, TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
-    mFixes := [TRuleFix.Create(Format('%s in uses aufnehmen', [mUnitName]), [mEdit], True)];
+    mFixes := [TRuleFix.Create(cTexts[TUnitsText.AddToUses].Fmt([mUnitName]), [mEdit], True)];
   end;
-  AReport.Add(TTextRange.Create(mFirst.StartPos, mFirst.EndPos), Format('%s wird ohne System.Variants in uses ' +
-    'verwendet (wie W1040).', [mFirst.Name]), TRuleConfidence.High, mFixes);
+  AReport.Add(TTextRange.Create(mFirst.StartPos, mFirst.EndPos), cTexts[TUnitsText.Variants].Fmt([mFirst.Name]),
+    TRuleConfidence.High, mFixes);
 end;
 
 procedure RegisterUnitRules(const ARegistry: TRuleRegistry);
@@ -1324,5 +1373,8 @@ begin
   ARegistry.Register(TUnitNameConflictRule.Create);
   ARegistry.Register(TImplicitVariantsUnitRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Units', cTexts);
 
 end.

@@ -58,6 +58,10 @@ type
     procedure QueriesListMissingInterfaceMembers;
     [Test]
     procedure CoreInfersInlineVariableTypes;
+    /// <summary>ChildAround sucht bei vielen Kindern binär; das Ergebnis gleicht der linearen Suche an jedem
+    /// Token.</summary>
+    [Test]
+    procedure ChildAroundMatchesLinearSearch;
   end;
 
 implementation
@@ -379,6 +383,66 @@ begin
   Assert.IsTrue(FCore.Expressions.ResolveFirst(TArray<string>.Create('mNeu'), mConsumed, mLocal), 'mNeu');
   Assert.IsTrue(FCore.Typing.TypeOf(mLocal, mType), 'Typ von mNeu');
   Assert.AreEqual('TKunde', mType.Name);
+end;
+
+/// <summary>Erstes Kind von ANode, das AOffset enthält, linear (Referenz für ChildAround).</summary>
+function LinearChildAround(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if (Result = nil) and TResolverNodes.Contains(ANode[mIndex], AOffset) then
+    begin
+      Result := ANode[mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Knoten mit den meisten Kindern unter ANode.</summary>
+function WidestNode(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mWidest: TSyntaxNode;
+begin
+  mWidest := ANode;
+  ANode.Walk(
+    function(AVisited: TSyntaxNode): Boolean
+    begin
+      if AVisited.ChildCount > mWidest.ChildCount then
+      begin
+        mWidest := AVisited;
+      end;
+      Result := True;
+    end);
+  Result := mWidest;
+end;
+
+procedure TResolverPartsTests.ChildAroundMatchesLinearSearch;
+var
+  mText: string;
+  mIndex, mOffset: Integer;
+  mTree: TSyntaxTree;
+  mWide: TSyntaxNode;
+begin
+  mText := 'unit Viele;'#10'interface'#10'implementation'#10;
+  for mIndex := 0 to 39 do
+  begin
+    mText := mText + Format('procedure P%d;'#10'begin'#10'  P%d;'#10'end;'#10#10, [mIndex, mIndex]);
+  end;
+  mText := mText + 'end.';
+  mTree := TPascalParser.Parse(mText);
+  try
+    mWide := WidestNode(mTree.Root);
+    Assert.IsTrue(mWide.ChildCount > 16, IntToStr(mWide.ChildCount));
+    for mOffset := 0 to Length(mText) + 1 do
+    begin
+      Assert.IsTrue(TResolverNodes.ChildAround(mWide, mOffset) = LinearChildAround(mWide, mOffset),
+        IntToStr(mOffset));
+    end;
+  finally
+    mTree.Free;
+  end;
 end;
 
 initialization

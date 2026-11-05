@@ -23,6 +23,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
@@ -122,9 +123,11 @@ type
     class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
       out AAction: TCodeAction): Boolean; static;
     /// <summary>#312: Bei einer Markierung, die kein Literal ist, "Als String-Literal" (ganze Zeilen);
-    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand.</summary>
-    class function StringLiteralActions(const AText: string; const ARange: TTextRange;
-      const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>; static;
+    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand. ATokens: die des Syntaxbaums zu AText.
+    /// </summary>
+    class function StringLiteralActions(const AText: string; const ATokens: TArray<TPascalToken>;
+      const ARange: TTextRange; const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+      static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
@@ -134,7 +137,6 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
   System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
@@ -142,7 +144,32 @@ uses
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.StringLiterals,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingCodeActionsText = (AddTryExceptFreeResult, AddTryFinallyWithFree, CleanUpUses, AddToUses,
+    MoveToTheImplementationUses, RemoveAllUnusedUses, CopyAsPlainText, AsStringLiteral, RemoveUnusedUses, Remove,
+    SwapAssignments);
+
+const
+  cTexts: array[TEditingCodeActionsText] of TAtlasText = (
+    (De: 'try/except ergänzen (Result bei Fehler freigeben)'; En: 'Add try/except (free Result on error)'),
+    (De: 'try/finally mit %s.Free ergänzen'; En: 'Add try/finally with %s.Free'),
+    (De: 'uses aufräumen'; En: 'Clean up uses'),
+    (De: 'uses %s ergänzen'; En: 'Add %s to uses'),
+    (De: '%s ins implementation-uses verschieben'; En: 'Move %s to the implementation uses'),
+    (De: 'Alle ungenutzten uses entfernen (%d)'; En: 'Remove all unused uses (%d)'),
+    (De: 'Als Klartext kopieren'; En: 'Copy as plain text'),
+    (De: 'Als String-Literal'; En: 'As string literal'),
+    (De: 'Ungenutzte uses entfernen (%s)'; En: 'Remove unused uses (%s)'),
+    (De: '%s entfernen'; En: 'Remove %s'),
+    (De: 'Zuweisungen umkehren'; En: 'Swap assignments'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Offset des ersten Tokens ab APosition (für die Wahl des uses-Abschnitts).</summary>
 function OffsetNear(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -585,13 +612,13 @@ begin
   Result.Kind := RewriteKind;
   if FIsResult then
   begin
-    Result.Title := 'try/except ergänzen (Result bei Fehler freigeben)';
+    Result.Title := cTexts[TEditingCodeActionsText.AddTryExceptFreeResult].Text;
     mBody := mBody + mIndent + 'except' + mLineBreak + mIndent + mStep + 'Result.Free;' + mLineBreak + mIndent +
       mStep + 'raise;';
   end
   else
   begin
-    Result.Title := Format('try/finally mit %s.Free ergänzen', [FTarget]);
+    Result.Title := cTexts[TEditingCodeActionsText.AddTryFinallyWithFree].Fmt([FTarget]);
     mBody := mBody + mIndent + 'finally' + mLineBreak + mIndent + mStep + ReleaseText;
   end;
   Result.Edits := [TTextEdit.Create(TTextRange.Create(FStatement.EndPos.Line,
@@ -632,7 +659,7 @@ begin
     mEdits, AByNamespace);
   if Result then
   begin
-    AAction.Title := 'uses aufräumen';
+    AAction.Title := cTexts[TEditingCodeActionsText.CleanUpUses].Text;
     AAction.Kind := OrganizeImportsKind;
     AAction.Edits := mEdits;
   end;
@@ -661,7 +688,7 @@ end;
 
 function MoveTitle(const AUnits: TArray<string>): string;
 begin
-  Result := Format('%s ins implementation-uses verschieben', [string.Join(', ', AUnits)]);
+  Result := cTexts[TEditingCodeActionsText.MoveToTheImplementationUses].Fmt([string.Join(', ', AUnits)]);
 end;
 
 /// <summary>Bereiche der ungenutzten Einträge.</summary>
@@ -696,7 +723,9 @@ type
     /// <summary>Gibt der Aktion für alle verschiebbaren Units die Kennung UsesMoveTag.</summary>
     procedure TagMoveAll(const AUnitName: string);
   public
-    constructor Create(const AText: string; const ARange: TTextRange; const AContext: TUsesContext);
+    /// <summary>ATokens: die des Syntaxbaums zu AText (große Units nicht je Code-Aktion neu zerlegen).</summary>
+    constructor Create(const AText: string; const ATokens: TArray<TPascalToken>; const ARange: TTextRange;
+      const AContext: TUsesContext);
     /// <summary>Fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix).</summary>
     procedure AddMissing(ATree: TSyntaxTree);
     /// <summary>interface-Units ins implementation verschieben (Rewrite).</summary>
@@ -707,13 +736,14 @@ type
     property Actions: TArray<TCodeAction> read FActions;
   end;
 
-constructor TUsesActionList.Create(const AText: string; const ARange: TTextRange; const AContext: TUsesContext);
+constructor TUsesActionList.Create(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ARange: TTextRange; const AContext: TUsesContext);
 begin
   inherited Create;
   FText := AText;
   FRange := ARange;
   FContext := AContext;
-  FTokens := TPascalLexer.Tokenize(AText);
+  FTokens := ATokens;
   FLineBreak := TTextLines.LineBreakOf(AText);
 end;
 
@@ -736,7 +766,7 @@ begin
   begin
     if TUsesClauses.AddUnit(FTokens, OffsetNear(FTokens, FRange.StartPos), mUnitName, FLineBreak, mEdit) then
     begin
-      Add(NewAction(Format('uses %s ergänzen', [mUnitName]), QuickFixKind, [mEdit], ''));
+      Add(NewAction(cTexts[TEditingCodeActionsText.AddToUses].Fmt([mUnitName]), QuickFixKind, [mEdit], ''));
     end;
   end;
 end;
@@ -760,7 +790,7 @@ begin
   mUnits := TUsesActions.UnusedUnits(FTokens, FContext.Info, FContext.Keep);
   if TUsesActions.RemoveUnits(FTokens, FText, mUnits, FLineBreak, mEdits) then
   begin
-    Add(NewAction(Format('Ungenutzte uses entfernen (%s)', [string.Join(', ', mUnits)]), RemoveUnusedKind,
+    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveUnusedUses].Fmt([string.Join(', ', mUnits)]), RemoveUnusedKind,
       mEdits, ''));
   end;
 end;
@@ -772,13 +802,14 @@ var
 begin
   if TUsesActions.RemoveEntries(FText, [AEntry.Range], mEdit) then
   begin
-    mAction := NewAction(Format('%s entfernen', [AEntry.Name]), QuickFixKind, [mEdit], UsesRemoveTag);
+    mAction := NewAction(cTexts[TEditingCodeActionsText.Remove].Fmt([AEntry.Name]), QuickFixKind, [mEdit],
+      UsesRemoveTag);
     mAction.IsPreferred := True;
     Add(mAction);
   end;
   if (Length(AUnused) > 1) and TUsesActions.RemoveEntries(FText, AUnused, mEdit) then
   begin
-    Add(NewAction(Format('Alle ungenutzten uses entfernen (%d)', [Length(AUnused)]), QuickFixKind, [mEdit],
+    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveAllUnusedUses].Fmt([Length(AUnused)]), QuickFixKind, [mEdit],
       UsesRemoveAllTag));
   end;
 end;
@@ -846,7 +877,14 @@ begin
   begin
     Exit;
   end;
-  mList := TUsesActionList.Create(AText, ARange, AContext);
+  if ATree <> nil then
+  begin
+    mList := TUsesActionList.Create(AText, ATree.Tokens, ARange, AContext);
+  end
+  else
+  begin
+    mList := TUsesActionList.Create(AText, TPascalLexer.Tokenize(AText), ARange, AContext);
+  end;
   try
     if AEditing then
     begin
@@ -889,23 +927,24 @@ begin
   Result := TAssignmentSwap.Swap(AText, ARange, AReadOnly, AAction.Edits);
   if Result then
   begin
-    AAction.Title := 'Zuweisungen umkehren';
+    AAction.Title := cTexts[TEditingCodeActionsText.SwapAssignments].Text;
     AAction.Kind := RewriteKind;
   end;
 end;
 
 /// <summary>"Als Klartext kopieren" für ein Literal an APosition; False, wenn dort keins steht.</summary>
-function CopyPlainAction(const AText: string; const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+function CopyPlainAction(const AText: string; const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  out AAction: TCodeAction): Boolean;
 var
   mLiteral: TTextRange;
   mPlain: string;
 begin
   AAction := Default(TCodeAction);
-  Result := TStringLiterals.LiteralAt(AText, APosition, mLiteral) and
+  Result := TStringLiterals.LiteralAt(ATokens, APosition, mLiteral) and
     TStringLiterals.PlainText(TStringLiterals.TextOf(AText, mLiteral), mPlain);
   if Result then
   begin
-    AAction.Title := 'Als Klartext kopieren';
+    AAction.Title := cTexts[TEditingCodeActionsText.CopyAsPlainText].Text;
     AAction.Kind := RewriteKind;
     AAction.Command := CopyTextCommand;
     AAction.CommandArguments := [mPlain];
@@ -956,17 +995,22 @@ begin
   end;
 end;
 
-class function TCodeActions.StringLiteralActions(const AText: string; const ARange: TTextRange;
-  const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+class function TCodeActions.StringLiteralActions(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ARange: TTextRange; const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
 var
   mLines: TArray<string>;
   mAction: TCodeAction;
   mFirst, mLast, mCommon: Integer;
 begin
   Result := nil;
-  if CopyPlainAction(AText, ARange.StartPos, mAction) then
+  if CopyPlainAction(AText, ATokens, ARange.StartPos, mAction) then
   begin
     Result := [mAction];
+    Exit;
+  end;
+  // Ohne Auswahl gibt es nichts umzuwandeln: den Text dann nicht in Zeilen teilen.
+  if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
+  begin
     Exit;
   end;
   mLines := TTextLines.SplitLines(AText);
@@ -981,12 +1025,15 @@ begin
     Exit;
   end;
   mAction := Default(TCodeAction);
-  mAction.Title := 'Als String-Literal';
+  mAction.Title := cTexts[TEditingCodeActionsText.AsStringLiteral].Text;
   mAction.Kind := RewriteKind;
   mAction.Edits := [TTextEdit.Create(TTextRange.Create(mFirst, 0, mLast, Length(mLines[mLast])),
     TStringLiterals.ToLiteral(Dedented(mLines, mFirst, mLast, mCommon), TTextLines.IndentOf(mLines[mFirst]), True,
     AMultiline, ASettings, TTextLines.LineBreakOf(AText)))];
   Result := [mAction];
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.CodeActions', cTexts);
 
 end.

@@ -52,6 +52,42 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TFileTemplatesText = (EmptyUnit, InterfaceAndImplementationNothingElse, UnitWithClass,
+    ClassWithConstructorAndDestructor, VCLForm, FormWithDfm, DUnitXTestClass, TestClassWithSetupTearDown);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TFileTemplatesText] of string = (
+    ('Leere Unit',
+     'interface und implementation, sonst nichts',
+     'Unit mit Klasse',
+     'Klasse mit Konstruktor und Destruktor',
+     'VCL-Formular',
+     'Formular mit .dfm',
+     'DUnitX-Testklasse',
+     'Testklasse mit Setup, TearDown und RegisterTestFixture'),
+    ('Empty unit',
+     'interface and implementation, nothing else',
+     'Unit with class',
+     'Class with constructor and destructor',
+     'VCL form',
+     'Form with .dfm',
+     'DUnitX test class',
+     'Test class with Setup, TearDown and RegisterTestFixture'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TFileTemplatesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 const
   EmptyUnitBody =
     'unit %Unit%;' + #10 +
@@ -179,12 +215,12 @@ end;
 
 class function TAtlasFileTemplates.BuiltIn: TAtlasSnippetList;
 begin
-  // Namen und Beschreibungen deutsch wie die übrigen mitgelieferten Code-Vorlagen (#51).
+  // Namen und Beschreibungen in der Sprache der Oberfläche wie die übrigen mitgelieferten Code-Vorlagen (#51).
   Result := [
-    Template('newunit', 'Leere Unit', 'interface und implementation, sonst nichts', 'unit', EmptyUnitBody),
-    Template('newclass', 'Unit mit Klasse', 'Klasse mit Konstruktor und Destruktor', 'unit', ClassUnitBody),
-    Template('newform', 'VCL-Formular', 'Formular mit .dfm', 'form', FormBody),
-    Template('newtest', 'DUnitX-Testklasse', 'Testklasse mit Setup, TearDown und RegisterTestFixture', 'test',
+    Template('newunit', UiText(TFileTemplatesText.EmptyUnit), UiText(TFileTemplatesText.InterfaceAndImplementationNothingElse), 'unit', EmptyUnitBody),
+    Template('newclass', UiText(TFileTemplatesText.UnitWithClass), UiText(TFileTemplatesText.ClassWithConstructorAndDestructor), 'unit', ClassUnitBody),
+    Template('newform', UiText(TFileTemplatesText.VCLForm), UiText(TFileTemplatesText.FormWithDfm), 'form', FormBody),
+    Template('newtest', UiText(TFileTemplatesText.DUnitXTestClass), UiText(TFileTemplatesText.TestClassWithSetupTearDown), 'test',
       TestBody)];
 end;
 
@@ -265,5 +301,8 @@ begin
   end;
   Result := StringReplace(Result + #10, #10, ALineBreak, [rfReplaceAll]);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Generate.FileTemplates', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

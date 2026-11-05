@@ -136,7 +136,36 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Dfm.ComponentRename;
+  Atlas.Common.Dfm.ComponentRename,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRenameText = (ThereIsNoIdentifierHere, IsNotKnown, IsDeclaredOutsideTheProject, UnitsAreRenamedViaThe,
+    RenamingToWouldChangeThe, IsAFormStoredAs, IsNotAValidIdentifier, FieldsTextDocumentUriAndPosition,
+    FieldsTextDocumentUriPositionAnd);
+
+const
+  cTexts: array[TRenameText] of TAtlasText = (
+    (De: 'Hier steht kein Bezeichner.'; En: 'There is no identifier here.'),
+    (De: '"%s" ist nicht bekannt.'; En: '"%s" is not known.'),
+    (De: '"%s" ist außerhalb des Projekts deklariert (%s).'; En: '"%s" is declared outside the project (%s).'),
+    (De: 'Units werden über den Dateinamen umbenannt.'; En: 'Units are renamed via the file name.'),
+    (De: 'Umbenennen in "%s" würde die Bedeutung ändern: In %s, Zeile %d, meinte "%s" danach %s statt %s. Bitte ' +
+      'einen anderen Namen wählen oder dort "Self." ergänzen.';
+     En: 'Renaming to "%s" would change the meaning: in %s, line %d, "%s" would then mean %s instead of %s. Please ' +
+      'choose another name or add "Self." there.'),
+    (De: '%s ist ein binär gespeichertes Formular. Bitte zuerst in Textform umwandeln, dann erneut umbenennen.';
+     En: '%s is a form stored as binary. Please convert it to text form first, then rename again.'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '),
+    (De: 'Felder "textDocument.uri", "position" und "newName" fehlen in ';
+     En: 'Fields "textDocument.uri", "position" and "newName" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
@@ -222,7 +251,7 @@ begin
   Index := TokenAt(ATree.Tokens, APosition);
   if Index < 0 then
   begin
-    Result.Error := 'Hier steht kein Bezeichner.';
+    Result.Error := cTexts[TRenameText.ThereIsNoIdentifierHere].Text;
     Exit;
   end;
   Result.Range := TTextRange.Create(ATree.Tokens[Index].StartPos, ATree.Tokens[Index].EndPos);
@@ -238,18 +267,18 @@ begin
   end;
   if Length(Targets) = 0 then
   begin
-    Result.Error := Format('"%s" ist nicht bekannt.', [Result.Name]);
+    Result.Error := cTexts[TRenameText.IsNotKnown].Fmt([Result.Name]);
   end
   else if not SameText(Targets[0].FileName, AFileName) and (IndexText(Targets[0].FileName, AFiles) < 0) then
   begin
-    Result.Error := Format('"%s" ist außerhalb des Projekts deklariert (%s).',
-      [Result.Name, ExtractFileName(Targets[0].FileName)]);
+    Result.Error := cTexts[TRenameText.IsDeclaredOutsideTheProject].Fmt([Result.Name,
+      ExtractFileName(Targets[0].FileName)]);
   end
   else if (Targets[0].Range.StartPos.Line = 0) and (Targets[0].Range.StartPos.Character = 0) and
     (Targets[0].Range.EndPos = Targets[0].Range.StartPos) then
   begin
     // Unit-Namen hängen am Dateinamen; das ist eine Dateioperation.
-    Result.Error := 'Units werden über den Dateinamen umbenannt.';
+    Result.Error := cTexts[TRenameText.UnitsAreRenamedViaThe].Text;
   end;
 end;
 
@@ -321,9 +350,8 @@ end;
 function ConflictText(const AFileName: string; const AToken: TPascalToken; const ANewName: string;
   const AAfter, ABefore: TResolvedSymbol): string;
 begin
-  Result := Format('Umbenennen in "%s" würde die Bedeutung ändern: In %s, Zeile %d, meinte "%s" danach %s ' +
-    'statt %s. Bitte einen anderen Namen wählen oder dort "Self." ergänzen.',
-    [ANewName, ExtractFileName(AFileName), AToken.StartPos.Line + 1, ANewName,
+  Result := cTexts[TRenameText.RenamingToWouldChangeThe].Fmt([ANewName, ExtractFileName(AFileName),
+    AToken.StartPos.Line + 1, ANewName,
     AAfter.ShadowText, ABefore.ShadowText]);
 end;
 
@@ -672,8 +700,8 @@ begin
   begin
     if not SameText(ExtractFileExt(mEdit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(mEdit.FileName) then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Format('%s ist ein binär gespeichertes Formular. ' +
-        'Bitte zuerst in Textform umwandeln, dann erneut umbenennen.', [ExtractFileName(mEdit.FileName)]));
+      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TRenameText.IsAFormStoredAs].Fmt([
+        ExtractFileName(mEdit.FileName)]));
     end;
   end;
 end;
@@ -721,8 +749,8 @@ begin
   AUnchanged := nil;
   if not IsValidName(ARequest.NewName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"%s" ist kein gültiger Bezeichner.',
-      [ARequest.NewName]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TRenameText.IsNotAValidIdentifier].Fmt([
+      ARequest.NewName]));
   end;
   mChecked := Check(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, ASearch.Files);
   if mChecked.Error <> '' then
@@ -779,7 +807,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + PrepareMethod);
+      cTexts[TRenameText.FieldsTextDocumentUriAndPosition].Text + PrepareMethod);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -883,7 +911,7 @@ begin
     TJSONObject(AParams).TryGetValue<string>('newName', mNewName)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "position" und "newName" fehlen in ' + RenameMethod);
+      cTexts[TRenameText.FieldsTextDocumentUriPositionAnd].Text + RenameMethod);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -909,5 +937,8 @@ begin
     TJSONObject(Result).AddPair('atlasUnchanged', UnchangedJson(mUnchanged));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Rename', cTexts);
 
 end.

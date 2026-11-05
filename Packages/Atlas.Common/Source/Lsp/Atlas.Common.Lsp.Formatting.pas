@@ -97,7 +97,22 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.DocComments;
+  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormattingText = (FieldsTextDocumentUriAndPosition, FieldRangeMissingIn, FieldTextDocumentUriMissing);
+
+const
+  cTexts: array[TFormattingText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'),
+    (De: 'Feld "range" fehlt in '; En: 'Field "range" missing in '),
+    (De: 'Feld "textDocument.uri" fehlt'; En: 'Field "textDocument.uri" missing'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspFormatting }
 
@@ -218,7 +233,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFormattingText.FieldsTextDocumentUriAndPosition].Text);
   end;
   Result := TJSONArray.Create;
   try
@@ -346,7 +362,7 @@ var
 begin
   if not AParams.TryGetValue<TJSONValue>('range', mRangeValue) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt in ' +
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TFormattingText.FieldRangeMissingIn].Text +
       TLspFormatting.RangeMethod);
   end;
   mRange := TLspPositions.ReadRange(mRangeValue);
@@ -368,7 +384,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFormattingText.FieldTextDocumentUriMissing].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -399,5 +416,8 @@ function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
 begin
   Result := Handle(AParams, True, ACancellation);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Formatting', cTexts);
 
 end.

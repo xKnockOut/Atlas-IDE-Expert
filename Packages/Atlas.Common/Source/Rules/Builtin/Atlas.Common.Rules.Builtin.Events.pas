@@ -44,7 +44,23 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TEventsText = (Title, WrapInAssigned, MayBeNil);
+
+const
+  cTexts: array[TEventsText] of TAtlasText = (
+    (De: 'Ereignis ohne Assigned-Prüfung aufgerufen'; En: 'Event called without Assigned check'),
+    (De: 'In if Assigned(%s) then einschließen'; En: 'Wrap in if Assigned(%s) then'),
+    (De: '%s kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.';
+     En: '%s can be nil; without an Assigned check an access violation follows.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   EventCallWithoutAssignedRuleId = 'event-call-without-assigned';
@@ -59,7 +75,7 @@ const
 function TEventCallWithoutAssignedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(EventCallWithoutAssignedRuleId, TRuleSeverity.Warning,
-    'Ereignis ohne Assigned-Prüfung aufgerufen');
+    cTexts[TEventsText.Title].Text);
 end;
 
 /// <summary>Name ohne Unit und ohne generische Argumente: System.SysUtils.TFunc&lt;Integer&gt; → TFunc.</summary>
@@ -735,7 +751,7 @@ var
       Exit;
     end;
     Indent := Copy(Lines[Line], 1, Statement.StartPos.Character);
-    AFix := TRuleFix.Create(Format('In if Assigned(%s) then einschließen', [AName]),
+    AFix := TRuleFix.Create(cTexts[TEventsText.WrapInAssigned].Fmt([AName]),
       [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos), 'if Assigned(' + AName +
       ') then' + LineBreak + Indent + '  ')]);
     Result := True;
@@ -795,7 +811,7 @@ var
       mFixes := [mFix];
     end;
     AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
-      Format('%s kann nil sein; ohne Assigned-Prüfung folgt eine Zugriffsverletzung.', [mWritten]), mFixes);
+      cTexts[TEventsText.MayBeNil].Fmt([mWritten]), mFixes);
   end;
 
   procedure CheckRoutine(ARoutine: TSyntaxNode; const AEvents: TArray<string>);
@@ -894,5 +910,8 @@ procedure RegisterEventRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TEventCallWithoutAssignedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Events', cTexts);
 
 end.

@@ -75,7 +75,27 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWithResolutionText = (NoWithStatement, NotInARoutine, CannotBeResolvedUnambiguously, TypeOfIsNotA, WithIsNotInA,
+    ResolveWith, WithWithoutBody);
+
+const
+  cTexts: array[TWithResolutionText] of TAtlasText = (
+    (De: 'keine with-Anweisung'; En: 'no with statement'),
+    (De: 'nicht in einer Routine'; En: 'not in a routine'),
+    (De: ' ist nicht eindeutig auflösbar'; En: ' cannot be resolved unambiguously'),
+    (De: 'Typ von %s ist kein Klassentyp'; En: 'Type of %s is not a class type'),
+    (De: 'with steht nicht in einer Anweisungsliste'; En: 'with is not in a statement list'),
+    (De: 'with auflösen'; En: 'Resolve with'),
+    (De: 'with ohne Rumpf'; En: 'with without body'));
+
+{$SCOPEDENUMS OFF}
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
@@ -305,18 +325,18 @@ function TWithResolver.Prepare: Boolean;
 begin
   if (FTree = nil) or (FWith = nil) or not Assigned(FLookup) then
   begin
-    Exit(Fail('keine with-Anweisung'));
+    Exit(Fail(cTexts[TWithResolutionText.NoWithStatement].Text));
   end;
   FItems := TWithResolution.Elements(FTree, FWith);
   FBody := TWithResolution.BodyOf(FTree, FWith);
   if (FItems = nil) or (FBody = nil) then
   begin
-    Exit(Fail('with ohne Rumpf'));
+    Exit(Fail(cTexts[TWithResolutionText.WithWithoutBody].Text));
   end;
   FRoutine := TRoutineBody.RoutineAt(FTree, FWith.StartOffset);
   if FRoutine = nil then
   begin
-    Exit(Fail('nicht in einer Routine'));
+    Exit(Fail(cTexts[TWithResolutionText.NotInARoutine].Text));
   end;
   // SetLength füllt mit '' bzw. False.
   SetLength(FPrefixes, Length(FItems));
@@ -339,7 +359,7 @@ begin
     begin
       case FLookup(FWith, mNode, mElement) of
         TWithOwner.Unknown:
-          Exit(Fail(mNode.Name + ' ist nicht eindeutig auflösbar'));
+          Exit(Fail(mNode.Name + cTexts[TWithResolutionText.CannotBeResolvedUnambiguously].Text));
         TWithOwner.Element:
           if (mElement >= 0) and (mElement <= High(FItems)) then
           begin
@@ -406,11 +426,11 @@ begin
   mProbed := TExtractRefactoring.TypeOfExpression(FText, FTree, FItems[AIndex], FWith, FOptions);
   if not mProbed.IsReference then
   begin
-    Exit(Fail('Typ von ' + TRoutineBody.TextOf(FText, FItems[AIndex]) + ' ist kein Klassentyp'));
+    Exit(Fail(cTexts[TWithResolutionText.TypeOfIsNotA].Fmt([TRoutineBody.TextOf(FText, FItems[AIndex])])));
   end;
   if not FInList then
   begin
-    Exit(Fail('with steht nicht in einer Anweisungsliste'));
+    Exit(Fail(cTexts[TWithResolutionText.WithIsNotInA].Text));
   end;
   DeclareVariable(AIndex, mProbed);
 end;
@@ -541,7 +561,7 @@ begin
   begin
     mNewText := AlignedStatement(mBodyText);
   end;
-  AResolved.Action.Title := 'with auflösen';
+  AResolved.Action.Title := cTexts[TWithResolutionText.ResolveWith].Text;
   AResolved.Action.Kind := RewriteKind;
   AResolved.Action.Edits := FEdits + [TTextEdit.Create(TTextRange.Create(FWith.StartPos, FWith.EndPos),
     FDeclarations + mNewText)];
@@ -568,5 +588,8 @@ begin
     mResolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.WithResolution', cTexts);
 
 end.

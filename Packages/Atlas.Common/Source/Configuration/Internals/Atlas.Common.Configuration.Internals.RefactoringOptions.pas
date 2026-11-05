@@ -18,7 +18,34 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRefactoringOptionsText = (RefactoringPropertyFromAccessorsPrefixesMustBeA,
+    RefactoringInvertBooleanAntonymsAndMustBe, RefactoringInvertBooleanAntonymsMustBeAn,
+    RefactoringInvertBooleanFallbackPrefixMustBeAn, RefactoringExtractSuperclassNameSuffixMustBeAn, RefactoringMustBe,
+    OrText);
+
+const
+  cTexts: array[TRefactoringOptionsText] of TAtlasText = (
+    (De: '"refactoring.propertyFromAccessorsPrefixes" muss eine Liste von Präfixen sein';
+     En: '"refactoring.propertyFromAccessorsPrefixes" must be a list of prefixes'),
+    (De: '"refactoring.invertBooleanAntonyms": "%s" und "%s" müssen Bezeichner sein';
+     En: '"refactoring.invertBooleanAntonyms": "%s" and "%s" must be identifiers'),
+    (De: '"refactoring.invertBooleanAntonyms" muss ein Objekt wie {"Hidden": "Visible"} sein';
+     En: '"refactoring.invertBooleanAntonyms" must be an object like {"Hidden": "Visible"}'),
+    (De: '"refactoring.invertBooleanFallbackPrefix" muss ein Bezeichner wie "Not" sein';
+     En: '"refactoring.invertBooleanFallbackPrefix" must be an identifier like "Not"'),
+    (De: '"refactoring.extractSuperclassNameSuffix" muss ein Bezeichner wie "Base" sein';
+     En: '"refactoring.extractSuperclassNameSuffix" must be an identifier like "Base"'),
+    (De: '"refactoring.%s" muss %s sein'; En: '"refactoring.%s" must be %s'),
+    (De: 'oder'; En: 'or'));
+
+{$SCOPEDENUMS OFF}
 
 function RefactoringFlags(var ARefactoring: TRefactoringSettings): TArray<TFlagOption>;
 begin
@@ -104,8 +131,8 @@ procedure ReadTwoWay(AReader: TConfigurationReader; AValue: TJsonNode; const AKe
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoiceText(AValue, AKey, AValues, Format('"refactoring.%s" muss %s sein',
-    [AKey, ChoiceText(AValues, 'oder')]), mIndex) then
+  if AReader.ExpectChoiceText(AValue, AKey, AValues, cTexts[TRefactoringOptionsText.RefactoringMustBe].Fmt([AKey,
+    ChoiceText(AValues, cTexts[TRefactoringOptionsText.OrText].Text)]), mIndex) then
   begin
     AFlag := mIndex = ATrueIndex;
   end;
@@ -137,7 +164,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"refactoring.propertyFromAccessorsPrefixes" muss eine Liste von Präfixen sein');
+    AReader.ReportNode(AValue, cTexts[TRefactoringOptionsText.RefactoringPropertyFromAccessorsPrefixesMustBeA].Text);
     Exit;
   end;
   ASettings.Refactoring.PropertyFromAccessorsPrefixes := nil;
@@ -160,7 +187,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(AValue, '"refactoring.invertBooleanAntonyms" muss ein Objekt wie {"Hidden": "Visible"} sein');
+    AReader.ReportNode(AValue, cTexts[TRefactoringOptionsText.RefactoringInvertBooleanAntonymsMustBeAn].Text);
     Exit;
   end;
   ASettings.Refactoring.InvertBooleanAntonyms := nil;
@@ -177,8 +204,8 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mItem], Format('"refactoring.invertBooleanAntonyms": "%s" und "%s" müssen ' +
-        'Bezeichner sein', [AValue.Keys[mItem], mText]));
+      AReader.ReportNode(AValue[mItem], cTexts[TRefactoringOptionsText.RefactoringInvertBooleanAntonymsAndMustBe].Fmt([
+        AValue.Keys[mItem], mText]));
     end;
   end;
 end;
@@ -206,14 +233,14 @@ end;
 procedure ReadFallbackPrefix(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  ReadIdent(AReader, AValue, AKey, '"refactoring.invertBooleanFallbackPrefix" muss ein Bezeichner wie "Not" sein',
+  ReadIdent(AReader, AValue, AKey, cTexts[TRefactoringOptionsText.RefactoringInvertBooleanFallbackPrefixMustBeAn].Text,
     ASettings.Refactoring.InvertBooleanFallbackPrefix);
 end;
 
 procedure ReadSuperclassSuffix(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  ReadIdent(AReader, AValue, AKey, '"refactoring.extractSuperclassNameSuffix" muss ein Bezeichner wie "Base" sein',
+  ReadIdent(AReader, AValue, AKey, cTexts[TRefactoringOptionsText.RefactoringExtractSuperclassNameSuffixMustBeAn].Text,
     ASettings.Refactoring.ExtractSuperclassNameSuffix);
 end;
 
@@ -246,5 +273,8 @@ function RefactoringSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.RefactoringOptions', cTexts);
 
 end.

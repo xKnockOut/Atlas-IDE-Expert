@@ -84,7 +84,23 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.DisableWarning;
+  Atlas.Common.Editing.DisableWarning,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompilerFixesText = (AddToUses, AddToUses2, InsertResultDefaultAtThe, FixAllInTheFile,
+    RemoveIneffectiveAssignmentTo, RemoveAssignmentToOnlyCall, CastExplicitly);
+
+const
+  cTexts: array[TCompilerFixesText] of TAtlasText = (
+    (De: 'uses %s ergänzen (%s)'; En: 'Add %s to uses (%s)'),
+    (De: 'uses %s ergänzen (%s: %s)'; En: 'Add %s to uses (%s: %s)'),
+    (De: 'Result := Default(%s); am Anfang einfügen (%s)'; En: 'Insert Result := Default(%s); at the start (%s)'),
+    (De: 'Alle %s in der Datei beheben (%d)'; En: 'Fix all %s in the file (%d)'),
+    (De: 'Wirkungslose Zuweisung an %s entfernen (%s)'; En: 'Remove ineffective assignment to %s (%s)'),
+    (De: 'Zuweisung an %s entfernen, nur %s aufrufen (%s)'; En: 'Remove assignment to %s, only call %s (%s)'),
+    (De: 'Explizit umwandeln: %s(…) (%s)'; En: 'Cast explicitly: %s(…) (%s)'));
 
 const
   FixCodes: array[0..5] of string = ('H2443', 'E2003', 'H2077', 'W1035', 'W1057', 'W1058');
@@ -277,7 +293,7 @@ begin
   begin
     Exit;
   end;
-  AddUnitFix(AText, ATokens, AMessage, UnitName, Format('uses %s ergänzen (%s)', [UnitName, AMessage.Code]),
+  AddUnitFix(AText, ATokens, AMessage, UnitName, cTexts[TCompilerFixesText.AddToUses].Fmt([UnitName, AMessage.Code]),
     Result);
 end;
 
@@ -324,7 +340,7 @@ begin
     AContext.Namespaces));
   for UnitName in Units do
   begin
-    AddUnitFix(AText, ATokens, AMessage, UnitName, Format('uses %s ergänzen (%s: %s)', [UnitName, AMessage.Code,
+    AddUnitFix(AText, ATokens, AMessage, UnitName, cTexts[TCompilerFixesText.AddToUses2].Fmt([UnitName, AMessage.Code,
       Name]), Result);
   end;
 end;
@@ -450,14 +466,14 @@ begin
     // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
     if IsPure(Value, LocalNames(RoutineOf(Statement))) then
     begin
-      Result := [Fix(AMessage.Code, Format('Wirkungslose Zuweisung an %s entfernen (%s)', [Name, AMessage.Code]),
+      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveIneffectiveAssignmentTo].Fmt([Name, AMessage.Code]),
         [StatementRemoval(AText, ATokens, Statement)], True)];
       Exit;
     end
     else if Value.Kind = TSyntaxKind.Call then
     begin
       // Der Aufruf bleibt, nur die Zuweisung fällt weg.
-      Result := [Fix(AMessage.Code, Format('Zuweisung an %s entfernen, nur %s aufrufen (%s)', [Name, Value.Name,
+      Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveAssignmentToOnlyCall].Fmt([Name, Value.Name,
         AMessage.Code]), [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Value.StartPos), '')], True)];
       Exit;
     end;
@@ -504,7 +520,7 @@ begin
   begin
     Indent := TTextLines.IndentOf(Lines[Body[0].StartPos.Line]);
   end;
-  Result := [Fix(AMessage.Code, Format('Result := Default(%s); am Anfang einfügen (%s)', [TypeText,
+  Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.InsertResultDefaultAtThe].Fmt([TypeText,
     AMessage.Code]), [Insertion(TTextPosition.Create(Body.StartPos.Line, Body.StartPos.Character + Length('begin')),
     LineBreak + Indent + Format('Result := Default(%s);', [TypeText]))], True)];
 end;
@@ -603,7 +619,7 @@ begin
   mChosen := CastTarget(ATree, AMessage);
   if mChosen <> nil then
   begin
-    Result := [Fix(AMessage.Code, Format('Explizit umwandeln: %s(…) (%s)', [mTarget, AMessage.Code]),
+    Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.CastExplicitly].Fmt([mTarget, AMessage.Code]),
       [Insertion(mChosen.StartPos, mTarget + '('), Insertion(mChosen.EndPos, ')')], True)];
   end;
 end;
@@ -777,8 +793,11 @@ begin
   Result := mCount >= 2;
   if Result then
   begin
-    AFix := Fix(mCode, Format('Alle %s in der Datei beheben (%d)', [mCode, mCount]), mEdits, False);
+    AFix := Fix(mCode, cTexts[TCompilerFixesText.FixAllInTheFile].Fmt([mCode, mCount]), mEdits, False);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.CompilerFixes', cTexts);
 
 end.

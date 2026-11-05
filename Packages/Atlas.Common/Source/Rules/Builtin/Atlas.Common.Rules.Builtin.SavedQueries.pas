@@ -35,7 +35,21 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Query.Contract;
+  Atlas.Common.Query.Contract,
+  Atlas.Common.Query.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSavedQueriesText = (Title);
+
+const
+  cTexts: array[TSavedQueriesText] of TAtlasText = (
+    (De: 'Gespeicherte Abfrage: %s'; En: 'Saved query: %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TSavedQueryRule }
 
@@ -75,7 +89,7 @@ begin
   mDescription := FQuery.Description;
   if mDescription = '' then
   begin
-    mDescription := Format('Gespeicherte Abfrage: %s', [FQuery.Query]);
+    mDescription := cTexts[TSavedQueriesText.Title].Fmt([FQuery.Query]);
   end;
   Result := TRuleDescriptor.Create(RuleId(FQuery.Name), FQuery.Severity, mDescription, False);
 end;
@@ -103,9 +117,12 @@ begin
   begin
     if SameText(mRow.FileName, AContext.FileName) then
     begin
-      AReport.Add(mRow.Range, mResult.Message(FQuery.Message, mRow));
+      AReport.Add(mRow.Range, mResult.Message(TQueryOutput.MessageTemplate(FQuery.Message), mRow));
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.SavedQueries', cTexts);
 
 end.

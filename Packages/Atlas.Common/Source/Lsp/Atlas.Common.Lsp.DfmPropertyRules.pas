@@ -44,7 +44,21 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDfmPropertyRulesText = (ChangesInFormFiles, ApplyPropertyRules);
+
+const
+  cTexts: array[TDfmPropertyRulesText] of TAtlasText = (
+    (De: '%d Änderungen in %d Formulardateien'; En: '%d changes in %d form files'),
+    (De: 'Eigenschaftsregeln anwenden'; En: 'Apply property rules'));
+
+{$SCOPEDENUMS OFF}
 
 function Before(const X, Y: TTextPosition): Boolean;
 begin
@@ -106,9 +120,9 @@ var
   mAnnotation: TJSONObject;
 begin
   mAnnotation := TJSONObject.Create;
-  mAnnotation.AddPair('label', 'Eigenschaftsregeln anwenden');
+  mAnnotation.AddPair('label', cTexts[TDfmPropertyRulesText.ApplyPropertyRules].Text);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  mAnnotation.AddPair('description', Format('%d Änderungen in %d Formulardateien', [AEdits, AFiles]));
+  mAnnotation.AddPair('description', cTexts[TDfmPropertyRulesText.ChangesInFormFiles].Fmt([AEdits, AFiles]));
   Result := TJSONObject.Create;
   Result.AddPair(AAnnotationId, mAnnotation);
 end;
@@ -255,5 +269,8 @@ begin
   Result.AddPair('documentChanges', mChanges);
   Result.AddPair('changeAnnotations', ChangeAnnotations(AnnotationId, AFiles, AEdits));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DfmPropertyRules', cTexts);
 
 end.

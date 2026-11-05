@@ -126,7 +126,83 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ConditionalExpression,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Expressions.Tokens;
+  Atlas.Common.Rules.Builtin.Expressions.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TExpressionsText = (NotTitle, NotIn, NotBitwise, NotCompare, AddParens, DuplicateTitle, SameCondition, JumpToFirst,
+    SameBranches, JumpToThen, Twice, SelfCompare, IndexTitle, DeleteZero, StartZero, StartOne, FixComparison,
+    AlwaysTrue, NeverTrue, MissesFirst, FirstNotFound, NullTitle, NullField, NullVariant, ReplaceWith, SwappedTitle,
+    SwappedText, SwappedPart, SwapArguments, DivTitle, DivLoses, ReplaceDiv, ConditionalTitle, ConditionalVersion);
+
+const
+  cTexts: array[TExpressionsText] of TAtlasText = (
+    (De: 'Vorrang von not vor in und Vergleichen übersehen';
+     En: 'Precedence of not over in and comparisons overlooked'),
+    (De: '„not“ gilt nur für %s, nicht für den in-Ausdruck. Gemeint ist vermutlich not (%s).';
+     En: '“not” applies only to %s, not to the in expression. Probably not (%s) is meant.'),
+    (De: '„not“ kehrt die Ganzzahl %s bitweise um, nicht den Vergleich. Gemeint ist vermutlich not (%s).';
+     En: '“not” inverts the integer %s bitwise, not the comparison. Probably not (%s) is meant.'),
+    (De: '„not“ gilt nur für %s, nicht für den Vergleich. Gemeint ist vermutlich not (%s).';
+     En: '“not” applies only to %s, not to the comparison. Probably not (%s) is meant.'),
+    (De: 'Klammern setzen: not (%s)'; En: 'Add parentheses: not (%s)'),
+    (De: 'Doppelte Bedingung oder gleiche Zweige'; En: 'Duplicate condition or identical branches'),
+    (De: 'Gleiche Bedingung wie in Zeile %d; dieser Zweig wird nie erreicht.';
+     En: 'Same condition as in line %d; this branch is never reached.'),
+    (De: 'Zum ersten Vorkommen springen'; En: 'Jump to the first occurrence'),
+    (De: 'then- und else-Zweig sind gleich; die Bedingung hat keine Wirkung.';
+     En: 'then and else branch are identical; the condition has no effect.'),
+    (De: 'Zum then-Zweig springen'; En: 'Jump to the then branch'),
+    (De: '%s steht zweimal in derselben %s-Verknüpfung; vermutlich ein Kopierfehler.';
+     En: '%s appears twice in the same %s chain; probably a copy error.'),
+    (De: '%s wird mit sich selbst verglichen; das Ergebnis ist immer %s.';
+     En: '%s is compared with itself; the result is always %s.'),
+    (De: 'String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen';
+     En: 'String index from 0 or Pos result compared with -1'),
+    (De: 'Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.';
+     En: 'Delete counts characters from 1; with the start value 0 it deletes nothing.'),
+    (De: '%s zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.';
+     En: '%s counts characters from 1; the start value 0 only works like 1 by chance.'),
+    (De: 'Startwert 1'; En: 'Start value 1'),
+    (De: 'Vergleich auf "%s" korrigieren'; En: 'Correct comparison to "%s"'),
+    (De: '%s liefert 0 bei keinem Treffer; der Vergleich %s ist immer wahr.';
+     En: '%s returns 0 for no match; the comparison %s is always true.'),
+    (De: '%s liefert 0 bei keinem Treffer; der Vergleich %s ist nie wahr.';
+     En: '%s returns 0 for no match; the comparison %s is never true.'),
+    (De: '%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s übersieht den Treffer am Anfang.';
+     En: '%s counts from 0 and returns -1 for no match; the comparison %s misses the match at the start.'),
+    (De: '%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s zählt den Treffer am Anfang als nicht ' +
+      'gefunden.';
+     En: '%s counts from 0 and returns -1 for no match; the comparison %s counts the match at the start as not found.'),
+    (De: 'Vergleich mit Null statt VarIsNull oder IsNull'; En: 'Comparison with Null instead of VarIsNull or IsNull'),
+    (De: 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: Exception); IsNull ' +
+      'prüft das Feld unabhängig davon.';
+     En: 'The comparison with Null depends on NullEqualityRule (ncrStrict: never true, ncrError: exception); IsNull ' +
+      'checks the field regardless.'),
+    (De: 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: Exception); VarIsNull ' +
+      'prüft den Wert unabhängig davon.';
+     En: 'The comparison with Null depends on NullEqualityRule (ncrStrict: never true, ncrError: exception); ' +
+      'VarIsNull checks the value regardless.'),
+    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'),
+    (De: 'Argumente von Pos, StartsText oder ContainsText vertauscht';
+     En: 'Arguments of Pos, StartsText or ContainsText swapped'),
+    (De: '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.';
+     En: '%s(Text, Part): probably swapped, %s is searched in %s.'),
+    (De: '%s(Teil, Text): vermutlich vertauscht, gesucht wird %s in %s.';
+     En: '%s(Part, Text): probably swapped, %s is searched in %s.'),
+    (De: 'Argumente tauschen'; En: 'Swap arguments'),
+    (De: 'Ganzzahldivision an Gleitkommazahl'; En: 'Integer division assigned to a floating-point number'),
+    (De: 'div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.';
+     En: 'div calculates as integer; %s is %s and loses the decimal places.'),
+    (De: 'div durch / ersetzen'; En: 'Replace div with /'),
+    (De: 'Bedingungsausdruck vor Delphi 13'; En: 'Conditional expression before Delphi 13'),
+    (De: 'Bedingungsausdrücke gibt es erst ab %s (eingestellt: %s)';
+     En: 'Conditional expressions exist only from %s on (set: %s)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -136,7 +212,7 @@ type
 function TOperatorPrecedenceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OperatorPrecedenceRuleId, TRuleSeverity.Warning,
-    'Vorrang von not vor in und Vergleichen übersehen');
+    cTexts[TExpressionsText.NotTitle].Text);
 end;
 
 /// <summary>Meldung für "not X op Y" (AShown) mit dem Operator AOp und dem Typ ATypeName von X.</summary>
@@ -144,18 +220,15 @@ function PrecedenceMessage(const AOp: TPascalToken; const ATypeName, AName, ASho
 begin
   if AOp.IsKeyword('in') then
   begin
-    Result := Format('„not“ gilt nur für %s, nicht für den in-Ausdruck. Gemeint ist vermutlich not (%s).',
-      [AName, AShown]);
+    Result := cTexts[TExpressionsText.NotIn].Fmt([AName, AShown]);
   end
   else if TDeclaredTypes.IsInt32(ATypeName) or TDeclaredTypes.IsInt64(ATypeName) then
   begin
-    Result := Format('„not“ kehrt die Ganzzahl %s bitweise um, nicht den Vergleich. ' +
-      'Gemeint ist vermutlich not (%s).', [AName, AShown]);
+    Result := cTexts[TExpressionsText.NotBitwise].Fmt([AName, AShown]);
   end
   else
   begin
-    Result := Format('„not“ gilt nur für %s, nicht für den Vergleich. Gemeint ist vermutlich not (%s).',
-      [AName, AShown]);
+    Result := cTexts[TExpressionsText.NotCompare].Fmt([AName, AShown]);
   end;
 end;
 
@@ -173,7 +246,7 @@ begin
   end;
   mShown := mName + ' ' + ATokens[AParts.Op].Text + ' ' + mShown;
   AReport.Add(RangeOf(ATokens, AParts.NotToken, AParts.Last), PrecedenceMessage(ATokens[AParts.Op], ATypeName,
-    mName, mShown), TRuleConfidence.High, [TRuleFix.Create(Format('Klammern setzen: not (%s)', [mShown]),
+    mName, mShown), TRuleConfidence.High, [TRuleFix.Create(cTexts[TExpressionsText.AddParens].Fmt([mShown]),
     [TRuleEdit.Create(RangeOf(ATokens, AParts.Operand, AParts.Last),
     '(' + SourceText(AContext.Text, ATokens, AParts.Operand, AParts.Last) + ')')])]);
 end;
@@ -221,7 +294,7 @@ const
 function TDuplicateConditionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DuplicateConditionRuleId, TRuleSeverity.Warning,
-    'Doppelte Bedingung oder gleiche Zweige');
+    cTexts[TExpressionsText.DuplicateTitle].Text);
 end;
 
 procedure TDuplicateConditionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -367,9 +440,8 @@ var
           if Key(Conditions[Earlier]) = Key(Conditions[Index]) then
           begin
             AReport.Add(TTextRange.Create(Conditions[Index].StartPos, Conditions[Index].EndPos),
-              Format('Gleiche Bedingung wie in Zeile %d; dieser Zweig wird nie erreicht.',
-              [Conditions[Earlier].StartPos.Line + 1]), TRuleConfidence.High,
-              [TRuleFix.Jump('Zum ersten Vorkommen springen', Conditions[Earlier].StartPos)]);
+              cTexts[TExpressionsText.SameCondition].Fmt([Conditions[Earlier].StartPos.Line + 1]), TRuleConfidence.High,
+              [TRuleFix.Jump(cTexts[TExpressionsText.JumpToFirst].Text, Conditions[Earlier].StartPos)]);
             Break;
           end;
       end;
@@ -383,9 +455,9 @@ var
     begin
       Exit;
     end;
-    AReport.Add(TTextRange.Create(AIf[0].StartPos, AIf[0].EndPos), 'then- und else-Zweig sind gleich; ' +
-      'die Bedingung hat keine Wirkung.', TRuleConfidence.High,
-      [TRuleFix.Jump('Zum then-Zweig springen', AIf[1].StartPos)]);
+    AReport.Add(TTextRange.Create(AIf[0].StartPos, AIf[0].EndPos), cTexts[TExpressionsText.SameBranches].Text,
+      TRuleConfidence.High,
+      [TRuleFix.Jump(cTexts[TExpressionsText.JumpToThen].Text, AIf[1].StartPos)]);
   end;
 
   // Operanden einer Kette aus demselben Operator: A and B and A. Iterativ (Bericht M1): rechter Operand
@@ -450,9 +522,8 @@ var
           if Key(List[Earlier]) = Key(List[Index]) then
           begin
             AReport.Add(TTextRange.Create(List[Index].StartPos, List[Index].EndPos),
-              Format('%s steht zweimal in derselben %s-Verknüpfung; vermutlich ein Kopierfehler.',
-              [Display(List[Index]), Op]), TRuleConfidence.High,
-              [TRuleFix.Jump('Zum ersten Vorkommen springen', List[Earlier].StartPos)]);
+              cTexts[TExpressionsText.Twice].Fmt([Display(List[Index]), Op]), TRuleConfidence.High,
+              [TRuleFix.Jump(cTexts[TExpressionsText.JumpToFirst].Text, List[Earlier].StartPos)]);
             Break;
           end;
       end;
@@ -527,8 +598,8 @@ var
     begin
       Outcome := 'False';
     end;
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s wird mit sich selbst verglichen; ' +
-      'das Ergebnis ist immer %s.', [Display(ANode[0]), Outcome]), TRuleConfidence.High);
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TExpressionsText.SelfCompare].Fmt([Display(ANode[0]), Outcome]), TRuleConfidence.High);
   end;
 
   // Iterativ (Bericht M1).
@@ -594,7 +665,7 @@ end;
 function TStringIndexBaseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(StringIndexBaseRuleId, TRuleSeverity.Warning,
-    'String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen');
+    cTexts[TExpressionsText.IndexTitle].Text);
 end;
 
 class function TStringIndexBaseRule.IsStringType(const AType: string): Boolean;
@@ -754,16 +825,17 @@ var
     Literal := Token(Args[Index]);
     if SameText(Name, 'Delete') then
     begin
-      Message := 'Delete zählt Zeichen ab 1; mit dem Startwert 0 löscht es nichts.';
+      Message := cTexts[TExpressionsText.DeleteZero].Text;
       Confidence := TRuleConfidence.High;
     end
     else
     begin
-      Message := Format('%s zählt Zeichen ab 1; der Startwert 0 wirkt nur zufällig wie 1.', [Name]);
+      Message := cTexts[TExpressionsText.StartZero].Fmt([Name]);
       Confidence := TRuleConfidence.Medium;
     end;
     AReport.Add(TTextRange.Create(Literal.StartPos, Literal.EndPos), Message, Confidence,
-      [TRuleFix.Create('Startwert 1', [TRuleEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos), '1')])]);
+      [TRuleFix.Create(cTexts[TExpressionsText.StartOne].Text, [TRuleEdit.Create(TTextRange.Create(Literal.StartPos,
+        Literal.EndPos), '1')])]);
   end;
 
   // Rechenoperator (+, -, *, div, mod) beim Code-Token APosition?
@@ -821,7 +893,7 @@ var
     Range: TTextRange;
   begin
     Range := TTextRange.Create(Token(AOperator).StartPos, Token(ALast).EndPos);
-    AReport.Add(Range, AMessage, AConfidence, [TRuleFix.Create(Format('Vergleich auf "%s" korrigieren',
+    AReport.Add(Range, AMessage, AConfidence, [TRuleFix.Create(cTexts[TExpressionsText.FixComparison].Fmt(
       [AReplacement]), [TRuleEdit.Create(Range, AReplacement)])]);
   end;
 
@@ -844,12 +916,12 @@ var
     Name := Token(APosition).Text;
     if (Compare = '>-1') or (Compare = '>=0') or (Compare = '<>-1') then
     begin
-      ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist immer wahr.',
+      ReportComparison(Operator, Last, cTexts[TExpressionsText.AlwaysTrue].Fmt(
         [Name, TextOf(Operator, Last)]), '> 0', TRuleConfidence.High);
     end
     else if (Compare = '=-1') or (Compare = '<0') or (Compare = '<=-1') then
     begin
-      ReportComparison(Operator, Last, Format('%s liefert 0 bei keinem Treffer; der Vergleich %s ist nie wahr.',
+      ReportComparison(Operator, Last, cTexts[TExpressionsText.NeverTrue].Fmt(
         [Name, TextOf(Operator, Last)]), '= 0', TRuleConfidence.High);
     end;
   end;
@@ -872,13 +944,13 @@ var
     Name := Token(APosition).Text;
     if (Compare = '>0') or (Compare = '>=1') then
     begin
-      ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
-        'übersieht den Treffer am Anfang.', [Name, TextOf(Operator, Last)]), '>= 0', TRuleConfidence.Medium);
+      ReportComparison(Operator, Last, cTexts[TExpressionsText.MissesFirst].Fmt([Name, TextOf(Operator, Last)]), '>= 0',
+        TRuleConfidence.Medium);
     end
     else if (Compare = '<1') or (Compare = '<=0') then
     begin
-      ReportComparison(Operator, Last, Format('%s zählt ab 0 und liefert -1 bei keinem Treffer; der Vergleich %s ' +
-        'zählt den Treffer am Anfang als nicht gefunden.', [Name, TextOf(Operator, Last)]), '< 0',
+      ReportComparison(Operator, Last, cTexts[TExpressionsText.FirstNotFound].Fmt([Name, TextOf(Operator, Last)]),
+        '< 0',
         TRuleConfidence.Medium);
     end;
   end;
@@ -931,7 +1003,7 @@ end;
 function TNullCompareRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(NullCompareRuleId, TRuleSeverity.Warning,
-    'Vergleich mit Null statt VarIsNull oder IsNull');
+    cTexts[TExpressionsText.NullTitle].Text);
 end;
 
 class function TNullCompareRule.IsDataType(const AType: string): Boolean;
@@ -1131,14 +1203,12 @@ var
     if DataValue(AExprFirst, AExprLast, Base) then
     begin
       Replacement := Prefix + Base + '.IsNull';
-      Message := 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
-        'Exception); IsNull prüft das Feld unabhängig davon.';
+      Message := cTexts[TExpressionsText.NullField].Text;
     end
     else
     begin
       Replacement := Prefix + 'VarIsNull(' + TextOf(AExprFirst, AExprLast) + ')';
-      Message := 'Der Vergleich mit Null hängt von NullEqualityRule ab (ncrStrict: nie wahr, ncrError: ' +
-        'Exception); VarIsNull prüft den Wert unabhängig davon.';
+      Message := cTexts[TExpressionsText.NullVariant].Text;
     end;
     // "not X = Null" bindet als "(not X) = Null": dann keine Korrektur, die Bedeutung ist unklar.
     if IsKey(AFirst - 1, 'not') then
@@ -1148,7 +1218,7 @@ var
     else
     begin
       AReport.Add(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Message,
-        [TRuleFix.Create(Format('Durch "%s" ersetzen', [Replacement]),
+        [TRuleFix.Create(cTexts[TExpressionsText.ReplaceWith].Fmt([Replacement]),
         [TRuleEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Replacement)])]);
     end;
   end;
@@ -1214,7 +1284,7 @@ end;
 function TPosArgumentsSwappedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PosArgumentsSwappedRuleId, TRuleSeverity.Warning,
-    'Argumente von Pos, StartsText oder ContainsText vertauscht');
+    cTexts[TExpressionsText.SwappedTitle].Text);
 end;
 
 class function TPosArgumentsSwappedRule.LiteralLength(const ALiteral: string): Integer;
@@ -1445,11 +1515,11 @@ var
     Name := Token(APosition).Text;
     if ATextFirst then
     begin
-      Message := '%s(Text, Teil): vermutlich vertauscht, gesucht wird %s in %s.';
+      Message := cTexts[TExpressionsText.SwappedText].Text;
     end
     else
     begin
-      Message := '%s(Teil, Text): vermutlich vertauscht, gesucht wird %s in %s.';
+      Message := cTexts[TExpressionsText.SwappedPart].Text;
     end;
     Message := Format(Message, [Name, TextOf(Args[TextArg], Args[TextArg + 1] - 2),
       TextOf(Args[PartArg], Args[PartArg + 1] - 2)]);
@@ -1457,7 +1527,7 @@ var
     Between := Copy(AContext.Text, Tokens[Code[Args[1] - 2]].Offset + Length(Tokens[Code[Args[1] - 2]].Text) + 1,
       Tokens[Code[Args[1]]].Offset - Tokens[Code[Args[1] - 2]].Offset - Length(Tokens[Code[Args[1] - 2]].Text));
     Range := TTextRange.Create(Token(Args[0]).StartPos, Token(Args[2] - 2).EndPos);
-    AReport.Add(Range, Message, TRuleConfidence.Medium, [TRuleFix.Create('Argumente tauschen',
+    AReport.Add(Range, Message, TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TExpressionsText.SwapArguments].Text,
       [TRuleEdit.Create(Range, TextOf(Args[1], Args[2] - 2) + Between + TextOf(Args[0], Args[1] - 2))])]);
   end;
 
@@ -1507,7 +1577,7 @@ end;
 function TIntegerDivisionToFloatRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(IntegerDivisionToFloatRuleId, TRuleSeverity.Warning,
-    'Ganzzahldivision an Gleitkommazahl');
+    cTexts[TExpressionsText.DivTitle].Text);
 end;
 
 class function TIntegerDivisionToFloatRule.IsFractional(const AType: string): Boolean;
@@ -1601,8 +1671,8 @@ var
       Exit;
     end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-      Format('div rechnet ganzzahlig; %s ist %s und verliert die Nachkommastellen.', [ATarget, AType]),
-      TRuleConfidence.High, [TRuleFix.Create('div durch / ersetzen',
+      cTexts[TExpressionsText.DivLoses].Fmt([ATarget, AType]),
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TExpressionsText.ReplaceDiv].Text,
       [TRuleEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), '/')])]);
   end;
 
@@ -1776,7 +1846,7 @@ type
 function TConditionalExpressionVersionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ConditionalExpressionVersionRuleId, TRuleSeverity.Error,
-    'Bedingungsausdruck vor Delphi 13');
+    cTexts[TExpressionsText.ConditionalTitle].Text);
 end;
 
 class function TConditionalExpressionVersionRule.IsVersionDirective(const ADirective: string): Boolean;
@@ -1888,7 +1958,7 @@ begin
   Blocks := VersionBlocks(AContext.Tree.Tokens);
   Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Formatting),
     TTextLines.LineBreakOf(AContext.Text));
-  Message := Format('Bedingungsausdrücke gibt es erst ab %s (eingestellt: %s)',
+  Message := cTexts[TExpressionsText.ConditionalVersion].Fmt(
     [TLanguageFeatures.ProductName(TLanguageFeatures.MinimumVersion(TLanguageFeature.IfExpression)),
     TLanguageFeatures.ProductName(AContext.DelphiVersion)]);
   for Node in Found do
@@ -1916,5 +1986,8 @@ begin
   ARegistry.Register(TIntegerDivisionToFloatRule.Create);
   ARegistry.Register(TConditionalExpressionVersionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Expressions', cTexts);
 
 end.

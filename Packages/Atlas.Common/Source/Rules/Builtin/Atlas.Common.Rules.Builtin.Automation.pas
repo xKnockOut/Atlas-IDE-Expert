@@ -53,7 +53,48 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues;
+  Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TAutomationText = (TypeNotAllowed, DispidTaken, NoCtorDtor, DirectiveNotAllowed, OnlyRegister, OverrideDispid,
+    AccessorField, PropertyDirective, RedeclareNoType, DispidOutside, NoFields, NamedOrder, DispatchType, Title,
+    OleCall, DispatchCall);
+
+const
+  cTexts: array[TAutomationText] of TAtlasText = (
+    (De: 'Der Typ %s ist im Abschnitt automated nicht erlaubt (wie E2176).';
+     En: 'The type %s is not allowed in the automated section (like E2176).'),
+    (De: 'dispid %s ist schon an %s vergeben (wie E2180).'; En: 'dispid %s is already assigned to %s (like E2180).'),
+    (De: 'Konstruktoren und Destruktoren sind im Abschnitt automated nicht erlaubt (wie E2177).';
+     En: 'Constructors and destructors are not allowed in the automated section (like E2177).'),
+    (De: '%s ist im Abschnitt automated nicht erlaubt (wie E2178).';
+     En: '%s is not allowed in the automated section (like E2178).'),
+    (De: 'Im Abschnitt automated ist nur register erlaubt, nicht %s (wie E2179).';
+     En: 'Only register is allowed in the automated section, not %s (like E2179).'),
+    (De: 'Die überschriebene Methode %s übernimmt die dispid des Vorfahren und darf keine eigene angeben (wie E2185).';
+     En: 'The overridden method %s takes over the dispid of the ancestor and must not specify its own (like E2185).'),
+    (De: 'Im Abschnitt automated muss %s auf eine Methode zeigen; %s ist ein Feld (wie E2096).';
+     En: 'In the automated section %s must refer to a method; %s is a field (like E2096).'),
+    (De: '%s ist an Properties im Abschnitt automated nicht erlaubt (wie E2182).';
+     En: '%s is not allowed on properties in the automated section (like E2182).'),
+    (De: 'Die Property %s darf im Abschnitt automated nicht ohne Typ neu deklariert werden (wie E2181).';
+     En: 'The property %s must not be redeclared without a type in the automated section (like E2181).'),
+    (De: 'dispid ist nur im Abschnitt automated erlaubt (wie E2185).';
+     En: 'dispid is only allowed in the automated section (like E2185).'),
+    (De: 'Felder sind im Abschnitt automated nicht erlaubt (wie E2175).';
+     En: 'Fields are not allowed in the automated section (like E2175).'),
+    (De: 'Unbenannte Argumente müssen vor den benannten stehen (wie E2166).';
+     En: 'Unnamed arguments must come before the named ones (like E2166).'),
+    (De: 'Der Typ %s ist in einem %s nicht erlaubt (wie %s).'; En: 'The type %s is not allowed in a %s (like %s).'),
+    (De: 'OLE-Automation falsch deklariert oder aufgerufen'; En: 'OLE automation declared or called incorrectly'),
+    (De: 'OLE-Automation-Aufruf'; En: 'OLE automation call'),
+    (De: 'Variant-Dispatch-Aufruf'; En: 'variant dispatch call'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Aufrufkonventionen, die im Abschnitt automated nicht erlaubt sind (E2179).
@@ -413,7 +454,7 @@ begin
       if IllegalAutomatedType(mTypeNode, mName) then
       begin
         FReport.Add(TTextRange.Create(mTypeNode.StartPos, mTypeNode.EndPos),
-          Format('Der Typ %s ist im Abschnitt automated nicht erlaubt (wie E2176).', [mName]));
+          cTexts[TAutomationText.TypeNotAllowed].Fmt([mName]));
       end;
     end;
   finally
@@ -440,7 +481,7 @@ begin
   begin
     if mDispid.Key = mKey then
     begin
-      FReport.Add(ARange, Format('dispid %s ist schon an %s vergeben (wie E2180).', [AText, mDispid.Member]));
+      FReport.Add(ARange, cTexts[TAutomationText.DispidTaken].Fmt([AText, mDispid.Member]));
       Exit;
     end;
   end;
@@ -461,7 +502,7 @@ begin
   if (mWord = 'constructor') or (mWord = 'destructor') then
   begin
     FReport.Add(TokenRange(mFirst),
-      'Konstruktoren und Destruktoren sind im Abschnitt automated nicht erlaubt (wie E2177).');
+      cTexts[TAutomationText.NoCtorDtor].Text);
   end;
   for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
@@ -473,20 +514,19 @@ begin
     if MatchText(mDirective.Name, ['dynamic', 'message']) then
     begin
       FReport.Add(TokenRange(FirstToken(mDirective)),
-        Format('%s ist im Abschnitt automated nicht erlaubt (wie E2178).', [mDirective.Name]));
+        cTexts[TAutomationText.DirectiveNotAllowed].Fmt([mDirective.Name]));
     end
     else if MatchText(mDirective.Name, cForeignConventions) then
     begin
       FReport.Add(TokenRange(FirstToken(mDirective)),
-        Format('Im Abschnitt automated ist nur register erlaubt, nicht %s (wie E2179).', [mDirective.Name]));
+        cTexts[TAutomationText.OnlyRegister].Fmt([mDirective.Name]));
     end
     else if SameText(mDirective.Name, 'dispid') then
     begin
       if HasDirective(AHeader, 'override') then
       begin
         FReport.Add(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
-          Format('Die überschriebene Methode %s übernimmt die dispid des Vorfahren und darf keine eigene ' +
-          'angeben (wie E2185).', [AHeader.Name]));
+          cTexts[TAutomationText.OverrideDispid].Fmt([AHeader.Name]));
       end
       else
       begin
@@ -534,8 +574,7 @@ begin
     ((mNext >= AStop) or not FTokens[mNext].IsSymbol('.')) and IsClassField(AClass, FTokens[mArgument].Text) then
   begin
     FReport.Add(TokenRange(mArgument),
-      Format('Im Abschnitt automated muss %s auf eine Methode zeigen; %s ist ein Feld (wie E2096).',
-      [AWord, FTokens[mArgument].Text]));
+      cTexts[TAutomationText.AccessorField].Fmt([AWord, FTokens[mArgument].Text]));
   end;
 end;
 
@@ -561,7 +600,7 @@ begin
   if MatchText(AWord, cForbiddenClauses) then
   begin
     FReport.Add(TokenRange(AClause.Index),
-      Format('%s ist an Properties im Abschnitt automated nicht erlaubt (wie E2182).', [AWord]));
+      cTexts[TAutomationText.PropertyDirective].Fmt([AWord]));
   end;
   if ((AWord = 'read') or (AWord = 'write')) and AClause.Typed then
   begin
@@ -588,8 +627,7 @@ begin
   if not mClause.Typed then
   begin
     FReport.Add(NameRange(AProperty),
-      Format('Die Property %s darf im Abschnitt automated nicht ohne Typ neu deklariert werden (wie E2181).',
-      [AProperty.Name]));
+      cTexts[TAutomationText.RedeclareNoType].Fmt([AProperty.Name]));
   end;
   // Klauseln hinter dem Typ bis zum ersten Semikolon auf Klammerebene 0.
   mClause.Stop := StopToken(AProperty);
@@ -641,7 +679,7 @@ begin
     if (mDirective.Kind = TSyntaxKind.Directive) and SameText(mDirective.Name, 'dispid') then
     begin
       FReport.Add(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
-        'dispid ist nur im Abschnitt automated erlaubt (wie E2185).');
+        cTexts[TAutomationText.DispidOutside].Text);
     end;
   end;
 end;
@@ -650,7 +688,7 @@ procedure TAutomationCheck.CheckAutomatedMember(AClass, AMember: TSyntaxNode; AD
 begin
   case AMember.Kind of
     TSyntaxKind.Field:
-      FReport.Add(NameRange(AMember), 'Felder sind im Abschnitt automated nicht erlaubt (wie E2175).');
+      FReport.Add(NameRange(AMember), cTexts[TAutomationText.NoFields].Text);
     TSyntaxKind.RoutineHeader:
       if not AMember.IsMethodResolution then
       begin
@@ -788,12 +826,12 @@ begin
   if mOle then
   begin
     mCode := 'E2160';
-    mKind := 'OLE-Automation-Aufruf';
+    mKind := cTexts[TAutomationText.OleCall].Text;
   end
   else
   begin
     mCode := 'E2281';
-    mKind := 'Variant-Dispatch-Aufruf';
+    mKind := cTexts[TAutomationText.DispatchCall].Text;
   end;
   mNamedSeen := False;
   for mIndex := 1 to ACall.ChildCount - 1 do
@@ -806,12 +844,12 @@ begin
     else if mNamedSeen then
     begin
       FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
-        'Unbenannte Argumente müssen vor den benannten stehen (wie E2166).');
+        cTexts[TAutomationText.NamedOrder].Text);
     end;
     if IllegalDispatchArgument(mArgument, mName) then
     begin
       FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
-        Format('Der Typ %s ist in einem %s nicht erlaubt (wie %s).', [mName, mKind, mCode]));
+        cTexts[TAutomationText.DispatchType].Fmt([mName, mKind, mCode]));
     end;
   end;
 end;
@@ -836,7 +874,7 @@ end;
 function TAutomationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(AutomationInvalidRuleId, TRuleSeverity.Error,
-    'OLE-Automation falsch deklariert oder aufgerufen');
+    cTexts[TAutomationText.Title].Text);
 end;
 
 procedure TAutomationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -859,5 +897,8 @@ procedure RegisterAutomationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TAutomationInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Automation', cTexts);
 
 end.

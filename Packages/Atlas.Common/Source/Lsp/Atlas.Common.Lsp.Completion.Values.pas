@@ -89,12 +89,16 @@ uses
 
 type
   /// <summary>Texte der Werte-Vervollständigung in beiden Sprachen (#1458).</summary>
-  TValuesText = (FillMissing, InsertAll);
+  TValuesText = (FillMissing, InsertAll, CreateALocalVariable, CreateInlineVariable, CreateField, CreateConstant);
 
 const
   cTexts: array[TValuesText] of TAtlasText = (
     (De: 'Fehlende Werte ergänzen (%d)'; En: 'Add missing values (%d)'),
-    (De: 'Alle Werte einfügen'; En: 'Insert all values'));
+    (De: 'Alle Werte einfügen'; En: 'Insert all values'),
+    (De: 'Lokale Variable anlegen'; En: 'Create a local variable'),
+    (De: 'Inline-Variable anlegen'; En: 'Create inline variable'),
+    (De: 'Feld %s anlegen'; En: 'Create field %s'),
+    (De: 'Konstante anlegen'; En: 'Create constant'));
   /// <summary>So oft folgt die Auflösung Aliasen und Mengen bis zur Aufzählung.</summary>
   cMaxAliasSteps = 4;
   /// <summary>Höchstens so viele Zeilen liest RangeText (lange Aufzählungen stehen über viele Zeilen).</summary>
@@ -557,7 +561,7 @@ var
 begin
   // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
   mItem := FBase;
-  mItem.Name := 'Lokale Variable anlegen';
+  mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
   mItem.Kind := KindVariable;
   mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
   mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
@@ -568,7 +572,7 @@ begin
   if AInlineVar and FSlot.InlineAllowed then
   begin
     mItem := FBase;
-    mItem.Name := 'Inline-Variable anlegen';
+    mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
     mItem.Kind := KindVariable;
     mItem.Detail := Format('var %s := …', [FSlot.Name]);
     mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
@@ -627,7 +631,7 @@ begin
     Exit;
   end;
   mItem := FBase;
-  mItem.Name := Format('Feld %s anlegen', [mField]);
+  mItem.Name := cTexts[TValuesText.CreateField].Fmt([mField]);
   mItem.Kind := KindField;
   mItem.Detail := Format('%s: %s', [mField, FDeclType]);
   // Die Verwendung heißt danach wie das Feld; der Cursor bleibt an derselben Stelle im Namen.
@@ -675,7 +679,7 @@ begin
     Exit;
   end;
   mItem := FBase;
-  mItem.Name := 'Konstante anlegen';
+  mItem.Name := cTexts[TValuesText.CreateConstant].Text;
   mItem.Kind := KindConstant;
   mItem.Detail := Format('%s = %s;', [FSlot.Name, TDeclareUnknown.DefaultValue(FTypeName)]);
   mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));

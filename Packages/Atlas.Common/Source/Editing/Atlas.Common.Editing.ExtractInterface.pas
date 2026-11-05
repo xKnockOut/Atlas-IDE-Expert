@@ -143,7 +143,49 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingExtractInterfaceText = (PropertyWithoutReadAndWrite, GenericMethodNotAllowedIn,
+    DoesNotImplementIInterfaceLacks, WhetherImplementsIInterfaceIsNot, ThereIsNoClassAt, HasNoPublicOrPublished,
+    TheClassHasChangedPlease, CannotGoIntoTheInterface, IsNotAValidIdentifier, NoMemberIsSelected,
+    TheNameIsAlreadyTaken, GoesIntoTheInterfaceToo, TheUnitHasNoImplementation, PropertyWithoutTypeInherited,
+    ConstructorText, DestructorText, ClassMethod, MessageHandler);
+
+const
+  cTexts: array[TEditingExtractInterfaceText] of TAtlasText = (
+    (De: 'Property ohne read und write'; En: 'property without read and write'),
+    (De: 'generische Methode (in Interfaces nicht erlaubt)'; En: 'generic method (not allowed in interfaces)'),
+    (De: '%s implementiert IInterface nicht: %s fehlen _AddRef, _Release und QueryInterface (Referenzzählen).';
+     En: '%s does not implement IInterface: %s lacks _AddRef, _Release and QueryInterface (reference counting).'),
+    (De: 'Ob %s IInterface implementiert, ist nicht bekannt; sonst fehlen %s _AddRef, _Release und QueryInterface ' +
+      '(Referenzzählen).';
+     En: 'Whether %s implements IInterface is not known; otherwise %s lacks _AddRef, _Release and QueryInterface ' +
+      '(reference counting).'),
+    (De: 'An dieser Stelle steht keine Klasse.'; En: 'There is no class at this position.'),
+    (De: '%s hat keine public- oder published-Methoden und -Properties für ein Interface.';
+     En: '%s has no public or published methods and properties for an interface.'),
+    (De: 'Die Klasse hat sich geändert; bitte die Aktion erneut aufrufen.';
+     En: 'The class has changed; please call the action again.'),
+    (De: '%s kann nicht ins Interface: %s.'; En: '%s cannot go into the interface: %s.'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Es ist kein Mitglied gewählt.'; En: 'No member is selected.'),
+    (De: 'Der Name %s ist schon vergeben.'; En: 'The name %s is already taken.'),
+    (De: '%s kommt als Zugriffsmethode von %s mit ins Interface.';
+     En: '%s goes into the interface too, as accessor of %s.'),
+    (De: 'Die Unit hat keinen implementation-Teil für die neuen Zugriffsmethoden.';
+     En: 'The unit has no implementation part for the new accessors.'),
+    (De: 'Property ohne Typ (geerbt)'; En: 'property without type (inherited)'),
+    (De: 'Konstruktor'; En: 'constructor'),
+    (De: 'Destruktor'; En: 'destructor'),
+    (De: 'Klassenmethode'; En: 'class method'),
+    (De: 'Botschaftsbehandlung'; En: 'message handler'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Klassen der RTL, die IInterface implementieren.</summary>
@@ -268,11 +310,11 @@ begin
   end
   else if AMember.IsRedeclaration then
   begin
-    Result := 'Property ohne Typ (geerbt)';
+    Result := cTexts[TEditingExtractInterfaceText.PropertyWithoutTypeInherited].Text;
   end
   else if (AMember.ReadAccessor = '') and (AMember.WriteAccessor = '') then
   begin
-    Result := 'Property ohne read und write';
+    Result := cTexts[TEditingExtractInterfaceText.PropertyWithoutReadAndWrite].Text;
   end;
 end;
 
@@ -281,24 +323,24 @@ function MethodReason(const AMember: TClassMember): string;
 begin
   case AMember.Kind of
     TClassMemberKind.Constructor_:
-      Result := 'Konstruktor';
+      Result := cTexts[TEditingExtractInterfaceText.ConstructorText].Text;
     TClassMemberKind.Destructor_:
-      Result := 'Destruktor';
+      Result := cTexts[TEditingExtractInterfaceText.DestructorText].Text;
     TClassMemberKind.Other:
       Result := 'Operator';
   else
     Result := '';
     if AMember.IsClassMember then
     begin
-      Result := 'Klassenmethode';
+      Result := cTexts[TEditingExtractInterfaceText.ClassMethod].Text;
     end
     else if AMember.IsGeneric then
     begin
-      Result := 'generische Methode (in Interfaces nicht erlaubt)';
+      Result := cTexts[TEditingExtractInterfaceText.GenericMethodNotAllowedIn].Text;
     end
     else if AMember.HasDirective('message') then
     begin
-      Result := 'Botschaftsbehandlung';
+      Result := cTexts[TEditingExtractInterfaceText.MessageHandler].Text;
     end;
   end;
 end;
@@ -376,11 +418,9 @@ begin
     First := ANewAncestors[0];
     case TExtractInterface.Supports(First, ALookup) of
       TInterfaceSupport.No:
-        Result := Format('%s implementiert IInterface nicht: %s fehlen _AddRef, _Release und QueryInterface ' +
-          '(Referenzzählen).', [First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.DoesNotImplementIInterfaceLacks].Fmt([First, ALayout.Name]);
       TInterfaceSupport.Unknown:
-        Result := Format('Ob %s IInterface implementiert, ist nicht bekannt; sonst fehlen %s _AddRef, _Release und ' +
-          'QueryInterface (Referenzzählen).', [First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.WhetherImplementsIInterfaceIsNot].Fmt([First, ALayout.Name]);
     end;
   end;
   ANewAncestors := ANewAncestors + [AInterfaceName];
@@ -410,7 +450,7 @@ begin
   mDecl := ClassAt(ASource.Tree, ASource.Line);
   if mDecl = nil then
   begin
-    AReason := 'An dieser Stelle steht keine Klasse.';
+    AReason := cTexts[TEditingExtractInterfaceText.ThereIsNoClassAt].Text;
     Exit(False);
   end;
   mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, mDecl);
@@ -429,8 +469,7 @@ begin
   Result := HasEnabled(AInfo.Candidates);
   if not Result then
   begin
-    AReason := Format('%s hat keine public- oder published-Methoden und -Properties für ein Interface.',
-      [AInfo.ClassName]);
+    AReason := cTexts[TEditingExtractInterfaceText.HasNoPublicOrPublished].Fmt([AInfo.ClassName]);
   end;
 end;
 
@@ -553,12 +592,12 @@ function CandidateError(const AItems: TArray<TExtractCandidate>; AId: Integer): 
 var
   mItem: TExtractCandidate;
 begin
-  Result := 'Die Klasse hat sich geändert; bitte die Aktion erneut aufrufen.';
+  Result := cTexts[TEditingExtractInterfaceText.TheClassHasChangedPlease].Text;
   for mItem in AItems do
   begin
     if (mItem.Id = AId) and not mItem.Enabled then
     begin
-      Exit(Format('%s kann nicht ins Interface: %s.', [mItem.Name, mItem.Reason]));
+      Exit(cTexts[TEditingExtractInterfaceText.CannotGoIntoTheInterface].Fmt([mItem.Name, mItem.Reason]));
     end;
     if mItem.Id = AId then
     begin
@@ -574,15 +613,15 @@ begin
   Result := '';
   if ADecl = nil then
   begin
-    Result := 'An dieser Stelle steht keine Klasse.';
+    Result := cTexts[TEditingExtractInterfaceText.ThereIsNoClassAt].Text;
   end
   else if not IsIdentifier(ARequest.Name) then
   begin
-    Result := Format('"%s" ist kein gültiger Bezeichner.', [ARequest.Name]);
+    Result := cTexts[TEditingExtractInterfaceText.IsNotAValidIdentifier].Fmt([ARequest.Name]);
   end
   else if ARequest.Members = nil then
   begin
-    Result := 'Es ist kein Mitglied gewählt.';
+    Result := cTexts[TEditingExtractInterfaceText.NoMemberIsSelected].Text;
   end;
 end;
 
@@ -596,7 +635,7 @@ begin
   AChosen := nil;
   if NameTaken(ATree, ALayout, ARequest.Name, ALookups.NameInUse) then
   begin
-    Exit(Format('Der Name %s ist schon vergeben.', [ARequest.Name]));
+    Exit(cTexts[TEditingExtractInterfaceText.TheNameIsAlreadyTaken].Fmt([ARequest.Name]));
   end;
   mItems := Candidates(ALayout, ALookups.IsMethodPointer);
   Result := '';
@@ -679,8 +718,8 @@ begin
   if FLayout.Members[AAccessor].Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_,
     TClassVisibility.StrictProtected, TClassVisibility.Protected_] then
   begin
-    FPlan.Warnings := FPlan.Warnings + [Format('%s kommt als Zugriffsmethode von %s mit ins Interface.',
-      [AName, AProperty])];
+    FPlan.Warnings := FPlan.Warnings + [cTexts[TEditingExtractInterfaceText.GoesIntoTheInterfaceToo].Fmt([AName,
+      AProperty])];
   end;
 end;
 
@@ -866,7 +905,7 @@ begin
     mBodiesLine := TClassEdits.BodiesEnd(ATree, FLayout.Name);
     if mBodiesLine < 0 then
     begin
-      AReason := 'Die Unit hat keinen implementation-Teil für die neuen Zugriffsmethoden.';
+      AReason := cTexts[TEditingExtractInterfaceText.TheUnitHasNoImplementation].Text;
       Exit(False);
     end;
     FPlan.Edits := FPlan.Edits + [TClassEdits.InsertBodies(AText, mBodiesLine, FNewBodies)];
@@ -966,5 +1005,8 @@ begin
   end;
   Result := Result + ALineBreak + 'implementation' + ALineBreak + ALineBreak + 'end.' + ALineBreak;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractInterface', cTexts);
 
 end.

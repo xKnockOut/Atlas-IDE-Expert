@@ -39,7 +39,29 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Checkin,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TForbiddenText = (ContainsCredentialsInTheAddress, AbsolutePathsDoNotBelong, LooksLikeCredentialsTheyDo);
+
+const
+  cTexts: array[TForbiddenText] of TAtlasText = (
+    (De: '"%s" enthält Zugangsdaten in der Adresse; atlas.json gilt für alle im Team, der Wert wird ignoriert';
+     En: '"%s" contains credentials in the address; atlas.json applies to everyone in the team, the value is ignored'),
+    (De: '"%s": absolute Pfade gehören nicht in atlas.json (gilt für alle im Team); der Wert wird ignoriert, bitte ' +
+      'relativ zum Projektordner angeben';
+     En: '"%s": absolute paths do not belong in atlas.json (applies to everyone in the team); the value is ignored, ' +
+      'please give it relative to the project folder'),
+    (De: '"%s" sieht nach Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher ' +
+      'von Windows verwenden) und werden ignoriert';
+     En: '"%s" looks like credentials; they do not belong in atlas.json (applies to everyone in the team, use the ' +
+      'Windows Credential Manager) and are ignored'));
+
+{$SCOPEDENUMS OFF}
 
 const
   PathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
@@ -135,14 +157,12 @@ begin
   Shown := StringReplace(APath, '[]', '', [rfReplaceAll]);
   if TTextCheckin.HasUrlCredentials(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, Format('"%s" enthält Zugangsdaten in der Adresse; atlas.json gilt für alle ' +
-      'im Team, der Wert wird ignoriert', [Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([Shown]));
     Exit(True);
   end;
   if TForbiddenEntries.IsPathSetting(APath) and TTextCheckin.IsMachinePath(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, Format('"%s": absolute Pfade gehören nicht in atlas.json (gilt für alle im ' +
-      'Team); der Wert wird ignoriert, bitte relativ zum Projektordner angeben', [Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([Shown]));
     Exit(True);
   end;
 end;
@@ -180,9 +200,8 @@ begin
     mPath := Join(APath, mKey);
     if TTextCheckin.IsCredentialKey(mKey) then
     begin
-      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2, Format('"%s" sieht nach ' +
-        'Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher von Windows ' +
-        'verwenden) und werden ignoriert', [mPath]));
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        cTexts[TForbiddenText.LooksLikeCredentialsTheyDo].Fmt([mPath]));
       AChanged := True;
     end
     else if RebuildItem(ANode[mIndex], mPath, AChanged, mChild) then
@@ -293,5 +312,8 @@ begin
     Stripper.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.Forbidden', cTexts);
 
 end.

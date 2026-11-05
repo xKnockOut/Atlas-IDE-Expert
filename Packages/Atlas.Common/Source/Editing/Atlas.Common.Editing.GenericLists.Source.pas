@@ -79,7 +79,20 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.GenericLists.Kinds,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSourceText = (TheChangesInOverlap);
+
+const
+  cTexts: array[TSourceText] of TAtlasText = (
+    (De: 'Die Änderungen in %s überschneiden sich'; En: 'The changes in %s overlap'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericListRange }
 
@@ -269,12 +282,15 @@ begin
     end;
     if (FEdits <> nil) and not TGenericListSyntax.NotAfter(mLast.Range.EndPos, mEdit.Range.StartPos) then
     begin
-      AReason := Format('Die Änderungen in %s überschneiden sich', [ExtractFileName(FFileName)]);
+      AReason := cTexts[TSourceText.TheChangesInOverlap].Fmt([ExtractFileName(FFileName)]);
       Exit(False);
     end;
     FEdits := FEdits + [mEdit];
     mLast := mEdit;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Source', cTexts);
 
 end.

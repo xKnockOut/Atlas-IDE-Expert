@@ -308,7 +308,18 @@ begin
     end;
   View := Sample;
   FBar.SetView(View);
-  Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty, 'ohne Ungelesene keine Plakette');
+  Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty, 'Benachrichtigungen aus: keine Plakette');
+  // Benachrichtigungen an: Plakette immer, auch ohne Ungelesene; ein Klick öffnet die Liste.
+  View.BadgeShown := True;
+  View.BadgeHint := '0 ungelesene Benachrichtigungen';
+  FBar.SetView(View);
+  Assert.IsFalse(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty, 'Plakette auch mit 0');
+  Assert.AreEqual('0', View.BadgeText);
+  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Badge));
+  Assert.AreEqual('0 ungelesene Benachrichtigungen', FBar.HintAt(P.X, P.Y));
+  FBar.ClickAt(P.X, P.Y);
+  Assert.AreEqual(FBar.ClientToScreen(FBar.PartRect(TAtlasStatusBarPart.Badge).TopLeft).X, Clicked.X);
+  Clicked := Point(-1, -1);
   View.BadgeCount := 3;
   View.BadgeHint := '3 ungelesene Benachrichtigungen';
   FBar.SetView(View);

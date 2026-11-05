@@ -83,7 +83,28 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer;
+  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingSafeDeleteText = (AtlasCannotSafelyDeleteThis, TheClassIsNotIn, TheDeclarationOfCannotBe,
+    LocalVariablesAreDeletedBy, SafelyDelete, LocalRoutine, Field);
+
+const
+  cTexts: array[TEditingSafeDeleteText] of TAtlasText = (
+    (De: 'Diese Deklaration kann Atlas nicht sicher löschen.'; En: 'Atlas cannot safely delete this declaration.'),
+    (De: 'Die Klasse %s steht nicht in dieser Unit.'; En: 'The class %s is not in this unit.'),
+    (De: 'Die Deklaration von %s ist nicht zu finden.'; En: 'The declaration of %s cannot be found.'),
+    (De: 'Lokale Variablen löscht die Regel unused-local.';
+     En: 'Local variables are deleted by the rule unused-local.'),
+    (De: '%s „%s“ sicher löschen …'; En: 'Safely delete %s “%s” …'),
+    (De: 'lokale Routine'; En: 'local routine'),
+    (De: 'Feld'; En: 'field'));
+
+{$SCOPEDENUMS OFF}
 
 { TSafeDeleteTarget }
 
@@ -93,7 +114,7 @@ begin
     TSafeDeleteKind.Method:
       Result := 'Methode';
     TSafeDeleteKind.Field:
-      Result := 'Feld';
+      Result := cTexts[TEditingSafeDeleteText.Field].Text;
     TSafeDeleteKind.Property_:
       Result := 'Property';
     TSafeDeleteKind.Type_:
@@ -105,7 +126,7 @@ begin
     TSafeDeleteKind.Routine:
       Result := 'Routine';
     TSafeDeleteKind.LocalRoutine:
-      Result := 'lokale Routine';
+      Result := cTexts[TEditingSafeDeleteText.LocalRoutine].Text;
   else
     Result := 'Unit';
   end;
@@ -416,7 +437,7 @@ begin
     Result := mHit >= 0;
     if Result and IsUndeletable(mLayout.Members[mHit]) then
     begin
-      Result := Fail(AReason, 'Diese Deklaration kann Atlas nicht sicher löschen.');
+      Result := Fail(AReason, cTexts[TEditingSafeDeleteText.AtlasCannotSafelyDeleteThis].Text);
     end
     else if Result then
     begin
@@ -440,7 +461,7 @@ begin
   mDecl := TClassLayout.DeclNamed(Tree, LastPart(mClassName));
   if mDecl = nil then
   begin
-    Exit(Fail(AReason, Format('Die Klasse %s steht nicht in dieser Unit.', [mClassName])));
+    Exit(Fail(AReason, cTexts[TEditingSafeDeleteText.TheClassIsNotIn].Fmt([mClassName])));
   end;
   mLayout := TClassLayout.Read(Tree, Text, mDecl);
   try
@@ -455,7 +476,7 @@ begin
   finally
     mLayout.Free;
   end;
-  Result := Fail(AReason, Format('Die Deklaration von %s ist nicht zu finden.', [ARoutine.Name]));
+  Result := Fail(AReason, cTexts[TEditingSafeDeleteText.TheDeclarationOfCannotBe].Fmt([ARoutine.Name]));
 end;
 
 function TSymbolFinder.InRoutine(ARoutine: TSyntaxNode; var ATarget: TSafeDeleteTarget;
@@ -522,7 +543,7 @@ begin
   end;
   if (AFound.Kind = TSyntaxKind.VarDecl) and IsInsideRoutine(AFound) then
   begin
-    Exit(Fail(AReason, 'Lokale Variablen löscht die Regel unused-local.'));
+    Exit(Fail(AReason, cTexts[TEditingSafeDeleteText.LocalVariablesAreDeletedBy].Text));
   end;
   if not NameRangeIn(Tree, AFound, ATarget.Name, ATarget.NameRange) then
   begin
@@ -1148,7 +1169,10 @@ end;
 
 class function TSafeDelete.Title(const ATarget: TSafeDeleteTarget): string;
 begin
-  Result := Format('%s „%s“ sicher löschen …', [TSafeDeleteTarget.KindName(ATarget.Kind), ATarget.Name]);
+  Result := cTexts[TEditingSafeDeleteText.SafelyDelete].Fmt([TSafeDeleteTarget.KindName(ATarget.Kind), ATarget.Name]);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.SafeDelete', cTexts);
 
 end.

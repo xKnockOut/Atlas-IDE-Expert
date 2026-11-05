@@ -59,12 +59,12 @@ type
 
   TConditionalExpression = class
   public const
-    ToExpressionTitle = 'In bedingten Ausdruck umwandeln';
-    ToStatementTitle = 'In if-Anweisung umwandeln';
-    IfThenTitle = 'IfThen durch bedingten Ausdruck ersetzen';
     /// <summary>Höchstens so viele Bedingungen werden zum Ausdruck.</summary>
     MaxConditions = 2;
   public
+    class function ToExpressionTitle: string; static;
+    class function ToStatementTitle: string; static;
+    class function IfThenTitle: string; static;
     /// <summary>„In bedingten Ausdruck umwandeln“ für das if, dessen Kopf APosition enthält.</summary>
     class function ToExpression(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       const ALookup: TConditionalLookup; out ARewrite: TStatementRewrite): Boolean; static;
@@ -93,7 +93,33 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConditionalExpressionText = (ConvertToConditionalExpression, ConvertToIfStatement, ReplaceIfThenWithAConditional);
+
+const
+  cTexts: array[TConditionalExpressionText] of TAtlasText = (
+    (De: 'In bedingten Ausdruck umwandeln'; En: 'Convert to conditional expression'),
+    (De: 'In if-Anweisung umwandeln'; En: 'Convert to if statement'),
+    (De: 'IfThen durch bedingten Ausdruck ersetzen'; En: 'Replace IfThen with a conditional expression'));
+
+class function TConditionalExpression.ToExpressionTitle: string;
+begin
+  Result := cTexts[TConditionalExpressionText.ConvertToConditionalExpression].Text;
+end;
+
+class function TConditionalExpression.ToStatementTitle: string;
+begin
+  Result := cTexts[TConditionalExpressionText.ConvertToIfStatement].Text;
+end;
+
+class function TConditionalExpression.IfThenTitle: string;
+begin
+  Result := cTexts[TConditionalExpressionText.ReplaceIfThenWithAConditional].Text;
+end;
 
 { TValueType }
 
@@ -1033,5 +1059,8 @@ begin
     TExpressionPart.Create(Expression, PrecedenceIfExpr).AtLeast(TExpressionText.ContextPrecedence(Call))));
   Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ConditionalExpression', cTexts);
 
 end.

@@ -76,7 +76,26 @@ uses
   Atlas.Common.Configuration.Internals.JsonTree,
   Atlas.Common.Configuration.Internals.ScopeData,
   Atlas.Common.Configuration.Internals.Forbidden,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TScopesText = (AppliesToAllProjectsAnd, BelongsToTheProjectAtlas);
+
+const
+  cTexts: array[TScopesText] of TAtlasText = (
+    (De: '"%s" gilt für alle Projekte und gehört in die globalen Einstellungen (Tools › Optionen › Atlas, Datei ' +
+      '%%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert';
+     En: '"%s" applies to all projects and belongs in the global settings (Tools › Options › Atlas, file ' +
+      '%%APPDATA%%\Atlas\settings.json); in atlas.json it is ignored'),
+    (De: '"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen Einstellungen wird es ' +
+      'ignoriert';
+     En: '"%s" belongs to the project (atlas.json, Atlas › Project Settings); in the global settings it is ignored'));
+
+{$SCOPEDENUMS OFF}
 
 function Listed(const APath: string; const AList: array of string): Boolean;
 var
@@ -124,13 +143,11 @@ function Misplaced(const APath: string; AKeep: TConfigurationScope): string;
 begin
   if AKeep = TConfigurationScope.Project then
   begin
-    Result := Format('"%s" gilt für alle Projekte und gehört in die globalen Einstellungen ' +
-      '(Tools › Optionen › Atlas, Datei %%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert', [APath]);
+    Result := cTexts[TScopesText.AppliesToAllProjectsAnd].Fmt([APath]);
   end
   else
   begin
-    Result := Format('"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen ' +
-      'Einstellungen wird es ignoriert', [APath]);
+    Result := cTexts[TScopesText.BelongsToTheProjectAtlas].Fmt([APath]);
   end;
 end;
 
@@ -464,5 +481,8 @@ begin
     Result := IncludeTrailingPathDelimiter(AAppData) + GlobalFolder + PathDelim + GlobalName;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Scopes', cTexts);
 
 end.
