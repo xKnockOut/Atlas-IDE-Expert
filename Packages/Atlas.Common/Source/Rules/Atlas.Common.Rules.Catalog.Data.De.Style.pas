@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeStyle: array[0..547] of string = (
+  CatalogLinesDeStyle: array[0..553] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -602,10 +602,16 @@ const
     '      "id": "unused-uses",',
     '      "name": "Ungenutzte Unit im uses",',
     '      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil i' +
-    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep, Units, ' +
-    'auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen b' +
-    'leiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo di' +
-    'eselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
+    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep oder der' +
+    ' Option keep, Units, auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiv' +
+    'en {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. S' +
+    'till im Editor, wo dieselben Einträge abgeblendet erscheinen (das Abblenden folgt der Regel: off, exclude und lsp-ignore nehmen es mit weg), ohne Symbolindex (--no-index) und bei Syntaxfehlern.",',
+    '      "options": [',
+    '        {',
+    '          "name": "keep",',
+    '          "description": "Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep; auch für das Abblenden im Editor und „uses aufräumen“."',
+    '        }',
+    '      ]',
     '    },',
     '{',
     '      "id": "now-for-elapsed-time",',

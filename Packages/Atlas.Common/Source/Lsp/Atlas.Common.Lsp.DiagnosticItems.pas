@@ -13,6 +13,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Suppressions,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.InactiveRegions,
@@ -52,9 +53,11 @@ type
       : TJSONObject; static;
     /// <summary>Befund des Präprozessors: Include-Zyklus als Warnung, sonst Hinweis.</summary>
     class function IssueToJson(const AIssue: TPreprocessorIssue): TJSONObject; static;
-    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.</summary>
+    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.
+    /// Ungenutzte Einträge, die ein lsp-ignore für unused-uses aus ASuppressions abdeckt, fehlen (#1135);
+    /// ASuppressions nil = keine.</summary>
     class procedure AddUses(AItems: TJSONArray; const AText: string; const AInactive: TArray<TTextRange>;
-      const AContext: TUsesContext); static;
+      const AContext: TUsesContext; ASuppressions: TSuppressions); static;
     /// <summary>Name des Zustands in data.uses.state: unused, initialization, allowlist, implementation.</summary>
     class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Parameter für publishDiagnostics einer Formulardatei (#44): nur Lesefehler der DFM, bei binär
@@ -72,6 +75,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.Deprecated,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
@@ -349,13 +353,18 @@ begin
 end;
 
 class procedure TLspDiagnosticItems.AddUses(AItems: TJSONArray; const AText: string;
-  const AInactive: TArray<TTextRange>; const AContext: TUsesContext);
+  const AInactive: TArray<TTextRange>; const AContext: TUsesContext; ASuppressions: TSuppressions);
 var
   mEntry: TUsesEntry;
   mItem, mData: TJSONObject;
 begin
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
   begin
+    if (mEntry.State = TUsesEntryState.Unused) and (ASuppressions <> nil) and
+      ASuppressions.IsSuppressed(UnusedUsesRuleId, mEntry.Range.StartPos.Line) then
+    begin
+      Continue;
+    end;
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEntry.Range));
     mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));

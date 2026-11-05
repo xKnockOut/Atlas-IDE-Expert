@@ -1,4 +1,8 @@
-﻿## Stable- und Unstable-Branch für v2.0 (05.11.2026, Branch `claude/project-thread-d525ec` auf `Pilot-2.0.0-beta.1`)
+﻿## Prüfregel unused-uses abgeschlossen (#1135, 05.11.2026, Branch `claude/project-thread-r5lf10` auf `Pilot-2.0.0-beta.1`)
+- Die Regel selbst kam mit #1352 (Sammelkorrektur). Nachgezogen, was #1135 darüber hinaus verlangt: Option `keep` (`TUnusedUsesRule.Keep`, auch in `TShellCodeArea.CodeActionWorkspaceOf`, also für Abblenden und „uses aufräumen“), Abblenden im Editor folgt der Regel (`TLspSyntaxDiagnostics.AddUnusedUses` mit `TRuleEngine.RuleOn`: off, Gruppe, Profil, `exclude`; `lsp-ignore` über `TLspDiagnosticItems.AddUses(…, ASuppressions)`).
+- Ursache behoben: Im Editor lief unused-uses „leer“ und zählte als gelaufen, ein `lsp-ignore: unused-uses` wurde `unused-suppression` mit sicherer Korrektur (Entfernen beim Speichern). Neues Interface `IRuleCondition.Applies` (Rules.Contract), der Lauf fragt es vor `Check`; unused-uses und uses-cycle (usesCycleLive aus) nutzen es.
+- Geprüft unter FPC: `TUnusedUsesTests` 12/12, `TLspSyntaxDiagnosticsTests` bis auf `AddsInactiveRangesAsUnnecessaryHints` (scheitert auch auf dem Ausgangsstand, JSON-Pfad unter FPC); die neuen Tests scheitern auf dem Ausgangsstand. **Nicht mit Delphi übersetzt.** Handtests UU1–UU11.
+## Stable- und Unstable-Branch für v2.0 (05.11.2026, Branch `claude/project-thread-d525ec` auf `Pilot-2.0.0-beta.1`)
 - `Pilot-2.0.0-beta.1` ist der Unstable-Branch: Alle PRs gehen weiter dorthin, sobald Atlas und die FPC-CI grün sind.
 - `Pilot-2.0-stable` zeigt nur auf Pilot-Commits, die Marco mit Delphi 0/0/0 gebaut hat (Win64-Gruppe und Win32-Plugin, Tests grün). Kein eigener Code-Weg, keine PRs und keine Cherry-Picks dorthin: Stable wird nur vorgerückt (fast-forward), z. B. `git push origin <commit>:refs/heads/Pilot-2.0-stable`.
 - Jeder bestätigte Stand bekommt einen Tag `delphi-ok-JJJJ-MM-TT` auf demselben Commit.
