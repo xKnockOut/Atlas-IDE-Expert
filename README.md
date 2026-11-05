@@ -278,7 +278,7 @@ In English: [Installation](docs/en/Installation.md) and [Configuration](docs/en/
 - [Configuration](docs/Konfiguration.md) of `atlas.json` (generated from the JSON schema with `pwsh Tools/Update-ConfigDoc.ps1`)
 - [Rules](docs/Regeln.md)
 - [MCP tools](docs/MCP.md)
-- [Benchmark](docs/Benchmark.md) of the performance targets
+- [Benchmark](docs/Benchmark.md) of the performance targets and of the time until a project group is ready (`Tools/Benchmark/ready.mjs`, several runs per version, median and range)
 
 ## Structure
 
