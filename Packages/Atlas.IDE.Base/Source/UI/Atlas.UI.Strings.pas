@@ -3774,7 +3774,7 @@ const
      'Hide status bar', 'live', 'on save', 'checking …', 'checked %s ago', '%d s', '%d min', '%d h',
      '%d lines', 'CC %d', '%s (limit %d)',
      'In this unit: %d errors, %d warnings, %d hints. Click: next finding of this kind, double-click: ' +
-     '“Atlas check” for this unit.',
+     '“Atlas Findings” for this unit.',
      'Checks while you type after the delay problems.liveDelayMs (problems.update live).',
      'Checks only after saving (problems.update save).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
