@@ -9627,3 +9627,11 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
+| LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
+| LK3 | `ForgetStartsNumberingAgain` | Grün |
