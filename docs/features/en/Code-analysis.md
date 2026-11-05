@@ -39,7 +39,7 @@ Marks move along while typing.
 - `problems.update` (*Tools › Options › Atlas › Rules › Check window*):
   - live while typing, with its own delay `problems.liveDelayMs` in milliseconds (100 to 10000, default 400)
   - on save
-  - only on request via "Check file now" (command palette, editor context menu, own shortcut Ctrl+Shift+Alt+P `keys.checkFile`, button in the "Atlas Findings" window, click on the live check in the status bar)
+  - only on request via "Check file now" (command palette, editor context menu, own shortcut Ctrl+Shift+Alt+P `keys.checkFile`, click on the check field in the Atlas status bar, e.g. "on save · project 91 %")
 - The former setting "Check while typing" is carried over
 
 ### Finding hover
