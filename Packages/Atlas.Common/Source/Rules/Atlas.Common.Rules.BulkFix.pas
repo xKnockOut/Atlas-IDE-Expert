@@ -186,7 +186,30 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TBulkFixText = (MinConfidenceValues, MinConfidenceBelow, Skipped, Preview, Written, Discarded, WriteFailed);
+
+const
+  cTexts: array[TBulkFixText] of TAtlasText = (
+    (De: 'minConfidence ist "medium" oder "high"'; En: 'minConfidence is "medium" or "high"'),
+    (De: 'minConfidence "%s" liegt unter fix.minConfidence (%s)';
+     En: 'minConfidence "%s" is below fix.minConfidence (%s)'),
+    (De: 'Übersprungen: %d mit zu niedriger Konfidenz, %d unsicher, %d Konflikt, %d ohne Korrektur';
+     En: 'Skipped: %d with too low confidence, %d unsafe, %d conflict, %d without fix'),
+    (De: 'Vorschau: %d Korrekturen in %d Dateien, nichts geschrieben';
+     En: 'Preview: %d fixes in %d files, nothing written'),
+    (De: '%d Korrekturen in %d Dateien geschrieben'; En: '%d fixes written in %d files'),
+    (De: 'Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): %s';
+     En: 'Discarded (the fixes would have caused syntax errors): %s'),
+    (De: 'Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.'; En: 'Writing failed (%s); all files restored.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cAllRules = 'all';
@@ -399,12 +422,12 @@ begin
     (AConfidence <> TRuleConfidence.Low);
   if not Result then
   begin
-    AError := 'minConfidence ist "medium" oder "high"';
+    AError := cTexts[TBulkFixText.MinConfidenceValues].Text;
     Exit;
   end;
   if Ord(AConfidence) < Ord(ASetting) then
   begin
-    AError := Format('minConfidence "%s" liegt unter fix.minConfidence (%s)', [Trim(ARequested),
+    AError := cTexts[TBulkFixText.MinConfidenceBelow].Fmt([Trim(ARequested),
       ConfidenceText(ASetting)]);
     Result := False;
   end;
@@ -730,7 +753,7 @@ begin
   if ASkipped[TBulkFixSkip.Confidence] + ASkipped[TBulkFixSkip.Unsafe] + ASkipped[TBulkFixSkip.Conflict] +
     ASkipped[TBulkFixSkip.NoFix] > 0 then
   begin
-    Result := Format('Übersprungen: %d mit zu niedriger Konfidenz, %d unsicher, %d Konflikt, %d ohne Korrektur',
+    Result := cTexts[TBulkFixText.Skipped].Fmt(
       [ASkipped[TBulkFixSkip.Confidence], ASkipped[TBulkFixSkip.Unsafe], ASkipped[TBulkFixSkip.Conflict],
       ASkipped[TBulkFixSkip.NoFix]]);
   end;
@@ -789,11 +812,11 @@ begin
   end;
   if ADryRun then
   begin
-    mLines := [Format('Vorschau: %d Korrekturen in %d Dateien, nichts geschrieben', [mFixes, mChanged])];
+    mLines := [cTexts[TBulkFixText.Preview].Fmt([mFixes, mChanged])];
   end
   else
   begin
-    mLines := [Format('%d Korrekturen in %d Dateien geschrieben', [mFixes, mChanged])];
+    mLines := [cTexts[TBulkFixText.Written].Fmt([mFixes, mChanged])];
   end;
   for mTotal in mTotals do
   begin
@@ -807,7 +830,7 @@ begin
   begin
     if mFile.Rejected then
     begin
-      mLines := mLines + [Format('Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): %s', [mFile.FileName])];
+      mLines := mLines + [cTexts[TBulkFixText.Discarded].Fmt([mFile.FileName])];
     end;
   end;
   Result := string.Join(ALineBreak, mLines);
@@ -857,10 +880,13 @@ begin
           on Exception do
             Continue;
         end;
-      raise EBulkFixWrite.CreateFmt('Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.', [E.Message]);
+      raise EBulkFixWrite.CreateFmt(cTexts[TBulkFixText.WriteFailed].Text, [E.Message]);
     end;
   end;
   Result := mWritten;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.BulkFix', cTexts);
 
 end.

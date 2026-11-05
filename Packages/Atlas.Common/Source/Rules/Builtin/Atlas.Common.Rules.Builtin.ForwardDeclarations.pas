@@ -72,7 +72,40 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.ForwardDeclarations,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TForwardDeclarationsText = (UsedBeforeTitle, UsedBefore, NoFix, RedundantTitle, Redundant, UnresolvedTitle,
+    CreateEmptyBody, ForwardNotImplemented, InterfaceNotImplemented, ContainsItself, OnlyForward, FullMissing);
+
+const
+  cTexts: array[TForwardDeclarationsText] of TAtlasText = (
+    (De: 'Typ wird benutzt, bevor er deklariert ist'; En: 'Type is used before it is declared'),
+    (De: '"%s" wird in %s benutzt, bevor es deklariert ist'; En: '"%s" is used in %s before it is declared'),
+    (De: ' (keine Korrektur: %s)'; En: ' (no fix: %s)'),
+    (De: 'Überflüssige Forward-Deklaration'; En: 'Redundant forward declaration'),
+    (De: 'Die Forward-Deklaration von "%s" wird nicht gebraucht: %s wird vor seiner Deklaration nicht benutzt';
+     En: 'The forward declaration of "%s" is not needed: %s is not used before its declaration'),
+    (De: 'Vorwärtsdeklaration nie aufgelöst'; En: 'Forward declaration never resolved'),
+    (De: 'Leeren Rumpf für %s anlegen'; En: 'Create empty body for %s'),
+    (De: '%s ist forward deklariert, aber nicht implementiert (wie E2065).';
+     En: '%s is declared forward but not implemented (like E2065).'),
+    (De: '%s ist im interface deklariert, aber nicht implementiert (wie E2065).';
+     En: '%s is declared in the interface but not implemented (like E2065).'),
+    (De: 'Der Record %s enthält sich selbst als Feld %s; ein Typ ist erst nach seinem end vollständig (wie E2086).';
+     En: 'The record %s contains itself as field %s; a type is complete only after its end (like E2086).'),
+    (De: '%s ist hier nur vorwärts deklariert; als Vorfahr oder in der Interface-Liste von %s muss der Typ schon ' +
+      'vollständig sein (wie E2086).';
+     En: '%s is only declared forward here; as ancestor or in the interface list of %s the type must already be ' +
+      'complete (like E2086).'),
+    (De: '%s ist nur vorwärts deklariert; die vollständige Deklaration fehlt in diesem type-Abschnitt (wie %s).';
+     En: '%s is only declared forward; the full declaration is missing in this type section (like %s).'));
+
+{$SCOPEDENUMS OFF}
 
 function FixesOf(const AFinding: TForwardFinding): TArray<TRuleFix>;
 var
@@ -93,7 +126,7 @@ end;
 function TTypeUsedBeforeDeclarationRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('type-used-before-declaration', TRuleSeverity.Error,
-    'Typ wird benutzt, bevor er deklariert ist');
+    cTexts[TForwardDeclarationsText.UsedBeforeTitle].Text);
 end;
 
 procedure TTypeUsedBeforeDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -111,10 +144,10 @@ begin
     begin
       Continue;
     end;
-    Message := Format('"%s" wird in %s benutzt, bevor es deklariert ist', [Finding.TypeName, Finding.UserName]);
+    Message := cTexts[TForwardDeclarationsText.UsedBefore].Fmt([Finding.TypeName, Finding.UserName]);
     if Finding.Reason <> '' then
     begin
-      Message := Message + Format(' (keine Korrektur: %s)', [Finding.Reason]);
+      Message := Message + cTexts[TForwardDeclarationsText.NoFix].Fmt([Finding.Reason]);
     end;
     AReport.Add(Finding.Range, Message, FixesOf(Finding));
   end;
@@ -125,7 +158,7 @@ end;
 function TUnneededForwardDeclarationRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unneeded-forward-declaration', TRuleSeverity.Hint,
-    'Überflüssige Forward-Deklaration');
+    cTexts[TForwardDeclarationsText.RedundantTitle].Text);
 end;
 
 procedure TUnneededForwardDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -140,8 +173,8 @@ begin
   begin
     if Finding.Issue = TForwardIssue.UnneededForward then
     begin
-      AReport.Add(Finding.Range, Format('Die Forward-Deklaration von "%s" wird nicht gebraucht: ' +
-        '%s wird vor seiner Deklaration nicht benutzt', [Finding.TypeName, Finding.TypeName]), FixesOf(Finding));
+      AReport.Add(Finding.Range, cTexts[TForwardDeclarationsText.Redundant].Fmt([Finding.TypeName, Finding.TypeName]),
+        FixesOf(Finding));
     end;
   end;
 end;
@@ -151,7 +184,7 @@ end;
 function TUnsatisfiedForwardRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnsatisfiedForwardRuleId, TRuleSeverity.Error,
-    'Vorwärtsdeklaration nie aufgelöst');
+    cTexts[TForwardDeclarationsText.UnresolvedTitle].Text);
 end;
 
 procedure TUnsatisfiedForwardRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -422,7 +455,7 @@ var
       Exit;
     end;
     Break_ := TTextLines.LineBreakOf(AContext.Text);
-    Result := [TRuleFix.Create(Format('Leeren Rumpf für %s anlegen', [ADecl.Name]),
+    Result := [TRuleFix.Create(cTexts[TForwardDeclarationsText.CreateEmptyBody].Fmt([ADecl.Name]),
       [TRuleEdit.Create(TTextRange.Create(At, At), Head + Break_ + 'begin' + Break_ + 'end;' + Break_ + Break_)])];
   end;
 
@@ -439,7 +472,7 @@ var
     begin
       Exit;
     end;
-    mMessage := Format('%s ist forward deklariert, aber nicht implementiert (wie E2065).', [mChild.Name]);
+    mMessage := cTexts[TForwardDeclarationsText.ForwardNotImplemented].Fmt([mChild.Name]);
     if AContainer = Implementation_ then
     begin
       AReport.Add(NameRange(mHeader, mChild.Name), mMessage, TRuleConfidence.High, CreateBody(mChild));
@@ -512,8 +545,9 @@ var
       end;
       if not Satisfied(Implementation_, 0, Child) then
       begin
-        AReport.Add(NameRange(Header, Child.Name), Format('%s ist im interface deklariert, aber nicht implementiert ' +
-          '(wie E2065).', [Child.Name]), TRuleConfidence.High, CreateBody(Child));
+        AReport.Add(NameRange(Header, Child.Name),
+          cTexts[TForwardDeclarationsText.InterfaceNotImplemented].Fmt([Child.Name]), TRuleConfidence.High,
+          CreateBody(Child));
       end;
     end;
   end;
@@ -540,8 +574,8 @@ var
       mType := mField[0];
       if (mType.Kind = TSyntaxKind.TypeReference) and (mType.ChildCount = 0) and SameText(mType.Name, ADecl.Name) then
       begin
-        AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos), Format('Der Record %s enthält sich selbst als ' +
-          'Feld %s; ein Typ ist erst nach seinem end vollständig (wie E2086).', [ADecl.Name, mField.Name]),
+        AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos),
+          cTexts[TForwardDeclarationsText.ContainsItself].Fmt([ADecl.Name, mField.Name]),
           TRuleConfidence.High);
       end;
     end;
@@ -577,8 +611,7 @@ var
         if (mType.Kind = TSyntaxKind.TypeReference) and (mType.ChildCount = 0) and SameText(mType.Name, ADecl.Name)
         then
         begin
-          AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos), Format('%s ist hier nur vorwärts deklariert; ' +
-            'als Vorfahr oder in der Interface-Liste von %s muss der Typ schon vollständig sein (wie E2086).',
+          AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos), cTexts[TForwardDeclarationsText.OnlyForward].Fmt(
             [ADecl.Name, mUser.Name]), TRuleConfidence.High);
         end;
       end;
@@ -637,8 +670,8 @@ var
       begin
         Code := 'E2420';
       end;
-      AReport.Add(NameRange(Decl, Decl.Name), Format('%s ist nur vorwärts deklariert; die vollständige ' +
-        'Deklaration fehlt in diesem type-Abschnitt (wie %s).', [Decl.Name, Code]), TRuleConfidence.High);
+      AReport.Add(NameRange(Decl, Decl.Name), cTexts[TForwardDeclarationsText.FullMissing].Fmt([Decl.Name, Code]),
+        TRuleConfidence.High);
     end;
   end;
 
@@ -726,5 +759,8 @@ begin
   ARegistry.Register(TUnneededForwardDeclarationRule.Create);
   ARegistry.Register(TUnsatisfiedForwardRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.ForwardDeclarations', cTexts);
 
 end.

@@ -36,7 +36,26 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.Formatter.Layout,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStyleLineLengthText = (CompilerLimit, VersionLimit, WrapLine, TooLong, Title);
+
+const
+  cTexts: array[TStyleLineLengthText] of TAtlasText = (
+    (De: 'Zeile mit %d Zeichen; der Compiler bricht über %d Zeichen ab (wie F2069).';
+     En: 'Line with %d characters; the compiler aborts above %d characters (like F2069).'),
+    (De: 'Zeile mit %d Zeichen; je nach Delphi-Version bricht der Compiler über %d Zeichen ab.';
+     En: 'Line with %d characters; depending on the Delphi version the compiler aborts above %d characters.'),
+    (De: 'Zeile umbrechen'; En: 'Wrap line'),
+    (De: 'Zeile hat %d Zeichen (Grenze %d).'; En: 'Line has %d characters (limit %d).'),
+    (De: 'Zeile zu lang'; En: 'Line too long'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cOperators: array[0..11] of string = ('+', '-', '*', '/', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', '<>');
@@ -322,13 +341,13 @@ begin
   Result := True;
   if Length(Text) > TLineLengthRule.HardLimit then
   begin
-    FReport.AddWithSeverity(Range, Format('Zeile mit %d Zeichen; der Compiler bricht über %d Zeichen ab (wie F2069).',
+    FReport.AddWithSeverity(Range, cTexts[TStyleLineLengthText.CompilerLimit].Fmt(
       [Length(Text), TLineLengthRule.HardLimit]), TRuleSeverity.Error, nil);
   end
   else if Length(Text) > TLineLengthRule.CompilerLimit then
   begin
-    FReport.AddWithSeverity(Range, Format('Zeile mit %d Zeichen; je nach Delphi-Version bricht der Compiler über ' +
-      '%d Zeichen ab.', [Length(Text), TLineLengthRule.CompilerLimit]), TRuleSeverity.Warning, nil);
+    FReport.AddWithSeverity(Range, cTexts[TStyleLineLengthText.VersionLimit].Fmt([Length(Text),
+      TLineLengthRule.CompilerLimit]), TRuleSeverity.Warning, nil);
   end
   else
   begin
@@ -357,10 +376,10 @@ begin
   Edits := WrapEdits(ALine, ColumnsOfLine);
   if Edits <> nil then
   begin
-    Fixes := [TRuleFix.Create('Zeile umbrechen', Edits)];
+    Fixes := [TRuleFix.Create(cTexts[TStyleLineLengthText.WrapLine].Text, Edits)];
   end;
   FReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(ColumnsOfLine)),
-    TTextPosition.Create(ALine, Length(FLines[ALine]))), Format('Zeile hat %d Zeichen (Grenze %d).',
+    TTextPosition.Create(ALine, Length(FLines[ALine]))), cTexts[TStyleLineLengthText.TooLong].Fmt(
     [Width, FMaxLength]), Fixes);
 end;
 
@@ -391,7 +410,7 @@ end;
 
 function TLineLengthRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('line-length', TRuleSeverity.Hint, 'Zeile zu lang', True);
+  Result := TRuleDescriptor.Create('line-length', TRuleSeverity.Hint, cTexts[TStyleLineLengthText.Title].Text, True);
 end;
 
 procedure TLineLengthRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -409,5 +428,8 @@ begin
     Scanner.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Style.LineLength', cTexts);
 
 end.

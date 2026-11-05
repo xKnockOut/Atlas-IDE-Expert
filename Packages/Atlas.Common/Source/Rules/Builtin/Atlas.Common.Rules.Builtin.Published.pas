@@ -56,7 +56,39 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPublishedText = (Title, MoveToPublic, NonAscii, ClassProperty, ArrayKind, PointerKind, ProcedureKind, Real48Kind,
+    LargeSet, FieldType, OneOverload);
+
+const
+  cTexts: array[TPublishedText] of TAtlasText = (
+    (De: 'Unzulässiges Mitglied im published-Abschnitt'; En: 'Invalid member in the published section'),
+    (De: 'In den public-Abschnitt verschieben'; En: 'Move to the public section'),
+    (De: 'Der published-Name %s enthält Zeichen außerhalb von ASCII (wie E2452).';
+     En: 'The published name %s contains characters outside ASCII (like E2452).'),
+    (De: 'Die Klassen-Property %s kann nicht published sein (wie E2545).';
+     En: 'The class property %s cannot be published (like E2545).'),
+    (De: '%0:s (Array) kann nicht published sein (wie E2188).'; En: '%0:s (array) cannot be published (like E2188).'),
+    (De: '%0:s (Zeiger) kann nicht published sein (wie E2188).';
+     En: '%0:s (pointer) cannot be published (like E2188).'),
+    (De: '%0:s (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).';
+     En: '%0:s (procedural type without "of object") cannot be published (like E2188).'),
+    (De: '%1:s ist vom Typ Real48; Real48 kann nicht published sein (wie E2186).';
+     En: '%1:s is of type Real48; Real48 cannot be published (like E2186).'),
+    (De: 'Die Menge %0:s ist größer als 4 Byte und kann nicht published sein (wie E2187).';
+     En: 'The set %0:s is larger than 4 bytes and cannot be published (like E2187).'),
+    (De: 'Das published-Feld %s ist vom Typ %s; published-Felder müssen Klassen oder Interfaces sein (wie E2217).';
+     En: 'The published field %s is of type %s; published fields must be classes or interfaces (like E2217).'),
+    (De: 'Nur eine Überladung von %s darf published sein (wie E2266).';
+     En: 'Only one overload of %s may be published (like E2266).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Was ein Typ für den published-Abschnitt ist.</summary>
@@ -255,7 +287,7 @@ end;
 function TPublishedTypeInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PublishedTypeInvalidRuleId, TRuleSeverity.Error,
-    'Unzulässiges Mitglied im published-Abschnitt');
+    cTexts[TPublishedText.Title].Text);
 end;
 
 type
@@ -614,7 +646,7 @@ begin
   begin
     Insert := TTextLines.IndentOf(FLines[APublished.StartPos.Line]) + 'public' + FLineBreak + Moved;
   end;
-  Result := [TRuleFix.Create('In den public-Abschnitt verschieben', [
+  Result := [TRuleFix.Create(cTexts[TPublishedText.MoveToPublic].Text, [
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(APublished.StartPos.Line, 0),
     TTextPosition.Create(APublished.StartPos.Line, 0)), Insert),
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(First, 0), TTextPosition.Create(Last + 1, 0)), '')])];
@@ -688,8 +720,8 @@ begin
   mName := mMember.Name;
   if not IsAscii(mName) then
   begin
-    FReport.Add(NameRange(mMember, mName.Split([','])[0]), Format('Der published-Name %s enthält Zeichen ' +
-      'außerhalb von ASCII (wie E2452).', [mName]), TRuleConfidence.High, AFixes);
+    FReport.Add(NameRange(mMember, mName.Split([','])[0]), cTexts[TPublishedText.NonAscii].Fmt([mName]),
+      TRuleConfidence.High, AFixes);
     Exit;
   end;
   case mMember.Kind of
@@ -724,8 +756,8 @@ var
 begin
   if IsClassProperty(AMember) then
   begin
-    FReport.Add(NameRange(AMember, AMember.Name), Format('Die Klassen-Property %s kann nicht published sein ' +
-      '(wie E2545).', [AMember.Name]), TRuleConfidence.High, AFixes);
+    FReport.Add(NameRange(AMember, AMember.Name), cTexts[TPublishedText.ClassProperty].Fmt([AMember.Name]),
+      TRuleConfidence.High, AFixes);
     Exit;
   end;
   // Array-Properties und Properties ohne Typ (neu veröffentlicht) prüft die Regel nicht.
@@ -743,15 +775,15 @@ var
 begin
   case AKind of
     TPublishKind.ArrayKind:
-      mMessage := '%0:s (Array) kann nicht published sein (wie E2188).';
+      mMessage := cTexts[TPublishedText.ArrayKind].Text;
     TPublishKind.PointerKind:
-      mMessage := '%0:s (Zeiger) kann nicht published sein (wie E2188).';
+      mMessage := cTexts[TPublishedText.PointerKind].Text;
     TPublishKind.ProcedureKind:
-      mMessage := '%0:s (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).';
+      mMessage := cTexts[TPublishedText.ProcedureKind].Text;
     TPublishKind.Real48Kind:
-      mMessage := '%1:s ist vom Typ Real48; Real48 kann nicht published sein (wie E2186).';
+      mMessage := cTexts[TPublishedText.Real48Kind].Text;
     TPublishKind.LargeSet:
-      mMessage := 'Die Menge %0:s ist größer als 4 Byte und kann nicht published sein (wie E2187).';
+      mMessage := cTexts[TPublishedText.LargeSet].Text;
   else
     // Unbekannt, Klassen, einfache Typen, Records und dynamische Arrays (dcc übersetzt sie, PU1-PU3).
     Exit;
@@ -769,8 +801,7 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(NameRange(AMember, AMember.Name.Split([','])[0]), Format('Das published-Feld %s ist vom Typ %s; ' +
-    'published-Felder müssen Klassen oder Interfaces sein (wie E2217).',
+  FReport.Add(NameRange(AMember, AMember.Name.Split([','])[0]), cTexts[TPublishedText.FieldType].Fmt(
     [StringReplace(AMember.Name, ',', ', ', [rfReplaceAll]), SourceOf(mTypeNode)]), TRuleConfidence.High, AFixes);
 end;
 
@@ -790,8 +821,8 @@ begin
     end
     else if (mScan <> nil) and (mScan.Name = 'published') and IsSameRoutine(ABody[mOther], mMember) then
     begin
-      FReport.Add(NameRange(mMember, mMember.Name), Format('Nur eine Überladung von %s darf published sein ' +
-        '(wie E2266).', [mMember.Name]), TRuleConfidence.High, AFixes);
+      FReport.Add(NameRange(mMember, mMember.Name), cTexts[TPublishedText.OneOverload].Fmt([mMember.Name]),
+        TRuleConfidence.High, AFixes);
       Exit;
     end;
   end;
@@ -900,5 +931,8 @@ procedure RegisterPublishedRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPublishedTypeInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Published', cTexts);
 
 end.

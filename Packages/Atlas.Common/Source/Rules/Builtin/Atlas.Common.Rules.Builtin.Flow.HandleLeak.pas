@@ -36,7 +36,28 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles;
+  Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowHandleLeakText = (AndWord, NeverClosed, NotAlwaysClosed, Add, WrapTry, Title, VerbOne, VerbMany);
+
+const
+  cTexts: array[TFlowHandleLeakText] of TAtlasText = (
+    (De: ' und '; En: ' and '),
+    (De: '%s %s nie mit %s geschlossen (Handle-Leck).'; En: '%s %s never closed with %s (handle leak).'),
+    (De: '%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).';
+     En: '%s %s not closed with %s on every path (handle leak).'),
+    (De: '%s ergänzen'; En: 'Add %s'),
+    (De: 'In try … finally %s einschließen'; En: 'Wrap in try … finally %s'),
+    (De: 'Windows-Handle wird nicht geschlossen'; En: 'Windows handle is not closed'),
+    (De: 'wird'; En: 'is'),
+    (De: 'werden'; En: 'are'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Was ein Knoten selbst auswertet: einfache Anweisungen ganz, bei if, case und Schleifen die Bedingung
 /// bzw. der Kopf, with ganz (with H do … gibt das Handle weiter).</summary>
@@ -199,7 +220,7 @@ begin
   begin
     if Result <> '' then
     begin
-      Result := Result + ' und ';
+      Result := Result + cTexts[TFlowHandleLeakText.AndWord].Text;
     end;
     Result := Result + Handle.Path;
   end;
@@ -209,19 +230,19 @@ function LeakMessage(const ALeaked: TArray<TOpenedHandle>; ANever: Boolean): str
 var
   Verb: string;
 begin
-  Verb := 'wird';
+  Verb := cTexts[TFlowHandleLeakText.VerbOne].Text;
   if Length(ALeaked) > 1 then
   begin
-    Verb := 'werden';
+    Verb := cTexts[TFlowHandleLeakText.VerbMany].Text;
   end;
   if ANever then
   begin
-    Result := Format('%s %s nie mit %s geschlossen (Handle-Leck).', [HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NeverClosed].Fmt([HandleNames(ALeaked), Verb,
       ALeaked[0].CloseName]);
   end
   else
   begin
-    Result := Format('%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).', [HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NotAlwaysClosed].Fmt([HandleNames(ALeaked), Verb,
       ALeaked[0].CloseName]);
   end;
 end;
@@ -523,7 +544,7 @@ begin
   begin
     Body := Body + ';' + FLineBreak + AOuter + AHandles[Index].CloseText;
   end;
-  Result := [TRuleFix.Create(Format('%s ergänzen', [AHandles[0].CloseName]),
+  Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.Add].Fmt([AHandles[0].CloseName]),
     [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), Body)])];
 end;
 
@@ -582,7 +603,7 @@ begin
     Exit;
   end;
   LineStart := First.StartOffset - Length(Inner);
-  Result := [TRuleFix.Create(Format('In try … finally %s einschließen', [AHandles[0].CloseName]),
+  Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.WrapTry].Fmt([AHandles[0].CloseName]),
     [TRuleEdit.Create(TTextRange.Create(PositionAt(LineStart), Last.EndPos),
     Outer + 'try' + FLineBreak + IndentedBody(LineStart, Last) + Outer + 'finally' + FLineBreak +
     ClosingLines(AHandles, Outer) + Outer + 'end')])];
@@ -754,7 +775,7 @@ end;
 
 function THandleLeakRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, 'Windows-Handle wird nicht geschlossen');
+  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, cTexts[TFlowHandleLeakText.Title].Text);
 end;
 
 class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
@@ -773,5 +794,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.HandleLeak', cTexts);
 
 end.

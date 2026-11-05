@@ -40,7 +40,31 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceAbstractText = (AndMore, AbstractInstanceTitle, OverrideIn, InheritedAbstractTitle, RemoveCall,
+    InheritedAbstract, AbstractMany, AbstractOne);
+
+const
+  cTexts: array[TInheritanceAbstractText] of TAtlasText = (
+    (De: ' und %d weitere'; En: ' and %d more'),
+    (De: 'Instanz einer Klasse mit abstrakten Methoden'; En: 'Instance of a class with abstract methods'),
+    (De: '%s in %s überschreiben'; En: 'Override %s in %s'),
+    (De: 'inherited ruft eine abstrakte Methode auf'; En: 'inherited calls an abstract method'),
+    (De: 'Aufruf entfernen'; En: 'Remove call'),
+    (De: '%s.%s ist abstrakt; der Aufruf über inherited löst zur Laufzeit EAbstractError aus.';
+     En: '%s.%s is abstract; the call via inherited raises EAbstractError at run time.'),
+    (De: '%s hat die abstrakten Methoden %s; ihr Aufruf löst EAbstractError aus (wie W1020).';
+     En: '%s has the abstract methods %s; calling them raises EAbstractError (like W1020).'),
+    (De: '%s hat die abstrakte Methode %s; der Aufruf löst EAbstractError aus (wie W1020).';
+     En: '%s has the abstract method %s; calling it raises EAbstractError (like W1020).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>So viele offene Methoden nennt die Meldung, der Rest wird gezählt.</summary>
@@ -137,7 +161,7 @@ begin
   Result := string.Join(', ', Names);
   if Length(AOpen) > cMaxNamed then
   begin
-    Result := Result + Format(' und %d weitere', [Length(AOpen) - cMaxNamed]);
+    Result := Result + cTexts[TInheritanceAbstractText.AndMore].Fmt([Length(AOpen) - cMaxNamed]);
   end;
 end;
 
@@ -146,7 +170,7 @@ end;
 function TAbstractClassInstantiatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('abstract-class-instantiated', TRuleSeverity.Warning,
-    'Instanz einer Klasse mit abstrakten Methoden');
+    cTexts[TInheritanceAbstractText.AbstractInstanceTitle].Text);
 end;
 
 procedure TAbstractClassInstantiatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -240,7 +264,7 @@ begin
     if not SameText(AOwners[Index], ALocation.Symbol.Name) and TClassActions.OverrideMethod(FContext.Text,
       ALocation.Symbol.Range.StartPos.Line, AOpen[Index].Name, FActions, Action) then
     begin
-      Result := Result + [TRuleFix.Create(Format('%s in %s überschreiben', [AOpen[Index].Name,
+      Result := Result + [TRuleFix.Create(cTexts[TInheritanceAbstractText.OverrideIn].Fmt([AOpen[Index].Name,
         ALocation.Symbol.Name]), Action.Edits)];
       Result[High(Result)].Alternative := Length(Result) > 1;
     end;
@@ -249,8 +273,8 @@ end;
 
 procedure TAbstractInstanceCheck.CheckCall(AName, ACreate: Integer);
 const
-  cMessage: array[Boolean] of string = ('%s hat die abstrakten Methoden %s; ihr Aufruf löst EAbstractError aus ' +
-    '(wie W1020).', '%s hat die abstrakte Methode %s; der Aufruf löst EAbstractError aus (wie W1020).');
+  cMessage: array[Boolean] of TInheritanceAbstractText = (TInheritanceAbstractText.AbstractMany,
+    TInheritanceAbstractText.AbstractOne);
 var
   Location: TSymbolLocation;
   Open: TArray<TIndexSymbol>;
@@ -264,7 +288,7 @@ begin
   if Open <> nil then
   begin
     FReport.Add(TTextRange.Create(FTokens[AName].StartPos, FTokens[ACreate].EndPos),
-      Format(cMessage[Length(Open) = 1], [Location.Symbol.Name, OpenNames(Location, Open, Owners)]),
+      cTexts[cMessage[Length(Open) = 1]].Fmt([Location.Symbol.Name, OpenNames(Location, Open, Owners)]),
       TRuleConfidence.High, OverrideFixes(Location, Open, Owners));
   end;
 end;
@@ -293,7 +317,7 @@ end;
 function TInheritedAbstractCallRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('inherited-abstract-call', TRuleSeverity.Warning,
-    'inherited ruft eine abstrakte Methode auf');
+    cTexts[TInheritanceAbstractText.InheritedAbstractTitle].Text);
 end;
 
 /// <summary>ASignature ohne Parameterliste: ein Parameter "abstract: Boolean" wäre keine Direktive.</summary>
@@ -433,10 +457,10 @@ begin
   Statement := OwnStatement(AExpr);
   if Statement <> nil then
   begin
-    Fixes := [RemoveStatementFix(FCache, FContext, Statement, 'Aufruf entfernen')];
+    Fixes := [RemoveStatementFix(FCache, FContext, Statement, cTexts[TInheritanceAbstractText.RemoveCall].Text)];
   end;
-  FReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s.%s ist abstrakt; der Aufruf über ' +
-    'inherited löst zur Laufzeit EAbstractError aus.', [Candidates[0].Container, Candidates[0].Name]),
+  FReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos),
+    cTexts[TInheritanceAbstractText.InheritedAbstract].Fmt([Candidates[0].Container, Candidates[0].Name]),
     TRuleConfidence.High, Fixes);
 end;
 
@@ -472,5 +496,8 @@ begin
     FResolver.UnpinTree;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.Abstract', cTexts);
 
 end.

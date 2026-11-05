@@ -105,14 +105,65 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Components.Model,
   Atlas.Common.Rules.Builtin.Components.InheritedCalls,
-  Atlas.Common.Rules.Builtin.Components.Members;
+  Atlas.Common.Rules.Builtin.Components.Members,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TComponentsText = (InheritedTitle, VclWork, PaintsItself, FiresOnPaint, InsertInherited, DefaultTitle,
+    DefaultMismatch, ChangeDefault, FreeNotificationTitle, AddFreeNotification, InvalidateTitle, NoInvalidate,
+    InsertInvalidate, PixelTitle, FixedPixel, ScaleWith, ColorTitle, FixedColor, ForeignComponent);
+
+const
+  cTexts: array[TComponentsText] of TAtlasText = (
+    (De: 'Überschriebene Komponentenmethode ruft inherited nicht auf';
+     En: 'Overridden component method does not call inherited'),
+    (De: '%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit';
+     En: '%s.%s does not call inherited; the VCL does its own work there'),
+    (De: '%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst';
+     En: '%s.Paint does not call inherited; %s.Paint paints itself there'),
+    (De: '%s.Paint ruft inherited nicht auf; %s.Paint löst dort OnPaint aus';
+     En: '%s.Paint does not call inherited; %s.Paint fires OnPaint there'),
+    (De: '"inherited;" einfügen'; En: 'Insert "inherited;"'),
+    (De: 'default-Angabe stimmt nicht mit dem Wert im Konstruktor überein';
+     En: 'default specifier does not match the value in the constructor'),
+    (De: '"%s" hat default %s, der Konstruktor setzt %s aber auf %s; der Wert wird dann nicht in der DFM gespeichert ' +
+      'oder falsch geladen';
+     En: '"%s" has default %s, but the constructor sets %s to %s; the value is then not stored in the DFM or loaded ' +
+      'incorrectly'),
+    (De: 'default auf %s ändern'; En: 'Change default to %s'),
+    (De: 'Komponentenreferenz ohne FreeNotification'; En: 'Component reference without FreeNotification'),
+    (De: 'FreeNotification im Setter ergänzen'; En: 'Add FreeNotification to the setter'),
+    (De: 'Setter ändert ein in Paint gelesenes Feld ohne Invalidate';
+     En: 'Setter changes a field read in Paint without Invalidate'),
+    (De: '%s ändert %s, das Paint liest, ohne Invalidate; die Anzeige bleibt veraltet';
+     En: '%s changes %s, which Paint reads, without Invalidate; the display stays outdated'),
+    (De: '"Invalidate;" einfügen'; En: 'Insert "Invalidate;"'),
+    (De: 'Feste Pixelwerte in Paint oder Resize ohne Skalierung';
+     En: 'Fixed pixel values in Paint or Resize without scaling'),
+    (De: 'Fester Pixelwert in %s: bei mehr als 96 dpi zu klein; ScaleValue verwenden';
+     En: 'Fixed pixel value in %s: too small above 96 dpi; use ScaleValue'),
+    (De: 'Mit ScaleValue skalieren'; En: 'Scale with ScaleValue'),
+    (De: 'Feste Farbe in Paint statt Systemfarbe oder StyleServices';
+     En: 'Fixed color in Paint instead of system color or StyleServices'),
+    (De: 'Feste Farbe in Paint: passt nicht zu VCL-Styles; Systemfarben (clBtnFace …) oder ' +
+      'StyleServices.GetSystemColor verwenden';
+     En: 'Fixed color in Paint: does not fit VCL styles; use system colors (clBtnFace …) or ' +
+      'StyleServices.GetSystemColor'),
+    (De: '"%s" verweist auf eine fremde Komponente ohne FreeNotification; wird sie freigegeben, bleibt ein ' +
+      'ungültiger Zeiger zurück';
+     En: '"%s" refers to a foreign component without FreeNotification; when it is freed, a dangling pointer remains'));
+
+{$SCOPEDENUMS OFF}
 
 { TComponentMissingInheritedRule }
 
 function TComponentMissingInheritedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-missing-inherited', TRuleSeverity.Warning,
-    'Überschriebene Komponentenmethode ruft inherited nicht auf');
+    cTexts[TComponentsText.InheritedTitle].Text);
 end;
 
 /// <summary>Überschreibt AMethod von AClass eine Methode aus InheritedMethods ohne inherited? AToken: Name im
@@ -136,8 +187,7 @@ var
   mOnPaintOnly: Boolean;
 begin
   AConfidence := TRuleConfidence.High;
-  AMessage := Format('%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit',
-    [AClassName, AMethodName]);
+  AMessage := cTexts[TComponentsText.VclWork].Fmt([AClassName, AMethodName]);
   Result := not SameText(AMethodName, 'Paint');
   if Result or not AModel.PaintingAncestor(AClassName, mAncestor, mOnPaintOnly) then
   begin
@@ -146,11 +196,11 @@ begin
   AConfidence := TRuleConfidence.Medium;
   if not mOnPaintOnly then
   begin
-    AMessage := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [AClassName, mAncestor]);
+    AMessage := cTexts[TComponentsText.PaintsItself].Fmt([AClassName, mAncestor]);
   end
   else
   begin
-    AMessage := Format('%s.Paint ruft inherited nicht auf; %s.Paint löst dort OnPaint aus', [AClassName, mAncestor]);
+    AMessage := cTexts[TComponentsText.FiresOnPaint].Fmt([AClassName, mAncestor]);
   end;
   Result := not mOnPaintOnly or AModel.MayUseOnPaint;
 end;
@@ -173,7 +223,7 @@ begin
   if mInserted then
   begin
     AReport.Add(TTextRange.Create(AToken.StartPos, AToken.EndPos), AMessage, AConfidence,
-      [TRuleFix.Create('"inherited;" einfügen', [mEdit])]);
+      [TRuleFix.Create(cTexts[TComponentsText.InsertInherited].Text, [mEdit])]);
   end
   else
   begin
@@ -218,7 +268,7 @@ end;
 function TComponentDefaultMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-default-mismatch', TRuleSeverity.Warning,
-    'default-Angabe stimmt nicht mit dem Wert im Konstruktor überein');
+    cTexts[TComponentsText.DefaultTitle].Text);
 end;
 
 /// <summary>Zuweisung an AField im Block (Feld oder Self.Feld); der zugewiesene Ausdruck.</summary>
@@ -319,10 +369,10 @@ begin
         Continue;
       end;
       mRange := TTextRange.Create(mProp.DefaultFirst.StartPos, mProp.DefaultLast.EndPos);
-      AReport.Add(mRange, Format('"%s" hat default %s, der Konstruktor setzt %s aber auf %s; der Wert wird ' +
-        'dann nicht in der DFM gespeichert oder falsch geladen', [mProp.Name, mProp.DefaultText, mProp.ReadName,
+      AReport.Add(mRange, cTexts[TComponentsText.DefaultMismatch].Fmt([mProp.Name, mProp.DefaultText, mProp.ReadName,
         mValueText]), TRuleConfidence.High,
-        [TRuleFix.Create(Format('default auf %s ändern', [mValueText]), [TRuleEdit.Create(mRange, mValueText)])]);
+        [TRuleFix.Create(cTexts[TComponentsText.ChangeDefault].Fmt([mValueText]), [TRuleEdit.Create(mRange,
+          mValueText)])]);
     end;
   end;
 end;
@@ -332,7 +382,7 @@ end;
 function TComponentMissingFreeNotificationRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-missing-free-notification', TRuleSeverity.Warning,
-    'Komponentenreferenz ohne FreeNotification');
+    cTexts[TComponentsText.FreeNotificationTitle].Text);
 end;
 
 /// <summary>Name des letzten Parameters der Implementierung.</summary>
@@ -373,9 +423,6 @@ end;
 /// <summary>Meldet AProp, wenn ihr Setter kein FreeNotification aufruft; mit Korrektur im Setter.</summary>
 procedure CheckFreeNotification(AModel: TComponentModel; const AClassName: string; const AProp: TPropertyInfo;
   const AReport: IRuleReport);
-const
-  cMessage = '"%s" verweist auf eine fremde Komponente ohne FreeNotification; wird sie freigegeben, ' +
-    'bleibt ein ungültiger Zeiger zurück';
 var
   mSetter: TMethodImpl;
   mEdit: TRuleEdit;
@@ -388,7 +435,7 @@ begin
     // write auf ein Feld: es gibt keinen Setter, in dem FreeNotification stehen könnte.
     if SameText(AProp.WriteName, AProp.ReadName) then
     begin
-      AReport.Add(mRange, Format(cMessage, [AProp.Name]), TRuleConfidence.Medium);
+      AReport.Add(mRange, cTexts[TComponentsText.ForeignComponent].Fmt([AProp.Name]), TRuleConfidence.Medium);
     end;
     Exit;
   end;
@@ -400,12 +447,12 @@ begin
   if (mParameter <> '') and AModel.InsertBeforeEnd(mSetter.Block, Format('if %s <> nil then', [mParameter]) + ' ' +
     Format('%s.FreeNotification(Self);', [mParameter]), mEdit) then
   begin
-    AReport.Add(mRange, Format(cMessage, [AProp.Name]), TRuleConfidence.Medium,
-      [TRuleFix.Create('FreeNotification im Setter ergänzen', [mEdit])]);
+    AReport.Add(mRange, cTexts[TComponentsText.ForeignComponent].Fmt([AProp.Name]), TRuleConfidence.Medium,
+      [TRuleFix.Create(cTexts[TComponentsText.AddFreeNotification].Text, [mEdit])]);
   end
   else
   begin
-    AReport.Add(mRange, Format(cMessage, [AProp.Name]), TRuleConfidence.Medium);
+    AReport.Add(mRange, cTexts[TComponentsText.ForeignComponent].Fmt([AProp.Name]), TRuleConfidence.Medium);
   end;
 end;
 
@@ -442,7 +489,7 @@ end;
 function TComponentSetterWithoutInvalidateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-setter-without-invalidate', TRuleSeverity.Hint,
-    'Setter ändert ein in Paint gelesenes Feld ohne Invalidate');
+    cTexts[TComponentsText.InvalidateTitle].Text);
 end;
 
 /// <summary>Setzt der Setter von AProp das Feld, das Paint liest, ohne neu zu zeichnen? ASetter: der Setter.</summary>
@@ -484,12 +531,11 @@ begin
       begin
         Continue;
       end;
-      Message := Format('%s ändert %s, das Paint liest, ohne Invalidate; die Anzeige bleibt veraltet',
-        [Setter.MethodName, Prop.ReadName]);
+      Message := cTexts[TComponentsText.NoInvalidate].Fmt([Setter.MethodName, Prop.ReadName]);
       if Model.InsertBeforeEnd(Setter.Block, 'Invalidate;', Edit) then
       begin
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium,
-          [TRuleFix.Create('"Invalidate;" einfügen', [Edit])]);
+          [TRuleFix.Create(cTexts[TComponentsText.InsertInvalidate].Text, [Edit])]);
       end
       else
       begin
@@ -504,7 +550,7 @@ end;
 function TComponentFixedPixelsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-fixed-pixels', TRuleSeverity.Warning,
-    'Feste Pixelwerte in Paint oder Resize ohne Skalierung');
+    cTexts[TComponentsText.PixelTitle].Text);
 end;
 
 /// <summary>Zahlenliteral, dessen erstes Zeichen in AFirst liegt ('0'..'9', bei Farben auch '$')?</summary>
@@ -664,8 +710,9 @@ begin
           Inc(Index);
         end;
         AReport.Add(TTextRange.Create(Literals[Last - Length(Edits) + 1].StartPos, Literals[Last].EndPos),
-          Format('Fester Pixelwert in %s: bei mehr als 96 dpi zu klein; ScaleValue verwenden',
-          [Method.MethodName]), TRuleConfidence.Medium, [TRuleFix.Create('Mit ScaleValue skalieren', Edits)]);
+          cTexts[TComponentsText.FixedPixel].Fmt(
+          [Method.MethodName]), TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text,
+            Edits)]);
       end;
     end;
   finally
@@ -678,7 +725,7 @@ end;
 function TComponentHardcodedColorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-hardcoded-color', TRuleSeverity.Hint,
-    'Feste Farbe in Paint statt Systemfarbe oder StyleServices');
+    cTexts[TComponentsText.ColorTitle].Text);
 end;
 
 /// <summary>Sind alle Argumente des Aufrufs ACall Zahlenliterale (RGB(255, 0, 0), TColor($00FF00))?</summary>
@@ -755,8 +802,7 @@ begin
       CollectColors(Method.Block, Colors);
       for Node in Colors do
       begin
-        AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), 'Feste Farbe in Paint: passt nicht zu ' +
-          'VCL-Styles; Systemfarben (clBtnFace …) oder StyleServices.GetSystemColor verwenden',
+        AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), cTexts[TComponentsText.FixedColor].Text,
           TRuleConfidence.Medium);
       end;
     end;
@@ -779,6 +825,9 @@ begin
   ARegistry.Register(TComponentFixedPixelsRule.Create);
   ARegistry.Register(TComponentHardcodedColorRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Components', cTexts);
 
 end.
 

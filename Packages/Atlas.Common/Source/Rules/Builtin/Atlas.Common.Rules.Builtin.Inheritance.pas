@@ -147,19 +147,44 @@ uses
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceText = (DestroyTitle, DestroyNoOverride, CreateTitle, CreateNoOverride, HidesTitle, Hides, VirtualTitle,
+    Virtual, ReplaceByOverride);
+
+const
+  cTexts: array[TInheritanceText] of TAtlasText = (
+    (De: 'destructor Destroy ohne override'; En: 'destructor Destroy without override'),
+    (De: 'Destroy ohne override: Free ruft diesen Destruktor nicht auf';
+     En: 'Destroy without override: Free does not call this destructor'),
+    (De: 'constructor Create(AOwner: TComponent) ohne override in einer Komponente';
+     En: 'constructor Create(AOwner: TComponent) without override in a component'),
+    (De: 'Create(AOwner: TComponent) ohne override: beim Laden aus der DFM wird dieser Konstruktor nicht aufgerufen';
+     En: 'Create(AOwner: TComponent) without override: loading from the DFM does not call this constructor'),
+    (De: 'Methode verdeckt eine virtuelle Methode des Vorfahren'; En: 'Method hides a virtual method of the ancestor'),
+    (De: '"%s" verdeckt die virtuelle Methode %s.%s; override oder reintroduce angeben';
+     En: '"%s" hides the virtual method %s.%s; specify override or reintroduce'),
+    (De: 'virtual im Nachfahren statt override'; En: 'virtual in the descendant instead of override'),
+    (De: '"%s" ist im Vorfahren schon virtuell; override statt %s verwenden';
+     En: '"%s" is already virtual in the ancestor; use override instead of %s'),
+    (De: '%s durch override ersetzen'; En: 'Replace %s with override'));
+
+{$SCOPEDENUMS OFF}
 
 { TDestroyWithoutOverrideRule }
 
 function TDestroyWithoutOverrideRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('destroy-without-override', TRuleSeverity.Warning,
-    'destructor Destroy ohne override');
+    cTexts[TInheritanceText.DestroyTitle].Text);
 end;
 
 procedure TDestroyWithoutOverrideRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  Message = 'Destroy ohne override: Free ruft diesen Destruktor nicht auf';
 var
   Ancestry: TAncestry;
   Methods: TArray<TMethodDecl>;
@@ -180,11 +205,11 @@ begin
       end;
       if AppendDirective(AContext, Method, 'override', Fix) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message, [Fix]);
+        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text, [Fix]);
       end
       else
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message);
+        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text);
       end;
     end;
   finally
@@ -197,13 +222,10 @@ end;
 function TComponentCreateWithoutOverrideRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-create-without-override', TRuleSeverity.Warning,
-    'constructor Create(AOwner: TComponent) ohne override in einer Komponente');
+    cTexts[TInheritanceText.CreateTitle].Text);
 end;
 
 procedure TComponentCreateWithoutOverrideRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  Message = 'Create(AOwner: TComponent) ohne override: beim Laden aus der DFM wird dieser Konstruktor ' +
-    'nicht aufgerufen';
 var
   Ancestry: TAncestry;
   Methods: TArray<TMethodDecl>;
@@ -224,11 +246,11 @@ begin
       end;
       if AppendDirective(AContext, Method, 'override', Fix) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message, [Fix]);
+        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text, [Fix]);
       end
       else
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message);
+        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text);
       end;
     end;
   finally
@@ -241,7 +263,7 @@ end;
 function THidesVirtualRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('hides-virtual', TRuleSeverity.Warning,
-    'Methode verdeckt eine virtuelle Methode des Vorfahren');
+    cTexts[TInheritanceText.HidesTitle].Text);
 end;
 
 /// <summary>AMethod verdeckt die virtuelle Methode AFound: virtual bei gleicher Signatur prüft
@@ -279,8 +301,8 @@ begin
   begin
     Confidence := TRuleConfidence.High;
   end;
-  AReport.Add(AMethod.Symbol.SelectionRange, Format('"%s" verdeckt die virtuelle Methode %s.%s; override ' +
-    'oder reintroduce angeben', [AMethod.Symbol.Name, AFound.TypeName, AFound.Symbol.Name]), Confidence, Fixes);
+  AReport.Add(AMethod.Symbol.SelectionRange, cTexts[TInheritanceText.Hides].Fmt([AMethod.Symbol.Name, AFound.TypeName,
+    AFound.Symbol.Name]), Confidence, Fixes);
 end;
 
 procedure THidesVirtualRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -318,7 +340,7 @@ end;
 function TVirtualInsteadOfOverrideRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('virtual-instead-of-override', TRuleSeverity.Warning,
-    'virtual im Nachfahren statt override');
+    cTexts[TInheritanceText.VirtualTitle].Text);
 end;
 
 /// <summary>Token der Direktive virtual bzw. dynamic im Kopf.</summary>
@@ -368,11 +390,12 @@ begin
           Continue;
         end;
       end;
-      Message := Format('"%s" ist im Vorfahren schon virtuell; override statt %s verwenden',
+      Message := cTexts[TInheritanceText.Virtual].Fmt(
         [Method.Symbol.Name, IfThen(Method.Has('virtual'), 'virtual', 'dynamic')]);
       if VirtualToken(AContext, Method, Token) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message, [TRuleFix.Create(Format('%s durch override ersetzen',
+        AReport.Add(Method.Symbol.SelectionRange, Message,
+          [TRuleFix.Create(cTexts[TInheritanceText.ReplaceByOverride].Fmt(
           [Token.Text]), [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), 'override')])]);
       end
       else
@@ -401,5 +424,8 @@ begin
   ARegistry.Register(TOverrideOnlyInheritedRule.Create);
   ARegistry.Register(TInheritedWithoutAncestorRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance', cTexts);
 
 end.

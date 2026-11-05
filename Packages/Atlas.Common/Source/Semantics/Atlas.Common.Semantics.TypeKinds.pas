@@ -55,13 +55,32 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.ExpressionTypes;
 
 const
-  cKindTexts: array[TResolvedTypeKind] of string = ('ein Typ unbekannter Art', 'eine Ganzzahl', 'eine Gleitkommazahl',
-    'eine Zahl vom Typ Currency', 'ein Boolean', 'ein Zeichen', 'ein String', 'ein Variant', 'ein Zeiger',
-    'eine Aufzählung', 'eine Menge', 'ein Array', 'ein Record', 'ein object-Typ', 'eine Klasse',
-    'eine Klassenreferenz', 'ein Interface', 'ein Helfer', 'ein prozeduraler Typ', 'eine Datei');
+  // Art als Satzteil („ist eine Menge“), deutsch und englisch (#1458).
+  cKindTexts: array[TResolvedTypeKind] of TAtlasText = (
+    (De: 'ein Typ unbekannter Art'; En: 'a type of unknown kind'),
+    (De: 'eine Ganzzahl'; En: 'an integer'),
+    (De: 'eine Gleitkommazahl'; En: 'a floating-point number'),
+    (De: 'eine Zahl vom Typ Currency'; En: 'a number of type Currency'),
+    (De: 'ein Boolean'; En: 'a Boolean'),
+    (De: 'ein Zeichen'; En: 'a character'),
+    (De: 'ein String'; En: 'a string'),
+    (De: 'ein Variant'; En: 'a Variant'),
+    (De: 'ein Zeiger'; En: 'a pointer'),
+    (De: 'eine Aufzählung'; En: 'an enumeration'),
+    (De: 'eine Menge'; En: 'a set'),
+    (De: 'ein Array'; En: 'an array'),
+    (De: 'ein Record'; En: 'a record'),
+    (De: 'ein object-Typ'; En: 'an object type'),
+    (De: 'eine Klasse'; En: 'a class'),
+    (De: 'eine Klassenreferenz'; En: 'a class reference'),
+    (De: 'ein Interface'; En: 'an interface'),
+    (De: 'ein Helfer'; En: 'a helper'),
+    (De: 'ein prozeduraler Typ'; En: 'a procedural type'),
+    (De: 'eine Datei'; En: 'a file'));
 
 { TResolvedTypeKinds }
 
@@ -223,7 +242,7 @@ end;
 
 class function TResolvedTypeKinds.Describe(AKind: TResolvedTypeKind): string;
 begin
-  Result := cKindTexts[AKind];
+  Result := cKindTexts[AKind].Text;
 end;
 
 class function TResolvedTypeKinds.DeclaredText(const ASignature: string): string;
@@ -251,5 +270,8 @@ begin
         end;
     end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Semantics.TypeKinds', cKindTexts);
 
 end.

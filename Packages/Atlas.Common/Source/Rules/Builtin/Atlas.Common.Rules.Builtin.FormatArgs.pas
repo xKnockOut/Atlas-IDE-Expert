@@ -55,7 +55,45 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.TypedScope;
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormatArgsText = (Title, EnumValue, IntegerKind, FloatKind, StringCharVariant, PointerKind, WidthPrecision, PassOrd,
+    PassBoolToStr, OfType, StarExpects, Expects, NoTypeLetter, Incomplete, IndexNoType, AtRuntime, TooFew, Unused);
+
+const
+  cTexts: array[TFormatArgsText] of TAtlasText = (
+    (De: 'Formatstring passt nicht zu den Argumenten'; En: 'Format string does not match the arguments'),
+    (De: 'Aufzählungswert'; En: 'enumeration value'),
+    (De: 'eine Ganzzahl'; En: 'an integer'),
+    (De: 'eine Gleitkommazahl'; En: 'a floating-point number'),
+    (De: 'einen String, ein Zeichen oder einen Variant'; En: 'a string, a character or a variant'),
+    (De: 'einen Zeiger'; En: 'a pointer'),
+    (De: 'eine Ganzzahl für Breite bzw. Genauigkeit'; En: 'an integer for width or precision'),
+    (De: ' Ord(%s) übergeben.'; En: ' Pass Ord(%s).'),
+    (De: ' BoolToStr(%s, True) übergeben.'; En: ' Pass BoolToStr(%s, True).'),
+    (De: 'vom Typ %s'; En: 'of type %s'),
+    (De: 'Das * in %s erwartet %s, %s ist %s: EConvertError zur Laufzeit.';
+     En: 'The * in %s expects %s, %s is %s: EConvertError at runtime.'),
+    (De: '%s erwartet %s, %s ist %s: EConvertError zur Laufzeit.%s';
+     En: '%s expects %s, %s is %s: EConvertError at runtime.%s'),
+    (De: 'Ungültiger Formatstring: In %s ist "%s" kein Typbuchstabe (d, u, e, f, g, n, m, p, s, x)';
+     En: 'Invalid format string: in %s "%s" is not a type letter (d, u, e, f, g, n, m, p, s, x)'),
+    (De: 'Ungültiger Formatstring: %s am Ende ist unvollständig';
+     En: 'Invalid format string: %s at the end is incomplete'),
+    (De: 'Ungültiger Formatstring: %s hat einen Index, aber keinen Typbuchstaben';
+     En: 'Invalid format string: %s has an index but no type letter'),
+    (De: ': EConvertError zur Laufzeit.'; En: ': EConvertError at runtime.'),
+    (De: 'Der Formatstring braucht %d Argumente, die Liste hat %d: EConvertError zur Laufzeit.';
+     En: 'The format string needs %d arguments, the list has %d: EConvertError at runtime.'),
+    (De: 'Argument %d (%s) kommt im Formatstring nicht vor und wird nicht ausgegeben.';
+     En: 'Argument %d (%s) does not occur in the format string and is not output.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Höchste Tiefe beim Auflösen von Konstanten aus Konstanten.
@@ -75,7 +113,7 @@ const
 function TFormatArgsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(FormatArgsRuleId, TRuleSeverity.Error,
-    'Formatstring passt nicht zu den Argumenten');
+    cTexts[TFormatArgsText.Title].Text);
 end;
 
 procedure TFormatArgsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -300,7 +338,7 @@ var
     end;
     if ATypeName = '' then
     begin
-      ATypeName := 'Aufzählungswert';
+      ATypeName := cTexts[TFormatArgsText.EnumValue].Text;
     end;
     Result := TFormatArgumentClass.Enum;
   end;
@@ -356,15 +394,15 @@ var
   begin
     case AType of
       'd', 'u', 'x':
-        Result := 'eine Ganzzahl';
+        Result := cTexts[TFormatArgsText.IntegerKind].Text;
       'e', 'f', 'g', 'n', 'm':
-        Result := 'eine Gleitkommazahl';
+        Result := cTexts[TFormatArgsText.FloatKind].Text;
       's':
-        Result := 'einen String, ein Zeichen oder einen Variant';
+        Result := cTexts[TFormatArgsText.StringCharVariant].Text;
       'p':
-        Result := 'einen Zeiger';
+        Result := cTexts[TFormatArgsText.PointerKind].Text;
     else
-      Result := 'eine Ganzzahl für Breite bzw. Genauigkeit';
+      Result := cTexts[TFormatArgsText.WidthPrecision].Text;
     end;
   end;
 
@@ -373,9 +411,9 @@ var
   begin
     case AClass of
       TFormatArgumentClass.Enum:
-        Result := Format(' Ord(%s) übergeben.', [AArgument]);
+        Result := cTexts[TFormatArgsText.PassOrd].Fmt([AArgument]);
       TFormatArgumentClass.Bool:
-        Result := Format(' BoolToStr(%s, True) übergeben.', [AArgument]);
+        Result := cTexts[TFormatArgsText.PassBoolToStr].Fmt([AArgument]);
     else
       Result := '';
     end;
@@ -394,17 +432,18 @@ var
     mShown := mScope.Text(Unwrapped(AArgument));
     if not StartsText('ein', mTypeName) and (mTypeName <> 'nil') then
     begin
-      mTypeName := Format('vom Typ %s', [mTypeName]);
+      mTypeName := cTexts[TFormatArgsText.OfType].Fmt([mTypeName]);
     end;
     if AType = '*' then
     begin
-      AReport.Add(TTextRange.Create(AArgument.StartPos, AArgument.EndPos), Format('Das * in %s erwartet %s, %s ist ' +
-        '%s: EConvertError zur Laufzeit.', [ASpec.Text, Expected(AType), mShown, mTypeName]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(AArgument.StartPos, AArgument.EndPos),
+        cTexts[TFormatArgsText.StarExpects].Fmt([ASpec.Text, Expected(AType), mShown, mTypeName]),
+        TRuleConfidence.High);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(AArgument.StartPos, AArgument.EndPos), Format('%s erwartet %s, %s ist %s: ' +
-        'EConvertError zur Laufzeit.%s', [ASpec.Text, Expected(AType), mShown, mTypeName, Advice(mClass, mShown)]),
+      AReport.Add(TTextRange.Create(AArgument.StartPos, AArgument.EndPos),
+        cTexts[TFormatArgsText.Expects].Fmt([ASpec.Text, Expected(AType), mShown, mTypeName, Advice(mClass, mShown)]),
         TRuleConfidence.High);
     end;
   end;
@@ -413,14 +452,13 @@ var
   begin
     case ASpec.Kind of
       TFormatSpecKind.UnknownType:
-        Result := Format('Ungültiger Formatstring: In %s ist "%s" kein Typbuchstabe (d, u, e, f, g, n, m, p, s, x)',
-          [ASpec.Text, Copy(ASpec.Text, Length(ASpec.Text), 1)]);
+        Result := cTexts[TFormatArgsText.NoTypeLetter].Fmt([ASpec.Text, Copy(ASpec.Text, Length(ASpec.Text), 1)]);
       TFormatSpecKind.Incomplete:
-        Result := Format('Ungültiger Formatstring: %s am Ende ist unvollständig', [ASpec.Text]);
+        Result := cTexts[TFormatArgsText.Incomplete].Fmt([ASpec.Text]);
     else
-      Result := Format('Ungültiger Formatstring: %s hat einen Index, aber keinen Typbuchstaben', [ASpec.Text]);
+      Result := cTexts[TFormatArgsText.IndexNoType].Fmt([ASpec.Text]);
     end;
-    Result := Result + ': EConvertError zur Laufzeit.';
+    Result := Result + cTexts[TFormatArgsText.AtRuntime].Text;
   end;
 
   /// <summary>Aufgelöst: Der voll qualifizierte Name eines Kandidaten entscheidet (eine eigene Methode Format
@@ -568,13 +606,13 @@ var
     Result := mArgs >= mNeeded;
     if not Result then
     begin
-      AReport.Add(TTextRange.Create(AList.StartPos, AList.EndPos), Format('Der Formatstring braucht %d Argumente, ' +
-        'die Liste hat %d: EConvertError zur Laufzeit.', [mNeeded, mArgs]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(AList.StartPos, AList.EndPos), cTexts[TFormatArgsText.TooFew].Fmt([mNeeded, mArgs]),
+        TRuleConfidence.High);
     end
     else if (mArgs > mNeeded) and not AFormat.HasExplicitIndex then
     begin
-      AReport.Add(TTextRange.Create(AList[mNeeded].StartPos, AList[mNeeded].EndPos), Format('Argument %d (%s) ' +
-        'kommt im Formatstring nicht vor und wird nicht ausgegeben.', [mNeeded + 1, mScope.Text(AList[mNeeded])]),
+      AReport.Add(TTextRange.Create(AList[mNeeded].StartPos, AList[mNeeded].EndPos),
+        cTexts[TFormatArgsText.Unused].Fmt([mNeeded + 1, mScope.Text(AList[mNeeded])]),
         TRuleConfidence.Medium);
     end;
   end;
@@ -678,5 +716,8 @@ procedure RegisterFormatArgsRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TFormatArgsRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.FormatArgs', cTexts);
 
 end.

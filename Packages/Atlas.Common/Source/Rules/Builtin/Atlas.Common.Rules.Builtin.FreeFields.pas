@@ -63,14 +63,40 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Options,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFreeFieldsText = (LeakTitle, Leak, UnclearTitle, Unclear, InitNotFinal, FreeInFinalization, ClassCtorNotFreed,
+    FreeInClassDestructor, StartTitle);
+
+const
+  cTexts: array[TFreeFieldsText] of TAtlasText = (
+    (De: 'Im Konstruktor erzeugtes Feld wird nicht freigegeben'; En: 'Field created in the constructor is not freed'),
+    (De: '%s wird im Konstruktor erzeugt, aber im Destruktor nicht freigegeben (Speicherleck).';
+     En: '%s is created in the constructor but not freed in the destructor (memory leak).'),
+    (De: 'Unklar, ob ein erzeugtes Feld freigegeben werden muss'; En: 'Unclear whether a created field must be freed'),
+    (De: '"%s" wird in %s erzeugt und nicht freigegeben; ob %s es freigeben muss, ist unklar: Es %s';
+     En: '"%s" is created in %s and not freed; whether %s must free it is unclear: it %s'),
+    (De: '%s wird in initialization erzeugt, aber in finalization nicht freigegeben.';
+     En: '%s is created in initialization but not freed in finalization.'),
+    (De: 'In finalization freigeben'; En: 'Free in finalization'),
+    (De: '%s wird im class constructor erzeugt, aber im class destructor nicht freigegeben.';
+     En: '%s is created in the class constructor but not freed in the class destructor.'),
+    (De: 'Im class destructor freigeben'; En: 'Free in the class destructor'),
+    (De: 'Beim Start erzeugtes Objekt wird nicht freigegeben'; En: 'Object created at startup is not freed'));
+
+{$SCOPEDENUMS OFF}
 
 { TOwnedFieldNotFreedRule }
 
 function TOwnedFieldNotFreedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('field-not-freed', TRuleSeverity.Warning,
-    'Im Konstruktor erzeugtes Feld wird nicht freigegeben');
+    cTexts[TFreeFieldsText.LeakTitle].Text);
 end;
 
 class function TOwnedFieldNotFreedRule.Ignored(const AField: TOwnedField; const AIgnoreTypes: TArray<string>): Boolean;
@@ -118,8 +144,7 @@ begin
       Fixes := [TRuleFix.Create(TFreeFields.FieldTitle, Edits, False)];
     end;
     // Mittel: Ob das Objekt anderswo freigegeben wird, sieht die Regel nicht immer.
-    AReport.Add(Field.Range, Format('%s wird im Konstruktor erzeugt, aber im Destruktor nicht freigegeben ' +
-      '(Speicherleck).', [Field.Name]), TRuleConfidence.Medium, Fixes);
+    AReport.Add(Field.Range, cTexts[TFreeFieldsText.Leak].Fmt([Field.Name]), TRuleConfidence.Medium, Fixes);
   end;
 end;
 
@@ -128,7 +153,7 @@ end;
 function TOwnedFieldFreeUnclearRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('owned-field-free-unclear', TRuleSeverity.Hint,
-    'Unklar, ob ein erzeugtes Feld freigegeben werden muss');
+    cTexts[TFreeFieldsText.UnclearTitle].Text);
 end;
 
 procedure TOwnedFieldFreeUnclearRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -143,8 +168,8 @@ begin
   begin
     if Field.State = TOwnedFieldState.Unclear then
     begin
-      AReport.Add(Field.Range, Format('"%s" wird in %s erzeugt und nicht freigegeben; ob %s es freigeben muss, ' +
-        'ist unklar: Es %s', [Field.Name, Field.CreatedIn, Field.ClassName, Field.Reason]));
+      AReport.Add(Field.Range, cTexts[TFreeFieldsText.Unclear].Fmt([Field.Name, Field.CreatedIn, Field.ClassName,
+        Field.Reason]));
     end;
   end;
 end;
@@ -863,21 +888,20 @@ function LeakMessage(const ACreation: TInitCreation; out ATitle: string): string
 begin
   if ACreation.ClassDecl = nil then
   begin
-    Result := Format('%s wird in initialization erzeugt, aber in finalization nicht freigegeben.', [ACreation.Name]);
-    ATitle := 'In finalization freigeben';
+    Result := cTexts[TFreeFieldsText.InitNotFinal].Fmt([ACreation.Name]);
+    ATitle := cTexts[TFreeFieldsText.FreeInFinalization].Text;
   end
   else
   begin
-    Result := Format('%s wird im class constructor erzeugt, aber im class destructor nicht freigegeben.',
-      [ACreation.Name]);
-    ATitle := 'Im class destructor freigeben';
+    Result := cTexts[TFreeFieldsText.ClassCtorNotFreed].Fmt([ACreation.Name]);
+    ATitle := cTexts[TFreeFieldsText.FreeInClassDestructor].Text;
   end;
 end;
 
 function TInitializationNotFinalizedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InitializationNotFinalizedRuleId, TRuleSeverity.Warning,
-    'Beim Start erzeugtes Objekt wird nicht freigegeben');
+    cTexts[TFreeFieldsText.StartTitle].Text);
 end;
 
 procedure TInitializationNotFinalizedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -923,5 +947,8 @@ begin
   ARegistry.Register(TOwnedFieldFreeUnclearRule.Create);
   ARegistry.Register(TInitializationNotFinalizedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.FreeFields', cTexts);
 
 end.
