@@ -257,6 +257,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Contributions` | `Core/Modules/Atlas.Core.Modules.Contributions.pas` | Beiträge der Module einsammeln, #1455 |
 | `Atlas.Core.Modules.FeatureParts` | `Core/Modules/Atlas.Core.Modules.FeatureParts.pas` | Teile eines Moduls für die Feature-Tabelle, #1455 |
 | `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
+| `Atlas.Core.Modules.KnownPackages` | `Core/Modules/Atlas.Core.Modules.KnownPackages.pas` | Module unter „Known Packages“ prüfen (Meldung 05.11.2026) |
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
@@ -479,6 +480,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Diagnostics.Timing` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Timing.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.TimingWindow` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.TimingWindow.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.Watchdog` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Watchdog.pas` | Ordner `IDE/Diagnostics` |
+| `Atlas.IDE.Diagnostics.KnownPackages` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.KnownPackages.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Editor.AnonymousMethod` | `IDE/Editor/Atlas.IDE.Editor.AnonymousMethod.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.BlockComment` | `IDE/Editor/Atlas.IDE.Editor.BlockComment.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ChangeSignature` | `IDE/Editor/Atlas.IDE.Editor.ChangeSignature.pas` | Ordner `IDE/Editor` |
