@@ -43,7 +43,27 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceInheritedCallsText = (OnlyInheritedTitle, RemoveMethod, OnlyInherited, NoAncestorTitle, RemoveInherited,
+    NoAncestor);
+
+const
+  cTexts: array[TInheritanceInheritedCallsText] of TAtlasText = (
+    (De: 'override ruft nur inherited auf'; En: 'override only calls inherited'),
+    (De: 'Methode entfernen'; En: 'Remove method'),
+    (De: '%s.%s ruft nur inherited auf und kann entfallen.'; En: '%s.%s only calls inherited and can be removed.'),
+    (De: 'inherited ohne Methode im Vorfahr'; En: 'inherited without method in the ancestor'),
+    (De: 'inherited entfernen'; En: 'Remove inherited'),
+    (De: 'Kein Vorfahr von %s hat %s: inherited tut nichts. Fehlt override?';
+     En: 'No ancestor of %s has %s: inherited does nothing. Is override missing?'));
+
+{$SCOPEDENUMS OFF}
 
 { Hilfen für override-only-inherited und inherited-without-ancestor }
 
@@ -267,7 +287,7 @@ end;
 function TOverrideOnlyInheritedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OverrideOnlyInheritedRuleId, TRuleSeverity.Hint,
-    'override ruft nur inherited auf');
+    cTexts[TInheritanceInheritedCallsText.OnlyInheritedTitle].Text);
 end;
 
 /// <summary>Ausdruck AExpr aus "Result := AExpr"; False bei anderen Anweisungen.</summary>
@@ -424,7 +444,7 @@ begin
   if WholeLineSpan(AContext.Text, AMethod.Header.StartOffset, AMethod.Header.EndOffset, True, False, mDecl) and
     WholeLineSpan(AContext.Text, ABody.StartOffset, ABody.EndOffset, True, True, mBodySpan) then
   begin
-    Result := [TRuleFix.Create('Methode entfernen', [
+    Result := [TRuleFix.Create(cTexts[TInheritanceInheritedCallsText.RemoveMethod].Text, [
       TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, mDecl.Start, mDecl.Finish), ''),
       TRuleEdit.Create(TRuleDerived.OffsetRange(ACache, AContext, mBodySpan.Start, mBodySpan.Finish), '')])];
   end;
@@ -460,7 +480,7 @@ begin
       if (mBody <> nil) and OnlyInheritedBody(AContext, mMethod, mBody) and VisibilityKept(mAncestry, mMethod) then
       begin
         AReport.Add(MethodNameRange(AContext, mBody.FindChild(TSyntaxKind.RoutineHeader), mMethod.Symbol.Name),
-          Format('%s.%s ruft nur inherited auf und kann entfallen.', [mMethod.ClassName, mMethod.Symbol.Name]),
+          cTexts[TInheritanceInheritedCallsText.OnlyInherited].Fmt([mMethod.ClassName, mMethod.Symbol.Name]),
           TRuleConfidence.High, RemovalFixes(mCache, AContext, mMethod, mBody));
       end;
     end;
@@ -474,7 +494,7 @@ end;
 function TInheritedWithoutAncestorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InheritedWithoutAncestorRuleId, TRuleSeverity.Hint,
-    'inherited ohne Methode im Vorfahr');
+    cTexts[TInheritanceInheritedCallsText.NoAncestorTitle].Text);
 end;
 
 /// <summary>Anweisungen "inherited;" ohne Namen im Block ABlock, ohne anonyme Methoden.</summary>
@@ -578,10 +598,11 @@ var
       mFixes := nil;
       if (mStatement.Parent <> nil) and (mStatement.Parent.Kind = TSyntaxKind.Block) then
       begin
-        mFixes := [RemoveStatementFix(mCache, AContext, mStatement, 'inherited entfernen')];
+        mFixes := [RemoveStatementFix(mCache, AContext, mStatement,
+          cTexts[TInheritanceInheritedCallsText.RemoveInherited].Text)];
       end;
       AReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
-        Format('Kein Vorfahr von %s hat %s: inherited tut nichts. Fehlt override?',
+        cTexts[TInheritanceInheritedCallsText.NoAncestor].Fmt(
         [AMethod.ClassName, AMethod.Symbol.Name]), TRuleConfidence.High, mFixes);
     end;
   end;
@@ -644,5 +665,8 @@ begin
     mAncestry.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls', cTexts);
 
 end.

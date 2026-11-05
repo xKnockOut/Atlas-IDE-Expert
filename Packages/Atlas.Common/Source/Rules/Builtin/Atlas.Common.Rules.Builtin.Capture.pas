@@ -75,7 +75,36 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCaptureText = (CopyPerIteration, CapturesVariable, LoopTitle, ParamTitle, UntypedParam, ResultCapture,
+    CannotCapture, VarParam, OutParam, CopyValue);
+
+const
+  cTexts: array[TCaptureText] of TAtlasText = (
+    (De: 'Variable "%s" je Durchlauf kopieren'; En: 'Copy variable "%s" per iteration'),
+    (De: 'Die anonyme Methode erfasst "%s", nicht seinen Wert; bis sie läuft, hat "%s" womöglich schon einen anderen ' +
+      'Wert';
+     En: 'The anonymous method captures "%s", not its value; by the time it runs, "%s" may already have a different ' +
+      'value'),
+    (De: 'Anonyme Methode erfasst eine Variable, die sich vor dem verzögerten Aufruf noch ändert';
+     En: 'Anonymous method captures a variable that still changes before the deferred call'),
+    (De: 'Anonyme Methode erfasst einen var-, out- oder untypisierten Parameter oder Result';
+     En: 'Anonymous method captures a var, out or untyped parameter or Result'),
+    (De: 'untypisierte Parameter'; En: 'untyped parameter'),
+    (De: 'Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).';
+     En: 'Result of the enclosing function cannot be captured (like E2555).'),
+    (De: 'Der %s %s kann nicht erfasst werden (wie E2555).'; En: 'The %s %s cannot be captured (like E2555).'),
+    (De: 'var-Parameter'; En: 'var parameter'),
+    (De: 'out-Parameter'; En: 'out parameter'),
+    (De: 'Wert in die lokale Variable %s kopieren'; En: 'Copy the value into the local variable %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Lokale Variable der Routine mit Typ ('' wenn unbekannt).</summary>
@@ -616,7 +645,7 @@ begin
   end;
   mLineBreak := TTextLines.LineBreakOf(FContext.Text);
   mFunctionName := 'Capture' + ALocal.Name;
-  AFix := TRuleFix.Create(Format('Variable "%s" je Durchlauf kopieren', [ALocal.Name]), [
+  AFix := TRuleFix.Create(cTexts[TCaptureText.CopyPerIteration].Fmt([ALocal.Name]), [
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(mInsert.Line, 0), TTextPosition.Create(mInsert.Line, 0)),
       mIndent + '  function ' + mFunctionName + '(const AValue: ' + ALocal.TypeName + '): TProc;' + mLineBreak +
       mIndent + '  begin' + mLineBreak +
@@ -660,8 +689,7 @@ var
   mMessage: string;
   mFix: TRuleFix;
 begin
-  mMessage := Format('Die anonyme Methode erfasst "%s", nicht seinen Wert; bis sie läuft, hat "%s" ' +
-    'womöglich schon einen anderen Wert', [ALocal.Name, ALocal.Name]);
+  mMessage := cTexts[TCaptureText.CapturesVariable].Fmt([ALocal.Name, ALocal.Name]);
   if CopyPerIterationFix(AMethod, ALocal, mFix) then
   begin
     FReport.Add(TTextRange.Create(AIdentifier.StartPos, AIdentifier.EndPos), mMessage, AConfidence, [mFix]);
@@ -738,7 +766,7 @@ end;
 function TCapturedLoopVariableRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('captured-loop-variable', TRuleSeverity.Warning,
-    'Anonyme Methode erfasst eine Variable, die sich vor dem verzögerten Aufruf noch ändert');
+    cTexts[TCaptureText.LoopTitle].Text);
 end;
 
 procedure TCapturedLoopVariableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1087,7 +1115,7 @@ end;
 function TAnonymousCaptureInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(AnonymousCaptureInvalidRuleId, TRuleSeverity.Error,
-    'Anonyme Methode erfasst einen var-, out- oder untypisierten Parameter oder Result');
+    cTexts[TCaptureText.ParamTitle].Text);
 end;
 
 procedure TAnonymousCaptureInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1141,11 +1169,11 @@ var
   begin
     case AKind of
       TCaptureDeclKind.VarParam:
-        Result := 'var-Parameter';
+        Result := cTexts[TCaptureText.VarParam].Text;
       TCaptureDeclKind.OutParam:
-        Result := 'out-Parameter';
+        Result := cTexts[TCaptureText.OutParam].Text;
     else
-      Result := 'untypisierte Parameter';
+      Result := cTexts[TCaptureText.UntypedParam].Text;
     end;
   end;
 
@@ -1331,7 +1359,7 @@ var
       Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Statement.EndPos.Line + 1, 0, Statement.EndPos.Line + 1,
         0), StatementIndent + ADecl.Name + ' := ' + Copy_ + ';' + LineBreak)];
     end;
-    AFix := TRuleFix.Create('Wert in die lokale Variable ' + Copy_ + ' kopieren', Edits);
+    AFix := TRuleFix.Create(cTexts[TCaptureText.CopyValue].Fmt([Copy_]), Edits);
     Result := True;
   end;
 
@@ -1356,11 +1384,11 @@ var
     Reported.Add(Key);
     if Decl.Kind = TCaptureDeclKind.FunctionResult then
     begin
-      Message := 'Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).';
+      Message := cTexts[TCaptureText.ResultCapture].Text;
     end
     else
     begin
-      Message := Format('Der %s %s kann nicht erfasst werden (wie E2555).', [KindText(Decl.Kind), Decl.Name]);
+      Message := cTexts[TCaptureText.CannotCapture].Fmt([KindText(Decl.Kind), Decl.Name]);
     end;
     if CopyFix(Decl, Outer, Fix) then
     begin
@@ -1429,5 +1457,8 @@ begin
   ARegistry.Register(TCapturedLoopVariableRule.Create);
   ARegistry.Register(TAnonymousCaptureInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Capture', cTexts);
 
 end.

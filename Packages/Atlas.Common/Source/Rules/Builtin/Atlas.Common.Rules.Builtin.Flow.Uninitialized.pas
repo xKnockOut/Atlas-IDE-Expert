@@ -27,7 +27,23 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowUninitializedText = (Title, MaybeRead);
+
+const
+  cTexts: array[TFlowUninitializedText] of TAtlasText = (
+    (De: 'Variable wird möglicherweise vor der ersten Zuweisung gelesen';
+     En: 'Variable may be read before the first assignment'),
+    (De: '"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde';
+     En: '"%s" may be read here before a value was assigned'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Merker in Bedingungen: positiv (F, Assigned(F), F &lt;&gt; nil) und negativ (not F, F = nil).
@@ -435,7 +451,7 @@ end;
 function TPossiblyUninitializedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('possibly-uninitialized', TRuleSeverity.Warning,
-    'Variable wird möglicherweise vor der ersten Zuweisung gelesen');
+    cTexts[TFlowUninitializedText.Title].Text);
 end;
 
 procedure TPossiblyUninitializedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -613,7 +629,7 @@ begin
       if IsRead(Node) and ReadsUninitialized(ARoot, Node) then
       begin
         FReport.Add(NodeRange(Node),
-          Format('"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde', [FName]), FConfidence);
+          cTexts[TFlowUninitializedText.MaybeRead].Fmt([FName]), FConfidence);
         FReported := True;
       end
       else
@@ -685,5 +701,8 @@ begin
     CheckRoutine(Routine);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.Uninitialized', cTexts);
 
 end.

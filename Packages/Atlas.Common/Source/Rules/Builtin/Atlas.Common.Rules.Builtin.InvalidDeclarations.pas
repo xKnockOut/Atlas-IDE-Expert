@@ -48,7 +48,33 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInvalidDeclarationsText = (Title, PackedType, FileResult, VirtualObjectConstructor, PropertyAccess,
+    AutomatedAccess, SameConstructors);
+
+const
+  cTexts: array[TInvalidDeclarationsText] of TAtlasText = (
+    (De: 'Deklaration, die der Compiler ablehnt'; En: 'Declaration the compiler rejects'),
+    (De: 'packed gilt nur für array, record, object, class, set und file, nicht für %s (wie E2006).';
+     En: 'packed applies only to array, record, object, class, set and file, not to %s (like E2006).'),
+    (De: '%s kann keine Datei liefern; der Ergebnistyp file ist nicht erlaubt (wie E2024).';
+     En: '%s cannot return a file; the result type file is not allowed (like E2024).'),
+    (De: 'Der Konstruktor %s eines object-Typs darf nicht virtual sein (wie E2062).';
+     En: 'The constructor %s of an object type must not be virtual (like E2062).'),
+    (De: 'Die Property %s braucht read oder write; ein Interface kennt keine Property ohne Zugriff (wie E2128).';
+     En: 'The property %s needs read or write; an interface knows no property without access (like E2128).'),
+    (De: 'Die Property %s im Abschnitt automated braucht read oder write (wie E2128).';
+     En: 'The property %s in the automated section needs read or write (like E2128).'),
+    (De: 'Die Konstruktoren %s und %s haben dieselben Parametertypen; aus C++ ist %s nicht erreichbar (wie W1029).';
+     En: 'The constructors %s and %s have the same parameter types; %s is not reachable from C++ (like W1029).'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Bezeichner oder Schlüsselwort mit Text AWord (ohne Groß-/Kleinschreibung)?</summary>
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
@@ -89,7 +115,7 @@ end;
 function TDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DeclarationInvalidRuleId, TRuleSeverity.Error,
-    'Deklaration, die der Compiler ablehnt');
+    cTexts[TInvalidDeclarationsText.Title].Text);
 end;
 
 class function TDeclarationInvalidRule.CppOutput(const ADproj: string): Boolean;
@@ -188,8 +214,8 @@ var
     mBefore := PreviousCode(FirstCode(AReference));
     if (mBefore >= 0) and IsWord(Tokens[mBefore], 'packed') then
     begin
-      AReport.Add(TokenRange(mBefore), Format('packed gilt nur für array, record, object, class, set und file, ' +
-        'nicht für %s (wie E2006).', [AReference.Name]), TRuleConfidence.High);
+      AReport.Add(TokenRange(mBefore), cTexts[TInvalidDeclarationsText.PackedType].Fmt([AReference.Name]),
+        TRuleConfidence.High);
     end;
   end;
 
@@ -202,8 +228,8 @@ var
     begin
       if (AHeader[mIndex].Kind = TSyntaxKind.TypeReference) and SameText(AHeader[mIndex].Name, 'file') then
       begin
-        AReport.Add(NodeRange(AHeader[mIndex]), Format('%s kann keine Datei liefern; der Ergebnistyp file ist ' +
-          'nicht erlaubt (wie E2024).', [AHeader.Name]), TRuleConfidence.High);
+        AReport.Add(NodeRange(AHeader[mIndex]), cTexts[TInvalidDeclarationsText.FileResult].Fmt([AHeader.Name]),
+          TRuleConfidence.High);
       end;
     end;
   end;
@@ -219,8 +245,8 @@ var
       if (AObject[mIndex].Kind = TSyntaxKind.RoutineHeader) and IsConstructor(AObject[mIndex]) and
         HasDirective(AObject[mIndex], 'virtual', mVirtual) then
       begin
-        AReport.Add(NodeRange(mVirtual), Format('Der Konstruktor %s eines object-Typs darf nicht virtual sein ' +
-          '(wie E2062).', [AObject[mIndex].Name]), TRuleConfidence.High);
+        AReport.Add(NodeRange(mVirtual),
+          cTexts[TInvalidDeclarationsText.VirtualObjectConstructor].Fmt([AObject[mIndex].Name]), TRuleConfidence.High);
       end;
     end;
   end;
@@ -286,13 +312,13 @@ var
       begin
         if AInterface then
         begin
-          AReport.Add(TokenRange(NameToken(mChild)), Format('Die Property %s braucht read oder write; ein ' +
-            'Interface kennt keine Property ohne Zugriff (wie E2128).', [mChild.Name]), TRuleConfidence.High);
+          AReport.Add(TokenRange(NameToken(mChild)), cTexts[TInvalidDeclarationsText.PropertyAccess].Fmt([mChild.Name]),
+            TRuleConfidence.High);
         end
         else
         begin
-          AReport.Add(TokenRange(NameToken(mChild)), Format('Die Property %s im Abschnitt automated braucht ' +
-            'read oder write (wie E2128).', [mChild.Name]), TRuleConfidence.High);
+          AReport.Add(TokenRange(NameToken(mChild)),
+            cTexts[TInvalidDeclarationsText.AutomatedAccess].Fmt([mChild.Name]), TRuleConfidence.High);
         end;
       end;
     end;
@@ -389,8 +415,8 @@ var
       begin
         if CppProject then
         begin
-          AReport.Add(TokenRange(NameToken(AHeader)), Format('Die Konstruktoren %s und %s haben dieselben ' +
-            'Parametertypen; aus C++ ist %s nicht erreichbar (wie W1029).', [AHeaders[mEarlier].Name, AHeader.Name,
+          AReport.Add(TokenRange(NameToken(AHeader)),
+            cTexts[TInvalidDeclarationsText.SameConstructors].Fmt([AHeaders[mEarlier].Name, AHeader.Name,
             AHeader.Name]), TRuleConfidence.High);
         end;
         Exit;
@@ -479,5 +505,8 @@ procedure RegisterInvalidDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeclarationInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.InvalidDeclarations', cTexts);
 
 end.

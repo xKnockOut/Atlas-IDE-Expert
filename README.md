@@ -92,7 +92,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
-- **Language follows the IDE** (German or English)
+- **Language follows the IDE** (German or English), including the messages and quick fixes of all rules
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **32 MCP tools** to read, check, build, test, rename and fix Delphi code

@@ -34,7 +34,33 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Index.LibraryUnits,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceShadowingText = (Title, ReadSuffix, RenameTo, LocalVariable, ParameterWhat, AssignedLocal,
+    AssignedParameter, Hides, PropertyOf, FieldOf, GlobalVariable);
+
+const
+  cTexts: array[TInheritanceShadowingText] of TAtlasText = (
+    (De: 'Lokaler Name verdeckt Feld, Property oder globale Variable';
+     En: 'Local name hides field, property or global variable'),
+    (De: '; gelesen wird die lokale Variable, der nichts zugewiesen wird.';
+     En: '; the local variable is read, but nothing is assigned to it.'),
+    (De: 'In %s umbenennen'; En: 'Rename to %s'),
+    (De: 'Lokale Variable'; En: 'Local variable'),
+    (De: 'Parameter'; En: 'Parameter'),
+    (De: '; die Zuweisung ändert nur die lokale Variable.'; En: '; the assignment only changes the local variable.'),
+    (De: '; die Zuweisung ändert nur den Parameter.'; En: '; the assignment only changes the parameter.'),
+    (De: '%s %s verdeckt %s'; En: '%s %s hides %s'),
+    (De: 'die Property %s.%s'; En: 'the property %s.%s'),
+    (De: 'das Feld %s.%s'; En: 'the field %s.%s'),
+    (De: 'die globale Variable %s'; En: 'the global variable %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TShadowedNameRule }
 
@@ -306,18 +332,20 @@ end;
 /// <summary>Meldungstext: was verdeckt wird, und ob eine Zuweisung nur den lokalen Namen ändert.</summary>
 function ShadowMessage(const ACandidate: TShadowCandidate; const AKind, ASuffix: string): string;
 const
-  cWhat: array[Boolean] of string = ('Lokale Variable', 'Parameter');
-  cAssigned: array[Boolean] of string = ('; die Zuweisung ändert nur die lokale Variable.',
-    '; die Zuweisung ändert nur den Parameter.');
+  cWhat: array[Boolean] of TInheritanceShadowingText = (TInheritanceShadowingText.LocalVariable,
+    TInheritanceShadowingText.ParameterWhat);
+  cAssigned: array[Boolean] of TInheritanceShadowingText = (TInheritanceShadowingText.AssignedLocal,
+    TInheritanceShadowingText.AssignedParameter);
 begin
-  Result := Format('%s %s verdeckt %s', [cWhat[ACandidate.IsParameter], ACandidate.Name, AKind]);
+  Result := cTexts[TInheritanceShadowingText.Hides].Fmt([cTexts[cWhat[ACandidate.IsParameter]].Text, ACandidate.Name,
+    AKind]);
   if ASuffix <> '' then
   begin
     Result := Result + ASuffix;
   end
   else if Assigned_(ACandidate.Routine, ACandidate.Name) then
   begin
-    Result := Result + cAssigned[ACandidate.IsParameter];
+    Result := Result + cTexts[cAssigned[ACandidate.IsParameter]].Text;
   end
   else
   begin
@@ -328,7 +356,7 @@ end;
 function TShadowedNameRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('shadowed-name', TRuleSeverity.Hint,
-    'Lokaler Name verdeckt Feld, Property oder globale Variable');
+    cTexts[TInheritanceShadowingText.Title].Text);
 end;
 
 procedure TShadowedNameRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -539,7 +567,8 @@ end;
 /// class var und class property.</summary>
 function TShadowCheck.MemberHit(const ACandidate: TShadowCandidate; out AHit: TShadowHit): Boolean;
 const
-  cKind: array[Boolean] of string = ('die Property ', 'das Feld ');
+  cKind: array[Boolean] of TInheritanceShadowingText = (TInheritanceShadowingText.PropertyOf,
+    TInheritanceShadowingText.FieldOf);
 var
   Member: TIndexSymbol;
   Unresolved, mUnitName: string;
@@ -550,12 +579,12 @@ begin
   if FAncestry.FindMember(ACandidate.ClassName, ACandidate.Name, Member, Unresolved, mUnitName) then
   begin
     AHit.Framework := (mUnitName <> '') and TLibraryUnits.IsLibrary(FContext.Index, mUnitName);
-    AHit.Kind := cKind[Member.Kind = TIndexSymbolKind.Field] + ACandidate.ClassName + '.' + Member.Name;
+    AHit.Kind := cTexts[cKind[Member.Kind = TIndexSymbolKind.Field]].Fmt([ACandidate.ClassName, Member.Name]);
     Exit(not mClassMethod or MatchText('class', Member.Directives));
   end;
   Result := not mClassMethod and FrameworkMember(Unresolved, ACandidate.Name);
   AHit.Framework := True;
-  AHit.Kind := 'die Property ' + ACandidate.ClassName + '.' + ACandidate.Name;
+  AHit.Kind := cTexts[TInheritanceShadowingText.PropertyOf].Fmt([ACandidate.ClassName, ACandidate.Name]);
 end;
 
 /// <summary>Was der Kandidat verdeckt: Mitglied der Klasse oder globale Variable der Unit.</summary>
@@ -566,7 +595,7 @@ begin
   begin
     Result := True;
     AHit.Framework := False;
-    AHit.Kind := 'die globale Variable ' + ACandidate.Name;
+    AHit.Kind := cTexts[TInheritanceShadowingText.GlobalVariable].Fmt([ACandidate.Name]);
   end;
 end;
 
@@ -587,7 +616,7 @@ begin
   Result := Usage.Unclear = 0;
   if Result and (Usage.Reads > 0) and (Usage.Writes = 0) then
   begin
-    ASuffix := '; gelesen wird die lokale Variable, der nichts zugewiesen wird.';
+    ASuffix := cTexts[TInheritanceShadowingText.ReadSuffix].Text;
   end
   else
   begin
@@ -629,7 +658,7 @@ begin
       Edits := Edits + [TRuleEdit.Create(TokenRange(Index), NewName)];
     end;
   end;
-  Result := [TRuleFix.Create(Format('In %s umbenennen', [NewName]), Edits)];
+  Result := [TRuleFix.Create(cTexts[TInheritanceShadowingText.RenameTo].Fmt([NewName]), Edits)];
 end;
 
 procedure TShadowCheck.CheckName(const ACandidate: TShadowCandidate);
@@ -813,5 +842,8 @@ begin
     Pending.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.Shadowing', cTexts);
 
 end.

@@ -105,7 +105,45 @@ uses
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TIdiomsText = (MoneyFloatTitle, ChangeToCurrency, MoneyFloat, BankersRounding, StringIfChainTitle, ConvertToCase,
+    StringIfChain, IfChainTitle, IfChain, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Eleven, Twelve);
+
+const
+  cTexts: array[TIdiomsText] of TAtlasText = (
+    (De: 'Geldbetrag als Gleitkommazahl'; En: 'Money amount as floating-point number'),
+    (De: 'Typ in Currency ändern'; En: 'Change type to Currency'),
+    (De: '%s ist %s; Currency rechnet Cent-Beträge exakt.'; En: '%s is %s; Currency computes cent amounts exactly.'),
+    (De: 'Round rundet %s auf die nächste gerade Zahl (2,5 wird 2); Geldbeträge kaufmännisch runden, z. B. mit ' +
+      'SimpleRoundTo.';
+     En: 'Round rounds %s to the nearest even number (2.5 becomes 2); round money amounts commercially, e.g. with ' +
+      'SimpleRoundTo.'),
+    (De: 'Lange if-Kette über denselben String'; En: 'Long if chain over the same string'),
+    (De: 'In case %s(…) umwandeln'; En: 'Convert to case %s(…)'),
+    (De: '%s Vergleiche desselben Strings; case %s(%s, [...]) ist kürzer.';
+     En: '%s comparisons of the same string; case %s(%s, [...]) is shorter.'),
+    (De: 'if-Kette lässt sich als case schreiben'; En: 'if chain can be written as case'),
+    (De: '%s Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.';
+     En: '%s branches compare the same expression with constants; as case the chain is shorter.'),
+    (De: 'Zwei'; En: 'Two'),
+    (De: 'Drei'; En: 'Three'),
+    (De: 'Vier'; En: 'Four'),
+    (De: 'Fünf'; En: 'Five'),
+    (De: 'Sechs'; En: 'Six'),
+    (De: 'Sieben'; En: 'Seven'),
+    (De: 'Acht'; En: 'Eight'),
+    (De: 'Neun'; En: 'Nine'),
+    (De: 'Zehn'; En: 'Ten'),
+    (De: 'Elf'; En: 'Eleven'),
+    (De: 'Zwölf'; En: 'Twelve'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -231,7 +269,8 @@ const
 
 function TMoneyAsFloatRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(MoneyAsFloatRuleId, TRuleSeverity.Hint, 'Geldbetrag als Gleitkommazahl', True);
+  Result := TRuleDescriptor.Create(MoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text,
+    True);
 end;
 
 class function TMoneyAsFloatRule.HeadOf(const AName: string): string;
@@ -709,14 +748,14 @@ var
       end;
       if Fixable then
       begin
-        Fixes := [TRuleFix.Create('Typ in Currency ändern', Edits)];
+        Fixes := [TRuleFix.Create(cTexts[TIdiomsText.ChangeToCurrency].Text, Edits)];
       end;
     end;
     for Name in NamesOf(ANode) do
     begin
       if IsMoney(ANode, Name) then
       begin
-        AReport.Add(NameRange(ANode, Name), Format('%s ist %s; Currency rechnet Cent-Beträge exakt.',
+        AReport.Add(NameRange(ANode, Name), cTexts[TIdiomsText.MoneyFloat].Fmt(
           [Name, NodeText(AContext, TypeRef)]), TRuleConfidence.Low, Fixes);
       end;
     end;
@@ -745,8 +784,7 @@ var
           not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) and
           IsMoney(Node, Node.Name) then
         begin
-          AReport.Add(NodeRange(ACall[0]), Format('Round rundet %s auf die nächste gerade Zahl (2,5 wird 2); ' +
-            'Geldbeträge kaufmännisch runden, z. B. mit SimpleRoundTo.', [Node.Name]), TRuleConfidence.Low);
+          AReport.Add(NodeRange(ACall[0]), cTexts[TIdiomsText.BankersRounding].Fmt([Node.Name]), TRuleConfidence.Low);
           Exit;
         end;
       end;
@@ -811,8 +849,9 @@ end;
 { TStringIfChainRule }
 
 const
-  CountWords: array[2..12] of string = ('Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun', 'Zehn',
-    'Elf', 'Zwölf');
+  CountWords: array[2..12] of TIdiomsText = (TIdiomsText.Two, TIdiomsText.Three, TIdiomsText.Four, TIdiomsText.Five,
+    TIdiomsText.Six, TIdiomsText.Seven, TIdiomsText.Eight, TIdiomsText.Nine, TIdiomsText.Ten, TIdiomsText.Eleven,
+    TIdiomsText.Twelve);
 
 type
   /// <summary>Ein Zweig der Kette: Literale der Bedingung und die Anweisung dahinter.</summary>
@@ -824,7 +863,7 @@ type
 
 function TStringIfChainRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(StringIfChainRuleId, TRuleSeverity.Hint, 'Lange if-Kette über denselben String',
+  Result := TRuleDescriptor.Create(StringIfChainRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.StringIfChainTitle].Text,
     True);
 end;
 
@@ -832,7 +871,7 @@ class function TStringIfChainRule.CountWord(ACount: Integer): string;
 begin
   if (ACount >= Low(CountWords)) and (ACount <= High(CountWords)) then
   begin
-    Result := CountWords[ACount];
+    Result := cTexts[CountWords[ACount]].Text;
   end
   else
   begin
@@ -1155,7 +1194,7 @@ var
     begin
       mEdits := mEdits + [mExtra];
     end;
-    AFix := TRuleFix.Create(Format('In case %s(…) umwandeln', [mFunction]), mEdits);
+    AFix := TRuleFix.Create(cTexts[TIdiomsText.ConvertToCase].Fmt([mFunction]), mEdits);
   end;
 
   procedure CheckChain(AHead: TSyntaxNode; AMin: Integer);
@@ -1215,7 +1254,7 @@ var
       Fixes := [One];
     end;
     AReport.Add(TTextRange.Create(AHead.StartPos, AHead[0].EndPos),
-      Format('%s Vergleiche desselben Strings; case %s(%s, [...]) ist kürzer.', [CountWord(Count),
+      cTexts[TIdiomsText.StringIfChain].Fmt([CountWord(Count),
       IfThen(Sensitive = 2, 'IndexText', 'IndexStr'), Subject]), TRuleConfidence.High, Fixes);
   end;
 
@@ -1260,7 +1299,7 @@ end;
 
 function TPreferCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(PreferCaseRuleId, TRuleSeverity.Hint, 'if-Kette lässt sich als case schreiben',
+  Result := TRuleDescriptor.Create(PreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text,
     True);
 end;
 
@@ -1342,8 +1381,7 @@ var
       mFixes := [TRuleFix.Create(mConversion.Title, [mConversion.Edit])];
     end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode[0].EndPos),
-      Format('%s Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.',
-      [TStringIfChainRule.CountWord(mBranches)]), TRuleConfidence.High, mFixes);
+      cTexts[TIdiomsText.IfChain].Fmt([TStringIfChainRule.CountWord(mBranches)]), TRuleConfidence.High, mFixes);
   end;
 
 var
@@ -1385,5 +1423,8 @@ begin
   ARegistry.Register(TStringIfChainRule.Create);
   ARegistry.Register(TPreferCaseRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Idioms', cTexts);
 
 end.

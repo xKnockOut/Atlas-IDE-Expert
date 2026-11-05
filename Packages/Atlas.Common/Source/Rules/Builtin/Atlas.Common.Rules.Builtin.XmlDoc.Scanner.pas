@@ -120,7 +120,39 @@ implementation
 
 uses
   System.StrUtils,
-  System.Character;
+  System.Character,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TXmlDocScannerText = (NotWellFormed, EscapeLt, WriteLt, WriteAmp, EscapeAmp, UndefinedEntity, NotClosedWith,
+    AddName, QuoteMissing, Unquoted, AddQuotes, BrNotClosed, WriteBr, TagNotClosed, WriteAsText, AddClosing,
+    NoOpening, RemoveClosing);
+
+const
+  cTexts: array[TXmlDocScannerText] of TAtlasText = (
+    (De: 'Doku-Kommentar ist kein wohlgeformtes XML: '; En: 'Doc comment is not well-formed XML: '),
+    (De: '''<'' muss &lt; heißen.'; En: '''<'' must be written &lt;.'),
+    (De: '''<'' als &lt; schreiben'; En: 'Write ''<'' as &lt;'),
+    (De: '''&'' als &amp; schreiben'; En: 'Write ''&'' as &amp;'),
+    (De: '''&'' muss &amp; heißen.'; En: '''&'' must be written &amp;.'),
+    (De: '&%s; ist in XML nicht definiert.'; En: '&%s; is not defined in XML.'),
+    (De: '%s wird nicht mit %s geschlossen.'; En: '%s is not closed with %s.'),
+    (De: '%s ergänzen'; En: 'Add %s'),
+    (De: 'Anführungszeichen hinter %s fehlt.'; En: 'Quotation mark after %s is missing.'),
+    (De: 'Wert von %s ohne Anführungszeichen.'; En: 'Value of %s without quotation marks.'),
+    (De: 'Anführungszeichen setzen'; En: 'Add quotation marks'),
+    (De: '<br> wird nicht geschlossen.'; En: '<br> is not closed.'),
+    (De: '<br/> schreiben'; En: 'Write <br/>'),
+    (De: '<%s> wird nicht geschlossen.'; En: '<%s> is not closed.'),
+    (De: '<%s> als Text schreiben'; En: 'Write <%s> as text'),
+    (De: '</%s> ergänzen'; En: 'Add </%s>'),
+    (De: '</%s> hat kein öffnendes Tag.'; En: '</%s> has no opening tag.'),
+    (De: '</%s> entfernen'; En: 'Remove </%s>'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Tags der XML-Dokumentation: Nicht geschlossen bekommen sie ein Endtag, fremde Namen werden zu Text.
@@ -164,7 +196,7 @@ class function TDocFlaw.Create(AStart, AStop: Integer; const AMessage, AFixTitle
 begin
   Result.Start := AStart;
   Result.Stop := AStop;
-  Result.Message := 'Doku-Kommentar ist kein wohlgeformtes XML: ' + AMessage;
+  Result.Message := cTexts[TXmlDocScannerText.NotWellFormed].Text + AMessage;
   Result.Code := '';
   Result.FixTitle := AFixTitle;
   Result.Replacements := AReplacements;
@@ -271,7 +303,8 @@ procedure TDocScanner.EscapeLess(AIndex: Integer; const ACode: string);
 var
   mFlaw: TDocFlaw;
 begin
-  mFlaw := TDocFlaw.Create(AIndex, AIndex + 1, '''<'' muss &lt; heißen.', '''<'' als &lt; schreiben',
+  mFlaw := TDocFlaw.Create(AIndex, AIndex + 1, cTexts[TXmlDocScannerText.EscapeLt].Text,
+    cTexts[TXmlDocScannerText.WriteLt].Text,
     [TDocReplacement.Create(AIndex, AIndex + 1, '&lt;')], False);
   mFlaw.Code := ACode;
   AddFlaw(mFlaw);
@@ -285,7 +318,7 @@ end;
 
 procedure TDocScanner.EscapeAmpersand(AIndex: Integer; const AMessage: string);
 begin
-  AddFlaw(TDocFlaw.Create(AIndex, AIndex + 1, AMessage, '''&'' als &amp; schreiben',
+  AddFlaw(TDocFlaw.Create(AIndex, AIndex + 1, AMessage, cTexts[TXmlDocScannerText.WriteAmp].Text,
     [TDocReplacement.Create(AIndex, AIndex + 1, '&amp;')], False));
 end;
 
@@ -341,14 +374,14 @@ begin
   end;
   if mStop = 0 then
   begin
-    EscapeAmpersand(AIndex, '''&'' muss &amp; heißen.');
+    EscapeAmpersand(AIndex, cTexts[TXmlDocScannerText.EscapeAmp].Text);
     Inc(AIndex);
     Exit;
   end;
   mName := Copy(FXml, AIndex + 1, mStop - AIndex - 2);
   if not mNumeric and (IndexText(mName, XmlEntities) < 0) then
   begin
-    EscapeAmpersand(AIndex, Format('&%s; ist in XML nicht definiert.', [mName]));
+    EscapeAmpersand(AIndex, cTexts[TXmlDocScannerText.UndefinedEntity].Fmt([mName]));
   end;
   AIndex := mStop;
 end;
@@ -360,8 +393,9 @@ begin
   Close := PosEx(AClose, FXml, AIndex + Length(AOpen));
   if Close = 0 then
   begin
-    AddFlaw(TDocFlaw.Create(AIndex, AIndex + Length(AOpen), Format('%s wird nicht mit %s geschlossen.',
-      [AOpen, AClose]), Format('%s ergänzen', [AClose]), [TDocReplacement.Create(FLength + 1, FLength + 1, AClose)],
+    AddFlaw(TDocFlaw.Create(AIndex, AIndex + Length(AOpen), cTexts[TXmlDocScannerText.NotClosedWith].Fmt(
+      [AOpen, AClose]), cTexts[TXmlDocScannerText.AddName].Fmt([AClose]), [TDocReplacement.Create(FLength + 1, FLength +
+        1, AClose)],
       True));
     AIndex := FLength + 1;
   end
@@ -400,7 +434,7 @@ begin
   mStop := PosEx(FXml[AIndex], FXml, mStart);
   if mStop = 0 then
   begin
-    AddFlaw(TDocFlaw.Create(mStart - 1, mStart, Format('Anführungszeichen hinter %s fehlt.', [AAttribute.Name]), '',
+    AddFlaw(TDocFlaw.Create(mStart - 1, mStart, cTexts[TXmlDocScannerText.QuoteMissing].Fmt([AAttribute.Name]), '',
       nil, True));
     Exit(TTagOutcome.Fatal);
   end;
@@ -424,8 +458,9 @@ begin
   begin
     Exit(TTagOutcome.Malformed);
   end;
-  AddFlaw(TDocFlaw.Create(mStart, AIndex, Format('Wert von %s ohne Anführungszeichen.', [AAttribute.Name]),
-    'Anführungszeichen setzen', [TDocReplacement.Create(mStart, mStart, '"'), TDocReplacement.Create(AIndex, AIndex,
+  AddFlaw(TDocFlaw.Create(mStart, AIndex, cTexts[TXmlDocScannerText.Unquoted].Fmt([AAttribute.Name]),
+    cTexts[TXmlDocScannerText.AddQuotes].Text, [TDocReplacement.Create(mStart, mStart, '"'),
+      TDocReplacement.Create(AIndex, AIndex,
     '"')], False));
   SetAttributeValue(AAttribute, FXml, mStart, AIndex);
   Result := TTagOutcome.Pending;
@@ -562,21 +597,25 @@ begin
   end;
   if SameText(Element.Name, 'br') then
   begin
-    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop, '<br> wird nicht geschlossen.', '<br/> schreiben',
+    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop, cTexts[TXmlDocScannerText.BrNotClosed].Text,
+      cTexts[TXmlDocScannerText.WriteBr].Text,
       [TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop - 1, '/')], True));
   end
   else if (Length(Element.Attributes) = 0) and not Element.HasChildren and
     ((IndexText(Element.Name, DocTags) < 0) or (IndexText(Element.Name, AttributeTags) >= 0)) then
   begin
     // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
-    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]),
-      Format('<%s> als Text schreiben', [Element.Name]), [TDocReplacement.Create(Element.Start, Element.Start + 1,
+    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop,
+      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([Element.Name]),
+      cTexts[TXmlDocScannerText.WriteAsText].Fmt([Element.Name]), [TDocReplacement.Create(Element.Start, Element.Start +
+        1,
       '&lt;'), TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop, '&gt;')], True));
   end
   else
   begin
-    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]),
-      Format('</%s> ergänzen', [Element.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
+    AddFlaw(TDocFlaw.Create(Element.Start, Element.OpenStop,
+      cTexts[TXmlDocScannerText.TagNotClosed].Fmt([Element.Name]),
+      cTexts[TXmlDocScannerText.AddClosing].Fmt([Element.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
       Format('</%s>', [Element.Name]))], True));
   end;
 end;
@@ -616,8 +655,8 @@ begin
   end;
   if Level < 0 then
   begin
-    AddFlaw(TDocFlaw.Create(AIndex, Index + 1, Format('</%s> hat kein öffnendes Tag.', [Name]),
-      Format('</%s> entfernen', [Name]), [TDocReplacement.Create(AIndex, Index + 1, '')], True));
+    AddFlaw(TDocFlaw.Create(AIndex, Index + 1, cTexts[TXmlDocScannerText.NoOpening].Fmt([Name]),
+      cTexts[TXmlDocScannerText.RemoveClosing].Fmt([Name]), [TDocReplacement.Create(AIndex, Index + 1, '')], True));
     AIndex := FLength + 1;
     Exit;
   end;
@@ -693,5 +732,8 @@ begin
     CloseOpen;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.XmlDoc.Scanner', cTexts);
 
 end.
