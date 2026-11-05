@@ -23,6 +23,9 @@
 // Ohne begin (if X then Foo;) gibt es keinen Block und keine Besitzer. Routinenköpfe
 // zählen nur außerhalb von Blöcken (nicht in Klassen, nicht als Prozedurtyp nach
 // "=", ":", "to", "of"); forward/external und implementation verwerfen offene Köpfe.
+// Lokale Routinen (#1788): Jedes Token und jeder Block trägt die Verschachtelung seiner Routine
+// (Routine, 0 = Routine auf oberster Ebene). Zwischen Kopf und Rumpf einer Routine stehende Köpfe sind
+// lokale Routinen; Köpfe im interface-Teil haben keinen Rumpf und zählen nicht. Depth bleibt davon unberührt.
 
 interface
 
@@ -41,6 +44,8 @@ type
     IsWord: Boolean;
     /// <summary>Schlüsselwort der Anweisung, zu der der Block gehört (if, then, for, procedure …, #653).</summary>
     Owner: Boolean;
+    /// <summary>Verschachtelung der Routine, in der das Token steht; 0 = Routine auf oberster Ebene (#1788).</summary>
+    Routine: Integer;
   end;
 
   /// <summary>Gepaarter Block (begin … end, repeat … until, class … end …), 0-basiert.</summary>
@@ -53,6 +58,10 @@ type
     /// <summary>Erstes Besitzer-Schlüsselwort vor dem Öffner (if, else, for, procedure …), sonst der Öffner (#653).</summary>
     OwnerLine: Integer;
     OwnerCharacter: Integer;
+    /// <summary>Verschachtelung der Routine, in der der Block steht; 0 = oberste Ebene (#1788).</summary>
+    Routine: Integer;
+    /// <summary>Rumpf einer Routine (begin bzw. asm nach dem Kopf, #1788).</summary>
+    IsRoutine: Boolean;
   end;
 
   /// <summary>Gefärbter Teil eines abgeleiteten Texts, z. B. des mitlaufenden Kopfs (#1229); Start 1-basiert.
@@ -62,6 +71,8 @@ type
     Length: Integer;
     Depth: Integer;
     Unpaired: Boolean;
+    /// <summary>Verschachtelung der Routine (#1788).</summary>
+    Routine: Integer;
   end;
 
   TAtlasPairs = class
@@ -87,6 +98,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Defaults;
 
 type
@@ -106,6 +118,8 @@ type
     Owners: TArray<Integer>;
     OwnerLine: Integer;
     OwnerCharacter: Integer;
+    Routine: Integer;
+    IsRoutine: Boolean;
   end;
 
   /// <summary>Zerlegt den Text in Klammern, Wörter und Satzzeichen; Strings, Kommentare und Zahlen zählen nicht.
@@ -144,9 +158,13 @@ type
     FClosed: TList<TAtlasPairBlock>;
     /// <summary>Token-Indizes von Routinenköpfen, deren Rumpf noch kommt (#653).</summary>
     FHeaders: TList<Integer>;
+    /// <summary>Im interface-Teil: Routinenköpfe dort haben keinen Rumpf (#1788).</summary>
+    FInInterface: Boolean;
     function Emit(AIndex, ADepth: Integer; AUnpaired: Boolean): Integer;
     function TextAt(AIndex: Integer): string;
     function TopWord: string;
+    /// <summary>Verschachtelung der Routine an der aktuellen Stelle (#1788).</summary>
+    function CurrentRoutine: Integer;
     function AfterParens(AIndex: Integer): string;
     procedure CloseBlock(AIndex: Integer);
     function Opens(AIndex: Integer; const AWord: string): Boolean;
@@ -414,6 +432,7 @@ begin
   mPair.Unpaired := AUnpaired;
   mPair.IsWord := FTokens[AIndex].IsWord;
   mPair.Owner := False;
+  mPair.Routine := CurrentRoutine;
   Result := FResults.Add(mPair);
 end;
 
@@ -423,6 +442,20 @@ begin
   if (AIndex >= 0) and (AIndex <= High(FTokens)) and not FTokens[AIndex].Plain then
   begin
     Result := LowerCase(FTokens[AIndex].Text);
+  end;
+end;
+
+function TPairAnalyzer.CurrentRoutine: Integer;
+begin
+  // Im Block gilt die Routine des äußersten Blocks; dazwischen ist der letzte offene Kopf die Routine, deren
+  // Deklarationsteil gerade läuft, jeder Kopf davor eine umschließende Routine.
+  if FBlocks.Count > 0 then
+  begin
+    Result := FBlocks.Last.Routine;
+  end
+  else
+  begin
+    Result := Max(0, FHeaders.Count - 1);
   end;
 end;
 
@@ -470,6 +503,7 @@ end;
 procedure TPairAnalyzer.CloseBlock(AIndex: Integer);
 var
   mBlock: TAtlasPairBlock;
+  mClose: Integer;
 begin
   mBlock.OpenLine := FResults.List[FBlocks.Last.Index].Line;
   mBlock.OpenCharacter := FResults.List[FBlocks.Last.Index].Character;
@@ -477,10 +511,14 @@ begin
   mBlock.CloseCharacter := FTokens[AIndex].Character;
   mBlock.OwnerLine := FBlocks.Last.OwnerLine;
   mBlock.OwnerCharacter := FBlocks.Last.OwnerCharacter;
+  mBlock.Routine := FBlocks.Last.Routine;
+  mBlock.IsRoutine := FBlocks.Last.IsRoutine;
   FBlocks.Delete(FBlocks.Count - 1);
   mBlock.Depth := FBlocks.Count;
   FClosed.Add(mBlock);
-  Emit(AIndex, FBlocks.Count, False);
+  // Erst ausgeben, dann die Liste lesen: Emit kann das Array der Liste neu anlegen.
+  mClose := Emit(AIndex, FBlocks.Count, False);
+  FResults.List[mClose].Routine := mBlock.Routine;
 end;
 
 function TPairAnalyzer.Opens(AIndex: Integer; const AWord: string): Boolean;
@@ -518,6 +556,7 @@ var
 begin
   mAdded := Emit(AIndex, ADepth, False);
   FResults.List[mAdded].Owner := True;
+  FResults.List[mAdded].Routine := AOpen.Routine;
   AOpen.Owners := AOpen.Owners + [mAdded];
   if (FTokens[AIndex].Line < AOpen.OwnerLine) or
     ((FTokens[AIndex].Line = AOpen.OwnerLine) and (FTokens[AIndex].Character < AOpen.OwnerCharacter)) then
@@ -622,6 +661,7 @@ var
 begin
   mFound := FHeaders.Last;
   FHeaders.Delete(FHeaders.Count - 1);
+  AOpen.IsRoutine := True;
   AddOwner(AOpen, mFound, ADepth);
   if TextAt(mFound - 1) = 'class' then
   begin
@@ -686,11 +726,21 @@ procedure TPairAnalyzer.TrackHeaders(AIndex: Integer; const AWord: string);
 begin
   if IsRoutineHeader(AIndex, AWord) then
   begin
-    FHeaders.Add(AIndex);
+    if not FInInterface then
+    begin
+      FHeaders.Add(AIndex);
+    end;
   end
   else if AWord = 'implementation' then
   begin
     FHeaders.Clear;
+    FInInterface := False;
+  end
+  // Abschnitt interface der Unit, nicht der Typ "IFoo = interface" (#1788).
+  else if (AWord = 'interface') and (FBlocks.Count = 0) and not IsOneOf(TextAt(AIndex - 1), ['=', 'packed']) then
+  begin
+    FHeaders.Clear;
+    FInInterface := True;
   end
   else if IsOneOf(AWord, ['forward', 'external']) and (FBlocks.Count = 0) and (FHeaders.Count > 0) then
   begin
@@ -726,6 +776,8 @@ var
   mOpen: TOpen;
 begin
   mOpen.Word := AWord;
+  mOpen.Routine := CurrentRoutine;
+  mOpen.IsRoutine := False;
   mOpen.Index := Emit(AIndex, FBlocks.Count, False);
   mOpen.Owners := nil;
   mOpen.OwnerLine := FTokens[AIndex].Line;
@@ -868,6 +920,7 @@ begin
     Span.Length := Token.Length;
     Span.Depth := Token.Depth;
     Span.Unpaired := Token.Unpaired;
+    Span.Routine := Token.Routine;
     // Hinter einem gekürzten „(…)“ steht anderer Text: nur, was dort wirklich steht.
     if (Span.Start < 1) or (Span.Start + Span.Length - 1 > System.Length(AText)) or
       (Copy(AText, Span.Start, Span.Length) <> Copy(ALine, Token.Character + 1, Token.Length)) then

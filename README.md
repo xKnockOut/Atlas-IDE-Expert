@@ -45,6 +45,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
+- **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
 - **Code queries** such as `classes where inherits TForm and methods > 40`
 - **Hotspots, call diagram, unit relations** and the path between two symbols
