@@ -37,6 +37,7 @@ type
 implementation
 
 uses
+  System.Classes,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,

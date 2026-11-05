@@ -77,8 +77,14 @@ const
 { TAtlasRulesSettingsDialog }
 
 function TAtlasRulesSettingsDialog.RuleGroups: TArray<string>;
+var
+  mIndex: Integer;
 begin
-  Result := TAtlasRuleTable.GroupIds;
+  SetLength(Result, Length(TAtlasRuleTable.GroupIds));
+  for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
+  begin
+    Result[mIndex] := TAtlasRuleTable.GroupIds[mIndex];
+  end;
 end;
 
 function TAtlasRulesSettingsDialog.RuleGroupCaption(const AGroup: string): string;

@@ -106,6 +106,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.TextFile,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
@@ -120,6 +121,7 @@ uses
   Atlas.IDE.Problems.Window,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Settings.Project,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
