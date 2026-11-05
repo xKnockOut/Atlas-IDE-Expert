@@ -86,6 +86,7 @@ implementation
 
 uses
   Winapi.Windows,
+  System.JSON,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Diagnostics.Guard,
@@ -144,6 +145,11 @@ begin
     function: TLspSession
     begin
       Result := ReadySession;
+    end;
+  Result.RunCommandAsync :=
+    procedure(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>)
+    begin
+      RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end;
   Result.Diagnose :=
     procedure(AMessage: string)
