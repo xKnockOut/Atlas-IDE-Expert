@@ -1,4 +1,10 @@
-﻿## Knopf im Fenster „Atlas-Suche: Ersetzen“ (05.11.2026, Branch `claude/project-thread-o95q59` auf `Pilot-2.0.0-beta.1`)
+﻿## Formatieren mit Markierung im Protokoll (05.11.2026, Branch `claude/project-thread-yp1u30` auf `Pilot-2.0.0-beta.1`)
+- Anlass: Marco vermutet, dass der Knopf „Formatieren“ der Editorleiste trotz Markierung die ganze Unit formatiert. Server (`TFormatter.Edits` mit Zeilenbereich, Tests `FormatsOnlyRange`, `RangeTouchesOnlyItsLines`) und Plugin (`TAtlasEditorCommandContext.Current` liest `AView.Block`) sehen auf dem Papier richtig aus; Verdacht: Der Block ist leer, wenn der Befehl nach dem Klick (`Later` in `Atlas.IDE.EditorToolbar.Service`) läuft.
+- Neu: `Atlas.Core.Editor.FormatLog` (`TAtlasFormatLog.Request`/`Answer`), aufgerufen in `TAtlasEditorServerCommands.FormatCode`. Zwei Zeilen im Protokoll, nur Zahlen (kein Dateiname, kein Quelltext): `Format: block valid=… size=…, selection lines a-b -> rangeFormatting` bzw. `no selection -> formatting (whole file)`, danach `Format: n edits, lines a-b, k outside selection`.
+- Geprüft: FPC trunk `Atlas.Core.Editor.FormatLog.Tests` 7/7; Atlas `--check` mit allen `metric-*` an: 0 Befunde in den 3 Units. Nicht mit Delphi übersetzt.
+- Offen: Marco formatiert mit Markierung über Knopf und über Strg+Umschalt+Alt+L und schickt die beiden `Format:`-Zeilen; danach die eigentliche Ursache beheben.
+
+## Knopf im Fenster „Atlas-Suche: Ersetzen“ (05.11.2026, Branch `claude/project-thread-o95q59` auf `Pilot-2.0.0-beta.1`)
 - Ursache: `TAtlasSearchReplaceFrame` hatte Kopfzeile und Hinweis (alTop) und den Knopf (alRight) im selben Panel mit fester Höhe 52. Die VCL richtet alTop vor alRight aus; dem Knopf blieb der Rest (wenige Pixel). Regel für Frames: Knopf mit alRight nie neben alTop-Geschwistern; eigene Zeile, deren Höhe aus dem Knopf folgt.
 - Jetzt: Kopfzeile alTop auf dem Frame, darunter Panel `FBar` (Höhe = Knopf + Ränder) mit Hinweis (alClient, zentriert) und Knopf (alRight). Test `ReplaceButtonHasItsOwnRow`. Die leere Liste nach „Ausgewählte ersetzen“ ist gewollt (Ergebnisse verworfen, Bericht im Hinweis).
 - Offen: Delphi-Build, Handtests ER19, ER20.
