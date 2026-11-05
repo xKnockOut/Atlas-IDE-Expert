@@ -65,6 +65,7 @@ contains
   Atlas.Core.Build.CompilerSwitches in 'Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas',
   Atlas.UI.Build.SwitchesFrame in 'Source\UI\Build\Atlas.UI.Build.SwitchesFrame.pas' {AtlasBuildSwitchesFrame: TFrame},
   Atlas.IDE.Build.SwitchesWindow in 'Source\IDE\Build\Atlas.IDE.Build.SwitchesWindow.pas',
-  Atlas.IDE.Build.CompilerSwitches in 'Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas';
+  Atlas.IDE.Build.CompilerSwitches in 'Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas',
+  Atlas.UI.Build.SettingsSection in 'Source\UI\Build\Atlas.UI.Build.SettingsSection.pas';
 
 end.

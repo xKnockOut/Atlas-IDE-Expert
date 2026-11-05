@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Settings.Page.Parts;
 
 // Teile der Optionsseite „Atlas“ (#227) je Bereich: legt sie in der Reihenfolge der Reiter an und baut ihre
-// Elemente. Die Seite selbst kennt nur den Ablauf (Bindung, Abschnitte der Module, Baum).
+// Elemente. Die Seite selbst kennt nur den Ablauf (Bindung, Abschnitte der Module, Baum). Base baut nur seine
+// eigenen Einstellungen; die der Module (Debugger, Tests, Suche …) bringen die Module als Abschnitte mit (#1456).
 
 interface
 
@@ -20,21 +21,17 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Page.Build,
   Atlas.UI.Settings.Page.Colors,
   Atlas.UI.Settings.Page.Commands,
   Atlas.UI.Settings.Page.Completion,
-  Atlas.UI.Settings.Page.Debug,
   Atlas.UI.Settings.Page.EditorCode,
   Atlas.UI.Settings.Page.EditorView,
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Index,
-  Atlas.UI.Settings.Page.Release,
   Atlas.UI.Settings.Page.Robustness,
   Atlas.UI.Settings.Page.Rules,
   Atlas.UI.Settings.Page.Startup,
-  Atlas.UI.Settings.Page.Tasks,
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Page.Vcs,
@@ -57,10 +54,7 @@ begin
   APage.AddPart(TAtlasSettingsColorsPart.Create(APage));
   APage.AddPart(TAtlasSettingsIndexPart.Create(APage));
   APage.AddPart(TAtlasSettingsBuildPart.Create(APage));
-  APage.AddPart(TAtlasSettingsTasksPart.Create(APage));
   APage.AddPart(TAtlasSettingsRulesPart.Create(APage));
-  APage.AddPart(TAtlasSettingsReleasePart.Create(APage));
-  APage.AddPart(TAtlasSettingsDebugPart.Create(APage));
   APage.AddPart(TAtlasSettingsCommandsPart.Create(APage));
   APage.AddPart(TAtlasSettingsRobustnessPart.Create(APage));
   APage.AddPart(TAtlasSettingsStartupPart.Create(APage));
@@ -95,23 +89,11 @@ begin
   APage.Part<TAtlasSettingsColorsPart>.Build;
   APage.Part<TAtlasSettingsIndexPart>.Build;
   APage.Part<TAtlasSettingsBuildPart>.Build;
-  APage.Part<TAtlasSettingsTasksPart>.Build;
   APage.Part<TAtlasSettingsRulesPart>.Build;
-  APage.Part<TAtlasSettingsReleasePart>.Build;
-  APage.Part<TAtlasSettingsDebugPart>.Build;
-  APage.Part<TAtlasSettingsDebugPart>.Build2;
   APage.Part<TAtlasSettingsCommandsPart>.Build;
   APage.Part<TAtlasSettingsCommandsPart>.Build2;
   APage.Part<TAtlasSettingsRobustnessPart>.Build;
   APage.Part<TAtlasSettingsStartupPart>.Build;
-  // Willkommensseite (#753): Base zeigt nur den Modulschalter; die Einstellungen der Seite baut das Modul als
-  // Abschnitt (#1456, Atlas.UI.Welcome.SettingsSection).
-  APage.AddSheet(TAtlasTextId.SettingsTabWelcome);
-  APage.Part<TAtlasSettingsModulesPart>.Add('WelcomePage');
-  // Issue-Tracker (#1280): eigener Bereich; die Willkommensseite schaltet nur, ob „Meine Issues“ erscheint.
-  // Die Einstellungen darin baut das Modul Tracker als Abschnitt (#1455, Atlas.UI.Tracker.SettingsSection).
-  APage.AddSheet(TAtlasTextId.SettingsTabIssues);
-  APage.Part<TAtlasSettingsModulesPart>.Add('IssuesEnabled');
   APage.Part<TAtlasSettingsVcsPart>.Build;
   APage.Part<TAtlasSettingsVcsToolsPart>.Build;
   APage.Part<TAtlasSettingsVcsProjectPart>.Build;

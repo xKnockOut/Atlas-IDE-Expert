@@ -39,6 +39,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Designer.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
@@ -113,6 +114,13 @@ begin
   TAtlasIdeDesignerBar.ApplySettings;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasDesignerSettingsSection.ProvideIn(GScope);
+end;
+
 procedure TAtlasDesignerModule.ThemeChanged;
 begin
   TAtlasIdeDesignerBar.ThemeChanged;
@@ -158,6 +166,7 @@ begin
   end;
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 

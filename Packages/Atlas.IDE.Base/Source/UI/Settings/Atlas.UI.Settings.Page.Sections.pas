@@ -1,8 +1,9 @@
 ﻿unit Atlas.UI.Settings.Page.Sections;
 
 // Abschnitte der Module auf der Optionsseite „Atlas“ (#1455, ADR 0017 Entscheidung 3): Jeder
-// IAtlasSettingsSectionProvider der Registry liefert einen eigenen Abschnitt, den der Teil in den Reiter seines
-// Bereichs baut (Bausteine über IAtlasSettingsSectionHost). Geht ein Modul, schließt er seinen Abschnitt; seine
+// IAtlasSettingsSectionProvider der Registry liefert einen eigenen Abschnitt, den der Teil in den Reiter seiner
+// Seite (x-page) bzw. seines Bereichs (x-area) baut (Bausteine über IAtlasSettingsSectionHost). Reiter, die erst für
+// Abschnitte entstehen, folgen der Reihenfolge des Katalogs. Geht ein Modul, schließt er seinen Abschnitt; seine
 // Werte bleiben erhalten.
 
 interface
@@ -33,11 +34,21 @@ type
     FAreas: TArray<TPair<string, Integer>>;
     FWatch: IAtlasRegistryListener;
     FWatchRegistration: IAtlasRegistration;
-    /// <summary>Reiter des Bereichs AArea (x-area); -1 ohne.</summary>
+    /// <summary>Erster Reiter mit einer Einstellung der Seite (AByPage) bzw. des Bereichs AArea; -1 ohne.</summary>
+    function SheetWith(const AArea: string; AByPage: Boolean): Integer;
+    /// <summary>Reiter der Seite bzw. des Bereichs AArea (x-page oder x-area); -1 ohne.</summary>
     function SheetOfArea(const AArea: string): Integer;
-    procedure AddSection(const AProvider: IAtlasSettingsSectionProvider);
+    /// <summary>Beschriftung eines neuen Reiters für AArea: Bereich aus dem Katalog, sonst Name der Seite.</summary>
+    function AreaSheetCaption(const AArea: string): string;
+    function CreateSection(const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
     procedure AddBuilt(const AProvider: IAtlasSettingsSectionProvider; const ASection: IAtlasSettingsSection);
-    procedure AddBinding(const AName: string; AControl: TControl; const AValues: TArray<string>);
+    procedure AddBinding(const AName: string; AControl: TControl; AKind: TAtlasSettingsBindingKind;
+      const AValues: TArray<string>);
+    /// <summary>Name der Plugin-Einstellung zum Schlüssel AKey (x-key); EAtlasSettingsKey ohne.</summary>
+    function NameOf(const AKey: string): string;
+    /// <summary>Eigenes Element AControl eines Abschnitts an AKeys (x-key): Punkt nur mit AMark, Zurücksetzen,
+    /// Unterpunkt, Sperre und Sprungziel.</summary>
+    procedure MarkOwn(AControl: TControl; const AKeys: TArray<string>; AMark: Boolean);
     function Values(const AStore: IAtlasMemorySettingsStore): IAtlasSettingsValues;
     /// <summary>Abschnitte abgemeldeter Module schließen (Regel 3).</summary>
     procedure DropMissing;
@@ -65,7 +76,9 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.StoreValues,
+  Atlas.Core.Settings.PageNames,
   Atlas.Core.Modules.Registry,
   Atlas.UI.Strings,
   Atlas.UI.Settings.ChoiceBox;
@@ -94,15 +107,41 @@ type
     procedure AddTitle(const ACaption: string);
     function AddHint(const AText: string; AHeight: Integer): TControl;
     function AddSwitch(const AKey, ACaption: string): TControl;
+    function AddModuleSwitch(const AKey: string): TControl;
     function AddNumber(const AKey, ACaption: string): TControl;
     function AddText(const AKey, ACaption: string): TControl;
     function AddChoice(const AKey, ACaption: string; const ACaptions, AValues: TArray<string>): TControl;
+    function AddKey(const AKey, ACaption: string): TControl;
+    function AddOwnCheck(const ACaption: string; const AKeys: TArray<string>): TControl;
+    function AddOwnNumber(const ACaption: string; const AKeys: TArray<string>): TControl;
+    function AddOwnText(const ACaption: string; const AKeys: TArray<string>): TControl;
+    function AddOwnChoice(const ACaption: string; const ACaptions, AKeys: TArray<string>): TControl;
+    procedure ShareKeys(AControl: TControl; const AKeys: TArray<string>);
     function AddRow(AHeight: Integer; const AKeys: TArray<string>): TWinControl;
     procedure Attach(ARow, AAnchor: TControl);
     procedure Changed;
     procedure Allow(AControl: TControl; AEnabled: Boolean);
     function ListReady(AControl: TWinControl): Boolean;
     function Reveal(const AKey: string): Boolean;
+    function Shows(const AKey: string): Boolean;
+  end;
+
+  /// <summary>Abschnitte vor dem Aufbau mit ihrem Anbieter; Order liefert die Reihenfolge des Aufbaus: nach der
+  /// ersten Einstellung ihres Reiters im Katalog, bei Gleichstand in der Reihenfolge der Anmeldung.</summary>
+  TAtlasPendingSections = class
+  private
+    FCatalog: TAtlasSettingsCatalog;
+    FRanks: TArray<Integer>;
+    FProviders: TArray<IAtlasSettingsSectionProvider>;
+    FSections: TArray<IAtlasSettingsSection>;
+    function RankOf(const AArea: string): Integer;
+  public
+    constructor Create(ACatalog: TAtlasSettingsCatalog);
+    /// <summary>Merkt ASection; ohne Abschnitt (Anbieter gescheitert) nichts.</summary>
+    procedure Add(const AProvider: IAtlasSettingsSectionProvider; const ASection: IAtlasSettingsSection);
+    function Order: TArray<Integer>;
+    property Providers: TArray<IAtlasSettingsSectionProvider> read FProviders;
+    property Sections: TArray<IAtlasSettingsSection> read FSections;
   end;
 
   /// <summary>Hört für die Seite auf die Registry: Geht ein Modul, schließt die Seite seinen Abschnitt (Regel 2).
@@ -115,6 +154,57 @@ type
     procedure Detach;
     procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
+
+{ TAtlasPendingSections }
+
+constructor TAtlasPendingSections.Create(ACatalog: TAtlasSettingsCatalog);
+begin
+  inherited Create;
+  FCatalog := ACatalog;
+end;
+
+function TAtlasPendingSections.RankOf(const AArea: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FCatalog.Count - 1 do
+  begin
+    if SameText(FCatalog[mIndex].Page, AArea) or SameText(FCatalog[mIndex].Area, AArea) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := MaxInt;
+end;
+
+procedure TAtlasPendingSections.Add(const AProvider: IAtlasSettingsSectionProvider;
+  const ASection: IAtlasSettingsSection);
+begin
+  if ASection = nil then
+  begin
+    Exit;
+  end;
+  FProviders := FProviders + [AProvider];
+  FSections := FSections + [ASection];
+  FRanks := FRanks + [RankOf(ASection.AreaId)];
+end;
+
+function TAtlasPendingSections.Order: TArray<Integer>;
+var
+  mIndex, mPosition: Integer;
+begin
+  // Einfügen nach Rang; gleicher Rang bleibt in der Reihenfolge der Anmeldung (stabil).
+  Result := nil;
+  for mIndex := 0 to High(FSections) do
+  begin
+    mPosition := Length(Result);
+    while (mPosition > 0) and (FRanks[Result[mPosition - 1]] > FRanks[mIndex]) do
+    begin
+      Dec(mPosition);
+    end;
+    Insert(mIndex, Result, mPosition);
+  end;
+end;
 
 { TAtlasSettingsSectionHost }
 
@@ -133,11 +223,7 @@ end;
 
 function TAtlasSettingsSectionHost.NameOf(const AKey: string): string;
 begin
-  Result := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
-  if Result = '' then
-  begin
-    raise EAtlasSettingsKey.CreateFmt(cSectionKeyMissing, [AKey]);
-  end;
+  Result := FPart.NameOf(AKey);
 end;
 
 procedure TAtlasSettingsSectionHost.AddTitle(const ACaption: string);
@@ -168,7 +254,31 @@ begin
   end;
   mName := NameOf(AKey);
   Result := FPage.AddCheck(ACaption);
-  FPart.AddBinding(mName, Result, nil);
+  FPart.AddBinding(mName, Result, sbkCheck, nil);
+end;
+
+function TAtlasSettingsSectionHost.AddModuleSwitch(const AKey: string): TControl;
+var
+  mIndex: Integer;
+  mCaption: string;
+begin
+  Result := nil;
+  if FPage = nil then
+  begin
+    Exit;
+  end;
+  mIndex := FPage.Catalog.IndexOfName(NameOf(AKey));
+  // Ein Schlüssel, den der Katalog nicht kennt, trägt sich selbst als Beschriftung.
+  mCaption := AKey;
+  if mIndex >= 0 then
+  begin
+    mCaption := FPage.Catalog[mIndex].Caption;
+    if TAtlasStrings.Language = TAtlasLanguage.English then
+    begin
+      mCaption := FPage.Catalog[mIndex].CaptionEn;
+    end;
+  end;
+  Result := AddSwitch(AKey, mCaption);
 end;
 
 function TAtlasSettingsSectionHost.AddNumber(const AKey, ACaption: string): TControl;
@@ -182,7 +292,7 @@ begin
   end;
   mName := NameOf(AKey);
   Result := FPage.AddNumber(ACaption);
-  FPart.AddBinding(mName, Result, nil);
+  FPart.AddBinding(mName, Result, sbkText, nil);
 end;
 
 function TAtlasSettingsSectionHost.AddText(const AKey, ACaption: string): TControl;
@@ -196,7 +306,7 @@ begin
   end;
   mName := NameOf(AKey);
   Result := FPage.AddTextLine(ACaption);
-  FPart.AddBinding(mName, Result, nil);
+  FPart.AddBinding(mName, Result, sbkText, nil);
 end;
 
 function TAtlasSettingsSectionHost.AddChoice(const AKey, ACaption: string;
@@ -215,34 +325,86 @@ begin
   end;
   mName := NameOf(AKey);
   Result := FPage.AddChoice(ACaption, ACaptions);
-  FPart.AddBinding(mName, Result, AValues);
+  FPart.AddBinding(mName, Result, sbkChoice, AValues);
 end;
 
-function TAtlasSettingsSectionHost.AddRow(AHeight: Integer; const AKeys: TArray<string>): TWinControl;
+function TAtlasSettingsSectionHost.AddKey(const AKey, ACaption: string): TControl;
 var
-  mNames: TArray<string>;
-  mKey, mName: string;
+  mName: string;
 begin
   Result := nil;
   if FPage = nil then
   begin
     Exit;
   end;
-  mNames := nil;
-  for mKey in AKeys do
+  mName := NameOf(AKey);
+  Result := FPage.AddKey(ACaption);
+  FPart.AddBinding(mName, Result, sbkShortcut, nil);
+end;
+
+function TAtlasSettingsSectionHost.AddOwnCheck(const ACaption: string; const AKeys: TArray<string>): TControl;
+begin
+  Result := nil;
+  if FPage = nil then
   begin
-    mNames := mNames + [NameOf(mKey)];
+    Exit;
+  end;
+  Result := FPage.AddCheck(ACaption);
+  FPart.MarkOwn(Result, AKeys, True);
+end;
+
+function TAtlasSettingsSectionHost.AddOwnNumber(const ACaption: string; const AKeys: TArray<string>): TControl;
+begin
+  Result := nil;
+  if FPage = nil then
+  begin
+    Exit;
+  end;
+  Result := FPage.AddNumber(ACaption);
+  FPart.MarkOwn(Result, AKeys, True);
+end;
+
+function TAtlasSettingsSectionHost.AddOwnText(const ACaption: string; const AKeys: TArray<string>): TControl;
+begin
+  Result := nil;
+  if FPage = nil then
+  begin
+    Exit;
+  end;
+  Result := FPage.AddTextLine(ACaption);
+  FPart.MarkOwn(Result, AKeys, True);
+end;
+
+function TAtlasSettingsSectionHost.AddOwnChoice(const ACaption: string;
+  const ACaptions, AKeys: TArray<string>): TControl;
+begin
+  Result := nil;
+  if FPage = nil then
+  begin
+    Exit;
+  end;
+  Result := FPage.AddChoice(ACaption, ACaptions);
+  FPart.MarkOwn(Result, AKeys, True);
+end;
+
+procedure TAtlasSettingsSectionHost.ShareKeys(AControl: TControl; const AKeys: TArray<string>);
+begin
+  if (FPage <> nil) and (AControl <> nil) then
+  begin
+    FPart.MarkOwn(AControl, AKeys, False);
+  end;
+end;
+
+function TAtlasSettingsSectionHost.AddRow(AHeight: Integer; const AKeys: TArray<string>): TWinControl;
+begin
+  Result := nil;
+  if FPage = nil then
+  begin
+    Exit;
   end;
   Result := FPage.AddPanel(AHeight);
-  if Length(mNames) > 0 then
-  begin
-    // Die Bindung hängt an der Zeile der Seite, nie an Elementen des Moduls: Die gibt das Modul in Close frei.
-    FPage.Marks.Bind(Result, mNames);
-    for mName in mNames do
-    begin
-      FPage.Bind(mName, Result);
-    end;
-  end;
+  // Die Bindung hängt an der Zeile der Seite, nie an Elementen des Moduls: Die gibt das Modul in Close frei.
+  FPart.MarkOwn(Result, AKeys, True);
 end;
 
 procedure TAtlasSettingsSectionHost.Attach(ARow, AAnchor: TControl);
@@ -285,6 +447,19 @@ begin
   end;
   mName := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
   Result := (mName <> '') and FPage.Reveal(mName);
+end;
+
+function TAtlasSettingsSectionHost.Shows(const AKey: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  if FPage = nil then
+  begin
+    Exit;
+  end;
+  mName := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
+  Result := (mName <> '') and (FPage.ControlOfSetting(mName) <> nil);
 end;
 
 { TAtlasSettingsSectionWatch }
@@ -331,22 +506,49 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasSettingsSectionsPart.SheetOfArea(const AArea: string): Integer;
+function TAtlasSettingsSectionsPart.SheetWith(const AArea: string; AByPage: Boolean): Integer;
 var
   mSheet, mIndex: Integer;
-  mName: string;
+  mName, mValue: string;
 begin
-  // Reiter eines Bereichs: der erste, auf dem eine Einstellung dieses Bereichs (x-area) steht.
   for mSheet := 0 to High(FPage.Boxes) do
   begin
     for mName in FPage.Marks.NamesIn(FPage.Boxes[mSheet]) do
     begin
       mIndex := FPage.Catalog.IndexOfName(mName);
-      if (mIndex >= 0) and SameText(FPage.Catalog[mIndex].Area, AArea) then
+      if mIndex < 0 then
+      begin
+        Continue;
+      end;
+      mValue := FPage.Catalog[mIndex].Area;
+      if AByPage then
+      begin
+        mValue := FPage.Catalog[mIndex].Page;
+      end;
+      if SameText(mValue, AArea) then
       begin
         Exit(mSheet);
       end;
     end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasSettingsSectionsPart.SheetOfArea(const AArea: string): Integer;
+var
+  mSheet: Integer;
+begin
+  // Reiter einer Seite bzw. eines Bereichs: der erste, auf dem eine Einstellung mit dieser Seite (x-page) steht,
+  // sonst der erste mit diesem Bereich (x-area). Zuerst die Seite: „Editor“ ist Seite und Bereich, und
+  // Einstellungen des Bereichs „editor“ stehen auch auf „Allgemein“.
+  Result := SheetWith(AArea, True);
+  if Result < 0 then
+  begin
+    Result := SheetWith(AArea, False);
+  end;
+  if Result >= 0 then
+  begin
+    Exit;
   end;
   for mSheet := 0 to High(FAreas) do
   begin
@@ -362,37 +564,87 @@ procedure TAtlasSettingsSectionsPart.Build;
 var
   mItem: IInterface;
   mProvider: IAtlasSettingsSectionProvider;
+  mPending: TAtlasPendingSections;
+  mIndex: Integer;
 begin
-  // Abschnitte der Module (#1455): in den Reiter ihres Bereichs, hinter die Einstellungen von Base.
-  for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
-  begin
-    if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
+  // Abschnitte der Module (#1455): in den Reiter ihrer Seite, hinter die Einstellungen von Base. Neue Reiter in der
+  // Reihenfolge des Katalogs, nicht in der zufälligen Reihenfolge der Anmeldung.
+  mPending := TAtlasPendingSections.Create(FPage.Catalog);
+  try
+    for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
     begin
-      AddSection(mProvider);
+      if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
+      begin
+        mPending.Add(mProvider, CreateSection(mProvider));
+      end;
     end;
+    for mIndex in mPending.Order do
+    begin
+      AddBuilt(mPending.Providers[mIndex], mPending.Sections[mIndex]);
+    end;
+  finally
+    mPending.Free;
   end;
   FWatch := TAtlasSettingsSectionWatch.Create(Self);
   FWatchRegistration := AtlasModuleRegistry.Subscribe(FWatch);
 end;
 
-procedure TAtlasSettingsSectionsPart.AddSection(const AProvider: IAtlasSettingsSectionProvider);
-var
-  mSection: IAtlasSettingsSection;
+function TAtlasSettingsSectionsPart.CreateSection(const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
 begin
+  Result := nil;
   try
-    mSection := AProvider.CreateSection;
+    Result := AProvider.CreateSection;
   except
     on E: Exception do
     begin
       TAtlasGuard.ReportProvider('settings', E);
-      Exit;
     end;
   end;
-  if mSection = nil then
+end;
+
+function TAtlasSettingsSectionsPart.AreaSheetCaption(const AArea: string): string;
+var
+  mEnglish: Boolean;
+begin
+  mEnglish := TAtlasStrings.Language = TAtlasLanguage.English;
+  if FPage.Catalog.HasArea(AArea) then
+  begin
+    Result := FPage.Catalog.AreaCaption(AArea, mEnglish);
+  end
+  else
+  begin
+    Result := TAtlasSettingsPageNames.Caption(AArea, mEnglish);
+  end;
+end;
+
+function TAtlasSettingsSectionsPart.NameOf(const AKey: string): string;
+begin
+  Result := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
+  if Result = '' then
+  begin
+    raise EAtlasSettingsKey.CreateFmt(cSectionKeyMissing, [AKey]);
+  end;
+end;
+
+procedure TAtlasSettingsSectionsPart.MarkOwn(AControl: TControl; const AKeys: TArray<string>; AMark: Boolean);
+var
+  mNames: TArray<string>;
+  mKey, mName: string;
+begin
+  if Length(AKeys) = 0 then
   begin
     Exit;
   end;
-  AddBuilt(AProvider, mSection);
+  mNames := nil;
+  for mKey in AKeys do
+  begin
+    mNames := mNames + [NameOf(mKey)];
+  end;
+  FPage.Marks.Bind(AControl, mNames, AMark);
+  for mName in mNames do
+  begin
+    FPage.Bind(mName, AControl);
+  end;
 end;
 
 procedure TAtlasSettingsSectionsPart.AddBuilt(const AProvider: IAtlasSettingsSectionProvider;
@@ -402,11 +654,15 @@ var
   mHost: TAtlasSettingsSectionHost;
   mHostRef: IAtlasSettingsSectionHost;
 begin
+  if ASection = nil then
+  begin
+    Exit;
+  end;
   mSheet := SheetOfArea(ASection.AreaId);
   if mSheet < 0 then
   begin
-    // Unbekannter Bereich: eigener Reiter mit der Beschriftung des Katalogs (sonst die Id).
-    FPage.AddSheetCaption(FPage.Catalog.AreaCaption(ASection.AreaId, TAtlasStrings.Language = TAtlasLanguage.English));
+    // Reiter, den Base nicht hat: eigener Reiter mit der Beschriftung des Katalogs (sonst die Id).
+    FPage.AddSheetCaption(AreaSheetCaption(ASection.AreaId));
     mSheet := High(FPage.Sheets);
     FAreas := FAreas + [TPair<string, Integer>.Create(ASection.AreaId, mSheet)];
   end;
@@ -431,20 +687,9 @@ begin
 end;
 
 procedure TAtlasSettingsSectionsPart.AddBinding(const AName: string; AControl: TControl;
-  const AValues: TArray<string>);
-var
-  mKind: TAtlasSettingsBindingKind;
+  AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
 begin
-  mKind := sbkText;
-  if AControl is TCheckBox then
-  begin
-    mKind := sbkCheck;
-  end
-  else if AControl is TAtlasChoiceBox then
-  begin
-    mKind := sbkChoice;
-  end;
-  FPage.BindValues(FBindings, AName, AControl, mKind, AValues);
+  FPage.BindValues(FBindings, AName, AControl, AKind, AValues);
   FPage.Marks.Bind(AControl, [AName]);
 end;
 

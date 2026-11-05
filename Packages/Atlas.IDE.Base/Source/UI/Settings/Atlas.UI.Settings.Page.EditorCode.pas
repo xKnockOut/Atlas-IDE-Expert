@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Settings.Page.EditorCode;
 
 // Reiter „Editor“, zweiter Teil: Bearbeiten (neu zugewiesene Variablen, Methodenreihenfolge, Übersichtsleiste,
-// Kommentare, Anweisungen, Einfügemarken, Fehlertext, Lesezeichen).
+// Kommentare, Anweisungen, Einfügemarken, Fehlertext, Code Lens).
 
 interface
 
@@ -15,13 +15,11 @@ uses
 
 type
   /// <summary>Reiter „Editor“, zweiter Teil: Bearbeiten (neu zugewiesene Variablen, Methodenreihenfolge,
-  /// Übersichtsleiste, Kommentare, Anweisungen, Einfügemarken, Fehlertext, Lesezeichen).</summary>
+  /// Übersichtsleiste, Kommentare, Anweisungen, Einfügemarken, Fehlertext, Code Lens).</summary>
   TAtlasSettingsEditorCodePart = class(TAtlasSettingsPagePart)
   private
     /// <summary>Fehlertext am Zeilenende (#509): aus, nur Fehler, Fehler und Warnungen, alle.</summary>
     FInlineDiagnostics: TAtlasChoiceBox;
-    FQuickBookmarkChordWait: TEdit;
-    FQuickBookmarksScope: TAtlasChoiceBox;
     FReassignedTargets: array[TAtlasReassignedTarget] of TCheckBox;
     FReassignedStyle: TAtlasChoiceBox;
     FReassignedColor: TEdit;
@@ -47,8 +45,6 @@ type
     property CompleteStatementTryKind: TAtlasChoiceBox read FCompleteStatementTryKind;
     property SmartPaste: TAtlasChoiceBox read FSmartPaste;
     property MultiCursorModifier: TAtlasChoiceBox read FMultiCursorModifier;
-    property QuickBookmarkChordWaitEdit: TEdit read FQuickBookmarkChordWait;
-    property QuickBookmarksScopeBox: TAtlasChoiceBox read FQuickBookmarksScope;
     property ReassignedStyleBox: TAtlasChoiceBox read FReassignedStyle;
     property ReassignedColorEdit: TEdit read FReassignedColor;
     /// <summary>Zum Testen: Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
@@ -167,23 +163,6 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsErrors),
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsWarnings),
     TAtlasStrings.Text(TAtlasTextId.SettingsInlineDiagnosticsAll)]);
-  // Persönliche Notizen an Codezeilen (#545).
-  BindCheck('Notes', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNotes)));
-  // Benannte Lesezeichen (#622): Funktion und Ablage für das Team; die Taste steht bei den Editorbefehlen.
-  BindCheck('BookmarksNamed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksNamed)));
-  BindCheck('BookmarksShared', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBookmarksShared)));
-  // Schnelle Lesezeichen (#1104): Spalte, Tasten, Akkord-Wartezeit, Sprungbereich, Übernahme der IDE-Lesezeichen.
-  BindCheck('QuickBookmarks', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarks)));
-  BindCheck('QuickBookmarksGutter', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutter)));
-  BindCheck('QuickBookmarksGutterClick', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksGutterClick)));
-  BindCheck('QuickBookmarksNumberedKeys', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksNumberedKeys)));
-  BindKey('QuickBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.QuickBookmarkToggleCommand)));
-  FQuickBookmarkChordWait := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarkChordWait));
-  // Reihenfolge wie AtlasQuickBookmarkScopes.
-  FQuickBookmarksScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScope),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeProject),
-    TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksScopeFile)]);
-  BindCheck('QuickBookmarksImportIde', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickBookmarksImportIde)));
 end;
 
 procedure TAtlasSettingsEditorCodePart.Build3;
@@ -191,11 +170,8 @@ begin
   BindCheck('CodeLensTestUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit)));
   BindCheck('CodeLensMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics)));
   BindCheck('Metrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll)));
-  BindCheck('CodeLensTests', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTests)));
   BindCheck('TodoList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList)));
-  BindCheck('BaselineUpdate', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBaselineUpdate)));
   BindCheck('MetricsReport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport)));
-  BindCheck('DfmPropertyRules', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDfmPropertyRules)));
 end;
 
 function TAtlasSettingsEditorCodePart.ReassignedTargetCheck(ATarget: TAtlasReassignedTarget): TCheckBox;
@@ -226,8 +202,6 @@ begin
   FPage.Marks.Bind(FMultiCursorModifier, ['MultiCursorModifier']);
   FPage.Marks.Bind(FSmartPaste, ['SmartPaste']);
   FPage.Marks.Bind(FInlineDiagnostics, ['InlineDiagnostics']);
-  FPage.Marks.Bind(FQuickBookmarkChordWait, ['QuickBookmarkChordWait']);
-  FPage.Marks.Bind(FQuickBookmarksScope, ['QuickBookmarksScope']);
 end;
 
 procedure TAtlasSettingsEditorCodePart.Load(const ASettings: TAtlasPluginSettings);
@@ -277,8 +251,6 @@ begin
     FMultiCursorModifier.Choice := 1;
   end;
   FInlineDiagnostics.Choice := Ord(TAtlasInlineDiagnostics.ModeOf(ASettings.InlineDiagnostics));
-  FQuickBookmarkChordWait.Text := IntToStr(ASettings.QuickBookmarkChordWait);
-  FQuickBookmarksScope.Choice := Max(0, IndexText(ASettings.QuickBookmarksScope, AtlasQuickBookmarkScopes));
 end;
 
 procedure TAtlasSettingsEditorCodePart.Save(var ASettings: TAtlasPluginSettings);
@@ -350,10 +322,6 @@ begin
   end;
   ASettings.InlineDiagnostics := TAtlasInlineDiagnostics.ModeName(
     TAtlasInlineDiagnosticsMode(EnsureRange(FInlineDiagnostics.Choice, 0, Ord(High(TAtlasInlineDiagnosticsMode)))));
-  ASettings.QuickBookmarkChordWait := EnsureRange(StrToIntDef(Trim(FQuickBookmarkChordWait.Text),
-    ASettings.QuickBookmarkChordWait), 0, TAtlasPluginSettings.MaxQuickChordWait);
-  ASettings.QuickBookmarksScope := AtlasQuickBookmarkScopes[EnsureRange(FQuickBookmarksScope.Choice, 0,
-    High(AtlasQuickBookmarkScopes))];
 end;
 
 end.

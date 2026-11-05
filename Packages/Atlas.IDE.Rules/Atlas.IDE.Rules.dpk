@@ -49,6 +49,7 @@ contains
   Atlas.IDE.Rules.Baseline in 'Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas',
   Atlas.UI.Rules.Strings in 'Source\UI\Rules\Atlas.UI.Rules.Strings.pas',
   Atlas.Core.Problems.BulkFix in 'Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas',
-  Atlas.UI.Problems.BulkFix in 'Source\UI\Problems\Atlas.UI.Problems.BulkFix.pas';
+  Atlas.UI.Problems.BulkFix in 'Source\UI\Problems\Atlas.UI.Problems.BulkFix.pas',
+  Atlas.UI.Rules.SettingsSection in 'Source\UI\Rules\Atlas.UI.Rules.SettingsSection.pas';
 
 end.

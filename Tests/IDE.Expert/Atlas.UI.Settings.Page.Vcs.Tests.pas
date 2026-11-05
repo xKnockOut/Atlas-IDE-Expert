@@ -181,23 +181,23 @@ var
   mState: TAtlasVcsProjectState;
 begin
   mVcs := SheetOf(APage.Part<TAtlasSettingsVcsPart>.VcsProviderChoice);
-  APage.Navigation.OnChange(APage.Navigation, AAreas[17]);
+  APage.Navigation.OnChange(APage.Navigation, AAreas[13]);
   Assert.IsTrue(APage.Pages.ActivePage = mVcs);
   Assert.AreEqual(1, AProbe.FProjectCalls);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying), APage.Part<TAtlasSettingsVcsProjectPart>.VcsProjectInfo.Caption);
   APage.Navigation.OnChange(APage.Navigation, AAreas[0]);
-  APage.Navigation.OnChange(APage.Navigation, AAreas[17]);
+  APage.Navigation.OnChange(APage.Navigation, AAreas[13]);
   Assert.AreEqual(1, AProbe.FProjectCalls, 'nur einmal je Öffnen');
   mState := TAtlasVcsProjectState.Empty;
   mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
   mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
   APage.Part<TAtlasSettingsVcsProjectPart>.VcsProjectDone(mState);
   Assert.Contains(APage.Part<TAtlasSettingsVcsProjectPart>.VcsProjectInfo.Caption, 'Kasse.dproj');
+  // Ohne die Module Willkommensseite und Tracker keine Links auf ihre Seiten (#1456).
+  Assert.IsFalse(APage.Part<TAtlasSettingsVcsPart>.VcsLinkWelcome.Visible, 'Willkommensseite fehlt');
+  Assert.IsFalse(APage.Part<TAtlasSettingsVcsPart>.VcsLinkIssues.Visible, 'Tracker fehlt');
   APage.Part<TAtlasSettingsVcsPart>.VcsLinkWelcome.Click;
-  // Ohne das Modul Willkommensseite die Seite seines Schalters (#1456).
-  Assert.IsTrue(APage.Pages.ActivePage = SheetOf(APage.ControlOfSetting('WelcomePage')));
-  APage.Part<TAtlasSettingsVcsPart>.VcsLinkIssues.Click;
-  Assert.IsTrue(APage.Pages.ActivePage = SheetOf(APage.ControlOfSetting('IssuesEnabled')));
+  Assert.IsTrue(APage.Pages.ActivePage = mVcs, 'ohne Ziel bleibt die Seite');
   APage.Part<TAtlasSettingsVcsPart>.VcsLinkEditor.Click;
   Assert.IsFalse(APage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
 end;
@@ -271,7 +271,7 @@ begin
     Assert.IsNotNull(mVcs);
     mAreas := TopLevelNodes(mPage);
     // Mit Punkt: svn, Pfad und Zeitlimit weichen von der Vorgabe ab.
-    Assert.AreEqual(TAtlasSettingsMarks.Dot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[17].Text,
+    Assert.AreEqual(TAtlasSettingsMarks.Dot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[13].Text,
       'eigener Bereich');
     AssertVcsPageControls(mPage, mVcs);
     Assert.AreEqual(0, mProbe.FProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
