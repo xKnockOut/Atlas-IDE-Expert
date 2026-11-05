@@ -44,6 +44,15 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.BuildPipeline.Inbox;
 
+/// <summary>Gründe wie in der UI; der Test prüft, dass ParseRequest sie verwendet.</summary>
+function Texts: TAtlasBuildInboxTexts;
+begin
+  Result := Default(TAtlasBuildInboxTexts);
+  Result.Unreadable := 'unlesbar';
+  Result.NoProject := 'ohne Projekt';
+  Result.UnknownMode := 'Art %s unbekannt';
+end;
+
 procedure TAtlasBuildInboxTests.Setup;
 begin
   FFolder := TAtlasBuildInbox.Folder(TPath.Combine(TPath.GetTempPath, 'Atlas-BuildInbox-' + IntToStr(Random(MaxInt))),
@@ -67,16 +76,17 @@ var
   Reason: string;
 begin
   Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "build", ' +
-    '"configuration": "Release", "platform": "Win64"}', Request, Reason), Reason);
+    '"configuration": "Release", "platform": "Win64"}', Texts, Request, Reason), Reason);
   Assert.AreEqual('C:\P\App.dproj', Request.Project);
   Assert.AreEqual(Ord(TAtlasCompileKind.Build), Ord(Request.Kind));
   Assert.AreEqual('Release', Request.Configuration);
   Assert.AreEqual('Win64', Request.Platform);
   // Ohne Art: make; Konfiguration und Plattform wie in der IDE.
-  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj"}', Request, Reason), Reason);
+  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj"}', Texts, Request, Reason), Reason);
   Assert.AreEqual(Ord(TAtlasCompileKind.Make), Ord(Request.Kind));
   Assert.AreEqual('', Request.Configuration);
-  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "CHECK"}', Request, Reason));
+  Assert.IsTrue(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "CHECK"}', Texts, Request,
+    Reason));
   Assert.AreEqual(Ord(TAtlasCompileKind.Check), Ord(Request.Kind));
 end;
 
@@ -85,12 +95,13 @@ var
   Request: TAtlasBuildRequest;
   Reason: string;
 begin
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('kaputt', Request, Reason));
-  Assert.IsNotEmpty(Reason);
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"mode": "make"}', Request, Reason));
-  Assert.IsTrue(Pos('Projekt', Reason) > 0, Reason);
-  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "clean"}', Request, Reason));
-  Assert.IsTrue(Pos('clean', Reason) > 0, Reason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('kaputt', Texts, Request, Reason));
+  Assert.AreEqual('unlesbar', Reason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"mode": "make"}', Texts, Request, Reason));
+  Assert.AreEqual('ohne Projekt', Reason);
+  Assert.IsFalse(TAtlasBuildInbox.ParseRequest('{"project": "C:\\P\\App.dproj", "mode": "clean"}', Texts, Request,
+    Reason));
+  Assert.AreEqual('Art clean unbekannt', Reason);
 end;
 
 function Message(ASeverity: TAtlasCompilerSeverity; const ACode: string; ALine: Integer): TAtlasCompilerMessage;
@@ -175,12 +186,12 @@ begin
   Pending := TAtlasBuildInbox.Pending(FFolder);
   Assert.AreEqual(2, Integer(Length(Pending)));
   Assert.AreEqual('a.json', ExtractFileName(Pending[0]));
-  Assert.IsTrue(TAtlasBuildInbox.Take(Pending[0], Request, Reason), Reason);
+  Assert.IsTrue(TAtlasBuildInbox.Take(Pending[0], Texts, Request, Reason), Reason);
   Assert.AreEqual('a', Request.Id);
   Assert.AreEqual('C:\P\A.dproj', Request.Project);
   Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'a.taken')));
   // Wer das Umbenennen verliert, hat den Auftrag nicht.
-  Assert.IsFalse(TAtlasBuildInbox.Take(Pending[0], Request, Reason));
+  Assert.IsFalse(TAtlasBuildInbox.Take(Pending[0], Texts, Request, Reason));
   Assert.AreEqual('', Reason);
   TAtlasBuildInbox.Answer(FFolder, 'a', TAtlasBuildInbox.RefusalText('nein'));
   Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'a.result.json')));
@@ -195,7 +206,7 @@ var
   Answer: TJSONValue;
 begin
   TFile.WriteAllText(TPath.Combine(FFolder, 'x.json'), 'kaputt', TEncoding.UTF8);
-  Assert.IsFalse(TAtlasBuildInbox.Take(TPath.Combine(FFolder, 'x.json'), Request, Reason));
+  Assert.IsFalse(TAtlasBuildInbox.Take(TPath.Combine(FFolder, 'x.json'), Texts, Request, Reason));
   Assert.IsNotEmpty(Reason);
   Answer := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'x.result.json'), TEncoding.UTF8));
   try

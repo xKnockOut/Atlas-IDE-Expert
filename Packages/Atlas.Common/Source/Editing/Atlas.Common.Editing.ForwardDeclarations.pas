@@ -68,7 +68,42 @@ uses
   System.Generics.Defaults,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TForwardDeclarationsText = (TheSectionBetweenTheType, TheSectionBetweenTheType2, BetweenTheTypeBlocksThere,
+    TheFirstTypeBlockDoes, NeedsWhichIsDeclaredBefore, DoesNotStartAtThe, SharesLinesWithOtherCode,
+    TheForwardDeclarationIsIn, TheForwardDeclarationSharesThe, AddForwardDeclaration, MoveForwardDeclarationUp,
+    MergeTypeBlocks, MoveDeclarationUp, RemoveForwardDeclaration);
+
+const
+  cTexts: array[TForwardDeclarationsText] of TAtlasText = (
+    (De: 'der %s-Abschnitt zwischen den type-Blöcken braucht %s';
+     En: 'the %s section between the type blocks needs %s'),
+    (De: 'der %s-Abschnitt zwischen den type-Blöcken teilt sich Zeilen mit anderem Code';
+     En: 'the %s section between the type blocks shares lines with other code'),
+    (De: 'zwischen den type-Blöcken steht mehr als const, var oder label';
+     En: 'between the type blocks there is more than const, var or label'),
+    (De: 'der erste type-Block beginnt nicht am Zeilenanfang';
+     En: 'the first type block does not start at the beginning of the line'),
+    (De: '%s braucht %s, das davor deklariert ist'; En: '%s needs %s, which is declared before it'),
+    (De: '%s beginnt nicht am Zeilenanfang'; En: '%s does not start at the beginning of the line'),
+    (De: '%s teilt sich Zeilen mit anderem Code'; En: '%s shares lines with other code'),
+    (De: 'die Forward-Deklaration steht in einem späteren type-Block';
+     En: 'the forward declaration is in a later type block'),
+    (De: 'die Forward-Deklaration teilt sich die Zeile mit anderem Code';
+     En: 'the forward declaration shares the line with other code'),
+    (De: 'Forward-Deklaration ergänzen'; En: 'Add forward declaration'),
+    (De: 'Forward-Deklaration nach oben verschieben'; En: 'Move forward declaration up'),
+    (De: 'type-Blöcke zusammenlegen'; En: 'Merge type blocks'),
+    (De: 'Deklaration nach oben verschieben'; En: 'Move declaration up'),
+    (De: 'Forward-Deklaration entfernen'; En: 'Remove forward declaration'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TDecl = record
@@ -422,7 +457,7 @@ begin
     mNeeded := NeededIn(mChild, mTypeNames);
     if mNeeded <> '' then
     begin
-      Exit(Format('der %s-Abschnitt zwischen den type-Blöcken braucht %s', [SectionWord(mChild), mNeeded]));
+      Exit(cTexts[TForwardDeclarationsText.TheSectionBetweenTheType].Fmt([SectionWord(mChild), mNeeded]));
     end;
   end;
   Result := '';
@@ -819,8 +854,7 @@ begin
   begin
     if not WholeLines(mChild, mChild, mRange) then
     begin
-      AFinding.Reason := Format('der %s-Abschnitt zwischen den type-Blöcken teilt sich Zeilen mit anderem Code',
-        [SectionWord(mChild)]);
+      AFinding.Reason := cTexts[TForwardDeclarationsText.TheSectionBetweenTheType2].Fmt([SectionWord(mChild)]);
       Exit(False);
     end;
     AText := AText + LinesText(mRange);
@@ -858,7 +892,7 @@ begin
   if not SplitBetween(mParent, IndexIn(mParent, AUser.Section), IndexIn(mParent, ATarget.Section), mBlocks,
     mMoved) then
   begin
-    AFinding.Reason := 'zwischen den type-Blöcken steht mehr als const, var oder label';
+    AFinding.Reason := cTexts[TForwardDeclarationsText.BetweenTheTypeBlocksThere].Text;
   end
   else
   begin
@@ -867,7 +901,7 @@ begin
   if (AFinding.Reason = '') and
     not IsBlank(Copy(LineText(AUser.Section.StartPos.Line), 1, AUser.Section.StartPos.Character)) then
   begin
-    AFinding.Reason := 'der erste type-Block beginnt nicht am Zeilenanfang';
+    AFinding.Reason := cTexts[TForwardDeclarationsText.TheFirstTypeBlockDoes].Text;
   end;
   if (AFinding.Reason <> '') or not TakeMoved(mMoved, AFinding, mText) then
   begin
@@ -910,15 +944,15 @@ begin
     mTargetStart.StartOffset));
   if mNeeded <> '' then
   begin
-    AFinding.Reason := Format('%s braucht %s, das davor deklariert ist', [ATarget.Node.Name, mNeeded]);
+    AFinding.Reason := cTexts[TForwardDeclarationsText.NeedsWhichIsDeclaredBefore].Fmt([ATarget.Node.Name, mNeeded]);
   end
   else if not IsBlank(Copy(LineText(mUserStart.StartPos.Line), 1, mUserStart.StartPos.Character)) then
   begin
-    AFinding.Reason := Format('%s beginnt nicht am Zeilenanfang', [AUser.Node.Name]);
+    AFinding.Reason := cTexts[TForwardDeclarationsText.DoesNotStartAtThe].Fmt([AUser.Node.Name]);
   end
   else if not TargetRange(AUser, ATarget, mTargetStart, mRange) then
   begin
-    AFinding.Reason := Format('%s teilt sich Zeilen mit anderem Code', [ATarget.Node.Name]);
+    AFinding.Reason := cTexts[TForwardDeclarationsText.SharesLinesWithOtherCode].Fmt([ATarget.Node.Name]);
   end;
   if AFinding.Reason <> '' then
   begin
@@ -946,11 +980,11 @@ begin
     // Die Forward-Deklaration gibt es schon, nur zu weit unten.
     if ATarget.Section <> AUser.Section then
     begin
-      Finding.Reason := 'die Forward-Deklaration steht in einem späteren type-Block';
+      Finding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationIsIn].Text;
     end
     else if not WholeLines(ATarget.Node, ATarget.Node, Range) then
     begin
-      Finding.Reason := 'die Forward-Deklaration teilt sich die Zeile mit anderem Code';
+      Finding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationSharesThe].Text;
     end
     else
     begin
@@ -1165,18 +1199,21 @@ class function TForwardDeclarations.FixTitle(AFix: TForwardFix): string;
 begin
   case AFix of
     TForwardFix.AddForward:
-      Result := 'Forward-Deklaration ergänzen';
+      Result := cTexts[TForwardDeclarationsText.AddForwardDeclaration].Text;
     TForwardFix.MoveForward:
-      Result := 'Forward-Deklaration nach oben verschieben';
+      Result := cTexts[TForwardDeclarationsText.MoveForwardDeclarationUp].Text;
     TForwardFix.MergeBlocks:
-      Result := 'type-Blöcke zusammenlegen';
+      Result := cTexts[TForwardDeclarationsText.MergeTypeBlocks].Text;
     TForwardFix.MoveDeclaration:
-      Result := 'Deklaration nach oben verschieben';
+      Result := cTexts[TForwardDeclarationsText.MoveDeclarationUp].Text;
     TForwardFix.RemoveForward:
-      Result := 'Forward-Deklaration entfernen';
+      Result := cTexts[TForwardDeclarationsText.RemoveForwardDeclaration].Text;
   else
     Result := '';
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ForwardDeclarations', cTexts);
 
 end.

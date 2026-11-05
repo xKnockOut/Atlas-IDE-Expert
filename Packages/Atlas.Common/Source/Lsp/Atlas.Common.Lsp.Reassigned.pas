@@ -54,7 +54,21 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Semantics.ResolvedSignatures;
+  Atlas.Common.Semantics.ResolvedSignatures,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TReassignedText = (TheURIIsExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TReassignedText] of TAtlasText = (
+    (De: 'Erwartet wird die URI'; En: 'The URI is expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 { TLspReassigned }
 
@@ -158,12 +172,12 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird die URI');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.TheURIIsExpected].Text);
   end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.DocumentIsNotOpen].Text + Uri);
   end;
   Targets := ReadTargets(AArguments);
   Symbols := nil;
@@ -185,5 +199,8 @@ begin
   end;
   Result := Json(Symbols);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Reassigned', cTexts);
 
 end.

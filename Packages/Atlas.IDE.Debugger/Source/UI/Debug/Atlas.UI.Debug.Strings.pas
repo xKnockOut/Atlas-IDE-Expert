@@ -65,7 +65,7 @@ type
     StepFilterRefresh, StepFilterCounting, StepFilterSummary, StepFilterTruncated, StepFilterNoCounts,
     StepFilterSession, StepFilterLast, StepFilterShiftHint, StepFilterByPattern, StepFilterInactive, DebugNoteTitle,
     DebugNoteProject, DebugNoteConfiguration, DebugNotePlatform, DebugNoteTime, DebugNoteThread, DebugNoteLocation,
-    DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation,
+    DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation, DebugNoteFileStem,
     SettingsDebugHoverValues, SettingsDebugVisualizers, SettingsDebugVisualizerNameFields,
     SettingsDebugVisualizerMaxLength, SettingsDebugVisualizerTimeout, SettingsDebugVisualizerMaxImagePixels,
     SettingsDebugVisualizerEvaluation, DebugVisualizerEvaluationFields, DebugVisualizerEvaluationProperties,
@@ -75,7 +75,8 @@ type
     SettingsDebugExceptionBanner, SettingsDebugExceptionBannerIgnoreAtLocation, SettingsDebugInlineValues,
     SettingsDebugInlineValuesPerLine, SettingsDebugExplainUnavailable, SettingsDebugCompletionInDialogs,
     SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, SettingsDebugExplainAccessViolation,
-    SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns);
+    SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns,
+    DebugEditorMenuGroup);
 
   TAtlasDebugStrings = class
   public
@@ -351,6 +352,7 @@ const
      'Letzte Exception',
      '%d x an dieser Stelle',
      'Kein Halt mit Quelltext.',
+     'debug-notiz',
      'Variablenwerte im Hover beim Debuggen',
      'Visualisierer für häufige Typen',
      'Namensfelder für Objekte in Listen',
@@ -380,7 +382,8 @@ const
      'Zugriffsverletzungen erklären (welcher Teil war nil)',
      'Getter und Funktionsaufrufe bei der Auswertung erlauben',
      'Schrittfilter beim Hineinspringen (F7)',
-     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):'),
+     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
+     'Debuggen'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -636,6 +639,7 @@ const
      'Last exception',
      '%d times at this location',
      'Not stopped in source code.',
+     'debug-note',
      'Variable values in the hover while debugging',
      'Visualizers for common types',
      'Name fields for objects in lists',
@@ -665,7 +669,8 @@ const
      'Explain access violations (which part was nil)',
      'Allow getters and function calls during evaluation',
      'Step filters when stepping into (F7)',
-     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):'));
+     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):',
+     'Debugging'));
 
 { TAtlasDebugStrings }
 

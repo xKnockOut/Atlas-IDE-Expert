@@ -41,7 +41,63 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Editing.Inlining.Syntax;
+  Atlas.Common.Editing.Inlining.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInliningMethodText = (NoSyntaxTree, NoCall, ConstructorsAndDestructors, TheBodyBelongsToAnother, NoBody,
+    NestedRoutinesOrLocalTypes, TheReceiverIsNotA, MethodWithoutReceiver, TheCallIsInA, TheCallIsInAn,
+    CannotBeInlinedAtThis, TheOrderOfTheCalls, ResultIsSetInA, SyntaxErrorInTheMethod, ResultIsReadBeforeIt, Unknown,
+    IsNotVisibleAtThe, TheResultTypeMeansSomething, TheDefaultValueOfMeans, TheArgumentForIsNot,
+    TheTypeOfMeansSomething, InlineMethod, InlineRoutine, GenericMethod, AnonymousMethodInTheBody,
+    ProcedureInTheExpression, TooManyArguments, TooFewArguments, ExitInTheMiddleOf, MeansSomethingDifferentAtThe,
+    ATypeMeansSomethingDifferent, Recursive, Labels, SeveralExit, UntypedParameter);
+
+const
+  cTexts: array[TInliningMethodText] of TAtlasText = (
+    (De: 'kein Syntaxbaum'; En: 'no syntax tree'),
+    (De: 'kein Aufruf'; En: 'no call'),
+    (De: 'Konstruktoren und Destruktoren'; En: 'constructors and destructors'),
+    (De: 'der Rumpf gehört zu einer anderen Routine'; En: 'the body belongs to another routine'),
+    (De: 'kein Rumpf'; En: 'no body'),
+    (De: 'verschachtelte Routinen oder lokale Typen'; En: 'nested routines or local types'),
+    (De: 'der Empfänger ist kein einfacher Name'; En: 'the receiver is not a simple name'),
+    (De: 'Methode ohne Empfänger'; En: 'method without receiver'),
+    (De: 'der Aufruf steht in einem with-Rumpf'; En: 'the call is in a with body'),
+    (De: 'der Aufruf steht in einer anonymen Methode'; En: 'the call is in an anonymous method'),
+    (De: 'an dieser Stelle nicht einbettbar'; En: 'cannot be inlined at this position'),
+    (De: 'die Reihenfolge der Aufrufe änderte sich'; En: 'the order of the calls would change'),
+    (De: 'Result wird in einer Schleife gesetzt'; En: 'Result is set in a loop'),
+    (De: 'Syntaxfehler in der Methode'; En: 'syntax error in the method'),
+    (De: 'Result wird vor dem Setzen gelesen'; En: 'Result is read before it is set'),
+    (De: ' unbekannt'; En: ' unknown'),
+    (De: ' ist am Aufruf nicht sichtbar'; En: ' is not visible at the call'),
+    (De: 'der Ergebnistyp bedeutet am Aufruf etwas anderes';
+     En: 'the result type means something different at the call'),
+    (De: 'der Vorgabewert von %s bedeutet am Aufruf etwas anderes';
+     En: 'the default value of %s means something different at the call'),
+    (De: 'das Argument für %s ist keine einfache Variable'; En: 'the argument for %s is not a simple variable'),
+    (De: 'der Typ von %s bedeutet am Aufruf etwas anderes';
+     En: 'the type of %s means something different at the call'),
+    (De: 'Methode %s einbetten'; En: 'Inline method %s'),
+    (De: 'Routine %s einbetten'; En: 'Inline routine %s'),
+    (De: 'generische Methode'; En: 'generic method'),
+    (De: 'anonyme Methode im Rumpf'; En: 'anonymous method in the body'),
+    (De: 'Prozedur im Ausdruck'; En: 'procedure in the expression'),
+    (De: 'zu viele Argumente'; En: 'too many arguments'),
+    (De: 'zu wenige Argumente'; En: 'too few arguments'),
+    (De: 'Exit mitten im Rumpf'; En: 'Exit in the middle of the body'),
+    (De: ' bedeutet am Aufruf etwas anderes'; En: ' means something different at the call'),
+    (De: 'ein Typ bedeutet am Aufruf etwas anderes'; En: 'a type means something different at the call'),
+    (De: 'rekursiv'; En: 'recursive'),
+    (De: 'Marken'; En: 'labels'),
+    (De: 'mehrere Exit'; En: 'several Exit'),
+    (De: 'untypisierter Parameter '; En: 'untyped parameter '));
+
+{$SCOPEDENUMS OFF}
 
 type
   TLocal = TRoutineLocal;
@@ -344,11 +400,11 @@ begin
   Result := Default(TCodeAction);
   if IsMethod then
   begin
-    Result.Title := Format('Methode %s einbetten', [ShortName]);
+    Result.Title := cTexts[TInliningMethodText.InlineMethod].Fmt([ShortName]);
   end
   else
   begin
-    Result.Title := Format('Routine %s einbetten', [ShortName]);
+    Result.Title := cTexts[TInliningMethodText.InlineRoutine].Fmt([ShortName]);
   end;
   Result.Kind := InlineKind;
   Result.Edits := Edits;
@@ -361,11 +417,11 @@ begin
   Result := '';
   if (Caller.Tree = nil) or (Callee.Tree = nil) or (Routine = nil) then
   begin
-    Result := 'kein Syntaxbaum';
+    Result := cTexts[TInliningMethodText.NoSyntaxTree].Text;
   end
   else if not TInlineSyntax.CallAt(Caller.Tree, Caller.Text, APosition, Call) then
   begin
-    Result := 'kein Aufruf';
+    Result := cTexts[TInliningMethodText.NoCall].Text;
   end
   else
   begin
@@ -397,11 +453,11 @@ begin
   mKeyword := TInlineSyntax.RoutineKeyword(CalleeTokens, Routine);
   if (mKeyword = 'constructor') or (mKeyword = 'destructor') then
   begin
-    Result := 'Konstruktoren und Destruktoren';
+    Result := cTexts[TInliningMethodText.ConstructorsAndDestructors].Text;
   end
   else if Pos('<', Routine.Name) > 0 then
   begin
-    Result := 'generische Methode';
+    Result := cTexts[TInliningMethodText.GenericMethod].Text;
   end;
 end;
 
@@ -422,14 +478,14 @@ begin
   Result := '';
   if not SameText(ShortName, Call.Name) then
   begin
-    Result := 'der Rumpf gehört zu einer anderen Routine';
+    Result := cTexts[TInliningMethodText.TheBodyBelongsToAnother].Text;
   end
   else
   begin
     CalleeBody := TRoutineBody.BodyOf(Routine);
     if CalleeBody = nil then
     begin
-      Result := 'kein Rumpf';
+      Result := cTexts[TInliningMethodText.NoBody].Text;
     end;
   end;
 end;
@@ -459,7 +515,7 @@ begin
   end;
   if (Result = '') and CallsItself then
   begin
-    Result := 'rekursiv';
+    Result := cTexts[TInliningMethodText.Recursive].Text;
   end;
 end;
 
@@ -473,9 +529,9 @@ begin
   begin
     case Routine[mIndex].Kind of
       TSyntaxKind.RoutineDecl, TSyntaxKind.TypeSection:
-        Result := 'verschachtelte Routinen oder lokale Typen';
+        Result := cTexts[TInliningMethodText.NestedRoutinesOrLocalTypes].Text;
       TSyntaxKind.LabelSection:
-        Result := 'Marken';
+        Result := cTexts[TInliningMethodText.Labels].Text;
     end;
     Inc(mIndex);
   end;
@@ -503,7 +559,7 @@ begin
   end
   else if TRoutineLocals.HasKind(CalleeBody, TSyntaxKind.AnonymousMethod) then
   begin
-    Result := 'anonyme Methode im Rumpf';
+    Result := cTexts[TInliningMethodText.AnonymousMethodInTheBody].Text;
   end;
 end;
 
@@ -535,7 +591,7 @@ begin
   CallerRoutine := TRoutineBody.RoutineAt(Caller.Tree, Call.NameOffset);
   if (Caller.Tree = Callee.Tree) and (CallerRoutine = Routine) then
   begin
-    Exit('rekursiv');
+    Exit(cTexts[TInliningMethodText.Recursive].Text);
   end;
   CallerBody := TRoutineBody.BodyOf(CallerRoutine);
   CallerClass := '';
@@ -562,7 +618,7 @@ begin
   begin
     if not TInlineSyntax.IsSimpleChain(Call.Receiver) then
     begin
-      Result := 'der Empfänger ist kein einfacher Name';
+      Result := cTexts[TInliningMethodText.TheReceiverIsNotA].Text;
     end
     else if not SameText(TRoutineBody.TextOf(Caller.Text, Call.Receiver), 'Self') then
     begin
@@ -571,7 +627,7 @@ begin
   end
   else if IsMethod and (CallerClass = '') then
   begin
-    Result := 'Methode ohne Empfänger';
+    Result := cTexts[TInliningMethodText.MethodWithoutReceiver].Text;
   end;
 end;
 
@@ -580,11 +636,11 @@ begin
   Result := '';
   if TInlineSyntax.Inside(Call.Node, TSyntaxKind.WithStatement, CallerBody) then
   begin
-    Result := 'der Aufruf steht in einem with-Rumpf';
+    Result := cTexts[TInliningMethodText.TheCallIsInA].Text;
   end
   else if not Options.InlineVar and TInlineSyntax.Inside(Call.Node, TSyntaxKind.AnonymousMethod, CallerBody) then
   begin
-    Result := 'der Aufruf steht in einer anonymen Methode';
+    Result := cTexts[TInliningMethodText.TheCallIsInAn].Text;
   end;
 end;
 
@@ -598,17 +654,17 @@ begin
   end;
   if not IsFunction then
   begin
-    Exit('Prozedur im Ausdruck');
+    Exit(cTexts[TInliningMethodText.ProcedureInTheExpression].Text);
   end;
   Host := TRoutineBody.HostStatement(Call.Node, CallerBody);
   if Host = nil then
   begin
-    Result := 'an dieser Stelle nicht einbettbar';
+    Result := cTexts[TInliningMethodText.CannotBeInlinedAtThis].Text;
   end
   else if CallsBefore then
   begin
     // Der Rumpf liefe vor allem, was in der Anweisung davor steht.
-    Result := 'die Reihenfolge der Aufrufe änderte sich';
+    Result := cTexts[TInliningMethodText.TheOrderOfTheCalls].Text;
   end;
 end;
 
@@ -644,13 +700,13 @@ begin
   Parameters := ParametersOf;
   if Length(Call.Arguments) > Length(Parameters) then
   begin
-    Result := 'zu viele Argumente';
+    Result := cTexts[TInliningMethodText.TooManyArguments].Text;
   end;
   for mIndex := Length(Call.Arguments) to High(Parameters) do
   begin
     if (Result = '') and (Parameters[mIndex].DefaultValue = nil) then
     begin
-      Result := 'zu wenige Argumente';
+      Result := cTexts[TInliningMethodText.TooFewArguments].Text;
     end;
   end;
 end;
@@ -705,7 +761,7 @@ begin
   // Result-Zuweisungen in Schleifen lassen sich nicht in eine einzelne Ersetzung übersetzen.
   if (Result = '') and IsFunction and ResultSetInLoop then
   begin
-    Result := 'Result wird in einer Schleife gesetzt';
+    Result := cTexts[TInliningMethodText.ResultIsSetInA].Text;
   end;
 end;
 
@@ -718,11 +774,11 @@ begin
   try
     if not mGraph.Complete then
     begin
-      Result := 'Syntaxfehler in der Methode';
+      Result := cTexts[TInliningMethodText.SyntaxErrorInTheMethod].Text;
     end
     else if IsFunction and (mGraph.MayReadBeforeWrite('Result') <> TFlowAnswer.No) then
     begin
-      Result := 'Result wird vor dem Setzen gelesen';
+      Result := cTexts[TInliningMethodText.ResultIsReadBeforeIt].Text;
     end;
   finally
     mGraph.Free;
@@ -797,7 +853,7 @@ begin
       begin
         if ExitStatement <> nil then
         begin
-          Result := 'mehrere Exit';
+          Result := cTexts[TInliningMethodText.SeveralExit].Text;
         end;
         ExitStatement := mNode;
       end;
@@ -824,7 +880,7 @@ begin
   end
   else
   begin
-    Result := 'Exit mitten im Rumpf';
+    Result := cTexts[TInliningMethodText.ExitInTheMiddleOf].Text;
   end;
 end;
 
@@ -1068,7 +1124,7 @@ begin
   mFound := TInlineSyntax.Meaning(Options.Lookup, Callee, [ANode.Name], ANode.StartOffset);
   if not mFound.Found then
   begin
-    Exit(ANode.Name + ' unbekannt');
+    Exit(ANode.Name + cTexts[TInliningMethodText.Unknown].Text);
   end;
   if mFound.IsRoutine then
   begin
@@ -1089,7 +1145,7 @@ begin
   end
   else if not mAtCall.Found or (mAtCall.Key <> AFound.Key) then
   begin
-    Result := ANode.Name + ' bedeutet am Aufruf etwas anderes';
+    Result := ANode.Name + cTexts[TInliningMethodText.MeansSomethingDifferentAtThe].Text;
   end;
 end;
 
@@ -1100,7 +1156,7 @@ begin
   begin
     if not Visible(AFound) then
     begin
-      Result := ANode.Name + ' ist am Aufruf nicht sichtbar';
+      Result := ANode.Name + cTexts[TInliningMethodText.IsNotVisibleAtThe].Text;
     end
     else
     begin
@@ -1175,12 +1231,12 @@ begin
   begin
     if (Result = '') and (Locals[mIndex].Kind <> TLocalKind.Parameter) and not SameType(Locals[mIndex].Decl) then
     begin
-      Result := 'ein Typ bedeutet am Aufruf etwas anderes';
+      Result := cTexts[TInliningMethodText.ATypeMeansSomethingDifferent].Text;
     end;
   end;
   if (Result = '') and not SameType(ReturnType) then
   begin
-    Result := 'der Ergebnistyp bedeutet am Aufruf etwas anderes';
+    Result := cTexts[TInliningMethodText.TheResultTypeMeansSomething].Text;
   end;
 end;
 
@@ -1355,7 +1411,7 @@ begin
       mAtCall := TInlineSyntax.Meaning(Options.Lookup, Caller, [mNode.Name], Call.NameOffset);
       if (Result = '') and (not mFound.Found or not mAtCall.Found or (mFound.Key <> mAtCall.Key)) then
       begin
-        Result := 'der Vorgabewert von ' + Parameters[AIndex].Name + ' bedeutet am Aufruf etwas anderes';
+        Result := cTexts[TInliningMethodText.TheDefaultValueOfMeans].Fmt([Parameters[AIndex].Name]);
       end;
     end;
   finally
@@ -1397,7 +1453,7 @@ begin
   if (AIndex > High(Call.Arguments)) or not TRoutineBody.IsVariableChain(AArgument) or
     TRoutineLocals.HasKind(AArgument, TSyntaxKind.Call) then
   begin
-    Exit('das Argument für ' + Parameters[AIndex].Name + ' ist keine einfache Variable');
+    Exit(cTexts[TInliningMethodText.TheArgumentForIsNot].Fmt([Parameters[AIndex].Name]));
   end;
   ParameterText[AIndex] := AText;
   for mNode in AOccurrences do
@@ -1515,11 +1571,11 @@ begin
   mParameter := Parameters[AIndex];
   if mParameter.TypeText = '' then
   begin
-    Exit('untypisierter Parameter ' + mParameter.Name);
+    Exit(cTexts[TInliningMethodText.UntypedParameter].Text + mParameter.Name);
   end;
   if not SameType(mParameter.TypeNode) then
   begin
-    Exit('der Typ von ' + mParameter.Name + ' bedeutet am Aufruf etwas anderes');
+    Exit(cTexts[TInliningMethodText.TheTypeOfMeansSomething].Fmt([mParameter.Name]));
   end;
   Result := '';
   ParameterText[AIndex] := Unique(mParameter.Name);
@@ -1834,5 +1890,8 @@ begin
     mInliner.Release;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Inlining.Method', cTexts);
 
 end.

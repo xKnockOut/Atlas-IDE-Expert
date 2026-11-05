@@ -18,8 +18,9 @@
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
 //   Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356,
 //   nur mit server.statusWindow).
-// - Ungelesene Benachrichtigungen (#1234) stehen als Plakette hinter dem
-//   Status (aus dem Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
+// - Mit eingeschalteten Benachrichtigungen steht immer eine Plakette mit der
+//   Zahl der ungelesenen (auch 0) hinter dem Status (#1234, aus dem
+//   Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
 //   Dahinter stehen die Zusatzfelder des Atlas-Felds (z. B. „interface-Änderung“
 //   der Unit-Beziehungen); ein Klick ruft dort ihren Klick, in der Statuszeile
 //   stehen sie dann nicht.

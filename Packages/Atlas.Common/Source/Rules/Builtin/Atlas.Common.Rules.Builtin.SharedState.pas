@@ -55,7 +55,37 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSharedStateText = (ParallelTitle, ParallelCollection, ParallelAdd, ParallelWrite, CounterTitle, IncNotAtomic,
+    DecNotAtomic, LockFix, NotAtomic, CounterUp, CounterDown, UseCall);
+
+const
+  cTexts: array[TSharedStateText] of TAtlasText = (
+    (De: 'Gemeinsame Variable in TParallel.For geschrieben'; En: 'Shared variable written in TParallel.For'),
+    (De: '%s wird parallel ohne Sperre verändert (%s); die Sammlung kann beschädigt werden.';
+     En: '%s is modified in parallel without a lock (%s); the collection can be damaged.'),
+    (De: '%s wird parallel ohne Sperre geschrieben; Additionen gehen verloren.';
+     En: '%s is written in parallel without a lock; additions get lost.'),
+    (De: '%s wird parallel ohne Sperre geschrieben; Änderungen gehen verloren.';
+     En: '%s is written in parallel without a lock; changes get lost.'),
+    (De: 'Zähler im Thread ohne TInterlocked'; En: 'Counter in a thread without TInterlocked'),
+    (De: 'Inc ist nicht atomar'; En: 'Inc is not atomic'),
+    (De: 'Dec ist nicht atomar'; En: 'Dec is not atomic'),
+    (De: 'Sperre mit TMonitor um %s.%s legen'; En: 'Put a TMonitor lock around %s.%s'),
+    (De: '%s ist nicht atomar'; En: '%s is not atomic'),
+    (De: '%s wird aus mehreren Threads ohne Sperre erhöht; %s.';
+     En: '%s is incremented from several threads without a lock; %s.'),
+    (De: '%s wird aus mehreren Threads ohne Sperre verringert; %s.';
+     En: '%s is decremented from several threads without a lock; %s.'),
+    (De: '%s verwenden'; En: 'Use %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
 {$SCOPEDENUMS ON}
@@ -567,7 +597,7 @@ begin
   begin
     Edits := [UsesEdit] + Edits;
   end;
-  Result := [TRuleFix.Create(Call + ' verwenden', Edits)];
+  Result := [TRuleFix.Create(cTexts[TSharedStateText.UseCall].Fmt([Call]), Edits)];
 end;
 
 function TSharedState.LockFix(const AWrite: TSharedWrite): TArray<TRuleFix>;
@@ -607,7 +637,7 @@ begin
   begin
     Text := 'begin' + LineBreak + Inner + Text + ';' + LineBreak + Indent + 'end';
   end;
-  Result := [TRuleFix.Create('Sperre mit TMonitor um ' + AWrite.Name + '.' + AWrite.Operation + ' legen',
+  Result := [TRuleFix.Create(cTexts[TSharedStateText.LockFix].Fmt([AWrite.Name, AWrite.Operation]),
     [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.EndPos), Text)])];
 end;
 
@@ -657,7 +687,7 @@ end;
 function TParallelForSharedWriteRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('parallel-for-shared-write', TRuleSeverity.Warning,
-    'Gemeinsame Variable in TParallel.For geschrieben');
+    cTexts[TSharedStateText.ParallelTitle].Text);
 end;
 
 class function TParallelForSharedWriteRule.DefaultThreadSafeTypes: TArray<string>;
@@ -689,19 +719,18 @@ var
         begin
           Continue;
         end;
-        Message := Format('%s wird parallel ohne Sperre verändert (%s); die Sammlung kann beschädigt werden.',
-          [Write.Name, Write.Operation]);
+        Message := cTexts[TSharedStateText.ParallelCollection].Fmt([Write.Name, Write.Operation]);
         Fixes := State.LockFix(Write);
       end
       else
       begin
         if MatchStr(Write.Operation, ['+', 'Inc']) then
         begin
-          Message := Format('%s wird parallel ohne Sperre geschrieben; Additionen gehen verloren.', [Write.Name]);
+          Message := cTexts[TSharedStateText.ParallelAdd].Fmt([Write.Name]);
         end
         else
         begin
-          Message := Format('%s wird parallel ohne Sperre geschrieben; Änderungen gehen verloren.', [Write.Name]);
+          Message := cTexts[TSharedStateText.ParallelWrite].Fmt([Write.Name]);
         end;
         Fixes := State.InterlockedFix(Write, TypeName);
       end;
@@ -784,7 +813,7 @@ end;
 function TThreadUnsafeIncrementRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-unsafe-increment', TRuleSeverity.Warning,
-    'Zähler im Thread ohne TInterlocked');
+    cTexts[TSharedStateText.CounterTitle].Text);
 end;
 
 /// <summary>Kann AText einen Zähler enthalten (Inc, Dec, + 1, - 1)? Schneller Vorfilter.</summary>
@@ -817,7 +846,8 @@ var
   procedure Report(AMethod, ARoutine: TSyntaxNode; AScopes: TNameScopes);
   var
     Write: TSharedWrite;
-    Verb, What, TypeName: string;
+    What, TypeName: string;
+    Verb: TSharedStateText;
   begin
     for Write in State.Writes(AMethod, False) do
     begin
@@ -830,22 +860,23 @@ var
       begin
         Continue;
       end;
-      Verb := 'erhöht';
+      Verb := TSharedStateText.CounterUp;
       if MatchText(Write.Operation, ['Dec', '-']) then
       begin
-        Verb := 'verringert';
+        Verb := TSharedStateText.CounterDown;
       end;
-      What := 'Inc ist nicht atomar';
+      What := cTexts[TSharedStateText.IncNotAtomic].Text;
       if SameText(Write.Operation, 'Dec') then
       begin
-        What := 'Dec ist nicht atomar';
+        What := cTexts[TSharedStateText.DecNotAtomic].Text;
       end
       else if Write.Kind = TWriteKind.Assign then
       begin
-        What := Write.Name + ' := ' + Write.Name + ' ' + Write.Operation + ' 1 ist nicht atomar';
+        What := cTexts[TSharedStateText.NotAtomic].Fmt([Write.Name + ' := ' + Write.Name + ' ' + Write.Operation +
+          ' 1']);
       end;
       AReport.Add(TTextRange.Create(Write.Statement.StartPos, Write.Statement.EndPos),
-        Format('%s wird aus mehreren Threads ohne Sperre %s; %s.', [Write.Name, Verb, What]), TRuleConfidence.Medium,
+        cTexts[Verb].Fmt([Write.Name, What]), TRuleConfidence.Medium,
         State.InterlockedFix(Write, TypeName));
     end;
   end;
@@ -954,5 +985,8 @@ begin
   ARegistry.Register(TParallelForSharedWriteRule.Create);
   ARegistry.Register(TThreadUnsafeIncrementRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.SharedState', cTexts);
 
 end.

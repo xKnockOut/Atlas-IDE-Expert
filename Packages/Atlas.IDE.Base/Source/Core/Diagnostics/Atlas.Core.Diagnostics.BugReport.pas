@@ -79,7 +79,50 @@ uses
   System.Classes,
   System.JSON,
   System.IOUtils,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TBugReportText = (Platform, Experimental, None, Settings, WrittenWithRealNamesDiagnostics, AtlasBugReport, Created,
+    Anonymized, WithRealNamesExplicitlyChosen, ThisReportContainsNoSource, PluginLogLastLines,
+    ServerErrorOutputStderrLast);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TBugReportText] of string = (
+    ('- Plattform: ',
+     '- Experimentell: ',
+     'keine',
+     '### Einstellungen',
+     ', geschrieben mit Klarnamen (diagnostics.log.names)',
+     '# Atlas-Fehlerbericht',
+     'Erstellt: ',
+     ' · anonymisiert',
+     ' · mit Klarnamen (ausdrücklich gewählt)',
+     'Quelltext steht nicht in diesem Bericht. Issue anlegen: ',
+     '### Protokoll des Plugins (letzte %d Zeilen%s)',
+     '### Fehlerausgabe des Servers (stderr, letzte %d Zeilen)'),
+    ('- Platform: ',
+     '- Experimental: ',
+     'none',
+     '### Settings',
+     ', written with real names (diagnostics.log.names)',
+     '# Atlas bug report',
+     'Created: ',
+     ' · anonymized',
+     ' · with real names (explicitly chosen)',
+     'This report contains no source code. Create an issue: ',
+     '### Plugin log (last %d lines%s)',
+     '### Server error output (stderr, last %d lines)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TBugReportText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasBugReport }
 
@@ -116,11 +159,11 @@ begin
   ABuilder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
   ABuilder.Append('- Atlas: ').Append(AInput.PluginVersion).Append(sLineBreak);
   ABuilder.Append('- IDE: ').Append(AInput.IdeVersion).Append(sLineBreak);
-  ABuilder.Append('- Plattform: ').Append(AInput.Platform).Append(sLineBreak);
-  ABuilder.Append('- Experimentell: ');
+  ABuilder.Append(UiText(TBugReportText.Platform)).Append(AInput.Platform).Append(sLineBreak);
+  ABuilder.Append(UiText(TBugReportText.Experimental));
   if Length(AInput.Experimental) = 0 then
   begin
-    ABuilder.Append('keine');
+    ABuilder.Append(UiText(TBugReportText.None));
   end
   else
   begin
@@ -133,7 +176,7 @@ class procedure TAtlasBugReport.AppendSettings(ABuilder: TStringBuilder; const A
 var
   mText: string;
 begin
-  ABuilder.Append('### Einstellungen').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append(UiText(TBugReportText.Settings)).Append(sLineBreak).Append(sLineBreak);
   mText := AInput.Settings;
   if AInput.Anonymize then
   begin
@@ -188,7 +231,7 @@ begin
   Result := '';
   if AInput.PluginLogNames then
   begin
-    Result := ', geschrieben mit Klarnamen (diagnostics.log.names)';
+    Result := UiText(TBugReportText.WrittenWithRealNamesDiagnostics);
   end;
 end;
 
@@ -198,27 +241,27 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('# Atlas-Fehlerbericht').Append(sLineBreak).Append(sLineBreak);
-    mBuilder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
+    mBuilder.Append(UiText(TBugReportText.AtlasBugReport)).Append(sLineBreak).Append(sLineBreak);
+    mBuilder.Append(UiText(TBugReportText.Created)).Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
     if AInput.Anonymize then
     begin
-      mBuilder.Append(' · anonymisiert');
+      mBuilder.Append(UiText(TBugReportText.Anonymized));
     end
     else
     begin
-      mBuilder.Append(' · mit Klarnamen (ausdrücklich gewählt)');
+      mBuilder.Append(UiText(TBugReportText.WithRealNamesExplicitlyChosen));
     end;
     mBuilder.Append(sLineBreak).Append(sLineBreak);
-    mBuilder.Append('Quelltext steht nicht in diesem Bericht. Issue anlegen: ').Append(IssuesUrl);
+    mBuilder.Append(UiText(TBugReportText.ThisReportContainsNoSource)).Append(IssuesUrl);
     mBuilder.Append(sLineBreak).Append(sLineBreak);
     AppendPlugin(mBuilder, AInput);
     AppendSettings(mBuilder, AInput);
-    AppendLines(mBuilder, Format('### Protokoll des Plugins (letzte %d Zeilen%s)', [Length(AInput.PluginLog),
+    AppendLines(mBuilder, Format(UiText(TBugReportText.PluginLogLastLines), [Length(AInput.PluginLog),
       PluginLogNote(AInput)]), AInput.PluginLog, AInput);
     // Was die Laufzeit des Servers vor einem Absturz noch ausgab (Bericht H5); anonymisiert wie das Protokoll.
     if Length(AInput.ServerErrorOutput) > 0 then
     begin
-      AppendLines(mBuilder, Format('### Fehlerausgabe des Servers (stderr, letzte %d Zeilen)',
+      AppendLines(mBuilder, Format(UiText(TBugReportText.ServerErrorOutputStderrLast),
         [Length(AInput.ServerErrorOutput)]), AInput.ServerErrorOutput, AInput);
     end;
     AppendServer(mBuilder, AInput);
@@ -267,5 +310,8 @@ class function TAtlasBugReport.DefaultFileName(ANow: TDateTime): string;
 begin
   Result := 'atlas-fehlerbericht-' + FormatDateTime('yyyymmdd"-"hhnn', ANow) + '.md';
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.BugReport', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

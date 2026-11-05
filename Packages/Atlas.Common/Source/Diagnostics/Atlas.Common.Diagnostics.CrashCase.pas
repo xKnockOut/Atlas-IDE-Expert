@@ -138,7 +138,37 @@ uses
   System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Jsonc;
+  Atlas.Text.Jsonc,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCrashCaseText = (ExceededTheTimeLimitOf, Raised, KindAbortedByTheWatchdog, FileText, BuiltWith,
+    NoneWithoutDebugInformationOr, FileNotFound, NoCrashCaseJSONObject, TheCrashCaseLacksMethod, AtlasCrashCase,
+    KindUnhandledException, Exception, Message, Line, CallStack);
+
+const
+  cTexts: array[TCrashCaseText] of TAtlasText = (
+    (De: 'überschritt das Zeitlimit von %d ms'; En: 'exceeded the time limit of %d ms'),
+    (De: 'löste %s aus'; En: 'raised %s'),
+    (De: 'Art: Abbruch durch den Watchdog'; En: 'Kind: aborted by the watchdog'),
+    (De: 'Datei: '; En: 'File: '),
+    (De: 'Gebaut mit: '; En: 'Built with: '),
+    (De: '(keiner: ohne Debug-Informationen oder beim Abbruch durch den Watchdog)';
+     En: '(none: without debug information or when aborted by the watchdog)'),
+    (De: 'Datei nicht gefunden: '; En: 'File not found: '),
+    (De: 'Kein Absturzfall (JSON-Objekt erwartet): '; En: 'No crash case (JSON object expected): '),
+    (De: 'Im Absturzfall fehlt "method"'; En: 'The crash case lacks "method"'),
+    (De: 'Atlas-Absturzfall '; En: 'Atlas crash case '),
+    (De: 'Art: unbehandelte Ausnahme'; En: 'Kind: unhandled exception'),
+    (De: 'Ausnahme: '; En: 'Exception: '),
+    (De: 'Meldung: '; En: 'Message: '),
+    (De: 'Zeile: '; En: 'Line: '),
+    (De: 'Aufrufstapel:'; En: 'Call stack:'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cKindNames: array[TCrashCaseKind] of string = ('exception', 'timeout');
@@ -203,11 +233,11 @@ begin
   end;
   if Kind = TCrashCaseKind.Timeout then
   begin
-    mWhat := Format('überschritt das Zeitlimit von %d ms', [TimeoutMs]);
+    mWhat := cTexts[TCrashCaseText.ExceededTheTimeLimitOf].Fmt([TimeoutMs]);
   end
   else
   begin
-    mWhat := 'löste ' + ExceptionClass + ' aus';
+    mWhat := cTexts[TCrashCaseText.Raised].Fmt([ExceptionClass]);
   end;
   if mWhere <> '' then
   begin
@@ -534,41 +564,43 @@ var
 begin
   mLines := TStringBuilder.Create;
   try
-    mLines.Append('Atlas-Absturzfall ').Append(FolderName(ACase.Time, ACase.ProcessId)).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.AtlasCrashCase].Text).Append(FolderName(ACase.Time,
+      ACase.ProcessId)).Append(sLineBreak);
     mLines.Append(ACase.Summary).Append(sLineBreak).Append(sLineBreak);
     if ACase.Kind = TCrashCaseKind.Timeout then
     begin
-      mLines.Append('Art: Abbruch durch den Watchdog').Append(sLineBreak);
+      mLines.Append(cTexts[TCrashCaseText.KindAbortedByTheWatchdog].Text).Append(sLineBreak);
     end
     else
     begin
-      mLines.Append('Art: unbehandelte Ausnahme').Append(sLineBreak);
+      mLines.Append(cTexts[TCrashCaseText.KindUnhandledException].Text).Append(sLineBreak);
     end;
-    mLines.Append('Ausnahme: ').Append(ACase.ExceptionClass).Append(sLineBreak);
-    mLines.Append('Meldung: ').Append(WithoutUserInfo(ACase.ExceptionMessage)).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.Exception].Text).Append(ACase.ExceptionClass).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.Message].Text).Append(WithoutUserInfo(ACase.ExceptionMessage))
+      .Append(sLineBreak);
     mLines.Append('Methode: ').Append(ACase.Method).Append(sLineBreak);
     if ACase.FileName <> '' then
     begin
-      mLines.Append('Datei: ').Append(ACase.FileName).Append(sLineBreak);
+      mLines.Append(cTexts[TCrashCaseText.FileText].Text).Append(ACase.FileName).Append(sLineBreak);
     end;
     if ACase.Line >= 0 then
     begin
-      mLines.Append('Zeile: ').Append(IntToStr(ACase.Line + 1)).Append(sLineBreak);
+      mLines.Append(cTexts[TCrashCaseText.Line].Text).Append(IntToStr(ACase.Line + 1)).Append(sLineBreak);
     end;
     mLines.Append('Atlas: ').Append(ACase.AtlasVersion).Append(sLineBreak);
-    mLines.Append('Gebaut mit: ').Append(ACase.BuildCompiler).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.BuiltWith].Text).Append(ACase.BuildCompiler).Append(sLineBreak);
     if ACase.Client <> '' then
     begin
       mLines.Append('Client: ').Append(ACase.Client).Append(sLineBreak);
     end;
-    mLines.Append(sLineBreak).Append('Aufrufstapel:').Append(sLineBreak);
+    mLines.Append(sLineBreak).Append(cTexts[TCrashCaseText.CallStack].Text).Append(sLineBreak);
     if Trim(ACase.Stack) <> '' then
     begin
       mLines.Append(ACase.Stack).Append(sLineBreak);
     end
     else
     begin
-      mLines.Append('(keiner: ohne Debug-Informationen oder beim Abbruch durch den Watchdog)').Append(sLineBreak);
+      mLines.Append(cTexts[TCrashCaseText.NoneWithoutDebugInformationOr].Text).Append(sLineBreak);
     end;
     Result := mLines.ToString;
   finally
@@ -807,21 +839,21 @@ begin
   Result := False;
   if not TFile.Exists(AFileName) then
   begin
-    AError := 'Datei nicht gefunden: ' + AFileName;
+    AError := cTexts[TCrashCaseText.FileNotFound].Text + AFileName;
     Exit;
   end;
   mRoot := ParseOrNil(TFile.ReadAllText(AFileName, TEncoding.UTF8));
   try
     if not (mRoot is TJSONObject) then
     begin
-      AError := 'Kein Absturzfall (JSON-Objekt erwartet): ' + AFileName;
+      AError := cTexts[TCrashCaseText.NoCrashCaseJSONObject].Text + AFileName;
       Exit;
     end;
     mObject := TJSONObject(mRoot);
     ACase.Method := StringOf(mObject, 'method');
     if ACase.Method = '' then
     begin
-      AError := 'Im Absturzfall fehlt "method"';
+      AError := cTexts[TCrashCaseText.TheCrashCaseLacksMethod].Text;
       Exit;
     end;
     ReadFields(mObject, ACase);
@@ -835,5 +867,8 @@ begin
     mRoot.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.CrashCase', cTexts);
 
 end.

@@ -27,7 +27,23 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowUninitializedText = (Title, MaybeRead);
+
+const
+  cTexts: array[TFlowUninitializedText] of TAtlasText = (
+    (De: 'Variable wird möglicherweise vor der ersten Zuweisung gelesen';
+     En: 'Variable may be read before the first assignment'),
+    (De: '"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde';
+     En: '"%s" may be read here before a value was assigned'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Merker in Bedingungen: positiv (F, Assigned(F), F &lt;&gt; nil) und negativ (not F, F = nil).
@@ -53,6 +69,10 @@ type
     FName: string;
     FConfidence: TRuleConfidence;
     FReported: Boolean;
+    /// <summary>Record-Methoden je Typname (Großbuchstaben): RecordMethods durchsucht die Typdeklarationen der Unit;
+    /// je Variable gerufen wuchs das mit großen Klassen quadratisch.</summary>
+    FRecordMethods: TDictionary<string, TArray<string>>;
+    function MethodsOfRecord(const ATypeName: string): TArray<string>;
     function FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
     function IsFlagFor(ABlock: TSyntaxNode; const AFlag: string): Boolean;
     function ThenGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
@@ -66,6 +86,7 @@ type
     procedure CheckRoutine(ARoutine: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
     procedure Run;
   end;
 
@@ -435,7 +456,7 @@ end;
 function TPossiblyUninitializedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('possibly-uninitialized', TRuleSeverity.Warning,
-    'Variable wird möglicherweise vor der ersten Zuweisung gelesen');
+    cTexts[TFlowUninitializedText.Title].Text);
 end;
 
 procedure TPossiblyUninitializedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -463,6 +484,25 @@ begin
   FReport := AReport;
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln (Review P-03).
   FCache := TRuleDerived.Open(AContext);
+  FRecordMethods := TDictionary<string, TArray<string>>.Create;
+end;
+
+destructor TUninitializedCheck.Destroy;
+begin
+  FRecordMethods.Free;
+  inherited;
+end;
+
+function TUninitializedCheck.MethodsOfRecord(const ATypeName: string): TArray<string>;
+var
+  mKey: string;
+begin
+  mKey := UpperCase(ATypeName);
+  if not FRecordMethods.TryGetValue(mKey, Result) then
+  begin
+    Result := RecordMethods(FContext.Tree.Root, ATypeName);
+    FRecordMethods.Add(mKey, Result);
+  end;
 end;
 
 function TUninitializedCheck.FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
@@ -613,7 +653,7 @@ begin
       if IsRead(Node) and ReadsUninitialized(ARoot, Node) then
       begin
         FReport.Add(NodeRange(Node),
-          Format('"%s" wird hier möglicherweise gelesen, bevor ein Wert zugewiesen wurde', [FName]), FConfidence);
+          cTexts[TFlowUninitializedText.MaybeRead].Fmt([FName]), FConfidence);
         FReported := True;
       end
       else
@@ -638,7 +678,7 @@ begin
   begin
     FName := Name;
     if HasOpaqueUse(ABlock, Name.Trim) or UsedInNested(ARoutine, Name) or
-      CallsRecordMethod(ABlock, Name, RecordMethods(FContext.Tree.Root, TypeName)) then
+      CallsRecordMethod(ABlock, Name, MethodsOfRecord(TypeName)) then
     begin
       Continue;
     end;
@@ -685,5 +725,8 @@ begin
     CheckRoutine(Routine);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.Uninitialized', cTexts);
 
 end.

@@ -51,7 +51,24 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMessageHandlersText = (AlsoIn, AlsoIn2, Handles, Messages);
+
+const
+  cTexts: array[TMessageHandlersText] of TAtlasText = (
+    (De: ' auch in '; En: ' also in '),
+    (De: ', auch in `%s.%s`'; En: ', also in `%s.%s`'),
+    (De: 'behandelt '; En: 'handles '),
+    (De: '**Nachrichten**' + #10;
+     En: '**Messages**' + #10));
+
+{$SCOPEDENUMS OFF}
 
 function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
@@ -232,10 +249,10 @@ begin
       begin
         Also := Also + ', ';
       end;
-      Also := Also + Own[Index].Message + ' auch in ' + Inherited_[Index].TypeName;
+      Also := Also + Own[Index].Message + cTexts[TMessageHandlersText.AlsoIn].Text + Inherited_[Index].TypeName;
     end;
   end;
-  Result := 'behandelt ' + Result;
+  Result := cTexts[TMessageHandlersText.Handles].Text + Result;
   if Also <> '' then
   begin
     Result := Result + ' (' + Also + ')';
@@ -251,13 +268,14 @@ begin
   begin
     Exit;
   end;
-  Result := '**Nachrichten**' + #10;
+  Result := cTexts[TMessageHandlersText.Messages].Text;
   for Index := 0 to High(Own) do
   begin
     Result := Result + #10 + '- `' + Own[Index].Message + '` → `' + Own[Index].MethodName + '`';
     if Inherited_[Index].TypeName <> '' then
     begin
-      Result := Result + ', auch in `' + Inherited_[Index].TypeName + '.' + Inherited_[Index].MethodName + '`';
+      Result := Result + cTexts[TMessageHandlersText.AlsoIn2].Fmt([Inherited_[Index].TypeName,
+        Inherited_[Index].MethodName]);
     end;
   end;
 end;
@@ -415,5 +433,8 @@ begin
     Trees.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MessageHandlers', cTexts);
 
 end.

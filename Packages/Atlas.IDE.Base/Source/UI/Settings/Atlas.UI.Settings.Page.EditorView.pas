@@ -106,7 +106,7 @@ begin
   BindCheck('InlayDefineHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints)));
   // Code hinter Steuerzeichen wie ^C (#862).
   BindCheck('InlayCharHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints)));
-  // Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).
+  // Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686).
   BindCheck('InlayMethodHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints)));
   // Beschriftung hinter dem end langer Blöcke (#620).
   BindCheck('BlockEndLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels)));

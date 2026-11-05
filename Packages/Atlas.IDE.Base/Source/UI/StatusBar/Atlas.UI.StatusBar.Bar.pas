@@ -4,10 +4,11 @@
 // Statuszeile der IDE. Die Höhe hängt nur von der DPI ab, nie vom Inhalt.
 // - SetView setzt den Inhalt (TAtlasStatusBarView); gleicher Inhalt zeichnet
 //   nicht neu. Elemente in der Reihenfolge von View.Items:
-//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“), dahinter mit
-//   ungelesenen Benachrichtigungen deren Plakette (#1234, Klick: OnBadge) und
-//   die Zusatzfelder der Module (View.Extras, z. B. „interface-Änderung“ der
-//   Unit-Beziehungen; Klick: OnExtra mit ihrer Kennung);
+//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“), dahinter bei
+//   eingeschalteten Benachrichtigungen immer deren Plakette mit der Zahl der
+//   ungelesenen, auch 0 (#1234, Klick: OnBadge), und die Zusatzfelder der
+//   Module (View.Extras, z. B. „interface-Änderung“ der Unit-Beziehungen;
+//   Klick: OnExtra mit ihrer Kennung);
 //   findings: Zähler je Art mit den Symbolen aus „Atlas-Prüfung“;
 //   liveCheck: „live · geprüft vor 2 s“, „prüft …“, „beim Speichern“;
 //   method: „ƒ TFoo.Bar · 4 Zeilen · CC 2“, über der Grenze in Warnfarbe.
@@ -72,7 +73,9 @@ type
     StatusHint: string;
     /// <summary>Zustand des Punkts; die Farbe wählt die Leiste aus ihrer Palette (#1255).</summary>
     StatusState: TAtlasStatusState;
-    /// <summary>Ungelesene Benachrichtigungen (#1234); 0 = keine Plakette. Zustand des schwersten Eintrags.</summary>
+    /// <summary>Benachrichtigungen an: Plakette zeigen, auch ohne Ungelesene.</summary>
+    BadgeShown: Boolean;
+    /// <summary>Ungelesene Benachrichtigungen (#1234). Zustand des schwersten Eintrags.</summary>
     BadgeCount: Integer;
     BadgeState: TAtlasStatusState;
     BadgeHint: string;
@@ -258,7 +261,7 @@ var
 begin
   Result := (string.Join(',', Items) = string.Join(',', AOther.Items)) and (StatusText = AOther.StatusText) and
     (StatusHint = AOther.StatusHint) and (StatusState = AOther.StatusState) and
-    (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and (BadgeHint = AOther.BadgeHint) and
+    (BadgeShown = AOther.BadgeShown) and (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and (BadgeHint = AOther.BadgeHint) and
     (FindingsShown = AOther.FindingsShown) and (FindingsHint = AOther.FindingsHint) and
     (LiveText = AOther.LiveText) and (LiveHint = AOther.LiveHint) and (LiveBusy = AOther.LiveBusy) and
     (MethodFound = AOther.MethodFound) and (MethodName = AOther.MethodName) and
@@ -587,7 +590,7 @@ begin
   ASubs[High(ASubs)] := ASub;
 end;
 
-/// <summary>Status, Plakette (#1234) und Zusatzfelder: Das Atlas-Feld der Statuszeile ist dann 0 breit und zeigt
+/// <summary>Status, Plakette (#1234, bei eingeschalteten Benachrichtigungen auch mit 0) und Zusatzfelder: Das Atlas-Feld der Statuszeile ist dann 0 breit und zeigt
 /// keine Zusatzfelder. Höchstens so viele Zusatzfelder, wie der Vorfahr Teile je Element unterscheidet.</summary>
 procedure AddStatus(const AView: TAtlasStatusBarView; var AParts: TArray<TAtlasStatusBarPart>;
   var ASubs: TArray<Integer>; ASlots: Integer);
@@ -595,7 +598,8 @@ var
   mIndex: Integer;
 begin
   AddPart(AParts, ASubs, TAtlasStatusBarPart.Status, -1);
-  if AView.BadgeCount > 0 then
+  // Plakette der Benachrichtigungen (#1234) direkt hinter dem Status, auch mit 0.
+  if AView.BadgeShown then
   begin
     AddPart(AParts, ASubs, TAtlasStatusBarPart.Badge, -1);
   end;

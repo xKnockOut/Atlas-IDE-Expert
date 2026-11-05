@@ -19,7 +19,46 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TProjectOptionsText = (IndentSizeMustBeAWhole, MaxLineLengthMustBeAWhole, AllowedArePreserveLowerAnd,
+    AllowedAreLfAndCrlf, AllowedArePreserveNewLineAnd, AllowedAreAutoDccIde, AffectedDepthMustBeAWhole,
+    TestUnitsProjectMustBeA, AllowedAreContainsNotContainsEmpty, AllowedAreAutoPromptAnd, ExcludeMustBeAList,
+    UnknownEntryInAProperty, APropertyRuleNeedsClass, ThisConditionNeedsAValue, APropertyRuleMustBe,
+    DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint);
+
+const
+  cTexts: array[TProjectOptionsText] of TAtlasText = (
+    (De: '"indentSize" muss eine ganze Zahl von 1 bis 16 sein';
+     En: '"indentSize" must be a whole number from 1 to 16'),
+    (De: '"maxLineLength" muss eine ganze Zahl von 0 bis 1000 sein';
+     En: '"maxLineLength" must be a whole number from 0 to 1000'),
+    (De: 'Erlaubt sind "preserve", "lower" und "upper"'; En: 'Allowed are "preserve", "lower" and "upper"'),
+    (De: 'Erlaubt sind "lf" und "crlf"'; En: 'Allowed are "lf" and "crlf"'),
+    (De: 'Erlaubt sind "preserve", "newLine" und "sameLine"'; En: 'Allowed are "preserve", "newLine" and "sameLine"'),
+    (De: 'Erlaubt sind "auto", "dcc", "ide" und "off"'; En: 'Allowed are "auto", "dcc", "ide" and "off"'),
+    (De: '"affectedDepth" muss eine ganze Zahl von 1 bis 5 sein';
+     En: '"affectedDepth" must be a whole number from 1 to 5'),
+    (De: '"testUnits.project" muss eine .dproj oder .dpr sein'; En: '"testUnits.project" must be a .dproj or .dpr'),
+    (De: 'Erlaubt sind "=", "<>", "contains", "notContains", "empty" und "notEmpty"';
+     En: 'Allowed are "=", "<>", "contains", "notContains", "empty" and "notEmpty"'),
+    (De: 'Erlaubt sind "auto", "prompt" und "none"'; En: 'Allowed are "auto", "prompt" and "none"'),
+    (De: '"exclude" muss eine Liste von Glob-Mustern sein'; En: '"exclude" must be a list of glob patterns'),
+    (De: 'Unbekannte Angabe "%s" in einer Eigenschaftsregel'; En: 'Unknown entry "%s" in a property rule'),
+    (De: 'Eine Eigenschaftsregel braucht "class" und "property"'; En: 'A property rule needs "class" and "property"'),
+    (De: 'Diese Bedingung braucht einen "value"'; En: 'This condition needs a "value"'),
+    (De: 'Eine Eigenschaftsregel muss ein Objekt sein: { "class": …, "property": …, "condition": … }';
+     En: 'A property rule must be an object: { "class": …, "property": …, "condition": … }'),
+    (De: '"dfmPropertyRules" muss eine Liste von Regeln sein'; En: '"dfmPropertyRules" must be a list of rules'),
+    (De: 'Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error';
+     En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'));
+
+{$SCOPEDENUMS OFF}
 
 { format }
 
@@ -70,7 +109,7 @@ end;
 procedure ReadIndentSize(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  if AReader.ExpectInteger(AValue, 1, 16, '"indentSize" muss eine ganze Zahl von 1 bis 16 sein',
+  if AReader.ExpectInteger(AValue, 1, 16, cTexts[TProjectOptionsText.IndentSizeMustBeAWhole].Text,
     ASettings.Formatting.IndentSize) then
   begin
     Include(ASettings.Formatting.Given, TFormatKey.IndentSize);
@@ -80,7 +119,7 @@ end;
 procedure ReadMaxLineLength(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  if AReader.ExpectInteger(AValue, 0, 1000, '"maxLineLength" muss eine ganze Zahl von 0 bis 1000 sein',
+  if AReader.ExpectInteger(AValue, 0, 1000, cTexts[TProjectOptionsText.MaxLineLengthMustBeAWhole].Text,
     ASettings.Formatting.MaxLineLength) then
   begin
     Include(ASettings.Formatting.Given, TFormatKey.MaxLineLength);
@@ -92,7 +131,8 @@ procedure ReadKeywordCase(AReader: TConfigurationReader; AValue: TJsonNode; cons
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectOneOf(AValue, ['preserve', 'lower', 'upper'], 'Erlaubt sind "preserve", "lower" und "upper"',
+  if AReader.ExpectOneOf(AValue, ['preserve', 'lower', 'upper'],
+    cTexts[TProjectOptionsText.AllowedArePreserveLowerAnd].Text,
     mIndex) then
   begin
     ASettings.Formatting.KeywordCase := TKeywordCase(mIndex);
@@ -107,7 +147,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectOneOf(AValue, ['lf', 'crlf'], 'Erlaubt sind "lf" und "crlf"', mIndex) then
+  if AReader.ExpectOneOf(AValue, ['lf', 'crlf'], cTexts[TProjectOptionsText.AllowedAreLfAndCrlf].Text, mIndex) then
   begin
     ASettings.Formatting.EndOfLine := cBreaks[mIndex];
     Include(ASettings.Formatting.Given, TFormatKey.EndOfLine);
@@ -120,7 +160,7 @@ var
   mIndex: Integer;
 begin
   if AReader.ExpectOneOf(AValue, ['preserve', 'newLine', 'sameLine'],
-    'Erlaubt sind "preserve", "newLine" und "sameLine"', mIndex) then
+    cTexts[TProjectOptionsText.AllowedArePreserveNewLineAnd].Text, mIndex) then
   begin
     ATarget := TBlockPlacement(mIndex);
   end;
@@ -175,7 +215,8 @@ procedure ReadCompilerBackend(AReader: TConfigurationReader; AValue: TJsonNode; 
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, ['auto', 'dcc', 'ide', 'off'], 'Erlaubt sind "auto", "dcc", "ide" und "off"',
+  if AReader.ExpectChoice(AValue, AKey, ['auto', 'dcc', 'ide', 'off'],
+    cTexts[TProjectOptionsText.AllowedAreAutoDccIde].Text,
     mIndex) then
   begin
     ASettings.Compiler.Backend := TCompilerBackendSetting(mIndex);
@@ -209,7 +250,7 @@ procedure ReadAffectedDepth(AReader: TConfigurationReader; AValue: TJsonNode; co
   var ASettings: TServerSettings);
 begin
   AReader.ExpectInteger(AValue, TTestsSettings.MinAffectedDepth, TTestsSettings.MaxAffectedDepth,
-    '"affectedDepth" muss eine ganze Zahl von 1 bis 5 sein', ASettings.Tests.AffectedDepth);
+    cTexts[TProjectOptionsText.AffectedDepthMustBeAWhole].Text, ASettings.Tests.AffectedDepth);
 end;
 
 const
@@ -270,7 +311,7 @@ begin
   end;
   if (mText <> '') and not MatchText(ExtractFileExt(mText), ['.dproj', '.dpr']) then
   begin
-    AReader.ReportNode(AValue, '"testUnits.project" muss eine .dproj oder .dpr sein');
+    AReader.ReportNode(AValue, cTexts[TProjectOptionsText.TestUnitsProjectMustBeA].Text);
   end
   else
   begin
@@ -335,7 +376,7 @@ var
   mIndex: Integer;
 begin
   if AReader.ExpectChoice(AValue, AKey, ['=', '<>', 'contains', 'notContains', 'empty', 'notEmpty'],
-    'Erlaubt sind "=", "<>", "contains", "notContains", "empty" und "notEmpty"', mIndex) then
+    cTexts[TProjectOptionsText.AllowedAreContainsNotContainsEmpty].Text, mIndex) then
   begin
     ARule.Condition := TDfmCondition(mIndex);
   end;
@@ -348,8 +389,7 @@ var
 begin
   if AReader.ExpectString(AValue, AKey, mText) and not TryParseRuleSeverity(mText, ARule.Severity) then
   begin
-    AReader.ReportNode(AValue, Format('Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error',
-      [mText]));
+    AReader.ReportNode(AValue, cTexts[TProjectOptionsText.UnknownSeverityAllowedOffHint].Fmt([mText]));
   end;
 end;
 
@@ -364,7 +404,8 @@ procedure ReadRuleFix(AReader: TConfigurationReader; AValue: TJsonNode; const AK
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, ['prompt', 'auto', 'none'], 'Erlaubt sind "auto", "prompt" und "none"',
+  if AReader.ExpectChoice(AValue, AKey, ['prompt', 'auto', 'none'],
+    cTexts[TProjectOptionsText.AllowedAreAutoPromptAnd].Text,
     mIndex) then
   begin
     ARule.Fix := TDfmFixMode(mIndex);
@@ -379,7 +420,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"exclude" muss eine Liste von Glob-Mustern sein');
+    AReader.ReportNode(AValue, cTexts[TProjectOptionsText.ExcludeMustBeAList].Text);
     Exit;
   end;
   for mItem := 0 to AValue.Count - 1 do
@@ -415,7 +456,7 @@ begin
     end;
   end;
   AReader.Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(mKey) + 2,
-    Format('Unbekannte Angabe "%s" in einer Eigenschaftsregel', [mKey]), False);
+    cTexts[TProjectOptionsText.UnknownEntryInAProperty].Fmt([mKey]), False);
 end;
 
 /// <summary>Vollständig? Ohne class und property, oder ohne value bei einer Bedingung, die einen braucht,
@@ -425,12 +466,12 @@ begin
   Result := (ARule.ClassName <> '') and (ARule.PropertyPath <> '');
   if not Result then
   begin
-    AReader.ReportNode(ANode, 'Eine Eigenschaftsregel braucht "class" und "property"');
+    AReader.ReportNode(ANode, cTexts[TProjectOptionsText.APropertyRuleNeedsClass].Text);
   end
   else if (ARule.Condition in [TDfmCondition.Equal, TDfmCondition.NotEqual, TDfmCondition.Contains,
     TDfmCondition.NotContains]) and (ARule.Value = '') then
   begin
-    AReader.ReportNode(ANode, 'Diese Bedingung braucht einen "value"');
+    AReader.ReportNode(ANode, cTexts[TProjectOptionsText.ThisConditionNeedsAValue].Text);
     Result := False;
   end;
 end;
@@ -445,8 +486,7 @@ begin
   ARule.Fix := TDfmFixMode.Prompt;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, 'Eine Eigenschaftsregel muss ein Objekt sein: { "class": …, "property": …, ' +
-      '"condition": … }');
+    AReader.ReportNode(ANode, cTexts[TProjectOptionsText.APropertyRuleMustBe].Text);
     Exit(False);
   end;
   ARule.ClassRange := TTextRange.Create(AReader.PositionAt(ANode.Start), AReader.PositionAt(ANode.Start + 1));
@@ -465,7 +505,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"dfmPropertyRules" muss eine Liste von Regeln sein');
+    AReader.ReportNode(ANode, cTexts[TProjectOptionsText.DfmPropertyRulesMustBeAList].Text);
     Exit;
   end;
   ASettings.DfmPropertyRules := nil;
@@ -497,5 +537,8 @@ function ProjectSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.ProjectOptions', cTexts);
 
 end.

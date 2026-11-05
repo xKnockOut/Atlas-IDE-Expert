@@ -32,7 +32,36 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentationCommandsText = (HeaderOnlyAppliesInA, DeprecatedBelongsAboveARoutine, TheDeclarationIsAlreadyMarked,
+    DeclarationOfNotFound, DeclarationOfIsIncomplete, TypeDeclarationIsIncomplete, HasTooFewMethodsFor,
+    TheMethodsOfAreAlready, RegionAllBelongsInThe, ArrangeTheMethodsOfThe, SetTheFileHeaderOr,
+    MarkTheDeclarationBelowAs, DeprecatedReason);
+
+const
+  cTexts: array[TDocumentationCommandsText] of TAtlasText = (
+    (De: '/header gilt nur in einer Unit'; En: '/header only applies in a unit'),
+    (De: '/deprecated gehört über eine Routine oder einen Typ'; En: '/deprecated belongs above a routine or a type'),
+    (De: 'Die Deklaration ist schon als deprecated markiert'; En: 'The declaration is already marked as deprecated'),
+    (De: 'Deklaration von %s nicht gefunden'; En: 'Declaration of %s not found'),
+    (De: 'Deklaration von %s ist unvollständig'; En: 'Declaration of %s is incomplete'),
+    (De: 'Typdeklaration ist unvollständig'; En: 'Type declaration is incomplete'),
+    (De: '%s hat zu wenige Methoden für Regionen'; En: '%s has too few methods for regions'),
+    (De: 'Die Methoden von %s stehen schon in Regionen'; En: 'The methods of %s are already in regions'),
+    (De: '/region-all gehört in die Deklaration der Klasse';
+     En: '/region-all belongs in the declaration of the class'),
+    (De: 'Methoden der Klasse in Regionen ordnen'; En: 'Arrange the methods of the class in regions'),
+    (De: 'Dateikopf setzen bzw. Jahr fortschreiben'; En: 'Set the file header or update the year'),
+    (De: 'Deklaration darunter als veraltet markieren'; En: 'Mark the declaration below as deprecated'),
+    (De: '/deprecated Grund'; En: '/deprecated Reason'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -228,7 +257,7 @@ begin
     mFirst := FirstCode(mTokens);
     if (mFirst > High(mTokens)) or (mSource.Tree.Root = nil) or (mSource.Tree.Root.Name = '') then
     begin
-      Exit(Fail('/header gilt nur in einer Unit', AReason));
+      Exit(Fail(cTexts[TDocumentationCommandsText.HeaderOnlyAppliesInA].Text, AReason));
     end;
     // Kommentare vor "unit" bilden den vorhandenen Kopf; dort nur das Jahr fortschreiben.
     if HasHeaderComment(mTokens, mFirst) then
@@ -468,7 +497,7 @@ type
 
 function TDeprecationPlan.Plan(ASource: TCommandSource): Boolean;
 begin
-  Error := '/deprecated gehört über eine Routine oder einen Typ';
+  Error := cTexts[TDocumentationCommandsText.DeprecatedBelongsAboveARoutine].Text;
   Result := Target >= 0;
   if Result and MatchText(Tokens[Target].Text, RoutineKeywords) then
   begin
@@ -480,7 +509,7 @@ begin
   end;
   if Result and Present then
   begin
-    Error := 'Die Deklaration ist schon als deprecated markiert';
+    Error := cTexts[TDocumentationCommandsText.TheDeclarationIsAlreadyMarked].Text;
     Result := False;
   end;
 end;
@@ -505,11 +534,11 @@ begin
   Result := mStop >= 0;
   if Target < 0 then
   begin
-    Error := 'Deklaration von ' + mName + ' nicht gefunden';
+    Error := cTexts[TDocumentationCommandsText.DeclarationOfNotFound].Fmt([mName]);
   end
   else if mStop < 0 then
   begin
-    Error := 'Deklaration von ' + mName + ' ist unvollständig';
+    Error := cTexts[TDocumentationCommandsText.DeclarationOfIsIncomplete].Fmt([mName]);
   end
   else
   begin
@@ -531,7 +560,7 @@ begin
   Result := mStop >= 0;
   if (mTypeNode <> nil) and (mStop < 0) then
   begin
-    Error := 'Typdeklaration ist unvollständig';
+    Error := cTexts[TDocumentationCommandsText.TypeDeclarationIsIncomplete].Text;
   end
   else if Result then
   begin
@@ -765,15 +794,15 @@ begin
   Result := '';
   if Length(ABodies) < 2 then
   begin
-    Result := Format('%s hat zu wenige Methoden für Regionen', [AClassName]);
+    Result := cTexts[TDocumentationCommandsText.HasTooFewMethodsFor].Fmt([AClassName]);
   end
   else if HasRegions(ASource, ABodies) then
   begin
-    Result := Format('Die Methoden von %s stehen schon in Regionen', [AClassName]);
+    Result := cTexts[TDocumentationCommandsText.TheMethodsOfAreAlready].Fmt([AClassName]);
   end
   else if CommandInBodies(ASource, ABodies) then
   begin
-    Result := '/region-all gehört in die Deklaration der Klasse';
+    Result := cTexts[TDocumentationCommandsText.RegionAllBelongsInThe].Text;
   end;
 end;
 
@@ -853,7 +882,7 @@ begin
   mSource := TCommandSource.Create(AContext);
   try
     mBodies := nil;
-    mError := '/region-all gehört in die Deklaration der Klasse';
+    mError := cTexts[TDocumentationCommandsText.RegionAllBelongsInThe].Text;
     if mSource.ClassAt(mClass) then
     begin
       mBodies := ClassBodies(mSource, mClass);
@@ -881,11 +910,15 @@ end;
 
 procedure RegisterDocumentationCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('header', 'Dateikopf setzen bzw. Jahr fortschreiben', '/header', ExecuteHeader));
-  ARegister(Command('deprecated', 'Deklaration darunter als veraltet markieren', '/deprecated Grund',
+  ARegister(Command('header', cTexts[TDocumentationCommandsText.SetTheFileHeaderOr].Text, '/header', ExecuteHeader));
+  ARegister(Command('deprecated', cTexts[TDocumentationCommandsText.MarkTheDeclarationBelowAs].Text,
+    cTexts[TDocumentationCommandsText.DeprecatedReason].Text,
     ExecuteDeprecated));
-  ARegister(Command('region-all', 'Methoden der Klasse in Regionen ordnen', '/region-all',
+  ARegister(Command('region-all', cTexts[TDocumentationCommandsText.ArrangeTheMethodsOfThe].Text, '/region-all',
     ExecuteRegionAll));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.DocumentationCommands', cTexts);
 
 end.

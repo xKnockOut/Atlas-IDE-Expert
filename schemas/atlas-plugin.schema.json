@@ -760,8 +760,8 @@
       "x-page": "Editor",
       "x-quickToggle": true,
       "x-drawing": true,
-      "x-caption": "Marke „ohne Self“",
-      "x-captionEn": "“no Self” marker",
+      "x-caption": "Marke „braucht kein Self“",
+      "x-captionEn": "“Self unused” marker",
       "x-issue": "#686"
     },
     "BlockEndLabels": {

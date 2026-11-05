@@ -66,14 +66,56 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Constants.Types;
+  Atlas.Common.Rules.Builtin.Constants.Types,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConstantsConversionsText = (SignTitle, ComparedUnsigned, MixedUnsigned, ComparedInt64, MixedInt64, Value, CastInt64,
+    LossTitle, LikeW1066, LikeW1072, TheValue, MayLose, StringTitle, DeclareString, Truncated, ResourceTooLong,
+    SplitLiteral, LiteralTooLong, CastExplicitly, WidenTarget);
+
+const
+  cTexts: array[TConstantsConversionsText] of TAtlasText = (
+    (De: 'Vorzeichenbehaftet und vorzeichenlos gemischt'; En: 'Signed and unsigned mixed'),
+    (De: '%s und %s verglichen: ein negativer Wert in %s wird vorzeichenlos verglichen (wie W1023).';
+     En: '%s and %s compared: a negative value in %s is compared as unsigned (like W1023).'),
+    (De: '%s und %s gemischt: ein negativer Wert in %s wird vorzeichenlos gerechnet (wie W1073).';
+     En: '%s and %s mixed: a negative value in %s is calculated as unsigned (like W1073).'),
+    (De: '%s und %s verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).';
+     En: '%s and %s compared: both operands are extended to Int64 (like W1023).'),
+    (De: '%s und %s gemischt: beide Operanden werden auf Int64 erweitert (wie W1024).';
+     En: '%s and %s mixed: both operands are extended to Int64 (like W1024).'),
+    (De: 'Wert'; En: 'Value'),
+    (De: '%s in Int64 umwandeln'; En: 'Cast %s to Int64'),
+    (De: 'Zuweisung mit möglichem Datenverlust'; En: 'Assignment with possible data loss'),
+    (De: ' (wie W1066)'; En: ' (like W1066)'),
+    (De: ' (wie W1072)'; En: ' (like W1072)'),
+    (De: 'Der Wert'; En: 'The value'),
+    (De: '%s ist %s; die Zuweisung an %s kann Daten verlieren%s.';
+     En: '%s is %s; the assignment to %s can lose data%s.'),
+    (De: 'String-Grenze überschritten'; En: 'String limit exceeded'),
+    (De: 'Als string deklarieren'; En: 'Declare as string'),
+    (De: 'Das Literal hat %d Zeichen und wird auf %d gekürzt (wie W1014).';
+     En: 'The literal has %d characters and is truncated to %d (like W1014).'),
+    (De: 'Der resourcestring %s hat %d Zeichen; Windows erlaubt höchstens %d (wie E2381).';
+     En: 'The resourcestring %s has %d characters; Windows allows at most %d (like E2381).'),
+    (De: 'Literal teilen'; En: 'Split literal'),
+    (De: 'Das Literal hat %d Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens %d erlaubt (wie E2056).';
+     En: 'The literal has %d characters in quotes; before Delphi 12 at most %d are allowed (like E2056).'),
+    (De: 'Ausdrücklich in %s umwandeln'; En: 'Cast explicitly to %s'),
+    (De: 'Zieltyp auf %s vergrößern'; En: 'Widen the target type to %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TSignedUnsignedMixRule }
 
 function TSignedUnsignedMixRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(SignedUnsignedMixRuleId, TRuleSeverity.Warning,
-    'Vorzeichenbehaftet und vorzeichenlos gemischt');
+    cTexts[TConstantsConversionsText.SignTitle].Text);
 end;
 
 /// <summary>Vergleich oder Rechnung, in der dcc Vorzeichen mischt? AComparison sagt, ob es ein Vergleich ist.
@@ -91,23 +133,19 @@ function MixMessage(AComparison: Boolean; AUnsignedBits: Integer; const ASignedT
 begin
   if (AUnsignedBits = 64) and AComparison then
   begin
-    Result := Format('%s und %s verglichen: ein negativer Wert in %s wird vorzeichenlos verglichen (wie W1023).',
-      [ASignedType, AUnsignedType, ASignedText]);
+    Result := cTexts[TConstantsConversionsText.ComparedUnsigned].Fmt([ASignedType, AUnsignedType, ASignedText]);
   end
   else if AUnsignedBits = 64 then
   begin
-    Result := Format('%s und %s gemischt: ein negativer Wert in %s wird vorzeichenlos gerechnet (wie W1073).',
-      [ASignedType, AUnsignedType, ASignedText]);
+    Result := cTexts[TConstantsConversionsText.MixedUnsigned].Fmt([ASignedType, AUnsignedType, ASignedText]);
   end
   else if AComparison then
   begin
-    Result := Format('%s und %s verglichen: beide Operanden werden auf Int64 erweitert (wie W1023).',
-      [ASignedType, AUnsignedType]);
+    Result := cTexts[TConstantsConversionsText.ComparedInt64].Fmt([ASignedType, AUnsignedType]);
   end
   else
   begin
-    Result := Format('%s und %s gemischt: beide Operanden werden auf Int64 erweitert (wie W1024).',
-      [ASignedType, AUnsignedType]);
+    Result := cTexts[TConstantsConversionsText.MixedInt64].Fmt([ASignedType, AUnsignedType]);
   end;
 end;
 
@@ -180,12 +218,12 @@ var
     mSignedText := NodeText(ANode[mSigned]);
     if (Length(mSignedText) > MaxOperandText) or (Pos(#10, mSignedText) > 0) then
     begin
-      mSignedText := 'Wert';
+      mSignedText := cTexts[TConstantsConversionsText.Value].Text;
     end;
     mUnsignedNode := ANode[mUnsigned];
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), MixMessage(mComparison, mKinds[mUnsigned].Bits,
       mTypes[mSigned], mTypes[mUnsigned], mSignedText), TRuleConfidence.Medium,
-      [TRuleFix.Create(Format('%s in Int64 umwandeln', [NodeText(mUnsignedNode)]),
+      [TRuleFix.Create(cTexts[TConstantsConversionsText.CastInt64].Fmt([NodeText(mUnsignedNode)]),
       [TTextEdit.Create(TTextRange.Create(mUnsignedNode.StartPos, mUnsignedNode.EndPos),
       'Int64(' + NodeText(mUnsignedNode) + ')')])]);
   end;
@@ -249,7 +287,7 @@ end;
 function TNarrowingAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(NarrowingAssignmentRuleId, TRuleSeverity.Warning,
-    'Zuweisung mit möglichem Datenverlust', True);
+    cTexts[TConstantsConversionsText.LossTitle].Text, True);
 end;
 
 class function TNarrowingAssignmentRule.DefaultTypes: TArray<string>;
@@ -609,26 +647,25 @@ var
     begin
       if (SourceCanonical = 'extended') and (ATargetCanonical = 'double') then
       begin
-        CodeSuffix := ' (wie W1066)';
+        CodeSuffix := cTexts[TConstantsConversionsText.LikeW1066].Text;
       end
       else
       begin
-        CodeSuffix := ' (wie W1072)';
+        CodeSuffix := cTexts[TConstantsConversionsText.LikeW1072].Text;
       end;
     end;
     ValueText := NodeText(AValue);
     if (Length(ValueText) > MaxValueText) or (Pos(#10, ValueText) > 0) then
     begin
-      ValueText := 'Der Wert';
+      ValueText := cTexts[TConstantsConversionsText.TheValue].Text;
     end;
-    Message := Format('%s ist %s; die Zuweisung an %s kann Daten verlieren%s.',
-      [ValueText, SourceDisplay, ATargetDisplay, CodeSuffix]);
-    Fixes := [TRuleFix.Create('Ausdrücklich in ' + ATargetDisplay + ' umwandeln',
+    Message := cTexts[TConstantsConversionsText.MayLose].Fmt([ValueText, SourceDisplay, ATargetDisplay, CodeSuffix]);
+    Fixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.CastExplicitly].Fmt([ATargetDisplay]),
       [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
       ATargetDisplay + '(' + NodeText(AValue) + ')')])];
     if ATargetTypeNode <> nil then
     begin
-      Fixes := Fixes + [TRuleFix.Create('Zieltyp auf ' + SourceDisplay + ' vergrößern',
+      Fixes := Fixes + [TRuleFix.Create(cTexts[TConstantsConversionsText.WidenTarget].Fmt([SourceDisplay]),
         [TTextEdit.Create(TTextRange.Create(ATargetTypeNode.StartPos, ATargetTypeNode.EndPos), SourceDisplay)])];
     end;
     AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Message, TRuleConfidence.Medium, Fixes);
@@ -751,7 +788,8 @@ end;
 
 function TStringLengthLimitRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(StringLengthLimitRuleId, TRuleSeverity.Warning, 'String-Grenze überschritten');
+  Result := TRuleDescriptor.Create(StringLengthLimitRuleId, TRuleSeverity.Warning,
+    cTexts[TConstantsConversionsText.StringTitle].Text);
 end;
 
 /// <summary>Position hinter dem Stück in Anführungszeichen, das an AStart beginnt; ASegment zählt seine Zeichen.
@@ -1419,11 +1457,12 @@ var
     Fixes := nil;
     if ATypeNode <> nil then
     begin
-      Fixes := [TRuleFix.Create('Als string deklarieren', [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
+      Fixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.DeclareString].Text,
+        [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
         ATypeNode.EndPos), 'string')])];
     end;
-    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('Das Literal hat %d Zeichen und wird ' +
-      'auf %d gekürzt (wie W1014).', [ALength, ALimit]), TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+      cTexts[TConstantsConversionsText.Truncated].Fmt([ALength, ALimit]), TRuleConfidence.High, Fixes);
   end;
 
   /// <summary>Typisierte Konstante oder initialisierte Variable: const K: string[8] = '…'.</summary>
@@ -1521,8 +1560,8 @@ var
       if Chars > MaxResourceString then
       begin
         AReport.AddWithSeverity(TTextRange.Create(Decl[Decl.ChildCount - 1].StartPos,
-          Decl[Decl.ChildCount - 1].EndPos), Format('Der resourcestring %s hat %d Zeichen; Windows erlaubt höchstens ' +
-          '%d (wie E2381).', [Decl.Name, Chars, MaxResourceString]), TRuleSeverity.Error, nil);
+          Decl[Decl.ChildCount - 1].EndPos), cTexts[TConstantsConversionsText.ResourceTooLong].Fmt([Decl.Name, Chars,
+            MaxResourceString]), TRuleSeverity.Error, nil);
       end;
     end;
   end;
@@ -1582,11 +1621,12 @@ var
         Split := SplitLiteral(Token.Text);
         if Split <> '' then
         begin
-          Fixes := [TRuleFix.Create('Literal teilen', [TTextEdit.Create(TTextRange.Create(Token.StartPos,
+          Fixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.SplitLiteral].Text,
+            [TTextEdit.Create(TTextRange.Create(Token.StartPos,
             Token.EndPos), Split)])];
         end;
-        AReport.AddWithSeverity(TTextRange.Create(Token.StartPos, Token.EndPos), Format('Das Literal hat %d ' +
-          'Zeichen in Anführungszeichen; vor Delphi 12 sind höchstens %d erlaubt (wie E2056).',
+        AReport.AddWithSeverity(TTextRange.Create(Token.StartPos, Token.EndPos),
+          cTexts[TConstantsConversionsText.LiteralTooLong].Fmt(
           [Longest, MaxLiteral]), TRuleSeverity.Error, Fixes);
       end;
     end;
@@ -1667,5 +1707,8 @@ begin
     LocalNames.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Constants.Conversions', cTexts);
 
 end.

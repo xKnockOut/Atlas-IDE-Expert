@@ -671,6 +671,10 @@ begin
   Assert.AreEqual(1, Integer(Length(Tags)));
   Assert.AreEqual('+ System.Classes', Tags[0].Text);
   Assert.IsTrue(Tags[0].Kind = TAtlasTagKind.Add);
+  // Englische Servertexte (#1458).
+  Entry := Item('TStringList', TAtlasItemKind.Class_, 'System.Classes (add to uses)');
+  Entry.UnitUsed := False;
+  Assert.AreEqual('System.Classes', TAtlasItemPresentation.MissingUnit(Entry));
   // Ohne Hinweis im Detail: aus der uses-Ergänzung.
   Entry := Item('TStringList', TAtlasItemKind.Class_, 'TStringList');
   Entry.UnitUsed := False;

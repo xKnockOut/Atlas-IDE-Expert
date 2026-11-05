@@ -93,7 +93,64 @@ uses
   System.Math,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Lsp.PublishedMembers,
-  Atlas.Common.Dfm.FormInfo;
+  Atlas.Common.Dfm.FormInfo,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIndexToolsText = (Enumeration, EnumerationValue, NoSymbolInTheIndex, NoExactMatchSimilarNames, Rationales,
+    NoSymbolInTheIndex2, NoRationalesFor, UnitNotInTheIndex, NoRationalesInUnit, GiveExactlyOneOfUnit,
+    NoSourcesForInThe, NotInTheIndex, None, NoTypeInTheIndex, NoneInTheIndex, NoteTypesOfThisName, ImplementationOnly,
+    MoreMatchesNarrowTheSearch, MoreDeclarationsNarrowTheName, MoreSymbolsNarrowTheName, ClassText, ObjectType,
+    Helper, Field, ConstructorText, More, Line, From, None2, Unknown, Events, Signature, Ancestors,
+    RegistrationPalettePage, Ancestors2, Descendants, Line2);
+
+const
+  cTexts: array[TIndexToolsText] of TAtlasText = (
+    (De: 'Aufzählung'; En: 'Enumeration'),
+    (De: 'Aufzählungswert'; En: 'Enumeration value'),
+    (De: 'Kein Symbol "%s" im Index (%d Units).'; En: 'No symbol "%s" in the index (%d units).'),
+    (De: 'Kein exakter Treffer, ähnliche Namen:'; En: 'No exact match, similar names:'),
+    (De: 'Begründungen:'; En: 'Rationales:'),
+    (De: 'Kein Symbol "%s" im Index.'; En: 'No symbol "%s" in the index.'),
+    (De: 'Keine Begründungen zu "%s".'; En: 'No rationales for "%s".'),
+    (De: 'Unit "%s" nicht im Index.'; En: 'Unit "%s" not in the index.'),
+    (De: 'Keine Begründungen in Unit %s.'; En: 'No rationales in unit %s.'),
+    (De: 'Genau eins von "unit" und "name" angeben.'; En: 'Give exactly one of "unit" and "name".'),
+    (De: 'Keine Quellen zu "%s" im Index; nur der Name ist bekannt (z. B. nur als .dcu vorhanden).';
+     En: 'No sources for "%s" in the index; only the name is known (e.g. only available as .dcu).'),
+    (De: '  - %s (nicht im Index)'; En: '  - %s (not in the index)'),
+    (De: '  (keine)'; En: '  (none)'),
+    (De: 'Kein Typ "%s" im Index.'; En: 'No type "%s" in the index.'),
+    (De: '  (keine im Index)'; En: '  (none in the index)'),
+    (De: 'Hinweis: %d Typen dieses Namens, gezeigt wird der erste.';
+     En: 'Note: %d types of this name, the first one is shown.'),
+    (De: ', nur implementation'; En: ', implementation only'),
+    (De: '… weitere Treffer, Suche genauer fassen'; En: '… more matches, narrow the search'),
+    (De: '… weitere Deklarationen, Namen genauer fassen (TFoo.Bar)';
+     En: '… more declarations, narrow the name (TFoo.Bar)'),
+    (De: '… weitere Symbole, Namen genauer fassen (TFoo.Bar)'; En: '… more symbols, narrow the name (TFoo.Bar)'),
+    (De: 'Klasse'; En: 'Class'),
+    (De: 'Objekttyp'; En: 'Object type'),
+    (De: 'Helfer'; En: 'Helper'),
+    (De: 'Feld'; En: 'Field'),
+    (De: 'Konstruktor'; En: 'Constructor'),
+    (De: '… %d weitere'; En: '… %d more'),
+    (De: '- %s (Zeile %d): %s'; En: '- %s (line %d): %s'),
+    (De: ' (aus %s)'; En: ' (from %s)'),
+    (De: 'keine'; En: 'none'),
+    (De: 'unbekannt'; En: 'unknown'),
+    (De: 'Ereignisse:'; En: 'Events:'),
+    (De: ' – Signatur '; En: ' – signature '),
+    (De: 'Vorfahren: '; En: 'Ancestors: '),
+    (De: 'Registrierung (Palettenseite): '; En: 'Registration (palette page): '),
+    (De: 'Vorfahren:'; En: 'Ancestors:'),
+    (De: 'Nachfahren:'; En: 'Descendants:'),
+    (De: '%s%s %s%s – Zeile %d'; En: '%s%s %s%s – line %d'));
+
+{$SCOPEDENUMS OFF}
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -117,20 +174,20 @@ end;
 class function TMcpIndexTools.KindName(AKind: TIndexSymbolKind): string;
 begin
   case AKind of
-    TIndexSymbolKind.ClassType: Result := 'Klasse';
-    TIndexSymbolKind.ObjectType: Result := 'Objekttyp';
+    TIndexSymbolKind.ClassType: Result := cTexts[TIndexToolsText.ClassText].Text;
+    TIndexSymbolKind.ObjectType: Result := cTexts[TIndexToolsText.ObjectType].Text;
     TIndexSymbolKind.RecordType: Result := 'Record';
     TIndexSymbolKind.InterfaceType: Result := 'Interface';
-    TIndexSymbolKind.HelperType: Result := 'Helfer';
-    TIndexSymbolKind.EnumType: Result := 'Aufzählung';
+    TIndexSymbolKind.HelperType: Result := cTexts[TIndexToolsText.Helper].Text;
+    TIndexSymbolKind.EnumType: Result := cTexts[TIndexToolsText.Enumeration].Text;
     TIndexSymbolKind.TypeAlias: Result := 'Typ';
-    TIndexSymbolKind.EnumMember: Result := 'Aufzählungswert';
+    TIndexSymbolKind.EnumMember: Result := cTexts[TIndexToolsText.EnumerationValue].Text;
     TIndexSymbolKind.Constant: Result := 'Konstante';
     TIndexSymbolKind.Variable: Result := 'Variable';
-    TIndexSymbolKind.Field: Result := 'Feld';
+    TIndexSymbolKind.Field: Result := cTexts[TIndexToolsText.Field].Text;
     TIndexSymbolKind.Property_: Result := 'Property';
     TIndexSymbolKind.Method: Result := 'Methode';
-    TIndexSymbolKind.Constructor_: Result := 'Konstruktor';
+    TIndexSymbolKind.Constructor_: Result := cTexts[TIndexToolsText.ConstructorText].Text;
   else
     Result := 'Routine';
   end;
@@ -150,7 +207,7 @@ begin
   end;
   if not ALocation.Symbol.InInterface then
   begin
-    Result := Result + ', nur implementation';
+    Result := Result + cTexts[TIndexToolsText.ImplementationOnly].Text;
   end;
   Result := Result + Format(') – Unit %s, %s', [ALocation.UnitName, TMcpIndexTools.Location(ALocation)]);
 end;
@@ -221,7 +278,7 @@ begin
   begin
     if mIndex >= TMcpIndexTools.MaxResults then
     begin
-      ALines.Add(Format('… %d weitere', [Length(AFound) - mIndex]));
+      ALines.Add(cTexts[TIndexToolsText.More].Fmt([Length(AFound) - mIndex]));
       Break;
     end;
     ALines.Add(Describe(AFound[mIndex]));
@@ -245,7 +302,7 @@ begin
       end;
       if ALines.Count >= MaxResults then
       begin
-        ALines.Add('… weitere Treffer, Suche genauer fassen');
+        ALines.Add(cTexts[TIndexToolsText.MoreMatchesNarrowTheSearch].Text);
         Exit(False);
       end;
       mLocation.UnitName := mUnit.UnitName;
@@ -276,11 +333,11 @@ begin
     end
     else if mLines.Count = 0 then
     begin
-      Result := Format('Kein Symbol "%s" im Index (%d Units).', [AQuery, FIndex.UnitCount]);
+      Result := cTexts[TIndexToolsText.NoSymbolInTheIndex].Fmt([AQuery, FIndex.UnitCount]);
     end
     else
     begin
-      Result := 'Kein exakter Treffer, ähnliche Namen:' + sLineBreak + JoinLines(mLines);
+      Result := cTexts[TIndexToolsText.NoExactMatchSimilarNames].Text + sLineBreak + JoinLines(mLines);
     end;
   finally
     mLines.Free;
@@ -306,7 +363,7 @@ var
 begin
   for mEntry in AEntries do
   begin
-    ALines.Add(Format('- %s (Zeile %d): %s', [mEntry.Marker, mEntry.Line + 1, mEntry.Text]));
+    ALines.Add(cTexts[TIndexToolsText.Line].Fmt([mEntry.Marker, mEntry.Line + 1, mEntry.Text]));
   end;
 end;
 
@@ -347,7 +404,7 @@ begin
   mEntries := TLspRationale.Select(EntriesOf(FIndex, ALocation), AOptions);
   if Length(mEntries) > 0 then
   begin
-    ALines.Add('Begründungen:');
+    ALines.Add(cTexts[TIndexToolsText.Rationales].Text);
     AddEntries(ALines, mEntries);
   end;
 end;
@@ -368,7 +425,7 @@ begin
     begin
       if mCount >= MaxDeclarations then
       begin
-        mLines.Add('… weitere Deklarationen, Namen genauer fassen (TFoo.Bar)');
+        mLines.Add(cTexts[TIndexToolsText.MoreDeclarationsNarrowTheName].Text);
         Break;
       end;
       Inc(mCount);
@@ -376,7 +433,7 @@ begin
     end;
     if mCount = 0 then
     begin
-      Exit(Format('Kein Symbol "%s" im Index.', [AQuery]));
+      Exit(cTexts[TIndexToolsText.NoSymbolInTheIndex2].Fmt([AQuery]));
     end;
     Result := JoinLines(mLines);
   finally
@@ -404,7 +461,7 @@ begin
       end;
       if mCount >= MaxDeclarations then
       begin
-        mLines.Add('… weitere Symbole, Namen genauer fassen (TFoo.Bar)');
+        mLines.Add(cTexts[TIndexToolsText.MoreSymbolsNarrowTheName].Text);
         Break;
       end;
       Inc(mCount);
@@ -418,7 +475,7 @@ begin
     Result := JoinLines(mLines);
     if mCount = 0 then
     begin
-      Result := Format('Keine Begründungen zu "%s".', [AName]);
+      Result := cTexts[TIndexToolsText.NoRationalesFor].Fmt([AName]);
     end;
   finally
     mLines.Free;
@@ -463,14 +520,14 @@ var
 begin
   if not FIndex.FindUnit(AUnitOrFile, mUnit) and not FIndex.FindFile(AUnitOrFile, mUnit) then
   begin
-    Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+    Exit(cTexts[TIndexToolsText.UnitNotInTheIndex].Fmt([AUnitOrFile]));
   end;
   mLines := TStringList.Create;
   try
     mLines.Add(Format('unit %s – %s', [mUnit.UnitName, mUnit.FileName]));
     if AddUnitEntries(mLines, mUnit, AOptions) = 0 then
     begin
-      Result := Format('Keine Begründungen in Unit %s.', [mUnit.UnitName]);
+      Result := cTexts[TIndexToolsText.NoRationalesInUnit].Fmt([mUnit.UnitName]);
     end
     else
     begin
@@ -486,7 +543,7 @@ begin
   // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
   if (Trim(AUnitOrFile) = '') = (Trim(AName) = '') then
   begin
-    Result := 'Genau eins von "unit" und "name" angeben.';
+    Result := cTexts[TIndexToolsText.GiveExactlyOneOfUnit].Text;
   end
   else if Trim(AName) <> '' then
   begin
@@ -601,7 +658,7 @@ begin
   Result := '';
   if not SameText(AMember.DeclaringClass, AClassName) then
   begin
-    Result := ' (aus ' + AMember.DeclaringClass + ')';
+    Result := cTexts[TIndexToolsText.From].Fmt([AMember.DeclaringClass]);
   end;
 end;
 
@@ -682,7 +739,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := 'keine';
+    Result := cTexts[TIndexToolsText.None2].Text;
   end;
 end;
 
@@ -695,7 +752,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := 'unbekannt';
+    Result := cTexts[TIndexToolsText.Unknown].Text;
   end;
 end;
 
@@ -725,7 +782,7 @@ begin
       ALines.Add(mLine + InheritedNote(mMember, AClassName));
     end;
   end;
-  ALines.Add('Ereignisse:');
+  ALines.Add(cTexts[TIndexToolsText.Events].Text);
   for mMember in mMembers do
   begin
     if mMember.IsEvent then
@@ -733,7 +790,7 @@ begin
       mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
       if TPublishedMembers.EventTail(FIndex, mReadText, AClassName, mMember.Name, mTail) then
       begin
-        mLine := mLine + ' – Signatur ' + mTail;
+        mLine := mLine + cTexts[TIndexToolsText.Signature].Text + mTail;
       end;
       ALines.Add(mLine + InheritedNote(mMember, AClassName));
     end;
@@ -748,14 +805,13 @@ begin
   mFound := TypeMatches(AClassName);
   if Length(mFound) = 0 then
   begin
-    Exit(Format('Keine Quellen zu "%s" im Index; nur der Name ist bekannt (z. B. nur als .dcu vorhanden).',
-      [AClassName]));
+    Exit(cTexts[TIndexToolsText.NoSourcesForInThe].Fmt([AClassName]));
   end;
   mLines := TStringList.Create;
   try
     mLines.Add(Describe(mFound[0]));
-    mLines.Add('Vorfahren: ' + AncestorLine(mFound[0]));
-    mLines.Add('Registrierung (Palettenseite): ' + PaletteLine(mFound[0]));
+    mLines.Add(cTexts[TIndexToolsText.Ancestors].Text + AncestorLine(mFound[0]));
+    mLines.Add(cTexts[TIndexToolsText.RegistrationPalettePage].Text + PaletteLine(mFound[0]));
     mLines.Add('Package: ' + PackageLine(mFound[0].UnitName));
     if Assigned(FReadText) then
     begin
@@ -775,7 +831,7 @@ var
   mName: string;
 begin
   // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
-  ALines.Add('Vorfahren:');
+  ALines.Add(cTexts[TIndexToolsText.Ancestors2].Text);
   mCurrent := AFound;
   mChain := TList<string>.Create;
   try
@@ -790,7 +846,7 @@ begin
       mParents := TypeMatches(mName);
       if Length(mParents) = 0 then
       begin
-        ALines.Add('  - ' + mName + ' (nicht im Index)');
+        ALines.Add(cTexts[TIndexToolsText.NotInTheIndex].Fmt([mName]));
         Break;
       end;
       mCurrent := mParents[0];
@@ -798,7 +854,7 @@ begin
     end;
     if mChain.Count = 0 then
     begin
-      ALines.Add('  (keine)');
+      ALines.Add(cTexts[TIndexToolsText.None].Text);
     end;
   finally
     mChain.Free;
@@ -815,7 +871,7 @@ begin
   mFound := TypeMatches(ATypeName);
   if Length(mFound) = 0 then
   begin
-    Exit(Format('Kein Typ "%s" im Index.', [ATypeName]));
+    Exit(cTexts[TIndexToolsText.NoTypeInTheIndex].Fmt([ATypeName]));
   end;
   mLines := TStringList.Create;
   mVisited := TDictionary<string, Boolean>.Create;
@@ -826,16 +882,16 @@ begin
       mLines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(mFound[0].Symbol.Ancestors, 1, MaxInt)));
     end;
     AddAncestors(mLines, mFound[0]);
-    mLines.Add('Nachfahren:');
+    mLines.Add(cTexts[TIndexToolsText.Descendants].Text);
     mIndex := mLines.Count;
     AddDescendants(mLines, mFound[0].Symbol.Name, 1, mVisited);
     if mLines.Count = mIndex then
     begin
-      mLines.Add('  (keine im Index)');
+      mLines.Add(cTexts[TIndexToolsText.NoneInTheIndex].Text);
     end;
     if Length(mFound) > 1 then
     begin
-      mLines.Add(Format('Hinweis: %d Typen dieses Namens, gezeigt wird der erste.', [Length(mFound)]));
+      mLines.Add(cTexts[TIndexToolsText.NoteTypesOfThisName].Fmt([Length(mFound)]));
     end;
     Result := JoinLines(mLines);
   finally
@@ -854,7 +910,7 @@ var
 begin
   if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
   begin
-    Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+    Exit(cTexts[TIndexToolsText.UnitNotInTheIndex].Fmt([AUnitOrFile]));
   end;
   Lines := TStringList.Create;
   try
@@ -878,7 +934,7 @@ begin
         Lines.Add(Section + ':');
       end;
       Indent := IfThen(Symbol.Container = '', '  ', '    ');
-      Lines.Add(Format('%s%s %s%s – Zeile %d', [Indent, KindName(Symbol.Kind),
+      Lines.Add(cTexts[TIndexToolsText.Line2].Fmt([Indent, KindName(Symbol.Kind),
         IfThen(Symbol.Container = '', Symbol.Name, Symbol.QualifiedName),
         IfThen(Symbol.TypeName <> '', ': ' + Symbol.TypeName, '') +
         IfThen(Length(Symbol.Ancestors) > 0, '(' + string.Join(', ', Symbol.Ancestors) + ')', ''),
@@ -895,5 +951,8 @@ begin
   // Gemeinsam mit dem Hover über Formularfelder (#126).
   Result := TFormInfo.Describe(AText);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.IndexTools', cTexts);
 
 end.

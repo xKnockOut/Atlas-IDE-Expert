@@ -91,7 +91,21 @@ uses
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDebugUnavailableText = (FieldsTextDocumentUriPositionAnd);
+
+const
+  cTexts: array[TDebugUnavailableText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri", "position" und "name" fehlen in ';
+     En: 'Fields "textDocument.uri", "position" and "name" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function LastPart(const AName: string): string;
 begin
@@ -644,7 +658,7 @@ begin
     TJSONObject(AParams).TryGetValue<string>('name', Name)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "position" und "name" fehlen in ' + Method);
+      cTexts[TDebugUnavailableText.FieldsTextDocumentUriPositionAnd].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -674,5 +688,8 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Result := ToJson(Facts, TLspCompilerSwitches.StateAt(Document.Text, Position, Context), FileName);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DebugUnavailable', cTexts);
 
 end.

@@ -98,7 +98,50 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer;
+  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingInlineAccessorText = (IsBothGetterAndSetter, IsNotAnOrdinaryMethod, IsVirtualVirtualDynamicOverride,
+    IsAClassMethod, IsOverloadedOrGeneric, PropertyHasAnIndexNeeds, PropertyIsAnArrayClass,
+    ThePropertiesOfHaveDifferent, DoesNotFitAsGetter, DoesNotFitAsSetter, TheBodyOfIsNot, IsNotAFieldOf,
+    HasADifferentTypeThan, ImplementsAMethodOf, WhetherImplementsAMethodOf, IsMappedToAnInterface, IsUsedInTheClass,
+    TheNameOfCannotBe, ReplaceAccessorsAndWithThe, PropertyAlsoNamesForStored, DoesMoreThanReadOr,
+    ReplaceAccessorWithField);
+
+const
+  cTexts: array[TEditingInlineAccessorText] of TAtlasText = (
+    (De: '%s ist zugleich Getter und Setter.'; En: '%s is both getter and setter.'),
+    (De: '%s ist keine gewöhnliche Methode.'; En: '%s is not an ordinary method.'),
+    (De: '%s ist virtuell (virtual, dynamic, override oder abstract).';
+     En: '%s is virtual (virtual, dynamic, override or abstract).'),
+    (De: '%s ist eine class-Methode.'; En: '%s is a class method.'),
+    (De: '%s ist überladen oder generisch.'; En: '%s is overloaded or generic.'),
+    (De: 'Property %s hat einen index; %s braucht ihn als Parameter.';
+     En: 'Property %s has an index; %s needs it as a parameter.'),
+    (De: 'Property %s ist eine Array-, class- oder umdeklarierte Property.';
+     En: 'Property %s is an array, class or redeclared property.'),
+    (De: 'Die Properties zu %s haben verschiedene Typen.'; En: 'The properties of %s have different types.'),
+    (De: '%s passt nicht als Getter zur Property.'; En: '%s does not fit as getter of the property.'),
+    (De: '%s passt nicht als Setter zur Property.'; En: '%s does not fit as setter of the property.'),
+    (De: 'Der Rumpf von %s steht nicht in dieser Unit.'; En: 'The body of %s is not in this unit.'),
+    (De: '%s ist kein Feld von %s.'; En: '%s is not a field of %s.'),
+    (De: '%s hat einen anderen Typ als die Property.'; En: '%s has a different type than the property.'),
+    (De: '%s implementiert eine Methode von %s.'; En: '%s implements a method of %s.'),
+    (De: 'Ob %s eine Methode von %s implementiert, ist unbekannt.';
+     En: 'Whether %s implements a method of %s is unknown.'),
+    (De: '%s ist einer Interface-Methode zugeordnet.'; En: '%s is mapped to an interface method.'),
+    (De: '%s wird in der Klasse benutzt (%s).'; En: '%s is used in the class (%s).'),
+    (De: 'Der Name von %s ist nicht zu finden.'; En: 'The name of %s cannot be found.'),
+    (De: 'Zugriffsmethoden %s und %s durch Feld ersetzen'; En: 'Replace accessors %s and %s with the field'),
+    (De: 'Property %s nennt %s auch bei stored.'; En: 'Property %s also names %s for stored.'),
+    (De: '%s tut mehr, als ein Feld zu lesen bzw. zu setzen.'; En: '%s does more than read or set a field.'),
+    (De: 'Zugriffsmethode %s durch Feld %s ersetzen'; En: 'Replace accessor %s with field %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TInlineAccessorOptions }
 
@@ -417,23 +460,23 @@ begin
   Result := '';
   if ABoth then
   begin
-    Result := Format('%s ist zugleich Getter und Setter.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.IsBothGetterAndSetter].Fmt([AMember.Name]);
   end
   else if AMember.Kind <> TClassMemberKind.Method then
   begin
-    Result := Format('%s ist keine gewöhnliche Methode.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.IsNotAnOrdinaryMethod].Fmt([AMember.Name]);
   end
   else if AMember.IsVirtual or AMember.HasDirective('message') then
   begin
-    Result := Format('%s ist virtuell (virtual, dynamic, override oder abstract).', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.IsVirtualVirtualDynamicOverride].Fmt([AMember.Name]);
   end
   else if AMember.IsClassMember then
   begin
-    Result := Format('%s ist eine class-Methode.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.IsAClassMethod].Fmt([AMember.Name]);
   end
   else if AMember.IsGeneric or (Length(ALayout.Find(AMember.Name)) > 1) then
   begin
-    Result := Format('%s ist überladen oder generisch.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.IsOverloadedOrGeneric].Fmt([AMember.Name]);
   end;
 end;
 
@@ -444,15 +487,15 @@ begin
   Result := '';
   if AProp.IndexSpecifier <> '' then
   begin
-    Result := Format('Property %s hat einen index; %s braucht ihn als Parameter.', [AProp.Name, AMethod]);
+    Result := cTexts[TEditingInlineAccessorText.PropertyHasAnIndexNeeds].Fmt([AProp.Name, AMethod]);
   end
   else if (AProp.Parameters <> '') or AProp.IsClassMember or AProp.IsRedeclaration then
   begin
-    Result := Format('Property %s ist eine Array-, class- oder umdeklarierte Property.', [AProp.Name]);
+    Result := cTexts[TEditingInlineAccessorText.PropertyIsAnArrayClass].Fmt([AProp.Name]);
   end
   else if SameText(AProp.StoredSpecifier, AMethod) then
   begin
-    Result := Format('Property %s nennt %s auch bei stored.', [AProp.Name, AMethod]);
+    Result := cTexts[TEditingInlineAccessorText.PropertyAlsoNamesForStored].Fmt([AProp.Name, AMethod]);
   end;
 end;
 
@@ -470,7 +513,7 @@ begin
     Result := PropertyIssue(mProp, AMethod);
     if (Result = '') and (AType <> '') and not SameType(AType, mProp.TypeName) then
     begin
-      Result := Format('Die Properties zu %s haben verschiedene Typen.', [AMethod]);
+      Result := cTexts[TEditingInlineAccessorText.ThePropertiesOfHaveDifferent].Fmt([AMethod]);
     end;
     if Result <> '' then
     begin
@@ -489,14 +532,14 @@ begin
   begin
     if not AMember.IsFunction or (AMember.Parameters <> '') or not SameType(AMember.TypeName, AType) then
     begin
-      Result := Format('%s passt nicht als Getter zur Property.', [AMember.Name]);
+      Result := cTexts[TEditingInlineAccessorText.DoesNotFitAsGetter].Fmt([AMember.Name]);
     end;
   end
   else if AMember.IsFunction or (Length(AMember.ParameterTypes) <> 1) or
     not SameType(AMember.ParameterTypes[0], AType) or StartsText('var ', AMember.Parameters) or
     StartsText('out ', AMember.Parameters) then
   begin
-    Result := Format('%s passt nicht als Setter zur Property.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.DoesNotFitAsSetter].Fmt([AMember.Name]);
   end;
 end;
 
@@ -517,22 +560,22 @@ begin
   AFieldName := '';
   if AMember.Body = nil then
   begin
-    Result := Format('Der Rumpf von %s steht nicht in dieser Unit.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.TheBodyOfIsNot].Fmt([AMember.Name]);
   end
   else if AField = '' then
   begin
-    Result := Format('%s tut mehr, als ein Feld zu lesen bzw. zu setzen.', [AMember.Name]);
+    Result := cTexts[TEditingInlineAccessorText.DoesMoreThanReadOr].Fmt([AMember.Name]);
   end
   else
   begin
     mFields := ALayout.Find(AField);
     if (Length(mFields) <> 1) or not IsInstanceField(ALayout.Members[mFields[0]]) then
     begin
-      Result := Format('%s ist kein Feld von %s.', [AField, ALayout.Name]);
+      Result := cTexts[TEditingInlineAccessorText.IsNotAFieldOf].Fmt([AField, ALayout.Name]);
     end
     else if not SameType(ALayout.Members[mFields[0]].TypeName, AType) then
     begin
-      Result := Format('%s hat einen anderen Typ als die Property.', [AField]);
+      Result := cTexts[TEditingInlineAccessorText.HasADifferentTypeThan].Fmt([AField]);
     end
     else
     begin
@@ -555,12 +598,12 @@ begin
   end;
   if mAnswer = TInterfaceAnswer.Yes then
   begin
-    Result := Format('%s implementiert eine Methode von %s.', [AMethod, ALayout.Ancestors[AIndex]]);
+    Result := cTexts[TEditingInlineAccessorText.ImplementsAMethodOf].Fmt([AMethod, ALayout.Ancestors[AIndex]]);
   end
   // Nur der erste Eintrag kann eine Klasse sein; ein unbekanntes Interface schließt aus.
   else if (mAnswer = TInterfaceAnswer.Unknown) and (AIndex > 0) then
   begin
-    Result := Format('Ob %s eine Methode von %s implementiert, ist unbekannt.', [AMethod,
+    Result := cTexts[TEditingInlineAccessorText.WhetherImplementsAMethodOf].Fmt([AMethod,
       ALayout.Ancestors[AIndex]]);
   end;
 end;
@@ -573,7 +616,7 @@ var
 begin
   if HasResolution(ALayout, AMethod) then
   begin
-    Exit(Format('%s ist einer Interface-Methode zugeordnet.', [AMethod]));
+    Exit(cTexts[TEditingInlineAccessorText.IsMappedToAnInterface].Fmt([AMethod]));
   end;
   for mIndex := 0 to High(ALayout.Ancestors) do
   begin
@@ -595,7 +638,7 @@ begin
   begin
     if not TMemberTransfer.Has(AProperties, mUser) then
     begin
-      Exit(Format('%s wird in der Klasse benutzt (%s).', [ALayout.Members[AMember].Name,
+      Exit(cTexts[TEditingInlineAccessorText.IsUsedInTheClass].Fmt([ALayout.Members[AMember].Name,
         ALayout.Members[mUser].Name]));
     end;
   end;
@@ -663,7 +706,7 @@ begin
   end;
   if (AReason = '') and not NameRangeIn(ALayout, mMember.Node, mMember.Name, AAccessor.NameRange) then
   begin
-    AReason := Format('Der Name von %s ist nicht zu finden.', [mMember.Name]);
+    AReason := cTexts[TEditingInlineAccessorText.TheNameOfCannotBe].Fmt([mMember.Name]);
   end;
   Result := AReason = '';
   if Result then
@@ -952,11 +995,13 @@ class function TInlineAccessor.Title(const AAccessors: TArray<TTrivialAccessor>)
 begin
   if Length(AAccessors) = 1 then
   begin
-    Result := Format('Zugriffsmethode %s durch Feld %s ersetzen', [AAccessors[0].Name, AAccessors[0].Field]);
+    Result := cTexts[TEditingInlineAccessorText.ReplaceAccessorWithField].Fmt([AAccessors[0].Name,
+      AAccessors[0].Field]);
   end
   else
   begin
-    Result := Format('Zugriffsmethoden %s und %s durch Feld ersetzen', [AAccessors[0].Name, AAccessors[1].Name]);
+    Result := cTexts[TEditingInlineAccessorText.ReplaceAccessorsAndWithThe].Fmt([AAccessors[0].Name,
+      AAccessors[1].Name]);
   end;
 end;
 
@@ -964,5 +1009,8 @@ class function TInlineAccessor.IsResolution(ALayout: TClassLayout; const AMethod
 begin
   Result := HasResolution(ALayout, AMethod);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.InlineAccessor', cTexts);
 
 end.

@@ -78,7 +78,32 @@ uses
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDatabaseText = (OfTable, DeleteAll, UpdateAll, WhereTitle, InFormFile, StarTitle, AllColumns, AllColumnsOf,
+    ReplaceStar, OfNamedTable);
+
+const
+  cTexts: array[TDatabaseText] of TAtlasText = (
+    (De: 'der Tabelle'; En: 'of the table'),
+    (De: 'DELETE ohne WHERE löscht alle Zeilen %s%s.'; En: 'DELETE without WHERE deletes all rows %s%s.'),
+    (De: 'UPDATE ohne WHERE ändert alle Zeilen %s%s.'; En: 'UPDATE without WHERE changes all rows %s%s.'),
+    (De: 'UPDATE oder DELETE ohne WHERE'; En: 'UPDATE or DELETE without WHERE'),
+    (De: ' (%s.%s in der Formulardatei)'; En: ' (%s.%s in the form file)'),
+    (De: 'SELECT * im Code'; En: 'SELECT * in code'),
+    (De: 'SELECT * holt alle Spalten%s; neue Spalten ändern still die Datenmenge.';
+     En: 'SELECT * fetches all columns%s; new columns silently change the dataset.'),
+    (De: 'SELECT %s.* holt alle Spalten von %0:s%s; neue Spalten ändern still die Datenmenge.';
+     En: 'SELECT %s.* fetches all columns of %0:s%s; new columns silently change the dataset.'),
+    (De: '* durch die persistenten Felder ersetzen'; En: 'Replace * with the persistent fields'),
+    (De: 'von %s'; En: 'of %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   Hole = cSqlHole;
@@ -351,19 +376,19 @@ var
 begin
   if AWrite.Table = '' then
   begin
-    Table := 'der Tabelle';
+    Table := cTexts[TDatabaseText.OfTable].Text;
   end
   else
   begin
-    Table := 'von ' + AWrite.Table;
+    Table := cTexts[TDatabaseText.OfNamedTable].Fmt([AWrite.Table]);
   end;
   if AWrite.Kind = 'DELETE' then
   begin
-    Result := Format('DELETE ohne WHERE löscht alle Zeilen %s%s.', [Table, ASuffix]);
+    Result := cTexts[TDatabaseText.DeleteAll].Fmt([Table, ASuffix]);
   end
   else
   begin
-    Result := Format('UPDATE ohne WHERE ändert alle Zeilen %s%s.', [Table, ASuffix]);
+    Result := cTexts[TDatabaseText.UpdateAll].Fmt([Table, ASuffix]);
   end;
 end;
 
@@ -1311,7 +1336,8 @@ end;
 
 function TSqlWriteWithoutWhereRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SqlWriteWithoutWhereRuleId, TRuleSeverity.Warning, 'UPDATE oder DELETE ohne WHERE');
+  Result := TRuleDescriptor.Create(SqlWriteWithoutWhereRuleId, TRuleSeverity.Warning,
+    cTexts[TDatabaseText.WhereTitle].Text);
 end;
 
 class function TSqlWriteWithoutWhereRule.Writes(const ASql: string; AStrictCase: Boolean): TArray<TSqlWrite>;
@@ -1422,7 +1448,7 @@ begin
   begin
     Exit;
   end;
-  for mHit in AFinder(mText, False, Format(' (%s.%s in der Formulardatei)', [AObject.Name, mRoot])) do
+  for mHit in AFinder(mText, False, cTexts[TDatabaseText.InFormFile].Fmt([AObject.Name, mRoot])) do
   begin
     mAnchor := FormAnchor(ATokens, AObject.Name, AFormClass);
     if mAnchor >= 0 then
@@ -1519,7 +1545,7 @@ const
 
 function TSqlSelectStarRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SqlSelectStarRuleId, TRuleSeverity.Hint, 'SELECT * im Code', True);
+  Result := TRuleDescriptor.Create(SqlSelectStarRuleId, TRuleSeverity.Hint, cTexts[TDatabaseText.StarTitle].Text, True);
 end;
 
 class function TSqlSelectStarRule.Stars(const ASql: string; AStrictCase: Boolean): TArray<TSqlStar>;
@@ -1612,12 +1638,11 @@ function StarMessage(const AStar: TSqlStar; const ASuffix: string): string;
 begin
   if AStar.Qualifier = '' then
   begin
-    Result := Format('SELECT * holt alle Spalten%s; neue Spalten ändern still die Datenmenge.', [ASuffix]);
+    Result := cTexts[TDatabaseText.AllColumns].Fmt([ASuffix]);
   end
   else
   begin
-    Result := Format('SELECT %s.* holt alle Spalten von %0:s%s; neue Spalten ändern still die Datenmenge.',
-      [AStar.Qualifier, ASuffix]);
+    Result := cTexts[TDatabaseText.AllColumnsOf].Fmt([AStar.Qualifier, ASuffix]);
   end;
 end;
 
@@ -1688,7 +1713,7 @@ begin
   mFields := DataSetFields(ADocument, AFound.Key);
   if (mFields <> nil) and StarColumn(ATokens, AFound, mToken, mColumn) then
   begin
-    Result := [TRuleFix.Create('* durch die persistenten Felder ersetzen',
+    Result := [TRuleFix.Create(cTexts[TDatabaseText.ReplaceStar].Text,
       [TRuleEdit.Create(TTextRange.Create(mToken.StartPos.Line, mToken.StartPos.Character + mColumn,
       mToken.StartPos.Line, mToken.StartPos.Character + mColumn + 1), string.Join(', ', mFields))])];
   end;
@@ -1725,5 +1750,8 @@ begin
   ARegistry.Register(TSqlWriteWithoutWhereRule.Create);
   ARegistry.Register(TSqlSelectStarRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Database', cTexts);
 
 end.

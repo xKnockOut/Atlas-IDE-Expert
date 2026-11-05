@@ -83,7 +83,24 @@ uses
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Query.Output,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryText = (QueryMissing, QueryResultIsNotValid, FormatIsJsonMarkdownCsv, NoProjectLoaded, CatalogIsNotValidJSON);
+
+const
+  cTexts: array[TQueryText] of TAtlasText = (
+    (De: '"query" fehlt'; En: '"query" missing'),
+    (De: 'Abfrageergebnis ist kein gültiges JSON'; En: 'Query result is not valid JSON'),
+    (De: '"format" ist json, markdown, csv oder text'; En: '"format" is json, markdown, csv or text'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'),
+    (De: 'Katalog ist kein gültiges JSON'; En: 'Catalog is not valid JSON'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -196,7 +213,7 @@ begin
   mQuery := StringOf(AParams, 'query');
   if mQuery = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"query" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.QueryMissing].Text);
   end;
   mLimit := 0;
   if AParams <> nil then
@@ -236,7 +253,7 @@ begin
   mValue := TJSONObject.ParseJSONValue(TQueryOutput.Json(AResult));
   if mValue = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Abfrageergebnis ist kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.QueryResultIsNotValid].Text);
   end;
   AAnswer.AddPair('format', 'json');
   AAnswer.AddPair('data', mValue);
@@ -253,11 +270,11 @@ begin
   mFormatText := StringOf(AParams, 'format');
   if not TQueryOutput.TryParseFormat(mFormatText, TQueryOutputFormat.Json, mFormat) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, csv oder text');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
   end;
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(AParams, 'uri')), mSettings, mRoot)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
   end;
   mAnswer := TJSONObject.Create;
   try
@@ -303,7 +320,7 @@ begin
       mValue := TJSONObject.ParseJSONValue(TQueryOutput.CatalogJson(mSettings.Queries));
       if mValue = nil then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Katalog ist kein gültiges JSON');
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.CatalogIsNotValidJSON].Text);
       end;
       mAnswer.AddPair('catalog', mValue);
     end;
@@ -403,5 +420,8 @@ begin
   Result.Calls := Calls(AInput.Index, AInput.EnsureUnit, AInput.Namespaces, AInput.Files, AInput.ReadText,
     AReferences);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Query', cTexts);
 
 end.
