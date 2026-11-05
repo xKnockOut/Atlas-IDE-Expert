@@ -6,8 +6,10 @@
 //   Änderung gilt der neue Text; dann holt er textDocument/inlayHint nur für
 //   die sichtbaren Zeilen (mit Rand), die im Zwischenspeicher noch fehlen
 //   (TAtlasInlayHintStore, je Datei und Textstand). Startet keinen Server.
-//   Der Abruf läuft im Hauptthread mit kurzem Zeitlimit; nach einem Fehler
-//   wartet er einige Sekunden.
+//   Der Abruf läuft im Hintergrund (TAtlasBackgroundRequest), höchstens einer
+//   zugleich; nach einem Fehler wartet er einige Sekunden. Früher wartete der
+//   Hauptthread bis zu 800 ms: Bei beschäftigtem Server hing die IDE alle
+//   paar Sekunden, und keine Antwort kam je an (2.0-stable).
 // - Zeichnen: nach dem Zeichnen jeder Zeile (plsEndPaint) kleine Marken mit
 //   den Namen hinter dem Zeilenende, in der Reihenfolge der Argumente. Der
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und
@@ -55,6 +57,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.Elements;
 
@@ -97,13 +100,14 @@ type
     end;
   private const
     QuietMs = 300;
-    TimeoutMs = 800;
+    TimeoutMs = 5000;
     RetryMs = 5000;
     /// <summary>Mehr gemerkte Beschriftungen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
     MaxEndHits = 500;
   private
     FSession: TAtlasInlayHintsSessionFunc;
     FStore: TAtlasInlayHintStore;
+    FRequest: TAtlasBackgroundRequest;
     FTimer: TTimer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -136,6 +140,9 @@ type
     /// <summary>Neuer Pufferstand in AView: merken und True (erst nach der Tipp-Pause holen).</summary>
     function SnapshotChanged(const AView: IOTAEditView): Boolean;
     procedure Fetch(const AView: IOTAEditView);
+    /// <summary>Antwort des Abrufs im Hauptthread übernehmen; AOk = False: später neu versuchen.</summary>
+    procedure Fetched(AOk: Boolean; const AFileName, AText: string; AFrom, ATill: Integer;
+      const AHints: TArray<TAtlasInlayHint>);
     /// <summary>Stift, Pinsel, Schrift und Textfarbe der Pillen in ADC wählen.</summary>
     procedure SelectHintStyle(ADC: HDC);
     procedure DrawHints(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AHints: TLineHints);
@@ -220,6 +227,7 @@ begin
   inherited Create;
   FSession := ASession;
   FStore := TAtlasInlayHintStore.Create;
+  FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.InlayHints);
   FIndex := -1;
   FHintFont := TFont.Create;
   FEvents := TEvents.Create;
@@ -241,6 +249,8 @@ var
   Services: INTACodeEditorServices;
 begin
   FTimer.Free;
+  // Laufenden Abruf abwarten; seine Antwort verfällt.
+  FRequest.Free;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
   begin
@@ -377,41 +387,65 @@ end;
 
 procedure TAtlasEditorInlayHints.Fetch(const AView: IOTAEditView);
 var
-  Session: TLspSession;
-  First, Last, From, Till: Integer;
-  Hints: TArray<TAtlasInlayHint>;
-  Percent: Integer;
+  mSession: TLspSession;
+  mFirst, mLast, mFrom, mTill, mPercent, mMinLines: Integer;
+  mFileName, mText: string;
+  mHints: TArray<TAtlasInlayHint>;
+  mOk: Boolean;
 begin
   FStore.SetText(FFileName, FText);
-  First := AView.TopRow - 1;
-  Last := First + AView.ViewSize.cy;
-  if not FStore.Missing(FFileName, First, Last, From, Till) then
+  mFirst := AView.TopRow - 1;
+  mLast := mFirst + AView.ViewSize.cy;
+  if FRequest.Busy or not FStore.Missing(FFileName, mFirst, mLast, mFrom, mTill) then
   begin
     Exit;
   end;
-  Session := FSession();
-  if Session = nil then
+  mSession := FSession();
+  if mSession = nil then
   begin
     Exit;
   end;
-  // Server indexiert: Er antwortet erst danach, der Hauptthread würde warten (#874). Später noch einmal.
-  if Session.Indexing(Percent) then
+  // Server indexiert: Er antwortet erst danach (#874). Später noch einmal.
+  if mSession.Indexing(mPercent) then
   begin
     FRetryAt := GetTickCount + RetryMs;
     Exit;
   end;
-  try
-    Session.Sync(FFileName, FText);
-    Hints := Session.InlayHints(FFileName, From, Till, FMinLines, TimeoutMs);
-  except
-    on E: ELspClientError do
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(FFileName, FText);
+  mFileName := FFileName;
+  mText := FText;
+  mMinLines := FMinLines;
+  mHints := nil;
+  mOk := False;
+  FRequest.Start(
+    procedure
     begin
-      // Server beschäftigt oder weg: später noch einmal, ohne den Editor zu bremsen.
-      FRetryAt := GetTickCount + RetryMs;
-      Exit;
-    end;
+      try
+        mHints := mSession.InlayHints(mFileName, mFrom, mTill, mMinLines, TimeoutMs);
+        mOk := True;
+      except
+        // Server beschäftigt oder weg: später noch einmal, ohne den Editor zu bremsen.
+        on ELspClientError do
+          mOk := False;
+      end;
+    end,
+    procedure
+    begin
+      Fetched(mOk, mFileName, mText, mFrom, mTill, mHints);
+    end);
+end;
+
+procedure TAtlasEditorInlayHints.Fetched(AOk: Boolean; const AFileName, AText: string; AFrom, ATill: Integer;
+  const AHints: TArray<TAtlasInlayHint>);
+begin
+  if not AOk then
+  begin
+    FRetryAt := GetTickCount + RetryMs;
+    Exit;
   end;
-  FStore.Put(FFileName, FText, From, Till, Hints);
+  // Der Speicher gilt je Datei und Textstand; eine Antwort für einen älteren Stand zeichnet nichts Falsches.
+  FStore.Put(AFileName, AText, AFrom, ATill, AHints);
   FShowing := True;
   Invalidate;
 end;

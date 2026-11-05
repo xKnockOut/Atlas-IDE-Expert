@@ -16,6 +16,10 @@
 // warten) kann der Manager alle Stände vergessen oder ein weiterer Takt
 // einsteigen; Entfernen und Leeren hält TAtlasOutlineLoadGuard bis zum Ende
 // der Abfrage zurück, damit der ladende Eintrag gültig bleibt.
+// documentSymbol selbst läuft im Hintergrund (TAtlasBackgroundRequest),
+// höchstens eine Anfrage zugleich; die Antwort gilt nur für den Eintrag und
+// die Version, für die gefragt wurde. Früher wartete der Hauptthread bis zu
+// 2 s (2.0-stable: „keine Antwort vom Server“ bei jedem Reiterwechsel).
 // Nur im Hauptthread.
 
 interface
@@ -65,6 +69,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
+  Atlas.Core.Lsp.BackgroundRequest,
   Atlas.IDE.Foundation.EditorSnapshot;
 
 const
@@ -72,7 +77,7 @@ const
   PauseMs = 600;
   /// <summary>Ohne Server oder nach Zeitgrenze: so oft neu versuchen.</summary>
   RetryMs = 2000;
-  RequestTimeoutMs = 2000;
+  RequestTimeoutMs = 5000;
   /// <summary>So viele Dateien bleiben gemerkt.</summary>
   KeptFiles = 8;
   PascalExtensions: array[0..4] of string = ('.pas', '.dpr', '.dpk', '.inc', '.pp');
@@ -97,6 +102,7 @@ var
   SessionOf: TFunc<TLspSession>;
   Entries: TObjectDictionary<string, TEntry>;
   Guard: TAtlasOutlineLoadGuard;
+  Request: TAtlasBackgroundRequest;
   LastStamp: Cardinal;
 
 function Key(const AFileName: string): string;
@@ -126,61 +132,97 @@ begin
   end;
 end;
 
+/// <summary>Antwort auf Load im Hauptthread: gilt nur, solange der Eintrag besteht und noch dieselbe Version hat.
+/// </summary>
+procedure Loaded(const AKey, AText: string; AVersion: Cardinal; AOk: Boolean; const ANodes: TAtlasOutlineNodes);
+var
+  mEntry: TEntry;
+begin
+  if (Entries = nil) or not Entries.TryGetValue(AKey, mEntry) or (mEntry.Version <> AVersion) then
+  begin
+    Exit;
+  end;
+  if not AOk then
+  begin
+    // Zeitgrenze oder Fehler: der alte Stand bleibt, später neu versuchen.
+    mEntry.Loaded := False;
+    mEntry.RetryAt := GetTickCount64 + RetryMs;
+    Exit;
+  end;
+  mEntry.Loaded := True;
+  // Syntaxfehler: Ohne Knoten bleibt der letzte gültige Stand.
+  if (Length(ANodes) = 0) and (Length(mEntry.Nodes) > 0) then
+  begin
+    Exit;
+  end;
+  mEntry.Nodes := ANodes;
+  mEntry.Text := AText;
+  Inc(LastStamp);
+  mEntry.Stamp := LastStamp;
+end;
+
 procedure Load(AEntry: TEntry; const ASnapshot: TAtlasEditorSnapshot);
 var
-  Session: TLspSession;
-  Response: TJSONValue;
-  Nodes: TAtlasOutlineNodes;
+  mSession: TLspSession;
+  mFileName, mKey, mText: string;
+  mVersion: Cardinal;
+  mNodes: TAtlasOutlineNodes;
+  mOk: Boolean;
 begin
   AEntry.Version := ASnapshot.Version;
   AEntry.PendingVersion := ASnapshot.Version;
-  Session := nil;
+  // Bis die Antwort da ist (oder ausbleibt), nicht neu fragen.
+  AEntry.Loaded := False;
+  AEntry.RetryAt := GetTickCount64 + RetryMs;
+  mSession := nil;
   // Kann den Server starten und die Projektkontexte abgleichen (InvalidateAll); der Wächter hält das zurück.
   if Assigned(SessionOf) then
   begin
-    Session := SessionOf();
+    mSession := SessionOf();
   end;
-  AEntry.NoServer := Session = nil;
-  if Session = nil then
-  begin
-    AEntry.Loaded := False;
-    AEntry.RetryAt := GetTickCount64 + RetryMs;
-    Exit;
-  end;
-  try
-    Session.Sync(AEntry.FileName, ASnapshot.Text);
-    Response := Session.DocumentSymbolTree(AEntry.FileName, RequestTimeoutMs);
-  except
-    // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
-    on E: ELspClientError do
-    begin
-      TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.SafeMessage(E.Message) +
-        '); alter Stand bleibt');
-      Response := nil;
-    end;
-  end;
-  try
-    if Response = nil then
-    begin
-      // Zeitgrenze oder Fehler: der alte Stand bleibt, später neu versuchen.
-      AEntry.Loaded := False;
-      AEntry.RetryAt := GetTickCount64 + RetryMs;
-      Exit;
-    end;
-    AEntry.Loaded := True;
-    Nodes := TAtlasOutline.FromJson(Response);
-  finally
-    Response.Free;
-  end;
-  // Syntaxfehler: Ohne Knoten bleibt der letzte gültige Stand.
-  if (Length(Nodes) = 0) and (Length(AEntry.Nodes) > 0) then
+  AEntry.NoServer := mSession = nil;
+  if mSession = nil then
   begin
     Exit;
   end;
-  AEntry.Nodes := Nodes;
-  AEntry.Text := ASnapshot.Text;
-  Inc(LastStamp);
-  AEntry.Stamp := LastStamp;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(AEntry.FileName, ASnapshot.Text);
+  mFileName := AEntry.FileName;
+  mKey := Key(mFileName);
+  mText := ASnapshot.Text;
+  mVersion := ASnapshot.Version;
+  mNodes := nil;
+  mOk := False;
+  Request.Start(
+    procedure
+    var
+      mResponse: TJSONValue;
+    begin
+      try
+        mResponse := mSession.DocumentSymbolTree(mFileName, RequestTimeoutMs);
+        try
+          mOk := mResponse <> nil;
+          if mOk then
+          begin
+            mNodes := TAtlasOutline.FromJson(mResponse);
+          end;
+        finally
+          mResponse.Free;
+        end;
+      except
+        // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
+        on E: ELspClientError do
+        begin
+          TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.SafeMessage(E.Message) +
+            '); alter Stand bleibt');
+          mOk := False;
+        end;
+      end;
+    end,
+    procedure
+    begin
+      Loaded(mKey, mText, mVersion, mOk, mNodes);
+    end);
 end;
 
 /// <summary>Load unter dem Wächter; danach Vorgemerktes nachholen. Der Eintrag kann danach freigegeben sein.</summary>
@@ -224,11 +266,17 @@ begin
   begin
     Guard := TAtlasOutlineLoadGuard.Create;
   end;
+  if Request = nil then
+  begin
+    Request := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+  end;
 end;
 
 class procedure TAtlasIdeOutlineCache.Uninstall;
 begin
   SessionOf := nil;
+  // Laufende Anfrage abwarten; ihre Antwort verfällt.
+  FreeAndNil(Request);
   FreeAndNil(Entries);
   FreeAndNil(Guard);
 end;
@@ -269,7 +317,7 @@ procedure UpdateEntry(const AFileName: string; const ASnapshot: TAtlasEditorSnap
 var
   Entry: TEntry;
 begin
-  if Guard.Busy then
+  if Guard.Busy or Request.Busy then
   begin
     Exit;
   end;
