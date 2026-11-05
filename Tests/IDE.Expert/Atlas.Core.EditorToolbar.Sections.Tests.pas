@@ -40,6 +40,8 @@ type
     procedure StopsAtEndDot;
     [Test]
     procedure ScansWholeTextWithCrLf;
+    [Test]
+    procedure CountsLinesInCommentsStringsAndCr;
   end;
 
 implementation
@@ -279,6 +281,17 @@ begin
   CheckMark(Sections.InterfacePart, 2, 0, 'interface');
   CheckMark(Sections.ImplementationPart, 12, 0, 'implementation');
   CheckMark(Sections.InterfaceUses.Stop, 4, 30, 'Ende der uses im interface');
+end;
+
+procedure TAtlasSectionScannerTests.CountsLinesInCommentsStringsAndCr;
+var
+  Sections: TAtlasUnitSections;
+begin
+  // Zeilen in Kommentaren und mehrzeiligen Strings zählen mit; CR allein trennt ebenfalls.
+  Sections := TAtlasSectionScanner.Scan('Unit U;'#13'{ eins'#13#10'zwei }'#10'  INTERFACE'#10 +
+    '(* drei'#10'*) const S = '''''''#10'implementation'#10'  '''''';'#13#10'Implementation'#10'end.');
+  CheckMark(Sections.InterfacePart, 3, 2, 'interface');
+  CheckMark(Sections.ImplementationPart, 8, 0, 'implementation nach dem String');
 end;
 
 initialization
