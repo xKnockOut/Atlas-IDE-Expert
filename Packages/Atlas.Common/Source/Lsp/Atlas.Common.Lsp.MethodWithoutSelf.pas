@@ -11,7 +11,7 @@
 //     {"edit": WorkspaceEdit über alle Dateien, "warnings": [...], "places": n,
 //     "files": n, "calls": n, "preview": Text}; geht es nicht, ein Fehler mit
 //     Grund. Die Verwendungen kommen aus der Referenzsuche im Projekt.
-//   - Marken: Inlay-Hinweis „ohne Self“ am Ende des Kopfs (MarkerHints).
+//   - Marken: Inlay-Hinweis „braucht kein Self“ am Ende des Kopfs (MarkerHints).
 // Namensauflösung: Mitglieder, Interfaces, sichtbare Helper über
 // TMethodLookup.FromResolver, die Formulardatei wie bei #668.
 
