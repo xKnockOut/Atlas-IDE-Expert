@@ -15,6 +15,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  Vcl.Controls,
   Vcl.StdCtrls,
   Atlas.UI.Settings.Section;
 
@@ -92,7 +93,6 @@ implementation
 
 uses
   System.UITypes,
-  Vcl.Controls,
   Vcl.Dialogs,
   Atlas.UI.Rules.Strings;
 
