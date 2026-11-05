@@ -48,7 +48,20 @@ type
 implementation
 
 uses
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRotatingFileStreamText = (LogStreamIsWriteOnly);
+
+const
+  cTexts: array[TRotatingFileStreamText] of TAtlasText = (
+    (De: 'Logstrom ist nur zum Schreiben'; En: 'Log stream is write-only'));
+
+{$SCOPEDENUMS OFF}
 
 function OpenFile(const AFileName: string; AAppend: Boolean): TFileStream;
 begin
@@ -141,7 +154,7 @@ end;
 
 function TRotatingFileStream.Read(var Buffer; Count: Longint): Longint;
 begin
-  raise EStreamError.Create('Logstrom ist nur zum Schreiben');
+  raise EStreamError.Create(cTexts[TRotatingFileStreamText.LogStreamIsWriteOnly].Text);
 end;
 
 function TRotatingFileStream.Write(const Buffer; Count: Longint): Longint;
@@ -157,5 +170,8 @@ function TRotatingFileStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int
 begin
   Result := FStream.Seek(Offset, Origin);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Logging.RotatingFileStream', cTexts);
 
 end.

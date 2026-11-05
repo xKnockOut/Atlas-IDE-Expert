@@ -103,7 +103,43 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingExtractSuperclassText = (ThereIsNoClassAt, HasNoFieldsMethodsOr, ConstructorsAndDestructorsStayStatements,
+    IsNotAValidIdentifier, TheBaseClassMustNot, TheNameIsAlreadyTaken, MemberIsNotACandidate, CannotMove,
+    PleaseSelectAtLeastOne, CannotBecomeAbstract, PleaseTakeItAlongOr, BecomesBecauseStillUsesIt,
+    TheUnitHasNoImplementation, TheClassIsNoLonger);
+
+const
+  cTexts: array[TEditingExtractSuperclassText] of TAtlasText = (
+    (De: 'An dieser Stelle steht keine Klasse.'; En: 'There is no class at this position.'),
+    (De: '%s hat keine Felder, Methoden oder Properties für eine Basisklasse.';
+     En: '%s has no fields, methods or properties for a base class.'),
+    (De: 'Konstruktoren und Destruktoren bleiben; Anweisungen direkt bei inherited, die nur verschobene Felder ' +
+      'setzen bzw. freigeben, wandern in einen eigenen der Basisklasse.';
+     En: 'Constructors and destructors stay; statements right at inherited that only set or free moved fields go ' +
+      'into an own one of the base class.'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Die Basisklasse darf nicht wie die Klasse heißen.';
+     En: 'The base class must not have the same name as the class.'),
+    (De: 'Der Name %s ist schon vergeben.'; En: 'The name %s is already taken.'),
+    (De: 'Mitglied %d ist kein Kandidat.'; En: 'Member %d is not a candidate.'),
+    (De: '%s kann nicht wandern: %s.'; En: '%s cannot move: %s.'),
+    (De: 'Bitte mindestens ein Mitglied wählen.'; En: 'Please select at least one member.'),
+    (De: '%s kann nicht abstrakt werden: %s.'; En: '%s cannot become abstract: %s.'),
+    (De: '. Bitte mitnehmen oder abstrakt deklarieren.'; En: '. Please take it along or declare it abstract.'),
+    (De: '%s wird %s, weil %s es weiter benutzt.'; En: '%s becomes %s because %s still uses it.'),
+    (De: 'Die Unit hat keinen implementation-Teil für die Rümpfe der Basisklasse.';
+     En: 'The unit has no implementation part for the bodies of the base class.'),
+    (De: 'Die Klasse ist nach dem Umbau nicht mehr lesbar.';
+     En: 'The class is no longer readable after the change.'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Aufteilung eines Konstruktors bzw. Destruktors.</summary>
@@ -621,7 +657,7 @@ begin
   mDecl := ClassAt(ASource.Tree, ASource.Line);
   if mDecl = nil then
   begin
-    Exit(Fail('An dieser Stelle steht keine Klasse.', AReason));
+    Exit(Fail(cTexts[TEditingExtractSuperclassText.ThereIsNoClassAt].Text, AReason));
   end;
   mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, mDecl);
   try
@@ -630,7 +666,7 @@ begin
     AInfo.Candidates := TMemberTransfer.Candidates(mLayout);
     if AInfo.Candidates = nil then
     begin
-      AReason := Format('%s hat keine Felder, Methoden oder Properties für eine Basisklasse.', [mLayout.Name]);
+      AReason := cTexts[TEditingExtractSuperclassText.HasNoFieldsMethodsOr].Fmt([mLayout.Name]);
     end
     else
     begin
@@ -642,8 +678,8 @@ begin
       AInfo.SuggestedName := FreeName(mLayout.Name, mSuffix, ANameInUse);
       if HasSplitMember(mLayout) then
       begin
-        AInfo.Notes := AInfo.Notes + ['Konstruktoren und Destruktoren bleiben; Anweisungen direkt bei inherited, ' +
-          'die nur verschobene Felder setzen bzw. freigeben, wandern in einen eigenen der Basisklasse.'];
+        AInfo.Notes := AInfo.Notes +
+          [cTexts[TEditingExtractSuperclassText.ConstructorsAndDestructorsStayStatements].Text];
       end;
     end;
   finally
@@ -652,8 +688,6 @@ begin
   Result := AReason = '';
 end;
 
-const
-  cUnreadable = 'Die Klasse ist nach dem Umbau nicht mehr lesbar.';
 
 type
   /// <summary>Gewählte Mitglieder: alle, die verschobenen und die abstrakten.</summary>
@@ -706,15 +740,15 @@ begin
   Result := '';
   if not IsIdentifier(AName) then
   begin
-    Result := Format('"%s" ist kein gültiger Bezeichner.', [AName]);
+    Result := cTexts[TEditingExtractSuperclassText.IsNotAValidIdentifier].Fmt([AName]);
   end
   else if SameText(AName, AClassName) then
   begin
-    Result := 'Die Basisklasse darf nicht wie die Klasse heißen.';
+    Result := cTexts[TEditingExtractSuperclassText.TheBaseClassMustNot].Text;
   end
   else if Assigned(ANameInUse) and ANameInUse(AName) then
   begin
-    Result := Format('Der Name %s ist schon vergeben.', [AName]);
+    Result := cTexts[TEditingExtractSuperclassText.TheNameIsAlreadyTaken].Fmt([AName]);
   end;
 end;
 
@@ -726,11 +760,12 @@ begin
   mIndex := TMemberTransfer.IndexOf(ACandidates, AId);
   if mIndex < 0 then
   begin
-    Result := Format('Mitglied %d ist kein Kandidat.', [AId]);
+    Result := cTexts[TEditingExtractSuperclassText.MemberIsNotACandidate].Fmt([AId]);
   end
   else if not ACandidates[mIndex].Enabled then
   begin
-    Result := Format('%s kann nicht wandern: %s.', [ACandidates[mIndex].Name, ACandidates[mIndex].Reason]);
+    Result := cTexts[TEditingExtractSuperclassText.CannotMove].Fmt([ACandidates[mIndex].Name,
+      ACandidates[mIndex].Reason]);
   end;
 end;
 
@@ -742,7 +777,7 @@ begin
   AChosen := nil;
   if AMembers = nil then
   begin
-    Exit('Bitte mindestens ein Mitglied wählen.');
+    Exit(cTexts[TEditingExtractSuperclassText.PleaseSelectAtLeastOne].Text);
   end;
   for mId in AMembers do
   begin
@@ -784,7 +819,7 @@ begin
     end
     else
     begin
-      Exit(Format('%s kann nicht abstrakt werden: %s.', [mCandidate.Name, mCandidate.Reason]));
+      Exit(cTexts[TEditingExtractSuperclassText.CannotBecomeAbstract].Fmt([mCandidate.Name, mCandidate.Reason]));
     end;
   end;
   Result := '';
@@ -814,7 +849,7 @@ begin
   mMissing := TMemberTransfer.MissingNeeds(ALayout, AChoice.Moved, AChoice.Chosen);
   if mMissing <> nil then
   begin
-    Result := string.Join('; ', mMissing) + '. Bitte mitnehmen oder abstrakt deklarieren.';
+    Result := string.Join('; ', mMissing) + cTexts[TEditingExtractSuperclassText.PleaseTakeItAlongOr].Text;
   end;
 end;
 
@@ -955,7 +990,7 @@ begin
   mName := FLayout.Members[AId].Name;
   FFinal[AId] := FRequest.RaiseVisibility;
   APlan.Raised := APlan.Raised + [mName];
-  APlan.Warnings := APlan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.', [mName,
+  APlan.Warnings := APlan.Warnings + [cTexts[TEditingExtractSuperclassText.BecomesBecauseStillUsesIt].Fmt([mName,
     TClassEdits.VisibilityName(FRequest.RaiseVisibility), FLayout.Name])];
   // Die Überschreibung unten braucht dieselbe Sichtbarkeit (sonst H2269).
   if TMemberTransfer.Has(FChoice.Abstracts, AId) then
@@ -1219,7 +1254,7 @@ begin
   mLine := TClassEdits.BodiesEnd(ATree, FLayout.Name);
   if mLine < 0 then
   begin
-    Result := 'Die Unit hat keinen implementation-Teil für die Rümpfe der Basisklasse.';
+    Result := cTexts[TEditingExtractSuperclassText.TheUnitHasNoImplementation].Text;
   end
   else
   begin
@@ -1237,7 +1272,7 @@ begin
   mNext := TMemberTransfer.ParseLayout(AText, FLayout.Name, mTree);
   if mNext = nil then
   begin
-    Exit(cUnreadable);
+    Exit(cTexts[TEditingExtractSuperclassText.TheClassIsNoLonger].Text);
   end;
   try
     mEdits := [TClassEdits.InsertBeforeLine(mNext.FirstLine, ABaseText)];
@@ -1280,7 +1315,7 @@ begin
   end
   else
   begin
-    AReason := cUnreadable;
+    AReason := cTexts[TEditingExtractSuperclassText.TheClassIsNoLonger].Text;
   end;
   Result := AReason = '';
 end;
@@ -1321,5 +1356,8 @@ begin
     mLayout.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractSuperclass', cTexts);
 
 end.

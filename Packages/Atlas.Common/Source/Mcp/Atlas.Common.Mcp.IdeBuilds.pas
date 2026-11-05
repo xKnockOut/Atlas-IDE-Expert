@@ -95,7 +95,33 @@ uses
   System.Generics.Collections,
   System.IOUtils,
   System.JSON,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIdeBuildsText = (NoRADStudioIDEWith, NoRunningIDEWithThe, NoRunningIDEWithThe2, TheIDEDeliveredNoResult,
+    TheIDEDidNotAccept, TheIDEAcceptedTheBuild, AnswerOfTheIDENot);
+
+const
+  cTexts: array[TIdeBuildsText] of TAtlasText = (
+    (De: 'Keine RAD-Studio-IDE mit Atlas-Plugin läuft. Ohne Kommandozeilen-Compiler baut Atlas über die IDE: das ' +
+      'Projekt dort öffnen und erneut aufrufen.';
+     En: 'No RAD Studio IDE with the Atlas plugin is running. Without a command-line compiler Atlas builds via the ' +
+      'IDE: open the project there and call again.'),
+    (De: 'Keine laufende IDE mit Atlas-Plugin hat ein Projekt unter dem Arbeitsordner als aktives Projekt. Projekt ' +
+      'in der IDE öffnen oder "project" angeben.';
+     En: 'No running IDE with the Atlas plugin has a project below the working folder as active project. Open the ' +
+      'project in the IDE or give "project".'),
+    (De: 'Keine laufende IDE mit Atlas-Plugin hat das Projekt %s offen. Projekt in der IDE öffnen und erneut ' +
+      'aufrufen.';
+     En: 'No running IDE with the Atlas plugin has the project %s open. Open the project in the IDE and call again.'),
+    (De: 'Die IDE hat kein Ergebnis geliefert.'; En: 'The IDE delivered no result.'),
+    (De: 'Die IDE hat den Build nicht angenommen (Plugin beschäftigt, abgeschaltet oder zu alt).';
+     En: 'The IDE did not accept the build (plugin busy, switched off or too old).'),
+    (De: 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
+     En: 'The IDE accepted the build but did not report in time.'),
+    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'));
 
 class function TMcpIdeBuilds.InboxOf(const ABase: string; APid: Cardinal): string;
 begin
@@ -210,18 +236,15 @@ begin
   end;
   if Length(AEntries) = 0 then
   begin
-    AReason := 'Keine RAD-Studio-IDE mit Atlas-Plugin läuft. Ohne Kommandozeilen-Compiler baut Atlas über die ' +
-      'IDE: das Projekt dort öffnen und erneut aufrufen.';
+    AReason := cTexts[TIdeBuildsText.NoRADStudioIDEWith].Text;
   end
   else if AProject = '' then
   begin
-    AReason := 'Keine laufende IDE mit Atlas-Plugin hat ein Projekt unter dem Arbeitsordner als aktives Projekt. ' +
-      'Projekt in der IDE öffnen oder "project" angeben.';
+    AReason := cTexts[TIdeBuildsText.NoRunningIDEWithThe].Text;
   end
   else
   begin
-    AReason := Format('Keine laufende IDE mit Atlas-Plugin hat das Projekt %s offen. Projekt in der IDE öffnen ' +
-      'und erneut aufrufen.', [AProject]);
+    AReason := cTexts[TIdeBuildsText.NoRunningIDEWithThe2].Fmt([AProject]);
   end;
   Result := False;
 end;
@@ -270,7 +293,7 @@ begin
       AOk := False;
       if AReason = '' then
       begin
-        AReason := 'Die IDE hat kein Ergebnis geliefert.';
+        AReason := cTexts[TIdeBuildsText.TheIDEDeliveredNoResult].Text;
       end;
     end;
   finally
@@ -329,7 +352,7 @@ begin
   end;
   if FileExists(Request) and not FileExists(Answer) and DeleteFile(Request) then
   begin
-    AReason := 'Die IDE hat den Build nicht angenommen (Plugin beschäftigt, abgeschaltet oder zu alt).';
+    AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
     Exit(TMcpIdeBuildOutcome.NotTaken);
   end;
   Started := AWaiting.Clock();
@@ -339,7 +362,7 @@ begin
   end;
   if not FileExists(Answer) then
   begin
-    AReason := 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
+    AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
     Exit(TMcpIdeBuildOutcome.TimedOut);
   end;
   try
@@ -351,7 +374,7 @@ begin
   DeleteQuietly(Answer);
   if not ParseAnswer(Text, Ok, ABuildText, AReason) then
   begin
-    AReason := 'Antwort der IDE nicht lesbar.';
+    AReason := cTexts[TIdeBuildsText.AnswerOfTheIDENot].Text;
     Exit(TMcpIdeBuildOutcome.Refused);
   end;
   if Ok then
@@ -363,5 +386,8 @@ begin
     Result := TMcpIdeBuildOutcome.Refused;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.IdeBuilds', cTexts);
 
 end.

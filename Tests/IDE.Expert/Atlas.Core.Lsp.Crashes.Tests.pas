@@ -14,6 +14,9 @@ type
   public
     [Test]
     procedure DescribesKnownExitCodes;
+    /// <summary>Mit englischer Oberfläche englische Namen, Codes unverändert (#1458).</summary>
+    [Test]
+    procedure DescribesExitCodesInEnglish;
     [Test]
     procedure RuntimeIsShortText;
     [Test]
@@ -31,6 +34,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Lsp.Crashes;
 
 procedure TAtlasServerCrashesTests.DescribesKnownExitCodes;
@@ -41,6 +45,21 @@ begin
   Assert.AreEqual('Code 3', TAtlasServerExits.Describe(3));
   Assert.AreEqual('Ausnahme 0xC0001234', TAtlasServerExits.Describe($C0001234));
   Assert.IsTrue(TAtlasServerExits.Describe(TAtlasServerExits.Unknown).StartsWith('Exit-Code unbekannt'));
+end;
+
+procedure TAtlasServerCrashesTests.DescribesExitCodesInEnglish;
+var
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  TAtlasTextLanguage.Current := TAtlasLanguage.English;
+  try
+    Assert.AreEqual('stack overflow (0xC00000FD)', TAtlasServerExits.Describe($C00000FD));
+    Assert.AreEqual('without error (code 0)', TAtlasServerExits.Describe(0));
+    Assert.AreEqual('Exception 0xC0001234', TAtlasServerExits.Describe($C0001234));
+  finally
+    TAtlasTextLanguage.Current := mSaved;
+  end;
 end;
 
 procedure TAtlasServerCrashesTests.RuntimeIsShortText;

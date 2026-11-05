@@ -36,7 +36,68 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.Modernizer,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionCommandsText = (IncOnlyConvertsASingle, IncAndDecOnlyApply, BelowIncThereIsNo,
+    IifNeedsConditionalExpressionsWhich, BelowIifThereIsNo, TheLiteralContainsMoreThan, TheLiteralIsAlreadyMulti,
+    TheLiteralIsNotMulti, TheLiteralContainsNoLine, BelowTheCommandThereIs, IncompleteConcatenation,
+    FormatOnlyConvertsConcatenationsWith, BelowFormatThereIsNo, FormatTypeOfUnknownAssumed,
+    FormatAppliesToAConcatenation, InTheLineBelowFormat, ExpectedIsModernForInline, ModernOnlyAppliesInThe,
+    ThereIsNothingToModernize, ModernizeTheEnclosingRoutineFor, ConvertTheStringConcatenationBelow,
+    WriteTheConcatenatedLiteralBelow, WriteTheMultiLineString, IfElseAssignmentBelowAs, XXNBelowAs,
+    IifNeedsTheSameTarget, MultiLineStringsExistOnly, ExpectedIsXXN, ExpectedIsIfBThen);
+
+const
+  cTexts: array[TExpressionCommandsText] of TAtlasText = (
+    (De: '/inc wandelt nur einen einzelnen Summanden um'; En: '/inc only converts a single summand'),
+    (De: 'Inc und Dec gelten nur für ganze Zahlen'; En: 'Inc and Dec only apply to integers'),
+    (De: 'Unter /inc steht keine Zuweisung in einer Routine'; En: 'Below /inc there is no assignment in a routine'),
+    (De: '/iif braucht Bedingungsausdrücke, die es erst ab Delphi 13 gibt (eingestellt: %s)';
+     En: '/iif needs conditional expressions, which exist only from Delphi 13 on (set: %s)'),
+    (De: 'Unter /iif steht keine if-Anweisung in einer Routine';
+     En: 'Below /iif there is no if statement in a routine'),
+    (De: 'Das Literal enthält mehr als Strings, sLineBreak und +';
+     En: 'The literal contains more than strings, sLineBreak and +'),
+    (De: 'Das Literal ist schon mehrzeilig'; En: 'The literal is already multi-line'),
+    (De: 'Das Literal ist nicht mehrzeilig'; En: 'The literal is not multi-line'),
+    (De: 'Das Literal enthält keinen Zeilenumbruch'; En: 'The literal contains no line break'),
+    (De: 'Unter dem Befehl steht kein String-Literal'; En: 'Below the command there is no string literal'),
+    (De: 'Unvollständige Verkettung'; En: 'Incomplete concatenation'),
+    (De: '/format wandelt nur Verkettungen mit + um'; En: '/format only converts concatenations with +'),
+    (De: 'Unter /format steht keine Verkettung aus Text und Werten';
+     En: 'Below /format there is no concatenation of text and values'),
+    (De: ' // /format: Typ von %s unbekannt, %%s angenommen'; En: ' // /format: type of %s unknown, %%s assumed'),
+    (De: '/format gilt für eine Verkettung in der Zeile darunter, im Rumpf einer Routine';
+     En: '/format applies to a concatenation in the line below, in the body of a routine'),
+    (De: 'In der Zeile unter /format steht kein String-Literal';
+     En: 'In the line below /format there is no string literal'),
+    (De: 'Erwartet wird /modern [-for] [-inline] [-free]'; En: 'Expected is /modern [-for] [-inline] [-free]'),
+    (De: '/modern gilt nur im Rumpf einer Routine'; En: '/modern only applies in the body of a routine'),
+    (De: 'In dieser Routine gibt es nichts zu modernisieren'; En: 'There is nothing to modernize in this routine'),
+    (De: 'Umgebende Routine modernisieren (for-in, Inline-Variablen, FreeAndNil)';
+     En: 'Modernize the enclosing routine (for-in, inline variables, FreeAndNil)'),
+    (De: 'String-Verkettung darunter in Format(…) umwandeln';
+     En: 'Convert the string concatenation below into Format(…)'),
+    (De: 'Verkettetes Literal darunter als mehrzeiligen String schreiben';
+     En: 'Write the concatenated literal below as a multi-line string'),
+    (De: 'Mehrzeiligen String darunter als Verkettung schreiben';
+     En: 'Write the multi-line string below as a concatenation'),
+    (De: 'if/else-Zuweisung darunter als Bedingungsausdruck';
+     En: 'if/else assignment below as conditional expression'),
+    (De: 'X := X + N darunter als Inc bzw. Dec'; En: 'X := X + N below as Inc or Dec'),
+    (De: '/iif braucht in beiden Zweigen dieselbe Zielvariable';
+     En: '/iif needs the same target variable in both branches'),
+    (De: 'Mehrzeilige Strings gibt es erst ab Delphi 12 (eingestellt: %s)';
+     En: 'Multi-line strings exist only from Delphi 12 (set: %s)'),
+    (De: 'Erwartet wird X := X + N bzw. X := X - N'; En: 'Expected is X := X + N or X := X - N'),
+    (De: 'Erwartet wird if B then X := A else X := C;'; En: 'Expected is if B then X := A else X := C;'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -154,8 +215,6 @@ end;
 
 { /inc }
 
-const
-  cIncExpected = 'Erwartet wird X := X + N bzw. X := X - N';
 
 type
   /// <summary>Zerlegung von X := X + N bzw. X := X - N für /inc.</summary>
@@ -201,7 +260,7 @@ end;
 
 function TIncStatement.Parse: string;
 begin
-  Result := cIncExpected;
+  Result := cTexts[TExpressionCommandsText.ExpectedIsXXN].Text;
   Tokens := CodeTokens(Text);
   Assign := FindTop(Tokens, 0, ':=');
   if not SidesMatch then
@@ -227,11 +286,11 @@ begin
   begin
     if not StepDepth(Tokens[mIndex], mDepth) and (mDepth = 0) and IsAdditive(Tokens[mIndex]) then
     begin
-      Result := '/inc wandelt nur einen einzelnen Summanden um';
+      Result := cTexts[TExpressionCommandsText.IncOnlyConvertsASingle].Text;
     end
     else if IsFloatNumber(Tokens[mIndex]) then
     begin
-      Result := 'Inc und Dec gelten nur für ganze Zahlen';
+      Result := cTexts[TExpressionCommandsText.IncAndDecOnlyApply].Text;
     end;
     Inc(mIndex);
   end;
@@ -262,7 +321,7 @@ begin
   try
     if (mSource.RoutineAt = nil) or not StatementBelow(mSource, mLast, mStatement.Text) then
     begin
-      Exit(Fail('Unter /inc steht keine Zuweisung in einer Routine', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.BelowIncThereIsNo].Text, AReason));
     end;
     AReason := mStatement.Parse;
     Result := AReason = '';
@@ -277,8 +336,6 @@ end;
 
 { /iif }
 
-const
-  cIifExpected = 'Erwartet wird if B then X := A else X := C;';
 
 type
   /// <summary>Zerlegung von if B then X := A else X := C; für /iif.</summary>
@@ -334,7 +391,7 @@ end;
 
 function TIifStatement.Parse: string;
 begin
-  Result := cIifExpected;
+  Result := cTexts[TExpressionCommandsText.ExpectedIsIfBThen].Text;
   if not FindParts then
   begin
     Exit;
@@ -343,7 +400,7 @@ begin
   if not SameText(Slice(Text, Tokens, ThenAt + 1, FirstAssign - 1),
     Slice(Text, Tokens, ElseAt + 1, SecondAssign - 1)) then
   begin
-    Exit('/iif braucht in beiden Zweigen dieselbe Zielvariable');
+    Exit(cTexts[TExpressionCommandsText.IifNeedsTheSameTarget].Text);
   end;
   if BranchesSimple then
   begin
@@ -367,15 +424,15 @@ begin
   AEdits := nil;
   if not TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, AContext.DelphiVersion) then
   begin
-    Exit(Fail(Format('/iif braucht Bedingungsausdrücke, die es erst ab Delphi 13 gibt (eingestellt: %s)',
-      [AContext.DelphiVersion]), AReason));
+    Exit(Fail(cTexts[TExpressionCommandsText.IifNeedsConditionalExpressionsWhich].Fmt([AContext.DelphiVersion]),
+      AReason));
   end;
   mStatement := Default(TIifStatement);
   mSource := TCommandSource.Create(AContext);
   try
     if (mSource.RoutineAt = nil) or not StatementBelow(mSource, mLast, mStatement.Text) then
     begin
-      Exit(Fail('Unter /iif steht keine if-Anweisung in einer Routine', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.BelowIifThereIsNo].Text, AReason));
     end;
     AReason := mStatement.Parse;
     Result := AReason = '';
@@ -415,15 +472,16 @@ begin
   Result := '';
   if not TStringLiterals.PlainText(AExpression, APlain) then
   begin
-    Result := 'Das Literal enthält mehr als Strings, sLineBreak und +';
+    Result := cTexts[TExpressionCommandsText.TheLiteralContainsMoreThan].Text;
   end
   else if StartsStr('''''''', Trim(AExpression)) = AToMultiline then
   begin
-    Result := IfThen(AToMultiline, 'Das Literal ist schon mehrzeilig', 'Das Literal ist nicht mehrzeilig');
+    Result := IfThen(AToMultiline, cTexts[TExpressionCommandsText.TheLiteralIsAlreadyMulti].Text,
+      cTexts[TExpressionCommandsText.TheLiteralIsNotMulti].Text);
   end
   else if AToMultiline and (Pos(#10, APlain) = 0) then
   begin
-    Result := 'Das Literal enthält keinen Zeilenumbruch';
+    Result := cTexts[TExpressionCommandsText.TheLiteralContainsNoLine].Text;
   end;
 end;
 
@@ -437,14 +495,14 @@ begin
   AEdits := nil;
   if AToMultiline and not TLanguageFeatures.IsAvailable(TLanguageFeature.MultilineString, AContext.DelphiVersion) then
   begin
-    Exit(Fail(Format('Mehrzeilige Strings gibt es erst ab Delphi 12 (eingestellt: %s)', [AContext.DelphiVersion]),
+    Exit(Fail(cTexts[TExpressionCommandsText.MultiLineStringsExistOnly].Fmt([AContext.DelphiVersion]),
       AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     if not LiteralBelow(mSource, AContext, mRange) then
     begin
-      Exit(Fail('Unter dem Befehl steht kein String-Literal', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.BelowTheCommandThereIs].Text, AReason));
     end;
     AReason := MultilineProblem(TStringLiterals.TextOf(AContext.Text, mRange), AToMultiline, mPlain);
     Result := AReason = '';
@@ -687,7 +745,7 @@ begin
   begin
     if AIndex = AStart then
     begin
-      Result := 'Unvollständige Verkettung';
+      Result := cTexts[TExpressionCommandsText.IncompleteConcatenation].Text;
     end
     else
     begin
@@ -697,7 +755,7 @@ begin
   end
   else if (FTokens[AIndex].Kind = TPascalTokenKind.Symbol) and (FTokens[AIndex].Text <> '.') then
   begin
-    Result := '/format wandelt nur Verkettungen mit + um';
+    Result := cTexts[TExpressionCommandsText.FormatOnlyConvertsConcatenationsWith].Text;
   end;
 end;
 
@@ -720,7 +778,7 @@ begin
   end;
   if (Result = '') and (mStart > FLast) then
   begin
-    Result := 'Unvollständige Verkettung';
+    Result := cTexts[TExpressionCommandsText.IncompleteConcatenation].Text;
   end;
   if Result = '' then
   begin
@@ -733,7 +791,7 @@ begin
   Result := Split;
   if (Result = '') and ((FLiterals = 0) or (FOthers = 0)) then
   begin
-    Result := 'Unter /format steht keine Verkettung aus Text und Werten';
+    Result := cTexts[TExpressionCommandsText.BelowFormatThereIsNo].Text;
   end;
 end;
 
@@ -743,7 +801,7 @@ begin
     FArguments]) + Copy(FLine, FTokens[FLast].Offset + Length(FTokens[FLast].Text) + 1, MaxInt);
   if FUnknown <> '' then
   begin
-    Result := Result + Format(' // /format: Typ von %s unbekannt, %%s angenommen', [FUnknown]);
+    Result := Result + cTexts[TExpressionCommandsText.FormatTypeOfUnknownAssumed].Fmt([FUnknown]);
   end;
 end;
 
@@ -759,13 +817,13 @@ begin
   try
     if (mSource.RoutineAt = nil) or (mSource.Line + 1 > High(mSource.Lines)) then
     begin
-      Exit(Fail('/format gilt für eine Verkettung in der Zeile darunter, im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.FormatAppliesToAConcatenation].Text, AReason));
     end;
     mTokens := CodeTokens(mSource.Lines[mSource.Line + 1]);
     mHit := FirstLiteral(mTokens);
     if mHit < 0 then
     begin
-      Exit(Fail('In der Zeile unter /format steht kein String-Literal', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.InTheLineBelowFormat].Text, AReason));
     end;
     mConcatenation := TConcatenation.Create(mSource, mTokens, mHit);
     try
@@ -865,19 +923,19 @@ begin
   AEdits := nil;
   if not ModernKinds(AContext, mKinds) then
   begin
-    Exit(Fail('Erwartet wird /modern [-for] [-inline] [-free]', AReason));
+    Exit(Fail(cTexts[TExpressionCommandsText.ExpectedIsModernForInline].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     mRoutine := mSource.RoutineAt;
     if mRoutine = nil then
     begin
-      Exit(Fail('/modern gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.ModernOnlyAppliesInThe].Text, AReason));
     end;
     mLines := TModernizer.Apply(RoutineLines(mSource, mRoutine), mKinds, mCount);
     if mCount = 0 then
     begin
-      Exit(Fail('In dieser Routine gibt es nichts zu modernisieren', AReason));
+      Exit(Fail(cTexts[TExpressionCommandsText.ThereIsNothingToModernize].Text, AReason));
     end;
     AEdits := [TTextEdit.Create(TTextRange.Create(mRoutine.StartPos.Line, 0, mRoutine.EndPos.Line + 1, 0),
       JoinLines(mLines, mSource.LineBreak))];
@@ -893,23 +951,26 @@ end;
 
 procedure RegisterExpressionCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('modern', 'Umgebende Routine modernisieren (for-in, Inline-Variablen, FreeAndNil)',
+  ARegister(Command('modern', cTexts[TExpressionCommandsText.ModernizeTheEnclosingRoutineFor].Text,
     '/modern -inline', ExecuteModern));
-  ARegister(Command('format', 'String-Verkettung darunter in Format(…) umwandeln', '/format',
+  ARegister(Command('format', cTexts[TExpressionCommandsText.ConvertTheStringConcatenationBelow].Text, '/format',
     ExecuteFormat));
-  ARegister(Command('multiline', 'Verkettetes Literal darunter als mehrzeiligen String schreiben',
+  ARegister(Command('multiline', cTexts[TExpressionCommandsText.WriteTheConcatenatedLiteralBelow].Text,
     '/multiline',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('multiline!', 'Mehrzeiligen String darunter als Verkettung schreiben', '/multiline!',
+  ARegister(Command('multiline!', cTexts[TExpressionCommandsText.WriteTheMultiLineString].Text, '/multiline!',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('iif', 'if/else-Zuweisung darunter als Bedingungsausdruck', '/iif', ExecuteIif));
-  ARegister(Command('inc', 'X := X + N darunter als Inc bzw. Dec', '/inc', ExecuteInc));
+  ARegister(Command('iif', cTexts[TExpressionCommandsText.IfElseAssignmentBelowAs].Text, '/iif', ExecuteIif));
+  ARegister(Command('inc', cTexts[TExpressionCommandsText.XXNBelowAs].Text, '/inc', ExecuteInc));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExpressionCommands', cTexts);
 
 end.

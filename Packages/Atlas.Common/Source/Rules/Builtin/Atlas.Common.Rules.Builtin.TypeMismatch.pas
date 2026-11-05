@@ -66,7 +66,46 @@ uses
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeMismatchText = (Incompatible, MethodVsProc, ProcVsMethod, ParamList, IncStep, PtrArg, InvalidCast,
+    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, Title);
+
+const
+  cTexts: array[TTypeMismatchText] of TAtlasText = (
+    (De: 'Inkompatible Typen: ''%s'' und ''%s'' (wie E2010).';
+     En: 'Incompatible types: ''%s'' and ''%s'' (like E2010).'),
+    (De: 'Inkompatible Typen: ''Methodenzeiger und reguläre Prozedur''; %s ist keine Methode eines Objekts (wie ' +
+      'E2009).';
+     En: 'Incompatible types: ''method pointer and regular procedure''; %s is not a method of an object (like E2009).'),
+    (De: 'Inkompatible Typen: ''Reguläre Prozedur und Methodenzeiger''; %s ist eine Methode, der Typ hat kein of ' +
+      'object (wie E2009).';
+     En: 'Incompatible types: ''regular procedure and method pointer''; %s is a method, the type has no of object ' +
+      '(like E2009).'),
+    (De: 'Inkompatible Typen: ''Liste der Parameter ist unterschiedlich''; %s passt nicht zum prozeduralen Typ (wie ' +
+      'E2009).';
+     En: 'Incompatible types: ''parameter lists differ''; %s does not fit the procedural type (like E2009).'),
+    (De: 'Inkompatible Typen: %s erwartet als Schrittweite eine Ganzzahl, %s ist %s (wie E2008).';
+     En: 'Incompatible types: %s expects an integer as step, %s is %s (like E2008).'),
+    (De: 'Inkompatible Typen: Ptr erwartet eine Adresse als Ganzzahl, %s ist %s (wie E2008).';
+     En: 'Incompatible types: Ptr expects an address as integer, %s is %s (like E2008).'),
+    (De: 'Ungültige Typumwandlung: %s nach %s (wie E2089).'; En: 'Invalid typecast: %s to %s (like E2089).'),
+    (De: 'Die Typen der tatsächlichen und formalen var-Parameter müssen übereinstimmen: %s und %s (wie E2033).';
+     En: 'Types of actual and formal var parameters must be identical: %s and %s (like E2033).'),
+    (De: 'Der Operator is braucht rechts eine Klasse; %s ist keine (wie E2015).';
+     En: 'The operator is needs a class on the right; %s is none (like E2015).'),
+    (De: 'Der Operator %s ist auf %s und %s nicht anwendbar (wie E2015).';
+     En: 'The operator %s is not applicable to %s and %s (like E2015).'),
+    (De: 'Der Operator %s ist auf %s nicht anwendbar (wie E2015).';
+     En: 'The operator %s is not applicable to %s (like E2015).'),
+    (De: 'Inkompatible Typen'; En: 'Incompatible types'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxDepth = 64;
@@ -1213,8 +1252,8 @@ end;
 
 procedure TTypeMismatchCheck.Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
 begin
-  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Inkompatible Typen: ''%s'' und ''%s'' ' +
-    '(wie E2010).', [ATarget, ASource]), TRuleConfidence.High);
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypeMismatchText.Incompatible].Fmt([ATarget,
+    ASource]), TRuleConfidence.High);
 end;
 
 procedure TTypeMismatchCheck.CheckAssignment(ANode: TSyntaxNode);
@@ -1278,19 +1317,17 @@ var
       TProcMatch.MethodKind:
         if ATarget.OfObject then
         begin
-          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ' +
-            '''Methodenzeiger und reguläre Prozedur''; %s ist keine Methode eines Objekts (wie E2009).',
+          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.MethodVsProc].Fmt(
             [NodeText(mSource)]), TRuleConfidence.High);
         end
         else
         begin
-          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ' +
-            '''Reguläre Prozedur und Methodenzeiger''; %s ist eine Methode, der Typ hat kein of object (wie E2009).',
+          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.ProcVsMethod].Fmt(
             [NodeText(mSource)]), TRuleConfidence.High);
         end;
       TProcMatch.Parameters, TProcMatch.ParameterType:
-        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ''Liste der ' +
-          'Parameter ist unterschiedlich''; %s passt nicht zum prozeduralen Typ (wie E2009).', [NodeText(mSource)]),
+        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos),
+          cTexts[TTypeMismatchText.ParamList].Fmt([NodeText(mSource)]),
           TRuleConfidence.High);
     else
       // Yes und Unsure sind oben ausgeschieden.
@@ -1356,8 +1393,8 @@ begin
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category in [TExpressionCategory.Float,
       TExpressionCategory.Currency_, TExpressionCategory.String_]) then
     begin
-      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), Format('Inkompatible Typen: %s erwartet ' +
-        'als Schrittweite eine Ganzzahl, %s ist %s (wie E2008).', [AName, NodeText(ANode[2]), mValue.Name]),
+      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), cTexts[TTypeMismatchText.IncStep].Fmt([AName,
+        NodeText(ANode[2]), mValue.Name]),
         TRuleConfidence.High);
     end;
   end
@@ -1366,8 +1403,8 @@ begin
     mValue := ValueOf(ANode[1]);
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category = TExpressionCategory.String_) then
     begin
-      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos), Format('Inkompatible Typen: Ptr erwartet ' +
-        'eine Adresse als Ganzzahl, %s ist %s (wie E2008).', [NodeText(ANode[1]), mValue.Name]), TRuleConfidence.High);
+      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos),
+        cTexts[TTypeMismatchText.PtrArg].Fmt([NodeText(ANode[1]), mValue.Name]), TRuleConfidence.High);
     end;
   end;
 end;
@@ -1397,8 +1434,8 @@ begin
     TExpressionCategory.Boolean_]) and (mSource.Category = TExpressionCategory.Float));
   if mInvalid then
   begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Ungültige Typumwandlung: %s nach %s ' +
-      '(wie E2089).', [mSource.Name, mTarget.Name]), TRuleConfidence.High);
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeMismatchText.InvalidCast].Fmt([mSource.Name, mTarget.Name]), TRuleConfidence.High);
   end;
 end;
 
@@ -1433,8 +1470,8 @@ begin
   mActual := ValueOfSymbol(mSymbol, mType);
   if TTypeCompatibility.VarParamDiffers(AFormal, mActual) then
   begin
-    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos), Format('Die Typen der tatsächlichen und ' +
-      'formalen var-Parameter müssen übereinstimmen: %s und %s (wie E2033).', [AFormal.Name, mActual.Name]),
+    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
+      cTexts[TTypeMismatchText.VarParamTypes].Fmt([AFormal.Name, mActual.Name]),
       TRuleConfidence.High);
   end;
 end;
@@ -1597,8 +1634,8 @@ begin
     end;
     if mSymbol.Builtin and IsDataCategory(TValueType.FromBuiltin(mSymbol.Name)) then
     begin
-      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator is braucht rechts eine ' +
-        'Klasse; %s ist keine (wie E2015).', [mSymbol.Name]), TRuleConfidence.High);
+      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypeMismatchText.IsNeedsClass].Fmt([mSymbol.Name]), TRuleConfidence.High);
     end;
     Exit;
   end;
@@ -1606,8 +1643,8 @@ begin
   mRight := ValueOf(ANode[1]);
   case TTypeCompatibility.OperatorFit(mOperator, mLeft, mRight) of
     TOperatorFit.NotApplicable:
-      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator %s ist auf %s und %s nicht ' +
-        'anwendbar (wie E2015).', [ANode.Name, mLeft.Name, mRight.Name]), TRuleConfidence.High);
+      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypeMismatchText.OperatorBinary].Fmt([ANode.Name, mLeft.Name, mRight.Name]), TRuleConfidence.High);
     TOperatorFit.Incompatible:
       Mismatch(ANode, ShownName(mLeft), ShownName(mRight));
   else
@@ -1626,8 +1663,8 @@ begin
   mOperand := ValueOf(ANode[0]);
   if TTypeCompatibility.UnaryNotApplicable(ANode.Name, mOperand) then
   begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator %s ist auf %s nicht ' +
-      'anwendbar (wie E2015).', [ANode.Name, mOperand.Name]), TRuleConfidence.High);
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeMismatchText.OperatorUnary].Fmt([ANode.Name, mOperand.Name]), TRuleConfidence.High);
   end;
 end;
 
@@ -1677,7 +1714,7 @@ end;
 
 function TTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeMismatchRuleId, TRuleSeverity.Error, 'Inkompatible Typen');
+  Result := TRuleDescriptor.Create(TypeMismatchRuleId, TRuleSeverity.Error, cTexts[TTypeMismatchText.Title].Text);
 end;
 
 procedure TTypeMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1700,5 +1737,8 @@ procedure RegisterTypeMismatchRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TTypeMismatchRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeMismatch', cTexts);
 
 end.

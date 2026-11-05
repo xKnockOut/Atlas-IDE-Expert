@@ -25,18 +25,33 @@ type
 implementation
 
 uses
-  Atlas.Common.JsonRpc.Contract;
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPositionsText = (IsNotAnObject, FieldMissingOrNotA, FieldMissingIn);
+
+const
+  cTexts: array[TPositionsText] of TAtlasText = (
+    (De: ' ist kein Objekt'; En: ' is not an object'),
+    (De: 'Feld "%s" fehlt oder ist keine Zahl in '; En: 'Field "%s" missing or not a number in '),
+    (De: 'Feld "%s" fehlt in '; En: 'Field "%s" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function ReadInteger(const AValue: TJSONValue; const AName, AContext: string): Integer;
 begin
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, AContext + ' ist kein Objekt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, AContext + cTexts[TPositionsText.IsNotAnObject].Text);
   end;
   if not TJSONObject(AValue).TryGetValue<Integer>(AName, Result) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "' + AName + '" fehlt oder ist keine Zahl in ' + AContext);
+      cTexts[TPositionsText.FieldMissingOrNotA].Fmt([AName]) + AContext);
   end;
 end;
 
@@ -50,7 +65,7 @@ begin
   if Result = nil then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "' + AName + '" fehlt in ' + AContext);
+      cTexts[TPositionsText.FieldMissingIn].Fmt([AName]) + AContext);
   end;
 end;
 
@@ -83,5 +98,8 @@ begin
   Result.AddPair('start', PositionToJson(ARange.StartPos));
   Result.AddPair('end', PositionToJson(ARange.EndPos));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Positions', cTexts);
 
 end.

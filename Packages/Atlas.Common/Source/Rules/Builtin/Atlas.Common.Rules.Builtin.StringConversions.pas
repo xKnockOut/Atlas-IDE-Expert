@@ -93,7 +93,41 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Rules.Builtin.TypeChecks.Types,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStringConversionsText = (Title, TheValue, BothCodes, Unmappable, MayLose, Implicit, ConvertExplicitly,
+    CharModified, PassingTo, ConversionLoses, ExplicitConversion, SetTruncates, UseCharInSet, AssignmentTo);
+
+const
+  cTexts: array[TStringConversionsText] of TAtlasText = (
+    (De: 'Umwandlung zwischen Unicode- und ANSI-Strings'; En: 'Conversion between Unicode and ANSI strings'),
+    (De: 'Der Wert'; En: 'The value'),
+    (De: 'W1058 und W1062'; En: 'W1058 and W1062'),
+    (De: '%s enthält Zeichen, die es in der ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie ' +
+      '%s).';
+     En: '%s contains characters that do not exist in the ANSI code page %d; the assignment to %s turns them into ' +
+      '''?'' (like %s).'),
+    (De: '%s ist %s; %s kann Zeichen verlieren (wie W1058).'; En: '%s is %s; %s can lose characters (like W1058).'),
+    (De: '%s ist %s; %s wandelt implizit um (wie W1057).'; En: '%s is %s; %s converts implicitly (like W1057).'),
+    (De: 'Ausdrücklich in %s umwandeln'; En: 'Convert explicitly to %s'),
+    (De: 'Zeichen von %s direkt geändert; das wird möglicherweise künftig nicht mehr unterstützt (wie W1068).';
+     En: 'Character of %s modified directly; this may not be supported in the future (like W1068).'),
+    (De: 'die Übergabe an %s (%s)'; En: 'the passing to %s (%s)'),
+    (De: '%s ist %s; die Umwandlung in %s kann Zeichen verlieren (wie W1060).';
+     En: '%s is %s; the conversion to %s can lose characters (like W1060).'),
+    (De: '%s ist %s; ausdrückliche Umwandlung in %s (wie W1059).';
+     En: '%s is %s; explicit conversion to %s (like W1059).'),
+    (De: '%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).';
+     En: '%s is %s; in the set expression the character is truncated to one byte (like W1050).'),
+    (De: 'CharInSet verwenden'; En: 'Use CharInSet'),
+    (De: 'die Zuweisung an %s'; En: 'the assignment to %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxValueText = 30;
@@ -106,7 +140,7 @@ const
 function TStringConversionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(StringConversionRuleId, TRuleSeverity.Warning,
-    'Umwandlung zwischen Unicode- und ANSI-Strings');
+    cTexts[TStringConversionsText.Title].Text);
 end;
 
 class function TStringConversionRule.KindOf(const ATypeName: string): TStringTypeKind;
@@ -200,7 +234,7 @@ var
     Result := NodeText(ANode);
     if Length(Result) > cMaxValueText then
     begin
-      Result := 'Der Wert';
+      Result := cTexts[TStringConversionsText.TheValue].Text;
     end;
   end;
 
@@ -336,7 +370,7 @@ var
     mWide := StateOf('W1062', AValue);
     if TRuleWarnSwitches.Reported(mLoss) and TRuleWarnSwitches.Reported(mWide) then
     begin
-      mCodes := 'W1058 und W1062';
+      mCodes := cTexts[TStringConversionsText.BothCodes].Text;
     end
     else if TRuleWarnSwitches.Reported(mWide) then
     begin
@@ -352,14 +386,14 @@ var
     end;
     if (mLoss = TRuleWarnState.AsError) or (mWide = TRuleWarnState.AsError) then
     begin
-      AReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s enthält Zeichen, die ' +
-        'es in der ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie %s).',
+      AReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+        cTexts[TStringConversionsText.Unmappable].Fmt(
         [ValueText(AValue), mCodePage, ATargetDisplay, mCodes]), TRuleSeverity.Error, nil);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s enthält Zeichen, die es in der ' +
-        'ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie %s).', [ValueText(AValue),
+      AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+        cTexts[TStringConversionsText.Unmappable].Fmt([ValueText(AValue),
         mCodePage, ATargetDisplay, mCodes]), TRuleConfidence.Medium);
     end;
   end;
@@ -384,15 +418,15 @@ var
     end;
     if mCode = 'W1058' then
     begin
-      mMessage := Format('%s ist %s; %s kann Zeichen verlieren (wie W1058).', [ValueText(AValue), mSourceDisplay,
+      mMessage := cTexts[TStringConversionsText.MayLose].Fmt([ValueText(AValue), mSourceDisplay,
         AWhere]);
     end
     else
     begin
-      mMessage := Format('%s ist %s; %s wandelt implizit um (wie W1057).', [ValueText(AValue), mSourceDisplay,
+      mMessage := cTexts[TStringConversionsText.Implicit].Fmt([ValueText(AValue), mSourceDisplay,
         AWhere]);
     end;
-    mFix := TRuleFix.Create(Format('Ausdrücklich in %s umwandeln', [ATargetDisplay]),
+    mFix := TRuleFix.Create(cTexts[TStringConversionsText.ConvertExplicitly].Fmt([ATargetDisplay]),
       [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s(%s)', [ATargetDisplay,
       NodeText(AValue)]))]);
     Report(mCode, AValue, mMessage, TRuleConfidence.High, [mFix]);
@@ -414,15 +448,16 @@ var
       if (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
         MatchText(mBaseType.Name, ['string', 'UnicodeString']) then
       begin
-        Report('W1068', ANode[0], Format('Zeichen von %s direkt geändert; das wird möglicherweise künftig nicht ' +
-          'mehr unterstützt (wie W1068).', [NodeText(Unwrapped(ANode[0])[0])]), TRuleConfidence.High, nil);
+        Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(Unwrapped(ANode[0])[0])]),
+          TRuleConfidence.High, nil);
       end;
       Exit;
     end;
     mTarget := ExpressionKind(ANode[0], True, mTargetDisplay);
     if mTarget <> TStringTypeKind.None then
     begin
-      CheckImplicit(ANode[1], mTarget, mTargetDisplay, 'die Zuweisung an ' + NodeText(ANode[0]));
+      CheckImplicit(ANode[1], mTarget, mTargetDisplay,
+        cTexts[TStringConversionsText.AssignmentTo].Fmt([NodeText(ANode[0])]));
     end;
   end;
 
@@ -448,7 +483,7 @@ var
     begin
       Exit;
     end;
-    CheckImplicit(ANode[1], mTarget, mTypeName, 'die Zuweisung an ' + ANode.Name);
+    CheckImplicit(ANode[1], mTarget, mTypeName, cTexts[TStringConversionsText.AssignmentTo].Fmt([ANode.Name]));
   end;
 
   /// <summary>Ist ACall sicher der Aufruf einer Routine mit bekanntem Kopf? Liefert Symbol und Parameter.</summary>
@@ -509,7 +544,7 @@ var
       if mTarget <> TStringTypeKind.None then
       begin
         CheckImplicit(ACall[mIndex], mTarget, Trim(mParams[mIndex - 1].TypeName),
-          Format('die Übergabe an %s (%s)', [mSymbol.Name, mParams[mIndex - 1].Name]));
+          cTexts[TStringConversionsText.PassingTo].Fmt([mSymbol.Name, mParams[mIndex - 1].Name]));
       end;
     end;
   end;
@@ -550,12 +585,12 @@ var
     mCode := ConversionCode(mSource, mTarget, True);
     if mCode = 'W1060' then
     begin
-      Report(mCode, ACall, Format('%s ist %s; die Umwandlung in %s kann Zeichen verlieren (wie W1060).',
+      Report(mCode, ACall, cTexts[TStringConversionsText.ConversionLoses].Fmt(
         [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
     end
     else if mCode = 'W1059' then
     begin
-      Report(mCode, ACall, Format('%s ist %s; ausdrückliche Umwandlung in %s (wie W1059).',
+      Report(mCode, ACall, cTexts[TStringConversionsText.ExplicitConversion].Fmt(
         [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
     end;
   end;
@@ -659,15 +694,15 @@ var
       Exit;
     end;
     mEdits := CharInSetEdits(ANode);
-    mMessage := Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).',
-      [ValueText(ANode[0]), mDisplay]);
+    mMessage := cTexts[TStringConversionsText.SetTruncates].Fmt([ValueText(ANode[0]), mDisplay]);
     if mEdits = nil then
     begin
       Report('W1050', ANode, mMessage, TRuleConfidence.High, nil);
     end
     else
     begin
-      Report('W1050', ANode, mMessage, TRuleConfidence.High, [TRuleFix.Create('CharInSet verwenden', mEdits)]);
+      Report('W1050', ANode, mMessage, TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TStringConversionsText.UseCharInSet].Text, mEdits)]);
     end;
   end;
 
@@ -756,5 +791,8 @@ procedure RegisterStringConversionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TStringConversionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.StringConversions', cTexts);
 
 end.

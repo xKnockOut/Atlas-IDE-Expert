@@ -50,6 +50,28 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDelphiVersionsText = (BDSIsNotInstalledAnd, BDSIsNotInstalledAtlas);
+
+const
+  cTexts: array[TDelphiVersionsText] of TAtlasText = (
+    (De: '%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; Bibliothekspfade und ' +
+      'RTL-Quellen fehlen';
+     En: '%s (BDS %s) is not installed and no other Delphi version was found; library paths and RTL sources are ' +
+      'missing'),
+    (De: '%s (BDS %s) ist nicht installiert; Atlas wählt die Version automatisch (je Projekt nach ProjectVersion der ' +
+      '.dproj, sonst %s)';
+     En: '%s (BDS %s) is not installed; Atlas chooses the version automatically (per project by ProjectVersion of ' +
+      'the .dproj, otherwise %s)'));
+
+{$SCOPEDENUMS OFF}
+
 type
   TVersionRange = record
     FromProject: Double;
@@ -238,17 +260,19 @@ begin
   Issue.IsError := False;
   if Length(AInstalled) = 0 then
   begin
-    Issue.Message := Format('%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; ' +
-      'Bibliothekspfade und RTL-Quellen fehlen', [ProductName(ASettings.DelphiVersion), ASettings.DelphiVersion]);
+    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAnd].Fmt([ProductName(ASettings.DelphiVersion),
+      ASettings.DelphiVersion]);
   end
   else
   begin
     Fallback := Choose(ASettings.DelphiVersion, '', AInstalled, Missing);
-    Issue.Message := Format('%s (BDS %s) ist nicht installiert; Atlas wählt die Version automatisch ' +
-      '(je Projekt nach ProjectVersion der .dproj, sonst %s)', [ProductName(ASettings.DelphiVersion),
+    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAtlas].Fmt([ProductName(ASettings.DelphiVersion),
       ASettings.DelphiVersion, ProductName(Fallback)]);
   end;
   Result := [Issue];
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.DelphiVersions', cTexts);
 
 end.

@@ -26,7 +26,50 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWinApiCommandsText = (ExpectedIsExternalNameDll, UnknownEntryAllowedAreDelayed, ExternalDoesNotBelongIn,
+    ExternalNeedsAnImplementationSection, NoRoutineThatIsNot, ExportsClauseWithoutClosing, MainBlockOfTheLibrary,
+    ExportsOnlyAppliesInA, OscheckOnlyAppliesInThe, BelowOscheckThereIsNo, ReturnTypeOfUnknownWin32Check,
+    ReturnsNotBOOLWin32CheckDoes, OlecheckOnlyAppliesInThe, BelowOlecheckThereIsNo, ReturnsNotHRESULT,
+    ImportAFunctionFromA, ExportRoutinesOfTheLibrary, CheckTheWindowsAPICall, CheckTheCOMCallBelow,
+    WithoutCallingConventionStdcallCdecl, AllRoutinesAreAlreadyIn, Nothing, ExternalExample);
+
+const
+  cTexts: array[TWinApiCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /external Name dll [delayed] [cdecl]';
+     En: 'Expected is /external Name dll [delayed] [cdecl]'),
+    (De: 'Unbekannte Angabe %s; erlaubt sind delayed und %s'; En: 'Unknown entry %s; allowed are delayed and %s'),
+    (De: '/external gehört nicht in eine Klasse'; En: '/external does not belong in a class'),
+    (De: '/external braucht hier einen implementation-Abschnitt';
+     En: '/external needs an implementation section here'),
+    (De: 'Keine Routine %s, die noch nicht exportiert wird'; En: 'No routine %s that is not exported yet'),
+    (De: 'exports-Klausel ohne abschließendes ";"'; En: 'exports clause without closing ";"'),
+    (De: 'Hauptblock der library nicht gefunden'; En: 'Main block of the library not found'),
+    (De: '/exports gilt nur in einer library-Datei (.dpr)'; En: '/exports only applies in a library file (.dpr)'),
+    (De: '/oscheck gilt nur im Rumpf einer Routine'; En: '/oscheck only applies in the body of a routine'),
+    (De: 'Unter /oscheck steht kein Aufruf'; En: 'Below /oscheck there is no call'),
+    (De: 'Rückgabetyp von %s unbekannt; Win32Check nur bei BOOL';
+     En: 'Return type of %s unknown; Win32Check only for BOOL'),
+    (De: '%s liefert %s, nicht BOOL; Win32Check passt nicht'; En: '%s returns %s, not BOOL; Win32Check does not fit'),
+    (De: '/olecheck gilt nur im Rumpf einer Routine'; En: '/olecheck only applies in the body of a routine'),
+    (De: 'Unter /olecheck steht kein Aufruf'; En: 'Below /olecheck there is no call'),
+    (De: '%s liefert %s, nicht HRESULT'; En: '%s returns %s, not HRESULT'),
+    (De: 'Funktion aus einer DLL importieren'; En: 'Import a function from a DLL'),
+    (De: 'Routinen der library exportieren'; En: 'Export routines of the library'),
+    (De: 'Windows-API-Aufruf darunter prüfen'; En: 'Check the Windows API call below'),
+    (De: 'COM-Aufruf darunter mit OleCheck prüfen'; En: 'Check the COM call below with OleCheck'),
+    (De: 'Ohne Aufrufkonvention (stdcall, cdecl): '; En: 'Without calling convention (stdcall, cdecl): '),
+    (De: 'Alle Routinen stehen schon in exports'; En: 'All routines are already in exports'),
+    (De: 'nichts'; En: 'nothing'),
+    (De: '/external MeineFunktion meine.dll'; En: '/external MyFunction my.dll'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -112,7 +155,7 @@ begin
   mWords := AArguments.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   if (Length(mWords) < 2) or not IsValidIdent(mWords[0]) then
   begin
-    Exit(Fail('Erwartet wird /external Name dll [delayed] [cdecl]', AReason));
+    Exit(Fail(cTexts[TWinApiCommandsText.ExpectedIsExternalNameDll].Text, AReason));
   end;
   ASpec.Name := mWords[0];
   ASpec.Dll := Unquoted(mWords[1]);
@@ -129,7 +172,7 @@ begin
     end
     else
     begin
-      Exit(Fail(Format('Unbekannte Angabe %s; erlaubt sind delayed und %s', [mWords[mIndex],
+      Exit(Fail(cTexts[TWinApiCommandsText.UnknownEntryAllowedAreDelayed].Fmt([mWords[mIndex],
         string.Join(', ', Conventions)]), AReason));
     end;
   end;
@@ -220,14 +263,14 @@ begin
   try
     if (mSource.RoutineAt = nil) and mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/external gehört nicht in eine Klasse', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.ExternalDoesNotBelongIn].Text, AReason));
     end;
     mLineBreak := mSource.LineBreak;
     mDeclaration := ExternalDeclaration(mSource, mSpec);
     // Aus einer Routine heraus: in die implementation wie /const!.
     if (mSource.RoutineAt <> nil) and (mSource.ImplementationStart < 0) then
     begin
-      Exit(Fail('/external braucht hier einen implementation-Abschnitt', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.ExternalNeedsAnImplementationSection].Text, AReason));
     end;
     if mSource.RoutineAt <> nil then
     begin
@@ -325,15 +368,15 @@ function NothingToExport(const AMissing: TArray<string>; const AName: string): s
 begin
   if AMissing <> nil then
   begin
-    Result := 'Ohne Aufrufkonvention (stdcall, cdecl): ' + string.Join(', ', AMissing);
+    Result := cTexts[TWinApiCommandsText.WithoutCallingConventionStdcallCdecl].Text + string.Join(', ', AMissing);
   end
   else if AName <> '' then
   begin
-    Result := Format('Keine Routine %s, die noch nicht exportiert wird', [AName]);
+    Result := cTexts[TWinApiCommandsText.NoRoutineThatIsNot].Fmt([AName]);
   end
   else
   begin
-    Result := 'Alle Routinen stehen schon in exports';
+    Result := cTexts[TWinApiCommandsText.AllRoutinesAreAlreadyIn].Text;
   end;
 end;
 
@@ -373,13 +416,14 @@ begin
   mClause := ARoot.FindChild(TSyntaxKind.ExportsClause);
   if mClause <> nil then
   begin
-    Exit(AppendToClause(ASource, mClause, mText, AEdit) or Fail('exports-Klausel ohne abschließendes ";"', AReason));
+    Exit(AppendToClause(ASource, mClause, mText,
+      AEdit) or Fail(cTexts[TWinApiCommandsText.ExportsClauseWithoutClosing].Text, AReason));
   end;
   mMain := ARoot.FindChild(TSyntaxKind.Block);
   if mMain = nil then
   begin
     AEdit := Default(TTextEdit);
-    Exit(Fail('Hauptblock der library nicht gefunden', AReason));
+    Exit(Fail(cTexts[TWinApiCommandsText.MainBlockOfTheLibrary].Text, AReason));
   end;
   AEdit := ASource.BeforeLine(mMain.StartPos.Line, 'exports' + Copy(mText, 2, MaxInt) + ';');
   Result := True;
@@ -398,7 +442,7 @@ begin
     mRoot := mSource.Tree.Root;
     if (mRoot = nil) or (mRoot.Kind <> TSyntaxKind.LibraryFile) then
     begin
-      Exit(Fail('/exports gilt nur in einer library-Datei (.dpr)', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.ExportsOnlyAppliesInA].Text, AReason));
     end;
     CollectExports(mRoot, AContext.Arguments, ListedNames(mSource, mRoot.FindChild(TSyntaxKind.ExportsClause)),
       mNames, mMissing);
@@ -591,23 +635,23 @@ begin
   try
     if Source.RoutineAt = nil then
     begin
-      Exit(Fail('/oscheck gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.OscheckOnlyAppliesInThe].Text, AReason));
     end;
     if not StatementBelow(Source, Statement) then
     begin
-      Exit(Fail('Unter /oscheck steht kein Aufruf', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.BelowOscheckThereIsNo].Text, AReason));
     end;
     TypeName := ResultType(Source, AContext.Index, Statement.Callee);
     if Statement.Target = '' then
     begin
       if TypeName = '' then
       begin
-        Exit(Fail(Format('Rückgabetyp von %s unbekannt; Win32Check nur bei BOOL', [Statement.Callee]), AReason));
+        Exit(Fail(cTexts[TWinApiCommandsText.ReturnTypeOfUnknownWin32Check].Fmt([Statement.Callee]), AReason));
       end;
       if not MatchText(TypeName, BoolTypes) then
       begin
-        Exit(Fail(Format('%s liefert %s, nicht BOOL; Win32Check passt nicht', [Statement.Callee,
-          IfThen(TypeName = '-', 'nichts', TypeName)]), AReason));
+        Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotBOOLWin32CheckDoes].Fmt([Statement.Callee,
+          IfThen(TypeName = '-', cTexts[TWinApiCommandsText.Nothing].Text, TypeName)]), AReason));
       end;
       AEdits := WrapStatement(Source, Statement, 'Win32Check(' + Statement.Text + ')');
     end
@@ -645,16 +689,17 @@ begin
   try
     if Source.RoutineAt = nil then
     begin
-      Exit(Fail('/olecheck gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.OlecheckOnlyAppliesInThe].Text, AReason));
     end;
     if not StatementBelow(Source, Statement) then
     begin
-      Exit(Fail('Unter /olecheck steht kein Aufruf', AReason));
+      Exit(Fail(cTexts[TWinApiCommandsText.BelowOlecheckThereIsNo].Text, AReason));
     end;
     TypeName := ResultType(Source, AContext.Index, Statement.Callee);
     if (TypeName <> '') and not MatchText(TypeName, ['HRESULT', 'HResult']) then
     begin
-      Exit(Fail(Format('%s liefert %s, nicht HRESULT', [Statement.Callee, IfThen(TypeName = '-', 'nichts',
+      Exit(Fail(cTexts[TWinApiCommandsText.ReturnsNotHRESULT].Fmt([Statement.Callee, IfThen(TypeName = '-',
+        cTexts[TWinApiCommandsText.Nothing].Text,
         TypeName)]), AReason));
     end;
     if Statement.Target = '' then
@@ -684,11 +729,16 @@ end;
 
 procedure RegisterWinApiCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('external', 'Funktion aus einer DLL importieren', '/external MeineFunktion meine.dll',
+  ARegister(Command('external', cTexts[TWinApiCommandsText.ImportAFunctionFromA].Text,
+    cTexts[TWinApiCommandsText.ExternalExample].Text,
     ExecuteExternal));
-  ARegister(Command('exports', 'Routinen der library exportieren', '/exports', ExecuteExports));
-  ARegister(Command('oscheck', 'Windows-API-Aufruf darunter prüfen', '/oscheck', ExecuteOsCheck));
-  ARegister(Command('olecheck', 'COM-Aufruf darunter mit OleCheck prüfen', '/olecheck', ExecuteOleCheck));
+  ARegister(Command('exports', cTexts[TWinApiCommandsText.ExportRoutinesOfTheLibrary].Text, '/exports',
+    ExecuteExports));
+  ARegister(Command('oscheck', cTexts[TWinApiCommandsText.CheckTheWindowsAPICall].Text, '/oscheck', ExecuteOsCheck));
+  ARegister(Command('olecheck', cTexts[TWinApiCommandsText.CheckTheCOMCallBelow].Text, '/olecheck', ExecuteOleCheck));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.WinApiCommands', cTexts);
 
 end.

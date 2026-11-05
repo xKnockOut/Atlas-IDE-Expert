@@ -39,7 +39,24 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THoverValuesText = (Empty, Elements, Deprecated, PlatformSpecific, Experimental);
+
+const
+  cTexts: array[THoverValuesText] of TAtlasText = (
+    (De: '[] · leer'; En: '[] · empty'),
+    (De: ' · %s Elemente'; En: ' · %s elements'),
+    (De: '**Veraltet**'; En: '**Deprecated**'),
+    (De: '**Plattformspezifisch**'; En: '**Platform specific**'),
+    (De: '**Experimentell**'; En: '**Experimental**'));
+
+{$SCOPEDENUMS OFF}
 
 function DigitValue(AChar: Char): Integer;
 begin
@@ -322,7 +339,7 @@ begin
   Text := Trim(Copy(Text, 2, Length(Text) - 2));
   if Text = '' then
   begin
-    Exit('[] · leer');
+    Exit(cTexts[THoverValuesText.Empty].Text);
   end;
   Elements := SplitTop(Text, ',');
   Count := 0;
@@ -357,7 +374,7 @@ begin
   end
   else
   begin
-    Result := Result + ' · ' + IntToStr(Count) + ' Elemente';
+    Result := Result + cTexts[THoverValuesText.Elements].Fmt([IntToStr(Count)]);
   end;
 end;
 
@@ -541,7 +558,7 @@ begin
           Message := Copy(ADeclaration, Start + 1, Close - Start - 1);
         end;
       end;
-      Result := '**Veraltet**';
+      Result := cTexts[THoverValuesText.Deprecated].Text;
       if Message <> '' then
       begin
         Result := Result + ': ' + Message;
@@ -550,13 +567,16 @@ begin
     end;
     if Word = 'platform' then
     begin
-      Exit('**Plattformspezifisch**');
+      Exit(cTexts[THoverValuesText.PlatformSpecific].Text);
     end;
     if Word = 'experimental' then
     begin
-      Exit('**Experimentell**');
+      Exit(cTexts[THoverValuesText.Experimental].Text);
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.HoverValues', cTexts);
 
 end.

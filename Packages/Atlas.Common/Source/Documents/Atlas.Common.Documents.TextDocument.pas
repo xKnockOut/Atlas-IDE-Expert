@@ -42,6 +42,21 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTextDocumentText = (InvalidRangeInEndLies);
+
+const
+  cTexts: array[TTextDocumentText] of TAtlasText = (
+    (De: 'Ungültiger Bereich in %s: Ende liegt vor dem Anfang'; En: 'Invalid range in %s: end lies before start'));
+
+{$SCOPEDENUMS OFF}
+
 { TTextDocument }
 
 constructor TTextDocument.Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
@@ -155,7 +170,7 @@ begin
       end;
       if EndOffset < StartOffset then
       begin
-        raise EDocumentError.CreateFmt('Ungültiger Bereich in %s: Ende liegt vor dem Anfang', [FUri]);
+        raise EDocumentError.CreateFmt(cTexts[TTextDocumentText.InvalidRangeInEndLies].Text, [FUri]);
       end;
       Text := Copy(Text, 1, StartOffset) + Change.Text + Copy(Text, EndOffset + 1, MaxInt);
     end
@@ -171,5 +186,8 @@ begin
   end;
   Result := Intermediate;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Documents.TextDocument', cTexts);
 
 end.

@@ -15,7 +15,9 @@
 //   {"ok": false, "reason": "…"}
 // "build" hat das Format der build-*.json des Servers (get_last_build);
 // Zeilen und Spalten sind 1-basiert, Info-Meldungen bleiben weg.
-// Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeBuilds.
+// Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeBuilds. Die Gründe einer
+// Ablehnung kommen in der Sprache der Oberfläche als TAtlasBuildInboxTexts
+// herein (#1458; Core kennt die Texttabellen nicht).
 
 interface
 
@@ -48,6 +50,14 @@ type
     Messages: TArray<TAtlasCompilerMessage>;
   end;
 
+  /// <summary>Gründe, aus denen ein Auftrag nicht lesbar ist, in der Sprache der Oberfläche.</summary>
+  TAtlasBuildInboxTexts = record
+    Unreadable: string;
+    NoProject: string;
+    /// <summary>Format mit %s für den Wert von "mode".</summary>
+    UnknownMode: string;
+  end;
+
   /// <summary>Ende eines Auftrags; AError &lt;&gt; '' = nicht gebaut (Grund), sonst Ergebnis in AReport.</summary>
   TAtlasBuildDoneProc = reference to procedure(const AReport: TAtlasBuildReport; const AError: string);
 
@@ -66,12 +76,12 @@ type
     /// <summary>"make", "build", "check" → Art; False bei anderem Text. '' gilt als "make".</summary>
     class function KindOf(const AMode: string; out AKind: TAtlasCompileKind): Boolean; static;
     /// <summary>Liest einen Auftrag; False mit Grund in AReason.</summary>
-    class function ParseRequest(const AText: string; out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
-      static;
+    class function ParseRequest(const AText: string; const ATexts: TAtlasBuildInboxTexts;
+      out ARequest: TAtlasBuildRequest; out AReason: string): Boolean; static;
     /// <summary>Übernimmt den Auftrag AFileName und liest ihn. False, wenn ihn schon jemand hat (AReason = '') oder
     /// er unlesbar ist (dann ist er mit Grund beantwortet).</summary>
-    class function Take(const AFileName: string; out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
-      static;
+    class function Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
+      out ARequest: TAtlasBuildRequest; out AReason: string): Boolean; static;
     /// <summary>Objekt "build" der Antwort; der Aufrufer gibt es frei.</summary>
     class function BuildJson(const AReport: TAtlasBuildReport): TJSONObject; static;
     /// <summary>{"ok": true, "build": …}.</summary>
@@ -143,8 +153,8 @@ begin
   end;
 end;
 
-class function TAtlasBuildInbox.ParseRequest(const AText: string; out ARequest: TAtlasBuildRequest;
-  out AReason: string): Boolean;
+class function TAtlasBuildInbox.ParseRequest(const AText: string; const ATexts: TAtlasBuildInboxTexts;
+  out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
 var
   Value: TJSONValue;
   Root: TJSONObject;
@@ -156,7 +166,7 @@ begin
   try
     if not (Value is TJSONObject) then
     begin
-      AReason := 'Auftrag nicht lesbar';
+      AReason := ATexts.Unreadable;
       Exit(False);
     end;
     Root := TJSONObject(Value);
@@ -169,19 +179,19 @@ begin
   end;
   if ARequest.Project = '' then
   begin
-    AReason := 'Auftrag ohne Projekt';
+    AReason := ATexts.NoProject;
     Exit(False);
   end;
   if not KindOf(Mode, ARequest.Kind) then
   begin
-    AReason := Format('Unbekannte Art "%s"; erlaubt sind make, build und check', [Mode]);
+    AReason := Format(ATexts.UnknownMode, [Mode]);
     Exit(False);
   end;
   Result := True;
 end;
 
-class function TAtlasBuildInbox.Take(const AFileName: string; out ARequest: TAtlasBuildRequest;
-  out AReason: string): Boolean;
+class function TAtlasBuildInbox.Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
+  out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
 var
   Taken, Text, Id: string;
 begin
@@ -200,7 +210,7 @@ begin
     on Exception do
       Text := '';
   end;
-  Result := ParseRequest(Text, ARequest, AReason);
+  Result := ParseRequest(Text, ATexts, ARequest, AReason);
   ARequest.Id := Id;
   if not Result then
   begin

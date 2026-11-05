@@ -69,13 +69,12 @@ type
   end;
 
   TNestedRoutines = class
-  public const
-    ToMethodTitle = 'In private Methode umwandeln';
-    ToUnitRoutineTitle = 'Aus Routine herauslösen';
-    EmbedMethodTitle = 'Als lokale Routine einbetten';
-    EmbedRoutineTitle = 'In lokale Routine umwandeln';
-    PassThroughSuffix = ' (durchgereichte Parameter entfernen)';
   public
+    class function ToMethodTitle: string; static;
+    class function ToUnitRoutineTitle: string; static;
+    class function EmbedMethodTitle: string; static;
+    class function EmbedRoutineTitle: string; static;
+    class function PassThroughSuffix: string; static;
     /// <summary>„In private Methode umwandeln“ bzw. „Aus Routine herauslösen“ für die lokale Routine, deren Kopf
     /// ARequest.Position enthält. Liegt sie in einer anderen lokalen Routine, ist AAction.Disabled der Hinweis.
     /// </summary>
@@ -110,7 +109,99 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Common.Editing.CreateMethod;
+  Atlas.Common.Editing.CreateMethod,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TNestedRoutinesText = (NoTree, NoLocalRoutine, UnsupportedForm, ClassNotInTheFile, ResultOfTheOuterRoutine,
+    CallsTheOuterRoutine, UsesTheLocalRoutine, UsesTheLocalType, WritesTheConstant, HasNoType,
+    AnAnonymousMethodCaptures, UnsupportedParameters, IsNotOnlyCalled, HeaderNotReadable,
+    ClassDeclarationCannotBeExtended, ChangedCalls, LiesInTheLocalRoutine, NoRoutineOfTheImplementation, Overloaded,
+    DeclarationMissing, NotPrivate, VirtualMessageOrOverloaded, UsedViaAnotherObject, NotExactlyOneCall,
+    NotUsedAsACall, CallerIsNotARoutine, CallerIsNotAMethod, NoParametersPassedThrough, AMemberOfTheClass,
+    BeginOfTheCallerIs, ChangedCalls1, RoutineWithoutBody, ANameHides, NewSignature, AlsoDeclaredElsewhere,
+    AlreadyKnows, NameResult, NewLocalRoutineIn, Recursive, Hides, ConvertToPrivateMethod, ExtractFromRoutine,
+    EmbedAsLocalRoutine, ConvertToLocalRoutine, RemovePassedThroughParameters);
+
+const
+  cTexts: array[TNestedRoutinesText] of TAtlasText = (
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: 'keine lokale Routine'; En: 'no local routine'),
+    (De: 'nicht unterstützte Form'; En: 'unsupported form'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'Result der äußeren Routine'; En: 'Result of the outer routine'),
+    (De: 'ruft die äußere Routine auf'; En: 'calls the outer routine'),
+    (De: 'nutzt die lokale Routine '; En: 'uses the local routine '),
+    (De: 'nutzt den lokalen Typ '; En: 'uses the local type '),
+    (De: 'schreibt die Konstante '; En: 'writes the constant '),
+    (De: ' hat keinen Typ'; En: ' has no type'),
+    (De: 'eine anonyme Methode fängt %s ein'; En: 'an anonymous method captures %s'),
+    (De: 'nicht unterstützte Parameter'; En: 'unsupported parameters'),
+    (De: ' wird nicht nur aufgerufen'; En: ' is not only called'),
+    (De: 'Kopf nicht lesbar'; En: 'header not readable'),
+    (De: 'Klassendeklaration nicht erweiterbar'; En: 'class declaration cannot be extended'),
+    (De: 'Geänderte Aufrufe: %d'; En: 'Changed calls: %d'),
+    (De: '%s liegt in der lokalen Routine %s; erst diese umwandeln';
+     En: '%s lies in the local routine %s; convert that one first'),
+    (De: 'keine Routine der Implementierung'; En: 'no routine of the implementation'),
+    (De: 'überladen'; En: 'overloaded'),
+    (De: 'Deklaration fehlt'; En: 'declaration missing'),
+    (De: 'nicht privat'; En: 'not private'),
+    (De: 'virtuell, Botschaft oder überladen'; En: 'virtual, message or overloaded'),
+    (De: 'über ein anderes Objekt benutzt'; En: 'used via another object'),
+    (De: 'nicht genau ein Aufruf'; En: 'not exactly one call'),
+    (De: 'nicht als Aufruf benutzt'; En: 'not used as a call'),
+    (De: 'Aufrufer ist keine Routine der Implementierung'; En: 'caller is not a routine of the implementation'),
+    (De: 'Aufrufer ist keine Methode derselben Art'; En: 'caller is not a method of the same kind'),
+    (De: 'keine durchgereichten Parameter'; En: 'no parameters passed through'),
+    (De: 'ein Mitglied der Klasse verdeckt '; En: 'a member of the class hides '),
+    (De: 'begin des Aufrufers steht nicht am Zeilenanfang';
+     En: 'begin of the caller is not at the beginning of the line'),
+    (De: 'Geänderte Aufrufe: 1'; En: 'Changed calls: 1'),
+    (De: 'Routine ohne Rumpf'; En: 'routine without body'),
+    (De: 'ein Name verdeckt '; En: 'a name hides '),
+    (De: 'Neue Signatur: %s'; En: 'New signature: %s'),
+    (De: 'auch anderswo deklariert'; En: 'also declared elsewhere'),
+    (De: ' kennt schon '; En: ' already knows '),
+    (De: 'Name Result'; En: 'name Result'),
+    (De: 'Neue lokale Routine in %s: %s'; En: 'New local routine in %s: %s'),
+    (De: 'rekursiv'; En: 'recursive'),
+    (De: ' verdeckt '; En: ' hides '),
+    (De: 'In private Methode umwandeln'; En: 'Convert to private method'),
+    (De: 'Aus Routine herauslösen'; En: 'Extract from routine'),
+    (De: 'Als lokale Routine einbetten'; En: 'Embed as local routine'),
+    (De: 'In lokale Routine umwandeln'; En: 'Convert to local routine'),
+    (De: ' (durchgereichte Parameter entfernen)'; En: ' (remove passed-through parameters)'));
+
+{$SCOPEDENUMS OFF}
+
+class function TNestedRoutines.ToMethodTitle: string;
+begin
+  Result := cTexts[TNestedRoutinesText.ConvertToPrivateMethod].Text;
+end;
+
+class function TNestedRoutines.ToUnitRoutineTitle: string;
+begin
+  Result := cTexts[TNestedRoutinesText.ExtractFromRoutine].Text;
+end;
+
+class function TNestedRoutines.EmbedMethodTitle: string;
+begin
+  Result := cTexts[TNestedRoutinesText.EmbedAsLocalRoutine].Text;
+end;
+
+class function TNestedRoutines.EmbedRoutineTitle: string;
+begin
+  Result := cTexts[TNestedRoutinesText.ConvertToLocalRoutine].Text;
+end;
+
+class function TNestedRoutines.PassThroughSuffix: string;
+begin
+  Result := cTexts[TNestedRoutinesText.RemovePassedThroughParameters].Text;
+end;
 
 type
   /// <summary>Name der äußeren Routine, den die lokale nutzt.</summary>
@@ -402,13 +493,13 @@ function TExtraction.LocateIssue(const APosition: TTextPosition): string;
 begin
   if (Request.Tree = nil) or (Request.Tree.Root = nil) then
   begin
-    Exit('kein Baum');
+    Exit(cTexts[TNestedRoutinesText.NoTree].Text);
   end;
   Lines := TLineTable.Build(Request.Text);
   Inner := TRoutineParts.RoutineWithHeaderAt(Request.Tree, Lines.OffsetAt(APosition));
   if (Inner = nil) or (Inner.Parent = nil) or (Inner.Parent.Kind <> TSyntaxKind.RoutineDecl) then
   begin
-    Exit('keine lokale Routine');
+    Exit(cTexts[TNestedRoutinesText.NoLocalRoutine].Text);
   end;
   Outer := Inner.Parent;
   QualifiedClass := TRoutineBody.QualifierOf(Outer.Name);
@@ -442,12 +533,12 @@ begin
   mOuterHeader := TRoutineParts.HeaderOf(Outer);
   if (Header = nil) or (mOuterHeader = nil) or (TRoutineBody.BodyOf(Inner) = nil) then
   begin
-    Exit('Routine ohne Rumpf');
+    Exit(cTexts[TNestedRoutinesText.RoutineWithoutBody].Text);
   end;
   if TRoutineParts.HasWord(Tokens, Header, ['forward', 'external', 'overload', 'assembler']) or
     TRoutineLocals.HasKind(Inner, TSyntaxKind.WithStatement) or (Pos('<', QualifiedClass) > 0) then
   begin
-    Exit('nicht unterstützte Form');
+    Exit(cTexts[TNestedRoutinesText.UnsupportedForm].Text);
   end;
   IsClass := TRoutineParts.IsClassHeader(Tokens, mOuterHeader);
   InnerIsFunction := TRoutineParts.IsFunction(Inner);
@@ -460,7 +551,7 @@ begin
     TypeBody := TRoutineBody.TypeBody(Request.Tree.Root, TRoutineBody.ShortNameOf(QualifiedClass));
     if TypeBody = nil then
     begin
-      Result := 'Klasse ' + QualifiedClass + ' nicht in der Datei';
+      Result := cTexts[TNestedRoutinesText.ClassNotInTheFile].Fmt([QualifiedClass]);
     end;
   end;
 end;
@@ -470,11 +561,11 @@ begin
   Result := '';
   if SameText(ANode.Name, 'Result') and TRoutineParts.IsFunction(Outer) then
   begin
-    Result := 'Result der äußeren Routine';
+    Result := cTexts[TNestedRoutinesText.ResultOfTheOuterRoutine].Text;
   end
   else if not IsMethod and SameText(ANode.Name, Outer.Name) then
   begin
-    Result := 'ruft die äußere Routine auf';
+    Result := cTexts[TNestedRoutinesText.CallsTheOuterRoutine].Text;
   end;
 end;
 
@@ -512,11 +603,11 @@ begin
     end;
     if (mChild.Kind = TSyntaxKind.RoutineDecl) and SameText(mChild.Name, ANode.Name) then
     begin
-      Exit('nutzt die lokale Routine ' + mChild.Name);
+      Exit(cTexts[TNestedRoutinesText.UsesTheLocalRoutine].Text + mChild.Name);
     end;
     if (mChild.Kind = TSyntaxKind.TypeSection) and (IndexText(ANode.Name, TRoutineParts.ChildNames(mChild)) >= 0) then
     begin
-      Exit('nutzt den lokalen Typ ' + ANode.Name);
+      Exit(cTexts[TNestedRoutinesText.UsesTheLocalType].Text + ANode.Name);
     end;
   end;
   Result := '';
@@ -592,7 +683,7 @@ begin
       if (mChild.Kind = TSyntaxKind.TypeSection) and (IndexText(mNode.Name, TRoutineParts.ChildNames(mChild)) >= 0) and
         not TRoutineParts.Shadowed(Cache, mNode, Inner, mNode.Name, True) then
       begin
-        Exit('nutzt den lokalen Typ ' + mNode.Name);
+        Exit(cTexts[TNestedRoutinesText.UsesTheLocalType].Text + mNode.Name);
       end;
     end;
   end;
@@ -603,7 +694,7 @@ function TExtraction.AddConstant(const ACaptured: TCaptured): string;
 begin
   if ACaptured.Written then
   begin
-    Exit('schreibt die Konstante ' + ACaptured.Local.Name);
+    Exit(cTexts[TNestedRoutinesText.WritesTheConstant].Text + ACaptured.Local.Name);
   end;
   if ConstLines = '' then
   begin
@@ -620,13 +711,13 @@ var
 begin
   if ACaptured.Local.TypeText = '' then
   begin
-    Exit(ACaptured.Local.Name + ' hat keinen Typ');
+    Exit(ACaptured.Local.Name + cTexts[TNestedRoutinesText.HasNoType].Text);
   end;
   mParameter := Default(TParameterText);
   mParameter.Modifier := ModeOf(ACaptured, Request.Lookup, Inner.StartOffset);
   if (mParameter.Modifier = 'var') and ACaptured.InAnonymous then
   begin
-    Exit('eine anonyme Methode fängt ' + ACaptured.Local.Name + ' ein');
+    Exit(cTexts[TNestedRoutinesText.AnAnonymousMethodCaptures].Fmt([ACaptured.Local.Name]));
   end;
   mParameter.Name := ACaptured.Local.Name;
   mParameter.Rest := ': ' + ACaptured.Local.TypeText;
@@ -646,7 +737,7 @@ begin
   Parameters := TRoutineParts.ParameterTexts(Request.Text, Header);
   if UnreadableParameters(Header, Parameters) then
   begin
-    Exit('nicht unterstützte Parameter');
+    Exit(cTexts[TNestedRoutinesText.UnsupportedParameters].Text);
   end;
   Arguments := '';
   ConstLines := '';
@@ -673,7 +764,7 @@ begin
   Result := '';
   if not CallEdit(Tokens, ANode, InnerIsFunction, NewName, Arguments, AEdits) then
   begin
-    Result := Inner.Name + ' wird nicht nur aufgerufen';
+    Result := Inner.Name + cTexts[TNestedRoutinesText.IsNotOnlyCalled].Text;
   end;
 end;
 
@@ -689,7 +780,7 @@ begin
   begin
     if TRoutineParts.Shadowed(Cache, ANode, Inner, mCaptured.Local.Name, False) then
     begin
-      Exit('ein Name verdeckt ' + mCaptured.Local.Name);
+      Exit(cTexts[TNestedRoutinesText.ANameHides].Text + mCaptured.Local.Name);
     end;
   end;
   Result := CallIssue(ANode, InnerEdits);
@@ -728,7 +819,7 @@ begin
   begin
     if ArgumentShadowed(ANode, mCaptured) then
     begin
-      Exit('ein Name verdeckt ' + mCaptured.Local.Name);
+      Exit(cTexts[TNestedRoutinesText.ANameHides].Text + mCaptured.Local.Name);
     end;
   end;
   Result := CallIssue(ANode, OuterEdits);
@@ -790,7 +881,7 @@ var
 begin
   if not TRoutineParts.NameTokens(Tokens, Header, mNameFirst, mNameLast) then
   begin
-    Exit('Kopf nicht lesbar');
+    Exit(cTexts[TNestedRoutinesText.HeaderNotReadable].Text);
   end;
   QualifiedName := NewName;
   if IsMethod then
@@ -854,7 +945,7 @@ begin
     if not TRoutineBody.MemberDeclaration(Request.Text, Request.Tree, TypeBody,
       TMemberEntry.Create('private', Declaration), Request.Style, mEdit) then
     begin
-      Exit('Klassendeklaration nicht erweiterbar');
+      Exit(cTexts[TNestedRoutinesText.ClassDeclarationCannotBeExtended].Text);
     end;
     mEdits := mEdits + [mEdit];
   end
@@ -865,8 +956,9 @@ begin
       mMoved + LineBreak + LineBreak)];
   end;
   AAction.Edits := mEdits;
-  AAction.Preview := Format('Neue Signatur: %s', [TRoutineParts.HeadText(Request.Text, Header, QualifiedName,
-    Parameters, IsClass)]) + LineBreak + Format('Geänderte Aufrufe: %d', [Calls]);
+  AAction.Preview := cTexts[TNestedRoutinesText.NewSignature].Fmt([TRoutineParts.HeadText(Request.Text, Header,
+    QualifiedName,
+    Parameters, IsClass)]) + LineBreak + cTexts[TNestedRoutinesText.ChangedCalls].Fmt([Calls]);
   Result := '';
 end;
 
@@ -921,7 +1013,7 @@ begin
   if mWork.InNested then
   begin
     // Hinweis statt Aktion: Die mittlere Routine müsste erst selbst heraus.
-    AAction.Disabled := Format('%s liegt in der lokalen Routine %s; erst diese umwandeln', [mWork.Inner.Name,
+    AAction.Disabled := cTexts[TNestedRoutinesText.LiesInTheLocalRoutine].Fmt([mWork.Inner.Name,
       mWork.Outer.Name]);
     Exit(True);
   end;
@@ -1024,19 +1116,19 @@ function TEmbedding.LocateIssue(const APosition: TTextPosition): string;
 begin
   if (Request.Tree = nil) or (Request.Tree.Root = nil) then
   begin
-    Exit('kein Baum');
+    Exit(cTexts[TNestedRoutinesText.NoTree].Text);
   end;
   Lines := TLineTable.Build(Request.Text);
   Tokens := Request.Tree.Tokens;
   Routine := TRoutineParts.TopRoutineAt(Request.Tree, Lines.OffsetAt(APosition), Declaration);
   if (Routine = nil) or (Routine.Parent = nil) or (Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
   begin
-    Exit('keine Routine der Implementierung');
+    Exit(cTexts[TNestedRoutinesText.NoRoutineOfTheImplementation].Text);
   end;
   Header := TRoutineParts.HeaderOf(Routine);
   if (Header = nil) or (TRoutineBody.BodyOf(Routine) = nil) then
   begin
-    Exit('Routine ohne Rumpf');
+    Exit(cTexts[TNestedRoutinesText.RoutineWithoutBody].Text);
   end;
   Short := TRoutineBody.ShortNameOf(Routine.Name);
   QualifiedClass := TRoutineBody.QualifierOf(Routine.Name);
@@ -1046,7 +1138,7 @@ begin
   if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or
     (Pos('<', QualifiedClass) > 0) or (Pos('.', QualifiedClass) > 0) then
   begin
-    Result := 'nicht unterstützte Form';
+    Result := cTexts[TNestedRoutinesText.UnsupportedForm].Text;
   end;
 end;
 
@@ -1063,14 +1155,14 @@ begin
     end;
     if Declaration <> nil then
     begin
-      Exit('überladen');
+      Exit(cTexts[TNestedRoutinesText.Overloaded].Text);
     end;
     Declaration := TypeBody[mIndex];
   end;
   Result := '';
   if Declaration = nil then
   begin
-    Result := 'Deklaration fehlt';
+    Result := cTexts[TNestedRoutinesText.DeclarationMissing].Text;
   end;
 end;
 
@@ -1079,18 +1171,18 @@ begin
   TypeBody := TRoutineBody.TypeBody(Request.Tree.Root, QualifiedClass);
   if TypeBody = nil then
   begin
-    Exit('Klasse ' + QualifiedClass + ' nicht in der Datei');
+    Exit(cTexts[TNestedRoutinesText.ClassNotInTheFile].Fmt([QualifiedClass]));
   end;
   Result := FindDeclaration;
   if (Result = '') and not MatchText(TRoutineBody.VisibilityOf(TypeBody, Declaration),
     ['private', 'strict private']) then
   begin
-    Result := 'nicht privat';
+    Result := cTexts[TNestedRoutinesText.NotPrivate].Text;
   end;
   if (Result = '') and TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract',
     'message', 'overload', 'reintroduce', 'final', 'static']) then
   begin
-    Result := 'virtuell, Botschaft oder überladen';
+    Result := cTexts[TNestedRoutinesText.VirtualMessageOrOverloaded].Text;
   end;
 end;
 
@@ -1120,7 +1212,7 @@ begin
   begin
     if (mSection <> nil) and DeclaredIn(mSection) then
     begin
-      Exit('auch anderswo deklariert');
+      Exit(cTexts[TNestedRoutinesText.AlsoDeclaredElsewhere].Text);
     end;
   end;
   Result := '';
@@ -1160,7 +1252,7 @@ begin
     end;
     if (mNode.Kind = TSyntaxKind.MemberAccess) and not IsSelfAccess(mNode) then
     begin
-      Exit('über ein anderes Objekt benutzt');
+      Exit(cTexts[TNestedRoutinesText.UsedViaAnotherObject].Text);
     end;
     if (mNode.Kind <> TSyntaxKind.MemberAccess) and TRoutineParts.Shadowed(Cache, mNode, nil, Short, False) then
     begin
@@ -1175,7 +1267,7 @@ begin
   end;
   if Length(mReferences) <> 1 then
   begin
-    Exit('nicht genau ein Aufruf');
+    Exit(cTexts[TNestedRoutinesText.NotExactlyOneCall].Text);
   end;
   Reference := mReferences[0];
   Result := '';
@@ -1201,7 +1293,7 @@ begin
   else if (mNode.Kind <> TSyntaxKind.CallStatement) and (not TRoutineParts.IsFunction(Routine) or
     (mNode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call, TSyntaxKind.AddressOf])) then
   begin
-    Result := 'nicht als Aufruf benutzt';
+    Result := cTexts[TNestedRoutinesText.NotUsedAsACall].Text;
   end;
 end;
 
@@ -1215,12 +1307,12 @@ begin
   if (Caller = nil) or (Caller = Routine) or (Caller.Parent <> Routine.Parent) or
     not TRoutineBody.Within(Reference, TRoutineBody.BodyOf(Caller)) then
   begin
-    Exit('Aufrufer ist keine Routine der Implementierung');
+    Exit(cTexts[TNestedRoutinesText.CallerIsNotARoutine].Text);
   end;
   if IsMethod and (not SameText(TRoutineBody.QualifierOf(Caller.Name), QualifiedClass) or
     (TRoutineParts.IsClassHeader(Tokens, TRoutineParts.HeaderOf(Caller)) <> IsClass)) then
   begin
-    Exit('Aufrufer ist keine Methode derselben Art');
+    Exit(cTexts[TNestedRoutinesText.CallerIsNotAMethod].Text);
   end;
   CallerBody := TRoutineBody.BodyOf(Caller);
   Result := UsageIssue;
@@ -1267,7 +1359,7 @@ var
 begin
   if Recursive then
   begin
-    Exit('rekursiv');
+    Exit(cTexts[TNestedRoutinesText.Recursive].Text);
   end;
   mAny := False;
   for mIndex := 0 to Min(High(Parameters), High(Arguments)) do
@@ -1282,7 +1374,7 @@ begin
   Result := '';
   if not mAny then
   begin
-    Result := 'keine durchgereichten Parameter';
+    Result := cTexts[TNestedRoutinesText.NoParametersPassedThrough].Text;
   end;
 end;
 
@@ -1293,7 +1385,7 @@ begin
   Parameters := TRoutineParts.ParameterTexts(Request.Text, Header);
   if UnreadableParameters(Header, Parameters) then
   begin
-    Exit('nicht unterstützte Parameter');
+    Exit(cTexts[TNestedRoutinesText.UnsupportedParameters].Text);
   end;
   SetLength(Removed, Length(Parameters));
   for mIndex := 0 to High(Removed) do
@@ -1337,11 +1429,11 @@ begin
   Result := '';
   if Cache.Declares(Caller, ANode.Name, CallerBody.StartOffset - 1) and not SameText(ANode.Name, 'Result') then
   begin
-    Result := Caller.Name + ' verdeckt ' + ANode.Name;
+    Result := Caller.Name + cTexts[TNestedRoutinesText.Hides].Text + ANode.Name;
   end
   else if IndexText(ANode.Name, AMembers) >= 0 then
   begin
-    Result := 'ein Mitglied der Klasse verdeckt ' + ANode.Name;
+    Result := cTexts[TNestedRoutinesText.AMemberOfTheClass].Text + ANode.Name;
   end;
 end;
 
@@ -1354,7 +1446,7 @@ begin
     if not TRoutineParts.Shadowed(Cache, mNode, Routine, mNode.Name, True) and Cache.Declares(Caller, mNode.Name,
       CallerBody.StartOffset - 1) then
     begin
-      Exit(Caller.Name + ' verdeckt ' + mNode.Name);
+      Exit(Caller.Name + cTexts[TNestedRoutinesText.Hides].Text + mNode.Name);
     end;
   end;
   Result := '';
@@ -1367,7 +1459,7 @@ var
 begin
   if Cache.Declares(Caller, Short, CallerBody.StartOffset - 1) then
   begin
-    Exit(Caller.Name + ' kennt schon ' + Short);
+    Exit(Caller.Name + cTexts[TNestedRoutinesText.AlreadyKnows].Text + Short);
   end;
   mMembers := CallerMembers;
   for mNode in Identifiers do
@@ -1381,7 +1473,7 @@ begin
   Result := TypeShadowIssue;
   if (Result = '') and SameText(Short, 'Result') then
   begin
-    Result := 'Name Result';
+    Result := cTexts[TNestedRoutinesText.NameResult].Text;
   end;
 end;
 
@@ -1528,13 +1620,14 @@ begin
   mBeginLine := CallerBody.StartPos.Line;
   if CallerBody.StartPos.Character <> Length(TTextLines.IndentOf(Request.Text, mBeginLine)) then
   begin
-    Exit('begin des Aufrufers steht nicht am Zeilenanfang');
+    Exit(cTexts[TNestedRoutinesText.BeginOfTheCallerIs].Text);
   end;
   AAction.Title := Title;
   AAction.Kind := RewriteKind;
   AAction.Edits := RemovalEdits + [InsertEdit(mMoved, mBeginLine)] + CallEdits;
-  AAction.Preview := Format('Neue lokale Routine in %s: %s', [Caller.Name,
-    TRoutineParts.HeadText(Request.Text, Header, Short, mKept, False)]) + LineBreak + 'Geänderte Aufrufe: 1';
+  AAction.Preview := cTexts[TNestedRoutinesText.NewLocalRoutineIn].Fmt([Caller.Name,
+    TRoutineParts.HeadText(Request.Text, Header, Short, mKept, False)]) + LineBreak +
+      cTexts[TNestedRoutinesText.ChangedCalls1].Text;
   Result := '';
 end;
 
@@ -1649,5 +1742,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.NestedRoutines', cTexts);
 
 end.

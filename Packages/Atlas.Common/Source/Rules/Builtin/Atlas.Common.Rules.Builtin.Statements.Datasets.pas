@@ -68,7 +68,33 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Statements.Tokens;
+  Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStatementsDatasetsText = (NextTitle, InsertNext, NextMissing, NextNotAlways, PostTitle, AddPost, PostMissing,
+    RollbackTitle, CreateTry, Rollback);
+
+const
+  cTexts: array[TStatementsDatasetsText] of TAtlasText = (
+    (De: 'Datenmengen-Schleife ohne Next'; En: 'Dataset loop without Next'),
+    (De: '%s.Next; am Ende des Rumpfs einfügen'; En: 'Insert %s.Next; at the end of the body'),
+    (De: 'Im Rumpf fehlt %s.Next; die Schleife läuft endlos.'; En: 'The body lacks %s.Next; the loop runs endlessly.'),
+    (De: 'Nicht jeder Weg durch den Rumpf ruft %s.Next auf; dort läuft die Schleife endlos.';
+     En: 'Not every path through the body calls %s.Next; there the loop runs endlessly.'),
+    (De: 'Edit oder Append ohne Post'; En: 'Edit or Append without Post'),
+    (De: '%s.Post mit try … except Cancel ergänzen'; En: 'Add %s.Post with try … except Cancel'),
+    (De: 'Nach %s fehlt Post oder Cancel; die Änderung bleibt offen.';
+     En: 'After %s, Post or Cancel is missing; the change stays open.'),
+    (De: 'Transaktion ohne Rollback'; En: 'Transaction without rollback'),
+    (De: 'try … except %s.%s; raise; end erzeugen'; En: 'Create try … except %s.%s; raise; end'),
+    (De: 'Kein Rollback bei einer Exception; die Transaktion bleibt offen und hält Sperren.';
+     En: 'No rollback on an exception; the transaction stays open and holds locks.'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Methode bzw. Routine einer Aufrufanweisung (Break, Q.Next, Q.Insert(…)); AReceiver ist der Text vor
 /// dem Punkt, AArguments die Zahl der Argumente. '' bei anderen Anweisungen.</summary>
@@ -113,7 +139,7 @@ const
 function TDatasetLoopWithoutNextRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dataset-loop-without-next', TRuleSeverity.Error,
-    'Datenmengen-Schleife ohne Next');
+    cTexts[TStatementsDatasetsText.NextTitle].Text);
 end;
 
 procedure TDatasetLoopWithoutNextRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -437,7 +463,7 @@ var
     begin
       Exit;
     end;
-    Result := [TRuleFix.Create(Format('%s.Next; am Ende des Rumpfs einfügen', [DataSet]), [TRuleEdit.Create(
+    Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.InsertNext].Fmt([DataSet]), [TRuleEdit.Create(
       TTextRange.Create(EndLine, 0, EndLine, 0), TTextLines.IndentOf(Lines[EndLine]) +
       TRoutineBody.IndentUnit(AContext.Formatting) + DataSet + '.Next;' + LineBreak)])];
   end;
@@ -461,14 +487,13 @@ var
     if not MentionsAdvance(ABody) then
     begin
       AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-        Format('Im Rumpf fehlt %s.Next; die Schleife läuft endlos.', [DataSet]), TRuleConfidence.High,
+        cTexts[TStatementsDatasetsText.NextMissing].Fmt([DataSet]), TRuleConfidence.High,
         NextFix(ABody));
     end
     else
     begin
       AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-        Format('Nicht jeder Weg durch den Rumpf ruft %s.Next auf; dort läuft die Schleife endlos.',
-        [DataSet]), TRuleConfidence.Medium);
+        cTexts[TStatementsDatasetsText.NextNotAlways].Fmt([DataSet]), TRuleConfidence.Medium);
     end;
   end;
 
@@ -518,7 +543,8 @@ const
 
 function TDatasetEditWithoutPostRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('dataset-edit-without-post', TRuleSeverity.Warning, 'Edit oder Append ohne Post');
+  Result := TRuleDescriptor.Create('dataset-edit-without-post', TRuleSeverity.Warning,
+    cTexts[TStatementsDatasetsText.PostTitle].Text);
 end;
 
 procedure TDatasetEditWithoutPostRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -750,7 +776,7 @@ var
     end;
     Text := Text + Indent + Step + ADataSet + '.Post;' + LineBreak + Indent + 'except' + LineBreak + Indent + Step +
       ADataSet + '.Cancel;' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
-    Result := [TRuleFix.Create(Format('%s.Post mit try … except Cancel ergänzen', [ADataSet]), [TRuleEdit.Create(
+    Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.AddPost].Fmt([ADataSet]), [TRuleEdit.Create(
       TTextRange.Create(List[Position + 1].StartPos.Line, 0, List[Last].EndPos.Line + 1, 0), Text)])];
   end;
 
@@ -788,8 +814,8 @@ var
     if IsOpenEdit(ANode, ARoutine, mName, mReceiver) then
     begin
       AReport.Add(TTextRange.Create(ANode[0].EndPos.Line, ANode[0].EndPos.Character - Length(mName),
-        ANode[0].EndPos.Line, ANode[0].EndPos.Character), Format('Nach %s fehlt Post oder Cancel; die ' +
-        'Änderung bleibt offen.', [mName]), TRuleConfidence.Medium, PostFix(ANode, mReceiver));
+        ANode[0].EndPos.Line, ANode[0].EndPos.Character), cTexts[TStatementsDatasetsText.PostMissing].Fmt([mName]),
+          TRuleConfidence.Medium, PostFix(ANode, mReceiver));
     end;
   end;
 
@@ -867,7 +893,7 @@ const
 function TTransactionWithoutRollbackRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('transaction-without-rollback', TRuleSeverity.Warning,
-    'Transaktion ohne Rollback');
+    cTexts[TStatementsDatasetsText.RollbackTitle].Text);
 end;
 
 /// <summary>Paar aus einem Eintrag von "pairs"; False ohne start oder rollback.</summary>
@@ -1093,7 +1119,7 @@ var
     end;
     Text := Text + Indent + 'except' + LineBreak + Indent + Step + AReceiver + '.' + APair.Rollback + Arguments +
       ';' + LineBreak + Indent + Step + 'raise;' + LineBreak + Indent + 'end;' + LineBreak;
-    Result := [TRuleFix.Create(Format('try … except %s.%s; raise; end erzeugen', [AReceiver, APair.Rollback]),
+    Result := [TRuleFix.Create(cTexts[TStatementsDatasetsText.CreateTry].Fmt([AReceiver, APair.Rollback]),
       [TRuleEdit.Create(TTextRange.Create(AList[APosition + 1].StartPos.Line, 0, AList[Last].EndPos.Line + 1, 0),
       Text)])];
   end;
@@ -1159,8 +1185,8 @@ var
       Exit;
     end;
     AReport.Add(TTextRange.Create(AMember.EndPos.Line, AMember.EndPos.Character - Length(AMember.Name),
-      AMember.EndPos.Line, AMember.EndPos.Character), 'Kein Rollback bei einer Exception; die Transaktion bleibt ' +
-      'offen und hält Sperren.', TRuleConfidence.High, RollbackFix(mList, mPosition, AReceiver, APair));
+      AMember.EndPos.Line, AMember.EndPos.Character), cTexts[TStatementsDatasetsText.Rollback].Text,
+        TRuleConfidence.High, RollbackFix(mList, mPosition, AReceiver, APair));
   end;
 
   procedure CheckStatement(AStatement, ARoutine: TSyntaxNode);
@@ -1240,5 +1266,8 @@ begin
     end);
   Visit(AContext.Tree.Root);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Statements.Datasets', cTexts);
 
 end.

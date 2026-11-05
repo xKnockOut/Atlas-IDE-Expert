@@ -45,7 +45,24 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Ownership;
+  Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOwnershipStringListObjectsText = (Title, SetOwning, SetOwnsObjects, NotOwned);
+
+const
+  cTexts: array[TOwnershipStringListObjectsText] of TAtlasText = (
+    (De: 'Objekte in einer TStringList ohne Besitz'; En: 'Objects in a TStringList without ownership'),
+    (De: '%s.Create(True) setzen'; En: 'Set %s.Create(True)'),
+    (De: 'OwnsObjects := True setzen'; En: 'Set OwnsObjects := True'),
+    (De: '%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.';
+     En: '%s does not own the objects; the %s objects are never released.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   StringListObjectsLeakRuleId = 'stringlist-objects-leak';
@@ -77,7 +94,7 @@ const
 function TStringListObjectsLeakRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(StringListObjectsLeakRuleId, TRuleSeverity.Warning,
-    'Objekte in einer TStringList ohne Besitz');
+    cTexts[TOwnershipStringListObjectsText.Title].Text);
 end;
 
 class function TStringListObjectsLeakRule.KeyOf(const AText: string): string;
@@ -599,12 +616,12 @@ begin
   if (mCreation.Kind = TSyntaxKind.MemberAccess) or (mCreation.ChildCount = 1) then
   begin
     // TStringList.Create bzw. TStringList.Create() → TStringList.Create(True)
-    AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [mClassText]),
+    AFix := TRuleFix.Create(cTexts[TOwnershipStringListObjectsText.SetOwning].Fmt([mClassText]),
       [TTextEdit.Create(TTextRange.Create(mCreation.StartPos, mCreation.EndPos), mClassText + '.Create(True)')]);
   end
   else if (mCreation.ChildCount = 2) and SameText(TextOf(mCreation[1]), 'False') then
   begin
-    AFix := TRuleFix.Create(Format('%s.Create(True) setzen', [mClassText]),
+    AFix := TRuleFix.Create(cTexts[TOwnershipStringListObjectsText.SetOwning].Fmt([mClassText]),
       [TTextEdit.Create(TTextRange.Create(mCreation[1].StartPos, mCreation[1].EndPos), 'True')]);
   end
   else
@@ -622,7 +639,7 @@ begin
   Result := Result and (Trim(Copy(FLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)) = ';');
   if Result then
   begin
-    AFix := TRuleFix.Create('OwnsObjects := True setzen',
+    AFix := TRuleFix.Create(cTexts[TOwnershipStringListObjectsText.SetOwnsObjects].Text,
       [TTextEdit.Create(TTextRange.Create(AStatement.EndPos.Line + 1, 0, AStatement.EndPos.Line + 1, 0),
       Copy(FLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character) + TextOf(AStatement[0]) +
       '.OwnsObjects := True;' + FLineBreak)]);
@@ -651,7 +668,7 @@ begin
     mFixes := [mFix];
   end;
   FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-    Format('%s besitzt die Objekte nicht; die %s-Objekte werden nie freigegeben.',
+    cTexts[TOwnershipStringListObjectsText.NotOwned].Fmt(
     [TextOf(ANode[0][0]), mClassName]), TRuleConfidence.Medium, mFixes);
 end;
 
@@ -758,5 +775,8 @@ procedure RegisterOwnershipStringListObjectsRules(const ARegistry: TRuleRegistry
 begin
   ARegistry.Register(TStringListObjectsLeakRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Ownership.StringListObjects', cTexts);
 
 end.
