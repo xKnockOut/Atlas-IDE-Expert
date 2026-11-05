@@ -99,6 +99,7 @@ uses
   Atlas.Core.Style.Symbol,
   System.StrUtils,
   Vcl.Controls,
+  Vcl.Graphics,
   Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,
