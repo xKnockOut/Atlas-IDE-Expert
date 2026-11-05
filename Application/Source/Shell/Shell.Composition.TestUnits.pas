@@ -68,7 +68,8 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.TestUnits;
+  Atlas.Common.Editing.TestUnits,
+  Atlas.Text.LogMarks;
 
 const
   /// <summary>Testprogramm höchstens so lange merken; ein neu angelegtes wird danach gefunden.</summary>
@@ -247,7 +248,7 @@ begin
     end;
   except
     on E: EInOutError do
-      FServices.Logger.Debug('Testprojekt: Ordner nicht lesbar: ' + E.Message);
+      FServices.Logger.Debug('Testprojekt: Ordner nicht lesbar: ' + TLogMarks.Text(E.Message));
   end;
 end;
 

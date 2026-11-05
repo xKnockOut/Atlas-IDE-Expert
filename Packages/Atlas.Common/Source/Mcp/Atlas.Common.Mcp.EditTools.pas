@@ -137,7 +137,8 @@ uses
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
-  Atlas.Text.Diff;
+  Atlas.Text.Diff,
+  Atlas.Text.LogMarks;
 
 { TMcpFileEdit }
 
@@ -321,7 +322,7 @@ begin
   end;
   if Assigned(FAudit) then
   begin
-    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, string.Join(', ', ANames)]));
+    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
   end;
 end;
 
@@ -600,7 +601,7 @@ begin
   if Assigned(FAudit) and (mNames <> nil) then
   begin
     FAudit(Format('MCP fix_findings (%s) hat geschrieben: %s', [string.Join(', ', AFixRules),
-      string.Join(', ', mNames)]));
+      TLogMarks.Path(string.Join(', ', mNames))]));
   end;
 end;
 

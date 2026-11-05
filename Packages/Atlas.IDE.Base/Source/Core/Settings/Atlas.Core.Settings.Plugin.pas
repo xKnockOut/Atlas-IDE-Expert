@@ -512,6 +512,7 @@ type
     property UpdatesChannel: string read FGeneral.UpdatesChannel write FGeneral.UpdatesChannel;
     property UpdatesNewModules: string read FGeneral.UpdatesNewModules write FGeneral.UpdatesNewModules;
     property BugReportAnonymize: Boolean read FGeneralServer.BugReportAnonymize write FGeneralServer.BugReportAnonymize;
+    property LogNames: Boolean read FGeneralServer.LogNames write FGeneralServer.LogNames;
     property UnitSearchEnabled: Boolean read FUnitSearch.UnitSearchEnabled write FUnitSearch.UnitSearchEnabled;
     property UnitSearchReplaceIdeDialog: Boolean read FUnitSearch.UnitSearchReplaceIdeDialog
       write FUnitSearch.UnitSearchReplaceIdeDialog;

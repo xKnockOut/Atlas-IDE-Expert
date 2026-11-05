@@ -200,6 +200,7 @@ begin
   Assert.AreEqual('stable', ASettings.UpdatesChannel);
   Assert.AreEqual('ask', ASettings.UpdatesNewModules);
   Assert.IsTrue(ASettings.BugReportAnonymize, 'Fehlerbericht anonymisiert');
+  Assert.IsFalse(ASettings.LogNames, 'atlas.log anonym (#1478)');
   Assert.IsTrue(ASettings.PairOwners, 'Anweisungen mitfärben standardmäßig an (#653)');
   Assert.AreEqual(1, ASettings.PairGuideWidth, 'Blocklinien 1 px');
   Assert.AreEqual(75, ASettings.PairGuideOpacity, 'Blocklinien 75 % Deckkraft');
@@ -327,6 +328,7 @@ begin
   ASettings.UpdatesChannel := 'prerelease';
   ASettings.UpdatesNewModules := 'skip';
   ASettings.BugReportAnonymize := False;
+  ASettings.LogNames := True;
   ASettings.ProblemsMessageList := True;
   ASettings.PairOwners := False;
   ASettings.PairGuideWidth := 3;
@@ -446,6 +448,7 @@ begin
   Assert.AreEqual('prerelease', ALoaded.UpdatesChannel);
   Assert.AreEqual('skip', ALoaded.UpdatesNewModules);
   Assert.IsFalse(ALoaded.BugReportAnonymize);
+  Assert.IsTrue(ALoaded.LogNames);
 end;
 procedure TAtlasPluginSettingsTests.SaveAndLoadRoundTrip;
 var

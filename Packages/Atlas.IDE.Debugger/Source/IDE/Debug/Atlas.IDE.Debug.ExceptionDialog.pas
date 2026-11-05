@@ -158,7 +158,7 @@ begin
   except
     // Ein Fehler hier darf die IDE nicht stören: der Dialog bleibt dann einfach sichtbar.
     on E: Exception do
-      TAtlasGuard.Log('Exception-Dialog ausblenden: ' + E.ClassName + ': ' + E.Message);
+      TAtlasGuard.Log('Exception-Dialog ausblenden: ' + TAtlasGuard.ErrorText(E));
   end;
 end;
 

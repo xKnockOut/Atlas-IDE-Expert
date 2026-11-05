@@ -112,7 +112,7 @@ begin
       except
         // Die Clients melden ihre Fehler selbst; hier nur das letzte Netz (#493).
         on E: Exception do
-          TAtlasGuard.Log('Tastatur: ' + E.ClassName + ': ' + E.Message);
+          TAtlasGuard.Log('Tastatur: ' + TAtlasGuard.ErrorText(E));
       end;
     end);
 end;
@@ -136,7 +136,7 @@ begin
   except
     // Keine Exception an die IDE (#493); die Taste geht dann an den Editor.
     on E: Exception do
-      TAtlasGuard.Log('Tastatur-Hook: ' + E.ClassName + ': ' + TAtlasGuard.SafeMessage(E.Message));
+      TAtlasGuard.Log('Tastatur-Hook: ' + TAtlasGuard.ErrorText(E));
   end;
   Result := CallNextHookEx(Hook, Code, WParam, LParam);
 end;

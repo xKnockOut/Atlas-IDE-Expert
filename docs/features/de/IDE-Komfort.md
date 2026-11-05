@@ -258,6 +258,7 @@ Im Diagnosemodus zeigt „Atlas-Diagnose“, was in Atlas gerade langsam ist:
 - abgesicherter Start nach einem Absturz (ein langsamer Start ist keiner: Statt beim nächsten Start Funktionen abzuschalten, nennt Atlas, wie lange es den Start aufgehalten hat und welche seiner Teile am längsten brauchten)
 - eigene Datendateien (Favoriten, Verläufe, Lesezeichen, Notizen …) werden in einem Schritt ersetzt, eine beschädigte liegt danach als `.defekt` daneben statt still überschrieben zu werden
 - Fehlerbericht zum Anhängen
+- Anonyme Diagnose (#1478): Protokolle von Plugin und Server, Fehlerbericht, Status, Diagnosepaket und `--timings` nennen Projekte, Units, Pfade, Benutzer und Meldungen nur als `name#N`, `datei#N`, `text#N`; Klarnamen nur nach ausdrücklicher Wahl (`diagnostics.log.names`, „Fehlerbericht anonymisieren“ aus, `--log-names`), im Paket vermerkt. Vor dem Speichern zeigt Atlas jede Datei des Pakets.
 - Tastenkonflikte mit anderen Erweiterungen (GExperts, CnPack, MMX) werden erkannt
 - Abstürze von Anfragen im Server:
   - jeder Absturz einer Anfrage im Server wird als nachstellbarer Fall gesichert (`%LOCALAPPDATA%\Atlas\crash`: Anfrage, letzte Nachrichten, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, `wiederholen.cmd` für `AtlasServer --replay`; `Tools/New-CrashTest.ps1` macht daraus einen DUnitX-Test)

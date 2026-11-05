@@ -154,7 +154,7 @@ begin
     // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
     on E: ELspClientError do
     begin
-      TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.SafeMessage(E.Message) +
+      TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.MessageText(E.Message) +
         '); alter Stand bleibt');
       Response := nil;
     end;

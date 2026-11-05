@@ -173,7 +173,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.Text.LogMarks;
 
 { TAtlasIdeDebugAccessViolation.TListener }
 
@@ -706,7 +707,8 @@ begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
   FOutcome.Explanation := AExplanation;
-  TAtlasGuard.Log('Zugriffsverletzung erklären: ' + AExplanation.Headline + ' ' + AExplanation.Detail);
+  TAtlasGuard.Log('Zugriffsverletzung erklären: ' + TLogMarks.Text(AExplanation.Headline) + ' ' +
+    TLogMarks.Text(AExplanation.Detail));
   // Steht (oder kommt) die Leiste für diesen Halt, zeigt sie die Erklärung; sonst die Meldungen.
   if TAtlasIdeDebugExceptionBar.Covers(FProgress.Stop) then
   begin

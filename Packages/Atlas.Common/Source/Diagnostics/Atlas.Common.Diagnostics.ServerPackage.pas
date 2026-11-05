@@ -10,7 +10,9 @@
 //   (name#N), Pfade unter einem Arbeitsbereich zu <ws>/…, andere zu <pfad>,
 //   Benutzer- und Rechnername zu <benutzer> (Atlas.Text.Anonymize).
 // - Protokoll: dieselben Regeln wie der Fehlerbericht, dazu Text in
-//   Anführungszeichen zu <wert>.
+//   Anführungszeichen zu <wert>; gekennzeichnete Namen, Pfade und fremder
+//   Text (Atlas.Text.LogMarks, #1478) werden ersetzt. Die erste Zeile sagt,
+//   ob das Protokoll anonymisiert ist oder Klarnamen enthält.
 // - Trace: Jede Zeile wird als JSON gelesen; Schlüssel, Zahlen und die Werte
 //   von "jsonrpc" und "method" bleiben, jeder andere Text wird <wert>. Zeilen,
 //   die kein JSON tragen, entfallen (gezählt). So bleibt sichtbar, welche
@@ -73,7 +75,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks;
 
 { TServerPackage }
 
@@ -271,12 +274,23 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
+    if AInput.Anonymize then
+    begin
+      mBuilder.Append('# Protokoll der Sitzung, anonymisiert').Append(sLineBreak);
+    end
+    else
+    begin
+      mBuilder.Append('# Protokoll der Sitzung mit Klarnamen (ausdrücklich gewählt)').Append(sLineBreak);
+    end;
     for mLine in AInput.LogLines do
     begin
-      mText := mLine;
       if AInput.Anonymize then
       begin
-        mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+        mText := TTextAnonymizer.AnonymizeLogLine(mLine, AInput.Workspaces, AInput.Identity);
+      end
+      else
+      begin
+        mText := TLogMarks.Plain(mLine);
       end;
       mBuilder.Append(mText).Append(sLineBreak);
     end;

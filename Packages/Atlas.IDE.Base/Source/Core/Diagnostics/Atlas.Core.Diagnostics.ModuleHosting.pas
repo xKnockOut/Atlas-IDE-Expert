@@ -88,6 +88,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.LogMarks;
+
 { TAtlasModuleHosting.TListener }
 
 procedure TAtlasModuleHosting.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
@@ -276,7 +279,8 @@ begin
     except
       on mError: Exception do
       begin
-        FFailures := FFailures + [FParts[mIndex].Name + ': ' + mError.ClassName + ': ' + mError.Message];
+        FFailures := FFailures + [FParts[mIndex].Name + ': ' + mError.ClassName + ': ' +
+          TLogMarks.Text(mError.Message)];
       end;
     end;
     FFeatures.Remove(FParts[mIndex].Name);

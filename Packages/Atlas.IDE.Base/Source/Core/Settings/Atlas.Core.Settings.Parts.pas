@@ -115,6 +115,9 @@ function AtlasSettingsParts: IAtlasSettingsParts;
 
 implementation
 
+uses
+  Atlas.Text.LogMarks;
+
 type
   TAtlasPartRegistration = class(TAtlasRegistration)
   private
@@ -466,7 +469,7 @@ begin
         mListener.Listener.SettingsChanged(mChange);
       except
         on mError: Exception do
-          mFailures := mFailures + [mError.ClassName + ': ' + mError.Message];
+          mFailures := mFailures + [mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
     end;
   end;

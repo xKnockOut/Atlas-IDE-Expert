@@ -82,7 +82,8 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.DelphiVersions,
   Shell.Platform,
-  Shell.Workspace.Listings;
+  Shell.Workspace.Listings,
+  Atlas.Text.LogMarks;
 
 { TShellLoadedProject }
 
@@ -164,7 +165,7 @@ begin
   end;
   if not FileExists(Result) then
   begin
-    FLogger.Warning('Projektdatei nicht gefunden: ' + Result);
+    FLogger.Warning('Projektdatei nicht gefunden: ' + TLogMarks.Path(Result));
     Result := '';
   end;
 end;
@@ -186,7 +187,7 @@ begin
   else if Length(mCandidates) > 1 then
   begin
     FLogger.Info(Format('%d Projektdateien in %s; "project" in %s wählt eine aus',
-      [Length(mCandidates), FRoot, ConfigurationFileName]));
+      [Length(mCandidates), TLogMarks.Path(FRoot), ConfigurationFileName]));
   end;
 end;
 
@@ -198,7 +199,7 @@ begin
     Result := FSetup.ProjectFile;
     if not FileExists(Result) then
     begin
-      FLogger.Warning('Projektdatei nicht gefunden: ' + Result);
+      FLogger.Warning('Projektdatei nicht gefunden: ' + TLogMarks.Path(Result));
       Result := '';
     end;
   end
@@ -231,7 +232,7 @@ begin
   if mConfiguredMissing then
   begin
     FLogger.Warning(Format('%s: delphiVersion %s ist nicht installiert; automatisch gewählt: %s',
-      [FName, ASettings.DelphiVersion, Result]));
+      [TLogMarks.Name(FName), ASettings.DelphiVersion, Result]));
   end;
 end;
 
@@ -247,18 +248,19 @@ begin
     if not TDelphiVersions.IsInstalled(ALoaded.Version, mInstalled) then
     begin
       FLogger.Info(Format('%s: kein Delphi installiert; Symbole wie %s (BDS %s, ProjectVersion %s), ' +
-        'ohne Bibliothekspfade', [FName, TDelphiVersions.ProductName(ALoaded.Version), ALoaded.Version,
+        'ohne Bibliothekspfade', [TLogMarks.Name(FName), TDelphiVersions.ProductName(ALoaded.Version), ALoaded.Version,
         ALoaded.ProjectVersion]));
       Exit;
     end;
     ALoaded.Installation := TDelphiInstallation.Create(ALoaded.Version);
     FLogger.Info(Format('%s: %s (BDS %s, ProjectVersion %s)',
-      [FName, TDelphiVersions.ProductName(ALoaded.Version), ALoaded.Version, ALoaded.ProjectVersion]));
+      [TLogMarks.Name(FName), TDelphiVersions.ProductName(ALoaded.Version), ALoaded.Version,
+        ALoaded.ProjectVersion]));
   except
     // Version bleibt: CompilerVersion und VERxxx hängen nicht an den Pfaden der Installation (#1321).
     on E: EProjectError do
     begin
-      FLogger.Warning('Delphi-Installation nicht gefunden: ' + E.Message);
+      FLogger.Warning('Delphi-Installation nicht gefunden: ' + TLogMarks.Text(E.Message));
       ALoaded.Installation := nil;
     end;
   end;
@@ -301,7 +303,8 @@ begin
   except
     on E: EProjectError do
     begin
-      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [ALoaded.ProjectFile, E.Message]));
+      FLogger.Error(Format('Projekt %s nicht lesbar: %s', [TLogMarks.Path(ALoaded.ProjectFile),
+        TLogMarks.Text(E.Message)]));
       Result := False;
     end;
   end;
@@ -322,7 +325,8 @@ begin
       ALoaded.CompilerLibraryPaths := ALoaded.Context.ExpandedLibraryPaths(ALoaded.Project, ALoaded.Variables);
     end;
     FLogger.Info(Format('%s: Projektkontext aus der IDE (%s, %s, %d Symbole, %d Suchpfade)',
-      [FName, ALoaded.Project.Config, ALoaded.Project.Platform, Length(ALoaded.Project.Defines),
+      [TLogMarks.Name(FName), TLogMarks.Name(ALoaded.Project.Config),
+      TLogMarks.Name(ALoaded.Project.Platform), Length(ALoaded.Project.Defines),
        Length(ALoaded.Project.SearchPaths)]));
   end;
   // Symbole aus den Projektoptionen der IDE gelten vor denen der Datei (#615).

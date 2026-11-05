@@ -38,7 +38,8 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  Atlas.Common.JsonRpc.Messages;
+  Atlas.Common.JsonRpc.Messages,
+  Atlas.Text.LogMarks;
 
 type
   /// <summary>Jede Datei einmal in die Erhebung.</summary>
@@ -148,13 +149,14 @@ begin
   mSurvey := Survey(AFiles);
   if not mSurvey.IsMixed then
   begin
-    FLogger.Debug(Format('Kodierungen im Projekt %s: %s', [FName, mSurvey.Describe]));
+    FLogger.Debug(Format('Kodierungen im Projekt %s: %s', [TLogMarks.Name(FName), mSurvey.Describe]));
+
     Exit;
   end;
   mText := Format('Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.',
-    [FName, mSurvey.Describe]);
+    [TLogMarks.Name(FName), mSurvey.Describe]);
   FLogger.Warning(mText);
-  Show(mText);
+  Show(TLogMarks.Plain(mText));
 end;
 
 end.

@@ -319,6 +319,7 @@ With the diagnostic mode on, *Atlas diagnostics* shows what in Atlas is slow rig
   - a slow IDE start is not a crash: instead of switching features off next time, Atlas names how long it held up the start and which of its parts took longest
 - Its own data files (favorites, histories, bookmarks, notes …) are replaced in one step, and a damaged one is kept next to it as `.defekt` instead of being silently overwritten
 - Bug report to attach
+- Anonymous diagnostics (#1478): plugin and server logs, bug report, status, diagnostic package and `--timings` name projects, units, paths, users and messages only as `name#N`, `datei#N`, `text#N`; real names only by explicit choice (`diagnostics.log.names`, “Anonymize bug reports” off, `--log-names`), noted in the package. Before saving, Atlas shows every file of the package.
 - Key conflicts with other extensions (GExperts, CnPack, MMX) are detected
 - Every crash of a request in the server is saved as a reproducible case (`%LOCALAPPDATA%\Atlas\crash`):
   - request, recent messages, snapshot of the file, settings without credentials, call stack

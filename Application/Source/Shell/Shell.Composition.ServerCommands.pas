@@ -105,7 +105,8 @@ uses
   Shell.Platform,
   Shell.CrashCases,
   Shell.Commands.Build,
-  Shell.Commands.Index;
+  Shell.Commands.Index,
+  Atlas.Text.LogMarks;
 
 function FirstText(const AArguments: TJSONArray): string;
 begin
@@ -172,7 +173,7 @@ var
 begin
   mWorkspaces := CollectProcesses;
   Result := TLspProcesses.ToJson(mWorkspaces, TShellPlatform.CurrentProcessId, Now);
-  FServices.Logger.Info(TLspProcesses.ToMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
+  FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
 end;
 
 function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
@@ -401,7 +402,7 @@ begin
         Format('Projekt %s ist nicht geladen.', [mArgs.Project]));
     end;
     FServices.SetProject(mTargets[mIndex].Setup.Origin, mItems[mIndex].Project);
-    FServices.Logger.Info(Format('Projekt %s ausgewählt', [mItems[mIndex].Name]));
+    FServices.Logger.Info(Format('Projekt %s ausgewählt', [TLogMarks.Name(mItems[mIndex].Name)]));
   end;
   for mIndex := 0 to High(mTargets) do
   begin
