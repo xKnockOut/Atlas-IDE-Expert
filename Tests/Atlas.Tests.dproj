@@ -649,6 +649,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Answer.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Registration.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Modules.Handshake.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Modules.KnownPackages.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.ModuleHosting.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Parts.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.StoreValues.Tests.pas"/>
@@ -1378,6 +1379,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Watch.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Answer.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.Handshake.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Modules\Atlas.Core.Modules.KnownPackages.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Diagnostics\Atlas.Core.Diagnostics.ModuleHosting.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Parts.pas"/>

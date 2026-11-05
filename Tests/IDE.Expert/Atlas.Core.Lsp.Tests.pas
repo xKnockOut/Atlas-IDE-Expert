@@ -9,6 +9,10 @@ type
   [TestFixture]
   TLspClientTests = class
   public
+    /// <summary>Erste Benutzung des gemeinsamen Rekorders (TAtlasPluginTimings.Shared, lebt bis zum Entladen)
+    /// ungemessen vorwegnehmen; sonst meldet TimingNamesExecutedCommand ihn je nach Reihenfolge als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure AnswersRequestFromSplitFrames;
     [Test]
@@ -175,6 +179,11 @@ const
     '"end":{"line":0,"character":1}},"newText":"b"}]}}}}';
 
 { TLspClientTests }
+
+procedure TLspClientTests.WarmUpFirstUse;
+begin
+  TimingNamesExecutedCommand;
+end;
 
 procedure TLspClientTests.AnswersRequestFromSplitFrames;
 var

@@ -19,6 +19,11 @@
 // - Abgesichert heißt: alle Schnellschalter (#604) für diese Sitzung aus;
 //   Suggest nennt, womit man beim Wiedereinschalten anfängt (zuletzt
 //   geänderte Einstellungen, dann Funktionen mit Fehlern).
+// - Sitzungen ohne Marke: Ein Prozess mit ATLAS_NO_SESSION_MARKER=1 (z. B.
+//   die Bau-IDE von cc.ps1, die abgewürgt werden darf) schreibt keine Marke,
+//   wertet keine fremden aus und lässt den Zustand unberührt
+//   (TAtlasSessionBook). Sonst zählte jede abgewürgte Bau-IDE als Absturz
+//   und brachte die nächste echte Sitzung in Stufe Safe.
 
 interface
 
@@ -94,6 +99,8 @@ type
     RepeatWindowMinutes = 10;
     EnvironmentName = 'ATLAS_SAFE_MODE';
     SwitchName = 'AtlasSafeMode';
+    /// <summary>Gesetzt ("1", "true", "yes"): Diese Sitzung führt kein Sitzungsbuch (TAtlasSessionBook).</summary>
+    NoMarkerEnvironmentName = 'ATLAS_NO_SESSION_MARKER';
   public
     /// <summary>Entscheidung beim Start und neuer Zustand. ACrashed: Marken früherer Sitzungen, deren Prozess
     /// nicht mehr läuft; AKeyDown: welche Taste beim Laden gedrückt ist; AForced: Kommandozeile bzw.
@@ -105,6 +112,9 @@ type
     class procedure CleanExit(var AState: TAtlasSafeState); static;
     /// <summary>Umgebungsvariable ("1", "true", "yes") oder Kommandozeile -AtlasSafeMode bzw. /AtlasSafeMode.</summary>
     class function IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean; static;
+    /// <summary>Wert einer Schalter-Umgebungsvariable gesetzt: "1", "true" oder "yes" (ohne Rücksicht auf
+    /// Groß-/Kleinschreibung und Leerraum).</summary>
+    class function IsSwitchOn(const AEnvironment: string): Boolean; static;
     /// <summary>Taste aus safeMode.startupKey ("shift", "ctrl", "none").</summary>
     class function KeyOf(const AText: string): TAtlasStartupKey; static;
     class function KeyText(AKey: TAtlasStartupKey): string; static;
@@ -141,6 +151,27 @@ type
       const AAlive: TAtlasProcessAlive): TArray<TAtlasSessionMarker>; static;
     class function ReadState(const AFolder: string): TAtlasSafeState; static;
     class procedure WriteState(const AFolder: string; const AState: TAtlasSafeState); static;
+  end;
+
+  /// <summary>Sitzungsbuch eines IDE-Prozesses: eigene Marke, Marken abgestürzter Sitzungen und Zustand in
+  /// Folder. Ohne Buch (Tracked = False, ATLAS_NO_SESSION_MARKER) schreibt die Sitzung nichts und liest keine
+  /// fremden Marken: Ihr Ende sagt nichts über Abstürze, und abgestürzte Sitzungen bleiben für die nächste
+  /// Sitzung mit Buch liegen.</summary>
+  TAtlasSessionBook = record
+    Folder: string;
+    ProcessId: Cardinal;
+    Tracked: Boolean;
+    /// <summary>ANoMarkerEnvironment: Wert von ATLAS_NO_SESSION_MARKER.</summary>
+    class function Create(const AFolder: string; AProcessId: Cardinal;
+      const ANoMarkerEnvironment: string): TAtlasSessionBook; static;
+    /// <summary>Zustand und Marken früherer Sitzungen, deren Prozess nicht mehr läuft (TakeCrashed); ohne Buch
+    /// leer.</summary>
+    procedure Open(const AAlive: TAtlasProcessAlive; out AState: TAtlasSafeState;
+      out ACrashed: TArray<TAtlasSessionMarker>);
+    procedure SaveState(const AState: TAtlasSafeState);
+    procedure SaveMarker(const AMarker: TAtlasSessionMarker);
+    /// <summary>Sauberes Ende: eigene Marke löschen, Absturzzähler zurücksetzen.</summary>
+    procedure Close;
   end;
 
 implementation
@@ -524,12 +555,19 @@ begin
   AState.CrashCount := 0;
 end;
 
+class function TAtlasSafeMode.IsSwitchOn(const AEnvironment: string): Boolean;
+var
+  mValue: string;
+begin
+  mValue := Trim(AEnvironment);
+  Result := SameText(mValue, '1') or SameText(mValue, 'true') or SameText(mValue, 'yes');
+end;
+
 class function TAtlasSafeMode.IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean;
 var
-  Arg, Value: string;
+  Arg: string;
 begin
-  Value := Trim(AEnvironment);
-  if SameText(Value, '1') or SameText(Value, 'true') or SameText(Value, 'yes') then
+  if IsSwitchOn(AEnvironment) then
   begin
     Exit(True);
   end;
@@ -837,6 +875,59 @@ end;
 class procedure TAtlasSessionFiles.WriteState(const AFolder: string; const AState: TAtlasSafeState);
 begin
   WriteFileSafely(StateFile(AFolder), AState.ToJson);
+end;
+
+{ TAtlasSessionBook }
+
+class function TAtlasSessionBook.Create(const AFolder: string; AProcessId: Cardinal;
+  const ANoMarkerEnvironment: string): TAtlasSessionBook;
+begin
+  Result.Folder := AFolder;
+  Result.ProcessId := AProcessId;
+  Result.Tracked := not TAtlasSafeMode.IsSwitchOn(ANoMarkerEnvironment);
+end;
+
+procedure TAtlasSessionBook.Open(const AAlive: TAtlasProcessAlive; out AState: TAtlasSafeState;
+  out ACrashed: TArray<TAtlasSessionMarker>);
+begin
+  AState := Default(TAtlasSafeState);
+  ACrashed := nil;
+  if not Tracked then
+  begin
+    Exit;
+  end;
+  AState := TAtlasSessionFiles.ReadState(Folder);
+  ACrashed := TAtlasSessionFiles.TakeCrashed(Folder, ProcessId, AAlive);
+end;
+
+procedure TAtlasSessionBook.SaveState(const AState: TAtlasSafeState);
+begin
+  if Tracked then
+  begin
+    TAtlasSessionFiles.WriteState(Folder, AState);
+  end;
+end;
+
+procedure TAtlasSessionBook.SaveMarker(const AMarker: TAtlasSessionMarker);
+begin
+  if Tracked then
+  begin
+    TAtlasSessionFiles.WriteMarker(Folder, AMarker);
+  end;
+end;
+
+procedure TAtlasSessionBook.Close;
+var
+  mState: TAtlasSafeState;
+begin
+  if not Tracked then
+  begin
+    Exit;
+  end;
+  TAtlasSessionFiles.DeleteMarker(Folder, ProcessId);
+  mState := TAtlasSessionFiles.ReadState(Folder);
+  TAtlasSafeMode.CleanExit(mState);
+  TAtlasSessionFiles.WriteState(Folder, mState);
 end;
 
 initialization

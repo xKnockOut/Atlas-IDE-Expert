@@ -598,6 +598,10 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
 | AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
 | AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
+| AS21 | `set ATLAS_NO_SESSION_MARKER=1`, aus dieser Konsole `bds -r <Profil>` starten, warten bis Atlas geladen ist | Unter `%LOCALAPPDATA%\Atlas\Session` entsteht keine `session-<pid>.json` dieser IDE; im Protokoll steht „Atlas gestartet (…), Stufe Normal, Grund None, ohne Sitzungsmarke (ATLAS_NO_SESSION_MARKER)“ |
+| AS22 | Bei AS21 die IDE im Taskmanager beenden, danach die IDE normal (ohne Variable) starten | Keine Rückfrage „Die letzte Sitzung wurde unerwartet beendet“, Atlas startet normal; `crashCount` in `safemode.json` unverändert |
+| AS23 | Normale IDE wie AS3 im Taskmanager beenden, danach eine IDE mit `ATLAS_NO_SESSION_MARKER=1` starten und wieder schließen, dann normal starten | Die IDE mit Variable startet normal ohne Rückfrage und lässt die Marke der abgestürzten Sitzung liegen; erst der normale Start fragt wie AS3 |
+| AS24 | `ATLAS_NO_SESSION_MARKER=1` und `ATLAS_SAFE_MODE=1` setzen, IDE starten | Wie AS12 (nur Einstellungsseite und Statusfeld), aber ohne Startmarke |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 
@@ -9638,3 +9642,29 @@ Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener
 | FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |
 | FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |
 | FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |
+
+## Module unter „Known Packages“ (Meldung vom 05.11.2026)
+
+Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Base und allen Modulen aus einem Ordner), nie im Standardprofil. Registry-Pfade unten für Delphi 13 und die klassische IDE; die 64-Bit-IDE nutzt `Known Packages x64`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KPM1 | IDE im Profil starten, alle Module eingetragen; `atlas.log` öffnen | Zeile `Known Packages: 11 Module im Ordner von Base, fehlend: -; abgeschaltet: -; aus anderem Ordner: -; andere bds.exe: n`; kein Hinweis „Atlas-Module fehlen“ |
+| KPM2 | IDE schließen, unter `HKCU\Software\Embarcadero\<Profil>\37.0\Known Packages` die Werte für Debugger und Search löschen, IDE starten | Protokoll `fehlend: Debugger, Search`; Benachrichtigung „Atlas-Module fehlen in der IDE“ (Warnung, Plakette gelb) mit „Die Module Debugger, Search …“ und Knopf „Wieder eintragen“ (**Abnahme**) |
+| KPM3 | Wie KPM2, „Wieder eintragen“ klicken, Registry ansehen, IDE neu starten | Zwei Werte mit Pfad der BPL und Beschreibung „Atlas Debugger“/„Atlas Search“; Hinweis „Atlas-Module wieder eingetragen · Die IDE lädt Debugger, Search beim nächsten Start.“; nach dem Neustart sind beide Module geladen und das Protokoll meldet `fehlend: -` (**Abnahme**) |
+| KPM4 | Wie KPM3, aber vor dem Neustart die IDE normal beenden und die Registry erneut ansehen | Die Werte stehen noch da. Fehlen sie, schreibt die IDE beim Beenden ihre eigene Liste zurück; bitte melden (das wäre die Ursache vom 05.11.) |
+| KPM5 | Ein Modul unter *Komponente › Packages installieren* abwählen (Häkchen weg), IDE neu starten | Protokoll `abgeschaltet: <Modul>`, kein Hinweis |
+| KPM6 | Ein Modul aus einem anderen Ordner eintragen (z. B. `Output\Win32\Release\Bpl`) | Protokoll `aus anderem Ordner: <Modul>`, kein Hinweis |
+| KPM7 | IDE A läuft; zweite IDE B im selben Profil starten, in B ein Modul über *Komponente › Packages installieren › Entfernen* entfernen | In `atlas.log` von A: `Known Packages geändert: entfernt <Modul>; neu -; in dieser IDE 11 Module angemeldet, andere bds.exe: 1` (A hat die Änderung nicht selbst gemacht) |
+| KPM8 | In einer IDE Base neu übersetzen, während Base und Module installiert sind (Projektgruppe Atlas, nur `Atlas.IDE.Base` bauen) | Protokoll zeigt, ob und wann Module aus der Liste fallen (`Known Packages geändert: entfernt …; in dieser IDE n Module angemeldet`); Ergebnis bitte melden (zweiter Verdacht für den 05.11.) |
+| KPM9 | IDE beenden, Protokoll ansehen | Zeile `Known Packages: … (beim Entladen)` mit dem Stand beim Beenden |
+| KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
+| KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
+
+## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
+| LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
+| LK3 | `ForgetStartsNumberingAgain` | Grün |
