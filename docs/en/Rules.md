@@ -6822,9 +6822,13 @@ uses
 
 **Unused unit in uses** · Code smell · Hint · Group Style and metrics
 
-Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep, units the form file refers to (a global variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index (--no-index) and with syntax errors.
+Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep or the keep option, units the form file refers to (a global variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed (the dimming follows the rule: off, exclude and lsp-ignore remove it as well), without a symbol index (--no-index) and with syntax errors.
 
 Bulk fix: the safe fix can be applied project-wide (`--fix unused-uses`, MCP `fix_findings`, command "Fix all safe findings …").
+
+| Option | Type | Default | Meaning |
+|---|---|---|---|
+| `keep` | string-list | `[]` | Units that never count as unused, in addition to usesKeep; also for the dimming in the editor and Clean up uses. |
 
 Flagged:
 
