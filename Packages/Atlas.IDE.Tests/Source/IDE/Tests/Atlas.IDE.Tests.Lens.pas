@@ -11,7 +11,7 @@
 //   grün, fehlgeschlagen in der Fehlerfarbe). Eine Marke über mehrere Tests
 //   (Fixture, alle Fälle einer [TestCase]-Methode) gilt erst als bestanden,
 //   wenn jeder ihrer Tests ein Ergebnis hat; lief erst ein Teil, steht dort
-//   „1/4 bestanden“ ohne Farbe (TAtlasTestTally); während eines Laufs (auch im
+//   „1/4 bestanden“ in der Warnfarbe (gelb, TAtlasTestTally); während eines Laufs (auch im
 //   Debugger) „Tests laufen …“. Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -99,7 +99,8 @@ type
     procedure Scan;
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
-    function Caption(const AItem: TItem; out AFailed, APassed: Boolean): string;
+    /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe).</summary>
+    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -361,13 +362,11 @@ begin
   Result := -1;
 end;
 
-function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AFailed, APassed: Boolean): string;
+function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus): string;
 var
   mTally: TAtlasTestTally;
-  mStatus: TAtlasTestStatus;
 begin
-  AFailed := False;
-  APassed := False;
+  AStatus := TAtlasTestStatus.Unknown;
   if FTests.Busy then
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
@@ -386,18 +385,16 @@ begin
   end;
   // Nur der Stand der Tests dieser Marke: Ein einzelner Test macht die Fixture nicht „bestanden“.
   mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected);
-  mStatus := mTally.Status;
-  if mStatus = TAtlasTestStatus.Failed then
+  AStatus := mTally.Status;
+  if AStatus = TAtlasTestStatus.Failed then
   begin
-    AFailed := True;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFailed, [Result]);
   end
-  else if mStatus = TAtlasTestStatus.Passed then
+  else if AStatus = TAtlasTestStatus.Passed then
   begin
-    APassed := True;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPassed, [Result]);
   end
-  else if mStatus = TAtlasTestStatus.Partial then
+  else if AStatus = TAtlasTestStatus.Partial then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.Passed, mTally.Total]);
   end;
@@ -474,20 +471,25 @@ var
   mColors: TAtlasColors;
   mTone: TAtlasColor;
   mText: string;
-  mFailed, mPassed: Boolean;
+  mStatus: TAtlasTestStatus;
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mFailed, mPassed);
+  mText := Caption(FItems[AIndex], mStatus);
   mColors := TAtlasColors.ForBackground(ABack);
   mTone := mColors.Accent;
-  if mFailed then
+  if mStatus = TAtlasTestStatus.Failed then
   begin
     mTone := mColors.Error;
   end
-  else if mPassed then
+  else if mStatus = TAtlasTestStatus.Passed then
   begin
     mTone := mColors.Add;
+  end
+  else if mStatus = TAtlasTestStatus.Partial then
+  begin
+    // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
+    mTone := mColors.Warn;
   end;
   mCanvas.Font.Size := Max(6, mCanvas.Font.Size - 1);
   mCanvas.Font.Style := [fsUnderline];
