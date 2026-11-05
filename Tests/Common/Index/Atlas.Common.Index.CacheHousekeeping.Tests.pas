@@ -42,11 +42,11 @@ type
     function CreateCache(const AName: string): string;
     function CreateFile(const AFileName: string; ASize: Integer): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen. Genau ein [SetupFixture] je Fixture: DUnitX führt nur
+    /// eine solche Methode aus, eine zweite fiel still weg (so blieb die Sperrliste ungewärmt, SecondLockFails).
+    /// </summary>
     [SetupFixture]
     procedure WarmUpFirstUse;
-    [SetupFixture]
-    procedure SetupFixture;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -372,6 +372,8 @@ begin
 end;
 
 procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
+var
+  mRoot: string;
 begin
   Setup;
   try
@@ -379,24 +381,19 @@ begin
   finally
     TearDown;
   end;
-end;
-
-procedure TIndexCacheDirectoryTests.SetupFixture;
-var
-  Root: string;
-begin
   // Gleichzeitiges Ersetzen löst Fehler aus, deren Meldungstexte die RTL beim ersten Mal
   // bis Programmende zwischenspeichert. Einmal vorab durchlaufen, damit der Leck-Monitor
   // in ConcurrentWritersLeaveReadableCache nur den Speicher des Tests sieht.
-  Root := TPath.Combine(TPath.GetTempPath, 'AtlasCacheWarmup' + IntToStr(TThread.GetTickCount64));
-  ForceDirectories(Root);
+  mRoot := TPath.Combine(TPath.GetTempPath, 'AtlasCacheWarmup' + IntToStr(TThread.GetTickCount64));
+  ForceDirectories(mRoot);
   try
-    WriteConcurrently(TPath.Combine(Root, 'index-00000000.json'), 50);
+    WriteConcurrently(TPath.Combine(mRoot, 'index-00000000.json'), 50);
     // Die Fehlerpfade gezielt, nicht nur zufällig: Ziel gesperrt (Replace scheitert), Ziel und
-    // Sicherung gesperrt, Ziel fehlt.
-    WarmUpFailures(Root);
+    // Sicherung gesperrt, Ziel fehlt. Dabei auch die Liste der eigenen Sperren (#1479): Ihr TMonitor und
+    // ihre Tabelle entstehen beim ersten TryLock und bleiben bis Programmende.
+    WarmUpFailures(mRoot);
   finally
-    TDirectory.Delete(Root, True);
+    TDirectory.Delete(mRoot, True);
   end;
 end;
 
