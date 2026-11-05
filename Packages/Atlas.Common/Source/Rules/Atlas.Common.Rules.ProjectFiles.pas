@@ -22,6 +22,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Rules.Contract;
@@ -32,6 +33,23 @@ type
   /// <summary>Sind alle Projekte geladen und indiziert? Sonst der Grund in AReason.</summary>
   TRuleProjectComplete = reference to function(out AReason: string): Boolean;
 
+  /// <summary>Bezeichner je Datei für NameIn ohne Verwendungen im Index: Jede Datei wird je Instanz einmal
+  /// gelesen und in Tokens zerlegt, nicht für jeden gesuchten Namen neu gelesen und geparst.</summary>
+  TRuleFileNames = class
+  private
+    FLock: TObject;
+    /// <summary>Kleingeschriebene Bezeichner je gelesener Datei (Schlüssel in Großbuchstaben).</summary>
+    FNames: TObjectDictionary<string, TDictionary<string, Boolean>>;
+    function NamesOf(const AFileName: string; const AReadText: TRuleProjectReadText): TDictionary<string, Boolean>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Bezeichner von AText ohne führendes &amp;, kleingeschrieben.</summary>
+    class function Identifiers(const AText: string): TDictionary<string, Boolean>; static;
+    /// <summary>Kommt AName als Bezeichner in AFileName vor? Unknown, wenn die Datei nicht lesbar ist.</summary>
+    function Lookup(const AFileName, AName: string; const AReadText: TRuleProjectReadText): TRuleNameAnswer;
+  end;
+
   TRuleProjectFiles = class(TInterfacedObject, IRuleProjectFiles)
   private
     FProjects: TArray<TRuleProject>;
@@ -40,9 +58,9 @@ type
     FComplete: TRuleProjectComplete;
     FUsesGraph: TUsesGraphService;
     FOwnsUsesGraph: Boolean;
+    FFileNames: TRuleFileNames;
     /// <summary>Der Uses-Graph-Dienst; ohne hereingereichten einer über FIndex. nil ohne Index.</summary>
     function UsesGraph: TUsesGraphService;
-    function TextHasName(const AText, AName: string): Boolean;
     /// <summary>Steht AName in einer der Include-Dateien? Unknown, wenn eine nicht lesbar ist.</summary>
     function NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
   public
@@ -78,9 +96,88 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Index.Usages,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Profiles;
+
+{ TRuleFileNames }
+
+constructor TRuleFileNames.Create;
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FNames := TObjectDictionary<string, TDictionary<string, Boolean>>.Create([doOwnsValues]);
+end;
+
+destructor TRuleFileNames.Destroy;
+begin
+  FNames.Free;
+  FLock.Free;
+  inherited;
+end;
+
+class function TRuleFileNames.Identifiers(const AText: string): TDictionary<string, Boolean>;
+var
+  mToken: TPascalToken;
+  mName: string;
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  // Nur Bezeichner zählen, nicht Kommentare und Strings; die Tokens reichen, ein Syntaxbaum ist nicht nötig.
+  for mToken in TPascalLexer.Tokenize(AText) do
+  begin
+    if mToken.Kind = TPascalTokenKind.Identifier then
+    begin
+      mName := mToken.Text;
+      if StartsStr('&', mName) then
+      begin
+        mName := Copy(mName, 2, MaxInt);
+      end;
+      Result.AddOrSetValue(AnsiLowerCase(mName), True);
+    end;
+  end;
+end;
+
+function TRuleFileNames.NamesOf(const AFileName: string;
+  const AReadText: TRuleProjectReadText): TDictionary<string, Boolean>;
+var
+  mKey, mText: string;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  System.TMonitor.Enter(FLock);
+  try
+    if FNames.TryGetValue(mKey, Result) then
+    begin
+      Exit;
+    end;
+    Result := nil;
+    // Nicht lesbare Dateien nicht merken: Sie können während der Prüfung lesbar werden.
+    if Assigned(AReadText) and AReadText(AFileName, mText) then
+    begin
+      Result := Identifiers(mText);
+      FNames.Add(mKey, Result);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TRuleFileNames.Lookup(const AFileName, AName: string;
+  const AReadText: TRuleProjectReadText): TRuleNameAnswer;
+var
+  mNames: TDictionary<string, Boolean>;
+begin
+  mNames := NamesOf(AFileName, AReadText);
+  if mNames = nil then
+  begin
+    Exit(TRuleNameAnswer.Unknown);
+  end;
+  Result := TRuleNameAnswer.Absent;
+  if mNames.ContainsKey(AnsiLowerCase(AName)) then
+  begin
+    Result := TRuleNameAnswer.Present;
+  end;
+end;
 
 { TRuleProjectFiles }
 
@@ -88,6 +185,7 @@ constructor TRuleProjectFiles.Create(const AProjects: TArray<TRuleProject>; cons
   const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete);
 begin
   inherited Create;
+  FFileNames := TRuleFileNames.Create;
   FProjects := AProjects;
   FIndex := AIndex;
   FReadText := AReadText;
@@ -107,6 +205,7 @@ begin
   begin
     FUsesGraph.Free;
   end;
+  FFileNames.Free;
   inherited;
 end;
 
@@ -297,45 +396,10 @@ begin
   Result := Assigned(FReadText) and FReadText(AFileName, AText);
 end;
 
-function TRuleProjectFiles.TextHasName(const AText, AName: string): Boolean;
-var
-  Tree: TSyntaxTree;
-  Token: TPascalToken;
-  Name: string;
-begin
-  Result := False;
-  // Erst billig im Text suchen, dann nur Bezeichner zählen (nicht Kommentare und Strings).
-  if not ContainsText(AText, AName) then
-  begin
-    Exit;
-  end;
-  Tree := TSyntaxTreeCache.Parse(AText);
-  try
-    for Token in Tree.Tokens do
-    begin
-      if Token.Kind = TPascalTokenKind.Identifier then
-      begin
-        Name := Token.Text;
-        if StartsStr('&', Name) then
-        begin
-          Name := Copy(Name, 2, MaxInt);
-        end;
-        if SameText(Name, AName) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  finally
-    Tree.Free;
-  end;
-end;
-
 function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
 var
   Indexed: TUnitIndex;
   HasUnit: Boolean;
-  Text: string;
 begin
   HasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, Indexed);
   if HasUnit then
@@ -346,16 +410,9 @@ begin
       TIndexUsageAnswer.Absent:
         Exit(TRuleNameAnswer.Absent);
     end;
-  if not ReadText(AFileName, Text) then
-  begin
-    Exit(TRuleNameAnswer.Unknown);
-  end;
-  if TextHasName(Text, AName) then
-  begin
-    Exit(TRuleNameAnswer.Present);
-  end;
-  Result := TRuleNameAnswer.Absent;
-  if HasUnit then
+  // Ohne Verwendungen (ausgelagert, aus): Bezeichner der Datei, je Datei einmal gelesen.
+  Result := FFileNames.Lookup(AFileName, AName, FReadText);
+  if HasUnit and (Result = TRuleNameAnswer.Absent) then
   begin
     Result := NameInIncludes(Indexed.Includes, AName);
   end;
@@ -363,18 +420,15 @@ end;
 
 function TRuleProjectFiles.NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
 var
-  mInclude, mText: string;
+  mInclude: string;
 begin
   Result := TRuleNameAnswer.Absent;
   for mInclude in AIncludes do
   begin
-    if not ReadText(mInclude, mText) then
+    Result := FFileNames.Lookup(mInclude, AName, FReadText);
+    if Result <> TRuleNameAnswer.Absent then
     begin
-      Exit(TRuleNameAnswer.Unknown);
-    end;
-    if TextHasName(mText, AName) then
-    begin
-      Exit(TRuleNameAnswer.Present);
+      Exit;
     end;
   end;
 end;
