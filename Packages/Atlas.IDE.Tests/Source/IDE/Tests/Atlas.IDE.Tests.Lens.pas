@@ -8,7 +8,10 @@
 // - Zeichnen: hinter dem Ende der Attributzeile ([TestFixture], [Test];
 //   ohne Attribut hinter der Deklaration) eine Marke „Test ausführen“ bzw.
 //   „Tests der Klasse ausführen“, nach einem Lauf mit dem Stand (bestanden
-//   grün, fehlgeschlagen in der Fehlerfarbe); während eines Laufs (auch im
+//   grün, fehlgeschlagen in der Fehlerfarbe). Eine Marke über mehrere Tests
+//   (Fixture, alle Fälle einer [TestCase]-Methode) gilt erst als bestanden,
+//   wenn jeder ihrer Tests ein Ergebnis hat; lief erst ein Teil, steht dort
+//   „1/4 bestanden“ ohne Farbe (TAtlasTestTally); während eines Laufs (auch im
 //   Debugger) „Tests laufen …“. Hat eine [TestCase]-Methode je Fall eine
 //   eigene Zeile, steht an jedem [TestCase] „Fall ausführen“ und die Marke
 //   der Methode (alle Fälle) an der Deklaration. Mit „Test debuggen“
@@ -39,6 +42,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Tests.Debug,
+  Atlas.Core.Tests.Run,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug;
 
@@ -56,6 +60,9 @@ type
       /// <summary>Zeile der Marke (0-basiert).</summary>
       Line: Integer;
       Selection: TAtlasTestSelection;
+      /// <summary>Tests, die ein Lauf der Marke ergibt; erst wenn alle bestanden sind, gilt sie als bestanden.
+      /// </summary>
+      Expected: TArray<TAtlasTestKey>;
       /// <summary>Gezeichnete Rechtecke „ausführen“ und „Debuggen“ (Koordinaten des Editors, leer ohne) und
       /// oberste sichtbare Zeile dabei.</summary>
       RunRect: TRect;
@@ -124,7 +131,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Tests.Run,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -282,6 +288,7 @@ begin
   mItem := Default(TAtlasIdeTestsLens.TItem);
   mItem.Line := ALine;
   mItem.Selection := TAtlasTestDebug.Selection(AFound, AFixture, ATest, ACase);
+  mItem.Expected := TAtlasTestRun.Expected(AFound, AFixture, ATest, ACase);
   if Length(mItem.Selection.Names) > 0 then
   begin
     AItems := AItems + [mItem];
@@ -356,7 +363,8 @@ end;
 
 function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AFailed, APassed: Boolean): string;
 var
-  Status: TAtlasTestStatus;
+  mTally: TAtlasTestTally;
+  mStatus: TAtlasTestStatus;
 begin
   AFailed := False;
   APassed := False;
@@ -376,16 +384,22 @@ begin
   begin
     Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRun);
   end;
-  Status := FTests.StatusOf(FUnitName, AItem.Selection.Fixture, AItem.Selection.Method, AItem.Selection.CaseName);
-  if Status = TAtlasTestStatus.Failed then
+  // Nur der Stand der Tests dieser Marke: Ein einzelner Test macht die Fixture nicht „bestanden“.
+  mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected);
+  mStatus := mTally.Status;
+  if mStatus = TAtlasTestStatus.Failed then
   begin
     AFailed := True;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensFailed, [Result]);
   end
-  else if Status = TAtlasTestStatus.Passed then
+  else if mStatus = TAtlasTestStatus.Passed then
   begin
     APassed := True;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPassed, [Result]);
+  end
+  else if mStatus = TAtlasTestStatus.Partial then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.Passed, mTally.Total]);
   end;
 end;
 
