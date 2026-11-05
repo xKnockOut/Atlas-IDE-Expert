@@ -26,7 +26,7 @@ Zurück zum [README](../../../README_DE.md)
 ### Marken und Hervorhebungen
 
 - **Typmarken** hinter `var X := …` ohne Typangabe
-- **Code-Metriken** als Marke:
+- **Code-Metriken** als Marke (Modul Analyse, `analysis.enabled`):
   - hinter jedem Methodenkopf (Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter, Operanden der größten Bedingung, lokale Variablen, Ausstiege)
   - hinter jeder Klasse (Member, Vererbungstiefe ohne RTL und VCL)
   - hinter dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)

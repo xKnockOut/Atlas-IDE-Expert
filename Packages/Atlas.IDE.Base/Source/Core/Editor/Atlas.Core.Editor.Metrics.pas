@@ -2,14 +2,13 @@
 
 // Code-Metriken im Plugin (#66), ohne VCL und OTA; Anfrage, Zeichnen und
 // Dateizugriff macht die IDE-Schicht.
-// - Code Lens: Antwort des Servers auf atlas.server.metrics lesen
-//   ({"enabled", "limits", "file", "methods", "structure"}), Beschriftung
-//   bauen und prüfen, ob die Zeile noch zur Methode passt. "structure" trägt
-//   die Kennzahlen des Aufbaus (#939): Member je Klasse auf dem Klassennamen,
-//   Zeilen der Unit auf dem Unit-Namen, Units im uses auf dem ersten uses,
-//   Vererbungstiefe ohne RTL und VCL auf dem Klassennamen (#980). Stehen
-//   mehrere in einer Zeile (Member und Vererbungstiefe), zeigt die Linse
-//   beide.
+// - Antwort des Servers auf atlas.server.metrics lesen ({"enabled", "limits",
+//   "file", "methods", "structure"}); Leser sind die Atlas-Statusleiste
+//   (#1155) und die Code Lens im Modul Analyse (Beschriftung dort in
+//   Atlas.Core.Analysis.MetricsLens, #1756). "structure" trägt die Kennzahlen
+//   des Aufbaus (#939): Member je Klasse auf dem Klassennamen, Zeilen der Unit
+//   auf dem Unit-Namen, Units im uses auf dem ersten uses, Vererbungstiefe
+//   ohne RTL und VCL auf dem Klassennamen (#980).
 // - Metrikbericht: Markdown aus der Antwort im Modus "markdown" (ein
 //   JSON-String) und Name der Berichtsdatei je Projekt.
 
@@ -34,9 +33,6 @@ type
   TAtlasStructureMetric = (ClassSize, UnitLength, UsesCount, InheritanceDepth);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Formate der Beschriftung je Kennzahl des Aufbaus mit %d, z. B. „%d Member“.</summary>
-  TAtlasStructureFormats = array[TAtlasStructureMetric] of string;
-
   /// <summary>Eine Kennzahl des Aufbaus mit ihrem Grenzwert (#939).</summary>
   TAtlasStructureItem = record
     Kind: TAtlasStructureMetric;
@@ -49,9 +45,6 @@ type
     /// <summary>Value ist nur eine Untergrenze ("atLeast", Vererbungstiefe bei abgebrochener Kette, #980).</summary>
     AtLeast: Boolean;
   end;
-
-  /// <summary>Formate der Beschriftung je Kennzahl mit %d, z. B. „%d Zeilen“, „Tiefe %d“.</summary>
-  TAtlasMetricFormats = array[TAtlasMetric] of string;
 
   TAtlasMethodMetrics = record
     Name: string;
@@ -77,30 +70,13 @@ type
     function StructuresAt(ALine: Integer): TArray<TAtlasStructureItem>;
   end;
 
-  TAtlasMetricsLens = class
+  /// <summary>Kennungen der Kennzahlen beim Server.</summary>
+  TAtlasMetricKeys = class
   public
-    /// <summary>Kennung beim Server: length, nesting, cyclomatic, cognitive, parameters, operands, locals, exits.
-    /// </summary>
+    /// <summary>length, nesting, cyclomatic, cognitive, parameters, operands, locals, exits.</summary>
     class function Key(AMetric: TAtlasMetric): string; static;
-    /// <summary>Beschriftung, Teile mit „ · “ getrennt; ein Wert über dem Grenzwert bekommt ALimitFormat
-    /// (mit %s für den Teil und %d für den Grenzwert), z. B. „zyklomatisch 17 (> 15)“.</summary>
-    class function Caption(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues;
-      const AFormats: TAtlasMetricFormats; const ALimitFormat: string): string; static;
-    /// <summary>Mindestens eine Kennzahl über ihrem Grenzwert.</summary>
-    class function Exceeds(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues): Boolean; static;
-    /// <summary>Kennung beim Server: classSize, unitLength, usesCount (#939), inheritanceDepth (#980).</summary>
+    /// <summary>classSize, unitLength, usesCount (#939), inheritanceDepth (#980).</summary>
     class function StructureKey(AMetric: TAtlasStructureMetric): string; static;
-    /// <summary>Beschriftung einer Kennzahl des Aufbaus, über dem Grenzwert mit ALimitFormat, z. B.
-    /// „87 Member (> 40)“ (#939).</summary>
-    class function StructureCaption(const AItem: TAtlasStructureItem; const AFormats: TAtlasStructureFormats;
-      const ALimitFormat: string): string; overload; static;
-    /// <summary>Beschriftungen aller AItems mit „ · “ getrennt; Untergrenzen (AtLeast) mit AAtLeastFormat, z. B.
-    /// „Vererbungstiefe mindestens %d“ (#980).</summary>
-    class function StructureCaption(const AItems: TArray<TAtlasStructureItem>; const AFormats: TAtlasStructureFormats;
-      const AAtLeastFormat, ALimitFormat: string): string; overload; static;
-    /// <summary>True, wenn ALine den letzten Teil von AName als Bezeichner enthält (die Lens steht noch an
-    /// ihrer Methode, auch wenn der Text seit dem Abruf verschoben ist).</summary>
-    class function LineMatches(const ALine, AName: string): Boolean; static;
   end;
 
   TAtlasMetricsReportFile = class
@@ -116,8 +92,7 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
-  Atlas.Text.Chars;
+  System.Generics.Collections;
 
 { TAtlasFileMetrics }
 
@@ -130,7 +105,7 @@ begin
   for mMetric := Low(TAtlasMetric) to High(TAtlasMetric) do
   begin
     Result[mMetric] := MaxInt;
-    if (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>(TAtlasMetricsLens.Key(mMetric),
+    if (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>(TAtlasMetricKeys.Key(mMetric),
       mNumber) then
     begin
       Result[mMetric] := mNumber;
@@ -146,7 +121,7 @@ begin
   AKind := Low(TAtlasStructureMetric);
   for mKind := Low(TAtlasStructureMetric) to High(TAtlasStructureMetric) do
   begin
-    if SameText(AText, TAtlasMetricsLens.StructureKey(mKind)) then
+    if SameText(AText, TAtlasMetricKeys.StructureKey(mKind)) then
     begin
       AKind := mKind;
       Result := True;
@@ -213,7 +188,7 @@ begin
       mValues := TJSONObject(AItem.GetValue('values'));
       for mMetric := Low(TAtlasMetric) to High(TAtlasMetric) do
       begin
-        if mValues.TryGetValue<Integer>(TAtlasMetricsLens.Key(mMetric), mNumber) then
+        if mValues.TryGetValue<Integer>(TAtlasMetricKeys.Key(mMetric), mNumber) then
         begin
           AMethod.Values[mMetric] := mNumber;
         end;
@@ -302,55 +277,9 @@ begin
   end;
 end;
 
-{ TAtlasMetricsLens }
+{ TAtlasMetricKeys }
 
-class function TAtlasMetricsLens.StructureKey(AMetric: TAtlasStructureMetric): string;
-begin
-  case AMetric of
-    TAtlasStructureMetric.ClassSize:
-      Result := 'classSize';
-    TAtlasStructureMetric.UnitLength:
-      Result := 'unitLength';
-    TAtlasStructureMetric.UsesCount:
-      Result := 'usesCount';
-  else
-    Result := 'inheritanceDepth';
-  end;
-end;
-
-class function TAtlasMetricsLens.StructureCaption(const AItem: TAtlasStructureItem;
-  const AFormats: TAtlasStructureFormats; const ALimitFormat: string): string;
-begin
-  Result := Format(AFormats[AItem.Kind], [AItem.Value]);
-  if AItem.Value > AItem.Limit then
-  begin
-    Result := Format(ALimitFormat, [Result, AItem.Limit]);
-  end;
-end;
-
-class function TAtlasMetricsLens.StructureCaption(const AItems: TArray<TAtlasStructureItem>;
-  const AFormats: TAtlasStructureFormats; const AAtLeastFormat, ALimitFormat: string): string;
-var
-  Item: TAtlasStructureItem;
-  Formats: TAtlasStructureFormats;
-begin
-  Result := '';
-  for Item in AItems do
-  begin
-    Formats := AFormats;
-    if Item.AtLeast then
-    begin
-      Formats[Item.Kind] := AAtLeastFormat;
-    end;
-    if Result <> '' then
-    begin
-      Result := Result + ' · ';
-    end;
-    Result := Result + StructureCaption(Item, Formats, ALimitFormat);
-  end;
-end;
-
-class function TAtlasMetricsLens.Key(AMetric: TAtlasMetric): string;
+class function TAtlasMetricKeys.Key(AMetric: TAtlasMetric): string;
 begin
   case AMetric of
     TAtlasMetric.MethodLength:
@@ -372,69 +301,17 @@ begin
   end;
 end;
 
-class function TAtlasMetricsLens.Caption(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues;
-  const AFormats: TAtlasMetricFormats; const ALimitFormat: string): string;
-var
-  Metric: TAtlasMetric;
-  Part: string;
+class function TAtlasMetricKeys.StructureKey(AMetric: TAtlasStructureMetric): string;
 begin
-  Result := '';
-  for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
-  begin
-    Part := Format(AFormats[Metric], [AMethod.Values[Metric]]);
-    if AMethod.Values[Metric] > ALimits[Metric] then
-    begin
-      Part := Format(ALimitFormat, [Part, ALimits[Metric]]);
-    end;
-    if Result <> '' then
-    begin
-      Result := Result + ' · ';
-    end;
-    Result := Result + Part;
-  end;
-end;
-
-class function TAtlasMetricsLens.Exceeds(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues): Boolean;
-var
-  Metric: TAtlasMetric;
-begin
-  for Metric := Low(TAtlasMetric) to High(TAtlasMetric) do
-  begin
-    if AMethod.Values[Metric] > ALimits[Metric] then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TAtlasMetricsLens.LineMatches(const ALine, AName: string): Boolean;
-var
-  Name, Line: string;
-  Dot, Start: Integer;
-begin
-  Name := AName;
-  Dot := LastDelimiter('.', Name);
-  if Dot > 0 then
-  begin
-    Name := Copy(Name, Dot + 1, MaxInt);
-  end;
-  Result := False;
-  if Name = '' then
-  begin
-    Exit;
-  end;
-  Line := UpperCase(ALine);
-  Name := UpperCase(Name);
-  Start := Pos(Name, Line);
-  while Start > 0 do
-  begin
-    if ((Start = 1) or not TTextChars.IsIdentChar(Line[Start - 1])) and
-      ((Start + Length(Name) > Length(Line)) or not TTextChars.IsIdentChar(Line[Start + Length(Name)])) then
-    begin
-      Exit(True);
-    end;
-    Start := Pos(Name, Line, Start + 1);
+  case AMetric of
+    TAtlasStructureMetric.ClassSize:
+      Result := 'classSize';
+    TAtlasStructureMetric.UnitLength:
+      Result := 'unitLength';
+    TAtlasStructureMetric.UsesCount:
+      Result := 'usesCount';
+  else
+    Result := 'inheritanceDepth';
   end;
 end;
 

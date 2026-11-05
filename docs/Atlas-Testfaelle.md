@@ -9392,3 +9392,20 @@ Vorbereitung: Win32-Plugin, `Atlas.IDE.Base` und `Atlas.IDE.Rules` gebaut; eigen
 | RM14 | `Atlas.IDE.Rules` ohne Neustart wieder installieren, RM1, RM7 und RM12 wiederholen | Einträge, Abschnitt und Regel-Editor sind sofort wieder da |
 | RM15 | Englische Oberfläche (`ui.language` = en), RM1 und RM7 | Alle Einträge, Knöpfe und Meldungen englisch |
 | RM16 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasRulesSettingsDialogTests`, `TRulesSettingsSectionTests`, `TAtlasRuleTableTests`, `TAtlasRuleExplanationTests` und `TAtlasSettingsPageDialogTests.DialogWithoutRulesModuleShowsJson` grün |
+
+## Metrik-Lens im Modul Analyse (#1756)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasModule`); Projekt mit einer Methode über einem Grenzwert (z. B. zyklomatisch > 15), Server läuft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LA1 | Alle Packages installiert; Unit mit Methoden öffnen, kurz warten | Marken hinter jedem Methodenkopf, an Klasse, Unit-Namen und uses wie bisher; die Methode über dem Grenzwert gelb mit „(> 15)“ (**Abnahme**) |
+| LA2 | Cursor in eine Methode setzen | Atlas-Statusleiste zeigt Zeilen und CC der Methode wie bisher |
+| LA3 | *Tools › Optionen › Atlas › Editor › Code Lens* | Zeile „Code Lens mit Code-Metriken hinter dem Methodenkopf“ unter „Code Lens und Kennzahlen“; ausschalten, OK: die Marken verschwinden sofort, die Statusleiste zeigt weiter Zeilen und CC |
+| LA4 | Wieder einschalten; dann Modulschalter „Analysefenster“ (`analysis.enabled`) auf *Allgemein* aus, OK | Marken verschwinden ohne Neustart, Statusleiste zeigt weiter Zeilen und CC |
+| LA5 | `Atlas.IDE.Analysis` deinstallieren (Komponente › Packages installieren), IDE nicht neu starten | Marken verschwinden, keine Fehlermeldung, Statusleiste zeigt weiter Zeilen und CC; in den Optionen fehlt die Zeile der Lens |
+| LA6 | `Atlas.IDE.Analysis` wieder installieren | Marken erscheinen nach der nächsten Tipp-Pause wieder; im Diagnoselog nur eine Anfrage `atlas.server.metrics` je Textstand, nicht zwei |
+| LA7 | Schnellschalter (Klick auf das Atlas-Feld) › „Code-Metriken“ aus und an | Marken verschwinden und erscheinen wieder |
+| LA8 | Marke rechts anklicken › Ausblenden › „Nur hier“ | Nur diese Marke verschwindet; Eintrag in `.atlas` wie bisher |
+| LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
+| LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |

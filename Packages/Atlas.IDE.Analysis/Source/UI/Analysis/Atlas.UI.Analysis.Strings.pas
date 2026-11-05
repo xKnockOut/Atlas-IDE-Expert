@@ -62,7 +62,11 @@ type
     HotspotsNoServer, HotspotsFailed, HotspotsDisabled, HotspotsNoVcs, HotspotsSaved, HotspotsSaveFilter,
     HotspotsChartHint, HotspotsBubbleHint, HotspotsNoEntries,
     SettingsArchitecture, SettingsArchitectureScope, SettingsArchitectureLibrary, SettingsArchitectureCentral,
-    SettingsHotspots, SettingsHotspotsMonths, SettingsHotspotsMinCommits);
+    SettingsHotspots, SettingsHotspotsMonths, SettingsHotspotsMinCommits,
+    // Code Lens mit Code-Metriken (#66, #1756).
+    SettingsCodeLensMetrics, MetricsLensLines, MetricsLensDepth, MetricsLensCyclomatic, MetricsLensCognitive,
+    MetricsLensParameters, MetricsLensLimit, MetricsLensMembers, MetricsLensUses, MetricsLensOperands,
+    MetricsLensLocals, MetricsLensExits, MetricsLensInheritance, MetricsLensInheritanceAtLeast);
 
   TAtlasAnalysisStrings = class
   public
@@ -308,7 +312,21 @@ const
      'Zentrale Units in der Tabelle',
      'Hotspots aus Änderungshäufigkeit und Komplexität (Fenster „Atlas-Hotspots“, Bericht, MCP get_hotspots)',
      'Ausgewerteter Zeitraum in Monaten (1–60)',
-     'Mindestzahl gemeinsamer Commits für die Änderungskopplung'),
+     'Mindestzahl gemeinsamer Commits für die Änderungskopplung',
+     'Code Lens mit Code-Metriken hinter dem Methodenkopf',
+     '%d Zeilen',
+     'Tiefe %d',
+     'zyklomatisch %d',
+     'kognitiv %d',
+     '%d Parameter',
+     '%s (> %d)',
+     '%d Member',
+     '%d Units im uses',
+     'Operanden %d',
+     '%d lokale',
+     '%d Ausstiege',
+     'Vererbungstiefe %d',
+     'Vererbungstiefe mindestens %d'),
     ('Atlas Architecture',
      'Architecture overview',
      'Architecture',
@@ -537,7 +555,21 @@ const
      'Central units in the table',
      'Hotspots from change frequency and complexity (window “Atlas Hotspots”, report, MCP get_hotspots)',
      'Period in months (1–60)',
-     'Minimum shared commits for change coupling'));
+     'Minimum shared commits for change coupling',
+     'Code lens with code metrics after the method header',
+     '%d lines',
+     'depth %d',
+     'cyclomatic %d',
+     'cognitive %d',
+     '%d parameters',
+     '%s (> %d)',
+     '%d members',
+     '%d units in uses',
+     'operands %d',
+     '%d locals',
+     '%d exits',
+     'inheritance depth %d',
+     'inheritance depth at least %d'));
 
 { TAtlasAnalysisStrings }
 
