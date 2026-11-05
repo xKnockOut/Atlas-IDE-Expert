@@ -9388,6 +9388,10 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA10 | Mehrere Tabs offen, zehnmal zwischen Tabs wechseln und einmal alle Dateien schließen; danach `atlas.log` ansehen | Je Leiste höchstens eine Zeile „gesperrt (Enabled := False) … weitere Sperren ohne Protokoll“ und eine „wieder freigegeben …“, kein Aufrufstapel; Brotkrümel, Editorleiste und Statusleiste bleiben bedienbar |
 | AA11 | Fenster „Atlas-Diagnose“, Reiter „Server“, nach einigen Minuten Arbeit | Serverbefehle stehen je Befehl („workspace/executeCommand atlas.server.status“ usw.), nicht mehr alle in einer Zeile |
 | AA12 | Domänenkonto (Arbeitsrechner), Willkommensseite oder „Atlas-Start“ offen, einige Minuten arbeiten; dann Fenster „Atlas-Diagnose“, Reiter „Hauptthread“ | Willkommensseite ohne Aufrufe über 16 ms im 5-s-Takt, Max. deutlich unter 8,3 s; der Gruß zeigt nach kurzer Zeit den Vornamen (vorher kurz den Kontonamen) |
+| AA13 | Willkommensseite bzw. „Atlas-Start“ offen und geschlossen, je einige Minuten ohne Projektwechsel arbeiten; dann Fenster „Atlas-Diagnose“, Reiter „Hauptthread“ | Willkommensseite ohne Aufrufe im Sekundentakt; in „Langsame Aufrufe“ keine Willkommensseite mehr alle 1–2 s (**Abnahme**) |
+| AA14 | Karte „<Projekt> für Atlas einrichten“ sichtbar: anderes Projekt der Gruppe aktivieren (Doppelklick in der Projektverwaltung), dann Projekt schließen, dann anderes Projekt öffnen | Die Karte nennt jeweils sofort das neue Ziel (ohne Projekt das oberste aus „Wieder öffnen“) |
+| AA15 | Server indiziert, Willkommensseite offen; Thema der IDE wechseln, Sprache bzw. `welcomePage.greeting` umschalten | Kurzstatus zählt weiter mit; nach Thema, Sprache und Schalter stimmen Symbol, Gruß und Texte sofort |
+| AA16 | Fenster „Atlas-Diagnose“ in der Startgröße bzw. schmal ziehen, dann breit ziehen | Schmal: Knöpfe Anhalten, Zurücksetzen, Bericht kopieren in einer zweiten Zeile rechts, Verlauf und „Langsam ab … ms“ ganz sichtbar; breit: wieder eine Zeile |
 
 ## Prüfregeln vollständig im Modul (#1755)
 
