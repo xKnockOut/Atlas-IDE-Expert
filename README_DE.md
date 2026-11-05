@@ -86,6 +86,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten
 - **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
+- **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
 - **Robustheit:** Fehler erreichen nie die IDE, sicherer Start, nachspielbare Absturzfälle
 
 ### [Einstellungen](docs/features/de/Einstellungen.md)

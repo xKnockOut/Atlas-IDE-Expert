@@ -22,7 +22,8 @@ type
     TestsAffectedHookInstalled,
     WelcomeQuickReasonTestsOff, WelcomeQuickReasonNotOpened,
     SettingsCodeLensTests, SettingsTestRun, SettingsTestsBuildFirst, SettingsTestsAfterBuild, SettingsTestDebug,
-    SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
+    SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit,
+    TestsEditorMenuGroup);
 
   TAtlasTestsStrings = class
   public
@@ -97,7 +98,8 @@ const
      'Beim Test-Debuggen am Anfang der Methode anhalten (einmaliger Haltepunkt)',
      'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
      'Ebenen von der Änderung bis zum Test (1 bis 5):',
-     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)',
+     'Tests'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -156,7 +158,8 @@ const
      'Stop at the start of the method when debugging a test (one-time breakpoint)',
      'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
      'Levels from the change to the test (1 to 5):',
-     'Offer before committing (Git pre-commit hook, Git only)'));
+     'Offer before committing (Git pre-commit hook, Git only)',
+     'Tests'));
 
 { TAtlasTestsStrings }
 

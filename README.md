@@ -86,6 +86,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Atlas welcome page** with projects, history, issues and news
 - **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
+- **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
 - **Robustness:** errors never reach the IDE, safe start, crash cases you can replay
 
 ### [Settings](docs/features/en/Settings.md)
