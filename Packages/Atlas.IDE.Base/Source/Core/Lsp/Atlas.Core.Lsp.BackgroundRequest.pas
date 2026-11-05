@@ -8,7 +8,9 @@
 // - Lebensdauer: ADone läuft nur, solange die Instanz lebt. Der Destruktor wartet die laufende Anfrage ab (sie
 //   endet spätestens mit ihrem Zeitlimit oder beim Abbruchsignal des Entladens) und verwirft ein noch eingereihtes
 //   ADone.
-// - Ausnahmen in AWork fängt der Aufrufer selbst; was durchrutscht, meldet die Sicherung für AFeature.
+// - Keine Antwort (ELspClientError: Zeitgrenze, Fehlerantwort, beendete Verbindung) fängt die Anfrage selbst und
+//   meldet sie ADone mit AOk = False und der Meldung; der Aufrufer fragt dann später erneut. Andere Ausnahmen
+//   meldet die Sicherung für AFeature im Hauptthread; ADone läuft auch dann (AOk = False).
 // Start, Busy und der Destruktor nur im Hauptthread.
 
 interface
@@ -19,6 +21,9 @@ uses
   Atlas.Core.Diagnostics.Guard;
 
 type
+  /// <summary>Abschluss im Hauptthread: AOk, wenn AWork ohne Ausnahme endete; sonst AError mit der Meldung.</summary>
+  TAtlasRequestDone = reference to procedure(AOk: Boolean; const AError: string);
+
   /// <summary>Gilt, solange die Instanz lebt; eingereihte Abschlüsse prüfen es im Hauptthread.</summary>
   IAtlasRequestAlive = interface
     ['{6B8E2D4A-3F1C-4E7B-9A5D-2C8F1E6B4A93}']
@@ -38,7 +43,7 @@ type
     constructor Create(AFeature: TAtlasFeature);
     destructor Destroy; override;
     /// <summary>AWork im Hintergrund, danach ADone im Hauptthread; False, solange noch eine Anfrage läuft.</summary>
-    function Start(const AWork: TProc; const ADone: TProc): Boolean;
+    function Start(const AWork: TProc; const ADone: TAtlasRequestDone): Boolean;
     /// <summary>Läuft gerade eine Anfrage?</summary>
     function Busy: Boolean;
   end;
@@ -46,7 +51,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Core.Lsp.Client;
 
 type
   TRequestAlive = class(TInterfacedObject, IAtlasRequestAlive)
@@ -111,36 +117,73 @@ begin
 end;
 
 /// <summary>Abschluss im Hauptthread: Busy zurücksetzen und ADone, solange die Instanz lebt.</summary>
-function Finish(ARequest: TAtlasBackgroundRequest; const AAlive: IAtlasRequestAlive;
-  const ADone: TProc): TThreadProcedure;
-begin
-  Result :=
-    procedure
-    begin
-      if not AAlive.Alive then
-      begin
-        Exit;
-      end;
-      ARequest.FBusy := False;
-      ADone();
-    end;
-end;
-
-/// <summary>Arbeit des Threads: AWork, dann den Abschluss einreihen.</summary>
-function Work(AFeature: TAtlasFeature; const AWork: TProc; const AFinish: TThreadProcedure): TProc;
+function Finish(ARequest: TAtlasBackgroundRequest; const AAlive: IAtlasRequestAlive; const ADone: TAtlasRequestDone;
+  const AError: string; AFailure: Exception): TThreadProcedure;
 begin
   Result :=
     procedure
     begin
       try
-        AWork();
+        if not AAlive.Alive then
+        begin
+          Exit;
+        end;
+        if AFailure <> nil then
+        begin
+          TAtlasGuard.Report(ARequest.FFeature, AFailure);
+        end;
+        ARequest.FBusy := False;
+        ADone((AError = '') and (AFailure = nil), AError);
       finally
-        TAtlasMainThread.Queue(AFeature, AFinish);
+        AFailure.Free;
       end;
     end;
 end;
 
-function TAtlasBackgroundRequest.Start(const AWork: TProc; const ADone: TProc): Boolean;
+/// <summary>Arbeit des Threads: AWork, dann den Abschluss einreihen.</summary>
+function Work(ARequest: TAtlasBackgroundRequest; const AWork: TProc; const ADone: TAtlasRequestDone): TProc;
+var
+  mFeature: TAtlasFeature;
+  mAlive: IAtlasRequestAlive;
+begin
+  // Im Hauptthread gelesen; der Thread fasst die Instanz nicht an.
+  mFeature := ARequest.FFeature;
+  mAlive := ARequest.FAlive;
+  Result :=
+    procedure
+    var
+      mError: string;
+      mFailure: Exception;
+    begin
+      mError := '';
+      mFailure := nil;
+      try
+        AWork();
+      except
+        on E: ELspClientError do
+        begin
+          // Leer hieße Erfolg: eine Meldung ohne Text bekommt die Klasse.
+          mError := E.Message;
+          if mError = '' then
+          begin
+            mError := E.ClassName;
+          end;
+        end;
+        on EAbort do
+        begin
+          // Wie TAtlasMainThread: stiller Abbruch, keine Meldung.
+          mError := 'EAbort';
+        end;
+        on Exception do
+        begin
+          mFailure := Exception(AcquireExceptionObject);
+        end;
+      end;
+      TAtlasMainThread.Queue(mFeature, Finish(ARequest, mAlive, ADone, mError, mFailure));
+    end;
+end;
+
+function TAtlasBackgroundRequest.Start(const AWork: TProc; const ADone: TAtlasRequestDone): Boolean;
 begin
   Result := not FBusy;
   if not Result then
@@ -149,7 +192,7 @@ begin
   end;
   Reap;
   FBusy := True;
-  FWorker := TThread.CreateAnonymousThread(Work(FFeature, AWork, Finish(Self, FAlive, ADone)));
+  FWorker := TThread.CreateAnonymousThread(Work(Self, AWork, ADone));
   FWorker.FreeOnTerminate := False;
   FWorker.Start;
 end;

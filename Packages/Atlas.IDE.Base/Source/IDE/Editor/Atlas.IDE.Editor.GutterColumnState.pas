@@ -25,6 +25,15 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasGutterColumnSessionFunc = reference to function: TLspSession;
 
+  /// <summary>Zuletzt erfragte Glühbirne: Datei, Zeile und Zeilentext der Frage und ob es eine Aktion gibt.</summary>
+  TAtlasGutterActionAsk = record
+    FileName: string;
+    Text: string;
+    Line: Integer;
+    Asked: Boolean;
+    Found: Boolean;
+  end;
+
   TAtlasIdeGutterColumnState = class
   public const
     OverridesCommand = 'atlas.server.overrideMarks';
@@ -49,11 +58,7 @@ type
     FFetchedText: string;
     FOverrides: TAtlasFileOverrides;
     // Glühbirne der Cursorzeile.
-    FActionFile: string;
-    FActionText: string;
-    FActionLine: Integer;
-    FActionAsked: Boolean;
-    FActionFound: Boolean;
+    FAction: TAtlasGutterActionAsk;
     // Probleme der Datei, neu gelesen bei neuer Version des Speichers.
     FProblemsFile: string;
     FProblemsVersion: Integer;
@@ -65,6 +70,8 @@ type
     function Settled: Boolean;
     /// <summary>True, wenn die Glühbirne der Cursorzeile neu zu erfragen ist.</summary>
     function ActionDue: Boolean;
+    /// <summary>Was fehlt, beim Server erfragen: Überschreibungen, sonst die Glühbirne; eine Anfrage zugleich.</summary>
+    procedure FetchDue(ASession: TLspSession);
     procedure FetchOverrides(ASession: TLspSession);
     /// <summary>Antwort auf FetchOverrides im Hauptthread; AOk = False: später neu versuchen.</summary>
     procedure OverridesFetched(AOk: Boolean; const AFileName, AText: string; const AOverrides: TAtlasFileOverrides);
@@ -134,7 +141,7 @@ begin
   inherited Create;
   FSession := ASession;
   FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.GutterColumn);
-  FActionLine := -1;
+  FAction.Line := -1;
   FCaretLine := -1;
   FProblemsVersion := -1;
   FOptions := TAtlasGutterColumnOptions.All;
@@ -180,9 +187,9 @@ begin
   FFetchedFile := '';
   FFetchedText := '';
   FOverrides := Default(TAtlasFileOverrides);
-  FActionFile := '';
-  FActionFound := False;
-  FActionAsked := False;
+  FAction.FileName := '';
+  FAction.Found := False;
+  FAction.Asked := False;
   FProblemsFile := '';
   FProblems := nil;
   FFileName := '';
@@ -214,8 +221,8 @@ end;
 
 function TAtlasIdeGutterColumnState.ActionDue: Boolean;
 begin
-  Result := not FActionAsked or not SameText(FActionFile, FFileName) or (FActionLine <> FCaretLine) or
-    (FActionText <> TAtlasRecursionMarks.LineOf(FText, FCaretLine));
+  Result := not FAction.Asked or not SameText(FAction.FileName, FFileName) or (FAction.Line <> FCaretLine) or
+    (FAction.Text <> TAtlasRecursionMarks.LineOf(FText, FCaretLine));
 end;
 
 procedure TAtlasIdeGutterColumnState.Track(const AView: IOTAEditView);
@@ -242,14 +249,19 @@ begin
   begin
     Exit;
   end;
+  FetchDue(mSession);
+end;
+
+procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
+begin
   if FOptions.Overrides and not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText)) then
   begin
-    FetchOverrides(mSession);
+    FetchOverrides(ASession);
   end;
   // Eine Anfrage zugleich: die Glühbirne im nächsten Takt.
   if FOptions.CodeActions and ActionDue and not FRequest.Busy then
   begin
-    FetchAction(mSession);
+    FetchAction(ASession);
   end;
 end;
 
@@ -258,7 +270,6 @@ var
   mValues: TJSONArray;
   mArguments, mFileName, mText: string;
   mOverrides: TAtlasFileOverrides;
-  mOk: Boolean;
 begin
   mValues := TJSONArray.Create;
   try
@@ -271,34 +282,27 @@ begin
   ASession.Sync(FFileName, FText);
   mFileName := FFileName;
   mText := FText;
-  mOk := False;
   mOverrides := Default(TAtlasFileOverrides);
+  // Server beschäftigt, weg oder zu alt (Befehl unbekannt, AOk = False): später noch einmal.
   FRequest.Start(
     procedure
     var
       mAnswer: TJSONValue;
     begin
+      mAnswer := ASession.RunCommand(OverridesCommand, mArguments, OverridesTimeoutMs);
       try
-        mAnswer := ASession.RunCommand(OverridesCommand, mArguments, OverridesTimeoutMs);
-        try
-          mOverrides := TAtlasFileOverrides.FromJson(mAnswer,
-            function(AUri: string): string
-            begin
-              Result := TLspSession.UriToPath(AUri);
-            end);
-          mOk := True;
-        finally
-          mAnswer.Free;
-        end;
-      except
-        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, ohne den Editor zu bremsen.
-        on ELspClientError do
-          mOk := False;
+        mOverrides := TAtlasFileOverrides.FromJson(mAnswer,
+          function(AUri: string): string
+          begin
+            Result := TLspSession.UriToPath(AUri);
+          end);
+      finally
+        mAnswer.Free;
       end;
     end,
-    procedure
+    procedure(AOk: Boolean; const AError: string)
     begin
-      OverridesFetched(mOk, mFileName, mText, mOverrides);
+      OverridesFetched(AOk, mFileName, mText, mOverrides);
     end);
 end;
 
@@ -322,34 +326,26 @@ var
   mLineText, mFileName: string;
   mLine: Integer;
   mFound: TArray<TLspCodeAction>;
-  mOk: Boolean;
 begin
   mLineText := TAtlasRecursionMarks.LineOf(FText, FCaretLine);
-  FActionFile := FFileName;
-  FActionLine := FCaretLine;
-  FActionText := mLineText;
-  FActionAsked := True;
+  FAction.FileName := FFileName;
+  FAction.Line := FCaretLine;
+  FAction.Text := mLineText;
+  FAction.Asked := True;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   ASession.Sync(FFileName, FText);
   mFileName := FFileName;
   mLine := FCaretLine;
   mFound := nil;
-  mOk := False;
   FRequest.Start(
     procedure
     begin
-      try
-        mFound := ASession.CodeActions(mFileName, TLspRange.Create(mLine, 0, mLine, Length(mLineText)),
-          ActionsTimeoutMs);
-        mOk := True;
-      except
-        on ELspClientError do
-          mOk := False;
-      end;
+      mFound := ASession.CodeActions(mFileName, TLspRange.Create(mLine, 0, mLine, Length(mLineText)),
+        ActionsTimeoutMs);
     end,
-    procedure
+    procedure(AOk: Boolean; const AError: string)
     begin
-      ActionFetched(mOk, mFileName, mLineText, mLine, mFound);
+      ActionFetched(AOk, mFileName, mLineText, mLine, mFound);
     end);
 end;
 
@@ -364,17 +360,17 @@ begin
     FRetryAt := TThread.GetTickCount64 + RetryMs;
   end;
   // Inzwischen eine andere Zeile gefragt: Diese Antwort gilt nicht mehr.
-  if not SameText(FActionFile, AFileName) or (FActionLine <> ALine) or (FActionText <> ALineText) then
+  if not SameText(FAction.FileName, AFileName) or (FAction.Line <> ALine) or (FAction.Text <> ALineText) then
   begin
     Exit;
   end;
-  mHad := FActionFound;
-  FActionFound := False;
+  mHad := FAction.Found;
+  FAction.Found := False;
   for mAction in AFound do
   begin
-    FActionFound := FActionFound or (mAction.Disabled = '');
+    FAction.Found := FAction.Found or (mAction.Disabled = '');
   end;
-  if mHad or FActionFound then
+  if mHad or FAction.Found then
   begin
     InvalidateTop;
   end;
@@ -408,9 +404,9 @@ begin
   begin
     Result.Problem := TAtlasGutterColumn.ProblemSymbol(ProblemsOf(AFileName), ALine);
   end;
-  if FOptions.CodeActions and FActionFound and (ALine = FActionLine) and SameText(AFileName, FActionFile) then
+  if FOptions.CodeActions and FAction.Found and (ALine = FAction.Line) and SameText(AFileName, FAction.FileName) then
   begin
-    Result.Action := not AHasText or TAtlasRecursionMarks.LineMatches(ALineText, FActionText);
+    Result.Action := not AHasText or TAtlasRecursionMarks.LineMatches(ALineText, FAction.Text);
   end;
   // Zeile seit dem Abruf geändert: Die Pfeile warten auf die nächste Antwort.
   if FOptions.Overrides and OverridesAt(AFileName, ALine, AOverrides) and

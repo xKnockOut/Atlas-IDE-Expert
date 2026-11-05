@@ -163,7 +163,6 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
@@ -391,7 +390,6 @@ var
   mFirst, mLast, mFrom, mTill, mPercent, mMinLines: Integer;
   mFileName, mText: string;
   mHints: TArray<TAtlasInlayHint>;
-  mOk: Boolean;
 begin
   FStore.SetText(FFileName, FText);
   mFirst := AView.TopRow - 1;
@@ -417,22 +415,15 @@ begin
   mText := FText;
   mMinLines := FMinLines;
   mHints := nil;
-  mOk := False;
+  // Server beschäftigt oder weg (AOk = False): später noch einmal, ohne den Editor zu bremsen.
   FRequest.Start(
     procedure
     begin
-      try
-        mHints := mSession.InlayHints(mFileName, mFrom, mTill, mMinLines, TimeoutMs);
-        mOk := True;
-      except
-        // Server beschäftigt oder weg: später noch einmal, ohne den Editor zu bremsen.
-        on ELspClientError do
-          mOk := False;
-      end;
+      mHints := mSession.InlayHints(mFileName, mFrom, mTill, mMinLines, TimeoutMs);
     end,
-    procedure
+    procedure(AOk: Boolean; const AError: string)
     begin
-      Fetched(mOk, mFileName, mText, mFrom, mTill, mHints);
+      Fetched(AOk, mFileName, mText, mFrom, mTill, mHints);
     end);
 end;
 

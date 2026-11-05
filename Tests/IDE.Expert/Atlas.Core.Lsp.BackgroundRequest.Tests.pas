@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Lsp.BackgroundRequest.Tests;
 
 // Tests für Serveranfragen im Hintergrund (2.0-stable: Inlay-Hints, Glühbirne, Überschreibungen und Gliederung
-// warteten im Hauptthread): Abschluss im Hauptthread, höchstens eine Anfrage, verworfener Abschluss nach Freigabe.
+// warteten im Hauptthread): Abschluss im Hauptthread, höchstens eine Anfrage, verworfener Abschluss nach Freigabe,
+// keine Antwort des Servers als AOk = False mit Meldung.
 
 interface
 
@@ -19,7 +20,9 @@ type
     [Test]
     procedure DoneIsDroppedAfterFree;
     [Test]
-    procedure DoneRunsEvenIfWorkRaises;
+    procedure NoAnswerGivesErrorText;
+    [Test]
+    procedure OtherExceptionStillFinishes;
   end;
 
 implementation
@@ -29,6 +32,7 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.BackgroundRequest;
 
 /// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder die Zeit um ist.</summary>
@@ -57,6 +61,47 @@ begin
     end;
 end;
 
+/// <summary>Arbeit, die AError wirft.</summary>
+function Raising(AError: Exception): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      raise AError;
+    end;
+end;
+
+type
+  /// <summary>Abschluss, der Aufrufe zählt und das Ergebnis festhält.</summary>
+  TDoneProbe = class
+  public
+    Count: Integer;
+    Ok: Boolean;
+    Error: string;
+    function Done: TAtlasRequestDone;
+  end;
+
+function TDoneProbe.Done: TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      Inc(Count);
+      Ok := AOk;
+      Error := AError;
+    end;
+end;
+
+/// <summary>Bedingung: der Abschluss lief mindestens ACount-mal.</summary>
+function Reached(AProbe: TDoneProbe; ACount: Integer): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := AProbe.Count >= ACount;
+    end;
+end;
+
 { TAtlasBackgroundRequestTests }
 
 procedure TAtlasBackgroundRequestTests.DoneRunsInMainThreadAfterWork;
@@ -64,23 +109,23 @@ var
   mRequest: TAtlasBackgroundRequest;
   mWorkThread: TThreadID;
   mDoneThread: TThreadID;
-  mDone: Boolean;
   mWork: TProc;
-  mFinish: TProc;
+  mFinish: TAtlasRequestDone;
+  mOk: Boolean;
 begin
   mWorkThread := 0;
   mDoneThread := 0;
-  mDone := False;
+  mOk := False;
   mWork :=
     procedure
     begin
       mWorkThread := TThread.CurrentThread.ThreadID;
     end;
   mFinish :=
-    procedure
+    procedure(AOk: Boolean; const AError: string)
     begin
       mDoneThread := TThread.CurrentThread.ThreadID;
-      mDone := True;
+      mOk := AOk;
     end;
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
@@ -89,10 +134,11 @@ begin
     Assert.IsTrue(WaitUntil(
       function: Boolean
       begin
-        Result := mDone;
+        Result := mDoneThread <> 0;
       end));
     Assert.IsTrue(mWorkThread <> MainThreadID, 'Arbeit im Hintergrund');
     Assert.IsTrue(mDoneThread = MainThreadID, 'Abschluss im Hauptthread');
+    Assert.IsTrue(mOk);
     Assert.IsFalse(mRequest.Busy);
   finally
     mRequest.Free;
@@ -103,96 +149,83 @@ procedure TAtlasBackgroundRequestTests.SecondStartIsRefusedWhileBusy;
 var
   mRequest: TAtlasBackgroundRequest;
   mGate: TEvent;
-  mDone: Integer;
-  mFinish: TProc;
+  mProbe: TDoneProbe;
 begin
-  mDone := 0;
-  mFinish :=
-    procedure
-    begin
-      Inc(mDone);
-    end;
+  mProbe := TDoneProbe.Create;
   mGate := TEvent.Create(nil, True, False, '');
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
-    Assert.IsTrue(mRequest.Start(Blocked(mGate), mFinish));
-    Assert.IsFalse(mRequest.Start(Blocked(mGate), mFinish), 'zweite Anfrage solange die erste läuft');
+    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done));
+    Assert.IsFalse(mRequest.Start(Blocked(mGate), mProbe.Done), 'zweite Anfrage solange die erste läuft');
     mGate.SetEvent;
-    Assert.IsTrue(WaitUntil(
-      function: Boolean
-      begin
-        Result := mDone = 1;
-      end));
-    Assert.IsTrue(mRequest.Start(Blocked(mGate), mFinish), 'nach dem Abschluss wieder frei');
-    Assert.IsTrue(WaitUntil(
-      function: Boolean
-      begin
-        Result := mDone = 2;
-      end));
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done), 'nach dem Abschluss wieder frei');
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 2)));
+    Assert.AreEqual(2, mProbe.Count);
   finally
     mRequest.Free;
     mGate.Free;
+    mProbe.Free;
   end;
 end;
 
 procedure TAtlasBackgroundRequestTests.DoneIsDroppedAfterFree;
 var
   mRequest: TAtlasBackgroundRequest;
-  mDone: Boolean;
+  mProbe: TDoneProbe;
   mWork: TProc;
-  mFinish: TProc;
 begin
-  mDone := False;
   mWork :=
     procedure
     begin
     end;
-  mFinish :=
-    procedure
-    begin
-      mDone := True;
-    end;
-  mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
-  mRequest.Start(mWork, mFinish);
-  // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
-  mRequest.Free;
-  WaitUntil(
-    function: Boolean
-    begin
-      Result := mDone;
-    end, 200);
-  Assert.IsFalse(mDone);
+  mProbe := TDoneProbe.Create;
+  try
+    mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+    mRequest.Start(mWork, mProbe.Done);
+    // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
+    mRequest.Free;
+    WaitUntil(Reached(mProbe, 1), 200);
+    Assert.AreEqual(0, mProbe.Count);
+  finally
+    mProbe.Free;
+  end;
 end;
 
-procedure TAtlasBackgroundRequestTests.DoneRunsEvenIfWorkRaises;
+procedure TAtlasBackgroundRequestTests.NoAnswerGivesErrorText;
 var
   mRequest: TAtlasBackgroundRequest;
-  mDone: Boolean;
-  mWork: TProc;
-  mFinish: TProc;
+  mProbe: TDoneProbe;
 begin
-  mDone := False;
-  mWork :=
-    procedure
-    begin
-      raise EAbort.Create('Abbruch');
-    end;
-  mFinish :=
-    procedure
-    begin
-      mDone := True;
-    end;
+  mProbe := TDoneProbe.Create;
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
-    mRequest.Start(mWork, mFinish);
-    Assert.IsTrue(WaitUntil(
-      function: Boolean
-      begin
-        Result := mDone;
-      end));
+    mRequest.Start(Raising(ELspTimeoutError.Create('Zeitlimit')), mProbe.Done);
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsFalse(mProbe.Ok);
+    Assert.AreEqual('Zeitlimit', mProbe.Error);
+    Assert.IsFalse(mRequest.Busy, 'nach fehlender Antwort wieder frei');
+  finally
+    mRequest.Free;
+    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasBackgroundRequestTests.OtherExceptionStillFinishes;
+var
+  mRequest: TAtlasBackgroundRequest;
+  mProbe: TDoneProbe;
+begin
+  mProbe := TDoneProbe.Create;
+  mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+  try
+    mRequest.Start(Raising(EAbort.Create('Abbruch')), mProbe.Done);
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsFalse(mProbe.Ok);
     Assert.IsFalse(mRequest.Busy, 'nach einer Ausnahme wieder frei');
   finally
     mRequest.Free;
+    mProbe.Free;
   end;
 end;
 
