@@ -30,6 +30,9 @@ type
     procedure Load(const ASettings: TAtlasPluginSettings); override;
     procedure Save(var ASettings: TAtlasPluginSettings); override;
     procedure BindMarks; override;
+    /// <summary>Links auf Seiten eines Moduls nur, wenn das Modul seine Einstellungen gebracht hat (#1456).
+    /// </summary>
+    procedure WindowReady; override;
     /// <summary>Art und Name der Art („Automatisch“, „Git“, „SVN“, „Aus“) zu "auto", "git", "svn", "off".
     /// </summary>
     class function VcsProviderCaption(const AProvider: string): string; static;
@@ -47,6 +50,11 @@ uses
   System.StrUtils,
   Vcl.Graphics,
   Atlas.UI.Settings.Page.EditorView;
+
+const
+  // Ziele der Links: Einstellungen der Module Welcome und Tracker; ohne das Modul fehlt der Link.
+  cWelcomeTarget = 'WelcomePageRefreshVcs';
+  cIssuesTarget = 'IssuesBranchPattern';
 
 { TAtlasSettingsVcsPart }
 
@@ -94,11 +102,11 @@ begin
   end
   else if Sender = FVcsLinkWelcome then
   begin
-    FPage.SelectModulePage('WelcomePageRefreshVcs', 'WelcomePage');
+    FPage.SelectSettingPage(cWelcomeTarget);
   end
   else if Sender = FVcsLinkIssues then
   begin
-    FPage.SelectModulePage('IssuesBranchPattern', 'IssuesEnabled');
+    FPage.SelectSettingPage(cIssuesTarget);
   end;
 end;
 
@@ -119,6 +127,13 @@ end;
 procedure TAtlasSettingsVcsPart.BindMarks;
 begin
   FPage.Marks.Bind(FVcsProvider, ['VcsProvider']);
+end;
+
+procedure TAtlasSettingsVcsPart.WindowReady;
+begin
+  // Die Abschnitte der Module stehen erst nach dem Aufbau der Teile von Base.
+  FVcsLinkWelcome.Visible := FPage.ControlOfSetting(cWelcomeTarget) <> nil;
+  FVcsLinkIssues.Visible := FPage.ControlOfSetting(cIssuesTarget) <> nil;
 end;
 
 procedure TAtlasSettingsVcsPart.Load(const ASettings: TAtlasPluginSettings);

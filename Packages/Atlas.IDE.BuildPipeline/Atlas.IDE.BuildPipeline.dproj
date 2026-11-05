@@ -103,6 +103,7 @@
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Summary.pas"/>
         <DCCReference Include="Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Composition.pas"/>
         <DCCReference Include="Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.Strings.pas"/>
+        <DCCReference Include="Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
