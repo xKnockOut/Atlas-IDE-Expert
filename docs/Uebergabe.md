@@ -3,7 +3,8 @@
 - Jetzt folgen alle Zusatzfelder dem Element status: Bei `Relocated` legt `THook.SyncExtras` keine Panels an, die Leiste liest `TAtlasStatusField.ExtraItems` (`TAtlasStatusExtraItem`) und klickt über `ClickExtra(Id, Punkt)`. Ohne Leiste oder ohne Element status bleibt alles in der Statuszeile. Module müssen nichts ändern.
 - Leiste: Element `TAtlasStatusBarPart.Extra` hinter Status und Plakette, eines je Zusatzfeld (`View.Extras`, `Places.Subs`), Kürzstufe wie die Live-Prüfung, Ereignis `OnExtra(Id, Punkt)`, `ExtraRect(Index)`. Teile im Vorfahr jetzt `Ord(Element) * SubSlots + Unterteil + 1` (`SubSlots` = 32, vorher `KindSlots` = 4 nur für die Zähler); höchstens 31 Zusatzfelder.
 - Der Fehlerzähler (#509) ist ohnehin aus, solange die Leiste ihre Zähler zeigt.
-- Geprüft (Cloud): AtlasServer `--check` mit Metriken über die geänderten Units; VCL-Teile nicht übersetzt (FPC kann sie nicht). Delphi-only-Test `ExtrasFollowTheStatus` in `Atlas.UI.StatusBar.Bar.Tests`. Handtests ZF1–ZF9.
+- Klicks der Leiste laufen über den Record `TAtlasStatusBarClick` (vorher `Fire`, wegen metric-class-size und Komplexität).
+- Geprüft (Cloud): AtlasServer `--check` mit allen `metric-*` an: 0 Befunde in den 5 geänderten Units; VCL-Teile nicht übersetzt (FPC kann sie nicht). Delphi-only-Test `ExtrasFollowTheStatus` in `Atlas.UI.StatusBar.Bar.Tests`. Handtests ZF1–ZF9.
 
 ## Lokale Routinen abheben (#1788, 05.11.2026, Branch `claude/project-thread-sbmrys` auf `Pilot-2.0.0-beta.1`)
 - Anlass Marco: Eine lokale Funktion in einer procedure war nicht andersfarbig. Ursache: `TPairAnalyzer` setzt die Tiefe auf die Zahl offener Blöcke; zwischen den Routinen ist keiner offen, lokale und äußere Routine hatten beide Tiefe 0.
