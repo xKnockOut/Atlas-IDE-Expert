@@ -165,7 +165,7 @@ fingerprint() {
   {
     echo "$FPC_COMMIT"
     (cd "$REPO" && find Application Packages Tools/Linux -type f \( -name '*.pas' -o -name '*.dpr' -o -name '*.inc' \
-      -o -name '*.py' -o -name '*.sh' \) -not -path '*/Tests/*' -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
+      -o -name '*.pp' -o -name '*.py' -o -name '*.sh' \) -not -path '*/Tests/*' -print0 | LC_ALL=C sort -z | xargs -0 sha256sum)
   } | sha256sum | cut -d' ' -f1
 }
 
@@ -192,11 +192,18 @@ else
   mkdir -p "$SRC" "$UNITS" "$OUT/Bin"
   python3 -I "$REPO/Tools/Linux/Convert-ForFpc.py" "$REPO" "$SRC" >&2
   cp "$REPO"/Tools/Linux/Compat/*.pas "$SRC/"
+  # Regex der vcl-compat aus dem Quelltext mit -dUSEWIDESTRING (#1751): Die vorkompilierten Units arbeiten mit
+  # AnsiString und pcre2-8, TMatch.Index zählt dort UTF-8-Bytes statt Zeichen wie unter Delphi. Mit UnicodeString
+  # und pcre2-16 stimmen die Indizes; libpcre2-16.so.0 wird zur Laufzeit geladen (Paket libpcre2-16-0).
+  cp "$REPO"/Tools/Linux/Compat/Regex/*.pp "$SRC/"
+  if ! ldconfig -p 2>/dev/null | grep -q 'libpcre2-16\.so\.0'; then
+    log "Hinweis: libpcre2-16.so.0 fehlt; reguläre Ausdrücke gehen erst nach apt-get install libpcre2-16-0"
+  fi
   F="$FPC_DIR/lib/fpc/3.3.1"
   log "Übersetze AtlasServer"
   # -Cs: 8 MB Stapel je Thread wie {$MAXSTACKSIZE} unter Windows (#1094). -gl: Zeilennummern in Stacktraces,
   # -Xg: Debuginformationen in AtlasServer.dbg statt im Programm.
-  if ! "$F/ppcx64" -n -Mdelphi -Sh -O1 -g -gl -Xg -Cs8388608 -l- -vew \
+  if ! "$F/ppcx64" -n -Mdelphi -Sh -dUSEWIDESTRING -O1 -g -gl -Xg -Cs8388608 -l- -vew \
     -FU"$UNITS" -Fu"$SRC" -Fu"$F/units/x86_64-linux/*" -Fi"$SRC" -FE"$OUT/Bin" \
     -o"$OUT/Bin/AtlasServer" "$SRC/AtlasServer.pas" >"$OUT/Fpc/build.log" 2>&1; then
     grep -E "Error|Fatal" "$OUT/Fpc/build.log" | head -20 >&2
