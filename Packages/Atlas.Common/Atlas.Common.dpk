@@ -526,6 +526,7 @@ contains
   Atlas.Common.Lsp.TestUnits in 'Source\Lsp\Atlas.Common.Lsp.TestUnits.pas',
   Atlas.Common.Lsp.UnitSearch in 'Source\Lsp\Atlas.Common.Lsp.UnitSearch.pas',
   Atlas.Common.Semantics.ControlFlow in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.pas',
+  Atlas.Common.Semantics.ControlFlow.Statements in 'Source\Semantics\Atlas.Common.Semantics.ControlFlow.Statements.pas',
   Atlas.Common.Semantics.Recursion in 'Source\Semantics\Atlas.Common.Semantics.Recursion.pas',
   Atlas.Common.Semantics.ExitPoints in 'Source\Semantics\Atlas.Common.Semantics.ExitPoints.pas',
   Atlas.Common.Semantics.Reassigned in 'Source\Semantics\Atlas.Common.Semantics.Reassigned.pas',

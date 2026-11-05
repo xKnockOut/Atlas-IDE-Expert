@@ -826,6 +826,7 @@ begin
     if not AcceptKw('to') then
     begin
       ExpectKw('downto');
+      Node.Descending := True;
     end;
     ParseExpression(Node);
   end;
