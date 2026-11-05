@@ -1021,7 +1021,6 @@ begin
   end;
 end;
 
-/// <summary>Typdeklarationen mit Klasse (auch geschachtelt), in Reihenfolge.</summary>
 /// <summary>Mehrzeilige Klassendeklaration?</summary>
 function IsClassDecl(ANode: TSyntaxNode): Boolean;
 begin
@@ -1029,6 +1028,7 @@ begin
     (ANode.FindChild(TSyntaxKind.ClassType).EndPos.Line > ANode.StartPos.Line);
 end;
 
+/// <summary>Typdeklarationen mit Klasse (auch geschachtelt), in Reihenfolge.</summary>
 function ClassDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
   Found: TArray<TSyntaxNode>;
