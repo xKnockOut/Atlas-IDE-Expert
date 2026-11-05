@@ -72,7 +72,54 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Pascal.PureRoutines;
+  Atlas.Common.Pascal.PureRoutines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRtlPatternsText = (SelfAssignTitle, SelfAssignHidden, AddSelf, SelfAssign, RemoveStatement, ForToTitle, ToDownto,
+    ForTo, NeverRuns, NotRaisedTitle, NotRaised, PrependRaise, AssertTitle, AssertSideEffect, IfThenTitle,
+    ToIfStatement, IfThen, RandomTitle, Random);
+
+const
+  cTexts: array[TRtlPatternsText] of TAtlasText = (
+    (De: 'Zuweisung an sich selbst'; En: 'Assignment to itself'),
+    (De: '%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s';
+     En: '%s is assigned to itself: %s hides %s; Self.%s := %s is probably meant'),
+    (De: 'Self. ergänzen'; En: 'Add Self.'),
+    (De: '%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert';
+     En: '%s is assigned to itself; another value is probably meant'),
+    (De: 'Anweisung entfernen'; En: 'Remove statement'),
+    (De: 'for-Schleife zählt mit to vom oberen zum unteren Wert';
+     En: 'for loop counts with to from the upper to the lower value'),
+    (De: 'to durch downto ersetzen'; En: 'Replace to with downto'),
+    (De: 'Die Schleife läuft vom oberen zum unteren Wert mit to und wird daher nie ausgeführt; downto verwenden';
+     En: 'The loop runs from the upper to the lower value with to and is therefore never executed; use downto'),
+    (De: 'Die Schleife läuft nie (%s to %s); gemeint war downto (wie H2135).';
+     En: 'The loop never runs (%s to %s); downto was meant (like H2135).'),
+    (De: 'Exception erzeugt, aber nicht ausgelöst'; En: 'Exception created but not raised'),
+    (De: '%s wird erzeugt, aber nicht ausgelöst; raise fehlt'; En: '%s is created but not raised; raise is missing'),
+    (De: 'raise voranstellen'; En: 'Prepend raise'),
+    (De: 'Assert mit Seiteneffekt'; En: 'Assert with side effect'),
+    (De: '%s im Assert verändert Daten; mit {$C-} entfällt der ganze Aufruf samt Seiteneffekt. Vorher ausführen und ' +
+      'nur das Ergebnis prüfen';
+     En: '%s in the Assert changes data; with {$C-} the whole call including the side effect is dropped. Execute it ' +
+      'before and only check the result'),
+    (De: 'IfThen wertet beide Zweige aus'; En: 'IfThen evaluates both branches'),
+    (De: 'In if-Anweisung umwandeln'; En: 'Convert to if statement'),
+    (De: 'IfThen wertet beide Zweige aus, auch den nicht gewählten; Seiteneffekte und Nil-Zugriffe darin treten ' +
+      'immer auf. if-Anweisung verwenden';
+     En: 'IfThen evaluates both branches, also the one not chosen; side effects and nil accesses in them always ' +
+      'occur. Use an if statement'),
+    (De: 'Random ohne Randomize'; En: 'Random without Randomize'),
+    (De: 'Random ohne Randomize in dieser Unit liefert bei jedem Start dieselbe Folge; Randomize einmal beim ' +
+      'Programmstart aufrufen';
+     En: 'Random without Randomize in this unit returns the same sequence on every start; call Randomize once at ' +
+      'program start'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -242,7 +289,8 @@ end;
 
 function TSelfAssignmentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('self-assignment', TRuleSeverity.Warning, 'Zuweisung an sich selbst');
+  Result := TRuleDescriptor.Create('self-assignment', TRuleSeverity.Warning,
+    cTexts[TRtlPatternsText.SelfAssignTitle].Text);
 end;
 
 /// <summary>Quelltext der Token AFirst..ALast wie geschrieben.</summary>
@@ -343,10 +391,10 @@ begin
   begin
     Exit;
   end;
-  AMessage := Format('%s wird sich selbst zugewiesen: %s verdeckt %s; gemeint ist vermutlich Self.%s := %s',
+  AMessage := cTexts[TRtlPatternsText.SelfAssignHidden].Fmt(
     [AName, mLocal.ShadowText, mMember.ShadowText, AName, AName]);
   mInsert := TTextRange.Create(FTokens[AStart].StartPos, FTokens[AStart].StartPos);
-  AFixes := [TRuleFix.Create('Self. ergänzen', [TRuleEdit.Create(mInsert, 'Self.')])] + AFixes;
+  AFixes := [TRuleFix.Create(cTexts[TRtlPatternsText.AddSelf].Text, [TRuleEdit.Create(mInsert, 'Self.')])] + AFixes;
 end;
 
 procedure TSelfAssignmentScan.CheckAssign(AAssign: Integer);
@@ -375,8 +423,8 @@ begin
   end;
   mLeftEnd := PreviousCode(FTokens, AAssign);
   mName := SourceText(FContext.Text, FTokens, mStart, mLeftEnd);
-  mMessage := Format('%s wird sich selbst zugewiesen; gemeint ist vermutlich ein anderer Wert', [mName]);
-  mFixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(mRemoval, '')])];
+  mMessage := cTexts[TRtlPatternsText.SelfAssign].Fmt([mName]);
+  mFixes := [TRuleFix.Create(cTexts[TRtlPatternsText.RemoveStatement].Text, [TRuleEdit.Create(mRemoval, '')])];
   if (mStart = mLeftEnd) and (FTokens[mStart].Kind = TPascalTokenKind.Identifier) and (FContext.Index <> nil) then
   begin
     AddShadowFix(mStart, mName, mMessage, mFixes);
@@ -418,7 +466,7 @@ end;
 function TForHighToLowRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('for-high-to-low', TRuleSeverity.Warning,
-    'for-Schleife zählt mit to vom oberen zum unteren Wert');
+    cTexts[TRtlPatternsText.ForToTitle].Text);
 end;
 
 /// <summary>Beginnt der Ausdruck bei AIndex mit dem Aufruf AName( und endet er vor AStop?</summary>
@@ -614,17 +662,16 @@ begin
     begin
       Continue;
     end;
-    mFix := TRuleFix.Create('to durch downto ersetzen', [TRuleEdit.Create(RangeOf(mTokens, mBounds.ToToken,
+    mFix := TRuleFix.Create(cTexts[TRtlPatternsText.ToDownto].Text, [TRuleEdit.Create(RangeOf(mTokens, mBounds.ToToken,
       mBounds.ToToken), 'downto')], True);
     mRange := RangeOf(mTokens, mIndex, mBounds.DoToken);
     if RunsHighToLow(mTokens, mBounds) then
     begin
-      AReport.Add(mRange, 'Die Schleife läuft vom oberen zum unteren Wert mit to und wird daher nie ausgeführt; ' +
-        'downto verwenden', TRuleConfidence.High, [mFix]);
+      AReport.Add(mRange, cTexts[TRtlPatternsText.ForTo].Text, TRuleConfidence.High, [mFix]);
     end
     else if NeverRuns(mTokens, mBounds) then
     begin
-      AReport.Add(mRange, Format('Die Schleife läuft nie (%s to %s); gemeint war downto (wie H2135).',
+      AReport.Add(mRange, cTexts[TRtlPatternsText.NeverRuns].Fmt(
         [BoundText(AContext.Text, mTokens, mBounds.StartExpr, mBounds.ToToken), BoundText(AContext.Text, mTokens,
         mBounds.EndExpr, mBounds.DoToken)]), TRuleConfidence.High, [mFix]);
     end;
@@ -636,7 +683,7 @@ end;
 function TExceptionNotRaisedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('exception-not-raised', TRuleSeverity.Warning,
-    'Exception erzeugt, aber nicht ausgelöst');
+    cTexts[TRtlPatternsText.NotRaisedTitle].Text);
 end;
 
 function IsExceptionClass(const AName: string): Boolean;
@@ -682,8 +729,9 @@ begin
       Continue;
     end;
     AReport.Add(RangeOf(Tokens, Index, PreviousCode(Tokens, Stop)),
-      Format('%s wird erzeugt, aber nicht ausgelöst; raise fehlt', [Tokens[Index].Text]), TRuleConfidence.High,
-      [TRuleFix.Create('raise voranstellen', [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos,
+      cTexts[TRtlPatternsText.NotRaised].Fmt([Tokens[Index].Text]), TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TRtlPatternsText.PrependRaise].Text,
+        [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos,
       Tokens[Index].StartPos), 'raise ')], True)]);
   end;
 end;
@@ -692,7 +740,8 @@ end;
 
 function TAssertSideEffectRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('assert-side-effect', TRuleSeverity.Warning, 'Assert mit Seiteneffekt');
+  Result := TRuleDescriptor.Create('assert-side-effect', TRuleSeverity.Warning,
+    cTexts[TRtlPatternsText.AssertTitle].Text);
 end;
 
 class function TAssertSideEffectRule.MutatingMethods(const AOptions: string): TArray<string>;
@@ -809,8 +858,7 @@ begin
     mEffect := AssertEffect(mTokens, mOpen, mClose, mMethods);
     if mEffect <> '' then
     begin
-      AReport.Add(RangeOf(mTokens, mIndex, mClose), Format('%s im Assert verändert Daten; mit {$C-} entfällt der ' +
-        'ganze Aufruf samt Seiteneffekt. Vorher ausführen und nur das Ergebnis prüfen', [mEffect]),
+      AReport.Add(RangeOf(mTokens, mIndex, mClose), cTexts[TRtlPatternsText.AssertSideEffect].Fmt([mEffect]),
         TRuleConfidence.High);
     end;
   end;
@@ -821,7 +869,7 @@ end;
 function TIfThenSideEffectRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('ifthen-side-effect', TRuleSeverity.Warning,
-    'IfThen wertet beide Zweige aus');
+    cTexts[TRtlPatternsText.IfThenTitle].Text);
 end;
 
 /// <summary>Namen, die die Bedingung auf nil prüft: Assigned(X), X &lt;&gt; nil.</summary>
@@ -953,7 +1001,8 @@ begin
   mStatement := 'if ' + RawText(AText, ATokens, AArgs[0].First, AArgs[0].Last) + ' then ' + mTargetText + ' := ' +
     RawText(AText, ATokens, AArgs[1].First, AArgs[1].Last) + ' else ' + mTargetText + ' := ' +
     RawText(AText, ATokens, AArgs[2].First, AArgs[2].Last) + ';';
-  Result := [TRuleFix.Create('In if-Anweisung umwandeln', [TRuleEdit.Create(RangeOf(ATokens, mTarget, mStop),
+  Result := [TRuleFix.Create(cTexts[TRtlPatternsText.ToIfStatement].Text, [TRuleEdit.Create(RangeOf(ATokens, mTarget,
+    mStop),
     mStatement)])];
 end;
 
@@ -978,8 +1027,7 @@ begin
     mArgs := Arguments(mTokens, mOpen, mClose);
     if (Length(mArgs) = 3) and BranchEffects(mTokens, mArgs, mConfidence) then
     begin
-      AReport.Add(RangeOf(mTokens, mIndex, mClose), 'IfThen wertet beide Zweige aus, auch den nicht gewählten; ' +
-        'Seiteneffekte und Nil-Zugriffe darin treten immer auf. if-Anweisung verwenden', mConfidence,
+      AReport.Add(RangeOf(mTokens, mIndex, mClose), cTexts[TRtlPatternsText.IfThen].Text, mConfidence,
         IfStatementFix(AContext.Text, mTokens, mIndex, mClose, mArgs));
     end;
   end;
@@ -989,7 +1037,8 @@ end;
 
 function TRandomWithoutRandomizeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('random-without-randomize', TRuleSeverity.Hint, 'Random ohne Randomize',
+  Result := TRuleDescriptor.Create('random-without-randomize', TRuleSeverity.Hint,
+    cTexts[TRtlPatternsText.RandomTitle].Text,
     True);
 end;
 
@@ -1021,8 +1070,7 @@ begin
   end;
   if First >= 0 then
   begin
-    AReport.Add(RangeOf(Tokens, First, First), 'Random ohne Randomize in dieser Unit liefert bei jedem Start ' +
-      'dieselbe Folge; Randomize einmal beim Programmstart aufrufen', TRuleConfidence.Low);
+    AReport.Add(RangeOf(Tokens, First, First), cTexts[TRtlPatternsText.Random].Text, TRuleConfidence.Low);
   end;
 end;
 
@@ -1035,5 +1083,8 @@ begin
   ARegistry.Register(TIfThenSideEffectRule.Create);
   ARegistry.Register(TRandomWithoutRandomizeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.RtlPatterns', cTexts);
 
 end.

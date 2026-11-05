@@ -32,14 +32,33 @@ uses
   Atlas.Common.Editing.Formatter.Layout,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Style.Tokens;
+  Atlas.Common.Rules.Builtin.Style.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStyleBeginEndText = (Title, SetBeginEnd, InMethod, InFile, CaseBranch, Without);
+
+const
+  cTexts: array[TStyleBeginEndText] of TAtlasText = (
+    (De: 'Bedingung oder Schleife ohne begin … end'; En: 'Condition or loop without begin … end'),
+    (De: 'begin … end setzen'; En: 'Add begin … end'),
+    (De: 'begin … end in der ganzen Methode setzen (%d Stellen)';
+     En: 'Add begin … end in the whole method (%d places)'),
+    (De: 'begin … end in der ganzen Datei setzen (%d Stellen)'; En: 'Add begin … end in the whole file (%d places)'),
+    (De: 'case-Zweig ohne begin … end'; En: 'case branch without begin … end'),
+    (De: '%s ohne begin … end'; En: '%s without begin … end'));
+
+{$SCOPEDENUMS OFF}
 
 { TMissingBeginEndRule }
 
 function TMissingBeginEndRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-begin-end', TRuleSeverity.Hint,
-    'Bedingung oder Schleife ohne begin … end');
+    cTexts[TStyleBeginEndText.Title].Text);
 end;
 
 type
@@ -591,10 +610,10 @@ function SiteFixes(AFinder: TBeginEndSites; ASite: Integer; const AMethods: TMet
 var
   SiteCount: Integer;
 begin
-  Result := [TRuleFix.Create('begin … end setzen', AFinder.Edits([ASite]), True)];
+  Result := [TRuleFix.Create(cTexts[TStyleBeginEndText.SetBeginEnd].Text, AFinder.Edits([ASite]), True)];
   if AMethods.Counts[ASite] > 1 then
   begin
-    Result := Result + [TRuleFix.Create(Format('begin … end in der ganzen Methode setzen (%d Stellen)',
+    Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InMethod].Fmt(
       [AMethods.Counts[ASite]]), AMethods.Edits[ASite])];
   end;
   SiteCount := Length(AFinder.Sites);
@@ -606,7 +625,7 @@ begin
   begin
     AFileEdits := AFinder.Edits(AllSites(SiteCount));
   end;
-  Result := Result + [TRuleFix.Create(Format('begin … end in der ganzen Datei setzen (%d Stellen)', [SiteCount]),
+  Result := Result + [TRuleFix.Create(cTexts[TStyleBeginEndText.InFile].Fmt([SiteCount]),
     AFileEdits)];
 end;
 
@@ -614,11 +633,11 @@ function SiteMessage(const AName: string): string;
 begin
   if AName = 'case' then
   begin
-    Result := 'case-Zweig ohne begin … end';
+    Result := cTexts[TStyleBeginEndText.CaseBranch].Text;
   end
   else
   begin
-    Result := AName + ' ohne begin … end';
+    Result := cTexts[TStyleBeginEndText.Without].Fmt([AName]);
   end;
 end;
 
@@ -648,5 +667,8 @@ begin
     Finder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Style.BeginEnd', cTexts);
 
 end.

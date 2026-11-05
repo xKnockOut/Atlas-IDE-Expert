@@ -73,7 +73,46 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPlatformText = (DialogTitle, LogInstead, InService, InConsole, InDll, LogOrError, EncodingTitle, AddEncoding,
+    FileNoEncoding, ReadNoEncoding, WriteNoEncoding, HklmTitle, Hklm, UseHkcu, NowMeasure, ToStopwatch, NowTitle);
+
+const
+  cTexts: array[TPlatformText] of TAtlasText = (
+    (De: 'Dialog in Konsolenprogramm oder Dienst'; En: 'Dialog in console program or service'),
+    (De: 'protokollieren statt anzeigen.'; En: 'log instead of displaying.'),
+    (De: 'in einem Windows-Dienst blockiert unsichtbar;'; En: 'in a Windows service blocks invisibly;'),
+    (De: 'in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft;';
+     En: 'in a console program waits for a click when the program runs unattended;'),
+    (De: 'in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat (Dienst, Webserver);';
+     En: 'in a DLL without forms blocks when the host has no user interface (service, web server);'),
+    (De: 'protokollieren oder einen Fehler zurückgeben.'; En: 'log or return an error.'),
+    (De: 'Text laden oder speichern ohne Kodierung'; En: 'Loading or saving text without encoding'),
+    (De: 'TEncoding.%s ergänzen'; En: 'Add TEncoding.%s'),
+    (De: 'TFile.%s ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.';
+     En: 'TFile.%s without encoding reads files without BOM with the ANSI code page.'),
+    (De: '%s ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.';
+     En: '%s without encoding reads files without BOM with the ANSI code page.'),
+    (De: '%s ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen auf anderen Rechnern verloren.';
+     En: '%s without encoding writes with the ANSI code page; umlauts get lost on other computers.'),
+    (De: 'Schreiben nach HKEY_LOCAL_MACHINE'; En: 'Writing to HKEY_LOCAL_MACHINE'),
+    (De: 'Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ohne sie schlägt es fehl oder landet in der ' +
+      'Virtualisierung.';
+     En: 'Writing to HKEY_LOCAL_MACHINE needs administrator rights; without them it fails or ends up in ' +
+      'virtualization.'),
+    (De: 'HKEY_CURRENT_USER verwenden'; En: 'Use HKEY_CURRENT_USER'),
+    (De: 'Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig von der Uhrzeit.';
+     En: 'Run time measured with Now; TStopwatch is more precise and independent of the time of day.'),
+    (De: 'In TStopwatch umwandeln'; En: 'Convert to TStopwatch'),
+    (De: 'Laufzeit mit Now gemessen'; En: 'Run time measured with Now'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -258,7 +297,7 @@ const
 function TUiCallInConsoleOrServiceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UiCallInConsoleOrServiceRuleId, TRuleSeverity.Warning,
-    'Dialog in Konsolenprogramm oder Dienst');
+    cTexts[TPlatformText.DialogTitle].Text);
 end;
 
 procedure TUiCallInConsoleOrServiceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -384,10 +423,10 @@ begin
     Kind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
   end;
   Confidence := TRuleConfidence.High;
-  Advice := 'protokollieren statt anzeigen.';
+  Advice := cTexts[TPlatformText.LogInstead].Text;
   if (Kind = TRuleApplicationKind.Service) or DeclaresService then
   begin
-    Place := 'in einem Windows-Dienst blockiert unsichtbar;';
+    Place := cTexts[TPlatformText.InService].Text;
   end
   // Units mit Formular zeigen Fenster bewusst, auch in einem Konsolenprogramm oder einer DLL.
   else if AContext.FormText <> '' then
@@ -396,14 +435,14 @@ begin
   end
   else if Kind = TRuleApplicationKind.Console then
   begin
-    Place := 'in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm unbeaufsichtigt läuft;';
+    Place := cTexts[TPlatformText.InConsole].Text;
   end
   else if Kind = TRuleApplicationKind.Library_ then
   begin
     // Ob der Host eine Oberfläche hat, weiß nur das aufrufende Programm.
     Confidence := TRuleConfidence.Medium;
-    Place := 'in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat (Dienst, Webserver);';
-    Advice := 'protokollieren oder einen Fehler zurückgeben.';
+    Place := cTexts[TPlatformText.InDll].Text;
+    Advice := cTexts[TPlatformText.LogOrError].Text;
   end
   else
   begin
@@ -428,7 +467,7 @@ const
 function TLoadWithoutEncodingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LoadWithoutEncodingRuleId, TRuleSeverity.Warning,
-    'Text laden oder speichern ohne Kodierung');
+    cTexts[TPlatformText.EncodingTitle].Text);
 end;
 
 procedure TLoadWithoutEncodingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -528,7 +567,7 @@ var
     begin
       Edits := Edits + [Extra];
     end;
-    Result := [TRuleFix.Create(Format('TEncoding.%s ergänzen', [Encoding]), Edits)];
+    Result := [TRuleFix.Create(cTexts[TPlatformText.AddEncoding].Fmt([Encoding]), Edits)];
   end;
 
   procedure CheckCall(ACall: TSyntaxNode);
@@ -544,8 +583,8 @@ var
     Method := Callee.Name;
     if MatchText(Method, ReadAllMethods) and IsQualifiedName(Callee[0]) and IsName(Callee[0], 'TFile') then
     begin
-      AReport.Add(NodeRange(Callee), Format('TFile.%s ohne Kodierung liest Dateien ohne BOM mit der ' +
-        'ANSI-Codepage.', [Method]), TRuleConfidence.Medium, Fix(ACall));
+      AReport.Add(NodeRange(Callee), cTexts[TPlatformText.FileNoEncoding].Fmt([Method]), TRuleConfidence.Medium,
+        Fix(ACall));
       Exit;
     end;
     if not MatchText(Method, TextFileMethods) or not IsStringList(Callee[0]) then
@@ -557,14 +596,14 @@ var
     begin
       if not EncodingKnown(ACall, Receiver) then
       begin
-        AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
+        AReport.Add(NodeRange(Callee), cTexts[TPlatformText.ReadNoEncoding].Fmt(
           [Method]), TRuleConfidence.Medium, Fix(ACall));
       end;
     end
     else if not EncodingKnown(ACall, Receiver) then
     begin
-      AReport.Add(NodeRange(Callee), Format('%s ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen ' +
-        'auf anderen Rechnern verloren.', [Method]), TRuleConfidence.Medium, Fix(ACall));
+      AReport.Add(NodeRange(Callee), cTexts[TPlatformText.WriteNoEncoding].Fmt([Method]), TRuleConfidence.Medium,
+        Fix(ACall));
     end;
   end;
 
@@ -609,7 +648,7 @@ const
 
 function TRegistryHklmWriteRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RegistryHklmWriteRuleId, TRuleSeverity.Hint, 'Schreiben nach HKEY_LOCAL_MACHINE');
+  Result := TRuleDescriptor.Create(RegistryHklmWriteRuleId, TRuleSeverity.Hint, cTexts[TPlatformText.HklmTitle].Text);
 end;
 
 procedure TRegistryHklmWriteRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -699,9 +738,8 @@ var
       end;
       if WrittenLater(Events, Index, NodeText(AContext, Assign[0][0])) then
       begin
-        AReport.Add(NodeRange(Assign[1]), 'Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ' +
-          'ohne sie schlägt es fehl oder landet in der Virtualisierung.', TRuleConfidence.High,
-          [TRuleFix.Create('HKEY_CURRENT_USER verwenden', [TRuleEdit.Create(NodeRange(Assign[1]),
+        AReport.Add(NodeRange(Assign[1]), cTexts[TPlatformText.Hklm].Text, TRuleConfidence.High,
+          [TRuleFix.Create(cTexts[TPlatformText.UseHkcu].Text, [TRuleEdit.Create(NodeRange(Assign[1]),
           'HKEY_CURRENT_USER')])]);
       end;
     end;
@@ -851,8 +889,8 @@ begin
   end;
   for mNode in mMeasures do
   begin
-    FReport.Add(NodeRange(mNode), 'Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig ' +
-      'von der Uhrzeit.', TRuleConfidence.High, Fixes(MeasuredStart(mNode)));
+    FReport.Add(NodeRange(mNode), cTexts[TPlatformText.NowMeasure].Text, TRuleConfidence.High,
+      Fixes(MeasuredStart(mNode)));
   end;
 end;
 
@@ -1062,14 +1100,14 @@ begin
   begin
     mEdits := mEdits + [mExtra];
   end;
-  Result := [TRuleFix.Create('In TStopwatch umwandeln', mEdits)];
+  Result := [TRuleFix.Create(cTexts[TPlatformText.ToStopwatch].Text, mEdits)];
 end;
 
 { TNowForElapsedTimeRule }
 
 function TNowForElapsedTimeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(NowForElapsedTimeRuleId, TRuleSeverity.Hint, 'Laufzeit mit Now gemessen');
+  Result := TRuleDescriptor.Create(NowForElapsedTimeRuleId, TRuleSeverity.Hint, cTexts[TPlatformText.NowTitle].Text);
 end;
 
 procedure TNowForElapsedTimeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1099,5 +1137,8 @@ begin
   ARegistry.Register(TRegistryHklmWriteRule.Create);
   ARegistry.Register(TNowForElapsedTimeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Platform', cTexts);
 
 end.

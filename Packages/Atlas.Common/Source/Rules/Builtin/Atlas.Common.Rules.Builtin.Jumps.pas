@@ -67,7 +67,36 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.ConditionalBranches;
+  Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TJumpsText = (Title, BreakToExit, OutsideLoop, LeavesFinally, LabelTitle, LabelSet, LabelUndeclared, LabelNeverSet,
+    JumpsInto, Leaves, ExceptBlock, FinallyBlock, TryBlock);
+
+const
+  cTexts: array[TJumpsText] of TAtlasText = (
+    (De: 'Break, Continue oder Exit an unzulässiger Stelle'; En: 'Break, Continue or Exit in an invalid place'),
+    (De: 'Break durch Exit ersetzen'; En: 'Replace Break with Exit'),
+    (De: '%s außerhalb einer Schleife (wie E2097).'; En: '%s outside of a loop (like E2097).'),
+    (De: '%s darf einen finally-Block nicht verlassen (wie E2126).';
+     En: '%s must not leave a finally block (like E2126).'),
+    (De: 'Sprungmarke falsch verwendet'; En: 'Label used incorrectly'),
+    (De: 'Marke %s ist bereits gesetzt (wie E2073).'; En: 'Label %s is already set (like E2073).'),
+    (De: 'Marke %s ist in dieser Routine nicht deklariert (wie E2093).';
+     En: 'Label %s is not declared in this routine (like E2093).'),
+    (De: 'Marke %s wird angesprungen, aber nie gesetzt (wie E2074).';
+     En: 'Label %s is jumped to but never set (like E2074).'),
+    (De: 'goto %s springt in %s (wie E2127).'; En: 'goto %s jumps into %s (like E2127).'),
+    (De: 'goto %s verlässt %s (wie E2127).'; En: 'goto %s leaves %s (like E2127).'),
+    (De: 'einen except-Block'; En: 'an except block'),
+    (De: 'einen finally-Block'; En: 'a finally block'),
+    (De: 'einen try-Block'; En: 'a try block'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Eintrag des eigenen Stapels von TJumpOutsideAllowedScopeRule.Check (Bericht M1): Knoten samt
@@ -146,7 +175,7 @@ end;
 function TJumpOutsideAllowedScopeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(JumpOutsideAllowedScopeRuleId, TRuleSeverity.Error,
-    'Break, Continue oder Exit an unzulässiger Stelle');
+    cTexts[TJumpsText.Title].Text);
 end;
 
 class function TJumpOutsideAllowedScopeRule.PlainCallName(AStatement: TSyntaxNode): string;
@@ -187,7 +216,7 @@ var
     Fixes := nil;
     if AWithFix then
     begin
-      Fixes := [TRuleFix.Create('Break durch Exit ersetzen', [TRuleEdit.Create(Range, 'Exit')])];
+      Fixes := [TRuleFix.Create(cTexts[TJumpsText.BreakToExit].Text, [TRuleEdit.Create(Range, 'Exit')])];
     end;
     AReport.Add(Range, AMessage, TRuleConfidence.High, Fixes);
   end;
@@ -227,13 +256,12 @@ var
     mWritten := Copy(AContext.Text, ANode.StartOffset + 1, Length(mName));
     if (mName <> 'exit') and not AEntry.HasLoop then
     begin
-      Report(ANode, AEntry.Scope, mName, Format('%s außerhalb einer Schleife (wie E2097).', [mWritten]),
+      Report(ANode, AEntry.Scope, mName, cTexts[TJumpsText.OutsideLoop].Fmt([mWritten]),
         (mName = 'break') and not AEntry.InFinally);
     end
     else if ((mName <> 'exit') and AEntry.FinallySinceLoop) or ((mName = 'exit') and AEntry.InFinally) then
     begin
-      Report(ANode, AEntry.Scope, mName, Format('%s darf einen finally-Block nicht verlassen (wie E2126).',
-        [mWritten]), False);
+      Report(ANode, AEntry.Scope, mName, cTexts[TJumpsText.LeavesFinally].Fmt([mWritten]), False);
     end;
   end;
 
@@ -290,7 +318,7 @@ end;
 
 function TLabelMisuseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LabelMisuseRuleId, TRuleSeverity.Error, 'Sprungmarke falsch verwendet');
+  Result := TRuleDescriptor.Create(LabelMisuseRuleId, TRuleSeverity.Error, cTexts[TJumpsText.LabelTitle].Text);
 end;
 
 class function TLabelMisuseRule.LabelKey(const AName: string): string;
@@ -380,11 +408,11 @@ var
   begin
     case ANode.Kind of
       TSyntaxKind.ExceptBlock:
-        Result := 'except-Block';
+        Result := cTexts[TJumpsText.ExceptBlock].Text;
       TSyntaxKind.FinallyBlock:
-        Result := 'finally-Block';
+        Result := cTexts[TJumpsText.FinallyBlock].Text;
     else
-      Result := 'try-Block';
+      Result := cTexts[TJumpsText.TryBlock].Text;
     end;
   end;
 
@@ -561,7 +589,7 @@ var
         mNode := ASets[mKey][mIndex];
         if SetEarlier(ASets[mKey], mIndex) then
         begin
-          AReport.Add(NameRange(mNode, mNode.Name), Format('Marke %s ist bereits gesetzt (wie E2073).',
+          AReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelSet].Fmt(
             [mNode.Name]), TRuleConfidence.High);
         end;
       end;
@@ -574,8 +602,8 @@ var
       end;
       for mNode in ASets[mKey] do
       begin
-        AReport.Add(NameRange(mNode, mNode.Name), Format('Marke %s ist in dieser Routine nicht deklariert ' +
-          '(wie E2093).', [mNode.Name]), TRuleConfidence.High);
+        AReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelUndeclared].Fmt([mNode.Name]),
+          TRuleConfidence.High);
       end;
     end;
   end;
@@ -607,13 +635,13 @@ var
     mFirst := CommonLength(mGotoChain, mTargetChain);
     if mFirst = Length(mGotoChain) then
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('goto %s springt in einen %s ' +
-        '(wie E2127).', [ANode.Name, BlockName(mTargetChain[mFirst])]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.JumpsInto].Fmt([ANode.Name,
+        BlockName(mTargetChain[mFirst])]), TRuleConfidence.High);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('goto %s verlässt einen %s ' +
-        '(wie E2127).', [ANode.Name, BlockName(mGotoChain[mFirst])]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.Leaves].Fmt([ANode.Name,
+        BlockName(mGotoChain[mFirst])]), TRuleConfidence.High);
     end;
   end;
 
@@ -627,8 +655,8 @@ var
       // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
       if not ASets.ContainsKey(mKey) and DeclaredOutside(AScope, mKey) then
       begin
-        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Marke %s ist in dieser Routine ' +
-          'nicht deklariert (wie E2093).', [ANode.Name]), TRuleConfidence.High);
+        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+          cTexts[TJumpsText.LabelUndeclared].Fmt([ANode.Name]), TRuleConfidence.High);
       end;
     end
     // E2127 nur bei genau einem Ziel.
@@ -663,7 +691,7 @@ var
       if not ASets.ContainsKey(mPair.Key) and Jumped(AGotos, mPair.Key) then
       begin
         AReport.Add(TTextRange.Create(Tokens[mPair.Value].StartPos, Tokens[mPair.Value].EndPos),
-          Format('Marke %s wird angesprungen, aber nie gesetzt (wie E2074).', [Tokens[mPair.Value].Text]),
+          cTexts[TJumpsText.LabelNeverSet].Fmt([Tokens[mPair.Value].Text]),
           TRuleConfidence.High);
       end;
     end;
@@ -747,5 +775,8 @@ begin
   ARegistry.Register(TJumpOutsideAllowedScopeRule.Create);
   ARegistry.Register(TLabelMisuseRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Jumps', cTexts);
 
 end.

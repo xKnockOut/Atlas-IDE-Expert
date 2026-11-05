@@ -83,7 +83,24 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTodosText = (TodoTitle, CommentedTitle, Commented, RemoveCommented);
+
+const
+  cTexts: array[TTodosText] of TAtlasText = (
+    (De: 'Offener TODO-Kommentar'; En: 'Open TODO comment'),
+    (De: 'Auskommentierter Code'; En: 'Commented-out code'),
+    (De: '%d Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.';
+     En: '%d lines of commented-out code; version control keeps it.'),
+    (De: 'Auskommentierten Code entfernen'; En: 'Remove commented-out code'));
+
+{$SCOPEDENUMS OFF}
 
 { TTodoRules }
 
@@ -156,7 +173,7 @@ end;
 function TTodoRule.Descriptor: TRuleDescriptor;
 begin
   // Freiwillig (#68): läuft nur eingeschaltet, wie die experimentellen Regeln.
-  Result := TRuleDescriptor.Create(TodoCommentRuleId, TRuleSeverity.Hint, 'Offener TODO-Kommentar', True);
+  Result := TRuleDescriptor.Create(TodoCommentRuleId, TRuleSeverity.Hint, cTexts[TTodosText.TodoTitle].Text, True);
 end;
 
 procedure TTodoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -195,7 +212,7 @@ type
 
 function TCommentedOutCodeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CommentedOutCodeRuleId, TRuleSeverity.Hint, 'Auskommentierter Code');
+  Result := TRuleDescriptor.Create(CommentedOutCodeRuleId, TRuleSeverity.Hint, cTexts[TTodosText.CommentedTitle].Text);
 end;
 
 class function TCommentedOutCodeRule.LooksLikeCode(const ALine: string): Boolean;
@@ -307,8 +324,8 @@ var
 
   procedure Report(const ARange: TTextRange; ACount, AFirstLine, ALastLine: Integer);
   begin
-    AReport.Add(ARange, Format('%d Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.',
-      [ACount]), TRuleConfidence.Medium, [TRuleFix.Create('Auskommentierten Code entfernen',
+    AReport.Add(ARange, cTexts[TTodosText.Commented].Fmt(
+      [ACount]), TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TTodosText.RemoveCommented].Text,
       [TRuleEdit.Create(TTextRange.Create(AFirstLine, 0, ALastLine + 1, 0), '')])]);
   end;
 
@@ -447,5 +464,8 @@ begin
   ARegistry.Register(TTodoRule.Create);
   ARegistry.Register(TCommentedOutCodeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Todos', cTexts);
 
 end.

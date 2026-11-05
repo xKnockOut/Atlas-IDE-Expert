@@ -1200,6 +1200,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.State.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Tips.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyStroke.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyStroke.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuSlots.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.MenuSlots.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>

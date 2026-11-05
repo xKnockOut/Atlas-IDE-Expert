@@ -47,7 +47,25 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.WarnSwitches;
+  Atlas.Common.Rules.WarnSwitches,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnsafeCodeText = (Title, AtOperator, PointerCast);
+
+const
+  cTexts: array[TUnsafeCodeText] of TAtlasText = (
+    (De: 'Unsicherer Code: @-Operator oder Umwandlung von Pointer in eine Klasse (wie W1047, W1048)';
+     En: 'Unsafe code: @ operator or cast from Pointer to a class (like W1047, W1048)'),
+    (De: '@%s: Der @-Operator ist unsicherer Code (wie W1047).';
+     En: '@%s: the @ operator is unsafe code (like W1047).'),
+    (De: 'Umwandlung von Pointer nach %s ist unsicher (wie W1048).';
+     En: 'Cast from Pointer to %s is unsafe (like W1048).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cUnsafeCode = 'UNSAFE_CODE';
@@ -75,7 +93,7 @@ end;
 function TUnsafeCodeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnsafeCodeRuleId, TRuleSeverity.Warning,
-    'Unsicherer Code: @-Operator oder Umwandlung von Pointer in eine Klasse (wie W1047, W1048)');
+    cTexts[TUnsafeCodeText.Title].Text);
 end;
 
 procedure TUnsafeCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -121,7 +139,7 @@ var
     begin
       Exit;
     end;
-    Report(ANode, cUnsafeCode, Format('@%s: Der @-Operator ist unsicherer Code (wie W1047).', [mOperand.Name]));
+    Report(ANode, cUnsafeCode, cTexts[TUnsafeCodeText.AtOperator].Fmt([mOperand.Name]));
   end;
 
   /// <summary>Name der Klasse, in die der Aufruf ANode umwandelt; False, wenn ANode sicher keine Umwandlung in eine
@@ -171,7 +189,7 @@ var
     begin
       Exit;
     end;
-    Report(ANode, cUnsafeCast, Format('Umwandlung von Pointer nach %s ist unsicher (wie W1048).', [mTarget]));
+    Report(ANode, cUnsafeCast, cTexts[TUnsafeCodeText.PointerCast].Fmt([mTarget]));
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -234,5 +252,8 @@ procedure RegisterUnsafeCodeRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnsafeCodeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.UnsafeCode', cTexts);
 
 end.

@@ -168,7 +168,50 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsText = (NotImplementedTitle, NotImplemented, NoDeclTitle, AddDeclaration, NoDecl, InterfaceTitle,
+    Differs, MissingOne, MissingMany, NotInList, MismatchTitle, WithoutModifier, WithModifier, InsteadOf,
+    NoTypeInstead, InsteadOfNoType, Instead, ParamCount, ResultInstead, DiffersFrom, FieldTitle, MoveField, InsertVar,
+    FieldAfter);
+
+const
+  cTexts: array[TDeclarationsText] of TAtlasText = (
+    (De: 'Methode ist deklariert, aber nicht implementiert'; En: 'Method is declared but not implemented'),
+    (De: '"%s.%s" ist deklariert, aber nicht implementiert'; En: '"%s.%s" is declared but not implemented'),
+    (De: 'Methodenrumpf ohne Deklaration im Typ'; En: 'Method body without declaration in the type'),
+    (De: 'Deklaration von %s in %s ergänzen'; En: 'Add declaration of %s to %s'),
+    (De: '"%s.%s" hat keine passende Deklaration in %s'; En: '"%s.%s" has no matching declaration in %s'),
+    (De: 'Interface-Methode fehlt in der Klasse (wie E2291)'; En: 'Interface method missing in the class (like E2291)'),
+    (De: '%s weicht von der Deklaration in %s ab (wie E2211).';
+     En: '%s differs from the declaration in %s (like E2211).'),
+    (De: '%s fehlt in %s (wie E2291).'; En: '%s is missing in %s (like E2291).'),
+    (De: '%s fehlen in %s (wie E2291).'; En: '%s are missing in %s (like E2291).'),
+    (De: '%s steht nicht in der Interface-Liste von %s (wie E2265).';
+     En: '%s is not in the interface list of %s (like E2265).'),
+    (De: 'Implementierung weicht von der Deklaration ab (wie E2037)';
+     En: 'Implementation differs from the declaration (like E2037)'),
+    (De: '%s ohne %s'; En: '%s without %s'),
+    (De: '%s mit %s'; En: '%s with %s'),
+    (De: '%s %s statt %s'; En: '%s %s instead of %s'),
+    (De: '%s ohne Typ statt %s'; En: '%s without type instead of %s'),
+    (De: '%s %s statt ohne Typ'; En: '%s %s instead of without type'),
+    (De: '%s statt %s'; En: '%s instead of %s'),
+    (De: '%d statt %d Parameter'; En: '%d instead of %d parameters'),
+    (De: 'Ergebnis %s statt %s'; En: 'result %s instead of %s'),
+    (De: '%s weicht von der Deklaration ab: %s (wie E2037).'; En: '%s differs from the declaration: %s (like E2037).'),
+    (De: 'Feld nach Methoden im selben Abschnitt'; En: 'Field after methods in the same section'),
+    (De: 'Feld an den Anfang des Abschnitts verschieben'; En: 'Move field to the start of the section'),
+    (De: 'var davor setzen'; En: 'Put var before it'),
+    (De: 'Feld nach Methoden im selben Abschnitt (wie E2169).';
+     En: 'Field after methods in the same section (like E2169).'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Beginnt die Direktive AText (groß geschrieben) einen {$IF…}-Block?</summary>
 function IsIfStart(const AText: string): Boolean;
@@ -309,7 +352,7 @@ end;
 function TDeclaredNotImplementedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('declared-not-implemented', TRuleSeverity.Error,
-    'Methode ist deklariert, aber nicht implementiert');
+    cTexts[TDeclarationsText.NotImplementedTitle].Text);
 end;
 
 procedure TDeclaredNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -339,7 +382,7 @@ begin
     begin
       Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
     end;
-    AReport.Add(Method.Symbol.SelectionRange, Format('"%s.%s" ist deklariert, aber nicht implementiert',
+    AReport.Add(Method.Symbol.SelectionRange, cTexts[TDeclarationsText.NotImplemented].Fmt(
       [Method.TypeName, Method.Symbol.Name]), Level, Fixes);
   end;
 end;
@@ -349,7 +392,7 @@ end;
 function TImplementedNotDeclaredRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('implemented-not-declared', TRuleSeverity.Error,
-    'Methodenrumpf ohne Deklaration im Typ');
+    cTexts[TDeclarationsText.NoDeclTitle].Text);
 end;
 
 procedure TImplementedNotDeclaredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -377,10 +420,10 @@ begin
     Fixes := nil;
     if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, Method, Edit) then
     begin
-      Fixes := [TRuleFix.Create(Format('Deklaration von %s in %s ergänzen', [Method.Symbol.Name,
+      Fixes := [TRuleFix.Create(cTexts[TDeclarationsText.AddDeclaration].Fmt([Method.Symbol.Name,
         Method.TypeName]), [Edit])];
     end;
-    AReport.Add(Method.Symbol.SelectionRange, Format('"%s.%s" hat keine passende Deklaration in %s',
+    AReport.Add(Method.Symbol.SelectionRange, cTexts[TDeclarationsText.NoDecl].Fmt(
       [Method.TypeName, Method.Symbol.Name, Method.TypeName]), Level, Fixes);
   end;
 end;
@@ -390,7 +433,7 @@ end;
 function TInterfaceNotImplementedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('interface-not-implemented', TRuleSeverity.Error,
-    'Interface-Methode fehlt in der Klasse (wie E2291)');
+    cTexts[TDeclarationsText.InterfaceTitle].Text);
 end;
 
 /// <summary>Steht im Token AIndex ein implements innerhalb der Zeilen von ARange?</summary>
@@ -561,7 +604,7 @@ begin
       if Own.Name <> '' then
       begin
         ADiffers := True;
-        FReport.Add(Own.SelectionRange, Format('%s weicht von der Deklaration in %s ab (wie E2211).',
+        FReport.Add(Own.SelectionRange, cTexts[TDeclarationsText.Differs].Fmt(
           [Own.Name, BareName(Member.Container)]), FLevel);
       end
       else if not Names.Contains(Name) then
@@ -614,11 +657,11 @@ begin
   end;
   if Length(Names) = 1 then
   begin
-    FReport.Add(AType.SelectionRange, Format('%s fehlt in %s (wie E2291).', [Names[0], AType.Name]), FLevel, Fixes);
+    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingOne].Fmt([Names[0], AType.Name]), FLevel, Fixes);
   end
   else if Length(Names) > 1 then
   begin
-    FReport.Add(AType.SelectionRange, Format('%s fehlen in %s (wie E2291).', [JoinedList(Names), AType.Name]),
+    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingMany].Fmt([JoinedList(Names), AType.Name]),
       FLevel, Fixes);
   end;
 end;
@@ -652,7 +695,7 @@ begin
     if not Listed(AType, Prefix) then
     begin
       FReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos),
-        Format('%s steht nicht in der Interface-Liste von %s (wie E2265).', [Prefix, AType.Name]), FLevel);
+        cTexts[TDeclarationsText.NotInList].Fmt([Prefix, AType.Name]), FLevel);
     end;
   end;
 end;
@@ -833,7 +876,7 @@ end;
 function TSignatureMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('signature-mismatch', TRuleSeverity.Error,
-    'Implementierung weicht von der Deklaration ab (wie E2037)');
+    cTexts[TDeclarationsText.MismatchTitle].Text);
 end;
 
 class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
@@ -850,15 +893,15 @@ function ModifierDifference(const ADecl, ABody: TShapeParameter): string;
 begin
   if ABody.Modifier = '' then
   begin
-    Result := Format('%s ohne %s', [ABody.Name, ADecl.Modifier]);
+    Result := cTexts[TDeclarationsText.WithoutModifier].Fmt([ABody.Name, ADecl.Modifier]);
   end
   else if ADecl.Modifier = '' then
   begin
-    Result := Format('%s mit %s', [ABody.Name, ABody.Modifier]);
+    Result := cTexts[TDeclarationsText.WithModifier].Fmt([ABody.Name, ABody.Modifier]);
   end
   else
   begin
-    Result := Format('%s %s statt %s', [ABody.Name, ABody.Modifier, ADecl.Modifier]);
+    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.Modifier, ADecl.Modifier]);
   end;
 end;
 
@@ -867,15 +910,15 @@ function TypeDifference(const ADecl, ABody: TShapeParameter): string;
 begin
   if ABody.TypeName = '' then
   begin
-    Result := Format('%s ohne Typ statt %s', [ABody.Name, ADecl.TypeName]);
+    Result := cTexts[TDeclarationsText.NoTypeInstead].Fmt([ABody.Name, ADecl.TypeName]);
   end
   else if ADecl.TypeName = '' then
   begin
-    Result := Format('%s %s statt ohne Typ', [ABody.Name, ABody.TypeName]);
+    Result := cTexts[TDeclarationsText.InsteadOfNoType].Fmt([ABody.Name, ABody.TypeName]);
   end
   else
   begin
-    Result := Format('%s %s statt %s', [ABody.Name, ABody.TypeName, ADecl.TypeName]);
+    Result := cTexts[TDeclarationsText.InsteadOf].Fmt([ABody.Name, ABody.TypeName, ADecl.TypeName]);
   end;
 end;
 
@@ -917,7 +960,7 @@ class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSi
       Body := ABody.Parameters[Index];
       if not SameText(Decl.Name, Body.Name) then
       begin
-        Result := Result + [Format('%s statt %s', [Body.Name, Decl.Name])];
+        Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([Body.Name, Decl.Name])];
       end;
       if Decl.Modifier <> Body.Modifier then
       begin
@@ -934,11 +977,12 @@ begin
   Result := nil;
   if (ADeclaration.Kind <> '') and (ABody.Kind <> '') and (ADeclaration.Kind <> ABody.Kind) then
   begin
-    Result := Result + [Format('%s statt %s', [ABody.Kind, ADeclaration.Kind])];
+    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Kind, ADeclaration.Kind])];
   end;
   if Length(ADeclaration.Parameters) <> Length(ABody.Parameters) then
   begin
-    Result := Result + [Format('%d statt %d Parameter', [Length(ABody.Parameters), Length(ADeclaration.Parameters)])];
+    Result := Result + [cTexts[TDeclarationsText.ParamCount].Fmt([Length(ABody.Parameters),
+      Length(ADeclaration.Parameters)])];
   end
   else
   begin
@@ -946,12 +990,12 @@ begin
   end;
   if (ADeclaration.Kind = ABody.Kind) and Differs(ADeclaration.ResultType, ABody.ResultType) then
   begin
-    Result := Result + [Format('Ergebnis %s statt %s', [ABody.ResultType, ADeclaration.ResultType])];
+    Result := Result + [cTexts[TDeclarationsText.ResultInstead].Fmt([ABody.ResultType, ADeclaration.ResultType])];
   end;
   // Der Rumpf darf die Konvention weglassen; nur eine abweichende Angabe ist ein Fehler.
   if (ABody.Convention <> '') and (ConventionOf(ABody) <> ConventionOf(ADeclaration)) then
   begin
-    Result := Result + [Format('%s statt %s', [ABody.Convention, ConventionOf(ADeclaration)])];
+    Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([ABody.Convention, ConventionOf(ADeclaration)])];
   end;
 end;
 
@@ -1116,7 +1160,7 @@ begin
           Fixes := Fixes + [Alternative(TRuleFix.Create(Actions[Index].Title, Actions[Index].Edits), Index > 0)];
         end;
       end;
-      AReport.Add(Pair.Body.Symbol.SelectionRange, Format('%s weicht von der Deklaration ab: %s (wie E2037).',
+      AReport.Add(Pair.Body.Symbol.SelectionRange, cTexts[TDeclarationsText.DiffersFrom].Fmt(
         [Pair.Body.Symbol.Name, string.Join(', ', Changes)]), Level, Fixes);
     end;
   finally
@@ -1129,7 +1173,7 @@ end;
 function TFieldAfterMethodRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(FieldAfterMethodRuleId, TRuleSeverity.Error,
-    'Feld nach Methoden im selben Abschnitt');
+    cTexts[TDeclarationsText.FieldTitle].Text);
 end;
 
 procedure TFieldAfterMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1211,7 +1255,7 @@ var
     begin
       Moved := Moved + Lines[Line] + LineBreak;
     end;
-    Result := [TRuleFix.Create('Feld an den Anfang des Abschnitts verschieben', [
+    Result := [TRuleFix.Create(cTexts[TDeclarationsText.MoveField].Text, [
       TRuleEdit.Create(TTextRange.Create(TargetLine, 0, TargetLine, 0), Moved),
       TRuleEdit.Create(TTextRange.Create(FieldStart, 0, FieldEnd + 1, 0), '')], True)];
   end;
@@ -1221,7 +1265,8 @@ var
     First: TSyntaxNode;
   begin
     First := BlockFirst(ABody, AField);
-    Result := TRuleFix.Create('var davor setzen', [TRuleEdit.Create(TTextRange.Create(First.StartPos,
+    Result := TRuleFix.Create(cTexts[TDeclarationsText.InsertVar].Text,
+      [TRuleEdit.Create(TTextRange.Create(First.StartPos,
       First.StartPos), 'var ')], True);
   end;
 
@@ -1272,7 +1317,7 @@ var
       Fixes := Fixes + [VarFix(ABody, AField)];
     end;
     AReport.Add(TTextRange.Create(ABody[AField].StartPos, ABody[AField].EndPos),
-      'Feld nach Methoden im selben Abschnitt (wie E2169).', TRuleConfidence.High, Fixes);
+      cTexts[TDeclarationsText.FieldAfter].Text, TRuleConfidence.High, Fixes);
   end;
 
   procedure CheckBody(ABody: TSyntaxNode);
@@ -1362,5 +1407,8 @@ begin
   ARegistry.Register(TTypeTooLargeRule.Create);
   ARegistry.Register(TDefaultParameterRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations', cTexts);
 
 end.
