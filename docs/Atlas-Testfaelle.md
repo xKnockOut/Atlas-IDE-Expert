@@ -9623,3 +9623,21 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Module unter „Known Packages“ (Meldung vom 05.11.2026)
+
+Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Base und allen Modulen aus einem Ordner), nie im Standardprofil. Registry-Pfade unten für Delphi 13 und die klassische IDE; die 64-Bit-IDE nutzt `Known Packages x64`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KPM1 | IDE im Profil starten, alle Module eingetragen; `atlas.log` öffnen | Zeile `Known Packages: 11 Module im Ordner von Base, fehlend: -; abgeschaltet: -; aus anderem Ordner: -; andere bds.exe: n`; kein Hinweis „Atlas-Module fehlen“ |
+| KPM2 | IDE schließen, unter `HKCU\Software\Embarcadero\<Profil>\37.0\Known Packages` die Werte für Debugger und Search löschen, IDE starten | Protokoll `fehlend: Debugger, Search`; Benachrichtigung „Atlas-Module fehlen in der IDE“ (Warnung, Plakette gelb) mit „Die Module Debugger, Search …“ und Knopf „Wieder eintragen“ (**Abnahme**) |
+| KPM3 | Wie KPM2, „Wieder eintragen“ klicken, Registry ansehen, IDE neu starten | Zwei Werte mit Pfad der BPL und Beschreibung „Atlas Debugger“/„Atlas Search“; Hinweis „Atlas-Module wieder eingetragen · Die IDE lädt Debugger, Search beim nächsten Start.“; nach dem Neustart sind beide Module geladen und das Protokoll meldet `fehlend: -` (**Abnahme**) |
+| KPM4 | Wie KPM3, aber vor dem Neustart die IDE normal beenden und die Registry erneut ansehen | Die Werte stehen noch da. Fehlen sie, schreibt die IDE beim Beenden ihre eigene Liste zurück; bitte melden (das wäre die Ursache vom 05.11.) |
+| KPM5 | Ein Modul unter *Komponente › Packages installieren* abwählen (Häkchen weg), IDE neu starten | Protokoll `abgeschaltet: <Modul>`, kein Hinweis |
+| KPM6 | Ein Modul aus einem anderen Ordner eintragen (z. B. `Output\Win32\Release\Bpl`) | Protokoll `aus anderem Ordner: <Modul>`, kein Hinweis |
+| KPM7 | IDE A läuft; zweite IDE B im selben Profil starten, in B ein Modul über *Komponente › Packages installieren › Entfernen* entfernen | In `atlas.log` von A: `Known Packages geändert: entfernt <Modul>; neu -; in dieser IDE 11 Module angemeldet, andere bds.exe: 1` (A hat die Änderung nicht selbst gemacht) |
+| KPM8 | In einer IDE Base neu übersetzen, während Base und Module installiert sind (Projektgruppe Atlas, nur `Atlas.IDE.Base` bauen) | Protokoll zeigt, ob und wann Module aus der Liste fallen (`Known Packages geändert: entfernt …; in dieser IDE n Module angemeldet`); Ergebnis bitte melden (zweiter Verdacht für den 05.11.) |
+| KPM9 | IDE beenden, Protokoll ansehen | Zeile `Known Packages: … (beim Entladen)` mit dem Stand beim Beenden |
+| KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
+| KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
