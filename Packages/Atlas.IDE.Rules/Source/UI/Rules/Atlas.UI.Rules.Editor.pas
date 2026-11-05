@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Settings.Rules;
+﻿unit Atlas.UI.Rules.Editor;
 
 // Regel-Editor der Seite „Prüfregeln“ (#909): ersetzt die frühere Regeltabelle
 // des Projektdialogs und steht in Tools › Optionen › Atlas › Prüfregeln im
@@ -37,7 +37,7 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Vcl.Grids,
-  Atlas.Core.Settings.RuleTable;
+  Atlas.Core.Rules.Table;
 
 type
   /// <summary>Behälter ohne Rahmen und Beschriftung (Zeilen und Bereiche des Editors).</summary>
@@ -223,7 +223,8 @@ function AtlasRuleGroupCaption(const AGroup: string): string;
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Rules.Strings;
 
 const
   Gap = 6;
@@ -232,11 +233,11 @@ const
   MinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
   SeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
-  GroupTexts: array[0..13] of TAtlasTextId = (TAtlasTextId.RulesGroupFindBugs, TAtlasTextId.RulesGroupExceptions,
-    TAtlasTextId.RulesGroupThreads, TAtlasTextId.RulesGroupDatabase, TAtlasTextId.RulesGroupCompiler,
-    TAtlasTextId.RulesGroupRobustness, TAtlasTextId.RulesGroupPerformance, TAtlasTextId.RulesGroupSecurity,
-    TAtlasTextId.RulesGroupComponents, TAtlasTextId.RulesGroupForms, TAtlasTextId.RulesGroupArchitecture,
-    TAtlasTextId.RulesGroupStyle, TAtlasTextId.RulesGroupPackages, TAtlasTextId.RulesGroupInternal);
+  GroupTexts: array[0..13] of TAtlasRulesTextId = (TAtlasRulesTextId.RulesGroupFindBugs, TAtlasRulesTextId.RulesGroupExceptions,
+    TAtlasRulesTextId.RulesGroupThreads, TAtlasRulesTextId.RulesGroupDatabase, TAtlasRulesTextId.RulesGroupCompiler,
+    TAtlasRulesTextId.RulesGroupRobustness, TAtlasRulesTextId.RulesGroupPerformance, TAtlasRulesTextId.RulesGroupSecurity,
+    TAtlasRulesTextId.RulesGroupComponents, TAtlasRulesTextId.RulesGroupForms, TAtlasRulesTextId.RulesGroupArchitecture,
+    TAtlasRulesTextId.RulesGroupStyle, TAtlasRulesTextId.RulesGroupPackages, TAtlasRulesTextId.RulesGroupInternal);
 
 { TAtlasRulesBox }
 
@@ -255,7 +256,7 @@ begin
   begin
     if SameText(TAtlasRuleTable.GroupIds[Index], AGroup) then
     begin
-      Exit(TAtlasStrings.Text(GroupTexts[Index]));
+      Exit(TAtlasRulesStrings.Text(GroupTexts[Index]));
     end;
   end;
   Result := AGroup;
@@ -266,23 +267,23 @@ function SeverityCaption(const ASeverity: string): string;
 begin
   if SameText(ASeverity, 'error') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityError);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityError);
   end
   else if SameText(ASeverity, 'warning') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityWarning);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityWarning);
   end
   else if SameText(ASeverity, 'info') or SameText(ASeverity, 'information') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityInfo);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityInfo);
   end
   else if SameText(ASeverity, 'hint') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityHint);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityHint);
   end
   else if SameText(ASeverity, 'off') then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesSeverityOff);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverityOff);
   end
   else
   begin
@@ -300,11 +301,11 @@ begin
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, [SeverityCaption(ARow.DefaultSeverity)]);
+    Result := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesSeverityDefault, [SeverityCaption(ARow.DefaultSeverity)]);
   end;
   if ARow.GlobalSeverity <> '' then
   begin
-    Result := Result + ' ' + TAtlasStrings.Fmt(TAtlasTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
+    Result := Result + ' ' + TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGlobal, [SeverityCaption(ARow.GlobalSeverity)]);
   end;
 end;
 
@@ -364,15 +365,15 @@ begin
   Result := '';
   if not ALoaded then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesLoading);
   end
   else if not AHasCatalog then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesNoCatalog);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesNoCatalog);
   end
   else if AEmpty then
   begin
-    Result := TAtlasStrings.Text(TAtlasTextId.RulesEmpty);
+    Result := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesEmpty);
   end;
 end;
 
@@ -562,8 +563,8 @@ var
   mColumn: TListColumn;
   mIndex: Integer;
 const
-  cColumns: array[0..4] of TAtlasTextId = (TAtlasTextId.RulesColumnId, TAtlasTextId.RulesColumnName,
-    TAtlasTextId.RulesColumnGroup, TAtlasTextId.RulesColumnSeverity, TAtlasTextId.RulesColumnExclude);
+  cColumns: array[0..4] of TAtlasRulesTextId = (TAtlasRulesTextId.RulesColumnId, TAtlasRulesTextId.RulesColumnName,
+    TAtlasRulesTextId.RulesColumnGroup, TAtlasRulesTextId.RulesColumnSeverity, TAtlasRulesTextId.RulesColumnExclude);
   cWidths: array[0..4] of Integer = (190, 220, 120, 150, 140);
 begin
   inherited Create(AOwner);
@@ -573,7 +574,7 @@ begin
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTopBar;
   FSearch.Align := alClient;
-  FSearch.TextHint := TAtlasStrings.Text(TAtlasTextId.RulesSearchHint);
+  FSearch.TextHint := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSearchHint);
   FGroupChoice := TComboBox.Create(Self);
   FGroupChoice.Parent := FTopBar;
   FGroupChoice.Align := alRight;
@@ -588,7 +589,7 @@ begin
   FTypeLevel := TCheckBox.Create(Self);
   FTypeLevel.Height := 20;
   FTypeLevel.Visible := False;
-  FTypeLevel.Caption := TAtlasStrings.Text(TAtlasTextId.RulesTypeLevel);
+  FTypeLevel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesTypeLevel);
   FTypeLevel.AlignWithMargins := True;
   FTypeLevel.Margins.SetBounds(18, 0, 0, 0);
   Stack(Self, FTypeLevel);
@@ -605,7 +606,7 @@ begin
   for mIndex := 0 to High(cColumns) do
   begin
     mColumn := FList.Columns.Add;
-    mColumn.Caption := TAtlasStrings.Text(cColumns[mIndex]);
+    mColumn.Caption := TAtlasRulesStrings.Text(cColumns[mIndex]);
     mColumn.Width := cWidths[mIndex];
   end;
   Stack(Self, FList);
@@ -632,7 +633,7 @@ begin
   end
   else
   begin
-    FList.Columns[2].Caption := TAtlasStrings.Text(TAtlasTextId.RulesColumnGroup);
+    FList.Columns[2].Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesColumnGroup);
   end;
 end;
 
@@ -644,7 +645,7 @@ begin
   begin
     Exit;
   end;
-  FMaster.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesGroupMaster, [AtlasRuleGroupCaption(Group)]);
+  FMaster.Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesGroupMaster, [AtlasRuleGroupCaption(Group)]);
   FFilling := True;
   try
     FMaster.Checked := not TAtlasRuleTable.GroupOff(ARulesJson, Group);
@@ -670,7 +671,7 @@ begin
   end;
   FGroupChoice.Items.BeginUpdate;
   try
-    FGroupChoice.Items.Add(TAtlasStrings.Text(TAtlasTextId.RulesAllGroups));
+    FGroupChoice.Items.Add(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesAllGroups));
     for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
     begin
       FGroupChoice.Items.Add(AtlasRuleGroupCaption(TAtlasRuleTable.GroupIds[mIndex]));
@@ -691,7 +692,7 @@ begin
   FDetails := TAtlasRulesBox.Create(Self);
   FDetails.AutoSize := True;
   Stack(Self, FDetails);
-  FTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesNoSelection));
+  FTitle := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesNoSelection));
   FTitle.Font.Style := [fsBold];
   FMark := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
   FMark.Font.Color := $000080C0;
@@ -707,16 +708,16 @@ begin
   mCaption.Layout := tlCenter;
   mCaption.Width := 160;
   mCaption.AutoSize := False;
-  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.RulesSeverity);
+  mCaption.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverity);
   FSeverity := TComboBox.Create(Self);
   FSeverity.Parent := FSeverityRow;
   FSeverity.Align := alLeft;
   FSeverity.Width := 200;
   FSeverity.Style := csDropDownList;
-  FExcludeLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesExclude));
+  FExcludeLabel := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesExclude));
   FExclude := TEdit.Create(Self);
   Stack(FDetails, FExclude);
-  FOptionsTitle := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.RulesOptions));
+  FOptionsTitle := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesOptions));
   FOptionsTitle.Font.Style := [fsBold];
   FOptionsBox := TAtlasRulesBox.Create(Self);
   FOptionsBox.AutoSize := True;
@@ -744,7 +745,7 @@ begin
   begin
     if mValue = '' then
     begin
-      FSeverity.Items.Add(TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault, ['']));
+      FSeverity.Items.Add(TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesSeverityDefault, ['']));
     end
     else
     begin
@@ -764,7 +765,7 @@ end;
 
 procedure TAtlasRulesDetailsView.ShowRow(const ARow: TAtlasRuleRow; APresent: Boolean; const AOverriding: string);
 begin
-  FTitle.Caption := TAtlasStrings.Text(TAtlasTextId.RulesNoSelection);
+  FTitle.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesNoSelection);
   if APresent then
   begin
     FTitle.Caption := ARow.Id;
@@ -779,7 +780,7 @@ begin
   if AOverriding <> '' then
   begin
     FDescription.Caption := Trim(ARow.Description + sLineBreak + sLineBreak +
-      TAtlasStrings.Fmt(TAtlasTextId.RulesOverriddenBy, [AOverriding]));
+      TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesOverriddenBy, [AOverriding]));
   end;
   if FSeverity.Items.Count > 0 then
   begin
@@ -787,7 +788,7 @@ begin
   end;
   if APresent and (FSeverity.Items.Count > 0) then
   begin
-    FSeverity.Items[0] := TAtlasStrings.Fmt(TAtlasTextId.RulesSeverityDefault,
+    FSeverity.Items[0] := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesSeverityDefault,
       [SeverityCaption(ARow.DefaultSeverity)]);
     FSeverity.ItemIndex := SeverityIndex(ARow);
   end;
@@ -947,7 +948,7 @@ end;
 procedure TAtlasRulesEditor.ShowLoading;
 begin
   FLoaded := False;
-  ShowStatus(TAtlasStrings.Text(TAtlasTextId.RulesLoading));
+  ShowStatus(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesLoading));
   Restack;
 end;
 
@@ -1282,7 +1283,7 @@ begin
   // Ungültige Eingabe bleibt im Feld stehen, wird aber nicht übernommen.
   if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
-    InvalidLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
+    InvalidLabel.Caption := TAtlasRulesStrings.Fmt(TAtlasRulesTextId.RulesOptionInvalid, [Option.Name]);
     if not InvalidLabel.Visible then
     begin
       InvalidLabel.Visible := True;
