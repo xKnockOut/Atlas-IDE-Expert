@@ -9623,3 +9623,14 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Sprache der Serverbefunde ohne `language` (#1458, #446)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | `"language"` aus `%APPDATA%\Atlas\settings.json` entfernen, IDE auf Deutsch starten | In `atlas.log` die Zeile „Sprache der Oberfläche: de (…)“ mit Quelle (Ressourcen, Registry Locales, Windows oder Vorgabe) und „initialize mit locale de“; Befunde im Editor und im Fenster „Atlas-Prüfung“ deutsch (**Abnahme**) |
+| SL2 | Wie SL1, IDE mit BDSSetLang auf Englisch umstellen, neu starten | Zeile „Sprache der Oberfläche: en (…)“, „initialize mit locale en“; Atlas-Menü und Befunde englisch |
+| SL3 | Wie SL1, falls die Zeile „en“ zeigt, obwohl die IDE deutsch ist: Zeile und den Wert unter `HKCU\Software\Embarcadero\Locales` für bds.exe melden | Ursache der Fehlerkennung nachvollziehbar |
+| SL4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |
+| SL5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |
+| SL6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |

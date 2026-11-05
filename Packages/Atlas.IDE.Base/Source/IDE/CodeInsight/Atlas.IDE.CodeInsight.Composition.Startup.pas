@@ -6,7 +6,7 @@
 interface
 
 uses
-  Atlas.UI.Strings,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.IDE.Diagnostics.SafeMode;
@@ -27,14 +27,15 @@ procedure StartStartTimes;
 procedure FreeStartTimes;
 /// <summary>Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Ladezeit und Startanteile.</summary>
 function LoadedAt: Int64;
-/// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
-/// BDSSetLang), sonst Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
-function IdeLanguage: TAtlasLanguage;
+/// <summary>Sprache der IDE (#446) wie TAtlasIdeLanguage.Decide: geladene Ressourcen-DLLs der IDE, Eintrag für
+/// bds.exe unter Software\Embarcadero\Locales, Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
+function IdeLanguage: TAtlasIdeLanguage;
 
 implementation
 
 uses
   Winapi.Windows,
+  Winapi.PsAPI,
   System.SysUtils,
   System.Classes,
   System.Win.Registry,
@@ -128,27 +129,40 @@ begin
   Result := LoadedAtStamp;
 end;
 
-/// <summary>Sprachkennung für bds.exe aus HKCU\Software\Embarcadero\Locales; '' ohne Eintrag.</summary>
+/// <summary>Sprachkennung für bds.exe unter Software\Embarcadero\Locales; '' ohne Eintrag. Wie die RTL beim
+/// Laden der Ressourcen: zuerst HKCU, dann HKLM.</summary>
 function RegisteredLanguage: string;
+const
+  cRoots: array[0..1] of HKEY = (HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE);
 var
   mRegistry: TRegistry;
   mNames: TStringList;
   mName: string;
+  mRoot: HKEY;
 begin
   Result := '';
   mRegistry := TRegistry.Create(KEY_READ);
   mNames := TStringList.Create;
   try
-    mRegistry.RootKey := HKEY_CURRENT_USER;
-    if mRegistry.OpenKeyReadOnly('Software\Embarcadero\Locales') then
+    for mRoot in cRoots do
     begin
-      mRegistry.GetValueNames(mNames);
-      for mName in mNames do
+      mRegistry.RootKey := mRoot;
+      if mRegistry.OpenKeyReadOnly('Software\Embarcadero\Locales') then
       begin
-        if SameText(mName, ParamStr(0)) and (mRegistry.GetDataType(mName) = rdString) then
+        mNames.Clear;
+        mRegistry.GetValueNames(mNames);
+        for mName in mNames do
         begin
-          Result := mRegistry.ReadString(mName);
+          if SameText(mName, ParamStr(0)) and (mRegistry.GetDataType(mName) = rdString) then
+          begin
+            Result := mRegistry.ReadString(mName);
+          end;
         end;
+        mRegistry.CloseKey;
+      end;
+      if Result <> '' then
+      begin
+        Exit;
       end;
     end;
   finally
@@ -157,23 +171,50 @@ begin
   end;
 end;
 
-function IdeLanguage: TAtlasLanguage;
+/// <summary>Datei einer Ressourcen-DLL. Die RTL lädt sie als Datendatei (LOAD_LIBRARY_AS_DATAFILE); für solche
+/// Handles liefert GetModuleFileName nichts, der Name der eingeblendeten Datei steht dann bei GetMappedFileName.
+/// </summary>
+function ResourceFileName(AInstance: HINST): string;
 var
+  mBuffer: array[0..MAX_PATH] of Char;
+  mLength: DWORD;
+begin
+  Result := GetModuleName(AInstance);
+  if Result = '' then
+  begin
+    mLength := GetMappedFileName(GetCurrentProcess, Pointer(AInstance and not HINST(3)), @mBuffer[0], MAX_PATH);
+    SetString(Result, mBuffer, mLength);
+  end;
+end;
+
+/// <summary>Endungen der Ressourcen-DLLs, die die RTL für die geladenen Module der IDE gewählt hat
+/// (coreide370.de → „de“): Das ist die Sprache, die die IDE tatsächlich zeigt. Leer, wenn kein Modul eine
+/// eigene Ressourcen-DLL hat (englische IDE).</summary>
+function ResourceCodes: TArray<string>;
+var
+  mModule: PLibModule;
   mCode: string;
 begin
-  mCode := RegisteredLanguage;
-  if (mCode = '') and ((GetUserDefaultUILanguage and $3FF) = LANG_GERMAN) then
+  Result := nil;
+  mModule := LibModuleList;
+  while mModule <> nil do
   begin
-    mCode := 'DE';
+    if (mModule.ResInstance <> 0) and (mModule.ResInstance <> mModule.Instance) then
+    begin
+      mCode := Copy(ExtractFileExt(ResourceFileName(mModule.ResInstance)), 2, MaxInt);
+      if mCode <> '' then
+      begin
+        Result := Result + [mCode];
+      end;
+    end;
+    mModule := mModule.Next;
   end;
-  if SameText(mCode, 'DE') then
-  begin
-    Result := TAtlasLanguage.German;
-  end
-  else
-  begin
-    Result := TAtlasLanguage.English;
-  end;
+end;
+
+function IdeLanguage: TAtlasIdeLanguage;
+begin
+  Result := TAtlasIdeLanguage.Decide(ResourceCodes, RegisteredLanguage,
+    (GetUserDefaultUILanguage and $3FF) = LANG_GERMAN);
 end;
 
 end.
