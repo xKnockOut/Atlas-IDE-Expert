@@ -4,10 +4,9 @@
 //   - Weitere Einstellungen des Servers für alle Projekte (%APPDATA%\Atlas\settings.json,
 //     ohne die Werte der übrigen Reiter) und die des aktiven Projekts (atlas.json)
 //     im Dialog bearbeiten; jede Einstellung hat genau einen Ort (#227).
-//   - Baseline (#97): Anzahl der Treffer in atlas-baseline.json, „Baseline neu
-//     erzeugen“ und „Baseline löschen“.
-//   - Unterdrückungen „lsp-ignore“ je Regel (#147, nur Anzeige).
 //   - „Index-Cache löschen“ (#184).
+// Baseline (#97) und Unterdrückungen je Regel (#147) stehen seit #1755 auf der
+// Seite Prüfregeln im Abschnitt des Moduls Prüfregeln.
 // Reine VCL; die Seite kennt weder Server noch Dateien. Die IDE-Schicht liefert
 // Texte und führt die Aktionen aus (AtlasServer.exe als Prozess bzw. Dialog).
 
@@ -30,10 +29,6 @@ type
   TAtlasServerPageHooks = record
     EditGlobal: TProc;
     EditProject: TProc;
-    BaselineInfo: TFunc<string>;
-    BaselineUpdate: TFunc<string>;
-    BaselineDelete: TFunc<string>;
-    Suppressions: TFunc<TArray<string>>;
     ClearCache: TFunc<string>;
     Confirm: TFunc<string, Boolean>;
   end;
@@ -43,11 +38,6 @@ type
     FNextTop: Integer;
     FEditGlobal: TButton;
     FEditProject: TButton;
-    FBaselineInfo: TLabel;
-    FBaselineUpdate: TButton;
-    FBaselineDelete: TButton;
-    FSuppressions: TListBox;
-    FSuppressionsRefresh: TButton;
     FCacheInfo: TLabel;
     FCacheClear: TButton;
     FHooks: TAtlasServerPageHooks;
@@ -57,31 +47,18 @@ type
     function Confirmed(const AQuestion: string): Boolean;
     procedure EditGlobalClick(Sender: TObject);
     procedure EditProjectClick(Sender: TObject);
-    procedure BaselineUpdateClick(Sender: TObject);
-    procedure BaselineDeleteClick(Sender: TObject);
-    procedure SuppressionsClick(Sender: TObject);
     procedure CacheClearClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Knöpfe nach den gesetzten Ereignissen freigeben, Anzahl der Baseline neu lesen.</summary>
+    /// <summary>Knöpfe nach den gesetzten Ereignissen freigeben.</summary>
     procedure Reload;
     property EditGlobal: TButton read FEditGlobal;
     property EditProject: TButton read FEditProject;
-    property BaselineInfo: TLabel read FBaselineInfo;
-    property BaselineUpdate: TButton read FBaselineUpdate;
-    property BaselineDelete: TButton read FBaselineDelete;
-    property Suppressions: TListBox read FSuppressions;
-    property SuppressionsRefresh: TButton read FSuppressionsRefresh;
     property CacheInfo: TLabel read FCacheInfo;
     property CacheClear: TButton read FCacheClear;
     property OnEditGlobal: TProc read FHooks.EditGlobal write FHooks.EditGlobal;
     property OnEditProject: TProc read FHooks.EditProject write FHooks.EditProject;
-    /// <summary>Text zur Baseline des aktiven Projekts.</summary>
-    property OnBaselineInfo: TFunc<string> read FHooks.BaselineInfo write FHooks.BaselineInfo;
-    /// <summary>Aktionen; Ergebnis als Meldung unter dem Abschnitt.</summary>
-    property OnBaselineUpdate: TFunc<string> read FHooks.BaselineUpdate write FHooks.BaselineUpdate;
-    property OnBaselineDelete: TFunc<string> read FHooks.BaselineDelete write FHooks.BaselineDelete;
-    property OnSuppressions: TFunc<TArray<string>> read FHooks.Suppressions write FHooks.Suppressions;
+    /// <summary>Index-Cache leeren; Ergebnis als Meldung unter dem Abschnitt.</summary>
     property OnClearCache: TFunc<string> read FHooks.ClearCache write FHooks.ClearCache;
     /// <summary>Rückfrage vor dem Löschen; Standard: Dialog mit Ja/Nein.</summary>
     property Confirm: TFunc<string, Boolean> read FHooks.Confirm write FHooks.Confirm;
@@ -106,28 +83,6 @@ begin
   Panel := AddPanel(32);
   FEditGlobal := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageGlobalEdit), 0, EditGlobalClick);
   FEditProject := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageProjectEdit), 230, EditProjectClick);
-
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineTitle));
-  Panel := AddPanel(20);
-  FBaselineInfo := TLabel.Create(Self);
-  FBaselineInfo.Parent := Panel;
-  FBaselineInfo.Left := 0;
-  FBaselineInfo.Top := 2;
-  FBaselineInfo.Font.Color := clGrayText;
-  Panel := AddPanel(32);
-  FBaselineUpdate := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
-    BaselineUpdateClick);
-  FBaselineDelete := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 230,
-    BaselineDeleteClick);
-
-  AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageSuppressionsTitle));
-  Panel := AddPanel(110);
-  FSuppressions := TListBox.Create(Self);
-  FSuppressions.Parent := Panel;
-  FSuppressions.Align := alClient;
-  Panel := AddPanel(32);
-  FSuppressionsRefresh := AddButton(Panel, TAtlasStrings.Text(TAtlasTextId.ServerPageSuppressionsRefresh), 0,
-    SuppressionsClick);
 
   AddTitle(TAtlasStrings.Text(TAtlasTextId.ServerPageCacheTitle));
   Panel := AddPanel(32);
@@ -184,18 +139,7 @@ procedure TAtlasServerPage.Reload;
 begin
   FEditGlobal.Enabled := Assigned(FHooks.EditGlobal);
   FEditProject.Enabled := Assigned(FHooks.EditProject);
-  FBaselineUpdate.Enabled := Assigned(FHooks.BaselineUpdate);
-  FBaselineDelete.Enabled := Assigned(FHooks.BaselineDelete);
-  FSuppressionsRefresh.Enabled := Assigned(FHooks.Suppressions);
   FCacheClear.Enabled := Assigned(FHooks.ClearCache);
-  if Assigned(FHooks.BaselineInfo) then
-  begin
-    FBaselineInfo.Caption := FHooks.BaselineInfo();
-  end
-  else
-  begin
-    FBaselineInfo.Caption := '';
-  end;
 end;
 
 function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
@@ -223,43 +167,6 @@ begin
   if Assigned(FHooks.EditProject) then
   begin
     FHooks.EditProject();
-  end;
-end;
-
-procedure TAtlasServerPage.BaselineUpdateClick(Sender: TObject);
-begin
-  if Assigned(FHooks.BaselineUpdate) then
-  begin
-    FBaselineInfo.Caption := FHooks.BaselineUpdate();
-  end;
-end;
-
-procedure TAtlasServerPage.BaselineDeleteClick(Sender: TObject);
-begin
-  if Assigned(FHooks.BaselineDelete) and
-    Confirmed(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm)) then
-  begin
-    FBaselineInfo.Caption := FHooks.BaselineDelete();
-  end;
-end;
-
-procedure TAtlasServerPage.SuppressionsClick(Sender: TObject);
-var
-  Line: string;
-begin
-  if not Assigned(FHooks.Suppressions) then
-  begin
-    Exit;
-  end;
-  FSuppressions.Items.BeginUpdate;
-  try
-    FSuppressions.Items.Clear;
-    for Line in FHooks.Suppressions() do
-    begin
-      FSuppressions.Items.Add(Line);
-    end;
-  finally
-    FSuppressions.Items.EndUpdate;
   end;
 end;
 

@@ -1,20 +1,19 @@
 ﻿unit Atlas.UI.Settings.Page.Rules;
 
-// Bereich „Prüfregeln“ (#909): Wege zu den Regeln, Prüffenster, Compiler vorab (#1024) und Knoten „Profile und
-// Baseline“.
+// Bereich „Prüfregeln“ (#909): Fenster „Atlas-Prüfung“, laufende Prüfung und Compiler vorab (#1024). Wege zu den
+// Regeln, Profile, Baseline und Unterdrückungen trägt der Abschnitt des Moduls Prüfregeln bei (#1755).
 
 interface
 
 uses
-  System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
-  /// <summary>Bereich „Prüfregeln“ (#909): Wege zu den Regeln, Prüffenster, Compiler vorab (#1024) und Knoten
-  /// „Profile und Baseline“.</summary>
+  /// <summary>Bereich „Prüfregeln“ (#909): Prüffenster und Compiler vorab (#1024); den Rest liefert das Modul
+  /// Prüfregeln als Abschnitt (#1755).</summary>
   TAtlasSettingsRulesPart = class(TAtlasSettingsPagePart)
   private
     FProblemsWindowScope: TAtlasChoiceBox;
@@ -23,27 +22,7 @@ type
     FProblemsCompilerMerge: TAtlasChoiceBox;
     FProblemsUpdate: TAtlasChoiceBox;
     FProblemsLiveDelay: TEdit;
-    /// <summary>Bereich Prüfregeln (#909): Index in FSheets. Die Regeln selbst stehen in den Dialogen der
-    /// Einstellungsdateien (Projekt und global); hier Prüffenster, Compiler vorab, Profile und Baseline.</summary>
-    FRulesArea: Integer;
-    FOnRulesProject: TProc;
-    FOnRulesGlobal: TProc;
-    FOnBaselineInfo: TFunc<string>;
-    FOnBaselineUpdate: TFunc<string>;
-    FOnBaselineDelete: TFunc<string>;
-    FBaselineInfo: TLabel;
-    FRulesProject: TButton;
-    FRulesGlobal: TButton;
-    FBaselineUpdateButton: TButton;
-    FBaselineDelete: TButton;
-    procedure AddRulesLinks;
-    procedure SetOnBaselineInfo(const AValue: TFunc<string>);
-    /// <summary>Wege zu den Regeln: Sender ist der Knopf des Projekt- oder des globalen Dialogs.</summary>
-    procedure RulesLinkClick(Sender: TObject);
-    /// <summary>Baseline neu erzeugen oder (nach Rückfrage) löschen, je nach Knopf in Sender.</summary>
-    procedure BaselineClick(Sender: TObject);
   public
-    procedure AddNodePages; override;
     procedure Build;
     procedure Load(const ASettings: TAtlasPluginSettings); override;
     procedure Save(var ASettings: TAtlasPluginSettings); override;
@@ -54,31 +33,13 @@ type
     property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
     property ProblemsUpdateChoice: TAtlasChoiceBox read FProblemsUpdate;
     property ProblemsLiveDelayEdit: TEdit read FProblemsLiveDelay;
-    property RulesProjectButton: TButton read FRulesProject;
-    property RulesGlobalButton: TButton read FRulesGlobal;
-    /// <summary>„Projekt-Prüfregeln bearbeiten …“: Projektdialog öffnen.</summary>
-    property OnRulesProject: TProc read FOnRulesProject write FOnRulesProject;
-    /// <summary>„Globale Prüfregeln bearbeiten …“: Dialog der globalen Einstellungen öffnen.</summary>
-    property OnRulesGlobal: TProc read FOnRulesGlobal write FOnRulesGlobal;
-    /// <summary>Baseline des aktiven Projekts: Text, neu erzeugen, löschen (Ergebnis als Text).</summary>
-    property OnBaselineInfo: TFunc<string> read FOnBaselineInfo write SetOnBaselineInfo;
-    property OnBaselineUpdate: TFunc<string> read FOnBaselineUpdate write FOnBaselineUpdate;
-    property OnBaselineDelete: TFunc<string> read FOnBaselineDelete write FOnBaselineDelete;
-    property BaselineInfoLabel: TLabel read FBaselineInfo;
   end;
 
 implementation
 
 uses
-  System.Classes,
-  System.UITypes,
   System.Math,
   System.StrUtils,
-  Vcl.Controls,
-  Vcl.Graphics,
-  Vcl.Forms,
-  Vcl.Dialogs,
-  Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings;
 
 const
@@ -97,12 +58,9 @@ const
 
 procedure TAtlasSettingsRulesPart.Build;
 begin
-  // Prüfregeln (#909): oben der Weg zu den Regeln (sie stehen in den Dialogen der Einstellungsdateien), darunter
-  // das Fenster „Atlas-Prüfung“ und die laufende Prüfung (Unterpunkt „Prüffenster“). „Profile und Baseline“
-  // entsteht in AddRulePages.
+  // Prüfregeln (#909): das Fenster „Atlas-Prüfung“ und die laufende Prüfung. Den Weg zu den Regeln (sie stehen in
+  // den Dialogen der Einstellungsdateien), Profile, Baseline und Unterdrückungen trägt das Modul bei (#1755).
   AddSheet(TAtlasTextId.SettingsTabRules);
-  FRulesArea := High(FPage.Sheets);
-  AddRulesLinks;
   BindCheck('ProblemsWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow)));
   FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
@@ -141,128 +99,6 @@ begin
   FPage.Marks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
   FPage.Marks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
   FPage.Marks.Bind(FProblemsUpdate, ['ProblemsUpdate']);
-end;
-
-procedure TAtlasSettingsRulesPart.AddRulesLinks;
-var
-  Row: TWinControl;
-
-  function AddLink(const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
-  begin
-    Result := TButton.Create(FPage);
-    Result.Parent := Row;
-    Result.Caption := ACaption;
-    Result.SetBounds(ALeft, 1, 210, 25);
-    Result.OnClick := AClick;
-  end;
-
-begin
-  // Die Regeln stehen in atlas.json des Projekts und in settings.json („Weitere globale Einstellungen“), mit
-  // einem Knoten je Gruppe; hier nur der Weg dorthin.
-  AddWrappedLabel(34, TAtlasStrings.Text(TAtlasTextId.RulesGlobalNote));
-  Row := AddPanel(28);
-  FRulesProject := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesProjectButton), 0, RulesLinkClick);
-  FRulesGlobal := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesGlobalButton), 216, RulesLinkClick);
-end;
-
-procedure TAtlasSettingsRulesPart.AddNodePages;
-var
-  Box: TScrollBox;
-  Row: TWinControl;
-  mText: TLabel;
-
-  function AddRow(ATop: Integer): TWinControl;
-  begin
-    Result := TAtlasSettingsRow.Create(FPage);
-    Result.Parent := Box;
-    Result.Align := alTop;
-    Result.AlignWithMargins := True;
-    Result.Height := 28;
-    Result.Top := ATop;
-  end;
-
-  function AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer;
-    AClick: TNotifyEvent): TButton;
-  begin
-    Result := TButton.Create(FPage);
-    Result.Parent := AParent;
-    Result.Caption := ACaption;
-    Result.SetBounds(ALeft, 1, 210, 25);
-    Result.OnClick := AClick;
-  end;
-
-begin
-  // „Profile und Baseline“: Profile gelten je Projekt (atlas.json), die Baseline je Projekt.
-  Box := FPage.NodeBox(FRulesArea, 'rules.profiles', TAtlasStrings.Text(TAtlasTextId.RulesProfilesNode));
-  mText := TLabel.Create(FPage);
-  mText.Parent := Box;
-  mText.Align := alTop;
-  mText.AlignWithMargins := True;
-  mText.WordWrap := True;
-  mText.ShowAccelChar := False;
-  mText.Caption := TAtlasStrings.Text(TAtlasTextId.RulesProfilesText);
-  mText.Top := 1000;
-  mText := TLabel.Create(FPage);
-  mText.Parent := Box;
-  mText.Align := alTop;
-  mText.AlignWithMargins := True;
-  mText.ShowAccelChar := False;
-  mText.Font.Style := [fsBold];
-  mText.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineTitle);
-  mText.Top := 3000;
-  FBaselineInfo := TLabel.Create(FPage);
-  FBaselineInfo.Parent := Box;
-  FBaselineInfo.Align := alTop;
-  FBaselineInfo.AlignWithMargins := True;
-  FBaselineInfo.WordWrap := True;
-  FBaselineInfo.ShowAccelChar := False;
-  FBaselineInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineNone);
-  FBaselineInfo.Top := 4000;
-  Row := AddRow(5000);
-  FBaselineUpdateButton := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
-    BaselineClick);
-  FBaselineDelete := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 216,
-    BaselineClick);
-end;
-
-procedure TAtlasSettingsRulesPart.SetOnBaselineInfo(const AValue: TFunc<string>);
-begin
-  FOnBaselineInfo := AValue;
-  if Assigned(FOnBaselineInfo) and (FBaselineInfo <> nil) then
-  begin
-    FBaselineInfo.Caption := FOnBaselineInfo();
-  end;
-end;
-
-procedure TAtlasSettingsRulesPart.RulesLinkClick(Sender: TObject);
-var
-  mOpen: TProc;
-begin
-  mOpen := FOnRulesGlobal;
-  if Sender = FRulesProject then
-  begin
-    mOpen := FOnRulesProject;
-  end;
-  if Assigned(mOpen) then
-  begin
-    mOpen();
-  end;
-end;
-
-procedure TAtlasSettingsRulesPart.BaselineClick(Sender: TObject);
-begin
-  if Sender = FBaselineUpdateButton then
-  begin
-    if Assigned(FOnBaselineUpdate) then
-    begin
-      FBaselineInfo.Caption := FOnBaselineUpdate();
-    end;
-  end
-  else if Assigned(FOnBaselineDelete) and (MessageDlg(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
-    mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
-  begin
-    FBaselineInfo.Caption := FOnBaselineDelete();
-  end;
 end;
 
 procedure TAtlasSettingsRulesPart.Load(const ASettings: TAtlasPluginSettings);

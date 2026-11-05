@@ -87,7 +87,26 @@ uses
   Atlas.Core.Build.Target,
   Atlas.IDE.Build.Target,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.ProjectDialog;
+  Atlas.UI.Settings.ProjectDialog,
+  Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Contributions;
+
+/// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
+/// </summary>
+function DialogClass: TAtlasProjectSettingsDialogClass;
+var
+  mItem: IInterface;
+  mProvider: IAtlasSettingsDialogProvider;
+begin
+  Result := TAtlasProjectSettingsDialog;
+  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasSettingsDialogProvider) do
+  begin
+    if Supports(mItem, IAtlasSettingsDialogProvider, mProvider) then
+    begin
+      Exit(mProvider.DialogClass);
+    end;
+  end;
+end;
 
 function RunCommand(const ACommand, AArgumentsJson: string): TJSONValue;
 begin
@@ -476,7 +495,7 @@ function TAtlasSettingsFileEdit.ShowDialog: Boolean;
 var
   mDialog: TAtlasProjectSettingsDialog;
 begin
-  mDialog := TAtlasProjectSettingsDialog.CreateDialog(nil, FModel, FFileName);
+  mDialog := DialogClass.CreateDialog(nil, FModel, FFileName);
   try
     Prepare(mDialog);
     mDialog.OnChoices :=
