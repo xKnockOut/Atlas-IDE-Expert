@@ -9377,7 +9377,7 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 
 ## Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
 
-Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen. Für AA22 bis AA26 ohne eigene große Unit: `node Tools/Benchmark/big-unit.mjs BigUnit.pas` erzeugt eine Unit mit etwa 26.000 Zeilen und verschachtelten Routinen (`--routines N` für mehr oder weniger), die in ein Projekt aufnehmen und öffnen.
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen. Für AA22 bis AA26 ohne eigene große Unit: `node Tools/Benchmark/big-unit.mjs BigUnit.pas` erzeugt eine Unit mit etwa 27.600 Zeilen (600 Methoden mit je drei verschachtelten lokalen Routinen); `--lines L` für etwa L Zeilen, `--routines N` für genau N Methoden, `--depth D` für die Verschachtelungstiefe (0 = keine). Die Unit in ein Projekt aufnehmen und öffnen.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
