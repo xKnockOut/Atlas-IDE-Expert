@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Adapters;
 
 // Adapters, Providers und Compositions der Core-Features für die Kompositionswurzel (A-09): Serverprozess,
-// Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Prozessläufer der Versionsverwaltung, Ziel und
-// Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese Unit erzeugt sie; die Features bekommen sie über
+// Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Code-Aktionen für den Klick auf eine Marke,
+// Prozessläufer der Versionsverwaltung, Ziel und Sicherung des Änderungsprotokolls und die Update-Quelle. Nur diese Unit erzeugt sie; die Features bekommen sie über
 // Schnittstellen und Fabriken.
 
 interface
@@ -12,8 +12,8 @@ uses
   Atlas.IDE.CodeInsight.Manager.State,
   Atlas.IDE.Vcs.Service;
 
-/// <summary>Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und Parameter-Hint aus dem Kern.
-/// </summary>
+/// <summary>Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und Parameter-Hint aus dem Kern,
+/// Code-Aktionen für den Klick auf die Marke „braucht kein Self“.</summary>
 function CodeInsightAdapters: TAtlasCodeInsightAdapters;
 /// <summary>Versionsverwaltung: Prozessläufer und Auswahl des Kerns.</summary>
 function VcsBackend: TAtlasIdeVcsBackend;
@@ -47,6 +47,7 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.Adapters.ProcessRunner,
   Atlas.IDE.Completion.Editor,
+  Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Undo.Target;
 
@@ -112,6 +113,12 @@ begin
     function(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc): TAtlasCompletionSources
     begin
       Result := CompletionSources(ASession, ALog);
+    end;
+  // Klick auf die Marke „braucht kein Self“ (#686): dieselbe Auswahl wie Strg+.
+  Result.OpenCodeActions :=
+    procedure
+    begin
+      TAtlasIdeEditorCommands.CodeActions;
     end;
 end;
 

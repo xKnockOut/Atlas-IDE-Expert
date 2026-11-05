@@ -110,8 +110,10 @@ type
   end;
 
   TMethodWithoutSelf = class
+  public const
+    /// <summary>Text der Marke für Clients; das Plugin beschriftet sie selbst in der Sprache der IDE.</summary>
+    MarkerText = 'Self unused';
   public
-    class function MarkerText: string; static;
     class function ClassMethodTitle: string; static;
     class function ClassMethodCallsTitle: string; static;
     class function RoutineTitle: string; static;
@@ -170,7 +172,7 @@ type
     OtherUnitsCallItBut, FirstUseNotInA, TheHelperIsInThe, IsAlreadyVisibleFor, EndOfTheHelperNot, EndOfTheHelperIs,
     AfterTheChangeNoLonger, BecomesAFreeRoutine, MovesToRecordHelperFor, BecomesAClassMethod, ChangedCalls,
     MethodWithoutBody, MethodOfAnInterface, UsedAsAMethodPointer, InheritedCall, CallWithoutArguments, NestedCalls,
-    Line, Line2, UsesInherited, UsesWith, UsesSelf, UsesText, UsesStrict, WithoutSelf, ConvertToClassMethod,
+    Line, Line2, UsesInherited, UsesWith, UsesSelf, UsesText, UsesStrict, ConvertToClassMethod,
     ConvertToClassMethodCalls, ConvertToStandaloneRoutine, MoveToRecordHelperFor);
 
 const
@@ -236,18 +238,12 @@ const
     (De: 'benutzt Self (%s)'; En: 'uses Self (%s)'),
     (De: 'benutzt %s (%s)'; En: 'uses %s (%s)'),
     (De: 'benutzt %s (strict)'; En: 'uses %s (strict)'),
-    (De: 'ohne Self'; En: 'without Self'),
     (De: 'In class-Methode umwandeln'; En: 'Convert to class method'),
     (De: 'In class-Methode umwandeln, Aufrufe über %s'; En: 'Convert to class method, calls via %s'),
     (De: 'In freie Routine umwandeln'; En: 'Convert to standalone routine'),
     (De: 'In Record-Helper für %s verschieben'; En: 'Move to record helper for %s'));
 
 {$SCOPEDENUMS OFF}
-
-class function TMethodWithoutSelf.MarkerText: string;
-begin
-  Result := cTexts[TEditingMethodWithoutSelfText.WithoutSelf].Text;
-end;
 
 class function TMethodWithoutSelf.ClassMethodTitle: string;
 begin

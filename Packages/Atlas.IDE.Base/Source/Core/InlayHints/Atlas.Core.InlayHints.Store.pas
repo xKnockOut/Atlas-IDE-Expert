@@ -22,8 +22,9 @@
 // Oberfläche in der Sprache der IDE („definiert COMPLIB_VCL“).
 // Steuerzeichen (#862): hinter ^C im Wert einer Konstanten der Code „#3“ (data.controlChar), mit eigener
 // Einstellung (InlayCharHints).
-// Methoden ohne Self (#686): am Ende des Kopfs die Marke „ohne Self“ (data.methodWithoutSelf); ob sie kommt,
-// entscheidet der Server (refactoring.methodKindMarker), die Beschriftung baut die Oberfläche.
+// Methoden ohne Self (#686): am Ende des Kopfs die Marke „braucht kein Self“ (data.methodWithoutSelf); ob sie
+// kommt, entscheidet der Server (refactoring.methodKindMarker), die Beschriftung baut die Oberfläche. Die Stelle
+// der Marke ist das Ziel des Klicks, der dort die Code-Aktionen öffnet.
 
 interface
 
@@ -124,8 +125,9 @@ type
     function DefinesOnLine(const AFileName: string; ALine: Integer): TArray<string>;
     /// <summary>Codes der Steuerzeichen in der Zeile („#3“, #862) in Reihenfolge.</summary>
     function CharsOnLine(const AFileName: string; ALine: Integer): TArray<string>;
-    /// <summary>Steht in der Zeile die Marke einer Methode ohne Self (#686)?</summary>
-    function MethodOnLine(const AFileName: string; ALine: Integer): Boolean;
+    /// <summary>Steht in der Zeile die Marke einer Methode ohne Self (#686)? ACharacter: ihre Stelle (Ende des
+    /// Kopfs, 0-basiert), für den Klick auf die Marke.</summary>
+    function MethodOnLine(const AFileName: string; ALine: Integer; out ACharacter: Integer): Boolean;
     /// <summary>„: Typ“, lange Typen gekürzt.</summary>
     class function TypeLabelOf(const ATypeName: string): string; static;
     /// <summary>Blockende-Beschriftung der Zeile: AText ist der Text der Marke ohne "//" (Anker), ALabel die
@@ -468,12 +470,26 @@ begin
   end;
 end;
 
-function TAtlasInlayHintStore.MethodOnLine(const AFileName: string; ALine: Integer): Boolean;
+function TAtlasInlayHintStore.MethodOnLine(const AFileName: string; ALine: Integer; out ACharacter: Integer): Boolean;
 var
   Entry: TEntry;
+  Hint: TAtlasInlayHint;
 begin
+  Result := False;
+  ACharacter := 0;
   Entry := Find(AFileName);
-  Result := (Entry <> nil) and (Length(NamesOn(Entry.Methods, ALine)) > 0);
+  if Entry = nil then
+  begin
+    Exit;
+  end;
+  for Hint in Entry.Methods do
+  begin
+    if Hint.Line = ALine then
+    begin
+      ACharacter := Hint.Character;
+      Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasInlayHintStore.OnLine(const AFileName: string; ALine: Integer): TArray<string>;

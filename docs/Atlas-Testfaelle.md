@@ -3098,8 +3098,8 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „ohne Self“ (englische IDE: „no Self“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
-| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ohne Self“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
+| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „braucht kein Self“ (englische IDE: „Self unused“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
+| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ‚braucht kein Self‘“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
 | MOS3 | Cursor auf den Kopf von `Doppelt`, Alt+Enter | Aktionen „In class-Methode umwandeln“, „In class-Methode umwandeln, Aufrufe über TRechner“, „In freie Routine umwandeln“; ohne Parameter einfachen Typs kein Helper |
 | MOS4 | „In class-Methode umwandeln“, Vorschau prüfen, übernehmen, übersetzen | Deklaration `class function Doppelt(A: Integer): Integer; static;`, Implementierung `class function TRechner.Doppelt…`; Aufrufe über Instanzen unverändert; Projekt übersetzt |
 | MOS5 | `refactoring.methodKindStatic` = false, MOS4 wiederholen; dann eine Methode, die eine class-Methode der Klasse aufruft | Ohne `static`; im zweiten Fall auch mit Schalter an kein `static`, die Vorschau warnt |
@@ -3110,6 +3110,8 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | MOS10 | Methode, die als Ereignis in der .dfm steht, virtuelle Methode, Überladung, Methode, die als `@TObj.M` oder Methodenzeiger übergeben wird | Keine Marke, keine Aktion; über atlas.server.methodKind ein Fehler mit Grund |
 | MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
 | MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
+| MOS13 | Cursor irgendwo anders, Linksklick auf die Marke „braucht kein Self“ hinter `Doppelt` | Cursor steht am Ende des Kopfs, die Auswahl der Code-Aktionen öffnet sich wie mit Strg+. (Umwandlungen wie MOS3); Klick mit Strg/Umschalt/Alt tut nichts Besonderes |
+| MOS14 | Marke sichtbar, dann Einstellung „Marke ‚braucht kein Self‘“ aus, ohne zu scrollen an dieselbe Stelle klicken | Nur der normale Klick des Editors, keine Aktionsauswahl; Klick auf eine Blockende-Beschriftung springt weiter zum Blockanfang |
 
 ## Aufzählung mit Namenstabelle (#667)
 
