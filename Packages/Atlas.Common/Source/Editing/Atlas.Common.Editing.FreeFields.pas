@@ -14,8 +14,9 @@
 //     häufiger VCL-Komponenten; Typen mit unbekannten Vorfahren mit Self,
 //     AOwner, Owner, Application oder einem Komponentenfeld der Klasse als
 //     erstem Argument) und Objekte, die die Klasse einem
-//     Interface-Feld zuweist (FLog := FLogImpl): die Referenzzählung gibt sie
-//     frei (#918). TObjectList und TObjectDictionary sind normale Felder.
+//     Interface-Feld zuweist (FLog := FLogImpl) oder einem Interface-Feld eines
+//     Record-Felds (FSystem.Registry := FRegistry, #1519): die Referenzzählung
+//     gibt sie frei (#918). TObjectList und TObjectDictionary sind normale Felder.
 //   - Unklar (Meldung ohne Aktion): Das Feld wird zurückgegeben (Result :=
 //     FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an
 //     dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben,
@@ -332,6 +333,12 @@ type
     Field: Integer;
   end;
 
+  /// <summary>Feld der Klasse mit Record-Typ (FSystem: TUpdateSystem).</summary>
+  TRecordField = record
+    Name: string;
+    TypeName: string;
+  end;
+
   TClassAnalyzer = class
   private
     FTree: TSyntaxTree;
@@ -341,6 +348,7 @@ type
     FClassName: string;
     FFields: TArray<TOwnedField>;
     FInterfaceFields: TArray<string>;
+    FRecordFields: TArray<TRecordField>;
     FPrivate: TArray<string>;
     FMethods: TArray<TSyntaxNode>;
     FVisited: TArray<string>;
@@ -353,7 +361,8 @@ type
     function FreedRef(ANode: TSyntaxNode): Integer;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
-    /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ.</summary>
+    /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ, oder FRecord.Feld mit einem Interface-Typ
+    /// in einem Record-Feld (FSystem.Registry: IUpdateRegistry).</summary>
     function IsInterfaceField(ANode: TSyntaxNode): Boolean;
     function MethodBody(const AName: string): TSyntaxNode;
     function CalledPrivate(AStatement: TSyntaxNode): string;
@@ -513,9 +522,23 @@ end;
 function TClassAnalyzer.IsInterfaceField(ANode: TSyntaxNode): Boolean;
 var
   mName: string;
+  mRecord: TRecordField;
 begin
   mName := SelfMemberName(ANode);
   Result := (mName <> '') and MatchText(mName, FInterfaceFields);
+  if Result or (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  // Die Referenzzählung des Record-Felds gibt das Objekt frei wie bei einem Interface-Feld (#1519).
+  mName := SelfMemberName(ANode[0]);
+  for mRecord in FRecordFields do
+  begin
+    if (mName <> '') and SameText(mRecord.Name, mName) then
+    begin
+      Result := FTypes.TypeGuess(FTypes.MemberType(mRecord.TypeName, ANode.Name)) = tgInterface;
+    end;
+  end;
 end;
 
 function TClassAnalyzer.MethodBody(const AName: string): TSyntaxNode;
@@ -889,8 +912,9 @@ end;
 procedure TClassAnalyzer.ReadField(AChild: TSyntaxNode);
 var
   mTypeRef: TSyntaxNode;
-  mTypeName: string;
+  mTypeName, mName: string;
   mGuess: TTypeGuess;
+  mRecord: TRecordField;
 begin
   mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
   if mTypeRef = nil then
@@ -902,6 +926,15 @@ begin
   if mGuess = tgInterface then
   begin
     FInterfaceFields := FInterfaceFields + TrimmedNames(AChild.Name);
+  end
+  else if mGuess = tgRecord then
+  begin
+    for mName in TrimmedNames(AChild.Name) do
+    begin
+      mRecord.Name := mName;
+      mRecord.TypeName := mTypeName;
+      FRecordFields := FRecordFields + [mRecord];
+    end;
   end;
   if not (mGuess in [tgRecord, tgInterface, tgOther]) then
   begin

@@ -2,7 +2,7 @@
 
 // Abschnitt der Willkommensseite im Optionsdialog (#1456): Die Optionsseite
 // holt ihn vom Anbieter des Moduls und baut ihn in den Reiter
-// Willkommensseite; Base zeigt dort nur den Modulschalter. Geprüft werden
+// Willkommensseite samt Modulschalter. Geprüft werden
 // Laden und Speichern aller Werte über die Seite (vorher in den Tests der
 // Seite), die benannten Layouts (#767), die Knöpfe der Zählung (#757) und der
 // Weg von „Meine Issues“ zur Seite Issue-Tracker.
@@ -43,8 +43,8 @@ type
     /// </summary>
     [Test]
     procedure UsageButtonsCallBack;
-    /// <summary>Lage im Reiter Willkommensseite, Sprint-Kachel auf eigenem Knoten, „Meine Issues“ führt ohne
-    /// Modul Tracker zu dessen Schalter.</summary>
+    /// <summary>Lage im Reiter Willkommensseite, Sprint-Kachel auf eigenem Knoten, ohne Modul Tracker kein Weg
+    /// von „Meine Issues“ zur Seite Issue-Tracker; der Filter „experimentell“ blendet den Kopf aus.</summary>
     [Test]
     procedure SectionOnWelcomeSheet;
   end;
@@ -64,6 +64,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.Layouts,
   Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.Welcome.SettingsLayouts,
   Atlas.UI.Welcome.Strings;
 
@@ -528,22 +529,31 @@ begin
     mPage := TAtlasSettingsPage.Create(mHost);
     mPage.Parent := mHost;
     mPage.HandleNeeded;
-    // Modulschalter von Base und Einstellungen des Moduls auf dem Reiter Willkommensseite.
+    // Modulschalter und Einstellungen des Moduls auf dem Reiter Willkommensseite.
     mWelcome := SheetOf(mPage.ControlOfSetting('WelcomePage'));
     Assert.IsNotNull(mWelcome);
     Assert.IsTrue(SheetOf(FSection.Start.IdePage) = mWelcome);
     Assert.IsTrue(SheetOf(FSection.Layouts.Choice) = SheetOf(FSection.Start.Columns), 'Layouts stehen bei den Spalten');
     // Sprint-Kachel (#1277): eigener Knoten welcome.sprint (Schema).
     Assert.IsTrue(SheetOf(FSection.Tiles.Sprint) = mPage.NodeSheet('welcome.sprint'));
-    // „Meine Issues“: nur der Schalter, daneben der Weg zur Seite Issue-Tracker; ohne Modul Tracker dessen Schalter.
+    // „Meine Issues“: nur der Schalter, daneben der Weg zur Seite Issue-Tracker; ohne Modul Tracker gibt es die
+    // Seite nicht und der Knopf ist verborgen (#1456).
     Assert.IsTrue(SheetOf(FSection.Tiles.IssuesLink) = SheetOf(FSection.Tiles.Issues));
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
       FSection.Tiles.IssuesLink.Caption);
+    Assert.IsNull(mPage.ControlOfSetting('IssuesEnabled'), 'ohne Modul Tracker');
+    Assert.IsFalse(FSection.Tiles.IssuesLink.Visible, 'kein Weg ins Leere');
     mPage.Pages.ActivePage := SheetOf(FSection.Tiles.Issues);
     FSection.Tiles.IssuesLink.Click;
-    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.ControlOfSetting('IssuesEnabled')));
+    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(FSection.Tiles.Issues), 'Klick bleibt auf der Seite');
+    // Der Kopf der Willkommensseite hat keine experimentelle Einstellung: Der Filter blendet ihn aus (#890).
+    Assert.IsNotNull(mPage.NodeSheet('welcome.header'));
+    mPage.Filter.Choice := 2;
+    mPage.Filter.OnChange(mPage.Filter);
+    Assert.IsNull(TreeNodeOf(mPage, mPage.NodeSheet('welcome.header')), 'Kopf der Willkommensseite ohne Treffer');
   finally
     mHost.Free;
+    TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
 

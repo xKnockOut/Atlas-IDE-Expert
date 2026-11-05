@@ -310,10 +310,7 @@
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Colors.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Index.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Build.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Tasks.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Rules.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Release.pas"/>
-        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Debug.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas"/>
@@ -798,6 +795,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

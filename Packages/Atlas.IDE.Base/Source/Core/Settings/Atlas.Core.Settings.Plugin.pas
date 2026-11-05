@@ -304,6 +304,7 @@ type
     property ProblemsShowCompilerCode: Boolean read FRules.ProblemsShowCompilerCode
       write FRules.ProblemsShowCompilerCode;
     property ProblemsWindowKey: Integer read FNavigationKeys.ProblemsWindowKey write FNavigationKeys.ProblemsWindowKey;
+    property CheckFileKey: Integer read FNavigationKeys.CheckFileKey write FNavigationKeys.CheckFileKey;
     property CreateIssueKey: Integer read FEditingKeys.CreateIssueKey write FEditingKeys.CreateIssueKey;
     property GotoInterfaceKey: Integer read FNavigationKeys.GotoInterfaceKey write FNavigationKeys.GotoInterfaceKey;
     property GotoImplementationKey: Integer read FNavigationKeys.GotoImplementationKey
