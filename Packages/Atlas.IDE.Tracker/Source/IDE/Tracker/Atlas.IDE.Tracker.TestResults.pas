@@ -308,7 +308,7 @@ begin
     // .atlas nicht lesbar: ohne Build-Server.
     on E: Exception do
     begin
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
 end;
@@ -408,7 +408,7 @@ end;
 class procedure TAtlasTestResultsFetchJob.Deliver(const AKeep: IAtlasTestResultsSource; AOwner: TAtlasIdeTestResults;
   const AFetch: TAtlasTestResultsFetch; ASucceeded: Boolean; const ABuild: TAtlasCiBuild; AError: TAtlasCiFetchError);
 begin
-  TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
     procedure
     begin
       if AKeep <> nil then
@@ -541,7 +541,7 @@ procedure TAtlasIdeTestResults.Guarded(const AProc: TProc);
 begin
   if FStarted then
   begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage, AProc);
+    TAtlasGuard.Run(TAtlasFeature.Tracker, AProc);
   end;
 end;
 

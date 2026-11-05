@@ -490,7 +490,7 @@ begin
         Instance.Flush;
       end;
     end;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, mFlush);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomeUpdates, mFlush);
 end;
 
 /// <summary>Höhe des Bereichs AId auf der Tafel ABoard; sonst die Vorgabe.</summary>
@@ -840,7 +840,7 @@ begin
     begin
       MarkDirty(mId);
     end;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, mCollect);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomeUpdates, mCollect);
 end;
 
 procedure TAtlasIdeWelcome.Flush;
@@ -856,7 +856,7 @@ begin
     Sync;
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.WelcomeUpdates,
     procedure
     var
       Item: string;

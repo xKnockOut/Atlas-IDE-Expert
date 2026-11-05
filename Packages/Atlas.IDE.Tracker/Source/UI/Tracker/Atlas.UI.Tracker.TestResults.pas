@@ -1359,7 +1359,7 @@ end;
 class procedure TAtlasTrackerTestResultsView.Post(const AAction: TThreadProcedure);
 begin
   // Die Quelle füllt die Kachel danach neu: nicht im eigenen Maus- bzw. Menüereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, AAction);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
 end;
 
 procedure TAtlasTrackerTestResultsView.SendRow(const ARow: TAtlasTestRow; const AAction: TAtlasTestResultsRowAction);

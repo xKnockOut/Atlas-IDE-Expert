@@ -147,7 +147,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           if (Threads = nil) or not Threads.Contains(mThread) then
@@ -468,7 +468,7 @@ begin
       mSetup.Title := TAtlasNewIssues.TitleOf(mFull);
       mSetup.Description := TAtlasNewIssues.DescriptionOf(mFull, Labels);
       mSetup.Code := TAtlasNewIssues.CodeOf(mFull);
-      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      TAtlasGuard.Run(TAtlasFeature.Tracker,
         procedure
         begin
           ShowDialog(mSetup, mPlace);
@@ -507,7 +507,7 @@ begin
       mSetup.Code := TAtlasNewIssues.CodeOfFindings(mFindings);
       // Aus Befunden ändert Atlas den Code nicht.
       mPlace := TAtlasNewIssuePlace.None;
-      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+      TAtlasGuard.Run(TAtlasFeature.Tracker,
         procedure
         begin
           ShowDialog(mSetup, mPlace);
@@ -529,7 +529,7 @@ begin
   mDescription := ADescription;
   mFiles := AFiles;
   mProject := TAtlasIdeTeamFile.ActiveProject;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mSetup: TAtlasNewIssueSetup;

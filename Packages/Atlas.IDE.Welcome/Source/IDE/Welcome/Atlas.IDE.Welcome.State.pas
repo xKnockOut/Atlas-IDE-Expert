@@ -131,13 +131,13 @@ begin
         begin
           Exit;
         end;
-        TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+        TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomeUpdates,
           procedure
           begin
             AtomicExchange(Queued, 0);
             if Current <> nil then
             begin
-              TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+              TAtlasGuard.Run(TAtlasFeature.WelcomeUpdates,
                 procedure
                 begin
                   if Current <> nil then

@@ -384,7 +384,7 @@ begin
     on E: Exception do
     begin
       Result.FormImage := nil;
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
 end;
@@ -428,7 +428,7 @@ begin
   mTarget := ATarget;
   mKey := AKey;
   mExtra := AExtra;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mProvider: IAtlasTrackerProvider;
@@ -499,7 +499,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           if (mKeep <> nil) and AOwner.FStarted then

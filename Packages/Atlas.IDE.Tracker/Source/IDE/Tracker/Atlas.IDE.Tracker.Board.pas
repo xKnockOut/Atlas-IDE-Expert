@@ -358,7 +358,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mFrame: TAtlasBoardFrame;

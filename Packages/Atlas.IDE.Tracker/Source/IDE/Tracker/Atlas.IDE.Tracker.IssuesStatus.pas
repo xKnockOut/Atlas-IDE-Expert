@@ -281,7 +281,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
   if not mData.Active.Active then
@@ -347,7 +347,7 @@ end;
 
 procedure TAtlasIdeIssuesStatus.ChecklistClicked;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mData: TAtlasIssuesView;
@@ -403,7 +403,7 @@ end;
 
 procedure TAtlasIdeIssuesStatus.WatchTick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
       Inc(FTicks);
@@ -541,7 +541,7 @@ var
   mKeep: IAtlasIdeIssuesActions;
 begin
   mKeep := FContext.Actions;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker,
     procedure
     begin
       if mKeep <> nil then
