@@ -115,7 +115,7 @@ type
     ClassMethodCallsTitle = 'In class-Methode umwandeln, Aufrufe über %s';
     RoutineTitle = 'In freie Routine umwandeln';
     HelperTitle = 'In Record-Helper für %s verschieben';
-    MarkerText = 'ohne Self';
+    MarkerText = 'Self unused';
   public
     /// <summary>Methode ohne Self, deren Kopf (Implementierung oder Deklaration) APosition enthält.</summary>
     class function Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;

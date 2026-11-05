@@ -76,7 +76,7 @@ type
     InlayCharHints,
     /// <summary>Marker der schnellen Lesezeichen links der Zeilennummern (#1104).</summary>
     QuickBookmarks,
-    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).</summary>
+    /// <summary>Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686).</summary>
     InlayMethodHints,
     /// <summary>Hervorgehobene Austrittspunkte samt Marke am Routinenkopf (#698).</summary>
     ExitPoints,
