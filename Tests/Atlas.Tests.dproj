@@ -1124,6 +1124,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ClassExtraction.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ClassExtraction.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.TestUnit.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LensAsk.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LensAsk.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Metrics.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>

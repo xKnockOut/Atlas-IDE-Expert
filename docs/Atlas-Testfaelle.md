@@ -9392,6 +9392,8 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA14 | Karte „<Projekt> für Atlas einrichten“ sichtbar: anderes Projekt der Gruppe aktivieren (Doppelklick in der Projektverwaltung), dann Projekt schließen, dann anderes Projekt öffnen | Die Karte nennt jeweils sofort das neue Ziel (ohne Projekt das oberste aus „Wieder öffnen“) |
 | AA15 | Server indiziert, Willkommensseite offen; Thema der IDE wechseln, Sprache bzw. `welcomePage.greeting` umschalten | Kurzstatus zählt weiter mit; nach Thema, Sprache und Schalter stimmen Symbol, Gruß und Texte sofort |
 | AA16 | Fenster „Atlas-Diagnose“ in der Startgröße bzw. schmal ziehen, dann breit ziehen | Schmal: Knöpfe Anhalten, Zurücksetzen, Bericht kopieren in einer zweiten Zeile rechts, Verlauf und „Langsam ab … ms“ ganz sichtbar; breit: wieder eine Zeile |
+| AA17 | Server läuft, Diagnosemodus an; eine Unit mit Testunit und Metriken öffnen, tippen, Datei wechseln, Rekursionssymbole an (editor.recursionMarkers); dann Fenster „Atlas-Diagnose“, Reiter „Server“ | Bei `atlas.server.testUnit`, `atlas.server.metrics` und `atlas.server.recursion` „Hauptthread gewartet“ 0; Lens „→ Testunit“, Metriken in der Statusleiste und ↻ erscheinen wie vorher nach der Tipp-Pause |
+| AA18 | Wie AA17, während der Server indexiert bzw. nach „Server neu starten“ | Kein Stocken; die Lens und die Symbole kommen nach dem Indexieren bzw. Neustart wieder, keine Zugriffsverletzung beim Neustart oder Schließen der IDE |
 
 ## Prüfregeln vollständig im Modul (#1755)
 
