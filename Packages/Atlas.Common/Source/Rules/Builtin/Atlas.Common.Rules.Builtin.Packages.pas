@@ -37,7 +37,26 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Projects.PackageReader;
+  Atlas.Common.Projects.PackageReader,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPackagesText = (AddToContains, Implicit, Title);
+
+const
+  cTexts: array[TPackagesText] of TAtlasText = (
+    (De: '"%s" in contains aufnehmen'; En: 'Add "%s" to contains'),
+    (De: '"%s" wird implizit ins Package gezogen: %s verwendet %s, und die Unit steht weder in contains noch in ' +
+      'einem requires-Package (W1033).';
+     En: '"%s" is implicitly pulled into the package: %s uses %s, and the unit is neither in contains nor in a ' +
+      'requires package (W1033).'),
+    (De: 'Unit wird implizit ins Package gezogen: weder in contains noch in einem requires-Package (wie W1033).';
+     En: 'Unit is implicitly pulled into the package: neither in contains nor in a requires package (like W1033).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TPending = record
@@ -217,12 +236,11 @@ begin
   begin
     mPath := ExtractRelativePath(ExtractFilePath(FContext.FileName), AUsed.FileName);
   end;
-  mFix := TRuleFix.Create(Format('"%s" in contains aufnehmen', [AName]),
+  mFix := TRuleFix.Create(cTexts[TPackagesText.AddToContains].Fmt([AName]),
     [TRuleEdit.Create(TTextRange.Create(FSource.ContainsEnd, FSource.ContainsEnd),
     TPackageReader.ContainsInsertion(AName, mPath, TTextLines.LineBreakOf(FContext.Text)))]);
   FReport.Add(FSource.Contains[AItem.Origin].Range,
-    Format('"%s" wird implizit ins Package gezogen: %s verwendet %s, und die Unit steht weder in ' +
-    'contains noch in einem requires-Package (W1033).', [AName, AItem.UnitName, AName]), [mFix]);
+    cTexts[TPackagesText.Implicit].Fmt([AName, AItem.UnitName, AName]), [mFix]);
 end;
 
 { TImplicitPackageImportRule }
@@ -230,7 +248,7 @@ end;
 function TImplicitPackageImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ImplicitPackageImportRuleId, TRuleSeverity.Warning,
-    'Unit wird implizit ins Package gezogen: weder in contains noch in einem requires-Package (wie W1033).');
+    cTexts[TPackagesText.Title].Text);
 end;
 
 procedure TImplicitPackageImportRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -259,5 +277,8 @@ procedure RegisterPackageRules(ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TImplicitPackageImportRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Packages', cTexts);
 
 end.

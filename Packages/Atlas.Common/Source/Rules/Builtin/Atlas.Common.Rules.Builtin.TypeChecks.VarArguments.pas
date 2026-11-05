@@ -40,7 +40,37 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.TypeChecks.Types;
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeChecksVarArgumentsText = (NotVariable, ConstantOpenArray, Expression, ConstantExpression, ResultOf, Constant,
+    TypedConstant, PropertyArg, ConstParameter, ValueArg, ViaLocal, AddressNeedsVariable, Title);
+
+const
+  cTexts: array[TTypeChecksVarArgumentsText] of TAtlasText = (
+    (De: '%s ist keine Variable und kann nicht an einen %s-Parameter übergeben werden (wie E2197).';
+     En: '%s is not a variable and cannot be passed to a %s parameter (like E2197).'),
+    (De: 'Eine Konstante kann nicht als offenes Array an einen %s-Parameter übergeben werden (wie E2192).';
+     En: 'A constant cannot be passed as open array to a %s parameter (like E2192).'),
+    (De: 'An einen %s-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).';
+     En: 'A variable must be passed to a %s parameter, not an expression (like E2036).'),
+    (De: 'Der konstante Ausdruck %s'; En: 'The constant expression %s'),
+    (De: 'Das Ergebnis von %s'; En: 'The result of %s'),
+    (De: 'Die Konstante %s'; En: 'The constant %s'),
+    (De: 'Die typisierte Konstante %s'; En: 'The typed constant %s'),
+    (De: 'Die Eigenschaft %s'; En: 'The property %s'),
+    (De: 'Der const-Parameter %s'; En: 'The const parameter %s'),
+    (De: 'Der Wert %s'; En: 'The value %s'),
+    (De: 'Über eine lokale Variable %s übergeben'; En: 'Pass via a local variable %s'),
+    (De: '@ braucht eine Variable; %s ist ein Ausdruck ohne Adresse (wie E2036).';
+     En: '@ needs a variable; %s is an expression without address (like E2036).'),
+    (De: 'Ungültiges Argument für einen var- oder out-Parameter'; En: 'Invalid argument for a var or out parameter'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Art eines unzulässigen Arguments für einen var- bzw. out-Parameter.</summary>
@@ -115,14 +145,11 @@ begin
   Result := True;
   case AKind of
     TVarArgumentKind.ConstantObject:
-      AMessage := Format('%s ist keine Variable und kann nicht an einen %s-Parameter übergeben werden (wie E2197).',
-        [ADescription, AModifier]);
+      AMessage := cTexts[TTypeChecksVarArgumentsText.NotVariable].Fmt([ADescription, AModifier]);
     TVarArgumentKind.OpenArrayConstant:
-      AMessage := Format('Eine Konstante kann nicht als offenes Array an einen %s-Parameter übergeben werden ' +
-        '(wie E2192).', [AModifier]);
+      AMessage := cTexts[TTypeChecksVarArgumentsText.ConstantOpenArray].Fmt([AModifier]);
     TVarArgumentKind.Expression:
-      AMessage := Format('An einen %s-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
-        [AModifier]);
+      AMessage := cTexts[TTypeChecksVarArgumentsText.Expression].Fmt([AModifier]);
   else
     // String-Element und Slice an var und out übersetzt dcc (#1383, IV1-IV4); erkannt nur, damit sie nicht als
     // Ausdruck bzw. Funktionsergebnis gelten.
@@ -253,7 +280,7 @@ begin
   end;
   if not AOpenArray and IsConstantExpression(AArgument) then
   begin
-    AResult.Description := Format('Der konstante Ausdruck %s', [AResult.Description]);
+    AResult.Description := cTexts[TTypeChecksVarArgumentsText.ConstantExpression].Fmt([AResult.Description]);
     AResult.Kind := TVarArgumentKind.ConstantObject;
   end
   else if AArgument.Kind <> TSyntaxKind.ParenExpr then
@@ -293,7 +320,7 @@ begin
     (Symbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and (Symbol.TypeName <> '') then
   begin
     // Aufruf einer Funktion (keine Typumwandlung): ihr Ergebnis ist keine Variable.
-    AResult.Description := Format('Das Ergebnis von %s', [NodeText(FContext, AArgument[0])]);
+    AResult.Description := cTexts[TTypeChecksVarArgumentsText.ResultOf].Fmt([NodeText(FContext, AArgument[0])]);
     AResult.Kind := TVarArgumentKind.ConstantObject;
   end;
 end;
@@ -308,12 +335,12 @@ begin
       AResult.Kind := TVarArgumentKind.OpenArrayConstant;
       Exit;
     end;
-    AResult.Description := Format('Die Konstante %s', [AResult.Description]);
+    AResult.Description := cTexts[TTypeChecksVarArgumentsText.Constant].Fmt([AResult.Description]);
     AResult.Kind := TVarArgumentKind.ConstantObject;
   end
   else if not FWriteableConsts and (ASymbol.SymbolKind = TIndexSymbolKind.Constant) then
   begin
-    AResult.Description := Format('Die typisierte Konstante %s', [AResult.Description]);
+    AResult.Description := cTexts[TTypeChecksVarArgumentsText.TypedConstant].Fmt([AResult.Description]);
     AResult.Kind := TVarArgumentKind.ConstantObject;
   end;
 end;
@@ -332,14 +359,14 @@ begin
       ClassifyConstant(Symbol, AOpenArray, AResult);
     TIndexSymbolKind.Property_:
       begin
-        AResult.Description := Format('Die Eigenschaft %s', [AResult.Description]);
+        AResult.Description := cTexts[TTypeChecksVarArgumentsText.PropertyArg].Fmt([AResult.Description]);
         AResult.WriteBack := ContainsText(' ' + Symbol.Signature.Replace(';', ' ') + ' ', ' write ');
         AResult.Kind := TVarArgumentKind.ConstantObject;
       end;
     TIndexSymbolKind.Variable:
       if IsConstParameter(Symbol) then
       begin
-        AResult.Description := Format('Der const-Parameter %s', [AResult.Description]);
+        AResult.Description := cTexts[TTypeChecksVarArgumentsText.ConstParameter].Fmt([AResult.Description]);
         AResult.Kind := TVarArgumentKind.ConstantObject;
       end;
   else
@@ -363,7 +390,7 @@ begin
       end
       else
       begin
-        Result.Description := Format('Der Wert %s', [Result.Description]);
+        Result.Description := cTexts[TTypeChecksVarArgumentsText.ValueArg].Fmt([Result.Description]);
         Result.Kind := TVarArgumentKind.ConstantObject;
       end;
     TSyntaxKind.SetConstructor:
@@ -467,7 +494,7 @@ begin
     Edits := Edits + [TTextEdit.Create(TTextRange.Create(Line, Length(FLines[Line]), Line, Length(FLines[Line])),
       FLineBreak + Indent + Argument + ' := ' + Name + ';')];
   end;
-  AFix := TRuleFix.Create(Format('Über eine lokale Variable %s übergeben', [Name]), Edits);
+  AFix := TRuleFix.Create(cTexts[TTypeChecksVarArgumentsText.ViaLocal].Fmt([Name]), Edits);
   Result := True;
 end;
 
@@ -555,8 +582,9 @@ begin
   if (mInner.Kind = TSyntaxKind.BinaryExpr) and MatchText(mInner.Name, ['+', '-', '*', '/', 'div', 'mod', 'and',
     'or', 'xor', 'shl', 'shr']) then
   begin
-    FReport.Add(TTextRange.Create(AAddress.StartPos, AAddress.EndPos), Format('@ braucht eine Variable; %s ist ' +
-      'ein Ausdruck ohne Adresse (wie E2036).', [NodeText(FContext, AAddress[0])]), TRuleConfidence.High);
+    FReport.Add(TTextRange.Create(AAddress.StartPos, AAddress.EndPos),
+      cTexts[TTypeChecksVarArgumentsText.AddressNeedsVariable].Fmt([NodeText(FContext, AAddress[0])]),
+      TRuleConfidence.High);
   end;
 end;
 
@@ -565,7 +593,7 @@ end;
 function TInvalidVarArgumentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InvalidVarArgumentRuleId, TRuleSeverity.Error,
-    'Ungültiges Argument für einen var- oder out-Parameter');
+    cTexts[TTypeChecksVarArgumentsText.Title].Text);
 end;
 
 procedure TInvalidVarArgumentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -606,5 +634,8 @@ begin
     Resolver.UnpinTree;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeChecks.VarArguments', cTexts);
 
 end.

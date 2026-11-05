@@ -162,7 +162,7 @@ begin
   AddSource(mData);
   AddException(mData);
   AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-  AFileName := TAtlasDebugNote.FileName(mData.Time);
+  AFileName := TAtlasDebugNote.FileName(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteFileStem), mData.Time);
   Result := True;
 end;
 

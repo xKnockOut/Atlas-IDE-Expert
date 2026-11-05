@@ -63,7 +63,37 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TLoopsText = (ToWhile, LoopVarTitle, Modified, VarParam, Assigned, OuterVariable, FieldKind, GlobalVariable,
+    NonLocal, ReadAfterTitle, ReadAfter, UseForVar);
+
+const
+  cTexts: array[TLoopsText] of TAtlasText = (
+    (De: 'Auf while-Schleife umstellen'; En: 'Convert to while loop'),
+    (De: 'Schleifenvariable verändert oder nicht lokal'; En: 'Loop variable modified or not local'),
+    (De: 'Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).';
+     En: 'Loop variable %s must not be modified in the body (like E2081).'),
+    (De: 'Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).';
+     En: 'Loop variable %s is passed as var parameter to %s (like W1015).'),
+    (De: 'Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).';
+     En: 'Loop variable %s must not be assigned in the body (like E2081).'),
+    (De: 'eine Variable der umgebenden Routine'; En: 'a variable of the enclosing routine'),
+    (De: 'ein Feld'; En: 'a field'),
+    (De: 'eine globale Variable'; En: 'a global variable'),
+    (De: 'Schleifenvariable %s ist %s, keine einfache lokale Variable (wie %s).';
+     En: 'Loop variable %s is %s, not a simple local variable (like %s).'),
+    (De: 'Schleifenvariable nach der Schleife gelesen'; En: 'Loop variable read after the loop'),
+    (De: '%s ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).';
+     En: '%s is undefined after the loop if no Break was reached (like W1037).'),
+    (De: 'for var %s verwenden'; En: 'Use for var %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TNameSet = TDictionary<string, Boolean>;
@@ -341,7 +371,7 @@ begin
   begin
     Exit;
   end;
-  Result := [TRuleFix.Create('Auf while-Schleife umstellen', mEdits)];
+  Result := [TRuleFix.Create(cTexts[TLoopsText.ToWhile].Text, mEdits)];
 end;
 
 { TForVariableMisuseRule }
@@ -349,7 +379,7 @@ end;
 function TForVariableMisuseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ForVariableMisuseRuleId, TRuleSeverity.Error,
-    'Schleifenvariable verändert oder nicht lokal');
+    cTexts[TLoopsText.LoopVarTitle].Text);
 end;
 
 procedure TForVariableMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -499,13 +529,13 @@ var
         not VarRoutines.ContainsKey('dec') then
       begin
         AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
-          Format('Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).', [AName]),
+          cTexts[TLoopsText.Modified].Fmt([AName]),
           TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
       end
       else if PassesByReference(mName, mIndex - 1) then
       begin
         AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
-          Format('Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).', [AName, mName]),
+          cTexts[TLoopsText.VarParam].Fmt([AName, mName]),
           TRuleConfidence.High);
       end;
     end;
@@ -548,7 +578,7 @@ var
         if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) and IsPlainName(mNode[0], AName) then
         begin
           AReport.Add(TTextRange.Create(mNode[0].StartPos, mNode[0].EndPos),
-            Format('Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).', [AName]),
+            cTexts[TLoopsText.Assigned].Fmt([AName]),
             TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
         end
         else if IsNamedCall(mNode) then
@@ -644,15 +674,15 @@ var
       ACode := 'E1019';
       if AOuterLocals.ContainsKey(AKey) then
       begin
-        Result := 'eine Variable der umgebenden Routine';
+        Result := cTexts[TLoopsText.OuterVariable].Text;
       end
       else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + AKey) then
       begin
-        Result := 'ein Feld';
+        Result := cTexts[TLoopsText.FieldKind].Text;
       end
       else if Globals.ContainsKey(AKey) then
       begin
-        Result := 'eine globale Variable';
+        Result := cTexts[TLoopsText.GlobalVariable].Text;
         ACode := 'W1019';
       end;
     end;
@@ -671,11 +701,11 @@ var
       mFixes := nil;
       if not UsedOutside(ABody, ALoop, ALoop.Name) then
       begin
-        mFixes := [TRuleFix.Create('for var ' + ALoop.Name + ' verwenden',
+        mFixes := [TRuleFix.Create(cTexts[TLoopsText.UseForVar].Fmt([ALoop.Name]),
           [TRuleEdit.Create(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].StartPos), 'var ')])];
       end;
       AReport.Add(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].EndPos),
-        Format('Schleifenvariable %s ist %s, keine einfache lokale Variable (wie %s).', [ALoop.Name, mKind, mCode]),
+        cTexts[TLoopsText.NonLocal].Fmt([ALoop.Name, mKind, mCode]),
         TRuleConfidence.High, mFixes);
     end;
 
@@ -855,7 +885,7 @@ end;
 function TForVariableAfterLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ForVariableAfterLoopRuleId, TRuleSeverity.Warning,
-    'Schleifenvariable nach der Schleife gelesen');
+    cTexts[TLoopsText.ReadAfterTitle].Text);
 end;
 
 procedure TForVariableAfterLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -991,8 +1021,8 @@ var
       Exit;
     end;
     Reported.Add(mTarget, True);
-    AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), Format('%s ist nach der Schleife undefiniert, ' +
-      'wenn kein Break erreicht wurde (wie W1037).', [ALoop.Name]), TRuleConfidence.High,
+    AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), cTexts[TLoopsText.ReadAfter].Fmt([ALoop.Name]),
+      TRuleConfidence.High,
       WhileLoopFix(AContext.Text, Tokens, ALoop, False));
   end;
 
@@ -1136,5 +1166,8 @@ begin
   ARegistry.Register(TForVariableMisuseRule.Create);
   ARegistry.Register(TForVariableAfterLoopRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Loops', cTexts);
 
 end.

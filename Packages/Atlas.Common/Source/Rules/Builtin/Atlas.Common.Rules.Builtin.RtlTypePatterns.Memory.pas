@@ -73,14 +73,68 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens;
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRtlTypePatternsMemoryText = (Title, IsManaged, Contains, Overwrites, CopiesRefs, Uninitialized, NotReleased,
+    ThreadvarTitle, ContainsParen, ThreadvarLeak, PCharTitle, StoreIntermediate, TemporaryNow, TemporaryLater,
+    CreateProcessTitle, CopyCommandLine, MayBeConstant, ParamConstant, ConstantCommandLine, ConcatCommandLine,
+    CallUniqueString);
+
+const
+  cTexts: array[TRtlTypePatternsMemoryText] of TAtlasText = (
+    (De: 'FillChar, Move oder GetMem auf verwaltete Typen'; En: 'FillChar, Move or GetMem on managed types'),
+    (De: '%s ist ein verwalteter Typ'; En: '%s is a managed type'),
+    (De: '%s enthält %s'; En: '%s contains %s'),
+    (De: 'überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).';
+     En: 'overwrites the references without release (leak, possibly access violation).'),
+    (De: 'kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ggf. Zugriffsverletzung).';
+     En: 'copies the references without reference counting (double release, possibly access violation).'),
+    (De: 'lässt die Referenzen uninitialisiert (Zugriffsverletzung beim ersten Zuweisen); New oder Initialize ' +
+      'verwenden.';
+     En: 'leaves the references uninitialized (access violation on the first assignment); use New or Initialize.'),
+    (De: 'gibt die Referenzen nicht frei (Leck); Dispose oder Finalize verwenden.';
+     En: 'does not release the references (leak); use Dispose or Finalize.'),
+    (De: 'threadvar mit verwaltetem Typ'; En: 'threadvar with managed type'),
+    (De: '%s (enthält %s)'; En: '%s (contains %s)'),
+    (De: 'threadvar mit %s wird beim Thread-Ende nicht finalisiert (Leck je Thread).';
+     En: 'threadvar with %s is not finalized at thread end (leak per thread).'),
+    (De: 'PChar auf einen temporären String'; En: 'PChar to a temporary string'),
+    (De: 'Zwischenergebnis in %s ablegen'; En: 'Store intermediate result in %s'),
+    (De: 'Der Ausdruck %s ist temporär; %s zeigt nach dieser Zeile auf freigegebenen Speicher.';
+     En: 'The expression %s is temporary; %s points to released memory after this line.'),
+    (De: 'Der Ausdruck %s ist temporär; %s liest den Zeiger erst später aus freigegebenem Speicher.';
+     En: 'The expression %s is temporary; %s reads the pointer later from released memory.'),
+    (De: 'CreateProcess mit unveränderlicher Befehlszeile'; En: 'CreateProcess with immutable command line'),
+    (De: 'Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen';
+     En: 'Copy the command line into a local variable and call UniqueString'),
+    (De: '%s schreibt in die Befehlszeile; %s kann auf einen konstanten String verweisen und ist ohne UniqueString ' +
+      'nicht beschreibbar.';
+     En: '%s writes to the command line; %s can refer to a constant string and is not writable without UniqueString.'),
+    (De: '%s schreibt in die Befehlszeile; der Parameter %s kann ein konstanter String sein und ist ohne ' +
+      'UniqueString nicht beschreibbar.';
+     En: '%s writes to the command line; the parameter %s can be a constant string and is not writable without ' +
+      'UniqueString.'),
+    (De: '%s schreibt in die Befehlszeile; ein konstanter String ist nicht beschreibbar.';
+     En: '%s writes to the command line; a constant string is not writable.'),
+    (De: '%s schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung das konstante Literal, ' +
+      'das nicht beschreibbar ist.';
+     En: '%s writes to the command line; if the other part is empty, the concatenation returns the constant literal, ' +
+      'which is not writable.'),
+    (De: 'UniqueString(%s) davor aufrufen'; En: 'Call UniqueString(%s) before it'));
+
+{$SCOPEDENUMS OFF}
 
 { TManagedTypeRawMemoryRule }
 
 function TManagedTypeRawMemoryRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('managed-type-raw-memory', TRuleSeverity.Error,
-    'FillChar, Move oder GetMem auf verwaltete Typen');
+    cTexts[TRtlTypePatternsMemoryText.Title].Text);
 end;
 
 type
@@ -210,11 +264,11 @@ function TRawMemoryScan.Subject(const ATypeName, AKind: string): string;
 begin
   if FManaged.IsPrimitive(ATypeName) then
   begin
-    Result := Format('%s ist ein verwalteter Typ', [ATypeName]);
+    Result := cTexts[TRtlTypePatternsMemoryText.IsManaged].Fmt([ATypeName]);
   end
   else
   begin
-    Result := Format('%s enthält %s', [ATypeName, AKind]);
+    Result := cTexts[TRtlTypePatternsMemoryText.Contains].Fmt([ATypeName, AKind]);
   end;
 end;
 
@@ -288,7 +342,7 @@ begin
       [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := Default(%s)', [FTokens[Name].Text,
       TypeName]))], True)];
   end;
-  Report(TypeName, Kind, 'überschreibt die Referenzen ohne Freigabe (Leck, ggf. Zugriffsverletzung).',
+  Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.Overwrites].Text,
     Fixes);
 end;
 
@@ -333,8 +387,7 @@ begin
       [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := %s', [FTokens[Destination].Text,
       FTokens[Source].Text]))], True)];
   end;
-  Report(TypeName, Kind, 'kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ' +
-    'ggf. Zugriffsverletzung).', Fixes);
+  Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.CopiesRefs].Text, Fixes);
 end;
 
 procedure TRawMemoryScan.CheckMemory(AAllocate: Boolean);
@@ -371,12 +424,11 @@ begin
   end;
   if AAllocate then
   begin
-    Report(TypeName, Kind, 'lässt die Referenzen uninitialisiert (Zugriffsverletzung beim ersten ' +
-      'Zuweisen); New oder Initialize verwenden.', Fixes);
+    Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.Uninitialized].Text, Fixes);
   end
   else
   begin
-    Report(TypeName, Kind, 'gibt die Referenzen nicht frei (Leck); Dispose oder Finalize verwenden.', Fixes);
+    Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.NotReleased].Text, Fixes);
   end;
 end;
 
@@ -457,7 +509,8 @@ end;
 
 function TThreadvarManagedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('threadvar-managed', TRuleSeverity.Warning, 'threadvar mit verwaltetem Typ');
+  Result := TRuleDescriptor.Create('threadvar-managed', TRuleSeverity.Warning,
+    cTexts[TRtlTypePatternsMemoryText.ThreadvarTitle].Text);
 end;
 
 procedure TThreadvarManagedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -479,7 +532,7 @@ var
     Shown := TypeName;
     if not Managed.IsPrimitive(TypeName) then
     begin
-      Shown := Format('%s (enthält %s)', [TypeName, Kind]);
+      Shown := cTexts[TRtlTypePatternsMemoryText.ContainsParen].Fmt([TypeName, Kind]);
     end;
     for Name in SplitString(ADecl.Name, ',') do
     begin
@@ -492,8 +545,8 @@ var
         if (Tokens[Index].Offset >= ADecl.StartOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
           SameText(Tokens[Index].Text, Trim(Name)) then
         begin
-          AReport.Add(RangeOf(Tokens, Index, Index), Format('threadvar mit %s wird beim Thread-Ende nicht ' +
-            'finalisiert (Leck je Thread).', [Shown]), TRuleConfidence.High);
+          AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TRtlTypePatternsMemoryText.ThreadvarLeak].Fmt([Shown]),
+            TRuleConfidence.High);
           Break;
         end;
       end;
@@ -570,7 +623,7 @@ const
 function TPCharOfTemporaryRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('pchar-of-temporary', TRuleSeverity.Warning,
-    'PChar auf einen temporären String');
+    cTexts[TRtlTypePatternsMemoryText.PCharTitle].Text);
 end;
 
 /// <summary>Ist ANode selbst ein String: String-Literal, Bezeichner mit String-Typ oder Aufruf einer Funktion (keine
@@ -815,13 +868,13 @@ var
     begin
       Name := FreshName(ARoutine, Target);
       Indent := StringOfChar(' ', AStatement.StartPos.Character);
-      Fixes := [TRuleFix.Create(Format('Zwischenergebnis in %s ablegen', [Name]),
+      Fixes := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.StoreIntermediate].Fmt([Name]),
         [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
         Format('var %s: string := %s;', [Name, Trim(Text(Expression))]) + LineBreak + Indent),
         TRuleEdit.Create(TTextRange.Create(Expression.StartPos, Expression.EndPos), Name)])];
     end;
-    AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos), Format('Der Ausdruck %s ist temporär; ' +
-      '%s zeigt nach dieser Zeile auf freigegebenen Speicher.', [Trim(Text(Expression)), Target]),
+    AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos),
+      cTexts[TRtlTypePatternsMemoryText.TemporaryNow].Fmt([Trim(Text(Expression)), Target]),
       TRuleConfidence.High, Fixes);
   end;
 
@@ -835,8 +888,8 @@ var
       Expression := TemporaryPChar(ACall[Index]);
       if Expression <> nil then
       begin
-        AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos), Format('Der Ausdruck %s ist ' +
-          'temporär; %s liest den Zeiger erst später aus freigegebenem Speicher.', [Trim(Text(Expression)),
+        AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos),
+          cTexts[TRtlTypePatternsMemoryText.TemporaryLater].Fmt([Trim(Text(Expression)),
           ACall.Name]), TRuleConfidence.High);
       end;
     end;
@@ -913,7 +966,7 @@ type
 function TCreateProcessReadonlyCommandLineRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('createprocess-readonly-commandline', TRuleSeverity.Error,
-    'CreateProcess mit unveränderlicher Befehlszeile');
+    cTexts[TRtlTypePatternsMemoryText.CreateProcessTitle].Text);
 end;
 
 class function TCreateProcessReadonlyCommandLineRule.CommandLineIndex(const AName: string): Integer;
@@ -1175,13 +1228,13 @@ var
     end;
     if AKind = TCommandLineKind.Variable then
     begin
-      Result := [TRuleFix.Create('UniqueString(' + AValue.Name + ') davor aufrufen',
+      Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CallUniqueString].Fmt([AValue.Name]),
         [TRoutineBody.InsertBefore(AContext.Text, Statement, 'UniqueString(' + AValue.Name + ');')])];
       Exit;
     end;
     Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, AContext.NewNames.Local('Befehl'));
     Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
-    Result := [TRuleFix.Create('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen',
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CopyCommandLine].Text,
       [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'string', AContext.Formatting),
       TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + Text(AValue) + ';' + LineBreak + Indent +
       'UniqueString(' + Name + ');'),
@@ -1217,17 +1270,14 @@ var
     Confidence := TRuleConfidence.High;
     case Kind of
       TCommandLineKind.Constant:
-        Message := ACall.Name + ' schreibt in die Befehlszeile; ein konstanter String ist nicht beschreibbar.';
+        Message := cTexts[TRtlTypePatternsMemoryText.ConstantCommandLine].Fmt([ACall.Name]);
       TCommandLineKind.Concatenation:
-        Message := ACall.Name + ' schreibt in die Befehlszeile; ist der andere Teil leer, liefert die Verkettung ' +
-          'das konstante Literal, das nicht beschreibbar ist.';
+        Message := cTexts[TRtlTypePatternsMemoryText.ConcatCommandLine].Fmt([ACall.Name]);
       TCommandLineKind.Variable:
-        Message := Format('%s schreibt in die Befehlszeile; %s kann auf einen konstanten String verweisen und ist ohne ' +
-          'UniqueString nicht beschreibbar.', [ACall.Name, Value.Name]);
+        Message := cTexts[TRtlTypePatternsMemoryText.MayBeConstant].Fmt([ACall.Name, Value.Name]);
       TCommandLineKind.Parameter:
         begin
-          Message := Format('%s schreibt in die Befehlszeile; der Parameter %s kann ein konstanter String sein und ' +
-            'ist ohne UniqueString nicht beschreibbar.', [ACall.Name, Value.Name]);
+          Message := cTexts[TRtlTypePatternsMemoryText.ParamConstant].Fmt([ACall.Name, Value.Name]);
           Confidence := TRuleConfidence.Medium;
         end;
     else
@@ -1288,5 +1338,8 @@ begin
     Types.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory', cTexts);
 
 end.

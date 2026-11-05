@@ -9,13 +9,15 @@ interface
 
 uses
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format;
 
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasLanguage = (German, English);
+  /// <summary>Sprache der Oberfläche; dieselbe für Core (Atlas.Core.Localization.Language, #1458).</summary>
+  TAtlasLanguage = Atlas.Core.Localization.Language.TAtlasLanguage;
 
   TAtlasTextId = (FooterKeys, CountOf, NoMatchesFor, BackspaceWidens, NoSuggestions, EscCloses, NoDetails,
     Overload, DeprecatedWith, DeprecatedPlain, InheritedFrom, InheritedPlain, OptionalDefault, NoOverloadWith,
@@ -763,8 +765,9 @@ type
     SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark);
 
   TAtlasStrings = class
-  private class var
-    FLanguage: TAtlasLanguage;
+  private
+    class function GetLanguage: TAtlasLanguage; static;
+    class procedure SetLanguage(AValue: TAtlasLanguage); static;
   public
     class function Text(AId: TAtlasTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
@@ -797,7 +800,8 @@ type
     class function SignatureFormatLine(const ALine: TAtlasFormatLine): string; static;
     /// <summary>Art eines Typbuchstabens (d → ganzzahlig, s → String …).</summary>
     class function FormatKind(AType: Char): string; static;
-    class property Language: TAtlasLanguage read FLanguage write FLanguage;
+    /// <summary>Sprache aller Plugin-Texte (TAtlasTextLanguage.Current).</summary>
+    class property Language: TAtlasLanguage read GetLanguage write SetLanguage;
   end;
 
 implementation
@@ -2972,7 +2976,7 @@ const
      'Markdown (*.md)|*.md',
      'Bug report',
      'Anonymize bug reports (replace paths, user name and identifiers)',
-     'Write atlas.log with clear names (names, paths and messages; otherwise name#1, datei#2.pas)',
+     'Write atlas.log with clear names (names, paths and messages; otherwise name#1, datei#2.pas)', // german-ok: Kennung im Protokoll
      'Accept with "(", ";" and "." (commit characters)',
      'Add the unit to uses automatically when accepting',
      'Parameter hint on "(" and ","',
@@ -4430,14 +4434,24 @@ const
 
 { TAtlasStrings }
 
+class function TAtlasStrings.GetLanguage: TAtlasLanguage;
+begin
+  Result := TAtlasTextLanguage.Current;
+end;
+
+class procedure TAtlasStrings.SetLanguage(AValue: TAtlasLanguage);
+begin
+  TAtlasTextLanguage.Current := AValue;
+end;
+
 class function TAtlasStrings.Text(AId: TAtlasTextId): string;
 begin
-  Result := Texts[FLanguage, AId];
+  Result := Texts[TAtlasTextLanguage.Current, AId];
 end;
 
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[FLanguage, AId], AArgs);
+  Result := Format(Texts[TAtlasTextLanguage.Current, AId], AArgs);
 end;
 
 class function TAtlasStrings.FormatKind(AType: Char): string;
@@ -4520,6 +4534,8 @@ end;
 
 class function TAtlasStrings.DocLabels: TAtlasDocLabels;
 begin
+  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
+  Result := TAtlasDocLabels.Current;
   Result.Params := Text(TAtlasTextId.DocParams);
   Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
   Result.Returns := Text(TAtlasTextId.DocReturns);

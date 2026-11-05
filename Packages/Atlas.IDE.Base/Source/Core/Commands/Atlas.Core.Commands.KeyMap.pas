@@ -879,7 +879,7 @@ const
     (Names: '|ende|end|'; Key: $23),
     (Names: '|bild auf|bildauf|pgup|page up|pageup|'; Key: $21),
     (Names: '|bild ab|bildab|pgdn|page down|pagedown|'; Key: $22),
-    (Names: '|rück|rücktaste|backspace|bksp|'; Key: $08),
+    (Names: '|rück|rücktaste|backspace|bksp|'; Key: $08), // german-ok: Eingabealias
     (Names: '|links|left|'; Key: $25),
     (Names: '|oben|auf|up|'; Key: $26),
     (Names: '|rechts|right|'; Key: $27),

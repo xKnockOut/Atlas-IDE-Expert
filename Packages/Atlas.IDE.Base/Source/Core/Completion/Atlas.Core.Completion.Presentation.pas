@@ -93,11 +93,63 @@ uses
   System.Character,
   System.Math,
   System.StrUtils,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TPresentationText = (NeverReached, Before, CircularReference, Active, SameParameters, Overload, PropertyText,
+    Field, From, Hides, Local, Parameter, Only, Branch, AsText, Recent, Frequent);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TPresentationText] of string = (
+    ('nie erreicht: ',
+     ' davor',
+     'Zirkelbezug',
+     'aktiv',
+     'gleiche Parameter',
+     'Überladung',
+     'Eigenschaft',
+     'Feld',
+     'aus ',
+     'verdeckt ',
+     'lokal',
+     'Parameter',
+     'nur ',
+     'Zweig ',
+     'als ',
+     'zuletzt',
+     'häufig'),
+    ('never reached: ',
+     ' before',
+     'circular reference',
+     'active',
+     'same parameters',
+     'overload',
+     'property',
+     'field',
+     'from ',
+     'hides ',
+     'local',
+     'parameter',
+     'only ',
+     'branch ',
+     'as ',
+     'recent',
+     'frequent'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TPresentationText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   /// <summary>Endung des Details, mit der der Server die Unit nennt, je Sprache der Servertexte (#1458).</summary>
-  UsesSuffixes: array[0..1] of string = (' (uses ergänzen)', ' (add to uses)');
+  UsesSuffixes: array[0..1] of string = (' (uses ergänzen)', ' (add to uses)'); // german-ok: Text des Servers
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -408,7 +460,7 @@ begin
   // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
   if AItem.Unreachable <> '' then
   begin
-    AddFilledTag(ATags, 'nie erreicht: ' + AItem.Unreachable + ' davor', TAtlasTagKind.Warn);
+    AddFilledTag(ATags, UiText(TPresentationText.NeverReached) + AItem.Unreachable + UiText(TPresentationText.Before), TAtlasTagKind.Warn);
   end;
   if AItem.Count > 0 then
   begin
@@ -417,12 +469,12 @@ begin
   // Zirkelbezug im uses-Abschnitt (#469).
   if AItem.UsesCycle <> '' then
   begin
-    AddIdTag(ATags, 'Zirkelbezug', TAtlasTagKind.Error, TAtlasTagId.Cycle);
+    AddIdTag(ATags, UiText(TPresentationText.CircularReference), TAtlasTagKind.Error, TAtlasTagId.Cycle);
   end;
   // Gleichnamige Bezeichner (#475): die Variante, die der Compiler wählt.
   if AItem.SameNameActive then
   begin
-    AddIdTag(ATags, 'aktiv', TAtlasTagKind.Accent, TAtlasTagId.Active);
+    AddIdTag(ATags, UiText(TPresentationText.Active), TAtlasTagKind.Accent, TAtlasTagId.Active);
   end;
 end;
 
@@ -431,11 +483,11 @@ procedure AddInheritedTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTa
 begin
   if AItem.InheritedMatch = 'same' then
   begin
-    AddIdTag(ATags, 'gleiche Parameter', TAtlasTagKind.Accent, TAtlasTagId.SameParams);
+    AddIdTag(ATags, UiText(TPresentationText.SameParameters), TAtlasTagKind.Accent, TAtlasTagId.SameParams);
   end
   else if AItem.InheritedMatch = 'overload' then
   begin
-    AddIdTag(ATags, 'Überladung', TAtlasTagKind.Neutral, TAtlasTagId.Overload);
+    AddIdTag(ATags, UiText(TPresentationText.Overload), TAtlasTagKind.Neutral, TAtlasTagId.Overload);
   end
   else if (AItem.InheritedMatch = 'other') and (AItem.DeclaringClass <> '') then
   begin
@@ -473,11 +525,11 @@ procedure AddMemberTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags)
 begin
   if AItem.Kind = TAtlasItemKind.Property_ then
   begin
-    AddTag(ATags, 'Eigenschaft', TAtlasTagKind.Neutral);
+    AddTag(ATags, UiText(TPresentationText.PropertyText), TAtlasTagKind.Neutral);
   end
   else if AItem.Kind = TAtlasItemKind.Field then
   begin
-    AddTag(ATags, 'Feld', TAtlasTagKind.Neutral);
+    AddTag(ATags, UiText(TPresentationText.Field), TAtlasTagKind.Neutral);
   end
   else if AItem.DeclaringClass <> '' then
   begin
@@ -494,10 +546,10 @@ begin
   begin
     Exit;
   end;
-  AddTag(ATags, 'aus ' + AItem.WithOrigin, TAtlasTagKind.Accent);
+  AddTag(ATags, UiText(TPresentationText.From) + AItem.WithOrigin, TAtlasTagKind.Accent);
   for mShadow in AItem.WithShadows do
   begin
-    AddFilledTag(ATags, 'verdeckt ' + mShadow, TAtlasTagKind.Warn);
+    AddFilledTag(ATags, UiText(TPresentationText.Hides) + mShadow, TAtlasTagKind.Warn);
   end;
 end;
 
@@ -505,8 +557,8 @@ end;
 procedure AddScopeTags(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Scope of
-    1: AddTag(ATags, 'lokal', TAtlasTagKind.Accent);
-    2: AddTag(ATags, 'Parameter', TAtlasTagKind.Accent);
+    1: AddTag(ATags, UiText(TPresentationText.Local), TAtlasTagKind.Accent);
+    2: AddTag(ATags, UiText(TPresentationText.Parameter), TAtlasTagKind.Accent);
     3: AddMemberTag(AItem, ATags);
     4: AddTag(ATags, 'Unit', TAtlasTagKind.Neutral);
     5:
@@ -530,11 +582,11 @@ begin
   begin
     if AItem.Unavailable then
     begin
-      AddTag(ATags, 'nur ' + AItem.Condition, TAtlasTagKind.Warn);
+      AddTag(ATags, UiText(TPresentationText.Only) + AItem.Condition, TAtlasTagKind.Warn);
     end
     else
     begin
-      AddTag(ATags, 'nur ' + AItem.Condition, TAtlasTagKind.Neutral);
+      AddTag(ATags, UiText(TPresentationText.Only) + AItem.Condition, TAtlasTagKind.Neutral);
     end;
   end;
 end;
@@ -547,7 +599,7 @@ begin
   // Felder varianter Records (#846): „Zweig 0“.
   if AItem.VariantBranch <> '' then
   begin
-    mIndex := AddTag(ATags, 'Zweig ' + AItem.VariantBranch, TAtlasTagKind.Neutral);
+    mIndex := AddTag(ATags, UiText(TPresentationText.Branch) + AItem.VariantBranch, TAtlasTagKind.Neutral);
     ATags[mIndex].Id := TAtlasTagId.VariantBranch;
     ATags[mIndex].Arg := AItem.VariantBranch;
   end;
@@ -571,7 +623,7 @@ begin
   // Sender mit Typumwandlung (#480).
   if AItem.Sender <> '' then
   begin
-    AddTag(ATags, 'als ' + AItem.Sender, TAtlasTagKind.Accent);
+    AddTag(ATags, UiText(TPresentationText.AsText) + AItem.Sender, TAtlasTagKind.Accent);
   end;
   // Typkonvertierung (#490).
   if AItem.Conversion <> '' then
@@ -584,8 +636,8 @@ end;
 procedure AddUsageTag(const AItem: TAtlasCompletionItem; var ATags: TAtlasTags);
 begin
   case AItem.Usage of
-    TAtlasUsageMark.Recent: AddIdTag(ATags, 'zuletzt', TAtlasTagKind.Accent, TAtlasTagId.Recent);
-    TAtlasUsageMark.Frequent: AddIdTag(ATags, 'häufig', TAtlasTagKind.Neutral, TAtlasTagId.Frequent);
+    TAtlasUsageMark.Recent: AddIdTag(ATags, UiText(TPresentationText.Recent), TAtlasTagKind.Accent, TAtlasTagId.Recent);
+    TAtlasUsageMark.Frequent: AddIdTag(ATags, UiText(TPresentationText.Frequent), TAtlasTagKind.Neutral, TAtlasTagId.Frequent);
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -743,5 +795,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Presentation', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

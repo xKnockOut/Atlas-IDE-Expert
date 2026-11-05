@@ -23,7 +23,20 @@ function BareName(const AText: string): string;
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsSharedText = (AndWord);
+
+const
+  cTexts: array[TDeclarationsSharedText] of TAtlasText = (
+    (De: ' und '; En: ' and '));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Erstes Token ab AOffset (Index), High + 1 ohne.</summary>
 function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
@@ -81,7 +94,7 @@ begin
     end
     else if Index = High(AItems) then
     begin
-      Result := Result + ' und ' + AItems[Index];
+      Result := Result + cTexts[TDeclarationsSharedText.AndWord].Text + AItems[Index];
     end
     else
     begin
@@ -100,5 +113,8 @@ begin
   end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.Shared', cTexts);
 
 end.

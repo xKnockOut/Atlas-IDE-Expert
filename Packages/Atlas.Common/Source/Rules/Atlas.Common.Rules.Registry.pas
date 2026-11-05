@@ -29,6 +29,22 @@ type
 
 implementation
 
+
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRegistryText = (NoId, Duplicate);
+
+const
+  cTexts: array[TRegistryText] of TAtlasText = (
+    (De: 'Regel ohne Kennung'; En: 'Rule without id'),
+    (De: 'Regel "%s" ist bereits registriert'; En: 'Rule "%s" is already registered'));
+
+{$SCOPEDENUMS OFF}
 { TRuleRegistry }
 
 constructor TRuleRegistry.Create;
@@ -51,11 +67,11 @@ begin
   Id := ARule.Descriptor.Id;
   if Id = '' then
   begin
-    raise ERuleRegistry.Create('Regel ohne Kennung');
+    raise ERuleRegistry.Create(cTexts[TRegistryText.NoId].Text);
   end;
   if Find(Id, Existing) then
   begin
-    raise ERuleRegistry.CreateFmt('Regel "%s" ist bereits registriert', [Id]);
+    raise ERuleRegistry.CreateFmt(cTexts[TRegistryText.Duplicate].Text, [Id]);
   end;
   FRules.Add(ARule);
 end;
@@ -80,5 +96,8 @@ function TRuleRegistry.Rules: TArray<IRule>;
 begin
   Result := FRules.ToArray;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Registry', cTexts);
 
 end.

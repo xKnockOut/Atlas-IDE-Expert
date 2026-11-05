@@ -81,7 +81,21 @@ uses
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.Baseline,
   Atlas.Text.Json,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOutputText = (FindingLine, Summary);
+
+const
+  cTexts: array[TOutputText] of TAtlasText = (
+    (De: '%s(%d,%d): %s %s [Konfidenz %s]: %s'; En: '%s(%d,%d): %s %s [confidence %s]: %s'),
+    (De: '%d Treffer in %d von %d Dateien'; En: '%d findings in %d of %d files'));
+
+{$SCOPEDENUMS OFF}
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
@@ -272,14 +286,14 @@ begin
       begin
         Inc(Count);
         // Konfidenz als eigene Spalte vor der Meldung, nicht im Meldungstext (#144).
-        Builder.Append(Format('%s(%d,%d): %s %s [Konfidenz %s]: %s', [CheckedFile.Path,
+        Builder.Append(cTexts[TOutputText.FindingLine].Fmt([CheckedFile.Path,
           Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
           TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, ConfidenceText(Finding.Confidence),
           Finding.Message]));
         Builder.Append(sLineBreak);
       end;
     end;
-    Builder.Append(Format('%d Treffer in %d von %d Dateien', [Count, FilesWithFindings, Length(AFiles)]));
+    Builder.Append(cTexts[TOutputText.Summary].Fmt([Count, FilesWithFindings, Length(AFiles)]));
     Builder.Append(sLineBreak);
     Result := Builder.ToString;
   finally
@@ -695,5 +709,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Output', cTexts);
 
 end.

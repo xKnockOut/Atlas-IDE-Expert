@@ -65,7 +65,36 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDfmPropertiesText = (Title, ShouldBe, MustNotBe, ShouldContain, MustNotContain, ShouldBeEmpty, MustNotBeEmpty,
+    SetInForm, AddTo, RemoveFrom, ClearInForm, UnknownClass, NoProperty);
+
+const
+  cTexts: array[TDfmPropertiesText] of TAtlasText = (
+    (De: 'Komponenten-Property weicht von einer Eigenschaftsregel aus atlas.json ab';
+     En: 'Component property differs from a property rule in atlas.json'),
+    (De: '%s soll %s sein, ist %s'; En: '%s should be %s, is %s'),
+    (De: '%s darf nicht %s sein'; En: '%s must not be %s'),
+    (De: '%s soll %s enthalten, ist %s'; En: '%s should contain %s, is %s'),
+    (De: '%s darf %s nicht enthalten'; En: '%s must not contain %s'),
+    (De: '%s soll leer sein, ist %s'; En: '%s should be empty, is %s'),
+    (De: '%s darf nicht leer sein'; En: '%s must not be empty'),
+    (De: '%s = %s in der Formulardatei setzen'; En: 'Set %s = %s in the form file'),
+    (De: '%s in %s ergänzen'; En: 'Add %s to %s'),
+    (De: '%s aus %s entfernen'; En: 'Remove %s from %s'),
+    (De: '%s in der Formulardatei leeren'; En: 'Clear %s in the form file'),
+    (De: 'Klasse "%s" ist im Index unbekannt; die Eigenschaftsregel greift nie';
+     En: 'Class "%s" is unknown in the index; the property rule never applies'),
+    (De: '%s hat keine Property "%s"; die Eigenschaftsregel greift nie';
+     En: '%s has no property "%s"; the property rule never applies'));
+
+{$SCOPEDENUMS OFF}
 
 const
   MaxDepth = 30;
@@ -475,7 +504,7 @@ end;
 function TDfmPropertyCheckRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-property', TRuleSeverity.Warning,
-    'Komponenten-Property weicht von einer Eigenschaftsregel aus atlas.json ab');
+    cTexts[TDfmPropertiesText.Title].Text);
 end;
 
 class function TDfmPropertyCheckRule.DeclaredDefault(const ADeclaration: string; out AValue: string): Boolean;
@@ -584,17 +613,17 @@ begin
   end;
   case ARule.Condition of
     TDfmCondition.Equal:
-      Result := Format('%s soll %s sein, ist %s', [ARule.PropertyPath, ARule.Value, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldBe].Fmt([ARule.PropertyPath, ARule.Value, Actual]);
     TDfmCondition.NotEqual:
-      Result := Format('%s darf nicht %s sein', [ARule.PropertyPath, ARule.Value]);
+      Result := cTexts[TDfmPropertiesText.MustNotBe].Fmt([ARule.PropertyPath, ARule.Value]);
     TDfmCondition.Contains:
-      Result := Format('%s soll %s enthalten, ist %s', [ARule.PropertyPath, ARule.Value, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldContain].Fmt([ARule.PropertyPath, ARule.Value, Actual]);
     TDfmCondition.NotContains:
-      Result := Format('%s darf %s nicht enthalten', [ARule.PropertyPath, ARule.Value]);
+      Result := cTexts[TDfmPropertiesText.MustNotContain].Fmt([ARule.PropertyPath, ARule.Value]);
     TDfmCondition.Empty:
-      Result := Format('%s soll leer sein, ist %s', [ARule.PropertyPath, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldBeEmpty].Fmt([ARule.PropertyPath, Actual]);
   else
-    Result := Format('%s darf nicht leer sein', [ARule.PropertyPath]);
+    Result := cTexts[TDfmPropertiesText.MustNotBeEmpty].Fmt([ARule.PropertyPath]);
   end;
   Result := Format('%s (%s): %s', [AObject.Name, AObject.TypeName, Result]);
 end;
@@ -765,24 +794,24 @@ begin
     TDfmCondition.Equal:
       begin
         AValue := DfmValue(ARule.Value, AStringType);
-        ATitle := Format('%s = %s in der Formulardatei setzen', [ARule.PropertyPath, AValue]);
+        ATitle := cTexts[TDfmPropertiesText.SetInForm].Fmt([ARule.PropertyPath, AValue]);
       end;
     TDfmCondition.Contains:
       begin
         Result := IsSet(AActual);
         AValue := JoinSet(SetElements(AActual) + [Trim(ARule.Value)]);
-        ATitle := Format('%s in %s ergänzen', [Trim(ARule.Value), ARule.PropertyPath]);
+        ATitle := cTexts[TDfmPropertiesText.AddTo].Fmt([Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.NotContains:
       begin
         Result := IsSet(AActual);
         AValue := SetWithout(AActual, Trim(ARule.Value));
-        ATitle := Format('%s aus %s entfernen', [Trim(ARule.Value), ARule.PropertyPath]);
+        ATitle := cTexts[TDfmPropertiesText.RemoveFrom].Fmt([Trim(ARule.Value), ARule.PropertyPath]);
       end;
     TDfmCondition.Empty:
       begin
         Result := EmptyValue(AActual, AStringType, AValue);
-        ATitle := Format('%s in der Formulardatei leeren', [ARule.PropertyPath]);
+        ATitle := cTexts[TDfmPropertiesText.ClearInForm].Fmt([ARule.PropertyPath]);
       end;
   else
     // <> und notEmpty: kein eindeutiger Sollwert.
@@ -1083,14 +1112,12 @@ begin
       if not Checker.FindClass(Rule.ClassName, Location) then
       begin
         Issue.Range := Rule.ClassRange;
-        Issue.Message := Format('Klasse "%s" ist im Index unbekannt; die Eigenschaftsregel greift nie',
-          [Rule.ClassName]);
+        Issue.Message := cTexts[TDfmPropertiesText.UnknownClass].Fmt([Rule.ClassName]);
       end
       else if (Rule.PropertyPath <> '') and not Checker.HasProperty(Rule.ClassName, Rule.PropertyPath, Missing) then
       begin
         Issue.Range := Rule.PropertyRange;
-        Issue.Message := Format('%s hat keine Property "%s"; die Eigenschaftsregel greift nie',
-          [Rule.ClassName, Missing]);
+        Issue.Message := cTexts[TDfmPropertiesText.NoProperty].Fmt([Rule.ClassName, Missing]);
       end
       else
       begin
@@ -1107,5 +1134,8 @@ procedure RegisterDfmPropertyRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDfmPropertyCheckRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DfmProperties', cTexts);
 
 end.
