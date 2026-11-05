@@ -34,6 +34,9 @@ type
     /// <summary>Projekt einer Gruppe im Unterordner: atlas.json aus dem Stamm darüber.</summary>
     [Test]
     procedure LoadsFileFromParentFolder;
+    /// <summary>Basis für "exclude": Ordner der Datei, nicht der Unterordner des Projekts.</summary>
+    [Test]
+    procedure ConfigRootIsFolderOfFile;
     [Test]
     procedure LoadsLegacyFileWithoutNewOne;
     [Test]
@@ -146,6 +149,17 @@ begin
   FDiskText := '';
   FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
   Assert.AreEqual(TServerSettings.Default.Platform, FConfiguration.Settings.Platform);
+end;
+
+procedure TLspConfigurationTests.ConfigRootIsFolderOfFile;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual(Root + '\', FConfiguration.ConfigRoot);
+  // Ohne Datei bleibt die Wurzel.
+  FDiskText := '';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual(Root + '\Packages\Expert', FConfiguration.ConfigRoot);
 end;
 
 procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;

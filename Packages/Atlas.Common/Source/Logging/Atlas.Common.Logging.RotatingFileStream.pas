@@ -130,7 +130,7 @@ begin
     System.SysUtils.DeleteFile(Previous);
   end;
   // Klappt das Umbenennen nicht, beginnt die Datei eben von vorn.
-  RenameFile(FFileName, Previous);
+  RenameFile(FFileName, Previous); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
   FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
 end;
 

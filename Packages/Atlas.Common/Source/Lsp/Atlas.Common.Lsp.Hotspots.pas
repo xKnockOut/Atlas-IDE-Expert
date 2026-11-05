@@ -128,6 +128,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,

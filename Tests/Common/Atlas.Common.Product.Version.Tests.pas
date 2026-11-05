@@ -36,7 +36,8 @@ var
   Version: string;
   Part: string;
 begin
-  Version := TProductVersion.Version;
+  // SemVer: Vorabkennung wie -beta.1 steht hinter den drei Zahlen.
+  Version := TProductVersion.Version.Split(['-'])[0];
   Assert.AreEqual<NativeInt>(3, Length(Version.Split(['.'])), 'Version muss aus Major.Minor.Patch bestehen');
   for Part in Version.Split(['.']) do
   begin

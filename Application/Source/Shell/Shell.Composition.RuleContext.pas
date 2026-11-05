@@ -193,7 +193,8 @@ begin
     if mWorkspace <> nil then
     begin
       AContext.Settings := mWorkspace.Configuration.Settings;
-      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Root), AFileName);
+      AContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Configuration.ConfigRoot),
+        AFileName);
       AContext.Baseline := mWorkspace.Baseline;
       // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
       // (#1112).

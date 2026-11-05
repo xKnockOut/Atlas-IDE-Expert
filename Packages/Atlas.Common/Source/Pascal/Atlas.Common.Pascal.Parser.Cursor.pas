@@ -8,6 +8,7 @@
 interface
 
 uses
+  System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
@@ -129,7 +130,6 @@ function IncludeAsValue(const APrevious: TPascalToken): Boolean;
 implementation
 
 uses
-  System.SysUtils,
   System.StrUtils,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Lexer,

@@ -150,7 +150,8 @@ begin
     else
     begin
       mSettings := mWorkspace.Configuration.Settings;
-      mContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Root), mFileName);
+      mContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Configuration.ConfigRoot),
+        mFileName);
       mContext.Naming := mWorkspace.RuleServices.Naming;
     end;
   finally
