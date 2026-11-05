@@ -14,9 +14,13 @@
 // toten, werden die Tabellen neu aufgebaut.
 //
 // Speicherbudget (#185): Zeichenketten kommen in einen Pool. Übersteigt der
-// geschätzte Bedarf das Budget, werden zuerst die Verwendungen ausgelagert
-// (#492; sie bleiben im Cache auf der Platte), dann Bibliotheks-Units, danach
-// Projekt-Units kompakt gehalten (nur interface-Symbole). MemoryParts teilt
+// geschätzte Bedarf das Budget, werden zuerst Bibliotheks-Units kompakt
+// gehalten (nur interface-Symbole, ohne Verwendungen), dann die Verwendungen
+// der Projekt-Units ausgelagert (#492; sie bleiben im Cache auf der Platte),
+// zuletzt Projekt-Units kompakt gehalten. Die Verwendungen der Projekt-Units
+// gehen erst nach den Bibliotheken: Ohne sie lesen projektweite Regeln
+// (unused-public-member) jede Datei der Gruppe, und der Prüflauf staut sich
+// (Abbrüche in 2.0-stable). MemoryParts teilt
 // die Schätzung für das Fenster „Atlas-Server“ (#1356) in Projekt, Bibliothek
 // und Verwendungen; die Anteile laufen beim Hinzufügen und Entfernen mit.
 //
@@ -127,8 +131,8 @@ type
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
     function OverBudgetLocked: Boolean;
-    /// <summary>Verkleinert die Unit AKey im Durchgang APass: -1 Verwendungen auslagern, 0 Bibliothek und 1 alle
-    /// kompakt halten.</summary>
+    /// <summary>Verkleinert die Unit AKey im Durchgang APass: 0 Bibliothek kompakt halten, 1 Verwendungen der
+    /// Projekt-Units auslagern, 2 Projekt-Units kompakt halten.</summary>
     procedure ShrinkUnitLocked(APass: Integer; const AKey: string);
     procedure RemoveFileLocked(const AFileKey: string);
     /// <summary>Baut die Tabellen neu, wenn die toten Verweise überwiegen.</summary>
@@ -512,7 +516,7 @@ begin
   begin
     Exit;
   end;
-  if APass < 0 then
+  if APass = 1 then
   begin
     if Length(mExisting.Usages) > 0 then
     begin
@@ -520,7 +524,7 @@ begin
       AddLocked(AKey, TIndexMemory.WithoutUsages(mExisting));
     end;
   end
-  else if not mExisting.Compact and ((APass > 0) or mExisting.Library_) then
+  else if not mExisting.Compact and ((APass = 2) or mExisting.Library_) then
   begin
     RemoveFileLocked(AKey);
     AddLocked(AKey, TIndexMemory.Compacted(TIndexMemory.WithoutUsages(mExisting)));
@@ -532,14 +536,14 @@ var
   mPass: Integer;
   mKey: string;
 begin
-  // Erst die Verwendungen auslagern (#492), dann Bibliotheken, dann Projekt-Units kompakt halten;
-  // jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
+  // Erst Bibliotheken kompakt halten, dann die Verwendungen der Projekt-Units auslagern (#492), dann
+  // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
   // das bei jeder Unit auf.
   if not OverBudgetLocked or (FShrinkable.Count = 0) then
   begin
     Exit;
   end;
-  for mPass := -1 to 1 do
+  for mPass := 0 to 2 do
   begin
     for mKey in FShrinkable.Keys.ToArray do
     begin
