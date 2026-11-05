@@ -52,6 +52,7 @@ type
 implementation
 
 uses
+  System.Classes,
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.VisualizerKinds,

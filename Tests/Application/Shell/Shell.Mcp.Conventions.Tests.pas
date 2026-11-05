@@ -26,6 +26,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Mcp.Server,
   Shell.Mcp.Conventions;

@@ -960,7 +960,7 @@ var
 begin
   Result := '';
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.UsesContext := GridUses;
+  mProviders.UsesContext := GridUses();
   mProviders.Rules := EditorRules(AConfig);
   mDiagnostics := TLspSyntaxDiagnostics.Create(AStore, ATransport, mProviders, 0);
   try

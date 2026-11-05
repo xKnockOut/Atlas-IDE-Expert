@@ -98,6 +98,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Style.Symbol,
   System.StrUtils,
+  Vcl.Graphics,
   Vcl.Controls,
   Vcl.Menus,
   Vcl.Forms,
