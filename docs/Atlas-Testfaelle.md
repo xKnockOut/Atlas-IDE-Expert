@@ -9289,3 +9289,19 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
 | LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |
+
+## Einstellungen nur der installierten Module (05.11.2026)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasModule`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ME1 | Alle Packages installiert; *Tools › Optionen › Atlas* öffnen | Alle Seiten wie bisher: Debuggen, Release-Build, Willkommensseite, Issue-Tracker; auf „Compiler“ die Schalter von Build-Werkzeugen, Build-Pipeline und Tests; „Units suchen“ mit Suche und Suchleiste |
+| ME2 | Alle Packages außer `Atlas.IDE.Base` deinstallieren, IDE neu starten, Optionen öffnen | Nur die Einstellungen von Base: keine Seiten Debuggen, Release-Build, Willkommensseite, Issue-Tracker; auf „Compiler“ nur Probleme, Aktion nach dem Speichern und Kosten einer interface-Änderung; „Units suchen“ nur mit Quick Open; „Prüfregeln“ ohne Modulschalter und Sammelkorrektur (**Abnahme**) |
+| ME3 | In ME2 Seite „Versionsverwaltung“ | Keine Links „Willkommensseite“ und „Issue-Tracker“ |
+| ME4 | Nur `Atlas.IDE.Debugger` wieder installieren (Komponente › Packages installieren), Optionen öffnen | Seite „Debuggen“ mit Modulschalter und allen Einstellungen des Debuggers; die übrigen Module fehlen weiter |
+| ME5 | In ME4 einen Wert auf „Debuggen“ ändern, OK, Optionen wieder öffnen | Wert gespeichert; Punkt für geänderte Werte und „Auf Standard zurücksetzen“ im Kontextmenü wie auf den Seiten von Base |
+| ME6 | Willkommensseite installiert, Issue-Tracker nicht; Seite Willkommensseite › „Meine Issues“ | Neben „Meine Issues“ kein Knopf zur Seite Issue-Tracker; mit installiertem Tracker ist er da und führt dorthin |
+| ME7 | Werte eines nicht installierten Moduls in der Registry (z. B. `DebugEnabled` = 0); Optionen mit OK schließen, Modul wieder installieren | Der Wert ist unverändert erhalten |
+| ME8 | Englische Oberfläche (`ui.language` = en), alle Module | Modulschalter auf jeder Seite englisch beschriftet |
+| ME9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; die Testklassen `T…SettingsSectionTests` der Module und `TAtlasSettingsSectionTests` grün |
