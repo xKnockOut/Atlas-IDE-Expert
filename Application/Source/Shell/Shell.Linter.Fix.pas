@@ -93,7 +93,21 @@ uses
   Shell.Linter.Files,
   Shell.Linter.Changes,
   Shell.Linter.Index,
-  Shell.Linter.Baseline;
+  Shell.Linter.Baseline,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterFixText = (Header, Affected, Changed, Conflicts);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterFixText] of TAtlasText = (
+    (De: 'Sammelkorrektur: %s (Konfidenz ab %s)'; En: 'Bulk fix: %s (confidence from %s)'),
+    (De: 'Betroffene Dateien: %s'; En: 'Affected files: %s'),
+    (De: 'Geänderte Dateien: %s'; En: 'Changed files: %s'),
+    (De: '--fix verträgt sich nicht mit --metrics, --todos, --suppression-stats und --update-baseline';
+    En: '--fix does not go with --metrics, --todos, --suppression-stats and --update-baseline'));
 
 /// <summary>Nur die Treffer aus AFindings, deren Zeile im Ausgangstext laut ALines geändert ist.</summary>
 function InChangedLines(const ACheck: TLinterFixCheck; const AFindings: TArray<TRuleFinding>;
@@ -190,7 +204,7 @@ begin
   Result := TLinterBaseline.Load(FOptions, mBaselinePath, FBaseline);
   if Result then
   begin
-    TLinterOutput.Error(Format('Sammelkorrektur: %s (Konfidenz ab %s)', [string.Join(', ', FOptions.FixRules),
+    TLinterOutput.Error(cTexts[TLinterFixText.Header].Fmt([string.Join(', ', FOptions.FixRules),
       TBulkFix.ConfidenceText(FFixOptions.MinConfidence)]));
   end;
 end;
@@ -295,11 +309,11 @@ begin
   TLinterOutput.Error(TBulkFix.Summary(FResults, FOptions.FixDryRun, sLineBreak));
   if (mChangedNames <> '') and FOptions.FixDryRun then
   begin
-    TLinterOutput.Error('Betroffene Dateien: ' + mChangedNames);
+    TLinterOutput.Error(cTexts[TLinterFixText.Affected].Fmt([mChangedNames]));
   end
   else if mChangedNames <> '' then
   begin
-    TLinterOutput.Error('Geänderte Dateien: ' + mChangedNames);
+    TLinterOutput.Error(cTexts[TLinterFixText.Changed].Fmt([mChangedNames]));
   end;
 end;
 
@@ -328,7 +342,7 @@ begin
   TLinterOutput.Warnings(AOptions);
   if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
   begin
-    TLinterOutput.Error('--fix verträgt sich nicht mit --metrics, --todos, --suppression-stats und --update-baseline');
+    TLinterOutput.Error(cTexts[TLinterFixText.Conflicts].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   if not TLinterTarget.Resolve(AOptions.CheckTarget, mTarget) then
@@ -350,5 +364,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Fix', cTexts);
 
 end.

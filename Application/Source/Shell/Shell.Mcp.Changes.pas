@@ -38,7 +38,17 @@ uses
   Atlas.Common.Rules.Builtin,
   Shell.Platform,
   Shell.Bootstrap,
-  Shell.Mcp.Context;
+  Shell.Mcp.Context,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpChangesText = (NotInIndex);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpChangesText] of TAtlasText = (
+    (De: 'Unit "%s" ist nicht im Index'; En: 'Unit "%s" is not in the index'));
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
@@ -58,7 +68,7 @@ begin
       AGroup.EnsureUnit(AUnit);
       if not AIndex.FindUnit(AUnit, mUnit) then
       begin
-        raise EMcpToolError.CreateFmt('Unit "%s" ist nicht im Index', [AUnit]);
+        raise EMcpToolError.Create(cTexts[TMcpChangesText.NotInIndex].Fmt([AUnit]));
       end;
       Result := AGuard.Resolve(mUnit.FileName);
     end;
@@ -172,5 +182,8 @@ begin
       Result := ChangeSetOf(AGroup, mRoot, ABase);
     end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp.Changes', cTexts);
 
 end.

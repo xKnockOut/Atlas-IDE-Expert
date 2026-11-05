@@ -106,7 +106,17 @@ uses
   Shell.CrashCases,
   Shell.Commands.Build,
   Shell.Commands.Index,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TServerCommandText = (NotLoaded);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TServerCommandText] of TAtlasText = (
+    (De: 'Projekt %s ist nicht geladen.'; En: 'Project %s is not loaded.'));
 
 function FirstText(const AArguments: TJSONArray): string;
 begin
@@ -399,7 +409,7 @@ begin
     if mIndex < 0 then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-        Format('Projekt %s ist nicht geladen.', [mArgs.Project]));
+        cTexts[TServerCommandText.NotLoaded].Fmt([mArgs.Project]));
     end;
     FServices.SetProject(mTargets[mIndex].Setup.Origin, mItems[mIndex].Project);
     FServices.Logger.Info(Format('Projekt %s ausgewählt', [TLogMarks.Name(mItems[mIndex].Name)]));
@@ -410,5 +420,8 @@ begin
   end;
   Result := TBuildCommands.ProjectChoices(mItems);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.ServerCommands', cTexts);
 
 end.

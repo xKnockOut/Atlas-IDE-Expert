@@ -4630,7 +4630,7 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
 | AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
 | AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
-| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau und Knopf „Datei jetzt prüfen“; die Liste ändert sich erst beim Speichern bzw. erst auf den Knopf |
+| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau, kein Knopf „Datei jetzt prüfen“ im Fenster; die Liste ändert sich erst beim Speichern bzw. erst auf Klick auf die Prüfung in der Atlas-Statusleiste |
 | AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
 | AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
 | AP17 | „Regel einstellen…“ im Tooltip | Der Dialog der Projekt-Einstellungen (ohne Projekt der globale) öffnet sich im Knoten der Gruppe, die Regel ist markiert |
@@ -9297,7 +9297,7 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV2 | Live, Verzögerung 2000, OK; tippen und anhalten | Die Liste ändert sich erst etwa 2 s nach dem letzten Tastendruck; mit 100 fast sofort (**Abnahme**) |
 | LV3 | Verzögerung 50 bzw. 50000 eingeben, OK, Dialog wieder öffnen | Wert auf 100 bzw. 10000 begrenzt |
 | LV4 | „Beim Speichern“; tippen, dann Strg+S | Beim Tippen keine Prüfung; nach dem Speichern die neuen Befunde |
-| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Knopf „Datei jetzt prüfen“ im Fenster prüft sofort (**Abnahme**) |
+| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Klick auf „manuell · …“ in der Atlas-Statusleiste prüft sofort (**Abnahme**) |
 | LV6 | In LV5 Befehlspalette (Strg+Umschalt+P) › „Datei jetzt prüfen“ | Die offene Datei wird geprüft; mit ausgeschalteten Prüfregeln fehlt der Befehl |
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
@@ -9459,6 +9459,21 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
 
+## Meldungen des Servers zweisprachig (#1458, Gruppe C)
+
+Vorbereitung: AtlasServer und `Atlas.Tests` aus dem Branch gebaut; ein Projekt mit Befunden; MCP-Client (z. B. Claude Code) mit `AtlasServer --mcp`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZE1 | `AtlasServer --check <Projekt> --locale en` | Zusammenfassung, Hinweise und Fehlermeldungen englisch (z. B. „Symbol index: … units in … s“), Befundtexte englisch (**Abnahme**) |
+| ZE2 | Wie ZE1 mit `--locale de` | Dieselben Ausgaben deutsch wie bisher |
+| ZE3 | `AtlasServer --check <Projekt> --locale xx --format foo` | Zwei Warnungen in der Sprache aus `settings.json` (ohne `language` englisch): unbekannte Sprache und unbekanntes Format |
+| ZE4 | `AtlasServer --mcp --locale en`, im Client die Werkzeugliste ansehen | Beschreibungen aller Werkzeuge und Parameter englisch; ein Aufruf ohne Pflichtargument meldet „Argument … is missing“ (**Abnahme**) |
+| ZE5 | Wie ZE4 mit `--locale de` | Beschreibungen und Meldungen deutsch |
+| ZE6 | In der IDE mit englischer Oberfläche (`language` = en) eine abgeschaltete Refaktorierung (z. B. `refactoring.safeDelete` aus) auslösen | Meldung englisch „"Safe delete" is turned off (refactoring.safeDelete).“ |
+| ZE7 | In der IDE mit englischer Oberfläche „Projekt kompilieren“ ohne gültige Lizenz bzw. ohne Projekt | Meldungen des Servers englisch (z. B. „No folder with a project open“) |
+| ZE8 | `Atlas.Tests` bauen und ausführen (Win64) | 0 Fehler, 0 Warnungen, 0 Hinweise; `TShellTextsTests`, `TCommandLineOptionsTests.WarningTextFollowsLanguage`, `TMcpToolsTests.ToolsSpeakBothLanguages`, `TLocalizationTextsTests.AllTablesComplete` grün; Tests mit deutschen Erwartungen unabhängig von der Reihenfolge grün |
+| ZE9 | AtlasServer mit Delphi 12 und 13 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
 ## Tracker-, Willkommens- und Debugger-Texte englisch (#1458, Gruppe E)
 
 Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); Projekt in einem Git-Repository mit Tracker-Verbindung (YouTrack oder GitHub).
@@ -9539,6 +9554,34 @@ end;
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
 
+## Datei prüfen über die Atlas-Statusleiste statt über einen Knopf (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Prüfregeln (`problems.enabled`) und Atlas-Statusleiste an, Fenster „Atlas-Prüfung“ offen, eine Unit mit Befunden im Editor.
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| PS1 | `problems.update` nacheinander auf „Live“, „Beim Speichern“ und „Nur auf Anforderung“ | Rechts im Fenster „Atlas-Prüfung“ steht nur die Anzeige „● Live“, „Beim Speichern“ bzw. „Manuell“; ein Knopf „Datei jetzt prüfen“ erscheint in keinem Modus, nichts ist abgeschnitten (**Abnahme**) |
+| PS2 | „Beim Speichern“; in der Unit einen Befund einbauen, nicht speichern, Maus über „beim Speichern · Projekt xx %“ in der Atlas-Statusleiste | Tooltip endet mit „Klick: Datei jetzt prüfen“ |
+| PS3 | In PS2 auf „beim Speichern · Projekt xx %“ klicken | Die offene Datei wird sofort geprüft, auch ungespeichert; der neue Befund erscheint in Statusleiste und Fenster, die übrigen Units werden nicht neu geprüft (**Abnahme**) |
+| PS4 | „Nur auf Anforderung“; Befund einbauen, auf „manuell · …“ in der Statusleiste klicken | Die offene Datei wird geprüft wie in PS3 |
+| PS5 | „Live“; auf die Live-Prüfung in der Statusleiste klicken | Wie bisher: „Atlas prüft alle Units neu …“, alle Units werden neu geprüft |
+| PS6 | Befehlspalette › „Datei jetzt prüfen“ und Strg+Umschalt+Alt+P | Beides prüft die offene Datei weiterhin |
+| PS7 | IDE auf Englisch (Atlas-Sprache English), PS1–PS3 wiederholen | Fenster „Atlas Findings“ ohne Knopf „Check file now“; Tooltip der Statusleiste endet mit „Click: check this file now“, Klick auf „on save · project xx %“ prüft die Datei |
+## Zusatzfelder in der Atlas-Statusleiste (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Atlas-Statusleiste an (`editor.statusBar`) mit dem Element „Status“; Modul Analyse installiert, `architecture.enabled` und `build.showInterfaceCost` an; Unit `Unten.pas` aus IK1 offen.
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| ZF1 | Einfügemarke in den interface-Teil von `Unten.pas` | „interface-Änderung: 2 Units werden neu kompiliert“ steht in der Atlas-Statusleiste direkt hinter dem Status (und hinter einer Plakette ungelesener Benachrichtigungen), mit Trennstrich; in der Statuszeile der IDE steht das Feld nicht mehr (**Abnahme**) |
+| ZF2 | Maus über das Feld aus ZF1 | Tooltip nennt die ersten Units wie bisher; das Feld wird hervorgehoben |
+| ZF3 | Klick auf das Feld aus ZF1 | „Unit-Beziehungen“ öffnet sich mit „Abhängigkeiten dieser Unit“ (wie IK-Klick in der Statuszeile) |
+| ZF4 | Einfügemarke in den implementation-Teil | Das Feld verschwindet aus der Atlas-Statusleiste, ohne Lücke oder doppelten Trennstrich |
+| ZF5 | Zahnrad › „Status“ ausblenden, dann interface-Teil wie ZF1 | Das Feld steht wieder in der Statuszeile der IDE (zusammen mit dem Atlas-Feld); nach dem Einblenden von „Status“ wieder in der Atlas-Leiste |
+| ZF6 | Zahnrad › „Statusleiste ausblenden“ | Atlas-Feld und alle Zusatzfelder stehen in der Statuszeile der IDE; Klick auf das Feld aus ZF1 dort öffnet „Unit-Beziehungen“ |
+| ZF7 | Mit Leiste und Status: Startprofil (#575), Compilerschalter, Schnell-Lesezeichen, Mehrfachcursor oder Zeit eines Tracker-Issues auslösen | Auch diese Felder stehen hinter dem Status in der Atlas-Leiste statt in der Statuszeile; ein Klick tut dort dasselbe wie vorher in der Statuszeile |
+| ZF8 | Editorfenster schmal ziehen | Zusatzfelder kürzen sich mit „…“ zusammen mit der Live-Prüfung, nach der Methode; Zähler bleiben; nichts bricht um |
+| ZF9 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster), dort interface-Teil wie ZF1 | Die Leiste jedes Fensters zeigt die Zusatzfelder hinter ihrem Status |
 ## Kontextmenü Atlas im Editor: Untermenüs und Tastenkürzel (05.11.2026)
 
 Ausgangslage: Das Untermenü *Atlas* im Kontextmenü des Editors war mit rund 40 Einträgen höher als der Bildschirm (oben abgeschnitten), und die Tastenkürzel klebten direkt am Text („FormatierenStrg+Alt+Umsch+L“).
@@ -9571,3 +9614,12 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | ENF6 | Englisch; `tests.affectedBeforeCommit` an, Hook anlegen lassen (`.git/hooks/pre-commit` vorher löschen); Datei ändern und in Git Bash committen | Hook-Kommentare englisch; Frage „Atlas: Run the affected tests now (test EXE without a new build)? [y/N]“; `y` startet die Tests, nach Fehlschlag „Atlas: Tests failed. Commit anyway? [y/N]“ |
 | ENF7 | Deutsch; Einstellung aus- und einschalten (Hook neu schreiben), committen | Fragen deutsch mit „[j/N]“; `j` und `y` gelten in beiden Sprachen |
 | ENF8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTaskDefinitionsTests`, `TAtlasTaskTextsTests.IssueInBothLanguages`, `TAtlasBuildInboxTests`, `TAtlasAffectedHookTests` und die Strings-Tests von Build, BuildPipeline und Tests grün |
+
+## Kräftige Farben im Benachrichtigungsfenster
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BN1 | Dunkles Design, Benachrichtigungen mit Warnung und Fehler (z. B. Build mit Warnungen), Glocke in der Atlas-Statusleiste anklicken | Gelbes „!“ und rotes „×“ so kräftig wie die rote/gelbe Plakette unten in der Statusleiste; Zeichen dunkel und gut lesbar (**Abnahme**) |
+| BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
+| BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
+| BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |

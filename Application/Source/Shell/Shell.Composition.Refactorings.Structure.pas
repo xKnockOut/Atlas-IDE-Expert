@@ -71,13 +71,33 @@ uses
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InlineAccessor,
-  Atlas.Common.Lsp.SafeDelete;
+  Atlas.Common.Lsp.SafeDelete,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TStructureRefactoringText = (ChangeSignature, ExtractInterface, ExtractSuperclass, ExtractMissing, SignatureMissing,
+    BulkOff, DirectionMissing, MembersMissing, MoveClass, PropertyFromAccessors, InlineAccessor, SafeDelete,
+    MoveMember);
+{$SCOPEDENUMS OFF}
 
 const
-  cChangeSignatureOff = '"Signatur ändern" ist abgeschaltet (refactoring.changeSignature).';
-  cExtractInterfaceOff = '"Interface herauslösen" ist abgeschaltet (refactoring.extractInterface).';
-  cExtractSuperclassOff = '"Basisklasse herauslösen" ist abgeschaltet (refactoring.extractSuperclass).';
-  cExtractMissing = 'Argument mit Name, Ziel und Mitgliedern fehlt';
+  cTexts: array[TStructureRefactoringText] of TAtlasText = (
+    (De: 'Signatur ändern'; En: 'Change signature'),
+    (De: 'Interface herauslösen'; En: 'Extract interface'),
+    (De: 'Basisklasse herauslösen'; En: 'Extract superclass'),
+    (De: 'Argument mit Name, Ziel und Mitgliedern fehlt'; En: 'Argument with name, target and members is missing'),
+    (De: 'Argument mit der neuen Signatur fehlt'; En: 'Argument with the new signature is missing'),
+    (De: 'Die Sammelaktion ist abgeschaltet (refactoring.inlineAccessorBulk).';
+    En: 'The bulk action is turned off (refactoring.inlineAccessorBulk).'),
+    (De: 'Argumente "uri", "position" und Richtung fehlen';
+    En: 'Arguments "uri", "position" and direction are missing'),
+    (De: 'Argument mit Mitgliedern und Zielen fehlt'; En: 'Argument with members and targets is missing'),
+    (De: 'Klasse verschieben'; En: 'Move class'),
+    (De: 'Property aus Getter und Setter'; En: 'Property from getter and setter'),
+    (De: 'Zugriffsmethode durch Feld ersetzen'; En: 'Replace accessor with field'),
+    (De: 'Sicher löschen'; En: 'Safe delete'),
+    (De: 'Mitglied verschieben'; En: 'Move member'));
 
 /// <summary>Ansatz für „Signatur ändern“: Dokument und Position aus den Argumenten (URI, Position).</summary>
 function SignatureSource(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ADocument: ITextDocument;
@@ -208,10 +228,11 @@ var
   mSettings: TRefactoringSettings;
 begin
   // Argumente: URI, Position.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
-  mDocument := Open(mUri, mSettings.ChangeSignature, cChangeSignatureOff);
+  mDocument := Open(mUri, mSettings.ChangeSignature, Disabled(cTexts[TStructureRefactoringText.ChangeSignature].Text,
+    'refactoring.changeSignature'));
   mResolver := NewResolver;
   try
     Result := TLspChangeSignature.InfoToJson(TLspChangeSignature.Prepare(SignatureSource(mResolver, Index, mDocument,
@@ -231,11 +252,12 @@ var
   mOutcome: TChangeSignatureOutcome;
 begin
   // Argumente: URI, Position, die neue Signatur (TLspChangeSignature.ReadRequest).
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
-  mDocument := Open(mUri, mSettings.ChangeSignature, cChangeSignatureOff);
-  Require(AArguments, 3, 'Argument mit der neuen Signatur fehlt');
+  mDocument := Open(mUri, mSettings.ChangeSignature, Disabled(cTexts[TStructureRefactoringText.ChangeSignature].Text,
+    'refactoring.changeSignature'));
+  Require(AArguments, 3, cTexts[TStructureRefactoringText.SignatureMissing].Text);
   mRequest := TLspChangeSignature.ReadRequest(AArguments.Items[2], ParameterModeOf(mSettings),
     mSettings.VirtualOverload);
   mResolver := NewResolver;
@@ -278,9 +300,10 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, Name der neuen Unit.
-  Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
+  Require(AArguments, ['uri', 'position', 'name']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).MoveClass, '"Klasse verschieben" ist abgeschaltet (refactoring.moveClass).');
+  mDocument := Open(mUri, Settings(mUri).MoveClass, Disabled(cTexts[TStructureRefactoringText.MoveClass].Text,
+    'refactoring.moveClass'));
   mFileName := TDocumentUris.ToPath(mUri);
   mContext := Default(TMoveClassContext);
   mContext.Index := Index;
@@ -327,12 +350,12 @@ var
   mReplaceCalls: Boolean;
 begin
   // Argumente: URI, Position, Aufrufe umstellen (true/false).
-  Require(AArguments, 3, 'Argumente "uri", "position" und "calls" fehlen');
+  Require(AArguments, ['uri', 'position', 'calls']);
   mUri := AArguments.Items[0].Value;
   mReplaceCalls := (AArguments.Items[2] is TJSONBool) and TJSONBool(AArguments.Items[2]).AsBoolean;
   mSettings := Settings(mUri);
   mDocument := Open(mUri, mSettings.PropertyFromAccessors,
-    '"Property aus Getter und Setter" ist abgeschaltet (refactoring.propertyFromAccessors).');
+    Disabled(cTexts[TStructureRefactoringText.PropertyFromAccessors].Text, 'refactoring.propertyFromAccessors'));
   mContext := Default(TPropertyFromAccessorsContext);
   mContext.Index := Index;
   mContext.Options := PropertyOptionsOf(mSettings);
@@ -385,14 +408,14 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, Bereich (here, unit, project).
-  Require(AArguments, 3, 'Argumente "uri", "position" und "scope" fehlen');
+  Require(AArguments, ['uri', 'position', 'scope']);
   mUri := AArguments.Items[0].Value;
   mScope := AArguments.Items[2].Value;
   mSettings := Settings(mUri);
   Allow(mSettings.InlineAccessor,
-    '"Zugriffsmethode durch Feld ersetzen" ist abgeschaltet (refactoring.inlineAccessor).');
+    Disabled(cTexts[TStructureRefactoringText.InlineAccessor].Text, 'refactoring.inlineAccessor'));
   Allow((mScope = TLspInlineAccessor.ScopeHere) or mSettings.InlineAccessorBulk,
-    'Die Sammelaktion ist abgeschaltet (refactoring.inlineAccessorBulk).');
+    cTexts[TStructureRefactoringText.BulkOff].Text);
   mDocument := Open(mUri);
   mContext := Default(TInlineAccessorContext);
   mContext.Index := Index;
@@ -435,10 +458,11 @@ var
   mContext: TSafeDeleteContext;
 begin
   // Argumente: URI, Position.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
-  mDocument := Open(mUri, mSettings.SafeDelete, '"Sicher löschen" ist abgeschaltet (refactoring.safeDelete).');
+  mDocument := Open(mUri, mSettings.SafeDelete, Disabled(cTexts[TStructureRefactoringText.SafeDelete].Text,
+    'refactoring.safeDelete'));
   mContext := Default(TSafeDeleteContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -470,14 +494,15 @@ var
   mContext: TSafeDeleteContext;
 begin
   // Argumente: URI, Position, die Antworten auf die Rückfragen.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mChoices := Default(TSafeDeleteChoices);
   if AArguments.Count > 2 then
   begin
     mChoices := TSafeDeleteChoices.FromJson(AArguments.Items[2]);
   end;
-  mDocument := Open(mUri, Settings(mUri).SafeDelete, '"Sicher löschen" ist abgeschaltet (refactoring.safeDelete).');
+  mDocument := Open(mUri, Settings(mUri).SafeDelete, Disabled(cTexts[TStructureRefactoringText.SafeDelete].Text,
+    'refactoring.safeDelete'));
   mContext := Default(TSafeDeleteContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -523,9 +548,10 @@ var
   mDocument: ITextDocument;
 begin
   // Argumente: URI, Position.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).ExtractInterface, cExtractInterfaceOff);
+  mDocument := Open(mUri, Settings(mUri).ExtractInterface,
+    Disabled(cTexts[TStructureRefactoringText.ExtractInterface].Text, 'refactoring.extractInterface'));
   Result := TLspExtractInterface.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
     TLspPositions.ReadPosition(AArguments.Items[1]), ExtractInterfaceContextOf(mUri));
 end;
@@ -538,10 +564,11 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, {name, unit, members}.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).ExtractInterface, cExtractInterfaceOff);
-  Require(AArguments, 3, cExtractMissing);
+  mDocument := Open(mUri, Settings(mUri).ExtractInterface,
+    Disabled(cTexts[TStructureRefactoringText.ExtractInterface].Text, 'refactoring.extractInterface'));
+  Require(AArguments, 3, cTexts[TStructureRefactoringText.ExtractMissing].Text);
   mContext := ExtractInterfaceContextOf(mUri);
   mContext.Resolver := NewResolver;
   try
@@ -589,9 +616,10 @@ var
   mDocument: ITextDocument;
 begin
   // Argumente: URI, Position.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).ExtractSuperclass, cExtractSuperclassOff);
+  mDocument := Open(mUri, Settings(mUri).ExtractSuperclass,
+    Disabled(cTexts[TStructureRefactoringText.ExtractSuperclass].Text, 'refactoring.extractSuperclass'));
   Result := TLspExtractSuperclass.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
     TLspPositions.ReadPosition(AArguments.Items[1]), ExtractSuperclassContextOf(mUri));
 end;
@@ -604,10 +632,11 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, {name, unit, members, abstract}.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).ExtractSuperclass, cExtractSuperclassOff);
-  Require(AArguments, 3, cExtractMissing);
+  mDocument := Open(mUri, Settings(mUri).ExtractSuperclass,
+    Disabled(cTexts[TStructureRefactoringText.ExtractSuperclass].Text, 'refactoring.extractSuperclass'));
+  Require(AArguments, 3, cTexts[TStructureRefactoringText.ExtractMissing].Text);
   mContext := ExtractSuperclassContextOf(mUri);
   mContext.Resolver := NewResolver;
   try
@@ -639,10 +668,10 @@ var
   mUri: string;
 begin
   // Argumente: URI, Position, Richtung, beim Ausführen {members, abstract, targets, option}.
-  Require(AArguments, 3, 'Argumente "uri", "position" und Richtung fehlen');
+  Require(AArguments, 3, cTexts[TStructureRefactoringText.DirectionMissing].Text);
   mUri := AArguments.Items[0].Value;
   ADocument := Open(mUri, Settings(mUri).MoveMember,
-    '"Mitglied verschieben" ist abgeschaltet (refactoring.moveMember).');
+    Disabled(cTexts[TStructureRefactoringText.MoveMember].Text, 'refactoring.moveMember'));
   Result := Default(TMoveMemberContext);
   Result.Index := Index;
   Result.ReadText := Reader;
@@ -667,7 +696,7 @@ var
   mAnswer: TJSONObject;
 begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
-  Require(AArguments, 4, 'Argument mit Mitgliedern und Zielen fehlt');
+  Require(AArguments, 4, cTexts[TStructureRefactoringText.MembersMissing].Text);
   mContext.Files := ProjectFiles;
   mContext.Request := AArguments.Items[3];
   mResolver := NewResolver;
@@ -681,5 +710,8 @@ begin
   Log(Format('Mitglied verschieben: %d Mitglieder', [Number(mAnswer, 'moved')]));
   Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Structure', cTexts);
 
 end.

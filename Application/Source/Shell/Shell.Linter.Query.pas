@@ -50,7 +50,22 @@ uses
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
-  Shell.Linter.Index;
+  Shell.Linter.Index,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterQueryMessage = (NoSavedQuery, Off, Formats);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterQueryMessage] of TAtlasText = (
+    (De: 'Keine gespeicherte Abfrage "%s" in atlas.json (queries)';
+    En: 'No saved query "%s" in atlas.json (queries)'),
+    (De: 'Code-Abfragen sind ausgeschaltet (query.enabled in atlas.json bzw. settings.json)';
+    En: 'Code queries are turned off (query.enabled in atlas.json or settings.json)'),
+    (De: '--query gibt es mit --format text (Standard), json oder csv';
+    En: '--query exists with --format text (default), json or csv'));
 
 class function TLinterQuery.Resolve(const AText: string; AFailOnMatch: Boolean; const ASettings: TServerSettings;
   out AQuery: TLinterQueryText): Boolean;
@@ -77,7 +92,7 @@ begin
   end;
   if not Result then
   begin
-    TLinterOutput.Error(Format('Keine gespeicherte Abfrage "%s" in atlas.json (queries)', [mName]));
+    TLinterOutput.Error(cTexts[TLinterQueryMessage.NoSavedQuery].Fmt([mName]));
   end;
 end;
 
@@ -161,7 +176,7 @@ begin
   mSettings := TLinterSettings.Load(ATarget.ConfigRoot);
   if not mSettings.QueryEnabled then
   begin
-    TLinterOutput.Error('Code-Abfragen sind ausgeschaltet (query.enabled in atlas.json bzw. settings.json)');
+    TLinterOutput.Error(cTexts[TLinterQueryMessage.Off].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
@@ -192,7 +207,7 @@ begin
   if not TQueryOutput.TryParseFormat(AOptions.FormatText, TQueryOutputFormat.Text, mFormat) or
     (mFormat = TQueryOutputFormat.Markdown) then
   begin
-    TLinterOutput.Error('--query gibt es mit --format text (Standard), json oder csv');
+    TLinterOutput.Error(cTexts[TLinterQueryMessage.Formats].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
@@ -209,5 +224,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Query', cTexts);
 
 end.

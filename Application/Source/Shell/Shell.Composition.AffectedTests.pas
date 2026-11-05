@@ -67,7 +67,18 @@ uses
   Shell.Bootstrap,
   Shell.Platform,
   Shell.VcsChanges,
-  Shell.Workspace;
+  Shell.Workspace,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TAffectedRequestText = (UriMissing, NoWorkspace);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAffectedRequestText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in %s'; En: 'Field "textDocument.uri" is missing in %s'),
+    (De: 'Kein Arbeitsbereich zu %s'; En: 'No workspace for %s'));
 
 /// <summary>Text auf der Platte, ohne ungespeicherte Puffer des Editors.</summary>
 function DiskSourceText(const AFileName: string; out AText: string): Boolean;
@@ -102,7 +113,7 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Feld "textDocument.uri" fehlt in ' + TAffectedTests.Method);
+      cTexts[TAffectedRequestText.UriMissing].Fmt([TAffectedTests.Method]));
   end;
   mSettings := AServices.Settings.SettingsFor(mUri);
   mQuery := QueryFor(AServices, TJSONObject(AParams), mUri);
@@ -141,7 +152,7 @@ begin
     mWorkspace := AServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace = nil then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'Kein Arbeitsbereich zu ' + AUri);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, cTexts[TAffectedRequestText.NoWorkspace].Fmt([AUri]));
     end;
     Result.WorkingDir := mWorkspace.Root;
   finally
@@ -179,5 +190,8 @@ begin
   Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
     AServices.ReadText);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.AffectedTests', cTexts);
 
 end.

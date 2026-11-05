@@ -49,7 +49,20 @@ uses
   Atlas.Common.Logging.Providers.StreamSink,
   Shell.Platform,
   Shell.Bootstrap,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterIndexText = (NotReady, NoProject, Ready);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterIndexText] of TAtlasText = (
+    (De: 'Symbolindex nach %d Minuten nicht fertig; Prüfung mit dem bisher aufgebauten Index';
+    En: 'Symbol index not ready after %d minutes; checking with the index built so far'),
+    (De: 'Kein Projekt gefunden; Prüfung ohne Symbolindex'; En: 'No project found; checking without symbol index'),
+    (De: 'Symbolindex: %d Units in %.1f s'; En: 'Symbol index: %d units in %.1f s'));
 
 /// <summary>Logger nur für Warnungen und Fehler auf stderr; stdout gehört dem Ergebnis.</summary>
 function ErrorLogger: ILogger;
@@ -106,17 +119,16 @@ begin
   AGroup.Load(TShellBootstrap.LoadGlobalSettings(nil));
   if not AGroup.WaitForIndex(TLinterIndex.cTimeoutMs) then
   begin
-    TLinterOutput.Error(Format('Symbolindex nach %d Minuten nicht fertig; Prüfung mit dem bisher aufgebauten Index',
-      [TLinterIndex.cTimeoutMs div 60000]));
+    TLinterOutput.Error(cTexts[TLinterIndexText.NotReady].Fmt([TLinterIndex.cTimeoutMs div 60000]));
   end
   else if AIndex.UnitCount = 0 then
   begin
-    TLinterOutput.Error('Kein Projekt gefunden; Prüfung ohne Symbolindex');
+    TLinterOutput.Error(cTexts[TLinterIndexText.NoProject].Text);
   end
   else
   begin
     // Anzeige für Menschen auf stderr: Dezimaltrenner des Gebietsschemas.
-    TLinterOutput.Error(Format('Symbolindex: %d Units in %.1f s', [AIndex.UnitCount,
+    TLinterOutput.Error(Format(cTexts[TLinterIndexText.Ready].Text, [AIndex.UnitCount,
       AWatch.ElapsedMilliseconds / 1000], FormatSettings));
   end;
 end;
@@ -188,5 +200,8 @@ begin
   end;
   AGroup.Free;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Index', cTexts);
 
 end.

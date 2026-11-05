@@ -53,8 +53,11 @@ type
   public const
     DefaultGitBase = 'main';
     SvnBase = 'BASE';
-    OffMessage = 'Betroffene Tests sind ausgeschaltet (tests.affected)';
   public
+    /// <summary>Meldung, wenn tests.affected aus ist.</summary>
+    class function OffMessage: string; static;
+    /// <summary>Grund für „alle Tests“, wenn die Namen nicht in ein --run-Argument passen.</summary>
+    class function TooManyForRun: string; static;
     /// <summary>Geänderte Dateien samt Zeilen aus AChanges.</summary>
     class function Inputs(AChanges: TVcsChanges): TArray<TAffectedInput>; static;
     /// <summary>Hauptdateien (.dpr) unter AFiles, die DUnitX verwenden.</summary>
@@ -76,7 +79,29 @@ implementation
 uses
   Atlas.Common.Rules.ChangedFiles,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TShellAffectedText = (Off, TooManyForRun);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TShellAffectedText] of TAtlasText = (
+    (De: 'Betroffene Tests sind ausgeschaltet (tests.affected)';
+    En: 'Affected tests are turned off (tests.affected)'),
+    (De: 'zu viele Tests für ein --run-Argument'; En: 'too many tests for one --run argument'));
+
+class function TShellAffectedTests.OffMessage: string;
+begin
+  Result := cTexts[TShellAffectedText.Off].Text;
+end;
+
+class function TShellAffectedTests.TooManyForRun: string;
+begin
+  Result := cTexts[TShellAffectedText.TooManyForRun].Text;
+end;
 
 class function TShellAffectedSources.New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText): TShellAffectedSources;
@@ -179,5 +204,8 @@ begin
     mChanges.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.AffectedTests', cTexts);
 
 end.

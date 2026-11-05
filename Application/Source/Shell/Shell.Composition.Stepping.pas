@@ -37,14 +37,25 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.StepTargets,
-  Atlas.Common.Lsp.StepFilter;
+  Atlas.Common.Lsp.StepFilter,
+  Atlas.Common.Localization.Texts,
+  Shell.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TSteppingText = (Unreadable);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TSteppingText] of TAtlasText = (
+    (De: 'Die Datei ist nicht lesbar.'; En: 'The file is not readable.'));
 
 /// <summary>Argumente URI und Zeile (ab 0); sonst EJsonRpcError.</summary>
 function LineOf(const AArguments: TJSONArray): Integer;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "line" fehlen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['uri', 'line']));
   end;
   Result := TJSONNumber(AArguments.Items[1]).AsInt;
 end;
@@ -125,7 +136,7 @@ begin
   // Nach F7 steht der Halt oft in einer Datei, die der Editor erst jetzt öffnet: selbst lesen.
   if not ReadText(TDocumentUris.ToPath(AUri), mText) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht lesbar.');
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TSteppingText.Unreadable].Text);
   end;
   mTree := TSyntaxTreeCache.Parse(mText);
   try
@@ -171,5 +182,8 @@ begin
   Log(Format('Schrittfilter: %d Dateien, %d Routinen', [mCounts.Files, mCounts.Routines]));
   Result := TLspStepFilter.CountsToJson(mCounts);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Stepping', cTexts);
 
 end.
