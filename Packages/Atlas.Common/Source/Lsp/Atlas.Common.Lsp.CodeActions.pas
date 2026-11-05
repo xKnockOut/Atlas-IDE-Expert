@@ -60,6 +60,9 @@ type
   TLspCodeActions = class
   public const
     Method = 'textDocument/codeAction';
+    /// <summary>So lange wartet die Glühbirne auf einen laufenden Lauf der Prüfregeln am selben Text (#1761).
+    /// </summary>
+    RuleWaitMs = 1500;
   private
     FStore: IDocumentStore;
     FRuleProvider: TRuleContextProvider;
@@ -119,6 +122,9 @@ implementation
 
 uses
   System.Generics.Collections,
+  System.Diagnostics,
+  Atlas.Common.JsonRpc.PendingRequests,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
@@ -334,6 +340,8 @@ type
     FWantsFixAll: Boolean;
     FWantsRemoveUnused: Boolean;
     FResult: TJSONArray;
+    /// <summary>Abbruchsignal der Anfrage; beendet nur das Warten auf einen laufenden Lauf.</summary>
+    FCancellation: IJsonRpcCancellationToken;
     procedure ReadWanted(const AOnly: TArray<string>);
     /// <summary>Treffer der Prüfregeln: aus dem Memo bei gleichem Text, sonst selbst gerechnet und abgelegt.
     /// </summary>
@@ -386,21 +394,48 @@ begin
   FWantsRemoveUnused := (AOnly <> nil) and TCodeActions.KindRequested(RemoveUnusedKind, AOnly);
 end;
 
+/// <summary>Warten auf einen fremden Lauf endet nach RuleWaitMs oder mit dem Signal von ACancellation.</summary>
+function WaitCancelled(const ACancellation: IJsonRpcCancellationToken): TRuleCancelled;
+var
+  mClock: TStopwatch;
+begin
+  mClock := TStopwatch.StartNew;
+  Result :=
+    function: Boolean
+    begin
+      Result := (mClock.ElapsedMilliseconds >= TLspCodeActions.RuleWaitMs) or
+        ((ACancellation <> nil) and ACancellation.IsCancellationRequested);
+    end;
+end;
+
 function TCodeActionBuilder.RuleFindings: TArray<TRuleFinding>;
 var
-  mMemo: Boolean;
+  mPastTimeout: IJsonRpcCancellationToken;
+  mPrevious: Pointer;
 begin
   // Die Treffer der Diagnose am selben Text wiederverwenden (2.0-stable): Die Glühbirne fragt bei jeder
-  // Cursorbewegung, und ein eigener Lauf aller Regeln stand hinter dem Prüflauf an.
-  mMemo := (FRules.Memo <> nil) and (FRules.FileName <> '');
-  if mMemo and FRules.Memo.TryGet(FRules.FileName, FText, Result) then
-  begin
-    Exit;
-  end;
-  Result := TLspSyntaxDiagnostics.RuleFindings(FText, FTree, FRules);
-  if mMemo then
-  begin
-    FRules.Memo.Put(FRules.FileName, FText, Result);
+  // Cursorbewegung, und ein eigener Lauf aller Regeln stand hinter dem Prüflauf an. Läuft die Diagnose
+  // gerade, wartet die Glühbirne höchstens RuleWaitMs auf sie, statt daneben noch einmal zu rechnen (#1761);
+  // danach zeigt sie die übrigen Aktionen ohne die der Regeln, statt ins Zeitlimit zu laufen. Rechnet sie selbst,
+  // läuft der Lauf über das Zeitlimit hinaus zu Ende und legt ab; auch tiefe Aufrufe (EnsureUnit) brechen dann nicht
+  // ab.
+  mPastTimeout := TJsonRpcPastTimeout.Create(FCancellation);
+  mPrevious := TJsonRpcCurrentRequest.Enter(mPastTimeout);
+  try
+    try
+      Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+    except
+      on ERuleCheckCancelled do
+      begin
+        if FCancellation <> nil then
+        begin
+          FCancellation.ThrowIfCancellationRequested;
+        end;
+        Result := nil;
+      end;
+    end;
+  finally
+    TJsonRpcCurrentRequest.Leave(mPrevious);
   end;
 end;
 
@@ -664,6 +699,7 @@ var
   mUsesActions: TArray<TCodeAction>;
 begin
   ReadWanted(AOnly);
+  FCancellation := ACancellation;
   ACancellation.ThrowIfCancellationRequested;
   CollectFindings;
   mHasCompletion := FWantsEditing and TClassCompletion.MissingBodies(FTree, FText, FRange.StartPos, mCompletion);

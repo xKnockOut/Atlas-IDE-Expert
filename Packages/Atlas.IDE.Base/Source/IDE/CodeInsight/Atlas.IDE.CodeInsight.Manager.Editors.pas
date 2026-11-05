@@ -16,6 +16,7 @@ uses
   Atlas.IDE.Signature.Editor,
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.InlayHints.Editor,
+  Atlas.IDE.Editor.Lens,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Problems.Controller;
@@ -30,6 +31,8 @@ type
     RunningSession: TFunc<TLspSession>;
     /// <summary>Server läuft und Sitzung initialisiert; startet keinen Server.</summary>
     ReadySession: TFunc<TLspSession>;
+    /// <summary>Befehl im Hintergrund an den laufenden Server (Code Lens); die Antwort im Hauptthread.</summary>
+    RunCommandAsync: TAtlasLensCommandProc;
     Diagnose: TProc<string>;
     /// <summary>Bedient Atlas diese Datei?</summary>
     Handles: TFunc<string, Boolean>;
@@ -167,6 +170,7 @@ var
   mReady: TFunc<TLspSession>;
 begin
   mReady := FHooks.ReadySession;
+  // Code Lens und Metriken fragen den Server im Hintergrund; der Hauptthread gibt nur den Textstand weiter.
   // Startet keinen Server: Inlay-Hints kommen erst, wenn er ohnehin läuft.
   FInlayHints := TAtlasEditorInlayHints.Create(
     function: TLspSession
@@ -178,13 +182,13 @@ begin
     function: TLspSession
     begin
       Result := mReady();
-    end);
+    end, FHooks.RunCommandAsync);
   // Code-Metriken für Statusleiste und die Lens im Modul Analyse (#66, #1756); startet ebenfalls keinen Server.
   FMetricsSource := TAtlasEditorMetricsSource.Create(
     function: TLspSession
     begin
       Result := mReady();
-    end);
+    end, FHooks.RunCommandAsync);
 end;
 
 function TAtlasCodeInsightEditors.Signature: TAtlasEditorSignature;

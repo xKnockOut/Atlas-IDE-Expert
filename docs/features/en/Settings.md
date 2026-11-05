@@ -2,7 +2,7 @@
 
 Back to the [README](../../../README.md)
 
-- *Tools › Options › Third Party › Atlas* as a tree: areas at the top, every feature with its own master switch that also disables its sub-options; next to it the pages *Snippets*, *Tastenkonflikte* (key conflicts) and *Server*
+- *Tools › Options › Third Party › Atlas* as a tree: areas at the top, every feature with its own master switch that also disables its sub-options; next to it the pages *Snippets*, *Key conflicts* and *Server*
 - Every visible feature can be switched off on its own; experimental features are marked
 - **Module switches** for whole areas (`debug.enabled` … `search.enabled`, `ruleChecks.enabled`, `welcomePage.enabled`):
   - debugging, issue tracker, analysis, tests, build tools, build pipeline, bookmarks, designer, rule checks, search and welcome page
@@ -11,7 +11,7 @@ Back to the [README](../../../README.md)
   - every module package brings its settings as its own section of the options dialog; with only `Atlas.IDE.Base` installed, only the settings of Base appear
   - if a project's `atlas.json` sets rules while the rule checks module is off, Atlas points this out once
 - Export, import, load profiles and reset settings
-- Team-wide values in the project file `.atlas` (next to the .dproj, in a folder above it up to the Git or SVN root, or next to the .groupproj), server and rule settings in `atlas.json` (*Atlas › Projekt-Einstellungen*), global values in `%APPDATA%\Atlas\settings.json`
+- Team-wide values in the project file `.atlas` (next to the .dproj, in a folder above it up to the Git or SVN root, or next to the .groupproj), server and rule settings in `atlas.json` (*Atlas › Project settings (atlas.json)…*), global values in `%APPDATA%\Atlas\settings.json`
 
 ## Language
 
