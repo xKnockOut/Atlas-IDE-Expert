@@ -337,6 +337,9 @@ var
   Tokens: TTokens;
   Index, Name, Dot, Ctor: Integer;
   Caught: TArray<THandler>;
+  // Handler schon gelesen? Caught = nil heißt auch "keine on-Handler"; ohne eigenen Merker las die Regel dann
+  // für jedes raise Exception.Create alle Token der Unit neu (quadratisch in großen Units).
+  mCaughtRead: Boolean;
 
   // Die raise-Anweisung, die bei AOffset beginnt; nil, wenn keine.
   function RaiseAt(AOffset: Integer): TSyntaxNode;
@@ -411,6 +414,7 @@ begin
     Exit;
   end;
   Tokens := AContext.Tree.Tokens;
+  mCaughtRead := False;
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('raise') then
@@ -431,9 +435,10 @@ begin
     begin
       Continue;
     end;
-    if Caught = nil then
+    if not mCaughtRead then
     begin
       Caught := Handlers(Tokens);
+      mCaughtRead := True;
     end;
     if CaughtRightThere(Tokens[Index].Offset) then
     begin

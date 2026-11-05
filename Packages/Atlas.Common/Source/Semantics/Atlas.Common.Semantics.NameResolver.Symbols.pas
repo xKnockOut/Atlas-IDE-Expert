@@ -670,10 +670,47 @@ begin
   Result := (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
 end;
 
+/// <summary>Erstes Kind von ANode, das nicht vor AOffset endet, per Binärsuche über die nach Lage geordneten
+/// Kinder; ChildCount, wenn alle vorher enden.</summary>
+function FirstEndingAtOrAfter(ANode: TSyntaxNode; AOffset: Integer): Integer;
+var
+  mLow, mHigh, mMiddle: Integer;
+begin
+  mLow := 0;
+  mHigh := ANode.ChildCount;
+  while mLow < mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if ANode[mMiddle].EndOffset < AOffset then
+    begin
+      mLow := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
+    end;
+  end;
+  Result := mLow;
+end;
+
 class function TResolverNodes.ChildAround(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+const
+  // Bis zu so vielen Kindern linear; darüber binär (eine Unit mit 1.000 Routinen suchte je Namensauflösung
+  // linear über alle, die Prüfung wuchs quadratisch).
+  cLinearChildren = 16;
 var
   mIndex: Integer;
 begin
+  if ANode.ChildCount > cLinearChildren then
+  begin
+    // Die Kinder liegen nacheinander und überlappen nicht: Alle vor mIndex enden vor AOffset, das Kind mIndex ist
+    // also das erste, das AOffset enthält. Ohne Treffer (AOffset zwischen zwei Kindern) linear wie bisher.
+    mIndex := FirstEndingAtOrAfter(ANode, AOffset);
+    if (mIndex < ANode.ChildCount) and Contains(ANode[mIndex], AOffset) then
+    begin
+      Exit(ANode[mIndex]);
+    end;
+  end;
   for mIndex := 0 to ANode.ChildCount - 1 do
   begin
     if Contains(ANode[mIndex], AOffset) then
