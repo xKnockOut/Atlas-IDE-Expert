@@ -86,6 +86,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Atlas welcome page** with projects, history, issues and news
 - **Issue tracker** (GitHub, YouTrack) and **version control** (Git, SVN) inside the IDE
 - **Command palette** (Ctrl+Shift+P), notification centre, server window
+- **Editor context menu *Atlas*** with submenus (Navigation, Edit, Search and analyze, Findings, modules) and right-aligned shortcuts
 - **Robustness:** errors never reach the IDE, safe start, crash cases you can replay
 
 ### [Settings](docs/features/en/Settings.md)
@@ -93,7 +94,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
-- **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests
+- **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **32 MCP tools** to read, check, build, test, rename and fix Delphi code

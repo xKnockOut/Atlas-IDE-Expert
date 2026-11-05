@@ -100,7 +100,62 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnicodeText = (CharCount, RemoveChar, RemoveInForm, InFormFile, BidiTitle, Bidi, InvisibleTitle, Invisible,
+    ControlTitle, InvalidUtf8, ControlPrefix, Control, InvalidUtf8Form, RejectedTitle, ReplaceWithString,
+    ReplaceWithQuoted, CharNotAllowed, Utf32, ConfusableTitle, ReplaceLatin, Confusable, MixedScripts, NonAscii,
+    ReplaceWith, ReplaceInForm, Typographic, DoubleQuotes);
+
+const
+  cTexts: array[TUnicodeText] of TAtlasText = (
+    (De: '%d Zeichen %s'; En: '%d characters %s'),
+    (De: 'Zeichen entfernen'; En: 'Remove character'),
+    (De: 'In der Formulardatei entfernen'; En: 'Remove in the form file'),
+    (De: 'Formulardatei, Zeile %d%s: %s %s'; En: 'Form file, line %d%s: %s %s'),
+    (De: 'Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)';
+     En: 'Bidirectional control characters can display code differently from how it is compiled (Trojan Source)'),
+    (De: 'Bidirektionales Steuerzeichen, Anzeige und Bedeutung können abweichen (Trojan Source):';
+     En: 'Bidirectional control character, display and meaning can differ (Trojan Source):'),
+    (De: 'Unsichtbare oder Nullbreiten-Zeichen im Quelltext'; En: 'Invisible or zero-width characters in the source'),
+    (De: 'Unsichtbares Zeichen'; En: 'Invisible character'),
+    (De: 'NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei';
+     En: 'NUL and control characters or invalid UTF-8 bytes in the source and in the form file'),
+    (De: 'Ungültiges UTF-8-Byte $%s (Byte %d der Datei)'; En: 'Invalid UTF-8 byte $%s (byte %d of the file)'),
+    (De: 'Steuerzeichen oder ungültiges Byte '; En: 'Control character or invalid byte '),
+    (De: 'Steuerzeichen oder ungültiges Byte'; En: 'Control character or invalid byte'),
+    (De: 'Formulardatei, Zeile %d, Spalte %d: ungültiges UTF-8-Byte $%s';
+     En: 'Form file, line %d, column %d: invalid UTF-8 byte $%s'),
+    (De: 'Datei in UTF-32 oder Zeichen im Code, die der Compiler nicht annimmt (wie F2438, E2038)';
+     En: 'File in UTF-32 or characters in the code that the compiler does not accept (like F2438, E2038)'),
+    (De: 'Durch den String %s ersetzen'; En: 'Replace with the string %s'),
+    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'),
+    (De: 'Zeichen ''%s'' (#$%s) ist im Quelltext nicht erlaubt (wie E2038).';
+     En: 'Character ''%s'' (#$%s) is not allowed in the source (like E2038).'),
+    (De: 'Die Datei ist UTF-32 kodiert; der Compiler liest nur UTF-8, UTF-16 und ANSI (wie F2438). In UTF-8 mit BOM ' +
+      'speichern.';
+     En: 'The file is UTF-32 encoded; the compiler reads only UTF-8, UTF-16 and ANSI (like F2438). Save it in UTF-8 ' +
+      'with BOM.'),
+    (De: 'Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen (Verwechslungsgefahr)';
+     En: 'Identifier with characters from several scripts or non-ASCII characters (risk of confusion)'),
+    (De: 'Durch "%s" mit lateinischen Zeichen ersetzen'; En: 'Replace with "%s" in Latin characters'),
+    (De: 'Bezeichner "%s" enthält Zeichen, die lateinischen gleichen; Verwechslung mit "%s" möglich';
+     En: 'Identifier "%s" contains characters resembling Latin ones; confusion with "%s" possible'),
+    (De: 'Bezeichner "%s" mischt Schriften'; En: 'Identifier "%s" mixes scripts'),
+    (De: 'Bezeichner "%s" enthält Nicht-ASCII-Zeichen'; En: 'Identifier "%s" contains non-ASCII characters'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'In der Formulardatei durch %s ersetzen'; En: 'Replace with %s in the form file'),
+    (De: 'Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).';
+     En: 'Typographic quotation marks are not allowed in the source (like E2038).'),
+    (De: 'Doppelte Anführungszeichen sind im Quelltext nicht erlaubt, Strings stehen in '' (wie E2038).';
+     En: 'Double quotation marks are not allowed in the source, strings are enclosed in '' (like E2038).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   {$SCOPEDENUMS ON}
@@ -223,7 +278,7 @@ begin
     end;
     if Length(ARun.Hits) > 1 then
     begin
-      Result := Format('%d Zeichen %s', [Length(ARun.Hits), Result]);
+      Result := cTexts[TUnicodeText.CharCount].Fmt([Length(ARun.Hits), Result]);
     end;
   finally
     Codes.Free;
@@ -500,13 +555,13 @@ begin
     // 'a<ZWSP>b' → 'a'#$200B'b': gleicher Wert, sichtbar. Mehrzeilige Strings lassen sich nicht teilen.
     if not ARun.MultiLine then
     begin
-      Result := [TRuleFix.Create('Durch ' + CharLiterals(ARun, False) + ' ersetzen',
+      Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWith].Fmt([CharLiterals(ARun, False)]),
         [TRuleEdit.Create(Range, '''' + CharLiterals(ARun, False) + '''')], True)];
     end;
   end
   else
   begin
-    Result := [TRuleFix.Create('Zeichen entfernen', [TRuleEdit.Create(Range, '')])];
+    Result := [TRuleFix.Create(cTexts[TUnicodeText.RemoveChar].Text, [TRuleEdit.Create(Range, '')])];
   end;
 end;
 
@@ -915,12 +970,13 @@ begin
   // Rohe Zeichen in einem String der Formulardatei: als #nnnn ausschreiben, wie Delphi es tut.
   if (ARun.Place = TCharPlace.StringLiteral) and ARun.Hits[0].Raw and ARun.Hits[High(ARun.Hits)].Raw then
   begin
-    Result := InFormFile(TRuleFix.Create('In der Formulardatei durch ' + CharLiterals(ARun, True) + ' ersetzen',
+    Result := InFormFile(TRuleFix.Create(cTexts[TUnicodeText.ReplaceInForm].Fmt([CharLiterals(ARun, True)]),
       [TRuleEdit.Create(RunRange(ARun), '''' + CharLiterals(ARun, True) + '''')], True));
   end
   else if ARun.Place = TCharPlace.Code then
   begin
-    Result := InFormFile(TRuleFix.Create('In der Formulardatei entfernen', [TRuleEdit.Create(RunRange(ARun), '')]));
+    Result := InFormFile(TRuleFix.Create(cTexts[TUnicodeText.RemoveInForm].Text, [TRuleEdit.Create(RunRange(ARun),
+      '')]));
   end;
 end;
 
@@ -930,7 +986,7 @@ var
   mProperty: string;
 begin
   FScan.Locate(ARun.Hits[0].Pos, mObject, mProperty);
-  AddRun(FRule, ARun, FReport, FieldRange(mObject), Format('Formulardatei, Zeile %d%s: %s %s',
+  AddRun(FRule, ARun, FReport, FieldRange(mObject), cTexts[TUnicodeText.InFormFile].Fmt(
     [ARun.Hits[0].Pos.Line + 1, WhereText(mObject, mProperty), FWhat, RunCodes(ARun)]), FormFixes(ARun));
 end;
 
@@ -993,13 +1049,13 @@ end;
 function TBidiControlRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('bidi-control', TRuleSeverity.Error,
-    'Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)');
+    cTexts[TUnicodeText.BidiTitle].Text);
 end;
 
 procedure TBidiControlRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   CheckText(TCharRule.Bidi, AContext, AReport,
-    'Bidirektionales Steuerzeichen, Anzeige und Bedeutung können abweichen (Trojan Source):');
+    cTexts[TUnicodeText.Bidi].Text);
 end;
 
 { TInvisibleCharRule }
@@ -1007,12 +1063,12 @@ end;
 function TInvisibleCharRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('invisible-char', TRuleSeverity.Warning,
-    'Unsichtbare oder Nullbreiten-Zeichen im Quelltext');
+    cTexts[TUnicodeText.InvisibleTitle].Text);
 end;
 
 procedure TInvisibleCharRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  CheckText(TCharRule.Invisible, AContext, AReport, 'Unsichtbares Zeichen');
+  CheckText(TCharRule.Invisible, AContext, AReport, cTexts[TUnicodeText.Invisible].Text);
 end;
 
 { TControlCharRule }
@@ -1020,7 +1076,7 @@ end;
 function TControlCharRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('control-char', TRuleSeverity.Error,
-    'NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei');
+    cTexts[TUnicodeText.ControlTitle].Text);
 end;
 
 /// <summary>Text ohne CR, damit Puffer mit anderen Zeilenenden als die Datei vergleichbar bleiben.</summary>
@@ -1102,7 +1158,7 @@ begin
   for mItem in AInvalid do
   begin
     AReport.Add(TTextRange.Create(mItem.Position, TTextPosition.Create(mItem.Position.Line,
-      mItem.Position.Character + 1)), Format('Ungültiges UTF-8-Byte $%s (Byte %d der Datei)',
+      mItem.Position.Character + 1)), cTexts[TUnicodeText.InvalidUtf8].Fmt(
       [IntToHex(mItem.Value, 2), mItem.ByteOffset]));
   end;
 end;
@@ -1137,7 +1193,7 @@ begin
   begin
     if not CoveredByInvalid(mRun, AInvalid) then
     begin
-      AddRun(TCharRule.Control, mRun, AReport, RunRange(mRun), 'Steuerzeichen oder ungültiges Byte ' +
+      AddRun(TCharRule.Control, mRun, AReport, RunRange(mRun), cTexts[TUnicodeText.ControlPrefix].Text +
         RunCodes(mRun), RunFixes(mRun));
     end;
   end;
@@ -1157,7 +1213,7 @@ begin
   begin
     mInvalid := InvalidBytes(AContext, AContext.FormFile, AContext.FormText);
   end;
-  CheckForm(TCharRule.Control, AContext, AReport, 'Steuerzeichen oder ungültiges Byte', Length(mInvalid) > 0);
+  CheckForm(TCharRule.Control, AContext, AReport, cTexts[TUnicodeText.Control].Text, Length(mInvalid) > 0);
   if Length(mInvalid) = 0 then
   begin
     Exit;
@@ -1166,7 +1222,7 @@ begin
   mRange := FormClassRange(TRuleDerived.UnitIndex(mCache, AContext), FormClassOf(AContext.FormText));
   for mItem in mInvalid do
   begin
-    AReport.Add(mRange, Format('Formulardatei, Zeile %d, Spalte %d: ungültiges UTF-8-Byte $%s',
+    AReport.Add(mRange, cTexts[TUnicodeText.InvalidUtf8Form].Fmt(
       [mItem.Position.Line + 1, mItem.Position.Character + 1, IntToHex(mItem.Value, 2)]));
   end;
 end;
@@ -1442,7 +1498,7 @@ end;
 function TFileEncodingUnsupportedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('file-encoding-unsupported', TRuleSeverity.Error,
-    'Datei in UTF-32 oder Zeichen im Code, die der Compiler nicht annimmt (wie F2438, E2038)');
+    cTexts[TUnicodeText.RejectedTitle].Text);
 end;
 
 /// <summary>Korrektur eines Zitats von AOpen bis AClose zum String; ARange deckt beide Anführungszeichen ab.</summary>
@@ -1453,7 +1509,7 @@ var
 begin
   ARange := TTextRange.Create(AOpen.Pos, TTextPosition.Create(AClose.Pos.Line, AClose.Pos.Character + AClose.Size));
   mLiteral := QuotedStr(Copy(AText, AOpen.Offset + AOpen.Size + 1, AClose.Offset - AOpen.Offset - AOpen.Size));
-  Result := [TRuleFix.Create(Format('Durch den String %s ersetzen', [mLiteral]),
+  Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWithString].Fmt([mLiteral]),
     [TRuleEdit.Create(ARange, mLiteral)])];
 end;
 
@@ -1467,22 +1523,20 @@ begin
   mAscii := AsciiOf(AChar.Code);
   if mAscii <> '' then
   begin
-    Result := [TRuleFix.Create(Format('Durch "%s" ersetzen', [mAscii]), [TRuleEdit.Create(ARange, mAscii)])];
+    Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWithQuoted].Fmt([mAscii]), [TRuleEdit.Create(ARange,
+      mAscii)])];
   end;
 end;
 
 function IllegalMessage(const AText: string; const AChar: TIllegalChar): string;
-const
-  cTypographicMessage = 'Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).';
-  cDoubleMessage = 'Doppelte Anführungszeichen sind im Quelltext nicht erlaubt, Strings stehen in '' (wie E2038).';
 begin
   case AChar.Quote of
     TQuoteKind.Typographic:
-      Result := cTypographicMessage;
+      Result := cTexts[TUnicodeText.Typographic].Text;
     TQuoteKind.Double:
-      Result := cDoubleMessage;
+      Result := cTexts[TUnicodeText.DoubleQuotes].Text;
   else
-    Result := Format('Zeichen ''%s'' (#$%s) ist im Quelltext nicht erlaubt (wie E2038).',
+    Result := cTexts[TUnicodeText.CharNotAllowed].Fmt(
       [Copy(AText, AChar.Offset + 1, AChar.Size), IntToHex(AChar.Code, 4)]);
   end;
 end;
@@ -1525,8 +1579,7 @@ begin
   begin
     // Der Text ist dann falsch dekodiert; weitere Meldungen wären Folgefehler.
     AReport.Add(TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 1)),
-      'Die Datei ist UTF-32 kodiert; der Compiler liest nur UTF-8, UTF-16 und ANSI (wie F2438). ' +
-      'In UTF-8 mit BOM speichern.', TRuleConfidence.High);
+      cTexts[TUnicodeText.Utf32].Text, TRuleConfidence.High);
     Exit;
   end;
   if AContext.Tree <> nil then
@@ -1584,7 +1637,7 @@ end;
 function TConfusableIdentifierRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('confusable-identifier', TRuleSeverity.Warning,
-    'Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen (Verwechslungsgefahr)');
+    cTexts[TUnicodeText.ConfusableTitle].Text);
 end;
 
 type
@@ -1639,19 +1692,19 @@ begin
     // Eindeutig nur, wenn jedes Nicht-ASCII-Zeichen ein lateinisches Gegenstück hat.
     if AScan.OnlyLookalikes then
     begin
-      mFixes := [TRuleFix.Create(Format('Durch "%s" mit lateinischen Zeichen ersetzen', [AScan.Replaced]),
+      mFixes := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceLatin].Fmt([AScan.Replaced]),
         [TRuleEdit.Create(mRange, AScan.Replaced)])];
     end;
-    AReport.Add(mRange, Format('Bezeichner "%s" enthält Zeichen, die lateinischen gleichen; Verwechslung mit "%s" ' +
-      'möglich', [AToken.Text, AScan.Replaced]), TRuleConfidence.High, mFixes);
+    AReport.Add(mRange, cTexts[TUnicodeText.Confusable].Fmt([AToken.Text, AScan.Replaced]), TRuleConfidence.High,
+      mFixes);
   end
   else if (TScript.Latin in AScan.Scripts) and (AScan.Scripts * [TScript.Greek, TScript.Cyrillic] <> []) then
   begin
-    AReport.Add(mRange, Format('Bezeichner "%s" mischt Schriften', [AToken.Text]), TRuleConfidence.Medium);
+    AReport.Add(mRange, cTexts[TUnicodeText.MixedScripts].Fmt([AToken.Text]), TRuleConfidence.Medium);
   end
   else
   begin
-    AReport.Add(mRange, Format('Bezeichner "%s" enthält Nicht-ASCII-Zeichen', [AToken.Text]), TRuleConfidence.Low);
+    AReport.Add(mRange, cTexts[TUnicodeText.NonAscii].Fmt([AToken.Text]), TRuleConfidence.Low);
   end;
 end;
 
@@ -1686,5 +1739,8 @@ begin
   ARegistry.Register(TConfusableIdentifierRule.Create);
   ARegistry.Register(TFileEncodingUnsupportedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unicode', cTexts);
 
 end.

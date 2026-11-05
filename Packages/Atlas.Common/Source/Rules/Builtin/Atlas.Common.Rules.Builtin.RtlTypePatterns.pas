@@ -91,14 +91,54 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions;
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRtlTypePatternsText = (OverflowTitle, Overflow, CastOperand, SizeOfTitle, SizeOfPointer, CharTitle, CharToPChar,
+    FloatTitle, FloatEqual, UseSameValue, CtorTitle, CtorOnInstance, WritelnTitle, ReplaceWith, NoConsoleWrite,
+    NoConsoleRead, UseCreate);
+
+const
+  cTexts: array[TRtlTypePatternsText] of TAtlasText = (
+    (De: 'Int32-Multiplikation läuft vor der Zuweisung an Int64 über';
+     En: 'Int32 multiplication overflows before the assignment to Int64'),
+    (De: '%s * %s wird in 32 Bit gerechnet und läuft über, bevor das Ergebnis in %s (Int64) landet';
+     En: '%s * %s is computed in 32 bits and overflows before the result lands in %s (Int64)'),
+    (De: 'Operand nach Int64 umwandeln'; En: 'Convert operand to Int64'),
+    (De: 'Move/FillChar mit SizeOf eines Zeigers statt der Daten';
+     En: 'Move/FillChar with SizeOf of a pointer instead of the data'),
+    (De: 'SizeOf(%s) ist die Größe des Zeigers (%s), nicht die der Daten; Length(…) * SizeOf(Element) verwenden';
+     En: 'SizeOf(%s) is the size of the pointer (%s), not of the data; use Length(…) * SizeOf(Element)'),
+    (De: 'Char wird nach PChar umgewandelt'; En: 'Char is converted to PChar'),
+    (De: '%s(%s) macht aus dem Zeichen eine Adresse; gemeint ist meist ein String: %s(string(%s))';
+     En: '%s(%s) turns the character into an address; usually a string is meant: %s(string(%s))'),
+    (De: 'Gleitkommavergleich mit = oder <>'; En: 'Floating-point comparison with = or <>'),
+    (De: 'Gleitkommawerte sind selten exakt gleich; SameValue aus System.Math mit Toleranz verwenden';
+     En: 'Floating-point values are rarely exactly equal; use SameValue from System.Math with a tolerance'),
+    (De: 'SameValue verwenden'; En: 'Use SameValue'),
+    (De: 'Konstruktor auf einer Instanz statt auf der Klasse'; En: 'Constructor on an instance instead of the class'),
+    (De: 'Create auf der Variablen %s statt auf der Klasse %s; das legt kein neues Objekt an';
+     En: 'Create on the variable %s instead of the class %s; this creates no new object'),
+    (De: 'Writeln in einem Programm ohne Konsole'; En: 'Writeln in a program without console'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'Das Projekt hat keine Konsole; %s löst zur Laufzeit E/A-Fehler 104 aus.';
+     En: 'The project has no console; %s raises I/O error 104 at run time.'),
+    (De: 'Das Projekt hat keine Konsole; %s löst zur Laufzeit E/A-Fehler 105 aus.';
+     En: 'The project has no console; %s raises I/O error 105 at run time.'),
+    (De: '%s.Create verwenden'; En: 'Use %s.Create'));
+
+{$SCOPEDENUMS OFF}
 
 { TInt32MulOverflowRule }
 
 function TInt32MulOverflowRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('int32-mul-overflow', TRuleSeverity.Warning,
-    'Int32-Multiplikation läuft vor der Zuweisung an Int64 über');
+    cTexts[TRtlTypePatternsText.OverflowTitle].Text);
 end;
 
 type
@@ -163,9 +203,10 @@ begin
       // V := A * B; mit V: Int64 und A, B höchstens 32 Bit.
       if mTokens[mIndex].IsSymbol(':=') and mMul.Matches(mTokens, mIndex) and mMul.Overflows(mTypes, mTokens) then
       begin
-        AReport.Add(RangeOf(mTokens, mMul.Left, mMul.Right), Format('%s * %s wird in 32 Bit gerechnet und läuft ' +
-          'über, bevor das Ergebnis in %s (Int64) landet', [mTokens[mMul.Left].Text, mTokens[mMul.Right].Text,
-          mTokens[mMul.Target].Text]), TRuleConfidence.High, [TRuleFix.Create('Operand nach Int64 umwandeln',
+        AReport.Add(RangeOf(mTokens, mMul.Left, mMul.Right),
+          cTexts[TRtlTypePatternsText.Overflow].Fmt([mTokens[mMul.Left].Text, mTokens[mMul.Right].Text,
+          mTokens[mMul.Target].Text]), TRuleConfidence.High,
+            [TRuleFix.Create(cTexts[TRtlTypePatternsText.CastOperand].Text,
           [TRuleEdit.Create(RangeOf(mTokens, mMul.Left, mMul.Left), 'Int64(' + mTokens[mMul.Left].Text + ')')], True)]);
       end;
     end;
@@ -179,7 +220,7 @@ end;
 function TSizeOfPointerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('sizeof-pointer', TRuleSeverity.Error,
-    'Move/FillChar mit SizeOf eines Zeigers statt der Daten');
+    cTexts[TRtlTypePatternsText.SizeOfTitle].Text);
 end;
 
 /// <summary>Aufruf einer der Routinen ANames bei AIndex mit "(" bei AOpen?</summary>
@@ -218,8 +259,8 @@ begin
     mTypeName := DeclaredTypeAt(ATypes, ATokens, mName);
     if (mTypeName <> '') and TDeclaredTypes.IsReference(mTypeName) then
     begin
-      AReport.Add(RangeOf(ATokens, mInner, mSizeClose), Format('SizeOf(%s) ist die Größe des Zeigers (%s), ' +
-        'nicht die der Daten; Length(…) * SizeOf(Element) verwenden', [ATokens[mName].Text, mTypeName]),
+      AReport.Add(RangeOf(ATokens, mInner, mSizeClose),
+        cTexts[TRtlTypePatternsText.SizeOfPointer].Fmt([ATokens[mName].Text, mTypeName]),
         TRuleConfidence.High);
     end;
   end;
@@ -254,7 +295,7 @@ end;
 
 function TCharToPCharRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('char-to-pchar', TRuleSeverity.Error, 'Char wird nach PChar umgewandelt');
+  Result := TRuleDescriptor.Create('char-to-pchar', TRuleSeverity.Error, cTexts[TRtlTypePatternsText.CharTitle].Text);
 end;
 
 procedure TCharToPCharRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -287,8 +328,8 @@ begin
       end;
       if TDeclaredTypes.IsChar(Types.DeclaredType(Tokens[Name].Text, Tokens[Name].StartPos)) then
       begin
-        AReport.Add(RangeOf(Tokens, Index, Close), Format('%s(%s) macht aus dem Zeichen eine Adresse; ' +
-          'gemeint ist meist ein String: %s(string(%s))', [Tokens[Index].Text, Tokens[Name].Text,
+        AReport.Add(RangeOf(Tokens, Index, Close), cTexts[TRtlTypePatternsText.CharToPChar].Fmt([Tokens[Index].Text,
+          Tokens[Name].Text,
           Tokens[Index].Text, Tokens[Name].Text]), TRuleConfidence.High);
       end;
     end;
@@ -301,7 +342,7 @@ end;
 
 function TFloatEqualityRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('float-equality', TRuleSeverity.Hint, 'Gleitkommavergleich mit = oder <>');
+  Result := TRuleDescriptor.Create('float-equality', TRuleSeverity.Hint, cTexts[TRtlTypePatternsText.FloatTitle].Text);
 end;
 
 function IsZero(const AToken: TPascalToken): Boolean;
@@ -456,9 +497,9 @@ begin
   begin
     mCall := 'not ' + mCall;
   end;
-  AReport.Add(RangeOf(ATokens, ALeft, ARight), 'Gleitkommawerte sind selten exakt gleich; SameValue aus ' +
-    'System.Math mit Toleranz verwenden', TRuleConfidence.Medium,
-    [TRuleFix.Create('SameValue verwenden', [TRuleEdit.Create(RangeOf(ATokens, ALeft, ARight), mCall)])]);
+  AReport.Add(RangeOf(ATokens, ALeft, ARight), cTexts[TRtlTypePatternsText.FloatEqual].Text, TRuleConfidence.Medium,
+    [TRuleFix.Create(cTexts[TRtlTypePatternsText.UseSameValue].Text, [TRuleEdit.Create(RangeOf(ATokens, ALeft, ARight),
+      mCall)])]);
 end;
 
 procedure TFloatEqualityRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -493,7 +534,7 @@ end;
 function TConstructorOnInstanceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('constructor-on-instance', TRuleSeverity.Warning,
-    'Konstruktor auf einer Instanz statt auf der Klasse');
+    cTexts[TRtlTypePatternsText.CtorTitle].Text);
 end;
 
 /// <summary>Bezeichner bei AIndex gefolgt von ".Create", nicht selbst Teil einer Kette und nicht nach inherited;
@@ -541,9 +582,10 @@ begin
       mTypeName := DeclaredTypeAt(mTypes, mTokens, mIndex);
       if IsInstanceType(mTypeName) and InStatements(AContext.Tree, mTokens[mIndex].StartPos) then
       begin
-        AReport.Add(RangeOf(mTokens, mIndex, mCtor), Format('Create auf der Variablen %s statt auf der Klasse %s; ' +
-          'das legt kein neues Objekt an', [mTokens[mIndex].Text, mTypeName]), TRuleConfidence.High,
-          [TRuleFix.Create(mTypeName + '.Create verwenden', [TRuleEdit.Create(RangeOf(mTokens, mIndex, mIndex),
+        AReport.Add(RangeOf(mTokens, mIndex, mCtor),
+          cTexts[TRtlTypePatternsText.CtorOnInstance].Fmt([mTokens[mIndex].Text, mTypeName]), TRuleConfidence.High,
+          [TRuleFix.Create(cTexts[TRtlTypePatternsText.UseCreate].Fmt([mTypeName]), [TRuleEdit.Create(RangeOf(mTokens,
+            mIndex, mIndex),
           mTypeName)])]);
       end;
     end;
@@ -568,7 +610,8 @@ const
 
 function TWritelnInGuiAppRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('writeln-in-gui-app', TRuleSeverity.Warning, 'Writeln in einem Programm ohne Konsole');
+  Result := TRuleDescriptor.Create('writeln-in-gui-app', TRuleSeverity.Warning,
+    cTexts[TRtlTypePatternsText.WritelnTitle].Text);
 end;
 
 type
@@ -1101,7 +1144,7 @@ begin
   begin
     mEdits := [TRuleEdit.Create(TTextRange.Create(ACall.StartPos, ACall.EndPos), ReplacedCall(mExpression))];
     mEdits := mEdits + UsesEdits(ACall);
-    Result := [TRuleFix.Create(Format('Durch %s ersetzen', [FixName]), mEdits)];
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsText.ReplaceWith].Fmt([FixName]), mEdits)];
   end;
 end;
 
@@ -1154,13 +1197,13 @@ begin
   if MatchText(ACallee.Name, ['Read', 'Readln']) then
   begin
     mNone := nil;
-    FReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), Format('Das Projekt hat keine Konsole; ' +
-      '%s löst zur Laufzeit E/A-Fehler 104 aus.', [Text(ACallee)]), TRuleConfidence.High, mNone);
+    FReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos),
+      cTexts[TRtlTypePatternsText.NoConsoleWrite].Fmt([Text(ACallee)]), TRuleConfidence.High, mNone);
   end
   else
   begin
-    FReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), Format('Das Projekt hat keine Konsole; ' +
-      '%s löst zur Laufzeit E/A-Fehler 105 aus.', [Text(ACallee)]), TRuleConfidence.High, Fixes(ANode, AFirst));
+    FReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos),
+      cTexts[TRtlTypePatternsText.NoConsoleRead].Fmt([Text(ACallee)]), TRuleConfidence.High, Fixes(ANode, AFirst));
   end;
 end;
 
@@ -1368,5 +1411,8 @@ begin
   ARegistry.Register(TCreateProcessReadonlyCommandLineRule.Create);
   ARegistry.Register(TGlobalFormatSettingsModifiedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.RtlTypePatterns', cTexts);
 
 end.

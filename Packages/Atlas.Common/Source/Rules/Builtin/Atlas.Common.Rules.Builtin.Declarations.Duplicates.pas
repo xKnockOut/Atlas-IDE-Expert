@@ -42,13 +42,64 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsDuplicatesText = (Title, RemoveSecond, AlreadyDeclared, RemoveDuplicate, UnitTwice, UnitInInterface,
+    KindType, KindVariable, KindConstant, KindRoutine, KindField, KindMethod, KindProperty, KindParameter, KindLabel);
+
+const
+  cTexts: array[TDeclarationsDuplicatesText] of TAtlasText = (
+    (De: 'Bezeichner doppelt deklariert'; En: 'Identifier declared twice'),
+    (De: 'Zweite Deklaration entfernen'; En: 'Remove second declaration'),
+    (De: '%s ist schon als %s deklariert (wie E2004).'; En: '%s is already declared as %s (like E2004).'),
+    (De: 'Doppelten Eintrag entfernen'; En: 'Remove duplicate entry'),
+    (De: 'Unit %s steht schon in uses (wie E2004).'; En: 'Unit %s is already in uses (like E2004).'),
+    (De: 'Unit %s steht schon im uses des interface (wie E2004).';
+     En: 'Unit %s is already in the uses of the interface (like E2004).'),
+    (De: 'Typ'; En: 'type'),
+    (De: 'Variable'; En: 'variable'),
+    (De: 'Konstante'; En: 'constant'),
+    (De: 'Routine'; En: 'routine'),
+    (De: 'Feld'; En: 'field'),
+    (De: 'Methode'; En: 'method'),
+    (De: 'Property'; En: 'property'),
+    (De: 'Parameter'; En: 'parameter'),
+    (De: 'Label'; En: 'label'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Art AKind (deutscher Schlüssel aus AddName, z. B. "Feld") in der Sprache der Meldung.</summary>
+function KindText(const AKind: string): string;
+const
+  cKeys: array[0..8] of string = ('Typ', 'Variable', 'Konstante', 'Routine', 'Feld', 'Methode', 'Property',
+    'Parameter', 'Label');
+  cKinds: array[0..8] of TDeclarationsDuplicatesText = (TDeclarationsDuplicatesText.KindType,
+    TDeclarationsDuplicatesText.KindVariable, TDeclarationsDuplicatesText.KindConstant,
+    TDeclarationsDuplicatesText.KindRoutine, TDeclarationsDuplicatesText.KindField,
+    TDeclarationsDuplicatesText.KindMethod, TDeclarationsDuplicatesText.KindProperty,
+    TDeclarationsDuplicatesText.KindParameter, TDeclarationsDuplicatesText.KindLabel);
+var
+  mIndex: Integer;
+begin
+  Result := AKind;
+  mIndex := IndexStr(AKind, cKeys);
+  if mIndex >= 0 then
+  begin
+    Result := cTexts[cKinds[mIndex]].Text;
+  end;
+end;
 
 { TDuplicateDeclarationRule }
 
 function TDuplicateDeclarationRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DuplicateDeclarationRuleId, TRuleSeverity.Error, 'Bezeichner doppelt deklariert');
+  Result := TRuleDescriptor.Create(DuplicateDeclarationRuleId, TRuleSeverity.Error,
+    cTexts[TDeclarationsDuplicatesText.Title].Text);
 end;
 
 type
@@ -447,7 +498,7 @@ var
     AFix := Default(TRuleFix);
     if Result then
     begin
-      AFix := TRuleFix.Create('Zweite Deklaration entfernen', [Edit]);
+      AFix := TRuleFix.Create(cTexts[TDeclarationsDuplicatesText.RemoveSecond].Text, [Edit]);
     end;
   end;
 
@@ -484,7 +535,7 @@ var
             Fixes := [Fix];
           end;
           AReport.Add(TTextRange.Create(Tokens[Names[Later].Token].StartPos, Tokens[Names[Later].Token].EndPos),
-            Format('%s ist schon als %s deklariert (wie E2004).', [Names[Later].Name, Names[Earlier].Kind]),
+            cTexts[TDeclarationsDuplicatesText.AlreadyDeclared].Fmt([Names[Later].Name, KindText(Names[Earlier].Kind)]),
             TRuleConfidence.High, Fixes);
           Break;
         end;
@@ -618,17 +669,19 @@ var
     Neighbours(AEntry, Previous, Next);
     if Previous <> nil then
     begin
-      Result := [TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(TTextRange.Create(
+      Result := [TRuleFix.Create(cTexts[TDeclarationsDuplicatesText.RemoveDuplicate].Text,
+        [TRuleEdit.Create(TTextRange.Create(
         Previous.EndPos, AEntry.EndPos), '')], True)];
     end
     else if Next <> nil then
     begin
-      Result := [TRuleFix.Create('Doppelten Eintrag entfernen', [TRuleEdit.Create(TTextRange.Create(
+      Result := [TRuleFix.Create(cTexts[TDeclarationsDuplicatesText.RemoveDuplicate].Text,
+        [TRuleEdit.Create(TTextRange.Create(
         AEntry.StartPos, Next.StartPos), '')], True)];
     end
     else if LinesEdit(AEntry.Parent, Edit) then
     begin
-      Result := [TRuleFix.Create('Doppelten Eintrag entfernen', [Edit], True)];
+      Result := [TRuleFix.Create(cTexts[TDeclarationsDuplicatesText.RemoveDuplicate].Text, [Edit], True)];
     end;
   end;
 
@@ -639,12 +692,12 @@ var
     Range := TTextRange.Create(ALater.StartPos, ALater.EndPos);
     if AEarlier.Parent = ALater.Parent then
     begin
-      AReport.Add(Range, Format('Unit %s steht schon in uses (wie E2004).', [ALater.Name]), TRuleConfidence.High,
+      AReport.Add(Range, cTexts[TDeclarationsDuplicatesText.UnitTwice].Fmt([ALater.Name]), TRuleConfidence.High,
         UsesFixes(ALater));
     end
     else
     begin
-      AReport.Add(Range, Format('Unit %s steht schon im uses des interface (wie E2004).', [ALater.Name]),
+      AReport.Add(Range, cTexts[TDeclarationsDuplicatesText.UnitInInterface].Fmt([ALater.Name]),
         TRuleConfidence.High, UsesFixes(ALater));
     end;
   end;
@@ -752,5 +805,8 @@ begin
   end;
   Names := nil;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.Duplicates', cTexts);
 
 end.

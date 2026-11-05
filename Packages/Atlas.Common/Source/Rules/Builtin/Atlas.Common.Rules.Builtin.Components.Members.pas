@@ -42,13 +42,40 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Components.Model;
+  Atlas.Common.Rules.Builtin.Components.Model,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TComponentsMembersText = (GetterTitle, GetterChanges, EqualsTitle, OverrideHash, EqualsOnly, HashOnly, RecordEqual);
+
+const
+  cTexts: array[TComponentsMembersText] of TAtlasText = (
+    (De: 'Getter verändert den Zustand'; En: 'Getter changes the state'),
+    (De: 'Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.';
+     En: 'The getter %s changes %s; even displaying it in the debugger changes the state.'),
+    (De: 'Equals ohne GetHashCode'; En: 'Equals without GetHashCode'),
+    (De: 'GetHashCode mit %s überschreiben (THashBobJenkins)'; En: 'Override GetHashCode with %s (THashBobJenkins)'),
+    (De: 'Equals ist überschrieben, GetHashCode nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.';
+     En: 'Equals is overridden, GetHashCode is not; as keys in TDictionary equal objects are not found.'),
+    (De: 'GetHashCode ist überschrieben, Equals nicht; als Schlüssel in TDictionary gelten gleiche Objekte weiter ' +
+      'als verschieden.';
+     En: 'GetHashCode is overridden, Equals is not; as keys in TDictionary equal objects still count as different.'),
+    (De: '%s hat class operator Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel ' +
+      'finden sich nicht.';
+     En: '%s has class operator Equal, but %s compares keys without a comparer byte by byte; equal keys are not ' +
+      'found.'));
+
+{$SCOPEDENUMS OFF}
 
 { TGetterSideEffectRule }
 
 function TGetterSideEffectRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('getter-side-effect', TRuleSeverity.Warning, 'Getter verändert den Zustand');
+  Result := TRuleDescriptor.Create('getter-side-effect', TRuleSeverity.Warning,
+    cTexts[TComponentsMembersText.GetterTitle].Text);
 end;
 
 /// <summary>F bzw. Self.F als Ziel; '' sonst.</summary>
@@ -301,7 +328,7 @@ var
           begin
             Reported := Reported + [Name];
             AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-              Format('Der Getter %s verändert %s; schon das Anzeigen im Debugger ändert den Zustand.', [AGetter, Name]),
+              cTexts[TComponentsMembersText.GetterChanges].Fmt([AGetter, Name]),
               TRuleConfidence.Medium);
           end;
         end;
@@ -359,7 +386,7 @@ const
 function TEqualsWithoutGetHashCodeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('equals-without-gethashcode', TRuleSeverity.Warning,
-    'Equals ohne GetHashCode');
+    cTexts[TComponentsMembersText.EqualsTitle].Text);
 end;
 
 /// <summary>Kopf AName im Klassen- bzw. Record-Rumpf ABody; nil ohne.</summary>
@@ -655,8 +682,7 @@ var
     Edit := TRuleEdit.Create(TTextRange.Create(Position, Position), Model.LineBreak + 'function ' + AInfo.Name +
       '.GetHashCode: Integer;' + Model.LineBreak + 'begin' + Model.LineBreak + Body + 'end;' + Model.LineBreak);
     Edits := Edits + [Edit];
-    AFix := TRuleFix.Create(Format('GetHashCode mit %s überschreiben (THashBobJenkins)',
-      [string.Join(', ', Names)]), Edits);
+    AFix := TRuleFix.Create(cTexts[TComponentsMembersText.OverrideHash].Fmt([string.Join(', ', Names)]), Edits);
     Result := True;
   end;
 
@@ -678,8 +704,8 @@ var
     begin
       Fixes := [Fix];
     end;
-    AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'Equals ist überschrieben, GetHashCode ' +
-      'nicht; als Schlüssel in TDictionary finden sich gleiche Objekte nicht.', TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), cTexts[TComponentsMembersText.EqualsOnly].Text,
+      TRuleConfidence.High, Fixes);
   end;
 
   // GetHashCode ohne Equals: melden.
@@ -693,8 +719,8 @@ var
       Exit;
     end;
     Header := MemberHeader(AInfo.Body, 'GetHashCode');
-    AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), 'GetHashCode ist überschrieben, Equals ' +
-      'nicht; als Schlüssel in TDictionary gelten gleiche Objekte weiter als verschieden.', TRuleConfidence.High);
+    AReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos), cTexts[TComponentsMembersText.HashOnly].Text,
+      TRuleConfidence.High);
   end;
 
   procedure CheckClasses;
@@ -762,8 +788,8 @@ var
         Key := HashedCreateKey(Node, Collection);
         if (Key <> '') and IsIn(Key, ARecords) and WithoutComparer(Node) then
         begin
-          AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos), Format('%s hat class operator ' +
-            'Equal, %s vergleicht Schlüssel ohne Comparer aber Byte für Byte; gleiche Schlüssel finden sich nicht.',
+          AReport.Add(TTextRange.Create(Collection.StartPos, Collection.EndPos),
+            cTexts[TComponentsMembersText.RecordEqual].Fmt(
             [Key, Collection.Name]), TRuleConfidence.High);
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -798,5 +824,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Components.Members', cTexts);
 
 end.

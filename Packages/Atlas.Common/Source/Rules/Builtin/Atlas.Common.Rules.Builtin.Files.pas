@@ -101,7 +101,40 @@ uses
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Chars,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFilesText = (Folder, ConcatTitle, UseCombine, Returns, ComesFrom, NoBackslashLiteral, NoBackslash, PathTitle,
+    FixedPath, UserPath, NetworkPath, CompareTitle, CaseInsensitive, UseSameFileName);
+
+const
+  cTexts: array[TFilesText] of TAtlasText = (
+    (De: 'Ordner'; En: 'Folder'),
+    (De: 'Pfad ohne Trennzeichen zusammengesetzt'; En: 'Path assembled without delimiter'),
+    (De: 'TPath.Combine verwenden'; En: 'Use TPath.Combine'),
+    (De: '%s liefert'; En: '%s returns'),
+    (De: '%s kommt aus %s und hat'; En: '%s comes from %s and has'),
+    (De: '%s keinen abschließenden Backslash; das Ergebnis ist …\%s%s.';
+     En: '%s no trailing backslash; the result is …\%s%s.'),
+    (De: '%s keinen abschließenden Backslash; %s wird ohne Trennzeichen angehängt.';
+     En: '%s no trailing backslash; %s is appended without delimiter.'),
+    (De: 'Fester Dateipfad im Code'; En: 'Fixed file path in code'),
+    (De: 'Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.';
+     En: 'Fixed file path; it may be missing on other computers.'),
+    (De: 'Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.';
+     En: 'Fixed user path; it does not exist on other computers.'),
+    (De: 'Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.';
+     En: 'Fixed network path; it may be missing on other computers and without a network.'),
+    (De: 'Dateinamen mit = verglichen'; En: 'File names compared with ='),
+    (De: 'Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.';
+     En: 'File names on Windows do not distinguish upper and lower case; SameFileName compares correctly.'),
+    (De: 'SameFileName verwenden'; En: 'Use SameFileName'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // System.SysUtils: Ordner ohne abschließendes Trennzeichen.
@@ -424,7 +457,7 @@ begin
     end;
     Inc(Index, 2);
   end;
-  Result := 'Ordner';
+  Result := cTexts[TFilesText.Folder].Text;
 end;
 
 { TPathConcatWithoutDelimiterRule }
@@ -432,7 +465,7 @@ end;
 function TPathConcatWithoutDelimiterRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PathConcatWithoutDelimiterRuleId, TRuleSeverity.Warning,
-    'Pfad ohne Trennzeichen zusammengesetzt');
+    cTexts[TFilesText.ConcatTitle].Text);
 end;
 
 procedure TPathConcatWithoutDelimiterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -460,7 +493,7 @@ var
     begin
       Edits := Edits + [UsesEdit];
     end;
-    Result := [TRuleFix.Create('TPath.Combine verwenden', Edits)];
+    Result := [TRuleFix.Create(cTexts[TFilesText.UseCombine].Text, Edits)];
   end;
 
   procedure CheckPlus(APlus: TSyntaxNode);
@@ -479,7 +512,7 @@ var
     Source := DirectorySource(Left);
     if Source <> '' then
     begin
-      Subject := Format('%s liefert', [Source]);
+      Subject := cTexts[TFilesText.Returns].Fmt([Source]);
     end
     else
     begin
@@ -497,18 +530,16 @@ var
       begin
         Exit;
       end;
-      Subject := Format('%s kommt aus %s und hat', [Left.Name, Source]);
+      Subject := cTexts[TFilesText.ComesFrom].Fmt([Left.Name, Source]);
     end;
     if IsLiteral then
     begin
-      Message := Format('%s keinen abschließenden Backslash; das Ergebnis ist …\%s%s.',
-        [Subject, TypicalFolder(Source), Plain]);
+      Message := cTexts[TFilesText.NoBackslashLiteral].Fmt([Subject, TypicalFolder(Source), Plain]);
       Confidence := TRuleConfidence.High;
     end
     else
     begin
-      Message := Format('%s keinen abschließenden Backslash; %s wird ohne Trennzeichen angehängt.',
-        [Subject, SourceText(Text, Right)]);
+      Message := cTexts[TFilesText.NoBackslash].Fmt([Subject, SourceText(Text, Right)]);
       Confidence := TRuleConfidence.Medium;
     end;
     AReport.Add(TTextRange.Create(Left.StartPos, Right.EndPos), Message, Confidence, Fixes(APlus, Left, Right));
@@ -545,7 +576,7 @@ const
 
 function THardcodedPathRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HardcodedPathRuleId, TRuleSeverity.Hint, 'Fester Dateipfad im Code');
+  Result := TRuleDescriptor.Create(HardcodedPathRuleId, TRuleSeverity.Hint, cTexts[TFilesText.PathTitle].Text);
 end;
 
 function IsSlash(C: Char): Boolean;
@@ -655,11 +686,11 @@ begin
     end;
     case PathKind(Plain) of
       THardcodedPathKind.Drive:
-        Message := 'Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.';
+        Message := cTexts[TFilesText.FixedPath].Text;
       THardcodedPathKind.UserFolder:
-        Message := 'Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.';
+        Message := cTexts[TFilesText.UserPath].Text;
       THardcodedPathKind.Network:
-        Message := 'Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.';
+        Message := cTexts[TFilesText.NetworkPath].Text;
     else
       Continue;
     end;
@@ -680,7 +711,7 @@ const
 
 function TFilenameCompareCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FilenameCompareCaseRuleId, TRuleSeverity.Hint, 'Dateinamen mit = verglichen');
+  Result := TRuleDescriptor.Create(FilenameCompareCaseRuleId, TRuleSeverity.Hint, cTexts[TFilesText.CompareTitle].Text);
 end;
 
 class function TFilenameCompareCaseRule.IsFileNameExpression(ANode: TSyntaxNode): Boolean;
@@ -893,8 +924,9 @@ begin
   for mCompare in mCompares do
   begin
     AReport.Add(TTextRange.Create(mCompare.StartPos, mCompare.EndPos),
-      'Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.',
-      TRuleConfidence.Medium, [TRuleFix.Create('SameFileName verwenden', SameFileNameEdits(AContext, mCompare,
+      cTexts[TFilesText.CaseInsensitive].Text,
+      TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TFilesText.UseSameFileName].Text, SameFileNameEdits(AContext,
+        mCompare,
       mUsed))]);
   end;
 end;
@@ -905,5 +937,8 @@ begin
   ARegistry.Register(THardcodedPathRule.Create);
   ARegistry.Register(TFilenameCompareCaseRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Files', cTexts);
 
 end.

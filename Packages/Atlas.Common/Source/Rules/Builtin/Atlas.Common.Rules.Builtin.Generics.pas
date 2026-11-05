@@ -100,7 +100,49 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Calls;
+  Atlas.Common.Rules.Builtin.Calls,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TGenericsText = (ConstraintTitle, NoClassType, NoValueType, NoDefaultConstructor, NotSupported, NotCompatible,
+    AddConstraint, NoConstructorConstraint, NoClassConstraint, InferTitle, ExplicitTypeArgs, MixedKinds, Number,
+    StringFamily, UnknownFamily, LogicalFamily);
+
+const
+  cTexts: array[TGenericsText] of TAtlasText = (
+    (De: 'Typargument verletzt eine Einschränkung'; En: 'Type argument violates a constraint'),
+    (De: '%s ist kein Klassentyp; %s von %s verlangt class (wie E2511).';
+     En: '%s is not a class type; %s of %s requires class (like E2511).'),
+    (De: '%s ist kein Werttyp; %s von %s verlangt record (wie E2512).';
+     En: '%s is not a value type; %s of %s requires record (like E2512).'),
+    (De: '%s hat keinen parameterlosen Konstruktor; %s von %s verlangt constructor (wie E2513).';
+     En: '%s has no parameterless constructor; %s of %s requires constructor (like E2513).'),
+    (De: '%s unterstützt %s nicht; %s von %s verlangt %s (wie E2514).';
+     En: '%s does not support %s; %s of %s requires %s (like E2514).'),
+    (De: '%s ist nicht mit %s kompatibel; %s von %s verlangt %s (wie E2515).';
+     En: '%s is not compatible with %s; %s of %s requires %s (like E2515).'),
+    (De: 'Einschränkung ergänzen'; En: 'Add constraint'),
+    (De: '%s hat keine constructor-Einschränkung; %s.Create ist nicht erlaubt (wie E2568).';
+     En: '%s has no constructor constraint; %s.Create is not allowed (like E2568).'),
+    (De: '%s hat keine class- oder Interface-Einschränkung; %s.%s ist nicht erlaubt (wie E2571).';
+     En: '%s has no class or interface constraint; %s.%s is not allowed (like E2571).'),
+    (De: 'Typargumente lassen sich nicht ableiten'; En: 'Type arguments cannot be inferred'),
+    (De: '%s braucht ausdrückliche Typargumente (%s<…>): %s kommt in keinem Parameter vor und lässt sich nicht ' +
+      'ableiten (wie E2531).';
+     En: '%s needs explicit type arguments (%s<…>): %s occurs in no parameter and cannot be inferred (like E2531).'),
+    (De: '%s von %s lässt sich nicht ableiten: Die Argumente sind verschiedener Art (%s und %s); Typargument ' +
+      'ausdrücklich angeben, z. B. %s<…> (wie E2532).';
+     En: '%s of %s cannot be inferred: the arguments are of different kinds (%s and %s); specify the type argument ' +
+      'explicitly, e.g. %s<…> (like E2532).'),
+    (De: 'Zahl'; En: 'number'),
+    (De: 'Zeichenkette'; En: 'string'),
+    (De: '?'; En: '?'),
+    (De: 'Boolean'; En: 'Boolean'));
+
+{$SCOPEDENUMS OFF}
 
 const
   Keywords: array[0..2] of string = ('class', 'record', 'constructor');
@@ -137,7 +179,7 @@ end;
 function TGenericConstraintViolatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(GenericConstraintViolatedRuleId, TRuleSeverity.Error,
-    'Typargument verletzt eine Einschränkung');
+    cTexts[TGenericsText.ConstraintTitle].Text);
 end;
 
 /// <summary>Einschränkungen einer Gruppe, an Kommas auf oberster Ebene getrennt (IComparer&lt;T, U&gt; bleibt
@@ -434,18 +476,17 @@ var
   begin
     if AParam.Has('class') and (AKind <> TArgumentKind.ClassArg) then
     begin
-      Result := Format('%s ist kein Klassentyp; %s von %s verlangt class (wie E2511).', [AArgText, AParam.Name,
+      Result := cTexts[TGenericsText.NoClassType].Fmt([AArgText, AParam.Name,
         AGeneric]);
     end
     else if AParam.Has('record') and (AKind <> TArgumentKind.ValueArg) then
     begin
-      Result := Format('%s ist kein Werttyp; %s von %s verlangt record (wie E2512).', [AArgText, AParam.Name,
+      Result := cTexts[TGenericsText.NoValueType].Fmt([AArgText, AParam.Name,
         AGeneric]);
     end
     else if AParam.Has('constructor') and not AParam.Has('record') and (AKind <> TArgumentKind.ClassArg) then
     begin
-      Result := Format('%s hat keinen parameterlosen Konstruktor; %s von %s verlangt constructor (wie E2513).',
-        [AArgText, AParam.Name, AGeneric]);
+      Result := cTexts[TGenericsText.NoDefaultConstructor].Fmt([AArgText, AParam.Name, AGeneric]);
     end
     else
     begin
@@ -497,12 +538,12 @@ var
       end;
       if mTarget.SymbolKind = TIndexSymbolKind.InterfaceType then
       begin
-        Result := Format('%s unterstützt %s nicht; %s von %s verlangt %s (wie E2514).', [AArgText, mConstraint,
+        Result := cTexts[TGenericsText.NotSupported].Fmt([AArgText, mConstraint,
           AParam.Name, AGeneric, mConstraint]);
       end
       else
       begin
-        Result := Format('%s ist nicht mit %s kompatibel; %s von %s verlangt %s (wie E2515).', [AArgText,
+        Result := cTexts[TGenericsText.NotCompatible].Fmt([AArgText,
           mConstraint, AParam.Name, AGeneric, mConstraint]);
       end;
     end;
@@ -604,7 +645,8 @@ var
       Exit;
     end;
     Offset := AStart + AParam.GroupEnd;
-    AFix := TRuleFix.Create('Einschränkung ergänzen', [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache, AContext,
+    AFix := TRuleFix.Create(cTexts[TGenericsText.AddConstraint].Text, [TRuleEdit.Create(TRuleDerived.OffsetRange(Cache,
+      AContext,
       Offset, Offset), AText)]);
   end;
 
@@ -667,8 +709,8 @@ var
       begin
         mFixes := [mFix];
       end;
-      AReport.Add(RangeOf(ANode), Format('%s hat keine constructor-Einschränkung; %s.Create ist nicht ' +
-        'erlaubt (wie E2568).', [mParam.Name, mParam.Name]), TRuleConfidence.High, mFixes);
+      AReport.Add(RangeOf(ANode), cTexts[TGenericsText.NoConstructorConstraint].Fmt([mParam.Name, mParam.Name]),
+        TRuleConfidence.High, mFixes);
     end;
 
     // X.Mitglied, wenn X einen Typparameter ohne Einschränkung als Typ hat.
@@ -690,8 +732,8 @@ var
       begin
         mFixes := [mFix];
       end;
-      AReport.Add(RangeOf(ANode), Format('%s hat keine class- oder Interface-Einschränkung; %s.%s ist nicht ' +
-        'erlaubt (wie E2571).', [AParams[mIndex].Name, AReceiver.Name, ANode.Name]), TRuleConfidence.High, mFixes);
+      AReport.Add(RangeOf(ANode), cTexts[TGenericsText.NoClassConstraint].Fmt([AParams[mIndex].Name, AReceiver.Name,
+        ANode.Name]), TRuleConfidence.High, mFixes);
     end;
 
     procedure CheckMember(ANode: TSyntaxNode);
@@ -981,13 +1023,14 @@ const
   cTextTypeNames: array[0..9] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString',
     'ShortString', 'UTF8String', 'Char', 'WideChar', 'AnsiChar');
   cLogicalTypeNames: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
-  cFamilyNames: array[TValueFamily] of string = ('', 'Zahl', 'Zeichenkette', 'Boolean');
+  cFamilyNames: array[TValueFamily] of TGenericsText = (TGenericsText.UnknownFamily, TGenericsText.Number,
+    TGenericsText.StringFamily, TGenericsText.LogicalFamily);
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Routine];
 
 function TGenericInferenceFailedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(GenericInferenceFailedRuleId, TRuleSeverity.Error,
-    'Typargumente lassen sich nicht ableiten');
+    cTexts[TGenericsText.InferTitle].Text);
 end;
 
 /// <summary>Steht AName bei AIndex in AHeader als eigenes Wort, dem (nach Leerzeichen) &lt; folgt? Dann dessen
@@ -1265,8 +1308,7 @@ var
         mFirst := mMissing;
       end;
     end;
-    AReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), Format('%s braucht ausdrückliche ' +
-      'Typargumente (%s<…>): %s kommt in keinem Parameter vor und lässt sich nicht ableiten (wie E2531).',
+    AReport.Add(TTextRange.Create(ACallee.StartPos, ACallee.EndPos), cTexts[TGenericsText.ExplicitTypeArgs].Fmt(
       [ACallee.Name, ACallee.Name, string.Join(', ', mFirst)]), TRuleConfidence.High, nil);
   end;
 
@@ -1381,10 +1423,9 @@ var
       begin
         Continue;
       end;
-      AReport.Add(TTextRange.Create(AArguments[mSeen].StartPos, AArguments[mSeen].EndPos), Format('%s von %s lässt ' +
-        'sich nicht ableiten: Die Argumente sind verschiedener Art (%s und %s); Typargument ausdrücklich angeben, ' +
-        'z. B. %s<…> (wie E2532).', [mParam, ACallee.Name, cFamilyNames[mFirst], cFamilyNames[FamilyOf(
-        AArguments[mSeen])], ACallee.Name]), TRuleConfidence.High, nil);
+      AReport.Add(TTextRange.Create(AArguments[mSeen].StartPos, AArguments[mSeen].EndPos),
+        cTexts[TGenericsText.MixedKinds].Fmt([mParam, ACallee.Name, cTexts[cFamilyNames[mFirst]].Text,
+        cTexts[cFamilyNames[FamilyOf(AArguments[mSeen])]].Text, ACallee.Name]), TRuleConfidence.High, nil);
     end;
   end;
 
@@ -1494,5 +1535,8 @@ begin
   ARegistry.Register(TGenericConstraintViolatedRule.Create);
   ARegistry.Register(TGenericInferenceFailedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Generics', cTexts);
 
 end.
