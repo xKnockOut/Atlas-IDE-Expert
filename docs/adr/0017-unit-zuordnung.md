@@ -67,6 +67,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Package | Units | Zeilen |
 |---|---:|---:|
+| `Atlas.Core.Localization.Language` | `Core/Localization/Atlas.Core.Localization.Language.pas` | Ordner `Core/Localization` |
 | `Atlas.IDE.Base` | 448 | 224 327 |
 | `Atlas.IDE.Debugger` | 47 | 23 568 |
 | `Atlas.IDE.Tracker` | 63 | 39 536 |

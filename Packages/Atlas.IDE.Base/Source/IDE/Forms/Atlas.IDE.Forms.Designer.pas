@@ -95,7 +95,52 @@ uses
   System.TypInfo,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Forms.Text,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TDesignerText = (IsNotAnObjectProperty, IsNotSet, CannotBeSet, HasNoDefaultValue, NotAStringValue, IsNotANumber,
+    TypeIsNotSetIn, ComponentNotFound, IsNotAnEvent, MethodIsMissingInThe, OpenInTheDesignerBut,
+    OpenInTheDesignerThere, FormIsNoLongerOpen);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TDesignerText] of string = (
+    ('%s ist keine Objekt-Eigenschaft',
+     '%s ist nicht gesetzt',
+     '%s lässt sich nicht setzen',
+     '%s hat keinen Vorgabewert',
+     '%s: kein String-Wert',
+     '%s: %s ist keine Zahl',
+     '%s: Typ wird im Designer nicht gesetzt',
+     'Komponente %s nicht gefunden',
+     '%s.%s ist kein Ereignis',
+     'Methode %s fehlt in der Unit',
+     'im Designer offen, aber noch nicht an den Server gemeldet',
+     'im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und einzeilige Eigenschaften (%s)',
+     'Formular ist nicht mehr offen'),
+    ('%s is not an object property',
+     '%s is not set',
+     '%s cannot be set',
+     '%s has no default value',
+     '%s: not a string value',
+     '%s: %s is not a number',
+     '%s: type is not set in the designer',
+     'component %s not found',
+     '%s.%s is not an event',
+     'method %s is missing in the unit',
+     'open in the designer, but not yet reported to the server',
+     'open in the designer; there Atlas only changes event assignments and single-line properties (%s)',
+     'form is no longer open'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TDesignerText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   SyncDelayMs = 500;
@@ -208,18 +253,18 @@ begin
     AProp := GetPropInfo(AInstance, Parts[Index]);
     if (AProp = nil) or (AProp^.PropType^.Kind <> tkClass) then
     begin
-      Exit(Format('%s ist keine Objekt-Eigenschaft', [Parts[Index]]));
+      Exit(Format(UiText(TDesignerText.IsNotAnObjectProperty), [Parts[Index]]));
     end;
     AInstance := GetObjectProp(AInstance, AProp);
     if AInstance = nil then
     begin
-      Exit(Format('%s ist nicht gesetzt', [Parts[Index]]));
+      Exit(Format(UiText(TDesignerText.IsNotSet), [Parts[Index]]));
     end;
   end;
   AProp := GetPropInfo(AInstance, Parts[High(Parts)]);
   if (AProp = nil) or (AProp^.SetProc = nil) then
   begin
-    Exit(Format('%s lässt sich nicht setzen', [APath]));
+    Exit(Format(UiText(TDesignerText.CannotBeSet), [APath]));
   end;
   Result := '';
 end;
@@ -247,7 +292,7 @@ begin
   end
   else
   begin
-    Result := Format('%s hat keinen Vorgabewert', [APath]);
+    Result := Format(UiText(TDesignerText.HasNoDefaultValue), [APath]);
   end;
 end;
 
@@ -259,7 +304,7 @@ begin
   Result := '';
   if not TAtlasFormChanges.StringValue(AChange.Value, mText) then
   begin
-    Result := Format('%s: kein String-Wert', [AChange.PropertyPath]);
+    Result := Format(UiText(TDesignerText.NotAStringValue), [AChange.PropertyPath]);
   end
   else if not ACheckOnly then
   begin
@@ -280,7 +325,7 @@ begin
     mIdentToInt := FindIdentToInt(AProp^.PropType^);
     if not Assigned(mIdentToInt) or not mIdentToInt(AChange.Value, mNumber) then
     begin
-      Exit(Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]));
+      Exit(Format(UiText(TDesignerText.IsNotANumber), [AChange.PropertyPath, AChange.Value]));
     end;
   end;
   if not ACheckOnly then
@@ -297,7 +342,7 @@ begin
   Result := '';
   if not TryStrToInt64(AChange.Value, mNumber) then
   begin
-    Result := Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]);
+    Result := Format(UiText(TDesignerText.IsNotANumber), [AChange.PropertyPath, AChange.Value]);
   end
   else if not ACheckOnly then
   begin
@@ -348,7 +393,7 @@ begin
   Result := '';
   if not TryStrToFloat(AChange.Value, mFloat, TFormatSettings.Invariant) then
   begin
-    Result := Format('%s: %s ist keine Zahl', [AChange.PropertyPath, AChange.Value]);
+    Result := Format(UiText(TDesignerText.IsNotANumber), [AChange.PropertyPath, AChange.Value]);
   end
   else if not ACheckOnly then
   begin
@@ -378,7 +423,7 @@ begin
     tkFloat:
       Result := AssignFloat(AInstance, AProp, AChange, ACheckOnly);
   else
-    Result := Format('%s: Typ wird im Designer nicht gesetzt', [AChange.PropertyPath]);
+    Result := Format(UiText(TDesignerText.TypeIsNotSetIn), [AChange.PropertyPath]);
   end;
 end;
 
@@ -407,17 +452,17 @@ begin
     mComponent := ComponentOf(ARoot, mChange.Component);
     if mComponent = nil then
     begin
-      Exit(Format('Komponente %s nicht gefunden', [mChange.Component]));
+      Exit(Format(UiText(TDesignerText.ComponentNotFound), [mChange.Component]));
     end;
     mPropInfo := GetPropInfo(mComponent, mChange.EventName);
     if (mPropInfo = nil) or (mPropInfo^.PropType^.Kind <> tkMethod) then
     begin
-      Exit(Format('%s.%s ist kein Ereignis', [mComponent.Name, mChange.EventName]));
+      Exit(Format(UiText(TDesignerText.IsNotAnEvent), [mComponent.Name, mChange.EventName]));
     end;
     // Die Unit ist schon geändert; der Handler muss dort unter dem neuen Namen stehen.
     if not ADesigner.MethodExists(mChange.NewHandler) then
     begin
-      Exit(Format('Methode %s fehlt in der Unit', [mChange.NewHandler]));
+      Exit(Format(UiText(TDesignerText.MethodIsMissingInThe), [mChange.NewHandler]));
     end;
     ATargets := ATargets + [mComponent];
     AProperties := AProperties + [mPropInfo];
@@ -442,7 +487,7 @@ begin
     mComponent := ComponentOf(ARoot, mProp.Component);
     if mComponent = nil then
     begin
-      Exit(Format('Komponente %s nicht gefunden', [mProp.Component]));
+      Exit(Format(UiText(TDesignerText.ComponentNotFound), [mProp.Component]));
     end;
     mReason := ResolveProperty(mComponent, mProp.PropertyPath, mInstance, mPropInfo);
     if mReason = '' then
@@ -698,7 +743,7 @@ begin
   // Die Positionen des Servers beziehen sich auf den Text, den Atlas zuletzt geschickt hat.
   if (FCurrent = nil) or not FCurrent.FTexts.TryGetValue(Key(AFileName), Sent) then
   begin
-    Exit('im Designer offen, aber noch nicht an den Server gemeldet');
+    Exit(UiText(TDesignerText.OpenInTheDesignerBut));
   end;
   try
     Edited := TLspEdits.Apply(Sent, AEdits);
@@ -708,7 +753,7 @@ begin
   end;
   if not TAtlasFormChanges.Diff(Sent, Edited, AChanges, AProperties, Reason) then
   begin
-    Exit(Format('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und einzeilige Eigenschaften (%s)',
+    Exit(Format(UiText(TDesignerText.OpenInTheDesignerThere),
       [Reason]));
   end;
   Result := '';
@@ -730,7 +775,7 @@ begin
   mDesigner := DesignerOf(mEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
-    Exit('Formular ist nicht mehr offen');
+    Exit(UiText(TDesignerText.FormIsNoLongerOpen));
   end;
   // Erst alles prüfen, dann setzen: Entweder alle Zuordnungen oder keine.
   Result := CheckEvents(mRoot, mDesigner, AChanges, mTargets, mProperties);
@@ -760,5 +805,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Forms.Designer', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

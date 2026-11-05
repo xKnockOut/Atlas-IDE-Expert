@@ -28,7 +28,10 @@ type
   TAtlasExpressionCompletionProvider = class(TAtlasAsyncCompletionProvider)
   public const
     DefaultTimeoutMs = 2000;
-    ProviderTitle = 'Vervollständigung (Debug-Dialoge)';
+  public
+    /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
+    /// </summary>
+    class function ProviderTitle: string; static;
   private
     FSession: TAtlasSessionFunc;
     FHistory: TFunc<TArray<string>>;
@@ -54,9 +57,32 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Client;
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TExpressionText = (CompletionDebugDialogs);
+
+const
+  cTexts: array[TAtlasLanguage, TExpressionText] of string = (
+    ('Vervollständigung (Debug-Dialoge)'),
+    ('Completion (debug dialogs)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TExpressionText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasExpressionCompletionProvider }
+
+class function TAtlasExpressionCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TExpressionText.CompletionDebugDialogs);
+end;
 
 constructor TAtlasExpressionCompletionProvider.Create(const ASession: TAtlasSessionFunc;
   const AHistory: TFunc<TArray<string>>; const AItemsOf: TAtlasLspItemsFunc; ATimeoutMs: Cardinal);
@@ -138,5 +164,8 @@ begin
     Result[Index].Rank := Index;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Providers.Expression', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

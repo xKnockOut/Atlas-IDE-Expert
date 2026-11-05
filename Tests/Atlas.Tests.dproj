@@ -626,6 +626,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatCheck.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Localization\Atlas.Core.Localization.Language.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.BackgroundRequest.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
@@ -635,6 +636,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Uris.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Localization.Language.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Uris.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.WorkspaceEdits.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.WorkspaceEdits.Tests.pas"/>
