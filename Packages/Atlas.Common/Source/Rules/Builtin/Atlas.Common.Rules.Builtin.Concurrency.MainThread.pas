@@ -55,7 +55,45 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Builtin.Concurrency.Syntax;
+  Atlas.Common.Rules.Builtin.Concurrency.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConcurrencyMainThreadText = (ProcessMessagesTitle, ReentryLoop, ReentryHandler, QueueTitle, ReplaceWith,
+    ReplaceWithEnd, AfterUnload, ThisPackage, BlockingTitle, InClickHandler, InEventHandler, WaitForSync, Blocks,
+    SleepLoop, ProcessMessagesAdvice, BlockingCallAdvice);
+
+const
+  cTexts: array[TConcurrencyMainThreadText] of TAtlasText = (
+    (De: 'Application.ProcessMessages in Schleifen'; En: 'Application.ProcessMessages in loops'),
+    (De: 'ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter Klick, Formular schließen).';
+     En: 'ProcessMessages in the loop allows reentry (second click, closing the form).'),
+    (De: 'ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter Klick, Formular schließen).';
+     En: 'ProcessMessages in the event handler allows reentry (second click, closing the form).'),
+    (De: 'TThread.Queue(nil, …) in einem Package'; En: 'TThread.Queue(nil, …) in a package'),
+    (De: 'Durch '; En: 'Replace with '),
+    (De: '…) ersetzen'; En: '…)'),
+    (De: '%s(nil, …) in %s: der Eintrag kann nach dem Entladen des Packages laufen.';
+     En: '%s(nil, …) in %s: the entry can run after the package is unloaded.'),
+    (De: 'diesem Package'; En: 'this package'),
+    (De: 'Blockierender Aufruf im Hauptthread'; En: 'Blocking call in the main thread'),
+    (De: 'im Click-Handler'; En: 'in the click handler'),
+    (De: 'im Ereignis-Handler '; En: 'in the event handler '),
+    (De: 'WaitFor %s blockiert den Hauptthread; ruft %s Synchronize auf, hängt das Programm.';
+     En: 'WaitFor %s blocks the main thread; if %s calls Synchronize, the program hangs.'),
+    (De: '%s %s blockiert den Hauptthread; die Oberfläche friert ein.';
+     En: '%s %s blocks the main thread; the user interface freezes.'),
+    (De: 'Warteschleife mit Sleep %s blockiert den Hauptthread; die Oberfläche friert ein.';
+     En: 'Waiting loop with Sleep %s blocks the main thread; the user interface freezes.'),
+    (De: ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum Ende sperren.';
+     En: ' Better move the work into a thread or TTask or disable the trigger until the end.'),
+    (De: ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
+     En: ' Better move the work to TTask.Run and report the result via TThread.Queue.'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Methode mit einem Parameter Sender: OnClick, OnTimer und Verwandte.</summary>
 function IsEventHandler(ARoutine: TSyntaxNode): Boolean;
@@ -96,14 +134,11 @@ end;
 
 { TProcessMessagesInLoopRule }
 
-const
-  ProcessMessagesAdvice = ' Besser die Arbeit in einen Thread oder TTask auslagern oder den Auslöser bis zum ' +
-    'Ende sperren.';
 
 function TProcessMessagesInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('processmessages-in-loop', TRuleSeverity.Hint,
-    'Application.ProcessMessages in Schleifen');
+    cTexts[TConcurrencyMainThreadText.ProcessMessagesTitle].Text);
 end;
 
 procedure TProcessMessagesInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -137,13 +172,13 @@ var
   begin
     if ALoops > 0 then
     begin
-      AReport.Add(NodeRange(ANode), 'ProcessMessages in der Schleife erlaubt Wiedereintritt (zweiter ' +
-        'Klick, Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium);
+      AReport.Add(NodeRange(ANode), cTexts[TConcurrencyMainThreadText.ReentryLoop].Text +
+        cTexts[TConcurrencyMainThreadText.ProcessMessagesAdvice].Text, TRuleConfidence.Medium);
     end
     else if AHandler then
     begin
-      AReport.Add(NodeRange(ANode), 'ProcessMessages im Ereignis-Handler erlaubt Wiedereintritt (zweiter ' +
-        'Klick, Formular schließen).' + ProcessMessagesAdvice, TRuleConfidence.Medium);
+      AReport.Add(NodeRange(ANode), cTexts[TConcurrencyMainThreadText.ReentryHandler].Text +
+        cTexts[TConcurrencyMainThreadText.ProcessMessagesAdvice].Text, TRuleConfidence.Medium);
     end;
   end;
 
@@ -223,7 +258,7 @@ end;
 function TQueueNilInPackageRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('queue-nil-in-package', TRuleSeverity.Warning,
-    'TThread.Queue(nil, …) in einem Package');
+    cTexts[TConcurrencyMainThreadText.QueueTitle].Text);
 end;
 
 class function TQueueNilInPackageRule.WrapperCall(const AWrapper, AMethod: string): string;
@@ -340,11 +375,11 @@ var
       begin
         Replace.EndPos := Token(Comma + 1).StartPos;
       end;
-      Fixes := [TRuleFix.Create('Durch ' + WrapperCall(Wrapper, Method) + '…) ersetzen',
+      Fixes := [TRuleFix.Create(cTexts[TConcurrencyMainThreadText.ReplaceWith].Text + WrapperCall(Wrapper, Method) +
+        cTexts[TConcurrencyMainThreadText.ReplaceWithEnd].Text,
         [TTextEdit.Create(Replace, WrapperCall(Wrapper, Method))])];
     end;
-    AReport.Add(Range, Format('%s(nil, …) in %s: der Eintrag kann nach dem Entladen des Packages laufen.',
-      [Method, Where]), Fixes);
+    AReport.Add(Range, cTexts[TConcurrencyMainThreadText.AfterUnload].Fmt([Method, Where]), Fixes);
   end;
 
 var
@@ -365,7 +400,7 @@ begin
   begin
     Exit;
   end;
-  Where := 'diesem Package';
+  Where := cTexts[TConcurrencyMainThreadText.ThisPackage].Text;
   if AContext.ProjectName <> '' then
   begin
     Where := AContext.ProjectName + '.bpl';
@@ -395,12 +430,11 @@ end;
 const
   FormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
   WindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
-  BlockingCallAdvice = ' Besser die Arbeit mit TTask.Run auslagern und das Ergebnis über TThread.Queue melden.';
 
 function TBlockingCallInMainThreadRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('blocking-call-in-main-thread', TRuleSeverity.Warning,
-    'Blockierender Aufruf im Hauptthread');
+    cTexts[TConcurrencyMainThreadText.BlockingTitle].Text);
 end;
 
 class function TBlockingCallInMainThreadRule.TimeoutArgument(const ACall: string): Integer;
@@ -500,11 +534,11 @@ var
     Method := MethodPart(ARoutine.Name);
     if EndsText('Click', Method) then
     begin
-      Result := 'im Click-Handler';
+      Result := cTexts[TConcurrencyMainThreadText.InClickHandler].Text;
     end
     else if IsEventHandler(ARoutine) then
     begin
-      Result := 'im Ereignis-Handler ' + Method;
+      Result := cTexts[TConcurrencyMainThreadText.InEventHandler].Text + Method;
     end
     else
     begin
@@ -559,8 +593,8 @@ var
     end;
     if SameText(ACallee.Name, 'WaitFor') and ((AArgs = nil) or (AArgs.ChildCount = 1)) and (mReceiver <> '') then
     begin
-      AReport.Add(NameRange(ACallee), Format('WaitFor %s blockiert den Hauptthread; ruft %s Synchronize auf, ' +
-        'hängt das Programm.', [Where(ARoutine), mReceiver]) + BlockingCallAdvice, TRuleConfidence.Medium);
+      AReport.Add(NameRange(ACallee), cTexts[TConcurrencyMainThreadText.WaitForSync].Fmt([Where(ARoutine), mReceiver]) +
+        cTexts[TConcurrencyMainThreadText.BlockingCallAdvice].Text, TRuleConfidence.Medium);
       Exit;
     end;
     if AArgs <> nil then
@@ -571,8 +605,8 @@ var
     begin
       mText := SourceText(AContext.Text, ACallee);
     end;
-    AReport.Add(NameRange(ACallee), Format('%s %s blockiert den Hauptthread; die Oberfläche friert ein.',
-      [mText, Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+    AReport.Add(NameRange(ACallee), cTexts[TConcurrencyMainThreadText.Blocks].Fmt(
+      [mText, Where(ARoutine)]) + cTexts[TConcurrencyMainThreadText.BlockingCallAdvice].Text, TRuleConfidence.Medium);
   end;
 
   // ACallee: Identifier oder MemberAccess mit dem Namen; AArgs: Aufruf mit Argumenten oder nil.
@@ -591,8 +625,8 @@ var
     // Kurzes Sleep nur in einer Warteschleife ohne ProcessMessages.
     else if SameText(ACallee.Name, 'Sleep') and (ALoop <> nil) and not MentionsProcessMessages(ALoop) then
     begin
-      AReport.Add(NameRange(ACallee), Format('Warteschleife mit Sleep %s blockiert den Hauptthread; die ' +
-        'Oberfläche friert ein.', [Where(ARoutine)]) + BlockingCallAdvice, TRuleConfidence.Medium);
+      AReport.Add(NameRange(ACallee), cTexts[TConcurrencyMainThreadText.SleepLoop].Fmt([Where(ARoutine)]) +
+        cTexts[TConcurrencyMainThreadText.BlockingCallAdvice].Text, TRuleConfidence.Medium);
     end;
   end;
 
@@ -690,5 +724,8 @@ begin
     Ancestry.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Concurrency.MainThread', cTexts);
 
 end.

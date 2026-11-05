@@ -56,7 +56,58 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Statements.Tokens;
+  Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStatementsLoopsText = (Title, StringZero, StringEnd, ZeroBased, UseLowHigh, ArrayEnd, UseHigh, ListEnd,
+    AddMinusOne, StringIndexZero, UseLow, ModifiedTitle, ForIn, ForwardAdd, ForwardInsert, ForwardDelete,
+    RewriteDownto);
+
+const
+  cTexts: array[TStatementsLoopsText] of TAtlasText = (
+    (De: 'Schleife läuft einen Schritt zu weit'; En: 'Loop runs one step too far'),
+    (De: 'Strings beginnen bei 1: der erste Durchlauf greift auf %s[0].';
+     En: 'Strings start at 1: the first iteration accesses %s[0].'),
+    (De: 'Obergrenze %s: der letzte Durchlauf greift hinter das String-Ende (mit {$ZEROBASEDSTRINGS ON} sind Strings ' +
+      'nullbasiert).';
+     En: 'Upper bound %s: the last iteration accesses beyond the end of the string (with {$ZEROBASEDSTRINGS ON} ' +
+      'strings are zero-based).'),
+    (De: 'Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert: die Schleife überspringt %s[0] und greift hinter das ' +
+      'Ende.';
+     En: 'With {$ZEROBASEDSTRINGS ON} strings are zero-based: the loop skips %s[0] and accesses beyond the end.'),
+    (De: 'Low(%s)/High(%s) verwenden'; En: 'Use Low(%s)/High(%s)'),
+    (De: 'Obergrenze %s: der letzte Durchlauf greift hinter das Array-Ende (Index %s).';
+     En: 'Upper bound %s: the last iteration accesses beyond the end of the array (index %s).'),
+    (De: 'High(%s) verwenden'; En: 'Use High(%s)'),
+    (De: 'Obergrenze %s: der letzte Durchlauf greift hinter das Listenende (Index %s).';
+     En: 'Upper bound %s: the last iteration accesses beyond the end of the list (index %s).'),
+    (De: '„- 1“ ergänzen'; En: 'Add “- 1”'),
+    (De: 'Strings beginnen bei 1: %s[0] liegt vor dem ersten Zeichen (wie E2157).';
+     En: 'Strings start at 1: %s[0] lies before the first character (like E2157).'),
+    (De: 'Low(%s) verwenden'; En: 'Use Low(%s)'),
+    (De: 'Liste in der eigenen Schleife verändert'; En: 'List modified in its own loop'),
+    (De: '%s.%s in for … in über %s: die RTL wirft eine Exception, weil sich die Liste ändert. Elemente sammeln und ' +
+      'nach der Schleife ändern.';
+     En: '%s.%s in for … in over %s: the RTL raises an exception because the list changes. Collect the elements and ' +
+      'change them after the loop.'),
+    (De: '%s.%s in einer Vorwärtsschleife über %s: die neuen Elemente durchläuft die Schleife nicht, die Obergrenze ' +
+      'steht beim Start fest.';
+     En: '%s.%s in a forward loop over %s: the loop does not visit the new elements, the upper bound is fixed at the ' +
+      'start.'),
+    (De: '%s.%s in einer Vorwärtsschleife über %s: die Elemente rücken nach, dasselbe Element kommt noch einmal, am ' +
+      'Ende fehlen Elemente.';
+     En: '%s.%s in a forward loop over %s: the elements move up, the same element comes again, elements are missing ' +
+      'at the end.'),
+    (De: '%s.%s in einer Vorwärtsschleife über %s: das nächste Element wird übersprungen, am Ende folgt ein ' +
+      'Indexfehler.';
+     En: '%s.%s in a forward loop over %s: the next element is skipped, an index error follows at the end.'),
+    (De: 'Schleife rückwärts (downto) umschreiben'; En: 'Rewrite the loop backwards (downto)'));
+
+{$SCOPEDENUMS OFF}
 
 { TLoopOffByOneRule }
 
@@ -120,7 +171,7 @@ end;
 function TLoopOffByOneRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LoopOffByOneRuleId, TRuleSeverity.Warning,
-    'Schleife läuft einen Schritt zu weit');
+    cTexts[TStatementsLoopsText.Title].Text);
 end;
 
 class function TLoopOffByOneRule.ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean;
@@ -332,23 +383,21 @@ var
     mWholeLength := ZeroBased and (ABase.Close = AHeader.HighLast);
     if not ZeroBased and (ALowKey = '0') then
     begin
-      Result := Format('Strings beginnen bei 1: der erste Durchlauf greift auf %s[0].', [ABase.Text]);
+      Result := cTexts[TStatementsLoopsText.StringZero].Fmt([ABase.Text]);
     end
     else if mWholeLength and (ALowKey = '0') then
     begin
-      Result := Format('Obergrenze %s: der letzte Durchlauf greift hinter das String-Ende ' +
-        '(mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert).', [AHighText]);
+      Result := cTexts[TStatementsLoopsText.StringEnd].Fmt([AHighText]);
     end
     else if mWholeLength and (ALowKey = '1') then
     begin
-      Result := Format('Mit {$ZEROBASEDSTRINGS ON} sind Strings nullbasiert: die Schleife überspringt %s[0] ' +
-        'und greift hinter das Ende.', [ABase.Text]);
+      Result := cTexts[TStatementsLoopsText.ZeroBased].Fmt([ABase.Text]);
     end;
   end;
 
   function StringFix(const AHeader: TLoopHeader; const ABase: TLoopBase): TRuleFix;
   begin
-    Result := TRuleFix.Create(Format('Low(%s)/High(%s) verwenden', [ABase.Text, ABase.Text]),
+    Result := TRuleFix.Create(cTexts[TStatementsLoopsText.UseLowHigh].Fmt([ABase.Text, ABase.Text]),
       [TRuleEdit.Create(TTextRange.Create(Tokens[AHeader.LowFirst].StartPos, Tokens[AHeader.HighLast].EndPos),
       Format('Low(%s) to High(%s)', [ABase.Text, ABase.Text]))]);
   end;
@@ -358,17 +407,16 @@ var
   begin
     if ABase.IsCall then
     begin
-      Result := Format('Obergrenze %s: der letzte Durchlauf greift hinter das Array-Ende (Index %s).',
-        [AHighText, Tokens[AHeader.HighFirst].Text]);
-      AFix := TRuleFix.Create(Format('High(%s) verwenden', [ABase.Text]),
+      Result := cTexts[TStatementsLoopsText.ArrayEnd].Fmt([AHighText, Tokens[AHeader.HighFirst].Text]);
+      AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.UseHigh].Fmt([ABase.Text]),
         [TRuleEdit.Create(TTextRange.Create(Tokens[AHeader.HighFirst].StartPos, Tokens[AHeader.HighLast].EndPos),
         Format('High(%s)', [ABase.Text]))]);
     end
     else
     begin
-      Result := Format('Obergrenze %s: der letzte Durchlauf greift hinter das Listenende (Index %s).',
-        [AHighText, Tokens[AHeader.HighLast].Text]);
-      AFix := TRuleFix.Create('„- 1“ ergänzen', [TRuleEdit.Create(TTextRange.Create(Tokens[AHeader.HighLast].EndPos,
+      Result := cTexts[TStatementsLoopsText.ListEnd].Fmt([AHighText, Tokens[AHeader.HighLast].Text]);
+      AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.AddMinusOne].Text,
+        [TRuleEdit.Create(TTextRange.Create(Tokens[AHeader.HighLast].EndPos,
         Tokens[AHeader.HighLast].EndPos), ' - 1')]);
     end;
   end;
@@ -472,8 +520,8 @@ var
       if IsStringType(Types.DeclaredType(mName, Tokens[mIndex].StartPos)) then
       begin
         AReport.Add(TTextRange.Create(Tokens[mIndex].StartPos, Tokens[mClose].EndPos),
-          Format('Strings beginnen bei 1: %s[0] liegt vor dem ersten Zeichen (wie E2157).', [mName]),
-          TRuleConfidence.High, [TRuleFix.Create(Format('Low(%s) verwenden', [mName]),
+          cTexts[TStatementsLoopsText.StringIndexZero].Fmt([mName]),
+          TRuleConfidence.High, [TRuleFix.Create(cTexts[TStatementsLoopsText.UseLow].Fmt([mName]),
           [TRuleEdit.Create(TTextRange.Create(Tokens[mZero].StartPos, Tokens[mZero].EndPos),
           Format('Low(%s)', [mName]))])]);
       end;
@@ -521,7 +569,7 @@ end;
 function TCollectionModifiedInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CollectionModifiedInLoopRuleId, TRuleSeverity.Warning,
-    'Liste in der eigenen Schleife verändert');
+    cTexts[TStatementsLoopsText.ModifiedTitle].Text);
 end;
 
 procedure TCollectionModifiedInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -689,23 +737,19 @@ var
     AFixes := nil;
     if ATarget.ForIn then
     begin
-      Result := Format('%s.%s in for … in über %s: die RTL wirft eine Exception, weil sich die Liste ändert. ' +
-        'Elemente sammeln und nach der Schleife ändern.', [ATarget.Text, AMethod, ATarget.Text]);
+      Result := cTexts[TStatementsLoopsText.ForIn].Fmt([ATarget.Text, AMethod, ATarget.Text]);
     end
     else if MatchText(AMethod, ['Add']) then
     begin
-      Result := Format('%s.%s in einer Vorwärtsschleife über %s: die neuen Elemente durchläuft die Schleife ' +
-        'nicht, die Obergrenze steht beim Start fest.', [ATarget.Text, AMethod, ATarget.Text]);
+      Result := cTexts[TStatementsLoopsText.ForwardAdd].Fmt([ATarget.Text, AMethod, ATarget.Text]);
     end
     else if MatchText(AMethod, ['Insert']) then
     begin
-      Result := Format('%s.%s in einer Vorwärtsschleife über %s: die Elemente rücken nach, dasselbe Element ' +
-        'kommt noch einmal, am Ende fehlen Elemente.', [ATarget.Text, AMethod, ATarget.Text]);
+      Result := cTexts[TStatementsLoopsText.ForwardInsert].Fmt([ATarget.Text, AMethod, ATarget.Text]);
     end
     else
     begin
-      Result := Format('%s.%s in einer Vorwärtsschleife über %s: das nächste Element wird übersprungen, ' +
-        'am Ende folgt ein Indexfehler.', [ATarget.Text, AMethod, ATarget.Text]);
+      Result := cTexts[TStatementsLoopsText.ForwardDelete].Fmt([ATarget.Text, AMethod, ATarget.Text]);
       AFixes := ATarget.Fix;
     end;
   end;
@@ -773,7 +817,7 @@ var
     mTarget := Target(mBaseFirst, mBaseLast, False);
     mLowText := Trim(SourceText(AContext.Text, Tokens, mHeader.LowFirst, mHeader.LowLast));
     mHighText := Trim(SourceText(AContext.Text, Tokens, mHeader.HighFirst, mHeader.HighLast));
-    mTarget.Fix := [TRuleFix.Create('Schleife rückwärts (downto) umschreiben',
+    mTarget.Fix := [TRuleFix.Create(cTexts[TStatementsLoopsText.RewriteDownto].Text,
       [TRuleEdit.Create(TTextRange.Create(Tokens[mHeader.LowFirst].StartPos, Tokens[mHeader.HighLast].EndPos),
       mHighText + ' downto ' + mLowText)])];
     FindCalls(mHeader.DoIndex + 1, mHeader.Stop, mTarget);
@@ -827,5 +871,8 @@ begin
   Methods := TRuleOptions.Strings(AContext.Options, 'mutatingMethods', DefaultMutatingMethods);
   Visit(AContext.Tree.Root);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Statements.Loops', cTexts);
 
 end.

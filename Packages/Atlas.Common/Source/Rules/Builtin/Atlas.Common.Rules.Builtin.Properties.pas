@@ -111,7 +111,83 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPropertiesText = (NotRecord, NoField, NotInstanceField, ArrayNeedsMethod, ClassNeedsStatic, ClassVar,
+    ClassSelector, Overloaded, NotStatic, ClassInstanceMethod, StaticClassMethod, SetterParam, SetterMismatch,
+    GetterMismatch, Undeclared, IsProperty, AccessorTitle, DefaultExists, DefaultSameIndex, DefaultArrayOnly,
+    NoDefault, DefaultTitle, NoPropertyMeant, UseName, NoProperty, Unreachable, RedeclaredTitle, AddRead, NoRead,
+    WriteOnlyTitle);
+
+const
+  cTexts: array[TPropertiesText] of TAtlasText = (
+    (De: '%s ist vom Typ %s, keinem Record; ein Feldselektor wie %s.%s geht nur über ein Record-Feld (wie E2459).';
+     En: '%s is of type %s, not a record; a field selector like %s.%s works only through a record field (like E2459).'),
+    (De: '%s hat kein Feld %s (wie E2562).'; En: '%s has no field %s (like E2562).'),
+    (De: '%s.%s ist kein Instanzfeld; hinter dem Punkt muss ein Feld des Records stehen (wie E2461).';
+     En: '%s.%s is not an instance field; a field of the record must follow the dot (like E2461).'),
+    (De: 'Die Array-Property %s braucht hinter %s eine Methode; %s ist ein Feld (wie E2008).';
+     En: 'The array property %s needs a method after %s; %s is a field (like E2008).'),
+    (De: 'Die Klassen-Property %s braucht hinter %s eine class var oder eine class-Methode mit static; %s ist ein ' +
+      'Instanzfeld (wie E2355).';
+     En: 'The class property %s needs a class var or a static class method after %s; %s is an instance field (like ' +
+      'E2355).'),
+    (De: '%s ist eine class var; die Property %s braucht ein Instanzfeld oder eine Instanzmethode (wie E2356).';
+     En: '%s is a class var; the property %s needs an instance field or an instance method (like E2356).'),
+    (De: 'Die Klassen-Property %s darf hinter %s keinen Feldselektor haben; %s.%s geht nur an Instanz-Properties ' +
+      '(wie E2459).';
+     En: 'The class property %s must not have a field selector after %s; %s.%s works only on instance properties ' +
+      '(like E2459).'),
+    (De: '%s ist überladen, und keine Überladung passt als %s von %s (wie E2250).';
+     En: '%s is overloaded, and no overload fits as %s of %s (like E2250).'),
+    (De: 'Die Klassen-Property %s braucht eine class-Methode mit static; %s ist nicht static (wie E2355).';
+     En: 'The class property %s needs a static class method; %s is not static (like E2355).'),
+    (De: 'Die Klassen-Property %s braucht hinter %s eine class var oder eine class-Methode mit static; %s ist eine ' +
+      'Instanzmethode (wie E2355).';
+     En: 'The class property %s needs a class var or a static class method after %s; %s is an instance method (like ' +
+      'E2355).'),
+    (De: '%s ist eine statische Klassenmethode; die Property %s braucht ein Instanzfeld oder eine Instanzmethode ' +
+      '(wie E2356).';
+     En: '%s is a static class method; the property %s needs an instance field or an instance method (like E2356).'),
+    (De: 'Der Setter %s nimmt den Wert als %s-Parameter; ein Setter braucht einen Wert- oder const-Parameter (wie ' +
+      'E2282).';
+     En: 'The setter %s takes the value as %s parameter; a setter needs a value or const parameter (like E2282).'),
+    (De: '%s passt nicht als Setter von %s; erwartet wird %s (wie E2008).';
+     En: '%s does not fit as setter of %s; expected is %s (like E2008).'),
+    (De: '%s passt nicht als Getter von %s; erwartet wird %s (wie E2008).';
+     En: '%s does not fit as getter of %s; expected is %s (like E2008).'),
+    (De: '%s ist in %s nicht deklariert (wie E2168).'; En: '%s is not declared in %s (like E2168).'),
+    (De: '%s ist eine Property; hinter %s gehört ein Feld oder eine Methode (wie E2168).';
+     En: '%s is a property; a field or a method belongs after %s (like E2168).'),
+    (De: 'Getter oder Setter einer Property ungültig'; En: 'Getter or setter of a property invalid'),
+    (De: '%s hat schon die default-Property %s; eine Klasse hat höchstens eine default-Property, überladen nur unter ' +
+      'demselben Namen (wie E2131).';
+     En: '%s already has the default property %s; a class has at most one default property, overloaded only under ' +
+      'the same name (like E2131).'),
+    (De: '%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).';
+     En: '%s already has the default property %s with the same index types (like E2131).'),
+    (De: 'default ist nur an Array-Properties erlaubt (wie E2132).';
+     En: 'default is only allowed on array properties (like E2132).'),
+    (De: '%s hat keine default-Property; %s[…] braucht eine (wie E2149).';
+     En: '%s has no default property; %s[…] needs one (like E2149).'),
+    (De: 'default-Property falsch deklariert oder fehlt'; En: 'default property declared incorrectly or missing'),
+    (De: '%s hat keine Property %s; gemeint ist %s (wie E2147).';
+     En: '%s has no property %s; %s is meant (like E2147).'),
+    (De: '%s verwenden'; En: 'Use %s'),
+    (De: '%s hat keine Property %s (wie E2147).'; En: '%s has no property %s (like E2147).'),
+    (De: 'Die Property %s von %s ist hier nicht erreichbar (wie E2233).';
+     En: 'The property %s of %s is not reachable here (like E2233).'),
+    (De: 'Neu deklarierte Property fehlt im Vorfahren'; En: 'Newly declared property missing in the ancestor'),
+    (De: 'read F%s ergänzen'; En: 'Add read F%s'),
+    (De: 'Property %s hat kein read.'; En: 'Property %s has no read.'),
+    (De: 'Property mit write, aber ohne read'; En: 'Property with write but without read'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ein Zugriff hinter read oder write: Name und Feldselektoren, Token von First bis Last.</summary>
@@ -785,20 +861,18 @@ begin
   end;
   if mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType then
   begin
-    Add(AAccessor, Format('%s ist vom Typ %s, keinem Record; ein Feldselektor wie %s.%s geht nur über ein ' +
-      'Record-Feld (wie E2459).', [APath, AField.TypeName, APath, ASelector]));
+    Add(AAccessor, cTexts[TPropertiesText.NotRecord].Fmt([APath, AField.TypeName, APath, ASelector]));
     Exit;
   end;
   mLookup := FindMember(mLocation, ASelector, AHit);
   if mLookup = TMemberLookup.Missing then
   begin
-    Add(AAccessor, Format('%s hat kein Feld %s (wie E2562).', [mLocation.Symbol.Name, ASelector]));
+    Add(AAccessor, cTexts[TPropertiesText.NoField].Fmt([mLocation.Symbol.Name, ASelector]));
   end
   else if (mLookup = TMemberLookup.Found) and ((AHit.Kind <> TIndexSymbolKind.Field) or AHit.HasDirective('class'))
     then
   begin
-    Add(AAccessor, Format('%s.%s ist kein Instanzfeld; hinter dem Punkt muss ein Feld des Records stehen (wie ' +
-      'E2461).', [mLocation.Symbol.Name, AHit.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.NotInstanceField].Fmt([mLocation.Symbol.Name, AHit.Name]));
   end
   else
   begin
@@ -832,24 +906,20 @@ begin
   // Mit index-Angabe nimmt dcc ein Feld hinter read und write an (PA1–PA3, mORMot2, SynEdit).
   if FShape.Symbol.MaxArgs > 0 then
   begin
-    Add(AAccessor, Format('Die Array-Property %s braucht hinter %s eine Methode; %s ist ein Feld (wie E2008).',
-      [FShape.Symbol.Name, mClause, AField.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.ArrayNeedsMethod].Fmt([FShape.Symbol.Name, mClause, AField.Name]));
   end
   else if FShape.IsClass and not AField.HasDirective('class') then
   begin
-    Add(AAccessor, Format('Die Klassen-Property %s braucht hinter %s eine class var oder eine class-Methode mit ' +
-      'static; %s ist ein Instanzfeld (wie E2355).', [FShape.Symbol.Name, mClause, AField.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.ClassNeedsStatic].Fmt([FShape.Symbol.Name, mClause, AField.Name]));
   end
   else if not FShape.IsClass and AField.HasDirective('class') then
   begin
-    Add(AAccessor, Format('%s ist eine class var; die Property %s braucht ein Instanzfeld oder eine ' +
-      'Instanzmethode (wie E2356).', [AField.Name, FShape.Symbol.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.ClassVar].Fmt([AField.Name, FShape.Symbol.Name]));
   end
   // Klassen-Properties lesen und schreiben nur ganze class vars (Cm.E2459, #1380).
   else if FShape.IsClass and (AAccessor.Selectors <> nil) then
   begin
-    Add(AAccessor, Format('Die Klassen-Property %s darf hinter %s keinen Feldselektor haben; %s.%s geht nur an ' +
-      'Instanz-Properties (wie E2459).', [FShape.Symbol.Name, mClause, AField.Name,
+    Add(AAccessor, cTexts[TPropertiesText.ClassSelector].Fmt([FShape.Symbol.Name, mClause, AField.Name,
       string.Join('.', AAccessor.Selectors)]));
   end
   else
@@ -888,8 +958,7 @@ begin
     mRole := 'Setter';
   end;
   // Delphi 13 meldet E2250 (PG3, #1382).
-  Add(AAccessor, Format('%s ist überladen, und keine Überladung passt als %s von %s (wie E2250).',
-    [AMethod.Name, mRole, FShape.Symbol.Name]));
+  Add(AAccessor, cTexts[TPropertiesText.Overloaded].Fmt([AMethod.Name, mRole, FShape.Symbol.Name]));
 end;
 
 function TAccessorScan.ReportsClassMismatch(const AAccessor: TPropertyAccessor; const AMethod: TIndexSymbol): Boolean;
@@ -901,21 +970,19 @@ begin
   Result := FShape.IsClass and not (mClass and mStatic);
   if Result and mClass then
   begin
-    Add(AAccessor, Format('Die Klassen-Property %s braucht eine class-Methode mit static; %s ist nicht static ' +
-      '(wie E2355).', [FShape.Symbol.Name, AMethod.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.NotStatic].Fmt([FShape.Symbol.Name, AMethod.Name]));
   end
   else if Result then
   begin
-    Add(AAccessor, Format('Die Klassen-Property %s braucht hinter %s eine class var oder eine class-Methode mit ' +
-      'static; %s ist eine Instanzmethode (wie E2355).', [FShape.Symbol.Name, ClauseOf(AAccessor), AMethod.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.ClassInstanceMethod].Fmt([FShape.Symbol.Name, ClauseOf(AAccessor),
+      AMethod.Name]));
   end
   // Eine Klassenmethode ohne static taugt als Getter einer Instanz-Property (PA5, HtmlViewer, Graphics32);
   // eine statische hat kein Self.
   else if not FShape.IsClass and mClass and mStatic then
   begin
     Result := True;
-    Add(AAccessor, Format('%s ist eine statische Klassenmethode; die Property %s braucht ein Instanzfeld oder ' +
-      'eine Instanzmethode (wie E2356).', [AMethod.Name, FShape.Symbol.Name]));
+    Add(AAccessor, cTexts[TPropertiesText.StaticClassMethod].Fmt([AMethod.Name, FShape.Symbol.Name]));
   end;
 end;
 
@@ -938,8 +1005,7 @@ begin
   Result := MatchText(mModifier, ['var', 'out']);
   if Result then
   begin
-    Add(AAccessor, Format('Der Setter %s nimmt den Wert als %s-Parameter; ein Setter braucht einen Wert- oder ' +
-      'const-Parameter (wie E2282).', [AMethod.Name, mModifier]));
+    Add(AAccessor, cTexts[TPropertiesText.SetterParam].Fmt([AMethod.Name, mModifier]));
   end;
 end;
 
@@ -954,13 +1020,11 @@ begin
   // Delphi 13 meldet die falsche Signatur als E2008 (Fall Cm.E2234, PG2, #1382).
   if AAccessor.IsWrite then
   begin
-    Add(AAccessor, Format('%s passt nicht als Setter von %s; erwartet wird %s (wie E2008).',
-      [AMethod.Name, FShape.Symbol.Name, Expected(AAccessor)]));
+    Add(AAccessor, cTexts[TPropertiesText.SetterMismatch].Fmt([AMethod.Name, FShape.Symbol.Name, Expected(AAccessor)]));
   end
   else
   begin
-    Add(AAccessor, Format('%s passt nicht als Getter von %s; erwartet wird %s (wie E2008).',
-      [AMethod.Name, FShape.Symbol.Name, Expected(AAccessor)]));
+    Add(AAccessor, cTexts[TPropertiesText.GetterMismatch].Fmt([AMethod.Name, FShape.Symbol.Name, Expected(AAccessor)]));
   end;
 end;
 
@@ -975,15 +1039,14 @@ begin
   end;
   if mFound = nil then
   begin
-    FReport.Add(Range(AAccessor), Format('%s ist in %s nicht deklariert (wie E2168).', [AAccessor.Name,
+    FReport.Add(Range(AAccessor), cTexts[TPropertiesText.Undeclared].Fmt([AAccessor.Name,
       FChain[0].Symbol.Name]), TRuleConfidence.High, CreateFixes(AAccessor));
     Exit;
   end;
   mSymbol := mFound[0];
   if mSymbol.Kind = TIndexSymbolKind.Property_ then
   begin
-    Add(AAccessor, Format('%s ist eine Property; hinter %s gehört ein Feld oder eine Methode (wie E2168).',
-      [mSymbol.Name, ClauseOf(AAccessor)]));
+    Add(AAccessor, cTexts[TPropertiesText.IsProperty].Fmt([mSymbol.Name, ClauseOf(AAccessor)]));
   end
   else if mSymbol.Kind = TIndexSymbolKind.Field then
   begin
@@ -1068,7 +1131,7 @@ end;
 function TPropertyAccessorInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PropertyAccessorInvalidRuleId, TRuleSeverity.Error,
-    'Getter oder Setter einer Property ungültig');
+    cTexts[TPropertiesText.AccessorTitle].Text);
 end;
 
 procedure TPropertyAccessorInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1202,13 +1265,12 @@ begin
   // lässt dcc nie zu (Cm.E2131, #1380).
   if not SameText(AEarlier.Name, ASymbol.Name) then
   begin
-    FReport.Add(ARange, Format('%s hat schon die default-Property %s; eine Klasse hat höchstens eine ' +
-      'default-Property, überladen nur unter demselben Namen (wie E2131).', [ASymbol.Container, AEarlier.Name]),
+    FReport.Add(ARange, cTexts[TPropertiesText.DefaultExists].Fmt([ASymbol.Container, AEarlier.Name]),
       TRuleConfidence.High);
   end
   else if SameIndexTypes(AEarlier, ASymbol) then
   begin
-    FReport.Add(ARange, Format('%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).',
+    FReport.Add(ARange, cTexts[TPropertiesText.DefaultSameIndex].Fmt(
       [ASymbol.Container, AEarlier.Name]), TRuleConfidence.High);
   end
   else
@@ -1232,7 +1294,7 @@ begin
   // Ohne Typ übernimmt eine Neudeklaration (property Items; default;) die Indexparameter des Vorfahren.
   if (ASymbol.MaxArgs = 0) and (ASymbol.TypeName <> '') then
   begin
-    FReport.Add(mRange, 'default ist nur an Array-Properties erlaubt (wie E2132).', TRuleConfidence.High);
+    FReport.Add(mRange, cTexts[TPropertiesText.DefaultArrayOnly].Text, TRuleConfidence.High);
     Exit;
   end;
   for mEarlier in ASeen do
@@ -1344,8 +1406,8 @@ begin
   if ((mSymbol.SymbolKind <> TIndexSymbolKind.Property_) or (mSymbol.MaxArgs <= 0) or
     (mBase.Kind = TSyntaxKind.IndexAccess)) and LacksDefault(mTypeInfo.Name) then
   begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s hat keine default-Property; ' +
-      '%s[…] braucht eine (wie E2149).', [mTypeInfo.Name, mSymbol.Name]), TRuleConfidence.High);
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TPropertiesText.NoDefault].Fmt([mTypeInfo.Name,
+      mSymbol.Name]), TRuleConfidence.High);
   end;
 end;
 
@@ -1389,7 +1451,7 @@ end;
 function TDefaultPropertyInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DefaultPropertyInvalidRuleId, TRuleSeverity.Error,
-    'default-Property falsch deklariert oder fehlt');
+    cTexts[TPropertiesText.DefaultTitle].Text);
 end;
 
 procedure TDefaultPropertyInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1514,13 +1576,14 @@ begin
   mClosest := TTextFuzzy.Closest(AProperty.Name, ANames);
   if mClosest <> '' then
   begin
-    FReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s; gemeint ist %s (wie E2147).',
+    FReport.Add(AProperty.SelectionRange, cTexts[TPropertiesText.NoPropertyMeant].Fmt(
       [mAncestor, AProperty.Name, mClosest]), TRuleConfidence.High,
-      [TRuleFix.Create(Format('%s verwenden', [mClosest]), [TRuleEdit.Create(AProperty.SelectionRange, mClosest)])]);
+      [TRuleFix.Create(cTexts[TPropertiesText.UseName].Fmt([mClosest]), [TRuleEdit.Create(AProperty.SelectionRange,
+        mClosest)])]);
   end
   else
   begin
-    FReport.Add(AProperty.SelectionRange, Format('%s hat keine Property %s (wie E2147).', [mAncestor,
+    FReport.Add(AProperty.SelectionRange, cTexts[TPropertiesText.NoProperty].Fmt([mAncestor,
       AProperty.Name]), TRuleConfidence.High);
   end;
 end;
@@ -1539,7 +1602,7 @@ begin
   end;
   if mHidden <> '' then
   begin
-    FReport.Add(AProperty.SelectionRange, Format('Die Property %s von %s ist hier nicht erreichbar (wie E2233).',
+    FReport.Add(AProperty.SelectionRange, cTexts[TPropertiesText.Unreachable].Fmt(
       [AProperty.Name, mHidden]), TRuleConfidence.High);
   end
   else
@@ -1585,7 +1648,7 @@ end;
 function TPropertyRedeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PropertyRedeclarationInvalidRuleId, TRuleSeverity.Error,
-    'Neu deklarierte Property fehlt im Vorfahren');
+    cTexts[TPropertiesText.RedeclaredTitle].Text);
 end;
 
 procedure TPropertyRedeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1826,11 +1889,11 @@ begin
   begin
     // Vor dem Wort write einfügen.
     mAt := FTokens[mWriter.First - 1].StartPos;
-    mFixes := [TRuleFix.Create(Format('read F%s ergänzen', [mName]),
+    mFixes := [TRuleFix.Create(cTexts[TPropertiesText.AddRead].Fmt([mName]),
       [TRuleEdit.Create(TTextRange.Create(mAt, mAt), Format('read F%s ', [mName]))])];
   end;
   FReport.Add(TTextRange.Create(FTokens[AStart + 1].StartPos, FTokens[AStart + 1].EndPos),
-    Format('Property %s hat kein read.', [mName]), TRuleConfidence.High, mFixes);
+    cTexts[TPropertiesText.NoRead].Fmt([mName]), TRuleConfidence.High, mFixes);
 end;
 
 procedure TWriteOnlyScan.Run;
@@ -1862,7 +1925,8 @@ end;
 
 function TWriteOnlyPropertyRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(WriteOnlyPropertyRuleId, TRuleSeverity.Hint, 'Property mit write, aber ohne read');
+  Result := TRuleDescriptor.Create(WriteOnlyPropertyRuleId, TRuleSeverity.Hint,
+    cTexts[TPropertiesText.WriteOnlyTitle].Text);
 end;
 
 procedure TWriteOnlyPropertyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1888,5 +1952,8 @@ begin
   ARegistry.Register(TPropertyRedeclarationInvalidRule.Create);
   ARegistry.Register(TWriteOnlyPropertyRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Properties', cTexts);
 
 end.

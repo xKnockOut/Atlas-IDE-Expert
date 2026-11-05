@@ -139,7 +139,50 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.GenericLists.Kinds,
-  Atlas.Common.Editing.GenericLists;
+  Atlas.Common.Editing.GenericLists,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCollectionsText = (VisibleNoProject, VisibleNotReady, NotReadable, DeclaredNoProject, DeclaredNotLoaded,
+    DeclaredNoGroup, NotFieldOrVariable, NoGeneric, NoQuickFix, ListTitle, ListCast, ListCasts, StackTitle, NonGeneric,
+    GenericStack, NonGenericFem, GenericQueue, StackCast, StackCasts);
+
+const
+  cTexts: array[TCollectionsText] of TAtlasText = (
+    (De: '%s ist auch in anderen Units sichtbar, und ohne geladenes Projekt lassen sie sich nicht prüfen';
+     En: '%s is also visible in other units, and they cannot be checked without a loaded project'),
+    (De: '%s ist auch in anderen Units sichtbar, die sich noch nicht prüfen lassen (%s)';
+     En: '%s is also visible in other units that cannot be checked yet (%s)'),
+    (De: '%s ist nicht lesbar'; En: '%s is not readable'),
+    (De: '%s ist in %s deklariert, und ohne geladenes Projekt lässt sich die Unit nicht ändern';
+     En: '%s is declared in %s, and the unit cannot be changed without a loaded project'),
+    (De: '%s ist in %s deklariert, und das Projekt ist noch nicht vollständig geladen (%s)';
+     En: '%s is declared in %s, and the project is not completely loaded yet (%s)'),
+    (De: '%s ist in %s deklariert, die zu keinem Projekt der Gruppe gehört';
+     En: '%s is declared in %s, which belongs to no project of the group'),
+    (De: 'Die Deklaration von %s ist kein Feld und keine Variable';
+     En: 'The declaration of %s is neither a field nor a variable'),
+    (De: 'Für %s gibt es kein generisches Gegenstück'; En: 'There is no generic counterpart for %s'),
+    (De: 'Keine Schnellkorrektur: '; En: 'No quick fix: '),
+    (De: 'Ungenerische Liste mit Cast'; En: 'Non-generic list with cast'),
+    (De: 'Ungenerische %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.';
+     En: 'Non-generic %s with cast on read; %s<%s> checks the type at compile time.'),
+    (De: 'Ungenerische %s mit Casts auf %s beim Lesen; eine generische Liste prüft den Typ beim Übersetzen.';
+     En: 'Non-generic %s with casts to %s on read; a generic list checks the type at compile time.'),
+    (De: 'Ungenerischer Stapel oder ungenerische Warteschlange mit Cast'; En: 'Non-generic stack or queue with cast'),
+    (De: 'Ungenerischer'; En: 'Non-generic'),
+    (De: 'ein generischer Stapel'; En: 'a generic stack'),
+    (De: 'Ungenerische'; En: 'Non-generic'),
+    (De: 'eine generische Warteschlange'; En: 'a generic queue'),
+    (De: '%s %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.';
+     En: '%s %s with cast on read; %s<%s> checks the type at compile time.'),
+    (De: '%s %s mit Casts auf %s beim Lesen; %s prüft den Typ beim Übersetzen.';
+     En: '%s %s with casts to %s on read; %s checks the type at compile time.'));
+
+{$SCOPEDENUMS OFF}
 
 { TLegacyCollectionType }
 
@@ -413,13 +456,11 @@ begin
   Result := False;
   if AContext.ProjectFiles = nil then
   begin
-    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, und ohne geladenes Projekt lassen sie sich ' +
-      'nicht prüfen', [ANames[0]]));
+    AConversion.Reject(cTexts[TCollectionsText.VisibleNoProject].Fmt([ANames[0]]));
   end
   else if not AContext.ProjectFiles.Complete(Reason) then
   begin
-    AConversion.Reject(Format('%s ist auch in anderen Units sichtbar, die sich noch nicht prüfen lassen (%s)',
-      [ANames[0], Reason]));
+    AConversion.Reject(cTexts[TCollectionsText.VisibleNotReady].Fmt([ANames[0], Reason]));
   end
   else
   begin
@@ -457,7 +498,7 @@ begin
   end
   else
   begin
-    AConversion.Reject(Format('%s ist nicht lesbar', [ExtractFileName(ASource)]));
+    AConversion.Reject(cTexts[TCollectionsText.NotReadable].Fmt([ExtractFileName(ASource)]));
   end;
 end;
 
@@ -559,22 +600,19 @@ begin
   AText := '';
   if AContext.ProjectFiles = nil then
   begin
-    AReason := Format('%s ist in %s deklariert, und ohne geladenes Projekt lässt sich die Unit nicht ändern',
-      [ARead.Symbol.Name, ARead.Symbol.UnitName]);
+    AReason := cTexts[TCollectionsText.DeclaredNoProject].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName]);
   end
   else if not AContext.ProjectFiles.Complete(Reason) then
   begin
-    AReason := Format('%s ist in %s deklariert, und das Projekt ist noch nicht vollständig geladen (%s)',
-      [ARead.Symbol.Name, ARead.Symbol.UnitName, Reason]);
+    AReason := cTexts[TCollectionsText.DeclaredNotLoaded].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName, Reason]);
   end
   else if not InProjects(AContext.ProjectFiles.ProjectsOf(AFileName, True), AFile) then
   begin
-    AReason := Format('%s ist in %s deklariert, die zu keinem Projekt der Gruppe gehört',
-      [ARead.Symbol.Name, ARead.Symbol.UnitName]);
+    AReason := cTexts[TCollectionsText.DeclaredNoGroup].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName]);
   end
   else if not AContext.ProjectFiles.ReadText(AFile, AText) then
   begin
-    AReason := Format('%s ist nicht lesbar', [ExtractFileName(AFile)]);
+    AReason := cTexts[TCollectionsText.NotReadable].Fmt([ExtractFileName(AFile)]);
   end
   else
   begin
@@ -619,7 +657,7 @@ begin
   Declaration := TGenericListConversion.DeclarationAt(ASource.Tree, ARead.Symbol.SelectionRange.StartPos, Name);
   if Declaration = nil then
   begin
-    Exit(Format('Die Deklaration von %s ist kein Feld und keine Variable', [ARead.Symbol.Name]));
+    Exit(cTexts[TCollectionsText.NotFieldOrVariable].Fmt([ARead.Symbol.Name]));
   end;
   if AConversion.Start(ASource.Tree, ASource.Text, ASource.FileName, Declaration, Name) then
   begin
@@ -644,7 +682,7 @@ begin
   AReason := '';
   if not TLegacyListKind.Find(ARead.CollectionType.Name, Kind) then
   begin
-    AReason := Format('Für %s gibt es kein generisches Gegenstück', [ARead.CollectionType.Name]);
+    AReason := cTexts[TCollectionsText.NoGeneric].Fmt([ARead.CollectionType.Name]);
     Exit;
   end;
   if not DeclarationSource(AContext, AFileName, ARead, Source, AReason) then
@@ -731,7 +769,7 @@ begin
   else
   begin
     AReport.AddWithDetails(Range, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
-      'Keine Schnellkorrektur: ' + Reason + '.', TRuleConfidence.High, nil);
+      cTexts[TCollectionsText.NoQuickFix].Text + Reason + '.', TRuleConfidence.High, nil);
   end;
 end;
 
@@ -780,7 +818,8 @@ end;
 
 function TLegacyTListRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LegacyTListRuleId, TRuleSeverity.Information, 'Ungenerische Liste mit Cast',
+  Result := TRuleDescriptor.Create(LegacyTListRuleId, TRuleSeverity.Information,
+    cTexts[TCollectionsText.ListTitle].Text,
     True);
 end;
 
@@ -804,13 +843,11 @@ function TLegacyTListRule.FindingMessage(const ACollectionType: string; const AC
 begin
   if Length(ACastTypes) = 1 then
   begin
-    Result := Format('Ungenerische %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.',
-      [ACollectionType, ACollectionType, ACastTypes[0]]);
+    Result := cTexts[TCollectionsText.ListCast].Fmt([ACollectionType, ACollectionType, ACastTypes[0]]);
   end
   else
   begin
-    Result := Format('Ungenerische %s mit Casts auf %s beim Lesen; eine generische Liste prüft den Typ ' +
-      'beim Übersetzen.', [ACollectionType, string.Join(', ', ACastTypes)]);
+    Result := cTexts[TCollectionsText.ListCasts].Fmt([ACollectionType, string.Join(', ', ACastTypes)]);
   end;
 end;
 
@@ -819,7 +856,7 @@ end;
 function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LegacyStackQueueRuleId, TRuleSeverity.Information,
-    'Ungenerischer Stapel oder ungenerische Warteschlange mit Cast', True);
+    cTexts[TCollectionsText.StackTitle].Text, True);
 end;
 
 function TLegacyStackQueueRule.CollectionTypes: TArray<TLegacyCollectionType>;
@@ -851,22 +888,21 @@ begin
   Stack := EndsText('Stack', ACollectionType);
   if Stack then
   begin
-    Adjective := 'Ungenerischer';
-    Generic := 'ein generischer Stapel';
+    Adjective := cTexts[TCollectionsText.NonGeneric].Text;
+    Generic := cTexts[TCollectionsText.GenericStack].Text;
   end
   else
   begin
-    Adjective := 'Ungenerische';
-    Generic := 'eine generische Warteschlange';
+    Adjective := cTexts[TCollectionsText.NonGenericFem].Text;
+    Generic := cTexts[TCollectionsText.GenericQueue].Text;
   end;
   if Length(ACastTypes) = 1 then
   begin
-    Result := Format('%s %s mit Cast beim Lesen; %s<%s> prüft den Typ beim Übersetzen.',
-      [Adjective, ACollectionType, ACollectionType, ACastTypes[0]]);
+    Result := cTexts[TCollectionsText.StackCast].Fmt([Adjective, ACollectionType, ACollectionType, ACastTypes[0]]);
   end
   else
   begin
-    Result := Format('%s %s mit Casts auf %s beim Lesen; %s prüft den Typ beim Übersetzen.',
+    Result := cTexts[TCollectionsText.StackCasts].Fmt(
       [Adjective, ACollectionType, string.Join(', ', ACastTypes), Generic]);
   end;
 end;
@@ -876,5 +912,8 @@ begin
   ARegistry.Register(TLegacyTListRule.Create);
   ARegistry.Register(TLegacyStackQueueRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Collections', cTexts);
 
 end.

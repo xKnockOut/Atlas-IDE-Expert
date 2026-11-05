@@ -31,7 +31,24 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceMemberHidesText = (Title, RenameInUnit, Hides, LikeW1009);
+
+const
+  cTexts: array[TInheritanceMemberHidesText] of TAtlasText = (
+    (De: 'Member verdeckt einen gleichnamigen Member des Vorfahren';
+     En: 'Member hides a member of the same name in the ancestor'),
+    (De: 'In %s umbenennen (in dieser Unit)'; En: 'Rename to %s (in this unit)'),
+    (De: '%s verdeckt %s.%s'; En: '%s hides %s.%s'),
+    (De: ' (wie W1009)'; En: ' (like W1009)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ergebnis einer Stufe der Vorfahrenkette: kein gleichnamiger Member, verdeckter Member gefunden, oder
@@ -162,7 +179,7 @@ end;
 function TMemberHidesAncestorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(MemberHidesAncestorRuleId, TRuleSeverity.Warning,
-    'Member verdeckt einen gleichnamigen Member des Vorfahren');
+    cTexts[TInheritanceMemberHidesText.Title].Text);
 end;
 
 procedure TMemberHidesAncestorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -287,7 +304,7 @@ begin
   end;
   if Edits <> nil then
   begin
-    Result := [TRuleFix.Create(Format('In %s umbenennen (in dieser Unit)', [NewName]), Edits)];
+    Result := [TRuleFix.Create(cTexts[TInheritanceMemberHidesText.RenameInUnit].Fmt([NewName]), Edits)];
   end;
 end;
 
@@ -330,10 +347,10 @@ procedure TMemberHidesCheck.ReportHidden(const AClass, AOwn: TIndexSymbol; const
 var
   Message: string;
 begin
-  Message := Format('%s verdeckt %s.%s', [AOwn.Name, ALocation.Symbol.Name, AHidden.Name]);
+  Message := cTexts[TInheritanceMemberHidesText.Hides].Fmt([AOwn.Name, ALocation.Symbol.Name, AHidden.Name]);
   if AOwn.Kind = TIndexSymbolKind.Property_ then
   begin
-    Message := Message + ' (wie W1009)';
+    Message := Message + cTexts[TInheritanceMemberHidesText.LikeW1009].Text;
   end;
   if AOwn.Kind = TIndexSymbolKind.Method then
   begin
@@ -401,5 +418,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.MemberHides', cTexts);
 
 end.
