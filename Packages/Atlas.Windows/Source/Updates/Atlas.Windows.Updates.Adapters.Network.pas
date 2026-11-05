@@ -39,6 +39,10 @@ type
 const
   cAgent = 'AtlasUpdate';
   cTimeoutMs = 30000;
+  /// <summary>Versuche je Abruf: GitHub beendet Verbindungen zeitweise (WinHTTP 12030), frisch hochgeladene Dateien
+  /// liefern kurz 404.</summary>
+  cAttempts = 3;
+  cRetryWaitMs = 2000;
 
 constructor TUpdateDownloadProgress.Create(const AProgress: TUpdateProgress);
 begin
@@ -82,12 +86,39 @@ begin
   end;
 end;
 
+/// <summary>Lohnt ein weiterer Versuch nach Status AStatus (0 = Verbindungsfehler)?</summary>
+function Retryable(AStatus: Integer): Boolean;
+begin
+  Result := (AStatus = 0) or (AStatus = 404) or (AStatus >= 500);
+end;
+
+/// <summary>ATry bis zu cAttempts mal; liefert Erfolg und Status des letzten Versuchs.</summary>
+function WithRetries(const ATry: TFunc<Integer>): Boolean;
+var
+  mAttempt, mStatus: Integer;
+begin
+  Result := False;
+  for mAttempt := 1 to cAttempts do
+  begin
+    mStatus := ATry();
+    Result := mStatus = 200;
+    if Result or not Retryable(mStatus) then
+    begin
+      Exit;
+    end;
+    if mAttempt < cAttempts then
+    begin
+      TThread.Sleep(cRetryWaitMs);
+    end;
+  end;
+end;
+
 { TUpdateWindowsNetwork }
 
 function TUpdateWindowsNetwork.Fetch(const AUrl: string; out AText, AError: string): Boolean;
 var
   mClient: THTTPClient;
-  mResponse: IHTTPResponse;
+  mText, mError: string;
 begin
   AText := '';
   if not IsHttps(AUrl, AError) then
@@ -96,23 +127,31 @@ begin
   end;
   mClient := NewClient;
   try
-    try
-      mResponse := mClient.Get(AUrl);
-      Result := mResponse.StatusCode = 200;
-      if Result then
+    Result := WithRetries(
+      function: Integer
+      var
+        mResponse: IHTTPResponse;
       begin
-        AText := mResponse.ContentAsString(TEncoding.UTF8);
-      end
-      else
-      begin
-        AError := 'HTTP ' + IntToStr(mResponse.StatusCode);
-      end;
-    except
-      on mError: ENetException do
-      begin
-        AError := mError.ClassName;
-        Result := False;
-      end;
+        Result := 0;
+        try
+          mResponse := mClient.Get(AUrl);
+          Result := mResponse.StatusCode;
+          mError := 'HTTP ' + IntToStr(Result);
+          if Result = 200 then
+          begin
+            mText := mResponse.ContentAsString(TEncoding.UTF8);
+          end;
+        except
+          on mFailure: ENetException do
+          begin
+            mError := mFailure.ClassName + ': ' + mFailure.Message;
+          end;
+        end;
+      end);
+    AText := mText;
+    if not Result then
+    begin
+      AError := mError;
     end;
   finally
     mClient.Free;
@@ -125,7 +164,7 @@ var
   mClient: THTTPClient;
   mStream: TFileStream;
   mProgress: TUpdateDownloadProgress;
-  mStatus: Integer;
+  mError: string;
 begin
   if not IsHttps(AUrl, AError) then
   begin
@@ -137,19 +176,25 @@ begin
   mStream := TFileStream.Create(AFileName, fmCreate);
   try
     mClient.OnReceiveData := mProgress.Received;
-    try
-      mStatus := mClient.Get(AUrl, mStream).StatusCode;
-      Result := mStatus = 200;
-      if not Result then
+    Result := WithRetries(
+      function: Integer
       begin
-        AError := 'HTTP ' + IntToStr(mStatus);
-      end;
-    except
-      on mError: ENetException do
-      begin
-        AError := mError.ClassName;
-        Result := False;
-      end;
+        Result := 0;
+        // Ein abgebrochener Versuch hinterlässt Teile der Datei.
+        mStream.Size := 0;
+        try
+          Result := mClient.Get(AUrl, mStream).StatusCode;
+          mError := 'HTTP ' + IntToStr(Result);
+        except
+          on mFailure: ENetException do
+          begin
+            mError := mFailure.ClassName + ': ' + mFailure.Message;
+          end;
+        end;
+      end);
+    if not Result then
+    begin
+      AError := mError;
     end;
   finally
     mStream.Free;
