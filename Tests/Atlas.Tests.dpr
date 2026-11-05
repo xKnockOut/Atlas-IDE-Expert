@@ -1038,6 +1038,8 @@ uses
   Atlas.Core.Welcome.Sections in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas',
   Atlas.Core.Welcome.Layout in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas',
   Atlas.Core.Welcome.Layouts in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas',
+  Atlas.Core.Welcome.AccountName in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.AccountName.pas',
+  Atlas.Core.Welcome.AccountName.Tests in 'IDE.Expert\Atlas.Core.Welcome.AccountName.Tests.pas',
   Atlas.Core.Welcome.Greeting in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas',
   Atlas.Core.Welcome.Scroll in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas',
   Atlas.Core.Welcome.Backup in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas',
