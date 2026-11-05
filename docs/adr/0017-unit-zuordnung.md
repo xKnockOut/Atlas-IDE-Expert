@@ -227,6 +227,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Lsp.AccessChains` | `Core/Lsp/Atlas.Core.Lsp.AccessChains.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Adapters.ServerProcess` | `Core/Lsp/Atlas.Core.Lsp.Adapters.ServerProcess.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Client` | `Core/Lsp/Atlas.Core.Lsp.Client.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.BackgroundRequest` | `Core/Lsp/Atlas.Core.Lsp.BackgroundRequest.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Contract` | `Core/Lsp/Atlas.Core.Lsp.Contract.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.CrashCases` | `Core/Lsp/Atlas.Core.Lsp.CrashCases.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Crashes` | `Core/Lsp/Atlas.Core.Lsp.Crashes.pas` | Ordner `Core/Lsp` |
@@ -923,6 +924,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Backup` | `Core/Welcome/Atlas.Core.Welcome.Backup.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Continue` | `Core/Welcome/Atlas.Core.Welcome.Continue.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Discover` | `Core/Welcome/Atlas.Core.Welcome.Discover.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.AccountName` | `Core/Welcome/Atlas.Core.Welcome.AccountName.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Greeting` | `Core/Welcome/Atlas.Core.Welcome.Greeting.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Help` | `Core/Welcome/Atlas.Core.Welcome.Help.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.HostLayout` | `Core/Welcome/Atlas.Core.Welcome.HostLayout.pas` | Ordner `Core/Welcome` |

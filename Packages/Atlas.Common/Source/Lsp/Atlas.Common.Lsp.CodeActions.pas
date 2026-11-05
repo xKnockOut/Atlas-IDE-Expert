@@ -320,6 +320,9 @@ type
     FWantsRemoveUnused: Boolean;
     FResult: TJSONArray;
     procedure ReadWanted(const AOnly: TArray<string>);
+    /// <summary>Treffer der Prüfregeln: aus dem Memo bei gleichem Text, sonst selbst gerechnet und abgelegt.
+    /// </summary>
+    function RuleFindings: TArray<TRuleFinding>;
     procedure CollectFindings;
     function UsesActions: TArray<TCodeAction>;
     function Style: TFormatStyle;
@@ -368,6 +371,24 @@ begin
   FWantsRemoveUnused := (AOnly <> nil) and TCodeActions.KindRequested(RemoveUnusedKind, AOnly);
 end;
 
+function TCodeActionBuilder.RuleFindings: TArray<TRuleFinding>;
+var
+  mMemo: Boolean;
+begin
+  // Die Treffer der Diagnose am selben Text wiederverwenden (2.0-stable): Die Glühbirne fragt bei jeder
+  // Cursorbewegung, und ein eigener Lauf aller Regeln stand hinter dem Prüflauf an.
+  mMemo := (FRules.Memo <> nil) and (FRules.FileName <> '');
+  if mMemo and FRules.Memo.TryGet(FRules.FileName, FText, Result) then
+  begin
+    Exit;
+  end;
+  Result := TLspSyntaxDiagnostics.RuleFindings(FText, FTree, FRules);
+  if mMemo then
+  begin
+    FRules.Memo.Put(FRules.FileName, FText, Result);
+  end;
+end;
+
 procedure TCodeActionBuilder.CollectFindings;
 begin
   FHasRules := Assigned(FOwner.FRuleProvider) and FOwner.FRuleProvider(FUri, FRules);
@@ -375,8 +396,7 @@ begin
   // in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
   if FHasRules then
   begin
-    FFindings := TFileChecker.SyntaxFindings(FTree.Diagnostics, FRules.Settings) +
-      TLspSyntaxDiagnostics.RuleFindings(FText, FTree, FRules);
+    FFindings := TFileChecker.SyntaxFindings(FTree.Diagnostics, FRules.Settings) + RuleFindings;
   end
   else
   begin
