@@ -6,6 +6,12 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Behoben
+- Zeit bis „bereit“ bei Projektgruppen (#1479): Beim Start jedes Projekts räumt der Server den Cache-Ordner auf und fragt dabei jeden Cache, ob er gesperrt ist. Die Sperren der schon gestarteten Projekte hält der eigene Prozess; die Probe über die Sperrdatei schlug dafür nur fehl, kostete aber Zeit, unter Linux (`AtlasServer --check`) wartete sie je Sperre, bevor sie aufgab. Jetzt kennt der Prozess seine Sperren selbst. Gemessen unter Linux mit vorhandenem Cache: Atlas-Gruppe mit 18 Projekten 1,6 statt 17,4 s, 8 Projekte mit gemeinsamen Suchpfaden 0,7 statt 4,0 s.
+
+### Neu
+- `Tools/Benchmark/ready.mjs` misst die Zeit bis „bereit“ mit mehreren Läufen je Fassung (#1479): ohne IDE über `AtlasServer --check` auf einer Projektgruppe oder aus den Diagnoselogs der IDE-Starts; Ausgabe Median und Spannweite, erster Lauf je Fassung (Umstieg) getrennt.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu

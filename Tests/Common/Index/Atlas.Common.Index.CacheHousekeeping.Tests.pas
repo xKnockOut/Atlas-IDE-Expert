@@ -53,6 +53,10 @@ type
     procedure TearDown;
     [Test]
     procedure SecondLockFails;
+    /// <summary>Eigene Sperren kennt der Prozess (#1479): auch über einen anderen Pfad zur selben Datei, und nach
+    /// dem Freigeben ist die Datei wieder frei.</summary>
+    [Test]
+    procedure OwnLockKnownInProcess;
     [Test]
     procedure ClearSkipsLockedCaches;
     [Test]
@@ -484,6 +488,33 @@ begin
     First.Free;
   end;
   Assert.IsFalse(TIndexCacheDirectory.IsLocked(Cache));
+end;
+
+procedure TIndexCacheDirectoryTests.OwnLockKnownInProcess;
+var
+  mLock, mSecond: TStream;
+  mCache, mDetour: string;
+begin
+  mCache := CreateCache('index-00000001.atlasidx');
+  mDetour := TPath.Combine(TPath.Combine(FRoot, '..'), TPath.Combine(ExtractFileName(FRoot),
+    'index-00000001.atlasidx'));
+  mLock := TIndexCacheDirectory.TryLock(mCache);
+  try
+    Assert.IsTrue(mLock <> nil);
+    Assert.IsTrue(TIndexCacheDirectory.IsLocked(mDetour));
+    Assert.IsTrue(TIndexCacheDirectory.TryLock(mDetour) = nil);
+  finally
+    mLock.Free;
+  end;
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mDetour));
+  mSecond := TIndexCacheDirectory.TryLock(mDetour);
+  try
+    Assert.IsTrue(mSecond <> nil);
+    Assert.IsTrue(TIndexCacheDirectory.IsLocked(mCache));
+  finally
+    mSecond.Free;
+  end;
+  Assert.IsFalse(TIndexCacheDirectory.IsLocked(mCache));
 end;
 
 procedure TIndexCacheDirectoryTests.ClearSkipsLockedCaches;
