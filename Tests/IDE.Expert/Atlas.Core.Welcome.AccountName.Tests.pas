@@ -117,7 +117,7 @@ begin
   mProbe := TAccountProbe.Create;
   try
     mProbe.Value := '  Muster, Erika  ';
-    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup, mProbe.Changed);
+    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       Assert.AreEqual('', mName.Name, 'vor der Antwort leer');
       Assert.IsTrue(WaitUntil(Reported(mProbe)));
@@ -142,7 +142,7 @@ begin
   mProbe := TAccountProbe.Create;
   try
     mProbe.Value := 'Erika Muster';
-    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup, mProbe.Changed);
+    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       for mIndex := 1 to 5 do
       begin
@@ -178,7 +178,7 @@ begin
   mProbe := TAccountProbe.Create;
   try
     mProbe.Value := '   ';
-    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup, mProbe.Changed);
+    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       Assert.AreEqual('', mName.Name);
       Assert.IsTrue(WaitUntil(Looked(mProbe)));
@@ -205,7 +205,7 @@ begin
   try
     mProbe.Value := 'Erika Muster';
     mProbe.Gate := TEvent.Create(nil, True, False, '');
-    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup, mProbe.Changed);
+    mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       Assert.AreEqual('', mName.Name);
       // Abfrage hängt (Domänencontroller nicht erreichbar); sie endet erst während der Freigabe.
