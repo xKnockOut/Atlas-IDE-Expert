@@ -272,6 +272,7 @@ $ControlsEn = @{
     'Kontrollkästchen' = 'Checkbox'
     'Kontrollkästchen „Code-Abfragen (Fenster Atlas-Abfrage, query_code)“' = 'Checkbox “Code queries (window Atlas Query, query_code)”'
     'Kontrollkästchen „Experimentelle Funktionen erlauben“' = 'Checkbox “Allow experimental features”'
+    'Kontrollkästchen „Prüfregeln“ (Modul-Schalter)' = 'Checkbox “Check rules” (module switch)'
     'Kontrollkästchen, Auswahl, Datei wählen' = 'Checkbox, choice, choose file'
     'Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Einstellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366), keepPrevious: Farben und Namen halten (#1367)' = 'Checkbox, choice, checkbox, number (5–100); exclude: list with Add/Remove in the project settings; baseline: choose file, failOn: list (project settings, #1121); grouping: grouping of the subsystems (#1366), keepPrevious: keep colours and names (#1367)'
     'Kontrollkästchen, Liste' = 'Checkbox, list'

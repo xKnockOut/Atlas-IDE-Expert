@@ -100,7 +100,10 @@ Back to the [README](../../../README.md)
 - A board in the dockable window *Atlas Board* (`issues.board`):
   - the current sprint of the YouTrack agile board or the GitHub project as columns with cards
   - "Only mine", search
-  - dragging changes the state in the tracker after a confirmation
+  - dragging changes the state in the tracker after a confirmation and follows the YouTrack workflow:
+    - under a state machine Atlas fires the matching transition like YouTrack's own board
+    - columns the workflow rules out are not highlighted
+    - the status line names the allowed transitions
   - click opens the preview, double-click starts the issue
 - A *Sprint* section on the start page (`welcomePage.sprint`):
   - current sprint with days left, own numbers, "team left" and a burndown
@@ -284,6 +287,21 @@ Settings: `vcs.externals.show`, `vcs.externals.update` (with, without, ask)
   - *Rebuild index*
   - *Create diagnostic package …* writes a ZIP with the bug report (#108), status, the session log and, with `--trace`, the trace of the last minutes, anonymised like the bug report and never with credentials, after a preview
 
+### Plugin timings in the diagnostic window (`diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`)
+
+With the diagnostic mode on, *Atlas diagnostics* shows what in Atlas is slow right now:
+
+| Tab | Content |
+|---|---|
+| *Main thread* | how busy Atlas kept the IDE over the last 60 s, own time per feature (calls, total, mean, max, calls above the threshold, share) and the last 200 slow calls with the Atlas action that ran; context menu *Show only X*, *Switch off until restart*, *Copy row* |
+| *Server* | each request with count, mean, max, how long the main thread waited, timeouts, cancellations and errors |
+| *Background* | working time of every completion source in the worker thread and how often it was too slow |
+| *Hangs* | the freeze watchdog's reports of the session and whether Atlas was involved |
+| *Completion* | the previous window |
+
+- *Pause*, *Reset* and *Copy report* (without source code and file names)
+- Switched off, no measuring point runs
+
 ## Files
 
 - **Silent reload** of files changed outside the IDE
@@ -313,5 +331,5 @@ Settings: `server.crashCases`, `server.crashSkip`
 
 ## Other
 
-- **Update check** only after consent
+- **Update check** only after consent; **update installer** (#1519): “Update now” downloads and verifies the update in the background and a console window applies it when the IDE closes, with module selection, rollback and the result on the next start (`updates.install`, `updates.channel`, `updates.newModules`); Delphi 12 gets it built from source
 - **Accessibility:** lists and tooltips readable by UI Automation
