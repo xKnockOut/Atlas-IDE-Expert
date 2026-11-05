@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Settings.RuleTable.Tests;
+﻿unit Atlas.Core.Rules.Table.Tests;
 
 // Tests für das Modell der Seite „Prüfregeln“ (#909): Katalogfelder,
 // Optionen, Ausnahmen, Hauptschalter je Gruppe und Suche; Gegenregeln (#1025).
@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Rules')]
   TAtlasRuleTableTests = class
   public
     [Test]
@@ -42,6 +43,12 @@ type
     procedure OverridingRuleOnlyWhenEnabled;
     [Test]
     procedure ObjectListTableRoundTrips;
+    [Test]
+    procedure RuleRowsFromCatalogAndFile;
+    [Test]
+    procedure RuleSeverityKeepsOptions;
+    [Test]
+    procedure SeverityChangeTouchesOnlyThatRule;
   end;
 
 implementation
@@ -50,7 +57,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.RuleTable;
+  Atlas.Core.Rules.Table;
 
 const
   CatalogText =
@@ -377,6 +384,64 @@ begin
   Assert.AreEqual(0, Integer(Length(TAtlasRuleTable.TableCells(mOption))));
   mCells := nil;
   mRows := nil;
+end;
+
+procedure TAtlasRuleTableTests.RuleRowsFromCatalogAndFile;
+var
+  mCatalog: TJSONValue;
+  Rows: TArray<TAtlasRuleRow>;
+begin
+  mCatalog := TJSONObject.ParseJSONValue('{"rules": [' +
+    '{"id": "no-with", "name": "Kein with", "category": "code-smell", "severity": "warning"},' +
+    '{"id": "empty-except", "name": "Leeres except", "category": "bug", "severity": "error"}]}');
+  try
+    Rows := TAtlasRuleTable.Rows(mCatalog, '{"no-with": "off", "own-rule": {"severity": "hint", "x": 1}}');
+    Assert.AreEqual(3, Integer(Length(Rows)));
+    Assert.AreEqual('no-with', Rows[0].Id);
+    Assert.AreEqual('off', Rows[0].Severity);
+    Assert.AreEqual('warning', Rows[0].DefaultSeverity);
+    Assert.IsTrue(Rows[0].Known);
+    Assert.AreEqual('', Rows[1].Severity);
+    Assert.AreEqual('own-rule', Rows[2].Id);
+    Assert.IsFalse(Rows[2].Known);
+    Assert.IsTrue(Rows[2].HasOptions);
+    Assert.AreEqual('hint', Rows[2].Severity);
+    // Ohne Server: nur die Regeln aus der Datei.
+    Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}'))));
+    // Im Projekt: globaler Wert je Regel, das Projekt übersteuert ihn.
+    Rows := TAtlasRuleTable.Rows(nil, '{"a": "off"}', '{"a": "hint", "b": "error"}');
+    Assert.AreEqual('off', Rows[0].Severity);
+    Assert.AreEqual('hint', Rows[0].GlobalSeverity);
+  finally
+    mCatalog.Free;
+  end;
+end;
+
+procedure TAtlasRuleTableTests.RuleSeverityKeepsOptions;
+var
+  Rules: string;
+begin
+  Rules := TAtlasRuleTable.WithSeverity('{"magic-number": {"severity": "hint", "ignore": [0]}}', 'magic-number',
+    'error');
+  Assert.IsTrue(Pos('"ignore":[0]', Rules) > 0);
+  Assert.IsTrue(Pos('"severity":"error"', Rules) > 0);
+  Rules := TAtlasRuleTable.WithSeverity('{"no-with": "error"}', 'no-with', '');
+  Assert.AreEqual('', Rules);
+  Rules := TAtlasRuleTable.WithSeverity('', 'no-with', 'off');
+  Assert.AreEqual('{"no-with":"off"}', Rules);
+end;
+
+procedure TAtlasRuleTableTests.SeverityChangeTouchesOnlyThatRule;
+var
+  mPath, mJson: string;
+begin
+  // Hat die Regel Optionen, ändert sich nur "severity".
+  TAtlasRuleTable.SeverityChange('{"magic-number": {"severity": "hint"}}', 'magic-number', 'off', mPath, mJson);
+  Assert.AreEqual('rules.magic-number.severity', mPath);
+  Assert.AreEqual('"off"', mJson);
+  TAtlasRuleTable.SeverityChange('{"no-with": "error"}', 'no-with', '', mPath, mJson);
+  Assert.AreEqual('rules.no-with', mPath);
+  Assert.AreEqual('', mJson);
 end;
 
 initialization

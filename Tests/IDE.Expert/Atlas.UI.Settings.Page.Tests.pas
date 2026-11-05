@@ -67,7 +67,7 @@ type
     /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel
     /// und den Änderungen für settings.json.</summary>
     [Test]
-    procedure RulesAreaLinksToDialogs;
+    procedure RulesAreaWindowSettings;
     /// <summary>#1108: offene Units zuerst auf dem Knoten „Prüffenster“; der Schalter sperrt seine Unterpunkte.
     /// </summary>
     [Test]
@@ -1122,14 +1122,14 @@ begin
     TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
-/// <summary>Knoten des Bereichs Regeln: Prüffenster und „Profile und Baseline“, keine Regelgruppen.</summary>
+/// <summary>Knoten des Bereichs Regeln: Prüffenster; „Profile und Baseline“ und die Regelgruppen kommen vom
+/// Modul Prüfregeln (#1755).</summary>
 procedure AssertRulesNodes(APage: TAtlasSettingsPage);
 begin
   Assert.IsTrue(SheetOf(CheckOf(APage, 'ProblemsWindow')) = APage.NodeSheet('rules.window'));
   Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsUpdateChoice) = APage.NodeSheet('rules.window'));
   Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit) = APage.NodeSheet('rules.window'));
-  Assert.IsNotNull(APage.NodeSheet('rules.profiles'));
-  Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.BaselineInfoLabel) = APage.NodeSheet('rules.profiles'));
+  Assert.IsNull(APage.NodeSheet('rules.profiles'), 'Profile und Baseline im Abschnitt des Moduls');
   Assert.IsNull(APage.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
 end;
 /// <summary>Gespeicherte Einstellungen des Prüffensters und der Gruppe „Compiler vorab“.</summary>
@@ -1144,12 +1144,11 @@ begin
   Assert.AreEqual(800, ASettings.ProblemsLiveDelayMs, 'Verzögerung gespeichert');
   Assert.IsFalse(ASettings.HoverProblemActions, 'Hover-Aktionen gespeichert');
 end;
-procedure TAtlasSettingsPageTests.RulesAreaLinksToDialogs;
+procedure TAtlasSettingsPageTests.RulesAreaWindowSettings;
 var
   Host: TForm;
   Page: TAtlasSettingsPage;
   Settings: TAtlasPluginSettings;
-  Project, Global: Integer;
 begin
   TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
@@ -1157,27 +1156,9 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    // Knoten: Prüffenster, Compiler vorab, „Profile und Baseline“; die Regeln stehen in den Dialogen der
-    // Einstellungsdateien.
+    // Knoten: Prüffenster und Compiler vorab; die Wege zu den Regeln, Baseline und Unterdrückungen bringt das
+    // Modul Prüfregeln als Abschnitt mit (#1755, Atlas.UI.Rules.SettingsSection.Tests).
     AssertRulesNodes(Page);
-    // Hauptknoten: Wege zum Projekt- und zum globalen Dialog.
-    Project := 0;
-    Global := 0;
-    Page.Part<TAtlasSettingsRulesPart>.OnRulesProject :=
-      procedure
-      begin
-        Inc(Project);
-      end;
-    Page.Part<TAtlasSettingsRulesPart>.OnRulesGlobal :=
-      procedure
-      begin
-        Inc(Global);
-      end;
-    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Page.Part<TAtlasSettingsRulesPart>.RulesProjectButton)));
-    Page.Part<TAtlasSettingsRulesPart>.RulesProjectButton.Click;
-    Page.Part<TAtlasSettingsRulesPart>.RulesGlobalButton.Click;
-    Assert.AreEqual(1, Project);
-    Assert.AreEqual(1, Global);
     // Einstellungen des Prüffensters im Rundweg.
     Settings := TAtlasPluginSettings.Defaults;
     Settings.ProblemsWindowScope := 'project';

@@ -8,7 +8,7 @@
 // TAtlasIdeKeys.Owner ab; nach dem Speichern belegt die Komposition die Tasten
 // über Settings.OnChanged neu.
 // „Server“ (#227): globale und Projekt-Einstellungen des Servers im Dialog,
-// Baseline, Unterdrückungen und Index-Cache über TAtlasIdeServerActions.
+// Index-Cache über TAtlasIdeServerActions (Baseline und Unterdrückungen: Modul Prüfregeln, #1755).
 
 interface
 
@@ -281,26 +281,6 @@ begin
       procedure
       begin
         TAtlasProjectSettings.Execute;
-      end;
-    FPage.OnBaselineInfo :=
-      function: string
-      begin
-        Result := TAtlasIdeServerActions.BaselineText;
-      end;
-    FPage.OnBaselineUpdate :=
-      function: string
-      begin
-        Result := TAtlasIdeServerActions.UpdateBaseline;
-      end;
-    FPage.OnBaselineDelete :=
-      function: string
-      begin
-        Result := TAtlasIdeServerActions.DeleteBaseline;
-      end;
-    FPage.OnSuppressions :=
-      function: TArray<string>
-      begin
-        Result := TAtlasIdeServerActions.Suppressions;
       end;
     FPage.OnClearCache :=
       function: string

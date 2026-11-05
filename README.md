@@ -174,7 +174,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests | `tests.enabled` |
 | `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | `buildTools.enabled` |
 | `Atlas.IDE.BuildPipeline` | Builds on request (also for MCP), check before compiling, release guard, verdict and build summary | `buildPipeline.enabled` |
-| `Atlas.IDE.Rules` | Rule checks: baseline, compiler messages into the baseline, form property rules, bulk fix | `ruleChecks.enabled` |
+| `Atlas.IDE.Rules` | Rule checks: rule editor, baseline and suppressions, compiler messages into the baseline, form property rules, bulk fix; suppress, configure and disable a rule from a finding (without the module only the findings and “Explain rule” remain) | `ruleChecks.enabled` |
 | `Atlas.IDE.Bookmarks` | Notes, named and quick bookmarks, TODO list | `bookmarks.enabled` |
 | `Atlas.IDE.Search` | Atlas search, unit search, code queries | `search.enabled` |
 | `Atlas.IDE.Analysis` | Architecture, hotspots, unit relations, path between symbols, code lens with code metrics | `analysis.enabled` |

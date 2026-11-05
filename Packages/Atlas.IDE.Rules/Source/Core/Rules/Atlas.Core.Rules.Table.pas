@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Settings.RuleTable;
+﻿unit Atlas.Core.Rules.Table;
 
 // Tabelle der Prüfregeln im Einstellungsdialog (#227): Zeilen aus dem
 // Regelkatalog des Servers (atlas.server.settingsCatalog) und dem Wert von
