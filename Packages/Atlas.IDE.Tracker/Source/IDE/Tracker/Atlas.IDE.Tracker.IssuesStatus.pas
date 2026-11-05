@@ -403,10 +403,15 @@ end;
 
 procedure TAtlasIdeIssuesStatus.WatchTick(Sender: TObject);
 begin
+  Inc(FTicks);
+  // Ohne Präfix gibt es keinen Commit-Dialog zu füllen: Nur der seltene Statustakt läuft.
+  if (FPrefix = '') and (FTicks mod cStatusTicks <> 0) then
+  begin
+    Exit;
+  end;
   TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
-      Inc(FTicks);
       if FTicks mod cStatusTicks = 0 then
       begin
         Update;

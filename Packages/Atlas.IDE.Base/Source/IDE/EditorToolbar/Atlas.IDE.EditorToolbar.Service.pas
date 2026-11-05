@@ -89,6 +89,7 @@ type
 implementation
 
 uses
+  Vcl.Forms,
   Atlas.Core.Outline.Breadcrumbs,
   Winapi.Windows,
   System.Classes,
@@ -136,6 +137,8 @@ type
     FPoints: TAtlasReturnPoints;
     FCommands: TArray<TAtlasCommand>;
     FSlow: Integer;
+    /// <summary>Takte seit dem letzten Lauf ohne aktiven Editor.</summary>
+    FIdle: Integer;
     // Abschnitte der zuletzt gelesenen Datei.
     FSectionsFile: string;
     FSectionsVersion: Cardinal;
@@ -718,6 +721,16 @@ begin
     end;
     Exit;
   end;
+  // Kein Editor aktiv oder die IDE im Hintergrund: Nur jeder SlowTicks-te Takt räumt auf.
+  if not Application.Active or (TAtlasEditorBuffer.ActiveView = nil) then
+  begin
+    Inc(FIdle);
+    if FIdle < SlowTicks then
+    begin
+      Exit;
+    end;
+  end;
+  FIdle := 0;
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
     procedure
     begin
