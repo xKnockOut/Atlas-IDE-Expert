@@ -44,7 +44,38 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols;
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeRestrictionsAttributesText = (Title, ArgumentNotConst, CallNotConst, WeakType, VolatileTarget, Duplicate);
+
+const
+  cTexts: array[TTypeRestrictionsAttributesText] of TAtlasText = (
+    (De: 'Attribut falsch verwendet'; En: 'Attribute used incorrectly'),
+    (De: 'Das Argument %s von [%s] ist kein konstanter Ausdruck; Attributargumente müssen Konstanten, ' +
+      'TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).';
+     En: 'The argument %s of [%s] is not a constant expression; attribute arguments must be constants, TypeInfo ' +
+      'expressions or array constructors (like E2448).'),
+    (De: 'Der Aufruf %s in [%s] ist kein konstanter Ausdruck; Attributargumente müssen Konstanten, ' +
+      'TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).';
+     En: 'The call %s in [%s] is not a constant expression; attribute arguments must be constants, TypeInfo ' +
+      'expressions or array constructors (like E2448).'),
+    (De: '[Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; %s hat den Typ %s (wie E2584).';
+     En: '[Weak] is only allowed on class and interface references; %s has the type %s (like E2584).'),
+    (De: '[Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, Routinen, Methoden oder ' +
+      'Properties (wie E2325).';
+     En: '[Volatile] applies only to variables, parameters and fields, not to types, routines, methods or properties ' +
+      '(like E2325).'),
+    (De: '[%s] steht mehrfach an derselben Deklaration; ein Attribut des Compilers darf je Ziel nur einmal stehen ' +
+      '(wie E2326).';
+     En: '[%s] occurs several times on the same declaration; a compiler attribute may occur only once per target ' +
+      '(like E2326).'));
+
+{$SCOPEDENUMS OFF}
 
 { TAttributeUsageInvalidRule }
 
@@ -231,7 +262,8 @@ end;
 
 function TAttributeUsageInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AttributeUsageInvalidRuleId, TRuleSeverity.Error, 'Attribut falsch verwendet');
+  Result := TRuleDescriptor.Create(AttributeUsageInvalidRuleId, TRuleSeverity.Error,
+    cTexts[TTypeRestrictionsAttributesText.Title].Text);
 end;
 
 procedure TAttributeUsageInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -328,8 +360,7 @@ var
       Result := CertainVariable(ANode.Name, AAttribute);
       if Result then
       begin
-        AReport.Add(NodeRange(ANode), Format('Das Argument %s von [%s] ist kein konstanter Ausdruck; ' +
-          'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein (wie E2448).',
+        AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.ArgumentNotConst].Fmt(
           [ANode.Name, AAttributeName]), TRuleConfidence.High, nil);
       end;
       Exit;
@@ -343,9 +374,8 @@ var
     Result := (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute);
     if Result then
     begin
-      AReport.Add(NodeRange(ANode), Format('Der Aufruf %s in [%s] ist kein konstanter Ausdruck; ' +
-        'Attributargumente müssen Konstanten, TypeInfo-Ausdrücke oder Array-Konstruktoren sein ' +
-        '(wie E2448).', [Callee.Name, AAttributeName]), TRuleConfidence.High, nil);
+      AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.CallNotConst].Fmt([Callee.Name,
+        AAttributeName]), TRuleConfidence.High, nil);
     end;
   end;
 
@@ -479,8 +509,8 @@ var
     begin
       Exit;
     end;
-    AReport.Add(NodeRange(AItem), Format('[Weak] ist nur an Klassen- und Interface-Referenzen erlaubt; %s hat ' +
-      'den Typ %s (wie E2584).', [Trim(ATarget.Name), OneLine(AContext.Text, TypeNode)]), TRuleConfidence.High,
+    AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.WeakType].Fmt([Trim(ATarget.Name),
+      OneLine(AContext.Text, TypeNode)]), TRuleConfidence.High,
       nil);
   end;
 
@@ -506,8 +536,8 @@ var
   begin
     if SameText(AName, 'Volatile') and (ATarget.Kind in VolatileForbiddenTargets) then
     begin
-      AReport.Add(NodeRange(AItem), '[Volatile] gilt nur für Variablen, Parameter und Felder, nicht für Typen, ' +
-        'Routinen, Methoden oder Properties (wie E2325).', TRuleConfidence.High, nil);
+      AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.VolatileTarget].Text, TRuleConfidence.High,
+        nil);
     end
     else if SameText(AName, 'Weak') then
     begin
@@ -548,8 +578,8 @@ var
       end;
       if IsDuplicate(Items, ItemNames, Index) then
       begin
-        AReport.Add(NodeRange(Items[Index]), Format('[%s] steht mehrfach an derselben Deklaration; ein Attribut ' +
-          'des Compilers darf je Ziel nur einmal stehen (wie E2326).', [ItemNames[Index]]), TRuleConfidence.High,
+        AReport.Add(NodeRange(Items[Index]), cTexts[TTypeRestrictionsAttributesText.Duplicate].Fmt([ItemNames[Index]]),
+          TRuleConfidence.High,
           nil);
       end
       else
@@ -597,5 +627,8 @@ begin
     Attributes.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeRestrictions.Attributes', cTexts);
 
 end.

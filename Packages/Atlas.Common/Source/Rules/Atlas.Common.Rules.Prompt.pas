@@ -36,7 +36,29 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPromptText = (Rule, BeforeAfter, Before, After, FindingNamed, Finding, Location, Severity, Message, Confidence);
+
+const
+  cTexts: array[TPromptText] of TAtlasText = (
+    (De: '### Regel'; En: '### Rule'),
+    (De: '### Vorher/Nachher'; En: '### Before/after'),
+    (De: 'Vorher:'; En: 'Before:'),
+    (De: 'Nachher:'; En: 'After:'),
+    (De: '## Befund %s: %s'; En: '## Finding %s: %s'),
+    (De: '## Befund %s'; En: '## Finding %s'),
+    (De: '- Datei: `%s`, Zeile %d, Spalte %d'; En: '- File: `%s`, line %d, column %d'),
+    (De: '- Schweregrad: %s'; En: '- Severity: %s'),
+    (De: '- Meldung: %s'; En: '- Message: %s'),
+    (De: '- Konfidenz: %s'; En: '- Confidence: %s'));
+
+{$SCOPEDENUMS OFF}
 
 var
   Shared: TRuleCatalog;
@@ -110,7 +132,7 @@ begin
   if AEntry.Description <> '' then
   begin
     ABuilder.AppendLine;
-    ABuilder.AppendLine('### Regel');
+    ABuilder.AppendLine(cTexts[TPromptText.Rule].Text);
     ABuilder.AppendLine;
     ABuilder.AppendLine(AEntry.Description);
   end;
@@ -122,9 +144,9 @@ begin
   if (AEntry.Bad <> '') or (AEntry.Good <> '') then
   begin
     ABuilder.AppendLine;
-    ABuilder.AppendLine('### Vorher/Nachher');
-    AppendExample(ABuilder, 'Vorher:', AEntry.Bad);
-    AppendExample(ABuilder, 'Nachher:', AEntry.Good);
+    ABuilder.AppendLine(cTexts[TPromptText.BeforeAfter].Text);
+    AppendExample(ABuilder, cTexts[TPromptText.Before].Text, AEntry.Bad);
+    AppendExample(ABuilder, cTexts[TPromptText.After].Text, AEntry.Good);
   end;
 end;
 
@@ -140,18 +162,19 @@ begin
   try
     if mKnown and (mEntry.Name <> '') then
     begin
-      mBuilder.AppendFormat('## Befund %s: %s', [AFinding.RuleId, mEntry.Name]).AppendLine;
+      mBuilder.AppendFormat(cTexts[TPromptText.FindingNamed].Text, [AFinding.RuleId, mEntry.Name]).AppendLine;
     end
     else
     begin
-      mBuilder.AppendFormat('## Befund %s', [AFinding.RuleId]).AppendLine;
+      mBuilder.AppendFormat(cTexts[TPromptText.Finding].Text, [AFinding.RuleId]).AppendLine;
     end;
     mBuilder.AppendLine;
-    mBuilder.AppendFormat('- Datei: `%s`, Zeile %d, Spalte %d', [AFileName, AFinding.Range.StartPos.Line + 1,
+    mBuilder.AppendFormat(cTexts[TPromptText.Location].Text, [AFileName, AFinding.Range.StartPos.Line + 1,
       AFinding.Range.StartPos.Character + 1]).AppendLine;
-    mBuilder.AppendFormat('- Schweregrad: %s', [TFindingsOutput.SeverityName(AFinding.Severity)]).AppendLine;
-    mBuilder.AppendFormat('- Meldung: %s', [AFinding.Message]).AppendLine;
-    mBuilder.AppendFormat('- Konfidenz: %s', [ConfidenceText(AFinding.Confidence)]).AppendLine;
+    mBuilder.AppendFormat(cTexts[TPromptText.Severity].Text,
+      [TFindingsOutput.SeverityName(AFinding.Severity)]).AppendLine;
+    mBuilder.AppendFormat(cTexts[TPromptText.Message].Text, [AFinding.Message]).AppendLine;
+    mBuilder.AppendFormat(cTexts[TPromptText.Confidence].Text, [ConfidenceText(AFinding.Confidence)]).AppendLine;
     if mKnown then
     begin
       AppendEntry(mBuilder, mEntry);
@@ -168,6 +191,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Prompt', cTexts);
   SharedLock := TObject.Create;
 
 finalization

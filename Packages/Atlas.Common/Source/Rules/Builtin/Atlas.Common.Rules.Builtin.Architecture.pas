@@ -133,7 +133,34 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TArchitectureText = (LayerTitle, LayerViolation, Describe, RoleTitle, RoleViolation, ContractTitle, ContractClass,
+    Foreign, Own);
+
+const
+  cTexts: array[TArchitectureText] of TAtlasText = (
+    (De: 'uses-Eintrag verletzt eine Schichtregel aus atlas.json';
+     En: 'uses entry violates a layer rule from atlas.json'),
+    (De: '%s darf %s nicht verwenden (Schicht "%s")'; En: '%s must not use %s (layer "%s")'),
+    (De: '%s %s aus %s'; En: '%s %s from %s'),
+    (De: 'uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)';
+     En: 'uses entry violates the role matrix (concept 8.1/8.3)'),
+    (De: '%s darf %s nicht importieren (%s)'; En: '%s must not import %s (%s)'),
+    (De: 'Contract-Unit deklariert eine Klasse'; En: 'Contract unit declares a class'),
+    (De: '%s ist eine Klasse in einer Contract-Unit; Contract enthält nur Records, Interfaces, Aufzählungen und ' +
+      'Ausnahmen (Konzept 7.1)';
+     En: '%s is a class in a contract unit; a contract contains only records, interfaces, enumerations and ' +
+      'exceptions (concept 7.1)'),
+    (De: 'fremde'; En: 'foreign'),
+    (De: 'eigene'; En: 'own'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoleNames: array[TArchitectureRole] of string =
@@ -205,7 +232,7 @@ end;
 function TForbiddenUsesRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('forbidden-uses', TRuleSeverity.Error,
-    'uses-Eintrag verletzt eine Schichtregel aus atlas.json');
+    cTexts[TArchitectureText.LayerTitle].Text);
 end;
 
 class function TForbiddenUsesRule.ParseLayers(const AOptions: string): TArray<TArchitectureLayer>;
@@ -293,8 +320,7 @@ begin
   begin
     if Violates(Layers, AContext.UnitName, AContext.RelativePath, Used.Name, Layer) then
     begin
-      AReport.Add(Used.Range, Format('%s darf %s nicht verwenden (Schicht "%s")',
-        [AContext.UnitName, Used.Name, Layer.From]));
+      AReport.Add(Used.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, Used.Name, Layer.From]));
     end;
   end;
 end;
@@ -430,12 +456,12 @@ class function TArchitectureMatrix.Describe(const ASource, ATarget: TArchitectur
 var
   Kind: string;
 begin
-  Kind := 'fremde';
+  Kind := cTexts[TArchitectureText.Foreign].Text;
   if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
   begin
-    Kind := 'eigene';
+    Kind := cTexts[TArchitectureText.Own].Text;
   end;
-  Result := Format('%s %s aus %s', [Kind, RoleNames[ATarget.Role], RoleNames[ASource.Role]]);
+  Result := cTexts[TArchitectureText.Describe].Fmt([Kind, RoleNames[ATarget.Role], RoleNames[ASource.Role]]);
 end;
 
 { TRoleImportRule }
@@ -443,7 +469,7 @@ end;
 function TRoleImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('architecture-role-import', TRuleSeverity.Warning,
-    'uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)', True);
+    cTexts[TArchitectureText.RoleTitle].Text, True);
 end;
 
 class function TRoleImportRule.ParseOptions(const AOptions: string): TRoleImportOptions;
@@ -544,7 +570,7 @@ begin
     begin
       Continue;
     end;
-    AReport.Add(Used.Range, Format('%s darf %s nicht importieren (%s)',
+    AReport.Add(Used.Range, cTexts[TArchitectureText.RoleViolation].Fmt(
       [OwnName, Used.Name, TArchitectureMatrix.Describe(Source, Target)]));
   end;
 end;
@@ -553,7 +579,8 @@ end;
 
 function TContractContentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('architecture-contract-content', TRuleSeverity.Warning, 'Contract-Unit deklariert eine Klasse', True);
+  Result := TRuleDescriptor.Create('architecture-contract-content', TRuleSeverity.Warning,
+    cTexts[TArchitectureText.ContractTitle].Text, True);
 end;
 
 function IsExceptionName(const AName: string): Boolean;
@@ -627,8 +654,7 @@ begin
       if not Result and IsForbiddenContractClass(ANode, mOptions.Allow, mOwnName) then
       begin
         mReport.Add(TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
-          ANode.StartPos.Character + Length(ANode.Name)), Format('%s ist eine Klasse in einer Contract-Unit; ' +
-          'Contract enthält nur Records, Interfaces, Aufzählungen und Ausnahmen (Konzept 7.1)', [ANode.Name]));
+          ANode.StartPos.Character + Length(ANode.Name)), cTexts[TArchitectureText.ContractClass].Fmt([ANode.Name]));
       end;
     end);
 end;
@@ -639,5 +665,8 @@ begin
   ARegistry.Register(TRoleImportRule.Create);
   ARegistry.Register(TContractContentRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Architecture', cTexts);
 
 end.

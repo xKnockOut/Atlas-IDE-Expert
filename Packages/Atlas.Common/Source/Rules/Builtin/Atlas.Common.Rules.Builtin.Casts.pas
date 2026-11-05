@@ -72,7 +72,28 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.TypedScope;
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCastsText = (UnrelatedTitle, Unrelated, CastTo, RedundantTitle, RemoveCast, AlreadyType, FreeVirtual);
+
+const
+  cTexts: array[TCastsText] of TAtlasText = (
+    (De: 'Harte Umwandlung zwischen nicht verwandten Klassen'; En: 'Hard cast between unrelated classes'),
+    (De: '%s und %s sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.';
+     En: '%s and %s are not related: the cast points to an object with a different layout.'),
+    (De: 'In %s umwandeln'; En: 'Cast to %s'),
+    (De: 'Überflüssige Typumwandlung'; En: 'Redundant type cast'),
+    (De: 'Umwandlung entfernen'; En: 'Remove cast'),
+    (De: '%s ist schon %s: Die Umwandlung ist überflüssig.'; En: '%s already is %s: the cast is redundant.'),
+    (De: 'Free ruft den virtuellen Destruktor: Die Umwandlung von %s nach %s ist überflüssig.';
+     En: 'Free calls the virtual destructor: the cast from %s to %s is redundant.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Längste Vererbungskette, die die Regel verfolgt.
@@ -138,7 +159,7 @@ end;
 function TUnrelatedClassCastRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnrelatedClassCastRuleId, TRuleSeverity.Warning,
-    'Harte Umwandlung zwischen nicht verwandten Klassen');
+    cTexts[TCastsText.UnrelatedTitle].Text);
 end;
 
 class function TUnrelatedClassCastRule.Allowed(const AAllowTypes: TArray<string>; const ASource,
@@ -299,9 +320,8 @@ var
       mReplacement := '(' + mReplacement + ')';
     end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-      Format('%s und %s sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.',
-      [mSourceType.Name, mTargetType.Name]), TRuleConfidence.High,
-      [TRuleFix.Create(Format('In %s umwandeln', [mReplacement]),
+      cTexts[TCastsText.Unrelated].Fmt([mSourceType.Name, mTargetType.Name]), TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TCastsText.CastTo].Fmt([mReplacement]),
       [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), mReplacement)])]);
   end;
 
@@ -350,7 +370,7 @@ end;
 
 function TRedundantCastRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RedundantCastRuleId, TRuleSeverity.Hint, 'Überflüssige Typumwandlung');
+  Result := TRuleDescriptor.Create(RedundantCastRuleId, TRuleSeverity.Hint, cTexts[TCastsText.RedundantTitle].Text);
 end;
 
 procedure TRedundantCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -476,7 +496,7 @@ var
     mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
     // Sicher (#1352): Der Ausdruck hat denselben Typ wie vorher, auch in der Sammelkorrektur.
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
-      [TRuleFix.Create('Umwandlung entfernen', [TTextEdit.Create(mRange, mScope.Text(ASource))], True)]);
+      [TRuleFix.Create(cTexts[TCastsText.RemoveCast].Text, [TTextEdit.Create(mRange, mScope.Text(ASource))], True)]);
   end;
 
   /// <summary>Deklariert eine Klasse der Kette außer TObject ein eigenes Free?</summary>
@@ -547,8 +567,7 @@ var
     begin
       Exit;
     end;
-    Report(ANode, mSource, Format('%s ist schon %s: Die Umwandlung ist überflüssig.',
-      [mScope.Text(mSource), mScope.Text(mTypeNode)]));
+    Report(ANode, mSource, cTexts[TCastsText.AlreadyType].Fmt([mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
 
   /// <summary>Ist ANode der Name in einem Aufruf Free(…) mit Argumenten? Der ist nicht TObject.Free.</summary>
@@ -594,8 +613,7 @@ var
     begin
       Exit;
     end;
-    Report(mCast, mSource, Format('Free ruft den virtuellen Destruktor: Die Umwandlung von %s nach %s ist ' +
-      'überflüssig.', [mScope.Text(mSource), mScope.Text(mTypeNode)]));
+    Report(mCast, mSource, cTexts[TCastsText.FreeVirtual].Fmt([mScope.Text(mSource), mScope.Text(mTypeNode)]));
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -648,5 +666,8 @@ begin
   ARegistry.Register(TUnrelatedClassCastRule.Create);
   ARegistry.Register(TRedundantCastRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Casts', cTexts);
 
 end.

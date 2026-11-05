@@ -84,7 +84,40 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Statements.Tokens;
+  Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStatementsPropertiesText = (RecordTitle, AssignVia, Copy, ConstantTarget, PointerTitle, UseAttribute,
+    PointerString, PointerWeak, NoWriteTitle, CreateWrite, AssignField, NoWriteClear, CallClear, NoWrite, NoRead);
+
+const
+  cTexts: array[TStatementsPropertiesText] of TAtlasText = (
+    (De: 'Zuweisung an ein Feld eines Property-Records'; En: 'Assignment to a field of a property record'),
+    (De: 'Über %s zuweisen und zurückschreiben'; En: 'Assign via %s and write back'),
+    (De: '%s liefert eine Kopie; die Zuweisung an %s hat keine Wirkung (wie E2064).';
+     En: '%s returns a copy; the assignment to %s has no effect (like E2064).'),
+    (De: '%s ist eine Konstante; ihr lässt sich nichts zuweisen (wie E2064).';
+     En: '%s is a constant; nothing can be assigned to it (like E2064).'),
+    (De: 'Untypisierter Zeiger umgeht die Referenzzählung'; En: 'Untyped pointer bypasses reference counting'),
+    (De: '[%s] %s verwenden'; En: 'Use [%s] %s'),
+    (De: 'Die Zuweisung über Pointer umgeht die Referenzzählung des Strings %s (dcc meldet das nicht).';
+     En: 'The assignment via Pointer bypasses the reference counting of the string %s (dcc does not report this).'),
+    (De: 'Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] %s.';
+     En: 'The assignment via Pointer bypasses reference counting (like W1070); better [weak] %s.'),
+    (De: 'Zuweisung an eine Property ohne write'; En: 'Assignment to a property without write'),
+    (De: '%s anlegen und write ergänzen'; En: 'Create %s and add write'),
+    (De: 'Feld %s zuweisen'; En: 'Assign field %s'),
+    (De: '%s.%s hat kein write (wie E2129); zum Leeren Clear aufrufen.';
+     En: '%s.%s has no write (like E2129); call Clear to empty it.'),
+    (De: 'Clear aufrufen'; En: 'Call Clear'),
+    (De: '%s.%s hat kein write (wie E2129).'; En: '%s.%s has no write (like E2129).'),
+    (De: '%s.%s hat kein read (wie E2130).'; En: '%s.%s has no read (like E2130).'));
+
+{$SCOPEDENUMS OFF}
 
 { TAssignToPropertyMemberRule }
 
@@ -97,7 +130,7 @@ type
 function TAssignToPropertyMemberRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(AssignToPropertyMemberRuleId, TRuleSeverity.Error,
-    'Zuweisung an ein Feld eines Property-Records');
+    cTexts[TStatementsPropertiesText.RecordTitle].Text);
 end;
 
 procedure TAssignToPropertyMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -168,7 +201,7 @@ var
       end;
       Edits := Edits + [UsesEdit];
     end;
-    AFix := TRuleFix.Create(Format('Über %s zuweisen und zurückschreiben', [Name]), Edits);
+    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.AssignVia].Fmt([Name]), Edits);
     Result := True;
   end;
 
@@ -282,8 +315,8 @@ var
     begin
       mName := NodeText(mReceiver);
     end;
-    AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), Format('%s liefert eine Kopie; die ' +
-      'Zuweisung an %s hat keine Wirkung (wie E2064).', [mName, mTarget.Name]), TRuleConfidence.High, mFixes);
+    AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), cTexts[TStatementsPropertiesText.Copy].Fmt([mName,
+      mTarget.Name]), TRuleConfidence.High, mFixes);
   end;
 
   procedure CheckConstant(ATarget: TSyntaxNode);
@@ -295,8 +328,8 @@ var
     if Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) and
       (Symbol.SymbolKind = TIndexSymbolKind.Constant) and (Symbol.TypeName = '') then
     begin
-      AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine Konstante; ihr lässt ' +
-        'sich nichts zuweisen (wie E2064).', [Symbol.Name]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
+        cTexts[TStatementsPropertiesText.ConstantTarget].Fmt([Symbol.Name]), TRuleConfidence.High);
     end;
   end;
 
@@ -359,7 +392,7 @@ end;
 function TUntypedPointerRefcountRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('untyped-pointer-refcount', TRuleSeverity.Warning,
-    'Untypisierter Zeiger umgeht die Referenzzählung');
+    cTexts[TStatementsPropertiesText.PointerTitle].Text);
 end;
 
 procedure TUntypedPointerRefcountRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -474,7 +507,7 @@ var
     mValue: TSyntaxNode;
   begin
     mValue := AStatement[1];
-    Result := TRuleFix.Create(Format('[%s] %s verwenden', [AAttribute, ASymbolName]),
+    Result := TRuleFix.Create(cTexts[TStatementsPropertiesText.UseAttribute].Fmt([AAttribute, ASymbolName]),
       [TRuleEdit.Create(TTextRange.Create(Tokens[AField].StartPos, Tokens[AField].StartPos), '[' + AAttribute + '] '),
       TRuleEdit.Create(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), AName),
       TRuleEdit.Create(TTextRange.Create(mValue.StartPos, mValue.EndPos), PlainValue(mValue))]);
@@ -519,8 +552,8 @@ var
     // Strings: ebenso falsch, aber dcc warnt nur unter NEXTGEN; [weak]/[unsafe] gibt es für sie nicht.
     if MatchText(mSymbol.TypeName, ['string', 'UnicodeString', 'AnsiString', 'RawByteString', 'UTF8String']) then
     begin
-      AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Format('Die Zuweisung über ' +
-        'Pointer umgeht die Referenzzählung des Strings %s (dcc meldet das nicht).', [mName]),
+      AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos),
+        cTexts[TStatementsPropertiesText.PointerString].Fmt([mName]),
         TRuleConfidence.Medium);
       Exit;
     end;
@@ -532,8 +565,8 @@ var
     mField := FieldToken(mSymbol, mMarked);
     if not mMarked then
     begin
-      AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos), Format('Die Zuweisung über ' +
-        'Pointer umgeht die Referenzzählung (wie W1070); besser [weak] %s.', [mName]), TRuleConfidence.Medium,
+      AReport.Add(TTextRange.Create(AStatement[0].StartPos, AStatement[0].EndPos),
+        cTexts[TStatementsPropertiesText.PointerWeak].Fmt([mName]), TRuleConfidence.Medium,
         WeakFixes(AStatement, mField, mSymbol, mName));
     end;
   end;
@@ -611,7 +644,7 @@ end;
 function TReadonlyPropertyAssignedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ReadonlyPropertyAssignedRuleId, TRuleSeverity.Error,
-    'Zuweisung an eine Property ohne write');
+    cTexts[TStatementsPropertiesText.NoWriteTitle].Text);
 end;
 
 class function TReadonlyPropertyAssignedRule.Accessors(const ASignature: string; out AHasRead,
@@ -832,7 +865,7 @@ var
     begin
       Exit;
     end;
-    AFix := TRuleFix.Create(Format('%s anlegen und write ergänzen', [Plan.Name]), Action.Edits +
+    AFix := TRuleFix.Create(cTexts[TStatementsPropertiesText.CreateWrite].Fmt([Plan.Name]), Action.Edits +
       [TTextEdit.Create(TTextRange.Create(Line, Column, Line, Column), ' write ' + Plan.Name)]);
     Result := True;
   end;
@@ -892,7 +925,8 @@ var
       mReadsField then
     begin
       mField := ReadAccessor(ASymbol.Signature);
-      Result := [TRuleFix.Create(Format('Feld %s zuweisen', [mField]), [TTextEdit.Create(TTextRange.Create(
+      Result := [TRuleFix.Create(cTexts[TStatementsPropertiesText.AssignField].Fmt([mField]),
+        [TTextEdit.Create(TTextRange.Create(
         ATarget.StartPos, ATarget.EndPos), mField)])];
     end;
   end;
@@ -911,14 +945,15 @@ var
     // Count := 0 auf einer Liste: Clear leert sie.
     if ClearsList(AStatement, ATarget, mSymbol) then
     begin
-      mMessage := Format('%s.%s hat kein write (wie E2129); zum Leeren Clear aufrufen.', [mSymbol.Container,
+      mMessage := cTexts[TStatementsPropertiesText.NoWriteClear].Fmt([mSymbol.Container,
         mSymbol.Name]);
-      mFixes := [TRuleFix.Create('Clear aufrufen', [TTextEdit.Create(TTextRange.Create(AStatement.StartPos,
+      mFixes := [TRuleFix.Create(cTexts[TStatementsPropertiesText.CallClear].Text,
+        [TTextEdit.Create(TTextRange.Create(AStatement.StartPos,
         AStatement.EndPos), NodeText(ATarget[0]) + '.Clear')])];
     end
     else
     begin
-      mMessage := Format('%s.%s hat kein write (wie E2129).', [mSymbol.Container, mSymbol.Name]);
+      mMessage := cTexts[TStatementsPropertiesText.NoWrite].Fmt([mSymbol.Container, mSymbol.Name]);
       mFixes := FieldFixes(AStatement, ATarget, mSymbol);
     end;
     if SetterFix(mSymbol, mFix) then
@@ -945,7 +980,7 @@ var
       (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.TypeName <> '') and
       Accessors(Symbol.Signature, HasRead, HasWrite) and not HasRead then
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s.%s hat kein read (wie E2130).',
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TStatementsPropertiesText.NoRead].Fmt(
         [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
     end;
   end;
@@ -1032,5 +1067,8 @@ begin
     Suspects.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Statements.Properties', cTexts);
 
 end.

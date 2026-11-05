@@ -126,7 +126,85 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Rules.Builtin.General,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeDeclarationsText = (MessageTitle, PassAsVar, InsertSignature, MessageParam, MessageNumber, MessageHandled,
+    InterfaceTitle, RecordKind, EnumKind, ClassKind, NotInterface, AlreadyListed, ClauseNotAllowed,
+    PropertyRedeclared, NoFields, DirectiveNotAllowed, ImplementsTitle, ImplementsType, GetterRegister, GetterNot,
+    ImplementsIndex, AlreadyImplemented, ImplementsClassOnly, ImplementsReadable, MethodResolution, ConventionTitle,
+    RemoveName, CtorRegister, PublishedRegister, VarargsWin32, VarargsCdecl, SetCdecl, DispTitle, DispAncestor,
+    RemoveAncestor, DispGuid, InsertGuid, DispMethodDirective, DispDirective);
+
+const
+  cTexts: array[TTypeDeclarationsText] of TAtlasText = (
+    (De: 'message-Methode falsch deklariert'; En: 'message method declared incorrectly'),
+    (De: 'Parameter %s als var übergeben'; En: 'Pass parameter %s as var'),
+    (De: 'Signatur %s einsetzen'; En: 'Insert signature %s'),
+    (De: 'Die message-Methode %s braucht genau einen var-Parameter (wie E2138).';
+     En: 'The message method %s needs exactly one var parameter (like E2138).'),
+    (De: 'Die Nachrichtennummer %s von %s muss mindestens 1 sein (wie E2139).';
+     En: 'The message number %s of %s must be at least 1 (like E2139).'),
+    (De: '%s wird schon von %s behandelt (wie E2140).'; En: '%s is already handled by %s (like E2140).'),
+    (De: 'Unzulässige Deklaration in einem Interface'; En: 'Invalid declaration in an interface'),
+    (De: 'ein Record'; En: 'a record'),
+    (De: 'eine Aufzählung'; En: 'an enumeration'),
+    (De: 'eine Klasse'; En: 'a class'),
+    (De: '%s ist %s und kein Interface (wie E2205).'; En: '%s is %s and not an interface (like E2205).'),
+    (De: '%s steht schon in der Liste der Interfaces (wie E2208).';
+     En: '%s is already in the list of interfaces (like E2208).'),
+    (De: 'Die Klausel %s ist in Interfaces nicht erlaubt (wie E2207).';
+     En: 'The clause %s is not allowed in interfaces (like E2207).'),
+    (De: 'Die Property %s ist schon in %s deklariert; Interfaces dürfen Properties nicht ohne Typ neu aufführen (wie ' +
+      'E2206).';
+     En: 'The property %s is already declared in %s; interfaces must not list properties again without type (like ' +
+      'E2206).'),
+    (De: 'Interfaces dürfen keine Felder haben (wie E2209).'; En: 'Interfaces must not have fields (like E2209).'),
+    (De: 'Die Direktive %s ist in Interfaces nicht erlaubt (wie E2210).';
+     En: 'The directive %s is not allowed in interfaces (like E2210).'),
+    (De: 'implements-Klausel unzulässig'; En: 'implements clause invalid'),
+    (De: 'implements ist nur an Properties mit Klassen- oder Interface-Typ erlaubt, %s ist keiner (wie E2259).';
+     En: 'implements is only allowed on properties with class or interface type, %s is none (like E2259).'),
+    (De: 'Der Getter %s einer implements-Property darf nicht %s sein, nur register (wie E2262).';
+     En: 'The getter %s of an implements property must not be %s, only register (like E2262).'),
+    (De: 'Der Getter %s einer implements-Property darf nicht %s sein (wie E2263 und E2148).';
+     En: 'The getter %s of an implements property must not be %s (like E2263 and E2148).'),
+    (De: 'implements ist nicht zusammen mit index erlaubt (wie E2260).';
+     En: 'implements is not allowed together with index (like E2260).'),
+    (De: '%s wird schon von %s per implements umgesetzt (wie E2257).';
+     En: '%s is already implemented by %s via implements (like E2257).'),
+    (De: 'implements ist nur in Klassen erlaubt (wie E2258).';
+     En: 'implements is only allowed in classes (like E2258).'),
+    (De: 'implements braucht eine lesbare Property (wie E2261).';
+     En: 'implements needs a readable property (like E2261).'),
+    (De: 'Für %s gibt es die implements-Property %s; Methodenzuordnungen sind dann nicht erlaubt (wie E2264).';
+     En: 'For %s there is the implements property %s; method resolutions are then not allowed (like E2264).'),
+    (De: 'Aufrufkonvention passt nicht'; En: 'Calling convention does not fit'),
+    (De: '%s entfernen'; En: 'Remove %s'),
+    (De: 'Konstruktoren und Destruktoren brauchen register, nicht %s (wie E2236).';
+     En: 'Constructors and destructors need register, not %s (like E2236).'),
+    (De: 'Der %s %s der published-Property %s braucht register, nicht %s (wie E2270).';
+     En: 'The %s %s of the published property %s needs register, not %s (like E2270).'),
+    (De: 'varargs ist unter Win32 nur an external-Routinen mit cdecl erlaubt (wie E2277).';
+     En: 'varargs is only allowed under Win32 on external routines with cdecl (like E2277).'),
+    (De: 'varargs ist nur mit cdecl erlaubt (wie %s).'; En: 'varargs is only allowed with cdecl (like %s).'),
+    (De: 'cdecl setzen'; En: 'Set cdecl'),
+    (De: 'Unzulässige dispinterface-Deklaration'; En: 'Invalid dispinterface declaration'),
+    (De: 'Ein dispinterface kann keinen Vorfahren haben (wie E2228).';
+     En: 'A dispinterface cannot have an ancestor (like E2228).'),
+    (De: 'Vorfahren entfernen'; En: 'Remove ancestor'),
+    (De: 'Das dispinterface %s braucht eine GUID (wie E2229).'; En: 'The dispinterface %s needs a GUID (like E2229).'),
+    (De: 'GUID einfügen'; En: 'Insert GUID'),
+    (De: 'Methoden eines dispinterface dürfen keine Direktive %s haben (wie E2230).';
+     En: 'Methods of a dispinterface must not have the directive %s (like E2230).'),
+    (De: 'Die Direktive %s ist in einem dispinterface nicht erlaubt (wie E2231).';
+     En: 'The directive %s is not allowed in a dispinterface (like E2231).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Knoten, unter denen Klassendeklarationen stehen können (Anweisungen bleiben außen vor).
@@ -530,7 +608,7 @@ end;
 function TMessageMethodInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(MessageMethodInvalidRuleId, TRuleSeverity.Error,
-    'message-Methode falsch deklariert');
+    cTexts[TTypeDeclarationsText.MessageTitle].Text);
 end;
 
 procedure TMessageMethodInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -755,11 +833,11 @@ var
     end;
     if SingleParameter(AMethod.Header, Param) then
     begin
-      Result := [TRuleFix.Create(Format('Parameter %s als var übergeben', [Param.Name]), Edits)];
+      Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.PassAsVar].Fmt([Param.Name]), Edits)];
     end
     else
     begin
-      Result := [TRuleFix.Create(Format('Signatur %s einsetzen', [DefaultMessageParameter]), Edits)];
+      Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.InsertSignature].Fmt([DefaultMessageParameter]), Edits)];
     end;
   end;
 
@@ -790,8 +868,8 @@ var
     begin
       Exit;
     end;
-    AReport.Add(NameRange(AMethod.Header), Format('Die message-Methode %s braucht genau einen var-Parameter ' +
-      '(wie E2138).', [MethodName(AMethod.Header)]), TRuleConfidence.High, SignatureFix(AMethod));
+    AReport.Add(NameRange(AMethod.Header), cTexts[TTypeDeclarationsText.MessageParam].Fmt([MethodName(AMethod.Header)]),
+      TRuleConfidence.High, SignatureFix(AMethod));
   end;
 
   function PathOf(const AMethod: TMessageMethod): string;
@@ -834,7 +912,7 @@ var
     end
     else if Value < 1 then
     begin
-      AReport.Add(Range, Format('Die Nachrichtennummer %s von %s muss mindestens 1 sein (wie E2139).',
+      AReport.Add(Range, cTexts[TTypeDeclarationsText.MessageNumber].Fmt(
         [ExpressionText(Method), MethodName(Method.Header)]), TRuleConfidence.High);
       Exit;
     end
@@ -846,7 +924,7 @@ var
     Earlier := EarlierHandler(AKeys, AKnown, AIndex);
     if Earlier >= 0 then
     begin
-      AReport.Add(Range, Format('%s wird schon von %s behandelt (wie E2140).', [ExpressionText(Method),
+      AReport.Add(Range, cTexts[TTypeDeclarationsText.MessageHandled].Fmt([ExpressionText(Method),
         MethodName(Methods[Earlier].Header)]), TRuleConfidence.High);
     end;
   end;
@@ -924,7 +1002,7 @@ end;
 function TInterfaceDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InterfaceDeclarationInvalidRuleId, TRuleSeverity.Error,
-    'Unzulässige Deklaration in einem Interface');
+    cTexts[TTypeDeclarationsText.InterfaceTitle].Text);
 end;
 
 procedure TInterfaceDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -945,11 +1023,11 @@ var
     end;
     case Resolved.SymbolKind of
       TIndexSymbolKind.RecordType:
-        AKind := 'ein Record';
+        AKind := cTexts[TTypeDeclarationsText.RecordKind].Text;
       TIndexSymbolKind.EnumType:
-        AKind := 'eine Aufzählung';
+        AKind := cTexts[TTypeDeclarationsText.EnumKind].Text;
     else
-      AKind := 'eine Klasse';
+      AKind := cTexts[TTypeDeclarationsText.ClassKind].Text;
     end;
   end;
 
@@ -959,8 +1037,8 @@ var
   begin
     if Scan.Unconditional(ANode) and NotAnInterface(ANode, Kind) then
     begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s ist %s und kein Interface ' +
-        '(wie E2205).', [ANode.Name, Kind]), TRuleConfidence.High);
+      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypeDeclarationsText.NotInterface].Fmt([ANode.Name, Kind]), TRuleConfidence.High);
     end;
   end;
 
@@ -990,7 +1068,7 @@ var
           Scan.Unconditional(References[Position]) then
         begin
           AReport.Add(TTextRange.Create(References[Position].StartPos, References[Position].EndPos),
-            Format('%s steht schon in der Liste der Interfaces (wie E2208).', [References[Position].Name]),
+            cTexts[TTypeDeclarationsText.AlreadyListed].Fmt([References[Position].Name]),
             TRuleConfidence.High);
           Break;
         end;
@@ -1010,7 +1088,7 @@ var
       if (Word = 'stored') or (Word = 'nodefault') or
         ((Word = 'default') and (Scan.ClauseArgument(AProperty, Index) < Scan.ClauseEnd(AProperty))) then
       begin
-        AReport.Add(Scan.TokenRange(Index), Format('Die Klausel %s ist in Interfaces nicht erlaubt (wie E2207).',
+        AReport.Add(Scan.TokenRange(Index), cTexts[TTypeDeclarationsText.ClauseNotAllowed].Fmt(
           [Word]), TRuleConfidence.High);
       end;
     end;
@@ -1057,8 +1135,7 @@ var
       if WithoutType(Child) and Scan.Resolver.DeclaredMember(Ancestor, Child.Name, Member) and
         (Member.SymbolKind = TIndexSymbolKind.Property_) then
       begin
-        AReport.Add(Scan.PropertyRange(Child), Format('Die Property %s ist schon in %s ' +
-          'deklariert; Interfaces dürfen Properties nicht ohne Typ neu aufführen (wie E2206).', [Child.Name,
+        AReport.Add(Scan.PropertyRange(Child), cTexts[TTypeDeclarationsText.PropertyRedeclared].Fmt([Child.Name,
           Member.Container]), TRuleConfidence.High);
       end;
     end;
@@ -1072,7 +1149,7 @@ var
     begin
       if ASection[Inner].Kind = TSyntaxKind.VarDecl then
       begin
-        AReport.Add(Scan.FirstRange(ASection[Inner]), 'Interfaces dürfen keine Felder haben (wie E2209).',
+        AReport.Add(Scan.FirstRange(ASection[Inner]), cTexts[TTypeDeclarationsText.NoFields].Text,
           TRuleConfidence.High);
       end;
     end;
@@ -1087,8 +1164,8 @@ var
       if (AHeader[Inner].Kind = TSyntaxKind.Directive) and
         MatchText(AHeader[Inner].Name, InterfaceForbiddenDirectives) then
       begin
-        AReport.Add(Scan.FirstRange(AHeader[Inner]), Format('Die Direktive %s ist in Interfaces nicht erlaubt ' +
-          '(wie E2210).', [AHeader[Inner].Name]), TRuleConfidence.High);
+        AReport.Add(Scan.FirstRange(AHeader[Inner]),
+          cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AHeader[Inner].Name]), TRuleConfidence.High);
       end;
     end;
   end;
@@ -1097,12 +1174,12 @@ var
   begin
     case AChild.Kind of
       TSyntaxKind.Field:
-        AReport.Add(Scan.FirstRange(AChild), 'Interfaces dürfen keine Felder haben (wie E2209).', TRuleConfidence.High);
+        AReport.Add(Scan.FirstRange(AChild), cTexts[TTypeDeclarationsText.NoFields].Text, TRuleConfidence.High);
       TSyntaxKind.VarSection:
         ReportVarSection(AChild);
       TSyntaxKind.Visibility:
-        AReport.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos), Format('Die Direktive %s ist in ' +
-          'Interfaces nicht erlaubt (wie E2210).', [AChild.Name]), TRuleConfidence.High);
+        AReport.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos),
+          cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AChild.Name]), TRuleConfidence.High);
       TSyntaxKind.RoutineHeader:
         ReportForbiddenDirectives(AChild);
       TSyntaxKind.PropertyDecl:
@@ -1193,7 +1270,7 @@ end;
 function TImplementsClauseInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ImplementsClauseInvalidRuleId, TRuleSeverity.Error,
-    'implements-Klausel unzulässig');
+    cTexts[TTypeDeclarationsText.ImplementsTitle].Text);
 end;
 
 procedure TImplementsClauseInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1226,8 +1303,8 @@ var
     end;
     if Resolved.Builtin or (Resolved.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.EnumType]) then
     begin
-      AReport.Add(TTextRange.Create(Reference.StartPos, Reference.EndPos), Format('implements ist nur an ' +
-        'Properties mit Klassen- oder Interface-Typ erlaubt, %s ist keiner (wie E2259).', [Reference.Name]),
+      AReport.Add(TTextRange.Create(Reference.StartPos, Reference.EndPos),
+        cTexts[TTypeDeclarationsText.ImplementsType].Fmt([Reference.Name]),
         TRuleConfidence.High);
     end;
   end;
@@ -1252,13 +1329,13 @@ var
       Name := Header[Index].Name;
       if MatchText(Name, ForeignConventions) then
       begin
-        AReport.Add(Scan.TokenRange(AGetter), Format('Der Getter %s einer implements-Property darf nicht %s ' +
-          'sein, nur register (wie E2262).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
+        AReport.Add(Scan.TokenRange(AGetter),
+          cTexts[TTypeDeclarationsText.GetterRegister].Fmt([Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
       end
       else if (Name = 'dynamic') or (Name = 'message') then
       begin
-        AReport.Add(Scan.TokenRange(AGetter), Format('Der Getter %s einer implements-Property darf nicht %s ' +
-          'sein (wie E2263 und E2148).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
+        AReport.Add(Scan.TokenRange(AGetter), cTexts[TTypeDeclarationsText.GetterNot].Fmt([Scan.Tokens[AGetter].Text,
+          Name]), TRuleConfidence.High);
       end;
     end;
   end;
@@ -1293,7 +1370,7 @@ var
       Argument := Scan.ClauseArgument(AProperty, Clause);
       if Word(Clause) = 'index' then
       begin
-        AReport.Add(Scan.TokenRange(Clause), 'implements ist nicht zusammen mit index erlaubt (wie E2260).',
+        AReport.Add(Scan.TokenRange(Clause), cTexts[TTypeDeclarationsText.ImplementsIndex].Text,
           TRuleConfidence.High);
       end
       else if (Word(Clause) = 'read') and (Argument < Scan.ClauseEnd(AProperty)) and
@@ -1334,7 +1411,7 @@ var
       if AKeys[Clause] = Key then
       begin
         AReport.Add(TTextRange.Create(Scan.Tokens[AFirst].StartPos, Scan.Tokens[AStop - 1].EndPos),
-          Format('%s wird schon von %s per implements umgesetzt (wie E2257).', [Scan.Text(AFirst, AStop),
+          cTexts[TTypeDeclarationsText.AlreadyImplemented].Fmt([Scan.Text(AFirst, AStop),
           AOwners[Clause]]), TRuleConfidence.High);
         Exit;
       end;
@@ -1379,7 +1456,7 @@ var
     end;
     if AType.Kind <> TSyntaxKind.ClassType then
     begin
-      AReport.Add(Scan.TokenRange(Implements), 'implements ist nur in Klassen erlaubt (wie E2258).',
+      AReport.Add(Scan.TokenRange(Implements), cTexts[TTypeDeclarationsText.ImplementsClassOnly].Text,
         TRuleConfidence.High);
       Exit;
     end;
@@ -1387,7 +1464,7 @@ var
     CheckClauses(AType, AProperty, Words);
     if not HasRead then
     begin
-      AReport.Add(Scan.TokenRange(Implements), 'implements braucht eine lesbare Property (wie E2261).',
+      AReport.Add(Scan.TokenRange(Implements), cTexts[TTypeDeclarationsText.ImplementsReadable].Text,
         TRuleConfidence.High);
     end;
     CollectInterfaces(AProperty, Implements, AKeys, AOwners);
@@ -1406,8 +1483,8 @@ var
       if AKeys[Clause] = Prefix then
       begin
         AReport.Add(Scan.TokenRange(Scan.NextCode(Scan.FirstToken(AHeader) + 1, Scan.StopToken(AHeader))),
-          Format('Für %s gibt es die implements-Property %s; Methodenzuordnungen sind dann nicht erlaubt ' +
-          '(wie E2264).', [Copy(AHeader.Name, 1, LastDelimiter('.', AHeader.Name) - 1), AOwners[Clause]]),
+          cTexts[TTypeDeclarationsText.MethodResolution].Fmt([Copy(AHeader.Name, 1, LastDelimiter('.',
+            AHeader.Name) - 1), AOwners[Clause]]),
           TRuleConfidence.High);
         Exit;
       end;
@@ -1490,7 +1567,7 @@ end;
 function TCallingConventionRequiredRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CallingConventionRequiredRuleId, TRuleSeverity.Error,
-    'Aufrufkonvention passt nicht');
+    cTexts[TTypeDeclarationsText.ConventionTitle].Text);
 end;
 
 procedure TCallingConventionRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1557,7 +1634,7 @@ var
         Edits := Edits + [Scan.DirectiveRemoval(Other)];
       end;
     end;
-    Result := [TRuleFix.Create(Format('%s entfernen', [AConvention.Name]), Edits)];
+    Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.RemoveName].Fmt([AConvention.Name]), Edits)];
   end;
 
   // Konstruktoren und Destruktoren mit fremder Konvention: E2236.
@@ -1568,8 +1645,8 @@ var
     Found := Convention(AHeader);
     if Found <> nil then
     begin
-      AReport.Add(Scan.FirstRange(Found), Format('Konstruktoren und Destruktoren brauchen register, nicht %s ' +
-        '(wie E2236).', [Found.Name]), TRuleConfidence.High, RemoveFix(AClassName, AHeader, Found));
+      AReport.Add(Scan.FirstRange(Found), cTexts[TTypeDeclarationsText.CtorRegister].Fmt([Found.Name]),
+        TRuleConfidence.High, RemoveFix(AClassName, AHeader, Found));
     end;
   end;
 
@@ -1609,8 +1686,8 @@ var
       begin
         Kind := 'Getter';
       end;
-      AReport.Add(Scan.TokenRange(Argument), Format('Der %s %s der published-Property %s braucht register, ' +
-        'nicht %s (wie E2270).', [Kind, Scan.Tokens[Argument].Text, AProperty.Name, Found.Name]),
+      AReport.Add(Scan.TokenRange(Argument), cTexts[TTypeDeclarationsText.PublishedRegister].Fmt([Kind,
+        Scan.Tokens[Argument].Text, AProperty.Name, Found.Name]),
         TRuleConfidence.High, RemoveFix(AClassName, Header, Found));
     end;
   end;
@@ -1661,8 +1738,7 @@ var
     begin
       if AContext.Tree.Platform = 'Win32' then
       begin
-        AReport.Add(Scan.FirstRange(Varargs), 'varargs ist unter Win32 nur an external-Routinen mit cdecl ' +
-          'erlaubt (wie E2277).', TRuleConfidence.High);
+        AReport.Add(Scan.FirstRange(Varargs), cTexts[TTypeDeclarationsText.VarargsWin32].Text, TRuleConfidence.High);
       end;
       Exit;
     end;
@@ -1685,8 +1761,8 @@ var
       Position := Scan.FirstRange(Varargs).StartPos;
       Edit := TTextEdit.Create(TTextRange.Create(Position, Position), 'cdecl; ');
     end;
-    AReport.Add(Scan.FirstRange(Varargs), Format('varargs ist nur mit cdecl erlaubt (wie %s).', [Code]),
-      TRuleConfidence.High, [TRuleFix.Create('cdecl setzen', [Edit])]);
+    AReport.Add(Scan.FirstRange(Varargs), cTexts[TTypeDeclarationsText.VarargsCdecl].Fmt([Code]),
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TTypeDeclarationsText.SetCdecl].Text, [Edit])]);
   end;
 
   // Iterativ (Bericht M1).
@@ -1749,7 +1825,7 @@ end;
 function TDispinterfaceInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DispinterfaceInvalidRuleId, TRuleSeverity.Error,
-    'Unzulässige dispinterface-Deklaration');
+    cTexts[TTypeDeclarationsText.DispTitle].Text);
 end;
 
 procedure TDispinterfaceInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1797,8 +1873,9 @@ var
         Exit;
       end;
       AReport.Add(TTextRange.Create(Scan.Tokens[mNext].StartPos, Scan.Tokens[mClose].EndPos),
-        'Ein dispinterface kann keinen Vorfahren haben (wie E2228).', TRuleConfidence.High,
-        [TRuleFix.Create('Vorfahren entfernen', [TTextEdit.Create(TTextRange.Create(Scan.Tokens[AKeyword].EndPos,
+        cTexts[TTypeDeclarationsText.DispAncestor].Text, TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TTypeDeclarationsText.RemoveAncestor].Text,
+          [TTextEdit.Create(TTextRange.Create(Scan.Tokens[AKeyword].EndPos,
           Scan.Tokens[mClose].EndPos), '')])]);
       mHeaderEnd := mClose;
       mNext := Scan.NextCode(mClose + 1, Length(Scan.Tokens));
@@ -1809,8 +1886,8 @@ var
       Exit;
     end;
     mIndent := TTextLines.IndentOf(AContext.Text, Scan.Tokens[Scan.FirstToken(ADeclaration)].StartPos.Line);
-    AReport.Add(Scan.FirstRange(ADeclaration), Format('Das dispinterface %s braucht eine GUID (wie E2229).',
-      [ADeclaration.Name]), TRuleConfidence.High, [TRuleFix.Create('GUID einfügen',
+    AReport.Add(Scan.FirstRange(ADeclaration), cTexts[TTypeDeclarationsText.DispGuid].Fmt(
+      [ADeclaration.Name]), TRuleConfidence.High, [TRuleFix.Create(cTexts[TTypeDeclarationsText.InsertGuid].Text,
       [TTextEdit.Create(TTextRange.Create(Scan.Tokens[mHeaderEnd].EndPos, Scan.Tokens[mHeaderEnd].EndPos),
         TTextLines.LineBreakOf(AContext.Text) + mIndent + '  ' + GuidLine)])]);
   end;
@@ -1826,9 +1903,10 @@ var
       mDirective := AHeader[mInner];
       if (mDirective.Kind = TSyntaxKind.Directive) and MatchText(mDirective.Name, DispForbiddenDirectives) then
       begin
-        AReport.Add(Scan.FirstRange(mDirective), Format('Methoden eines dispinterface dürfen keine ' +
-          'Direktive %s haben (wie E2230).', [mDirective.Name]), TRuleConfidence.High,
-          [TRuleFix.Create(Format('%s entfernen', [mDirective.Name]), [Scan.DirectiveRemoval(mDirective)])]);
+        AReport.Add(Scan.FirstRange(mDirective),
+          cTexts[TTypeDeclarationsText.DispMethodDirective].Fmt([mDirective.Name]), TRuleConfidence.High,
+          [TRuleFix.Create(cTexts[TTypeDeclarationsText.RemoveName].Fmt([mDirective.Name]),
+            [Scan.DirectiveRemoval(mDirective)])]);
       end;
     end;
   end;
@@ -1844,8 +1922,8 @@ var
       mWord := LowerCase(Scan.Tokens[mInner].Text);
       if (mWord = 'read') or (mWord = 'write') then
       begin
-        AReport.Add(Scan.TokenRange(mInner), Format('Die Direktive %s ist in einem dispinterface nicht ' +
-          'erlaubt (wie E2231).', [mWord]), TRuleConfidence.High);
+        AReport.Add(Scan.TokenRange(mInner), cTexts[TTypeDeclarationsText.DispDirective].Fmt([mWord]),
+          TRuleConfidence.High);
       end;
     end;
   end;
@@ -1947,5 +2025,8 @@ begin
   ARegistry.Register(TCallingConventionRequiredRule.Create);
   ARegistry.Register(TDispinterfaceInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeDeclarations', cTexts);
 
 end.

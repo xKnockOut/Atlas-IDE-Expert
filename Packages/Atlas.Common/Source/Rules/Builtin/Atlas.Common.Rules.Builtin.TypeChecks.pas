@@ -95,7 +95,53 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Rules.Builtin.TypeChecks.Hresult,
-  Atlas.Common.Rules.Builtin.TypeChecks.VarArguments;
+  Atlas.Common.Rules.Builtin.TypeChecks.VarArguments,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeChecksText = (DynArrayTitle, NewNeedsLength, NewNotDynArray, NewNotAllowed, DisposeNotAllowed,
+    SetLengthNeedsLength, LocalRoutineTitle, MoveToUnit, ProcedureKind, FunctionKind, LocalAssigned, LocalPassed,
+    LocalAddress, ConditionTitle, NotBoolean, EnumeratorTitle, UseCount, NoEnumerator, NoCurrent, NoEnumeratorPlain);
+
+const
+  cTexts: array[TTypeChecksText] of TAtlasText = (
+    (De: 'New, Dispose oder SetLength falsch für dynamische Arrays';
+     En: 'New, Dispose or SetLength wrong for dynamic arrays'),
+    (De: 'New für das dynamische Array %s braucht mindestens eine Länge (wie E2308).';
+     En: 'New for the dynamic array %s needs at least one length (like E2308).'),
+    (De: 'New mit Länge erwartet den Typ eines dynamischen Arrays; %s ist keiner (wie E2008).';
+     En: 'New with length expects the type of a dynamic array; %s is none (like E2008).'),
+    (De: 'New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).';
+     En: 'New is not allowed for dynamic arrays; SetLength sets the length (like E2255).'),
+    (De: 'Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).';
+     En: 'Dispose is not allowed for dynamic arrays and not needed (like E2008).'),
+    (De: 'SetLength braucht für das dynamische Array %s mindestens eine Länge (wie E2246).';
+     En: 'SetLength needs at least one length for the dynamic array %s (like E2246).'),
+    (De: 'Lokale Routine als Prozedurvariable'; En: 'Local routine as procedural variable'),
+    (De: '%s als Routine der Unit auslagern'; En: 'Move %s out as a routine of the unit'),
+    (De: 'Prozedur'; En: 'procedure'),
+    (De: 'Funktion'; En: 'function'),
+    (De: 'Die lokale %s %s kann keiner Prozedurvariablen zugewiesen werden (wie E2094).';
+     En: 'The local %s %s cannot be assigned to a procedural variable (like E2094).'),
+    (De: 'Die lokale %s %s kann nicht als Prozedurvariable übergeben werden (wie E2094).';
+     En: 'The local %s %s cannot be passed as a procedural variable (like E2094).'),
+    (De: 'Die Adresse des lokalen Symbols %s ist keine Konstante (wie E2278).';
+     En: 'The address of the local symbol %s is not a constant (like E2278).'),
+    (De: 'Bedingung ist kein Boolean'; En: 'Condition is not Boolean'),
+    (De: 'Die Bedingung ist %s, nicht Boolean (wie E2012).'; En: 'The condition is %s, not Boolean (like E2012).'),
+    (De: 'for-in über einen Typ ohne Enumerator'; En: 'for-in over a type without enumerator'),
+    (De: '; stattdessen über Count mit Index durchlaufen'; En: '; iterate via Count with an index instead'),
+    (De: '%s hat keinen Enumerator; for-in ist hier nicht möglich%s (wie E2430).';
+     En: '%s has no enumerator; for-in is not possible here%s (like E2430).'),
+    (De: 'Der Enumerator %s von %s hat kein öffentliches %s; for-in ist hier nicht möglich (wie E2431).';
+     En: 'The enumerator %s of %s has no public %s; for-in is not possible here (like E2431).'),
+    (De: '%s hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).';
+     En: '%s has no enumerator; for-in is not possible here (like E2430).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxAncestorDepth = 16;
@@ -113,7 +159,7 @@ const
 function TDynamicArrayMisuseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DynamicArrayMisuseRuleId, TRuleSeverity.Error,
-    'New, Dispose oder SetLength falsch für dynamische Arrays');
+    cTexts[TTypeChecksText.DynArrayTitle].Text);
 end;
 
 procedure TDynamicArrayMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -208,20 +254,19 @@ var
       if (AArgCount = 1) and Dynamic then
       begin
         AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-          Format('New für das dynamische Array %s braucht mindestens eine Länge (wie E2308).', [ATargetText]),
+          cTexts[TTypeChecksText.NewNeedsLength].Fmt([ATargetText]),
           TRuleConfidence.High);
       end
       else if (AArgCount > 1) and Other then
       begin
         AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-          Format('New mit Länge erwartet den Typ eines dynamischen Arrays; %s ist keiner (wie E2008).',
-          [ATargetText]), TRuleConfidence.High);
+          cTexts[TTypeChecksText.NewNotDynArray].Fmt([ATargetText]), TRuleConfidence.High);
       end;
     end
     else if (AArgCount = 1) and IsArrayVariable(ACall[1]) then
     begin
       AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-        'New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).',
+        cTexts[TTypeChecksText.NewNotAllowed].Text,
         TRuleConfidence.High, StatementFixes(ACall, Format('SetLength(%s, 1)', [ATargetText])));
     end;
   end;
@@ -249,13 +294,13 @@ var
     if SingleArray and IsIntrinsicCall(Resolver, AContext, FileName, Callee, 'Dispose') then
     begin
       AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-        'Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', TRuleConfidence.High,
+        cTexts[TTypeChecksText.DisposeNotAllowed].Text, TRuleConfidence.High,
         StatementFixes(ACall, TargetText + ' := nil'));
     end
     else if SingleArray and IsIntrinsicCall(Resolver, AContext, FileName, Callee, 'SetLength') then
     begin
       AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-        Format('SetLength braucht für das dynamische Array %s mindestens eine Länge (wie E2246).', [TargetText]),
+        cTexts[TTypeChecksText.SetLengthNeedsLength].Fmt([TargetText]),
         TRuleConfidence.High);
     end;
   end;
@@ -296,7 +341,7 @@ end;
 function TLocalRoutineAsCallbackRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LocalRoutineAsCallbackRuleId, TRuleSeverity.Error,
-    'Lokale Routine als Prozedurvariable');
+    cTexts[TTypeChecksText.LocalRoutineTitle].Text);
 end;
 
 procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -450,7 +495,7 @@ var
         Text := Text + TrimLeft(Lines[Line]) + LineBreak;
       end;
     end;
-    AFix := TRuleFix.Create(Format('%s als Routine der Unit auslagern', [ARoutine.Name]), [
+    AFix := TRuleFix.Create(cTexts[TTypeChecksText.MoveToUnit].Fmt([ARoutine.Name]), [
       TTextEdit.Create(TTextRange.Create(Outer.StartPos.Line, 0, Outer.StartPos.Line, 0), Text + LineBreak),
       TTextEdit.Create(TTextRange.Create(First, 0, Last + 1, 0), '')]);
     Result := True;
@@ -463,21 +508,19 @@ var
     Fixes: TArray<TRuleFix>;
     Header: TSyntaxNode;
   begin
-    Kind := 'Prozedur';
+    Kind := cTexts[TTypeChecksText.ProcedureKind].Text;
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     if (Header <> nil) and StartsText('function', Trim(NodeText(AContext, Header))) then
     begin
-      Kind := 'Funktion';
+      Kind := cTexts[TTypeChecksText.FunctionKind].Text;
     end;
     if AAssigned then
     begin
-      Message := Format('Die lokale %s %s kann keiner Prozedurvariablen zugewiesen werden (wie E2094).',
-        [Kind, ARoutine.Name]);
+      Message := cTexts[TTypeChecksText.LocalAssigned].Fmt([Kind, ARoutine.Name]);
     end
     else
     begin
-      Message := Format('Die lokale %s %s kann nicht als Prozedurvariable übergeben werden (wie E2094).',
-        [Kind, ARoutine.Name]);
+      Message := cTexts[TTypeChecksText.LocalPassed].Fmt([Kind, ARoutine.Name]);
     end;
     Fixes := nil;
     if MoveFix(ARoutine, Fix) then
@@ -565,7 +608,7 @@ var
       if IsLocalAddress(Inner, Outer) then
       begin
         AReport.Add(TTextRange.Create(Inner.StartPos, Inner.EndPos),
-          Format('Die Adresse des lokalen Symbols %s ist keine Konstante (wie E2278).', [Inner[0].Name]),
+          cTexts[TTypeChecksText.LocalAddress].Fmt([Inner[0].Name]),
           TRuleConfidence.High);
       end;
     end;
@@ -650,7 +693,8 @@ end;
 
 function TConditionNotBooleanRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ConditionNotBooleanRuleId, TRuleSeverity.Error, 'Bedingung ist kein Boolean');
+  Result := TRuleDescriptor.Create(ConditionNotBooleanRuleId, TRuleSeverity.Error,
+    cTexts[TTypeChecksText.ConditionTitle].Text);
 end;
 
 procedure TConditionNotBooleanRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -751,7 +795,7 @@ var
       Fixes := Fixes + [Replacement(ACondition, Text + ' > 0', True)];
     end;
     AReport.Add(TTextRange.Create(ACondition.StartPos, ACondition.EndPos),
-      Format('Die Bedingung ist %s, nicht Boolean (wie E2012).', [TypeInfo.Name]), TRuleConfidence.High, Fixes);
+      cTexts[TTypeChecksText.NotBoolean].Fmt([TypeInfo.Name]), TRuleConfidence.High, Fixes);
   end;
 
 begin
@@ -791,7 +835,8 @@ end;
 
 function TForInNotEnumerableRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ForInNotEnumerableRuleId, TRuleSeverity.Error, 'for-in über einen Typ ohne Enumerator');
+  Result := TRuleDescriptor.Create(ForInNotEnumerableRuleId, TRuleSeverity.Error,
+    cTexts[TTypeChecksText.EnumeratorTitle].Text);
 end;
 
 procedure TForInNotEnumerableRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -856,9 +901,9 @@ var
     Hint := '';
     if Resolver.FindMember(AType, 'Count', Member) then
     begin
-      Hint := '; stattdessen über Count mit Index durchlaufen';
+      Hint := cTexts[TTypeChecksText.UseCount].Text;
     end;
-    AMessage := Format('%s hat keinen Enumerator; for-in ist hier nicht möglich%s (wie E2430).', [AType.Name, Hint]);
+    AMessage := cTexts[TTypeChecksText.NoEnumerator].Fmt([AType.Name, Hint]);
   end;
 
   /// <summary>Typ des Enumerators, den AMethod (GetEnumerator) liefert, wenn er sicher bekannt und nicht generisch
@@ -896,8 +941,7 @@ var
     Result := (Missing <> '') and AncestorsKnown(Enumerator);
     if Result then
     begin
-      AMessage := Format('Der Enumerator %s von %s hat kein öffentliches %s; for-in ist hier nicht möglich ' +
-        '(wie E2431).', [Enumerator.Name, AType.Name, Missing]);
+      AMessage := cTexts[TTypeChecksText.NoCurrent].Fmt([Enumerator.Name, AType.Name, Missing]);
     end;
   end;
 
@@ -912,7 +956,7 @@ var
       Result := IsScalarName(AType.Name);
       if Result then
       begin
-        AMessage := Format('%s hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', [AType.Name]);
+        AMessage := cTexts[TTypeChecksText.NoEnumeratorPlain].Fmt([AType.Name]);
       end;
     end
     else if not IsStructured(AType) then
@@ -1003,5 +1047,8 @@ begin
   ARegistry.Register(TConditionNotBooleanRule.Create);
   ARegistry.Register(TForInNotEnumerableRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeChecks', cTexts);
 
 end.

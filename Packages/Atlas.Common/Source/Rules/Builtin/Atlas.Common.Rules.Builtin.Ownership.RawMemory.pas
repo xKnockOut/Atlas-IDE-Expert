@@ -45,7 +45,22 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Ownership.TryFinally;
+  Atlas.Common.Rules.Builtin.Ownership.TryFinally,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOwnershipRawMemoryText = (Title, InsertTryFinally, NeverReleased);
+
+const
+  cTexts: array[TOwnershipRawMemoryText] of TAtlasText = (
+    (De: 'GetMem oder New ohne Freigabe'; En: 'GetMem or New without release'),
+    (De: 'try … finally %s(%s) end einfügen'; En: 'Insert try … finally %s(%s) end'),
+    (De: '%s wird mit %s angelegt, aber nie freigegeben.'; En: '%s is allocated with %s but never released.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RawMemoryLeakRuleId = 'raw-memory-leak';
@@ -72,7 +87,7 @@ const
 function TRawMemoryLeakRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(RawMemoryLeakRuleId, TRuleSeverity.Warning,
-    'GetMem oder New ohne Freigabe');
+    cTexts[TOwnershipRawMemoryText.Title].Text);
 end;
 
 class function TRawMemoryLeakRule.ReleaseFor(const AAllocator: string): string;
@@ -462,10 +477,10 @@ begin
   if (Release <> '') and (Statement <> nil) and TTryFinallyWrap.Create(FLines, FLineBreak,
     FContext.Formatting).Wrap(Statement, '', Release + '(' + AName + ');', Edit) then
   begin
-    Fixes := [TRuleFix.Create(Format('try … finally %s(%s) end einfügen', [Release, AName]), [Edit])];
+    Fixes := [TRuleFix.Create(cTexts[TOwnershipRawMemoryText.InsertTryFinally].Fmt([Release, AName]), [Edit])];
   end;
   FReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
-    Format('%s wird mit %s angelegt, aber nie freigegeben.', [AName, Allocator]), TRuleConfidence.Medium,
+    cTexts[TOwnershipRawMemoryText.NeverReleased].Fmt([AName, Allocator]), TRuleConfidence.Medium,
     Fixes);
 end;
 
@@ -557,5 +572,8 @@ procedure RegisterOwnershipRawMemoryRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TRawMemoryLeakRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Ownership.RawMemory', cTexts);
 
 end.
