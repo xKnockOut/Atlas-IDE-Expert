@@ -79,6 +79,8 @@ type
     FKind: TSyntaxKind;
     // Steht hinter FKind in dessen Auffüllbytes und vergrößert den Knoten nicht.
     FModifier: TParameterModifier;
+    // Ebenso in den Auffüllbytes.
+    FDescending: Boolean;
     FName: string;
     FParent: TSyntaxNode;
     FChildren: TObjectList<TSyntaxNode>;
@@ -119,6 +121,8 @@ type
     property Kind: TSyntaxKind read FKind write FKind;
     /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
     property Modifier: TParameterModifier read FModifier write FModifier;
+    /// <summary>Nur bei ForStatement: downto statt to.</summary>
+    property Descending: Boolean read FDescending write FDescending;
     /// <summary>Name bei Deklarationen, Text bei Bezeichnern, Literalen und Operatoren.</summary>
     property Name: string read FName write FName;
     property Parent: TSyntaxNode read FParent;
