@@ -34,7 +34,7 @@ Einstellungen: `fix.bulk`
 - `problems.update` (*Tools › Optionen › Atlas › Prüfregeln › Prüffenster*):
   - live beim Tippen mit eigener Verzögerung `problems.liveDelayMs` in Millisekunden (100 bis 10000, Vorgabe 400)
   - beim Speichern
-  - nur auf Anforderung über „Datei jetzt prüfen“ (Befehlspalette, Editor-Kontextmenü, eigenes Kürzel Strg+Umschalt+Alt+P `keys.checkFile`, Knopf im Fenster „Atlas-Prüfung“, Klick auf die Live-Prüfung der Statusleiste)
+  - nur auf Anforderung über „Datei jetzt prüfen“ (Befehlspalette, Editor-Kontextmenü, eigenes Kürzel Strg+Umschalt+Alt+P `keys.checkFile`, Klick auf die Schaltfläche der Prüfung in der Atlas-Statusleiste, z. B. „beim Speichern · Projekt 91 %“)
 - Die frühere Einstellung „Laufende Prüfung beim Tippen“ wird übernommen
 
 ### Befund-Hover und Optionen
