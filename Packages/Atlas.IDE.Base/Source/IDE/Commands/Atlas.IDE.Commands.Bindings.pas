@@ -80,6 +80,8 @@ implementation
 
 uses
   System.SysUtils,
+  Winapi.Windows,
+  Atlas.Core.Commands.KeyStroke,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
@@ -172,6 +174,12 @@ begin
   BindingResult := krUnhandled;
   if FOwner = nil then
   begin
+    Exit;
+  end;
+  // Hat das Kontextmenü denselben Tastendruck über das Kürzel seiner Aktion schon ausgeführt, nicht noch einmal.
+  if not TAtlasKeyStroke.Claim(KeyCode, Cardinal(GetMessageTime)) then
+  begin
+    BindingResult := krHandled;
     Exit;
   end;
   for Key in FOwner.Keys do

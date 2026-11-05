@@ -130,7 +130,28 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.TextFile;
+  Atlas.Core.Files.TextFile,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TIdeStatusLinesText = (CharactersCannotBeRepresentedIn, SavedAs);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TIdeStatusLinesText] of string = (
+    ('%s: %d Zeichen lassen sich in ANSI nicht darstellen und werden zu „?“',
+     '%s gespeichert als %s'),
+    ('%s: %d characters cannot be represented in ANSI and become "?"',
+     '%s saved as %s'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TIdeStatusLinesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasIdeStatusLines }
 
@@ -474,7 +495,7 @@ begin
         TAtlasFileFormats.Detect(Bytes).Encoding));
       if (Losses > 0) and Assigned(FSources.Report) then
       begin
-        FSources.Report(System.SysUtils.Format('%s: %d Zeichen lassen sich in ANSI nicht darstellen und werden zu „?“',
+        FSources.Report(System.SysUtils.Format(UiText(TIdeStatusLinesText.CharactersCannotBeRepresentedIn),
           [ExtractFileName(AFileName), Losses]));
       end;
     end;
@@ -531,7 +552,7 @@ begin
     FCache.Remove(Key(AFileName));
     if Assigned(FSources.Report) then
     begin
-      FSources.Report(Format('%s gespeichert als %s', [ExtractFileName(AFileName), Target.Text]));
+      FSources.Report(Format(UiText(TIdeStatusLinesText.SavedAs), [ExtractFileName(AFileName), Target.Text]));
     end;
   end;
   if SameText(AFileName, FActiveFile) then
@@ -539,5 +560,8 @@ begin
     RefreshFile;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Status.Lines', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

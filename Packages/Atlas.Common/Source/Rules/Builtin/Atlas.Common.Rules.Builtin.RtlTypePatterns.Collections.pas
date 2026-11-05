@@ -62,7 +62,36 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens;
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRtlTypePatternsCollectionsText = (UnsortedTitle, AddSorted, UseIndexOf, FindUnsorted, DuplicatesUnsorted,
+    DictionaryTitle, ToTryGetValue, KeyNotChecked, DelimiterTitle, InsertStrict, Delimiter);
+
+const
+  cTexts: array[TRtlTypePatternsCollectionsText] of TAtlasText = (
+    (De: 'Find oder Duplicates auf einer unsortierten TStringList';
+     En: 'Find or Duplicates on an unsorted TStringList'),
+    (De: 'Sorted := True nach dem Erzeugen ergänzen'; En: 'Add Sorted := True after creation'),
+    (De: 'IndexOf statt Find verwenden'; En: 'Use IndexOf instead of Find'),
+    (De: 'Find setzt eine sortierte Liste voraus; %s ist nicht sortiert.';
+     En: 'Find requires a sorted list; %s is not sorted.'),
+    (De: 'Duplicates wirkt nur bei sortierten Listen; %s ist nicht sortiert.';
+     En: 'Duplicates works only on sorted lists; %s is not sorted.'),
+    (De: 'Dictionary-Zugriff ohne Prüfung des Schlüssels'; En: 'Dictionary access without checking the key'),
+    (De: 'In TryGetValue umschreiben'; En: 'Rewrite as TryGetValue'),
+    (De: 'Schlüssel wird nicht geprüft; fehlt er, löst der Zugriff EListError aus.';
+     En: 'Key is not checked; if it is missing, the access raises EListError.'),
+    (De: 'DelimitedText ohne StrictDelimiter'; En: 'DelimitedText without StrictDelimiter'),
+    (De: 'StrictDelimiter := True; einfügen'; En: 'Insert StrictDelimiter := True;'),
+    (De: 'Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: ''Max Muster'' wird zu zwei Einträgen.';
+     En: 'Without StrictDelimiter, DelimitedText also splits at spaces: ''John Doe'' becomes two entries.'));
+
+{$SCOPEDENUMS OFF}
 
 { TStringListUnsortedRule }
 
@@ -126,7 +155,7 @@ end;
 function TStringListUnsortedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('stringlist-unsorted', TRuleSeverity.Warning,
-    'Find oder Duplicates auf einer unsortierten TStringList');
+    cTexts[TRtlTypePatternsCollectionsText.UnsortedTitle].Text);
 end;
 
 procedure TStringListUnsortedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -469,7 +498,7 @@ var
     begin
       Exit;
     end;
-    Result := [TRuleFix.Create('Sorted := True nach dem Erzeugen ergänzen',
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.AddSorted].Text,
       [TRuleEdit.Create(TTextRange.Create(Creation.EndPos, Creation.EndPos),
       ';' + LineBreak + Indent(Creation) + ListName(AFacts) + '.Sorted := True')])];
   end;
@@ -487,7 +516,7 @@ var
       Exit;
     end;
     IndexText := Text(AFind[2]);
-    Result := [TRuleFix.Create('IndexOf statt Find verwenden',
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.UseIndexOf].Text,
       [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
       Format('%s := %s.IndexOf(%s);', [IndexText, Text(AFind[0][0]), Text(AFind[1])]) + LineBreak +
       Indent(Statement)),
@@ -507,13 +536,14 @@ var
       begin
         Fixes := SortedFix(AFacts);
         Fixes := Fixes + IndexOfFix(Use);
-        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos), Format('Find setzt eine sortierte Liste voraus; ' +
-          '%s ist nicht sortiert.', [Name]), TRuleConfidence.Medium, Fixes);
+        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos),
+          cTexts[TRtlTypePatternsCollectionsText.FindUnsorted].Fmt([Name]), TRuleConfidence.Medium, Fixes);
       end
       else
       begin
-        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos), Format('Duplicates wirkt nur bei sortierten ' +
-          'Listen; %s ist nicht sortiert.', [Name]), TRuleConfidence.Medium, SortedFix(AFacts));
+        AReport.Add(TTextRange.Create(Use.StartPos, Use.EndPos),
+          cTexts[TRtlTypePatternsCollectionsText.DuplicatesUnsorted].Fmt([Name]), TRuleConfidence.Medium,
+          SortedFix(AFacts));
       end;
     end;
   end;
@@ -629,7 +659,7 @@ end;
 function TDictionaryGetWithoutCheckRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dictionary-get-without-check', TRuleSeverity.Hint,
-    'Dictionary-Zugriff ohne Prüfung des Schlüssels');
+    cTexts[TRtlTypePatternsCollectionsText.DictionaryTitle].Text);
 end;
 
 procedure TDictionaryGetWithoutCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1053,7 +1083,8 @@ var
       Exit;
     end;
     Indent := StringOfChar(' ', Statement.StartPos.Character);
-    Result := [TRuleFix.Create('In TryGetValue umschreiben', [TRuleEdit.Create(TTextRange.Create(Statement.StartPos,
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.ToTryGetValue].Text,
+      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos,
       Statement.EndPos), 'if not ' + Text(ADictNode) + '.TryGetValue(' + Text(AAccess[AAccess.ChildCount - 1]) +
       ', ' + Target.Name + ') then' + LineBreak + Indent + '  ' + Target.Name + ' := ' + DefaultValue(AValueType))])];
   end;
@@ -1090,8 +1121,9 @@ var
     begin
       Exit;
     end;
-    AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos), 'Schlüssel wird nicht geprüft; fehlt er, löst ' +
-      'der Zugriff EListError aus.', TRuleConfidence.Medium, Fixes(AAccess, DictNode, Value));
+    AReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos),
+      cTexts[TRtlTypePatternsCollectionsText.KeyNotChecked].Text, TRuleConfidence.Medium, Fixes(AAccess, DictNode,
+      Value));
   end;
 
   procedure Visit(ANode: TSyntaxNode);
@@ -1140,7 +1172,7 @@ end;
 function TDelimitedTextWithoutStrictRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('delimited-text-without-strict', TRuleSeverity.Warning,
-    'DelimitedText ohne StrictDelimiter');
+    cTexts[TRtlTypePatternsCollectionsText.DelimiterTitle].Text);
 end;
 
 procedure TDelimitedTextWithoutStrictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1285,11 +1317,11 @@ var
       begin
         Prefix := 'Self.';
       end;
-      Fixes := [TRuleFix.Create('StrictDelimiter := True; einfügen',
+      Fixes := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.InsertStrict].Text,
         [TRoutineBody.InsertBefore(AContext.Text, Statement, Prefix + List + '.StrictDelimiter := True;')])];
     end;
     AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
-      'Ohne StrictDelimiter trennt DelimitedText auch an Leerzeichen: ''Max Muster'' wird zu zwei Einträgen.',
+      cTexts[TRtlTypePatternsCollectionsText.Delimiter].Text,
       Fixes);
   end;
 
@@ -1317,5 +1349,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections', cTexts);
 
 end.

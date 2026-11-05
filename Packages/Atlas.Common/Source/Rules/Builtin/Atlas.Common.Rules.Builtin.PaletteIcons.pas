@@ -39,7 +39,22 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.ResourceNames;
+  Atlas.Common.Rules.ResourceNames,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPaletteIconsText = (Title, NoIcon, MissingSizes);
+
+const
+  cTexts: array[TPaletteIconsText] of TAtlasText = (
+    (De: 'Registrierte Komponente ohne Palettensymbol'; En: 'Registered component without palette icon'),
+    (De: 'Kein Palettensymbol %s in den eingebundenen Ressourcen'; En: 'No palette icon %s in the linked resources'),
+    (De: 'Palettensymbol %s fehlt in %s px (High-DPI)'; En: 'Palette icon %s is missing in %s px (high DPI)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   HighDpiVersion = 22;
@@ -130,7 +145,7 @@ end;
 function TPaletteIconRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('component-palette-icon', TRuleSeverity.Hint,
-    'Registrierte Komponente ohne Palettensymbol');
+    cTexts[TPaletteIconsText.Title].Text);
 end;
 
 procedure TPaletteIconRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -229,7 +244,7 @@ begin
   if not HasAnyIcon(ANames, mUpper) then
   begin
     AReport.Add(TTextRange.Create(AToken.StartPos, AToken.EndPos),
-      'Kein Palettensymbol ' + mUpper + ' in den eingebundenen Ressourcen');
+      cTexts[TPaletteIconsText.NoIcon].Fmt([mUpper]));
     Exit;
   end;
   if MajorVersion(AContext.DelphiVersion) < HighDpiVersion then
@@ -240,7 +255,7 @@ begin
   if mMissing <> '' then
   begin
     AReport.Add(TTextRange.Create(AToken.StartPos, AToken.EndPos),
-      'Palettensymbol ' + mUpper + ' fehlt in ' + mMissing + ' px (High-DPI)');
+      cTexts[TPaletteIconsText.MissingSizes].Fmt([mUpper, mMissing]));
   end;
 end;
 
@@ -248,5 +263,8 @@ procedure RegisterPaletteIconRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TPaletteIconRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.PaletteIcons', cTexts);
 
 end.

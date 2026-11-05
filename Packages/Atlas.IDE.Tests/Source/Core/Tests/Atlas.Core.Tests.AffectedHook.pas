@@ -14,6 +14,8 @@
 //   (/dev/tty) fragt der Hook, ob die Tests laufen sollen, und nach
 //   Fehlschlägen, ob trotzdem committet wird. Ohne Terminal (Commit aus der
 //   IDE) bleibt es bei der Liste; der Commit läuft weiter.
+// - Fragen und Kommentare des Skripts kommen in der Sprache der Oberfläche als
+//   TAtlasAffectedHookTexts herein (#1458; Core kennt die Texttabellen nicht).
 // - Fehlt die Datei, der Server oder die Test-EXE, tut der Hook nichts. SVN hat
 //   keine Hooks auf dem Client; dort gibt es das Angebot nicht.
 
@@ -28,12 +30,24 @@ type
   TAtlasAffectedHookState = (Missing, Own, Foreign);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Inhalt von &lt;gitdir&gt;/atlas-affected-tests.</summary>
+  /// <summary>Texte des Skripts in der Sprache der Oberfläche: Kommentare ohne „#“, Fragen mit Leerzeichen am Ende.
+  /// </summary>
+  TAtlasAffectedHookTexts = record
+    Purpose: string;
+    Removal: string;
+    ExitCodes: string;
+    NoTerminal: string;
+    AskRun: string;
+    AskCommit: string;
+  end;
+
+  /// <summary>Inhalt von &lt;gitdir&gt;/atlas-affected-tests; Texts für das Skript.</summary>
   TAtlasAffectedHookConfig = record
     ServerPath: string;
     /// <summary>.dproj bzw. .groupproj für --check.</summary>
     Project: string;
     Executable: string;
+    Texts: TAtlasAffectedHookTexts;
   end;
 
   TAtlasAffectedHook = class
@@ -43,8 +57,8 @@ type
     /// <summary>Zweite Zeile des eigenen Hooks.</summary>
     Marker = '# atlas-affected-tests (#1353)';
   public
-    /// <summary>Inhalt des Hooks, Zeilenende LF.</summary>
-    class function Script: string; static;
+    /// <summary>Inhalt des Hooks mit ATexts, Zeilenende LF.</summary>
+    class function Script(const ATexts: TAtlasAffectedHookTexts): string; static;
     /// <summary>Eigener Hook: die Marke steht in den ersten Zeilen.</summary>
     class function IsOwn(const AContent: string): Boolean; static;
     class function HookFile(const AHooksDir: string): string; static;
@@ -72,13 +86,31 @@ uses
 const
   cLf = #10;
 
-class function TAtlasAffectedHook.Script: string;
+/// <summary>Text ohne Zeilenumbrüche: Sie würden das Skript zerreißen.</summary>
+function OneLine(const AText: string): string;
+begin
+  Result := StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+end;
+
+function Comment(const AText: string): string;
+begin
+  Result := '# ' + OneLine(AText);
+end;
+
+/// <summary>Argument für printf '…': „%“ verdoppelt, „'“ als '\''.</summary>
+function PrintfText(const AText: string): string;
+begin
+  Result := StringReplace(OneLine(AText), '%', '%%', [rfReplaceAll]);
+  Result := '''' + StringReplace(Result, '''', '''\''''', [rfReplaceAll]) + '''';
+end;
+
+class function TAtlasAffectedHook.Script(const ATexts: TAtlasAffectedHookTexts): string;
 begin
   Result :=
     '#!/bin/sh' + cLf +
     Marker + cLf +
-    '# Von Atlas angelegt (tests.affectedBeforeCommit): nennt vor dem Commit die betroffenen Tests und' + cLf +
-    '# führt sie im Terminal auf Wunsch aus. Entfernen: Einstellung ausschalten oder diese Datei löschen.' + cLf +
+    Comment(ATexts.Purpose) + cLf +
+    Comment(ATexts.Removal) + cLf +
     'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + cLf +
     'conf="$dir/' + ConfigFile + '"' + cLf +
     '[ -f "$conf" ] || exit 0' + cLf +
@@ -89,20 +121,20 @@ begin
     '[ -n "$project" ] && [ -f "$project" ] || exit 0' + cLf +
     'run=$("$server" --check "$project" --affected-tests HEAD --include-uncommitted --format dunitx)' + cLf +
     'code=$?' + cLf +
-    '# 0 = Liste (leer: keine betroffenen Tests), 2 = alle Tests nötig, sonst (3 = aus, Fehler) nichts tun.' + cLf +
+    Comment(ATexts.ExitCodes) + cLf +
     'case $code in' + cLf +
     '  0) [ -n "$run" ] || exit 0 ;;' + cLf +
     '  2) run= ;;' + cLf +
     '  *) exit 0 ;;' + cLf +
     'esac' + cLf +
     '[ -n "$exe" ] && [ -f "$exe" ] || exit 0' + cLf +
-    '# Ohne Terminal (Commit aus der IDE) bleibt es bei der Liste.' + cLf +
+    Comment(ATexts.NoTerminal) + cLf +
     '( : < /dev/tty ) 2>/dev/null || exit 0' + cLf +
-    'printf ''Atlas: Betroffene Tests jetzt ausführen (Test-EXE ohne neuen Build)? [j/N] '' > /dev/tty' + cLf +
+    'printf ' + PrintfText(ATexts.AskRun) + ' > /dev/tty' + cLf +
     'read answer < /dev/tty' + cLf +
     'case "$answer" in j|J|y|Y) ;; *) exit 0 ;; esac' + cLf +
     '"$exe" $run --exitbehavior:Continue < /dev/null && exit 0' + cLf +
-    'printf ''Atlas: Tests fehlgeschlagen. Trotzdem committen? [j/N] '' > /dev/tty' + cLf +
+    'printf ' + PrintfText(ATexts.AskCommit) + ' > /dev/tty' + cLf +
     'read answer < /dev/tty' + cLf +
     'case "$answer" in j|J|y|Y) exit 0 ;; esac' + cLf +
     'exit 1' + cLf;
@@ -224,9 +256,9 @@ begin
   case State(AHooksDir) of
     TAtlasAffectedHookState.Own:
       // Neu schreiben: eine ältere Fassung des Skripts wird so ersetzt.
-      Result := WriteText(HookFile(AHooksDir), Script);
+      Result := WriteText(HookFile(AHooksDir), Script(AConfig.Texts));
     TAtlasAffectedHookState.Missing:
-      Result := ForceDirectories(AHooksDir) and WriteText(HookFile(AHooksDir), Script);
+      Result := ForceDirectories(AHooksDir) and WriteText(HookFile(AHooksDir), Script(AConfig.Texts));
   end;
   if Result then
   begin

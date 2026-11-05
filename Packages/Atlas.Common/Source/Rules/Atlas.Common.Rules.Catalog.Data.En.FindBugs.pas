@@ -749,8 +749,8 @@ const
     '      "group": "find-bugs",',
     '      "description": "A case over an enumerated type without else does not cover all values; a value added later silently falls through. The message names the missing values. The type of the selector ' +
     '(variable, parameter, field or chain A.B) comes from name resolution, the values from the index or the unit itself; aliases are followed. Ranges (bsNeu..bsBezahlt) and lists count as present. Selector' +
-    's with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix \"Fehlende Werte ergänzen (n)\" adds empty branches in dec' +
-    'laration order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).",',
+    's with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix \"Add missing values (n)\" adds empty branches in declarat' +
+    'ion order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).",',
     '      "bad": "case Bestellung.Status of\n  bsNeu: Anlegen;\n  bsBezahlt: Versenden;\nend;",',
     '      "good": "case Bestellung.Status of\n  bsNeu: Anlegen;\n  bsBezahlt: Versenden;\n  bsStorniert: ;\n  bsZurueck: ;\nend;",',
     '      "options": [',

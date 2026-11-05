@@ -230,7 +230,50 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TTransferText = (WithoutSettings, SettingsIsNotAnObject, OtherFormat, NoJSONObject, FormatVersionExpected,
+    SchemaVersionExpected, ModeMergeOrReplace, AreasUnknownArea, UnknownKey, OutdatedKeyCorrectIs, IsNotTransferred,
+    FileText);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TTransferText] of string = (
+    ('ohne "settings"',
+     '"settings" ist kein Objekt',
+     'anderes Format: ',
+     'kein JSON-Objekt',
+     'formatVersion: erwartet ',
+     'schemaVersion: erwartet ',
+     'mode: merge oder replace',
+     'areas: unbekannter Bereich ',
+     ': unbekannter Schlüssel',
+     ': veralteter Schlüssel, richtig ist ',
+     ': wird nicht übertragen',
+     'Datei: '),
+    ('without "settings"',
+     '"settings" is not an object',
+     'other format: ',
+     'no JSON object',
+     'formatVersion: expected ',
+     'schemaVersion: expected ',
+     'mode: merge or replace',
+     'areas: unknown area ',
+     ': unknown key',
+     ': outdated key, correct is ',
+     ': is not transferred',
+     'File: '));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TTransferText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -1207,16 +1250,16 @@ begin
     // Ältere Datei: flache Liste von Registry-Namen (Werte 0/1, Zahlen, Text); mit "format" fehlt "settings".
     if ARoot.GetValue('format') <> nil then
     begin
-      Result := 'ohne "settings"';
+      Result := UiText(TTransferText.WithoutSettings);
     end;
   end
   else if not (ASettings is TJSONObject) then
   begin
-    Result := '"settings" ist kein Objekt';
+    Result := UiText(TTransferText.SettingsIsNotAnObject);
   end
   else if (ARoot.GetValue('format') <> nil) and (StringField(ARoot, 'format') <> TAtlasSettingsTransfer.FormatName) then
   begin
-    Result := 'anderes Format: ' + StringField(ARoot, 'format');
+    Result := UiText(TTransferText.OtherFormat) + StringField(ARoot, 'format');
   end;
 end;
 
@@ -1229,7 +1272,7 @@ begin
   mRoot := TAtlasJsonText.Parse(AText);
   if mRoot = nil then
   begin
-    Result.Error := 'kein JSON-Objekt';
+    Result.Error := UiText(TTransferText.NoJSONObject);
     Exit;
   end;
   try
@@ -1604,21 +1647,21 @@ begin
   Result := nil;
   if ASource.FormatVersion <> TAtlasSettingsTransfer.FormatVersion then
   begin
-    Result := Result + ['formatVersion: erwartet ' + IntToStr(TAtlasSettingsTransfer.FormatVersion)];
+    Result := Result + [UiText(TTransferText.FormatVersionExpected) + IntToStr(TAtlasSettingsTransfer.FormatVersion)];
   end;
   if ASource.SchemaVersion <> ACatalog.Version then
   begin
-    Result := Result + ['schemaVersion: erwartet ' + IntToStr(ACatalog.Version)];
+    Result := Result + [UiText(TTransferText.SchemaVersionExpected) + IntToStr(ACatalog.Version)];
   end;
   if (ASource.Mode <> '') and (ASource.Mode <> 'merge') and (ASource.Mode <> 'replace') then
   begin
-    Result := Result + ['mode: merge oder replace'];
+    Result := Result + [UiText(TTransferText.ModeMergeOrReplace)];
   end;
   for mArea in ASource.Areas do
   begin
     if not ACatalog.HasArea(mArea) then
     begin
-      Result := Result + ['areas: unbekannter Bereich ' + mArea];
+      Result := Result + [UiText(TTransferText.AreasUnknownArea) + mArea];
     end;
   end;
 end;
@@ -1633,15 +1676,15 @@ begin
   mEntry := ACatalog.Resolve(AKey, mMigrated);
   if mEntry < 0 then
   begin
-    Result := [AKey + ': unbekannter Schlüssel'];
+    Result := [AKey + UiText(TTransferText.UnknownKey)];
   end
   else if mMigrated then
   begin
-    Result := [AKey + ': veralteter Schlüssel, richtig ist ' + ACatalog[mEntry].Key];
+    Result := [AKey + UiText(TTransferText.OutdatedKeyCorrectIs) + ACatalog[mEntry].Key];
   end
   else if not ACatalog[mEntry].Transferable then
   begin
-    Result := [AKey + ': wird nicht übertragen'];
+    Result := [AKey + UiText(TTransferText.IsNotTransferred)];
   end
   // Ungültig: die Meldungen der Schemaprüfung.
   else if ACatalog.ValidValue(ACatalog[mEntry], AValue, Result) then
@@ -1659,7 +1702,7 @@ begin
   mSource := ParseFile(AText);
   if not mSource.Valid then
   begin
-    AIssues := ['Datei: ' + mSource.Error];
+    AIssues := [UiText(TTransferText.FileText) + mSource.Error];
   end
   else
   begin
@@ -1707,5 +1750,8 @@ begin
     Backups.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Transfer', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

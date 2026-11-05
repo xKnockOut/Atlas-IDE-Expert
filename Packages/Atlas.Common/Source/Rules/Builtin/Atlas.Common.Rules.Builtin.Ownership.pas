@@ -81,7 +81,49 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Ownership.TryFinally;
+  Atlas.Common.Rules.Builtin.Ownership.TryFinally,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOwnershipText = (RemoveFree, InsteadOfFree, OwnsElements, OwnsValues, DoubleFree, DoubleFreeList, AssignAndFree,
+    Lost, MoveBeforeInherited, InAfterConstruction, InConstructor, SelfInterface, SelfAfterConstruction,
+    OwnedFreedTitle, LostTitle, SelfInterfaceTitle, InsteadOfRemove, AssignmentTo);
+
+const
+  cTexts: array[TOwnershipText] of TAtlasText = (
+    (De: 'Free entfernen'; En: 'Remove Free'),
+    (De: '%s statt Free'; En: '%s instead of Free'),
+    (De: 'seine Elemente (OwnsObjects)'; En: 'its elements (OwnsObjects)'),
+    (De: 'seine Werte (doOwnsValues)'; En: 'its values (doOwnsValues)'),
+    (De: '%s besitzt %s; %s gibt das Element ein zweites Mal frei.';
+     En: '%s owns %s; %s releases the element a second time.'),
+    (De: '%s besitzt %s; die Liste gibt das Element beim Freigeben ein zweites Mal frei.';
+     En: '%s owns %s; the list releases the element a second time when it is released.'),
+    (De: 'An %s zuweisen und in try/finally freigeben'; En: 'Assign to %s and release in try/finally'),
+    (De: 'Das erzeugte %s wird nirgends gespeichert und nie freigegeben (Speicherleck).';
+     En: 'The created %s is stored nowhere and never released (memory leak).'),
+    (De: 'Vor inherited verschieben'; En: 'Move before inherited'),
+    (De: 'in AfterConstruction'; En: 'in AfterConstruction'),
+    (De: 'im Konstruktor'; En: 'in the constructor'),
+    (De: 'Self wird %s als Interface übergeben; die eigene Referenzzählung von %s gibt das Objekt frei, sobald der ' +
+      'Zähler danach auf 0 fällt.';
+     En: 'Self is passed as interface %s; the own reference counting of %s releases the object as soon as the ' +
+      'counter then drops to 0.'),
+    (De: 'Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach auf 0, ist das ' +
+      'Objekt schon freigegeben.';
+     En: 'Self is passed as interface after inherited AfterConstruction; if the counter then drops to 0, the object ' +
+      'is already released.'),
+    (De: 'Element einer besitzenden Liste zusätzlich freigegeben';
+     En: 'Element of an owning list released additionally'),
+    (De: 'Objekt erzeugt und sofort verloren'; En: 'Object created and lost immediately'),
+    (De: 'Self als Interface im Konstruktor weitergegeben'; En: 'Self passed on as interface in the constructor'),
+    (De: '%s statt Remove'; En: '%s instead of Remove'),
+    (De: 'die Zuweisung an %s[…]'; En: 'the assignment to %s[…]'));
+
+{$SCOPEDENUMS OFF}
 
 const
   OwnedItemFreedRuleId = 'owned-item-freed';
@@ -299,7 +341,8 @@ begin
   begin
     mMethod := 'ExtractPair';
   end;
-  Result := TRuleFix.Create(mMethod + ' statt Remove', [TTextEdit.Create(TTextRange.Create(AToken.StartPos,
+  Result := TRuleFix.Create(cTexts[TOwnershipText.InsteadOfRemove].Fmt([mMethod]),
+    [TTextEdit.Create(TTextRange.Create(AToken.StartPos,
     AToken.EndPos), mMethod)]);
 end;
 
@@ -777,7 +820,7 @@ begin
   Result := OwnStatement(APosition, mNode);
   if Result then
   begin
-    AFix := TRuleFix.Create('Free entfernen',
+    AFix := TRuleFix.Create(cTexts[TOwnershipText.RemoveFree].Text,
       [TTextEdit.Create(TTextRange.Create(mNode.StartPos.Line, 0, mNode.EndPos.Line + 1, 0), '')]);
   end;
 end;
@@ -805,7 +848,7 @@ begin
   begin
     mPrefix := 'Self.';
   end;
-  AFix := TRuleFix.Create(Format('%s statt Free', [mMethod]),
+  AFix := TRuleFix.Create(cTexts[TOwnershipText.InsteadOfFree].Fmt([mMethod]),
     [TTextEdit.Create(TTextRange.Create(mNode.StartPos, mNode.EndPos),
     Format('%s%s.%s(%s)', [mPrefix, Token(AFree.First).Text, mMethod, AFree.IndexText]))]);
 end;
@@ -928,7 +971,7 @@ begin
   end
   else if ElementAccess(APosition, mAfter, mIndex) and IsSym(mAfter, ':=') then
   begin
-    ARemoval.Text := 'die Zuweisung an ' + Token(APosition).Text + '[…]';
+    ARemoval.Text := cTexts[TOwnershipText.AssignmentTo].Fmt([Token(APosition).Text]);
   end;
 end;
 
@@ -997,21 +1040,20 @@ begin
   begin
     Exit;
   end;
-  mOwns := 'seine Elemente (OwnsObjects)';
+  mOwns := cTexts[TOwnershipText.OwnsElements].Text;
   if AItem.List.IsDictionary then
   begin
-    mOwns := 'seine Werte (doOwnsValues)';
+    mOwns := cTexts[TOwnershipText.OwnsValues].Text;
   end;
   if mRemoval.Text <> '' then
   begin
-    mMessage := Format('%s besitzt %s; %s gibt das Element ein zweites Mal frei.', [AItem.List.Name, mOwns,
+    mMessage := cTexts[TOwnershipText.DoubleFree].Fmt([AItem.List.Name, mOwns,
       mRemoval.Text]);
     mFixes := RemovalFixes(AItem, mRemoval);
   end
   else
   begin
-    mMessage := Format('%s besitzt %s; die Liste gibt das Element beim Freigeben ein zweites Mal frei.',
-      [AItem.List.Name, mOwns]);
+    mMessage := cTexts[TOwnershipText.DoubleFreeList].Fmt([AItem.List.Name, mOwns]);
     mFixes := ListFreeFixes(AItem);
   end;
   FReport.Add(TTextRange.Create(Token(AItem.First).StartPos, Token(AItem.Last).EndPos), mMessage, mFixes);
@@ -1134,7 +1176,7 @@ begin
     mName + '.Free;', mEdit);
   if Result then
   begin
-    AFix := TRuleFix.Create(Format('An %s zuweisen und in try/finally freigeben', [mName]),
+    AFix := TRuleFix.Create(cTexts[TOwnershipText.AssignAndFree].Fmt([mName]),
       [TRoutineBody.AddVariable(FContext.Text, ARoutine, mName, ATypeText, FContext.Formatting), mEdit]);
   end;
 end;
@@ -1221,7 +1263,7 @@ begin
     mFixes := [mFix];
   end;
   FReport.Add(TTextRange.Create(Token(ACall.Position).StartPos, Token(ACall.Next - 1).EndPos),
-    Format('Das erzeugte %s wird nirgends gespeichert und nie freigegeben (Speicherleck).', [mTypeText]), mFixes);
+    cTexts[TOwnershipText.Lost].Fmt([mTypeText]), mFixes);
 end;
 
 procedure TCreateWithoutAssignmentScan.CheckStatement(ARoutine, AStatement: TSyntaxNode);
@@ -1591,7 +1633,7 @@ begin
   begin
     mText := mText + FLines[mLine] + FLineBreak;
   end;
-  Result := [TRuleFix.Create('Vor inherited verschieben', [
+  Result := [TRuleFix.Create(cTexts[TOwnershipText.MoveBeforeInherited].Text, [
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(mBefore.StartPos.Line, 0),
       TTextPosition.Create(mBefore.StartPos.Line, 0)), mText),
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(mMoved.StartPos.Line, 0),
@@ -1627,10 +1669,10 @@ begin
     Result := AInfo.Counting or
       (mIsAfterConstruction and FAncestry.DescendsFrom(AInfo.TypeName, 'TInterfacedObject'));
   end;
-  AInfo.Where := 'in AfterConstruction';
+  AInfo.Where := cTexts[TOwnershipText.InAfterConstruction].Text;
   if IsKey(mFirst, 'constructor') then
   begin
-    AInfo.Where := 'im Konstruktor';
+    AInfo.Where := cTexts[TOwnershipText.InConstructor].Text;
   end;
 end;
 
@@ -1639,14 +1681,12 @@ begin
   if AInfo.Counting then
   begin
     FReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
-      Format('Self wird %s als Interface übergeben; die eigene Referenzzählung von %s gibt das Objekt ' +
-      'frei, sobald der Zähler danach auf 0 fällt.', [AInfo.Where, AInfo.TypeName]));
+      cTexts[TOwnershipText.SelfInterface].Fmt([AInfo.Where, AInfo.TypeName]));
   end
   else if AInheritedAt >= 0 then
   begin
     FReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
-      'Self wird nach inherited AfterConstruction als Interface übergeben; fällt der Zähler danach auf 0, ' +
-      'ist das Objekt schon freigegeben.',
+      cTexts[TOwnershipText.SelfAfterConstruction].Text,
       MoveFix(AInfo.Block, Token(AInheritedAt).Offset, Token(APosition).Offset));
   end;
 end;
@@ -1710,7 +1750,7 @@ end;
 function TOwnedItemFreedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OwnedItemFreedRuleId, TRuleSeverity.Error,
-    'Element einer besitzenden Liste zusätzlich freigegeben');
+    cTexts[TOwnershipText.OwnedFreedTitle].Text);
 end;
 
 class function TOwnedItemFreedRule.CreatesOwning(const ATypeName, AArguments: string;
@@ -1749,7 +1789,7 @@ end;
 function TCreateWithoutAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CreateWithoutAssignmentRuleId, TRuleSeverity.Warning,
-    'Objekt erzeugt und sofort verloren');
+    cTexts[TOwnershipText.LostTitle].Text);
 end;
 
 class function TCreateWithoutAssignmentRule.LooksLikeType(const AName: string): Boolean;
@@ -1796,7 +1836,7 @@ end;
 function TSelfAsInterfaceInConstructorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(SelfAsInterfaceInConstructorRuleId, TRuleSeverity.Warning,
-    'Self als Interface im Konstruktor weitergegeben');
+    cTexts[TOwnershipText.SelfInterfaceTitle].Text);
 end;
 
 class function TSelfAsInterfaceInConstructorRule.IsInterfaceType(const AType: string): Boolean;
@@ -1834,5 +1874,8 @@ begin
   ARegistry.Register(TCreateWithoutAssignmentRule.Create);
   ARegistry.Register(TSelfAsInterfaceInConstructorRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Ownership', cTexts);
 
 end.

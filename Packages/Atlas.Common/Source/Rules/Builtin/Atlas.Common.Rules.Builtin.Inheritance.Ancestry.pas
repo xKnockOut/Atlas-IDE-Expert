@@ -190,7 +190,20 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceAncestryText = (AddName);
+
+const
+  cTexts: array[TInheritanceAncestryText] of TAtlasText = (
+    (De: '"%s" ergänzen'; En: 'Add "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
 begin
@@ -999,7 +1012,7 @@ begin
   Result := EndPosition(AContext, AMethod.Header.EndOffset, Position);
   if Result then
   begin
-    AFix := TRuleFix.Create(Format('"%s" ergänzen', [ADirective]),
+    AFix := TRuleFix.Create(cTexts[TInheritanceAncestryText.AddName].Fmt([ADirective]),
       [TRuleEdit.Create(TTextRange.Create(Position, Position), ' ' + ADirective + ';')]);
   end;
 end;
@@ -1371,5 +1384,8 @@ begin
   end;
   Result := False;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.Ancestry', cTexts);
 
 end.

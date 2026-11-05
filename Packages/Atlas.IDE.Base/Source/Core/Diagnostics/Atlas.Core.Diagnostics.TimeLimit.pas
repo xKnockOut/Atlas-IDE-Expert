@@ -87,7 +87,26 @@ implementation
 uses
   System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TTimeLimitText = (AtlasIsShuttingDown);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TTimeLimitText] of string = (
+    ('Atlas wird beendet'),
+    ('Atlas is shutting down'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TTimeLimitText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasTimeLimit.TWorker }
 
@@ -267,7 +286,7 @@ begin
   AError := '';
   if TAtlasShutdown.Signalled then
   begin
-    AError := 'Atlas wird beendet';
+    AError := UiText(TTimeLimitText.AtlasIsShuttingDown);
     Exit(TAtlasTimedOutcome.Failed);
   end;
   if ALimitMs < 0 then
@@ -414,5 +433,8 @@ begin
     FReleased.SetEvent;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.TimeLimit', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

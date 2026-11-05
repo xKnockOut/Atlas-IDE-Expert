@@ -57,7 +57,40 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols;
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeRestrictionsOperatorsText = (Title, VarFirst, ParamsFromTemplate, NoDeclaration, UnknownMeant, Unknown,
+    ParamCount, ParamOrResult, InOneParam, SameType, AsResult, AssignVar, RenameTo);
+
+const
+  cTexts: array[TTypeRestrictionsOperatorsText] of TAtlasText = (
+    (De: 'class operator falsch deklariert'; En: 'class operator declared incorrectly'),
+    (De: 'var vor den ersten Parameter setzen'; En: 'Put var before the first parameter'),
+    (De: 'Parameter nach Vorlage: '; En: 'Parameters from template: '),
+    (De: 'Zu %s.%s gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).';
+     En: 'There is no valid declaration for %s.%s; the body matches nothing (like E2037).'),
+    (De: 'Unbekannter Operator %s; gemeint ist wohl %s (wie E2393).';
+     En: 'Unknown operator %s; %s is probably meant (like E2393).'),
+    (De: 'Unbekannter Operator %s (wie E2393).'; En: 'Unknown operator %s (like E2393).'),
+    (De: 'Der Operator %s muss %d Parameter haben (wie E2517).';
+     En: 'The operator %s must have %d parameters (like E2517).'),
+    (De: '%s muss %s als Parameter oder Ergebnis haben (wie E2521).';
+     En: '%s must have %s as parameter or result (like E2521).'),
+    (De: 'Der Operator %s muss %s in mindestens einem Parameter haben (wie E2518).';
+     En: 'The operator %s must have %s in at least one parameter (like E2518).'),
+    (De: '%s muss denselben Typ liefern wie den ersten Parameter, hier %s (wie E2519).';
+     En: '%s must return the same type as the first parameter, here %s (like E2519).'),
+    (De: ' als Ergebnis'; En: ' as result'),
+    (De: 'Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).';
+     En: 'The first parameter of Assign must be a var parameter of the own type (like E2617).'),
+    (De: 'In %s umbenennen'; En: 'Rename to %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TOperatorDeclarationInvalidRule }
 
@@ -208,7 +241,7 @@ end;
 function TOperatorDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OperatorDeclarationInvalidRuleId, TRuleSeverity.Error,
-    'class operator falsch deklariert');
+    cTexts[TTypeRestrictionsOperatorsText.Title].Text);
 end;
 
 procedure TOperatorDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -234,7 +267,7 @@ var
 
   function RenameFix(const AOwn: string; const AHead: TRoutineHead; const ANew: string): TRuleFix;
   begin
-    Result := TRuleFix.Create('In ' + ANew + ' umbenennen', BothHeads(AOwn, AHead,
+    Result := TRuleFix.Create(cTexts[TTypeRestrictionsOperatorsText.RenameTo].Fmt([ANew]), BothHeads(AOwn, AHead,
       function(AOne: TRoutineHead): TArray<TRuleEdit>
       var
         Index: Integer;
@@ -263,7 +296,7 @@ var
 
   function VarFix(const AOwn: string; const AHead: TRoutineHead): TRuleFix;
   begin
-    Result := TRuleFix.Create('var vor den ersten Parameter setzen', BothHeads(AOwn, AHead,
+    Result := TRuleFix.Create(cTexts[TTypeRestrictionsOperatorsText.VarFirst].Text, BothHeads(AOwn, AHead,
       function(AOne: TRoutineHead): TArray<TRuleEdit>
       var
         Param: TSyntaxNode;
@@ -306,7 +339,8 @@ var
 
   function ParametersFix(const AOwn: string; const AHead: TRoutineHead; const ATemplate: string): TRuleFix;
   begin
-    Result := TRuleFix.Create('Parameter nach Vorlage: ' + ATemplate, BothHeads(AOwn, AHead,
+    Result := TRuleFix.Create(cTexts[TTypeRestrictionsOperatorsText.ParamsFromTemplate].Text + ATemplate,
+      BothHeads(AOwn, AHead,
       function(AOne: TRoutineHead): TArray<TRuleEdit>
       var
         Parameters: TSyntaxNode;
@@ -344,8 +378,8 @@ var
       mName := NameToken(Tokens, mBody.Header);
       if mName >= 0 then
       begin
-        Report(TokenRange(Tokens[mName]), Format('Zu %s.%s gibt es keine gültige Deklaration; der Rumpf passt zu ' +
-          'nichts (wie E2037).', [AOwn, AHead.Header.Name]), nil);
+        Report(TokenRange(Tokens[mName]), cTexts[TTypeRestrictionsOperatorsText.NoDeclaration].Fmt([AOwn,
+          AHead.Header.Name]), nil);
       end;
     end;
   end;
@@ -379,12 +413,12 @@ var
     mClosest := TTextFuzzy.Closest(ASite.Name, KnownOperators);
     if mClosest <> '' then
     begin
-      Report(ASite.Range, Format('Unbekannter Operator %s; gemeint ist wohl %s (wie E2393).', [ASite.Name,
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.UnknownMeant].Fmt([ASite.Name,
         mClosest]), [RenameFix(ASite.Own, ASite.Head, mClosest)]);
     end
     else
     begin
-      Report(ASite.Range, Format('Unbekannter Operator %s (wie E2393).', [ASite.Name]), nil);
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.Unknown].Fmt([ASite.Name]), nil);
     end;
     ReportBodies(ASite.Own, ASite.Head);
   end;
@@ -408,7 +442,7 @@ var
     begin
       mFixes := [ParametersFix(ASite.Own, ASite.Head, mTemplate)];
     end;
-    Report(ASite.Range, Format('Der Operator %s muss %d Parameter haben (wie E2517).', [ASite.Name, mExpected]),
+    Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.ParamCount].Fmt([ASite.Name, mExpected]),
       mFixes);
   end;
 
@@ -438,13 +472,12 @@ var
     end;
     if ASite.Shape = TOperatorShape.Conversion then
     begin
-      Report(ASite.Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [ASite.Name,
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.ParamOrResult].Fmt([ASite.Name,
         ASite.Own]), nil);
     end
     else
     begin
-      Report(ASite.Range, Format('Der Operator %s muss %s in mindestens einem Parameter haben (wie E2518).',
-        [ASite.Name, ASite.Own]), nil);
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.InOneParam].Fmt([ASite.Name, ASite.Own]), nil);
     end;
   end;
 
@@ -473,9 +506,9 @@ var
     Result := MatchText(ASite.Name, ['Inc', 'Dec']) and ResultDiffers(ASite);
     if Result then
     begin
-      Report(ASite.Range, Format('%s muss denselben Typ liefern wie den ersten Parameter, hier %s (wie E2519).',
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.SameType].Fmt(
         [ASite.Name, ASite.ParamTypes[0]]), [ResultFix(ASite.Own, ASite.Head, ASite.ParamTypes[0],
-        ASite.ParamTypes[0] + ' als Ergebnis')]);
+        ASite.ParamTypes[0] + cTexts[TTypeRestrictionsOperatorsText.AsResult].Text)]);
     end;
   end;
 
@@ -486,8 +519,7 @@ var
     if (ASite.Shape = TOperatorShape.Assign) and (ASite.Head.Parameters <> nil) and
       (ASite.Head.Parameters[0].Modifier <> TParameterModifier.VarParam) then
     begin
-      Report(ASite.Range, 'Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein ' +
-        '(wie E2617).', [VarFix(ASite.Own, ASite.Head)]);
+      Report(ASite.Range, cTexts[TTypeRestrictionsOperatorsText.AssignVar].Text, [VarFix(ASite.Own, ASite.Head)]);
     end;
   end;
 
@@ -547,5 +579,8 @@ begin
     Headers.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeRestrictions.Operators', cTexts);
 
 end.

@@ -42,14 +42,38 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsOverloadsText = (Title, NotMarked, EarlierNotMarked, AppendOverload, SameSignatureResult,
+    SameSignature);
+
+const
+  cTexts: array[TDeclarationsOverloadsText] of TAtlasText = (
+    (De: 'Überladung ohne overload oder mit gleicher Signatur';
+     En: 'Overload without overload directive or with the same signature'),
+    (De: '%s ist überladen, aber nicht mit overload markiert (wie E2254).';
+     En: '%s is overloaded but not marked with overload (like E2254).'),
+    (De: '%s ist überladen, die frühere Deklaration in Zeile %d trägt kein overload (wie E2267).';
+     En: '%s is overloaded, the earlier declaration in line %d has no overload (like E2267).'),
+    (De: 'overload; an alle Deklarationen anhängen'; En: 'Append overload; to all declarations'),
+    (De: '%s mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile %d (wie E2301).';
+     En: '%s with the same parameters and the same result type already exists in line %d (like E2301).'),
+    (De: '%s mit denselben Parametern gibt es schon in Zeile %d (wie E2252).';
+     En: '%s with the same parameters already exists in line %d (like E2252).'));
+
+{$SCOPEDENUMS OFF}
 
 { TOverloadDirectiveMissingRule }
 
 function TOverloadDirectiveMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OverloadDirectiveMissingRuleId, TRuleSeverity.Error,
-    'Überladung ohne overload oder mit gleicher Signatur');
+    cTexts[TDeclarationsOverloadsText.Title].Text);
 end;
 
 type
@@ -254,18 +278,18 @@ var
   begin
     if not ALater.HasOverload then
     begin
-      Message := Format('%s ist überladen, aber nicht mit overload markiert (wie E2254).', [ALater.Name]);
+      Message := cTexts[TDeclarationsOverloadsText.NotMarked].Fmt([ALater.Name]);
     end
     else
     begin
-      Message := Format('%s ist überladen, die frühere Deklaration in Zeile %d trägt kein overload (wie E2267).',
+      Message := cTexts[TDeclarationsOverloadsText.EarlierNotMarked].Fmt(
         [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
     end;
     Edits := MissingEdits(AEntries);
     Fixes := nil;
     if Edits <> nil then
     begin
-      Fixes := [TRuleFix.Create('overload; an alle Deklarationen anhängen', Edits, True)];
+      Fixes := [TRuleFix.Create(cTexts[TDeclarationsOverloadsText.AppendOverload].Text, Edits, True)];
     end;
     AReport.Add(NameRange(ALater), Message, TRuleConfidence.High, Fixes);
   end;
@@ -277,13 +301,12 @@ var
   begin
     if (ALater.ResultType <> '') and (ALater.ResultType = AEarlier.ResultType) then
     begin
-      Message := Format('%s mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile %d ' +
-        '(wie E2301).', [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
+      Message := cTexts[TDeclarationsOverloadsText.SameSignatureResult].Fmt([ALater.Name,
+        AEarlier.Header.StartPos.Line + 1]);
     end
     else
     begin
-      Message := Format('%s mit denselben Parametern gibt es schon in Zeile %d (wie E2252).',
-        [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
+      Message := cTexts[TDeclarationsOverloadsText.SameSignature].Fmt([ALater.Name, AEarlier.Header.StartPos.Line + 1]);
     end;
     AReport.Add(NameRange(ALater), Message, TRuleConfidence.High);
   end;
@@ -512,5 +535,8 @@ begin
   Paths := TConditionalBranches.Paths(Tokens);
   Visit(AContext.Tree.Root);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.Overloads', cTexts);
 
 end.

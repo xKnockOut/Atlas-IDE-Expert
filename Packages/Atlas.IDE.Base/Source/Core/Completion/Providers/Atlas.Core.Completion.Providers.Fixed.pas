@@ -32,6 +32,27 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TFixedText = (CompletionFixed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TFixedText] of string = (
+    ('Vervollständigung (fest)'),
+    ('Completion (fixed)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TFixedText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 { TAtlasFixedCompletionProvider }
 
 constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal);
@@ -48,7 +69,7 @@ constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionI
   AIncomplete: Boolean);
 begin
   inherited Create;
-  Name := 'Vervollständigung (fest)';
+  Name := UiText(TFixedText.CompletionFixed);
   FItems := AItems;
   FDelayMs := ADelayMs;
   FIncomplete := AIncomplete;
@@ -72,5 +93,8 @@ begin
   end;
   Result := FItems;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Providers.Fixed', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
