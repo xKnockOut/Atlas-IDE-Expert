@@ -303,7 +303,7 @@ begin
     begin
       AField.ClickBadge(APoint);
     end);
-  ABar.OnExtra := ExtraClick;
+  ABar.OnExtra := ExtraClick();
   ABar.OnStatusOpen :=
     procedure
     begin
