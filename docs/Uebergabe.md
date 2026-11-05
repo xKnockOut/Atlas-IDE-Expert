@@ -1,4 +1,9 @@
-﻿## Klassenmarke „bestanden“ erst nach allen Tests (05.11.2026, Branch `claude/project-thread-f6o0j4` auf `Pilot-2.0.0-beta.1`)
+﻿## Knopf im Fenster „Atlas-Suche: Ersetzen“ (05.11.2026, Branch `claude/project-thread-o95q59` auf `Pilot-2.0.0-beta.1`)
+- Ursache: `TAtlasSearchReplaceFrame` hatte Kopfzeile und Hinweis (alTop) und den Knopf (alRight) im selben Panel mit fester Höhe 52. Die VCL richtet alTop vor alRight aus; dem Knopf blieb der Rest (wenige Pixel). Regel für Frames: Knopf mit alRight nie neben alTop-Geschwistern; eigene Zeile, deren Höhe aus dem Knopf folgt.
+- Jetzt: Kopfzeile alTop auf dem Frame, darunter Panel `FBar` (Höhe = Knopf + Ränder) mit Hinweis (alClient, zentriert) und Knopf (alRight). Test `ReplaceButtonHasItsOwnRow`. Die leere Liste nach „Ausgewählte ersetzen“ ist gewollt (Ergebnisse verworfen, Bericht im Hinweis).
+- Offen: Delphi-Build, Handtests ER19, ER20.
+
+## Klassenmarke „bestanden“ erst nach allen Tests (05.11.2026, Branch `claude/project-thread-f6o0j4` auf `Pilot-2.0.0-beta.1`)
 - Ursache: `TAtlasTestRun.StatusOf` mit leerer Methode (Marke der Fixture) gab Passed, sobald irgendein Test der Fixture bestanden hatte und keiner fehlgeschlagen war; welche Tests die Fixture hat, wusste die Funktion nicht. Gleiches für eine `[TestCase]`-Methode, wenn nur ein Fall lief.
 - Jetzt trägt jede Marke der Lens die Tests, die ihr Lauf ergibt (`TAtlasTestRun.Expected` aus `TDUnitXUnit`, ohne `[Ignore]`, Fälle einzeln), `TAtlasTestRun.TallyOf` zählt sie gegen die Ergebnisse (`TAtlasTestTally`: Total, Ran, Passed, Failed). Status: Failed bei einem Fehlschlag, Passed erst wenn alle ein Ergebnis haben, neu `TAtlasTestStatus.Partial` mit Text „%s · %d/%d bestanden“ (`TestsLensPartial`) in der Warnfarbe (gelb, Marcos Wunsch). `TAtlasIdeTests.StatusOf` ersetzt durch `TallyOf`.
 - Geprüft: FPC trunk `Atlas.Core.Tests.Run.Tests` 12/12 (5 neue), `Atlas.UI.Tests.Strings.Tests` 2/2; Atlas `--check` mit allen `metric-*` an: 0 Befunde in den 5 Units. Nicht mit Delphi übersetzt. Handtests TR25–TR27.
