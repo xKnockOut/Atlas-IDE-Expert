@@ -3802,7 +3802,7 @@ else if Betrag > 100 then
 
 **case over an enumeration without all values** · Bug · Warning · Group Find bugs
 
-A case over an enumerated type without else does not cover all values; a value added later silently falls through. The message names the missing values. The type of the selector (variable, parameter, field or chain A.B) comes from name resolution, the values from the index or the unit itself; aliases are followed. Ranges (bsNeu..bsBezahlt) and lists count as present. Selectors with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix "Fehlende Werte ergänzen (n)" adds empty branches in declaration order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).
+A case over an enumerated type without else does not cover all values; a value added later silently falls through. The message names the missing values. The type of the selector (variable, parameter, field or chain A.B) comes from name resolution, the values from the index or the unit itself; aliases are followed. Ranges (bsNeu..bsBezahlt) and lists count as present. Selectors with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix "Add missing values (n)" adds empty branches in declaration order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|

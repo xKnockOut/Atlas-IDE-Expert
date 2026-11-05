@@ -52,6 +52,10 @@ type
     procedure ReferenceProjectMutationsAreFound;
     [Test]
     procedure ReferenceRatingsAreValid;
+    /// <summary>Alle Mutationen mit englischen Texten (#1458): Meldungen, Korrekturtitel und Regeltitel ohne
+    /// deutsche Wörter, außer solchen aus dem geprüften Quelltext.</summary>
+    [Test]
+    procedure EnglishTextsWithoutGerman;
   end;
 
 implementation
@@ -74,6 +78,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RtlStubs,
+  Atlas.Common.Localization.Texts,
   System.StrUtils;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
@@ -737,6 +742,140 @@ begin
       [Rate.RuleId, Rate.Correct, Rate.Wrong, Rate.FalseAlarmRate * 100], TFormatSettings.Invariant));
   end;
   Assert.AreEqual('', Problems, 'bewertungen.csv:' + Problems);
+end;
+
+const
+  // Häufige deutsche Wörter der Meldungen; Umlaute und ß zählen immer.
+  cGermanWords: array[0..33] of string = ('und', 'oder', 'nicht', 'der', 'die', 'das', 'den', 'dem', 'des', 'ist',
+    'sind', 'wird', 'werden', 'mit', 'ohne', 'kein', 'keine', 'keinen', 'eine', 'einen', 'einer', 'ein', 'wie',
+    'auf', 'aus', 'nach', 'zum', 'zur', 'beim', 'vom', 'statt', 'fehlt', 'ersetzen', 'entfernen');
+  // Texte, die nicht aus den Regeln kommen, sondern aus Parser bzw. Editing (#1458 Gruppe B): Regel-ID und Art.
+  // Einträge entfernen, sobald die Units dort umgestellt sind.
+  cOtherGroups: array[0..2] of string = ('syntax ', 'declared-not-implemented Korrektur',
+    'constant-initializer-mismatch Korrektur');
+
+/// <summary>Erstes deutsche Wort in AText, das nicht im geprüften Quelltext ASource steht; '' ohne.</summary>
+function GermanWord(const AText, ASource: string): string;
+var
+  mWord: string;
+  mStart, mPos: Integer;
+begin
+  Result := '';
+  mPos := 1;
+  while mPos <= Length(AText) do
+  begin
+    while (mPos <= Length(AText)) and not CharInSet(AText[mPos], ['A'..'Z', 'a'..'z', '_']) and
+      (Ord(AText[mPos]) < 128) do
+    begin
+      Inc(mPos);
+    end;
+    mStart := mPos;
+    while (mPos <= Length(AText)) and (CharInSet(AText[mPos], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or
+      (Ord(AText[mPos]) >= 128)) do
+    begin
+      Inc(mPos);
+    end;
+    mWord := Copy(AText, mStart, mPos - mStart);
+    // Ganz in Großbuchstaben (DES, SQL) sind Abkürzungen, keine Wörter.
+    if (mWord <> '') and (mWord <> UpperCase(mWord)) and (MatchText(mWord, cGermanWords) or
+      (mWord.IndexOfAny(['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']) >= 0)) and not ContainsText(ASource, mWord) then
+    begin
+      Exit(mWord);
+    end;
+    Inc(mPos);
+  end;
+end;
+
+/// <summary>Ob AKey ("Regel Art") mit einem Eintrag aus cOtherGroups beginnt.</summary>
+function StartsWithAny(const AKey: string): Boolean;
+var
+  mPrefix: string;
+begin
+  Result := False;
+  for mPrefix in cOtherGroups do
+  begin
+    if StartsText(mPrefix, AKey) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Meldet AText, wenn es ein deutsches Wort enthält, einmal je Regel und Text.</summary>
+procedure AddGerman(var AProblems: string; const ARuleId, AKind, AText, ASource: string);
+var
+  mWord, mLine: string;
+begin
+  mWord := GermanWord(AText, ASource);
+  mLine := Format('%s %s: %s [%s]', [ARuleId, AKind, AText, mWord]);
+  if (mWord <> '') and (Pos(mLine, AProblems) = 0) and not StartsWithAny(ARuleId + ' ' + AKind) then
+  begin
+    AProblems := AProblems + sLineBreak + mLine;
+  end;
+end;
+
+/// <summary>Englische Texte der Befunde von AMutation; liefert die deutschen Stellen.</summary>
+function EnglishMutationProblems(const ARun: TMutationRun; const AMutation: TRuleMutation): string;
+var
+  mFileName, mText, mMutated: string;
+  mRuleIndex: Integer;
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
+begin
+  Result := '';
+  mFileName := TPath.Combine(TPath.Combine(ARun.Folder, 'Source'), AMutation.FileName);
+  mRuleIndex := IndexText(AMutation.RuleId, ARun.Known);
+  if (mRuleIndex < 0) or not TFile.Exists(mFileName) then
+  begin
+    Exit;
+  end;
+  mText := ReadSource(mFileName);
+  if not TGoldenCorpus.Mutate(mText, AMutation, mMutated) then
+  begin
+    Exit;
+  end;
+  for mFinding in TFileChecker.CheckText(ARun.Rules, MutationSettings(ARun.Descriptors[mRuleIndex]),
+    AMutation.FileName, mMutated, MutationProject(ARun, AMutation.FileName, mFileName)) do
+  begin
+    AddGerman(Result, mFinding.RuleId, 'Meldung', mFinding.Message, mMutated);
+    for mFix in mFinding.Fixes do
+    begin
+      AddGerman(Result, mFinding.RuleId, 'Korrektur', mFix.Title, mMutated);
+    end;
+  end;
+end;
+
+procedure TGoldenCorpusTests.EnglishTextsWithoutGerman;
+var
+  Folder, Problems: string;
+  Run: TMutationRun;
+  Errors: TArray<string>;
+  Mutation: TRuleMutation;
+  Descriptor: TRuleDescriptor;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+  begin
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
+  Problems := '';
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    Run := MutationRun(Folder);
+    for Descriptor in Run.Descriptors do
+    begin
+      AddGerman(Problems, Descriptor.Id, 'Titel', Descriptor.Description, '');
+    end;
+    for Mutation in TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')), Errors) do
+    begin
+      Problems := Problems + EnglishMutationProblems(Run, Mutation);
+    end;
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  Run := Default(TMutationRun);
+  Errors := nil;
+  Assert.AreEqual('', Problems, 'Deutsche Texte im englischen Lauf:' + Problems);
 end;
 
 initialization

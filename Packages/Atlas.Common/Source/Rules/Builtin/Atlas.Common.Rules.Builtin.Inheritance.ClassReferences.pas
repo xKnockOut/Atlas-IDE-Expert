@@ -30,7 +30,25 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceClassReferencesText = (Title, VirtualOverride, VirtualOn, NotVirtual);
+
+const
+  cTexts: array[TInheritanceClassReferencesText] of TAtlasText = (
+    (De: 'Konstruktor über Klassenreferenz nicht virtuell (wie E2391)';
+     En: 'Constructor via class reference not virtual (like E2391)'),
+    (De: 'virtual an %s.%s, override in den Nachfahren'; En: 'virtual on %s.%s, override in the descendants'),
+    (De: 'virtual an %s.%s'; En: 'virtual on %s.%s'),
+    (De: '%s.%s ist nicht virtuell; über die Klassenreferenz läuft immer %s.%s (wie E2391).';
+     En: '%s.%s is not virtual; the class reference always runs %s.%s (like E2391).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Prüfung einer Unit für class-reference-nonvirtual-constructor.</summary>
@@ -125,7 +143,7 @@ end;
 function TClassReferenceNonvirtualConstructorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('class-reference-nonvirtual-constructor', TRuleSeverity.Warning,
-    'Konstruktor über Klassenreferenz nicht virtuell (wie E2391)');
+    cTexts[TInheritanceClassReferencesText.Title].Text);
 end;
 
 class function TClassReferenceNonvirtualConstructorRule.ClassRefTarget(const ASignature: string): string;
@@ -295,12 +313,13 @@ begin
   Edits := Edits + OverrideEdits(AConstructor);
   if Length(Edits) > 1 then
   begin
-    AFix := TRuleFix.Create(Format('virtual an %s.%s, override in den Nachfahren', [AConstructor.Container,
+    AFix := TRuleFix.Create(cTexts[TInheritanceClassReferencesText.VirtualOverride].Fmt([AConstructor.Container,
       AConstructor.Name]), Edits);
   end
   else
   begin
-    AFix := TRuleFix.Create(Format('virtual an %s.%s', [AConstructor.Container, AConstructor.Name]), Edits);
+    AFix := TRuleFix.Create(cTexts[TInheritanceClassReferencesText.VirtualOn].Fmt([AConstructor.Container,
+      AConstructor.Name]), Edits);
   end;
 end;
 
@@ -395,8 +414,8 @@ begin
   begin
     Fixes := [Fix];
   end;
-  FReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos), Format('%s.%s ist nicht virtuell; über die ' +
-    'Klassenreferenz läuft immer %s.%s (wie E2391).', [Member.Container, Member.Name, Member.Container,
+  FReport.Add(TTextRange.Create(AAccess.StartPos, AAccess.EndPos),
+    cTexts[TInheritanceClassReferencesText.NotVirtual].Fmt([Member.Container, Member.Name, Member.Container,
     Member.Name]), TRuleConfidence.High, Fixes);
 end;
 
@@ -446,5 +465,8 @@ begin
     FResolver.UnpinTree;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.ClassReferences', cTexts);
 
 end.

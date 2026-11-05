@@ -86,7 +86,65 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TGeneralText = (GuidNotCreated, EmptyExceptTitle, EmptyExcept, InsertRaise, EmptyFinallyTitle, ReplaceTryByBegin,
+    RemoveTry, EmptyFinallyFree, EmptyFinally, InterfaceGuidTitle, LikeE2232, InterfaceWithoutGuid, InsertGuid,
+    DuplicateGuidTitle, DuplicateGuid, NewGuid, GuidSyntaxTitle, MissingBraces, MissingOpenBrace, MissingCloseBrace,
+    BlockCount, BlockLength, NoHexDigit, AddBraces, LikeE2204, FileHeaderTitle, FileHeader, InsertFileHeader,
+    HardcodedStringTitle, HardcodedString, First, Second, Third, Fourth, Last);
+
+const
+  cTexts: array[TGeneralText] of TAtlasText = (
+    (De: 'GUID konnte nicht erzeugt werden'; En: 'Could not create GUID'),
+    (De: 'Leerer except-Block'; En: 'Empty except block'),
+    (De: 'Leerer except-Block verschluckt jede Ausnahme; behandeln, weiterwerfen oder mit einem Kommentar begründen';
+     En: 'Empty except block swallows every exception; handle it, re-raise it or justify it with a comment'),
+    (De: 'raise; einfügen'; En: 'Insert raise;'),
+    (De: 'Leerer finally-Block'; En: 'Empty finally block'),
+    (De: 'try … finally end durch begin … end ersetzen'; En: 'Replace try … finally end with begin … end'),
+    (De: 'try … finally end entfernen (Rumpf bleibt)'; En: 'Remove try … finally end (body stays)'),
+    (De: 'Leerer finally-Block; fehlt hier %s.Free?'; En: 'Empty finally block; is %s.Free missing here?'),
+    (De: 'Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.';
+     En: 'Empty finally block; the release is missing or try … finally is superfluous.'),
+    (De: 'Interface ohne GUID'; En: 'Interface without GUID'),
+    (De: ' (wie E2232).'; En: ' (like E2232).'),
+    (De: 'Interface %s hat keine GUID; Supports, as und QueryInterface brauchen eine%s';
+     En: 'Interface %s has no GUID; Supports, as and QueryInterface need one%s'),
+    (De: 'GUID einfügen'; En: 'Insert GUID'),
+    (De: 'Zwei Interfaces mit derselben GUID'; En: 'Two interfaces with the same GUID'),
+    (De: '%s hat dieselbe GUID wie %s; Supports und as verwechseln die beiden';
+     En: '%s has the same GUID as %s; Supports and as confuse the two'),
+    (De: 'Neue GUID erzeugen'; En: 'Generate new GUID'),
+    (De: 'GUID mit falscher Schreibweise'; En: 'GUID with wrong notation'),
+    (De: 'Der GUID fehlen die geschweiften Klammern'; En: 'The GUID lacks the curly braces'),
+    (De: 'Der GUID fehlt die öffnende geschweifte Klammer'; En: 'The GUID lacks the opening curly brace'),
+    (De: 'Der GUID fehlt die schließende geschweifte Klammer'; En: 'The GUID lacks the closing curly brace'),
+    (De: 'Die GUID hat %d statt 5 Blöcke'; En: 'The GUID has %d instead of 5 blocks'),
+    (De: 'Der %s Block der GUID hat %d statt %d Zeichen';
+     En: 'The %s block of the GUID has %d instead of %d characters'),
+    (De: 'Die GUID enthält „%s“, das ist keine Hexadezimalziffer';
+     En: 'The GUID contains “%s”, which is not a hexadecimal digit'),
+    (De: 'Geschweifte Klammern ergänzen'; En: 'Add curly braces'),
+    (De: ' (wie E2204).'; En: ' (like E2204).'),
+    (De: 'Dateikopf fehlt oder weicht ab'; En: 'File header missing or different'),
+    (De: 'Der Dateikopf entspricht nicht der Vorlage'; En: 'The file header does not match the template'),
+    (De: 'Dateikopf einfügen'; En: 'Insert file header'),
+    (De: 'Text im Code statt resourcestring'; En: 'Text in code instead of resourcestring'),
+    (De: 'Text im Code; für Übersetzungen in einen resourcestring auslagern';
+     En: 'Text in code; move it into a resourcestring for translations'),
+    (De: 'erste'; En: 'first'),
+    (De: 'zweite'; En: 'second'),
+    (De: 'dritte'; En: 'third'),
+    (De: 'vierte'; En: 'fourth'),
+    (De: 'letzte'; En: 'last'));
+
+{$SCOPEDENUMS OFF}
 
 function TokenRange(const AToken: TPascalToken): TTextRange;
 begin
@@ -144,7 +202,7 @@ var
 begin
   if CreateGUID(Guid) <> 0 then
   begin
-    raise EOSError.Create('GUID konnte nicht erzeugt werden');
+    raise EOSError.Create(cTexts[TGeneralText.GuidNotCreated].Text);
   end;
   Result := '[''' + GUIDToString(Guid) + ''']';
 end;
@@ -153,7 +211,7 @@ end;
 
 function TEmptyExceptRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('empty-except', TRuleSeverity.Warning, 'Leerer except-Block');
+  Result := TRuleDescriptor.Create('empty-except', TRuleSeverity.Warning, cTexts[TGeneralText.EmptyExceptTitle].Text);
 end;
 
 procedure TEmptyExceptRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -190,9 +248,8 @@ begin
       Continue;
     end;
     Indent := LineIndent(AContext.Text, Tokens[Index].StartPos.Line);
-    AReport.Add(TokenRange(Tokens[Index]), 'Leerer except-Block verschluckt jede Ausnahme; behandeln, ' +
-      'weiterwerfen oder mit einem Kommentar begründen', TRuleConfidence.High,
-      [TRuleFix.Create('raise; einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos,
+    AReport.Add(TokenRange(Tokens[Index]), cTexts[TGeneralText.EmptyExcept].Text, TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TGeneralText.InsertRaise].Text, [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos,
         Tokens[Index].EndPos), TTextLines.LineBreakOf(AContext.Text) + Indent + '  raise;')])]);
   end;
 end;
@@ -201,7 +258,7 @@ end;
 
 function TEmptyFinallyRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('empty-finally', TRuleSeverity.Hint, 'Leerer finally-Block');
+  Result := TRuleDescriptor.Create('empty-finally', TRuleSeverity.Hint, cTexts[TGeneralText.EmptyFinallyTitle].Text);
 end;
 
 procedure TEmptyFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -408,7 +465,7 @@ var
       Length(Lines[mEndLine])));
     if not InStatementList(ATry) and (StatementCount(ATry) > 1) then
     begin
-      AFix := TRuleFix.Create('try … finally end durch begin … end ersetzen',
+      AFix := TRuleFix.Create(cTexts[TGeneralText.ReplaceTryByBegin].Text,
         [TRuleEdit.Create(mRange, TTextLines.JoinLines(BeginEndBody(mTryLine, mFinallyLine, mEndLine), LineBreak))]);
       Exit(True);
     end;
@@ -417,7 +474,7 @@ var
     Result := mBody <> nil;
     if Result then
     begin
-      AFix := TRuleFix.Create('try … finally end entfernen (Rumpf bleibt)',
+      AFix := TRuleFix.Create(cTexts[TGeneralText.RemoveTry].Text,
         [TRuleEdit.Create(mRange, TTextLines.JoinLines(mBody, LineBreak))]);
     end;
   end;
@@ -452,11 +509,11 @@ var
     Variable := CreatedVariable(ATry);
     if Variable <> '' then
     begin
-      Message := Format('Leerer finally-Block; fehlt hier %s.Free?', [Variable]);
+      Message := cTexts[TGeneralText.EmptyFinallyFree].Fmt([Variable]);
     end
     else
     begin
-      Message := 'Leerer finally-Block; die Freigabe fehlt oder try … finally ist überflüssig.';
+      Message := cTexts[TGeneralText.EmptyFinally].Text;
     end;
     if Fix(ATry, TryToken, FinallyToken, EndToken, RuleFix) then
     begin
@@ -612,7 +669,8 @@ end;
 
 function TInterfaceGuidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('interface-guid', TRuleSeverity.Warning, 'Interface ohne GUID');
+  Result := TRuleDescriptor.Create('interface-guid', TRuleSeverity.Warning,
+    cTexts[TGeneralText.InterfaceGuidTitle].Text);
 end;
 
 /// <summary>Wird AName mit Supports, as oder QueryInterface abgefragt?</summary>
@@ -672,16 +730,17 @@ begin
     if IsQueried(Tokens, Declaration.Name) then
     begin
       Confidence := TRuleConfidence.High;
-      mCode := ' (wie E2232).';
+      mCode := cTexts[TGeneralText.LikeE2232].Text;
     end
     else
     begin
       Confidence := TRuleConfidence.Low;
     end;
     Indent := LineIndent(AContext.Text, Tokens[Declaration.NameToken].StartPos.Line);
-    AReport.Add(TokenRange(Tokens[Declaration.NameToken]), Format('Interface %s hat keine GUID; Supports, as ' +
-      'und QueryInterface brauchen eine%s', [Declaration.Name, mCode]), Confidence,
-      [TRuleFix.Create('GUID einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Declaration.HeaderEnd].EndPos,
+    AReport.Add(TokenRange(Tokens[Declaration.NameToken]),
+      cTexts[TGeneralText.InterfaceWithoutGuid].Fmt([Declaration.Name, mCode]), Confidence,
+      [TRuleFix.Create(cTexts[TGeneralText.InsertGuid].Text,
+        [TRuleEdit.Create(TTextRange.Create(Tokens[Declaration.HeaderEnd].EndPos,
         Tokens[Declaration.HeaderEnd].EndPos),
         TTextLines.LineBreakOf(AContext.Text) + Indent + '  ' + GuidLine)], True)]);
   end;
@@ -692,7 +751,7 @@ end;
 function TDuplicateInterfaceGuidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('duplicate-interface-guid', TRuleSeverity.Error,
-    'Zwei Interfaces mit derselben GUID');
+    cTexts[TGeneralText.DuplicateGuidTitle].Text);
 end;
 
 procedure TDuplicateInterfaceGuidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -719,9 +778,9 @@ begin
       if (Other <> Index) and (Declarations[Other].Guid = Declarations[Index].Guid) then
       begin
         Token := Tokens[Declarations[Index].GuidToken];
-        AReport.Add(TokenRange(Token), Format('%s hat dieselbe GUID wie %s; Supports und as verwechseln die ' +
-          'beiden', [Declarations[Index].Name, Declarations[Other].Name]), TRuleConfidence.High,
-          [TRuleFix.Create('Neue GUID erzeugen', [TRuleEdit.Create(TokenRange(Token),
+        AReport.Add(TokenRange(Token), cTexts[TGeneralText.DuplicateGuid].Fmt([Declarations[Index].Name,
+          Declarations[Other].Name]), TRuleConfidence.High,
+          [TRuleFix.Create(cTexts[TGeneralText.NewGuid].Text, [TRuleEdit.Create(TokenRange(Token),
             Copy(GuidLine, 2, Length(GuidLine) - 2))])]);
         Break;
       end;
@@ -733,7 +792,8 @@ end;
 
 function TGuidSyntaxInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('guid-syntax-invalid', TRuleSeverity.Error, 'GUID mit falscher Schreibweise');
+  Result := TRuleDescriptor.Create('guid-syntax-invalid', TRuleSeverity.Error,
+    cTexts[TGeneralText.GuidSyntaxTitle].Text);
 end;
 
 /// <summary>Fehlende geschweifte Klammern der GUID AGuid; '' ohne Fehler.</summary>
@@ -742,15 +802,15 @@ begin
   Result := '';
   if not AGuid.StartsWith('{') and not AGuid.EndsWith('}') then
   begin
-    Result := 'Der GUID fehlen die geschweiften Klammern';
+    Result := cTexts[TGeneralText.MissingBraces].Text;
   end
   else if not AGuid.StartsWith('{') then
   begin
-    Result := 'Der GUID fehlt die öffnende geschweifte Klammer';
+    Result := cTexts[TGeneralText.MissingOpenBrace].Text;
   end
   else if not AGuid.EndsWith('}') or (Length(AGuid) < 2) then
   begin
-    Result := 'Der GUID fehlt die schließende geschweifte Klammer';
+    Result := cTexts[TGeneralText.MissingCloseBrace].Text;
   end;
 end;
 
@@ -758,19 +818,20 @@ end;
 function BlockProblem(const ABlocks: TArray<string>): string;
 const
   Lengths: array[0..4] of Integer = (8, 4, 4, 4, 12);
-  Ordinals: array[0..4] of string = ('erste', 'zweite', 'dritte', 'vierte', 'letzte');
+  Ordinals: array[0..4] of TGeneralText = (TGeneralText.First, TGeneralText.Second, TGeneralText.Third,
+    TGeneralText.Fourth, TGeneralText.Last);
 var
   mIndex: Integer;
 begin
   if Length(ABlocks) <> Length(Lengths) then
   begin
-    Exit(Format('Die GUID hat %d statt 5 Blöcke', [Length(ABlocks)]));
+    Exit(cTexts[TGeneralText.BlockCount].Fmt([Length(ABlocks)]));
   end;
   for mIndex := 0 to High(ABlocks) do
   begin
     if Length(ABlocks[mIndex]) <> Lengths[mIndex] then
     begin
-      Exit(Format('Der %s Block der GUID hat %d statt %d Zeichen', [Ordinals[mIndex], Length(ABlocks[mIndex]),
+      Exit(cTexts[TGeneralText.BlockLength].Fmt([cTexts[Ordinals[mIndex]].Text, Length(ABlocks[mIndex]),
         Lengths[mIndex]]));
     end;
   end;
@@ -789,7 +850,7 @@ begin
     begin
       if not CharInSet(mChar, ['0'..'9', 'A'..'F', 'a'..'f']) then
       begin
-        Exit(Format('Die GUID enthält „%s“, das ist keine Hexadezimalziffer', [mChar]));
+        Exit(cTexts[TGeneralText.NoHexDigit].Fmt([mChar]));
       end;
     end;
   end;
@@ -842,12 +903,12 @@ var
     Fixes := nil;
     if TGuidSyntaxInvalidRule.Problem('{' + Guid + '}') = '' then
     begin
-      Fixes := [TRuleFix.Create('Geschweifte Klammern ergänzen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
+      Fixes := [TRuleFix.Create(cTexts[TGeneralText.AddBraces].Text, [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
         '''{' + Guid + '}''')], True)];
     end;
-    Fixes := Fixes + [TRuleFix.Create('Neue GUID erzeugen', [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
+    Fixes := Fixes + [TRuleFix.Create(cTexts[TGeneralText.NewGuid].Text, [TRuleEdit.Create(TokenRange(Tokens[AIndex]),
       Copy(GuidLine, 2, Length(GuidLine) - 2))])];
-    AReport.Add(TokenRange(Tokens[AIndex]), Message + ' (wie E2204).', TRuleConfidence.High, Fixes);
+    AReport.Add(TokenRange(Tokens[AIndex]), Message + cTexts[TGeneralText.LikeE2204].Text, TRuleConfidence.High, Fixes);
   end;
 
 var
@@ -891,7 +952,7 @@ end;
 
 function TFileHeaderRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('file-header', TRuleSeverity.Hint, 'Dateikopf fehlt oder weicht ab', True);
+  Result := TRuleDescriptor.Create('file-header', TRuleSeverity.Hint, cTexts[TGeneralText.FileHeaderTitle].Text, True);
 end;
 
 class function TFileHeaderRule.Template(const AOptions: string): string;
@@ -934,15 +995,17 @@ begin
   begin
     Exit;
   end;
-  AReport.Add(TTextRange.Create(0, 0, 0, 0), 'Der Dateikopf entspricht nicht der Vorlage', TRuleConfidence.High,
-    [TRuleFix.Create('Dateikopf einfügen', [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0), Header + LineBreak)])]);
+  AReport.Add(TTextRange.Create(0, 0, 0, 0), cTexts[TGeneralText.FileHeader].Text, TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TGeneralText.InsertFileHeader].Text, [TRuleEdit.Create(TTextRange.Create(0, 0, 0, 0),
+      Header + LineBreak)])]);
 end;
 
 { THardcodedStringRule }
 
 function THardcodedStringRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('hardcoded-string', TRuleSeverity.Hint, 'Text im Code statt resourcestring',
+  Result := TRuleDescriptor.Create('hardcoded-string', TRuleSeverity.Hint,
+    cTexts[TGeneralText.HardcodedStringTitle].Text,
     True);
 end;
 
@@ -1004,7 +1067,7 @@ begin
     end;
     if LooksLikeText(AnsiDequotedStr(Tokens[Index].Text, '''')) then
     begin
-      AReport.Add(TokenRange(Tokens[Index]), 'Text im Code; für Übersetzungen in einen resourcestring auslagern',
+      AReport.Add(TokenRange(Tokens[Index]), cTexts[TGeneralText.HardcodedString].Text,
         TRuleConfidence.Low);
     end;
   end;
@@ -1020,5 +1083,8 @@ begin
   ARegistry.Register(TFileHeaderRule.Create);
   ARegistry.Register(THardcodedStringRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.General', cTexts);
 
 end.

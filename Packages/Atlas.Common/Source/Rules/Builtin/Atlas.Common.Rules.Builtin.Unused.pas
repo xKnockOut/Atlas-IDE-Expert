@@ -99,7 +99,28 @@ uses
   Atlas.Common.Rules.Builtin.Flow,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Unused.Duplicates,
-  Atlas.Common.Rules.Builtin.Unused.EmptyRoutines;
+  Atlas.Common.Rules.Builtin.Unused.EmptyRoutines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnusedText = (LocalTitle, RemoveVariable, LocalUnused, ParamTitle, ParamUnused, AssignedTitle, LikeH2077,
+    NeverRead);
+
+const
+  cTexts: array[TUnusedText] of TAtlasText = (
+    (De: 'Lokale Variable wird nicht verwendet'; En: 'Local variable is not used'),
+    (De: 'Variable "%s" entfernen'; En: 'Remove variable "%s"'),
+    (De: 'Variable "%s" wird nicht verwendet'; En: 'Variable "%s" is not used'),
+    (De: 'Parameter wird nicht verwendet'; En: 'Parameter is not used'),
+    (De: 'Parameter "%s" wird nicht verwendet'; En: 'Parameter "%s" is not used'),
+    (De: 'Zugewiesener Wert wird nie gelesen'; En: 'Assigned value is never read'),
+    (De: ' (wie H2077)'; En: ' (like H2077)'),
+    (De: 'Der an "%s" zugewiesene Wert wird nie gelesen%s'; En: 'The value assigned to "%s" is never read%s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TNameSet = TDictionary<string, Boolean>;
@@ -369,7 +390,7 @@ end;
 
 function TUnusedLocalRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('unused-local', TRuleSeverity.Hint, 'Lokale Variable wird nicht verwendet');
+  Result := TRuleDescriptor.Create('unused-local', TRuleSeverity.Hint, cTexts[TUnusedText.LocalTitle].Text);
 end;
 
 /// <summary>Ende der Inline-Variablen ab AOffset samt Leerzeichen und ";" dahinter.</summary>
@@ -470,7 +491,7 @@ var
   mTitle: string;
   mStart, mStop: Integer;
 begin
-  mTitle := Format('Variable "%s" entfernen', [AName]);
+  mTitle := cTexts[TUnusedText.RemoveVariable].Fmt([AName]);
   mNames := SplitNames(ADecl.Name);
   if ADecl.Kind = TSyntaxKind.InlineVar then
   begin
@@ -507,7 +528,7 @@ begin
     begin
       Continue;
     end;
-    mMessage := Format('Variable "%s" wird nicht verwendet', [mName]);
+    mMessage := cTexts[TUnusedText.LocalUnused].Fmt([mName]);
     if RemoveVarFix(FCache, FContext, ASection, ADecl, mName, mFix) then
     begin
       FReport.Add(NameRange(FContext, ADecl, mName), mMessage, mConfidence, [mFix]);
@@ -558,7 +579,7 @@ end;
 
 function TUnusedParameterRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('unused-parameter', TRuleSeverity.Hint, 'Parameter wird nicht verwendet');
+  Result := TRuleDescriptor.Create('unused-parameter', TRuleSeverity.Hint, cTexts[TUnusedText.ParamTitle].Text);
 end;
 
 /// <summary>Wird ANode als Wert verwendet (Zuweisung, Argument, @) statt aufgerufen?</summary>
@@ -667,7 +688,7 @@ begin
     begin
       mConfidence := TRuleConfidence.Medium;
     end;
-    FReport.Add(NameRange(FContext, AParam, mName), Format('Parameter "%s" wird nicht verwendet', [mName]),
+    FReport.Add(NameRange(FContext, AParam, mName), cTexts[TUnusedText.ParamUnused].Fmt([mName]),
       mConfidence);
   end;
 end;
@@ -712,7 +733,7 @@ end;
 
 function TUnusedAssignmentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('unused-assignment', TRuleSeverity.Hint, 'Zugewiesener Wert wird nie gelesen');
+  Result := TRuleDescriptor.Create('unused-assignment', TRuleSeverity.Hint, cTexts[TUnusedText.AssignedTitle].Text);
 end;
 
 /// <summary>Kommt AName in lokalen Routinen oder anonymen Methoden unter ANode vor (ANode selbst zählt nicht)?</summary>
@@ -897,7 +918,7 @@ begin
   if FTypes.TryGetValue(LowerCase(AName), mTypeText) and (mTypeText <> '') and
     (FManaged.Managed(mTypeText, 0) = '') and not FManaged.CustomManaged(mTypeText, 0) then
   begin
-    Result := ' (wie H2077)';
+    Result := cTexts[TUnusedText.LikeH2077].Text;
   end;
 end;
 
@@ -1034,7 +1055,7 @@ begin
     // Leeren eines gesetzten Werts ist Freigabe (Started := Default(…) am Testende, Lookup := nil vor Free).
     if WriteUnread(mWrite) and not (ClearsValue(FContext.Text, mWrite) and HoldsValue(mWrite)) then
     begin
-      FReport.Add(NameRange(FContext, mWrite, FName), Format('Der an "%s" zugewiesene Wert wird nie gelesen%s',
+      FReport.Add(NameRange(FContext, mWrite, FName), cTexts[TUnusedText.NeverRead].Fmt(
         [FName, CodeSuffix(FName)]), TRuleConfidence.High);
     end;
   end;
@@ -1112,5 +1133,8 @@ begin
   ARegistry.Register(TDuplicateAssignmentRule.Create);
   ARegistry.Register(TEmptyRoutineRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unused', cTexts);
 
 end.

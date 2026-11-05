@@ -55,7 +55,22 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Suppressions,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSuppressionStatsText = (Row, Summary);
+
+const
+  cTexts: array[TSuppressionStatsText] of TAtlasText = (
+    (De: '%-30s %5d  (Zeile %d, Datei %d, ungenutzt %d, in %d Dateien)';
+     En: '%-30s %5d  (line %d, file %d, unused %d, in %d files)'),
+    (De: '%d Dateien ausgewertet, %d Regeln unterdrückt'; En: '%d files evaluated, %d rules suppressed'));
+
+{$SCOPEDENUMS OFF}
 
 { TSuppressionCount }
 
@@ -190,11 +205,11 @@ begin
     begin
       for Count in Counts do
       begin
-        Builder.Append(Format('%-30s %5d  (Zeile %d, Datei %d, ungenutzt %d, in %d Dateien)',
+        Builder.Append(cTexts[TSuppressionStatsText.Row].Fmt(
           [Count.RuleId, Count.Total, Count.LineCount, Count.FileCount, Count.UnusedCount, Count.Files]))
           .Append(sLineBreak);
       end;
-      Builder.Append(Format('%d Dateien ausgewertet, %d Regeln unterdrückt', [FFiles, FCounts.Count]))
+      Builder.Append(cTexts[TSuppressionStatsText.Summary].Fmt([FFiles, FCounts.Count]))
         .Append(sLineBreak);
     end
     else
@@ -219,5 +234,8 @@ begin
     Builder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.SuppressionStats', cTexts);
 
 end.

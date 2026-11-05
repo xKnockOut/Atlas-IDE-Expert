@@ -85,7 +85,36 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.ConsideredUsed,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TVisibilityText = (InstanceField, InstanceProperty, InstanceMethod, NotVisible, NotInClassMethod, PrivateInAncestor,
+    AccessTitle, PrivateField, PrivateConstant, PrivateMethod, RemoveName, NeverUsed, Title, PrivateProperty);
+
+const
+  cTexts: array[TVisibilityText] of TAtlasText = (
+    (De: 'ein Instanzfeld'; En: 'an instance field'),
+    (De: 'eine Instanz-Property'; En: 'an instance property'),
+    (De: 'eine Instanzmethode'; En: 'an instance method'),
+    (De: '%s.%s ist %s und hier nicht sichtbar (wie %s).'; En: '%s.%s is %s and not visible here (like %s).'),
+    (De: '%s ist %s und in der Klassenmethode %s nicht erreichbar (wie E2124).';
+     En: '%s is %s and not reachable in the class method %s (like E2124).'),
+    (De: 'Die Property %s verweist auf %s.%s, das im Vorfahren private ist (wie W1045).';
+     En: 'The property %s refers to %s.%s, which is private in the ancestor (like W1045).'),
+    (De: 'Zugriff auf ein nicht sichtbares Mitglied'; En: 'Access to a member that is not visible'),
+    (De: 'Privates Feld'; En: 'Private field'),
+    (De: 'Private Konstante'; En: 'Private constant'),
+    (De: 'Private Methode'; En: 'Private method'),
+    (De: '%s entfernen'; En: 'Remove %s'),
+    (De: '%s %s wird nie verwendet (wie H2219).'; En: '%s %s is never used (like H2219).'),
+    (De: 'Privates Mitglied wird nie verwendet'; En: 'Private member is never used'),
+    (De: 'Private Property'; En: 'Private property'));
+
+{$SCOPEDENUMS OFF}
 
 const
   Restricted = [TIndexVisibility.Private, TIndexVisibility.StrictPrivate, TIndexVisibility.Protected,
@@ -227,11 +256,11 @@ function InstanceKindText(AKind: TIndexSymbolKind): string;
 begin
   case AKind of
     TIndexSymbolKind.Field:
-      Result := 'ein Instanzfeld';
+      Result := cTexts[TVisibilityText.InstanceField].Text;
     TIndexSymbolKind.Property_:
-      Result := 'eine Instanz-Property';
+      Result := cTexts[TVisibilityText.InstanceProperty].Text;
   else
-    Result := 'eine Instanzmethode';
+    Result := cTexts[TVisibilityText.InstanceMethod].Text;
   end;
 end;
 
@@ -526,7 +555,7 @@ begin
   begin
     mCode := 'E2362';
   end;
-  FReport.Add(MemberRange(ANode), Format('%s.%s ist %s und hier nicht sichtbar (wie %s).', [mMember.Container,
+  FReport.Add(MemberRange(ANode), cTexts[TVisibilityText.NotVisible].Fmt([mMember.Container,
     mMember.Name, VisibilityText(mMember.Visibility), mCode]), TRuleConfidence.High);
 end;
 
@@ -581,8 +610,8 @@ begin
     Exit;
   end;
   mMethodName := Copy(AMethod.Name, LastDelimiter('.', AMethod.Name) + 1, MaxInt);
-  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s ist %s und in der Klassenmethode %s ' +
-    'nicht erreichbar (wie E2124).', [mSymbol.Name, InstanceKindText(mSymbol.SymbolKind), mMethodName]),
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+    cTexts[TVisibilityText.NotInClassMethod].Fmt([mSymbol.Name, InstanceKindText(mSymbol.SymbolKind), mMethodName]),
     TRuleConfidence.High);
 end;
 
@@ -660,8 +689,8 @@ begin
         not mMember.Unavailable and (mMember.Condition = '');
       if Result then
       begin
-        FReport.AddWithSeverity(ASymbol.SelectionRange, Format('Die Property %s verweist auf %s.%s, ' +
-          'das im Vorfahren private ist (wie W1045).', [ASymbol.Name, mChain[mLevel].Symbol.Name, mMember.Name]),
+        FReport.AddWithSeverity(ASymbol.SelectionRange, cTexts[TVisibilityText.PrivateInAncestor].Fmt([ASymbol.Name,
+          mChain[mLevel].Symbol.Name, mMember.Name]),
           TRuleSeverity.Warning, nil);
       end;
       Exit;
@@ -732,7 +761,7 @@ end;
 function TInaccessibleMemberRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InaccessibleMemberRuleId, TRuleSeverity.Error,
-    'Zugriff auf ein nicht sichtbares Mitglied');
+    cTexts[TVisibilityText.AccessTitle].Text);
 end;
 
 procedure TInaccessibleMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -797,13 +826,13 @@ function PrivateKindText(const ASymbol: TIndexSymbol): string;
 begin
   case ASymbol.Kind of
     TIndexSymbolKind.Field:
-      Result := 'Privates Feld';
+      Result := cTexts[TVisibilityText.PrivateField].Text;
     TIndexSymbolKind.Constant:
-      Result := 'Private Konstante';
+      Result := cTexts[TVisibilityText.PrivateConstant].Text;
     TIndexSymbolKind.Property_:
-      Result := 'Private Property';
+      Result := cTexts[TVisibilityText.PrivateProperty].Text;
   else
-    Result := 'Private Methode';
+    Result := cTexts[TVisibilityText.PrivateMethod].Text;
   end;
 end;
 
@@ -1042,7 +1071,7 @@ begin
   begin
     Exit;
   end;
-  Result := [TRuleFix.Create(Format('%s entfernen', [ASymbol.Name]), mEdits)];
+  Result := [TRuleFix.Create(cTexts[TVisibilityText.RemoveName].Fmt([ASymbol.Name]), mEdits)];
 end;
 
 /// <summary>Ist ASymbol ein privates Mitglied (Felder nur mit includeFields), das nie vorkommt?</summary>
@@ -1071,7 +1100,7 @@ procedure TUnusedPrivateMemberCheck.CheckMember(const ASymbol: TIndexSymbol);
 begin
   if Candidate(ASymbol) and not Excused(ASymbol) then
   begin
-    FReport.Add(ASymbol.SelectionRange, Format('%s %s wird nie verwendet (wie H2219).', [PrivateKindText(ASymbol),
+    FReport.Add(ASymbol.SelectionRange, cTexts[TVisibilityText.NeverUsed].Fmt([PrivateKindText(ASymbol),
       ASymbol.Name]), TRuleConfidence.High, RemoveFix(ASymbol));
   end;
 end;
@@ -1149,7 +1178,7 @@ end;
 function TUnusedPrivateMemberRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnusedPrivateMemberRuleId, TRuleSeverity.Hint,
-    'Privates Mitglied wird nie verwendet');
+    cTexts[TVisibilityText.Title].Text);
 end;
 
 procedure TUnusedPrivateMemberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1173,5 +1202,8 @@ begin
   ARegistry.Register(TInaccessibleMemberRule.Create);
   ARegistry.Register(TUnusedPrivateMemberRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Visibility', cTexts);
 
 end.

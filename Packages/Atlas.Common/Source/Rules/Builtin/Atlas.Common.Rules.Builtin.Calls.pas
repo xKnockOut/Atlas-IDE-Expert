@@ -105,7 +105,43 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCallsText = (Title, IsMissing, AndWord, OneArgument, Arguments, NonePassed, OnePassed, Passed, OpenSignatureHelp,
+    ExpectsNone, Expects, ExpectsAtMost, ExpectsMissing, ExpectsAtLeast, OverloadTitle, NoOverloadNoArgs,
+    NoOverloadFits, Ambiguous, AreMissing);
+
+const
+  cTexts: array[TCallsText] of TAtlasText = (
+    (De: 'Falsche Anzahl Argumente beim Aufruf'; En: 'Wrong number of arguments in call'),
+    (De: ' fehlt'; En: ' is missing'),
+    (De: ' und '; En: ' and '),
+    (De: '1 Argument'; En: '1 argument'),
+    (De: ' Argumente'; En: ' arguments'),
+    (De: 'übergeben ist keins'; En: 'none passed'),
+    (De: 'übergeben ist 1'; En: '1 passed'),
+    (De: 'übergeben sind '; En: 'passed: '),
+    (De: 'Signaturhilfe öffnen'; En: 'Open signature help'),
+    (De: '%s erwartet keine Argumente, %s (wie E2034).'; En: '%s expects no arguments, %s (like E2034).'),
+    (De: '%s erwartet %s, %s (wie E2034).'; En: '%s expects %s, %s (like E2034).'),
+    (De: '%s erwartet höchstens %s, %s (wie E2034).'; En: '%s expects at most %s, %s (like E2034).'),
+    (De: '%s erwartet %s, %s; %s (wie E2035).'; En: '%s expects %s, %s; %s (like E2035).'),
+    (De: '%s erwartet mindestens %s, %s; %s (wie E2035).'; En: '%s expects at least %s, %s; %s (like E2035).'),
+    (De: 'Überladung nicht auflösbar oder mehrdeutig'; En: 'Overload cannot be resolved or is ambiguous'),
+    (De: 'Keine der %d Überladungen von %s lässt sich ohne Argumente aufrufen (wie E2250).';
+     En: 'None of the %d overloads of %s can be called without arguments (like E2250).'),
+    (De: 'Keine der %d Überladungen von %s passt zu den Argumenten (%s) (wie E2250).';
+     En: 'None of the %d overloads of %s matches the arguments (%s) (like E2250).'),
+    (De: 'Aufruf von %s ist mehrdeutig: %s passen gleich gut (wie E2251).';
+     En: 'Call to %s is ambiguous: %s match equally well (like E2251).'),
+    (De: ' fehlen'; En: ' are missing'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -115,7 +151,7 @@ const
 function TArgumentCountMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ArgumentCountMismatchRuleId, TRuleSeverity.Error,
-    'Falsche Anzahl Argumente beim Aufruf');
+    cTexts[TCallsText.Title].Text);
 end;
 
 /// <summary>Erste Klammer auf oberster Ebene (außerhalb von Strings und Typargumenten); 0 ohne. Steht ":"
@@ -233,7 +269,7 @@ begin
   end;
   if Length(ANames) = 1 then
   begin
-    Exit(ANames[0] + ' fehlt');
+    Exit(ANames[0] + cTexts[TCallsText.IsMissing].Text);
   end;
   for Index := 0 to High(ANames) - 1 do
   begin
@@ -243,18 +279,18 @@ begin
     end;
     Result := Result + ANames[Index];
   end;
-  Result := Result + ' und ' + ANames[High(ANames)] + ' fehlen';
+  Result := Result + cTexts[TCallsText.AndWord].Text + ANames[High(ANames)] + cTexts[TCallsText.AreMissing].Text;
 end;
 
 function ArgumentsText(ACount: Integer): string;
 begin
   if ACount = 1 then
   begin
-    Result := '1 Argument';
+    Result := cTexts[TCallsText.OneArgument].Text;
   end
   else
   begin
-    Result := IntToStr(ACount) + ' Argumente';
+    Result := IntToStr(ACount) + cTexts[TCallsText.Arguments].Text;
   end;
 end;
 
@@ -262,15 +298,15 @@ function PassedText(ACount: Integer): string;
 begin
   if ACount = 0 then
   begin
-    Result := 'übergeben ist keins';
+    Result := cTexts[TCallsText.NonePassed].Text;
   end
   else if ACount = 1 then
   begin
-    Result := 'übergeben ist 1';
+    Result := cTexts[TCallsText.OnePassed].Text;
   end
   else
   begin
-    Result := 'übergeben sind ' + IntToStr(ACount);
+    Result := cTexts[TCallsText.Passed].Text + IntToStr(ACount);
   end;
 end;
 
@@ -321,12 +357,12 @@ begin
   if ANode = ACallee then
   begin
     Target := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character + 1);
-    Result := TRuleFix.SignatureHelp('Signaturhilfe öffnen', Target);
+    Result := TRuleFix.SignatureHelp(cTexts[TCallsText.OpenSignatureHelp].Text, Target);
     Result.Edits := [TTextEdit.Create(TTextRange.Create(ACallee.EndPos, ACallee.EndPos), '()')];
   end
   else
   begin
-    Result := TRuleFix.SignatureHelp('Signaturhilfe öffnen', TTextPosition.Create(ANode.EndPos.Line,
+    Result := TRuleFix.SignatureHelp(cTexts[TCallsText.OpenSignatureHelp].Text, TTextPosition.Create(ANode.EndPos.Line,
       ANode.EndPos.Character - 1));
   end;
 end;
@@ -525,16 +561,16 @@ var
   begin
     if ARoutine.MaxArgs = 0 then
     begin
-      Result := Format('%s erwartet keine Argumente, %s (wie E2034).', [ARoutine.Name, PassedText(ACount)]);
+      Result := cTexts[TCallsText.ExpectsNone].Fmt([ARoutine.Name, PassedText(ACount)]);
     end
     else if ARoutine.MinArgs = ARoutine.MaxArgs then
     begin
-      Result := Format('%s erwartet %s, %s (wie E2034).', [ARoutine.Name, ArgumentsText(ARoutine.MaxArgs),
+      Result := cTexts[TCallsText.Expects].Fmt([ARoutine.Name, ArgumentsText(ARoutine.MaxArgs),
         PassedText(ACount)]);
     end
     else
     begin
-      Result := Format('%s erwartet höchstens %s, %s (wie E2034).', [ARoutine.Name,
+      Result := cTexts[TCallsText.ExpectsAtMost].Fmt([ARoutine.Name,
         ArgumentsText(ARoutine.MaxArgs), PassedText(ACount)]);
     end;
   end;
@@ -553,12 +589,12 @@ var
     end;
     if ARoutine.MinArgs = ARoutine.MaxArgs then
     begin
-      Result := Format('%s erwartet %s, %s; %s (wie E2035).', [ARoutine.Name, ArgumentsText(ARoutine.MinArgs),
+      Result := cTexts[TCallsText.ExpectsMissing].Fmt([ARoutine.Name, ArgumentsText(ARoutine.MinArgs),
         PassedText(ACount), MissingText(Missing)]);
     end
     else
     begin
-      Result := Format('%s erwartet mindestens %s, %s; %s (wie E2035).', [ARoutine.Name,
+      Result := cTexts[TCallsText.ExpectsAtLeast].Fmt([ARoutine.Name,
         ArgumentsText(ARoutine.MinArgs), PassedText(ACount), MissingText(Missing)]);
     end;
   end;
@@ -678,7 +714,7 @@ type
 function TOverloadResolutionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OverloadResolutionRuleId, TRuleSeverity.Error,
-    'Überladung nicht auflösbar oder mehrdeutig');
+    cTexts[TCallsText.OverloadTitle].Text);
 end;
 
 class function TOverloadResolutionRule.Fit(AParameter, AArgument: TExpressionCategory): TArgumentFit;
@@ -1194,7 +1230,7 @@ var
     begin
       if mIndex = High(ACandidates) then
       begin
-        Result := Result + ' und ';
+        Result := Result + cTexts[TCallsText.AndWord].Text;
       end
       else if mIndex > 0 then
       begin
@@ -1266,13 +1302,11 @@ var
   begin
     if Length(ATypes) = 0 then
     begin
-      Result := Format('Keine der %d Überladungen von %s lässt sich ohne Argumente aufrufen (wie E2250).',
-        [ACount, ACallee.Name]);
+      Result := cTexts[TCallsText.NoOverloadNoArgs].Fmt([ACount, ACallee.Name]);
     end
     else
     begin
-      Result := Format('Keine der %d Überladungen von %s passt zu den Argumenten (%s) (wie E2250).',
-        [ACount, ACallee.Name, TypesText(ATypes)]);
+      Result := cTexts[TCallsText.NoOverloadFits].Fmt([ACount, ACallee.Name, TypesText(ATypes)]);
     end;
   end;
 
@@ -1303,8 +1337,7 @@ var
     end
     else if Ambiguous(mApplicable, ANode, mTypes) then
     begin
-      mMessage := Format('Aufruf von %s ist mehrdeutig: %s passen gleich gut (wie E2251).',
-        [ACallee.Name, ListText(mApplicable)]);
+      mMessage := cTexts[TCallsText.Ambiguous].Fmt([ACallee.Name, ListText(mApplicable)]);
     end
     else
     begin
@@ -1397,5 +1430,8 @@ begin
   ARegistry.Register(TArgumentCountMismatchRule.Create);
   ARegistry.Register(TOverloadResolutionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Calls', cTexts);
 
 end.

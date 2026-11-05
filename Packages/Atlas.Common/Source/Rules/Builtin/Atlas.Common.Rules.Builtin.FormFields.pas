@@ -74,7 +74,37 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormFieldsText = (NoObjectTitle, NoObject, NoFieldTitle, AddField, NoField, ClassTitle, ClassDiffers, ChangeType,
+    NotCreatedTitle, NotCreated);
+
+const
+  cTexts: array[TFormFieldsText] of TAtlasText = (
+    (De: 'Komponentenfeld des Formulars ohne Objekt in der Formulardatei';
+     En: 'Component field of the form without an object in the form file'),
+    (De: 'Feld %s hat kein Objekt in der Formulardatei; beim Laden bleibt es nil';
+     En: 'Field %s has no object in the form file; it stays nil after loading'),
+    (De: 'Objekt der Formulardatei ohne Feld in der Formularklasse';
+     En: 'Object of the form file without a field in the form class'),
+    (De: 'Feld %s: %s ergänzen'; En: 'Add field %s: %s'),
+    (De: 'Objekt %s: %s der Formulardatei hat kein Feld in %s';
+     En: 'Object %s: %s of the form file has no field in %s'),
+    (De: 'Feld und Objekt der Formulardatei haben verschiedene Klassen';
+     En: 'Field and object of the form file have different classes'),
+    (De: 'Feld %s ist %s, das Objekt in der Formulardatei aber %s';
+     En: 'Field %s is %s, but the object in the form file is %s'),
+    (De: 'Typ auf %s ändern'; En: 'Change type to %s'),
+    (De: 'Zugriff auf ein Formular, das noch nicht erzeugt ist'; En: 'Access to a form that is not created yet'),
+    (De: '%s wird in der .dpr erst nach %s erzeugt und ist hier noch nil.';
+     En: '%s is created in the .dpr only after %s and is still nil here.'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TFormField = record
@@ -339,7 +369,7 @@ end;
 function TFormFieldWithoutObjectRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-field-without-object', TRuleSeverity.Warning,
-    'Komponentenfeld des Formulars ohne Objekt in der Formulardatei');
+    cTexts[TFormFieldsText.NoObjectTitle].Text);
 end;
 
 procedure TFormFieldWithoutObjectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -357,8 +387,7 @@ begin
     begin
       if Field.IsPublished and not Match.HasObject(Field.Name) then
       begin
-        AReport.Add(NodeRange(Field.Node), Format('Feld %s hat kein Objekt in der Formulardatei; beim Laden ' +
-          'bleibt es nil', [Field.Name]));
+        AReport.Add(NodeRange(Field.Node), cTexts[TFormFieldsText.NoObject].Fmt([Field.Name]));
       end;
     end;
   finally
@@ -371,7 +400,7 @@ end;
 function TFormObjectWithoutFieldRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-object-without-field', TRuleSeverity.Warning,
-    'Objekt der Formulardatei ohne Feld in der Formularklasse');
+    cTexts[TFormFieldsText.NoFieldTitle].Text);
 end;
 
 procedure TFormObjectWithoutFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -396,15 +425,15 @@ begin
         Fixes := nil;
         if Match.FieldInsert(AContext.Text, Line, Indent) then
         begin
-          Fixes := [TRuleFix.Create(Format('Feld %s: %s ergänzen', [Obj.Name, Obj.TypeName]),
+          Fixes := [TRuleFix.Create(cTexts[TFormFieldsText.AddField].Fmt([Obj.Name, Obj.TypeName]),
             [TRuleEdit.Create(TTextRange.Create(Line, 0, Line, 0),
             Indent + Obj.Name + ': ' + Obj.TypeName + ';' + TTextLines.LineBreakOf(AContext.Text))])];
         end;
         // Gemeldet wird an der Formularklasse; die Formulardatei ist nicht das geprüfte Dokument.
         AReport.Add(TTextRange.Create(Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character,
           Match.FClass.Parent.StartPos.Line, Match.FClass.Parent.StartPos.Character +
-          Length(Match.FClass.Parent.Name)), Format('Objekt %s: %s der Formulardatei hat kein Feld ' +
-          'in %s', [Obj.Name, Obj.TypeName, Match.Document.Root.TypeName]), Fixes);
+          Length(Match.FClass.Parent.Name)), cTexts[TFormFieldsText.NoField].Fmt([Obj.Name, Obj.TypeName,
+            Match.Document.Root.TypeName]), Fixes);
       end;
     end;
   finally
@@ -417,7 +446,7 @@ end;
 function TFormFieldTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-field-type-mismatch', TRuleSeverity.Warning,
-    'Feld und Objekt der Formulardatei haben verschiedene Klassen');
+    cTexts[TFormFieldsText.ClassTitle].Text);
 end;
 
 function KnownClass(const AIndex: ISymbolIndex; const AName: string): Boolean;
@@ -455,9 +484,9 @@ begin
       if Match.FindField(Obj.Name, Field) and (Field.TypeNode <> nil) and
         not SameText(ShortName(Field.TypeName), ShortName(Obj.TypeName)) and KnownClass(AContext.Index, Obj.TypeName) then
       begin
-        AReport.Add(NodeRange(Field.TypeNode), Format('Feld %s ist %s, das Objekt in der Formulardatei aber %s',
+        AReport.Add(NodeRange(Field.TypeNode), cTexts[TFormFieldsText.ClassDiffers].Fmt(
           [Field.Name, Field.TypeName, Obj.TypeName]),
-          [TRuleFix.Create(Format('Typ auf %s ändern', [Obj.TypeName]),
+          [TRuleFix.Create(cTexts[TFormFieldsText.ChangeType].Fmt([Obj.TypeName]),
           [TRuleEdit.Create(NodeRange(Field.TypeNode), Obj.TypeName)])]);
       end;
     end;
@@ -471,7 +500,7 @@ end;
 function TFormAccessBeforeCreateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-access-before-create', TRuleSeverity.Warning,
-    'Zugriff auf ein Formular, das noch nicht erzeugt ist');
+    cTexts[TFormFieldsText.NotCreatedTitle].Text);
 end;
 
 class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;
@@ -752,7 +781,7 @@ var
       end;
       Reported := Reported + [Name];
       AReport.Add(TTextRange.Create(Token(Position).StartPos, Token(Position).EndPos),
-        Format('%s wird in der .dpr erst nach %s erzeugt und ist hier noch nil.', [Name, OwnName]),
+        cTexts[TFormFieldsText.NotCreated].Fmt([Name, OwnName]),
         TRuleConfidence.Medium);
     end;
   end;
@@ -827,5 +856,8 @@ begin
   ARegistry.Register(TFormFieldTypeMismatchRule.Create);
   ARegistry.Register(TFormAccessBeforeCreateRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.FormFields', cTexts);
 
 end.

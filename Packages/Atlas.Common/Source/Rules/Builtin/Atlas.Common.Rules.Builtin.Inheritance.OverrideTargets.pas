@@ -34,7 +34,35 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceOverrideTargetsText = (Title, TakeSignature, Final, NotVirtual, OtherName, NoAncestor, NoAncestorMeant,
+    Sealed);
+
+const
+  cTexts: array[TInheritanceOverrideTargetsText] of TAtlasText = (
+    (De: 'override ohne passende virtuelle Methode im Vorfahren';
+     En: 'override without matching virtual method in the ancestor'),
+    (De: 'Signatur von %s.%s übernehmen'; En: 'Take signature of %s.%s'),
+    (De: '%s.%s ist final und lässt sich nicht überschreiben (wie E2352).';
+     En: '%s.%s is final and cannot be overridden (like E2352).'),
+    (De: '%s.%s ist nicht virtuell; override braucht virtual oder dynamic im Vorfahren (wie E2170).';
+     En: '%s.%s is not virtual; override needs virtual or dynamic in the ancestor (like E2170).'),
+    (De: '%s hat kein virtuelles %s; dort heißt es %s (wie E2137).';
+     En: '%s has no virtual %s; there it is called %s (like E2137).'),
+    (De: 'Kein Vorfahr von %s hat ein virtuelles %s (wie E2137).';
+     En: 'No ancestor of %s has a virtual %s (like E2137).'),
+    (De: 'Kein Vorfahr von %s hat ein virtuelles %s; gemeint ist wohl %s (wie E2137).';
+     En: 'No ancestor of %s has a virtual %s; %s is probably meant (like E2137).'),
+    (De: '%s ist sealed; davon lässt sich nicht ableiten (wie E2353).';
+     En: '%s is sealed; it cannot be derived from (like E2353).'));
+
+{$SCOPEDENUMS OFF}
 
 { TOverrideTargetMissingRule }
 
@@ -264,7 +292,7 @@ type
 function TOverrideTargetMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('override-target-missing', TRuleSeverity.Error,
-    'override ohne passende virtuelle Methode im Vorfahren');
+    cTexts[TInheritanceOverrideTargetsText.Title].Text);
 end;
 
 procedure TOverrideTargetMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -488,7 +516,8 @@ begin
     Edits := Edits + [TRuleEdit.Create(TTextRange.Create(FTokens[Body].StartPos, FTokens[BodyLast].StartPos),
       ACandidate.Keyword + ' ' + FMethod.ClassName + '.' + WithoutDefaults(ACandidate.Head))];
   end;
-  AFix := TRuleFix.Create(Format('Signatur von %s.%s übernehmen', [ACandidate.TypeName, ACandidate.Symbol.Name]),
+  AFix := TRuleFix.Create(cTexts[TInheritanceOverrideTargetsText.TakeSignature].Fmt([ACandidate.TypeName,
+    ACandidate.Symbol.Name]),
     Edits);
 end;
 
@@ -523,8 +552,9 @@ begin
     begin
       if Candidate.Symbol.HasDirective('final') then
       begin
-        FReport.Add(FMethod.Symbol.SelectionRange, Format('%s.%s ist final und lässt sich nicht überschreiben ' +
-          '(wie E2352).', [Candidate.TypeName, Candidate.Symbol.Name]), TRuleConfidence.High);
+        FReport.Add(FMethod.Symbol.SelectionRange,
+          cTexts[TInheritanceOverrideTargetsText.Final].Fmt([Candidate.TypeName, Candidate.Symbol.Name]),
+          TRuleConfidence.High);
       end;
       Exit(True);
     end;
@@ -541,8 +571,8 @@ begin
   begin
     if Compare(Candidate) = TOverrideMatch.Same then
     begin
-      FReport.Add(FMethod.Symbol.SelectionRange, Format('%s.%s ist nicht virtuell; override braucht virtual ' +
-        'oder dynamic im Vorfahren (wie E2170).', [Candidate.TypeName, Candidate.Symbol.Name]),
+      FReport.Add(FMethod.Symbol.SelectionRange,
+        cTexts[TInheritanceOverrideTargetsText.NotVirtual].Fmt([Candidate.TypeName, Candidate.Symbol.Name]),
         TRuleConfidence.High);
       Exit(True);
     end;
@@ -599,7 +629,7 @@ begin
   begin
     Fixes := [Fix];
   end;
-  FReport.Add(FMethod.Symbol.SelectionRange, Format('%s hat kein virtuelles %s; dort heißt es %s (wie E2137).',
+  FReport.Add(FMethod.Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.OtherName].Fmt(
     [Best.Candidate.TypeName, OwnHead(FMethod), Best.Candidate.Head]), Confidence, Fixes);
 end;
 
@@ -662,12 +692,13 @@ begin
   Typo := TTextFuzzy.Closest(FMethod.Symbol.Name, TypoNames(Virtuals));
   if Typo = '' then
   begin
-    FReport.Add(FMethod.Symbol.SelectionRange, Format('Kein Vorfahr von %s hat ein virtuelles %s (wie E2137).',
+    FReport.Add(FMethod.Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.NoAncestor].Fmt(
       [FMethod.ClassName, FMethod.Symbol.Name]), TRuleConfidence.High);
     Exit;
   end;
-  FReport.Add(FMethod.Symbol.SelectionRange, Format('Kein Vorfahr von %s hat ein virtuelles %s; gemeint ist ' +
-    'wohl %s (wie E2137).', [FMethod.ClassName, FMethod.Symbol.Name, Typo]), TRuleConfidence.High,
+  FReport.Add(FMethod.Symbol.SelectionRange,
+    cTexts[TInheritanceOverrideTargetsText.NoAncestorMeant].Fmt([FMethod.ClassName, FMethod.Symbol.Name, Typo]),
+    TRuleConfidence.High,
     TypoFixes(Virtuals, Typo));
 end;
 
@@ -700,7 +731,7 @@ begin
     Chain := FAncestry.Ancestors(Symbol.Name, Complete, ObjectMissing);
     if (Chain <> nil) and IsSealedSignature(Chain[0].Symbol.Signature) then
     begin
-      FReport.Add(Symbol.SelectionRange, Format('%s ist sealed; davon lässt sich nicht ableiten (wie E2353).',
+      FReport.Add(Symbol.SelectionRange, cTexts[TInheritanceOverrideTargetsText.Sealed].Fmt(
         [Chain[0].Symbol.Name]), TRuleConfidence.High);
     end;
   end;
@@ -719,5 +750,8 @@ begin
   end;
   CheckSealed;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.OverrideTargets', cTexts);
 
 end.

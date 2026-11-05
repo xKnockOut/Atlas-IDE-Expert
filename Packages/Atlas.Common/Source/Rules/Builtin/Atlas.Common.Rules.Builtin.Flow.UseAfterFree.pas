@@ -29,7 +29,25 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowUseAfterFreeText = (FreedAndNil, Freed, JumpToFree, Title);
+
+const
+  cTexts: array[TFlowUseAfterFreeText] of TAtlasText = (
+    (De: '%s wurde in Zeile %d mit FreeAndNil freigegeben und ist hier nil.';
+     En: '%s was freed with FreeAndNil in line %d and is nil here.'),
+    (De: '%s wurde in Zeile %d freigegeben und wird hier wieder gelesen.';
+     En: '%s was freed in line %d and is read here again.'),
+    (De: 'Zur Freigabe in Zeile %d springen'; En: 'Jump to the free in line %d'),
+    (De: 'Objekt nach Free weiter benutzt'; En: 'Object still used after Free'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Prüfung einer Unit für use-after-free; hält den Graphen der Routine, die Freigabe und den Stand des
@@ -270,14 +288,14 @@ begin
   FreeLine := FFree.Syntax.StartPos.Line + 1;
   if FToNil then
   begin
-    Message := Format('%s wurde in Zeile %d mit FreeAndNil freigegeben und ist hier nil.', [FPath, FreeLine]);
+    Message := cTexts[TFlowUseAfterFreeText.FreedAndNil].Fmt([FPath, FreeLine]);
   end
   else
   begin
-    Message := Format('%s wurde in Zeile %d freigegeben und wird hier wieder gelesen.', [FPath, FreeLine]);
+    Message := cTexts[TFlowUseAfterFreeText.Freed].Fmt([FPath, FreeLine]);
   end;
   FReport.Add(NodeRange(AAccess), Message, Confidence,
-    [TRuleFix.Jump(Format('Zur Freigabe in Zeile %d springen', [FreeLine]), FFree.Syntax.StartPos)]);
+    [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([FreeLine]), FFree.Syntax.StartPos)]);
 end;
 
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
@@ -372,7 +390,7 @@ end;
 
 function TUseAfterFreeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UseAfterFreeRuleId, TRuleSeverity.Error, 'Objekt nach Free weiter benutzt');
+  Result := TRuleDescriptor.Create(UseAfterFreeRuleId, TRuleSeverity.Error, cTexts[TFlowUseAfterFreeText.Title].Text);
 end;
 
 procedure TUseAfterFreeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -386,5 +404,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.UseAfterFree', cTexts);
 
 end.

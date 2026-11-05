@@ -27,12 +27,33 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Unused.Shared;
+  Atlas.Common.Rules.Builtin.Unused.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnusedEmptyRoutinesText = (Title, RoutineKind, MethodKind, InsertComment, EmptyComment, Empty, RemoveKind);
+
+const
+  cTexts: array[TUnusedEmptyRoutinesText] of TAtlasText = (
+    (De: 'Methode oder Routine ohne Anweisung und ohne Kommentar';
+     En: 'Method or routine without statement and without comment'),
+    (De: 'Routine'; En: 'routine'),
+    (De: 'Methode'; En: 'method'),
+    (De: 'Kommentar einfügen'; En: 'Insert comment'),
+    (De: '  // Absichtlich leer.'; En: '  // Intentionally empty.'),
+    (De: '%s ist leer; entweder fehlt der Inhalt oder die %s kann weg.';
+     En: '%s is empty; either the content is missing or the %s can go.'),
+    (De: '%s entfernen'; En: 'Remove %s'));
+
+{$SCOPEDENUMS OFF}
 
 function TEmptyRoutineRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('empty-routine', TRuleSeverity.Hint,
-    'Methode oder Routine ohne Anweisung und ohne Kommentar');
+    cTexts[TUnusedEmptyRoutinesText.Title].Text);
 end;
 
 /// <summary>Kopf der Methode in ihrem Typ und der Sichtbarkeitsabschnitt davor ('' ohne Angabe).</summary>
@@ -110,10 +131,10 @@ end;
 
 function RoutineKindText(AIsMethod: Boolean): string;
 begin
-  Result := 'Routine';
+  Result := cTexts[TUnusedEmptyRoutinesText.RoutineKind].Text;
   if AIsMethod then
   begin
-    Result := 'Methode';
+    Result := cTexts[TUnusedEmptyRoutinesText.MethodKind].Text;
   end;
 end;
 
@@ -304,8 +325,9 @@ begin
   begin
     mIndent := TTextLines.IndentOf(mLines[FTokens[mBeginToken].StartPos.Line]);
   end;
-  Result := [TRuleFix.Create('Kommentar einfügen', [TRuleEdit.Create(TTextRange.Create(
-    FTokens[mBeginToken].EndPos, FTokens[mEndToken].StartPos), FLineBreak + mIndent + '  // Absichtlich leer.' +
+  Result := [TRuleFix.Create(cTexts[TUnusedEmptyRoutinesText.InsertComment].Text, [TRuleEdit.Create(TTextRange.Create(
+    FTokens[mBeginToken].EndPos, FTokens[mEndToken].StartPos), FLineBreak + mIndent +
+      cTexts[TUnusedEmptyRoutinesText.EmptyComment].Text +
     FLineBreak + mIndent)])];
 end;
 
@@ -405,11 +427,11 @@ begin
     mEdits := RemoveEdits(ARoutine, mMember, mForward);
     if mEdits <> nil then
     begin
-      mFixes := mFixes + [TRuleFix.Create(mKind + ' entfernen', mEdits)];
+      mFixes := mFixes + [TRuleFix.Create(cTexts[TUnusedEmptyRoutinesText.RemoveKind].Fmt([mKind]), mEdits)];
     end;
   end;
-  FReport.Add(NameRange(FContext, mHeader, mShort), Format('%s ist leer; entweder fehlt der Inhalt oder die %s ' +
-    'kann weg.', [mShort, mKind]), mFixes);
+  FReport.Add(NameRange(FContext, mHeader, mShort), cTexts[TUnusedEmptyRoutinesText.Empty].Fmt([mShort, mKind]),
+    mFixes);
 end;
 
 procedure TEmptyRoutineCheck.Run;
@@ -438,5 +460,8 @@ begin
     mCheck.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unused.EmptyRoutines', cTexts);
 
 end.

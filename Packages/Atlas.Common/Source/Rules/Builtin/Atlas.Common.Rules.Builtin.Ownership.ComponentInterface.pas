@@ -58,7 +58,26 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Ownership;
+  Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOwnershipComponentInterfaceText = (Title, InsertUnregister, RefCounted, NotRefCounted);
+
+const
+  cTexts: array[TOwnershipComponentInterfaceText] of TAtlasText = (
+    (De: 'Interface auf eine Komponente ohne Referenzzählung bleibt nach der Freigabe gespeichert';
+     En: 'Interface to a component without reference counting stays stored after release'),
+    (De: 'Abmeldung vor der Freigabe einfügen'; En: 'Insert unregistration before the release'),
+    (De: '%s ist referenzgezählt (TInterfacedObject); %s gibt es frei, obwohl %s noch ein %s darauf hält.';
+     En: '%s is reference counted (TInterfacedObject); %s releases it although %s still holds a %s to it.'),
+    (De: '%s ist ein %s ohne Referenzzählung; nach %s hält %s ein ungültiges %s.';
+     En: '%s is a %s without reference counting; after %s, %s holds an invalid %s.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   ComponentInterfaceDanglingRuleId = 'component-interface-dangling';
@@ -68,7 +87,7 @@ const
 function TComponentInterfaceDanglingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ComponentInterfaceDanglingRuleId, TRuleSeverity.Warning,
-    'Interface auf eine Komponente ohne Referenzzählung bleibt nach der Freigabe gespeichert');
+    cTexts[TOwnershipComponentInterfaceText.Title].Text);
 end;
 
 class function TComponentInterfaceDanglingRule.Counterpart(const AMethod: string): string;
@@ -591,7 +610,7 @@ begin
   end;
   if Result then
   begin
-    AFix := TRuleFix.Create('Abmeldung vor der Freigabe einfügen',
+    AFix := TRuleFix.Create(cTexts[TOwnershipComponentInterfaceText.InsertUnregister].Text,
       [TRoutineBody.InsertBefore(FContext.Text, mStatement, mLine)]);
   end;
 end;
@@ -712,8 +731,8 @@ begin
   // davor gäbe es schon frei (Zähler 0), Free wäre dann die zweite Freigabe.
   if SameText(AStore.Base, 'TInterfacedObject') then
   begin
-    FReport.Add(TTextRange.Create(AStore.Parent.StartPos, AStore.Parent.EndPos), Format('%s ist referenzgezählt ' +
-      '(TInterfacedObject); %s gibt es frei, obwohl %s noch ein %s darauf hält.', [AStore.ObjectType.Name,
+    FReport.Add(TTextRange.Create(AStore.Parent.StartPos, AStore.Parent.EndPos),
+      cTexts[TOwnershipComponentInterfaceText.RefCounted].Fmt([AStore.ObjectType.Name,
       NodeText(AStore.Release.Statement), NodeText(AStore.Holder), AStore.InterfaceName]), TRuleConfidence.Medium);
   end
   else if not Unregistered(AStore) then
@@ -723,8 +742,8 @@ begin
     begin
       mFixes := [mFix];
     end;
-    FReport.Add(TTextRange.Create(AStore.Parent.StartPos, AStore.Parent.EndPos), Format('%s ist ein %s ohne ' +
-      'Referenzzählung; nach %s hält %s ein ungültiges %s.', [AStore.ObjectType.Name, AStore.Base,
+    FReport.Add(TTextRange.Create(AStore.Parent.StartPos, AStore.Parent.EndPos),
+      cTexts[TOwnershipComponentInterfaceText.NotRefCounted].Fmt([AStore.ObjectType.Name, AStore.Base,
       NodeText(AStore.Release.Statement), NodeText(AStore.Holder), AStore.InterfaceName]), TRuleConfidence.Medium,
       mFixes);
   end;
@@ -871,5 +890,8 @@ procedure RegisterOwnershipComponentInterfaceRules(const ARegistry: TRuleRegistr
 begin
   ARegistry.Register(TComponentInterfaceDanglingRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Ownership.ComponentInterface', cTexts);
 
 end.

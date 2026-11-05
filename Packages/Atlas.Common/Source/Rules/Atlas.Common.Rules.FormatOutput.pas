@@ -60,7 +60,31 @@ uses
   System.Math,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormatOutputText = (SyntaxError, Unstable, NotWritten, Formatted, Deviations, Line, More, WrittenSummary,
+    ChangedSummary, SyntaxSummary);
+
+const
+  cTexts: array[TFormatOutputText] of TAtlasText = (
+    (De: '%s(%d,%d): Syntaxfehler, nicht formatiert: %s'; En: '%s(%d,%d): syntax error, not formatted: %s'),
+    (De: '%s: Formatierung nicht stabil, ein zweiter Lauf ändert erneut';
+     En: '%s: formatting not stable, a second run changes again'),
+    (De: '%s: nicht geschrieben: %s'; En: '%s: not written: %s'),
+    (De: '%s: formatiert (%d Abweichungen)'; En: '%s: formatted (%d deviations)'),
+    (De: '%s: %d Abweichungen'; En: '%s: %d deviations'),
+    (De: '  Zeile %d: %s'; En: '  Line %d: %s'),
+    (De: '  … und %d weitere (alle mit --format json)'; En: '  … and %d more (all with --format json)'),
+    (De: 'Formatierung: %d von %d Dateien geschrieben'; En: 'Formatting: %d of %d files written'),
+    (De: 'Formatierung: %d von %d Dateien weichen ab'; En: 'Formatting: %d of %d files deviate'),
+    (De: ', %d mit Syntaxfehlern nicht formatiert'; En: ', %d not formatted because of syntax errors'));
+
+{$SCOPEDENUMS OFF}
 
 { TFormattedFile }
 
@@ -86,14 +110,14 @@ end;
 
 function SyntaxLine(const AFile: TFormattedFile): string;
 begin
-  Result := Format('%s(%d,%d): Syntaxfehler, nicht formatiert: %s', [AFile.Path,
+  Result := cTexts[TFormatOutputText.SyntaxError].Fmt([AFile.Path,
     AFile.Outcome.SyntaxError.StartPos.Line + 1, AFile.Outcome.SyntaxError.StartPos.Character + 1,
     AFile.Outcome.SyntaxError.Message]);
 end;
 
 function UnstableLine(const AFile: TFormattedFile): string;
 begin
-  Result := Format('%s: Formatierung nicht stabil, ein zweiter Lauf ändert erneut', [AFile.Path]);
+  Result := cTexts[TFormatOutputText.Unstable].Fmt([AFile.Path]);
 end;
 
 class function TFormatOutput.Problems(const AFiles: TArray<TFormattedFile>): TArray<string>;
@@ -113,7 +137,7 @@ begin
     end;
     if mFile.Error <> '' then
     begin
-      Result := Result + [Format('%s: nicht geschrieben: %s', [mFile.Path, mFile.Error])];
+      Result := Result + [cTexts[TFormatOutputText.NotWritten].Fmt([mFile.Path, mFile.Error])];
     end;
   end;
 end;
@@ -126,23 +150,23 @@ begin
   mCount := Length(AFile.Outcome.Deviations);
   if AWrite and AFile.Written then
   begin
-    ABuilder.AppendLine(Format('%s: formatiert (%d Abweichungen)', [AFile.Path, mCount]));
+    ABuilder.AppendLine(cTexts[TFormatOutputText.Formatted].Fmt([AFile.Path, mCount]));
     Exit;
   end;
   if AWrite then
   begin
-    ABuilder.AppendLine(Format('%s: nicht geschrieben: %s', [AFile.Path, AFile.Error]));
+    ABuilder.AppendLine(cTexts[TFormatOutputText.NotWritten].Fmt([AFile.Path, AFile.Error]));
     Exit;
   end;
-  ABuilder.AppendLine(Format('%s: %d Abweichungen', [AFile.Path, mCount]));
+  ABuilder.AppendLine(cTexts[TFormatOutputText.Deviations].Fmt([AFile.Path, mCount]));
   for mIndex := 0 to Min(mCount, TFormatOutput.cShownPerFile) - 1 do
   begin
-    ABuilder.AppendLine(Format('  Zeile %d: %s', [AFile.Outcome.Deviations[mIndex].Line + 1,
+    ABuilder.AppendLine(cTexts[TFormatOutputText.Line].Fmt([AFile.Outcome.Deviations[mIndex].Line + 1,
       AFile.Outcome.Deviations[mIndex].Message]));
   end;
   if mCount > TFormatOutput.cShownPerFile then
   begin
-    ABuilder.AppendLine(Format('  … und %d weitere (alle mit --format json)', [mCount - TFormatOutput.cShownPerFile]));
+    ABuilder.AppendLine(cTexts[TFormatOutputText.More].Fmt([mCount - TFormatOutput.cShownPerFile]));
   end;
 end;
 
@@ -350,15 +374,15 @@ begin
   end;
   if AWrite then
   begin
-    Result := Format('Formatierung: %d von %d Dateien geschrieben', [mWritten, Length(AFiles)]);
+    Result := cTexts[TFormatOutputText.WrittenSummary].Fmt([mWritten, Length(AFiles)]);
   end
   else
   begin
-    Result := Format('Formatierung: %d von %d Dateien weichen ab', [mChanged, Length(AFiles)]);
+    Result := cTexts[TFormatOutputText.ChangedSummary].Fmt([mChanged, Length(AFiles)]);
   end;
   if mSyntax > 0 then
   begin
-    Result := Result + Format(', %d mit Syntaxfehlern nicht formatiert', [mSyntax]);
+    Result := Result + cTexts[TFormatOutputText.SyntaxSummary].Fmt([mSyntax]);
   end;
 end;
 
@@ -379,5 +403,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.FormatOutput', cTexts);
 
 end.

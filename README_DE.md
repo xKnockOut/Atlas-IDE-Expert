@@ -92,7 +92,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Modulschalter** für ganze Bereiche wie Debuggen, Tests oder Issue-Tracker; jedes Modul bringt seine Einstellungen selbst mit, ohne installiertes Modul fehlen sie
 - **Exportieren, Importieren, Profile und Zurücksetzen**
 - **Werte fürs Team** in `.atlas` und `atlas.json`
-- **Sprache wie die IDE** (Deutsch oder Englisch)
+- **Sprache wie die IDE** (Deutsch oder Englisch), auch Meldungen und Korrekturen aller Prüfregeln
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **32 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
