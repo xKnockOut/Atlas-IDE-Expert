@@ -225,7 +225,8 @@ const
     (De: 'unter Zusammenhalt %s (ab %s Units)'; En: 'below cohesion %s (from %s units)'),
     (De: 'Zuordnung (Kanten je Teilsystem, interface %s, implementation %s):%s  Teilsystem | interface | impl. | ' +
       'Summe';
-     En: 'Assignment (edges per subsystem, interface %s, implementation %s):%s  Subsystem | interface | impl'),
+     En: 'Assignment (edges per subsystem, interface %s, implementation %s):%s  Subsystem | interface | impl. | ' +
+      'sum'),
     (De: 'Namensraum passt zu einem anderen Teilsystem'; En: 'Namespace fits another subsystem'),
     (De: 'mehr Kanten in ein anderes Teilsystem'; En: 'more edges into another subsystem'),
     (De: '- [Zentrale Units](#zentrale-units)'; En: '- [Central units](#central-units)'),
