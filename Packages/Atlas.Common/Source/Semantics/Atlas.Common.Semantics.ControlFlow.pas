@@ -173,6 +173,9 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Semantics.ControlFlow.Statements;
+
 type
   /// <summary>Sprungziel, dessen Knoten erst später feststeht.</summary>
   TJumpTarget = class
@@ -259,21 +262,6 @@ type
     destructor Destroy; override;
     function Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;
   end;
-
-function IsStatement(AKind: TSyntaxKind): Boolean;
-begin
-  case AKind of
-    TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
-    TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.ForStatement,
-    TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
-    TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.RaiseStatement,
-    TSyntaxKind.GotoStatement, TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar,
-    TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement, TSyntaxKind.Error:
-      Result := True;
-  else
-    Result := False;
-  end;
-end;
 
 function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
 var
@@ -776,7 +764,7 @@ begin
   Result := APreds;
   for Index := AFirst to AParent.ChildCount - 1 do
   begin
-    if IsStatement(AParent.Children[Index].Kind) then
+    if TFlowStatements.IsStatement(AParent.Children[Index].Kind) then
     begin
       Result := Statement(AParent.Children[Index], Result);
     end;
@@ -885,7 +873,7 @@ begin
   Branches := 0;
   for Index := 0 to S.ChildCount - 1 do
   begin
-    if IsStatement(S.Children[Index].Kind) then
+    if TFlowStatements.IsStatement(S.Children[Index].Kind) then
     begin
       Result := Concat(Result, Statement(S.Children[Index], [Condition]));
       Inc(Branches);
@@ -921,33 +909,11 @@ begin
   end;
 end;
 
-/// <summary>Ist die Bedingung der Schleife S die Konstante AValue (while True, until False; auch in Klammern)?
-/// Dann verlässt nur Break, Exit oder raise die Schleife (#1109).</summary>
-function ConstantCondition(S: TSyntaxNode; const AValue: string): Boolean;
-var
-  Index: Integer;
-  Condition: TSyntaxNode;
-begin
-  Result := False;
-  for Index := 0 to S.ChildCount - 1 do
-  begin
-    if not IsStatement(S.Children[Index].Kind) then
-    begin
-      Condition := S.Children[Index];
-      while (Condition.Kind = TSyntaxKind.ParenExpr) and (Condition.ChildCount = 1) do
-      begin
-        Condition := Condition.Children[0];
-      end;
-      Exit((Condition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and SameText(Condition.Name, AValue));
-    end;
-  end;
-end;
-
 function TFlowBuilder.BuildLoop(S: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 var
   Init, Condition: TFlowNode;
   Loop: TLoopContext;
-  Body: TArray<TFlowNode>;
+  Body, Entry: TArray<TFlowNode>;
 begin
   Body := APreds;
   // for und for-in weisen der Schleifenvariablen vor dem ersten Durchlauf zu.
@@ -958,15 +924,22 @@ begin
     Body := [Init];
   end;
   Condition := NewNode(TFlowNodeKind.Condition, S);
+  Entry := [Condition];
+  if TFlowStatements.RunsAtLeastOnce(S) then
+  begin
+    // Läuft die Schleife sicher einmal, geht der erste Durchlauf an der Prüfung vorbei in den Rumpf.
+    Entry := Concat(Body, Entry);
+    Body := nil;
+  end;
   LinkAll(Body, Condition);
   Loop.BreakTarget := NewTarget;
   Loop.ContinueTarget := NewTarget;
   FLoops.Add(Loop);
-  Body := Sequence(S, 0, [Condition]);
+  Body := Sequence(S, 0, Entry);
   FLoops.Delete(FLoops.Count - 1);
   LinkAll(Body, Condition);
   Resolve(Loop.ContinueTarget, Condition);
-  if (S.Kind = TSyntaxKind.WhileStatement) and ConstantCondition(S, 'True') then
+  if (S.Kind = TSyntaxKind.WhileStatement) and TFlowStatements.ConstantCondition(S, 'True') then
   begin
     Result := Loop.BreakTarget.Sources.ToArray;
   end
@@ -993,7 +966,7 @@ begin
   LinkAll(Body, Condition);
   Resolve(Loop.ContinueTarget, Condition);
   Link(Condition, Head);
-  if ConstantCondition(S, 'False') then
+  if TFlowStatements.ConstantCondition(S, 'False') then
   begin
     Result := Loop.BreakTarget.Sources.ToArray;
   end
@@ -1089,7 +1062,7 @@ begin
       mHasHandlers := True;
       Result := Concat(Result, Sequence(mChild, 0, [mHandler]));
     end
-    else if IsStatement(mChild.Kind) then
+    else if TFlowStatements.IsStatement(mChild.Kind) then
     begin
       mHasElse := True;
     end;
@@ -1464,7 +1437,7 @@ end;
 /// <summary>Teil einer Anweisung, den eigene Knoten auswerten (Anweisungen, case-Zweige, except, finally).</summary>
 function IsNestedPart(AChild: TSyntaxNode): Boolean;
 begin
-  Result := IsStatement(AChild.Kind) or (AChild.Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
+  Result := TFlowStatements.IsStatement(AChild.Kind) or (AChild.Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
     TSyntaxKind.ExceptBlock, TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock]);
 end;
 
