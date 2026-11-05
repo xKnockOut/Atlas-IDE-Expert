@@ -701,7 +701,7 @@ begin
     AState.Hook := TAtlasMyIssues.cHookForeign;
     FContext.Report(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHookForeign));
   end
-  else if TAtlasCommitHook.Install(AHooks) then
+  else if TAtlasCommitHook.Install(AHooks, TAtlasStrings.Language = TAtlasLanguage.English) then
   begin
     AState.Hook := TAtlasMyIssues.cHookYes;
     TAtlasGuard.Log(cLogHook);
