@@ -14,18 +14,12 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Core.Problems.Explanation;
 
 type
-  /// <summary>Katalogtext einer Regel (atlas.server.settingsCatalog).</summary>
-  TAtlasRuleExplanation = record
-    Id: string;
-    Name: string;
-    Description: string;
-    Bad: string;
-    Good: string;
-    Experimental: Boolean;
-  end;
+  /// <summary>Katalogtext einer Regel (Atlas.Core.Problems.Explanation).</summary>
+  TAtlasRuleExplanation = Atlas.Core.Problems.Explanation.TAtlasRuleExplanation;
 
   TAtlasRuleExplainDialog = class(TForm)
   private

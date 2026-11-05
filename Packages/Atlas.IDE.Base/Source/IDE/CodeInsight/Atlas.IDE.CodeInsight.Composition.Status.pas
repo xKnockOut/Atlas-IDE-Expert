@@ -66,7 +66,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Problems.InlineHints,
-  Atlas.IDE.Settings.Options,
+  Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Status.ServerWindow,
   Atlas.IDE.StatusBar.Service,
   Atlas.IDE.Problems.Controller,
@@ -223,7 +223,8 @@ begin
   mHooks.OpenRule :=
     procedure(ARule: string)
     begin
-      TAtlasOptionsRegistration.ShowRule(ARule);
+      // Regel einstellen über das Modul Prüfregeln (#1755); ohne Modul nichts.
+      TAtlasRuleActions.Configure(ARule);
     end;
   TAtlasIdeServerWindow.Install(mHooks);
 end;

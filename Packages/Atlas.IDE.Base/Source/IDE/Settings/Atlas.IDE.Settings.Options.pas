@@ -10,15 +10,12 @@
 // aufbauen“ und „Index löschen“ über die Befehle des Servers, im Hintergrund
 // (#874): Die Antwort kommt im Hauptthread und geht nur an die Seite, für die
 // sie bestellt wurde (FGeneration), solange der Dialog offen ist.
-// Baseline, Unterdrückungen und Index-Cache über AtlasServer.exe als Prozess
-// rufen beide Seiten über TAtlasIdeServerActions.
+// Den Index-Cache leert die Seite „Atlas.Server“ über AtlasServer.exe als
+// Prozess (TAtlasIdeServerActions); Baseline und Unterdrückungen gehören dem
+// Modul Prüfregeln (#1755).
 // ShowSetting (#628, „Einstellungen dazu …“): öffnet Tools › Optionen, wählt
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
-// ShowRule (#909, „Regel einstellen…“ im Fenster „Atlas-Prüfung“ und im
-// Befund-Hover) öffnet den Dialog der Projekt-Einstellungen (ohne Projekt den
-// der globalen) im Knoten der Gruppe der Regel: Die Prüfregeln stehen nur
-// dort, nicht in Tools › Optionen. Die Seite Prüfregeln zeigt den Weg dorthin.
 // Seite Issue-Tracker: Den Abschnitt mit Verbindungen, Projekten, Abfragen
 // und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Settings).
 // ShowSetting mit Vorgabe („zuordnen …“ aus „Meine Issues“, #1261) reicht die
@@ -69,9 +66,6 @@ type
     /// <summary>Wie ShowSetting; danach bekommt der Abschnitt des Moduls, dem AKey gehört, die Vorgabe AArgument
     /// (z. B. „zuordnen …“ mit dem Projekt, #1261).</summary>
     class procedure ShowSetting(const AKey, AArgument: string); overload; static;
-    /// <summary>„Regel einstellen…“ (#909): Tools › Optionen auf der Seite Prüfregeln bei der Regel ARuleId
-    /// öffnen.</summary>
-    class procedure ShowRule(const ARuleId: string); static;
     /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Tools › Optionen auf der Seite Versionsverwaltung
     /// öffnen und den Serverzugang für AFolder prüfen.</summary>
     class procedure ShowVcsServer(const AFolder: string); static;
@@ -92,7 +86,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Progress,
   Atlas.UI.Settings.Page,
-  Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.SubPages,
   Atlas.IDE.Settings.VcsOptions,
@@ -408,7 +401,7 @@ begin
   FPage := AFrame as TAtlasSettingsPage;
   FPage.Part<TAtlasSettingsGeneralPart>.DefaultServerPath := HookText(Hooks.DefaultServerPath);
   FPage.Part<TAtlasSettingsCompletionPart>.OnResetHistory := Hooks.ResetHistory;
-  TAtlasPageOptions.ConnectRules(FPage);
+  TAtlasPageOptions.ConnectServerVersion(FPage);
   // „Einstellungen dazu …“ (#628): gewünschte Zeile zeigen.
   if PendingReveal <> '' then
   begin
@@ -611,11 +604,6 @@ begin
   begin
     Environment.EditOptions('', Options.GetCaption);
   end;
-end;
-
-class procedure TAtlasOptionsRegistration.ShowRule(const ARuleId: string);
-begin
-  TAtlasProjectSettings.ShowRule(ARuleId);
 end;
 
 class procedure TAtlasOptionsRegistration.ShowSetting(const AKey: string);

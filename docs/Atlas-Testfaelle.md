@@ -9369,3 +9369,26 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 | ZB3 | `node Tools/Benchmark/ready.mjs --logs vor=<Ordner vor> --logs nach=<Ordner nach>` | Tabelle mit Umstieg, Median und Spannweite je Fassung; „nach“ nicht langsamer als „vor“ (**Abnahme**, Tabelle ins Issue #1479) |
 | ZB4 | Dieselbe Gruppe ohne IDE: `node Tools/Benchmark/ready.mjs --server vor=<alte AtlasServer.exe> --server nach=<neue> --target <Gruppenordner> --runs 6 --cache %TEMP%\atlas-ready` | Wie ZB3; die Zeiten liegen unter denen der IDE (ohne Start von Delphi) |
 | ZB5 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TIndexCacheDirectoryTests.OwnLockKnownInProcess` grün |
+
+## Prüfregeln vollständig im Modul (#1755)
+
+Vorbereitung: Win32-Plugin, `Atlas.IDE.Base` und `Atlas.IDE.Rules` gebaut; eigenes Registry-Profil (`bds -r AtlasRegeln`). Testprojekt mit `atlas.json` und einigen Regelbefunden (z. B. `no-with`, `magic-number`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RM1 | Beide Packages installiert; Fenster „Atlas-Prüfung“, Rechtsklick auf einen Regelbefund | „Für diese Zeile unterdrücken“, „Regel einstellen…“, „Regel abschalten“ und „Regel erklären“ wie bisher; bei einer Compilermeldung sind die drei Regel-Einträge gesperrt |
+| RM2 | In RM1 „Für diese Zeile unterdrücken“ auf einen Befund in einer nicht geöffneten Unit | Die Unit öffnet sich an der Stelle, über der Zeile steht `// lsp-ignore: <Regel>`, der Befund verschwindet nach der Prüfung |
+| RM3 | In RM1 „Regel einstellen…“ | Dialog der Projekt-Einstellungen öffnet im Knoten der Gruppe der Regel, die Regel ist in der Tabelle markiert |
+| RM4 | In RM1 „Regel abschalten“, dann `atlas.json` ansehen | `"<Regel>": "off"` (bei Regeln mit Optionen nur `"severity": "off"`), Kommentare und andere Schlüssel unverändert; Meldung „Regel … in atlas.json abgeschaltet.“ |
+| RM5 | Ohne Projekt (alles schließen, eine einzelne Unit öffnen) „Regel abschalten“ | Eintrag landet in der globalen `settings.json` |
+| RM6 | Befund-Hover über einem Regelbefund: „Regel einstellen…“ und „Unterdrücken“ in der Aktionszeile | Wie RM3 bzw. RM2 (gleicher Weg über das Modul) |
+| RM7 | *Tools › Optionen › Atlas › Prüfregeln*, Hauptknoten | Modulschalter, Hinweis, „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“, darunter „Profile und Baseline“ mit Stand der Baseline, „Baseline neu erzeugen“, „Baseline löschen“, „Unterdrückungen (lsp-ignore) je Regel“ mit „Auswerten“; kein eigener Knoten „Profile und Baseline“ mehr |
+| RM8 | In RM7 „Baseline neu erzeugen“, dann „Baseline löschen“ (Rückfrage mit Ja) | Stand zeigt „%d Treffer in %d Einträgen“, nach dem Löschen „Keine Baseline im aktiven Projekt“; Datei `atlas-baseline.json` neben `atlas.json` erzeugt bzw. gelöscht |
+| RM9 | In RM7 „Auswerten“ | Liste je Regel „Regel: Anzahl (ungenutzt …, in … Dateien)“ bzw. „Keine Unterdrückungen“ |
+| RM10 | Seite *Atlas › Server* | Nur noch Server, Dialoge der Einstellungsdateien und Index-Cache; keine Baseline und keine Unterdrückungen mehr |
+| RM11 | `Atlas.IDE.Rules` deinstallieren, IDE neu starten; RM1 wiederholen | Nur „Regel erklären“ (und Issue/Kopieren); keine Einträge zum Unterdrücken, Einstellen oder Abschalten; im Hover keine Regel-Aktionen |
+| RM12 | In RM11 *Atlas › Projekt-Einstellungen* | Dialog ohne Knoten je Regelgruppe; „rules“ als JSON-Text, Änderungen dort werden gespeichert |
+| RM13 | In RM11 *Tools › Optionen › Atlas › Prüfregeln* | Prüffenster und Compiler-Einstellungen wie bisher; keine Baseline, keine Unterdrückungen, keine Wege zu den Regeln |
+| RM14 | `Atlas.IDE.Rules` ohne Neustart wieder installieren, RM1, RM7 und RM12 wiederholen | Einträge, Abschnitt und Regel-Editor sind sofort wieder da |
+| RM15 | Englische Oberfläche (`ui.language` = en), RM1 und RM7 | Alle Einträge, Knöpfe und Meldungen englisch |
+| RM16 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasRulesSettingsDialogTests`, `TRulesSettingsSectionTests`, `TAtlasRuleTableTests`, `TAtlasRuleExplanationTests` und `TAtlasSettingsPageDialogTests.DialogWithoutRulesModuleShowsJson` grün |
