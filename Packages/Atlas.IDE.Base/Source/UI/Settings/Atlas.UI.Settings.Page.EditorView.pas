@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.EditorView;
 
-// Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Designer, Kopf, Minimap,
+// Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Kopf, Minimap,
 // Änderungsmarken, gleiche Stellen).
 
 interface
@@ -14,8 +14,8 @@ uses
   Atlas.UI.Settings.Page.Host;
 
 type
-  /// <summary>Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Designer,
-  /// Kopf, Minimap, Änderungsmarken, gleiche Stellen).</summary>
+  /// <summary>Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Kopf,
+  /// Minimap, Änderungsmarken, gleiche Stellen).</summary>
   TAtlasSettingsEditorViewPart = class(TAtlasSettingsPagePart)
   private
     FXmlDocExpand: TAtlasChoiceBox;
@@ -27,7 +27,6 @@ type
     FEditorToolbarItems: TEdit;
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
-    FDesignerSearchStyle: TAtlasChoiceBox;
     FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
@@ -74,8 +73,6 @@ var
   Panel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
-  AddModuleSwitch('BookmarksEnabled');
-  AddModuleSwitch('DesignerEnabled');
   BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
@@ -138,14 +135,6 @@ begin
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
   // Aufrufdiagramm (#1122).
   BindCheck('CallHierarchyDiagram', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram)));
-  // Designer-Leiste im Formular-Designer (#1442).
-  BindCheck('EditorDesignerBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar)));
-  BindKey('DesignerSearchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchKey)));
-  FDesignerSearchStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchStyle),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchWindow),
-    TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchPopup)]);
-  BindCheck('DesignerTabOrderClick', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerTabOrderClick)));
-  BindCheck('DesignerAlign', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerAlign)));
   // Mitlaufender Kopf (#506, experimentell).
   BindCheck('StickyScroll', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll)));
   BindText('StickyScrollMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines)));
@@ -202,7 +191,6 @@ begin
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
   FPage.Marks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
   FPage.Marks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
-  FPage.Marks.Bind(FDesignerSearchStyle, ['DesignerSearchStyle']);
   FPage.Marks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FPage.Marks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
   FPage.Marks.Bind(FMinimapRender, ['MinimapRender']);
@@ -217,8 +205,6 @@ procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSetting
 begin
   FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, AtlasToolbarPositions));
   FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
-  FDesignerSearchStyle.Choice := Ord(SameText(ASettings.DesignerSearchStyle,
-    TAtlasPluginSettings.DesignerSearchPopup));
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
@@ -234,14 +220,6 @@ begin
   ASettings.EditorToolbarPosition := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
     High(AtlasToolbarPositions))];
   ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
-  if FDesignerSearchStyle.Choice = 1 then
-  begin
-    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
-  end
-  else
-  begin
-    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchWindow;
-  end;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
     ASettings.StickyScrollBlockMinLines);

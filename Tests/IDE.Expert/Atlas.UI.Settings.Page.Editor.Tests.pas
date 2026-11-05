@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.Editor.Tests;
 
-// Tests der Einstellungsseite: Seiten für Editorbefehle, Leisten und Lesezeichen.
+// Tests der Einstellungsseite: Seiten für Editorbefehle und Leisten.
 
 interface
 
@@ -8,16 +8,13 @@ uses
   DUnitX.TestFramework;
 
 type
-  /// <summary>Seiten für Editorbefehle, Leisten und Lesezeichen.</summary>
+  /// <summary>Seiten für Editorbefehle und Leisten.</summary>
   [TestFixture]
   TAtlasSettingsPageEditorTests = class
   public
     /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
     [SetupFixture]
     procedure WarmUp;
-    /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
-    [Test]
-    procedure BookmarksRoundTrip;
     /// <summary>Erzeugen-Menü (#719) auf dem Reiter Befehle.</summary>
     [Test]
     procedure GenerateMenuRoundTrip;
@@ -47,8 +44,6 @@ type
     procedure EditorToolbarRoundTrip;
     [Test]
     procedure EditorStatusBarRoundTrip;
-    [Test]
-    procedure QuickBookmarksRoundTrip;
     /// <summary>#1122: Kontrollkästchen „Aufrufdiagramm“ liest und schreibt callHierarchy.diagram.</summary>
     [Test]
     procedure CallHierarchyDiagramRoundTrip;
@@ -318,32 +313,6 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(CheckOf(Page, 'GenerateMenu').Checked);
     Assert.AreEqual('/json', EditOf(Page, 'GenerateMenuHidden').Text);
-  finally
-    Page.Free;
-  end;
-end;
-procedure TAtlasSettingsPageEditorTests.BookmarksRoundTrip;
-var
-  Page: TAtlasSettingsPage;
-  Saved: TAtlasPluginSettings;
-begin
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(Page, 'BookmarksNamed').Checked, 'Lesezeichen standardmäßig an');
-    Assert.IsFalse(CheckOf(Page, 'BookmarksShared').Checked, 'standardmäßig lokal');
-    Assert.AreEqual(ShortCutToText($C04B), EditOf(Page, 'BookmarkKey').Text, 'Strg+Alt+K');
-    CheckOf(Page, 'BookmarksNamed').Checked := False;
-    CheckOf(Page, 'BookmarksShared').Checked := True;
-    EditOf(Page, 'BookmarkKey').Text := '';
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.BookmarksNamed, 'abschaltbar');
-    Assert.IsTrue(Saved.BookmarksShared);
-    Assert.AreEqual(0, Saved.BookmarkKey, 'leer = keine Taste');
-    Page.LoadFrom(Saved);
-    Assert.IsFalse(CheckOf(Page, 'BookmarksNamed').Checked);
-    Assert.IsTrue(CheckOf(Page, 'BookmarksShared').Checked);
   finally
     Page.Free;
   end;
@@ -640,43 +609,6 @@ begin
     Page.LoadFrom(Settings);
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.CallHierarchyDiagram, 'an bleibt an');
-  finally
-    Page.Free;
-  end;
-end;
-procedure TAtlasSettingsPageEditorTests.QuickBookmarksRoundTrip;
-var
-  Page: TAtlasSettingsPage;
-  Settings, Saved: TAtlasPluginSettings;
-begin
-  // #1104: Schalter, Taste, Wartezeit (begrenzt), Sprungbereich als Auswahl, Tasten für nächstes/voriges.
-  Settings := TAtlasPluginSettings.Defaults;
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    Page.LoadFrom(Settings);
-    Assert.IsTrue(CheckOf(Page, 'QuickBookmarks').Checked);
-    Assert.IsTrue(CheckOf(Page, 'QuickBookmarksGutter').Checked);
-    Assert.AreEqual('800', Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarkChordWaitEdit.Text);
-    Assert.AreEqual(0, Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarksScopeBox.Choice);
-    Assert.AreEqual('', EditOf(Page, 'NextBookmarkKey').Text);
-    CheckOf(Page, 'QuickBookmarksGutterClick').Checked := False;
-    CheckOf(Page, 'QuickBookmarksNumberedKeys').Checked := False;
-    CheckOf(Page, 'QuickBookmarksImportIde').Checked := False;
-    Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarkChordWaitEdit.Text := '99999';
-    Page.Part<TAtlasSettingsEditorCodePart>.QuickBookmarksScopeBox.Choice := 1;
-    EditOf(Page, 'QuickBookmarkKey').Text := '';
-    EditOf(Page, 'NextBookmarkKey').Text := 'F2';
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsTrue(Saved.QuickBookmarks);
-    Assert.IsFalse(Saved.QuickBookmarksGutterClick);
-    Assert.IsFalse(Saved.QuickBookmarksNumberedKeys);
-    Assert.IsFalse(Saved.QuickBookmarksImportIde);
-    Assert.AreEqual(TAtlasPluginSettings.MaxQuickChordWait, Saved.QuickBookmarkChordWait);
-    Assert.AreEqual('file', Saved.QuickBookmarksScope);
-    Assert.AreEqual(0, Saved.QuickBookmarkKey);
-    Assert.AreEqual($71, Saved.NextBookmarkKey, 'F2');
-    Assert.AreEqual(0, Saved.PreviousBookmarkKey);
   finally
     Page.Free;
   end;

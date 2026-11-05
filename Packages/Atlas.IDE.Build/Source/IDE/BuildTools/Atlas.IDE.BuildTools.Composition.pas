@@ -60,6 +60,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Build.SettingsSection,
   System.Types,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -565,6 +566,13 @@ begin
   end;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasBuildSettingsSection.ProvideIn(GScope);
+end;
+
 function TAtlasBuildModule.RunTask(const AProject, AName: string; out AReason: string): Boolean;
 begin
   AReason := '';
@@ -639,6 +647,7 @@ begin
   GScope.Provide(IAtlasFollowsTheme, mRef);
   // Vertrag zwischen Modulen: Startprofile und Projektaufgaben für die Schnellaktionen der Willkommensseite (#764).
   GScope.Provide(IAtlasBuildToolsSource, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 
