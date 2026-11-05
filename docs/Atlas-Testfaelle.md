@@ -9446,3 +9446,46 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA8 | Marke rechts anklicken › Ausblenden › „Nur hier“ | Nur diese Marke verschwindet; Eintrag in `.atlas` wie bisher |
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
+
+## Lokale Routinen in Paarfarben und Blocklinien (#1788)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Paarfarben und Blocklinien an. Unit mit dieser Routine öffnen:
+
+```pascal
+procedure TForm1.Laden;
+var
+  mListe: TStringList;
+
+  function Gueltig(const AName: string): Boolean;
+  begin
+    Result := AName <> '';
+  end;
+
+begin
+  mListe := TStringList.Create;
+  try
+    if Gueltig('x') then
+    begin
+      mListe.Add('x');
+    end;
+  finally
+    mListe.Free;
+  end;
+end;
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LR1 | Vorgabe (`highlight.nestedRoutines` = `deeper`) | `procedure`, äußeres `begin`/`end` und ihre Linie in der ersten Paarfarbe (blau); `function Gueltig`, ihr `begin`/`end` und ihre Linie in der zweiten (rot) (**Abnahme**) |
+| LR2 | *Tools › Optionen › Atlas › Editor*: „Lokale Routinen färben“ zeigt drei Einträge ohne Buchstaben: „wie die äußere Routine“, „eine Stufe tiefer“, „in eigener Farbe, Blocklinie gestrichelt“ | Wie beschrieben; „eine Stufe tiefer“ gewählt |
+| LR3 | „wie die äußere Routine“, OK | Gueltig wieder in derselben Farbe wie die äußere Routine (Stand vor #1788), ohne Neustart |
+| LR4 | „in eigener Farbe, Blocklinie gestrichelt“, OK | `function`, `begin`, `end` von Gueltig in Bernstein, ihre Blocklinie gestrichelt; `try`/`if` der äußeren Routine unverändert |
+| LR5 | Reiter *Farben*: Flächen „Lokale Routinen im hellen/dunklen Thema“ anklicken, Farbe wählen, OK | Neue Farbe sofort im Editor; „Standardfarben“ setzt sie zurück, gespeichert bleibt dann leer |
+| LR6 | „Zeilen lokaler Routinen hinterlegen“ an, OK | Zeilen von `function Gueltig` bis zu ihrem `end;` schwach in ihrer Farbe hinterlegt, Text gut lesbar; die äußere Routine nicht |
+| LR7 | Band an, drei Stufen (Prozedur in Gueltig) | Innerste Routine in ihrer Farbe, die mittlere in ihrer; keine doppelte Überlagerung |
+| LR8 | Lange Routine scrollen, bis der mitlaufende Kopf `function Gueltig` zeigt | Kopfzeile und Linien im Kopf in derselben Farbe wie im Editor |
+| LR9 | Unit mit `interface`-Teil mit mehreren Routinen und Klassen | Klassen im interface und Routinen der implementation in der ersten Paarfarbe (keine falsche Stufe) |
+| LR10 | Paarfarben aus | Keine Farben, kein Band |
+| LR11 | Englische Oberfläche | Beschriftungen englisch |
+| LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
+| LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
