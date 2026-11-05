@@ -39,7 +39,7 @@
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
 //   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, 0 breit),
-//   zeigt die Leiste die Plakette (BadgeShown, BadgeCount, ClickBadge, #1234),
+//   zeigt die Leiste die Plakette (Badge, ClickBadge, #1234),
 //   bei eingeschalteten Benachrichtigungen immer, auch mit 0.
 // - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
 //   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
@@ -49,7 +49,8 @@
 //   ist das Atlas-Panel 0 breit; die Leiste liest Text, State und Tooltip und
 //   öffnet über OpenWindowAt bzw. ContextAt dasselbe Statusfenster bzw. die
 //   Schnellschalter. Anchor fragt dann OnRelocatedAnchor (Element der Leiste).
-//   Zusatzfelder bleiben in der Statuszeile.
+//   Die Zusatzfelder ziehen mit um: In der Statuszeile stehen sie dann nicht,
+//   die Leiste liest sie über ExtraItems und klickt über ClickExtra.
 
 interface
 
@@ -80,6 +81,15 @@ type
     Hint: string;
     /// <summary>Linksklick auf die Plakette mit der linken Oberkante des Felds.</summary>
     OnClick: TProc<TPoint>;
+  end;
+
+  /// <summary>Zusatzfeld für die Atlas-Statusleiste (#1155): Kennung, Text, Tooltip und ob ein Klick etwas tut.
+  /// </summary>
+  TAtlasStatusExtraItem = record
+    Id: string;
+    Text: string;
+    Hint: string;
+    Clickable: Boolean;
   end;
 
   /// <summary>Stand des letzten Refresh: sichtbare Zeilen, Kurztext, Tooltip und Gesamtzustand.</summary>
@@ -224,13 +234,15 @@ type
     /// OnClick mit der linken Oberkante des Felds. Nur im Hauptthread.</summary>
     procedure SetBadge(const ABadge: TAtlasStatusBadge);
     /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated ist das Feld 0 breit, die Leiste zeigt
-    /// sie dann selbst.</summary>
-    property BadgeShown: Boolean read FBadge.Shown;
-    property BadgeCount: Integer read FBadge.Count;
-    property BadgeState: TAtlasStatusState read FBadge.State;
-    property BadgeHint: string read FBadge.Hint;
+    /// sie dann selbst (Shown, Count, State, Hint).</summary>
+    property Badge: TAtlasStatusBadge read FBadge;
     /// <summary>Wie ein Klick auf die Plakette, Liste mit der linken Oberkante an APoint (#1234).</summary>
     procedure ClickBadge(const APoint: TPoint);
+    /// <summary>Zusatzfelder in ihrer Reihenfolge, für die Atlas-Statusleiste: Bei Relocated stehen sie nicht in
+    /// der Statuszeile.</summary>
+    function ExtraItems: TArray<TAtlasStatusExtraItem>;
+    /// <summary>Wie ein Klick auf das Zusatzfeld AId mit der linken Oberkante an APoint; ohne Feld nichts.</summary>
+    procedure ClickExtra(const AId: string; const APoint: TPoint);
   end;
 
 implementation
@@ -812,15 +824,21 @@ end;
 
 procedure TAtlasStatusField.THook.SyncExtras;
 var
-  Index: Integer;
+  Index, Count: Integer;
   Item: TFieldPanel;
 begin
-  while Extras.Count > Length(Field.FExtras) do
+  // In die Atlas-Statusleiste umgezogen: Die Zusatzfelder stehen dort hinter dem Status.
+  Count := Length(Field.FExtras);
+  if TAtlasStatusField.Relocated then
+  begin
+    Count := 0;
+  end;
+  while Extras.Count > Count do
   begin
     DropPanel(Extras.Last);
     Extras.Delete(Extras.Count - 1);
   end;
-  while Extras.Count < Length(Field.FExtras) do
+  while Extras.Count < Count do
   begin
     Extras.Add(nil);
   end;
@@ -1222,6 +1240,35 @@ begin
     end;
   end;
   RequestRefresh;
+end;
+
+function TAtlasStatusField.ExtraItems: TArray<TAtlasStatusExtraItem>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(FExtras));
+  for mIndex := 0 to High(FExtras) do
+  begin
+    Result[mIndex].Id := FExtras[mIndex].Id;
+    Result[mIndex].Text := FExtras[mIndex].Text;
+    Result[mIndex].Hint := FExtras[mIndex].Hint;
+    Result[mIndex].Clickable := Assigned(FExtras[mIndex].OnClick);
+  end;
+end;
+
+procedure TAtlasStatusField.ClickExtra(const AId: string; const APoint: TPoint);
+var
+  mExtra: TExtra;
+begin
+  for mExtra in FExtras do
+  begin
+    if mExtra.Id = AId then
+    begin
+      RunClick(mExtra.OnClick, APoint);
+      Exit;
+    end;
+  end;
 end;
 
 procedure TAtlasStatusField.ClickBadge(const APoint: TPoint);
