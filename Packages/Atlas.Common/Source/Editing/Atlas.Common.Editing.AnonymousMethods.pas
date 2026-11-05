@@ -74,11 +74,13 @@ type
   end;
 
   TAnonymousMethods = class
-  public const
-    ToMethodTitle = 'In Methode umwandeln';
-    ToRoutineTitle = 'In Routine umwandeln';
-    EmbedTitle = EmbedTitle;
   public
+    /// <summary>Titel „In Methode umwandeln“ in der Sprache der Servertexte.</summary>
+    class function ToMethodTitle: string; static;
+    /// <summary>Titel „In Routine umwandeln“ in der Sprache der Servertexte.</summary>
+    class function ToRoutineTitle: string; static;
+    /// <summary>Titel „Als anonyme Methode einbetten“ (wie EmbedTitle der Unit Shared).</summary>
+    class function EmbedTitle: string; static;
     /// <summary>Geht „In Methode umwandeln“ an AInput.Position (Kopf einer anonymen Methode), ohne Prüfung des
     /// Namens? ATarget nennt Ziel, Vorschlag und Form, sonst AReason den Grund.</summary>
     class function Target(const AInput: TAnonymousInput; out ATarget: TAnonymousTarget;
@@ -123,7 +125,7 @@ type
     NothingCanBeInsertedBefore, ANestedAnonymousMethodCaptures, IsNotAValidName, IsAlreadyTaken, BodyNotReadable,
     ClassDeclarationCannotBeExtended, RunsDuringTheCapturedVariables, MayRunLaterANamed, NotPossibleAsFieldsHere,
     CapturesNoVariablesTheSite, RunsLaterTheValuesOf, ReadsTheValuesFromFields, RoutineWithoutHeader,
-    OnlyInMethodsOfAn, NewMethod, NewRoutine);
+    OnlyInMethodsOfAn, NewMethod, NewRoutine, ToMethodTitle, ToRoutineTitle);
 
 const
   cTexts: array[TEditingAnonymousMethodsText] of TAtlasText = (
@@ -168,7 +170,9 @@ const
     (De: 'Routine ohne Kopf'; En: 'routine without header'),
     (De: 'nur in Methoden eines Objekts'; En: 'only in methods of an object'),
     (De: 'Neue Methode: '; En: 'New method: '),
-    (De: 'Neue Routine: '; En: 'New routine: '));
+    (De: 'Neue Routine: '; En: 'New routine: '),
+    (De: 'In Methode umwandeln'; En: 'Convert to method'),
+    (De: 'In Routine umwandeln'; En: 'Convert to routine'));
 
 {$SCOPEDENUMS OFF}
 
@@ -1588,6 +1592,21 @@ begin
 end;
 
 { TAnonymousMethods }
+
+class function TAnonymousMethods.ToMethodTitle: string;
+begin
+  Result := cTexts[TEditingAnonymousMethodsText.ToMethodTitle].Text;
+end;
+
+class function TAnonymousMethods.ToRoutineTitle: string;
+begin
+  Result := cTexts[TEditingAnonymousMethodsText.ToRoutineTitle].Text;
+end;
+
+class function TAnonymousMethods.EmbedTitle: string;
+begin
+  Result := Atlas.Common.Editing.AnonymousMethods.Shared.EmbedTitle;
+end;
 
 class function TAnonymousMethods.KindOfTypeText(const ATypeText: string): TProcTypeKind;
 var
