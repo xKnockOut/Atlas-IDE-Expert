@@ -41,14 +41,10 @@ procedure TAtlasSettingsPagesTests.WarmUp;
 begin
   WarmUpSettingsPage;
 end;
-/// <summary>Feste Antworten für Unterdrückungen, Cache und Rückfrage.</summary>
+/// <summary>Feste Antworten für Cache und Rückfrage; Baseline und Unterdrückungen stehen seit #1755 im
+/// Abschnitt des Moduls Prüfregeln.</summary>
 procedure WireServerPageAnswers(APage: TAtlasServerPage);
 begin
-  APage.OnSuppressions :=
-    function: TArray<string>
-    begin
-      Result := ['no-with: 3 (ungenutzt 1, in 2 Dateien)'];
-    end;
   APage.OnClearCache :=
     function: string
     begin
@@ -90,7 +86,7 @@ procedure TAtlasSettingsPagesTests.ServerPageRunsActions;
 var
   Host: TForm;
   Page: TAtlasServerPage;
-  Global, Deleted: Boolean;
+  Global: Boolean;
 begin
   // Listen brauchen ein Fenster, wie in der IDE.
   Host := TForm.CreateNew(nil);
@@ -99,36 +95,17 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     // Ohne Ereignisse ist alles aus.
-    Assert.IsFalse(Page.BaselineUpdate.Enabled);
     Assert.IsFalse(Page.CacheClear.Enabled);
     Global := False;
-    Deleted := False;
     Page.OnEditGlobal :=
       procedure
       begin
         Global := True;
       end;
-    Page.OnBaselineInfo :=
-      function: string
-      begin
-        Result := '5 Treffer in 2 Einträgen';
-      end;
-    Page.OnBaselineDelete :=
-      function: string
-      begin
-        Deleted := True;
-        Result := 'gelöscht';
-      end;
     WireServerPageAnswers(Page);
     Page.Reload;
-    Assert.AreEqual('5 Treffer in 2 Einträgen', Page.BaselineInfo.Caption);
     Page.EditGlobal.Click;
     Assert.IsTrue(Global);
-    Page.BaselineDelete.Click;
-    Assert.IsTrue(Deleted);
-    Assert.AreEqual('gelöscht', Page.BaselineInfo.Caption);
-    Page.SuppressionsRefresh.Click;
-    Assert.AreEqual(1, Integer(Page.Suppressions.Items.Count));
     Page.CacheClear.Click;
     Assert.AreEqual('Cache leer', Page.CacheInfo.Caption);
   finally

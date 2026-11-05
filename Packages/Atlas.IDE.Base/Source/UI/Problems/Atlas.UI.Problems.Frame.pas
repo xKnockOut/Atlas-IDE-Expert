@@ -66,6 +66,7 @@ type
     FOnFixAll: TAtlasFindingEvent;
     FCanFixAll: TFunc<Boolean>;
     FOnSuppress: TAtlasFindingEvent;
+    FCanRuleActions: TFunc<Boolean>;
     FOnConfigure: TAtlasFindingEvent;
     FOnDisable: TAtlasFindingEvent;
     FOnExplain: TAtlasFindingEvent;
@@ -81,6 +82,9 @@ type
     /// <summary>Eintrag sichtbar (fix.bulk); nil = unsichtbar.</summary>
     property CanFixAll: TFunc<Boolean> read FCanFixAll write FCanFixAll;
     property OnSuppress: TAtlasFindingEvent read FOnSuppress write FOnSuppress;
+    /// <summary>„Für diese Zeile unterdrücken“, „Regel einstellen…“ und „Regel abschalten“ sichtbar (Modul
+    /// Prüfregeln läuft, #1755); nil = unsichtbar.</summary>
+    property CanRuleActions: TFunc<Boolean> read FCanRuleActions write FCanRuleActions;
     property OnConfigure: TAtlasFindingEvent read FOnConfigure write FOnConfigure;
     property OnDisable: TAtlasFindingEvent read FOnDisable write FOnDisable;
     property OnExplain: TAtlasFindingEvent read FOnExplain write FOnExplain;
@@ -217,6 +221,8 @@ type
     function SelectedRows: TArray<Integer>;
     function Current(out AFinding: TAtlasFinding): Boolean;
     function IsRule(const AFinding: TAtlasFinding): Boolean;
+    /// <summary>Einträge der Regel-Aktionen nach CanRuleActions zeigen und freigeben.</summary>
+    procedure ShowRuleActions(ACanSuppress, ARule: Boolean);
     procedure Fire(const AEvent: TAtlasFindingEvent);
     procedure MenuPopup(Sender: TObject);
     procedure OpenClick(Sender: TObject);
@@ -1685,6 +1691,19 @@ begin
   Result := (AFinding.Category <> TAtlasFindingCategory.Compiler) and (AFinding.Rule <> '');
 end;
 
+procedure TAtlasProblemsFrameMenu.ShowRuleActions(ACanSuppress, ARule: Boolean);
+var
+  mVisible: Boolean;
+begin
+  mVisible := Assigned(FCanRuleActions) and FCanRuleActions();
+  FSuppressItem.Visible := mVisible and Assigned(FOnSuppress);
+  FConfigureItem.Visible := mVisible and Assigned(FOnConfigure);
+  FDisableItem.Visible := mVisible and Assigned(FOnDisable);
+  FSuppressItem.Enabled := ACanSuppress;
+  FConfigureItem.Enabled := ARule;
+  FDisableItem.Enabled := ARule;
+end;
+
 procedure TAtlasProblemsFrameMenu.Fire(const AEvent: TAtlasFindingEvent);
 var
   Finding: TAtlasFinding;
@@ -1740,10 +1759,9 @@ begin
   begin
     FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, ['…']);
   end;
-  // Syntaxfehler (#1022) lassen sich nicht per Kommentar unterdrücken.
-  FSuppressItem.Enabled := Rule and Finding.Problem.CanSuppress;
-  FConfigureItem.Enabled := Rule;
-  FDisableItem.Enabled := Rule;
+  // Regel-Aktionen liefert das Modul Prüfregeln (#1755); Syntaxfehler (#1022) lassen sich nicht per Kommentar
+  // unterdrücken.
+  ShowRuleActions(Rule and Finding.Problem.CanSuppress, Rule);
   FExplainItem.Enabled := Rule;
   // Issue anlegen (#1268): auch für Compilermeldungen; mehrere markierte ergeben ein Issue mit Liste.
   Count := Length(SelectedFindings);
