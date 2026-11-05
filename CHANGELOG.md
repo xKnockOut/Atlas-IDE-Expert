@@ -6,6 +6,12 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- `unused-uses` (#1135): Das Abblenden ungenutzter uses im Editor ist jetzt die Darstellung der Regel. Mit `"unused-uses": "off"` (auch über die Gruppe oder ein Profil), ihrem `exclude`, dem allgemeinen `exclude` und `// lsp-ignore: unused-uses` bleibt auch das Abblenden weg. Neue Option `keep` (Units, die nie als ungenutzt gelten, zusätzlich zu `usesKeep`); sie gilt für die Regel, das Abblenden und „uses aufräumen“.
+
+### Behoben
+- Ein `// lsp-ignore: unused-uses` galt im Editor als unnötig (`unused-suppression`), weil die Regel dort nicht prüft; dessen sichere Korrektur entfernte den Kommentar beim Speichern. Regeln können jetzt je Datei angeben, dass sie nicht prüfen (`IRuleCondition`); dann zählt ihr `lsp-ignore` nicht als unnötig. Dasselbe galt für `uses-cycle` mit `diagnostics.usesCycleLive` aus.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu
