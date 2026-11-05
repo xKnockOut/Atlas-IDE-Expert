@@ -65,7 +65,80 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols;
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeRestrictionsGenericsText = (ClassRecord, ClassWithClass, RecordWithClass, RecordCtor, CtorRecord, OneClass,
+    ClassAndKeyword, InvalidConstraint, Operators, Destructors, ClassConstructors, Constructors, Title,
+    DuplicateConstraint, InstantiatedType, RemoveType, LocalRoutine, AttributeClass, HidesTypeParam, TypeNoParams,
+    VirtualMethods, InterfaceMethods, GlobalRoutines, NoVariant, ImplementationUse, ClassOf, AsAttribute);
+
+const
+  cTexts: array[TTypeRestrictionsGenericsText] of TAtlasText = (
+    (De: 'class und record lassen sich nicht zusammen fordern (wie E2507).';
+     En: 'class and record cannot be required together (like E2507).'),
+    (De: 'class lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+     En: 'class cannot be required together with a class as constraint (like E2552).'),
+    (De: 'record lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+     En: 'record cannot be required together with a class as constraint (like E2552).'),
+    (De: 'record widerspricht der Einschränkung constructor (wie E2516).';
+     En: 'record contradicts the constraint constructor (like E2516).'),
+    (De: 'constructor widerspricht der Einschränkung record (wie E2516).';
+     En: 'constructor contradicts the constraint record (like E2516).'),
+    (De: 'Nur eine Klasse ist als Einschränkung erlaubt; %s ist die zweite (wie E2553).';
+     En: 'Only one class is allowed as constraint; %s is the second (like E2553).'),
+    (De: 'Die Klasse %s lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).';
+     En: 'The class %s cannot be required together with class or record (like E2552).'),
+    (De: '%s ist keine gültige Einschränkung; erlaubt sind Klassen, Interfaces, class, record und constructor (wie ' +
+      'E2510).';
+     En: '%s is not a valid constraint; allowed are classes, interfaces, class, record and constructor (like E2510).'),
+    (De: 'Operatoren dürfen keine Typparameter haben (wie E2529).';
+     En: 'Operators must not have type parameters (like E2529).'),
+    (De: 'Destruktoren dürfen keine Typparameter haben (wie E2528).';
+     En: 'Destructors must not have type parameters (like E2528).'),
+    (De: 'Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).';
+     En: 'Class constructors must not have type parameters (like E2528).'),
+    (De: 'Konstruktoren dürfen keine Typparameter haben (wie E2528).';
+     En: 'Constructors must not have type parameters (like E2528).'),
+    (De: 'Generische Deklaration unzulässig'; En: 'Generic declaration invalid'),
+    (De: 'Die Einschränkung %s steht doppelt (wie E2603).'; En: 'The constraint %s occurs twice (like E2603).'),
+    (De: 'Der instanziierte Typ %s lässt sich nicht mit type als eigener Typ deklarieren (wie E2574).';
+     En: 'The instantiated type %s cannot be declared as a type of its own with type (like E2574).'),
+    (De: 'type entfernen (Alias)'; En: 'Remove type (alias)'),
+    (De: 'Die lokale Routine %s ist in %s nicht erlaubt: Methoden generischer Typen und generische Methoden haben ' +
+      'keine lokalen Routinen; als private Methode oder anonyme Methode schreiben (wie E2570).';
+     En: 'The local routine %s is not allowed in %s: methods of generic types and generic methods have no local ' +
+      'routines; write it as a private method or an anonymous method (like E2570).'),
+    (De: 'Die Attributklasse %s darf keine Typparameter haben (wie E2549).';
+     En: 'The attribute class %s must not have type parameters (like E2549).'),
+    (De: 'Der Typparameter %s verdeckt den gleichnamigen Typparameter von %s (wie H2509).';
+     En: 'The type parameter %s hides the type parameter of the same name of %s (like H2509).'),
+    (De: 'Der Typ %s darf keine Typparameter haben; erlaubt sind sie an Klassen, Records, Interfaces, Arrays und ' +
+      'Prozedurtypen (wie E2508).';
+     En: 'The type %s must not have type parameters; they are allowed on classes, records, interfaces, arrays and ' +
+      'procedural types (like E2508).'),
+    (De: 'Virtuelle, dynamische und message-Methoden dürfen keine Typparameter haben (wie E2533).';
+     En: 'Virtual, dynamic and message methods must not have type parameters (like E2533).'),
+    (De: 'Interface-Methoden dürfen keine Typparameter haben (wie E2535).';
+     En: 'Interface methods must not have type parameters (like E2535).'),
+    (De: 'Globale Routinen dürfen keine Typparameter haben; als class-Methode eines Records deklarieren (wie E2530).';
+     En: 'Global routines must not have type parameters; declare them as a class method of a record (like E2530).'),
+    (De: '%s hat keine Variante mit %d Typparametern; deklariert: %s (wie E2551).';
+     En: '%s has no variant with %d type parameters; declared: %s (like E2551).'),
+    (De: '%s gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf %s aus dem ' +
+      'implementation-Teil nicht verwenden (wie E2506).';
+     En: '%s belongs to a generic type or is generic, is in the interface section and must not use %s from the ' +
+      'implementation section (like E2506).'),
+    (De: 'class of ist für parametrisierte Typen nicht erlaubt (wie E2548).';
+     En: 'class of is not allowed for parameterized types (like E2548).'),
+    (De: 'Parametrisierte Typen können nicht als Attribut stehen (wie E2565).';
+     En: 'Parameterized types cannot be used as attribute (like E2565).'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericDeclarationInvalidRule }
 
@@ -482,29 +555,29 @@ begin
     TConstraintKind.ClassKeyword:
       if AState.HasRecord then
       begin
-        Result := 'class und record lassen sich nicht zusammen fordern (wie E2507).';
+        Result := cTexts[TTypeRestrictionsGenericsText.ClassRecord].Text;
       end
       else if AState.ClassTypes > 0 then
       begin
-        Result := 'class lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+        Result := cTexts[TTypeRestrictionsGenericsText.ClassWithClass].Text;
       end;
     TConstraintKind.RecordKeyword:
       if AState.HasClass then
       begin
-        Result := 'class und record lassen sich nicht zusammen fordern (wie E2507).';
+        Result := cTexts[TTypeRestrictionsGenericsText.ClassRecord].Text;
       end
       else if AState.ClassTypes > 0 then
       begin
-        Result := 'record lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).';
+        Result := cTexts[TTypeRestrictionsGenericsText.RecordWithClass].Text;
       end
       else if AState.HasConstructor then
       begin
-        Result := 'record widerspricht der Einschränkung constructor (wie E2516).';
+        Result := cTexts[TTypeRestrictionsGenericsText.RecordCtor].Text;
       end;
     TConstraintKind.ConstructorKeyword:
       if AState.HasRecord then
       begin
-        Result := 'constructor widerspricht der Einschränkung record (wie E2516).';
+        Result := cTexts[TTypeRestrictionsGenericsText.CtorRecord].Text;
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -519,16 +592,14 @@ begin
     TConstraintKind.ClassType:
       if AState.ClassTypes > 0 then
       begin
-        Result := Format('Nur eine Klasse ist als Einschränkung erlaubt; %s ist die zweite (wie E2553).', [AText]);
+        Result := cTexts[TTypeRestrictionsGenericsText.OneClass].Fmt([AText]);
       end
       else if AState.HasClass or AState.HasRecord then
       begin
-        Result := Format('Die Klasse %s lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).',
-          [AText]);
+        Result := cTexts[TTypeRestrictionsGenericsText.ClassAndKeyword].Fmt([AText]);
       end;
     TConstraintKind.Invalid:
-      Result := Format('%s ist keine gültige Einschränkung; erlaubt sind Klassen, Interfaces, class, record und ' +
-        'constructor (wie E2510).', [AText]);
+      Result := cTexts[TTypeRestrictionsGenericsText.InvalidConstraint].Fmt([AText]);
   else
     Result := KeywordConflict(AKind, AState);
   end;
@@ -607,20 +678,20 @@ function MemberGenericMessage(const AHead: TRoutineHead; AHolderKind: TSyntaxKin
 begin
   if AHead.Keyword = 'operator' then
   begin
-    Result := 'Operatoren dürfen keine Typparameter haben (wie E2529).';
+    Result := cTexts[TTypeRestrictionsGenericsText.Operators].Text;
   end
   else if AHead.Keyword = 'destructor' then
   begin
-    Result := 'Destruktoren dürfen keine Typparameter haben (wie E2528).';
+    Result := cTexts[TTypeRestrictionsGenericsText.Destructors].Text;
   end
   else if AHead.IsClass and (AHead.Keyword = 'constructor') then
   begin
-    Result := 'Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).';
+    Result := cTexts[TTypeRestrictionsGenericsText.ClassConstructors].Text;
   end
   // Mit dcc 13 belegt für Klassen (Cm.E2528); Records und object bleiben ungeprüft still.
   else if (AHead.Keyword = 'constructor') and (AHolderKind = TSyntaxKind.ClassType) then
   begin
-    Result := 'Konstruktoren dürfen keine Typparameter haben (wie E2528).';
+    Result := cTexts[TTypeRestrictionsGenericsText.Constructors].Text;
   end
   else
   begin
@@ -631,7 +702,7 @@ end;
 function TGenericDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(GenericDeclarationInvalidRuleId, TRuleSeverity.Error,
-    'Generische Deklaration unzulässig');
+    cTexts[TTypeRestrictionsGenericsText.Title].Text);
 end;
 
 procedure TGenericDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -751,7 +822,7 @@ var
       Key := LowerCase(Constraint.Text);
       if MatchText(Key, Seen) and (Kind <> TConstraintKind.ClassType) then
       begin
-        Report(Constraint.Range, Format('Die Einschränkung %s steht doppelt (wie E2603).', [Constraint.Text]));
+        Report(Constraint.Range, cTexts[TTypeRestrictionsGenericsText.DuplicateConstraint].Fmt([Constraint.Text]));
         Continue;
       end;
       Seen := Seen + [Key];
@@ -796,9 +867,10 @@ var
       Exit;
     end;
     mRange := TTextRange.Create(Tokens[mBefore].StartPos, ATypeNode.EndPos);
-    AReport.Add(mRange, Format('Der instanziierte Typ %s lässt sich nicht mit type als eigener Typ deklarieren ' +
-      '(wie E2574).', [OneLine(AContext.Text, ATypeNode)]), TRuleConfidence.High,
-      [TRuleFix.Create('type entfernen (Alias)', [TRuleEdit.Create(TTextRange.Create(Tokens[mBefore].StartPos,
+    AReport.Add(mRange, cTexts[TTypeRestrictionsGenericsText.InstantiatedType].Fmt([OneLine(AContext.Text, ATypeNode)]),
+      TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TTypeRestrictionsGenericsText.RemoveType].Text,
+        [TRuleEdit.Create(TTextRange.Create(Tokens[mBefore].StartPos,
       Tokens[mAt].StartPos), '')])]);
   end;
 
@@ -822,9 +894,8 @@ var
         begin
           mInner := ADecl[mChild];
         end;
-        Report(HeaderNameRange(mInner), Format('Die lokale Routine %s ist in %s nicht erlaubt: Methoden generischer ' +
-          'Typen und generische Methoden haben keine lokalen Routinen; als private Methode oder anonyme Methode ' +
-          'schreiben (wie E2570).', [ADecl[mChild].Name, mHeader.Name]));
+        Report(HeaderNameRange(mInner), cTexts[TTypeRestrictionsGenericsText.LocalRoutine].Fmt([ADecl[mChild].Name,
+          mHeader.Name]));
       end;
     end;
   end;
@@ -841,8 +912,7 @@ var
     begin
       if SameText(Ancestor, 'TCustomAttribute') then
       begin
-        Report(TokenRangeAt(ADecl.StartOffset), Format('Die Attributklasse %s darf keine Typparameter haben ' +
-          '(wie E2549).', [ADecl.Name]));
+        Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.AttributeClass].Fmt([ADecl.Name]));
         Break;
       end;
       Ancestor := Types.ParentOf(Ancestor);
@@ -884,8 +954,8 @@ var
       begin
         if (Inner[Child].Kind = TSyntaxKind.Identifier) and MatchText(Inner[Child].Name, Names) then
         begin
-          Report(NodeRange(Inner[Child]), Format('Der Typparameter %s verdeckt den gleichnamigen Typparameter ' +
-            'von %s (wie H2509).', [Inner[Child].Name, ADecl.Name]));
+          Report(NodeRange(Inner[Child]), cTexts[TTypeRestrictionsGenericsText.HidesTypeParam].Fmt([Inner[Child].Name,
+            ADecl.Name]));
         end;
       end;
     end;
@@ -908,8 +978,7 @@ var
     end;
     if TypeNode.Kind in NonGenericTypeKinds then
     begin
-      Report(TokenRangeAt(ADecl.StartOffset), Format('Der Typ %s darf keine Typparameter haben; erlaubt sind sie ' +
-        'an Klassen, Records, Interfaces, Arrays und Prozedurtypen (wie E2508).', [ADecl.Name]));
+      Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.TypeNoParams].Fmt([ADecl.Name]));
       Exit;
     end;
     if TypeNode.Kind = TSyntaxKind.ClassType then
@@ -938,8 +1007,7 @@ var
       Directive := Head.Directive(Name);
       if Directive <> nil then
       begin
-        Report(NodeRange(Directive), 'Virtuelle, dynamische und message-Methoden dürfen keine Typparameter ' +
-          'haben (wie E2533).');
+        Report(NodeRange(Directive), cTexts[TTypeRestrictionsGenericsText.VirtualMethods].Text);
         Exit;
       end;
     end;
@@ -992,7 +1060,7 @@ var
     Holder := AHeader.Parent;
     if Holder.Kind = TSyntaxKind.InterfaceType then
     begin
-      Report(HeaderNameRange(AHeader), 'Interface-Methoden dürfen keine Typparameter haben (wie E2535).');
+      Report(HeaderNameRange(AHeader), cTexts[TTypeRestrictionsGenericsText.InterfaceMethods].Text);
     end
     else if Holder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
       TSyntaxKind.HelperType] then
@@ -1003,8 +1071,8 @@ var
     else if IsGlobalRoutine(AHeader, Holder) and not ((Holder.Parent.Kind = TSyntaxKind.ImplementationSection) and
       DeclaredGenericInInterface(AHeader.Name)) then
     begin
-      Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, Own.EndPos), 'Globale Routinen dürfen keine ' +
-        'Typparameter haben; als class-Methode eines Records deklarieren (wie E2530).');
+      Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, Own.EndPos),
+        cTexts[TTypeRestrictionsGenericsText.GlobalRoutines].Text);
     end;
   end;
 
@@ -1145,8 +1213,7 @@ var
     Count := AAccess[1].ChildCount;
     if DescribeVariants(Heads, Count, Variants, Fits) and not Fits then
     begin
-      Report(NodeRange(AAccess), Format('%s hat keine Variante mit %d Typparametern; deklariert: %s (wie E2551).',
-        [AAccess.Name, Count, Variants]));
+      Report(NodeRange(AAccess), cTexts[TTypeRestrictionsGenericsText.NoVariant].Fmt([AAccess.Name, Count, Variants]));
     end;
   end;
 
@@ -1183,9 +1250,7 @@ var
         end;
         for Use in Symbols.UsesIn(Routine, Decl) do
         begin
-          Report(NodeRange(Use), Format('%s gehört zu einem generischen Typ bzw. ist generisch, steht im ' +
-            'interface-Teil und darf %s aus dem implementation-Teil nicht verwenden (wie E2506).',
-            [Routine.Name, Use.Name]));
+          Report(NodeRange(Use), cTexts[TTypeRestrictionsGenericsText.ImplementationUse].Fmt([Routine.Name, Use.Name]));
         end;
       end;
     finally
@@ -1198,7 +1263,7 @@ var
   begin
     if (AClassOf.ChildCount > 0) and (AClassOf[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
     begin
-      Report(NodeRange(AClassOf[0]), 'class of ist für parametrisierte Typen nicht erlaubt (wie E2548).');
+      Report(NodeRange(AClassOf[0]), cTexts[TTypeRestrictionsGenericsText.ClassOf].Text);
     end;
   end;
 
@@ -1218,7 +1283,7 @@ var
       (Item[0].FindChild(TSyntaxKind.GenericArgs) <> nil));
     if Generic then
     begin
-      Report(NodeRange(AAttribute), 'Parametrisierte Typen können nicht als Attribut stehen (wie E2565).');
+      Report(NodeRange(AAttribute), cTexts[TTypeRestrictionsGenericsText.AsAttribute].Text);
     end;
   end;
 
@@ -1281,5 +1346,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeRestrictions.Generics', cTexts);
 
 end.

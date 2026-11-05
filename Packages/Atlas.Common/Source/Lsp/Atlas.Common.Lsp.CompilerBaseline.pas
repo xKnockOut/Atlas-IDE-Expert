@@ -90,7 +90,23 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Scopes,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompilerBaselineText = (BaselineNotReadableWriteIt, NoWorkspaceFoundForThe, AnswerOfTheBaselineIs);
+
+const
+  cTexts: array[TCompilerBaselineText] of TAtlasText = (
+    (De: 'Baseline nicht lesbar: erst mit atlas.updateBaseline neu schreiben';
+     En: 'Baseline not readable: write it again with atlas.updateBaseline first'),
+    (De: 'Kein Arbeitsbereich für die Baseline gefunden'; En: 'No workspace found for the baseline'),
+    (De: 'Antwort der Baseline ist kein gültiges JSON'; En: 'Answer of the baseline is not valid JSON'));
+
+{$SCOPEDENUMS OFF}
 
 /// Pfad relativ zu ARoot mit "/", '' außerhalb; Trenner und Groß-/Kleinschreibung zählen nicht.
 function RelativeTo(const ARoot, AFileName: string): string;
@@ -278,7 +294,7 @@ begin
   if Previous = 'invalid' then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Baseline nicht lesbar: erst mit atlas.updateBaseline neu schreiben');
+      cTexts[TCompilerBaselineText.BaselineNotReadableWriteIt].Text);
   end;
   Sources := SourcesOf(ASource.Root, AMessages, Owner, Slot);
   Skipped := 0;
@@ -348,7 +364,8 @@ begin
   end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, False, Result)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Arbeitsbereich für die Baseline gefunden');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TCompilerBaselineText.NoWorkspaceFoundForThe].Text);
   end;
 end;
 
@@ -369,7 +386,8 @@ begin
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Antwort der Baseline ist kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError,
+      cTexts[TCompilerBaselineText.AnswerOfTheBaselineIs].Text);
   end;
 end;
 
@@ -396,5 +414,8 @@ begin
   end;
   Result := Answer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompilerBaseline', cTexts);
 
 end.

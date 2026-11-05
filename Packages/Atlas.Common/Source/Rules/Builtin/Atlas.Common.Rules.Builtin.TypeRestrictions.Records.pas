@@ -66,7 +66,94 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols;
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeRestrictionsRecordsText = (Title, LocalMethods, LocalProperties, LocalClassMembers, LocalTypes, LocalConstants,
+    ParameterlessCtor, DefaultCtor, Destructor_, StaticClassMethods, AddStatic, VirtualMethods, Directive,
+    HelperVirtual, HelperDirective, HelperDestructor, HelperFields, HelperDescendants, HelperGeneric, ClassCtorParams,
+    ClassCtorVirtual, ClassCtorMany, InlineVirtual, RemoveInline, InlineCtor, InlineOpenArray, InlineLocalCall,
+    InlineLocalAccess, InlineAsm, InlineImplementation, ThreadvarLocal, ThreadvarAbsolute, ThreadvarInit,
+    HelperAsType, RemoveDirective);
+
+const
+  cTexts: array[TTypeRestrictionsRecordsText] of TAtlasText = (
+    (De: 'Sprachregel für Records, inline und Helfer verletzt';
+     En: 'Language rule for records, inline and helpers violated'),
+    (De: 'Lokale und anonyme Records dürfen keine Methoden deklarieren (wie E2433).';
+     En: 'Local and anonymous records must not declare methods (like E2433).'),
+    (De: 'Lokale und anonyme Records dürfen keine Properties deklarieren (wie E2434).';
+     En: 'Local and anonymous records must not declare properties (like E2434).'),
+    (De: 'Lokale und anonyme Records dürfen keine Klassenmitglieder deklarieren (wie E2435).';
+     En: 'Local and anonymous records must not declare class members (like E2435).'),
+    (De: 'Lokale und anonyme Records dürfen keine Typen deklarieren (wie E2436).';
+     En: 'Local and anonymous records must not declare types (like E2436).'),
+    (De: 'Lokale und anonyme Records dürfen keine Konstanten deklarieren (wie E2437).';
+     En: 'Local and anonymous records must not declare constants (like E2437).'),
+    (De: 'Records erlauben keine parameterlosen Konstruktoren (wie E2394).';
+     En: 'Records do not allow parameterless constructors (like E2394).'),
+    (De: 'Records erlauben keine Konstruktoren, die ohne Argumente aufrufbar sind; alle Parameter haben Vorgabewerte ' +
+      '(wie E2471).';
+     En: 'Records do not allow constructors that can be called without arguments; all parameters have default values ' +
+      '(like E2471).'),
+    (De: 'Records dürfen keinen Destruktor einführen (wie E2465).';
+     En: 'Records must not introduce a destructor (like E2465).'),
+    (De: 'Klassenmethoden in Records müssen static sein (wie E2398).';
+     En: 'Class methods in records must be static (like E2398).'),
+    (De: 'static ergänzen'; En: 'Add static'),
+    (De: 'Records erlauben keine virtuellen Methoden (wie E2379).';
+     En: 'Records do not allow virtual methods (like E2379).'),
+    (De: 'Die Direktive %s ist in Records nicht erlaubt (wie E2463).';
+     En: 'The directive %s is not allowed in records (like E2463).'),
+    (De: 'Record-Helfer erlauben keine virtuellen Methoden (wie E2598).';
+     En: 'Record helpers do not allow virtual methods (like E2598).'),
+    (De: 'Die Direktive %s ist in Record-Helfern nicht erlaubt (wie E2475).';
+     En: 'The directive %s is not allowed in record helpers (like E2475).'),
+    (De: 'Class-Helfer dürfen keinen Destruktor einführen (wie E2295).';
+     En: 'Class helpers must not introduce a destructor (like E2295).'),
+    (De: 'Helfer dürfen keine Felder deklarieren (wie E2599).'; En: 'Helpers must not declare fields (like E2599).'),
+    (De: 'Ein Class-Helfer, der von %s abstammt, kann nur Nachfahren von %s helfen (wie E2294).';
+     En: 'A class helper descending from %s can only help descendants of %s (like E2294).'),
+    (De: 'Helfer dürfen nicht im Kontext eines parametrisierten Typs deklariert werden (wie E2589).';
+     En: 'Helpers must not be declared in the context of a parameterized type (like E2589).'),
+    (De: 'Klassenkonstruktoren dürfen keine Parameter haben (wie E2360).';
+     En: 'Class constructors must not have parameters (like E2360).'),
+    (De: 'Klassenkonstruktoren dürfen nicht virtual, dynamic oder message sein (wie E2534).';
+     En: 'Class constructors must not be virtual, dynamic or message (like E2534).'),
+    (De: 'Mehrere Klassenkonstruktoren in %s: %s und %s (wie E2359).';
+     En: 'Several class constructors in %s: %s and %s (like E2359).'),
+    (De: 'Inline-Methoden dürfen nicht virtual oder dynamic sein (wie E2425).';
+     En: 'Inline methods must not be virtual or dynamic (like E2425).'),
+    (De: 'inline entfernen'; En: 'Remove inline'),
+    (De: 'inline ist an Konstruktoren und Destruktoren nicht erlaubt (wie E2442).';
+     En: 'inline is not allowed on constructors and destructors (like E2442).'),
+    (De: 'Inline-Routinen dürfen keine offenen Array-Parameter haben (wie E2439).';
+     En: 'Inline routines must not have open array parameters (like E2439).'),
+    (De: 'Die Inline-Routine %s darf die lokale Routine %s nicht aufrufen (wie E2501).';
+     En: 'The inline routine %s must not call the local routine %s (like E2501).'),
+    (De: 'Die eingebettete lokale Routine %s darf nicht auf %s der umgebenden Routine zugreifen (wie E2449).';
+     En: 'The inlined local routine %s must not access %s of the enclosing routine (like E2449).'),
+    (De: 'Inline-Routinen dürfen keinen asm-Block haben (wie E2426).';
+     En: 'Inline routines must not have an asm block (like E2426).'),
+    (De: 'Die Inline-Routine %s aus dem interface-Teil darf %s aus dem implementation-Teil nicht verwenden (wie ' +
+      'E2441).';
+     En: 'The inline routine %s from the interface section must not use %s from the implementation section (like ' +
+      'E2441).'),
+    (De: 'threadvar ist nur auf Unit-Ebene erlaubt, nicht lokal in einer Routine (wie E2189).';
+     En: 'threadvar is only allowed at unit level, not locally in a routine (like E2189).'),
+    (De: 'threadvar-Variablen dürfen nicht absolute sein (wie E2190).';
+     En: 'threadvar variables must not be absolute (like E2190).'),
+    (De: 'threadvar-Variablen lassen sich nicht initialisieren (wie E2194).';
+     En: 'threadvar variables cannot be initialized (like E2194).'),
+    (De: 'Der Helfer %s kann nicht als Typ in Deklarationen stehen (wie E2527).';
+     En: 'The helper %s cannot be used as a type in declarations (like E2527).'),
+    (De: '%s entfernen'; En: 'Remove %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TTypeRestrictionViolatedRule }
 
@@ -238,7 +325,7 @@ end;
 function TTypeRestrictionViolatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TypeRestrictionViolatedRuleId, TRuleSeverity.Error,
-    'Sprachregel für Records, inline und Helfer verletzt');
+    cTexts[TTypeRestrictionsRecordsText.Title].Text);
 end;
 
 procedure TTypeRestrictionViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -426,14 +513,14 @@ var
     if Directive <> nil then
     begin
       Report(AVirtualCode, NodeRange(Directive), AVirtualMessage, RemoveFix(AHead, RecordForbiddenDirectives,
-        Directive.Name + ' entfernen'));
+        cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
       Exit;
     end;
     Directive := FirstDirective(AHead, RecordForbiddenDirectives);
     if Directive <> nil then
     begin
       Report(AOtherCode, NodeRange(Directive), Format(AOtherFormat, [Directive.Name]), RemoveFix(AHead,
-        RecordForbiddenDirectives, Directive.Name + ' entfernen'));
+        RecordForbiddenDirectives, cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
     end;
   end;
 
@@ -448,23 +535,18 @@ var
       Member := ARecord[Child];
       case Member.Kind of
         TSyntaxKind.RoutineHeader:
-          Report('E2433', NameRange(Member), 'Lokale und anonyme Records dürfen keine Methoden deklarieren ' +
-            '(wie E2433).', nil);
+          Report('E2433', NameRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalMethods].Text, nil);
         TSyntaxKind.PropertyDecl:
-          Report('E2434', KeywordRange(Member), 'Lokale und anonyme Records dürfen keine Properties ' +
-            'deklarieren (wie E2434).', nil);
+          Report('E2434', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalProperties].Text, nil);
         TSyntaxKind.VarSection:
           if PrecededByClass(Tokens, Member) then
           begin
-            Report('E2435', KeywordRange(Member), 'Lokale und anonyme Records dürfen keine Klassenmitglieder ' +
-              'deklarieren (wie E2435).', nil);
+            Report('E2435', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalClassMembers].Text, nil);
           end;
         TSyntaxKind.TypeSection:
-          Report('E2436', KeywordRange(Member), 'Lokale und anonyme Records dürfen keine Typen deklarieren ' +
-            '(wie E2436).', nil);
+          Report('E2436', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalTypes].Text, nil);
         TSyntaxKind.ConstSection:
-          Report('E2437', KeywordRange(Member), 'Lokale und anonyme Records dürfen keine Konstanten ' +
-            'deklarieren (wie E2437).', nil);
+          Report('E2437', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalConstants].Text, nil);
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -478,23 +560,23 @@ var
     begin
       if AHead.ParameterCount = 0 then
       begin
-        Report('E2394', NameRange(AMember), 'Records erlauben keine parameterlosen Konstruktoren (wie E2394).', nil);
+        Report('E2394', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.ParameterlessCtor].Text, nil);
       end
       else if AllParametersDefaulted(Tokens, AHead) then
       begin
-        Report('E2471', NameRange(AMember), 'Records erlauben keine Konstruktoren, die ohne Argumente aufrufbar ' +
-          'sind; alle Parameter haben Vorgabewerte (wie E2471).', nil);
+        Report('E2471', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.DefaultCtor].Text, nil);
       end;
     end
     else if AHead.Keyword = 'destructor' then
     begin
-      Report('E2465', NameRange(AMember), 'Records dürfen keinen Destruktor einführen (wie E2465).', nil);
+      Report('E2465', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.Destructor_].Text, nil);
     end
     else if AHead.IsClass and MatchText(AHead.Keyword, ['procedure', 'function']) and
       not AHead.HasDirective('static') then
     begin
-      Report('E2398', NameRange(AMember), 'Klassenmethoden in Records müssen static sein (wie E2398).',
-        [TRuleFix.Create('static ergänzen', [TRuleEdit.Create(TTextRange.Create(AMember.EndPos, AMember.EndPos),
+      Report('E2398', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.StaticClassMethods].Text,
+        [TRuleFix.Create(cTexts[TTypeRestrictionsRecordsText.AddStatic].Text,
+          [TRuleEdit.Create(TTextRange.Create(AMember.EndPos, AMember.EndPos),
         ' static;')])]);
     end;
   end;
@@ -509,8 +591,8 @@ var
     begin
       Exit;
     end;
-    CheckForbiddenDirectives(Head, 'E2379', 'Records erlauben keine virtuellen Methoden (wie E2379).', 'E2463',
-      'Die Direktive %s ist in Records nicht erlaubt (wie E2463).');
+    CheckForbiddenDirectives(Head, 'E2379', cTexts[TTypeRestrictionsRecordsText.VirtualMethods].Text, 'E2463',
+      cTexts[TTypeRestrictionsRecordsText.Directive].Text);
     CheckRecordMethodKind(Head, AMember);
   end;
 
@@ -564,12 +646,12 @@ var
     Head := TRoutineHead.Read(Tokens, AMember);
     if AIsRecordHelper then
     begin
-      CheckForbiddenDirectives(Head, 'E2598', 'Record-Helfer erlauben keine virtuellen Methoden (wie E2598).',
-        'E2475', 'Die Direktive %s ist in Record-Helfern nicht erlaubt (wie E2475).');
+      CheckForbiddenDirectives(Head, 'E2598', cTexts[TTypeRestrictionsRecordsText.HelperVirtual].Text,
+        'E2475', cTexts[TTypeRestrictionsRecordsText.HelperDirective].Text);
     end
     else if (Head.Keyword = 'destructor') and not Head.IsClass then
     begin
-      Report('E2295', NameRange(AMember), 'Class-Helfer dürfen keinen Destruktor einführen (wie E2295).', nil);
+      Report('E2295', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.HelperDestructor].Text, nil);
     end;
   end;
 
@@ -580,13 +662,13 @@ var
   begin
     case AMember.Kind of
       TSyntaxKind.Field:
-        Report('E2599', KeywordRange(AMember), 'Helfer dürfen keine Felder deklarieren (wie E2599).', nil);
+        Report('E2599', KeywordRange(AMember), cTexts[TTypeRestrictionsRecordsText.HelperFields].Text, nil);
       TSyntaxKind.VarSection:
         if not PrecededByClass(Tokens, AMember) then
         begin
           for Inner := 0 to AMember.ChildCount - 1 do
           begin
-            Report('E2599', KeywordRange(AMember[Inner]), 'Helfer dürfen keine Felder deklarieren (wie E2599).',
+            Report('E2599', KeywordRange(AMember[Inner]), cTexts[TTypeRestrictionsRecordsText.HelperFields].Text,
               nil);
           end;
         end;
@@ -618,8 +700,8 @@ var
     Wanted := BareTypeName(AncestorTarget.Name);
     if CertainlyNotDescendant(BareTypeName(ATarget.Name), Wanted) then
     begin
-      Report('E2294', NodeRange(ATarget), Format('Ein Class-Helfer, der von %s abstammt, kann nur Nachfahren ' +
-        'von %s helfen (wie E2294).', [AncestorName, Wanted]), nil);
+      Report('E2294', NodeRange(ATarget), cTexts[TTypeRestrictionsRecordsText.HelperDescendants].Fmt([AncestorName,
+        Wanted]), nil);
     end;
   end;
 
@@ -637,8 +719,7 @@ var
     begin
       if (Outer.Kind = TSyntaxKind.TypeDecl) and (Outer.FindChild(TSyntaxKind.GenericParams) <> nil) then
       begin
-        Report('E2589', KeywordRange(AHelper.Parent), 'Helfer dürfen nicht im Kontext eines parametrisierten Typs ' +
-          'deklariert werden (wie E2589).', nil);
+        Report('E2589', KeywordRange(AHelper.Parent), cTexts[TTypeRestrictionsRecordsText.HelperGeneric].Text, nil);
         Break;
       end;
       Outer := Outer.Parent;
@@ -688,13 +769,14 @@ var
       end;
       if Head.ParameterCount > 0 then
       begin
-        Report('E2360', NameRange(Head.Header), 'Klassenkonstruktoren dürfen keine Parameter haben (wie E2360).', nil);
+        Report('E2360', NameRange(Head.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorParams].Text, nil);
       end;
       Directive := FirstDirective(Head, ClassConstructorDirectives);
       if Directive <> nil then
       begin
-        Report('E2534', NodeRange(Directive), 'Klassenkonstruktoren dürfen nicht virtual, dynamic oder message sein ' +
-          '(wie E2534).', RemoveFix(Head, ClassConstructorDirectives, Directive.Name + ' entfernen'));
+        Report('E2534', NodeRange(Directive), cTexts[TTypeRestrictionsRecordsText.ClassCtorVirtual].Text,
+          RemoveFix(Head, ClassConstructorDirectives,
+            cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
       end;
       if First = nil then
       begin
@@ -704,7 +786,7 @@ var
         TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, First.StartOffset)),
         TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, Head.Header.StartOffset))) then
       begin
-        Report('E2359', NameRange(Head.Header), Format('Mehrere Klassenkonstruktoren in %s: %s und %s (wie E2359).',
+        Report('E2359', NameRange(Head.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorMany].Fmt(
           [AType.Parent.Name, First.Name, Head.Header.Name]), nil);
       end;
     end;
@@ -732,18 +814,18 @@ var
     end;
     if FirstDirective(Head, RecordVirtualDirectives) <> nil then
     begin
-      Report('E2425', NodeRange(InlineHead), 'Inline-Methoden dürfen nicht virtual oder dynamic sein (wie E2425).',
-        RemoveFix(Head, ['inline'], 'inline entfernen'));
+      Report('E2425', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineVirtual].Text,
+        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end
     else if MatchText(Head.Keyword, ['constructor', 'destructor']) then
     begin
-      Report('E2442', NodeRange(InlineHead), 'inline ist an Konstruktoren und Destruktoren nicht erlaubt (wie E2442).',
-        RemoveFix(Head, ['inline'], 'inline entfernen'));
+      Report('E2442', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineCtor].Text,
+        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end;
     if HasOpenArrayParameter(Head) then
     begin
-      Report('E2439', NodeRange(InlineHead), 'Inline-Routinen dürfen keine offenen Array-Parameter haben (wie E2439).',
-        RemoveFix(Head, ['inline'], 'inline entfernen'));
+      Report('E2439', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineOpenArray].Text,
+        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end;
   end;
 
@@ -832,8 +914,8 @@ var
       if MatchText(Ident.Name, Nested) and not MatchText(Ident.Name, Used) then
       begin
         Used := Used + [Ident.Name];
-        Report('E2501', NodeRange(Ident), Format('Die Inline-Routine %s darf die lokale Routine %s nicht ' +
-          'aufrufen (wie E2501).', [ARoutine.Name, Ident.Name]), AFix);
+        Report('E2501', NodeRange(Ident), cTexts[TTypeRestrictionsRecordsText.InlineLocalCall].Fmt([ARoutine.Name,
+          Ident.Name]), AFix);
       end;
     end;
   end;
@@ -862,8 +944,8 @@ var
       if MatchText(Ident.Name, Outside) and not MatchText(Ident.Name, Own) and not MatchText(Ident.Name, Used) then
       begin
         Used := Used + [Ident.Name];
-        Report('E2449', NodeRange(Ident), Format('Die eingebettete lokale Routine %s darf nicht auf %s der ' +
-          'umgebenden Routine zugreifen (wie E2449).', [ARoutine.Name, Ident.Name]), AFix);
+        Report('E2449', NodeRange(Ident), cTexts[TTypeRestrictionsRecordsText.InlineLocalAccess].Fmt([ARoutine.Name,
+          Ident.Name]), AFix);
       end;
     end;
   end;
@@ -881,11 +963,10 @@ var
       Exit;
     end;
     Head := TRoutineHead.Read(Tokens, InlineHead);
-    Fix := RemoveFix(Head, ['inline'], 'inline entfernen');
+    Fix := RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text);
     if ARoutine.FindChild(TSyntaxKind.AsmBlock) <> nil then
     begin
-      Report('E2426', NodeRange(Head.Directive('inline')), 'Inline-Routinen dürfen keinen asm-Block haben ' +
-        '(wie E2426).', Fix);
+      Report('E2426', NodeRange(Head.Directive('inline')), cTexts[TTypeRestrictionsRecordsText.InlineAsm].Text, Fix);
     end;
     Body := ARoutine.FindChild(TSyntaxKind.Block);
     if Body = nil then
@@ -941,8 +1022,8 @@ var
         begin
           if not MatchText(Use.Name, mUsable) then
           begin
-            Report('E2441', NodeRange(Use), Format('Die Inline-Routine %s aus dem interface-Teil darf %s aus dem ' +
-              'implementation-Teil nicht verwenden (wie E2441).', [Routine.Name, Use.Name]), nil);
+            Report('E2441', NodeRange(Use), cTexts[TTypeRestrictionsRecordsText.InlineImplementation].Fmt([Routine.Name,
+              Use.Name]), nil);
           end;
         end;
       end;
@@ -963,8 +1044,7 @@ var
     begin
       if Outer.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Report('E2189', KeywordRange(ASection), 'threadvar ist nur auf Unit-Ebene erlaubt, nicht lokal in einer ' +
-          'Routine (wie E2189).', nil);
+        Report('E2189', KeywordRange(ASection), cTexts[TTypeRestrictionsRecordsText.ThreadvarLocal].Text, nil);
         Break;
       end;
       Outer := Outer.Parent;
@@ -978,11 +1058,11 @@ var
       end;
       if HasTopLevelToken(Tokens, Decl.StartOffset, Decl.EndOffset, 'absolute') then
       begin
-        Report('E2190', KeywordRange(Decl), 'threadvar-Variablen dürfen nicht absolute sein (wie E2190).', nil);
+        Report('E2190', KeywordRange(Decl), cTexts[TTypeRestrictionsRecordsText.ThreadvarAbsolute].Text, nil);
       end
       else if HasTopLevelToken(Tokens, Decl.StartOffset, Decl.EndOffset, '=') then
       begin
-        Report('E2194', KeywordRange(Decl), 'threadvar-Variablen lassen sich nicht initialisieren (wie E2194).', nil);
+        Report('E2194', KeywordRange(Decl), cTexts[TTypeRestrictionsRecordsText.ThreadvarInit].Text, nil);
       end;
     end;
   end;
@@ -1000,8 +1080,7 @@ var
     Name := AReference.Name;
     if Types.DeclaredKind(Name) = TSyntaxKind.HelperType then
     begin
-      Report('E2527', NodeRange(AReference), Format('Der Helfer %s kann nicht als Typ in Deklarationen stehen ' +
-        '(wie E2527).', [Name]), nil);
+      Report('E2527', NodeRange(AReference), cTexts[TTypeRestrictionsRecordsText.HelperAsType].Fmt([Name]), nil);
     end;
   end;
 
@@ -1070,5 +1149,8 @@ begin
     Ancestry.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeRestrictions.Records', cTexts);
 
 end.

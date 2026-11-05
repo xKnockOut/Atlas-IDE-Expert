@@ -60,7 +60,54 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TClassCommandsText = (ImplOnlyAppliesInA, AllMethodsOfHaveA, CtorOnlyAppliesInA, ExpectedIsCtorCtorOwner,
+    DtorOnlyAppliesInA, ExpectedIsMsgWMNAME, MsgOnlyAppliesInA, ExpectedIsOverrideMethodName, OverrideOnlyAppliesInA,
+    NoVirtualMethodInThe, IntfOnlyAppliesInThe, IsNotAKnownInterface, IsAlreadyAttachedToAnd, TheHeaderOfCannotBe,
+    ExpectedIsIntfIName, CreateMissingMethodBodiesOf, ConstructorWithTheFieldsAs, DestructorThatFreesCreatedFields,
+    OverrideAVirtualMethodOf, AttachAnInterfaceToThe, DestroyAlreadyFreesAllFields, CreateAMessageMethod);
+
+const
+  cTexts: array[TClassCommandsText] of TAtlasText = (
+    (De: '/impl gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/impl only applies in a class or one of its methods'),
+    (De: 'Alle Methoden von %s haben einen Rumpf'; En: 'All methods of %s have a body'),
+    (De: '/ctor gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/ctor only applies in a class or one of its methods'),
+    (De: 'Erwartet wird /ctor, /ctor owner oder /ctor FeldA, FeldB; kein Feld %s in %s';
+     En: 'Expected is /ctor, /ctor owner or /ctor FieldA, FieldB; no field %s in %s'),
+    (De: '/dtor gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/dtor only applies in a class or one of its methods'),
+    (De: 'Erwartet wird /msg WM_NAME'; En: 'Expected is /msg WM_NAME'),
+    (De: '/msg gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/msg only applies in a class or one of its methods'),
+    (De: 'Erwartet wird /override Methodenname'; En: 'Expected is /override MethodName'),
+    (De: '/override gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/override only applies in a class or one of its methods'),
+    (De: 'Keine virtuelle Methode %s in den Vorfahren von '; En: 'No virtual method %s in the ancestors of '),
+    (De: '/intf gilt nur in der Deklaration einer Klasse'; En: '/intf only applies in the declaration of a class'),
+    (De: '%s ist kein bekanntes Interface'; En: '%s is not a known interface'),
+    (De: '%s hängt schon an %s und ist vollständig implementiert';
+     En: '%s is already attached to %s and fully implemented'),
+    (De: 'Der Kopf von %s lässt sich nicht erweitern'; En: 'The header of %s cannot be extended'),
+    (De: 'Erwartet wird /intf IName'; En: 'Expected is /intf IName'),
+    (De: 'Fehlende Methodenrümpfe der Klasse anlegen'; En: 'Create missing method bodies of the class'),
+    (De: 'Konstruktor mit den Feldern als Parametern'; En: 'Constructor with the fields as parameters'),
+    (De: 'Destruktor, der erzeugte Felder freigibt'; En: 'Destructor that frees created fields'),
+    (De: 'Virtuelle Methode eines Vorfahren überschreiben'; En: 'Override a virtual method of an ancestor'),
+    (De: 'Interface an die Klasse hängen und seine Methoden anlegen';
+     En: 'Attach an interface to the class and create its methods'),
+    (De: '%s.Destroy gibt schon alle im Konstruktor erzeugten Felder frei';
+     En: '%s.Destroy already frees all fields created in the constructor'),
+    (De: 'Botschaftsmethode anlegen'; En: 'Create a message method'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TMessageEntry = record
@@ -289,12 +336,12 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/impl gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.ImplOnlyAppliesInA].Text, AReason));
     end;
     if not TClassCompletion.MissingBodies(Source.Tree, Source.Text,
       TTextPosition.Create(ClassSymbol.SelectionRange.StartPos.Line, 0), Action) then
     begin
-      Exit(Fail('Alle Methoden von ' + ClassSymbol.Name + ' haben einen Rumpf', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.AllMethodsOfHaveA].Fmt([ClassSymbol.Name]), AReason));
     end;
     AEdits := Action.Edits + [Source.RemoveCommand];
     Result := True;
@@ -390,7 +437,7 @@ begin
   try
     if not mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.CtorOnlyAppliesInA].Text, AReason));
     end;
     if SameText(AContext.Arguments, 'owner') then
     begin
@@ -403,8 +450,7 @@ begin
       // Ohne Argument alle Felder, sonst nur die genannten (mit oder ohne F).
       if not ChosenFields(mSource, mClass, AContext.Arguments, mChosen, mUnknown) then
       begin
-        Exit(Fail(Format('Erwartet wird /ctor, /ctor owner oder /ctor FeldA, FeldB; kein Feld %s in %s',
-          [mUnknown, mClass.Name]), AReason));
+        Exit(Fail(cTexts[TClassCommandsText.ExpectedIsCtorCtorOwner].Fmt([mUnknown, mClass.Name]), AReason));
       end;
       FieldConstructor(mSource, mClass, mChosen, mDeclaration, mBody);
     end;
@@ -503,7 +549,7 @@ begin
   end;
   if Length(mMissing) = 0 then
   begin
-    Exit(Fail(Format('%s.Destroy gibt schon alle im Konstruktor erzeugten Felder frei', [AClass.Name]), AReason));
+    Exit(Fail(cTexts[TClassCommandsText.DestroyAlreadyFreesAllFields].Fmt([AClass.Name]), AReason));
   end;
   mTarget := FreeTarget(ASource, ABody);
   mIndent := ASource.Indent(mTarget);
@@ -535,7 +581,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/dtor gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.DtorOnlyAppliesInA].Text, AReason));
     end;
     Fields := CreatedFields(Source, ClassSymbol.Name);
     // Vorhandenen Destruktor ergänzen statt einen zweiten anzulegen.
@@ -576,7 +622,7 @@ begin
   Message := UpperCase(Trim(AContext.Arguments));
   if (Pos('_', Message) < 2) or not IsValidIdent(Message) then
   begin
-    Exit(Fail('Erwartet wird /msg WM_NAME', AReason));
+    Exit(Fail(cTexts[TClassCommandsText.ExpectedIsMsgWMNAME].Text, AReason));
   end;
   Name := MessageMethodName(Message);
   RecordType := MessageRecord(Message);
@@ -584,7 +630,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/msg gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.MsgOnlyAppliesInA].Text, AReason));
     end;
     AEdits := AddMethod(Source, ClassSymbol, 'protected',
       Format('procedure %s(var Message: %s); message %s;', [Name, RecordType, Message]),
@@ -757,17 +803,17 @@ begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
-    Exit(Fail('Erwartet wird /override Methodenname', AReason));
+    Exit(Fail(cTexts[TClassCommandsText.ExpectedIsOverrideMethodName].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/override gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TClassCommandsText.OverrideOnlyAppliesInA].Text, AReason));
     end;
     if not FindVirtual(Source, AContext.Index, ClassSymbol, AContext.Arguments, Header) then
     begin
-      Exit(Fail('Keine virtuelle Methode ' + AContext.Arguments + ' in den Vorfahren von ' + ClassSymbol.Name,
+      Exit(Fail(cTexts[TClassCommandsText.NoVirtualMethodInThe].Fmt([AContext.Arguments]) + ClassSymbol.Name,
         AReason));
     end;
     Signature := Header.Signature;
@@ -1208,7 +1254,7 @@ begin
   if not ASource.ClassAt(mClass) or (mClass.Range.StartPos.Line >= ASource.Line) or
     (mClass.Range.EndPos.Line <= ASource.Line) then
   begin
-    Exit(Fail('/intf gilt nur in der Deklaration einer Klasse', AReason));
+    Exit(Fail(cTexts[TClassCommandsText.IntfOnlyAppliesInThe].Text, AReason));
   end;
   mTarget := IntfTarget(ASource, AContext, mClass);
   mOwn := ASource.UnitIndex;
@@ -1216,11 +1262,11 @@ begin
   mListed := ListedAncestors(ASource, mClass, AName, mBefore);
   if not MissingMembers(AContext, mOwn, mTarget.TypeName, AName, mBefore, mMissing) then
   begin
-    Exit(Fail(Format('%s ist kein bekanntes Interface', [AName]), AReason));
+    Exit(Fail(cTexts[TClassCommandsText.IsNotAKnownInterface].Fmt([AName]), AReason));
   end;
   if mListed and (Length(mMissing) = 0) then
   begin
-    Exit(Fail(Format('%s hängt schon an %s und ist vollständig implementiert', [AName, mClass.Name]), AReason));
+    Exit(Fail(cTexts[TClassCommandsText.IsAlreadyAttachedToAnd].Fmt([AName, mClass.Name]), AReason));
   end;
   mEdits := nil;
   for mMember in mMissing do
@@ -1229,7 +1275,7 @@ begin
   end;
   if not mListed and not HeaderEdit(ASource, mClass, AName, mEdit) then
   begin
-    Exit(Fail(Format('Der Kopf von %s lässt sich nicht erweitern', [mClass.Name]), AReason));
+    Exit(Fail(cTexts[TClassCommandsText.TheHeaderOfCannotBe].Fmt([mClass.Name]), AReason));
   end;
   if not mListed then
   begin
@@ -1248,7 +1294,7 @@ begin
   mName := Trim(AContext.Arguments);
   if not IsValidIdent(PlainName(mName), True) then
   begin
-    Exit(Fail('Erwartet wird /intf IName', AReason));
+    Exit(Fail(cTexts[TClassCommandsText.ExpectedIsIntfIName].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
@@ -1268,14 +1314,17 @@ end;
 
 procedure RegisterClassCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('impl', 'Fehlende Methodenrümpfe der Klasse anlegen', '/impl', ExecuteImpl));
-  ARegister(Command('ctor', 'Konstruktor mit den Feldern als Parametern', '/ctor owner', ExecuteCtor));
-  ARegister(Command('dtor', 'Destruktor, der erzeugte Felder freigibt', '/dtor', ExecuteDtor));
-  ARegister(Command('override', 'Virtuelle Methode eines Vorfahren überschreiben', '/override Paint',
+  ARegister(Command('impl', cTexts[TClassCommandsText.CreateMissingMethodBodiesOf].Text, '/impl', ExecuteImpl));
+  ARegister(Command('ctor', cTexts[TClassCommandsText.ConstructorWithTheFieldsAs].Text, '/ctor owner', ExecuteCtor));
+  ARegister(Command('dtor', cTexts[TClassCommandsText.DestructorThatFreesCreatedFields].Text, '/dtor', ExecuteDtor));
+  ARegister(Command('override', cTexts[TClassCommandsText.OverrideAVirtualMethodOf].Text, '/override Paint',
     ExecuteOverride));
-  ARegister(Command('msg', 'Botschaftsmethode anlegen', '/msg WM_SIZE', ExecuteMsg));
-  ARegister(Command('intf', 'Interface an die Klasse hängen und seine Methoden anlegen', '/intf IExporter',
+  ARegister(Command('msg', cTexts[TClassCommandsText.CreateAMessageMethod].Text, '/msg WM_SIZE', ExecuteMsg));
+  ARegister(Command('intf', cTexts[TClassCommandsText.AttachAnInterfaceToThe].Text, '/intf IExporter',
     ExecuteIntf));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ClassCommands', cTexts);
 
 end.

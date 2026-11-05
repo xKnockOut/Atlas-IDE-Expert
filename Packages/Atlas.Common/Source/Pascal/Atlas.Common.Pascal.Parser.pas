@@ -106,7 +106,26 @@ uses
   Atlas.Common.Pascal.Parser.Cursor,
   Atlas.Common.Pascal.Parser.Expressions,
   Atlas.Common.Pascal.Parser.Declarations,
-  Atlas.Common.Pascal.Parser.Types;
+  Atlas.Common.Pascal.Parser.Types,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPascalParserText = (StatementsAreNotAllowedIn, BeforeElseIsNotAllowed, ExceptOrFinally, FileName, Remove,
+    VariableName);
+
+const
+  cTexts: array[TPascalParserText] of TAtlasText = (
+    (De: 'Anweisungen sind im interface-Teil nicht erlaubt'; En: 'Statements are not allowed in the interface part'),
+    (De: ''';'' vor ''else'' ist nicht erlaubt'; En: ''';'' before ''else'' is not allowed'),
+    (De: '"except" oder "finally"'; En: '"except" or "finally"'),
+    (De: 'Dateiname'; En: 'file name'),
+    (De: ''';'' entfernen'; En: 'Remove '';'''),
+    (De: 'Variablenname'; En: 'variable name'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ganze Datei, Abschnitte und Anweisungen; Spitze der Kette Cursor, Ausdrücke, Deklarationen, Typen.</summary>
@@ -211,7 +230,7 @@ begin
   if IsKw('begin') then
   begin
     // Anweisungen bis zum implementation-Teil überspringen.
-    DiagnoseCode('E2050', 'Anweisungen sind im interface-Teil nicht erlaubt', Current.StartPos, Current.EndPos);
+    DiagnoseCode('E2050', cTexts[TPascalParserText.StatementsAreNotAllowedIn].Text, Current.StartPos, Current.EndPos);
     while not AtEnd and not IsKw('implementation') do
     begin
       Advance;
@@ -299,7 +318,7 @@ begin
       end
       else
       begin
-        DiagnoseUnexpected('Dateiname');
+        DiagnoseUnexpected(cTexts[TPascalParserText.FileName].Text);
       end;
     end;
     FinishNode(Item, ItemStart);
@@ -678,8 +697,8 @@ begin
       // if A then B; else C – außer in case- und on-Zweigen, wo "; else" deren else-Teil beginnt (#1022).
       if IsSym(';') and PeekIsKw(1, 'else') and not FInCaseItem then
       begin
-        DiagnoseCode('E2153', ''';'' vor ''else'' ist nicht erlaubt', Current.StartPos, Current.EndPos,
-          TParserFix.Create(''';'' entfernen', Current.StartPos, Current.EndPos, '', True));
+        DiagnoseCode('E2153', cTexts[TPascalParserText.BeforeElseIsNotAllowed].Text, Current.StartPos, Current.EndPos,
+          TParserFix.Create(cTexts[TPascalParserText.Remove].Text, Current.StartPos, Current.EndPos, '', True));
         Advance;
       end;
       // Leerer then-Zweig vor else (if A then else B): eine leere Anweisung hält seinen Platz, sonst stünde der
@@ -808,7 +827,7 @@ begin
   end
   else
   begin
-    DiagnoseUnexpected('E2088', 'Variablenname');
+    DiagnoseUnexpected('E2088', cTexts[TPascalParserText.VariableName].Text);
   end;
   if AcceptSym(':') then
   begin
@@ -926,7 +945,7 @@ begin
   end
   else
   begin
-    DiagnoseUnexpected('E2125', '"except" oder "finally"');
+    DiagnoseUnexpected('E2125', cTexts[TPascalParserText.ExceptOrFinally].Text);
   end;
   ExpectKw('end');
   FinishNode(Node, Start);
@@ -1166,5 +1185,8 @@ begin
   end;
   Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Parser', cTexts);
 
 end.

@@ -8,6 +8,7 @@
 // - Meldung der Prüfung vor dem Build („Delphi-12-Prüfung: 2 Fehler, Build
 //   abgebrochen“).
 // - Letztes Ergebnis für Statusfeld, Befehlspalette und Menü.
+// - Verworfene Einträge aus tasks (#1458: Core liefert Art, Stelle und Wert).
 
 interface
 
@@ -35,12 +36,24 @@ type
     class function LastResult(const ALast: TAtlasTaskLastRun; AHas: Boolean): string; static;
     /// <summary>Beschreibung in der Befehlspalette: Gruppe · Befehl · letztes Ergebnis.</summary>
     class function Description(const ATask: TAtlasTaskDefinition; const ALastText: string): string; static;
+    /// <summary>„Lint: args muss eine Liste sein“.</summary>
+    class function Issue(const AIssue: TAtlasTaskIssue): string; static;
   end;
 
 implementation
 
 uses
   Atlas.UI.Build.Strings;
+
+const
+  cIssueTexts: array[TAtlasTaskIssueKind] of TAtlasBuildTextId = (TAtlasBuildTextId.TasksIssueUnknownMatcher,
+    TAtlasBuildTextId.TasksIssueSeverityMapValue, TAtlasBuildTextId.TasksIssueMatcherWithoutRegex,
+    TAtlasBuildTextId.TasksIssueMatcherType, TAtlasBuildTextId.TasksIssueArgsValue,
+    TAtlasBuildTextId.TasksIssueArgsType, TAtlasBuildTextId.TasksIssueKeyUnreadable,
+    TAtlasBuildTextId.TasksIssueTimeoutValue, TAtlasBuildTextId.TasksIssueUnknownGroup,
+    TAtlasBuildTextId.TasksIssueBeforeBuildValue, TAtlasBuildTextId.TasksIssueMissingName,
+    TAtlasBuildTextId.TasksIssueMissingCommand, TAtlasBuildTextId.TasksIssueTasksType,
+    TAtlasBuildTextId.TasksIssueTaskType, TAtlasBuildTextId.TasksIssueDuplicateName);
 
 { TAtlasTaskTexts }
 
@@ -164,6 +177,12 @@ class function TAtlasTaskTexts.Description(const ATask: TAtlasTaskDefinition; co
 begin
   Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksItemDescription, [GroupName(ATask.Group), ATask.CommandLine,
     ALastText]);
+end;
+
+class function TAtlasTaskTexts.Issue(const AIssue: TAtlasTaskIssue): string;
+begin
+  // Texte ohne Wert bzw. ohne Stelle lassen die überzähligen Argumente weg.
+  Result := TAtlasBuildStrings.Fmt(cIssueTexts[AIssue.Kind], [AIssue.Where, AIssue.Value]);
 end;
 
 end.

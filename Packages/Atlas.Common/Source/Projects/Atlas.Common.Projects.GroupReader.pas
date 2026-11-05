@@ -26,7 +26,20 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Projects.Internals.Xml;
+  Atlas.Common.Projects.Internals.Xml,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TGroupReaderText = (RootElementProjectExpected);
+
+const
+  cTexts: array[TGroupReaderText] of TAtlasText = (
+    (De: '%s: Wurzelelement <Project> erwartet'; En: '%s: root element <Project> expected'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Projekte (.dproj) aus einer ItemGroup, relativ zu ADirectory aufgelöst und je Datei einmal.</summary>
 procedure AddProjects(AGroup: TXmlElement; const ADirectory: string; AFound: TList<string>;
@@ -73,7 +86,7 @@ begin
   try
     if mRoot.Name <> 'Project' then
     begin
-      raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
+      raise EProjectError.CreateFmt(cTexts[TGroupReaderText.RootElementProjectExpected].Text, [AFileName]);
     end;
     for mIndex := 0 to mRoot.ChildCount - 1 do
     begin
@@ -96,5 +109,8 @@ var
 begin
   Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, FileFormat));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.GroupReader', cTexts);
 
 end.

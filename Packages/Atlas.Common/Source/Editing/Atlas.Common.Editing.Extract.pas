@@ -108,7 +108,33 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Editing.Extract.Method;
+  Atlas.Common.Editing.Extract.Method,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExtractText = (IntroduceVariable, IntroduceVariableAllOccurrences, ExtractConstantInTheUnit, NoSelection,
+    NotInTheBodyOf, NotAWholeCondition, AnonymousMethodInTheCondition, ResultInTheCondition, IsOnlyVisibleInThe,
+    TheConditionChanges, TypeOfUnknown, MoveConditionIntoAFunction);
+
+const
+  cTexts: array[TExtractText] of TAtlasText = (
+    (De: 'Variable einführen'; En: 'Introduce variable'),
+    (De: 'Variable einführen (alle %d Vorkommen)'; En: 'Introduce variable (all %d occurrences)'),
+    (De: 'Konstante in der Unit extrahieren'; En: 'Extract constant in the unit'),
+    (De: 'keine Auswahl'; En: 'no selection'),
+    (De: 'nicht im Rumpf einer Routine'; En: 'not in the body of a routine'),
+    (De: 'keine ganze Bedingung'; En: 'not a whole condition'),
+    (De: 'anonyme Methode in der Bedingung'; En: 'anonymous method in the condition'),
+    (De: 'Result in der Bedingung'; En: 'Result in the condition'),
+    (De: ' ist nur in der Routine sichtbar'; En: ' is only visible in the routine'),
+    (De: 'die Bedingung ändert '; En: 'the condition changes '),
+    (De: 'Typ von %s unbekannt'; En: 'Type of %s unknown'),
+    (De: 'Bedingung in Funktion auslagern'; En: 'Move condition into a function'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
@@ -397,10 +423,10 @@ begin
   begin
     mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mNode.StartPos, mNode.EndPos), mName)];
   end;
-  AAction.Title := 'Variable einführen';
+  AAction.Title := cTexts[TExtractText.IntroduceVariable].Text;
   if AAll then
   begin
-    AAction.Title := Format('Variable einführen (alle %d Vorkommen)', [Length(FTargets)]);
+    AAction.Title := cTexts[TExtractText.IntroduceVariableAllOccurrences].Fmt([Length(FTargets)]);
   end;
   AAction.Kind := ExtractKind;
   AAction.Edits := mEdits;
@@ -549,7 +575,7 @@ begin
   if AUnit then
   begin
     mEdit := UnitConstant(mName, mValue);
-    AAction.Title := 'Konstante in der Unit extrahieren';
+    AAction.Title := cTexts[TExtractText.ExtractConstantInTheUnit].Text;
   end
   else
   begin
@@ -665,23 +691,23 @@ var
 begin
   if not TExtractSupport.Selection(FText, FTree, ARange, mStart, mEnd) then
   begin
-    Exit(Fail('keine Auswahl', FReason));
+    Exit(Fail(cTexts[TExtractText.NoSelection].Text, FReason));
   end;
   FRoutine := TRoutineBody.RoutineAt(FTree, mStart);
   if (FRoutine = nil) or (TRoutineBody.RoutineAt(FTree, mEnd) <> FRoutine) then
   begin
-    Exit(Fail('nicht im Rumpf einer Routine', FReason));
+    Exit(Fail(cTexts[TExtractText.NotInTheBodyOf].Text, FReason));
   end;
   FBody := TRoutineBody.BodyOf(FRoutine);
   FCondition := ConditionAt(FBody, mStart, mEnd);
   if FCondition = nil then
   begin
-    Exit(Fail('keine ganze Bedingung', FReason));
+    Exit(Fail(cTexts[TExtractText.NotAWholeCondition].Text, FReason));
   end;
   Result := not TExtractSupport.InsideBlocked(FCondition, FBody, FReason);
   if Result and TRoutineLocals.HasKind(FCondition, TSyntaxKind.AnonymousMethod) then
   begin
-    Result := Fail('anonyme Methode in der Bedingung', FReason);
+    Result := Fail(cTexts[TExtractText.AnonymousMethodInTheCondition].Text, FReason);
   end;
 end;
 
@@ -690,11 +716,11 @@ begin
   Result := True;
   if SameText(ANode.Name, 'Result') then
   begin
-    Result := Fail('Result in der Bedingung', FReason);
+    Result := Fail(cTexts[TExtractText.ResultInTheCondition].Text, FReason);
   end
   else if IndexText(ANode.Name, FOnlyNames) >= 0 then
   begin
-    Result := Fail(ANode.Name + ' ist nur in der Routine sichtbar', FReason);
+    Result := Fail(ANode.Name + cTexts[TExtractText.IsOnlyVisibleInThe].Text, FReason);
   end;
 end;
 
@@ -711,7 +737,7 @@ begin
   Result := TRoutineLocals.AccessOf(ANode, FLookup) = TLocalAccess.Read;
   if not Result then
   begin
-    FReason := 'die Bedingung ändert ' + ANode.Name;
+    FReason := cTexts[TExtractText.TheConditionChanges].Text + ANode.Name;
   end
   else if not Contains(FOrder, mIndex) then
   begin
@@ -761,7 +787,7 @@ begin
     end
     else
     begin
-      Result := Fail('Typ von ' + FLocals[mIndex].Name + ' unbekannt', FReason);
+      Result := Fail(cTexts[TExtractText.TypeOfUnknown].Fmt([FLocals[mIndex].Name]), FReason);
     end;
     Inc(mPosition);
   end;
@@ -821,7 +847,7 @@ begin
   end;
   if Result then
   begin
-    AAction.Title := 'Bedingung in Funktion auslagern';
+    AAction.Title := cTexts[TExtractText.MoveConditionIntoAFunction].Text;
     AAction.Kind := ExtractKind;
     AAction.Edits := mEdits;
   end;
@@ -881,5 +907,8 @@ begin
     Result := Result + [mAction];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Extract', cTexts);
 
 end.

@@ -19,6 +19,9 @@ type
     procedure JsonIsValidAndComplete;
     [Test]
     procedure HtmlEmbedsDataWithoutExternalLinks;
+    /// <summary>Die Karte erscheint in der Sprache der Servertexte (#1458).</summary>
+    [Test]
+    procedure HtmlFollowsLanguage;
     [Test]
     procedure TextSectionsAndLimit;
     [Test]
@@ -61,6 +64,8 @@ uses
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.MapTemplate,
+  Atlas.Common.Architecture.MapTemplateEn,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.UsesGraph.Tests,
@@ -188,6 +193,25 @@ begin
   Assert.Contains(Html, 'Zyklen markieren');
 end;
 
+procedure TArchitectureReportTests.HtmlFollowsLanguage;
+var
+  mHtml: string;
+begin
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mHtml := TArchitectureReport.Html(Sample);
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  Assert.Contains(mHtml, '<html lang="en">');
+  Assert.Contains(mHtml, 'Show path');
+  Assert.IsFalse(Pos('Weg zeigen', mHtml) > 0, 'kein deutscher Knopf');
+  Assert.Contains(mHtml, '"name":"App.Core.Base"');
+  // Beide Vorlagen sind gleich aufgebaut.
+  Assert.AreEqual(Integer(Length(ArchitectureMapHtml.Split([#10]))),
+    Integer(Length(ArchitectureMapHtmlEn.Split([#10]))));
+end;
+
 procedure TArchitectureReportTests.ReportsCarryComparison;
 var
   Data, Older: TArchitectureOverview;
@@ -280,10 +304,12 @@ procedure TArchitectureReportTests.TemplateHasPlaceholdersOnce;
 var
   Html: string;
 begin
-  Html := ArchitectureMapHtml;
-  Assert.AreEqual(1, Integer(Length(Html.Split(['{{DATA}}'])) - 1));
-  Assert.AreEqual(1, Integer(Length(Html.Split(['{{TITLE}}'])) - 1));
-  Assert.Contains(Html, '</html>');
+  for Html in TArray<string>.Create(ArchitectureMapHtml, ArchitectureMapHtmlEn) do
+  begin
+    Assert.AreEqual(1, Integer(Length(Html.Split(['{{DATA}}'])) - 1));
+    Assert.AreEqual(1, Integer(Length(Html.Split(['{{TITLE}}'])) - 1));
+    Assert.Contains(Html, '</html>');
+  end;
 end;
 
 procedure TArchitectureReportTests.HeaderNamesChangedResolution;

@@ -167,7 +167,49 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TComparisonText = (NoteTheSavedStateWas, ThroughInterfaceOnly, ThroughImplementation, AgainstTheMainDirection,
+    ArchitectureComparisonWithTheState, ResultNoChangeCountsAs, ResultNoChangeOfThe, ComparisonSWithTheSavedState,
+    NoChanges, NewCycles, RemovedCycles, NewCrossLinks, RemovedCrossLinks, NewUsesEdgesBetweenSubsystems,
+    RemovedUsesEdgesBetweenSubsystems, GrownCentralUnits, NewUnits, RemovedUnits, ResultChangeFailOn,
+    UnknownDeviationAllowed, Rare, More, SubsystemChanges, GrowthLine);
+
+const
+  cTexts: array[TComparisonText] of TAtlasText = (
+    (De: 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = %s gerechnet, der aktuelle mit γ = %s; ' +
+      'Teilsystemwechsel können daher kommen.';
+     En: 'Note: the saved state was calculated with granularity γ = %s, the current one with γ = %s; subsystem moves ' +
+      'may come from that.'),
+    (De: 'nur über interface'; En: 'through interface only'),
+    (De: 'über implementation'; En: 'through implementation'),
+    (De: 'gegen die Hauptrichtung'; En: 'against the main direction'),
+    (De: 'Architekturvergleich mit dem Stand „%s“ (%s Units, %s uses-Kanten)';
+     En: 'Architecture comparison with the state “%s” (%s units, %s uses edges)'),
+    (De: 'Ergebnis: keine Abweichung gilt als Fehler (fail-on leer)';
+     En: 'Result: no change counts as an error (fail-on empty)'),
+    (De: 'Ergebnis: keine Abweichung der Arten '; En: 'Result: no change of the kinds '),
+    (De: '## Vergleich%s%sMit dem gespeicherten Stand „%s“ (%s Units, %s uses-Kanten).';
+     En: '## Comparison%s%sWith the saved state “%s” (%s units, %s uses edges).'),
+    (De: 'Keine Abweichung.'; En: 'No changes.'),
+    (De: 'Neue Zyklen'; En: 'New cycles'),
+    (De: 'Entfernte Zyklen'; En: 'Removed cycles'),
+    (De: 'Neue Querverbindungen'; En: 'New cross links'),
+    (De: 'Entfernte Querverbindungen'; En: 'Removed cross links'),
+    (De: 'Neue uses-Kanten zwischen Teilsystemen'; En: 'New uses edges between subsystems'),
+    (De: 'Entfernte uses-Kanten zwischen Teilsystemen'; En: 'Removed uses edges between subsystems'),
+    (De: 'Gewachsene zentrale Units'; En: 'Grown central units'),
+    (De: 'Neue Units'; En: 'New units'),
+    (De: 'Entfernte Units'; En: 'Removed units'),
+    (De: 'Ergebnis: Abweichung %s (fail-on %s)'; En: 'Result: change %s (fail-on %s)'),
+    (De: 'Unbekannte Abweichung "%s" (erlaubt: %s)'; En: 'Unknown deviation "%s" (allowed: %s)'),
+    (De: 'selten'; En: 'rare'),
+    (De: '  … %s weitere'; En: '  … %s more'),
+    (De: 'Teilsystemwechsel'; En: 'Subsystem changes'),
+    (De: '%s: gesamt abhängig %s → %s (+%s, +%s %%)'; En: '%s: total dependents %s → %s (+%s, +%s %%)'));
 
 const
   LineBreak = #13#10;
@@ -207,10 +249,9 @@ begin
   Result := '';
   if ResolutionDiffers then
   begin
-    Result := 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = ' +
-      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution) + ' gerechnet, der aktuelle mit γ = ' +
-      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution) +
-      '; Teilsystemwechsel können daher kommen.';
+    Result := cTexts[TComparisonText.NoteTheSavedStateWas].Fmt([
+      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution),
+      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution)]);
   end;
 end;
 
@@ -304,7 +345,7 @@ begin
     end;
     if not Found then
     begin
-      AError := 'Unbekannte Abweichung "' + Name + '" (erlaubt: ' + string.Join(', ', KindNameList) + ')';
+      AError := cTexts[TComparisonText.UnknownDeviationAllowed].Fmt([Name, string.Join(', ', KindNameList)]);
       Exit(False);
     end;
   end;
@@ -623,11 +664,11 @@ function CycleCaption(const ACycle: TComparisonCycle): string;
 begin
   if ACycle.InterfaceOnly then
   begin
-    Result := 'nur über interface';
+    Result := cTexts[TComparisonText.ThroughInterfaceOnly].Text;
   end
   else
   begin
-    Result := 'über implementation';
+    Result := cTexts[TComparisonText.ThroughImplementation].Text;
   end;
 end;
 
@@ -635,11 +676,11 @@ function ReasonCaption(const AReason: string): string;
 begin
   if AReason = 'rare' then
   begin
-    Result := 'selten';
+    Result := cTexts[TComparisonText.Rare].Text;
   end
   else if AReason = 'againstDirection' then
   begin
-    Result := 'gegen die Hauptrichtung';
+    Result := cTexts[TComparisonText.AgainstTheMainDirection].Text;
   end
   else
   begin
@@ -659,8 +700,8 @@ begin
   begin
     Percent := 100;
   end;
-  Result := AGrowth.Unit_ + ': gesamt abhängig ' + IntToStr(AGrowth.Before) + ' → ' + IntToStr(AGrowth.After) +
-    ' (+' + IntToStr(AGrowth.After - AGrowth.Before) + ', +' + IntToStr(Percent) + ' %)';
+  Result := cTexts[TComparisonText.GrowthLine].Fmt([AGrowth.Unit_, IntToStr(AGrowth.Before),
+    IntToStr(AGrowth.After), IntToStr(AGrowth.After - AGrowth.Before), IntToStr(Percent)]);
 end;
 
 function SubsystemPair(const AEdge: TComparisonEdge): string;
@@ -686,7 +727,7 @@ begin
   end;
   if Count < Length(ALines) then
   begin
-    Result := Result + '  … ' + IntToStr(Length(ALines) - Count) + ' weitere' + LineBreak;
+    Result := Result + cTexts[TComparisonText.More].Fmt([IntToStr(Length(ALines) - Count)]) + LineBreak;
   end;
 end;
 
@@ -745,36 +786,38 @@ class function TArchitectureComparer.Text(const AComparison: TArchitectureCompar
 var
   Failed: TArchitectureFailKinds;
 begin
-  Result := 'Architekturvergleich mit dem Stand „' + AComparison.BaselineTitle + '“ (' +
-    IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) + ' uses-Kanten)' +
+  Result := cTexts[TComparisonText.ArchitectureComparisonWithTheState].Fmt([AComparison.BaselineTitle,
+    IntToStr(AComparison.BaselineUnits), IntToStr(AComparison.BaselineEdges)]) +
     LineBreak;
   if AComparison.GroupingNote <> '' then
   begin
     Result := Result + AComparison.GroupingNote + LineBreak;
   end;
-  Result := Result + Section('Neue Zyklen', CycleLines(AComparison.NewCycles), ALimit) +
-    Section('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles), ALimit) +
-    Section('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True), ALimit) +
-    Section('Entfernte Querverbindungen', LinkLines(AComparison.RemovedCrossLinks, True), ALimit) +
-    Section('Neue uses-Kanten zwischen Teilsystemen', LinkLines(AComparison.NewEdges, False), ALimit) +
-    Section('Entfernte uses-Kanten zwischen Teilsystemen', LinkLines(AComparison.RemovedEdges, False), ALimit) +
-    Section('Teilsystemwechsel', MoveLines(AComparison.Moves), ALimit) +
-    Section('Gewachsene zentrale Units', GrowthLines(AComparison.Growth), ALimit) +
-    Section('Neue Units', AComparison.NewUnits, ALimit) +
-    Section('Entfernte Units', AComparison.RemovedUnits, ALimit);
+  Result := Result + Section(cTexts[TComparisonText.NewCycles].Text, CycleLines(AComparison.NewCycles), ALimit) +
+    Section(cTexts[TComparisonText.RemovedCycles].Text, CycleLines(AComparison.RemovedCycles), ALimit) +
+    Section(cTexts[TComparisonText.NewCrossLinks].Text, LinkLines(AComparison.NewCrossLinks, True), ALimit) +
+    Section(cTexts[TComparisonText.RemovedCrossLinks].Text, LinkLines(AComparison.RemovedCrossLinks, True), ALimit) +
+    Section(cTexts[TComparisonText.NewUsesEdgesBetweenSubsystems].Text, LinkLines(AComparison.NewEdges, False),
+      ALimit) +
+    Section(cTexts[TComparisonText.RemovedUsesEdgesBetweenSubsystems].Text, LinkLines(AComparison.RemovedEdges, False),
+      ALimit) +
+    Section(cTexts[TComparisonText.SubsystemChanges].Text, MoveLines(AComparison.Moves), ALimit) +
+    Section(cTexts[TComparisonText.GrownCentralUnits].Text, GrowthLines(AComparison.Growth), ALimit) +
+    Section(cTexts[TComparisonText.NewUnits].Text, AComparison.NewUnits, ALimit) +
+    Section(cTexts[TComparisonText.RemovedUnits].Text, AComparison.RemovedUnits, ALimit);
   Failed := AComparison.Kinds * AFailOn;
   if AFailOn = [] then
   begin
-    Result := Result + 'Ergebnis: keine Abweichung gilt als Fehler (fail-on leer)';
+    Result := Result + cTexts[TComparisonText.ResultNoChangeCountsAs].Text;
   end
   else if Failed = [] then
   begin
-    Result := Result + 'Ergebnis: keine Abweichung der Arten ' + string.Join(', ', KindNames(AFailOn));
+    Result := Result + cTexts[TComparisonText.ResultNoChangeOfThe].Text + string.Join(', ', KindNames(AFailOn));
   end
   else
   begin
-    Result := Result + 'Ergebnis: Abweichung ' + string.Join(', ', KindNames(Failed)) + ' (fail-on ' +
-      string.Join(', ', KindNames(AFailOn)) + ')';
+    Result := Result + cTexts[TComparisonText.ResultChangeFailOn].Fmt([string.Join(', ', KindNames(Failed)),
+      string.Join(', ', KindNames(AFailOn))]);
   end;
 end;
 
@@ -806,27 +849,27 @@ end;
 
 class function TArchitectureComparer.Markdown(const AComparison: TArchitectureComparison): string;
 begin
-  Result := '## Vergleich' + LineBreak + LineBreak + 'Mit dem gespeicherten Stand „' + AComparison.BaselineTitle +
-    '“ (' + IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) +
-    ' uses-Kanten).' + LineBreak + LineBreak;
+  Result := cTexts[TComparisonText.ComparisonSWithTheSavedState].Fmt([LineBreak, LineBreak, AComparison.BaselineTitle,
+    IntToStr(AComparison.BaselineUnits), IntToStr(AComparison.BaselineEdges)]) + LineBreak + LineBreak;
   if AComparison.GroupingNote <> '' then
   begin
     Result := Result + AComparison.GroupingNote + LineBreak + LineBreak;
   end;
   if AComparison.IsEmpty then
   begin
-    Result := Result + 'Keine Abweichung.' + LineBreak + LineBreak;
+    Result := Result + cTexts[TComparisonText.NoChanges].Text + LineBreak + LineBreak;
   end;
-  Result := Result + MarkdownList('Neue Zyklen', CycleLines(AComparison.NewCycles)) +
-    MarkdownList('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles)) +
-    MarkdownList('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True)) +
-    MarkdownList('Entfernte Querverbindungen', LinkLines(AComparison.RemovedCrossLinks, True)) +
-    MarkdownList('Neue uses-Kanten zwischen Teilsystemen', LinkLines(AComparison.NewEdges, False)) +
-    MarkdownList('Entfernte uses-Kanten zwischen Teilsystemen', LinkLines(AComparison.RemovedEdges, False)) +
-    MarkdownList('Teilsystemwechsel', MoveLines(AComparison.Moves)) +
-    MarkdownList('Gewachsene zentrale Units', GrowthLines(AComparison.Growth)) +
-    MarkdownList('Neue Units', AComparison.NewUnits) +
-    MarkdownList('Entfernte Units', AComparison.RemovedUnits);
+  Result := Result + MarkdownList(cTexts[TComparisonText.NewCycles].Text, CycleLines(AComparison.NewCycles)) +
+    MarkdownList(cTexts[TComparisonText.RemovedCycles].Text, CycleLines(AComparison.RemovedCycles)) +
+    MarkdownList(cTexts[TComparisonText.NewCrossLinks].Text, LinkLines(AComparison.NewCrossLinks, True)) +
+    MarkdownList(cTexts[TComparisonText.RemovedCrossLinks].Text, LinkLines(AComparison.RemovedCrossLinks, True)) +
+    MarkdownList(cTexts[TComparisonText.NewUsesEdgesBetweenSubsystems].Text, LinkLines(AComparison.NewEdges, False)) +
+    MarkdownList(cTexts[TComparisonText.RemovedUsesEdgesBetweenSubsystems].Text, LinkLines(AComparison.RemovedEdges,
+      False)) +
+    MarkdownList(cTexts[TComparisonText.SubsystemChanges].Text, MoveLines(AComparison.Moves)) +
+    MarkdownList(cTexts[TComparisonText.GrownCentralUnits].Text, GrowthLines(AComparison.Growth)) +
+    MarkdownList(cTexts[TComparisonText.NewUnits].Text, AComparison.NewUnits) +
+    MarkdownList(cTexts[TComparisonText.RemovedUnits].Text, AComparison.RemovedUnits);
 end;
 
 function JsonText(const AText: string): string;
@@ -975,5 +1018,8 @@ begin
     ',"addedEdges":' + MapEdgesJson(AComparison.AddedEdges) + LineBreak +
     ',"droppedEdges":' + MapEdgesJson(AComparison.DroppedEdges) + '}';
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Architecture.Comparison', cTexts);
 
 end.

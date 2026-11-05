@@ -73,7 +73,59 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Builtin.Concurrency.Syntax;
+  Atlas.Common.Rules.Builtin.Concurrency.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConcurrencyThreadsText = (UsedAfterStartTitle, UsedAfterStart, FreeTitle, DoubleFree, RemoveFree,
+    SyncDestructorTitle, SyncDestructor, ResumeTitle, ResumeDeprecated, ReplaceWithStart, SuspendDeprecated,
+    TerminatedTitle, AddTerminated, NoTerminated, AnonymousTitle, AddStart, AppendStart, TaskTitle, WrapTry, InTask,
+    TaskLost, NeverStarted);
+
+const
+  cTexts: array[TConcurrencyThreadsText] of TAtlasText = (
+    (De: 'Thread mit FreeOnTerminate wird nach dem Start weiter benutzt';
+     En: 'Thread with FreeOnTerminate is used after the start'),
+    (De: '"%s" gibt sich nach dem Start selbst frei (FreeOnTerminate); der Zugriff kann ein freigegebenes Objekt ' +
+      'treffen';
+     En: '"%s" frees itself after the start (FreeOnTerminate); the access can hit a freed object'),
+    (De: 'Free auf einem Thread mit FreeOnTerminate'; En: 'Free on a thread with FreeOnTerminate'),
+    (De: '"%s" gibt sich mit FreeOnTerminate selbst frei; Free führt zur Doppelfreigabe';
+     En: '"%s" frees itself with FreeOnTerminate; Free leads to a double free'),
+    (De: 'Free entfernen'; En: 'Remove Free'),
+    (De: 'Synchronize im Destruktor eines Threads'; En: 'Synchronize in the destructor of a thread'),
+    (De: 'Synchronize im Destruktor eines Threads: der Hauptthread wartet in WaitFor, der Thread auf Synchronize; ' +
+      'beide verklemmen sich';
+     En: 'Synchronize in the destructor of a thread: the main thread waits in WaitFor, the thread waits for ' +
+      'Synchronize; both deadlock'),
+    (De: 'Veraltetes TThread.Resume oder Suspend'; En: 'Deprecated TThread.Resume or Suspend'),
+    (De: 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten';
+     En: 'TThread.Resume is deprecated; start a created thread with Start'),
+    (De: 'Durch Start ersetzen'; En: 'Replace with Start'),
+    (De: 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; stattdessen mit einem ' +
+      'Ereignis (TEvent) warten';
+     En: 'TThread.Suspend is deprecated and can stop the thread in the middle of a lock; wait with an event (TEvent) ' +
+      'instead'),
+    (De: 'Thread-Schleife ohne Terminated'; En: 'Thread loop without Terminated'),
+    (De: 'Terminated in die Schleifenbedingung aufnehmen'; En: 'Add Terminated to the loop condition'),
+    (De: 'Die Schleife prüft Terminated nicht; der Thread lässt sich nicht beenden.';
+     En: 'The loop does not check Terminated; the thread cannot be stopped.'),
+    (De: 'Anonymer Thread nie gestartet'; En: 'Anonymous thread never started'),
+    (De: '%s.Start ergänzen'; En: 'Add %s.Start'),
+    (De: '.Start anhängen'; En: 'Append .Start'),
+    (De: 'Exception in TTask geht verloren'; En: 'Exception in TTask is lost'),
+    (De: 'Rumpf in try … except mit Meldung über TThread.Queue einschließen';
+     En: 'Wrap the body in try … except with a message via TThread.Queue'),
+    (De: 'im Task'; En: 'in the task'),
+    (De: 'Der Task wird nie abgefragt und fängt keine Exceptions; Fehler %s gehen verloren.';
+     En: 'The task is never queried and catches no exceptions; errors %s are lost.'),
+    (De: 'Der anonyme Thread wird nie gestartet und nie freigegeben.';
+     En: 'The anonymous thread is never started and never freed.'));
+
+{$SCOPEDENUMS OFF}
 
 { Gemeinsam für FreeOnTerminate }
 
@@ -132,7 +184,7 @@ end;
 function TThreadUseAfterFreeOnTerminateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-use-after-free-on-terminate', TRuleSeverity.Warning,
-    'Thread mit FreeOnTerminate wird nach dem Start weiter benutzt');
+    cTexts[TConcurrencyThreadsText.UsedAfterStartTitle].Text);
 end;
 
 procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -159,8 +211,8 @@ procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext;
         // Neue Zuweisung beendet die Beobachtung; Free meldet thread-free-with-free-on-terminate.
         if not IsAssignmentTo(Statement, Name) and not SameText(FreedVariable(Statement), Name) then
         begin
-          AReport.Add(NodeRange(Statement), Format('"%s" gibt sich nach dem Start selbst frei (FreeOnTerminate); ' +
-            'der Zugriff kann ein freigegebenes Objekt treffen', [Name]), TRuleConfidence.High);
+          AReport.Add(NodeRange(Statement), cTexts[TConcurrencyThreadsText.UsedAfterStart].Fmt([Name]),
+            TRuleConfidence.High);
         end;
         Name := '';
         Started := False;
@@ -197,7 +249,7 @@ end;
 function TThreadFreeWithFreeOnTerminateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-free-with-free-on-terminate', TRuleSeverity.Error,
-    'Free auf einem Thread mit FreeOnTerminate');
+    cTexts[TConcurrencyThreadsText.FreeTitle].Text);
 end;
 
 procedure TThreadFreeWithFreeOnTerminateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -222,9 +274,9 @@ procedure TThreadFreeWithFreeOnTerminateRule.Check(const AContext: TRuleContext;
       end
       else if (Name <> '') and SameText(FreedVariable(Statement), Name) then
       begin
-        AReport.Add(NodeRange(Statement), Format('"%s" gibt sich mit FreeOnTerminate selbst frei; Free führt zur ' +
-          'Doppelfreigabe', [Name]), TRuleConfidence.High,
-          [TRuleFix.Create('Free entfernen', [TRuleEdit.Create(StatementRemoval(AContext.Text, Statement), '')])]);
+        AReport.Add(NodeRange(Statement), cTexts[TConcurrencyThreadsText.DoubleFree].Fmt([Name]), TRuleConfidence.High,
+          [TRuleFix.Create(cTexts[TConcurrencyThreadsText.RemoveFree].Text,
+            [TRuleEdit.Create(StatementRemoval(AContext.Text, Statement), '')])]);
         Name := '';
       end;
     end;
@@ -248,7 +300,7 @@ end;
 function TSynchronizeInDestructorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('synchronize-in-destructor', TRuleSeverity.Warning,
-    'Synchronize im Destruktor eines Threads');
+    cTexts[TConcurrencyThreadsText.SyncDestructorTitle].Text);
 end;
 
 type
@@ -335,8 +387,7 @@ var
         end;
         if IsSynchronizeName(Node) then
         begin
-          AReport.Add(NameRange(Node), 'Synchronize im Destruktor eines Threads: der Hauptthread wartet in WaitFor, ' +
-            'der Thread auf Synchronize; beide verklemmen sich', TRuleConfidence.Medium);
+          AReport.Add(NameRange(Node), cTexts[TConcurrencyThreadsText.SyncDestructor].Text, TRuleConfidence.Medium);
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -401,7 +452,7 @@ end;
 function TThreadResumeSuspendRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-resume-suspend', TRuleSeverity.Warning,
-    'Veraltetes TThread.Resume oder Suspend');
+    cTexts[TConcurrencyThreadsText.ResumeTitle].Text);
 end;
 
 /// <summary>Ist AReceiver ein Bezeichner, dessen deklarierter Typ sicher kein Thread ist: Typ in der Datei
@@ -468,13 +519,13 @@ begin
         Range := NameRange(Call.Member);
         if SameText(Call.Method, 'Resume') then
         begin
-          Report.Add(Range, 'TThread.Resume ist veraltet; einen erzeugten Thread mit Start starten',
-            TRuleConfidence.High, [TRuleFix.Create('Durch Start ersetzen', [TRuleEdit.Create(Range, 'Start')], True)]);
+          Report.Add(Range, cTexts[TConcurrencyThreadsText.ResumeDeprecated].Text,
+            TRuleConfidence.High, [TRuleFix.Create(cTexts[TConcurrencyThreadsText.ReplaceWithStart].Text,
+              [TRuleEdit.Create(Range, 'Start')], True)]);
         end
         else
         begin
-          Report.Add(Range, 'TThread.Suspend ist veraltet und kann den Thread mitten in einer Sperre anhalten; ' +
-            'stattdessen mit einem Ereignis (TEvent) warten', TRuleConfidence.High);
+          Report.Add(Range, cTexts[TConcurrencyThreadsText.SuspendDeprecated].Text, TRuleConfidence.High);
         end;
       end);
   finally
@@ -492,7 +543,7 @@ const
 function TThreadLoopWithoutTerminatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-loop-without-terminated', TRuleSeverity.Warning,
-    'Thread-Schleife ohne Terminated');
+    cTexts[TConcurrencyThreadsText.TerminatedTitle].Text);
 end;
 
 /// <summary>Kommt AIndex in AItems vor?</summary>
@@ -656,7 +707,7 @@ var
     begin
       Replacement := Text + ' or Terminated';
     end;
-    Result := [TRuleFix.Create('Terminated in die Schleifenbedingung aufnehmen',
+    Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.AddTerminated].Text,
       [TRuleEdit.Create(NodeRange(Condition), Replacement)])];
   end;
 
@@ -694,8 +745,8 @@ var
     if mInfinite or MentionsAny(ANode, ThreadWaitCalls) then
     begin
       AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-        ANode.StartPos.Character + Length(mKeyword))), 'Die Schleife prüft Terminated nicht; der Thread ' +
-        'lässt sich nicht beenden.', TRuleConfidence.High, Fix(ANode));
+        ANode.StartPos.Character + Length(mKeyword))), cTexts[TConcurrencyThreadsText.NoTerminated].Text,
+          TRuleConfidence.High, Fix(ANode));
     end;
   end;
 
@@ -861,13 +912,11 @@ end;
 
 { TAnonymousThreadNotStartedRule }
 
-const
-  AnonymousThreadMessage = 'Der anonyme Thread wird nie gestartet und nie freigegeben.';
 
 function TAnonymousThreadNotStartedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('anonymous-thread-not-started', TRuleSeverity.Warning,
-    'Anonymer Thread nie gestartet');
+    cTexts[TConcurrencyThreadsText.AnonymousTitle].Text);
 end;
 
 procedure TAnonymousThreadNotStartedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -954,7 +1003,7 @@ var
     begin
       Exit;
     end;
-    Result := [TRuleFix.Create(Format('%s.Start ergänzen', [AName]), [TRuleEdit.Create(
+    Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.AddStart].Fmt([AName]), [TRuleEdit.Create(
       TTextRange.Create(Last.EndPos.Line + 1, 0, Last.EndPos.Line + 1, 0),
       TTextLines.IndentOf(Lines[AAssign.StartPos.Line]) + AName + '.Start;' + LineBreak)])];
   end;
@@ -996,8 +1045,9 @@ var
     // TThread.CreateAnonymousThread(…); als eigene Anweisung.
     if (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount > 0) and IsCreation(ANode[0]) then
     begin
-      AReport.Add(NameRange(ANode[0][0]), AnonymousThreadMessage, TRuleConfidence.High,
-        [TRuleFix.Create('.Start anhängen', [TRuleEdit.Create(TTextRange.Create(ANode[0].EndPos, ANode[0].EndPos),
+      AReport.Add(NameRange(ANode[0][0]), cTexts[TConcurrencyThreadsText.NeverStarted].Text, TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TConcurrencyThreadsText.AppendStart].Text,
+          [TRuleEdit.Create(TTextRange.Create(ANode[0].EndPos, ANode[0].EndPos),
         '.Start')])]);
     end;
     // Lokale Variable, die nie gestartet und nicht weitergegeben wird.
@@ -1009,7 +1059,8 @@ var
     Usage(ARoutine, mTarget, mName, mStarted, mEscapes);
     if not mStarted and not mEscapes then
     begin
-      AReport.Add(NameRange(mCreation[0]), AnonymousThreadMessage, TRuleConfidence.High, StartFix(ANode, mName));
+      AReport.Add(NameRange(mCreation[0]), cTexts[TConcurrencyThreadsText.NeverStarted].Text, TRuleConfidence.High,
+        StartFix(ANode, mName));
     end;
   end;
 
@@ -1061,7 +1112,7 @@ end;
 function TTaskExceptionUnobservedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('task-exception-unobserved', TRuleSeverity.Hint,
-    'Exception in TTask geht verloren');
+    cTexts[TConcurrencyThreadsText.TaskTitle].Text);
 end;
 
 procedure TTaskExceptionUnobservedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1240,7 +1291,7 @@ var
     begin
       Edits := [UsesEdit] + Edits;
     end;
-    Result := [TRuleFix.Create('Rumpf in try … except mit Meldung über TThread.Queue einschließen', Edits)];
+    Result := [TRuleFix.Create(cTexts[TConcurrencyThreadsText.WrapTry].Text, Edits)];
   end;
 
   procedure Report(ACall: TSyntaxNode);
@@ -1261,14 +1312,14 @@ var
     Name := FirstCall(Body);
     if Name = '' then
     begin
-      Name := 'im Task';
+      Name := cTexts[TConcurrencyThreadsText.InTask].Text;
     end
     else
     begin
       Name := 'in ' + Name;
     end;
-    AReport.Add(NameRange(ACall[0]), Format('Der Task wird nie abgefragt und fängt keine Exceptions; Fehler %s ' +
-      'gehen verloren.', [Name]), TRuleConfidence.Medium, WrapFix(Body));
+    AReport.Add(NameRange(ACall[0]), cTexts[TConcurrencyThreadsText.TaskLost].Fmt([Name]), TRuleConfidence.Medium,
+      WrapFix(Body));
   end;
 
   // Wie oft erwähnt die Routine die Variable außer an ATarget: als V.Start und sonst?
@@ -1409,5 +1460,8 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   Visit(AContext.Tree.Root, nil);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Concurrency.Threads', cTexts);
 
 end.

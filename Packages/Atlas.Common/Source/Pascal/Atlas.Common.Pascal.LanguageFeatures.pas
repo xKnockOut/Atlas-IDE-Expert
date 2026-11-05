@@ -67,14 +67,31 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLanguageFeaturesText = (OnlyAvailableFromOnSet);
+
+const
+  cTexts: array[TLanguageFeaturesText] of TAtlasText = (
+    (De: '%s erst ab %s verfügbar (eingestellt: %s)'; En: '%s only available from %s on (set: %s)'));
 
 const
   Minimums: array[TLanguageFeature] of string = ('20.0', '20.0', '21.0', '23.0', '37.0', '22.0', '22.0', '37.0',
     '37.0');
-  Names: array[TLanguageFeature] of string = ('Inline-Variable', 'Inline-Konstante',
-    'Managed Record (class operator Initialize/Finalize)', 'Mehrzeiliger String', 'If-Ausdruck',
-    'Ziffern-Trennzeichen (_)', 'Binärliteral (%)', 'Operator "is not"', 'Operator "not in"');
+  Names: array[TLanguageFeature] of TAtlasText = (
+    (De: 'Inline-Variable'; En: 'inline variable'),
+    (De: 'Inline-Konstante'; En: 'inline constant'),
+    (De: 'Managed Record (class operator Initialize/Finalize)';
+     En: 'managed record (class operator Initialize/Finalize)'),
+    (De: 'Mehrzeiliger String'; En: 'multi-line string'),
+    (De: 'If-Ausdruck'; En: 'if expression'),
+    (De: 'Ziffern-Trennzeichen (_)'; En: 'digit separator (_)'),
+    (De: 'Binärliteral (%)'; En: 'binary literal (%)'),
+    (De: 'Operator "is not"'; En: 'operator "is not"'),
+    (De: 'Operator "not in"'; En: 'operator "not in"'));
 
 type
   TProduct = record
@@ -100,7 +117,7 @@ end;
 
 class function TLanguageFeatures.DisplayName(AFeature: TLanguageFeature): string;
 begin
-  Result := Names[AFeature];
+  Result := Names[AFeature].Text;
 end;
 
 class function TLanguageFeatures.ProductName(const ABdsVersion: string): string;
@@ -188,8 +205,8 @@ begin
   Finding.Feature := AFeature;
   Finding.StartPos := AStartPos;
   Finding.EndPos := AEndPos;
-  Finding.Message := Format('%s erst ab %s verfügbar (eingestellt: %s)',
-    [Names[AFeature], TLanguageFeatures.ProductName(Minimums[AFeature]), TLanguageFeatures.ProductName(AVersion)]);
+  Finding.Message := cTexts[TLanguageFeaturesText.OnlyAvailableFromOnSet].Fmt([Names[AFeature].Text,
+    TLanguageFeatures.ProductName(Minimums[AFeature]), TLanguageFeatures.ProductName(AVersion)]);
   AList.Add(Finding);
 end;
 
@@ -389,5 +406,8 @@ begin
     List.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.LanguageFeatures', cTexts);
 
 end.

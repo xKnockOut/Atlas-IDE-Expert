@@ -128,7 +128,51 @@ uses
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Conditions.Values,
-  Atlas.Common.Rules.Builtin.Conditions.Jumps;
+  Atlas.Common.Rules.Builtin.Conditions.Jumps,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConditionsText = (ConstantTitle, AlwaysTrue, AlwaysFalse, RemoveCondition, RemoveDeadBranch, InfiniteTitle, NoExit,
+    JumpToHead, UnchangedTitle, AndWord, NeverChangedOne, NeverChangedMany, RedundantTitle, RemoveStatement,
+    RedundantExit, RedundantContinue, OnceTitle, OfSubject, FirstElement, ExactlyOnce, AtMostOnce, AJump, BelongsInIf);
+
+const
+  cTexts: array[TConditionsText] of TAtlasText = (
+    (De: 'Bedingung ist immer gleich'; En: 'Condition is always the same'),
+    (De: 'Die Bedingung ist immer wahr (%s).'; En: 'The condition is always true (%s).'),
+    (De: 'Die Bedingung ist immer falsch (%s).'; En: 'The condition is always false (%s).'),
+    (De: 'Bedingung entfernen'; En: 'Remove condition'),
+    (De: 'Toten Zweig entfernen'; En: 'Remove dead branch'),
+    (De: 'Schleife ohne Ausgang'; En: 'Loop without exit'),
+    (De: 'Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).';
+     En: 'The loop has no exit (no Break, Exit or raise).'),
+    (De: 'Zum Schleifenkopf springen'; En: 'Jump to the loop head'),
+    (De: 'Schleifenbedingung ändert sich im Rumpf nie'; En: 'Loop condition never changes in the body'),
+    (De: ' und '; En: ' and '),
+    (De: ' wird im Rumpf nie verändert; die Schleife endet nicht.';
+     En: ' is never changed in the body; the loop does not end.'),
+    (De: ' werden im Rumpf nie verändert; die Schleife endet nicht.';
+     En: ' are never changed in the body; the loop does not end.'),
+    (De: 'Überflüssiges Exit oder Continue'; En: 'Redundant Exit or Continue'),
+    (De: 'Anweisung entfernen'; En: 'Remove statement'),
+    (De: 'Exit am Ende der Routine ist überflüssig.'; En: 'Exit at the end of the routine is redundant.'),
+    (De: 'Continue am Ende des Schleifenrumpfs ist überflüssig.';
+     En: 'Continue at the end of the loop body is redundant.'),
+    (De: 'Schleife läuft höchstens einmal'; En: 'Loop runs at most once'),
+    (De: ' von %s'; En: ' of %s'),
+    (De: 'Jeder Durchlauf endet mit %s: Die Schleife prüft nur das erste Element%s.';
+     En: 'Every iteration ends with %s: the loop checks only the first element%s.'),
+    (De: 'Jeder Durchlauf endet mit %s: Die Schleife läuft genau einmal.';
+     En: 'Every iteration ends with %s: the loop runs exactly once.'),
+    (De: 'Jeder Durchlauf endet mit %s: Die Schleife läuft höchstens einmal.';
+     En: 'Every iteration ends with %s: the loop runs at most once.'),
+    (De: 'einem Sprung'; En: 'a jump'),
+    (De: ' Gehört %s in den if-Zweig?'; En: ' Does %s belong in the if branch?'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -171,7 +215,8 @@ end;
 
 function TConstantConditionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ConstantConditionRuleId, TRuleSeverity.Warning, 'Bedingung ist immer gleich');
+  Result := TRuleDescriptor.Create(ConstantConditionRuleId, TRuleSeverity.Warning,
+    cTexts[TConditionsText.ConstantTitle].Text);
 end;
 
 /// <summary>Text des Knotens; Folgezeilen um die Spalte des Knotens gegenüber AColumn ausgerückt.</summary>
@@ -265,11 +310,11 @@ function ConstantMessage(const AValue: TConstantValue): string;
 begin
   if AValue.Bool then
   begin
-    Result := Format('Die Bedingung ist immer wahr (%s).', [AValue.Shown]);
+    Result := cTexts[TConditionsText.AlwaysTrue].Fmt([AValue.Shown]);
   end
   else
   begin
-    Result := Format('Die Bedingung ist immer falsch (%s).', [AValue.Shown]);
+    Result := cTexts[TConditionsText.AlwaysFalse].Fmt([AValue.Shown]);
   end;
 end;
 
@@ -301,18 +346,19 @@ var
     begin
       if AValue.Bool then
       begin
-        Fixes := [TRuleFix.Create('Bedingung entfernen', [TRuleEdit.Create(NodeRange(ANode),
+        Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveCondition].Text, [TRuleEdit.Create(NodeRange(ANode),
           Outdented(AContext.Text, Branch, ANode.StartPos.Character))])];
       end
       else
       begin
-        Fixes := [TRuleFix.Create('Toten Zweig entfernen', [TRuleEdit.Create(NodeRange(ANode),
+        Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text, [TRuleEdit.Create(NodeRange(ANode),
           Outdented(AContext.Text, Branch, ANode.StartPos.Character))])];
       end;
     end
     else if not AValue.Bool then
     begin
-      Fixes := [TRuleFix.Create('Toten Zweig entfernen', [TRuleEdit.Create(StatementRemoval(AContext.Text, ANode),
+      Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text,
+        [TRuleEdit.Create(StatementRemoval(AContext.Text, ANode),
         '')])];
     end;
     AReport.Add(NodeRange(ANode[0]), Message, TRuleConfidence.High, Fixes);
@@ -389,7 +435,7 @@ end;
 
 function TInfiniteLoopRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InfiniteLoopRuleId, TRuleSeverity.Error, 'Schleife ohne Ausgang');
+  Result := TRuleDescriptor.Create(InfiniteLoopRuleId, TRuleSeverity.Error, cTexts[TConditionsText.InfiniteTitle].Text);
 end;
 
 procedure TInfiniteLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -458,13 +504,13 @@ var
           if Node.Kind = TSyntaxKind.WhileStatement then
           begin
             AReport.Add(TTextRange.Create(Node.StartPos, Node[0].EndPos),
-              'Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).', TRuleConfidence.High);
+              cTexts[TConditionsText.NoExit].Text, TRuleConfidence.High);
           end
           else
           begin
             Condition := Node[Node.ChildCount - 1];
-            AReport.Add(NodeRange(Condition), 'Die Schleife hat keinen Ausgang (kein Break, Exit oder raise).',
-              TRuleConfidence.High, [TRuleFix.Jump('Zum Schleifenkopf springen', Node.StartPos)]);
+            AReport.Add(NodeRange(Condition), cTexts[TConditionsText.NoExit].Text,
+              TRuleConfidence.High, [TRuleFix.Jump(cTexts[TConditionsText.JumpToHead].Text, Node.StartPos)]);
           end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
@@ -517,7 +563,7 @@ type
 function TLoopConditionUnchangedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LoopConditionUnchangedRuleId, TRuleSeverity.Warning,
-    'Schleifenbedingung ändert sich im Rumpf nie');
+    cTexts[TConditionsText.UnchangedTitle].Text);
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -820,7 +866,7 @@ begin
   begin
     if mIndex = High(AVariables) then
     begin
-      Result := Result + ' und ' + AVariables[mIndex].Name;
+      Result := Result + cTexts[TConditionsText.AndWord].Text + AVariables[mIndex].Name;
     end
     else
     begin
@@ -829,11 +875,11 @@ begin
   end;
   if Length(AVariables) = 1 then
   begin
-    Result := Result + ' wird im Rumpf nie verändert; die Schleife endet nicht.';
+    Result := Result + cTexts[TConditionsText.NeverChangedOne].Text;
   end
   else
   begin
-    Result := Result + ' werden im Rumpf nie verändert; die Schleife endet nicht.';
+    Result := Result + cTexts[TConditionsText.NeverChangedMany].Text;
   end;
 end;
 
@@ -1024,7 +1070,8 @@ end;
 
 function TRedundantJumpRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RedundantJumpRuleId, TRuleSeverity.Hint, 'Überflüssiges Exit oder Continue');
+  Result := TRuleDescriptor.Create(RedundantJumpRuleId, TRuleSeverity.Hint,
+    cTexts[TConditionsText.RedundantTitle].Text);
 end;
 
 /// <summary>Ist AStatement ein bloßes AName; (ohne Argumente, ohne Qualifizierer)?</summary>
@@ -1116,7 +1163,8 @@ begin
   // In einer Anweisungsfolge (begin … end, repeat … until); als Zweig eines if bliebe ein leeres then.
   if (AStatement.Parent <> nil) and (AStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.RepeatStatement]) then
   begin
-    mFixes := [TRuleFix.Create('Anweisung entfernen', [TRuleEdit.Create(StatementRemoval(AContext.Text, AStatement),
+    mFixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveStatement].Text,
+      [TRuleEdit.Create(StatementRemoval(AContext.Text, AStatement),
       '')])];
   end;
   AReport.Add(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), AMessage, TRuleConfidence.High, mFixes);
@@ -1131,7 +1179,7 @@ begin
   Result := nil;
   if ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
   begin
-    AMessage := 'Exit am Ende der Routine ist überflüssig.';
+    AMessage := cTexts[TConditionsText.RedundantExit].Text;
     mBlock := ANode.FindChild(TSyntaxKind.Block);
     if (mBlock <> nil) and (mBlock.ChildCount > 0) and IsBareJump(mBlock[mBlock.ChildCount - 1], 'Exit') and
       not HasDirectiveBetween(ATokens, mBlock.StartOffset, mBlock.EndOffset) then
@@ -1141,7 +1189,7 @@ begin
   end
   else if LoopLastStatement(ANode, mLast) and not HasDirectiveBetween(ATokens, ANode.StartOffset, ANode.EndOffset) then
   begin
-    AMessage := 'Continue am Ende des Schleifenrumpfs ist überflüssig.';
+    AMessage := cTexts[TConditionsText.RedundantContinue].Text;
     Result := LastStatement(mLast);
     if (Result <> nil) and not IsBareJump(Result, 'Continue') then
     begin
@@ -1187,7 +1235,8 @@ end;
 
 function TLoopRunsAtMostOnceRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LoopRunsAtMostOnceRuleId, TRuleSeverity.Warning, 'Schleife läuft höchstens einmal');
+  Result := TRuleDescriptor.Create(LoopRunsAtMostOnceRuleId, TRuleSeverity.Warning,
+    cTexts[TConditionsText.OnceTitle].Text);
 end;
 
 function IsLoop(ANode: TSyntaxNode): Boolean;
@@ -1448,15 +1497,14 @@ begin
         mSubject := '';
         if ALoop.ChildCount > 1 then
         begin
-          mSubject := Format(' von %s', [NodeText(AText, ALoop[ALoop.ChildCount - 2])]);
+          mSubject := cTexts[TConditionsText.OfSubject].Fmt([NodeText(AText, ALoop[ALoop.ChildCount - 2])]);
         end;
-        Result := Format('Jeder Durchlauf endet mit %s: Die Schleife prüft nur das erste Element%s.',
-          [AJump, mSubject]);
+        Result := cTexts[TConditionsText.FirstElement].Fmt([AJump, mSubject]);
       end;
     TSyntaxKind.RepeatStatement:
-      Result := Format('Jeder Durchlauf endet mit %s: Die Schleife läuft genau einmal.', [AJump]);
+      Result := cTexts[TConditionsText.ExactlyOnce].Fmt([AJump]);
   else
-    Result := Format('Jeder Durchlauf endet mit %s: Die Schleife läuft höchstens einmal.', [AJump]);
+    Result := cTexts[TConditionsText.AtMostOnce].Fmt([AJump]);
   end;
 end;
 
@@ -1737,12 +1785,12 @@ begin
   end;
   if mMixed then
   begin
-    mJump := 'einem Sprung';
+    mJump := cTexts[TConditionsText.AJump].Text;
   end;
   mMessage := LoopOnceMessage(FContext.Text, ALoop, mJump);
   if not mMixed and MisplacedJump(mStatements, mJumpAt) then
   begin
-    mMessage := mMessage + Format(' Gehört %s in den if-Zweig?', [mJump]);
+    mMessage := mMessage + cTexts[TConditionsText.BelongsInIf].Fmt([mJump]);
   end;
   FReport.Add(KeywordRange(ALoop), mMessage, TRuleConfidence.High);
 end;
@@ -1826,5 +1874,8 @@ begin
   ARegistry.Register(TRedundantJumpRule.Create);
   ARegistry.Register(TLoopRunsAtMostOnceRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Conditions', cTexts);
 
 end.

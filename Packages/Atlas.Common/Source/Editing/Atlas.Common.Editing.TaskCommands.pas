@@ -31,7 +31,54 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTaskCommandsText = (OnlyAppliesInTheBody, LineTouchesVCLObjectsAnd, LinesToTouchVCLObjects, IsWrittenInTheTask,
+    TheBodyWritesTheOuter, IsNotPossibleInTParallel, TParallelForOnlyCountsUpwards, PleasePutTheBodyOf,
+    ParallelOnlyAppliesInThe, ExpectedIsFutureNameType, AtomicOnlyAppliesInThe, BelowAtomicThereIsNo,
+    BelowAtomicThereIsNo2, ExpectedBelowIsIncF, IsNotAFieldAtomic, LineTouchesVCLObjects, ForLoopBelowAsTParallel,
+    FollowingStatementsAsTTaskFuture, IncDecOnAField, FollowingStatementsInTTaskRun, FutureSumInteger,
+    BelowParallelThereIsNo);
+
+const
+  cTexts: array[TTaskCommandsText] of TAtlasText = (
+    (De: '/%s gilt nur im Rumpf einer Routine'; En: '/%s only applies in the body of a routine'),
+    (De: 'Zeile %d fasst VCL-Objekte an und läuft jetzt über TThread.Queue im Hauptthread';
+     En: 'Line %d touches VCL objects and now runs via TThread.Queue in the main thread'),
+    (De: 'Zeilen %d bis %d fassen VCL-Objekte an und laufen jetzt über TThread.Queue im Hauptthread';
+     En: 'Lines %d to %d touch VCL objects and now run via TThread.Queue in the main thread'),
+    (De: '%s wird im Task geschrieben und danach gelesen; der Task läuft nebenläufig, der Wert steht dort nicht ' +
+      'sicher fest';
+     En: '%s is written in the task and read afterwards; the task runs concurrently, so the value is not reliably ' +
+      'set there'),
+    (De: 'Der Rumpf schreibt die äußere Variable %s; TInterlocked verwenden';
+     En: 'The body writes the outer variable %s; use TInterlocked'),
+    (De: ' ist in TParallel.For nicht möglich'; En: ' is not possible in TParallel.For'),
+    (De: 'TParallel.For zählt nur aufwärts (kein downto)'; En: 'TParallel.For only counts upwards (no downto)'),
+    (De: 'Rumpf der Schleife bitte auf eigene Zeilen setzen'; En: 'Please put the body of the loop on its own lines'),
+    (De: '/parallel gilt nur im Rumpf einer Routine'; En: '/parallel only applies in the body of a routine'),
+    (De: 'Erwartet wird /future Name: Typ'; En: 'Expected is /future Name: Type'),
+    (De: '/atomic gilt nur im Rumpf einer Routine'; En: '/atomic only applies in the body of a routine'),
+    (De: 'Unter /atomic steht keine Anweisung'; En: 'Below /atomic there is no statement'),
+    (De: 'Unter /atomic steht keine einzeilige Anweisung'; En: 'Below /atomic there is no single-line statement'),
+    (De: 'Erwartet wird darunter Inc(F), Dec(F) oder F := F + N';
+     En: 'Expected below is Inc(F), Dec(F) or F := F + N'),
+    (De: '%s ist kein Feld; /atomic gilt für Felder'; En: '%s is not a field; /atomic applies to fields'),
+    (De: 'Zeile %d fasst VCL-Objekte an'; En: 'Line %d touches VCL objects'),
+    (De: 'for-Schleife darunter als TParallel.For'; En: 'for loop below as TParallel.For'),
+    (De: 'Folgende Anweisungen als TTask.Future'; En: 'Following statements as TTask.Future'),
+    (De: 'Inc/Dec auf einem Feld als TInterlocked'; En: 'Inc/Dec on a field as TInterlocked'),
+    (De: 'Folgende Anweisungen in TTask.Run'; En: 'Following statements in TTask.Run'),
+    (De: '/future Summe: Integer'; En: '/future Sum: Integer'),
+    (De: 'Unter /parallel steht keine Schleife for I := A to B do';
+     En: 'Below /parallel there is no loop for I := A to B do'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -127,7 +174,7 @@ var
 begin
   if ASource.RoutineAt = nil then
   begin
-    Exit(Fail('/' + AName + ' gilt nur im Rumpf einer Routine', AReason));
+    Exit(Fail(cTexts[TTaskCommandsText.OnlyAppliesInTheBody].Fmt([AName]), AReason));
   end;
   Stop := BlockEnd(ASource, ASource.Line);
   // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
@@ -360,19 +407,16 @@ begin
   Result := nil;
   if ASplit = ALast then
   begin
-    Result := Result + [Format('Zeile %d fasst VCL-Objekte an und läuft jetzt über TThread.Queue im Hauptthread',
-      [ASplit + 1])];
+    Result := Result + [cTexts[TTaskCommandsText.LineTouchesVCLObjectsAnd].Fmt([ASplit + 1])];
   end
   else if ASplit < ALast then
   begin
-    Result := Result + [Format('Zeilen %d bis %d fassen VCL-Objekte an und laufen jetzt über TThread.Queue im ' +
-      'Hauptthread', [ASplit + 1, ALast + 1])];
+    Result := Result + [cTexts[TTaskCommandsText.LinesToTouchVCLObjects].Fmt([ASplit + 1, ALast + 1])];
   end;
   mReadAfter := ReadAfterTask(ASource, ASource.RoutineAt, AFirst, ALast);
   if Length(mReadAfter) > 0 then
   begin
-    Result := Result + [Format('%s wird im Task geschrieben und danach gelesen; der Task läuft nebenläufig, ' +
-      'der Wert steht dort nicht sicher fest', [string.Join(', ', mReadAfter)])];
+    Result := Result + [cTexts[TTaskCommandsText.IsWrittenInTheTask].Fmt([string.Join(', ', mReadAfter)])];
   end;
 end;
 
@@ -472,14 +516,14 @@ begin
   begin
     if TouchesVcl(ASource, ATypes, ASource.Lines[mLine], TTextPosition.Create(mLine, 0)) then
     begin
-      Exit(Format('Zeile %d fasst VCL-Objekte an', [mLine + 1]));
+      Exit(cTexts[TTaskCommandsText.LineTouchesVCLObjects].Fmt([mLine + 1]));
     end;
   end;
 end;
 
 function OuterWriteProblem(const AName: string): string;
 begin
-  Result := Format('Der Rumpf schreibt die äußere Variable %s; TInterlocked verwenden', [AName]);
+  Result := cTexts[TTaskCommandsText.TheBodyWritesTheOuter].Fmt([AName]);
 end;
 
 /// <summary>Folgt auf das Token AIndex ein Punkt (Zugriff auf ein Element)?</summary>
@@ -505,7 +549,7 @@ begin
   end;
   if MatchText(mToken.Text, ['Break', 'Exit']) and (mToken.Kind = TPascalTokenKind.Identifier) then
   begin
-    Result := mToken.Text + ' ist in TParallel.For nicht möglich';
+    Result := mToken.Text + cTexts[TTaskCommandsText.IsNotPossibleInTParallel].Text;
   end
   else if mToken.IsKeyword('var') and (AIndex < High(ATokens)) then
   begin
@@ -541,8 +585,6 @@ begin
   end;
 end;
 
-const
-  cNoParallelLoop = 'Unter /parallel steht keine Schleife for I := A to B do';
 
 type
   /// <summary>Schleife unter /parallel: for-Knoten, Start- und Endausdruck, Zeilen des Rumpfs.</summary>
@@ -571,14 +613,14 @@ end;
 /// ALoop.Expressions.</summary>
 function ForIssue(ASource: TCommandSource; var ALoop: TParallelLoop): string;
 begin
-  Result := cNoParallelLoop;
+  Result := cTexts[TTaskCommandsText.BelowParallelThereIsNo].Text;
   if (ALoop.ForNode = nil) or (ALoop.ForNode.ChildCount < 3) then
   begin
     Exit;
   end;
   if ContainsText(ASource.Lines[ALoop.ForNode.StartPos.Line], ' downto ') then
   begin
-    Exit('TParallel.For zählt nur aufwärts (kein downto)');
+    Exit(cTexts[TTaskCommandsText.TParallelForOnlyCountsUpwards].Text);
   end;
   ALoop.Expressions := ForExpressions(ALoop.ForNode);
   if Length(ALoop.Expressions) = 2 then
@@ -604,7 +646,7 @@ begin
   end;
   if (ALoop.First > ALoop.Last) or (ALoop.First = ALoop.ForNode.StartPos.Line) then
   begin
-    Exit('Rumpf der Schleife bitte auf eigene Zeilen setzen');
+    Exit(cTexts[TTaskCommandsText.PleasePutTheBodyOf].Text);
   end;
   mTypes := TDeclaredTypes.Create(ASource.Tree, ASource.Text);
   try
@@ -621,7 +663,7 @@ begin
   Result := '';
   if ASource.RoutineAt = nil then
   begin
-    Result := '/parallel gilt nur im Rumpf einer Routine';
+    Result := cTexts[TTaskCommandsText.ParallelOnlyAppliesInThe].Text;
   end;
   if Result = '' then
   begin
@@ -726,7 +768,7 @@ begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
   begin
-    Exit(Fail('Erwartet wird /future Name: Typ', AReason));
+    Exit(Fail(cTexts[TTaskCommandsText.ExpectedIsFutureNameType].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -798,11 +840,11 @@ begin
   AStatement := '';
   if ASource.RoutineAt = nil then
   begin
-    Exit('/atomic gilt nur im Rumpf einer Routine');
+    Exit(cTexts[TTaskCommandsText.AtomicOnlyAppliesInThe].Text);
   end;
   if ASource.Line + 1 > High(ASource.Lines) then
   begin
-    Exit('Unter /atomic steht keine Anweisung');
+    Exit(cTexts[TTaskCommandsText.BelowAtomicThereIsNo].Text);
   end;
   mLine := ASource.Lines[ASource.Line + 1];
   AIndent := Copy(mLine, 1, Length(mLine) - Length(TrimLeft(mLine)));
@@ -814,7 +856,7 @@ begin
   end
   else
   begin
-    Result := 'Unter /atomic steht keine einzeilige Anweisung';
+    Result := cTexts[TTaskCommandsText.BelowAtomicThereIsNo2].Text;
   end;
 end;
 
@@ -894,11 +936,11 @@ begin
       mCall := AtomicCall(mStatement, mTarget);
       if mCall = '' then
       begin
-        AReason := 'Erwartet wird darunter Inc(F), Dec(F) oder F := F + N';
+        AReason := cTexts[TTaskCommandsText.ExpectedBelowIsIncF].Text;
       end
       else if not IsField(mSource, mTarget) then
       begin
-        AReason := Format('%s ist kein Feld; /atomic gilt für Felder', [mTarget]);
+        AReason := cTexts[TTaskCommandsText.IsNotAFieldAtomic].Fmt([mTarget]);
       end;
     end;
     Result := AReason = '';
@@ -923,11 +965,15 @@ end;
 
 procedure RegisterTaskCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('task', 'Folgende Anweisungen in TTask.Run', '/task', ExecuteTask));
-  ARegister(Command('parallel', 'for-Schleife darunter als TParallel.For', '/parallel', ExecuteParallel));
-  ARegister(Command('future', 'Folgende Anweisungen als TTask.Future', '/future Summe: Integer',
+  ARegister(Command('task', cTexts[TTaskCommandsText.FollowingStatementsInTTaskRun].Text, '/task', ExecuteTask));
+  ARegister(Command('parallel', cTexts[TTaskCommandsText.ForLoopBelowAsTParallel].Text, '/parallel', ExecuteParallel));
+  ARegister(Command('future', cTexts[TTaskCommandsText.FollowingStatementsAsTTaskFuture].Text,
+    cTexts[TTaskCommandsText.FutureSumInteger].Text,
     ExecuteFuture));
-  ARegister(Command('atomic', 'Inc/Dec auf einem Feld als TInterlocked', '/atomic', ExecuteAtomic));
+  ARegister(Command('atomic', cTexts[TTaskCommandsText.IncDecOnAField].Text, '/atomic', ExecuteAtomic));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.TaskCommands', cTexts);
 
 end.

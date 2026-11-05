@@ -101,7 +101,23 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBaselineText = (NoProjectFilesBaselineNot, NoWorkspaceFoundForThe, AnswerOfTheBaselineIs);
+
+const
+  cTexts: array[TBaselineText] of TAtlasText = (
+    (De: 'Keine Projektdateien: Baseline nicht geschrieben (Projekt noch nicht geladen?)';
+     En: 'No project files: baseline not written (project not loaded yet?)'),
+    (De: 'Kein Arbeitsbereich für die Baseline gefunden'; En: 'No workspace found for the baseline'),
+    (De: 'Antwort der Baseline ist kein gültiges JSON'; En: 'Answer of the baseline is not valid JSON'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspBaseline }
 
@@ -186,7 +202,7 @@ begin
   if Length(ASource.Files) = 0 then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Keine Projektdateien: Baseline nicht geschrieben (Projekt noch nicht geladen?)');
+      cTexts[TBaselineText.NoProjectFilesBaselineNot].Text);
   end;
   mRoot := ASource.Root;
   mPrevious := ReadPrevious(mRoot, mOld, mSetAsideFile);
@@ -225,14 +241,17 @@ begin
   // Auch für eine Quelltextdatei die Dateien ihres Arbeitsbereichs: Die Baseline gilt immer für alle.
   if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Arbeitsbereich für die Baseline gefunden');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TBaselineText.NoWorkspaceFoundForThe].Text);
   end;
   Text := Update(Source);
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Antwort der Baseline ist kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TBaselineText.AnswerOfTheBaselineIs].Text);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Baseline', cTexts);
 
 end.

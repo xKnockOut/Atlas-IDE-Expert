@@ -93,7 +93,28 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.InterfaceStubs;
+  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspSlashMenuText = (URIPositionAndLastLine, DocumentIsNotOpen, NoMethodsOfAnInterface, NoneOfTheChosenMethods,
+    CreateMissingMethodsOfThe, SlashCommandsAreSwitchedOff);
+
+const
+  cTexts: array[TLspSlashMenuText] of TAtlasText = (
+    (De: 'Erwartet werden URI, Position und letzte Zeile der Markierung';
+     En: 'URI, position and last line of the selection expected'),
+    (De: 'Dokument ist nicht geöffnet'; En: 'Document is not open'),
+    (De: 'Hier fehlen keine Methoden eines Interfaces'; En: 'No methods of an interface are missing here'),
+    (De: 'Keine der gewählten Methoden fehlt: '; En: 'None of the chosen methods is missing: '),
+    (De: 'Fehlende Methoden der Interfaces anlegen'; En: 'Create missing methods of the interfaces'),
+    (De: 'Schnellbefehle sind für diese Datei abgeschaltet (slashCommands)';
+     En: 'Slash commands are switched off for this file (slashCommands)'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Dokument zur URI und Stelle samt Markierung aus den ersten drei Argumenten.</summary>
 function ReadSpot(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer; out AUri: string;
@@ -104,13 +125,12 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI, Position und letzte Zeile ' +
-      'der Markierung');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.URIPositionAndLastLine].Text);
   end;
   AUri := AArguments.Items[0].Value;
   if not AStore.TryGet(AUri, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.DocumentIsNotOpen].Text);
   end;
   Position := TLspPositions.ReadPosition(AArguments.Items[1]);
   EndLine := -1;
@@ -242,7 +262,7 @@ begin
   AReason := '';
   if not MissingInterfaceMethods(AUri, AText, ASpot, Items, CommandLine) then
   begin
-    AReason := 'Hier fehlen keine Methoden eines Interfaces';
+    AReason := cTexts[TLspSlashMenuText.NoMethodsOfAnInterface].Text;
     Exit(False);
   end;
   Chosen := AArguments.Split([',', ';'], TStringSplitOptions.ExcludeEmpty);
@@ -256,7 +276,7 @@ begin
   end;
   if Length(Edits) = 0 then
   begin
-    AReason := 'Keine der gewählten Methoden fehlt: ' + AArguments;
+    AReason := cTexts[TLspSlashMenuText.NoneOfTheChosenMethods].Text + AArguments;
     Exit(False);
   end;
   LineBreak := TTextLines.LineBreakOf(AText);
@@ -283,7 +303,7 @@ var
   begin
     Item := TJSONObject.Create;
     Item.AddPair('name', ImplementName);
-    Item.AddPair('summary', 'Fehlende Methoden der Interfaces anlegen');
+    Item.AddPair('summary', cTexts[TLspSlashMenuText.CreateMissingMethodsOfThe].Text);
     Item.AddPair('example', '');
     Item.AddPair('group', TSlashMenu.GroupName(TSlashGroup.Generate));
     Item.AddPair('argument', TSlashMenu.ArgumentName(TSlashArgument.Optional));
@@ -379,7 +399,7 @@ begin
   Edits := nil;
   if not Enabled(Uri, Disabled) then
   begin
-    Reason := 'Schnellbefehle sind für diese Datei abgeschaltet (slashCommands)';
+    Reason := cTexts[TLspSlashMenuText.SlashCommandsAreSwitchedOff].Text;
   end
   else
   begin
@@ -421,5 +441,8 @@ begin
     raise;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SlashMenu', cTexts);
 
 end.

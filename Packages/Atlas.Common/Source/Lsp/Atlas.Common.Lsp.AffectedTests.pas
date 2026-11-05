@@ -191,7 +191,44 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TAffectedTestsText = (TestProgramChanged, NotInTheProjects, NotReadable, OnlyBlankLinesOrComments,
+    UnitNotInTheProjects, FormClassOfNotFound, NotUsedByAnyUnit, NoDelphiSource, TimeLimitOfTheAnalysis,
+    AllTestsNeeded, NoAffectedTestsComparedWith, AffectedTestsComparedWithDepth, Changed,
+    LimitsReachedCheckWithGreater, ProjectFileOfAnotherProject, MoreThanAffectedPlaces, WithoutInfluenceOnTestsFiles,
+    Inferred, Form);
+
+const
+  cTexts: array[TAffectedTestsText] of TAtlasText = (
+    (De: 'Testprogramm %s geändert'; En: 'Test program %s changed'),
+    (De: 'nicht in den Projekten'; En: 'not in the projects'),
+    (De: '%s nicht lesbar'; En: '%s not readable'),
+    (De: 'nur Leerzeilen oder Kommentare'; En: 'only blank lines or comments'),
+    (De: 'Unit nicht in den Projekten'; En: 'Unit not in the projects'),
+    (De: 'Formularklasse von %s nicht gefunden'; En: 'Form class of %s not found'),
+    (De: 'von keiner Unit der Projekte eingebunden'; En: 'not used by any unit of the projects'),
+    (De: 'keine Delphi-Quelle'; En: 'no Delphi source'),
+    (De: 'Zeitlimit der Analyse erreicht'; En: 'Time limit of the analysis reached'),
+    (De: 'Alle Tests nötig: %s.'; En: 'All tests needed: %s.'),
+    (De: 'Keine betroffenen Tests gegenüber %s (Tiefe %d).'; En: 'No affected tests compared with %s (depth %d).'),
+    (De: '%d betroffene Tests gegenüber %s (Tiefe %d), davon %d ganze Fixtures:';
+     En: '%d affected tests compared with %s (depth %d), %d of them whole fixtures:'),
+    (De: 'Geändert (%d):'; En: 'Changed (%d):'),
+    (De: 'Grenzen erreicht: %s; mit größerer Tiefe oder allen Tests prüfen.';
+     En: 'Limits reached: %s; check with greater depth or all tests.'),
+    (De: 'Projektdatei eines anderen Projekts'; En: 'project file of another project'),
+    (De: 'mehr als %d betroffene Stellen'; En: 'more than %d affected places'),
+    (De: 'Ohne Einfluss auf Tests: %d Dateien.'; En: 'Without influence on tests: %d files.'),
+    (De: ' (erschlossen)'; En: ' (inferred)'),
+    (De: 'Formular'; En: 'form'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cArrow = ' → ';
@@ -225,7 +262,7 @@ begin
   end;
   if Inferred then
   begin
-    Result := Result + ' (erschlossen)';
+    Result := Result + cTexts[TAffectedTestsText.Inferred].Text;
   end;
 end;
 
@@ -946,11 +983,11 @@ begin
   begin
     if SameFile(ChangeFileExt(mProgram, AExt), AInput.FileName) then
     begin
-      NeedAll(Format('Testprogramm %s geändert', [ExtractFileName(AInput.FileName)]));
+      NeedAll(cTexts[TAffectedTestsText.TestProgramChanged].Fmt([ExtractFileName(AInput.FileName)]));
       Exit;
     end;
   end;
-  Skip(AInput.FileName, 'Projektdatei eines anderen Projekts');
+  Skip(AInput.FileName, cTexts[TAffectedTestsText.ProjectFileOfAnotherProject].Text);
 end;
 
 procedure TAffectedRun.MapUnit(const AInput: TAffectedInput);
@@ -971,11 +1008,11 @@ begin
   end;
   if not ProjectFile(AInput.FileName, mUnit) then
   begin
-    Skip(AInput.FileName, 'nicht in den Projekten');
+    Skip(AInput.FileName, cTexts[TAffectedTestsText.NotInTheProjects].Text);
   end
   else if not ReadText(AInput.FileName, mText) then
   begin
-    NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]));
+    NeedAll(cTexts[TAffectedTestsText.NotReadable].Fmt([ExtractFileName(AInput.FileName)]));
   end
   else
   begin
@@ -983,7 +1020,7 @@ begin
     FResult.Changes := FResult.Changes + mChanges;
     if mChanges = nil then
     begin
-      Skip(AInput.FileName, 'nur Leerzeilen oder Kommentare');
+      Skip(AInput.FileName, cTexts[TAffectedTestsText.OnlyBlankLinesOrComments].Text);
     end;
   end;
 end;
@@ -1003,7 +1040,7 @@ begin
       AChange.Kind := TAffectedChangeKind.Symbol;
       AChange.Item := TLspHierarchies.ItemOf(AUnit.UnitName, AUnitFile, AUnit.Symbols[mIndex]);
       AChange.Source := AFormFile;
-      AChange.Place := 'Formular';
+      AChange.Place := cTexts[TAffectedTestsText.Form].Text;
       Exit(True);
     end;
   end;
@@ -1019,12 +1056,12 @@ begin
   mUnitFile := ChangeFileExt(AInput.FileName, '.pas');
   if not ProjectFile(mUnitFile, mUnit) then
   begin
-    Skip(AInput.FileName, 'Unit nicht in den Projekten');
+    Skip(AInput.FileName, cTexts[TAffectedTestsText.UnitNotInTheProjects].Text);
     Exit;
   end;
   if not ReadText(AInput.FileName, mText) or not ReadText(mUnitFile, mUnitText) then
   begin
-    NeedAll(Format('%s nicht lesbar', [ExtractFileName(AInput.FileName)]));
+    NeedAll(cTexts[TAffectedTestsText.NotReadable].Fmt([ExtractFileName(AInput.FileName)]));
     Exit;
   end;
   mClass := TAffectedTests.FormClass(mText);
@@ -1038,7 +1075,7 @@ begin
   end
   else
   begin
-    NeedAll(Format('Formularklasse von %s nicht gefunden', [ExtractFileName(AInput.FileName)]));
+    NeedAll(cTexts[TAffectedTestsText.FormClassOfNotFound].Fmt([ExtractFileName(AInput.FileName)]));
   end;
 end;
 
@@ -1063,7 +1100,7 @@ begin
   Result := ReadText(AIncluding.FileName, mText);
   if not Result then
   begin
-    NeedAll(Format('%s nicht lesbar', [ExtractFileName(AIncluding.FileName)]));
+    NeedAll(cTexts[TAffectedTestsText.NotReadable].Fmt([ExtractFileName(AIncluding.FileName)]));
     Exit;
   end;
   // Die Stelle des {$I}; findet sie sich nicht (Name über einen Suchpfad), die ganze Unit.
@@ -1102,7 +1139,7 @@ begin
   end;
   if not mFound then
   begin
-    Skip(AInput.FileName, 'von keiner Unit der Projekte eingebunden');
+    Skip(AInput.FileName, cTexts[TAffectedTestsText.NotUsedByAnyUnit].Text);
   end;
 end;
 
@@ -1129,7 +1166,7 @@ begin
   end
   else
   begin
-    Skip(AInput.FileName, 'keine Delphi-Quelle');
+    Skip(AInput.FileName, cTexts[TAffectedTestsText.NoDelphiSource].Text);
   end;
 end;
 
@@ -1458,11 +1495,11 @@ begin
   // Unvollständig verfolgt: Es können Tests fehlen. Die Tiefe dagegen ist gewollt.
   if TImpactLimit.Time in FResult.Limits then
   begin
-    NeedAll('Zeitlimit der Analyse erreicht');
+    NeedAll(cTexts[TAffectedTestsText.TimeLimitOfTheAnalysis].Text);
   end
   else if TImpactLimit.Count in FResult.Limits then
   begin
-    NeedAll(Format('mehr als %d betroffene Stellen', [TImpactAnalysis.MaxPlaces]));
+    NeedAll(cTexts[TAffectedTestsText.MoreThanAffectedPlaces].Fmt([TImpactAnalysis.MaxPlaces]));
   end;
 end;
 
@@ -1604,11 +1641,11 @@ var
 begin
   if AResult.All then
   begin
-    Exit(TArray<string>.Create(Format('Alle Tests nötig: %s.', [AResult.AllReason])));
+    Exit(TArray<string>.Create(cTexts[TAffectedTestsText.AllTestsNeeded].Fmt([AResult.AllReason])));
   end;
   if Length(AResult.Tests) = 0 then
   begin
-    Exit(TArray<string>.Create(Format('Keine betroffenen Tests gegenüber %s (Tiefe %d).', [AResult.Base,
+    Exit(TArray<string>.Create(cTexts[TAffectedTestsText.NoAffectedTestsComparedWith].Fmt([AResult.Base,
       AResult.Depth])));
   end;
   mFixtures := 0;
@@ -1619,8 +1656,8 @@ begin
       Inc(mFixtures);
     end;
   end;
-  Result := TArray<string>.Create(Format('%d betroffene Tests gegenüber %s (Tiefe %d), davon %d ganze Fixtures:',
-    [Length(AResult.Tests), AResult.Base, AResult.Depth, mFixtures]));
+  Result := TArray<string>.Create(cTexts[TAffectedTestsText.AffectedTestsComparedWithDepth].Fmt([Length(AResult.Tests),
+    AResult.Base, AResult.Depth, mFixtures]));
   for mTest in AResult.Tests do
   begin
     Result := Result + ['  ' + mTest.Name];
@@ -1640,7 +1677,7 @@ begin
   begin
     Exit;
   end;
-  Result := TArray<string>.Create('', Format('Geändert (%d):', [Length(AResult.Changes)]));
+  Result := TArray<string>.Create('', cTexts[TAffectedTestsText.Changed].Fmt([Length(AResult.Changes)]));
   for mChange in AResult.Changes do
   begin
     Result := Result + [Format('  %s (%s, %s)', [mChange.Text, mChange.Place, ExtractFileName(mChange.Source)])];
@@ -1668,13 +1705,13 @@ begin
   mLines := TestLines(AResult) + ChangeLines(AResult);
   if Length(AResult.Skipped) > 0 then
   begin
-    mLines := mLines + ['', Format('Ohne Einfluss auf Tests: %d Dateien.', [Length(AResult.Skipped)])];
+    mLines := mLines + ['', cTexts[TAffectedTestsText.WithoutInfluenceOnTestsFiles].Fmt([Length(AResult.Skipped)])];
   end;
   mLimitNames := LimitNames(AResult.Limits);
   if mLimitNames <> nil then
   begin
-    mLines := mLines + ['', 'Grenzen erreicht: ' + string.Join(', ', mLimitNames) +
-      '; mit größerer Tiefe oder allen Tests prüfen.'];
+    mLines := mLines + ['', cTexts[TAffectedTestsText.LimitsReachedCheckWithGreater].Fmt([string.Join(', ',
+      mLimitNames)])];
   end;
   if not AResult.All and (Length(AResult.Tests) > 0) then
   begin
@@ -1895,5 +1932,8 @@ begin
     Result.Limits := LimitsOf(mLimits);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.AffectedTests', cTexts);
 
 end.

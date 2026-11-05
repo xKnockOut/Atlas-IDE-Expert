@@ -138,7 +138,61 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditToolsText = (IsNotReadableNothingChanged, HasUnsavedChangesInThe, HasBeenChangedInThe, NoChanges,
+    PreviewDryRunChangesInFiles, ChangesWrittenInFiles, IsNotReadable, NotChangedPleaseCheckInferred,
+    ThereIsNoSymbolThat, NoFixInLineAvailable, FixesInLineApplyWith, NoFixInLine, RepeatWithDryRunFalseTo,
+    NotTouchedUnsavedChangesIn, ArgumentRulesMissingRuleIds, DeviationsFromTheFormatRules, AndMore,
+    NoteTheFormattingIsNot, SyntaxErrorInLineNot, NoDeviationFromTheFormat, NoDeviationFromTheFormat2,
+    OnlyTheLineEndingsDiffer, Line, FormattedTextPascal);
+
+const
+  cTexts: array[TEditToolsText] of TAtlasText = (
+    (De: '%s ist nicht lesbar; nichts geändert.'; En: '%s is not readable; nothing changed.'),
+    (De: '%s hat ungespeicherte Änderungen im Editor; nichts geändert. Erst in der IDE speichern.';
+     En: '%s has unsaved changes in the editor; nothing changed. Save in the IDE first.'),
+    (De: '%s wurde inzwischen geändert; nichts geändert.';
+     En: '%s has been changed in the meantime; nothing changed.'),
+    (De: 'Keine Änderungen.'; En: 'No changes.'),
+    (De: 'Vorschau (dryRun): %d Änderungen in %d Dateien, nichts geschrieben. Zum Schreiben mit dryRun=false ' +
+      'wiederholen.';
+     En: 'Preview (dryRun): %d changes in %d files, nothing written. Repeat with dryRun=false to write.'),
+    (De: '%d Änderungen in %d Dateien geschrieben.'; En: '%d changes written in %d files.'),
+    (De: '%s ist nicht lesbar'; En: '%s is not readable'),
+    (De: 'Nicht geändert, bitte prüfen (%d erschlossene Stellen):';
+     En: 'Not changed, please check (%d inferred places):'),
+    (De: 'An dieser Stelle steht kein umbenennbares Symbol.';
+     En: 'There is no symbol that can be renamed at this position.'),
+    (De: 'Keine Korrektur "%s" in Zeile %d. Verfügbar:'; En: 'No fix "%s" in line %d. Available:'),
+    (De: 'Korrekturen in Zeile %d (mit title anwenden):'; En: 'Fixes in line %d (apply with title):'),
+    (De: 'Keine Korrektur in Zeile %d.'; En: 'No fix in line %d.'),
+    (De: 'Zum Schreiben mit dryRun=false wiederholen.'; En: 'Repeat with dryRun=false to write.'),
+    (De: 'Nicht angefasst (ungespeicherte Änderungen im Editor): %s';
+     En: 'Not touched (unsaved changes in the editor): %s'),
+    (De: 'Argument "rules" fehlt: Regelkennungen oder "all"'; En: 'Argument "rules" missing: rule ids or "all"'),
+    (De: '%s: %d Abweichungen von den Formatregeln'; En: '%s: %d deviations from the format rules'),
+    (De: '- … und %d weitere'; En: '- … and %d more'),
+    (De: 'Hinweis: Die Formatierung ist nicht stabil, ein zweiter Lauf ändert erneut.';
+     En: 'Note: the formatting is not stable, a second run changes it again.'),
+    (De: '%s: Syntaxfehler in Zeile %d, nicht formatiert: %s'; En: '%s: syntax error in line %d, not formatted: %s'),
+    (De: 'Keine Abweichung von den Formatregeln; der Text bleibt, wie er ist.';
+     En: 'No deviation from the format rules; the text stays as it is.'),
+    (De: '%s: keine Abweichung von den Formatregeln.'; En: '%s: no deviation from the format rules.'),
+    (De: 'Nur die Zeilenenden weichen ab (format.endOfLine); format_code ändert sie nicht, dafür AtlasServer --check ' +
+      '<Datei> --format-write verwenden.';
+     En: 'Only the line endings differ (format.endOfLine); format_code does not change them, use AtlasServer --check ' +
+      '<file> --format-write for that.'),
+    (De: '- Zeile %d: %s'; En: '- Line %d: %s'),
+    (De: 'Formatierter Text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```';
+     En: 'Formatted text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```'));
+
+{$SCOPEDENUMS OFF}
 
 { TMcpFileEdit }
 
@@ -274,7 +328,7 @@ begin
   begin
     if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
     begin
-      raise EMcpToolError.CreateFmt('%s ist nicht lesbar; nichts geändert.', [ANames[mIndex]]);
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
     end;
     ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
   end;
@@ -292,8 +346,7 @@ begin
     begin
       if ContainsName(ANames, mDirty) then
       begin
-        raise EMcpToolError.CreateFmt('%s hat ungespeicherte Änderungen im Editor; nichts geändert. ' +
-          'Erst in der IDE speichern.', [mDirty]);
+        raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
       end;
     end;
   end;
@@ -302,7 +355,7 @@ begin
   begin
     if not FReadText(ANames[mIndex], mCurrent) or (mCurrent <> AOldTexts[mIndex]) then
     begin
-      raise EMcpToolError.CreateFmt('%s wurde inzwischen geändert; nichts geändert.', [ANames[mIndex]]);
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [ANames[mIndex]]);
     end;
   end;
 end;
@@ -335,7 +388,7 @@ var
 begin
   if Length(AEdits) = 0 then
   begin
-    raise EMcpToolError.Create('Keine Änderungen.');
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
   end;
   mGroups := GroupByFile(AEdits, mNames);
   ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
@@ -343,14 +396,15 @@ begin
   try
     if ADryRun then
     begin
-      mReport.AppendFormat('Vorschau (dryRun): %d Änderungen in %d Dateien, nichts geschrieben. ' +
-        'Zum Schreiben mit dryRun=false wiederholen.', [Length(AEdits), Length(mNames)]).AppendLine;
+      mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
     end
     else
     begin
       EnsureWritable(mNames, mOldTexts);
       WriteAll(ATool, mNames, mOldTexts, mNewTexts);
-      mReport.AppendFormat('%d Änderungen in %d Dateien geschrieben.', [Length(AEdits), Length(mNames)]).AppendLine;
+      mReport.AppendFormat(cTexts[TEditToolsText.ChangesWrittenInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
     end;
     for mIndex := 0 to High(mNames) do
     begin
@@ -375,7 +429,7 @@ var
 begin
   if not FReadText(AFileName, mText) then
   begin
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   mSettings := TReferenceSettings.Default;
   if Assigned(FSettingsFor) then
@@ -418,8 +472,7 @@ begin
   begin
     Exit;
   end;
-  Result := sLineBreak + sLineBreak + Format('Nicht geändert, bitte prüfen (%d erschlossene Stellen):',
-    [Length(AUnchanged)]);
+  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
   for mLocation in AUnchanged do
   begin
     Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
@@ -437,7 +490,7 @@ begin
   mEdits := RenameEdits(AFileName, ALine, AColumn, ANewName, mUnchanged);
   if Length(mEdits) = 0 then
   begin
-    raise EMcpToolError.Create('An dieser Stelle steht kein umbenennbares Symbol.');
+    raise EMcpToolError.Create(cTexts[TEditToolsText.ThereIsNoSymbolThat].Text);
   end;
   Result := Apply('rename_symbol', mEdits, ADryRun) + UnchangedReport(mUnchanged);
 end;
@@ -451,7 +504,7 @@ var
 begin
   if not FReadText(AFileName, mText) then
   begin
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   Result := nil;
   for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
@@ -490,11 +543,11 @@ var
 begin
   if ATitle <> '' then
   begin
-    Result := Format('Keine Korrektur "%s" in Zeile %d. Verfügbar:', [ATitle, ALine]);
+    Result := cTexts[TEditToolsText.NoFixInLineAvailable].Fmt([ATitle, ALine]);
   end
   else
   begin
-    Result := Format('Korrekturen in Zeile %d (mit title anwenden):', [ALine]);
+    Result := cTexts[TEditToolsText.FixesInLineApplyWith].Fmt([ALine]);
   end;
   for mAction in AActions do
   begin
@@ -513,7 +566,7 @@ begin
   mActions := ActionsAt(AScope, AFileName, ALine);
   if Length(mActions) = 0 then
   begin
-    raise EMcpToolError.CreateFmt('Keine Korrektur in Zeile %d.', [ALine]);
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.NoFixInLine].Text, [ALine]);
   end;
   mChosen := -1;
   if ATitle <> '' then
@@ -581,7 +634,7 @@ begin
   begin
     if mResult.Changed and (not FReadText(mResult.FileName, mCurrent) or (mCurrent <> mResult.OldText)) then
     begin
-      raise EMcpToolError.CreateFmt('%s wurde inzwischen geändert; nichts geändert.', [mResult.FileName]);
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [mResult.FileName]);
     end;
     if mResult.Changed then
     begin
@@ -619,11 +672,11 @@ begin
     mReport.AppendLine(TBulkFix.Summary(AResults, ADryRun, sLineBreak));
     if ADryRun then
     begin
-      mReport.AppendLine('Zum Schreiben mit dryRun=false wiederholen.');
+      mReport.AppendLine(cTexts[TEditToolsText.RepeatWithDryRunFalseTo].Text);
     end;
     for mFileName in AUntouched do
     begin
-      mReport.AppendFormat('Nicht angefasst (ungespeicherte Änderungen im Editor): %s', [mFileName]).AppendLine;
+      mReport.AppendFormat(cTexts[TEditToolsText.NotTouchedUnsavedChangesIn].Text, [mFileName]).AppendLine;
     end;
     for mResult in AResults do
     begin
@@ -649,7 +702,7 @@ var
 begin
   if AFixRules = nil then
   begin
-    raise EMcpToolError.Create('Argument "rules" fehlt: Regelkennungen oder "all"');
+    raise EMcpToolError.Create(cTexts[TEditToolsText.ArgumentRulesMissingRuleIds].Text);
   end;
   if not TBulkFix.MinConfidenceOf(AScope.Settings.FixMinConfidence, AMinConfidence, mConfidence, mError) then
   begin
@@ -674,20 +727,20 @@ var
 begin
   mLines := TStringList.Create;
   try
-    mLines.Add(Format('%s: %d Abweichungen von den Formatregeln', [ExtractFileName(AFileName),
+    mLines.Add(cTexts[TEditToolsText.DeviationsFromTheFormatRules].Fmt([ExtractFileName(AFileName),
       Length(AOutcome.Deviations)]));
     for mIndex := 0 to Min(Length(AOutcome.Deviations), cShown) - 1 do
     begin
-      mLines.Add(Format('- Zeile %d: %s', [AOutcome.Deviations[mIndex].Line + 1,
+      mLines.Add(cTexts[TEditToolsText.Line].Fmt([AOutcome.Deviations[mIndex].Line + 1,
         AOutcome.Deviations[mIndex].Message]));
     end;
     if Length(AOutcome.Deviations) > cShown then
     begin
-      mLines.Add(Format('- … und %d weitere', [Length(AOutcome.Deviations) - cShown]));
+      mLines.Add(cTexts[TEditToolsText.AndMore].Fmt([Length(AOutcome.Deviations) - cShown]));
     end;
     if not AOutcome.Stable then
     begin
-      mLines.Add('Hinweis: Die Formatierung ist nicht stabil, ein zweiter Lauf ändert erneut.');
+      mLines.Add(cTexts[TEditToolsText.NoteTheFormattingIsNot].Text);
     end;
     Result := TrimRight(mLines.Text);
   finally
@@ -702,7 +755,7 @@ begin
   Result := TFormatCheck.Run(AText, AStyle, AScope, ASource.Options);
   if Result.HasSyntaxError then
   begin
-    raise EMcpToolError.CreateFmt('%s: Syntaxfehler in Zeile %d, nicht formatiert: %s',
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.SyntaxErrorInLineNot].Text,
       [ExtractFileName(AFileName), Result.SyntaxError.StartPos.Line + 1, Result.SyntaxError.Message]);
   end;
 end;
@@ -715,10 +768,10 @@ begin
   mOutcome := FormatOrFail(AStyle, AFileName, AText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
-    Exit('Keine Abweichung von den Formatregeln; der Text bleibt, wie er ist.');
+    Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat].Text);
   end;
-  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + 'Formatierter Text:' + sLineBreak +
-    '```pascal' + sLineBreak + mOutcome.Formatted + sLineBreak + '```';
+  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak +
+    cTexts[TEditToolsText.FormattedTextPascal].Fmt([mOutcome.Formatted]);
 end;
 
 function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName: string;
@@ -731,12 +784,12 @@ var
 begin
   if not FReadText(AFileName, mText) then
   begin
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   mOutcome := FormatOrFail(AStyle, AFileName, mText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
-    Exit(Format('%s: keine Abweichung von den Formatregeln.', [ExtractFileName(AFileName)]));
+    Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat2].Fmt([ExtractFileName(AFileName)]));
   end;
   mEdits := nil;
   for mEdit in TTextChanges.Diff(mText, mOutcome.Formatted) do
@@ -746,10 +799,12 @@ begin
   // Die Datei behält ihre Zeilenenden (TFileEncoding beim Schreiben); andere setzt --format-write um.
   if Length(mEdits) = 0 then
   begin
-    Exit(DeviationReport(AFileName, mOutcome) + sLineBreak + 'Nur die Zeilenenden weichen ab (format.endOfLine); ' +
-      'format_code ändert sie nicht, dafür AtlasServer --check <Datei> --format-write verwenden.');
+    Exit(DeviationReport(AFileName, mOutcome) + sLineBreak + cTexts[TEditToolsText.OnlyTheLineEndingsDiffer].Text);
   end;
   Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + Apply('format_code', mEdits, ADryRun);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.EditTools', cTexts);
 
 end.

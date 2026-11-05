@@ -39,7 +39,8 @@
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
 //   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, 0 breit),
-//   zeigt die Leiste die Plakette (BadgeCount, ClickBadge, #1234).
+//   zeigt die Leiste die Plakette (BadgeShown, BadgeCount, ClickBadge, #1234),
+//   bei eingeschalteten Benachrichtigungen immer, auch mit 0.
 // - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
 //   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
 //   Deshalb sind sie vom eigenen Typ TFieldPanel und melden ihre Freigabe dem
@@ -73,6 +74,8 @@ type
 
   /// <summary>Plakette der Benachrichtigungen (#601).</summary>
   TAtlasStatusBadge = record
+    /// <summary>Benachrichtigungen an: die Atlas-Statusleiste zeigt die Plakette auch mit 0.</summary>
+    Shown: Boolean;
     Count: Integer;
     State: TAtlasStatusState;
     Hint: string;
@@ -226,13 +229,13 @@ type
     /// <summary>Zusatzfeld AId setzen (Text, Tooltip, Linksklick mit der linken Oberkante des Panels); AText ''
     /// entfernt es. Nur im Hauptthread.</summary>
     procedure SetExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-    /// <summary>Plakette der Benachrichtigungen (#601): ACount ungelesene (0 = keine Plakette), Farbe nach
-    /// AState, AHint im Tooltip; Linksklick auf die Plakette ruft AOnClick mit der linken Oberkante des Felds.
-    /// Nur im Hauptthread.</summary>
-    procedure SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
-      const AOnClick: TProc<TPoint>);
+    /// <summary>Plakette der Benachrichtigungen (#601): Count ungelesene (im Feld 0 = keine Plakette, in der
+    /// Atlas-Statusleiste zählt Shown), Farbe nach State, Hint im Tooltip; Linksklick auf die Plakette ruft
+    /// OnClick mit der linken Oberkante des Felds. Nur im Hauptthread.</summary>
+    procedure SetBadge(const ABadge: TAtlasStatusBadge);
     /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated ist das Feld 0 breit, die Leiste zeigt
     /// sie dann selbst.</summary>
+    property BadgeShown: Boolean read FBadge.Shown;
     property BadgeCount: Integer read FBadge.Count;
     property BadgeState: TAtlasStatusState read FBadge.State;
     property BadgeHint: string read FBadge.Hint;
@@ -1273,28 +1276,32 @@ end;
 
 procedure TAtlasStatusField.ClickBadge(const APoint: TPoint);
 begin
-  if (FBadge.Count > 0) and Assigned(FBadge.OnClick) then
+  if FBadge.Shown and Assigned(FBadge.OnClick) then
   begin
     FBadge.OnClick(APoint);
   end;
 end;
 
-procedure TAtlasStatusField.SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
-  const AOnClick: TProc<TPoint>);
+procedure TAtlasStatusField.SetBadge(const ABadge: TAtlasStatusBadge);
+var
+  mCount: Integer;
 begin
-  if ACount < 0 then
+  mCount := ABadge.Count;
+  if mCount < 0 then
   begin
-    ACount := 0;
+    mCount := 0;
   end;
-  FBadge.OnClick := AOnClick;
+  FBadge.OnClick := ABadge.OnClick;
   // Unverändert: nicht neu zeichnen (die Zentrale meldet auch Änderungen ohne Wirkung auf die Plakette).
-  if (ACount = FBadge.Count) and (AState = FBadge.State) and (AHint = FBadge.Hint) then
+  if (ABadge.Shown = FBadge.Shown) and (mCount = FBadge.Count) and (ABadge.State = FBadge.State) and
+    (ABadge.Hint = FBadge.Hint) then
   begin
     Exit;
   end;
-  FBadge.Count := ACount;
-  FBadge.State := AState;
-  FBadge.Hint := AHint;
+  FBadge.Shown := ABadge.Shown;
+  FBadge.Count := mCount;
+  FBadge.State := ABadge.State;
+  FBadge.Hint := ABadge.Hint;
   RequestRefresh;
 end;
 
