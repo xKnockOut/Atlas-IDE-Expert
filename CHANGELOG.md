@@ -17,6 +17,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Ein `// lsp-ignore: unused-uses` galt im Editor als unnötig (`unused-suppression`), weil die Regel dort nicht prüft; dessen sichere Korrektur entfernte den Kommentar beim Speichern. Regeln können jetzt je Datei angeben, dass sie nicht prüfen (`IRuleCondition`); dann zählt ihr `lsp-ignore` nicht als unnötig. Dasselbe galt für `uses-cycle` mit `diagnostics.usesCycleLive` aus.
 - Zeit bis „bereit“ bei Projektgruppen (#1479): Beim Start jedes Projekts räumt der Server den Cache-Ordner auf und fragt dabei jeden Cache, ob er gesperrt ist. Die Sperren der schon gestarteten Projekte hält der eigene Prozess; die Probe über die Sperrdatei schlug dafür nur fehl, kostete aber Zeit, unter Linux (`AtlasServer --check`) wartete sie je Sperre, bevor sie aufgab. Jetzt kennt der Prozess seine Sperren selbst. Gemessen unter Linux mit vorhandenem Cache: Atlas-Gruppe mit 18 Projekten 1,6 statt 17,4 s, 8 Projekte mit gemeinsamen Suchpfaden 0,7 statt 4,0 s.
 
+### Geändert
+- Doku zweisprachig (#1458): READMEs als Kurzüberblick, Details je Bereich unter `docs/features/de` und `docs/features/en`; englische Fassungen von IDE-Plugin, MCP, Prüfregeln, Einstellungen und Claude-Code-Plugin (`docs/en`), Regeln und Einstellungen aus den Werkzeugen erzeugt.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu
