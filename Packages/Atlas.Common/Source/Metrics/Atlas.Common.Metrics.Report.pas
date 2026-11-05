@@ -546,8 +546,8 @@ begin
   begin
     mSummary := TMetricsReport.Summarize(TArray<TFileMetrics>.Create(mFile), ALimits);
     ABuilder.Append('| ').Append(Cell(mFile.Path)).Append(' | ').Append(IntToStr(mSummary.Methods))
-      .Append(' | ').Append(StringReplace(TMetricsReport.TenthsText(mSummary.AverageTenths(TMetricKind.MethodLength)),
-      '.', ',', [])).Append(' | ').Append(IntToStr(mSummary.Maximum[TMetricKind.Cyclomatic])).Append(' | ')
+      .Append(' | ').Append(DecimalText(TMetricsReport.TenthsText(mSummary.AverageTenths(TMetricKind.MethodLength))))
+      .Append(' | ').Append(IntToStr(mSummary.Maximum[TMetricKind.Cyclomatic])).Append(' | ')
       .Append(IntToStr(mSummary.Maximum[TMetricKind.Cognitive])).Append(' | ')
       .Append(IntToStr(mSummary.OverLimits)).Append(' |').Append(LineBreak);
   end;

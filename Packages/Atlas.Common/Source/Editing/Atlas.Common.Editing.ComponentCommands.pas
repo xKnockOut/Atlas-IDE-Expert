@@ -671,10 +671,13 @@ begin
       Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent2].Fmt([mClass.Name]), AReason));
     end;
     mFields := NotificationFields(mSource, AContext, mClass.Name);
+    if (mFields = nil) and (AContext.Arguments = '') then
+    begin
+      Exit(Fail(cTexts[TComponentCommandsText.NoFieldsWithAComponent].Text, AReason));
+    end;
     if mFields = nil then
     begin
-      Exit(Fail(IfThen(AContext.Arguments = '', cTexts[TComponentCommandsText.NoFieldsWithAComponent].Text,
-        cTexts[TComponentCommandsText.HasNoField].Fmt([mClass.Name, AContext.Arguments])), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.HasNoField].Fmt([mClass.Name, AContext.Arguments]), AReason));
     end;
     // Vorhandene Bedingungen nicht verdoppeln.
     mRoutine := FindBody(mSource, mClass.Name, 'Notification');
