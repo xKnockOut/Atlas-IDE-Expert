@@ -161,7 +161,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           ADone(mOk, mKey, mError);
@@ -261,7 +261,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           // Ohne Antwort der letzte Stand aus dem Zwischenspeicher.

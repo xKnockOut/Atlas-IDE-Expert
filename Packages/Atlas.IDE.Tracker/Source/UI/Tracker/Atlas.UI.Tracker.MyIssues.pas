@@ -1473,7 +1473,7 @@ end;
 class procedure TAtlasTrackerIssuesView.Post(const AAction: TThreadProcedure);
 begin
   // Die Quelle füllt den Bereich danach neu: nicht im eigenen Maus- bzw. Menüereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, AAction);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
 end;
 
 procedure TAtlasTrackerIssuesView.Send(const AAction: TAtlasIssuesAction);

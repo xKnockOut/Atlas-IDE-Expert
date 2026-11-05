@@ -398,7 +398,7 @@ begin
     begin
       if not mOwner.FStopped then
       begin
-        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        TAtlasGuard.Run(TAtlasFeature.Tracker,
           procedure
           begin
             mOwner.ShowEnd(mProvider, mTarget, mInput, mOptions, mCommits, mEnded);

@@ -71,7 +71,7 @@ type
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
     ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
-    BlameIssues, Query, Hotspots, DesignerBar);
+    BlameIssues, Query, Hotspots, DesignerBar, Tracker, WelcomeUpdates);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -788,7 +788,8 @@ const
       'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
       'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
       'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
-      'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste'),
+      'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste', 'Tracker',
+      'Willkommensseite: Aktualisieren'),
     ('Completion', 'Parameter hint', 'Tooltip', 'Bracket pairs',
       'Problems', 'Reload', 'Command palette', 'Check on save', 'Watchdog', 'Server', 'Settings', 'Menu',
       'Files', 'Inlay hints', 'Results window', 'Editor commands', 'Forms', 'Compile events', 'Status field',
@@ -801,7 +802,8 @@ const
       'Quick bookmarks', 'Atlas status bar', 'Architecture overview', 'Unit relations',
       'Path between symbols', 'Project tasks', 'Debugging',
       'Exit points', 'Reassigned variables', 'Type of expression', 'Method order',
-      'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar'));
+      'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
+      'Welcome page: updates'));
 begin
   Result := Names[TAtlasTextLanguage.Current, AFeature];
 end;

@@ -130,7 +130,7 @@ var
   mKeep: IInterface;
 begin
   mKeep := AKeep;
-  TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
     procedure
     begin
       if mKeep <> nil then
@@ -231,7 +231,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           if mKeep <> nil then

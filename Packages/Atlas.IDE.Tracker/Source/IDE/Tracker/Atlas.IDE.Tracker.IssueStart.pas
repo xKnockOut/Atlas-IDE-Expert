@@ -714,7 +714,7 @@ end;
 
 procedure TAtlasIdeIssueStart.EndActive;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mProject, mBranch: string;

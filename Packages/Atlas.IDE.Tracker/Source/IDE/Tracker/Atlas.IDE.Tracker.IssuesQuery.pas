@@ -190,7 +190,7 @@ end;
 class procedure TAtlasIdeIssuesQuery.Deliver(const AKeep: IAtlasIdeIssuesActions; AOwner: TAtlasIdeIssuesQuery;
   const AJob: TAtlasIssuesFetchJob);
 begin
-  TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
     procedure
     begin
       if AKeep <> nil then
@@ -267,7 +267,7 @@ begin
   // Erst nach dem Ende des Abfrage-Threads (Fetch fragt nur, wenn keiner mehr läuft).
   mKeep := FContext.Actions;
   mOwner := Self;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker,
     procedure
     begin
       if mKeep <> nil then
@@ -284,7 +284,7 @@ end;
 
 procedure TAtlasIdeIssuesQuery.QueryNow;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
       Fetch(True);
@@ -297,7 +297,7 @@ end;
 
 procedure TAtlasIdeIssuesQuery.Credentials;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -323,7 +323,7 @@ end;
 
 procedure TAtlasIdeIssuesQuery.EnterCredentialsForActive;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -375,7 +375,7 @@ begin
   mEdit := FContext.Hooks.EditQueries;
   if FContext.Started and Assigned(mEdit) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    TAtlasGuard.Run(TAtlasFeature.Tracker,
       procedure
       begin
         mEdit();
@@ -389,7 +389,7 @@ end;
 
 procedure TAtlasIdeIssuesQuery.AssignProject;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mProject: string;

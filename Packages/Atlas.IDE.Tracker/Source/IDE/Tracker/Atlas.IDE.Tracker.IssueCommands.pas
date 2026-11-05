@@ -121,7 +121,7 @@ end;
 
 procedure TAtlasIdeIssueCommands.ShowPreviewPrompt;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -269,7 +269,7 @@ end;
 
 procedure TAtlasIdeIssueCommands.AttachPrompt;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -313,7 +313,7 @@ var
   mIssue: TAtlasTrackerIssue;
 begin
   mIssue := AIssue;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -338,7 +338,7 @@ var
   mIssue: TAtlasTrackerIssue;
 begin
   mIssue := AIssue;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;
@@ -365,7 +365,7 @@ var
   mIssue: TAtlasTrackerIssue;
 begin
   mIssue := AIssue;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mTarget: TAtlasTrackerTarget;

@@ -263,7 +263,7 @@ begin
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do
     begin
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
 end;
@@ -360,7 +360,7 @@ begin
   except
     on E: Exception do
     begin
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+      TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
   if Result <> '' then
