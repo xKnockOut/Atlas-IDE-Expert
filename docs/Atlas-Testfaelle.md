@@ -9339,3 +9339,15 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | ME7 | Werte eines nicht installierten Moduls in der Registry (z. B. `DebugEnabled` = 0); Optionen mit OK schließen, Modul wieder installieren | Der Wert ist unverändert erhalten |
 | ME8 | Englische Oberfläche (`ui.language` = en), alle Module | Modulschalter auf jeder Seite englisch beschriftet |
 | ME9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; die Testklassen `T…SettingsSectionTests` der Module und `TAtlasSettingsSectionTests` grün |
+
+## Zeit bis „bereit“ bei Projektgruppen (#1479)
+
+Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an (`diagnostics.log`, Vorgabe). Zwei Fassungen: vor 38205b4e (z. B. 1.1.x) und dieser Stand. Je Fassung einen leeren Ordner für die Logs.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZB1 | Fassung „vor“ installieren; sechsmal: IDE frisch starten, Gruppe öffnen, warten bis die Statusleiste „bereit“ zeigt, Gipfel und Speicher im Fenster „Atlas-Server“ notieren, IDE schließen; die neue `diag-…log` aus `%LOCALAPPDATA%\Atlas\Logs\Diagnose` in den Ordner „vor“ kopieren | Sechs Dateien, jede mit `index project#0 start` … `index project#7 done` |
+| ZB2 | Dasselbe mit diesem Stand, Logs in den Ordner „nach“; der erste Lauf ist der Umstieg | Sechs Dateien |
+| ZB3 | `node Tools/Benchmark/ready.mjs --logs vor=<Ordner vor> --logs nach=<Ordner nach>` | Tabelle mit Umstieg, Median und Spannweite je Fassung; „nach“ nicht langsamer als „vor“ (**Abnahme**, Tabelle ins Issue #1479) |
+| ZB4 | Dieselbe Gruppe ohne IDE: `node Tools/Benchmark/ready.mjs --server vor=<alte AtlasServer.exe> --server nach=<neue> --target <Gruppenordner> --runs 6 --cache %TEMP%\atlas-ready` | Wie ZB3; die Zeiten liegen unter denen der IDE (ohne Start von Delphi) |
+| ZB5 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TIndexCacheDirectoryTests.OwnLockKnownInProcess` grün |

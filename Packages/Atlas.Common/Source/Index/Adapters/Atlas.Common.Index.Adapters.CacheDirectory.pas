@@ -82,9 +82,12 @@ type
     /// TArchitectureRequest.ScopeKey), gleich für LSP- und MCP-Prozess; außerhalb von Index, damit das Aufräumen
     /// der Index-Caches ihn nicht erfasst.</summary>
     class function ArchitectureFileFor(const ARoot, AScopeKey: string): string; static;
-    /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.</summary>
+    /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.
+    /// Hält dieser Prozess die Sperre schon (anderes Projekt der Gruppe), gleich nil, ohne die Datei zu öffnen.
+    /// </summary>
     class function TryLock(const ACacheFile: string): TStream; static;
-    /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
+    /// <summary>True, wenn eine andere Instanz oder dieser Prozess ACacheFile gesperrt hat. Eigene Sperren
+    /// beantwortet der Prozess selbst (#1479).</summary>
     class function IsLocked(const ACacheFile: string): Boolean; static;
     /// <summary>Löscht die ältesten Caches über AMaxBytes; liefert die Anzahl.</summary>
     class function Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: string): Integer; overload; static;
@@ -218,11 +221,116 @@ begin
     ArchitectureFileName);
 end;
 
+type
+  /// <summary>Sperrdateien, die dieser Prozess offen hält (#1479). Das Aufräumen fragt bei jedem Projektstart
+  /// alle Caches ab, ob sie gesperrt sind; in einer Projektgruppe hält der eigene Prozess die Sperren der schon
+  /// gestarteten Projekte. Die Probe über die Datei schlägt dann nur fehl, kostet aber: Free Pascal wartet unter
+  /// Linux bei belegter Sperre, bevor es aufgibt (gemessen 14 von 17 s bis „bereit“ bei 18 Projekten).</summary>
+  TIndexCacheHeldLocks = class
+  strict private
+    class var FLock: TObject;
+    class var FFiles: TDictionary<string, Boolean>;
+  public
+    class constructor Create;
+    class destructor Destroy;
+    class function KeyOf(const ACacheFile: string): string; static;
+    class function Held(const ACacheFile: string): Boolean; static;
+    class procedure Add(const AKey: string); static;
+    class procedure Remove(const AKey: string); static;
+  end;
+
+  /// <summary>Offene Sperrdatei; meldet sich in TIndexCacheHeldLocks an und beim Freigeben ab.</summary>
+  TIndexCacheLockStream = class(TFileStream)
+  strict private
+    FKey: string;
+  public
+    constructor Create(const ACacheFile: string);
+    destructor Destroy; override;
+  end;
+
+{ TIndexCacheHeldLocks }
+
+class constructor TIndexCacheHeldLocks.Create;
+begin
+  FLock := TObject.Create;
+  FFiles := TDictionary<string, Boolean>.Create;
+end;
+
+class destructor TIndexCacheHeldLocks.Destroy;
+begin
+  // Eine Sperre, die erst nach dieser Unit freigegeben wird, meldet sich dann ins Leere ab (Remove prüft nil).
+  FreeAndNil(FFiles);
+  FreeAndNil(FLock);
+end;
+
+class function TIndexCacheHeldLocks.KeyOf(const ACacheFile: string): string;
+begin
+  Result := AnsiUpperCase(ExpandFileName(ACacheFile));
+end;
+
+class function TIndexCacheHeldLocks.Held(const ACacheFile: string): Boolean;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Result := FFiles.ContainsKey(KeyOf(ACacheFile));
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TIndexCacheHeldLocks.Add(const AKey: string);
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FFiles.AddOrSetValue(AKey, True);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TIndexCacheHeldLocks.Remove(const AKey: string);
+begin
+  if FLock = nil then
+  begin
+    Exit;
+  end;
+  System.TMonitor.Enter(FLock);
+  try
+    FFiles.Remove(AKey);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+{ TIndexCacheLockStream }
+
+constructor TIndexCacheLockStream.Create(const ACacheFile: string);
+begin
+  inherited Create(ACacheFile + TIndexCacheDirectory.LockExtension, fmCreate or fmShareExclusive);
+  // Erst nach dem Öffnen anmelden: Scheitert es, gehört die Sperre einem anderen.
+  FKey := TIndexCacheHeldLocks.KeyOf(ACacheFile);
+  TIndexCacheHeldLocks.Add(FKey);
+end;
+
+destructor TIndexCacheLockStream.Destroy;
+begin
+  // Abmelden vor dem Schließen: Danach darf eine Probe die Datei wieder öffnen.
+  if FKey <> '' then
+  begin
+    TIndexCacheHeldLocks.Remove(FKey);
+  end;
+  inherited;
+end;
+
 class function TIndexCacheDirectory.TryLock(const ACacheFile: string): TStream;
 begin
+  if TIndexCacheHeldLocks.Held(ACacheFile) then
+  begin
+    Exit(nil);
+  end;
   try
     ForceDirectories(ExtractFileDir(ACacheFile));
-    Result := TFileStream.Create(ACacheFile + LockExtension, fmCreate or fmShareExclusive);
+    Result := TIndexCacheLockStream.Create(ACacheFile);
   except
     on EStreamError do
       Result := nil;
@@ -238,6 +346,10 @@ begin
   if not FileExists(ACacheFile + LockExtension) then
   begin
     Exit(False);
+  end;
+  if TIndexCacheHeldLocks.Held(ACacheFile) then
+  begin
+    Exit(True);
   end;
   Lock := TryLock(ACacheFile);
   Result := Lock = nil;

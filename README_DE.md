@@ -276,7 +276,7 @@ Ausführlich: [docs/Installation.md](docs/Installation.md).
 - [Konfiguration](docs/Konfiguration.md) von `atlas.json` (erzeugt aus dem JSON-Schema mit `pwsh Tools/Update-ConfigDoc.ps1`, englisch aus `x-description-en`: [docs/en/Configuration.md](docs/en/Configuration.md))
 - [Prüfregeln](docs/Regeln.md)
 - [MCP-Werkzeuge](docs/MCP.md)
-- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte
+- [Benchmark](docs/Benchmark.md) der Leistungs-Zielwerte und der Zeit bis „bereit“ einer Projektgruppe (`Tools/Benchmark/ready.mjs`, mehrere Läufe je Fassung, Median und Spannweite)
 
 ## Aufbau
 
