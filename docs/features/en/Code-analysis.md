@@ -7,13 +7,13 @@ The server checks every unit while you type. Findings appear:
 - as squiggles,
 - in the tooltip,
 - shortened at the end of the line,
-- project-wide in the dockable window **"Atlas-Prüfung"** (Ctrl+Alt+P).
+- project-wide in the dockable window **"Atlas Findings"** (Ctrl+Alt+P).
 
 Marks move along while typing.
 
 ## Findings window, hover and options page
 
-### Window "Atlas-Prüfung"
+### Window "Atlas Findings"
 
 - Live findings of the file, project or project group
 - Filters per kind, category and text
@@ -39,7 +39,7 @@ Marks move along while typing.
 - `problems.update` (*Tools › Options › Atlas › Rules › Check window*):
   - live while typing, with its own delay `problems.liveDelayMs` in milliseconds (100 to 10000, default 400)
   - on save
-  - only on request via "Check file now" (command palette, editor context menu, own shortcut Ctrl+Shift+Alt+P `keys.checkFile`, button in the "Atlas-Prüfung" window, click on the live check in the status bar)
+  - only on request via "Check file now" (command palette, editor context menu, own shortcut Ctrl+Shift+Alt+P `keys.checkFile`, button in the "Atlas Findings" window, click on the live check in the status bar)
 - The former setting "Check while typing" is carried over
 
 ### Finding hover
@@ -47,7 +47,7 @@ Marks move along while typing.
 - Shows severity and rule
 - Action line "Alt+Enter: fix", "Suppress for this line", "Configure rule…"
 
-### Page "Prüfregeln" in the options
+### Page "Check rules" in the options
 
 - Per rule group a master switch
 - A table with severity, exclusions and options of every rule

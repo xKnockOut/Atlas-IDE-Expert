@@ -137,6 +137,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.ProjectEvents.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Startup.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>

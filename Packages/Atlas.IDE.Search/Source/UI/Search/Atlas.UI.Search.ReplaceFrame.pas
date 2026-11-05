@@ -2,8 +2,11 @@
 
 // Inhalt des Fensters „Atlas-Suche: Ersetzen“ (#893), reine VCL: die Treffer
 // einer Suche über Dateien mit Häkchen zum Ersetzen. Oben Kopfzeile (Suche,
-// Ersatz, Anzahl), Knopf „Ausgewählte ersetzen“ und eine Hinweiszeile (etwa
-// „12 Ersetzungen in 3 Dateien“ oder übersprungene Dateien). Darunter die
+// Ersatz, Anzahl), darunter eine Zeile mit Hinweis (etwa „12 Ersetzungen in
+// 3 Dateien“ oder übersprungene Dateien) und rechts dem Knopf „Ausgewählte
+// ersetzen“. Knopf und Hinweis stehen in einer eigenen Zeile, deren Höhe aus
+// dem Knopf folgt: Die VCL richtet alTop vor alRight aus, neben zwei
+// Beschriftungen mit alTop blieben dem Knopf sonst nur wenige Pixel. Darunter die
 // Liste aus TAtlasReplaceList.Rows: je Datei eine Kopfzeile, darunter ihre
 // Treffer mit Zeile, Zeilentext und bei Regex der Vorschau „vorher →
 // nachher“. Die erste Spalte ist das Häkchen (☑/☐): Klick darauf oder
@@ -31,8 +34,8 @@ type
 
   TAtlasSearchReplaceFrame = class(TFrame)
   private
-    FTop: TPanel;
     FTitle: TLabel;
+    FBar: TPanel;
     FReplace: TButton;
     FNotice: TLabel;
     FList: TListView;
@@ -78,40 +81,44 @@ const
   CheckOn = '☑';
   CheckOff = '☐';
   CheckWidth = 32;
+  ReplaceWidth = 170;
 
 constructor TAtlasSearchReplaceFrame.Create(AOwner: TComponent);
 var
   Column: TListColumn;
 begin
   inherited Create(AOwner);
-  FTop := TPanel.Create(Self);
-  FTop.Parent := Self;
-  FTop.Align := alTop;
-  FTop.BevelOuter := bvNone;
-  FTop.ShowCaption := False;
-  FTop.Height := 52;
-
-  FReplace := TButton.Create(Self);
-  FReplace.Parent := FTop;
-  FReplace.Align := alRight;
-  FReplace.AlignWithMargins := True;
-  FReplace.Width := 170;
-  FReplace.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceSelectedButton);
-  FReplace.OnClick := ReplaceClick;
-
   FTitle := TLabel.Create(Self);
-  FTitle.Parent := FTop;
+  FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
   FTitle.ShowAccelChar := False;
   FTitle.Font.Style := [fsBold];
 
+  // Eigene Zeile für Hinweis und Knopf, unter der Kopfzeile.
+  FBar := TPanel.Create(Self);
+  FBar.Parent := Self;
+  FBar.Align := alTop;
+  FBar.Top := FTitle.Top + FTitle.Height + 1;
+  FBar.BevelOuter := bvNone;
+  FBar.ShowCaption := False;
+
+  FReplace := TButton.Create(Self);
+  FReplace.Parent := FBar;
+  FReplace.Align := alRight;
+  FReplace.AlignWithMargins := True;
+  FReplace.Width := ReplaceWidth;
+  FReplace.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceSelectedButton);
+  FReplace.OnClick := ReplaceClick;
+  // Höhe aus dem Knopf: ChangeScale skaliert beide gleich.
+  FBar.Height := FReplace.Height + FReplace.Margins.Top + FReplace.Margins.Bottom;
+
   FNotice := TLabel.Create(Self);
-  FNotice.Parent := FTop;
-  FNotice.Align := alTop;
+  FNotice.Parent := FBar;
+  FNotice.Align := alClient;
   FNotice.AlignWithMargins := True;
+  FNotice.Layout := tlCenter;
   FNotice.ShowAccelChar := False;
-  FNotice.Top := FTitle.Top + FTitle.Height + 1;
 
   FList := TListView.Create(Self);
   FList.Parent := Self;
