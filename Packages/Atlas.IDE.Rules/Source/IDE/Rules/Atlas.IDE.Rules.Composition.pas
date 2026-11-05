@@ -10,12 +10,18 @@
 // über dessen Scope bereit:
 // - Befehle (Palette),
 // - die Sammelkorrektur (IAtlasBulkFixer) für das Fenster „Atlas-Prüfung“,
+// - Regel einstellen, unterdrücken und abschalten am Befund
+//   (IAtlasRuleActions, #1755) für Fenster, Befund-Hover und Serverfenster,
+// - den Dialog der Einstellungsdateien mit Regel-Editor
+//   (IAtlasSettingsDialogProvider, #1755),
+// - die Abschnitte „Prüfregeln“ (mit Wegen zu den Regeln, Baseline und
+//   Unterdrückungen) und „Editor“ im Optionsdialog,
 // - das Aktualisieren der Baseline (IAtlasBaselineSource) für die
 //   Einrichtung der Willkommensseite (#759).
-// Prüfen selbst, Fenster „Atlas-Prüfung“, Erklären, Unterdrücken und
-// Abschalten am Befund, die Regeltabelle der Einstellungen, der Hinweis bei
-// abgeschaltetem Modul (#1454) und der Stand der Baseline-Datei bleiben in
-// Base: Sie laufen auch ohne das Modul (ohne Prüfregeln gibt es nur keine
+// Prüfen selbst, Fenster „Atlas-Prüfung“ mit Erklären, Inline-Hinweise,
+// Übersichtsleiste, der Hinweis bei abgeschaltetem Modul (#1454) sowie Stand
+// und Format der Baseline-Datei bleiben in Base: Sie zeigen auch
+// Syntaxfehler und Compilermeldungen (ohne Prüfregeln gibt es nur keine
 // Regeltreffer). Abmelden in der Finalisierung, solange Base läuft (Regel 5);
 // passt die Vertragsversion von Base nicht, meldet sich das Modul nicht an
 // (Regel 7).
@@ -50,18 +56,23 @@ type
 implementation
 
 uses
-  Atlas.UI.Rules.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Handshake,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.Findings,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Settings.ProjectDialog,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,
   Atlas.IDE.Rules.BulkFix,
+  Atlas.IDE.Rules.FindingActions,
+  Atlas.IDE.Rules.Settings,
+  Atlas.UI.Rules.SettingsDialog,
+  Atlas.UI.Rules.SettingsSection,
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings;
 
@@ -184,7 +195,7 @@ end;
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
 begin
-  TAtlasRulesChecksSection.ProvideIn(GScope);
+  GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeRulesSettings.Create as IAtlasSettingsSectionProvider);
   TAtlasRulesEditorSection.ProvideIn(GScope);
 end;
 
@@ -219,6 +230,8 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasBaselineSource, mRef);
   GScope.Provide(IAtlasBulkFixer, TAtlasIdeRulesBulkFix.Create(GScope) as IAtlasBulkFixer);
+  GScope.Provide(IAtlasRuleActions, TAtlasIdeRuleActions.Create as IAtlasRuleActions);
+  GScope.Provide(IAtlasSettingsDialogProvider, TAtlasRulesDialogProvider.Create as IAtlasSettingsDialogProvider);
   ProvideSettingsSections;
   Result := True;
 end;
