@@ -506,7 +506,7 @@ begin
   Assert.IsTrue(Sink.WaitDone(3000));
   Assert.AreEqual('Beta', Sink.Names);
   Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
-    'Quelle Hängt langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+    'Quelle Hängt langsam: text#');
   // Hängenden Arbeiter freigeben.
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.StopAll;
@@ -543,7 +543,7 @@ begin
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Langsam'), 'langsam ist kein Fehler');
   Assert.AreEqual(1, Slow.Calls, 'solange der erste Aufruf läuft, kein weiterer Arbeiter');
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
-  Assert.Contains(Text, 'Quelle Langsam langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+  Assert.Contains(Text, 'Quelle Langsam langsam: text#');
   Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile je Quelle und Minute');
   Assert.IsFalse(Text.Contains('Fehler in Quelle'), 'keine Fehlerzeile');
   // Hängenden Arbeiter freigeben; danach fragt die Quelle wieder.

@@ -262,6 +262,11 @@ begin
   begin
     mKeys.Height := mRect.Height;
   end;
+  // Eine Höhenänderung kann sie über die Ansicht schieben; die Tastenhilfe bleibt ganz unten.
+  if mKeys.Top < ASelf.FParts.Bottom.Top then
+  begin
+    mKeys.Top := ASelf.ClientHeight;
+  end;
 end;
 
 function AddViewButton(ASelf: TAtlasDebugEvaluateFrame; AKind: TAtlasEvalView): TSpeedButton;

@@ -307,15 +307,18 @@ begin
     mFrame.Parent := mHost;
     mFrame.Align := alClient;
     mFrame.HandleNeeded;
+    // Ein unsichtbares Fenster legt die Leiste nicht an, dann richtet sie sich nicht neu aus.
+    mFrame.Parts.Bar.HandleNeeded;
+    mFrame.Parts.Bar.Realign;
     // Links Text, Zeilen, JSON, Hex; rechts Ändern, Festheften, IDE-Dialog (IDE-Dialog ganz rechts).
     for mKind := Low(TAtlasEvalView) to Pred(High(TAtlasEvalView)) do
     begin
       Assert.IsTrue(mFrame.Parts.ViewButtons[mKind].Left < mFrame.Parts.ViewButtons[Succ(mKind)].Left,
         'Ansichten in Reihenfolge');
     end;
-    Assert.IsTrue(mFrame.Parts.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Parts.ModifyButton.Left);
-    Assert.IsTrue(mFrame.Parts.ModifyButton.Left < mFrame.Parts.PinButton.Left);
-    Assert.IsTrue(mFrame.Parts.PinButton.Left < mFrame.Parts.IdeDialogButton.Left);
+    Assert.IsTrue(mFrame.Parts.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Parts.ModifyButton.Left, 'Ansichten links von Ändern');
+    Assert.IsTrue(mFrame.Parts.ModifyButton.Left < mFrame.Parts.PinButton.Left, 'Ändern vor Festheften');
+    Assert.IsTrue(mFrame.Parts.PinButton.Left < mFrame.Parts.IdeDialogButton.Left, 'Festheften vor IDE-Dialog');
     Assert.IsTrue(mFrame.Parts.IdeDialogButton.Left + mFrame.Parts.IdeDialogButton.Width <=
       mFrame.Parts.Bar.ClientWidth, 'innerhalb der Leiste');
   finally
