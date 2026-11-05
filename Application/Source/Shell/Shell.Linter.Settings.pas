@@ -51,7 +51,17 @@ uses
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Output,
   Shell.Bootstrap,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterSettingsText = (NotFound);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterSettingsText] of TAtlasText = (
+    (De: 'Ziel "%s" nicht gefunden'; En: 'Target "%s" not found'));
 
 { TLinterTarget }
 
@@ -62,7 +72,7 @@ begin
   Result := TFile.Exists(ATarget) or TDirectory.Exists(ATarget);
   if not Result then
   begin
-    TLinterOutput.Error(Format('Ziel "%s" nicht gefunden', [ATarget]));
+    TLinterOutput.Error(cTexts[TLinterSettingsText.NotFound].Fmt([ATarget]));
     Exit;
   end;
   if AResult.IsFolder then
@@ -211,5 +221,8 @@ begin
   Result.Units := AOptions.UnitFilter;
   Result.MinSeverity := AOptions.MinSeverity;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Settings', cTexts);
 
 end.

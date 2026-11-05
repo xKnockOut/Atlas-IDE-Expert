@@ -100,6 +100,7 @@ uses
   Shell.Linter.Check in 'Source\Shell\Shell.Linter.Check.pas',
   Shell.Linter.Reports in 'Source\Shell\Shell.Linter.Reports.pas',
   Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
+  Shell.Texts in 'Source\Shell\Shell.Texts.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
   Shell.AffectedTests in 'Source\Shell\Shell.AffectedTests.pas',
   Shell.Hotspots in 'Source\Shell\Shell.Hotspots.pas',

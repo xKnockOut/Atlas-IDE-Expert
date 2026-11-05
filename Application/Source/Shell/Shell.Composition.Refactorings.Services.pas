@@ -92,7 +92,11 @@ type
     /// <summary>EJsonRpcError (RequestFailed) mit ADisabled, wenn AEnabled nicht gilt.</summary>
     class procedure Allow(AEnabled: Boolean; const ADisabled: string); static;
     /// <summary>EJsonRpcError (InvalidParams) mit AMissing, wenn weniger als ACount Argumente da sind.</summary>
-    class procedure Require(const AArguments: TJSONArray; ACount: Integer; const AMissing: string); static;
+    class procedure Require(const AArguments: TJSONArray; ACount: Integer; const AMissing: string); overload; static;
+    /// <summary>Wie oben für die Argumente ANames (je eins); die Meldung nennt sie in der Sprache der Texte.</summary>
+    class procedure Require(const AArguments: TJSONArray; const ANames: array of string); overload; static;
+    /// <summary>Meldung für Allow und Open: Befehl AName ist über die Einstellung ASetting abgeschaltet.</summary>
+    class function Disabled(const AName, ASetting: string): string; static;
     /// <summary>Zahl im Feld AName der Antwort.</summary>
     class function Number(const AAnswer: TJSONObject; const AName: string): Integer; static;
     /// <summary>Länge der Liste im Feld AName der Antwort.</summary>
@@ -126,7 +130,19 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.LanguageFeatures,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts,
+  Shell.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TRefactoringServiceText = (NotOpen, Disabled);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TRefactoringServiceText] of TAtlasText = (
+    (De: 'Die Datei ist nicht geöffnet.'; En: 'The file is not open.'),
+    (De: '"%s" ist abgeschaltet (%s).'; En: '"%s" is turned off (%s).'));
 
 constructor TShellRefactoringPart.Create(const AServices: TShellRefactoringServices);
 begin
@@ -156,7 +172,7 @@ function TShellRefactoringPart.Open(const AUri: string): ITextDocument;
 begin
   if not FServices.Documents.TryGet(AUri, Result) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TRefactoringServiceText.NotOpen].Text);
   end;
 end;
 
@@ -249,6 +265,19 @@ begin
   end;
 end;
 
+class procedure TShellRefactoringPart.Require(const AArguments: TJSONArray; const ANames: array of string);
+begin
+  if (AArguments = nil) or (AArguments.Count < Length(ANames)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(ANames));
+  end;
+end;
+
+class function TShellRefactoringPart.Disabled(const AName, ASetting: string): string;
+begin
+  Result := cTexts[TRefactoringServiceText.Disabled].Fmt([AName, ASetting]);
+end;
+
 class function TShellRefactoringPart.Number(const AAnswer: TJSONObject; const AName: string): Integer;
 begin
   Result := (AAnswer.GetValue(AName) as TJSONNumber).AsInt;
@@ -286,5 +315,8 @@ begin
   Result.Style := FormatStyle(AUri);
   Result.NewNames := FServices.NewNamesFor(AUri);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Services', cTexts);
 
 end.

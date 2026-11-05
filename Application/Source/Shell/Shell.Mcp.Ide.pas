@@ -32,7 +32,19 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpIdeText = (ModeInvalid, ResultUnreadable);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpIdeText] of TAtlasText = (
+    (De: 'Argument "mode": erlaubt sind "make", "build" und "check"';
+    En: 'Argument "mode": allowed are "make", "build" and "check"'),
+    (De: 'Ergebnis der IDE nicht lesbar.'; En: 'Result of the IDE not readable.'));
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
 /// Löschen, damit das Plugin sie währenddessen atomar ersetzen kann (Bericht M5, N3).</summary>
@@ -202,7 +214,7 @@ begin
   end;
   if not TMcpIdeBuilds.ModeValid(Request.Mode) then
   begin
-    raise EMcpToolError.Create('Argument "mode": erlaubt sind "make", "build" und "check"');
+    raise EMcpToolError.Create(cTexts[TMcpIdeText.ModeInvalid].Text);
   end;
   Request.Configuration := AConfiguration;
   Request.Platform := APlatform;
@@ -231,8 +243,11 @@ begin
   end;
   if not TMcpBuildTools.FromFileText(BuildText, Result) then
   begin
-    raise EMcpToolError.Create('Ergebnis der IDE nicht lesbar.');
+    raise EMcpToolError.Create(cTexts[TMcpIdeText.ResultUnreadable].Text);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp.Ide', cTexts);
 
 end.

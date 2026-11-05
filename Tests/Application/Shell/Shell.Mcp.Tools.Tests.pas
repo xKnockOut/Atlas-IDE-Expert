@@ -29,6 +29,13 @@ type
     procedure ChangesOutsideVersionControlGiveReason;
     [Test]
     procedure WriteSourceTextKeepsLineBreaks;
+    /// <summary>#1458: Beschreibungen und Eingabeschemas aller Werkzeuge in beiden Sprachen; jedes Schema ist
+    /// gültiges JSON mit Eigenschaften, die englischen Texte sind ohne deutsche Wörter.</summary>
+    [Test]
+    procedure ToolsSpeakBothLanguages;
+    /// <summary>SchemaWith setzt die Beschreibungen als JSON-Texte ein, auch mit Anführungszeichen.</summary>
+    [Test]
+    procedure SchemaWithQuotesDescriptions;
   end;
 
 implementation
@@ -41,6 +48,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Prompts,
+  Atlas.Common.Localization.Texts,
   Shell.CommandLine,
   Shell.Mcp.Context,
   Shell.Mcp.Ide,
@@ -78,6 +86,71 @@ begin
       for mTool in mListed.GetValue<TJSONArray>('tools') do
       begin
         Result := Result + [mTool.GetValue<string>('name')];
+      end;
+    finally
+      mListed.Free;
+    end;
+  finally
+    mServer.Free;
+  end;
+end;
+
+/// <summary>Deutsche Spuren in einem englischen Text: Umlaute oder häufige deutsche Wörter.</summary>
+function LooksGerman(const AText: string): Boolean;
+const
+  cMarks: array[0..8] of string = ('ä', 'ö', 'ü', 'ß', ' und ', ' oder ', ' der ', ' die ', ' nicht ');
+var
+  mMark: string;
+begin
+  Result := False;
+  for mMark in cMarks do
+  begin
+    if Pos(mMark, LowerCase(AText)) > 0 then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Prüft Beschreibung und Schema jedes Werkzeugs in der aktuellen Sprache.</summary>
+procedure CheckToolTexts(AEnglish: Boolean);
+var
+  mServer: TMcpServer;
+  mContext: TMcpToolContext;
+  mListed, mSchema, mProperties, mProperty: TJSONObject;
+  mTools: TJSONArray;
+  mTool: TJSONValue;
+  mPair: TJSONPair;
+  mName, mText, mDescription: string;
+begin
+  mServer := TMcpServer.Create('Atlas', '0');
+  try
+    mContext := Default(TMcpToolContext);
+    mContext.Server := mServer;
+    RegisterContextTools(mContext);
+    mListed := mServer.ListTools;
+    try
+      mTools := mListed.GetValue<TJSONArray>('tools');
+      for mTool in mTools do
+      begin
+        mName := mTool.GetValue<string>('name');
+        mText := mTool.GetValue<string>('description');
+        Assert.IsTrue(mText <> '', mName);
+        mSchema := mTool.GetValue<TJSONObject>('inputSchema');
+        mProperties := mSchema.GetValue('properties') as TJSONObject;
+        Assert.IsNotNull(mProperties, mName + ': Schema ungültig');
+        for mPair in mProperties do
+        begin
+          mProperty := mPair.JsonValue as TJSONObject;
+          if mProperty.TryGetValue<string>('description', mDescription) then
+          begin
+            mText := mText + ' ' + mDescription;
+          end;
+        end;
+        if AEnglish then
+        begin
+          Assert.IsFalse(LooksGerman(mText), mName + ': ' + mText);
+        end;
       end;
     finally
       mListed.Free;
@@ -251,6 +324,27 @@ begin
   finally
     TDirectory.Delete(mFolder, True);
   end;
+end;
+
+procedure TMcpToolsTests.ToolsSpeakBothLanguages;
+var
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  try
+    TAtlasLocale.Use(TTextLanguage.German);
+    CheckToolTexts(False);
+    TAtlasLocale.Use(TTextLanguage.English);
+    CheckToolTexts(True);
+  finally
+    TAtlasLocale.Use(mSaved);
+  end;
+end;
+
+procedure TMcpToolsTests.SchemaWithQuotesDescriptions;
+begin
+  Assert.AreEqual('{"a":"x \"y\"","b":"z"}', SchemaWith('{"a":%s,"b":%s}', ['x "y"', 'z']));
+  Assert.AreEqual('{"a":%s}', SchemaWith('{"a":%s}', []));
 end;
 
 initialization

@@ -42,7 +42,8 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
-  Atlas.Common.Lsp.SmartPaste;
+  Atlas.Common.Lsp.SmartPaste,
+  Shell.Texts;
 
 /// <summary>Ist eins der Refactorings aus Atlas.Common.Lsp.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;
@@ -91,7 +92,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, optional die Einrückungsbreite des Editors.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
   mIndentWidth := 0;
   if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONNumber) then
@@ -119,7 +120,7 @@ begin
   // Argumente: alte URI, neue URI, URIs der Dateien des Bereichs (#512).
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "old", "new" und "files" fehlen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['old', 'new', 'files']));
   end;
   if not Settings(AArguments.Items[1].Value).UnitRenameFollowUp then
   begin
@@ -158,7 +159,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, eingefügter Bereich, optional die gewählten Units (#515).
-  Require(AArguments, 2, 'Argumente "uri" und "range" fehlen');
+  Require(AArguments, ['uri', 'range']);
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri);
   UsesContext(mUri, mContext);

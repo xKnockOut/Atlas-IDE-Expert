@@ -1668,6 +1668,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Texts.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Texts.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
         <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>

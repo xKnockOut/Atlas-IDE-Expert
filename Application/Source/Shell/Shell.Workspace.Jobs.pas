@@ -57,7 +57,17 @@ uses
   Atlas.Common.Projects.DprojReader,
   Shell.Platform,
   Shell.Workspace.Listings,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TWorkspaceJobText = (NoDelphi);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TWorkspaceJobText] of TAtlasText = (
+    (De: 'Delphi-Installation nicht gefunden'; En: 'Delphi installation not found'));
 
 { TShellWorkspaceJobs }
 
@@ -71,7 +81,7 @@ begin
   AError := '';
   if AInstall.BdsRoot = '' then
   begin
-    AError := 'Delphi-Installation nicht gefunden';
+    AError := cTexts[TWorkspaceJobText.NoDelphi].Text;
     Exit(False);
   end;
   // Eigener Ausgabeordner je Projekt, Plattform und Konfiguration; der Build des Entwicklers bleibt unberührt.
@@ -242,5 +252,8 @@ begin
     TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Workspace.Jobs', cTexts);
 
 end.

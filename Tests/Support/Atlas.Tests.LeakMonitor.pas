@@ -28,6 +28,11 @@
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
 // Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
+//
+// Der Monitor ist der einzige Haken vor jedem Setup und setzt deshalb auch den gemeinsamen Ausgangszustand:
+// Jeder Test beginnt mit deutschen Texten (TAtlasLocale, #1458). Die Sprache gilt prozessweit, und Tests, die
+// Einstellungen anwenden (TShellSettings.SetLoose wählt ohne language Englisch), ließen sonst nachfolgende Tests
+// je nach Reihenfolge englisch prüfen.
 
 interface
 
@@ -95,6 +100,7 @@ uses
   System.Generics.Collections,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Catalog,
@@ -476,6 +482,7 @@ end;
 
 procedure TLeakMonitor.PreSetup;
 begin
+  TAtlasLocale.Use(TTextLanguage.German);
   Start;
   FSetUpBefore := AllocatedBytes;
 end;

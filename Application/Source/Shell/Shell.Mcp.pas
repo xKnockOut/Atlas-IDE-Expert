@@ -65,7 +65,23 @@ uses
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
   Shell.Mcp.Startup,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpHostText = (Instructions, ConventionsName, ConventionsDescription);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpHostText] of TAtlasText = (
+    (De: 'Delphi-Projekt in %s. Für Fragen zu Typen, Units und Formularen zuerst diese Werkzeuge nutzen statt ' +
+    'Quelldateien vollständig zu lesen.';
+    En: 'Delphi project in %s. For questions about types, units and forms, use these tools first instead of ' +
+    'reading source files completely.'),
+    (De: 'Projektkonventionen'; En: 'Project conventions'),
+    (De: 'Regelprofil, Formatstil, Benennungsregeln und aktive Prüfregeln des Projekts als Markdown.';
+    En: 'Rule profile, format style, naming rules and active check rules of the project as Markdown.'));
 
 class function TMcpShell.ToolNames: TArray<string>;
 var
@@ -197,14 +213,13 @@ end;
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
   const ALogger: ILogger);
 begin
-  AServer.Instructions := 'Delphi-Projekt in ' + AServices.Root + '. Für Fragen zu Typen, Units und Formularen ' +
-    'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
+  AServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([AServices.Root]);
   RegisterContextTools(AServices.ToolContext(AServer));
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  AServer.AddResource('delphi://conventions', 'Projektkonventionen',
-    'Regelprofil, Formatstil, Benennungsregeln und aktive Prüfregeln des Projekts als Markdown.', 'text/markdown',
+  AServer.AddResource('delphi://conventions', cTexts[TMcpHostText.ConventionsName].Text,
+    cTexts[TMcpHostText.ConventionsDescription].Text, 'text/markdown',
     ConventionsOf(AServices.Workspace));
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
@@ -311,5 +326,8 @@ begin
     mServices.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp', cTexts);
 
 end.

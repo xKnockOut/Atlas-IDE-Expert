@@ -94,7 +94,26 @@ uses
   Shell.Linter.Files,
   Shell.Linter.Changes,
   Shell.Linter.Index,
-  Shell.Linter.Reports;
+  Shell.Linter.Reports,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterCheckText = (DiffOnly, MetricsFormat, TodosFormat, TodosMetrics, BaselineAll, NoSourceRoot);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterCheckText] of TAtlasText = (
+    (De: '--format diff gibt es nur mit --format-check oder --format-write';
+    En: '--format diff only exists with --format-check or --format-write'),
+    (De: '--metrics gibt es nur mit --format text (Markdown) oder json';
+    En: '--metrics only exists with --format text (Markdown) or json'),
+    (De: '--todos gibt es nur mit --format text (Markdown) oder json';
+    En: '--todos only exists with --format text (Markdown) or json'),
+    (De: '--todos und --metrics schließen sich aus'; En: '--todos and --metrics exclude each other'),
+    (De: '--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert';
+    En: '--update-baseline always writes the baseline for all files; --changed/--diff is ignored'),
+    (De: 'Quellwurzel "%s" nicht gefunden'; En: 'Source root "%s" not found'));
 
 class function TLinterCheck.Validate(const AOptions: TCommandLineOptions): Boolean;
 var
@@ -103,19 +122,19 @@ begin
   mError := '';
   if AOptions.FormatDiff then
   begin
-    mError := '--format diff gibt es nur mit --format-check oder --format-write';
+    mError := cTexts[TLinterCheckText.DiffOnly].Text;
   end
   else if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
   begin
-    mError := '--metrics gibt es nur mit --format text (Markdown) oder json';
+    mError := cTexts[TLinterCheckText.MetricsFormat].Text;
   end
   else if AOptions.Todos and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
   begin
-    mError := '--todos gibt es nur mit --format text (Markdown) oder json';
+    mError := cTexts[TLinterCheckText.TodosFormat].Text;
   end
   else if AOptions.Todos and AOptions.Metrics then
   begin
-    mError := '--todos und --metrics schließen sich aus';
+    mError := cTexts[TLinterCheckText.TodosMetrics].Text;
   end;
   Result := mError = '';
   if not Result then
@@ -185,8 +204,7 @@ begin
   FPrograms := TLinterFiles.Programs(Result);
   if (FOptions.ChangedRef <> '') and FOptions.UpdateBaseline then
   begin
-    TLinterOutput.Error('--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ' +
-      'ignoriert');
+    TLinterOutput.Error(cTexts[TLinterCheckText.BaselineAll].Text);
   end
   else if FOptions.ChangedRef <> '' then
   begin
@@ -447,7 +465,7 @@ begin
   Result := TLinterTarget.Resolve(AOptions.CheckTarget, ATarget);
   if Result and (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
   begin
-    TLinterOutput.Error(Format('Quellwurzel "%s" nicht gefunden', [AOptions.SourceRoot]));
+    TLinterOutput.Error(cTexts[TLinterCheckText.NoSourceRoot].Fmt([AOptions.SourceRoot]));
     Result := False;
   end;
 end;
@@ -477,5 +495,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Check', cTexts);
 
 end.
