@@ -8120,6 +8120,8 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog 
 | AW24 | Während F8 die Werte nachlädt: im Eingabefeld tippen, Pfeiltasten im Baum, Fenster verschieben | Fenster reagiert ohne spürbare Verzögerung (vorher wurde der Baum nach jeder Zeitscheibe neu aufgebaut) |
 | AW25 | Objekt-Zeile zugeklappt, F8 | Aufklappzeichen bleibt beim Neu-Auswerten stehen (kein kurzes Verschwinden) |
 | AW26 | Langer String (z. B. 1 MB `TStringList.Text`) als Ausdruck, Ansicht JSON bzw. Text gewählt, F8 mehrmals | Baumzeile gekürzt mit …, Ansicht unten unverändert ohne Ruckeln; Fenster schließen und wieder andocken: Zeilen, Farben und Auswahl stimmen |
+| AW27 | Fenster frei schwebend öffnen und größer ziehen, dann schmal ziehen und wieder breit; auch angedockt | Kein leerer Streifen unter der Tastenhilfe: Baum (bzw. nach dem Teiler die Ansicht) füllt die Höhe, die Tastenhilfe umbricht schmal auf mehrere Zeilen und wird breit wieder einzeilig |
+| AW28 | Leiste über der Ansicht ansehen | Links Text, Zeilen, JSON, Hex; rechts Ändern …, Festheften, IDE-Dialog (IDE-Dialog ganz rechts) |
 
 ## Werte im Editor beim Debuggen (#508)
 
