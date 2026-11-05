@@ -387,8 +387,7 @@ end;
 
 class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string);
 var
-  OldLines, NewLines: TArray<string>;
-  Prefix, Suffix, ChangedEnd, Delta, Index: Integer;
+  OldCount, NewCount, Prefix, Suffix, ChangedEnd, Delta, Index: Integer;
   Kept: TArray<TAtlasProblem>;
   Problem: TAtlasProblem;
 
@@ -410,16 +409,15 @@ var
     end;
     // In der geänderten Stelle: bleibt stehen, aber blass und im Text.
     AProblem.Stale := True;
-    AProblem.StartLine := EnsureRange(AProblem.StartLine, 0, Max(0, High(NewLines)));
-    AProblem.EndLine := EnsureRange(AProblem.EndLine, AProblem.StartLine, Max(0, High(NewLines)));
+    AProblem.StartLine := EnsureRange(AProblem.StartLine, 0, Max(0, NewCount - 1));
+    AProblem.EndLine := EnsureRange(AProblem.EndLine, AProblem.StartLine, Max(0, NewCount - 1));
   end;
 
 begin
-  OldLines := AEntry.Text.Split([#10]);
-  NewLines := ANewText.Split([#10]);
-  TTextDiff.CommonPrefixSuffix(OldLines, NewLines, Prefix, Suffix);
-  ChangedEnd := Length(OldLines) - Suffix;
-  Delta := Length(NewLines) - Length(OldLines);
+  // Ohne die Texte in Zeilen zu zerlegen: Das läuft im Hauptthread nach jeder Änderung.
+  TTextDiff.CommonPrefixSuffix(AEntry.Text, ANewText, Prefix, Suffix, OldCount, NewCount);
+  ChangedEnd := OldCount - Suffix;
+  Delta := NewCount - OldCount;
   for Index := 0 to High(AEntry.Atlas) do
   begin
     Map(AEntry.Atlas[Index], False);
@@ -980,20 +978,11 @@ begin
   end;
 end;
 
-/// <summary>Steht ein Problem an derselben Stelle mit derselben Meldung schon in AProblems?</summary>
-function HasDuplicate(const AProblems: TArray<TAtlasProblem>; const AProblem: TAtlasProblem): Boolean;
-var
-  mOther: TAtlasProblem;
+/// <summary>Schlüssel für Doppelte: dieselbe Stelle mit derselben Meldung (Groß-/Kleinschreibung egal).</summary>
+function DuplicateKey(const AProblem: TAtlasProblem): string;
 begin
-  for mOther in AProblems do
-  begin
-    if (mOther.StartLine = AProblem.StartLine) and (mOther.StartCharacter = AProblem.StartCharacter) and
-      SameText(mOther.Message, AProblem.Message) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := IntToStr(AProblem.StartLine) + ':' + IntToStr(AProblem.StartCharacter) + ':' +
+    UpperCase(AProblem.Message);
 end;
 
 /// <summary>Vom Compiler bestätigte Befunde markieren (#1024); mit AMerge ohne die bestätigende
@@ -1020,14 +1009,17 @@ begin
       mDrop[mFound] := AMerge;
     end;
   end;
-  Result := nil;
+  SetLength(Result, Length(mProblems));
+  mFound := 0;
   for mIndex := 0 to High(mProblems) do
   begin
     if not mDrop[mIndex] then
     begin
-      Result := Result + [mProblems[mIndex]];
+      Result[mFound] := mProblems[mIndex];
+      Inc(mFound);
     end;
   end;
+  SetLength(Result, mFound);
 end;
 
 procedure SortByPosition(var AProblems: TArray<TAtlasProblem>);
@@ -1051,7 +1043,10 @@ function TAtlasProblemStore.ForFile(const AFileName: string): TArray<TAtlasProbl
 var
   mEntry: TEntry;
   mProblem: TAtlasProblem;
-  mVisible: TArray<TAtlasProblem>;
+  mAll, mVisible: TArray<TAtlasProblem>;
+  mSeen: TDictionary<string, Boolean>;
+  mKey: string;
+  mCount: Integer;
 begin
   Result := nil;
   mEntry := Find(AFileName);
@@ -1063,16 +1058,31 @@ begin
   begin
     Exit(mEntry.Visible);
   end;
-  mVisible := nil;
-  for mProblem in mEntry.Compiler + mEntry.Atlas + mEntry.Tests + mEntry.Tasks do
-  begin
-    // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme; ausgeblendete Projektaufgaben (#900) fehlen.
-    if not mProblem.Unnecessary and not mProblem.IsUses and ((FHiddenTasks = nil) or not TaskHidden(mProblem.Source))
-      and not HasDuplicate(mVisible, mProblem) then
+  mAll := mEntry.Compiler + mEntry.Atlas + mEntry.Tests + mEntry.Tasks;
+  SetLength(mVisible, Length(mAll));
+  mCount := 0;
+  // Doppelte über eine Tabelle: Große Units haben Tausende Befunde, und das läuft nach jeder Änderung.
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    for mProblem in mAll do
     begin
-      mVisible := mVisible + [mProblem];
+      // Inaktive Zweige und uses-Hinweise (#621) sind keine Probleme; ausgeblendete Projektaufgaben (#900) fehlen.
+      if mProblem.Unnecessary or mProblem.IsUses or ((FHiddenTasks <> nil) and TaskHidden(mProblem.Source)) then
+      begin
+        Continue;
+      end;
+      mKey := DuplicateKey(mProblem);
+      if not mSeen.ContainsKey(mKey) then
+      begin
+        mSeen.Add(mKey, True);
+        mVisible[mCount] := mProblem;
+        Inc(mCount);
+      end;
     end;
+  finally
+    mSeen.Free;
   end;
+  SetLength(mVisible, mCount);
   mVisible := Confirmed(mVisible, FCompilerMerge);
   SortByPosition(mVisible);
   mEntry.Visible := mVisible;

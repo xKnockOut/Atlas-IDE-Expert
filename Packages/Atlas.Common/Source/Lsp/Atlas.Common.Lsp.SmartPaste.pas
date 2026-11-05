@@ -40,7 +40,20 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSmartPasteText = (ArgumentsUriAndRangeMissing);
+
+const
+  cTexts: array[TSmartPasteText] of TAtlasText = (
+    (De: 'Argumente "uri" und "range" fehlen'; En: 'Arguments "uri" and "range" missing'));
+
+{$SCOPEDENUMS OFF}
 
 function NamesJson(const ANames: TArray<string>): TJSONArray;
 var
@@ -125,7 +138,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
   begin
-    raise EArgumentException.Create('Argumente "uri" und "range" fehlen');
+    raise EArgumentException.Create(cTexts[TSmartPasteText.ArgumentsUriAndRangeMissing].Text);
   end;
   mRange := TLspPositions.ReadRange(AArguments.Items[1]);
   mTarget := Default(TSmartPasteTarget);
@@ -151,5 +164,8 @@ begin
   Result.AddPair('added', NamesJson(mUses.Added));
   Result.AddPair('toImplementation', NamesJson(mUses.ToImplementation));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SmartPaste', cTexts);
 
 end.

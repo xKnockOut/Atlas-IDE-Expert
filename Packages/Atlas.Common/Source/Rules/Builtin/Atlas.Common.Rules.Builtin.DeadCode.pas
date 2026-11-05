@@ -134,7 +134,54 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Units,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeadCodeText = (MoveToImplementation, NeededInInterface, RemoveEntry, Circular, LikeF2092, SelfUses, AllInterface,
+    OneImplementation, ShowGraph, LikeF2047, ViaImplementation, CycleTitle, Routine, Constant, GlobalVariable,
+    TypeWord, MarkIntended, NeverUsed, UnusedTitle, UnitTitle, UnitUnused, UnitOnlyBy, UsesTitle, NothingUsed, JumpTo,
+    LineSuffix);
+
+const
+  cTexts: array[TDeadCodeText] of TAtlasText = (
+    (De: 'In implementation-uses verschieben'; En: 'Move to implementation uses'),
+    (De: 'Im interface-Teil gebraucht: '; En: 'Needed in the interface part: '),
+    (De: 'Eintrag entfernen'; En: 'Remove entry'),
+    (De: 'Zirkuläre Unit-Referenz: '; En: 'Circular unit reference: '),
+    (De: ' (wie F2092)'; En: ' (like F2092)'),
+    (De: 'Die Unit nennt sich selbst im uses: Der Compiler lehnt das ab (F2092).';
+     En: 'The unit names itself in uses: the compiler rejects that (F2092).'),
+    (De: 'Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).';
+     En: 'All edges are in the interface part: the compiler rejects the cycle (F2047).'),
+    (De: 'Mindestens eine Kante liegt im implementation-Teil: Der Compiler erlaubt den Zyklus.';
+     En: 'At least one edge is in the implementation part: the compiler allows the cycle.'),
+    (De: 'Graph zeigen (Unit-Beziehungen)'; En: 'Show graph (unit relations)'),
+    (De: ' (wie F2047)'; En: ' (like F2047)'),
+    (De: ' (über implementation-uses)'; En: ' (via implementation uses)'),
+    (De: 'Zirkuläre Unit-Referenz über uses'; En: 'Circular unit reference via uses'),
+    (De: 'Routine'; En: 'Routine'),
+    (De: 'Konstante'; En: 'Constant'),
+    (De: 'Globale Variable'; En: 'Global variable'),
+    (De: 'Typ'; En: 'Type'),
+    (De: 'Als bewusst vorhanden markieren (lsp-ignore)'; En: 'Mark as intentionally present (lsp-ignore)'),
+    (De: '%s %s wird nirgends verwendet.'; En: '%s %s is never used.'),
+    (De: 'Deklaration im implementation-Teil wird nie verwendet';
+     En: 'Declaration in the implementation part is never used'),
+    (De: 'Unit wird von keiner anderen Unit verwendet'; En: 'Unit is not used by any other unit'),
+    (De: 'Unit %s wird von keiner Unit und keinem Programm verwendet.';
+     En: 'Unit %s is used by no unit and no program.'),
+    (De: 'Unit %s wird von keiner anderen Unit verwendet; nur %s nennt sie im uses.';
+     En: 'Unit %s is not used by any other unit; only %s names it in uses.'),
+    (De: 'Aus der Unit im uses wird nichts verwendet'; En: 'Nothing from the unit in uses is used'),
+    (De: 'Aus %s wird nichts verwendet'; En: 'Nothing from %s is used'),
+    (De: 'Zu %s springen (Zeile %s, braucht %s im interface)'; En: 'Go to %s (line %s, needs %s in the interface)'),
+    (De: ' (Zeile %s)'; En: ' (line %s)'));
+
+{$SCOPEDENUMS OFF}
 
 function CleanName(const AText: string): string;
 begin
@@ -458,7 +505,7 @@ begin
     end;
     mEdits := TArray<TTextEdit>.Create(SmallestEdit(FContext.Text, mNewText));
   end;
-  Result := TArray<TRuleFix>.Create(TRuleFix.Create('In implementation-uses verschieben', mEdits));
+  Result := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TDeadCodeText.MoveToImplementation].Text, mEdits));
 end;
 
 /// <summary>Sprünge zu den Bezeichnern in AShown (höchstens cMaxJumps), ihre Liste in ADetails.</summary>
@@ -484,13 +531,12 @@ begin
     begin
       mNeed := mNeed + ', ';
     end;
-    mNeed := mNeed + mName + ' (Zeile ' + mLine + ')';
-    mFix := TRuleFix.Jump('Zu ' + mName + ' springen (Zeile ' + mLine + ', braucht ' + AUnitName +
-      ' im interface)', AShown[mIndex].Range.StartPos);
+    mNeed := mNeed + mName + cTexts[TDeadCodeText.LineSuffix].Fmt([mLine]);
+    mFix := TRuleFix.Jump(cTexts[TDeadCodeText.JumpTo].Fmt([mName, mLine, AUnitName]), AShown[mIndex].Range.StartPos);
     mFix.Alternative := mIndex > 0;
     Result := Result + [mFix];
   end;
-  ADetails := ADetails + sLineBreak + 'Im interface-Teil gebraucht: ' + mNeed;
+  ADetails := ADetails + sLineBreak + cTexts[TDeadCodeText.NeededInInterface].Text + mNeed;
 end;
 
 /// <summary>Korrekturen am interface-Eintrag (#896): ins implementation-uses verschieben, wenn kein
@@ -546,7 +592,8 @@ begin
   Result := nil;
   if TUsesActions.RemoveEntries(FContext.Text, TArray<TTextRange>.Create(ARange), mEdit) then
   begin
-    Result := TArray<TRuleFix>.Create(TRuleFix.Create('Eintrag entfernen', TArray<TTextEdit>.Create(mEdit)));
+    Result := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TDeadCodeText.RemoveEntry].Text,
+      TArray<TTextEdit>.Create(mEdit)));
   end;
 end;
 
@@ -559,8 +606,9 @@ begin
   begin
     if (mReference.List = TUsesListKind.UsesList) and SameText(CleanName(mReference.Name), FOwnName) then
     begin
-      AddFinding(mReference.Range, 'Zirkuläre Unit-Referenz: ' + FOwnName + ' → ' + FOwnName + ' (wie F2092)',
-        'Die Unit nennt sich selbst im uses: Der Compiler lehnt das ab (F2092).', TRuleSeverity.Error,
+      AddFinding(mReference.Range, cTexts[TDeadCodeText.Circular].Text + FOwnName + ' → ' + FOwnName +
+        cTexts[TDeadCodeText.LikeF2092].Text,
+        cTexts[TDeadCodeText.SelfUses].Text, TRuleSeverity.Error,
         RemoveFixes(mReference.Range), TArray<TRuleRelated>.Create(RelatedOf(FContext.FileName, mReference.Range,
         FOwnName)));
     end;
@@ -620,11 +668,11 @@ var
 begin
   if AAllInterface then
   begin
-    mDetails := 'Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).';
+    mDetails := cTexts[TDeadCodeText.AllInterface].Text;
   end
   else
   begin
-    mDetails := 'Mindestens eine Kante liegt im implementation-Teil: Der Compiler erlaubt den Zyklus.';
+    mDetails := cTexts[TDeadCodeText.OneImplementation].Text;
   end;
   mRelated := PathRelated(AReference, ASteps, mPathText, mDetails);
   mFixes := nil;
@@ -634,22 +682,25 @@ begin
   end;
   if (mFixes = nil) or mFixes[0].HasJump then
   begin
-    mFixes := mFixes + [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
+    mFixes := mFixes + [TRuleFix.UnitRelations(cTexts[TDeadCodeText.ShowGraph].Text)];
   end;
   if AAllInterface then
   begin
-    AddFinding(AReference.Range, 'Zirkuläre Unit-Referenz: ' + mPathText + ' (wie F2047)', mDetails,
+    AddFinding(AReference.Range, cTexts[TDeadCodeText.Circular].Text + mPathText + cTexts[TDeadCodeText.LikeF2047].Text,
+      mDetails,
       TRuleSeverity.Error, mFixes, mRelated);
   end
   else if FContext.Live then
   begin
     // Im Editor nur als Hinweis (#896), projektweit mit dem Schweregrad der Regel (#64).
-    AddFinding(AReference.Range, 'Zirkuläre Unit-Referenz: ' + mPathText + ' (über implementation-uses)',
+    AddFinding(AReference.Range, cTexts[TDeadCodeText.Circular].Text + mPathText +
+      cTexts[TDeadCodeText.ViaImplementation].Text,
       mDetails, TRuleSeverity.Hint, mFixes, mRelated);
   end
   else
   begin
-    AddFinding(AReference.Range, 'Zirkuläre Unit-Referenz: ' + mPathText + ' (über implementation-uses)',
+    AddFinding(AReference.Range, cTexts[TDeadCodeText.Circular].Text + mPathText +
+      cTexts[TDeadCodeText.ViaImplementation].Text,
       mDetails, TRuleSeverity.Default, mFixes, mRelated);
   end;
 end;
@@ -701,7 +752,7 @@ end;
 
 function TUsesCycleRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UsesCycleRuleId, TRuleSeverity.Warning, 'Zirkuläre Unit-Referenz über uses');
+  Result := TRuleDescriptor.Create(UsesCycleRuleId, TRuleSeverity.Warning, cTexts[TDeadCodeText.CycleTitle].Text);
 end;
 
 function TUsesCycleRule.Applies(const AContext: TRuleContext): Boolean;
@@ -768,13 +819,13 @@ function KindText(const ASymbol: TIndexSymbol): string;
 begin
   case ASymbol.Kind of
     TIndexSymbolKind.Routine:
-      Result := 'Routine';
+      Result := cTexts[TDeadCodeText.Routine].Text;
     TIndexSymbolKind.Constant:
-      Result := 'Konstante';
+      Result := cTexts[TDeadCodeText.Constant].Text;
     TIndexSymbolKind.Variable:
-      Result := 'Globale Variable';
+      Result := cTexts[TDeadCodeText.GlobalVariable].Text;
   else
-    Result := 'Typ';
+    Result := cTexts[TDeadCodeText.TypeWord].Text;
   end;
 end;
 
@@ -923,7 +974,7 @@ begin
   begin
     mIndent := Copy(FLines[mLine], 1, Length(FLines[mLine]) - Length(TrimLeft(FLines[mLine])));
   end;
-  Result := TRuleFix.Create('Als bewusst vorhanden markieren (lsp-ignore)',
+  Result := TRuleFix.Create(cTexts[TDeadCodeText.MarkIntended].Text,
     [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '// lsp-ignore: ' +
     UnusedDeclarationRuleId + FLineBreak)]);
   Result.Alternative := True;
@@ -991,7 +1042,7 @@ begin
   begin
     if FirstCandidate(mSymbol) and not Kept(mSymbol) then
     begin
-      FReport.Add(mSymbol.SelectionRange, Format('%s %s wird nirgends verwendet.', [KindText(mSymbol),
+      FReport.Add(mSymbol.SelectionRange, cTexts[TDeadCodeText.NeverUsed].Fmt([KindText(mSymbol),
         mSymbol.Name]), TRuleConfidence.High, [IgnoreFix(mSymbol)]);
     end;
   end;
@@ -1002,7 +1053,7 @@ end;
 function TUnusedDeclarationRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnusedDeclarationRuleId, TRuleSeverity.Hint,
-    'Deklaration im implementation-Teil wird nie verwendet');
+    cTexts[TDeadCodeText.UnusedTitle].Text);
 end;
 
 procedure TUnusedDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1127,7 +1178,7 @@ end;
 function TUnusedUnitRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnusedUnitRuleId, TRuleSeverity.Hint,
-    'Unit wird von keiner anderen Unit verwendet');
+    cTexts[TDeadCodeText.UnitTitle].Text);
 end;
 
 procedure TUnusedUnitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1152,13 +1203,12 @@ begin
   mOwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
   if mPrograms = '' then
   begin
-    AReport.Add(mRange, Format('Unit %s wird von keiner Unit und keinem Programm verwendet.', [mOwnName]),
+    AReport.Add(mRange, cTexts[TDeadCodeText.UnitUnused].Fmt([mOwnName]),
       TRuleConfidence.Medium);
   end
   else
   begin
-    AReport.Add(mRange, Format('Unit %s wird von keiner anderen Unit verwendet; nur %s nennt sie im uses.',
-      [mOwnName, mPrograms]), TRuleConfidence.Medium);
+    AReport.Add(mRange, cTexts[TDeadCodeText.UnitOnlyBy].Fmt([mOwnName, mPrograms]), TRuleConfidence.Medium);
   end;
 end;
 
@@ -1199,7 +1249,7 @@ end;
 
 function TUnusedUsesRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedUsesRuleId, TRuleSeverity.Hint, 'Aus der Unit im uses wird nichts verwendet');
+  Result := TRuleDescriptor.Create(UnusedUsesRuleId, TRuleSeverity.Hint, cTexts[TDeadCodeText.UsesTitle].Text);
 end;
 
 class function TUnusedUsesRule.Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>;
@@ -1241,9 +1291,10 @@ begin
     mFixes := nil;
     if TUsesActions.RemoveEntries(AContext.Text, TArray<TTextRange>.Create(mEntry.Range), mEdit) then
     begin
-      mFixes := TArray<TRuleFix>.Create(TRuleFix.Create('Eintrag entfernen', TArray<TTextEdit>.Create(mEdit), True));
+      mFixes := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TDeadCodeText.RemoveEntry].Text,
+        TArray<TTextEdit>.Create(mEdit), True));
     end;
-    AReport.Add(mEntry.Range, Format('Aus %s wird nichts verwendet', [mEntry.Name]), TRuleConfidence.High, mFixes);
+    AReport.Add(mEntry.Range, cTexts[TDeadCodeText.NothingUsed].Fmt([mEntry.Name]), TRuleConfidence.High, mFixes);
   end;
 end;
 
@@ -1254,5 +1305,8 @@ begin
   ARegistry.Register(TUnusedUnitRule.Create);
   ARegistry.Register(TUnusedUsesRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DeadCode', cTexts);
 
 end.

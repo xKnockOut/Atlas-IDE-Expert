@@ -112,7 +112,75 @@ uses
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CheckTools,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCodeToolsText = (NoteSymbolsOfThisName, ViaInterface, LineAndColumnCountFrom, FileNotReadable, NoSymbolInTheIndex,
+    FileNotReadable2, InferredCheckBeforeRenaming, None, IsNotARoutineOr, ThereIsNoDeclarationFor, NoAffectedTests,
+    DepthReachedPlacesNotFollowed, MaximumOfPlacesReachedResult, TimeLimitOfMsReached, NothingUsesTheSymbol,
+    InvalidRangeTheFileHas, IsNotReadableGiveThe, WarningUnresolvedIdentifierCannotBe,
+    WarningUnresolvedIdentifierCannotBe2, NoFindingsIn, NoteUnitSystemIsNot, NoteTheNameCheckKnows,
+    UsesOfCertainInferred, CalledBy, Calls, UnitLevel, ImpactOfDepthPlacesDirect, FindingsInPositionsInThe, Virtual,
+    ImplementationText, Implementations, Inferred, More, CertainInferred, Form, Form2, AffectedTests, Level,
+    MoreFindings);
+
+const
+  cTexts: array[TCodeToolsText] of TAtlasText = (
+    (De: 'Hinweis: %d Symbole dieses Namens, ausgewertet wird %s in %s. Mit TTyp.Name genauer fassen.';
+     En: 'Note: %d symbols of this name, %s in %s is evaluated. Narrow it down with TType.Name.'),
+    (De: 'über Interface'; En: 'via interface'),
+    (De: 'line und column zählen ab 1'; En: 'line and column count from 1'),
+    (De: 'Datei %s nicht lesbar'; En: 'File %s not readable'),
+    (De: 'Kein Symbol "%s" im Index.'; En: 'No symbol "%s" in the index.'),
+    (De: 'Datei %s nicht lesbar.'; En: 'File %s not readable.'),
+    (De: 'Erschlossen, vor dem Umbenennen prüfen:'; En: 'Inferred, check before renaming:'),
+    (De: '  (keine)'; En: '  (none)'),
+    (De: '%s ist keine Routine oder Methode.'; En: '%s is not a routine or method.'),
+    (De: 'Zu %s gibt es keine Deklaration.'; En: 'There is no declaration for %s.'),
+    (De: 'Keine betroffenen Tests.'; En: 'No affected tests.'),
+    (De: 'Tiefe %d erreicht: %d Stellen nicht weiter verfolgt (größere "depth" geht weiter).';
+     En: 'Depth %d reached: %d places not followed further (a greater "depth" goes on).'),
+    (De: 'Höchstzahl von %d Stellen erreicht, Ergebnis unvollständig.';
+     En: 'Maximum of %d places reached, result incomplete.'),
+    (De: 'Zeitlimit von %d ms erreicht, Ergebnis unvollständig.';
+     En: 'Time limit of %d ms reached, result incomplete.'),
+    (De: 'Nichts verwendet das Symbol.'; En: 'Nothing uses the symbol.'),
+    (De: 'Ungültiger Bereich %d-%d; die Datei hat %d Zeilen'; En: 'Invalid range %d-%d; the file has %d lines'),
+    (De: '%s ist nicht lesbar; ohne Bereich den ganzen Text angeben';
+     En: '%s is not readable; give the whole text without a range'),
+    (De: '%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar; gemeint ist %s? ({$SCOPEDENUMS ON})';
+     En: '%d:%d: warning [unresolved-identifier] "%s" cannot be resolved; did you mean %s? ({$SCOPEDENUMS ON})'),
+    (De: '%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar';
+     En: '%d:%d: warning [unresolved-identifier] "%s" cannot be resolved'),
+    (De: 'Keine Befunde in %s.'; En: 'No findings in %s.'),
+    (De: 'Hinweis: Unit System ist nicht im Index, Bezeichner wurden nicht geprüft.';
+     En: 'Note: unit System is not in the index, identifiers were not checked.'),
+    (De: 'Hinweis: Die Namensprüfung kennt keine Überladungen, Generics, Class Helper und with; einzelne Meldungen ' +
+      'können Fehlalarme sein.';
+     En: 'Note: the name check knows no overloads, generics, class helpers and with; single messages can be false ' +
+      'alarms.'),
+    (De: '%d Verwendungen von %s (%s:%d), %d sicher, %d erschlossen:';
+     En: '%d uses of %s (%s:%d), %d certain, %d inferred:'),
+    (De: 'Aufgerufen von:'; En: 'Called by:'),
+    (De: 'Ruft auf:'; En: 'Calls:'),
+    (De: ', Unit-Ebene'; En: ', unit level'),
+    (De: 'Auswirkungen von %s, Tiefe %d: %d Stellen, %d direkt, %d indirekt, %d Tests.';
+     En: 'Impact of %s, depth %d: %d places, %d direct, %d indirect, %d tests.'),
+    (De: '%d Befunde in %s (Positionen im neuen Text, Zeile:Spalte):';
+     En: '%d findings in %s (positions in the new text, line:column):'),
+    (De: 'virtuell'; En: 'virtual'),
+    (De: ' [%s, 1 Umsetzung]'; En: ' [%s, 1 implementation]'),
+    (De: ' [%s, %d Umsetzungen]'; En: ' [%s, %d implementations]'),
+    (De: ' – erschlossen (%s): %s'; En: ' – inferred (%s): %s'),
+    (De: '… %d weitere'; En: '… %d more'),
+    (De: '  %d sicher, %d erschlossen'; En: '  %d certain, %d inferred'),
+    (De: '%s    Formular: %s (%s:%d)'; En: '%s    Form: %s (%s:%d)'),
+    (De: '  Formular: %s (%s:%d)'; En: '  Form: %s (%s:%d)'),
+    (De: 'Betroffene Tests:'; En: 'Affected tests:'),
+    (De: '  %s (%s:%d, Ebene %d)'; En: '  %s (%s:%d, level %d)'),
+    (De: '… %d weitere Befunde'; En: '… %d more findings'));
 
 { TMcpCodeTools }
 
@@ -150,8 +218,8 @@ begin
     ALocation := Found[0];
     if Length(Found) > 1 then
     begin
-      AHint := Format('Hinweis: %d Symbole dieses Namens, ausgewertet wird %s in %s. ' +
-        'Mit TTyp.Name genauer fassen.', [Length(Found), ALocation.Symbol.QualifiedName, ALocation.UnitName]);
+      AHint := cTexts[TCodeToolsText.NoteSymbolsOfThisName].Fmt([Length(Found), ALocation.Symbol.QualifiedName,
+        ALocation.UnitName]);
     end;
   end;
 end;
@@ -196,11 +264,11 @@ begin
   Result := '';
   if ACall.Dispatch = TReferenceReason.Interface_ then
   begin
-    Result := 'über Interface';
+    Result := cTexts[TCodeToolsText.ViaInterface].Text;
   end
   else if ACall.Dispatch = TReferenceReason.Virtual then
   begin
-    Result := 'virtuell';
+    Result := cTexts[TCodeToolsText.Virtual].Text;
   end
   else
   begin
@@ -212,11 +280,11 @@ begin
   end
   else if ACall.Implementations = 1 then
   begin
-    Result := ' [' + Result + ', 1 Umsetzung]';
+    Result := cTexts[TCodeToolsText.ImplementationText].Fmt([Result]);
   end
   else
   begin
-    Result := Format(' [%s, %d Umsetzungen]', [Result, ACall.Implementations]);
+    Result := cTexts[TCodeToolsText.Implementations].Fmt([Result, ACall.Implementations]);
   end;
 end;
 
@@ -229,7 +297,7 @@ begin
   end
   else
   begin
-    Result := Format(' – erschlossen (%s): %s', [AConfidence.ReasonName, AConfidence.Detail]);
+    Result := cTexts[TCodeToolsText.Inferred].Fmt([AConfidence.ReasonName, AConfidence.Detail]);
   end;
 end;
 
@@ -242,11 +310,11 @@ var
 begin
   if (ALine < 1) or (AColumn < 1) then
   begin
-    raise EMcpToolError.Create('line und column zählen ab 1');
+    raise EMcpToolError.Create(cTexts[TCodeToolsText.LineAndColumnCountFrom].Text);
   end;
   if not FReadText(AFileName, Text) then
   begin
-    raise EMcpToolError.CreateFmt('Datei %s nicht lesbar', [AFileName]);
+    raise EMcpToolError.CreateFmt(cTexts[TCodeToolsText.FileNotReadable].Text, [AFileName]);
   end;
   Tree := TSyntaxTreeCache.Parse(Text);
   try
@@ -338,17 +406,17 @@ var
 begin
   if not Locate(AName, mLocation, mHint) then
   begin
-    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+    Exit(cTexts[TCodeToolsText.NoSymbolInTheIndex].Fmt([AName]));
   end;
   if not FReadText(mLocation.FileName, mText) then
   begin
-    Exit(Format('Datei %s nicht lesbar.', [mLocation.FileName]));
+    Exit(cTexts[TCodeToolsText.FileNotReadable2].Fmt([mLocation.FileName]));
   end;
   mFound := FindReferences(mLocation, mText);
   mSure := SureCount(mFound);
   mLines := TStringList.Create;
   try
-    mLines.Add(Format('%d Verwendungen von %s (%s:%d), %d sicher, %d erschlossen:', [Length(mFound),
+    mLines.Add(cTexts[TCodeToolsText.UsesOfCertainInferred].Fmt([Length(mFound),
       mLocation.Symbol.QualifiedName, mLocation.FileName, mLocation.Symbol.SelectionRange.StartPos.Line + 1, mSure,
       Length(mFound) - mSure]));
     // Erst die sicheren, dann die erschlossenen: Nur die sicheren ändert ein Umbenennen ohne Prüfung.
@@ -356,12 +424,12 @@ begin
     AddReferences(mLines, mFound, True, mCount);
     if (mSure < Length(mFound)) and (mCount < MaxReferences) then
     begin
-      mLines.Add('Erschlossen, vor dem Umbenennen prüfen:');
+      mLines.Add(cTexts[TCodeToolsText.InferredCheckBeforeRenaming].Text);
     end;
     AddReferences(mLines, mFound, False, mCount);
     if mCount < Length(mFound) then
     begin
-      mLines.Add(Format('… %d weitere', [Length(mFound) - mCount]));
+      mLines.Add(cTexts[TCodeToolsText.More].Fmt([Length(mFound) - mCount]));
     end;
     if mHint <> '' then
     begin
@@ -392,7 +460,7 @@ begin
   ALines.Add(ATitle);
   if Length(ACalls) = 0 then
   begin
-    ALines.Add('  (keine)');
+    ALines.Add(cTexts[TCodeToolsText.None].Text);
   end;
   Sure := 0;
   for Call in ACalls do
@@ -416,7 +484,7 @@ begin
   end;
   if Sure < Length(ACalls) then
   begin
-    ALines.Add(Format('  %d sicher, %d erschlossen', [Sure, Length(ACalls) - Sure]));
+    ALines.Add(cTexts[TCodeToolsText.CertainInferred].Fmt([Sure, Length(ACalls) - Sure]));
   end;
 end;
 
@@ -442,11 +510,11 @@ var
 begin
   if not Locate(AName, Location, Hint) then
   begin
-    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+    Exit(cTexts[TCodeToolsText.NoSymbolInTheIndex].Fmt([AName]));
   end;
   if not FReadText(Location.FileName, Text) then
   begin
-    Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+    Exit(cTexts[TCodeToolsText.FileNotReadable2].Fmt([Location.FileName]));
   end;
   Files := ProvidedFiles(FFiles);
   Lines := TStringList.Create;
@@ -459,18 +527,19 @@ begin
         if not TLspHierarchies.CallItemAt(Resolver, Tree, Location.FileName,
           Location.Symbol.SelectionRange.StartPos, Item) then
         begin
-          Exit(Format('%s ist keine Routine oder Methode.', [Location.Symbol.QualifiedName]));
+          Exit(cTexts[TCodeToolsText.IsNotARoutineOr].Fmt([Location.Symbol.QualifiedName]));
         end;
         Lines.Add(DescribeItem(Item));
         if ADirection in [TMcpCallDirection.Incoming, TMcpCallDirection.Both] then
         begin
-          AddCalls(Lines, 'Aufgerufen von:', '←',
+          AddCalls(Lines, cTexts[TCodeToolsText.CalledBy].Text, '←',
             TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(Resolver, FIndex, FReadText, nil), Item, Files,
             SettingsOf(Item.FileName)));
         end;
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
         begin
-          AddCalls(Lines, 'Ruft auf:', '→', TLspHierarchies.OutgoingCalls(Resolver, FIndex, Item, FReadText, nil));
+          AddCalls(Lines, cTexts[TCodeToolsText.Calls].Text, '→', TLspHierarchies.OutgoingCalls(Resolver, FIndex, Item,
+            FReadText, nil));
         end;
       finally
         Resolver.Free;
@@ -509,7 +578,7 @@ var
 begin
   if not Locate(AName, Location, Hint) then
   begin
-    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+    Exit(cTexts[TCodeToolsText.NoSymbolInTheIndex].Fmt([AName]));
   end;
   Result := Impact(AName, ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName).Depth, AJson);
 end;
@@ -527,11 +596,11 @@ var
 begin
   if not Locate(AName, Location, Hint) then
   begin
-    Exit(Format('Kein Symbol "%s" im Index.', [AName]));
+    Exit(cTexts[TCodeToolsText.NoSymbolInTheIndex].Fmt([AName]));
   end;
   if not FReadText(Location.FileName, Text) then
   begin
-    Exit(Format('Datei %s nicht lesbar.', [Location.FileName]));
+    Exit(cTexts[TCodeToolsText.FileNotReadable2].Fmt([Location.FileName]));
   end;
   Options := ImpactOptionsOf(Self, FImpactOptionsFor, Location.FileName);
   Options.Depth := TImpactAnalysis.ClampDepth(ADepth);
@@ -543,7 +612,7 @@ begin
       if not TLspHierarchies.SymbolItemAt(Resolver, Tree, Location.FileName,
         Location.Symbol.SelectionRange.StartPos, Start) then
       begin
-        Exit(Format('Zu %s gibt es keine Deklaration.', [Location.Symbol.QualifiedName]));
+        Exit(cTexts[TCodeToolsText.ThereIsNoDeclarationFor].Fmt([Location.Symbol.QualifiedName]));
       end;
       if Assigned(FFiles) then
       begin
@@ -574,10 +643,15 @@ end;
 
 function ImpactEdgeText(AEdge: TImpactEdge): string;
 const
-  Texts: array[TImpactEdge] of string = ('Aufruf', 'Verweis', 'Override', 'überschriebene Basismethode',
-    'Interface-Methode', 'Umsetzung');
+  Texts: array[TImpactEdge] of TAtlasText = (
+    (De: 'Aufruf'; En: 'call'),
+    (De: 'Verweis'; En: 'reference'),
+    (De: 'Override'; En: 'override'),
+    (De: 'überschriebene Basismethode'; En: 'overridden base method'),
+    (De: 'Interface-Methode'; En: 'interface method'),
+    (De: 'Umsetzung'; En: 'implementation'));
 begin
-  Result := Texts[AEdge];
+  Result := Texts[AEdge].Text;
 end;
 
 procedure AddImpactPlace(ALines: TStrings; const AResult: TImpactResult; AIndex: Integer; const AIndent: string);
@@ -595,7 +669,7 @@ begin
   end;
   if Place.Terminal then
   begin
-    Extra := Extra + ', Unit-Ebene';
+    Extra := Extra + cTexts[TCodeToolsText.UnitLevel].Text;
   end;
   if Place.Test >= 0 then
   begin
@@ -604,7 +678,7 @@ begin
   ALines.Add(Format('%s← %s (%s)%s', [AIndent, DescribeItem(Place.Item), Extra, ConfidenceSuffix(Place.Confidence)]));
   for Binding in Place.Forms do
   begin
-    ALines.Add(Format('%s    Formular: %s (%s:%d)', [AIndent, Binding.Text, Binding.FileName,
+    ALines.Add(cTexts[TCodeToolsText.Form].Fmt([AIndent, Binding.Text, Binding.FileName,
       Binding.Range.StartPos.Line + 1]));
   end;
   // Jede Stelle hat genau eine Ursache: Der Baum endet.
@@ -622,12 +696,12 @@ procedure AddImpactHead(ALines: TStrings; const AResult: TImpactResult);
 var
   mBinding: TImpactFormBinding;
 begin
-  ALines.Add(Format('Auswirkungen von %s, Tiefe %d: %d Stellen, %d direkt, %d indirekt, %d Tests.',
-    [DescribeItem(AResult.Symbol), AResult.Depth, Length(AResult.Places), AResult.LevelCount(1),
+  ALines.Add(cTexts[TCodeToolsText.ImpactOfDepthPlacesDirect].Fmt([DescribeItem(AResult.Symbol), AResult.Depth,
+    Length(AResult.Places), AResult.LevelCount(1),
     Length(AResult.Places) - AResult.LevelCount(1), Length(AResult.Tests)]));
   for mBinding in AResult.SymbolForms do
   begin
-    ALines.Add(Format('  Formular: %s (%s:%d)', [mBinding.Text, mBinding.FileName, mBinding.Range.StartPos.Line + 1]));
+    ALines.Add(cTexts[TCodeToolsText.Form2].Fmt([mBinding.Text, mBinding.FileName, mBinding.Range.StartPos.Line + 1]));
   end;
 end;
 
@@ -637,13 +711,13 @@ var
 begin
   if Length(AResult.Tests) = 0 then
   begin
-    ALines.Add('Keine betroffenen Tests.');
+    ALines.Add(cTexts[TCodeToolsText.NoAffectedTests].Text);
     Exit;
   end;
-  ALines.Add('Betroffene Tests:');
+  ALines.Add(cTexts[TCodeToolsText.AffectedTests].Text);
   for mTest in AResult.Tests do
   begin
-    ALines.Add(Format('  %s (%s:%d, Ebene %d)', [mTest.Name, mTest.FileName, mTest.Line + 1, mTest.Level]));
+    ALines.Add(cTexts[TCodeToolsText.Level].Fmt([mTest.Name, mTest.FileName, mTest.Line + 1, mTest.Level]));
   end;
   ALines.Add('run_tests tests: ' + string.Join(', ', AResult.RunNames));
 end;
@@ -652,16 +726,15 @@ procedure AddImpactLimits(ALines: TStrings; const AResult: TImpactResult);
 begin
   if TImpactLimit.Depth in AResult.Limits then
   begin
-    ALines.Add(Format('Tiefe %d erreicht: %d Stellen nicht weiter verfolgt (größere "depth" geht weiter).',
-      [AResult.Depth, AResult.Unexpanded]));
+    ALines.Add(cTexts[TCodeToolsText.DepthReachedPlacesNotFollowed].Fmt([AResult.Depth, AResult.Unexpanded]));
   end;
   if TImpactLimit.Count in AResult.Limits then
   begin
-    ALines.Add(Format('Höchstzahl von %d Stellen erreicht, Ergebnis unvollständig.', [AResult.MaxPlaces]));
+    ALines.Add(cTexts[TCodeToolsText.MaximumOfPlacesReachedResult].Fmt([AResult.MaxPlaces]));
   end;
   if TImpactLimit.Time in AResult.Limits then
   begin
-    ALines.Add(Format('Zeitlimit von %d ms erreicht, Ergebnis unvollständig.', [AResult.TimeoutMs]));
+    ALines.Add(cTexts[TCodeToolsText.TimeLimitOfMsReached].Fmt([AResult.TimeoutMs]));
   end;
 end;
 
@@ -675,7 +748,7 @@ begin
     AddImpactHead(mLines, AResult);
     if Length(AResult.Places) = 0 then
     begin
-      mLines.Add('Nichts verwendet das Symbol.');
+      mLines.Add(cTexts[TCodeToolsText.NothingUsesTheSymbol].Text);
     end;
     for mIndex := 0 to High(AResult.Places) do
     begin
@@ -727,7 +800,7 @@ begin
   if (AStartLine < 1) or (AStartLine > Length(Lines) + 1) or (AEndLine < AStartLine - 1) or
     (AEndLine > Length(Lines)) then
   begin
-    raise EMcpToolError.CreateFmt('Ungültiger Bereich %d-%d; die Datei hat %d Zeilen',
+    raise EMcpToolError.CreateFmt(cTexts[TCodeToolsText.InvalidRangeTheFileHas].Text,
       [AStartLine, AEndLine, Length(Lines)]);
   end;
   Inserted := AText;
@@ -758,7 +831,7 @@ begin
   end;
   if not (Assigned(FReadText) and FReadText(AFileName, mOriginal)) then
   begin
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar; ohne Bereich den ganzen Text angeben', [AFileName]);
+    raise EMcpToolError.CreateFmt(cTexts[TCodeToolsText.IsNotReadableGiveThe].Text, [AFileName]);
   end;
   Result := ReplaceLines(mOriginal, AText, AStartLine, AEndLine);
 end;
@@ -773,14 +846,14 @@ begin
   end
   else if AName.Suggestion <> '' then
   begin
-    Result := Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar; gemeint ist %s? ' +
-      '({$SCOPEDENUMS ON})', [AName.Range.StartPos.Line + 1, AName.Range.StartPos.Character + 1, AName.Name,
+    Result := cTexts[TCodeToolsText.WarningUnresolvedIdentifierCannotBe].Fmt([AName.Range.StartPos.Line + 1,
+      AName.Range.StartPos.Character + 1, AName.Name,
       AName.Suggestion]);
   end
   else
   begin
-    Result := Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar',
-      [AName.Range.StartPos.Line + 1, AName.Range.StartPos.Character + 1, AName.Name]);
+    Result := cTexts[TCodeToolsText.WarningUnresolvedIdentifierCannotBe2].Fmt([AName.Range.StartPos.Line + 1,
+      AName.Range.StartPos.Character + 1, AName.Name]);
   end;
 end;
 
@@ -810,25 +883,24 @@ procedure FinishCheckReport(ALines: TStrings; ACount: Integer; const AFileName: 
 begin
   if ACount > TMcpCodeTools.MaxFindings then
   begin
-    ALines.Add(Format('… %d weitere Befunde', [ACount - TMcpCodeTools.MaxFindings]));
+    ALines.Add(cTexts[TCodeToolsText.MoreFindings].Fmt([ACount - TMcpCodeTools.MaxFindings]));
   end;
   if ACount = 0 then
   begin
-    ALines.Insert(0, Format('Keine Befunde in %s.', [ExtractFileName(AFileName)]));
+    ALines.Insert(0, cTexts[TCodeToolsText.NoFindingsIn].Fmt([ExtractFileName(AFileName)]));
   end
   else
   begin
-    ALines.Insert(0, Format('%d Befunde in %s (Positionen im neuen Text, Zeile:Spalte):', [ACount,
+    ALines.Insert(0, cTexts[TCodeToolsText.FindingsInPositionsInThe].Fmt([ACount,
       ExtractFileName(AFileName)]));
   end;
   if not ACheckNames then
   begin
-    ALines.Add('Hinweis: Unit System ist nicht im Index, Bezeichner wurden nicht geprüft.');
+    ALines.Add(cTexts[TCodeToolsText.NoteUnitSystemIsNot].Text);
   end
   else
   begin
-    ALines.Add('Hinweis: Die Namensprüfung kennt keine Überladungen, Generics, Class Helper und with; ' +
-      'einzelne Meldungen können Fehlalarme sein.');
+    ALines.Add(cTexts[TCodeToolsText.NoteTheNameCheckKnows].Text);
   end;
 end;
 
@@ -893,5 +965,8 @@ begin
     Result := TMcpCallDirection.Both;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.CodeTools', cTexts);
 
 end.

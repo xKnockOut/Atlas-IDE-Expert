@@ -66,7 +66,34 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.UnresolvedNames;
+  Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInliningText = (ImplUses, AddUses, MissingUnit, MissingUnits, CompiledUnit, CompiledUnitIndirect, Title);
+
+const
+  cTexts: array[TInliningText] of TAtlasText = (
+    (De: 'Inline-Funktion %s wird nicht eingebettet: %s steht nur im uses des implementation-Teils, und die ' +
+      'aufrufende Routine ist selbst inline (wie H2445).';
+     En: 'Inline function %s is not expanded: %s is only in the uses of the implementation section, and the calling ' +
+      'routine is itself inline (like H2445).'),
+    (De: 'uses %s ergänzen'; En: 'Add uses %s'),
+    (De: 'Inline-Funktion %s wird nicht eingebettet: %s fehlt in uses (wie H2443).';
+     En: 'Inline function %s is not expanded: %s is missing in uses (like H2443).'),
+    (De: 'Inline-Funktion %s wird nicht eingebettet: %s fehlen in uses (wie H2443).';
+     En: 'Inline function %s is not expanded: %s are missing in uses (like H2443).'),
+    (De: 'Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s (wie H2456).';
+     En: 'Inline function %s is not expanded: %s uses the compiled unit %s (like H2456).'),
+    (De: 'Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s indirekt über %s (wie H2457).';
+     En: 'Inline function %s is not expanded: %s uses the compiled unit %s indirectly via %s (like H2457).'),
+    (De: 'Inline-Funktion wird nicht eingebettet (wie H2443, H2445, H2456, H2457)';
+     En: 'Inline function is not expanded (like H2443, H2445, H2456, H2457)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Was eine inline-Routine aus Sicht ihrer Unit braucht.</summary>
@@ -801,9 +828,7 @@ begin
   // Die billige Frage nach dem uses zuerst: CallerIsInline durchsucht die Symbole der Datei.
   if OnlyInImplementationUses(ACallee.OwnerUnit.UnitName) and CallerIsInline(Routines) then
   begin
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s steht nur im uses des ' +
-      'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).',
-      [Name, ACallee.OwnerUnit.UnitName]));
+    FReport.Add(ARange, cTexts[TInliningText.ImplUses].Fmt([Name, ACallee.OwnerUnit.UnitName]));
     Exit(True);
   end;
   Missings := nil;
@@ -822,17 +847,15 @@ begin
   Fixes := nil;
   if TUsesClauses.AddUnit(FContext.Tree.Tokens, AOffset, Missing, FLineBreak, Edit) then
   begin
-    Fixes := [TRuleFix.Create(Format('uses %s ergänzen', [Missing]), [Edit], True)];
+    Fixes := [TRuleFix.Create(cTexts[TInliningText.AddUses].Fmt([Missing]), [Edit], True)];
   end;
   if Length(Missings) = 1 then
   begin
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s fehlt in uses (wie H2443).',
-      [Name, Missing]), Fixes);
+    FReport.Add(ARange, cTexts[TInliningText.MissingUnit].Fmt([Name, Missing]), Fixes);
   end
   else
   begin
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s fehlen in uses (wie H2443).',
-      [Name, Missing]), Fixes);
+    FReport.Add(ARange, cTexts[TInliningText.MissingUnits].Fmt([Name, Missing]), Fixes);
   end;
   Result := True;
 end;
@@ -855,13 +878,12 @@ begin
   Result := mCycle <> '';
   if mCycle = CycleDirect then
   begin
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s ' +
-      '(wie H2456).', [mName, ACallee.OwnerUnit.UnitName, FOwnName]));
+    FReport.Add(ARange, cTexts[TInliningText.CompiledUnit].Fmt([mName, ACallee.OwnerUnit.UnitName, FOwnName]));
   end
   else if Result then
   begin
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s ' +
-      'indirekt über %s (wie H2457).', [mName, ACallee.OwnerUnit.UnitName, FOwnName, mCycle]));
+    FReport.Add(ARange, cTexts[TInliningText.CompiledUnitIndirect].Fmt([mName, ACallee.OwnerUnit.UnitName, FOwnName,
+      mCycle]));
   end;
 end;
 
@@ -1037,7 +1059,7 @@ end;
 function TInlineNotExpandedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InlineNotExpandedRuleId, TRuleSeverity.Hint,
-    'Inline-Funktion wird nicht eingebettet (wie H2443, H2445, H2456, H2457)');
+    cTexts[TInliningText.Title].Text);
 end;
 
 procedure TInlineNotExpandedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1060,5 +1082,8 @@ procedure RegisterInliningRules(ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TInlineNotExpandedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inlining', cTexts);
 
 end.

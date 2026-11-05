@@ -31,7 +31,29 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Dfm.BinaryForm,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDfmParserText = (Missing, ItemOrExpected, Missing2, ExpectedAfter, PropertyOrEndExpected, EndMissing,
+    ObjectExpectedBinaryDFM, NestedTooDeeply, ClassNameExpected);
+
+const
+  cTexts: array[TDfmParserText] of TAtlasText = (
+    (De: '"%s" fehlt'; En: '"%s" missing'),
+    (De: '"item" oder ">" erwartet'; En: '"item" or ">" expected'),
+    (De: '">" fehlt'; En: '">" missing'),
+    (De: '"=" nach "%s" erwartet'; En: '"=" expected after "%s"'),
+    (De: 'Property oder "end" erwartet'; En: 'Property or "end" expected'),
+    (De: '"end" fehlt'; En: '"end" missing'),
+    (De: '"object" erwartet (binäre DFM?)'; En: '"object" expected (binary DFM?)'),
+    (De: 'Zu tief verschachtelt'; En: 'Nested too deeply'),
+    (De: 'Klassenname erwartet'; En: 'Class name expected'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Schutz vor Stapelüberlauf bei kaputten Dateien.</summary>
@@ -277,7 +299,7 @@ begin
   end;
   if AtEnd then
   begin
-    Error(Format('"%s" fehlt', [AClose]));
+    Error(cTexts[TDfmParserText.Missing].Fmt([AClose]));
   end
   else
   begin
@@ -307,14 +329,14 @@ begin
     end
     else
     begin
-      Error('"item" oder ">" erwartet');
+      Error(cTexts[TDfmParserText.ItemOrExpected].Text);
       SkipLine;
     end;
     SkipBlanks;
   end;
   if AtEnd then
   begin
-    Error('">" fehlt');
+    Error(cTexts[TDfmParserText.Missing2].Text);
   end
   else
   begin
@@ -350,7 +372,7 @@ var
 begin
   if FDepth >= MaxDepth then
   begin
-    Error('Zu tief verschachtelt');
+    Error(cTexts[TDfmParserText.NestedTooDeeply].Text);
     SkipLine;
     Exit;
   end;
@@ -373,7 +395,7 @@ begin
   SkipSpaces;
   if Current <> '=' then
   begin
-    Error(Format('"=" nach "%s" erwartet', [mItem.Name]));
+    Error(cTexts[TDfmParserText.ExpectedAfter].Fmt([mItem.Name]));
     SkipLine;
     Exit;
   end;
@@ -412,7 +434,7 @@ begin
       end
       else
       begin
-        Error('Property oder "end" erwartet');
+        Error(cTexts[TDfmParserText.PropertyOrEndExpected].Text);
         Advance;
         SkipLine;
       end;
@@ -421,7 +443,7 @@ begin
     end;
     if AtEnd then
     begin
-      Error('"end" fehlt');
+      Error(cTexts[TDfmParserText.EndMissing].Text);
     end
     else
     begin
@@ -463,7 +485,7 @@ begin
   end;
   if AObject.TypeName = '' then
   begin
-    Error('Klassenname erwartet');
+    Error(cTexts[TDfmParserText.ClassNameExpected].Text);
   end;
 end;
 
@@ -534,12 +556,15 @@ begin
     end
     else if not Scanner.AtEnd then
     begin
-      Scanner.Error('"object" erwartet (binäre DFM?)');
+      Scanner.Error(cTexts[TDfmParserText.ObjectExpectedBinaryDFM].Text);
     end;
     Result.Errors := Scanner.FErrors.ToArray;
   finally
     Scanner.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Dfm.Parser', cTexts);
 
 end.

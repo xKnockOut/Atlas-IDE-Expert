@@ -52,7 +52,18 @@ implementation
 
 uses
   System.IOUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIdeEditsText = (AnswerOfTheIDENot, TheIDEAcceptedTheChange);
+
+const
+  cTexts: array[TIdeEditsText] of TAtlasText = (
+    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'),
+    (De: 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
+     En: 'The IDE accepted the change but did not confirm it.'));
 
 class function TMcpIdeEdits.InboxOf(const ABase: string; APid: Cardinal): string;
 begin
@@ -135,7 +146,7 @@ var
 begin
   if not ReadAnswer(AAnswer, mApplied, mNotOpen, AReason) then
   begin
-    AReason := 'Antwort der IDE nicht lesbar.';
+    AReason := cTexts[TIdeEditsText.AnswerOfTheIDENot].Text;
     Result := TMcpIdeEditOutcome.Failed;
   end
   else if mApplied then
@@ -174,11 +185,14 @@ begin
     // Übernommen, aber noch nicht fertig.
     if not AwaitAnswer(mAnswer, TakenMs, AWait, AClock) then
     begin
-      AReason := 'Die IDE hat die Änderung angenommen, aber nicht bestätigt.';
+      AReason := cTexts[TIdeEditsText.TheIDEAcceptedTheChange].Text;
       Exit(TMcpIdeEditOutcome.Failed);
     end;
   end;
   Result := OutcomeOf(mAnswer, AReason);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.IdeEdits', cTexts);
 
 end.

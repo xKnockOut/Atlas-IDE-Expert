@@ -112,7 +112,30 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Lsp.Uris,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TWorkspaceEditsText = (ChangeInLineTheText, ChangeEndsBeforeItsStart, ChangesOverlap);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TWorkspaceEditsText] of string = (
+    ('Änderung in Zeile %d, der Text hat nur %d Zeilen',
+     'Änderung %d endet vor ihrem Anfang',
+     'Änderungen überlappen sich'),
+    ('Change in line %d, the text has only %d lines',
+     'Change %d ends before its start',
+     'Changes overlap'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TWorkspaceEditsText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function ReadPosition(const ARange: TJSONObject; const AName: string; out APosition: TLspTextPosition): Boolean;
 var
@@ -404,7 +427,7 @@ begin
   begin
     if (AEdits[Index].StartPos.Line > LastLine) or (AEdits[Index].EndPos.Line > LastLine) then
     begin
-      raise ELspEditError.CreateFmt('Änderung in Zeile %d, der Text hat nur %d Zeilen',
+      raise ELspEditError.CreateFmt(UiText(TWorkspaceEditsText.ChangeInLineTheText),
         [AEdits[Index].EndPos.Line + 1, LastLine + 1]);
     end;
     Items[Index].Range.StartOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].StartPos);
@@ -413,7 +436,7 @@ begin
     Items[Index].Index := Index;
     if Items[Index].Range.EndOffset < Items[Index].Range.StartOffset then
     begin
-      raise ELspEditError.CreateFmt('Änderung %d endet vor ihrem Anfang', [Index + 1]);
+      raise ELspEditError.CreateFmt(UiText(TWorkspaceEditsText.ChangeEndsBeforeItsStart), [Index + 1]);
     end;
   end;
   TArray.Sort<TIndexedRange>(Items, TComparer<TIndexedRange>.Construct(
@@ -430,7 +453,7 @@ begin
   begin
     if (Index > 0) and (Items[Index].Range.StartOffset < Items[Index - 1].Range.EndOffset) then
     begin
-      raise ELspEditError.Create('Änderungen überlappen sich');
+      raise ELspEditError.Create(UiText(TWorkspaceEditsText.ChangesOverlap));
     end;
     Result[Index] := Items[Index].Range;
   end;
@@ -459,5 +482,8 @@ begin
     Builder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Lsp.WorkspaceEdits', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -81,7 +81,22 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Builtin.Metrics;
+  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMetricsText = (MetricsDataIsNotValid, UnknownModeAllowedFileSummary);
+
+const
+  cTexts: array[TMetricsText] of TAtlasText = (
+    (De: 'Metrikdaten sind kein gültiges JSON'; En: 'Metrics data is not valid JSON'),
+    (De: 'Unbekannter Modus "%s"; erlaubt: file, summary, json, markdown';
+     En: 'Unknown mode "%s"; allowed: file, summary, json, markdown'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspMetrics }
 
@@ -210,7 +225,7 @@ begin
   if not TryParseMode(ModeText, Mode) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      Format('Unbekannter Modus "%s"; erlaubt: file, summary, json, markdown', [ModeText]));
+      cTexts[TMetricsText.UnknownModeAllowedFileSummary].Fmt([ModeText]));
   end;
   if (Mode = TLspMetricsMode.FileValues) and IsProject(FileName) then
   begin
@@ -232,8 +247,11 @@ begin
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Metrikdaten sind kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TMetricsText.MetricsDataIsNotValid].Text);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Metrics', cTexts);
 
 end.

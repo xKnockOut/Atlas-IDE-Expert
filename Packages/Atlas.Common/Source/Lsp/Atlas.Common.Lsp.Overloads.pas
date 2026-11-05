@@ -57,7 +57,23 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspOverloadsText = (ThereIsNoHeaderOf, OverloadNotPossible, UnknownKind);
+
+const
+  cTexts: array[TLspOverloadsText] of TAtlasText = (
+    (De: 'Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.';
+     En: 'There is no header of a routine with a body in this unit here.'),
+    (De: 'Überladung geht nicht: '; En: 'Overload not possible: '),
+    (De: 'Unbekannte Art "%s"'; En: 'Unknown kind "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspOverloads.KindName(AKind: TOverloadKind): string;
 begin
@@ -242,17 +258,20 @@ var
 begin
   if not KindOf(AKind, Kind) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Art "%s"', [AKind]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspOverloadsText.UnknownKind].Fmt([AKind]));
   end;
   if not TOverloads.Target(AText, ATree, APosition, Target) then
   begin
-    raise Fail('Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.');
+    raise Fail(cTexts[TLspOverloadsText.ThereIsNoHeaderOf].Text);
   end;
   if not TOverloads.Build(AText, ATree, Target, TOverloadRequest.Create(Kind, ADefault), Outcome, Reason) then
   begin
-    raise Fail('Überladung geht nicht: ' + Reason);
+    raise Fail(cTexts[TLspOverloadsText.OverloadNotPossible].Text + Reason);
   end;
   Result := AnswerJson(TDocumentUris.FromPath(AFileName), Outcome);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Overloads', cTexts);
 
 end.

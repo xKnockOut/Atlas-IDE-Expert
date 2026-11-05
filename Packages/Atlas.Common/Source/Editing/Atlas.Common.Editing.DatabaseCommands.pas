@@ -29,7 +29,39 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.StringLiterals,
   Atlas.Common.Editing.SqlText,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDatabaseCommandsText = (ExpectedAreQueryAndSQL, SqlOnlyAppliesInThe, ExpectedIsAQueryE, ParamsOnlyAppliesInThe,
+    ThereIsNoSQLText, NotInTheSQLOf, AllParametersOfAreSet, ExpectedIsADatasetE, ExpectedIsAConnectionE,
+    SetSQLTextAndParameters, AddMissingParamByNameLines, IterateRecordsDisableControlsFirstNext,
+    WrapStatementsInATransaction);
+
+const
+  cTexts: array[TDatabaseCommandsText] of TAtlasText = (
+    (De: 'Erwartet werden Query und SQL, z. B. /sql Q select * from Kunde where Nr = :Nr';
+     En: 'Expected are query and SQL, e.g. /sql Q select * from Customer where No = :No'),
+    (De: '/sql gilt nur im Rumpf einer Routine'; En: '/sql only applies in the body of a routine'),
+    (De: 'Erwartet wird eine Query, z. B. /params Q'; En: 'Expected is a query, e.g. /params Q'),
+    (De: '/params gilt nur im Rumpf einer Routine'; En: '/params only applies in the body of a routine'),
+    (De: 'Für %s steht kein SQL-Text in der Unit oder Formulardatei';
+     En: 'There is no SQL text for %s in the unit or form file'),
+    (De: 'Nicht im SQL von %s: %s'; En: 'Not in the SQL of %s: %s'),
+    (De: 'Alle Parameter von %s sind gesetzt'; En: 'All parameters of %s are set'),
+    (De: 'Erwartet wird eine Datenmenge, z. B. /loop Q'; En: 'Expected is a dataset, e.g. /loop Q'),
+    (De: 'Erwartet wird eine Verbindung, z. B. /transaction Con';
+     En: 'Expected is a connection, e.g. /transaction Con'),
+    (De: 'SQL-Text und Parameter einer Query setzen'; En: 'Set SQL text and parameters of a query'),
+    (De: 'Fehlende ParamByName-Zeilen ergänzen'; En: 'Add missing ParamByName lines'),
+    (De: 'Datensätze durchlaufen (DisableControls, First, Next)';
+     En: 'Iterate records (DisableControls, First, Next)'),
+    (De: 'Anweisungen in eine Transaktion fassen'; En: 'Wrap statements in a transaction'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Ab dieser Länge der Zeile "Q.SQL.Text := '…';" wird der Text verteilt.</summary>
@@ -103,13 +135,13 @@ begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Sql) or (Sql = '') then
   begin
-    Exit(Fail('Erwartet werden Query und SQL, z. B. /sql Q select * from Kunde where Nr = :Nr', AReason));
+    Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedAreQueryAndSQL].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
     begin
-      Exit(Fail('/sql gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TDatabaseCommandsText.SqlOnlyAppliesInThe].Text, AReason));
     end;
     Indent := Source.Indent(Source.Line);
     TypeName := TypeOfName(Source, Name);
@@ -174,19 +206,19 @@ begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
   begin
-    Exit(Fail('Erwartet wird eine Query, z. B. /params Q', AReason));
+    Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsAQueryE].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/params gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TDatabaseCommandsText.ParamsOnlyAppliesInThe].Text, AReason));
     end;
     Sql := SqlOf(AContext, Source, Name);
     if Sql = '' then
     begin
-      Exit(Fail(Format('Für %s steht kein SQL-Text in der Unit oder Formulardatei', [Name]), AReason));
+      Exit(Fail(cTexts[TDatabaseCommandsText.ThereIsNoSQLText].Fmt([Name]), AReason));
     end;
     Params := TSqlText.Params(Sql);
     RoutineText := '';
@@ -202,11 +234,11 @@ begin
     Extra := TSqlText.Missing(Assigned, Params);
     if Extra <> nil then
     begin
-      Exit(Fail(Format('Nicht im SQL von %s: %s', [Name, string.Join(', ', Extra)]), AReason));
+      Exit(Fail(cTexts[TDatabaseCommandsText.NotInTheSQLOf].Fmt([Name, string.Join(', ', Extra)]), AReason));
     end;
     if Missing = nil then
     begin
-      Exit(Fail(Format('Alle Parameter von %s sind gesetzt', [Name]), AReason));
+      Exit(Fail(cTexts[TDatabaseCommandsText.AllParametersOfAreSet].Fmt([Name]), AReason));
     end;
     Indent := Source.Indent(Source.Line);
     TypeName := TypeOfName(Source, Name);
@@ -232,7 +264,7 @@ begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
   begin
-    Exit(Fail('Erwartet wird eine Datenmenge, z. B. /loop Q', AReason));
+    Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsADatasetE].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -257,7 +289,7 @@ begin
   AEdits := nil;
   if not SplitName(AContext.Arguments, Name, Rest) or (Rest <> '') then
   begin
-    Exit(Fail('Erwartet wird eine Verbindung, z. B. /transaction Con', AReason));
+    Exit(Fail(cTexts[TDatabaseCommandsText.ExpectedIsAConnectionE].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -311,13 +343,17 @@ end;
 
 procedure RegisterDatabaseCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('sql', 'SQL-Text und Parameter einer Query setzen',
+  ARegister(Command('sql', cTexts[TDatabaseCommandsText.SetSQLTextAndParameters].Text,
     '/sql Q select * from Kunde where Nr = :Nr', ExecuteSql));
-  ARegister(Command('params', 'Fehlende ParamByName-Zeilen ergänzen', '/params Q', ExecuteParams));
-  ARegister(Command('loop', 'Datensätze durchlaufen (DisableControls, First, Next)', '/loop Q',
+  ARegister(Command('params', cTexts[TDatabaseCommandsText.AddMissingParamByNameLines].Text, '/params Q',
+    ExecuteParams));
+  ARegister(Command('loop', cTexts[TDatabaseCommandsText.IterateRecordsDisableControlsFirstNext].Text, '/loop Q',
     ExecuteLoop));
-  ARegister(Command('transaction', 'Anweisungen in eine Transaktion fassen', '/transaction Con',
+  ARegister(Command('transaction', cTexts[TDatabaseCommandsText.WrapStatementsInATransaction].Text, '/transaction Con',
     ExecuteTransaction));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.DatabaseCommands', cTexts);
 
 end.

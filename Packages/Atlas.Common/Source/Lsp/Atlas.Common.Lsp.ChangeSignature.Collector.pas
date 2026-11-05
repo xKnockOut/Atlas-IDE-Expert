@@ -129,7 +129,41 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCollectorText = (TheHeaderOfCannotBe, IsOutsideTheProjectThe, CannotBeRead, OverridesAMethodWhoseAncestor,
+    TheOverriddenMethodOfIs, OverridesOutsideTheProjectThe, TheEventTypeChangesToo, IsUsedAsAMethod,
+    TheMethodIsBoundIn, ThereIsNoRoutineHere, IsDeclaredOutsideTheProject, Line);
+
+const
+  cTexts: array[TCollectorText] of TAtlasText = (
+    (De: 'Der Kopf von %s lässt sich nicht lesen.'; En: 'The header of %s cannot be read.'),
+    (De: '%s steht außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ändern.';
+     En: '%s is outside the project (%s); the signature cannot be changed there.'),
+    (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
+    (De: '%s überschreibt eine Methode, deren Vorfahr nicht im Index steht.';
+     En: '%s overrides a method whose ancestor is not in the index.'),
+    (De: 'Die überschriebene Methode von %s steht nicht im Index.';
+     En: 'The overridden method of %s is not in the index.'),
+    (De: '%s überschreibt %s außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ändern.';
+     En: '%s overrides %s outside the project (%s); the signature cannot be changed there.'),
+    (De: 'Der Ereignistyp %s ändert sich mit; weitere Handler dieses Typs und Aufrufe über das Ereignis passt Atlas ' +
+      'nicht an.';
+     En: 'The event type %s changes too; Atlas does not adapt other handlers of this type and calls via the event.'),
+    (De: '%s: %s wird als Methodenzeiger verwendet; Aufrufe darüber findet Atlas nicht.';
+     En: '%s: %s is used as a method pointer; Atlas does not find calls through it.'),
+    (De: 'Die Methode ist in einer Formulardatei gebunden; Aufrufe über das Ereignis findet Atlas nicht.';
+     En: 'The method is bound in a form file; Atlas does not find calls via the event.'),
+    (De: 'Hier steht keine Routine.'; En: 'There is no routine here.'),
+    (De: '"%s" ist außerhalb des Projekts deklariert (%s).'; En: '"%s" is declared outside the project (%s).'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'));
+
+{$SCOPEDENUMS OFF}
 
 const
   ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -266,7 +300,7 @@ begin
   if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, TChangeSignature.NameTokenAt(AUnit.Tokens,
     ADecl.SelectionRange.StartPos), Result.Decl) then
   begin
-    raise SignatureError(Format('Der Kopf von %s lässt sich nicht lesen.', [ADecl.QualifiedName]));
+    raise SignatureError(cTexts[TCollectorText.TheHeaderOfCannotBe].Fmt([ADecl.QualifiedName]));
   end;
   // Routine nur im implementation-Teil: der Kopf des Rumpfs ist die Deklaration.
   mLast := TChangeSignature.BodyEnd(AUnit.Tree, Result.Decl);
@@ -370,7 +404,7 @@ end;
 
 function PlaceOf(const ALocation: TReferenceLocation): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(ALocation.FileName), ALocation.Range.StartPos.Line + 1]);
+  Result := cTexts[TCollectorText.Line].Fmt([ExtractFileName(ALocation.FileName), ALocation.Range.StartPos.Line + 1]);
 end;
 
 { TSourceFile }
@@ -733,13 +767,13 @@ function TSignatureCollector.ReadableSource(const AFileName: string; const ADecl
 begin
   if not InProject(AFileName) then
   begin
-    raise SignatureError(Format('%s steht außerhalb des Projekts (%s); dort lässt sich die Signatur nicht ändern.',
-      [ADecl.QualifiedName, ExtractFileName(AFileName)]));
+    raise SignatureError(cTexts[TCollectorText.IsOutsideTheProjectThe].Fmt([ADecl.QualifiedName,
+      ExtractFileName(AFileName)]));
   end;
   Result := Source(AFileName);
   if (Result = nil) or (Result.Tree = nil) then
   begin
-    raise SignatureError(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+    raise SignatureError(cTexts[TCollectorText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -774,17 +808,16 @@ begin
   begin
     if not TypeSymbol(Result.Container, mOwner) or (Length(mOwner.Symbol.Ancestors) = 0) then
     begin
-      raise SignatureError(Format('%s überschreibt eine Methode, deren Vorfahr nicht im Index steht.',
-        [Result.QualifiedName]));
+      raise SignatureError(cTexts[TCollectorText.OverridesAMethodWhoseAncestor].Fmt([Result.QualifiedName]));
     end;
     if not FirstDeclaring(mOwner.Symbol.Ancestors[0], Result, ADecl.ParamTypes, mFile, mFound) then
     begin
-      raise SignatureError(Format('Die überschriebene Methode von %s steht nicht im Index.', [Result.QualifiedName]));
+      raise SignatureError(cTexts[TCollectorText.TheOverriddenMethodOfIs].Fmt([Result.QualifiedName]));
     end;
     if not InProject(mFile) then
     begin
-      raise SignatureError(Format('%s überschreibt %s außerhalb des Projekts (%s); dort lässt sich die Signatur ' +
-        'nicht ändern.', [Result.QualifiedName, mFound.QualifiedName, ExtractFileName(mFile)]));
+      raise SignatureError(cTexts[TCollectorText.OverridesOutsideTheProjectThe].Fmt([Result.QualifiedName,
+        mFound.QualifiedName, ExtractFileName(mFile)]));
     end;
     Result := mFound;
     AFile := mFile;
@@ -931,8 +964,7 @@ begin
     begin
       FSeen.Add('EVENT|' + UpperCase(AEventType), True);
       Members := Members + [mMember];
-      Warnings := Warnings + [Format('Der Ereignistyp %s ändert sich mit; weitere Handler dieses Typs und ' +
-        'Aufrufe über das Ereignis passt Atlas nicht an.', [AEventType])];
+      Warnings := Warnings + [cTexts[TCollectorText.TheEventTypeChangesToo].Fmt([AEventType])];
     end;
     Exit(True);
   end;
@@ -1012,8 +1044,7 @@ begin
     TSignatureUse.Accessor:
       Accessors := Accessors + [PlaceOf(ALocation)];
     TSignatureUse.Pointer_:
-      Warnings := Warnings + [Format('%s: %s wird als Methodenzeiger verwendet; Aufrufe darüber findet Atlas nicht.',
-        [PlaceOf(ALocation), AName])];
+      Warnings := Warnings + [cTexts[TCollectorText.IsUsedAsAMethod].Fmt([PlaceOf(ALocation), AName])];
   else
     AddCall(mOther, mToken, ALocation);
   end;
@@ -1056,8 +1087,7 @@ begin
   end;
   if BoundEvent <> '' then
   begin
-    Warnings := Warnings + ['Die Methode ist in einer Formulardatei gebunden; Aufrufe über das Ereignis findet ' +
-      'Atlas nicht.'];
+    Warnings := Warnings + [cTexts[TCollectorText.TheMethodIsBoundIn].Text];
   end;
 end;
 
@@ -1083,15 +1113,18 @@ var
 begin
   if not (TargetPosition(mDeclFile, mPosition) and DeclarationAt(mDeclFile, mPosition, mDecl)) then
   begin
-    raise SignatureError('Hier steht keine Routine.');
+    raise SignatureError(cTexts[TCollectorText.ThereIsNoRoutineHere].Text);
   end;
   if not InProject(mDeclFile) then
   begin
-    raise SignatureError(Format('"%s" ist außerhalb des Projekts deklariert (%s).', [mDecl.Name,
+    raise SignatureError(cTexts[TCollectorText.IsDeclaredOutsideTheProject].Fmt([mDecl.Name,
       ExtractFileName(mDeclFile)]));
   end;
   CollectHierarchy(mDeclFile, mDecl);
   CollectUses(mDecl);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ChangeSignature.Collector', cTexts);
 
 end.

@@ -154,7 +154,21 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCheckerText = (SyntaxTitle, NewerFeatureTitle);
+
+const
+  cTexts: array[TCheckerText] of TAtlasText = (
+    (De: 'Syntaxfehler des Parsers'; En: 'Syntax error of the parser'),
+    (De: 'Sprachmerkmal einer neueren Delphi-Version'; En: 'Language feature of a newer Delphi version'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Formulardatei (.dfm, sonst .fmx) neben einer .pas-Datei; leer ohne oder wenn nicht lesbar.</summary>
 procedure LoadForm(var AContext: TRuleContext; const AFileName: string);
@@ -260,7 +274,7 @@ end;
 
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, 'Syntaxfehler des Parsers');
+  Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, cTexts[TCheckerText.SyntaxTitle].Text);
 end;
 
 class function TFileChecker.SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
@@ -296,7 +310,7 @@ end;
 class function TFileChecker.LanguageFeatureDescriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LanguageFeatureRuleId, TRuleSeverity.Warning,
-    'Sprachmerkmal einer neueren Delphi-Version');
+    cTexts[TCheckerText.NewerFeatureTitle].Text);
 end;
 
 class function TFileChecker.LanguageFeatureFindings(ATree: TSyntaxTree; const ASettings: TServerSettings;
@@ -476,5 +490,8 @@ begin
     Tree.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Checker', cTexts);
 
 end.

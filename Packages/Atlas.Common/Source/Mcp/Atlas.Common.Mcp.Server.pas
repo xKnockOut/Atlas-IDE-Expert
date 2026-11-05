@@ -214,7 +214,35 @@ implementation
 uses
   Atlas.Text.Uris,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TServerText = (ToolDoesNotExistIn, NameOfThePromptMissing, PromptArgumentMissing, PromptsAreSwitchedOffMcp,
+    UriMissing, ToolIsOffInRestricted, ToolIsSwitchedOffIn, ToolNameMissing, ParameterMissing, UnknownPrompt,
+    UnknownResource, UnknownTool);
+
+const
+  cTexts: array[TServerText] of TAtlasText = (
+    (De: 'Werkzeug "%s" gibt es in diesem Server nicht.'; En: 'Tool "%s" does not exist in this server.'),
+    (De: 'Name des Prompts fehlt'; En: 'Name of the prompt missing'),
+    (De: 'Prompt "%s": Argument "%s" fehlt (%s)'; En: 'Prompt "%s": argument "%s" missing (%s)'),
+    (De: 'Prompts sind abgeschaltet (mcp.prompts).'; En: 'Prompts are switched off (mcp.prompts).'),
+    (De: 'uri fehlt'; En: 'uri missing'),
+    (De: 'Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).';
+     En: 'Tool "%s" is off in restricted mode (read-only tools only).'),
+    (De: 'Werkzeug "%s" ist in atlas.json abgeschaltet (mcp.disabledTools).';
+     En: 'Tool "%s" is switched off in atlas.json (mcp.disabledTools).'),
+    (De: 'Werkzeugname fehlt'; En: 'Tool name missing'),
+    (De: 'Parameter "%s" fehlt'; En: 'Parameter "%s" missing'),
+    (De: 'Unbekannter Prompt "%s"'; En: 'Unknown prompt "%s"'),
+    (De: 'Unbekannte Ressource "%s"'; En: 'Unknown resource "%s"'),
+    (De: 'Unbekanntes Werkzeug "%s"'; En: 'Unknown tool "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Methoden des MCP-Protokolls.
@@ -412,7 +440,7 @@ var
 begin
   if not FindToolIn(FCatalog.Tools, AName, mTool) then
   begin
-    AText := Format('Werkzeug "%s" gibt es in diesem Server nicht.', [AName]);
+    AText := cTexts[TServerText.ToolDoesNotExistIn].Fmt([AName]);
     Exit(False);
   end;
   Result := not Execute(mTool, AArguments, AText);
@@ -452,7 +480,7 @@ function PromptNameOf(const AParams: TJSONValue): string;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Name des Prompts fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.NameOfThePromptMissing].Text);
   end;
   Result := TJSONObject(AParams).GetValue('name').Value;
 end;
@@ -504,7 +532,7 @@ begin
     if mInfo.Required and not AArguments.ContainsKey(mInfo.Name) then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-        Format('Prompt "%s": Argument "%s" fehlt (%s)', [APrompt.Name, mInfo.Name, mInfo.Description]));
+        cTexts[TServerText.PromptArgumentMissing].Fmt([APrompt.Name, mInfo.Name, mInfo.Description]));
     end;
   end;
 end;
@@ -565,11 +593,11 @@ begin
   if not PromptsEnabled then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Prompts sind abgeschaltet (mcp.prompts).');
+      cTexts[TServerText.PromptsAreSwitchedOffMcp].Text);
   end;
   if not FindPromptIn(Prompts, mName, mPrompt) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannter Prompt "%s"', [mName]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownPrompt].Fmt([mName]));
   end;
   mArguments := TDictionary<string, string>.Create;
   try
@@ -660,7 +688,7 @@ function ResourceUriOf(const AParams: TJSONValue): string;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('uri') is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'uri fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UriMissing].Text);
   end;
   Result := TJSONObject(AParams).GetValue('uri').Value;
 end;
@@ -731,7 +759,7 @@ begin
   end;
   if not (PromptsEnabled and FindTemplate(FCatalog.Templates, mUri, mTemplate, mValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Ressource "%s"', [mUri]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownResource].Fmt([mUri]));
   end;
   if Assigned(FEvents.OnBeforeToolCall) then
   begin
@@ -901,11 +929,11 @@ begin
   begin
     if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
     begin
-      AText := Format('Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).', [ATool.Name]);
+      AText := cTexts[TServerText.ToolIsOffInRestricted].Fmt([ATool.Name]);
     end
     else
     begin
-      AText := Format('Werkzeug "%s" ist in atlas.json abgeschaltet (mcp.disabledTools).', [ATool.Name]);
+      AText := cTexts[TServerText.ToolIsSwitchedOffIn].Fmt([ATool.Name]);
     end;
     Exit(True);
   end;
@@ -942,12 +970,12 @@ var
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Werkzeugname fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.ToolNameMissing].Text);
   end;
   Name := TJSONObject(AParams).GetValue('name').Value;
   if not FindToolIn(FCatalog.Tools, Name, Tool) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekanntes Werkzeug "%s"', [Name]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownTool].Fmt([Name]));
   end;
   Arguments := nil;
   if TJSONObject(AParams).GetValue('arguments') is TJSONObject then
@@ -1049,8 +1077,11 @@ begin
   Result := OptionalString(AArguments, AName);
   if Result = '' then
   begin
-    raise EMcpToolError.CreateFmt('Parameter "%s" fehlt', [AName]);
+    raise EMcpToolError.CreateFmt(cTexts[TServerText.ParameterMissing].Text, [AName]);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Server', cTexts);
 
 end.

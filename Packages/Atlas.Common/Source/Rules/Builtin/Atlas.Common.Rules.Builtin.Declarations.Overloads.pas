@@ -42,14 +42,38 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsOverloadsText = (Title, NotMarked, EarlierNotMarked, AppendOverload, SameSignatureResult,
+    SameSignature);
+
+const
+  cTexts: array[TDeclarationsOverloadsText] of TAtlasText = (
+    (De: 'Überladung ohne overload oder mit gleicher Signatur';
+     En: 'Overload without overload directive or with the same signature'),
+    (De: '%s ist überladen, aber nicht mit overload markiert (wie E2254).';
+     En: '%s is overloaded but not marked with overload (like E2254).'),
+    (De: '%s ist überladen, die frühere Deklaration in Zeile %d trägt kein overload (wie E2267).';
+     En: '%s is overloaded, the earlier declaration in line %d has no overload (like E2267).'),
+    (De: 'overload; an alle Deklarationen anhängen'; En: 'Append overload; to all declarations'),
+    (De: '%s mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile %d (wie E2301).';
+     En: '%s with the same parameters and the same result type already exists in line %d (like E2301).'),
+    (De: '%s mit denselben Parametern gibt es schon in Zeile %d (wie E2252).';
+     En: '%s with the same parameters already exists in line %d (like E2252).'));
+
+{$SCOPEDENUMS OFF}
 
 { TOverloadDirectiveMissingRule }
 
 function TOverloadDirectiveMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OverloadDirectiveMissingRuleId, TRuleSeverity.Error,
-    'Überladung ohne overload oder mit gleicher Signatur');
+    cTexts[TDeclarationsOverloadsText.Title].Text);
 end;
 
 type
@@ -254,18 +278,18 @@ var
   begin
     if not ALater.HasOverload then
     begin
-      Message := Format('%s ist überladen, aber nicht mit overload markiert (wie E2254).', [ALater.Name]);
+      Message := cTexts[TDeclarationsOverloadsText.NotMarked].Fmt([ALater.Name]);
     end
     else
     begin
-      Message := Format('%s ist überladen, die frühere Deklaration in Zeile %d trägt kein overload (wie E2267).',
+      Message := cTexts[TDeclarationsOverloadsText.EarlierNotMarked].Fmt(
         [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
     end;
     Edits := MissingEdits(AEntries);
     Fixes := nil;
     if Edits <> nil then
     begin
-      Fixes := [TRuleFix.Create('overload; an alle Deklarationen anhängen', Edits, True)];
+      Fixes := [TRuleFix.Create(cTexts[TDeclarationsOverloadsText.AppendOverload].Text, Edits, True)];
     end;
     AReport.Add(NameRange(ALater), Message, TRuleConfidence.High, Fixes);
   end;
@@ -277,13 +301,12 @@ var
   begin
     if (ALater.ResultType <> '') and (ALater.ResultType = AEarlier.ResultType) then
     begin
-      Message := Format('%s mit denselben Parametern und demselben Ergebnistyp gibt es schon in Zeile %d ' +
-        '(wie E2301).', [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
+      Message := cTexts[TDeclarationsOverloadsText.SameSignatureResult].Fmt([ALater.Name,
+        AEarlier.Header.StartPos.Line + 1]);
     end
     else
     begin
-      Message := Format('%s mit denselben Parametern gibt es schon in Zeile %d (wie E2252).',
-        [ALater.Name, AEarlier.Header.StartPos.Line + 1]);
+      Message := cTexts[TDeclarationsOverloadsText.SameSignature].Fmt([ALater.Name, AEarlier.Header.StartPos.Line + 1]);
     end;
     AReport.Add(NameRange(ALater), Message, TRuleConfidence.High);
   end;
@@ -352,43 +375,41 @@ var
       TRoutineSignatures.IsClassConstructor(Tokens, AHeader);
   end;
 
-  // Deklarationen eines Bereichs; eine Implementierung (begin, asm oder external) zu einer früheren Deklaration
-  // (interface, forward) zählt nicht. class constructor und class destructor sind keine Überladungen der
-  // Instanzmethoden (#1325).
-  function ScopeEntries(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean): TArray<TOverloadEntry>;
+  // Deklarationen eines Bereichs nach Namen (Schlüssel in Großbuchstaben, Reihenfolge des ersten Auftretens in
+  // AOrder); eine Implementierung (begin, asm oder external) zu einer früheren Deklaration (interface, forward)
+  // zählt nicht. class constructor und class destructor sind keine Überladungen der Instanzmethoden (#1325).
+  // Gruppiert über ein Dictionary: Je Kopf über alle früheren zu suchen war in Klassen mit vielen Methoden
+  // quadratisch.
+  procedure ScopeGroups(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean; AOrder: TList<string>;
+    AGroups: TDictionary<string, TArray<TOverloadEntry>>);
   var
-    Entry: TOverloadEntry;
-    Header: TSyntaxNode;
-    IsBody: Boolean;
+    mEntry: TOverloadEntry;
+    mHeader: TSyntaxNode;
+    mKey: string;
+    mGroup: TArray<TOverloadEntry>;
+    mIsBody: Boolean;
   begin
-    Result := nil;
-    for Header in AHeaders do
+    for mHeader in AHeaders do
     begin
-      if Skipped(Header) then
+      if Skipped(mHeader) then
       begin
         Continue;
       end;
-      Entry := EntryOf(Header);
-      IsBody := ABodiesFollow and (Header.Parent <> nil) and
-        TRoutineSignatures.HasImplementation(Header.Parent) and ImplementsEarlier(Result, Entry);
-      if not IsBody then
+      mEntry := EntryOf(mHeader);
+      mKey := UpperCase(mEntry.Name);
+      if not AGroups.TryGetValue(mKey, mGroup) then
       begin
-        Result := Result + [Entry];
+        mGroup := nil;
       end;
-    end;
-  end;
-
-  // Deklarationen gleichen Namens wie AName.
-  function NamedGroup(const AEntries: TArray<TOverloadEntry>; const AName: string): TArray<TOverloadEntry>;
-  var
-    Other: TOverloadEntry;
-  begin
-    Result := nil;
-    for Other in AEntries do
-    begin
-      if SameText(Other.Name, AName) then
+      mIsBody := ABodiesFollow and (mHeader.Parent <> nil) and
+        TRoutineSignatures.HasImplementation(mHeader.Parent) and ImplementsEarlier(mGroup, mEntry);
+      if not mIsBody then
       begin
-        Result := Result + [Other];
+        if mGroup = nil then
+        begin
+          AOrder.Add(mKey);
+        end;
+        AGroups.AddOrSetValue(mKey, mGroup + [mEntry]);
       end;
     end;
   end;
@@ -396,24 +417,24 @@ var
   // Deklarationen eines Bereichs nach Namen prüfen.
   procedure CheckScope(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean);
   var
-    Entries, Group: TArray<TOverloadEntry>;
-    Entry: TOverloadEntry;
-    Done: TArray<string>;
+    mOrder: TList<string>;
+    mGroups: TDictionary<string, TArray<TOverloadEntry>>;
+    mKey: string;
   begin
-    Entries := ScopeEntries(AHeaders, ABodiesFollow);
-    Done := nil;
-    for Entry in Entries do
-    begin
-      if IndexText(Entry.Name, Done) >= 0 then
+    mOrder := TList<string>.Create;
+    mGroups := TDictionary<string, TArray<TOverloadEntry>>.Create;
+    try
+      ScopeGroups(AHeaders, ABodiesFollow, mOrder, mGroups);
+      for mKey in mOrder do
       begin
-        Continue;
+        if Length(mGroups[mKey]) > 1 then
+        begin
+          CheckGroup(mGroups[mKey]);
+        end;
       end;
-      Done := Done + [Entry.Name];
-      Group := NamedGroup(Entries, Entry.Name);
-      if Length(Group) > 1 then
-      begin
-        CheckGroup(Group);
-      end;
+    finally
+      mGroups.Free;
+      mOrder.Free;
     end;
   end;
 
@@ -514,5 +535,8 @@ begin
   Paths := TConditionalBranches.Paths(Tokens);
   Visit(AContext.Tree.Root);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.Overloads', cTexts);
 
 end.

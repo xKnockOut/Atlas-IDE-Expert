@@ -113,7 +113,35 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TUnitRelationsText = (FileMissing, UriMissing, DepthIs0AllLevels, TheUsesListsCannotBe,
+    TargetIsInterfaceOrImplementation, ProgramsAndPackagesHaveOnly, WithoutAnIndexItCannot, CannotBeRemoved,
+    IsUsedOrMissing, IsAlreadyInTheUses, IsInNoUsesList, ArgumentsUriUnit);
+
+const
+  cTexts: array[TUnitRelationsText] of TAtlasText = (
+    (De: 'Datei fehlt'; En: 'File missing'),
+    (De: '"uri" fehlt'; En: '"uri" missing'),
+    (De: '"depth" ist 0 (alle Ebenen) oder größer'; En: '"depth" is 0 (all levels) or greater'),
+    (De: 'Die uses-Listen lassen sich nicht umschreiben (Direktive, Kommentar oder Programm)';
+     En: 'The uses lists cannot be rewritten (directive, comment or program)'),
+    (De: 'Ziel ist interface oder implementation'; En: 'Target is interface or implementation'),
+    (De: 'Programme und Packages haben nur ein uses'; En: 'Programs and packages have only one uses'),
+    (De: 'Ohne Index lässt sich nicht prüfen, ob %s ungenutzt ist';
+     En: 'Without an index it cannot be checked whether %s is unused'),
+    (De: ' lässt sich nicht entfernen'; En: ' cannot be removed'),
+    (De: ' wird verwendet oder fehlt'; En: ' is used or missing'),
+    (De: '%s steht schon im %s-uses'; En: '%s is already in the %s uses'),
+    (De: '%s steht in keiner uses-Liste'; En: '%s is in no uses list'),
+    (De: 'Argumente: [uri, Unit]'; En: 'Arguments: [uri, unit]'));
+
+{$SCOPEDENUMS OFF}
 
 function PathOf(const AText: string): string;
 begin
@@ -235,7 +263,7 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Datei fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.FileMissing].Text);
   end;
 end;
 
@@ -250,7 +278,7 @@ var
 begin
   if not (AParams is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
   end;
   Params := TJSONObject(AParams);
   FileName := '';
@@ -260,7 +288,7 @@ begin
   end;
   if FileName = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.UriMissing].Text);
   end;
   Depth := 1;
   if Params.TryGetValue<Double>('depth', Number) then
@@ -269,7 +297,7 @@ begin
   end;
   if Depth < 0 then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"depth" ist 0 (alle Ebenen) oder größer');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.DepthIs0AllLevels].Text);
   end;
   Text := TextOf(FileName);
   EntriesOf(FileName, Text, Unused, OnlyImplementation);
@@ -382,7 +410,8 @@ begin
     begin
       if Reference.InInterface = (ATarget = TUsesSection.Interface_) then
       begin
-        AError := Format('%s steht schon im %s-uses', [AUnit, TUnitRelationsBuilder.SectionName(ATarget)]);
+        AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
+          TUnitRelationsBuilder.SectionName(ATarget)]);
         Exit(False);
       end;
       Found := True;
@@ -391,7 +420,7 @@ begin
   end;
   if not Found then
   begin
-    AError := Format('%s steht in keiner uses-Liste', [AUnit]);
+    AError := cTexts[TUnitRelationsText.IsInNoUsesList].Fmt([AUnit]);
     Exit(False);
   end;
   if ATarget = TUsesSection.Implementation_ then
@@ -404,7 +433,7 @@ begin
   end;
   if not Result then
   begin
-    AError := 'Die uses-Listen lassen sich nicht umschreiben (Direktive, Kommentar oder Programm)';
+    AError := cTexts[TUnitRelationsText.TheUsesListsCannotBe].Text;
   end;
 end;
 
@@ -433,12 +462,14 @@ begin
   end
   else
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ziel ist interface oder implementation');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TUnitRelationsText.TargetIsInterfaceOrImplementation].Text);
   end;
   Extension := LowerCase(ExtractFileExt(FileName));
   if (Extension = '.dpr') or (Extension = '.dpk') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Programme und Packages haben nur ein uses');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TUnitRelationsText.ProgramsAndPackagesHaveOnly].Text);
   end;
   if not MoveEdits(TextOf(FileName), UnitName, Section, Edits, Error) then
   begin
@@ -461,15 +492,15 @@ begin
   FileName := FileOf(AArguments, 0);
   if (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente: [uri, Unit]');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.ArgumentsUriUnit].Text);
   end;
   UnitName := Trim(AArguments.Items[1].Value);
   Text := TextOf(FileName);
   if (Text = '') or not Assigned(FUsesContextFor) or
     not FUsesContextFor(TDocumentUris.FromPath(FileName), Context) or not Assigned(Context.Info) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ohne Index lässt sich nicht prüfen, ob ' +
-      UnitName + ' ungenutzt ist');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TUnitRelationsText.WithoutAnIndexItCannot].Fmt([
+      UnitName]));
   end;
   Found := False;
   for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(Text), TLspInactiveRegions.Ranges(Text,
@@ -479,7 +510,8 @@ begin
     begin
       if not TUsesActions.RemoveEntries(Text, [Entry.Range], Edit) then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName + ' lässt sich nicht entfernen');
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName +
+          cTexts[TUnitRelationsText.CannotBeRemoved].Text);
       end;
       Found := True;
       Break;
@@ -487,11 +519,15 @@ begin
   end;
   if not Found then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName + ' wird verwendet oder fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, UnitName +
+      cTexts[TUnitRelationsText.IsUsedOrMissing].Text);
   end;
   Answer := TJSONObject.Create;
   Answer.AddPair('edit', TLspApplyEdit.TextEdits(FileName, [Edit]));
   Result := Answer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.UnitRelations', cTexts);
 
 end.

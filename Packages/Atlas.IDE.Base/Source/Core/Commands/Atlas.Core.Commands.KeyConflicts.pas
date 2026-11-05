@@ -138,6 +138,47 @@ type
 
 implementation
 
+
+uses
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TKeyConflictsText = (IDEPlayKeyboardMacro, IDERecordKeyboardMacro, IDECodeBrowsingFindDeclaration,
+    IDESelectColumnBlockUp, IDESelectColumnBlockDown, IDEFindReferences, IDEAddToDoItem, IDEFoldingCtrlShiftK,
+    IDEToggleBookmark, IDEGoToBookmark);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TKeyConflictsText] of string = (
+    ('IDE: Tastaturmakro abspielen',
+     'IDE: Tastaturmakro aufzeichnen',
+     'IDE: Code-Browsing (Deklaration suchen)',
+     'IDE: Spaltenblock nach oben markieren',
+     'IDE: Spaltenblock nach unten markieren',
+     'IDE: Referenzen suchen',
+     'IDE: To-Do-Eintrag hinzufügen',
+     'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)',
+     'IDE: Lesezeichen %d umschalten',
+     'IDE: Zu Lesezeichen %d springen'),
+    ('IDE: Play keyboard macro',
+     'IDE: Record keyboard macro',
+     'IDE: Code browsing (find declaration)',
+     'IDE: Select column block up',
+     'IDE: Select column block down',
+     'IDE: Find references',
+     'IDE: Add To-Do item',
+     'IDE: Folding (Ctrl+Shift+K, then U, E, A, T, O …)',
+     'IDE: Toggle bookmark %d',
+     'IDE: Go to bookmark %d'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TKeyConflictsText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 { TAtlasKeyEntry }
 
 class function TAtlasKeyEntry.Create(AFunc: TAtlasKeyFunction; AKey: Word; APriority: Boolean): TAtlasKeyEntry;
@@ -632,24 +673,24 @@ class function TAtlasKeyConflicts.KnownIdeKeys: TArray<TAtlasKeyOwner>;
 var
   Digit: Integer;
 begin
-  Result := [TAtlasKeyOwner.Create(scCtrl or scShift or Ord('P'), 'IDE: Tastaturmakro abspielen'),
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), 'IDE: Tastaturmakro aufzeichnen'),
+  Result := [TAtlasKeyOwner.Create(scCtrl or scShift or Ord('P'), UiText(TKeyConflictsText.IDEPlayKeyboardMacro)),
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('R'), UiText(TKeyConflictsText.IDERecordKeyboardMacro)),
     // Zeilen verschieben und duplizieren (#634) nimmt diese Tasten mit Vorrang.
-    TAtlasKeyOwner.Create(scAlt or $26, 'IDE: Code-Browsing (Deklaration suchen)'), // VK_UP
-    TAtlasKeyOwner.Create(scShift or scAlt or $26, 'IDE: Spaltenblock nach oben markieren'),
-    TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren'), // VK_DOWN
+    TAtlasKeyOwner.Create(scAlt or $26, UiText(TKeyConflictsText.IDECodeBrowsingFindDeclaration)), // VK_UP
+    TAtlasKeyOwner.Create(scShift or scAlt or $26, UiText(TKeyConflictsText.IDESelectColumnBlockUp)),
+    TAtlasKeyOwner.Create(scShift or scAlt or $28, UiText(TKeyConflictsText.IDESelectColumnBlockDown)), // VK_DOWN
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
-    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen'), // VK_RETURN
+    TAtlasKeyOwner.Create(scCtrl or scShift or $0D, UiText(TKeyConflictsText.IDEFindReferences)), // VK_RETURN
     // Typ des markierten Ausdrucks (#689) nimmt Strg+Umschalt+T mit Vorrang.
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('T'), 'IDE: To-Do-Eintrag hinzufügen'),
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('T'), UiText(TKeyConflictsText.IDEAddToDoItem)),
     // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
-    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), UiText(TKeyConflictsText.IDEFoldingCtrlShiftK))];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.
   for Digit := 0 to 9 do
   begin
     Result := Result + [TAtlasKeyOwner.Create(scCtrl or scShift or (Ord('0') + Digit),
-      'IDE: Lesezeichen ' + IntToStr(Digit) + ' umschalten'), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + Digit),
-      'IDE: Zu Lesezeichen ' + IntToStr(Digit) + ' springen')];
+      Format(UiText(TKeyConflictsText.IDEToggleBookmark), [Digit])), TAtlasKeyOwner.Create(scCtrl or (Ord('0') + Digit),
+      Format(UiText(TKeyConflictsText.IDEGoToBookmark), [Digit]))];
   end;
 end;
 
@@ -711,5 +752,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Commands.KeyConflicts', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

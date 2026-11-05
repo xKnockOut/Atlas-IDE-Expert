@@ -149,7 +149,22 @@ uses
   System.Diagnostics,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.JsonRpc.Messages,
-  Atlas.Common.JsonRpc.CurrentRequest;
+  Atlas.Common.JsonRpc.CurrentRequest,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDispatcherText = (FieldMethodMissing, FieldMethodIsNotA, MethodNotSupported);
+
+const
+  cTexts: array[TDispatcherText] of TAtlasText = (
+    (De: 'Feld "method" fehlt'; En: 'Field "method" missing'),
+    (De: 'Feld "method" ist keine Zeichenkette'; En: 'Field "method" is not a string'),
+    (De: 'Methode nicht unterstützt: '; En: 'Method not supported: '));
+
+{$SCOPEDENUMS OFF}
 
 function ErrorResponse(const AId: TJSONValue; const AError: Exception): TJSONObject;
 begin
@@ -611,14 +626,15 @@ begin
   end
   else if mMethodValue = nil then
   begin
-    Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest, 'Feld "method" fehlt');
+    Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest,
+      cTexts[TDispatcherText.FieldMethodMissing].Text);
   end
   else if not (mMethodValue is TJSONString) then
   begin
     if mId <> nil then
     begin
       Result := TJsonRpcMessages.Error(mId, TJsonRpcErrorCode.InvalidRequest,
-        'Feld "method" ist keine Zeichenkette');
+        cTexts[TDispatcherText.FieldMethodIsNotA].Text);
     end;
   end
   else
@@ -685,7 +701,8 @@ begin
       end;
       if not FRequestHandlers.TryGetValue(AMethod, mHandler) then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, 'Methode nicht unterstützt: ' + AMethod);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.MethodNotFound, cTexts[TDispatcherText.MethodNotSupported].Text +
+          AMethod);
       end;
       // Abgebrochen, während die Anfrage noch in der Warteschlange stand.
       mRun.Token.ThrowIfCancellationRequested;
@@ -711,5 +728,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.Dispatcher', cTexts);
 
 end.

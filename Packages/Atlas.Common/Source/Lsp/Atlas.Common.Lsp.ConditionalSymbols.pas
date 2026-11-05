@@ -103,7 +103,68 @@ uses
   Atlas.Text.Defines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Documents.Uris;
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConditionalSymbolsText = (ProjectOptionsOfTheIDE, UndefinedWithUNDEF, DefinedWithDEFINE, NoProjectLoadedOnlyThe,
+    SetNeitherInTheProject, NotDefined, TheDirectiveLiesInAn, UnknownActive, SetNeitherInTheDproj,
+    PUSHOPTSavesTheSwitchState, WithoutAMatchingPOPOPTThe, POPOPTRestoresTheSwitchState, TheConditionLiesInAn,
+    TheConditionCannotBeEvaluated, UnknownActive2, AValueIsNotKnown, UsedInTheFileLine, InLineText, InLineText2,
+    ThisDirectiveUndefinesFromHere, POPOPTInLineRestoresIt, CompilerDefaultOn, CompilerDefault, Platform, DefinedIn,
+    ThisDirectiveDefinesFromHere, Active, Project, True, False, Since, From, POPOPTWithoutAMatchingPUSHOPT, Active2,
+    Inactive);
+
+const
+  cTexts: array[TConditionalSymbolsText] of TAtlasText = (
+    (De: 'Projektoptionen der IDE'; En: 'Project options of the IDE'),
+    (De: 'aufgehoben mit {$UNDEF %s} %s'; En: 'undefined with {$UNDEF %s} %s'),
+    (De: 'definiert mit {$DEFINE %s} %s'; En: 'defined with {$DEFINE %s} %s'),
+    (De: 'kein Projekt geladen, nur die Datei ausgewertet'; En: 'no project loaded, only the file evaluated'),
+    (De: 'weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt';
+     En: 'set neither in the project nor by the compiler nor with {$DEFINE} before'),
+    (De: 'nicht definiert'; En: 'not defined'),
+    (De: #10 + #10 + 'Die Direktive liegt in einem inaktiven Zweig und wirkt nicht.';
+     En: #10 + #10 + 'The directive lies in an inactive branch and has no effect.'),
+    (De: 'unbekannt = aktiv'; En: 'unknown = active'),
+    (De: 'weder in der .dproj noch mit einem Schalter davor gesetzt';
+     En: 'set neither in the .dproj nor with a switch before'),
+    (De: '**{$PUSHOPT}** sichert den Schalterstand'; En: '**{$PUSHOPT}** saves the switch state'),
+    (De: '; ohne passendes {$POPOPT} gilt der geänderte Stand bis zum Dateiende.';
+     En: '; without a matching {$POPOPT} the changed state applies up to the end of the file.'),
+    (De: '**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile %d wieder her.';
+     En: '**{$POPOPT}** restores the switch state of {$PUSHOPT} in line %d.'),
+    (De: 'Die Bedingung liegt in einem inaktiven Zweig und wird nicht ausgewertet.';
+     En: 'The condition lies in an inactive branch and is not evaluated.'),
+    (De: 'Die Bedingung lässt sich nicht auswerten.'; En: 'The condition cannot be evaluated.'),
+    (De: '**unbekannt = aktiv**: %s %s'; En: '**unknown = active**: %s %s'),
+    (De: #10 + #10 + 'Ein Wert ist hier nicht bekannt; der Zweig und ein {$ELSE} dazu gelten als aktiv.';
+     En: #10 + #10 + 'A value is not known here; the branch and an {$ELSE} for it count as active.'),
+    (De: 'in der Datei verwendet (Zeile %d)'; En: 'used in the file (line %d)'),
+    (De: 'in Zeile %d'; En: 'in line %d'),
+    (De: 'in [%s](%s), Zeile %d'; En: 'in [%s](%s), line %d'),
+    (De: 'Diese Direktive hebt **%s** ab hier auf.'; En: 'This directive undefines **%s** from here on.'),
+    (De: '; {$POPOPT} in Zeile %d stellt ihn wieder her.'; En: '; {$POPOPT} in line %d restores it.'),
+    (De: 'Compiler-Vorgabe auf '; En: 'Compiler default on '),
+    (De: 'Compiler-Vorgabe'; En: 'compiler default'),
+    (De: ' (Plattform %s)'; En: ' (platform %s)'),
+    (De: 'definiert in '; En: 'defined in '),
+    (De: 'Diese Direktive definiert **%s** ab hier.'; En: 'This directive defines **%s** from here on.'),
+    (De: 'aktiv'; En: 'active'),
+    (De: #10 + #10 + 'Projekt: ';
+     En: #10 + #10 + 'Project: '),
+    (De: 'wahr'; En: 'true'),
+    (De: 'falsch'; En: 'false'),
+    (De: 'seit '; En: 'since '),
+    (De: 'aus '; En: 'from '),
+    (De: '**{$POPOPT}** ohne passendes {$PUSHOPT} davor.'; En: '**{$POPOPT}** without a matching {$PUSHOPT} before.'),
+    (De: '**aktiv**: %s %s'; En: '**active**: %s %s'),
+    (De: '**inaktiv**: %s %s'; En: '**inactive**: %s %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Plattformen für die Compiler-Symbole, die hier nicht gelten.</summary>
@@ -148,7 +209,7 @@ begin
       Continue;
     end;
     Source.Name := UpperCase(Name);
-    Source.Origin := 'Projektoptionen der IDE';
+    Source.Origin := cTexts[TConditionalSymbolsText.ProjectOptionsOfTheIDE].Text;
     for Origin in AOrigins do
     begin
       if SameText(Origin.Key, Name) then
@@ -162,10 +223,10 @@ begin
   for Name in APredefined do
   begin
     Source.Name := UpperCase(Name);
-    Source.Origin := 'Compiler-Vorgabe';
+    Source.Origin := cTexts[TConditionalSymbolsText.CompilerDefault].Text;
     if APlatform <> '' then
     begin
-      Source.Origin := Source.Origin + ' (Plattform ' + APlatform + ')';
+      Source.Origin := Source.Origin + cTexts[TConditionalSymbolsText.Platform].Fmt([APlatform]);
     end;
     Result := Result + [Source];
   end;
@@ -358,10 +419,11 @@ var
 begin
   if ASite.FileIndex = 0 then
   begin
-    Exit(Format('in Zeile %d', [ASite.Range.StartPos.Line + 1]));
+    Exit(cTexts[TConditionalSymbolsText.InLineText].Fmt([ASite.Range.StartPos.Line + 1]));
   end;
   FileName := AProcessed.Files[ASite.FileIndex];
-  Result := Format('in [%s](%s), Zeile %d', [ExtractFileName(FileName), TDocumentUris.FromPath(FileName),
+  Result := cTexts[TConditionalSymbolsText.InLineText2].Fmt([ExtractFileName(FileName),
+    TDocumentUris.FromPath(FileName),
     ASite.Range.StartPos.Line + 1]);
 end;
 
@@ -417,11 +479,11 @@ function SiteOrigin(const AProcessed: TPreprocessorResult; const ALast: TDefineS
 begin
   if ALast.Undefine then
   begin
-    Result := Format('aufgehoben mit {$UNDEF %s} %s', [AName, SiteText(AProcessed, ALast)]);
+    Result := cTexts[TConditionalSymbolsText.UndefinedWithUNDEF].Fmt([AName, SiteText(AProcessed, ALast)]);
   end
   else
   begin
-    Result := Format('definiert mit {$DEFINE %s} %s', [AName, SiteText(AProcessed, ALast)]);
+    Result := cTexts[TConditionalSymbolsText.DefinedWithDEFINE].Fmt([AName, SiteText(AProcessed, ALast)]);
   end;
 end;
 
@@ -438,17 +500,17 @@ begin
       begin
         Exit(mSource.Origin);
       end;
-      Exit('definiert in ' + mSource.Origin);
+      Exit(cTexts[TConditionalSymbolsText.DefinedIn].Text + mSource.Origin);
     end;
   end;
   Result := '';
   if not AContext.HasDefines then
   begin
-    Result := 'kein Projekt geladen, nur die Datei ausgewertet';
+    Result := cTexts[TConditionalSymbolsText.NoProjectLoadedOnlyThe].Text;
   end
   else if not ADefined then
   begin
-    Result := 'weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt';
+    Result := cTexts[TConditionalSymbolsText.SetNeitherInTheProject].Text;
   end;
 end;
 
@@ -458,11 +520,11 @@ begin
   Result := '';
   if ADirective = 'DEFINE' then
   begin
-    Result := #10#10 + Format('Diese Direktive definiert **%s** ab hier.', [AName]);
+    Result := #10#10 + cTexts[TConditionalSymbolsText.ThisDirectiveDefinesFromHere].Fmt([AName]);
   end
   else if ADirective = 'UNDEF' then
   begin
-    Result := #10#10 + Format('Diese Direktive hebt **%s** ab hier auf.', [AName]);
+    Result := #10#10 + cTexts[TConditionalSymbolsText.ThisDirectiveUndefinesFromHere].Fmt([AName]);
   end;
 end;
 
@@ -492,10 +554,10 @@ begin
     mDefined := IndexText(mName, AContext.Defines) >= 0;
     mOrigin := ContextOrigin(AContext, mName, mDefined);
   end;
-  mState := 'nicht definiert';
+  mState := cTexts[TConditionalSymbolsText.NotDefined].Text;
   if mDefined then
   begin
-    mState := 'aktiv';
+    mState := cTexts[TConditionalSymbolsText.Active].Text;
   end;
   AMarkdown := Format('**%s**: %s', [mName, mState]);
   if mOrigin <> '' then
@@ -505,12 +567,12 @@ begin
   AMarkdown := AMarkdown + DirectiveNote(mDirective, mName);
   if InInactiveRange(mProcessed, mStart) then
   begin
-    AMarkdown := AMarkdown + #10#10 + 'Die Direktive liegt in einem inaktiven Zweig und wirkt nicht.';
+    AMarkdown := AMarkdown + cTexts[TConditionalSymbolsText.TheDirectiveLiesInAn].Text;
   end;
   // Aus einer Include-Datei (#860): unter welchem Projektstand die Datei gelesen wurde.
   if mHasSite and (mLast.FileIndex <> 0) and AContext.HasDefines and (TargetText(AContext) <> '') then
   begin
-    AMarkdown := AMarkdown + #10#10 + 'Projekt: ' + TargetText(AContext);
+    AMarkdown := AMarkdown + cTexts[TConditionalSymbolsText.Project].Text + TargetText(AContext);
   end;
   Result := True;
 end;
@@ -533,11 +595,11 @@ function ValueText(AValue: TConditionValue): string;
 begin
   case AValue of
     TConditionValue.Yes:
-      Result := 'wahr';
+      Result := cTexts[TConditionalSymbolsText.True].Text;
     TConditionValue.No:
-      Result := 'falsch';
+      Result := cTexts[TConditionalSymbolsText.False].Text;
   else
-    Result := 'unbekannt = aktiv';
+    Result := cTexts[TConditionalSymbolsText.UnknownActive].Text;
   end;
 end;
 
@@ -548,15 +610,15 @@ begin
   begin
     if AContext.HasDefines then
     begin
-      Exit('weder in der .dproj noch mit einem Schalter davor gesetzt');
+      Exit(cTexts[TConditionalSymbolsText.SetNeitherInTheDproj].Text);
     end;
-    Exit('kein Projekt geladen, nur die Datei ausgewertet');
+    Exit(cTexts[TConditionalSymbolsText.NoProjectLoadedOnlyThe].Text);
   end;
   if StartsStr('{$', AOrigin) then
   begin
-    Exit('seit ' + AOrigin);
+    Exit(cTexts[TConditionalSymbolsText.Since].Text + AOrigin);
   end;
-  Result := 'aus ' + AOrigin;
+  Result := cTexts[TConditionalSymbolsText.From].Text + AOrigin;
   if (AContext.Config <> '') and not ContainsStr(AOrigin, '(') then
   begin
     Result := Result + ' (' + AContext.Config + ')';
@@ -626,15 +688,15 @@ function PushOptHover(const AText: string; const AToken: TPascalToken): string;
 var
   mLine: Integer;
 begin
-  Result := '**{$PUSHOPT}** sichert den Schalterstand';
+  Result := cTexts[TConditionalSymbolsText.PUSHOPTSavesTheSwitchState].Text;
   mLine := PartnerLine(AText, AToken, True);
   if mLine >= 0 then
   begin
-    Result := Result + Format('; {$POPOPT} in Zeile %d stellt ihn wieder her.', [mLine + 1]);
+    Result := Result + cTexts[TConditionalSymbolsText.POPOPTInLineRestoresIt].Fmt([mLine + 1]);
   end
   else
   begin
-    Result := Result + '; ohne passendes {$POPOPT} gilt der geänderte Stand bis zum Dateiende.';
+    Result := Result + cTexts[TConditionalSymbolsText.WithoutAMatchingPOPOPTThe].Text;
   end;
 end;
 
@@ -645,12 +707,11 @@ begin
   mLine := PartnerLine(AText, AToken, False);
   if mLine >= 0 then
   begin
-    Result := Format('**{$POPOPT}** stellt den Schalterstand von {$PUSHOPT} in Zeile %d wieder her.',
-      [mLine + 1]);
+    Result := cTexts[TConditionalSymbolsText.POPOPTRestoresTheSwitchState].Fmt([mLine + 1]);
   end
   else
   begin
-    Result := '**{$POPOPT}** ohne passendes {$PUSHOPT} davor.';
+    Result := cTexts[TConditionalSymbolsText.POPOPTWithoutAMatchingPUSHOPT].Text;
   end;
 end;
 
@@ -677,11 +738,11 @@ function UncheckedHover(const AProcessed: TPreprocessorResult; const AToken: TPa
 begin
   if InInactiveRange(AProcessed, AToken.StartPos) then
   begin
-    Result := 'Die Bedingung liegt in einem inaktiven Zweig und wird nicht ausgewertet.';
+    Result := cTexts[TConditionalSymbolsText.TheConditionLiesInAn].Text;
   end
   else
   begin
-    Result := 'Die Bedingung lässt sich nicht auswerten.';
+    Result := cTexts[TConditionalSymbolsText.TheConditionCannotBeEvaluated].Text;
   end;
 end;
 
@@ -696,11 +757,11 @@ begin
   end;
   case ACheck.Value of
     TConditionValue.Yes:
-      Result := Format('**aktiv**: %s %s', [mPart.Value, SwitchOrigin(mPart.Origin, AContext)]);
+      Result := cTexts[TConditionalSymbolsText.Active2].Fmt([mPart.Value, SwitchOrigin(mPart.Origin, AContext)]);
     TConditionValue.No:
-      Result := Format('**inaktiv**: %s %s', [mPart.Value, SwitchOrigin(mPart.Origin, AContext)]);
+      Result := cTexts[TConditionalSymbolsText.Inactive].Fmt([mPart.Value, SwitchOrigin(mPart.Origin, AContext)]);
   else
-    Result := Format('**unbekannt = aktiv**: %s %s', [mPart.Text, SwitchOrigin(mPart.Origin, AContext)]);
+    Result := cTexts[TConditionalSymbolsText.UnknownActive2].Fmt([mPart.Text, SwitchOrigin(mPart.Origin, AContext)]);
   end;
 end;
 
@@ -723,8 +784,7 @@ begin
   end;
   if ACheck.Value = TConditionValue.Unknown then
   begin
-    Result := Result + #10#10 +
-      'Ein Wert ist hier nicht bekannt; der Zweig und ein {$ELSE} dazu gelten als aktiv.';
+    Result := Result + cTexts[TConditionalSymbolsText.AValueIsNotKnown].Text;
   end;
 end;
 
@@ -872,7 +932,7 @@ begin
         SplitSymbols(Token.Text, Directive, Names, Starts);
         for Name in Names do
         begin
-          Add(Name, Format('in der Datei verwendet (Zeile %d)', [Token.StartPos.Line + 1]),
+          Add(Name, cTexts[TConditionalSymbolsText.UsedInTheFileLine].Fmt([Token.StartPos.Line + 1]),
             IndexText(Name, Processed.Defines) >= 0);
         end;
       end;
@@ -881,7 +941,7 @@ begin
     begin
       for Name in TTextDefines.Predefined(Platform, 0) do
       begin
-        Add(Name, 'Compiler-Vorgabe auf ' + Platform, False);
+        Add(Name, cTexts[TConditionalSymbolsText.CompilerDefaultOn].Text + Platform, False);
       end;
     end;
     Result := Found.ToArray;
@@ -890,5 +950,8 @@ begin
     Seen.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ConditionalSymbols', cTexts);
 
 end.

@@ -104,7 +104,44 @@ uses
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspSafeDeleteText = (IsMappedToAnInterface, WhetherImplementsAMethodOf, IsStoredAsBinaryAnd, FormBelongsToTheClass,
+    ThereIsNothingHereThat, IsPublishedFormsAndRTTI, OverridesAnInheritedMethodCalls, AfterDeletingNoLongerParses,
+    TheUsesEntryInCould, Overrides, SafeDelete, IsStillUsed, DeletedDespiteUses, UsesSymbolsFrom, Includes,
+    SymbolsFiles, Implements);
+
+const
+  cTexts: array[TLspSafeDeleteText] of TAtlasText = (
+    (De: '%s ist einer Interface-Methode zugeordnet.'; En: '%s is mapped to an interface method.'),
+    (De: 'Ob %s eine Methode von %s implementiert, ist unbekannt.';
+     En: 'Whether %s implements a method of %s is unknown.'),
+    (De: '%s ist binär gespeichert und wurde nicht geprüft.'; En: '%s is stored as binary and was not checked.'),
+    (De: 'Formular %s gehört zur Klasse.'; En: 'Form %s belongs to the class.'),
+    (De: 'Hier steht nichts, das Atlas sicher löschen kann.';
+     En: 'There is nothing here that Atlas can safely delete.'),
+    (De: '%s ist published: Formulare und RTTI können es ansprechen.';
+     En: '%s is published: forms and RTTI can address it.'),
+    (De: '%s überschreibt eine geerbte Methode: Aufrufe gehen danach an den Vorfahren.';
+     En: '%s overrides an inherited method: calls then go to the ancestor.'),
+    (De: 'Nach dem Löschen parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After deleting, %s no longer parses without errors (line %d: %s).'),
+    (De: 'Der uses-Eintrag in %s ließ sich nicht entfernen.'; En: 'The uses entry in %s could not be removed.'),
+    (De: '%s:%d überschreibt %s'; En: '%s:%d overrides %s'),
+    (De: 'Sicher löschen'; En: 'Safe delete'),
+    (De: '%s wird noch verwendet: %s'; En: '%s is still used: %s'),
+    (De: 'Trotz %d Verwendungen gelöscht.'; En: 'Deleted despite %d uses.'),
+    (De: '%s benutzt Symbole aus %s.'; En: '%s uses symbols from %s.'),
+    (De: '%s bindet %s ein.'; En: '%s includes %s.'),
+    (De: '%d Symbole, %d Dateien'; En: '%d symbols, %d files'),
+    (De: '%s.%s implementiert %s.%s.'; En: '%s.%s implements %s.%s.'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TSafeDeleteUsage = record
@@ -329,8 +366,8 @@ begin
   end;
   if TInlineAccessor.IsResolution(ALayout, Target.Name) then
   begin
-    AddUsage(FFileName, Target.NameRange.StartPos, Format('%s ist einer Interface-Methode zugeordnet.',
-      [Target.Name]), 'interface');
+    AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.IsMappedToAnInterface].Fmt([Target.Name]),
+      'interface');
   end;
   Interfaces := TInlineAccessor.IndexInterfaces(FContext.Index);
   for Index := 0 to High(ALayout.Ancestors) do
@@ -342,12 +379,12 @@ begin
     end;
     if Answer = TInterfaceAnswer.Yes then
     begin
-      AddUsage(FFileName, Target.NameRange.StartPos, Format('%s.%s implementiert %s.%s.', [ALayout.Name,
+      AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.Implements].Fmt([ALayout.Name,
         Target.Name, ALayout.Ancestors[Index], Target.Name]), 'interface');
     end
     else if (Answer = TInterfaceAnswer.Unknown) and (Index > 0) then
     begin
-      Warnings := Warnings + [Format('Ob %s eine Methode von %s implementiert, ist unbekannt.', [Target.Name,
+      Warnings := Warnings + [cTexts[TLspSafeDeleteText.WhetherImplementsAMethodOf].Fmt([Target.Name,
         ALayout.Ancestors[Index]])];
     end;
   end;
@@ -394,7 +431,7 @@ begin
     end;
     if TFileEncoding.IsBinaryFormFile(Form) then
     begin
-      Warnings := Warnings + [Format('%s ist binär gespeichert und wurde nicht geprüft.', [ExtractFileName(Form)])];
+      Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(Form)])];
       Continue;
     end;
     Document := TDfmParser.Parse(Text);
@@ -405,8 +442,8 @@ begin
       end;
       if Target.Kind = TSafeDeleteKind.Type_ then
       begin
-        AddUsage(Form, Document.Root.TypeRange.StartPos, Format('Formular %s gehört zur Klasse.',
-          [ExtractFileName(Form)]), 'form');
+        AddUsage(Form, Document.Root.TypeRange.StartPos, cTexts[TLspSafeDeleteText.FormBelongsToTheClass].Fmt([
+          ExtractFileName(Form)]), 'form');
       end
       else
       begin
@@ -607,12 +644,13 @@ begin
     end
     else if Assigned(FContext.UsesFor) then
     begin
-      AddUsage(mFileName, TTextPosition.Create(0, 0), Format('%s benutzt Symbole aus %s.',
-        [ExtractFileName(mFileName), mUnitName]), 'uses');
+      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TLspSafeDeleteText.UsesSymbolsFrom].Fmt([
+        ExtractFileName(mFileName), mUnitName]), 'uses');
     end
     else
     begin
-      AddUsage(mFileName, TTextPosition.Create(0, 0), Format('%s bindet %s ein.', [ExtractFileName(mFileName),
+      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TLspSafeDeleteText.Includes].Fmt([
+        ExtractFileName(mFileName),
         mUnitName]), 'uses');
     end;
   end;
@@ -628,7 +666,7 @@ begin
   begin
     if Reason = '' then
     begin
-      Reason := 'Hier steht nichts, das Atlas sicher löschen kann.';
+      Reason := cTexts[TLspSafeDeleteText.ThereIsNothingHereThat].Text;
     end;
     raise Fail(Reason);
   end;
@@ -641,12 +679,11 @@ begin
   FindReferences;
   if Target.IsPublished then
   begin
-    Warnings := Warnings + [Format('%s ist published: Formulare und RTTI können es ansprechen.', [Target.Name])];
+    Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsPublishedFormsAndRTTI].Fmt([Target.Name])];
   end;
   if Target.IsOverride then
   begin
-    Warnings := Warnings + [Format('%s überschreibt eine geerbte Methode: Aufrufe gehen danach an den Vorfahren.',
-      [Target.Name])];
+    Warnings := Warnings + [cTexts[TLspSafeDeleteText.OverridesAnInheritedMethodCalls].Fmt([Target.Name])];
   end;
   if Target.Kind = TSafeDeleteKind.Type_ then
   begin
@@ -818,8 +855,8 @@ begin
   try
     if Length(mAfter.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      raise Fail(Format('Nach dem Löschen parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AFileName), mAfter.Diagnostics[0].StartPos.Line + 1, mAfter.Diagnostics[0].Message]));
+      raise Fail(cTexts[TLspSafeDeleteText.AfterDeletingNoLongerParses].Fmt([ExtractFileName(AFileName),
+        mAfter.Diagnostics[0].StartPos.Line + 1, mAfter.Diagnostics[0].Message]));
     end;
   finally
     mAfter.Free;
@@ -844,7 +881,7 @@ begin
     end
     else
     begin
-      AChanges.Warn(Format('Der uses-Eintrag in %s ließ sich nicht entfernen.', [ExtractFileName(mFileName)]));
+      AChanges.Warn(cTexts[TLspSafeDeleteText.TheUsesEntryInCould].Fmt([ExtractFileName(mFileName)]));
     end;
   end;
   AChanges.DeleteFile(FFileName);
@@ -1022,7 +1059,8 @@ begin
   end;
   for mHit in APlan.Overrides do
   begin
-    Result := Result + [Format('%s:%d überschreibt %s', [ExtractFileName(mHit.FileName), mHit.Position.Line + 1,
+    Result := Result + [cTexts[TLspSafeDeleteText.Overrides].Fmt([ExtractFileName(mHit.FileName), mHit.Position.Line +
+      1,
       APlan.Target.Name])];
   end;
 end;
@@ -1045,8 +1083,8 @@ end;
 function ExecuteJson(AChanges: TWorkspaceChanges; ADeleted: Integer): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.AnnotationId, 'Sicher löschen', Format('%d Symbole, %d Dateien',
-    [ADeleted, AChanges.FileCount])));
+  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.AnnotationId, cTexts[TLspSafeDeleteText.SafeDelete].Text,
+    cTexts[TLspSafeDeleteText.SymbolsFiles].Fmt([ADeleted, AChanges.FileCount])));
   Result.AddPair('warnings', AChanges.WarningsJson);
   Result.AddPair('deleted', TJSONNumber.Create(ADeleted));
   Result.AddPair('edits', TJSONNumber.Create(AChanges.EditCount));
@@ -1068,7 +1106,7 @@ begin
     mBlocking := BlockingOf(mPlan, AContext.Choices.Overrides);
     if (mBlocking <> nil) and not AContext.Choices.Force then
     begin
-      raise Fail(Format('%s wird noch verwendet: %s', [mPlan.Target.Name, string.Join('; ', mBlocking)]));
+      raise Fail(cTexts[TLspSafeDeleteText.IsStillUsed].Fmt([mPlan.Target.Name, string.Join('; ', mBlocking)]));
     end;
     for mWarning in mPlan.Warnings do
     begin
@@ -1076,7 +1114,7 @@ begin
     end;
     if mBlocking <> nil then
     begin
-      mChanges.Warn(Format('Trotz %d Verwendungen gelöscht.', [Length(mBlocking)]));
+      mChanges.Warn(cTexts[TLspSafeDeleteText.DeletedDespiteUses].Fmt([Length(mBlocking)]));
     end;
     mPlan.Build(AContext.Choices, mChanges);
     Result := ExecuteJson(mChanges, DeletedCount(mPlan, AContext.Choices));
@@ -1085,5 +1123,8 @@ begin
     mPlan.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SafeDelete', cTexts);
 
 end.

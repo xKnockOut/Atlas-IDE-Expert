@@ -67,7 +67,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 
 ### Convert a method without `Self`
 
-- A method that uses neither `Self` nor instance members gets a “no Self” marker and becomes:
+- A method that uses neither `Self` nor instance members gets a “Self unused” marker; clicking it (or Ctrl+. on the header) offers to convert it into:
   - a `class … static` method,
   - a class method with its calls rewritten to the class,
   - a free routine,

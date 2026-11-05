@@ -30,7 +30,25 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowOutParamReadText = (OutToVar, AlwaysEmpty, Undefined, ReadBeforeSet, Title);
+
+const
+  cTexts: array[TFlowOutParamReadText] of TAtlasText = (
+    (De: 'out durch var ersetzen'; En: 'Replace out with var'),
+    (De: 'bei %s ist er hier immer leer.'; En: 'with %s it is always empty here.'),
+    (De: 'sein Wert ist hier undefiniert.'; En: 'its value is undefined here.'),
+    (De: 'out-Parameter %s wird gelesen, bevor er gesetzt ist; %s';
+     En: 'out parameter %s is read before it is set; %s'),
+    (De: 'out-Parameter gelesen, bevor er gesetzt ist'; En: 'out parameter read before it is set'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Verwaltete Typen leert der Aufrufer vor dem Aufruf mit out.</summary>
 function IsManagedParamType(const ATypeName: string): Boolean;
@@ -266,7 +284,7 @@ begin
   end;
   if Edits <> nil then
   begin
-    Result := [TRuleFix.Create('out durch var ersetzen', Edits)];
+    Result := [TRuleFix.Create(cTexts[TFlowOutParamReadText.OutToVar].Text, Edits)];
   end;
 end;
 
@@ -291,13 +309,13 @@ var
 begin
   if IsManagedParamType(FTypeName) then
   begin
-    Detail := Format('bei %s ist er hier immer leer.', [FTypeName]);
+    Detail := cTexts[TFlowOutParamReadText.AlwaysEmpty].Fmt([FTypeName]);
   end
   else
   begin
-    Detail := 'sein Wert ist hier undefiniert.';
+    Detail := cTexts[TFlowOutParamReadText.Undefined].Text;
   end;
-  FReport.Add(NodeRange(ANode), Format('out-Parameter %s wird gelesen, bevor er gesetzt ist; %s',
+  FReport.Add(NodeRange(ANode), cTexts[TFlowOutParamReadText.ReadBeforeSet].Fmt(
     [FName, Detail]), TRuleConfidence.High, Fix);
 end;
 
@@ -404,7 +422,7 @@ end;
 function TOutParamReadRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OutParamReadRuleId, TRuleSeverity.Warning,
-    'out-Parameter gelesen, bevor er gesetzt ist');
+    cTexts[TFlowOutParamReadText.Title].Text);
 end;
 
 procedure TOutParamReadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -418,5 +436,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.OutParamRead', cTexts);
 
 end.

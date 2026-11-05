@@ -118,7 +118,23 @@ implementation
 uses
   System.Hash,
   System.Generics.Collections,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCacheText = (IndexCacheDamaged, IndexCacheTooLarge, IndexCacheSizeDiffersFrom, ChecksumDoesNotMatch,
+    NoAtlasIndexHeaderMissing, ContentDamaged, FormatVersionInsteadOf);
+
+const
+  cTexts: array[TCacheText] of TAtlasText = (
+    (De: 'Index-Cache beschädigt'; En: 'Index cache damaged'),
+    (De: 'Index-Cache zu groß'; En: 'Index cache too large'),
+    (De: 'Index-Cache: Größe weicht von der Vorabzählung ab'; En: 'Index cache: size differs from the pre-count'),
+    (De: 'Prüfsumme stimmt nicht'; En: 'Checksum does not match'),
+    (De: 'kein Atlas-Index (Kopf fehlt)'; En: 'no Atlas index (header missing)'),
+    (De: 'Inhalt beschädigt'; En: 'content damaged'),
+    (De: 'Formatversion %d statt %d'; En: 'Format version %d instead of %d'));
 
 const
   Magic: array[0..7] of Byte = (Ord('A'), Ord('T'), Ord('L'), Ord('A'), Ord('S'), Ord('I'), Ord('D'), Ord('X'));
@@ -187,7 +203,7 @@ type
 
 procedure Fail;
 begin
-  raise ECacheFormat.Create('Index-Cache beschädigt');
+  raise ECacheFormat.Create(cTexts[TCacheText.IndexCacheDamaged].Text);
 end;
 
 /// <summary>FNV-1a (32 Bit) über AData ab AFrom.</summary>
@@ -726,7 +742,7 @@ begin
     mCapacity := SerializedSize(mTable, mCounter);
     if mCapacity > MaxInt then
     begin
-      raise ECacheFormat.Create('Index-Cache zu groß');
+      raise ECacheFormat.Create(cTexts[TCacheText.IndexCacheTooLarge].Text);
     end;
     mOutput := TCacheWriter.Create(Integer(mCapacity));
     mChecksumAt := WriteHead(mOutput, mTable);
@@ -734,7 +750,7 @@ begin
     // Beide Läufe müssen dieselben Texte in derselben Reihenfolge sehen.
     if (mTable.Items.Count <> mTextCount) or (mOutput.Length_ <> mCapacity) then
     begin
-      raise EInvalidOpException.Create('Index-Cache: Größe weicht von der Vorabzählung ab');
+      raise EInvalidOpException.Create(cTexts[TCacheText.IndexCacheSizeDiffersFrom].Text);
     end;
     Result := mOutput.TakeBytes;
     StoreChecksum(Result, mChecksumAt);
@@ -951,7 +967,7 @@ begin
   // Prüfsumme (#492): abgeschnittene oder veränderte Dateien vor dem Dekodieren erkennen.
   if not ChecksumMatches(AReader, AData) then
   begin
-    AReason := 'Prüfsumme stimmt nicht';
+    AReason := cTexts[TCacheText.ChecksumDoesNotMatch].Text;
     Exit;
   end;
   mStrings := ReadStringTable(AReader, AData);
@@ -978,7 +994,7 @@ begin
   begin
     Exit;
   end;
-  AReason := 'kein Atlas-Index (Kopf fehlt)';
+  AReason := cTexts[TCacheText.NoAtlasIndexHeaderMissing].Text;
   if not HasMagic(AData) then
   begin
     Exit;
@@ -990,7 +1006,7 @@ begin
     mVersion := mReader.ReadVar;
     if mVersion <> FormatVersion then
     begin
-      AReason := Format('Formatversion %d statt %d', [mVersion, FormatVersion]);
+      AReason := cTexts[TCacheText.FormatVersionInsteadOf].Fmt([mVersion, FormatVersion]);
     end
     else
     begin
@@ -1000,7 +1016,7 @@ begin
     on ECacheFormat do
     begin
       Result := nil;
-      AReason := 'Inhalt beschädigt';
+      AReason := cTexts[TCacheText.ContentDamaged].Text;
     end;
   end;
 end;
@@ -1107,5 +1123,8 @@ class function TIndexCache.HashOf(const AText: string): string;
 begin
   Result := THashFNV1a32.GetHashString(AText) + IntToHex(Length(AText), 1);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Index.Cache', cTexts);
 
 end.

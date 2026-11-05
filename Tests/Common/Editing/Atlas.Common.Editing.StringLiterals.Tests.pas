@@ -40,8 +40,16 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.StringLiterals;
+
+/// <summary>StringLiteralActions mit den Token von AText.</summary>
+function LiteralActions(const AText: string; const ARange: TTextRange): TArray<TCodeAction>;
+begin
+  Result := TCodeActions.StringLiteralActions(AText, TPascalLexer.Tokenize(AText), ARange,
+    TStringLiteralSettings.Default, False);
+end;
 
 const
   Sql = 'select *'#13#10'from Kunde'#13#10'where Name = ''O''''Brien''';
@@ -170,20 +178,17 @@ procedure TStringLiteralsTests.CodeActions;
 var
   Actions: TArray<TCodeAction>;
 begin
-  Actions := TCodeActions.StringLiteralActions('    select *'#10'      from Kunde'#10'x',
-    TTextRange.Create(0, 0, 2, 0), TStringLiteralSettings.Default, False);
+  Actions := LiteralActions('    select *'#10'      from Kunde'#10'x', TTextRange.Create(0, 0, 2, 0));
   Assert.AreEqual(1, Integer(Length(Actions)));
   Assert.AreEqual('Als String-Literal', Actions[0].Title);
   Assert.AreEqual('    ''select *'' + sLineBreak +'#10'    ''  from Kunde''', Actions[0].Edits[0].NewText);
   Assert.AreEqual(1, Actions[0].Edits[0].Range.EndPos.Line);
-  Actions := TCodeActions.StringLiteralActions('  S := ''a'' + sLineBreak + ''b'';', TTextRange.Create(0, 9, 0, 9),
-    TStringLiteralSettings.Default, False);
+  Actions := LiteralActions('  S := ''a'' + sLineBreak + ''b'';', TTextRange.Create(0, 9, 0, 9));
   Assert.AreEqual(1, Integer(Length(Actions)));
   Assert.AreEqual(CopyTextCommand, Actions[0].Command);
   Assert.AreEqual('a'#13#10'b', Actions[0].CommandArguments[0]);
   // Ohne Markierung und ohne Literal keine Aktion.
-  Assert.AreEqual(0, Integer(Length(TCodeActions.StringLiteralActions('  Save;', TTextRange.Create(0, 2, 0, 2),
-    TStringLiteralSettings.Default, False))));
+  Assert.AreEqual(0, Integer(Length(LiteralActions('  Save;', TTextRange.Create(0, 2, 0, 2)))));
 end;
 
 initialization

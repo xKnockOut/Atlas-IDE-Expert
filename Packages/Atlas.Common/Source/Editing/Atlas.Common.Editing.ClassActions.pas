@@ -80,7 +80,23 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TClassActionsText = (CreateGetterSetterAndField, Override, ImplementMethodsOf, Create);
+
+const
+  cTexts: array[TClassActionsText] of TAtlasText = (
+    (De: 'Getter, Setter und Feld für %s erzeugen'; En: 'Create getter, setter and field for %s'),
+    (De: '%s überschreiben'; En: 'Override %s'),
+    (De: 'Methoden von %s implementieren'; En: 'Implement methods of %s'),
+    (De: '%s anlegen'; En: 'Create %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TClassActionContext }
 
@@ -354,7 +370,7 @@ begin
   finally
     mSource.Free;
   end;
-  AAction.Title := Format('Getter, Setter und Feld für %s erzeugen', [mProperty.Name]);
+  AAction.Title := cTexts[TClassActionsText.CreateGetterSetterAndField].Fmt([mProperty.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
   Result := True;
@@ -367,7 +383,7 @@ begin
   Result := RunPhantom(AText, ALine, '/intf ' + AInterface, AContext, AAction.Edits);
   if Result then
   begin
-    AAction.Title := Format('Methoden von %s implementieren', [AInterface]);
+    AAction.Title := cTexts[TClassActionsText.ImplementMethodsOf].Fmt([AInterface]);
     AAction.Kind := RewriteKind;
   end;
 end;
@@ -379,7 +395,7 @@ begin
   Result := RunPhantom(AText, ALine, '/override ' + AName, AContext, AAction.Edits);
   if Result then
   begin
-    AAction.Title := Format('%s überschreiben', [AName]);
+    AAction.Title := cTexts[TClassActionsText.Override].Fmt([AName]);
     AAction.Kind := RewriteKind;
   end;
 end;
@@ -405,7 +421,7 @@ begin
   begin
     Exit;
   end;
-  AAction.Title := Format('%s anlegen', [APlan.Name]);
+  AAction.Title := cTexts[TClassActionsText.Create].Fmt([APlan.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
 end;
@@ -458,5 +474,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ClassActions', cTexts);
 
 end.
