@@ -102,6 +102,7 @@ contains
   Atlas.IDE.Welcome.Help in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas',
   Atlas.IDE.Welcome.Setup in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas',
   Atlas.IDE.Welcome.Setup.Paths in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas',
+  Atlas.IDE.Welcome.Setup.ProjectEvents in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.ProjectEvents.pas',
   Atlas.IDE.Welcome.Layouts in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas',
   Atlas.IDE.Welcome.Tiles in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas',
   Atlas.IDE.Welcome.TileProjects in 'Source\IDE\Welcome\Atlas.IDE.Welcome.TileProjects.pas',

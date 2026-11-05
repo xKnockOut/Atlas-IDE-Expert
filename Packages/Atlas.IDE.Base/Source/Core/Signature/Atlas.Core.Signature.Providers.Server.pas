@@ -36,7 +36,10 @@ type
   TAtlasServerSignatureProvider = class(TInterfacedObject, IAtlasSignatureSource)
   public const
     DefaultTimeoutMs = 2000;
-    ProviderTitle = 'Parameter-Hint (Server)';
+  public
+    /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
+    /// </summary>
+    class function ProviderTitle: string; static;
   private type
     /// <summary>Hält eingereihte Aufrufe davon ab, eine freigegebene Quelle zu benutzen.</summary>
     TAliveFlag = class(TInterfacedObject)
@@ -79,9 +82,33 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client;
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TServerText = (ParameterHintServer);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TServerText] of string = (
+    ('Parameter-Hint (Server)'),
+    ('Parameter hint (server)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TServerText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasServerSignatureProvider }
+
+class function TAtlasServerSignatureProvider.ProviderTitle: string;
+begin
+  Result := UiText(TServerText.ParameterHintServer);
+end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
 begin
@@ -508,5 +535,8 @@ begin
     StartWorker(mSession, AFileName, TPoint.Create(ACharacter, ALine), mGeneration, ACallback);
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Signature.Providers.Server', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

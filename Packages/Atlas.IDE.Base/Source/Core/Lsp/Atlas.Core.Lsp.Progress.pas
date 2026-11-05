@@ -90,7 +90,52 @@ type
 implementation
 
 uses
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TProgressText = (AtlasIsIndexing, AtlasIsIndexing2, FiguresNotAvailableServerNot, UnitsDeclarations, InMemory,
+    OfText, UsagesOfUnitsOffloaded, OnDisk, LastUpdate, IndexDeletedItIsBeing, IndexDeletedCachesFreedIt,
+    AtlasIndexUnitsSymbolsIn, LastRunMsReadFrom);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TProgressText] of string = (
+    ('Atlas indiziert … (%d %%)',
+     'Atlas indiziert …',
+     'Kennzahlen nicht verfügbar (Server läuft nicht).',
+     'Units: %d · Deklarationen: %d',
+     'Im Speicher: ',
+     ' von ',
+     ' (Verwendungen von %d Units ausgelagert)',
+     'Auf der Platte: ',
+     'Letzte Aktualisierung: ',
+     'Index gelöscht; er wird neu aufgebaut.',
+     'Index gelöscht: %d Caches, %s frei; er wird neu aufgebaut.',
+     'Atlas-Index: %d Units, %d Symbole, %s im Speicher, %s auf der Platte',
+     '    %s: letzter Lauf %d ms, %d gelesen, %d aus dem Cache, %d fehlen, Cache %s'),
+    ('Atlas is indexing … (%d %%)',
+     'Atlas is indexing …',
+     'Figures not available (server not running).',
+     'Units: %d · declarations: %d',
+     'In memory: ',
+     ' of ',
+     ' (usages of %d units offloaded)',
+     'On disk: ',
+     'Last update: ',
+     'Index deleted; it is being rebuilt.',
+     'Index deleted: %d caches, %s freed; it is being rebuilt.',
+     'Atlas index: %d units, %d symbols, %s in memory, %s on disk',
+     '    %s: last run %d ms, %d read, %d from the cache, %d missing, cache %s'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TProgressText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TLspProgress }
 
@@ -245,11 +290,11 @@ begin
   end
   else if APercent >= 0 then
   begin
-    Result := Format('Atlas indiziert … (%d %%)', [APercent]);
+    Result := Format(UiText(TProgressText.AtlasIsIndexing), [APercent]);
   end
   else
   begin
-    Result := 'Atlas indiziert …';
+    Result := UiText(TProgressText.AtlasIsIndexing2);
   end;
 end;
 
@@ -290,20 +335,20 @@ function TLspIndexMetrics.Text: string;
 begin
   if not Valid then
   begin
-    Exit('Kennzahlen nicht verfügbar (Server läuft nicht).');
+    Exit(UiText(TProgressText.FiguresNotAvailableServerNot));
   end;
-  Result := Format('Units: %d · Deklarationen: %d', [Units, Declarations]) + sLineBreak +
-    'Im Speicher: ' + TLspIndexStatus.SizeText(MemoryBytes);
+  Result := Format(UiText(TProgressText.UnitsDeclarations), [Units, Declarations]) + sLineBreak +
+    UiText(TProgressText.InMemory) + TLspIndexStatus.SizeText(MemoryBytes);
   if BudgetBytes > 0 then
   begin
-    Result := Result + ' von ' + TLspIndexStatus.SizeText(BudgetBytes);
+    Result := Result + UiText(TProgressText.OfText) + TLspIndexStatus.SizeText(BudgetBytes);
   end;
   if OffloadedUnits > 0 then
   begin
-    Result := Result + Format(' (Verwendungen von %d Units ausgelagert)', [OffloadedUnits]);
+    Result := Result + Format(UiText(TProgressText.UsagesOfUnitsOffloaded), [OffloadedUnits]);
   end;
-  Result := Result + sLineBreak + 'Auf der Platte: ' + TLspIndexStatus.SizeText(DiskBytes) + sLineBreak +
-    'Letzte Aktualisierung: ';
+  Result := Result + sLineBreak + UiText(TProgressText.OnDisk) + TLspIndexStatus.SizeText(DiskBytes) + sLineBreak +
+    UiText(TProgressText.LastUpdate);
   if LastUpdate = 0 then
   begin
     Result := Result + '–';
@@ -391,9 +436,9 @@ class function TLspIndexStatus.ClearedText(const AAnswer: TJSONValue): string;
 begin
   if not (AAnswer is TJSONObject) then
   begin
-    Exit('Index gelöscht; er wird neu aufgebaut.');
+    Exit(UiText(TProgressText.IndexDeletedItIsBeing));
   end;
-  Result := Format('Index gelöscht: %d Caches, %s frei; er wird neu aufgebaut.',
+  Result := Format(UiText(TProgressText.IndexDeletedCachesFreedIt),
     [TJSONObject(AAnswer).GetValue<Integer>('removed', 0),
      SizeText(TJSONObject(AAnswer).GetValue<Int64>('freedBytes', 0))]);
 end;
@@ -413,7 +458,7 @@ begin
   Status := TJSONObject(AStatus);
   Bytes := Status.GetValue<Int64>('indexBytes', 0);
   // Beide Größen wie SizeText mit Dezimalkomma, unabhängig vom Gebietsschema.
-  Result := Result + [Format('Atlas-Index: %d Units, %d Symbole, %s im Speicher, %s auf der Platte',
+  Result := Result + [Format(UiText(TProgressText.AtlasIndexUnitsSymbolsIn),
     [Status.GetValue<Integer>('units', 0), Status.GetValue<Integer>('symbols', 0), SizeText(Bytes),
      SizeText(Status.GetValue<Int64>('diskBytes', 0))])];
   Workspaces := Status.GetValue('workspaces');
@@ -423,7 +468,7 @@ begin
     begin
       if Item is TJSONObject then
       begin
-        Result := Result + [Format('    %s: letzter Lauf %d ms, %d gelesen, %d aus dem Cache, %d fehlen, Cache %s',
+        Result := Result + [Format(UiText(TProgressText.LastRunMsReadFrom),
           [TJSONObject(Item).GetValue<string>('name', ''), TJSONObject(Item).GetValue<Integer>('lastIndexMs', 0),
           TJSONObject(Item).GetValue<Integer>('parsed', 0), TJSONObject(Item).GetValue<Integer>('fromCache', 0),
           TJSONObject(Item).GetValue<Integer>('missing', 0),
@@ -433,5 +478,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Lsp.Progress', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
