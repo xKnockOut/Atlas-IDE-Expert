@@ -388,7 +388,8 @@ const
     'Atlas.ExpressionType', // ExpressionType
     'Atlas.SafeDelete', // SafeDelete
     'Atlas.CreateIssue', // CreateIssue
-    '' // DesignerSearch
+    '', // DesignerSearch
+    'Atlas.CheckFile' // CheckFile
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;

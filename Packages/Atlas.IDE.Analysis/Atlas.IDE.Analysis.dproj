@@ -125,6 +125,7 @@
         </DCCReference>
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
         <DCCReference Include="Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas">
+        <DCCReference Include="Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas"/>
             <Form>AtlasUnitRelationsFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>

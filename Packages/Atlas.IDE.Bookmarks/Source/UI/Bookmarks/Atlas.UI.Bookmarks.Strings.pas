@@ -27,7 +27,11 @@ type
     QuickBookmarkTipJump, QuickBookmarkTipFree, QuickBookmarkMenuNumber, QuickBookmarkMenuNumberUsed,
     QuickBookmarkMenuName, QuickBookmarkMenuRemove, QuickBookmarkMenuRemoveFile, QuickBookmarkMenuWindow,
     QuickBookmarkImported, QuickBookmarkChordFailed, QuickBookmarkDisabled, BookmarksColumnNumber,
-    BookmarksOnlyFile);
+    BookmarksOnlyFile,
+    SettingsNotes, SettingsBookmarksNamed, SettingsBookmarksShared, SettingsQuickBookmarks,
+    SettingsQuickBookmarksGutter, SettingsQuickBookmarksGutterClick, SettingsQuickBookmarksNumberedKeys,
+    SettingsQuickBookmarkChordWait, SettingsQuickBookmarksScope, SettingsQuickBookmarksScopeProject,
+    SettingsQuickBookmarksScopeFile, SettingsQuickBookmarksImportIde);
 
   TAtlasBookmarksStrings = class
   public
@@ -135,7 +139,19 @@ const
      'Faltungsakkord Strg+Umschalt+K, %s ließ sich nicht an die IDE weiterreichen.',
      'Schnelle Lesezeichen sind ausgeschaltet (bookmarks.quick).',
      'Nr.',
-     'nur diese Datei'),
+     'nur diese Datei',
+     'Persönliche Notizen an Codezeilen (Symbol in der Rinne, nicht im Quelltext)',
+     'Benannte Lesezeichen (Seitenfenster, Symbol in der Rinne)',
+     'Lesezeichen im Repository für das Team speichern (atlas-bookmarks.json statt .atlas-bookmarks.json)',
+     'Schnelle Lesezeichen (nummeriert 1–9 und unnummeriert) mit Spalte links der Zeilennummern',
+     'Spalte links der Zeilennummern mit den Markern',
+     'Linksklick in die Spalte setzt und entfernt Lesezeichen',
+     'Strg+Umschalt+1…9 und Strg+1…9 von der IDE übernehmen',
+     'Wartezeit auf Faltungsakkorde in ms (0 = Strg+Umschalt+K bleibt bei der IDE):',
+     'Strg+1…9 springt:',
+     'projektweit',
+     'nur in der aktuellen Datei',
+     'IDE-Lesezeichen 1–9 beim ersten Öffnen übernehmen und dort entfernen'),
     ('Notes and bookmarks',
      'Note on this line…',
      'Delete note on this line',
@@ -227,7 +243,19 @@ const
      'Folding chord Ctrl+Shift+K, %s could not be passed on to the IDE.',
      'Quick bookmarks are switched off (bookmarks.quick).',
      'No.',
-     'this file only'));
+     'this file only',
+     'Personal notes on code lines (gutter icon, not in the source)',
+     'Named bookmarks (side window, gutter icon)',
+     'Store bookmarks in the repository for the team (atlas-bookmarks.json instead of .atlas-bookmarks.json)',
+     'Quick bookmarks (numbered 1–9 and unnumbered) with a column left of the line numbers',
+     'Column left of the line numbers with the markers',
+     'Left click in the column sets and removes bookmarks',
+     'Take over Ctrl+Shift+1…9 and Ctrl+1…9 from the IDE',
+     'Wait for folding chords in ms (0 = Ctrl+Shift+K stays with the IDE):',
+     'Ctrl+1…9 jumps:',
+     'project-wide',
+     'only in the current file',
+     'Take over IDE bookmarks 1–9 on first open and remove them there'));
 
 { TAtlasBookmarksStrings }
 

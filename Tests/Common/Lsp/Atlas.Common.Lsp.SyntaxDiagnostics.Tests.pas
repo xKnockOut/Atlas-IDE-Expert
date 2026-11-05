@@ -88,6 +88,10 @@ type
     /// Syntaxfehlern.</summary>
     [Test]
     procedure ReportsUnusedUsesUnlessSyntaxErrors;
+    /// <summary>#1135: Das Abblenden folgt der Regel unused-uses: aus mit "off", "exclude" und lsp-ignore; ein
+    /// lsp-ignore für die im Editor schweigende Regel ist kein unused-suppression.</summary>
+    [Test]
+    procedure UnusedUsesFollowRule;
   end;
 
 implementation
@@ -107,6 +111,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.UsesActions,
@@ -905,6 +910,92 @@ begin
   finally
     Diagnostics.Free;
   end;
+end;
+
+/// <summary>uses-Kontext, in dem jede Unit bekannt ist und nur TStringGrid anbietet.</summary>
+function GridUses: TUsesContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      AContext := Default(TUsesContext);
+      AContext.Info :=
+        function(const AUnitName: string): TUsesUnitInfo
+        begin
+          Result := Default(TUsesUnitInfo);
+          Result.Known := True;
+          Result.Names := ['TStringGrid'];
+        end;
+      Result := True;
+    end;
+end;
+
+/// <summary>Regelkontext des Editors für A.pas mit den Einstellungen AConfig und der Regel unused-uses.</summary>
+function EditorRules(const AConfig: string): TRuleContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    var
+      mIssues: TArray<TConfigurationIssue>;
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Rules := TArray<IRule>.Create(TUnusedUsesRule.Create);
+      AContext.Settings := TConfigurationParser.Parse(AConfig, mIssues);
+      AContext.RelativePath := 'A.pas';
+      AContext.FileName := 'C:\Projekt\A.pas';
+      AContext.Live := True;
+      Result := True;
+    end;
+end;
+
+/// <summary>Meldungen der Diagnosen zu ACode mit den Einstellungen AConfig, durch | getrennt, mit Regelkennung.
+/// </summary>
+function UsesDiagnostics(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+  const ACode, AConfig: string): string;
+var
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mParams: TJSONObject;
+  mItem: TJSONValue;
+begin
+  Result := '';
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.UsesContext := GridUses;
+  mProviders.Rules := EditorRules(AConfig);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(AStore, ATransport, mProviders, 0);
+  try
+    mParams := mDiagnostics.Compute(AStore.Open(Uri, 'objectpascal', 1, ACode));
+    try
+      for mItem in mParams.GetValue('diagnostics') as TJSONArray do
+      begin
+        Result := Result + mItem.GetValue<string>('message') + '|';
+        if TJSONObject(mItem).GetValue('code') <> nil then
+        begin
+          Result := Result + mItem.GetValue<string>('code') + '|';
+        end;
+      end;
+    finally
+      mParams.Free;
+    end;
+    AStore.Close(Uri);
+  finally
+    mDiagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule;
+const
+  Code = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'end.';
+  Ignored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: unused-uses'#10'  Vcl.Grids;'#10 +
+    'implementation'#10'end.';
+begin
+  Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet|', UsesDiagnostics(FStore, FTransport, Code, '{}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"unused-uses": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"group:style": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code,
+    '{"rules": {"unused-uses": {"severity": "hint", "exclude": ["A"]}}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"exclude": ["A.pas"]}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
 end;
 
 initialization

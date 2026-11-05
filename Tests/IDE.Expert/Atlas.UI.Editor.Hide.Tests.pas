@@ -60,7 +60,10 @@ uses
   Atlas.Core.Editor.Hide,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Hide,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Page.TestSupport,
+  Atlas.UI.Tests.SettingsSection,
+  Atlas.UI.Bookmarks.SettingsSection;
 
 type
   /// <summary>Zählt „Rückgängig“ (TNotifyEvent braucht eine Methode).</summary>
@@ -278,6 +281,7 @@ end;
 procedure TAtlasHideUiTests.PageRevealsEverySettingOfElementsAndWelcome;
 var
   mWelcome: IAtlasRegistration;
+  mModules: TArray<IAtlasRegistration>;
   Host: TForm;
   Page: TAtlasSettingsPage;
   Element: TAtlasDrawnElement;
@@ -285,8 +289,10 @@ var
   Key: string;
   Control: TControl;
   Parent: TWinControl;
-begin  mWelcome := ProvideWelcomeSettings;
-
+begin
+  mWelcome := ProvideWelcomeSettings;
+  // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen.
+  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection]);
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -318,6 +324,7 @@ begin  mWelcome := ProvideWelcomeSettings;
   finally
     Host.Free;
     mWelcome.Revoke;
+    RevokeAll(mModules);
   end;
 end;
 

@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Rules.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
@@ -179,6 +180,14 @@ begin
       DfmPropertyRulesVisible)];
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasRulesChecksSection.ProvideIn(GScope);
+  TAtlasRulesEditorSection.ProvideIn(GScope);
+end;
+
 function TAtlasRulesModule.StartUpdate(const AProject: string; const ADone: TAtlasBaselineUpdateDone): string;
 begin
   Result := TAtlasIdeRulesBaseline.StartUpdate(AProject, ADone);
@@ -210,6 +219,7 @@ begin
   GScope.Provide(IAtlasCommandSource, mRef);
   GScope.Provide(IAtlasBaselineSource, mRef);
   GScope.Provide(IAtlasBulkFixer, TAtlasIdeRulesBulkFix.Create(GScope) as IAtlasBulkFixer);
+  ProvideSettingsSections;
   Result := True;
 end;
 
