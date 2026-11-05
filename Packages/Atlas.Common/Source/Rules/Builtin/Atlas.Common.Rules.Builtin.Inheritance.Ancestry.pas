@@ -50,11 +50,23 @@ type
     // (vorher je Abfrage über alle Symbole der Unit, jedes als Kopie): Regeln fragen dieselben Klassen oft.
     FUnitSymbols: TDictionary<string, TArray<TIndexSymbol>>;
     FMembers: TDictionary<string, TArray<TIndexSymbol>>;
+    /// <summary>Felder und Properties je Typ und Name (Schlüssel Typ #0 Name in Großbuchstaben): Indizes in
+    /// MemberList, aufsteigend. FindMember suchte sonst je Name linear über alle Mitglieder; eine Klasse mit
+    /// 1.000 Methoden machte shadowed-name quadratisch.</summary>
+    FFieldsByName: TDictionary<string, TArray<Integer>>;
+    /// <summary>Typen, deren Felder und Properties schon in FFieldsByName stehen.</summary>
+    FFieldsIndexed: TDictionary<string, Boolean>;
+    /// <summary>Methoden und Konstruktoren dieser Datei je Anfang (Zeile:Spalte): Indizes in FLocal.Symbols,
+    /// aufsteigend; erst bei Bedarf angelegt. Je Methodendeklaration über alle Symbole gesucht war das quadratisch.
+    /// </summary>
+    FLocalMethodsAt: TDictionary<string, TArray<Integer>>;
     /// <summary>Symbole der Datei AFileName ('' = diese Datei); False, wenn der Index sie nicht kennt.</summary>
     function SymbolsOf(const AFileName: string; out ASymbols: TArray<TIndexSymbol>): Boolean;
     /// <summary>Felder, Properties, Methoden, Konstruktoren und Destruktoren von AType, je Typ einmal gesucht.
     /// </summary>
     function MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+    /// <summary>Indizes der Felder und Properties namens AName in MemberList(AType), aufsteigend.</summary>
+    function FieldsNamed(const AType: TSymbolLocation; const AName: string): TArray<Integer>;
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Klasse AName mit AArity Typparametern (#1326: THorseChannel und THorseChannel&lt;T&gt; sind zwei
     /// Typen); AArity &lt; 0 = Zahl unbekannt, jede passt.</summary>
@@ -78,6 +90,8 @@ type
     function HasConstructor(const ATypeName: string): Boolean;
     /// <summary>Nächste gleichnamige Methode in den Vorfahren, falls sie virtuell ist.</summary>
     function InheritedVirtual(const AMethod: TMethodDecl): TInherited;
+    /// <summary>Methode oder Konstruktor der Klasse ATypeName in dieser Datei, der bei APos beginnt.</summary>
+    function LocalMethodAt(const ATypeName: string; const APos: TTextPosition; out ASymbol: TIndexSymbol): Boolean;
     /// <summary>Feld oder Property AName in ATypeName oder einem Vorfahren, das dort sichtbar ist (#934).
     /// Bricht die Kette ab, steht in AUnresolved der Vorfahr, der weder in der Datei noch im Index steht.</summary>
     function FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved: string): Boolean;
@@ -252,10 +266,58 @@ begin
   FLocal := ALocal;
   FUnitSymbols := TDictionary<string, TArray<TIndexSymbol>>.Create;
   FMembers := TDictionary<string, TArray<TIndexSymbol>>.Create;
+  FFieldsByName := TDictionary<string, TArray<Integer>>.Create;
+  FFieldsIndexed := TDictionary<string, Boolean>.Create;
+end;
+
+/// <summary>Schlüssel einer Stelle für FLocalMethodsAt.</summary>
+function PositionKey(const APos: TTextPosition): string;
+begin
+  Result := IntToStr(APos.Line) + ':' + IntToStr(APos.Character);
+end;
+
+function TAncestry.LocalMethodAt(const ATypeName: string; const APos: TTextPosition;
+  out ASymbol: TIndexSymbol): Boolean;
+var
+  mIndex: Integer;
+  mKey: string;
+  mFound: TArray<Integer>;
+begin
+  if FLocalMethodsAt = nil then
+  begin
+    FLocalMethodsAt := TDictionary<string, TArray<Integer>>.Create;
+    for mIndex := 0 to High(FLocal.Symbols) do
+    begin
+      if FLocal.Symbols[mIndex].Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+      begin
+        mKey := PositionKey(FLocal.Symbols[mIndex].Range.StartPos);
+        if not FLocalMethodsAt.TryGetValue(mKey, mFound) then
+        begin
+          mFound := nil;
+        end;
+        FLocalMethodsAt.AddOrSetValue(mKey, mFound + [mIndex]);
+      end;
+    end;
+  end;
+  if FLocalMethodsAt.TryGetValue(PositionKey(APos), mFound) then
+  begin
+    for mIndex in mFound do
+    begin
+      if SameText(FLocal.Symbols[mIndex].Container, ATypeName) then
+      begin
+        ASymbol := FLocal.Symbols[mIndex];
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 destructor TAncestry.Destroy;
 begin
+  FLocalMethodsAt.Free;
+  FFieldsIndexed.Free;
+  FFieldsByName.Free;
   FMembers.Free;
   FUnitSymbols.Free;
   inherited;
@@ -285,6 +347,44 @@ begin
   FUnitSymbols.Add(mKey, ASymbols);
 end;
 
+/// <summary>Schlüssel eines Typs für die Caches von TAncestry.</summary>
+function TypeKey(const AType: TSymbolLocation): string;
+begin
+  Result := AnsiLowerCase(AType.FileName) + '|' + AnsiLowerCase(AType.Symbol.Name) + '|' +
+    IntToStr(AType.Symbol.Range.StartPos.Line) + ':' + IntToStr(AType.Symbol.Range.EndPos.Line);
+end;
+
+function TAncestry.FieldsNamed(const AType: TSymbolLocation; const AName: string): TArray<Integer>;
+var
+  mType, mKey: string;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
+  mFound: TArray<Integer>;
+begin
+  mType := TypeKey(AType);
+  if not FFieldsIndexed.ContainsKey(mType) then
+  begin
+    mMembers := MemberList(AType);
+    for mIndex := 0 to High(mMembers) do
+    begin
+      if mMembers[mIndex].Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_] then
+      begin
+        mKey := mType + #0 + UpperCase(mMembers[mIndex].Name);
+        if not FFieldsByName.TryGetValue(mKey, mFound) then
+        begin
+          mFound := nil;
+        end;
+        FFieldsByName.AddOrSetValue(mKey, mFound + [mIndex]);
+      end;
+    end;
+    FFieldsIndexed.Add(mType, True);
+  end;
+  if not FFieldsByName.TryGetValue(mType + #0 + UpperCase(AName), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function TAncestry.MemberList(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 var
   mKey, mOwner: string;
@@ -292,8 +392,7 @@ var
   mFound: TList<TIndexSymbol>;
   mIndex: Integer;
 begin
-  mKey := AnsiLowerCase(AType.FileName) + '|' + AnsiLowerCase(AType.Symbol.Name) + '|' +
-    IntToStr(AType.Symbol.Range.StartPos.Line) + ':' + IntToStr(AType.Symbol.Range.EndPos.Line);
+  mKey := TypeKey(AType);
   // Member geschachtelter Typen tragen den ganzen Pfad als Container (TAussen.TInnen).
   mOwner := AType.Symbol.Name;
   if AType.Symbol.Container <> '' then
@@ -1073,19 +1172,8 @@ end;
 /// <summary>Symbol der Methode AHeader der Klasse ATypeName im Index der Datei; False ohne.</summary>
 function MethodSymbol(AAncestry: TAncestry; const ATypeName: string; AHeader: TSyntaxNode;
   out ASymbol: TIndexSymbol): Boolean;
-var
-  Symbol: TIndexSymbol;
 begin
-  for Symbol in AAncestry.Local.Symbols do
-  begin
-    if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-      SameText(Symbol.Container, ATypeName) and (Symbol.Range.StartPos = AHeader.StartPos) then
-    begin
-      ASymbol := Symbol;
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := AAncestry.LocalMethodAt(ATypeName, AHeader.StartPos, ASymbol);
 end;
 
 /// <summary>Methodendeklarationen aller Klassen der Datei.</summary>
@@ -1222,22 +1310,18 @@ begin
   Result := FindMember(ATypeName, AName, AMember, AUnresolved, mUnitName);
 end;
 
-/// <summary>Index des Felds oder der Property AName in AMembers, das ein Nachfahre ADepth Stufen tiefer sieht:
-/// private nur in derselben Unit (ALocal), strict private nur in der Klasse selbst; -1 ohne.</summary>
-function VisibleMember(const AMembers: TArray<TIndexSymbol>; const AName: string; ADepth: Integer;
+/// <summary>Index des Felds oder der Property in AMembers, das ein Nachfahre ADepth Stufen tiefer sieht:
+/// private nur in derselben Unit (ALocal), strict private nur in der Klasse selbst; -1 ohne. ANamed: Indizes der
+/// gleichnamigen Felder und Properties (TAncestry.FieldsNamed), aufsteigend.</summary>
+function VisibleMember(const AMembers: TArray<TIndexSymbol>; const ANamed: TArray<Integer>; ADepth: Integer;
   ALocal: Boolean): Integer;
 var
   Index: Integer;
   Member: TIndexSymbol;
 begin
-  for Index := 0 to High(AMembers) do
+  for Index in ANamed do
   begin
     Member := AMembers[Index];
-    if not (Member.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) or
-      not SameText(Member.Name, AName) then
-    begin
-      Continue;
-    end;
     if (ADepth = 0) or (ALocal and (Member.Visibility <> TIndexVisibility.StrictPrivate)) or
       not (Member.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]) then
     begin
@@ -1268,7 +1352,7 @@ begin
       Exit(False);
     end;
     Members := MemberList(Location);
-    Index := VisibleMember(Members, AName, Depth, Location.FileName = '');
+    Index := VisibleMember(Members, FieldsNamed(Location, AName), Depth, Location.FileName = '');
     if Index >= 0 then
     begin
       AMember := Members[Index];
