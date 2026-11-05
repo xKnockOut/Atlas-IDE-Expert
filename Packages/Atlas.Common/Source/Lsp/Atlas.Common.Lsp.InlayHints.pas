@@ -45,7 +45,7 @@ type
     /// <summary>Code eines Steuerzeichens wie ^C (#862); nur mit ControlChar.</summary>
     CharCode: Integer;
     ControlChar: Boolean;
-    /// <summary>Marke „ohne Self“ am Ende des Kopfs einer Methode (#686).</summary>
+    /// <summary>Marke „braucht kein Self“ am Ende des Kopfs einer Methode (#686).</summary>
     MethodWithoutSelf: Boolean;
   end;
 
@@ -137,7 +137,7 @@ type
     /// ATreeText ist der Text, aus dem ATree gelesen wurde.</summary>
     class function ControlChars(ATree: TSyntaxTree; const ATreeText: string;
       const ARange: TTextRange): TArray<TInlayHint>; static;
-    /// <summary>Hinter dem Kopf jeder Methode in ARange, die Self nicht braucht, die Marke „ohne Self“ (#686);
+    /// <summary>Hinter dem Kopf jeder Methode in ARange, die Self nicht braucht, die Marke „braucht kein Self“ (#686);
     /// Mitglieder, Interfaces und Formular über AResolver und AReadText.</summary>
     class function MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
       const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>; static;
@@ -1509,6 +1509,7 @@ begin
     begin
       Hint := Default(TInlayHint);
       Hint.Position := Position;
+      // Text für Clients; das Plugin beschriftet die Marke selbst in der Sprache der IDE.
       Hint.Text := TMethodWithoutSelf.MarkerText;
       Hint.PaddingLeft := True;
       Hint.MethodWithoutSelf := True;

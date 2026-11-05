@@ -40,6 +40,8 @@ type
     EditView: TFunc<IOTAEditView>;
     NewCompletionSources: TAtlasCompletionSourcesFactory;
     NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
+    /// <summary>Code-Aktionen an der Schreibmarke öffnen (Klick auf die Marke „braucht kein Self“, #686).</summary>
+    OpenCodeActions: TProc;
   end;
 
   /// <summary>Editor-Anbindungen des Managers.</summary>
@@ -176,7 +178,7 @@ begin
     function: TLspSession
     begin
       Result := mReady();
-    end);
+    end, FHooks.OpenCodeActions);
   // Code Lens zur Testunit (#189); startet ebenfalls keinen Server.
   FTestUnitLens := TAtlasEditorTestUnitLens.Create(
     function: TLspSession
