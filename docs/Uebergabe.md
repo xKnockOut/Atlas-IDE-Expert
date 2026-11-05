@@ -1,4 +1,11 @@
-﻿## Meldungen des Servers zweisprachig (#1458 Gruppe C, 05.11.2026, Branch `claude/project-thread-i211dh` auf `Pilot-2.0.0-beta.1`)
+﻿## Leckmeldungen der Tests geklärt (Offene Punkte Cloud, Punkt 4, 05.11.2026, Branch `claude/project-thread-83cxch` auf `Pilot-2.0.0-beta.1`)
+- Je Fall Ursache und Behebung in `docs/Offene-Punkte-Cloud.md`, Punkt 4. Kein echtes Leck im Produktcode.
+- Anonymes Protokoll (#1478): `TAtlasLogRedactor` behält die Nummern je Name/Text bis Programmende; neue Methode `Forget`. Der Leckmonitor vergisst in `PostTearDown` die Nummern von `TAtlasGuard.RotatingLog` vor der Messung (fünf der zehn Meldungen).
+- Leckmonitor wärmt die Befehlsliste `TSlashCommandRegistry.Shared` für beide Sprachen vor (seit #1458 Gruppe B eine je Sprache; 23 KB in `EnglishTextsWithoutGerman`).
+- Falle: Zwei `[SetupFixture]` in einer Fixture; DUnitX führt nur eine aus (`TIndexCacheDirectoryTests`, zusammengelegt). Sonst keine Fixture mit zweien.
+- `[SetupFixture]` neu in `TLspClientTests` (Rekorder `TAtlasPluginTimings.Shared`), `TLspInlineValuesTests`, `TMcpToolsTests` (je 72 Byte, vermutlich TMonitor-Daten globaler Sperren; bei `TMcpToolsTests` nicht genau zugeordnet: bleibt die Meldung, ist es ein echtes Leck).
+- Nicht übersetzt und nicht ausgeführt (kein FPC trunk im Container). Handtests LK1–LK3.
+## Meldungen des Servers zweisprachig (#1458 Gruppe C, 05.11.2026, Branch `claude/project-thread-i211dh` auf `Pilot-2.0.0-beta.1`)
 - Alle Benutzertexte in `Application` (Shell, Linter, Workspace, MCP-Werkzeuge, Refaktorierungen, Compile) stehen in Tabellen `TAtlasText` (De/En) der jeweiligen Unit; übrig sind nur Protokollzeilen und zwei interne Programmierfehler-Exceptions (Baseline `Application` jetzt 126).
 - Gemeinsame Texte in `Shell.Texts` (`TShellTexts`: `Missing`, `Choice`, `NoProject`, `Joined` mit „und“/„and“). MCP-Schemas: eine JSON-Vorlage mit `%s`, gefüllt über `SchemaWith` (JSON-escaped), damit die Beschreibungen erst beim Abruf in der aktuellen Sprache entstehen.
 - Ursache statt Symptom: Warnungen der Befehlszeile entstehen, bevor die Sprache feststeht (`--locale`, `settings.json`). `TCommandLineOptions.Warnings` hält jetzt `TCommandLineWarning` (Art + Wert), der Text entsteht erst bei der Ausgabe (`.Text`). Ebenso wurden Konstanten mit Texten zu Funktionen (`OffMessage`, `SkipMessage`, `Disabled`).
