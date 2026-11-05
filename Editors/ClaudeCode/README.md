@@ -1,5 +1,7 @@
 # Atlas in Claude Code
 
+*English version: [README.en.md](README.en.md)*
+
 ## Installation
 
 ### Als Plugin aus dem Marketplace (empfohlen)
