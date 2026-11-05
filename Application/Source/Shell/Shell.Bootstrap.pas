@@ -58,7 +58,8 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Projects.GroupReader;
+  Atlas.Common.Projects.GroupReader,
+  Atlas.Text.LogMarks;
 
 class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
@@ -95,14 +96,15 @@ begin
     Result := TGroupProjReader.Load(AGroupFile);
     if ALogger <> nil then
     begin
-      ALogger.Info(Format('Projektgruppe %s: %d Projekte', [AGroupFile, Length(Result)]));
+      ALogger.Info(Format('Projektgruppe %s: %d Projekte', [TLogMarks.Path(AGroupFile), Length(Result)]));
     end;
   except
     on E: Exception do
     begin
       if ALogger <> nil then
       begin
-        ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [AGroupFile, E.Message]));
+        ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [TLogMarks.Path(AGroupFile),
+          TLogMarks.Text(E.Message)]));
       end;
       Result := nil;
     end;
@@ -161,7 +163,7 @@ begin
       begin
         raise;
       end;
-      ALogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
+      ALogger.Warning('Globale Einstellungen nicht lesbar: ' + TLogMarks.Text(E.Message));
     end;
   end;
 end;

@@ -72,7 +72,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Dfm.BinaryForm;
+  Atlas.Common.Dfm.BinaryForm,
+  Atlas.Text.LogMarks;
 
 { TSelectBuildArgs }
 
@@ -262,7 +263,7 @@ begin
       end;
     except
       on E: Exception do
-        ALogger.Warning(Format('%s nicht umgewandelt: %s', [Form, E.Message]));
+        ALogger.Warning(Format('%s nicht umgewandelt: %s', [TLogMarks.Path(Form), TLogMarks.Text(E.Message)]));
     end;
 end;
 

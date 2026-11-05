@@ -71,7 +71,7 @@ begin
       end;
     except
       on E: ERegistryException do
-        TAtlasGuard.Log('Navigationsleiste: Merker nicht lesbar (' + TAtlasGuard.SafeMessage(E.Message) + ')');
+        TAtlasGuard.Log('Navigationsleiste: Merker nicht lesbar (' + TAtlasGuard.MessageText(E.Message) + ')');
     end;
   finally
     Registry.Free;
@@ -92,7 +92,7 @@ begin
       end;
     except
       on E: ERegistryException do
-        TAtlasGuard.Log('Navigationsleiste: Merker nicht geschrieben (' + TAtlasGuard.SafeMessage(E.Message) + ')');
+        TAtlasGuard.Log('Navigationsleiste: Merker nicht geschrieben (' + TAtlasGuard.MessageText(E.Message) + ')');
     end;
   finally
     Registry.Free;

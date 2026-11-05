@@ -4,14 +4,17 @@
 // Build stellt die gewählten Teile anonymisiert zusammen, genau so, wie sie in
 // die ZIP-Datei kommen; die Vorschau zeigt dieselben Dateien mit Größe und
 // Inhalt. Teile:
-// - Logs: Ende von atlas.log des Plugins (Pfade unter einem Projekt zu <ws>,
+// - Logs: Ende von atlas.log des Plugins (schon beim Schreiben anonym, #1478:
+//   name#N, datei#N, text#N; dazu Pfade unter einem Projekt zu <ws>,
 //   andere Pfade zu <pfad>, Benutzer- und Rechnername zu <benutzer>, Text in
 //   Anführungszeichen zu <wert>, wie der Fehlerbericht #108) und die
 //   Diagnoselogs des Servers (#647, schon beim Schreiben anonym; zur
 //   Sicherheit noch einmal über die Pfadregeln).
-// - Versionen: atlas-info.txt mit Atlas, RAD Studio, Windows und Plattform.
+// - Versionen: atlas-info.txt mit Atlas, RAD Studio, Windows und Plattform;
+//   dazu, ob atlas.log mit Klarnamen geschrieben ist (diagnostics.log.names).
 // - Einstellungen: einstellungen.json, jeder Wert, der wie ein Pfad aussieht,
-//   wird zu "<pfad>"; Benutzer- und Rechnername werden ersetzt.
+//   wird zu "<pfad>", jeder andere Text außer festen Werten zu "<wert>"
+//   (#1478); Benutzer- und Rechnername werden ersetzt.
 // - Letzte Diagnosedaten (#479): atlas-diagnosemodus.txt, ohne Dateinamen
 //   geschrieben; zur Sicherheit über die Pfadregeln.
 // Die Kurzbeschreibung steht nicht in der ZIP, sondern nur in der
@@ -63,6 +66,8 @@ type
     Roots: TArray<string>;
     /// <summary>Benutzer-, Rechner- und Domänenname.</summary>
     Identity: TArray<string>;
+    /// <summary>atlas.log mit Klarnamen geschrieben (diagnostics.log.names, #1478).</summary>
+    PluginLogNames: Boolean;
     Created: TDateTime;
   end;
 
@@ -133,7 +138,8 @@ implementation
 uses
   System.Zip,
   System.StrUtils,
-  Atlas.Core.Diagnostics.BugReport;
+  Atlas.Core.Diagnostics.BugReport,
+  Atlas.Text.Anonymize;
 
 { TAtlasPackageFile }
 
@@ -344,12 +350,21 @@ begin
 end;
 
 class function TAtlasDiagnosticPackage.Info(const AInput: TAtlasPackageInput): string;
+var
+  mLog: string;
 begin
+  // Klarnamen stehen nur nach ausdrücklicher Wahl im Protokoll; das Paket sagt es sichtbar (#1478).
+  mLog := 'Protokoll des Plugins anonym geschrieben';
+  if AInput.PluginLogNames then
+  begin
+    mLog := 'Protokoll des Plugins mit Klarnamen geschrieben (diagnostics.log.names), im Paket über die Pfadregeln';
+  end;
   Result := 'Atlas ' + AInput.AtlasVersion + sLineBreak +
     'RAD Studio ' + AInput.IdeVersion + sLineBreak +
     'Windows ' + AInput.WindowsVersion + sLineBreak +
     'Plattform ' + AInput.Platform + sLineBreak +
-    'Erstellt ' + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak;
+    'Erstellt ' + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak +
+    mLog + sLineBreak;
 end;
 
 class function TAtlasDiagnosticPackage.Build(const AInput: TAtlasPackageInput;
@@ -367,7 +382,8 @@ begin
   end;
   if TAtlasPackagePart.Settings in AParts then
   begin
-    Text := Anonymize(SettingsWithoutPaths(AInput.SettingsJson), AInput.Roots, AInput.Identity);
+    Text := Anonymize(TTextAnonymizer.AnonymizeJsonValues(SettingsWithoutPaths(AInput.SettingsJson)), AInput.Roots,
+      AInput.Identity);
     Files := Files + [TAtlasPackageFile.Create(SettingsFileName, TAtlasPackagePart.Settings, Text)];
   end;
   if TAtlasPackagePart.Logs in AParts then

@@ -60,6 +60,9 @@ type
     procedure FixCheckAndUtf8Output;
     [Test]
     procedure ArchitectureOverviewOfFolder;
+    /// <summary>--timings nennt Units anonym (name#N), im Klartext nur mit --log-names (#1478).</summary>
+    [Test]
+    procedure TimingsHideUnitNamesWithoutLogNames;
   end;
 
 implementation
@@ -76,6 +79,7 @@ uses
   Atlas.Common.Rules.FormatOutput,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Diagnostics.CheckProfile,
   Shell.CommandLine,
   Shell.Linter.Output,
   Shell.Linter.Settings,
@@ -369,6 +373,39 @@ begin
   Assert.IsTrue(TLinterTarget.Resolve(Path('Src'), mTarget));
   mOverview := TLinterArchitecture.OverviewOf(mTarget, TServerSettings.Default);
   Assert.AreEqual(2, Integer(Length(mOverview.Units)));
+end;
+
+procedure TLinterPartsTests.TimingsHideUnitNamesWithoutLogNames;
+var
+  mOptions: TCommandLineOptions;
+  mTimings: TCheckTimings;
+  mProfiler: TCheckProfiler;
+  mText: string;
+begin
+  mTimings := Default(TCheckTimings);
+  mTimings.IndexMs := 100;
+  mProfiler := TCheckProfiler.Create;
+  try
+    mProfiler.BeginRun(Now);
+    mProfiler.AddUnit('C:\MarkerOrdner\MarkerUnitKunde.pas', 1000);
+    mProfiler.FinishRun(1);
+    mTimings.Profile := mProfiler.Snapshot(TCheckRunProfile.cTop);
+  finally
+    mProfiler.Free;
+  end;
+  mOptions := Default(TCommandLineOptions);
+  mText := TLinterOutput.TimingsText(mOptions, mTimings);
+  Assert.IsFalse(mText.Contains('MarkerUnitKunde'), mText);
+  Assert.IsFalse(mText.Contains('MarkerOrdner'), mText);
+  Assert.IsTrue(mText.Contains('anonymisiert'), mText);
+  mOptions.TimingsFile := 'profil.json';
+  mText := TLinterOutput.TimingsText(mOptions, mTimings);
+  Assert.IsFalse(mText.Contains('MarkerUnitKunde'), mText);
+  Assert.IsTrue(mText.Contains('"anonymized"'), mText);
+  mOptions.TimingsFile := '';
+  mOptions.LogNames := True;
+  mText := TLinterOutput.TimingsText(mOptions, mTimings);
+  Assert.IsTrue(mText.Contains('MarkerUnitKunde'), mText);
 end;
 
 initialization

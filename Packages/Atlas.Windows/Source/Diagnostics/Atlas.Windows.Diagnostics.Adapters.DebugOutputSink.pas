@@ -18,13 +18,14 @@ type
 implementation
 
 uses
-  Atlas.Windows.Diagnostics.DebugOutput;
+  Atlas.Windows.Diagnostics.DebugOutput,
+  Atlas.Common.Logging.EntryText;
 
 { TDebugOutputLogSink }
 
 procedure TDebugOutputLogSink.Write(const AEntry: TLogEntry);
 begin
-  TDebugOutput.Write(AEntry.ToText);
+  TDebugOutput.Write(TLogEntryText.PlainLine(AEntry));
 end;
 
 end.

@@ -54,7 +54,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Projects.Selection;
+  Atlas.Common.Projects.Selection,
+  Atlas.Text.LogMarks;
 
 constructor TShellBuildChoice.Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup);
 begin
@@ -126,7 +127,8 @@ begin
   if TakeRestore(mChoice.Config, mChoice.Platform) then
   begin
     FLogger.Info(Format('%s: gemerkte Wahl übernommen (Konfiguration %s, Plattform %s)',
-      [FName, mChoice.Config, mChoice.Platform]));
+      [TLogMarks.Name(FName), TLogMarks.Name(mChoice.Config),
+      TLogMarks.Name(mChoice.Platform)]));
   end;
 end;
 
@@ -155,7 +157,7 @@ begin
     Exit;
   end;
   FLogger.Warning(Format('%s: gewählte Konfiguration oder Plattform gibt es nicht mehr (%s); es gelten die Vorgaben',
-    [FName, mError]));
+    [TLogMarks.Name(FName), TLogMarks.Text(mError)]));
   if FSetup.Selection <> nil then
   begin
     FSetup.Selection.SetBuild(AProject.FileName, '', '');
@@ -194,7 +196,7 @@ begin
   end;
   if AHasDefines then
   begin
-    FLogger.Info(Format('%s: %d Symbole aus den Projektoptionen der IDE', [FName, Length(mDefines)]));
+    FLogger.Info(Format('%s: %d Symbole aus den Projektoptionen der IDE', [TLogMarks.Name(FName), Length(mDefines)]));
   end;
 end;
 

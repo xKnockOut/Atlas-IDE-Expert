@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Diagnosepaket und Logs vollständig anonym (#1478): Die Stelle, an der eine Protokollzeile entsteht, kennzeichnet Namen, Pfade und fremden Text (Meldung einer Exception, Compilermeldung, Parameter einer Anfrage) mit `Atlas.Text.LogMarks`; jede Senke ersetzt sie selbst, statt dass der Anonymisierer nachträglich rät. Server-Log (`--log`), Diagnoselog, Protokoll der Sitzung, Status (`atlas.server.status`), Fehlerbericht, Diagnosepaket, Prozessliste und `--timings` (Units als `name#N`, im Klartext mit `--log-names`) sind damit ohne Typ-, Routinen-, Projekt- und Benutzernamen; unter dem Arbeitsbereich bleiben nur `<ws>/<datei>.pas`, von den Einstellungen nur Schlüssel, Zahlen, Schalter und feste Werte. Das Plugin-Protokoll `atlas.log` schreibt anonym (`name#N`, `datei#N`, `text#N`); Klarnamen nur mit der neuen Einstellung `diagnostics.log.names` (Vorgabe aus), was Fehlerbericht und Paket sichtbar vermerken. Ohne Anonymisierung nennt der Fehlerbericht „mit Klarnamen (ausdrücklich gewählt)“. Die Vorschau des Server-Diagnosepakets beginnt mit der Liste aller Dateien. Die Zahlenzeilen des Diagnoselogs halten das Format `index project#N … mem X MB` (Einheiten außer MB klein, `cacheWrite … kb`). Wächter-Tests mit Markernamen für jede Quelle.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu

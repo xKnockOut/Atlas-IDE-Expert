@@ -80,7 +80,8 @@ implementation
 uses
   System.IOUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.LogMarks;
 
 /// <summary>Zeitstempel einer Datei in Millisekunden (UTC); False, wenn sie fehlt.</summary>
 function FileStampOf(const AFileName: string; out AStamp: Int64): Boolean;
@@ -198,7 +199,8 @@ end;
 
 procedure TShellDiagnosticsArea.CheckFailed(AError: Exception);
 begin
-  FServices.Logger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName, AError.Message]));
+  FServices.Logger.Error(Format('Fehler beim Prüfen der Syntax: %s: %s', [AError.ClassName,
+    TLogMarks.Text(AError.Message)]));
 end;
 
 function TShellDiagnosticsArea.CheckFiles: TArray<string>;

@@ -101,7 +101,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.JsonRpc.Messages,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Text.LogMarks;
 
 const
   cRestrictedReason = 'Der Arbeitsbereich ist nicht vertrauenswürdig';
@@ -183,7 +184,7 @@ begin
   mShow := MarkUnavailable(AChoice, AShow, mFirst);
   if mFirst then
   begin
-    FServices.Logger.Warning('Kompilieren nicht möglich: ' + AChoice.Reason +
+    FServices.Logger.Warning('Kompilieren nicht möglich: ' + TLogMarks.Text(AChoice.Reason) +
       '. Nach dem Speichern wird bis zum nächsten Laden des Projekts nicht mehr kompiliert; ' +
       'der Befehl "Projekt kompilieren" versucht es erneut.');
   end;
@@ -372,7 +373,7 @@ begin
     except
       // Sonst läge die Ausnahme ungelesen in FatalException und FCompiling bliebe True (Code-Review S-06).
       on E: Exception do
-        FServices.Logger.Error(Format('Compilerlauf abgebrochen: %s: %s', [E.ClassName, E.Message]));
+        FServices.Logger.Error(Format('Compilerlauf abgebrochen: %s: %s', [E.ClassName, TLogMarks.Text(E.Message)]));
     end;
   finally
     if not mDone then
@@ -536,7 +537,7 @@ begin
     Inc(mCounts[mItem.Severity]);
     if mItem.FileName = '' then
     begin
-      FServices.Logger.Warning(Format('Compiler: %s %s', [mItem.Code, mItem.Text]));
+      FServices.Logger.Warning(Format('Compiler: %s %s', [mItem.Code, TLogMarks.Text(mItem.Text)]));
     end;
   end;
   FServices.Publish(FResults.Replace(AMessages));

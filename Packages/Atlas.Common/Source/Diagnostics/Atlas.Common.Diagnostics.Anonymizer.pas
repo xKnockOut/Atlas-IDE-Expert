@@ -14,6 +14,10 @@
 //   Arbeitsbereichen zu name#N, Text in Anführungszeichen zu wert#N, Benutzer-
 //   und Rechnername zu benutzer#N. Dateien unter den Bibliothekspfaden der
 //   Delphi-Installation behalten ihren Namen. Die Nummern gelten für einen Lauf.
+//   Gekennzeichnete Werte (Atlas.Text.LogMarks, #1478) gehen zuerst: Ein Name
+//   wird immer name#N (und gilt danach als bekannt), ein Pfad datei#N, fremder
+//   Text wert#N, auch wenn kein Muster sie erkennt. Die Muster danach bleiben
+//   als Netz für Zeilen ohne Kennzeichen.
 
 interface
 
@@ -22,7 +26,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.RegularExpressions;
+  System.RegularExpressions,
+  Atlas.Text.LogMarks;
 
 type
   TDiagnosticIdKind = (Project, Document, UnitFile);
@@ -75,6 +80,9 @@ type
     function PathLabel(const APath: string): string;
     function QuotedLabel(const AInner: string): string;
     function WordLabel(const AWord: string): string;
+    /// <summary>Ersatz für einen gekennzeichneten Wert; unter FLock.</summary>
+    function MarkLabel(AKind: TLogMarkKind; const AValue: string): string;
+    function ValueLabel(const AValue: string): string;
     procedure AddNameLocked(const AName: string);
   public
     /// <summary>AIdentity: Benutzer- und Rechnername u. ä.; Einträge unter drei Zeichen zählen nicht.</summary>
@@ -513,9 +521,46 @@ begin
   Result := 'datei#' + IntToStr(Number) + Extension;
 end;
 
-function TLogAnonymizer.QuotedLabel(const AInner: string): string;
+function TLogAnonymizer.ValueLabel(const AValue: string): string;
 var
-  Number: Integer;
+  mNumber: Integer;
+begin
+  if not FValues.TryGetValue(AValue, mNumber) then
+  begin
+    mNumber := FValues.Count + 1;
+    FValues.Add(AValue, mNumber);
+  end;
+  Result := 'wert#' + IntToStr(mNumber);
+end;
+
+function TLogAnonymizer.MarkLabel(AKind: TLogMarkKind; const AValue: string): string;
+begin
+  case AKind of
+    TLogMarkKind.Name:
+      begin
+        // Kurze Namen bleiben aus dem Wörterbuch (sie kämen in jedem Satz vor), verborgen werden sie trotzdem.
+        AddNameLocked(AValue);
+        Result := NameLabel(Trim(AValue));
+        if Result = '' then
+        begin
+          Result := ValueLabel(AValue);
+        end;
+      end;
+    TLogMarkKind.Path:
+      Result := PathLabel(Trim(AValue));
+  else
+    if FNumber.IsMatch(AValue) then
+    begin
+      Result := AValue;
+    end
+    else
+    begin
+      Result := ValueLabel(AValue);
+    end;
+  end;
+end;
+
+function TLogAnonymizer.QuotedLabel(const AInner: string): string;
 begin
   if FNumber.IsMatch(AInner) or FMethod.IsMatch(AInner) then
   begin
@@ -526,16 +571,10 @@ begin
     Exit(PathLabel(AInner));
   end;
   Result := NameLabel(Trim(AInner));
-  if Result <> '' then
+  if Result = '' then
   begin
-    Exit;
+    Result := ValueLabel(AInner);
   end;
-  if not FValues.TryGetValue(AInner, Number) then
-  begin
-    Number := FValues.Count + 1;
-    FValues.Add(AInner, Number);
-  end;
-  Result := 'wert#' + IntToStr(Number);
 end;
 
 function TLogAnonymizer.WordLabel(const AWord: string): string;
@@ -580,9 +619,13 @@ function TLogAnonymizer.Anonymize(const AText: string): string;
 var
   Index: Integer;
 begin
-  Result := AText;
   TMonitor.Enter(FLock);
   try
+    Result := TLogMarks.Resolve(AText,
+      function(AKind: TLogMarkKind; const AValue: string): string
+      begin
+        Result := MarkLabel(AKind, AValue);
+      end);
     for Index := 0 to High(FIdentity) do
     begin
       Result := StringReplace(Result, FIdentity[Index], 'benutzer#' + IntToStr(Index + 1),

@@ -4,7 +4,8 @@
 // Projekt“: je Arbeitsbereich der Index-Cache (Ordner\Datei, Format, Stand),
 // wer die Sperre hält, die angemeldeten Prozesse und ihre Sperr- und
 // Cache-Ereignisse nach Zeit. Die Antwort trägt dazu "markdown" für die
-// Meldungsansicht und das Log.
+// Meldungsansicht und das Log. Fürs Log kennzeichnet MarkedMarkdown Namen
+// der Arbeitsbereiche und Caches (#1478), damit sie dort anonym stehen.
 
 interface
 
@@ -41,6 +42,9 @@ type
     class function Age(ASaved, ANow: TDateTime): string; static;
     /// <summary>"LSP · Atlas IDE Expert (pid 4711)".</summary>
     class function ProcessText(const AProcess: TIndexProcessInfo): string; static;
+    /// <summary>Wie ToMarkdown, Arbeitsbereich und Cache gekennzeichnet (Atlas.Text.LogMarks), fürs Log.</summary>
+    class function MarkedMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
+      ANow: TDateTime): string; static;
     class function ToMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
       ANow: TDateTime): string; static;
     class function ToJson(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
@@ -52,7 +56,8 @@ implementation
 uses
   System.Generics.Collections,
   System.DateUtils,
-  System.Classes;
+  System.Classes,
+  Atlas.Text.LogMarks;
 
 { TLspProcessWorkspace }
 
@@ -140,6 +145,12 @@ end;
 
 class function TLspProcesses.ToMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
   ANow: TDateTime): string;
+begin
+  Result := TLogMarks.Plain(MarkedMarkdown(AWorkspaces, AOwnPid, ANow));
+end;
+
+class function TLspProcesses.MarkedMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
+  ANow: TDateTime): string;
 var
   Builder: TStringBuilder;
   Workspace: TLspProcessWorkspace;
@@ -155,8 +166,8 @@ begin
     end;
     for Workspace in AWorkspaces do
     begin
-      Builder.Append(#10).Append('### ').Append(Workspace.Name).Append(#10);
-      Builder.Append('- Index-Cache: ').Append(Workspace.CacheName).Append(#10);
+      Builder.Append(#10).Append('### ').Append(TLogMarks.Name(Workspace.Name)).Append(#10);
+      Builder.Append('- Index-Cache: ').Append(TLogMarks.Path(Workspace.CacheName)).Append(#10);
       if Workspace.Holder(Holder) then
       begin
         Builder.Append('- Sperre: ').Append(ProcessText(Holder)).Append(', schreibt').Append(#10);

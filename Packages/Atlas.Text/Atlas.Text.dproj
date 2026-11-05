@@ -73,6 +73,7 @@
         <DCCReference Include="Source\Lines\Atlas.Text.Lines.pas"/>
         <DCCReference Include="Source\Chars\Atlas.Text.Chars.pas"/>
         <DCCReference Include="Source\Encoding\Atlas.Text.Encoding.pas"/>
+        <DCCReference Include="Source\LogMarks\Atlas.Text.LogMarks.pas"/>
         <DCCReference Include="Source\Anonymize\Atlas.Text.Anonymize.pas"/>
         <DCCReference Include="Source\Uris\Atlas.Text.Uris.pas"/>
         <DCCReference Include="Source\Diff\Atlas.Text.Diff.pas"/>

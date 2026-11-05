@@ -56,7 +56,8 @@ uses
   Atlas.Common.Compiler.CommandLine,
   Atlas.Common.Projects.DprojReader,
   Shell.Platform,
-  Shell.Workspace.Listings;
+  Shell.Workspace.Listings,
+  Atlas.Text.LogMarks;
 
 { TShellWorkspaceJobs }
 
@@ -206,12 +207,12 @@ var
 begin
   try
     FBaseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(AFileName, mFormat));
-    FLogger.Info(Format('Baseline für %s geladen: %d bekannte Treffer', [FName, FBaseline.Count]));
+    FLogger.Info(Format('Baseline für %s geladen: %d bekannte Treffer', [TLogMarks.Name(FName), FBaseline.Count]));
   except
     on E: Exception do
     begin
       FBaseline := nil;
-      FLogger.Error(Format('Baseline %s nicht lesbar: %s', [AFileName, E.Message]));
+      FLogger.Error(Format('Baseline %s nicht lesbar: %s', [TLogMarks.Path(AFileName), TLogMarks.Text(E.Message)]));
     end;
   end;
 end;

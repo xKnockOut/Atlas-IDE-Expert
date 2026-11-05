@@ -59,7 +59,8 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Text.LogMarks;
 
 /// <summary>Fenster des Editorfensters zu AEditorParent (das Formular der IDE, nicht das Hauptfenster); 0 ohne.
 /// </summary>
@@ -135,7 +136,7 @@ begin
   mClass[0] := #0;
   GetClassName(GetAncestor(mRoot, GA_PARENT), mClass, Length(mClass));
   TAtlasGuard.Log(Format('Designer-Ansicht: %s ist sichtbar, liegt aber nicht im Editorfenster (Elternfenster %s)',
-    [ARoot.Name, string(mClass)]));
+    [TLogMarks.Name(ARoot.Name), string(mClass)]));
 end;
 
 class function TAtlasIdeDesignerView.FormEditorShownIn(const AModule: IOTAModule; AWindow: THandle): IOTAFormEditor;

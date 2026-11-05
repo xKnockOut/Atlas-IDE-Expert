@@ -210,6 +210,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **Markierung suchen** mit F3 bzw. Umschalt+F3
 - **Stilles Neuladen** extern geänderter Dateien
 - **Robustheit:** kein Fehler in Atlas erreicht die IDE, Hänger-Wächter mit Protokoll, Stacktraces mit Unit und Zeile für jeden abgefangenen Fehler, Prüfregeln und Editorfunktionen vertragen beliebig tief verschachtelte Ausdrücke ohne Rekursion (eine Unit jenseits des Netzes von 100000 Ebenen bekommt den Hinweis `unit-too-deep`, statt still ihre Befunde zu verlieren), eine wiederholt fehlerhafte Funktion wird einzeln abgeschaltet (mit Benachrichtigung zum Wiedereinschalten), die übrigen laufen weiter, Serverabstürze stehen mit Ursache (Exit-Code, stderr) im Protokoll, und ein Server, der zweimal gleich abstürzt, wird nicht in einer Schleife neu gestartet, abgesicherter Start nach einem Absturz (ein langsamer Start ist keiner: Statt beim nächsten Start Funktionen abzuschalten, nennt Atlas, wie lange es den Start aufgehalten hat und welche seiner Teile am längsten brauchten), eigene Datendateien (Favoriten, Verläufe, Lesezeichen, Notizen …) werden in einem Schritt ersetzt, eine beschädigte liegt danach als `.defekt` daneben statt still überschrieben zu werden, Fehlerbericht zum Anhängen, Tastenkonflikte mit anderen Erweiterungen (GExperts, CnPack, MMX) werden erkannt, jeder Absturz einer Anfrage im Server wird als nachstellbarer Fall gesichert (`%LOCALAPPDATA%\Atlas\crash`: Anfrage, letzte Nachrichten, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, `wiederholen.cmd` für `AtlasServer --replay`; `Tools/New-CrashTest.ps1` macht daraus einen DUnitX-Test), die Meldung nach dem Neustart nennt Methode, Datei, Zeile und Ausnahme mit „Fall öffnen“ und „Issue anlegen“, und als Sicherheitsnetz überspringt der Server eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, sichtbar in Statusleiste und Prüffenster (`server.crashCases`, `server.crashSkip`)
+- **Anonyme Diagnose** (#1478): Protokolle von Plugin und Server, Fehlerbericht, Status, Diagnosepaket und `--timings` nennen Projekte, Units, Pfade, Benutzer und Meldungen nur als `name#N`, `datei#N`, `text#N`; Klarnamen nur nach ausdrücklicher Wahl (`diagnostics.log.names`, „Fehlerbericht anonymisieren“ aus, `--log-names`), im Paket vermerkt. Vor dem Speichern zeigt Atlas jede Datei des Pakets.
 - **Update-Prüfung** nur nach Zustimmung; **Update-Installer** (#1519): „Jetzt aktualisieren“ lädt und prüft das Update im Hintergrund, ein Konsolenfenster spielt es beim Schließen der IDE ein, mit Auswahl der Module, Rückfall und Ergebnis beim nächsten Start (`updates.install`, `updates.channel`, `updates.newModules`); Delphi 12 bekommt es aus dem Quelltext gebaut
 - **Barrierefreiheit:** Listen und Tooltips für UI Automation lesbar
 
@@ -361,7 +362,8 @@ pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die
 
 | Parameter | Bedeutung |
 |---|---|
-| `--log <Datei>` | Logdatei, wird fortgeschrieben |
+| `--log <Datei>` | Logdatei, wird fortgeschrieben; Pfade, Projekt-, Unit- und Benutzernamen sowie Meldungen stehen als Kennungen (`datei#3`, `name#2`, `wert#1`, #1478) |
+| `--log-names` | Logdatei und `--timings` mit echten Pfaden und Namen (nur zur lokalen Fehlersuche) |
 | `--log-level <Stufe>` | `debug`, `info` (Standard), `warning`, `error`; gilt für Logdatei und `window/logMessage` |
 | `--trace <Datei>` | Mitschnitt aller JSON-Nachrichten (`-->` empfangen, `<--` gesendet) |
 

@@ -108,7 +108,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Compiler.IdeCommand;
+  Atlas.Common.Compiler.IdeCommand,
+  Atlas.Text.LogMarks;
 
 { TShellCompilerEditions }
 
@@ -368,7 +369,7 @@ begin
     Detail := '';
     if Report.Error <> '' then
     begin
-      Detail := ': ' + Report.Error;
+      Detail := ': ' + TLogMarks.Text(Report.Error);
     end;
     FLogger.Warning('Build über die IDE misslungen, ohne lesbare Meldungen' + Detail);
   end;
