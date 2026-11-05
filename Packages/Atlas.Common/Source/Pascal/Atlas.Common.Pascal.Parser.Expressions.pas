@@ -85,7 +85,20 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TParserExpressionsText = (Expression);
+
+const
+  cTexts: array[TParserExpressionsText] of TAtlasText = (
+    (De: 'Ausdruck'; En: 'expression'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RelationalOperators: array[0..5] of string = ('=', '<>', '<', '>', '<=', '>=');
@@ -465,7 +478,7 @@ begin
   Result := ParseOperand(mStart);
   if Result = nil then
   begin
-    DiagnoseUnexpected('Ausdruck');
+    DiagnoseUnexpected(cTexts[TParserExpressionsText.Expression].Text);
     Result := StartNode(TSyntaxKind.Error);
     FinishNode(Result, mStart);
     Exit;
@@ -641,5 +654,8 @@ begin
     ParseArguments(Result, ']');
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Parser.Expressions', cTexts);
 
 end.

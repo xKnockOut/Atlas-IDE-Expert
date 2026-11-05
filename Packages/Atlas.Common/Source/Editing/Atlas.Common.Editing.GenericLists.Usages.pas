@@ -61,7 +61,35 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.GenericLists.Kinds,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TUsagesText = (TheUseOfInCannot, UnsupportedUseOfIn, IsPassedOnIn, IsInAWithStatement, IsPassedTo2,
+    HasNoCounterpartInT, HasNoCounterpartInT2, IsReadWithoutACast, TheLoopVariableInIs, TheLoopVariableIsAlso,
+    SomethingIsAssignedToThe);
+
+const
+  cTexts: array[TUsagesText] of TAtlasText = (
+    (De: 'Die Verwendung von %s in %s (%s) ist nicht auflösbar'; En: 'The use of %s in %s (%s) cannot be resolved'),
+    (De: 'Nicht unterstützte Verwendung von %s in %s'; En: 'Unsupported use of %s in %s'),
+    (De: '%s wird in %s weitergegeben'; En: '%s is passed on in %s'),
+    (De: '%s steht in %s in einer with-Anweisung'; En: '%s is in a with statement in %s'),
+    (De: '%s wird in %s an %s übergeben'; En: '%0:s is passed to %2:s in %1:s'),
+    (De: '%s hat in %s<T> kein Gegenstück (%s, %s)'; En: '%s has no counterpart in %s<T> (%s, %s)'),
+    (De: '%s.%s hat in %s<T> kein Gegenstück (%s)'; En: '%s.%s has no counterpart in %s<T> (%s)'),
+    (De: '%s wird in %s ohne Cast gelesen'; En: '%s is read without a cast in %s'),
+    (De: 'Die Schleifenvariable %s in %s ist keine lokale Variable';
+     En: 'The loop variable %s in %s is not a local variable'),
+    (De: 'Die Schleifenvariable %s wird in %s auch anders benutzt';
+     En: 'The loop variable %s is also used differently in %s'),
+    (De: 'Der Schleifenvariable %s wird in %s etwas zugewiesen';
+     En: 'Something is assigned to the loop variable %s in %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericListUsages }
 
@@ -124,7 +152,7 @@ begin
   mMatch := Matches(AFileIndex, ANode);
   if (mMatch = TGenericListMatch.Unknown) and not IsAssumed(AFileIndex, ANode) then
   begin
-    Exit(Fail(Format('Die Verwendung von %s in %s (%s) ist nicht auflösbar', [ANode.Name,
+    Exit(Fail(cTexts[TUsagesText.TheUseOfInCannot].Fmt([ANode.Name,
       ExtractFileName(FFiles[AFileIndex].FileName), LineOf(ANode)])));
   end;
   // Die Kinder einer Verwendung (Self, A in A.FListe) sind keine weiteren Verwendungen.
@@ -225,7 +253,7 @@ end;
 
 procedure TGenericListUsages.FailUse(AUse: TSyntaxNode);
 begin
-  Fail(Format('Nicht unterstützte Verwendung von %s in %s', [FTarget.Name, LineOf(AUse)]));
+  Fail(cTexts[TUsagesText.UnsupportedUseOfIn].Fmt([FTarget.Name, LineOf(AUse)]));
 end;
 
 procedure TGenericListUsages.ClassifyUse(AFileIndex: Integer; AUse: TSyntaxNode);
@@ -245,7 +273,7 @@ begin
       end
       else
       begin
-        Fail(Format('%s wird in %s weitergegeben', [FTarget.Name, LineOf(AUse)]));
+        Fail(cTexts[TUsagesText.IsPassedOnIn].Fmt([FTarget.Name, LineOf(AUse)]));
       end;
     TSyntaxKind.MemberAccess:
       if mParent[0] = AUse then
@@ -268,9 +296,9 @@ begin
         FailUse(AUse);
       end;
     TSyntaxKind.WithStatement:
-      Fail(Format('%s steht in %s in einer with-Anweisung', [FTarget.Name, LineOf(AUse)]));
+      Fail(cTexts[TUsagesText.IsInAWithStatement].Fmt([FTarget.Name, LineOf(AUse)]));
   else
-    Fail(Format('%s wird in %s weitergegeben', [FTarget.Name, LineOf(AUse)]));
+    Fail(cTexts[TUsagesText.IsPassedOnIn].Fmt([FTarget.Name, LineOf(AUse)]));
   end;
 end;
 
@@ -318,7 +346,7 @@ begin
   begin
     Exit;
   end;
-  Fail(Format('%s wird in %s an %s übergeben', [FTarget.Name, LineOf(AUse), FFiles[AFileIndex].NodeText(ACall[0])]));
+  Fail(cTexts[TUsagesText.IsPassedTo2].Fmt([FTarget.Name, LineOf(AUse), FFiles[AFileIndex].NodeText(ACall[0])]));
 end;
 
 function TGenericListUsages.MemberProblem(AMember: TSyntaxNode): string;
@@ -328,12 +356,12 @@ begin
   Result := '';
   if FKind.UnsupportedReason(AMember.Name, mReason) then
   begin
-    Result := Format('%s hat in %s<T> kein Gegenstück (%s, %s)', [mReason, FKind.GenericName, FTarget.Name,
+    Result := cTexts[TUsagesText.HasNoCounterpartInT].Fmt([mReason, FKind.GenericName, FTarget.Name,
       LineOf(AMember)]);
   end
   else if not FKind.IsKnown(AMember.Name) then
   begin
-    Result := Format('%s.%s hat in %s<T> kein Gegenstück (%s)', [FTarget.Name, AMember.Name, FKind.GenericName,
+    Result := cTexts[TUsagesText.HasNoCounterpartInT2].Fmt([FTarget.Name, AMember.Name, FKind.GenericName,
       LineOf(AMember)]);
   end;
 end;
@@ -484,7 +512,7 @@ begin
   if (mOuter.Parent <> nil) and not NoteCastRead(AFileIndex, ARead, mOuter) and
     not IsHarmlessRead(FFiles[AFileIndex], mOuter) then
   begin
-    Fail(Format('%s wird in %s ohne Cast gelesen', [AWhat, LineOf(ARead)]));
+    Fail(cTexts[TUsagesText.IsReadWithoutACast].Fmt([AWhat, LineOf(ARead)]));
   end;
 end;
 
@@ -512,7 +540,7 @@ begin
   end;
   if mDeclaration = nil then
   begin
-    Fail(Format('Die Schleifenvariable %s in %s ist keine lokale Variable', [ALoop.Name, LineOf(ALoop)]));
+    Fail(cTexts[TUsagesText.TheLoopVariableInIs].Fmt([ALoop.Name, LineOf(ALoop)]));
     Exit(nil);
   end;
   RetypeDeclaration(ASource, mDeclaration, ALoop.Name, cItemPlaceholder, False);
@@ -536,13 +564,13 @@ begin
   if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and (ANode <> ALoop) and
     SameText(ANode.Name, ALoop.Name) then
   begin
-    Exit(Fail(Format('Die Schleifenvariable %s wird in %s auch anders benutzt', [ALoop.Name, LineOf(ANode)])));
+    Exit(Fail(cTexts[TUsagesText.TheLoopVariableIsAlso].Fmt([ALoop.Name, LineOf(ANode)])));
   end;
   if TGenericListSyntax.IsIdentifierNamed(ANode, ALoop.Name) then
   begin
     if TGenericListSyntax.IsAssignTarget(TGenericListSyntax.Unparen(ANode)) then
     begin
-      Exit(Fail(Format('Der Schleifenvariable %s wird in %s etwas zugewiesen', [ALoop.Name, LineOf(ANode)])));
+      Exit(Fail(cTexts[TUsagesText.SomethingIsAssignedToThe].Fmt([ALoop.Name, LineOf(ANode)])));
     end;
     ClassifyRead(AFileIndex, ANode, ALoop.Name);
   end;
@@ -625,5 +653,8 @@ begin
   mElement.TypeName := ElementTypeOf(FFiles[AFileIndex], AArgument);
   FElements := FElements + [mElement];
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Usages', cTexts);
 
 end.

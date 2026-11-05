@@ -126,7 +126,20 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TAccessChainsText = (FieldsTextDocumentUriAndLine);
+
+const
+  cTexts: array[TAccessChainsText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "line" fehlen in '; En: 'Fields "textDocument.uri" and "line" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   ChainKinds = [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.Call];
@@ -1263,7 +1276,7 @@ begin
     TJSONObject(AParams).TryGetValue<Integer>('line', mLine)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "line" fehlen in ' + Method);
+      cTexts[TAccessChainsText.FieldsTextDocumentUriAndLine].Text + Method);
   end;
   mSource := Default(TAccessChainSource);
   if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', mSource.PointerSize) then
@@ -1291,5 +1304,8 @@ begin
     mSource.Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.AccessChains', cTexts);
 
 end.

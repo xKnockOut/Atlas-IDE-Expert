@@ -68,7 +68,24 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingTestUnitsText = (IsGenericCreateTheObject, TestForStillMissing, NeedsArgumentsInTheConstructor);
+
+const
+  cTexts: array[TEditingTestUnitsText] of TAtlasText = (
+    (De: '  // %s ist generisch: Objekt mit konkreten Typargumenten im Test anlegen.';
+     En: '  // %s is generic: create the object with concrete type arguments in the test.'),
+    (De: 'Test für %s fehlt noch'; En: 'Test for %s still missing'),
+    (De: '  // %s braucht Argumente im Konstruktor: FSubject hier anlegen.';
+     En: '  // %s needs arguments in the constructor: create FSubject here.'));
+
+{$SCOPEDENUMS OFF}
 
 function PatternOrDefault(const APattern: string): string;
 begin
@@ -406,11 +423,11 @@ begin
   end
   else if HasSubject then
   begin
-    Line('  // ' + ClassName + ' braucht Argumente im Konstruktor: FSubject hier anlegen.');
+    Line(cTexts[TEditingTestUnitsText.NeedsArgumentsInTheConstructor].Fmt([ClassName]));
   end
   else if Generic then
   begin
-    Line('  // ' + ClassName + ' ist generisch: Objekt mit konkreten Typargumenten im Test anlegen.');
+    Line(cTexts[TEditingTestUnitsText.IsGenericCreateTheObject].Fmt([ClassName]));
   end;
   Line('end;');
   Line('');
@@ -437,7 +454,7 @@ begin
     Line('');
     Line('procedure ' + Fixture + '.' + mMethod.Name + ';');
     Line('begin');
-    Line('  Assert.Fail(' + QuotedStr('Test für ' + mMethod.Target + ' fehlt noch') + ');');
+    Line('  Assert.Fail(' + QuotedStr(cTexts[TEditingTestUnitsText.TestForStillMissing].Fmt([mMethod.Target])) + ');');
     Line('end;');
   end;
 end;
@@ -558,5 +575,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.TestUnits', cTexts);
 
 end.

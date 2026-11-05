@@ -75,7 +75,21 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExitPointsText = (URIAndPositionExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TExitPointsText] of TAtlasText = (
+    (De: 'Erwartet werden URI und Position'; En: 'URI and position expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 const
   KindNames: array[TExitPointKind] of string = ('exit', 'raise', 'halt', 'call', 'end', 'result', 'source',
@@ -226,12 +240,12 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExitPointsText.URIAndPositionExpected].Text);
   end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExitPointsText.DocumentIsNotOpen].Text + Uri);
   end;
   Options := TExitPointOptions.Default;
   if Assigned(AReaders.SettingsFor) then
@@ -269,5 +283,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExitPoints', cTexts);
 
 end.

@@ -144,7 +144,23 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Lsp.Reassigned;
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THoverText = (FieldsTextDocumentUriAndPosition, ParameterNotFoundIn, FieldNotFoundIn);
+
+const
+  cTexts: array[THoverText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '),
+    (De: 'Parameter nicht gefunden in %s'; En: 'Parameter not found in %s'),
+    (De: 'Feld nicht gefunden in %s'; En: 'Field not found in %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cSectionBreak = #10#10'---'#10#10;
@@ -191,7 +207,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + TLspHover.Method);
+      cTexts[THoverText.FieldsTextDocumentUriAndPosition].Text + TLspHover.Method);
   end;
   APosition := TLspPositions.ReadPosition(mPosition);
 end;
@@ -314,11 +330,11 @@ begin
   end;
   if mCall.Kind = TDataNameKind.Param then
   begin
-    AHint := Format('Parameter nicht gefunden in %s', [mCall.DisplayName]);
+    AHint := cTexts[THoverText.ParameterNotFoundIn].Fmt([mCall.DisplayName]);
   end
   else
   begin
-    AHint := Format('Feld nicht gefunden in %s', [mCall.DisplayName]);
+    AHint := cTexts[THoverText.FieldNotFoundIn].Fmt([mCall.DisplayName]);
   end;
   Result := True;
 end;
@@ -511,5 +527,8 @@ begin
     mOwnTree.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Hover', cTexts);
 
 end.

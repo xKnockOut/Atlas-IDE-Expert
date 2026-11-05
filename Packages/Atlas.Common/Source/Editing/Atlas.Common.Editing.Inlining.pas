@@ -88,7 +88,52 @@ uses
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Editing.Inlining.Syntax,
-  Atlas.Common.Editing.Inlining.Method;
+  Atlas.Common.Editing.Inlining.Method,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInliningText = (NoSyntaxTree, NoIdentifier, NotInARoutine, IsNotALocalVariable, SeveralNamesInOneDeclaration,
+    IsUsedInANested, IsALoopVariable, IsUsedInAnAnonymous, IsChanged, IsAssignedMoreThanOnce, GetsNoValue,
+    IsNeverRead, TheAssignmentIsNotIn, TheAssignmentIsInA, TheExpressionContains, TheExpressionHasSideEffects,
+    AsmOrSyntaxErrorIn, AssignmentNotInTheFlow, ReadNotInTheFlow, AtOnePlaceADifferent, IsNotVisibleAtOne,
+    ChangesBeforeOnePlace, InBetweenTheValueOf, TheExpressionHasSideEffects2, OnlyLocalVariables, IsInAWithBody);
+
+const
+  cTexts: array[TInliningText] of TAtlasText = (
+    (De: 'kein Syntaxbaum'; En: 'no syntax tree'),
+    (De: 'kein Bezeichner'; En: 'no identifier'),
+    (De: 'nicht in einer Routine'; En: 'not in a routine'),
+    (De: ' ist keine lokale Variable'; En: ' is not a local variable'),
+    (De: 'mehrere Namen in einer Deklaration'; En: 'several names in one declaration'),
+    (De: ' wird in einer verschachtelten Routine verwendet'; En: ' is used in a nested routine'),
+    (De: ' ist Laufvariable'; En: ' is a loop variable'),
+    (De: ' wird in einer anonymen Methode verwendet'; En: ' is used in an anonymous method'),
+    (De: ' wird verändert'; En: ' is changed'),
+    (De: ' wird mehrfach zugewiesen'; En: ' is assigned more than once'),
+    (De: ' bekommt keinen Wert'; En: ' gets no value'),
+    (De: ' wird nie gelesen'; En: ' is never read'),
+    (De: 'die Zuweisung steht nicht in einer Anweisungsliste'; En: 'the assignment is not in a statement list'),
+    (De: 'die Zuweisung steht in einem with-Rumpf'; En: 'the assignment is in a with body'),
+    (De: 'der Ausdruck enthält '; En: 'the expression contains '),
+    (De: 'der Ausdruck hat Seiteneffekte und wird mehrfach gelesen';
+     En: 'the expression has side effects and is read more than once'),
+    (De: 'asm oder Syntaxfehler in der Routine'; En: 'asm or syntax error in the routine'),
+    (De: 'Zuweisung nicht im Ablauf'; En: 'assignment not in the flow'),
+    (De: 'Lesen nicht im Ablauf'; En: 'read not in the flow'),
+    (De: 'an einer Stelle kommt ein anderer Wert von %s an'; En: 'at one place a different value of %s arrives'),
+    (De: ' ist an einer Stelle nicht sichtbar'; En: ' is not visible at one place'),
+    (De: ' ändert sich vor einer Stelle'; En: ' changes before one place'),
+    (De: 'dazwischen kann sich der Wert des Ausdrucks ändern';
+     En: 'in between the value of the expression may change'),
+    (De: 'der Ausdruck hat Seiteneffekte; die Reihenfolge änderte sich';
+     En: 'the expression has side effects; the order would change'),
+    (De: 'nur lokale Variablen'; En: 'only local variables'),
+    (De: ' steht in einem with-Rumpf'; En: ' is in a with body'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TLocal = TRoutineLocal;
@@ -440,20 +485,20 @@ begin
   Tree := Source.Tree;
   if (Tree = nil) or (Tree.Root = nil) then
   begin
-    Exit('kein Syntaxbaum');
+    Exit(cTexts[TInliningText.NoSyntaxTree].Text);
   end;
   Tokens := Tree.Tokens;
   mToken := TInlineSyntax.TokenContaining(Tokens, TLineTable.Build(Source.Text).OffsetAt(APosition));
   if mToken < 0 then
   begin
-    Exit('kein Bezeichner');
+    Exit(cTexts[TInliningText.NoIdentifier].Text);
   end;
   Name := Tokens[mToken].Text;
   Offset := Tokens[mToken].Offset;
   Routine := TInlineSyntax.RoutineContaining(Tree.Root, Offset);
   if Routine = nil then
   begin
-    Result := 'nicht in einer Routine';
+    Result := cTexts[TInliningText.NotInARoutine].Text;
   end;
 end;
 
@@ -472,7 +517,7 @@ begin
   end;
   if LocalIndex < 0 then
   begin
-    Result := Name + ' ist keine lokale Variable';
+    Result := Name + cTexts[TInliningText.IsNotALocalVariable].Text;
   end
   else
   begin
@@ -501,7 +546,7 @@ begin
   Result := '';
   if not (Local.Kind in [TLocalKind.Variable, TLocalKind.InlineVariable]) then
   begin
-    Result := 'nur lokale Variablen';
+    Result := cTexts[TInliningText.OnlyLocalVariables].Text;
   end
   else if Local.Decl.Kind = TSyntaxKind.InlineConst then
   begin
@@ -509,14 +554,14 @@ begin
   end
   else if (Local.Kind = TLocalKind.InlineVariable) and (Pos(',', Local.Decl.Name) > 0) then
   begin
-    Result := 'mehrere Namen in einer Deklaration';
+    Result := cTexts[TInliningText.SeveralNamesInOneDeclaration].Text;
   end
   else
   begin
     Name := Local.Name;
     if (Local.Kind = TLocalKind.Variable) and UsedInNested then
     begin
-      Result := Name + ' wird in einer verschachtelten Routine verwendet';
+      Result := Name + cTexts[TInliningText.IsUsedInANested].Text;
     end;
   end;
 end;
@@ -575,7 +620,7 @@ begin
       if SameText(mNode.Name, Name) and not TRoutineLocals.IsInlineFor(Tokens, mNode) and
         (TRoutineLocals.IndexOf(Locals, mNode.Name, mNode.StartOffset) = LocalIndex) then
       begin
-        Result := Name + ' ist Laufvariable';
+        Result := Name + cTexts[TInliningText.IsALoopVariable].Text;
       end;
     end;
   finally
@@ -611,11 +656,11 @@ begin
   Result := '';
   if TInlineSyntax.Inside(ANode, TSyntaxKind.AnonymousMethod, Body) then
   begin
-    Result := Name + ' wird in einer anonymen Methode verwendet';
+    Result := Name + cTexts[TInliningText.IsUsedInAnAnonymous].Text;
   end
   else if TInlineSyntax.Inside(ANode, TSyntaxKind.WithStatement, Body) then
   begin
-    Result := Name + ' steht in einem with-Rumpf';
+    Result := Name + cTexts[TInliningText.IsInAWithBody].Text;
   end
   else
   begin
@@ -625,7 +670,7 @@ begin
       TLocalAccess.Write:
         Result := NoteDefinition(ANode);
     else
-      Result := Name + ' wird verändert';
+      Result := Name + cTexts[TInliningText.IsChanged].Text;
     end;
   end;
 end;
@@ -635,7 +680,7 @@ begin
   Result := '';
   if Definition <> nil then
   begin
-    Result := Name + ' wird mehrfach zugewiesen';
+    Result := Name + cTexts[TInliningText.IsAssignedMoreThanOnce].Text;
   end
   else
   begin
@@ -649,23 +694,23 @@ begin
   Result := '';
   if Definition = nil then
   begin
-    Result := Name + ' bekommt keinen Wert';
+    Result := Name + cTexts[TInliningText.GetsNoValue].Text;
   end
   else if Reads = nil then
   begin
-    Result := Name + ' wird nie gelesen';
+    Result := Name + cTexts[TInliningText.IsNeverRead].Text;
   end
   else if not TRoutineBody.InList(Definition) then
   begin
-    Result := 'die Zuweisung steht nicht in einer Anweisungsliste';
+    Result := cTexts[TInliningText.TheAssignmentIsNotIn].Text;
   end
   else if TInlineSyntax.Inside(Definition, TSyntaxKind.WithStatement, Body) then
   begin
-    Result := 'die Zuweisung steht in einem with-Rumpf';
+    Result := cTexts[TInliningText.TheAssignmentIsInA].Text;
   end
   else if TInlineSyntax.UsesName(Expression, Name) then
   begin
-    Result := 'der Ausdruck enthält ' + Name;
+    Result := cTexts[TInliningText.TheExpressionContains].Text + Name;
   end;
 end;
 
@@ -686,7 +731,7 @@ begin
   end;
   if SideEffects and (Length(Reads) > 1) then
   begin
-    Result := 'der Ausdruck hat Seiteneffekte und wird mehrfach gelesen';
+    Result := cTexts[TInliningText.TheExpressionHasSideEffects].Text;
   end;
 end;
 
@@ -725,12 +770,12 @@ begin
   try
     if not mGraph.Complete then
     begin
-      Exit('asm oder Syntaxfehler in der Routine');
+      Exit(cTexts[TInliningText.AsmOrSyntaxErrorIn].Text);
     end;
     mDefinition := mGraph.NodeOf(Definition);
     if mDefinition = nil then
     begin
-      Exit('Zuweisung nicht im Ablauf');
+      Exit(cTexts[TInliningText.AssignmentNotInTheFlow].Text);
     end;
     Result := '';
     mIndex := 0;
@@ -751,11 +796,11 @@ begin
   mRead := FlowNodeAt(AGraph, ARead);
   if mRead = nil then
   begin
-    Exit('Lesen nicht im Ablauf');
+    Exit(cTexts[TInliningText.ReadNotInTheFlow].Text);
   end;
   if not SingleReaching(AGraph.ReachingDefinitions(mRead, Name), ADefinition) then
   begin
-    Exit('an einer Stelle kommt ein anderer Wert von ' + Name + ' an');
+    Exit(cTexts[TInliningText.AtOnePlaceADifferent].Fmt([Name]));
   end;
   Result := NamesIssue(AGraph, ADefinition, mRead, ARead);
   if Result = '' then
@@ -781,13 +826,13 @@ begin
     end;
     if TRoutineLocals.IndexOf(Locals, mNode.Name, AReadNode.StartOffset) <> mIndex then
     begin
-      Result := mNode.Name + ' ist an einer Stelle nicht sichtbar';
+      Result := mNode.Name + cTexts[TInliningText.IsNotVisibleAtOne].Text;
     end
     else if (Locals[mIndex].Kind <> TLocalKind.Constant) and
       not SameReaching(AGraph.ReachingDefinitions(ADefinition, mNode.Name),
       AGraph.ReachingDefinitions(ARead, mNode.Name)) then
     begin
-      Result := mNode.Name + ' ändert sich vor einer Stelle';
+      Result := mNode.Name + cTexts[TInliningText.ChangesBeforeOnePlace].Text;
     end;
   end;
 end;
@@ -798,12 +843,12 @@ begin
   if (Volatile or SideEffects) and (TInlineSyntax.InLoopWithout(ARead, Definition, Body) or
     ChangesBetween(Body, Locals, Definition.EndOffset, ARead.StartOffset, Source, Options.Lookup)) then
   begin
-    Result := 'dazwischen kann sich der Wert des Ausdrucks ändern';
+    Result := cTexts[TInliningText.InBetweenTheValueOf].Text;
   end
   else if SideEffects and (not EvaluatedOnce(ARead) or ReadsBetween(Body, Definition.EndOffset,
     ARead.StartOffset)) then
   begin
-    Result := 'der Ausdruck hat Seiteneffekte; die Reihenfolge änderte sich';
+    Result := cTexts[TInliningText.TheExpressionHasSideEffects2].Text;
   end;
 end;
 
@@ -880,5 +925,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Inlining', cTexts);
 
 end.

@@ -140,7 +140,22 @@ uses
   Atlas.Common.Editing.AssignmentSwap,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.FreeFields,
-  Atlas.Common.Lsp.InactiveRegions;
+  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspCodeActionsText = (FieldsTextDocumentUriAndRange, CopyFindingAsPrompt, SortClassMembers);
+
+const
+  cTexts: array[TLspCodeActionsText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "range" fehlen in '; En: 'Fields "textDocument.uri" and "range" missing in '),
+    (De: 'Befund %s als Prompt kopieren'; En: 'Copy finding %s as prompt'),
+    (De: 'Klassenmitglieder ordnen'; En: 'Sort class members'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspCodeActions }
 
@@ -565,7 +580,7 @@ begin
       (mFinding.Range.EndPos.Line >= FRange.StartPos.Line) then
     begin
       mAction := Default(TCodeAction);
-      mAction.Title := Format('Befund %s als Prompt kopieren', [mFinding.RuleId]);
+      mAction.Title := cTexts[TLspCodeActionsText.CopyFindingAsPrompt].Fmt([mFinding.RuleId]);
       mAction.Kind := QuickFixKind;
       mAction.Command := CopyTextCommand;
       mAction.CommandArguments := [TFindingPrompt.Markdown(mFinding, TDocumentUris.ToPath(FUri), FText,
@@ -618,7 +633,7 @@ begin
   if TMemberOrder.Sort(FText, FTree, FRange.StartPos.Line, mSettings, mEdit) then
   begin
     mAction := Default(TCodeAction);
-    mAction.Title := 'Klassenmitglieder ordnen';
+    mAction.Title := cTexts[TLspCodeActionsText.SortClassMembers].Text;
     mAction.Kind := RewriteKind;
     mAction.Edits := [mEdit];
     Add(mAction);
@@ -772,7 +787,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "range" fehlen in ' + Method);
+      cTexts[TLspCodeActionsText.FieldsTextDocumentUriAndRange].Text + Method);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -791,5 +806,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CodeActions', cTexts);
 
 end.

@@ -98,7 +98,41 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormatCheckText = (SpaceBeforeMissing, SpaceAfterMissing, TooManySpacesAfter, SpaceAfterCommaMissing,
+    TooManySpacesAfterComma, IndentationInsteadOf, IndentationWithTabInsteadOf, IndentationWithSpacesInsteadOf,
+    IndentationOfTabsAndSpaces, LineBreakAtEndOf, TooManySpacesBefore, SpaceAtEndOfLine, LineBreakLinesInsteadOf,
+    AlignmentBefore, LineBreak, Spelling, Mixed, None, LineEndingsInsteadOf);
+
+const
+  cTexts: array[TFormatCheckText] of TAtlasText = (
+    (De: 'Leerzeichen vor := fehlt'; En: 'Space before := missing'),
+    (De: 'Leerzeichen nach := fehlt'; En: 'Space after := missing'),
+    (De: 'Zu viele Leerzeichen nach :='; En: 'Too many spaces after :='),
+    (De: 'Leerzeichen nach Komma fehlt'; En: 'Space after comma missing'),
+    (De: 'Zu viele Leerzeichen nach Komma'; En: 'Too many spaces after comma'),
+    (De: 'Einrückung %d statt %d'; En: 'Indentation %d instead of %d'),
+    (De: 'Einrückung mit Tabulator statt Leerzeichen'; En: 'Indentation with tab instead of spaces'),
+    (De: 'Einrückung mit Leerzeichen statt Tabulator'; En: 'Indentation with spaces instead of tab'),
+    (De: 'Einrückung aus Tabulatoren und Leerzeichen'; En: 'Indentation of tabs and spaces'),
+    (De: 'Zeilenumbruch am Dateiende fehlt'; En: 'Line break at end of file missing'),
+    (De: 'Zu viele Leerzeichen vor :='; En: 'Too many spaces before :='),
+    (De: 'Leerzeichen am Zeilenende'; En: 'Space at end of line'),
+    (De: 'Zeilenumbruch: %d Zeilen statt %d'; En: 'Line break: %d lines instead of %d'),
+    (De: 'Ausrichtung vor „%s“'; En: 'Alignment before “%s”'),
+    (De: 'Zeilenumbruch'; En: 'Line break'),
+    (De: 'Schreibweise `%s`'; En: 'Spelling `%s`'),
+    (De: 'gemischt'; En: 'mixed'),
+    (De: 'keine'; En: 'none'),
+    (De: 'Zeilenenden %s statt %s'; En: 'Line endings %s instead of %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TFormatLineSpan }
 
@@ -286,11 +320,11 @@ begin
   begin
     if AOldGap = 0 then
     begin
-      mWhat := 'Leerzeichen vor := fehlt';
+      mWhat := cTexts[TFormatCheckText.SpaceBeforeMissing].Text;
     end
     else
     begin
-      mWhat := 'Zu viele Leerzeichen vor :=';
+      mWhat := cTexts[TFormatCheckText.TooManySpacesBefore].Text;
     end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
   end
@@ -298,11 +332,11 @@ begin
   begin
     if AOldGap = 0 then
     begin
-      mWhat := 'Leerzeichen nach := fehlt';
+      mWhat := cTexts[TFormatCheckText.SpaceAfterMissing].Text;
     end
     else
     begin
-      mWhat := 'Zu viele Leerzeichen nach :=';
+      mWhat := cTexts[TFormatCheckText.TooManySpacesAfter].Text;
     end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceAssignment, mWhat);
   end
@@ -310,18 +344,17 @@ begin
   begin
     if AOldGap = 0 then
     begin
-      mWhat := 'Leerzeichen nach Komma fehlt';
+      mWhat := cTexts[TFormatCheckText.SpaceAfterCommaMissing].Text;
     end
     else
     begin
-      mWhat := 'Zu viele Leerzeichen nach Komma';
+      mWhat := cTexts[TFormatCheckText.TooManySpacesAfterComma].Text;
     end;
     AddOnce(AList, ALine, TFormatDeviationKind.SpaceComma, mWhat);
   end
   else
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.Alignment, Format('Ausrichtung vor „%s“',
-      [AToken.Text]));
+    AddOnce(AList, ALine, TFormatDeviationKind.Alignment, cTexts[TFormatCheckText.AlignmentBefore].Fmt([AToken.Text]));
   end;
 end;
 
@@ -352,19 +385,21 @@ procedure DescribeIndent(var AList: TArray<TFormatDeviation>; ALine: Integer; co
 begin
   if AOld.Width <> ANew.Width then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.Indent, Format('Einrückung %d statt %d', [AOld.Width, ANew.Width]));
+    AddOnce(AList, ALine, TFormatDeviationKind.Indent, cTexts[TFormatCheckText.IndentationInsteadOf].Fmt([AOld.Width,
+      ANew.Width]));
   end
   else if AOld.HasTab and not ANew.HasTab then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Tabulator statt Leerzeichen');
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, cTexts[TFormatCheckText.IndentationWithTabInsteadOf].Text);
   end
   else if ANew.HasTab and not AOld.HasTab then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung mit Leerzeichen statt Tabulator');
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars,
+      cTexts[TFormatCheckText.IndentationWithSpacesInsteadOf].Text);
   end
   else if AOld.Chars <> ANew.Chars then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, 'Einrückung aus Tabulatoren und Leerzeichen');
+    AddOnce(AList, ALine, TFormatDeviationKind.IndentChars, cTexts[TFormatCheckText.IndentationOfTabsAndSpaces].Text);
   end;
 end;
 
@@ -399,15 +434,15 @@ begin
   mNewTokens := TPascalLexer.Tokenize(ANewRest);
   if not SameTokenTexts(mOldTokens, mNewTokens) then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.LineBreaks, 'Zeilenumbruch');
+    AddOnce(AList, ALine, TFormatDeviationKind.LineBreaks, cTexts[TFormatCheckText.LineBreak].Text);
     Exit;
   end;
   for mIndex := 0 to High(mOldTokens) do
   begin
     if mOldTokens[mIndex].Text <> mNewTokens[mIndex].Text then
     begin
-      AddOnce(AList, ALine, TFormatDeviationKind.KeywordCase, Format('Schreibweise `%s`',
-        [mOldTokens[mIndex].Text]));
+      AddOnce(AList, ALine, TFormatDeviationKind.KeywordCase, cTexts[TFormatCheckText.Spelling].Fmt([
+        mOldTokens[mIndex].Text]));
     end;
     if (mIndex > 0) and (GapBefore(mOldTokens, mIndex) <> GapBefore(mNewTokens, mIndex)) then
     begin
@@ -430,7 +465,7 @@ begin
   end;
   if (TrimRight(AOld) <> AOld) and (TrimRight(ANew) = ANew) then
   begin
-    AddOnce(AList, ALine, TFormatDeviationKind.TrailingWhitespace, 'Leerzeichen am Zeilenende');
+    AddOnce(AList, ALine, TFormatDeviationKind.TrailingWhitespace, cTexts[TFormatCheckText.SpaceAtEndOfLine].Text);
     mOld.Rest := TrimRight(mOld.Rest);
   end;
   if mOld.Rest <> mNew.Rest then
@@ -449,9 +484,9 @@ begin
     TTextLineBreak.CR:
       Result := 'CR';
     TTextLineBreak.Mixed:
-      Result := 'gemischt';
+      Result := cTexts[TFormatCheckText.Mixed].Text;
   else
-    Result := 'keine';
+    Result := cTexts[TFormatCheckText.None].Text;
   end;
 end;
 
@@ -464,8 +499,8 @@ begin
   mNewKind := TTextLines.KindOf(ANew);
   if (mOldKind <> mNewKind) and (mOldKind <> TTextLineBreak.None) and (mNewKind <> TTextLineBreak.None) then
   begin
-    AddOnce(AList, 0, TFormatDeviationKind.EndOfLine, Format('Zeilenenden %s statt %s',
-      [LineBreakName(mOldKind), LineBreakName(mNewKind)]));
+    AddOnce(AList, 0, TFormatDeviationKind.EndOfLine, cTexts[TFormatCheckText.LineEndingsInsteadOf].Fmt([
+      LineBreakName(mOldKind), LineBreakName(mNewKind)]));
   end;
 end;
 
@@ -497,12 +532,13 @@ begin
   end
   else if OnlyEmptyAppended(AHunk, AOld, ANew) then
   begin
-    AddOnce(AList, Max(Length(AOld) - 1, 0), TFormatDeviationKind.FinalNewline, 'Zeilenumbruch am Dateiende fehlt');
+    AddOnce(AList, Max(Length(AOld) - 1, 0), TFormatDeviationKind.FinalNewline,
+      cTexts[TFormatCheckText.LineBreakAtEndOf].Text);
   end
   else
   begin
     AddOnce(AList, Min(AHunk.OldStart, Max(Length(AOld) - 1, 0)), TFormatDeviationKind.LineBreaks,
-      Format('Zeilenumbruch: %d Zeilen statt %d', [AHunk.OldCount, AHunk.NewCount]));
+      cTexts[TFormatCheckText.LineBreakLinesInsteadOf].Fmt([AHunk.OldCount, AHunk.NewCount]));
   end;
 end;
 
@@ -609,5 +645,8 @@ begin
     Result := 'finalNewline';
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.FormatCheck', cTexts);
 
 end.

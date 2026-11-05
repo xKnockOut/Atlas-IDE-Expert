@@ -33,7 +33,20 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TShutdownLeaksText = (MemoryLeftAtShutdownBytes);
+
+const
+  cTexts: array[TShutdownLeaksText] of TAtlasText = (
+    (De: 'Speicherrest beim Beenden: %d Bytes'; En: 'Memory left at shutdown: %d bytes'));
+
+{$SCOPEDENUMS OFF}
 
 const
   MaxLogFileLength = 1023;
@@ -72,7 +85,7 @@ end;
 
 class function TShutdownLeaks.Describe(ABytes: Int64): string;
 begin
-  Result := Format('Speicherrest beim Beenden: %d Bytes', [ABytes]);
+  Result := cTexts[TShutdownLeaksText.MemoryLeftAtShutdownBytes].Fmt([ABytes]);
 end;
 
 class procedure TShutdownLeaks.SetLogFile(const AFileName: string);
@@ -161,6 +174,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.ShutdownLeaks', cTexts);
   Prewarm;
   Baseline := TShutdownLeaks.AllocatedBytes;
 

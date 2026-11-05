@@ -41,6 +41,24 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLineTransportText = (MessageExceedsTheMaximumLength, MessageIsNotValidJSON, MessageIsNotAJSON, InputClosed);
+
+const
+  cTexts: array[TLineTransportText] of TAtlasText = (
+    (De: 'Nachricht überschreitet die Höchstlänge'; En: 'Message exceeds the maximum length'),
+    (De: 'Nachricht ist kein gültiges JSON'; En: 'Message is not valid JSON'),
+    (De: 'Nachricht ist kein JSON-Objekt'; En: 'Message is not a JSON object'),
+    (De: 'Eingabe geschlossen'; En: 'Input closed'));
+
+{$SCOPEDENUMS OFF}
+
 { TJsonRpcLineTransport }
 
 constructor TJsonRpcLineTransport.Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
@@ -107,7 +125,7 @@ begin
       begin
         if mLine.Size >= MaxLineLength then
         begin
-          raise EJsonRpcTransportError.Create('Nachricht überschreitet die Höchstlänge');
+          raise EJsonRpcTransportError.Create(cTexts[TLineTransportText.MessageExceedsTheMaximumLength].Text);
         end;
         mLine.WriteBuffer(mValue, 1);
       end;
@@ -129,17 +147,17 @@ var
 begin
   if not ReadLine(Line) then
   begin
-    raise EJsonRpcTransportClosed.Create('Eingabe geschlossen');
+    raise EJsonRpcTransportClosed.Create(cTexts[TLineTransportText.InputClosed].Text);
   end;
   Value := TJSONObject.ParseJSONValue(Line, 0, True);
   if Value = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Nachricht ist kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TLineTransportText.MessageIsNotValidJSON].Text);
   end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Nachricht ist kein JSON-Objekt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, cTexts[TLineTransportText.MessageIsNotAJSON].Text);
   end;
   Result := TJSONObject(Value);
 end;
@@ -157,5 +175,8 @@ begin
     FWriteLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.LineTransport', cTexts);
 
 end.

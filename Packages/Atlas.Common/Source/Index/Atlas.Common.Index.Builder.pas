@@ -209,7 +209,23 @@ implementation
 
 uses
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBuilderText = (SymbolIndex, SearchPaths, LibraryText, UnitsSymbols);
+
+const
+  cTexts: array[TBuilderText] of TAtlasText = (
+    (De: 'Symbolindex'; En: 'Symbol index'),
+    (De: 'Suchpfade: '; En: 'Search paths: '),
+    (De: 'Bibliothek: '; En: 'Library: '),
+    (De: '%d Units, %d Symbole'; En: '%d units, %d symbols'));
+
+{$SCOPEDENUMS OFF}
 
 function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
 begin
@@ -865,7 +881,7 @@ begin
   end;
   if Assigned(AProgress) then
   begin
-    AProgress(TIndexProgressKind.Started, 'Symbolindex', 0);
+    AProgress(TIndexProgressKind.Started, cTexts[TBuilderText.SymbolIndex].Text, 0);
   end;
   try
     // Units der Suchpfade gehören zum Projekt, auch wenn keine sie einbindet.
@@ -873,17 +889,19 @@ begin
     begin
       FOnProjectDone(Result);
     end;
-    if not Result.Cancelled and RunStage(TIndexStage.SearchPaths, ASearchFiles, 'Suchpfade: ', Length(AFiles),
+    if not Result.Cancelled and RunStage(TIndexStage.SearchPaths, ASearchFiles, cTexts[TBuilderText.SearchPaths].Text,
+      Length(AFiles),
       Result, mRun) then
     begin
-      RunStage(TIndexStage.Library_, ALibraryFiles, 'Bibliothek: ', Length(AFiles) + Length(ASearchFiles), Result,
+      RunStage(TIndexStage.Library_, ALibraryFiles, cTexts[TBuilderText.LibraryText].Text, Length(AFiles) +
+        Length(ASearchFiles), Result,
         mRun);
     end;
   finally
     if Assigned(AProgress) then
     begin
       AProgress(TIndexProgressKind.Finished,
-        Format('%d Units, %d Symbole', [FIndex.UnitCount, FIndex.SymbolCount]), 100);
+        cTexts[TBuilderText.UnitsSymbols].Fmt([FIndex.UnitCount, FIndex.SymbolCount]), 100);
     end;
   end;
 end;
@@ -986,5 +1004,8 @@ begin
     Inc(Result, ApplyChange(mChange, mIgnored));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Index.Builder', cTexts);
 
 end.

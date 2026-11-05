@@ -37,7 +37,20 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSuggestConstText = (DeclareAsConstantConst);
+
+const
+  cTexts: array[TSuggestConstText] of TAtlasText = (
+    (De: 'Als Konstante deklarieren (const %s)'; En: 'Declare as constant (const %s)'));
+
+{$SCOPEDENUMS OFF}
 
 function InlineAction(ATree: TSyntaxTree; const ASymbol: TReassignedSymbol; out AAction: TCodeAction): Boolean;
 var
@@ -66,7 +79,7 @@ begin
     Exit;
   end;
   AAction := Default(TCodeAction);
-  AAction.Title := Format('Als Konstante deklarieren (const %s)', [ASymbol.Name]);
+  AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(Tokens[Keyword].StartPos, Tokens[Keyword].EndPos), 'const'),
     TTextEdit.Create(TTextRange.Create(Tokens[Assign].StartPos, Tokens[Assign].EndPos), '=')];
@@ -160,7 +173,7 @@ begin
     Format('const %s: %s =', [ASymbol.Name, TypeText]))];
   TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], Edits);
   AAction := Default(TCodeAction);
-  AAction.Title := Format('Als Konstante deklarieren (const %s)', [ASymbol.Name]);
+  AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := Edits;
   Result := True;
@@ -187,5 +200,8 @@ begin
     Result := SectionAction(AText, ATree, Symbol, AAction);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.SuggestConst', cTexts);
 
 end.

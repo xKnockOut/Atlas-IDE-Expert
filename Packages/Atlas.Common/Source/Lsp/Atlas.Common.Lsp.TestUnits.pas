@@ -110,7 +110,31 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
+    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines);
+
+const
+  cTexts: array[TLspTestUnitsText] of TAtlasText = (
+    (De: 'Unit %s nicht gefunden'; En: 'Unit %s not found'),
+    (De: 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); „testUnits.project“ in atlas.json ' +
+      'festlegen';
+     En: 'No test project found (DUnitX or DUnit in the workspace); set “testUnits.project” in atlas.json'),
+    (De: 'Zur Unit %s wechseln'; En: 'Switch to unit %s'),
+    (De: 'Zur Testunit %s wechseln'; En: 'Switch to test unit %s'),
+    (De: 'DUnitX-Testunit für %s anlegen'; En: 'Create a DUnitX test unit for %s'),
+    (De: ' braucht die URI der Unit'; En: ' needs the URI of the unit'),
+    (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
+    (De: '%s hat weder Klassen noch Routinen im interface';
+     En: '%s has neither classes nor routines in the interface'));
+
+{$SCOPEDENUMS OFF}
 
 const
   LineBreak = #13#10;
@@ -182,7 +206,7 @@ begin
   end;
   if ATarget.CounterpartFile = '' then
   begin
-    ATarget.Reason := Format('Unit %s nicht gefunden', [ATested]);
+    ATarget.Reason := cTexts[TLspTestUnitsText.UnitNotFound].Fmt([ATested]);
   end;
 end;
 
@@ -215,12 +239,11 @@ begin
   end;
   if AContext.TestProgram = '' then
   begin
-    ATarget.Reason := 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); ' +
-      '„testUnits.project“ in atlas.json festlegen';
+    ATarget.Reason := cTexts[TLspTestUnitsText.NoTestProjectFoundDUnitX].Text;
   end
   else if (ATarget.ClassName = '') and (Length(TTestUnits.TestMethods(ATarget.Source, '')) = 0) then
   begin
-    ATarget.Reason := Format('%s hat weder Klassen noch Routinen im interface', [ATarget.UnitName]);
+    ATarget.Reason := cTexts[TLspTestUnitsText.HasNeitherClassesNorRoutines].Fmt([ATarget.UnitName]);
   end
   else
   begin
@@ -382,11 +405,11 @@ begin
   begin
     if Target.IsTest then
     begin
-      Title := Format('Zur Unit %s wechseln', [Target.Counterpart]);
+      Title := cTexts[TLspTestUnitsText.SwitchToUnit].Fmt([Target.Counterpart]);
     end
     else
     begin
-      Title := Format('Zur Testunit %s wechseln', [Target.Counterpart]);
+      Title := cTexts[TLspTestUnitsText.SwitchToTestUnit].Fmt([Target.Counterpart]);
     end;
     Action := TJSONObject.Create;
     Action.AddPair('title', Title);
@@ -405,7 +428,7 @@ begin
   begin
     Subject := Target.UnitName;
   end;
-  Title := Format('DUnitX-Testunit für %s anlegen', [Subject]);
+  Title := cTexts[TLspTestUnitsText.CreateADUnitXTestUnit].Fmt([Subject]);
   Edit := CreateEdit(Target, Context);
   Action := TJSONObject.Create;
   Action.AddPair('title', Title);
@@ -425,7 +448,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EArgumentException.Create(Command + ' braucht die URI der Unit');
+    raise EArgumentException.Create(Command + cTexts[TLspTestUnitsText.NeedsTheURIOfThe].Text);
   end;
   Uri := AArguments.Items[0].Value;
   Line := -1;
@@ -438,7 +461,7 @@ begin
   if not Assigned(FContextFor) or not FContextFor(Uri, Context) then
   begin
     Answer.AddPair('unit', '');
-    Answer.AddPair('reason', 'Datei gehört zu keinem Arbeitsbereich');
+    Answer.AddPair('reason', cTexts[TLspTestUnitsText.FileBelongsToNoWorkspace].Text);
     Exit;
   end;
   Target := ResolveUri(Uri, Line, Context);
@@ -461,5 +484,8 @@ begin
   end;
   Answer.AddPair('reason', Target.Reason);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.TestUnits', cTexts);
 
 end.

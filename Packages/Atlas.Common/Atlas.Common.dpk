@@ -257,6 +257,7 @@ contains
   Atlas.Common.Architecture.Overview.Splitting in 'Source\Architecture\Atlas.Common.Architecture.Overview.Splitting.pas',
   Atlas.Common.Architecture.Layout in 'Source\Architecture\Atlas.Common.Architecture.Layout.pas',
   Atlas.Common.Architecture.MapTemplate in 'Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas',
+  Atlas.Common.Architecture.MapTemplateEn in 'Source\Architecture\Atlas.Common.Architecture.MapTemplateEn.pas',
   Atlas.Common.Architecture.Snapshot in 'Source\Architecture\Atlas.Common.Architecture.Snapshot.pas',
   Atlas.Common.Architecture.Comparison in 'Source\Architecture\Atlas.Common.Architecture.Comparison.pas',
   Atlas.Common.Architecture.Matching in 'Source\Architecture\Atlas.Common.Architecture.Matching.pas',

@@ -90,7 +90,19 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TProjectsMissingUnitText = (ProjectFolderAndSubfolders, SearchPathsOf, Project, LibraryText);
+
+const
+  cTexts: array[TProjectsMissingUnitText] of TAtlasText = (
+    (De: 'Projektordner %s und Unterordner'; En: 'Project folder %s and subfolders'),
+    (De: 'Suchpfade von %s, %s'; En: 'Search paths of %s, %s'),
+    (De: 'Projekt %s'; En: 'Project %s'),
+    (De: 'Bibliothek %s'; En: 'Library %s'));
 
 const
   // .pas vor .dcu: Eine Quelle lässt sich auch ins Projekt aufnehmen.
@@ -261,7 +273,7 @@ begin
   begin
     Exit;
   end;
-  FSearched := FSearched + [Format('Projektordner %s und Unterordner', [mRoot])];
+  FSearched := FSearched + [cTexts[TProjectsMissingUnitText.ProjectFolderAndSubfolders].Fmt([mRoot])];
   // Der Projektordner selbst steht immer im Suchweg des Compilers.
   FSeen := FSeen + [FolderKey(mRoot)];
   mQueue := [mRoot];
@@ -292,7 +304,7 @@ var
 begin
   for mProject in FSetup.GroupProjects do
   begin
-    FSearched := FSearched + [Format('Projekt %s', [NameOf(mProject.FileName)])];
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.Project].Fmt([NameOf(mProject.FileName)])];
     Look(TProjectPaths.DirectoryOf(mProject.FileName), TMissingUnitPlace.GroupProject, NameOf(mProject.FileName));
     for mFolder in mProject.SearchPaths do
     begin
@@ -312,7 +324,7 @@ begin
     begin
       Continue;
     end;
-    FSearched := FSearched + [Format('Suchpfade von %s, %s', [mTarget.Config, mTarget.Platform])];
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.SearchPathsOf].Fmt([mTarget.Config, mTarget.Platform])];
     for mFolder in mTarget.SearchPaths do
     begin
       Look(mFolder, TMissingUnitPlace.OtherTarget, mTarget.Config + ', ' + mTarget.Platform);
@@ -334,7 +346,7 @@ begin
     begin
       Continue;
     end;
-    FSearched := FSearched + [Format('Bibliothek %s', [mPlatform])];
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.LibraryText].Fmt([mPlatform])];
     for mFolder in FSetup.LibraryPaths(mPlatform) do
     begin
       Look(mFolder, TMissingUnitPlace.OtherPlatformLibrary, mPlatform);
@@ -427,5 +439,8 @@ begin
     Delete(Result, Length(Result), 1);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.MissingUnit', cTexts);
 
 end.

@@ -74,7 +74,35 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPropertyFromAccessorsText = (AfterTheChangeNoLonger, PropertyFromGetterAndSetter, WhetherIsMeantAsA,
+    IsUsedAsAMethod, StaysVisibleItIsStill, AndUpdateCalls, NoPropertyIsMissingHere, PropertiesCallsUpdatedFiles,
+    CreateMissingProperties, CreateProperty, Line);
+
+const
+  cTexts: array[TPropertyFromAccessorsText] of TAtlasText = (
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Property aus Getter und Setter'; En: 'Property from getter and setter'),
+    (De: '%s: Ob %s dort als Methodenzeiger gemeint ist, lässt sich nicht bestimmen; die Stelle bleibt.';
+     En: '%s: whether %s is meant as a method pointer there cannot be determined; the place stays.'),
+    (De: '%s: %s wird als Methodenzeiger verwendet und bleibt.'; En: '%s: %s is used as a method pointer and stays.'),
+    (De: '%s bleibt sichtbar: Es wird außerhalb der Klasse noch benutzt.';
+     En: '%s stays visible: it is still used outside the class.'),
+    (De: ' und Aufrufe umstellen'; En: ' and update calls'),
+    (De: 'Hier fehlt keine Property.'; En: 'No property is missing here.'),
+    (De: '%d Properties, %d Aufrufe umgestellt, %d Dateien'; En: '%d properties, %d calls updated, %d files'),
+    (De: 'Fehlende Properties anlegen (%d)'; En: 'Create missing properties (%d)'),
+    (De: 'Property %s anlegen'; En: 'Create property %s'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'));
+
+{$SCOPEDENUMS OFF}
 
 const
   ProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
@@ -116,7 +144,7 @@ end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), APosition.Line + 1]);
+  Result := cTexts[TPropertyFromAccessorsText.Line].Fmt([ExtractFileName(AFileName), APosition.Line + 1]);
 end;
 
 /// <summary>Routine mit Rumpf, in der APosition liegt; nil außerhalb.</summary>
@@ -360,8 +388,8 @@ begin
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
-      raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AUnit.FileName), mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
+      raise Fail(cTexts[TPropertyFromAccessorsText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+        mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
     end;
   finally
     mTree.Free;
@@ -374,10 +402,10 @@ var
   mAnnotation: TJSONObject;
 begin
   mAnnotation := TJSONObject.Create;
-  mAnnotation.AddPair('label', 'Property aus Getter und Setter');
+  mAnnotation.AddPair('label', cTexts[TPropertyFromAccessorsText.PropertyFromGetterAndSetter].Text);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  mAnnotation.AddPair('description', Format('%d Properties, %d Aufrufe umgestellt, %d Dateien',
-    [APropertyCount, ACalls, AFileCount]));
+  mAnnotation.AddPair('description', cTexts[TPropertyFromAccessorsText.PropertiesCallsUpdatedFiles].Fmt([
+    APropertyCount, ACalls, AFileCount]));
   Result := TJSONObject.Create;
   Result.AddPair(TLspPropertyFromAccessors.AnnotationId, mAnnotation);
 end;
@@ -539,8 +567,8 @@ begin
   else
     if FContext.ReplaceCalls and not AHit.OwnBody then
     begin
-      Warn(Format('%s: Ob %s dort als Methodenzeiger gemeint ist, lässt sich nicht bestimmen; die Stelle bleibt.',
-        [Where(AHit.Location.FileName, AHit.Location.Range.StartPos), AHit.Method.Name]));
+      Warn(cTexts[TPropertyFromAccessorsText.WhetherIsMeantAsA].Fmt([Where(AHit.Location.FileName,
+        AHit.Location.Range.StartPos), AHit.Method.Name]));
     end;
     Result := TAccessorUse.Keep;
   end;
@@ -573,8 +601,8 @@ begin
   end;
   if (mUse = TAccessorUse.Pointer_) and FContext.ReplaceCalls then
   begin
-    Warn(Format('%s: %s wird als Methodenzeiger verwendet und bleibt.',
-      [Where(ALocation.FileName, ALocation.Range.StartPos), AMethod.Name]));
+    Warn(cTexts[TPropertyFromAccessorsText.IsUsedAsAMethod].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),
+      AMethod.Name]));
   end;
   if not mHit.Internal then
   begin
@@ -609,7 +637,7 @@ begin
     end;
     if FRemaining.ContainsKey(UpperCase(mMethod.Name)) then
     begin
-      Warn(Format('%s bleibt sichtbar: Es wird außerhalb der Klasse noch benutzt.', [mMethod.Name]));
+      Warn(cTexts[TPropertyFromAccessorsText.StaysVisibleItIsStill].Fmt([mMethod.Name]));
     end
     else
     begin
@@ -735,11 +763,11 @@ begin
   end;
   if Whole then
   begin
-    Title := Format('Fehlende Properties anlegen (%d)', [Length(Found)]);
+    Title := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(Found)]);
   end
   else
   begin
-    Title := Format('Property %s anlegen', [Found[0].Name]);
+    Title := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([Found[0].Name]);
   end;
   if AReplaceCalls <> TReplaceCalls.Always then
   begin
@@ -747,7 +775,7 @@ begin
   end;
   if AReplaceCalls <> TReplaceCalls.Never then
   begin
-    Result := Result + [Action(Title + ' und Aufrufe umstellen', True)];
+    Result := Result + [Action(Title + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
   end;
 end;
 
@@ -762,7 +790,7 @@ begin
   mProperties := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AContext.Options, mWhole);
   if mProperties = nil then
   begin
-    raise Fail('Hier fehlt keine Property.');
+    raise Fail(cTexts[TPropertyFromAccessorsText.NoPropertyIsMissingHere].Text);
   end;
   mRun := TPropertyRun.Create(AResolver, ATree, AFileName, AText, AContext);
   try
@@ -772,5 +800,8 @@ begin
     mRun.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PropertyFromAccessors', cTexts);
 
 end.

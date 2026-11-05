@@ -134,7 +134,54 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingMoveMemberText = (PleaseSelectAtLeastOne, MemberIsNotACandidate, CannotMove, ThereIsNoClassAt,
+    ThereIsNoFieldMethod, AndHaveDifferentTypeParameters, TheAncestorIsNotReadable, CannotBecomeAbstract,
+    PleaseTakeItAlongOr, DoesNotMatchAndThen, BecomesBecauseStillUsesIt, CallsInheritedInThatMeans,
+    IsNoLongerReadableAfter, IsStillUsedIn, IsUsedOutsideTheDescendants, Becomes, BecauseTheDescendantsUseIt,
+    SoThatTheDescendantsCan, IsNotADirectDescendant, TheDescendantIsNotReadable, TheOtherDescendantsOfMust,
+    IsNotReadable, PleaseSelectAtLeastOne2, AlreadyHasAMember, ThenHidesWithoutOverride);
+
+const
+  cTexts: array[TEditingMoveMemberText] of TAtlasText = (
+    (De: 'Bitte mindestens ein Mitglied wählen.'; En: 'Please select at least one member.'),
+    (De: 'Mitglied %d ist kein Kandidat.'; En: 'Member %d is not a candidate.'),
+    (De: '%s kann nicht wandern: %s.'; En: '%s cannot move: %s.'),
+    (De: 'An dieser Stelle steht keine Klasse.'; En: 'There is no class at this position.'),
+    (De: 'An dieser Stelle steht kein Feld, keine Methode und keine Property.';
+     En: 'There is no field, method or property at this position.'),
+    (De: '%s und %s haben verschiedene Typparameter; Rümpfe ließen sich nicht übertragen.';
+     En: '%s and %s have different type parameters; bodies could not be transferred.'),
+    (De: 'Der Vorfahr %s ist nicht lesbar.'; En: 'The ancestor %s is not readable.'),
+    (De: '%s kann nicht abstrakt werden: %s.'; En: '%s cannot become abstract: %s.'),
+    (De: '. Bitte mitnehmen oder abstrakt deklarieren.'; En: '. Please take it along or declare it abstract.'),
+    (De: '%s.%s passt nicht zu %s.%s und verdeckt es dann.'; En: '%s.%s does not match %s.%s and then hides it.'),
+    (De: '%s wird %s, weil %s es weiter benutzt.'; En: '%s becomes %s because %s still uses it.'),
+    (De: '%s ruft inherited auf; in %s meint das den Vorfahren von %s.';
+     En: '%s calls inherited; in %s that means the ancestor of %s.'),
+    (De: '%s ist nach dem Umbau nicht mehr lesbar.'; En: '%s is no longer readable after the change.'),
+    (De: '%s wird in %s weiter benutzt (%s).'; En: '%s is still used in %s (%s).'),
+    (De: '%s wird außerhalb der Nachfahren über %s benutzt: %s.';
+     En: '%s is used outside the descendants via %s: %s.'),
+    (De: '%s wird %s, %s'; En: '%s becomes %s, %s'),
+    (De: 'weil die Nachfahren es benutzen.'; En: 'because the descendants use it.'),
+    (De: 'damit die Nachfahren es überschreiben können.'; En: 'so that the descendants can override it.'),
+    (De: '%s ist kein direkter Nachfahr von %s.'; En: '%s is not a direct descendant of %s.'),
+    (De: 'Der Nachfahr %s ist nicht lesbar.'; En: 'The descendant %s is not readable.'),
+    (De: 'Die übrigen Nachfahren von %s müssen %s selbst überschreiben (sonst EAbstractError).';
+     En: 'The other descendants of %s must override %s themselves (otherwise EAbstractError).'),
+    (De: '%s ist nicht lesbar.'; En: '%s is not readable.'),
+    (De: 'Bitte mindestens einen Nachfahren wählen.'; En: 'Please select at least one descendant.'),
+    (De: '%s hat schon ein Mitglied %s.'; En: '%s already has a member %s.'),
+    (De: '%s.%s verdeckt dann %s.%s (ohne override).'; En: '%s.%s then hides %s.%s (without override).'));
+
+{$SCOPEDENUMS OFF}
 
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin
@@ -183,18 +230,19 @@ begin
   AChosen := nil;
   if AIds = nil then
   begin
-    Exit(Fail('Bitte mindestens ein Mitglied wählen.', AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.PleaseSelectAtLeastOne].Text, AReason));
   end;
   for Id in AIds do
   begin
     Index := TMemberTransfer.IndexOf(ACandidates, Id);
     if Index < 0 then
     begin
-      Exit(Fail(Format('Mitglied %d ist kein Kandidat.', [Id]), AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.MemberIsNotACandidate].Fmt([Id]), AReason));
     end;
     if not ACandidates[Index].Enabled then
     begin
-      Exit(Fail(Format('%s kann nicht wandern: %s.', [ACandidates[Index].Name, ACandidates[Index].Reason]), AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([ACandidates[Index].Name, ACandidates[Index].Reason]),
+        AReason));
     end;
     if not TMemberTransfer.Has(AChosen, Id) then
     begin
@@ -320,7 +368,7 @@ begin
   Decl := TClassLayout.DeclAt(ATree, ALine, True);
   if Decl = nil then
   begin
-    Exit(Fail('An dieser Stelle steht keine Klasse.', AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.ThereIsNoClassAt].Text, AReason));
   end;
   Layout := TClassLayout.Read(ATree, AText, Decl);
   try
@@ -333,11 +381,11 @@ begin
     Member := Layout.MemberAtLine(ALine);
     if (Member < 0) or (TMemberTransfer.IndexOf(AInfo.Candidates, Member) < 0) then
     begin
-      Exit(Fail('An dieser Stelle steht kein Feld, keine Methode und keine Property.', AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.ThereIsNoFieldMethod].Text, AReason));
     end;
     if not AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, Member)].Enabled then
     begin
-      Exit(Fail(Format('%s kann nicht wandern: %s.', [Layout.Members[Member].Name,
+      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([Layout.Members[Member].Name,
         AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, Member)].Reason]), AReason));
     end;
     AInfo.Selected := Member;
@@ -356,8 +404,7 @@ begin
     StringReplace(ATarget.GenericParams, ' ', '', [rfReplaceAll]));
   if not Result then
   begin
-    AReason := Format('%s und %s haben verschiedene Typparameter; Rümpfe ließen sich nicht übertragen.',
-      [ASource.Name, ATarget.Name]);
+    AReason := cTexts[TEditingMoveMemberText.AndHaveDifferentTypeParameters].Fmt([ASource.Name, ATarget.Name]);
   end;
 end;
 
@@ -452,7 +499,7 @@ var
 begin
   if Target = nil then
   begin
-    Exit(Fail(Format('Der Vorfahr %s ist nicht lesbar.', [TargetRef.ClassName]), AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.TheAncestorIsNotReadable].Fmt([TargetRef.ClassName]), AReason));
   end;
   Result := SameGenerics(Source, Target, AReason);
   if Result then
@@ -491,7 +538,8 @@ begin
       mIndex := TMemberTransfer.IndexOf(Candidates, mId);
       if not Candidates[mIndex].CanAbstract then
       begin
-        Exit(Fail(Format('%s kann nicht abstrakt werden: %s.', [Candidates[mIndex].Name, Candidates[mIndex].Reason]),
+        Exit(Fail(cTexts[TEditingMoveMemberText.CannotBecomeAbstract].Fmt([Candidates[mIndex].Name,
+          Candidates[mIndex].Reason]),
           AReason));
       end;
       Abstracts := Abstracts + [mId];
@@ -505,13 +553,14 @@ begin
   mMissing := TMemberTransfer.MissingNeeds(Source, Moved, Picked);
   if mMissing <> nil then
   begin
-    Exit(Fail(string.Join('; ', mMissing) + '. Bitte mitnehmen oder abstrakt deklarieren.', AReason));
+    Exit(Fail(string.Join('; ', mMissing) + cTexts[TEditingMoveMemberText.PleaseTakeItAlongOr].Text, AReason));
   end;
   for mId in Picked do
   begin
     if Target.Find(Source.Members[mId].Name) <> nil then
     begin
-      Exit(Fail(Format('%s hat schon ein Mitglied %s.', [Target.Name, Source.Members[mId].Name]), AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.AlreadyHasAMember].Fmt([Target.Name, Source.Members[mId].Name]),
+        AReason));
     end;
   end;
   AReason := '';
@@ -593,13 +642,13 @@ begin
   end
   else if mMatched then
   begin
-    Plan.Warnings := Plan.Warnings + [Format('%s.%s verdeckt dann %s.%s (ohne override).',
-      [ASibling.Name, mMember.Name, Target.Name, mMember.Name])];
+    Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.ThenHidesWithoutOverride].Fmt([ASibling.Name,
+      mMember.Name, Target.Name, mMember.Name])];
   end
   else
   begin
-    Plan.Warnings := Plan.Warnings + [Format('%s.%s passt nicht zu %s.%s und verdeckt es dann.',
-      [ASibling.Name, mMember.Name, Target.Name, mMember.Name])];
+    Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.DoesNotMatchAndThen].Fmt([ASibling.Name,
+      mMember.Name, Target.Name, mMember.Name])];
   end;
 end;
 
@@ -616,8 +665,8 @@ begin
     begin
       Raised := Raised + [mId];
       Plan.Raised := Plan.Raised + [Source.Members[mId].Name];
-      Plan.Warnings := Plan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.',
-        [Source.Members[mId].Name, TClassEdits.VisibilityName(Request.RaiseVisibility), Source.Name])];
+      Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.BecomesBecauseStillUsesIt].Fmt([
+        Source.Members[mId].Name, TClassEdits.VisibilityName(Request.RaiseVisibility), Source.Name])];
     end;
   end;
 end;
@@ -659,8 +708,8 @@ begin
   if CallsInherited(mMember.Body) and (Source.Ancestors <> nil) and
     not SameText(PlainName(Source.Ancestors[0]), Target.Name) then
   begin
-    Plan.Warnings := Plan.Warnings + [Format('%s ruft inherited auf; in %s meint das den Vorfahren von %s.',
-      [mMember.Name, Target.Name, Target.Name])];
+    Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.CallsInheritedInThatMeans].Fmt([mMember.Name,
+      Target.Name, Target.Name])];
   end;
 end;
 
@@ -719,7 +768,7 @@ begin
   end
   else
   begin
-    AReason := Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]);
+    AReason := cTexts[TEditingMoveMemberText.IsNoLongerReadableAfter].Fmt([Source.Name]);
   end;
 end;
 
@@ -824,7 +873,7 @@ begin
   end;
   if mUsers <> nil then
   begin
-    Result := Format('%s wird in %s weiter benutzt (%s).', [Source.Members[AId].Name, Source.Name,
+    Result := cTexts[TEditingMoveMemberText.IsStillUsedIn].Fmt([Source.Members[AId].Name, Source.Name,
       string.Join(', ', mUsers)]);
   end;
 end;
@@ -845,7 +894,7 @@ begin
   end;
   if mPlaces <> nil then
   begin
-    Result := Format('%s wird außerhalb der Nachfahren über %s benutzt: %s.', [Source.Members[AId].Name,
+    Result := cTexts[TEditingMoveMemberText.IsUsedOutsideTheDescendants].Fmt([Source.Members[AId].Name,
       Source.Name, string.Join(', ', mPlaces)]);
   end;
 end;
@@ -894,7 +943,7 @@ procedure TPushDown.AddNeeded(AId: Integer; const AWhy: string);
 begin
   Needed := Needed + [AId];
   Plan.Raised := Plan.Raised + [Source.Members[AId].Name];
-  Plan.Warnings := Plan.Warnings + [Format('%s wird %s, %s', [Source.Members[AId].Name,
+  Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.Becomes].Fmt([Source.Members[AId].Name,
     TClassEdits.VisibilityName(Request.RaiseVisibility), AWhy])];
 end;
 
@@ -912,7 +961,7 @@ begin
       if not TMemberTransfer.Has(Picked, mNeed) and not TMemberTransfer.Has(Needed, mNeed) and
         MustRaise(mNeed, mOtherUnit) and (Source.Members[mNeed].Kind <> TClassMemberKind.Other) then
       begin
-        AddNeeded(mNeed, 'weil die Nachfahren es benutzen.');
+        AddNeeded(mNeed, cTexts[TEditingMoveMemberText.BecauseTheDescendantsUseIt].Text);
       end;
     end;
   end;
@@ -921,7 +970,7 @@ begin
   begin
     if MustRaise(mId, mOtherUnit) then
     begin
-      AddNeeded(mId, 'damit die Nachfahren es überschreiben können.');
+      AddNeeded(mId, cTexts[TEditingMoveMemberText.SoThatTheDescendantsCan].Text);
     end;
   end;
 end;
@@ -967,7 +1016,7 @@ begin
   end
   else
   begin
-    AReason := Format('%s ist nach dem Umbau nicht mehr lesbar.', [Source.Name]);
+    AReason := cTexts[TEditingMoveMemberText.IsNoLongerReadableAfter].Fmt([Source.Name]);
   end;
 end;
 
@@ -975,7 +1024,7 @@ function TPushDown.CheckTarget(ATarget: TClassLayout; out AReason: string): Bool
 begin
   if (ATarget.Ancestors = nil) or not SameText(PlainName(ATarget.Ancestors[0]), Source.Name) then
   begin
-    Exit(Fail(Format('%s ist kein direkter Nachfahr von %s.', [ATarget.Name, Source.Name]), AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.IsNotADirectDescendant].Fmt([ATarget.Name, Source.Name]), AReason));
   end;
   Result := SameGenerics(Source, ATarget, AReason);
 end;
@@ -998,7 +1047,8 @@ begin
     begin
       if not IsOverrideOf(ATarget.Members[mFound], mId) then
       begin
-        Exit(Fail(Format('%s hat schon ein Mitglied %s.', [ATarget.Name, Source.Members[mId].Name]), AReason));
+        Exit(Fail(cTexts[TEditingMoveMemberText.AlreadyHasAMember].Fmt([ATarget.Name, Source.Members[mId].Name]),
+          AReason));
       end;
       ASkip := ASkip + [mId];
     end;
@@ -1063,7 +1113,7 @@ begin
   mTarget := TMemberTransfer.ParseLayout(Files.Text(ARef.FileName), ARef.ClassName, mTree);
   if mTarget = nil then
   begin
-    Exit(Fail(Format('Der Nachfahr %s ist nicht lesbar.', [ARef.ClassName]), AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.TheDescendantIsNotReadable].Fmt([ARef.ClassName]), AReason));
   end;
   try
     Result := CheckTarget(mTarget, AReason) and Overridden(mTarget, mSkip, AReason);
@@ -1116,8 +1166,8 @@ begin
   end;
   if (Kept <> nil) and (Request.AllTargets > Length(Targets)) then
   begin
-    Plan.Warnings := Plan.Warnings + [Format('Die übrigen Nachfahren von %s müssen %s selbst überschreiben ' +
-      '(sonst EAbstractError).', [Source.Name, string.Join(', ', Plan.Abstracts)])];
+    Plan.Warnings := Plan.Warnings + [cTexts[TEditingMoveMemberText.TheOtherDescendantsOfMust].Fmt([Source.Name,
+      string.Join(', ', Plan.Abstracts)])];
   end;
 end;
 
@@ -1139,7 +1189,7 @@ begin
   mWork.Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, mSourceTree);
   if mWork.Source = nil then
   begin
-    Exit(Fail(Format('%s ist nicht lesbar.', [ASource.ClassName]), AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.IsNotReadable].Fmt([ASource.ClassName]), AReason));
   end;
   mTargetTree := nil;
   try
@@ -1165,7 +1215,7 @@ begin
   AReason := '';
   if ATargets = nil then
   begin
-    Exit(Fail('Bitte mindestens einen Nachfahren wählen.', AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.PleaseSelectAtLeastOne2].Text, AReason));
   end;
   mWork := Default(TPushDown);
   mWork.Files := AFiles;
@@ -1175,7 +1225,7 @@ begin
   mWork.Source := TMemberTransfer.ParseLayout(AFiles.Text(ASource.FileName), ASource.ClassName, mSourceTree);
   if mWork.Source = nil then
   begin
-    Exit(Fail(Format('%s ist nicht lesbar.', [ASource.ClassName]), AReason));
+    Exit(Fail(cTexts[TEditingMoveMemberText.IsNotReadable].Fmt([ASource.ClassName]), AReason));
   end;
   try
     Result := mWork.Run(AReason);
@@ -1185,5 +1235,8 @@ begin
     mSourceTree.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MoveMember', cTexts);
 
 end.

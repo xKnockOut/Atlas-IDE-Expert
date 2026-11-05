@@ -350,7 +350,29 @@ uses
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument,
-  Atlas.Common.Lsp.CompactJson;
+  Atlas.Common.Lsp.CompactJson,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWorkspaceCheckText = (ProjectCheckInterrupted, DeadlineOfTheFileExpired, ProjectCheckFinishedUnitsIn,
+    ProjectCheckPauseEndedAfter, ProjectCheckLowPriorityNot, ProjectCheckEndedAfterError, ProjectCheckSkipped);
+
+const
+  cTexts: array[TWorkspaceCheckText] of TAtlasText = (
+    (De: 'Projektprüfung unterbrochen'; En: 'Project check interrupted'),
+    (De: 'Frist der Datei abgelaufen'; En: 'Deadline of the file expired'),
+    (De: 'Projektprüfung fertig: %d Units in %d ms, %d neu geprüft, %d übersprungen';
+     En: 'Project check finished: %d units in %d ms, %d checked anew, %d skipped'),
+    (De: 'Projektprüfung: Pause "%s" nach Frist beendet (Sicherheitsnetz)';
+     En: 'Project check: pause "%s" ended after deadline (safety net)'),
+    (De: 'Projektprüfung: niedrige Priorität nicht gesetzt'; En: 'Project check: low priority not set'),
+    (De: 'Projektprüfung beendet nach Fehler: '; En: 'Project check ended after error: '),
+    (De: 'Projektprüfung: %s übersprungen (%s)'; En: 'Project check: %s skipped (%s)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Frist der Datei abgelaufen (#1220): Die Datei kommt ans Ende der Schlange.</summary>
@@ -395,11 +417,11 @@ procedure TCheckToken.ThrowIfCancellationRequested;
 begin
   if FOwner.Interrupted(FInterruptible) then
   begin
-    raise EWorkspaceCheckInterrupted.Create('Projektprüfung unterbrochen');
+    raise EWorkspaceCheckInterrupted.Create(cTexts[TWorkspaceCheckText.ProjectCheckInterrupted].Text);
   end;
   if Expired then
   begin
-    raise EWorkspaceCheckDeadline.Create('Frist der Datei abgelaufen');
+    raise EWorkspaceCheckDeadline.Create(cTexts[TWorkspaceCheckText.DeadlineOfTheFileExpired].Text);
   end;
 end;
 
@@ -733,8 +755,8 @@ begin
   Run.Active := False;
   Run.ElapsedMs := Clock.ElapsedMilliseconds;
   Profiler.FinishRun(Run.ElapsedMs);
-  Result := Format('Projektprüfung fertig: %d Units in %d ms, %d neu geprüft, %d übersprungen',
-    [Run.Total, Run.ElapsedMs, RunComputed, Run.Skipped]);
+  Result := cTexts[TWorkspaceCheckText.ProjectCheckFinishedUnitsIn].Fmt([Run.Total, Run.ElapsedMs, RunComputed,
+    Run.Skipped]);
 end;
 
 procedure TLspWorkspaceCheck.TProgress.Settle;
@@ -826,7 +848,7 @@ begin
       Reasons.Remove(mReason);
       if Assigned(ALog) then
       begin
-        ALog(Format('Projektprüfung: Pause "%s" nach Frist beendet (Sicherheitsnetz)', [mReason]));
+        ALog(cTexts[TWorkspaceCheckText.ProjectCheckPauseEndedAfter].Fmt([mReason]));
       end;
     end;
   finally
@@ -870,7 +892,7 @@ begin
     Priority := tpLower;
   except
     on Exception do
-      Log('Projektprüfung: niedrige Priorität nicht gesetzt');
+      Log(cTexts[TWorkspaceCheckText.ProjectCheckLowPriorityNot].Text);
   end;
 end;
 
@@ -886,7 +908,7 @@ begin
   except
     // Ein Fehler außerhalb einer Datei beendet nur die Projektprüfung, nicht den Server.
     on E: Exception do
-      Log('Projektprüfung beendet nach Fehler: ' + E.ClassName);
+      Log(cTexts[TWorkspaceCheckText.ProjectCheckEndedAfterError].Text + E.ClassName);
   end;
 end;
 
@@ -1064,7 +1086,7 @@ begin
   begin
     // Datei überspringen (#1094): leer bis zur nächsten Änderung, die übrigen weiter prüfen.
     TStackGuard.AfterError(AError);
-    Log(Format('Projektprüfung: %s übersprungen (%s)', [LabelOf(AEntry.FileName), AError.ClassName]));
+    Log(cTexts[TWorkspaceCheckText.ProjectCheckSkipped].Fmt([LabelOf(AEntry.FileName), AError.ClassName]));
     Store(AUri, AStamp, TJSONArray.Create, True);
   end;
 end;
@@ -1513,5 +1535,8 @@ begin
   end;
   Result := TInterlocked.Exchange(FStarted, 1) = 0;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WorkspaceCheck', cTexts);
 
 end.
