@@ -18,6 +18,10 @@ type
     [Test]
     procedure ResultMissingOnOnePath;
     [Test]
+    procedure ForWithLiteralBoundsRunsAtLeastOnce;
+    [Test]
+    procedure ForBoundsAndDirection;
+    [Test]
     procedure ExitWithValueSetsResult;
     [Test]
     procedure BreakLeavesLoop;
@@ -72,7 +76,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Semantics.ControlFlow;
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Statements;
 
 type
   TFlowFixture = record
@@ -218,6 +223,56 @@ begin
     Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
   finally
     F.Free;
+  end;
+end;
+
+/// <summary>for mit Literalen als Grenzen und nicht leerem Bereich läuft sicher einmal; leerer Bereich, downto
+/// und Variablen als Grenze lassen den Weg am Rumpf vorbei offen.</summary>
+procedure TControlFlowTests.ForWithLiteralBoundsRunsAtLeastOnce;
+
+  function MayEndWithoutResult(const ABody: string): Boolean;
+  var
+    mFixture: TFlowFixture;
+  begin
+    mFixture := Flow(ABody);
+    try
+      Result := mFixture.Graph.MayEndWithout('Result') = TFlowAnswer.Yes;
+    finally
+      mFixture.Free;
+    end;
+  end;
+
+begin
+  Assert.IsFalse(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    Result := I;'));
+  Assert.IsFalse(MayEndWithoutResult('  for I := 3 downto 1 do'#13#10'    Result := I;'));
+  Assert.IsFalse(MayEndWithoutResult('  for var J: Integer := 1 to 1 do'#13#10'    Result := J;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 64 to 0 do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 downto 64 do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 to X do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    if I > X then'#13#10'      Result := I;'));
+end;
+
+/// <summary>Grenzen aus Zahlenliteralen (auch $hex, nach dem Typ einer Inline-Variablen) und downto aus dem
+/// Parser; ohne for-Schleife keine Aussage.</summary>
+procedure TControlFlowTests.ForBoundsAndDirection;
+var
+  mFixture: TFlowFixture;
+  mFor: TSyntaxNode;
+  mFrom, mTo: Int64;
+begin
+  mFixture := Flow('  for var J: Integer := $10 downto 2 do'#13#10'    Y := J;');
+  try
+    mFor := FindKind(mFixture.Tree.Root, TSyntaxKind.ForStatement);
+    Assert.IsTrue(TFlowStatements.LiteralBounds(mFor, mFrom, mTo));
+    Assert.AreEqual(Int64(16), mFrom);
+    Assert.AreEqual(Int64(2), mTo);
+    Assert.IsTrue(mFor.Descending);
+    Assert.IsTrue(TFlowStatements.RunsAtLeastOnce(mFor));
+    Assert.IsFalse(TFlowStatements.RunsAtLeastOnce(FindKind(mFixture.Tree.Root, TSyntaxKind.RoutineDecl)));
+    Assert.IsTrue(TFlowStatements.IsStatement(TSyntaxKind.ForStatement));
+    Assert.IsFalse(TFlowStatements.IsStatement(TSyntaxKind.Literal));
+  finally
+    mFixture.Free;
   end;
 end;
 

@@ -432,9 +432,12 @@ begin
   try
     Monitor.PreSetup;
     GetMem(Block, 4096);
-    Monitor.PostSetUp;
-    // Wie die Startdaten eines Threads: im Setup belegt, vor PreTest frei.
-    FreeMem(Block);
+    try
+      Monitor.PostSetUp;
+    finally
+      // Wie die Startdaten eines Threads: im Setup belegt, vor PreTest frei.
+      FreeMem(Block);
+    end;
     Monitor.PreTest;
     Monitor.PostTest;
     Monitor.PreTearDown;
