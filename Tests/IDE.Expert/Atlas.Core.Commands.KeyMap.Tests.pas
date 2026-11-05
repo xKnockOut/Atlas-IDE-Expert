@@ -60,6 +60,10 @@ type
     procedure CommandIdsMatchPalette;
     [Test]
     procedure HtmlIsEscapedAndMarksConflicts;
+    /// <summary>„Datei jetzt prüfen“ (#1744): Vorgabe, Befehl, abgeschaltet ohne Prüfregeln, zurück in die
+    /// Einstellungen.</summary>
+    [Test]
+    procedure CheckFileKeyFollowsProblems;
   end;
 
 implementation
@@ -605,7 +609,7 @@ begin
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
       TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
-      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete] then
+      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),
@@ -932,6 +936,27 @@ begin
   Html := TAtlasKeyMap.Html('en', 'T', '', '', ['K'], nil);
   Assert.DoesNotContain(Html, 'class="sub"');
   Assert.DoesNotContain(Html, 'window.print()');
+end;
+
+procedure TAtlasKeyMapTests.CheckFileKeyFollowsProblems;
+var
+  mSettings, mSaved: TAtlasPluginSettings;
+  mEntry: TAtlasKeyEntry;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mEntry := EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.CheckFile);
+  Assert.AreEqual($E050, Integer(mEntry.Key), 'Strg+Umschalt+Alt+P');
+  Assert.IsFalse(mEntry.Disabled);
+  Assert.AreEqual('Atlas.CheckFile', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.CheckFile));
+  Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.CheckFile)));
+  mSettings.Problems := False;
+  mEntry := EntryOf(TAtlasKeyEntry.AllFromSettings(mSettings), TAtlasKeyFunction.CheckFile);
+  Assert.IsTrue(mEntry.Disabled, 'ohne Prüfregeln kein Konflikt');
+  mSettings.Problems := True;
+  mSettings.CheckFileKey := $C04D;
+  mSaved := TAtlasPluginSettings.Defaults;
+  TAtlasKeyEntry.ToSettings(TAtlasKeyEntry.AllFromSettings(mSettings), mSaved);
+  Assert.AreEqual($C04D, mSaved.CheckFileKey, 'Strg+Alt+M');
 end;
 
 initialization

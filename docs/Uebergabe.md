@@ -219,7 +219,12 @@
 - **Was:** `problems.update` (`live`/`save`/`manual`, Plugin `ProblemsUpdate`) ersetzt `problems.live`; `problems.liveDelayMs` (100–10000, Vorgabe 400) ersetzt die feste Wartezeit von 400 ms. Alte Werte (Registry `ProblemsLive`, Import `problems.live`) werden umgesetzt: an = live, aus = save.
 - **Kern:** Werte in `Atlas.Core.Settings.ProblemsUpdate` (Settings darf nicht von Problems abhängen, sonst Feature-Zyklus A-09); `Atlas.Core.Problems.Refresh` (`TAtlasProblemsRefresh.Due` entscheidet je Takt, `TAtlasProblemsCheckRequest` hält die Anforderung „Datei jetzt prüfen“). Der Controller fragt nur noch `PullDue`; der Takt folgt einer kurzen Verzögerung (`TickMs`).
 - **Plugin:** Knopf „Datei jetzt prüfen“ im Fenster „Atlas-Prüfung“ (nicht im Live-Modus), Befehl `Atlas.CheckFile` in der Befehlspalette, Klick auf die Live-Prüfung der Statusleiste prüft außerhalb von Live nur die offene Datei.
-- **Stand:** ungebaut; Python-Nachbau von Update-ConfigDoc (pwsh nicht installierbar). Handtests LV1–LV9, ASL7/ASL7b, AP14. Offen als Folgeidee: eigenes Tastenkürzel für „Datei jetzt prüfen“.
+- **Stand:** ungebaut; Python-Nachbau von Update-ConfigDoc (pwsh nicht installierbar). Handtests LV1–LV9, ASL7/ASL7b, AP14. Folgeidee eigenes Tastenkürzel: #1744 (siehe unten).
+
+## Tastenkürzel für „Datei jetzt prüfen“ (05.11.2026, #1744, Branch `claude/project-thread-0h5jut` auf `Pilot-2.0.0-beta.1`, ungebaut mit Delphi)
+- **Was:** `keys.checkFile` (Plugin `CheckFileKey`, Vorgabe Strg+Umschalt+Alt+P = $E050, Marcos Wahl) ruft `TAtlasIdeProblems.CheckFileNow` auf; wirkt in allen Modi von `problems.update`, weil `TAtlasProblemsRefresh.Due` eine Anforderung immer sofort ausführt. Strg+Alt+F9 ist schon `keys.check` (Compiler-Prüfung).
+- **Wo:** Feld in `TAtlasPluginNavigationKeysSettings`, Bindung in `TAtlasEditingKeys.AddChecks` (nur mit `problems.enabled`), neue Funktion `TAtlasKeyFunction.CheckFile` (hinten angehängt; CommandIds, BindOrder, Beschriftung), Seite *Befehle* (`BindKey`), Eintrag im Editor-Kontextmenü (`AddWhen`, nur mit Prüfregeln).
+- **Stand:** FPC-Tests und Atlas siehe PR; Handtests DP1–DP9.
 
 ## Speicherkorrekturen in der Rollenstruktur von 2.0 (02.11.2026, Branch `claude/project-thread-3ck2sf` auf `Pilot-2.0.0-beta.1`)
 - Ziel: Die übernommenen Korrekturen (PR #1482) liegen in Atlas.Common bzw. in Atlas.IDE.Base (Fenster „Atlas-Server“), nicht in einem Modul; alle berührten Units haben jetzt 0 Atlas-Befunde mit Metriken, ohne Grenzwerte zu ändern.

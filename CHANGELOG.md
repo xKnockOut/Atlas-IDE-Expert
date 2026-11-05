@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Plugin: eigenes Tastenkürzel für „Datei jetzt prüfen“ (#1744, `keys.checkFile`, Vorgabe Strg+Umschalt+Alt+P, Seite *Befehle*; leer = keins): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von `problems.update` (im Live-Modus ohne die Wartezeit). Vorrang wie die Editorbefehle; steht in der Tastenkürzel-Übersicht (#520, mit Konflikterkennung), neben dem Befehl in der Befehlspalette und als neuer Eintrag im Atlas-Untermenü des Editor-Kontextmenüs; ohne Prüfregeln bleibt das Kürzel frei.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu
