@@ -148,7 +148,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Diagnostics.StackGuard,
   Shell.Bootstrap,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Text.LogMarks;
 
 function BuildCompilerText: string;
 begin
@@ -227,7 +228,7 @@ begin
       except
         // Gesperrt oder unlesbar: der Fall ohne diese Datei.
         on E: Exception do
-          ALogger.Warning('Absturzfall: Einstellungen nicht lesbar (' + ExtractFileName(mFile) + ')');
+          ALogger.Warning('Absturzfall: Einstellungen nicht lesbar (' + TLogMarks.Path(ExtractFileName(mFile)) + ')');
       end;
   end;
 end;
@@ -353,11 +354,11 @@ begin
   end;
   if mFolder = '' then
   begin
-    FLogger.Error('Absturzfall nicht gesichert: ' + mFailure);
+    FLogger.Error('Absturzfall nicht gesichert: ' + TLogMarks.Text(mFailure));
     Exit;
   end;
   Result := mFolder;
-  FLogger.Warning(Format('Absturzfall gesichert: %s; %s', [ACase.Summary, mFolder]));
+  FLogger.Warning(Format('Absturzfall gesichert: %s; %s', [TLogMarks.Text(ACase.Summary), TLogMarks.Path(mFolder)]));
 end;
 
 procedure TShellCrashCases.SendCase(const ACase: TCrashCase; const AFolder: string; ASkipping: Boolean);
@@ -481,8 +482,8 @@ begin
       if mSkipping then
       begin
         FLogger.Warning(Format('Sicherheitsnetz: %s an %s wird bis zur nächsten Änderung übersprungen ' +
-          '(zweiter Absturz, %s); Fall %s', [AMethod, ExtractFileName(mCase.FileName), AError.ClassName,
-          mFolder]));
+          '(zweiter Absturz, %s); Fall %s', [AMethod, TLogMarks.Path(ExtractFileName(mCase.FileName)),
+          AError.ClassName, TLogMarks.Path(mFolder)]));
         // Der eben abgestürzte Eintrag steht in der Liste hinten (TCrashSkips.Crashed).
         mSkipped := FSkips.Skipped;
         SendSkip(mSkipped[High(mSkipped)], True);
@@ -495,7 +496,7 @@ begin
   except
     // Das Sichern darf die Fehlerantwort nicht verhindern (der Dispatcher verschluckt ohnehin).
     on E: Exception do
-      FLogger.Error('Absturzfall: ' + E.ClassName + ': ' + E.Message);
+      FLogger.Error('Absturzfall: ' + E.ClassName + ': ' + TLogMarks.Text(E.Message));
   end;
 end;
 
@@ -531,7 +532,7 @@ begin
     end;
   except
     on E: Exception do
-      FLogger.Error('Absturzfall (Zeitlimit): ' + E.ClassName + ': ' + E.Message);
+      FLogger.Error('Absturzfall (Zeitlimit): ' + E.ClassName + ': ' + TLogMarks.Text(E.Message));
   end;
 end;
 
@@ -587,7 +588,7 @@ begin
   if FSkips.Skip(AMethod, mUri, TCrashSkips.Checksum(mText), mEntry, mChanged) then
   begin
     FLogger.Warning(Format('Sicherheitsnetz: %s an %s übersprungen nach Absturz; Fall %s', [AMethod,
-      ExtractFileName(TDocumentUris.ToPath(mUri)), mEntry.CaseFolder]));
+      TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mUri))), TLogMarks.Path(mEntry.CaseFolder)]));
     raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, SkipText(mEntry));
   end;
   if mChanged then
@@ -616,7 +617,7 @@ begin
   for mEntry in mEnded do
   begin
     FLogger.Info(Format('Sicherheitsnetz: %s an %s wieder aktiv (Datei geändert)', [mEntry.Method,
-      ExtractFileName(TDocumentUris.ToPath(mEntry.Uri))]));
+      TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mEntry.Uri)))]));
     SendSkip(mEntry, False);
   end;
 end;
@@ -631,7 +632,7 @@ begin
   for mEntry in mEnded do
   begin
     FLogger.Info(Format('Sicherheitsnetz: %s an %s wieder aktiv (Erneut versuchen)', [mEntry.Method,
-      ExtractFileName(TDocumentUris.ToPath(mEntry.Uri))]));
+      TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mEntry.Uri)))]));
     SendSkip(mEntry, False);
   end;
   Result := Length(mEnded);

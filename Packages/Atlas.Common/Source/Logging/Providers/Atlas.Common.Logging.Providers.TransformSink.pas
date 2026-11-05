@@ -1,7 +1,9 @@
 ﻿unit Atlas.Common.Logging.Providers.TransformSink;
 
 // Senke, die den Text jedes Eintrags umschreibt und an eine andere Senke
-// weitergibt, z. B. anonymisiert in die Logdatei (#647).
+// weitergibt, z. B. anonymisiert in die Logdatei (#647). Die Umschreibung
+// bekommt den Text mit Kennzeichen (TLogEntry.Text, #1478), damit sie
+// Namen, Pfade und fremden Text sicher erkennt.
 
 interface
 

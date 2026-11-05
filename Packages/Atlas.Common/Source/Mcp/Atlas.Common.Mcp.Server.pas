@@ -213,7 +213,8 @@ implementation
 
 uses
   Atlas.Text.Uris,
-  Atlas.Common.JsonRpc.Contract;
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Text.LogMarks;
 
 const
   // Methoden des MCP-Protokolls.
@@ -913,7 +914,7 @@ begin
     begin
       if AArguments <> nil then
       begin
-        Audit(Format('MCP %s %s', [ATool.Name, AArguments.ToJSON]));
+        Audit(Format('MCP %s %s', [ATool.Name, TLogMarks.Text(AArguments.ToJSON)]));
       end
       else
       begin

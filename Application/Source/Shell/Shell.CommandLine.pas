@@ -37,7 +37,8 @@
 //   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
 //                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
 //                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
-//                         (Nicht --profile: Das wählt seit #146 das Regelprofil.)
+//                         (Nicht --profile: Das wählt seit #146 das Regelprofil.) Unit-Namen anonym
+//                         (name#N, #1478); mit --log-names im Klartext.
 //
 // Formatieren ohne IDE (#1358), Ziel wie bei --check:
 //   --format-check        prüft, ob die Dateien den Formatregeln (format.*, .editorconfig) entsprechen;
@@ -103,7 +104,8 @@ type
   public
     LogFile: string;
     LogLevel: TLogLevel;
-    /// <summary>--log-names: Server-Log mit Pfaden und Namen statt anonymisiert (#647).</summary>
+    /// <summary>--log-names: Server-Log und --timings mit Pfaden und Namen statt anonymisiert (#647, #1478).
+    /// </summary>
     LogNames: Boolean;
     TraceFile: string;
     /// <summary>--locale (#1458): Sprache der Texte ohne Client, "de" oder "en"; '' = nicht angegeben.</summary>

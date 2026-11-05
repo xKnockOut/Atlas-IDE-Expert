@@ -3895,6 +3895,14 @@
       "x-area": "general",
       "x-page": "Start und Updates"
     },
+    "LogNames": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "diagnostics.log.names",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-issue": "#1478"
+    },
     "UnitSearchEnabled": {
       "type": "boolean",
       "default": true,

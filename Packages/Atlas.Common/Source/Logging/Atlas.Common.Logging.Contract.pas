@@ -2,6 +2,10 @@
 
 // Contract des Platform-Features Logging: Stufen, Logeintrag, Logger (API)
 // und Senke (SPI). Alle Diagnoseausgaben laufen über ILogger, nie über stdout.
+// Namen, Pfade und fremder Text sind im Text eines Eintrags gekennzeichnet
+// (Atlas.Text.LogMarks, #1478). Senken, die Klartext schreiben, nehmen
+// TLogEntryText (Atlas.Common.Logging.EntryText); anonym schreibende ersetzen
+// die Kennzeichen selbst.
 
 interface
 
@@ -21,11 +25,14 @@ type
     FLevel: TLogLevel;
     FText: string;
   public
+    /// <summary>AText darf Kennzeichen (TLogMarks) tragen.</summary>
     constructor Create(ATimestamp: TDateTime; ALevel: TLogLevel; const AText: string);
-    /// <summary>Einzeilige Darstellung, z. B. "2026-10-07 19:50:00.123 [INFO] Text".</summary>
+    /// <summary>Einzeilige Darstellung, z. B. "2026-10-07 19:50:00.123 [INFO] Text", mit den Kennzeichen des
+    /// Texts.</summary>
     function ToText: string;
     property Timestamp: TDateTime read FTimestamp;
     property Level: TLogLevel read FLevel;
+    /// <summary>Text mit Kennzeichen (TLogMarks); Klartext über TLogEntryText.Plain.</summary>
     property Text: string read FText;
   end;
 

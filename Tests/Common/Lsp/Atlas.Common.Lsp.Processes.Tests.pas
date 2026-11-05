@@ -20,6 +20,8 @@ type
     procedure JsonCarriesFields;
     [Test]
     procedure WithoutWorkspaces;
+    [Test]
+    procedure MarkedMarkdownMarksNames;
   end;
 
 implementation
@@ -30,7 +32,8 @@ uses
   System.Generics.Collections,
   System.DateUtils,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Lsp.Processes;
+  Atlas.Common.Lsp.Processes,
+  Atlas.Text.LogMarks;
 
 function Sample(ANow: TDateTime): TLspProcessWorkspace;
 var
@@ -125,6 +128,18 @@ begin
   Workspace := Default(TLspProcessWorkspace);
   Assert.IsFalse(Workspace.BuiltOnce);
   Assert.AreEqual('', Workspace.CacheName);
+end;
+
+procedure TLspProcessesTests.MarkedMarkdownMarksNames;
+var
+  Now_: TDateTime;
+  Text: string;
+begin
+  // Fürs Log sind Arbeitsbereich und Cache gekennzeichnet; ToMarkdown zeigt sie im Klartext (#1478).
+  Now_ := EncodeDateTime(2026, 10, 21, 10, 41, 31, 0);
+  Text := TLspProcesses.MarkedMarkdown([Sample(Now_)], 5000, Now_);
+  Assert.IsTrue(TLogMarks.HasMarks(Text));
+  Assert.AreEqual(TLspProcesses.ToMarkdown([Sample(Now_)], 5000, Now_), TLogMarks.Plain(Text));
 end;
 
 initialization

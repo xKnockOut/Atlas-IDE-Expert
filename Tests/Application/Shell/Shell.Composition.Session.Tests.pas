@@ -42,7 +42,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Logging.Providers.Logger;
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Text.LogMarks;
 
 const
   cTimeoutMs = 4321;
@@ -111,7 +112,9 @@ begin
   finally
     mError.Free;
   end;
-  Assert.IsTrue(mText.StartsWith('EArgumentException: Kaputt'), mText);
+  // Die Meldung ist als fremder Text gekennzeichnet (#1478).
+  Assert.IsTrue(TLogMarks.Plain(mText).StartsWith('EArgumentException: Kaputt'), mText);
+  Assert.IsTrue(TLogMarks.HasMarks(mText));
 end;
 
 initialization

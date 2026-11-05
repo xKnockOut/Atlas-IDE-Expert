@@ -442,7 +442,7 @@ begin
     // Ohne Schreibrecht oder bei fremder Sperre (Bericht M5) bleiben die Werte für diese Sitzung bestehen. Ins
     // Protokoll ohne Pfad: Die Meldung von EAtlasTextFileError nennt keinen, andere nur mit Klasse.
     on E: EAtlasTextFileError do
-      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.SafeMessage(E.Message));
+      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.MessageText(E.Message));
     on E: Exception do
       TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + E.ClassName);
   end;

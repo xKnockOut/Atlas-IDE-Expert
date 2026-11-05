@@ -10,6 +10,9 @@
 // Pfade zu <pfad>, Benutzer- und Rechnername zu <benutzer> und im Protokoll
 // Text in Anführungszeichen zu <wert>. Die Regeln stehen einmal in
 // Atlas.Text.Anonymize und gelten für Server und Plugin gleich (ADR 0012).
+// Von den Einstellungen bleiben dann nur feste Werte, Zahlen und Schalter
+// (#1478). Ohne Anonymisierung vermerkt der Kopf die ausdrückliche Wahl, und
+// schreibt atlas.log Klarnamen (diagnostics.log.names), sagt es der Abschnitt.
 
 interface
 
@@ -36,6 +39,8 @@ type
     Roots: TArray<string>;
     Identity: TArray<string>;
     Anonymize: Boolean;
+    /// <summary>atlas.log mit Klarnamen geschrieben (diagnostics.log.names, #1478).</summary>
+    PluginLogNames: Boolean;
     Created: TDateTime;
   end;
 
@@ -132,7 +137,7 @@ begin
   mText := AInput.Settings;
   if AInput.Anonymize then
   begin
-    mText := AnonymizePaths(mText, AInput.Roots, AInput.Identity);
+    mText := AnonymizePaths(TTextAnonymizer.AnonymizeJsonValues(mText), AInput.Roots, AInput.Identity);
   end;
   ABuilder.Append('```json').Append(sLineBreak).Append(mText.TrimRight).Append(sLineBreak).Append('```');
   ABuilder.Append(sLineBreak).Append(sLineBreak);
@@ -177,6 +182,16 @@ begin
   ABuilder.Append(mText.TrimRight).Append(sLineBreak);
 end;
 
+/// <summary>Zusatz zur Überschrift des Plugin-Protokolls: geschrieben mit Klarnamen (#1478).</summary>
+function PluginLogNote(const AInput: TAtlasBugReportInput): string;
+begin
+  Result := '';
+  if AInput.PluginLogNames then
+  begin
+    Result := ', geschrieben mit Klarnamen (diagnostics.log.names)';
+  end;
+end;
+
 class function TAtlasBugReport.Build(const AInput: TAtlasBugReportInput): string;
 var
   mBuilder: TStringBuilder;
@@ -188,14 +203,18 @@ begin
     if AInput.Anonymize then
     begin
       mBuilder.Append(' · anonymisiert');
+    end
+    else
+    begin
+      mBuilder.Append(' · mit Klarnamen (ausdrücklich gewählt)');
     end;
     mBuilder.Append(sLineBreak).Append(sLineBreak);
     mBuilder.Append('Quelltext steht nicht in diesem Bericht. Issue anlegen: ').Append(IssuesUrl);
     mBuilder.Append(sLineBreak).Append(sLineBreak);
     AppendPlugin(mBuilder, AInput);
     AppendSettings(mBuilder, AInput);
-    AppendLines(mBuilder, Format('### Protokoll des Plugins (letzte %d Zeilen)', [Length(AInput.PluginLog)]),
-      AInput.PluginLog, AInput);
+    AppendLines(mBuilder, Format('### Protokoll des Plugins (letzte %d Zeilen%s)', [Length(AInput.PluginLog),
+      PluginLogNote(AInput)]), AInput.PluginLog, AInput);
     // Was die Laufzeit des Servers vor einem Absturz noch ausgab (Bericht H5); anonymisiert wie das Protokoll.
     if Length(AInput.ServerErrorOutput) > 0 then
     begin

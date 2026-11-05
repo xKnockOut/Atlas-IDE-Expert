@@ -68,7 +68,8 @@ implementation
 uses
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Product.Version,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Text.LogMarks;
 
 constructor TShellProtocol.Create(const AServices: TShellProtocolServices);
 var
@@ -168,7 +169,8 @@ begin
     mParams := Copy(mParams, 1, 500) + '…';
   end;
   FServices.Logger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
-    [AMethod, AError.ClassName, AError.Message, sLineBreak, mParams, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
+    [AMethod, AError.ClassName, TLogMarks.Text(AError.Message), sLineBreak,
+      TLogMarks.Text(mParams), sLineBreak, TShellPlatform.StackTraceOf(AError)]));
   // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
   if FCrashCases <> nil then
   begin

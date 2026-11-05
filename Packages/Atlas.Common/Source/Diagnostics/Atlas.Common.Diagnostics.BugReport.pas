@@ -8,14 +8,19 @@
 // <ws>/…, alle anderen absoluten Pfade und Datei-URIs zu <pfad>, Benutzer- und
 // Rechnername zu <benutzer>; im Protokoll zusätzlich Text in Anführungszeichen
 // (Bezeichner, Werte) zu <wert>. Die Regeln stehen in Atlas.Text.Anonymize
-// und gelten gleich im Plugin (ADR 0012).
+// und gelten gleich im Plugin (ADR 0012). Seit #1478 bleiben in der
+// Konfiguration nur Schlüssel, Zahlen, Wahrheitswerte und Schlüsselwörter
+// (TTextAnonymizer.AnonymizeJsonValues); gekennzeichnete Werte im Protokoll
+// werden ersetzt, ohne Anonymisierung nur von ihren Kennzeichen befreit. Ohne
+// Anonymisierung vermerkt der Kopf „mit Klarnamen“.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Statistics,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks;
 
 type
   TBugReportInput = record
@@ -76,6 +81,10 @@ begin
   if AInput.Anonymize then
   begin
     ABuilder.Append(' · anonymisiert');
+  end
+  else
+  begin
+    ABuilder.Append(' · mit Klarnamen (ausdrücklich gewählt)');
   end;
   ABuilder.Append(sLineBreak).Append(sLineBreak);
   ABuilder.Append('Quelltext steht nicht in diesem Bericht.').Append(sLineBreak).Append(sLineBreak);
@@ -92,7 +101,8 @@ begin
   mText := AInput.Configuration;
   if AInput.Anonymize then
   begin
-    mText := TTextAnonymizer.AnonymizePaths(mText, AInput.Workspaces, AInput.Identity);
+    mText := TTextAnonymizer.AnonymizePaths(TTextAnonymizer.AnonymizeJsonValues(mText), AInput.Workspaces,
+      AInput.Identity);
   end;
   ABuilder.Append('```json').Append(sLineBreak).Append(mText.TrimRight).Append(sLineBreak).Append('```');
   ABuilder.Append(sLineBreak).Append(sLineBreak);
@@ -141,10 +151,13 @@ begin
   ABuilder.Append(sLineBreak).Append('```').Append(sLineBreak);
   for mLine in AInput.LogLines do
   begin
-    mText := mLine;
     if AInput.Anonymize then
     begin
-      mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+      mText := TTextAnonymizer.AnonymizeLogLine(mLine, AInput.Workspaces, AInput.Identity);
+    end
+    else
+    begin
+      mText := TLogMarks.Plain(mLine);
     end;
     // Mehrzeilige Einträge (z. B. Status) bleiben lesbar; ``` würde den Block schließen.
     ABuilder.Append(TTextAnonymizer.FenceSafe(mText)).Append(sLineBreak);

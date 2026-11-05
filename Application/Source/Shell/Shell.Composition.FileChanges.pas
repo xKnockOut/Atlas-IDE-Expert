@@ -79,7 +79,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.LogMarks;
 
 constructor TShellFileChanges.Create(const AServices: TShellFileChangesServices);
 begin
@@ -137,7 +138,8 @@ begin
   end;
   if mUpdated then
   begin
-    FServices.Logger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+    FServices.Logger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s',
+      [TLogMarks.Path(ExtractFileName(AFileName))]));
   end;
   // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
   // folgt dem Index, die Neuprüfung ist gebündelt.
@@ -149,7 +151,7 @@ end;
 
 procedure TShellFileChanges.RefreshFailed(E: Exception);
 begin
-  FServices.Logger.Warning('Index nach Tipp-Pause: ' + E.Message);
+  FServices.Logger.Warning('Index nach Tipp-Pause: ' + TLogMarks.Text(E.Message));
 end;
 
 procedure TShellFileChanges.DocumentEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
@@ -246,7 +248,8 @@ begin
   // Neu aufbauen: Suchpfade, Defines oder Units können sich geändert haben.
   for mWorkspace in AReload do
   begin
-    FServices.Logger.Info(Format('Projektdatei in %s geändert, Symbolindex wird neu aufgebaut', [mWorkspace.Root]));
+    FServices.Logger.Info(Format('Projektdatei in %s geändert, Symbolindex wird neu aufgebaut',
+      [TLogMarks.Path(mWorkspace.Root)]));
     mWorkspace.Reload;
   end;
 end;
