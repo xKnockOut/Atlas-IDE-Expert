@@ -10,6 +10,9 @@
 //   sie mit UseStorage setzt.
 // - Abmelden stoppt ein aktives Modul und löst seinen Scope rückwärts; ein
 //   Fehler hält den Abbau nicht an (wie TAtlasFeatureTable.StopAll, #886).
+//   Zuerst verwirft TAtlasMainThread die wartenden Einträge des Moduls und
+//   nimmt keine neuen an (Info.Handle): Sie liefen sonst nach dem Entladen des
+//   Packages in nicht mehr geladenem Code; Anmelden nimmt sie wieder an.
 // - Objekte nach Interface-GUID (Provide/FindAll); die Registry versteht
 //   nicht, was dahinter steckt.
 // - Änderungsmeldung außerhalb der Sperre; ein gelöster Hörer wird auch
@@ -113,6 +116,7 @@ function AtlasModuleRegistryInstance: TAtlasModuleRegistry;
 implementation
 
 uses
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Text.LogMarks;
 
 type
@@ -587,6 +591,7 @@ begin
     FLock.Release;
   end;
   Result := mEntry.ScopeRef;
+  TAtlasMainThread.OpenModule(mEntry.Info.Handle);
   RaiseFailures(NotifyModule(rcModuleAdded, mEntry.Info.Id));
 end;
 
@@ -608,6 +613,8 @@ begin
   finally
     FLock.Release;
   end;
+  // Was jetzt noch für das Modul wartet oder eingereiht wird, liefe nach dem Entladen seines Packages.
+  TAtlasMainThread.CloseModule(mEntry.Info.Handle);
   // Erst stoppen, dann die Anmeldungen lösen: Stop darf noch auf eigene Anmeldungen zugreifen.
   try
     if mEntry.Module.IsActive then

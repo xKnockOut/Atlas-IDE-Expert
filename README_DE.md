@@ -183,6 +183,8 @@ Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE 
 | `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |
 
+`TAtlasMainThread` führt die Einträge je Modul: Meldet sich ein Modul ab oder wird sein Package entladen, verfallen seine noch wartenden Einträge in den Hauptthread, statt danach in nicht mehr geladenem Code zu laufen.
+
 Wie sich ein Modul anmeldet, welche Verträge es nutzt und die Regeln für Laden und Entladen: [docs/Architektur.md](docs/Architektur.md) (Abschnitt „Module und Verträge des Plugins“) und [ADR 0017](docs/adr/0017-funktions-packages.md); zu welchem Package jede Unit gehört, steht in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
 
 ## Voraussetzungen
