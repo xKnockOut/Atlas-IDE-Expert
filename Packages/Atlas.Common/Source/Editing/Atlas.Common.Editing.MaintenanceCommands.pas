@@ -19,11 +19,10 @@ interface
 uses
   Atlas.Common.Editing.Contract;
 
-const
-  /// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
-  CleanUsesNoIndexHint = '/cleanuses braucht den Index des Projekts';
-  /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
-  IgnoreNoHitHint = 'Regel %s meldet in der Zeile darunter nichts';
+/// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
+function CleanUsesNoIndexHint: string;
+/// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
+function IgnoreNoHitHint: string;
 
 /// <summary>Trägt die Pflegebefehle über ARegister ein.</summary>
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
@@ -42,7 +41,47 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMaintenanceCommandsText = (ExpectedIsIgnoreRuleReason, BelowIgnoreThereIsNo, ExpectedIsTodoText,
+    DocOnlyAppliesAboveA, LogOnlyAppliesInThe, SuppressARuleForThe, TODOCommentForTheIDE, TodoCheckErrorCase,
+    XMLDocSkeletonForThe, LogLineWithUnitAnd, SortUsesLists, StrikeUnusedUsesOrderStays, CleanusesNeedsTheIndexOf,
+    RuleReportsNothingInThe);
+
+const
+  cTexts: array[TMaintenanceCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /ignore regel [Begründung]'; En: 'Expected is /ignore rule [reason]'),
+    (De: 'Unter /ignore steht keine Zeile, die unterdrückt werden kann';
+     En: 'Below /ignore there is no line that can be suppressed'),
+    (De: 'Erwartet wird /todo Text'; En: 'Expected is /todo Text'),
+    (De: '/doc gilt nur über einer Routine'; En: '/doc only applies above a routine'),
+    (De: '/log gilt nur im Rumpf einer Routine'; En: '/log only applies in the body of a routine'),
+    (De: 'Prüfregel für die Zeile darunter unterdrücken'; En: 'Suppress a rule for the line below'),
+    (De: 'TODO-Kommentar für die IDE-TODO-Liste'; En: 'TODO comment for the IDE to-do list'),
+    (De: '/todo Fehlerfall prüfen'; En: '/todo Check error case'),
+    (De: 'XML-Doc-Gerüst für die Routine darunter'; En: 'XML doc skeleton for the routine below'),
+    (De: 'Protokollzeile mit Unit- und Routinennamen'; En: 'Log line with unit and routine name'),
+    (De: 'uses-Listen sortieren'; En: 'Sort uses lists'),
+    (De: 'Ungenutzte uses streichen, Reihenfolge bleibt'; En: 'Strike unused uses, order stays'),
+    (De: '/cleanuses braucht den Index des Projekts'; En: '/cleanuses needs the index of the project'),
+    (De: 'Regel %s meldet in der Zeile darunter nichts'; En: 'Rule %s reports nothing in the line below'));
+
+{$SCOPEDENUMS OFF}
+
+function CleanUsesNoIndexHint: string;
+begin
+  Result := cTexts[TMaintenanceCommandsText.CleanusesNeedsTheIndexOf].Text;
+end;
+
+function IgnoreNoHitHint: string;
+begin
+  Result := cTexts[TMaintenanceCommandsText.RuleReportsNothingInThe].Text;
+end;
 
 { /sortuses }
 
@@ -157,13 +196,13 @@ begin
   Reason := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
   if not IsRuleId(Id) then
   begin
-    Exit(Fail('Erwartet wird /ignore regel [Begründung]', AReason));
+    Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsIgnoreRuleReason].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     if (Source.Line >= High(Source.Lines)) or (Trim(Source.Lines[Source.Line + 1]) = '') then
     begin
-      Exit(Fail('Unter /ignore steht keine Zeile, die unterdrückt werden kann', AReason));
+      Exit(Fail(cTexts[TMaintenanceCommandsText.BelowIgnoreThereIsNo].Text, AReason));
     end;
     // Nur Regeln, die dort treffen; Muster mit * prüfen wir nicht.
     if (AContext.Host <> nil) and (Pos('*', Id) = 0) and
@@ -260,7 +299,7 @@ begin
   SplitTodo(AContext.Arguments, Owner, Category, Text, HasCategory);
   if Text = '' then
   begin
-    Exit(Fail('Erwartet wird /todo Text', AReason));
+    Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsTodoText].Text, AReason));
   end;
   // Ohne Host (Prüfung stehen gebliebener Zeilen) nur die Angaben aus der Zeile.
   if AContext.Host <> nil then
@@ -364,7 +403,7 @@ begin
     end;
     if (Next > High(Source.Lines)) or not IsRoutineStart(Source.Lines[Next]) then
     begin
-      Exit(Fail('/doc gilt nur über einer Routine', AReason));
+      Exit(Fail(cTexts[TMaintenanceCommandsText.DocOnlyAppliesAboveA].Text, AReason));
     end;
     AEdits := [Source.ReplaceWithIndentedLines(DocCommentLines(RoutineSignatureFrom(Source.Lines, Next)))];
     Result := True;
@@ -387,7 +426,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/log gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TMaintenanceCommandsText.LogOnlyAppliesInThe].Text, AReason));
     end;
     Name := Routine.Name;
     if Source.Tree.Root.Name <> '' then
@@ -415,15 +454,19 @@ end;
 
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
-  ARegister(Command('cleanuses', 'Ungenutzte uses streichen, Reihenfolge bleibt', '/cleanuses',
+  ARegister(Command('sortuses', cTexts[TMaintenanceCommandsText.SortUsesLists].Text, '/sortuses', ExecuteSortUses));
+  ARegister(Command('cleanuses', cTexts[TMaintenanceCommandsText.StrikeUnusedUsesOrderStays].Text, '/cleanuses',
     ExecuteCleanUses));
-  ARegister(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
+  ARegister(Command('ignore', cTexts[TMaintenanceCommandsText.SuppressARuleForThe].Text,
     '/ignore unused-local Absicht', ExecuteIgnore));
-  ARegister(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
+  ARegister(Command('todo', cTexts[TMaintenanceCommandsText.TODOCommentForTheIDE].Text,
+    cTexts[TMaintenanceCommandsText.TodoCheckErrorCase].Text,
     ExecuteTodo));
-  ARegister(Command('doc', 'XML-Doc-Gerüst für die Routine darunter', '/doc', ExecuteDoc));
-  ARegister(Command('log', 'Protokollzeile mit Unit- und Routinennamen', '/log', ExecuteLog));
+  ARegister(Command('doc', cTexts[TMaintenanceCommandsText.XMLDocSkeletonForThe].Text, '/doc', ExecuteDoc));
+  ARegister(Command('log', cTexts[TMaintenanceCommandsText.LogLineWithUnitAnd].Text, '/log', ExecuteLog));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MaintenanceCommands', cTexts);
 
 end.

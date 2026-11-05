@@ -41,7 +41,23 @@ implementation
 uses
   System.IOUtils,
   System.StrUtils,
-  Atlas.Common.Mcp.Server;
+  Atlas.Common.Mcp.Server,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPathsText = (PathMissing, LiesOutsideTheWorkspaceAnd);
+
+const
+  cTexts: array[TPathsText] of TAtlasText = (
+    (De: 'Pfad fehlt'; En: 'Path missing'),
+    (De: '"%s" liegt außerhalb des Arbeitsbereichs (%s) und seiner Bibliothekspfade; MCP-Werkzeuge lesen nur dort ' +
+      '(#99).';
+     En: '"%s" lies outside the workspace (%s) and its library paths; MCP tools only read there (#99).'));
+
+{$SCOPEDENUMS OFF}
 
 { TMcpPathGuard }
 
@@ -84,7 +100,7 @@ var
 begin
   if Trim(APath) = '' then
   begin
-    raise EMcpToolError.Create('Pfad fehlt');
+    raise EMcpToolError.Create(cTexts[TPathsText.PathMissing].Text);
   end;
   if TPath.IsRelativePath(APath) then
   begin
@@ -108,8 +124,10 @@ begin
       end;
     end;
   end;
-  raise EMcpToolError.CreateFmt('"%s" liegt außerhalb des Arbeitsbereichs (%s) und seiner Bibliothekspfade; ' +
-    'MCP-Werkzeuge lesen nur dort (#99).', [Result, FRoot]);
+  raise EMcpToolError.CreateFmt(cTexts[TPathsText.LiesOutsideTheWorkspaceAnd].Text, [Result, FRoot]);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Paths', cTexts);
 
 end.

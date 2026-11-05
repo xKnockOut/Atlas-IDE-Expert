@@ -38,7 +38,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSelectionRangesText = (FieldsTextDocumentUriAndPositions);
+
+const
+  cTexts: array[TSelectionRangesText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "positions" fehlen in ';
+     En: 'Fields "textDocument.uri" and "positions" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 // Erstes Kind, das den Bereich AStart..AEnd umschließt, sonst nil.
 function ChildAround(ANode: TSyntaxNode; AStart, AEnd: Integer): TSyntaxNode;
@@ -196,7 +210,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONArray>('positions', Positions)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "positions" fehlen in ' + Method);
+      cTexts[TSelectionRangesText.FieldsTextDocumentUriAndPositions].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -227,5 +241,8 @@ begin
     raise;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SelectionRanges', cTexts);
 
 end.

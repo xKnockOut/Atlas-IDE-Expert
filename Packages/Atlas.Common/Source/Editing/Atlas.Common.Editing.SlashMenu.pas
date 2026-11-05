@@ -138,7 +138,20 @@ uses
   Atlas.Common.Editing.CollectionCommands,
   Atlas.Common.Editing.RecordCommands,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingSlashMenuText = (TheCursorPositionLiesOutside);
+
+const
+  cTexts: array[TEditingSlashMenuText] of TAtlasText = (
+    (De: 'Die Cursorstelle liegt außerhalb der Datei'; En: 'The cursor position lies outside the file'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Häufige Symbole für /ifdef.</summary>
@@ -913,7 +926,7 @@ begin
   end;
   if not Prepare(AText, ASpot, mCommand, mVirtual, mCommandLine, mWrapUntil) then
   begin
-    AReason := 'Die Cursorstelle liegt außerhalb der Datei';
+    AReason := cTexts[TEditingSlashMenuText.TheCursorPositionLiesOutside].Text;
     Exit(False);
   end;
   Result := ARegistry.Run(mVirtual, mCommandLine, mWrapUntil, ACall.Environment, mEdits, AReason);
@@ -1029,5 +1042,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.SlashMenu', cTexts);
 
 end.

@@ -32,7 +32,24 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TStatusToolsText = (AtlasServerOfTheIDE, ThisMCPProcessNoAtlas, Source);
+
+const
+  cTexts: array[TStatusToolsText] of TAtlasText = (
+    (De: 'Atlas-Server der IDE (Prozess %d, Stand %s)'; En: 'Atlas server of the IDE (process %d, state %s)'),
+    (De: 'dieser MCP-Prozess (für den Ordner läuft gerade kein Atlas-Server der IDE)';
+     En: 'this MCP process (no Atlas server of the IDE is running for the folder right now)'),
+    (De: 'Quelle: %s' + #10 + #10;
+     En: 'Source: %s' + #10 + #10));
+
+{$SCOPEDENUMS OFF}
 
 class function TMcpStatusTools.ServerStatus(const ACacheRoot, AFolder: string; AJson: Boolean; ANow: TDateTime;
   const AOwn: TMcpOwnStatusFunc): string;
@@ -51,8 +68,7 @@ begin
       if mValue is TJSONObject then
       begin
         mObject := TJSONObject(mValue);
-        mSource := Format('Atlas-Server der IDE (Prozess %d, Stand %s)',
-          [mPid, FormatDateTime('hh":"nn":"ss', mWritten)]);
+        mSource := cTexts[TStatusToolsText.AtlasServerOfTheIDE].Fmt([mPid, FormatDateTime('hh":"nn":"ss', mWritten)]);
         if AJson then
         begin
           mObject.AddPair('source', mSource);
@@ -64,14 +80,14 @@ begin
         begin
           mMarkdown := mObject.GetValue('markdown').Value;
         end;
-        Exit('Quelle: ' + mSource + #10#10 + mMarkdown);
+        Exit(cTexts[TStatusToolsText.Source].Fmt([mSource]) + mMarkdown);
       end;
     finally
       mValue.Free;
     end;
   end;
   mStatus := AOwn();
-  mSource := 'dieser MCP-Prozess (für den Ordner läuft gerade kein Atlas-Server der IDE)';
+  mSource := cTexts[TStatusToolsText.ThisMCPProcessNoAtlas].Text;
   mObject := mStatus.ToJson;
   try
     if AJson then
@@ -82,11 +98,14 @@ begin
     end
     else
     begin
-      Result := 'Quelle: ' + mSource + #10#10 + mStatus.ToMarkdown;
+      Result := cTexts[TStatusToolsText.Source].Fmt([mSource]) + mStatus.ToMarkdown;
     end;
   finally
     mObject.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.StatusTools', cTexts);
 
 end.

@@ -59,7 +59,27 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TContextSnippetsText = (PropertyWithSetterWhichChecks, SetOnlyOnChange, CreateObjectFieldsOf, FreeCreatedFieldsOf,
+    WithoutNotification, Calls);
+
+const
+  cTexts: array[TContextSnippetsText] of TAtlasText = (
+    (De: 'Property %s: %s mit Setter %s, der auf Änderung prüft und %s';
+     En: 'Property %s: %s with setter %s, which checks for a change and %s'),
+    (De: '%s nur bei Änderung setzen; %s'; En: 'Set %s only on change; %s'),
+    (De: '%d Objektfelder von %s erzeugen'; En: 'Create %d object fields of %s'),
+    (De: '%d erzeugte Felder von %s freigeben'; En: 'Free %d created fields of %s'),
+    (De: 'ohne Benachrichtigung'; En: 'without notification'),
+    (De: 'ruft %s auf'; En: 'calls %s'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Typ mit Typargumenten: TObjectList&lt;TKunde&gt;.</summary>
 function FullType(const AField: TIndexSymbol): string;
@@ -122,11 +142,11 @@ function NotifyText(const ACall: string): string;
 begin
   if ACall = '' then
   begin
-    Result := 'ohne Benachrichtigung';
+    Result := cTexts[TContextSnippetsText.WithoutNotification].Text;
   end
   else
   begin
-    Result := 'ruft ' + ACall + ' auf';
+    Result := cTexts[TContextSnippetsText.Calls].Fmt([ACall]);
   end;
 end;
 
@@ -168,7 +188,7 @@ begin
         LB + TSetterGenerator.Body(Field.Name, 'Value', Call, LB))];
     end;
     Result := Result + [Snippet('prop', 'prop ' + Name,
-      Format('Property %s: %s mit Setter %s, der auf Änderung prüft und %s', [Name, TypeText, Setter,
+      cTexts[TContextSnippetsText.PropertyWithSetterWhichChecks].Fmt([Name, TypeText, Setter,
       NotifyText(Call)]),
       Format('property ${1:%s}: %s read %s write %s;$0', [TContextSnippets.Escape(Name),
       TContextSnippets.Escape(TypeText), Field.Name, Setter]), Edits)];
@@ -226,7 +246,7 @@ begin
     Text := Text + Line;
     Found := True;
   end;
-  Result := [Snippet('changed', 'changed ' + Field, Format('%s nur bei Änderung setzen; %s', [Field,
+  Result := [Snippet('changed', 'changed ' + Field, cTexts[TContextSnippetsText.SetOnlyOnChange].Fmt([Field,
     NotifyText(TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass))]), Text + '$0', nil)];
 end;
 
@@ -273,7 +293,8 @@ begin
     Lines := ['inherited;'] + Lines;
   end;
   Text := string.Join(#10, Lines) + '$0';
-  Result := [Snippet('create', 'create', Format('%d Objektfelder von %s erzeugen', [Number, AClass.Name]), Text,
+  Result := [Snippet('create', 'create', cTexts[TContextSnippetsText.CreateObjectFieldsOf].Fmt([Number, AClass.Name]),
+    Text,
     nil)];
 end;
 
@@ -302,7 +323,7 @@ begin
   begin
     Exit;
   end;
-  Result := [Snippet('free', 'free', Format('%d erzeugte Felder von %s freigeben', [Integer(Length(Lines)),
+  Result := [Snippet('free', 'free', cTexts[TContextSnippetsText.FreeCreatedFieldsOf].Fmt([Integer(Length(Lines)),
     AClass.Name]), string.Join(#10, Lines) + '$0', nil)];
   if not Mentions(Body, 'inherited') then
   begin
@@ -544,5 +565,8 @@ begin
   Index := 1;
   Result := PlainUntilClose(ASnippet, Index, False);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ContextSnippets', cTexts);
 
 end.

@@ -35,6 +35,9 @@ type
     /// <summary>Katalog für die Vervollständigung im Fenster „Atlas-Abfrage“ (atlas/queryCatalog): Mengen mit ihren
     /// Feldern und Prädikaten, Schlüsselwörter und die gespeicherten Abfragen AQueries.</summary>
     class function CatalogJson(const AQueries: TArray<TSavedQuery>): string; static;
+    /// <summary>Meldung einer gespeicherten Abfrage: ATemplate oder bei '' der Vorgabetext in der Sprache von
+    /// Atlas.</summary>
+    class function MessageTemplate(const ATemplate: string): string; static;
   end;
 
 implementation
@@ -42,7 +45,32 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Query.Catalog;
+  Atlas.Common.Query.Catalog,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TOutputText = (FileText, MoreMatchesNotShownLimit, InferredMeansACallCounts, OfMatches, DefaultMessage, OneMatch,
+    Matches, OfTheseInferred, Column, Suggestion, Inferred, Inferred2, Inferred3);
+
+const
+  cTexts: array[TOutputText] of TAtlasText = (
+    (De: ' Datei |'; En: ' File |'),
+    (De: 'Weitere %d Treffer nicht gezeigt (limit).'; En: '%d more matches not shown (limit).'),
+    (De: 'Erschlossen heißt: Ein Aufruf zählt mit, den die Namensauflösung nicht sicher zuordnet (Interface, ' +
+      'virtuelle Methode, Überladung; siehe get_call_hierarchy).';
+     En: 'Inferred means: a call counts that the name resolution does not assign with certainty (interface, virtual ' +
+      'method, overload; see get_call_hierarchy).'),
+    (De: '%d von %d Treffern'; En: '%d of %d matches'),
+    (De: '{name}: Treffer der Abfrage {query}'; En: '{name}: hit of the query {query}'),
+    (De: '1 Treffer'; En: '1 match'),
+    (De: '%d Treffer'; En: '%d matches'),
+    (De: ', %d davon erschlossen'; En: ', %d of them inferred'),
+    (De: 'Spalte %d: %s'; En: 'Column %d: %s'),
+    (De: 'Vorschlag: %s'; En: 'Suggestion: %s'),
+    (De: ' (erschlossen)'; En: ' (inferred)'),
+    (De: 'erschlossen'; En: 'inferred'),
+    (De: '  (erschlossen)'; En: '  (inferred)'));
 
 function MarkdownCell(const AText: string): string;
 begin
@@ -65,24 +93,33 @@ function Summary(const AResult: TQueryResult): string;
 begin
   if AResult.Truncated then
   begin
-    Result := Format('%d von %d Treffern', [Length(AResult.Rows), AResult.Total]);
+    Result := cTexts[TOutputText.OfMatches].Fmt([Length(AResult.Rows), AResult.Total]);
   end
   else if AResult.Total = 1 then
   begin
-    Result := '1 Treffer';
+    Result := cTexts[TOutputText.OneMatch].Text;
   end
   else
   begin
-    Result := Format('%d Treffer', [AResult.Total]);
+    Result := cTexts[TOutputText.Matches].Fmt([AResult.Total]);
   end;
   if AResult.InferredCount > 0 then
   begin
-    Result := Result + Format(', %d davon erschlossen', [AResult.InferredCount]);
+    Result := Result + cTexts[TOutputText.OfTheseInferred].Fmt([AResult.InferredCount]);
   end;
   Result := Result + Format(' in %d ms', [AResult.ElapsedMs]);
 end;
 
 { TQueryOutput }
+
+class function TQueryOutput.MessageTemplate(const ATemplate: string): string;
+begin
+  Result := ATemplate;
+  if Result = '' then
+  begin
+    Result := cTexts[TOutputText.DefaultMessage].Text;
+  end;
+end;
 
 class function TQueryOutput.TryParseFormat(const AText: string; AFallback: TQueryOutputFormat;
   out AFormat: TQueryOutputFormat): Boolean;
@@ -133,7 +170,7 @@ class function TQueryOutput.ErrorText(const AResult: TQueryResult): string;
 begin
   if AResult.ErrorColumn > 0 then
   begin
-    Result := Format('Spalte %d: %s', [AResult.ErrorColumn, AResult.Error]) + sLineBreak + '  ' + AResult.Query +
+    Result := cTexts[TOutputText.Column].Fmt([AResult.ErrorColumn, AResult.Error]) + sLineBreak + '  ' + AResult.Query +
       sLineBreak + '  ' + StringOfChar(' ', AResult.ErrorColumn - 1) + '^';
   end
   else
@@ -142,7 +179,7 @@ begin
   end;
   if (AResult.Suggestion <> '') and not ContainsText(AResult.Error, '`' + AResult.Suggestion + '`') then
   begin
-    Result := Result + sLineBreak + Format('Vorschlag: %s', [AResult.Suggestion]);
+    Result := Result + sLineBreak + cTexts[TOutputText.Suggestion].Fmt([AResult.Suggestion]);
   end;
 end;
 
@@ -155,7 +192,7 @@ begin
   begin
     ABuilder.Append(' ').Append(AResult.Columns[mIndex]).Append(' |');
   end;
-  ABuilder.Append(' Datei |').Append(sLineBreak).Append('|');
+  ABuilder.Append(cTexts[TOutputText.FileText].Text).Append(sLineBreak).Append('|');
   for mIndex := 0 to High(AResult.Columns) + 1 do
   begin
     ABuilder.Append('---|');
@@ -174,7 +211,7 @@ begin
     mCell := MarkdownCell(TQueryResult.CellText(ARow, mIndex));
     if (mIndex = 0) and ARow.Inferred then
     begin
-      mCell := mCell + ' (erschlossen)';
+      mCell := mCell + cTexts[TOutputText.Inferred].Text;
     end;
     ABuilder.Append(' ').Append(mCell).Append(' |');
   end;
@@ -204,13 +241,12 @@ procedure AppendMarkdownNotes(ABuilder: TStringBuilder; const AResult: TQueryRes
 begin
   if AResult.Truncated then
   begin
-    ABuilder.Append(sLineBreak).Append(Format('Weitere %d Treffer nicht gezeigt (limit).',
-      [AResult.Total - Length(AResult.Rows)])).Append(sLineBreak);
+    ABuilder.Append(sLineBreak).Append(cTexts[TOutputText.MoreMatchesNotShownLimit].Fmt([
+      AResult.Total - Length(AResult.Rows)])).Append(sLineBreak);
   end;
   if HasInferredRow(AResult) then
   begin
-    ABuilder.Append(sLineBreak).Append('Erschlossen heißt: Ein Aufruf zählt mit, den die Namensauflösung nicht ' +
-      'sicher zuordnet (Interface, virtuelle Methode, Überladung; siehe get_call_hierarchy).').Append(sLineBreak);
+    ABuilder.Append(sLineBreak).Append(cTexts[TOutputText.InferredMeansACallCounts].Text).Append(sLineBreak);
   end;
 end;
 
@@ -382,7 +418,7 @@ begin
       mBuilder.Append(CsvCell(mRow.Path)).Append(';');
       if mRow.Inferred then
       begin
-        mBuilder.Append('erschlossen');
+        mBuilder.Append(cTexts[TOutputText.Inferred2].Text);
       end;
       mBuilder.Append(sLineBreak);
     end;
@@ -436,7 +472,7 @@ begin
       mBuilder.Append(mRow.Path);
       if mRow.Inferred then
       begin
-        mBuilder.Append('  (erschlossen)');
+        mBuilder.Append(cTexts[TOutputText.Inferred3].Text);
       end;
       mBuilder.Append(sLineBreak);
     end;
@@ -570,5 +606,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Output', cTexts);
 
 end.

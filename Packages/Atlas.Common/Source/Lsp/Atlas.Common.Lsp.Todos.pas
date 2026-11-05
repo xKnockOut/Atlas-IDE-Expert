@@ -59,7 +59,22 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTodosText = (TODODataIsNotValid, UnknownModeAllowedSummaryJson);
+
+const
+  cTexts: array[TTodosText] of TAtlasText = (
+    (De: 'TODO-Daten sind kein gültiges JSON'; En: 'TODO data is not valid JSON'),
+    (De: 'Unbekannter Modus "%s"; erlaubt: summary, json, markdown';
+     En: 'Unknown mode "%s"; allowed: summary, json, markdown'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspTodos }
 
@@ -181,7 +196,7 @@ begin
   if not TryParseMode(ModeText, Project, Mode) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      Format('Unbekannter Modus "%s"; erlaubt: summary, json, markdown', [ModeText]));
+      cTexts[TTodosText.UnknownModeAllowedSummaryJson].Fmt([ModeText]));
   end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, Project, Source)) then
   begin
@@ -197,8 +212,11 @@ begin
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'TODO-Daten sind kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TTodosText.TODODataIsNotValid].Text);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Todos', cTexts);
 
 end.

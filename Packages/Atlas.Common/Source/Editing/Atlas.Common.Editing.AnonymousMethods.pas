@@ -77,7 +77,7 @@ type
   public const
     ToMethodTitle = 'In Methode umwandeln';
     ToRoutineTitle = 'In Routine umwandeln';
-    EmbedTitle = cEmbedTitle;
+    EmbedTitle = EmbedTitle;
   public
     /// <summary>Geht „In Methode umwandeln“ an AInput.Position (Kopf einer anonymen Methode), ohne Prüfung des
     /// Namens? ATarget nennt Ziel, Vorschlag und Form, sonst AReason den Grund.</summary>
@@ -110,7 +110,67 @@ uses
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Editing.AnonymousMethods.Embed;
+  Atlas.Common.Editing.AnonymousMethods.Embed,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingAnonymousMethodsText = (NoTree, NoAnonymousMethod, NotInARoutine, LiesInALocalRoutine,
+    LiesInAnotherAnonymousMethod, UnsupportedClass, ClassNotInTheFile, UnsupportedParameters, UsesResultOfTheOuter,
+    UsesTheLocalRoutine, UsesTheLocalType, WritesTheConstant, TypeOfUnknown, TheAnonymousMethodWritesCaptured,
+    NothingCanBeInsertedBefore, ANestedAnonymousMethodCaptures, IsNotAValidName, IsAlreadyTaken, BodyNotReadable,
+    ClassDeclarationCannotBeExtended, RunsDuringTheCapturedVariables, MayRunLaterANamed, NotPossibleAsFieldsHere,
+    CapturesNoVariablesTheSite, RunsLaterTheValuesOf, ReadsTheValuesFromFields, RoutineWithoutHeader,
+    OnlyInMethodsOfAn, NewMethod, NewRoutine);
+
+const
+  cTexts: array[TEditingAnonymousMethodsText] of TAtlasText = (
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: 'keine anonyme Methode'; En: 'no anonymous method'),
+    (De: 'nicht in einer Routine'; En: 'not in a routine'),
+    (De: 'liegt in einer lokalen Routine'; En: 'lies in a local routine'),
+    (De: 'liegt in einer anderen anonymen Methode'; En: 'lies in another anonymous method'),
+    (De: 'nicht unterstützte Klasse'; En: 'unsupported class'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'nicht unterstützte Parameter'; En: 'unsupported parameters'),
+    (De: 'nutzt Result der äußeren Routine'; En: 'uses Result of the outer routine'),
+    (De: 'nutzt die lokale Routine '; En: 'uses the local routine '),
+    (De: 'nutzt den lokalen Typ '; En: 'uses the local type '),
+    (De: 'schreibt die Konstante '; En: 'writes the constant '),
+    (De: 'Typ von %s unbekannt'; En: 'Type of %s unknown'),
+    (De: 'die anonyme Methode schreibt erfasste Variablen'; En: 'the anonymous method writes captured variables'),
+    (De: 'vor der Anweisung lässt sich nichts einfügen'; En: 'nothing can be inserted before the statement'),
+    (De: 'eine verschachtelte anonyme Methode fängt %s ein'; En: 'a nested anonymous method captures %s'),
+    (De: '"%s" ist kein gültiger Name'; En: '"%s" is not a valid name'),
+    (De: '"%s" ist schon vergeben'; En: '"%s" is already taken'),
+    (De: 'Rumpf nicht lesbar'; En: 'body not readable'),
+    (De: 'Klassendeklaration nicht erweiterbar'; En: 'class declaration cannot be extended'),
+    (De: 'Läuft während %s: Die erfassten Variablen (%s) werden Parameter, geschriebene als var; an der Stelle ruft ' +
+      'eine kurze anonyme Methode %s mit ihnen auf.';
+     En: 'Runs during %s: the captured variables (%s) become parameters, written ones as var; at the site a short ' +
+      'anonymous method calls %s with them.'),
+    (De: 'Läuft womöglich später: Eine benannte Methode kann %s nicht erfassen. An der Stelle bleibt eine kurze ' +
+      'anonyme Weiterleitung, die die Variablen weiter festhält und %s mit ihnen aufruft; das Verhalten bleibt ' +
+      'gleich.';
+     En: 'May run later: a named method cannot capture %s. At the site a short anonymous forwarder remains, which ' +
+      'keeps holding the variables and calls %s with them; the behavior stays the same.'),
+    (De: 'Als Felder geht hier nicht: %s.'; En: 'Not possible as fields here: %s.'),
+    (De: 'Erfasst keine Variablen: An der Stelle steht jetzt %s.';
+     En: 'Captures no variables: the site now reads %s.'),
+    (De: 'Läuft später: Die Werte von %s kommen vor der Anweisung in Felder, an der Stelle steht %s.';
+     En: 'Runs later: the values of %s go into fields before the statement, the site reads %s.'),
+    (De: '%s liest die Werte aus Feldern: Spätere Änderungen von %s sieht es nicht, und gleichzeitig wartende ' +
+      'Aufrufe teilen sich die Felder.';
+     En: '%s reads the values from fields: it does not see later changes of %s, and calls waiting at the same time ' +
+      'share the fields.'),
+    (De: 'Routine ohne Kopf'; En: 'routine without header'),
+    (De: 'nur in Methoden eines Objekts'; En: 'only in methods of an object'),
+    (De: 'Neue Methode: '; En: 'New method: '),
+    (De: 'Neue Routine: '; En: 'New routine: '));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Rufen die anonyme Methode, solange der Aufruf läuft.
@@ -551,26 +611,26 @@ begin
   mTree := FSite.Input.Tree;
   if (mTree = nil) or (mTree.Root = nil) then
   begin
-    Exit('kein Baum');
+    Exit(cTexts[TEditingAnonymousMethodsText.NoTree].Text);
   end;
   FSite.Tokens := mTree.Tokens;
   FSite.Anonymous := AnonymousAt(mTree, TLineTable.Build(FSite.Input.Text).OffsetAt(FSite.Input.Position));
   if (FSite.Anonymous = nil) or (TRoutineBody.BodyOf(FSite.Anonymous) = nil) then
   begin
-    Exit('keine anonyme Methode');
+    Exit(cTexts[TEditingAnonymousMethodsText.NoAnonymousMethod].Text);
   end;
   FSite.Outer := RoutineOf(FSite.Anonymous);
   if (FSite.Outer = nil) or (TRoutineBody.BodyOf(FSite.Outer) = nil) then
   begin
-    Result := 'nicht in einer Routine';
+    Result := cTexts[TEditingAnonymousMethodsText.NotInARoutine].Text;
   end
   else if FSite.Outer <> TAnonymousSyntax.TopRoutineOf(FSite.Anonymous) then
   begin
-    Result := 'liegt in einer lokalen Routine';
+    Result := cTexts[TEditingAnonymousMethodsText.LiesInALocalRoutine].Text;
   end
   else if TRoutineParts.InAnonymous(FSite.Anonymous, FSite.Outer) then
   begin
-    Result := 'liegt in einer anderen anonymen Methode';
+    Result := cTexts[TEditingAnonymousMethodsText.LiesInAnotherAnonymousMethod].Text;
   end
   else
   begin
@@ -605,11 +665,11 @@ begin
   mHeader := TRoutineParts.HeaderOf(FSite.Outer);
   if (Pos('<', FSite.ClassName) > 0) or (Pos('.', FSite.ClassName) > 0) then
   begin
-    Result := 'nicht unterstützte Klasse';
+    Result := cTexts[TEditingAnonymousMethodsText.UnsupportedClass].Text;
   end
   else if mHeader = nil then
   begin
-    Result := 'Routine ohne Kopf';
+    Result := cTexts[TEditingAnonymousMethodsText.RoutineWithoutHeader].Text;
   end
   else if FSite.IsMethod then
   begin
@@ -628,7 +688,7 @@ begin
   FSite.TypeBody := TRoutineBody.TypeBody(FSite.Input.Tree.Root, FSite.ClassName);
   if FSite.TypeBody = nil then
   begin
-    Result := 'Klasse ' + FSite.ClassName + ' nicht in der Datei';
+    Result := cTexts[TEditingAnonymousMethodsText.ClassNotInTheFile].Fmt([FSite.ClassName]);
   end
   else
   begin
@@ -644,7 +704,7 @@ begin
   FSite.Parameters := TRoutineParts.ParameterTexts(FSite.Input.Text, FSite.Anonymous);
   if TAnonymousSyntax.UnreadParameters(FSite.Parameters, FSite.Anonymous) then
   begin
-    Result := 'nicht unterstützte Parameter';
+    Result := cTexts[TEditingAnonymousMethodsText.UnsupportedParameters].Text;
   end;
 end;
 
@@ -704,7 +764,7 @@ begin
   end;
   if SameText(ANode.Name, 'Result') and TRoutineParts.IsFunction(FSite.Outer) then
   begin
-    Exit('nutzt Result der äußeren Routine');
+    Exit(cTexts[TEditingAnonymousMethodsText.UsesResultOfTheOuter].Text);
   end;
   mFound := OuterIndex(ANode, AOuterLocals);
   if mFound < 0 then
@@ -746,11 +806,11 @@ begin
     mChild := FSite.Outer[mIndex];
     if ARoutines and (mChild.Kind = TSyntaxKind.RoutineDecl) and SameText(mChild.Name, AName) then
     begin
-      Result := 'nutzt die lokale Routine ' + mChild.Name;
+      Result := cTexts[TEditingAnonymousMethodsText.UsesTheLocalRoutine].Text + mChild.Name;
     end
     else if (mChild.Kind = TSyntaxKind.TypeSection) and (IndexText(AName, TRoutineParts.ChildNames(mChild)) >= 0) then
     begin
-      Result := 'nutzt den lokalen Typ ' + AName;
+      Result := cTexts[TEditingAnonymousMethodsText.UsesTheLocalType].Text + AName;
     end;
     Inc(mIndex);
   end;
@@ -778,7 +838,7 @@ begin
   mLine := TRoutineBody.TextOf(FSite.Input.Text, ALocal.Decl);
   if AWritten then
   begin
-    Result := 'schreibt die Konstante ' + ANode.Name;
+    Result := cTexts[TEditingAnonymousMethodsText.WritesTheConstant].Text + ANode.Name;
   end
   else if IndexText(mLine, FSite.ConstLines) < 0 then
   begin
@@ -878,7 +938,7 @@ begin
   begin
     if FSite.Captured[mIndex].TypeText = '' then
     begin
-      Result := 'Typ von ' + FSite.Captured[mIndex].Local.Name + ' unbekannt';
+      Result := cTexts[TEditingAnonymousMethodsText.TypeOfUnknown].Fmt([FSite.Captured[mIndex].Local.Name]);
     end;
     Inc(mIndex);
   end;
@@ -889,15 +949,15 @@ function TSiteAnalysis.FieldsProblem: string;
 begin
   if not FSite.IsMethod or FSite.IsClass then
   begin
-    Result := 'nur in Methoden eines Objekts';
+    Result := cTexts[TEditingAnonymousMethodsText.OnlyInMethodsOfAn].Text;
   end
   else if AnyWritten(FSite.Captured) then
   begin
-    Result := 'die anonyme Methode schreibt erfasste Variablen';
+    Result := cTexts[TEditingAnonymousMethodsText.TheAnonymousMethodWritesCaptured].Text;
   end
   else if TRoutineBody.HostStatement(FSite.Anonymous, TRoutineBody.BodyOf(FSite.Outer)) = nil then
   begin
-    Result := 'vor der Anweisung lässt sich nichts einfügen';
+    Result := cTexts[TEditingAnonymousMethodsText.NothingCanBeInsertedBefore].Text;
   end
   else
   begin
@@ -916,7 +976,8 @@ begin
   begin
     if FSite.Captured[mIndex].Written and FSite.Captured[mIndex].InNested then
     begin
-      Result := 'eine verschachtelte anonyme Methode fängt ' + FSite.Captured[mIndex].Local.Name + ' ein';
+      Result := cTexts[TEditingAnonymousMethodsText.ANestedAnonymousMethodCaptures].Fmt([
+        FSite.Captured[mIndex].Local.Name]);
     end;
     Inc(mIndex);
   end;
@@ -1090,11 +1151,11 @@ function TSiteBuilder.NameReason: string;
 begin
   if not IsValidName(FName) then
   begin
-    Result := Format('"%s" ist kein gültiger Name', [FName]);
+    Result := cTexts[TEditingAnonymousMethodsText.IsNotAValidName].Fmt([FName]);
   end
   else if SiteNameTaken(FSite, FName) then
   begin
-    Result := Format('"%s" ist schon vergeben', [FName]);
+    Result := cTexts[TEditingAnonymousMethodsText.IsAlreadyTaken].Fmt([FName]);
   end
   else
   begin
@@ -1317,7 +1378,7 @@ begin
   end
   else
   begin
-    AReason := 'Rumpf nicht lesbar';
+    AReason := cTexts[TEditingAnonymousMethodsText.BodyNotReadable].Text;
   end;
 end;
 
@@ -1411,7 +1472,7 @@ begin
   end
   else
   begin
-    Result := 'Klassendeklaration nicht erweiterbar';
+    Result := cTexts[TEditingAnonymousMethodsText.ClassDeclarationCannotBeExtended].Text;
   end;
 end;
 
@@ -1452,7 +1513,7 @@ begin
   end
   else
   begin
-    Result := 'Klassendeklaration nicht erweiterbar';
+    Result := cTexts[TEditingAnonymousMethodsText.ClassDeclarationCannotBeExtended].Text;
   end;
 end;
 
@@ -1470,18 +1531,16 @@ function TSiteBuilder.ForwardingExplanation(const ANames: string): string;
 begin
   if FSite.Synchronous then
   begin
-    Result := Format('Läuft während %s: Die erfassten Variablen (%s) werden Parameter, geschriebene als var; ' +
-      'an der Stelle ruft eine kurze anonyme Methode %s mit ihnen auf.', [FSite.CallName, ANames, FName]);
+    Result := cTexts[TEditingAnonymousMethodsText.RunsDuringTheCapturedVariables].Fmt([FSite.CallName, ANames, FName]);
   end
   else
   begin
-    Result := Format('Läuft womöglich später: Eine benannte Methode kann %s nicht erfassen. An der Stelle bleibt ' +
-      'eine kurze anonyme Weiterleitung, die die Variablen weiter festhält und %s mit ihnen aufruft; das ' +
-      'Verhalten bleibt gleich.', [ANames, FName]);
+    Result := cTexts[TEditingAnonymousMethodsText.MayRunLaterANamed].Fmt([ANames, FName]);
   end;
   if FSite.FieldsReason <> '' then
   begin
-    Result := Result + FLineBreak + Format('Als Felder geht hier nicht: %s.', [FSite.FieldsReason]);
+    Result := Result + FLineBreak + cTexts[TEditingAnonymousMethodsText.NotPossibleAsFieldsHere].Fmt([
+      FSite.FieldsReason]);
   end;
 end;
 
@@ -1493,12 +1552,11 @@ begin
   mNames := Joined(CapturedNames(FSite.Captured), ', ');
   case FSite.Form of
     TAnonymousForm.Direct:
-      Result := Format('Erfasst keine Variablen: An der Stelle steht jetzt %s.', [FName]);
+      Result := cTexts[TEditingAnonymousMethodsText.CapturesNoVariablesTheSite].Fmt([FName]);
     TAnonymousForm.Forwarding:
       Result := ForwardingExplanation(mNames);
     TAnonymousForm.Fields:
-      Result := Format('Läuft später: Die Werte von %s kommen vor der Anweisung in Felder, an der Stelle steht %s.',
-        [mNames, FName]);
+      Result := cTexts[TEditingAnonymousMethodsText.RunsLaterTheValuesOf].Fmt([mNames, FName]);
   else
     Result := '';
   end;
@@ -1509,11 +1567,11 @@ function TSiteBuilder.Preview: string;
 begin
   if FSite.IsMethod then
   begin
-    Result := 'Neue Methode: ';
+    Result := cTexts[TEditingAnonymousMethodsText.NewMethod].Text;
   end
   else
   begin
-    Result := 'Neue Routine: ';
+    Result := cTexts[TEditingAnonymousMethodsText.NewRoutine].Text;
   end;
   Result := Result + TRoutineParts.HeadText(FSite.Input.Text, FSite.Anonymous, Qualified(FSite, FName), FParameters,
     FSite.IsClass) + FLineBreak + FormExplanation;
@@ -1524,8 +1582,7 @@ begin
   Result := nil;
   if FSite.Form = TAnonymousForm.Fields then
   begin
-    Result := TArray<string>.Create(Format('%s liest die Werte aus Feldern: Spätere Änderungen von %s sieht es ' +
-      'nicht, und gleichzeitig wartende Aufrufe teilen sich die Felder.', [FName,
+    Result := TArray<string>.Create(cTexts[TEditingAnonymousMethodsText.ReadsTheValuesFromFields].Fmt([FName,
       Joined(CapturedNames(FSite.Captured), ', ')]));
   end;
 end;
@@ -1617,5 +1674,8 @@ begin
     mEmbedding.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.AnonymousMethods', cTexts);
 
 end.

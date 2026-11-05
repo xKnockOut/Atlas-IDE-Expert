@@ -134,7 +134,27 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TClassCompletionText = (AlignTheImplementationOfWith, AlignTheDeclarationOfWith, CreateMethodBodyFor,
+    CreateMissingMethodBodyFor, CreateMissingMethodBodiesFor);
+
+const
+  cTexts: array[TClassCompletionText] of TAtlasText = (
+    (De: 'Implementierung von %s an die Deklaration angleichen';
+     En: 'Align the implementation of %s with the declaration'),
+    (De: 'Deklaration von %s an die Implementierung angleichen';
+     En: 'Align the declaration of %s with the implementation'),
+    (De: 'Methodenrumpf für %s.%s erzeugen'; En: 'Create method body for %s.%s'),
+    (De: 'Fehlenden Methodenrumpf für %s erzeugen'; En: 'Create missing method body for %s'),
+    (De: '%d fehlende Methodenrümpfe für %s erzeugen'; En: 'Create %d missing method bodies for %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Bedingte Übersetzung im Kopf einer Methode (#1324).
@@ -1031,7 +1051,7 @@ begin
   Name := APair.Body.Symbol.Name;
   Fix := Default(TCodeAction);
   Fix.Kind := QuickFixKind;
-  Fix.Title := Format('Implementierung von %s an die Deklaration angleichen', [Name]);
+  Fix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([Name]);
   Fix.Edits := [TTextEdit.Create(BodyRange, WithoutDefaults(DeclTail))];
   // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
@@ -1044,7 +1064,7 @@ begin
     Fix.Edits := Fix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, Convention)];
   end;
   AFixes := AFixes + [Fix];
-  Fix.Title := Format('Deklaration von %s an die Implementierung angleichen', [Name]);
+  Fix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([Name]);
   DeclTailText := WithDefaultsOf(BodyTail, DeclTail);
   Fix.Edits := nil;
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
@@ -1667,15 +1687,15 @@ function BodiesTitle(const APlan: TBodyPlan): string;
 begin
   if APlan.OnMethod then
   begin
-    Result := Format('Methodenrumpf für %s.%s erzeugen', [APlan.TypeName, APlan.Missing[0].Name]);
+    Result := cTexts[TClassCompletionText.CreateMethodBodyFor].Fmt([APlan.TypeName, APlan.Missing[0].Name]);
   end
   else if Length(APlan.Missing) = 1 then
   begin
-    Result := Format('Fehlenden Methodenrumpf für %s erzeugen', [APlan.TypeName]);
+    Result := cTexts[TClassCompletionText.CreateMissingMethodBodyFor].Fmt([APlan.TypeName]);
   end
   else
   begin
-    Result := Format('%d fehlende Methodenrümpfe für %s erzeugen', [Length(APlan.Missing), APlan.TypeName]);
+    Result := cTexts[TClassCompletionText.CreateMissingMethodBodiesFor].Fmt([Length(APlan.Missing), APlan.TypeName]);
   end;
 end;
 
@@ -1718,5 +1738,8 @@ begin
     AAction.Tag := ClassBodiesTag;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ClassCompletion', cTexts);
 
 end.

@@ -18,21 +18,77 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TAnalysisOptionsText = (IndexCacheMaxAgeDaysMustBeA, IndexCacheMaxMbMustBeA, IndexExcludeMustBeA,
+    ArchitectureGroupingMustBeA, ArchitectureGroupingFoundationsMustBe, ArchitectureScopeMustBeProject,
+    ArchitectureCentralUnitsMustBeA, ArchitectureExcludeMustBeA, ArchitectureFailOnMustBeA, TheNameOfAQuery,
+    UnknownEntryInASaved, ASavedQueryMustBe, ASavedQueryNeedsName, QueriesMustBeAList, QueryAppearsTwiceTheFirst,
+    HotspotsMonthsMustBeA, HotspotsCouplingMinCommitsMustBe, ArchitectureFailOnUnknownDeviationAllowed,
+    UnknownSeverityAllowedOffHint, QueryNeedsQuery, RangeResolution, RangeMaxShare, RangeMinCohesion);
+
+const
+  cTexts: array[TAnalysisOptionsText] of TAtlasText = (
+    (De: '"index.cacheMaxAgeDays" muss eine ganze Zahl von 0 bis 3650 sein';
+     En: '"index.cacheMaxAgeDays" must be a whole number from 0 to 3650'),
+    (De: '"index.cacheMaxMb" muss eine ganze Zahl von 0 bis 1048576 sein';
+     En: '"index.cacheMaxMb" must be a whole number from 0 to 1048576'),
+    (De: '"index.exclude" muss eine Liste von Mustern sein'; En: '"index.exclude" must be a list of patterns'),
+    (De: '"architecture.grouping.%s" muss eine Zahl von %s sein';
+     En: '"architecture.grouping.%s" must be a number from %s'),
+    (De: '"architecture.grouping.foundations" muss "group", "attach" oder "separate" sein';
+     En: '"architecture.grouping.foundations" must be "group", "attach" or "separate"'),
+    (De: '"architecture.scope" muss "project" oder "projectGroup" sein';
+     En: '"architecture.scope" must be "project" or "projectGroup"'),
+    (De: '"architecture.centralUnits" muss eine ganze Zahl von 5 bis 100 sein';
+     En: '"architecture.centralUnits" must be a whole number from 5 to 100'),
+    (De: '"architecture.exclude" muss eine Liste von Mustern sein';
+     En: '"architecture.exclude" must be a list of patterns'),
+    (De: '"architecture.failOn" muss eine Liste aus newCycle, newCrossLink, subsystemChange und centralGrowth sein';
+     En: '"architecture.failOn" must be a list of newCycle, newCrossLink, subsystemChange and centralGrowth'),
+    (De: 'Der Name einer Abfrage besteht aus Buchstaben, Ziffern, "-", "_" und "."';
+     En: 'The name of a query consists of letters, digits, "-", "_" and "."'),
+    (De: 'Unbekannte Angabe "%s" in einer gespeicherten Abfrage'; En: 'Unknown entry "%s" in a saved query'),
+    (De: 'Eine gespeicherte Abfrage muss ein Objekt sein: { "name": …, "query": … }';
+     En: 'A saved query must be an object: { "name": …, "query": … }'),
+    (De: 'Eine gespeicherte Abfrage braucht "name"'; En: 'A saved query needs "name"'),
+    (De: '"queries" muss eine Liste von Abfragen sein'; En: '"queries" must be a list of queries'),
+    (De: 'Abfrage "%s" ist doppelt; es gilt die erste'; En: 'Query "%s" appears twice; the first one applies'),
+    (De: '"hotspots.months" muss eine ganze Zahl von 1 bis 60 sein';
+     En: '"hotspots.months" must be a whole number from 1 to 60'),
+    (De: '"hotspots.coupling.minCommits" muss eine ganze Zahl von 2 bis 1000 sein';
+     En: '"hotspots.coupling.minCommits" must be a whole number from 2 to 1000'),
+    (De: '"architecture.failOn": unbekannte Abweichung "%s" (erlaubt: newCycle, newCrossLink, subsystemChange, ' +
+      'centralGrowth)';
+     En: '"architecture.failOn": unknown deviation "%s" (allowed: newCycle, newCrossLink, subsystemChange, ' +
+      'centralGrowth)'),
+    (De: 'Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error';
+     En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'),
+    (De: 'Abfrage "%s" braucht "query"'; En: 'Query "%s" needs "query"'),
+    (De: '0,2 bis 5,0'; En: '0.2 to 5.0'),
+    (De: '0 bis 0,9'; En: '0 to 0.9'),
+    (De: '0 bis 1'; En: '0 to 1'));
+
+{$SCOPEDENUMS OFF}
 
 { index }
 
 procedure ReadCacheMaxAge(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 0, 3650, '"index.cacheMaxAgeDays" muss eine ganze Zahl von 0 bis 3650 sein',
+  AReader.ExpectInteger(AValue, 0, 3650, cTexts[TAnalysisOptionsText.IndexCacheMaxAgeDaysMustBeA].Text,
     ASettings.IndexCacheMaxAgeDays);
 end;
 
 procedure ReadCacheMaxMb(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 0, 1048576, '"index.cacheMaxMb" muss eine ganze Zahl von 0 bis 1048576 sein',
+  AReader.ExpectInteger(AValue, 0, 1048576, cTexts[TAnalysisOptionsText.IndexCacheMaxMbMustBeA].Text,
     ASettings.IndexCacheMaxMb);
 end;
 
@@ -41,7 +97,7 @@ procedure ReadIndexExclude(AReader: TConfigurationReader; AValue: TJsonNode; con
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(AValue, 'index.exclude', '"index.exclude" muss eine Liste von Mustern sein', mItems) then
+  if AReader.ExpectStrings(AValue, 'index.exclude', cTexts[TAnalysisOptionsText.IndexExcludeMustBeA].Text, mItems) then
   begin
     ASettings.IndexExclude := mItems;
   end;
@@ -75,17 +131,17 @@ end;
 { architecture.grouping }
 
 type
-  /// <summary>Bereich einer Zahl von architecture.grouping; Text für die Meldung ("0,2 bis 5,0").</summary>
+  /// <summary>Bereich einer Zahl von architecture.grouping; Meldungstext ("0,2 bis 5,0") je Sprache.</summary>
   TFractionRange = record
     Min: Double;
     Max: Double;
-    Text: string;
+    Text: TAnalysisOptionsText;
   end;
 
 const
-  cResolutionRange: TFractionRange = (Min: 0.2; Max: 5; Text: '0,2 bis 5,0');
-  cMaxShareRange: TFractionRange = (Min: 0; Max: 0.9; Text: '0 bis 0,9');
-  cMinCohesionRange: TFractionRange = (Min: 0; Max: 1; Text: '0 bis 1');
+  cResolutionRange: TFractionRange = (Min: 0.2; Max: 5; Text: TAnalysisOptionsText.RangeResolution);
+  cMaxShareRange: TFractionRange = (Min: 0; Max: 0.9; Text: TAnalysisOptionsText.RangeMaxShare);
+  cMinCohesionRange: TFractionRange = (Min: 0; Max: 1; Text: TAnalysisOptionsText.RangeMinCohesion);
 
 /// <summary>Zahl im Bereich ARange; sonst Fehler.</summary>
 procedure ReadFraction(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
@@ -100,7 +156,8 @@ begin
   end
   else
   begin
-    AReader.ReportNode(AValue, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AKey, ARange.Text]));
+    AReader.ReportNode(AValue, cTexts[TAnalysisOptionsText.ArchitectureGroupingMustBeA].Fmt([AKey,
+      cTexts[ARange.Text].Text]));
   end;
 end;
 
@@ -128,7 +185,7 @@ var
   mIndex: Integer;
 begin
   if AReader.ExpectOneOf(AValue, ['group', 'attach', 'separate'],
-    '"architecture.grouping.foundations" muss "group", "attach" oder "separate" sein', mIndex) then
+    cTexts[TAnalysisOptionsText.ArchitectureGroupingFoundationsMustBe].Text, mIndex) then
   begin
     ASettings.ArchitectureGroupingFoundations := AValue.Value;
   end;
@@ -156,7 +213,7 @@ var
   mIndex: Integer;
 begin
   if AReader.ExpectOneOf(AValue, ['project', 'projectGroup'],
-    '"architecture.scope" muss "project" oder "projectGroup" sein', mIndex) then
+    cTexts[TAnalysisOptionsText.ArchitectureScopeMustBeProject].Text, mIndex) then
   begin
     ASettings.ArchitectureScope := AValue.Value;
   end;
@@ -165,7 +222,7 @@ end;
 procedure ReadCentralUnits(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 5, 100, '"architecture.centralUnits" muss eine ganze Zahl von 5 bis 100 sein',
+  AReader.ExpectInteger(AValue, 5, 100, cTexts[TAnalysisOptionsText.ArchitectureCentralUnitsMustBeA].Text,
     ASettings.ArchitectureCentralUnits);
 end;
 
@@ -174,7 +231,7 @@ procedure ReadArchitectureExclude(AReader: TConfigurationReader; AValue: TJsonNo
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(AValue, 'architecture.exclude', '"architecture.exclude" muss eine Liste von Mustern sein',
+  if AReader.ExpectStrings(AValue, 'architecture.exclude', cTexts[TAnalysisOptionsText.ArchitectureExcludeMustBeA].Text,
     mItems) then
   begin
     ASettings.ArchitectureExclude := mItems;
@@ -202,8 +259,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"architecture.failOn" muss eine Liste aus newCycle, newCrossLink, ' +
-      'subsystemChange und centralGrowth sein');
+    AReader.ReportNode(AValue, cTexts[TAnalysisOptionsText.ArchitectureFailOnMustBeA].Text);
     Exit;
   end;
   ASettings.ArchitectureFailOn := nil;
@@ -219,8 +275,8 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mItem], Format('"architecture.failOn": unbekannte Abweichung "%s" (erlaubt: ' +
-        'newCycle, newCrossLink, subsystemChange, centralGrowth)', [mText]));
+      AReader.ReportNode(AValue[mItem], cTexts[TAnalysisOptionsText.ArchitectureFailOnUnknownDeviationAllowed].Fmt([
+        mText]));
     end;
   end;
 end;
@@ -307,7 +363,7 @@ begin
   AQuery.Name := Trim(mText);
   if not IsQueryName(AQuery.Name) then
   begin
-    AReader.ReportNode(AValue, 'Der Name einer Abfrage besteht aus Buchstaben, Ziffern, "-", "_" und "."');
+    AReader.ReportNode(AValue, cTexts[TAnalysisOptionsText.TheNameOfAQuery].Text);
     AQuery.Name := '';
   end;
 end;
@@ -331,8 +387,7 @@ begin
   if AReader.ExpectString(AValue, 'severity', mText) and (not TryParseRuleSeverity(mText, AQuery.Severity) or
     (AQuery.Severity = TRuleSeverity.Default)) then
   begin
-    AReader.ReportNode(AValue, Format('Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error',
-      [mText]));
+    AReader.ReportNode(AValue, cTexts[TAnalysisOptionsText.UnknownSeverityAllowedOffHint].Fmt([mText]));
     AQuery.Severity := TRuleSeverity.Warning;
   end;
 end;
@@ -370,7 +425,7 @@ begin
   else
   begin
     AReader.Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(mKey) + 2,
-      Format('Unbekannte Angabe "%s" in einer gespeicherten Abfrage', [mKey]), False);
+      cTexts[TAnalysisOptionsText.UnknownEntryInASaved].Fmt([mKey]), False);
   end;
 end;
 
@@ -382,7 +437,7 @@ begin
   AQuery.Severity := TRuleSeverity.Warning;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, 'Eine gespeicherte Abfrage muss ein Objekt sein: { "name": …, "query": … }');
+    AReader.ReportNode(ANode, cTexts[TAnalysisOptionsText.ASavedQueryMustBe].Text);
     Exit(False);
   end;
   AQuery.Range := TTextRange.Create(AReader.PositionAt(ANode.Start), AReader.PositionAt(ANode.Start + 1));
@@ -392,11 +447,11 @@ begin
   end;
   if AQuery.Name = '' then
   begin
-    AReader.ReportNode(ANode, 'Eine gespeicherte Abfrage braucht "name"');
+    AReader.ReportNode(ANode, cTexts[TAnalysisOptionsText.ASavedQueryNeedsName].Text);
   end
   else if AQuery.Query = '' then
   begin
-    AReader.ReportNode(ANode, Format('Abfrage "%s" braucht "query"', [AQuery.Name]));
+    AReader.ReportNode(ANode, cTexts[TAnalysisOptionsText.QueryNeedsQuery].Fmt([AQuery.Name]));
   end;
   Result := (AQuery.Name <> '') and (AQuery.Query <> '');
 end;
@@ -422,7 +477,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"queries" muss eine Liste von Abfragen sein');
+    AReader.ReportNode(ANode, cTexts[TAnalysisOptionsText.QueriesMustBeAList].Text);
     Exit;
   end;
   ASettings.Queries := nil;
@@ -435,7 +490,7 @@ begin
     // Der Name ist die Kennung der Regel query:<name> und von --query @<name>: zweimal derselbe wäre mehrdeutig.
     if HasQuery(ASettings.Queries, mQuery.Name) then
     begin
-      AReader.ReportNode(ANode[mIndex], Format('Abfrage "%s" ist doppelt; es gilt die erste', [mQuery.Name]));
+      AReader.ReportNode(ANode[mIndex], cTexts[TAnalysisOptionsText.QueryAppearsTwiceTheFirst].Fmt([mQuery.Name]));
     end
     else
     begin
@@ -454,14 +509,14 @@ end;
 procedure ReadMonths(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 1, 60, '"hotspots.months" muss eine ganze Zahl von 1 bis 60 sein',
+  AReader.ExpectInteger(AValue, 1, 60, cTexts[TAnalysisOptionsText.HotspotsMonthsMustBeA].Text,
     ASettings.HotspotsMonths);
 end;
 
 procedure ReadMinCommits(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 2, 1000, '"hotspots.coupling.minCommits" muss eine ganze Zahl von 2 bis 1000 sein',
+  AReader.ExpectInteger(AValue, 2, 1000, cTexts[TAnalysisOptionsText.HotspotsCouplingMinCommitsMustBe].Text,
     ASettings.HotspotsCouplingMinCommits);
 end;
 
@@ -505,5 +560,8 @@ function AnalysisSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.AnalysisOptions', cTexts);
 
 end.

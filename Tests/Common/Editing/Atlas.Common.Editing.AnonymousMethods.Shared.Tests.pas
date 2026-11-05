@@ -245,7 +245,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     Assert.IsTrue(RunEmbedding(EmbedInput(mText, mTree), mAction, mReason), mReason);
-    Assert.AreEqual(cEmbedTitle, mAction.Title);
+    Assert.AreEqual(EmbedTitle, mAction.Title);
     Assert.AreEqual(3, Integer(Length(mAction.Edits)));
     Assert.IsTrue(Pos('procedure(const AItem: Integer)', mAction.Edits[2].NewText) > 0, mAction.Edits[2].NewText);
   finally

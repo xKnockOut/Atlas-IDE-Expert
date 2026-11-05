@@ -57,11 +57,11 @@ type
 
   TIfCase = class
   public const
-    ToCaseTitle = 'In case umwandeln';
-    ToIfTitle = 'In if-Kette umwandeln';
     /// <summary>So viele Bedingungen braucht eine Kette mindestens.</summary>
     MinConditions = 2;
   public
+    class function ToCaseTitle: string; static;
+    class function ToIfTitle: string; static;
     /// <summary>„In case umwandeln“ für die if-Kette, deren Kopf (if … then) APosition enthält.</summary>
     class function ToCase(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       const ALookup: TIfCaseLookup; const ALayout: TStatementLayout; out AConversion: TIfCaseConversion): Boolean;
@@ -87,7 +87,27 @@ uses
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIfCaseText = (ConvertToCase, ConvertToIfChain);
+
+const
+  cTexts: array[TIfCaseText] of TAtlasText = (
+    (De: 'In case umwandeln'; En: 'Convert to case'),
+    (De: 'In if-Kette umwandeln'; En: 'Convert to if chain'));
+
+class function TIfCase.ToCaseTitle: string;
+begin
+  Result := cTexts[TIfCaseText.ConvertToCase].Text;
+end;
+
+class function TIfCase.ToIfTitle: string;
+begin
+  Result := cTexts[TIfCaseText.ConvertToIfChain].Text;
+end;
 
 type
   /// <summary>Eine case-Marke: ein Wert (High = nil) oder ein Bereich Low..High.</summary>
@@ -998,5 +1018,8 @@ begin
     mWriter.Code(mCase, Length(mBranches), mElse)));
   Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.IfCase', cTexts);
 
 end.

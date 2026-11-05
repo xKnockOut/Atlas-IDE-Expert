@@ -18,11 +18,10 @@ interface
 uses
   Atlas.Common.Editing.Contract;
 
-const
-  /// <summary>Hinweis, wenn unter /fix bzw. /explain kein Treffer steht.</summary>
-  NoFindingBelowHint = 'In der Zeile darunter meldet keine Prüfregel etwas';
-  /// <summary>Hinweis, wenn unter /fix nur Treffer ohne sichere Korrektur stehen.</summary>
-  NoSafeFixHint = 'Für die Treffer in der Zeile darunter gibt es keine sichere Korrektur';
+/// <summary>Hinweis, wenn unter /fix bzw. /explain kein Treffer steht.</summary>
+function NoFindingBelowHint: string;
+/// <summary>Hinweis, wenn unter /fix nur Treffer ohne sichere Korrektur stehen.</summary>
+function NoSafeFixHint: string;
 
 /// <summary>Trägt /extract, /inline, /fix, /explain, /fmt und /measure über ARegister ein.</summary>
 procedure RegisterRefactoringCommands(const ARegister: TSlashRegister);
@@ -42,7 +41,56 @@ uses
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.Inlining,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRefactoringCommandsText = (ExpectedIsExtractName, ExtractOnlyAppliesInThe, BelowExtractThereAreNo,
+    InTheLineBelowThere, InlineOnlyAppliesInThe, BelowInlineThereIsNo, BelowThereIsNoLine, NeedsTheEditor,
+    NoRulesRunForThis, FmtOnlyAppliesInThe, MeasureOnlyAppliesInThe, ExtractTheStatementsBelowInto,
+    InlineTheCallOrVariable, ApplySafeFixesToThe, ExplainTheFindingsOfThe, MeasureTheRunTimeOf,
+    FormatTheEnclosingRoutine, ExtractLoad, MeasureLoad, NoRuleReportsAnythingIn, ThereIsNoSafeFix);
+
+const
+  cTexts: array[TRefactoringCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /extract Name'; En: 'Expected is /extract Name'),
+    (De: '/extract gilt nur im Rumpf einer Routine'; En: '/extract only applies in the body of a routine'),
+    (De: 'Unter /extract stehen keine Anweisungen'; En: 'Below /extract there are no statements'),
+    (De: 'In der Zeile darunter steht kein Aufruf einer Routine dieser Datei und keine einbettbare Variable';
+     En: 'In the line below there is no call of a routine of this file and no variable that can be inlined'),
+    (De: '/inline gilt nur im Rumpf einer Routine'; En: '/inline only applies in the body of a routine'),
+    (De: 'Unter /inline steht keine Anweisung'; En: 'Below /inline there is no statement'),
+    (De: 'Unter /%s steht keine Zeile'; En: 'Below /%s there is no line'),
+    (De: '/%s braucht den Editor'; En: '/%s needs the editor'),
+    (De: 'Für diese Datei laufen keine Prüfregeln'; En: 'No rules run for this file'),
+    (De: '/fmt gilt nur im Rumpf einer Routine'; En: '/fmt only applies in the body of a routine'),
+    (De: '/measure gilt nur im Rumpf einer Routine'; En: '/measure only applies in the body of a routine'),
+    (De: 'Anweisungen darunter in eine Methode ausziehen'; En: 'Extract the statements below into a method'),
+    (De: 'Aufruf bzw. Variable in der Zeile darunter einbetten'; En: 'Inline the call or variable in the line below'),
+    (De: 'Sichere Korrekturen der Zeile darunter anwenden'; En: 'Apply safe fixes to the line below'),
+    (De: 'Treffer der Zeile darunter erklären'; En: 'Explain the findings of the line below'),
+    (De: 'Laufzeit der folgenden Anweisungen messen'; En: 'Measure the run time of the following statements'),
+    (De: 'Umgebende Routine formatieren'; En: 'Format the enclosing routine'),
+    (De: '/extract Laden'; En: '/extract Load'),
+    (De: '/measure Laden'; En: '/measure Load'),
+    (De: 'In der Zeile darunter meldet keine Prüfregel etwas'; En: 'No rule reports anything in the line below'),
+    (De: 'Für die Treffer in der Zeile darunter gibt es keine sichere Korrektur';
+     En: 'There is no safe fix for the findings in the line below'));
+
+{$SCOPEDENUMS OFF}
+
+function NoFindingBelowHint: string;
+begin
+  Result := cTexts[TRefactoringCommandsText.NoRuleReportsAnythingIn].Text;
+end;
+
+function NoSafeFixHint: string;
+begin
+  Result := cTexts[TRefactoringCommandsText.ThereIsNoSafeFix].Text;
+end;
 
 function LeadingOf(const ALine: string): Integer;
 begin
@@ -68,18 +116,18 @@ begin
   Name := Trim(AContext.Arguments);
   if not IsValidIdent(Name) then
   begin
-    Exit(Fail('Erwartet wird /extract Name', AReason));
+    Exit(Fail(cTexts[TRefactoringCommandsText.ExpectedIsExtractName].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     if Source.RoutineAt = nil then
     begin
-      Exit(Fail('/extract gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.ExtractOnlyAppliesInThe].Text, AReason));
     end;
     First := Source.Line + 1;
     if (First > High(Source.Lines)) or (Trim(Source.Lines[First]) = '') then
     begin
-      Exit(Fail('Unter /extract stehen keine Anweisungen', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.BelowExtractThereAreNo].Text, AReason));
     end;
     // Bis zur nächsten Leerzeile; eine weniger eingerückte Zeile (end des Blocks) beendet die Auswahl.
     Indent := LeadingOf(Source.Lines[First]);
@@ -194,7 +242,7 @@ begin
     InlineFirstVariable(mInline, mNames, mOptions, AAction);
   if not Result and (AWhy = '') then
   begin
-    AWhy := 'In der Zeile darunter steht kein Aufruf einer Routine dieser Datei und keine einbettbare Variable';
+    AWhy := cTexts[TRefactoringCommandsText.InTheLineBelowThere].Text;
   end;
 end;
 
@@ -210,12 +258,12 @@ begin
   try
     if Source.RoutineAt = nil then
     begin
-      Exit(Fail('/inline gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.InlineOnlyAppliesInThe].Text, AReason));
     end;
     Next := Source.Line + 1;
     if (Next > High(Source.Lines)) or (Trim(Source.Lines[Next]) = '') then
     begin
-      Exit(Fail('Unter /inline steht keine Anweisung', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.BelowInlineThereIsNo].Text, AReason));
     end;
     if not InlineOnLine(AContext, Source, Next, Action, Why) then
     begin
@@ -237,15 +285,15 @@ begin
   AFindings := nil;
   if (ASource.Line >= High(ASource.Lines)) or (Trim(ASource.Lines[ASource.Line + 1]) = '') then
   begin
-    Exit(Fail(Format('Unter /%s steht keine Zeile', [AContext.Name]), AReason));
+    Exit(Fail(cTexts[TRefactoringCommandsText.BelowThereIsNoLine].Fmt([AContext.Name]), AReason));
   end;
   if AContext.Host = nil then
   begin
-    Exit(Fail(Format('/%s braucht den Editor', [AContext.Name]), AReason));
+    Exit(Fail(cTexts[TRefactoringCommandsText.NeedsTheEditor].Fmt([AContext.Name]), AReason));
   end;
   if not AContext.Host.FindingsAt(AContext.Uri, ASource.Text, ASource.Line + 1, AFindings) then
   begin
-    Exit(Fail('Für diese Datei laufen keine Prüfregeln', AReason));
+    Exit(Fail(cTexts[TRefactoringCommandsText.NoRulesRunForThis].Text, AReason));
   end;
   if AFindings = nil then
   begin
@@ -340,7 +388,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/fmt gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.FmtOnlyAppliesInThe].Text, AReason));
     end;
     // Formatiert wird der Text ohne Befehlszeile; deren Zeile entfernt RemoveCommand.
     Text := Source.Text;
@@ -373,7 +421,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/measure gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TRefactoringCommandsText.MeasureOnlyAppliesInThe].Text, AReason));
     end;
     Name := Routine.Name;
     if Source.Tree.Root.Name <> '' then
@@ -407,15 +455,21 @@ end;
 
 procedure RegisterRefactoringCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('extract', 'Anweisungen darunter in eine Methode ausziehen', '/extract Laden',
+  ARegister(Command('extract', cTexts[TRefactoringCommandsText.ExtractTheStatementsBelowInto].Text,
+    cTexts[TRefactoringCommandsText.ExtractLoad].Text,
     ExecuteExtract));
-  ARegister(Command('inline', 'Aufruf bzw. Variable in der Zeile darunter einbetten', '/inline',
+  ARegister(Command('inline', cTexts[TRefactoringCommandsText.InlineTheCallOrVariable].Text, '/inline',
     ExecuteInline));
-  ARegister(Command('fix', 'Sichere Korrekturen der Zeile darunter anwenden', '/fix', ExecuteFix));
-  ARegister(Command('explain', 'Treffer der Zeile darunter erklären', '/explain', ExecuteExplain));
-  ARegister(Command('fmt', 'Umgebende Routine formatieren', '/fmt', ExecuteFmt));
-  ARegister(Command('measure', 'Laufzeit der folgenden Anweisungen messen', '/measure Laden',
+  ARegister(Command('fix', cTexts[TRefactoringCommandsText.ApplySafeFixesToThe].Text, '/fix', ExecuteFix));
+  ARegister(Command('explain', cTexts[TRefactoringCommandsText.ExplainTheFindingsOfThe].Text, '/explain',
+    ExecuteExplain));
+  ARegister(Command('fmt', cTexts[TRefactoringCommandsText.FormatTheEnclosingRoutine].Text, '/fmt', ExecuteFmt));
+  ARegister(Command('measure', cTexts[TRefactoringCommandsText.MeasureTheRunTimeOf].Text,
+    cTexts[TRefactoringCommandsText.MeasureLoad].Text,
     ExecuteMeasure));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.RefactoringCommands', cTexts);
 
 end.

@@ -113,7 +113,7 @@ Prompts compared with the commands of the Claude Code plugin (`/atlas:bauen`): t
 | Tool | Parameters | Result |
 |---|---|---|
 | `find_symbol` | `name` | Locations with kind, type, unit, file:line; without an exact hit, substring search |
-| `get_declaration` | `name` | Source text of the declaration, also from RTL/VCL; plus the section “Begründungen:” (rationale, #1123) with `// WHY:`, `// HACK:`, `// NOTE:` … above the declaration and in the body of the implementation, per entry marker, line and text (off with `hints.rationale`) |
+| `get_declaration` | `name` | Source text of the declaration, also from RTL/VCL; plus the section “Rationales:” (“Begründungen:” with German server texts, #1123) with `// WHY:`, `// HACK:`, `// NOTE:` … above the declaration and in the body of the implementation, per entry marker, line and text (off with `hints.rationale`) |
 | `get_type_hierarchy` | `name` | Ancestors up to the root, descendants recursively |
 | `get_component_info` | `name` | Published properties with type and default (explicit, implicit, `nodefault`, `stored`), events with signature, ancestor chain, palette page from `RegisterComponents`, package from `contains` of the .dpk; without sources a note instead of an empty list |
 | `get_unit_outline` | `unit` | uses lists and symbols of a unit with line numbers |
