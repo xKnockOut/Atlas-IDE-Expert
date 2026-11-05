@@ -9416,6 +9416,8 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA25 | Während die Prüfung von AA22 läuft, weiter tippen | Die Befunde folgen dem neuen Stand; kein alter Stand bleibt stehen |
 | AA26 | Wie AA22, nach Ende der Prüfung: Cursor mit den Pfeiltasten durch die Unit bewegen, auch in Klassendeklarationen mit Get-/Set-Methoden und auf String-Literalen | Glühbirne folgt dem Cursor ohne spürbare Verzögerung; „Property aus Zugriffsmethoden“, „Als Klartext kopieren“ und uses-Aktionen erscheinen wie bisher; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` deutlich unter 1 s |
 | AA27 | Fenster „Atlas-Diagnose“ in der Startgröße öffnen, Reiter „Server“; danach schmaler und breiter ziehen | Spalte „Anfrage“ zeigt `textDocument/codeAction` lesbar; alle Spalten enden am rechten Rand (keine abgeschnittene Spalte); breit wieder volle Breiten |
+| AA28 | Große Unit (`node Tools/Benchmark/big-unit.mjs --lines 30000`) mit Editor- und Statusleiste öffnen, einige Zeilen tippen und nach jeder Pause kurz warten; dann „Atlas-Diagnose“, Reiter „Hauptthread“ | Tippen ohne Stocken; Editorleiste markiert den Abschnitt am Cursor richtig (interface, implementation, uses), Statusleiste zeigt Befundzahlen und Methode; Statusleiste und Editorleiste ohne Aufrufe über der Schwelle |
+| AA29 | Projekt mit `.atlas` öffnen, die Datei außerhalb der IDE ändern; dann eine neue `.atlas` eine Ebene höher anlegen (die alte löschen); Projekt wechseln | Änderung gilt nach etwa 2 s; die neue Datei weiter oben gilt nach höchstens etwa 10 s; nach dem Projektwechsel sofort die Datei des neuen Projekts; „Einstellungen“ im Diagnose-Fenster ohne Aufrufe über der Schwelle |
 
 ## Prüfregeln vollständig im Modul (#1755)
 

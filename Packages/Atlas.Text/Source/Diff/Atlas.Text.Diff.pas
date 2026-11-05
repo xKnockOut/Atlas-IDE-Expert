@@ -25,7 +25,12 @@ type
     MaxCells = 4000000;
   public
     /// <summary>Anzahl gleicher Zeilen am Anfang und (ohne Überlappung mit dem Anfang) am Ende.</summary>
-    class procedure CommonPrefixSuffix(const AOld, ANew: TArray<string>; out APrefix, ASuffix: Integer); static;
+    class procedure CommonPrefixSuffix(const AOld, ANew: TArray<string>; out APrefix, ASuffix: Integer); overload;
+      static;
+    /// <summary>Wie oben für die durch LF getrennten Zeilen von AOld und ANew, ohne die Texte in Zeilen zu
+    /// zerlegen (große Units: bei jeder Änderung). AOldCount und ANewCount: Zeilen, also LF + 1.</summary>
+    class procedure CommonPrefixSuffix(const AOld, ANew: string; out APrefix, ASuffix, AOldCount,
+      ANewCount: Integer); overload; static;
     /// <summary>Geänderte Blöcke von AOld nach ANew, aufsteigend (LCS der Mitte; ist sie größer als
     /// MaxCells, ein Block).</summary>
     class function Hunks(const AOld, ANew: TArray<string>): TArray<TTextLineHunk>; static;
@@ -63,6 +68,68 @@ begin
   begin
     Inc(ASuffix);
   end;
+end;
+
+/// <summary>Anzahl LF in AText[AFrom..ATo] (1-basiert, einschließlich).</summary>
+function CountLineFeeds(const AText: string; AFrom, ATo: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := AFrom to ATo do
+  begin
+    if AText[mIndex] = #10 then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+/// <summary>Endet bei AIndex (1-basiert, letztes Zeichen davor) eine Zeile: Textende oder LF dahinter?</summary>
+function LineEndsAfter(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= Length(AText)) or (AText[AIndex + 1] = #10);
+end;
+
+/// <summary>Beginnt bei AIndex (1-basiert) eine Zeile: Textanfang oder LF davor?</summary>
+function LineStartsAt(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex <= 1) or (AText[AIndex - 1] = #10);
+end;
+
+class procedure TTextDiff.CommonPrefixSuffix(const AOld, ANew: string; out APrefix, ASuffix, AOldCount,
+  ANewCount: Integer);
+var
+  mSame, mTail, mLimit: Integer;
+begin
+  AOldCount := CountLineFeeds(AOld, 1, Length(AOld)) + 1;
+  ANewCount := CountLineFeeds(ANew, 1, Length(ANew)) + 1;
+  // Gleiche Zeichen am Anfang: Jedes LF darin schließt eine gleiche Zeile; die angefangene ist gleich, wenn
+  // sie in beiden Texten hier endet.
+  mLimit := Min(Length(AOld), Length(ANew));
+  mSame := 0;
+  while (mSame < mLimit) and (AOld[mSame + 1] = ANew[mSame + 1]) do
+  begin
+    Inc(mSame);
+  end;
+  APrefix := CountLineFeeds(AOld, 1, mSame);
+  if LineEndsAfter(AOld, mSame) and LineEndsAfter(ANew, mSame) then
+  begin
+    Inc(APrefix);
+  end;
+  APrefix := Min(APrefix, Min(AOldCount, ANewCount));
+  // Gleiche Zeichen am Ende entsprechend, ohne Überlappung mit dem Anfang in Zeilen.
+  mTail := 0;
+  while (mTail < mLimit) and (AOld[Length(AOld) - mTail] = ANew[Length(ANew) - mTail]) do
+  begin
+    Inc(mTail);
+  end;
+  ASuffix := CountLineFeeds(AOld, Length(AOld) - mTail + 1, Length(AOld));
+  if LineStartsAt(AOld, Length(AOld) - mTail + 1) and LineStartsAt(ANew, Length(ANew) - mTail + 1) then
+  begin
+    Inc(ASuffix);
+  end;
+  ASuffix := Min(ASuffix, Min(AOldCount - APrefix, ANewCount - APrefix));
 end;
 
 type
