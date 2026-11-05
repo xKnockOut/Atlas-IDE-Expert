@@ -162,7 +162,7 @@ begin
     end
     else
     begin
-      RenameFile(Temp, AFileName);
+      RenameFile(Temp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
     end;
   except
     // Gemeldet, nicht verschluckt: Der Aufrufer schreibt den Grund ins Log.
@@ -179,7 +179,7 @@ begin
   // geschrieben, also an ihre Stelle setzen.
   if Written and not Result and not FileExists(AFileName) then
   begin
-    Result := RenameFile(Temp, AFileName);
+    Result := RenameFile(Temp, AFileName); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
   end;
   if not Result and (AError = '') then
   begin

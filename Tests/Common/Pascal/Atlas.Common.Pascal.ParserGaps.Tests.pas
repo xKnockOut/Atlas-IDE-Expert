@@ -14,6 +14,9 @@ type
   TParserGapsTests = class
   public
     /// <summary>#1137 (Probe p05): &amp;&amp;op_Equality ohne Diagnose, Methode im Typ und im implementation-Teil.</summary>
+    /// <summary>Hinweiswort vor dem Startwert (System.NoErrMsg).</summary>
+    [Test]
+    procedure HintBeforeInitialValue;
     [Test]
     procedure DoubleAmpersandParses;
     /// <summary>#1137: Deklarationen hinter der Stelle bleiben im Index, der Name ohne &amp;.</summary>
@@ -248,6 +251,19 @@ begin
 end;
 
 { TParserGapsTests }
+
+procedure TParserGapsTests.HintBeforeInitialValue;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse('unit U;'#10'interface'#10'var'#10'  NoErrMsg: Boolean platform = False;'#10 +
+    '  Weiter: Integer;'#10'implementation'#10'end.');
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+end;
 
 procedure TParserGapsTests.DoubleAmpersandParses;
 var

@@ -1,10 +1,12 @@
-﻿# Changelog
+# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
 Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
+
+## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu
 - Update-Installer (#1519, ADR 0018): neue `AtlasUpdate.exe` im Release-Paket. Im Plugin bietet „Jetzt aktualisieren“ ein gefundenes Update an; `AtlasUpdate prepare` lädt es unsichtbar, prüft SHA-256 und Signatur (signiert: derselbe Herausgeber für jede EXE, BPL und DLL) und baut für Delphi 12 das Plugin aus dem Quelltext des Releases. Beim Schließen der IDE spielt `AtlasUpdate apply` es in einem Konsolenfenster ein: wartet auf die IDE, tauscht mit Sicherung (gesperrte EXE wird beiseitegelegt), trägt die Known Packages im Profil ein (alte Einträge von BetterDelphiLSP, Argus und Atlas.IDE.Expert fallen weg) und nimmt bei einem Fehler alles zurück. Neue Module wählt der Benutzer in einer Liste; abgewählte werden entfernt, sofern kein anderes Profil sie lädt. Das Ergebnis meldet Atlas beim nächsten Start. `AtlasUpdate install` richtet Atlas im Konsolendialog ein (IDE, Profil, Ziel, Module). Einstellungen `updates.install` (ask, auto, off), `updates.channel` (stable, prerelease) und `updates.newModules` (ask, install, skip). Nicht über das Plugin bei GetIt, außerhalb eines Release-Ordners und ohne `AtlasUpdate.exe`. `release.yml` baut und signiert `AtlasUpdate.exe`, legt das Quelltext-ZIP bei, schreibt Paket und Quelltext mit SHA-256 in `atlas-version.json` und ersetzt `atlas-version-beta.json` im Vorab-Release `update-channel`.

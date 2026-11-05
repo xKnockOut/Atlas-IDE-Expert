@@ -72,6 +72,7 @@ type
     FLock: TObject;
     FSettings: TServerSettings;
     FRootPath: string;
+    FConfigRoot: string;
     FFiles: TConfigurationFiles;
     FOnChanged: TConfigurationChangedEvent;
     FExtraIssues: TConfigurationExtraIssues;
@@ -125,6 +126,9 @@ type
     /// <summary>Aktuelle Einstellungen (Kopie, threadsicher).</summary>
     property Settings: TServerSettings read GetSettings;
     property RootPath: string read FRootPath;
+    /// <summary>Ordner der atlas.json, sonst die Wurzel: Basis der Pfade aus "exclude". Projekte einer Gruppe haben
+    /// ihren Ordner als Wurzel, die Datei liegt oft darüber.</summary>
+    property ConfigRoot: string read FConfigRoot;
     /// <summary>Gelesene Datei sowie atlas.json und die frühere des Arbeitsbereichs; für den Fehlerbericht (#108)
     /// und den Dateibeobachter (#227).</summary>
     property Files: TConfigurationFiles read FFiles;
@@ -483,6 +487,7 @@ var
   mDir, mFound: string;
 begin
   FRootPath := ARootPath;
+  FConfigRoot := ARootPath;
   FFiles.Primary := '';
   FFiles.Legacy := '';
   if ARootPath <> '' then
@@ -494,6 +499,7 @@ begin
     if mFound <> '' then
     begin
       mDir := mFound;
+      FConfigRoot := mFound;
     end;
     FFiles.Primary := mDir + ConfigurationFileName;
     FFiles.Legacy := mDir + LegacyConfigurationFileName;

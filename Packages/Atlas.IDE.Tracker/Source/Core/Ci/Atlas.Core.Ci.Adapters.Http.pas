@@ -112,6 +112,7 @@ implementation
 
 uses
   System.NetEncoding,
+  System.NetConsts,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Ci.Internals.Addresses;
 

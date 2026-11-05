@@ -432,6 +432,8 @@ begin
   Node.Name := Names;
   ExpectSym(':');
   ParseType(Node);
+  // X: Boolean platform = False (System.NoErrMsg): Das Hinweiswort darf vor dem Startwert stehen.
+  ParseHints;
   if IsIdentText('absolute') then
   begin
     Advance;

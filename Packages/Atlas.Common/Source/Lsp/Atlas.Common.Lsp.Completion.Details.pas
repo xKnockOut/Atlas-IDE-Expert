@@ -42,6 +42,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.Index.Files,
   Atlas.Common.Semantics.NameResolver,

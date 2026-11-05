@@ -11,6 +11,7 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -36,7 +37,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract;
 

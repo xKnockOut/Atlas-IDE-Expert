@@ -39,6 +39,7 @@ implementation
 
 uses
   System.JSON,
+  System.Generics.Collections,
   Vcl.Clipbrd,
   ToolsAPI,
   Atlas.Core.Completion.Snippets,
