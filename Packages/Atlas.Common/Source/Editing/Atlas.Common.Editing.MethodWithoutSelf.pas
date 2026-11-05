@@ -115,8 +115,6 @@ type
     ClassMethodCallsTitle = 'In class-Methode umwandeln, Aufrufe über %s';
     RoutineTitle = 'In freie Routine umwandeln';
     HelperTitle = 'In Record-Helper für %s verschieben';
-    /// <summary>Text des Inlay-Hinweises für Clients; das Plugin beschriftet die Marke selbst in der Sprache der
-    /// IDE („braucht kein Self“ bzw. „Self unused“).</summary>
     MarkerText = 'Self unused';
   public
     /// <summary>Methode ohne Self, deren Kopf (Implementierung oder Deklaration) APosition enthält.</summary>

@@ -1488,6 +1488,7 @@ begin
     begin
       Hint := Default(TInlayHint);
       Hint.Position := Position;
+      // Text für Clients; das Plugin beschriftet die Marke selbst in der Sprache der IDE.
       Hint.Text := TMethodWithoutSelf.MarkerText;
       Hint.PaddingLeft := True;
       Hint.MethodWithoutSelf := True;
