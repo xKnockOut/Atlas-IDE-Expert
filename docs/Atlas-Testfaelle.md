@@ -9394,6 +9394,9 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA16 | Fenster „Atlas-Diagnose“ in der Startgröße bzw. schmal ziehen, dann breit ziehen | Schmal: Knöpfe Anhalten, Zurücksetzen, Bericht kopieren in einer zweiten Zeile rechts, Verlauf und „Langsam ab … ms“ ganz sichtbar; breit: wieder eine Zeile |
 | AA17 | Server läuft, Diagnosemodus an; eine Unit mit Testunit und Metriken öffnen, tippen, Datei wechseln, Rekursionssymbole an (editor.recursionMarkers); dann Fenster „Atlas-Diagnose“, Reiter „Server“ | Bei `atlas.server.testUnit`, `atlas.server.metrics` und `atlas.server.recursion` „Hauptthread gewartet“ 0; Lens „→ Testunit“, Metriken in der Statusleiste und ↻ erscheinen wie vorher nach der Tipp-Pause |
 | AA18 | Wie AA17, während der Server indexiert bzw. nach „Server neu starten“ | Kein Stocken; die Lens und die Symbole kommen nach dem Indexieren bzw. Neustart wieder, keine Zugriffsverletzung beim Neustart oder Schließen der IDE |
+| AA19 | Diagnosemodus an; in einer sehr großen Unit (über 20.000 Zeilen) tippen, scrollen, Datei wechseln, Lesezeichen und Rekursionssymbole an | Tippen flüssig; Lens, Rand, Lesezeichen erscheinen nach der Tipp-Pause wie vorher; nach dem Speichern in einem anderen Editor stimmen die Marken |
+| AA20 | Fenster „Compiler-Schalter“ zu und Statusfeld der Schalter aus, eine Minute arbeiten; dann Fenster öffnen | Im Reiter „Hauptthread“ wachsen die Aufrufe von „Compile-Ereignisse“ ohne Build nicht mehr um 20 je Sekunde; das Fenster füllt sich sofort |
+| AA21 | Zwei große Formulare im Designer offen, im einen eine Komponente verschieben | Nur dieses Formular geht an den Server (Diagnoselog); „Formulare“ im Hauptthread deutlich unter 187 ms; Umbenennen eines Handlers in beiden Formularen wirkt weiter |
 
 ## Prüfregeln vollständig im Modul (#1755)
 

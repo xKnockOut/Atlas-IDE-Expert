@@ -105,7 +105,8 @@ uses
   Winapi.Windows,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 { TAtlasLensPoll }
 
@@ -125,7 +126,7 @@ var
   mText: string;
   mMoment: Cardinal;
 begin
-  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  mText := TAtlasEditorSnapshots.Get(AView).Text;
   mMoment := GetTickCount;
   Result := SameText(FileName, AView.Buffer.FileName) and (Text = mText);
   if not Result then
