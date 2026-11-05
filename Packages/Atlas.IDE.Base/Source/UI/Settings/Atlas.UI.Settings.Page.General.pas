@@ -24,7 +24,6 @@ type
     FOnServerVersion: TFunc<string, string>;
     FDefaultServerPath: string;
     FDiagnosticMode: TCheckBox;
-    FArchitectureScope: TAtlasChoiceBox;
     FShortcutTipsScope: TAtlasChoiceBox;
     FStatusToggles: TAtlasChoiceBox;
     FIndexProgress: TAtlasChoiceBox;
@@ -47,7 +46,6 @@ type
     property StatusToggles: TAtlasChoiceBox read FStatusToggles;
     property IndexProgress: TAtlasChoiceBox read FIndexProgress;
     property StatusHidden: TEdit read FStatusHidden;
-    property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
     /// <summary>Server, der bei leerem Pfad gilt (für die Anzeige „Verwendet: …“).</summary>
     property DefaultServerPath: string read FDefaultServerPath write SetDefaultServerPath;
     /// <summary>Version des Servers unter dem Pfad als Text ('' = unbekannt); nil = keine Anzeige.</summary>
@@ -102,8 +100,6 @@ var
 begin
   AddSheet(TAtlasTextId.SettingsTabGeneral);
   BindCheck('Enabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEnabled)));
-  // Modul-Schalter (#1454): je Modul auf dem Hauptknoten seines Bereichs, ganz oben.
-  AddModuleSwitch('AnalysisEnabled');
   // Wo der Server liegt; leer gilt der Standard neben dem Plugin.
   Panel := AddPanel(20);
   Title := TLabel.Create(FPage);
@@ -170,19 +166,6 @@ begin
   BindCheck('DiagnosticsProcesses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses)));
   // Fenster „Atlas-Server“ (#1356).
   BindCheck('ServerStatusWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow)));
-  // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
-  // architecture.scope (projectGroup, project).
-  BindCheck('ArchitectureEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture)));
-  FArchitectureScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureScope),
-    [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
-  BindCheck('ArchitectureIncludeLibraryUnits', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary)));
-  BindText('ArchitectureCentralUnits', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral)));
-  // Code-Abfragen (#1351): Fenster „Atlas-Abfrage“, Befehl und Menüeintrag; Unterpunkt über x-node.
-  BindCheck('QueryEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuery)));
-  // Hotspots (#1354): Unterpunkt „Hotspots“ über x-node.
-  BindCheck('HotspotsEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots)));
-  BindText('HotspotsMonths', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths)));
-  BindText('HotspotsCouplingMinCommits', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMinCommits)));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   BindCheck('SetupChecklist', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist)));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -195,7 +178,6 @@ end;
 
 procedure TAtlasSettingsGeneralPart.BindMarks;
 begin
-  FPage.Marks.Bind(FArchitectureScope, ['ArchitectureScope']);
   FPage.Marks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
   FPage.Marks.Bind(FStatusToggles, ['StatusFieldToggles']);
   FPage.Marks.Bind(FIndexProgress, ['IndexProgressPlace']);
@@ -206,7 +188,6 @@ procedure TAtlasSettingsGeneralPart.Load(const ASettings: TAtlasPluginSettings);
 begin
   FServerPath.Text := ASettings.ServerPath;
   ServerPathChange(nil);
-  FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
   FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
   if not ASettings.StatusTogglesOnDoubleClick then
   begin
@@ -238,14 +219,6 @@ end;
 procedure TAtlasSettingsGeneralPart.Save(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.ServerPath := Trim(FServerPath.Text);
-  if FArchitectureScope.Choice = 1 then
-  begin
-    ASettings.ArchitectureScope := 'project';
-  end
-  else
-  begin
-    ASettings.ArchitectureScope := 'projectGroup';
-  end;
   ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
     Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
   case FStatusToggles.Choice of
