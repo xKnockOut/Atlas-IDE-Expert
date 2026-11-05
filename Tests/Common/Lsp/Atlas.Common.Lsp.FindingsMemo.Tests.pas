@@ -12,6 +12,9 @@ type
   [TestFixture]
   TRuleFindingsMemoTests = class
   public
+    /// <summary>Erster Aufbau der Regeln und ihrer Tabellen, nicht dem ersten Test anrechnen.</summary>
+    [SetupFixture]
+    procedure WarmUp;
     [Test]
     procedure GivesFindingsForSameText;
     [Test]
@@ -138,6 +141,11 @@ begin
 end;
 
 { TRuleFindingsMemoTests }
+
+procedure TRuleFindingsMemoTests.WarmUp;
+begin
+  ActionTitles(TRuleFindingsMemo.Create, 2);
+end;
 
 procedure TRuleFindingsMemoTests.GivesFindingsForSameText;
 var
