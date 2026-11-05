@@ -623,7 +623,11 @@ begin
   mInfo := HeaderInfo(mServer, mIndexing, mPercent, mUnits);
   mInfo.Greeting := Settings.WelcomePageGreeting;
   mInfo.Hour := mHour;
-  mInfo.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
+  // Ohne Grußzeile kein Nachschlagen des Namens (bei Domänenkonten eine Anfrage an den Domänencontroller).
+  if mInfo.Greeting then
+  begin
+    mInfo.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
+  end;
   AHeader.ShowInfo(mInfo);
   AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
   if (FSearch <> nil) and (AHeader.Search <> nil) then
