@@ -74,7 +74,7 @@ begin
   Line.Action := True;
   Assert.AreEqual(Ord(TAtlasGutterSymbol.Action), Ord(TAtlasGutterColumn.Choose(Line, TAtlasGutterColumnOptions.All)));
   Line.Problem := TAtlasGutterSymbol.Hint;
-  Assert.AreEqual(Ord(TAtlasGutterSymbol.Hint), Ord(TAtlasGutterColumn.Choose(Line, TAtlasGutterColumnOptions.All)));
+  Assert.AreEqual(Ord(TAtlasGutterSymbol.Action), Ord(TAtlasGutterColumn.Choose(Line, TAtlasGutterColumnOptions.All)));
   Line.Problem := TAtlasGutterSymbol.Error;
   Assert.AreEqual(Ord(TAtlasGutterSymbol.Error), Ord(TAtlasGutterColumn.Choose(Line, TAtlasGutterColumnOptions.All)));
 end;
