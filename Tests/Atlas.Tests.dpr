@@ -368,6 +368,7 @@ uses
   Atlas.Common.Lsp.SelectionRanges.Tests in 'Common\Lsp\Atlas.Common.Lsp.SelectionRanges.Tests.pas',
   Atlas.Common.Lsp.DiagnosticItems.Tests in 'Common\Lsp\Atlas.Common.Lsp.DiagnosticItems.Tests.pas',
   Atlas.Common.Lsp.SyntaxDiagnostics.Tests in 'Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas',
+  Atlas.Common.Lsp.FindingsMemo.Tests in 'Common\Lsp\Atlas.Common.Lsp.FindingsMemo.Tests.pas',
   Atlas.Common.Configuration.Tests in 'Common\Configuration\Atlas.Common.Configuration.Tests.pas',
   Atlas.Common.Configuration.TestSupport in 'Common\Configuration\Atlas.Common.Configuration.TestSupport.pas',
   Atlas.Common.Configuration.Features.Tests in 'Common\Configuration\Atlas.Common.Configuration.Features.Tests.pas',

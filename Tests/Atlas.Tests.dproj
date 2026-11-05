@@ -403,6 +403,7 @@
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackGuard.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FindingsMemo.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.TestSupport.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Features.Tests.pas"/>

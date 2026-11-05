@@ -13,6 +13,7 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Lsp.FindingsMemo,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Shell.Workspace,
   Shell.Composition.Workspaces,
@@ -44,6 +45,8 @@ type
     /// <summary>Zuletzt gesehener Stand von ruleChecks.enabled (#1454): 1 an, 0 aus; nur über TInterlocked.
     /// </summary>
     FRuleChecksState: Integer;
+    /// <summary>Treffer der Diagnose für die Code-Aktionen am selben Text (2.0-stable).</summary>
+    FMemo: IRuleFindingsMemo;
     procedure WorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
       out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
     /// <summary>Projekt des Arbeitsbereichs und weitere Projekte mit der Datei; Aufrufer hält die Sperre.</summary>
@@ -109,6 +112,7 @@ begin
   inherited Create;
   FServices := AServices;
   FRuleChecksState := 1;
+  FMemo := TRuleFindingsMemo.Create;
 end;
 
 function TShellRuleContext.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -143,6 +147,7 @@ begin
   end;
   AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
   AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
+  AContext.Memo := FMemo;
   Result := True;
 end;
 

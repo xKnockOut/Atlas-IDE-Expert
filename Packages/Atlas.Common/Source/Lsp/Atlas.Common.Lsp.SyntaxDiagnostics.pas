@@ -45,6 +45,7 @@ uses
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Common.Lsp.FindingsMemo,
   Atlas.Common.Editing.Contract;
 
 type
@@ -89,6 +90,9 @@ type
     Cancelled: TRuleCancelled;
     /// <summary>Prüfung für den Editor (TRuleContext.Live, #896); die Komposition setzt es.</summary>
     Live: Boolean;
+    /// <summary>Zuletzt gerechnete Treffer je Datei und Text: Die Diagnose legt ab, die Code-Aktion liest
+    /// (2.0-stable); nil = keine.</summary>
+    Memo: IRuleFindingsMemo;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -179,10 +183,8 @@ type
     /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
     class function BuildParams(const ADocument: ITextDocument;
       const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt.</summary>
-    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
-      const ADelphiVersion: string): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
+    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt ('' = alle bekannt),
+    /// und den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
     /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
@@ -293,6 +295,11 @@ begin
   except
     AItems.Free;
     raise;
+  end;
+  // Vollständiger Lauf: Die Glühbirne an diesem Text braucht die Regeln nicht noch einmal.
+  if (ARules.Memo <> nil) and (ARules.FileName <> '') then
+  begin
+    ARules.Memo.Put(ARules.FileName, AText, mFindings);
   end;
   // Routinen aus demselben Baum: Die Baseline braucht sie für ihren Schlüssel.
   if ARules.Baseline <> nil then
@@ -667,13 +674,7 @@ end;
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>): TJSONObject;
 begin
-  Result := BuildParams(ADocument, AInactive, '');
-end;
-
-class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TTextRange>; const ADelphiVersion: string): TJSONObject;
-begin
-  Result := BuildParams(ADocument, AInactive, ADelphiVersion, Default(TRuleCheckContext));
+  Result := BuildParams(ADocument, AInactive, '', Default(TRuleCheckContext));
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
