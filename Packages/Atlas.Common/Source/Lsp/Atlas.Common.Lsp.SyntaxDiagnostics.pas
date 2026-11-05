@@ -45,6 +45,7 @@ uses
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Common.Lsp.FindingsMemo,
   Atlas.Common.Editing.Contract;
 
 type
@@ -89,6 +90,9 @@ type
     Cancelled: TRuleCancelled;
     /// <summary>Prüfung für den Editor (TRuleContext.Live, #896); die Komposition setzt es.</summary>
     Live: Boolean;
+    /// <summary>Zuletzt gerechnete Treffer je Datei und Text: Die Diagnose legt ab, die Code-Aktion liest
+    /// (2.0-stable); nil = keine.</summary>
+    Memo: IRuleFindingsMemo;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -161,6 +165,9 @@ type
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
     function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Ungenutzte uses (#621) als Darstellung der Regel unused-uses (#1135) in AItems.</summary>
+    procedure AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput;
+      AHasRules: Boolean);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -176,15 +183,18 @@ type
     /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
     class function BuildParams(const ADocument: ITextDocument;
       const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt.</summary>
-    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
-      const ADelphiVersion: string): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
+    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt ('' = alle bekannt),
+    /// und den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
     /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput)
       : TJSONObject; overload; static;
+    /// <summary>Wie RuleFindings über ARules.Memo (#1761): Treffer am selben Text aus dem Memo, nach Warten auf
+    /// einen laufenden Lauf am selben Text oder selbst gerechnet und abgelegt. Ohne Memo wie RuleFindings.
+    /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
+    class function SharedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
+      const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>; static;
     /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
     /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
     class function RuleFindings(const AText: string; ATree: TSyntaxTree;
@@ -225,6 +235,8 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Rules.Checker;
 
 // Übernimmt AParams.
@@ -284,7 +296,7 @@ var
   mFinding: TRuleFinding;
 begin
   try
-    mFindings := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    mFindings := TLspSyntaxDiagnostics.SharedRuleFindings(AText, ATree, ARules, ARules.Cancelled);
   except
     AItems.Free;
     raise;
@@ -562,7 +574,7 @@ var
   mIssues: TArray<TPreprocessorIssue>;
   mIssue: TPreprocessorIssue;
   mItems: TJSONArray;
-  mUses: TUsesContext;
+  mHasRules: Boolean;
 begin
   if TLspDiagnosticItems.TryFormParams(ADocument.Uri, ADocument.Text, Result) then
   begin
@@ -574,7 +586,8 @@ begin
   begin
     mInput.Inactive := InactiveOf(ADocument, mInput.Defines, mIssues);
   end;
-  if not CurrentRules(ADocument.Uri, mInput.Rules) then
+  mHasRules := CurrentRules(ADocument.Uri, mInput.Rules);
+  if not mHasRules then
   begin
     mInput.Rules := Default(TRuleCheckContext);
   end;
@@ -587,14 +600,39 @@ begin
   begin
     mItems.AddElement(TLspDiagnosticItems.IssueToJson(mIssue));
   end;
-  // Ungenutzte uses (#621): nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht
-  // die Meldungen: Auch mit abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
-  if CurrentUses(ADocument.Uri, mUses) and
-    (Length(TSyntaxTreeCache.GetFor(ADocument, mInput.Defines).Tree.Diagnostics) = 0) then
-  begin
-    TLspDiagnosticItems.AddUses(mItems, ADocument.Text, TLspInactiveRegions.RangesOf(mInput.Inactive), mUses);
-  end;
+  AddUnusedUses(mItems, ADocument, mInput, mHasRules);
   AddCompilerMessages(mItems, ADocument, CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
+end;
+
+procedure TLspSyntaxDiagnostics.AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument;
+  const AInput: TSyntaxDiagnosticsInput; AHasRules: Boolean);
+var
+  mUses: TUsesContext;
+  mTree: ISharedSyntaxTree;
+  mSuppressions: TSuppressions;
+begin
+  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135): Mit der Regel aus, für ausgeschlossene
+  // Dateien und unter lsp-ignore bleibt es weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
+  if not CurrentUses(ADocument.Uri, mUses) or (AHasRules and not TRuleEngine.RuleOn(UnusedUsesRuleId,
+    AInput.Rules.Settings, AInput.Rules.RelativePath, ChangeFileExt(ExtractFileName(AInput.Rules.FileName), '')))
+    then
+  begin
+    Exit;
+  end;
+  // Nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht die Meldungen: Auch mit
+  // abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
+  mTree := TSyntaxTreeCache.GetFor(ADocument, AInput.Defines);
+  if Length(mTree.Tree.Diagnostics) > 0 then
+  begin
+    Exit;
+  end;
+  mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
+  try
+    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
+      mSuppressions);
+  finally
+    mSuppressions.Free;
+  end;
 end;
 
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
@@ -636,13 +674,7 @@ end;
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>): TJSONObject;
 begin
-  Result := BuildParams(ADocument, AInactive, '');
-end;
-
-class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TTextRange>; const ADelphiVersion: string): TJSONObject;
-begin
-  Result := BuildParams(ADocument, AInactive, ADelphiVersion, Default(TRuleCheckContext));
+  Result := BuildParams(ADocument, AInactive, '', Default(TRuleCheckContext));
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
@@ -694,6 +726,26 @@ begin
   Result.AddPair('uri', ADocument.Uri);
   Result.AddPair('version', TJSONNumber.Create(ADocument.Version));
   Result.AddPair('diagnostics', mItems);
+end;
+
+/// <summary>Lauf der Prüfregeln für Obtain.</summary>
+function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
+begin
+  Result :=
+    function: TArray<TRuleFinding>
+    begin
+      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    end;
+end;
+
+class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
+begin
+  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
+  begin
+    Exit(RuleFindings(AText, ATree, ARules));
+  end;
+  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
 end;
 
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;

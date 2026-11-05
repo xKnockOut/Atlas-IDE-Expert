@@ -218,15 +218,15 @@ var
 begin
   mSection := TTestSection.Create;
   mRef := mSection;
-  mSection.Area := 'issues';
+  mSection.Area := 'Compiler';
   mRegistration := Provided(mSection);
   try
     mPage := TAtlasSettingsPage.Create(nil);
     try
       Assert.AreEqual(1, mPage.Part<TAtlasSettingsSectionsPart>.Count);
       Assert.AreEqual(1, mSection.Builds);
-      // Bereich issues: derselbe Reiter wie die übrigen Einstellungen des Issue-Trackers.
-      Assert.AreSame(SheetOf(mPage.ControlOfSetting('IssuesEnabled')), SheetOf(mSection.Row));
+      // Seite Compiler (x-page): derselbe Reiter wie die Einstellungen von Base dort.
+      Assert.AreSame(SheetOf(mPage.ControlOfSetting('ShowInterfaceCost')), SheetOf(mSection.Row));
     finally
       mPage.Free;
     end;
@@ -421,7 +421,7 @@ begin
     mPage := TAtlasSettingsPage.Create(nil);
     try
       Assert.AreEqual(0, mPage.Part<TAtlasSettingsSectionsPart>.Count);
-      Assert.IsNotNull(mPage.ControlOfSetting('IssuesEnabled'));
+      Assert.IsNotNull(mPage.ControlOfSetting('ShowInterfaceCost'), 'die Seite von Base steht');
     finally
       mPage.Free;
     end;

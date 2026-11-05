@@ -123,7 +123,8 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Bootstrap,
   Shell.Workspace.Loader,
-  Shell.Workspace.RuleProjects;
+  Shell.Workspace.RuleProjects,
+  Atlas.Text.LogMarks;
 
 /// <summary>Teile für den Indexaufbau eines Arbeitsbereichs.</summary>
 function IndexingParts(const ARoot, AName: string; const AServices: TShellWorkspaceServices;
@@ -194,7 +195,8 @@ end;
 procedure TShellWorkspace.SettingsChanged(const ASettings: TServerSettings);
 begin
   FLogger.Info(Format('Einstellungen für %s: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
-    [FName, ASettings.DelphiVersion, ASettings.Project, Length(ASettings.Rules), Length(ASettings.Exclude)]));
+    [TLogMarks.Name(FName), ASettings.DelphiVersion, TLogMarks.Path(ASettings.Project), Length(ASettings.Rules),
+      Length(ASettings.Exclude)]));
   // Vorgabe-Kodierung (#121) gilt für alle Lese- und Schreibpfade unter diesem Ordner.
   if FRoot <> '' then
   begin
@@ -217,7 +219,7 @@ begin
   if FSetup.Deferred and not FSetup.Activated and not ASettings.IndexProjectGroup then
   begin
     FLogger.Info(Format('%s: index.projectGroup ist aus; indiziert wird, sobald eine Datei des Projekts offen ist',
-      [FName]));
+      [TLogMarks.Name(FName)]));
     FState.WithoutProject := True;
     Exit;
   end;
@@ -339,7 +341,8 @@ begin
   begin
     Exit;
   end;
-  FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [FName, AConfig, APlatform]));
+  FLogger.Info(Format('%s: Konfiguration %s, Plattform %s gewählt', [TLogMarks.Name(FName), TLogMarks.Name(AConfig),
+    TLogMarks.Name(APlatform)]));
   // Über Neustarts merken (#46); die Symbole der IDE kommen nach dem Start neu.
   if (FSetup.Selection <> nil) and ((AConfig <> '') or (APlatform <> '')) then
   begin
@@ -395,7 +398,7 @@ begin
   begin
     Exit;
   end;
-  FLogger.Info(Format('%s: Datei des Projekts geöffnet, Index wird aufgebaut', [FName]));
+  FLogger.Info(Format('%s: Datei des Projekts geöffnet, Index wird aufgebaut', [TLogMarks.Name(FName)]));
   Reload;
 end;
 

@@ -39,6 +39,14 @@ type
     /// <summary>Eigene Paarfarben je Thema („#RRGGBB,…“, fünf Stück); leer = Standardpalette.</summary>
     PairColorsLight: string;
     PairColorsDark: string;
+    /// <summary>Lokale Routinen färben (#1788): outer (wie die äußere Routine), deeper (eine Stufe tiefer) oder
+    /// color (eigene Farbe, Blocklinie gestrichelt).</summary>
+    NestedRoutines: string;
+    /// <summary>Zeilen lokaler Routinen schwach in ihrer Farbe hinterlegen (#1788).</summary>
+    NestedRoutineBand: Boolean;
+    /// <summary>Eigene Farbe lokaler Routinen je Thema („#RRGGBB“); leer = Palette (#1788).</summary>
+    NestedRoutineColorLight: string;
+    NestedRoutineColorDark: string;
     /// <summary>Gleichen Text wie die Markierung hervorheben (#709, highlight.selectionMatches).</summary>
     SelectionMatches: Boolean;
     /// <summary>Mindestlänge der Markierung, MinMinLength bis MaxMinLength von TAtlasSelectionMatches (#709).
@@ -82,6 +90,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Settings.Reassigned,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette;
 
 /// <summary>Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).</summary>
@@ -99,6 +108,18 @@ begin
   end;
 end;
 
+/// <summary>Eine Farbe einheitlich schreiben; ungültig = leer (Palette, #1788).</summary>
+function NormalColor(const AText: string): string;
+var
+  mColor: TAtlasColor;
+begin
+  Result := '';
+  if TAtlasColors.ParseColor(AText, mColor) then
+  begin
+    Result := TAtlasColorMath.ToHex(mColor);
+  end;
+end;
+
 { TAtlasPluginHighlightingSettings }
 
 class function TAtlasPluginHighlightingSettings.Defaults: TAtlasPluginHighlightingSettings;
@@ -111,6 +132,10 @@ begin
   Result.PairGuideOpacity := 75;
   Result.PairColorsLight := '';
   Result.PairColorsDark := '';
+  Result.NestedRoutines := 'deeper';
+  Result.NestedRoutineBand := False;
+  Result.NestedRoutineColorLight := '';
+  Result.NestedRoutineColorDark := '';
   Result.SelectionMatches := True;
   Result.SelectionMatchesMinLength := 3;
   Result.SelectionMatchesCaseSensitive := False;
@@ -133,6 +158,9 @@ begin
   PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
   PairColorsDark := NormalPairs(PairColorsDark);
+  NestedRoutines := Choice(NestedRoutines, ['deeper', 'outer', 'color']);
+  NestedRoutineColorLight := NormalColor(NestedRoutineColorLight);
+  NestedRoutineColorDark := NormalColor(NestedRoutineColorDark);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
   SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, MinSelectionMatches, MaxSelectionMatches);
@@ -151,6 +179,10 @@ begin
   AIo.Number('PairGuideOpacity', PairGuideOpacity);
   AIo.Text('PairColorsLight', PairColorsLight);
   AIo.Text('PairColorsDark', PairColorsDark);
+  AIo.Text('NestedRoutines', NestedRoutines);
+  AIo.Flag('NestedRoutineBand', NestedRoutineBand);
+  AIo.Text('NestedRoutineColorLight', NestedRoutineColorLight);
+  AIo.Text('NestedRoutineColorDark', NestedRoutineColorDark);
   AIo.Flag('SelectionMatches', SelectionMatches);
   AIo.Number('SelectionMatchesMinLength', SelectionMatchesMinLength);
   AIo.Flag('SelectionMatchesCaseSensitive', SelectionMatchesCaseSensitive);

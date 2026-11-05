@@ -286,6 +286,13 @@ type
     property PairGuideOpacity: Integer read FHighlighting.PairGuideOpacity write FHighlighting.PairGuideOpacity;
     property PairColorsLight: string read FHighlighting.PairColorsLight write FHighlighting.PairColorsLight;
     property PairColorsDark: string read FHighlighting.PairColorsDark write FHighlighting.PairColorsDark;
+    /// <summary>Lokale Routinen abheben (#1788).</summary>
+    property NestedRoutines: string read FHighlighting.NestedRoutines write FHighlighting.NestedRoutines;
+    property NestedRoutineBand: Boolean read FHighlighting.NestedRoutineBand write FHighlighting.NestedRoutineBand;
+    property NestedRoutineColorLight: string read FHighlighting.NestedRoutineColorLight
+      write FHighlighting.NestedRoutineColorLight;
+    property NestedRoutineColorDark: string read FHighlighting.NestedRoutineColorDark
+      write FHighlighting.NestedRoutineColorDark;
     property Problems: Boolean read FEditorInsight.Problems write FEditorInsight.Problems;
     property ProblemsMessageList: Boolean read FRules.ProblemsMessageList write FRules.ProblemsMessageList;
     property ProblemsWindow: Boolean read FRules.ProblemsWindow write FRules.ProblemsWindow;
@@ -304,6 +311,7 @@ type
     property ProblemsShowCompilerCode: Boolean read FRules.ProblemsShowCompilerCode
       write FRules.ProblemsShowCompilerCode;
     property ProblemsWindowKey: Integer read FNavigationKeys.ProblemsWindowKey write FNavigationKeys.ProblemsWindowKey;
+    property CheckFileKey: Integer read FNavigationKeys.CheckFileKey write FNavigationKeys.CheckFileKey;
     property CreateIssueKey: Integer read FEditingKeys.CreateIssueKey write FEditingKeys.CreateIssueKey;
     property GotoInterfaceKey: Integer read FNavigationKeys.GotoInterfaceKey write FNavigationKeys.GotoInterfaceKey;
     property GotoImplementationKey: Integer read FNavigationKeys.GotoImplementationKey
@@ -511,6 +519,7 @@ type
     property UpdatesChannel: string read FGeneral.UpdatesChannel write FGeneral.UpdatesChannel;
     property UpdatesNewModules: string read FGeneral.UpdatesNewModules write FGeneral.UpdatesNewModules;
     property BugReportAnonymize: Boolean read FGeneralServer.BugReportAnonymize write FGeneralServer.BugReportAnonymize;
+    property LogNames: Boolean read FGeneralServer.LogNames write FGeneralServer.LogNames;
     property UnitSearchEnabled: Boolean read FUnitSearch.UnitSearchEnabled write FUnitSearch.UnitSearchEnabled;
     property UnitSearchReplaceIdeDialog: Boolean read FUnitSearch.UnitSearchReplaceIdeDialog
       write FUnitSearch.UnitSearchReplaceIdeDialog;

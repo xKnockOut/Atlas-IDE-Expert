@@ -11,12 +11,17 @@
 // Version, Start, Zustand), Speicher je Bereich gegen das Budget, Zeitprofil
 // des letzten Prüflaufs, Warteschlange von Index und Prüfung und die
 // Trefferquoten von Index-Cache und Syntaxbaum-Cache.
+// Seit #1478 liefert Mapped eine Kopie, in der jeder Name (Ordner, eigene
+// Konfiguration, langsame Units) und jeder Pfad (Projekt, Caches) über eine
+// Funktion läuft: für die Protokollzeile gekennzeichnet (TLogMarks), für den
+// anonymen Status über den Anonymisierer des Servers.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Text.LogMarks,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Diagnostics.CheckProfile;
 
@@ -46,6 +51,8 @@ type
     Selected: Boolean;
     /// <summary>" · Debug/Win64 (gewählt) · aktiv in der IDE · ausgewählt"; '' ohne Projekt.</summary>
     function ProjectText: string;
+    /// <summary>Kopie mit AMap auf Name, eigener Konfiguration (Name), Projekt und Caches (Pfad).</summary>
+    function Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
   end;
 
   /// <summary>Speicher je Bereich in Byte (#1356), geschätzt außer Total.</summary>
@@ -137,6 +144,9 @@ type
     /// <summary>Der Aufrufer übernimmt das Objekt; enthält zusätzlich "markdown".</summary>
     function ToJson: TJSONObject;
     function ToMarkdown: string;
+    /// <summary>Kopie, in der Namen und Pfade der Arbeitsbereiche und die Namen der langsamsten Units über AMap
+    /// laufen (#1478).</summary>
+    function Mapped(const AMap: TLogMarkMap): TServerStatus;
   private
     procedure AppendDiagnostics(ABuilder: TStringBuilder);
   end;
@@ -150,7 +160,57 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Anonymize,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TStatusText = (Chosen, ActiveInTheIDE, Selected, Loading, Checking, IndexIsBeingBuilt, LastIndexRunMsRead,
+    MethodCountMeanMsMax, ProcessVersionRunningFor, IndexBudget, BudgetExceededUsesAreSwapped,
+    QueueIndexWaitingRunningCheck, SyntaxTreesInMemory, SyntaxTrees, CachesOnDisk, OfTheseOpenDocuments, CacheHits,
+    UsesOfUnitsSwappedOut, Updated, MemoryMB, Symbols, Usages, LibraryUnits, OpenDocuments, Total, IndexUnitsSymbols,
+    Memory, OfThisSymbolIndex, OfText, UnitsCompact, Ready);
+
+const
+  cTexts: array[TStatusText] of TAtlasText = (
+    (De: ' (gewählt)'; En: ' (chosen)'),
+    (De: ' · aktiv in der IDE'; En: ' · active in the IDE'),
+    (De: ' · ausgewählt'; En: ' · selected'),
+    (De: 'lädt'; En: 'loading'),
+    (De: 'prüft'; En: 'checking'),
+    (De: '- %s%s: Index wird aufgebaut'; En: '- %s%s: index is being built'),
+    (De: '- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)';
+     En: '- %s%s: last index run %d ms (%d read anew, %d from the cache, %d missing)'),
+    (De: '| Methode | Anzahl | Mittel ms | Max ms | Fehler |'; En: '| Method | Count | Mean ms | Max ms | Errors |'),
+    (De: '- Prozess %d, Version %s, läuft seit %d s, %s'; En: '- Process %d, version %s, running for %d s, %s'),
+    (De: '| Budget des Index | '; En: '| Index budget | '),
+    (De: 'Budget überschritten: Verwendungen werden ausgelagert.'; En: 'Budget exceeded: uses are swapped out.'),
+    (De: '- Warteschlange: Index %d wartend, %d laufend; Prüfung %d wartend, %d laufend; älteste Wartezeit %d ms';
+     En: '- Queue: index %d waiting, %d running; check %d waiting, %d running; oldest wait %d ms'),
+    (De: ', Syntaxbäume %d %% (%d im Speicher)'; En: ', syntax trees %d %% (%d in memory)'),
+    (De: ', Syntaxbäume –'; En: ', syntax trees –'),
+    (De: '- Caches auf der Platte: '; En: '- Caches on disk: '),
+    (De: '- davon geöffnete Dokumente: '; En: '- of these open documents: '),
+    (De: '- Cache-Treffer: '; En: '- Cache hits: '),
+    (De: ', Verwendungen von %d Units ausgelagert'; En: ', uses of %d units swapped out'),
+    (De: ', aktualisiert '; En: ', updated '),
+    (De: '| Speicher | MB |'; En: '| Memory | MB |'),
+    (De: '| Symbole | '; En: '| Symbols | '),
+    (De: '| Verwendungen | '; En: '| Usages | '),
+    (De: '| Bibliotheks-Units | '; En: '| Library units | '),
+    (De: '| Offene Dokumente | '; En: '| Open documents | '),
+    (De: '| Gesamt | '; En: '| Total | '),
+    (De: '- Index: %d Units, %d Symbole'; En: '- Index: %d units, %d symbols'),
+    (De: '- Speicher: '; En: '- Memory: '),
+    (De: '- davon Symbolindex: '; En: '- of this symbol index: '),
+    (De: ' von '; En: ' of '),
+    (De: ', %d Units kompakt'; En: ', %d units compact'),
+    (De: 'bereit'; En: 'ready'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>ISO 8601 in UTC; '' für 0.</summary>
 function DateText(AValue: TDateTime): string;
@@ -172,6 +232,49 @@ end;
 
 { TWorkspaceStatus }
 
+/// <summary>AMap(AKind, AValue), leere Werte bleiben leer.</summary>
+function MappedValue(const AMap: TLogMarkMap; AKind: TLogMarkKind; const AValue: string): string;
+begin
+  Result := AValue;
+  if AValue <> '' then
+  begin
+    Result := AMap(AKind, AValue);
+  end;
+end;
+
+function TWorkspaceStatus.Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
+begin
+  Result := Self;
+  Result.Name := MappedValue(AMap, TLogMarkKind.Name, Name);
+  Result.Project := MappedValue(AMap, TLogMarkKind.Path, Project);
+  Result.CacheFile := MappedValue(AMap, TLogMarkKind.Path, CacheFile);
+  Result.LibraryCacheFile := MappedValue(AMap, TLogMarkKind.Path, LibraryCacheFile);
+  // Debug, Release und die Plattformen verraten nichts; eigene Konfigurationen tragen oft Kundennamen.
+  if not TTextAnonymizer.IsKeyword(Config) then
+  begin
+    Result.Config := MappedValue(AMap, TLogMarkKind.Name, Config);
+  end;
+end;
+
+function TServerStatus.Mapped(const AMap: TLogMarkMap): TServerStatus;
+var
+  mIndex: Integer;
+  mMap: TLogMarkMap;
+begin
+  Result := Self;
+  Result.Workspaces := Copy(Workspaces);
+  for mIndex := 0 to High(Result.Workspaces) do
+  begin
+    Result.Workspaces[mIndex] := Workspaces[mIndex].Mapped(AMap);
+  end;
+  mMap := AMap;
+  Result.CheckRun := CheckRun.Anonymized(
+    function(const AName: string): string
+    begin
+      Result := MappedValue(mMap, TLogMarkKind.Name, AName);
+    end);
+end;
+
 function TWorkspaceStatus.ProjectText: string;
 begin
   Result := '';
@@ -185,15 +288,15 @@ begin
   end;
   if BuildChosen then
   begin
-    Result := Result + ' (gewählt)';
+    Result := Result + cTexts[TStatusText.Chosen].Text;
   end;
   if Active then
   begin
-    Result := Result + ' · aktiv in der IDE';
+    Result := Result + cTexts[TStatusText.ActiveInTheIDE].Text;
   end;
   if Selected then
   begin
-    Result := Result + ' · ausgewählt';
+    Result := Result + cTexts[TStatusText.Selected].Text;
   end;
 end;
 
@@ -247,15 +350,15 @@ function TServerStatus.StateText: string;
 begin
   if State = StateLoading then
   begin
-    Result := 'lädt';
+    Result := cTexts[TStatusText.Loading].Text;
   end
   else if State = StateChecking then
   begin
-    Result := 'prüft';
+    Result := cTexts[TStatusText.Checking].Text;
   end
   else
   begin
-    Result := 'bereit';
+    Result := cTexts[TStatusText.Ready].Text;
   end;
 end;
 
@@ -268,15 +371,16 @@ begin
   begin
     if mWorkspace.LastIndexMs < 0 then
     begin
-      ABuilder.Append(Format('- %s%s: Index wird aufgebaut', [mWorkspace.Name, mWorkspace.ProjectText])).Append(#10);
+      ABuilder.Append(cTexts[TStatusText.IndexIsBeingBuilt].Fmt([mWorkspace.Name, mWorkspace.ProjectText])).Append(#10);
       Continue;
     end;
-    ABuilder.Append(Format('- %s%s: letzter Indexlauf %d ms (%d neu eingelesen, %d aus dem Cache, %d fehlen)',
-      [mWorkspace.Name, mWorkspace.ProjectText, mWorkspace.LastIndexMs, mWorkspace.Parsed, mWorkspace.FromCache,
+    ABuilder.Append(cTexts[TStatusText.LastIndexRunMsRead].Fmt([mWorkspace.Name, mWorkspace.ProjectText,
+      mWorkspace.LastIndexMs, mWorkspace.Parsed, mWorkspace.FromCache,
       mWorkspace.Missing]));
     if mWorkspace.LastUpdate <> 0 then
     begin
-      ABuilder.Append(', aktualisiert ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', mWorkspace.LastUpdate));
+      ABuilder.Append(cTexts[TStatusText.Updated].Text).Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss',
+        mWorkspace.LastUpdate));
     end;
     ABuilder.Append(', Cache ').Append(MegaBytes(mWorkspace.CacheBytes + mWorkspace.LibraryCacheBytes));
     ABuilder.Append(#10);
@@ -292,7 +396,7 @@ begin
   begin
     Exit;
   end;
-  ABuilder.Append(#10).Append('| Methode | Anzahl | Mittel ms | Max ms | Fehler |').Append(#10);
+  ABuilder.Append(#10).Append(cTexts[TStatusText.MethodCountMeanMsMax].Text).Append(#10);
   ABuilder.Append('|---|---:|---:|---:|---:|').Append(#10);
   for mRequest in ARequests do
   begin
@@ -379,33 +483,34 @@ procedure TServerStatus.AppendDiagnostics(ABuilder: TStringBuilder);
 var
   mProfile: string;
 begin
-  ABuilder.Append(#10).Append(Format('- Prozess %d, Version %s, läuft seit %d s, %s',
-    [ProcessId, Version, UptimeMs div 1000, StateText])).Append(#10);
-  ABuilder.Append(#10).Append('| Speicher | MB |').Append(#10);
+  ABuilder.Append(#10).Append(cTexts[TStatusText.ProcessVersionRunningFor].Fmt([ProcessId, Version, UptimeMs div 1000,
+    StateText])).Append(#10);
+  ABuilder.Append(#10).Append(cTexts[TStatusText.MemoryMB].Text).Append(#10);
   ABuilder.Append('|---|---:|').Append(#10);
-  ABuilder.Append('| Symbole | ').Append(MegaBytes(Memory.Symbols)).Append(' |').Append(#10);
-  ABuilder.Append('| Verwendungen | ').Append(MegaBytes(Memory.Usages)).Append(' |').Append(#10);
-  ABuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(Memory.LibraryUnits)).Append(' |').Append(#10);
+  ABuilder.Append(cTexts[TStatusText.Symbols].Text).Append(MegaBytes(Memory.Symbols)).Append(' |').Append(#10);
+  ABuilder.Append(cTexts[TStatusText.Usages].Text).Append(MegaBytes(Memory.Usages)).Append(' |').Append(#10);
+  ABuilder.Append(cTexts[TStatusText.LibraryUnits].Text).Append(MegaBytes(Memory.LibraryUnits)).Append(' |')
+    .Append(#10);
   ABuilder.Append('| Syntaxbaum-Cache | ').Append(MegaBytes(Memory.TreeCache)).Append(' |').Append(#10);
-  ABuilder.Append('| Offene Dokumente | ').Append(MegaBytes(Memory.Documents)).Append(' |').Append(#10);
+  ABuilder.Append(cTexts[TStatusText.OpenDocuments].Text).Append(MegaBytes(Memory.Documents)).Append(' |').Append(#10);
   ABuilder.Append('| Packages (.dcp) | ').Append(MegaBytes(Memory.Packages)).Append(' |').Append(#10);
   ABuilder.Append('| Rest | ').Append(MegaBytes(Memory.Rest)).Append(' |').Append(#10);
   if Memory.Total >= 0 then
   begin
-    ABuilder.Append('| Gesamt | ').Append(MegaBytes(Memory.Total)).Append(' |').Append(#10);
+    ABuilder.Append(cTexts[TStatusText.Total].Text).Append(MegaBytes(Memory.Total)).Append(' |').Append(#10);
   end;
   if Memory.Budget > 0 then
   begin
-    ABuilder.Append('| Budget des Index | ').Append(MegaBytes(Memory.Budget)).Append(' |').Append(#10);
+    ABuilder.Append(cTexts[TStatusText.IndexBudget].Text).Append(MegaBytes(Memory.Budget)).Append(' |').Append(#10);
   end;
   if Memory.OverBudget(CompactUnits, OffloadedUnits) then
   begin
-    ABuilder.Append(#10).Append('Budget überschritten: Verwendungen werden ausgelagert.').Append(#10);
+    ABuilder.Append(#10).Append(cTexts[TStatusText.BudgetExceededUsesAreSwapped].Text).Append(#10);
   end;
-  ABuilder.Append(#10).Append(Format('- Warteschlange: Index %d wartend, %d laufend; Prüfung %d wartend, %d laufend; ' +
-    'älteste Wartezeit %d ms', [Queue.IndexWaiting, Queue.IndexRunning, Queue.CheckWaiting, Queue.CheckRunning,
+  ABuilder.Append(#10).Append(cTexts[TStatusText.QueueIndexWaitingRunningCheck].Fmt([Queue.IndexWaiting,
+    Queue.IndexRunning, Queue.CheckWaiting, Queue.CheckRunning,
     Queue.OldestWaitMs])).Append(#10);
-  ABuilder.Append('- Cache-Treffer: ');
+  ABuilder.Append(cTexts[TStatusText.CacheHits].Text);
   if IndexCacheHitPercent >= 0 then
   begin
     ABuilder.Append(Format('Index %d %%', [IndexCacheHitPercent]));
@@ -416,11 +521,11 @@ begin
   end;
   if TreeCacheHitPercent >= 0 then
   begin
-    ABuilder.Append(Format(', Syntaxbäume %d %% (%d im Speicher)', [TreeCacheHitPercent, TreeCacheTrees]));
+    ABuilder.Append(cTexts[TStatusText.SyntaxTreesInMemory].Fmt([TreeCacheHitPercent, TreeCacheTrees]));
   end
   else
   begin
-    ABuilder.Append(', Syntaxbäume –');
+    ABuilder.Append(cTexts[TStatusText.SyntaxTrees].Text);
   end;
   ABuilder.Append(#10);
   mProfile := CheckRun.ToMarkdown;
@@ -437,27 +542,27 @@ begin
   Builder := TStringBuilder.Create;
   try
     Builder.Append('**Atlas**').Append(#10#10);
-    Builder.Append(Format('- Index: %d Units, %d Symbole', [Units, Symbols])).Append(#10);
+    Builder.Append(cTexts[TStatusText.IndexUnitsSymbols].Fmt([Units, Symbols])).Append(#10);
     if MemoryBytes >= 0 then
     begin
-      Builder.Append('- Speicher: ').Append(MegaBytes(MemoryBytes)).Append(#10);
+      Builder.Append(cTexts[TStatusText.Memory].Text).Append(MegaBytes(MemoryBytes)).Append(#10);
     end;
-    Builder.Append('- davon Symbolindex: ').Append(MegaBytes(IndexBytes));
+    Builder.Append(cTexts[TStatusText.OfThisSymbolIndex].Text).Append(MegaBytes(IndexBytes));
     if BudgetBytes > 0 then
     begin
-      Builder.Append(' von ').Append(MegaBytes(BudgetBytes));
+      Builder.Append(cTexts[TStatusText.OfText].Text).Append(MegaBytes(BudgetBytes));
     end;
     if CompactUnits > 0 then
     begin
-      Builder.Append(Format(', %d Units kompakt', [CompactUnits]));
+      Builder.Append(cTexts[TStatusText.UnitsCompact].Fmt([CompactUnits]));
     end;
     if OffloadedUnits > 0 then
     begin
-      Builder.Append(Format(', Verwendungen von %d Units ausgelagert', [OffloadedUnits]));
+      Builder.Append(cTexts[TStatusText.UsesOfUnitsSwappedOut].Fmt([OffloadedUnits]));
     end;
     Builder.Append(#10);
-    Builder.Append('- Caches auf der Platte: ').Append(MegaBytes(DiskBytes)).Append(#10);
-    Builder.Append('- davon geöffnete Dokumente: ').Append(MegaBytes(DocumentBytes)).Append(#10);
+    Builder.Append(cTexts[TStatusText.CachesOnDisk].Text).Append(MegaBytes(DiskBytes)).Append(#10);
+    Builder.Append(cTexts[TStatusText.OfTheseOpenDocuments].Text).Append(MegaBytes(DocumentBytes)).Append(#10);
     if Compiler <> '' then
     begin
       Builder.Append('- ').Append(Compiler).Append(#10);
@@ -522,5 +627,8 @@ begin
   end;
   Result.AddPair('markdown', ToMarkdown);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Status', cTexts);
 
 end.

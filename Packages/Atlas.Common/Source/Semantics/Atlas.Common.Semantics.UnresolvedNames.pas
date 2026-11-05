@@ -63,7 +63,21 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TUnresolvedNamesText = (IsNotAConstructorOf, IsNotADestructorOf, FailIsOnlyAllowedIn);
+
+const
+  cTexts: array[TUnresolvedNamesText] of TAtlasText = (
+    (De: '"%s" ist kein Konstruktor von %s; New braucht einen Konstruktor des object-Typs (wie E2601).';
+     En: '"%s" is not a constructor of %s; New needs a constructor of the object type (like E2601).'),
+    (De: '"%s" ist kein Destruktor von %s; Dispose braucht einen Destruktor des object-Typs (wie E2602).';
+     En: '"%s" is not a destructor of %s; Dispose needs a destructor of the object type (like E2602).'),
+    (De: 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).';
+     En: 'Fail is only allowed in the constructor of an object type (like E2078).'));
 
 const
   // Sonderfälle zusätzlich zu TSystemIntrinsics (dort die Bezeichner von System ohne Quelltext, #880).
@@ -103,17 +117,15 @@ class function TUnresolvedNames.Describe(const AName: TUnresolvedName): string;
 begin
   if AName.Code = 'E2601' then
   begin
-    Result := Format('"%s" ist kein Konstruktor von %s; New braucht einen Konstruktor des object-Typs (wie E2601).',
-      [AName.Name, AName.Owner]);
+    Result := cTexts[TUnresolvedNamesText.IsNotAConstructorOf].Fmt([AName.Name, AName.Owner]);
   end
   else if AName.Code = 'E2602' then
   begin
-    Result := Format('"%s" ist kein Destruktor von %s; Dispose braucht einen Destruktor des object-Typs ' +
-      '(wie E2602).', [AName.Name, AName.Owner]);
+    Result := cTexts[TUnresolvedNamesText.IsNotADestructorOf].Fmt([AName.Name, AName.Owner]);
   end
   else if AName.Code = 'E2078' then
   begin
-    Result := 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).';
+    Result := cTexts[TUnresolvedNamesText.FailIsOnlyAllowedIn].Text;
   end
   else
   begin
@@ -488,5 +500,8 @@ begin
     Declared.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Semantics.UnresolvedNames', cTexts);
 
 end.

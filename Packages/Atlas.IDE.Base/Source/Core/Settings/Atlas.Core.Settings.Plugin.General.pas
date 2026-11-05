@@ -106,6 +106,9 @@ type
     /// <summary>Fehlerbericht anonymisieren (#108, diagnostics.bugReport.anonymize): Pfade, Benutzername und
     /// Bezeichner ersetzen; Vorgabe an.</summary>
     BugReportAnonymize: Boolean;
+    /// <summary>Protokoll atlas.log mit Klarnamen (#1478, diagnostics.log.names); Vorgabe aus: Namen, Pfade und
+    /// Meldungen stehen als name#N, datei#N, text#N.</summary>
+    LogNames: Boolean;
     /// <summary>Modul-Schalter analysis.enabled (#1454): Analysefenster (Architektur, Unit-Beziehungen, Symbolpfad, Hotspots); aus = die wirksamen Werte aller Einstellungen des Moduls sind
     /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
     AnalysisEnabled: Boolean;
@@ -241,6 +244,7 @@ begin
   Result.SafeStartupTimeoutMs := 30000;
   Result.SafeKeepSettingsHistory := 5;
   Result.BugReportAnonymize := True;
+  Result.LogNames := False;
   Result.AnalysisEnabled := True;
 end;
 
@@ -295,6 +299,7 @@ begin
   AIo.Number('SafeStartupTimeoutMs', SafeStartupTimeoutMs);
   AIo.Number('SafeKeepSettingsHistory', SafeKeepSettingsHistory);
   AIo.Flag('BugReportAnonymize', BugReportAnonymize);
+  AIo.Flag('LogNames', LogNames);
   AIo.Flag('AnalysisEnabled', AnalysisEnabled);
 end;
 

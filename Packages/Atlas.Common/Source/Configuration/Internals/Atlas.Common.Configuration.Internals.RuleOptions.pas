@@ -26,7 +26,90 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRuleOptionsText = (KeywordsMustBeAList, AMarkerConsistsOfLetters, KindMustBeRoutineType, MustBeAListOf,
+    NameMustBeANon, UnknownKeyAllowedNameKind, SymbolsMustBeAList, AnEntryOfSymbolsIs, MustBeAWholeNumber,
+    MustBeTrueOrFalse, AllowedMustBeAList, MustBeAListOf2, TypeLevelMustBeCertainOr, KindsMayOnlyContainDeprecated,
+    SearchPathsMustBeProjectAtlas, DefaultEncodingMustBeUTF8Unicode, PairsMustBeAList, PairsMustBeAList2,
+    PairsMustBeAList3, RegisterPairsMustBeAList, RuleExpectsASeverityOr, ProfileExpectsANameOr,
+    UnknownKeyAllowedEditorCli, UnknownKeyAllowedExtendsCategories, AProfileIsAnObject, UnknownKeyAllowedFilesRules,
+    OverridesMustBeAList, APathRuleIsAn, ExcludeMustBeAList, AllowedAreLowMediumAnd, AllowedAreMediumAndHigh,
+    UnknownSettingFix, MustBeAText, EntryOfSymbolsWithoutName, MustBeAnObjectRule, ProfilesMustBeAnObject,
+    UnknownSeverityAllowedOffHint, UnknownSeverityAllowedOffHint2, PathRuleWithoutFiles);
+
+const
+  cTexts: array[TRuleOptionsText] of TAtlasText = (
+    (De: '"keywords" muss eine Liste von Marken sein, z. B. ["TODO", "FIXME"]';
+     En: '"keywords" must be a list of markers, e.g. ["TODO", "FIXME"]'),
+    (De: 'Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"';
+     En: 'A marker consists of letters only and is not DONE, e.g. "HACK"'),
+    (De: '"kind" muss routine, type, constant, field, property, enumValue oder identifier sein';
+     En: '"kind" must be routine, type, constant, field, property, enumValue or identifier'),
+    (De: '"%s" muss eine Liste von Texten sein'; En: '"%s" must be a list of texts'),
+    (De: '"name" muss ein nicht leerer Text sein'; En: '"name" must be a non-empty text'),
+    (De: 'Unbekannter Schlüssel "%s"; erlaubt: name, kind, message, replacement, severity, units, firstArgument, ' +
+      'allowFirstArgument';
+     En: 'Unknown key "%s"; allowed: name, kind, message, replacement, severity, units, firstArgument, ' +
+      'allowFirstArgument'),
+    (De: '"symbols" muss eine Liste von Objekten mit "name" sein';
+     En: '"symbols" must be a list of objects with "name"'),
+    (De: 'Ein Eintrag von "symbols" ist ein Objekt mit "name", z. B. {"name": "System.Writeln"}';
+     En: 'An entry of "symbols" is an object with "name", e.g. {"name": "System.Writeln"}'),
+    (De: '"%s" muss eine ganze Zahl ab %d sein'; En: '"%s" must be a whole number from %d'),
+    (De: '"%s" muss true oder false sein'; En: '"%s" must be true or false'),
+    (De: '"allowed" muss eine Liste von Texten sein'; En: '"allowed" must be a list of texts'),
+    (De: '"%s" muss eine Liste von Zahlen sein'; En: '"%s" must be a list of numbers'),
+    (De: '"typeLevel" muss "certain" oder "off" sein'; En: '"typeLevel" must be "certain" or "off"'),
+    (De: '"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten';
+     En: '"kinds" may only contain "deprecated", "experimental", "platform" and "library"'),
+    (De: '"searchPaths" muss "project", "atlas" oder "both" sein';
+     En: '"searchPaths" must be "project", "atlas" or "both"'),
+    (De: '"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein';
+     En: '"defaultEncoding" must be UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 or Default'),
+    (De: '"pairs" muss eine Liste von Objekten mit "start", "commit" und "rollback" sein';
+     En: '"pairs" must be a list of objects with "start", "commit" and "rollback"'),
+    (De: '"pairs" muss eine Liste von Texten "Öffnen>Schließen" oder von Objekten mit "open" und "close" sein';
+     En: '"pairs" must be a list of texts "Open>Close" or of objects with "open" and "close"'),
+    (De: '"pairs" muss eine Liste von Objekten mit "open" und "close" sein';
+     En: '"pairs" must be a list of objects with "open" and "close"'),
+    (De: '"registerPairs" muss eine Liste von Objekten mit "open" und "close" sein';
+     En: '"registerPairs" must be a list of objects with "open" and "close"'),
+    (De: 'Regel erwartet einen Schweregrad oder ein Objekt mit "severity"';
+     En: 'Rule expects a severity or an object with "severity"'),
+    (De: '"profile" erwartet einen Namen oder { "editor": …, "cli": … }';
+     En: '"profile" expects a name or { "editor": …, "cli": … }'),
+    (De: 'Unbekannter Schlüssel "%s"; erlaubt: editor, cli'; En: 'Unknown key "%s"; allowed: editor, cli'),
+    (De: 'Unbekannter Schlüssel "%s"; erlaubt: extends, categories, rules';
+     En: 'Unknown key "%s"; allowed: extends, categories, rules'),
+    (De: 'Ein Profil ist ein Objekt mit "extends", "categories" und "rules"';
+     En: 'A profile is an object with "extends", "categories" and "rules"'),
+    (De: 'Unbekannter Schlüssel "%s"; erlaubt: files, rules'; En: 'Unknown key "%s"; allowed: files, rules'),
+    (De: '"overrides" muss eine Liste sein: [{ "files": ["Tests/**"], "rules": { … } }]';
+     En: '"overrides" must be a list: [{ "files": ["Tests/**"], "rules": { … } }]'),
+    (De: 'Eine Pfadregel ist ein Objekt mit "files" und "rules"';
+     En: 'A path rule is an object with "files" and "rules"'),
+    (De: '"exclude" muss eine Liste von Mustern sein'; En: '"exclude" must be a list of patterns'),
+    (De: 'Erlaubt sind "low", "medium" und "high"'; En: 'Allowed are "low", "medium" and "high"'),
+    (De: 'Erlaubt sind "medium" und "high"'; En: 'Allowed are "medium" and "high"'),
+    (De: 'Unbekannte Einstellung "fix.%s"'; En: 'Unknown setting "fix.%s"'),
+    (De: '"%s" muss ein Text sein'; En: '"%s" must be a text'),
+    (De: 'Eintrag von "symbols" ohne "name"'; En: 'Entry of "symbols" without "name"'),
+    (De: '"%s" muss ein Objekt sein: { "regel": "warning" }'; En: '"%s" must be an object: { "rule": "warning" }'),
+    (De: '"profiles" muss ein Objekt sein: { "name": { "extends": …, "rules": … } }';
+     En: '"profiles" must be an object: { "name": { "extends": …, "rules": … } }'),
+    (De: 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error';
+     En: 'Unknown severity; allowed: off, hint, info, warning, error'),
+    (De: 'Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error';
+     En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'),
+    (De: 'Pfadregel ohne "files"'; En: 'Path rule without "files"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
@@ -36,12 +119,12 @@ const
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..33] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..34] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
-    'formatMethods', 'unitKinds');
+    'formatMethods', 'unitKinds', 'keep');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
@@ -221,7 +304,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"keywords" muss eine Liste von Marken sein, z. B. ["TODO", "FIXME"]');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.KeywordsMustBeAList].Text);
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -233,7 +316,7 @@ begin
     end;
     if (mKeyword = '') or SameText(mKeyword, 'DONE') or not IsLetters(mKeyword) then
     begin
-      AReader.ReportNode(ANode[mIndex], 'Eine Marke besteht nur aus Buchstaben und ist nicht DONE, z. B. "HACK"');
+      AReader.ReportNode(ANode[mIndex], cTexts[TRuleOptionsText.AMarkerConsistsOfLetters].Text);
     end;
   end;
 end;
@@ -249,23 +332,23 @@ begin
   if AKey = 'kind' then
   begin
     mValid := (AValue.Kind = TJsonKind.String_) and (IndexText(AValue.Value, ForbiddenSymbolKinds) >= 0);
-    mMessage := '"kind" muss routine, type, constant, field, property, enumValue oder identifier sein';
+    mMessage := cTexts[TRuleOptionsText.KindMustBeRoutineType].Text;
   end
   else if MatchStr(AKey, ['message', 'replacement']) then
   begin
     mValid := AValue.Kind = TJsonKind.String_;
-    mMessage := Format('"%s" muss ein Text sein', [AKey]);
+    mMessage := cTexts[TRuleOptionsText.MustBeAText].Fmt([AKey]);
   end
   else if AKey = 'severity' then
   begin
     mValid := (AValue.Kind = TJsonKind.String_) and TryParseRuleSeverity(AValue.Value, mSeverity);
-    mMessage := 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error';
+    mMessage := cTexts[TRuleOptionsText.UnknownSeverityAllowedOffHint].Text;
   end
   else
   begin
     Result := MatchStr(AKey, SymbolListMembers);
     mValid := not Result or IsStringList(AValue);
-    mMessage := Format('"%s" muss eine Liste von Texten sein', [AKey]);
+    mMessage := cTexts[TRuleOptionsText.MustBeAListOf].Fmt([AKey]);
   end;
   if not mValid then
   begin
@@ -281,13 +364,12 @@ begin
   begin
     if (AValue.Kind <> TJsonKind.String_) or (Trim(AValue.Value) = '') then
     begin
-      AReader.ReportNode(AValue, '"name" muss ein nicht leerer Text sein');
+      AReader.ReportNode(AValue, cTexts[TRuleOptionsText.NameMustBeANon].Text);
     end;
   end
   else if not CheckSymbolValue(AReader, AKey, AValue) then
   begin
-    AReader.ReportNode(AValue, Format('Unbekannter Schlüssel "%s"; erlaubt: name, kind, message, replacement, ' +
-      'severity, units, firstArgument, allowFirstArgument', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.UnknownKeyAllowedNameKind].Fmt([AKey]));
   end;
 end;
 
@@ -300,7 +382,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"symbols" muss eine Liste von Objekten mit "name" sein');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.SymbolsMustBeAList].Text);
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -308,7 +390,7 @@ begin
     mItem := ANode[mIndex];
     if mItem.Kind <> TJsonKind.Object_ then
     begin
-      AReader.ReportNode(mItem, 'Ein Eintrag von "symbols" ist ein Objekt mit "name", z. B. {"name": "System.Writeln"}');
+      AReader.ReportNode(mItem, cTexts[TRuleOptionsText.AnEntryOfSymbolsIs].Text);
       Continue;
     end;
     mHasName := False;
@@ -321,7 +403,7 @@ begin
     end;
     if not mHasName then
     begin
-      AReader.ReportNode(mItem, 'Eintrag von "symbols" ohne "name"');
+      AReader.ReportNode(mItem, cTexts[TRuleOptionsText.EntryOfSymbolsWithoutName].Text);
     end;
   end;
 end;
@@ -342,7 +424,7 @@ begin
     begin
       if not IsIntegerFrom(AValue, mLimit.Min) then
       begin
-        AReader.ReportNode(AValue, Format('"%s" muss eine ganze Zahl ab %d sein', [AKey, mLimit.Min]));
+        AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAWholeNumber].Fmt([AKey, mLimit.Min]));
       end;
       Exit(True);
     end;
@@ -366,7 +448,7 @@ begin
   Result := (IndexStr(AKey, BooleanRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.Boolean_);
   if Result then
   begin
-    AReader.ReportNode(AValue, Format('"%s" muss true oder false sein', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeTrueOrFalse].Fmt([AKey]));
   end;
 end;
 
@@ -376,7 +458,7 @@ begin
   Result := (IndexStr(AKey, StringListRuleOptions) >= 0) and not IsStringList(AValue);
   if Result then
   begin
-    AReader.ReportNode(AValue, Format('"%s" muss eine Liste von Texten sein', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAListOf].Fmt([AKey]));
   end;
 end;
 
@@ -387,7 +469,7 @@ begin
   Result := (AKey = 'allowed') and (ARuleId = 'inherited-wrong-method');
   if Result and not IsStringList(AValue) then
   begin
-    AReader.ReportNode(AValue, '"allowed" muss eine Liste von Texten sein');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.AllowedMustBeAList].Text);
   end;
 end;
 
@@ -397,7 +479,7 @@ begin
   Result := (IndexStr(AKey, NumberListRuleOptions) >= 0) and not IsListOf(AValue, TJsonKind.Number);
   if Result then
   begin
-    AReader.ReportNode(AValue, Format('"%s" muss eine Liste von Zahlen sein', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAListOf2].Fmt([AKey]));
   end;
 end;
 
@@ -407,7 +489,7 @@ begin
   Result := (IndexStr(AKey, StringRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.String_);
   if Result then
   begin
-    AReader.ReportNode(AValue, Format('"%s" muss ein Text sein', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAText].Fmt([AKey]));
   end;
 end;
 
@@ -418,7 +500,7 @@ begin
     ((AValue.Kind <> TJsonKind.String_) or (IndexStr(AValue.Value, ['certain', 'off']) < 0));
   if Result then
   begin
-    AReader.ReportNode(AValue, '"typeLevel" muss "certain" oder "off" sein');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.TypeLevelMustBeCertainOr].Text);
   end;
 end;
 
@@ -429,7 +511,7 @@ begin
   Result := (AKey = 'kinds') and (ARuleId = 'deprecated-symbol') and not IsStringListOf(AValue, DeprecationKinds);
   if Result then
   begin
-    AReader.ReportNode(AValue, '"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.KindsMayOnlyContainDeprecated].Text);
   end;
 end;
 
@@ -449,7 +531,7 @@ begin
   Result := (AKey = 'searchPaths') and (IndexStr(AValue.Value, ['project', 'atlas', 'both']) < 0);
   if Result then
   begin
-    AReader.ReportNode(AValue, '"searchPaths" muss "project", "atlas" oder "both" sein');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.SearchPathsMustBeProjectAtlas].Text);
   end;
 end;
 
@@ -461,7 +543,7 @@ begin
   if Result then
   begin
     AReader.ReportNode(AValue,
-      '"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein');
+      cTexts[TRuleOptionsText.DefaultEncodingMustBeUTF8Unicode].Text);
   end;
 end;
 
@@ -478,20 +560,19 @@ begin
   begin
     if not IsPairList(AValue, ['start', 'commit', 'rollback']) then
     begin
-      AReader.ReportNode(AValue, '"pairs" muss eine Liste von Objekten mit "start", "commit" und "rollback" sein');
+      AReader.ReportNode(AValue, cTexts[TRuleOptionsText.PairsMustBeAList].Text);
     end;
   end
   else if ARuleId = 'handle-leak' then
   begin
     if not IsArrowPairList(AValue) then
     begin
-      AReader.ReportNode(AValue, '"pairs" muss eine Liste von Texten "Öffnen>Schließen" oder von Objekten mit ' +
-        '"open" und "close" sein');
+      AReader.ReportNode(AValue, cTexts[TRuleOptionsText.PairsMustBeAList2].Text);
     end;
   end
   else if not IsPairList(AValue, ['open', 'close']) then
   begin
-    AReader.ReportNode(AValue, '"pairs" muss eine Liste von Objekten mit "open" und "close" sein');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.PairsMustBeAList3].Text);
   end;
 end;
 
@@ -502,7 +583,7 @@ begin
   Result := (AKey = 'registerPairs') and not IsPairList(AValue, ['open', 'close']);
   if Result then
   begin
-    AReader.ReportNode(AValue, '"registerPairs" muss eine Liste von Objekten mit "open" und "close" sein');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.RegisterPairsMustBeAList].Text);
   end;
 end;
 
@@ -544,7 +625,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mInner], 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error');
+      AReader.ReportNode(AValue[mInner], cTexts[TRuleOptionsText.UnknownSeverityAllowedOffHint].Text);
     end;
   end;
   ARule.Options := AReader.NodeText(AValue);
@@ -563,7 +644,7 @@ begin
   Result := AValue.Kind in [TJsonKind.String_, TJsonKind.Object_];
   if not Result then
   begin
-    AReader.ReportNode(AValue, 'Regel erwartet einen Schweregrad oder ein Objekt mit "severity"');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.RuleExpectsASeverityOr].Text);
   end
   else if AValue.Kind = TJsonKind.Object_ then
   begin
@@ -575,8 +656,7 @@ begin
     ARule.Severity := mSeverity;
     if not Result then
     begin
-      AReader.ReportNode(AValue, Format('Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error',
-        [AValue.Value]));
+      AReader.ReportNode(AValue, cTexts[TRuleOptionsText.UnknownSeverityAllowedOffHint2].Fmt([AValue.Value]));
     end;
   end;
 end;
@@ -591,7 +671,7 @@ begin
   Result := ANode.Kind = TJsonKind.Object_;
   if not Result then
   begin
-    AReader.ReportNode(ANode, Format('"%s" muss ein Objekt sein: { "regel": "warning" }', [AName]));
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.MustBeAnObjectRule].Fmt([AName]));
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -660,7 +740,7 @@ begin
   end;
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, '"profile" erwartet einen Namen oder { "editor": …, "cli": … }');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.ProfileExpectsANameOr].Text);
     Exit;
   end;
   for mIndex := 0 to ANode.Count - 1 do
@@ -681,8 +761,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(ANode[mIndex], Format('Unbekannter Schlüssel "%s"; erlaubt: editor, cli',
-        [ANode.Keys[mIndex]]));
+      AReader.ReportNode(ANode[mIndex], cTexts[TRuleOptionsText.UnknownKeyAllowedEditorCli].Fmt([ANode.Keys[mIndex]]));
     end;
   end;
 end;
@@ -719,8 +798,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mInner], Format('Unbekannter Schlüssel "%s"; erlaubt: extends, categories, rules',
-        [mKey]));
+      AReader.ReportNode(AValue[mInner], cTexts[TRuleOptionsText.UnknownKeyAllowedExtendsCategories].Fmt([mKey]));
     end;
   end;
 end;
@@ -731,7 +809,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
-    AReader.ReportNode(ANode, '"profiles" muss ein Objekt sein: { "name": { "extends": …, "rules": … } }');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.ProfilesMustBeAnObject].Text);
     Exit;
   end;
   ASettings.Profiles := nil;
@@ -739,7 +817,7 @@ begin
   begin
     if ANode[mIndex].Kind <> TJsonKind.Object_ then
     begin
-      AReader.ReportNode(ANode[mIndex], 'Ein Profil ist ein Objekt mit "extends", "categories" und "rules"');
+      AReader.ReportNode(ANode[mIndex], cTexts[TRuleOptionsText.AProfileIsAnObject].Text);
     end
     else
     begin
@@ -774,7 +852,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mInner], Format('Unbekannter Schlüssel "%s"; erlaubt: files, rules', [mKey]));
+      AReader.ReportNode(AValue[mInner], cTexts[TRuleOptionsText.UnknownKeyAllowedFilesRules].Fmt([mKey]));
     end;
   end;
 end;
@@ -787,7 +865,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"overrides" muss eine Liste sein: [{ "files": ["Tests/**"], "rules": { … } }]');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.OverridesMustBeAList].Text);
     Exit;
   end;
   ASettings.Overrides := nil;
@@ -796,13 +874,13 @@ begin
     mValue := ANode[mIndex];
     if mValue.Kind <> TJsonKind.Object_ then
     begin
-      AReader.ReportNode(mValue, 'Eine Pfadregel ist ein Objekt mit "files" und "rules"');
+      AReader.ReportNode(mValue, cTexts[TRuleOptionsText.APathRuleIsAn].Text);
       Continue;
     end;
     mItem := ReadOverride(AReader, mValue);
     if mItem.Files = nil then
     begin
-      AReader.ReportNode(mValue, 'Pfadregel ohne "files"');
+      AReader.ReportNode(mValue, cTexts[TRuleOptionsText.PathRuleWithoutFiles].Text);
     end
     else
     begin
@@ -858,7 +936,7 @@ var
 begin
   if ANode.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(ANode, '"exclude" muss eine Liste von Mustern sein');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.ExcludeMustBeAList].Text);
     Exit;
   end;
   ASettings.Exclude := nil;
@@ -892,7 +970,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(ANode, 'Erlaubt sind "low", "medium" und "high"');
+    AReader.ReportNode(ANode, cTexts[TRuleOptionsText.AllowedAreLowMediumAnd].Text);
   end;
 end;
 
@@ -918,7 +996,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(AValue, 'Erlaubt sind "medium" und "high"');
+    AReader.ReportNode(AValue, cTexts[TRuleOptionsText.AllowedAreMediumAndHigh].Text);
   end;
 end;
 
@@ -938,7 +1016,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(ANode[mIndex], Format('Unbekannte Einstellung "fix.%s"', [ANode.Keys[mIndex]]));
+      AReader.ReportNode(ANode[mIndex], cTexts[TRuleOptionsText.UnknownSettingFix].Fmt([ANode.Keys[mIndex]]));
     end;
   end;
 end;
@@ -976,5 +1054,8 @@ function RuleSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.RuleOptions', cTexts);
 
 end.

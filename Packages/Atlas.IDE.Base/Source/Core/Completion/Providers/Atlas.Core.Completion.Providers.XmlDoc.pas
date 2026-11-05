@@ -27,10 +27,10 @@ type
   end;
 
   TAtlasXmlDocCompletionProvider = class(TAtlasAsyncCompletionProvider)
-  public const
-    /// <summary>Name für die Sicherung je Quelle (#493).</summary>
-    ProviderTitle = 'Vervollständigung (XMLDoc)';
   public
+    /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
+    /// </summary>
+    class function ProviderTitle: string; static;
     constructor Create;
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
@@ -42,7 +42,26 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  System.Classes;
+  System.Classes,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TXmlDocText = (CompletionXMLDoc);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TXmlDocText] of string = (
+    ('Vervollständigung (XMLDoc)'),
+    ('Completion (XMLDoc)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TXmlDocText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function Lines(const AText: string): TArray<string>;
 begin
@@ -184,6 +203,11 @@ end;
 
 { TAtlasXmlDocCompletionProvider }
 
+class function TAtlasXmlDocCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TXmlDocText.CompletionXMLDoc);
+end;
+
 constructor TAtlasXmlDocCompletionProvider.Create;
 begin
   inherited Create;
@@ -208,5 +232,8 @@ begin
   end;
   Result := TAtlasXmlDoc.TagItems(TAtlasXmlDoc.FollowingDeclaration(AContext.Text, AContext.Line));
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Providers.XmlDoc', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

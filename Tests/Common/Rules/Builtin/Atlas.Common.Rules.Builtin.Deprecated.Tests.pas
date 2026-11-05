@@ -560,8 +560,23 @@ begin
   finally
     Item.Free;
   end;
+  // Englische Meldung (#1458): erkannt an der Compilernummer, nicht am Text.
+  Finding.Message := 'Alt is deprecated: use Neu (like W1000).';
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  try
+    Assert.AreEqual('[2]', Item.GetValue('tags').ToJSON);
+  finally
+    Item.Free;
+  end;
   // platform ist nicht veraltet und wird nicht durchgestrichen.
   Finding.Message := 'Grenze ist platform (wie W1002).';
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
+  try
+    Assert.IsNull(Item.GetValue('tags'));
+  finally
+    Item.Free;
+  end;
+  Finding.Message := 'Grenze is platform (like W1002).';
   Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.IsNull(Item.GetValue('tags'));

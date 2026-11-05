@@ -63,7 +63,8 @@ type
 implementation
 
 uses
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Localization.Language;
 
 { TAtlasObservedFile }
 
@@ -80,9 +81,11 @@ end;
 
 class function TAtlasExternalChanges.ActionText(AAction: TAtlasReloadAction): string;
 const
-  Texts: array[TAtlasReloadAction] of string = ('neu laden', 'ungespeicherte Änderungen, behalten', 'gelöscht');
+  Texts: array[TAtlasLanguage, TAtlasReloadAction] of string = (
+    ('neu laden', 'ungespeicherte Änderungen, behalten', 'gelöscht'),
+    ('reload', 'unsaved changes, kept', 'deleted'));
 begin
-  Result := Texts[AAction];
+  Result := Texts[TAtlasTextLanguage.Current, AAction];
 end;
 
 constructor TAtlasExternalChanges.Create;

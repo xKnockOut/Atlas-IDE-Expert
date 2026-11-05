@@ -50,7 +50,30 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.FreeFields;
+  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOpenToolsText = (Title, FieldAndDestructor, AddToDestructor, RememberAndFinalization, AddToFinalization,
+    IndexNotKept, IndexNeverRemoved);
+
+const
+  cTexts: array[TOpenToolsText] of TAtlasText = (
+    (De: 'IDE-Notifier ohne RemoveNotifier'; En: 'IDE notifier without RemoveNotifier'),
+    (De: 'Index in ein Feld legen und %s im Destruktor ergänzen';
+     En: 'Store the index in a field and add %s to the destructor'),
+    (De: '%s im Destruktor ergänzen'; En: 'Add %s to the destructor'),
+    (De: 'Index merken und %s in finalization ergänzen'; En: 'Remember the index and add %s to finalization'),
+    (De: '%s in finalization ergänzen'; En: 'Add %s to finalization'),
+    (De: 'Der Index von %s wird nicht gemerkt; ohne %s ruft die IDE nach dem Entladen ins Leere.';
+     En: 'The index of %s is not kept; without %s the IDE calls into nowhere after unloading.'),
+    (De: 'Der Index %s von %s geht nie an %s; die IDE ruft nach dem Entladen ins Leere.';
+     En: 'The index %s of %s never reaches %s; the IDE calls into nowhere after unloading.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   OtaNotifierNotRemovedRuleId = 'ota-notifier-not-removed';
@@ -63,7 +86,7 @@ const
 function TOtaNotifierNotRemovedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OtaNotifierNotRemovedRuleId, TRuleSeverity.Warning,
-    'IDE-Notifier ohne RemoveNotifier');
+    cTexts[TOpenToolsText.Title].Text);
 end;
 
 class function TOtaNotifierNotRemovedRule.Pairs(const AOptions: string): TArray<TRegisterPair>;
@@ -662,12 +685,13 @@ begin
   end;
   if ATarget = '' then
   begin
-    AFix := TRuleFix.Create(Format('Index in ein Feld legen und %s im Destruktor ergänzen', [ACall.Pair.Close]),
+    AFix := TRuleFix.Create(cTexts[TOpenToolsText.FieldAndDestructor].Fmt([ACall.Pair.Close]),
       Sorted(mEdits + mDestroying));
   end
   else
   begin
-    AFix := TRuleFix.Create(Format('%s im Destruktor ergänzen', [ACall.Pair.Close]), Sorted(mEdits + mDestroying));
+    AFix := TRuleFix.Create(cTexts[TOpenToolsText.AddToDestructor].Fmt([ACall.Pair.Close]), Sorted(mEdits +
+      mDestroying));
   end;
 end;
 
@@ -711,11 +735,11 @@ begin
   mEdits := mEdits + [mEdit];
   if ATarget = '' then
   begin
-    AFix := TRuleFix.Create(Format('Index merken und %s in finalization ergänzen', [ACall.Pair.Close]), mEdits);
+    AFix := TRuleFix.Create(cTexts[TOpenToolsText.RememberAndFinalization].Fmt([ACall.Pair.Close]), mEdits);
   end
   else
   begin
-    AFix := TRuleFix.Create(Format('%s in finalization ergänzen', [ACall.Pair.Close]), mEdits);
+    AFix := TRuleFix.Create(cTexts[TOpenToolsText.AddToFinalization].Fmt([ACall.Pair.Close]), mEdits);
   end;
 end;
 
@@ -791,8 +815,8 @@ begin
   begin
     mFixes := [mFix];
   end;
-  FReport.Add(CallRange(ACall), Format('Der Index von %s wird nicht gemerkt; ohne %s ruft die IDE nach dem ' +
-    'Entladen ins Leere.', [ACall.Pair.Open, ACall.Pair.Close]), TRuleConfidence.Medium, mFixes);
+  FReport.Add(CallRange(ACall), cTexts[TOpenToolsText.IndexNotKept].Fmt([ACall.Pair.Open, ACall.Pair.Close]),
+    TRuleConfidence.Medium, mFixes);
 end;
 
 procedure TOtaNotifierScan.CheckAssigned(const ACall: TNotifierCall; const AAssign: Integer);
@@ -825,8 +849,8 @@ begin
   begin
     mFixes := [mFix];
   end;
-  FReport.Add(CallRange(ACall), Format('Der Index %s von %s geht nie an %s; die IDE ruft nach dem Entladen ins ' +
-    'Leere.', [mTarget, ACall.Pair.Open, ACall.Pair.Close]), TRuleConfidence.Medium, mFixes);
+  FReport.Add(CallRange(ACall), cTexts[TOpenToolsText.IndexNeverRemoved].Fmt([mTarget, ACall.Pair.Open,
+    ACall.Pair.Close]), TRuleConfidence.Medium, mFixes);
 end;
 
 procedure TOtaNotifierScan.Run;
@@ -888,5 +912,8 @@ procedure RegisterOpenToolsRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOtaNotifierNotRemovedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.OpenTools', cTexts);
 
 end.

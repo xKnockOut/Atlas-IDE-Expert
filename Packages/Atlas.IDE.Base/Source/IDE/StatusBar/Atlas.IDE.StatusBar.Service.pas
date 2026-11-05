@@ -18,8 +18,9 @@
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
 //   Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356,
 //   nur mit server.statusWindow).
-// - Ungelesene Benachrichtigungen (#1234) stehen als Plakette hinter dem
-//   Status (aus dem Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
+// - Mit eingeschalteten Benachrichtigungen steht immer eine Plakette mit der
+//   Zahl der ungelesenen (auch 0) hinter dem Status (#1234, aus dem
+//   Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
 //   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
@@ -52,7 +53,7 @@ type
     THooks = record
       /// <summary>Atlas-Feld der Statuszeile; nil ohne.</summary>
       Field: TFunc<TAtlasStatusField>;
-      /// <summary>Metriken aus atlas.server.metrics (Lens-Abruf, #66).</summary>
+      /// <summary>Metriken aus atlas.server.metrics (Abruf in Atlas.IDE.Editor.MetricsSource, #66).</summary>
       Metrics: TAtlasStatusMetricsFunc;
       /// <summary>Metriken auch ohne Lens holen (True) bzw. nicht mehr (False).</summary>
       WantMetrics: TProc<Boolean>;

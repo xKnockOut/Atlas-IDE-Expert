@@ -19,14 +19,59 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditorOptionsText = (EndMarkerMinLinesMustBeAWhole, ImpactDepthMustBeAWhole, XmlDocExpandMustBeCollapsedLast,
+    HintsXmlDocFullIsDeprecatedUse, XmlDocMaxLinesMustBeAWhole, RationaleMarkersMustBeAList,
+    RationaleMarkersMustNotContainAn, AllowedAreAutoMultilineAnd, AllowedAreSLineBreak1310, MaxLineLengthMustBeAWhole,
+    MemberOrderMustBeAList, ExitKeywordsMustBeAList, AllowedAreFuzzyAndPrefix, AllowedArePrivateProtectedAnd,
+    AllowedAreAsAndCast, AllowedArePrivateAndProtected, AllowedArePrefixAndUses, AllowedAreOffHelperAnd,
+    AllowedAreFreeAndFreeAndNil, ExpectedIsAUnitName, UnknownEntryInMemberOrder);
+
+const
+  cTexts: array[TEditorOptionsText] of TAtlasText = (
+    (De: '"endMarkerMinLines" muss eine ganze Zahl ab 1 sein';
+     En: '"endMarkerMinLines" must be a whole number from 1'),
+    (De: '"impactDepth" muss eine ganze Zahl von 1 bis 5 sein';
+     En: '"impactDepth" must be a whole number from 1 to 5'),
+    (De: '"xmlDocExpand" muss "collapsed", "last" oder "expanded" sein';
+     En: '"xmlDocExpand" must be "collapsed", "last" or "expanded"'),
+    (De: '"hints.xmlDocFull" ist veraltet, stattdessen "hints.xmlDocExpand" verwenden';
+     En: '"hints.xmlDocFull" is deprecated, use "hints.xmlDocExpand" instead'),
+    (De: '"xmlDocMaxLines" muss eine ganze Zahl von 0 bis %d sein';
+     En: '"xmlDocMaxLines" must be a whole number from 0 to %d'),
+    (De: '"rationaleMarkers" muss eine Liste von Marken sein'; En: '"rationaleMarkers" must be a list of markers'),
+    (De: '"rationaleMarkers" darf keine leere Marke enthalten';
+     En: '"rationaleMarkers" must not contain an empty marker'),
+    (De: 'Erlaubt sind "auto", "multiline" und "concat"'; En: 'Allowed are "auto", "multiline" and "concat"'),
+    (De: 'Erlaubt sind "sLineBreak", "#13#10", "#10", "space" und "none"';
+     En: 'Allowed are "sLineBreak", "#13#10", "#10", "space" and "none"'),
+    (De: '"maxLineLength" muss eine ganze Zahl ab 0 sein'; En: '"maxLineLength" must be a whole number from 0'),
+    (De: '"memberOrder.%s" muss eine Liste sein'; En: '"memberOrder.%s" must be a list'),
+    (De: '"exitKeywords" muss eine Liste von Namen sein'; En: '"exitKeywords" must be a list of names'),
+    (De: 'Erlaubt sind "fuzzy" und "prefix"'; En: 'Allowed are "fuzzy" and "prefix"'),
+    (De: 'Erlaubt sind "private", "protected" und "public"'; En: 'Allowed are "private", "protected" and "public"'),
+    (De: 'Erlaubt sind "as" und "cast"'; En: 'Allowed are "as" and "cast"'),
+    (De: 'Erlaubt sind "private" und "protected"'; En: 'Allowed are "private" and "protected"'),
+    (De: 'Erlaubt sind "prefix" und "uses"'; En: 'Allowed are "prefix" and "uses"'),
+    (De: 'Erlaubt sind "off", "helper" und "function"'; En: 'Allowed are "off", "helper" and "function"'),
+    (De: 'Erlaubt sind "free" und "freeAndNil"'; En: 'Allowed are "free" and "freeAndNil"'),
+    (De: 'Erwartet wird ein Unit-Name wie "App.Texte" oder ""'; En: 'Expected is a unit name like "App.Texts" or ""'),
+    (De: 'Unbekannter Eintrag "%s" in "memberOrder.%s"'; En: 'Unknown entry "%s" in "memberOrder.%s"'));
+
+{$SCOPEDENUMS OFF}
 
 { inlayHints, codeLens, references, navigation, directives }
 
 procedure ReadEndMarkerMinLines(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 1, MaxInt, '"endMarkerMinLines" muss eine ganze Zahl ab 1 sein',
+  AReader.ExpectInteger(AValue, 1, MaxInt, cTexts[TEditorOptionsText.EndMarkerMinLinesMustBeAWhole].Text,
     ASettings.InlayHints.EndMarkerMinLines);
 end;
 
@@ -71,7 +116,7 @@ end;
 procedure ReadImpactDepth(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 1, 5, '"impactDepth" muss eine ganze Zahl von 1 bis 5 sein',
+  AReader.ExpectInteger(AValue, 1, 5, cTexts[TEditorOptionsText.ImpactDepthMustBeAWhole].Text,
     ASettings.Navigation.ImpactDepth);
 end;
 
@@ -108,7 +153,7 @@ var
   mIndex: Integer;
 begin
   Result := AReader.ExpectChoice(AValue, 'xmlDocExpand', [THintSettings.ExpandCollapsed, THintSettings.ExpandLast,
-    THintSettings.ExpandExpanded], '"xmlDocExpand" muss "collapsed", "last" oder "expanded" sein', mIndex);
+    THintSettings.ExpandExpanded], cTexts[TEditorOptionsText.XmlDocExpandMustBeCollapsedLast].Text, mIndex);
   if Result then
   begin
     AHints.XmlDocExpand := AValue.Value;
@@ -127,7 +172,7 @@ begin
     Exit;
   end;
   AReader.Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(ANode.Keys[AIndex]) + 2,
-    '"hints.xmlDocFull" ist veraltet, stattdessen "hints.xmlDocExpand" verwenden', False);
+    cTexts[TEditorOptionsText.HintsXmlDocFullIsDeprecatedUse].Text, False);
   if AExpandSet then
   begin
     Exit;
@@ -146,7 +191,7 @@ procedure ReadXmlDocMaxLines(AReader: TConfigurationReader; AValue: TJsonNode; c
   var ASettings: TServerSettings);
 begin
   AReader.ExpectInteger(AValue, 0, THintSettings.MaxXmlDocLines,
-    Format('"xmlDocMaxLines" muss eine ganze Zahl von 0 bis %d sein', [THintSettings.MaxXmlDocLines]),
+    cTexts[TEditorOptionsText.XmlDocMaxLinesMustBeAWhole].Fmt([THintSettings.MaxXmlDocLines]),
     ASettings.Hints.XmlDocMaxLines);
 end;
 
@@ -159,7 +204,7 @@ var
 begin
   if AValue.Kind <> TJsonKind.Array_ then
   begin
-    AReader.ReportNode(AValue, '"rationaleMarkers" muss eine Liste von Marken sein');
+    AReader.ReportNode(AValue, cTexts[TEditorOptionsText.RationaleMarkersMustBeAList].Text);
     Exit;
   end;
   ASettings.Hints.RationaleMarkers := nil;
@@ -171,7 +216,7 @@ begin
     end;
     if Trim(mText) = '' then
     begin
-      AReader.ReportNode(AValue[mItem], '"rationaleMarkers" darf keine leere Marke enthalten');
+      AReader.ReportNode(AValue[mItem], cTexts[TEditorOptionsText.RationaleMarkersMustNotContainAn].Text);
     end
     else
     begin
@@ -243,7 +288,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "auto", "multiline" und "concat"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreAutoMultilineAnd].Text, mIndex) then
   begin
     ASettings.StringLiteral.Style := cStyles[mIndex];
   end;
@@ -258,7 +303,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "sLineBreak", "#13#10", "#10", "space" und "none"',
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreSLineBreak1310].Text,
     mIndex) then
   begin
     ASettings.StringLiteral.LineBreak := cBreaks[mIndex];
@@ -268,7 +313,7 @@ end;
 procedure ReadMaxLineLength(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 0, MaxInt, '"maxLineLength" muss eine ganze Zahl ab 0 sein',
+  AReader.ExpectInteger(AValue, 0, MaxInt, cTexts[TEditorOptionsText.MaxLineLengthMustBeAWhole].Text,
     ASettings.StringLiteral.MaxLineLength);
 end;
 
@@ -301,7 +346,7 @@ begin
   Result := AValue.Kind = TJsonKind.Array_;
   if not Result then
   begin
-    AReader.ReportNode(AValue, Format('"memberOrder.%s" muss eine Liste sein', [AKey]));
+    AReader.ReportNode(AValue, cTexts[TEditorOptionsText.MemberOrderMustBeAList].Fmt([AKey]));
     Exit;
   end;
   for mItem := 0 to AValue.Count - 1 do
@@ -316,7 +361,7 @@ begin
     end
     else
     begin
-      AReader.ReportNode(AValue[mItem], Format('Unbekannter Eintrag "%s" in "memberOrder.%s"', [mText, AKey]));
+      AReader.ReportNode(AValue[mItem], cTexts[TEditorOptionsText.UnknownEntryInMemberOrder].Fmt([mText, AKey]));
     end;
   end;
 end;
@@ -367,7 +412,7 @@ procedure ReadExitKeywords(AReader: TConfigurationReader; AValue: TJsonNode; con
 var
   mItems: TArray<string>;
 begin
-  if AReader.ExpectStrings(AValue, AKey, '"exitKeywords" muss eine Liste von Namen sein', mItems) then
+  if AReader.ExpectStrings(AValue, AKey, cTexts[TEditorOptionsText.ExitKeywordsMustBeAList].Text, mItems) then
   begin
     ASettings.Highlight.ExitKeywords := mItems;
   end;
@@ -398,7 +443,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "fuzzy" und "prefix"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreFuzzyAndPrefix].Text, mIndex) then
   begin
     ASettings.Completion.Matching := cValues[mIndex];
   end;
@@ -413,7 +458,8 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "private", "protected" und "public"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedArePrivateProtectedAnd].Text,
+    mIndex) then
   begin
     ASettings.Completion.InterfaceSection := cValues[mIndex];
   end;
@@ -427,7 +473,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "as" und "cast"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreAsAndCast].Text, mIndex) then
   begin
     ASettings.Completion.SenderCast := cValues[mIndex];
   end;
@@ -442,7 +488,8 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "private" und "protected"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedArePrivateAndProtected].Text,
+    mIndex) then
   begin
     ASettings.Completion.AccessorSection := cValues[mIndex];
   end;
@@ -457,7 +504,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "prefix" und "uses"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedArePrefixAndUses].Text, mIndex) then
   begin
     ASettings.Completion.SameNameInsert := cValues[mIndex];
   end;
@@ -472,7 +519,7 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "off", "helper" und "function"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreOffHelperAnd].Text, mIndex) then
   begin
     ASettings.Completion.TypeConversion := cValues[mIndex];
   end;
@@ -486,7 +533,8 @@ const
 var
   mIndex: Integer;
 begin
-  if AReader.ExpectChoice(AValue, AKey, cNames, 'Erlaubt sind "free" und "freeAndNil"', mIndex) then
+  if AReader.ExpectChoice(AValue, AKey, cNames, cTexts[TEditorOptionsText.AllowedAreFreeAndFreeAndNil].Text,
+    mIndex) then
   begin
     ASettings.Completion.FreeStyle := cValues[mIndex];
   end;
@@ -507,7 +555,7 @@ begin
   end
   else
   begin
-    AReader.ReportNode(AValue, 'Erwartet wird ein Unit-Name wie "App.Texte" oder ""');
+    AReader.ReportNode(AValue, cTexts[TEditorOptionsText.ExpectedIsAUnitName].Text);
   end;
 end;
 
@@ -567,5 +615,8 @@ function EditorSections: TArray<TConfigurationSection>;
 begin
   Result := SectionList(cSections);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.EditorOptions', cTexts);
 
 end.

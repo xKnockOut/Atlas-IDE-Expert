@@ -47,7 +47,29 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TStreamTransportText = (InvalidHeader, HeaderContentLengthMissing, InputClosedWithinAMessage, MessageIsNotValidJSON,
+    MessageIsNotAJSON, InputClosedWithinAHeader, HeaderLineTooLong, InputClosed, EmptyMessage);
+
+const
+  cTexts: array[TStreamTransportText] of TAtlasText = (
+    (De: 'Ungültiger Header "%s"'; En: 'Invalid header "%s"'),
+    (De: 'Header Content-Length fehlt'; En: 'Header Content-Length missing'),
+    (De: 'Eingabe innerhalb einer Nachricht geschlossen'; En: 'Input closed within a message'),
+    (De: 'Nachricht ist kein gültiges JSON'; En: 'Message is not valid JSON'),
+    (De: 'Nachricht ist kein JSON-Objekt'; En: 'Message is not a JSON object'),
+    (De: 'Eingabe innerhalb eines Headers geschlossen'; En: 'Input closed within a header'),
+    (De: 'Headerzeile zu lang'; En: 'Header line too long'),
+    (De: 'Eingabe geschlossen'; En: 'Input closed'),
+    (De: 'Leere Nachricht'; En: 'Empty message'));
+
+{$SCOPEDENUMS OFF}
 
 { TJsonRpcStreamTransport }
 
@@ -108,9 +130,9 @@ begin
     begin
       if AAtMessageStart and (Len = 0) then
       begin
-        raise EJsonRpcTransportClosed.Create('Eingabe geschlossen');
+        raise EJsonRpcTransportClosed.Create(cTexts[TStreamTransportText.InputClosed].Text);
       end;
-      raise EJsonRpcTransportError.Create('Eingabe innerhalb eines Headers geschlossen');
+      raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.InputClosedWithinAHeader].Text);
     end;
     if B = 10 then
     begin
@@ -122,7 +144,7 @@ begin
     end;
     if Len >= MaxHeaderLineLength then
     begin
-      raise EJsonRpcTransportError.Create('Headerzeile zu lang');
+      raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.HeaderLineTooLong].Text);
     end;
     if Len = Length(Line) then
     begin
@@ -159,14 +181,14 @@ begin
       if not TryStrToInt(Line.Substring(Length(ContentLengthHeader)).Trim, Result)
         or (Result < 0) or (Result > MaxContentLength) then
       begin
-        raise EJsonRpcTransportError.CreateFmt('Ungültiger Header "%s"', [Line]);
+        raise EJsonRpcTransportError.CreateFmt(cTexts[TStreamTransportText.InvalidHeader].Text, [Line]);
       end;
     end;
     // Weitere Header (z. B. Content-Type) werden ignoriert.
   end;
   if Result < 0 then
   begin
-    raise EJsonRpcTransportError.Create('Header Content-Length fehlt');
+    raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.HeaderContentLengthMissing].Text);
   end;
 end;
 
@@ -181,7 +203,7 @@ begin
   begin
     if (FBufferPos >= FBufferLen) and not FillBuffer then
     begin
-      raise EJsonRpcTransportError.Create('Eingabe innerhalb einer Nachricht geschlossen');
+      raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.InputClosedWithinAMessage].Text);
     end;
     Count := Min(ACount - Offset, FBufferLen - FBufferPos);
     Move(FBuffer[FBufferPos], Result[Offset], Count);
@@ -198,18 +220,18 @@ begin
   Body := ReadBody(ReadContentLength);
   if Length(Body) = 0 then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Leere Nachricht');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TStreamTransportText.EmptyMessage].Text);
   end;
 
   Value := TJSONObject.ParseJSONValue(Body, 0, True);
   if Value = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Nachricht ist kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TStreamTransportText.MessageIsNotValidJSON].Text);
   end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Nachricht ist kein JSON-Objekt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, cTexts[TStreamTransportText.MessageIsNotAJSON].Text);
   end;
   Result := TJSONObject(Value);
 end;
@@ -229,5 +251,8 @@ begin
     FWriteLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.StreamTransport', cTexts);
 
 end.

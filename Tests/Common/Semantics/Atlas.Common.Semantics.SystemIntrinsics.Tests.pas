@@ -26,6 +26,8 @@ type
     [Test]
     procedure ListKnowsRoutinesTypesAndOverloads;
     [Test]
+    procedure EnglishTextsFollowLanguage;
+    [Test]
     procedure NameAtSkipsMembersAfterDot;
     [Test]
     procedure CompletionOffersIntrinsicsWithoutUses;
@@ -55,7 +57,8 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Lsp.Hover;
+  Atlas.Common.Lsp.Hover,
+  Atlas.Common.Localization.Texts;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -153,6 +156,25 @@ begin
   finally
     Tree.Free;
   end;
+end;
+
+procedure TSystemIntrinsicsTests.EnglishTextsFollowLanguage;
+var
+  mFound: TArray<TSystemIntrinsic>;
+begin
+  // #1458: Beschreibung und Platzhalter im Kopf folgen der Sprache, die Köpfe sonst nicht.
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mFound := TSystemIntrinsics.Find('Abs');
+    Assert.AreEqual('Absolute value of a number.', mFound[0].Documentation);
+    Assert.AreEqual('function Abs(X): <type of X>;', mFound[0].Declaration);
+    Assert.AreEqual('Integer, 32 bits signed.', TSystemIntrinsics.Find('Integer')[0].Documentation);
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  mFound := TSystemIntrinsics.Find('Abs');
+  Assert.AreEqual('Betrag einer Zahl.', mFound[0].Documentation);
+  Assert.AreEqual('function Abs(X): <Typ von X>;', mFound[0].Declaration);
 end;
 
 procedure TSystemIntrinsicsTests.ListKnowsRoutinesTypesAndOverloads;

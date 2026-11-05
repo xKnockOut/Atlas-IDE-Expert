@@ -13,6 +13,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Suppressions,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.InactiveRegions,
@@ -24,19 +25,19 @@ type
   public const
     Source = 'Atlas';
     CompilerSource = 'dcc';
-    InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
-    InactiveConditionMessage = 'Inaktiv: Bedingung %s nicht erfüllt';
-    InactiveTargetSuffix = ' (Zielplattform %s · %s)';
-    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
-    UsesUnusedMessage = 'Aus %s wird nichts verwendet';
-    UsesInitializationMessage = '%s wird wegen initialization nicht als ungenutzt gezeigt';
-    UsesAllowlistMessage = '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
-    UsesImplementationMessage = '%s wird nur in der implementation gebraucht';
     /// <summary>DiagnosticTag.Unnecessary: Der Editor blendet ab.</summary>
     TagUnnecessary = 1;
     /// <summary>DiagnosticTag.Deprecated: Der Editor streicht durch.</summary>
     TagDeprecated = 2;
   public
+    class function InactiveMessage: string; static;
+    class function InactiveConditionMessage: string; static;
+    class function InactiveTargetSuffix: string; static;
+    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
+    class function UsesUnusedMessage: string; static;
+    class function UsesInitializationMessage: string; static;
+    class function UsesAllowlistMessage: string; static;
+    class function UsesImplementationMessage: string; static;
     /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
     class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
     /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
@@ -52,9 +53,11 @@ type
       : TJSONObject; static;
     /// <summary>Befund des Präprozessors: Include-Zyklus als Warnung, sonst Hinweis.</summary>
     class function IssueToJson(const AIssue: TPreprocessorIssue): TJSONObject; static;
-    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.</summary>
+    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.
+    /// Ungenutzte Einträge, die ein lsp-ignore für unused-uses aus ASuppressions abdeckt, fehlen (#1135);
+    /// ASuppressions nil = keine.</summary>
     class procedure AddUses(AItems: TJSONArray; const AText: string; const AInactive: TArray<TTextRange>;
-      const AContext: TUsesContext); static;
+      const AContext: TUsesContext; ASuppressions: TSuppressions); static;
     /// <summary>Name des Zustands in data.uses.state: unused, initialization, allowlist, implementation.</summary>
     class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Parameter für publishDiagnostics einer Formulardatei (#44): nur Lesefehler der DFM, bei binär
@@ -72,11 +75,69 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.Deprecated,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.FormFiles,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDiagnosticItemsText = (InactiveRegionConditionalCompilation, InactiveConditionNotMet, TargetPlatform,
+    NothingFromIsUsed, IsNotShownAsUnused, IsInUsesKeepAndIs, IsOnlyNeededInThe);
+
+const
+  cTexts: array[TDiagnosticItemsText] of TAtlasText = (
+    (De: 'Inaktiver Bereich (bedingte Kompilierung)'; En: 'Inactive region (conditional compilation)'),
+    (De: 'Inaktiv: Bedingung %s nicht erfüllt'; En: 'Inactive: condition %s not met'),
+    (De: ' (Zielplattform %s · %s)'; En: ' (target platform %s · %s)'),
+    (De: 'Aus %s wird nichts verwendet'; En: 'Nothing from %s is used'),
+    (De: '%s wird wegen initialization nicht als ungenutzt gezeigt';
+     En: '%s is not shown as unused because of initialization'),
+    (De: '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
+     En: '%s is in usesKeep and is not shown as unused'),
+    (De: '%s wird nur in der implementation gebraucht'; En: '%s is only needed in the implementation'));
+
+{$SCOPEDENUMS OFF}
+
+class function TLspDiagnosticItems.InactiveMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.InactiveRegionConditionalCompilation].Text;
+end;
+
+class function TLspDiagnosticItems.InactiveConditionMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.InactiveConditionNotMet].Text;
+end;
+
+class function TLspDiagnosticItems.InactiveTargetSuffix: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.TargetPlatform].Text;
+end;
+
+class function TLspDiagnosticItems.UsesUnusedMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.NothingFromIsUsed].Text;
+end;
+
+class function TLspDiagnosticItems.UsesInitializationMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsNotShownAsUnused].Text;
+end;
+
+class function TLspDiagnosticItems.UsesAllowlistMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsInUsesKeepAndIs].Text;
+end;
+
+class function TLspDiagnosticItems.UsesImplementationMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsOnlyNeededInThe].Text;
+end;
 
 function SeverityOf(ASeverity: TRuleSeverity): Integer;
 begin
@@ -349,13 +410,18 @@ begin
 end;
 
 class procedure TLspDiagnosticItems.AddUses(AItems: TJSONArray; const AText: string;
-  const AInactive: TArray<TTextRange>; const AContext: TUsesContext);
+  const AInactive: TArray<TTextRange>; const AContext: TUsesContext; ASuppressions: TSuppressions);
 var
   mEntry: TUsesEntry;
   mItem, mData: TJSONObject;
 begin
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
   begin
+    if (mEntry.State = TUsesEntryState.Unused) and (ASuppressions <> nil) and
+      ASuppressions.IsSuppressed(UnusedUsesRuleId, mEntry.Range.StartPos.Line) then
+    begin
+      Continue;
+    end;
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEntry.Range));
     mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
@@ -398,5 +464,8 @@ begin
     mForm.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DiagnosticItems', cTexts);
 
 end.

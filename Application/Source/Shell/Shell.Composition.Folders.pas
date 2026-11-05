@@ -107,7 +107,8 @@ uses
   Atlas.Common.Rules.Builtin.DfmProperties,
   Shell.Platform,
   Shell.Bootstrap,
-  Shell.Workspace.Setup;
+  Shell.Workspace.Setup,
+  Atlas.Text.LogMarks;
 
 /// <summary>Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units, sonst
 /// alles unter dem Ordner.</summary>
@@ -251,11 +252,11 @@ begin
   FServices.Configuration.UpdateWatchedFiles;
   if AProjectFile <> '' then
   begin
-    FServices.Logger.Info('Arbeitsbereich für Projekt: ' + AProjectFile);
+    FServices.Logger.Info('Arbeitsbereich für Projekt: ' + TLogMarks.Path(AProjectFile));
   end
   else
   begin
-    FServices.Logger.Info('Arbeitsbereichsordner: ' + ARoot);
+    FServices.Logger.Info('Arbeitsbereichsordner: ' + TLogMarks.Path(ARoot));
   end;
   mWorkspace.Load;
 end;
@@ -375,7 +376,8 @@ begin
   begin
     Exit;
   end;
-  FServices.Logger.Info(Format('Arbeitsbereich entfernt: %s (%d Projekte)', [AFolder.Path, Length(mRemoved)]));
+  FServices.Logger.Info(Format('Arbeitsbereich entfernt: %s (%d Projekte)', [TLogMarks.Path(AFolder.Path),
+    Length(mRemoved)]));
   for mWorkspace in mRemoved do
   begin
     mWorkspace.Stop;

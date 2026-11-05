@@ -171,7 +171,29 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Flow.Shared;
+  Atlas.Common.Rules.Builtin.Flow.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowText = (ResultTitle, NoResult, UnreachableTitle, Unreachable, NoReturnTitle, ExitNoReturn, EndNoReturn);
+
+const
+  cTexts: array[TFlowText] of TAtlasText = (
+    (De: 'Funktion kann enden, ohne Result zu setzen'; En: 'Function can end without setting Result'),
+    (De: '"%s" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert';
+     En: '"%s" can end without setting Result; the return value is then undefined'),
+    (De: 'Anweisung wird nie ausgeführt'; En: 'Statement is never executed'),
+    (De: 'Diese Anweisung wird nie ausgeführt'; En: 'This statement is never executed'),
+    (De: 'noreturn-Routine kann normal zurückkehren'; En: 'noreturn routine can return normally'),
+    (De: 'Exit verlässt %s normal, obwohl die Routine noreturn ist.';
+     En: 'Exit leaves %s normally although the routine is noreturn.'),
+    (De: '%s kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.';
+     En: '%s can return normally at the end although the routine is noreturn.'));
+
+{$SCOPEDENUMS OFF}
 
 function HasOpaqueUse(ABlock: TSyntaxNode; const AName: string): Boolean;
 begin
@@ -183,7 +205,7 @@ end;
 function TResultNotSetRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('result-not-set', TRuleSeverity.Warning,
-    'Funktion kann enden, ohne Result zu setzen');
+    cTexts[TFlowText.ResultTitle].Text);
 end;
 
 procedure TResultNotSetRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -220,7 +242,7 @@ begin
     if (Graph.MayEndWithout('Result') = TFlowAnswer.Yes) and (Graph.MayEndWithout(Name) = TFlowAnswer.Yes) then
     begin
       AReport.Add(HeaderNameRange(AContext, Routine),
-        Format('"%s" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert', [Name]),
+        cTexts[TFlowText.NoResult].Fmt([Name]),
         TRuleConfidence.High);
     end;
   end;
@@ -230,7 +252,7 @@ end;
 
 function TUnreachableCodeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('unreachable-code', TRuleSeverity.Warning, 'Anweisung wird nie ausgeführt');
+  Result := TRuleDescriptor.Create('unreachable-code', TRuleSeverity.Warning, cTexts[TFlowText.UnreachableTitle].Text);
 end;
 
 /// <summary>Bereich der ersten Zeile von ANode; mehrzeilige Anweisungen werden nicht ganz markiert.</summary>
@@ -367,7 +389,7 @@ begin
     begin
       if (Node.Syntax <> nil) and StartsDeadRun(Node.Syntax) then
       begin
-        AReport.Add(FirstLineRange(AContext, Node.Syntax), 'Diese Anweisung wird nie ausgeführt',
+        AReport.Add(FirstLineRange(AContext, Node.Syntax), cTexts[TFlowText.Unreachable].Text,
           TRuleConfidence.High);
       end;
     end;
@@ -474,7 +496,7 @@ end;
 function TNoreturnReturnsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(NoreturnReturnsRuleId, TRuleSeverity.Warning,
-    'noreturn-Routine kann normal zurückkehren');
+    cTexts[TFlowText.NoReturnTitle].Text);
 end;
 
 procedure TNoreturnReturnsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -662,13 +684,13 @@ begin
       for mExit in mExits do
       begin
         AReport.Add(NodeRange(mExit.Syntax),
-          Format('Exit verlässt %s normal, obwohl die Routine noreturn ist.', [mName]), TRuleConfidence.High);
+          cTexts[TFlowText.ExitNoReturn].Fmt([mName]), TRuleConfidence.High);
       end;
       mToEnd := Reachable(True);
       if mToEnd[mGraph.ExitNode.Index] then
       begin
         AReport.Add(HeaderNameRange(AContext, mRoutine),
-          Format('%s kann am Ende normal zurückkehren, obwohl die Routine noreturn ist.', [mName]),
+          cTexts[TFlowText.EndNoReturn].Fmt([mName]),
           TRuleConfidence.High);
       end;
     end;
@@ -692,5 +714,8 @@ begin
   ARegistry.Register(TOutParamReadRule.Create);
   ARegistry.Register(TNoreturnReturnsRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow', cTexts);
 
 end.

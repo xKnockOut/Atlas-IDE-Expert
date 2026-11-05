@@ -15,6 +15,9 @@ type
   TRuleRegistry = class
   private
     FRules: TList<IRule>;
+    /// <summary>Regeln nach Kennung in Großbuchstaben: Die Prüfung auf doppelte Kennungen las sonst je Anmeldung
+    /// den Deskriptor jeder schon angemeldeten Regel (quadratisch, je Anfrage im Server).</summary>
+    FById: TDictionary<string, IRule>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -29,16 +32,34 @@ type
 
 implementation
 
+
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRegistryText = (NoId, Duplicate);
+
+const
+  cTexts: array[TRegistryText] of TAtlasText = (
+    (De: 'Regel ohne Kennung'; En: 'Rule without id'),
+    (De: 'Regel "%s" ist bereits registriert'; En: 'Rule "%s" is already registered'));
+
+{$SCOPEDENUMS OFF}
 { TRuleRegistry }
 
 constructor TRuleRegistry.Create;
 begin
   inherited Create;
   FRules := TList<IRule>.Create;
+  FById := TDictionary<string, IRule>.Create;
 end;
 
 destructor TRuleRegistry.Destroy;
 begin
+  FById.Free;
   FRules.Free;
   inherited;
 end;
@@ -51,34 +72,31 @@ begin
   Id := ARule.Descriptor.Id;
   if Id = '' then
   begin
-    raise ERuleRegistry.Create('Regel ohne Kennung');
+    raise ERuleRegistry.Create(cTexts[TRegistryText.NoId].Text);
   end;
   if Find(Id, Existing) then
   begin
-    raise ERuleRegistry.CreateFmt('Regel "%s" ist bereits registriert', [Id]);
+    raise ERuleRegistry.CreateFmt(cTexts[TRegistryText.Duplicate].Text, [Id]);
   end;
   FRules.Add(ARule);
+  FById.Add(UpperCase(Id), ARule);
 end;
 
 function TRuleRegistry.Find(const AId: string; out ARule: IRule): Boolean;
-var
-  Rule: IRule;
 begin
-  for Rule in FRules do
+  Result := FById.TryGetValue(UpperCase(AId), ARule);
+  if not Result then
   begin
-    if SameText(Rule.Descriptor.Id, AId) then
-    begin
-      ARule := Rule;
-      Exit(True);
-    end;
+    ARule := nil;
   end;
-  ARule := nil;
-  Result := False;
 end;
 
 function TRuleRegistry.Rules: TArray<IRule>;
 begin
   Result := FRules.ToArray;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Registry', cTexts);
 
 end.

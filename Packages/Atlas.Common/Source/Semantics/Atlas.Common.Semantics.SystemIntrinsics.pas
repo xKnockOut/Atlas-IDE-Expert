@@ -49,7 +49,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Localization.Texts;
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
@@ -203,8 +204,159 @@ const
     // Steht in System.pas nur im Kommentar; der Compiler setzt den Wert (Delphi 13: 37.0).
     'CompilerVersion|C|const CompilerVersion: Extended;|Version des Compilers (Delphi 13: 37.0), für $IF CompilerVersion >= … und im Code.');
 
+  // Beschreibungen auf Englisch, in derselben Reihenfolge wie Entries (#1458).
+  EnglishDocumentation: array[0..146] of string = (
+    'Absolute value of a number.',
+    'Address of a variable or routine (like @).',
+    'Opens a text file for appending.',
+    'Arc tangent in radians.',
+    'Raises EAssertionFailed if Condition is False.',
+    'Raises EAssertionFailed with Message if Condition is False.',
+    'Associates a file variable with a file name (old name of AssignFile).',
+    'True if pointer, object, interface or method pointer is not nil.',
+    'Associates a file variable with a file name; CodePage only for text files.',
+    'Compares Target with Comparand and sets NewValue if equal (atomic); returns the old value.',
+    'Decrements Target atomically and returns the new value.',
+    'Sets Target atomically to Value and returns the old value.',
+    'Increments Target atomically and returns the new value.',
+    'Reads Count records of an untyped file into Buf.',
+    'Writes Count records from Buf to an untyped file.',
+    'Leaves the innermost loop.',
+    'Character for the ordinal value X.',
+    'Closes a file (old name of CloseFile).',
+    'Closes a file associated with AssignFile.',
+    'Concatenates strings or dynamic arrays (any number of arguments).',
+    'Jumps to the next iteration of the innermost loop.',
+    'Substring or part of a dynamic array from Index (strings from 1, arrays from 0).',
+    'Rest from Index.',
+    'Cosine of an angle in radians.',
+    'Decrements X by 1.',
+    'Decrements X by N.',
+    'Default value of type T (0, nil, empty string ...).',
+    'Removes Count characters or elements from Index.',
+    'Frees a variable created with New.',
+    'True at the end of the file.',
+    'True at the end of standard input.',
+    'True at the end of a line of a text file.',
+    'True at the end of a line of standard input.',
+    'Deletes the closed file associated with F.',
+    'Removes element I from set S.',
+    'Leaves the current routine.',
+    'Sets Result to Value and leaves the function.',
+    'e to the power of X.',
+    'Cancels the creation in the constructor of an object type (old object syntax).',
+    'Current position in a typed or untyped file.',
+    'Size of a typed or untyped file in records.',
+    'Frees managed contents (strings, interfaces ...) of V.',
+    'Writes the buffer of a text file.',
+    'Fractional part of a number.',
+    'Frees memory allocated with GetMem or AllocMem.',
+    'Allocates Size bytes of memory and points P to it (contents not initialized).',
+    'Kind of type T, evaluated at compile time.',
+    'Ends the program.',
+    'True if T contains [Weak] references.',
+    'High-order byte of X.',
+    'Highest index or value of an array, string or ordinal type.',
+    'Increments X by 1.',
+    'Increments X by N.',
+    'Adds element I to set S.',
+    'Initializes managed contents of V.',
+    'Inserts Source into Dest at position Index (also dynamic arrays).',
+    'Integer part of a number as a floating-point number.',
+    'Error code of the last input/output under {$I-}; resets it.',
+    'True if Value is constant at compile time.',
+    'True if T has managed contents (strings, interfaces ...).',
+    'Length of a string or number of elements of an array.',
+    'Natural logarithm.',
+    'Low-order byte of X.',
+    'Lowest index or value of an array, string or ordinal type.',
+    'Creates a new dynamic variable and points P to it.',
+    'True if X is odd.',
+    'Ordinal value of X.',
+    'The number pi.',
+    'Predecessor of the ordinal value X.',
+    'Pointer to the address Address.',
+    'Reads values from a file or the console.',
+    'Reads values and moves to the next line.',
+    'Changes the size of a memory block allocated with GetMem; Size 0 frees it.',
+    'Renames the closed file associated with F.',
+    'Opens an existing file; RecSize only for untyped files.',
+    'Return address of the current routine.',
+    'Creates or empties a file; RecSize only for untyped files.',
+    'Rounds X to the nearest integer.',
+    'Ends the program with a runtime error.',
+    'Sets the position in a typed or untyped file.',
+    'Like Eof, skips white space first.',
+    'Like Eof for standard input, skips white space first.',
+    'Like Eoln, skips spaces and tabs first.',
+    'Like Eoln for standard input, skips spaces and tabs first.',
+    'Sets the length of a string or dynamic array (multidimensional: further lengths).',
+    'Sets S to Length characters from Buffer.',
+    'Gives a text file its own buffer.',
+    'Sine of an angle in radians.',
+    'Size of a variable or type in bytes.',
+    'The first Count elements of A as an open array argument.',
+    'Square of X.',
+    'Square root.',
+    'Converts a number to a string.',
+    'Successor of the ordinal value X.',
+    'Swaps the high-order and low-order byte.',
+    'Cuts off the fractional digits.',
+    'Truncates a file at the current position.',
+    'Type information for T (like TypeInfo).',
+    'Pointer to the RTTI of type T.',
+    'Pointer to the VMT of an object type.',
+    'Converts a string to a number; Code is the error position or 0.',
+    'Writes values to a file or the console.',
+    'Writes values and a line break.',
+    'Boolean value.',
+    'Boolean value, 1 byte, nonzero is True.',
+    'Boolean value, 2 bytes, nonzero is True.',
+    'Boolean value, 4 bytes, nonzero is True.',
+    'Integer, 8 bits signed.',
+    'Integer, 16 bits signed.',
+    'Integer, 32 bits signed.',
+    'Integer, 64 bits signed.',
+    'Integer, 8 bits unsigned.',
+    'Integer, 16 bits unsigned.',
+    'Integer, 32 bits unsigned.',
+    'Integer, 64 bits unsigned.',
+    'Signed integer of pointer size (32 or 64 bits).',
+    'Unsigned integer of pointer size (32 or 64 bits).',
+    'Character, UTF-16 code unit.',
+    'Character, UTF-16 code unit (2 bytes).',
+    'Character, 1 byte.',
+    'Reference-counted string of UTF-16 characters (= string).',
+    'String of 1-byte characters with code page.',
+    'COM string (BSTR) without reference counting.',
+    'String of at most 255 characters, length in the first byte.',
+    'Untyped pointer.',
+    'Pointer to null-terminated characters.',
+    'Pointer to null-terminated 1-byte characters.',
+    'Pointer to null-terminated UTF-16 characters.',
+    'Floating-point number, 4 bytes.',
+    'Floating-point number, 8 bytes.',
+    'Floating-point number, 10 bytes under Win32, otherwise 8 bytes.',
+    'Floating-point number (= Double).',
+    '64-bit integer in floating-point format.',
+    'Fixed-point number with 4 decimal places, 8 bytes.',
+    'Value of changing type.',
+    'Text file for AssignFile, Reset, Readln and Writeln.',
+    'Text file for AssignFile, Reset, Readln and Writeln.',
+    'Old floating-point number with 6 bytes.',
+    'Open ShortString parameter (old syntax).',
+    'Pointer to a ShortString.',
+    'Floating-point number with 10 bytes on all platforms.',
+    'Signed integer, 32 bits (64 bits under 64-bit Linux and iOS).',
+    'Unsigned integer, 32 bits (64 bits under 64-bit Linux and iOS).',
+    'Variant with OLE-compatible types only.',
+    'Boolean value true.',
+    'Boolean value false.',
+    'Compiler version (Delphi 13: 37.0), for $IF CompilerVersion >= … and in code.');
+
 var
-  GEntries: TArray<TSystemIntrinsic>;
+  /// <summary>Einträge je Sprache, beim Laden für alle Sprachen aufgebaut.</summary>
+  GEntries: array[TTextLanguage] of TArray<TSystemIntrinsic>;
 
 /// <summary>Mindest- und Höchstzahl der Argumente aus dem Kopf; Parameter mit Standardwert zählen nicht
 /// zur Mindestzahl.</summary>
@@ -237,7 +389,8 @@ begin
   end;
 end;
 
-function Build: TArray<TSystemIntrinsic>;
+/// <summary>Einträge in ALanguage: Beschreibung und Platzhalter „Typ von X“ im Kopf übersetzt.</summary>
+function Build(ALanguage: TTextLanguage): TArray<TSystemIntrinsic>;
 var
   Index: Integer;
   Parts: TArray<string>;
@@ -261,6 +414,11 @@ begin
     end;
     Result[Index].Declaration := Parts[2];
     Result[Index].Documentation := Parts[3];
+    if ALanguage = TTextLanguage.English then
+    begin
+      Result[Index].Declaration := StringReplace(Parts[2], '<Typ von ', '<type of ', []); // german-ok
+      Result[Index].Documentation := EnglishDocumentation[Index];
+    end;
     Result[Index].MinArgs := 0;
     Result[Index].MaxArgs := 0;
     if Result[Index].Kind = TIndexSymbolKind.Routine then
@@ -270,11 +428,22 @@ begin
   end;
 end;
 
+/// <summary>Baut die Einträge für alle Sprachen auf.</summary>
+procedure BuildAll;
+var
+  mLanguage: TTextLanguage;
+begin
+  for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+  begin
+    GEntries[mLanguage] := Build(mLanguage);
+  end;
+end;
+
 { TSystemIntrinsics }
 
 class function TSystemIntrinsics.All: TArray<TSystemIntrinsic>;
 begin
-  Result := GEntries;
+  Result := GEntries[TAtlasLocale.Language];
 end;
 
 class function TSystemIntrinsics.Find(const AName: string): TArray<TSystemIntrinsic>;
@@ -282,7 +451,7 @@ var
   Entry: TSystemIntrinsic;
 begin
   Result := nil;
-  for Entry in GEntries do
+  for Entry in GEntries[TAtlasLocale.Language] do
   begin
     if SameText(Entry.Name, AName) then
     begin
@@ -300,7 +469,7 @@ class function TSystemIntrinsics.IsType(const AName: string): Boolean;
 var
   mEntry: TSystemIntrinsic;
 begin
-  for mEntry in GEntries do
+  for mEntry in GEntries[TAtlasLocale.Language] do
   begin
     if (mEntry.Kind = TIndexSymbolKind.RecordType) and SameText(mEntry.Name, AName) then
     begin
@@ -364,9 +533,9 @@ end;
 
 initialization
   // Einmal beim Laden aufbauen: Anfragen lesen die Liste danach nur noch, auch aus Worker-Threads.
-  GEntries := Build;
+  BuildAll;
 
 finalization
-  GEntries := nil;
+  Finalize(GEntries);
 
 end.

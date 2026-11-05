@@ -39,7 +39,8 @@ type
     class function IsServerName(const AName: string): Boolean; static;
     /// <summary>Bericht zuerst, dann die Dateien des Servers.</summary>
     class function Build(const AReport: string; const AServerFiles: TAtlasPackageFiles): TAtlasPackageFiles; static;
-    /// <summary>Vorschau: je Datei „== Name (Größe) ==“ und Inhalt, gekürzt auf PreviewChars mit ACutNote.</summary>
+    /// <summary>Vorschau: zuerst die Liste der Dateien mit Größe (#1478), dann je Datei „== Name (Größe) ==“ und
+    /// Inhalt, gekürzt auf PreviewChars mit ACutNote.</summary>
     class function Preview(const AFiles: TAtlasPackageFiles; const ACutNote: string): string; static;
     /// <summary>Atlas-Server-Diagnose-2026-10-29-1430.zip.</summary>
     class function ZipName(ANow: TDateTime): string; static;
@@ -124,12 +125,15 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
+    // Erst die Liste aller Dateien, damit vor dem Speichern sichtbar ist, was in die ZIP kommt (#1478).
+    mBuilder.Append('Dateien im Paket:').Append(sLineBreak);
     for mFile in AFiles do
     begin
-      if mBuilder.Length > 0 then
-      begin
-        mBuilder.Append(sLineBreak);
-      end;
+      mBuilder.Append('- ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes)').Append(sLineBreak);
+    end;
+    for mFile in AFiles do
+    begin
+      mBuilder.Append(sLineBreak);
       mBuilder.Append('== ').Append(mFile.Name).Append(' (').Append(mFile.Size).Append(' Bytes) ==');
       mBuilder.Append(sLineBreak);
       mText := mFile.Text;

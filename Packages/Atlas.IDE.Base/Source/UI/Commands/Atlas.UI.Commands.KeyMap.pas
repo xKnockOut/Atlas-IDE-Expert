@@ -210,7 +210,8 @@ const
     TAtlasTextId.ExpressionTypeCommand, // ExpressionType
     TAtlasTextId.SafeDeleteCommand, // SafeDelete
     TAtlasTextId.CreateIssueCommand, // CreateIssue
-    TAtlasTextId.DesignerBarSearchHint); // DesignerSearch
+    TAtlasTextId.DesignerBarSearchHint, // DesignerSearch
+    TAtlasTextId.ProblemsCheckFileCommand); // CheckFile
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 

@@ -201,7 +201,16 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompletionCollectorText = (AddToUses);
+
+const
+  cTexts: array[TCompletionCollectorText] of TAtlasText = (
+    (De: ' (uses ergänzen)'; En: ' (add to uses)'));
 
 const
   // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
@@ -1139,7 +1148,8 @@ begin
   mMember.FileName := AUnitInfo.FileName;
   mMember.SelectionRange.StartPos := ASymbol.SelectionRange.StartPos;
   // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
-  Result := ACollector.Add(ASymbol.Name, AUnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(ASymbol.Kind),
+  Result := ACollector.Add(ASymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+    CompletionKindOf(ASymbol.Kind),
     ImportPenalty(AUnitInfo), mMember, [AEdit]);
 end;
 
@@ -1539,7 +1549,8 @@ begin
     mMember := TResolvedSymbol.FromIndex(AUnitInfo, mSymbol);
     mMember.IsHelper := True;
     mMember.Depth := ADepth;
-    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(mSymbol.Kind),
+    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+      CompletionKindOf(mSymbol.Kind),
       ImportPenalty(AUnitInfo), mMember, [AEdit]) then
     begin
       AKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
@@ -1884,5 +1895,8 @@ begin
   AIncomplete := FTruncated or FImportsCapped or
     ((FContext.Kind = TCompletionContextKind.Scope) and (Length(FContext.Prefix) < CompletionMinImportPrefix));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompletionCollector', cTexts);
 
 end.

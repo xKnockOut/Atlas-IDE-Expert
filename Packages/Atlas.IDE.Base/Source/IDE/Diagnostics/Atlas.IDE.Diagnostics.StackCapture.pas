@@ -227,7 +227,7 @@ begin
         on E: Exception do
         begin
           FreeAndNil(Result);
-          TAtlasGuard.Log('Stacktraces: Map-Datei nicht lesbar: ' + TAtlasGuard.SafeMessage(E.Message));
+          TAtlasGuard.Log('Stacktraces: Map-Datei nicht lesbar: ' + TAtlasGuard.MessageText(E.Message));
         end;
       end;
       Break;

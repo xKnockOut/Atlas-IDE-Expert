@@ -30,6 +30,9 @@ type
     procedure PinTreeTakesSharedExtraction;
     [Test]
     procedure ForeignTreeIsNotServed;
+    /// <summary>#1761: Resolver ohne Auswertung des Prüflaufs teilen die am Baum hängende Extraktion.</summary>
+    [Test]
+    procedure TreeExtractsAreSharedAtTree;
     /// <summary>Die Engine gibt allen Regeln dieselbe Auswertung des Baums und löst sie nach dem Lauf.</summary>
     [Test]
     procedure EngineSharesTreeUnitsWithRules;
@@ -461,6 +464,30 @@ begin
     mTree.Free;
   end;
   mSource := '';
+end;
+
+procedure TTreeUnitsTests.TreeExtractsAreSharedAtTree;
+var
+  mTree: TSyntaxTree;
+  mFirst, mSecond: ITreeExtracts;
+  mUnit, mAgain: TUnitIndex;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mFirst := TTreeExtracts.ForTree(mTree);
+    mSecond := TTreeExtracts.ForTree(mTree);
+    Assert.IsTrue(mFirst = mSecond, 'dieselbe Auswertung am Baum');
+    mUnit := mFirst.Extracted(cFileName);
+    mAgain := mSecond.Extracted(AnsiLowerCase(cFileName));
+    Assert.IsTrue(Pointer(mUnit.Symbols) = Pointer(mAgain.Symbols), 'einmal extrahiert, Dateiname ohne Schreibung');
+    Assert.AreEqual(Integer(Length(TIndexExtractor.Extract(mTree, cFileName).Symbols)), Integer(Length(mUnit.Symbols)));
+    mFirst := nil;
+    mSecond := nil;
+  finally
+    mTree.Free;
+  end;
+  mUnit := Default(TUnitIndex);
+  mAgain := Default(TUnitIndex);
 end;
 
 initialization

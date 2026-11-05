@@ -5,7 +5,8 @@
 //   er atlas.server.testUnit für die Datei (nur, wenn der Server ohnehin
 //   läuft) und merkt sich die Antwort je Datei und Textstand. Ohne Änderung
 //   fragt er alle RefreshMs neu, damit eine inzwischen angelegte Testunit
-//   erscheint.
+//   erscheint. Der Befehl läuft im Hintergrund (TAtlasLensPoll.AskAsync), der
+//   Hauptthread wartet nicht auf den Server.
 // - Zeichnen: hinter dem Ende der Zeile „unit …;“ (plsEndPaint) eine Marke
 //   mit dem Text der Lens; ihr Rechteck wird gemerkt.
 // - Klick: Linksklick in die Marke wechselt wie der Befehl „Zur Testunit
@@ -19,6 +20,7 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
+  System.JSON,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -42,11 +44,13 @@ type
     end;
   private const
     QuietMs = 500;
-    TimeoutMs = 800;
+    // Im Hintergrund: Ein langsamer Server hält nur die Lens auf, nicht die IDE.
+    TimeoutMs = 5000;
     RetryMs = 5000;
     RefreshMs = 10000;
   private
     FSession: TAtlasTestUnitLensSessionFunc;
+    FRun: TAtlasLensCommandProc;
     FTimer: TTimer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -61,6 +65,9 @@ type
     FLensTopRow: Integer;
     procedure Tick(Sender: TObject);
     procedure Fetch;
+    /// <summary>Rückruf für die Antwort zur Zeile „unit …;“ ALine.</summary>
+    function Answer(ALine: Integer): TProc<TJSONValue>;
+    procedure Take(AAnswer: TJSONValue; ALine: Integer);
     procedure Clear;
     function Caption: string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
@@ -68,7 +75,8 @@ type
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     class procedure Invalidate; static;
   public
-    constructor Create(const ASession: TAtlasTestUnitLensSessionFunc);
+    /// <summary>ASession für den Textstand, ARun für den Befehl im Hintergrund.</summary>
+    constructor Create(const ASession: TAtlasTestUnitLensSessionFunc; const ARun: TAtlasLensCommandProc);
     destructor Destroy; override;
     /// <summary>Klick auf die Lens: zwischen Unit und Testunit wechseln (Editorbefehle). Setzt die Composition
     /// (A-09: die Lens importiert die Editorbefehle nicht); nil = Klick ohne Wirkung.</summary>
@@ -79,7 +87,6 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.MainThread,
-  System.JSON,
   Vcl.Graphics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -108,12 +115,14 @@ end;
 
 { TAtlasEditorTestUnitLens }
 
-constructor TAtlasEditorTestUnitLens.Create(const ASession: TAtlasTestUnitLensSessionFunc);
+constructor TAtlasEditorTestUnitLens.Create(const ASession: TAtlasTestUnitLensSessionFunc;
+  const ARun: TAtlasLensCommandProc);
 var
   Services: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
+  FRun := ARun;
   FIndex := -1;
   FLine := -1;
   FEvents := TEvents.Create;
@@ -135,6 +144,8 @@ var
   Services: INTACodeEditorServices;
 begin
   FTimer.Free;
+  // Eine ausstehende Antwort erreicht die Lens nicht mehr.
+  FPoll.Close;
   // Erst abmelden, dann freigeben (#493).
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
   begin
@@ -200,8 +211,6 @@ end;
 
 procedure TAtlasEditorTestUnitLens.Fetch;
 var
-  mAnswer: TJSONValue;
-  mInfo: TAtlasTestUnitInfo;
   mLine: Integer;
 begin
   mLine := TAtlasTestUnits.UnitLine(FPoll.Text.Replace(#13#10, #10).Split([#10]));
@@ -211,26 +220,39 @@ begin
     FPoll.Fetched;
     Exit;
   end;
-  if not FPoll.Ask(FSession(), TestUnitCommand, FPoll.UriLineArguments(mLine), TimeoutMs, RetryMs, mAnswer) then
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, TestUnitCommand, FPoll.UriLineArguments(mLine), RetryMs,
+    TimeoutMs, Answer(mLine));
+end;
+
+function TAtlasEditorTestUnitLens.Answer(ALine: Integer): TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    begin
+      Take(AAnswer, ALine);
+    end;
+end;
+
+procedure TAtlasEditorTestUnitLens.Take(AAnswer: TJSONValue; ALine: Integer);
+var
+  mInfo: TAtlasTestUnitInfo;
+begin
+  // Den Wert gibt der Manager frei.
+  if not FPoll.Answered(AAnswer, RetryMs) then
   begin
     Exit;
   end;
-  try
-    mInfo := TAtlasTestUnitInfo.FromJson(mAnswer,
-      function(AUri: string): string
-      begin
-        Result := TLspSession.UriToPath(AUri);
-      end);
-  finally
-    mAnswer.Free;
-  end;
-  FPoll.Fetched;
-  if (mInfo.Lens = FInfo.Lens) and (mInfo.Counterpart = FInfo.Counterpart) and (mLine = FLine) then
+  mInfo := TAtlasTestUnitInfo.FromJson(AAnswer,
+    function(AUri: string): string
+    begin
+      Result := TLspSession.UriToPath(AUri);
+    end);
+  if (mInfo.Lens = FInfo.Lens) and (mInfo.Counterpart = FInfo.Counterpart) and (ALine = FLine) then
   begin
     Exit;
   end;
   FInfo := mInfo;
-  FLine := mLine;
+  FLine := ALine;
   FShowing := mInfo.Lens <> TAtlasTestUnitLens.None;
   Invalidate;
 end;

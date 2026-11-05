@@ -49,7 +49,21 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TManagedTypesText = (MethodReferences, DynamicArrays);
+
+const
+  cTexts: array[TManagedTypesText] of TAtlasText = (
+    (De: 'Methodenreferenzen'; En: 'method references'),
+    (De: 'dynamische Arrays'; En: 'dynamic arrays'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // RTL-Records mit verwalteten Feldern, auch ohne Index.
@@ -207,7 +221,7 @@ begin
       // reference to … ist ein Interface mit Referenzzähler.
       if IndexText('reference to', mLocation.Symbol.Directives) >= 0 then
       begin
-        Result := 'Methodenreferenzen';
+        Result := cTexts[TManagedTypesText.MethodReferences].Text;
       end
       else
       begin
@@ -251,11 +265,11 @@ begin
   end
   else if StartsText('reference to', AName) then
   begin
-    Result := 'Methodenreferenzen';
+    Result := cTexts[TManagedTypesText.MethodReferences].Text;
   end
   else if StartsText('array of', AName) or StartsText('TArray<', AName) or MatchText(AName, DynamicArrayNames) then
   begin
-    Result := 'dynamische Arrays';
+    Result := cTexts[TManagedTypesText.DynamicArrays].Text;
   end;
 end;
 
@@ -275,7 +289,7 @@ begin
   end
   else if (mBody <> nil) and SameText(mBody.Name, 'reference') then
   begin
-    Result := 'Methodenreferenzen';
+    Result := cTexts[TManagedTypesText.MethodReferences].Text;
   end
   else if (ADecl.FindChild(TSyntaxKind.TypeReference) <> nil) or (ADecl.FindChild(TSyntaxKind.ArrayType) <> nil) then
   begin
@@ -475,5 +489,8 @@ begin
     Result := CustomManaged(NodeTypeText(Decl), ADepth + 1);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.ManagedTypes', cTexts);
 
 end.

@@ -110,7 +110,8 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.Providers.TransformSink,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Text.LogMarks;
 
 threadvar
   /// <summary>Rechenzeit des Handler-Threads beim Start der Anfrage.</summary>
@@ -167,7 +168,8 @@ begin
   except
     on E: Exception do
     begin
-      ALogger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [AFileName, E.Message]));
+      ALogger.Error(Format('Logdatei "%s" kann nicht geöffnet werden: %s', [TLogMarks.Path(AFileName),
+        TLogMarks.Text(E.Message)]));
       Result := False;
     end;
   end;

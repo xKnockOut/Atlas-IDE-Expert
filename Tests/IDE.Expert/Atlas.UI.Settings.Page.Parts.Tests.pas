@@ -20,6 +20,10 @@ type
     /// <summary>Ein Teil, den die Seite nicht angelegt hat, ist ein Programmierfehler mit Klassennamen.</summary>
     [Test]
     procedure MissingPartRaises;
+    /// <summary>Ohne angemeldete Module zeigt die Seite keine Einstellung eines Moduls (#1456): Base baut nur seine
+    /// eigenen, die der Module bringen die Module als Abschnitte mit.</summary>
+    [Test]
+    procedure NoModuleSettingsWithoutModules;
   end;
 
 implementation
@@ -35,6 +39,7 @@ uses
   Atlas.UI.Settings.Page.Colors,
   Atlas.UI.Settings.Page.Index,
   Atlas.UI.Settings.Page.VcsProjects,
+  Atlas.UI.Settings.Page.Sections,
   Atlas.UI.Settings.Page.TestSupport;
 
 type
@@ -62,7 +67,7 @@ begin
     Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsProjectsPart>);
     Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsProjectAddPart>);
     Assert.IsNotNull(mPage.Part<TAtlasSettingsVcsServersPart>);
-    Assert.IsNotNull(mPage.Part<TAtlasSettingsModulesPart>);
+    Assert.IsNotNull(mPage.Part<TAtlasSettingsSectionsPart>);
     Assert.AreSame(mPage.Part<TAtlasSettingsGeneralPart>, mPage.Part<TAtlasSettingsGeneralPart>, 'derselbe Teil');
   finally
     mPage.Free;
@@ -86,6 +91,26 @@ begin
       end;
     end;
     Assert.IsTrue(Pos('TAtlasUnknownPart', mMessage) > 0, mMessage);
+  finally
+    mPage.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPagePartsTests.NoModuleSettingsWithoutModules;
+const
+  cModuleSettings: array[0..9] of string = ('DebugEnabled', 'TestsEnabled', 'BuildToolsEnabled', 'ReleaseGuard',
+    'SearchEnabled', 'AnalysisEnabled', 'BookmarksEnabled', 'DesignerEnabled', 'WelcomePage', 'IssuesEnabled');
+var
+  mPage: TAtlasSettingsPage;
+  mName: string;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    for mName in cModuleSettings do
+    begin
+      Assert.IsNull(mPage.ControlOfSetting(mName), mName);
+    end;
+    Assert.IsNotNull(mPage.ControlOfSetting('CheckOnSave'), 'Einstellung von Base');
   finally
     mPage.Free;
   end;

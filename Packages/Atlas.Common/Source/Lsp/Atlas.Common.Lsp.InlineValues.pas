@@ -78,7 +78,21 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInlineValuesText = (FieldsTextDocumentUriRangeAnd);
+
+const
+  cTexts: array[TInlineValuesText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri", "range" und "context.stoppedLocation" fehlen in ';
+     En: 'Fields "textDocument.uri", "range" and "context.stoppedLocation" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 type
   TOffsetRange = record
@@ -396,7 +410,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', StoppedValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "range" und "context.stoppedLocation" fehlen in ' + Method);
+      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -416,5 +430,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InlineValues', cTexts);
 
 end.

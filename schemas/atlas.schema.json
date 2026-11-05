@@ -701,6 +701,15 @@
                 "description": "Nur unused-public-member (#1102): Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. TPlugin.* oder *Callback.",
                 "x-description-en": "Only unused-public-member (#1102): name patterns (* and ?) for members that always count as used, e.g. TPlugin.* or *Callback."
               },
+              "keep": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unused-uses (#1135): Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep. Gilt auch für das Abblenden im Editor und „uses aufräumen“.",
+                "x-description-en": "Only unused-uses (#1135): units that never count as unused, in addition to usesKeep. Also applies to the dimming in the editor and to \"Clean up uses\"."
+              },
               "checkUses": {
                 "type": "boolean",
                 "default": true,
@@ -1618,8 +1627,8 @@
         "methodKindMarker": {
           "type": "boolean",
           "default": true,
-          "description": "Marke „ohne Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
-          "x-description-en": "Label \"without Self\" at the header of such methods; off = the actions only via Ctrl+.",
+          "description": "Marke „braucht kein Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
+          "x-description-en": "Label \"Self unused\" at the header of such methods; off = the actions only via Ctrl+.",
           "x-issue": "#686"
         },
         "methodKindStatic": {
@@ -2173,8 +2182,8 @@
       "type": "integer",
       "minimum": 0,
       "default": 768,
-      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",
-      "x-description-en": "Upper limit for the symbol index in memory in MB. Above it first the usages are swapped out (they stay in the cache on disk), then library units (RTL, VCL) and finally project units are kept compact (interface symbols only). 0: unlimited.",
+      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL) kompakt gehalten (nur interface-Symbole), dann die Verwendungen der Projekt-Units ausgelagert (sie bleiben im Cache auf der Platte) und zuletzt Projekt-Units kompakt gehalten. 0: unbegrenzt.",
+      "x-description-en": "Upper limit for the symbol index in memory in MB. Above it first library units (RTL, VCL) are kept compact (interface symbols only), then the usages of project units are swapped out (they stay in the cache on disk) and finally project units are kept compact. 0: unlimited.",
       "x-scope": "global",
       "x-area": "general",
       "x-page": "Speicher",

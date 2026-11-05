@@ -82,7 +82,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.PackageReader,
-  Shell.Workspace.Listings;
+  Shell.Workspace.Listings,
+  Atlas.Text.LogMarks;
 
 { TPackageLocatorHold }
 
@@ -234,7 +235,8 @@ begin
   except
     on E: Exception do
     begin
-      ALogger.Debug(Format('Gruppenprojekt %s für die Unit-Suche nicht lesbar: %s', [AFile, E.Message]));
+      ALogger.Debug(Format('Gruppenprojekt %s für die Unit-Suche nicht lesbar: %s', [TLogMarks.Path(AFile),
+        TLogMarks.Text(E.Message)]));
       Exit(False);
     end;
   end;

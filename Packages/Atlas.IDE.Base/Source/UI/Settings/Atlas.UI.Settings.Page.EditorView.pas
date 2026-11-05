@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Settings.Page.EditorView;
 
-// Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Designer, Kopf, Minimap,
+// Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Kopf, Minimap,
 // Änderungsmarken, gleiche Stellen).
 
 interface
@@ -14,11 +14,12 @@ uses
   Atlas.UI.Settings.Page.Host;
 
 type
-  /// <summary>Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Designer,
-  /// Kopf, Minimap, Änderungsmarken, gleiche Stellen).</summary>
+  /// <summary>Reiter „Editor“, erster Teil: Anzeige im Editor (Editorleiste #1101, Statusleiste #1155, Kopf,
+  /// Minimap, Änderungsmarken, gleiche Stellen).</summary>
   TAtlasSettingsEditorViewPart = class(TAtlasSettingsPagePart)
   private
     FXmlDocExpand: TAtlasChoiceBox;
+    FNestedRoutines: TAtlasChoiceBox;
     FStickyScrollBlockMinLines: TEdit;
     FMinimapRender: TAtlasChoiceBox;
     FMinimapSide: TAtlasChoiceBox;
@@ -27,7 +28,6 @@ type
     FEditorToolbarItems: TEdit;
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
-    FDesignerSearchStyle: TAtlasChoiceBox;
     FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
@@ -43,6 +43,8 @@ type
     procedure BindMarks; override;
     property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
+    /// <summary>Zum Testen: Färbung lokaler Routinen (#1788).</summary>
+    property NestedRoutines: TAtlasChoiceBox read FNestedRoutines;
     /// <summary>Zum Testen: Editorleiste (#1101).</summary>
     property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
     property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
@@ -64,6 +66,7 @@ uses
   Vcl.Controls,
   Atlas.UI.Strings,
   Atlas.Core.Documentation.Contract,
+  Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
 
@@ -74,8 +77,6 @@ var
   Panel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
-  AddModuleSwitch('BookmarksEnabled');
-  AddModuleSwitch('DesignerEnabled');
   BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
@@ -91,6 +92,12 @@ begin
   BindCheck('PairOwners', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners)));
   BindText('PairGuideWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth)));
   BindText('PairGuideOpacity', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity)));
+  // Lokale Routinen abheben (#1788): Färbung und Band getrennt.
+  FNestedRoutines := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutines),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesOuter),
+    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesDeeper),
+    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesColor)]);
+  BindCheck('NestedRoutineBand', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineBand)));
   BindCheck('InactiveDim', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim)));
   BindCheck('InlayHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints)));
   // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
@@ -99,7 +106,7 @@ begin
   BindCheck('InlayDefineHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints)));
   // Code hinter Steuerzeichen wie ^C (#862).
   BindCheck('InlayCharHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints)));
-  // Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).
+  // Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686).
   BindCheck('InlayMethodHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints)));
   // Beschriftung hinter dem end langer Blöcke (#620).
   BindCheck('BlockEndLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels)));
@@ -138,14 +145,6 @@ begin
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
   // Aufrufdiagramm (#1122).
   BindCheck('CallHierarchyDiagram', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram)));
-  // Designer-Leiste im Formular-Designer (#1442).
-  BindCheck('EditorDesignerBar', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar)));
-  BindKey('DesignerSearchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchKey)));
-  FDesignerSearchStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchStyle),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchWindow),
-    TAtlasStrings.Text(TAtlasTextId.SettingsDesignerSearchPopup)]);
-  BindCheck('DesignerTabOrderClick', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerTabOrderClick)));
-  BindCheck('DesignerAlign', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDesignerAlign)));
   // Mitlaufender Kopf (#506, experimentell).
   BindCheck('StickyScroll', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll)));
   BindText('StickyScrollMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines)));
@@ -202,7 +201,6 @@ begin
   // (der gälte für jeden Haken), lassen sich aber zurücksetzen.
   FPage.Marks.Bind(FEditorToolbarPosition, ['EditorToolbarPosition']);
   FPage.Marks.Bind(FEditorToolbarItems, ['EditorToolbarItems']);
-  FPage.Marks.Bind(FDesignerSearchStyle, ['DesignerSearchStyle']);
   FPage.Marks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FPage.Marks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
   FPage.Marks.Bind(FMinimapRender, ['MinimapRender']);
@@ -211,14 +209,13 @@ begin
   FPage.Marks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
   FPage.Marks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
   FPage.Marks.Bind(FXmlDocExpand, ['XmlDocExpand']);
+  FPage.Marks.Bind(FNestedRoutines, ['NestedRoutines']);
 end;
 
 procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSettings);
 begin
   FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, AtlasToolbarPositions));
   FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
-  FDesignerSearchStyle.Choice := Ord(SameText(ASettings.DesignerSearchStyle,
-    TAtlasPluginSettings.DesignerSearchPopup));
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
@@ -227,6 +224,7 @@ begin
   FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
   FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
   FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
+  FNestedRoutines.Choice := Ord(TAtlasRoutineNesting.StyleOf(ASettings.NestedRoutines));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Save(var ASettings: TAtlasPluginSettings);
@@ -234,14 +232,6 @@ begin
   ASettings.EditorToolbarPosition := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
     High(AtlasToolbarPositions))];
   ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
-  if FDesignerSearchStyle.Choice = 1 then
-  begin
-    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
-  end
-  else
-  begin
-    ASettings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchWindow;
-  end;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
     ASettings.StickyScrollBlockMinLines);
@@ -265,6 +255,8 @@ begin
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
   ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
+  ASettings.NestedRoutines := TAtlasRoutineNesting.StyleNames[TAtlasNestedRoutineStyle(EnsureRange(
+    FNestedRoutines.Choice, Ord(Low(TAtlasNestedRoutineStyle)), Ord(High(TAtlasNestedRoutineStyle))))];
 end;
 
 /// <summary>„Leiste anpassen …“ (#1101): Dialog auf den Werten der Seite; übernommen wird erst mit OK der Optionen.

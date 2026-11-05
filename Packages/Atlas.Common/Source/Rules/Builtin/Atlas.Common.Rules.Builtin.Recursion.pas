@@ -59,25 +59,50 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TRecursionText = (AccessorTitle, SetterRecursion, GetterRecursion, UseField, Title, NoTerminationExample,
+    NoTermination);
+
+const
+  cTexts: array[TRecursionText] of TAtlasText = (
+    (De: 'Setter oder Getter ruft sich selbst auf (Endlosrekursion)';
+     En: 'Setter or getter calls itself (endless recursion)'),
+    (De: 'Zuweisung an die Property %s im eigenen Setter: Endlosrekursion.';
+     En: 'Assignment to the property %s in its own setter: endless recursion.'),
+    (De: 'Lesen der Property %s im eigenen Getter: Endlosrekursion.';
+     En: 'Reading the property %s in its own getter: endless recursion.'),
+    (De: 'Feld %s verwenden'; En: 'Use field %s'),
+    (De: 'Rekursion ohne Abbruch'; En: 'Recursion without termination'),
+    (De: '%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. %s).';
+     En: '%s calls itself on every path; the termination is missing (e.g. %s).'),
+    (De: '%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.';
+     En: '%s calls itself on every path; the termination is missing.'));
+
+{$SCOPEDENUMS OFF}
 
 { TSetterRecursionRule }
 
 function TSetterRecursionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(SetterRecursionRuleId, TRuleSeverity.Error,
-    'Setter oder Getter ruft sich selbst auf (Endlosrekursion)');
+    cTexts[TRecursionText.AccessorTitle].Text);
 end;
 
 class function TSetterRecursionRule.Message(const ATrap: TAccessorTrap): string;
 begin
   if ATrap.IsSetter then
   begin
-    Result := Format('Zuweisung an die Property %s im eigenen Setter: Endlosrekursion.', [ATrap.PropertyName]);
+    Result := cTexts[TRecursionText.SetterRecursion].Fmt([ATrap.PropertyName]);
   end
   else
   begin
-    Result := Format('Lesen der Property %s im eigenen Getter: Endlosrekursion.', [ATrap.PropertyName]);
+    Result := cTexts[TRecursionText.GetterRecursion].Fmt([ATrap.PropertyName]);
   end;
 end;
 
@@ -93,7 +118,7 @@ begin
   begin
     if Trap.Field <> '' then
     begin
-      AReport.Add(Trap.Range, Message(Trap), [TRuleFix.Create(Format('Feld %s verwenden', [Trap.Field]),
+      AReport.Add(Trap.Range, Message(Trap), [TRuleFix.Create(cTexts[TRecursionText.UseField].Fmt([Trap.Field]),
         [TRuleEdit.Create(Trap.Range, Trap.Field)])]);
     end
     else
@@ -113,7 +138,8 @@ const
 
 function TUnconditionalRecursionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnconditionalRecursionRuleId, TRuleSeverity.Error, 'Rekursion ohne Abbruch');
+  Result := TRuleDescriptor.Create(UnconditionalRecursionRuleId, TRuleSeverity.Error,
+    cTexts[TRecursionText.Title].Text);
 end;
 
 /// <summary>Liegt A nicht hinter B?</summary>
@@ -693,13 +719,12 @@ begin
   mHint := StopHint(ARoutine);
   if mHint <> '' then
   begin
-    FReport.Add(ACall.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch ' +
-      '(z. B. %s).', [mName, mHint]), TRuleConfidence.High);
+    FReport.Add(ACall.Chain[0].Range, cTexts[TRecursionText.NoTerminationExample].Fmt([mName, mHint]),
+      TRuleConfidence.High);
   end
   else
   begin
-    FReport.Add(ACall.Chain[0].Range, Format('%s ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch.',
-      [mName]), TRuleConfidence.High);
+    FReport.Add(ACall.Chain[0].Range, cTexts[TRecursionText.NoTermination].Fmt([mName]), TRuleConfidence.High);
   end;
 end;
 
@@ -765,5 +790,8 @@ begin
   ARegistry.Register(TSetterRecursionRule.Create);
   ARegistry.Register(TUnconditionalRecursionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Recursion', cTexts);
 
 end.

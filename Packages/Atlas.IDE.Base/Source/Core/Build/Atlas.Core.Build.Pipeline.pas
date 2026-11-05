@@ -72,7 +72,8 @@ implementation
 
 uses
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.Core.Modules.Contributions,
+  Atlas.Text.LogMarks;
 
 class function TAtlasBuildPipeline.MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject): TArray<string>;
@@ -94,7 +95,7 @@ begin
         mListener.MessagesRead(AMessages, AProject);
       except
         on E: Exception do
-          Result := Result + [E.ClassName + ': ' + E.Message];
+          Result := Result + [E.ClassName + ': ' + TLogMarks.Text(E.Message)];
       end;
   end;
 end;
@@ -124,7 +125,7 @@ begin
         end;
       except
         on E: Exception do
-          AFailures := AFailures + [E.ClassName + ': ' + E.Message];
+          AFailures := AFailures + [E.ClassName + ': ' + TLogMarks.Text(E.Message)];
       end;
   end;
 end;
@@ -156,7 +157,7 @@ begin
         mListener.BuildEvaluated(AMessages, AProject, AVerdict);
       except
         on E: Exception do
-          Result := Result + [E.ClassName + ': ' + E.Message];
+          Result := Result + [E.ClassName + ': ' + TLogMarks.Text(E.Message)];
       end;
   end;
 end;

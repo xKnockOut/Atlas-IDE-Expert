@@ -54,7 +54,29 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormReferencesText = (Title, AddUses, NotInUses, Runtime, ReferenceTo);
+
+const
+  cTexts: array[TFormReferencesText] of TAtlasText = (
+    (De: 'Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht';
+     En: 'Form file refers to a module whose unit is not in the uses'),
+    (De: 'uses %s ergänzen'; En: 'Add uses %s'),
+    (De: '%s = %s: %s stammt aus %s, die Unit steht nicht in den uses. Die IDE öffnet %s dann nicht mit, der Verweis ' +
+      'bleibt leer und geht beim Speichern verloren.';
+     En: '%s = %s: %s comes from %s, the unit is not in the uses. The IDE then does not open %s as well, the ' +
+      'reference stays empty and is lost on saving.'),
+    (De: 'Zur Laufzeit löst die VCL den Verweis nur auf, solange ein Modul %s existiert.';
+     En: 'At runtime the VCL resolves the reference only while a module %s exists.'),
+    (De: 'Verweis auf %s'; En: 'Reference to %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ein Lauf der Regel über eine Formulardatei.</summary>
@@ -128,7 +150,7 @@ end;
 function TDfmReferenceUnitMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cDfmReferenceUnitMissingRuleId, TRuleSeverity.Warning,
-    'Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht');
+    cTexts[TFormReferencesText.Title].Text);
 end;
 
 class function TDfmReferenceUnitMissingRule.ProjectModules(const AMainSource: string): TArray<TFormModuleUnit>;
@@ -319,7 +341,7 @@ begin
   if TUsesClauses.AddUnit(FContext.Tree.Tokens, MaxInt, AUnitName, TTextLines.LineBreakOf(FContext.Text),
     mEdit) then
   begin
-    Result := [TRuleFix.Create(Format('uses %s ergänzen', [AUnitName]), [mEdit])];
+    Result := [TRuleFix.Create(cTexts[TFormReferencesText.AddUses].Fmt([AUnitName]), [mEdit])];
   end;
 end;
 
@@ -334,18 +356,16 @@ begin
   begin
     Exit;
   end;
-  mMessage := Format('%s = %s: %s stammt aus %s, die Unit steht nicht in den uses. Die IDE öffnet %s dann ' +
-    'nicht mit, der Verweis bleibt leer und geht beim Speichern verloren.', [AReference.Reference.Name,
+  mMessage := cTexts[TFormReferencesText.NotInUses].Fmt([AReference.Reference.Name,
     AReference.Reference.Value, AReference.ModuleName, AUnitName, AReference.ModuleName]);
-  mDetails := Format('Zur Laufzeit löst die VCL den Verweis nur auf, solange ein Modul %s existiert.',
-    [AReference.ModuleName]);
+  mDetails := cTexts[TFormReferencesText.Runtime].Fmt([AReference.ModuleName]);
   // Weitere Stellen tragen nur Treffer mit hoher Sicherheit (AddRelated kennt keine andere).
   if (AConfidence = TRuleConfidence.High) and (FContext.FormFile <> '') and
     Supports(FReport, IRuleRelatedReport, mExtended) then
   begin
     mRelated.FileName := FContext.FormFile;
     mRelated.Range := AReference.Reference.ValueRange;
-    mRelated.Message := Format('Verweis auf %s', [AReference.Reference.Value]);
+    mRelated.Message := cTexts[TFormReferencesText.ReferenceTo].Fmt([AReference.Reference.Value]);
     mExtended.AddRelated(ReportRange(AReference), mMessage, mDetails, TRuleSeverity.Default,
       Fixes(AUnitName), [mRelated]);
   end
@@ -354,5 +374,8 @@ begin
     FReport.AddWithDetails(ReportRange(AReference), mMessage, mDetails, AConfidence, Fixes(AUnitName));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.FormReferences', cTexts);
 
 end.

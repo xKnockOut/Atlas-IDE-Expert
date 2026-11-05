@@ -105,7 +105,28 @@ uses
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.State,
   Atlas.Common.Editing.GenericLists.Elements,
-  Atlas.Common.Editing.GenericLists.UsesEdits;
+  Atlas.Common.Editing.GenericLists.UsesEdits,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TGenericListsText = (IsNeverReadWithA, IsReadWithDifferentCasts, ContainsValuesOfTypeInstead,
+    IsNotCreatedHereWithout, IsNotKnownIn, ConvertTo);
+
+const
+  cTexts: array[TGenericListsText] of TAtlasText = (
+    (De: '%s wird nirgends mit Cast gelesen; der Elementtyp ist unbekannt';
+     En: '%s is never read with a cast; the element type is unknown'),
+    (De: '%s wird mit verschiedenen Casts gelesen: %s'; En: '%s is read with different casts: %s'),
+    (De: '%s enthält Werte vom Typ %s statt Objekte'; En: '%s contains values of type %s instead of objects'),
+    (De: '%s wird hier nicht erzeugt; ohne Create lässt sich nicht festlegen, dass %s<T> die Objekte nicht besitzt';
+     En: '%s is not created here; without Create it cannot be specified that %s<T> does not own the objects'),
+    (De: '%s ist in %s nicht bekannt'; En: '%s is not known in %s'),
+    (De: 'In %s umwandeln'; En: 'Convert to %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericListConversion }
 
@@ -168,16 +189,16 @@ begin
   mItemName := TGenericListSyntax.LastName(ItemType);
   if FCasts = nil then
   begin
-    Result := Fail(Format('%s wird nirgends mit Cast gelesen; der Elementtyp ist unbekannt', [FTarget.Name]));
+    Result := Fail(cTexts[TGenericListsText.IsNeverReadWithA].Fmt([FTarget.Name]));
   end
   else if Length(mDistinct) > 1 then
   begin
-    Result := Fail(Format('%s wird mit verschiedenen Casts gelesen: %s', [FTarget.Name,
+    Result := Fail(cTexts[TGenericListsText.IsReadWithDifferentCasts].Fmt([FTarget.Name,
       string.Join(', ', mDistinct)]));
   end
   else if TGenericListNames.IsScalarType(mItemName) then
   begin
-    Result := Fail(Format('%s enthält Werte vom Typ %s statt Objekte', [FTarget.Name, mItemName]));
+    Result := Fail(cTexts[TGenericListsText.ContainsValuesOfTypeInstead].Fmt([FTarget.Name, mItemName]));
   end
   else
   begin
@@ -207,8 +228,7 @@ end;
 function TGenericListConversion.CheckCreated: Boolean;
 begin
   Result := (FKind.CreateArguments = '') or FCreated or
-    Fail(Format('%s wird hier nicht erzeugt; ohne Create lässt sich nicht festlegen, dass %s<T> die Objekte ' +
-    'nicht besitzt', [FTarget.Name, FKind.GenericName]));
+    Fail(cTexts[TGenericListsText.IsNotCreatedHereWithout].Fmt([FTarget.Name, FKind.GenericName]));
 end;
 
 function TGenericListConversion.CheckItems: Boolean;
@@ -227,7 +247,7 @@ begin
     mSource := FFiles[mIndex];
     if (mSource.GenericAt <> nil) and not mSource.MentionsIdentifier(TGenericListSyntax.LastName(ItemType)) then
     begin
-      Exit(Fail(Format('%s ist in %s nicht bekannt', [ItemType, ExtractFileName(mSource.FileName)])));
+      Exit(Fail(cTexts[TGenericListsText.IsNotKnownIn].Fmt([ItemType, ExtractFileName(mSource.FileName)])));
     end;
   end;
   Result := True;
@@ -267,7 +287,7 @@ var
   mFileEdits: TFileTextEdits;
 begin
   Result := Default(TGenericListPlan);
-  Result.Title := Format('In %s umwandeln', [GenericText]);
+  Result.Title := cTexts[TGenericListsText.ConvertTo].Fmt([GenericText]);
   Result.ItemType := ItemType;
   Result.Edits := FFiles[0].Edits;
   for mIndex := 1 to FFiles.Count - 1 do
@@ -291,5 +311,8 @@ begin
     APlan := BuildPlan;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists', cTexts);
 
 end.

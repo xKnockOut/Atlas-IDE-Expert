@@ -37,14 +37,27 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSlashCommandsText = (Title);
+
+const
+  cTexts: array[TSlashCommandsText] of TAtlasText = (
+    (De: 'Schnellbefehl wurde nicht ausgeführt'; En: 'Quick command was not executed'));
+
+{$SCOPEDENUMS OFF}
 
 { TSlashCommandRule }
 
 function TSlashCommandRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('slash-command', TRuleSeverity.Hint,
-    'Schnellbefehl wurde nicht ausgeführt');
+    cTexts[TSlashCommandsText.Title].Text);
 end;
 
 procedure TSlashCommandRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -127,5 +140,8 @@ procedure RegisterSlashCommandRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TSlashCommandRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.SlashCommands', cTexts);
 
 end.

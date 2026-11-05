@@ -135,7 +135,23 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Rules.Builtin.Metrics;
+  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCodeLensText = (Overrides, FieldTextDocumentUriMissing, FieldDataOfTheLens, Descendant, Descendants, Reference,
+    References);
+
+const
+  cTexts: array[TCodeLensText] of TAtlasText = (
+    (De: 'überschreibt %s.'; En: 'overrides %s.'),
+    (De: 'Feld "textDocument.uri" fehlt'; En: 'Field "textDocument.uri" missing'),
+    (De: 'Feld "data" der Linse fehlt oder ist unvollständig'; En: 'Field "data" of the lens missing or incomplete'),
+    (De: 'Nachfahre'; En: 'descendant'),
+    (De: 'Nachfahren'; En: 'descendants'),
+    (De: 'Referenz'; En: 'reference'),
+    (De: 'Referenzen'; En: 'references'));
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -322,7 +338,7 @@ begin
     Exit;
   end;
   mEntry := NewEntry(TCodeLensKind.Descendants, ASymbol.SelectionRange,
-    Plural(Length(mDescendants), 'Nachfahre', 'Nachfahren'));
+    Plural(Length(mDescendants), cTexts[TCodeLensText.Descendant].Text, cTexts[TCodeLensText.Descendants].Text));
   for mDescendant in mDescendants do
   begin
     mEntry.Targets := mEntry.Targets + [Location(mDescendant.FileName, mDescendant.Symbol.SelectionRange)];
@@ -379,7 +395,7 @@ begin
   if FindOverridden(ASource.Resolver, ASource.Index, ACurrent, AType, ASymbol.Name, mFound) then
   begin
     mEntry := NewEntry(TCodeLensKind.Overrides, ASymbol.SelectionRange,
-      'überschreibt ' + mFound.Owner + '.' + ASymbol.Name);
+      cTexts[TCodeLensText.Overrides].Fmt([mFound.Owner]) + ASymbol.Name);
     mEntry.Targets := [mFound.Target];
     AList.Add(mEntry);
   end;
@@ -516,7 +532,8 @@ begin
   finally
     mHeaders.Free;
   end;
-  Result.Title := Plural(Length(Result.Targets), 'Referenz', 'Referenzen');
+  Result.Title := Plural(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text,
+    cTexts[TCodeLensText.References].Text);
 end;
 
 class function TLspCodeLens.ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject;
@@ -585,7 +602,7 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -638,7 +655,7 @@ begin
     DataPosition(TJSONObject(AParams), 'data.line', 'data.character', mStart) and
     DataPosition(TJSONObject(AParams), 'data.endLine', 'data.endCharacter', mEnd)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "data" der Linse fehlt oder ist unvollständig');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCodeLensText.FieldDataOfTheLens].Text);
   end;
   Result := NewEntry(TCodeLensKind.References, TTextRange.Create(mStart, mEnd), '');
 end;
@@ -663,7 +680,7 @@ begin
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
-    mEntry.Title := Plural(0, 'Referenz', 'Referenzen');
+    mEntry.Title := Plural(0, cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
     Exit(ToJson(mEntry, mSource.FileName));
   end;
   mCancellation := TRequestCancellation.Create(ACancellation);
@@ -679,5 +696,8 @@ begin
   end;
   Result := ToJson(mEntry, mSource.FileName);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CodeLens', cTexts);
 
 end.

@@ -162,7 +162,54 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLanguageText = (TextWithoutClosingQuotationMark, IsNotANumber, DoesNotExistForNegation, EndOfTheQuery,
+    ExpectedFieldPredicateNotOr, FieldDoesNotExistFor, ExpectedValueAfterFound, LikeOnlyExistsForText, IsANumberIsNot,
+    IsATruthValueTrue, ExpectedComparisonOrLikeAfter, IsATruthValueAllowed, DoesNotExistFor, ExpectedNameAfterFound,
+    ExpectedForInColumnFound, ExpectedAttributeAfterHasFound, ExpectedSetFound, ExpectedByAfterOrderFound,
+    ExpectedCountAfterLimitFound, ExpectedWhereOrderByOr, UnexpectedConditionsAreJoinedWith, UnknownField, FieldsOf,
+    QueryColumn, UnexpectedCharacter, DidYouMean, UnknownSet, EmptyQueryExampleClassesWhere);
+
+const
+  cTexts: array[TLanguageText] of TAtlasText = (
+    (De: 'Text ohne schließendes Anführungszeichen'; En: 'Text without closing quotation mark'),
+    (De: '"%s…" ist keine Zahl'; En: '"%s…" is not a number'),
+    (De: '"!" gibt es nicht; für Verneinung "not", für ungleich "<>"';
+     En: '"!" does not exist; for negation use "not", for unequal "<>"'),
+    (De: 'Ende der Abfrage'; En: 'End of the query'),
+    (De: 'Erwartet: Feld, Prädikat, not oder "(", gefunden %s';
+     En: 'Expected: field, predicate, not or "(", found %s'),
+    (De: 'Feld `%s` gibt es bei `%s` nicht; Felder: %s'; En: 'Field `%s` does not exist for `%s`; fields: %s'),
+    (De: 'Erwartet: Wert nach `%s`, gefunden %s'; En: 'Expected: value after `%s`, found %s'),
+    (De: 'like gibt es nur für Textfelder; `%s` ist %s'; En: 'like only exists for text fields; `%s` is %s'),
+    (De: '`%s` ist eine Zahl; %s ist keine'; En: '`%s` is a number; %s is not'),
+    (De: '`%s` ist ein Wahrheitswert (true oder false); %s ist keiner';
+     En: '`%s` is a truth value (true or false); %s is not'),
+    (De: 'Erwartet: Vergleich (=, <>, <, >, <=, >=) oder like nach `%s`, gefunden %s';
+     En: 'Expected: comparison (=, <>, <, >, <=, >=) or like after `%s`, found %s'),
+    (De: '`%s` ist ein Wahrheitswert; erlaubt sind = und <>'; En: '`%s` is a truth value; allowed are = and <>'),
+    (De: '`%s` gibt es bei `%s` nicht'; En: '`%s` does not exist for `%s`'),
+    (De: 'Erwartet: Name nach `%s`, gefunden %s'; En: 'Expected: name after `%s`, found %s'),
+    (De: 'Erwartet: ")" zu "(" in Spalte %d, gefunden %s'; En: 'Expected: ")" for "(" in column %d, found %s'),
+    (De: 'Erwartet: `attribute` nach `has`, gefunden %s'; En: 'Expected: `attribute` after `has`, found %s'),
+    (De: 'Erwartet: Menge (%s), gefunden %s'; En: 'Expected: set (%s), found %s'),
+    (De: 'Erwartet: `by` nach `order`, gefunden %s'; En: 'Expected: `by` after `order`, found %s'),
+    (De: 'Erwartet: Anzahl nach `limit`, gefunden %s'; En: 'Expected: count after `limit`, found %s'),
+    (De: 'Erwartet: where, order by oder limit, gefunden %s'; En: 'Expected: where, order by or limit, found %s'),
+    (De: 'Unerwartet: %s; Bedingungen verbinden and und or';
+     En: 'Unexpected: %s; conditions are joined with and and or'),
+    (De: 'Unbekanntes Feld'; En: 'Unknown field'),
+    (De: '%s; Felder von %s: %s'; En: '%s; fields of %s: %s'),
+    (De: 'Abfrage "%s", Spalte %d: %s'; En: 'Query "%s", column %d: %s'),
+    (De: 'Unerwartetes Zeichen "%s"'; En: 'Unexpected character "%s"'),
+    (De: '%s `%s`, meintest du `%s`?'; En: '%s `%s`, did you mean `%s`?'),
+    (De: 'Unbekannte Menge'; En: 'Unknown set'),
+    (De: 'Leere Abfrage; Beispiel: classes where methods > 40';
+     En: 'Empty query; example: classes where methods > 40'));
 
 const
   cOperatorChars = ['=', '<', '>', '!'];
@@ -290,7 +337,7 @@ begin
   end;
   if APosition > Length(AText) then
   begin
-    raise EQueryError.Create('Text ohne schließendes Anführungszeichen', mStart, '');
+    raise EQueryError.Create(cTexts[TLanguageText.TextWithoutClosingQuotationMark].Text, mStart, '');
   end;
   Inc(APosition);
 end;
@@ -315,7 +362,7 @@ begin
   // 12abc ist kein Name und keine Zahl.
   if (APosition <= Length(AText)) and IsNameChar(AText[APosition]) then
   begin
-    raise EQueryError.Create(Format('"%s…" ist keine Zahl', [AToken.Text]), mStart, '');
+    raise EQueryError.Create(cTexts[TLanguageText.IsNotANumber].Fmt([AToken.Text]), mStart, '');
   end;
   AToken.Kind := TQueryTokenKind.Number;
 end;
@@ -339,7 +386,7 @@ begin
   end
   else if AToken.Text = '!' then
   begin
-    raise EQueryError.Create('"!" gibt es nicht; für Verneinung "not", für ungleich "<>"', mStart, '<>');
+    raise EQueryError.Create(cTexts[TLanguageText.DoesNotExistForNegation].Text, mStart, '<>');
   end;
   AToken.Kind := TQueryTokenKind.Symbol;
 end;
@@ -388,7 +435,7 @@ begin
   end
   else
   begin
-    raise EQueryError.Create(Format('Unerwartetes Zeichen "%s"', [AText[APosition]]), APosition, '');
+    raise EQueryError.Create(cTexts[TLanguageText.UnexpectedCharacter].Fmt([AText[APosition]]), APosition, '');
   end;
 end;
 
@@ -429,7 +476,7 @@ class function TQueryParser.UnknownText(const AWhat, AName, ASuggestion: string)
 begin
   if ASuggestion <> '' then
   begin
-    Result := Format('%s `%s`, meintest du `%s`?', [AWhat, AName, ASuggestion]);
+    Result := cTexts[TLanguageText.DidYouMean].Fmt([AWhat, AName, ASuggestion]);
   end
   else
   begin
@@ -465,7 +512,7 @@ function Describe(const AToken: TQueryToken): string;
 begin
   if AToken.Kind = TQueryTokenKind.EndOfQuery then
   begin
-    Result := 'Ende der Abfrage';
+    Result := cTexts[TLanguageText.EndOfTheQuery].Text;
   end
   else
   begin
@@ -518,7 +565,7 @@ var
 begin
   if AToken.Kind <> TQueryTokenKind.Name then
   begin
-    Fail(Format('Erwartet: Feld, Prädikat, not oder "(", gefunden %s', [Describe(AToken)]), AToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedFieldPredicateNotOr].Fmt([Describe(AToken)]), AToken.Column);
   end;
   if not TQueryCatalog.TryField(AToken.Text, Result) then
   begin
@@ -529,17 +576,17 @@ begin
     end;
     if mSuggestion <> '' then
     begin
-      Fail(UnknownText('Unbekanntes Feld', AToken.Text, mSuggestion), AToken.Column, mSuggestion);
+      Fail(UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, mSuggestion), AToken.Column, mSuggestion);
     end
     else
     begin
-      Fail(Format('%s; Felder von %s: %s', [UnknownText('Unbekanntes Feld', AToken.Text, ''),
+      Fail(cTexts[TLanguageText.FieldsOf].Fmt([UnknownText(cTexts[TLanguageText.UnknownField].Text, AToken.Text, ''),
         TQueryCatalog.EntityName(FEntity), string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column);
     end;
   end;
   if not (FEntity in Result.Entities) then
   begin
-    Fail(Format('Feld `%s` gibt es bei `%s` nicht; Felder: %s', [Result.Name, TQueryCatalog.EntityName(FEntity),
+    Fail(cTexts[TLanguageText.FieldDoesNotExistFor].Fmt([Result.Name, TQueryCatalog.EntityName(FEntity),
       string.Join(', ', TQueryCatalog.FieldNames(FEntity))]), AToken.Column,
       TTextFuzzy.Closest(AToken.Text, TQueryCatalog.FieldNames(FEntity)));
   end;
@@ -554,13 +601,13 @@ begin
   mToken := Next;
   if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Number, TQueryTokenKind.Text]) then
   begin
-    Fail(Format('Erwartet: Wert nach `%s`, gefunden %s', [AField.Name, Describe(mToken)]), mToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedValueAfterFound].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
   end;
   if ALike then
   begin
     if AField.FieldType <> TQueryFieldType.Text then
     begin
-      Fail(Format('like gibt es nur für Textfelder; `%s` ist %s', [AField.Name,
+      Fail(cTexts[TLanguageText.LikeOnlyExistsForText].Fmt([AField.Name,
         LowerCase(TQueryCatalog.FieldTypeName(AField.FieldType))]), mToken.Column);
     end;
     Exit(TQueryValue.OfText(mToken.Text));
@@ -570,7 +617,7 @@ begin
       begin
         if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt64(mToken.Text, mNumber) then
         begin
-          Fail(Format('`%s` ist eine Zahl; %s ist keine', [AField.Name, Describe(mToken)]), mToken.Column);
+          Fail(cTexts[TLanguageText.IsANumberIsNot].Fmt([AField.Name, Describe(mToken)]), mToken.Column);
         end;
         Result := TQueryValue.OfNumber(mNumber);
       end;
@@ -586,7 +633,7 @@ begin
         end
         else
         begin
-          Fail(Format('`%s` ist ein Wahrheitswert (true oder false); %s ist keiner', [AField.Name,
+          Fail(cTexts[TLanguageText.IsATruthValueTrue].Fmt([AField.Name,
             Describe(mToken)]), mToken.Column);
           Result := TQueryValue.Empty;
         end;
@@ -626,14 +673,14 @@ begin
   end
   else if (mOperatorToken.Kind <> TQueryTokenKind.Symbol) or not OperatorOf(mOperatorToken.Text, mOperator) then
   begin
-    Fail(Format('Erwartet: Vergleich (=, <>, <, >, <=, >=) oder like nach `%s`, gefunden %s',
-      [mField.Name, Describe(mOperatorToken)]), mOperatorToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedComparisonOrLikeAfter].Fmt([mField.Name, Describe(mOperatorToken)]),
+      mOperatorToken.Column);
     mOperator := TQueryOperator.Equal;
   end;
   if (mField.FieldType = TQueryFieldType.Flag) and not (mOperator in [TQueryOperator.Equal,
     TQueryOperator.NotEqual]) then
   begin
-    Fail(Format('`%s` ist ein Wahrheitswert; erlaubt sind = und <>', [mField.Name]), mOperatorToken.Column);
+    Fail(cTexts[TLanguageText.IsATruthValueAllowed].Fmt([mField.Name]), mOperatorToken.Column);
   end;
   mNode := TQueryCompareNode.Create;
   try
@@ -655,13 +702,13 @@ var
 begin
   if not (FEntity in TQueryCatalog.PredicateEntities(AKind)) then
   begin
-    Fail(Format('`%s` gibt es bei `%s` nicht', [TQueryCatalog.PredicateName(AKind),
+    Fail(cTexts[TLanguageText.DoesNotExistFor].Fmt([TQueryCatalog.PredicateName(AKind),
       TQueryCatalog.EntityName(FEntity)]), AColumn);
   end;
   mToken := Next;
   if not (mToken.Kind in [TQueryTokenKind.Name, TQueryTokenKind.Text]) then
   begin
-    Fail(Format('Erwartet: Name nach `%s`, gefunden %s', [TQueryCatalog.PredicateName(AKind), Describe(mToken)]),
+    Fail(cTexts[TLanguageText.ExpectedNameAfterFound].Fmt([TQueryCatalog.PredicateName(AKind), Describe(mToken)]),
       mToken.Column);
   end;
   mNode := TQueryPredicateNode.Create;
@@ -697,7 +744,7 @@ begin
   if Current.Kind <> TQueryTokenKind.CloseParen then
   begin
     Result.Free;
-    Fail(Format('Erwartet: ")" zu "(" in Spalte %d, gefunden %s', [mColumn, Describe(Current)]), Current.Column);
+    Fail(cTexts[TLanguageText.ExpectedForInColumnFound].Fmt([mColumn, Describe(Current)]), Current.Column);
   end;
   Next;
 end;
@@ -739,7 +786,7 @@ begin
   begin
     if not Current.Is_('attribute') then
     begin
-      Fail(Format('Erwartet: `attribute` nach `has`, gefunden %s', [Describe(Current)]), Current.Column,
+      Fail(cTexts[TLanguageText.ExpectedAttributeAfterHasFound].Fmt([Describe(Current)]), Current.Column,
         'attribute');
     end;
     Next;
@@ -833,9 +880,9 @@ begin
   mSuggestion := TTextFuzzy.Closest(mToken.Text, TQueryCatalog.EntityNames);
   if mSuggestion <> '' then
   begin
-    Fail(UnknownText('Unbekannte Menge', mToken.Text, mSuggestion), mToken.Column, mSuggestion);
+    Fail(UnknownText(cTexts[TLanguageText.UnknownSet].Text, mToken.Text, mSuggestion), mToken.Column, mSuggestion);
   end;
-  Fail(Format('Erwartet: Menge (%s), gefunden %s', [string.Join(', ', TQueryCatalog.EntityNames),
+  Fail(cTexts[TLanguageText.ExpectedSetFound].Fmt([string.Join(', ', TQueryCatalog.EntityNames),
     Describe(mToken)]), mToken.Column);
 end;
 
@@ -844,7 +891,7 @@ begin
   Next;
   if not Current.Is_('by') then
   begin
-    Fail(Format('Erwartet: `by` nach `order`, gefunden %s', [Describe(Current)]), Current.Column, 'by');
+    Fail(cTexts[TLanguageText.ExpectedByAfterOrderFound].Fmt([Describe(Current)]), Current.Column, 'by');
   end;
   Next;
   AAst.OrderField := FieldFor(Next);
@@ -869,7 +916,7 @@ begin
   mToken := Next;
   if (mToken.Kind <> TQueryTokenKind.Number) or not TryStrToInt(mToken.Text, mLimit) or (mLimit < 0) then
   begin
-    Fail(Format('Erwartet: Anzahl nach `limit`, gefunden %s', [Describe(mToken)]), mToken.Column);
+    Fail(cTexts[TLanguageText.ExpectedCountAfterLimitFound].Fmt([Describe(mToken)]), mToken.Column);
   end;
   AAst.Limit := mLimit;
 end;
@@ -885,10 +932,10 @@ begin
   end;
   if (AAst.Condition = nil) and not AAst.HasOrder and (AAst.Limit < 0) then
   begin
-    Fail(Format('Erwartet: where, order by oder limit, gefunden %s', [Describe(mToken)]), mToken.Column,
+    Fail(cTexts[TLanguageText.ExpectedWhereOrderByOr].Fmt([Describe(mToken)]), mToken.Column,
       TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('where', 'order', 'limit')));
   end;
-  Fail(Format('Unerwartet: %s; Bedingungen verbinden and und or', [Describe(mToken)]), mToken.Column,
+  Fail(cTexts[TLanguageText.UnexpectedConditionsAreJoinedWith].Fmt([Describe(mToken)]), mToken.Column,
     TTextFuzzy.Closest(mToken.Text, TArray<string>.Create('and', 'or', 'order', 'limit')));
 end;
 
@@ -899,7 +946,7 @@ var
 begin
   if Trim(AText) = '' then
   begin
-    raise EQueryError.Create('Leere Abfrage; Beispiel: classes where methods > 40', 1, '');
+    raise EQueryError.Create(cTexts[TLanguageText.EmptyQueryExampleClassesWhere].Text, 1, '');
   end;
   mParser := TQueryParser.Create;
   mAst := TQueryAst.Create;
@@ -971,7 +1018,7 @@ begin
     end;
     mIssue := Default(TConfigurationIssue);
     mIssue.IsError := True;
-    mIssue.Message := Format('Abfrage "%s", Spalte %d: %s', [mQuery.Name, mColumn, mError]);
+    mIssue.Message := cTexts[TLanguageText.QueryColumn].Fmt([mQuery.Name, mColumn, mError]);
     mIssue.Range := mQuery.QueryRange;
     // Auf der Zeile des Texts steht die Stelle genau, sonst gilt der ganze Text.
     if (mColumn > 0) and (mQuery.QueryRange.StartPos.Line = mQuery.QueryRange.EndPos.Line) then
@@ -986,5 +1033,8 @@ begin
     Result := Result + [mIssue];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Language', cTexts);
 
 end.

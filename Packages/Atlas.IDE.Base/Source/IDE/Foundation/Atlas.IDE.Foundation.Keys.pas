@@ -101,6 +101,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   Atlas.Core.Commands.KeyConflicts,
+  Atlas.Core.Commands.KeyStroke,
   Atlas.UI.Strings;
 
 { TAtlasIdeKeyBinding.TBinding }
@@ -146,7 +147,8 @@ procedure TAtlasIdeKeyBinding.TBinding.Execute(const Context: IOTAKeyContext; Ke
   var BindingResult: TKeyBindingResult);
 begin
   BindingResult := krHandled;
-  if (FOwner <> nil) and Assigned(FOwner.FAction) then
+  // Denselben Tastendruck nicht ein zweites Mal ausführen, wenn ihn das Kontextmenü über sein Kürzel schon nahm.
+  if (FOwner <> nil) and Assigned(FOwner.FAction) and TAtlasKeyStroke.Claim(KeyCode, Cardinal(GetMessageTime)) then
   begin
     // Keine Exception an die IDE (#493).
     TAtlasGuard.Run(FOwner.FFeature, FOwner.FAction);

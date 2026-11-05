@@ -101,6 +101,15 @@ begin
   end;
 end;
 
+/// <summary>Gründe für unlesbare Aufträge in der Sprache der Oberfläche (#1458).</summary>
+function InboxTexts: TAtlasBuildInboxTexts;
+begin
+  Result := Default(TAtlasBuildInboxTexts);
+  Result.Unreadable := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestUnreadable);
+  Result.NoProject := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestNoProject);
+  Result.UnknownMode := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRequestUnknownMode);
+end;
+
 function ErrorCount(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
 var
   Message: TAtlasCompilerMessage;
@@ -121,7 +130,7 @@ var
   Reason, mFolder: string;
   OnMessage: TAtlasBuildInboxProc;
 begin
-  if not TAtlasBuildInbox.Take(ARequestFile, Request, Reason) then
+  if not TAtlasBuildInbox.Take(ARequestFile, InboxTexts, Request, Reason) then
   begin
     Exit;
   end;

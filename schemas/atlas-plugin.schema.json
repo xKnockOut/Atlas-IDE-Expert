@@ -412,7 +412,7 @@
     "AnalysisEnabled": {
       "type": "boolean",
       "default": true,
-      "description": "Modul Analyse (#1454): Architekturübersicht, Unit-Beziehungen, Symbolpfad und Hotspots; aus = keine dieser Fenster, Befehle und Menüeinträge. Die Einzelschalter behalten ihre Werte.",
+      "description": "Modul Analyse (#1454): Architekturübersicht, Unit-Beziehungen, Symbolpfad, Hotspots und Code Lens mit Code-Metriken (#1756); aus = keine dieser Fenster, Befehle, Menüeinträge und Marken im Editor. Die Einzelschalter behalten ihre Werte.",
       "x-key": "analysis.enabled",
       "x-area": "general",
       "x-page": "Allgemein",
@@ -608,6 +608,33 @@
       "x-captionEn": "Colour statements",
       "x-issue": "#653"
     },
+    "NestedRoutines": {
+      "type": "string",
+      "enum": [
+        "outer",
+        "deeper",
+        "color"
+      ],
+      "default": "deeper",
+      "description": "Lokale Routinen in Paarfarben, Blocklinien und mitlaufendem Kopf: outer = wie die äußere Routine, deeper = eine Stufe tiefer, color = eigene Farbe (highlight.nestedRoutineColorLight/Dark) mit gestrichelter Blocklinie.",
+      "x-key": "highlight.nestedRoutines",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
+      "x-issue": "#1788"
+    },
+    "NestedRoutineBand": {
+      "type": "boolean",
+      "default": false,
+      "description": "Zeilen lokaler Routinen vom Kopf bis zum end schwach in ihrer Farbe hinterlegen.",
+      "x-key": "highlight.nestedRoutineBand",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
+      "x-issue": "#1788"
+    },
     "InactiveDim": {
       "type": "boolean",
       "default": true,
@@ -733,8 +760,8 @@
       "x-page": "Editor",
       "x-quickToggle": true,
       "x-drawing": true,
-      "x-caption": "Marke „ohne Self“",
-      "x-captionEn": "“no Self” marker",
+      "x-caption": "Marke „braucht kein Self“",
+      "x-captionEn": "“Self unused” marker",
       "x-issue": "#686"
     },
     "BlockEndLabels": {
@@ -810,7 +837,7 @@
       "x-area": "editor",
       "x-feature": "CodeLens",
       "x-page": "Editor",
-      "x-parent": "metrics",
+      "x-parent": "analysis.enabled",
       "x-node": "editor.codeLens",
       "x-quickToggle": true,
       "x-drawing": true,
@@ -2469,6 +2496,28 @@
       "x-parent": "highlight.pairColors",
       "x-node": ""
     },
+    "NestedRoutineColorLight": {
+      "type": "string",
+      "default": "",
+      "description": "Eigene Farbe lokaler Routinen im hellen Schema (#RRGGBB); leer = Vorgabe der Palette.",
+      "x-key": "highlight.nestedRoutineColorLight",
+      "x-area": "highlighting",
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": "",
+      "x-issue": "#1788"
+    },
+    "NestedRoutineColorDark": {
+      "type": "string",
+      "default": "",
+      "description": "Eigene Farbe lokaler Routinen im dunklen Schema (#RRGGBB); leer = Vorgabe der Palette.",
+      "x-key": "highlight.nestedRoutineColorDark",
+      "x-area": "highlighting",
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": "",
+      "x-issue": "#1788"
+    },
     "ProblemsStatusCounter": {
       "type": "boolean",
       "default": true,
@@ -2633,6 +2682,16 @@
       "x-format": "shortcut",
       "x-page": "Befehle",
       "x-issue": "#909"
+    },
+    "CheckFileKey": {
+      "type": "integer",
+      "default": 57424,
+      "description": "Tastenkürzel für „Datei jetzt prüfen“ (Vorgabe Strg+Umschalt+Alt+P): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von problems.update (im Live-Modus ohne die Wartezeit); 0 = keins.",
+      "x-key": "keys.checkFile",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#1744"
     },
     "GotoInterfaceKey": {
       "type": "integer",
@@ -3894,6 +3953,14 @@
       "x-key": "diagnostics.bugReport.anonymize",
       "x-area": "general",
       "x-page": "Start und Updates"
+    },
+    "LogNames": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "diagnostics.log.names",
+      "x-area": "general",
+      "x-page": "Start und Updates",
+      "x-issue": "#1478"
     },
     "UnitSearchEnabled": {
       "type": "boolean",

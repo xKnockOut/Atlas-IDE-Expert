@@ -2,8 +2,9 @@
 
 // Regel handle-leak aus Atlas.Common.Rules.Builtin.Flow (#269): Ein Windows-Handle aus der Tabelle der Paare
 // (CreateFile/CloseHandle, GetDC/ReleaseDC …) wird in einer lokalen Variablen geöffnet, und ein Weg erreicht das
-// normale Ende der Routine, ohne es zu schließen oder weiterzugeben. Bei if über die Prüfung des Handles folgt der
-// Weg nur dem Zweig, in dem das Öffnen gelang. Korrektur: try … finally Schließen end um die folgenden Anweisungen.
+// normale Ende der Routine, ohne es zu schließen oder weiterzugeben. Bei if über die Prüfung des Handles (auch über
+// einen Merker, Result := H <> 0; if Result then …) folgt der Weg nur dem Zweig, in dem das Öffnen gelang.
+// Korrektur: try … finally Schließen end um die folgenden Anweisungen.
 
 interface
 
@@ -35,7 +36,28 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles;
+  Atlas.Common.Rules.Builtin.Flow.HandleLeak.Handles,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFlowHandleLeakText = (AndWord, NeverClosed, NotAlwaysClosed, Add, WrapTry, Title, VerbOne, VerbMany);
+
+const
+  cTexts: array[TFlowHandleLeakText] of TAtlasText = (
+    (De: ' und '; En: ' and '),
+    (De: '%s %s nie mit %s geschlossen (Handle-Leck).'; En: '%s %s never closed with %s (handle leak).'),
+    (De: '%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).';
+     En: '%s %s not closed with %s on every path (handle leak).'),
+    (De: '%s ergänzen'; En: 'Add %s'),
+    (De: 'In try … finally %s einschließen'; En: 'Wrap in try … finally %s'),
+    (De: 'Windows-Handle wird nicht geschlossen'; En: 'Windows handle is not closed'),
+    (De: 'wird'; En: 'is'),
+    (De: 'werden'; En: 'are'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Was ein Knoten selbst auswertet: einfache Anweisungen ganz, bei if, case und Schleifen die Bedingung
 /// bzw. der Kopf, with ganz (with H do … gibt das Handle weiter).</summary>
@@ -86,6 +108,78 @@ begin
   end;
 end;
 
+/// <summary>ANode ist AName := ….</summary>
+function IsAssignTo(ANode: TSyntaxNode; const AName: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName);
+end;
+
+/// <summary>Zuweisungen AName := … unter ABody (ohne eingebettete Routinen), die zwischen AFrom und ATo stehen.
+/// </summary>
+function AssignmentsTo(ABody: TSyntaxNode; const AName: string; AFrom, ATo: Integer): TArray<TSyntaxNode>;
+var
+  Found: TArray<TSyntaxNode>;
+  Body: TSyntaxNode;
+  Name: string;
+  From, Till: Integer;
+begin
+  Found := nil;
+  Body := ABody;
+  Name := AName;
+  From := AFrom;
+  Till := ATo;
+  // Iterativ (Bericht M1).
+  ABody.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode <> Body) and IsRoutineBody(ANode) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if IsAssignTo(ANode, Name) and (ANode.StartOffset > From) and (ANode.EndOffset < Till) then
+      begin
+        Found := Found + [ANode];
+      end;
+    end);
+  Result := Found;
+end;
+
+/// <summary>Merker als Bedingung (#1519): Result := H &lt;&gt; INVALID_HANDLE_VALUE; if Result then …. Die
+/// Bedingung ist eine Variable (auch not X oder in Klammern), der ABody zwischen dem Öffnen und dem if genau
+/// einmal einen Ausdruck zuweist; dann gilt dessen Bedeutung. Spätere Zuweisungen (im then-Zweig) zählen nicht.
+/// 0 sonst.</summary>
+function FlagSuccess(ABody, AIf, ACondition: TSyntaxNode; const AHandle: TOpenedHandle;
+  AOpenCall: TSyntaxNode): Integer;
+var
+  Node: TSyntaxNode;
+  Sign: Integer;
+  Assignments: TArray<TSyntaxNode>;
+begin
+  Result := 0;
+  Sign := 1;
+  Node := ACondition;
+  while (Node.ChildCount = 1) and ((Node.Kind = TSyntaxKind.ParenExpr) or
+    ((Node.Kind = TSyntaxKind.UnaryExpr) and SameText(Node.Name, 'not'))) do
+  begin
+    if Node.Kind = TSyntaxKind.UnaryExpr then
+    begin
+      Sign := -Sign;
+    end;
+    Node := Node[0];
+  end;
+  if (ABody = nil) or (Node.Kind <> TSyntaxKind.Identifier) then
+  begin
+    Exit;
+  end;
+  Assignments := AssignmentsTo(ABody, Node.Name, AOpenCall.EndOffset, AIf.StartOffset);
+  if Length(Assignments) = 1 then
+  begin
+    Result := Sign * OpenSuccess(Assignments[0][1], AHandle, AOpenCall);
+  end;
+end;
+
 /// <summary>Variablen und Inline-Variablen der Routine (ohne Parameter und eingebettete Routinen).</summary>
 function DeclaredLocals(ARoutine: TSyntaxNode): TArray<string>;
 var
@@ -126,7 +220,7 @@ begin
   begin
     if Result <> '' then
     begin
-      Result := Result + ' und ';
+      Result := Result + cTexts[TFlowHandleLeakText.AndWord].Text;
     end;
     Result := Result + Handle.Path;
   end;
@@ -136,19 +230,19 @@ function LeakMessage(const ALeaked: TArray<TOpenedHandle>; ANever: Boolean): str
 var
   Verb: string;
 begin
-  Verb := 'wird';
+  Verb := cTexts[TFlowHandleLeakText.VerbOne].Text;
   if Length(ALeaked) > 1 then
   begin
-    Verb := 'werden';
+    Verb := cTexts[TFlowHandleLeakText.VerbMany].Text;
   end;
   if ANever then
   begin
-    Result := Format('%s %s nie mit %s geschlossen (Handle-Leck).', [HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NeverClosed].Fmt([HandleNames(ALeaked), Verb,
       ALeaked[0].CloseName]);
   end
   else
   begin
-    Result := Format('%s %s nicht auf jedem Weg mit %s geschlossen (Handle-Leck).', [HandleNames(ALeaked), Verb,
+    Result := cTexts[TFlowHandleLeakText.NotAlwaysClosed].Fmt([HandleNames(ALeaked), Verb,
       ALeaked[0].CloseName]);
   end;
 end;
@@ -320,6 +414,10 @@ begin
   begin
     Result := OpenSuccess(Condition, AHandle, AOpenCall);
   end;
+  if (Result = 0) and (Condition <> nil) then
+  begin
+    Result := FlagSuccess(FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, Condition, AHandle, AOpenCall);
+  end;
 end;
 
 /// <summary>Nachfolger, denen der Weg mit offenem Handle folgt: bei if über die Prüfung des Handles nur der
@@ -446,7 +544,7 @@ begin
   begin
     Body := Body + ';' + FLineBreak + AOuter + AHandles[Index].CloseText;
   end;
-  Result := [TRuleFix.Create(Format('%s ergänzen', [AHandles[0].CloseName]),
+  Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.Add].Fmt([AHandles[0].CloseName]),
     [TRuleEdit.Create(TTextRange.Create(AStatement.EndPos, AStatement.EndPos), Body)])];
 end;
 
@@ -505,7 +603,7 @@ begin
     Exit;
   end;
   LineStart := First.StartOffset - Length(Inner);
-  Result := [TRuleFix.Create(Format('In try … finally %s einschließen', [AHandles[0].CloseName]),
+  Result := [TRuleFix.Create(cTexts[TFlowHandleLeakText.WrapTry].Fmt([AHandles[0].CloseName]),
     [TRuleEdit.Create(TTextRange.Create(PositionAt(LineStart), Last.EndPos),
     Outer + 'try' + FLineBreak + IndentedBody(LineStart, Last) + Outer + 'finally' + FLineBreak +
     ClosingLines(AHandles, Outer) + Outer + 'end')])];
@@ -677,7 +775,7 @@ end;
 
 function THandleLeakRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, 'Windows-Handle wird nicht geschlossen');
+  Result := TRuleDescriptor.Create(HandleLeakRuleId, TRuleSeverity.Warning, cTexts[TFlowHandleLeakText.Title].Text);
 end;
 
 class function THandleLeakRule.Pairs(const AOptions: string): TArray<string>;
@@ -696,5 +794,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Flow.HandleLeak', cTexts);
 
 end.

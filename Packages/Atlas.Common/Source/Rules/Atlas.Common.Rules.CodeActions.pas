@@ -35,7 +35,22 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCodeActionsText = (SuppressLine, SuppressFile, ApplyAllSafe);
+
+const
+  cTexts: array[TCodeActionsText] of TAtlasText = (
+    (De: '"%s" für diese Zeile unterdrücken'; En: 'Suppress "%s" for this line'),
+    (De: '"%s" für diese Datei unterdrücken'; En: 'Suppress "%s" for this file'),
+    (De: 'Alle sicheren Korrekturen anwenden'; En: 'Apply all safe fixes'));
+
+{$SCOPEDENUMS OFF}
 
 function Overlaps(const A, B: TTextRange): Boolean;
 
@@ -148,14 +163,14 @@ begin
     Exit;
   end;
   mAction := Default(TCodeAction);
-  mAction.Title := Format('"%s" für diese Zeile unterdrücken', [AFinding.RuleId]);
+  mAction.Title := cTexts[TCodeActionsText.SuppressLine].Fmt([AFinding.RuleId]);
   mAction.Kind := QuickFixKind;
   mAction.Edits := [TCodeActions.SuppressLine(AText, AFinding.Range.StartPos.Line, AFinding.RuleId)];
   mAction.RuleId := AFinding.RuleId;
   mAction.DiagnosticRange := AFinding.Range;
   mAction.Tag := RuleSuppressLineTag;
   Result := Result + [mAction];
-  mAction.Title := Format('"%s" für diese Datei unterdrücken', [AFinding.RuleId]);
+  mAction.Title := cTexts[TCodeActionsText.SuppressFile].Fmt([AFinding.RuleId]);
   mAction.Edits := [TCodeActions.SuppressFile(AText, AFinding.RuleId)];
   mAction.Tag := RuleSuppressFileTag;
   Result := Result + [mAction];
@@ -242,7 +257,7 @@ var
   mFix: TRuleFix;
 begin
   AAction := Default(TCodeAction);
-  AAction.Title := 'Alle sicheren Korrekturen anwenden';
+  AAction.Title := cTexts[TCodeActionsText.ApplyAllSafe].Text;
   AAction.Kind := FixAllKind;
   for mFinding in AFindings do
   begin
@@ -278,5 +293,8 @@ begin
     Result := Result + [Action];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.CodeActions', cTexts);
 
 end.

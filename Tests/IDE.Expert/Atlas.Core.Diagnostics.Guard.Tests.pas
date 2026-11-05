@@ -128,11 +128,15 @@ begin
   FOldFolder := TAtlasGuard.RotatingLog.Folder;
   TAtlasGuard.RotatingLog.Folder := FFolder;
   TAtlasGuard.Fuse.ResetAll;
+  // Diese Tests prüfen Inhalte der Zeilen; anonym schreibt das Protokoll sie als text#N (#1478, eigene Tests in
+  // Atlas.Core.Diagnostics.LogRedaction.Tests).
+  TAtlasGuard.SetLogNames(True);
 end;
 
 procedure TAtlasGuardTests.TearDown;
 begin
   TAtlasGuard.Fuse.ResetAll;
+  TAtlasGuard.SetLogNames(False);
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.StackOf := nil;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;

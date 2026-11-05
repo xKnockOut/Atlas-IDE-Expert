@@ -99,7 +99,8 @@ uses
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Workspace.Listings,
-  Shell.Workspace.Packages;
+  Shell.Workspace.Packages,
+  Atlas.Text.LogMarks;
 
 const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
@@ -233,8 +234,8 @@ begin
     [FParts.Setup.Priority, AElapsedMs, AResult.Parsed, AResult.FromCache, AResult.Missing, FParts.Index.UnitCount,
      AResult.ResolveMs, AResult.ParseMs, IfThen(AResult.Cancelled, ' cancelled', '')]) + MissText(AResult));
   FParts.Logger.Info(Format('Symbolindex für %s fertig in %d ms: %d Units, %d Symbole (%d neu eingelesen, %d aus dem Cache, %d fehlen)%s',
-    [FParts.Name, AElapsedMs, FParts.Index.UnitCount, FParts.Index.SymbolCount, AResult.Parsed, AResult.FromCache,
-     AResult.Missing, IfThen(AResult.Cancelled, ', abgebrochen', '')]));
+    [TLogMarks.Name(FParts.Name), AElapsedMs, FParts.Index.UnitCount, FParts.Index.SymbolCount, AResult.Parsed,
+     AResult.FromCache, AResult.Missing, IfThen(AResult.Cancelled, ', abgebrochen', '')]));
   if AResult.Cancelled then
   begin
     Exit;
@@ -256,8 +257,10 @@ end;
 
 procedure TShellWorkspaceIndexing.CacheWritten(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64);
 begin
-  // Wie oft und wie groß geschrieben wird (Rückmeldung 22.10.2026); ohne Pfad.
-  IndexEvent(Format('index project#%d cacheWrite %s units %d %d KB %d ms mem %d MB',
+  // Wie oft und wie groß geschrieben wird (Rückmeldung 22.10.2026); ohne Pfad. Das Zeilenformat ist festgelegt
+  // (#1478, docs/Diagnose.md): Einheiten außer „MB“ am Ende klein, damit ^\S+ index project#\d+ \w+ [\d a-z]+ mem \d+ MB$
+  // jede Speicherzeile trifft.
+  IndexEvent(Format('index project#%d cacheWrite %s units %d %d kb %d ms mem %d MB',
     [FParts.Setup.Priority, IfThen(ALibrary, 'library', 'project'), AUnits, ABytes div 1024, AElapsedMs,
      TShutdownLeaks.AllocatedBytes div (1024 * 1024)]));
 end;
@@ -289,8 +292,9 @@ begin
   // Sonst bliebe workspace/diagnostic bis zum nächsten Reload bei indexLoading (Code-Review A-04).
   // Start hält den alten Lauf an, bevor es ProjectPending setzt: Das hier trifft nur den eigenen.
   FParts.State.ProjectPending := False;
-  FParts.Logger.Error(Format('Fehler beim Aufbau des Symbolindex für %s: %s: %s', [FParts.Name, AError.ClassName,
-    AError.Message]));
+  FParts.Logger.Error(Format('Fehler beim Aufbau des Symbolindex für %s: %s: %s', [TLogMarks.Name(FParts.Name),
+    AError.ClassName,
+      TLogMarks.Text(AError.Message)]));
   IndexEvent(Format('index project#%d failed %s', [FParts.Setup.Priority, AError.ClassName]));
   try
     // Ohne aktiven Fortschritt ein No-op.
@@ -348,7 +352,7 @@ begin
   if ARequest.ReadOnlyCache then
   begin
     FParts.Logger.Info(Format('Cache %s wird von einer anderen Instanz geschrieben und hier nur gelesen',
-      [ARequest.CacheFile]));
+      [TLogMarks.Path(ARequest.CacheFile)]));
     // Auf deren Stand warten statt alles doppelt zu lesen (#62), begrenzt.
     ARequest.CacheBusy := CacheBusyOf(ARequest.CacheFile);
     ARequest.CacheWaitMs := cCacheWaitMs;
@@ -402,8 +406,9 @@ begin
   PrepareCache(ALoaded, ASettings, mRequest);
   Publish(ALoaded, mRequest);
   FParts.Logger.Info(Format('Symbolindex für %s (%s, %s): %d Projektdateien, %d Units der Suchpfade, %d der Bibliothek, Cache %s',
-    [ALoaded.ProjectFile, ALoaded.Project.Config, ALoaded.Project.Platform, Length(mRequest.Files),
-     Length(mRequest.SearchFiles), Length(mRequest.LibraryFiles), mRequest.CacheFile]));
+    [TLogMarks.Path(ALoaded.ProjectFile),
+      TLogMarks.Name(ALoaded.Project.Config), TLogMarks.Name(ALoaded.Project.Platform), Length(mRequest.Files),
+     Length(mRequest.SearchFiles), Length(mRequest.LibraryFiles), TLogMarks.Path(mRequest.CacheFile)]));
   IndexEvent(Format('index project#%d start files %d search %d library %d cache %s',
     [FParts.Setup.Priority, Length(mRequest.Files), Length(mRequest.SearchFiles), Length(mRequest.LibraryFiles),
      IfThen(mRequest.ReadOnlyCache, 'readOnly', 'write')]));

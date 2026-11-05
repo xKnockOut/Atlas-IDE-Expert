@@ -1,0 +1,309 @@
+# Build, test, debug
+
+Back to the [README](../../../README.md)
+
+## Build
+
+### Gate for hints and warnings
+
+- A summary after each build ("succeeded, but 2 warnings, 1 hint")
+- Optionally a build with warnings or hints counts as failed
+- Known legacy messages go into the baseline
+
+Settings: `build.zeroHints`, `build.warningsAsErrors`
+
+### Disable a compiler warning in place
+
+- A code action on a warning or hint of the last build:
+  - wraps the line, the routine or the unit in `{$WARN SYMBOL_DEPRECATED OFF}` … `ON` (or `{$HINTS OFF}`), with an optional reason comment,
+  - or turns the warning off in the project options.
+
+Settings: `refactoring.disableWarning`
+
+### Quick fixes for compiler messages
+
+| Message | Quick fix |
+|---|---|
+| H2443 | adds the missing unit |
+| E2003 | offers the units declaring the identifier |
+| H2077 | removes a dead assignment (keeping a call) |
+| W1035 | inserts `Result := Default(T);` |
+| W1057/W1058 | add an explicit string cast |
+
+- "Fix all in file" in one undo step
+
+Settings: `refactoring.compilerFixes`
+
+### Unit not found
+
+- On F2613/F1026 Atlas searches:
+  - the project folder
+  - the project group
+  - the other configurations
+  - the libraries of other platforms
+  - the index
+- It offers:
+  - to add the folder to the search path of this or all configurations (relative to the `.dproj`)
+  - or to add the unit to the project
+- Otherwise "only for Win32, Win64" or the searched places
+
+Settings: `refactoring.missingUnit`
+
+### Check before compiling
+
+- The units changed since the last successful compile are checked for syntax errors and rule errors before each build
+- Report or cancel the build
+
+Settings: `build.gate`
+
+### Release build guard
+
+- Checks the project options before a release build (DEBUG symbol, debug information, …)
+
+### Build once on opening
+
+- As soon as the IDE is idle
+- Optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to
+- Afterwards the project is back as it was
+
+### Compiler switches at the cursor
+
+- A dockable window lists the effective `R`, `Q`, `O`, `C`, `I`, `A`, `HINTS`, `WARNINGS`, disabled warnings and active symbols at the cursor position
+- Each with its origin: project option, compiler default, include file or directive with line, e.g. `R−, set in line 10`
+- Plus platform and configuration
+- Values that differ from the .dproj are highlighted
+- Double-click jumps to the directive or opens the project options
+- Optionally the deviations stand in the status bar (`R− Q− HINTS OFF`)
+- Command `Atlas.CompilerSwitches`
+
+Settings: `build.compilerSwitches`, `build.showSwitchesInStatusBar`
+
+### Build tool for Claude Code
+
+- `build_project` builds open projects with the IDE's compiler, even in the Starter edition
+
+## Test
+
+### DUnitX tests
+
+- Run from the editor
+- A single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
+
+### Run affected tests (#1353)
+
+Available from the *Atlas* menu and the command palette.
+
+- Atlas compares the working copy with the base:
+  - Git: merge base with `main`
+  - SVN: `BASE`
+  - uncommitted changes included
+- It finds the changed routines, types and constants:
+  - interface changes count for the symbol
+  - uses and initialization for the whole unit
+  - `.dfm` for the form class
+  - `.inc` for the including units
+  - comments not at all
+- It follows their impact up to the depth and runs only the DUnitX tests they reach, each with its reason in the messages view.
+- If more than 80 % of a fixture is affected, the whole fixture runs.
+- Optionally a Git hook offers the tests before every commit.
+- The same selection is available on the command line (`--affected-tests`) and for Claude Code (`get_affected_tests`).
+
+Settings: `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`
+
+### Launch profiles
+
+- For parameters, working folder, environment and host application
+
+## Debug: values and display
+
+### Values in the hover while debugging
+
+- See [Understanding](Understanding.md)
+
+### Visualizers for common types
+
+- One-line summaries instead of raw object dumps in the hover, Watches and Local Variables, e.g.:
+  - `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]`
+  - `TFDQuery · dsEdit · 3/10 · Name = Meier, Ort = Berlin`
+  - `clWebDodgerBlue · $1E90FF`
+- The magnifier opens a viewer with a table, hex view, JSON tree, image or color swatch.
+- Lists, dictionaries, datasets, bytes and streams, JSON, colors, TGUID, TPoint/TRect/TSize and bitmaps, each switchable
+- Evaluation with a time limit and without side effects unless allowed (`debug.visualizers.evaluation`)
+
+Settings: `debug.visualizers`
+
+### Custom value display per type
+
+- Put `// atlas-debug: '{Name}, {City} (No {No})'` or `[AtlasDebugDisplay('…')]` (bundled unit `Atlas.Debug.Attributes`) above a class
+  - `TCustomer` then shows as `Miller, Berlin (No 4711)` in the hover, Watches and Local Variables
+- Descendants inherit the rule.
+- Third-party classes such as `TFDConnection` get one via `debugDisplayRules` in the `.atlas` project file.
+- Placeholders:
+  - with format (`{Amount:0.00}`)
+  - `{?Field}` instead of losing the whole value when something cannot be evaluated
+  - getters and calls only with `debug.displayRules.allowCalls`
+- `// atlas-debug-children: Name, City` limits the children in the viewer ("All fields" stays available).
+- The editor completes placeholders, rule `debug-display-placeholder` flags unknown ones.
+
+Settings: `debug.displayRules`
+
+### Inline values while debugging
+
+- While the process is stopped, the values of local variables, parameters, loop variables and fields of `Self` stand dimmed at the end of the lines of the current routine (`Count = 3, Name = 'Meier'`)
+- Values changed since the last step are highlighted
+- `TDateTime` shows as a date
+- Only plain names are evaluated, never calls or properties
+- In small time slices so F8 stays fast
+
+Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
+
+### "No access to value" explained
+
+- When the debugger only says "Inaccessible value" or "... inaccessible here due to optimization" for a variable, the hover and the inline values show `‹no access›`.
+- The hover names the cause:
+  - started in Release
+  - `$D-`/`$L-`
+  - `$O+` with a register
+  - the variable's lifetime
+  - `inline`
+  - RTL/VCL without debug DCUs
+- It names where the switch comes from.
+- It offers fixes with a preview:
+  - restart with Debug
+  - `{$OPTIMIZATION OFF}`/`ON` around the routine
+  - `{$O-}` at the start of the unit
+  - use debug DCUs
+- Without a match it lists what was checked.
+
+Settings: `debug.explainUnavailable`
+
+### Completion in debugger dialogs
+
+- In Evaluate/Modify (Ctrl+F7), in a watch expression and in the condition and eval expression of a breakpoint, the Atlas popup offers names from the right scope:
+  - locals, parameters, fields of `Self`
+  - units and globals
+  - members after `.`
+- The scope is:
+  - the execution point while the program is stopped
+  - the breakpoint's line in the breakpoint dialog
+  - otherwise the editor's cursor line
+- Down in an empty field shows the last 20 expressions of the project.
+
+Settings: `debug.completionInDialogs`
+
+### Evaluate window
+
+- A dockable window "Atlas: Evaluate" with several expressions that are evaluated again at every stop
+- Values that changed since the last stop are highlighted.
+- Objects, records and arrays expand into their fields (taken from the Atlas index, each evaluated on its own).
+- The selected value shows as text with visible control characters, as the lines of a `TStrings`, as formatted JSON or as hex.
+- While the values come in one by one the window stays responsive: the tree is only changed where something changed instead of being rebuilt every time; expanded rows, the selection and the scroll position stay put. Tree and value view fill the window at any size, the key help wraps to the width.
+- "Allow side effects" (off) permits function calls and getters.
+
+| Key / command | Action |
+|---|---|
+| "Modify …" | sets a new value |
+| Ctrl+Enter | pins an expression for the project |
+| Down in the empty field | shows the last 50 expressions |
+| Ctrl+F7 | opens the window with the expression under the cursor |
+| Shift+Ctrl+F7, or command "Evaluate/Modify (IDE dialog)" | opens the IDE dialog |
+
+Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
+
+## Debug: stepping and breaking
+
+### Smart step into
+
+- Shortcut Ctrl+Alt+F7
+- On `Save(Customer.Name, Format(…))` Atlas lists the calls of the paused line in execution order:
+  - `1 TCustomer.GetName (Getter)`
+  - `2 Format`
+  - `3 Save`
+- It steps straight into the one you pick by digit or Enter, without walking through the others.
+- Virtual calls follow the runtime type.
+- Calls without source or debug DCUs are greyed out.
+- A single call acts like F7.
+
+Settings: `debug.stepIntoTarget`
+
+### Break on next event
+
+Run menu and command palette. "Which code runs when I click here?"
+
+- Pick event kinds (mouse, keyboard, timer, window, database, actions, other) and optionally one form or only the visible ones.
+- Atlas sets temporary breakpoints on all matching handlers from the forms and from assignments in code (`Btn.OnClick := …`).
+- It stops in the next one that runs, removes them all and shows `Stopped: btnOk.OnClick → TfrmCustomer.btnSaveClick` (shared handlers resolved via `Sender.Name`).
+- "Keep watching" arms them again.
+- Frequent events (`OnPaint`, `OnMouseMove`, `OnUpdate`, timers under 100 ms) only when chosen explicitly (`debug.breakOnNextEvent.excluded`).
+
+Settings: `debug.breakOnNextEvent`
+
+### Step filters
+
+- F7 no longer stops in:
+  - one-statement property getters and setters
+  - trivial routines (one assignment to Result or a field)
+  - class operators or constructors that only call `inherited`
+- It skips every routine that matches a pattern such as `*.Log*` or `TBaseForm.*`.
+- Right-click a method and choose “Skip when stepping into” to add it.
+- A breakpoint inside a skipped routine still stops; Shift+F7 steps in once anyway.
+- The dockable window “Step filters” shows how many routines of the project each kind and pattern matches.
+
+Settings: `debug.stepFilters`
+
+## Debug: exceptions
+
+### Exception history
+
+- Dockable window “Atlas: Exceptions” with every exception of the debug session:
+  - time, class, message from the IDE's dialog
+  - count of equal exceptions at the same place
+  - location, thread
+- Filter by class and text
+- Enter jumps to the line
+- Ctrl+C copies class, message and call stack
+- “Ignore class from now on” continues silently on that class
+
+Settings: `debug.exceptionHistory`
+
+### Just my code
+
+- After an exception in library code Atlas jumps to the first line of your own code in the call stack and marks it.
+- F7 into code without source runs on until it returns.
+- The exception history shows library frames faded and collapsed to “… 7 library frames”.
+- Own code = project folders plus `debug.ownCodeFolders`
+
+Settings: `debug.justMyCode`
+
+### Exception bar instead of the dialog
+
+- When the debugger stops on an exception, a bar at the top of the editor shows:
+  - class, message, thread
+  - how often it came at this place
+  - the first line of your own code (“3 levels hidden”)
+- Buttons:
+  - Break (F8/Esc)
+  - Continue (F9)
+  - Ignore class
+  - Ignore only here (class + unit + line per project, continued silently next time)
+  - Copy message
+- In Delphi 12 and 13 Atlas closes the IDE's dialog for it, otherwise the dialog stays and the bar follows.
+
+Settings: `debug.exceptionBanner` (off until the study in `docs/Studie-Exception-Dialog.md` is positive)
+
+### Access violation explained
+
+- When the debugger stops on an access violation in your own code, Atlas splits the statements of the line into access chains (`Order.Customer.Address.City`, `List[I].Name`, `Self.FData^`) and evaluates them from the left.
+- The exception bar:
+  - says "`Order.Customer` is nil" with the field at the read address ("access to field `FAddress` (offset $1C)", confirmed by the debugger or estimated)
+  - lists the checked links with ✓/✗
+  - offers "Where is `Customer` assigned?", "Evaluate expression" and "Copy explanation"
+- It also recognises:
+  - freed objects (memory manager fill patterns such as `$80808080` and `$FEEEFEEE`)
+  - an index outside a dynamic array
+- Without a clear cause it says "Cause not clear".
+- The culprit is underlined in the editor until you continue.
+- Getters and function calls are not evaluated unless `debug.explainAccessViolation.allowCalls` is on.
+- Without the exception bar the result goes to the messages.
+
+Settings: `debug.explainAccessViolation`

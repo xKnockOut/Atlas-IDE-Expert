@@ -209,11 +209,61 @@ uses
   System.Classes,
   System.Diagnostics,
   System.Math,
-  Atlas.Core.Diagnostics.BugReport;
+  Atlas.Core.Diagnostics.BugReport,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TTimingText = (Context, Entries, Visible, Source, Entries2, StepLastMeanMaximumBudget, AtlasDiagnosticMode479,
+    Created, Platform, Budget409ContextMsSource, ContainsNoSourceCodeFile, TimesInMsLastQuery, QueriesNewestFirst,
+    NoQueryMeasuredYet, Settings);
+{$SCOPEDENUMS OFF}
 
 const
-  StepNames: array[TAtlasTimingStep] of string = ('Kontext', 'Quelle', 'Filtern und Sortieren', 'Zeichnen',
-    'Bis zur Liste');
+  cTexts: array[TAtlasLanguage, TTimingText] of string = (
+    (' | Kontext ',
+     ' | Einträge ',
+     ', sichtbar ',
+     'Quelle ',
+     'Einträge',
+     'Schritt | letzte | Mittel | Maximum | Budget',
+     '# Atlas-Diagnosemodus (#479)',
+     'Erstellt: ',
+     ', Plattform: ',
+     'Budget (#409): Kontext %d ms, Quelle %d ms, Filtern und Sortieren %d ms, Zeichnen %d ms, bis zur Liste %d ms. (!) = über dem Budget.',
+     'Enthält keinen Quelltext; Dateinamen: ',
+     '## Zeiten in ms: letzte Abfrage, Mittelwert und Maximum der letzten %d',
+     '## Abfragen, neueste zuerst',
+     'Noch keine Abfrage gemessen.',
+     '## Einstellungen'),
+    (' | Context ',
+     ' | Entries ',
+     ', visible ',
+     'Source ',
+     'Entries',
+     'Step | last | mean | maximum | budget',
+     '# Atlas diagnostic mode (#479)',
+     'Created: ',
+     ', platform: ',
+     'Budget (#409): context %d ms, source %d ms, filter and sort %d ms, draw %d ms, until the list %d ms. (!) = over budget.',
+     'Contains no source code; file names: ',
+     '## Times in ms: last query, mean and maximum of the last %d',
+     '## Queries, newest first',
+     'No query measured yet.',
+     '## Settings'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TTimingText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
+const
+  StepNames: array[TAtlasLanguage, TAtlasTimingStep] of string = (
+    ('Kontext', 'Quelle', 'Filtern und Sortieren', 'Zeichnen', 'Bis zur Liste'),
+    ('Context', 'Source', 'Filter and sort', 'Draw', 'Until the list'));
   NoValue = '–';
 
 function Invariant: TFormatSettings;
@@ -742,7 +792,7 @@ begin
   begin
     Result := Result + ', ' + AQuery.FileName;
   end;
-  Result := Result + ' | Kontext ' + TAtlasTimingRows.Ms(AQuery.ContextMs) +
+  Result := Result + UiText(TTimingText.Context) + TAtlasTimingRows.Ms(AQuery.ContextMs) +
     Mark(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Context, AQuery.ContextMs));
   for Provider in AQuery.Providers do
   begin
@@ -752,21 +802,21 @@ begin
   end;
   for Step in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
   begin
-    Result := Result + ' | ' + StepNames[Step] + ' ' + TAtlasTimingRows.Ms(AQuery.Value(Step)) +
+    Result := Result + ' | ' + StepNames[TAtlasTextLanguage.Current, Step] + ' ' + TAtlasTimingRows.Ms(AQuery.Value(Step)) +
       Mark(TAtlasTimingBudget.Exceeded(Step, AQuery.Value(Step)));
   end;
-  Result := Result + ' | Einträge ' + IntToStr(AQuery.Count) + ', sichtbar ' + IntToStr(AQuery.Shown);
+  Result := Result + UiText(TTimingText.Entries) + IntToStr(AQuery.Count) + UiText(TTimingText.Visible) + IntToStr(AQuery.Shown);
 end;
 
 function RowCaption(const ARow: TAtlasTimingRow): string;
 begin
   case ARow.Kind of
     TAtlasTimingRowKind.Provider:
-      Result := 'Quelle ' + ARow.Name;
+      Result := UiText(TTimingText.Source) + ARow.Name;
     TAtlasTimingRowKind.Entries:
-      Result := 'Einträge';
+      Result := UiText(TTimingText.Entries2);
   else
-    Result := StepNames[ARow.Step];
+    Result := StepNames[TAtlasTextLanguage.Current, ARow.Step];
   end;
 end;
 
@@ -790,7 +840,7 @@ procedure AddStepTable(ALines: TStrings; const AQueries: TArray<TAtlasQueryTimin
 var
   mRow: TAtlasTimingRow;
 begin
-  ALines.Add('Schritt | letzte | Mittel | Maximum | Budget');
+  ALines.Add(UiText(TTimingText.StepLastMeanMaximumBudget));
   ALines.Add('--- | --- | --- | --- | ---');
   for mRow in TAtlasTimingRows.Build(AQueries) do
   begin
@@ -807,21 +857,20 @@ var
 begin
   Lines := TStringList.Create;
   try
-    Lines.Add('# Atlas-Diagnosemodus (#479)');
+    Lines.Add(UiText(TTimingText.AtlasDiagnosticMode479));
     Lines.Add('');
-    Lines.Add('Erstellt: ' + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
-    Lines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + ', Plattform: ' + AInput.Platform);
-    Lines.Add(Format('Budget (#409): Kontext %d ms, Quelle %d ms, Filtern und Sortieren %d ms, Zeichnen %d ms, ' +
-      'bis zur Liste %d ms. (!) = über dem Budget.', [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
+    Lines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
+    Lines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
+    Lines.Add(Format(UiText(TTimingText.Budget409ContextMsSource), [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
       TAtlasTimingBudget.FilterSortMs, TAtlasTimingBudget.DrawMs, TAtlasTimingBudget.FirstVisibleMs]));
-    Lines.Add('Enthält keinen Quelltext; Dateinamen: ' + BoolToStr(AInput.FileNames, True) + '.');
+    Lines.Add(UiText(TTimingText.ContainsNoSourceCodeFile) + BoolToStr(AInput.FileNames, True) + '.');
     Lines.Add('');
-    Lines.Add(Format('## Zeiten in ms: letzte Abfrage, Mittelwert und Maximum der letzten %d',
+    Lines.Add(Format(UiText(TTimingText.TimesInMsLastQuery),
       [Length(AQueries)]));
     Lines.Add('');
     AddStepTable(Lines, AQueries);
     Lines.Add('');
-    Lines.Add('## Abfragen, neueste zuerst');
+    Lines.Add(UiText(TTimingText.QueriesNewestFirst));
     Lines.Add('');
     for Index := High(AQueries) downto 0 do
     begin
@@ -829,14 +878,14 @@ begin
     end;
     if Length(AQueries) = 0 then
     begin
-      Lines.Add('Noch keine Abfrage gemessen.');
+      Lines.Add(UiText(TTimingText.NoQueryMeasuredYet));
     end;
     Lines.Add('');
     if AInput.Plugin <> '' then
     begin
       Lines.Add(AInput.Plugin);
     end;
-    Lines.Add('## Einstellungen');
+    Lines.Add(UiText(TTimingText.Settings));
     Lines.Add('');
     // Pfade (Serverpfad u. a.) wie im Fehlerbericht kürzen; Benutzer- und Rechnername ersetzen.
     Settings := TAtlasBugReport.AnonymizePaths(AInput.Settings, nil, AInput.Identity);
@@ -848,6 +897,7 @@ begin
 end;
 
 initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Timing', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
   TAtlasQueryTimings.FShared := TAtlasQueryTimings.Create;
 
 finalization

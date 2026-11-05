@@ -41,12 +41,12 @@ uses
   Atlas.Core.Projects.Setup,
   System.SysUtils,
   System.Classes,
-  Vcl.ExtCtrls,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
   Atlas.UI.Welcome.Setup,
-  Atlas.IDE.Welcome.Setup.Paths;
+  Atlas.IDE.Welcome.Setup.Paths,
+  Atlas.IDE.Welcome.Setup.ProjectEvents;
 
 type
   /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
@@ -94,13 +94,14 @@ type
     FShown: Boolean;
     FListener: Integer;
     FQueued: Boolean;
-    /// <summary>Wechsel des aktiven Projekts meldet die IDE nicht: einmal je Sekunde vergleichen.</summary>
-    FWatch: TTimer;
+    /// <summary>Meldet ein anderes aktives Projekt und geöffnete oder geschlossene Projekte (vorher wurde jede
+    /// Sekunde verglichen, mit Dateizugriffen im Hauptthread).</summary>
+    FEvents: TAtlasIdeSetupProjectEvents;
     FWatched: string;
     FBaseline: TBaselineRun;
     FPaths: TPathsRun;
     FThread: TThread;
-    procedure WatchTick(Sender: TObject);
+    procedure TargetMayChange;
     procedure ProjectsChanged(const AId: string);
     procedure BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
       const AError: string);
@@ -501,17 +502,18 @@ begin
       end);
   end;
   FTitle := '';
-  if FWatch = nil then
+  if FEvents = nil then
   begin
-    FWatch := TTimer.Create(nil);
-    FWatch.Interval := 1000;
-    FWatch.OnTimer := WatchTick;
+    FEvents := TAtlasIdeSetupProjectEvents.Create(
+      procedure
+      begin
+        TargetMayChange;
+      end);
   end;
-  FWatch.Enabled := True;
   Refresh;
 end;
 
-procedure TAtlasIdeSetup.WatchTick(Sender: TObject);
+procedure TAtlasIdeSetup.TargetMayChange;
 var
   Open: Boolean;
   Project: string;
@@ -537,7 +539,7 @@ begin
     Exit;
   end;
   FStarted := False;
-  FreeAndNil(FWatch);
+  FreeAndNil(FEvents);
   if FListener >= 0 then
   begin
     TAtlasWelcomeSections.Default.RemoveListener(FListener);

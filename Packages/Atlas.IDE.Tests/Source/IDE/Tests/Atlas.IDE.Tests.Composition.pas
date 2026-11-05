@@ -64,6 +64,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tests.SettingsSection,
   ToolsAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -318,13 +319,20 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im Untermenü „Tests“ von Atlas im Kontextmenü des Editors.</summary>
+function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsEditorMenuGroup);
+end;
+
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
-    MenuEntry('Atlas.RunTest', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.DebugTest', TAtlasMenuPlace.EditorContext)];
+    ContextEntry('Atlas.RunTest'),
+    ContextEntry('Atlas.DebugTest')];
 end;
 
 procedure TAtlasTestsModule.ApplySettings;
@@ -384,6 +392,15 @@ begin
   Result := TAtlasIdeTestDebugger.LocateByName(AProject, AFullName, AFileName, ALine);
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasTestsCompilerSection.ProvideIn(GScope);
+  TAtlasTestsDebugSection.ProvideIn(GScope);
+  TAtlasTestsEditorSection.ProvideIn(GScope);
+end;
+
 function TAtlasTestsModule.Busy: Boolean;
 begin
   Result := (GTests <> nil) and GTests.Busy;
@@ -434,6 +451,7 @@ begin
   GScope.Provide(IAtlasTestRunner, mRef);
   // Vertrag zwischen Modulen: Karte Tests (#763) und Schnellaktionen (#764) der Willkommensseite.
   GScope.Provide(IAtlasTestsSource, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 

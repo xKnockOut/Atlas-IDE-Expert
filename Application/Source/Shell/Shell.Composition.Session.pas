@@ -82,7 +82,8 @@ implementation
 
 uses
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Common.Product.Version;
+  Atlas.Common.Product.Version,
+  Atlas.Text.LogMarks;
 
 function AllocatedBytes: Int64;
 begin
@@ -172,8 +173,8 @@ function TShellSession.DescribeFailure(const AError: Exception): string;
 var
   mStack: string;
 begin
-  Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, AError.Message, sLineBreak,
-    FServices.Dispatcher.LastMessage]);
+  Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, TLogMarks.Text(AError.Message), sLineBreak,
+    TLogMarks.Text(FServices.Dispatcher.LastMessage)]);
   mStack := TShellPlatform.StackTraceOf(AError);
   if mStack <> '' then
   begin

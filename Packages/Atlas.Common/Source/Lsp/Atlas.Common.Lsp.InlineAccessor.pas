@@ -81,7 +81,33 @@ uses
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspInlineAccessorText = (ReplaceAllTrivialAccessorsOf, ReplaceAllTrivialAccessorsOf2, ThereIsNoTrivialAccessor,
+    StaysItIsStillCalled, NoTrivialAccessorFound, AfterTheChangeNoLonger, ReplaceAccessorWithField, AccessorsFiles,
+    UnknownScope);
+
+const
+  cTexts: array[TLspInlineAccessorText] of TAtlasText = (
+    (De: 'Alle trivialen Zugriffsmethoden der Unit ersetzen (%d)';
+     En: 'Replace all trivial accessors of the unit (%d)'),
+    (De: 'Alle trivialen Zugriffsmethoden des Projekts ersetzen …';
+     En: 'Replace all trivial accessors of the project …'),
+    (De: 'Hier steht keine triviale Zugriffsmethode.'; En: 'There is no trivial accessor here.'),
+    (De: '%s.%s bleibt: Es wird noch aufgerufen (%s).'; En: '%s.%s stays: it is still called (%s).'),
+    (De: 'Keine triviale Zugriffsmethode gefunden.'; En: 'No trivial accessor found.'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Zugriffsmethode durch Feld ersetzen'; En: 'Replace accessor with field'),
+    (De: '%d Zugriffsmethoden, %d Dateien'; En: '%d accessors, %d files'),
+    (De: 'Unbekannter Bereich "%s".'; En: 'Unknown scope "%s".'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TAccessorGroups = TList<TArray<TTrivialAccessor>>;
@@ -237,8 +263,8 @@ begin
   end;
   if mCount > 0 then
   begin
-    Result := Result + [Action(Format('Alle trivialen Zugriffsmethoden der Unit ersetzen (%d)', [mCount]), AUri,
-      APosition, ScopeUnit), Action('Alle trivialen Zugriffsmethoden des Projekts ersetzen …', AUri, APosition,
+    Result := Result + [Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf].Fmt([mCount]), AUri,
+      APosition, ScopeUnit), Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf2].Text, AUri, APosition,
       ScopeProject)];
   end;
 end;
@@ -335,7 +361,7 @@ begin
   if mFound = nil then
   begin
     mLayout.Free;
-    raise Fail(IfThen(mReason = '', 'Hier steht keine triviale Zugriffsmethode.', mReason));
+    raise Fail(IfThen(mReason = '', cTexts[TLspInlineAccessorText.ThereIsNoTrivialAccessor].Text, mReason));
   end;
   AUnit.Layouts.Add(mLayout);
   AUnit.Accessors.Add(mFound);
@@ -405,7 +431,7 @@ begin
     end
     else
     begin
-      FChanges.Warn(Format('%s.%s bleibt: Es wird noch aufgerufen (%s).', [mAccessor.ClassName, mAccessor.Name,
+      FChanges.Warn(cTexts[TLspInlineAccessorText.StaysItIsStillCalled].Fmt([mAccessor.ClassName, mAccessor.Name,
         string.Join(', ', mUses)]));
     end;
   end;
@@ -433,7 +459,7 @@ begin
   end;
   if FChanges.Warnings = nil then
   begin
-    raise Fail('Keine triviale Zugriffsmethode gefunden.');
+    raise Fail(cTexts[TLspInlineAccessorText.NoTrivialAccessorFound].Text);
   end;
   raise Fail(string.Join(' ', FChanges.Warnings));
 end;
@@ -448,8 +474,8 @@ begin
   try
     if Length(mCheck.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AUnit.FileName), mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
+      raise Fail(cTexts[TLspInlineAccessorText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+        mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
     mCheck.Free;
@@ -491,8 +517,9 @@ begin
     AddEdits(mUnit);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspInlineAccessor.AnnotationId, 'Zugriffsmethode durch Feld ersetzen',
-    Format('%d Zugriffsmethoden, %d Dateien', [mTotal, FChanges.FileCount])));
+  Result.AddPair('edit', FChanges.ToJson(TLspInlineAccessor.AnnotationId,
+    cTexts[TLspInlineAccessorText.ReplaceAccessorWithField].Text,
+    cTexts[TLspInlineAccessorText.AccessorsFiles].Fmt([mTotal, FChanges.FileCount])));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('accessors', TJSONNumber.Create(mTotal));
   Result.AddPair('edits', TJSONNumber.Create(FChanges.EditCount));
@@ -506,7 +533,7 @@ var
 begin
   if not MatchText(AContext.Scope, [ScopeHere, ScopeUnit, ScopeProject]) then
   begin
-    raise Fail(Format('Unbekannter Bereich "%s".', [AContext.Scope]));
+    raise Fail(cTexts[TLspInlineAccessorText.UnknownScope].Fmt([AContext.Scope]));
   end;
   mRun := TAccessorRun.Create(AResolver, AContext);
   try
@@ -516,5 +543,8 @@ begin
     mRun.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InlineAccessor', cTexts);
 
 end.

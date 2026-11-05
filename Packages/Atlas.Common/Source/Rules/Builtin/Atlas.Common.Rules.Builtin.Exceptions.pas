@@ -90,7 +90,61 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TExceptionsText = (GenericTitle, Generic, CatchAllTitle, CatchAll, FreedTitle, OwnedByHandler, OwnedByRtl,
+    DestructorTitle, InheritedSkipped, LeavesDestructor, OrderTitle, MoveBefore, AlreadyHandled, AncestorHandled,
+    ReraiseTitle, ReplaceRaise, Reraise, BareRaiseTitle, BareRaise, TryTitle, MoveBeforeTry, TryBeforeInherited);
+
+const
+  cTexts: array[TExceptionsText] of TAtlasText = (
+    (De: 'raise Exception statt einer eigenen Exception-Klasse';
+     En: 'raise Exception instead of an own exception class'),
+    (De: 'raise Exception lässt sich nicht gezielt abfangen; eine eigene Klasse (z. B. EKundeNichtGefunden = ' +
+      'class(Exception)) oder eine passende der RTL verwenden';
+     En: 'raise Exception cannot be caught specifically; use an own class (e.g. ECustomerNotFound = ' +
+      'class(Exception)) or a suitable one from the RTL'),
+    (De: 'on E: Exception do ohne raise'; En: 'on E: Exception do without raise'),
+    (De: 'Bibliothekscode fängt jede Exception ab, ohne sie weiterzuwerfen; der Aufrufer erfährt nichts vom Fehler. ' +
+      'Gezielt abfangen oder mit raise weiterwerfen';
+     En: 'Library code catches every exception without re-raising it; the caller learns nothing about the error. ' +
+      'Catch specifically or re-raise with raise'),
+    (De: 'Exception-Objekt nach raise zusätzlich freigegeben'; En: 'Exception object additionally freed after raise'),
+    (De: '%s gehört nach dem Handler der RTL und wird dort freigegeben; eigenes Freigeben führt zur doppelten Freigabe';
+     En: '%s belongs to the handler of the RTL after it and is freed there; freeing it yourself leads to a double ' +
+      'free'),
+    (De: '%s wird mit raise ausgelöst und gehört dann der RTL; zusätzliches Freigeben führt zur doppelten Freigabe';
+     En: '%s is raised with raise and then belongs to the RTL; freeing it additionally leads to a double free'),
+    (De: 'raise im Destruktor'; En: 'raise in the destructor'),
+    (De: 'raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.';
+     En: 'raise in the destructor: inherited %s no longer runs, fields are left behind.'),
+    (De: 'raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine Freigabe ohne Ausnahme.';
+     En: 'raise in the destructor: the exception leaves %s, the caller expects freeing without an exception.'),
+    (De: 'Allgemeiner Exception-Handler vor speziellem'; En: 'General exception handler before a specific one'),
+    (De: 'on %s vor on %s verschieben'; En: 'Move on %s before on %s'),
+    (De: 'Nie erreicht: %s wird schon in Zeile %d behandelt.'; En: 'Never reached: %s is already handled in line %d.'),
+    (De: 'Nie erreicht: %s ist ein Nachfahr von %s, das schon in Zeile %d behandelt wird.';
+     En: 'Never reached: %s is a descendant of %s, which is already handled in line %d.'),
+    (De: 'raise E statt raise im Handler'; En: 'raise E instead of raise in the handler'),
+    (De: 'raise %s; durch raise; ersetzen'; En: 'Replace raise %s; with raise;'),
+    (De: 'raise %s löst das Objekt neu aus: Absprungstelle (ExceptAddr) und Aufrufliste zeigen danach auf diesen ' +
+      'Handler statt auf den ursprünglichen Fehler; raise; wirft die Exception unverändert weiter.';
+     En: 'raise %s raises the object again: the exception address (ExceptAddr) and the call stack then point to this ' +
+      'handler instead of the original error; raise; re-raises the exception unchanged.'),
+    (De: 'raise ohne Argument außerhalb eines except-Blocks'; En: 'raise without argument outside an except block'),
+    (De: 'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).';
+     En: 'raise without argument is only allowed in an except block (like E2145).'),
+    (De: 'Geerbter Konstruktor erst nach try'; En: 'Inherited constructor only after try'),
+    (De: '%s vor try ziehen'; En: 'Move %s before try'),
+    (De: 'try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).';
+     En: 'try before the call of the inherited constructor; Self is not initialized yet (like H2505).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TTokens = TArray<TPascalToken>;
@@ -275,7 +329,7 @@ end;
 function TGenericExceptionRaisedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('generic-exception-raised', TRuleSeverity.Hint,
-    'raise Exception statt einer eigenen Exception-Klasse');
+    cTexts[TExceptionsText.GenericTitle].Text);
 end;
 
 procedure TGenericExceptionRaisedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -283,6 +337,9 @@ var
   Tokens: TTokens;
   Index, Name, Dot, Ctor: Integer;
   Caught: TArray<THandler>;
+  // Handler schon gelesen? Caught = nil heißt auch "keine on-Handler"; ohne eigenen Merker las die Regel dann
+  // für jedes raise Exception.Create alle Token der Unit neu (quadratisch in großen Units).
+  mCaughtRead: Boolean;
 
   // Die raise-Anweisung, die bei AOffset beginnt; nil, wenn keine.
   function RaiseAt(AOffset: Integer): TSyntaxNode;
@@ -357,6 +414,7 @@ begin
     Exit;
   end;
   Tokens := AContext.Tree.Tokens;
+  mCaughtRead := False;
   for Index := 0 to High(Tokens) do
   begin
     if not Tokens[Index].IsKeyword('raise') then
@@ -377,16 +435,16 @@ begin
     begin
       Continue;
     end;
-    if Caught = nil then
+    if not mCaughtRead then
     begin
       Caught := Handlers(Tokens);
+      mCaughtRead := True;
     end;
     if CaughtRightThere(Tokens[Index].Offset) then
     begin
       Continue;
     end;
-    AReport.Add(RangeOf(Tokens, Index, Ctor), 'raise Exception lässt sich nicht gezielt abfangen; eine eigene ' +
-      'Klasse (z. B. EKundeNichtGefunden = class(Exception)) oder eine passende der RTL verwenden',
+    AReport.Add(RangeOf(Tokens, Index, Ctor), cTexts[TExceptionsText.Generic].Text,
       TRuleConfidence.High);
   end;
 end;
@@ -396,7 +454,7 @@ end;
 function TCatchAllWithoutRaiseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('catch-all-without-raise', TRuleSeverity.Warning,
-    'on E: Exception do ohne raise', True);
+    cTexts[TExceptionsText.CatchAllTitle].Text, True);
 end;
 
 procedure TCatchAllWithoutRaiseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -427,9 +485,8 @@ begin
     end;
     if not Raises then
     begin
-      AReport.Add(RangeOf(Tokens, Handler.OnToken, Handler.DoToken), 'Bibliothekscode fängt jede Exception ab, ' +
-        'ohne sie weiterzuwerfen; der Aufrufer erfährt nichts vom Fehler. Gezielt abfangen oder mit raise ' +
-        'weiterwerfen', TRuleConfidence.Medium);
+      AReport.Add(RangeOf(Tokens, Handler.OnToken, Handler.DoToken), cTexts[TExceptionsText.CatchAll].Text,
+        TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -439,7 +496,7 @@ end;
 function TExceptionFreedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('exception-freed', TRuleSeverity.Error,
-    'Exception-Objekt nach raise zusätzlich freigegeben');
+    cTexts[TExceptionsText.FreedTitle].Text);
 end;
 
 /// <summary>Erstes und letztes Token der Routine, in der Token AIndex liegt; False ohne.</summary>
@@ -523,8 +580,8 @@ var
         if IsFreeOf(Tokens, mIndex, mHandler.Name) then
         begin
           Done := Done + [mIndex];
-          AReport.Add(RangeOf(Tokens, mIndex, mIndex), Format('%s gehört nach dem Handler der RTL und wird dort ' +
-            'freigegeben; eigenes Freigeben führt zur doppelten Freigabe', [mHandler.Name]), TRuleConfidence.High);
+          AReport.Add(RangeOf(Tokens, mIndex, mIndex), cTexts[TExceptionsText.OwnedByHandler].Fmt([mHandler.Name]),
+            TRuleConfidence.High);
         end;
       end;
     end;
@@ -563,8 +620,8 @@ var
       if IsFreeOf(Tokens, mInner, Tokens[AName].Text) and not Reported(mInner) then
       begin
         Done := Done + [mInner];
-        AReport.Add(RangeOf(Tokens, mInner, mInner), Format('%s wird mit raise ausgelöst und gehört dann der ' +
-          'RTL; zusätzliches Freigeben führt zur doppelten Freigabe', [Tokens[AName].Text]), TRuleConfidence.High);
+        AReport.Add(RangeOf(Tokens, mInner, mInner), cTexts[TExceptionsText.OwnedByRtl].Fmt([Tokens[AName].Text]),
+          TRuleConfidence.High);
         Break;
       end;
     end;
@@ -594,7 +651,8 @@ end;
 
 function TExceptionInDestructorRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('exception-in-destructor', TRuleSeverity.Warning, 'raise im Destruktor');
+  Result := TRuleDescriptor.Create('exception-in-destructor', TRuleSeverity.Warning,
+    cTexts[TExceptionsText.DestructorTitle].Text);
 end;
 
 procedure TExceptionInDestructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -659,13 +717,11 @@ var
   begin
     if ANode.StartOffset < InheritedOffset then
     begin
-      mMessage := Format('raise im Destruktor: inherited %s läuft nicht mehr, Felder bleiben liegen.',
-        [RoutineName]);
+      mMessage := cTexts[TExceptionsText.InheritedSkipped].Fmt([RoutineName]);
     end
     else
     begin
-      mMessage := Format('raise im Destruktor: die Ausnahme verlässt %s, der Aufrufer erwartet eine ' +
-        'Freigabe ohne Ausnahme.', [RoutineName]);
+      mMessage := cTexts[TExceptionsText.LeavesDestructor].Fmt([RoutineName]);
     end;
     AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
       ANode.StartPos.Character + Length('raise'))), mMessage, TRuleConfidence.High);
@@ -782,7 +838,7 @@ const
 function TExceptHandlerOrderRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('except-handler-order', TRuleSeverity.Warning,
-    'Allgemeiner Exception-Handler vor speziellem');
+    cTexts[TExceptionsText.OrderTitle].Text);
 end;
 
 class function TExceptHandlerOrderRule.KnownParent(const AName: string): string;
@@ -884,7 +940,7 @@ var
     begin
       Text := Copy(Text, 1, Length(Text) - Length(LineBreak)) + ';' + LineBreak;
     end;
-    Result := [TRuleFix.Create(Format('on %s vor on %s verschieben', [TypeOf(ASpecial), TypeOf(AGeneral)]), [
+    Result := [TRuleFix.Create(cTexts[TExceptionsText.MoveBefore].Fmt([TypeOf(ASpecial), TypeOf(AGeneral)]), [
       TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(AGeneral.StartPos.Line, 0),
         TTextPosition.Create(AGeneral.StartPos.Line, 0)), Text),
       TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ASpecial.StartPos.Line, 0),
@@ -915,14 +971,14 @@ var
       mRange := TTextRange.Create(mReference.StartPos, mReference.EndPos);
       if SameText(mGeneral, mSpecial) then
       begin
-        AReport.Add(mRange, Format('Nie erreicht: %s wird schon in Zeile %d behandelt.',
+        AReport.Add(mRange, cTexts[TExceptionsText.AlreadyHandled].Fmt(
           [mSpecial, AHandlers[mEarlier].StartPos.Line + 1]));
         Exit;
       end;
       if Covers(mGeneral, mSpecial) then
       begin
-        AReport.Add(mRange, Format('Nie erreicht: %s ist ein Nachfahr von %s, das schon in Zeile %d behandelt ' +
-          'wird.', [mSpecial, mGeneral, AHandlers[mEarlier].StartPos.Line + 1]),
+        AReport.Add(mRange, cTexts[TExceptionsText.AncestorHandled].Fmt([mSpecial, mGeneral,
+          AHandlers[mEarlier].StartPos.Line + 1]),
           MoveFix(AHandlers[mEarlier], AHandlers[AIndex]));
         Exit;
       end;
@@ -994,7 +1050,7 @@ end;
 function TReraiseExceptionObjectRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('reraise-exception-object', TRuleSeverity.Warning,
-    'raise E statt raise im Handler');
+    cTexts[TExceptionsText.ReraiseTitle].Text);
 end;
 
 procedure TReraiseExceptionObjectRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1065,7 +1121,7 @@ var
     mFixes := nil;
     if Tokens[mStop].IsSymbol(';') or Tokens[mStop].IsKeyword('end') or Tokens[mStop].IsKeyword('else') then
     begin
-      mFixes := [TRuleFix.Create(Format('raise %s; durch raise; ersetzen', [AHandler.Name]),
+      mFixes := [TRuleFix.Create(cTexts[TExceptionsText.ReplaceRaise].Fmt([AHandler.Name]),
         [TRuleEdit.Create(RangeOf(Tokens, AIndex, mName), 'raise')])];
     end
     else if not SameText(Tokens[mStop].Text, 'at') then
@@ -1073,9 +1129,8 @@ var
       Exit;
     end;
     Done := Done + [AIndex];
-    AReport.Add(RangeOf(Tokens, AIndex, mName), Format('raise %s löst das Objekt neu aus: Absprungstelle ' +
-      '(ExceptAddr) und Aufrufliste zeigen danach auf diesen Handler statt auf den ursprünglichen Fehler; ' +
-      'raise; wirft die Exception unverändert weiter.', [AHandler.Name]), TRuleConfidence.High, mFixes);
+    AReport.Add(RangeOf(Tokens, AIndex, mName), cTexts[TExceptionsText.Reraise].Fmt([AHandler.Name]),
+      TRuleConfidence.High, mFixes);
   end;
 
 var
@@ -1109,7 +1164,7 @@ end;
 function TReraiseOutsideHandlerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('reraise-outside-handler', TRuleSeverity.Error,
-    'raise ohne Argument außerhalb eines except-Blocks');
+    cTexts[TExceptionsText.BareRaiseTitle].Text);
 end;
 
 procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1155,7 +1210,7 @@ procedure TReraiseOutsideHandlerRule.Check(const AContext: TRuleContext; const A
         begin
           AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
             ANode.StartPos.Character + Length('raise'))),
-            'raise ohne Argument ist nur in einem except-Block erlaubt (wie E2145).', TRuleConfidence.High);
+            cTexts[TExceptionsText.BareRaise].Text, TRuleConfidence.High);
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -1226,7 +1281,7 @@ end;
 function TInheritedConstructorAfterTryRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('inherited-constructor-after-try', TRuleSeverity.Hint,
-    'Geerbter Konstruktor erst nach try');
+    cTexts[TExceptionsText.TryTitle].Text);
 end;
 
 /// <summary>Erstes Token ab AOffset (die Tokens sind nach Offset sortiert).</summary>
@@ -1290,8 +1345,6 @@ begin
 end;
 
 procedure TInheritedConstructorAfterTryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  Message = 'try vor dem Aufruf des geerbten Konstruktors; Self ist noch nicht initialisiert (wie H2505).';
 var
   Tokens: TTokens;
   Paths, Lines: TArray<string>;
@@ -1361,7 +1414,8 @@ var
     begin
       Text := Text + '; ';
     end;
-    Result := [TRuleFix.Create(Format('%s vor try ziehen', [Trim(Copy(AContext.Text, ACall.StartOffset + 1,
+    Result := [TRuleFix.Create(cTexts[TExceptionsText.MoveBeforeTry].Fmt([Trim(Copy(AContext.Text, ACall.StartOffset +
+      1,
       ACall.EndOffset - ACall.StartOffset))]), [TRuleEdit.Create(TTextRange.Create(Tokens[TryToken].StartPos,
       Tokens[TryToken].StartPos), Text), TRuleEdit.Create(Removal, '')], True)];
   end;
@@ -1456,7 +1510,8 @@ var
       end;
       mReported := mReported + [mTry];
       AReport.Add(TTextRange.Create(mTry.StartPos, TTextPosition.Create(mTry.StartPos.Line,
-        mTry.StartPos.Character + Length('try'))), Message, TRuleConfidence.High, MoveBeforeTry(mTry, mAfter));
+        mTry.StartPos.Character + Length('try'))), cTexts[TExceptionsText.TryBeforeInherited].Text,
+          TRuleConfidence.High, MoveBeforeTry(mTry, mAfter));
     end;
   end;
 
@@ -1490,5 +1545,8 @@ begin
   ARegistry.Register(TReraiseOutsideHandlerRule.Create);
   ARegistry.Register(TInheritedConstructorAfterTryRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Exceptions', cTexts);
 
 end.

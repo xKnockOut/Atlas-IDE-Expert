@@ -125,6 +125,9 @@
         </DCCReference>
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
         <DCCReference Include="Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas">
+        <DCCReference Include="Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas"/>
+        <DCCReference Include="Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
+        <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.MetricsLens.pas"/>
             <Form>AtlasUnitRelationsFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>

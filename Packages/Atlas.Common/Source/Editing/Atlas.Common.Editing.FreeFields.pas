@@ -14,8 +14,9 @@
 //     häufiger VCL-Komponenten; Typen mit unbekannten Vorfahren mit Self,
 //     AOwner, Owner, Application oder einem Komponentenfeld der Klasse als
 //     erstem Argument) und Objekte, die die Klasse einem
-//     Interface-Feld zuweist (FLog := FLogImpl): die Referenzzählung gibt sie
-//     frei (#918). TObjectList und TObjectDictionary sind normale Felder.
+//     Interface-Feld zuweist (FLog := FLogImpl) oder einem Interface-Feld eines
+//     Record-Felds (FSystem.Registry := FRegistry, #1519): die Referenzzählung
+//     gibt sie frei (#918). TObjectList und TObjectDictionary sind normale Felder.
 //   - Unklar (Meldung ohne Aktion): Das Feld wird zurückgegeben (Result :=
 //     FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an
 //     dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben,
@@ -71,10 +72,9 @@ type
   end;
 
   TFreeFields = class
-  public const
-    FieldTitle = 'Im Destruktor freigeben';
-    ClassTitle = 'Alle eigenen Objekte freigeben (%d)';
   public
+    class function FieldTitle: string; static;
+    class function ClassTitle: string; static;
     /// <summary>Stil aus dem Wert der Einstellung: freeAndNil, sonst Free.</summary>
     class function StyleOf(const AName: string): TFreeFieldsStyle; static;
     /// <summary>Im Konstruktor erzeugte und nicht freigegebene Felder aller Klassen in ATree; AIndex (auch nil)
@@ -122,7 +122,36 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.FreeFields.Types,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFreeFieldsText = (IsReturnedBy, IsPassedTo1In, IsAlsoAssignedWithoutCreate, CanBeSetFromOutside,
+    FreeInTheDestructor, FreeAllOwnedObjects);
+
+const
+  cTexts: array[TFreeFieldsText] of TAtlasText = (
+    (De: 'wird von %s zurückgegeben'; En: 'is returned by %s'),
+    (De: 'wird in %s an %s übergeben'; En: 'is passed to %1:s in %0:s'),
+    (De: 'wird in %s auch ohne Create zugewiesen'; En: 'is also assigned without Create in %s'),
+    (De: 'kann über die Property %s von außen gesetzt werden'; En: 'can be set from outside via the property %s'),
+    (De: 'Im Destruktor freigeben'; En: 'Free in the destructor'),
+    (De: 'Alle eigenen Objekte freigeben (%d)'; En: 'Free all owned objects (%d)'));
+
+{$SCOPEDENUMS OFF}
+
+class function TFreeFields.FieldTitle: string;
+begin
+  Result := cTexts[TFreeFieldsText.FreeInTheDestructor].Text;
+end;
+
+class function TFreeFields.ClassTitle: string;
+begin
+  Result := cTexts[TFreeFieldsText.FreeAllOwnedObjects].Text;
+end;
 
 const
   FreeMethods: array[0..2] of string = ('Free', 'Destroy', 'DisposeOf');
@@ -332,6 +361,12 @@ type
     Field: Integer;
   end;
 
+  /// <summary>Feld der Klasse mit Record-Typ (FSystem: TUpdateSystem).</summary>
+  TRecordField = record
+    Name: string;
+    TypeName: string;
+  end;
+
   TClassAnalyzer = class
   private
     FTree: TSyntaxTree;
@@ -341,6 +376,7 @@ type
     FClassName: string;
     FFields: TArray<TOwnedField>;
     FInterfaceFields: TArray<string>;
+    FRecordFields: TArray<TRecordField>;
     FPrivate: TArray<string>;
     FMethods: TArray<TSyntaxNode>;
     FVisited: TArray<string>;
@@ -353,7 +389,8 @@ type
     function FreedRef(ANode: TSyntaxNode): Integer;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
-    /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ.</summary>
+    /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ, oder FRecord.Feld mit einem Interface-Typ
+    /// in einem Record-Feld (FSystem.Registry: IUpdateRegistry).</summary>
     function IsInterfaceField(ANode: TSyntaxNode): Boolean;
     function MethodBody(const AName: string): TSyntaxNode;
     function CalledPrivate(AStatement: TSyntaxNode): string;
@@ -513,9 +550,23 @@ end;
 function TClassAnalyzer.IsInterfaceField(ANode: TSyntaxNode): Boolean;
 var
   mName: string;
+  mRecord: TRecordField;
 begin
   mName := SelfMemberName(ANode);
   Result := (mName <> '') and MatchText(mName, FInterfaceFields);
+  if Result or (ANode.Kind <> TSyntaxKind.MemberAccess) or (ANode.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  // Die Referenzzählung des Record-Felds gibt das Objekt frei wie bei einem Interface-Feld (#1519).
+  mName := SelfMemberName(ANode[0]);
+  for mRecord in FRecordFields do
+  begin
+    if (mName <> '') and SameText(mRecord.Name, mName) then
+    begin
+      Result := FTypes.TypeGuess(FTypes.MemberType(mRecord.TypeName, ANode.Name)) = tgInterface;
+    end;
+  end;
 end;
 
 function TClassAnalyzer.MethodBody(const AName: string): TSyntaxNode;
@@ -804,7 +855,7 @@ begin
     end
     else if SameText(ANode[0].Name, 'Exit') then
     begin
-      SetUnclear(FieldRef(ANode[1]), Format('wird von %s zurückgegeben', [AMethod]));
+      SetUnclear(FieldRef(ANode[1]), cTexts[TFreeFieldsText.IsReturnedBy].Fmt([AMethod]));
     end;
   end
   else if IsHandOver(ANode) then
@@ -829,7 +880,7 @@ begin
     end
     else
     begin
-      SetUnclear(mField, Format('wird in %s an %s übergeben', [AMethod, TFreeFieldTypes.CodeOf(FText, ANode[0])]));
+      SetUnclear(mField, cTexts[TFreeFieldsText.IsPassedTo1In].Fmt([AMethod, TFreeFieldTypes.CodeOf(FText, ANode[0])]));
     end;
   end;
 end;
@@ -840,7 +891,7 @@ var
 begin
   if (ATarget.Kind = TSyntaxKind.Identifier) and SameText(ATarget.Name, 'Result') then
   begin
-    SetUnclear(AField, Format('wird von %s zurückgegeben', [AMethod]));
+    SetUnclear(AField, cTexts[TFreeFieldsText.IsReturnedBy].Fmt([AMethod]));
   end
   else if (ATarget.Kind = TSyntaxKind.Identifier) and (FieldRef(ATarget) < 0) then
   begin
@@ -851,7 +902,7 @@ begin
   end
   else if (ATarget.Kind = TSyntaxKind.MemberAccess) and (FieldRef(ATarget) < 0) then
   begin
-    SetUnclear(AField, Format('wird in %s an %s übergeben', [AMethod, TFreeFieldTypes.CodeOf(FText, ATarget)]));
+    SetUnclear(AField, cTexts[TFreeFieldsText.IsPassedTo1In].Fmt([AMethod, TFreeFieldTypes.CodeOf(FText, ATarget)]));
   end;
 end;
 
@@ -882,15 +933,16 @@ begin
   mField := FieldRef(mTarget);
   if (mField >= 0) and not Creation(ANode[1], mTypeName, mOwned) and not IsNilLiteral(ANode[1]) then
   begin
-    SetUnclear(mField, Format('wird in %s auch ohne Create zugewiesen', [AMethod]));
+    SetUnclear(mField, cTexts[TFreeFieldsText.IsAlsoAssignedWithoutCreate].Fmt([AMethod]));
   end;
 end;
 
 procedure TClassAnalyzer.ReadField(AChild: TSyntaxNode);
 var
   mTypeRef: TSyntaxNode;
-  mTypeName: string;
+  mTypeName, mName: string;
   mGuess: TTypeGuess;
+  mRecord: TRecordField;
 begin
   mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
   if mTypeRef = nil then
@@ -902,6 +954,15 @@ begin
   if mGuess = tgInterface then
   begin
     FInterfaceFields := FInterfaceFields + TrimmedNames(AChild.Name);
+  end
+  else if mGuess = tgRecord then
+  begin
+    for mName in TrimmedNames(AChild.Name) do
+    begin
+      mRecord.Name := mName;
+      mRecord.TypeName := mTypeName;
+      FRecordFields := FRecordFields + [mRecord];
+    end;
   end;
   if not (mGuess in [tgRecord, tgInterface, tgOther]) then
   begin
@@ -973,8 +1034,7 @@ begin
     mWritten := WrittenField(FText, FClassNode[mIndex]);
     if mWritten <> '' then
     begin
-      SetUnclear(FieldIndex(mWritten), Format('kann über die Property %s von außen gesetzt werden',
-        [FClassNode[mIndex].Name]));
+      SetUnclear(FieldIndex(mWritten), cTexts[TFreeFieldsText.CanBeSetFromOutside].Fmt([FClassNode[mIndex].Name]));
     end;
   end;
   for mIndex in FCreated do
@@ -1584,5 +1644,8 @@ begin
       mHeader, AStatements, mLineBreak))];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.FreeFields', cTexts);
 
 end.

@@ -8,14 +8,19 @@
 // <ws>/…, alle anderen absoluten Pfade und Datei-URIs zu <pfad>, Benutzer- und
 // Rechnername zu <benutzer>; im Protokoll zusätzlich Text in Anführungszeichen
 // (Bezeichner, Werte) zu <wert>. Die Regeln stehen in Atlas.Text.Anonymize
-// und gelten gleich im Plugin (ADR 0012).
+// und gelten gleich im Plugin (ADR 0012). Seit #1478 bleiben in der
+// Konfiguration nur Schlüssel, Zahlen, Wahrheitswerte und Schlüsselwörter
+// (TTextAnonymizer.AnonymizeJsonValues); gekennzeichnete Werte im Protokoll
+// werden ersetzt, ohne Anonymisierung nur von ihren Kennzeichen befreit. Ohne
+// Anonymisierung vermerkt der Kopf „mit Klarnamen“.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Statistics,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks;
 
 type
   TBugReportInput = record
@@ -54,6 +59,31 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBugReportText = (WithRealNamesExplicitlyChosen, SourceCodeIsNotPart, Error, TimeMethodDurationMsResult,
+    LogLastLines, AtlasBugReportServer, Created, Anonymized, EffectiveConfiguration, RecentRequests);
+
+const
+  cTexts: array[TBugReportText] of TAtlasText = (
+    (De: ' · mit Klarnamen (ausdrücklich gewählt)'; En: ' · with real names (explicitly chosen)'),
+    (De: 'Quelltext steht nicht in diesem Bericht.'; En: 'Source code is not part of this report.'),
+    (De: ' | Fehler |'; En: ' | Error |'),
+    (De: '| Zeit | Methode | Dauer ms | Ergebnis |'; En: '| Time | Method | Duration ms | Result |'),
+    (De: '## Protokoll (letzte %d Zeilen)'; En: '## Log (last %d lines)'),
+    (De: '# Atlas-Fehlerbericht (Server)'; En: '# Atlas bug report (server)'),
+    (De: 'Erstellt: '; En: 'Created: '),
+    (De: ' · anonymisiert'; En: ' · anonymized'),
+    (De: '## Wirksame Konfiguration'; En: '## Effective configuration'),
+    (De: '## Letzte Anfragen (%d)'; En: '## Recent requests (%d)'));
+
+{$SCOPEDENUMS OFF}
+
 { TBugReport }
 
 class function TBugReport.AnonymizePaths(const AText: string; const AWorkspaces, AIdentity: TArray<string>): string;
@@ -71,14 +101,19 @@ procedure AppendHeader(ABuilder: TStringBuilder; const AInput: TBugReportInput);
 var
   mText: string;
 begin
-  ABuilder.Append('# Atlas-Fehlerbericht (Server)').Append(sLineBreak).Append(sLineBreak);
-  ABuilder.Append('Erstellt: ').Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss', AInput.Created));
+  ABuilder.Append(cTexts[TBugReportText.AtlasBugReportServer].Text).Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append(cTexts[TBugReportText.Created].Text).Append(FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss',
+    AInput.Created));
   if AInput.Anonymize then
   begin
-    ABuilder.Append(' · anonymisiert');
+    ABuilder.Append(cTexts[TBugReportText.Anonymized].Text);
+  end
+  else
+  begin
+    ABuilder.Append(cTexts[TBugReportText.WithRealNamesExplicitlyChosen].Text);
   end;
   ABuilder.Append(sLineBreak).Append(sLineBreak);
-  ABuilder.Append('Quelltext steht nicht in diesem Bericht.').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append(cTexts[TBugReportText.SourceCodeIsNotPart].Text).Append(sLineBreak).Append(sLineBreak);
 
   ABuilder.Append('## Version').Append(sLineBreak).Append(sLineBreak);
   ABuilder.Append('- Server: ').Append(AInput.ServerVersion).Append(sLineBreak);
@@ -88,11 +123,12 @@ begin
   end;
   ABuilder.Append(sLineBreak);
 
-  ABuilder.Append('## Wirksame Konfiguration').Append(sLineBreak).Append(sLineBreak);
+  ABuilder.Append(cTexts[TBugReportText.EffectiveConfiguration].Text).Append(sLineBreak).Append(sLineBreak);
   mText := AInput.Configuration;
   if AInput.Anonymize then
   begin
-    mText := TTextAnonymizer.AnonymizePaths(mText, AInput.Workspaces, AInput.Identity);
+    mText := TTextAnonymizer.AnonymizePaths(TTextAnonymizer.AnonymizeJsonValues(mText), AInput.Workspaces,
+      AInput.Identity);
   end;
   ABuilder.Append('```json').Append(sLineBreak).Append(mText.TrimRight).Append(sLineBreak).Append('```');
   ABuilder.Append(sLineBreak).Append(sLineBreak);
@@ -103,7 +139,7 @@ procedure AppendRequests(ABuilder: TStringBuilder; const AInput: TBugReportInput
 var
   mRequest: TRecentRequest;
 begin
-  ABuilder.Append(Format('## Letzte Anfragen (%d)', [Length(AInput.Requests)])).Append(sLineBreak);
+  ABuilder.Append(cTexts[TBugReportText.RecentRequests].Fmt([Length(AInput.Requests)])).Append(sLineBreak);
   ABuilder.Append(sLineBreak);
   if Length(AInput.Requests) = 0 then
   begin
@@ -111,7 +147,7 @@ begin
   end
   else
   begin
-    ABuilder.Append('| Zeit | Methode | Dauer ms | Ergebnis |').Append(sLineBreak);
+    ABuilder.Append(cTexts[TBugReportText.TimeMethodDurationMsResult].Text).Append(sLineBreak);
     ABuilder.Append('|---|---|---:|---|').Append(sLineBreak);
     for mRequest in AInput.Requests do
     begin
@@ -120,7 +156,7 @@ begin
       ABuilder.Append(' | ').Append(mRequest.ElapsedMs);
       if mRequest.Failed then
       begin
-        ABuilder.Append(' | Fehler |');
+        ABuilder.Append(cTexts[TBugReportText.Error].Text);
       end
       else
       begin
@@ -137,14 +173,17 @@ procedure AppendLog(ABuilder: TStringBuilder; const AInput: TBugReportInput);
 var
   mLine, mText: string;
 begin
-  ABuilder.Append(Format('## Protokoll (letzte %d Zeilen)', [Length(AInput.LogLines)])).Append(sLineBreak);
+  ABuilder.Append(cTexts[TBugReportText.LogLastLines].Fmt([Length(AInput.LogLines)])).Append(sLineBreak);
   ABuilder.Append(sLineBreak).Append('```').Append(sLineBreak);
   for mLine in AInput.LogLines do
   begin
-    mText := mLine;
     if AInput.Anonymize then
     begin
-      mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+      mText := TTextAnonymizer.AnonymizeLogLine(mLine, AInput.Workspaces, AInput.Identity);
+    end
+    else
+    begin
+      mText := TLogMarks.Plain(mLine);
     end;
     // Mehrzeilige Einträge (z. B. Status) bleiben lesbar; ``` würde den Block schließen.
     ABuilder.Append(TTextAnonymizer.FenceSafe(mText)).Append(sLineBreak);
@@ -166,5 +205,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.BugReport', cTexts);
 
 end.

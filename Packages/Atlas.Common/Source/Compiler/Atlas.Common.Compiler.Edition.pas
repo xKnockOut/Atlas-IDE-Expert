@@ -80,7 +80,26 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditionText = (NoCommandLineCompilerStarter, NoCommandLineCompilerStarter2, CommandLineCompilerNotChecked,
+    CommandLineCompilerAvailable);
+
+const
+  cTexts: array[TEditionText] of TAtlasText = (
+    (De: 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 melden nur den Lizenztext)';
+     En: 'no command-line compiler (Starter Edition: dcc32/dcc64 only report the license text)'),
+    (De: 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 fehlen im Ordner bin)';
+     En: 'no command-line compiler (Starter Edition: dcc32/dcc64 missing in the bin folder)'),
+    (De: 'Kommandozeilen-Compiler noch nicht geprüft'; En: 'Command-line compiler not checked yet'),
+    (De: 'Kommandozeilen-Compiler vorhanden'; En: 'Command line compiler available'));
+
+{$SCOPEDENUMS OFF}
 
 const
   EditionTexts: array[TCompilerEdition] of string = ('unknown', 'commandLine', 'noCommandLine', 'missing');
@@ -164,13 +183,13 @@ class function TCompilerEditions.Describe(AEdition: TCompilerEdition): string;
 begin
   case AEdition of
     TCompilerEdition.CommandLine:
-      Result := 'Kommandozeilen-Compiler vorhanden';
+      Result := cTexts[TEditionText.CommandLineCompilerAvailable].Text;
     TCompilerEdition.NoCommandLine:
-      Result := 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 melden nur den Lizenztext)';
+      Result := cTexts[TEditionText.NoCommandLineCompilerStarter].Text;
     TCompilerEdition.Missing:
-      Result := 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 fehlen im Ordner bin)';
+      Result := cTexts[TEditionText.NoCommandLineCompilerStarter2].Text;
   else
-    Result := 'Kommandozeilen-Compiler noch nicht geprüft';
+    Result := cTexts[TEditionText.CommandLineCompilerNotChecked].Text;
   end;
 end;
 
@@ -295,5 +314,8 @@ begin
     Root.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Compiler.Edition', cTexts);
 
 end.
