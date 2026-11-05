@@ -15,6 +15,9 @@ type
   TRuleRegistry = class
   private
     FRules: TList<IRule>;
+    /// <summary>Regeln nach Kennung in Großbuchstaben: Die Prüfung auf doppelte Kennungen las sonst je Anmeldung
+    /// den Deskriptor jeder schon angemeldeten Regel (quadratisch, je Anfrage im Server).</summary>
+    FById: TDictionary<string, IRule>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -35,10 +38,12 @@ constructor TRuleRegistry.Create;
 begin
   inherited Create;
   FRules := TList<IRule>.Create;
+  FById := TDictionary<string, IRule>.Create;
 end;
 
 destructor TRuleRegistry.Destroy;
 begin
+  FById.Free;
   FRules.Free;
   inherited;
 end;
@@ -58,22 +63,16 @@ begin
     raise ERuleRegistry.CreateFmt('Regel "%s" ist bereits registriert', [Id]);
   end;
   FRules.Add(ARule);
+  FById.Add(UpperCase(Id), ARule);
 end;
 
 function TRuleRegistry.Find(const AId: string; out ARule: IRule): Boolean;
-var
-  Rule: IRule;
 begin
-  for Rule in FRules do
+  Result := FById.TryGetValue(UpperCase(AId), ARule);
+  if not Result then
   begin
-    if SameText(Rule.Descriptor.Id, AId) then
-    begin
-      ARule := Rule;
-      Exit(True);
-    end;
+    ARule := nil;
   end;
-  ARule := nil;
-  Result := False;
 end;
 
 function TRuleRegistry.Rules: TArray<IRule>;

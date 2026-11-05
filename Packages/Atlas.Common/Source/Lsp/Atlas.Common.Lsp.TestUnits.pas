@@ -22,6 +22,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.TestUnits;
 
 type
@@ -82,8 +83,10 @@ type
     /// <summary>Gegenstück der Unit AFileName mit Text AText; ALine 0-basiert, -1 = ohne Zeile.</summary>
     class function Resolve(const AFileName, AText: string; ALine: Integer;
       const AContext: TTestUnitContext): TTestUnitTarget; overload; static;
-    /// <summary>Wie oben mit fertigem Index der Unit (aus dem Syntaxbaum des offenen Dokuments).</summary>
-    class function Resolve(const AFileName, AText: string; const ASource: TUnitIndex; ALine: Integer;
+    /// <summary>Wie oben mit fertigen Token und fertigem Index der Unit (aus dem Syntaxbaum des offenen
+    /// Dokuments; große Units nicht je Code-Aktion neu zerlegen).</summary>
+    class function Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>; const ASource: TUnitIndex;
+      ALine: Integer;
       const AContext: TTestUnitContext): TTestUnitTarget; overload; static;
     /// <summary>Ordner für neue Testunits: testUnits.folder unter der Wurzel, sonst der des Testprogramms.</summary>
     class function TestFolder(const AContext: TTestUnitContext): string; static;
@@ -104,9 +107,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Semantics.TreeUnits,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UnitTemplates,
@@ -168,7 +171,8 @@ end;
 class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 begin
-  Result := Resolve(AFileName, AText, TIndexExtractor.ExtractText(AText, AFileName, nil), ALine, AContext);
+  Result := Resolve(AFileName, TPascalLexer.Tokenize(AText), TIndexExtractor.ExtractText(AText, AFileName, nil), ALine,
+    AContext);
 end;
 
 /// <summary>Zu prüfende Unit ATested einer Testunit eintragen.</summary>
@@ -229,16 +233,14 @@ begin
   end;
 end;
 
-class function TLspTestUnits.Resolve(const AFileName, AText: string; const ASource: TUnitIndex; ALine: Integer;
-  const AContext: TTestUnitContext): TTestUnitTarget;
+class function TLspTestUnits.Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>;
+  const ASource: TUnitIndex; ALine: Integer; const AContext: TTestUnitContext): TTestUnitTarget;
 var
-  mTokens: TArray<TPascalToken>;
   mTested, mFolder: string;
 begin
   Result := Default(TTestUnitTarget);
   Result.FileName := AFileName;
-  mTokens := TPascalLexer.Tokenize(AText);
-  if not IsUnitText(mTokens) then
+  if not IsUnitText(ATokens) then
   begin
     Exit;
   end;
@@ -249,7 +251,7 @@ begin
     Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
   end;
   if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
-    TRuleProfiles.IsTestUnit(mTokens) then
+    TRuleProfiles.IsTestUnit(ATokens) then
   begin
     SetTested(Result, mTested, AContext);
     Exit;
@@ -341,7 +343,8 @@ begin
   if FStore.TryGet(AUri, Document) then
   begin
     Shared := TSyntaxTreeCache.Get(Document);
-    Result := Resolve(FileName, Document.Text, TIndexExtractor.Extract(Shared.Tree, FileName), ALine, AContext);
+    Result := Resolve(FileName, Shared.Tree.Tokens, TTreeExtracts.ForTree(Shared.Tree).Extracted(FileName), ALine,
+      AContext);
   end
   else
   begin

@@ -18,6 +18,9 @@ type
     /// <summary>{$I datei} und {$INCLUDE datei} zählen, Schalter wie {$I+} und {$IFDEF} nicht.</summary>
     [Test]
     procedure HasIncludesFindsIncludeDirectives;
+    /// <summary>{$IF…} und (*$IF…*) in jeder Schreibung, andere Direktiven und $IF ohne Klammer nicht.</summary>
+    [Test]
+    procedure HasConditionalsFindsConditionalDirectives;
     /// <summary>Abnahme: {$DEFINE FOO} aus defs.inc wählt den Zweig; keine Syntaxdiagnose.</summary>
     [Test]
     procedure ActiveDiagnosticsReadIncludeDefines;
@@ -107,6 +110,16 @@ begin
   Assert.IsTrue(TPascalPreprocessor.HasIncludes('(*$INCLUDE defs.inc*)'));
   Assert.IsFalse(TPascalPreprocessor.HasIncludes('{$I+}{$IFDEF X}{$ENDIF}'));
   Assert.IsFalse(TPascalPreprocessor.HasIncludes('S := ''$I x'';'));
+end;
+
+procedure TIncludeDefinesTests.HasConditionalsFindsConditionalDirectives;
+begin
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('{$IFDEF X}{$ENDIF}'));
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('{$ifndef X}{$endif}'));
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('(*$If Defined(X)*)(*$IfEnd*)'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('{$R+}{$I defs.inc}'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('S := ''$IF'';*$IF'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('{$I'));
 end;
 
 procedure TIncludeDefinesTests.ActiveDiagnosticsReadIncludeDefines;

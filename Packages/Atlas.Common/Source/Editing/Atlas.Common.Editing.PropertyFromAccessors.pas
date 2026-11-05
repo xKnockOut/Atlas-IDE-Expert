@@ -488,6 +488,9 @@ type
     FMembers: TArray<string>;
     FFields: TDictionary<string, string>;
     FUsedAccessors: TArray<string>;
+    /// <summary>Anzahl der Methoden je Name (Großbuchstaben); ersetzt das Abzählen aller Methoden je Kandidat.
+    /// </summary>
+    FNameCounts: TDictionary<string, Integer>;
     function Count(const AName: string): Integer;
     function HasMember(const AName: string): Boolean;
     function Strip(const AName: string; AGetter: Boolean; const AResultType: string; out ABase: string): Boolean;
@@ -635,6 +638,7 @@ begin
   FOptions := AOptions;
   FClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
   FFields := TDictionary<string, string>.Create;
+  FNameCounts := TDictionary<string, Integer>.Create;
   mCurrent := Default(TClassSection);
   mCurrent.Section := TMemberSection.Public_;
   mCurrent.HeadLine := ADecl.StartPos.Line;
@@ -698,6 +702,7 @@ end;
 
 destructor TClassReader.Destroy;
 begin
+  FNameCounts.Free;
   FFields.Free;
   inherited;
 end;
@@ -737,19 +742,14 @@ begin
     end;
   end;
   FRoutines := FRoutines + [mInfo];
+  FNameCounts.AddOrSetValue(UpperCase(mInfo.Name), Count(mInfo.Name) + 1);
 end;
 
 function TClassReader.Count(const AName: string): Integer;
-var
-  Routine: TRoutineInfo;
 begin
-  Result := 0;
-  for Routine in FRoutines do
+  if not FNameCounts.TryGetValue(UpperCase(AName), Result) then
   begin
-    if SameText(Routine.Name, AName) then
-    begin
-      Inc(Result);
-    end;
+    Result := 0;
   end;
 end;
 
@@ -1022,6 +1022,13 @@ begin
 end;
 
 /// <summary>Typdeklarationen mit Klasse (auch geschachtelt), in Reihenfolge.</summary>
+/// <summary>Mehrzeilige Klassendeklaration?</summary>
+function IsClassDecl(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
+    (ANode.FindChild(TSyntaxKind.ClassType).EndPos.Line > ANode.StartPos.Line);
+end;
+
 function ClassDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
   Found: TArray<TSyntaxNode>;
@@ -1032,8 +1039,7 @@ begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
-          (ANode.FindChild(TSyntaxKind.ClassType).EndPos.Line > ANode.StartPos.Line) then
+        if IsClassDecl(ANode) then
         begin
           Found := Found + [ANode];
         end;
@@ -1041,6 +1047,53 @@ begin
       end);
   end;
   Result := Found;
+end;
+
+/// <summary>Klassendeklarationen, die ALine enthalten; steigt nur in Knoten ab, die die Zeile abdecken
+/// (große Units: nicht jede Klasse je Cursorbewegung lesen).</summary>
+function ClassDeclsAt(ATree: TSyntaxTree; ALine: Integer): TArray<TSyntaxNode>;
+var
+  Found: TArray<TSyntaxNode>;
+begin
+  Found := nil;
+  if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
+    ATree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := (ANode = ATree.Root) or ((ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine));
+        if Result and IsClassDecl(ANode) then
+        begin
+          Found := Found + [ANode];
+        end;
+      end);
+  end;
+  Result := Found;
+end;
+
+/// <summary>Property-Kandidaten der Klassen ADecls.</summary>
+function PropertiesOf(ATree: TSyntaxTree; const AText: string; const ADecls: TArray<TSyntaxNode>;
+  const AOptions: TPropertyFromAccessorsOptions): TArray<TAccessorProperty>;
+var
+  mDecl: TSyntaxNode;
+  mReader: TClassReader;
+  mLines: TArray<string>;
+begin
+  Result := nil;
+  if ADecls = nil then
+  begin
+    Exit;
+  end;
+  mLines := TTextLines.SplitLines(AText);
+  for mDecl in ADecls do
+  begin
+    mReader := TClassReader.Create(ATree, AText, mLines, mDecl, AOptions);
+    try
+      Result := Result + mReader.Properties;
+    finally
+      mReader.Free;
+    end;
+  end;
 end;
 
 { TPropertyFromAccessors }
@@ -1086,22 +1139,8 @@ end;
 
 class function TPropertyFromAccessors.Find(ATree: TSyntaxTree; const AText: string;
   const AOptions: TPropertyFromAccessorsOptions): TArray<TAccessorProperty>;
-var
-  Decl: TSyntaxNode;
-  Reader: TClassReader;
-  Lines: TArray<string>;
 begin
-  Result := nil;
-  Lines := TTextLines.SplitLines(AText);
-  for Decl in ClassDecls(ATree) do
-  begin
-    Reader := TClassReader.Create(ATree, AText, Lines, Decl, AOptions);
-    try
-      Result := Result + Reader.Properties;
-    finally
-      Reader.Free;
-    end;
-  end;
+  Result := PropertiesOf(ATree, AText, ClassDecls(ATree), AOptions);
 end;
 
 /// <summary>Steht ALine in der Deklaration von AMethod (ab dem Namen)?</summary>
@@ -1117,7 +1156,8 @@ var
 begin
   Result := nil;
   AWholeClass := False;
-  for Item in Find(ATree, AText, AOptions) do
+  // Getter und Setter stehen in der Klassendeklaration: Nur Klassen, die die Zeile enthalten, kommen infrage.
+  for Item in PropertiesOf(ATree, AText, ClassDeclsAt(ATree, ALine), AOptions) do
   begin
     if Item.ClassLine = ALine then
     begin
