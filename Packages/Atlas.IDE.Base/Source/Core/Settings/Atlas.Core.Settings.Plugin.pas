@@ -286,6 +286,13 @@ type
     property PairGuideOpacity: Integer read FHighlighting.PairGuideOpacity write FHighlighting.PairGuideOpacity;
     property PairColorsLight: string read FHighlighting.PairColorsLight write FHighlighting.PairColorsLight;
     property PairColorsDark: string read FHighlighting.PairColorsDark write FHighlighting.PairColorsDark;
+    /// <summary>Lokale Routinen abheben (#1788).</summary>
+    property NestedRoutines: string read FHighlighting.NestedRoutines write FHighlighting.NestedRoutines;
+    property NestedRoutineBand: Boolean read FHighlighting.NestedRoutineBand write FHighlighting.NestedRoutineBand;
+    property NestedRoutineColorLight: string read FHighlighting.NestedRoutineColorLight
+      write FHighlighting.NestedRoutineColorLight;
+    property NestedRoutineColorDark: string read FHighlighting.NestedRoutineColorDark
+      write FHighlighting.NestedRoutineColorDark;
     property Problems: Boolean read FEditorInsight.Problems write FEditorInsight.Problems;
     property ProblemsMessageList: Boolean read FRules.ProblemsMessageList write FRules.ProblemsMessageList;
     property ProblemsWindow: Boolean read FRules.ProblemsWindow write FRules.ProblemsWindow;
