@@ -159,7 +159,26 @@ uses
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.SchemaCheck,
   Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.PluginSchemaData;
+  Atlas.Core.Settings.PluginSchemaData,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TCatalogText = (NotAValidJSONValue);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCatalogText] of string = (
+    (': kein gültiger JSON-Wert'),
+    (': not a valid JSON value'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCatalogText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function KindOf(ASchema: TJSONObject): TAtlasSettingKind;
 var
@@ -789,7 +808,7 @@ begin
   try
     if Value = nil then
     begin
-      AIssues := AIssues + [AEntry.Key + ': kein gültiger JSON-Wert'];
+      AIssues := AIssues + [AEntry.Key + UiText(TCatalogText.NotAValidJSONValue)];
     end
     else if Schema is TJSONObject then
     begin
@@ -801,5 +820,8 @@ begin
   end;
   Result := Length(AIssues) = 0;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Catalog', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -97,7 +97,26 @@ uses
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Core.Notifications.Sources,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TCheckOnSaveText = (AtlasCompilerCheck);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCheckOnSaveText] of string = (
+    ('Atlas-Compilerprüfung'),
+    ('Atlas compiler check'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCheckOnSaveText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function NowMs: Int64;
 begin
@@ -148,7 +167,7 @@ end;
 
 function TAtlasIdeCheckOnSave.TBinding.GetDisplayName: string;
 begin
-  Result := 'Atlas-Compilerprüfung';
+  Result := UiText(TCheckOnSaveText.AtlasCompilerCheck);
 end;
 
 function TAtlasIdeCheckOnSave.TBinding.GetName: string;
@@ -439,5 +458,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Build.CheckOnSave', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
