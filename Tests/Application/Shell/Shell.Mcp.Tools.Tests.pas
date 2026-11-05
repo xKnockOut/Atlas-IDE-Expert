@@ -112,16 +112,36 @@ begin
   end;
 end;
 
+/// <summary>Beschreibung des Werkzeugs ATool und aller seiner Parameter, mit Leerzeichen verbunden.</summary>
+function ToolText(const ATool: TJSONValue): string;
+var
+  mName, mDescription: string;
+  mProperties, mProperty: TJSONObject;
+  mPair: TJSONPair;
+begin
+  mName := ATool.GetValue<string>('name');
+  Result := ATool.GetValue<string>('description');
+  Assert.IsTrue(Result <> '', mName);
+  mProperties := ATool.GetValue<TJSONObject>('inputSchema').GetValue('properties') as TJSONObject;
+  Assert.IsNotNull(mProperties, mName + ': Schema ungültig');
+  for mPair in mProperties do
+  begin
+    mProperty := mPair.JsonValue as TJSONObject;
+    if mProperty.TryGetValue<string>('description', mDescription) then
+    begin
+      Result := Result + ' ' + mDescription;
+    end;
+  end;
+end;
+
 /// <summary>Prüft Beschreibung und Schema jedes Werkzeugs in der aktuellen Sprache.</summary>
 procedure CheckToolTexts(AEnglish: Boolean);
 var
   mServer: TMcpServer;
   mContext: TMcpToolContext;
-  mListed, mSchema, mProperties, mProperty: TJSONObject;
-  mTools: TJSONArray;
+  mListed: TJSONObject;
   mTool: TJSONValue;
-  mPair: TJSONPair;
-  mName, mText, mDescription: string;
+  mText: string;
 begin
   mServer := TMcpServer.Create('Atlas', '0');
   try
@@ -130,26 +150,12 @@ begin
     RegisterContextTools(mContext);
     mListed := mServer.ListTools;
     try
-      mTools := mListed.GetValue<TJSONArray>('tools');
-      for mTool in mTools do
+      for mTool in mListed.GetValue<TJSONArray>('tools') do
       begin
-        mName := mTool.GetValue<string>('name');
-        mText := mTool.GetValue<string>('description');
-        Assert.IsTrue(mText <> '', mName);
-        mSchema := mTool.GetValue<TJSONObject>('inputSchema');
-        mProperties := mSchema.GetValue('properties') as TJSONObject;
-        Assert.IsNotNull(mProperties, mName + ': Schema ungültig');
-        for mPair in mProperties do
-        begin
-          mProperty := mPair.JsonValue as TJSONObject;
-          if mProperty.TryGetValue<string>('description', mDescription) then
-          begin
-            mText := mText + ' ' + mDescription;
-          end;
-        end;
+        mText := ToolText(mTool);
         if AEnglish then
         begin
-          Assert.IsFalse(LooksGerman(mText), mName + ': ' + mText);
+          Assert.IsFalse(LooksGerman(mText), mTool.GetValue<string>('name') + ': ' + mText);
         end;
       end;
     finally

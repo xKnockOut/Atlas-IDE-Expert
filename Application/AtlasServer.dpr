@@ -135,6 +135,7 @@ uses
   Shell.Mcp.ProjectTools in 'Source\Shell\Shell.Mcp.ProjectTools.pas',
   Shell.Mcp.ChangeTools in 'Source\Shell\Shell.Mcp.ChangeTools.pas',
   Shell.Mcp.Changes in 'Source\Shell\Shell.Mcp.Changes.pas',
+  Shell.Mcp.Conventions in 'Source\Shell\Shell.Mcp.Conventions.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas',
   Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
   Shell.CrashCases in 'Source\Shell\Shell.CrashCases.pas',

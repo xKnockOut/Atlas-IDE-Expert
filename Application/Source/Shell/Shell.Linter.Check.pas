@@ -70,8 +70,6 @@ type
     function Execute: Integer;
     /// <summary>--check; Fehler in der Befehlszeile und unerwartete Fehler geben 3.</summary>
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
-    /// <summary>Prüft Kombinationen der Befehlszeile; False mit Meldung auf stderr.</summary>
-    class function Validate(const AOptions: TCommandLineOptions): Boolean; static;
     /// <summary>Beschreibungen aller Regeln für SARIF: Syntax, Sprachstand, ARules und mit Index die
     /// gespeicherten Abfragen mit failIfAny (#1351) als Regeln query:&lt;name&gt;.</summary>
     class function DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -94,54 +92,7 @@ uses
   Shell.Linter.Files,
   Shell.Linter.Changes,
   Shell.Linter.Index,
-  Shell.Linter.Reports,
-  Atlas.Common.Localization.Texts;
-
-type
-{$SCOPEDENUMS ON}
-  TLinterCheckText = (DiffOnly, MetricsFormat, TodosFormat, TodosMetrics, BaselineAll, NoSourceRoot);
-{$SCOPEDENUMS OFF}
-
-const
-  cTexts: array[TLinterCheckText] of TAtlasText = (
-    (De: '--format diff gibt es nur mit --format-check oder --format-write';
-    En: '--format diff only exists with --format-check or --format-write'),
-    (De: '--metrics gibt es nur mit --format text (Markdown) oder json';
-    En: '--metrics only exists with --format text (Markdown) or json'),
-    (De: '--todos gibt es nur mit --format text (Markdown) oder json';
-    En: '--todos only exists with --format text (Markdown) or json'),
-    (De: '--todos und --metrics schließen sich aus'; En: '--todos and --metrics exclude each other'),
-    (De: '--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert';
-    En: '--update-baseline always writes the baseline for all files; --changed/--diff is ignored'),
-    (De: 'Quellwurzel "%s" nicht gefunden'; En: 'Source root "%s" not found'));
-
-class function TLinterCheck.Validate(const AOptions: TCommandLineOptions): Boolean;
-var
-  mError: string;
-begin
-  mError := '';
-  if AOptions.FormatDiff then
-  begin
-    mError := cTexts[TLinterCheckText.DiffOnly].Text;
-  end
-  else if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
-  begin
-    mError := cTexts[TLinterCheckText.MetricsFormat].Text;
-  end
-  else if AOptions.Todos and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
-  begin
-    mError := cTexts[TLinterCheckText.TodosFormat].Text;
-  end
-  else if AOptions.Todos and AOptions.Metrics then
-  begin
-    mError := cTexts[TLinterCheckText.TodosMetrics].Text;
-  end;
-  Result := mError = '';
-  if not Result then
-  begin
-    TLinterOutput.Error(mError);
-  end;
-end;
+  Shell.Linter.Reports;
 
 class function TLinterCheck.DescriptorsOf(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   AWithIndex: Boolean): TArray<TRuleDescriptor>;
@@ -202,11 +153,8 @@ begin
   Result := TLinterFiles.Collect(FOptions.CheckTarget, FSettings, FRoot, ASources);
   FPackages := TLinterFiles.Packages(Result);
   FPrograms := TLinterFiles.Programs(Result);
-  if (FOptions.ChangedRef <> '') and FOptions.UpdateBaseline then
-  begin
-    TLinterOutput.Error(cTexts[TLinterCheckText.BaselineAll].Text);
-  end
-  else if FOptions.ChangedRef <> '' then
+  // --update-baseline schreibt immer für alle Dateien; den Hinweis dazu gibt TLinterSettings.Validate.
+  if (FOptions.ChangedRef <> '') and not FOptions.UpdateBaseline then
   begin
     FGit := TLinterChanges.Detect(FConfigRoot, FSettings);
     Result := TLinterChanges.Select(FOptions, Result, FGit);
@@ -459,24 +407,13 @@ begin
   end;
 end;
 
-/// <summary>Ziel und --source-root vorhanden?</summary>
-function TargetOf(const AOptions: TCommandLineOptions; out ATarget: TLinterTarget): Boolean;
-begin
-  Result := TLinterTarget.Resolve(AOptions.CheckTarget, ATarget);
-  if Result and (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
-  begin
-    TLinterOutput.Error(cTexts[TLinterCheckText.NoSourceRoot].Fmt([AOptions.SourceRoot]));
-    Result := False;
-  end;
-end;
-
 class function TLinterCheck.Run(const AOptions: TCommandLineOptions): Integer;
 var
   mTarget: TLinterTarget;
   mCheck: TLinterCheck;
 begin
   TLinterOutput.Warnings(AOptions);
-  if not Validate(AOptions) or not TargetOf(AOptions, mTarget) then
+  if not TLinterSettings.Validate(AOptions) or not TLinterTarget.ResolveCheck(AOptions, mTarget) then
   begin
     Exit(TFindingsOutput.ExitFailure);
   end;
@@ -495,8 +432,5 @@ begin
     end;
   end;
 end;
-
-initialization
-  TAtlasTextTables.Add('Shell.Linter.Check', cTexts);
 
 end.

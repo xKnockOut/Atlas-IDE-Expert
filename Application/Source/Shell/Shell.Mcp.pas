@@ -53,10 +53,6 @@ uses
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Mcp.Paths,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Prompt,
-  Atlas.Common.Rules.Conventions,
-  Atlas.Common.Rules.Builtin,
   Shell.Platform,
   Shell.CrashCases,
   Shell.Workspace,
@@ -64,13 +60,14 @@ uses
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
+  Shell.Mcp.Conventions,
   Shell.Mcp.Startup,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;
 
 type
 {$SCOPEDENUMS ON}
-  TMcpHostText = (Instructions, ConventionsName, ConventionsDescription);
+  TMcpHostText = (Instructions);
 {$SCOPEDENUMS OFF}
 
 const
@@ -78,10 +75,7 @@ const
     (De: 'Delphi-Projekt in %s. Für Fragen zu Typen, Units und Formularen zuerst diese Werkzeuge nutzen statt ' +
     'Quelldateien vollständig zu lesen.';
     En: 'Delphi project in %s. For questions about types, units and forms, use these tools first instead of ' +
-    'reading source files completely.'),
-    (De: 'Projektkonventionen'; En: 'Project conventions'),
-    (De: 'Regelprofil, Formatstil, Benennungsregeln und aktive Prüfregeln des Projekts als Markdown.';
-    En: 'Rule profile, format style, naming rules and active check rules of the project as Markdown.'));
+    'reading source files completely.'));
 
 class function TMcpShell.ToolNames: TArray<string>;
 var
@@ -167,23 +161,6 @@ begin
     end;
 end;
 
-/// <summary>Projektkonventionen (#272) als Markdown.</summary>
-function ConventionsOf(AWorkspace: TShellWorkspace): TFunc<string>;
-begin
-  Result :=
-    function: string
-    var
-      mCatalog: TRuleCatalog;
-    begin
-      mCatalog := TFindingPrompt.GermanCatalog;
-      try
-        Result := TRuleConventions.Markdown(BuiltinRules, AWorkspace.Configuration.Settings, mCatalog);
-      finally
-        mCatalog.Free;
-      end;
-    end;
-end;
-
 /// <summary>Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).</summary>
 function BeforeToolCallOf(const AServices: TMcpServices; const ALogger: ILogger): TProc;
 var
@@ -218,9 +195,7 @@ begin
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  AServer.AddResource('delphi://conventions', cTexts[TMcpHostText.ConventionsName].Text,
-    cTexts[TMcpHostText.ConventionsDescription].Text, 'text/markdown',
-    ConventionsOf(AServices.Workspace));
+  TMcpConventions.Register(AServer, AServices.Workspace);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 

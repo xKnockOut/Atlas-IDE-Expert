@@ -1568,6 +1568,8 @@ uses
   Shell.Mcp.ProjectTools in '..\Application\Source\Shell\Shell.Mcp.ProjectTools.pas',
   Shell.Mcp.ChangeTools in '..\Application\Source\Shell\Shell.Mcp.ChangeTools.pas',
   Shell.Mcp.Changes in '..\Application\Source\Shell\Shell.Mcp.Changes.pas',
+  Shell.Mcp.Conventions in '..\Application\Source\Shell\Shell.Mcp.Conventions.pas',
+  Shell.Mcp.Conventions.Tests in 'Application\Shell\Shell.Mcp.Conventions.Tests.pas',
   Shell.Diagnostics in '..\Application\Source\Shell\Shell.Diagnostics.pas',
   Shell.SlashHost in '..\Application\Source\Shell\Shell.SlashHost.pas',
   Shell.Bootstrap in '..\Application\Source\Shell\Shell.Bootstrap.pas',
