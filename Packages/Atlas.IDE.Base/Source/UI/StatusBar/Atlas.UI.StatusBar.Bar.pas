@@ -166,7 +166,6 @@ type
     FEvents: TAtlasStatusBarEvents;
     procedure Layout;
     function ElementAt(X, Y: Integer): TAtlasStatusBarPart;
-    procedure Fire(X, Y: Integer);
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
     function PartAt(X, Y: Integer): Integer; override;
@@ -453,6 +452,20 @@ type
     procedure Extra(const ARect: TRect; AIndex: Integer);
     procedure Gear(const ARect: TRect);
     procedure Element(APart: TAtlasStatusBarPart; ASub: Integer; const ARect: TRect);
+  end;
+
+  /// <summary>Klick auf die Leiste: meldet das Ereignis des Elements unter dem Punkt.</summary>
+  TAtlasStatusBarClick = record
+    Bar: TAtlasEditorStatusBar;
+    /// <summary>Linke Oberkante des Elements APart (Bildschirm).</summary>
+    function Corner(APart: TAtlasStatusBarPart): TPoint;
+    /// <summary>Element ohne Unterteil: Status, Plakette, Live-Prüfung, Methode, Zahnrad.</summary>
+    procedure Whole(APart: TAtlasStatusBarPart);
+    /// <summary>Zähler ASub (Index in Kinds).</summary>
+    procedure Finding(ASub: Integer);
+    /// <summary>Zusatzfeld ASub (Index in View.Extras), nur mit Klick.</summary>
+    procedure Extra(ASub: Integer);
+    procedure Run(X, Y: Integer);
   end;
 
   /// <summary>Menü „Leiste anpassen“: je Element ein Haken, darunter „Statusleiste ausblenden“.</summary>
@@ -1178,13 +1191,16 @@ begin
 end;
 
 procedure TAtlasEditorStatusBar.ClickAt(X, Y: Integer);
+var
+  mClick: TAtlasStatusBarClick;
 begin
-  Fire(X, Y);
+  mClick.Bar := Self;
+  mClick.Run(X, Y);
 end;
 
 procedure TAtlasEditorStatusBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
 begin
-  Fire(X, Y);
+  ClickAt(X, Y);
 end;
 
 procedure TAtlasEditorStatusBar.DoubleClickAt(X, Y: Integer);
@@ -1205,49 +1221,73 @@ begin
   Result := AControl.ClientToScreen(Point(ARect.Left, ARect.Top));
 end;
 
-procedure TAtlasEditorStatusBar.Fire(X, Y: Integer);
-var
-  mKind, mSub: Integer;
+{ TAtlasStatusBarClick }
+
+function TAtlasStatusBarClick.Corner(APart: TAtlasStatusBarPart): TPoint;
 begin
-  Layout;
-  mSub := FPlaces.SubAt(Point(X, Y), ClientHeight);
-  case ElementAt(X, Y) of
+  Result := ScreenCorner(Bar, Bar.PartRect(APart));
+end;
+
+procedure TAtlasStatusBarClick.Whole(APart: TAtlasStatusBarPart);
+begin
+  case APart of
     TAtlasStatusBarPart.Status:
-      if Assigned(FEvents.Status) then
+      if Assigned(Bar.FEvents.Status) then
       begin
-        FEvents.Status(ScreenCorner(Self, PartRect(TAtlasStatusBarPart.Status)));
-      end;
-    TAtlasStatusBarPart.Findings:
-      begin
-        mKind := mSub;
-        if (mKind >= 0) and Assigned(FEvents.Finding) then
-        begin
-          FEvents.Finding(Kinds[mKind]);
-        end;
+        Bar.FEvents.Status(Corner(APart));
       end;
     TAtlasStatusBarPart.Badge:
-      if Assigned(FEvents.Badge) then
+      if Assigned(Bar.FEvents.Badge) then
       begin
-        FEvents.Badge(ScreenCorner(Self, PartRect(TAtlasStatusBarPart.Badge)));
+        Bar.FEvents.Badge(Corner(APart));
       end;
     TAtlasStatusBarPart.LiveCheck:
-      if Assigned(FEvents.LiveCheck) then
+      if Assigned(Bar.FEvents.LiveCheck) then
       begin
-        FEvents.LiveCheck();
+        Bar.FEvents.LiveCheck();
       end;
     TAtlasStatusBarPart.Method:
-      if FView.MethodFound and Assigned(FEvents.Method) then
+      if Bar.FView.MethodFound and Assigned(Bar.FEvents.Method) then
       begin
-        FEvents.Method();
-      end;
-    TAtlasStatusBarPart.Extra:
-      if (mSub >= 0) and FView.Extras[mSub].Clickable and Assigned(FEvents.Extra) then
-      begin
-        FEvents.Extra(FView.Extras[mSub].Id, ScreenCorner(Self, FPlaces.ExtraRect(mSub, ClientHeight)));
+        Bar.FEvents.Method();
       end;
     TAtlasStatusBarPart.Gear:
-      BuildMenu.Popup(ScreenCorner(Self, FPlaces.Gear).X, ScreenCorner(Self, FPlaces.Gear).Y);
-    TAtlasStatusBarPart.None: ;
+      Bar.BuildMenu.Popup(Corner(APart).X, Corner(APart).Y);
+  else
+    // Zähler und Zusatzfelder über ihren Unterteil, None tut nichts.
+  end;
+end;
+
+procedure TAtlasStatusBarClick.Finding(ASub: Integer);
+begin
+  if (ASub >= 0) and Assigned(Bar.FEvents.Finding) then
+  begin
+    Bar.FEvents.Finding(Kinds[ASub]);
+  end;
+end;
+
+procedure TAtlasStatusBarClick.Extra(ASub: Integer);
+begin
+  if (ASub >= 0) and Bar.FView.Extras[ASub].Clickable and Assigned(Bar.FEvents.Extra) then
+  begin
+    Bar.FEvents.Extra(Bar.FView.Extras[ASub].Id, ScreenCorner(Bar, Bar.ExtraRect(ASub)));
+  end;
+end;
+
+procedure TAtlasStatusBarClick.Run(X, Y: Integer);
+var
+  mPart: TAtlasStatusBarPart;
+  mSub: Integer;
+begin
+  mPart := Bar.ElementAt(X, Y);
+  mSub := Bar.FPlaces.SubAt(Point(X, Y), Bar.ClientHeight);
+  case mPart of
+    TAtlasStatusBarPart.Findings:
+      Finding(mSub);
+    TAtlasStatusBarPart.Extra:
+      Extra(mSub);
+  else
+    Whole(mPart);
   end;
 end;
 
