@@ -56,6 +56,8 @@ type
     [Test]
     procedure IsModuleHandleOnlyForRegistered;
     [Test]
+    procedure UnregisterDropsQueuedEntriesOfModule;
+    [Test]
     procedure ShutDownUnregistersAllInReverse;
     [Test]
     procedure RegistrationSurvivesRegistry;
@@ -67,6 +69,9 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
@@ -753,6 +758,52 @@ begin
     mRegistry.UnregisterModule('atlas.a');
     Assert.IsFalse(mRegistry.IsModuleHandle(4711));
   finally
+    mLog.Free;
+  end;
+end;
+
+/// <summary>Setzt ARan; eigene Routine, damit der Code sicher im Testprogramm liegt.</summary>
+function Marker(var ARan: Boolean): TThreadProcedure;
+var
+  mRan: PBoolean;
+begin
+  mRan := @ARan;
+  Result :=
+    procedure
+    begin
+      mRan^ := True;
+    end;
+end;
+
+procedure TModuleRegistryTests.UnregisterDropsQueuedEntriesOfModule;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mRan: Boolean;
+  mProc: TThreadProcedure;
+  mModule: NativeUInt;
+begin
+  mRan := False;
+  mProc := Marker(mRan);
+  // Das Testprogramm spielt das Package des Moduls: Info.Handle = Modul des eingereihten Codes.
+  mModule := TAtlasMainThread.ModuleOf(mProc);
+  mLog := TLog.Create;
+  try
+    mRegistry := TAtlasModuleRegistry.Create;
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', mModule) as IAtlasModule);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mProc);
+    mRegistry.UnregisterModule('atlas.a');
+    CheckSynchronize;
+    Assert.IsFalse(mRan, 'Eintrag des abgemeldeten Moduls läuft nicht nach seinem Entladen');
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', mModule) as IAtlasModule);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mProc);
+    CheckSynchronize;
+    Assert.IsTrue(mRan, 'nach erneutem Anmelden wieder angenommen');
+    mRegistry.UnregisterModule('atlas.a');
+  finally
+    TAtlasMainThread.OpenModule(mModule);
+    mRegistry := nil;
+    mProc := nil;
     mLog.Free;
   end;
 end;

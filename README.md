@@ -184,6 +184,8 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 
+`TAtlasMainThread` tracks queued main thread entries per module: when a module unregisters or its package is unloaded, its waiting entries are dropped instead of running later in unloaded code.
+
 How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and [ADR 0017](docs/adr/0017-funktions-packages.md); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Requirements

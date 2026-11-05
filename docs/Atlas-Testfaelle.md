@@ -9623,3 +9623,16 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Einträge in den Hauptthread verfallen mit ihrem Modul (05.11.2026)
+
+Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeile 129, `Proc()` in `Guarded`), aus einem Eintrag eines Moduls, das entladen wurde, während der Eintrag wartete. Geprüft wird mit einem eigenen Registry-Profil (`bds -r <Name>`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasMainThreadTests` (u. a. `CloseModuleDropsWaitingAndLaterEntries`, `ModuleUnloadedDropsButStaysOpen`, `CloseModuleDropsEntriesOfWorker`, `StopEmptiesPendingList`) und `TModuleRegistryTests.UnregisterDropsQueuedEntriesOfModule` grün, keine Leckmeldung |
+| HE2 | Win32- und Win64-Plugin bauen | 0/0/0; insbesondere keine Meldung zu `AddModuleUnloadProc(AtlasMainThreadModuleUnload)` und `FindHInstance` in `Atlas.Core.Diagnostics.MainThread` |
+| HE3 | IDE mit allen Modulen, Projekt öffnen, Willkommensseite und Atlas-Issue offen; in *Komponente › Packages installieren* das Package `Atlas.IDE.Tracker` abwählen (entladen), dann `Atlas.IDE.Welcome` | Kein Absturz, auch nicht in den Sekunden danach; im `atlas.log` gegebenenfalls „Atlas: dropped N queued main thread entries of module $…“ |
+| HE4 | Wie HE3, während eine Prüfung oder ein Tracker-Abruf läuft (viele Einträge unterwegs) | Kein Absturz; IDE bleibt bedienbar |
+| HE5 | Nach HE3 die Packages wieder anhaken (laden) | Module melden sich an und arbeiten normal (Willkommensseite aktualisiert sich, Tracker-Vorschau lädt) |
+| HE6 | IDE mehrmals normal beenden, auch mit laufender Prüfung | Kein Absturz beim Beenden; „Atlas entladen“ im Protokoll ohne Fehler im Schritt MainThread |
