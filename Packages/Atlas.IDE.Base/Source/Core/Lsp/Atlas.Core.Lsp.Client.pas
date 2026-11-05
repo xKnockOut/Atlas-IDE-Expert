@@ -579,17 +579,34 @@ begin
   Result := RequestCancellable(AMethod, AParams, ATimeoutMs, nil);
 end;
 
+/// <summary>Name der Anfrage im Diagnose-Fenster: bei workspace/executeCommand mit dem Befehl
+/// (2.0-stable: alle Serverbefehle standen in einer Zeile, ohne zu zeigen, welcher scheitert).</summary>
+function RequestLabel(const AMethod: string; AParams: TJSONValue): string;
+var
+  mCommand: string;
+begin
+  Result := AMethod;
+  if (AMethod = 'workspace/executeCommand') and (AParams is TJSONObject) and
+    TJSONObject(AParams).TryGetValue<string>('command', mCommand) then
+  begin
+    Result := AMethod + ' ' + mCommand;
+  end;
+end;
+
 function TLspClient.RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
   const ACancelled: TFunc<Boolean>): TJSONValue;
 var
   mWatch: TStopwatch;
   mOutcome: TAtlasRequestOutcome;
+  mLabel: string;
 begin
   if not TAtlasPluginTimings.Enabled then
   begin
     Exit(DoRequest(AMethod, AParams, ATimeoutMs, ACancelled));
   end;
-  // Diagnose-Fenster, Reiter „Server“: Dauer und Ausgang jeder Anfrage.
+  // Diagnose-Fenster, Reiter „Server“: Dauer und Ausgang jeder Anfrage. Der Name vorher: DoRequest übernimmt
+  // AParams.
+  mLabel := RequestLabel(AMethod, AParams);
   mWatch := TStopwatch.StartNew;
   mOutcome := TAtlasRequestOutcome.Failed;
   try
@@ -609,7 +626,7 @@ begin
       end;
     end;
   finally
-    TAtlasPluginTimings.NoteRequest(AMethod, mWatch.Elapsed.TotalMilliseconds, mOutcome);
+    TAtlasPluginTimings.NoteRequest(mLabel, mWatch.Elapsed.TotalMilliseconds, mOutcome);
   end;
 end;
 

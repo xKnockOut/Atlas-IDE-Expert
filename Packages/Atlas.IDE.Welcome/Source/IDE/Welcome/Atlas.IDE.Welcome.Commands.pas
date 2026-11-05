@@ -28,6 +28,9 @@
 //   "atlas" oder der Schlüssel als JSON).
 // - Kopf: Grußzeile nach Uhrzeit und Vorname des Windows-Kontos, Version,
 //   Kurzstatus aus Server und Index; neu bei jeder Änderung im Statusfeld.
+//   Den Anzeigenamen des Kontos schlägt TAtlasWelcomeAccountName einmal im
+//   Hintergrund nach (bei Domänenkonten fragt Windows dafür den
+//   Domänencontroller; im Hauptthread kostete das bei jedem Neuzeichnen).
 //   Rechts das Suchfeld (#760, welcomePage.search), angebunden an Search.
 // - Karte „Neu in Atlas“ (#756, WhatsNew): nach einem Update oben in der
 //   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
@@ -76,6 +79,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Welcome.AccountName,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
@@ -97,6 +101,9 @@ type
       Indexing: TAtlasIndexingFunc;
       Units: TFunc<Integer>;
       Message: TProc<string>;
+      /// <summary>Anzeigename des Kontos für den Gruß; im Hintergrund nachgeschlagen (gehört der Steuerung).
+      /// </summary>
+      Account: TAtlasWelcomeAccountName;
     end;
 
     /// <summary>Kennungen der Beobachter bei den Bereichen und beim Statusfeld.</summary>
@@ -208,6 +215,8 @@ var
   // Lebt die Steuerung noch? Für Arbeit, die über die Nachrichtenschleife kommt.
   Instance: TAtlasIdeWelcome;
 
+/// <summary>Anzeigename des Windows-Kontos; fragt bei Domänenkonten den Domänencontroller (nur im Hintergrund
+/// aufrufen, siehe TAtlasWelcomeAccountName).</summary>
 function DisplayName: string;
 var
   Size: ULONG;
@@ -228,6 +237,29 @@ end;
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
+end;
+
+/// <summary>Nachschlagen des Anzeigenamens für TAtlasWelcomeAccountName (läuft im Hintergrund).</summary>
+function AccountLookup: TFunc<string>;
+begin
+  Result :=
+    function: string
+    begin
+      Result := DisplayName;
+    end;
+end;
+
+/// <summary>Der Name ist da: Kopf neu zeichnen, solange die Steuerung lebt.</summary>
+function AccountChanged: TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if Instance <> nil then
+      begin
+        Instance.SectionChanged(TAtlasWelcomeIds.Header);
+      end;
+    end;
 end;
 
 { Hilfen }
@@ -454,6 +486,7 @@ begin
   FHooks.Units := AUnits;
   FHooks.Message := AMessage;
   FAreas := TAtlasIdeWelcomeAreas.Create;
+  FHooks.Account := TAtlasWelcomeAccountName.Create(AccountLookup(), AccountChanged());
   FIdeLayout := TAtlasIdeWelcomeIdeLayout.Create(AMessage);
   FLayouts := TAtlasIdeWelcomeLayouts.Create(
     procedure
@@ -507,6 +540,8 @@ end;
 destructor TAtlasIdeWelcome.Destroy;
 begin
   Instance := nil;
+  // Zuerst: wartet eine laufende Abfrage des Namens ab; ihr Abschluss erreicht danach nichts mehr.
+  FreeAndNil(FHooks.Account);
   FreeAndNil(FProjectWatch);
   // Vor den Frames: löst die Suchfelder, die noch leben.
   FreeAndNil(FSearch);
@@ -588,7 +623,11 @@ begin
   mInfo := HeaderInfo(mServer, mIndexing, mPercent, mUnits);
   mInfo.Greeting := Settings.WelcomePageGreeting;
   mInfo.Hour := mHour;
-  mInfo.FirstName := TAtlasWelcomeGreeting.FirstName(DisplayName, GetEnvironmentVariable('USERNAME'));
+  // Ohne Grußzeile kein Nachschlagen des Namens (bei Domänenkonten eine Anfrage an den Domänencontroller).
+  if mInfo.Greeting then
+  begin
+    mInfo.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
+  end;
   AHeader.ShowInfo(mInfo);
   AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
   if (FSearch <> nil) and (AHeader.Search <> nil) then

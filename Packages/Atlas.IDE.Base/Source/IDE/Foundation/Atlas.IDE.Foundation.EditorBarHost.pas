@@ -18,8 +18,10 @@
 //   gibt danach nur ihre eigenen frei. Enable gibt die Leiste (VCL) und ihre
 //   Fenster (auch an der VCL vorbei mit EnableWindow gesperrte) wieder frei;
 //   Ensure ruft es, sobald ein Editor aktiv ist.
-// - Sperren protokollieren: Disabled schreibt den Aufrufer mit Stapel ins
-//   Protokoll (höchstens MaxDisabledLogs je Host).
+// - Sperren protokollieren: Disabled und Enable schreiben je Host nur die
+//   erste Sperre und Freigabe als eine Zeile. Der Verursacher ist bekannt
+//   (TEditWindow.ShowView beim Tab-Wechsel und Schließen aller Editoren,
+//   2.0-stable); ein Stapel je Sperre füllte nur das Protokoll.
 // - Thema: ForEach wendet Farben (oder anderes) auf jede Leiste an.
 // - Absturzsicherung je Leiste: Anlegen, Einordnen und ForEach laufen je
 //   Leiste in einem eigenen try; ein Fehler zählt für das Feature
@@ -49,6 +51,8 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Wo eine Leiste steht: im Code-Editor, im Formular-Designer oder in beiden (Vorgabe).</summary>
   TAtlasEditorBarView = (Any, Code, Designer);
+  /// <summary>Was ein Leisten-Host schon protokolliert hat: erste Sperre, erste Freigabe.</summary>
+  TAtlasEditorBarLogged = (Disabled, Enabled);
 {$SCOPEDENUMS OFF}
 
   TAtlasEditorBarHost = class
@@ -57,9 +61,6 @@ type
     TCreateBar = reference to function(AEditorParent: TWinControl): TControl;
     /// <summary>Leiste einordnen (Parent, Align, Reihenfolge); beim Anlegen und bei jedem Ensure.</summary>
     TPlaceBar = reference to procedure(ABar: TControl; AEditorParent: TWinControl);
-  public const
-    /// <summary>So oft je Host den Aufrufer protokollieren, der eine Leiste sperrt.</summary>
-    MaxDisabledLogs = 3;
   private type
     TWatcher = class(TComponent)
     private
@@ -77,7 +78,8 @@ type
     /// <summary>Eltern-Steuerelement des Editors je Leiste (gleicher Index wie FBars).</summary>
     FParents: TList<TWinControl>;
     FHidden: Boolean;
-    FDisabledLogged: Integer;
+    /// <summary>Erste Sperre bzw. Freigabe schon protokolliert; danach still.</summary>
+    FLogged: set of TAtlasEditorBarLogged;
     FOnRemoved: TProc<TControl>;
     FShowIn: TAtlasEditorBarView;
     procedure Removed(ABar: TControl);
@@ -142,10 +144,6 @@ uses
   Vcl.Forms,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.IDE.Foundation.EditorBuffer;
-
-type
-  /// <summary>Nur für den Stapel im Protokoll: wird sofort wieder gefangen.</summary>
-  EAtlasBarDisabled = class(Exception);
 
 /// <summary>Steuerelement mit seinen Eltern bis zum Formular, für das Protokoll.</summary>
 function ControlChain(AControl: TControl): string;
@@ -562,7 +560,11 @@ begin
     if not mBar.Enabled then
     begin
       mBar.Enabled := True;
-      TAtlasGuard.Log(FName + ': wieder freigegeben, ein Editor ist aktiv');
+      if not (TAtlasEditorBarLogged.Enabled in FLogged) then
+      begin
+        Include(FLogged, TAtlasEditorBarLogged.Enabled);
+        TAtlasGuard.Log(FName + ': wieder freigegeben, ein Editor ist aktiv (weitere Freigaben ohne Protokoll)');
+      end;
     end;
     if (mBar is TWinControl) and EnableWindows(TWinControl(mBar)) then
     begin
@@ -573,33 +575,21 @@ end;
 
 procedure TAtlasEditorBarHost.Disabled(ABar: TObject);
 var
-  mTrace, mChain: string;
+  mChain: string;
 begin
-  // Die ersten Male reichen, um den Aufrufer zu sehen.
-  if FDisabledLogged >= MaxDisabledLogs then
+  // Die IDE sperrt die Leisten bei jedem Tab-Wechsel (TEditWindow.ShowView); Enable gibt sie wieder frei.
+  if TAtlasEditorBarLogged.Disabled in FLogged then
   begin
     Exit;
   end;
-  Inc(FDisabledLogged);
+  Include(FLogged, TAtlasEditorBarLogged.Disabled);
   mChain := '';
   if ABar is TControl then
   begin
     mChain := ControlChain(TControl(ABar).Parent);
   end;
-  try
-    raise EAtlasBarDisabled.Create(FName + ' wird gesperrt');
-  except
-    on E: Exception do
-    begin
-      mTrace := E.StackTrace;
-      if (mTrace = '') and Assigned(TAtlasGuard.StackOf) then
-      begin
-        mTrace := TAtlasGuard.StackOf(E);
-      end;
-    end;
-  end;
-  TAtlasGuard.Log(Format('%s: wird gesperrt (Enabled := False), in %s; Aufrufer:%s%s',
-    [FName, mChain, sLineBreak, mTrace]));
+  TAtlasGuard.Log(Format('%s: gesperrt (Enabled := False), in %s; weitere Sperren ohne Protokoll',
+    [FName, mChain]));
 end;
 
 function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
