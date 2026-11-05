@@ -75,7 +75,8 @@ type
     SettingsDebugExceptionBanner, SettingsDebugExceptionBannerIgnoreAtLocation, SettingsDebugInlineValues,
     SettingsDebugInlineValuesPerLine, SettingsDebugExplainUnavailable, SettingsDebugCompletionInDialogs,
     SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, SettingsDebugExplainAccessViolation,
-    SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns);
+    SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns,
+    DebugEditorMenuGroup);
 
   TAtlasDebugStrings = class
   public
@@ -381,7 +382,8 @@ const
      'Zugriffsverletzungen erklären (welcher Teil war nil)',
      'Getter und Funktionsaufrufe bei der Auswertung erlauben',
      'Schrittfilter beim Hineinspringen (F7)',
-     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):'),
+     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
+     'Debuggen'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -667,7 +669,8 @@ const
      'Explain access violations (which part was nil)',
      'Allow getters and function calls during evaluation',
      'Step filters when stepping into (F7)',
-     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):'));
+     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):',
+     'Debugging'));
 
 { TAtlasDebugStrings }
 

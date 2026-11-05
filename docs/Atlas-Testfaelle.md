@@ -9533,6 +9533,24 @@ end;
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
 
+## Kontextmenü Atlas im Editor: Untermenüs und Tastenkürzel (05.11.2026)
+
+Ausgangslage: Das Untermenü *Atlas* im Kontextmenü des Editors war mit rund 40 Einträgen höher als der Bildschirm (oben abgeschnitten), und die Tastenkürzel klebten direkt am Text („FormatierenStrg+Alt+Umsch+L“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EK1 | Rechtsklick im Editor › *Atlas* | Oben „Code-Aktionen“ und „Erzeugen …“, Trennlinie, Untermenüs *Navigation*, *Bearbeiten*, *Suchen und analysieren*, *Befunde*, Trennlinie, *Debuggen*, *Tests*, *Notizen und Lesezeichen*, „Weg von hier nach …“, „Issue anlegen …“, Trennlinie, „Element ausblenden …“; das Menü passt auf den Bildschirm (**Abnahme**) |
+| EK2 | Untermenüs öffnen | Kürzel stehen in einer eigenen Spalte rechtsbündig (z. B. *Bearbeiten › Formatieren* Strg+Alt+Umsch+L, *Befunde › Nächster Befund* Strg+Alt+F8), nicht mehr am Text (**Abnahme**) |
+| EK3 | Jeden Eintrag einmal per Maus wählen (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Debuggen, Tests, Notizen und Lesezeichen) | Jeder Befehl läuft genau einmal |
+| EK4 | Kontextmenü einmal öffnen und schließen, danach im Editor Strg+Alt+Umsch+L, Strg+Alt+K, Alt+Enter, Strg+W drücken | Jeder Befehl läuft genau einmal (kein doppeltes Formatieren, kein zweiter Dialog) (**Abnahme**) |
+| EK5 | Nach EK4: Strg+Umschalt+↑ in einer Methode, dann außerhalb einer Methode; Strg+. auf einer Zeile ohne Element | In der Methode Wechsel Deklaration ⇄ Implementierung; außerhalb die Klassennavigation der IDE bzw. IDE Insight wie ohne Atlas |
+| EK6 | *Tools › Optionen › Atlas › Befehle*: Kürzel für „Formatieren“ ändern, OK, Kontextmenü öffnen | Das neue Kürzel steht im Menü, ohne Neustart |
+| EK7 | Prüfregeln aus (`problems.enabled`), Kontextmenü | *Befunde* zeigt nur „Nächster Befund“ und „Vorheriger Befund“, „Datei jetzt prüfen“ fehlt |
+| EK8 | Module Debugger und Tests über die Modulschalter abschalten, Kontextmenü | Untermenüs *Debuggen* und *Tests* fehlen, keine leeren Untermenüs, keine doppelte Trennlinie; wieder einschalten: sie erscheinen ohne Neustart |
+| EK9 | Englische Oberfläche | Untermenüs *Navigation*, *Edit*, *Search and analyze*, *Findings*, *Debugging*, *Tests*, *Notes and bookmarks*; Kürzel rechtsbündig |
+| EK10 | Rechtsklick in die Rinne einer anderen Zeile › *Atlas › Notizen und Lesezeichen › Notiz an dieser Zeile…* | Dialog nennt die angeklickte Zeile (wie NO6) |
+| EK11 | `Atlas.Tests` bauen und ausführen, Plugin-Packages bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasMenuSlotsTests`, `TAtlasKeyStrokeTests` grün |
+
 ## Englische Texte der übrigen Module (#1458, Gruppe F)
 
 Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und Tests gebaut; eigenes Registry-Profil (`bds -r AtlasEnglisch`); Git-Projekt mit Testprojekt. Englisch über `ui.language` = en bzw. englische IDE, Deutsch über `ui.language` = de.
