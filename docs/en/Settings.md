@@ -18,6 +18,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | Check rules | `rules` | – | settings.json (Tools › Options › Atlas) and atlas.json (Atlas › Project settings) | no | Table from the rule catalog | #41 |
 | Check rules | `profile` | `"standard"` | atlas.json (Atlas › Project settings) | no | Choice | #146 |
 | Check rules | `profiles` | – | atlas.json (Atlas › Project settings) | no | Profile editor | #146 |
+| Check rules | `ruleChecks`: `enabled` | – | settings.json (Tools › Options › Atlas) | no | Checkbox “Check rules” (module switch) | #1454 |
 | Check rules | `overrides` | – | atlas.json (Atlas › Project settings) | no | List with patterns | #146 |
 | Check rules | `excludeTests` | `false` | settings.json (Tools › Options › Atlas) and atlas.json (Atlas › Project settings) | no | Checkbox | #146 |
 | Check rules | `testProfile` | – | atlas.json (Atlas › Project settings) | no | Choice | #146 |
@@ -125,6 +126,7 @@ All settings with page and control in the settings plugin (#227). Details on val
 | General | Safe start after a crash: ask (`safeMode.askAfterCrash`), without asking after two crashes (`safeMode.autoAfterRepeatedCrash`), key while loading (`safeMode.startupKey`: shift, ctrl, none), slow start from (`safeMode.startupTimeoutMs`; Atlas then names its share of the start in the messages window, can be switched off with `robustness.hangHint`, and in the log; not a crash, report N4), remembered settings states (`safeMode.keepSettingsHistory`) | on, on, shift, 30000, 5 | Plugin (registry `SafeAskAfterCrash`, `SafeAutoAfterRepeatedCrash`, `SafeStartupKey`, `SafeStartupTimeoutMs`, `SafeKeepSettingsHistory`); command line `-AtlasSafeMode`, environment variable `ATLAS_SAFE_MODE=1` | no | Checkbox, checkbox, choice, number (1000–120000), number (0–50) | #722 |
 | General | Undo Atlas changes across several files: on/off (`undo.multiFile`), number of sets (`undo.multiFile.depth`), keep across restarts (`undo.multiFile.persist`) up to at most MB (`undo.multiFile.maxSizeMb`), on conflicts (`undo.multiFile.onConflict`: partial, abort), newly created files (`undo.multiFile.newFiles`: recycleBin, delete, keep), keys Undo and Redo | on, 20, on, 50, partial, recycleBin, Ctrl+Alt+Z, Ctrl+Alt+Shift+Z | Plugin (registry `UndoMultiFile`, `UndoMultiFileDepth`, `UndoMultiFilePersist`, `UndoMultiFileMaxSizeMb`, `UndoMultiFileOnConflict`, `UndoMultiFileNewFiles`, `UndoKey`, `RedoKey`); backup in `%LOCALAPPDATA%\Atlas\undo` | no | Checkbox, number (1–200), checkbox, number (1–1024), choice, choice, shortcut, shortcut | #721 |
 | General | After consent at the first start check for a new Atlas version at most once a day (`updates.check`); only the Atlas and IDE versions are transmitted, a note appears in the messages view and as the yellow row “Version” in the status panel and in the status tile | off | Plugin (registry `UpdatesCheck`); state (also the new version found) in `%LOCALAPPDATA%\Atlas\updates.json` | no | Checkbox | #495 |
+| General | Install updates (`updates.install`: off only a note as before, ask on a click on “Download and install on exit”, auto download right away); channel (`updates.channel`: stable, prerelease also pre-release versions); new modules of an update (`updates.newModules`: ask show a selection, install install them too, skip do not install). Downloaded and verified in the background to `%LOCALAPPDATA%\Atlas\Updates\<Version>`, swapped by `AtlasUpdate.exe` when the IDE closes, with rollback; locked for an installation via GetIt, without `AtlasUpdate.exe` or without write access to the Atlas folder. Only works with `updates.check` | ask, stable, ask | Plugin (registry `UpdatesInstall`, `UpdatesChannel`, `UpdatesNewModules`); declined new modules in `%LOCALAPPDATA%\Atlas\Updates\declined.txt` | no | Choice lists | #1519 |
 | General | Anonymize the bug report (*Atlas › Create bug report…*): paths below the project become `<ws>`, other paths `<pfad>`, user name and identifiers in the log are replaced (`diagnostics.bugReport.anonymize`) | on | Plugin (registry `BugReportAnonymize`) | no | Checkbox | #108 |
 | General | Export, import and reset settings (`settings.exportImport`, quick toggle): buttons at the bottom of *Tools › Options › Atlas* and commands *Atlas.SettingsExport*, *Atlas.SettingsImport*, *Atlas.SettingsProfile*, *Atlas.SettingsReset* (command palette); changed values with a dot at the field (`settings.markModified`), backup in `%APPDATA%\Atlas\Backups` before every import (`settings.backupBeforeImport`), omit credentials or write placeholders (`settings.exportSecrets`: omit, placeholder); areas see below | on, on, on, omit | Plugin (registry `SettingsExportImport`, `SettingsMarkModified`, `SettingsBackupBeforeImport`, `SettingsExportSecrets`) | no | Checkbox, choice, buttons “Export…”, “Import…”, “Load profile…”, “Reset page”, “Reset all…”, context menu “Reset to default” | #723 |
 | Completion | Pin favourites (`completion.favorites`, quick toggle): Ctrl+D in the open list or a click on the star that appears when hovering over a row pins or unpins the entry; pinned entries appear with a star on the left before all other groups, independent of learning and ranking, but only if they match the typed prefix; per pair (type, member) like the learning weighting, at most 5 per type (a sixth replaces nothing, the footer names the reason); list with “Remove” and “Remove all” on the options page | on | Plugin (registry `Favorites`); favourites in `%APPDATA%\Atlas\favorites.json` (type, member, kind, unit, signature, time; readable without the server) | no | Checkbox, list with buttons | #458 |
@@ -179,20 +181,20 @@ All settings with page and control in the settings plugin (#227). Details on val
 
 | Area | Keys |
 |---|---|
-| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `inlayHints.methodKind`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `search.replaceIdeSearch`, `search.fromFirstHit`, `search.resultsInMessages`, `search.replace`, `search.regex`, `search.history`, `search.multiFile`, `problems.statusCounter`, `hover.problemActions`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.formCaptions`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `references.inferred`, `references.textMatches`, `callHierarchy.diagram`, `navigation.impact`, `navigation.impactDepth`, `peek.heightLines`, `peek.showImplementation`, `navigation.dataFlow`, `navigation.dataFlow.maxDepth`, `navigation.dataFlow.excludeTests`, `outline.enabled`, `navigation.symbolPath`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.breadcrumbsIdeColors`, `editor.breadcrumbsHideIdeToolbar`, `editor.toolbar`, `editor.toolbar.position`, `editor.toolbar.items`, `editor.toolbar.returnButton`, `editor.toolbar.labels`, `editor.statusBar`, `editor.designerBar`, `editor.designerBar.searchKey`, `editor.designerBar.searchStyle`, `editor.designerBar.tabOrderClick`, `editor.designerBar.align`, `editor.statusBar.items`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.stickyScrollTypes`, `editor.stickyScrollRoutines`, `editor.stickyScrollBlocks`, `editor.stickyScrollLoops`, `editor.stickyScrollTry`, `editor.stickyScrollCase`, `editor.stickyScrollWith`, `editor.stickyScrollBlockMinLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `hints.expressionType`, `hints.expressionType.conversions`, `hints.expressionType.constValue`, `editor.methodPlacement`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `hints.rationale`, `hints.rationaleMarkers`, `hints.adrFolder`, `directives.completion`, `directives.hover` |
+| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `inlayHints.methodKind`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `search.enabled`, `search.replaceIdeSearch`, `search.fromFirstHit`, `search.resultsInMessages`, `search.replace`, `search.regex`, `search.history`, `search.multiFile`, `problems.statusCounter`, `hover.problemActions`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.formCaptions`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `references.inferred`, `references.textMatches`, `callHierarchy.diagram`, `navigation.impact`, `navigation.impactDepth`, `peek.heightLines`, `peek.showImplementation`, `navigation.dataFlow`, `navigation.dataFlow.maxDepth`, `navigation.dataFlow.excludeTests`, `outline.enabled`, `navigation.symbolPath`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.breadcrumbsIdeColors`, `editor.breadcrumbsHideIdeToolbar`, `editor.toolbar`, `editor.toolbar.position`, `editor.toolbar.items`, `editor.toolbar.returnButton`, `editor.toolbar.labels`, `editor.statusBar`, `designer.enabled`, `editor.designerBar`, `editor.designerBar.searchKey`, `editor.designerBar.searchStyle`, `editor.designerBar.tabOrderClick`, `editor.designerBar.align`, `editor.statusBar.items`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.stickyScrollTypes`, `editor.stickyScrollRoutines`, `editor.stickyScrollBlocks`, `editor.stickyScrollLoops`, `editor.stickyScrollTry`, `editor.stickyScrollCase`, `editor.stickyScrollWith`, `editor.stickyScrollBlockMinLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `hints.expressionType`, `hints.expressionType.conversions`, `hints.expressionType.constValue`, `editor.methodPlacement`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `hints.rationale`, `hints.rationaleMarkers`, `hints.adrFolder`, `directives.completion`, `directives.hover` |
 | Completion (`completion`) | `completion.enabled`, `completion.filterChips`, `completion.preview`, `completion.groupInherited`, `completion.variantBranch`, `completion.listMode`, `completion.listMode.scope`, `completion.learning`, `completion.favorites`, `completion.visibleRows`, `completion.panelCollapsed`, `completion.selectionMarker`, `completion.autoParentheses`, `completion.fixCase`, `completion.commitCharacters`, `completion.autoUses`, `completion.parameterHints`, `completion.formatPlaceholders`, `completion.openDelayMs`, `completion.matching`, `completion.offerTryFinally`, `completion.keywords`, `completion.genericConstraints`, `completion.resourceStrings`, `completion.typeConversion`, `completion.assignAllFields`, `completion.usesDetails`, `completion.inheritedCall`, `completion.attributes`, `completion.anonymousMethods`, `completion.withOrigin`, `completion.exceptionClasses`, `completion.syntaxNotice`, `completion.sameNameVariants`, `completion.sameNameInsert`, `completion.showFmxUnits`, `completion.nameSuggestions` |
 | Highlighting (`highlighting`) | `highlight.pairColors`, `highlight.pairGuides`, `highlight.pairOwners`, `highlight.inactiveDim`, `highlight.pairGuideWidth`, `highlight.pairGuideOpacity`, `highlight.pairColorsLight`, `highlight.pairColorsDark`, `highlight.selectionMatches`, `highlight.selectionMatches.minLength`, `highlight.selectionMatches.caseSensitive`, `highlight.selectionMatches.wholeWord`, `highlight.selectionMatches.navigateF3`, `highlight.selectionMatches.maxMatches`, `editor.exitPoints`, `editor.exitPoints.exceptions`, `editor.exitPoints.loops`, `editor.exitPoints.badge`, `highlight.reassigned`, `highlight.reassigned.targets`, `highlight.reassigned.style`, `highlight.reassigned.color`, `highlight.blockPairs`, `highlight.directives`, `highlight.exitPoints`, `highlight.exitKeywords` |
 | Keyboard shortcuts (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `bookmarks.quick.keyPriority`, `bookmarks.quick.setKey`, `bookmarks.quick.setKeyPriority`, `bookmarks.quick.jumpKey`, `bookmarks.quick.jumpKeyPriority`, `keys.nextBookmark`, `keys.previousBookmark`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.searchReplace`, `keys.search`, `keys.searchNext`, `keys.searchPrevious`, `keys.searchInMethod`, `keys.createIssue`, `keys.problemsWindow`, `keys.gotoInterface`, `keys.gotoImplementation`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.safeDelete`, `keys.safeDelete.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.expressionType`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
 | Code actions (`codeActions`) | `keys.generateMenu`, `codeActions.methodToggle`, `slashCommands.enabled`, `keys.generateMenu.groups`, `keys.generateMenu.hidden`, `keys.generateMenu.recentFirst`, `keys.generateMenu.showCommandNames`, `usesCommand`, `completeBlocks.docComment`, `slashCommands.disabled`, `slashCommands.headerTemplate`, `slashCommands.logCall`, `slashCommands.componentPalette`, `slashCommands.todoOwner`, `slashCommands.todoCategory`, `slashCommands.sortUsesRemoveUnused`, `slashCommands.enumHelper`, `slashCommands.setHelper` |
-| Code checks (`rules`) | `problems.window`, `problems.window.scope`, `problems.window.groupBy`, `problems.window.columns`, `problems.window.compiler`, `problems.window.followCursor`, `problems.window.openFirst`, `problems.window.closedUnits`, `problems.window.showCleanActive`, `problems.compilerMerge`, `problems.showCompilerCode`, `problems.live`, `fix.bulk`, `problems.list`, `rules`, `excludeTests` |
-| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `build.onOpen`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
-| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.hoverValues`, `debug.explainUnavailable`, `debug.completionInDialogs`, `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`, `debug.explainAccessViolation`, `debug.explainAccessViolation.allowCalls`, `debug.exceptionHistory`, `debug.justMyCode`, `debug.exceptionBanner`, `debug.exceptionBanner.ignoreAtLocation`, `debug.inlineValues`, `debug.inlineValuesPerLine`, `debug.ownCodeFolders`, `debug.visualizers`, `debug.visualizers.types`, `debug.visualizers.nameFields`, `debug.visualizers.maxLength`, `debug.visualizers.timeoutMs`, `debug.visualizers.maxImagePixels`, `debug.visualizers.evaluation`, `debug.displayRules`, `debug.displayRules.allowCalls`, `debug.stepIntoTarget`, `debug.stepFilters`, `debug.stepFilters.kinds`, `debug.stepFilters.patterns`, `debug.stepIntoTarget.key`, `debug.breakOnNextEvent`, `debug.breakOnNextEvent.excluded` |
+| Code checks (`rules`) | `problems.window`, `problems.window.scope`, `problems.window.groupBy`, `problems.window.columns`, `problems.window.compiler`, `problems.window.followCursor`, `problems.window.openFirst`, `problems.window.closedUnits`, `problems.window.showCleanActive`, `problems.compilerMerge`, `problems.showCompilerCode`, `ruleChecks.enabled`, `problems.update`, `problems.liveDelayMs`, `fix.bulk`, `problems.list`, `rules`, `excludeTests` |
+| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `buildTools.enabled`, `buildPipeline.enabled`, `build.onOpen`, `tests.enabled`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
+| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.enabled`, `debug.hoverValues`, `debug.explainUnavailable`, `debug.completionInDialogs`, `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`, `debug.explainAccessViolation`, `debug.explainAccessViolation.allowCalls`, `debug.exceptionHistory`, `debug.justMyCode`, `debug.exceptionBanner`, `debug.exceptionBanner.ignoreAtLocation`, `debug.inlineValues`, `debug.inlineValuesPerLine`, `debug.ownCodeFolders`, `debug.visualizers`, `debug.visualizers.types`, `debug.visualizers.nameFields`, `debug.visualizers.maxLength`, `debug.visualizers.timeoutMs`, `debug.visualizers.maxImagePixels`, `debug.visualizers.evaluation`, `debug.displayRules`, `debug.displayRules.allowCalls`, `debug.stepIntoTarget`, `debug.stepFilters`, `debug.stepFilters.kinds`, `debug.stepFilters.patterns`, `debug.stepIntoTarget.key`, `debug.breakOnNextEvent`, `debug.breakOnNextEvent.excluded` |
 | Templates/snippets (`snippets`) | `snippets.enabled`, `snippets.importIdeTemplates`, `completion.postfixTemplates` |
-| Bookmarks (`bookmarks`) | `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
+| Bookmarks (`bookmarks`) | `bookmarks.enabled`, `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
 | Welcome page (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.ideWelcomePage`, `welcomePage.layout`, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.sprint`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
-| Issue tracker (`issues`) | `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
+| Issue tracker (`issues`) | `issues.enabled`, `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
 | Version control (`vcs`) | `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.branch.git.base`, `vcs.branch.git.push`, `vcs.branch.git.uncommitted`, `vcs.branch.git.worktree`, `vcs.branch.git.worktreeFolder`, `vcs.git`, `vcs.svn` |
-| General (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `server.statusWindow`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
+| General (`general`) | `diagnosticMode.enabled`, `diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`, `diagnostics.processes`, `server.statusWindow`, `analysis.enabled`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `updates.install`, `updates.channel`, `updates.newModules`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
 | not exported (state, this machine only) | `ui.architectureWindowPlaced`, `ui.hotspotsWindowPlaced`, `ui.unitRelationsWindowPlaced`, `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
 ## Experimental features
@@ -223,8 +225,11 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `completion.enabled`
     - `teamFile.enabled`
   - `diagnosticMode.enabled`
+    - `diagnosticMode.pluginTimings`
+    - `diagnosticMode.slowThresholdMs`
   - `diagnostics.processes`
   - `server.statusWindow`
+  - `analysis.enabled`
   - `experimental.enabled`
   - `editor.reloadExternal`
   - `editor.openForEdits`
@@ -254,16 +259,16 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `settings.exportSecrets`
 
 - **Architecture** (`general.architecture`)
-  - `architecture.enabled`
+  - `architecture.enabled` – depends on `analysis.enabled`
     - `architecture.scope`
     - `architecture.includeLibraryUnits`
     - `architecture.centralUnits`
 
 - **Code queries** (`general.query`)
-  - `query.enabled`
+  - `query.enabled` – depends on `search.enabled`
 
 - **Hotspots** (`general.hotspots`)
-  - `hotspots.enabled`
+  - `hotspots.enabled` – depends on `analysis.enabled`
     - `hotspots.months`
     - `hotspots.coupling.minCommits`
 
@@ -281,6 +286,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `inlayHints.methodKind`
   - `editor.blockEndLabels`
     - `editor.blockEndLabels.minLines`
+  - `bookmarks.enabled`
   - `editor.inlineDiagnostics`
   - `editor.continuePattern` – depends on `completion.enabled`
     - `editor.continuePattern.minLines`
@@ -291,6 +297,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `callHierarchy.diagram`
   - `editor.breadcrumbsIdeColors`
   - `editor.breadcrumbsHideIdeToolbar`
+  - `designer.enabled`
   - `editor.methodPlacement`
 
 - **Pair colouring** (`editor.pairs`)
@@ -317,7 +324,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `editor.statusBar.items`
 
 - **Designer bar** (`editor.designerBar`)
-  - `editor.designerBar`
+  - `editor.designerBar` – depends on `designer.enabled`
     - `editor.designerBar.searchKey`
     - `editor.designerBar.searchStyle`
     - `editor.designerBar.tabOrderClick` (experimental)
@@ -421,12 +428,12 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `keys.multiCursor.below`
 
 - **Notes and bookmarks** (`editor.notes`)
-  - `notes.enabled`
-  - `bookmarks.named`
+  - `notes.enabled` – depends on `bookmarks.enabled`
+  - `bookmarks.named` – depends on `bookmarks.enabled`
     - `bookmarks.shared`
 
 - **Quick bookmarks** (`editor.quickBookmarks`)
-  - `bookmarks.quick`
+  - `bookmarks.quick` – depends on `bookmarks.enabled`
     - `bookmarks.quick.gutter`
       - `bookmarks.quick.gutterClick`
     - `bookmarks.quick.numberedKeys`
@@ -440,23 +447,26 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `codeLens.metrics`
   - `codeLens.tests` – depends on `tests.run`
   - `todos.list`
-  - `baseline.update`
+  - `baseline.update` – depends on `ruleChecks.enabled`
   - `metrics.report`
-  - `dfmRules.apply`
+  - `dfmRules.apply` – depends on `ruleChecks.enabled`
   - `codeLens.testUnit` – depends on `completion.enabled`
 
 ### Compiler
 
 - **Main node**
-  - `compiler.mcpBuild`
-  - `build.zeroHints`
+  - `buildTools.enabled`
+    - `build.compilerSwitches`
+      - `build.showSwitchesInStatusBar`
+  - `buildPipeline.enabled`
+    - `compiler.mcpBuild`
+    - `build.zeroHints`
+    - `build.summary`
+    - `build.warningsAsErrors`
+    - `build.gate`
+    - `build.gateTimeoutMs`
+  - `tests.enabled`
   - `build.showInterfaceCost`
-  - `build.summary`
-  - `build.warningsAsErrors`
-  - `build.compilerSwitches`
-    - `build.showSwitchesInStatusBar`
-  - `build.gate`
-  - `build.gateTimeoutMs`
 
 - **Problems** (`compiler.problems`)
   - `problems.enabled` – depends on `completion.enabled`
@@ -469,7 +479,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `compiler.onSave`
 
 - **Tests** (`compiler.tests`)
-  - `tests.run` – depends on `completion.enabled`
+  - `tests.run` – depends on `tests.enabled`
     - `tests.afterBuild`
     - `tests.affected`
       - `tests.affectedDepth`
@@ -477,11 +487,11 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `tests.buildFirst`
 
 - **Start profiles** (`compiler.startProfiles`)
-  - `startProfiles.enabled`
+  - `startProfiles.enabled` – depends on `buildTools.enabled`
     - `startProfiles.statusField`
 
 - **Build on open** (`compiler.openBuild`)
-  - `build.onOpen`
+  - `build.onOpen` – depends on `buildTools.enabled`
     - `build.onOpenKind`
     - `build.onOpenScope`
     - `build.onOpenDelayMs`
@@ -490,7 +500,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `build.onOpenPlatform`
 
 - **Project tasks** (`compiler.tasks`)
-  - `taskRunner.enabled`
+  - `taskRunner.enabled` – depends on `buildTools.enabled`
     - `taskRunner.problemsFromOutput`
     - `taskRunner.beforeBuild`
     - `taskRunner.saveBeforeRun`
@@ -599,7 +609,7 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `outline.conditions`
 
 - **Symbol path** (`commands.symbolPath`)
-  - `navigation.symbolPath`
+  - `navigation.symbolPath` – depends on `analysis.enabled`
 
 - **Generate menu** (`commands.generateMenu`)
   - `keys.generateMenu`
@@ -634,43 +644,44 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### Debugging
 
 - **Main node**
-  - `tests.debug`
+  - `tests.debug` – depends on `tests.enabled`
     - `debug.testBreakAtStart`
-  - `debug.hoverValues`
-  - `debug.explainUnavailable`
-  - `debug.completionInDialogs`
-  - `debug.evaluateWindow`
-    - `debug.evaluateWindow.replaceCtrlF7`
-  - `debug.explainAccessViolation`
-    - `debug.explainAccessViolation.allowCalls`
-  - `debug.exceptionHistory`
-    - `debug.exceptionBanner`
-      - `debug.exceptionBanner.ignoreAtLocation`
-  - `debug.justMyCode`
-    - `debug.ownCodeFolders`
-  - `debug.inlineValues`
-    - `debug.inlineValuesPerLine`
-  - `debug.visualizers`
-    - `debug.visualizers.types`
-    - `debug.visualizers.nameFields`
-    - `debug.visualizers.maxLength`
-    - `debug.visualizers.timeoutMs`
-    - `debug.visualizers.maxImagePixels`
-    - `debug.visualizers.evaluation`
-  - `debug.displayRules`
-    - `debug.displayRules.allowCalls`
-  - `debug.stepIntoTarget`
-    - `debug.stepIntoTarget.key`
-  - `debug.stepFilters`
-    - `debug.stepFilters.kinds`
-    - `debug.stepFilters.patterns`
-  - `debug.breakOnNextEvent`
-    - `debug.breakOnNextEvent.excluded`
+  - `debug.enabled`
+    - `debug.hoverValues`
+    - `debug.explainUnavailable`
+    - `debug.completionInDialogs`
+    - `debug.evaluateWindow`
+      - `debug.evaluateWindow.replaceCtrlF7`
+    - `debug.explainAccessViolation`
+      - `debug.explainAccessViolation.allowCalls`
+    - `debug.exceptionHistory`
+      - `debug.exceptionBanner`
+        - `debug.exceptionBanner.ignoreAtLocation`
+    - `debug.justMyCode`
+      - `debug.ownCodeFolders`
+    - `debug.inlineValues`
+      - `debug.inlineValuesPerLine`
+    - `debug.visualizers`
+      - `debug.visualizers.types`
+      - `debug.visualizers.nameFields`
+      - `debug.visualizers.maxLength`
+      - `debug.visualizers.timeoutMs`
+      - `debug.visualizers.maxImagePixels`
+      - `debug.visualizers.evaluation`
+    - `debug.displayRules`
+      - `debug.displayRules.allowCalls`
+    - `debug.stepIntoTarget`
+      - `debug.stepIntoTarget.key`
+    - `debug.stepFilters`
+      - `debug.stepFilters.kinds`
+      - `debug.stepFilters.patterns`
+    - `debug.breakOnNextEvent`
+      - `debug.breakOnNextEvent.excluded`
 
 ### Release build
 
 - **Main node**
-  - `build.releaseGuard` – depends on `completion.enabled`
+  - `build.releaseGuard` – depends on `buildPipeline.enabled`
     - `build.releaseConfigs`
     - `build.releaseChecks`
 
@@ -683,6 +694,11 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `welcomePage.openOnStart`
     - `welcomePage.openWhenNoProject`
     - `welcomePage.whatsNew`
+  - `welcomePage.tests.ci` – depends on `issues.enabled`
+    - `welcomePage.tests.ci.login`
+    - `welcomePage.tests.ci.provider`
+    - `welcomePage.tests.ci.intervalMinutes`
+    - `welcomePage.tests.ci.notify`
 
 - **Header** (`welcome.header`)
   - `welcomePage.header` – depends on `welcomePage.enabled`
@@ -713,17 +729,12 @@ Risky or immature features come as **experimental** (#834): they have their own 
 - **Test results** (`welcome.tests`)
   - `welcomePage.tests` – depends on `welcomePage.enabled`
     - `welcomePage.tests.maxFailures`
-    - `welcomePage.tests.ci`
-      - `welcomePage.tests.ci.login`
-      - `welcomePage.tests.ci.provider`
-      - `welcomePage.tests.ci.intervalMinutes`
-      - `welcomePage.tests.ci.notify`
 
 - **My issues** (`welcome.issues`)
-  - `welcomePage.issues` – depends on `welcomePage.enabled`
+  - `welcomePage.issues` – depends on `issues.enabled`
 
 - **Sprint** (`welcome.sprint`)
-  - `welcomePage.sprint` – depends on `welcomePage.enabled`
+  - `welcomePage.sprint` – depends on `issues.enabled`
 
 - **Quick actions** (`welcome.quickActions`)
   - `welcomePage.quickActions` – depends on `welcomePage.enabled`
@@ -807,32 +818,33 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### Search units
 
 - **Main node**
-  - `search.replaceIdeSearch`
-  - `search.fromFirstHit`
-  - `search.resultsInMessages`
-  - `search.replace`
-  - `search.regex`
-  - `search.history`
-  - `search.multiFile`
-  - `unitSearch.enabled`
-    - `unitSearch.replaceIdeDialog`
-    - `unitSearch.replaceUseUnitDialog`
-    - `unitSearch.replaceFormsDialog`
-    - `unitSearch.rememberCollapsed`
-    - `unitSearch.filters`
-    - `unitSearch.filterSyntax`
-    - `unitSearch.formCaptions`
-    - `unitSearch.preview`
-      - `unitSearch.preview.form`
-      - `unitSearch.preview.usedBy`
-      - `unitSearch.preview.autoCollapse`
-    - `unitSearch.multiSelect`
-    - `unitSearch.actions`
-      - `unitSearch.actions.addUses`
-    - `unitSearch.pathStyle`
-    - `unitSearch.groupBy`
-    - `unitSearch.defaultScope`
-    - `unitSearch.key`
+  - `search.enabled`
+    - `search.replaceIdeSearch`
+    - `search.fromFirstHit`
+    - `search.resultsInMessages`
+    - `search.replace`
+    - `search.regex`
+    - `search.history`
+    - `search.multiFile`
+    - `unitSearch.enabled`
+      - `unitSearch.replaceIdeDialog`
+      - `unitSearch.replaceUseUnitDialog`
+      - `unitSearch.replaceFormsDialog`
+      - `unitSearch.rememberCollapsed`
+      - `unitSearch.filters`
+      - `unitSearch.filterSyntax`
+      - `unitSearch.formCaptions`
+      - `unitSearch.preview`
+        - `unitSearch.preview.form`
+        - `unitSearch.preview.usedBy`
+        - `unitSearch.preview.autoCollapse`
+      - `unitSearch.multiSelect`
+      - `unitSearch.actions`
+        - `unitSearch.actions.addUses`
+      - `unitSearch.pathStyle`
+      - `unitSearch.groupBy`
+      - `unitSearch.defaultScope`
+      - `unitSearch.key`
 
 - **Quick open** (`unitSearch.quickOpen`)
   - `quickOpen.enabled`
@@ -847,6 +859,9 @@ Risky or immature features come as **experimental** (#834): they have their own 
 
 ### Check rules
 
+- **Main node**
+  - `ruleChecks.enabled`
+
 - **Findings window** (`rules.window`)
   - `problems.window` – depends on `problems.enabled`
     - `problems.window.scope`
@@ -857,8 +872,9 @@ Risky or immature features come as **experimental** (#834): they have their own 
     - `problems.window.openFirst`
       - `problems.window.closedUnits`
       - `problems.window.showCleanActive`
-    - `fix.bulk`
-  - `problems.live` – depends on `problems.enabled`
+  - `problems.update` – depends on `problems.enabled`
+  - `problems.liveDelayMs` – depends on `problems.enabled`
+  - `fix.bulk` – depends on `ruleChecks.enabled`
   - `problems.list` – depends on `problems.enabled`
 
 - **Compiler ahead** (`rules.group.compiler`)
@@ -883,6 +899,9 @@ Risky or immature features come as **experimental** (#834): they have their own 
   - `safeMode.startupTimeoutMs`
   - `safeMode.keepSettingsHistory`
   - `updates.check`
+  - `updates.install`
+  - `updates.channel`
+  - `updates.newModules`
   - `diagnostics.bugReport.anonymize`
 
 ### Undo
@@ -898,53 +917,54 @@ Risky or immature features come as **experimental** (#834): they have their own 
 ### Issue tracker
 
 - **Main node**
-  - `issues.tracker`
-  - `issues.start`
-  - `issues.branchPattern`
-  - `issues.branchBase`
-  - `issues.commitPattern`
-  - `issues.login`
-  - `issues.connections`
-  - `issues.projects`
-  - `issues.queries`
-  - `issues.queryPicker`
-  - `issues.create`
-    - `issues.create.includeCode`
-  - `issues.preview`
-    - `issues.preview.comments`
-    - `issues.preview.checklists`
-    - `issues.preview.links`
-    - `issues.preview.development`
-  - `issues.codeLinks`
-  - `issues.blameLinks`
-    - `issues.blameLinks.maxRevisions`
-  - `issues.syncState`
-  - `issues.stateField`
-  - `issues.assigneeField`
-  - `issues.startState`
-  - `issues.assignOnStart`
-  - `issues.startComment`
-  - `issues.endStates`
-  - `issues.endComment`
-  - `issues.timeTracking`
-    - `issues.idleMinutes`
-    - `issues.timeRounding`
-  - `issues.checklistStatus`
-  - `issues.warnBlocked`
-  - `issues.board`
-    - `issues.board.confirmMove`
-    - `issues.board.onlyMine`
-  - `issues.sprint.burndown`
-  - `issues.sprint.compare`
-  - `issues.paletteSearch`
-  - `issues.commentEditor`
-  - `issues.commentSnippets`
-  - `issues.notify`
-    - `issues.notify.intervalMinutes`
-    - `issues.notify.scope`
-  - `issues.attach`
-    - `issues.attach.logFiles`
-    - `issues.attach.maxImageWidth`
+  - `issues.enabled`
+    - `issues.tracker`
+    - `issues.start`
+    - `issues.branchPattern`
+    - `issues.branchBase`
+    - `issues.commitPattern`
+    - `issues.login`
+    - `issues.connections`
+    - `issues.projects`
+    - `issues.queries`
+    - `issues.queryPicker`
+    - `issues.create`
+      - `issues.create.includeCode`
+    - `issues.preview`
+      - `issues.preview.comments`
+      - `issues.preview.checklists`
+      - `issues.preview.links`
+      - `issues.preview.development`
+    - `issues.codeLinks`
+    - `issues.blameLinks`
+      - `issues.blameLinks.maxRevisions`
+    - `issues.syncState`
+    - `issues.stateField`
+    - `issues.assigneeField`
+    - `issues.startState`
+    - `issues.assignOnStart`
+    - `issues.startComment`
+    - `issues.endStates`
+    - `issues.endComment`
+    - `issues.timeTracking`
+      - `issues.idleMinutes`
+      - `issues.timeRounding`
+    - `issues.checklistStatus`
+    - `issues.warnBlocked`
+    - `issues.board`
+      - `issues.board.confirmMove`
+      - `issues.board.onlyMine`
+    - `issues.sprint.burndown`
+    - `issues.sprint.compare`
+    - `issues.paletteSearch`
+    - `issues.commentEditor`
+    - `issues.commentSnippets`
+    - `issues.notify`
+      - `issues.notify.intervalMinutes`
+      - `issues.notify.scope`
+    - `issues.attach`
+      - `issues.attach.logFiles`
+      - `issues.attach.maxImageWidth`
 
 ### Version control
 

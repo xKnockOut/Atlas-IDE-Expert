@@ -29,6 +29,14 @@ Der Server prüft jede Unit beim Tippen.
 
 Einstellungen: `fix.bulk`
 
+### Wann die Prüfung läuft
+
+- `problems.update` (*Tools › Optionen › Atlas › Prüfregeln › Prüffenster*):
+  - live beim Tippen mit eigener Verzögerung `problems.liveDelayMs` in Millisekunden (100 bis 10000, Vorgabe 400)
+  - beim Speichern
+  - nur auf Anforderung über „Datei jetzt prüfen“ (Befehlspalette, Knopf im Fenster „Atlas-Prüfung“, Klick auf die Live-Prüfung der Statusleiste)
+- Die frühere Einstellung „Laufende Prüfung beim Tippen“ wird übernommen
+
 ### Befund-Hover und Optionen
 
 - **Befund-Hover** mit Schweregrad, Regel und Aktionszeile „Alt+Enter: Korrektur“, „Für diese Zeile unterdrücken“, „Regel einstellen…“
@@ -38,7 +46,7 @@ Einstellungen: `fix.bulk`
 
 ## Prüfregeln
 
-**312 Prüfregeln** in vier Kategorien: 203 Fehler, 99 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+**313 Prüfregeln** in vier Kategorien: 204 Fehler, 99 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
 
 ### Korrektheit
 
@@ -349,6 +357,7 @@ Compilerfehler schon beim Tippen, ohne Build.
 - Formulare, die `Application.CreateForm` und zusätzlich der Code erzeugt (die Korrektur entfernt die Zeile aus der `.dpr`)
 - Handler in geerbten Formularen, die den Handler des Vorfahren nicht mehr aufrufen (die Korrektur fügt `inherited;` ein)
 - Formulare, die sich im eigenen Ereignis-Handler freigeben (die Korrektur nimmt `Release` bzw. `Action := caFree`)
+- Verweise der Formulardatei auf Komponenten eines anderen Formulars oder Datenmoduls, dessen Unit nicht in den uses steht (`Connection = Form1.Connection`; die Korrektur ergänzt die Unit)
 
 ### Laufzeitumgebung
 

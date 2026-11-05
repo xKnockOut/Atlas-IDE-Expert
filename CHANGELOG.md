@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Geändert
+- Doku zweisprachig (#1458): READMEs als Kurzüberblick, Details je Bereich unter `docs/features/de` und `docs/features/en`; englische Fassungen von IDE-Plugin, MCP, Prüfregeln, Einstellungen und Claude-Code-Plugin (`docs/en`), Regeln und Einstellungen aus den Werkzeugen erzeugt.
+
 ## [2.0.0-beta.1] - 2026-11-05
 
 ### Neu

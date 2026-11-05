@@ -88,7 +88,10 @@ Einstellungen: `issues.create`, `issues.create.includeCode`
 - Board im andockbaren Fenster *Atlas-Board* (`issues.board`):
   - aktueller Sprint des YouTrack-Agile-Boards bzw. des GitHub-Projekts als Spalten mit Karten
   - „Nur meine“, Suche
-  - Ziehen ändert nach Rückfrage den Zustand im Tracker
+  - Ziehen ändert nach Rückfrage den Zustand im Tracker und folgt dem Workflow von YouTrack:
+    - unter einer Zustandsmaschine löst Atlas den passenden Übergang aus wie das Board von YouTrack
+    - Spalten, die der Workflow ausschließt, leuchten nicht auf
+    - die Statuszeile nennt die erlaubten Übergänge
   - Klick öffnet die Vorschau, Doppelklick beginnt
 - Bereich *Sprint* auf der Startseite (`welcomePage.sprint`):
   - aktueller Sprint mit Resttagen, eigenen Zahlen, „Team übrig“ und Burndown
@@ -229,6 +232,21 @@ Aufruf: *Atlas › Hilfe und Diagnose*, Befehl `Atlas.ServerStatus`, Klick auf d
 - *Aktualisieren* fragt sofort, *Index neu aufbauen*.
 - *Diagnosepaket erstellen …* schreibt nach einer Vorschau eine ZIP-Datei mit Fehlerbericht (#108), Status, Protokoll der Sitzung und mit `--trace` dem Trace der letzten Minuten, anonymisiert wie der Fehlerbericht und nie mit Zugangsdaten.
 
+## Zeiten des Plugins im Diagnosefenster (`diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`)
+
+Im Diagnosemodus zeigt „Atlas-Diagnose“, was in Atlas gerade langsam ist:
+
+| Reiter | Inhalt |
+|---|---|
+| *Hauptthread* | wie sehr Atlas die IDE in den letzten 60 s belegt hat, eigene Zeit je Funktion (Aufrufe, Summe, Mittel, Maximum, Aufrufe ab der Schwelle, Anteil) und die letzten 200 langsamen Aufrufe mit der laufenden Atlas-Aktion; Kontextmenü *Nur X zeigen*, *bis zum Neustart ausschalten*, *Zeile kopieren* |
+| *Server* | jede Anfrage mit Anzahl, Mittel, Maximum, Wartezeit des Hauptthreads, Zeitüberschreitungen, Abbrüchen und Fehlern |
+| *Hintergrund* | Arbeitszeit jeder Quelle der Vervollständigung im Arbeitsthread und wie oft sie zu langsam war |
+| *Hänger* | die Meldungen des Einfrier-Wächters der Sitzung und ob Atlas beteiligt war |
+| *Vervollständigung* | das bisherige Fenster |
+
+- *Anhalten*, *Zurücksetzen* und *Bericht kopieren* (ohne Quelltext und Dateinamen)
+- Ausgeschaltet läuft kein Messpunkt
+
 ## Robustheit
 
 - kein Fehler in Atlas erreicht die IDE
@@ -250,5 +268,5 @@ Einstellungen: `server.crashCases`, `server.crashSkip`
 
 ## Weiteres
 
-- **Update-Prüfung** nur nach Zustimmung
+- **Update-Prüfung** nur nach Zustimmung; **Update-Installer** (#1519): „Jetzt aktualisieren“ lädt und prüft das Update im Hintergrund, ein Konsolenfenster spielt es beim Schließen der IDE ein, mit Auswahl der Module, Rückfall und Ergebnis beim nächsten Start (`updates.install`, `updates.channel`, `updates.newModules`); Delphi 12 bekommt es aus dem Quelltext gebaut
 - **Barrierefreiheit:** Listen und Tooltips für UI Automation lesbar

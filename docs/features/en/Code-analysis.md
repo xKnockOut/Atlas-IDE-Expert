@@ -34,6 +34,14 @@ Marks move along while typing.
   - units that are not open come last, dimmed (or shown normally or hidden)
   - optionally the active unit also shows without findings ("No findings")
 
+### When the check runs
+
+- `problems.update` (*Tools › Options › Atlas › Rules › Check window*):
+  - live while typing, with its own delay `problems.liveDelayMs` in milliseconds (100 to 10000, default 400)
+  - on save
+  - only on request via "Check file now" (command palette, button in the "Atlas-Prüfung" window, click on the live check in the status bar)
+- The former setting "Check while typing" is carried over
+
 ### Finding hover
 
 - Shows severity and rule
@@ -47,7 +55,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**312 check rules** in four categories: 203 bugs, 99 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
+**313 check rules** in four categories: 204 bugs, 99 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 
@@ -438,6 +446,7 @@ Compiler errors while typing, without a build.
 - Forms created by `Application.CreateForm` and again by hand (quick fix removes the line from the `.dpr`)
 - Handlers in inherited forms that no longer call the ancestor's handler (quick fix inserts `inherited;`)
 - Forms that free themselves in their own event handler (quick fix uses `Release` or `Action := caFree`)
+- References in the form file to components of another form or data module whose unit is not in the uses clause (`Connection = Form1.Connection`; quick fix adds the unit)
 
 ### Runtime environment
 
