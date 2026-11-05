@@ -1,5 +1,7 @@
 ﻿# Atlas IDE Expert in RAD Studio einbinden
 
+*English version: [RAD-Studio.md](en/RAD-Studio.md)*
+
 Es gibt zwei Wege:
 
 - **Empfohlen: das IDE-Plugin** `Atlas.IDE.Base` (ADR 0006) für RAD Studio 13 und 12. Es meldet sich als eigener Code Insight-Manager an und bringt eigene Fenster für Vervollständigung, Parameter-Hint und Hover sowie Probleme im Editor, Klammerpaare, Befehlspalette und Compilerprüfung mit (Übersicht in der [README](../README_DE.md)).

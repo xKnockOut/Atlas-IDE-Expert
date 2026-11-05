@@ -1,5 +1,7 @@
 # Einstellungen
 
+*English version: [en/Settings.md](en/Settings.md)*
+
 <!-- Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json. Nicht von Hand bearbeiten. -->
 
 Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Einzelheiten zu Werten und Bedeutung stehen in [Konfiguration.md](Konfiguration.md).
