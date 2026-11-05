@@ -9377,7 +9377,7 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 
 ## Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
 
-Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen.
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen. Für AA22 bis AA26 ohne eigene große Unit: `node Tools/Benchmark/big-unit.mjs BigUnit.pas` erzeugt eine Unit mit etwa 26.000 Zeilen und verschachtelten Routinen (`--routines N` für mehr oder weniger), die in ein Projekt aufnehmen und öffnen.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
