@@ -130,7 +130,8 @@ procedure TAbstractDeclarationInvalidRule.Check(const AContext: TRuleContext; co
 var
   Tokens: TArray<TPascalToken>;
   Paths: TArray<string>;
-  Declared: TArray<TDeclaredMethod>;
+  // Deklarierte Methoden je Klasse.Name (Großbuchstaben): Lookup suchte je Rumpf über alle (quadratisch).
+  Declared: TDictionary<string, TArray<TDeclaredMethod>>;
   Lines: TArray<string>;
   Cache: IRuleDerivedCache;
   Ancestry: TAncestry;
@@ -160,6 +161,24 @@ var
   function TokenRange(AIndex: Integer): TTextRange;
   begin
     Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+  end;
+
+  function DeclaredKey(const AClassName, AName: string): string;
+  begin
+    Result := UpperCase(AClassName) + '.' + UpperCase(AName);
+  end;
+
+  procedure AddDeclared(const AMethod: TDeclaredMethod);
+  var
+    mKey: string;
+    mGroup: TArray<TDeclaredMethod>;
+  begin
+    mKey := DeclaredKey(AMethod.ClassName, AMethod.Name);
+    if not Declared.TryGetValue(mKey, mGroup) then
+    begin
+      mGroup := nil;
+    end;
+    Declared.AddOrSetValue(mKey, mGroup + [AMethod]);
   end;
 
   /// <summary>Token der Direktive ADirective im Kopf AHeader; -1 ohne.</summary>
@@ -236,7 +255,7 @@ var
     Method.Name := AHeader.Name;
     Method.IsAbstract := Abstract_ >= 0;
     Method.Path := TConditionalBranches.PathAt(Paths, First);
-    Declared := Declared + [Method];
+    AddDeclared(Method);
   end;
 
   /// <summary>E2383: "class abstract sealed" bzw. "class sealed abstract". ASealed: die Klasse ist sealed,
@@ -438,13 +457,17 @@ var
   procedure Lookup(const AClassName, AName, APath: string; out AAbstract, AConcrete: Boolean);
   var
     Method: TDeclaredMethod;
+    mGroup: TArray<TDeclaredMethod>;
   begin
     AAbstract := False;
     AConcrete := False;
-    for Method in Declared do
+    if not Declared.TryGetValue(DeclaredKey(AClassName, AName), mGroup) then
     begin
-      if SameText(Method.ClassName, AClassName) and SameText(Method.Name, AName) and
-        not TConditionalBranches.Exclusive(Method.Path, APath) then
+      Exit;
+    end;
+    for Method in mGroup do
+    begin
+      if not TConditionalBranches.Exclusive(Method.Path, APath) then
       begin
         if Method.IsAbstract then
         begin
@@ -571,17 +594,21 @@ begin
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text);
-  Declared := nil;
   Cache := TRuleDerived.Open(AContext);
-  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  Declared := TDictionary<string, TArray<TDeclaredMethod>>.Create;
   try
-    Visit(AContext.Tree.Root);
+    Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Ancestry.Free;
+    end;
+    if Declared.Count > 0 then
+    begin
+      VisitBodies(AContext.Tree.Root);
+    end;
   finally
-    Ancestry.Free;
-  end;
-  if Declared <> nil then
-  begin
-    VisitBodies(AContext.Tree.Root);
+    Declared.Free;
   end;
 end;
 

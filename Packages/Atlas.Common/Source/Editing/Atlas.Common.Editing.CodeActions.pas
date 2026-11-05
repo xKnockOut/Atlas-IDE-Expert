@@ -23,6 +23,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
@@ -122,9 +123,11 @@ type
     class function SwapAssignments(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
       out AAction: TCodeAction): Boolean; static;
     /// <summary>#312: Bei einer Markierung, die kein Literal ist, "Als String-Literal" (ganze Zeilen);
-    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand.</summary>
-    class function StringLiteralActions(const AText: string; const ARange: TTextRange;
-      const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>; static;
+    /// auf einem Literal "Als Klartext kopieren" über CopyTextCommand. ATokens: die des Syntaxbaums zu AText.
+    /// </summary>
+    class function StringLiteralActions(const AText: string; const ATokens: TArray<TPascalToken>;
+      const ARange: TTextRange; const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+      static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
   end;
@@ -134,7 +137,6 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract,
   System.RegularExpressions,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
@@ -721,7 +723,9 @@ type
     /// <summary>Gibt der Aktion für alle verschiebbaren Units die Kennung UsesMoveTag.</summary>
     procedure TagMoveAll(const AUnitName: string);
   public
-    constructor Create(const AText: string; const ARange: TTextRange; const AContext: TUsesContext);
+    /// <summary>ATokens: die des Syntaxbaums zu AText (große Units nicht je Code-Aktion neu zerlegen).</summary>
+    constructor Create(const AText: string; const ATokens: TArray<TPascalToken>; const ARange: TTextRange;
+      const AContext: TUsesContext);
     /// <summary>Fehlende Unit zum Bezeichner an ARange.StartPos (Quick-Fix).</summary>
     procedure AddMissing(ATree: TSyntaxTree);
     /// <summary>interface-Units ins implementation verschieben (Rewrite).</summary>
@@ -732,13 +736,14 @@ type
     property Actions: TArray<TCodeAction> read FActions;
   end;
 
-constructor TUsesActionList.Create(const AText: string; const ARange: TTextRange; const AContext: TUsesContext);
+constructor TUsesActionList.Create(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ARange: TTextRange; const AContext: TUsesContext);
 begin
   inherited Create;
   FText := AText;
   FRange := ARange;
   FContext := AContext;
-  FTokens := TPascalLexer.Tokenize(AText);
+  FTokens := ATokens;
   FLineBreak := TTextLines.LineBreakOf(AText);
 end;
 
@@ -872,7 +877,14 @@ begin
   begin
     Exit;
   end;
-  mList := TUsesActionList.Create(AText, ARange, AContext);
+  if ATree <> nil then
+  begin
+    mList := TUsesActionList.Create(AText, ATree.Tokens, ARange, AContext);
+  end
+  else
+  begin
+    mList := TUsesActionList.Create(AText, TPascalLexer.Tokenize(AText), ARange, AContext);
+  end;
   try
     if AEditing then
     begin
@@ -921,13 +933,14 @@ begin
 end;
 
 /// <summary>"Als Klartext kopieren" für ein Literal an APosition; False, wenn dort keins steht.</summary>
-function CopyPlainAction(const AText: string; const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+function CopyPlainAction(const AText: string; const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  out AAction: TCodeAction): Boolean;
 var
   mLiteral: TTextRange;
   mPlain: string;
 begin
   AAction := Default(TCodeAction);
-  Result := TStringLiterals.LiteralAt(AText, APosition, mLiteral) and
+  Result := TStringLiterals.LiteralAt(ATokens, APosition, mLiteral) and
     TStringLiterals.PlainText(TStringLiterals.TextOf(AText, mLiteral), mPlain);
   if Result then
   begin
@@ -982,17 +995,22 @@ begin
   end;
 end;
 
-class function TCodeActions.StringLiteralActions(const AText: string; const ARange: TTextRange;
-  const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
+class function TCodeActions.StringLiteralActions(const AText: string; const ATokens: TArray<TPascalToken>;
+  const ARange: TTextRange; const ASettings: TStringLiteralSettings; AMultiline: Boolean): TArray<TCodeAction>;
 var
   mLines: TArray<string>;
   mAction: TCodeAction;
   mFirst, mLast, mCommon: Integer;
 begin
   Result := nil;
-  if CopyPlainAction(AText, ARange.StartPos, mAction) then
+  if CopyPlainAction(AText, ATokens, ARange.StartPos, mAction) then
   begin
     Result := [mAction];
+    Exit;
+  end;
+  // Ohne Auswahl gibt es nichts umzuwandeln: den Text dann nicht in Zeilen teilen.
+  if (ARange.StartPos.Line = ARange.EndPos.Line) and (ARange.StartPos.Character = ARange.EndPos.Character) then
+  begin
     Exit;
   end;
   mLines := TTextLines.SplitLines(AText);

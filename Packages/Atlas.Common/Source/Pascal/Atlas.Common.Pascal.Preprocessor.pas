@@ -1550,30 +1550,54 @@ begin
   Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
 end;
 
+/// <summary>Die Zeichen ab AStart in AText lauten AUpper (Großbuchstaben, ASCII), ohne Rücksicht auf die
+/// Schreibung.</summary>
+function UpperAt(const AText: string; AStart: Integer; const AUpper: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := AStart + Length(AUpper) - 1 <= Length(AText);
+  mIndex := 1;
+  while Result and (mIndex <= Length(AUpper)) do
+  begin
+    Result := UpCase(AText[AStart + mIndex - 1]) = AUpper[mIndex];
+    Inc(mIndex);
+  end;
+end;
+
 class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;
 var
-  Upper: string;
+  mStart: Integer;
 begin
-  Upper := UpperCase(AText);
-  Result := (Pos('{$IF', Upper) > 0) or (Pos('(*$IF', Upper) > 0);
+  // Je '$' statt den ganzen Text in Großbuchstaben zu kopieren: Der Baum-Cache fragt das bei jedem Zugriff,
+  // jeder Anbieter einer Code-Aktion einmal (#1761).
+  mStart := Pos('$', AText);
+  while mStart > 0 do
+  begin
+    if (mStart > 1) and UpperAt(AText, mStart + 1, 'IF') and ((AText[mStart - 1] = '{') or
+      ((mStart > 2) and (AText[mStart - 1] = '*') and (AText[mStart - 2] = '('))) then
+    begin
+      Exit(True);
+    end;
+    mStart := Pos('$', AText, mStart + 1);
+  end;
+  Result := False;
 end;
 
 class function TPascalPreprocessor.HasIncludes(const AText: string): Boolean;
 var
-  Upper: string;
-  Start, Next: Integer;
+  mStart, mNext: Integer;
 begin
-  Upper := UpperCase(AText);
-  Start := Pos('$I', Upper);
-  while Start > 0 do
+  mStart := Pos('$', AText);
+  while mStart > 0 do
   begin
-    Next := Start + 2;
-    if (Start > 1) and CharInSet(Upper[Start - 1], ['{', '*']) and (Next <= Length(Upper)) and
-      (CharInSet(Upper[Next], [' ', #9, '''']) or (Copy(Upper, Next, 6) = 'NCLUDE')) then
+    mNext := mStart + 2;
+    if (mStart > 1) and CharInSet(AText[mStart - 1], ['{', '*']) and UpperAt(AText, mStart + 1, 'I') and
+      (mNext <= Length(AText)) and (CharInSet(AText[mNext], [' ', #9, '''']) or UpperAt(AText, mNext, 'NCLUDE')) then
     begin
       Exit(True);
     end;
-    Start := Pos('$I', Upper, Next);
+    mStart := Pos('$', AText, mStart + 1);
   end;
   Result := False;
 end;

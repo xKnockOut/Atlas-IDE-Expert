@@ -9385,7 +9385,7 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 
 ## Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
 
-Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen.
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen. Für AA22 bis AA26 ohne eigene große Unit: `node Tools/Benchmark/big-unit.mjs BigUnit.pas` erzeugt eine Unit mit etwa 27.600 Zeilen (600 Methoden mit je drei verschachtelten lokalen Routinen); `--lines L` für etwa L Zeilen, `--routines N` für genau N Methoden, `--depth D` für die Verschachtelungstiefe (0 = keine). Die Unit in ein Projekt aufnehmen und öffnen.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -9414,6 +9414,8 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA23 | Wie AA22, Task-Manager offen | AtlasServer.exe fällt nach der Prüfung wieder auf etwa 0 % CPU; kein dauernder Lauf je Cursorbewegung; Speicher wächst nicht weiter |
 | AA24 | Wie AA22: Cursor auf Zeilen mit und ohne Befund, Hover über Bezeichner | Glühbirne erscheint (während einer laufenden Prüfung höchstens nach etwa 1,5 s, dann ohne Regelkorrekturen); Hover erscheint; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` ohne Zeitlimit |
 | AA25 | Während die Prüfung von AA22 läuft, weiter tippen | Die Befunde folgen dem neuen Stand; kein alter Stand bleibt stehen |
+| AA26 | Wie AA22, nach Ende der Prüfung: Cursor mit den Pfeiltasten durch die Unit bewegen, auch in Klassendeklarationen mit Get-/Set-Methoden und auf String-Literalen | Glühbirne folgt dem Cursor ohne spürbare Verzögerung; „Property aus Zugriffsmethoden“, „Als Klartext kopieren“ und uses-Aktionen erscheinen wie bisher; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` deutlich unter 1 s |
+| AA27 | Fenster „Atlas-Diagnose“ in der Startgröße öffnen, Reiter „Server“; danach schmaler und breiter ziehen | Spalte „Anfrage“ zeigt `textDocument/codeAction` lesbar; alle Spalten enden am rechten Rand (keine abgeschnittene Spalte); breit wieder volle Breiten |
 
 ## Prüfregeln vollständig im Modul (#1755)
 

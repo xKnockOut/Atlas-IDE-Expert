@@ -18,6 +18,29 @@ uses
   Atlas.Common.Semantics.Contract;
 
 type
+  /// <summary>Wie TIndexExtractor.Extract(Baum, Dateiname), je Dateiname einmal; threadsicher.</summary>
+  ITreeExtracts = interface
+    ['{5E8A3C71-2B9D-4F06-8A14-C7D2E9B01F35}']
+    function Extracted(const AFileName: string): TUnitIndex;
+  end;
+
+  /// <summary>Extrahierte Units eines Baums, am Baum selbst geteilt (TSyntaxTree.Derived, #1761): Resolver ohne
+  /// TTreeUnits des Prüflaufs (Code-Aktionen, Hover, Vervollständigung …) werten denselben Baum so nur einmal
+  /// aus. Nur das Extrahieren: Die Zusammenführung mit dem Index ändert sich mit dem Index.</summary>
+  TTreeExtracts = class(TInterfacedObject, ITreeExtracts)
+  private
+    FTree: TSyntaxTree;
+    FLock: TObject;
+    // Dateiname groß -> Unit. Unter FLock.
+    FEntries: TDictionary<string, TUnitIndex>;
+  public
+    constructor Create(ATree: TSyntaxTree);
+    destructor Destroy; override;
+    function Extracted(const AFileName: string): TUnitIndex;
+    /// <summary>Die am Baum ATree geteilte Auswertung.</summary>
+    class function ForTree(ATree: TSyntaxTree): ITreeExtracts; static;
+  end;
+
   TTreeUnits = class(TInterfacedObject, ITreeUnits)
   private type
     TEntry = record
@@ -56,6 +79,57 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Extractor;
+
+{ TTreeExtracts }
+
+constructor TTreeExtracts.Create(ATree: TSyntaxTree);
+begin
+  inherited Create;
+  FTree := ATree;
+  FLock := TObject.Create;
+  FEntries := TDictionary<string, TUnitIndex>.Create;
+end;
+
+destructor TTreeExtracts.Destroy;
+begin
+  FEntries.Free;
+  FLock.Free;
+  inherited Destroy;
+end;
+
+function TTreeExtracts.Extracted(const AFileName: string): TUnitIndex;
+var
+  mKey: string;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  System.TMonitor.Enter(FLock);
+  try
+    if not FEntries.TryGetValue(mKey, Result) then
+    begin
+      Result := TIndexExtractor.Extract(FTree, AFileName);
+      FEntries.Add(mKey, Result);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+/// <summary>Legt die Auswertung für ATree an (für TSyntaxTree.Derived).</summary>
+function ExtractsFactory(ATree: TSyntaxTree): TFunc<IInterface>;
+begin
+  Result :=
+    function: IInterface
+    begin
+      Result := TTreeExtracts.Create(ATree) as ITreeExtracts;
+    end;
+end;
+
+class function TTreeExtracts.ForTree(ATree: TSyntaxTree): ITreeExtracts;
+begin
+  Result := ATree.Derived(ExtractsFactory(ATree)) as ITreeExtracts;
+end;
+
+{ TTreeUnits }
 
 constructor TTreeUnits.Create(ATree: TSyntaxTree);
 begin

@@ -604,7 +604,7 @@ begin
   begin
     mSettings := TStringLiteralSettings.Default;
   end;
-  Add(TCodeActions.StringLiteralActions(FText, FRange, mSettings, mMultiline));
+  Add(TCodeActions.StringLiteralActions(FText, FTree.Tokens, FRange, mSettings, mMultiline));
 end;
 
 procedure TCodeActionBuilder.AddDocCommentActions;

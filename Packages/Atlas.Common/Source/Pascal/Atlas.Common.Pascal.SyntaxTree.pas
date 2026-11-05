@@ -161,6 +161,8 @@ type
     // 0 = noch nicht bestimmt.
     FDepth: Integer;
     FDeepest: TSyntaxNode;
+    /// <summary>Abgeleitete Daten anderer Schichten (Derived); unter System.TMonitor(Self).</summary>
+    FDerived: IInterface;
     procedure Measure;
   public
     constructor Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
@@ -183,6 +185,10 @@ type
     /// <summary>Bezeichner, auf dem APosition steht oder direkt hinter dem sie steht (Cursor am Wortende); -1 ohne
     /// Bezeichner und für C in ^C (#862). Binär gesucht (#1323).</summary>
     function IdentifierAt(const APosition: TTextPosition): Integer;
+    /// <summary>Einmal je Baum abgeleitete Daten, etwa die extrahierte Unit der Namensauflösung (#1761): Der erste
+    /// Aufruf legt sie mit AFactory an, alle weiteren teilen sie; sie leben so lange wie der Baum. Threadsicher.
+    /// Vorher extrahierte jeder Anbieter einer Code-Aktion die ganze Unit neu.</summary>
+    function Derived(const AFactory: TFunc<IInterface>): IInterface;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -577,8 +583,23 @@ end;
 
 destructor TSyntaxTree.Destroy;
 begin
+  FDerived := nil;
   FRoot.Free;
   inherited;
+end;
+
+function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;
+begin
+  System.TMonitor.Enter(Self);
+  try
+    if FDerived = nil then
+    begin
+      FDerived := AFactory();
+    end;
+    Result := FDerived;
+  finally
+    System.TMonitor.Exit(Self);
+  end;
 end;
 
 type
