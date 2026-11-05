@@ -95,6 +95,8 @@ type
     FIgnore: TArray<string>;
     FTokens: TArray<TPascalToken>;
     FFrameworkMembers: Boolean;
+    /// <summary>Globale Variablen der Unit (Name klein) mit ihrer frühesten Zeile; nil, bis zuerst gefragt.</summary>
+    FGlobals: TDictionary<string, Integer>;
     function Significant(AIndex, AStep: Integer): Integer;
     function NameTokens(ANode: TSyntaxNode; const AName: string): TArray<Integer>;
     function TokenRange(AIndex: Integer): TTextRange;
@@ -371,6 +373,7 @@ end;
 
 destructor TShadowCheck.Destroy;
 begin
+  FGlobals.Free;
   FAncestry.Free;
   inherited Destroy;
 end;
@@ -442,17 +445,30 @@ begin
   end;
 end;
 
-/// <summary>Globale Variable der Unit vor ARoutine.</summary>
+/// <summary>Globale Variable der Unit vor ARoutine. Die Variablen sammelt der erste Aufruf einmal: Vorher lief
+/// jeder geprüfte Name über alle Symbole der Unit, quadratisch in ihrer Länge.</summary>
 function TShadowCheck.GlobalVariable(ARoutine: TSyntaxNode; const AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
+  mLine: Integer;
+  mKey: string;
 begin
-  Result := False;
-  for Symbol in FAncestry.Local.Symbols do
+  if FGlobals = nil then
   begin
-    Result := Result or ((Symbol.Kind = TIndexSymbolKind.Variable) and (Symbol.Container = '') and
-      SameText(Symbol.Name, AName) and (Symbol.Range.StartPos.Line < ARoutine.StartPos.Line));
+    FGlobals := TDictionary<string, Integer>.Create;
+    for mSymbol in FAncestry.Local.Symbols do
+    begin
+      if (mSymbol.Kind = TIndexSymbolKind.Variable) and (mSymbol.Container = '') then
+      begin
+        mKey := LowerCase(mSymbol.Name);
+        if not FGlobals.TryGetValue(mKey, mLine) or (mSymbol.Range.StartPos.Line < mLine) then
+        begin
+          FGlobals.AddOrSetValue(mKey, mSymbol.Range.StartPos.Line);
+        end;
+      end;
+    end;
   end;
+  Result := FGlobals.TryGetValue(LowerCase(AName), mLine) and (mLine < ARoutine.StartPos.Line);
 end;
 
 /// <summary>1, wenn die Inline-Variable ADeclaration vorbelegt wird (var X := …), sonst 0.</summary>

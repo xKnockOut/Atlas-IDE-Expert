@@ -32,7 +32,7 @@ More: [Installation](#installation).
 
 ## Features
 
-Short overview; each heading links to the full description. Features marked *(experimental)* are off by default and can be switched on under *Tools › Options › Third Party › Atlas* once the master switch "Experimentell" is on. What changed per version: [CHANGELOG](CHANGELOG.md) (German).
+Short overview; each heading links to the full description. Features marked *(experimental)* are off by default and can be switched on under *Tools › Options › Third Party › Atlas* once the master switch "Experimental" is on. What changed per version: [CHANGELOG](CHANGELOG.md) (German).
 
 ### [Writing](docs/features/en/Writing.md)
 - **Code completion** in its own popup with detail panel, fuzzy matching, favourites and `+ Unit` for missing uses
@@ -45,6 +45,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
+- **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
 - **Code queries** such as `classes where inherits TForm and methods > 40`
 - **Hotspots, call diagram, unit relations** and the path between two symbols
@@ -59,7 +60,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes
-- **Window "Atlas-Prüfung"** for file, project or group, with bulk fixes
+- **Window "Atlas Findings"** for file, project or group, with bulk fixes
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Linter for CI** with text, JSON or SARIF output. All rules: [docs/Regeln.md](docs/Regeln.md)
 
@@ -114,7 +115,7 @@ Not yet in `main`, tracked as issues:
 2. Build `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `AtlasServer` and `AtlasUpdate` for **Win64** (all for the same platform). Result: `Output\Win64\Debug\Bin\AtlasServer.exe` and `AtlasUpdate.exe`. Alternatively take `AtlasServer.exe` from a [release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); the server does not depend on the Delphi version.
 3. Build the core package `Atlas.IDE.Base` and then the module packages `Atlas.IDE.<Module>` ([Structure](#structure)) with the Delphi version the plugin is meant to run in: **Win32** for the classic IDE, **Win64** for the 64-bit IDE. Result: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl`, `Atlas.IDE.Debugger370.bpl` … (Delphi 13; Delphi 12: `…290.bpl`, 64-bit IDE: `Output\Win64\…`).
 4. *Component › Install Packages › Add*: first `Atlas.IDE.Base`, then each module you want. A module needs the core package and nothing else; one that is missing or switched off (`debug.enabled` …) simply takes its features with it.
-5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas-Server". The page shows whether the server is found.
+5. If the server is neither in `Output\…\Bin` nor next to the BPL: *Tools › Options › Third Party › Atlas*, field "Atlas server". The page shows whether the server is found.
 6. Restart Delphi once: Atlas switches off the IDE's Help Insight and structural highlighting so nothing appears twice; the IDE reads these switches only at startup.
 
 Details and troubleshooting: [docs/en/RAD-Studio.md](docs/en/RAD-Studio.md).
@@ -169,7 +170,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 
 | Package | Content | Switch |
 |---|---|---|
-| `Atlas.IDE.Base` | Core: server session, code insight (completion, hover, parameter hint), editor, navigation, refactorings, findings and the "Atlas-Prüfung" window, compiler messages and check on save, settings, notifications, version control; registry and all contracts between the modules (`Source/Contracts`) | – |
+| `Atlas.IDE.Base` | Core: server session, code insight (completion, hover, parameter hint), editor, navigation, refactorings, findings and the "Atlas Findings" window, compiler messages and check on save, settings, notifications, version control; registry and all contracts between the modules (`Source/Contracts`) | – |
 | `Atlas.IDE.Debugger` | Debugging: values in hover and editor, evaluate window, exceptions, step filters, explain access violations | `debug.enabled` |
 | `Atlas.IDE.Tests` | DUnitX runner, test at cursor, code lens, affected tests | `tests.enabled` |
 | `Atlas.IDE.Build` | Build tools: build on open, project tasks, start profiles, compiler switches | `buildTools.enabled` |
@@ -182,7 +183,7 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
 
-How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (section "Module und Verträge des Plugins") and [ADR 0017](docs/adr/0017-funktions-packages.md); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
+How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and [ADR 0017](docs/adr/0017-funktions-packages.md); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 
 ## Requirements
 

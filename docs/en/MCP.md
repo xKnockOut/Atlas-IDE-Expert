@@ -99,9 +99,9 @@ The project's own prompts are in `atlas.json` under `mcp.customPrompts`. Placeho
     "customPrompts": [
       {
         "name": "check_unit",
-        "description": "Unit vor dem Review prüfen",
-        "arguments": [{ "name": "unit", "description": "Unit-Name", "required": true }],
-        "text": "Prüfe {unit}: Befunde zuerst, dann Methoden über den Grenzwerten.",
+        "description": "Check a unit before the review",
+        "arguments": [{ "name": "unit", "description": "Unit name", "required": true }],
+        "text": "Check {unit}: findings first, then methods above the thresholds.",
         "include": ["diagnostics", "metrics"]
       }
     ]
@@ -162,16 +162,16 @@ This separates errors in the server from errors in the description or schema tha
 ### MCP Inspector
 
 ```powershell
-# Oberfläche im Browser: links Server verbinden, oben "Tools", rechts "Messages" mit jedem Aufruf roh
+# UI in the browser: connect the server on the left, "Tools" on top, "Messages" on the right with every raw call
 pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt
 
-# Oberfläche im Terminal (SSH, Cloud-Sitzung)
+# UI in the terminal (SSH, cloud session)
 pwsh Tools/Start-McpInspector.ps1 -Tui
 
-# Kommandozeile, ein Aufruf, Ergebnis als JSON
+# Command line, one call, result as JSON
 pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict
 pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Arguments @{ file = 'Application/AtlasServer.dpr'; line = 1; column = 9; withParameters = $true }
-pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
+pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output conventions.json
 pwsh Tools/Start-McpInspector.ps1 -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Shell.Mcp' }
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shell.Mcp
 ```

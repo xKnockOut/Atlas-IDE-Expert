@@ -169,7 +169,7 @@
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.Processes.pas": 4,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.PromoteVariable.pas": 1,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.PropertyFromAccessors.pas": 7,
-  "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.PullDiagnostics.pas": 1,
+  "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.PullDiagnostics.pas": 2,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.QualifiedNames.pas": 3,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.Query.pas": 5,
   "Packages/Atlas.Common/Source/Lsp/Atlas.Common.Lsp.Rationale.pas": 2,

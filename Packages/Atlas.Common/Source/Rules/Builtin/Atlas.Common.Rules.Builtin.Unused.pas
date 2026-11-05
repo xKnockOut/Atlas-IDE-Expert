@@ -315,9 +315,17 @@ type
 
   TUnusedParameterCheck = class(TUnusedNamesCheck)
   private
+    /// <summary>Namen, die irgendwo in der Datei als Wert verwendet werden (klein); einmal je Datei gesammelt,
+    /// nil bis zum ersten Bedarf. Vorher durchsuchte jede Routine den ganzen Baum: quadratisch in der Länge
+    /// der Unit (26.000 Zeilen: 52 s für die ganze Prüfung).</summary>
+    FValueNames: TNameSet;
     procedure CheckParameter(AHeader, AParam: TSyntaxNode);
+    function UsedAsValue(const AName: string): Boolean;
+    function SignatureGiven(ARoutine: TSyntaxNode): Boolean;
   protected
     procedure CheckRoutine(ARoutine: TSyntaxNode); override;
+  public
+    destructor Destroy; override;
   end;
 
 { TUnusedNamesCheck }
@@ -594,23 +602,20 @@ begin
   end;
 end;
 
-function UsedAsValue(ANode: TSyntaxNode; const AName: string): Boolean;
-var
-  Name: string;
+/// <summary>Alle Namen unter ARoot, die als Wert verwendet werden, klein geschrieben in ANames.</summary>
+procedure CollectValueNames(ARoot: TSyntaxNode; ANames: TNameSet);
 begin
-  Name := AName;
   // Iterativ (Bericht M1).
-  Result := ANode.Search(
+  ARoot.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       // Auch Objekt.Methode (Writer.OnFindMethodName := Namer.FindMethodName): Der Name steht am MemberAccess.
-      if (AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and SameText(AVisited.Name, Name) and
-        IsValueUse(AVisited) then
+      if (AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsValueUse(AVisited) then
       begin
-        Exit(TSyntaxSearchStep.Found);
+        ANames.AddOrSetValue(LowerCase(AVisited.Name), True);
       end;
       Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
+    end);
 end;
 
 /// <summary>Parameterliste der Routine; False ohne Kopf oder ohne Parameter.</summary>
@@ -641,14 +646,30 @@ begin
   end;
 end;
 
-/// <summary>Ist die Signatur von außen vorgegeben oder wird die Routine als Wert verwendet?</summary>
-function SignatureGiven(ARoot, ARoutine: TSyntaxNode): Boolean;
+{ TUnusedParameterCheck }
+
+destructor TUnusedParameterCheck.Destroy;
 begin
-  Result := ((Pos('.', ARoutine.Name) > 0) and MethodSignatureFixed(ARoot, ARoutine.Name)) or
-    UsedAsValue(ARoot, ShortName(ARoutine.Name));
+  FValueNames.Free;
+  inherited Destroy;
 end;
 
-{ TUnusedParameterCheck }
+function TUnusedParameterCheck.UsedAsValue(const AName: string): Boolean;
+begin
+  if FValueNames = nil then
+  begin
+    FValueNames := TNameSet.Create;
+    CollectValueNames(FContext.Tree.Root, FValueNames);
+  end;
+  Result := FValueNames.ContainsKey(LowerCase(AName));
+end;
+
+/// <summary>Ist die Signatur von außen vorgegeben oder wird die Routine als Wert verwendet?</summary>
+function TUnusedParameterCheck.SignatureGiven(ARoutine: TSyntaxNode): Boolean;
+begin
+  Result := ((Pos('.', ARoutine.Name) > 0) and MethodSignatureFixed(FContext.Tree.Root, ARoutine.Name)) or
+    UsedAsValue(ShortName(ARoutine.Name));
+end;
 
 procedure TUnusedParameterCheck.CheckParameter(AHeader, AParam: TSyntaxNode);
 var
@@ -678,7 +699,7 @@ var
   mIndex: Integer;
 begin
   if not RoutineParameters(ARoutine, mHeader, mParams) or HasSenderParameter(mParams) or
-    SignatureGiven(FContext.Tree.Root, ARoutine) then
+    SignatureGiven(ARoutine) then
   begin
     Exit;
   end;
