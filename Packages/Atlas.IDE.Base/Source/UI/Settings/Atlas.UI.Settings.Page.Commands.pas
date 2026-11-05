@@ -116,11 +116,6 @@ begin
   BindCheck('OutlineAlphabetical', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical)));
   BindCheck('OutlineFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor)));
   BindCheck('OutlineConditions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions)));
-  // „Lesezeichen setzen…“ (#622).
-  BindKey('BookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd)));
-  // Nächstes/voriges Lesezeichen (#1104), ohne Vorgabe.
-  BindKey('NextBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand)));
-  BindKey('PreviousBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand)));
   // „Element ausblenden …“ am gezeichneten Element (#628).
   BindKey('HideElementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand)));
   // Nächster/vorheriger Befund (#509).

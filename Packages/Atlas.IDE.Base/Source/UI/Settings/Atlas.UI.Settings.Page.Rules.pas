@@ -38,10 +38,10 @@ type
     FBaselineDelete: TButton;
     procedure AddRulesLinks;
     procedure SetOnBaselineInfo(const AValue: TFunc<string>);
-    procedure RulesProjectClick(Sender: TObject);
-    procedure RulesGlobalClick(Sender: TObject);
-    procedure BaselineUpdateClick(Sender: TObject);
-    procedure BaselineDeleteClick(Sender: TObject);
+    /// <summary>Wege zu den Regeln: Sender ist der Knopf des Projekt- oder des globalen Dialogs.</summary>
+    procedure RulesLinkClick(Sender: TObject);
+    /// <summary>Baseline neu erzeugen oder (nach Rückfrage) löschen, je nach Knopf in Sender.</summary>
+    procedure BaselineClick(Sender: TObject);
   public
     procedure AddNodePages; override;
     procedure Build;
@@ -102,7 +102,6 @@ begin
   // entsteht in AddRulePages.
   AddSheet(TAtlasTextId.SettingsTabRules);
   FRulesArea := High(FPage.Sheets);
-  AddModuleSwitch('RuleChecksEnabled');
   AddRulesLinks;
   BindCheck('ProblemsWindow', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindow)));
   FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
@@ -126,8 +125,6 @@ begin
     TAtlasStrings.Text(TAtlasTextId.ProblemsUpdateManual)]);
   FProblemsLiveDelay := BindText('ProblemsLiveDelayMs',
     AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLiveDelay)));
-  // Sammelkorrektur im Kontextmenü des Fensters (#1352).
-  BindCheck('FixBulk', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk)));
   // Liste „Atlas-Probleme“ im Meldungsfenster (#398), seit #909 nur noch zusätzlich zum Fenster.
   BindCheck('ProblemsMessageList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsList)));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
@@ -164,8 +161,8 @@ begin
   // einem Knoten je Gruppe; hier nur der Weg dorthin.
   AddWrappedLabel(34, TAtlasStrings.Text(TAtlasTextId.RulesGlobalNote));
   Row := AddPanel(28);
-  FRulesProject := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesProjectButton), 0, RulesProjectClick);
-  FRulesGlobal := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesGlobalButton), 216, RulesGlobalClick);
+  FRulesProject := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesProjectButton), 0, RulesLinkClick);
+  FRulesGlobal := AddLink(TAtlasStrings.Text(TAtlasTextId.RulesGlobalButton), 216, RulesLinkClick);
 end;
 
 procedure TAtlasSettingsRulesPart.AddNodePages;
@@ -223,9 +220,9 @@ begin
   FBaselineInfo.Top := 4000;
   Row := AddRow(5000);
   FBaselineUpdateButton := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineUpdate), 0,
-    BaselineUpdateClick);
+    BaselineClick);
   FBaselineDelete := AddButton(Row, TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDelete), 216,
-    BaselineDeleteClick);
+    BaselineClick);
 end;
 
 procedure TAtlasSettingsRulesPart.SetOnBaselineInfo(const AValue: TFunc<string>);
@@ -237,33 +234,31 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsRulesPart.RulesProjectClick(Sender: TObject);
+procedure TAtlasSettingsRulesPart.RulesLinkClick(Sender: TObject);
+var
+  mOpen: TProc;
 begin
-  if Assigned(FOnRulesProject) then
+  mOpen := FOnRulesGlobal;
+  if Sender = FRulesProject then
   begin
-    FOnRulesProject();
+    mOpen := FOnRulesProject;
+  end;
+  if Assigned(mOpen) then
+  begin
+    mOpen();
   end;
 end;
 
-procedure TAtlasSettingsRulesPart.RulesGlobalClick(Sender: TObject);
+procedure TAtlasSettingsRulesPart.BaselineClick(Sender: TObject);
 begin
-  if Assigned(FOnRulesGlobal) then
+  if Sender = FBaselineUpdateButton then
   begin
-    FOnRulesGlobal();
-  end;
-end;
-
-procedure TAtlasSettingsRulesPart.BaselineUpdateClick(Sender: TObject);
-begin
-  if Assigned(FOnBaselineUpdate) then
-  begin
-    FBaselineInfo.Caption := FOnBaselineUpdate();
-  end;
-end;
-
-procedure TAtlasSettingsRulesPart.BaselineDeleteClick(Sender: TObject);
-begin
-  if Assigned(FOnBaselineDelete) and (MessageDlg(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
+    if Assigned(FOnBaselineUpdate) then
+    begin
+      FBaselineInfo.Caption := FOnBaselineUpdate();
+    end;
+  end
+  else if Assigned(FOnBaselineDelete) and (MessageDlg(TAtlasStrings.Text(TAtlasTextId.ServerPageBaselineDeleteConfirm),
     mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
   begin
     FBaselineInfo.Caption := FOnBaselineDelete();

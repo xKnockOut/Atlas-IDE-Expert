@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Settings.Page.Startup;
 
 // Reiter „Start“ (abgesicherter Start #722, Updates #495 und #1519, Fehlerbericht #108), „Rückgängig“ und
-// „Units suchen“ (#777).
+// „Units suchen“ (hier nur schnell öffnen #503; die Units-Suche #777 baut ihr Modul als Abschnitt dazu).
 
 interface
 
@@ -13,22 +13,19 @@ uses
 
 type
   /// <summary>Reiter „Start“ (abgesicherter Start #722, Updates #495, Fehlerbericht #108), „Rückgängig“ und „Units
-  /// suchen“ (#777).</summary>
+  /// suchen“ (schnell öffnen #503).</summary>
   TAtlasSettingsStartupPart = class(TAtlasSettingsPagePart)
   private
     FSafeKey: TAtlasChoiceBox;
     FUndoOnConflict: TAtlasChoiceBox;
     FUndoNewFiles: TAtlasChoiceBox;
-    FUnitSearchPathStyle: TAtlasChoiceBox;
-    FUnitSearchGroupBy: TAtlasChoiceBox;
-    FUnitSearchDefaultScope: TAtlasChoiceBox;
     FVersion: TLabel;
     FUpdatesInstall: TAtlasChoiceBox;
     FUpdatesChannel: TAtlasChoiceBox;
     FUpdatesNewModules: TAtlasChoiceBox;
     procedure AddSafeSection;
     procedure AddUndoSection;
-    procedure AddUnitSearchSection;
+    procedure AddQuickOpenSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
   public
@@ -59,10 +56,6 @@ uses
   Atlas.Core.Undo.Names;
 
 const
-  // Reihenfolge der Auswahllisten von „Units suchen“ (#777) wie die Werte der Einstellungen.
-  UnitSearchPathStyles: array[0..2] of string = ('relative', 'compact', 'absolute');
-  UnitSearchGroupings: array[0..2] of string = ('project', 'folder', 'none');
-  UnitSearchScopes: array[0..3] of string = ('group', 'project', 'searchPath', 'library');
   // Auswahllisten der Updates (#1519) in der Reihenfolge der Anzeige.
   UpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
   UpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
@@ -82,8 +75,7 @@ begin
   AddUndoSection;
 
   AddSheet(TAtlasTextId.SettingsTabUnitSearch);
-  AddModuleSwitch('SearchEnabled');
-  AddUnitSearchSection;
+  AddQuickOpenSection;
 end;
 
 procedure TAtlasSettingsStartupPart.BindMarks;
@@ -91,9 +83,6 @@ begin
   FPage.Marks.Bind(FSafeKey, ['SafeStartupKey']);
   FPage.Marks.Bind(FUndoOnConflict, ['UndoMultiFileOnConflict']);
   FPage.Marks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
-  FPage.Marks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
-  FPage.Marks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
-  FPage.Marks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
   FPage.Marks.Bind(FUpdatesInstall, ['UpdatesInstall']);
   FPage.Marks.Bind(FUpdatesChannel, ['UpdatesChannel']);
   FPage.Marks.Bind(FUpdatesNewModules, ['UpdatesNewModules']);
@@ -126,50 +115,13 @@ begin
   BindText('SafeKeepSettingsHistory', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSafeHistory)));
 end;
 
-procedure TAtlasSettingsStartupPart.AddUnitSearchSection;
+procedure TAtlasSettingsStartupPart.AddQuickOpenSection;
 begin
-  BindCheck('UnitSearchEnabled', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled)));
-  BindCheck('UnitSearchReplaceIdeDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace)));
-  BindCheck('UnitSearchReplaceUseUnitDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceUseUnit)));
-  BindCheck('UnitSearchReplaceFormsDialog', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceForms)));
-  BindKey('UnitSearchKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey)));
-  FUnitSearchPathStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathStyle),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathRelative),
-    TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathCompact),
-    TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathAbsolute)]);
-  FUnitSearchGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchGroupBy),
-    [TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupProject), TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupFolder),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchGroupNone)]);
-  BindCheck('UnitSearchRememberCollapsed', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchRememberCollapsed)));
-  BindCheck('UnitSearchFilters', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilters)));
-  FUnitSearchDefaultScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchDefaultScope),
-    [TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginGroup), TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginActive),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
-    TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
-  BindCheck('UnitSearchFilterSyntax', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax)));
-  BindCheck('UnitSearchFormCaptions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions)));
-  BindCheck('UnitSearchPreview', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview)));
-  BindCheck('UnitSearchPreviewForm', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm)));
-  BindCheck('UnitSearchPreviewUsedBy', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy)));
-  BindCheck('UnitSearchPreviewAutoCollapse', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewAutoCollapse)));
-  BindCheck('UnitSearchMultiSelect', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchMultiSelect)));
-  BindCheck('UnitSearchActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchActions)));
-  BindCheck('UnitSearchActionsAddUses', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchAddUses)));
-  // Datei und Symbol schnell öffnen (#503).
+  // Datei und Symbol schnell öffnen (#503); die Units-Suche baut ihr Modul als Abschnitt in diesen Reiter (#1455).
   AddTitle(TAtlasTextId.QuickOpenTitle);
   BindCheck('QuickOpen', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpen)));
   BindCheck('QuickOpenLibrary', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenLibrary)));
   BindKey('QuickOpenKey', AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsQuickOpenKey)));
-  // Suchleiste im Editor (#878).
-  AddTitle(TAtlasTextId.SettingsSearchTitle);
-  BindCheck('SearchReplaceIde', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace)));
-  BindCheck('SearchResultsInMessages', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages)));
-  // Ersetzen, Regex, Verlauf und Bereiche über Dateien (#893).
-  BindCheck('SearchReplace', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplaceBar)));
-  BindCheck('SearchRegex', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchRegex)));
-  BindText('SearchHistory', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSearchHistory)));
-  BindCheck('SearchMultiFile', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMultiFile)));
-  BindCheck('SearchFromFirstHit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchFromFirst)));
 end;
 
 procedure TAtlasSettingsStartupPart.AddUndoSection;
@@ -235,9 +187,6 @@ begin
   end;
   FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
   FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
-  FUnitSearchPathStyle.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
-  FUnitSearchGroupBy.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
-  FUnitSearchDefaultScope.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
   FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, UpdatesInstallModes);
   FUpdatesChannel.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesChannel, UpdatesChannels);
   FUpdatesNewModules.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesNewModules, UpdatesNewModulesModes);
@@ -256,9 +205,6 @@ begin
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
-  ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
-  ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];
-  ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
   ASettings.UpdatesInstall := UpdatesInstallModes[EnsureRange(FUpdatesInstall.Choice, 0, 2)];
   ASettings.UpdatesChannel := UpdatesChannels[EnsureRange(FUpdatesChannel.Choice, 0, 1)];
   ASettings.UpdatesNewModules := UpdatesNewModulesModes[EnsureRange(FUpdatesNewModules.Choice, 0, 2)];
