@@ -2,7 +2,8 @@
 
 // Fenster „Atlas-Suche: Ersetzen“ (#893): Zeilen je Datei und Treffer,
 // Häkchen einer Datei gilt für alle ihre Treffer, Kopfzeile mit Anzahl,
-// „Ausgewählte ersetzen“ nur mit angehakten Treffern, Sprung per Enter.
+// „Ausgewählte ersetzen“ nur mit angehakten Treffern, Sprung per Enter,
+// Knopf in einer eigenen Zeile mit voller Höhe.
 
 interface
 
@@ -25,6 +26,8 @@ type
     procedure RowsFollowTheModelAndToggleTogether;
     [Test]
     procedure ReplaceAndOpenAreReported;
+    [Test]
+    procedure ReplaceButtonHasItsOwnRow;
   end;
 
 implementation
@@ -33,6 +36,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Files,
@@ -139,6 +143,33 @@ begin
     Host.Free;
     List.Free;
     Log := '';
+  end;
+end;
+
+procedure TAtlasSearchReplaceFrameTests.ReplaceButtonHasItsOwnRow;
+var
+  Host: TForm;
+  Frame: TAtlasSearchReplaceFrame;
+  Row: TWinControl;
+  Index: Integer;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasSearchReplaceFrame.Create(Host);
+    Frame.Parent := Host;
+    Row := Frame.ReplaceButton.Parent;
+    // Die VCL richtet alTop vor alRight aus: Neben einem alTop-Geschwister
+    // bliebe dem Knopf nur der Rest der Zeilenhöhe (Knopf unsichtbar).
+    for Index := 0 to Row.ControlCount - 1 do
+    begin
+      Assert.IsFalse(Row.Controls[Index].Align = alTop, Row.Controls[Index].ClassName + ' mit alTop neben dem Knopf');
+    end;
+    Assert.IsTrue(Row.Height >= Frame.ReplaceButton.Height + Frame.ReplaceButton.Margins.Top +
+      Frame.ReplaceButton.Margins.Bottom, 'Zeile so hoch wie der Knopf');
+    Assert.IsTrue(Frame.Notice.Parent = Row, 'Hinweis neben dem Knopf');
+    Assert.IsFalse(Frame.Title.Parent = Row, 'Kopfzeile darüber');
+  finally
+    Host.Free;
   end;
 end;
 
