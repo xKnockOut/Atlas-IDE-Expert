@@ -473,7 +473,7 @@ begin
   if AAnonymize then
   begin
     // Ordner, Projekt, Caches, eigene Konfiguration und langsame Units, nicht nur die Units (#1478).
-    mStatus := mStatus.Mapped(AnonymousMap);
+    mStatus := mStatus.Mapped(AnonymousMap());
   end;
   Result := mStatus.ToJson;
   // Für get_server_status (#1356): dieselben Zahlen wie das Fenster, nur lokal und nie anonym abgefragt.
