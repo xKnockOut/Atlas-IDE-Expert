@@ -9463,3 +9463,23 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | UE8 | Englische Oberfläche: Issue beginnen, Git-Hook erlauben; `.git/hooks/prepare-commit-msg` öffnen | Kommentarzeilen englisch („Created by Atlas …“); Commit bekommt das Präfix wie bisher |
 | UE9 | Zeitbuchung „Correct …“ mit `2 hours 30 minutes`, dann `1 hour` | Wird als 2:30 bzw. 1:00 übernommen |
 | UE10 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage`, `TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage`, `TAtlasTrackerSettingsTablesTests.SnippetsDefaultsInLanguage`, `TAtlasCommitHookTests`, `TAtlasDebugNoteTests.FileNameHasDateAndTime` grün |
+
+## Texte von Atlas.IDE.Base englisch (#1458, Gruppe D)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); englische Oberfläche (`ui.language` = en), IDE neu gestartet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BEN1 | Datei mit Encoding UTF-8 ohne BOM öffnen, Statusfeld „Format“ ansehen und anklicken | Format und Menü englisch („UTF-8 without BOM“, „LF“ …), Hinweise beim Speichern englisch („… saved as …“) |
+| BEN2 | Vervollständigung mit Strg+Leertaste in einer Unit, auch mit Code-Vorlagen (`for`, `try`) | Kennzeichen der Einträge, Vorlagennamen und -beschreibungen englisch |
+| BEN3 | *Tools › Options › Keyboard* (Tastaturbelegungen der IDE) | Einträge „Atlas completion“ und „Atlas compiler check“ |
+| BEN4 | Pfad zum Server in den Optionen auf eine nicht vorhandene Datei setzen, IDE neu starten | Meldungsfenster „Server not found: … (the built-in Code Insight stays active)“; Statusfeld „AtlasServer.exe not found“ |
+| BEN5 | Server im Task-Manager beenden | Hinweis zum Ende englisch (z. B. „exit code unknown …“) |
+| BEN6 | Doku-Tooltip über einer Routine mit XML-Doku (Parameter, Rückgabe, Ausnahmen) | Überschriften englisch („Parameters“, „Returns“ …) |
+| BEN7 | Aufrufdiagramm einer Routine öffnen (Rechtsklick › Aufrufhierarchie › Diagramm) | Seitentitel „Call diagram: …“, Schalter, Legende und Hinweis englisch |
+| BEN8 | Umbenennen eines Ereignisses einer Form, die im Designer offen ist, so dass Atlas ablehnt | Grund englisch („open in the designer; there Atlas only changes …“) |
+| BEN9 | Atlas-Änderung rückgängig machen, während das Projekt ungespeichert ist | Grund „project has unsaved changes; please save first“ |
+| BEN10 | Fehlerbericht anlegen (Atlas › Problem melden) und Diagnosefenster öffnen | Texte und Funktionsnamen der Sicherung englisch |
+| BEN11 | Teamdatei `.atlas` neu anlegen (Optionen › Projekt) | Kommentare im Gerüst englisch, Datei gültig |
+| BEN12 | Deutsche Oberfläche (`ui.language` = de), BEN1, BEN3 und BEN7 | Wieder deutsche Texte |
+| BEN13 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTextLanguageTests`, `TAtlasCallDiagramTests.HtmlFollowsLanguage`, `TAtlasServerCrashesTests.DescribesExitCodesInEnglish`, `TAtlasTeamFileTests.SkeletonIsValidInEnglish` grün |
