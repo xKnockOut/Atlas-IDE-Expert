@@ -168,7 +168,6 @@ end;
 procedure TAtlasSettingsEditorCodePart.Build3;
 begin
   BindCheck('CodeLensTestUnit', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensTestUnit)));
-  BindCheck('CodeLensMetrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCodeLensMetrics)));
   BindCheck('Metrics', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsAll)));
   BindCheck('TodoList', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTodoList)));
   BindCheck('MetricsReport', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMetricsReport)));

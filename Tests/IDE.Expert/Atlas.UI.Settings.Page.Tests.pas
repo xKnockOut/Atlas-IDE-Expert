@@ -509,7 +509,6 @@ begin
   ASettings.PairGuideWidth := 3;
   ASettings.PairGuideOpacity := 70;
   ASettings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
-  ASettings.CodeLensMetrics := False;
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
   ASettings.TeamFile := False;
@@ -538,7 +537,6 @@ begin
   Assert.AreEqual(70, ASaved.PairGuideOpacity);
   Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', ASaved.PairColorsLight);
   Assert.AreEqual('', ASaved.PairColorsDark, 'Standardfarben bleiben leer');
-  Assert.IsFalse(ASaved.CodeLensMetrics, 'Code Lens Metriken (#66)');
   Assert.IsFalse(ASaved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(ASaved.MetricsReport, 'Befehl (#66)');
   Assert.IsFalse(ASaved.TeamFile, 'Projektdatei (#486)');

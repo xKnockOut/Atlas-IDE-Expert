@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Analysis.SettingsSection.Tests;
 
 // Abschnitt des Moduls Analyse (#1456): Architekturübersicht (#1118) und Hotspots (#1354); Laden und Speichern
-// über die Seite und der Platz unter den Unterpunkten von „Allgemein“.
+// über die Seite und der Platz unter den Unterpunkten von „Allgemein“; Code Lens mit Code-Metriken (#66, #1756) auf
+// der Seite „Editor“.
 
 interface
 
@@ -27,6 +28,9 @@ type
     /// <summary>Die Zeilen stehen auf den Unterpunkten (x-node) von „Allgemein“.</summary>
     [Test]
     procedure RowsOnTheirNodes;
+    /// <summary>codeLens.metrics baut das Modul, nicht mehr Base; Unterpunkt Editor › Code Lens.</summary>
+    [Test]
+    procedure MetricsLensRoundTrip;
   end;
 
 implementation
@@ -45,7 +49,7 @@ end;
 
 procedure TAnalysisSettingsSectionTests.Setup;
 begin
-  FRegistrations := ProvideSections([TAtlasAnalysisSettingsSection]);
+  FRegistrations := ProvideSections([TAtlasAnalysisSettingsSection, TAtlasAnalysisEditorSection]);
 end;
 
 procedure TAnalysisSettingsSectionTests.TearDown;
@@ -104,8 +108,30 @@ begin
     mPage.HandleNeeded;
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'ArchitectureEnabled')) = mPage.NodeSheet('general.architecture'));
     Assert.IsTrue(SheetOf(CheckOf(mPage, 'HotspotsEnabled')) = mPage.NodeSheet('general.hotspots'));
+    Assert.IsTrue(SheetOf(CheckOf(mPage, 'CodeLensMetrics')) = mPage.NodeSheet('editor.codeLens'), 'Editor › Code Lens');
   finally
     mHost.Free;
+  end;
+end;
+
+procedure TAnalysisSettingsSectionTests.MetricsLensRoundTrip;
+var
+  mPage: TAtlasSettingsPage;
+  mSaved: TAtlasPluginSettings;
+begin
+  mPage := TAtlasSettingsPage.Create(nil);
+  try
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(CheckOf(mPage, 'CodeLensMetrics').Checked, 'Vorgabe an (#66)');
+    CheckOf(mPage, 'CodeLensMetrics').Checked := False;
+    mSaved := TAtlasPluginSettings.Defaults;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.CodeLensMetrics, 'abschaltbar');
+    mPage.LoadFrom(TAtlasPluginSettings.Defaults);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(CheckOf(mPage, 'CodeLensMetrics').Checked);
+  finally
+    mPage.Free;
   end;
 end;
 

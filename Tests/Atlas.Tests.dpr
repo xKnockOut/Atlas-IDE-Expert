@@ -1208,6 +1208,8 @@ uses
   Atlas.Core.UnitRelations.Model.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas',
   Atlas.Core.UnitRelations.InterfaceCost in '..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
   Atlas.Core.UnitRelations.InterfaceCost.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas',
+  Atlas.Core.Analysis.MetricsLens in '..\Packages\Atlas.IDE.Analysis\Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas',
+  Atlas.Core.Analysis.MetricsLens.Tests in 'IDE.Expert\Atlas.Core.Analysis.MetricsLens.Tests.pas',
   Atlas.UI.UnitRelations.Frame in '..\Packages\Atlas.IDE.Analysis\Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas',
   Atlas.UI.UnitRelations.Frame.Tests in 'IDE.Expert\Atlas.UI.UnitRelations.Frame.Tests.pas',
   Atlas.Core.SymbolPath.Model in '..\Packages\Atlas.IDE.Base\Source\Core\SymbolPath\Atlas.Core.SymbolPath.Model.pas',
