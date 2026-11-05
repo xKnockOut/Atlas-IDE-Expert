@@ -144,7 +144,9 @@ More: [docs/en/Installation.md](docs/en/Installation.md).
 - [Configuration](docs/en/Configuration.md) of `atlas.json` (generated from the schema's `x-description-en` with `pwsh Tools/Update-ConfigDoc.ps1`)
 - [Rules](docs/en/Rules.md) (generated from the rule catalog with `pwsh Tools/Update-RuleCatalog.ps1`)
 - [MCP tools](docs/en/MCP.md) and the [Claude Code plugin](Editors/ClaudeCode/README.en.md)
-- In German only: [Benchmark](docs/Benchmark.md) of the performance targets, [architecture](docs/Architektur.md), [test cases](docs/Atlas-Testfaelle.md)
+- [Keywords](docs/en/Keywords.md): short help in the hover for keywords and directives
+- [Benchmark](docs/en/Benchmark.md) of the performance targets
+- In German only (developer documents): [architecture](docs/Architektur.md), [test cases](docs/Atlas-Testfaelle.md), [changelog](CHANGELOG.md)
 
 Every English page links its German original and vice versa.
 

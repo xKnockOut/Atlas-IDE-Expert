@@ -1,5 +1,7 @@
 # Benchmark
 
+*English version: [Benchmark.md](en/Benchmark.md)*
+
 `Tools/Benchmark/bench.mjs` misst die Leistungs-Zielwerte (#85) am echten Server über stdio. Benötigt Node 18 oder neuer.
 
 | Vorgang | Zielwert (p95) |
