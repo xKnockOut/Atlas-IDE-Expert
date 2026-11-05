@@ -6,6 +6,14 @@
 - Für Marcos PC (außerhalb des Repos): Ist (a) bestätigt, braucht `cc.ps1` beim Bau der Atlas-Gruppe ein eigenes Profil oder alle Atlas-Packages (Base und Module) unter „Disabled Packages“ und danach alle zurück.
 - Geprüft (Cloud): FPC trunk `TAtlasKnownPackagesTests` 6/6; `AtlasServer --check` mit allen `metric-*` an über die 5 neuen/geänderten Units: 0 Befunde; alle Prüfskripte mit pwsh grün. IDE-Unit nicht übersetzt (Winapi/ToolsAPI). Handtests KPM1–KPM11.
 
+## Leckmeldungen der Tests geklärt (Offene Punkte Cloud, Punkt 4, 05.11.2026, Branch `claude/project-thread-83cxch` auf `Pilot-2.0.0-beta.1`)
+- Je Fall Ursache und Behebung in `docs/Offene-Punkte-Cloud.md`, Punkt 4. Kein echtes Leck im Produktcode.
+- Anonymes Protokoll (#1478): `TAtlasLogRedactor` behält die Nummern je Name/Text bis Programmende; neue Methode `Forget`. Der Leckmonitor vergisst in `PostTearDown` die Nummern von `TAtlasGuard.RotatingLog` vor der Messung (fünf der zehn Meldungen).
+- Leckmonitor wärmt die Befehlsliste `TSlashCommandRegistry.Shared` für beide Sprachen vor (seit #1458 Gruppe B eine je Sprache; 23 KB in `EnglishTextsWithoutGerman`).
+- Falle: Zwei `[SetupFixture]` in einer Fixture; DUnitX führt nur eine aus (`TIndexCacheDirectoryTests`, zusammengelegt). Sonst keine Fixture mit zweien.
+- `[SetupFixture]` neu in `TLspClientTests` (Rekorder `TAtlasPluginTimings.Shared`), `TLspInlineValuesTests`, `TMcpToolsTests` (je 72 Byte, vermutlich TMonitor-Daten globaler Sperren; bei `TMcpToolsTests` nicht genau zugeordnet: bleibt die Meldung, ist es ein echtes Leck).
+- Nicht übersetzt und nicht ausgeführt (kein FPC trunk im Container). Handtests LK1–LK3.
+
 ## Absturzzählung ohne fremde IDE-Prozesse (05.11.2026, Branch `claude/project-thread-57uv7e` auf `Pilot-2.0.0-beta.1`, Offene-Punkte-Cloud Nr. 1)
 - Ursache: `TAtlasSessionFiles.TakeCrashed` wertet jede Startmarke ohne laufenden Prozess als Absturz. Bau-IDEs (cc.ps1, `Build-Compilermeldungen.ps1 -IdeProfile`) werden hart beendet; ihre Marken brachten die nächste echte Sitzung in Stufe Safe (`Crash`, `RepeatedCrash`), und ihr sauberes Ende setzte umgekehrt den Zähler der echten IDE zurück.
 - Jetzt: Sitzungsbuch `TAtlasSessionBook` (Core, `Atlas.Core.Diagnostics.SafeMode`) bündelt Lesen (`Open` = Zustand + `TakeCrashed`), `SaveState`, `SaveMarker`, `Close` (Marke löschen + `CleanExit`). Mit `ATLAS_NO_SESSION_MARKER` = 1/true/yes (`TAtlasSafeMode.IsSwitchOn`, auch von `IsForced` genutzt) ist `Tracked` falsch: keine Marke, keine fremden Marken lesen oder löschen, Zustand unberührt. Taste beim Laden und `ATLAS_SAFE_MODE` wirken weiter. `TAtlasIdeSafeMode` nutzt nur noch das Buch; die Startzeile im Protokoll endet dann mit „ohne Sitzungsmarke (ATLAS_NO_SESSION_MARKER)“.

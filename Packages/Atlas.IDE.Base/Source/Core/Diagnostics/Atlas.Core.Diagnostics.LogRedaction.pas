@@ -38,6 +38,10 @@ type
     destructor Destroy; override;
     /// <summary>AText ohne Namen, Pfade und fremden Text; mit Names nur ohne Kennzeichen.</summary>
     function Redact(const AText: string): string;
+    /// <summary>Vergisst alle Nummern; der nächste Wert bekommt wieder die 1. Die Tabelle lebt sonst so lange wie
+    /// das Protokoll (beim Plugin bis zum Entladen). Für Tests: Der Leckmonitor setzt das gemeinsame Protokoll so
+    /// nach jedem Test zurück, sonst zählt jeder neue Wert als Leck des Tests, der ihn zuerst schreibt.</summary>
+    procedure Forget;
     /// <summary>Benutzer-, Rechner- und Domänenname aus der Umgebung (USERNAME, COMPUTERNAME, USERDOMAIN).
     /// </summary>
     class function EnvironmentIdentity: TArray<string>; static;
@@ -134,6 +138,16 @@ begin
   if AKind = TLogMarkKind.Path then
   begin
     Result := Result + TTextAnonymizer.FileExtension(Trim(AValue));
+  end;
+end;
+
+procedure TAtlasLogRedactor.Forget;
+begin
+  FLock.Enter;
+  try
+    FLabels.Clear;
+  finally
+    FLock.Leave;
   end;
 end;
 

@@ -19,6 +19,11 @@ type
     /// <summary>Gefundene Werte als „Zeile:Name“ mit Leerzeichen getrennt.</summary>
     function ValuesFor(AFirstLine, ALastLine, AStoppedLine: Integer): string;
   public
+    /// <summary>Erste Benutzung des Handler-Wegs ungemessen vorwegnehmen: Die globalen Sperren der Namespaces
+    /// (TLspNamespaces) und des Baum-Caches legen ihre TMonitor- bzw. Tabellendaten beim ersten Zugriff an und
+    /// behalten sie bis Programmende (72 Byte unter Win64 in HandlerWritesInlineValues).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -95,6 +100,16 @@ const
   FileName = 'C:\P\Werte.pas';
 
 { TLspInlineValuesTests }
+
+procedure TLspInlineValuesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    HandlerWritesInlineValues;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspInlineValuesTests.Setup;
 begin

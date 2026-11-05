@@ -9645,3 +9645,11 @@ Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Bas
 | KPM9 | IDE beenden, Protokoll ansehen | Zeile `Known Packages: … (beim Entladen)` mit dem Stand beim Beenden |
 | KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
 | KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
+
+## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
+| LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
+| LK3 | `ForgetStartsNumberingAgain` | Grün |
