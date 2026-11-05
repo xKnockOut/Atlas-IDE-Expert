@@ -45,7 +45,22 @@ uses
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.UsesLocator,
   Shell.Linter.Output,
-  Shell.Linter.Files;
+  Shell.Linter.Files,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterArchitectureText = (Report, FileKind, Off);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterArchitectureText] of TAtlasText = (
+    (De: 'Architekturbericht %s: %d Units, %d Teilsysteme, %d Zyklen, %d Querverbindungen';
+    En: 'Architecture report %s: %d units, %d subsystems, %d cycles, %d cross links'),
+    (De: '--architecture erwartet eine .md-, .html- oder .json-Datei';
+    En: '--architecture expects a .md, .html or .json file'),
+    (De: 'Architekturübersicht ist ausgeschaltet (architecture.enabled in settings.json)';
+    En: 'Architecture overview is turned off (architecture.enabled in settings.json)'));
 
 function ReaderFunc(): TUsesTextReader;
 begin
@@ -165,8 +180,8 @@ end;
 function Finish(const AOptions: TCommandLineOptions; const AOverview: TArchitectureOverview;
   const AComparison: TLinterArchitectureComparison): Integer;
 begin
-  TLinterOutput.Error(Format('Architekturbericht %s: %d Units, %d Teilsysteme, %d Zyklen, %d Querverbindungen',
-    [AOptions.ArchitectureFile, Length(AOverview.Units), Length(AOverview.Subsystems), Length(AOverview.Cycles),
+  TLinterOutput.Error(cTexts[TLinterArchitectureText.Report].Fmt([AOptions.ArchitectureFile, Length(AOverview.Units),
+    Length(AOverview.Subsystems), Length(AOverview.Cycles),
     Length(AOverview.CrossLinks)]));
   Result := TFindingsOutput.ExitClean;
   if not AComparison.Compared or (AOptions.CompareFile = '') then
@@ -189,7 +204,7 @@ begin
   Result := TLinterFiles.IsReportFile(AOptions.ArchitectureFile);
   if not Result then
   begin
-    TLinterOutput.Error('--architecture erwartet eine .md-, .html- oder .json-Datei');
+    TLinterOutput.Error(cTexts[TLinterArchitectureText.FileKind].Text);
     Exit;
   end;
   AComparison.FailOn := [];
@@ -211,7 +226,7 @@ begin
   mSettings := TLinterSettings.Load(ATarget.ConfigRoot);
   if not mSettings.ArchitectureEnabled then
   begin
-    TLinterOutput.Error('Architekturübersicht ist ausgeschaltet (architecture.enabled in settings.json)');
+    TLinterOutput.Error(cTexts[TLinterArchitectureText.Off].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
@@ -245,5 +260,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Architecture', cTexts);
 
 end.

@@ -307,9 +307,9 @@ var
   mWithout, mWith: TArray<TRuleDescriptor>;
   mSettings: TServerSettings;
 begin
-  Assert.IsTrue(TLinterCheck.Validate(TCommandLineOptions.Parse(['--check', FFolder])));
-  Assert.IsFalse(TLinterCheck.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--todos'])));
-  Assert.IsFalse(TLinterCheck.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--format',
+  Assert.IsTrue(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder])));
+  Assert.IsFalse(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--todos'])));
+  Assert.IsFalse(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--format',
     'sarif'])));
   mSettings := TServerSettings.Default;
   mWithout := TLinterCheck.DescriptorsOf(nil, mSettings, False);

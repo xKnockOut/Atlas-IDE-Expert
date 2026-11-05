@@ -124,7 +124,20 @@ uses
   Shell.Bootstrap,
   Shell.Workspace.Loader,
   Shell.Workspace.RuleProjects,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts,
+  Shell.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TWorkspaceText = (NotLoadedFor, Loading, Indexing);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TWorkspaceText] of TAtlasText = (
+    (De: 'Für %s ist kein Projekt geladen.'; En: 'No project is loaded for %s.'),
+    (De: 'Projekte werden geladen'; En: 'Projects are being loaded'),
+    (De: 'Index wird aufgebaut'; En: 'Index is being built'));
 
 /// <summary>Teile für den Indexaufbau eines Arbeitsbereichs.</summary>
 function IndexingParts(const ARoot, AName: string; const AServices: TShellWorkspaceServices;
@@ -313,7 +326,7 @@ begin
   begin
     AJob := Default(TShellCompileJob);
     AJob.Settings := FConfiguration.Settings.Compiler;
-    AError := 'Kein Projekt geladen';
+    AError := TShellTexts.NoProject;
     Exit;
   end;
   Result := TShellWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,
@@ -333,7 +346,7 @@ begin
   Result := FState.Project(mProject);
   if not Result then
   begin
-    AError := Format('Für %s ist kein Projekt geladen.', [FName]);
+    AError := cTexts[TWorkspaceText.NotLoadedFor].Fmt([FName]);
     Exit;
   end;
   Result := FBuild.Select(mProject, AConfig, APlatform, ADefines, AHasDefines, AError);
@@ -418,12 +431,12 @@ begin
   AReason := '';
   if FState.ProjectPending or not (FState.Project(mInfo) or FState.WithoutProject) then
   begin
-    AReason := 'Projekte werden geladen';
+    AReason := cTexts[TWorkspaceText.Loading].Text;
     Exit(False);
   end;
   if IndexLoading >= 0 then
   begin
-    AReason := 'Index wird aufgebaut';
+    AReason := cTexts[TWorkspaceText.Indexing].Text;
     Exit(False);
   end;
   Result := True;
@@ -439,5 +452,8 @@ begin
     Result := AAll[0];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Workspace', cTexts);
 
 end.
