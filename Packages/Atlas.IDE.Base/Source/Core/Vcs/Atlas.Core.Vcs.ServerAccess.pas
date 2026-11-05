@@ -61,7 +61,7 @@ const
     'network is unreachable', 'no route to host', 'connection reset');
   // git: kein Remote.
   GitNoServer: array[0..4] of string = ('does not appear to be a git repository', 'no such remote',
-    'no remote repository specified', 'scheint kein git-repository zu sein', 'kein solches remote');
+    'no remote repository specified', 'scheint kein git-repository zu sein', 'kein solches remote'); // german-ok
   // svn: Anmeldung fehlt oder Zertifikat muss bestätigt werden.
   SvnLogin: array[0..3] of string = ('e170001', 'e215004', 'e215000', 'e230001');
   // svn: Server nicht erreichbar.

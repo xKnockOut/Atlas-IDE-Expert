@@ -16,6 +16,10 @@ type
   public
     [Test]
     procedure LoadsLevelByLevel;
+    /// <summary>Mit englischer Oberfläche: lang="en", englische Beschriftung, kein Platzhalter übrig (#1458).
+    /// </summary>
+    [Test]
+    procedure HtmlFollowsLanguage;
     [Test]
     procedure RecursionBecomesBackArrow;
     [Test]
@@ -43,6 +47,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Results.CallDiagram;
 
 function Item(const AName, AFileName: string; ALine: Integer): TAtlasHierarchyItem;
@@ -377,6 +382,29 @@ begin
   finally
     Diagram.Free;
   end;
+end;
+
+procedure TAtlasCallDiagramTests.HtmlFollowsLanguage;
+var
+  mDiagram: TAtlasCallDiagram;
+  mHtml: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  TAtlasTextLanguage.Current := TAtlasLanguage.English;
+  mDiagram := NewDiagram;
+  try
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mHtml := mDiagram.Html('TForm1.Start');
+  finally
+    mDiagram.Free;
+    TAtlasTextLanguage.Current := mSaved;
+  end;
+  Assert.IsTrue(Pos('<html lang="en">', mHtml) > 0, 'Sprache');
+  Assert.IsTrue(Pos('<title>Call diagram: TForm1.Start</title>', mHtml) > 0, 'Titel');
+  Assert.IsTrue(Pos('project units only', mHtml) > 0, 'Schalter');
+  Assert.AreEqual(0, Pos('{{', mHtml), 'Platzhalter');
+  Assert.AreEqual(0, Pos('nur Projekt-Units', mHtml), 'deutscher Schalter');
 end;
 
 procedure TAtlasCallDiagramTests.HtmlIsSelfContained;

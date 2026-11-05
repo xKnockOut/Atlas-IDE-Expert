@@ -90,7 +90,29 @@ uses
   System.IOUtils,
   System.RTLConsts,
   Atlas.Text.Encoding,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TTextFileText = (FileIsLockedByAnother, FormSavedAsBinaryPlease, FormSavedAsBinaryIs);
+
+const
+  cTexts: array[TAtlasLanguage, TTextFileText] of string = (
+    ('Datei ist von einem anderen Programm gesperrt und bleibt unverändert (%s)',
+     'binär gespeichertes Formular; bitte in der IDE als Text speichern',
+     'binär gespeichertes Formular wird nicht überschrieben'),
+    ('File is locked by another program and stays unchanged (%s)',
+     'form saved as binary; please save it as text in the IDE',
+     'form saved as binary is not overwritten'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TTextFileText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   /// <summary>
@@ -204,7 +226,7 @@ begin
     if Attempt >= ReplaceAttempts then
     begin
       // Ohne Dateinamen: Die Meldung kann im Protokoll landen.
-      raise EAtlasTextFileError.CreateFmt('Datei ist von einem anderen Programm gesperrt und bleibt unverändert (%s)',
+      raise EAtlasTextFileError.CreateFmt(UiText(TTextFileText.FileIsLockedByAnother),
         [SysErrorMessage(Error)]);
     end;
     // Netz (siehe ReplaceAttempts).
@@ -384,7 +406,7 @@ begin
   Bytes := ReadAllBytes(AFileName);
   if IsBinaryForm(Bytes) then
   begin
-    raise EAtlasTextFileError.Create('binär gespeichertes Formular; bitte in der IDE als Text speichern');
+    raise EAtlasTextFileError.Create(UiText(TTextFileText.FormSavedAsBinaryPlease));
   end;
   Result := Decode(Bytes, ADefaultCodePage);
 end;
@@ -412,7 +434,7 @@ class procedure TAtlasTextFile.Save(const AFileName: string; const AContent: TAt
 begin
   if TFile.Exists(AFileName) and IsBinaryForm(ReadAllBytes(AFileName)) then
   begin
-    raise EAtlasTextFileError.Create('binär gespeichertes Formular wird nicht überschrieben');
+    raise EAtlasTextFileError.Create(UiText(TTextFileText.FormSavedAsBinaryIs));
   end;
   Replace(AFileName, Encode(AContent));
 end;
@@ -434,5 +456,8 @@ begin
     raise;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Files.TextFile', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

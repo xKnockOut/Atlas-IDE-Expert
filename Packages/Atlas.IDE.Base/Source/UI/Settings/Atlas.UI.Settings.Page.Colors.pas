@@ -8,6 +8,7 @@ uses
   System.Classes,
   System.UITypes,
   Vcl.ExtCtrls,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Page.Host;
@@ -19,6 +20,9 @@ type
     // Eigene Paarfarben je Thema, eine Fläche je Tiefe.
     FLightSwatches: array[0..4] of TShape;
     FDarkSwatches: array[0..4] of TShape;
+    // Eigene Farbe lokaler Routinen je Thema (#1788).
+    FNestedLight: array[0..0] of TShape;
+    FNestedDark: array[0..0] of TShape;
     /// <summary>Zeile mit Beschriftung und fünf Farbflächen.</summary>
     procedure AddSwatches(const ACaption: string; var ASwatches: array of TShape);
     procedure SwatchMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -26,6 +30,8 @@ type
     class procedure ShowPairs(const ASwatches: array of TShape; const APairs: TAtlasPairColors); static;
     /// <summary>Farben der Flächen als Einstellung; gleich der Palette = leer.</summary>
     class function PairsSetting(const ASwatches: array of TShape; const ADefault: TAtlasPairColors): string; static;
+    /// <summary>Farbe der Fläche als Einstellung; gleich ADefault = leer (#1788).</summary>
+    class function ColorSetting(ASwatch: TShape; ADefault: TAtlasColor): string; static;
   public
     procedure Build;
     procedure Load(const ASettings: TAtlasPluginSettings); override;
@@ -41,7 +47,6 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.Dialogs,
-  Atlas.Core.Style.Color,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Strings;
 
@@ -57,6 +62,8 @@ begin
   AddSheet(TAtlasTextId.SettingsTabColors);
   AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsLight), FLightSwatches);
   AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsPairColorsDark), FDarkSwatches);
+  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorLight), FNestedLight);
+  AddSwatches(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineColorDark), FNestedDark);
   Panel := AddPanel(22);
   Title := TLabel.Create(FPage);
   Title.Parent := Panel;
@@ -79,6 +86,8 @@ procedure TAtlasSettingsColorsPart.BindMarks;
 begin
   FPage.Marks.Bind(FLightSwatches[0], ['PairColorsLight']);
   FPage.Marks.Bind(FDarkSwatches[0], ['PairColorsDark']);
+  FPage.Marks.Bind(FNestedLight[0], ['NestedRoutineColorLight']);
+  FPage.Marks.Bind(FNestedDark[0], ['NestedRoutineColorDark']);
 end;
 
 procedure TAtlasSettingsColorsPart.AddSwatches(const ACaption: string; var ASwatches: array of TShape);
@@ -132,6 +141,8 @@ procedure TAtlasSettingsColorsPart.ResetColorsClick(Sender: TObject);
 begin
   ShowPairs(FLightSwatches, TAtlasColors.Light.Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.Pairs);
+  FNestedLight[0].Brush.Color := TColor(TAtlasColors.Light.NestedRoutine);
+  FNestedDark[0].Brush.Color := TColor(TAtlasColors.Dark.NestedRoutine);
 end;
 
 class procedure TAtlasSettingsColorsPart.ShowPairs(const ASwatches: array of TShape; const APairs: TAtlasPairColors);
@@ -161,16 +172,34 @@ begin
   end;
 end;
 
+class function TAtlasSettingsColorsPart.ColorSetting(ASwatch: TShape; ADefault: TAtlasColor): string;
+var
+  mColor: TAtlasColor;
+begin
+  mColor := TAtlasColor(ColorToRGB(ASwatch.Brush.Color));
+  Result := '';
+  if mColor <> ADefault then
+  begin
+    Result := TAtlasColorMath.ToHex(mColor);
+  end;
+end;
+
 procedure TAtlasSettingsColorsPart.Load(const ASettings: TAtlasPluginSettings);
 begin
   ShowPairs(FLightSwatches, TAtlasColors.Light.WithPairs(ASettings.PairColorsLight).Pairs);
   ShowPairs(FDarkSwatches, TAtlasColors.Dark.WithPairs(ASettings.PairColorsDark).Pairs);
+  FNestedLight[0].Brush.Color := TColor(TAtlasColors.Light.WithNestedRoutine(ASettings.NestedRoutineColorLight)
+    .NestedRoutine);
+  FNestedDark[0].Brush.Color := TColor(TAtlasColors.Dark.WithNestedRoutine(ASettings.NestedRoutineColorDark)
+    .NestedRoutine);
 end;
 
 procedure TAtlasSettingsColorsPart.Save(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.PairColorsLight := PairsSetting(FLightSwatches, TAtlasColors.Light.Pairs);
   ASettings.PairColorsDark := PairsSetting(FDarkSwatches, TAtlasColors.Dark.Pairs);
+  ASettings.NestedRoutineColorLight := ColorSetting(FNestedLight[0], TAtlasColors.Light.NestedRoutine);
+  ASettings.NestedRoutineColorDark := ColorSetting(FNestedDark[0], TAtlasColors.Dark.NestedRoutine);
 end;
 
 end.

@@ -136,6 +136,9 @@ type
     class function Text(AId: TAtlasTrackerTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasTrackerTextId; const AArgs: array of const): string; static;
+    /// <summary>Oberfläche englisch: für Vorgaben, die der Sprache folgen (Textbausteine, Kommentar beim Beenden).
+    /// </summary>
+    class function English: Boolean; static;
   end;
 
 implementation
@@ -1249,6 +1252,11 @@ end;
 class function TAtlasTrackerStrings.Fmt(AId: TAtlasTrackerTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasTrackerStrings.English: Boolean;
+begin
+  Result := TAtlasStrings.Language = TAtlasLanguage.English;
 end;
 
 end.

@@ -45,6 +45,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
+- **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
 - **Code queries** such as `classes where inherits TForm and methods > 40`
 - **Hotspots, call diagram, unit relations** and the path between two symbols
@@ -92,7 +93,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
-- **Language follows the IDE** (German or English)
+- **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **32 MCP tools** to read, check, build, test, rename and fix Delphi code
