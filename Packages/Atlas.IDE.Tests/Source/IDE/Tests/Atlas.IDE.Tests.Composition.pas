@@ -319,13 +319,20 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im Untermenü „Tests“ von Atlas im Kontextmenü des Editors.</summary>
+function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsEditorMenuGroup);
+end;
+
 function TAtlasTestsModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
     MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
-    MenuEntry('Atlas.RunTest', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.DebugTest', TAtlasMenuPlace.EditorContext)];
+    ContextEntry('Atlas.RunTest'),
+    ContextEntry('Atlas.DebugTest')];
 end;
 
 procedure TAtlasTestsModule.ApplySettings;

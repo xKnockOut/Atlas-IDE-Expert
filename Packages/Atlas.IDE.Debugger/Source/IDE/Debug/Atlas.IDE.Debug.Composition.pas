@@ -358,15 +358,22 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im Untermenü „Debuggen“ von Atlas im Kontextmenü des Editors.</summary>
+function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+end;
+
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
-    MenuEntry('Atlas.StepIntoTarget', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.StepFilterSkip', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.StepFilterUnskip', TAtlasMenuPlace.EditorContext)];
+    ContextEntry('Atlas.StepIntoTarget'),
+    ContextEntry('Atlas.StepFilterSkip'),
+    ContextEntry('Atlas.StepFilterUnskip')];
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
