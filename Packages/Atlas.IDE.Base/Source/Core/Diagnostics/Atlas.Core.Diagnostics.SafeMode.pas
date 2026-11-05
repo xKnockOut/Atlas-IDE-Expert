@@ -149,7 +149,36 @@ uses
   System.Math,
   System.Classes,
   System.IOUtils,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TSafeModeText = (LoadingMs, LoadingNotFinished, Mode, ActiveFeatures, ErrorsNone, Errors);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TSafeModeText] of string = (
+    ('Laden: %d ms',
+     'Laden: nicht abgeschlossen',
+     'Modus: ',
+     'Aktive Funktionen: ',
+     'Fehler: keine',
+     'Fehler %s: %d'),
+    ('Loading: %d ms',
+     'Loading: not finished',
+     'Mode: ',
+     'Active features: ',
+     'Errors: none',
+     'Errors %s: %d'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TSafeModeText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   LevelNames: array[TAtlasSafeLevel] of string = ('normal', 'safe', 'minimal');
@@ -649,28 +678,28 @@ begin
   Result := ['Atlas ' + AMarker.Version, 'Start: ' + DateToISO8601(AMarker.StartedAt, True)];
   if AMarker.Loaded then
   begin
-    Result := Result + [Format('Laden: %d ms', [AMarker.LoadMs])];
+    Result := Result + [Format(UiText(TSafeModeText.LoadingMs), [AMarker.LoadMs])];
   end
   else
   begin
-    Result := Result + ['Laden: nicht abgeschlossen'];
+    Result := Result + [UiText(TSafeModeText.LoadingNotFinished)];
   end;
-  Result := Result + ['Modus: ' + LevelNames[AMarker.Level]];
+  Result := Result + [UiText(TSafeModeText.Mode) + LevelNames[AMarker.Level]];
   Names := string.Join(', ', AMarker.Features);
   if Names = '' then
   begin
     Names := '–';
   end;
-  Result := Result + ['Aktive Funktionen: ' + Names];
+  Result := Result + [UiText(TSafeModeText.ActiveFeatures) + Names];
   if Length(AMarker.Failures) = 0 then
   begin
-    Result := Result + ['Fehler: keine'];
+    Result := Result + [UiText(TSafeModeText.ErrorsNone)];
   end
   else
   begin
     for Pair in AMarker.Failures do
     begin
-      Result := Result + [Format('Fehler %s: %d', [Pair.Key, Pair.Value])];
+      Result := Result + [Format(UiText(TSafeModeText.Errors), [Pair.Key, Pair.Value])];
     end;
   end;
 end;
@@ -809,5 +838,8 @@ class procedure TAtlasSessionFiles.WriteState(const AFolder: string; const AStat
 begin
   WriteFileSafely(StateFile(AFolder), AState.ToJson);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.SafeMode', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

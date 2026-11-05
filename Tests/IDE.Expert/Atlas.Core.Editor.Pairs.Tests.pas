@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Editor.Pairs.Tests;
 
-// Tests für Klammer- und Blockpaare (#514) und ihre Besitzer-Schlüsselwörter (#653).
+// Tests für Klammer- und Blockpaare (#514), ihre Besitzer-Schlüsselwörter (#653) und die Verschachtelung
+// lokaler Routinen (#1788).
 
 interface
 
@@ -51,6 +52,16 @@ type
     procedure GuideStartsAtTheStatement;
     [Test]
     procedure PenWidthScalesWithLineHeight;
+    [Test]
+    procedure LocalRoutineTokensCarryTheirNesting;
+    [Test]
+    procedure LocalRoutineBlocksAreMarked;
+    [Test]
+    procedure InterfaceHeadsDoNotNest;
+    [Test]
+    procedure LocalTypesBelongToTheirRoutine;
+    [Test]
+    procedure SpansAndGuidesCarryTheNesting;
   end;
 
 implementation
@@ -87,6 +98,32 @@ begin
   end;
   Result := Trim(Result);
 end;
+
+/// <summary>"Text@Tiefe/Routine" je Token samt Besitzern (#1788), Besitzer mit "*".</summary>
+function Nesting(const AText: string): string;
+var
+  Lines: TArray<string>;
+  Token: TAtlasPairToken;
+begin
+  Lines := AText.Split([#10]);
+  Result := '';
+  for Token in TAtlasPairs.Analyze(AText) do
+  begin
+    Result := Result + Copy(Lines[Token.Line], Token.Character + 1, Token.Length) + '@' + IntToStr(Token.Depth) +
+      '/' + IntToStr(Token.Routine);
+    if Token.Owner then
+    begin
+      Result := Result + '*';
+    end;
+    Result := Result + ' ';
+  end;
+  Result := Trim(Result);
+end;
+
+const
+  /// <summary>Routine A mit lokaler Funktion B, darin ein if-Block (#1788).</summary>
+  cLocal = 'procedure A;'#10'  function B: Boolean;'#10'  begin'#10'    if X then'#10'    begin'#10'    end;'#10 +
+    '  end;'#10'begin'#10'end;';
 
 /// <summary>Wie bisher (#514): nur Klammern und Blockwörter.</summary>
 function Describe(const AText: string): string;
@@ -348,6 +385,82 @@ begin
   Assert.AreEqual(3, TAtlasGuides.PenWidth(9, 16, 16));
   Assert.AreEqual(1, TAtlasGuides.PenWidth(0, 16, 16));
   Assert.AreEqual(2, TAtlasGuides.PenWidth(2, 0, 16));
+end;
+
+procedure TAtlasPairsTests.LocalRoutineTokensCarryTheirNesting;
+begin
+  // Ursache von #1788: Tiefe zählt nur Blöcke, deshalb haben A und B beide Tiefe 0; Routine trennt sie.
+  Assert.AreEqual('procedure@0/0* function@0/1* begin@0/1 if@1/1* then@1/1* begin@1/1 end@1/1 end@0/1 ' +
+    'begin@0/0 end@0/0', Nesting(cLocal));
+  // Zwei Stufen: C in B in A.
+  Assert.AreEqual('procedure@0/0* procedure@0/1* procedure@0/2* begin@0/2 end@0/2 begin@0/1 end@0/1 begin@0/0 ' +
+    'end@0/0', Nesting('procedure A;'#10'procedure B;'#10'procedure C;'#10'begin'#10'end;'#10'begin'#10'end;'#10 +
+    'begin'#10'end;'));
+  // Nach dem Ende der lokalen Routine wieder Stufe 0: zwei Routinen nacheinander.
+  Assert.AreEqual('procedure@0/0* begin@0/0 end@0/0 procedure@0/0* begin@0/0 end@0/0',
+    Nesting('procedure A;'#10'begin'#10'end;'#10'procedure B;'#10'begin'#10'end;'));
+end;
+
+procedure TAtlasPairsTests.LocalRoutineBlocksAreMarked;
+var
+  Blocks: TArray<TAtlasPairBlock>;
+begin
+  TAtlasPairs.Analyze(cLocal, Blocks);
+  // In der Reihenfolge ihres Endes: if-Block, Rumpf von B, Rumpf von A.
+  Assert.AreEqual(3, Integer(Length(Blocks)));
+  Assert.IsFalse(Blocks[0].IsRoutine);
+  Assert.AreEqual(1, Blocks[0].Routine);
+  Assert.IsTrue(Blocks[1].IsRoutine);
+  Assert.AreEqual(1, Blocks[1].Routine);
+  Assert.AreEqual(1, Blocks[1].OwnerLine);
+  Assert.IsTrue(Blocks[2].IsRoutine);
+  Assert.AreEqual(0, Blocks[2].Routine);
+end;
+
+procedure TAtlasPairsTests.InterfaceHeadsDoNotNest;
+begin
+  // Köpfe im interface haben keinen Rumpf; ohne Abschnittserkennung stünde die Klasse eine Stufe tiefer.
+  Assert.AreEqual('class@0/0 end@0/0', Nesting('unit U;'#10'interface'#10'procedure P;'#10'procedure Q;'#10 +
+    'type'#10'  TFoo = class'#10'  end;'));
+  // Der Typ IFoo = interface beginnt keinen Abschnitt.
+  Assert.AreEqual('interface@0/0 end@0/0 procedure@0/0* begin@0/0 end@0/0',
+    Nesting('type'#10'  IFoo = interface'#10'  end;'#10'procedure A;'#10'begin'#10'end;'));
+end;
+
+procedure TAtlasPairsTests.LocalTypesBelongToTheirRoutine;
+begin
+  Assert.AreEqual('procedure@0/0* record@0/0 end@0/0 procedure@0/1* record@0/1 end@0/1 begin@0/1 end@0/1 ' +
+    'begin@0/0 end@0/0', Nesting('procedure A;'#10'type'#10'  TA = record'#10'  end;'#10'  procedure B;'#10 +
+    '  type'#10'    TB = record'#10'    end;'#10'  begin'#10'  end;'#10'begin'#10'end;'));
+end;
+
+procedure TAtlasPairsTests.SpansAndGuidesCarryTheNesting;
+var
+  Blocks: TArray<TAtlasPairBlock>;
+  Tokens, LineTokens: TArray<TAtlasPairToken>;
+  Token: TAtlasPairToken;
+  Spans: TArray<TAtlasPairSpan>;
+  Guides: TArray<TAtlasGuide>;
+  Lines: TArray<string>;
+begin
+  Lines := cLocal.Split([#10]);
+  Tokens := TAtlasPairs.Analyze(cLocal, Blocks);
+  LineTokens := nil;
+  for Token in Tokens do
+  begin
+    if Token.Line = 1 then
+    begin
+      LineTokens := LineTokens + [Token];
+    end;
+  end;
+  Spans := TAtlasPairs.Spans(TrimLeft(Lines[1]), Lines[1], LineTokens, True);
+  Assert.AreEqual(1, Integer(Length(Spans)));
+  Assert.AreEqual(1, Spans[0].Routine, 'Kopf der lokalen Funktion im mitlaufenden Kopf');
+  Guides := TAtlasGuides.FromBlocks(Lines, Blocks, 2, True);
+  Assert.AreEqual(3, Integer(Length(Guides)));
+  Assert.AreEqual(1, Guides[1].Routine);
+  Assert.AreEqual(1, Guides[1].FirstLine, 'Linie ab dem Kopf');
+  Assert.AreEqual(0, Guides[2].Routine);
 end;
 
 initialization

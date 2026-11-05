@@ -107,6 +107,7 @@ type
     procedure HistoryClick(Sender: TObject);
   protected
     procedure CreateWnd; override;
+    procedure Resize; override;
   public
     /// <summary>Meldungen an die IDE-Schicht.</summary>
     Hooks: TAtlasEvalFrameHooks;
@@ -181,11 +182,20 @@ begin
   Result.Height := Scaled(ASelf, AHeight);
 end;
 
+/// <summary>Reihenfolge nebeneinander ausgerichteter Teile: Die VCL ordnet sie nach Left. Neue Teile haben alle
+/// Left 0; ohne eigene Werte hängt die Reihenfolge davon ab, wie die VCL Gleichstände auflöst (vorher standen die
+/// Ansichten verkehrt herum und „IDE-Dialog“ links statt rechts).</summary>
+function OrderLeft(APosition: Integer): Integer;
+begin
+  Result := 10000 + APosition;
+end;
+
 function AddButton(ASelf: TAtlasDebugEvaluateFrame; AParent: TWinControl; AText: TAtlasDebugTextId;
-  AClick: TNotifyEvent): TButton;
+  AClick: TNotifyEvent; APosition: Integer): TButton;
 begin
   Result := TButton.Create(ASelf);
   Result.Parent := AParent;
+  Result.Left := OrderLeft(APosition);
   Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 86);
@@ -217,11 +227,15 @@ begin
   ASelf.FParts.HistoryMenu := TPopupMenu.Create(ASelf);
 end;
 
-/// <summary>Ganz unten die Tastenhilfe.</summary>
+/// <summary>Ganz unten die Tastenhilfe. Die Höhe setzt FitKeys bei jeder Größenänderung: Mit AutoSize rechnet
+/// TLabel sie nur bei Text- und Schriftwechsel aus, hier also bei der Anfangsbreite von 65 Pixeln (viele Zeilen),
+/// und behält sie, wenn das Fenster breiter wird. Der Rest blieb als leerer Streifen unten stehen, Baum und Ansicht
+/// wuchsen nicht mit.</summary>
 procedure BuildKeys(ASelf: TAtlasDebugEvaluateFrame);
 begin
   ASelf.FParts.Keys := TLabel.Create(ASelf);
   ASelf.FParts.Keys.Parent := ASelf;
+  ASelf.FParts.Keys.AutoSize := False;
   ASelf.FParts.Keys.Align := alBottom;
   ASelf.FParts.Keys.AlignWithMargins := True;
   ASelf.FParts.Keys.ShowAccelChar := False;
@@ -230,10 +244,31 @@ begin
   ASelf.FParts.Keys.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateKeys);
 end;
 
+/// <summary>Höhe der Tastenhilfe für ihre jetzige Breite (Zeilen umbrochen wie beim Zeichnen).</summary>
+procedure FitKeys(ASelf: TAtlasDebugEvaluateFrame);
+var
+  mKeys: TLabel;
+  mRect: TRect;
+begin
+  mKeys := ASelf.FParts.Keys;
+  if (mKeys = nil) or not ASelf.HandleAllocated or (mKeys.Width <= 0) then
+  begin
+    Exit;
+  end;
+  mRect := Rect(0, 0, mKeys.Width, 0);
+  mKeys.Canvas.Font := mKeys.Font;
+  DrawText(mKeys.Canvas.Handle, PChar(mKeys.Caption), -1, mRect, DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+  if mKeys.Height <> mRect.Height then
+  begin
+    mKeys.Height := mRect.Height;
+  end;
+end;
+
 function AddViewButton(ASelf: TAtlasDebugEvaluateFrame; AKind: TAtlasEvalView): TSpeedButton;
 begin
   Result := TSpeedButton.Create(ASelf);
   Result.Parent := ASelf.FParts.Bar;
+  Result.Left := OrderLeft(Ord(AKind));
   Result.Align := alLeft;
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 54);
@@ -251,12 +286,12 @@ var
   mKind: TAtlasEvalView;
 begin
   ASelf.FParts.Bar := AddPanel(ASelf, ASelf.FParts.Bottom, alTop, 28);
-  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateIdeDialog,
-    ASelf.IdeDialogClick);
-  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluatePin, ASelf.PinClick);
   ASelf.FParts.ModifyButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateModify,
-    ASelf.ModifyClick);
-  for mKind := High(TAtlasEvalView) downto Low(TAtlasEvalView) do
+    ASelf.ModifyClick, 0);
+  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluatePin, ASelf.PinClick, 1);
+  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateIdeDialog,
+    ASelf.IdeDialogClick, 2);
+  for mKind := Low(TAtlasEvalView) to High(TAtlasEvalView) do
   begin
     ASelf.FParts.ViewButtons[mKind] := AddViewButton(ASelf, mKind);
   end;
@@ -578,8 +613,16 @@ end;
 procedure TAtlasDebugEvaluateFrame.CreateWnd;
 begin
   inherited CreateWnd;
+  FitKeys(Self);
   // TTreeView.Items braucht ein Fenster.
   Refresh;
+end;
+
+procedure TAtlasDebugEvaluateFrame.Resize;
+begin
+  inherited Resize;
+  // Breiter oder schmaler: Die Tastenhilfe braucht weniger oder mehr Zeilen, Baum und Ansicht bekommen den Rest.
+  FitKeys(Self);
 end;
 
 procedure TAtlasDebugEvaluateFrame.SetList(AList: TAtlasEvalList);

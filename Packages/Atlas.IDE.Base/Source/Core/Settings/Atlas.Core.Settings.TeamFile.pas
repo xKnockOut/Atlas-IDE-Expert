@@ -243,7 +243,8 @@ uses
   System.StrUtils,
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
-  Atlas.Text.DebugDisplay;
+  Atlas.Text.DebugDisplay,
+  Atlas.Core.Localization.Language;
 
 const
   NamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
@@ -1498,48 +1499,82 @@ end;
 
 class function TAtlasTeamFile.Skeleton: string;
 const
-  Lines: array[0..33] of string = (
-    '{',
-    '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
-    '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
-    '  // Datei hat Vorrang. Keine Zugangsdaten und keine absoluten Pfade: Atlas',
-    '  // ignoriert solche Einträge. Pfade relativ zu dieser Datei.',
-    '  "version": 1,',
-    '  "naming": {',
-    '    // "field": "F", "parameter": "A", "local": "L", "constant": "c"',
-    '  },',
-    '  // Ordner mit Code-Vorlagen des Projekts (*.atlas-snippet wie unter %APPDATA%\Atlas\Snippets):',
-    '  // "snippets": "Vorlagen\\Snippets",',
-    '  "formatFunctions": [',
-    '    // {"name": "Log", "formatIndex": 0}',
-    '  ],',
-    '  "sqlTargets": [',
-    '    // "TMyQuery.SQL"',
-    '  ],',
-    '  "fileMethods": [',
-    '    // "TDateien.Laden"',
-    '  ],',
-    '  "mainThreadExceptions": [',
-    '    // "TLogger.Write"',
-    '  ],',
-    '  "startProfiles": [',
-    '    // {"name": "Demo", "parameters": "-demo", "workingDir": "Bin", "environment": {"MODUS": "demo"}}',
-    '  ],',
-    '  // Build-Server und Issue-Tracker; Benutzer und Token im Anmeldespeicher von Windows:',
-    '  // "ci": {"provider": "jenkins", "url": "https://ci.example.com", "job": "projekt", "multibranch": false},',
-    '  // "tracker": {"provider": "youtrack", "url": "https://example.youtrack.cloud", "project": "ATL"},',
-    '  // Im Editor ausgeblendete Elemente („Nur hier“ bzw. „In dieser Datei ausblenden“, #628):',
-    '  // "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", "anchor": "TKunde.Speichern"}],',
-    '  // Wertdarstellung beim Debuggen für fremde Klassen (eigene: // atlas-debug: über dem Typ, #854):',
-    '  // "debugDisplayRules": {"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})"},',
-    '}');
+  Lines: array[TAtlasLanguage, 0..33] of string = (
+    ('{',
+     '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
+     '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
+     '  // Datei hat Vorrang. Keine Zugangsdaten und keine absoluten Pfade: Atlas',
+     '  // ignoriert solche Einträge. Pfade relativ zu dieser Datei.',
+     '  "version": 1,',
+     '  "naming": {',
+     '    // "field": "F", "parameter": "A", "local": "L", "constant": "c"',
+     '  },',
+     '  // Ordner mit Code-Vorlagen des Projekts (*.atlas-snippet wie unter %APPDATA%\Atlas\Snippets):',
+     '  // "snippets": "Vorlagen\\Snippets",',
+     '  "formatFunctions": [',
+     '    // {"name": "Log", "formatIndex": 0}',
+     '  ],',
+     '  "sqlTargets": [',
+     '    // "TMyQuery.SQL"',
+     '  ],',
+     '  "fileMethods": [',
+     '    // "TDateien.Laden"',
+     '  ],',
+     '  "mainThreadExceptions": [',
+     '    // "TLogger.Write"',
+     '  ],',
+     '  "startProfiles": [',
+     '    // {"name": "Demo", "parameters": "-demo", "workingDir": "Bin", "environment": {"MODUS": "demo"}}',
+     '  ],',
+     '  // Build-Server und Issue-Tracker; Benutzer und Token im Anmeldespeicher von Windows:',
+     '  // "ci": {"provider": "jenkins", "url": "https://ci.example.com", "job": "projekt", "multibranch": false},',
+     '  // "tracker": {"provider": "youtrack", "url": "https://example.youtrack.cloud", "project": "ATL"},',
+     '  // Im Editor ausgeblendete Elemente („Nur hier“ bzw. „In dieser Datei ausblenden“, #628):',
+     '  // "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", "anchor": "TKunde.Speichern"}],',
+     '  // Wertdarstellung beim Debuggen für fremde Klassen (eigene: // atlas-debug: über dem Typ, #854):',
+     '  // "debugDisplayRules": {"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})"},',
+     '}'),
+    ('{',
+     '  // Atlas project settings for the whole team (checked in). Personal',
+     '  // settings are under Tools > Options > Atlas; a value from this',
+     '  // file takes precedence. No credentials and no absolute paths: Atlas',
+     '  // ignores such entries. Paths are relative to this file.',
+     '  "version": 1,',
+     '  "naming": {',
+     '    // "field": "F", "parameter": "A", "local": "L", "constant": "c"',
+     '  },',
+     '  // Folder with the project''s code snippets (*.atlas-snippet as under %APPDATA%\Atlas\Snippets):',
+     '  // "snippets": "Templates\\Snippets",',
+     '  "formatFunctions": [',
+     '    // {"name": "Log", "formatIndex": 0}',
+     '  ],',
+     '  "sqlTargets": [',
+     '    // "TMyQuery.SQL"',
+     '  ],',
+     '  "fileMethods": [',
+     '    // "TFiles.Load"',
+     '  ],',
+     '  "mainThreadExceptions": [',
+     '    // "TLogger.Write"',
+     '  ],',
+     '  "startProfiles": [',
+     '    // {"name": "Demo", "parameters": "-demo", "workingDir": "Bin", "environment": {"MODE": "demo"}}',
+     '  ],',
+     '  // Build server and issue tracker; user and token in the Windows credential store:',
+     '  // "ci": {"provider": "jenkins", "url": "https://ci.example.com", "job": "project", "multibranch": false},',
+     '  // "tracker": {"provider": "youtrack", "url": "https://example.youtrack.cloud", "project": "ATL"},',
+     '  // Elements hidden in the editor ("Only here" or "Hide in this file", #628):',
+     '  // "hidden": [{"setting": "BlockEndLabels", "file": "Source/Customer.pas", "anchor": "TCustomer.Save"}],',
+     '  // Value display while debugging for foreign classes (own ones: // atlas-debug: above the type, #854):',
+     '  // "debugDisplayRules": {"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})"},',
+     '}'));
 var
-  Line: string;
+  mIndex: Integer;
 begin
   Result := '';
-  for Line in Lines do
+  for mIndex := Low(Lines[TAtlasLanguage.German]) to High(Lines[TAtlasLanguage.German]) do
   begin
-    Result := Result + Line + #13#10;
+    Result := Result + Lines[TAtlasTextLanguage.Current, mIndex] + #13#10;
   end;
 end;
 

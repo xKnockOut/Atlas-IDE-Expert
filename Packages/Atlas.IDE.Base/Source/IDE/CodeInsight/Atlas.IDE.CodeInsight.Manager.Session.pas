@@ -104,7 +104,30 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.UI.Strings,
   Atlas.IDE.CodeInsight.Manager.Paths,
-  Atlas.IDE.CodeInsight.Manager.Handlers;
+  Atlas.IDE.CodeInsight.Manager.Handlers,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TSessionText] of string = (
+    ('Server nicht gefunden: %s (die eingebaute Code Insight bleibt aktiv)',
+     'Server nicht gefunden: %s',
+     'AtlasServer.exe nicht gefunden'),
+    ('Server not found: %s (the built-in Code Insight stays active)',
+     'Server not found: %s',
+     'AtlasServer.exe not found'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TSessionText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 /// <summary>Sprache der Oberfläche für den Server (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche.</summary>
 function InterfaceLocale: string;
@@ -282,8 +305,8 @@ begin
   Diagnose('Starte Server: ' + mPath);
   if not FileExists(mPath) then
   begin
-    ReportError('Server nicht gefunden: ' + mPath);
-    SetPhase(TAtlasServerPhase.Failed, 'AtlasServer.exe nicht gefunden');
+    ReportError(Format(UiText(TSessionText.ServerNotFound), [mPath]));
+    SetPhase(TAtlasServerPhase.Failed, UiText(TSessionText.AtlasServerExeNotFound));
     Exit(False);
   end;
   SetPhase(TAtlasServerPhase.Starting, '');
@@ -602,7 +625,7 @@ begin
     FServerFound := FileExists(mPath);
     if not FServerFound then
     begin
-      ReportError('Server nicht gefunden: ' + mPath + ' (die eingebaute Code Insight bleibt aktiv)');
+      ReportError(Format(UiText(TSessionText.ServerNotFoundTheBuilt), [mPath]));
     end;
   end;
   Result := FServerFound;
@@ -624,5 +647,8 @@ begin
     ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc')) and
     ServerAvailable;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Manager.Session', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
