@@ -116,11 +116,6 @@ begin
   BindCheck('OutlineAlphabetical', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical)));
   BindCheck('OutlineFollowCursor', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor)));
   BindCheck('OutlineConditions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineConditions)));
-  // „Lesezeichen setzen…“ (#622).
-  BindKey('BookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.BookmarksMenuAdd)));
-  // Nächstes/voriges Lesezeichen (#1104), ohne Vorgabe.
-  BindKey('NextBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.NextBookmarkCommand)));
-  BindKey('PreviousBookmarkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.PreviousBookmarkCommand)));
   // „Element ausblenden …“ am gezeichneten Element (#628).
   BindKey('HideElementKey', AddKey(TAtlasStrings.Text(TAtlasTextId.HideElementCommand)));
   // Nächster/vorheriger Befund (#509).
@@ -128,6 +123,8 @@ begin
   BindKey('PreviousProblemKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand)));
   // Fenster „Atlas-Prüfung“ (#909).
   BindKey('ProblemsWindowKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand)));
+  // „Datei jetzt prüfen“ (#1744).
+  BindKey('CheckFileKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand)));
   // „Issue anlegen …“ (#1268), ohne Vorgabe.
   BindKey('CreateIssueKey', AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand)));
   BindKey('UndoKey', AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu)));

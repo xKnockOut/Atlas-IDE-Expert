@@ -4,13 +4,18 @@
 // Ein Modul meldet einen IAtlasSettingsSectionProvider über seinen Scope an
 // (GScope.Provide); jede Optionsseite holt sich daraus ihren eigenen Abschnitt
 // (IAtlasSettingsSection), so dass zwei Seiten nie dieselben Steuerelemente
-// teilen. Die Optionsseite von Base baut ihn in den
-// Bereich AreaId (x-area des Schemas; unbekannter Bereich: eigener Reiter mit
-// der Beschriftung aus dem Katalog) und gibt ihm dafür die Bausteine der Seite
-// (IAtlasSettingsSectionHost). Schalter, Zahl, Text und Auswahl hängen an
-// einem Schlüssel: Base liest und schreibt sie selbst. Eigene Zeilen
-// (Tabellen, Knöpfe) füllt das Modul; deren Schlüssel liest und schreibt es in
-// Load und Save über IAtlasSettingsValues. Alle Werte bleiben in der einen
+// teilen. Ein Modul mit Einstellungen auf mehreren Reitern meldet je Reiter
+// einen Anbieter an. Die Optionsseite von Base baut den Abschnitt in den
+// Reiter AreaId: eine Seite (x-page des Schemas, z. B. „Compiler“) oder ein
+// Bereich (x-area, z. B. „issues“). Fehlt der Reiter, entsteht er hinter den
+// Reitern von Base mit der Beschriftung aus dem Katalog. Die Seite zeigt nur
+// die Einstellungen von Base und der angemeldeten Module (#1455); fehlt ein
+// Modul, fehlen seine Einstellungen. Die Bausteine der Seite
+// (IAtlasSettingsSectionHost): Schalter, Zahl, Text, Tastenkürzel und Auswahl
+// hängen an einem Schlüssel: Base liest und schreibt sie selbst. Eigene
+// Elemente (AddOwn…) und eigene Zeilen (Tabellen, Knöpfe) füllt das Modul;
+// deren Schlüssel liest und schreibt es in Load und Save über
+// IAtlasSettingsValues. Alle Werte bleiben in der einen
 // Ablage von Base; fehlt das Modul, bleiben sie unverändert erhalten.
 // Gebundene Felder schreibt die Seite vor Save; ein Abschnitt darf einen
 // Wert in Save anders schreiben (z. B. ungekürzt oder geordnet).
@@ -34,6 +39,9 @@ type
     function AddHint(const AText: string; AHeight: Integer): TControl;
     /// <summary>Schalter an AKey (x-key, Wahrheitswert); ein TCheckBox.</summary>
     function AddSwitch(const AKey, ACaption: string): TControl;
+    /// <summary>Schalter des Moduls an AKey (x-module im Schema) mit der Beschriftung aus dem Katalog, damit er auf
+    /// jeder Seite gleich heißt (Schnellschalter, Willkommensseite); ein TCheckBox.</summary>
+    function AddModuleSwitch(const AKey: string): TControl;
     /// <summary>Zahl an AKey; ein TCustomEdit.</summary>
     function AddNumber(const AKey, ACaption: string): TControl;
     /// <summary>Textzeile an AKey (Beschriftung darüber, Feld in voller Breite); ein TCustomEdit. Gespeichert wird
@@ -43,6 +51,24 @@ type
     /// (bei Zahlen als Text); ein TCustomComboBox. Ein gespeicherter Wert, der fehlt, zeigt den ersten Eintrag.
     /// </summary>
     function AddChoice(const AKey, ACaption: string; const ACaptions, AValues: TArray<string>): TControl;
+    /// <summary>Tastenkürzel an AKey (Text wie im Menü, leer = keine Taste); ein TCustomEdit.</summary>
+    function AddKey(const AKey, ACaption: string): TControl;
+    /// <summary>Haken, den der Abschnitt selbst liest und schreibt (Liste aus Haken, abgeleiteter Wert); ein
+    /// TCheckBox. AKeys: Schlüssel, nach denen sich Punkt, Zurücksetzen, Unterpunkt und Sperre richten (leer: keine).
+    /// </summary>
+    function AddOwnCheck(const ACaption: string; const AKeys: TArray<string>): TControl;
+    /// <summary>Zahl, die der Abschnitt selbst liest und schreibt; ein TCustomEdit. AKeys wie bei AddOwnCheck.
+    /// </summary>
+    function AddOwnNumber(const ACaption: string; const AKeys: TArray<string>): TControl;
+    /// <summary>Textzeile, die der Abschnitt selbst liest und schreibt; ein TCustomEdit. AKeys wie bei AddOwnCheck.
+    /// </summary>
+    function AddOwnText(const ACaption: string; const AKeys: TArray<string>): TControl;
+    /// <summary>Auswahl mit der Anzeige ACaptions, die der Abschnitt selbst liest und schreibt; ein
+    /// TCustomComboBox. AKeys wie bei AddOwnCheck.</summary>
+    function AddOwnChoice(const ACaption: string; const ACaptions, AKeys: TArray<string>): TControl;
+    /// <summary>Mehrere Elemente teilen sich die Schlüssel AKeys: Zurücksetzen und Kontextmenü an AControl, aber kein
+    /// eigener Punkt (z. B. je Prüfung ein Haken in einer Liste).</summary>
+    procedure ShareKeys(AControl: TControl; const AKeys: TArray<string>);
     /// <summary>Eigene Zeile der Höhe AHeight für Tabellen und Knöpfe. AKeys: Schlüssel, die der Abschnitt darin
     /// selbst liest und schreibt; nach ihnen richten sich Punkt, Zurücksetzen, Unterpunkt und Sperre der Zeile.
     /// </summary>
@@ -60,6 +86,9 @@ type
     function ListReady(AControl: TWinControl): Boolean;
     /// <summary>Zeigt die Einstellung AKey (Reiter, ins Bild rollen); False, wenn die Seite sie nicht kennt.</summary>
     function Reveal(const AKey: string): Boolean;
+    /// <summary>Hat die Seite eine Zeile für AKey, auch aus dem Abschnitt eines anderen Moduls? Erst in
+    /// WindowReady verlässlich, wenn alle Abschnitte gebaut sind (Wege zu Einstellungen anderer Module).</summary>
+    function Shows(const AKey: string): Boolean;
   end;
 
   /// <summary>Abschnitt eines Moduls im Optionsdialog, je Seite ein eigener. Die Seite ruft Build einmal, danach
@@ -69,7 +98,8 @@ type
     ['{91C21CB1-3374-4185-AD4F-F6BAEF7A1C4C}']
     /// <summary>Id des Moduls (TAtlasModuleInfo.Id).</summary>
     function OwnerId: string;
-    /// <summary>Bereich der Optionsseite (x-area, z. B. „issues“).</summary>
+    /// <summary>Reiter der Optionsseite: Seite (x-page, z. B. „Compiler“) oder Bereich (x-area, z. B. „issues“).
+    /// </summary>
     function AreaId: string;
     procedure Build(const AHost: IAtlasSettingsSectionHost);
     /// <summary>Werte der eigenen Zeilen aus AValues zeigen (gebundene Felder lädt die Seite selbst).</summary>

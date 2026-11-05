@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Analysis.SettingsSection,
   System.Types,
   System.JSON,
   Atlas.Text.Product.Version,
@@ -434,6 +435,13 @@ begin
   TAtlasIdeUnitRelations.ApplySettings;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasAnalysisSettingsSection.ProvideIn(GScope);
+end;
+
 procedure TAtlasAnalysisModule.ThemeChanged;
 begin
   TAtlasIdeArchitecture.ThemeChanged;
@@ -485,6 +493,7 @@ begin
   GScope.Provide(IAtlasMenuSource, mRef);
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 

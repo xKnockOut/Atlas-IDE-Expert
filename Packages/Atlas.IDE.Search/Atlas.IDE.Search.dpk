@@ -79,6 +79,7 @@ contains
   Atlas.UI.Query.Parts in 'Source\UI\Query\Atlas.UI.Query.Parts.pas',
   Atlas.UI.Query.Frame in 'Source\UI\Query\Atlas.UI.Query.Frame.pas' {AtlasCodeQueryFrame: TFrame},
   Atlas.IDE.Query.Window in 'Source\IDE\Query\Atlas.IDE.Query.Window.pas',
-  Atlas.IDE.Query.Service in 'Source\IDE\Query\Atlas.IDE.Query.Service.pas';
+  Atlas.IDE.Query.Service in 'Source\IDE\Query\Atlas.IDE.Query.Service.pas',
+  Atlas.UI.Search.SettingsSection in 'Source\UI\Search\Atlas.UI.Search.SettingsSection.pas';
 
 end.

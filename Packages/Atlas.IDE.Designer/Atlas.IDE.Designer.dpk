@@ -49,6 +49,7 @@ contains
   Atlas.UI.Designer.Search in 'Source\UI\Designer\Atlas.UI.Designer.Search.pas',
   Atlas.UI.Designer.TabOverlay in 'Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',
-  Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas';
+  Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas',
+  Atlas.UI.Designer.SettingsSection in 'Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas';
 
 end.
