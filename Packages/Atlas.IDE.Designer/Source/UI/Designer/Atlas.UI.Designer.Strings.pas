@@ -21,7 +21,10 @@ type
     DesignerSearchGroupClass, DesignerSearchGroupFlat, DesignerSearchSelect, DesignerSearchEvent,
     DesignerSearchCopy, DesignerSearchCount, DesignerSearchKeys, DesignerSearchKeysPopup, DesignerSearchPosition,
     DesignerSearchProperties, DesignerSearchEvents, DesignerSearchNoEvents, DesignerSearchNonVisual,
-    DesignerSearchNoForm);
+    DesignerSearchNoForm,
+    SettingsEditorDesignerBar, SettingsDesignerSearchKey, SettingsDesignerSearchStyle,
+    SettingsDesignerSearchWindow, SettingsDesignerSearchPopup, SettingsDesignerTabOrderClick,
+    SettingsDesignerAlign);
 
   TAtlasDesignerStrings = class
   public
@@ -84,7 +87,14 @@ const
      'Ereignisse',
      'keine',
      'nichtvisuell',
-     'Kein Formular im Designer.'),
+     'Kein Formular im Designer.',
+     'Designer-Leiste im Formular-Designer (Komponenten suchen, Nichtvisuelle, Elternelement, Tab-Reihenfolge)',
+     'Taste für „Komponenten suchen“ (nur im Designer):',
+     'Fenster „Komponenten suchen“:',
+     'Groß mit Filtern und Vorschau',
+     'Klein wie Strg+P',
+     'Tab-Reihenfolge per Klick auf die Nummern neu vergeben',
+     'Knopf „Ausrichten“ mit Menü'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -131,7 +141,14 @@ const
      'Events',
      'none',
      'non-visual',
-     'No form in the designer.'));
+     'No form in the designer.',
+     'Designer bar in the form designer (find components, non-visual, parent, tab order)',
+     'Key for “Find components” (designer only):',
+     '“Find components” window:',
+     'Large with filters and preview',
+     'Small like Ctrl+P',
+     'Renumber the tab order by clicking the numbers',
+     '“Align” button with menu'));
 
 { TAtlasDesignerStrings }
 
