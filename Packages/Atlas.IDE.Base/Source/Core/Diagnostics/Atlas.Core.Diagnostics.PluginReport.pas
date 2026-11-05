@@ -60,7 +60,53 @@ uses
   System.Classes,
   System.Math,
   System.Generics.Defaults,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TPluginReportText = (MainThreadPerFeatureOwn, FeatureCallsTotalMeanMaximum, NoCallMeasuredYet,
+    SlowCallsNewestFirstAt, None, ServerRequestsMs, RequestCountMeanMaximumMain, BackgroundSourcesMs,
+    SourceCallsMeanMaximumToo, HangsFreezeWatchdogNewestFirst, MsAtlasInvolved, PluginTimings,
+    MeasuringSinceSlowFromMs);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TPluginReportText] of string = (
+    ('### Hauptthread je Funktion (eigene Zeit in ms)',
+     'Funktion | Aufrufe | Summe | Mittel | Maximum | ab Schwelle | Anteil %',
+     'Noch kein Aufruf gemessen.',
+     '### Langsame Aufrufe, neueste zuerst (höchstens %d)',
+     'Keiner.',
+     '### Server-Anfragen (ms)',
+     'Anfrage | Anzahl | Mittel | Maximum | Hauptthread gewartet | Zeitüberschreitung | abgebrochen | Fehler',
+     '### Quellen im Hintergrund (ms)',
+     'Quelle | Aufrufe | Mittel | Maximum | zu langsam',
+     '### Hänger (Einfrier-Wächter), neueste zuerst',
+     '- %s: %d ms, %s, Atlas beteiligt: %s',
+     '## Plugin-Zeiten',
+     'Messung seit %s, langsam ab %d ms eigener Zeit, Hauptthread durch Atlas belegt: %s %% (Mittel der letzten %d s).'),
+    ('### Main thread per feature (own time in ms)',
+     'Feature | calls | total | mean | maximum | above threshold | share %',
+     'No call measured yet.',
+     '### Slow calls, newest first (at most %d)',
+     'None.',
+     '### Server requests (ms)',
+     'Request | count | mean | maximum | main thread waited | timeout | cancelled | errors',
+     '### Background sources (ms)',
+     'Source | calls | mean | maximum | too slow',
+     '### Hangs (freeze watchdog), newest first',
+     '- %s: %d ms, %s, Atlas involved: %s',
+     '## Plugin timings',
+     'Measuring since %s, slow from %d ms own time, main thread used by Atlas: %s %% (mean of the last %d s).'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TPluginReportText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   cNoValue = '–';
@@ -207,9 +253,9 @@ procedure AddFeatures(ALines: TStrings; const ASnapshot: TAtlasPluginSnapshot);
 var
   mRow: TAtlasFeatureRow;
 begin
-  ALines.Add('### Hauptthread je Funktion (eigene Zeit in ms)');
+  ALines.Add(UiText(TPluginReportText.MainThreadPerFeatureOwn));
   ALines.Add('');
-  ALines.Add('Funktion | Aufrufe | Summe | Mittel | Maximum | ab Schwelle | Anteil %');
+  ALines.Add(UiText(TPluginReportText.FeatureCallsTotalMeanMaximum));
   ALines.Add('--- | --- | --- | --- | --- | --- | ---');
   for mRow in TAtlasPluginRows.Features(ASnapshot) do
   begin
@@ -219,7 +265,7 @@ begin
   end;
   if Length(ASnapshot.Features) = 0 then
   begin
-    ALines.Add('Noch kein Aufruf gemessen.');
+    ALines.Add(UiText(TPluginReportText.NoCallMeasuredYet));
   end;
   ALines.Add('');
 end;
@@ -231,7 +277,7 @@ var
   mActivity: string;
 begin
   mCalls := TAtlasPluginRows.Slow(ASnapshot, False, Low(TAtlasFeature));
-  ALines.Add(Format('### Langsame Aufrufe, neueste zuerst (höchstens %d)', [TAtlasPluginRows.cReportSlowCalls]));
+  ALines.Add(Format(UiText(TPluginReportText.SlowCallsNewestFirstAt), [TAtlasPluginRows.cReportSlowCalls]));
   ALines.Add('');
   for mIndex := 0 to Min(High(mCalls), TAtlasPluginRows.cReportSlowCalls - 1) do
   begin
@@ -245,7 +291,7 @@ begin
   end;
   if Length(mCalls) = 0 then
   begin
-    ALines.Add('Keiner.');
+    ALines.Add(UiText(TPluginReportText.None));
   end;
   ALines.Add('');
 end;
@@ -254,9 +300,9 @@ procedure AddRequests(ALines: TStrings; const ASnapshot: TAtlasPluginSnapshot);
 var
   mRequest: TAtlasRequestTiming;
 begin
-  ALines.Add('### Server-Anfragen (ms)');
+  ALines.Add(UiText(TPluginReportText.ServerRequestsMs));
   ALines.Add('');
-  ALines.Add('Anfrage | Anzahl | Mittel | Maximum | Hauptthread gewartet | Zeitüberschreitung | abgebrochen | Fehler');
+  ALines.Add(UiText(TPluginReportText.RequestCountMeanMaximumMain));
   ALines.Add('--- | --- | --- | --- | --- | --- | --- | ---');
   for mRequest in TAtlasPluginRows.Requests(ASnapshot) do
   begin
@@ -271,9 +317,9 @@ procedure AddSources(ALines: TStrings; const ASnapshot: TAtlasPluginSnapshot);
 var
   mSource: TAtlasSourceTiming;
 begin
-  ALines.Add('### Quellen im Hintergrund (ms)');
+  ALines.Add(UiText(TPluginReportText.BackgroundSourcesMs));
   ALines.Add('');
-  ALines.Add('Quelle | Aufrufe | Mittel | Maximum | zu langsam');
+  ALines.Add(UiText(TPluginReportText.SourceCallsMeanMaximumToo));
   ALines.Add('--- | --- | --- | --- | ---');
   for mSource in TAtlasPluginRows.Sources(ASnapshot) do
   begin
@@ -288,7 +334,7 @@ var
   mHang: TAtlasHangEntry;
   mActivity: string;
 begin
-  ALines.Add('### Hänger (Einfrier-Wächter), neueste zuerst');
+  ALines.Add(UiText(TPluginReportText.HangsFreezeWatchdogNewestFirst));
   ALines.Add('');
   for mHang in TAtlasPluginRows.Hangs(ASnapshot) do
   begin
@@ -297,12 +343,12 @@ begin
     begin
       mActivity := cNoValue;
     end;
-    ALines.Add(Format('- %s: %d ms, %s, Atlas beteiligt: %s', [TAtlasPluginRows.Clock(mHang.At), mHang.DurationMs,
+    ALines.Add(Format(UiText(TPluginReportText.MsAtlasInvolved), [TAtlasPluginRows.Clock(mHang.At), mHang.DurationMs,
       mActivity, BoolToStr(mHang.WithAtlas, True)]));
   end;
   if Length(ASnapshot.Hangs) = 0 then
   begin
-    ALines.Add('Keiner.');
+    ALines.Add(UiText(TPluginReportText.None));
   end;
   ALines.Add('');
 end;
@@ -313,10 +359,9 @@ var
 begin
   mLines := TStringList.Create;
   try
-    mLines.Add('## Plugin-Zeiten');
+    mLines.Add(UiText(TPluginReportText.PluginTimings));
     mLines.Add('');
-    mLines.Add(Format('Messung seit %s, langsam ab %d ms eigener Zeit, Hauptthread durch Atlas belegt: %s %% ' +
-      '(Mittel der letzten %d s).', [FormatDateTime('hh":"nn":"ss', ASnapshot.Since), ASnapshot.ThresholdMs,
+    mLines.Add(Format(UiText(TPluginReportText.MeasuringSinceSlowFromMs), [FormatDateTime('hh":"nn":"ss', ASnapshot.Since), ASnapshot.ThresholdMs,
       TAtlasPluginRows.Percent(ASnapshot.BusyPercent), Length(ASnapshot.Busy)]));
     mLines.Add('');
     AddFeatures(mLines, ASnapshot);
@@ -329,5 +374,8 @@ begin
     mLines.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.PluginReport', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -175,11 +175,13 @@ type
     property Selected: Integer read FSelected;
   end;
 
-  /// <summary>Textbausteine für Kommentare (#1278).</summary>
+  /// <summary>Textbausteine für Kommentare (#1278). English: Sprache der Oberfläche für die Vorgaben (#1458).
+  /// </summary>
   TAtlasTrackerSnippetTable = class
   private
     FItems: TArray<TAtlasCommentSnippet>;
     FSelected: Integer;
+    FEnglish: Boolean;
     procedure Clamp;
   public
     constructor Create;
@@ -198,6 +200,7 @@ type
     class function Line(const AText: string): string; static;
     property Items: TArray<TAtlasCommentSnippet> read FItems;
     property Selected: Integer read FSelected;
+    property English: Boolean read FEnglish write FEnglish;
   end;
 
   /// <summary>Die vier Tabellen der Seite; Load und Save über die Schlüssel der Einstellungen.</summary>
@@ -933,7 +936,7 @@ end;
 
 procedure TAtlasTrackerSnippetTable.Load(const AJson: string);
 begin
-  FItems := TAtlasCommentSnippets.Read(AJson);
+  FItems := TAtlasCommentSnippets.Read(AJson, FEnglish);
   FSelected := FirstRow(Length(FItems));
 end;
 
@@ -979,7 +982,7 @@ end;
 
 procedure TAtlasTrackerSnippetTable.Defaults;
 begin
-  FItems := TAtlasCommentSnippets.Defaults;
+  FItems := TAtlasCommentSnippets.Defaults(FEnglish);
   FSelected := FirstRow(Length(FItems));
 end;
 
