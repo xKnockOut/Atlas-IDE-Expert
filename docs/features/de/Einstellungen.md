@@ -8,6 +8,7 @@ Zurück zum [README](../../../README_DE.md)
   - Debuggen, Issue-Tracker, Analyse, Tests, Build-Werkzeuge, Build-Pipeline, Lesezeichen, Designer, Prüfregeln, Suche und Willkommensseite
   - Ein ausgeschaltetes Modul schaltet seine Funktionen und Befehle ohne Neustart ab, die gespeicherten Werte bleiben.
   - Das Profil *Nur Code Insight* lässt nur den Kern an.
+  - Jedes Modul-Package bringt seine Einstellungen als eigenen Abschnitt im Optionsdialog mit; ist nur `Atlas.IDE.Base` installiert, erscheinen nur die Einstellungen von Base.
   - Legt die `atlas.json` eines Projekts Prüfregeln fest, während das Modul Prüfregeln aus ist, weist Atlas einmal darauf hin.
 - Einstellungen exportieren, importieren, Profile laden und zurücksetzen
 - Teamweite Werte in der Projektdatei `.atlas` (neben der .dproj, in einem Ordner darüber bis zur Wurzel von Git oder SVN oder neben der .groupproj), Server- und Regeleinstellungen in `atlas.json` (*Atlas › Projekt-Einstellungen*), globale Werte in `%APPDATA%\Atlas\settings.json`
