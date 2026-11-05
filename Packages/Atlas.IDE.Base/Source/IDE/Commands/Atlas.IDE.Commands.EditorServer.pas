@@ -54,6 +54,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.TestUnit,
+  Atlas.Core.Editor.FormatLog,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -176,6 +177,23 @@ begin
   Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [mName]));
 end;
 
+/// <summary>Protokoll vor dem Formatieren (anonym): Block der IDE und gesendeter Bereich.</summary>
+procedure LogFormatRequest(const AView: IOTAEditView; const ASelection: TLspRange);
+var
+  mBlock: IOTAEditBlock;
+  mValid: Boolean;
+  mSize: Integer;
+begin
+  mBlock := AView.Block;
+  mValid := (mBlock <> nil) and mBlock.IsValid;
+  mSize := 0;
+  if mValid then
+  begin
+    mSize := mBlock.Size;
+  end;
+  TAtlasGuard.Log(TAtlasFormatLog.Request(mValid, mSize, ASelection));
+end;
+
 class procedure TAtlasEditorServerCommands.FormatCode;
 var
   mView: IOTAEditView;
@@ -194,6 +212,7 @@ begin
   begin
     Exit;
   end;
+  LogFormatRequest(mView, mSelection);
   // Breite einer Ebene aus dem Editor; .editorconfig und atlas.json gehen beim Server vor.
   mIndent := TAtlasEditorBuffer.BlockIndent(mView.Buffer);
   try
@@ -212,6 +231,7 @@ begin
       Exit;
     end;
   end;
+  TAtlasGuard.Log(TAtlasFormatLog.Answer(mEdits, mSelection));
   if Length(mEdits) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.FormatCodeNothing));

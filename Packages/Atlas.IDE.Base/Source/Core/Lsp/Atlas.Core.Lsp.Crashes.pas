@@ -70,7 +70,35 @@ implementation
 
 uses
   System.IOUtils,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TCrashesText = (Exception0x8X, WithoutErrorCode0, Code1UnhandledExceptionOr, RuntimeError217UnhandledException,
+    ExitCodeUnknownProcessWas);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCrashesText] of string = (
+    ('Ausnahme 0x%.8X',
+     'ohne Fehler (Code 0)',
+     'Code 1 (unbehandelte Ausnahme oder von außen beendet)',
+     'Laufzeitfehler 217 (unbehandelte Ausnahme)',
+     'Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)'),
+    ('Exception 0x%.8X',
+     'without error (code 0)',
+     'code 1 (unhandled exception or terminated from outside)',
+     'runtime error 217 (unhandled exception)',
+     'exit code unknown (process was still running when the connection ended)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCrashesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasServerExits }
 
@@ -78,11 +106,16 @@ const
   // Bekannte Codes mit Namen; Describe nennt sie mit dem Code in Hex.
   NamedExitCodes: array[0..13] of Cardinal = ($0EEDFADE, $40010004, $C0000005, $C0000017, $C000001D, $C0000094,
     $C0000096, $C00000FD, $C000013A, $C0000135, $C0000142, $C0000374, $C0000409, $C0000420);
-  NamedExitTexts: array[0..13] of string = ('unbehandelte Delphi-Ausnahme',
-    'von außen beendet (Abmelden oder Debugger)', 'Zugriffsverletzung', 'zu wenig Speicher',
-    'unzulässiger Befehl', 'Ganzzahl-Division durch null', 'privilegierter Befehl', 'Stapelüberlauf',
-    'mit Strg+C abgebrochen', 'DLL nicht gefunden', 'DLL-Initialisierung fehlgeschlagen', 'Heap beschädigt',
-    'Sicherheitsabbruch (Stackpuffer-Überlauf oder Fast-Fail)', 'Assertion fehlgeschlagen');
+  NamedExitTexts: array[TAtlasLanguage, 0..13] of string = (
+    ('unbehandelte Delphi-Ausnahme',
+     'von außen beendet (Abmelden oder Debugger)', 'Zugriffsverletzung', 'zu wenig Speicher',
+     'unzulässiger Befehl', 'Ganzzahl-Division durch null', 'privilegierter Befehl', 'Stapelüberlauf',
+     'mit Strg+C abgebrochen', 'DLL nicht gefunden', 'DLL-Initialisierung fehlgeschlagen', 'Heap beschädigt',
+     'Sicherheitsabbruch (Stackpuffer-Überlauf oder Fast-Fail)', 'Assertion fehlgeschlagen'),
+    ('unhandled Delphi exception', 'terminated from outside (logoff or debugger)', 'access violation',
+     'out of memory', 'illegal instruction', 'integer division by zero', 'privileged instruction', 'stack overflow',
+     'cancelled with Ctrl+C', 'DLL not found', 'DLL initialization failed', 'heap corrupted',
+     'security abort (stack buffer overrun or fast fail)', 'assertion failed'));
 
 /// <summary>Name eines bekannten Codes aus NamedExitCodes; False für andere.</summary>
 function NamedExitText(ACode: Cardinal; out AText: string): Boolean;
@@ -93,7 +126,7 @@ begin
   begin
     if NamedExitCodes[Index] = ACode then
     begin
-      AText := NamedExitTexts[Index];
+      AText := NamedExitTexts[TAtlasTextLanguage.Current, Index];
       Exit(True);
     end;
   end;
@@ -112,7 +145,7 @@ begin
   end
   else if ACode >= $80000000 then
   begin
-    Result := Format('Ausnahme 0x%.8X', [ACode]);
+    Result := Format(UiText(TCrashesText.Exception0x8X), [ACode]);
   end
   else
   begin
@@ -124,13 +157,13 @@ class function TAtlasServerExits.Describe(ACode: Cardinal): string;
 begin
   case ACode of
     0:
-      Result := 'ohne Fehler (Code 0)';
+      Result := UiText(TCrashesText.WithoutErrorCode0);
     1:
-      Result := 'Code 1 (unbehandelte Ausnahme oder von außen beendet)';
+      Result := UiText(TCrashesText.Code1UnhandledExceptionOr);
     217:
-      Result := 'Laufzeitfehler 217 (unbehandelte Ausnahme)';
+      Result := UiText(TCrashesText.RuntimeError217UnhandledException);
     Unknown:
-      Result := 'Exit-Code unbekannt (Prozess lief beim Ende der Verbindung noch)';
+      Result := UiText(TCrashesText.ExitCodeUnknownProcessWas);
   else
     Result := DescribeNamedExit(ACode);
   end;
@@ -262,5 +295,8 @@ begin
     FLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Lsp.Crashes', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

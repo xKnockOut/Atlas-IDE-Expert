@@ -41,7 +41,22 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Editing.GenericLists.Kinds,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TElementsText = (TakesValuesOfType, TakesValuesOfType2);
+
+const
+  cTexts: array[TElementsText] of TAtlasText = (
+    (De: '%s nimmt in Zeile %d Werte vom Typ %s auf, nicht %s';
+     En: '%0:s takes values of type %2:s in line %1:d, not %3:s'),
+    (De: '%s nimmt in Zeile %d Werte vom Typ %s auf'; En: '%0:s takes values of type %2:s in line %1:d'));
+
+{$SCOPEDENUMS OFF}
 
 constructor TGenericListElementCheck.Create(AResolver: TNameResolver; AFiles: TObjectList<TGenericListSource>;
   const AListName, AItemType: string);
@@ -72,7 +87,7 @@ begin
   if not FResolver.Queries.TypeDescendsFrom(mSource.Tree, mSource.FileName, mOffset, AElement.TypeName,
     FItemType) then
   begin
-    FProblem := Format('%s nimmt in Zeile %d Werte vom Typ %s auf, nicht %s', [FListName,
+    FProblem := cTexts[TElementsText.TakesValuesOfType].Fmt([FListName,
       AElement.Node.StartPos.Line + 1, AElement.TypeName, FItemType]);
     Result := TGenericListElementFit.Wrong;
   end;
@@ -93,7 +108,7 @@ begin
   end
   else if TGenericListNames.IsScalarType(mTypeName) then
   begin
-    FProblem := Format('%s nimmt in Zeile %d Werte vom Typ %s auf', [FListName, AElement.Node.StartPos.Line + 1,
+    FProblem := cTexts[TElementsText.TakesValuesOfType2].Fmt([FListName, AElement.Node.StartPos.Line + 1,
       mTypeName]);
     Result := TGenericListElementFit.Wrong;
   end
@@ -102,5 +117,8 @@ begin
     Result := CheckDescendant(AElement);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Elements', cTexts);
 
 end.

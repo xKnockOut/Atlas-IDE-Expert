@@ -109,7 +109,37 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExtractMethodText = (AsmInTheSelection, WithInTheSelection, ExitInTheSelection, JumpsOutOfTheSelection,
+    GotoAcrossTheEdgeOf, GotoWithUnknownTarget, NoSelection, NotInTheBodyOf, NoCompleteStatements,
+    ResultInTheSelection, IsOnlyVisibleInThe, IsStillNeededAfterThe, AnAnonymousMethodCaptures, TypeOfUnknown,
+    ExtractMethod);
+
+const
+  cTexts: array[TExtractMethodText] of TAtlasText = (
+    (De: 'asm in der Auswahl'; En: 'asm in the selection'),
+    (De: 'with in der Auswahl'; En: 'with in the selection'),
+    (De: 'Exit in der Auswahl'; En: 'Exit in the selection'),
+    (De: ' springt aus der Auswahl'; En: ' jumps out of the selection'),
+    (De: 'goto über den Rand der Auswahl'; En: 'goto across the edge of the selection'),
+    (De: 'goto mit unbekanntem Ziel'; En: 'goto with unknown target'),
+    (De: 'keine Auswahl'; En: 'no selection'),
+    (De: 'nicht im Rumpf einer Routine'; En: 'not in the body of a routine'),
+    (De: 'keine vollständigen Anweisungen'; En: 'no complete statements'),
+    (De: 'Result in der Auswahl'; En: 'Result in the selection'),
+    (De: ' ist nur in der Routine sichtbar'; En: ' is only visible in the routine'),
+    (De: ' wird nach der Auswahl noch gebraucht'; En: ' is still needed after the selection'),
+    (De: 'eine anonyme Methode fängt %s ein'; En: 'an anonymous method captures %s'),
+    (De: 'Typ von %s unbekannt'; En: 'Type of %s unknown'),
+    (De: 'Methode extrahieren'; En: 'Extract method'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
@@ -277,11 +307,11 @@ begin
   begin
     if (AReason = '') and TRoutineLocals.HasKind(mStatement, TSyntaxKind.AsmBlock) then
     begin
-      AReason := 'asm in der Auswahl';
+      AReason := cTexts[TExtractMethodText.AsmInTheSelection].Text;
     end;
     if (AReason = '') and TRoutineLocals.HasKind(mStatement, TSyntaxKind.WithStatement) then
     begin
-      AReason := 'with in der Auswahl';
+      AReason := cTexts[TExtractMethodText.WithInTheSelection].Text;
     end;
   end;
   Result := AReason <> '';
@@ -313,12 +343,12 @@ begin
   end;
   if SameText(ANode.Name, 'Exit') and (ANode.Parent.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call]) then
   begin
-    Result := 'Exit in der Auswahl';
+    Result := cTexts[TExtractMethodText.ExitInTheSelection].Text;
   end
   else if MatchText(ANode.Name, ['Break', 'Continue']) and (ANode.Parent.Kind = TSyntaxKind.CallStatement) and
     LeavesSelection(ANode, AStart, AEnd) then
   begin
-    Result := ANode.Name + ' springt aus der Auswahl';
+    Result := ANode.Name + cTexts[TExtractMethodText.JumpsOutOfTheSelection].Text;
   end;
 end;
 
@@ -337,13 +367,13 @@ begin
       mFound := True;
       if TExtractSupport.InSelection(mLabel, AStart, AEnd) <> TExtractSupport.InSelection(AGoto, AStart, AEnd) then
       begin
-        Result := 'goto über den Rand der Auswahl';
+        Result := cTexts[TExtractMethodText.GotoAcrossTheEdgeOf].Text;
       end;
     end;
   end;
   if (Result = '') and not mFound and TExtractSupport.InSelection(AGoto, AStart, AEnd) then
   begin
-    Result := 'goto mit unbekanntem Ziel';
+    Result := cTexts[TExtractMethodText.GotoWithUnknownTarget].Text;
   end;
 end;
 
@@ -424,17 +454,17 @@ function TMethodExtraction.Prepare(const ARange: TTextRange): Boolean;
 begin
   if not TExtractSupport.Selection(FText, FTree, ARange, FStart, FEnd) then
   begin
-    Exit(Fail('keine Auswahl', FReason));
+    Exit(Fail(cTexts[TExtractMethodText.NoSelection].Text, FReason));
   end;
   FRoutine := TRoutineBody.RoutineAt(FTree, FStart);
   if (FRoutine = nil) or (TRoutineBody.RoutineAt(FTree, FEnd) <> FRoutine) then
   begin
-    Exit(Fail('nicht im Rumpf einer Routine', FReason));
+    Exit(Fail(cTexts[TExtractMethodText.NotInTheBodyOf].Text, FReason));
   end;
   FBody := TRoutineBody.BodyOf(FRoutine);
   if not SelectedStatements(FTree, FBody, FStart, FEnd, FStatements) then
   begin
-    Exit(Fail('keine vollständigen Anweisungen', FReason));
+    Exit(Fail(cTexts[TExtractMethodText.NoCompleteStatements].Text, FReason));
   end;
   // In einer anonymen Methode oder einem with-Rumpf: Namen hätten außen eine andere Bedeutung.
   Result := not TExtractSupport.InsideBlocked(FStatements[0], FBody, FReason) and
@@ -468,11 +498,11 @@ begin
   end;
   if SameText(ANode.Name, 'Result') then
   begin
-    Result := Fail('Result in der Auswahl', FReason);
+    Result := Fail(cTexts[TExtractMethodText.ResultInTheSelection].Text, FReason);
   end
   else if IndexText(ANode.Name, FOnlyNames) >= 0 then
   begin
-    Result := Fail(ANode.Name + ' ist nur in der Routine sichtbar', FReason);
+    Result := Fail(ANode.Name + cTexts[TExtractMethodText.IsOnlyVisibleInThe].Text, FReason);
   end;
 end;
 
@@ -624,7 +654,7 @@ begin
     begin
       if FUses[mIndex].After then
       begin
-        Exit(Fail(FLocals[mIndex].Name + ' wird nach der Auswahl noch gebraucht', FReason));
+        Exit(Fail(FLocals[mIndex].Name + cTexts[TExtractMethodText.IsStillNeededAfterThe].Text, FReason));
       end;
     end
     else
@@ -648,7 +678,8 @@ begin
     if not Result and TRoutineBody.Within(mOccurrence.Node, AAnonymous) and
       (FUses[mOccurrence.Local].Mode in [TParameterMode.Var_, TParameterMode.Out_]) then
     begin
-      Result := not Fail('eine anonyme Methode fängt ' + FLocals[mOccurrence.Local].Name + ' ein', FReason);
+      Result := not Fail(cTexts[TExtractMethodText.AnAnonymousMethodCaptures].Fmt([FLocals[mOccurrence.Local].Name]),
+        FReason);
     end;
   end;
 end;
@@ -726,7 +757,7 @@ begin
   Result := ASignature.LocalType(FLocals[AIndex], mType);
   if not Result then
   begin
-    Result := Fail('Typ von ' + FLocals[AIndex].Name + ' unbekannt', FReason);
+    Result := Fail(cTexts[TExtractMethodText.TypeOfUnknown].Fmt([FLocals[AIndex].Name]), FReason);
   end
   else if FUses[AIndex].Mode = TParameterMode.LocalVar then
   begin
@@ -831,11 +862,14 @@ begin
   end;
   if Result then
   begin
-    AAction.Title := 'Methode extrahieren';
+    AAction.Title := cTexts[TExtractMethodText.ExtractMethod].Text;
     AAction.Kind := cExtractKind;
     AAction.Edits := mEdits;
   end;
   AReason := FReason;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Extract.Method', cTexts);
 
 end.

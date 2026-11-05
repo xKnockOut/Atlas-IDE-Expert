@@ -102,7 +102,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.TreeUnits,
   Atlas.Common.Semantics.NameResolver.Symbols;
 
@@ -145,7 +144,7 @@ begin
   end
   else
   begin
-    Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+    Result := MergedUnit(TTreeExtracts.ForTree(ATree).Extracted(AFileName), AFileName);
   end;
 end;
 
@@ -233,7 +232,7 @@ begin
   end
   else
   begin
-    mPin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
+    mPin.Extracted := TTreeExtracts.ForTree(ATree).Extracted(AFileName);
     mPin.Merged := MergedUnit(mPin.Extracted, AFileName);
   end;
   mPin.Depth := 1;
@@ -293,7 +292,7 @@ begin
   end
   else
   begin
-    Result := TIndexExtractor.Extract(ATree, AFileName);
+    Result := TTreeExtracts.ForTree(ATree).Extracted(AFileName);
   end;
 end;
 

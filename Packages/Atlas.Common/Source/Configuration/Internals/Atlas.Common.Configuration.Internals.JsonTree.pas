@@ -64,7 +64,31 @@ type
 implementation
 
 uses
-  Atlas.Text.Jsonc;
+  Atlas.Text.Jsonc,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TJsonTreeText = (CommentNotClosed, StringNotClosed, InvalidUSequence, InvalidEscapeSequence, OrExpected,
+    KeyInQuotationMarksExpected, Missing, Missing2, ContentAfterTheValue, LineBreakInString, ValueExpected,
+    UnknownValue, NestedTooDeeply, Expected);
+
+const
+  cTexts: array[TJsonTreeText] of TAtlasText = (
+    (De: 'Kommentar nicht abgeschlossen'; En: 'Comment not closed'),
+    (De: 'String nicht abgeschlossen'; En: 'String not closed'),
+    (De: 'Ungültige \u-Folge'; En: 'Invalid \u sequence'),
+    (De: 'Ungültige Escape-Folge'; En: 'Invalid escape sequence'),
+    (De: '"," oder "%s" erwartet'; En: '"," or "%s" expected'),
+    (De: 'Schlüssel in Anführungszeichen erwartet'; En: 'Key in quotation marks expected'),
+    (De: '"}" fehlt'; En: '"}" missing'),
+    (De: '"]" fehlt'; En: '"]" missing'),
+    (De: 'Inhalt hinter dem Wert'; En: 'Content after the value'),
+    (De: 'Zeilenumbruch im String'; En: 'Line break in string'),
+    (De: 'Wert erwartet'; En: 'Value expected'),
+    (De: 'Unbekannter Wert "%s"'; En: 'Unknown value "%s"'),
+    (De: 'Zu tief verschachtelt'; En: 'Nested too deeply'),
+    (De: '":" erwartet'; En: '":" expected'));
 
 type
   TReader = class
@@ -165,7 +189,7 @@ begin
   if not TJsoncScanner.SkipSpace(FText, FPos, OpenComment) then
   begin
     FPos := OpenComment;
-    Fail('Kommentar nicht abgeschlossen');
+    Fail(cTexts[TJsonTreeText.CommentNotClosed].Text);
   end;
 end;
 
@@ -181,7 +205,7 @@ begin
     begin
       if FPos > Length(FText) then
       begin
-        Fail('String nicht abgeschlossen');
+        Fail(cTexts[TJsonTreeText.StringNotClosed].Text);
       end;
       case FText[FPos] of
         '"':
@@ -190,7 +214,7 @@ begin
             Break;
           end;
         #10, #13:
-          Fail('Zeilenumbruch im String');
+          Fail(cTexts[TJsonTreeText.LineBreakInString].Text);
         '\':
           ReadEscape(mBuilder);
       else
@@ -212,7 +236,7 @@ begin
   Inc(FPos);
   if FPos > Length(FText) then
   begin
-    Fail('String nicht abgeschlossen');
+    Fail(cTexts[TJsonTreeText.StringNotClosed].Text);
   end;
   case FText[FPos] of
     '"', '\', '/': ABuilder.Append(FText[FPos]);
@@ -226,13 +250,13 @@ begin
         mCode := StrToIntDef('$' + Copy(FText, FPos + 1, 4), -1);
         if (mCode < 0) or (FPos + 4 > Length(FText)) then
         begin
-          Fail('Ungültige \u-Folge');
+          Fail(cTexts[TJsonTreeText.InvalidUSequence].Text);
         end;
         ABuilder.Append(Char(mCode));
         Inc(FPos, 4);
       end;
   else
-    Fail('Ungültige Escape-Folge');
+    Fail(cTexts[TJsonTreeText.InvalidEscapeSequence].Text);
   end;
   Inc(FPos);
 end;
@@ -247,7 +271,7 @@ begin
   end
   else if (FPos <= Length(FText)) and (FText[FPos] <> AClose) then
   begin
-    Fail(Format('"," oder "%s" erwartet', [AClose]));
+    Fail(cTexts[TJsonTreeText.OrExpected].Fmt([AClose]));
   end;
 end;
 
@@ -258,14 +282,14 @@ var
 begin
   if FText[FPos] <> '"' then
   begin
-    Fail('Schlüssel in Anführungszeichen erwartet');
+    Fail(cTexts[TJsonTreeText.KeyInQuotationMarksExpected].Text);
   end;
   mKeyStart := FPos - 1;
   mKey := ReadString;
   SkipSpace;
   if (FPos > Length(FText)) or (FText[FPos] <> ':') then
   begin
-    Fail('":" erwartet');
+    Fail(cTexts[TJsonTreeText.Expected].Text);
   end;
   Inc(FPos);
   ANode.FKeys.Add(mKey);
@@ -286,7 +310,7 @@ begin
     end;
     if FPos > Length(FText) then
     begin
-      Fail('"}" fehlt');
+      Fail(cTexts[TJsonTreeText.Missing].Text);
     end;
     Inc(FPos);
     Result.FStop := FPos - 1;
@@ -309,7 +333,7 @@ begin
     end;
     if FPos > Length(FText) then
     begin
-      Fail('"]" fehlt');
+      Fail(cTexts[TJsonTreeText.Missing2].Text);
     end;
     Inc(FPos);
     Result.FStop := FPos - 1;
@@ -331,7 +355,7 @@ begin
   mWord := Copy(FText, AStart + 1, FPos - 1 - AStart);
   if mWord = '' then
   begin
-    Fail('Wert erwartet');
+    Fail(cTexts[TJsonTreeText.ValueExpected].Text);
   end;
   if mWord = 'null' then
   begin
@@ -347,7 +371,7 @@ begin
   end
   else
   begin
-    raise EJsonTreeError.Create(Format('Unbekannter Wert "%s"', [mWord]), AStart);
+    raise EJsonTreeError.Create(cTexts[TJsonTreeText.UnknownValue].Fmt([mWord]), AStart);
   end;
   Result.FValue := mWord;
   Result.FStop := FPos - 1;
@@ -360,12 +384,12 @@ var
 begin
   if ADepth > MaxDepth then
   begin
-    Fail('Zu tief verschachtelt');
+    Fail(cTexts[TJsonTreeText.NestedTooDeeply].Text);
   end;
   SkipSpace;
   if FPos > Length(FText) then
   begin
-    Fail('Wert erwartet');
+    Fail(cTexts[TJsonTreeText.ValueExpected].Text);
   end;
   mStart := FPos - 1;
   case FText[FPos] of
@@ -392,7 +416,7 @@ begin
     SkipSpace;
     if FPos <= Length(FText) then
     begin
-      Fail('Inhalt hinter dem Wert');
+      Fail(cTexts[TJsonTreeText.ContentAfterTheValue].Text);
     end;
   except
     Result.Free;
@@ -413,5 +437,8 @@ begin
     Reader.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.JsonTree', cTexts);
 
 end.

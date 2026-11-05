@@ -50,7 +50,83 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TProjectCommandsText = (NoDprojIsLoadedFor, CannotBeRead, ConfigurationIsNotIn, HasNoSectionFor, ExpectedIsASymbolE,
+    ExpectedIsAFolderRelative, TheFolderDoesNotExist, ExpectedAreConfigurationAndOr, IsNeitherAConfigurationNor,
+    DfmNeedsTheEditor, DfmOnlyAppliesInA, ThereIsNoDfmOr, IsNotATextDFM, NeedsTheEditor, NeedsASavedFile,
+    HasNoUsesOrContains, HasNoRoomForDCCReference, ExpectedIsAUnitName, TheIndexDoesNotKnow, ExpectedIsAUnitName2,
+    OpenNeedsTheEditor, TheUnitIsNeitherIn, TestForStillMissing, TheTestUnitHasNo, TestClassOrEndOf,
+    TestOnlyAppliesInThe, TestNeedsTheEditor, TestOnlyAppliesInA, AddASymbolToDCC, AddAFolderToThe,
+    SwitchConfigurationAndPlatform, JumpToThePositionIn, CreateANewUnitAdd, OpenAUnitFromThe, CreateANewComponentUnit,
+    CreateADUnitXTestFor, NeedsALoadedProject, IsAlreadyIn, ConfigNeedsALoadedProject, IsAlreadyInTheProject,
+    AlreadyExists, AddASymbolToDCC2, UnitCustomersData, ExpectedIsComponentTMyButtonTButton);
+
+const
+  cTexts: array[TProjectCommandsText] of TAtlasText = (
+    (De: 'Zu dieser Datei ist keine .dproj geladen'; En: 'No .dproj is loaded for this file'),
+    (De: '%s lässt sich nicht lesen'; En: '%s cannot be read'),
+    (De: 'Konfiguration %s steht nicht in %s'; En: 'Configuration %s is not in %s'),
+    (De: '%s hat keinen Abschnitt für %s'; En: '%s has no section for %s'),
+    (De: 'Erwartet wird ein Symbol, z. B. /define TEST'; En: 'Expected is a symbol, e.g. /define TEST'),
+    (De: 'Erwartet wird ein Ordner relativ zur .dproj, z. B. /searchpath Source\Common';
+     En: 'Expected is a folder relative to the .dproj, e.g. /searchpath Source\Common'),
+    (De: 'Den Ordner %s gibt es nicht'; En: 'The folder %s does not exist'),
+    (De: 'Erwartet werden Konfiguration und/oder Plattform, z. B. /config Release Win64';
+     En: 'Expected are configuration and/or platform, e.g. /config Release Win64'),
+    (De: '%s ist weder Konfiguration (%s) noch Plattform (%s)';
+     En: '%s is neither a configuration (%s) nor a platform (%s)'),
+    (De: '/dfm braucht den Editor'; En: '/dfm needs the editor'),
+    (De: '/dfm gilt nur in einer Methode der Formularklasse'; En: '/dfm only applies in a method of the form class'),
+    (De: 'Neben der Unit liegt keine .dfm oder .fmx'; En: 'There is no .dfm or .fmx next to the unit'),
+    (De: '%s ist keine Text-DFM'; En: '%s is not a text DFM'),
+    (De: '/%s braucht den Editor'; En: '/%s needs the editor'),
+    (De: '/%s braucht eine gespeicherte Datei'; En: '/%s needs a saved file'),
+    (De: '%s hat kein uses bzw. contains für %s'; En: '%s has no uses or contains for %s'),
+    (De: '%s hat keinen Platz für DCCReference'; En: '%s has no room for DCCReference'),
+    (De: 'Erwartet wird ein Unit-Name, z. B. /unit Kunden.Daten';
+     En: 'Expected is a unit name, e.g. /unit Customers.Data'),
+    (De: 'Die Klasse %s kennt der Index nicht'; En: 'The index does not know the class %s'),
+    (De: 'Erwartet wird ein Unit-Name, z. B. /open System.SysUtils';
+     En: 'Expected is a unit name, e.g. /open System.SysUtils'),
+    (De: '/open braucht den Editor'; En: '/open needs the editor'),
+    (De: 'Die Unit %s steht weder im Index noch im Suchpfad';
+     En: 'The unit %s is neither in the index nor in the search path'),
+    (De: 'Test für %s fehlt noch'; En: 'Test for %s still missing'),
+    (De: 'Die Testunit hat keine Testklasse'; En: 'The test unit has no test class'),
+    (De: 'Testklasse oder Ende der Testunit nicht gefunden'; En: 'Test class or end of the test unit not found'),
+    (De: '/test gilt nur im Rumpf einer Methode oder Routine';
+     En: '/test only applies in the body of a method or routine'),
+    (De: '/test braucht den Editor'; En: '/test needs the editor'),
+    (De: '/test gilt nur in einer Unit'; En: '/test only applies in a unit'),
+    (De: 'Symbol in DCC_Define der aktiven Konfiguration eintragen';
+     En: 'Add a symbol to DCC_Define of the active configuration'),
+    (De: 'Ordner in den Suchpfad des Projekts eintragen'; En: 'Add a folder to the search path of the project'),
+    (De: 'Konfiguration und Plattform umschalten'; En: 'Switch configuration and platform'),
+    (De: 'Zur Stelle in der Formulardatei springen'; En: 'Jump to the position in the form file'),
+    (De: 'Neue Unit anlegen, ins Projekt eintragen und öffnen';
+     En: 'Create a new unit, add it to the project and open it'),
+    (De: 'Unit aus dem Suchpfad öffnen'; En: 'Open a unit from the search path'),
+    (De: 'Neue Komponenten-Unit mit Register anlegen und ins Projekt eintragen';
+     En: 'Create a new component unit with Register and add it to the project'),
+    (De: 'DUnitX-Test für die aktuelle Methode anlegen, Testunit bei Bedarf';
+     En: 'Create a DUnitX test for the current method, test unit if needed'),
+    (De: '/%s braucht ein geladenes Projekt'; En: '/%s needs a loaded project'),
+    (De: '%s steht schon in %s (%s)'; En: '%s is already in %s (%s)'),
+    (De: '/config braucht ein geladenes Projekt'; En: '/config needs a loaded project'),
+    (De: '%s steht schon im Projekt'; En: '%s is already in the project'),
+    (De: '%s gibt es schon'; En: '%s already exists'),
+    (De: 'Symbol in DCC_Define aller Konfigurationen eintragen';
+     En: 'Add a symbol to DCC_Define of all configurations'),
+    (De: '/unit Kunden.Daten'; En: '/unit Customers.Data'),
+    (De: 'Erwartet wird /component TMyButton : TButton'; En: 'Expected is /component TMyButton : TButton'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Projekt und .dproj-Text zur Datei des Befehls; False mit Grund.</summary>
 function LoadProject(const AContext: TSlashContext; out AProject: TProjectInfo; out AText, AReason: string): Boolean;
@@ -58,15 +134,15 @@ begin
   AText := '';
   if AContext.Host = nil then
   begin
-    Exit(Fail(Format('/%s braucht ein geladenes Projekt', [AContext.Name]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.NeedsALoadedProject].Fmt([AContext.Name]), AReason));
   end;
   if not AContext.Host.Project(AContext.Uri, AProject) then
   begin
-    Exit(Fail('Zu dieser Datei ist keine .dproj geladen', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.NoDprojIsLoadedFor].Text, AReason));
   end;
   if not AContext.Host.ReadFile(AProject.FileName, AText) then
   begin
-    Exit(Fail(Format('%s lässt sich nicht lesen', [ExtractFileName(AProject.FileName)]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.CannotBeRead].Fmt([ExtractFileName(AProject.FileName)]), AReason));
   end;
   Result := True;
 end;
@@ -129,14 +205,16 @@ begin
   mKey := TDprojEditor.ConfigKey(AText, AEntry.Config);
   if mKey = '' then
   begin
-    Exit(Fail(Format('Konfiguration %s steht nicht in %s', [AEntry.Config, ExtractFileName(AProject.FileName)]),
+    Exit(Fail(cTexts[TProjectCommandsText.ConfigurationIsNotIn].Fmt([AEntry.Config,
+      ExtractFileName(AProject.FileName)]),
       AReason));
   end;
   case TDprojEditor.AddToList(AText, mKey, AEntry.PropertyName, AEntry.Value, mNewText) of
     TDprojEditResult.Present:
-      Exit(Fail(Format('%s steht schon in %s (%s)', [AEntry.Value, AEntry.PropertyName, AEntry.Config]), AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.IsAlreadyIn].Fmt([AEntry.Value, AEntry.PropertyName, AEntry.Config]),
+        AReason));
     TDprojEditResult.NoGroup:
-      Exit(Fail(Format('%s hat keinen Abschnitt für %s', [ExtractFileName(AProject.FileName), AEntry.Config]),
+      Exit(Fail(cTexts[TProjectCommandsText.HasNoSectionFor].Fmt([ExtractFileName(AProject.FileName), AEntry.Config]),
         AReason));
   end;
   AEdits := CommandRemoval(AContext);
@@ -160,7 +238,7 @@ begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
-    Exit(Fail('Erwartet wird ein Symbol, z. B. /define TEST', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsASymbolE].Text, AReason));
   end;
   if not LoadProject(AContext, Project, Text, AReason) then
   begin
@@ -194,7 +272,7 @@ begin
   end;
   if Path = '' then
   begin
-    Exit(Fail('Erwartet wird ein Ordner relativ zur .dproj, z. B. /searchpath Source\Common', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAFolderRelative].Text, AReason));
   end;
   if not LoadProject(AContext, Project, Text, AReason) then
   begin
@@ -202,7 +280,7 @@ begin
   end;
   if not AContext.Host.DirectoryExists(TProjectPaths.Combine(TProjectPaths.DirectoryOf(Project.FileName), Path)) then
   begin
-    Exit(Fail(Format('Den Ordner %s gibt es nicht', [Path]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TheFolderDoesNotExist].Fmt([Path]), AReason));
   end;
   Result := AddToProject(AContext, Project, Text, TListEntry.Create('Base', 'DCC_UnitSearchPath', Path), AEdits,
     AReason);
@@ -220,15 +298,15 @@ begin
   AEdits := nil;
   if AContext.Arguments = '' then
   begin
-    Exit(Fail('Erwartet werden Konfiguration und/oder Plattform, z. B. /config Release Win64', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedAreConfigurationAndOr].Text, AReason));
   end;
   if AContext.Host = nil then
   begin
-    Exit(Fail('/config braucht ein geladenes Projekt', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ConfigNeedsALoadedProject].Text, AReason));
   end;
   if not AContext.Host.Project(AContext.Uri, Project) then
   begin
-    Exit(Fail('Zu dieser Datei ist keine .dproj geladen', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.NoDprojIsLoadedFor].Text, AReason));
   end;
   Config := '';
   Platform := '';
@@ -245,8 +323,8 @@ begin
     end
     else
     begin
-      Exit(Fail(Format('%s ist weder Konfiguration (%s) noch Plattform (%s)',
-        [Word, string.Join(', ', Project.Configs), string.Join(', ', Project.Platforms)]), AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.IsNeitherAConfigurationNor].Fmt([Word, string.Join(', ', Project.Configs),
+        string.Join(', ', Project.Platforms)]), AReason));
     end;
   end;
   Source := TCommandSource.Create(AContext);
@@ -304,14 +382,14 @@ begin
   AEdits := nil;
   if AContext.Host = nil then
   begin
-    Exit(Fail('/dfm braucht den Editor', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.DfmNeedsTheEditor].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if (Routine = nil) or (Pos('.', Routine.Name) = 0) then
     begin
-      Exit(Fail('/dfm gilt nur in einer Methode der Formularklasse', AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.DfmOnlyAppliesInA].Text, AReason));
     end;
     Method := Copy(Routine.Name, LastDelimiter('.', Routine.Name) + 1, MaxInt);
     FileName := TDocumentUris.ToPath(AContext.Uri);
@@ -325,13 +403,13 @@ begin
     end;
     if FormFile = '' then
     begin
-      Exit(Fail('Neben der Unit liegt keine .dfm oder .fmx', AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.ThereIsNoDfmOr].Text, AReason));
     end;
     Document := TDfmParser.Parse(FormText);
     try
       if Document.Root = nil then
       begin
-        Exit(Fail(Format('%s ist keine Text-DFM', [ExtractFileName(FormFile)]), AReason));
+        Exit(Fail(cTexts[TProjectCommandsText.IsNotATextDFM].Fmt([ExtractFileName(FormFile)]), AReason));
       end;
       // Ereignis-Handler: zur Zuweisung; sonst Formularmethode: zum Formular selbst.
       if not FindEvent(Document.Root, Method, Target) then
@@ -507,7 +585,7 @@ begin
   end
   else if AContext.Host = nil then
   begin
-    Result := Format('/%s braucht den Editor', [AContext.Name]);
+    Result := cTexts[TProjectCommandsText.NeedsTheEditor].Fmt([AContext.Name]);
   end
   else
   begin
@@ -516,7 +594,7 @@ begin
   end;
   if (Result = '') and AProject.Loaded and InProject(AProject.Info, AName) then
   begin
-    Result := Format('%s steht schon im Projekt', [AName]);
+    Result := cTexts[TProjectCommandsText.IsAlreadyInTheProject].Fmt([AName]);
   end;
 end;
 
@@ -538,13 +616,13 @@ begin
   end
   else
   begin
-    Exit(Format('/%s braucht eine gespeicherte Datei', [AContext.Name]));
+    Exit(cTexts[TProjectCommandsText.NeedsASavedFile].Fmt([AContext.Name]));
   end;
   AFileName := TProjectPaths.Combine(mFolder, AName + '.pas');
   Result := '';
   if AContext.Host.ReadFile(AFileName, mExisting) then
   begin
-    Result := Format('%s gibt es schon', [ExtractFileName(AFileName)]);
+    Result := cTexts[TProjectCommandsText.AlreadyExists].Fmt([ExtractFileName(AFileName)]);
   end;
 end;
 
@@ -567,7 +645,7 @@ begin
     if not TUnitTemplates.UnitProgramEdit(mMainText, AName,
       TTestUnits.RelativePath(TProjectPaths.DirectoryOf(mMainSource), AFileName), mEdit) then
     begin
-      Exit(Format('%s hat kein uses bzw. contains für %s', [ExtractFileName(mMainSource), AName]));
+      Exit(cTexts[TProjectCommandsText.HasNoUsesOrContains].Fmt([ExtractFileName(mMainSource), AName]));
     end;
     AFiles := AFiles + [TSlashFile.Create(mMainSource, Applied(mMainText, mEdit), False)];
   end;
@@ -579,7 +657,7 @@ begin
   end
   else
   begin
-    Result := Format('%s hat keinen Platz für DCCReference', [ExtractFileName(AProject.Info.FileName)]);
+    Result := cTexts[TProjectCommandsText.HasNoRoomForDCCReference].Fmt([ExtractFileName(AProject.Info.FileName)]);
   end;
 end;
 
@@ -619,7 +697,7 @@ begin
   Name := UnitNameOf(AContext.Arguments);
   if Name = '' then
   begin
-    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /unit Kunden.Daten', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAUnitName].Text, AReason));
   end;
   Result := AddNewUnit(AContext, Name, NewUnitText(Name), True, AEdits, AReason);
 end;
@@ -648,8 +726,6 @@ end;
 
 function ExecuteComponent(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
-const
-  Usage = 'Erwartet wird /component TMyButton : TButton';
 var
   ClassName, Ancestor, AncestorUnit, UnitName, Palette: string;
   Colon: Integer;
@@ -668,7 +744,7 @@ begin
   end;
   if not IsValidIdent(ClassName) or not IsValidIdent(Ancestor, True) then
   begin
-    Exit(Fail(Usage, AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsComponentTMyButtonTButton].Text, AReason));
   end;
   // TComponent steht in System.Classes, das das Gerüst immer einträgt.
   AncestorUnit := '';
@@ -677,7 +753,7 @@ begin
     AncestorUnit := ClassUnit(AContext, Ancestor);
     if AncestorUnit = '' then
     begin
-      Exit(Fail(Format('Die Klasse %s kennt der Index nicht', [Ancestor]), AReason));
+      Exit(Fail(cTexts[TProjectCommandsText.TheIndexDoesNotKnow].Fmt([Ancestor]), AReason));
     end;
     if SameText(AncestorUnit, 'System.Classes') or SameText(AncestorUnit, 'System.SysUtils') then
     begin
@@ -827,15 +903,15 @@ begin
   Name := UnitNameOf(AContext.Arguments);
   if Name = '' then
   begin
-    Exit(Fail('Erwartet wird ein Unit-Name, z. B. /open System.SysUtils', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.ExpectedIsAUnitName2].Text, AReason));
   end;
   if AContext.Host = nil then
   begin
-    Exit(Fail('/open braucht den Editor', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.OpenNeedsTheEditor].Text, AReason));
   end;
   if not FindUnitFile(AContext, Name, FileName) then
   begin
-    Exit(Fail(Format('Die Unit %s steht weder im Index noch im Suchpfad', [Name]), AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TheUnitIsNeitherIn].Fmt([Name]), AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -1001,7 +1077,8 @@ end;
 function TestBodyText(const AFixture, AName, ATarget, ALineBreak, ALine: string): string;
 begin
   Result := 'procedure ' + AFixture + '.' + AName + ';' + ALineBreak + 'begin' + ALineBreak + '  Assert.Fail(' +
-    QuotedStr('Test für ' + ATarget + ' fehlt noch') + ');' + ALineBreak + 'end;' + ALineBreak + ALineBreak + ALine;
+    QuotedStr(cTexts[TProjectCommandsText.TestForStillMissing].Fmt([ATarget])) + ');' + ALineBreak + 'end;' +
+      ALineBreak + ALineBreak + ALine;
 end;
 
 /// <summary>Deklaration des Tests AName vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer.</summary>
@@ -1029,7 +1106,7 @@ begin
   mIndex := UnitIndexOf(AText);
   if not FixtureSymbol(mIndex, ARequest.Fixture, mFixture) then
   begin
-    Exit(Fail('Die Testunit hat keine Testklasse', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TheTestUnitHasNo].Text, AReason));
   end;
   mNames := FixtureMethods(mIndex, mFixture.Name);
   if MatchText(ARequest.TestName, mNames) and ARequest.OnlyIfMissing then
@@ -1044,7 +1121,7 @@ begin
   mBody := BodyLine(mLines);
   if (mEndLine < 0) or (mBody < 0) then
   begin
-    Exit(Fail('Testklasse oder Ende der Testunit nicht gefunden', AReason));
+    Exit(Fail(cTexts[TProjectCommandsText.TestClassOrEndOf].Text, AReason));
   end;
   mNeedsUses := UsesEditFor(AText, mFixture, ARequest.UnitName, mLineBreak, mUsesEdit);
   mLines[mBody] := TestBodyText(mFixture.Name, mName, ARequest.Target, mLineBreak, mLines[mBody]);
@@ -1091,18 +1168,18 @@ begin
   mRoutine := ASource.RoutineAt;
   if mRoutine = nil then
   begin
-    Exit('/test gilt nur im Rumpf einer Methode oder Routine');
+    Exit(cTexts[TProjectCommandsText.TestOnlyAppliesInThe].Text);
   end;
   if AContext.Host = nil then
   begin
-    Exit('/test braucht den Editor');
+    Exit(cTexts[TProjectCommandsText.TestNeedsTheEditor].Text);
   end;
   APlan.RoutineName := mRoutine.Name;
   SplitRoutineName(mRoutine.Name, APlan.ClassName, APlan.MethodName);
   APlan.UnitName := ASource.UnitIndex.UnitName;
   if (APlan.UnitName = '') or (APlan.MethodName = '') then
   begin
-    Exit('/test gilt nur in einer Unit');
+    Exit(cTexts[TProjectCommandsText.TestOnlyAppliesInA].Text);
   end;
   Result := '';
   if not AContext.Host.TestUnit(AContext.Uri, ASource.Text, APlan.Target) then
@@ -1124,7 +1201,7 @@ begin
   end
   else if not AContext.Host.ReadFile(APlan.Target.FileName, AText) then
   begin
-    Result := Format('%s lässt sich nicht lesen', [ExtractFileName(APlan.Target.FileName)]);
+    Result := cTexts[TProjectCommandsText.CannotBeRead].Fmt([ExtractFileName(APlan.Target.FileName)]);
   end;
 end;
 
@@ -1207,22 +1284,26 @@ end;
 
 procedure RegisterProjectCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('define', 'Symbol in DCC_Define der aktiven Konfiguration eintragen', '/define TEST',
+  ARegister(Command('define', cTexts[TProjectCommandsText.AddASymbolToDCC].Text, '/define TEST',
     ExecuteDefine));
-  ARegister(Command('define!', 'Symbol in DCC_Define aller Konfigurationen eintragen', '/define! TEST',
+  ARegister(Command('define!', cTexts[TProjectCommandsText.AddASymbolToDCC2].Text, '/define! TEST',
     ExecuteDefine));
-  ARegister(Command('searchpath', 'Ordner in den Suchpfad des Projekts eintragen',
+  ARegister(Command('searchpath', cTexts[TProjectCommandsText.AddAFolderToThe].Text,
     '/searchpath Source\Common', ExecuteSearchPath));
-  ARegister(Command('config', 'Konfiguration und Plattform umschalten', '/config Release Win64',
+  ARegister(Command('config', cTexts[TProjectCommandsText.SwitchConfigurationAndPlatform].Text, '/config Release Win64',
     ExecuteConfig));
-  ARegister(Command('dfm', 'Zur Stelle in der Formulardatei springen', '/dfm', ExecuteDfm));
-  ARegister(Command('unit', 'Neue Unit anlegen, ins Projekt eintragen und öffnen', '/unit Kunden.Daten',
+  ARegister(Command('dfm', cTexts[TProjectCommandsText.JumpToThePositionIn].Text, '/dfm', ExecuteDfm));
+  ARegister(Command('unit', cTexts[TProjectCommandsText.CreateANewUnitAdd].Text,
+    cTexts[TProjectCommandsText.UnitCustomersData].Text,
     ExecuteUnit));
-  ARegister(Command('open', 'Unit aus dem Suchpfad öffnen', '/open System.SysUtils', ExecuteOpen));
-  ARegister(Command('component', 'Neue Komponenten-Unit mit Register anlegen und ins Projekt eintragen',
+  ARegister(Command('open', cTexts[TProjectCommandsText.OpenAUnitFromThe].Text, '/open System.SysUtils', ExecuteOpen));
+  ARegister(Command('component', cTexts[TProjectCommandsText.CreateANewComponentUnit].Text,
     '/component TMyButton : TButton', ExecuteComponent));
-  ARegister(Command('test', 'DUnitX-Test für die aktuelle Methode anlegen, Testunit bei Bedarf',
+  ARegister(Command('test', cTexts[TProjectCommandsText.CreateADUnitXTestFor].Text,
     '/test', ExecuteTest));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ProjectCommands', cTexts);
 
 end.

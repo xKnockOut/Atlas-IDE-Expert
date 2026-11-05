@@ -61,7 +61,21 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompilerSwitchesText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TCompilerSwitchesText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   OriginKinds: array[TSwitchOriginKind] of string = ('default', 'project', 'directive', 'include');
@@ -164,7 +178,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TCompilerSwitchesText.FieldsTextDocumentUriAndPosition].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -178,5 +192,8 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Result := ToJson(StateAt(Document.Text, TLspPositions.ReadPosition(PositionValue), Context), Context);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompilerSwitches', cTexts);
 
 end.

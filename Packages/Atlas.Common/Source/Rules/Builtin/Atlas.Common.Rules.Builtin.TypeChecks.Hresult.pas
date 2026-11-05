@@ -37,7 +37,23 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.TypeChecks.Types;
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeChecksHresultText = (ResultLikeInterface, Mismatch, Title);
+
+const
+  cTexts: array[TTypeChecksHresultText] of TAtlasText = (
+    (De: 'Ergebnistyp %s wie im Interface'; En: 'Result type %s as in the interface'),
+    (De: '%s.%s liefert %s, die Implementierung %s (wie W1008).';
+     En: '%s.%s returns %s, the implementation %s (like W1008).'),
+    (De: 'Integer und HRESULT vertauscht'; En: 'Integer and HRESULT swapped'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxInterfaceDepth = 16;
@@ -192,7 +208,7 @@ begin
       Edits := Edits + [TTextEdit.Create(TTextRange.Create(Target.StartPos, Target.EndPos), AType)];
     end;
   end;
-  AFix := TRuleFix.Create(Format('Ergebnistyp %s wie im Interface', [AType]), Edits);
+  AFix := TRuleFix.Create(cTexts[TTypeChecksHresultText.ResultLikeInterface].Fmt([AType]), Edits);
   Result := True;
 end;
 
@@ -353,7 +369,7 @@ begin
     begin
       Fixes := [Fix];
     end;
-    FReport.Add(Method.SelectionRange, Format('%s.%s liefert %s, die Implementierung %s (wie W1008).',
+    FReport.Add(Method.SelectionRange, cTexts[TTypeChecksHresultText.Mismatch].Fmt(
       [AInterface.Name, AMember.Name, AMember.TypeName, Method.TypeName]), TRuleConfidence.High, Fixes);
   end;
 end;
@@ -362,7 +378,8 @@ end;
 
 function THresultIntegerMixRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HresultIntegerMixRuleId, TRuleSeverity.Warning, 'Integer und HRESULT vertauscht');
+  Result := TRuleDescriptor.Create(HresultIntegerMixRuleId, TRuleSeverity.Warning,
+    cTexts[TTypeChecksHresultText.Title].Text);
 end;
 
 /// <summary>1 für HRESULT, 2 für Integer bzw. LongInt, 0 sonst.</summary>
@@ -429,5 +446,8 @@ begin
     Resolver.UnpinTree;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeChecks.Hresult', cTexts);
 
 end.

@@ -78,7 +78,16 @@ implementation
 
 uses
   System.StrUtils,
-  System.RegularExpressions;
+  System.RegularExpressions,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TAssignFieldsText = (AssignAllFields);
+
+const
+  cTexts: array[TAssignFieldsText] of TAtlasText = (
+    (De: 'Alle Felder zuweisen (%d)'; En: 'Assign all fields (%d)'));
 
 const
   NumberTypes: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint',
@@ -392,7 +401,10 @@ end;
 
 class function TAssignFields.Title(ACount: Integer): string;
 begin
-  Result := Format('Alle Felder zuweisen (%d)', [ACount]);
+  Result := cTexts[TAssignFieldsText.AssignAllFields].Fmt([ACount]);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.AssignFields', cTexts);
 
 end.

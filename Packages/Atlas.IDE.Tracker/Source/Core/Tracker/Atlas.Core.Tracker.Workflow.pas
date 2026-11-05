@@ -87,8 +87,9 @@ type
   public const
     DefaultStateField = 'State';
     DefaultAssigneeField = 'Assignee';
-    /// <summary>Vorgabe von issues.endComment.</summary>
+    /// <summary>Vorgabe von issues.endComment (wie im Schema) und ihre englische Fassung (#1458).</summary>
     DefaultEndComment = 'Erledigt in {branch}.\n{commits}';
+    DefaultEndCommentEn = 'Done in {branch}.\n{commits}';
     /// <summary>Zeitgrenze eines Schreibzugriffs und der Klapplisten.</summary>
     WriteTimeoutMs = 10000;
     /// <summary>Höchstens so viele Commits in {commits}.</summary>
@@ -104,6 +105,9 @@ type
     /// <summary>Der Anbieter führt Zustand und Zuständigkeit in benannten Feldern (YouTrack), so dass Zustandsfeld
     /// und Benutzerfeld etwas bedeuten. GitHub hat keine: Zustände sind Labels, zuständig sind Benutzer.</summary>
     class function UsesFields(const AProvider: string): Boolean; static;
+    /// <summary>issues.endComment für die Oberfläche in AEnglish: Die unveränderte Vorgabe einer Sprache folgt der
+    /// Sprache der IDE, jeder andere Text bleibt, wie er ist.</summary>
+    class function EndCommentFor(const AStored: string; AEnglish: Boolean): string; static;
     /// <summary>AOptions mit den Werten der Verbindung zum Server von ATarget (persönliche zuerst); leere Werte der
     /// Verbindung lassen die globalen.</summary>
     class function ForConnection(const AOptions: TAtlasTrackerSyncOptions;
@@ -235,6 +239,19 @@ end;
 class function TAtlasTrackerWorkflow.UsesFields(const AProvider: string): Boolean;
 begin
   Result := not SameText(Trim(AProvider), TAtlasTrackerTarget.GitHub);
+end;
+
+class function TAtlasTrackerWorkflow.EndCommentFor(const AStored: string; AEnglish: Boolean): string;
+begin
+  Result := AStored;
+  if (AStored = DefaultEndComment) and AEnglish then
+  begin
+    Result := DefaultEndCommentEn;
+  end
+  else if (AStored = DefaultEndCommentEn) and not AEnglish then
+  begin
+    Result := DefaultEndComment;
+  end;
 end;
 
 class function TAtlasTrackerWorkflow.ForConnection(const AOptions: TAtlasTrackerSyncOptions;

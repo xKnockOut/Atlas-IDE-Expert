@@ -84,7 +84,32 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.IDE.Undo.Target;
+  Atlas.IDE.Undo.Target,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TWorkspaceEditText = (OpenInTheDesignerThere, ReadOnly, FileNotFound, ProjectHasUnsavedChangesPlease);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TWorkspaceEditText] of string = (
+    ('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften',
+     'schreibgeschützt',
+     'Datei nicht gefunden',
+     'Projekt hat ungespeicherte Änderungen; bitte erst speichern'),
+    ('open in the designer; there Atlas only changes event assignments and properties',
+     'read-only',
+     'file not found',
+     'project has unsaved changes; please save first'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TWorkspaceEditText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 type
   /// <summary>Vorhandene Datei, fertig zum Schreiben: Puffer, Formular im Designer, Projektdatei oder Platte.</summary>
@@ -183,7 +208,7 @@ begin
   AFile.IsForm := True;
   if AEntry.HasBase then
   begin
-    Exit('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften');
+    Exit(UiText(TWorkspaceEditText.OpenInTheDesignerThere));
   end;
   Result := TAtlasIdeForms.Check(AEntry.FileName, AEntry.Edits, AFile.FormChanges, AFile.FormProperties);
   if Result <> '' then
@@ -216,7 +241,7 @@ var
 begin
   if AFile.Buffer.IsReadOnly then
   begin
-    raise ELspEditError.Create('schreibgeschützt');
+    raise ELspEditError.Create(UiText(TWorkspaceEditText.ReadOnly));
   end;
   AFile.Text := TAtlasEditorBuffer.Text(AFile.Buffer);
   if AEntry.HasBase then
@@ -245,7 +270,7 @@ var
 begin
   if not FileExists(AEntry.FileName) then
   begin
-    raise ELspEditError.Create('Datei nicht gefunden');
+    raise ELspEditError.Create(UiText(TWorkspaceEditText.FileNotFound));
   end;
   // Vorgabe-Kodierung aus atlas.json wie beim Server (#121); binäre Formulare brechen hier ab.
   AFile.Disk := TAtlasTextFile.Load(AEntry.FileName, TAtlasEncodingDefault.CodePageFor(AEntry.FileName));
@@ -268,7 +293,7 @@ begin
     AFile.Project := TAtlasIdeFiles.ProjectModule(AEntry.FileName);
     if (AFile.Project <> nil) and TAtlasIdeFiles.ProjectModified(AFile.Project) then
     begin
-      raise ELspEditError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+      raise ELspEditError.Create(UiText(TWorkspaceEditText.ProjectHasUnsavedChangesPlease));
     end;
   end
   else if (AFile.Buffer = nil) and OpenUnopened(AEntry, APolicy) then
@@ -564,5 +589,8 @@ begin
   // 2. Anwenden.
   Execute(Plan, Files, AAction, Target, Result);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Editor.WorkspaceEdit', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

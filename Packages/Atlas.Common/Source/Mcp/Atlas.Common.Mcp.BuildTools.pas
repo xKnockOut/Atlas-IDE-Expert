@@ -34,7 +34,24 @@ uses
   System.Generics.Collections,
   System.DateUtils,
   System.StrUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBuildToolsText = (NoBuildFromTheIDE, TheLastBuildConcernedNot);
+
+const
+  cTexts: array[TBuildToolsText] of TAtlasText = (
+    (De: 'Noch kein Build aus der IDE für %s bekannt. Das IDE-Plugin meldet Builds, sobald Atlas in der IDE läuft ' +
+      'und dort compiliert wurde.';
+     En: 'No build from the IDE known yet for %s. The IDE plugin reports builds as soon as Atlas runs in the IDE and ' +
+      'compiled there.'),
+    (De: 'Der letzte Build betraf %s, nicht %s.'; En: 'The last build concerned %s, not %s.'));
+
+{$SCOPEDENUMS OFF}
 
 function SeverityText(ASeverity: TCompilerSeverity): string;
 const
@@ -175,8 +192,7 @@ end;
 
 class function TMcpBuildTools.NoBuild(const ARoot: string): string;
 begin
-  Result := Format('Noch kein Build aus der IDE für %s bekannt. Das IDE-Plugin meldet Builds, sobald Atlas ' +
-    'in der IDE läuft und dort compiliert wurde.', [ARoot]);
+  Result := cTexts[TBuildToolsText.NoBuildFromTheIDE].Fmt([ARoot]);
 end;
 
 class function TMcpBuildTools.Report(const ABuild: TIdeBuild; const ARoot, AProject: string): string;
@@ -194,7 +210,7 @@ begin
     not SameText(AProject, ExtractFileName(ABuild.Project)) and
     not SameText(ChangeFileExt(AProject, ''), ChangeFileExt(ExtractFileName(ABuild.Project), '')) then
   begin
-    Exit(Format('Der letzte Build betraf %s, nicht %s.', [ExtractFileName(ABuild.Project), AProject]));
+    Exit(cTexts[TBuildToolsText.TheLastBuildConcernedNot].Fmt([ExtractFileName(ABuild.Project), AProject]));
   end;
   FillChar(Counts, SizeOf(Counts), 0);
   for Message in ABuild.Messages do
@@ -228,5 +244,8 @@ begin
     Root.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.BuildTools', cTexts);
 
 end.

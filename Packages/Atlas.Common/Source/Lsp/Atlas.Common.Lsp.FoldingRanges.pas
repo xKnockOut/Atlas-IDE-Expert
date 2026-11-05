@@ -50,7 +50,20 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFoldingRangesText = (FieldTextDocumentUriMissingIn);
+
+const
+  cTexts: array[TFoldingRangesText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   KindComment = 'comment';
@@ -309,7 +322,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + Method);
   end;
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
   if not FStore.TryGet(Uri, Document) then
@@ -333,5 +347,8 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Result := ToJson(Collect(Tree));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.FoldingRanges', cTexts);
 
 end.

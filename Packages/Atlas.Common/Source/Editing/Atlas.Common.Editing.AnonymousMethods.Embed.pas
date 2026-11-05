@@ -65,7 +65,53 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEmbedText = (NoTree, NoMethodOfTheImplementation, NoMethod, UnsupportedForm, ClassNotInTheFile, Overloaded,
+    DeclarationMissing, NotPrivate, VirtualMessageOrOverloaded, IsInTheFormFile, LocalRoutinesTypesOrLabels,
+    InheritedOrWith, UnsupportedParameters, ParametersWithDefaultValue, UsedViaAnotherObject, NotExactlyOnePlaceWhere,
+    IsCalledNotPassedAs, TheTargetIsAMethod, TheTargetIsAProcedural, TargetTypeUnknown, PassedOutsideAMethodOf,
+    PassedInsideWith, IsPassedAsAnAnonymous, MethodWithoutBody, ClassMethod, Recursive, Hides);
+
+const
+  cTexts: array[TEmbedText] of TAtlasText = (
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: 'keine Methode der Implementierung'; En: 'no method of the implementation'),
+    (De: 'keine Methode'; En: 'no method'),
+    (De: 'nicht unterstützte Form'; En: 'unsupported form'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'überladen'; En: 'overloaded'),
+    (De: 'Deklaration fehlt'; En: 'declaration missing'),
+    (De: 'nicht privat'; En: 'not private'),
+    (De: 'virtuell, Botschaft oder überladen'; En: 'virtual, message or overloaded'),
+    (De: ' steht in der Formulardatei'; En: ' is in the form file'),
+    (De: 'lokale Routinen, Typen oder Marken'; En: 'local routines, types or labels'),
+    (De: 'inherited oder with'; En: 'inherited or with'),
+    (De: 'nicht unterstützte Parameter'; En: 'unsupported parameters'),
+    (De: 'Parameter mit Vorgabewert'; En: 'parameters with default value'),
+    (De: 'über ein anderes Objekt benutzt'; En: 'used via another object'),
+    (De: 'nicht genau eine Übergabe'; En: 'not exactly one place where it is passed'),
+    (De: 'wird aufgerufen, nicht als Wert übergeben'; En: 'is called, not passed as a value'),
+    (De: 'das Ziel ist ein Methodenzeiger (of object); dort passt keine anonyme Methode';
+     En: 'the target is a method pointer (of object); an anonymous method does not fit there'),
+    (De: 'das Ziel ist ein prozeduraler Typ ohne reference to';
+     En: 'the target is a procedural type without reference to'),
+    (De: 'Zieltyp unbekannt'; En: 'target type unknown'),
+    (De: 'Übergabe nicht in einer Methode derselben Klasse'; En: 'passed outside a method of the same class'),
+    (De: 'Übergabe in with'; En: 'passed inside with'),
+    (De: '%s steht an der Übergabe in %s als anonyme Methode; die Methode entfällt.';
+     En: '%s is passed as an anonymous method in %s; the method is removed.'),
+    (De: 'Methode ohne Rumpf'; En: 'method without body'),
+    (De: 'Klassenmethode'; En: 'class method'),
+    (De: 'rekursiv'; En: 'recursive'),
+    (De: ' verdeckt '; En: ' hides '));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Wird der Wert ANode an der Stelle übergeben oder gespeichert (Argument, rechte Seite, Startwert)?
 /// </summary>
@@ -192,14 +238,14 @@ begin
   mTree := FInput.Tree;
   if (mTree = nil) or (mTree.Root = nil) then
   begin
-    Exit('kein Baum');
+    Exit(cTexts[TEmbedText.NoTree].Text);
   end;
   FTokens := mTree.Tokens;
   FRoutine := TRoutineParts.TopRoutineAt(mTree, TLineTable.Build(FInput.Text).OffsetAt(FInput.Position),
     mDeclaration);
   if (FRoutine = nil) or (FRoutine.Parent = nil) or (FRoutine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
   begin
-    Exit('keine Methode der Implementierung');
+    Exit(cTexts[TEmbedText.NoMethodOfTheImplementation].Text);
   end;
   FHeader := TRoutineParts.HeaderOf(FRoutine);
   FBody := TRoutineBody.BodyOf(FRoutine);
@@ -207,11 +253,11 @@ begin
   FClassName := TRoutineBody.QualifierOf(FRoutine.Name);
   if (FHeader = nil) or (FBody = nil) then
   begin
-    Result := 'Methode ohne Rumpf';
+    Result := cTexts[TEmbedText.MethodWithoutBody].Text;
   end
   else if (FClassName = '') or (Pos('<', FClassName) > 0) or (Pos('.', FClassName) > 0) then
   begin
-    Result := 'keine Methode';
+    Result := cTexts[TEmbedText.NoMethod].Text;
   end
   else
   begin
@@ -224,18 +270,18 @@ begin
   Result := '';
   if TRoutineParts.IsClassHeader(FTokens, FHeader) then
   begin
-    Result := 'Klassenmethode';
+    Result := cTexts[TEmbedText.ClassMethod].Text;
   end
   else if TRoutineParts.HasWord(FTokens, FHeader, ['overload', 'forward', 'external', 'assembler']) then
   begin
-    Result := 'nicht unterstützte Form';
+    Result := cTexts[TEmbedText.UnsupportedForm].Text;
   end
   else
   begin
     FTypeBody := TRoutineBody.TypeBody(FInput.Tree.Root, FClassName);
     if FTypeBody = nil then
     begin
-      Result := 'Klasse ' + FClassName + ' nicht in der Datei';
+      Result := cTexts[TEmbedText.ClassNotInTheFile].Fmt([FClassName]);
     end;
   end;
 end;
@@ -255,14 +301,14 @@ begin
     begin
       if FDeclaration <> nil then
       begin
-        Result := 'überladen';
+        Result := cTexts[TEmbedText.Overloaded].Text;
       end;
       FDeclaration := mNode;
     end;
   end;
   if (Result = '') and (FDeclaration = nil) then
   begin
-    Result := 'Deklaration fehlt';
+    Result := cTexts[TEmbedText.DeclarationMissing].Text;
   end;
 end;
 
@@ -275,16 +321,16 @@ begin
   end;
   if not MatchText(TRoutineBody.VisibilityOf(FTypeBody, FDeclaration), ['private', 'strict private']) then
   begin
-    Result := 'nicht privat';
+    Result := cTexts[TEmbedText.NotPrivate].Text;
   end
   else if TRoutineParts.HasWord(FTokens, FDeclaration, ['virtual', 'dynamic', 'override', 'abstract', 'message',
     'overload', 'reintroduce', 'final', 'static']) then
   begin
-    Result := 'virtuell, Botschaft oder überladen';
+    Result := cTexts[TEmbedText.VirtualMessageOrOverloaded].Text;
   end
   else if Assigned(FInput.Lookup.InForm) and FInput.Lookup.InForm(FShort) then
   begin
-    Result := FShort + ' steht in der Formulardatei';
+    Result := FShort + cTexts[TEmbedText.IsInTheFormFile].Text;
   end;
 end;
 
@@ -294,11 +340,11 @@ function TAnonymousEmbedding.BodyReason: string;
 begin
   if HasLocalDeclarations(FRoutine) then
   begin
-    Result := 'lokale Routinen, Typen oder Marken';
+    Result := cTexts[TEmbedText.LocalRoutinesTypesOrLabels].Text;
   end
   else if TAnonymousSyntax.HasInherited(FTokens, FBody) or TRoutineLocals.HasKind(FBody, TSyntaxKind.WithStatement) then
   begin
-    Result := 'inherited oder with';
+    Result := cTexts[TEmbedText.InheritedOrWith].Text;
   end
   else
   begin
@@ -311,11 +357,11 @@ begin
   FParameters := TRoutineParts.ParameterTexts(FInput.Text, FHeader);
   if TAnonymousSyntax.UnreadParameters(FParameters, FHeader) then
   begin
-    Result := 'nicht unterstützte Parameter';
+    Result := cTexts[TEmbedText.UnsupportedParameters].Text;
   end
   else if HasDefaultValue(FParameters) then
   begin
-    Result := 'Parameter mit Vorgabewert';
+    Result := cTexts[TEmbedText.ParametersWithDefaultValue].Text;
   end
   else
   begin
@@ -340,11 +386,11 @@ begin
   end;
   if (ANode.Kind = TSyntaxKind.MemberAccess) and not IsSelfAccess(ANode) then
   begin
-    Result := 'über ein anderes Objekt benutzt';
+    Result := cTexts[TEmbedText.UsedViaAnotherObject].Text;
   end
   else if TRoutineBody.Within(ANode, FRoutine) then
   begin
-    Result := 'rekursiv';
+    Result := cTexts[TEmbedText.Recursive].Text;
   end
   else
   begin
@@ -386,12 +432,12 @@ begin
   end;
   if Length(mReferences) <> 1 then
   begin
-    Exit('nicht genau eine Übergabe');
+    Exit(cTexts[TEmbedText.NotExactlyOnePlaceWhere].Text);
   end;
   FReference := mReferences[0];
   if not IsValueUse(FReference) then
   begin
-    Result := 'wird aufgerufen, nicht als Wert übergeben';
+    Result := cTexts[TEmbedText.IsCalledNotPassedAs].Text;
   end;
 end;
 
@@ -406,11 +452,11 @@ begin
   end;
   case mKind of
     TProcTypeKind.MethodPointer:
-      Result := 'das Ziel ist ein Methodenzeiger (of object); dort passt keine anonyme Methode';
+      Result := cTexts[TEmbedText.TheTargetIsAMethod].Text;
     TProcTypeKind.Plain:
-      Result := 'das Ziel ist ein prozeduraler Typ ohne reference to';
+      Result := cTexts[TEmbedText.TheTargetIsAProcedural].Text;
     TProcTypeKind.Unknown:
-      Result := 'Zieltyp unbekannt';
+      Result := cTexts[TEmbedText.TargetTypeUnknown].Text;
   else
     Result := '';
   end;
@@ -422,11 +468,11 @@ begin
   if (FCaller = nil) or not SameText(TRoutineBody.QualifierOf(FCaller.Name), FClassName) or
     TRoutineParts.IsClassHeader(FTokens, TRoutineParts.HeaderOf(FCaller)) then
   begin
-    Result := 'Übergabe nicht in einer Methode derselben Klasse';
+    Result := cTexts[TEmbedText.PassedOutsideAMethodOf].Text;
   end
   else if TAnonymousSyntax.Inside(FReference, FCaller, TSyntaxKind.WithStatement) then
   begin
-    Result := 'Übergabe in with';
+    Result := cTexts[TEmbedText.PassedInsideWith].Text;
   end
   else
   begin
@@ -446,7 +492,7 @@ begin
     if (mScope.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) and FCache.Declares(mScope, AName,
       FReference.StartOffset) then
     begin
-      Result := mScope.Name + ' verdeckt ' + AName;
+      Result := mScope.Name + cTexts[TEmbedText.Hides].Text + AName;
     end;
     mScope := mScope.Parent;
   end;
@@ -523,11 +569,13 @@ begin
   mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(FReference.StartPos, FReference.EndPos), mHead +
     mLineBreak + MovedText(mLineBreak))];
   Result := Default(TCodeAction);
-  Result.Title := cEmbedTitle;
+  Result.Title := EmbedTitle;
   Result.Kind := RewriteKind;
   Result.Edits := mEdits;
-  Result.Preview := Format('%s steht an der Übergabe in %s als anonyme Methode; die Methode entfällt.',
-    [FShort, FCaller.Name]) + mLineBreak + mHead;
+  Result.Preview := cTexts[TEmbedText.IsPassedAsAnAnonymous].Fmt([FShort, FCaller.Name]) + mLineBreak + mHead;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.AnonymousMethods.Embed', cTexts);
 
 end.

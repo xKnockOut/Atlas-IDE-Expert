@@ -84,7 +84,44 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormsText = (ResourceTitle, Missing, NotIncluded, TwiceTitle, SecondInstance, TheDpr, InheritedTitle,
+    InsertInherited, NotExecuted, SelfFreeTitle, FreeToRelease, ReplaceCaFree, FreesItself, EventHandler,
+    HandlerSuffix, InsertResource, RemoveFromMain);
+
+const
+  cTexts: array[TFormsText] of TAtlasText = (
+    (De: 'Formular-Unit ohne {$R *.dfm} bzw. {$R} ohne Formulardatei';
+     En: 'Form unit without {$R *.dfm} or {$R} without form file'),
+    (De: '%s fehlt; der Compiler bricht mit F1026 ab.'; En: '%s is missing; the compiler stops with F1026.'),
+    (De: '%s wird nicht eingebunden; %s.Create löst EResNotFound aus.';
+     En: '%s is not included; %s.Create raises EResNotFound.'),
+    (De: 'Formular automatisch und zusätzlich von Hand erzeugt';
+     En: 'Form created automatically and additionally by hand'),
+    (De: '%s wird schon in %s erzeugt; hier entsteht eine zweite Instanz.';
+     En: '%s is already created in %s; a second instance is created here.'),
+    (De: 'der .dpr'; En: 'the .dpr'),
+    (De: 'Ereignis-Handler im geerbten Formular ohne inherited';
+     En: 'Event handler in the inherited form without inherited'),
+    (De: 'inherited; am Anfang einfügen'; En: 'Insert inherited; at the start'),
+    (De: '%s.%s wird nicht mehr ausgeführt (kein inherited).'; En: '%s.%s is no longer executed (no inherited).'),
+    (De: 'Formular gibt sich im eigenen Ereignis frei'; En: 'Form frees itself in its own event'),
+    (De: 'Free durch Release ersetzen'; En: 'Replace Free with Release'),
+    (De: 'Durch Action := caFree ersetzen'; En: 'Replace with Action := caFree'),
+    (De: 'Das Formular gibt sich im eigenen %s frei; die VCL greift danach noch darauf zu.';
+     En: 'The form frees itself in its own %s; the VCL still accesses it afterwards.'),
+    (De: 'Ereignis-Handler'; En: 'event handler'),
+    (De: '-Handler'; En: ' handler'),
+    (De: '{$R *%s} nach implementation einfügen'; En: 'Insert {$R *%s} after implementation'),
+    (De: '%s aus %s entfernen'; En: 'Remove %s from %s'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Klasse ATypeName der Unit (Interface oder Implementation), sonst nil. Iterativ (Bericht M1).
 /// </summary>
@@ -167,7 +204,7 @@ end;
 function TFormResourceMissingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-resource-missing', TRuleSeverity.Error,
-    'Formular-Unit ohne {$R *.dfm} bzw. {$R} ohne Formulardatei');
+    cTexts[TFormsText.ResourceTitle].Text);
 end;
 
 class function TFormResourceMissingRule.FormResource(const ADirective, AUnitFile: string;
@@ -233,7 +270,7 @@ begin
       if Assigned(AContext.ReadFile) and not AContext.ReadFile(mFileName, mData) then
       begin
         AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos),
-          Format('%s fehlt; der Compiler bricht mit F1026 ab.', [ExtractFileName(mFileName)]));
+          cTexts[TFormsText.Missing].Fmt([ExtractFileName(mFileName)]));
       end;
     end;
   end;
@@ -282,11 +319,11 @@ begin
   end;
   mExtension := FormExtension(AContext);
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mFix := TRuleFix.Create('{$R *' + mExtension + '} nach implementation einfügen',
+  mFix := TRuleFix.Create(cTexts[TFormsText.InsertResource].Fmt([mExtension]),
     [TRuleEdit.Create(TTextRange.Create(mImplementation.EndPos, mImplementation.EndPos),
     mLineBreak + mLineBreak + '{$R *' + mExtension + '}')], True);
   AReport.Add(TTextRange.Create(mImplementation.StartPos, mImplementation.EndPos),
-    Format('%s wird nicht eingebunden; %s.Create löst EResNotFound aus.', [FormBaseName(AContext, mUnitFile) +
+    cTexts[TFormsText.NotIncluded].Fmt([FormBaseName(AContext, mUnitFile) +
     mExtension, mClassName]), TRuleConfidence.High, [mFix]);
 end;
 
@@ -445,7 +482,7 @@ end;
 function TFormAutoCreateAndManualRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-autocreate-and-manual', TRuleSeverity.Warning,
-    'Formular automatisch und zusätzlich von Hand erzeugt');
+    cTexts[TFormsText.TwiceTitle].Text);
 end;
 
 procedure TFormAutoCreateAndManualRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -590,12 +627,12 @@ var
     mFixes := nil;
     if AHasCall then
     begin
-      mFixes := [TRuleFix.Create(ACall.Statement + ' aus ' + MainName + ' entfernen',
+      mFixes := [TRuleFix.Create(cTexts[TFormsText.RemoveFromMain].Fmt([ACall.Statement, MainName]),
         [TRuleEdit.Create(ACall.Range, '')])];
       mFixes[0].FileName := AContext.ProjectMainSource;
     end;
     AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition + 4).EndPos),
-      Format('%s wird schon in %s erzeugt; hier entsteht eine zweite Instanz.', [Token(APosition).Text, MainName]),
+      cTexts[TFormsText.SecondInstance].Fmt([Token(APosition).Text, MainName]),
       TRuleConfidence.High, mFixes);
   end;
 
@@ -646,7 +683,7 @@ begin
   Tokens := AContext.Tree.Tokens;
   Code := CodeIndexes(Tokens);
   Calls := nil;
-  MainName := 'der .dpr';
+  MainName := cTexts[TFormsText.TheDpr].Text;
   if AContext.ProjectName <> '' then
   begin
     MainName := AContext.ProjectName + '.dpr';
@@ -715,7 +752,7 @@ end;
 function TInheritedFormHandlerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('inherited-form-handler-without-inherited', TRuleSeverity.Warning,
-    'Ereignis-Handler im geerbten Formular ohne inherited');
+    cTexts[TFormsText.InheritedTitle].Text);
 end;
 
 type
@@ -966,12 +1003,12 @@ var
     if ATokens.HasBegin then
     begin
       mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-      mFixes := [TRuleFix.Create('inherited; am Anfang einfügen', [TRuleEdit.Create(TTextRange.Create(
+      mFixes := [TRuleFix.Create(cTexts[TFormsText.InsertInherited].Text, [TRuleEdit.Create(TTextRange.Create(
         ATokens.BeginToken.EndPos, ATokens.BeginToken.EndPos), mLineBreak +
         TTextLines.IndentOf(AContext.Text, ATokens.BeginToken.StartPos.Line) + '  inherited;')], True)];
     end;
     AReport.Add(TTextRange.Create(ATokens.NameToken.StartPos, ATokens.NameToken.EndPos),
-      Format('%s.%s wird nicht mehr ausgeführt (kein inherited).', [AAncestor.Owner, AAncestor.Handler]),
+      cTexts[TFormsText.NotExecuted].Fmt([AAncestor.Owner, AAncestor.Handler]),
       TRuleConfidence.High, mFixes);
   end;
 
@@ -1039,7 +1076,7 @@ end;
 function TSelfFreeInEventHandlerRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('self-free-in-event-handler', TRuleSeverity.Error,
-    'Formular gibt sich im eigenen Ereignis frei');
+    cTexts[TFormsText.SelfFreeTitle].Text);
 end;
 
 /// <summary>Kommt Free, Destroy oder DisposeOf im Text vor?</summary>
@@ -1144,20 +1181,20 @@ var
   var
     mWhat, mReplacement, mTitle: string;
   begin
-    mWhat := 'Ereignis-Handler';
+    mWhat := cTexts[TFormsText.EventHandler].Text;
     if StartsText('On', AEvent) and (Length(AEvent) > 2) then
     begin
-      mWhat := Copy(AEvent, 3, MaxInt) + '-Handler';
+      mWhat := Copy(AEvent, 3, MaxInt) + cTexts[TFormsText.HandlerSuffix].Text;
     end;
     mReplacement := 'Release';
-    mTitle := 'Free durch Release ersetzen';
+    mTitle := cTexts[TFormsText.FreeToRelease].Text;
     if AIsClose then
     begin
       mReplacement := 'Action := caFree';
-      mTitle := 'Durch Action := caFree ersetzen';
+      mTitle := cTexts[TFormsText.ReplaceCaFree].Text;
     end;
     AReport.Add(TTextRange.Create(AStatement.StartPos, AStatement.EndPos),
-      Format('Das Formular gibt sich im eigenen %s frei; die VCL greift danach noch darauf zu.', [mWhat]),
+      cTexts[TFormsText.FreesItself].Fmt([mWhat]),
       TRuleConfidence.High, [TRuleFix.Create(mTitle, [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos,
       AStatement.EndPos), mReplacement)], True)]);
   end;
@@ -1276,5 +1313,8 @@ begin
   // dfm-reference-unit-missing gehört zur Gruppe forms, steht aber in eigener Unit.
   ARegistry.Register(TDfmReferenceUnitMissingRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Forms', cTexts);
 
 end.

@@ -48,14 +48,34 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypedExpressions,
-  Atlas.Common.Rules.TypedScope;
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStringAddressText = (Title, EmptyRead, ReplaceWith, EmptyWrite);
+
+const
+  cTexts: array[TStringAddressText] of TAtlasText = (
+    (De: 'Adresse des ersten Zeichens über S[1]'; En: 'Address of the first character via S[1]'),
+    (De: 'Bei leerem %s löst %s mit Bereichsprüfung einen Fehler aus. %s ist auch für leere Strings sicher.';
+     En: 'With an empty %s, %s raises an error under range checking. %s is safe for empty strings too.'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'Bei leerem %s löst %s mit Bereichsprüfung einen Fehler aus. Zum Lesen ist %s auch für leere Strings ' +
+      'sicher, zum Schreiben vorher UniqueString(%s).';
+     En: 'With an empty %s, %s raises an error under range checking. For reading, %s is safe for empty strings too; ' +
+      'for writing, call UniqueString(%s) first.'));
+
+{$SCOPEDENUMS OFF}
 
 { TFirstCharAddressRule }
 
 function TFirstCharAddressRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(FirstCharAddressRuleId, TRuleSeverity.Warning,
-    'Adresse des ersten Zeichens über S[1]');
+    cTexts[TStringAddressText.Title].Text);
 end;
 
 procedure TFirstCharAddressRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -189,15 +209,13 @@ var
     mFixes := nil;
     if IsConstParameter(mSymbol) then
     begin
-      mMessage := Format('Bei leerem %s löst %s mit Bereichsprüfung einen Fehler aus. %s ist auch für leere ' +
-        'Strings sicher.', [mScope.Text(mBase), mScope.Text(ANode), mSafe]);
-      mFixes := [TRuleFix.Create(Format('Durch %s ersetzen', [mSafe]),
+      mMessage := cTexts[TStringAddressText.EmptyRead].Fmt([mScope.Text(mBase), mScope.Text(ANode), mSafe]);
+      mFixes := [TRuleFix.Create(cTexts[TStringAddressText.ReplaceWith].Fmt([mSafe]),
         [TTextEdit.Create(TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos), mSafe)])];
     end
     else
     begin
-      mMessage := Format('Bei leerem %s löst %s mit Bereichsprüfung einen Fehler aus. Zum Lesen ist %s auch ' +
-        'für leere Strings sicher, zum Schreiben vorher UniqueString(%s).', [mScope.Text(mBase), mScope.Text(ANode),
+      mMessage := cTexts[TStringAddressText.EmptyWrite].Fmt([mScope.Text(mBase), mScope.Text(ANode),
         mSafe, mScope.Text(mBase)]);
     end;
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, mFixes);
@@ -247,5 +265,8 @@ procedure RegisterStringAddressRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TFirstCharAddressRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.StringAddress', cTexts);
 
 end.

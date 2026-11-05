@@ -231,10 +231,22 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPullDiagnosticsText = (FieldTextDocumentUriMissingIn, StillChecking);
 
 const
-  cStillChecking = 'Prüfung läuft noch (nach %d ms); die Befunde folgen nach workspace/diagnostic/refresh.';
+  cTexts: array[TPullDiagnosticsText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '),
+    (De: 'Prüfung läuft noch (nach %d ms); die Befunde folgen nach workspace/diagnostic/refresh.';
+     En: 'Check still running (after %d ms); the findings follow after workspace/diagnostic/refresh.'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Abbruch der Regelprüfung beim Signal von ACancellation; nil ohne.</summary>
 function RequestCancelled(const ACancellation: IJsonRpcCancellationToken): TRuleCancelled;
@@ -717,7 +729,7 @@ begin
     end;
     if (mClock.ElapsedMilliseconds >= Int64(mWait)) and mJob.Abandon then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.ServerCancelled, Format(cStillChecking, [mWait]));
+      raise EJsonRpcError.Create(TLspErrorCode.ServerCancelled, cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
     end;
     Sleep(TPullReportCache.RunningPollMs);
   end;
@@ -807,7 +819,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + DocumentMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + DocumentMethod);
   end;
   if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
   begin
@@ -929,5 +942,8 @@ begin
     mPrevious.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PullDiagnostics', cTexts);
 
 end.

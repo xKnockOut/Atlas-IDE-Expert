@@ -105,7 +105,37 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingMoveClassText = (NoClassAtThisPosition, IsNotAValidUnit, TheNewUnitWouldHave, TheUnitHasNoInterface,
+    SeveralTypesAreNamed, PartOfTheClassIs, TheClassUsesFromThe, CircularReferenceTheClassNeeds, NoRoomForTheNew,
+    TheOriginalUnitNoLonger, TheNewUnitDoesNot, FormClassesStayWithTheir);
+
+const
+  cTexts: array[TEditingMoveClassText] of TAtlasText = (
+    (De: 'keine Klasse an dieser Stelle'; En: 'no class at this position'),
+    (De: '„%s“ ist kein gültiger Unit-Name'; En: '“%s” is not a valid unit name'),
+    (De: 'die neue Unit hieße wie die Ursprungs-Unit';
+     En: 'the new unit would have the same name as the original unit'),
+    (De: 'die Unit hat keinen interface- und implementation-Teil';
+     En: 'the unit has no interface and implementation part'),
+    (De: 'mehrere Typen heißen %s'; En: 'several types are named %s'),
+    (De: 'ein Teil der Klasse steht in bedingter Übersetzung'; En: 'part of the class is in conditional compilation'),
+    (De: 'die Klasse verwendet %s aus dem implementation-Teil von %s';
+     En: 'the class uses %s from the implementation part of %s'),
+    (De: 'Kreisverweis: die Klasse braucht Typen aus dem interface von %s, das sie selbst verwendet';
+     En: 'circular reference: the class needs types from the interface of %s, which itself uses it'),
+    (De: 'kein Platz für die neue Unit im uses'; En: 'no room for the new unit in uses'),
+    (De: 'die Ursprungs-Unit parst danach nicht mehr'; En: 'the original unit no longer parses afterwards'),
+    (De: 'die neue Unit parst nicht'; En: 'the new unit does not parse'),
+    (De: 'Formularklassen bleiben bei ihrer Formulardatei'; En: 'Form classes stay with their form file'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Namen aus System, die jede Unit ohne uses kennt; gelten auch ohne Namensauflösung als bekannt.
@@ -1039,7 +1069,7 @@ begin
   Decl := TMoveClass.ClassAt(Source.Tree, APosition);
   if Decl = nil then
   begin
-    Exit('keine Klasse an dieser Stelle');
+    Exit(cTexts[TEditingMoveClassText.NoClassAtThisPosition].Text);
   end;
   TypeNode := TypeNodeOf(Decl);
   TypeSection := Decl.Parent;
@@ -1059,15 +1089,15 @@ begin
   Result := '';
   if not IsValidIdent(Plan.NewUnit, True) then
   begin
-    Result := Format('„%s“ ist kein gültiger Unit-Name', [Plan.NewUnit]);
+    Result := cTexts[TEditingMoveClassText.IsNotAValidUnit].Fmt([Plan.NewUnit]);
   end
   else if SameText(Plan.NewUnit, Plan.OriginUnit) then
   begin
-    Result := 'die neue Unit hieße wie die Ursprungs-Unit';
+    Result := cTexts[TEditingMoveClassText.TheNewUnitWouldHave].Text;
   end
   else if (InterfaceNode = nil) or (ImplementationNode = nil) then
   begin
-    Result := 'die Unit hat keinen interface- und implementation-Teil';
+    Result := cTexts[TEditingMoveClassText.TheUnitHasNoInterface].Text;
   end;
 end;
 
@@ -1086,7 +1116,7 @@ begin
     end;
     if not IsForward(mNode) then
     begin
-      Exit(Format('mehrere Typen heißen %s', [Plan.ClassName]));
+      Exit(cTexts[TEditingMoveClassText.SeveralTypesAreNamed].Fmt([Plan.ClassName]));
     end;
     Forwards := Forwards + [mNode];
   end;
@@ -1101,7 +1131,7 @@ begin
   mAncestor := AncestorName(TypeNode);
   if (mAncestor <> '') and HasFormResource(Source.Text) and IsFormAncestor(mAncestor) then
   begin
-    Result := 'Formularklassen bleiben bei ihrer Formulardatei';
+    Result := cTexts[TEditingMoveClassText.FormClassesStayWithTheir].Text;
   end;
 end;
 
@@ -1144,7 +1174,7 @@ begin
   begin
     if not Unconditional(Source.Tree.Tokens, mPiece) then
     begin
-      Exit('ein Teil der Klasse steht in bedingter Übersetzung');
+      Exit(cTexts[TEditingMoveClassText.PartOfTheClassIs].Text);
     end;
   end;
 end;
@@ -1279,7 +1309,7 @@ begin
   end;
   if mOffset >= ImplementationNode.StartOffset then
   begin
-    Exit(Format('die Klasse verwendet %s aus dem implementation-Teil von %s', [AName, Plan.OriginUnit]));
+    Exit(cTexts[TEditingMoveClassText.TheClassUsesFromThe].Fmt([AName, Plan.OriginUnit]));
   end;
   if AInDecl then
   begin
@@ -1357,8 +1387,7 @@ begin
   CollectReferences;
   if DeclNeedsOrigin and InterfaceRef then
   begin
-    Result := Format('Kreisverweis: die Klasse braucht Typen aus dem interface von %s, das sie selbst verwendet',
-      [Plan.OriginUnit]);
+    Result := cTexts[TEditingMoveClassText.CircularReferenceTheClassNeeds].Fmt([Plan.OriginUnit]);
   end;
 end;
 
@@ -1518,7 +1547,7 @@ begin
     end;
     if not TUsesClauses.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
     begin
-      Exit('kein Platz für die neue Unit im uses');
+      Exit(cTexts[TEditingMoveClassText.NoRoomForTheNew].Text);
     end;
     mEdits := mEdits + [mEdit];
   end;
@@ -1535,11 +1564,11 @@ begin
   end;
   if not ParsesCleanly(TChangeSignature.ApplyEdits(Source.Text, Plan.OriginEdits)) then
   begin
-    Result := 'die Ursprungs-Unit parst danach nicht mehr';
+    Result := cTexts[TEditingMoveClassText.TheOriginalUnitNoLonger].Text;
   end
   else if not ParsesCleanly(Plan.Text) then
   begin
-    Result := 'die neue Unit parst nicht';
+    Result := cTexts[TEditingMoveClassText.TheNewUnitDoesNot].Text;
   end;
 end;
 
@@ -1659,5 +1688,8 @@ begin
   end;
   Result := AEdits <> nil;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MoveClass', cTexts);
 
 end.

@@ -60,14 +60,64 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Components.Model;
+  Atlas.Common.Rules.Builtin.Components.Model,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TComponentsInheritedCallsText = (CtorTitle, NeverFreed, NeverCreated, AfterConstruction, Insert, MessageTitle,
+    DefaultHandling, NoInherited, InsertAtStart, OrderTitle, MoveToEnd, MoveToStart, BeforeFree, BeforeInherited,
+    OtherTitle, CallInherited, OtherMethod, Consequence0, Consequence1, Consequence2, Consequence3, Consequence4,
+    Consequence5, Consequence6, Consequence7, Consequence8);
+
+const
+  cTexts: array[TComponentsInheritedCallsText] of TAtlasText = (
+    (De: 'Konstruktor oder Destruktor ohne inherited'; En: 'Constructor or destructor without inherited'),
+    (De: '%s ruft inherited nicht auf; die Felder von %s werden nie freigegeben.';
+     En: '%s does not call inherited; the fields of %s are never freed.'),
+    (De: '%s ruft inherited nicht auf; die Felder von %s werden nie angelegt.';
+     En: '%s does not call inherited; the fields of %s are never created.'),
+    (De: '%s ruft inherited nicht auf; die Arbeit von %s nach dem Erzeugen entfällt.';
+     En: '%s does not call inherited; the work of %s after construction is skipped.'),
+    (De: '"%s" einfügen'; En: 'Insert "%s"'),
+    (De: 'Message-Handler ohne inherited'; En: 'Message handler without inherited'),
+    (De: 'die Standardbehandlung von Windows bzw. der VCL entfällt';
+     En: 'the default handling of Windows or the VCL is skipped'),
+    (De: '%s ruft inherited nicht auf; %s.'; En: '%s does not call inherited; %s.'),
+    (De: '"inherited;" am Anfang einfügen'; En: 'Insert "inherited;" at the start'),
+    (De: 'inherited an der falschen Stelle'; En: 'inherited in the wrong place'),
+    (De: 'inherited an das Ende des Destruktors verschieben'; En: 'Move inherited to the end of the destructor'),
+    (De: 'inherited an den Anfang des Konstruktors verschieben'; En: 'Move inherited to the start of the constructor'),
+    (De: 'inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.';
+     En: 'inherited before freeing the own fields; the ancestor can still access %s.'),
+    (De: '%s greift vor inherited auf %s aus %s zu; der Vorfahr ist noch nicht angelegt.';
+     En: '%s accesses %s from %s before inherited; the ancestor is not created yet.'),
+    (De: 'inherited ruft eine andere Methode'; En: 'inherited calls a different method'),
+    (De: 'inherited %s aufrufen'; En: 'Call inherited %s'),
+    (De: '%s ruft inherited %s auf; gemeint ist vermutlich inherited %s.';
+     En: '%s calls inherited %s; probably inherited %s is meant.'),
+    (De: 'die VCL passt Ausrichtung und Anker nicht mehr an'; En: 'the VCL no longer adjusts alignment and anchors'),
+    (De: 'das Fenster schließt nicht mehr'; En: 'the window no longer closes'),
+    (De: 'die VCL zeichnet das Steuerelement nicht mehr'; En: 'the VCL no longer paints the control'),
+    (De: 'Tastatureingaben erreichen die Standardbehandlung nicht mehr';
+     En: 'keyboard input no longer reaches the default handling'),
+    (De: 'die Fokusbehandlung der VCL entfällt'; En: 'the focus handling of the VCL is skipped'),
+    (De: 'Mausereignisse wie OnClick und OnMouseDown entfallen';
+     En: 'mouse events such as OnClick and OnMouseDown are lost'),
+    (De: 'die VCL räumt das Fenster nicht mehr auf'; En: 'the VCL no longer cleans up the window'),
+    (De: 'Schrift und Skalierung passen sich nicht mehr an'; En: 'font and scaling no longer adapt'),
+    (De: 'die Standardbehandlung der VCL entfällt'; En: 'the default handling of the VCL is skipped'));
+
+{$SCOPEDENUMS OFF}
 
 { TMissingInheritedRule }
 
 function TMissingInheritedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-inherited', TRuleSeverity.Warning,
-    'Konstruktor oder Destruktor ohne inherited');
+    cTexts[TComponentsInheritedCallsText.CtorTitle].Text);
 end;
 
 class function TMissingInheritedRule.DefaultMethods: TArray<string>;
@@ -186,17 +236,15 @@ function InheritedMessage(const AMethodName, AParent: string; AAtEnd, AIsConstru
 begin
   if AAtEnd then
   begin
-    Result := Format('%s ruft inherited nicht auf; die Felder von %s werden nie freigegeben.',
-      [AMethodName, AParent]);
+    Result := cTexts[TComponentsInheritedCallsText.NeverFreed].Fmt([AMethodName, AParent]);
   end
   else if AIsConstructor then
   begin
-    Result := Format('%s ruft inherited nicht auf; die Felder von %s werden nie angelegt.', [AMethodName, AParent]);
+    Result := cTexts[TComponentsInheritedCallsText.NeverCreated].Fmt([AMethodName, AParent]);
   end
   else
   begin
-    Result := Format('%s ruft inherited nicht auf; die Arbeit von %s nach dem Erzeugen entfällt.',
-      [AMethodName, AParent]);
+    Result := cTexts[TComponentsInheritedCallsText.AfterConstruction].Fmt([AMethodName, AParent]);
   end;
 end;
 
@@ -224,7 +272,7 @@ begin
   if mInserted then
   begin
     AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), AMessage, TRuleConfidence.High,
-      [TRuleFix.Create(Format('"%s" einfügen', [AStatement]), [mEdit])]);
+      [TRuleFix.Create(cTexts[TComponentsInheritedCallsText.Insert].Fmt([AStatement]), [mEdit])]);
   end
   else
   begin
@@ -362,7 +410,7 @@ end;
 function TMessageHandlerWithoutInheritedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('message-handler-without-inherited', TRuleSeverity.Warning,
-    'Message-Handler ohne inherited');
+    cTexts[TComponentsInheritedCallsText.MessageTitle].Text);
 end;
 
 class function TMessageHandlerWithoutInheritedRule.DefaultSwallow: TArray<string>;
@@ -379,11 +427,11 @@ const
     'WM_SETFOCUS,WM_KILLFOCUS,CM_ENTER,CM_EXIT',
     'WM_LBUTTON*,WM_RBUTTON*,WM_MBUTTON*,WM_MOUSEMOVE,WM_MOUSEWHEEL,CM_MOUSEENTER,CM_MOUSELEAVE',
     'WM_DESTROY,WM_NCDESTROY', 'WM_DPICHANGED,CM_PARENTFONTCHANGED,CM_FONTCHANGED,CM_STYLECHANGED', 'CM_*');
-  cConsequenceTexts: array[0..8] of string = ('die VCL passt Ausrichtung und Anker nicht mehr an',
-    'das Fenster schließt nicht mehr', 'die VCL zeichnet das Steuerelement nicht mehr',
-    'Tastatureingaben erreichen die Standardbehandlung nicht mehr', 'die Fokusbehandlung der VCL entfällt',
-    'Mausereignisse wie OnClick und OnMouseDown entfallen', 'die VCL räumt das Fenster nicht mehr auf',
-    'Schrift und Skalierung passen sich nicht mehr an', 'die Standardbehandlung der VCL entfällt');
+  cConsequenceTexts: array[0..8] of TComponentsInheritedCallsText = (TComponentsInheritedCallsText.Consequence0,
+    TComponentsInheritedCallsText.Consequence1, TComponentsInheritedCallsText.Consequence2,
+    TComponentsInheritedCallsText.Consequence3, TComponentsInheritedCallsText.Consequence4,
+    TComponentsInheritedCallsText.Consequence5, TComponentsInheritedCallsText.Consequence6,
+    TComponentsInheritedCallsText.Consequence7, TComponentsInheritedCallsText.Consequence8);
 
 /// <summary>Passt der Nachrichtenname AName zu einem Eintrag der Komma-Liste AList (* am Ende: Präfix)?</summary>
 function MatchesMessage(const AName, AList: string): Boolean;
@@ -415,12 +463,12 @@ begin
   begin
     if (Result = '') and MatchesMessage(mName, cConsequenceMessages[mIndex]) then
     begin
-      Result := cConsequenceTexts[mIndex];
+      Result := cTexts[cConsequenceTexts[mIndex]].Text;
     end;
   end;
   if Result = '' then
   begin
-    Result := 'die Standardbehandlung von Windows bzw. der VCL entfällt';
+    Result := cTexts[TComponentsInheritedCallsText.DefaultHandling].Text;
   end;
 end;
 
@@ -519,12 +567,12 @@ begin
   begin
     Exit;
   end;
-  mText := Format('%s ruft inherited nicht auf; %s.', [mMethod.MethodName,
+  mText := cTexts[TComponentsInheritedCallsText.NoInherited].Fmt([mMethod.MethodName,
     TMessageHandlerWithoutInheritedRule.Consequence(mMessageName)]);
   if FModel.InsertAfterBegin(mMethod.Block, 'inherited;', mEdit) then
   begin
     FReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), mText, TRuleConfidence.Medium,
-      [TRuleFix.Create('"inherited;" am Anfang einfügen', [mEdit])]);
+      [TRuleFix.Create(cTexts[TComponentsInheritedCallsText.InsertAtStart].Text, [mEdit])]);
   end
   else
   begin
@@ -576,7 +624,8 @@ end;
 
 function TInheritedOrderRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('inherited-order', TRuleSeverity.Warning, 'inherited an der falschen Stelle');
+  Result := TRuleDescriptor.Create('inherited-order', TRuleSeverity.Warning,
+    cTexts[TComponentsInheritedCallsText.OrderTitle].Text);
 end;
 
 /// <summary>Ist AStatement ein Aufruf von inherited (inherited; inherited Name; inherited Name(…))?</summary>
@@ -793,11 +842,11 @@ var
     Remove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
     if AToEnd then
     begin
-      AFix := TRuleFix.Create('inherited an das Ende des Destruktors verschieben', [Remove, Insert]);
+      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToEnd].Text, [Remove, Insert]);
     end
     else
     begin
-      AFix := TRuleFix.Create('inherited an den Anfang des Konstruktors verschieben', [Insert, Remove]);
+      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToStart].Text, [Insert, Remove]);
     end;
   end;
 
@@ -833,8 +882,7 @@ var
           mFixes := [Fix];
         end;
         AReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
-          Format('inherited vor dem Freigeben der eigenen Felder; der Vorfahr kann noch auf %s zugreifen.',
-          [Field]), TRuleConfidence.Medium, mFixes);
+          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([Field]), TRuleConfidence.Medium, mFixes);
       end;
       Exit;
     end;
@@ -946,7 +994,7 @@ var
           Fixes := [Fix];
         end;
         AReport.Add(TTextRange.Create(Access.StartPos, Access.EndPos),
-          Format('%s greift vor inherited auf %s aus %s zu; der Vorfahr ist noch nicht angelegt.',
+          cTexts[TComponentsInheritedCallsText.BeforeInherited].Fmt(
           [AMethod.MethodName, Member, Owner]), TRuleConfidence.Medium, Fixes);
         Exit;
       end;
@@ -988,7 +1036,7 @@ end;
 function TInheritedWrongMethodRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('inherited-wrong-method', TRuleSeverity.Warning,
-    'inherited ruft eine andere Methode');
+    cTexts[TComponentsInheritedCallsText.OtherTitle].Text);
 end;
 
 class function TInheritedWrongMethodRule.Allowed(const APairs: TArray<string>;
@@ -1037,11 +1085,11 @@ begin
   end;
   if mArguments = ParameterCount(AMethod) then
   begin
-    mFixes := [TRuleFix.Create(Format('inherited %s aufrufen', [AMethod.MethodName]),
+    mFixes := [TRuleFix.Create(cTexts[TComponentsInheritedCallsText.CallInherited].Fmt([AMethod.MethodName]),
       [TRuleEdit.Create(TTextRange.Create(ACall.StartPos, ACall.EndPos), 'inherited ' + AMethod.MethodName)])];
   end;
   AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-    Format('%s ruft inherited %s auf; gemeint ist vermutlich inherited %s.',
+    cTexts[TComponentsInheritedCallsText.OtherMethod].Fmt(
     [AMethod.MethodName, ACall.Name, AMethod.MethodName]), TRuleConfidence.High, mFixes);
 end;
 
@@ -1148,5 +1196,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Components.InheritedCalls', cTexts);
 
 end.

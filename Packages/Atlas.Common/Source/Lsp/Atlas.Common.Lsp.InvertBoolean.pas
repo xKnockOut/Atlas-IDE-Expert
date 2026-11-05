@@ -90,7 +90,65 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.Rename,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspInvertBooleanText = (IsAnAccessorOfA, CannotBeRead, IsAnAccessorOfThe, StartsWithFalsePleaseSet,
+    HasNoConstructorInStarts, StartsWithFalsePleaseDeclare, IsAnAccessorOfA2, IsAnAccessorOfThe2, IsBoundToAnEvent,
+    TheRoutineForTheParameter, IsBoundToAnEvent2, TheParameterIsNotIn, IsAParameterTheCaller,
+    TheDeclarationOfIsMissing, IsPublishedFormsStillStore, IsPublishedFormsOutsideThe, IsStoredAsBinaryAnd,
+    StringRTTIOrStreamingStays, AfterTheChangeNoLonger, IsNotAValidIdentifier, ThereIsNoBooleanOf, TheNewNameIsThe,
+    PlacesInFiles, Line, InvertMeaning, InvertBoolean, Line2);
+
+const
+  cTexts: array[TLspInvertBooleanText] of TAtlasText = (
+    (De: '%s: %s ist Zugriff einer Property. Bitte die Property umkehren.';
+     En: '%s: %s is an accessor of a property. Please invert the property.'),
+    (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
+    (De: '%s ist Zugriff der Property %s. Bitte die Property umkehren.';
+     En: '%s is an accessor of the property %s. Please invert the property.'),
+    (De: '%s: %s beginnt mit False; bitte %s := True setzen, wo der Wert entsteht.';
+     En: '%s: %s starts with False; please set %s := True where the value is created.'),
+    (De: '%s hat keinen Konstruktor in %s: %s beginnt mit False; bitte im Konstruktor %s := True setzen.';
+     En: '%s has no constructor in %s: %s starts with False; please set %s := True in the constructor.'),
+    (De: '%s: %s beginnt mit False; bitte als %s: Boolean = True deklarieren.';
+     En: '%s: %s starts with False; please declare it as %s: Boolean = True.'),
+    (De: '%s ist Zugriffsmethode einer Property (%s). Bitte die Property umkehren.';
+     En: '%s is an accessor of a property (%s). Please invert the property.'),
+    (De: '%s ist Zugriffsmethode der Property %s. Bitte die Property umkehren.';
+     En: '%s is an accessor of the property %s. Please invert the property.'),
+    (De: '%s ist an ein Ereignis gebunden (%s).'; En: '%s is bound to an event (%s).'),
+    (De: 'Zum Parameter %s fehlt die Routine.'; En: 'The routine for the parameter %s is missing.'),
+    (De: '%s ist an ein Ereignis gebunden (%s); seine Parameter liegen fest.';
+     En: '%s is bound to an event (%s); its parameters are fixed.'),
+    (De: 'Der Parameter %s steht nicht im Kopf von %s.'; En: 'The parameter %s is not in the header of %s.'),
+    (De: '%s ist ein %s-Parameter: Der Aufrufer bekäme den umgekehrten Wert zurück.';
+     En: '%s is a %s parameter: the caller would get the inverted value back.'),
+    (De: 'Die Deklaration von %s fehlt.'; En: 'The declaration of %s is missing.'),
+    (De: '%s ist published: Formulare speichern noch %s (Formulare einbeziehen ist abgeschaltet).';
+     En: '%s is published: forms still store %s (including forms is switched off).'),
+    (De: '%s ist published: Formulare außerhalb des Projekts und gespeicherte Einstellungen behalten den alten Namen.';
+     En: '%s is published: forms outside the project and saved settings keep the old name.'),
+    (De: '%s ist binär gespeichert und bleibt; bitte in Textform umwandeln.';
+     En: '%s is stored as binary and stays; please convert it to text form.'),
+    (De: '%s: Zeichenkette %s (RTTI oder Streaming?) bleibt, bitte prüfen.';
+     En: '%s: string %s (RTTI or streaming?) stays, please check.'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Hier steht kein Boolean des Projekts.'; En: 'There is no Boolean of the project here.'),
+    (De: 'Der neue Name ist der alte.'; En: 'The new name is the old one.'),
+    (De: '%s → %s: %d Stellen in %d Dateien'; En: '%s → %s: %d places in %d files'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'),
+    (De: 'Bedeutung umkehren (%s → %s)'; En: 'Invert meaning (%s → %s)'),
+    (De: 'Boolean umkehren'; En: 'Invert Boolean'),
+    (De: '%s, Zeile %d: %s'; En: '%s, line %d: %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   BooleanTypes: array[0..4] of string = ('Boolean', 'System.Boolean', 'ByteBool', 'WordBool', 'LongBool');
@@ -202,7 +260,7 @@ end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), APosition.Line + 1]);
+  Result := cTexts[TLspInvertBooleanText.Line].Fmt([ExtractFileName(AFileName), APosition.Line + 1]);
 end;
 
 function IsBooleanType(const ATypeName: string): Boolean;
@@ -463,7 +521,7 @@ begin
     Exit;
   end;
   mSuggested := TInvertBoolean.Suggest(mSymbol.Name, AContext.Antonyms, AContext.Prefix);
-  mTitle := Format('Bedeutung umkehren (%s → %s)', [mSymbol.Name, mSuggested]);
+  mTitle := cTexts[TLspInvertBooleanText.InvertMeaning].Fmt([mSymbol.Name, mSuggested]);
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -760,8 +818,8 @@ begin
   mPrevious := PreviousToken(mTokens, AToken);
   if (mPrevious >= 0) and MatchText(mTokens[mPrevious].Text, ['read', 'write']) then
   begin
-    raise Fail(Format('%s: %s ist Zugriff einer Property. Bitte die Property umkehren.',
-      [Where(ALocation.FileName, ALocation.Range.StartPos), mTokens[AToken].Text]));
+    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfA].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),
+      mTokens[AToken].Text]));
   end;
 end;
 
@@ -770,7 +828,7 @@ begin
   Result := Source(AFileName);
   if (Result = nil) or (Result.Tree = nil) then
   begin
-    raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TLspInvertBooleanText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -806,7 +864,7 @@ begin
     Owner := AccessingProperty(ASymbol.FileName, ASymbol.Container, ASymbol.Name);
     if Owner <> '' then
     begin
-      raise Fail(Format('%s ist Zugriff der Property %s. Bitte die Property umkehren.', [ASymbol.Name, Owner]));
+      raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe].Fmt([ASymbol.Name, Owner]));
     end;
   end;
   AddReferences(ASymbol.FileName, ASymbol.SelectionRange.StartPos, ANewName, True, AAccessorCheck);
@@ -970,8 +1028,8 @@ begin
   mTypeDecl := NodeAt(AUnit.Tree, TSyntaxKind.TypeDecl, AUnit.Tree.Tokens[AToken].Offset);
   if (mTypeDecl = nil) or (mTypeDecl.FindChild(TSyntaxKind.ClassType) = nil) then
   begin
-    Warn(Format('%s: %s beginnt mit False; bitte %s := True setzen, wo der Wert entsteht.',
-      [Where(ASymbol.FileName, ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
+    Warn(cTexts[TLspInvertBooleanText.StartsWithFalsePleaseSet].Fmt([Where(ASymbol.FileName,
+      ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
     Exit;
   end;
   mClassName := PlainClassName(mTypeDecl.Name);
@@ -982,8 +1040,8 @@ begin
   end;
   if mConstructors = nil then
   begin
-    Warn(Format('%s hat keinen Konstruktor in %s: %s beginnt mit False; bitte im Konstruktor %s := True setzen.',
-      [mClassName, ExtractFileName(ASymbol.FileName), ASymbol.Name, ANewName]));
+    Warn(cTexts[TLspInvertBooleanText.HasNoConstructorInStarts].Fmt([mClassName, ExtractFileName(ASymbol.FileName),
+      ASymbol.Name, ANewName]));
   end;
 end;
 
@@ -1009,8 +1067,8 @@ begin
   end;
   if (ASymbol.SymbolKind = TIndexSymbolKind.Variable) and not AddVariableStart(mUnit, mToken) then
   begin
-    Warn(Format('%s: %s beginnt mit False; bitte als %s: Boolean = True deklarieren.',
-      [Where(ASymbol.FileName, ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
+    Warn(cTexts[TLspInvertBooleanText.StartsWithFalsePleaseDeclare].Fmt([Where(ASymbol.FileName,
+      ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
   end
   else if ASymbol.SymbolKind = TIndexSymbolKind.Field then
   begin
@@ -1026,8 +1084,7 @@ var
 begin
   if AFamily.Accessors <> nil then
   begin
-    raise Fail(Format('%s ist Zugriffsmethode einer Property (%s). Bitte die Property umkehren.',
-      [AFamily.Name, AFamily.Accessors[0]]));
+    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfA2].Fmt([AFamily.Name, AFamily.Accessors[0]]));
   end;
   mOwner := ResolveAt(FResolver, AOrigin.Tree, AOrigin.FileName, APosition);
   mProperty := '';
@@ -1037,8 +1094,7 @@ begin
   end;
   if mProperty <> '' then
   begin
-    raise Fail(Format('%s ist Zugriffsmethode der Property %s. Bitte die Property umkehren.',
-      [mOwner.Name, mProperty]));
+    raise Fail(cTexts[TLspInvertBooleanText.IsAnAccessorOfThe2].Fmt([mOwner.Name, mProperty]));
   end;
 end;
 
@@ -1059,7 +1115,7 @@ begin
   end;
   if mFamily.BoundEvent <> '' then
   begin
-    raise Fail(Format('%s ist an ein Ereignis gebunden (%s).', [mFamily.Name, mFamily.BoundEvent]));
+    raise Fail(cTexts[TLspInvertBooleanText.IsBoundToAnEvent].Fmt([mFamily.Name, mFamily.BoundEvent]));
   end;
   WarnAll(mFamily.Warnings);
   for mHeader in mFamily.Headers do
@@ -1111,7 +1167,7 @@ begin
   Origin := Source(AFileName);
   if (Origin = nil) or (Origin.Tree = nil) then
   begin
-    raise Fail(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TLspInvertBooleanText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
   Family := TLspChangeSignature.Family(FamilySource(FResolver, FContext, Origin.Tree, AFileName, APosition));
   Last := -1;
@@ -1218,7 +1274,7 @@ begin
   end;
   if mNameToken < 0 then
   begin
-    raise Fail(Format('Zum Parameter %s fehlt die Routine.', [ASymbol.Name]));
+    raise Fail(cTexts[TLspInvertBooleanText.TheRoutineForTheParameter].Fmt([ASymbol.Name]));
   end;
   Result := mTokens[mNameToken].StartPos;
 end;
@@ -1262,18 +1318,17 @@ var
 begin
   if AFamily.BoundEvent <> '' then
   begin
-    raise Fail(Format('%s ist an ein Ereignis gebunden (%s); seine Parameter liegen fest.', [AFamily.Name,
+    raise Fail(cTexts[TLspInvertBooleanText.IsBoundToAnEvent2].Fmt([AFamily.Name,
       AFamily.BoundEvent]));
   end;
   if AParameter < 0 then
   begin
-    raise Fail(Format('Der Parameter %s steht nicht im Kopf von %s.', [ASymbol.Name, AFamily.Name]));
+    raise Fail(cTexts[TLspInvertBooleanText.TheParameterIsNotIn].Fmt([ASymbol.Name, AFamily.Name]));
   end;
   mModifier := LowerCase(Trim(AFamily.Headers[0].Parameters[AParameter].Modifier));
   if EndsText('var', mModifier) or EndsText('out', mModifier) then
   begin
-    raise Fail(Format('%s ist ein %s-Parameter: Der Aufrufer bekäme den umgekehrten Wert zurück.',
-      [ASymbol.Name, mModifier]));
+    raise Fail(cTexts[TLspInvertBooleanText.IsAParameterTheCaller].Fmt([ASymbol.Name, mModifier]));
   end;
 end;
 
@@ -1395,7 +1450,7 @@ begin
   end;
   if Result = nil then
   begin
-    raise Fail(Format('Die Deklaration von %s fehlt.', [ASymbol.Name]));
+    raise Fail(cTexts[TLspInvertBooleanText.TheDeclarationOfIsMissing].Fmt([ASymbol.Name]));
   end;
 end;
 
@@ -1463,11 +1518,9 @@ begin
   end
   else
   begin
-    Warn(Format('%s ist published: Formulare speichern noch %s (Formulare einbeziehen ist abgeschaltet).',
-      [ASymbol.Name, ASymbol.Name]));
+    Warn(cTexts[TLspInvertBooleanText.IsPublishedFormsStillStore].Fmt([ASymbol.Name, ASymbol.Name]));
   end;
-  Warn(Format('%s ist published: Formulare außerhalb des Projekts und gespeicherte Einstellungen behalten den ' +
-    'alten Namen.', [ASymbol.Name]));
+  Warn(cTexts[TLspInvertBooleanText.IsPublishedFormsOutsideThe].Fmt([ASymbol.Name]));
 end;
 
 procedure TInvertPlan.AddProperty(const ASymbol: TResolvedSymbol; const ANewName: string);
@@ -1529,13 +1582,13 @@ begin
   end;
   if TFileEncoding.IsBinaryFormFile(AForm) then
   begin
-    Warn(Format('%s ist binär gespeichert und bleibt; bitte in Textform umwandeln.', [ExtractFileName(AForm)]));
+    Warn(cTexts[TLspInvertBooleanText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(AForm)]));
     Exit;
   end;
   mEdits := TInvertBoolean.DfmEdits(mText, AClasses, AOld, ANew, mFound);
   for mWarning in mFound do
   begin
-    Warn(Format('%s, Zeile %d: %s', [ExtractFileName(AForm), mWarning.Position.Line + 1, mWarning.Text]));
+    Warn(cTexts[TLspInvertBooleanText.Line2].Fmt([ExtractFileName(AForm), mWarning.Position.Line + 1, mWarning.Text]));
   end;
   if mEdits <> nil then
   begin
@@ -1584,8 +1637,8 @@ begin
       begin
         if (Token.Kind = TPascalTokenKind.StringLiteral) and SameText(Token.Text, '''' + AOld + '''') then
         begin
-          Warn(Format('%s: Zeichenkette %s (RTTI oder Streaming?) bleibt, bitte prüfen.',
-            [Where(FileName, Token.StartPos), Token.Text]));
+          Warn(cTexts[TLspInvertBooleanText.StringRTTIOrStreamingStays].Fmt([Where(FileName, Token.StartPos),
+            Token.Text]));
         end;
       end;
     finally
@@ -1624,8 +1677,8 @@ begin
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
-      raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AUnit.FileName), mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
+      raise Fail(cTexts[TLspInvertBooleanText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+        mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
     end;
   finally
     mTree.Free;
@@ -1695,7 +1748,7 @@ var
   mWarning: string;
 begin
   mAnnotation := TJSONObject.Create;
-  mAnnotation.AddPair('label', 'Boolean umkehren');
+  mAnnotation.AddPair('label', cTexts[TLspInvertBooleanText.InvertBoolean].Text);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
   mAnnotation.AddPair('description', ADescription);
   mAnnotations := TJSONObject.Create;
@@ -1728,16 +1781,16 @@ var
 begin
   if not TLspRename.IsValidName(AContext.NewName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"%s" ist kein gültiger Bezeichner.',
-      [AContext.NewName]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));
   end;
   if not Target(AResolver, ATree, AFileName, APosition, AContext.Files, mSymbol) then
   begin
-    raise Fail('Hier steht kein Boolean des Projekts.');
+    raise Fail(cTexts[TLspInvertBooleanText.ThereIsNoBooleanOf].Text);
   end;
   if SameText(AContext.NewName, mSymbol.Name) then
   begin
-    raise Fail('Der neue Name ist der alte.');
+    raise Fail(cTexts[TLspInvertBooleanText.TheNewNameIsThe].Text);
   end;
   mPlan := TInvertPlan.Create(AResolver, ATree, AFileName, AText, AContext);
   try
@@ -1747,9 +1800,12 @@ begin
   finally
     mPlan.Free;
   end;
-  Result := Answer(mChanges, Format('%s → %s: %d Stellen in %d Dateien', [mSymbol.Name, AContext.NewName, mPlaces,
+  Result := Answer(mChanges, cTexts[TLspInvertBooleanText.PlacesInFiles].Fmt([mSymbol.Name, AContext.NewName, mPlaces,
     mFiles]), mWarnings, mPlaces, mFiles);
 end;
 
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InvertBoolean', cTexts);
 
 end.

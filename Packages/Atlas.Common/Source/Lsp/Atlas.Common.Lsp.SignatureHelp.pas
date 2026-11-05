@@ -155,7 +155,16 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSignatureHelpText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TSignatureHelpText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'));
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -1411,7 +1420,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen');
+      cTexts[TSignatureHelpText.FieldsTextDocumentUriAndPosition].Text);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -1436,5 +1445,8 @@ begin
   end;
   Result := ToJson(Help);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SignatureHelp', cTexts);
 
 end.

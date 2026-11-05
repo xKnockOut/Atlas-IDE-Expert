@@ -290,6 +290,7 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.Splitting.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Layout.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplateEn.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Comparison.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Matching.pas"/>

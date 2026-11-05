@@ -72,7 +72,46 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPublicMembersText = (GlobalVariable, PublicType, Searched, FileOne, FileMany, AndSep, FormOne, FormMany, OfGroup,
+    OfProject, MarkPublic, NeverUsed, OnlyUsedIn, Title, FieldNoun, ConstantNoun, PropertyNoun, ClassVariableNoun,
+    RoutineNoun, MethodNoun, PublishedKind, ProtectedNeuter, ProtectedKind, PublicNeuter, PublicKind);
+
+const
+  cTexts: array[TPublicMembersText] of TAtlasText = (
+    (De: 'Globale Variable'; En: 'Global variable'),
+    (De: 'Öffentlicher Typ'; En: 'Public type'),
+    (De: 'Durchsucht: '; En: 'Searched: '),
+    (De: 'Datei'; En: 'file'),
+    (De: 'Dateien'; En: 'files'),
+    (De: ' und '; En: ' and '),
+    (De: 'Formular'; En: 'form'),
+    (De: 'Formulare'; En: 'forms'),
+    (De: ' der Projektgruppe'; En: ' of the project group'),
+    (De: ' des Projekts'; En: ' of the project'),
+    (De: 'Als bewusst öffentlich markieren (lsp-ignore)'; En: 'Mark as intentionally public (lsp-ignore)'),
+    (De: '%s %s wird im Projekt nirgends verwendet.'; En: '%s %s is not used anywhere in the project.'),
+    (De: '%s %s wird nur in %s verwendet.'; En: '%s %s is only used in %s.'),
+    (De: 'Öffentliches Mitglied wird im Projekt nie verwendet'; En: 'Public member is never used in the project'),
+    (De: 'Feld'; En: 'field'),
+    (De: 'Konstante'; En: 'constant'),
+    (De: 'Property'; En: 'property'),
+    (De: 'Klassenvariable'; En: 'class variable'),
+    (De: 'Routine'; En: 'routine'),
+    (De: 'Methode'; En: 'method'),
+    (De: 'Published-%s'; En: 'Published %s'),
+    (De: 'Geschütztes %s'; En: 'Protected %s'),
+    (De: 'Geschützte %s'; En: 'Protected %s'),
+    (De: 'Öffentliches %s'; En: 'Public %s'),
+    (De: 'Öffentliche %s'; En: 'Public %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Aufrufe, die Klassen für Streaming und Objektinspektor bekannt machen.</summary>
@@ -102,48 +141,49 @@ begin
   if ASymbol.Container = '' then
     case ASymbol.Kind of
       TIndexSymbolKind.Variable:
-        Exit('Globale Variable');
+        Exit(cTexts[TPublicMembersText.GlobalVariable].Text);
       TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias:
-        Exit('Öffentlicher Typ');
+        Exit(cTexts[TPublicMembersText.PublicType].Text);
     else
       // Übrige Arten: nichts zu tun.
     end;
   Neuter := ASymbol.Kind = TIndexSymbolKind.Field;
   case ASymbol.Kind of
     TIndexSymbolKind.Field:
-      Noun := 'Feld';
+      Noun := cTexts[TPublicMembersText.FieldNoun].Text;
     TIndexSymbolKind.Constant:
-      Noun := 'Konstante';
+      Noun := cTexts[TPublicMembersText.ConstantNoun].Text;
     TIndexSymbolKind.Property_:
-      Noun := 'Property';
+      Noun := cTexts[TPublicMembersText.PropertyNoun].Text;
     TIndexSymbolKind.Variable:
-      Noun := 'Klassenvariable';
+      Noun := cTexts[TPublicMembersText.ClassVariableNoun].Text;
     TIndexSymbolKind.Routine:
-      Noun := 'Routine';
+      Noun := cTexts[TPublicMembersText.RoutineNoun].Text;
   else
-    Noun := 'Methode';
+    Noun := cTexts[TPublicMembersText.MethodNoun].Text;
   end;
+  // Das Geschlecht des Nomens zählt nur im Deutschen; die englischen Texte sind gleich.
   case ASymbol.Visibility of
     TIndexVisibility.Published:
-      Result := 'Published-' + Noun;
+      Result := cTexts[TPublicMembersText.PublishedKind].Fmt([Noun]);
     TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
       if Neuter then
       begin
-        Result := 'Geschütztes ' + Noun;
+        Result := cTexts[TPublicMembersText.ProtectedNeuter].Fmt([Noun]);
       end
       else
       begin
-        Result := 'Geschützte ' + Noun;
+        Result := cTexts[TPublicMembersText.ProtectedKind].Fmt([Noun]);
       end;
   else
     if Neuter then
     begin
-      Result := 'Öffentliches ' + Noun;
+      Result := cTexts[TPublicMembersText.PublicNeuter].Fmt([Noun]);
     end
     else
     begin
-      Result := 'Öffentliche ' + Noun;
+      Result := cTexts[TPublicMembersText.PublicKind].Fmt([Noun]);
     end;
   end;
 end;
@@ -858,18 +898,20 @@ end;
 
 function TSearchArea.SearchedText(AWholeGroup: Boolean): string;
 begin
-  Result := 'Durchsucht: ' + Counted(FFiles.Count, 'Datei', 'Dateien');
+  Result := cTexts[TPublicMembersText.Searched].Text + Counted(FFiles.Count, cTexts[TPublicMembersText.FileOne].Text,
+    cTexts[TPublicMembersText.FileMany].Text);
   if FForms.Count > 0 then
   begin
-    Result := Result + ' und ' + Counted(FForms.Count, 'Formular', 'Formulare');
+    Result := Result + cTexts[TPublicMembersText.AndSep].Text + Counted(FForms.Count,
+      cTexts[TPublicMembersText.FormOne].Text, cTexts[TPublicMembersText.FormMany].Text);
   end;
   if AWholeGroup then
   begin
-    Result := Result + ' der Projektgruppe';
+    Result := Result + cTexts[TPublicMembersText.OfGroup].Text;
   end
   else
   begin
-    Result := Result + ' des Projekts';
+    Result := Result + cTexts[TPublicMembersText.OfProject].Text;
   end;
 end;
 
@@ -1142,7 +1184,7 @@ begin
   begin
     mIndent := Copy(FLines[mLine], 1, Length(FLines[mLine]) - Length(TrimLeft(FLines[mLine])));
   end;
-  Result := TRuleFix.Create('Als bewusst öffentlich markieren (lsp-ignore)',
+  Result := TRuleFix.Create(cTexts[TPublicMembersText.MarkPublic].Text,
     [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '// lsp-ignore: ' +
     UnusedPublicMemberRuleId + FLineBreak)]);
   Result.Alternative := True;
@@ -1173,11 +1215,11 @@ begin
   end;
   case UsageOf(ASymbol, mTestProject) of
     TUsage.Unused:
-      FReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird im Projekt nirgends verwendet.',
+      FReport.AddWithDetails(ASymbol.SelectionRange, cTexts[TPublicMembersText.NeverUsed].Fmt(
         [KindText(ASymbol), QualifiedOf(ASymbol)]), FArea.SearchedText(FOptions.WholeGroup), TRuleConfidence.Medium,
         [IgnoreFix(ASymbol)]);
     TUsage.OnlyTests:
-      FReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird nur in %s verwendet.',
+      FReport.AddWithDetails(ASymbol.SelectionRange, cTexts[TPublicMembersText.OnlyUsedIn].Fmt(
         [KindText(ASymbol), QualifiedOf(ASymbol), mTestProject]), FArea.SearchedText(FOptions.WholeGroup),
         TRuleConfidence.Medium, [IgnoreFix(ASymbol)]);
   else
@@ -1210,7 +1252,7 @@ end;
 function TUnusedPublicMemberRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(UnusedPublicMemberRuleId, TRuleSeverity.Hint,
-    'Öffentliches Mitglied wird im Projekt nie verwendet');
+    cTexts[TPublicMembersText.Title].Text);
 end;
 
 /// <summary>Hat der Lauf Baum, Projektdateien, Index und Dateinamen, und bindet die Unit nichts ein?</summary>
@@ -1251,5 +1293,8 @@ procedure RegisterPublicMemberRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUnusedPublicMemberRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.PublicMembers', cTexts);
 
 end.

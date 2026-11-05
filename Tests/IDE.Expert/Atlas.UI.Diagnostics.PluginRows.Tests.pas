@@ -23,12 +23,20 @@ type
     procedure RequestRowMarksTimeoutsAndFailures;
     [Test]
     procedure ColumnsMatchCells;
+    /// <summary>Breit genug: feste Breiten, die erste Spalte nimmt den Rest.</summary>
+    [Test]
+    procedure LayoutKeepsFixedWidthsWhenWide;
+    /// <summary>Zu schmal (Startgröße, Reiter „Server“): Die erste Spalte behält ihr Minimum, die übrigen werden
+    /// anteilig schmaler und enden am rechten Rand.</summary>
+    [Test]
+    procedure LayoutShrinksFixedColumnsWhenNarrow;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Types,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.PluginReport,
@@ -119,6 +127,37 @@ begin
   mHang := Default(TAtlasHangEntry);
   Assert.AreEqual(Integer(Length(TAtlasPluginGridRows.HangColumns)),
     Integer(Length(TAtlasPluginGridRows.Hangs(TArray<TAtlasHangEntry>.Create(mHang))[0].Cells)));
+end;
+
+procedure TAtlasPluginGridRowsTests.LayoutKeepsFixedWidthsWhenWide;
+var
+  mSpans: TArray<TPoint>;
+begin
+  mSpans := TAtlasGridLayout.Spans(TArray<Integer>.Create(0, 100, 50), 500, 160, 40);
+  Assert.AreEqual(0, mSpans[0].X);
+  Assert.AreEqual(350, mSpans[0].Y);
+  Assert.AreEqual(350, mSpans[1].X);
+  Assert.AreEqual(450, mSpans[1].Y);
+  Assert.AreEqual(500, mSpans[2].Y);
+end;
+
+procedure TAtlasPluginGridRowsTests.LayoutShrinksFixedColumnsWhenNarrow;
+var
+  mWidths: TArray<Integer>;
+  mSpans: TArray<TPoint>;
+  mIndex: Integer;
+begin
+  // Spalten des Reiters „Server“: 64 + 72 + 72 + 150 + 120 + 90 + 60 = 628 feste Pixel.
+  mWidths := TArray<Integer>.Create(0, 64, 72, 72, 150, 120, 90, 60);
+  mSpans := TAtlasGridLayout.Spans(mWidths, 600, 160, 40);
+  Assert.AreEqual(160, mSpans[0].Y, 'Anfrage behält ihr Minimum');
+  for mIndex := 1 to High(mSpans) do
+  begin
+    Assert.AreEqual(mSpans[mIndex - 1].Y, mSpans[mIndex].X, 'lückenlos');
+    Assert.IsTrue(mSpans[mIndex].Y - mSpans[mIndex].X >= 40, 'Mindestbreite');
+    Assert.IsTrue(mSpans[mIndex].Y - mSpans[mIndex].X <= mWidths[mIndex], 'höchstens die feste Breite');
+  end;
+  Assert.IsTrue(mSpans[High(mSpans)].Y <= 600, 'endet am Rand: ' + IntToStr(mSpans[High(mSpans)].Y));
 end;
 
 initialization

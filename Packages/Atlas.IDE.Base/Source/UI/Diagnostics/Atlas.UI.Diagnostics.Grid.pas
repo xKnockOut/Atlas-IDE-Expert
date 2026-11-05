@@ -4,8 +4,9 @@
 // Hintergrund, Hänger), reine VCL: Kopfzeile, Zeilen mit Warn- und
 // Fehlerfarbe je Zelle, auf Wunsch ein Anteilsbalken in der letzten Spalte und
 // eine gewählte Zeile (Klick, Rechtsklick, Doppelklick). Die erste Spalte
-// nimmt die übrige Breite, die anderen haben feste Breiten (bei 96 dpi). Die
-// Zeichenfläche ist so hoch wie alle Zeilen und liegt in einem Rollbereich;
+// nimmt die übrige Breite, die anderen haben feste Breiten (bei 96 dpi); ist
+// das Fenster dafür zu schmal, werden sie anteilig schmaler (TAtlasGridLayout).
+// Die Zeichenfläche ist so hoch wie alle Zeilen und liegt in einem Rollbereich;
 // so braucht nichts davon ein Fenster, bevor es gezeigt wird.
 
 interface
@@ -32,6 +33,16 @@ type
     Width: Integer;
     Right: Boolean;
     class function Make(const ACaption: string; AWidth: Integer; ARight: Boolean): TAtlasGridColumn; static;
+  end;
+
+  /// <summary>Spaltenkanten: Die erste Spalte nimmt den Rest, mindestens AFirstMin. Reicht die Breite dafür nicht,
+  /// werden die übrigen Spalten anteilig schmaler, jede höchstens bis AFixedMin; ihre Texte enden dann mit „…“.
+  /// Vorher behielten sie ihre Breite und ragten in der Startgröße des Fensters über den Rand, oder die erste
+  /// Spalte (etwa die Anfrage im Reiter „Server“) war nur 80 Pixel breit.</summary>
+  TAtlasGridLayout = record
+    /// <summary>Linke und rechte Kante je Spalte; AWidths[0] wird nicht gelesen.</summary>
+    class function Spans(const AWidths: TArray<Integer>; AWidth, AFirstMin, AFixedMin: Integer): TArray<TPoint>;
+      static;
   end;
 
   TAtlasGridRow = record
@@ -96,7 +107,8 @@ uses
 
 const
   cTextFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS;
-  cFirstMinWidth = 80;
+  cFirstMinWidth = 160;
+  cFixedMinWidth = 40;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -110,6 +122,38 @@ begin
   Result.Caption := ACaption;
   Result.Width := AWidth;
   Result.Right := ARight;
+end;
+
+{ TAtlasGridLayout }
+
+class function TAtlasGridLayout.Spans(const AWidths: TArray<Integer>; AWidth, AFirstMin,
+  AFixedMin: Integer): TArray<TPoint>;
+var
+  mFixed, mAvailable, mIndex, mLeft, mWidth: Integer;
+begin
+  SetLength(Result, Length(AWidths));
+  if Length(AWidths) = 0 then
+  begin
+    Exit;
+  end;
+  mFixed := 0;
+  for mIndex := 1 to High(AWidths) do
+  begin
+    Inc(mFixed, AWidths[mIndex]);
+  end;
+  mAvailable := Max(0, AWidth - AFirstMin);
+  mLeft := Max(AFirstMin, AWidth - mFixed);
+  Result[0] := Point(0, mLeft);
+  for mIndex := 1 to High(AWidths) do
+  begin
+    mWidth := AWidths[mIndex];
+    if (mAvailable < mFixed) and (mFixed > 0) then
+    begin
+      mWidth := Max(Min(AFixedMin, AWidths[mIndex]), MulDiv(AWidths[mIndex], mAvailable, mFixed));
+    end;
+    Result[mIndex] := Point(mLeft, mLeft + mWidth);
+    Inc(mLeft, mWidth);
+  end;
 end;
 
 { TAtlasGridRow }
@@ -207,23 +251,15 @@ end;
 
 function TAtlasDiagnosticGrid.ColumnSpan(AIndex, AWidth: Integer): TPoint;
 var
-  mFixed, mIndex, mLeft: Integer;
+  mWidths: TArray<Integer>;
+  mIndex: Integer;
 begin
-  mFixed := 0;
-  for mIndex := 1 to High(FColumns) do
+  SetLength(mWidths, Length(FColumns));
+  for mIndex := 0 to High(FColumns) do
   begin
-    Inc(mFixed, Scale(FColumns[mIndex].Width));
+    mWidths[mIndex] := Scale(FColumns[mIndex].Width);
   end;
-  mLeft := Max(Scale(cFirstMinWidth), AWidth - mFixed);
-  if AIndex = 0 then
-  begin
-    Exit(Point(0, mLeft));
-  end;
-  for mIndex := 1 to AIndex - 1 do
-  begin
-    Inc(mLeft, Scale(FColumns[mIndex].Width));
-  end;
-  Result := Point(mLeft, mLeft + Scale(FColumns[AIndex].Width));
+  Result := TAtlasGridLayout.Spans(mWidths, AWidth, Scale(cFirstMinWidth), Scale(cFixedMinWidth))[AIndex];
 end;
 
 function TAtlasDiagnosticGrid.RowText(AIndex: Integer): string;
