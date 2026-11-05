@@ -4624,7 +4624,7 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
 | AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
 | AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
-| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau und Knopf „Datei jetzt prüfen“; die Liste ändert sich erst beim Speichern bzw. erst auf den Knopf |
+| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau, kein Knopf „Datei jetzt prüfen“ im Fenster; die Liste ändert sich erst beim Speichern bzw. erst auf Klick auf die Prüfung in der Atlas-Statusleiste |
 | AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
 | AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
 | AP17 | „Regel einstellen…“ im Tooltip | Der Dialog der Projekt-Einstellungen (ohne Projekt der globale) öffnet sich im Knoten der Gruppe, die Regel ist markiert |
@@ -9289,7 +9289,7 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV2 | Live, Verzögerung 2000, OK; tippen und anhalten | Die Liste ändert sich erst etwa 2 s nach dem letzten Tastendruck; mit 100 fast sofort (**Abnahme**) |
 | LV3 | Verzögerung 50 bzw. 50000 eingeben, OK, Dialog wieder öffnen | Wert auf 100 bzw. 10000 begrenzt |
 | LV4 | „Beim Speichern“; tippen, dann Strg+S | Beim Tippen keine Prüfung; nach dem Speichern die neuen Befunde |
-| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Knopf „Datei jetzt prüfen“ im Fenster prüft sofort (**Abnahme**) |
+| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Klick auf „manuell · …“ in der Atlas-Statusleiste prüft sofort (**Abnahme**) |
 | LV6 | In LV5 Befehlspalette (Strg+Umschalt+P) › „Datei jetzt prüfen“ | Die offene Datei wird geprüft; mit ausgeschalteten Prüfregeln fehlt der Befehl |
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
@@ -9489,3 +9489,17 @@ end;
 | LR11 | Englische Oberfläche | Beschriftungen englisch |
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Datei prüfen über die Atlas-Statusleiste statt über einen Knopf (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Prüfregeln (`problems.enabled`) und Atlas-Statusleiste an, Fenster „Atlas-Prüfung“ offen, eine Unit mit Befunden im Editor.
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| PS1 | `problems.update` nacheinander auf „Live“, „Beim Speichern“ und „Nur auf Anforderung“ | Rechts im Fenster „Atlas-Prüfung“ steht nur die Anzeige „● Live“, „Beim Speichern“ bzw. „Manuell“; ein Knopf „Datei jetzt prüfen“ erscheint in keinem Modus, nichts ist abgeschnitten (**Abnahme**) |
+| PS2 | „Beim Speichern“; in der Unit einen Befund einbauen, nicht speichern, Maus über „beim Speichern · Projekt xx %“ in der Atlas-Statusleiste | Tooltip endet mit „Klick: Datei jetzt prüfen“ |
+| PS3 | In PS2 auf „beim Speichern · Projekt xx %“ klicken | Die offene Datei wird sofort geprüft, auch ungespeichert; der neue Befund erscheint in Statusleiste und Fenster, die übrigen Units werden nicht neu geprüft (**Abnahme**) |
+| PS4 | „Nur auf Anforderung“; Befund einbauen, auf „manuell · …“ in der Statusleiste klicken | Die offene Datei wird geprüft wie in PS3 |
+| PS5 | „Live“; auf die Live-Prüfung in der Statusleiste klicken | Wie bisher: „Atlas prüft alle Units neu …“, alle Units werden neu geprüft |
+| PS6 | Befehlspalette › „Datei jetzt prüfen“ und Strg+Umschalt+Alt+P | Beides prüft die offene Datei weiterhin |
+| PS7 | IDE auf Englisch (Atlas-Sprache English), PS1–PS3 wiederholen | Fenster „Atlas Findings“ ohne Knopf „Check file now“; Tooltip der Statusleiste endet mit „Click: check this file now“, Klick auf „on save · project xx %“ prüft die Datei |

@@ -1,4 +1,9 @@
-﻿## Lokale Routinen abheben (#1788, 05.11.2026, Branch `claude/project-thread-sbmrys` auf `Pilot-2.0.0-beta.1`)
+﻿## Knopf „Datei jetzt prüfen“ im Fenster „Atlas-Prüfung“ entfernt (05.11.2026, Branch `claude/project-thread-f6pi44` auf `Pilot-2.0.0-beta.1`)
+- Wunsch Marco: Der Knopf entfällt; die aktuelle Datei prüft die Schaltfläche der Prüfung in der Atlas-Statusleiste („beim Speichern · Projekt xx %“ bzw. „manuell · …“). Das tat sie außerhalb von Live schon (`TStatusBarState.Recheck` → `TAtlasIdeProblems.CheckFileNow`, `TAtlasStatusBarContent.ClickChecksFile`), im Live-Modus prüft der Klick weiter alle Units neu.
+- Entfernt: `TAtlasProblemsFrameParts.CheckFileButton`/`OnCheckFile`/`CheckFileClick` und die Verdrahtung in `Atlas.IDE.Problems.Service`. Befehl `Atlas.CheckFile`, Kürzel und Eintrag im Editor-Kontextmenü bleiben (Text `ProblemsCheckFileCommand`).
+- Test `LiveAndPausedAndStatus` prüft jetzt, dass das Fenster keinen solchen Knopf hat (nur Delphi, VCL). Handtests PS1–PS7. Nicht mit Delphi übersetzt.
+
+## Lokale Routinen abheben (#1788, 05.11.2026, Branch `claude/project-thread-sbmrys` auf `Pilot-2.0.0-beta.1`)
 - Anlass Marco: Eine lokale Funktion in einer procedure war nicht andersfarbig. Ursache: `TPairAnalyzer` setzt die Tiefe auf die Zahl offener Blöcke; zwischen den Routinen ist keiner offen, lokale und äußere Routine hatten beide Tiefe 0.
 - Analyse: `TAtlasPairToken`, `TAtlasPairBlock`, `TAtlasPairSpan` und `TAtlasGuide` tragen `Routine` (Verschachtelung, 0 = oberste Ebene), Blöcke zusätzlich `IsRoutine` (Rumpf). Offene Routinenköpfe zählen; Köpfe im interface-Teil werden nicht mehr gesammelt (`FInInterface`). `Depth` unverändert (Paarsuche in `Editor.Match`). Falle: `FResults.List[Emit(...)]` schreibt in das alte Array, wenn Emit die Liste vergrößert (AV unter FPC); erst Index holen.
 - Neue Unit `Atlas.Core.Editor.RoutineNesting`: Arten `outer`/`deeper`/`color`, Farbe aus Tiefe und Verschachtelung, Bänder, `PairPalette` (eigene Paarfarben und Farbe lokaler Routinen, ersetzt die doppelten `WithCustomPairs`/`PairPalette` in Editor.Pairs und StickyScroll). Palette: `NestedRoutine`, `WithNestedRoutine`, `ParseColor`.
