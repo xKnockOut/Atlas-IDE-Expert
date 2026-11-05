@@ -48,14 +48,17 @@
 //                       (#1352), mit derselben Analyse wie die Hinweise im
 //                       Editor (#621, TUsesActions.Entries): Units, die der
 //                       Index nicht kennt, mit initialization/finalization
-//                       oder aus usesKeep bleiben; inaktive Zweige zählen
+//                       oder aus usesKeep und der Option keep (#1135)
+//                       bleiben; inaktive Zweige zählen
 //                       nicht; nur in Units, denn das uses eines Programms
 //                       oder Packages zählt die Units des Projekts auf.
 //                       Sichere Korrektur „Eintrag entfernen“ für die
 //                       Sammelkorrektur (--fix unused-uses). Im Editor
-//                       (TRuleContext.Live) schweigt die Regel, dort zeigt
-//                       der Server dieselben Einträge abgeblendet; ohne Index
-//                       und bei Syntaxfehlern ebenso.
+//                       (TRuleContext.Live) läuft die Regel nicht
+//                       (IRuleCondition), dort zeigt der Server dieselben
+//                       Einträge abgeblendet, nach ihren Einstellungen
+//                       (TLspSyntaxDiagnostics.AddUnusedUses); ohne Index und
+//                       bei Syntaxfehlern ebenso.
 //
 // uses-cycle und unused-unit schweigen ohne Projekte (Linter, Datei ohne
 // Projekt), solange Projekte laden oder der Index läuft, und für Units, die der
@@ -74,9 +77,11 @@ const
   UnusedUsesRuleId = 'unused-uses';
 
 type
-  TUsesCycleRule = class(TInterfacedObject, IRule)
+  TUsesCycleRule = class(TInterfacedObject, IRule, IRuleCondition)
   public
     function Descriptor: TRuleDescriptor;
+    /// <summary>Nicht beim Tippen mit diagnostics.usesCycleLive aus (#896).</summary>
+    function Applies(const AContext: TRuleContext): Boolean;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
@@ -92,10 +97,16 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
-  TUnusedUsesRule = class(TInterfacedObject, IRule)
+  TUnusedUsesRule = class(TInterfacedObject, IRule, IRuleCondition)
   public
     function Descriptor: TRuleDescriptor;
+    /// <summary>Nicht im Editor (dort blendet der Server dieselben Einträge ab), ohne Index, bei Syntaxfehlern und
+    /// außerhalb von Units.</summary>
+    function Applies(const AContext: TRuleContext): Boolean;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>Units, die bleiben: AUsesKeep (usesKeep) und die Option keep der Regel aus AOptions (#1135).
+    /// </summary>
+    class function Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>; static;
   end;
 
 procedure RegisterDeadCodeRules(const ARegistry: TRuleRegistry);
@@ -693,18 +704,20 @@ begin
   Result := TRuleDescriptor.Create(UsesCycleRuleId, TRuleSeverity.Warning, 'Zirkuläre Unit-Referenz über uses');
 end;
 
+function TUsesCycleRule.Applies(const AContext: TRuleContext): Boolean;
+begin
+  // diagnostics.usesCycleLive aus (#896): keine Meldung beim Tippen, die projektweite Prüfung bleibt. Die Regel
+  // läuft dann nicht, ihr lsp-ignore ist also nicht unnötig (#1135).
+  Result := not (AContext.Live and AContext.NoUsesCycleLive);
+end;
+
 procedure TUsesCycleRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mRange: TTextRange;
   mCheck: TUsesCycleCheck;
 begin
   if (AContext.Tree = nil) or (AContext.FileName = '') or IsProgramFile(AContext.FileName) or
-    not UnitNameRange(AContext.Tree.Tokens, mRange) then
-  begin
-    Exit;
-  end;
-  // diagnostics.usesCycleLive aus (#896): keine Meldung beim Tippen, die projektweite Prüfung bleibt.
-  if AContext.Live and AContext.NoUsesCycleLive then
+    not UnitNameRange(AContext.Tree.Tokens, mRange) or not Applies(AContext) then
   begin
     Exit;
   end;
@@ -1189,28 +1202,37 @@ begin
   Result := TRuleDescriptor.Create(UnusedUsesRuleId, TRuleSeverity.Hint, 'Aus der Unit im uses wird nichts verwendet');
 end;
 
+class function TUnusedUsesRule.Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>;
+begin
+  Result := AUsesKeep + TRuleOptions.Strings(AOptions, 'keep', nil);
+end;
+
+function TUnusedUsesRule.Applies(const AContext: TRuleContext): Boolean;
+begin
+  // Im Editor zeigt der Server dieselben Einträge abgeblendet (#621); ohne Index ist nichts sicher, und bei
+  // Syntaxfehlern fehlen Bezeichner. Das uses eines Programms, einer Bibliothek oder eines Packages zählt die
+  // Units des Projekts auf (Formulare, "in"-Pfade, DCCReference): Ein Eintrag dort ist Mitgliedschaft, nicht
+  // Abhängigkeit.
+  Result := not AContext.Live and (AContext.Index <> nil) and (AContext.Tree <> nil) and
+    (Length(AContext.Tree.Diagnostics) = 0) and
+    (TModuleHeader.Read(AContext.Tree.Tokens).Kind = TModuleKind.UnitModule);
+end;
+
 procedure TUnusedUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mEntry: TUsesEntry;
   mEdit: TTextEdit;
   mFixes: TArray<TRuleFix>;
 begin
-  // Im Editor zeigt der Server dieselben Einträge abgeblendet (#621); ohne Index ist nichts sicher, und bei
-  // Syntaxfehlern fehlen Bezeichner.
-  if AContext.Live or (AContext.Index = nil) or (AContext.Tree = nil) or (Length(AContext.Tree.Diagnostics) > 0) then
-  begin
-    Exit;
-  end;
-  // Das uses eines Programms, einer Bibliothek oder eines Packages zählt die Units des Projekts auf (Formulare,
-  // "in"-Pfade, DCCReference): Ein Eintrag dort ist Mitgliedschaft, nicht Abhängigkeit.
-  if TModuleHeader.Read(AContext.Tree.Tokens).Kind <> TModuleKind.UnitModule then
+  // Auch bei einem Aufruf ohne Prüflauf (der Lauf fragt Applies vorher).
+  if not Applies(AContext) then
   begin
     Exit;
   end;
   // Module, auf die die Formulardatei verweist: Ihr uses-Eintrag ist gebraucht (dfm-reference-unit-missing).
   for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges,
     UsesUnitInfo(AContext.Index, AContext.EnsureUnit, TFormModel.ForeignModulesOf(AContext.FormText)),
-    AContext.UsesKeep) do
+    Keep(AContext.Options, AContext.UsesKeep)) do
   begin
     if mEntry.State <> TUsesEntryState.Unused then
     begin

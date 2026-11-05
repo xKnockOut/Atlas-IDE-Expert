@@ -9289,3 +9289,21 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
 | LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |
+
+## Prüfregel unused-uses (#1135)
+
+Vorbereitung: Projekt mit Unit `uBericht.pas`, deren uses `System.SysUtils, System.Classes, Vcl.Grids` enthält und nur `Format` aus SysUtils verwendet; Fenster „Atlas-Prüfung“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UU1 | uBericht im Editor öffnen | `System.Classes` und `Vcl.Grids` abgeblendet, Tooltip „Aus Vcl.Grids wird nichts verwendet“; keine zweite Meldung mit `unused-uses` im Prüffenster (**Abnahme**) |
+| UU2 | `AtlasServer --check <Projekt> --rules unused-uses`, danach dasselbe mit `--no-index` | Mit Index je ein Hinweis `unused-uses` für die beiden Units; ohne Index nichts |
+| UU3 | Claude Code: MCP `get_diagnostics` für uBericht.pas | Dieselben zwei Hinweise wie in UU2 |
+| UU4 | Schnellkorrektur „Eintrag entfernen“ in der Ausgabe von `get_diagnostics` bzw. `--fix unused-uses` | Eintrag samt Komma entfernt, Datei übersetzt weiter |
+| UU5 | In atlas.json `"rules": {"unused-uses": "off"}`, Datei neu öffnen | Kein Abblenden mehr, `--check` meldet nichts; „uses aufräumen“ entfernt weiter |
+| UU6 | `"rules": {"unused-uses": {"severity": "warning", "keep": ["Vcl.Grids"]}}` | Vcl.Grids nicht mehr abgeblendet, `--check` meldet nur System.Classes als Warnung; „uses aufräumen“ lässt Vcl.Grids stehen |
+| UU7 | `"rules": {"unused-uses": {"severity": "hint", "exclude": ["uBericht"]}}` | Kein Abblenden in uBericht, `--check` meldet dort nichts; andere Units unverändert |
+| UU8 | `// lsp-ignore: unused-uses` in eine eigene Zeile über `Vcl.Grids` schreiben, speichern (mit „Beim Speichern korrigieren“ an) | Vcl.Grids nicht mehr abgeblendet; kein Hinweis `unused-suppression`, der Kommentar bleibt nach dem Speichern stehen; `--check` meldet Vcl.Grids nicht |
+| UU9 | `--check` mit `--baseline`, in der der Treffer für Vcl.Grids steht | Nur System.Classes gemeldet |
+| UU10 | *Tools › Optionen › Atlas › Prüfregeln*, Regel „Ungenutzte Unit im uses“ öffnen | Schweregrad wählbar, Option „keep“ als Liste; Änderung wirkt wie UU5/UU6 |
+| UU11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TUnusedUsesTests` und `TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule` grün |
