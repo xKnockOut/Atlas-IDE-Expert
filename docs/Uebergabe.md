@@ -1,4 +1,9 @@
-﻿## Update-Installer (#1519, 04.11.2026, Branch `claude/project-thread-0tfj25` auf `Pilot-2.0.0-beta.1`)
+﻿## Stable- und Unstable-Branch für v2.0 (05.11.2026, Branch `claude/project-thread-d525ec` auf `Pilot-2.0.0-beta.1`)
+- `Pilot-2.0.0-beta.1` ist der Unstable-Branch: Alle PRs gehen weiter dorthin, sobald Atlas und die FPC-CI grün sind.
+- `Pilot-2.0-stable` zeigt nur auf Pilot-Commits, die Marco mit Delphi 0/0/0 gebaut hat (Win64-Gruppe und Win32-Plugin, Tests grün). Kein eigener Code-Weg, keine PRs und keine Cherry-Picks dorthin: Stable wird nur vorgerückt (fast-forward), z. B. `git push origin <commit>:refs/heads/Pilot-2.0-stable`.
+- Jeder bestätigte Stand bekommt einen Tag `delphi-ok-JJJJ-MM-TT` auf demselben Commit.
+- Angelegt auf `c03f26ed` (Version 2.0.0-beta.1). Tag `delphi-ok-2026-11-05` steht noch aus: Aus der Cloud ließ sich kein Tag pushen, Marco setzt ihn lokal.
+## Update-Installer (#1519, 04.11.2026, Branch `claude/project-thread-0tfj25` auf `Pilot-2.0.0-beta.1`)
 - Variante A von Marco („beim Beenden installieren“), ADR 0018. Neue Konsolenanwendung `AtlasUpdate.exe` (`Application/AtlasUpdate.dpr`, Shell `Shell.Update*.pas`) mit `prepare`, `apply`, `install`; Logik `Atlas.Common.Updates.*` (Versionsdatei, Auswahl, Known Packages, Archiv, Bauen aus dem Quelltext, Tausch mit Rückfall), Texte/Records `Atlas.Text.Updates`, `Atlas.Text.UpdateRun`; Windows-Adapter `Atlas.Windows.Updates.Adapters.*`.
 - Plugin: `Atlas.Core.Updates.Install` (Modus, Kanal, Sperrgründe, Aufrufe), `Atlas.IDE.Updates.Install` (Prozesse starten, `state.json` lesen, `result.json` melden), `Atlas.UI.Updates.Offer`/`.Selection`/`.Texts`/`.Strings`; `TAtlasIdeUpdates` bietet an, bereitet mit `auto` ohne Frage vor und startet `apply`, wenn `Application.Terminated` beim Entladen gesetzt ist.
 - Einstellungen `updates.install`, `updates.channel`, `updates.newModules` (Seite „Start und Updates“).
