@@ -66,7 +66,6 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
   Atlas.Core.Lsp.BackgroundRequest,
@@ -167,7 +166,7 @@ var
   mFileName, mKey, mText: string;
   mVersion: Cardinal;
   mNodes: TAtlasOutlineNodes;
-  mOk: Boolean;
+  mAnswered: Boolean;
 begin
   AEntry.Version := ASnapshot.Version;
   AEntry.PendingVersion := ASnapshot.Version;
@@ -192,36 +191,32 @@ begin
   mText := ASnapshot.Text;
   mVersion := ASnapshot.Version;
   mNodes := nil;
-  mOk := False;
+  mAnswered := False;
   Request.Start(
     procedure
     var
       mResponse: TJSONValue;
     begin
+      mResponse := mSession.DocumentSymbolTree(mFileName, RequestTimeoutMs);
       try
-        mResponse := mSession.DocumentSymbolTree(mFileName, RequestTimeoutMs);
-        try
-          mOk := mResponse <> nil;
-          if mOk then
-          begin
-            mNodes := TAtlasOutline.FromJson(mResponse);
-          end;
-        finally
-          mResponse.Free;
-        end;
-      except
-        // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
-        on E: ELspClientError do
+        mAnswered := mResponse <> nil;
+        if mAnswered then
         begin
-          TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.MessageText(E.Message) +
-            '); alter Stand bleibt');
-          mOk := False;
+          mNodes := TAtlasOutline.FromJson(mResponse);
         end;
+      finally
+        mResponse.Free;
       end;
     end,
-    procedure
+    procedure(AOk: Boolean; const AError: string)
     begin
-      Loaded(mKey, mText, mVersion, mOk, mNodes);
+      // Zeitgrenze, Fehlerantwort oder beendete Verbindung: wie keine Antwort.
+      if AError <> '' then
+      begin
+        TAtlasGuard.Log('Gliederung: keine Antwort vom Server (' + TAtlasGuard.MessageText(AError) +
+          '); alter Stand bleibt');
+      end;
+      Loaded(mKey, mText, mVersion, AOk and mAnswered, mNodes);
     end);
 end;
 

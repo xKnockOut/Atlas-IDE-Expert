@@ -9369,3 +9369,18 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 | ZB3 | `node Tools/Benchmark/ready.mjs --logs vor=<Ordner vor> --logs nach=<Ordner nach>` | Tabelle mit Umstieg, Median und Spannweite je Fassung; „nach“ nicht langsamer als „vor“ (**Abnahme**, Tabelle ins Issue #1479) |
 | ZB4 | Dieselbe Gruppe ohne IDE: `node Tools/Benchmark/ready.mjs --server vor=<alte AtlasServer.exe> --server nach=<neue> --target <Gruppenordner> --runs 6 --cache %TEMP%\atlas-ready` | Wie ZB3; die Zeiten liegen unter denen der IDE (ohne Start von Delphi) |
 | ZB5 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TIndexCacheDirectoryTests.OwnLockKnownInProcess` grün |
+
+## Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
+
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AA1 | `memoryBudgetMb` auf den bisherigen Wert (z. B. 1024), IDE neu starten, warten bis „bereit“, eine Unit mit vielen public-Methoden öffnen | Fenster „Atlas-Server“: `unused-public-member` nicht mehr unter den langsamsten Regeln mit Minutenwerten; die Warteschlange der Prüfung läuft leer (**Abnahme**) |
+| AA2 | Im Editor tippen und mit der Maus durch Zeilen klicken, 2 Minuten | Reiter „Hänger“: keine Einträge von 600 bis 800 ms mehr durch Inlay-Hints, Glühbirne, Überschreibungen oder Gliederung; Reiter „Hauptthread“: `InlayHints`, `GutterColumn` und `Outline` mit Maximum unter 50 ms (**Abnahme**) |
+| AA3 | Cursor auf eine Zeile mit Befund, der eine Schnellkorrektur hat (z. B. fehlendes `begin`/`end`) | Nach kurzer Zeit erscheint die Glühbirne in der Atlas-Spalte am Rand |
+| AA4 | Eine Klasse mit überschriebenen Methoden öffnen | Überschreibungs-Marker in der Atlas-Spalte erscheinen, ohne dass die IDE stockt |
+| AA5 | Gliederung (Brotkrümel/Sticky Scroll) in einer großen Unit, während der Server prüft | Gliederung folgt nach der Antwort; im Log höchstens vereinzelt „Gliederung: keine Antwort vom Server (… 5000 ms)“, nicht mehr alle paar Sekunden |
+| AA6 | Mitteilungen über 30 Minuten Arbeit | Kein „Absturzfall gesichert — Der Server hat die Anfrage abgebrochen: textDocument/codeAction“ mehr |
+| AA7 | IDE schließen, während der Server beschäftigt ist | IDE schließt ohne Zugriffsverletzung; kein Fehler im Log nach dem Entladen |
+| AA8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasBackgroundRequestTests`, `TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough`, `TRuleProjectFilesTests.NameInReadsEachFileOnce` grün |
