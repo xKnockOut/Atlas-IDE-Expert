@@ -64,7 +64,8 @@ uses
   System.IOUtils,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
-  Atlas.Common.Mcp.BuildTools;
+  Atlas.Common.Mcp.BuildTools,
+  Atlas.Text.LogMarks;
 
 constructor TShellIde.Create(const AServices: TShellIdeServices);
 begin
@@ -136,7 +137,7 @@ begin
       TMcpBuildTools.ToFileText(ABuild), TEncoding.UTF8);
   except
     on E: Exception do
-      FServices.Logger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
+      FServices.Logger.Warning(Format('Letzter Build nicht gespeichert: %s', [TLogMarks.Text(E.Message)]));
   end;
 end;
 
@@ -171,7 +172,8 @@ var
   mWorkspace: TShellWorkspace;
 begin
   FServices.Logger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
-    [ExtractFileName(AContext.Project), AContext.Configuration, AContext.Platform]));
+    [TLogMarks.Path(ExtractFileName(AContext.Project)),
+      TLogMarks.Name(AContext.Configuration), TLogMarks.Name(AContext.Platform)]));
   for mWorkspace in WorkspacesOfProject(AContext.Project) do
   begin
     mWorkspace.Reload;

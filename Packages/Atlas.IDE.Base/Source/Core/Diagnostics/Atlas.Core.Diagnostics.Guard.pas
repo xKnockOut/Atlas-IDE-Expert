@@ -47,13 +47,20 @@
 //   Scheitert das Anhängen, zählt Add die verlorenen Zeilen, meldet den
 //   ersten Fehler (und jeden neuen Grund) über OnError und schreibt beim
 //   nächsten Gelingen eine Zeile über die Lücke.
+// - Anonym (#1478): Jede Zeile läuft vor dem Schreiben durch
+//   TAtlasLogRedactor (Atlas.Core.Diagnostics.LogRedaction). Namen, Pfade und
+//   fremder Text sind an der Stelle gekennzeichnet, an der die Zeile entsteht
+//   (Atlas.Text.LogMarks); die Meldung einer Exception kennzeichnet ErrorText
+//   bzw. ErrorLine. Klarnamen nur mit diagnostics.log.names (Redactor.Names).
+//   Warnungen an die Oberfläche gehen ohne Kennzeichen im Klartext.
 
 interface
 
 uses
   System.SysUtils,
   System.SyncObjs,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Diagnostics.LogRedaction;
 
 type
 {$SCOPEDENUMS ON}
@@ -85,6 +92,7 @@ type
     FLastError: string;
     FRotateError: string;
     FOnError: TAtlasLogError;
+    FRedactor: TAtlasLogRedactor;
     procedure Rotate;
     /// <summary>Rotiert eine volle Datei; Zeile über ein gescheitertes Rotieren oder ''.</summary>
     function RotateIfFull(const AStamp: string): string;
@@ -121,6 +129,8 @@ type
     property OnError: TAtlasLogError read FOnError write FOnError;
     /// <summary>%LOCALAPPDATA%\Atlas\Logs.</summary>
     class function DefaultFolder: string; static;
+    /// <summary>Anonymisiert jede Zeile vor dem Schreiben (#1478); gehört dem Protokoll.</summary>
+    property Redactor: TAtlasLogRedactor read FRedactor;
   end;
 
   TAtlasFuse = class
@@ -229,6 +239,13 @@ type
     class function DisabledSet: TAtlasFeatures; static;
     /// <summary>Protokolliert eine Zeile ins rotierende Protokoll.</summary>
     class procedure Log(const AText: string); static;
+    /// <summary>„Klasse: Meldung“ mit gekennzeichneter, einzeiliger Meldung (#1478) für eine Protokollzeile.
+    /// </summary>
+    class function ErrorText(E: Exception): string; static;
+    /// <summary>AText einzeilig und gekürzt (SafeMessage), als fremder Text gekennzeichnet (#1478).</summary>
+    class function MessageText(const AText: string): string; static;
+    /// <summary>Klarnamen im Protokoll (diagnostics.log.names); Vorgabe aus.</summary>
+    class procedure SetLogNames(AValue: Boolean); static;
     class function FeatureName(AFeature: TAtlasFeature): string; static;
     /// <summary>Fehler der Quelle AName melden; nach 3 in 5 Minuten fällt nur sie aus.</summary>
     class procedure ReportProvider(const AName: string; E: Exception); overload; static;
@@ -264,6 +281,7 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
+  Atlas.Text.LogMarks,
   Atlas.Core.Product.Version;
 
 { TAtlasRotatingLog }
@@ -285,10 +303,12 @@ begin
   FMaxBytes := AMaxBytes;
   FMaxFiles := AMaxFiles;
   FLock := TCriticalSection.Create;
+  FRedactor := TAtlasLogRedactor.Create(TAtlasLogRedactor.EnvironmentIdentity);
 end;
 
 destructor TAtlasRotatingLog.Destroy;
 begin
+  FRedactor.Free;
   FLock.Free;
   inherited;
 end;
@@ -435,7 +455,8 @@ var
 begin
   FLock.Enter;
   try
-    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ' + AText + sLineBreak);
+    Failure := AppendLine(FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' ' + FRedactor.Redact(AText) +
+      sLineBreak);
     if Failure = '' then
     begin
       Notify := FFailed > 0;
@@ -758,6 +779,24 @@ begin
   end;
 end;
 
+class function TAtlasGuard.ErrorText(E: Exception): string;
+begin
+  Result := E.ClassName + ': ' + MessageText(E.Message);
+end;
+
+class function TAtlasGuard.MessageText(const AText: string): string;
+begin
+  Result := TLogMarks.Text(SafeMessage(AText));
+end;
+
+class procedure TAtlasGuard.SetLogNames(AValue: Boolean);
+begin
+  if FLog <> nil then
+  begin
+    FLog.Redactor.Names := AValue;
+  end;
+end;
+
 class function TAtlasGuard.SafeMessage(const AText: string): string;
 var
   Builder: TStringBuilder;
@@ -798,8 +837,7 @@ class function TAtlasGuard.ErrorLine(const AWhere: string; E: Exception): string
 var
   Trace: string;
 begin
-  Result := Format('Atlas %s · Fehler in %s: %s: %s', [TAtlasPluginVersion.Version, AWhere, E.ClassName,
-    SafeMessage(E.Message)]);
+  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.Version, AWhere, ErrorText(E)]);
   // E.StackTrace nur mit installiertem Anbieter (JCL, madExcept); sonst der Mitschnitt des Plugins.
   Trace := Trim(E.StackTrace);
   if (Trace = '') and Assigned(FStackOf) then
@@ -821,7 +859,7 @@ begin
   Log(AText);
   if Assigned(FOnWarning) then
     try
-      FOnWarning(AText);
+      FOnWarning(TLogMarks.Plain(AText));
     except
       // Auch die Warnung darf nicht in die IDE durchschlagen.
     end;
@@ -881,7 +919,7 @@ begin
   Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
     'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
     'Funktionen einschalten.', [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
-    SafeMessage(E.Message)]));
+    TLogMarks.Text(SafeMessage(E.Message))]));
   Tripped := FOnTripped;
   if Assigned(Tripped) then
     try
@@ -899,7 +937,7 @@ begin
     Warn(Format('Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen ' +
       'Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über ' +
       'Atlas > Abgeschaltete Funktionen einschalten.', [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
-      SafeMessage(E.Message)]));
+      TLogMarks.Text(SafeMessage(E.Message))]));
   end;
 end;
 
@@ -935,7 +973,7 @@ begin
   begin
     Suffix := Format(' (dazu %d weitere seit der letzten Meldung)', [Skipped]);
   end;
-  Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, SafeMessage(AText), Suffix]));
+  Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, MessageText(AText), Suffix]));
 end;
 
 class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;

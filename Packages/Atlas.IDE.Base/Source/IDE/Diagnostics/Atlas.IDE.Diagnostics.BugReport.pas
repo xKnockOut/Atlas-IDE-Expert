@@ -124,6 +124,7 @@ begin
   Result.Platform := 'Win32';
   {$ENDIF}
   Result.Anonymize := TAtlasIdeSettings.Current.BugReportAnonymize;
+  Result.PluginLogNames := TAtlasIdeSettings.Current.LogNames;
   Result.Created := Now;
   Result.Roots := ProjectRoots;
   Result.Identity := Identity;

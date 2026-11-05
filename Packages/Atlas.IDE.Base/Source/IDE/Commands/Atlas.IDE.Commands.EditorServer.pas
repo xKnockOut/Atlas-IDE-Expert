@@ -359,7 +359,7 @@ begin
     on E: ELspClientError do
     begin
       // Beim Tippen keine Meldung; nur ins Protokoll.
-      TAtlasGuard.Log('Schnellbefehl: ' + E.Message);
+      TAtlasGuard.Log('Schnellbefehl: ' + TAtlasGuard.MessageText(E.Message));
       Exit;
     end;
   end;

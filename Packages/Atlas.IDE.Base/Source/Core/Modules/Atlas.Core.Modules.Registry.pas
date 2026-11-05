@@ -112,6 +112,9 @@ function AtlasModuleRegistryInstance: TAtlasModuleRegistry;
 
 implementation
 
+uses
+  Atlas.Text.LogMarks;
+
 type
   TAtlasModuleScope = class(TInterfacedObject, IAtlasModuleScope)
   private
@@ -179,7 +182,7 @@ end;
 
 function FailureOf(const AStep: string; AError: Exception): string;
 begin
-  Result := AStep + ': ' + AError.ClassName + ': ' + AError.Message;
+  Result := AStep + ': ' + AError.ClassName + ': ' + TLogMarks.Text(AError.Message);
 end;
 
 procedure AppendFailures(var AList: TArray<string>; const AMore: TArray<string>);

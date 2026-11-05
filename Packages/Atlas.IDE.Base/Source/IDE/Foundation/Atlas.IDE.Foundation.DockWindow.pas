@@ -472,7 +472,7 @@ begin
       ApplyDarkCaption(FForm);
     except
       on E: Exception do
-        TAtlasGuard.Log('Dunkle Titelleiste: ' + E.ClassName + ': ' + E.Message);
+        TAtlasGuard.Log('Dunkle Titelleiste: ' + TAtlasGuard.ErrorText(E));
     end;
 end;
 
@@ -497,7 +497,8 @@ begin
   except
     // Thema ist Kosmetik: ein Fehler darf das Fenster nicht verhindern.
     on E: Exception do
-      TAtlasGuard.Log(Format('Thema der Form %s: %s: %s', [AForm.ClassName, E.ClassName, E.Message]));
+      TAtlasGuard.Log(Format('Thema der Form %s: %s: %s', [AForm.ClassName, E.ClassName,
+        TAtlasGuard.MessageText(E.Message)]));
   end;
 end;
 

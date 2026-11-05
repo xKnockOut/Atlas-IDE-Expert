@@ -355,7 +355,7 @@ begin
       begin
         CloseHandle(Result);
       end;
-      TAtlasGuard.Log('stderr des Servers bleibt bei NUL: ' + TAtlasGuard.SafeMessage(E.Message));
+      TAtlasGuard.Log('stderr des Servers bleibt bei NUL: ' + TAtlasGuard.MessageText(E.Message));
       FStderrFile := '';
       Result := CreateFile('NUL', GENERIC_WRITE, FILE_SHARE_READ or FILE_SHARE_WRITE, ASecurity, OPEN_EXISTING, 0, 0);
     end;

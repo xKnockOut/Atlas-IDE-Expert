@@ -374,7 +374,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      TAtlasGuard.Log('Erzeugen-Menü: Code-Aktionen fehlen (' + E.Message + ')');
+      TAtlasGuard.Log('Erzeugen-Menü: Code-Aktionen fehlen (' + TAtlasGuard.MessageText(E.Message) + ')');
       Result := nil;
     end;
   end;
@@ -432,7 +432,7 @@ begin
       except
         on E: ELspClientError do
         begin
-          TAtlasGuard.Log('Erzeugen-Menü: Auswahl fehlt (' + E.Message + ')');
+          TAtlasGuard.Log('Erzeugen-Menü: Auswahl fehlt (' + TAtlasGuard.MessageText(E.Message) + ')');
           Exit;
         end;
       end;

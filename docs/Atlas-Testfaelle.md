@@ -9290,6 +9290,24 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
 | LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |
 
+## Diagnosepaket und Logs vollständig anonym (#1478)
+
+Vorbereitung: Testprojekt mit Markernamen, z. B. Ordner `C:\MarkerOrdner\MarkerKunde`, Projekt `MarkerKunde.dproj`, Unit `uMarkerLager.pas` mit `TMarkerForm.Geheim` und einem Syntaxfehler; Windows-Benutzer bekannt. Atlas mit Vorgaben (anonym), Server mit `--log`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AL1 | Projekt öffnen, Unit bearbeiten und speichern, einen Build mit Fehler auslösen, dann `atlas.log` (`%LOCALAPPDATA%\Atlas\Logs`) öffnen | Kein Markername, kein Pfad, kein Benutzername, kein Quelltext; Namen als `name#N`, Dateien als `datei#N.pas`, Meldungen als `text#N`; gleiche Werte tragen dieselbe Nummer |
+| AL2 | Server-Log (`--log`) und `diag-*.log` desselben Laufs öffnen | Keine Markernamen; Projekt und Units als `name#N`, Dateien als `datei#N.pas`, Meldungen als `wert#N`; Zahlenzeilen `index project#N … mem X MB` unverändert |
+| AL3 | *Atlas › Hilfe und Diagnose › Problem melden…*, Vorschau ansehen, ZIP anlegen und entpacken | Die Vorschau zeigt jede Datei; in keiner steht ein Markername, Pfad oder Benutzername; `atlas-info.txt` nennt „Protokoll des Plugins anonym geschrieben“; `einstellungen.json` enthält nur Schlüssel, Zahlen, Schalter und feste Werte (sonst `"<wert>"`, Pfade `"<pfad>"`) (**Abnahme**) |
+| AL4 | Fenster „Atlas-Server“ › Diagnosepaket | Vorschau beginnt mit „Dateien im Paket:“ und der Liste mit Größen; `fehlerbericht.md`, `server/status.json`, `server/protokoll.txt` ohne Markernamen; Arbeitsbereich und Projekt als `name#N`/`datei#N.dproj` |
+| AL5 | *Atlas › Fehlerbericht erstellen…* (anonym) | Kopf „· anonymisiert“; Einstellungen nur mit festen Werten; Plugin- und Serverprotokoll ohne Markernamen; unter dem Projekt nur `<ws>/<datei>.pas` |
+| AL6 | Optionen › Fehlerbericht: „anonymisieren“ aus, Bericht erneut erstellen | Kopf „· mit Klarnamen (ausdrücklich gewählt)“; Namen und Pfade im Klartext |
+| AL7 | Optionen › Fehlerbericht: „Protokoll atlas.log mit Klarnamen schreiben“ an, Fehler auslösen, `atlas.log` ansehen; dann Bericht und Problem melden | Neue Zeilen im Klartext; der Bericht nennt „geschrieben mit Klarnamen (diagnostics.log.names)“, `atlas-info.txt` ebenso; nach dem Ausschalten wieder `name#N` |
+| AL8 | `AtlasServer --check <Ordner> --timings` und `--timings profil.json`, danach mit `--log-names` | Ohne `--log-names` Units als `name#N` mit Hinweis „anonymisiert“ bzw. `"anonymized": true`; mit `--log-names` im Klartext |
+| AL9 | Ausgabefenster der IDE (Meldungen von Atlas) beim selben Lauf ansehen | Meldungen im Klartext ohne Kästchen oder fremde Zeichen (die Kennzeichen erscheinen nirgends) |
+| AL10 | Prozesse am Projekt (*Atlas › Hilfe und Diagnose*) und danach das Server-Log | Fenster im Klartext; im Log stehen Arbeitsbereich und Cache als `name#N`/`datei#N` |
+| AL11 | `Atlas.Tests` mit Delphi 12 und 13 bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAnonymityTests`, `TLogMarksTests`, `TAtlasLogRedactorTests`, `TTextAnonymizerTests` grün |
+
 ## Prüfregel unused-uses (#1135)
 
 Vorbereitung: Projekt mit Unit `uBericht.pas`, deren uses `System.SysUtils, System.Classes, Vcl.Grids` enthält und nur `Format` aus SysUtils verwendet; Fenster „Atlas-Prüfung“ offen.

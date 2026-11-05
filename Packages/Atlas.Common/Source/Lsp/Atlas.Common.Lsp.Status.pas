@@ -11,12 +11,17 @@
 // Version, Start, Zustand), Speicher je Bereich gegen das Budget, Zeitprofil
 // des letzten Prüflaufs, Warteschlange von Index und Prüfung und die
 // Trefferquoten von Index-Cache und Syntaxbaum-Cache.
+// Seit #1478 liefert Mapped eine Kopie, in der jeder Name (Ordner, eigene
+// Konfiguration, langsame Units) und jeder Pfad (Projekt, Caches) über eine
+// Funktion läuft: für die Protokollzeile gekennzeichnet (TLogMarks), für den
+// anonymen Status über den Anonymisierer des Servers.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Text.LogMarks,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Diagnostics.CheckProfile;
 
@@ -46,6 +51,8 @@ type
     Selected: Boolean;
     /// <summary>" · Debug/Win64 (gewählt) · aktiv in der IDE · ausgewählt"; '' ohne Projekt.</summary>
     function ProjectText: string;
+    /// <summary>Kopie mit AMap auf Name, eigener Konfiguration (Name), Projekt und Caches (Pfad).</summary>
+    function Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
   end;
 
   /// <summary>Speicher je Bereich in Byte (#1356), geschätzt außer Total.</summary>
@@ -137,6 +144,9 @@ type
     /// <summary>Der Aufrufer übernimmt das Objekt; enthält zusätzlich "markdown".</summary>
     function ToJson: TJSONObject;
     function ToMarkdown: string;
+    /// <summary>Kopie, in der Namen und Pfade der Arbeitsbereiche und die Namen der langsamsten Units über AMap
+    /// laufen (#1478).</summary>
+    function Mapped(const AMap: TLogMarkMap): TServerStatus;
   private
     procedure AppendDiagnostics(ABuilder: TStringBuilder);
   end;
@@ -150,7 +160,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Anonymize;
 
 /// <summary>ISO 8601 in UTC; '' für 0.</summary>
 function DateText(AValue: TDateTime): string;
@@ -171,6 +182,49 @@ begin
 end;
 
 { TWorkspaceStatus }
+
+/// <summary>AMap(AKind, AValue), leere Werte bleiben leer.</summary>
+function MappedValue(const AMap: TLogMarkMap; AKind: TLogMarkKind; const AValue: string): string;
+begin
+  Result := AValue;
+  if AValue <> '' then
+  begin
+    Result := AMap(AKind, AValue);
+  end;
+end;
+
+function TWorkspaceStatus.Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
+begin
+  Result := Self;
+  Result.Name := MappedValue(AMap, TLogMarkKind.Name, Name);
+  Result.Project := MappedValue(AMap, TLogMarkKind.Path, Project);
+  Result.CacheFile := MappedValue(AMap, TLogMarkKind.Path, CacheFile);
+  Result.LibraryCacheFile := MappedValue(AMap, TLogMarkKind.Path, LibraryCacheFile);
+  // Debug, Release und die Plattformen verraten nichts; eigene Konfigurationen tragen oft Kundennamen.
+  if not TTextAnonymizer.IsKeyword(Config) then
+  begin
+    Result.Config := MappedValue(AMap, TLogMarkKind.Name, Config);
+  end;
+end;
+
+function TServerStatus.Mapped(const AMap: TLogMarkMap): TServerStatus;
+var
+  mIndex: Integer;
+  mMap: TLogMarkMap;
+begin
+  Result := Self;
+  Result.Workspaces := Copy(Workspaces);
+  for mIndex := 0 to High(Result.Workspaces) do
+  begin
+    Result.Workspaces[mIndex] := Workspaces[mIndex].Mapped(AMap);
+  end;
+  mMap := AMap;
+  Result.CheckRun := CheckRun.Anonymized(
+    function(const AName: string): string
+    begin
+      Result := MappedValue(mMap, TLogMarkKind.Name, AName);
+    end);
+end;
 
 function TWorkspaceStatus.ProjectText: string;
 begin

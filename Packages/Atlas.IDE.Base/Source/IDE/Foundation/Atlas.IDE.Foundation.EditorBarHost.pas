@@ -373,7 +373,7 @@ begin
         mBar.Free;
       except
         on E: Exception do
-          TAtlasGuard.Log(Format('%s: Leiste nicht freigegeben: %s', [FName, TAtlasGuard.SafeMessage(E.Message)]));
+          TAtlasGuard.Log(Format('%s: Leiste nicht freigegeben: %s', [FName, TAtlasGuard.MessageText(E.Message)]));
       end;
     end;
   finally
@@ -646,7 +646,7 @@ begin
   except
     // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
     on E: Exception do
-      TAtlasGuard.Log(FName + ': nicht ein- bzw. ausgeblendet: ' + TAtlasGuard.SafeMessage(E.Message));
+      TAtlasGuard.Log(FName + ': nicht ein- bzw. ausgeblendet: ' + TAtlasGuard.MessageText(E.Message));
   end;
 end;
 

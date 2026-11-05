@@ -173,6 +173,8 @@ begin
   // Fehlerbericht (#108).
   AddTitle(TAtlasTextId.SettingsBugReportTitle);
   BindCheck('BugReportAnonymize', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBugReportAnonymize)));
+  // Protokoll des Plugins mit Klarnamen (#1478, diagnostics.log.names); Vorgabe anonym.
+  BindCheck('LogNames', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsLogNames)));
 end;
 
 procedure TAtlasSettingsStartupPart.Load(const ASettings: TAtlasPluginSettings);

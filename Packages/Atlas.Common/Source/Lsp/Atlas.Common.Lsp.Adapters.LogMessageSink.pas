@@ -27,7 +27,8 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Common.JsonRpc.Messages;
+  Atlas.Common.JsonRpc.Messages,
+  Atlas.Common.Logging.EntryText;
 
 { TLspLogMessageSink }
 
@@ -58,7 +59,7 @@ var
 begin
   Params := TJSONObject.Create;
   Params.AddPair('type', TJSONNumber.Create(MessageTypeOf(AEntry.Level)));
-  Params.AddPair('message', AEntry.Text);
+  Params.AddPair('message', TLogEntryText.Plain(AEntry));
   Notification := TJsonRpcMessages.Notification(Method, Params);
   try
     FTransport.WriteMessage(Notification);

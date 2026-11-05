@@ -21,6 +21,7 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.WorkspaceCheck,
+  Atlas.Text.LogMarks,
   Shell.Workspace,
   Shell.Composition.Contract;
 
@@ -68,6 +69,10 @@ type
     function Workspaces: TArray<TShellWorkspace>;
     function WorkspaceRoots: TArray<string>;
     function RecentLines: TArray<string>;
+    /// <summary>Protokoll der Sitzung, mit AAnonymize über den Anonymisierer, sonst im Klartext.</summary>
+    function SessionLines(AAnonymize: Boolean): TArray<string>;
+    /// <summary>Ersatz eines Namens oder Pfads im anonymen Status (Anonymisierer des Servers).</summary>
+    function AnonymousMap: TLogMarkMap;
     function CollectStatus: TServerStatus;
     procedure CollectDiagnosticsStatus(var AStatus: TServerStatus);
     function ConfigurationReport: string;
@@ -97,6 +102,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Lsp.StatusFile,
+  Atlas.Text.Anonymize,
   Shell.Platform;
 
 const
@@ -243,6 +249,66 @@ begin
   end;
 end;
 
+function TShellStatusReports.SessionLines(AAnonymize: Boolean): TArray<string>;
+var
+  mAnonymizer: ILogAnonymizer;
+  mIndex: Integer;
+  mRoots: TArray<string>;
+begin
+  // Die Zeilen tragen Kennzeichen für Namen, Pfade und fremden Text (#1478): anonym über den Anonymisierer des
+  // Servers (dieselben name#N wie im Status und in --log), sonst im Klartext.
+  Result := RecentLines;
+  mAnonymizer := nil;
+  mRoots := nil;
+  if AAnonymize then
+  begin
+    mAnonymizer := FServices.Anonymizer();
+    mRoots := WorkspaceRoots;
+  end;
+  for mIndex := 0 to High(Result) do
+  begin
+    if mAnonymizer <> nil then
+    begin
+      Result[mIndex] := mAnonymizer.Anonymize(Result[mIndex]);
+    end
+    else if AAnonymize then
+    begin
+      Result[mIndex] := TTextAnonymizer.RedactMarks(Result[mIndex], mRoots);
+    end
+    else
+    begin
+      Result[mIndex] := TLogMarks.Plain(Result[mIndex]);
+    end;
+  end;
+end;
+
+/// <summary>Kennzeichnet AValue nach seiner Art, für die Protokollzeile des Status.</summary>
+function MarkValue(AKind: TLogMarkKind; const AValue: string): string;
+begin
+  Result := TLogMarks.Mark(AKind, AValue);
+end;
+
+function TShellStatusReports.AnonymousMap: TLogMarkMap;
+var
+  mAnonymizer: ILogAnonymizer;
+  mRoots: TArray<string>;
+begin
+  mAnonymizer := FServices.Anonymizer();
+  mRoots := WorkspaceRoots;
+  Result :=
+    function(AKind: TLogMarkKind; const AValue: string): string
+    begin
+      if mAnonymizer <> nil then
+      begin
+        Result := mAnonymizer.Anonymize(TLogMarks.Mark(AKind, AValue));
+      end
+      else
+      begin
+        Result := TTextAnonymizer.RedactMarks(TLogMarks.Mark(AKind, AValue), mRoots);
+      end;
+    end;
+end;
+
 function TShellStatusReports.ConfigurationReport: string;
 var
   mRoot, mItem, mChoice: TJSONObject;
@@ -294,7 +360,7 @@ begin
   mInput.ServerVersion := TProductVersion.Version;
   mInput.Created := Now;
   mInput.Configuration := ConfigurationReport;
-  mInput.LogLines := LastLines(RecentLines, cBugReportLogLines);
+  mInput.LogLines := LastLines(SessionLines(mInput.Anonymize), cBugReportLogLines);
   mInput.Requests := FServices.Statistics.Recent;
   mInput.Workspaces := WorkspaceRoots;
   mInput.Identity := TProcessInfo.IdentityNames;
@@ -400,23 +466,15 @@ end;
 function TShellStatusReports.StatusJson(AAnonymize: Boolean): TJSONObject;
 var
   mStatus: TServerStatus;
-  mAnonymizer: ILogAnonymizer;
 begin
   mStatus := CollectStatus;
+  // Namen und Pfade gekennzeichnet: Das Log schreibt sie anonym, das Ausgabefenster im Klartext (#1478).
+  FServices.Logger.Info('Status:' + sLineBreak + mStatus.Mapped(MarkValue).ToMarkdown);
   if AAnonymize then
   begin
-    mAnonymizer := FServices.Anonymizer();
-    mStatus.CheckRun := mStatus.CheckRun.Anonymized(
-      function(const AName: string): string
-      begin
-        Result := AName;
-        if mAnonymizer <> nil then
-        begin
-          Result := mAnonymizer.Anonymize(AName);
-        end;
-      end);
+    // Ordner, Projekt, Caches, eigene Konfiguration und langsame Units, nicht nur die Units (#1478).
+    mStatus := mStatus.Mapped(AnonymousMap);
   end;
-  FServices.Logger.Info('Status:' + sLineBreak + mStatus.ToMarkdown);
   Result := mStatus.ToJson;
   // Für get_server_status (#1356): dieselben Zahlen wie das Fenster, nur lokal und nie anonym abgefragt.
   if not AAnonymize then
@@ -442,7 +500,7 @@ begin
   finally
     mStatus.Free;
   end;
-  mInput.LogLines := RecentLines;
+  mInput.LogLines := SessionLines(mInput.Anonymize);
   mTracing := FServices.Tracing();
   mInput.Tracing := mTracing <> nil;
   if mTracing <> nil then

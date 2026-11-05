@@ -4,7 +4,8 @@ Zurück zum [README](../../../README_DE.md)
 
 | Parameter | Bedeutung |
 |---|---|
-| `--log <Datei>` | Logdatei, wird fortgeschrieben |
+| `--log <Datei>` | Logdatei, wird fortgeschrieben; Pfade, Projekt-, Unit- und Benutzernamen sowie Meldungen stehen als Kennungen (`datei#3`, `name#2`, `wert#1`, #1478) |
+| `--log-names` | Logdatei und `--timings` mit echten Pfaden und Namen (nur zur lokalen Fehlersuche) |
 | `--log-level <Stufe>` | `debug`, `info` (Standard), `warning`, `error`; gilt für Logdatei und `window/logMessage` |
 | `--trace <Datei>` | Mitschnitt aller JSON-Nachrichten (`-->` empfangen, `<--` gesendet) |
 
