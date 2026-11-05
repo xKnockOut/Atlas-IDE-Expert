@@ -25,13 +25,34 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
+  Atlas.Text.DUnitX,
   Atlas.Text.TestResults;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Stand eines Tests bzw. einer Fixture nach dem letzten Lauf.</summary>
-  TAtlasTestStatus = (Unknown, Passed, Failed);
+  /// <summary>Stand eines Tests bzw. einer Fixture nach dem letzten Lauf. Partial: Von mehreren Tests (Fixture,
+  /// [TestCase]-Methode) lief erst ein Teil, keiner schlug fehl.</summary>
+  TAtlasTestStatus = (Unknown, Passed, Failed, Partial);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Ein Test, den der Lauf einer Marke ergibt: Methode und Fall ('' ohne [TestCase]).</summary>
+  TAtlasTestKey = record
+    Method: string;
+    CaseName: string;
+  end;
+
+  /// <summary>Stand der Tests einer Marke (Fixture, Test mit Fällen) über alle bisherigen Läufe.</summary>
+  TAtlasTestTally = record
+    /// <summary>Tests der Marke.</summary>
+    Total: Integer;
+    /// <summary>Davon mit Ergebnis (bestanden, fehlgeschlagen oder übersprungen).</summary>
+    Ran: Integer;
+    Passed: Integer;
+    Failed: Integer;
+    /// <summary>Failed bei einem Fehlschlag; Passed erst, wenn jeder Test ein Ergebnis hat und mindestens einer
+    /// bestand; Partial, wenn erst ein Teil lief; sonst Unknown.</summary>
+    function Status: TAtlasTestStatus;
+  end;
 
   /// <summary>Datei der Unit AUnitName im Testprojekt; '' ohne.</summary>
   TAtlasTestUnitFile = reference to function(const AUnitName: string): string;
@@ -101,13 +122,38 @@ type
     /// <summary>Wie oben, nur der Fall ACaseName eines [TestCase] (#585); ACaseName '' = alle Fälle.</summary>
     class function StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
       ACaseName: string): TAtlasTestStatus; overload; static;
+    /// <summary>Tests, die der Lauf einer Marke ergibt: Fixture AFixtureIndex, Test ATestIndex (-1 = alle) und Fall
+    /// ACaseIndex (-1 = alle). Tests mit [Ignore] zählen nicht.</summary>
+    class function Expected(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
+      ACaseIndex: Integer): TArray<TAtlasTestKey>; static;
+    /// <summary>Stand der Tests AKeys der Fixture AFixture in den Ergebnissen.</summary>
+    class function TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+      const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally; static;
   end;
 
 implementation
 
 uses
-  Atlas.Core.Problems.Store,
-  Atlas.Text.DUnitX;
+  Atlas.Core.Problems.Store;
+
+{ TAtlasTestTally }
+
+function TAtlasTestTally.Status: TAtlasTestStatus;
+begin
+  Result := TAtlasTestStatus.Unknown;
+  if Failed > 0 then
+  begin
+    Result := TAtlasTestStatus.Failed;
+  end
+  else if (Total > 0) and (Ran >= Total) and (Passed > 0) then
+  begin
+    Result := TAtlasTestStatus.Passed;
+  end
+  else if (Ran > 0) and (Ran < Total) then
+  begin
+    Result := TAtlasTestStatus.Partial;
+  end;
+end;
 
 { TAtlasTestRun }
 
@@ -315,6 +361,14 @@ begin
   end;
 end;
 
+/// <summary>Gehört das Ergebnis AItem zu Unit, Fixture, Methode ('' = alle) und Fall ('' = alle)?</summary>
+function Matches(const AItem: TTestCaseResult; const AUnitName, AFixture, AMethod, ACaseName: string): Boolean;
+begin
+  Result := SameText(AItem.Fixture, AFixture) and ((AUnitName = '') or (AItem.UnitName = '') or
+    SameText(AItem.UnitName, AUnitName)) and ((AMethod = '') or SameText(AItem.Method, AMethod)) and
+    ((ACaseName = '') or SameText(AItem.CaseName, ACaseName));
+end;
+
 class function TAtlasTestRun.StatusOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture,
   AMethod: string): TAtlasTestStatus;
 begin
@@ -329,16 +383,7 @@ begin
   Result := TAtlasTestStatus.Unknown;
   for Item in ACases do
   begin
-    if not SameText(Item.Fixture, AFixture) or ((AUnitName <> '') and (Item.UnitName <> '') and
-      not SameText(Item.UnitName, AUnitName)) then
-    begin
-      Continue;
-    end;
-    if (AMethod <> '') and not SameText(Item.Method, AMethod) then
-    begin
-      Continue;
-    end;
-    if (ACaseName <> '') and not SameText(Item.CaseName, ACaseName) then
+    if not Matches(Item, AUnitName, AFixture, AMethod, ACaseName) then
     begin
       Continue;
     end;
@@ -349,6 +394,108 @@ begin
     if Item.Outcome = TTestOutcome.Passed then
     begin
       Result := TAtlasTestStatus.Passed;
+    end;
+  end;
+end;
+
+/// <summary>Schlüssel des Tests ATest anhängen: alle Fälle (ACaseIndex -1), ein Fall oder der Test ohne Fälle.
+/// </summary>
+procedure AddKeys(var AKeys: TArray<TAtlasTestKey>; const ATest: TDUnitXTest; ACaseIndex: Integer);
+var
+  mCase, mCount: Integer;
+begin
+  if ATest.Ignored then
+  begin
+    Exit;
+  end;
+  mCount := Length(AKeys);
+  if Length(ATest.Cases) = 0 then
+  begin
+    SetLength(AKeys, mCount + 1);
+    AKeys[mCount].Method := ATest.Method;
+    AKeys[mCount].CaseName := '';
+  end
+  else if (ACaseIndex >= 0) and (ACaseIndex <= High(ATest.Cases)) then
+  begin
+    SetLength(AKeys, mCount + 1);
+    AKeys[mCount].Method := ATest.Method;
+    AKeys[mCount].CaseName := ATest.Cases[ACaseIndex];
+  end
+  else
+  begin
+    SetLength(AKeys, mCount + Length(ATest.Cases));
+    for mCase := 0 to High(ATest.Cases) do
+    begin
+      AKeys[mCount + mCase].Method := ATest.Method;
+      AKeys[mCount + mCase].CaseName := ATest.Cases[mCase];
+    end;
+  end;
+end;
+
+class function TAtlasTestRun.Expected(const AUnit: TDUnitXUnit; AFixtureIndex, ATestIndex,
+  ACaseIndex: Integer): TArray<TAtlasTestKey>;
+var
+  mTests: TArray<TDUnitXTest>;
+  mTest: Integer;
+begin
+  Result := nil;
+  if (AFixtureIndex < 0) or (AFixtureIndex > High(AUnit.Fixtures)) then
+  begin
+    Exit;
+  end;
+  mTests := AUnit.Fixtures[AFixtureIndex].Tests;
+  if ATestIndex < 0 then
+  begin
+    for mTest := 0 to High(mTests) do
+    begin
+      AddKeys(Result, mTests[mTest], -1);
+    end;
+  end
+  else if ATestIndex <= High(mTests) then
+  begin
+    AddKeys(Result, mTests[ATestIndex], ACaseIndex);
+  end;
+end;
+
+/// <summary>Gibt es ein Ergebnis (auch übersprungen) zum Test AKey?</summary>
+function HasResult(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKey: TAtlasTestKey): Boolean;
+var
+  mItem: TTestCaseResult;
+begin
+  Result := False;
+  for mItem in ACases do
+  begin
+    if Matches(mItem, AUnitName, AFixture, AKey.Method, AKey.CaseName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class function TAtlasTestRun.TallyOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture: string;
+  const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
+var
+  mKey: TAtlasTestKey;
+  mStatus: TAtlasTestStatus;
+begin
+  Result := Default(TAtlasTestTally);
+  Result.Total := Length(AKeys);
+  for mKey in AKeys do
+  begin
+    if not HasResult(ACases, AUnitName, AFixture, mKey) then
+    begin
+      Continue;
+    end;
+    Inc(Result.Ran);
+    mStatus := StatusOf(ACases, AUnitName, AFixture, mKey.Method, mKey.CaseName);
+    if mStatus = TAtlasTestStatus.Failed then
+    begin
+      Inc(Result.Failed);
+    end
+    else if mStatus = TAtlasTestStatus.Passed then
+    begin
+      Inc(Result.Passed);
     end;
   end;
 end;
