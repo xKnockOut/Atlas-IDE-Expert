@@ -419,6 +419,25 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |  |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |  |
 
+### Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
+
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen.
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| AA1 | `memoryBudgetMb` auf den bisherigen Wert (z. B. 1024), IDE neu starten, warten bis „bereit“, eine Unit mit vielen public-Methoden öffnen | Fenster „Atlas-Server“: `unused-public-member` nicht mehr unter den langsamsten Regeln mit Minutenwerten; die Warteschlange der Prüfung läuft leer (**Abnahme**) |  |
+| AA2 | Im Editor tippen und mit der Maus durch Zeilen klicken, 2 Minuten | Reiter „Hänger“: keine Einträge von 600 bis 800 ms mehr durch Inlay-Hints, Glühbirne, Überschreibungen oder Gliederung; Reiter „Hauptthread“: `InlayHints`, `GutterColumn` und `Outline` mit Maximum unter 50 ms (**Abnahme**) |  |
+| AA3 | Cursor auf eine Zeile mit Befund, der eine Schnellkorrektur hat (z. B. fehlendes `begin`/`end`) | Nach kurzer Zeit erscheint die Glühbirne in der Atlas-Spalte am Rand |  |
+| AA4 | Eine Klasse mit überschriebenen Methoden öffnen | Überschreibungs-Marker in der Atlas-Spalte erscheinen, ohne dass die IDE stockt |  |
+| AA5 | Gliederung (Brotkrümel/Sticky Scroll) in einer großen Unit, während der Server prüft | Gliederung folgt nach der Antwort; im Log höchstens vereinzelt „Gliederung: keine Antwort vom Server (… 5000 ms)“, nicht mehr alle paar Sekunden |  |
+| AA6 | Mitteilungen über 30 Minuten Arbeit | Kein „Absturzfall gesichert — Der Server hat die Anfrage abgebrochen: textDocument/codeAction“ mehr |  |
+| AA7 | IDE schließen, während der Server beschäftigt ist | IDE schließt ohne Zugriffsverletzung; kein Fehler im Log nach dem Entladen |  |
+| AA8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasBackgroundRequestTests`, `TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough`, `TRuleProjectFilesTests.NameInReadsEachFileOnce`, `TRuleFindingsMemoTests` grün |  |
+| AA9 | Große Unit öffnen, warten bis die Befunde da sind, mit der Maus durch 20 Zeilen klicken | Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` im Mittel deutlich unter dem Wert vor dieser Änderung (Messung unter Linux: 0,7–1,5 s → 0,2–0,3 s); Glühbirne erscheint ohne Verzögerung (**Abnahme**) |  |
+| AA10 | Mehrere Tabs offen, zehnmal zwischen Tabs wechseln und einmal alle Dateien schließen; danach `atlas.log` ansehen | Je Leiste höchstens eine Zeile „gesperrt (Enabled := False) … weitere Sperren ohne Protokoll“ und eine „wieder freigegeben …“, kein Aufrufstapel; Brotkrümel, Editorleiste und Statusleiste bleiben bedienbar |  |
+| AA11 | Fenster „Atlas-Diagnose“, Reiter „Server“, nach einigen Minuten Arbeit | Serverbefehle stehen je Befehl („workspace/executeCommand atlas.server.status“ usw.), nicht mehr alle in einer Zeile |  |
+| AA12 | Domänenkonto (Arbeitsrechner), Willkommensseite oder „Atlas-Start“ offen, einige Minuten arbeiten; dann Fenster „Atlas-Diagnose“, Reiter „Hauptthread“ | Willkommensseite ohne Aufrufe über 16 ms im 5-s-Takt, Max. deutlich unter 8,3 s; der Gruß zeigt nach kurzer Zeit den Vornamen (vorher kurz den Kontonamen) |  |
+
 ### Aktualisierung der Prüfung einstellbar (problems.update)
 
 Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfung“ offen, Statusleiste an.
