@@ -190,7 +190,7 @@ procedure StartGutterMarks;
 begin
   GutterMarks := TAtlasIdeGutterMarks.Create;
   // Rekursionssymbole (#623); fragt den Server nur, wenn er ohnehin läuft.
-  GutterMarks.Add(TAtlasIdeRecursionGutter.Create(RunningSession));
+  GutterMarks.Add(TAtlasIdeRecursionGutter.Create(RunningSession, RunServerCommand));
 end;
 
 procedure StopGutterMarks;

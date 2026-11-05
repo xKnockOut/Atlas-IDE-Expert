@@ -135,6 +135,7 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
@@ -252,7 +253,7 @@ begin
     begin
       Exit;
     end;
-    Text := TAtlasEditorBuffer.Text(View.Buffer);
+    Text := TAtlasEditorSnapshots.Get(View).Text;
     if not SameText(FFileName, View.Buffer.FileName) or (FText <> Text) then
     begin
       FFileName := View.Buffer.FileName;

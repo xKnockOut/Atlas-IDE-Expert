@@ -8,7 +8,9 @@
 //   der Ereignis-Handler liefert der Designer (IDesigner.GetMethodName).
 // - Änderungen im Designer (Komponente eingefügt, gelöscht, umbenannt,
 //   Ereignis zugewiesen) meldet IDesignNotification; 500 ms danach geht der
-//   neue Text an den Server. Ein geschlossenes Formular meldet Atlas mit
+//   neue Text an den Server, nur für die geänderten Formulare (vorher wurde
+//   jedes offene Formular neu in Text gewandelt, im Diagnose-Fenster bis
+//   266 ms je Änderung). Ein geschlossenes Formular meldet Atlas mit
 //   didClose ab, danach gilt wieder die Datei. Nach einem Serverneustart
 //   gehen alle Formulare neu an den Server.
 // - Änderungen des Servers an einem offenen Formular (Umbenennen eines
@@ -55,15 +57,25 @@ type
     FNotificationRef: IDesignNotification;
     FTimer: TTimer;
     FDirty: Boolean;
+    /// <summary>Alle Formulare senden (Start, neue Sitzung, Änderung ohne Designer); sonst nur FDirtyRoots.
+    /// </summary>
+    FAll: Boolean;
+    /// <summary>Wurzeln der Formulare, die sich seit dem letzten Senden geändert haben; nur verglichen, nie
+    /// benutzt (die Komponente kann inzwischen frei sein).</summary>
+    FDirtyRoots: TList<TComponent>;
     FLastSession: TLspSession;
     /// <summary>Zuletzt gesendeter Text je Formulardatei (Schlüssel in Großbuchstaben).</summary>
     FTexts: TDictionary<string, string>;
     /// <summary>Wurzelkomponente → Formulardatei, für DesignerClosed.</summary>
     FRoots: TDictionary<TComponent, string>;
     procedure Tick(Sender: TObject);
-    procedure Changed;
+    /// <summary>Formular von ADesigner geändert; nil: welches, ist unbekannt (alle senden).</summary>
+    procedure Changed(const ADesigner: IDesigner);
     procedure Closed(ARoot: TComponent);
     procedure SyncAll(ASession: TLspSession);
+    /// <summary>Nur die geänderten Formulare (FDirtyRoots) senden.</summary>
+    procedure SyncDirty(ASession: TLspSession);
+    procedure SyncEditor(ASession: TLspSession; const AEditor: IOTAFormEditor; ARoot: TComponent);
     procedure Log(const AText: string);
   public
     /// <summary>ASessionOf: laufende Sitzung, ohne den Server zu starten; ALog: Diagnoseprotokoll.</summary>
@@ -465,7 +477,7 @@ procedure TAtlasIdeForms.TNotification.ItemDeleted(const ADesigner: IDesigner; A
 begin
   if FOwner <> nil then
   begin
-    FOwner.Changed;
+    FOwner.Changed(ADesigner);
   end;
 end;
 
@@ -473,7 +485,7 @@ procedure TAtlasIdeForms.TNotification.ItemInserted(const ADesigner: IDesigner; 
 begin
   if FOwner <> nil then
   begin
-    FOwner.Changed;
+    FOwner.Changed(ADesigner);
   end;
 end;
 
@@ -481,7 +493,7 @@ procedure TAtlasIdeForms.TNotification.ItemsModified(const ADesigner: IDesigner)
 begin
   if FOwner <> nil then
   begin
-    FOwner.Changed;
+    FOwner.Changed(ADesigner);
   end;
 end;
 
@@ -494,7 +506,7 @@ procedure TAtlasIdeForms.TNotification.DesignerOpened(const ADesigner: IDesigner
 begin
   if FOwner <> nil then
   begin
-    FOwner.Changed;
+    FOwner.Changed(ADesigner);
   end;
 end;
 
@@ -525,6 +537,7 @@ begin
   FLog := ALog;
   FTexts := TDictionary<string, string>.Create;
   FRoots := TDictionary<TComponent, string>.Create;
+  FDirtyRoots := TList<TComponent>.Create;
   FNotification := TNotification.Create;
   FNotification.FOwner := Self;
   FNotificationRef := FNotification;
@@ -534,6 +547,7 @@ begin
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   FDirty := True;
+  FAll := True;
   FCurrent := Self;
 end;
 
@@ -548,6 +562,7 @@ begin
   FNotification.FOwner := nil;
   UnregisterDesignNotification(FNotificationRef);
   FNotificationRef := nil;
+  FDirtyRoots.Free;
   FRoots.Free;
   FTexts.Free;
   inherited;
@@ -561,8 +576,23 @@ begin
   end;
 end;
 
-procedure TAtlasIdeForms.Changed;
+procedure TAtlasIdeForms.Changed(const ADesigner: IDesigner);
+var
+  mRoot: TComponent;
 begin
+  mRoot := nil;
+  if ADesigner <> nil then
+  begin
+    mRoot := ADesigner.Root;
+  end;
+  if mRoot = nil then
+  begin
+    FAll := True;
+  end
+  else if not FDirtyRoots.Contains(mRoot) then
+  begin
+    FDirtyRoots.Add(mRoot);
+  end;
   // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit (P-04).
   TAtlasEditorSnapshots.Invalidate;
   // Erst nach einer Pause senden: Beim Ziehen kommt eine Meldung je Mausbewegung.
@@ -594,41 +624,78 @@ begin
         FLastSession := Session;
         FTexts.Clear;
         FDirty := True;
+        FAll := True;
       end;
       if not FDirty then
       begin
         Exit;
       end;
       FDirty := False;
-      SyncAll(Session);
+      if FAll then
+      begin
+        SyncAll(Session);
+      end
+      else
+      begin
+        SyncDirty(Session);
+      end;
     end);
 end;
 
 procedure TAtlasIdeForms.SyncAll(ASession: TLspSession);
 var
-  Editor: IOTAFormEditor;
-  Root: TComponent;
-  Text, Previous: string;
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
 begin
-  for Editor in FormEditors do
-    try
-      Root := RootOf(Editor);
-      if Root = nil then
-      begin
-        Continue;
-      end;
-      FRoots.AddOrSetValue(Root, Editor.FileName);
-      Text := TextOf(Editor);
-      if (Text = '') or (FTexts.TryGetValue(Key(Editor.FileName), Previous) and (Previous = Text)) then
-      begin
-        Continue;
-      end;
-      ASession.Sync(Editor.FileName, Text);
-      FTexts.AddOrSetValue(Key(Editor.FileName), Text);
-    except
-      on E: Exception do
-        Log(Format('Formular %s nicht gesendet: %s', [ExtractFileName(Editor.FileName), E.Message]));
+  FAll := False;
+  FDirtyRoots.Clear;
+  for mEditor in FormEditors do
+  begin
+    mRoot := RootOf(mEditor);
+    if mRoot <> nil then
+    begin
+      SyncEditor(ASession, mEditor, mRoot);
     end;
+  end;
+end;
+
+procedure TAtlasIdeForms.SyncDirty(ASession: TLspSession);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  if FDirtyRoots.Count = 0 then
+  begin
+    Exit;
+  end;
+  for mEditor in FormEditors do
+  begin
+    mRoot := RootOf(mEditor);
+    if (mRoot <> nil) and FDirtyRoots.Contains(mRoot) then
+    begin
+      SyncEditor(ASession, mEditor, mRoot);
+    end;
+  end;
+  FDirtyRoots.Clear;
+end;
+
+procedure TAtlasIdeForms.SyncEditor(ASession: TLspSession; const AEditor: IOTAFormEditor; ARoot: TComponent);
+var
+  mText, mPrevious: string;
+begin
+  try
+    FRoots.AddOrSetValue(ARoot, AEditor.FileName);
+    mText := TextOf(AEditor);
+    if (mText = '') or (FTexts.TryGetValue(Key(AEditor.FileName), mPrevious) and (mPrevious = mText)) then
+    begin
+      Exit;
+    end;
+    ASession.Sync(AEditor.FileName, mText);
+    FTexts.AddOrSetValue(Key(AEditor.FileName), mText);
+  except
+    on E: Exception do
+      Log(Format('Formular %s nicht gesendet: %s', [ExtractFileName(AEditor.FileName), E.Message]));
+  end;
 end;
 
 procedure TAtlasIdeForms.Closed(ARoot: TComponent);
@@ -756,7 +823,7 @@ begin
     mDesigner.Modified;
     if FCurrent <> nil then
     begin
-      FCurrent.Changed;
+      FCurrent.Changed(mDesigner);
     end;
   end;
 end;

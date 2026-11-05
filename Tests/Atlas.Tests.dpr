@@ -1004,6 +1004,8 @@ uses
   Atlas.Core.Editor.ClassExtraction in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ClassExtraction.pas',
   Atlas.Core.Editor.ClassExtraction.Tests in 'IDE.Expert\Atlas.Core.Editor.ClassExtraction.Tests.pas',
   Atlas.Core.Editor.TestUnit.Tests in 'IDE.Expert\Atlas.Core.Editor.TestUnit.Tests.pas',
+  Atlas.Core.Editor.LensAsk in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LensAsk.pas',
+  Atlas.Core.Editor.LensAsk.Tests in 'IDE.Expert\Atlas.Core.Editor.LensAsk.Tests.pas',
   Atlas.Core.Editor.Metrics in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Metrics.pas',
   Atlas.Core.Editor.Metrics.Tests in 'IDE.Expert\Atlas.Core.Editor.Metrics.Tests.pas',
   Atlas.Core.Projects.Todos in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Todos.pas',
