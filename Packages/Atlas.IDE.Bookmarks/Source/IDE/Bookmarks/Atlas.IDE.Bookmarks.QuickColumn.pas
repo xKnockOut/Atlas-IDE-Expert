@@ -205,6 +205,7 @@ uses
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
@@ -777,7 +778,7 @@ begin
   begin
     Exit;
   end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mText := TAtlasEditorSnapshots.Get(mView).Text;
   if not SameText(FTrack.FileName, mView.Buffer.FileName) then
   begin
     // Neue Datei vorn: gleich wiederfinden und einmal je Sitzung die IDE-Lesezeichen übernehmen.

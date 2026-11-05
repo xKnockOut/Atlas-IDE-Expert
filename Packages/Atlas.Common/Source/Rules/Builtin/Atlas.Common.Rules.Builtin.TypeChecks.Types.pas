@@ -75,6 +75,9 @@ const
   RtlPlainProcedureTypes: array[0..3] of string = ('TListSortCompare', 'TStringListSortCompare',
     'TThreadFunc', 'TFarProc');
 
+type
+  TSyntaxKinds = set of TSyntaxKind;
+
 /// <summary>Dateiname für die Namensauflösung wie in den übrigen Regeln.</summary>
 function ResolverFileName(const AContext: TRuleContext): string;
 begin
@@ -162,21 +165,53 @@ begin
     ((ANode.EndPos.Line = APosition.Line) and (ANode.EndPos.Character >= APosition.Character)));
 end;
 
-/// <summary>Innerste Deklaration (Variable, Parameter, Feld, Typ, Konstante) um APosition; nil ohne.</summary>
-function DeclarationAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+/// <summary>Letzter Knoten der Arten AKinds in Pre-Order, der APosition umfasst; nil ohne. Teilbäume mit
+/// bekanntem Bereich, der APosition nicht umfasst, überspringt die Suche: Vorher lief jede Abfrage über alle
+/// Knoten der Datei (PreOrder), je Aufruf bzw. Deklaration, also quadratisch in der Länge der Unit.</summary>
+function LastCovering(ARoot: TSyntaxNode; const APosition: TTextPosition; const AKinds: TSyntaxKinds): TSyntaxNode;
 var
-  Node: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mEndKnown: Boolean;
 begin
   Result := nil;
-  // Vorwärts in Pre-Order: Der letzte Treffer ist der innerste.
-  for Node in PreOrder(ARoot) do
+  if ARoot = nil then
   begin
-    if (Node.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.TypeDecl,
-      TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar]) and Covers(Node, APosition) then
-    begin
-      Result := Node;
-    end;
+    Exit;
   end;
+  // Eigener Stapel: Ausdrucksketten können sehr tief sein (Bericht M1).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mEndKnown := (mNode.EndPos.Line > 0) or (mNode.EndPos.Character > 0);
+      if mEndKnown and not Covers(mNode, APosition) then
+      begin
+        Continue;
+      end;
+      if (mNode.Kind in AKinds) and Covers(mNode, APosition) then
+      begin
+        Result := mNode;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Innerste Deklaration (Variable, Parameter, Feld, Typ, Konstante) um APosition; nil ohne.</summary>
+function DeclarationAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
+begin
+  // Pre-Order: Der letzte Treffer ist der innerste.
+  Result := LastCovering(ARoot, APosition, [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field,
+    TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar]);
 end;
 
 /// <summary>Typ hinter dem ersten ':' bzw. '=' auf oberster Klammerebene einer Signatur ("Werte: array of Double"
@@ -386,17 +421,8 @@ end;
 
 /// <summary>Kopf der lokalen Routine, deren Name an APosition steht; nil ohne.</summary>
 function HeaderAt(ARoot: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
-var
-  Node: TSyntaxNode;
 begin
-  Result := nil;
-  for Node in PreOrder(ARoot) do
-  begin
-    if (Node.Kind = TSyntaxKind.RoutineHeader) and Covers(Node, APosition) then
-    begin
-      Result := Node;
-    end;
-  end;
+  Result := LastCovering(ARoot, APosition, [TSyntaxKind.RoutineHeader]);
 end;
 
 function ModifierText(AModifier: TParameterModifier): string;

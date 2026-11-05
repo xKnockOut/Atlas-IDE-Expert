@@ -5,7 +5,9 @@
 // - Abruf: Ein Zeitgeber prüft den oberen Editor. Nach einer Tipp-Pause fragt
 //   er atlas.server.recursion mit der Datei und der Tiefe
 //   (editor.recursionMarkers.depth), nur, wenn der Server ohnehin läuft, und
-//   merkt sich die Antwort je Datei, Textstand und Tiefe.
+//   merkt sich die Antwort je Datei, Textstand und Tiefe. Der Befehl läuft im
+//   Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread alle
+//   250 ms bis zu 800 ms auf den Server.
 // - Symbol: ein Kreispfeil (↻) neben jeder Zeile mit einem Aufruf, der über
 //   höchstens „Tiefe“ Methoden derselben Unit zur aufrufenden zurückführt;
 //   nur, solange die Zeile noch den Text vom Abruf hat.
@@ -21,6 +23,7 @@ interface
 uses
   System.SysUtils,
   System.Types,
+  System.JSON,
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.Core.Diagnostics.Guard,
@@ -29,7 +32,8 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Recursion,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.GutterMarks;
+  Atlas.IDE.Foundation.GutterMarks,
+  Atlas.IDE.Editor.Lens;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -40,30 +44,28 @@ type
     Command = 'atlas.server.recursion';
   private const
     QuietMs = 700;
-    TimeoutMs = 800;
+    // Im Hintergrund: Ein langsamer Server hält nur die Symbole auf, nicht die IDE.
+    TimeoutMs = 5000;
     RetryMs = 5000;
+    // Gleicher Stand und gleiche Tiefe: nie neu fragen.
+    RefreshMs = High(Cardinal);
   private
     FSession: TAtlasRecursionSessionFunc;
+    FRun: TAtlasLensCommandProc;
     FTimer: TTimer;
-    FFileName: string;
-    FText: string;
-    FChangedAt: Cardinal;
-    FRetryAt: Cardinal;
-    FFetchedFile: string;
-    FFetchedText: string;
+    /// <summary>Abruf; FPoll.FetchedFile und FetchedText sind der Stand, zu dem FMarks gehört.</summary>
+    FPoll: TAtlasLensPoll;
     FFetchedDepth: Integer;
     FMarks: TAtlasFileRecursion;
     procedure Tick(Sender: TObject);
-    /// <summary>False und Stand gemerkt, wenn sich Datei AFileName oder Text AText seit dem letzten Takt geändert
-    /// haben.</summary>
-    function Settled(const AFileName, AText: string): Boolean;
-    /// <summary>Ruhezeit vorbei und für Datei, Text und Tiefe ADepth noch nichts geholt?</summary>
-    function Due(out ADepth: Integer): Boolean;
     procedure Fetch(ADepth: Integer);
+    function Answer(ADepth: Integer): TProc<TJSONValue>;
+    procedure Take(AAnswer: TJSONValue; ADepth: Integer);
     procedure Clear;
     function CallsAt(const AFileName: string; ALine: Integer): TArray<TAtlasRecursionCall>;
   public
-    constructor Create(const ASession: TAtlasRecursionSessionFunc);
+    /// <summary>ASession für den Textstand, ARun für den Befehl im Hintergrund.</summary>
+    constructor Create(const ASession: TAtlasRecursionSessionFunc; const ARun: TAtlasLensCommandProc);
     destructor Destroy; override;
     function Feature: TAtlasFeature; override;
     function Element: TAtlasDrawnElement; override;
@@ -83,13 +85,9 @@ implementation
 
 uses
   System.Generics.Collections,
-  Winapi.Windows,
   System.Math,
-  System.JSON,
   ToolsAPI,
-  Atlas.Core.Lsp.Client,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
 
@@ -103,10 +101,12 @@ end;
 
 { TAtlasIdeRecursionGutter }
 
-constructor TAtlasIdeRecursionGutter.Create(const ASession: TAtlasRecursionSessionFunc);
+constructor TAtlasIdeRecursionGutter.Create(const ASession: TAtlasRecursionSessionFunc;
+  const ARun: TAtlasLensCommandProc);
 begin
   inherited Create;
   FSession := ASession;
+  FRun := ARun;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -116,6 +116,8 @@ end;
 destructor TAtlasIdeRecursionGutter.Destroy;
 begin
   FTimer.Free;
+  // Eine ausstehende Antwort erreicht die Schicht nicht mehr.
+  FPoll.Close;
   inherited Destroy;
 end;
 
@@ -140,8 +142,7 @@ var
 begin
   Had := FMarks.HasCalls;
   FMarks := Default(TAtlasFileRecursion);
-  FFetchedFile := '';
-  FFetchedText := '';
+  FPoll.Forget;
   if Had then
   begin
     TAtlasIdeGutterMarks.Invalidate;
@@ -176,7 +177,17 @@ begin
       Exit;
     end;
     mView := TopSourceView;
-    if (mView <> nil) and Settled(mView.Buffer.FileName, TAtlasEditorBuffer.Text(mView.Buffer)) and Due(mDepth) then
+    if mView = nil then
+    begin
+      Exit;
+    end;
+    mDepth := TAtlasIdeSettings.RecursionMarkersDepth;
+    // Andere Tiefe: der geholte Stand gilt nicht mehr.
+    if (mDepth <> FFetchedDepth) and (FPoll.FetchedFile <> '') then
+    begin
+      Clear;
+    end;
+    if FPoll.Due(mView, QuietMs, RefreshMs) then
     begin
       Fetch(mDepth);
     end;
@@ -186,68 +197,40 @@ begin
   end;
 end;
 
-function TAtlasIdeRecursionGutter.Settled(const AFileName, AText: string): Boolean;
-begin
-  Result := SameText(FFileName, AFileName) and (FText = AText);
-  if not Result then
-  begin
-    FFileName := AFileName;
-    FText := AText;
-    FChangedAt := GetTickCount;
-  end;
-end;
-
-function TAtlasIdeRecursionGutter.Due(out ADepth: Integer): Boolean;
-var
-  mMoment: Cardinal;
-begin
-  ADepth := TAtlasIdeSettings.RecursionMarkersDepth;
-  mMoment := GetTickCount;
-  Result := (mMoment - FChangedAt >= QuietMs) and (mMoment >= FRetryAt) and
-    not (SameText(FFetchedFile, FFileName) and (FFetchedText = FText) and (FFetchedDepth = ADepth));
-end;
-
 procedure TAtlasIdeRecursionGutter.Fetch(ADepth: Integer);
 var
-  Session: TLspSession;
-  Values: TJSONArray;
-  Arguments: string;
-  Answer: TJSONValue;
-  Marks: TAtlasFileRecursion;
+  mValues: TJSONArray;
+  mArguments: string;
 begin
-  Session := FSession();
-  if Session = nil then
+  mValues := TJSONArray.Create;
+  try
+    mValues.Add(TLspSession.PathToUri(FPoll.FileName));
+    mValues.Add(ADepth);
+    mArguments := mValues.ToJSON;
+  finally
+    mValues.Free;
+  end;
+  FPoll.AskAsync(FSession(), FRun, Feature, Command, mArguments, RetryMs, TimeoutMs, Answer(ADepth));
+end;
+
+function TAtlasIdeRecursionGutter.Answer(ADepth: Integer): TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    begin
+      Take(AAnswer, ADepth);
+    end;
+end;
+
+procedure TAtlasIdeRecursionGutter.Take(AAnswer: TJSONValue; ADepth: Integer);
+begin
+  // Den Wert gibt der Manager frei.
+  if not FPoll.Answered(AAnswer, RetryMs) then
   begin
     Exit;
   end;
-  Values := TJSONArray.Create;
-  try
-    Values.Add(TLspSession.PathToUri(FFileName));
-    Values.Add(ADepth);
-    Arguments := Values.ToJSON;
-  finally
-    Values.Free;
-  end;
-  try
-    Session.Sync(FFileName, FText);
-    Answer := Session.RunCommand(Command, Arguments, TimeoutMs);
-  except
-    on E: ELspClientError do
-    begin
-      // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, ohne den Editor zu bremsen.
-      FRetryAt := GetTickCount + RetryMs;
-      Exit;
-    end;
-  end;
-  try
-    Marks := TAtlasFileRecursion.FromJson(Answer);
-  finally
-    Answer.Free;
-  end;
-  FFetchedFile := FFileName;
-  FFetchedText := FText;
   FFetchedDepth := ADepth;
-  FMarks := Marks;
+  FMarks := TAtlasFileRecursion.FromJson(AAnswer);
   TAtlasIdeGutterMarks.Invalidate;
 end;
 
@@ -258,13 +241,13 @@ end;
 
 function TAtlasIdeRecursionGutter.HasMarks(const AFileName: string): Boolean;
 begin
-  Result := SameText(AFileName, FFetchedFile) and FMarks.HasCalls;
+  Result := SameText(AFileName, FPoll.FetchedFile) and FMarks.HasCalls;
 end;
 
 function TAtlasIdeRecursionGutter.CallsAt(const AFileName: string; ALine: Integer): TArray<TAtlasRecursionCall>;
 begin
   Result := nil;
-  if SameText(AFileName, FFetchedFile) then
+  if SameText(AFileName, FPoll.FetchedFile) then
   begin
     Result := FMarks.CallsAt(ALine);
   end;
@@ -277,7 +260,7 @@ begin
   // Zeile seit dem Abruf geändert: Das Symbol wartet auf die nächste Antwort.
   if Result and AHasText then
   begin
-    Result := TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FFetchedText, ALine));
+    Result := TAtlasRecursionMarks.LineMatches(ALineText, TAtlasRecursionMarks.LineOf(FPoll.FetchedText, ALine));
   end;
 end;
 
