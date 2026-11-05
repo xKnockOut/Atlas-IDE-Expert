@@ -9289,3 +9289,19 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
 | LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |
+
+## Tastenkürzel für „Datei jetzt prüfen“ (#1744)
+
+Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfung“ offen, `problems.update` = „Nur auf Anforderung“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DP1 | *Tools › Optionen › Atlas › Befehle* ansehen | Zeile „Datei jetzt prüfen“ direkt unter „Fenster „Atlas-Prüfung““ mit Strg+Umschalt+Alt+P |
+| DP2 | Im Editor tippen (Befund erzeugen), dann Strg+Umschalt+Alt+P | Die offene Datei wird sofort geprüft, der neue Befund erscheint im Fenster und im Editor, ohne zu speichern (**Abnahme**) |
+| DP3 | „Beim Speichern“ einstellen, tippen, Strg+Umschalt+Alt+P | Sofort geprüft, ohne Strg+S |
+| DP4 | „Live beim Tippen“ mit Verzögerung 5000, tippen, sofort Strg+Umschalt+Alt+P | Geprüft, ohne die 5 s abzuwarten |
+| DP5 | Feld leeren, OK; Strg+Umschalt+Alt+P im Editor | Atlas reagiert nicht mehr; Befehlspalette und Knopf prüfen weiter |
+| DP6 | Kürzel Strg+Alt+F9 eintragen (schon „Prüfen“), *Atlas › Tastenkürzel-Übersicht…* öffnen | „Datei jetzt prüfen“ steht rot als Konflikt mit „Prüfen“; mit Strg+Umschalt+Alt+P wieder ohne Konflikt |
+| DP7 | Prüfregeln ausschalten (`problems.enabled` aus), Strg+Umschalt+Alt+P | Nichts passiert, die Tastenkürzel-Übersicht zeigt die Zeile als abgeschaltet; Eintrag im Editor-Kontextmenü (Atlas-Untermenü) fehlt |
+| DP8 | Rechtsklick im Editor › Atlas | Eintrag „Datei jetzt prüfen“ unter „Vorheriger Befund“ mit dem Kürzel daneben; Befehlspalette zeigt das Kürzel neben „Datei jetzt prüfen“ |
+| DP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPluginSettingsTests.CheckFileKeyOption`, `TAtlasKeyMapTests.CheckFileKeyFollowsProblems`, `TAtlasSettingsPageEditorTests.CheckFileKeyRoundTrip`, `EveryKeySettingIsInOverview` grün |
