@@ -1711,6 +1711,9 @@ Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und
 | TR22 | Schnellschalter „DUnitX-Tests ausführen“ aus | Marken und beide Befehle verschwinden, kein Lauf nach dem Build |
 | TR23 | Claude Code: „Führe die Tests über run_tests aus“ (vorhandene EXE) | JSON mit `result` `failed`, Zahlen und je Fehlschlag Name, `expected`/`actual`, Datei und Zeile; kein Compiler läuft; die Projekt-Zusammenfassung ändert sich nicht |
 | TR24 | `run_tests` mit `build: true` ohne laufende IDE bzw. mit `tests: ["Unit.TFixture.Methode"]` | Ohne IDE der Grund wie bei `build_project`, keine Tests; mit Filter nur dieser Test |
+| TR25 | Fixture mit vier Tests, nach IDE-Neustart nur einen Test über seine Marke ausführen (bestanden) | Die Marke des Tests „Test ausführen · bestanden“ in Grün; die Marke der Klasse „Tests der Klasse ausführen · 1/4 bestanden“ in Gelb, die übrigen Tests ohne Stand |
+| TR26 | Danach die anderen drei Tests einzeln ausführen (alle bestanden) | Klassenmarke zählt mit („2/4“, „3/4“) und zeigt nach dem vierten „Tests der Klasse ausführen · bestanden“ in Grün |
+| TR27 | `[TestCase]`-Methode mit zwei Fällen in eigener Zeile, nur „Fall ausführen“ am ersten Fall | Fallmarke „bestanden“; Marke der Methode „Test ausführen · 1/2 bestanden“ in Gelb; schlägt ein Fall fehl, sind Methode und Klasse sofort „fehlgeschlagen“ |
 
 ## Einzelnen Test debuggen (#585)
 

@@ -108,10 +108,9 @@ type
     /// <summary>Ein Build ist fertig und bewertet (#530): mit „Tests nach dem Build“ laufen die Tests, wenn er als
     /// erfolgreich gilt (ASucceeded = TAtlasBuildVerdict.Effective).</summary>
     procedure BuildFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean);
-    /// <summary>Stand eines Tests bzw. einer Fixture (AMethod = '') nach den Läufen dieser Sitzung.</summary>
-    function StatusOf(const AUnitName, AFixture, AMethod: string): TAtlasTestStatus; overload;
-    /// <summary>Stand eines Falls ACaseName (#585); '' = alle Fälle.</summary>
-    function StatusOf(const AUnitName, AFixture, AMethod, ACaseName: string): TAtlasTestStatus; overload;
+    /// <summary>Stand der Tests AKeys (Marke der Code Lens: Fixture, Test oder Fall, #585) nach den Läufen dieser
+    /// Sitzung.</summary>
+    function TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
     /// <summary>Testprojekt zur Datei AFileName (Testunit; '' = ohne): ihr Projekt, sonst das aktive Testprojekt,
     /// sonst die der Gruppe; bei mehreren fragt Atlas einmal und merkt sich die Wahl. Ruft AThen im Hauptthread,
     /// ohne Testprojekt eine Meldung statt dessen.</summary>
@@ -760,14 +759,10 @@ begin
   end;
 end;
 
-function TAtlasIdeTests.StatusOf(const AUnitName, AFixture, AMethod: string): TAtlasTestStatus;
+function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string;
+  const AKeys: TArray<TAtlasTestKey>): TAtlasTestTally;
 begin
-  Result := TAtlasTestRun.StatusOf(FCases, AUnitName, AFixture, AMethod);
-end;
-
-function TAtlasIdeTests.StatusOf(const AUnitName, AFixture, AMethod, ACaseName: string): TAtlasTestStatus;
-begin
-  Result := TAtlasTestRun.StatusOf(FCases, AUnitName, AFixture, AMethod, ACaseName);
+  Result := TAtlasTestRun.TallyOf(FCases, AUnitName, AFixture, AKeys);
 end;
 
 end.
