@@ -1408,6 +1408,8 @@ uses
   Atlas.Core.Editor.Unwrap.Tests in 'IDE.Expert\Atlas.Core.Editor.Unwrap.Tests.pas',
   Atlas.Core.Editor.ExpressionType in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ExpressionType.pas',
   Atlas.Core.Editor.ExpressionType.Tests in 'IDE.Expert\Atlas.Core.Editor.ExpressionType.Tests.pas',
+  Atlas.Core.Editor.FormatLog in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.FormatLog.pas',
+  Atlas.Core.Editor.FormatLog.Tests in 'IDE.Expert\Atlas.Core.Editor.FormatLog.Tests.pas',
   Atlas.Core.Editor.MethodPlacement in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MethodPlacement.pas',
   Atlas.Core.Editor.MethodPlacement.Tests in 'IDE.Expert\Atlas.Core.Editor.MethodPlacement.Tests.pas',
   Atlas.Core.Editor.SafeDelete in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SafeDelete.pas',
