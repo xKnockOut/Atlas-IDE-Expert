@@ -1,4 +1,4 @@
-﻿unit Atlas.UI.Settings.Rules.Tests;
+﻿unit Atlas.UI.Rules.Editor.Tests;
 
 // Regel-Editor der Seite „Prüfregeln“ (#909): Gruppe mit Hauptschalter, der
 // alles sperrt, Suche und Gruppenauswahl, Schweregrad, Ausnahmen und Optionen
@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Rules')]
   TAtlasRulesEditorTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -60,7 +61,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.UI.Settings.Rules;
+  Atlas.UI.Rules.Editor;
 
 const
   CatalogText =

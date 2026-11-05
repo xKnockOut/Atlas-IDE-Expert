@@ -12,12 +12,9 @@
 //     Delphi-Versionen, Konfigurationen und Plattformen der .dproj, Profile.
 //   - Textfelder mit Beispielen im Schema als Auswahl mit freier Eingabe.
 //   - Dateiauswahl für x-control „Datei wählen“ (logFile, traceFile).
-//   - "rules" mit dem Regel-Editor (TAtlasRulesEditor, #909) aus dem
-//     Regelkatalog (Catalog): auf der Seite alle Regeln mit Suche, darunter im
-//     Seitenbaum ein Knoten je Gruppe mit Hauptschalter. Schweregrad, Ausnahmen
-//     und Optionen; Werte der globalen Datei als „(global: …)“. Geändert wird je
-//     Regel nur ihr Wert in der Datei. Die Prüfregeln stehen nur hier (Projekt
-//     und „Weitere globale Einstellungen“), nicht in Tools › Optionen.
+//   - "rules": Den Regel-Editor (#909) mit einem Knoten je Regelgruppe liefert
+//     das Modul Prüfregeln als abgeleitete Dialogklasse (IAtlasSettingsDialogProvider,
+//     #1755). Ohne Modul steht "rules" als JSON-Text da wie die übrigen Werte.
 //   - Übrige Werte (profiles, overrides, dfmPropertyRules, profile als Objekt)
 //     als JSON-Text.
 // Vor dem Schließen mit OK prüft OnValidate den neuen Text (beim Server, sonst
@@ -27,7 +24,8 @@
 // Aufbau in einer Vorfahrenkette, je Ebene eine Aufgabe: Rahmen mit Knöpfen
 // und Hinweis (TAtlasSettingsDialogFrame), Seitenbaum und Navigation
 // (TAtlasSettingsDialogPages), Felder einer Seite und ihre Prüfung
-// (TAtlasSettingsDialogFields), Prüfregeln (TAtlasProjectSettingsDialog).
+// (TAtlasSettingsDialogFields), Dialog mit Katalog (TAtlasProjectSettingsDialog,
+// Grundlage des Regel-Editors im Modul Prüfregeln).
 
 interface
 
@@ -47,9 +45,7 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
-  Atlas.Core.Settings.RuleTable,
-  Atlas.Core.Settings.Validation,
-  Atlas.UI.Settings.Rules;
+  Atlas.Core.Settings.Validation;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -94,7 +90,8 @@ type
     property ServerChecks: Boolean read FServerChecks write SetServerChecks;
   end;
 
-  /// <summary>Seitenbaum: ein Knoten je Seite, unter der Seite mit "rules" einer je Regelgruppe.</summary>
+  /// <summary>Seitenbaum: ein Knoten je Seite, unter der Seite mit "rules" einer je Regelgruppe (RuleGroups).
+  /// </summary>
   TAtlasSettingsDialogPages = class(TAtlasSettingsDialogFrame)
   private
     FSelecting: Boolean;
@@ -120,6 +117,11 @@ type
     procedure ShowCurrent;
     procedure ShowPage(APage: Integer); virtual; abstract;
     procedure ShowGroup(AGroup: Integer); virtual; abstract;
+    /// <summary>Regelgruppen für die Knoten unter der Seite mit "rules"; ohne Regel-Editor keine. Wird schon im
+    /// Konstruktor gefragt.</summary>
+    function RuleGroups: TArray<string>; virtual;
+    /// <summary>Beschriftung des Knotens der Regelgruppe AGroup.</summary>
+    function RuleGroupCaption(const AGroup: string): string; virtual;
   public
     /// <summary>Seite mit diesem Namen zeigen; False ohne sie.</summary>
     function SelectPage(const APage: string): Boolean;
@@ -163,8 +165,11 @@ type
     procedure UpdateState(AIndex: Integer);
     /// <summary>Wert von AIndex auf den Standard zurücksetzen.</summary>
     procedure ResetValue(AIndex: Integer); virtual;
-    /// <summary>Regeltabelle ab ATop, mit AGroup nur diese Gruppe; liefert die Oberkante darunter.</summary>
-    function AddRuleTable(ATop: Integer; const AGroup: string): Integer; virtual; abstract;
+    /// <summary>"rules" mit eigenem Editor (Modul Prüfregeln); sonst als JSON-Text.</summary>
+    function HasRuleEditor: Boolean; virtual;
+    /// <summary>Regeltabelle ab ATop, mit AGroup nur diese Gruppe; liefert die Oberkante darunter. Nur mit
+    /// HasRuleEditor.</summary>
+    function AddRuleTable(ATop: Integer; const AGroup: string): Integer; virtual;
   public
     /// <summary>Text des Zustands eines Felds auf der gezeigten Seite; '' wenn nicht gezeigt.</summary>
     function StateText(const APath: string): string;
@@ -176,41 +181,31 @@ type
     property ProjectHint: string read FProjectHint write SetProjectHint;
   end;
 
-  /// <summary>Der Dialog mit dem Regel-Editor (#909) für das Feld "rules".</summary>
+  /// <summary>Dialog über eine Einstellungsdatei mit dem Katalog des Servers. Der Regel-Editor (#909) für "rules"
+  /// kommt aus dem Modul Prüfregeln als abgeleitete Klasse (#1755).</summary>
   TAtlasProjectSettingsDialog = class(TAtlasSettingsDialogFields)
-  private
-    FCatalog: TJSONValue;
-    // Regel-Editor: Wert von "rules" mit den Änderungen.
-    FRulesJson: string;
-    /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
-    FGlobalRulesJson: string;
-    FRuleEditor: TAtlasRulesEditor;
-    /// <summary>Höhe des Regel-Editors, mit der die Felder darunter stehen (#1296).</summary>
-    FRuleHeight: Integer;
-    function HasRule(const AId: string): Boolean;
-    function RuleTarget(const AId: string): TTreeNode;
-    procedure ApplyRules(const AUpdated: string);
-    procedure RuleEditorChange(Sender: TObject);
-    procedure RuleEditorResize(Sender: TObject);
-    function GetRuleList: TListView;
   protected
+    FCatalog: TJSONValue;
     procedure ShowGroup(AGroup: Integer); override;
-    procedure ClearBox; override;
-    procedure ResetValue(AIndex: Integer); override;
-    function AddRuleTable(ATop: Integer; const AGroup: string): Integer; override;
+    /// <summary>Nach dem Aufbau, bevor die erste Seite erscheint: Werte der Ableitung lesen.</summary>
+    procedure ValuesReady; virtual;
   public
     /// <summary>AModel bleibt beim Aufrufer. AFileName: bearbeitete Datei für die Anzeige.</summary>
-    constructor CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string);
-    /// <summary>Schweregrad einer Regel wie über die Tabelle setzen ('' = Vorgabe); False ohne die Regel.</summary>
-    function SetRuleSeverity(const AId, ASeverity: string): Boolean;
+    constructor CreateDialog(AOwner: TComponent; AModel: TAtlasSettingsModel; const AFileName: string); virtual;
     /// <summary>Knoten der Gruppe der Regel zeigen und die Regel markieren („Regel einstellen…“, #909); False
-    /// ohne Katalog, ohne "rules" oder ohne die Regel.</summary>
-    function SelectRule(const AId: string): Boolean;
-    property RuleList: TListView read GetRuleList;
-    /// <summary>Regel-Editor auf der gezeigten Seite; nil ohne "rules".</summary>
-    property RuleEditor: TAtlasRulesEditor read FRuleEditor;
+    /// ohne Regel-Editor, ohne Katalog, ohne "rules" oder ohne die Regel.</summary>
+    function SelectRule(const AId: string): Boolean; virtual;
     /// <summary>Antwort von atlas.server.settingsCatalog für die Regeltabelle; bleibt beim Aufrufer.</summary>
     property Catalog: TJSONValue read FCatalog write FCatalog;
+  end;
+
+  TAtlasProjectSettingsDialogClass = class of TAtlasProjectSettingsDialog;
+
+  /// <summary>Dialogklasse mit Regel-Editor; das Modul Prüfregeln stellt sie bereit (#1755), der Aufrufer fragt
+  /// laufende Module bei jedem Öffnen. Ohne Modul gilt TAtlasProjectSettingsDialog.</summary>
+  IAtlasSettingsDialogProvider = interface
+    ['{C41D7E62-9B35-4F08-A2D7-5E8F13B9C604}']
+    function DialogClass: TAtlasProjectSettingsDialogClass;
   end;
 
 implementation
@@ -490,14 +485,24 @@ begin
   begin
     Exit;
   end;
-  for mGroup in TAtlasRuleTable.GroupIds do
+  for mGroup in RuleGroups do
   begin
-    mNode := FPageTree.Items.AddChild(FPageNodes[APage], AtlasRuleGroupCaption(mGroup));
+    mNode := FPageTree.Items.AddChild(FPageNodes[APage], RuleGroupCaption(mGroup));
     mNode.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
     FGroups := FGroups + [mGroup];
     FGroupNodes := FGroupNodes + [mNode];
   end;
   FPageNodes[APage].Expand(False);
+end;
+
+function TAtlasSettingsDialogPages.RuleGroups: TArray<string>;
+begin
+  Result := nil;
+end;
+
+function TAtlasSettingsDialogPages.RuleGroupCaption(const AGroup: string): string;
+begin
+  Result := AGroup;
 end;
 
 function TAtlasSettingsDialogPages.RulePage: Integer;
@@ -865,7 +870,7 @@ begin
   Control := nil;
   Header;
   Notes;
-  if Index = Dialog.FRuleIndex then
+  if (Index = Dialog.FRuleIndex) and Dialog.HasRuleEditor then
   begin
     // Regeltabelle aus dem Katalog; der Zustand gilt für "rules" als Ganzes.
     Top := Dialog.AddRuleTable(Top, '');
@@ -1009,6 +1014,16 @@ begin
       mTop := mRow.Build(Self, mIndex, mTop);
     end;
   end;
+end;
+
+function TAtlasSettingsDialogFields.HasRuleEditor: Boolean;
+begin
+  Result := False;
+end;
+
+function TAtlasSettingsDialogFields.AddRuleTable(ATop: Integer; const AGroup: string): Integer;
+begin
+  Result := ATop;
 end;
 
 procedure TAtlasSettingsDialogFields.ClearBox;
@@ -1280,188 +1295,26 @@ constructor TAtlasProjectSettingsDialog.CreateDialog(AOwner: TComponent; AModel:
   const AFileName: string);
 begin
   inherited CreateFields(AOwner, AModel, AFileName);
-  if FRuleIndex >= 0 then
-  begin
-    FRulesJson := FModel.Current(FRuleIndex);
-    if not FModel.Global then
-    begin
-      FGlobalRulesJson := FModel.Inherited_(FRuleIndex);
-    end;
-  end;
+  ValuesReady;
   if Length(FPageNodes) > 0 then
   begin
     SelectNode(FPageNodes[0]);
   end;
 end;
 
-function TAtlasProjectSettingsDialog.RuleTarget(const AId: string): TTreeNode;
-var
-  mRow: TAtlasRuleRow;
+procedure TAtlasProjectSettingsDialog.ValuesReady;
 begin
-  Result := nil;
-  if (FRuleIndex < 0) or (FCatalog = nil) then
-  begin
-    Exit;
-  end;
-  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
-  begin
-    if SameText(mRow.Id, AId) then
-    begin
-      // Knoten der Gruppe der Regel, sonst die Seite mit allen Regeln.
-      Result := GroupNode(mRow.Group);
-      if (Result = nil) and (RulePage >= 0) then
-      begin
-        Result := FPageNodes[RulePage];
-      end;
-    end;
-  end;
-end;
-
-function TAtlasProjectSettingsDialog.SelectRule(const AId: string): Boolean;
-var
-  mTarget: TTreeNode;
-begin
-  Result := False;
-  mTarget := RuleTarget(AId);
-  if mTarget <> nil then
-  begin
-    SelectNode(mTarget);
-    Result := (FRuleEditor <> nil) and FRuleEditor.SelectRule(AId);
-  end;
-end;
-
-procedure TAtlasProjectSettingsDialog.ClearBox;
-begin
-  inherited ClearBox;
-  FRuleEditor := nil;
-end;
-
-procedure TAtlasProjectSettingsDialog.ResetValue(AIndex: Integer);
-begin
-  inherited ResetValue(AIndex);
-  if AIndex = FRuleIndex then
-  begin
-    FRulesJson := '';
-  end;
+  // Ohne Regel-Editor nichts zu lesen.
 end;
 
 procedure TAtlasProjectSettingsDialog.ShowGroup(AGroup: Integer);
-var
-  mTitle: TLabel;
 begin
-  ClearBox;
-  FCurrentPage := -1;
-  FCurrentGroup := AGroup;
-  mTitle := TLabel.Create(FBox);
-  mTitle.Parent := FBox;
-  mTitle.SetBounds(Gap * 2, Gap, 400, 16);
-  mTitle.Font.Style := [fsBold];
-  mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
-  AddRuleTable(Gap + 24, FGroups[AGroup]);
+  // Ohne Regel-Editor gibt es keine Gruppenknoten.
 end;
 
-function TAtlasProjectSettingsDialog.AddRuleTable(ATop: Integer; const AGroup: string): Integer;
-begin
-  // Regel-Editor (#909); er braucht für Tabelle und Auswahllisten ein Fenster. Mit AGroup nur diese Gruppe mit
-  // ihrem Hauptschalter.
-  FRuleEditor := TAtlasRulesEditor.Create(FBox);
-  FRuleEditor.Parent := FBox;
-  FRuleEditor.SetBounds(Gap * 2, ATop, FBox.ClientWidth - Gap * 5, 400);
-  FRuleEditor.Anchors := [akLeft, akTop, akRight];
-  FRuleEditor.FixedGroup := AGroup;
-  FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
-  FRuleEditor.OnChange := RuleEditorChange;
-  FRuleEditor.HandleNeeded;
-  FRuleHeight := FRuleEditor.Height;
-  FRuleEditor.OnResize := RuleEditorResize;
-  Result := ATop + FRuleHeight + Gap;
-end;
-
-procedure TAtlasProjectSettingsDialog.RuleEditorResize(Sender: TObject);
-var
-  mIndex, mShift, mBottom: Integer;
-  mControl: TControl;
-begin
-  // Die Seite steht mit festen Positionen; der Editor wächst mit der markierten Regel (Optionen, Beispiele) und
-  // überdeckte sonst die Felder darunter (#1296). Alles unter seiner alten Unterkante rückt um die Differenz.
-  if (FRuleEditor = nil) or (csDestroying in FRuleEditor.ComponentState) then
-  begin
-    Exit;
-  end;
-  mShift := FRuleEditor.Height - FRuleHeight;
-  if mShift = 0 then
-  begin
-    Exit;
-  end;
-  mBottom := FRuleEditor.Top + FRuleHeight;
-  FRuleHeight := FRuleEditor.Height;
-  FBox.DisableAlign;
-  try
-    for mIndex := 0 to FBox.ControlCount - 1 do
-    begin
-      mControl := FBox.Controls[mIndex];
-      if (mControl <> FRuleEditor) and (mControl.Top >= mBottom) then
-      begin
-        mControl.Top := mControl.Top + mShift;
-      end;
-    end;
-  finally
-    FBox.EnableAlign;
-  end;
-end;
-
-function TAtlasProjectSettingsDialog.GetRuleList: TListView;
-begin
-  Result := nil;
-  if FRuleEditor <> nil then
-  begin
-    Result := FRuleEditor.List;
-  end;
-end;
-
-procedure TAtlasProjectSettingsDialog.ApplyRules(const AUpdated: string);
-var
-  mChange: TPair<string, string>;
-begin
-  // Nur die geänderten Regeln in die Datei: Kommentare und andere Regeln bleiben.
-  for mChange in TAtlasRuleTable.Changes(FRulesJson, AUpdated) do
-  begin
-    FModel.SetPath(mChange.Key, mChange.Value);
-  end;
-  FRulesJson := AUpdated;
-end;
-
-procedure TAtlasProjectSettingsDialog.RuleEditorChange(Sender: TObject);
-begin
-  ApplyRules(FRuleEditor.RulesJson);
-  UpdateState(FRuleIndex);
-end;
-
-function TAtlasProjectSettingsDialog.HasRule(const AId: string): Boolean;
-var
-  mRow: TAtlasRuleRow;
+function TAtlasProjectSettingsDialog.SelectRule(const AId: string): Boolean;
 begin
   Result := False;
-  for mRow in TAtlasRuleTable.Rows(FCatalog, FRulesJson, FGlobalRulesJson) do
-  begin
-    if SameText(mRow.Id, AId) then
-    begin
-      Result := True;
-    end;
-  end;
-end;
-
-function TAtlasProjectSettingsDialog.SetRuleSeverity(const AId, ASeverity: string): Boolean;
-begin
-  if FRuleEditor <> nil then
-  begin
-    Exit(FRuleEditor.SetRuleSeverity(AId, ASeverity));
-  end;
-  Result := HasRule(AId);
-  if Result then
-  begin
-    ApplyRules(TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity));
-  end;
 end;
 
 end.

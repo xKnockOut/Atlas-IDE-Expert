@@ -20,10 +20,10 @@
 // löst die Schlüssel sofort (nicht erst mit OK).
 // Reveal (#628, „Einstellungen dazu …“ am gezeichneten Element): wählt den Reiter einer Einstellung über ihren
 // Schlüssel (Name der Plugin-Einstellung), rollt sie ins Bild, setzt den Fokus und hebt die Zeile fett hervor.
-// Bereich Prüfregeln (#909): Die Regeln selbst stehen in den Dialogen der Einstellungsdateien (atlas.json des
-// Projekts, settings.json über „Weitere globale Einstellungen“) mit einem Knoten je Gruppe; im Hauptknoten der
-// Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.live),
-// „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
+// Bereich Prüfregeln (#909): Unterknoten „Prüffenster“ (problems.window*, problems.live) und „Compiler vorab“
+// (problems.compilerMerge, problems.showCompilerCode). Den Weg zu den Regeln (Dialoge der Einstellungsdateien
+// mit einem Knoten je Gruppe), Profile, Baseline und Unterdrückungen baut das Modul Prüfregeln als Abschnitt
+// (#1755).
 // Bereich Versionsverwaltung (#1285): Art (vcs.provider), Programme git und svn mit eigenem Pfad, „…“ und
 // „Prüfen“ (Version und Fundort, im Hintergrund über OnVcsCheck), Zeitlimit je Aufruf und „Aktuelles Projekt“
 // (beim ersten Zeigen der Seite einmal im Hintergrund abgefragt, OnVcsProject); Links auf die Seiten, die die
