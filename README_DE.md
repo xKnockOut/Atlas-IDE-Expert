@@ -93,7 +93,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Modulschalter** für ganze Bereiche wie Debuggen, Tests oder Issue-Tracker; jedes Modul bringt seine Einstellungen selbst mit, ohne installiertes Modul fehlen sie
 - **Exportieren, Importieren, Profile und Zurücksetzen**
 - **Werte fürs Team** in `.atlas` und `atlas.json`
-- **Sprache wie die IDE** (Deutsch oder Englisch), auch Issue-Tracker, Willkommensseite und Debugger; unveränderte Vorgabetexte wie Textbausteine wechseln mit; ebenso Meldungen, Statuszeilen, Hinweise der Vervollständigung, Code-Vorlagen, Hinweise zu Serverabstürzen und das Aufrufdiagramm
+- **Sprache wie die IDE** (Deutsch oder Englisch), auch Issue-Tracker, Willkommensseite und Debugger; unveränderte Vorgabetexte wie Textbausteine wechseln mit; ebenso Meldungen, Statuszeilen, Hinweise der Vervollständigung, Code-Vorlagen, Hinweise zu Serverabstürzen und das Aufrufdiagramm; außerdem Hinweise zu ungültigen Projektaufgaben, die Antworten von IDE-Builds für Claude Code und die Fragen des pre-commit-Hooks für betroffene Tests
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **32 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code

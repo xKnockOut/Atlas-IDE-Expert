@@ -9528,3 +9528,18 @@ end;
 | LR11 | Englische Oberfläche | Beschriftungen englisch |
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Englische Texte der übrigen Module (#1458, Gruppe F)
+
+Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und Tests gebaut; eigenes Registry-Profil (`bds -r AtlasEnglisch`); Git-Projekt mit Testprojekt. Englisch über `ui.language` = en bzw. englische IDE, Deutsch über `ui.language` = de.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ENF1 | In `atlas.json` des Projekts `"tasks": [{"name": "Lint", "command": "x", "args": 1, "key": "Q"}, {"command": "y"}]` eintragen, Projekt aktivieren; englische Oberfläche | Meldungsansicht (Gruppe Atlas) nennt englisch „Lint: args must be a list“, „Lint: key "Q" not readable“, „tasks[1]: without name“ (**Abnahme**) |
+| ENF2 | Dasselbe mit deutscher Oberfläche | „Lint: args muss eine Liste sein“, „Lint: Taste "Q" nicht lesbar“, „tasks[1]: ohne name“ wie bisher |
+| ENF3 | Englische Oberfläche; in Claude Code `build_project` für ein Projekt, das in der IDE nicht offen ist | Antwort „The project X.dproj is not open in the IDE“ |
+| ENF4 | Englisch; während ein Build in der IDE läuft, `build_project` aufrufen; danach mit laufendem Debugger | „A build or compiler check is already running in the IDE“ bzw. „The debugger is running in the IDE“ |
+| ENF5 | Englisch; `build_project` mit `mode` = `clean` (über die Auftragsdatei im Eingang) | Antwort „Unknown mode "clean"; allowed are make, build and check“ |
+| ENF6 | Englisch; `tests.affectedBeforeCommit` an, Hook anlegen lassen (`.git/hooks/pre-commit` vorher löschen); Datei ändern und in Git Bash committen | Hook-Kommentare englisch; Frage „Atlas: Run the affected tests now (test EXE without a new build)? [y/N]“; `y` startet die Tests, nach Fehlschlag „Atlas: Tests failed. Commit anyway? [y/N]“ |
+| ENF7 | Deutsch; Einstellung aus- und einschalten (Hook neu schreiben), committen | Fragen deutsch mit „[j/N]“; `j` und `y` gelten in beiden Sprachen |
+| ENF8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTaskDefinitionsTests`, `TAtlasTaskTextsTests.IssueInBothLanguages`, `TAtlasBuildInboxTests`, `TAtlasAffectedHookTests` und die Strings-Tests von Build, BuildPipeline und Tests grün |
