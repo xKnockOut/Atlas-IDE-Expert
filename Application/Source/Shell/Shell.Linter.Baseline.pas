@@ -54,7 +54,24 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.ChangedFiles,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterBaselineText = (Unreadable, NotFound, Orphans, Written, Completed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterBaselineText] of TAtlasText = (
+    (De: 'Bisherige Baseline nicht lesbar, wird ersetzt: %s'; En: 'Previous baseline not readable, replacing it: %s'),
+    (De: 'Baseline "%s" nicht gefunden'; En: 'Baseline "%s" not found'),
+    (De: '%d Einträge ohne Datei werden entfernt (Datei umbenannt, verschoben oder gelöscht):';
+    En: '%d entries without a file are removed (file renamed, moved or deleted):'),
+    (De: 'Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, %d unverändert)';
+    En: 'Baseline written: %s (%d findings, %d files checked; %d new, %d removed, %d unchanged)'),
+    (De: '%d Einträge der älteren Baseline um die Routine ergänzt';
+    En: '%d entries of the older baseline completed with the routine'));
 
 class function TLinterBaseline.PathOf(const AOptions: TCommandLineOptions; const AConfigRoot: string): string;
 begin
@@ -93,7 +110,7 @@ begin
   except
     on E: Exception do
     begin
-      TLinterOutput.Error(Format('Bisherige Baseline nicht lesbar, wird ersetzt: %s', [E.Message]));
+      TLinterOutput.Error(cTexts[TLinterBaselineText.Unreadable].Fmt([E.Message]));
       Result := nil;
     end;
   end;
@@ -114,7 +131,7 @@ begin
   end
   else if AOptions.BaselineFile <> '' then
   begin
-    TLinterOutput.Error(Format('Baseline "%s" nicht gefunden', [APath]));
+    TLinterOutput.Error(cTexts[TLinterBaselineText.NotFound].Fmt([APath]));
     Result := False;
   end;
 end;
@@ -202,8 +219,7 @@ begin
   begin
     Exit;
   end;
-  TLinterOutput.Error(Format('%d Einträge ohne Datei werden entfernt (Datei umbenannt, verschoben oder gelöscht):',
-    [AUpdate.OrphanCount]));
+  TLinterOutput.Error(cTexts[TLinterBaselineText.Orphans].Fmt([AUpdate.OrphanCount]));
   for mOrphan in AUpdate.Orphans do
   begin
     TLinterOutput.Error(Format('  %s (%d)', [mOrphan.Path, mOrphan.Count]));
@@ -212,12 +228,15 @@ end;
 
 class procedure TLinterBaseline.ReportUpdate(const AUpdate: TBaselineUpdate; const APath: string);
 begin
-  TLinterOutput.Error(Format('Baseline geschrieben: %s (%d Treffer, %d Dateien geprüft; %d neu, %d entfernt, ' +
-    '%d unverändert)', [APath, AUpdate.Total, AUpdate.Files, AUpdate.Added, AUpdate.Removed, AUpdate.Unchanged]));
+  TLinterOutput.Error(cTexts[TLinterBaselineText.Written].Fmt([APath, AUpdate.Total, AUpdate.Files, AUpdate.Added,
+    AUpdate.Removed, AUpdate.Unchanged]));
   if AUpdate.Completed > 0 then
   begin
-    TLinterOutput.Error(Format('%d Einträge der älteren Baseline um die Routine ergänzt', [AUpdate.Completed]));
+    TLinterOutput.Error(cTexts[TLinterBaselineText.Completed].Fmt([AUpdate.Completed]));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Baseline', cTexts);
 
 end.

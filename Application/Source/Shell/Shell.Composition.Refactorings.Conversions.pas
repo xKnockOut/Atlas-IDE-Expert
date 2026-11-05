@@ -41,7 +41,20 @@ uses
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Lsp.AnonymousMethods,
-  Atlas.Common.Lsp.MethodWithoutSelf;
+  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TConversionRefactoringText = (InvertBoolean, PromoteVariable, AnonymousMethod, MethodKind);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TConversionRefactoringText] of TAtlasText = (
+    (De: 'Boolean umkehren'; En: 'Invert Boolean'),
+    (De: 'Lokale Variable und Feld umwandeln'; En: 'Convert local variable and field'),
+    (De: 'Anonyme Methode und Methode umwandeln'; En: 'Convert anonymous method and method'),
+    (De: 'Methode ohne Self umwandeln'; En: 'Convert method without Self'));
 
 function InvertBooleanContextOf(const ASettings: TRefactoringSettings): TInvertBooleanContext;
 begin
@@ -103,10 +116,11 @@ var
   mAnswer: TJSONObject;
 begin
   // Argumente: URI, Position, neuer Name.
-  Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
+  Require(AArguments, ['uri', 'position', 'name']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
-  mDocument := Open(mUri, mSettings.InvertBoolean, '"Boolean umkehren" ist abgeschaltet (refactoring.invertBoolean).');
+  mDocument := Open(mUri, mSettings.InvertBoolean, Disabled(cTexts[TConversionRefactoringText.InvertBoolean].Text,
+    'refactoring.invertBoolean'));
   mContext := InvertBooleanContextOf(mSettings);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -163,10 +177,10 @@ var
   mContext: TPromoteVariableContext;
 begin
   // Argumente: URI, Position, Name.
-  Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
+  Require(AArguments, ['uri', 'position', 'name']);
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).PromoteVariable,
-    '"Lokale Variable und Feld umwandeln" ist abgeschaltet (refactoring.promoteVariable).');
+    Disabled(cTexts[TConversionRefactoringText.PromoteVariable].Text, 'refactoring.promoteVariable'));
   mShared := TSyntaxTreeCache.Get(mDocument, nil);
   mFileName := TDocumentUris.ToPath(mUri);
   mResolver := NewResolver;
@@ -238,11 +252,11 @@ var
   mRequest: TAnonymousMethodRequest;
 begin
   // Argumente: URI, Position, Name.
-  Require(AArguments, 3, 'Argumente "uri", "position" und "name" fehlen');
+  Require(AArguments, ['uri', 'position', 'name']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
   mDocument := Open(mUri, mSettings.AnonymousMethod,
-    '"Anonyme Methode und Methode umwandeln" ist abgeschaltet (refactoring.anonymousMethod).');
+    Disabled(cTexts[TConversionRefactoringText.AnonymousMethod].Text, 'refactoring.anonymousMethod'));
   mShared := TSyntaxTreeCache.Get(mDocument, nil);
   mFileName := TDocumentUris.ToPath(mUri);
   mResolver := NewResolver;
@@ -307,11 +321,11 @@ var
   mContext: TMethodKindContext;
 begin
   // Argumente: URI, Position, Umwandlung.
-  Require(AArguments, 3, 'Argumente "uri", "position" und "conversion" fehlen');
+  Require(AArguments, ['uri', 'position', 'conversion']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
   mDocument := Open(mUri, mSettings.MethodKind,
-    '"Methode ohne Self umwandeln" ist abgeschaltet (refactoring.methodKind).');
+    Disabled(cTexts[TConversionRefactoringText.MethodKind].Text, 'refactoring.methodKind'));
   mContext := Default(TMethodKindContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -330,5 +344,8 @@ begin
     Number(mAnswer, 'calls'), Count(mAnswer, 'warnings')]));
   Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Conversions', cTexts);
 
 end.

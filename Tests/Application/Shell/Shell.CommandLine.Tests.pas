@@ -19,6 +19,9 @@ type
     procedure IgnoresEditorArgumentsSilently;
     [Test]
     procedure WarnsAboutUnknownArgument;
+    /// <summary>#1458: Der Hinweis entsteht erst bei der Ausgabe in der dann gültigen Sprache.</summary>
+    [Test]
+    procedure WarningTextFollowsLanguage;
     [Test]
     procedure AcceptsSingleAndTypographicDashes;
     [Test]
@@ -72,6 +75,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts,
   Shell.CommandLine;
 
 { TCommandLineOptionsTests }
@@ -138,7 +142,7 @@ begin
   Options := TCommandLineOptions.Parse(['--clientProcessId=abc']);
   Assert.AreEqual(Cardinal(0), Options.ClientProcessId);
   Assert.AreEqual<NativeInt>(1, Length(Options.Warnings));
-  Assert.Contains(Options.Warnings[0], 'abc');
+  Assert.Contains(Options.Warnings[0].Text, 'abc');
 end;
 
 procedure TCommandLineOptionsTests.WarnsAboutUnknownArgument;
@@ -147,7 +151,27 @@ var
 begin
   Options := TCommandLineOptions.Parse(['--gibtsnicht']);
   Assert.AreEqual<NativeInt>(1, Length(Options.Warnings));
-  Assert.Contains(Options.Warnings[0], '--gibtsnicht');
+  Assert.Contains(Options.Warnings[0].Text, '--gibtsnicht');
+end;
+
+procedure TCommandLineOptionsTests.WarningTextFollowsLanguage;
+var
+  mOptions: TCommandLineOptions;
+  mSaved: TTextLanguage;
+begin
+  mSaved := TAtlasLocale.Language;
+  try
+    mOptions := TCommandLineOptions.Parse(['--gibtsnicht', '--log-level', 'laut']);
+    Assert.AreEqual<NativeInt>(2, Length(mOptions.Warnings));
+    Assert.IsTrue(mOptions.Warnings[0].Kind = TCommandLineWarningKind.UnknownParameter);
+    TAtlasLocale.Use(TTextLanguage.English);
+    Assert.AreEqual('Unknown parameter "--gibtsnicht" is ignored', mOptions.Warnings[0].Text);
+    Assert.AreEqual('Unknown log level "laut", using info', mOptions.Warnings[1].Text);
+    TAtlasLocale.Use(TTextLanguage.German);
+    Assert.AreEqual('Unbekannter Parameter "--gibtsnicht" wird ignoriert', mOptions.Warnings[0].Text);
+  finally
+    TAtlasLocale.Use(mSaved);
+  end;
 end;
 
 procedure TCommandLineOptionsTests.AcceptsSingleAndTypographicDashes;

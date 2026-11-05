@@ -1579,6 +1579,8 @@ uses
   Shell.Commands.Build in '..\Application\Source\Shell\Shell.Commands.Build.pas',
   Shell.Commands.Index in '..\Application\Source\Shell\Shell.Commands.Index.pas',
   Shell.Commands.Tests in 'Application\Shell\Shell.Commands.Tests.pas',
+  Shell.Texts in '..\Application\Source\Shell\Shell.Texts.pas',
+  Shell.Texts.Tests in 'Application\Shell\Shell.Texts.Tests.pas',
   Shell.VcsChanges in '..\Application\Source\Shell\Shell.VcsChanges.pas',
   Shell.VcsChanges.Tests in 'Application\Shell\Shell.VcsChanges.Tests.pas',
   Shell.AffectedTests in '..\Application\Source\Shell\Shell.AffectedTests.pas',

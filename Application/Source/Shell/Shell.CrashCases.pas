@@ -69,7 +69,6 @@ type
     SkipNotification = 'atlas/crashSkip';
     RetryCommand = 'atlas.crash.retry';
     SkipsFileName = 'uebersprungen.json';
-    SkipMessage = 'Übersprungen nach Absturz';
     /// <summary>Testschalter (Umgebungsvariable): „textDocument/hover“ lässt jede Hover-Anfrage mit ECrashTest
     /// abstürzen, „textDocument/hover:overflow“ mit einem echten Stapelüberlauf.</summary>
     TestVariable = 'ATLAS_CRASH_TEST';
@@ -119,6 +118,8 @@ type
     /// <summary>%LOCALAPPDATA%\Atlas\crash (unter Linux im Cache-Ordner des Benutzers).</summary>
     class function DefaultRoot: string; static;
     /// <summary>Text der Fehlerantwort beim Überspringen.</summary>
+    /// <summary>Anfang der Meldung an den Client für eine übersprungene Anfrage.</summary>
+    class function SkipMessage: string; static;
     class function SkipText(const AEntry: TCrashSkipEntry): string; static;
     property Root: string read FRoot;
     /// <summary>server.crashCases: Fälle sichern und melden.</summary>
@@ -149,7 +150,22 @@ uses
   Atlas.Common.Diagnostics.StackGuard,
   Shell.Bootstrap,
   Shell.Platform,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TCrashCaseText = (Skipped, SkipText, SkipCase, Timeout, Watchdog, TestCrash);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TCrashCaseText] of TAtlasText = (
+    (De: 'Übersprungen nach Absturz'; En: 'Skipped after crash'),
+    (De: '%s: %s ist an dieser Datei %d-mal abgestürzt (%s)'; En: '%s: %s crashed %d times on this file (%s)'),
+    (De: '; Fall %s'; En: '; case %s'),
+    (De: 'Zeitlimit'; En: 'Timeout'),
+    (De: 'Abbruch durch den Watchdog nach %d ms'; En: 'Aborted by the watchdog after %d ms'),
+    (De: 'Künstlicher Absturz (Testschalter %s)'; En: 'Artificial crash (test switch %s)'));
 
 function BuildCompilerText: string;
 begin
@@ -285,13 +301,18 @@ begin
   Result := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'crash');
 end;
 
+class function TShellCrashCases.SkipMessage: string;
+begin
+  Result := cTexts[TCrashCaseText.Skipped].Text;
+end;
+
 class function TShellCrashCases.SkipText(const AEntry: TCrashSkipEntry): string;
 begin
-  Result := Format('%s: %s ist an dieser Datei %d-mal abgestürzt (%s)', [SkipMessage, AEntry.Method,
+  Result := cTexts[TCrashCaseText.SkipText].Fmt([SkipMessage, AEntry.Method,
     AEntry.Crashes, AEntry.ExceptionClass]);
   if AEntry.CaseFolder <> '' then
   begin
-    Result := Result + '; Fall ' + AEntry.CaseFolder;
+    Result := Result + cTexts[TCrashCaseText.SkipCase].Fmt([AEntry.CaseFolder]);
   end;
 end;
 
@@ -522,8 +543,8 @@ begin
     end;
     mCase := NewCase(TCrashCaseKind.Timeout, mMethod, AId, mParams);
     mCase.TimeoutMs := ATimeoutMs;
-    mCase.ExceptionClass := 'Zeitlimit';
-    mCase.ExceptionMessage := Format('Abbruch durch den Watchdog nach %d ms', [ATimeoutMs]);
+    mCase.ExceptionClass := cTexts[TCrashCaseText.Timeout].Text;
+    mCase.ExceptionMessage := cTexts[TCrashCaseText.Watchdog].Fmt([ATimeoutMs]);
     // Ein Abbruch durch den Watchdog zählt nicht für das Überspringen: Langsam ist nicht abgestürzt.
     mFolder := Store(mCase, False);
     if mFolder <> '' then
@@ -556,7 +577,7 @@ begin
   begin
     Deeper(0);
   end;
-  raise ECrashTest.Create('Künstlicher Absturz (Testschalter ' + TShellCrashCases.TestVariable + ')');
+  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.TestVariable]));
 end;
 
 procedure TShellCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
@@ -656,5 +677,8 @@ function TShellCrashCases.Skipped: TArray<TCrashSkipEntry>;
 begin
   Result := FSkips.Skipped;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.CrashCases', cTexts);
 
 end.

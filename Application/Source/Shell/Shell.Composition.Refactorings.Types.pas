@@ -40,7 +40,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Lsp.EnumTables,
-  Atlas.Common.Lsp.Overloads;
+  Atlas.Common.Lsp.Overloads,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TTypeRefactoringText = (TypeAlias, ResolveAlias, EnumTables, UpdateTables, Overloads);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TTypeRefactoringText] of TAtlasText = (
+    (De: 'Typ-Alias einführen'; En: 'Introduce type alias'),
+    (De: 'Alias auflösen'; En: 'Resolve alias'),
+    (De: 'Namenstabelle anlegen'; En: 'Create name table'),
+    (De: 'Tabellen nachziehen'; En: 'Update tables'),
+    (De: 'Überladung anlegen'; En: 'Create overload'));
 
 procedure TShellTypeRefactorings.Register(ACommands: TLspCommands);
 begin
@@ -101,9 +115,10 @@ var
   mContext: TTypeAliasContext;
 begin
   // Argumente: URI, Position, Name, Reichweite.
-  Require(AArguments, 4, 'Argumente "uri", "position", "name" und "scope" fehlen');
+  Require(AArguments, ['uri', 'position', 'name', 'scope']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).TypeAlias, '"Typ-Alias einführen" ist abgeschaltet (refactoring.typeAlias).');
+  mDocument := Open(mUri, Settings(mUri).TypeAlias, Disabled(cTexts[TTypeRefactoringText.TypeAlias].Text,
+    'refactoring.typeAlias'));
   mContext := Default(TTypeAliasContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -131,9 +146,10 @@ var
   mContext: TTypeAliasContext;
 begin
   // Argumente: URI, Position des Alias-Namens.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).TypeAlias, '"Alias auflösen" ist abgeschaltet (refactoring.typeAlias).');
+  mDocument := Open(mUri, Settings(mUri).TypeAlias, Disabled(cTexts[TTypeRefactoringText.ResolveAlias].Text,
+    'refactoring.typeAlias'));
   mContext := Default(TTypeAliasContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -184,10 +200,11 @@ var
   mContext: TEnumTablesContext;
 begin
   // Argumente: URI, Position, Name, Stelle.
-  Require(AArguments, 4, 'Argumente "uri", "position", "name" und "placement" fehlen');
+  Require(AArguments, ['uri', 'position', 'name', 'placement']);
   mUri := AArguments.Items[0].Value;
   mSettings := Settings(mUri);
-  mDocument := Open(mUri, mSettings.EnumTables, '"Namenstabelle anlegen" ist abgeschaltet (refactoring.enumTables).');
+  mDocument := Open(mUri, mSettings.EnumTables, Disabled(cTexts[TTypeRefactoringText.EnumTables].Text,
+    'refactoring.enumTables'));
   mContext := Default(TEnumTablesContext);
   mContext.ResourceStrings := mSettings.EnumTablesResourceStrings;
   Result := TLspEnumTables.Execute(TEnumTablesDocument.Create(TSyntaxTreeCache.Get(mDocument, nil).Tree,
@@ -205,9 +222,10 @@ var
   mContext: TEnumTablesContext;
 begin
   // Argumente: URI, Position des Typnamens.
-  Require(AArguments, 2, 'Argumente "uri" und "position" fehlen');
+  Require(AArguments, ['uri', 'position']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).EnumTables, '"Tabellen nachziehen" ist abgeschaltet (refactoring.enumTables).');
+  mDocument := Open(mUri, Settings(mUri).EnumTables, Disabled(cTexts[TTypeRefactoringText.UpdateTables].Text,
+    'refactoring.enumTables'));
   mContext := Default(TEnumTablesContext);
   mContext.Index := Index;
   mContext.Files := ProjectFiles;
@@ -244,9 +262,10 @@ var
   mResolver: TNameResolver;
 begin
   // Argumente: URI, Position, Art (copy bzw. forward).
-  Require(AArguments, 3, 'Argumente "uri", "position" und "kind" fehlen');
+  Require(AArguments, ['uri', 'position', 'kind']);
   mUri := AArguments.Items[0].Value;
-  mDocument := Open(mUri, Settings(mUri).Overloads, '"Überladung anlegen" ist abgeschaltet (refactoring.overloads).');
+  mDocument := Open(mUri, Settings(mUri).Overloads, Disabled(cTexts[TTypeRefactoringText.Overloads].Text,
+    'refactoring.overloads'));
   mFileName := TDocumentUris.ToPath(mUri);
   mShared := TSyntaxTreeCache.Get(mDocument, nil);
   mResolver := NewResolver;
@@ -264,5 +283,8 @@ begin
   end;
   Log('Überladung angelegt');
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Types', cTexts);
 
 end.

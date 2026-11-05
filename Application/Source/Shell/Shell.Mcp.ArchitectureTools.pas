@@ -38,7 +38,66 @@ uses
   Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Lsp.SymbolPath,
-  Atlas.Common.JsonRpc.CurrentRequest;
+  Atlas.Common.JsonRpc.CurrentRequest,
+  Atlas.Common.Localization.Texts,
+  Shell.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpArchitectureText = (GetArchitectureTool, GetArchitectureSection, GetArchitectureUnit,
+    GetArchitectureCompareWith, GetArchitectureResolution, FindPathTool, FindPathFrom, FindPathTo, FindPathVia,
+    FindPathMaxSteps, FindPathAll, ArchitectureOff, ResolutionRange);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpArchitectureText] of TAtlasText = (
+    (De: 'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), ' +
+    'zentrale Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der ' +
+    'uses-Einträge. Mit "unit" der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). ' +
+    'Mit "compareWith" der Vergleich mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, ' +
+    'Querverbindungen und uses-Kanten zwischen Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, ' +
+    'neue und entfernte Units. Umfang und Bibliotheks-Units aus architecture.* in atlas.json. "resolution" ' +
+    '(0,2–5,0) stellt die Feinheit der Teilsysteme für diesen Aufruf ein (#1366): größer = mehr und kleinere ' +
+    'Teilsysteme.';
+    En: 'Architecture overview (#1118) from the uses graph: subsystems (groups of closely connected units), ' +
+    'central units, cycles and cross links between subsystems, each with file:line of the uses entries. With ' +
+    '"unit" the profile of one unit (subsystem, dependencies, cycles, outliers). With "compareWith" the ' +
+    'comparison with a saved state (#1121): new and removed cycles, cross links and uses edges between ' +
+    'subsystems, subsystem changes, grown central units, new and removed units. Scope and library units from ' +
+    'architecture.* in atlas.json. "resolution" (0.2–5.0) sets the granularity of the subsystems for this ' +
+    'call (#1366): larger = more and smaller subsystems.'),
+    (De: 'Abschnitt; Vorgabe overview'; En: 'Section; default overview'),
+    (De: 'Steckbrief dieser Unit statt eines Abschnitts'; En: 'Profile of this unit instead of a section'),
+    (De: 'Gespeicherter Stand (JSON aus AtlasServer --architecture <Datei.json>), Pfad relativ zum Projekt: ' +
+    'liefert die Abschnitte des Vergleichs';
+    En: 'Saved state (JSON from AtlasServer --architecture <file.json>), path relative to the project: returns ' +
+    'the sections of the comparison'),
+    (De: 'Feinheit der Teilsysteme (Louvain-Auflösung γ); Vorgabe architecture.grouping.resolution, 1 = klassisch';
+    En: 'Granularity of the subsystems (Louvain resolution γ); default architecture.grouping.resolution, 1 = ' +
+    'classic'),
+    (De: 'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
+    'zusammen?“, in einem Aufruf statt vieler find_references/get_call_hierarchy. Kanten: uses, inherits, ' +
+    'implements (auch Interface → Umsetzung), hasField, parameter, result, calls, contains. Liefert die ' +
+    'Kette mit Kantenart und Datei:Zeile je Schritt; erschlossene Kanten (mehrere Umsetzungen) tragen ' +
+    '[erschlossen]. „Kein Weg“ ist eine verlässliche Antwort; bei mehrdeutigem Namen kommt die Trefferliste.';
+    En: 'Shortest path between two symbols or units (#1117), e.g. "How is TCustomerForm connected to ' +
+    'TDatabase?", in one call instead of many find_references/get_call_hierarchy calls. Edges: uses, ' +
+    'inherits, implements (also interface → implementation), hasField, parameter, result, calls, contains. ' +
+    'Returns the chain with edge kind and file:line for each step; inferred edges (several implementations) ' +
+    'are marked as inferred. "No path" is a reliable answer; for an ambiguous name the list of matches is ' +
+    'returned.'),
+    (De: 'Start: Typ, Methode (TFoo.Bar), Routine, Feld, Property oder Unit';
+    En: 'Start: type, method (TFoo.Bar), routine, field, property or unit'),
+    (De: 'Ziel, Angabe wie bei from; ein Typ zählt samt seinen Mitgliedern';
+    En: 'Target, given like from; a type counts together with its members'),
+    (De: 'Erlaubte Kantenarten (Vorgabe alle); library erlaubt RTL/VCL als Durchgang';
+    En: 'Allowed edge kinds (default all); library allows RTL/VCL as a passage'),
+    (De: 'Höchstens so viele Schritte, Vorgabe 8'; En: 'At most this many steps, default 8'),
+    (De: 'Alle gleich kurzen Wege (höchstens 5) statt nur des ersten';
+    En: 'All equally short paths (at most 5) instead of only the first'),
+    (De: 'Architekturübersicht ist ausgeschaltet (architecture.enabled)';
+    En: 'Architecture overview is turned off (architecture.enabled)'),
+    (De: '"resolution" ist eine Zahl von 0,2 bis 5,0'; En: '"resolution" is a number from 0.2 to 5.0'));
 
 /// <summary>Argumente von find_path; EMcpToolError bei ungültigen Werten.</summary>
 function FindPathRequest(const AArguments: TJSONObject): TSymbolPathRequest;
@@ -61,7 +120,7 @@ begin
   mSettings := AWorkspace.Configuration.Settings;
   if not mSettings.ArchitectureEnabled then
   begin
-    raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
+    raise EMcpToolError.Create(cTexts[TMcpArchitectureText.ArchitectureOff].Text);
   end;
   Result := TArchitectureRequest.FromSettings(mSettings);
   if AResolution > 0 then
@@ -82,7 +141,7 @@ begin
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create('Kein Projekt geladen');
+    raise EMcpToolError.Create(TShellTexts.NoProject);
   end;
   // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
   Result.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot, Result.ScopeKey);
@@ -202,7 +261,8 @@ var
 begin
   if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
   begin
-    raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+    raise EMcpToolError.Create(TShellTexts.Choice('section',
+      ['overview', 'central', 'subsystems', 'cycles', 'crossLinks']));
   end;
   mResolution := 0;
   mValue := nil;
@@ -214,7 +274,7 @@ begin
   begin
     if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
     begin
-      raise EMcpToolError.Create('"resolution" ist eine Zahl von 0,2 bis 5,0');
+      raise EMcpToolError.Create(cTexts[TMcpArchitectureText.ResolutionRange].Text);
     end;
     mResolution := TJSONNumber(mValue).AsDouble;
   end;
@@ -228,22 +288,17 @@ end;
 
 procedure AddGetArchitecture(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('get_architecture',
-    'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), zentrale ' +
-    'Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge. Mit "unit" ' +
-    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
-    'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
-    'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
-    'Bibliotheks-Units aus architecture.* in atlas.json. "resolution" (0,2–5,0) stellt die Feinheit der ' +
-    'Teilsysteme für diesen Aufruf ein (#1366): größer = mehr und kleinere Teilsysteme.',
-    '{"type":"object","properties":{' +
+  AContext.Server.AddTool('get_architecture', cTexts[TMcpArchitectureText.GetArchitectureTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
       '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
-        '"description":"Abschnitt; Vorgabe overview"},' +
-      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
-      '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
-        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"},' +
-      '"resolution":{"type":"number","minimum":0.2,"maximum":5,"description":"Feinheit der Teilsysteme ' +
-        '(Louvain-Auflösung γ); Vorgabe architecture.grouping.resolution, 1 = klassisch"}}}',
+      '"description":%s},' +
+      '"unit":{"type":"string","description":%s},' +
+      '"compareWith":{"type":"string","description":%s},' +
+      '"resolution":{"type":"number","minimum":0.2,"maximum":5,"description":%s}}}',
+      [cTexts[TMcpArchitectureText.GetArchitectureSection].Text,
+      cTexts[TMcpArchitectureText.GetArchitectureUnit].Text,
+      cTexts[TMcpArchitectureText.GetArchitectureCompareWith].Text,
+      cTexts[TMcpArchitectureText.GetArchitectureResolution].Text]),
     ContextTool(AContext, ToolGetArchitecture));
 end;
 
@@ -254,22 +309,21 @@ end;
 
 procedure AddFindPath(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('find_path',
-    'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
-    'zusammen?“, in einem Aufruf statt vieler find_references/get_call_hierarchy. Kanten: uses, inherits, ' +
-    'implements (auch Interface → Umsetzung), hasField, parameter, result, calls, contains. Liefert die Kette ' +
-    'mit Kantenart und Datei:Zeile je Schritt; erschlossene Kanten (mehrere Umsetzungen) tragen [erschlossen]. ' +
-    '„Kein Weg“ ist eine verlässliche Antwort; bei mehrdeutigem Namen kommt die Trefferliste.',
-    '{"type":"object","properties":{' +
-      '"from":{"type":"string","description":"Start: Typ, Methode (TFoo.Bar), Routine, Feld, Property oder Unit"},' +
-      '"to":{"type":"string","description":"Ziel, Angabe wie bei from; ein Typ zählt samt seinen Mitgliedern"},' +
+  AContext.Server.AddTool('find_path', cTexts[TMcpArchitectureText.FindPathTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"from":{"type":"string","description":%s},' +
+      '"to":{"type":"string","description":%s},' +
       '"via":{"type":"array","items":{"type":"string","enum":["uses","inherits","implements","hasField",' +
-        '"parameter","result","calls","contains","library"]},' +
-        '"description":"Erlaubte Kantenarten (Vorgabe alle); library erlaubt RTL/VCL als Durchgang"},' +
-      '"maxSteps":{"type":"integer","minimum":1,"maximum":16,"description":"Höchstens so viele Schritte, ' +
-        'Vorgabe 8"},' +
-      '"all":{"type":"boolean","description":"Alle gleich kurzen Wege (höchstens 5) statt nur des ersten"}},' +
+      '"parameter","result","calls","contains","library"]},' +
+      '"description":%s},' +
+      '"maxSteps":{"type":"integer","minimum":1,"maximum":16,"description":%s},' +
+      '"all":{"type":"boolean","description":%s}},' +
       '"required":["from","to"]}',
+      [cTexts[TMcpArchitectureText.FindPathFrom].Text,
+      cTexts[TMcpArchitectureText.FindPathTo].Text,
+      cTexts[TMcpArchitectureText.FindPathVia].Text,
+      cTexts[TMcpArchitectureText.FindPathMaxSteps].Text,
+      cTexts[TMcpArchitectureText.FindPathAll].Text]),
     ContextTool(AContext, ToolFindPath));
 end;
 
@@ -278,5 +332,8 @@ begin
   AddGetArchitecture(AContext);
   AddFindPath(AContext);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp.ArchitectureTools', cTexts);
 
 end.
