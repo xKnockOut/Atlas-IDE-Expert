@@ -36,7 +36,8 @@ type
     class function KeyOf(const AProject: string): string; static;
     /// <summary>Stand von atlas.json des Projekts und der globalen Datei.</summary>
     class function SignatureOf(const AProject: string): string; static;
-    /// <summary>Aufgaben des Projekts AProject (.dproj; '' = nur global).</summary>
+    /// <summary>Aufgaben des Projekts AProject (.dproj; '' = nur global); AIssues nennt verworfene Einträge in
+    /// der Sprache der Oberfläche.</summary>
     class function DefinitionsOf(const AProject: string; out AIssues: TArray<string>): TAtlasTaskDefinitions;
       static;
     /// <summary>Dateien des geladenen Projekts und sein Suchpfad (ohne Einträge mit Makros).</summary>
@@ -77,7 +78,8 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Settings.Project;
+  Atlas.IDE.Settings.Project,
+  Atlas.UI.Tasks.Texts;
 
 const
   cMessageGroup = 'Atlas';
@@ -145,17 +147,24 @@ class function TAtlasIdeTaskProjects.DefinitionsOf(const AProject: string; out A
 var
   mHasBom: Boolean;
   mOwn, mGlobal: TAtlasTaskDefinitions;
+  mIssues: TAtlasTaskIssues;
+  mIssue: TAtlasTaskIssue;
 begin
   AIssues := nil;
+  mIssues := nil;
   mOwn := nil;
   if AProject <> '' then
   begin
     mOwn := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TPath.Combine(ExtractFileDir(AProject),
-      TAtlasSettingsFiles.ProjectName), mHasBom), False, AIssues);
+      TAtlasSettingsFiles.ProjectName), mHasBom), False, mIssues);
   end;
   mGlobal := TAtlasTasks.Parse(TAtlasProjectSettings.ReadText(TAtlasProjectSettings.GlobalFile, mHasBom), True,
-    AIssues);
+    mIssues);
   Result := TAtlasTasks.Merge(mOwn, mGlobal);
+  for mIssue in mIssues do
+  begin
+    AIssues := AIssues + [TAtlasTaskTexts.Issue(mIssue)];
+  end;
 end;
 
 /// <summary>Suchpfad mit Ordnern relativ zu AFolder; Makros wie $(BDS) setzt er nicht ein, solche Einträge bleiben
