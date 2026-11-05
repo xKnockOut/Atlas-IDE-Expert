@@ -2975,6 +2975,10 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+| ASL19 | Benachrichtigungen an, keine ungelesenen (z. B. nach „Alle gelesen“), hell und dunkel | Hinter dem Status steht eine neutrale Plakette „0“; Tooltip „0 ungelesene Benachrichtigungen; …“ (englisch „0 unread notifications; …“); Klick öffnet die Liste |
+| ASL20 | Build mit Fehlern, dann in der Liste „Alle gelesen“ | Plakette wird rot mit „1“, danach wieder neutral „0“; sie verschwindet nicht |
+| ASL21 | `notifications.enabled` aus (Seite *Allgemein* oder Schnellschalter), danach wieder an | Aus: keine Plakette in der Leiste; an: Plakette „0“ ohne Neustart wieder da |
+| ASL22 | Element „Status“ in „Leiste anpassen“ abwählen | Keine Plakette in der Leiste; im Atlas-Feld der IDE-Statuszeile erscheint sie wie bisher nur mit ungelesenen Einträgen |
 
 ## Projektprüfung als begrenzter Lauf (#1247)
 
