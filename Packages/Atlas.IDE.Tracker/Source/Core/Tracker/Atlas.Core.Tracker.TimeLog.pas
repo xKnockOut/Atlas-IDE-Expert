@@ -123,8 +123,8 @@ type
     class function ClockText(ASeconds: Int64): string; static;
     /// <summary>Dauer für YouTrack: "1h 25m", "45m", "2h"; '' bei 0.</summary>
     class function Presentation(AMinutes: Integer): string; static;
-    /// <summary>Eingabe "1:25", "85", "85 min", "1 h 25 min", "1h 25m", "1,5 h"; False bei 0, zu groß oder
-    /// unlesbar.</summary>
+    /// <summary>Eingabe "1:25", "85", "85 min", "1 h 25 min", "1h 25m", "1,5 h", Einheiten deutsch und englisch
+    /// ("2 Std", "2 hours", "30 minutes"); False bei 0, zu groß oder unlesbar.</summary>
     class function ParseDuration(const AText: string; out AMinutes: Integer): Boolean; static;
   end;
 
@@ -746,15 +746,16 @@ begin
   end;
 end;
 
-/// <summary>Minuten je Einheit: h, std, stunden 60; ohne Einheit, m, min, minuten 1.</summary>
+/// <summary>Minuten je Einheit: h, std, stunden, hr, hour(s) 60; ohne Einheit, m, min, minuten, minute(s) 1 (#1458).
+/// </summary>
 function UnitFactor(const AUnit: string; out AFactor: Double): Boolean;
 begin
   AFactor := 0;
-  if MatchStr(AUnit, ['h', 'std', 'std.', 'stunde', 'stunden']) then
+  if MatchStr(AUnit, ['h', 'std', 'std.', 'stunde', 'stunden', 'hr', 'hrs', 'hour', 'hours']) then
   begin
     AFactor := 60;
   end
-  else if (AUnit = '') or MatchStr(AUnit, ['m', 'min', 'min.', 'minuten']) then
+  else if (AUnit = '') or MatchStr(AUnit, ['m', 'min', 'min.', 'mins', 'minuten', 'minute', 'minutes']) then
   begin
     AFactor := 1;
   end;

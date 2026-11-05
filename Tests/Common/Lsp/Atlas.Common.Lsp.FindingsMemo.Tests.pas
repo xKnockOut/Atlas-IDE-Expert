@@ -28,12 +28,24 @@ type
     procedure CodeActionReadsMemo;
     [Test]
     procedure CodeActionFillsMemo;
+    /// <summary>#1761: Ein zweiter Aufrufer am selben Text wartet auf den laufenden Lauf, statt selbst zu rechnen.
+    /// </summary>
+    [Test]
+    procedure ObtainWaitsForRunningRun;
+    /// <summary>Das Warten endet mit ACancelled; der laufende Lauf legt trotzdem ab.</summary>
+    [Test]
+    procedure ObtainWaitEndsWhenCancelled;
+    /// <summary>Scheitert ein Lauf, rechnet der nächste Aufrufer selbst.</summary>
+    [Test]
+    procedure ObtainAfterFailedRunComputes;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  System.SyncObjs,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
@@ -234,6 +246,140 @@ begin
   mMemo := TRuleFindingsMemo.Create;
   ActionTitles(mMemo, 2);
   Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'die Code-Aktion legt ihren Lauf ab');
+end;
+
+/// <summary>Lauf, der auf AGo wartet und dann einen Treffer der Regel ARuleId liefert.</summary>
+function GatedRun(AGo: TEvent; const ARuleId: string): TRuleFindingsRun;
+begin
+  Result :=
+    function: TArray<TRuleFinding>
+    begin
+      AGo.WaitFor(10000);
+      Result := [Finding(ARuleId, 1, 'Korrektur')];
+    end;
+end;
+
+/// <summary>Lauf, der AStarted setzt, auf AGo wartet und dann einen Treffer der Regel ARuleId liefert.</summary>
+function ObtainInThread(const AMemo: IRuleFindingsMemo; AStarted, AGo: TEvent; const ARuleId: string): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    begin
+      AMemo.Obtain(cFileName, cText,
+        function: TArray<TRuleFinding>
+        begin
+          AStarted.SetEvent;
+          AGo.WaitFor(10000);
+          Result := [Finding(ARuleId, 1, 'Korrektur')];
+        end, nil);
+    end);
+  Result.FreeOnTerminate := False;
+  Result.Start;
+end;
+
+procedure TRuleFindingsMemoTests.ObtainWaitsForRunningRun;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+  mOwnRuns: Integer;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      mOwnRuns := 0;
+      // Der erste Lauf endet erst nach einer Weile; der zweite Aufrufer rechnet nicht selbst.
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          Sleep(100);
+          mGo.SetEvent;
+        end).Start;
+      mFound := mMemo.Obtain(cFileName, cText,
+        function: TArray<TRuleFinding>
+        begin
+          Inc(mOwnRuns);
+          Result := nil;
+        end, nil);
+      Assert.AreEqual(0, mOwnRuns);
+      Assert.AreEqual(1, Integer(Length(mFound)));
+      Assert.AreEqual('erster-lauf', mFound[0].RuleId);
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
+  mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.ObtainWaitEndsWhenCancelled;
+var
+  mMemo: IRuleFindingsMemo;
+  mStarted, mGo: TEvent;
+  mThread: TThread;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  mStarted := TEvent.Create(nil, True, False, '');
+  mGo := TEvent.Create(nil, True, False, '');
+  try
+    mThread := ObtainInThread(mMemo, mStarted, mGo, 'erster-lauf');
+    try
+      Assert.AreEqual(Ord(wrSignaled), Ord(mStarted.WaitFor(10000)));
+      Assert.WillRaise(
+        procedure
+        begin
+          mMemo.Obtain(cFileName, cText, GatedRun(mGo, 'zweiter-lauf'),
+            function: Boolean
+            begin
+              Result := True;
+            end);
+        end, ERuleCheckCancelled);
+      mGo.SetEvent;
+      mThread.WaitFor;
+    finally
+      mThread.Free;
+    end;
+  finally
+    mGo.Free;
+    mStarted.Free;
+  end;
+  Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'der laufende Lauf legt ab');
+  Assert.AreEqual('erster-lauf', mFound[0].RuleId);
+  mFound := nil;
+end;
+
+procedure TRuleFindingsMemoTests.ObtainAfterFailedRunComputes;
+var
+  mMemo: IRuleFindingsMemo;
+  mFound: TArray<TRuleFinding>;
+begin
+  mMemo := TRuleFindingsMemo.Create;
+  Assert.WillRaise(
+    procedure
+    begin
+      mMemo.Obtain(cFileName, cText,
+        function: TArray<TRuleFinding>
+        begin
+          raise ERuleCheckCancelled.Create('abgebrochen');
+        end, nil);
+    end, ERuleCheckCancelled);
+  Assert.IsFalse(mMemo.TryGet(cFileName, cText, mFound), 'ein abgebrochener Lauf legt nichts ab');
+  mFound := mMemo.Obtain(cFileName, cText,
+    function: TArray<TRuleFinding>
+    begin
+      Result := [Finding('zweiter-lauf', 1, 'Korrektur')];
+    end, nil);
+  Assert.AreEqual('zweiter-lauf', mFound[0].RuleId);
+  mFound := nil;
 end;
 
 initialization

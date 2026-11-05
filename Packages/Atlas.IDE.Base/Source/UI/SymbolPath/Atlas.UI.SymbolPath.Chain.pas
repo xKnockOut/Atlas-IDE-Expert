@@ -193,7 +193,7 @@ begin
   else if AStep.Kind = 'hasField' then
   begin
     // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
-    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']);
+    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']); // german-ok: Kennung des Servers
   end
   else if SimpleStepText(AStep.Kind, mId) then
   begin

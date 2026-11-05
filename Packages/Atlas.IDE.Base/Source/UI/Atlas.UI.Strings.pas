@@ -9,13 +9,15 @@ interface
 
 uses
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format;
 
 {$SCOPEDENUMS ON}
 
 type
-  TAtlasLanguage = (German, English);
+  /// <summary>Sprache der Oberfläche; dieselbe für Core (Atlas.Core.Localization.Language, #1458).</summary>
+  TAtlasLanguage = Atlas.Core.Localization.Language.TAtlasLanguage;
 
   TAtlasTextId = (FooterKeys, CountOf, NoMatchesFor, BackspaceWidens, NoSuggestions, EscCloses, NoDetails,
     Overload, DeprecatedWith, DeprecatedPlain, InheritedFrom, InheritedPlain, OptionalDefault, NoOverloadWith,
@@ -757,11 +759,15 @@ type
     SettingsDiagnosticPluginTimings, SettingsDiagnosticSlowMs,
     // Aktualisierung der Prüfung (problems.update, problems.liveDelayMs).
     ProblemsUpdateLive, ProblemsUpdateSave, ProblemsUpdateManual, SettingsProblemsLiveDelay, ProblemsManual,
-    ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick);
+    ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick,
+    // Lokale Routinen abheben (#1788).
+    SettingsNestedRoutines, SettingsNestedRoutinesOuter, SettingsNestedRoutinesDeeper, SettingsNestedRoutinesColor,
+    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark);
 
   TAtlasStrings = class
-  private class var
-    FLanguage: TAtlasLanguage;
+  private
+    class function GetLanguage: TAtlasLanguage; static;
+    class procedure SetLanguage(AValue: TAtlasLanguage); static;
   public
     class function Text(AId: TAtlasTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
@@ -794,7 +800,8 @@ type
     class function SignatureFormatLine(const ALine: TAtlasFormatLine): string; static;
     /// <summary>Art eines Typbuchstabens (d → ganzzahlig, s → String …).</summary>
     class function FormatKind(AType: Char): string; static;
-    class property Language: TAtlasLanguage read FLanguage write FLanguage;
+    /// <summary>Sprache aller Plugin-Texte (TAtlasTextLanguage.Current).</summary>
+    class property Language: TAtlasLanguage read GetLanguage write SetLanguage;
   end;
 
 implementation
@@ -2624,7 +2631,14 @@ const
      'Datei jetzt prüfen',
      'manuell',
      'Prüft nur auf Anforderung (problems.update manual).',
-     'Klick: Datei jetzt prüfen'),
+     'Klick: Datei jetzt prüfen',
+     'Lokale Routinen färben:',
+     'wie die äußere Routine',
+     'eine Stufe tiefer',
+     'in eigener Farbe, Blocklinie gestrichelt',
+     'Zeilen lokaler Routinen hinterlegen',
+     'Lokale Routinen im hellen Thema',
+     'Lokale Routinen im dunklen Thema'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -2962,7 +2976,7 @@ const
      'Markdown (*.md)|*.md',
      'Bug report',
      'Anonymize bug reports (replace paths, user name and identifiers)',
-     'Write atlas.log with clear names (names, paths and messages; otherwise name#1, datei#2.pas)',
+     'Write atlas.log with clear names (names, paths and messages; otherwise name#1, datei#2.pas)', // german-ok: Kennung im Protokoll
      'Accept with "(", ";" and "." (commit characters)',
      'Add the unit to uses automatically when accepting',
      'Parameter hint on "(" and ","',
@@ -3770,7 +3784,7 @@ const
      'Hide status bar', 'live', 'on save', 'checking …', 'checked %s ago', '%d s', '%d min', '%d h',
      '%d lines', 'CC %d', '%s (limit %d)',
      'In this unit: %d errors, %d warnings, %d hints. Click: next finding of this kind, double-click: ' +
-     '“Atlas check” for this unit.',
+     '“Atlas Findings” for this unit.',
      'Checks while you type after the delay problems.liveDelayMs (problems.update live).',
      'Checks only after saving (problems.update save).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
@@ -4409,18 +4423,35 @@ const
      'Check file now',
      'manual',
      'Checks only on request (problems.update manual).',
-     'Click: check this file now'));
+     'Click: check this file now',
+     'Colour local routines:',
+     'like the outer routine',
+     'one level deeper',
+     'in their own colour, dashed guide',
+     'Shade the lines of local routines',
+     'Local routines in the light theme',
+     'Local routines in the dark theme'));
 
 { TAtlasStrings }
 
+class function TAtlasStrings.GetLanguage: TAtlasLanguage;
+begin
+  Result := TAtlasTextLanguage.Current;
+end;
+
+class procedure TAtlasStrings.SetLanguage(AValue: TAtlasLanguage);
+begin
+  TAtlasTextLanguage.Current := AValue;
+end;
+
 class function TAtlasStrings.Text(AId: TAtlasTextId): string;
 begin
-  Result := Texts[FLanguage, AId];
+  Result := Texts[TAtlasTextLanguage.Current, AId];
 end;
 
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[FLanguage, AId], AArgs);
+  Result := Format(Texts[TAtlasTextLanguage.Current, AId], AArgs);
 end;
 
 class function TAtlasStrings.FormatKind(AType: Char): string;
@@ -4503,6 +4534,8 @@ end;
 
 class function TAtlasStrings.DocLabels: TAtlasDocLabels;
 begin
+  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
+  Result := TAtlasDocLabels.Current;
   Result.Params := Text(TAtlasTextId.DocParams);
   Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
   Result.Returns := Text(TAtlasTextId.DocReturns);

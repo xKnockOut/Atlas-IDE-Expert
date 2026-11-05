@@ -86,6 +86,7 @@ implementation
 
 uses
   Winapi.Windows,
+  System.JSON,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Diagnostics.Guard,
@@ -93,7 +94,26 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.CodeInsight.Manager.Queries;
+  Atlas.IDE.CodeInsight.Manager.Queries,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TManagerText = (Completion);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TManagerText] of string = (
+    ('Vervollständigung: '),
+    ('Completion: '));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TManagerText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   // Unterscheidet sich vom gleichnamigen benutzerdefinierten LSP-Eintrag.
@@ -144,6 +164,11 @@ begin
     function: TLspSession
     begin
       Result := ReadySession;
+    end;
+  Result.RunCommandAsync :=
+    procedure(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>)
+    begin
+      RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
     end;
   Result.Diagnose :=
     procedure(AMessage: string)
@@ -480,7 +505,7 @@ begin
   except
     on E: Exception do
     begin
-      ReportError('Vervollständigung: ' + E.Message);
+      ReportError(UiText(TManagerText.Completion) + E.Message);
       ReportFailure(TAtlasFeature.Completion, E);
     end;
   end;
@@ -527,7 +552,7 @@ begin
   except
     on E: Exception do
     begin
-      ReportError('Vervollständigung: ' + E.Message);
+      ReportError(UiText(TManagerText.Completion) + E.Message);
       ReportFailure(TAtlasFeature.Completion, E);
     end;
   end;
@@ -574,5 +599,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Manager', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

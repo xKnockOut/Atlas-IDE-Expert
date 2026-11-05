@@ -50,6 +50,10 @@ type
     procedure InfoShowsVersion;
     [Test]
     procedure ShowInfoFillsLabels;
+    [Test]
+    procedure SameInfoComparesAllFields;
+    [Test]
+    procedure SameInfoLeavesHeaderAlone;
   end;
 
   [TestFixture]
@@ -201,6 +205,79 @@ begin
     Info.Greeting := False;
     Header.ShowInfo(Info);
     Assert.AreEqual(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHeaderTitle), Header.GreetingLabel.Caption);
+  finally
+    Header.Free;
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+function SampleInfo: TAtlasWelcomeHeaderInfo;
+begin
+  Result := Default(TAtlasWelcomeHeaderInfo);
+  Result.Greeting := True;
+  Result.Hour := 9;
+  Result.FirstName := 'Marco';
+  Result.Version := '1.0.0';
+  Result.Phase := TAtlasServerPhase.Running;
+  Result.Units := 42;
+  Result.Percent := -1;
+end;
+
+procedure TAtlasWelcomeHeaderTests.SameInfoComparesAllFields;
+var
+  Other: TAtlasWelcomeHeaderInfo;
+begin
+  Assert.IsTrue(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, SampleInfo));
+  Other := SampleInfo;
+  Other.Greeting := False;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Grußzeile');
+  Other := SampleInfo;
+  Other.Hour := 10;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Stunde');
+  Other := SampleInfo;
+  Other.FirstName := 'Mia';
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Name');
+  Other := SampleInfo;
+  Other.Version := '1.0.1';
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Version');
+  Other := SampleInfo;
+  Other.Phase := TAtlasServerPhase.Stopped;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Phase');
+  Other := SampleInfo;
+  Other.Units := 43;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Units');
+  Other := SampleInfo;
+  Other.Indexing := True;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Indizierung');
+  Other := SampleInfo;
+  Other.Percent := 50;
+  Assert.IsFalse(TAtlasWelcomeHeaderFrame.SameInfo(SampleInfo, Other), 'Prozent');
+end;
+
+procedure TAtlasWelcomeHeaderTests.SameInfoLeavesHeaderAlone;
+var
+  Saved: TAtlasLanguage;
+  Header: TAtlasWelcomeHeaderFrame;
+  Info: TAtlasWelcomeHeaderInfo;
+begin
+  Saved := TAtlasStrings.Language;
+  Header := TAtlasWelcomeHeaderFrame.Create(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Info := SampleInfo;
+    Header.ShowInfo(Info);
+    // Markierung: Ein zweites ShowInfo mit denselben Angaben darf den Kopf nicht anfassen.
+    Header.InfoLabel.Caption := 'unberührt';
+    Header.ShowInfo(Info);
+    Assert.AreEqual('unberührt', Header.InfoLabel.Caption, 'gleiche Angaben: nichts neu gesetzt');
+    Info.Units := 43;
+    Header.ShowInfo(Info);
+    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', Header.InfoLabel.Caption, 'geändert: neu');
+    // Nach Renew (Thema, Sprache, Einstellungen) setzt auch dasselbe ShowInfo alles neu.
+    Header.InfoLabel.Caption := 'unberührt';
+    Header.Renew;
+    Header.ShowInfo(Info);
+    Assert.AreEqual('Atlas 1.0.0 · Server läuft · 43 Units im Index', Header.InfoLabel.Caption, 'nach Renew');
   finally
     Header.Free;
     TAtlasStrings.Language := Saved;
