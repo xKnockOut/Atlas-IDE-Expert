@@ -2,8 +2,9 @@
 
 // Regel handle-leak aus Atlas.Common.Rules.Builtin.Flow (#269): Ein Windows-Handle aus der Tabelle der Paare
 // (CreateFile/CloseHandle, GetDC/ReleaseDC …) wird in einer lokalen Variablen geöffnet, und ein Weg erreicht das
-// normale Ende der Routine, ohne es zu schließen oder weiterzugeben. Bei if über die Prüfung des Handles folgt der
-// Weg nur dem Zweig, in dem das Öffnen gelang. Korrektur: try … finally Schließen end um die folgenden Anweisungen.
+// normale Ende der Routine, ohne es zu schließen oder weiterzugeben. Bei if über die Prüfung des Handles (auch über
+// einen Merker, Result := H <> 0; if Result then …) folgt der Weg nur dem Zweig, in dem das Öffnen gelang.
+// Korrektur: try … finally Schließen end um die folgenden Anweisungen.
 
 interface
 
@@ -83,6 +84,78 @@ begin
     begin
       AThen := AIf[Index];
     end;
+  end;
+end;
+
+/// <summary>ANode ist AName := ….</summary>
+function IsAssignTo(ANode: TSyntaxNode; const AName: string): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName);
+end;
+
+/// <summary>Zuweisungen AName := … unter ABody (ohne eingebettete Routinen), die zwischen AFrom und ATo stehen.
+/// </summary>
+function AssignmentsTo(ABody: TSyntaxNode; const AName: string; AFrom, ATo: Integer): TArray<TSyntaxNode>;
+var
+  Found: TArray<TSyntaxNode>;
+  Body: TSyntaxNode;
+  Name: string;
+  From, Till: Integer;
+begin
+  Found := nil;
+  Body := ABody;
+  Name := AName;
+  From := AFrom;
+  Till := ATo;
+  // Iterativ (Bericht M1).
+  ABody.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode <> Body) and IsRoutineBody(ANode) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if IsAssignTo(ANode, Name) and (ANode.StartOffset > From) and (ANode.EndOffset < Till) then
+      begin
+        Found := Found + [ANode];
+      end;
+    end);
+  Result := Found;
+end;
+
+/// <summary>Merker als Bedingung (#1519): Result := H &lt;&gt; INVALID_HANDLE_VALUE; if Result then …. Die
+/// Bedingung ist eine Variable (auch not X oder in Klammern), der ABody zwischen dem Öffnen und dem if genau
+/// einmal einen Ausdruck zuweist; dann gilt dessen Bedeutung. Spätere Zuweisungen (im then-Zweig) zählen nicht.
+/// 0 sonst.</summary>
+function FlagSuccess(ABody, AIf, ACondition: TSyntaxNode; const AHandle: TOpenedHandle;
+  AOpenCall: TSyntaxNode): Integer;
+var
+  Node: TSyntaxNode;
+  Sign: Integer;
+  Assignments: TArray<TSyntaxNode>;
+begin
+  Result := 0;
+  Sign := 1;
+  Node := ACondition;
+  while (Node.ChildCount = 1) and ((Node.Kind = TSyntaxKind.ParenExpr) or
+    ((Node.Kind = TSyntaxKind.UnaryExpr) and SameText(Node.Name, 'not'))) do
+  begin
+    if Node.Kind = TSyntaxKind.UnaryExpr then
+    begin
+      Sign := -Sign;
+    end;
+    Node := Node[0];
+  end;
+  if (ABody = nil) or (Node.Kind <> TSyntaxKind.Identifier) then
+  begin
+    Exit;
+  end;
+  Assignments := AssignmentsTo(ABody, Node.Name, AOpenCall.EndOffset, AIf.StartOffset);
+  if Length(Assignments) = 1 then
+  begin
+    Result := Sign * OpenSuccess(Assignments[0][1], AHandle, AOpenCall);
   end;
 end;
 
@@ -319,6 +392,10 @@ begin
   if Condition <> nil then
   begin
     Result := OpenSuccess(Condition, AHandle, AOpenCall);
+  end;
+  if (Result = 0) and (Condition <> nil) then
+  begin
+    Result := FlagSuccess(FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, Condition, AHandle, AOpenCall);
   end;
 end;
 

@@ -154,6 +154,9 @@ type
     SearchMethodKey: Integer;
     /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
     ProblemsWindowKey: Integer;
+    /// <summary>„Datei jetzt prüfen“ (#1744, keys.checkFile): offene Datei sofort prüfen, in jedem Modus von
+    /// problems.update (TShortCut, 0 = keins; Vorgabe Strg+Umschalt+Alt+P).</summary>
+    CheckFileKey: Integer;
     /// <summary>Kürzel „Zum interface-Teil“ (#1101, keys.gotoInterface); 0 = keins.</summary>
     GotoInterfaceKey: Integer;
     /// <summary>Kürzel „Zum implementation-Teil“ (#1101, keys.gotoImplementation); 0 = keins.</summary>
@@ -400,6 +403,7 @@ begin
   Result.SearchPreviousKey := $2072; // Umschalt+F3
   Result.SearchMethodKey := $E046; // Strg+Umschalt+Alt+F
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
+  Result.CheckFileKey := $E050; // Strg+Umschalt+Alt+P
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
   Result.NextProblemKey := $C077; // Strg+Alt+F8
@@ -459,6 +463,7 @@ begin
   BookmarkKey := EnsureRange(BookmarkKey, 0, $FFFF);
   HideElementKey := EnsureRange(HideElementKey, 0, $FFFF);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
+  CheckFileKey := EnsureRange(CheckFileKey, 0, $FFFF);
   GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
   GotoImplementationKey := EnsureRange(GotoImplementationKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
@@ -481,6 +486,7 @@ begin
   AIo.Number('SearchPreviousKey', SearchPreviousKey);
   AIo.Number('SearchMethodKey', SearchMethodKey);
   AIo.Number('ProblemsWindowKey', ProblemsWindowKey);
+  AIo.Number('CheckFileKey', CheckFileKey);
   AIo.Number('GotoInterfaceKey', GotoInterfaceKey);
   AIo.Number('GotoImplementationKey', GotoImplementationKey);
   AIo.Number('NextProblemKey', NextProblemKey);

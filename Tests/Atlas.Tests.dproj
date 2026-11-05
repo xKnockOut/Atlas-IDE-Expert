@@ -876,10 +876,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Colors.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Index.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Build.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Tasks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Rules.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Release.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Debug.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas"/>
@@ -1908,6 +1905,26 @@
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Section.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Build\Atlas.UI.Build.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.SettingsSection.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Debug.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tests.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Build.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.BuildPipeline.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Search.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Analysis.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Bookmarks.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Designer.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Rules.SettingsSection.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Section.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

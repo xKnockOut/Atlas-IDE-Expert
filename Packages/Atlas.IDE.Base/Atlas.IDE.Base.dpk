@@ -263,10 +263,7 @@ contains
   Atlas.UI.Settings.Page.Colors in 'Source\UI\Settings\Atlas.UI.Settings.Page.Colors.pas',
   Atlas.UI.Settings.Page.Index in 'Source\UI\Settings\Atlas.UI.Settings.Page.Index.pas',
   Atlas.UI.Settings.Page.Build in 'Source\UI\Settings\Atlas.UI.Settings.Page.Build.pas',
-  Atlas.UI.Settings.Page.Tasks in 'Source\UI\Settings\Atlas.UI.Settings.Page.Tasks.pas',
   Atlas.UI.Settings.Page.Rules in 'Source\UI\Settings\Atlas.UI.Settings.Page.Rules.pas',
-  Atlas.UI.Settings.Page.Release in 'Source\UI\Settings\Atlas.UI.Settings.Page.Release.pas',
-  Atlas.UI.Settings.Page.Debug in 'Source\UI\Settings\Atlas.UI.Settings.Page.Debug.pas',
   Atlas.UI.Settings.Page.Commands in 'Source\UI\Settings\Atlas.UI.Settings.Page.Commands.pas',
   Atlas.UI.Settings.Page.Robustness in 'Source\UI\Settings\Atlas.UI.Settings.Page.Robustness.pas',
   Atlas.UI.Settings.Page.Startup in 'Source\UI\Settings\Atlas.UI.Settings.Page.Startup.pas',
@@ -713,6 +710,7 @@ contains
   Atlas.Core.SavedPlaces.Contract in 'Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas',
   Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
   Atlas.Text.Updates in '..\Atlas.Text\Source\Updates\Atlas.Text.Updates.pas',
-  Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas';
+  Atlas.Text.UpdateRun in '..\Atlas.Text\Source\UpdateRun\Atlas.Text.UpdateRun.pas',
+  Atlas.UI.Settings.Section in 'Source\UI\Settings\Atlas.UI.Settings.Section.pas';
 
 end.
