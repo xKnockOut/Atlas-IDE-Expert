@@ -52,6 +52,7 @@ contains
   Atlas.Core.BuildPipeline.Gate in 'Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas',
   Atlas.IDE.BuildPipeline.Gate in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Gate.pas',
   Atlas.IDE.BuildPipeline.Summary in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Summary.pas',
-  Atlas.IDE.BuildPipeline.Composition in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Composition.pas';
+  Atlas.IDE.BuildPipeline.Composition in 'Source\IDE\BuildPipeline\Atlas.IDE.BuildPipeline.Composition.pas',
+  Atlas.UI.BuildPipeline.SettingsSection in 'Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas';
 
 end.

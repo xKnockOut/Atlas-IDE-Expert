@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Bookmarks.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
@@ -516,6 +517,14 @@ begin
   TAtlasIdeBookmarks.ThemeChanged;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasBookmarksEditorSection.ProvideIn(GScope);
+  TAtlasBookmarksKeysSection.ProvideIn(GScope);
+end;
+
 function TAtlasBookmarksModule.Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
 var
   mMarks: TArray<TAtlasBookmark>;
@@ -590,6 +599,7 @@ begin
   // Schichten der Rinne (#545, #622): vor den Rekursionssymbolen von Base.
   GScope.Provide(IAtlasGutterLayer, TAtlasIdeNotesGutter.Create as IAtlasGutterLayer);
   GScope.Provide(IAtlasGutterLayer, TAtlasIdeBookmarksGutter.Create as IAtlasGutterLayer);
+  ProvideSettingsSections;
   Result := True;
 end;
 

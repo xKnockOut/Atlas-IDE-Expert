@@ -50,6 +50,8 @@ type
     [Test]
     procedure InterfaceFieldTakesOverObject;
     [Test]
+    procedure RecordInterfaceFieldTakesOverObject;
+    [Test]
     procedure ComponentFieldAsOwner;
     [Test]
     procedure HandOverAndCastToInterface;
@@ -330,6 +332,43 @@ begin
   Assert.AreEqual(1, Integer(Length(Fields)));
   Assert.AreEqual('FRest', Fields[0].Name);
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[0].State));
+end;
+
+procedure TFreeFieldsTests.RecordInterfaceFieldTakesOverObject;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TSystem = record'#10 +
+    '    Log: ILog;'#10 +
+    '    Name: TLog;'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FSystem: TSystem;'#10 +
+    '    FLogImpl: TLog;'#10 +
+    '    FOther: TLog;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FLogImpl := TLog.Create;'#10 +
+    '  FOther := TLog.Create;'#10 +
+    '  FSystem.Log := FLogImpl;'#10 +
+    '  Self.FSystem.Name := FOther;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  // FSystem.Log ist ein Interface: dessen Referenzzählung gibt FLogImpl frei (#1519); FSystem.Name nicht.
+  Fields := Analyze(Text);
+  Assert.AreEqual(1, Integer(Length(Fields)));
+  Assert.AreEqual('FOther', Fields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));
 end;
 
 procedure TFreeFieldsTests.ComponentFieldAsOwner;

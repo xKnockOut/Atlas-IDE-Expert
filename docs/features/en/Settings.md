@@ -8,6 +8,7 @@ Back to the [README](../../../README.md)
   - debugging, issue tracker, analysis, tests, build tools, build pipeline, bookmarks, designer, rule checks, search and welcome page
   - a module that is off turns off its features and commands without a restart; stored values stay
   - the profile *Nur Code Insight* (code insight only) keeps just the core
+  - every module package brings its settings as its own section of the options dialog; with only `Atlas.IDE.Base` installed, only the settings of Base appear
   - if a project's `atlas.json` sets rules while the rule checks module is off, Atlas points this out once
 - Export, import, load profiles and reset settings
 - Team-wide values in the project file `.atlas` (next to the .dproj, in a folder above it up to the Git or SVN root, or next to the .groupproj), server and rule settings in `atlas.json` (*Atlas › Projekt-Einstellungen*), global values in `%APPDATA%\Atlas\settings.json`

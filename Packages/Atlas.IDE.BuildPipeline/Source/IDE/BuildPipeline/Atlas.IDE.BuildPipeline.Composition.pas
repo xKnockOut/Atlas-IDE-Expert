@@ -62,6 +62,7 @@ type
 implementation
 
 uses
+  Atlas.UI.BuildPipeline.SettingsSection,
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -388,6 +389,14 @@ begin
   end;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasBuildPipelineCompilerSection.ProvideIn(GScope);
+  TAtlasBuildPipelineReleaseSection.ProvideIn(GScope);
+end;
+
 function TAtlasBuildPipelineModule.Evaluate(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; ASucceeded: Boolean): Boolean;
 var
@@ -460,6 +469,7 @@ begin
   GScope.Provide(IAtlasBuildEvaluator, mRef);
   // Vertrag zwischen Modulen: Builds auf Auftrag für Tests, Build-Werkzeuge und Willkommensseite.
   GScope.Provide(IAtlasBuildJobs, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 

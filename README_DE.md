@@ -164,7 +164,7 @@ Englisch gibt es dieselben Seiten unter [docs/en](docs/en/) und [docs/features/e
 
 ### Packages des IDE-Plugins (2.0, ADR 0017)
 
-Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) mit den Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Jedes Modul requiret nur `Atlas.IDE.Base`, nie ein anderes Modul; Base kennt kein Modul.
+Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE ab Delphi 12.3) mit den Schichten `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Jedes Modul requiret nur `Atlas.IDE.Base`, nie ein anderes Modul; Base kennt kein Modul. Seine Einstellungen im Optionsdialog bringt jedes Modul als Abschnitt selbst mit, samt Modulschalter: Ist nur `Atlas.IDE.Base` installiert, zeigt *Tools › Optionen › Atlas* nur die Einstellungen von Base.
 
 | Package | Inhalt | Schalter |
 |---|---|---|

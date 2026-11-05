@@ -49,8 +49,6 @@ type
     function BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
     function BindText(const AName: string; AControl: TEdit): TEdit;
     function BindKey(const AName: string; AControl: TEdit): TEdit;
-    /// <summary>Schalter eines Moduls (#1454) auf dem aktuellen Reiter.</summary>
-    function AddModuleSwitch(const AName: string): TCheckBox;
     procedure Attach(ARow, AAnchor: TControl);
     procedure Allow(AControl: TControl; AValue: Boolean);
   public
@@ -65,18 +63,6 @@ type
     procedure SheetShown(ASheet: TTabSheet); virtual;
     /// <summary>Eigene Knoten im Baum, nachdem die Seite die Bereiche verteilt hat.</summary>
     procedure AddNodePages; virtual;
-  end;
-
-  /// <summary>Schalter der Module (#1454) über ihre Namen; ohne Eintrag an.</summary>
-  TAtlasSettingsModulesPart = class(TAtlasSettingsPagePart)
-  private
-    FChecks: TArray<TCheckBox>;
-    FNames: TArray<string>;
-  public
-    function Add(const AName: string): TCheckBox;
-    procedure Load(const ASettings: TAtlasPluginSettings); override;
-    procedure Save(var ASettings: TAtlasPluginSettings); override;
-    procedure BindMarks; override;
   end;
 
   TAtlasSettingsPageHost = class(TAtlasSettingsPageSheets)
@@ -119,9 +105,8 @@ type
     function BindKey(const AName: string; AControl: TEdit): TEdit;
     procedure BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
       AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
-    /// <summary>Seite der Einstellung AName eines Moduls; ohne das Modul die Seite seines Schalters AFallback.
-    /// </summary>
-    procedure SelectModulePage(const AName, AFallback: string);
+    /// <summary>Seite der Einstellung AName (auch eines Moduls); ohne Element (Modul fehlt) nichts.</summary>
+    procedure SelectSettingPage(const AName: string);
     function Catalog: TAtlasSettingsCatalog;
     /// <summary>Gebundenes Element der Einstellung AName (Registry-Name); nil ohne (Modul fehlt).</summary>
     function ControlOfSetting(const AName: string): TControl;
@@ -234,11 +219,6 @@ begin
   Result := FPage.BindKey(AName, AControl);
 end;
 
-function TAtlasSettingsPagePart.AddModuleSwitch(const AName: string): TCheckBox;
-begin
-  Result := FPage.Part<TAtlasSettingsModulesPart>.Add(AName);
-end;
-
 procedure TAtlasSettingsPagePart.Attach(ARow, AAnchor: TControl);
 begin
   FPage.Attach(ARow, AAnchor);
@@ -279,72 +259,6 @@ begin
   // Keine eigenen Knoten.
 end;
 
-{ TAtlasSettingsModulesPart }
-
-function TAtlasSettingsModulesPart.Add(const AName: string): TCheckBox;
-var
-  mIndex: Integer;
-  mCaption: string;
-begin
-  mCaption := AName;
-  mIndex := FPage.Catalog.IndexOfName(AName);
-  if mIndex >= 0 then
-  begin
-    if TAtlasStrings.Language = TAtlasLanguage.English then
-    begin
-      mCaption := FPage.Catalog[mIndex].CaptionEn;
-    end
-    else
-    begin
-      mCaption := FPage.Catalog[mIndex].Caption;
-    end;
-  end;
-  Result := AddCheck(mCaption);
-  FChecks := FChecks + [Result];
-  FNames := FNames + [AName];
-end;
-
-procedure TAtlasSettingsModulesPart.Load(const ASettings: TAtlasPluginSettings);
-var
-  mStore: IAtlasMemorySettingsStore;
-  mIndex: Integer;
-begin
-  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  for mIndex := 0 to High(FChecks) do
-  begin
-    FChecks[mIndex].Checked := mStore.ReadInteger(FNames[mIndex], 1) <> 0;
-  end;
-end;
-
-procedure TAtlasSettingsModulesPart.Save(var ASettings: TAtlasPluginSettings);
-var
-  mStore: IAtlasMemorySettingsStore;
-  mIndex: Integer;
-begin
-  if Length(FChecks) = 0 then
-  begin
-    Exit;
-  end;
-  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  for mIndex := 0 to High(FChecks) do
-  begin
-    mStore.WriteInteger(FNames[mIndex], Ord(FChecks[mIndex].Checked));
-  end;
-  ASettings.Load(mStore);
-end;
-
-procedure TAtlasSettingsModulesPart.BindMarks;
-var
-  mIndex: Integer;
-begin
-  // Sprungziel (#767, Bereiche der Willkommensseite) und Markierung über den Namen des Moduls.
-  for mIndex := 0 to High(FChecks) do
-  begin
-    FPage.Bind(FNames[mIndex], FChecks[mIndex]);
-    FPage.Marks.Bind(FChecks[mIndex], [FNames[mIndex]]);
-  end;
-end;
-
 { TAtlasSettingsPageHost }
 
 constructor TAtlasSettingsPageHost.Create(AOwner: TComponent);
@@ -363,7 +277,6 @@ begin
     begin
       ResetNames(ANames);
     end;
-  AddPart(TAtlasSettingsModulesPart.Create(Self));
 end;
 
 destructor TAtlasSettingsPageHost.Destroy;
@@ -427,17 +340,12 @@ begin
   Result := nil;
 end;
 
-procedure TAtlasSettingsPageHost.SelectModulePage(const AName, AFallback: string);
+procedure TAtlasSettingsPageHost.SelectSettingPage(const AName: string);
 var
   mControl: TControl;
 begin
-  // Die Einstellungen baut das Modul (Tracker #1455, Willkommensseite #1456); fehlt es, bleibt der Reiter mit
-  // seinem Modulschalter.
+  // Die Einstellungen eines Moduls baut das Modul (#1456); fehlt es, gibt es kein Ziel.
   mControl := ControlOfSetting(AName);
-  if mControl = nil then
-  begin
-    mControl := ControlOfSetting(AFallback);
-  end;
   if mControl <> nil then
   begin
     SelectPage(PageOf(mControl));
