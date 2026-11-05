@@ -303,10 +303,10 @@ begin
   end;
   AView.StatusState := AField.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
-  AView.BadgeShown := AField.BadgeShown;
-  AView.BadgeCount := AField.BadgeCount;
-  AView.BadgeState := AField.BadgeState;
-  AView.BadgeHint := AField.BadgeHint;
+  AView.BadgeShown := AField.Badge.Shown;
+  AView.BadgeCount := AField.Badge.Count;
+  AView.BadgeState := AField.Badge.State;
+  AView.BadgeHint := AField.Badge.Hint;
   ExtrasInto(AField, AView);
 end;
 
