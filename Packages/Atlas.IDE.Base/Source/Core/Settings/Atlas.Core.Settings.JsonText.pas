@@ -39,7 +39,28 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Text.Jsonc;
+  Atlas.Text.Jsonc,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TJsonTextText = (AtlasJsonDoesNotStart, AtlasJsonObjectNotClosed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TJsonTextText] of string = (
+    ('atlas.json beginnt nicht mit einem Objekt',
+     'atlas.json: Objekt nicht geschlossen'),
+    ('atlas.json does not start with an object',
+     'atlas.json: object not closed'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TJsonTextText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 type
   TMember = record
@@ -302,7 +323,7 @@ begin
   Scanner.SkipSpace(mOpen);
   if (mOpen > Length(Scanner.Text)) or (Scanner.Text[mOpen] <> '{') then
   begin
-    raise EArgumentException.Create('atlas.json beginnt nicht mit einem Objekt');
+    raise EArgumentException.Create(UiText(TJsonTextText.AtlasJsonDoesNotStart));
   end;
   for mIndex := 0 to High(Parts) do
   begin
@@ -348,7 +369,7 @@ var
 begin
   if AClose < 0 then
   begin
-    raise EArgumentException.Create('atlas.json: Objekt nicht geschlossen');
+    raise EArgumentException.Create(UiText(TJsonTextText.AtlasJsonObjectNotClosed));
   end;
   if ACount > 0 then
   begin
@@ -583,5 +604,8 @@ begin
     mOpen := mMember.ValueStart;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.JsonText', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

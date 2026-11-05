@@ -67,7 +67,26 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Problems.Controller;
+  Atlas.IDE.Problems.Controller,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  THandlersText = (FileOperationsCreateRenameDelete);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, THandlersText] of string = (
+    ('Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.'),
+    ('File operations (create, rename, delete) are not supported.'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: THandlersText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 class function TAtlasServerHandlers.ApplyEdit(const AEdit: TLspWorkspaceEdit; const ADiagnose: TProc<string>;
   out AReason: string): Boolean;
@@ -77,7 +96,7 @@ begin
   Result := False;
   if AEdit.Unsupported > 0 then
   begin
-    AReason := 'Dateioperationen (anlegen, umbenennen, löschen) werden nicht unterstützt.';
+    AReason := UiText(THandlersText.FileOperationsCreateRenameDelete);
     Exit;
   end;
   try
@@ -249,5 +268,8 @@ begin
     Result := ASkip.Uri;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Manager.Handlers', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

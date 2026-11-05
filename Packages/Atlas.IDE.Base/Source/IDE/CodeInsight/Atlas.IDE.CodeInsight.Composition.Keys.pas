@@ -36,7 +36,26 @@ uses
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Build,
   Atlas.IDE.CodeInsight.Composition.Tools,
-  Atlas.IDE.CodeInsight.Composition.Palette;
+  Atlas.IDE.CodeInsight.Composition.Palette,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TKeysText = (AtlasCompletion);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TKeysText] of string = (
+    ('Atlas-Vervollständigung'),
+    ('Atlas completion'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TKeysText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 var
   // Tastenkürzel der Editorbefehle (#399).
@@ -128,7 +147,7 @@ end;
 
 procedure StartCompletionKey;
 begin
-  CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', 'Atlas-Vervollständigung',
+  CompletionKey := TAtlasIdeKeyBinding.Create('Atlas.Completion', UiText(TKeysText.AtlasCompletion),
     TAtlasFeature.Completion, OpenCompletion);
 end;
 
@@ -200,5 +219,8 @@ function KeysWatched: Boolean;
 begin
   Result := Watched;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Composition.Keys', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
