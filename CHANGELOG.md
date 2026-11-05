@@ -6,11 +6,16 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
-### Behoben
-- Zeit bis „bereit“ bei Projektgruppen (#1479): Beim Start jedes Projekts räumt der Server den Cache-Ordner auf und fragt dabei jeden Cache, ob er gesperrt ist. Die Sperren der schon gestarteten Projekte hält der eigene Prozess; die Probe über die Sperrdatei schlug dafür nur fehl, kostete aber Zeit, unter Linux (`AtlasServer --check`) wartete sie je Sperre, bevor sie aufgab. Jetzt kennt der Prozess seine Sperren selbst. Gemessen unter Linux mit vorhandenem Cache: Atlas-Gruppe mit 18 Projekten 1,6 statt 17,4 s, 8 Projekte mit gemeinsamen Suchpfaden 0,7 statt 4,0 s.
-
 ### Neu
+- Plugin: eigenes Tastenkürzel für „Datei jetzt prüfen“ (#1744, `keys.checkFile`, Vorgabe Strg+Umschalt+Alt+P, Seite *Befehle*; leer = keins): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von `problems.update` (im Live-Modus ohne die Wartezeit). Vorrang wie die Editorbefehle; steht in der Tastenkürzel-Übersicht (#520, mit Konflikterkennung), neben dem Befehl in der Befehlspalette und als neuer Eintrag im Atlas-Untermenü des Editor-Kontextmenüs; ohne Prüfregeln bleibt das Kürzel frei.
 - `Tools/Benchmark/ready.mjs` misst die Zeit bis „bereit“ mit mehreren Läufen je Fassung (#1479): ohne IDE über `AtlasServer --check` auf einer Projektgruppe oder aus den Diagnoselogs der IDE-Starts; Ausgabe Median und Spannweite, erster Lauf je Fassung (Umstieg) getrennt.
+
+### Geändert
+- `unused-uses` (#1135): Das Abblenden ungenutzter uses im Editor ist jetzt die Darstellung der Regel. Mit `"unused-uses": "off"` (auch über die Gruppe oder ein Profil), ihrem `exclude`, dem allgemeinen `exclude` und `// lsp-ignore: unused-uses` bleibt auch das Abblenden weg. Neue Option `keep` (Units, die nie als ungenutzt gelten, zusätzlich zu `usesKeep`); sie gilt für die Regel, das Abblenden und „uses aufräumen“.
+
+### Behoben
+- Ein `// lsp-ignore: unused-uses` galt im Editor als unnötig (`unused-suppression`), weil die Regel dort nicht prüft; dessen sichere Korrektur entfernte den Kommentar beim Speichern. Regeln können jetzt je Datei angeben, dass sie nicht prüfen (`IRuleCondition`); dann zählt ihr `lsp-ignore` nicht als unnötig. Dasselbe galt für `uses-cycle` mit `diagnostics.usesCycleLive` aus.
+- Zeit bis „bereit“ bei Projektgruppen (#1479): Beim Start jedes Projekts räumt der Server den Cache-Ordner auf und fragt dabei jeden Cache, ob er gesperrt ist. Die Sperren der schon gestarteten Projekte hält der eigene Prozess; die Probe über die Sperrdatei schlug dafür nur fehl, kostete aber Zeit, unter Linux (`AtlasServer --check`) wartete sie je Sperre, bevor sie aufgab. Jetzt kennt der Prozess seine Sperren selbst. Gemessen unter Linux mit vorhandenem Cache: Atlas-Gruppe mit 18 Projekten 1,6 statt 17,4 s, 8 Projekte mit gemeinsamen Suchpfaden 0,7 statt 4,0 s.
 
 ## [2.0.0-beta.1] - 2026-11-05
 
@@ -26,6 +31,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Intern: Index-Aufbau (`TIndexBuilder`, `TIndexService` mit neuem `TIndexCacheWriter`) und Fenster „Atlas-Server“ (Speicherbalken, Tabellen, Knopfleiste als eigene Steuerelemente) in kleinere Bausteine zerlegt, ohne Verhaltensänderung; der Rückruf nach der Projektstufe ist jetzt `TIndexBuilder.OnProjectDone`.
 
 ### Behoben
+- Prüfregeln `handle-leak` und `owned-field-free-unclear` (Nachlauf zu #1519): `handle-leak` folgt jetzt auch einem Merker als Prüfung des Öffnens (`Result := H <> INVALID_HANDLE_VALUE; if Result then CloseHandle(H)`), auch mit `not` und einer weiteren Zuweisung im then-Zweig. `owned-field-free-unclear` erkennt die Zuweisung an ein Interface-Feld eines Record-Felds (`FSystem.Registry := FRegistry`) wie bei einem Interface-Feld als Übernahme durch die Referenzzählung.
 - Prüfbefunde im Meldungsfenster: Die Liste „Atlas-Probleme“ (`problems.list`) ist seit dem Fenster „Atlas-Prüfung“ (#909) Vorgabe aus, erschien aber bei bestehenden Installationen weiter, weil das Plugin beim Speichern alle Werte schreibt und so die alte Vorgabe „an“ festgehalten hatte. Der Schalter liegt jetzt unter dem neuen Registry-Namen `ProblemsMessageList`; der alte Wert wird nicht übernommen. Wer die Liste bewusst nutzt, schaltet sie unter *Tools › Optionen › Atlas › Compiler* wieder ein.
 - Atlas-Suche unter Delphi 12: Strg+F scheiterte mit „Element ‚TAtlasSearchBar‘ hat kein übergeordnetes Fenster“, nach drei Versuchen schaltete die Sicherung die Suche ab. Die Leiste las beim Setzen ihrer Teile (vor dem Einhängen ins Editorfenster) den gewählten Bereich aus der Bereichsliste, und die ComboBox legte dafür ein Fenster an. Ohne Fenster gelten jetzt Bereich und Stufe der vorbereiteten Suche.
 - `unused-uses`, abgeblendete uses-Einträge im Editor und „uses aufräumen“: Ein Eintrag, den nur die Formulardatei braucht (`Connection = Form1.Connection` braucht `Unit1`), galt als ungenutzt, und die sichere Korrektur entfernte ihn. Die IDE öffnet das Modul dann nicht mehr mit, und der Verweis geht verloren. Jetzt zählt ein solcher Verweis als Verwendung im implementation-Teil.

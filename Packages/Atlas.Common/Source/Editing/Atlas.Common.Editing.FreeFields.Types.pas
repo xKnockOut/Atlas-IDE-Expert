@@ -2,7 +2,8 @@
 
 // Typauflösung für „Felder im Destruktor freigeben“ (#666): Art eines Typs
 // (Klasse, Record, Interface, anderes) und Vorfahrenkette aus der Datei und dem
-// Index, ob eine Klasse eine Komponente ist und welche Feldtypen eine Klasse hat.
+// Index, ob eine Klasse eine Komponente ist, welche Feldtypen eine Klasse hat
+// und welchen Typ ein Feld eines Records hat.
 // Ohne Deklaration helfen bekannte Records der RTL und die Namensregel IFoo.
 
 interface
@@ -26,6 +27,8 @@ type
     function IndexAncestor(const AName: string; out ANext: string): Boolean;
     function FileFieldTypes(const AClassName: string; out ADeclared: Boolean): TArray<string>;
     function IndexFieldTypes(const AClassName: string): TArray<string>;
+    function FileMemberType(const ATypeName, AMember: string): string;
+    function IndexMemberType(const ATypeName, AMember: string): string;
   public
     /// <summary>Quelltext eines Knotens.</summary>
     class function NodeText(const AText: string; ANode: TSyntaxNode): string; static;
@@ -46,6 +49,9 @@ type
     function OwnedByArgument(const ATypeName: string; AArgument: TSyntaxNode): Boolean;
     /// <summary>Typen der Felder der Klasse AClassName aus Datei oder Index, samt Typargumenten.</summary>
     function ClassFieldTypes(const AClassName: string): TArray<string>;
+    /// <summary>Typ des Felds AMember von Record oder Klasse ATypeName aus Datei oder Index; '' unbekannt.
+    /// </summary>
+    function MemberType(const ATypeName, AMember: string): string;
   end;
 
 implementation
@@ -192,6 +198,31 @@ begin
       if mTypeRef <> nil then
       begin
         Result := Result + [TFreeFieldTypes.CodeOf(AText, mTypeRef)];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Typ des Felds AMember unter den Feldern von ATypeNode (Record oder Klasse); '' sonst.</summary>
+function MemberTypeOf(ATypeNode: TSyntaxNode; const AText, AMember: string): string;
+var
+  mIndex: Integer;
+  mName: string;
+  mTypeRef: TSyntaxNode;
+begin
+  Result := '';
+  for mIndex := 0 to ATypeNode.ChildCount - 1 do
+  begin
+    mTypeRef := ATypeNode[mIndex].FindChild(TSyntaxKind.TypeReference);
+    if (ATypeNode[mIndex].Kind <> TSyntaxKind.Field) or (mTypeRef = nil) then
+    begin
+      Continue;
+    end;
+    for mName in ATypeNode[mIndex].Name.Split([',']) do
+    begin
+      if SameText(Trim(mName), AMember) then
+      begin
+        Exit(TFreeFieldTypes.CodeOf(AText, mTypeRef));
       end;
     end;
   end;
@@ -486,6 +517,65 @@ begin
     begin
       Exit(UnitFieldTypes(mUnit, AClassName));
     end;
+  end;
+end;
+
+function TFreeFieldTypes.FileMemberType(const ATypeName, AMember: string): string;
+var
+  mFound, mName, mMember, mText: string;
+begin
+  // Result lässt sich nicht in der anonymen Methode füllen.
+  mFound := '';
+  mName := ATypeName;
+  mMember := AMember;
+  mText := FText;
+  FTree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      mTypeNode: TSyntaxNode;
+    begin
+      Result := mFound = '';
+      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
+      begin
+        Exit;
+      end;
+      mTypeNode := ANode.FindChild(TSyntaxKind.RecordType);
+      if mTypeNode = nil then
+      begin
+        mTypeNode := ANode.FindChild(TSyntaxKind.ClassType);
+      end;
+      if mTypeNode <> nil then
+      begin
+        mFound := MemberTypeOf(mTypeNode, mText, mMember);
+      end;
+    end);
+  Result := mFound;
+end;
+
+function TFreeFieldTypes.IndexMemberType(const ATypeName, AMember: string): string;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := '';
+  if FIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in FIndex.FindSymbols(AMember) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.Field) and SameText(mLocation.Symbol.Container, ATypeName) then
+    begin
+      Exit(IndexTypeName(mLocation.Symbol));
+    end;
+  end;
+end;
+
+function TFreeFieldTypes.MemberType(const ATypeName, AMember: string): string;
+begin
+  Result := FileMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
+  if Result = '' then
+  begin
+    Result := IndexMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
   end;
 end;
 

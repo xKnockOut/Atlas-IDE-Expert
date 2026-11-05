@@ -156,14 +156,14 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')), 'Standard ohne Punkt');
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')), 'Standard ohne Punkt');
     Assert.IsFalse(Page.Marks.IsMarked(Page.Part<TAtlasSettingsTransferPart>.SettingsExportSecretsChoice));
     Settings := TAtlasPluginSettings.Defaults;
-    Settings.Notes := False;
+    Settings.HoverProblemActions := False;
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
-    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'Notes')), 'geändert: Punkt');
-    Assert.IsTrue(string(CheckOf(Page, 'Notes').Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')), 'geändert: Punkt');
+    Assert.IsTrue(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.Dot));
     Assert.IsTrue(Page.Marks.IsMarked(Page.Part<TAtlasSettingsTransferPart>.SettingsExportSecretsChoice), 'Punkt an der Beschriftung');
     Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
     // Ändern auf der Seite setzt den Punkt sofort.
@@ -173,8 +173,8 @@ begin
     Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')), 'zurück auf Standard: kein Punkt');
     // settings.markModified aus: keine Punkte, gespeichert wird der Text ohne Punkt.
     Page.Part<TAtlasSettingsTransferPart>.SettingsMarkModifiedCheck.Checked := False;
-    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
-    Assert.IsFalse(string(CheckOf(Page, 'Notes').Caption).StartsWith(TAtlasSettingsMarks.Dot));
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')));
+    Assert.IsFalse(string(CheckOf(Page, 'HoverProblemActions').Caption).StartsWith(TAtlasSettingsMarks.Dot));
   finally
     Page.Free;
   end;
@@ -188,17 +188,17 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Settings := TAtlasPluginSettings.Defaults;
-    Settings.Notes := False;
+    Settings.HoverProblemActions := False;
     Settings.SettingsBackupBeforeImport := False;
     Page.LoadFrom(Settings);
-    Page.ResetNames(['Notes']);
-    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Notizen zurück auf Standard');
+    Page.ResetNames(['HoverProblemActions']);
+    Assert.IsTrue(CheckOf(Page, 'HoverProblemActions').Checked, 'Befund-Hover zurück auf Standard');
     Assert.IsFalse(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'anderer Wert bleibt');
-    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
+    Assert.IsFalse(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')));
     // Erst OK speichert: SaveTo liefert den zurückgesetzten Wert.
     Saved := Settings;
     Page.SaveTo(Saved);
-    Assert.IsTrue(Saved.Notes);
+    Assert.IsTrue(Saved.HoverProblemActions);
     Assert.IsFalse(Saved.SettingsBackupBeforeImport);
   finally
     Page.Free;
@@ -218,19 +218,19 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Settings := TAtlasPluginSettings.Defaults;
-    Settings.Notes := False;
+    Settings.HoverProblemActions := False;
     Settings.SettingsBackupBeforeImport := False;
     Settings.SettingsExportSecrets := 'placeholder';
     Page.LoadFrom(Settings);
     General := SheetOf(CheckOf(Page, 'SettingsBackupBeforeImport'));
     Assert.IsTrue(General <> nil);
-    Assert.IsTrue(SheetOf(CheckOf(Page, 'Notes')) <> General, 'Notizen auf einem anderen Reiter');
+    Assert.IsTrue(SheetOf(CheckOf(Page, 'HoverProblemActions')) <> General, 'Befund-Hover auf einem anderen Reiter');
     Page.Pages.ActivePage := General;
     Page.ResetPage;
     Assert.IsTrue(CheckOf(Page, 'SettingsBackupBeforeImport').Checked, 'Reiter zurückgesetzt');
     Assert.AreEqual(0, Page.Part<TAtlasSettingsTransferPart>.SettingsExportSecretsChoice.Choice);
-    Assert.IsFalse(CheckOf(Page, 'Notes').Checked, 'anderer Reiter bleibt');
-    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'Notes')));
+    Assert.IsFalse(CheckOf(Page, 'HoverProblemActions').Checked, 'anderer Reiter bleibt');
+    Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'HoverProblemActions')));
   finally
     Host.Free;
   end;
@@ -245,18 +245,18 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Settings := TAtlasPluginSettings.Defaults;
-    Settings.Notes := False;
+    Settings.HoverProblemActions := False;
     Page.LoadFrom(Settings);
-    Assert.IsTrue(CheckOf(Page, 'Notes').PopupMenu = Page.Marks.Menu, 'Kontextmenü am Feld');
-    Assert.AreEqual(1, Integer(Length(Page.Marks.NamesOf(CheckOf(Page, 'Notes')))));
+    Assert.IsTrue(CheckOf(Page, 'HoverProblemActions').PopupMenu = Page.Marks.Menu, 'Kontextmenü am Feld');
+    Assert.AreEqual(1, Integer(Length(Page.Marks.NamesOf(CheckOf(Page, 'HoverProblemActions')))));
     // Wie beim Rechtsklick (ohne das Menü modal zu zeigen).
-    Page.Marks.Menu.PopupComponent := CheckOf(Page, 'Notes');
+    Page.Marks.Menu.PopupComponent := CheckOf(Page, 'HoverProblemActions');
     Page.Marks.Menu.OnPopup(Page.Marks.Menu);
     Assert.IsTrue(Page.Marks.Menu.Items[0].Enabled);
     // Erster Eintrag: „Auf Standard zurücksetzen“.
     Item := 0;
     Page.Marks.Menu.Items[Item].Click;
-    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'zurückgesetzt');
+    Assert.IsTrue(CheckOf(Page, 'HoverProblemActions').Checked, 'zurückgesetzt');
   finally
     Page.Free;
   end;
@@ -275,13 +275,13 @@ begin
   Page := TAtlasSettingsPage.Create(nil);
   try
     Settings := TAtlasPluginSettings.Defaults;
-    Settings.Notes := False;
+    Settings.HoverProblemActions := False;
     Page.LoadFrom(Settings);
     Page.Part<TAtlasSettingsTransferPart>.OnExportSettings :=
       procedure(ACurrent: TAtlasPluginSettings)
       begin
         Inc(Exported);
-        Assert.IsFalse(ACurrent.Notes, 'Werte der Seite');
+        Assert.IsFalse(ACurrent.HoverProblemActions, 'Werte der Seite');
       end;
     Page.Part<TAtlasSettingsTransferPart>.OnImportSettings :=
       function(const ACurrent: TAtlasPluginSettings; AProfile: Boolean; out AResult: TAtlasPluginSettings): Boolean
@@ -289,7 +289,7 @@ begin
         Inc(Asked);
         Profile := AProfile;
         AResult := ACurrent;
-        AResult.Notes := True;
+        AResult.HoverProblemActions := True;
         AResult.SettingsBackupBeforeImport := False;
         Result := True;
       end;
@@ -304,7 +304,7 @@ begin
     Page.Part<TAtlasSettingsTransferPart>.ImportButton.Click;
     Assert.AreEqual(1, Asked);
     Assert.IsFalse(Profile, 'Import aus Datei');
-    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Seite zeigt den Import');
+    Assert.IsTrue(CheckOf(Page, 'HoverProblemActions').Checked, 'Seite zeigt den Import');
     Assert.IsFalse(CheckOf(Page, 'SettingsBackupBeforeImport').Checked);
     Assert.IsTrue(Page.Marks.IsMarked(CheckOf(Page, 'SettingsBackupBeforeImport')));
     Page.Part<TAtlasSettingsTransferPart>.ResetAllButton.Click;

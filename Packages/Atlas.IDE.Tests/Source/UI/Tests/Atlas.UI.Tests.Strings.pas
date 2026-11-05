@@ -19,7 +19,9 @@ type
     TestsChoiceSaveFailed, TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone,
     TestsAffectedAll, TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,
     TestsAffectedHookInstalled,
-    WelcomeQuickReasonTestsOff, WelcomeQuickReasonNotOpened);
+    WelcomeQuickReasonTestsOff, WelcomeQuickReasonNotOpened,
+    SettingsCodeLensTests, SettingsTestRun, SettingsTestsBuildFirst, SettingsTestsAfterBuild, SettingsTestDebug,
+    SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
 
   TAtlasTestsStrings = class
   public
@@ -84,7 +86,16 @@ const
      'Betroffene Tests vor dem Commit: In %s liegt schon ein fremder pre-commit-Hook; Atlas lässt ihn stehen.',
      'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.',
     '„Tests ausführen“ ist ausgeschaltet',
-    'Projekt nicht geöffnet'),
+    'Projekt nicht geöffnet',
+     'Code Lens „Test ausführen“ an [TestFixture] und [Test]',
+     'DUnitX-Tests ausführen (Befehle, Code Lens, Fehlschläge als Probleme)',
+     'Vor den Tests bauen (sonst läuft die vorhandene Test-EXE)',
+     'Tests nach erfolgreichem Build automatisch ausführen',
+     'Test debuggen (Befehl „Test am Cursor debuggen“, Kontextmenü, Marke „Debuggen“ der Code Lens)',
+     'Beim Test-Debuggen am Anfang der Methode anhalten (einmaliger Haltepunkt)',
+     'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
+     'Ebenen von der Änderung bis zum Test (1 bis 5):',
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -133,7 +144,16 @@ const
      'Affected tests before commit: %s already holds a foreign pre-commit hook; Atlas leaves it alone.',
      'Affected tests before commit: pre-commit hook created in %s.',
     '“Run tests” is switched off',
-    'Project not opened'));
+    'Project not opened',
+     'Code lens “Run test” at [TestFixture] and [Test]',
+     'Run DUnitX tests (commands, code lens, failures as problems)',
+     'Build before running tests (otherwise the existing test EXE runs)',
+     'Run tests automatically after a successful build',
+     'Debug test (command “Debug test at cursor”, context menu, code lens mark “Debug”)',
+     'Stop at the start of the method when debugging a test (one-time breakpoint)',
+     'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
+     'Levels from the change to the test (1 to 5):',
+     'Offer before committing (Git pre-commit hook, Git only)'));
 
 { TAtlasTestsStrings }
 
