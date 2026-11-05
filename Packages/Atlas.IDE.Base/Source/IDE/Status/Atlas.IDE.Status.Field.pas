@@ -39,7 +39,7 @@
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
 //   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, 0 breit),
-//   zeigt die Leiste die Plakette (BadgeShown, BadgeCount, ClickBadge, #1234),
+//   zeigt die Leiste die Plakette (Badge, ClickBadge, #1234),
 //   bei eingeschalteten Benachrichtigungen immer, auch mit 0.
 // - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
 //   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
@@ -234,11 +234,8 @@ type
     /// OnClick mit der linken Oberkante des Felds. Nur im Hauptthread.</summary>
     procedure SetBadge(const ABadge: TAtlasStatusBadge);
     /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated ist das Feld 0 breit, die Leiste zeigt
-    /// sie dann selbst.</summary>
-    property BadgeShown: Boolean read FBadge.Shown;
-    property BadgeCount: Integer read FBadge.Count;
-    property BadgeState: TAtlasStatusState read FBadge.State;
-    property BadgeHint: string read FBadge.Hint;
+    /// sie dann selbst (Shown, Count, State, Hint).</summary>
+    property Badge: TAtlasStatusBadge read FBadge;
     /// <summary>Wie ein Klick auf die Plakette, Liste mit der linken Oberkante an APoint (#1234).</summary>
     procedure ClickBadge(const APoint: TPoint);
     /// <summary>Zusatzfelder in ihrer Reihenfolge, für die Atlas-Statusleiste: Bei Relocated stehen sie nicht in
