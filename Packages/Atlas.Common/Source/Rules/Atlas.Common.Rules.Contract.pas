@@ -461,6 +461,16 @@ type
     function Applies(const AContext: TRuleContext): Boolean;
   end;
 
+  /// <summary>Regel, die einzelne Stellen mangels Wissen nicht entscheiden kann, z. B. inline-not-expanded bei
+  /// einer Routine, die der Index nicht kennt (RTL unter Linux). Ein lsp-ignore für sie in einer solchen Zeile
+  /// gilt nicht als unused-suppression: Mit vollständigem Index meldete die Regel dort womöglich etwas.</summary>
+  IRuleLineCertainty = interface
+    ['{D81A25A9-CD8F-4412-9468-DAFFB794F2A7}']
+    /// <summary>False: Die Regel konnte die Zeile ALine (ab 0; -1 = ganze Datei) nicht sicher prüfen. AContext ist
+    /// der Kontext ihres Laufs.</summary>
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+  end;
+
   /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),
   /// z. B. /ignore ohne Treffer in der Zeile darunter (#297).</summary>
   IRuleAfterFindings = interface

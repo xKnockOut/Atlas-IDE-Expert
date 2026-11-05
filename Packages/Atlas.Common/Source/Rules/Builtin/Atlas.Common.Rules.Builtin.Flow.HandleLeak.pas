@@ -3,7 +3,8 @@
 // Regel handle-leak aus Atlas.Common.Rules.Builtin.Flow (#269): Ein Windows-Handle aus der Tabelle der Paare
 // (CreateFile/CloseHandle, GetDC/ReleaseDC …) wird in einer lokalen Variablen geöffnet, und ein Weg erreicht das
 // normale Ende der Routine, ohne es zu schließen oder weiterzugeben. Bei if über die Prüfung des Handles (auch über
-// einen Merker, Result := H <> 0; if Result then …) folgt der Weg nur dem Zweig, in dem das Öffnen gelang.
+// einen Merker, Result := H <> 0; if Result then …, auch Result := CreatePipe(R, W, nil, 0); if Result then …)
+// folgt der Weg nur dem Zweig, in dem das Öffnen gelang.
 // Korrektur: try … finally Schließen end um die folgenden Anweisungen.
 
 interface
@@ -115,8 +116,8 @@ begin
     (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName);
 end;
 
-/// <summary>Zuweisungen AName := … unter ABody (ohne eingebettete Routinen), die zwischen AFrom und ATo stehen.
-/// </summary>
+/// <summary>Zuweisungen AName := … unter ABody (ohne eingebettete Routinen), die hinter AFrom enden und vor ATo;
+/// eine Zuweisung, die AFrom umschließt, zählt mit.</summary>
 function AssignmentsTo(ABody: TSyntaxNode; const AName: string; AFrom, ATo: Integer): TArray<TSyntaxNode>;
 var
   Found: TArray<TSyntaxNode>;
@@ -138,7 +139,7 @@ begin
       begin
         Result := TSyntaxSearchStep.Skip;
       end
-      else if IsAssignTo(ANode, Name) and (ANode.StartOffset > From) and (ANode.EndOffset < Till) then
+      else if IsAssignTo(ANode, Name) and (ANode.EndOffset > From) and (ANode.EndOffset < Till) then
       begin
         Found := Found + [ANode];
       end;
@@ -148,8 +149,9 @@ end;
 
 /// <summary>Merker als Bedingung (#1519): Result := H &lt;&gt; INVALID_HANDLE_VALUE; if Result then …. Die
 /// Bedingung ist eine Variable (auch not X oder in Klammern), der ABody zwischen dem Öffnen und dem if genau
-/// einmal einen Ausdruck zuweist; dann gilt dessen Bedeutung. Spätere Zuweisungen (im then-Zweig) zählen nicht.
-/// 0 sonst.</summary>
+/// einmal einen Ausdruck zuweist; dann gilt dessen Bedeutung. Das gilt auch für die Zuweisung, die selbst öffnet
+/// (Result := OpenProcessToken(…, Token); if not Result then Exit). Spätere Zuweisungen (im then-Zweig) zählen
+/// nicht. 0 sonst.</summary>
 function FlagSuccess(ABody, AIf, ACondition: TSyntaxNode; const AHandle: TOpenedHandle;
   AOpenCall: TSyntaxNode): Integer;
 var
@@ -173,7 +175,7 @@ begin
   begin
     Exit;
   end;
-  Assignments := AssignmentsTo(ABody, Node.Name, AOpenCall.EndOffset, AIf.StartOffset);
+  Assignments := AssignmentsTo(ABody, Node.Name, AOpenCall.StartOffset, AIf.StartOffset);
   if Length(Assignments) = 1 then
   begin
     Result := Sign * OpenSuccess(Assignments[0][1], AHandle, AOpenCall);
