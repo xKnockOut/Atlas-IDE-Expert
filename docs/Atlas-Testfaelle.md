@@ -9415,6 +9415,7 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA24 | Wie AA22: Cursor auf Zeilen mit und ohne Befund, Hover über Bezeichner | Glühbirne erscheint (während einer laufenden Prüfung höchstens nach etwa 1,5 s, dann ohne Regelkorrekturen); Hover erscheint; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` ohne Zeitlimit |
 | AA25 | Während die Prüfung von AA22 läuft, weiter tippen | Die Befunde folgen dem neuen Stand; kein alter Stand bleibt stehen |
 | AA26 | Wie AA22, nach Ende der Prüfung: Cursor mit den Pfeiltasten durch die Unit bewegen, auch in Klassendeklarationen mit Get-/Set-Methoden und auf String-Literalen | Glühbirne folgt dem Cursor ohne spürbare Verzögerung; „Property aus Zugriffsmethoden“, „Als Klartext kopieren“ und uses-Aktionen erscheinen wie bisher; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` deutlich unter 1 s |
+| AA27 | Fenster „Atlas-Diagnose“ in der Startgröße öffnen, Reiter „Server“; danach schmaler und breiter ziehen | Spalte „Anfrage“ zeigt `textDocument/codeAction` lesbar; alle Spalten enden am rechten Rand (keine abgeschnittene Spalte); breit wieder volle Breiten |
 
 ## Prüfregeln vollständig im Modul (#1755)
 
