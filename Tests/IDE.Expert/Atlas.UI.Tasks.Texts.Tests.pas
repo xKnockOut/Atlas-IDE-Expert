@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Tasks.Texts.Tests;
 
 // Tests für die Texte der Projektaufgaben (#900): Dauer, Kopfzeilen je
-// Ausgang, Meldung beim Abbruch vor dem Build, letztes Ergebnis.
+// Ausgang, Meldung beim Abbruch vor dem Build, letztes Ergebnis, verworfene
+// Einträge in beiden Sprachen (#1458).
 
 interface
 
@@ -28,6 +29,8 @@ type
     procedure BlockedNamesErrorsOrExitCode;
     [Test]
     procedure LastResultAndDescription;
+    [Test]
+    procedure IssueInBothLanguages;
   end;
 
 implementation
@@ -139,6 +142,28 @@ begin
   Assert.AreEqual('Prüfung · pwsh Tools/Check-Delphi12.ps1 · bestanden 14:03',
     TAtlasTaskTexts.Description(Task, 'bestanden 14:03'));
   Assert.AreEqual('Sonstiges', TAtlasTaskTexts.GroupName(TAtlasTaskGroup.Other));
+end;
+
+procedure TAtlasTaskTextsTests.IssueInBothLanguages;
+var
+  mKind: TAtlasTaskIssueKind;
+  mIssue: TAtlasTaskIssue;
+begin
+  mIssue := TAtlasTaskIssue.Create(TAtlasTaskIssueKind.KeyUnreadable, 'Lint', 'Q');
+  Assert.AreEqual('Lint: Taste "Q" nicht lesbar', TAtlasTaskTexts.Issue(mIssue));
+  Assert.AreEqual('tasks muss eine Liste sein',
+    TAtlasTaskTexts.Issue(TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TasksType, '')));
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('Lint: key "Q" not readable', TAtlasTaskTexts.Issue(mIssue));
+  Assert.AreEqual('tasks[2]: not an object',
+    TAtlasTaskTexts.Issue(TAtlasTaskIssue.Create(TAtlasTaskIssueKind.TaskType, 'tasks[2]')));
+  // Jede Art hat einen Text, der die Stelle nennt (außer tasks selbst).
+  for mKind := Low(TAtlasTaskIssueKind) to High(TAtlasTaskIssueKind) do
+  begin
+    mIssue := TAtlasTaskIssue.Create(mKind, 'Stelle', 'Wert');
+    Assert.IsTrue((mKind = TAtlasTaskIssueKind.TasksType) or (Pos('Stelle: ', TAtlasTaskTexts.Issue(mIssue)) = 1),
+      TAtlasTaskTexts.Issue(mIssue));
+  end;
 end;
 
 initialization

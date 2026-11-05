@@ -44,7 +44,11 @@ type
     SettingsTasksEnabled, SettingsTasksProblemsFromOutput, SettingsTasksBeforeBuild, SettingsTasksBeforeBuildOff,
     SettingsTasksBeforeBuildWarn, SettingsTasksBeforeBuildBlock, SettingsTasksSaveBeforeRun,
     SettingsTasksRunChecksParallel, SettingsTasksOnlyFindings, SettingsBuildCompilerSwitches,
-    SettingsBuildSwitchesInStatusBar);
+    SettingsBuildSwitchesInStatusBar,
+    TasksIssueUnknownMatcher, TasksIssueSeverityMapValue, TasksIssueMatcherWithoutRegex, TasksIssueMatcherType,
+    TasksIssueArgsValue, TasksIssueArgsType, TasksIssueKeyUnreadable, TasksIssueTimeoutValue,
+    TasksIssueUnknownGroup, TasksIssueBeforeBuildValue, TasksIssueMissingName, TasksIssueMissingCommand,
+    TasksIssueTasksType, TasksIssueTaskType, TasksIssueDuplicateName);
 
   TAtlasBuildStrings = class
   public
@@ -206,7 +210,22 @@ const
      'Prüfungen gleichzeitig statt nacheinander',
      'Im Register „Atlas-Aufgaben“ nur Befunde zeigen',
      'Fenster „Compiler-Schalter“ (wirksame Schalter an der Cursorposition mit Herkunft)',
-     'Abweichende Schalter in der Statusleiste zeigen'),
+     'Abweichende Schalter in der Statusleiste zeigen',
+     '%s: unbekanntes Muster "%s", Ausgabe ohne Befunde',
+     '%s: severityMap "%s" ist weder error, warning noch info',
+     '%s: matcher ohne regex',
+     '%s: matcher muss Name oder Objekt sein',
+     '%s: args enthält einen Wert, der kein Text ist',
+     '%s: args muss eine Liste sein',
+     '%s: Taste "%s" nicht lesbar',
+     '%s: timeoutSec muss eine ganze Zahl ab 0 sein',
+     '%s: unbekannte group "%s", gilt als other',
+     '%s: beforeBuild "%s" ist weder off, warn noch block',
+     '%s: ohne name',
+     '%s: ohne command',
+     'tasks muss eine Liste sein',
+     '%s: kein Objekt',
+     '%s: Name doppelt, die erste Aufgabe gilt'),
     ('Start profile: …',
      'Start profile: %s',
      'Start profile: –',
@@ -351,7 +370,22 @@ const
      'Run checks in parallel',
      'Show only findings in the "Atlas tasks" tab',
      'Compiler switches window (effective switches at the cursor with their origin)',
-     'Show deviating switches in the status bar'));
+     'Show deviating switches in the status bar',
+     '%s: unknown matcher "%s", output without findings',
+     '%s: severityMap "%s" is neither error, warning nor info',
+     '%s: matcher without regex',
+     '%s: matcher must be a name or an object',
+     '%s: args contains a value that is not text',
+     '%s: args must be a list',
+     '%s: key "%s" not readable',
+     '%s: timeoutSec must be a whole number from 0',
+     '%s: unknown group "%s", treated as other',
+     '%s: beforeBuild "%s" is neither off, warn nor block',
+     '%s: without name',
+     '%s: without command',
+     'tasks must be a list',
+     '%s: not an object',
+     '%s: duplicate name, the first task applies'));
 
 { TAtlasBuildStrings }
 
