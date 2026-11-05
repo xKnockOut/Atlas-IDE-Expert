@@ -36,7 +36,21 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.Completion.Values;
+  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEnumValueCommandsText = (URIAndPositionExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TEnumValueCommandsText] of TAtlasText = (
+    (De: 'Erwartet werden URI und Position'; En: 'URI and position expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 class function TEnumValueCommands.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
@@ -52,12 +66,14 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TEnumValueCommandsText.URIAndPositionExpected].Text);
   end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TEnumValueCommandsText.DocumentIsNotOpen].Text +
+      Uri);
   end;
   Shared := TSyntaxTreeCache.Get(Document);
   Values := nil;
@@ -81,5 +97,8 @@ begin
   end;
   Result := Answer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.EnumValueCommands', cTexts);
 
 end.

@@ -82,7 +82,7 @@ type
     IncludeDefines: Boolean;
     /// <summary>Hinter Steuerzeichen wie ^C in Konstanten der Code (#3, #862).</summary>
     ControlChars: Boolean;
-    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686). Kein Schlüssel unter
+    /// <summary>Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686). Kein Schlüssel unter
     /// inlayHints: Die Komposition setzt sie aus refactoring.methodKind und refactoring.methodKindMarker; in
     /// Default aus.</summary>
     MethodWithoutSelf: Boolean;
@@ -503,7 +503,7 @@ type
     /// <summary>Erkennung und Code-Aktionen für Methoden ohne Self (#686): class-Methode, freie Routine,
     /// Record-Helper.</summary>
     MethodKind: Boolean;
-    /// <summary>Marke „ohne Self“ am Kopf solcher Methoden (#686); aus = nur über Strg+.</summary>
+    /// <summary>Marke „braucht kein Self“ am Kopf solcher Methoden (#686); aus = nur über Strg+.</summary>
     MethodKindMarker: Boolean;
     /// <summary>class-Methoden mit static erzeugen (#686).</summary>
     MethodKindStatic: Boolean;

@@ -134,6 +134,9 @@ begin
   FView.StateField.Value := AValues.ReadString(cStateFieldKey);
   FView.AssigneeField.Value := AValues.ReadString(cAssigneeFieldKey);
   FView.StartState.Value := AValues.ReadString(cStartStateKey);
+  // Die unveränderte Vorgabe in der Sprache der Oberfläche (#1458); die Seite hat den gespeicherten Text geladen.
+  FView.EndComment.Text := TAtlasTrackerWorkflow.EndCommentFor(AValues.ReadString(cEndCommentKey),
+    TAtlasTrackerStrings.English);
 end;
 
 procedure TAtlasTrackerWorkflowPart.Save(const AValues: IAtlasSettingsValues);

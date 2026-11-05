@@ -74,7 +74,20 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.PromoteVariable;
+  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspAnonymousMethodsText = (ConversionNotPossible);
+
+const
+  cTexts: array[TLspAnonymousMethodsText] of TAtlasText = (
+    (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Alias auf Alias: so tief wird verfolgt.
@@ -340,7 +353,8 @@ var
 begin
   if not TAnonymousMethods.Execute(InputOf(ARequest), AName, Converted, Reason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      cTexts[TLspAnonymousMethodsText.ConversionNotPossible].Text + Reason);
   end;
   Warnings := TJSONArray.Create;
   for Warning in Converted.Warnings do
@@ -354,5 +368,8 @@ begin
   Result.AddPair('files', TJSONNumber.Create(1));
   Result.AddPair('preview', Converted.Preview);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.AnonymousMethods', cTexts);
 
 end.

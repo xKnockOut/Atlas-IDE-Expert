@@ -72,7 +72,22 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.ApplyEdit,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBulkFixText = (RulesMissingRuleIdsOr, ArgumentsRulesFilesMinConfidenceHigh);
+
+const
+  cTexts: array[TBulkFixText] of TAtlasText = (
+    (De: '"rules" fehlt: Regelkennungen oder "all"'; En: '"rules" missing: rule ids or "all"'),
+    (De: 'Argumente: [{"rules": [...], "files": [...], "minConfidence": "high"}]';
+     En: 'Arguments: [{"rules": [...], "files": [...], "minConfidence": "high"}]'));
+
+{$SCOPEDENUMS OFF}
 
 function PathOf(const AText: string): string;
 begin
@@ -196,13 +211,13 @@ begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONObject) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Argumente: [{"rules": [...], "files": [...], "minConfidence": "high"}]');
+      cTexts[TBulkFixText.ArgumentsRulesFilesMinConfidenceHigh].Text);
   end;
   mArguments := TJSONObject(AArguments.Items[0]);
   mFixRules := StringsOf(mArguments.GetValue('rules'));
   if mFixRules = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"rules" fehlt: Regelkennungen oder "all"');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TBulkFixText.RulesMissingRuleIdsOr].Text);
   end;
   mRequested := '';
   if mArguments.GetValue('minConfidence') is TJSONString then
@@ -219,5 +234,8 @@ begin
   end;
   Result := AnswerJson(mResults);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.BulkFix', cTexts);
 
 end.

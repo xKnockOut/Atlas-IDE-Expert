@@ -30,7 +30,38 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.TypeCommands;
+  Atlas.Common.Editing.TypeCommands,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRecordCommandsText = (ExpectedIsRecordTNameX, OnlyAppliesInTheDeclaration, ExpectedIsOperatorImplicit, NoFieldIn,
+    HasNoFields, EqualsOnlyAppliesInA, CloneOnlyAppliesInA, CreateARecordWithConstructor, CreateAClassOperatorFor,
+    CreateEqualsAndGetHashCodeOr, CreateCloneWithFreeingOn, TODOCopyResultFrom, UnknownOperator,
+    RecordTPointXYInteger);
+
+const
+  cTexts: array[TRecordCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /record TName X, Y: Integer [ro]'; En: 'Expected is /record TName X, Y: Integer [ro]'),
+    (De: '/%s gilt nur in der Deklaration eines Records'; En: '/%s only applies in the declaration of a record'),
+    (De: 'Erwartet wird /operator = + Implicit'; En: 'Expected is /operator = + Implicit'),
+    (De: 'Kein Feld %s in %s'; En: 'No field %s in %s'),
+    (De: ' hat keine Felder'; En: ' has no fields'),
+    (De: '/equals gilt nur in einer Klasse, einer ihrer Methoden oder einem Record';
+     En: '/equals only applies in a class, one of its methods or a record'),
+    (De: '/clone gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/clone only applies in a class or one of its methods'),
+    (De: 'Record mit Konstruktor anlegen'; En: 'Create a record with constructor'),
+    (De: 'class operator für den Record anlegen'; En: 'Create a class operator for the record'),
+    (De: 'Equals und GetHashCode bzw. = und <> anlegen'; En: 'Create Equals and GetHashCode or = and <>'),
+    (De: 'Clone mit Freigabe bei Fehlern anlegen'; En: 'Create Clone with freeing on errors'),
+    (De: '    // TODO: Result.%s aus %s kopieren'; En: '    // TODO: copy Result.%s from %s'),
+    (De: 'Unbekannter Operator '; En: 'Unknown operator '),
+    (De: '/record TPunkt X, Y: Integer'; En: '/record TPoint X, Y: Integer'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TOperatorEntry = record
@@ -205,7 +236,7 @@ begin
   AEdits := nil;
   if not ParseRecord(AContext.Arguments, mTypeName, mGroups, mReadOnly) then
   begin
-    Exit(Fail('Erwartet wird /record TName X, Y: Integer [ro]', AReason));
+    Exit(Fail(cTexts[TRecordCommandsText.ExpectedIsRecordTNameX].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
@@ -244,7 +275,7 @@ begin
       Exit(True);
     end;
   end;
-  Result := Fail('/' + AName + ' gilt nur in der Deklaration eines Records', AReason);
+  Result := Fail(cTexts[TRecordCommandsText.OnlyAppliesInTheDeclaration].Fmt([AName]), AReason);
 end;
 
 /// <summary>Bedingung, die alle Felder von A und B vergleicht.</summary>
@@ -421,7 +452,7 @@ begin
     Name := OperatorName(IfThen(Colon > 0, Copy(Token, 1, Colon - 1), Token));
     if Name = '' then
     begin
-      Exit(Fail('Unbekannter Operator ' + Token, AReason));
+      Exit(Fail(cTexts[TRecordCommandsText.UnknownOperator].Text + Token, AReason));
     end;
     Target := IfThen(Colon > 0, Copy(Token, Colon + 1, MaxInt), 'string');
     // Zu = gehört immer <> und umgekehrt.
@@ -436,7 +467,7 @@ begin
   end;
   if Names = nil then
   begin
-    Exit(Fail('Erwartet wird /operator = + Implicit', AReason));
+    Exit(Fail(cTexts[TRecordCommandsText.ExpectedIsOperatorImplicit].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -509,12 +540,12 @@ begin
   begin
     if not HasField(AChosen, mName) then
     begin
-      Exit(Fail(Format('Kein Feld %s in %s', [mName, ATypeName]), AReason));
+      Exit(Fail(cTexts[TRecordCommandsText.NoFieldIn].Fmt([mName, ATypeName]), AReason));
     end;
   end;
   if AChosen = nil then
   begin
-    Exit(Fail(ATypeName + ' hat keine Felder', AReason));
+    Exit(Fail(ATypeName + cTexts[TRecordCommandsText.HasNoFields].Text, AReason));
   end;
   Result := True;
 end;
@@ -622,7 +653,7 @@ begin
     mIsRecord := not mSource.ClassAt(mTypeSymbol);
     if mIsRecord and not RecordAt(mSource, 'equals', mTypeSymbol, AReason) then
     begin
-      Exit(Fail('/equals gilt nur in einer Klasse, einer ihrer Methoden oder einem Record', AReason));
+      Exit(Fail(cTexts[TRecordCommandsText.EqualsOnlyAppliesInA].Text, AReason));
     end;
     if not ChooseFields(FieldsOf(mSource, mTypeSymbol), WantedFields(AContext.Arguments), mTypeSymbol.Name, mChosen,
       AReason) then
@@ -721,7 +752,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/clone gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TRecordCommandsText.CloneOnlyAppliesInA].Text, AReason));
     end;
     T := ClassSymbol.Name;
     Copies := nil;
@@ -744,7 +775,7 @@ begin
         end
         else
         begin
-          Copies := Copies + [Format('    // TODO: Result.%s aus %s kopieren', [Field.Name, Field.Name])];
+          Copies := Copies + [cTexts[TRecordCommandsText.TODOCopyResultFrom].Fmt([Field.Name, Field.Name])];
         end;
       end;
     end;
@@ -802,12 +833,16 @@ end;
 
 procedure RegisterRecordCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('record', 'Record mit Konstruktor anlegen', '/record TPunkt X, Y: Integer',
+  ARegister(Command('record', cTexts[TRecordCommandsText.CreateARecordWithConstructor].Text,
+    cTexts[TRecordCommandsText.RecordTPointXYInteger].Text,
     ExecuteRecord));
-  ARegister(Command('operator', 'class operator für den Record anlegen', '/operator = + Implicit',
+  ARegister(Command('operator', cTexts[TRecordCommandsText.CreateAClassOperatorFor].Text, '/operator = + Implicit',
     ExecuteOperator));
-  ARegister(Command('equals', 'Equals und GetHashCode bzw. = und <> anlegen', '/equals', ExecuteEquals));
-  ARegister(Command('clone', 'Clone mit Freigabe bei Fehlern anlegen', '/clone', ExecuteClone));
+  ARegister(Command('equals', cTexts[TRecordCommandsText.CreateEqualsAndGetHashCodeOr].Text, '/equals', ExecuteEquals));
+  ARegister(Command('clone', cTexts[TRecordCommandsText.CreateCloneWithFreeingOn].Text, '/clone', ExecuteClone));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.RecordCommands', cTexts);
 
 end.

@@ -32,7 +32,33 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TErrorCommandsText = (NoUncheckedObjectInterfaceOr, IsNotAnUncheckedObject, ExpectedIsGuardParameterName,
+    GuardOnlyAppliesInThe, ExpectedIsRaiseEClassText, RaiseOnlyAppliesInThe, InsertNilChecksForParameters,
+    RaiseAnException, RaiseEImportErrorFileMissing, GuardACustomer);
+
+const
+  cTexts: array[TErrorCommandsText] of TAtlasText = (
+    (De: 'Keine ungeprüften Objekt-, Interface- oder Zeigerparameter';
+     En: 'No unchecked object, interface or pointer parameters'),
+    (De: ' ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter';
+     En: ' is not an unchecked object, interface or pointer parameter'),
+    (De: 'Erwartet wird /guard [Parametername]'; En: 'Expected is /guard [ParameterName]'),
+    (De: '/guard gilt nur im Rumpf einer Routine'; En: '/guard only applies in the body of a routine'),
+    (De: 'Erwartet wird /raise EKlasse Text'; En: 'Expected is /raise EClass Text'),
+    (De: '/raise gilt nur im Rumpf einer Routine'; En: '/raise only applies in the body of a routine'),
+    (De: 'nil-Prüfungen für Parameter einfügen'; En: 'Insert nil checks for parameters'),
+    (De: 'Ausnahme auslösen'; En: 'Raise an exception'),
+    (De: '/raise EImportFehler Datei fehlt'; En: '/raise EImportError File missing'),
+    (De: '/guard AKunde'; En: '/guard ACustomer'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Typen mit T-Präfix, die keine Klassen sind.
@@ -198,10 +224,10 @@ end;
 
 function NoGuardReason(const AArguments: string): string;
 begin
-  Result := 'Keine ungeprüften Objekt-, Interface- oder Zeigerparameter';
+  Result := cTexts[TErrorCommandsText.NoUncheckedObjectInterfaceOr].Text;
   if AArguments <> '' then
   begin
-    Result := AArguments + ' ist kein ungeprüfter Objekt-, Interface- oder Zeigerparameter';
+    Result := AArguments + cTexts[TErrorCommandsText.IsNotAnUncheckedObject].Text;
   end;
 end;
 
@@ -215,14 +241,14 @@ begin
   AEdits := nil;
   if (AContext.Arguments <> '') and not IsValidIdent(AContext.Arguments) then
   begin
-    Exit(Fail('Erwartet wird /guard [Parametername]', AReason));
+    Exit(Fail(cTexts[TErrorCommandsText.ExpectedIsGuardParameterName].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     mRoutine := mSource.RoutineAt;
     if mRoutine = nil then
     begin
-      Exit(Fail('/guard gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TErrorCommandsText.GuardOnlyAppliesInThe].Text, AReason));
     end;
     mBlock := mRoutine.FindChild(TSyntaxKind.Block);
     mChecks := GuardChecks(mSource, AContext, mRoutine, mBlock);
@@ -279,14 +305,14 @@ begin
   Message := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
   if not IsValidIdent(Name, True) or (Message = '') then
   begin
-    Exit(Fail('Erwartet wird /raise EKlasse Text', AReason));
+    Exit(Fail(cTexts[TErrorCommandsText.ExpectedIsRaiseEClassText].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/raise gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TErrorCommandsText.RaiseOnlyAppliesInThe].Text, AReason));
     end;
     if Pos('%', Message) > 0 then
     begin
@@ -324,8 +350,14 @@ end;
 
 procedure RegisterErrorCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('guard', 'nil-Prüfungen für Parameter einfügen', '/guard AKunde', ExecuteGuard));
-  ARegister(Command('raise', 'Ausnahme auslösen', '/raise EImportFehler Datei fehlt', ExecuteRaise));
+  ARegister(Command('guard', cTexts[TErrorCommandsText.InsertNilChecksForParameters].Text,
+    cTexts[TErrorCommandsText.GuardACustomer].Text,
+    ExecuteGuard));
+  ARegister(Command('raise', cTexts[TErrorCommandsText.RaiseAnException].Text,
+    cTexts[TErrorCommandsText.RaiseEImportErrorFileMissing].Text, ExecuteRaise));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ErrorCommands', cTexts);
 
 end.

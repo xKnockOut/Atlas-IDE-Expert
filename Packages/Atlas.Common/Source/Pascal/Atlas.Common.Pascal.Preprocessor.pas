@@ -205,7 +205,36 @@ uses
   System.SyncObjs,
   Atlas.Text.Defines,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.Preprocessor.Expressions;
+  Atlas.Common.Pascal.Preprocessor.Expressions,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPreprocessorText = (InvalidIFExpression, InvalidIFOPTSwitch, IncludeFileMissing, IncludeFileNotFound,
+    IncludeFileIncludesItself, AndText, AfterELSE, ENDIFMissing, InLineText, InLineText2, IncludeFilesNestedTooDeeply,
+    Unknown, CompilerDefault);
+
+const
+  cTexts: array[TPreprocessorText] of TAtlasText = (
+    (De: 'Ungültiger $IF-Ausdruck: '; En: 'Invalid $IF expression: '),
+    (De: 'Ungültiger $IFOPT-Schalter: '; En: 'Invalid $IFOPT switch: '),
+    (De: 'Include-Datei fehlt'; En: 'Include file missing'),
+    (De: 'Include-Datei "%s" nicht gefunden'; En: 'Include file "%s" not found'),
+    (De: 'Include-Datei "%s" bindet sich selbst ein'; En: 'Include file "%s" includes itself'),
+    (De: ' und '; En: ' and '),
+    (De: '$%s nach $ELSE'; En: '$%s after $ELSE'),
+    (De: '$ENDIF fehlt'; En: '$ENDIF missing'),
+    (De: '{$%s} in Zeile %d'; En: '{$%s} in line %d'),
+    (De: '{$%s} in %s, Zeile %d'; En: '{$%s} in %s, line %d'),
+    (De: 'Include-Dateien zu tief verschachtelt'; En: 'Include files nested too deeply'),
+    (De: 'unbekannt'; En: 'unknown'),
+    (De: '(Vorgabe des Compilers)'; En: '(compiler default)'));
+
+/// <summary>Herkunft eines Schalters ohne Eintrag in der .dproj.</summary>
+function DefaultSuffix: string;
+begin
+  Result := cTexts[TPreprocessorText.CompilerDefault].Text;
+end;
 
 type
   /// <summary>Stand eines Schalters für $IFOPT; fehlt ein Buchstabe, ist er unbekannt.</summary>
@@ -307,10 +336,6 @@ type
     destructor Destroy; override;
     procedure Scan(const AText: string);
   end;
-
-const
-  /// <summary>Herkunft eines Schalters ohne Eintrag in der .dproj.</summary>
-  DefaultSuffix = '(Vorgabe des Compilers)';
 
 type
   /// <summary>Schalter mit langem Namen ({$RANGECHECKS ON}) und Eigenschaft der .dproj.</summary>
@@ -695,7 +720,7 @@ begin
     except
       on E: EPreprocessorExpression do
       begin
-        AddIssue(AFileIndex, AToken, 'Ungültiger $IF-Ausdruck: ' + E.Message);
+        AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.InvalidIFExpression].Text + E.Message);
         Result := TConditionValue.No;
       end;
     end;
@@ -718,7 +743,7 @@ begin
   if not ParseSwitch(FirstWord(AArgument) + Copy(Trim(AArgument), Length(FirstWord(AArgument)) + 1, 1), Letter,
     Wanted) then
   begin
-    AddIssue(AFileIndex, AToken, 'Ungültiger $IFOPT-Schalter: ' + Trim(AArgument));
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.InvalidIFOPTSwitch].Text + Trim(AArgument));
     Exit(TConditionValue.No);
   end;
   Part.Text := Letter + Copy('-+', Ord(Wanted) + 1, 1);
@@ -738,7 +763,7 @@ begin
   else
   begin
     Result := TConditionValue.Unknown;
-    Part.Value := 'unbekannt';
+    Part.Value := cTexts[TPreprocessorText.Unknown].Text;
   end;
   AddCheck(AFileIndex, AToken, 'IFOPT', Trim(AArgument), Result, [Part]);
 end;
@@ -784,11 +809,12 @@ begin
   Result := Length(Letters) > 0;
   if AFileIndex = 0 then
   begin
-    Origin := Format('{$%s} in Zeile %d', [ABody, AToken.StartPos.Line + 1]);
+    Origin := cTexts[TPreprocessorText.InLineText].Fmt([ABody, AToken.StartPos.Line + 1]);
   end
   else
   begin
-    Origin := Format('{$%s} in %s, Zeile %d', [ABody, ExtractFileName(FFiles[AFileIndex]), AToken.StartPos.Line + 1]);
+    Origin := cTexts[TPreprocessorText.InLineText2].Fmt([ABody, ExtractFileName(FFiles[AFileIndex]),
+      AToken.StartPos.Line + 1]);
   end;
   for Index := 0 to High(Letters) do
   begin
@@ -809,26 +835,27 @@ begin
   end;
   if AName = '' then
   begin
-    AddIssue(AFileIndex, AToken, 'Include-Datei fehlt');
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileMissing].Text);
     Exit;
   end;
   if not Assigned(FOptions.ResolveInclude) or
     not FOptions.ResolveInclude(AName, FFiles[AFileIndex], FileName, Text) then
   begin
-    AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" nicht gefunden', [AName]),
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileNotFound].Fmt([AName]),
       TPreprocessorIssueKind.IncludeMissing);
     Exit;
   end;
   if ADepth >= FOptions.MaxIncludeDepth then
   begin
-    AddIssue(AFileIndex, AToken, 'Include-Dateien zu tief verschachtelt', TPreprocessorIssueKind.IncludeCycle);
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFilesNestedTooDeeply].Text,
+      TPreprocessorIssueKind.IncludeCycle);
     Exit;
   end;
   for Existing in FIncludeStack do
   begin
     if SameText(Existing, FileName) then
     begin
-      AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" bindet sich selbst ein', [AName]),
+      AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileIncludesItself].Fmt([AName]),
         TPreprocessorIssueKind.IncludeCycle);
       Exit;
     end;
@@ -904,7 +931,7 @@ begin
   end
   else
   begin
-    mConditional.Condition := AState.Outer + ' und ' + AState.Text;
+    mConditional.Condition := AState.Outer + cTexts[TPreprocessorText.AndText].Text + AState.Text;
   end;
   mConditional.Active := AState.Active;
   FRun.FConditionals.Add(mConditional);
@@ -930,7 +957,7 @@ begin
   end
   else
   begin
-    Result := mTop.Outer + ' und ' + mTop.Text;
+    Result := mTop.Outer + cTexts[TPreprocessorText.AndText].Text + mTop.Text;
   end;
 end;
 
@@ -1028,7 +1055,7 @@ begin
   mState := FStack.Pop;
   if mState.InElse then
   begin
-    FRun.AddIssue(FFileIndex, AToken, Format('$%s nach $ELSE', [AName]));
+    FRun.AddIssue(FFileIndex, AToken, cTexts[TPreprocessorText.AfterELSE].Fmt([AName]));
   end;
   CloseBranch(mState, AToken);
   mState.Start := AToken.EndPos;
@@ -1174,7 +1201,7 @@ begin
   end;
   while FOpening.Count > 0 do
   begin
-    FRun.AddIssue(FFileIndex, FOpening.Pop, '$ENDIF fehlt');
+    FRun.AddIssue(FFileIndex, FOpening.Pop, cTexts[TPreprocessorText.ENDIFMissing].Text);
   end;
   if not FActive then
   begin
@@ -1523,30 +1550,54 @@ begin
   Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
 end;
 
+/// <summary>Die Zeichen ab AStart in AText lauten AUpper (Großbuchstaben, ASCII), ohne Rücksicht auf die
+/// Schreibung.</summary>
+function UpperAt(const AText: string; AStart: Integer; const AUpper: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := AStart + Length(AUpper) - 1 <= Length(AText);
+  mIndex := 1;
+  while Result and (mIndex <= Length(AUpper)) do
+  begin
+    Result := UpCase(AText[AStart + mIndex - 1]) = AUpper[mIndex];
+    Inc(mIndex);
+  end;
+end;
+
 class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;
 var
-  Upper: string;
+  mStart: Integer;
 begin
-  Upper := UpperCase(AText);
-  Result := (Pos('{$IF', Upper) > 0) or (Pos('(*$IF', Upper) > 0);
+  // Je '$' statt den ganzen Text in Großbuchstaben zu kopieren: Der Baum-Cache fragt das bei jedem Zugriff,
+  // jeder Anbieter einer Code-Aktion einmal (#1761).
+  mStart := Pos('$', AText);
+  while mStart > 0 do
+  begin
+    if (mStart > 1) and UpperAt(AText, mStart + 1, 'IF') and ((AText[mStart - 1] = '{') or
+      ((mStart > 2) and (AText[mStart - 1] = '*') and (AText[mStart - 2] = '('))) then
+    begin
+      Exit(True);
+    end;
+    mStart := Pos('$', AText, mStart + 1);
+  end;
+  Result := False;
 end;
 
 class function TPascalPreprocessor.HasIncludes(const AText: string): Boolean;
 var
-  Upper: string;
-  Start, Next: Integer;
+  mStart, mNext: Integer;
 begin
-  Upper := UpperCase(AText);
-  Start := Pos('$I', Upper);
-  while Start > 0 do
+  mStart := Pos('$', AText);
+  while mStart > 0 do
   begin
-    Next := Start + 2;
-    if (Start > 1) and CharInSet(Upper[Start - 1], ['{', '*']) and (Next <= Length(Upper)) and
-      (CharInSet(Upper[Next], [' ', #9, '''']) or (Copy(Upper, Next, 6) = 'NCLUDE')) then
+    mNext := mStart + 2;
+    if (mStart > 1) and CharInSet(AText[mStart - 1], ['{', '*']) and UpperAt(AText, mStart + 1, 'I') and
+      (mNext <= Length(AText)) and (CharInSet(AText[mNext], [' ', #9, '''']) or UpperAt(AText, mNext, 'NCLUDE')) then
     begin
       Exit(True);
     end;
-    Start := Pos('$I', Upper, Next);
+    mStart := Pos('$', AText, mStart + 1);
   end;
   Result := False;
 end;
@@ -1613,6 +1664,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Preprocessor', cTexts);
   ProviderLock := TCriticalSection.Create;
 
 finalization

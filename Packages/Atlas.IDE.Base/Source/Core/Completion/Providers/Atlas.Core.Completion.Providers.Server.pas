@@ -33,8 +33,10 @@ type
   TAtlasServerCompletionProvider = class(TAtlasAsyncCompletionProvider, IAtlasCompletionResolver)
   public const
     DefaultTimeoutMs = 2000;
-    /// <summary>Name für die Sicherung je Quelle (#493).</summary>
-    ProviderTitle = 'Vervollständigung (Server)';
+  public
+    /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
+    /// </summary>
+    class function ProviderTitle: string; static;
   private
     FSession: TAtlasSessionFunc;
     FTimeoutMs: Cardinal;
@@ -88,9 +90,33 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client;
+  Atlas.Core.Lsp.Client,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TServerText = (CompletionServer);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TServerText] of string = (
+    ('Vervollständigung (Server)'),
+    ('Completion (server)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TServerText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasServerCompletionProvider }
+
+class function TAtlasServerCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TServerText.CompletionServer);
+end;
 
 constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc);
 begin
@@ -836,5 +862,8 @@ begin
     end);
   Result := True;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Providers.Server', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

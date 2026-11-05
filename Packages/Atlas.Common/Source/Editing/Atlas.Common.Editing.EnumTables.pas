@@ -87,19 +87,17 @@ type
   end;
 
   TEnumTables = class
-  public const
-    CreateTitle = 'Namenstabelle anlegen (%s)';
-    CreateImplementationTitle = 'Namenstabelle anlegen, im implementation-Teil (%s)';
-    SyncTitle = 'Tabellen von %s nachziehen';
-    AddTitle = 'Fehlenden Eintrag ergänzen (%s)';
-    AddManyTitle = 'Fehlende Einträge ergänzen (%s)';
-    RemoveTitle = 'Überzähligen Eintrag entfernen (%s)';
-    RemoveManyTitle = 'Überzählige Einträge entfernen (%d)';
-    AdjustTitle = 'Tabelle an %s anpassen';
-    UncertainSuffix = ', Stelle geschätzt';
-    UncertainNote = 'Die Stelle ist geschätzt: Nicht jeder Eintrag lässt sich einem Element zuordnen; ' +
-      'Kommentare wie {osPaid} machen sie sicher.';
   public
+    class function CreateTitle: string; static;
+    class function CreateImplementationTitle: string; static;
+    class function SyncTitle: string; static;
+    class function AddTitle: string; static;
+    class function AddManyTitle: string; static;
+    class function RemoveTitle: string; static;
+    class function RemoveManyTitle: string; static;
+    class function AdjustTitle: string; static;
+    class function UncertainSuffix: string; static;
+    class function UncertainNote: string; static;
     /// <summary>Gemeinsames Präfix aus Kleinbuchstaben aller Namen (os bei osNew, osPaid); '' ohne.</summary>
     class function CommonPrefix(const ANames: TArray<string>): string; static;
     /// <summary>Text eines Elements: APrefix weg, CamelCase getrennt: osPaymentDue → Payment due.</summary>
@@ -135,7 +133,94 @@ uses
   System.Character,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.ResourceStrings;
+  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingEnumTablesText = (NoEnumerationTypeAtThis, IsNotDirectlyInThe, HasElementsWithFixedValues, IsNotAValidName,
+    TheNameIsAlreadyTaken, TheUnitHasNoImplementation, CreateNameTable, CreateNameTableInThe, UpdateTablesOf,
+    AddMissingEntry, AddMissingEntries, RemoveSurplusEntry, RemoveSurplusEntries, AdjustTableTo, PositionEstimated,
+    ThePositionIsEstimatedNot);
+
+const
+  cTexts: array[TEditingEnumTablesText] of TAtlasText = (
+    (De: 'Kein Aufzählungstyp an dieser Stelle'; En: 'No enumeration type at this position'),
+    (De: '%s steht nicht direkt im interface- oder implementation-Teil';
+     En: '%s is not directly in the interface or implementation part'),
+    (De: '%s hat Elemente mit festen Werten; eine Tabelle darüber hätte Lücken';
+     En: '%s has elements with fixed values; a table over it would have gaps'),
+    (De: '%s ist kein gültiger Name'; En: '%s is not a valid name'),
+    (De: 'Der Name %s ist schon vergeben'; En: 'The name %s is already taken'),
+    (De: 'Die Unit hat keinen implementation-Teil'; En: 'The unit has no implementation part'),
+    (De: 'Namenstabelle anlegen (%s)'; En: 'Create name table (%s)'),
+    (De: 'Namenstabelle anlegen, im implementation-Teil (%s)';
+     En: 'Create name table, in the implementation part (%s)'),
+    (De: 'Tabellen von %s nachziehen'; En: 'Update tables of %s'),
+    (De: 'Fehlenden Eintrag ergänzen (%s)'; En: 'Add missing entry (%s)'),
+    (De: 'Fehlende Einträge ergänzen (%s)'; En: 'Add missing entries (%s)'),
+    (De: 'Überzähligen Eintrag entfernen (%s)'; En: 'Remove surplus entry (%s)'),
+    (De: 'Überzählige Einträge entfernen (%d)'; En: 'Remove surplus entries (%d)'),
+    (De: 'Tabelle an %s anpassen'; En: 'Adjust table to %s'),
+    (De: ', Stelle geschätzt'; En: ', position estimated'),
+    (De: 'Die Stelle ist geschätzt: Nicht jeder Eintrag lässt sich einem Element zuordnen; Kommentare wie {osPaid} ' +
+      'machen sie sicher.';
+     En: 'The position is estimated: not every entry can be assigned to an element; comments like {osPaid} make it ' +
+      'certain.'));
+
+{$SCOPEDENUMS OFF}
+
+class function TEnumTables.CreateTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.CreateNameTable].Text;
+end;
+
+class function TEnumTables.CreateImplementationTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.CreateNameTableInThe].Text;
+end;
+
+class function TEnumTables.SyncTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.UpdateTablesOf].Text;
+end;
+
+class function TEnumTables.AddTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.AddMissingEntry].Text;
+end;
+
+class function TEnumTables.AddManyTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.AddMissingEntries].Text;
+end;
+
+class function TEnumTables.RemoveTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.RemoveSurplusEntry].Text;
+end;
+
+class function TEnumTables.RemoveManyTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.RemoveSurplusEntries].Text;
+end;
+
+class function TEnumTables.AdjustTitle: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.AdjustTableTo].Text;
+end;
+
+class function TEnumTables.UncertainSuffix: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.PositionEstimated].Text;
+end;
+
+class function TEnumTables.UncertainNote: string;
+begin
+  Result := cTexts[TEditingEnumTablesText.ThePositionIsEstimatedNot].Text;
+end;
 
 const
   /// <summary>Ab dieser Länge steht die neue Tabelle je Eintrag auf einer Zeile.</summary>
@@ -380,7 +465,7 @@ begin
     end);
   if Decl = nil then
   begin
-    Exit(Fail('Kein Aufzählungstyp an dieser Stelle', AReason));
+    Exit(Fail(cTexts[TEditingEnumTablesText.NoEnumerationTypeAtThis].Text, AReason));
   end;
   Enum := Decl.FindChild(TSyntaxKind.EnumType);
   // Nur Typen der Unit: In Klassen und Routinen fehlt der Platz für eine Konstante dahinter.
@@ -388,11 +473,11 @@ begin
     not (Decl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
     TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
   begin
-    Exit(Fail(Format('%s steht nicht direkt im interface- oder implementation-Teil', [Decl.Name]), AReason));
+    Exit(Fail(cTexts[TEditingEnumTablesText.IsNotDirectlyInThe].Fmt([Decl.Name]), AReason));
   end;
   if not PlainNames(Enum, ATarget.Names) then
   begin
-    Exit(Fail(Format('%s hat Elemente mit festen Werten; eine Tabelle darüber hätte Lücken', [Decl.Name]),
+    Exit(Fail(cTexts[TEditingEnumTablesText.HasElementsWithFixedValues].Fmt([Decl.Name]),
       AReason));
   end;
   ATarget.TypeName := Decl.Name;
@@ -482,11 +567,11 @@ begin
   Result := '';
   if not IsIdentifier(AName) then
   begin
-    Result := Format('%s ist kein gültiger Name', [AName]);
+    Result := cTexts[TEditingEnumTablesText.IsNotAValidName].Fmt([AName]);
   end
   else if IndexText(AName, ATaken) >= 0 then
   begin
-    Result := Format('Der Name %s ist schon vergeben', [AName]);
+    Result := cTexts[TEditingEnumTablesText.TheNameIsAlreadyTaken].Fmt([AName]);
   end;
 end;
 
@@ -523,7 +608,7 @@ begin
     mResource := TEnumTables.ResourceName(Info.TypeName, mName, Prefix);
     if IndexText(mResource, ATaken + Resources) >= 0 then
     begin
-      Exit(Fail(Format('Der Name %s ist schon vergeben', [mResource]), AReason));
+      Exit(Fail(cTexts[TEditingEnumTablesText.TheNameIsAlreadyTaken].Fmt([mResource]), AReason));
     end;
     Resources := Resources + [mResource];
     Items := Items + ['@' + mResource];
@@ -635,7 +720,7 @@ begin
   end
   else
   begin
-    Exit(Fail('Die Unit hat keinen implementation-Teil', AReason));
+    Exit(Fail(cTexts[TEditingEnumTablesText.TheUnitHasNoImplementation].Text, AReason));
   end;
 end;
 
@@ -1636,5 +1721,8 @@ begin
     mRepairer.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.EnumTables', cTexts);
 
 end.

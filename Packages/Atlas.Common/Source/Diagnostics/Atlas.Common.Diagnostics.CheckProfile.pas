@@ -137,7 +137,35 @@ implementation
 uses
   System.Math,
   System.DateUtils,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCheckProfileText = (CheckRunInProgressFor, LastCheckRunUnitsIn, CheckUnitsInMs, SlowestRulesMsCalls, TotalHeap,
+    Start, SlowestUnitsMs, AtlasCheckTimeProfile, SymbolIndexUnitsInMs, SymbolIndexNoneNoIndex, MemoryMB, Symbols,
+    LibraryUnits, Usages);
+
+const
+  cTexts: array[TCheckProfileText] of TAtlasText = (
+    (De: 'Prüflauf läuft seit %d ms: %d Units geprüft'; En: 'Check run in progress for %d ms: %d units checked'),
+    (De: 'Letzter Prüflauf: %d Units in %d ms'; En: 'Last check run: %d units in %d ms'),
+    (De: '- Prüfung: %d Units in %d ms'; En: '- Check: %d units in %d ms'),
+    (De: '| Langsamste Regeln | ms | Aufrufe |'; En: '| Slowest rules | ms | Calls |'),
+    (De: '| Gesamt (Heap) | '; En: '| Total (heap) | '),
+    (De: ', Beginn '; En: ', start '),
+    (De: '| Langsamste Units | ms |'; En: '| Slowest units | ms |'),
+    (De: '# Atlas --check: Zeitprofil'; En: '# Atlas --check: time profile'),
+    (De: '- Symbolindex: %d Units in %d ms'; En: '- Symbol index: %d units in %d ms'),
+    (De: '- Symbolindex: keiner (--no-index)'; En: '- Symbol index: none (--no-index)'),
+    (De: '| Speicher | MB |'; En: '| Memory | MB |'),
+    (De: '| Symbole | '; En: '| Symbols | '),
+    (De: '| Bibliotheks-Units | '; En: '| Library units | '),
+    (De: '| Verwendungen | '; En: '| Usages | '));
+
+{$SCOPEDENUMS OFF}
 
 threadvar
   CurrentProfiler: TCheckProfiler;
@@ -228,21 +256,21 @@ begin
   try
     if Active then
     begin
-      mBuilder.Append(Format('Prüflauf läuft seit %d ms: %d Units geprüft', [DurationMs, Units]));
+      mBuilder.Append(cTexts[TCheckProfileText.CheckRunInProgressFor].Fmt([DurationMs, Units]));
     end
     else
     begin
-      mBuilder.Append(Format('Letzter Prüflauf: %d Units in %d ms', [Units, DurationMs]));
+      mBuilder.Append(cTexts[TCheckProfileText.LastCheckRunUnitsIn].Fmt([Units, DurationMs]));
     end;
     if Started <> 0 then
     begin
-      mBuilder.Append(', Beginn ').Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Started));
+      mBuilder.Append(cTexts[TCheckProfileText.Start].Text).Append(FormatDateTime('dd.mm.yyyy hh":"nn":"ss', Started));
     end;
     mBuilder.Append(Format(' (Summe Units %s ms, Summe Regeln %s ms)', [MsText(UnitMs), MsText(RuleMs)]));
     mBuilder.Append(#10);
     if Length(SlowUnits) > 0 then
     begin
-      mBuilder.Append(#10).Append('| Langsamste Units | ms |').Append(#10);
+      mBuilder.Append(#10).Append(cTexts[TCheckProfileText.SlowestUnitsMs].Text).Append(#10);
       mBuilder.Append('|---|---:|').Append(#10);
       for mUnit in SlowUnits do
       begin
@@ -251,7 +279,7 @@ begin
     end;
     if Length(SlowRules) > 0 then
     begin
-      mBuilder.Append(#10).Append('| Langsamste Regeln | ms | Aufrufe |').Append(#10);
+      mBuilder.Append(#10).Append(cTexts[TCheckProfileText.SlowestRulesMsCalls].Text).Append(#10);
       mBuilder.Append('|---|---:|---:|').Append(#10);
       for mRule in SlowRules do
       begin
@@ -282,24 +310,25 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('# Atlas --check: Zeitprofil').Append(#10#10);
+    mBuilder.Append(cTexts[TCheckProfileText.AtlasCheckTimeProfile].Text).Append(#10#10);
     if IndexMs >= 0 then
     begin
-      mBuilder.Append(Format('- Symbolindex: %d Units in %d ms', [IndexUnits, IndexMs])).Append(#10);
+      mBuilder.Append(cTexts[TCheckProfileText.SymbolIndexUnitsInMs].Fmt([IndexUnits, IndexMs])).Append(#10);
     end
     else
     begin
-      mBuilder.Append('- Symbolindex: keiner (--no-index)').Append(#10);
+      mBuilder.Append(cTexts[TCheckProfileText.SymbolIndexNoneNoIndex].Text).Append(#10);
     end;
-    mBuilder.Append(Format('- Prüfung: %d Units in %d ms', [Profile.Units, Profile.DurationMs])).Append(#10);
-    mBuilder.Append(#10).Append('| Speicher | MB |').Append(#10);
+    mBuilder.Append(cTexts[TCheckProfileText.CheckUnitsInMs].Fmt([Profile.Units, Profile.DurationMs])).Append(#10);
+    mBuilder.Append(#10).Append(cTexts[TCheckProfileText.MemoryMB].Text).Append(#10);
     mBuilder.Append('|---|---:|').Append(#10);
-    mBuilder.Append('| Symbole | ').Append(MegaBytes(ProjectBytes)).Append(' |').Append(#10);
-    mBuilder.Append('| Bibliotheks-Units | ').Append(MegaBytes(LibraryBytes)).Append(' |').Append(#10);
-    mBuilder.Append('| Verwendungen | ').Append(MegaBytes(UsageBytes)).Append(' |').Append(#10);
+    mBuilder.Append(cTexts[TCheckProfileText.Symbols].Text).Append(MegaBytes(ProjectBytes)).Append(' |').Append(#10);
+    mBuilder.Append(cTexts[TCheckProfileText.LibraryUnits].Text).Append(MegaBytes(LibraryBytes)).Append(' |')
+      .Append(#10);
+    mBuilder.Append(cTexts[TCheckProfileText.Usages].Text).Append(MegaBytes(UsageBytes)).Append(' |').Append(#10);
     if TotalBytes >= 0 then
     begin
-      mBuilder.Append('| Gesamt (Heap) | ').Append(MegaBytes(TotalBytes)).Append(' |').Append(#10);
+      mBuilder.Append(cTexts[TCheckProfileText.TotalHeap].Text).Append(MegaBytes(TotalBytes)).Append(' |').Append(#10);
     end;
     if Profile.Serial > 0 then
     begin
@@ -546,5 +575,8 @@ begin
   // In zwei Schritten, damit ATicks * 1000000 bei langen Läufen nicht überläuft.
   Result := (ATicks div AFrequency) * 1000000 + ((ATicks mod AFrequency) * 1000000) div AFrequency;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.CheckProfile', cTexts);
 
 end.

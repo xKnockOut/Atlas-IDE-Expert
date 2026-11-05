@@ -169,7 +169,54 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSnapshotText = (ArchitectureStateIsDamaged, IsNotAList, IsNotAnObject, NumberOfAUnitExpected, UnitMissing,
+    NameOfAUnitExpected, SubsystemMissing, Outliers, UnitsMissing, ArchitectureStateWithoutFormatVersion,
+    ArchitectureStateInFormatIs, FileIsNotAnArchitecture, ArchitectureStateIsNotA, ArchitectureStateNotFound,
+    ArchitectureStateNotReadable, NumberOfASubsystemExpected, SourceTargetSectionExpected, UnitWithoutName,
+    CentralUnits, EdgeExpected, Subsystem, Edge, Subsystem2, Cycle, CrossLink);
+
+const
+  cTexts: array[TSnapshotText] of TAtlasText = (
+    (De: 'Architekturstand ist beschädigt: '; En: 'Architecture state is damaged: '),
+    (De: '"%s" ist keine Liste'; En: '"%s" is not a list'),
+    (De: ' %s ist kein Objekt'; En: ' %s is not an object'),
+    (De: ': Nummer einer Unit erwartet'; En: ': number of a unit expected'),
+    (De: ': Unit %s fehlt'; En: ': unit %s missing'),
+    (De: ': Name einer Unit erwartet'; En: ': name of a unit expected'),
+    (De: ': Teilsystem %s fehlt'; En: ': subsystem %s missing'),
+    (De: 'Ausreißer'; En: 'Outliers'),
+    (De: '"units" fehlt'; En: '"units" missing'),
+    (De: 'Architekturstand ohne Formatversion ("format"); erwartet wird eine Datei aus AtlasServer --architecture ' +
+      '<Datei.json> oder „Stand speichern …“';
+     En: 'Architecture state without format version ("format"); expected is a file from AtlasServer --architecture ' +
+      '<file.json> or “Save state …”'),
+    (De: 'Architekturstand im Format %d wird nicht unterstützt (gelesen werden die Formate 1 bis %d); bitte mit ' +
+      'dieser Atlas-Version neu speichern';
+     En: 'Architecture state in format %d is not supported (formats 1 to %d are read); please save it again with ' +
+      'this Atlas version'),
+    (De: 'Datei ist kein Architekturstand ("kind": "%s")'; En: 'File is not an architecture state ("kind": "%s")'),
+    (De: 'Architekturstand ist kein JSON-Objekt'; En: 'Architecture state is not a JSON object'),
+    (De: 'Architekturstand "%s" nicht gefunden'; En: 'Architecture state "%s" not found'),
+    (De: 'Architekturstand "%s" nicht lesbar: '; En: 'Architecture state "%s" not readable: '),
+    (De: ': Nummer eines Teilsystems erwartet'; En: ': number of a subsystem expected'),
+    (De: ': [Quelle, Ziel, Abschnitt] erwartet'; En: ': [source, target, section] expected'),
+    (De: 'Unit %s ohne Namen'; En: 'Unit %s without name'),
+    (De: 'zentrale Units'; En: 'central units'),
+    (De: ': Kante erwartet'; En: ': edge expected'),
+    (De: 'Teilsystem'; En: 'Subsystem'),
+    (De: 'Kante '; En: 'Edge '),
+    (De: 'Teilsystem '; En: 'Subsystem '),
+    (De: 'Zyklus'; En: 'Cycle'),
+    (De: 'Querverbindung'; En: 'Cross link'));
+
+{$SCOPEDENUMS OFF}
 
 const
   LineBreak = #10;
@@ -756,7 +803,7 @@ end;
 
 procedure TSnapshotReader.Fail(const AText: string);
 begin
-  raise EArchitectureSnapshot.Create('Architekturstand ist beschädigt: ' + AText);
+  raise EArchitectureSnapshot.Create(cTexts[TSnapshotText.ArchitectureStateIsDamaged].Text + AText);
 end;
 
 function TSnapshotReader.Field(AObject: TJSONObject; const AName: string): TJSONValue;
@@ -832,7 +879,7 @@ begin
   end;
   if not (Value is TJSONArray) then
   begin
-    Fail('"' + AName + '" ist keine Liste');
+    Fail(cTexts[TSnapshotText.IsNotAList].Fmt([AName]));
   end;
   Result := TJSONArray(Value);
 end;
@@ -841,7 +888,7 @@ function TSnapshotReader.ObjectAt(AItems: TJSONArray; AIndex: Integer; const AWh
 begin
   if not (AItems.Items[AIndex] is TJSONObject) then
   begin
-    Fail(AWhat + ' ' + IntToStr(AIndex + 1) + ' ist kein Objekt');
+    Fail(AWhat + cTexts[TSnapshotText.IsNotAnObject].Fmt([IntToStr(AIndex + 1)]));
   end;
   Result := TJSONObject(AItems.Items[AIndex]);
 end;
@@ -854,18 +901,18 @@ begin
   begin
     if not (AValue is TJSONNumber) then
     begin
-      Fail(AWhat + ': Nummer einer Unit erwartet');
+      Fail(AWhat + cTexts[TSnapshotText.NumberOfAUnitExpected].Text);
     end;
     Number := TJSONNumber(AValue).AsInt;
     if (Number < 0) or (Number > High(FUnitNames)) then
     begin
-      Fail(AWhat + ': Unit ' + IntToStr(Number) + ' fehlt');
+      Fail(AWhat + cTexts[TSnapshotText.UnitMissing].Fmt([IntToStr(Number)]));
     end;
     Exit(FUnitNames[Number]);
   end;
   if not (AValue is TJSONString) or (AValue is TJSONNumber) or (AValue.Value = '') then
   begin
-    Fail(AWhat + ': Name einer Unit erwartet');
+    Fail(AWhat + cTexts[TSnapshotText.NameOfAUnitExpected].Text);
   end;
   Result := AValue.Value;
 end;
@@ -878,7 +925,7 @@ begin
   begin
     if not (AValue is TJSONNumber) then
     begin
-      Fail(AWhat + ': Nummer eines Teilsystems erwartet');
+      Fail(AWhat + cTexts[TSnapshotText.NumberOfASubsystemExpected].Text);
     end;
     Number := TJSONNumber(AValue).AsInt;
     // -1: ohne Teilsystem (z. B. Ausreißer ohne Vorschlag).
@@ -888,7 +935,7 @@ begin
     end;
     if Number > High(FSubsystemNames) then
     begin
-      Fail(AWhat + ': Teilsystem ' + IntToStr(Number) + ' fehlt');
+      Fail(AWhat + cTexts[TSnapshotText.SubsystemMissing].Fmt([IntToStr(Number)]));
     end;
     Exit(FSubsystemNames[Number]);
   end;
@@ -929,7 +976,7 @@ begin
     Items := TJSONArray(AValue);
     if Items.Count < 3 then
     begin
-      Fail(AWhat + ': [Quelle, Ziel, Abschnitt] erwartet');
+      Fail(AWhat + cTexts[TSnapshotText.SourceTargetSectionExpected].Text);
     end;
     Result.Source := UnitName(Items.Items[0], AWhat);
     Result.Target := UnitName(Items.Items[1], AWhat);
@@ -943,7 +990,7 @@ begin
   end
   else
   begin
-    Fail(AWhat + ': Kante erwartet');
+    Fail(AWhat + cTexts[TSnapshotText.EdgeExpected].Text);
   end;
   Result.Interface_ := (Section = 'interface') or (Section = 'i');
 end;
@@ -988,7 +1035,7 @@ begin
     FUnitNames[mIndex] := TextOf(ObjectAt(AUnits, mIndex, 'Unit'), 'name');
     if FUnitNames[mIndex] = '' then
     begin
-      Fail('Unit ' + IntToStr(mIndex + 1) + ' ohne Namen');
+      Fail(cTexts[TSnapshotText.UnitWithoutName].Fmt([IntToStr(mIndex + 1)]));
     end;
   end;
   if ASubsystems <> nil then
@@ -996,7 +1043,7 @@ begin
     SetLength(FSubsystemNames, ASubsystems.Count);
     for mIndex := 0 to ASubsystems.Count - 1 do
     begin
-      FSubsystemNames[mIndex] := TextOf(ObjectAt(ASubsystems, mIndex, 'Teilsystem'), 'name');
+      FSubsystemNames[mIndex] := TextOf(ObjectAt(ASubsystems, mIndex, cTexts[TSnapshotText.Subsystem].Text), 'name');
     end;
   end;
 end;
@@ -1036,7 +1083,7 @@ begin
   SetLength(Result, mItems.Count);
   for mIndex := 0 to mItems.Count - 1 do
   begin
-    Result[mIndex] := EdgeOf(mItems.Items[mIndex], 'Kante ' + IntToStr(mIndex + 1));
+    Result[mIndex] := EdgeOf(mItems.Items[mIndex], cTexts[TSnapshotText.Edge].Text + IntToStr(mIndex + 1));
   end;
 end;
 
@@ -1060,10 +1107,10 @@ function TSnapshotReader.ReadSubsystem(AItem: TJSONObject; const AName: string):
 begin
   Result := Default(TSnapshotSubsystem);
   Result.Name := AName;
-  Result.Units := UnitNames(ArrayOf(AItem, 'units'), 'Teilsystem ' + AName);
+  Result.Units := UnitNames(ArrayOf(AItem, 'units'), cTexts[TSnapshotText.Subsystem2].Text + AName);
   if HasCentral(Field(AItem, 'central')) then
   begin
-    Result.Central := UnitName(Field(AItem, 'central'), 'Teilsystem ' + AName);
+    Result.Central := UnitName(Field(AItem, 'central'), cTexts[TSnapshotText.Subsystem2].Text + AName);
   end;
   Result.Inner := IntOf(AItem, 'inner');
   Result.Outer := IntOf(AItem, 'outer');
@@ -1107,10 +1154,10 @@ begin
   SetLength(Result, mItems.Count);
   for mIndex := 0 to mItems.Count - 1 do
   begin
-    mItem := ObjectAt(mItems, mIndex, 'Ausreißer');
+    mItem := ObjectAt(mItems, mIndex, cTexts[TSnapshotText.Outliers].Text);
     Result[mIndex] := Default(TSnapshotOutlier);
-    Result[mIndex].Unit_ := UnitName(Field(mItem, 'unit'), 'Ausreißer');
-    Result[mIndex].Suggested := SubsystemName(Field(mItem, 'suggested'), 'Ausreißer');
+    Result[mIndex].Unit_ := UnitName(Field(mItem, 'unit'), cTexts[TSnapshotText.Outliers].Text);
+    Result[mIndex].Suggested := SubsystemName(Field(mItem, 'suggested'), cTexts[TSnapshotText.Outliers].Text);
     Result[mIndex].Reason := TextOf(mItem, 'reason');
   end;
 end;
@@ -1122,7 +1169,7 @@ var
 begin
   Result := Default(TSnapshotCycle);
   Result.InterfaceOnly := FlagOf(AItem, 'interfaceOnly');
-  Result.Units := UnitNames(ArrayOf(AItem, 'units'), 'Zyklus');
+  Result.Units := UnitNames(ArrayOf(AItem, 'units'), cTexts[TSnapshotText.Cycle].Text);
   mEdges := ArrayOf(AItem, 'edges');
   if mEdges = nil then
   begin
@@ -1131,7 +1178,7 @@ begin
   SetLength(Result.Edges, mEdges.Count);
   for mMember := 0 to mEdges.Count - 1 do
   begin
-    Result.Edges[mMember] := EdgeOf(mEdges.Items[mMember], 'Zyklus');
+    Result.Edges[mMember] := EdgeOf(mEdges.Items[mMember], cTexts[TSnapshotText.Cycle].Text);
   end;
 end;
 
@@ -1149,7 +1196,7 @@ begin
   SetLength(Result, mItems.Count);
   for mIndex := 0 to mItems.Count - 1 do
   begin
-    Result[mIndex] := ReadCycle(ObjectAt(mItems, mIndex, 'Zyklus'));
+    Result[mIndex] := ReadCycle(ObjectAt(mItems, mIndex, cTexts[TSnapshotText.Cycle].Text));
   end;
 end;
 
@@ -1168,11 +1215,11 @@ begin
   SetLength(Result, mItems.Count);
   for mIndex := 0 to mItems.Count - 1 do
   begin
-    mItem := ObjectAt(mItems, mIndex, 'Querverbindung');
+    mItem := ObjectAt(mItems, mIndex, cTexts[TSnapshotText.CrossLink].Text);
     Result[mIndex] := Default(TSnapshotCrossLink);
-    Result[mIndex].Edge := EdgeOf(mItem, 'Querverbindung');
-    Result[mIndex].FromSubsystem := SubsystemName(Field(mItem, 'from'), 'Querverbindung');
-    Result[mIndex].ToSubsystem := SubsystemName(Field(mItem, 'to'), 'Querverbindung');
+    Result[mIndex].Edge := EdgeOf(mItem, cTexts[TSnapshotText.CrossLink].Text);
+    Result[mIndex].FromSubsystem := SubsystemName(Field(mItem, 'from'), cTexts[TSnapshotText.CrossLink].Text);
+    Result[mIndex].ToSubsystem := SubsystemName(Field(mItem, 'to'), cTexts[TSnapshotText.CrossLink].Text);
     Result[mIndex].Reason := TextOf(mItem, 'reason');
     Result[mIndex].Forward := IntOf(mItem, 'forward');
     Result[mIndex].Backward := IntOf(mItem, 'backward');
@@ -1188,13 +1235,13 @@ begin
   mUnits := ArrayOf(FData, 'units');
   if mUnits = nil then
   begin
-    Fail('"units" fehlt');
+    Fail(cTexts[TSnapshotText.UnitsMissing].Text);
   end;
   mSubsystems := ArrayOf(FData, 'subsystems');
   ReadNames(mUnits, mSubsystems);
   Result.Units := ReadUnits(mUnits);
   Result.Edges := ReadEdges;
-  Result.Central := UnitNames(ArrayOf(FData, 'central'), 'zentrale Units');
+  Result.Central := UnitNames(ArrayOf(FData, 'central'), cTexts[TSnapshotText.CentralUnits].Text);
   Result.Subsystems := ReadSubsystems(mSubsystems);
   Result.Outliers := ReadOutliers;
   Result.Cycles := ReadCycles;
@@ -1222,22 +1269,19 @@ begin
   mVersion := AData.GetValue('format');
   if not (mVersion is TJSONNumber) then
   begin
-    AError := 'Architekturstand ohne Formatversion ("format"); erwartet wird eine Datei aus ' +
-      'AtlasServer --architecture <Datei.json> oder „Stand speichern …“';
+    AError := cTexts[TSnapshotText.ArchitectureStateWithoutFormatVersion].Text;
   end
   else
   begin
     AFormat := TJSONNumber(mVersion).AsInt;
     if (AFormat < 1) or (AFormat > TArchitectureSnapshots.FormatVersion) then
     begin
-      AError := Format('Architekturstand im Format %d wird nicht unterstützt (gelesen werden ' +
-        'die Formate 1 bis %d); bitte mit dieser Atlas-Version neu speichern',
-        [AFormat, TArchitectureSnapshots.FormatVersion]);
+      AError := cTexts[TSnapshotText.ArchitectureStateInFormatIs].Fmt([AFormat, TArchitectureSnapshots.FormatVersion]);
     end
     else if (AFormat = 2) and (AData.GetValue('kind') is TJSONString) and
       (AData.GetValue('kind').Value <> TArchitectureSnapshots.Kind) then
     begin
-      AError := 'Datei ist kein Architekturstand ("kind": "' + AData.GetValue('kind').Value + '")';
+      AError := cTexts[TSnapshotText.FileIsNotAnArchitecture].Fmt([AData.GetValue('kind').Value]);
     end;
   end;
   Result := AError = '';
@@ -1284,7 +1328,7 @@ begin
   try
     if not (mRoot is TJSONObject) then
     begin
-      AError := 'Architekturstand ist kein JSON-Objekt';
+      AError := cTexts[TSnapshotText.ArchitectureStateIsNotA].Text;
       Exit(False);
     end;
     mData := SnapshotData(TJSONObject(mRoot));
@@ -1307,7 +1351,7 @@ begin
   ASnapshot := Default(TArchitectureSnapshot);
   if not TFile.Exists(AFileName) then
   begin
-    AError := 'Architekturstand "' + AFileName + '" nicht gefunden';
+    AError := cTexts[TSnapshotText.ArchitectureStateNotFound].Fmt([AFileName]);
     Exit(False);
   end;
   try
@@ -1324,7 +1368,7 @@ begin
   except
     on E: Exception do
     begin
-      AError := 'Architekturstand "' + AFileName + '" nicht lesbar: ' + E.Message;
+      AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;
       Exit(False);
     end;
   end;
@@ -1346,5 +1390,8 @@ begin
   end;
   TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(Json(ASnapshot)));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Architecture.Snapshot', cTexts);
 
 end.

@@ -77,7 +77,30 @@ uses
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCheckToolsText = (NotReadable, AtlasFound1FindingsIn, FixTheCauseInThe, SeverityIsErrorWarningInformation,
+    FindingsInFiles, Confidence, MoreFindings);
+
+const
+  cTexts: array[TCheckToolsText] of TAtlasText = (
+    (De: '%s: nicht lesbar'; En: '%s: not readable'),
+    (De: 'Atlas hat in %s nach der Änderung %d Befunde gefunden (Zeile:Spalte):';
+     En: 'Atlas found %1:d findings in %0:s after the change (line:column):'),
+    (De: #10 + '%s' + #10 + 'Ursache im Code beheben; Erklärung mit explain_finding, Korrektur mit apply_code_action.';
+     En: #10 + '%s' + #10 + 'Fix the cause in the code; explanation with explain_finding, fix with apply_code_action.'),
+    (De: '"severity" ist error, warning, information oder hint';
+     En: '"severity" is error, warning, information or hint'),
+    (De: '%d Befunde in %d Dateien.'; En: '%d findings in %d files.'),
+    (De: '%d:%d: %s [%s] [Konfidenz %s] %s'; En: '%d:%d: %s [%s] [confidence %s] %s'),
+    (De: '… %d weitere Befunde'; En: '… %d more findings'));
+
+{$SCOPEDENUMS OFF}
 
 { TMcpCheckTools }
 
@@ -92,7 +115,7 @@ end;
 
 class function TMcpCheckTools.FindingLine(const AFinding: TRuleFinding): string;
 begin
-  Result := Format('%d:%d: %s [%s] [Konfidenz %s] %s', [AFinding.Range.StartPos.Line + 1,
+  Result := cTexts[TCheckToolsText.Confidence].Fmt([AFinding.Range.StartPos.Line + 1,
     AFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(AFinding.Severity), AFinding.RuleId,
     ConfidenceText(AFinding.Confidence), AFinding.Message]);
 end;
@@ -184,7 +207,7 @@ begin
     begin
       if not AReadText(mFileName, mText) then
       begin
-        mLines.Add(Format('%s: nicht lesbar', [mFileName]));
+        mLines.Add(cTexts[TCheckToolsText.NotReadable].Fmt([mFileName]));
         Continue;
       end;
       Inc(mChecked);
@@ -199,9 +222,9 @@ begin
     end;
     if mCount > MaxFindings then
     begin
-      mLines.Add(Format('… %d weitere Befunde', [mCount - MaxFindings]));
+      mLines.Add(cTexts[TCheckToolsText.MoreFindings].Fmt([mCount - MaxFindings]));
     end;
-    mLines.Insert(0, Format('%d Befunde in %d Dateien.', [mCount, mChecked]));
+    mLines.Insert(0, cTexts[TCheckToolsText.FindingsInFiles].Fmt([mCount, mChecked]));
     Result := TrimRight(mLines.Text);
   finally
     mLines.Free;
@@ -233,7 +256,7 @@ begin
   end;
   if ACount > TMcpCheckTools.MaxFindings then
   begin
-    Result := Result + Format('… %d weitere Befunde', [ACount - TMcpCheckTools.MaxFindings]) + #10;
+    Result := Result + cTexts[TCheckToolsText.MoreFindings].Fmt([ACount - TMcpCheckTools.MaxFindings]) + #10;
   end;
   Result := TrimRight(Result);
 end;
@@ -259,8 +282,8 @@ begin
   begin
     Exit;
   end;
-  mContext := Format('Atlas hat in %s nach der Änderung %d Befunde gefunden (Zeile:Spalte):', [AFileName, mCount]) +
-    #10 + mFindings + #10 + 'Ursache im Code beheben; Erklärung mit explain_finding, Korrektur mit apply_code_action.';
+  mContext := cTexts[TCheckToolsText.AtlasFound1FindingsIn].Fmt([AFileName, mCount]) +
+    cTexts[TCheckToolsText.FixTheCauseInThe].Fmt([mFindings]);
   Result := '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":' +
     TFindingsOutput.JsonString(mContext) + '}}';
 end;
@@ -285,8 +308,11 @@ begin
   end
   else
   begin
-    raise EMcpToolError.Create('"severity" ist error, warning, information oder hint');
+    raise EMcpToolError.Create(cTexts[TCheckToolsText.SeverityIsErrorWarningInformation].Text);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.CheckTools', cTexts);
 
 end.

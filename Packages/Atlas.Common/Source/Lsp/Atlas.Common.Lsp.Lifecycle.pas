@@ -49,6 +49,24 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLifecycleText = (ServerIsNotInitializedYet, ServerIsAlreadyInitialized, ServerIsShuttingDown, ServerHasShutDown);
+
+const
+  cTexts: array[TLifecycleText] of TAtlasText = (
+    (De: 'Server ist noch nicht initialisiert'; En: 'Server is not initialized yet'),
+    (De: 'Server ist bereits initialisiert'; En: 'Server is already initialized'),
+    (De: 'Server wird beendet'; En: 'Server is shutting down'),
+    (De: 'Server ist beendet'; En: 'Server has shut down'));
+
+{$SCOPEDENUMS OFF}
+
 { TLspLifecycle }
 
 constructor TLspLifecycle.Create(const AServerName, AServerVersion: string;
@@ -90,17 +108,17 @@ begin
       if AMethod <> TLspLifecycleMethod.InitializeRequest then
       begin
         ACode := TLspErrorCode.ServerNotInitialized;
-        Result := 'Server ist noch nicht initialisiert';
+        Result := cTexts[TLifecycleText.ServerIsNotInitializedYet].Text;
       end;
     TLspServerState.Running:
       if AMethod = TLspLifecycleMethod.InitializeRequest then
       begin
-        Result := 'Server ist bereits initialisiert';
+        Result := cTexts[TLifecycleText.ServerIsAlreadyInitialized].Text;
       end;
     TLspServerState.ShuttingDown:
-      Result := 'Server wird beendet';
+      Result := cTexts[TLifecycleText.ServerIsShuttingDown].Text;
     TLspServerState.Exited:
-      Result := 'Server ist beendet';
+      Result := cTexts[TLifecycleText.ServerHasShutDown].Text;
   end;
 end;
 
@@ -186,5 +204,8 @@ begin
     Result := 1;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Lifecycle', cTexts);
 
 end.

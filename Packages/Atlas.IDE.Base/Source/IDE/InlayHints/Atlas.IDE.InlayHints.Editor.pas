@@ -40,7 +40,9 @@
 // - Steuerzeichen (#862, Einstellung InlayCharHints): hinter ^C in einer
 //   Konstanten der Code „#3“ in einer Pille; ausblendbar je Codezeile.
 // - Methoden ohne Self (#686, Einstellung InlayMethodHints): hinter dem Kopf
-//   der Implementierung „ohne Self“ in einer Pille; ausblendbar je Codezeile.
+//   der Implementierung „braucht kein Self“ in einer Pille; ausblendbar je
+//   Codezeile. Ein Linksklick auf die Pille setzt den Cursor ans Ende des
+//   Kopfs und öffnet dort die Code-Aktionen wie Strg+. (die Umwandlungen).
 // - Platz hinter dem Zeilenende (#509): teilt sich der Zeichner über
 //   TAtlasLineTail mit dem Fehlertext am Zeilenende.
 
@@ -65,21 +67,51 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasInlayHintsSessionFunc = reference to function: TLspSession;
 
+  /// <summary>Gezeichnete Blockende-Beschriftung (#620) oder Marke „braucht kein Self“ (#686) mit Ziel des
+  /// Klicks.</summary>
+  TAtlasInlayPillHit = record
+    FileName: string;
+    Line: Integer;
+    TopRow: Integer;
+    Rect: TRect;
+    TargetLine: Integer;
+    TargetCharacter: Integer;
+    /// <summary>Marke einer Methode ohne Self: nach dem Sprung die Code-Aktionen öffnen.</summary>
+    Actions: Boolean;
+  end;
+
+  /// <summary>Klickbare Marken: Ein Linksklick auf eine Blockende-Beschriftung springt zum Blockanfang, einer auf die
+  /// Marke „braucht kein Self“ ans Ende des Methodenkopfs und öffnet dort die Code-Aktionen.</summary>
+  TAtlasInlayHintClicks = class
+  private const
+    /// <summary>Mehr gemerkte Flächen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
+    MaxHits = 500;
+  private
+    FStore: TAtlasInlayHintStore;
+    FMethodActions: TProc;
+    FHits: TArray<TAtlasInlayPillHit>;
+    /// <summary>Ist die Art von AHit noch an, und steht eine Marke „braucht kein Self“ noch im Speicher?</summary>
+    function StillShown(const AHit: TAtlasInlayPillHit): Boolean;
+    /// <summary>Gemerkte Fläche unter X, Y in der Ansicht AView, die noch gilt.</summary>
+    function HitAt(const AView: IOTAEditView; X, Y: Integer; out AHit: TAtlasInlayPillHit): Boolean;
+    /// <summary>Sprung zum Ziel von AHit, bei einer Marke „braucht kein Self“ danach die Code-Aktionen.</summary>
+    procedure Open(const AHit: TAtlasInlayPillHit);
+  public
+    /// <summary>AStore gehört dem Aufrufer. AMethodActions: Code-Aktionen an der Schreibmarke öffnen (wie Strg+.);
+    /// nil = nur der Sprung.</summary>
+    constructor Create(AStore: TAtlasInlayHintStore; const AMethodActions: TProc);
+    procedure Remember(const AHit: TAtlasInlayPillHit);
+    procedure Clear;
+    /// <summary>Mausklick im Editor an X, Y; nur ein Linksklick ohne Umschalt, Strg und Alt zählt.</summary>
+    procedure Click(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+  end;
+
   TAtlasEditorInlayHints = class
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
-    end;
-    /// <summary>Gezeichnete Blockende-Beschriftung mit Ziel des Klicks (#620).</summary>
-    TEndHit = record
-      FileName: string;
-      Line: Integer;
-      TopRow: Integer;
-      Rect: TRect;
-      BlockLine: Integer;
-      BlockCharacter: Integer;
     end;
     /// <summary>Eine Pille je Art: das Element für .atlas und die Beschriftungen.</summary>
     TPillRow = record
@@ -97,13 +129,13 @@ type
       EndText: string;
       EndLabel: string;
       EndHint: TAtlasInlayHint;
+      /// <summary>Stelle der Marke „braucht kein Self“ (Ende des Kopfs, 0-basiert).</summary>
+      MethodCharacter: Integer;
     end;
   private const
     QuietMs = 300;
     TimeoutMs = 5000;
     RetryMs = 5000;
-    /// <summary>Mehr gemerkte Beschriftungen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
-    MaxEndHits = 500;
   private
     FSession: TAtlasInlayHintsSessionFunc;
     FStore: TAtlasInlayHintStore;
@@ -126,7 +158,7 @@ type
     FPen: HGDIOBJ;
     FBrush: HGDIOBJ;
     FMinLines: Integer;
-    FEndHits: TArray<TEndHit>;
+    FClicks: TAtlasInlayHintClicks;
     /// <summary>Baut FHintFont nur neu, wenn sich Name, Größe oder PPI der Editorschrift geändert haben.</summary>
     procedure EnsureHintFont(const AEditorFont: TFont);
     /// <summary>Stift, Pinsel und Textfarbe nur neu, wenn sich der Hintergrund geändert hat.</summary>
@@ -149,11 +181,11 @@ type
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    procedure RememberEnd(const AFileName: string; ALine, ATopRow: Integer; const ARect: TRect;
-      const AHint: TAtlasInlayHint);
     class procedure Invalidate; static;
   public
-    constructor Create(const ASession: TAtlasInlayHintsSessionFunc);
+    /// <summary>AMethodActions: Code-Aktionen an der Schreibmarke öffnen (wie Strg+.), für den Klick auf die Marke
+    /// „braucht kein Self“; nil = nur der Sprung.</summary>
+    constructor Create(const ASession: TAtlasInlayHintsSessionFunc; const AMethodActions: TProc);
     destructor Destroy; override;
   end;
 
@@ -219,13 +251,14 @@ end;
 
 { TAtlasEditorInlayHints }
 
-constructor TAtlasEditorInlayHints.Create(const ASession: TAtlasInlayHintsSessionFunc);
+constructor TAtlasEditorInlayHints.Create(const ASession: TAtlasInlayHintsSessionFunc; const AMethodActions: TProc);
 var
   Services: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
   FStore := TAtlasInlayHintStore.Create;
+  FClicks := TAtlasInlayHintClicks.Create(FStore, AMethodActions);
   FRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.InlayHints);
   FIndex := -1;
   FHintFont := TFont.Create;
@@ -263,6 +296,7 @@ begin
   FEventsRef := nil;
   FreeColors;
   FHintFont.Free;
+  FClicks.Free;
   FStore.Free;
   inherited Destroy;
 end;
@@ -331,7 +365,7 @@ begin
   begin
     FMinLines := TAtlasIdeSettings.Current.BlockEndLabelsMinLines;
     FStore.Clear;
-    FEndHits := nil;
+    FClicks.Clear;
   end;
 end;
 
@@ -535,8 +569,8 @@ begin
   AddRow(AHints, TAtlasDrawnElement.InlayDefineHints, DefineLabels(AStore.DefinesOnLine(AFileName, ALine)));
   // Steuerzeichen (#862): „#3“ hinter ^C.
   AddRow(AHints, TAtlasDrawnElement.InlayCharHints, AStore.CharsOnLine(AFileName, ALine));
-  // Methode ohne Self (#686): „ohne Self“ in der Sprache der IDE hinter dem Kopf.
-  if AStore.MethodOnLine(AFileName, ALine) then
+  // Methode ohne Self (#686): „braucht kein Self“ in der Sprache der IDE hinter dem Kopf.
+  if AStore.MethodOnLine(AFileName, ALine, AHints.MethodCharacter) then
   begin
     AddRow(AHints, TAtlasDrawnElement.InlayMethodHints,
       TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.InlayMethodWithoutSelf)));
@@ -621,6 +655,19 @@ begin
   SetBkMode(ADC, TRANSPARENT);
 end;
 
+/// <summary>Klickfläche ARect in Zeile ALine mit Ziel ATargetLine/ATargetCharacter (0-basiert).</summary>
+function PillHit(const AContext: INTACodeEditorPaintContext; ALine: Integer; const ARect: TRect;
+  ATargetLine, ATargetCharacter: Integer; AActions: Boolean): TAtlasInlayPillHit;
+begin
+  Result.FileName := AContext.FileName;
+  Result.Line := ALine;
+  Result.TopRow := AContext.EditView.TopRow;
+  Result.Rect := ARect;
+  Result.TargetLine := ATargetLine;
+  Result.TargetCharacter := ATargetCharacter;
+  Result.Actions := AActions;
+end;
+
 procedure TAtlasEditorInlayHints.DrawHints(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AHints: TLineHints);
 var
@@ -659,13 +706,22 @@ begin
       mPill := DrawPills(mDC, mRow.Labels, mTop, mHeight, mX);
       TAtlasIdeElements.Painted(TAtlasIdeElements.Target(mRow.Element, AContext.FileName, AHints.Line,
         AHints.Stored), mPill, AContext.EditView.TopRow, ARect.Height);
+      // Marke „braucht kein Self“ (#686): Ein Klick öffnet die Umwandlungen am Ende des Kopfs.
+      if mRow.Element = TAtlasDrawnElement.InlayMethodHints then
+      begin
+        FClicks.Remember(PillHit(AContext, AHints.Line, mPill, AHints.Line, AHints.MethodCharacter, True));
+      end;
     end;
     if AHints.ShowEnd then
     begin
       mPill := DrawEndLabel(mDC, AHints.EndLabel, mX, mTop, mHeight);
       TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.BlockEndLabels, AContext.FileName,
         AHints.Line, AHints.EndText), mPill, AContext.EditView.TopRow, ARect.Height);
-      RememberEnd(AContext.FileName, AHints.Line, AContext.EditView.TopRow, mPill, AHints.EndHint);
+      if AHints.EndHint.HasBlock then
+      begin
+        FClicks.Remember(PillHit(AContext, AHints.Line, mPill, AHints.EndHint.BlockLine, AHints.EndHint.BlockCharacter,
+          False));
+      end;
       mX := mPill.Right;
     end;
     TAtlasLineTail.Finish(Self, mTailKey, mX);
@@ -699,82 +755,123 @@ begin
   end;
 end;
 
-procedure TAtlasEditorInlayHints.RememberEnd(const AFileName: string; ALine, ATopRow: Integer; const ARect: TRect;
-  const AHint: TAtlasInlayHint);
-var
-  Hit: TEndHit;
-  Index: Integer;
-begin
-  if not AHint.HasBlock then
-  begin
-    Exit;
-  end;
-  Hit.FileName := AFileName;
-  Hit.Line := ALine;
-  Hit.TopRow := ATopRow;
-  Hit.Rect := ARect;
-  Hit.BlockLine := AHint.BlockLine;
-  Hit.BlockCharacter := AHint.BlockCharacter;
-  for Index := 0 to High(FEndHits) do
-  begin
-    if (FEndHits[Index].Line = ALine) and SameText(FEndHits[Index].FileName, AFileName) then
-    begin
-      FEndHits[Index] := Hit;
-      Exit;
-    end;
-  end;
-  if Length(FEndHits) >= MaxEndHits then
-  begin
-    FEndHits := nil;
-  end;
-  FEndHits := FEndHits + [Hit];
-end;
-
 procedure TAtlasEditorInlayHints.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
-var
-  Editors: IOTAEditorServices;
-  View: IOTAEditView;
-  Hit: TEndHit;
-  FileName: string;
-  Line, Character: Integer;
 begin
-  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FEndHits) = 0) or
-    not TAtlasIdeSettings.BlockEndLabelsOn then
-  begin
-    Exit;
-  end;
   try
-    View := nil;
-    if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
-    begin
-      View := Editors.TopView;
-    end;
-    if (View = nil) or (View.Buffer = nil) then
-    begin
-      Exit;
-    end;
-    for Hit in FEndHits do
-    begin
-      // Nur, wenn die Beschriftung noch dort steht: gleiche Datei, nicht gescrollt.
-      if SameText(Hit.FileName, View.Buffer.FileName) and (Hit.TopRow = View.TopRow) and
-        PtInRect(Hit.Rect, Point(X, Y)) then
-      begin
-        FileName := Hit.FileName;
-        Line := Hit.BlockLine;
-        Character := Hit.BlockCharacter;
-        // Erst nach dem Mausereignis: der Editor setzt den Cursor sonst an die Klickstelle.
-        TAtlasMainThread.ForceQueue(TAtlasFeature.InlayHints,
-          procedure
-          begin
-            TAtlasIdeNavigation.GoToLocation(FileName, Line, Character);
-          end);
-        Exit;
-      end;
-    end;
+    FClicks.Click(Button, Shift, X, Y);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.InlayHints, E);
+  end;
+end;
+
+{ TAtlasInlayHintClicks }
+
+constructor TAtlasInlayHintClicks.Create(AStore: TAtlasInlayHintStore; const AMethodActions: TProc);
+begin
+  inherited Create;
+  FStore := AStore;
+  FMethodActions := AMethodActions;
+end;
+
+procedure TAtlasInlayHintClicks.Clear;
+begin
+  FHits := nil;
+end;
+
+procedure TAtlasInlayHintClicks.Remember(const AHit: TAtlasInlayPillHit);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FHits) do
+  begin
+    if (FHits[mIndex].Line = AHit.Line) and (FHits[mIndex].Actions = AHit.Actions) and
+      SameText(FHits[mIndex].FileName, AHit.FileName) then
+    begin
+      FHits[mIndex] := AHit;
+      Exit;
+    end;
+  end;
+  if Length(FHits) >= MaxHits then
+  begin
+    FHits := nil;
+  end;
+  FHits := FHits + [AHit];
+end;
+
+function TAtlasInlayHintClicks.StillShown(const AHit: TAtlasInlayPillHit): Boolean;
+var
+  mCharacter: Integer;
+begin
+  if not AHit.Actions then
+  begin
+    Exit(TAtlasIdeSettings.BlockEndLabelsOn);
+  end;
+  // Nach einer Änderung bleibt die alte Fläche gemerkt, bis die Zeile neu gezeichnet wird.
+  Result := TAtlasIdeSettings.InlayMethodHintsOn and FStore.MethodOnLine(AHit.FileName, AHit.Line, mCharacter) and
+    (mCharacter = AHit.TargetCharacter);
+end;
+
+function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; X, Y: Integer; out AHit: TAtlasInlayPillHit): Boolean;
+var
+  mHit: TAtlasInlayPillHit;
+begin
+  for mHit in FHits do
+  begin
+    // Nur, wenn die Marke noch dort steht (gleiche Datei, nicht gescrollt) und ihre Art noch an ist.
+    if SameText(mHit.FileName, AView.Buffer.FileName) and (mHit.TopRow = AView.TopRow) and
+      PtInRect(mHit.Rect, Point(X, Y)) and StillShown(mHit) then
+    begin
+      AHit := mHit;
+      Exit(True);
+    end;
+  end;
+  AHit := Default(TAtlasInlayPillHit);
+  Result := False;
+end;
+
+procedure TAtlasInlayHintClicks.Open(const AHit: TAtlasInlayPillHit);
+var
+  mHit: TAtlasInlayPillHit;
+  mActions: TProc;
+begin
+  mHit := AHit;
+  mActions := nil;
+  if AHit.Actions then
+  begin
+    mActions := FMethodActions;
+  end;
+  // Erst nach dem Mausereignis: der Editor setzt den Cursor sonst an die Klickstelle.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.InlayHints,
+    procedure
+    begin
+      TAtlasIdeNavigation.GoToLocation(mHit.FileName, mHit.TargetLine, mHit.TargetCharacter);
+      if Assigned(mActions) then
+      begin
+        mActions();
+      end;
+    end);
+end;
+
+procedure TAtlasInlayHintClicks.Click(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mHit: TAtlasInlayPillHit;
+begin
+  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FHits) = 0) then
+  begin
+    Exit;
+  end;
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  if (mView <> nil) and (mView.Buffer <> nil) and HitAt(mView, X, Y, mHit) then
+  begin
+    Open(mHit);
   end;
 end;
 

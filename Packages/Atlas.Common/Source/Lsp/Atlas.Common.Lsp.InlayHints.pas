@@ -45,7 +45,7 @@ type
     /// <summary>Code eines Steuerzeichens wie ^C (#862); nur mit ControlChar.</summary>
     CharCode: Integer;
     ControlChar: Boolean;
-    /// <summary>Marke „ohne Self“ am Ende des Kopfs einer Methode (#686).</summary>
+    /// <summary>Marke „braucht kein Self“ am Ende des Kopfs einer Methode (#686).</summary>
     MethodWithoutSelf: Boolean;
   end;
 
@@ -93,8 +93,9 @@ type
     /// <summary>Mindestlänge des Blocks aus der Anfrage (#620, editor.blockEndLabels.minLines im Plugin); geht
     /// inlayHints.endMarkerMinLines vor.</summary>
     MinLinesParam = 'atlas.endMarkerMinLines';
+  public
     /// <summary>Anfang der Beschriftung hinter {$I} (#860).</summary>
-    DefinesPrefix = 'definiert ';
+    class function DefinesPrefix: string; static;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -136,7 +137,7 @@ type
     /// ATreeText ist der Text, aus dem ATree gelesen wurde.</summary>
     class function ControlChars(ATree: TSyntaxTree; const ATreeText: string;
       const ARange: TTextRange): TArray<TInlayHint>; static;
-    /// <summary>Hinter dem Kopf jeder Methode in ARange, die Self nicht braucht, die Marke „ohne Self“ (#686);
+    /// <summary>Hinter dem Kopf jeder Methode in ARange, die Self nicht braucht, die Marke „braucht kein Self“ (#686);
     /// Mitglieder, Interfaces und Formular über AResolver und AReadText.</summary>
     class function MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
       const ARange: TTextRange; const AReadText: THoverReadText): TArray<TInlayHint>; static;
@@ -171,7 +172,27 @@ uses
   Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInlayHintsText = (FieldsTextDocumentUriAndRange, WriteOutTheType, Defines);
+
+const
+  cTexts: array[TInlayHintsText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "range" fehlen'; En: 'Fields "textDocument.uri" and "range" missing'),
+    (De: 'Typ ausschreiben'; En: 'Write out the type'),
+    (De: 'definiert '; En: 'defines '));
+
+{$SCOPEDENUMS OFF}
+
+class function TLspInlayHints.DefinesPrefix: string;
+begin
+  Result := cTexts[TInlayHintsText.Defines].Text;
+end;
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -1135,7 +1156,7 @@ begin
   begin
     Exit;
   end;
-  AAction.Title := 'Typ ausschreiben';
+  AAction.Title := cTexts[TInlayHintsText.WriteOutTheType].Text;
   AAction.Kind := RewriteKind;
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(mUnits.Found.NameEnd, mUnits.Found.NameEnd),
     ': ' + mUnits.Found.TypeName)];
@@ -1488,6 +1509,7 @@ begin
     begin
       Hint := Default(TInlayHint);
       Hint.Position := Position;
+      // Text für Clients; das Plugin beschriftet die Marke selbst in der Sprache der IDE.
       Hint.Text := TMethodWithoutSelf.MarkerText;
       Hint.PaddingLeft := True;
       Hint.MethodWithoutSelf := True;
@@ -1631,7 +1653,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "range" fehlen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TInlayHintsText.FieldsTextDocumentUriAndRange].Text);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -1663,5 +1686,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InlayHints', cTexts);
 
 end.

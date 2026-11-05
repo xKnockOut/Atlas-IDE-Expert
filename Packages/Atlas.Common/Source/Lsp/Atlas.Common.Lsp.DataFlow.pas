@@ -93,7 +93,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.DataFlow.Targets;
+  Atlas.Common.Lsp.DataFlow.Targets,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDataFlowText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TDataFlowText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Filter und Pfad der Anfrage (excludeTests, onlyProject, path).</summary>
 function ReadOptions(AParams: TJSONObject): TDataFlowOptions;
@@ -323,7 +337,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TDataFlowText.FieldsTextDocumentUriAndPosition].Text + Method);
   end;
   mCancellation := TRequestCancellation.Create(ACancellation);
   mTree := TreeOf(mUri, mCancellation, mShared, mOwnTree);
@@ -338,5 +352,8 @@ begin
   end;
   Result := ToJson(mAnalysis);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DataFlow', cTexts);
 
 end.

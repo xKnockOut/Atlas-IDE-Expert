@@ -112,8 +112,8 @@ type
     ClientCommand = 'atlas.changeSignature';
     PrepareCommand = 'atlas.server.changeSignature.prepare';
     ApplyCommand = 'atlas.server.changeSignature';
-    Title = 'Signatur ändern …';
   public
+    class function Title: string; static;
     /// <summary>Steht an APosition der Name einer Routine (Deklaration, Rumpf oder Aufruf)?</summary>
     class function IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): Boolean; static;
@@ -156,7 +156,55 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.ClassCompletion,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspChangeSignatureText = (TheChangesInOverlapLine, TheMethodIsBoundTo, TheMethodIsAnAccessor,
+    TheParameterIsStillUsed, InterfaceMethodsAndBoundHandlers, TheNewSignatureCollidesWith, ThereIsNoPlaceFor,
+    AfterTheChangeNoLonger, IsReadOnlyOrNot, IsReadOnlyOrNot2, AccessorOfAPropertyParameters,
+    TheNewSignatureIsMissing, FieldParametersMissing, ChangeSignature);
+
+const
+  cTexts: array[TLspChangeSignatureText] of TAtlasText = (
+    (De: 'Die Änderungen in %s überschneiden sich (Zeile %d).'; En: 'The changes in %s overlap (line %d).'),
+    (De: 'Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus dem Projekt. Die ' +
+      'Parameter lassen sich nur umbenennen.';
+     En: 'The method is bound to %s in a form file; the event type does not come from the project. The parameters ' +
+      'can only be renamed.'),
+    (De: 'Die Methode ist Zugriffsmethode einer Property (%s); die Parameter lassen sich nur umbenennen.';
+     En: 'The method is an accessor of a property (%s); the parameters can only be renamed.'),
+    (De: 'Der Parameter "%s" wird in %s, Zeile %d noch verwendet; erst die Verwendung entfernen.';
+     En: 'The parameter "%s" is still used in %s, line %d; remove the use first.'),
+    (De: 'Interface-Methoden und gebundene Handler: Eine Überladung erfüllt das Interface bzw. den Ereignistyp ' +
+      'nicht; alle Aufrufer übergeben den neuen Wert.';
+     En: 'Interface methods and bound handlers: an overload does not satisfy the interface or the event type; all ' +
+      'callers pass the new value.'),
+    (De: 'Die neue Signatur kollidiert mit einer vorhandenen Überladung von %s (Zeile %d).';
+     En: 'The new signature collides with an existing overload of %s (line %d).'),
+    (De: 'Für die Überladung von %s fehlt ein Platz im implementation-Teil.';
+     En: 'There is no place for the overload of %s in the implementation part.'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: '%s ist schreibgeschützt bzw. nicht im Projekt; dort steht eine Deklaration der Methode.';
+     En: '%s is read-only or not in the project; a declaration of the method is there.'),
+    (De: '%s ist schreibgeschützt bzw. nicht im Projekt; %d Aufrufe dort bleiben unverändert.';
+     En: '%s is read-only or not in the project; %d calls there stay unchanged.'),
+    (De: 'Zugriffsmethode einer Property (%s): Parameter lassen sich nur umbenennen.';
+     En: 'Accessor of a property (%s): parameters can only be renamed.'),
+    (De: 'Die neue Signatur fehlt.'; En: 'The new signature is missing.'),
+    (De: 'Feld "parameters" fehlt.'; En: 'Field "parameters" missing.'),
+    (De: 'Signatur ändern …'; En: 'Change signature …'));
+
+{$SCOPEDENUMS OFF}
+
+class function TLspChangeSignature.Title: string;
+begin
+  Result := cTexts[TLspChangeSignatureText.ChangeSignature].Text;
+end;
 
 type
   {$SCOPEDENUMS ON}
@@ -516,7 +564,7 @@ begin
     begin
       if Overlaps(AEdits[mIndex].Range, AEdits[mOther].Range) then
       begin
-        raise SignatureError(Format('Die Änderungen in %s überschneiden sich (Zeile %d).', [ExtractFileName(AName),
+        raise SignatureError(cTexts[TLspChangeSignatureText.TheChangesInOverlapLine].Fmt([ExtractFileName(AName),
           AEdits[mIndex].Range.StartPos.Line + 1]));
       end;
     end;
@@ -638,13 +686,11 @@ begin
   begin
     if FCollector.EventFixed then
     begin
-      mError := Format('Die Methode ist in einer Formulardatei an %s gebunden; der Ereignistyp stammt nicht aus ' +
-        'dem Projekt. Die Parameter lassen sich nur umbenennen.', [FCollector.BoundEvent]);
+      mError := cTexts[TLspChangeSignatureText.TheMethodIsBoundTo].Fmt([FCollector.BoundEvent]);
     end
     else if Length(FCollector.Accessors) > 0 then
     begin
-      mError := Format('Die Methode ist Zugriffsmethode einer Property (%s); die Parameter lassen sich nur ' +
-        'umbenennen.', [FCollector.Accessors[0]]);
+      mError := cTexts[TLspChangeSignatureText.TheMethodIsAnAccessor].Fmt([FCollector.Accessors[0]]);
     end;
   end;
   if mError <> '' then
@@ -670,8 +716,8 @@ begin
     mFound := BodyUses(mUnit, AMember, AMember.Decl.Parameters[mIndex].Name);
     if Length(mFound) > 0 then
     begin
-      raise SignatureError(Format('Der Parameter "%s" wird in %s, Zeile %d noch verwendet; erst die Verwendung ' +
-        'entfernen.', [AMember.Decl.Parameters[mIndex].Name, ExtractFileName(AMember.FileName),
+      raise SignatureError(cTexts[TLspChangeSignatureText.TheParameterIsStillUsed].Fmt([
+        AMember.Decl.Parameters[mIndex].Name, ExtractFileName(AMember.FileName),
         mUnit.Tokens[mFound[0]].StartPos.Line + 1]));
     end;
   end;
@@ -683,8 +729,8 @@ begin
   if FUseOverload and (FCollector.InterfaceMethod or (FCollector.BoundEvent <> '')) then
   begin
     FUseOverload := False;
-    FCollector.Warnings := FCollector.Warnings + ['Interface-Methoden und gebundene Handler: Eine Überladung ' +
-      'erfüllt das Interface bzw. den Ereignistyp nicht; alle Aufrufer übergeben den neuen Wert.'];
+    FCollector.Warnings := FCollector.Warnings +
+      [cTexts[TLspChangeSignatureText.InterfaceMethodsAndBoundHandlers].Text];
   end;
   FOutcome.Mode := TNewParameterMode.UpdateCallers;
   if FUseOverload then
@@ -707,8 +753,8 @@ begin
       SameText(mSymbol.Name, FRoot.Name) and SameParamTypes(mSymbol.ParamTypes, mNewTypes) and
       not SameParamTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
     begin
-      raise SignatureError(Format('Die neue Signatur kollidiert mit einer vorhandenen Überladung von %s (Zeile %d).',
-        [FRoot.Name, mSymbol.SelectionRange.StartPos.Line + 1]));
+      raise SignatureError(cTexts[TLspChangeSignatureText.TheNewSignatureCollidesWith].Fmt([FRoot.Name,
+        mSymbol.SelectionRange.StartPos.Line + 1]));
     end;
   end;
 end;
@@ -863,7 +909,7 @@ begin
   end
   else
   begin
-    raise SignatureError(Format('Für die Überladung von %s fehlt ein Platz im implementation-Teil.', [FRoot.Name]));
+    raise SignatureError(cTexts[TLspChangeSignatureText.ThereIsNoPlaceFor].Fmt([FRoot.Name]));
   end;
 end;
 
@@ -954,8 +1000,8 @@ begin
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
       mDiagnostic := mTree.Diagnostics[0];
-      raise SignatureError(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AName), mDiagnostic.StartPos.Line + 1, mDiagnostic.Message]));
+      raise SignatureError(cTexts[TLspChangeSignatureText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AName),
+        mDiagnostic.StartPos.Line + 1, mDiagnostic.Message]));
     end;
   finally
     mTree.Free;
@@ -979,11 +1025,10 @@ begin
   begin
     if HasHeaderEdit(mFinal) then
     begin
-      raise SignatureError(Format('%s ist schreibgeschützt bzw. nicht im Projekt; dort steht eine Deklaration der ' +
-        'Methode.', [ExtractFileName(mName)]));
+      raise SignatureError(cTexts[TLspChangeSignatureText.IsReadOnlyOrNot].Fmt([ExtractFileName(mName)]));
     end;
-    FOutcome.Warnings := FOutcome.Warnings + [Format('%s ist schreibgeschützt bzw. nicht im Projekt; %d Aufrufe ' +
-      'dort bleiben unverändert.', [ExtractFileName(mName), Length(mFinal)])];
+    FOutcome.Warnings := FOutcome.Warnings + [cTexts[TLspChangeSignatureText.IsReadOnlyOrNot2].Fmt([
+      ExtractFileName(mName), Length(mFinal)])];
     Exit;
   end;
   CheckParses(mUnit, mName, mFinal);
@@ -1144,8 +1189,8 @@ begin
     Result.Warnings := mCollector.Warnings;
     if Length(mCollector.Accessors) > 0 then
     begin
-      Result.Warnings := Result.Warnings + [Format('Zugriffsmethode einer Property (%s): Parameter lassen sich nur ' +
-        'umbenennen.', [mCollector.Accessors[0]])];
+      Result.Warnings := Result.Warnings + [cTexts[TLspChangeSignatureText.AccessorOfAPropertyParameters].Fmt([
+        mCollector.Accessors[0]])];
     end;
   finally
     mCollector.Free;
@@ -1269,7 +1314,8 @@ begin
   Result.VirtualOverload := ADefaultVirtual;
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die neue Signatur fehlt.');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspChangeSignatureText.TheNewSignatureIsMissing].Text);
   end;
   if TJSONObject(AValue).TryGetValue<string>('newParameter', Text) then
   begin
@@ -1283,7 +1329,8 @@ begin
   Items := TJSONObject(AValue).GetValue('parameters') as TJSONArray;
   if Items = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "parameters" fehlt.');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspChangeSignatureText.FieldParametersMissing].Text);
   end;
   for Item in Items do
   begin
@@ -1336,5 +1383,8 @@ begin
   end;
   Result.AddPair('newParameter', ModeName(AOutcome.Mode));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ChangeSignature', cTexts);
 
 end.

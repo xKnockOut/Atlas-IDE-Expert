@@ -147,7 +147,26 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TReaderText = (UnknownSetting, MustBeTrueOrFalse, MustBeAListOf, MustBeAString, MustBeAnObject, MustBe, OrText);
+
+const
+  cTexts: array[TReaderText] of TAtlasText = (
+    (De: 'Unbekannte Einstellung "%s.%s"'; En: 'Unknown setting "%s.%s"'),
+    (De: '"%s" muss true oder false sein'; En: '"%s" must be true or false'),
+    (De: '"%s" muss eine Liste von Texten sein'; En: '"%s" must be a list of texts'),
+    (De: '"%s" muss ein String sein'; En: '"%s" must be a string'),
+    (De: '"%s" muss ein Objekt sein'; En: '"%s" must be an object'),
+    (De: '"%s.%s" muss %s sein'; En: '"%s.%s" must be %s'),
+    (De: 'oder'; En: 'or'));
+
+{$SCOPEDENUMS OFF}
 
 function TryParseRuleSeverity(const AValue: string; out ASeverity: TRuleSeverity): Boolean;
 const
@@ -329,7 +348,7 @@ end;
 procedure TConfigurationReader.ReportUnknown(ANode: TJsonNode; AIndex: Integer; const APrefix: string);
 begin
   Report(ANode.KeyStarts[AIndex], ANode.KeyStarts[AIndex] + Length(ANode.Keys[AIndex]) + 2,
-    Format('Unbekannte Einstellung "%s.%s"', [APrefix, ANode.Keys[AIndex]]), False);
+    cTexts[TReaderText.UnknownSetting].Fmt([APrefix, ANode.Keys[AIndex]]), False);
 end;
 
 function TConfigurationReader.ExpectString(ANode: TJsonNode; const AName: string; out AValue: string): Boolean;
@@ -342,7 +361,7 @@ begin
   else
   begin
     AValue := '';
-    ReportNode(ANode, Format('"%s" muss ein String sein', [AName]));
+    ReportNode(ANode, cTexts[TReaderText.MustBeAString].Fmt([AName]));
   end;
 end;
 
@@ -355,7 +374,7 @@ begin
   end
   else
   begin
-    ReportNode(ANode, Format('"%s" muss true oder false sein', [AName]));
+    ReportNode(ANode, cTexts[TReaderText.MustBeTrueOrFalse].Fmt([AName]));
   end;
 end;
 
@@ -364,14 +383,14 @@ begin
   Result := ANode.Kind = TJsonKind.Object_;
   if not Result then
   begin
-    ReportNode(ANode, Format('"%s" muss ein Objekt sein', [AName]));
+    ReportNode(ANode, cTexts[TReaderText.MustBeAnObject].Fmt([AName]));
   end;
 end;
 
 function TConfigurationReader.ParseStrings(ANode: TJsonNode; const AName: string;
   out AItems: TArray<string>): Boolean;
 begin
-  Result := ExpectStrings(ANode, AName, Format('"%s" muss eine Liste von Texten sein', [AName]), AItems);
+  Result := ExpectStrings(ANode, AName, cTexts[TReaderText.MustBeAListOf].Fmt([AName]), AItems);
 end;
 
 function TConfigurationReader.ExpectStrings(ANode: TJsonNode; const AName, AMessage: string;
@@ -511,8 +530,8 @@ begin
   begin
     if mChoice.Key = ANode.Keys[AIndex] then
     begin
-      if ExpectChoiceText(ANode[AIndex], mChoice.Key, mChoice.Values, Format('"%s.%s" muss %s sein',
-        [ASection, mChoice.Key, ChoiceText(mChoice.Values, 'oder')]), mFound) then
+      if ExpectChoiceText(ANode[AIndex], mChoice.Key, mChoice.Values, cTexts[TReaderText.MustBe].Fmt([ASection,
+        mChoice.Key, ChoiceText(mChoice.Values, cTexts[TReaderText.OrText].Text)]), mFound) then
       begin
         mChoice.Value^ := mChoice.Values[mFound];
       end;
@@ -552,5 +571,8 @@ function TConfigurationReader.Issues: TArray<TConfigurationIssue>;
 begin
   Result := FIssues.ToArray;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.Reader', cTexts);
 
 end.

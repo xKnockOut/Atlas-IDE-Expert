@@ -140,14 +140,66 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Rules.Builtin.Constants.Conversions,
-  Atlas.Common.Rules.Builtin.Constants.TypedConstants;
+  Atlas.Common.Rules.Builtin.Constants.TypedConstants,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConstantsText = (Title, MoreThan, DivZeroOperand, DivZero, Overflow, LowAboveHigh, OutOfRangeE, OutOfRangeW,
+    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType, SetDefault,
+    SingleDecl, DeclareSingle, VarDefault, NeedsDefault);
+
+const
+  cTexts: array[TConstantsText] of TAtlasText = (
+    (De: 'Fehler in einem konstanten Ausdruck'; En: 'Error in a constant expression'),
+    (De: 'mehr als 4294967296'; En: 'more than 4294967296'),
+    (De: 'Division durch null in einem konstanten Ausdruck (%s = 0, wie E2098).';
+     En: 'Division by zero in a constant expression (%s = 0, like E2098).'),
+    (De: 'Division durch null in einem konstanten Ausdruck (wie E2098).';
+     En: 'Division by zero in a constant expression (like E2098).'),
+    (De: 'Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).';
+     En: 'Overflow in a constant expression: the result fits into no integer type (like E2099).'),
+    (De: 'Die Untergrenze %d liegt über der Obergrenze %d (wie E2011).';
+     En: 'The lower bound %d is above the upper bound %d (like E2011).'),
+    (De: '%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).';
+     En: '%d is out of the range of %s (%d..%d, like E1012).'),
+    (De: '%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).';
+     En: '%d is out of the range of %s (%d..%d, like W1012).'),
+    (De: '%s passt auf 64 Bit gekürzt nicht in %s (wie W1012).';
+     En: '%s truncated to 64 bits does not fit into %s (like W1012).'),
+    (De: 'Index %d liegt außerhalb der Grenzen von %s (%d..%d, wie E1012).';
+     En: 'Index %d is out of the bounds of %s (%d..%d, like E1012).'),
+    (De: '%s hat %s Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).';
+     En: '%s has %s values; a set may have at most 256 elements (like E2028).'),
+    (De: 'Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).';
+     En: 'Integer constant too large: %s does not fit into 64 bits (like E2102).'),
+    (De: '%s in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).';
+     En: '%s in {$RTTI} is not a set of vcPrivate, vcProtected, vcPublic and vcPublished (like E2572).'),
+    (De: 'Unzulässiger Standardwert eines Parameters'; En: 'Invalid default value of a parameter'),
+    (De: 'Parameter mit Standardwert ans Ende verschieben'; En: 'Move parameters with default value to the end'),
+    (De: 'Parameter vom Typ %s können keinen Standardwert haben (wie E2268).';
+     En: 'Parameters of type %s cannot have a default value (like E2268).'),
+    (De: '%s ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und kleine Mengentypen (wie ' +
+      'E2146).';
+     En: '%s is a set over 4 bytes; default values exist only for ordinal, pointer and small set types (like E2146).'),
+    (De: '%s: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).';
+     En: '%s: default values exist only for individually declared parameters (like E2237).'),
+    (De: 'Parameter einzeln deklarieren'; En: 'Declare parameters individually'),
+    (De: '%s ist ein %s-Parameter und kann keinen Standardwert haben (wie E2239).';
+     En: '%s is a %s parameter and cannot have a default value (like E2239).'),
+    (De: '%s braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).';
+     En: '%s needs a default value because a previous parameter has one (like E2238).'));
+
+{$SCOPEDENUMS OFF}
 
 { TConstantExpressionErrorRule }
 
 function TConstantExpressionErrorRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ConstantExpressionErrorRuleId, TRuleSeverity.Error,
-    'Fehler in einem konstanten Ausdruck');
+    cTexts[TConstantsText.Title].Text);
 end;
 
 class function TConstantExpressionErrorRule.TooLargeLiteral(const ATokenText: string): Boolean;
@@ -348,7 +400,7 @@ begin
     4..11:
       Result := '4294967296';
     12..15:
-      Result := 'mehr als 4294967296';
+      Result := cTexts[TConstantsText.MoreThan].Text;
   else
     Result := '';
   end;
@@ -395,7 +447,7 @@ begin
   // AHigh - ALow kann bei Low(Int64)..High(Int64) überlaufen; deshalb mit der Untergrenze vergleichen.
   if (ALow < 0) and (AHigh > High(Int64) + ALow) then
   begin
-    Result := 'mehr als 4294967296';
+    Result := cTexts[TConstantsText.MoreThan].Text;
   end
   else if AHigh - ALow >= 256 then
   begin
@@ -443,12 +495,12 @@ var
     end;
     if ANode[1].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
     begin
-      Message := Format('Division durch null in einem konstanten Ausdruck (%s = 0, wie E2098).',
+      Message := cTexts[TConstantsText.DivZeroOperand].Fmt(
         [Copy(AContext.Text, ANode[1].StartOffset + 1, ANode[1].EndOffset - ANode[1].StartOffset)]);
     end
     else
     begin
-      Message := 'Division durch null in einem konstanten Ausdruck (wie E2098).';
+      Message := cTexts[TConstantsText.DivZero].Text;
     end;
     AReport.Add(NodeRange(ANode), Message, TRuleConfidence.High);
   end;
@@ -491,7 +543,7 @@ var
       (Values.Check(ANode, Value) = TOrdinalStatus.Overflow) then
     begin
       AReport.Add(NodeRange(ANode),
-        'Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).',
+        cTexts[TConstantsText.Overflow].Text,
         TRuleConfidence.High);
     end;
   end;
@@ -503,8 +555,7 @@ var
     if (ANode.ChildCount = 2) and ValueOf(ANode[0], Lowest) and ValueOf(ANode[1], Highest) and
       (Lowest > Highest) then
     begin
-      AReport.Add(NodeRange(ANode), Format('Die Untergrenze %d liegt über der Obergrenze %d (wie E2011).',
-        [Lowest, Highest]), TRuleConfidence.High);
+      AReport.Add(NodeRange(ANode), cTexts[TConstantsText.LowAboveHigh].Fmt([Lowest, Highest]), TRuleConfidence.High);
     end;
   end;
 
@@ -537,13 +588,13 @@ var
   begin
     if ASubrange or OutsideIsError(AValue, ATypeName) then
     begin
-      AReport.Add(NodeRange(AValueNode), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
+      AReport.Add(NodeRange(AValueNode), cTexts[TConstantsText.OutOfRangeE].Fmt(
         [AValue, ATypeName, ALow, AHigh]), TRuleConfidence.High);
     end
     else
     begin
-      AReport.AddWithSeverity(NodeRange(AValueNode), Format(
-        '%d liegt außerhalb des Bereichs von %s (%d..%d, wie W1012).', [AValue, ATypeName, ALow, AHigh]),
+      AReport.AddWithSeverity(NodeRange(AValueNode), cTexts[TConstantsText.OutOfRangeW].Fmt([AValue, ATypeName, ALow,
+        AHigh]),
         TRuleSeverity.Warning, nil);
     end;
   end;
@@ -561,8 +612,8 @@ var
     mKind := IntegerKindOf(ATypeName);
     if (mKind.Bits = 64) and mKind.Signed then
     begin
-      AReport.AddWithSeverity(NodeRange(AValueNode), Format(
-        '%s passt auf 64 Bit gekürzt nicht in %s (wie W1012).', [AValueNode.Name, ATypeName]),
+      AReport.AddWithSeverity(NodeRange(AValueNode), cTexts[TConstantsText.Truncated64].Fmt([AValueNode.Name,
+        ATypeName]),
         TRuleSeverity.Warning, nil);
     end;
   end;
@@ -869,8 +920,8 @@ var
       if BoundsOf(AArray[mIndex - 1], mLow, mHigh) and ValueOf(AAccess[mIndex], mValue) and
         ((mValue < mLow) or (mValue > mHigh)) then
       begin
-        AReport.Add(NodeRange(AAccess[mIndex]), Format(
-          'Index %d liegt außerhalb der Grenzen von %s (%d..%d, wie E1012).', [mValue, AAccess[0].Name, mLow, mHigh]),
+        AReport.Add(NodeRange(AAccess[mIndex]), cTexts[TConstantsText.IndexOut].Fmt([mValue, AAccess[0].Name, mLow,
+          mHigh]),
           TRuleConfidence.High);
       end;
     end;
@@ -961,7 +1012,7 @@ var
     begin
       if ValueOf(mLabel, mValue) and OutsideIsError(mValue, mTypeInfo.Name) then
       begin
-        AReport.Add(NodeRange(mLabel), Format('%d liegt außerhalb des Bereichs von %s (%d..%d, wie E1012).',
+        AReport.Add(NodeRange(mLabel), cTexts[TConstantsText.OutOfRangeE].Fmt(
           [mValue, mTypeInfo.Name, mLow, mHigh]), TRuleConfidence.High);
       end;
     end;
@@ -1011,7 +1062,7 @@ var
     end;
     if mValues <> '' then
     begin
-      AReport.Add(NodeRange(ASet), Format('%s hat %s Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
+      AReport.Add(NodeRange(ASet), cTexts[TConstantsText.SetTooLarge].Fmt(
         [NodeText(ASet), mValues]), TRuleConfidence.High);
     end;
   end;
@@ -1105,7 +1156,7 @@ var
       if (mToken.Kind = TPascalTokenKind.Number) and TooLargeLiteral(mToken.Text) and not InAsm(mToken.Offset) then
       begin
         AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos),
-          Format('Ganzzahlkonstante zu groß: %s passt nicht in 64 Bit (wie E2102).', [mToken.Text]),
+          cTexts[TConstantsText.IntTooLarge].Fmt([mToken.Text]),
           TRuleConfidence.High);
       end
       else if (mToken.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(mToken.Text) = 'RTTI') then
@@ -1120,8 +1171,7 @@ var
       end;
       if (mVisibility <> '') and (TConditionalBranches.PathAt(mPaths, mIndex) = '') then
       begin
-        AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), Format(
-          '%s in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).',
+        AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), cTexts[TConstantsText.RttiSet].Fmt(
           [mVisibility]), TRuleConfidence.High);
       end;
     end;
@@ -1149,7 +1199,7 @@ end;
 function TDefaultParameterInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DefaultParameterInvalidRuleId, TRuleSeverity.Error,
-    'Unzulässiger Standardwert eines Parameters');
+    cTexts[TConstantsText.DefaultTitle].Text);
 end;
 
 /// <summary>Hat der Parameter einen Standardwert? Kinder sind Typ und Wert; ohne Typ gibt es keinen Wert.</summary>
@@ -1369,7 +1419,7 @@ var
     begin
       Edits := Edits + [TTextEdit.Create(Range, Reordered(Paired, Defaults))];
     end;
-    AFix := TRuleFix.Create('Parameter mit Standardwert ans Ende verschieben', Edits);
+    AFix := TRuleFix.Create(cTexts[TConstantsText.MoveDefaults].Text, Edits);
     Result := True;
   end;
 
@@ -1490,13 +1540,12 @@ var
     end;
     if NoDefaultType(mType) then
     begin
-      AReport.Add(NodeRange(AParameter), Format('Parameter vom Typ %s können keinen Standardwert haben ' +
-        '(wie E2268).', [AParameter[0].Name]), TRuleConfidence.High);
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([AParameter[0].Name]),
+        TRuleConfidence.High);
     end
     else if LargeSetType(mType) then
     begin
-      AReport.Add(NodeRange(AParameter), Format('%s ist eine Menge über 4 Byte; Standardwerte gibt es nur ' +
-        'für ordinale, Zeiger- und kleine Mengentypen (wie E2146).', [AParameter[0].Name]),
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SetDefault].Fmt([AParameter[0].Name]),
         TRuleConfidence.Medium);
     end;
   end;
@@ -1509,15 +1558,15 @@ var
     mNames := AParameter.Name.Split([',']);
     if Length(mNames) > 1 then
     begin
-      AReport.Add(NodeRange(AParameter), Format('%s: Standardwerte gibt es nur für einzeln deklarierte ' +
-        'Parameter (wie E2237).', [StringReplace(AParameter.Name, ',', ', ', [rfReplaceAll])]),
-        TRuleConfidence.High, [TRuleFix.Create('Parameter einzeln deklarieren',
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SingleDecl].Fmt([StringReplace(AParameter.Name, ',',
+        ', ', [rfReplaceAll])]),
+        TRuleConfidence.High, [TRuleFix.Create(cTexts[TConstantsText.DeclareSingle].Text,
         [TTextEdit.Create(NodeRange(AParameter), SeparateDeclarations(AParameter, mNames))])]);
     end;
     if AParameter.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam] then
     begin
-      AReport.Add(NodeRange(AParameter), Format('%s ist ein %s-Parameter und kann keinen Standardwert haben ' +
-        '(wie E2239).', [AParameter.Name, Trim(ModifierText(AParameter))]), TRuleConfidence.High);
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.VarDefault].Fmt([AParameter.Name,
+        Trim(ModifierText(AParameter))]), TRuleConfidence.High);
     end
     else
     begin
@@ -1536,8 +1585,8 @@ var
     begin
       mFixes := [mFix];
     end;
-    AReport.Add(NodeRange(AParameter), Format('%s braucht einen Standardwert, weil ein vorheriger Parameter ' +
-      'einen hat (wie E2238).', [StringReplace(AParameter.Name, ',', ', ', [rfReplaceAll])]),
+    AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NeedsDefault].Fmt([StringReplace(AParameter.Name, ',',
+      ', ', [rfReplaceAll])]),
       TRuleConfidence.High, mFixes);
   end;
 
@@ -1631,5 +1680,8 @@ begin
   ARegistry.Register(TTypedConstantModifiedRule.Create);
   ARegistry.Register(TStringLengthLimitRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Constants', cTexts);
 
 end.

@@ -9,6 +9,9 @@
       Atlas.Common.Architecture.MapTemplate mit der Funktion
       ArchitectureMapHtml; TArchitectureReport.Html setzt Titel ({{TITLE}})
       und Daten ({{DATA}}) ein.
+    - Architekturkarte.en.html (dieselbe Seite mit englischen Texten, #1458)
+      wird Atlas.Common.Architecture.MapTemplateEn mit ArchitectureMapHtmlEn;
+      Änderungen an der Karte in beiden Dateien vornehmen (gleiche Zeilenzahl).
     - Packages/Atlas.IDE.Base/Source/Core/Results/Aufrufdiagramm.html wird
       Atlas.Core.Results.CallDiagramTemplate mit der Funktion
       CallDiagramHtml; TAtlasCallDiagram.Html setzt Titel und Daten ein.
@@ -36,6 +39,9 @@ $Templates = @(
     @{ Folder = 'Packages/Atlas.Common/Source/Architecture'; Source = 'Architekturkarte.html';
        Unit = 'Atlas.Common.Architecture.MapTemplate'; Function = 'ArchitectureMapHtml';
        Purpose = 'Vorlage des HTML-Berichts der Architekturübersicht (#1118).' },
+    @{ Folder = 'Packages/Atlas.Common/Source/Architecture'; Source = 'Architekturkarte.en.html';
+       Unit = 'Atlas.Common.Architecture.MapTemplateEn'; Function = 'ArchitectureMapHtmlEn';
+       Purpose = 'Englische Vorlage des HTML-Berichts der Architekturübersicht (#1118, #1458).' },
     @{ Folder = 'Packages/Atlas.IDE.Base/Source/Core/Results'; Source = 'Aufrufdiagramm.html';
        Unit = 'Atlas.Core.Results.CallDiagramTemplate'; Function = 'CallDiagramHtml';
        Purpose = 'Vorlage des Aufrufdiagramms als HTML (#1122).' }
@@ -89,6 +95,14 @@ if ($Current.Replace("`r`n", "`n") -cne $Result.Replace("`r`n", "`n")) {
         Write-Host "Geschrieben: $UnitPath"
     }
 }
+}
+# Deutsche und englische Karte müssen gleich aufgebaut bleiben (#1458): gleiche Zeilenzahl.
+$MapFolder = Join-Path $Root 'Packages/Atlas.Common/Source/Architecture'
+$MapCounts = foreach ($Name in @('Architekturkarte.html', 'Architekturkarte.en.html')) {
+    ([IO.File]::ReadAllText((Join-Path $MapFolder $Name)).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")).Count
+}
+if ($MapCounts[0] -ne $MapCounts[1]) {
+    $Problems.Add("Architekturkarte.en.html hat $($MapCounts[1]) Zeilen, Architekturkarte.html $($MapCounts[0]): beide gleich ändern")
 }
 if ($Problems.Count -gt 0) {
     foreach ($Problem in $Problems) { Write-Host "FEHLER: $Problem" }

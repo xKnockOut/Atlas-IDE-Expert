@@ -29,6 +29,9 @@ type
     NewFolderWatcher: TFunc<TAtlasWatchedChanges, IAtlasFolderWatcher>;
     NewCompletionSources: TAtlasCompletionSourcesFactory;
     NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
+    /// <summary>Code-Aktionen an der Schreibmarke öffnen wie Strg+. (Klick auf die Marke „braucht kein Self“,
+    /// #686); nil = nur der Sprung.</summary>
+    OpenCodeActions: TProc;
   end;
 
   /// <summary>Phase des Servers für das Statusfeld (#591) mit Beginn (Ortszeit) und „von Atlas beendet“ (#754).

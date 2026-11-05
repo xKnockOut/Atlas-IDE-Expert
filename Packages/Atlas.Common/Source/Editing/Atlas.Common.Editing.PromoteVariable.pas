@@ -76,10 +76,9 @@ type
   end;
 
   TPromoteVariable = class
-  public const
-    ToFieldTitle = 'In Feld umwandeln';
-    ToLocalTitle = 'In lokale Variable umwandeln';
   public
+    class function ToFieldTitle: string; static;
+    class function ToLocalTitle: string; static;
     /// <summary>F + Name ohne L- bzw. m-Präfix: LLineNo → FLineNo, mCount → FCount, Total → FTotal.</summary>
     class function FieldName(const ALocal: string): string; static;
     /// <summary>L + Name ohne F-Präfix: FLineNo → LLineNo.</summary>
@@ -105,7 +104,83 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingPromoteVariableText = (IsCreatedAndFreedIn, CallsItselfAfterwardsAllCalls, IsNotUsedAnywhere,
+    IsUsedInSeveralMethods, TheLocalRoutineAlreadyDeclares, NoTree, NoName, NotInARoutine, VariableOfALocalRoutine,
+    ClassNotInTheFile, TypeOfUnknown, SeveralNamesInOneInline, UnsupportedForm, NoLocalVariable, NoMethod,
+    NoFieldOfAClass, IsNotAFieldOf, NotPrivate, TypeUnknown, ThePropertyUses, IsInTheFormFile, IsAlsoUsedIn,
+    IsUsedOutsideAMethod, IsUsedViaAnotherObject, IsUsedInALocal, ClassDeclarationCannotBeExtended,
+    MethodNotFoundAfterThe, IsNotWrittenFirstOn, IsNotAValidName, ResultDoesNotParse, CallsItself, AlreadyDeclares,
+    AlreadyMeansSomethingDifferentIn, RoutineWithoutBody, NeitherVariableNorInlineVariable,
+    NeitherFieldNorLocalVariable, IsInAWith, AlreadyHasAMember, AlreadyInheritsAMember, ClassMethod, ConvertToField,
+    ConvertToLocalVariable);
+
+const
+  cTexts: array[TEditingPromoteVariableText] of TAtlasText = (
+    (De: '%s wird in %s erzeugt und freigegeben; als Feld überdauert der Verweis die Methode (nach der Freigabe auf ' +
+      'nil setzen, z. B. mit FreeAndNil).';
+     En: '%s is created and freed in %s; as a field the reference outlives the method (set it to nil after freeing, ' +
+      'e.g. with FreeAndNil).'),
+    (De: '%s ruft sich selbst auf; alle Aufrufe teilen sich danach das Feld.';
+     En: '%s calls itself; afterwards all calls share the field.'),
+    (De: ' wird nirgends benutzt'; En: ' is not used anywhere'),
+    (De: ' wird in mehreren Methoden benutzt: '; En: ' is used in several methods: '),
+    (De: 'die lokale Routine %s deklariert schon %s'; En: 'the local routine %s already declares %s'),
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: 'kein Name'; En: 'no name'),
+    (De: 'nicht in einer Routine'; En: 'not in a routine'),
+    (De: 'Variable einer lokalen Routine'; En: 'variable of a local routine'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'Typ von %s unbekannt'; En: 'Type of %s unknown'),
+    (De: 'mehrere Namen in einer Inline-Deklaration'; En: 'several names in one inline declaration'),
+    (De: 'nicht unterstützte Form'; En: 'unsupported form'),
+    (De: 'keine lokale Variable'; En: 'no local variable'),
+    (De: 'keine Methode'; En: 'no method'),
+    (De: 'kein Feld einer Klasse'; En: 'no field of a class'),
+    (De: ' ist kein Feld von '; En: ' is not a field of '),
+    (De: 'nicht privat'; En: 'not private'),
+    (De: 'Typ unbekannt'; En: 'type unknown'),
+    (De: 'die Property %s nutzt '; En: 'the property %s uses '),
+    (De: ' steht in der Formulardatei'; En: ' is in the form file'),
+    (De: ' wird auch in %s benutzt'; En: ' is also used in %s'),
+    (De: ' wird außerhalb einer Methode benutzt'; En: ' is used outside a method'),
+    (De: ' wird über ein anderes Objekt benutzt'; En: ' is used via another object'),
+    (De: ' wird in einer lokalen Routine benutzt'; En: ' is used in a local routine'),
+    (De: 'Klassendeklaration nicht erweiterbar'; En: 'class declaration cannot be extended'),
+    (De: 'Methode nach der Umwandlung nicht gefunden'; En: 'Method not found after the conversion'),
+    (De: '%s wird in %s nicht auf jedem Weg zuerst geschrieben'; En: '%s is not written first on every path in %s'),
+    (De: '"%s" ist kein gültiger Name'; En: '"%s" is not a valid name'),
+    (De: 'Ergebnis parst nicht'; En: 'Result does not parse'),
+    (De: ' ruft sich selbst auf'; En: ' calls itself'),
+    (De: '%s deklariert schon %s'; En: '%s already declares %s'),
+    (De: '%s bedeutet in %s schon etwas anderes'; En: '%s already means something different in %s'),
+    (De: 'Routine ohne Rumpf'; En: 'routine without body'),
+    (De: 'weder Variable noch Inline-Variable'; En: 'neither variable nor inline variable'),
+    (De: 'weder Feld noch lokale Variable'; En: 'neither field nor local variable'),
+    (De: ' steht in einem with'; En: ' is in a with'),
+    (De: '%s hat schon ein Mitglied %s'; En: '%s already has a member %s'),
+    (De: '%s erbt schon ein Mitglied %s'; En: '%s already inherits a member %s'),
+    (De: 'Klassenmethode'; En: 'class method'),
+    (De: 'In Feld umwandeln'; En: 'Convert to field'),
+    (De: 'In lokale Variable umwandeln'; En: 'Convert to local variable'));
+
+{$SCOPEDENUMS OFF}
+
+class function TPromoteVariable.ToFieldTitle: string;
+begin
+  Result := cTexts[TEditingPromoteVariableText.ConvertToField].Text;
+end;
+
+class function TPromoteVariable.ToLocalTitle: string;
+begin
+  Result := cTexts[TEditingPromoteVariableText.ConvertToLocalVariable].Text;
+end;
 
 type
   /// <summary>Was an der Stelle umgewandelt wird.</summary>
@@ -444,13 +519,11 @@ begin
   Result := nil;
   if ACreated and AFreed then
   begin
-    Result := Result + [Format('%s wird in %s erzeugt und freigegeben; als Feld überdauert der Verweis die ' +
-      'Methode (nach der Freigabe auf nil setzen, z. B. mit FreeAndNil).', [ALocal.Name, AMethod.Name])];
+    Result := Result + [cTexts[TEditingPromoteVariableText.IsCreatedAndFreedIn].Fmt([ALocal.Name, AMethod.Name])];
   end;
   if IsRecursive(AMethod) then
   begin
-    Result := Result + [Format('%s ruft sich selbst auf; alle Aufrufe teilen sich danach das Feld.',
-      [AMethod.Name])];
+    Result := Result + [cTexts[TEditingPromoteVariableText.CallsItselfAfterwardsAllCalls].Fmt([AMethod.Name])];
   end;
 end;
 
@@ -562,7 +635,7 @@ begin
   Result := '';
   if Length(ATops) = 0 then
   begin
-    Result := AName + ' wird nirgends benutzt';
+    Result := AName + cTexts[TEditingPromoteVariableText.IsNotUsedAnywhere].Text;
   end
   else if Length(ATops) > 1 then
   begin
@@ -571,7 +644,7 @@ begin
     begin
       mNames := mNames + [mTop.Name];
     end;
-    Result := AName + ' wird in mehreren Methoden benutzt: ' + string.Join(', ', mNames);
+    Result := AName + cTexts[TEditingPromoteVariableText.IsUsedInSeveralMethods].Text + string.Join(', ', mNames);
   end
   else
   begin
@@ -585,7 +658,7 @@ begin
   Result := '';
   if IsClassMethod(ATokens, AMethod) then
   begin
-    Result := 'Klassenmethode';
+    Result := cTexts[TEditingPromoteVariableText.ClassMethod].Text;
   end
   else if TRoutineLocals.HasKind(AMethod, TSyntaxKind.WithStatement) then
   begin
@@ -593,7 +666,7 @@ begin
   end
   else if IsRecursive(AMethod) then
   begin
-    Result := AMethod.Name + ' ruft sich selbst auf';
+    Result := AMethod.Name + cTexts[TEditingPromoteVariableText.CallsItself].Text;
   end;
 end;
 
@@ -653,18 +726,18 @@ begin
   Result := '';
   if HasLocal(AText, ATree, AMethod, AName) then
   begin
-    Exit(Format('%s deklariert schon %s', [AMethod.Name, AName]));
+    Exit(cTexts[TEditingPromoteVariableText.AlreadyDeclares].Fmt([AMethod.Name, AName]));
   end;
   mNested := NestedDeclarer(AText, ATree, AMethod, AName);
   if mNested <> nil then
   begin
-    Exit(Format('die lokale Routine %s deklariert schon %s', [mNested.Name, AName]));
+    Exit(cTexts[TEditingPromoteVariableText.TheLocalRoutineAlreadyDeclares].Fmt([mNested.Name, AName]));
   end;
   // In allen Methoden der Klasse meinte ein gleichnamiger Bezeichner danach das Feld.
   mUser := ClassUser(ATree, AClassName, AName);
   if mUser <> nil then
   begin
-    Result := Format('%s bedeutet in %s schon etwas anderes', [AName, mUser.Name]);
+    Result := cTexts[TEditingPromoteVariableText.AlreadyMeansSomethingDifferentIn].Fmt([AName, mUser.Name]);
   end;
 end;
 
@@ -676,19 +749,19 @@ var
 begin
   if DeclaresAnywhere(AText, ATree, AMethod, AName) then
   begin
-    Exit(Format('%s deklariert schon %s', [AMethod.Name, AName]));
+    Exit(cTexts[TEditingPromoteVariableText.AlreadyDeclares].Fmt([AMethod.Name, AName]));
   end;
   mNested := NestedDeclarer(AText, ATree, AMethod, AName);
   if mNested <> nil then
   begin
-    Exit(Format('die lokale Routine %s deklariert schon %s', [mNested.Name, AName]));
+    Exit(cTexts[TEditingPromoteVariableText.TheLocalRoutineAlreadyDeclares].Fmt([mNested.Name, AName]));
   end;
   Result := '';
   for mNode in NodesOf(AMethod, TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, AName) then
     begin
-      Exit(Format('%s bedeutet in %s schon etwas anderes', [AName, AMethod.Name]));
+      Exit(cTexts[TEditingPromoteVariableText.AlreadyMeansSomethingDifferentIn].Fmt([AName, AMethod.Name]));
     end;
   end;
 end;
@@ -785,7 +858,7 @@ begin
   AReason := '';
   if (Tree = nil) or (Tree.Root = nil) then
   begin
-    Exit(Fail('kein Baum', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoTree].Text, AReason));
   end;
   Lines := TLineTable.Build(Text);
   Tokens := Tree.Tokens;
@@ -793,7 +866,7 @@ begin
   Name := WordAt(Tokens, Offset);
   if Name = '' then
   begin
-    Exit(Fail('kein Name', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoName].Text, AReason));
   end;
   // Feld in der Klasse oder lokale Variable bzw. Feld in einer Methode.
   if NodeAtOffset(Tree, Offset, TSyntaxKind.Field) <> nil then
@@ -815,7 +888,7 @@ begin
   mRoutine := RoutineAtOffset(Tree, AOffset);
   if mRoutine = nil then
   begin
-    Exit('nicht in einer Routine');
+    Exit(cTexts[TEditingPromoteVariableText.NotInARoutine].Text);
   end;
   Method := TopRoutineOf(mRoutine);
   ClassName := TRoutineBody.QualifierOf(Method.Name);
@@ -823,11 +896,11 @@ begin
   // Lokal in einer lokalen Routine: kein Feld der Klasse.
   if InLocalRoutine(Text, Tree, mRoutine, Method, Name, AOffset) then
   begin
-    Result := 'Variable einer lokalen Routine';
+    Result := cTexts[TEditingPromoteVariableText.VariableOfALocalRoutine].Text;
   end
   else if TRoutineBody.BodyOf(Method) = nil then
   begin
-    Result := 'Routine ohne Rumpf';
+    Result := cTexts[TEditingPromoteVariableText.RoutineWithoutBody].Text;
   end;
 end;
 
@@ -836,7 +909,7 @@ begin
   TypeBody := TRoutineBody.TypeBody(Tree.Root, ClassName);
   if TypeBody = nil then
   begin
-    Exit('Klasse ' + ClassName + ' nicht in der Datei');
+    Exit(cTexts[TEditingPromoteVariableText.ClassNotInTheFile].Fmt([ClassName]));
   end;
   TypeText := Local.TypeText;
   if (TypeText = '') and Assigned(Lookup.InlineType) then
@@ -846,7 +919,7 @@ begin
   Result := '';
   if TypeText = '' then
   begin
-    Result := 'Typ von ' + Local.Name + ' unbekannt';
+    Result := cTexts[TEditingPromoteVariableText.TypeOfUnknown].Fmt([Local.Name]);
   end;
 end;
 
@@ -854,19 +927,19 @@ function TPromotePlan.LocalIssue: string;
 begin
   if not IsPromotable(Local) then
   begin
-    Result := 'weder Variable noch Inline-Variable';
+    Result := cTexts[TEditingPromoteVariableText.NeitherVariableNorInlineVariable].Text;
   end
   else if (Local.Kind = TRoutineLocalKind.InlineVariable) and (Pos(',', Local.Decl.Name) > 0) then
   begin
-    Result := 'mehrere Namen in einer Inline-Deklaration';
+    Result := cTexts[TEditingPromoteVariableText.SeveralNamesInOneInline].Text;
   end
   else if IsClassMethod(Tokens, Method) then
   begin
-    Result := 'Klassenmethode';
+    Result := cTexts[TEditingPromoteVariableText.ClassMethod].Text;
   end
   else if (Pos('<', ClassName) > 0) or TRoutineLocals.HasKind(Method, TSyntaxKind.WithStatement) then
   begin
-    Result := 'nicht unterstützte Form';
+    Result := cTexts[TEditingPromoteVariableText.UnsupportedForm].Text;
   end
   else
   begin
@@ -924,11 +997,11 @@ begin
   begin
     // Kein lokaler Name: vielleicht ein Feld.
     Direction := TPromoteDirection.ToLocal;
-    Exit(Fail('keine lokale Variable', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoLocalVariable].Text, AReason));
   end;
   if ClassName = '' then
   begin
-    Exit(Fail('keine Methode', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoMethod].Text, AReason));
   end;
   Local := mLocals[mFound];
   AReason := LocalIssue;
@@ -950,7 +1023,7 @@ begin
   end
   else
   begin
-    Result := 'kein Feld einer Klasse';
+    Result := cTexts[TEditingPromoteVariableText.NoFieldOfAClass].Text;
   end;
 end;
 
@@ -961,25 +1034,25 @@ begin
   mRoutine := RoutineAtOffset(Tree, AOffset);
   if mRoutine = nil then
   begin
-    Exit('weder Feld noch lokale Variable');
+    Exit(cTexts[TEditingPromoteVariableText.NeitherFieldNorLocalVariable].Text);
   end;
   ClassName := TRoutineBody.QualifierOf(TopRoutineOf(mRoutine).Name);
   if ClassName = '' then
   begin
-    Exit('keine Methode');
+    Exit(cTexts[TEditingPromoteVariableText.NoMethod].Text);
   end;
   TypeBody := TRoutineBody.TypeBody(Tree.Root, ClassName);
   Result := '';
   if TypeBody = nil then
   begin
-    Result := 'Klasse ' + ClassName + ' nicht in der Datei';
+    Result := cTexts[TEditingPromoteVariableText.ClassNotInTheFile].Fmt([ClassName]);
   end
   else
   begin
     Field := FieldNamed(TypeBody, Name);
     if Field = nil then
     begin
-      Result := Name + ' ist kein Feld von ' + ClassName;
+      Result := Name + cTexts[TEditingPromoteVariableText.IsNotAFieldOf].Text + ClassName;
     end;
   end;
 end;
@@ -992,11 +1065,11 @@ begin
   Result := '';
   if Pos('<', ClassName) > 0 then
   begin
-    Exit('nicht unterstützte Form');
+    Exit(cTexts[TEditingPromoteVariableText.UnsupportedForm].Text);
   end;
   if not MatchText(TRoutineBody.VisibilityOf(TypeBody, Field), ['private', 'strict private']) then
   begin
-    Exit('nicht privat');
+    Exit(cTexts[TEditingPromoteVariableText.NotPrivate].Text);
   end;
   if IsClassVar(Tokens, Field) then
   begin
@@ -1006,15 +1079,15 @@ begin
   mProperty := PropertyUsing(Tree, Tokens, Name);
   if TypeText = '' then
   begin
-    Result := 'Typ unbekannt';
+    Result := cTexts[TEditingPromoteVariableText.TypeUnknown].Text;
   end
   else if mProperty <> nil then
   begin
-    Result := 'die Property ' + mProperty.Name + ' nutzt ' + Name;
+    Result := cTexts[TEditingPromoteVariableText.ThePropertyUses].Fmt([mProperty.Name]) + Name;
   end
   else if Assigned(Lookup.InForm) and Lookup.InForm(Name) then
   begin
-    Result := Name + ' steht in der Formulardatei';
+    Result := Name + cTexts[TEditingPromoteVariableText.IsInTheFormFile].Text;
   end;
 end;
 
@@ -1031,14 +1104,14 @@ begin
   begin
     if TRoutineLocals.HasKind(ATop, TSyntaxKind.WithStatement) then
     begin
-      Result := Name + ' steht in einem with';
+      Result := Name + cTexts[TEditingPromoteVariableText.IsInAWith].Text;
     end;
     Exit;
   end;
   mOther := TRoutineBody.TypeBody(Tree.Root, mQualifier);
   if (mOther = nil) or (IndexText(Name, TRoutineBody.MemberNames(mOther)) < 0) then
   begin
-    Result := Name + ' wird auch in ' + ATop.Name + ' benutzt';
+    Result := Name + cTexts[TEditingPromoteVariableText.IsAlsoUsedIn].Fmt([ATop.Name]);
   end;
 end;
 
@@ -1048,13 +1121,13 @@ begin
   Result := '';
   if ATop = nil then
   begin
-    Result := Name + ' wird außerhalb einer Methode benutzt';
+    Result := Name + cTexts[TEditingPromoteVariableText.IsUsedOutsideAMethod].Text;
   end
   else if ANode.Kind = TSyntaxKind.MemberAccess then
   begin
     if not IsSelfAccess(ANode) or not SameText(TRoutineBody.QualifierOf(ATop.Name), ClassName) then
     begin
-      Result := Name + ' wird über ein anderes Objekt benutzt';
+      Result := Name + cTexts[TEditingPromoteVariableText.IsUsedViaAnotherObject].Text;
     end;
   end
   else if ShadowedBelow(Text, Tree, ANode, nil, Name) then
@@ -1085,7 +1158,7 @@ begin
     Result := UseIssue(mNode, mTop, mSkip);
     if (Result = '') and not mSkip and (RoutineOf(mNode) <> mTop) then
     begin
-      Result := Name + ' wird in einer lokalen Routine benutzt';
+      Result := Name + cTexts[TEditingPromoteVariableText.IsUsedInALocal].Text;
     end;
     if Result <> '' then
     begin
@@ -1136,11 +1209,11 @@ begin
   Result := '';
   if IndexText(ANewName, TRoutineBody.MemberNames(TypeBody)) >= 0 then
   begin
-    Result := Format('%s hat schon ein Mitglied %s', [ClassName, ANewName]);
+    Result := cTexts[TEditingPromoteVariableText.AlreadyHasAMember].Fmt([ClassName, ANewName]);
   end
   else if Assigned(Lookup.MemberExists) and Lookup.MemberExists(ClassName, ANewName, TypeBody.StartOffset) then
   begin
-    Result := Format('%s erbt schon ein Mitglied %s', [ClassName, ANewName]);
+    Result := cTexts[TEditingPromoteVariableText.AlreadyInheritsAMember].Fmt([ClassName, ANewName]);
   end
   else if not SameText(ANewName, Local.Name) then
   begin
@@ -1188,7 +1261,7 @@ begin
   end;
   if not TRoutineBody.FieldDeclaration(Text, Tree, TypeBody, ANewName + ': ' + TypeText + ';', AStyle, mEdit) then
   begin
-    Exit(Fail('Klassendeklaration nicht erweiterbar', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.ClassDeclarationCannotBeExtended].Text, AReason));
   end;
   AEdits := AEdits + [mEdit];
   RemoveLocalDeclaration(ANewName, AEdits);
@@ -1266,7 +1339,7 @@ begin
     end;
     if Routine = nil then
     begin
-      Exit(Fail('Methode nach der Umwandlung nicht gefunden', AReason));
+      Exit(Fail(cTexts[TEditingPromoteVariableText.MethodNotFoundAfterThe].Text, AReason));
     end;
     Graph := TControlFlowGraph.Build(Routine, TFlowSignatures.FromTree(Check.Root));
     try
@@ -1280,7 +1353,7 @@ begin
     end;
     if Answer <> TFlowAnswer.No then
     begin
-      Exit(Fail(Format('%s wird in %s nicht auf jedem Weg zuerst geschrieben', [Name, Method.Name]), AReason));
+      Exit(Fail(cTexts[TEditingPromoteVariableText.IsNotWrittenFirstOn].Fmt([Name, Method.Name]), AReason));
     end;
     Result := True;
   finally
@@ -1298,7 +1371,7 @@ begin
   AResult := Default(TPromoteResult);
   if not IsValidName(ANewName) then
   begin
-    Exit(Fail('"' + ANewName + '" ist kein gültiger Name', AReason));
+    Exit(Fail(cTexts[TEditingPromoteVariableText.IsNotAValidName].Fmt([ANewName]), AReason));
   end;
   if Direction = TPromoteDirection.ToField then
   begin
@@ -1317,7 +1390,7 @@ begin
   try
     if Length(Check.Diagnostics) > 0 then
     begin
-      Exit(Fail('Ergebnis parst nicht', AReason));
+      Exit(Fail(cTexts[TEditingPromoteVariableText.ResultDoesNotParse].Text, AReason));
     end;
   finally
     Check.Free;
@@ -1413,5 +1486,8 @@ begin
     Plan.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.PromoteVariable', cTexts);
 
 end.

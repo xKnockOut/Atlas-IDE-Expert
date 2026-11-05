@@ -67,11 +67,11 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 ### **Methode ohne `Self` umwandeln**
 
-- Eine Methode, die weder `Self` noch Instanzmitglieder nutzt, bekommt die Marke „ohne Self“ und wird:
-  - `class … static`-Methode,
-  - class-Methode mit Aufrufen über die Klasse,
-  - freie Routine
-  - oder Record-Helper für den Typ ihres ersten Parameters,
+- Eine Methode, die weder `Self` noch Instanzmitglieder nutzt, bekommt die Marke „braucht kein Self“; ein Klick darauf (oder Strg+. auf dem Kopf) bietet an, sie umzuwandeln in:
+  - eine `class … static`-Methode,
+  - eine class-Methode mit Aufrufen über die Klasse,
+  - eine freie Routine
+  - oder einen Record-Helper für den Typ ihres ersten Parameters,
 - über alle Units mit Vorschau jedes geänderten Aufrufs
 - wahlweise Hinweisregel `method-without-self`
 

@@ -57,7 +57,33 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Pascal.AsmStatements;
+  Atlas.Common.Pascal.AsmStatements,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TAssemblerText = (LocalVariable, MissingOperand, TooLarge, DivByZero, TwoRelocatable, EspIndex, StringTooLong,
+    SizeMismatch, LeaNumber, MovTarget, Like, Title);
+
+const
+  cTexts: array[TAssemblerText] of TAtlasText = (
+    (De: '%s ist eine lokale Variable; db braucht eine Konstante'; En: '%s is a local variable; db needs a constant'),
+    (De: 'Hinter %s fehlt ein Operand'; En: 'Operand missing after %s'),
+    (De: 'Die Zahl %s passt nicht in 64 Bit'; En: 'The number %s does not fit into 64 bits'),
+    (De: 'Division durch null'; En: 'Division by zero'),
+    (De: 'Zwei relozierbare Adressen lassen sich nicht addieren'; En: 'Two relocatable addresses cannot be added'),
+    (De: 'esp kann nicht Indexregister mit Faktor sein'; En: 'esp cannot be an index register with a scale factor'),
+    (De: 'Die Stringkonstante hat %d Zeichen, %s fasst 4'; En: 'The string constant has %d characters, %s holds 4'),
+    (De: 'Operandengröße stimmt nicht überein: %s hat %d Byte, %s %d Byte';
+     En: 'Operand size mismatch: %s has %d bytes, %s %d bytes'),
+    (De: 'lea braucht eine Speicheradresse, keine Zahl'; En: 'lea needs a memory address, not a number'),
+    (De: 'Eine Zahl kann nicht Ziel von mov sein'; En: 'A number cannot be the target of mov'),
+    (De: '%s (wie %s).'; En: '%s (like %s).'),
+    (De: 'Ungültige Anweisung im Inline-Assembler'; En: 'Invalid statement in inline assembler'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Befehle, deren zwei Operanden gleich groß sein müssen.
@@ -324,7 +350,7 @@ begin
         mLocals.ContainsKey(LowerCase(TokenText(mOperand.Tokens[0]))) then
       begin
         ACode := 'E2109';
-        Result := Format('%s ist eine lokale Variable; db braucht eine Konstante', [TokenText(mOperand.Tokens[0])]);
+        Result := cTexts[TAssemblerText.LocalVariable].Fmt([TokenText(mOperand.Tokens[0])]);
       end;
     end;
   finally
@@ -347,7 +373,7 @@ begin
     if mOperand.Tokens = nil then
     begin
       ACode := 'E2105';
-      Exit(Format('Hinter %s fehlt ein Operand', [AStatement.Mnemonic]));
+      Exit(cTexts[TAssemblerText.MissingOperand].Fmt([AStatement.Mnemonic]));
     end;
   end;
 end;
@@ -410,18 +436,18 @@ begin
   if TooLarge(mToken) then
   begin
     ACode := 'E2113';
-    Result := Format('Die Zahl %s passt nicht in 64 Bit', [TokenText(mToken)]);
+    Result := cTexts[TAssemblerText.TooLarge].Fmt([TokenText(mToken)]);
   end
   else if (FTokens[mToken].IsSymbol('/') or FTokens[mToken].IsKeyword('mod')) and
     (APosition < High(AOperand.Tokens)) and IsZero(AOperand.Tokens[APosition + 1]) then
   begin
     ACode := 'E2118';
-    Result := 'Division durch null';
+    Result := cTexts[TAssemblerText.DivByZero].Text;
   end
   else if OffsetSum(AOperand, APosition) then
   begin
     ACode := 'E2111';
-    Result := 'Zwei relozierbare Adressen lassen sich nicht addieren';
+    Result := cTexts[TAssemblerText.TwoRelocatable].Text;
   end;
 end;
 
@@ -440,7 +466,7 @@ begin
       if EspWithScale(mOperand, mPosition) then
       begin
         ACode := 'E2105';
-        Exit('esp kann nicht Indexregister mit Faktor sein');
+        Exit(cTexts[TAssemblerText.EspIndex].Text);
       end;
     end;
   end;
@@ -479,7 +505,7 @@ begin
     if Length(mLiteral) > 4 then
     begin
       ACode := 'E2114';
-      Exit(Format('Die Stringkonstante hat %d Zeichen, %s fasst 4', [Length(mLiteral),
+      Exit(cTexts[TAssemblerText.StringTooLong].Fmt([Length(mLiteral),
         TokenText(mOperands[0].Tokens[0])]));
     end;
   end;
@@ -487,7 +513,7 @@ begin
   if MatchStr(AStatement.Mnemonic, cSameSizeMnemonics) and (mLeft > 0) and (mRight > 0) and (mLeft <> mRight) then
   begin
     ACode := 'E2107';
-    Exit(Format('Operandengröße stimmt nicht überein: %s hat %d Byte, %s %d Byte',
+    Exit(cTexts[TAssemblerText.SizeMismatch].Fmt(
       [TokenText(mOperands[0].Tokens[0]), mLeft, TokenText(mOperands[1].Tokens[0]), mRight]));
   end;
   Result := NumberOperandProblem(AStatement, ACode);
@@ -500,12 +526,12 @@ begin
   if (AStatement.Mnemonic = 'lea') and IsNumber(AStatement.Operands[1]) then
   begin
     ACode := 'E2107';
-    Result := 'lea braucht eine Speicheradresse, keine Zahl';
+    Result := cTexts[TAssemblerText.LeaNumber].Text;
   end
   else if (AStatement.Mnemonic = 'mov') and IsNumber(AStatement.Operands[0]) then
   begin
     ACode := 'E2107';
-    Result := 'Eine Zahl kann nicht Ziel von mov sein';
+    Result := cTexts[TAssemblerText.MovTarget].Text;
   end;
 end;
 
@@ -555,7 +581,7 @@ begin
     mMessage := Problem(ANode, mStatement, mCode);
     if mMessage <> '' then
     begin
-      FReport.Add(Range(mStatement), Format('%s (wie %s).', [mMessage, mCode]), TRuleConfidence.High);
+      FReport.Add(Range(mStatement), cTexts[TAssemblerText.Like].Fmt([mMessage, mCode]), TRuleConfidence.High);
     end;
   end;
 end;
@@ -611,7 +637,7 @@ end;
 
 function TAsmInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AsmInvalidRuleId, TRuleSeverity.Error, 'Ungültige Anweisung im Inline-Assembler');
+  Result := TRuleDescriptor.Create(AsmInvalidRuleId, TRuleSeverity.Error, cTexts[TAssemblerText.Title].Text);
 end;
 
 procedure TAsmInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -637,5 +663,8 @@ procedure RegisterAssemblerRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TAsmInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Assembler', cTexts);
 
 end.

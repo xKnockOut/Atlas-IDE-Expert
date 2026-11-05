@@ -34,8 +34,9 @@ type
     /// <summary>Zweite Zeile des eigenen Hooks.</summary>
     Marker = '# atlas-commit-prefix (#765)';
   public
-    /// <summary>Inhalt des Hooks, Zeilenende LF (sh von Git für Windows).</summary>
-    class function Script: string; static;
+    /// <summary>Inhalt des Hooks, Zeilenende LF (sh von Git für Windows); die Kommentarzeilen in der Sprache der
+    /// Oberfläche (AEnglish, #1458).</summary>
+    class function Script(AEnglish: Boolean): string; static;
     /// <summary>Eigener Hook: die Marke steht in den ersten Zeilen.</summary>
     class function IsOwn(const AContent: string): Boolean; static;
     class function HookFile(const AHooksDir: string): string; static;
@@ -44,7 +45,7 @@ type
     class function State(const AHooksDir: string): TAtlasCommitHookState; static;
     /// <summary>Eigenen Hook anlegen (Ordner falls nötig); ein fremder bleibt. True, wenn danach der eigene dort
     /// liegt.</summary>
-    class function Install(const AHooksDir: string): Boolean; static;
+    class function Install(const AHooksDir: string; AEnglish: Boolean): Boolean; static;
     /// <summary>Eigenen Hook entfernen; einen fremden nie. True, wenn danach kein eigener mehr dort liegt.</summary>
     class function Uninstall(const AHooksDir: string): Boolean; static;
     /// <summary>Präfix für den Hook schreiben; leer = Datei entfernen. False bei Fehler.</summary>
@@ -63,14 +64,20 @@ const
   /// <summary>So viel liest State vom Hook; die Marke steht in den ersten Zeilen.</summary>
   cMaxHookBytes = 4096;
   cMaxPrefixBytes = 1024;
+  /// <summary>Kommentar des Hooks je Sprache (False deutsch, True englisch).</summary>
+  cHookComment: array[Boolean, 0..1] of string = (
+    ('# Von Atlas angelegt: setzt den Präfix des aktiven Issues an den Anfang der Commit-Nachricht.', // german-ok
+     '# Ohne aktives Issue tut der Hook nichts. Entfernen: diese Datei löschen.'), // german-ok
+    ('# Created by Atlas: puts the prefix of the active issue at the start of the commit message.',
+     '# Without an active issue the hook does nothing. To remove it, delete this file.'));
 
-class function TAtlasCommitHook.Script: string;
+class function TAtlasCommitHook.Script(AEnglish: Boolean): string;
 begin
   Result :=
     '#!/bin/sh' + Lf +
     Marker + Lf +
-    '# Von Atlas angelegt: setzt den Präfix des aktiven Issues an den Anfang der Commit-Nachricht.' + Lf +
-    '# Ohne aktives Issue tut der Hook nichts. Entfernen: diese Datei löschen.' + Lf +
+    cHookComment[AEnglish, 0] + Lf +
+    cHookComment[AEnglish, 1] + Lf +
     'case "$2" in merge|squash|commit) exit 0 ;; esac' + Lf +
     'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + Lf +
     'file="$dir/' + PrefixFile + '"' + Lf +
@@ -136,7 +143,7 @@ begin
   end;
 end;
 
-class function TAtlasCommitHook.Install(const AHooksDir: string): Boolean;
+class function TAtlasCommitHook.Install(const AHooksDir: string; AEnglish: Boolean): Boolean;
 begin
   Result := False;
   if AHooksDir = '' then
@@ -146,9 +153,9 @@ begin
   case State(AHooksDir) of
     TAtlasCommitHookState.Own:
       // Neu schreiben: eine ältere Fassung des Skripts wird so ersetzt.
-      Result := WriteText(HookFile(AHooksDir), Script);
+      Result := WriteText(HookFile(AHooksDir), Script(AEnglish));
     TAtlasCommitHookState.Missing:
-      Result := TAtlasTrackerFiles.Files.ForceFolder(AHooksDir) and WriteText(HookFile(AHooksDir), Script);
+      Result := TAtlasTrackerFiles.Files.ForceFolder(AHooksDir) and WriteText(HookFile(AHooksDir), Script(AEnglish));
   end;
 end;
 

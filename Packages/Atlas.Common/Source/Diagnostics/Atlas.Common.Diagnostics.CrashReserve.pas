@@ -58,6 +58,22 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCrashReserveText = (ThePreviousCaseIsStill, TimeLimitOfMsExceeded);
+
+const
+  cTexts: array[TCrashReserveText] of TAtlasText = (
+    (De: 'Der vorige Fall wird noch geschrieben'; En: 'The previous case is still being written'),
+    (De: 'Zeitlimit von %d ms beim Schreiben überschritten'; En: 'Time limit of %d ms exceeded while writing'));
+
+{$SCOPEDENUMS OFF}
+
 const
   cForever = Cardinal($FFFFFFFF);
 
@@ -154,7 +170,7 @@ begin
     end;
     if FFinished < FPosted then
     begin
-      AFailure := 'Der vorige Fall wird noch geschrieben';
+      AFailure := cTexts[TCrashReserveText.ThePreviousCaseIsStill].Text;
       Exit(False);
     end;
     FWork := AWork;
@@ -176,11 +192,14 @@ begin
     end
     else
     begin
-      AFailure := Format('Zeitlimit von %d ms beim Schreiben überschritten', [TimeoutMs]);
+      AFailure := cTexts[TCrashReserveText.TimeLimitOfMsExceeded].Fmt([TimeoutMs]);
     end;
   finally
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.CrashReserve', cTexts);
 
 end.

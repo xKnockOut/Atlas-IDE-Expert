@@ -90,7 +90,32 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Common.Projects.Paths,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTestToolsText = (PlatformIsNotActivatedIn, ProjectNotFound, NoDUnitXTestProjectFound, TheTestProgramWroteNo,
+    SeveralTestProjectsSpecifyProject);
+
+const
+  cTexts: array[TTestToolsText] of TAtlasText = (
+    (De: 'Plattform "%s" ist im Testprojekt nicht aktiviert (vorhanden: %s).';
+     En: 'Platform "%s" is not activated in the test project (available: %s).'),
+    (De: 'Projekt "%s" nicht gefunden.'; En: 'Project "%s" not found.'),
+    (De: 'Kein DUnitX-Testprojekt gefunden (Hauptdatei mit uses DUnitX.TestFramework); "project" angeben.';
+     En: 'No DUnitX test project found (main file with uses DUnitX.TestFramework); give "project".'),
+    (De: 'Das Testprogramm hat keinen XML-Bericht geschrieben (%s). Es braucht einen DUnitX-XML-Logger: ' +
+      'runner.AddLogger(TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile)) wie in der Vorlage von RAD ' +
+      'Studio.';
+     En: 'The test program wrote no XML report (%s). It needs a DUnitX XML logger: ' +
+      'runner.AddLogger(TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile)) as in the RAD Studio ' +
+      'template.'),
+    (De: 'Mehrere Testprojekte (%s); "project" angeben.'; En: 'Several test projects (%s); specify "project".'));
+
+{$SCOPEDENUMS OFF}
 
 function SameProject(const AFileName, AWanted: string): Boolean;
 begin
@@ -110,8 +135,7 @@ begin
   begin
     if (Length(AEnabled) > 0) and (IndexText(ARequested, AEnabled) < 0) then
     begin
-      AReason := Format('Plattform "%s" ist im Testprojekt nicht aktiviert (vorhanden: %s).',
-        [ARequested, string.Join(', ', AEnabled)]);
+      AReason := cTexts[TTestToolsText.PlatformIsNotActivatedIn].Fmt([ARequested, string.Join(', ', AEnabled)]);
       Exit(False);
     end;
     APlatform := ARequested;
@@ -180,7 +204,7 @@ begin
       Exit(True);
     end;
   end;
-  AReason := Format('Projekt "%s" nicht gefunden.', [AWanted]);
+  AReason := cTexts[TTestToolsText.ProjectNotFound].Fmt([AWanted]);
   Result := False;
 end;
 
@@ -203,11 +227,11 @@ begin
   end
   else if Length(mFound) = 0 then
   begin
-    AReason := 'Kein DUnitX-Testprojekt gefunden (Hauptdatei mit uses DUnitX.TestFramework); "project" angeben.';
+    AReason := cTexts[TTestToolsText.NoDUnitXTestProjectFound].Text;
   end
   else
   begin
-    AReason := Format('Mehrere Testprojekte (%s); "project" angeben.', [ProjectNames(mFound)]);
+    AReason := cTexts[TTestToolsText.SeveralTestProjectsSpecifyProject].Fmt([ProjectNames(mFound)]);
   end;
 end;
 
@@ -425,9 +449,7 @@ begin
     AddHead(mRoot, ATarget, ATests, ARun, AProcess.ExitCode);
     if not ARun.Valid then
     begin
-      mRoot.AddPair('reason', 'Das Testprogramm hat keinen XML-Bericht geschrieben (' + ARun.Error + '). Es braucht ' +
-        'einen DUnitX-XML-Logger: runner.AddLogger(TDUnitXXMLNUnitFileLogger.Create(TDUnitX.Options.XMLOutputFile)) ' +
-        'wie in der Vorlage von RAD Studio.');
+      mRoot.AddPair('reason', cTexts[TTestToolsText.TheTestProgramWroteNo].Fmt([ARun.Error]));
       mRoot.AddPair('output', StringsJson(AProcess.Output));
       Exit(mRoot.Format(2));
     end;
@@ -448,5 +470,8 @@ begin
     mRoot.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.TestTools', cTexts);
 
 end.

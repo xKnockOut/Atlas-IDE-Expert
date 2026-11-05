@@ -33,7 +33,49 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CaseCompletion,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWrapCommandsText = (TryOnlyAppliesInThe, NoLocalObjectIsCreated, ExpectedIsIfdefSYMBOL, ExpectedIsRegionName,
+    CaseOnlyUnderstandsAName, TheTypeOfIsNot, ALabelInTheCase, TheCaseAlreadyHandlesAll, CaseHasNoArguments,
+    CaseOnlyAppliesInThe, TryFinallyFreeAroundThe, GuardTheFollowingStatementsWith, AddTheMissingValuesOf,
+    FollowingStatementsViaTThreadQueue, FollowingStatementsViaTThreadSynchronize, LockTheFollowingStatements,
+    FollowingStatementsInIFDEF, FollowingStatementsInREGION, RegionLoad, CaseExpectsACaseStatement);
+
+const
+  cTexts: array[TWrapCommandsText] of TAtlasText = (
+    (De: '/try gilt nur im Rumpf einer Routine'; En: '/try only applies in the body of a routine'),
+    (De: 'Vor /try wird kein lokales Objekt erzeugt'; En: 'No local object is created before /try'),
+    (De: 'Erwartet wird /ifdef SYMBOL'; En: 'Expected is /ifdef SYMBOL'),
+    (De: 'Erwartet wird /region Name'; En: 'Expected is /region Name'),
+    (De: '/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art';
+     En: '/case only understands a name like Kind or Customer.Kind as selector'),
+    (De: 'Der Typ von %s ist keine bekannte Aufzählung'; En: 'The type of %s is not a known enumeration'),
+    (De: 'Eine Marke im case ist kein Wert von %s'; En: 'A label in the case is not a value of %s'),
+    (De: 'Der case behandelt schon alle Werte von %s'; En: 'The case already handles all values of %s'),
+    (De: '/case hat keine Argumente'; En: '/case has no arguments'),
+    (De: '/case gilt nur im Rumpf einer Routine'; En: '/case only applies in the body of a routine'),
+    (De: 'try … finally Free um die folgenden Anweisungen'; En: 'try … finally Free around the following statements'),
+    (De: 'Folgende Anweisungen mit Protokoll und raise absichern';
+     En: 'Guard the following statements with logging and raise'),
+    (De: 'Fehlende Werte der Aufzählung im case darunter ergänzen';
+     En: 'Add the missing values of the enumeration to the case below'),
+    (De: 'Folgende Anweisungen per TThread.Queue im Hauptthread';
+     En: 'Following statements via TThread.Queue in the main thread'),
+    (De: 'Folgende Anweisungen per TThread.Synchronize im Hauptthread';
+     En: 'Following statements via TThread.Synchronize in the main thread'),
+    (De: 'Folgende Anweisungen sperren'; En: 'Lock the following statements'),
+    (De: 'Folgende Anweisungen in {$IFDEF}'; En: 'Following statements in {$IFDEF}'),
+    (De: 'Folgende Anweisungen in {$REGION}'; En: 'Following statements in {$REGION}'),
+    (De: '/region Laden'; En: '/region Load'),
+    (De: '/case erwartet darunter eine case-Anweisung über einer Aufzählung';
+     En: '/case expects a case statement over an enumeration below'));
+
+{$SCOPEDENUMS OFF}
 
 { /try }
 
@@ -93,7 +135,7 @@ begin
     Routine := Source.RoutineAt;
     if Routine = nil then
     begin
-      Exit(Fail('/try gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TWrapCommandsText.TryOnlyAppliesInThe].Text, AReason));
     end;
     Variable := '';
     for Index := Source.Line - 1 downto Routine.StartPos.Line do
@@ -106,7 +148,7 @@ begin
     end;
     if (Variable = '') or IsField(Source, Variable) then
     begin
-      Exit(Fail('Vor /try wird kein lokales Objekt erzeugt', AReason));
+      Exit(Fail(cTexts[TWrapCommandsText.NoLocalObjectIsCreated].Text, AReason));
     end;
     // Result gehört dem Aufrufer: nur bei einer Ausnahme freigeben.
     if SameText(Variable, 'Result') then
@@ -185,7 +227,7 @@ begin
   AEdits := nil;
   if not IsValidIdent(AContext.Arguments) then
   begin
-    Exit(Fail('Erwartet wird /ifdef SYMBOL', AReason));
+    Exit(Fail(cTexts[TWrapCommandsText.ExpectedIsIfdefSYMBOL].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -203,7 +245,7 @@ begin
   AEdits := nil;
   if AContext.Arguments = '' then
   begin
-    Exit(Fail('Erwartet wird /region Name', AReason));
+    Exit(Fail(cTexts[TWrapCommandsText.ExpectedIsRegionName].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -317,8 +359,6 @@ begin
     AToken.IsKeyword('repeat') or AToken.IsKeyword('asm');
 end;
 
-const
-  cCaseUsage = '/case erwartet darunter eine case-Anweisung über einer Aufzählung';
 
 type
   /// <summary>Ablauf von /case: fehlende Werte der Aufzählung als Zweige ergänzen.</summary>
@@ -387,7 +427,7 @@ begin
   end;
   if (FCaseIndex > High(FTokens)) or not FTokens[FCaseIndex].IsKeyword('case') then
   begin
-    Exit(Fail(cCaseUsage));
+    Exit(Fail(cTexts[TWrapCommandsText.CaseExpectsACaseStatement].Text));
   end;
   // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
   FNames := nil;
@@ -400,14 +440,14 @@ begin
     end
     else if not FTokens[FOfIndex].IsSymbol('.') then
     begin
-      Exit(Fail('/case versteht als Auswahl nur einen Namen wie Art oder Kunde.Art'));
+      Exit(Fail(cTexts[TWrapCommandsText.CaseOnlyUnderstandsAName].Text));
     end;
     FOfIndex := NextCode(FTokens, FOfIndex);
   end;
   Result := (FOfIndex <= High(FTokens)) and (FNames <> nil);
   if not Result then
   begin
-    FReason := cCaseUsage;
+    FReason := cTexts[TWrapCommandsText.CaseExpectsACaseStatement].Text;
   end;
 end;
 
@@ -454,7 +494,7 @@ begin
       mChain.TypeFound and EnumValues(mResolver, mChain.TypeInfo);
     if not Result then
     begin
-      Exit(Fail(Format('Der Typ von %s ist keine bekannte Aufzählung', [string.Join('.', FNames)])));
+      Exit(Fail(cTexts[TWrapCommandsText.TheTypeOfIsNot].Fmt([string.Join('.', FNames)])));
     end;
     FScoped := ScopedEnum(FContext, FSource, FFileName, mChain.TypeInfo);
   finally
@@ -469,15 +509,15 @@ begin
   // Vorhandene Marken und Einrückung wie bei der Vervollständigung (#449).
   if not TCaseCompletion.BranchSlot(FSource.Text, FTokens, FTokens[FOfIndex].EndPos, FSlot) then
   begin
-    Exit(Fail(cCaseUsage));
+    Exit(Fail(cTexts[TWrapCommandsText.CaseExpectsACaseStatement].Text));
   end;
   if not TCaseCompletion.Missing(FValues, FSlot.Labels, FMissing) then
   begin
-    Exit(Fail(Format('Eine Marke im case ist kein Wert von %s', [FEnumName])));
+    Exit(Fail(cTexts[TWrapCommandsText.ALabelInTheCase].Fmt([FEnumName])));
   end;
   if FMissing = nil then
   begin
-    Exit(Fail(Format('Der case behandelt schon alle Werte von %s', [FEnumName])));
+    Exit(Fail(cTexts[TWrapCommandsText.TheCaseAlreadyHandlesAll].Fmt([FEnumName])));
   end;
   for mLabel in FSlot.Labels do
   begin
@@ -545,12 +585,12 @@ begin
   AEdits := nil;
   if FContext.Arguments <> '' then
   begin
-    FReason := '/case hat keine Argumente';
+    FReason := cTexts[TWrapCommandsText.CaseHasNoArguments].Text;
     Result := False;
   end
   else if FSource.RoutineAt = nil then
   begin
-    FReason := '/case gilt nur im Rumpf einer Routine';
+    FReason := cTexts[TWrapCommandsText.CaseOnlyAppliesInThe].Text;
     Result := False;
   end
   else
@@ -590,23 +630,27 @@ end;
 
 procedure RegisterWrapCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('try', 'try … finally Free um die folgenden Anweisungen', '/try', ExecuteTry));
-  ARegister(Command('lock', 'Folgende Anweisungen sperren', '/lock', ExecuteLock));
-  ARegister(Command('sync', 'Folgende Anweisungen per TThread.Queue im Hauptthread', '/sync',
+  ARegister(Command('try', cTexts[TWrapCommandsText.TryFinallyFreeAroundThe].Text, '/try', ExecuteTry));
+  ARegister(Command('lock', cTexts[TWrapCommandsText.LockTheFollowingStatements].Text, '/lock', ExecuteLock));
+  ARegister(Command('sync', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadQueue].Text, '/sync',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Queue', AEdits, AReason);
     end));
-  ARegister(Command('sync!', 'Folgende Anweisungen per TThread.Synchronize im Hauptthread', '/sync!',
+  ARegister(Command('sync!', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadSynchronize].Text, '/sync!',
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));
-  ARegister(Command('ifdef', 'Folgende Anweisungen in {$IFDEF}', '/ifdef DEBUG', ExecuteIfdef));
-  ARegister(Command('except', 'Folgende Anweisungen mit Protokoll und raise absichern', '/except',
+  ARegister(Command('ifdef', cTexts[TWrapCommandsText.FollowingStatementsInIFDEF].Text, '/ifdef DEBUG', ExecuteIfdef));
+  ARegister(Command('except', cTexts[TWrapCommandsText.GuardTheFollowingStatementsWith].Text, '/except',
     ExecuteExcept));
-  ARegister(Command('region', 'Folgende Anweisungen in {$REGION}', '/region Laden', ExecuteRegion));
-  ARegister(Command('case', 'Fehlende Werte der Aufzählung im case darunter ergänzen', '/case', ExecuteCase));
+  ARegister(Command('region', cTexts[TWrapCommandsText.FollowingStatementsInREGION].Text,
+    cTexts[TWrapCommandsText.RegionLoad].Text, ExecuteRegion));
+  ARegister(Command('case', cTexts[TWrapCommandsText.AddTheMissingValuesOf].Text, '/case', ExecuteCase));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.WrapCommands', cTexts);
 
 end.

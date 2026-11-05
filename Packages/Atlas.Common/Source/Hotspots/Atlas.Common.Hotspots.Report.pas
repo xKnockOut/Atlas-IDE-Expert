@@ -63,7 +63,72 @@ implementation
 
 uses
   System.Math,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THotspotsReportText = (ChangeCouplingPairsWithoutUses, NoPairs, ScoreChangesAuthorsCognitiveLines,
+    HotspotsOfScoreNormalizedChanges, NoChangedUnitsInThe, ScoreChangesAuthorsComplexityLines,
+    ScoreNormalizedChangesNormalizedCognitive, NoChangedMethodsInThe, ChangeCoupling, PairsWithoutUsesEdgeThat,
+    TextXYClassLabel, TextX14YClass, CircleCxCyRFill, ThThScoreThTh, ScoreNormalizedChangesNormalizedCognitive2,
+    H2ChangeCouplingH2, PClassNotePairsWithout, PNoPairsP, Rising, Same, Falling, New, MonthsSinceCommits,
+    SharedCommitsAnd, BubbleChart, HtmlLanguage);
+
+const
+  cTexts: array[THotspotsReportText] of TAtlasText = (
+    (De: 'Änderungskopplung (%s): Paare ohne uses-Kante, die fast immer zusammen geändert werden, %d von %d:';
+     En: 'Change coupling (%s): pairs without uses edge that are almost always changed together, %d of %d:'),
+    (De: 'Keine Paare.'; En: 'No pairs.'),
+    (De: '%d. %s: Wert %s · %d Änderungen · %d Autoren · kognitiv %d · %d Zeilen%s%s · zuletzt %s';
+     En: '%d. %s: score %s · %d changes · %d authors · cognitive %d · %d lines%s%s · last %s'),
+    (De: 'Hotspots (%s), %s, %d von %d; Wert = normierte Änderungen × normierte kognitive Komplexität:';
+     En: 'Hotspots (%s), %s, %d of %d; score = normalized changes × normalized cognitive complexity:'),
+    (De: 'Keine geänderten Units im Zeitraum.'; En: 'No changed units in the period.'),
+    (De: ' | Wert | Änderungen | Autoren | Komplexität | Zeilen | Geändert | Trend | Zuletzt |';
+     En: ' | Score | Changes | Authors | Complexity | Lines | Changed | Trend | Last |'),
+    (De: '. Wert = normierte Änderungen × normierte kognitive Komplexität (0–1); Trend gegenüber dem Stand vor 3 ' +
+      'Monaten.';
+     En: '. Score = normalized changes × normalized cognitive complexity (0–1); trend compared with the state 3 ' +
+      'months ago.'),
+    (De: 'Keine geänderten Methoden im Zeitraum.'; En: 'No changed methods in the period.'),
+    (De: '## Änderungskopplung'; En: '## Change coupling'),
+    (De: 'Paare ohne uses-Kante, die fast immer zusammen geändert werden.';
+     En: 'Pairs without uses edge that are almost always changed together.'),
+    (De: '<text x="%d" y="%d" class="label" text-anchor="middle">Änderungen (0–%d)</text>';
+     En: '<text x="%d" y="%d" class="label" text-anchor="middle">Changes (0–%d)</text>'),
+    (De: '<text x="14" y="%d" class="label" text-anchor="middle" transform="rotate(-90 14 %d)">Komplexität ' +
+      '(0–%d)</text>';
+     En: '<text x="14" y="%d" class="label" text-anchor="middle" transform="rotate(-90 14 %d)">Complexity ' +
+      '(0–%d)</text>'),
+    (De: '<circle cx="%s" cy="%s" r="%s" fill="%s"><title>%s: %d Änderungen, kognitiv %d, %d Zeilen, Wert ' +
+      '%s</title></circle>';
+     En: '<circle cx="%s" cy="%s" r="%s" fill="%s"><title>%s: %d changes, cognitive %d, %d lines, score ' +
+      '%s</title></circle>'),
+    (De: '</th><th>Wert</th><th>Änderungen</th><th>Autoren</th><th>Komplexität</th><th>Zeilen</th><th>Geändert</th><t' +
+      'h>Trend</th><th>Zuletzt</th></tr></thead><tbody>';
+     En: '</th><th>Score</th><th>Changes</th><th>Authors</th><th>Complexity</th><th>Lines</th><th>Changed</th><th>Tre' +
+      'nd</th><th>Last</th></tr></thead><tbody>'),
+    (De: '. Wert = normierte Änderungen × normierte kognitive Komplexität (0–1); Blasengröße = Zeilen; Trend ' +
+      'gegenüber dem Stand vor 3 Monaten.</p>';
+     En: '. Score = normalized changes × normalized cognitive complexity (0–1); bubble size = lines; trend compared ' +
+      'with the state 3 months ago.</p>'),
+    (De: '<h2>Änderungskopplung</h2>'; En: '<h2>Change coupling</h2>'),
+    (De: '<p class="note">Paare ohne uses-Kante, die fast immer zusammen geändert werden.</p>';
+     En: '<p class="note">Pairs without uses edge that are almost always changed together.</p>'),
+    (De: '<p>Keine Paare.</p>'; En: '<p>No pairs.</p>'),
+    (De: 'steigend'; En: 'rising'),
+    (De: 'gleich'; En: 'same'),
+    (De: 'fallend'; En: 'falling'),
+    (De: 'neu'; En: 'new'),
+    (De: '%s, %d Monate seit %s, %d Commits'; En: '%s, %d months since %s, %d commits'),
+    (De: '%s ↔ %s: %d gemeinsame Commits (%d %%; %d bzw. %d)'; En: '%s ↔ %s: %d shared commits (%d %%; %d and %d)'),
+    (De: 'Blasendiagramm'; En: 'Bubble chart'),
+    (De: 'de'; En: 'en'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cLineBreak = #13#10;
@@ -177,13 +242,13 @@ class function THotspotReport.TrendCaption(ATrend: THotspotTrend): string;
 begin
   case ATrend of
     THotspotTrend.Rising:
-      Result := 'steigend';
+      Result := cTexts[THotspotsReportText.Rising].Text;
     THotspotTrend.Steady:
-      Result := 'gleich';
+      Result := cTexts[THotspotsReportText.Same].Text;
     THotspotTrend.Falling:
-      Result := 'fallend';
+      Result := cTexts[THotspotsReportText.Falling].Text;
     THotspotTrend.New:
-      Result := 'neu';
+      Result := cTexts[THotspotsReportText.New].Text;
   else
     Result := '';
   end;
@@ -225,7 +290,7 @@ begin
   else
     mKind := '';
   end;
-  Result := Format('%s, %d Monate seit %s, %d Commits', [mKind, AResult.Months, DateText(AResult.Since),
+  Result := cTexts[THotspotsReportText.MonthsSinceCommits].Fmt([mKind, AResult.Months, DateText(AResult.Since),
     AResult.Commits]);
 end;
 
@@ -351,7 +416,7 @@ end;
 
 function CouplingLine(const APair: THotspotCoupling): string;
 begin
-  Result := Format('%s ↔ %s: %d gemeinsame Commits (%d %%; %d bzw. %d)', [APair.First.Path, APair.Second.Path,
+  Result := cTexts[THotspotsReportText.SharedCommitsAnd].Fmt([APair.First.Path, APair.Second.Path,
     APair.Shared, Round(APair.Ratio * 100), APair.FirstChanges, APair.SecondChanges]);
 end;
 
@@ -360,8 +425,8 @@ procedure AppendCouplingText(ABuilder: TStringBuilder; const AResult: THotspotRe
 var
   mIndex: Integer;
 begin
-  ABuilder.Append(Format('Änderungskopplung (%s): Paare ohne uses-Kante, die fast immer zusammen geändert ' +
-    'werden, %d von %d:', [THotspotReport.RangeText(AResult), Min(ALimit, Length(AResult.Coupling)),
+  ABuilder.Append(cTexts[THotspotsReportText.ChangeCouplingPairsWithoutUses].Fmt([THotspotReport.RangeText(AResult),
+    Min(ALimit, Length(AResult.Coupling)),
     Length(AResult.Coupling)])).Append(cLineBreak);
   for mIndex := 0 to Min(ALimit, Length(AResult.Coupling)) - 1 do
   begin
@@ -369,7 +434,7 @@ begin
   end;
   if Length(AResult.Coupling) = 0 then
   begin
-    ABuilder.Append('Keine Paare.').Append(cLineBreak);
+    ABuilder.Append(cTexts[THotspotsReportText.NoPairs].Text).Append(cLineBreak);
   end;
 end;
 
@@ -388,8 +453,8 @@ begin
   begin
     mChurn := ' · ' + mChurn + ' Zeilen';
   end;
-  Result := Format('%d. %s: Wert %s · %d Änderungen · %d Autoren · kognitiv %d · %d Zeilen%s%s · ' +
-    'zuletzt %s', [AIndex + 1, THotspotReport.EntryName(AEntry), ScoreText(AEntry.Score), AEntry.Changes.Changes,
+  Result := cTexts[THotspotsReportText.ScoreChangesAuthorsCognitiveLines].Fmt([AIndex + 1,
+    THotspotReport.EntryName(AEntry), ScoreText(AEntry.Score), AEntry.Changes.Changes,
     Length(AEntry.Changes.Authors), AEntry.Complexity, AEntry.Lines, mChurn, mTrend,
     DateText(AEntry.Changes.LastChange)]);
 end;
@@ -407,8 +472,8 @@ begin
   begin
     mLevel := 'Methoden';
   end;
-  ABuilder.Append(Format('Hotspots (%s), %s, %d von %d; Wert = normierte Änderungen × normierte kognitive ' +
-    'Komplexität:', [THotspotReport.RangeText(AResult), mLevel, Min(ALimit, Length(mEntries)), Length(mEntries)]))
+  ABuilder.Append(cTexts[THotspotsReportText.HotspotsOfScoreNormalizedChanges].Fmt([THotspotReport.RangeText(AResult),
+    mLevel, Min(ALimit, Length(mEntries)), Length(mEntries)]))
     .Append(cLineBreak);
   for mIndex := 0 to Min(ALimit, Length(mEntries)) - 1 do
   begin
@@ -416,7 +481,7 @@ begin
   end;
   if Length(mEntries) = 0 then
   begin
-    ABuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
+    ABuilder.Append(cTexts[THotspotsReportText.NoChangedUnitsInThe].Text).Append(cLineBreak);
   end;
 end;
 
@@ -461,7 +526,7 @@ begin
   begin
     ABuilder.Append('Unit');
   end;
-  ABuilder.Append(' | Wert | Änderungen | Autoren | Komplexität | Zeilen | Geändert | Trend | Zuletzt |')
+  ABuilder.Append(cTexts[THotspotsReportText.ScoreChangesAuthorsComplexityLines].Text)
     .Append(cLineBreak);
   ABuilder.Append('|---:|---|---:|---:|---:|---:|---:|---|---|---|').Append(cLineBreak);
   for mIndex := 0 to High(AEntries) do
@@ -489,12 +554,13 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.Append('# Hotspots ').Append(AResult.Title).Append(cLineBreak).Append(cLineBreak);
-    mBuilder.Append(RangeText(AResult)).Append('. Wert = normierte Änderungen × normierte kognitive Komplexität ' +
-      '(0–1); Trend gegenüber dem Stand vor 3 Monaten.').Append(cLineBreak).Append(cLineBreak);
+    mBuilder.Append(RangeText(AResult))
+      .Append(cTexts[THotspotsReportText.ScoreNormalizedChangesNormalizedCognitive].Text).Append(cLineBreak)
+      .Append(cLineBreak);
     mBuilder.Append('## Units').Append(cLineBreak).Append(cLineBreak);
     if Length(AResult.Units) = 0 then
     begin
-      mBuilder.Append('Keine geänderten Units im Zeitraum.').Append(cLineBreak);
+      mBuilder.Append(cTexts[THotspotsReportText.NoChangedUnitsInThe].Text).Append(cLineBreak);
     end
     else
     begin
@@ -505,19 +571,20 @@ begin
       mBuilder.Append(cLineBreak).Append('## Methoden').Append(cLineBreak).Append(cLineBreak);
       if Length(AResult.Methods) = 0 then
       begin
-        mBuilder.Append('Keine geänderten Methoden im Zeitraum.').Append(cLineBreak);
+        mBuilder.Append(cTexts[THotspotsReportText.NoChangedMethodsInThe].Text).Append(cLineBreak);
       end
       else
       begin
         MarkdownTable(mBuilder, AResult.Methods, True);
       end;
     end;
-    mBuilder.Append(cLineBreak).Append('## Änderungskopplung').Append(cLineBreak).Append(cLineBreak);
-    mBuilder.Append('Paare ohne uses-Kante, die fast immer zusammen geändert werden.').Append(cLineBreak)
+    mBuilder.Append(cLineBreak).Append(cTexts[THotspotsReportText.ChangeCoupling].Text).Append(cLineBreak)
+      .Append(cLineBreak);
+    mBuilder.Append(cTexts[THotspotsReportText.PairsWithoutUsesEdgeThat].Text).Append(cLineBreak)
       .Append(cLineBreak);
     if Length(AResult.Coupling) = 0 then
     begin
-      mBuilder.Append('Keine Paare.').Append(cLineBreak);
+      mBuilder.Append(cTexts[THotspotsReportText.NoPairs].Text).Append(cLineBreak);
     end
     else
     begin
@@ -569,16 +636,16 @@ begin
     mMaxComplexity := Max(mMaxComplexity, AEntries[mIndex].Complexity);
     mMaxLines := Max(mMaxLines, AEntries[mIndex].Lines);
   end;
-  ABuilder.Append(Format('<svg class="chart" viewBox="0 0 %d %d" role="img" aria-label="Blasendiagramm">',
-    [cWidth, cHeight])).Append(cLineBreak);
+  ABuilder.Append(Format('<svg class="chart" viewBox="0 0 %d %d" role="img" aria-label="%s">',
+    [cWidth, cHeight, cTexts[THotspotsReportText.BubbleChart].Text])).Append(cLineBreak);
   ABuilder.Append(Format('<line x1="%d" y1="%d" x2="%d" y2="%d" class="axis"/>', [cLeft, cHeight - cBottom,
     cWidth - cRight, cHeight - cBottom]));
   ABuilder.Append(Format('<line x1="%d" y1="%d" x2="%d" y2="%d" class="axis"/>', [cLeft, cTop, cLeft,
     cHeight - cBottom])).Append(cLineBreak);
-  ABuilder.Append(Format('<text x="%d" y="%d" class="label" text-anchor="middle">Änderungen (0–%d)</text>',
-    [(cLeft + cWidth - cRight) div 2, cHeight - 10, mMaxChanges]));
-  ABuilder.Append(Format('<text x="14" y="%d" class="label" text-anchor="middle" transform="rotate(-90 14 %d)">' +
-    'Komplexität (0–%d)</text>', [(cTop + cHeight - cBottom) div 2, (cTop + cHeight - cBottom) div 2,
+  ABuilder.Append(cTexts[THotspotsReportText.TextXYClassLabel].Fmt([(cLeft + cWidth - cRight) div 2, cHeight - 10,
+    mMaxChanges]));
+  ABuilder.Append(cTexts[THotspotsReportText.TextX14YClass].Fmt([(cTop + cHeight - cBottom) div 2, (cTop +
+    cHeight - cBottom) div 2,
     mMaxComplexity])).Append(cLineBreak);
   // Größte Blasen zuerst, damit kleine darüber sichtbar bleiben.
   for mIndex := mCount - 1 downto 0 do
@@ -587,8 +654,8 @@ begin
     mX := cLeft + (cWidth - cLeft - cRight) * mEntry.Changes.Changes / mMaxChanges;
     mY := (cHeight - cBottom) - (cHeight - cTop - cBottom) * mEntry.Complexity / mMaxComplexity;
     mRadius := 3 + 22 * Sqrt(mEntry.Lines / mMaxLines);
-    ABuilder.Append(Format('<circle cx="%s" cy="%s" r="%s" fill="%s"><title>%s: %d Änderungen, kognitiv %d, ' +
-      '%d Zeilen, Wert %s</title></circle>', [Coordinate(mX), Coordinate(mY), Coordinate(mRadius),
+    ABuilder.Append(cTexts[THotspotsReportText.CircleCxCyRFill].Fmt([Coordinate(mX), Coordinate(mY),
+      Coordinate(mRadius),
       ScoreColor(mEntry.Score), HtmlEscape(THotspotReport.EntryName(mEntry)), mEntry.Changes.Changes,
       mEntry.Complexity, mEntry.Lines, ScoreText(mEntry.Score)])).Append(cLineBreak);
   end;
@@ -610,8 +677,7 @@ begin
   begin
     ABuilder.Append('Unit');
   end;
-  ABuilder.Append('</th><th>Wert</th><th>Änderungen</th><th>Autoren</th><th>Komplexität</th><th>Zeilen</th>' +
-    '<th>Geändert</th><th>Trend</th><th>Zuletzt</th></tr></thead><tbody>').Append(cLineBreak);
+  ABuilder.Append(cTexts[THotspotsReportText.ThThScoreThTh].Text).Append(cLineBreak);
   for mIndex := 0 to High(AEntries) do
   begin
     mEntry := AEntries[mIndex];
@@ -636,7 +702,8 @@ end;
 /// <summary>Kopf der HTML-Seite bis zur Erläuterung unter dem Titel.</summary>
 procedure HtmlHead(ABuilder: TStringBuilder; const AResult: THotspotResult);
 begin
-  ABuilder.Append('<!DOCTYPE html>').Append(cLineBreak).Append('<html lang="de"><head><meta charset="utf-8">')
+  ABuilder.Append('<!DOCTYPE html>').Append(cLineBreak).Append('<html lang="')
+    .Append(cTexts[THotspotsReportText.HtmlLanguage].Text).Append('"><head><meta charset="utf-8">')
     .Append('<meta name="viewport" content="width=device-width, initial-scale=1">')
     .Append('<title>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</title>').Append(cLineBreak);
   ABuilder.Append('<style>:root{color-scheme:light dark;--fg:#1f2328;--bg:#fff;--line:#d0d7de;--muted:#656d76}' +
@@ -649,9 +716,8 @@ begin
     'td:nth-child(2){text-align:left}.path{color:var(--muted);font-size:12px}.note{color:var(--muted)}' +
     '</style></head><body>').Append(cLineBreak);
   ABuilder.Append('<h1>Hotspots ').Append(HtmlEscape(AResult.Title)).Append('</h1>').Append(cLineBreak);
-  ABuilder.Append('<p class="note">').Append(HtmlEscape(THotspotReport.RangeText(AResult))).Append('. Wert = ' +
-    'normierte Änderungen × normierte kognitive Komplexität (0–1); Blasengröße = Zeilen; Trend gegenüber dem ' +
-    'Stand vor 3 Monaten.</p>').Append(cLineBreak);
+  ABuilder.Append('<p class="note">').Append(HtmlEscape(THotspotReport.RangeText(AResult)))
+    .Append(cTexts[THotspotsReportText.ScoreNormalizedChangesNormalizedCognitive2].Text).Append(cLineBreak);
 end;
 
 /// <summary>Abschnitt mit Überschrift ATitle und Tabelle bzw. AEmpty ohne Einträge.</summary>
@@ -674,12 +740,12 @@ procedure HtmlCoupling(ABuilder: TStringBuilder; const ACoupling: TArray<THotspo
 var
   mPair: THotspotCoupling;
 begin
-  ABuilder.Append('<h2>Änderungskopplung</h2>').Append(cLineBreak);
-  ABuilder.Append('<p class="note">Paare ohne uses-Kante, die fast immer zusammen geändert werden.</p>')
+  ABuilder.Append(cTexts[THotspotsReportText.H2ChangeCouplingH2].Text).Append(cLineBreak);
+  ABuilder.Append(cTexts[THotspotsReportText.PClassNotePairsWithout].Text)
     .Append(cLineBreak);
   if Length(ACoupling) = 0 then
   begin
-    ABuilder.Append('<p>Keine Paare.</p>').Append(cLineBreak);
+    ABuilder.Append(cTexts[THotspotsReportText.PNoPairsP].Text).Append(cLineBreak);
     Exit;
   end;
   ABuilder.Append('<ul>');
@@ -698,10 +764,10 @@ begin
   try
     HtmlHead(mBuilder, AResult);
     HtmlChart(mBuilder, Entries(AResult));
-    HtmlSection(mBuilder, 'Units', 'Keine geänderten Units im Zeitraum.', AResult.Units, False);
+    HtmlSection(mBuilder, 'Units', cTexts[THotspotsReportText.NoChangedUnitsInThe].Text, AResult.Units, False);
     if AResult.Level = THotspotLevel.Methods then
     begin
-      HtmlSection(mBuilder, 'Methoden', 'Keine geänderten Methoden im Zeitraum.', AResult.Methods, True);
+      HtmlSection(mBuilder, 'Methoden', cTexts[THotspotsReportText.NoChangedMethodsInThe].Text, AResult.Methods, True);
     end;
     HtmlCoupling(mBuilder, AResult.Coupling);
     mBuilder.Append('</body></html>').Append(cLineBreak);
@@ -729,5 +795,8 @@ begin
     Result := Markdown(AResult);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Hotspots.Report', cTexts);
 
 end.

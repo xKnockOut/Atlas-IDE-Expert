@@ -48,7 +48,7 @@ type
     /// SetEditorSettings setzen.</summary>
     procedure SetClientLocale(const ALocale: string);
     function Highlight(const AUri: string): THighlightSettings;
-    /// <summary>Inlay-Hinweise; die Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
+    /// <summary>Inlay-Hinweise; die Marke „braucht kein Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
     /// </summary>
     function InlayHints(const AUri: string): TInlayHintSettings;
     function Hints(const AUri: string): THintSettings;

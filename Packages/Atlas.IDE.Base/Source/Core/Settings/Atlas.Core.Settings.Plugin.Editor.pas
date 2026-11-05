@@ -158,7 +158,7 @@ type
     InlayDefineHints: Boolean;
     /// <summary>Code hinter Steuerzeichen wie ^C in Konstanten („#3“, #862, inlayHints.controlChars).</summary>
     InlayCharHints: Boolean;
-    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686,
+    /// <summary>Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686,
     /// refactoring.methodKindMarker).</summary>
     InlayMethodHints: Boolean;
     /// <summary>Persönliche Notizen an Codezeilen (#545): Symbol in der Rinne, Befehle und Liste; gespeichert in
