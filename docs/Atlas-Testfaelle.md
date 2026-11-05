@@ -9397,6 +9397,10 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA19 | Diagnosemodus an; in einer sehr großen Unit (über 20.000 Zeilen) tippen, scrollen, Datei wechseln, Lesezeichen und Rekursionssymbole an | Tippen flüssig; Lens, Rand, Lesezeichen erscheinen nach der Tipp-Pause wie vorher; nach dem Speichern in einem anderen Editor stimmen die Marken |
 | AA20 | Fenster „Compiler-Schalter“ zu und Statusfeld der Schalter aus, eine Minute arbeiten; dann Fenster öffnen | Im Reiter „Hauptthread“ wachsen die Aufrufe von „Compile-Ereignisse“ ohne Build nicht mehr um 20 je Sekunde; das Fenster füllt sich sofort |
 | AA21 | Zwei große Formulare im Designer offen, im einen eine Komponente verschieben | Nur dieses Formular geht an den Server (Diagnoselog); „Formulare“ im Hauptthread deutlich unter 187 ms; Umbenennen eines Handlers in beiden Formularen wirkt weiter |
+| AA22 | Server mit diesem Stand; die größte Unit des Projekts (über 30.000 Zeilen) öffnen und einige Minuten darin arbeiten | Keine Mitteilung „Absturzfall gesichert – Der Server hat die Anfrage abgebrochen: textDocument/codeAction bzw. textDocument/diagnostic“; Fenster „Atlas-Prüfung“ zeigt die Befunde der Unit spätestens einige Sekunden nach der Tipp-Pause (**Abnahme**) |
+| AA23 | Wie AA22, Task-Manager offen | AtlasServer.exe fällt nach der Prüfung wieder auf etwa 0 % CPU; kein dauernder Lauf je Cursorbewegung; Speicher wächst nicht weiter |
+| AA24 | Wie AA22: Cursor auf Zeilen mit und ohne Befund, Hover über Bezeichner | Glühbirne erscheint (während einer laufenden Prüfung höchstens nach etwa 1,5 s, dann ohne Regelkorrekturen); Hover erscheint; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` ohne Zeitlimit |
+| AA25 | Während die Prüfung von AA22 läuft, weiter tippen | Die Befunde folgen dem neuen Stand; kein alter Stand bleibt stehen |
 
 ## Prüfregeln vollständig im Modul (#1755)
 
