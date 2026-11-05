@@ -1158,6 +1158,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.AccountName.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.AccountName.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
