@@ -117,9 +117,9 @@ type
     function Skipped: TArray<TCrashSkipEntry>;
     /// <summary>%LOCALAPPDATA%\Atlas\crash (unter Linux im Cache-Ordner des Benutzers).</summary>
     class function DefaultRoot: string; static;
-    /// <summary>Text der Fehlerantwort beim Überspringen.</summary>
     /// <summary>Anfang der Meldung an den Client für eine übersprungene Anfrage.</summary>
     class function SkipMessage: string; static;
+    /// <summary>Text der Fehlerantwort beim Überspringen.</summary>
     class function SkipText(const AEntry: TCrashSkipEntry): string; static;
     property Root: string read FRoot;
     /// <summary>server.crashCases: Fälle sichern und melden.</summary>
