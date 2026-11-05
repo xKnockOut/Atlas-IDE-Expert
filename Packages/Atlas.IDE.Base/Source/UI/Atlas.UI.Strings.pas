@@ -757,7 +757,10 @@ type
     SettingsDiagnosticPluginTimings, SettingsDiagnosticSlowMs,
     // Aktualisierung der Prüfung (problems.update, problems.liveDelayMs).
     ProblemsUpdateLive, ProblemsUpdateSave, ProblemsUpdateManual, SettingsProblemsLiveDelay, ProblemsManual,
-    ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick);
+    ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick,
+    // Lokale Routinen abheben (#1788).
+    SettingsNestedRoutines, SettingsNestedRoutinesOuter, SettingsNestedRoutinesDeeper, SettingsNestedRoutinesColor,
+    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark);
 
   TAtlasStrings = class
   private class var
@@ -2624,7 +2627,14 @@ const
      'Datei jetzt prüfen',
      'manuell',
      'Prüft nur auf Anforderung (problems.update manual).',
-     'Klick: Datei jetzt prüfen'),
+     'Klick: Datei jetzt prüfen',
+     'Lokale Routinen färben:',
+     'wie die äußere Routine',
+     'eine Stufe tiefer',
+     'in eigener Farbe, Blocklinie gestrichelt',
+     'Zeilen lokaler Routinen hinterlegen',
+     'Lokale Routinen im hellen Thema',
+     'Lokale Routinen im dunklen Thema'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3770,7 +3780,7 @@ const
      'Hide status bar', 'live', 'on save', 'checking …', 'checked %s ago', '%d s', '%d min', '%d h',
      '%d lines', 'CC %d', '%s (limit %d)',
      'In this unit: %d errors, %d warnings, %d hints. Click: next finding of this kind, double-click: ' +
-     '“Atlas check” for this unit.',
+     '“Atlas Findings” for this unit.',
      'Checks while you type after the delay problems.liveDelayMs (problems.update live).',
      'Checks only after saving (problems.update save).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
@@ -4409,7 +4419,14 @@ const
      'Check file now',
      'manual',
      'Checks only on request (problems.update manual).',
-     'Click: check this file now'));
+     'Click: check this file now',
+     'Colour local routines:',
+     'like the outer routine',
+     'one level deeper',
+     'in their own colour, dashed guide',
+     'Shade the lines of local routines',
+     'Local routines in the light theme',
+     'Local routines in the dark theme'));
 
 { TAtlasStrings }
 

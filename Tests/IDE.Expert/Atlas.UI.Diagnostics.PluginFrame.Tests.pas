@@ -3,7 +3,8 @@
 // Diagnose-Fenster mit den Reitern des Plugins: Seiten wechseln, Hinweis bei
 // ausgeschalteter Messung, Leiste mit Belegung und Schwelle, Filter „Nur X
 // zeigen“, Abschalten und Zeile kopieren über das Kontextmenü, die Wahl folgt
-// der Funktion über einen neuen Stand, Zeichnen ohne Fehler.
+// der Funktion über einen neuen Stand, Zeichnen ohne Fehler, Knöpfe der Leiste
+// in einer zweiten Zeile, wenn das Fenster schmal ist.
 
 interface
 
@@ -31,12 +32,17 @@ type
     procedure SelectionFollowsFeature;
     [Test]
     procedure PaintsAllPages;
+    [Test]
+    procedure BarTwoRowsRule;
+    [Test]
+    procedure NarrowBarPutsButtonsBelow;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Types,
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
@@ -282,6 +288,52 @@ begin
     end;
     Application.ProcessMessages;
     Assert.AreEqual(Ord(High(TAtlasDiagnosticPage)), Ord(mFrame.ActivePage));
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasDiagnosticsFrameTests.BarTwoRowsRule;
+begin
+  Assert.IsFalse(TAtlasDiagnosticBar.NeedsTwoRows(500, 300, 800), 'passt nebeneinander');
+  Assert.IsFalse(TAtlasDiagnosticBar.NeedsTwoRows(500, 300, 900), 'Platz übrig');
+  Assert.IsTrue(TAtlasDiagnosticBar.NeedsTwoRows(500, 300, 799), 'ein Punkt zu schmal');
+  Assert.IsFalse(TAtlasDiagnosticBar.NeedsTwoRows(500, 300, 0), 'ohne Breite (noch nicht angeordnet)');
+end;
+
+procedure TAtlasDiagnosticsFrameTests.NarrowBarPutsButtonsBelow;
+var
+  mForm: TForm;
+  mFrame: TAtlasDiagnosticsFrame;
+  mBar: TAtlasDiagnosticBar;
+  mButtons, mSpark, mThreshold: TRect;
+  mRowHeight: Integer;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mFrame := NewFrame(mForm);
+    mFrame.SetSnapshot(Snapshot, 0);
+    mForm.Show;
+    mForm.ClientWidth := 1400;
+    Application.ProcessMessages;
+    mBar := mFrame.Bar;
+    mRowHeight := mBar.Height;
+    Assert.AreEqual(Ord(alRight), Ord(mBar.Buttons.Align), 'breit: Knöpfe rechts');
+    // Schmal wie das Fenster in seiner Startgröße: Die Knöpfe lagen über Verlauf und Schwelle.
+    mForm.ClientWidth := 520;
+    Application.ProcessMessages;
+    Assert.AreEqual(Ord(alBottom), Ord(mBar.Buttons.Align), 'schmal: Knöpfe darunter');
+    Assert.AreEqual(2 * mRowHeight, mBar.Height);
+    mButtons := mBar.Buttons.BoundsRect;
+    mSpark := mBar.Spark.BoundsRect;
+    mThreshold := mBar.Threshold.BoundsRect;
+    Assert.IsFalse(mButtons.IntersectsWith(mSpark), 'Verlauf frei');
+    Assert.IsFalse(mButtons.IntersectsWith(mThreshold), 'Schwelle frei');
+    Assert.IsTrue(mBar.PauseButton.Visible and (mBar.PauseButton.Width > 0));
+    mForm.ClientWidth := 1400;
+    Application.ProcessMessages;
+    Assert.AreEqual(Ord(alRight), Ord(mBar.Buttons.Align), 'wieder breit: eine Zeile');
+    Assert.AreEqual(mRowHeight, mBar.Height);
   finally
     mForm.Free;
   end;

@@ -63,6 +63,8 @@ type
     Badges: array[TAtlasBadgeKind] of TAtlasBadgeColors;
     /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
     Pairs: TAtlasPairColors;
+    /// <summary>Eigene Farbe lokaler Routinen (#1788, highlight.nestedRoutines = color).</summary>
+    NestedRoutine: TAtlasColor;
     /// <summary>Platzhalter von Format und ihre Argumente (#451), halb durchsichtig über dem Text.</summary>
     Placeholders: TAtlasPlaceholderColors;
     /// <summary>Zustandspunkte, Plaketten und Befundsymbole (#1255); nicht Add/Warn/Error, die für Text gedacht
@@ -70,6 +72,11 @@ type
     Signals: TAtlasSignals;
     /// <summary>Eigene Paarfarben aus den Einstellungen: leer oder ungültig = Palette.</summary>
     function WithPairs(const ACustom: string): TAtlasColors;
+    /// <summary>Eigene Farbe lokaler Routinen aus den Einstellungen (#1788): „#RRGGBB“; leer oder ungültig =
+    /// Palette.</summary>
+    function WithNestedRoutine(const ACustom: string): TAtlasColors;
+    /// <summary>True, wenn AText genau eine Farbe „#RRGGBB“ ist; AColor erhält sie (#1788).</summary>
+    class function ParseColor(const AText: string; out AColor: TAtlasColor): Boolean; static;
     /// <summary>„#RRGGBB,…“ mit genau fünf Farben in Reihenfolge der Tiefe.</summary>
     class function ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean; static;
     class function PairsText(const APairs: TAtlasPairColors): string; static;
@@ -162,6 +169,8 @@ begin
   Result.Pairs[2] := Hex('#007C8A');
   Result.Pairs[3] := Hex('#C000E0');
   Result.Pairs[4] := Hex('#008700');
+  // Lokale Routinen (#1788): Bernstein, keiner der Paarfarben ähnlich, gegen Weiß über 4,5 : 1.
+  Result.NestedRoutine := Hex('#A85A00');
   // Sechs deutlich verschiedene Töne für die Platzhalter (#451); Rot fehlt, es bleibt den Fehlern.
   Result.Placeholders[0] := Hex('#0071E3');
   Result.Placeholders[1] := Hex('#D86A00');
@@ -214,6 +223,7 @@ begin
   Result.Pairs[2] := Hex('#00A4A4');
   Result.Pairs[3] := Hex('#E250FF');
   Result.Pairs[4] := Hex('#24AA24');
+  Result.NestedRoutine := Hex('#E8A33D');
   Result.Placeholders[0] := Hex('#3C94FF');
   Result.Placeholders[1] := Hex('#FF9A3D');
   Result.Placeholders[2] := Hex('#24AA24');
@@ -232,6 +242,37 @@ begin
   begin
     Result.Pairs := Custom;
   end;
+end;
+
+function TAtlasColors.WithNestedRoutine(const ACustom: string): TAtlasColors;
+var
+  mColor: TAtlasColor;
+begin
+  Result := Self;
+  if ParseColor(ACustom, mColor) then
+  begin
+    Result.NestedRoutine := mColor;
+  end;
+end;
+
+class function TAtlasColors.ParseColor(const AText: string; out AColor: TAtlasColor): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  AColor := 0;
+  mText := Trim(AText);
+  if (Length(mText) <> 7) or (mText[1] <> '#') then
+  begin
+    Exit;
+  end;
+  try
+    AColor := Hex(mText);
+  except
+    on EConvertError do
+      Exit;
+  end;
+  Result := True;
 end;
 
 class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;

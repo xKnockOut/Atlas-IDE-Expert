@@ -25,6 +25,13 @@ type
     procedure Cancel;
     /// <summary>Abbruch, weil das Dokument sich geändert hat.</summary>
     procedure CancelModified;
+    /// <summary>Abbruch, weil das Zeitlimit abgelaufen ist (Watchdog); ein späteres Cancel überschreibt ihn.
+    /// </summary>
+    procedure Expire;
+    /// <summary>True, wenn nur das Zeitlimit abgelaufen ist: kein ausdrücklicher Abbruch ($/cancelRequest, Ende
+    /// der Verbindung), kein geändertes Dokument. Eine Arbeit, deren Ergebnis gespeichert wird, darf dann zu Ende
+    /// laufen.</summary>
+    function OnlyExpired: Boolean;
     /// <summary>Beansprucht die einzige Antwort auf die Anfrage: True genau beim ersten Aufruf (Worker oder
     /// Watchdog, Code-Review A-06). Threadsicher.</summary>
     function TryAnswer: Boolean;
@@ -32,7 +39,7 @@ type
 
   TJsonRpcCancellation = class(TInterfacedObject, IJsonRpcCancellationToken, IJsonRpcCancellationSource)
   private
-    /// <summary>0 = offen, 1 = abgebrochen, 2 = Dokument geändert.</summary>
+    /// <summary>0 = offen, 1 = abgebrochen, 2 = Dokument geändert, 3 = Zeitlimit abgelaufen.</summary>
     FCancelled: Integer;
     /// <summary>1, sobald jemand die Antwort beansprucht hat.</summary>
     FAnswered: Integer;
@@ -41,7 +48,25 @@ type
     procedure ThrowIfCancellationRequested;
     procedure Cancel;
     procedure CancelModified;
+    procedure Expire;
+    function OnlyExpired: Boolean;
     function TryAnswer: Boolean;
+  end;
+
+  /// <summary>Signal einer Anfrage ohne ihr bloßes Zeitlimit (#1761): für Arbeit, deren Ergebnis gespeichert wird
+  /// und die nach dem Zeitlimit zu Ende laufen darf, auch für tiefe Aufrufe über TJsonRpcCurrentRequest.
+  /// Ausdrücklicher Abbruch und geändertes Dokument gelten weiter.</summary>
+  TJsonRpcPastTimeout = class(TInterfacedObject, IJsonRpcCancellationToken)
+  private
+    FRequest: IJsonRpcCancellationToken;
+  public
+    /// <summary>ARequest darf nil sein (nie abgebrochen).</summary>
+    constructor Create(const ARequest: IJsonRpcCancellationToken);
+    function IsCancellationRequested: Boolean;
+    procedure ThrowIfCancellationRequested;
+    /// <summary>True, wenn bei ARequest nur das Zeitlimit abgelaufen ist (IJsonRpcCancellationSource.OnlyExpired).
+    /// </summary>
+    class function OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean; static;
   end;
 
   IJsonRpcPendingRequests = interface
@@ -147,7 +172,7 @@ end;
 procedure TJsonRpcCancellation.ThrowIfCancellationRequested;
 begin
   case TInterlocked.CompareExchange(FCancelled, 0, 0) of
-    1:
+    1, 3:
       raise EJsonRpcRequestCancelled.Create;
     2:
       raise EJsonRpcContentModified.Create;
@@ -161,13 +186,54 @@ end;
 
 procedure TJsonRpcCancellation.CancelModified;
 begin
-  // Ein ausdrücklicher Abbruch bleibt ein Abbruch.
-  TInterlocked.CompareExchange(FCancelled, 2, 0);
+  // Ein ausdrücklicher Abbruch bleibt ein Abbruch; ein geändertes Dokument wiegt schwerer als das Zeitlimit.
+  if TInterlocked.CompareExchange(FCancelled, 2, 0) = 3 then
+  begin
+    TInterlocked.CompareExchange(FCancelled, 2, 3);
+  end;
+end;
+
+procedure TJsonRpcCancellation.Expire;
+begin
+  TInterlocked.CompareExchange(FCancelled, 3, 0);
+end;
+
+function TJsonRpcCancellation.OnlyExpired: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FCancelled, 0, 0) = 3;
 end;
 
 function TJsonRpcCancellation.TryAnswer: Boolean;
 begin
   Result := TInterlocked.CompareExchange(FAnswered, 1, 0) = 0;
+end;
+
+{ TJsonRpcPastTimeout }
+
+constructor TJsonRpcPastTimeout.Create(const ARequest: IJsonRpcCancellationToken);
+begin
+  inherited Create;
+  FRequest := ARequest;
+end;
+
+class function TJsonRpcPastTimeout.OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean;
+var
+  mSource: IJsonRpcCancellationSource;
+begin
+  Result := Supports(ARequest, IJsonRpcCancellationSource, mSource) and mSource.OnlyExpired;
+end;
+
+function TJsonRpcPastTimeout.IsCancellationRequested: Boolean;
+begin
+  Result := (FRequest <> nil) and FRequest.IsCancellationRequested and not OnlyExpired(FRequest);
+end;
+
+procedure TJsonRpcPastTimeout.ThrowIfCancellationRequested;
+begin
+  if IsCancellationRequested then
+  begin
+    FRequest.ThrowIfCancellationRequested;
+  end;
 end;
 
 { TJsonRpcPendingRequests }
@@ -372,7 +438,7 @@ begin
   begin
     Exit(False);
   end;
-  Source.Cancel;
+  Source.Expire;
   Result := Source.TryAnswer;
 end;
 

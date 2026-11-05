@@ -16,6 +16,13 @@ type
   private
     FSymbols: TList<TIndexSymbol>;
     FReader: TIndexTokenReader;
+    /// <summary>Positionen der Methoden und Routinen in FSymbols je "typ.name" (klein), bis FIndexed
+    /// eingetragen. Vorher suchte jede Implementierung alle Symbole ab: quadratisch in der Länge der Unit.
+    /// </summary>
+    FRoutines: TObjectDictionary<string, TList<Integer>>;
+    FIndexed: Integer;
+    /// <summary>Positionen der Routinen namens AName in AContainer; nil ohne.</summary>
+    function RoutinesNamed(const AName, AContainer: string): TList<Integer>;
     function IsCandidate(ANode: TSyntaxNode): Boolean;
     /// <summary>Typparameter des Typs AContainer (TList&lt;T&gt; → 'T'), '' ohne.</summary>
     function ContainerParams(const AContainer: string): string;
@@ -30,6 +37,7 @@ type
     procedure AddRoutine(ANode: TSyntaxNode);
   public
     constructor Create(ASymbols: TList<TIndexSymbol>; AReader: TIndexTokenReader);
+    destructor Destroy; override;
     /// <summary>Trägt InlineRefs an Deklaration und Implementierung der inline-Routinen aus ASection ein.</summary>
     procedure Add(ASection: TSyntaxNode);
     /// <summary>Verweise des Rumpfs ANode einer inline-Routine; nil, wenn die Routine nicht einbettbar ist.
@@ -393,6 +401,46 @@ begin
   inherited Create;
   FSymbols := ASymbols;
   FReader := AReader;
+  FRoutines := TObjectDictionary<string, TList<Integer>>.Create([doOwnsValues]);
+end;
+
+destructor TIndexInlineRefs.Destroy;
+begin
+  FRoutines.Free;
+  inherited Destroy;
+end;
+
+function RoutineKey(const AName, AContainer: string): string;
+begin
+  Result := LowerCase(AContainer) + '.' + LowerCase(AName);
+end;
+
+function TIndexInlineRefs.RoutinesNamed(const AName, AContainer: string): TList<Integer>;
+var
+  mSymbol: TIndexSymbol;
+  mKey: string;
+  mList: TList<Integer>;
+begin
+  // Neu hinzugekommene Symbole nachtragen; die Positionen bleiben gleich (nur angehängt).
+  while FIndexed < FSymbols.Count do
+  begin
+    mSymbol := FSymbols[FIndexed];
+    if mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine] then
+    begin
+      mKey := RoutineKey(mSymbol.Name, mSymbol.Container);
+      if not FRoutines.TryGetValue(mKey, mList) then
+      begin
+        mList := TList<Integer>.Create;
+        FRoutines.Add(mKey, mList);
+      end;
+      mList.Add(FIndexed);
+    end;
+    Inc(FIndexed);
+  end;
+  if not FRoutines.TryGetValue(RoutineKey(AName, AContainer), Result) then
+  begin
+    Result := nil;
+  end;
 end;
 
 function TIndexInlineRefs.RefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
@@ -448,10 +496,16 @@ var
   mPosition, mMin, mMax: Integer;
   mTypes: TArray<string>;
   mSymbol: TIndexSymbol;
+  mCandidates: TList<Integer>;
 begin
-  TIndexTypeText.ParamInfo(ANode.FindChild(TSyntaxKind.RoutineHeader), mMin, mMax, mTypes);
   Result := -1;
-  for mPosition := 0 to FSymbols.Count - 1 do
+  mCandidates := RoutinesNamed(AName, AContainer);
+  if mCandidates = nil then
+  begin
+    Exit;
+  end;
+  TIndexTypeText.ParamInfo(ANode.FindChild(TSyntaxKind.RoutineHeader), mMin, mMax, mTypes);
+  for mPosition in mCandidates do
   begin
     mSymbol := FSymbols[mPosition];
     if IsSameRoutine(mSymbol, AName, AContainer) and not (mSymbol.Range.StartPos = ANode.StartPos) and
