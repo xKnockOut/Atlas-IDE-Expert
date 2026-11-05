@@ -26,6 +26,8 @@ type
     procedure BugReportNotesClearNames;
     [Test]
     procedure NumericIndexLineStaysReadable;
+    [Test]
+    procedure UmlautsBeforeMarksKeepTheLine;
   end;
 
 implementation
@@ -256,6 +258,17 @@ begin
     Assert.AreEqual(mLine, mAnonymizer.Anonymize(mLine), 'Zahlenzeile unverändert');
     Assert.IsTrue(TRegEx.IsMatch(mLine, cIndexLinePattern), mLine);
   end;
+end;
+
+procedure TAnonymityTests.UmlautsBeforeMarksKeepTheLine;
+var
+  mAnonymizer: ILogAnonymizer;
+begin
+  // Unter FPC zählte TMatch.Index hinter Umlauten Bytes statt Zeichen: „fürrnname1: DDelphi“ (#1751).
+  mAnonymizer := NewAnonymizer;
+  Assert.AreEqual('Einstellungen für name#1: Delphi 12, Projekt datei#1.dproj, 0 Ausschlüsse',
+    mAnonymizer.Anonymize('Einstellungen für ' + TLogMarks.Name(cMarkerProject) + ': Delphi 12, Projekt ' +
+    TLogMarks.Path(cRoot + '\' + cMarkerProject + '.dproj') + ', 0 Ausschlüsse'));
 end;
 
 initialization
