@@ -81,6 +81,7 @@ begin
   mPreview := TAtlasServerDiagnostics.Preview(TAtlasServerDiagnostics.Build('# Bericht',
     [TAtlasPackageFile.Create('server/protokoll.txt', TAtlasPackagePart.Logs,
     StringOfChar('a', TAtlasServerDiagnostics.PreviewChars + 10) + 'ENDE')]), '(gekürzt)');
+  Assert.IsTrue(mPreview.StartsWith('Dateien im Paket:' + sLineBreak + '- fehlerbericht.md (9 Bytes)'), mPreview);
   Assert.IsTrue(mPreview.Contains('== fehlerbericht.md (9 Bytes) =='), mPreview);
   Assert.IsTrue(mPreview.Contains('== server/protokoll.txt ('), mPreview);
   Assert.IsTrue(mPreview.Contains('(gekürzt)'));

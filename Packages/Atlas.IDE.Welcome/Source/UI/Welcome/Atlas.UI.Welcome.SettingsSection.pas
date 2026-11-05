@@ -64,6 +64,8 @@ type
 
   /// <summary>Start, Layout, Kopf, Suche und „Neu in Atlas“.</summary>
   TAtlasWelcomeStartView = record
+    /// <summary>Schalter des Moduls (welcomePage.enabled); früher in Base (#1456).</summary>
+    Enabled: TCheckBox;
     IdePage: TCheckBox;
     Layout: TCheckBox;
     OpenOnStart: TCheckBox;
@@ -207,7 +209,6 @@ const
   cBuildKey = 'welcomePage.quickActions.buildKey';
   cTestKey = 'welcomePage.quickActions.testKey';
   cIssuesTrackerKey = 'issues.tracker';
-  cIssuesEnabledKey = 'issues.enabled';
 
 { TAtlasWelcomeSettingsHooks }
 
@@ -225,10 +226,10 @@ end;
 
 procedure TAtlasWelcomeSettingsHooks.IssuesLinkClick(Sender: TObject);
 begin
-  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter. Ohne Modul Tracker bleibt dessen Schalter.
-  if (FHost <> nil) and not FHost.Reveal(cIssuesTrackerKey) then
+  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter. Ohne Modul Tracker ist der Knopf verborgen.
+  if FHost <> nil then
   begin
-    FHost.Reveal(cIssuesEnabledKey);
+    FHost.Reveal(cIssuesTrackerKey);
   end;
 end;
 
@@ -405,6 +406,7 @@ end;
 procedure TAtlasWelcomeSettingsSection.BuildStart;
 begin
   // Willkommensseite der IDE und Fenster „Atlas-Start“ unabhängig (#761); Atlas-Layout der IDE (#753).
+  FStart.Enabled := FHost.AddModuleSwitch('welcomePage.enabled') as TCheckBox;
   FStart.IdePage := Check('welcomePage.ideWelcomePage', TAtlasWelcomeTextId.SettingsWelcomeIdePage);
   FStart.Layout := OwnCheck(cLayoutKey, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayout));
   FStart.OpenOnStart := Check('welcomePage.openOnStart', TAtlasWelcomeTextId.SettingsWelcomeOpenOnStart);
@@ -655,7 +657,13 @@ end;
 
 procedure TAtlasWelcomeSettingsSection.WindowReady;
 begin
-  // Keine Listen: nichts nachzuholen.
+  // Keine Listen. Jetzt sind alle Abschnitte gebaut: Den Weg zur Seite Issue-Tracker gibt es nur mit dem Modul
+  // Tracker (#1456).
+  if FClosed or (FHost = nil) then
+  begin
+    Exit;
+  end;
+  FTiles.IssuesLink.Visible := FHost.Shows(cIssuesTrackerKey);
 end;
 
 function TAtlasWelcomeSettingsSection.Show(const AKey, AArgument: string): Boolean;

@@ -62,7 +62,8 @@ uses
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Lsp.Adapters.LogMessageSink,
   Shell.Platform,
-  Shell.Diagnostics;
+  Shell.Diagnostics,
+  Atlas.Text.LogMarks;
 
 class function TShellStdio.CreateTraceStream(const AFileName, AFallbackTag: string; out AActualName: string): TStream;
 var
@@ -127,11 +128,13 @@ begin
     Result := ATracing;
     if not SameText(mTraceName, AOptions.TraceFile) then
     begin
-      ALogger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [AOptions.TraceFile, mTraceName]));
+      ALogger.Info(Format('Mitschnitt "%s" ist belegt, schreibe nach "%s"', [TLogMarks.Path(AOptions.TraceFile),
+        TLogMarks.Path(mTraceName)]));
     end;
   except
     on E: Exception do
-      ALogger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [AOptions.TraceFile, E.Message]));
+      ALogger.Error(Format('Mitschnitt "%s" kann nicht angelegt werden: %s', [TLogMarks.Path(AOptions.TraceFile),
+        TLogMarks.Text(E.Message)]));
   end;
 end;
 
@@ -140,7 +143,7 @@ begin
   ATracing.OnFailed :=
     procedure(const AReason: string)
     begin
-      ALogger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + AReason);
+      ALogger.Warning('Mitschnitt abgebrochen, der Server arbeitet ohne weiter: ' + TLogMarks.Text(AReason));
     end;
 end;
 

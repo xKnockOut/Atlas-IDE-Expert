@@ -12,13 +12,12 @@
 // Statuszeile: Anzahl Befunde und Dateien, letzte Prüfung (Datei, Dauer,
 // Uhrzeit, TAtlasProblemsController.LastCheck) und „a von b Units geprüft“
 // für das Projekt. Rechts „Live“ bzw. „Angehalten“ nach problems.live.
-// Aktionen: Springen (TAtlasIdeNavigation), Schnellkorrektur und
-// „Für diese Zeile unterdrücken“ über die Code-Aktion mit Kennung (Hooks
-// ApplyTagged, Atlas.Common.Rules.CodeActions), „Regel einstellen…“ (Hook
-// ConfigureRule, Seite Prüfregeln), „Regel abschalten“ schreibt
-// rules.<id> = "off" in atlas.json des Projekts bzw. ohne Projekt in die
-// globale Datei, „Regel erklären“ zeigt den Katalogtext (Hook Command,
-// atlas.server.settingsCatalog im Hintergrund, #874). „Alle sicheren Treffer
+// Aktionen: Springen (TAtlasIdeNavigation), Schnellkorrektur über die
+// Code-Aktion mit Kennung (Hook ApplyTagged, Atlas.Common.Rules.CodeActions),
+// „Regel erklären“ zeigt den Katalogtext (Hook Command,
+// atlas.server.settingsCatalog im Hintergrund, #874). „Regel einstellen…“,
+// „Für diese Zeile unterdrücken“ und „Regel abschalten“ liefert das Modul
+// Prüfregeln (TAtlasRuleActions, #1755); ohne Modul fehlen die Einträge. „Alle sicheren Treffer
 // von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
 // IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
@@ -28,7 +27,7 @@
 // das ordnet das Modell zu); geänderte Eingaben bauen die Liste neu, sonst
 // nichts. Statuszeile dann „n Befunde · a offene Units (b) · c nicht geöffnete
 // Units (d)“ bzw. „… ausgeblendet“. Schnellkorrektur und Unterdrücken öffnen
-// eine nicht geöffnete Unit zuerst (ApplyTag).
+// eine nicht geöffnete Unit zuerst.
 // Bereich, Gruppierung, Spalten und „Offene zuerst“ landen in den
 // Einstellungen (problems.window.scope/groupBy/columns/openFirst). Mit
 // problems.window aus gibt es weder Menüeintrag noch Fenster. Nur im
@@ -55,8 +54,6 @@ type
   TAtlasIdeProblemsHooks = record
     /// <summary>Code-Aktion mit Kennung (data.tag) am Befund im oberen Editor anwenden.</summary>
     ApplyTagged: TProc<TAtlasProblem, string>;
-    /// <summary>Optionen auf der Seite Prüfregeln bei der Regel öffnen.</summary>
-    ConfigureRule: TProc<string>;
     /// <summary>Befehl an den laufenden Server im Hintergrund; ADone im Hauptthread (nil ohne Server).</summary>
     Command: TAtlasProblemsCommandProc;
     /// <summary>Zeile in der Meldungsansicht.</summary>
@@ -109,11 +106,9 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.RuleTable,
-  Atlas.Core.Settings.JsonText,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,
@@ -121,17 +116,35 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Problems.Window,
-  Atlas.IDE.Settings.Project,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TProblemsServiceText = (AtlasCheck);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TProblemsServiceText] of string = (
+    ('Atlas-Prüfung: '),
+    ('Atlas check: '));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TProblemsServiceText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   TickMs = 250;
-  /// <summary>Kennungen der Code-Aktionen (RuleFixTag, RuleSuppressLineTag in Atlas.Common.Editing.CodeActions;
-  /// das Plugin hängt nicht von Atlas.Common ab).</summary>
+  /// <summary>Kennung der Code-Aktion (RuleFixTag in Atlas.Common.Editing.CodeActions; das Plugin hängt nicht von
+  /// Atlas.Common ab).</summary>
   FixTag = 'rule.fix';
-  SuppressLineTag = 'rule.suppressLine';
 
 type
   TState = class
@@ -473,85 +486,18 @@ begin
   end;
 end;
 
-procedure DisableRule(const AFinding: TAtlasFinding);
-var
-  Root: TJSONObject;
-  Rules: TJSONValue;
-  RulesJson, Path, Json, Target: string;
-  Content: TAtlasTextFileContent;
-begin
-  RulesJson := '';
-  Target := TAtlasProjectSettings.SettingsFile;
-  if Target <> '' then
-  begin
-    Root := TAtlasProjectSettings.ReadProject;
-    try
-      if Root <> nil then
-      begin
-        Rules := Root.GetValue('rules');
-        if Rules <> nil then
-        begin
-          RulesJson := Rules.ToJSON;
-        end;
-      end;
-    finally
-      Root.Free;
-    end;
-    // Nur "severity", wenn die Regel Optionen hat.
-    TAtlasRuleTable.SeverityChange(RulesJson, AFinding.Rule, 'off', Path, Json);
-    if TAtlasProjectSettings.WriteValue(Path, Json) then
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsRuleDisabled, [AFinding.Rule, ExtractFileName(Target)]));
-      Exit;
-    end;
-  end;
-  // Ohne Projekt: globale Datei.
-  Target := TAtlasIdeSettings.GlobalFile;
-  if (Target = '') or not TAtlasIdeSettings.LoadGlobal(Content) then
-  begin
-    Exit;
-  end;
-  Root := TAtlasJsonText.Parse(Content.Text);
-  try
-    if Root <> nil then
-    begin
-      Rules := Root.GetValue('rules');
-      if Rules <> nil then
-      begin
-        RulesJson := Rules.ToJSON;
-      end;
-    end;
-  finally
-    Root.Free;
-  end;
-  // Nur dieser Wert ändert sich; Kommentare und alle anderen Schlüssel bleiben.
-  TAtlasRuleTable.SeverityChange(RulesJson, AFinding.Rule, 'off', Path, Json);
-  TAtlasIdeSettings.SaveGlobal(Content, TAtlasJsonText.SetValue(Content.Text, Path, Json));
-  Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsRuleDisabled, [AFinding.Rule, ExtractFileName(Target)]));
-end;
-
 procedure ShowExplanation(ACatalog: TJSONValue; const ARule: string);
 var
-  Rows: TArray<TAtlasRuleRow>;
-  Row: TAtlasRuleRow;
-  Explanation: TAtlasRuleExplanation;
+  mExplanation: TAtlasRuleExplanation;
 begin
-  Rows := TAtlasRuleTable.Rows(ACatalog, '');
-  for Row in Rows do
+  if TAtlasRuleExplanation.Find(ACatalog, ARule, mExplanation) then
   begin
-    if SameText(Row.Id, ARule) then
-    begin
-      Explanation.Id := Row.Id;
-      Explanation.Name := Row.Name;
-      Explanation.Description := Row.Description;
-      Explanation.Bad := Row.Bad;
-      Explanation.Good := Row.Good;
-      Explanation.Experimental := Row.Experimental;
-      TAtlasRuleExplainDialog.Execute(Explanation);
-      Exit;
-    end;
+    TAtlasRuleExplainDialog.Execute(mExplanation);
+  end
+  else
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainUnknown, [ARule]));
   end;
-  Say(TAtlasStrings.Fmt(TAtlasTextId.ProblemsExplainUnknown, [ARule]));
 end;
 
 procedure Explain(const AFinding: TAtlasFinding);
@@ -670,27 +616,34 @@ begin
     begin
       Result := (State <> nil) and BulkFixer(mFixer) and mFixer.CanFixAll;
     end;
+end;
+
+/// <summary>Regel einstellen, unterdrücken und abschalten: Beiträge des Moduls Prüfregeln (#1755).</summary>
+procedure WireRuleActions(AFrame: TAtlasProblemsFrame);
+begin
+  AFrame.CanRuleActions :=
+    function: Boolean
+    begin
+      Result := (State <> nil) and TAtlasRuleActions.Available;
+    end;
   AFrame.OnSuppress :=
     procedure(const AFinding: TAtlasFinding)
     begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
         begin
-          ApplyTag(AFinding, SuppressLineTag);
+          // Die Code-Aktion gilt für den oberen Editor: Das Modul springt erst hin.
+          TAtlasRuleActions.Suppress(TAtlasRuleActions.Place(AFinding.FileName, AFinding.Problem));
         end);
     end;
-end;
-
-/// <summary>Regel einstellen, abschalten, erklären; Issue anlegen.</summary>
-procedure WireRules(AFrame: TAtlasProblemsFrame);
-begin
   AFrame.OnConfigure :=
     procedure(const AFinding: TAtlasFinding)
     begin
-      if (State <> nil) and Assigned(State.Hooks.ConfigureRule) then
-      begin
-        State.Hooks.ConfigureRule(AFinding.Rule);
-      end;
+      TAtlasGuard.Run(TAtlasFeature.Problems,
+        procedure
+        begin
+          TAtlasRuleActions.Configure(AFinding.Rule);
+        end);
     end;
   AFrame.OnDisable :=
     procedure(const AFinding: TAtlasFinding)
@@ -698,9 +651,14 @@ begin
       TAtlasGuard.Run(TAtlasFeature.Problems,
         procedure
         begin
-          DisableRule(AFinding);
+          TAtlasRuleActions.Disable(AFinding.Rule);
         end);
     end;
+end;
+
+/// <summary>Regel erklären; Issue anlegen.</summary>
+procedure WireRules(AFrame: TAtlasProblemsFrame);
+begin
   AFrame.OnExplain :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -730,6 +688,7 @@ procedure Wire(AFrame: TAtlasProblemsFrame);
 begin
   WireSettings(AFrame);
   WireFixes(AFrame);
+  WireRuleActions(AFrame);
   WireRules(AFrame);
   AFrame.OnScope :=
     procedure(AScope: TAtlasFindingScope)
@@ -777,7 +736,7 @@ begin
   except
     on E: Exception do
     begin
-      Say('Atlas-Prüfung: ' + E.Message);
+      Say(UiText(TProblemsServiceText.AtlasCheck) + E.Message);
       TAtlasGuard.Report(TAtlasFeature.Problems, E);
     end;
   end;
@@ -953,5 +912,8 @@ begin
   end;
   Result := True;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Problems.Service', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

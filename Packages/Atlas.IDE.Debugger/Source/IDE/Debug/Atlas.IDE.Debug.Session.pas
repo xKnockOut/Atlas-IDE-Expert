@@ -574,7 +574,7 @@ begin
     on E: Exception do
     begin
       AFrames := nil;
-      TAtlasGuard.Log(Format('Debugger-Stack nicht lesbar: %s: %s', [E.ClassName, E.Message]));
+      TAtlasGuard.Log(Format('Debugger-Stack nicht lesbar: %s: %s', [E.ClassName, TAtlasGuard.MessageText(E.Message)]));
       Result := TAtlasDebugStackRead.None;
     end;
   end;
@@ -628,7 +628,8 @@ begin
       on E: Exception do
       begin
         ADepth := 0;
-        TAtlasGuard.Log(Format('Debugger-Stacktiefe nicht lesbar: %s: %s', [E.ClassName, E.Message]));
+        TAtlasGuard.Log(Format('Debugger-Stacktiefe nicht lesbar: %s: %s', [E.ClassName,
+          TAtlasGuard.MessageText(E.Message)]));
         Exit(TAtlasDebugStackRead.None);
       end;
     end;

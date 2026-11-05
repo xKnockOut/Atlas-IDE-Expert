@@ -10,7 +10,9 @@
 //   (name#N), Pfade unter einem Arbeitsbereich zu <ws>/…, andere zu <pfad>,
 //   Benutzer- und Rechnername zu <benutzer> (Atlas.Text.Anonymize).
 // - Protokoll: dieselben Regeln wie der Fehlerbericht, dazu Text in
-//   Anführungszeichen zu <wert>.
+//   Anführungszeichen zu <wert>; gekennzeichnete Namen, Pfade und fremder
+//   Text (Atlas.Text.LogMarks, #1478) werden ersetzt. Die erste Zeile sagt,
+//   ob das Protokoll anonymisiert ist oder Klarnamen enthält.
 // - Trace: Jede Zeile wird als JSON gelesen; Schlüssel, Zahlen und die Werte
 //   von "jsonrpc" und "method" bleiben, jeder andere Text wird <wert>. Zeilen,
 //   die kein JSON tragen, entfallen (gezählt). So bleibt sichtbar, welche
@@ -73,7 +75,28 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TServerPackageText = (SessionLogAnonymized, SessionLogWithRealNames, TraceOfTheLastMinutes,
+    AnonymizedKeysNumbersAndMethods, LinesWithoutJSONLeftOut);
+
+const
+  cTexts: array[TServerPackageText] of TAtlasText = (
+    (De: '# Protokoll der Sitzung, anonymisiert'; En: '# Session log, anonymized'),
+    (De: '# Protokoll der Sitzung mit Klarnamen (ausdrücklich gewählt)';
+     En: '# Session log with real names (explicitly chosen)'),
+    (De: '# Trace der letzten %d Minuten'; En: '# Trace of the last %d minutes'),
+    (De: ', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)';
+     En: ', anonymized (keys, numbers and methods remain)'),
+    (De: '# %d Zeilen ohne JSON ausgelassen'; En: '# %d lines without JSON left out'));
+
+{$SCOPEDENUMS OFF}
 
 { TServerPackage }
 
@@ -271,12 +294,23 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
+    if AInput.Anonymize then
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogAnonymized].Text).Append(sLineBreak);
+    end
+    else
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogWithRealNames].Text).Append(sLineBreak);
+    end;
     for mLine in AInput.LogLines do
     begin
-      mText := mLine;
       if AInput.Anonymize then
       begin
-        mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
+        mText := TTextAnonymizer.AnonymizeLogLine(mLine, AInput.Workspaces, AInput.Identity);
+      end
+      else
+      begin
+        mText := TLogMarks.Plain(mLine);
       end;
       mBuilder.Append(mText).Append(sLineBreak);
     end;
@@ -296,10 +330,10 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     mDropped := 0;
-    mBuilder.Append(Format('# Trace der letzten %d Minuten', [AInput.TraceMinutes]));
+    mBuilder.Append(cTexts[TServerPackageText.TraceOfTheLastMinutes].Fmt([AInput.TraceMinutes]));
     if AInput.Anonymize then
     begin
-      mBuilder.Append(', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)');
+      mBuilder.Append(cTexts[TServerPackageText.AnonymizedKeysNumbersAndMethods].Text);
     end;
     mBuilder.Append(sLineBreak);
     for mLine in AInput.TraceLines do
@@ -320,7 +354,7 @@ begin
     end;
     if mDropped > 0 then
     begin
-      mBuilder.Append(Format('# %d Zeilen ohne JSON ausgelassen', [mDropped])).Append(sLineBreak);
+      mBuilder.Append(cTexts[TServerPackageText.LinesWithoutJSONLeftOut].Fmt([mDropped])).Append(sLineBreak);
     end;
     Result := mBuilder.ToString;
   finally
@@ -360,5 +394,8 @@ begin
   end;
   Result.AddPair('files', mFiles);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.ServerPackage', cTexts);
 
 end.

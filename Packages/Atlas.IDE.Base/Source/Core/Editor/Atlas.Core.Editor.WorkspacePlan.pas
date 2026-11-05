@@ -89,7 +89,32 @@ type
 implementation
 
 uses
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TWorkspacePlanText = (FileNotFound, AlreadyExists, AtlasDoesNotDeleteFolders, IsBeingDeleted);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TWorkspacePlanText] of string = (
+    ('Datei nicht gefunden',
+     '%s existiert bereits',
+     'Ordner löscht Atlas nicht',
+     'wird gelöscht'),
+    ('File not found',
+     '%s already exists',
+     'Atlas does not delete folders',
+     'is being deleted'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TWorkspacePlanText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 type
   /// <summary>Vorhandene Datei, die eine Operation ersetzt: Änderungen gelten für Base.</summary>
@@ -219,7 +244,7 @@ begin
   end;
   if not FEnvironment.Read(AFileName, Result) then
   begin
-    raise ELspEditError.Create('Datei nicht gefunden');
+    raise ELspEditError.Create(UiText(TWorkspacePlanText.FileNotFound));
   end;
   if FReplaced.TryGetValue(KeyOf(AFileName), Item) then
   begin
@@ -301,7 +326,7 @@ begin
   begin
     Exit(False);
   end;
-  raise ELspEditError.CreateFmt('%s existiert bereits', [ExtractFileName(AFileName)]);
+  raise ELspEditError.CreateFmt(UiText(TWorkspacePlanText.AlreadyExists), [ExtractFileName(AFileName)]);
 end;
 
 procedure TPlanBuilder.SetTarget(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
@@ -373,7 +398,7 @@ procedure TPlanBuilder.PlanRename(const AOperation: TLspFileOperation);
 begin
   if not Exists(AOperation.FileName) then
   begin
-    raise ELspEditError.Create('Datei nicht gefunden');
+    raise ELspEditError.Create(UiText(TWorkspacePlanText.FileNotFound));
   end;
   if not SameText(AOperation.FileName, AOperation.NewFileName) and
     (not Exists(AOperation.NewFileName) or MayReplace(AOperation.NewFileName, AOperation)) then
@@ -390,7 +415,7 @@ begin
   end
   else if FEnvironment.IsDirectory(AOperation.FileName) then
   begin
-    raise ELspEditError.Create('Ordner löscht Atlas nicht');
+    raise ELspEditError.Create(UiText(TWorkspacePlanText.AtlasDoesNotDeleteFolders));
   end
   else if Exists(AOperation.FileName) then
   begin
@@ -398,7 +423,7 @@ begin
   end
   else if not AOperation.IgnoreIfNotExists then
   begin
-    raise ELspEditError.Create('Datei nicht gefunden');
+    raise ELspEditError.Create(UiText(TWorkspacePlanText.FileNotFound));
   end;
 end;
 
@@ -450,7 +475,7 @@ begin
   begin
     if FGone.ContainsKey(KeyOf(AFiles[mIndex].FileName)) then
     begin
-      APlan.Error := Failure(AFiles[mIndex].FileName, 'wird gelöscht');
+      APlan.Error := Failure(AFiles[mIndex].FileName, UiText(TWorkspacePlanText.IsBeingDeleted));
       Result := False;
     end
     else if FPending.ContainsKey(KeyOf(AFiles[mIndex].FileName)) then
@@ -592,5 +617,8 @@ begin
     Builder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Editor.WorkspacePlan', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

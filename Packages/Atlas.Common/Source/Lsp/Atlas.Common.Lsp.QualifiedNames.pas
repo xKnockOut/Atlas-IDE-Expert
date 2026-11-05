@@ -62,7 +62,22 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Positions,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQualifiedNamesText = (ThereIsNoKnownSymbol, URIAndPositionExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TQualifiedNamesText] of TAtlasText = (
+    (De: 'An Zeile %d, Spalte %d steht kein bekanntes Symbol'; En: 'There is no known symbol at line %d, column %d'),
+    (De: 'Erwartet werden URI und Position'; En: 'URI and position expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -354,7 +369,7 @@ begin
   end
   else
   begin
-    AError := Format('An Zeile %d, Spalte %d steht kein bekanntes Symbol', [ARequest.Position.Line + 1,
+    AError := cTexts[TQualifiedNamesText.ThereIsNoKnownSymbol].Fmt([ARequest.Position.Line + 1,
       ARequest.Position.Character + 1]);
   end;
 end;
@@ -370,14 +385,16 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TQualifiedNamesText.URIAndPositionExpected].Text);
   end;
   Uri := AArguments.Items[0].Value;
   WithParameters := (AArguments.Count > 2) and (AArguments.Items[2] is TJSONBool) and
     TJSONBool(AArguments.Items[2]).AsBoolean;
   if not AStore.TryGet(Uri, Document) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQualifiedNamesText.DocumentIsNotOpen].Text +
+      Uri);
   end;
   Shared := TSyntaxTreeCache.Get(Document);
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
@@ -393,5 +410,8 @@ begin
   end;
   Result := TJSONString.Create(Name);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.QualifiedNames', cTexts);
 
 end.

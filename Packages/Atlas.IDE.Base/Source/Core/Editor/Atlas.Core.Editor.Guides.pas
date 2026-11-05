@@ -25,6 +25,8 @@ type
     /// <summary>1-basierte Editorspalte, vor der die Linie steht (Tabs aufgelöst).</summary>
     Column: Integer;
     Depth: Integer;
+    /// <summary>Verschachtelung der Routine des Blocks (#1788).</summary>
+    Routine: Integer;
   end;
 
   /// <summary>Strukturhervorhebung der IDE und ob Atlas sie abgeschaltet hat.</summary>
@@ -106,6 +108,7 @@ begin
     Guide.Column := Min(Indent, Length(TAtlasPairs.DisplayLine(Copy(ALines[Block.CloseLine], 1,
       Block.CloseCharacter), ATabWidth)) + 1);
     Guide.Depth := Block.Depth;
+    Guide.Routine := Block.Routine;
     Result := Result + [Guide];
   end;
 end;

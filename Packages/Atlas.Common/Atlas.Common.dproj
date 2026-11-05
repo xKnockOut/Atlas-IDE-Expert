@@ -75,6 +75,7 @@
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.Contract.pas"/>
         <DCCReference Include="Source\Localization\Atlas.Common.Localization.Texts.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.Logger.pas"/>
+        <DCCReference Include="Source\Logging\Atlas.Common.Logging.EntryText.pas"/>
         <DCCReference Include="Source\Logging\Atlas.Common.Logging.RotatingFileStream.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.StreamSink.pas"/>
         <DCCReference Include="Source\Logging\Providers\Atlas.Common.Logging.Providers.TransformSink.pas"/>
@@ -289,6 +290,7 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.Splitting.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Layout.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplateEn.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Comparison.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Matching.pas"/>
@@ -757,6 +759,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DiagnosticItems.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FindingsMemo.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>

@@ -73,7 +73,7 @@ type
     class function InlayDefineHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Codes von Steuerzeichen an (#862).</summary>
     class function InlayCharHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken „ohne Self“ an (#686).</summary>
+    /// <summary>Plugin eingeschaltet und Marken „braucht kein Self“ an (#686).</summary>
     class function InlayMethodHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
     /// </summary>
@@ -442,7 +442,7 @@ begin
     // Ohne Schreibrecht oder bei fremder Sperre (Bericht M5) bleiben die Werte für diese Sitzung bestehen. Ins
     // Protokoll ohne Pfad: Die Meldung von EAtlasTextFileError nennt keinen, andere nur mit Klasse.
     on E: EAtlasTextFileError do
-      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.SafeMessage(E.Message));
+      TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + TAtlasGuard.MessageText(E.Message));
     on E: Exception do
       TAtlasGuard.Log('Einstellungen nicht gespeichert: ' + E.ClassName);
   end;

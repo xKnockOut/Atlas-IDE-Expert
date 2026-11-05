@@ -66,7 +66,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Problems.InlineHints,
-  Atlas.IDE.Settings.Options,
+  Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Status.ServerWindow,
   Atlas.IDE.StatusBar.Service,
   Atlas.IDE.Problems.Controller,
@@ -223,7 +223,8 @@ begin
   mHooks.OpenRule :=
     procedure(ARule: string)
     begin
-      TAtlasOptionsRegistration.ShowRule(ARule);
+      // Regel einstellen über das Modul Prüfregeln (#1755); ohne Modul nichts.
+      TAtlasRuleActions.Configure(ARule);
     end;
   TAtlasIdeServerWindow.Install(mHooks);
 end;
@@ -355,22 +356,32 @@ begin
   end;
 end;
 
-/// <summary>Plakette der ungelesenen Benachrichtigungen am Statusfeld; ein Klick öffnet die Liste.</summary>
+/// <summary>Klick auf die Plakette: Liste der Benachrichtigungen an APoint.</summary>
+procedure ShowNotificationList(APoint: TPoint);
+begin
+  if NotificationsInstance <> nil then
+  begin
+    NotificationsInstance.Show(APoint);
+  end;
+end;
+
+/// <summary>Plakette der ungelesenen Benachrichtigungen am Statusfeld; ein Klick öffnet die Liste. Mit
+/// eingeschalteten Benachrichtigungen zeigt die Atlas-Statusleiste sie immer, auch mit 0.</summary>
 procedure ShowBadge(AUnread: Integer; AWorst: TAtlasNotificationSeverity);
+var
+  mBadge: TAtlasStatusBadge;
 begin
   if StatusFieldInstance = nil then
   begin
     Exit;
   end;
-  StatusFieldInstance.SetBadge(AUnread, BadgeState(AWorst),
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]),
-    procedure(APoint: TPoint)
-    begin
-      if NotificationsInstance <> nil then
-      begin
-        NotificationsInstance.Show(APoint);
-      end;
-    end);
+  mBadge := Default(TAtlasStatusBadge);
+  mBadge.Shown := TAtlasIdeNotifications.Active;
+  mBadge.Count := AUnread;
+  mBadge.State := BadgeState(AWorst);
+  mBadge.Hint := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBadgeHint, [AUnread]);
+  mBadge.OnClick := ShowNotificationList;
+  StatusFieldInstance.SetBadge(mBadge);
 end;
 
 procedure StartNotifications;

@@ -65,13 +65,27 @@ type
     StepFilterRefresh, StepFilterCounting, StepFilterSummary, StepFilterTruncated, StepFilterNoCounts,
     StepFilterSession, StepFilterLast, StepFilterShiftHint, StepFilterByPattern, StepFilterInactive, DebugNoteTitle,
     DebugNoteProject, DebugNoteConfiguration, DebugNotePlatform, DebugNoteTime, DebugNoteThread, DebugNoteLocation,
-    DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation);
+    DebugNoteCallStack, DebugNoteLastException, DebugNoteCount, DebugNoteNoLocation, DebugNoteFileStem,
+    SettingsDebugHoverValues, SettingsDebugVisualizers, SettingsDebugVisualizerNameFields,
+    SettingsDebugVisualizerMaxLength, SettingsDebugVisualizerTimeout, SettingsDebugVisualizerMaxImagePixels,
+    SettingsDebugVisualizerEvaluation, DebugVisualizerEvaluationFields, DebugVisualizerEvaluationProperties,
+    DebugVisualizerEvaluationCalls, SettingsDebugDisplayRules, SettingsDebugDisplayRulesAllowCalls,
+    SettingsDebugStepIntoTarget, SettingsDebugBreakOnNextEvent, SettingsDebugBreakOnNextEventExcluded,
+    SettingsDebugExceptionHistory, SettingsDebugJustMyCode, SettingsDebugOwnCodeFolders,
+    SettingsDebugExceptionBanner, SettingsDebugExceptionBannerIgnoreAtLocation, SettingsDebugInlineValues,
+    SettingsDebugInlineValuesPerLine, SettingsDebugExplainUnavailable, SettingsDebugCompletionInDialogs,
+    SettingsDebugEvaluateWindow, SettingsDebugEvaluateReplaceCtrlF7, SettingsDebugExplainAccessViolation,
+    SettingsDebugExplainAccessViolationAllowCalls, SettingsDebugStepFilters, SettingsDebugStepFilterPatterns,
+    DebugEditorMenuGroup);
 
   TAtlasDebugStrings = class
   public
     class function Text(AId: TAtlasDebugTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasDebugTextId; const AArgs: array of const): string; static;
+    /// <summary>Name des Befehls Atlas.StepIntoTarget; der Text liegt in Base, weil ihn auch die Tastenbelegung
+    /// und die Willkommensseite zeigen.</summary>
+    class function StepIntoTargetCommand: string; static;
   end;
 
 implementation
@@ -337,7 +351,39 @@ const
      'Aufrufstapel',
      'Letzte Exception',
      '%d x an dieser Stelle',
-     'Kein Halt mit Quelltext.'),
+     'Kein Halt mit Quelltext.',
+     'debug-notiz',
+     'Variablenwerte im Hover beim Debuggen',
+     'Visualisierer für häufige Typen',
+     'Namensfelder für Objekte in Listen',
+     'Höchstlänge des Ersatztexts (Zeichen)',
+     'Zeitlimit je Auswertung (ms)',
+     'Größtes Bild im Ansichtsfenster (Pixel)',
+     'Auswertung im Programm',
+     'nur Felder (ohne Nebenwirkungen)',
+     'auch Getter von Eigenschaften',
+     'auch Funktionsaufrufe (ToString, ToJSON)',
+     'Eigene Wertdarstellungen (// atlas-debug:, [AtlasDebugDisplay], Projektdatei)',
+     'Getter und Funktionsaufrufe in Vorlagen erlauben',
+     'Gezielt hineinspringen (Strg+Alt+F7: einen Aufruf der Anweisung wählen)',
+     'Beim nächsten Ereignis anhalten (Menü Start und Befehlspalette)',
+     'Häufige Ereignisse, nur auf ausdrückliche Wahl (kommagetrennt)',
+     'Exception-Verlauf beim Debuggen (Fenster „Atlas: Exceptions“)',
+     'Nur eigener Code beim Debuggen (Sprung in eigenen Code, F7 überspringt Code ohne Quelltext)',
+     'Weitere Ordner mit eigenem Code (durch ; getrennt):',
+     'Exception-Meldung als Leiste am Editor statt als Dialog (Delphi 12 und 13)',
+     'Knopf „Nur an dieser Stelle ignorieren“',
+     'Werte im Editor beim Debuggen (am Zeilenende, solange der Prozess angehalten ist)',
+     'Höchstens Werte je Zeile:',
+     '„kein Zugriff“ beim Debuggen erklären (Ursache und Korrekturen)',
+     'Vervollständigung in Debugger-Dialogen (Auswerten, Überwachung, Haltepunkt)',
+     'Fenster „Auswerten“ (mehrere Ausdrücke, Baum, Ansichten, Ändern)',
+     'Strg+F7 öffnet das Atlas-Fenster statt „Auswerten/Ändern“',
+     'Zugriffsverletzungen erklären (welcher Teil war nil)',
+     'Getter und Funktionsaufrufe bei der Auswertung erlauben',
+     'Schrittfilter beim Hineinspringen (F7)',
+     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
+     'Debuggen'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -592,7 +638,39 @@ const
      'Call stack',
      'Last exception',
      '%d times at this location',
-     'Not stopped in source code.'));
+     'Not stopped in source code.',
+     'debug-note',
+     'Variable values in the hover while debugging',
+     'Visualizers for common types',
+     'Name fields for objects in lists',
+     'Maximum length of the replacement text (characters)',
+     'Time limit per evaluation (ms)',
+     'Largest image in the viewer (pixels)',
+     'Evaluation in the program',
+     'fields only (no side effects)',
+     'also property getters',
+     'also function calls (ToString, ToJSON)',
+     'Custom value display (// atlas-debug:, [AtlasDebugDisplay], project file)',
+     'Allow getters and function calls in templates',
+     'Step into specific call (Ctrl+Alt+F7: choose a call of the statement)',
+     'Break on next event (Run menu and command palette)',
+     'Frequent events, only when chosen explicitly (comma-separated)',
+     'Exception history while debugging (window “Atlas: Exceptions”)',
+     'Just my code while debugging (jump to own code, F7 skips code without source)',
+     'More folders with own code (separated by ;):',
+     'Exception message as a bar on the editor instead of a dialog (Delphi 12 and 13)',
+     'Button “Ignore only here”',
+     'Inline values while debugging (at the end of the line while the process is stopped)',
+     'At most values per line:',
+     'Explain "no access" while debugging (cause and fixes)',
+     'Completion in debugger dialogs (evaluate, watch, breakpoint)',
+     'Evaluate window (several expressions, tree, views, modify)',
+     'Ctrl+F7 opens the Atlas window instead of Evaluate/Modify',
+     'Explain access violations (which part was nil)',
+     'Allow getters and function calls during evaluation',
+     'Step filters when stepping into (F7)',
+     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):',
+     'Debugging'));
 
 { TAtlasDebugStrings }
 
@@ -604,6 +682,11 @@ end;
 class function TAtlasDebugStrings.Fmt(AId: TAtlasDebugTextId; const AArgs: array of const): string;
 begin
   Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasDebugStrings.StepIntoTargetCommand: string;
+begin
+  Result := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
 end;
 
 end.

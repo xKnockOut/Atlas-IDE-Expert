@@ -194,6 +194,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh;
@@ -545,7 +546,7 @@ begin
   begin
     Exit;
   end;
-  mText := TAtlasEditorBuffer.Text(mView.Buffer);
+  mText := TAtlasEditorSnapshots.Get(mView).Text;
   if not SameText(FFileName, mView.Buffer.FileName) then
   begin
     // Andere Datei vorn: gleich zuordnen, damit ihre Symbole erscheinen.

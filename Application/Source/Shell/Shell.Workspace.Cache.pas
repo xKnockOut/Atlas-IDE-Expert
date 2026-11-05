@@ -72,7 +72,8 @@ implementation
 uses
   System.IOUtils,
   Atlas.Common.Index.Adapters.CacheDirectory,
-  Atlas.Common.Index.CacheHousekeeping;
+  Atlas.Common.Index.CacheHousekeeping,
+  Atlas.Text.LogMarks;
 
 { TShellCacheFiles }
 
@@ -224,7 +225,7 @@ begin
     Housekeep(TArray<string>.Create(AFiles.ProjectFile, AFiles.LibraryFile, AFiles.SearchFile), ASettings);
   except
     on E: Exception do
-      FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
+      FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [TLogMarks.Text(E.Message)]));
   end;
 end;
 
@@ -281,10 +282,11 @@ begin
     TFile.Delete(AFiles.ProjectFile);
     DeleteIfExists(AFiles.LibraryFile);
     DeleteIfExists(AFiles.SearchFile);
-    ALogger.Info('Index-Cache verworfen: ' + ExtractFileName(AFiles.ProjectFile));
+    ALogger.Info('Index-Cache verworfen: ' + TLogMarks.Path(ExtractFileName(AFiles.ProjectFile)));
   except
     on E: Exception do
-      ALogger.Warning(Format('Index-Cache %s nicht löschbar: %s', [ExtractFileName(AFiles.ProjectFile), E.ClassName]));
+      ALogger.Warning(Format('Index-Cache %s nicht löschbar: %s', [TLogMarks.Path(ExtractFileName(AFiles.ProjectFile)),
+        E.ClassName]));
   end;
 end;
 

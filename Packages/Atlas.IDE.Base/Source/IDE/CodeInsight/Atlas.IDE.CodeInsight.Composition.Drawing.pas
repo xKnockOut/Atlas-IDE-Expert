@@ -103,19 +103,6 @@ begin
     end);
 end;
 
-/// <summary>Regel ARule auf der Optionsseite zeigen.</summary>
-procedure ShowRule(ARule: string);
-var
-  mRule: string;
-begin
-  mRule := ARule;
-  TAtlasGuard.Run(TAtlasFeature.Settings,
-    procedure
-    begin
-      TAtlasOptionsRegistration.ShowRule(mRule);
-    end);
-end;
-
 procedure StartHide;
 begin
   TAtlasIdeElements.Start;
@@ -172,7 +159,6 @@ var
   mHooks: TAtlasIdeProblemsHooks;
 begin
   mHooks.ApplyTagged := ApplyTagged;
-  mHooks.ConfigureRule := ShowRule;
   mHooks.Command :=
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
@@ -204,7 +190,7 @@ procedure StartGutterMarks;
 begin
   GutterMarks := TAtlasIdeGutterMarks.Create;
   // Rekursionssymbole (#623); fragt den Server nur, wenn er ohnehin läuft.
-  GutterMarks.Add(TAtlasIdeRecursionGutter.Create(RunningSession));
+  GutterMarks.Add(TAtlasIdeRecursionGutter.Create(RunningSession, RunServerCommand));
 end;
 
 procedure StopGutterMarks;

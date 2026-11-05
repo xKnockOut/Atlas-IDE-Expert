@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Search.SettingsSection,
   System.Classes,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -438,6 +439,14 @@ begin
   TAtlasIdeSearch.ThemeChanged;
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasSearchUnitSearchSection.ProvideIn(GScope);
+  TAtlasSearchQuerySection.ProvideIn(GScope);
+end;
+
 function TAtlasSearchModule.TakenActions: TArray<TAtlasTakenAction>;
 var
   mAction: TBasicAction;
@@ -498,6 +507,7 @@ begin
   GScope.Provide(IAtlasAppliesSettings, mRef);
   GScope.Provide(IAtlasFollowsTheme, mRef);
   GScope.Provide(IAtlasTakenActions, mRef);
+  ProvideSettingsSections;
   Result := True;
 end;
 

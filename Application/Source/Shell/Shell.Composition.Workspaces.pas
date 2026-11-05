@@ -106,7 +106,8 @@ uses
   System.SysUtils,
   System.Math,
   Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Rules.LibrarySources;
+  Atlas.Common.Rules.LibrarySources,
+  Atlas.Text.LogMarks;
 
 const
   cWaitForever = Cardinal($FFFFFFFF);
@@ -377,7 +378,8 @@ begin
   begin
     FChoices.AddOrSetValue(AnsiUpperCase(AFileName), AChosen.Name);
     FServices.Logger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
-      [ExtractFileName(AFileName), ACount, AChosen.Name, AReason]));
+      [TLogMarks.Path(ExtractFileName(AFileName)), ACount,
+      TLogMarks.Name(AChosen.Name), TLogMarks.Text(AReason)]));
   end;
 end;
 

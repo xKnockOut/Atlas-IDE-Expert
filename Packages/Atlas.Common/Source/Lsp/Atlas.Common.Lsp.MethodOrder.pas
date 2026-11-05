@@ -43,7 +43,21 @@ uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMethodOrderText = (TheURIIsExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TMethodOrderText] of TAtlasText = (
+    (De: 'Erwartet wird die URI'; En: 'The URI is expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 { TLspMethodOrder }
 
@@ -92,12 +106,12 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird die URI');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TMethodOrderText.TheURIIsExpected].Text);
   end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TMethodOrderText.DocumentIsNotOpen].Text + Uri);
   end;
   Placement := TMethodPlacement.Declaration;
   Scope := 'all';
@@ -133,5 +147,8 @@ begin
   end;
   Result := Json(Answer);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MethodOrder', cTexts);
 
 end.

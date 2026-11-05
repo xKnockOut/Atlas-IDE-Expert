@@ -61,7 +61,20 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.FormMentions,
-  Atlas.Common.Lsp.InlayHints;
+  Atlas.Common.Lsp.InlayHints,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspPromoteVariableText = (ConversionNotPossible);
+
+const
+  cTexts: array[TLspPromoteVariableText] of TAtlasText = (
+    (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
@@ -131,7 +144,8 @@ begin
   if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, AContext.Lookup, AContext.Style,
     AContext.NewName), Promoted, Reason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      cTexts[TLspPromoteVariableText.ConversionNotPossible].Text + Reason);
   end;
   Warnings := TJSONArray.Create;
   for Warning in Promoted.Warnings do
@@ -144,5 +158,8 @@ begin
   Result.AddPair('places', TJSONNumber.Create(Promoted.Places));
   Result.AddPair('files', TJSONNumber.Create(1));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PromoteVariable', cTexts);
 
 end.

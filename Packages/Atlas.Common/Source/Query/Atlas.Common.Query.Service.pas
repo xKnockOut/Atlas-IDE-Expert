@@ -52,7 +52,20 @@ type
 implementation
 
 uses
-  Atlas.Common.Query.Engine;
+  Atlas.Common.Query.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryServiceText = (NoProjectLoaded);
+
+const
+  cTexts: array[TQueryServiceText] of TAtlasText = (
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Abbruch, sobald AFirst oder ASecond ihn meldet; eigene Routine, damit die Methodenreferenz keinen
 /// Rahmen von Execute festhält.</summary>
@@ -110,7 +123,7 @@ begin
   begin
     Result := Default(TQueryResult);
     Result.Query := ARequest.Query;
-    Result.Error := 'Kein Projekt geladen';
+    Result.Error := cTexts[TQueryServiceText.NoProjectLoaded].Text;
     Exit;
   end;
   mKey := ARequest.Query + #1 + string.Join(#2, ARequest.Fields) + #1 + IntToStr(ARequest.Limit);
@@ -160,5 +173,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Service', cTexts);
 
 end.

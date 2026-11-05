@@ -92,11 +92,40 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspExtractSuperclassText = (ExtractSuperclass, ExtractSuperclassFrom, AfterTheChangeNoLonger,
+    RequestWithNameUnitAnd, IsNotAValidUnit, TheBaseClassCannotBe, UnknownOriginOfTheNew, WithMembersFiles,
+    ExtractSuperclass2, AlreadyExists, IsAlreadyInTheProject);
+
+const
+  cTexts: array[TLspExtractSuperclassText] of TAtlasText = (
+    (De: 'Basisklasse herauslösen: '; En: 'Extract superclass: '),
+    (De: 'Basisklasse aus %s herauslösen …'; En: 'Extract superclass from %s …'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Anfrage mit name, unit und members fehlt'; En: 'Request with name, unit and members missing'),
+    (De: '"%s" ist kein gültiger Unit-Name.'; En: '"%s" is not a valid unit name.'),
+    (De: 'Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s';
+     En: 'The base class cannot be moved into a unit of its own: %s'),
+    (De: 'Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der alten.';
+     En: 'Unknown origin of %s: the new unit takes over the uses of the old one for it.'),
+    (De: '%s mit %d Mitgliedern, %d Dateien'; En: '%s with %d members, %d files'),
+    (De: 'Basisklasse herauslösen'; En: 'Extract superclass'),
+    (De: '%s gibt es schon.'; En: '%s already exists.'),
+    (De: '%s steht schon im Projekt.'; En: '%s is already in the project.'));
+
+{$SCOPEDENUMS OFF}
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Basisklasse herauslösen: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+    cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
 end;
 
 function KindText(AKind: TTransferKind): string;
@@ -198,7 +227,7 @@ begin
   begin
     Exit;
   end;
-  Title := Format('Basisklasse aus %s herauslösen …', [Info.ClassName]);
+  Title := cTexts[TLspExtractSuperclassText.ExtractSuperclassFrom].Fmt([Info.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -319,8 +348,8 @@ begin
   try
     if Length(Check.Diagnostics) > ABefore then
     begin
-      raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+      raise Failed(cTexts[TLspExtractSuperclassText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+        Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
     end;
   finally
     Check.Free;
@@ -391,7 +420,8 @@ var
 begin
   if not (ARequest is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit name, unit und members fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
   end;
   mBody := TJSONObject(ARequest);
   FRequest := Default(TSuperclassRequest);
@@ -403,7 +433,7 @@ begin
   FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin
-    raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [FUnitName]));
+    raise Failed(cTexts[TLspExtractSuperclassText.IsNotAValidUnit].Fmt([FUnitName]));
   end;
 end;
 
@@ -424,7 +454,7 @@ var
 begin
   if Assigned(FContext.Exists) and FContext.Exists(FNewFile) then
   begin
-    raise Failed(Format('%s gibt es schon.', [ExtractFileName(FNewFile)]));
+    raise Failed(cTexts[TLspExtractSuperclassText.AlreadyExists].Fmt([ExtractFileName(FNewFile)]));
   end;
   if not FContext.HasProject then
   begin
@@ -434,7 +464,7 @@ begin
   begin
     if SameText(mItem.Name, FUnitName) then
     begin
-      raise Failed(Format('%s steht schon im Projekt.', [FUnitName]));
+      raise Failed(cTexts[TLspExtractSuperclassText.IsAlreadyInTheProject].Fmt([FUnitName]));
     end;
   end;
 end;
@@ -452,7 +482,7 @@ begin
         TTextPosition.Create(FPlan.BaseLine, 0), FUnitName, TLspMoveClass.Lookup(FContext.Resolver), Result,
         mReason) then
       begin
-        raise Failed(Format('Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s', [mReason]));
+        raise Failed(cTexts[TLspExtractSuperclassText.TheBaseClassCannotBe].Fmt([mReason]));
       end;
     finally
       FContext.Resolver.UnpinTree;
@@ -474,8 +504,7 @@ begin
   FChanges.CreateFile(FNewFile, mMove.Text);
   if mMove.Unresolved <> nil then
   begin
-    FChanges.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der alten.',
-      [string.Join(', ', mMove.Unresolved)]));
+    FChanges.Warn(cTexts[TLspExtractSuperclassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mMove.Unresolved)]));
   end;
 end;
 
@@ -485,9 +514,10 @@ var
   mDescription: string;
 begin
   mMoved := Length(FPlan.Moved) + Length(FPlan.Abstracts);
-  mDescription := Format('%s mit %d Mitgliedern, %d Dateien', [FPlan.BaseName, mMoved, FChanges.FileCount]);
+  mDescription := cTexts[TLspExtractSuperclassText.WithMembersFiles].Fmt([FPlan.BaseName, mMoved, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.AnnotationId, 'Basisklasse herauslösen',
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.AnnotationId,
+    cTexts[TLspExtractSuperclassText.ExtractSuperclass2].Text,
     mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('file', TDocumentUris.FromPath(FNewFile));
@@ -541,5 +571,8 @@ begin
     mExtraction.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractSuperclass', cTexts);
 
 end.

@@ -38,7 +38,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Documentation.Contract;
+  Atlas.Core.Documentation.Contract,
+  Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -110,7 +111,10 @@ type
     ItemRemarks: string;
     ItemExample: string;
     ItemSeeAlso: string;
+    class function ForLanguage(ALanguage: TAtlasLanguage): TAtlasDocLabels; static;
     class function German: TAtlasDocLabels; static;
+    /// <summary>Beschriftungen in der Sprache der Oberfläche (TAtlasTextLanguage).</summary>
+    class function Current: TAtlasDocLabels; static;
   end;
 
   TAtlasDocSpan = record
@@ -274,35 +278,104 @@ begin
   Result.PillPad := Round(3 * AScale);
 end;
 
+type
+  /// <summary>Beschriftungen von TAtlasDocLabels in Feldreihenfolge.</summary>
+  TDocLabel = (Params, TypeParams, Returns, Value, Exceptions, Remarks, Example, SeeAlso, Rationale, Undocumented,
+    More, Less, CountParam, CountParams, CountTypeParam, CountTypeParams, CountException, CountExceptions,
+    CountRationale, CountRationales, ItemReturns, ItemValue, ItemRemarks, ItemExample, ItemSeeAlso);
+
+const
+  cDocLabels: array[TAtlasLanguage, TDocLabel] of string = (
+    ('PARAMETER',
+     'TYPPARAMETER',
+     'RÜCKGABE',
+     'WERT',
+     'AUSNAHMEN',
+     'HINWEISE',
+     'BEISPIEL',
+     'SIEHE AUCH',
+     'BEGRÜNDUNG',
+     'nicht dokumentiert',
+     'Mehr anzeigen ▾',
+     'Weniger anzeigen ▴',
+     '%d Parameter',
+     '%d Parameter',
+     '%d Typparameter',
+     '%d Typparameter',
+     '%d Ausnahme',
+     '%d Ausnahmen',
+     '%d weitere Begründung',
+     '%d weitere Begründungen',
+     'Rückgabe',
+     'Wert',
+     'Hinweis',
+     'Beispiel',
+     'Siehe auch'),
+    ('PARAMETERS',
+     'TYPE PARAMETERS',
+     'RETURNS',
+     'VALUE',
+     'EXCEPTIONS',
+     'REMARKS',
+     'EXAMPLE',
+     'SEE ALSO',
+     'RATIONALE',
+     'not documented',
+     'Show more ▾',
+     'Show less ▴',
+     '%d parameter',
+     '%d parameters',
+     '%d type parameter',
+     '%d type parameters',
+     '%d exception',
+     '%d exceptions',
+     '%d more rationale',
+     '%d more rationales',
+     'Returns',
+     'Value',
+     'Remark',
+     'Example',
+     'See also'));
+
 { TAtlasDocLabels }
+
+class function TAtlasDocLabels.ForLanguage(ALanguage: TAtlasLanguage): TAtlasDocLabels;
+begin
+  Result.Params := cDocLabels[ALanguage, TDocLabel.Params];
+  Result.TypeParams := cDocLabels[ALanguage, TDocLabel.TypeParams];
+  Result.Returns := cDocLabels[ALanguage, TDocLabel.Returns];
+  Result.Value := cDocLabels[ALanguage, TDocLabel.Value];
+  Result.Exceptions := cDocLabels[ALanguage, TDocLabel.Exceptions];
+  Result.Remarks := cDocLabels[ALanguage, TDocLabel.Remarks];
+  Result.Example := cDocLabels[ALanguage, TDocLabel.Example];
+  Result.SeeAlso := cDocLabels[ALanguage, TDocLabel.SeeAlso];
+  Result.Rationale := cDocLabels[ALanguage, TDocLabel.Rationale];
+  Result.Undocumented := cDocLabels[ALanguage, TDocLabel.Undocumented];
+  Result.More := cDocLabels[ALanguage, TDocLabel.More];
+  Result.Less := cDocLabels[ALanguage, TDocLabel.Less];
+  Result.CountParam := cDocLabels[ALanguage, TDocLabel.CountParam];
+  Result.CountParams := cDocLabels[ALanguage, TDocLabel.CountParams];
+  Result.CountTypeParam := cDocLabels[ALanguage, TDocLabel.CountTypeParam];
+  Result.CountTypeParams := cDocLabels[ALanguage, TDocLabel.CountTypeParams];
+  Result.CountException := cDocLabels[ALanguage, TDocLabel.CountException];
+  Result.CountExceptions := cDocLabels[ALanguage, TDocLabel.CountExceptions];
+  Result.CountRationale := cDocLabels[ALanguage, TDocLabel.CountRationale];
+  Result.CountRationales := cDocLabels[ALanguage, TDocLabel.CountRationales];
+  Result.ItemReturns := cDocLabels[ALanguage, TDocLabel.ItemReturns];
+  Result.ItemValue := cDocLabels[ALanguage, TDocLabel.ItemValue];
+  Result.ItemRemarks := cDocLabels[ALanguage, TDocLabel.ItemRemarks];
+  Result.ItemExample := cDocLabels[ALanguage, TDocLabel.ItemExample];
+  Result.ItemSeeAlso := cDocLabels[ALanguage, TDocLabel.ItemSeeAlso];
+end;
 
 class function TAtlasDocLabels.German: TAtlasDocLabels;
 begin
-  Result.Params := 'PARAMETER';
-  Result.TypeParams := 'TYPPARAMETER';
-  Result.Returns := 'RÜCKGABE';
-  Result.Value := 'WERT';
-  Result.Exceptions := 'AUSNAHMEN';
-  Result.Remarks := 'HINWEISE';
-  Result.Example := 'BEISPIEL';
-  Result.SeeAlso := 'SIEHE AUCH';
-  Result.Rationale := 'BEGRÜNDUNG';
-  Result.Undocumented := 'nicht dokumentiert';
-  Result.More := 'Mehr anzeigen ▾';
-  Result.Less := 'Weniger anzeigen ▴';
-  Result.CountParam := '%d Parameter';
-  Result.CountParams := '%d Parameter';
-  Result.CountTypeParam := '%d Typparameter';
-  Result.CountTypeParams := '%d Typparameter';
-  Result.CountException := '%d Ausnahme';
-  Result.CountExceptions := '%d Ausnahmen';
-  Result.CountRationale := '%d weitere Begründung';
-  Result.CountRationales := '%d weitere Begründungen';
-  Result.ItemReturns := 'Rückgabe';
-  Result.ItemValue := 'Wert';
-  Result.ItemRemarks := 'Hinweis';
-  Result.ItemExample := 'Beispiel';
-  Result.ItemSeeAlso := 'Siehe auch';
+  Result := ForLanguage(TAtlasLanguage.German);
+end;
+
+class function TAtlasDocLabels.Current: TAtlasDocLabels;
+begin
+  Result := ForLanguage(TAtlasTextLanguage.Current);
 end;
 
 { TAtlasDocSpan }
@@ -543,5 +616,9 @@ begin
   end;
   Result := Lines[ALines - 1].Bottom;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Documentation.Layout', cDocLabels[TAtlasLanguage.German],
+    cDocLabels[TAtlasLanguage.English]);
 
 end.

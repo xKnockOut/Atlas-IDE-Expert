@@ -1,9 +1,10 @@
 ﻿unit Atlas.Common.Rules.Builtin.UnusedUses.Tests;
 
-// Tests der Regel unused-uses (#1352): ungenutzter Eintrag mit sicherer
-// Korrektur, benutzte Units, initialization, usesKeep, inaktive Zweige,
-// Schweigen in Programmen, im Editor (Live) und ohne Index, und die
-// Sammelkorrektur mit zwei Einträgen derselben Liste.
+// Tests der Regel unused-uses (#1352, #1135): ungenutzter Eintrag mit
+// sicherer Korrektur, benutzte Units, initialization, usesKeep und Option
+// keep, inaktive Zweige, Schweigen in Programmen, im Editor (Live) und ohne
+// Index, lsp-ignore dort nicht als unnötig gemeldet, und die Sammelkorrektur
+// mit zwei Einträgen derselben Liste.
 
 interface
 
@@ -22,6 +23,10 @@ type
     procedure InitializationKeepsUnit;
     [Test]
     procedure UsesKeepKeepsUnit;
+    [Test]
+    procedure KeepOptionKeepsUnit;
+    [Test]
+    procedure SuppressionWithoutCheckIsNotUnused;
     [Test]
     procedure InactiveBranchIsIgnored;
     [Test]
@@ -145,6 +150,52 @@ var
 begin
   mSettings := TConfigurationParser.Parse('{"usesKeep": ["Hilfe"]}', mIssues);
   Assert.AreEqual('', Names(Check(UnitText('Hilfe, Andere'), mSettings, Index, 'Bericht.pas')));
+end;
+
+procedure TUnusedUsesTests.KeepOptionKeepsUnit;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := TConfigurationParser.Parse('{"rules": {"unused-uses": {"severity": "hint", "keep": ["Hilfe"]}}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('', Names(Check(UnitText('Hilfe, Andere'), mSettings, Index, 'Bericht.pas')));
+  Assert.AreEqual('Hilfe;Andere;', string.Join(';', TUnusedUsesRule.Keep('{"keep": ["Andere"]}', ['Hilfe'])) + ';');
+end;
+
+procedure TUnusedUsesTests.SuppressionWithoutCheckIsNotUnused;
+var
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mText: string;
+begin
+  // Im Editor und ohne Index prüft die Regel nicht: Ihr lsp-ignore darf nicht als unused-suppression gelten,
+  // dessen sichere Korrektur den Kommentar beim Speichern entfernte (#1135).
+  mText := UnitText('// lsp-ignore: unused-uses'#13#10'  Hilfe, Andere');
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Bericht.pas';
+    mContext.UnitName := 'Bericht';
+    mContext.Text := mText;
+    mContext.Tree := mTree;
+    mContext.Index := Index;
+    mContext.Live := True;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    mContext.Live := False;
+    mContext.Index := nil;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    // Mit Index unterdrückt der Kommentar den Treffer und ist damit genutzt.
+    mContext.Index := Index;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    mContext.Index := nil;
+  finally
+    mTree.Free;
+  end;
 end;
 
 procedure TUnusedUsesTests.FormReferenceKeepsUnit;

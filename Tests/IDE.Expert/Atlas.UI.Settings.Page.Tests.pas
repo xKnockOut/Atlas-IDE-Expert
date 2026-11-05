@@ -29,9 +29,6 @@ type
     /// Allgemein, Taste auf dem Reiter Befehle.</summary>
     [Test]
     procedure NotificationsRoundTrip;
-    /// <summary>Notizen (#545): Schalter auf dem Reiter Editor, Vorgabe an.</summary>
-    [Test]
-    procedure NotesRoundTrip;
     [Test]
     procedure SafeModeRoundTrips;
     [Test]
@@ -70,7 +67,7 @@ type
     /// <summary>#909: Bereich Prüfregeln mit Prüffenster, Knoten je Gruppe, Hauptschalter, Reveal einer Regel
     /// und den Änderungen für settings.json.</summary>
     [Test]
-    procedure RulesAreaLinksToDialogs;
+    procedure RulesAreaWindowSettings;
     /// <summary>#1108: offene Units zuerst auf dem Knoten „Prüffenster“; der Schalter sperrt seine Unterpunkte.
     /// </summary>
     [Test]
@@ -90,8 +87,6 @@ implementation
 
 uses
   Atlas.UI.Settings.Page.Tree,
-  Atlas.Core.Modules.Contract,
-  Atlas.UI.Welcome.TestSupport,
   System.SysUtils,
   System.Classes,
   System.UITypes,
@@ -102,7 +97,6 @@ uses
   Atlas.UI.Settings.Page,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Style.Symbol,
-  Vcl.Graphics,
   System.StrUtils,
   Vcl.Controls,
   Vcl.Menus,
@@ -146,22 +140,6 @@ begin
   end;
   Result := TAtlasSettingsGroup(AControl);
 end;
-/// <summary>Knoten des Baums, der ASheet zeigt; nil ohne.</summary>
-function TreeNodeOf(APage: TAtlasSettingsPage; ASheet: TTabSheet): TTreeNode;
-var
-  Index: Integer;
-begin
-  for Index := 0 to APage.Navigation.Items.Count - 1 do
-  begin
-    Result := APage.Navigation.Items[Index];
-    APage.Navigation.OnChange(APage.Navigation, Result);
-    if APage.Pages.ActivePage = ASheet then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
 /// <summary>#890: Bereiche oben im Baum in fester Reihenfolge; jede Seite hat Inhalt und keinen sichtbaren
 /// Reiter.</summary>
 procedure AssertTreeAreas(APage: TAtlasSettingsPage; const AAreas: TArray<TTreeNode>);
@@ -171,15 +149,14 @@ begin
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), AAreas[0].Text);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), AAreas[6].Text);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), AAreas[7].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRelease), AAreas[8].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabDebug), AAreas[9].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), AAreas[13].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), AAreas[14].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), AAreas[15].Text);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), AAreas[16].Text, 'eigener Bereich (#1280)');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), AAreas[17].Text, 'eigener Bereich (#1285)');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[18].Text);
-  Assert.IsTrue(APage.Pages.PageCount > 17, 'Unterpunkte haben eigene Seiten');
+  // Ohne angemeldete Module nur die Bereiche von Base (#1456): Debuggen, Release-Build, Willkommensseite und
+  // Issue-Tracker bringen die Module als Abschnitte mit.
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCommands), AAreas[8].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), AAreas[11].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), AAreas[12].Text);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), AAreas[13].Text, 'eigener Bereich (#1285)');
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), AAreas[14].Text);
+  Assert.IsTrue(APage.Pages.PageCount > 14, 'Unterpunkte haben eigene Seiten');
   for mIndex := 0 to APage.Pages.PageCount - 1 do
   begin
     Assert.IsTrue(APage.Pages.Pages[mIndex].ControlCount > 0, APage.Pages.Pages[mIndex].Caption);
@@ -202,7 +179,7 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Assert.AreEqual(19, Integer(Length(Areas)));
+    Assert.AreEqual(15, Integer(Length(Areas)));
     AssertTreeAreas(Page, Areas);
     Assert.IsTrue(Page.Pages.ActivePage = Page.Pages.Pages[0], 'erstes Öffnen: Allgemein');
     // Unterpunkt „Minikarte“ unter „Editor“ mit ihren Einstellungen und nichts sonst.
@@ -215,7 +192,7 @@ begin
     Assert.IsNotNull(Node, 'Knoten im Baum');
     Assert.AreEqual(1, Node.Level);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabEditor), Node.Parent.Text);
-    Page.Navigation.OnChange(Page.Navigation, Areas[13]);
+    Page.Navigation.OnChange(Page.Navigation, Areas[11]);
     Assert.AreEqual('', Page.NodeOfSheet(Page.Pages.ActivePage), 'Hauptknoten zeigt den Bereich');
     Page.Navigation.OnChange(Page.Navigation, Node);
     Assert.IsTrue(Page.Pages.ActivePage = Minimap, 'Klick im Baum schaltet die Seite');
@@ -420,14 +397,11 @@ begin
 end;
 procedure TAtlasSettingsPageTests.FilterAndResetPerNode;
 var
-  mWelcome: IAtlasRegistration;
   Host: TForm;
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
   Minimap: TTabSheet;
 begin
-  mWelcome := ProvideWelcomeSettings;
-
   // #890: Der Filter blendet Knoten ohne Treffer aus; „Seite zurücksetzen“ wirkt auf den gewählten Knoten.
   TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
@@ -442,14 +416,12 @@ begin
     Minimap := Page.NodeSheet('editor.minimap');
     Page.Filter.Choice := 2;
     Page.Filter.OnChange(Page.Filter);
-    Assert.IsTrue(Length(TopLevelNodes(Page)) < 17, 'Bereiche ohne experimentelle Einstellung fehlen');
+    Assert.IsTrue(Length(TopLevelNodes(Page)) < 15, 'Bereiche ohne experimentelle Einstellung fehlen');
     Assert.IsNotNull(TreeNodeOf(Page, Minimap), 'Minikarte ist experimentell');
-    Assert.IsNotNull(Page.NodeSheet('welcome.header'));
-    Assert.IsNull(TreeNodeOf(Page, Page.NodeSheet('welcome.header')), 'Kopf der Willkommensseite ohne Treffer');
     Page.Filter.Choice := 0;
     Page.Filter.OnChange(Page.Filter);
-    // 16 Bereiche, „Prüfregeln“ (#909), Issue-Tracker (#1280) und Versionsverwaltung (#1285).
-    Assert.AreEqual(19, Integer(Length(TopLevelNodes(Page))));
+    // Bereiche von Base ohne Module (#1456), darunter „Prüfregeln“ (#909) und Versionsverwaltung (#1285).
+    Assert.AreEqual(15, Integer(Length(TopLevelNodes(Page))));
     // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
     EditOf(Page, 'MinimapWidth').Text := '90';
     EditOf(Page, 'StickyScrollMaxLines').Text := '7';
@@ -462,7 +434,6 @@ begin
     Assert.IsTrue(Saved.ExperimentalEnabled);
   finally
     Host.Free;
-    mWelcome.Revoke;
     TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
@@ -538,7 +509,9 @@ begin
   ASettings.PairGuideWidth := 3;
   ASettings.PairGuideOpacity := 70;
   ASettings.PairColorsLight := '#0071E3,#007C8A,#C000E0,#008700,#4040FF';
-  ASettings.CodeLensMetrics := False;
+  ASettings.NestedRoutines := 'outer';
+  ASettings.NestedRoutineBand := True;
+  ASettings.NestedRoutineColorDark := '#123456';
   ASettings.TodoList := False;
   ASettings.MetricsReport := False;
   ASettings.TeamFile := False;
@@ -567,7 +540,10 @@ begin
   Assert.AreEqual(70, ASaved.PairGuideOpacity);
   Assert.AreEqual('#0071E3,#007C8A,#C000E0,#008700,#4040FF', ASaved.PairColorsLight);
   Assert.AreEqual('', ASaved.PairColorsDark, 'Standardfarben bleiben leer');
-  Assert.IsFalse(ASaved.CodeLensMetrics, 'Code Lens Metriken (#66)');
+  Assert.AreEqual('outer', ASaved.NestedRoutines, 'Färbung lokaler Routinen (#1788)');
+  Assert.IsTrue(ASaved.NestedRoutineBand, 'Band lokaler Routinen (#1788)');
+  Assert.AreEqual('#123456', ASaved.NestedRoutineColorDark, 'eigene Farbe lokaler Routinen (#1788)');
+  Assert.AreEqual('', ASaved.NestedRoutineColorLight, 'Standardfarbe bleibt leer (#1788)');
   Assert.IsFalse(ASaved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(ASaved.MetricsReport, 'Befehl (#66)');
   Assert.IsFalse(ASaved.TeamFile, 'Projektdatei (#486)');
@@ -818,25 +794,6 @@ begin
   Assert.AreEqual(0, Saved.NotificationsKey, 'leer = keine Taste');
   // Build-Server (#763, sechste Quelle) behält sein Verhalten; unbekannte Quellen bleiben erhalten.
   Assert.AreEqual('server=off, buildServer=collect, tracker=off, shortcutTips=collect', Saved.NotificationsSources);
-end;
-procedure TAtlasSettingsPageTests.NotesRoundTrip;
-var
-  Page: TAtlasSettingsPage;
-  Saved: TAtlasPluginSettings;
-begin
-  Page := TAtlasSettingsPage.Create(nil);
-  try
-    Page.LoadFrom(TAtlasPluginSettings.Defaults);
-    Assert.IsTrue(CheckOf(Page, 'Notes').Checked, 'Notizen standardmäßig an');
-    CheckOf(Page, 'Notes').Checked := False;
-    Saved := TAtlasPluginSettings.Defaults;
-    Page.SaveTo(Saved);
-    Assert.IsFalse(Saved.Notes, 'Notizen abschaltbar');
-    Page.LoadFrom(Saved);
-    Assert.IsFalse(CheckOf(Page, 'Notes').Checked);
-  finally
-    Page.Free;
-  end;
 end;
 procedure TAtlasSettingsPageTests.ExperimentalSwitchRoundTrips;
 var
@@ -1172,15 +1129,14 @@ begin
     TAtlasSettingsPageTree.ForgetTreeState;
   end;
 end;
-/// <summary>Knoten des Bereichs Regeln: Prüffenster und „Profile und Baseline“, keine Regelgruppen.</summary>
+/// <summary>Knoten des Bereichs Regeln: Prüffenster; „Profile und Baseline“ und die Regelgruppen kommen vom
+/// Modul Prüfregeln (#1755).</summary>
 procedure AssertRulesNodes(APage: TAtlasSettingsPage);
 begin
   Assert.IsTrue(SheetOf(CheckOf(APage, 'ProblemsWindow')) = APage.NodeSheet('rules.window'));
   Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsUpdateChoice) = APage.NodeSheet('rules.window'));
   Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit) = APage.NodeSheet('rules.window'));
-  Assert.IsTrue(SheetOf(CheckOf(APage, 'FixBulk')) = APage.NodeSheet('rules.window'));
-  Assert.IsNotNull(APage.NodeSheet('rules.profiles'));
-  Assert.IsTrue(SheetOf(APage.Part<TAtlasSettingsRulesPart>.BaselineInfoLabel) = APage.NodeSheet('rules.profiles'));
+  Assert.IsNull(APage.NodeSheet('rules.profiles'), 'Profile und Baseline im Abschnitt des Moduls');
   Assert.IsNull(APage.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
 end;
 /// <summary>Gespeicherte Einstellungen des Prüffensters und der Gruppe „Compiler vorab“.</summary>
@@ -1193,15 +1149,13 @@ begin
   Assert.IsTrue(ASettings.ProblemsWindowCompiler);
   Assert.AreEqual('save', ASettings.ProblemsUpdate, 'Aktualisierung gespeichert');
   Assert.AreEqual(800, ASettings.ProblemsLiveDelayMs, 'Verzögerung gespeichert');
-  Assert.IsFalse(ASettings.FixBulk, 'Sammelkorrektur gespeichert');
   Assert.IsFalse(ASettings.HoverProblemActions, 'Hover-Aktionen gespeichert');
 end;
-procedure TAtlasSettingsPageTests.RulesAreaLinksToDialogs;
+procedure TAtlasSettingsPageTests.RulesAreaWindowSettings;
 var
   Host: TForm;
   Page: TAtlasSettingsPage;
   Settings: TAtlasPluginSettings;
-  Project, Global: Integer;
 begin
   TAtlasSettingsPageTree.ForgetTreeState;
   Host := TForm.CreateNew(nil);
@@ -1209,34 +1163,15 @@ begin
     Page := TAtlasSettingsPage.Create(Host);
     Page.Parent := Host;
     Page.HandleNeeded;
-    // Knoten: Prüffenster, Compiler vorab, „Profile und Baseline“; die Regeln stehen in den Dialogen der
-    // Einstellungsdateien.
+    // Knoten: Prüffenster und Compiler vorab; die Wege zu den Regeln, Baseline und Unterdrückungen bringt das
+    // Modul Prüfregeln als Abschnitt mit (#1755, Atlas.UI.Rules.SettingsSection.Tests).
     AssertRulesNodes(Page);
-    // Hauptknoten: Wege zum Projekt- und zum globalen Dialog.
-    Project := 0;
-    Global := 0;
-    Page.Part<TAtlasSettingsRulesPart>.OnRulesProject :=
-      procedure
-      begin
-        Inc(Project);
-      end;
-    Page.Part<TAtlasSettingsRulesPart>.OnRulesGlobal :=
-      procedure
-      begin
-        Inc(Global);
-      end;
-    Assert.AreEqual('', Page.NodeOfSheet(SheetOf(Page.Part<TAtlasSettingsRulesPart>.RulesProjectButton)));
-    Page.Part<TAtlasSettingsRulesPart>.RulesProjectButton.Click;
-    Page.Part<TAtlasSettingsRulesPart>.RulesGlobalButton.Click;
-    Assert.AreEqual(1, Project);
-    Assert.AreEqual(1, Global);
     // Einstellungen des Prüffensters im Rundweg.
     Settings := TAtlasPluginSettings.Defaults;
     Settings.ProblemsWindowScope := 'project';
     Settings.ProblemsWindowGroupBy := 'rule';
     Settings.ProblemsUpdate := 'manual';
     Settings.ProblemsLiveDelayMs := 1200;
-    Settings.FixBulk := False;
     Settings.HoverProblemActions := False;
     Page.LoadFrom(Settings);
     Assert.AreEqual(1, Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowScopeChoice.Choice);
@@ -1245,7 +1180,6 @@ begin
     Assert.AreEqual('1200', Page.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit.Text, 'Verzögerung geladen');
     Page.Part<TAtlasSettingsRulesPart>.ProblemsUpdateChoice.Choice := 1;
     Page.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit.Text := '800';
-    Assert.IsFalse(CheckOf(Page, 'FixBulk').Checked, 'Sammelkorrektur geladen');
     Assert.IsFalse(CheckOf(Page, 'HoverProblemActions').Checked, 'Hover-Aktionen geladen');
     Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowScopeChoice.Choice := 0;
     CheckOf(Page, 'ProblemsWindowCompiler').Checked := True;

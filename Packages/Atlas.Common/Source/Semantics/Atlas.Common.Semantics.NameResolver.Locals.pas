@@ -413,6 +413,15 @@ begin
   Result := False;
 end;
 
+/// <summary>Kann ANode die Zeile ALine enthalten? Unbekanntes Ende (0:0) zählt als ja.</summary>
+function MayContainLine(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mEndKnown: Boolean;
+begin
+  mEndKnown := (ANode.EndPos.Line > 0) or (ANode.EndPos.Character > 0);
+  Result := (ANode.StartPos.Line <= ALine) and (not mEndKnown or (ANode.EndPos.Line >= ALine));
+end;
+
 function TResolverLocals.LocalOverloads(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
 var
   mNode, mParent, mSibling: TSyntaxNode;
@@ -436,6 +445,12 @@ begin
         SameText(AVisited.Name, mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
+      end;
+      // Nur in Knoten, die die Zeile umfassen: Vorher lief jede Auflösung einer lokalen Routine durch den
+      // ganzen Baum, quadratisch in der Länge der Unit (verschachtelte Routinen in großen Units).
+      if not MayContainLine(AVisited, mStartPos.Line) then
+      begin
+        Exit(TSyntaxSearchStep.Skip);
       end;
       Result := TSyntaxSearchStep.Descend;
     end);

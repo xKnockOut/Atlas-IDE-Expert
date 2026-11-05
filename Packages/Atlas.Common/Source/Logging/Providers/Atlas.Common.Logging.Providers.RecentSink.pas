@@ -2,7 +2,9 @@
 
 // Senke, die die letzten Logzeilen im Speicher hält (#108): Auszug für den
 // Fehlerbericht, auch ohne --log. Fester Ringpuffer, die ältesten Zeilen
-// werden verdrängt. Threadsicher.
+// werden verdrängt. Threadsicher. Die Zeilen behalten die Kennzeichen für
+// Namen, Pfade und fremden Text (TLogEntry.ToText, #1478): Wer sie
+// weitergibt, anonymisiert sie oder entfernt die Kennzeichen (TLogMarks.Plain).
 
 interface
 

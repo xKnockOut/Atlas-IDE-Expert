@@ -132,7 +132,31 @@ uses
   System.StrUtils,
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Documents.Uris;
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THotspotsText = (LevelIsUnitOrMethod, MonthsIsAWholeNumber, NoProjectLoaded, NoVersionControlFound,
+    FormatIsJsonMarkdownHtml, SectionIsHotspotsOrCoupling, LimitIsAWholeNumber, HotspotDataIsNotValid,
+    TargetFileMissingMdHtml, HotspotsAreSwitchedOffHotspots);
+
+const
+  cTexts: array[THotspotsText] of TAtlasText = (
+    (De: '"level" ist unit oder method'; En: '"level" is unit or method'),
+    (De: '"months" ist eine ganze Zahl von 1 bis 60'; En: '"months" is a whole number from 1 to 60'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'),
+    (De: 'Keine Versionsverwaltung gefunden'; En: 'No version control found'),
+    (De: '"format" ist json, markdown, html oder text'; En: '"format" is json, markdown, html or text'),
+    (De: '"section" ist hotspots oder coupling'; En: '"section" is hotspots or coupling'),
+    (De: '"limit" ist eine ganze Zahl ab 0'; En: '"limit" is a whole number from 0'),
+    (De: 'Hotspot-Daten sind kein gültiges JSON'; En: 'Hotspot data is not valid JSON'),
+    (De: 'Zieldatei fehlt (.md, .html oder .json)'; En: 'Target file missing (.md, .html or .json)'),
+    (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are switched off (hotspots.enabled)'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -326,13 +350,13 @@ begin
   AError := '';
   if not THotspots.TryLevelOf(StringOf(AParams, 'level'), mLevel) then
   begin
-    AError := '"level" ist unit oder method';
+    AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
     Exit(False);
   end;
   ARequest.Level := mLevel;
   if not IntegerOf(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
   begin
-    AError := '"months" ist eine ganze Zahl von 1 bis 60';
+    AError := cTexts[THotspotsText.MonthsIsAWholeNumber].Text;
     Exit(False);
   end;
   ARequest.Options.Months := mMonths;
@@ -382,7 +406,7 @@ begin
   if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(AParams, 'uri')), ARequest, mSettings, AVcs,
     AOutcome.VcsError)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
   end;
   AOutcome.Enabled := mSettings.HotspotsEnabled;
   Result := False;
@@ -395,7 +419,7 @@ begin
     Result := AVcs <> nil;
     if not Result and (AOutcome.VcsError = '') then
     begin
-      AOutcome.VcsError := 'Keine Versionsverwaltung gefunden';
+      AOutcome.VcsError := cTexts[THotspotsText.NoVersionControlFound].Text;
     end;
   end;
 end;
@@ -456,11 +480,11 @@ function ViewOf(const AParams: TJSONObject): TLspHotspotView;
 begin
   if not TLspHotspots.TryParseFormat(StringOf(AParams, 'format'), Result.Format) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, html oder text');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.FormatIsJsonMarkdownHtml].Text);
   end;
   if not THotspotReport.ParseSection(StringOf(AParams, 'section'), Result.Section) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"section" ist hotspots oder coupling');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
   end;
   Result.Limit := 0;
   if Result.Format = TLspHotspotFormat.Text then
@@ -469,7 +493,7 @@ begin
   end;
   if not IntegerOf(AParams, 'limit', Result.Limit, Result.Limit) or (Result.Limit < 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"limit" ist eine ganze Zahl ab 0');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LimitIsAWholeNumber].Text);
   end;
 end;
 
@@ -484,7 +508,7 @@ begin
         mValue := TJSONObject.ParseJSONValue(THotspotReport.Json(AResult));
         if mValue = nil then
         begin
-          raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Hotspot-Daten sind kein gültiges JSON');
+          raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[THotspotsText.HotspotDataIsNotValid].Text);
         end;
         AAnswer.AddPair('format', 'json');
         AAnswer.AddPair('data', mValue);
@@ -613,7 +637,7 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.TargetFileMissingMdHtml].Text);
   end;
 end;
 
@@ -622,7 +646,8 @@ procedure CheckSavable(const AOutcome: TLspHotspotOutcome);
 begin
   if not AOutcome.Enabled then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Hotspots sind ausgeschaltet (hotspots.enabled)');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest,
+      cTexts[THotspotsText.HotspotsAreSwitchedOffHotspots].Text);
   end;
   if AOutcome.VcsError <> '' then
   begin
@@ -642,7 +667,7 @@ begin
   try
     if not THotspots.TryLevelOf(StringOf(mParams, 'level'), mLevel) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"level" ist unit oder method');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LevelIsUnitOrMethod].Text);
     end;
     // Dieselbe Rechnung wie das Fenster (Methodenebene enthält die Units); gezeigt wird die gewählte Ebene.
     mParams.RemovePair('level').Free;
@@ -669,5 +694,8 @@ begin
   end;
   Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Hotspots', cTexts);
 
 end.

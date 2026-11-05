@@ -88,7 +88,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLinkedEditingText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TLinkedEditingText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -424,7 +438,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -462,5 +476,8 @@ begin
   Found := Ranges(Tree, TDocumentUris.ToPath(Uri), Position);
   Result := ToJson(Found);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.LinkedEditing', cTexts);
 
 end.

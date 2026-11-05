@@ -186,7 +186,39 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.PluginTimings;
+  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TClientText = (ErrorResponseFromTheServer, ServerMessageWithoutEndOf, ServerMessageWithBytesExceeds,
+    ConnectionToTheServerHas, Cancelled, NoAnswerToAtlasIs, NoAnswerToWithinMs);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TClientText] of string = (
+    ('Fehlerantwort des Servers',
+     'Servernachricht ohne Kopfende',
+     'Servernachricht mit %d Bytes über der Grenze von %d Bytes',
+     'Verbindung zum Server ist beendet',
+     '%s abgebrochen',
+     'Keine Antwort auf %s: Atlas wird beendet',
+     'Keine Antwort auf %s innerhalb von %d ms'),
+    ('Error response from the server',
+     'Server message without end of header',
+     'Server message with %d bytes exceeds the limit of %d bytes',
+     'Connection to the server has ended',
+     '%s cancelled',
+     'No answer to %s: Atlas is shutting down',
+     'No answer to %s within %d ms'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TClientText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   HeaderEnd: array[0..3] of Byte = (13, 10, 13, 10);
@@ -318,7 +350,7 @@ begin
     ResultValue := AMessage.GetValue('result');
     if ErrorValue is TJSONObject then
     begin
-      Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', 'Fehlerantwort des Servers');
+      Pending.Error := TJSONObject(ErrorValue).GetValue<string>('message', UiText(TClientText.ErrorResponseFromTheServer));
     end
     else if (ResultValue <> nil) and not (ResultValue is TJSONNull) then
     begin
@@ -360,7 +392,7 @@ begin
   if Length(ABuffer) >= TLspClient.MaxHeaderLength + Length(HeaderEnd) then
   begin
     ABuffer := nil;
-    raise ELspClientError.Create('Servernachricht ohne Kopfende');
+    raise ELspClientError.Create(UiText(TClientText.ServerMessageWithoutEndOf));
   end;
 end;
 
@@ -370,7 +402,7 @@ begin
   if ABodyLength > TLspClient.MaxContentLength then
   begin
     ABuffer := nil;
-    raise ELspClientError.CreateFmt('Servernachricht mit %d Bytes über der Grenze von %d Bytes',
+    raise ELspClientError.CreateFmt(UiText(TClientText.ServerMessageWithBytesExceeds),
       [ABodyLength, TLspClient.MaxContentLength]);
   end;
 end;
@@ -417,7 +449,7 @@ begin
     if FClient.FClosed then
     begin
       AParams.Free;
-      raise ELspClientError.Create('Verbindung zum Server ist beendet');
+      raise ELspClientError.Create(UiText(TClientText.ConnectionToTheServerHas));
     end;
     Inc(FClient.FNextId);
     FId := FClient.FNextId;
@@ -458,7 +490,7 @@ begin
     if (Result = wrTimeout) and FCancelled() then
     begin
       FClient.CancelOnServer(FId);
-      raise ELspCancelledError.CreateFmt('%s abgebrochen', [FMethod]);
+      raise ELspCancelledError.CreateFmt(UiText(TClientText.Cancelled), [FMethod]);
     end;
   until (Result <> wrTimeout) or (Waited >= FTimeoutMs);
 end;
@@ -488,7 +520,7 @@ begin
         FClient.AddResponseTime(AElapsedMs);
       end;
     wrAbandoned:
-      raise ELspClientError.CreateFmt('Keine Antwort auf %s: Atlas wird beendet', [FMethod]);
+      raise ELspClientError.CreateFmt(UiText(TClientText.NoAnswerToAtlasIs), [FMethod]);
   else
     begin
       if Counts then
@@ -497,7 +529,7 @@ begin
       end;
       // Sonst rechnet der Server weiter, während schon die nächste Anfrage kommt (CPU-Last).
       FClient.CancelOnServer(FId);
-      raise ELspTimeoutError.CreateFmt('Keine Antwort auf %s innerhalb von %d ms', [FMethod, FTimeoutMs]);
+      raise ELspTimeoutError.CreateFmt(UiText(TClientText.NoAnswerToWithinMs), [FMethod, FTimeoutMs]);
     end;
   end;
 end;
@@ -579,17 +611,34 @@ begin
   Result := RequestCancellable(AMethod, AParams, ATimeoutMs, nil);
 end;
 
+/// <summary>Name der Anfrage im Diagnose-Fenster: bei workspace/executeCommand mit dem Befehl
+/// (2.0-stable: alle Serverbefehle standen in einer Zeile, ohne zu zeigen, welcher scheitert).</summary>
+function RequestLabel(const AMethod: string; AParams: TJSONValue): string;
+var
+  mCommand: string;
+begin
+  Result := AMethod;
+  if (AMethod = 'workspace/executeCommand') and (AParams is TJSONObject) and
+    TJSONObject(AParams).TryGetValue<string>('command', mCommand) then
+  begin
+    Result := AMethod + ' ' + mCommand;
+  end;
+end;
+
 function TLspClient.RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
   const ACancelled: TFunc<Boolean>): TJSONValue;
 var
   mWatch: TStopwatch;
   mOutcome: TAtlasRequestOutcome;
+  mLabel: string;
 begin
   if not TAtlasPluginTimings.Enabled then
   begin
     Exit(DoRequest(AMethod, AParams, ATimeoutMs, ACancelled));
   end;
-  // Diagnose-Fenster, Reiter „Server“: Dauer und Ausgang jeder Anfrage.
+  // Diagnose-Fenster, Reiter „Server“: Dauer und Ausgang jeder Anfrage. Der Name vorher: DoRequest übernimmt
+  // AParams.
+  mLabel := RequestLabel(AMethod, AParams);
   mWatch := TStopwatch.StartNew;
   mOutcome := TAtlasRequestOutcome.Failed;
   try
@@ -609,7 +658,7 @@ begin
       end;
     end;
   finally
-    TAtlasPluginTimings.NoteRequest(AMethod, mWatch.Elapsed.TotalMilliseconds, mOutcome);
+    TAtlasPluginTimings.NoteRequest(mLabel, mWatch.Elapsed.TotalMilliseconds, mOutcome);
   end;
 end;
 
@@ -866,7 +915,7 @@ begin
     end;
     for Pending in FPending.Values do
     begin
-      Pending.Error := 'Verbindung zum Server ist beendet';
+      Pending.Error := UiText(TClientText.ConnectionToTheServerHas);
       Pending.Done.SetEvent;
     end;
     Handler := FOnClosed;
@@ -947,5 +996,8 @@ begin
     Result := Sum / ASamples;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Lsp.Client', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -85,7 +85,25 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Rules.TypedScope;
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TForbiddenSymbolsText = (Title, ForbiddenReason, Forbidden, ReplaceWith);
+
+const
+  cTexts: array[TForbiddenSymbolsText] of TAtlasText = (
+    (De: 'Verbotenes Symbol aus atlas.json verwendet'; En: 'Forbidden symbol from atlas.json used'),
+    (De: '%s ist in diesem Projekt verboten: %s (atlas.json › forbidden-symbol).';
+     En: '%s is forbidden in this project: %s (atlas.json › forbidden-symbol).'),
+    (De: '%s ist in diesem Projekt verboten (atlas.json › forbidden-symbol).';
+     En: '%s is forbidden in this project (atlas.json › forbidden-symbol).'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cKindNames: array[TForbiddenKind] of string = ('', 'routine', 'type', 'constant', 'field', 'property', 'enumValue',
@@ -271,7 +289,7 @@ end;
 function TForbiddenSymbolRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ForbiddenSymbolRuleId, TRuleSeverity.Warning,
-    'Verbotenes Symbol aus atlas.json verwendet', True);
+    cTexts[TForbiddenSymbolsText.Title].Text, True);
 end;
 
 class function TForbiddenSymbolRule.TryParseKind(const AText: string; out AKind: TForbiddenKind): Boolean;
@@ -512,17 +530,16 @@ var
   begin
     if AEntry.Message <> '' then
     begin
-      mMessage := Format('%s ist in diesem Projekt verboten: %s (atlas.json › forbidden-symbol).',
-        [AShown, AEntry.Message]);
+      mMessage := cTexts[TForbiddenSymbolsText.ForbiddenReason].Fmt([AShown, AEntry.Message]);
     end
     else
     begin
-      mMessage := Format('%s ist in diesem Projekt verboten (atlas.json › forbidden-symbol).', [AShown]);
+      mMessage := cTexts[TForbiddenSymbolsText.Forbidden].Fmt([AShown]);
     end;
     mFixes := nil;
     if (AEntry.Replacement <> '') and ReplacedRange(ANode, mRange) then
     begin
-      mFixes := [TRuleFix.Create(Format('Durch %s ersetzen', [AEntry.Replacement]),
+      mFixes := [TRuleFix.Create(cTexts[TForbiddenSymbolsText.ReplaceWith].Fmt([AEntry.Replacement]),
         [TTextEdit.Create(mRange, AEntry.Replacement)])];
     end;
     AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, AEntry.Severity, mFixes);
@@ -730,5 +747,8 @@ procedure RegisterForbiddenSymbolRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TForbiddenSymbolRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.ForbiddenSymbols', cTexts);
 
 end.

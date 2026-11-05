@@ -253,6 +253,7 @@ begin
   Result.LastDataFile := TAtlasIdeDiagnosticMode.LastDataFile;
   Result.Roots := TAtlasIdeBugReport.ProjectRoots;
   Result.Identity := TAtlasIdeBugReport.Identity;
+  Result.PluginLogNames := TAtlasIdeSettings.Current.LogNames;
   Result.Created := Now;
 end;
 

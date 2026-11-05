@@ -2,7 +2,11 @@
 
 // Einträge des Untermenüs Atlas im Kontextmenü des Editors (#399), aus
 // TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort)
-// ausgelagert, in der Reihenfolge des Menüs.
+// ausgelagert, in der Reihenfolge des Menüs. Oben die häufigsten Befehle
+// (Code-Aktionen, Erzeugen), danach Untermenüs Navigation, Bearbeiten, Suchen
+// und analysieren, Befunde, dann die Einträge der Module (eigene Untermenüs
+// nach Section) und „Element ausblenden“. Alles in einer Ebene war höher als
+// der Bildschirm.
 
 interface
 
@@ -13,18 +17,23 @@ type
   /// <summary>Einträge des Kontextmenüs der Editorbefehle.</summary>
   TAtlasEditorMenu = record
   private
-    /// <summary>Code-Aktionen, Erzeugen-Menü und Auswahl.</summary>
+    /// <summary>Code-Aktionen und Erzeugen-Menü.</summary>
     class procedure AddActions(AMenu: TAtlasIdeContextMenu); static;
-    /// <summary>Implementierungen, Typdefinition und Methodenwechsel.</summary>
+    /// <summary>Untermenü Navigation: Implementierungen, Typdefinition, Methodenwechsel, Abschnitte, Testunit.
+    /// </summary>
     class procedure AddNavigation(AMenu: TAtlasIdeContextMenu); static;
-    /// <summary>Abschnittssprünge und Formatieren.</summary>
+    /// <summary>Abschnittssprünge und Testunit (in Navigation).</summary>
     class procedure AddSections(AMenu: TAtlasIdeContextMenu); static;
-    /// <summary>Einträge der Module, Methodenreihenfolge, Referenzen, Aufrufdiagramm und Auswirkungen.</summary>
-    class procedure AddLookups(AMenu: TAtlasIdeContextMenu); static;
-    /// <summary>Testunit, qualifizierter Name und Rückgängig.</summary>
+    /// <summary>Untermenü Bearbeiten: Auswahl, Formatieren, Methodenreihenfolge.</summary>
+    class procedure AddEditing(AMenu: TAtlasIdeContextMenu); static;
+    /// <summary>Qualifizierten Namen kopieren und Atlas-Änderungen (in Bearbeiten).</summary>
     class procedure AddTools(AMenu: TAtlasIdeContextMenu); static;
-    /// <summary>Befunde und Ausblenden.</summary>
+    /// <summary>Untermenü Suchen und analysieren: Referenzen, Aufrufdiagramm, Auswirkungen.</summary>
+    class procedure AddLookups(AMenu: TAtlasIdeContextMenu); static;
+    /// <summary>Untermenü Befunde.</summary>
     class procedure AddProblems(AMenu: TAtlasIdeContextMenu); static;
+    /// <summary>Einträge der Module und Ausblenden.</summary>
+    class procedure AddModules(AMenu: TAtlasIdeContextMenu); static;
   public
     /// <summary>Alle Einträge in AMenu aufnehmen.</summary>
     class procedure Fill(AMenu: TAtlasIdeContextMenu); static;
@@ -41,14 +50,37 @@ uses
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
-  Atlas.IDE.Commands.EditorActions;
+  Atlas.IDE.Commands.EditorActions,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Namen der Untermenüs (#1458).</summary>
+  TEditorMenuText = (Edit, Analysis, Findings);
+{$SCOPEDENUMS OFF}
 
 const
-  // Plätze im Kontextmenü für Einträge der Module (#1455): Lesezeichen 8 (mit Trennlinien), Debugger 3, Tests 2,
-  // Analyse 1, Tracker 1; Reserve für Regeln und Willkommensseite. Zu wenige meldet das Log.
-  cModuleSlotCount = 24;
+  cTexts: array[TAtlasLanguage, TEditorMenuText] of string = (
+    ('Bearbeiten', 'Suchen und analysieren', 'Befunde'),
+    ('Edit', 'Search and analyze', 'Findings'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TEditorMenuText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
+const
+  // Plätze im Kontextmenü für Einträge der Module (#1455). Untermenüs nach Section: Notizen und Lesezeichen 7,
+  // Debuggen 3, Tests 2; direkt: Analyse 1, Tracker 1. Reserve für Regeln und Willkommensseite. Zu wenige meldet
+  // das Log.
+  cModuleTopSlots = 8;
+  cModuleGroups = 4;
+  cModuleGroupSlots = 10;
 
 { TAtlasEditorMenu }
 
@@ -79,6 +111,11 @@ begin
       TAtlasIdeGenerate.Show;
     end);
   AMenu.Add('-', nil, nil);
+end;
+
+class procedure TAtlasEditorMenu.AddEditing(AMenu: TAtlasIdeContextMenu);
+begin
+  AMenu.BeginGroup(UiText(TEditorMenuText.Edit));
   AMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
     function: Integer
     begin
@@ -98,10 +135,34 @@ begin
       TAtlasEditorActionCommands.ShrinkSelection;
     end);
   AMenu.Add('-', nil, nil);
+  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  AMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.FormatCode then
+      begin
+        Result := TAtlasIdeSettings.Current.FormatCodeKey;
+      end;
+    end,
+    procedure
+    begin
+      TAtlasEditorActionCommands.FormatCode;
+    end);
+  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
+  AMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Run;
+    end);
+  AddTools(AMenu);
+  AMenu.EndGroup;
 end;
 
 class procedure TAtlasEditorMenu.AddNavigation(AMenu: TAtlasIdeContextMenu);
 begin
+  AMenu.BeginGroup(TAtlasStrings.Text(TAtlasTextId.MenuGroupNavigation));
   AMenu.Add('Atlas.Implementations', TAtlasStrings.Text(TAtlasTextId.MenuImplementations),
     function: Integer
     begin
@@ -134,10 +195,13 @@ begin
     begin
       TAtlasEditorActionCommands.ToggleMethod;
     end);
+  AddSections(AMenu);
+  AMenu.EndGroup;
 end;
 
 class procedure TAtlasEditorMenu.AddSections(AMenu: TAtlasIdeContextMenu);
 begin
+  AMenu.Add('-', nil, nil);
   // Abschnittssprünge der Editorleiste (#1101), auch ohne die Leiste.
   AMenu.Add('Atlas.GotoInterface', TAtlasStrings.Text(TAtlasTextId.GotoInterfaceCommand),
     function: Integer
@@ -157,33 +221,21 @@ begin
     begin
       TAtlasGuard.Run(TAtlasFeature.EditorToolbar, TAtlasIdeEditorToolbar.GotoImplementation);
     end);
-  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
-  AMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+  AMenu.Add('-', nil, nil);
+  AMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     function: Integer
     begin
-      Result := 0;
-      if TAtlasIdeSettings.Current.FormatCode then
-      begin
-        Result := TAtlasIdeSettings.Current.FormatCodeKey;
-      end;
+      Result := TAtlasIdeSettings.Current.TestUnitKey;
     end,
     procedure
     begin
-      TAtlasEditorActionCommands.FormatCode;
+      TAtlasEditorActionCommands.SwitchTestUnit;
     end);
 end;
 
 class procedure TAtlasEditorMenu.AddLookups(AMenu: TAtlasIdeContextMenu);
 begin
-  // Einträge der Module (#1455), z. B. „Gezielt hineinspringen“ und die Befehle des Schrittfilters des Debuggers.
-  AMenu.AddModuleSlots(cModuleSlotCount);
-  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
-  AMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
-    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
-    procedure
-    begin
-      TAtlasIdeMethodPlacement.Run;
-    end);
+  AMenu.BeginGroup(UiText(TEditorMenuText.Analysis));
   AMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
@@ -210,20 +262,12 @@ begin
     begin
       Result := TAtlasIdeImpact.Enabled;
     end);
-  AMenu.Add('-', nil, nil);
+  AMenu.EndGroup;
 end;
 
 class procedure TAtlasEditorMenu.AddTools(AMenu: TAtlasIdeContextMenu);
 begin
-  AMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
-    function: Integer
-    begin
-      Result := TAtlasIdeSettings.Current.TestUnitKey;
-    end,
-    procedure
-    begin
-      TAtlasEditorActionCommands.SwitchTestUnit;
-    end);
+  AMenu.Add('-', nil, nil);
   AMenu.Add('Atlas.CopyQualifiedName', TAtlasStrings.Text(TAtlasTextId.EditorCopyQualified), nil,
     procedure
     begin
@@ -259,7 +303,7 @@ end;
 class procedure TAtlasEditorMenu.AddProblems(AMenu: TAtlasIdeContextMenu);
 begin
   // Nächster/vorheriger Befund (#509).
-  AMenu.Add('-', nil, nil);
+  AMenu.BeginGroup(UiText(TEditorMenuText.Findings));
   AMenu.Add('Atlas.NextProblem', TAtlasStrings.Text(TAtlasTextId.ProblemNextCommand),
     function: Integer
     begin
@@ -278,6 +322,29 @@ begin
     begin
       TAtlasEditorActionCommands.StepProblem(False);
     end);
+  // Datei jetzt prüfen (#1744): nur mit Prüfregeln.
+  AMenu.AddWhen(TAtlasFeature.Problems, 'Atlas.CheckFile',
+    TAtlasStrings.Text(TAtlasTextId.ProblemsCheckFileCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.CheckFileKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeProblems.CheckFileNow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Problems;
+    end);
+  AMenu.EndGroup;
+end;
+
+class procedure TAtlasEditorMenu.AddModules(AMenu: TAtlasIdeContextMenu);
+begin
+  // Einträge der Module (#1455), z. B. „Gezielt hineinspringen“ und die Befehle des Schrittfilters des Debuggers.
+  AMenu.Add('-', nil, nil);
+  AMenu.AddModuleSlots(cModuleTopSlots, cModuleGroups, cModuleGroupSlots);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   AMenu.Add('-', nil, nil);
   AMenu.AddGuarded(TAtlasFeature.Hide, 'Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
@@ -295,10 +362,14 @@ class procedure TAtlasEditorMenu.Fill(AMenu: TAtlasIdeContextMenu);
 begin
   AddActions(AMenu);
   AddNavigation(AMenu);
-  AddSections(AMenu);
+  AddEditing(AMenu);
   AddLookups(AMenu);
-  AddTools(AMenu);
   AddProblems(AMenu);
+  AddModules(AMenu);
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Commands.EditorMenu', cTexts[TAtlasLanguage.German],
+    cTexts[TAtlasLanguage.English]);
 
 end.

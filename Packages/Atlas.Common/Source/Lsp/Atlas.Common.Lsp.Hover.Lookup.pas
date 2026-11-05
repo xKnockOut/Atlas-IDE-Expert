@@ -56,7 +56,21 @@ uses
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLookupText = (PossibleElement, PossibleElements);
+
+const
+  cTexts: array[TLookupText] of TAtlasText = (
+    (De: ' · 1 mögliches Element'; En: ' · 1 possible element'),
+    (De: ' · %s mögliche Elemente'; En: ' · %s possible elements'));
+
+{$SCOPEDENUMS OFF}
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -155,11 +169,11 @@ begin
   Result := 'set of ' + mBaseType;
   if mCount = 1 then
   begin
-    Result := Result + ' · 1 mögliches Element';
+    Result := Result + cTexts[TLookupText.PossibleElement].Text;
   end
   else if mCount >= 0 then
   begin
-    Result := Result + ' · ' + IntToStr(mCount) + ' mögliche Elemente';
+    Result := Result + cTexts[TLookupText.PossibleElements].Fmt([IntToStr(mCount)]);
   end;
 end;
 
@@ -653,5 +667,8 @@ begin
     mRun.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Hover.Lookup', cTexts);
 
 end.

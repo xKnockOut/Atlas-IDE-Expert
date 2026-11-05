@@ -57,6 +57,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Debug.SettingsSection,
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.Guard,
@@ -83,7 +84,6 @@ uses
   Atlas.IDE.Debug.Report,
   Atlas.IDE.Contracts.DebugReport,
   Atlas.IDE.Debug.Composition.Values,
-  Atlas.UI.Strings,
   Atlas.UI.Debug.Strings;
 
 var
@@ -313,7 +313,7 @@ function TAtlasDebugModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
-    CommandWithKey('Atlas.StepIntoTarget', TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+    CommandWithKey('Atlas.StepIntoTarget', TAtlasDebugStrings.StepIntoTargetCommand,
       TAtlasIdeStepInto.Run,
       StepIntoTargetVisible, StepIntoTargetKey),
     // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
@@ -358,15 +358,22 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im Untermenü „Debuggen“ von Atlas im Kontextmenü des Editors.</summary>
+function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
+  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+end;
+
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
     MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
     MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
-    MenuEntry('Atlas.StepIntoTarget', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.StepFilterSkip', TAtlasMenuPlace.EditorContext),
-    MenuEntry('Atlas.StepFilterUnskip', TAtlasMenuPlace.EditorContext)];
+    ContextEntry('Atlas.StepIntoTarget'),
+    ContextEntry('Atlas.StepFilterSkip'),
+    ContextEntry('Atlas.StepFilterUnskip')];
 end;
 
 function TAtlasDebugModule.Keys: TArray<TAtlasModuleKey>;
@@ -376,7 +383,7 @@ begin
   // Gezielt hineinspringen (#836): nur im angehaltenen Zustand; sonst geht die Taste an die IDE weiter.
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.StepIntoTarget';
-  mKey.Caption := TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand);
+  mKey.Caption := TAtlasDebugStrings.StepIntoTargetCommand;
   mKey.Key := StepIntoTargetKey;
   mKey.Attempt :=
     function: Boolean
@@ -512,6 +519,13 @@ begin
     end, TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
 end;
 
+/// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
+/// ausgeschaltet einstellen lässt.</summary>
+procedure ProvideSettingsSections;
+begin
+  TAtlasDebugSettingsSection.ProvideIn(GScope);
+end;
+
 /// <summary>Alle Teile in ihrer Startreihenfolge; Werte und Ausdrücke aus Atlas.IDE.Debug.Composition.Values.
 /// </summary>
 function Parts: TArray<IAtlasFeaturePart>;
@@ -556,6 +570,7 @@ begin
   GScope.Provide(IAtlasHoverValueSource, mRef);
   // Vertrag zwischen Modulen: Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (#1276).
   GScope.Provide(IAtlasDebugReportSource, TAtlasIdeDebugReport.Create as IAtlasDebugReportSource);
+  ProvideSettingsSections;
   Result := True;
 end;
 

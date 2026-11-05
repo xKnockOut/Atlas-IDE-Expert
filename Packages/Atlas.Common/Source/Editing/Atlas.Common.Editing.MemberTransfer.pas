@@ -139,7 +139,34 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMemberTransferText = (GenericMethodsCannotBeVirtual, StaticClassMethodsCannotBe, MessageMethodsStayAsThey,
+    AlreadyOverridesAMethodOf, IsAlreadyAbstract, OnlyChangesTheVisibilityOf, TheClassIsNoLonger, TheUnitOfHasNo,
+    TheClassIsNotReadable, OnlyMethods, Needs);
+
+const
+  cTexts: array[TMemberTransferText] of TAtlasText = (
+    (De: 'generische Methoden können nicht virtuell sein'; En: 'generic methods cannot be virtual'),
+    (De: 'statische Klassenmethoden können nicht virtuell sein'; En: 'static class methods cannot be virtual'),
+    (De: 'Message-Methoden bleiben, wie sie sind'; En: 'message methods stay as they are'),
+    (De: 'überschreibt schon eine Methode des Vorfahren'; En: 'already overrides a method of the ancestor'),
+    (De: 'ist schon abstrakt'; En: 'is already abstract'),
+    (De: 'ändert nur die Sichtbarkeit eines geerbten Mitglieds';
+     En: 'only changes the visibility of an inherited member'),
+    (De: 'Die Klasse %s ist nicht mehr lesbar.'; En: 'The class %s is no longer readable.'),
+    (De: 'Die Unit von %s hat keinen implementation-Teil für die Rümpfe.';
+     En: 'The unit of %s has no implementation part for the bodies.'),
+    (De: 'Die Klasse %s ist nicht lesbar.'; En: 'The class %s is not readable.'),
+    (De: 'nur Methoden'; En: 'only methods'),
+    (De: '%s braucht %s'; En: '%s needs %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Direktiven, die eine neu geschriebene Deklaration behält.</summary>
@@ -211,27 +238,27 @@ class function TMemberTransfer.AbstractBlocker(const AMember: TClassMember): str
 begin
   if AMember.Kind <> TClassMemberKind.Method then
   begin
-    Result := 'nur Methoden';
+    Result := cTexts[TMemberTransferText.OnlyMethods].Text;
   end
   else if AMember.IsGeneric then
   begin
-    Result := 'generische Methoden können nicht virtuell sein';
+    Result := cTexts[TMemberTransferText.GenericMethodsCannotBeVirtual].Text;
   end
   else if AMember.HasDirective('static') then
   begin
-    Result := 'statische Klassenmethoden können nicht virtuell sein';
+    Result := cTexts[TMemberTransferText.StaticClassMethodsCannotBe].Text;
   end
   else if AMember.HasDirective('message') then
   begin
-    Result := 'Message-Methoden bleiben, wie sie sind';
+    Result := cTexts[TMemberTransferText.MessageMethodsStayAsThey].Text;
   end
   else if AMember.HasDirective('override') then
   begin
-    Result := 'überschreibt schon eine Methode des Vorfahren';
+    Result := cTexts[TMemberTransferText.AlreadyOverridesAMethodOf].Text;
   end
   else if AMember.IsAbstract then
   begin
-    Result := 'ist schon abstrakt';
+    Result := cTexts[TMemberTransferText.IsAlreadyAbstract].Text;
   end
   else
   begin
@@ -271,7 +298,7 @@ begin
     if Member.IsRedeclaration then
     begin
       Item.Enabled := False;
-      Item.Reason := 'ändert nur die Sichtbarkeit eines geerbten Mitglieds';
+      Item.Reason := cTexts[TMemberTransferText.OnlyChangesTheVisibilityOf].Text;
     end
     else if Kind = TTransferKind.Method then
     begin
@@ -317,7 +344,7 @@ begin
     begin
       if not Has(AChosen, Need) and KindOf(ALayout.Members[Need], Kind) then
       begin
-        Text := Format('%s braucht %s', [ALayout.Members[Id].Name, ALayout.Members[Need].Name]);
+        Text := cTexts[TMemberTransferText.Needs].Fmt([ALayout.Members[Id].Name, ALayout.Members[Need].Name]);
         if IndexText(Text, Result) < 0 then
         begin
           Result := Result + [Text];
@@ -788,7 +815,7 @@ begin
     mLayout := TMemberTransfer.ParseLayout(AText, AClassName, mTree);
     if mLayout = nil then
     begin
-      AReason := Format('Die Klasse %s ist nicht mehr lesbar.', [AClassName]);
+      AReason := cTexts[TMemberTransferText.TheClassIsNoLonger].Fmt([AClassName]);
       Exit(False);
     end;
     try
@@ -829,7 +856,7 @@ begin
     end
     else
     begin
-      AReason := Format('Die Unit von %s hat keinen implementation-Teil für die Rümpfe.', [AClassName]);
+      AReason := cTexts[TMemberTransferText.TheUnitOfHasNo].Fmt([AClassName]);
     end;
   finally
     mTree.Free;
@@ -848,7 +875,7 @@ begin
   mLayout := ParseLayout(AText, AClassName, mTree);
   if mLayout = nil then
   begin
-    AReason := Format('Die Klasse %s ist nicht lesbar.', [AClassName]);
+    AReason := cTexts[TMemberTransferText.TheClassIsNotReadable].Fmt([AClassName]);
     Exit(False);
   end;
   mLayout.Free;
@@ -869,5 +896,8 @@ begin
   end;
   Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MemberTransfer', cTexts);
 
 end.

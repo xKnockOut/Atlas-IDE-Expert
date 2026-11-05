@@ -16,6 +16,7 @@
 interface
 
 uses
+  Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.Core.Tracker.Connections,
@@ -34,7 +35,9 @@ type
   public const
     cOwnerId = 'atlas.tracker';
     cAreaId = 'issues';
+    cEnabledKey = 'issues.enabled';
   private
+    FEnabled: TCheckBox;
     FRows: TAtlasTrackerSettingsRows;
     FHooks: TAtlasTrackerSettingsHooks;
     FTables: TAtlasTrackerSettingsTables;
@@ -69,6 +72,8 @@ type
     /// <summary>„zuordnen …“ aus „Meine Issues“ (#1261): Zeile für AMatch anlegen bzw. wählen und zeigen.</summary>
     procedure AssignTrackerProject(const AMatch: string);
     property Closed: Boolean read FClosed;
+    /// <summary>Schalter des Moduls (issues.enabled); früher in Base (#1456).</summary>
+    property Enabled: TCheckBox read FEnabled;
     property Hooks: TAtlasTrackerSettingsHooks read FHooks;
     property Tables: TAtlasTrackerSettingsTables read FTables;
     property Connections: TAtlasTrackerConnectionsPart read FConnections;
@@ -82,7 +87,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.UI.Tracker.Strings;
 
 { TAtlasTrackerSettingsSection }
 
@@ -91,6 +97,7 @@ begin
   inherited Create;
   FHooks := TAtlasTrackerSettingsHooks.Create;
   FTables := TAtlasTrackerSettingsTables.Create;
+  FTables.Snippets.English := TAtlasTrackerStrings.English;
 end;
 
 destructor TAtlasTrackerSettingsSection.Destroy;
@@ -122,6 +129,7 @@ begin
     Exit;
   end;
   FRows := TAtlasTrackerSettingsRows.Create(AHost);
+  FEnabled := AHost.AddModuleSwitch(cEnabledKey) as TCheckBox;
   FConnections := TAtlasTrackerConnectionsPart.Create(FRows, FHooks, FTables, ConnectionsChanged);
   FProjects := TAtlasTrackerProjectsPart.Create(FRows, FHooks, FTables, ProjectsChanged);
   FQueries := TAtlasTrackerQueriesPart.Create(FRows, FHooks, FTables);
@@ -197,6 +205,8 @@ begin
   FreeAndNil(FProjects);
   FreeAndNil(FConnections);
   FreeAndNil(FRows);
+  // Der Schalter gehört der Seite.
+  FEnabled := nil;
   FreeAndNil(FHooks);
 end;
 

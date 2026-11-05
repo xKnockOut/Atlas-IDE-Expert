@@ -24,13 +24,12 @@ uses
 
 type
   TConditions = class
-  public const
-    InvertTitle = 'Bedingung umkehren';
-    EarlyExitTitle = 'Frühen Ausstieg einführen (Exit)';
-    EarlyContinueTitle = 'Frühen Ausstieg einführen (Continue)';
-    MergeTitle = 'Verschachtelte if zusammenfassen';
-    DoubleNegationTitle = 'Doppelte Verneinung entfernen';
   public
+    class function InvertTitle: string; static;
+    class function EarlyExitTitle: string; static;
+    class function EarlyContinueTitle: string; static;
+    class function MergeTitle: string; static;
+    class function DoubleNegationTitle: string; static;
     /// <summary>„Bedingung umkehren“ für das if, dessen Kopf APosition enthält (nur mit else).</summary>
     class function Invert(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean; static;
@@ -55,7 +54,50 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConditionsText = (InvertCondition, IntroduceEarlyExitExit, IntroduceEarlyExitContinue, MergeNestedIf,
+    RemoveDoubleNegation);
+
+const
+  cTexts: array[TConditionsText] of TAtlasText = (
+    (De: 'Bedingung umkehren'; En: 'Invert condition'),
+    (De: 'Frühen Ausstieg einführen (Exit)'; En: 'Introduce early exit (Exit)'),
+    (De: 'Frühen Ausstieg einführen (Continue)'; En: 'Introduce early exit (Continue)'),
+    (De: 'Verschachtelte if zusammenfassen'; En: 'Merge nested if'),
+    (De: 'Doppelte Verneinung entfernen'; En: 'Remove double negation'));
+
+{$SCOPEDENUMS OFF}
+
+class function TConditions.InvertTitle: string;
+begin
+  Result := cTexts[TConditionsText.InvertCondition].Text;
+end;
+
+class function TConditions.EarlyExitTitle: string;
+begin
+  Result := cTexts[TConditionsText.IntroduceEarlyExitExit].Text;
+end;
+
+class function TConditions.EarlyContinueTitle: string;
+begin
+  Result := cTexts[TConditionsText.IntroduceEarlyExitContinue].Text;
+end;
+
+class function TConditions.MergeTitle: string;
+begin
+  Result := cTexts[TConditionsText.MergeNestedIf].Text;
+end;
+
+class function TConditions.DoubleNegationTitle: string;
+begin
+  Result := cTexts[TConditionsText.RemoveDoubleNegation].Text;
+end;
 
 function LayoutAt(const AText: string; ANode: TSyntaxNode; const ALayout: TStatementLayout): TStatementLayout;
 begin
@@ -484,5 +526,8 @@ begin
     Result := Result + [Rewrite];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Conditions', cTexts);
 
 end.

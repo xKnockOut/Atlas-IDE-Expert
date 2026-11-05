@@ -36,7 +36,36 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsVariantRecordsText = (Title, MoveToFixed, UseShortString, RecordConstraint, TypeParam, NeedsFinal,
+    NeedsInit, FileFinal, FileInit);
+
+const
+  cTexts: array[TDeclarationsVariantRecordsText] of TAtlasText = (
+    (De: 'Verwalteter Typ im varianten Teil eines Records'; En: 'Managed type in the variant part of a record'),
+    (De: '%s in den festen Teil verschieben'; En: 'Move %s to the fixed part'),
+    (De: 'ShortString verwenden (höchstens 255 Zeichen)'; En: 'Use ShortString (at most 255 characters)'),
+    (De: '%s: record einschränken'; En: '%s: constrain to record'),
+    (De: 'Typparameter %s kann Finalisierung brauchen und ist im varianten Teil nicht erlaubt; record-Einschränkung ' +
+      'verwenden (wie E2569).';
+     En: 'Type parameter %s can need finalization and is not allowed in the variant part; use a record constraint ' +
+      '(like E2569).'),
+    (De: '%s braucht Finalisierung und ist im varianten Teil nicht erlaubt (wie E2154).';
+     En: '%s needs finalization and is not allowed in the variant part (like E2154).'),
+    (De: '%s braucht Initialisierung und ist im varianten Teil nicht erlaubt (wie E2418).';
+     En: '%s needs initialization and is not allowed in the variant part (like E2418).'),
+    (De: '%s braucht Finalisierung und ist in einem Dateityp nicht erlaubt (wie E2155).';
+     En: '%s needs finalization and is not allowed in a file type (like E2155).'),
+    (De: '%s braucht Initialisierung und ist in einem Dateityp nicht erlaubt (wie E2417).';
+     En: '%s needs initialization and is not allowed in a file type (like E2417).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Eine Gruppe von Typparametern bis zum nächsten ; auf oberster Ebene: Token des gesuchten Namens
@@ -129,7 +158,7 @@ end;
 function TVariantRecordManagedFieldRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('variant-record-managed-field', TRuleSeverity.Error,
-    'Verwalteter Typ im varianten Teil eines Records');
+    cTexts[TDeclarationsVariantRecordsText.Title].Text);
 end;
 
 procedure TVariantRecordManagedFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -236,7 +265,7 @@ var
       Removal := TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos);
     end;
     CaseToken := TokenAtOffset(Tokens, APart.StartOffset);
-    Result := TRuleFix.Create(Format('%s in den festen Teil verschieben', [AField.Name]),
+    Result := TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.MoveToFixed].Fmt([AField.Name]),
       [TRuleEdit.Create(TTextRange.Create(Tokens[CaseToken].StartPos, Tokens[CaseToken].StartPos),
       Text + ';' + LineBreak + TTextLines.IndentOf(Lines[Tokens[CaseToken].StartPos.Line])),
       TRuleEdit.Create(Removal, '')], False);
@@ -248,7 +277,7 @@ var
     if MatchText(NodeText(ATypeNode), ['string', 'AnsiString', 'UnicodeString', 'WideString', 'RawByteString',
       'UTF8String']) then
     begin
-      Result := [TRuleFix.Create('ShortString verwenden (höchstens 255 Zeichen)',
+      Result := [TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.UseShortString].Text,
         [TRuleEdit.Create(TTextRange.Create(ATypeNode.StartPos, ATypeNode.EndPos), 'ShortString')], False)];
     end;
   end;
@@ -284,25 +313,24 @@ var
     begin
       if Alone then
       begin
-        Fixes := Fixes + [TRuleFix.Create(Format('%s: record einschränken', [TypeText]),
+        Fixes := Fixes + [TRuleFix.Create(cTexts[TDeclarationsVariantRecordsText.RecordConstraint].Fmt([TypeText]),
           [TRuleEdit.Create(TTextRange.Create(Tokens[Param].EndPos, Tokens[Param].EndPos), ': record')], False)];
       end;
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('Typparameter %s kann ' +
-        'Finalisierung brauchen und ist im varianten Teil nicht erlaubt; record-Einschränkung verwenden ' +
-        '(wie E2569).', [TypeText]), TRuleConfidence.High, Fixes);
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.TypeParam].Fmt([TypeText]), TRuleConfidence.High, Fixes);
       Exit;
     end;
     Kind := Types.Managed(TypeText, 0);
     if Kind <> '' then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Finalisierung und ist ' +
-        'im varianten Teil nicht erlaubt (wie E2154).', [TypeText]), TRuleConfidence.High,
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.NeedsFinal].Fmt([TypeText]), TRuleConfidence.High,
         ShortStringFix(TypeRef) + Fixes);
     end
     else if Types.CustomManaged(TypeText, 0) then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Initialisierung und ' +
-        'ist im varianten Teil nicht erlaubt (wie E2418).', [TypeText]), TRuleConfidence.High, Fixes);
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.NeedsInit].Fmt([TypeText]), TRuleConfidence.High, Fixes);
     end;
   end;
 
@@ -319,13 +347,14 @@ var
     TypeText := NodeText(TypeRef);
     if Types.Managed(TypeText, 0) <> '' then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Finalisierung und ist ' +
-        'in einem Dateityp nicht erlaubt (wie E2155).', [TypeText]), TRuleConfidence.High, ShortStringFix(TypeRef));
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.FileFinal].Fmt([TypeText]), TRuleConfidence.High,
+        ShortStringFix(TypeRef));
     end
     else if Types.CustomManaged(TypeText, 0) then
     begin
-      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos), Format('%s braucht Initialisierung und ' +
-        'ist in einem Dateityp nicht erlaubt (wie E2417).', [TypeText]), TRuleConfidence.High, nil);
+      AReport.Add(TTextRange.Create(TypeRef.StartPos, TypeRef.EndPos),
+        cTexts[TDeclarationsVariantRecordsText.FileInit].Fmt([TypeText]), TRuleConfidence.High, nil);
     end;
   end;
 
@@ -373,5 +402,8 @@ begin
     Types.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.VariantRecords', cTexts);
 
 end.

@@ -138,7 +138,35 @@ implementation
 uses
   Atlas.Common.Index.Files,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.Implementations;
+  Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TReferenceConfidenceText = (InAnInactiveBranchOf, InAnInactiveBranchCondition, CallViaIsTheOnly, CallViaIsOneOf,
+    CallOfOverridesIt, OverloadNotUniqueCandidatesThis, OverloadNotUniqueCandidatesAmong, SameNameTypeCannotBe,
+    NameInTheStringLiteral);
+
+const
+  cTexts: array[TReferenceConfidenceText] of TAtlasText = (
+    (De: 'In einem inaktiven Zweig der bedingten Übersetzung';
+     En: 'In an inactive branch of conditional compilation'),
+    (De: 'In einem inaktiven Zweig: Bedingung %s nicht erfüllt'; En: 'In an inactive branch: condition %s not met'),
+    (De: 'Aufruf über %s.%s; %s ist die einzige Umsetzung'; En: 'Call via %s.%s; %s is the only implementation'),
+    (De: 'Aufruf über %s.%s; %s ist eine von %d Umsetzungen'; En: 'Call via %s.%s; %s is one of %d implementations'),
+    (De: 'Aufruf von %s.%s; %s.%s überschreibt sie'; En: 'Call of %s.%s; %s.%s overrides it'),
+    (De: 'Überladung nicht eindeutig: %d Kandidaten, gewählt wurde dieses Symbol';
+     En: 'Overload not unique: %d candidates, this symbol was chosen'),
+    (De: 'Überladung nicht eindeutig: %d Kandidaten, darunter dieses Symbol';
+     En: 'Overload not unique: %d candidates, among them this symbol'),
+    (De: 'Gleicher Name, Typ nicht bestimmbar (with oder Ausdruck mit unbekanntem Typ)';
+     En: 'Same name, type cannot be determined (with or expression of unknown type)'),
+    (De: 'Name im String-Literal %s (etwa für RTTI oder MethodAddress)';
+     En: 'Name in the string literal %s (e.g. for RTTI or MethodAddress)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Mitglieder, die über ein Interface oder eine überschriebene Methode erreicht werden.</summary>
@@ -376,11 +404,11 @@ function InactiveDetail(const ACondition: string): string;
 begin
   if ACondition = '' then
   begin
-    Result := 'In einem inaktiven Zweig der bedingten Übersetzung';
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchOf].Text;
   end
   else
   begin
-    Result := Format('In einem inaktiven Zweig: Bedingung %s nicht erfüllt', [ACondition]);
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchCondition].Fmt([ACondition]);
   end;
 end;
 
@@ -436,13 +464,13 @@ begin
   if AClasses <= 1 then
   begin
     Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-      Format('Aufruf über %s.%s; %s ist die einzige Umsetzung', [AResolved.Container, AResolved.Name,
+      cTexts[TReferenceConfidenceText.CallViaIsTheOnly].Fmt([AResolved.Container, AResolved.Name,
       FSymbol.Container]), False);
   end
   else
   begin
     Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-      Format('Aufruf über %s.%s; %s ist eine von %d Umsetzungen', [AResolved.Container, AResolved.Name,
+      cTexts[TReferenceConfidenceText.CallViaIsOneOf].Fmt([AResolved.Container, AResolved.Name,
       FSymbol.Container, AClasses]), False);
   end;
   Result.Implementations := AClasses;
@@ -451,7 +479,7 @@ end;
 function TReferenceClassifier.VirtualConfidence(const AResolved: TResolvedSymbol): TReferenceConfidence;
 begin
   Result := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
-    Format('Aufruf von %s.%s; %s.%s überschreibt sie', [AResolved.Container, AResolved.Name, FSymbol.Container,
+    cTexts[TReferenceConfidenceText.CallOfOverridesIt].Fmt([AResolved.Container, AResolved.Name, FSymbol.Container,
     FSymbol.Name]), False);
   Result.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
     False);
@@ -499,7 +527,7 @@ begin
   if AMatched then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-      Format('Überladung nicht eindeutig: %d Kandidaten, gewählt wurde dieses Symbol', [Length(All)]), True);
+      cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesThis].Fmt([Length(All)]), True);
     Exit(True);
   end;
   for Candidate in All do
@@ -509,7 +537,7 @@ begin
     if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
     begin
       AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-        Format('Überladung nicht eindeutig: %d Kandidaten, darunter dieses Symbol', [Length(All)]), False);
+        cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesAmong].Fmt([Length(All)]), False);
       Exit(True);
     end;
   end;
@@ -558,7 +586,7 @@ begin
   if Length(Targets) = 0 then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Unresolved,
-      'Gleicher Name, Typ nicht bestimmbar (with oder Ausdruck mit unbekanntem Typ)', False);
+      cTexts[TReferenceConfidenceText.SameNameTypeCannotBe].Text, False);
     Exit(True);
   end;
   Result := Ambiguous(ATree, AFileName, Position, False, AConfidence) or InheritedCall(Resolved, AConfidence);
@@ -571,8 +599,11 @@ begin
   if Result then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Text,
-      Format('Name im String-Literal %s (etwa für RTTI oder MethodAddress)', [AToken.Text]), False);
+      cTexts[TReferenceConfidenceText.NameInTheStringLiteral].Fmt([AToken.Text]), False);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ReferenceConfidence', cTexts);
 
 end.

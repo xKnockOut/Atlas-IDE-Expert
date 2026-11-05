@@ -39,7 +39,26 @@ implementation
 
 uses
   System.Math,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBinaryFormText = (SignatureTPF0Missing, UnexpectedEndOfFile, UnknownValueType, IntegerExpected, EndOfListExpected,
+    CollectionItemExpected);
+
+const
+  cTexts: array[TBinaryFormText] of TAtlasText = (
+    (De: 'Signatur TPF0 fehlt'; En: 'Signature TPF0 missing'),
+    (De: 'Unerwartetes Dateiende'; En: 'Unexpected end of file'),
+    (De: 'Unbekannter Werttyp %d'; En: 'Unknown value type %d'),
+    (De: 'Ganzzahl erwartet'; En: 'Integer expected'),
+    (De: 'Listenende erwartet'; En: 'End of list expected'),
+    (De: 'Collection-Eintrag erwartet'; En: 'Collection item expected'));
+
+{$SCOPEDENUMS OFF}
 
 const
   vaNull = 0;
@@ -150,7 +169,7 @@ function TConverter.ReadByte: Byte;
 begin
   if FPos >= Length(FBytes) then
   begin
-    raise EBinaryForm.Create('Unerwartetes Dateiende');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.UnexpectedEndOfFile].Text);
   end;
   Result := FBytes[FPos];
   Inc(FPos);
@@ -160,7 +179,7 @@ function TConverter.NextByte: Byte;
 begin
   if FPos >= Length(FBytes) then
   begin
-    raise EBinaryForm.Create('Unerwartetes Dateiende');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.UnexpectedEndOfFile].Text);
   end;
   Result := FBytes[FPos];
 end;
@@ -169,7 +188,7 @@ function TConverter.ReadBytes(ACount: Integer): TBytes;
 begin
   if (ACount < 0) or (FPos + ACount > Length(FBytes)) then
   begin
-    raise EBinaryForm.Create('Unerwartetes Dateiende');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.UnexpectedEndOfFile].Text);
   end;
   Result := Copy(FBytes, FPos, ACount);
   Inc(FPos, ACount);
@@ -264,7 +283,7 @@ begin
     vaInt32: Result := ReadInt32;
     vaInt64: Result := ReadInt64;
   else
-    raise EBinaryForm.Create('Ganzzahl erwartet');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.IntegerExpected].Text);
   end;
 end;
 
@@ -277,7 +296,7 @@ procedure TConverter.ReadListEnd;
 begin
   if ReadByte <> vaNull then
   begin
-    raise EBinaryForm.Create('Listenende erwartet');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.EndOfListExpected].Text);
   end;
 end;
 
@@ -435,7 +454,7 @@ begin
   Emit(CrLf);
   if ReadByte <> vaList then
   begin
-    raise EBinaryForm.Create('Collection-Eintrag erwartet');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.CollectionItemExpected].Text);
   end;
   Inc(FNesting);
   while not EndOfList do
@@ -506,7 +525,7 @@ begin
     vaNull:
       Result := 'Null';
   else
-    raise EBinaryForm.CreateFmt('Unbekannter Werttyp %d', [AKind]);
+    raise EBinaryForm.CreateFmt(cTexts[TBinaryFormText.UnknownValueType].Text, [AKind]);
   end;
 end;
 
@@ -600,7 +619,7 @@ function TConverter.Run: string;
 begin
   if (ReadByte <> Ord('T')) or (ReadByte <> Ord('P')) or (ReadByte <> Ord('F')) or (ReadByte <> Ord('0')) then
   begin
-    raise EBinaryForm.Create('Signatur TPF0 fehlt');
+    raise EBinaryForm.Create(cTexts[TBinaryFormText.SignatureTPF0Missing].Text);
   end;
   ConvertObject;
   Result := FOut.ToString;
@@ -744,5 +763,8 @@ begin
     Result := ToText(TEncoding.UTF8.GetBytes(AText), AFormText);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Dfm.BinaryForm', cTexts);
 
 end.

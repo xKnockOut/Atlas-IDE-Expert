@@ -47,7 +47,28 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.Internals.Xml,
-  Atlas.Common.Projects.Internals.MSBuild;
+  Atlas.Common.Projects.Internals.MSBuild,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDprojReaderText = (ConfigurationDoesNotExistIn, PlatformIsNotActivatedIn, Project, Configuration, Platform,
+    RootElementProjectExpected);
+
+const
+  cTexts: array[TDprojReaderText] of TAtlasText = (
+    (De: 'Konfiguration "%s" gibt es im Projekt nicht (vorhanden: %s).';
+     En: 'Configuration "%s" does not exist in the project (available: %s).'),
+    (De: 'Plattform "%s" ist im Projekt nicht aktiviert (vorhanden: %s).';
+     En: 'Platform "%s" is not activated in the project (available: %s).'),
+    (De: 'Projekt'; En: 'Project'),
+    (De: 'Konfiguration'; En: 'Configuration'),
+    (De: ', Plattform '; En: ', platform '),
+    (De: '%s: Wurzelelement <Project> erwartet'; En: '%s: root element <Project> expected'));
+
+{$SCOPEDENUMS OFF}
 
 function UniqueUpper(const AItems: TArray<string>): TArray<string>;
 var
@@ -102,7 +123,7 @@ var
   Start, Stop: Integer;
   Name, Platform: string;
 begin
-  Result := 'Projekt';
+  Result := cTexts[TDprojReaderText.Project].Text;
   Start := Pos('$(Base', ACondition);
   if Start = 0 then
   begin
@@ -129,7 +150,7 @@ begin
   end;
   if StartsText('Cfg_', Name) then
   begin
-    Result := 'Konfiguration';
+    Result := cTexts[TDprojReaderText.Configuration].Text;
     if AConfig <> '' then
     begin
       Result := Result + ' ' + AConfig;
@@ -137,7 +158,7 @@ begin
   end;
   if Platform <> '' then
   begin
-    Result := Result + ', Plattform ' + Platform;
+    Result := Result + cTexts[TDprojReaderText.Platform].Text + Platform;
   end;
 end;
 
@@ -334,7 +355,7 @@ begin
   try
     if mRoot.Name <> 'Project' then
     begin
-      raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
+      raise EProjectError.CreateFmt(cTexts[TDprojReaderText.RootElementProjectExpected].Text, [AFileName]);
     end;
     PresetProperties(mState, AFileName);
     ReadGroups(mState, mRoot);
@@ -360,14 +381,15 @@ begin
   // Ohne Angaben in der Datei (ältere Projekte) wird nichts abgelehnt.
   if (AConfig <> '') and (Length(AProject.Configs) > 0) and (IndexText(AConfig, AProject.Configs) < 0) then
   begin
-    Exit(Format('Konfiguration "%s" gibt es im Projekt nicht (vorhanden: %s).',
-      [AConfig, string.Join(', ', AProject.Configs)]));
+    Exit(cTexts[TDprojReaderText.ConfigurationDoesNotExistIn].Fmt([AConfig, string.Join(', ', AProject.Configs)]));
   end;
   if (APlatform <> '') and (Length(AProject.Platforms) > 0) and (IndexText(APlatform, AProject.Platforms) < 0) then
   begin
-    Exit(Format('Plattform "%s" ist im Projekt nicht aktiviert (vorhanden: %s).',
-      [APlatform, string.Join(', ', AProject.Platforms)]));
+    Exit(cTexts[TDprojReaderText.PlatformIsNotActivatedIn].Fmt([APlatform, string.Join(', ', AProject.Platforms)]));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.DprojReader', cTexts);
 
 end.

@@ -125,7 +125,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.ApplyEdit;
+  Atlas.Common.Lsp.ApplyEdit,
+  Atlas.Text.LogMarks;
 
 class function TShellSlashSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
   const AHeaderTemplate: THeaderTemplateFunc): TShellSlashSources;
@@ -250,11 +251,11 @@ var
 begin
   if not TLspApplyEdit.ReadResult(AResponse, mReason) then
   begin
-    Logger.Warning(Format('%s nicht geändert: %s', [Description, mReason]));
+    Logger.Warning(Format('%s nicht geändert: %s', [TLogMarks.Text(Description), TLogMarks.Text(mReason)]));
     ShowNotChanged(Transport, Description, mReason);
     Exit;
   end;
-  Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [Description]));
+  Logger.Info(Format('%s geändert (Schnellbefehl, über den Editor)', [TLogMarks.Text(Description)]));
   if Reload and Assigned(WorkspaceOf) then
   begin
     mTarget := WorkspaceOf(Uri);
@@ -372,11 +373,12 @@ begin
     // Kodierung und Zeilenumbrüche der vorhandenen Datei beibehalten.
     TFileEncoding.LoadFromFile(Info.FileName, FileFormat);
     TFileEncoding.SaveToFile(Info.FileName, AText, FileFormat);
-    FLogger.Info(Format('%s geändert (Schnellbefehl)', [Info.FileName]));
+    FLogger.Info(Format('%s geändert (Schnellbefehl)', [TLogMarks.Path(Info.FileName)]));
   except
     on E: Exception do
     begin
-      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [Info.FileName, E.Message]));
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [TLogMarks.Path(Info.FileName),
+        TLogMarks.Text(E.Message)]));
       Exit;
     end;
   end;
@@ -655,11 +657,12 @@ begin
       Exit;
     end;
     WriteToDisk(AUri, AFiles);
-    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [mDescription]));
+    FLogger.Info(Format('%s geschrieben (Schnellbefehl)', [TLogMarks.Text(mDescription)]));
   except
     on E: Exception do
     begin
-      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [mDescription, E.Message]));
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [TLogMarks.Text(mDescription),
+        TLogMarks.Text(E.Message)]));
       Exit;
     end;
   end;

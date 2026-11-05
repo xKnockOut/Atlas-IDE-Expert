@@ -51,7 +51,36 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Editing.GenericLists.Syntax;
+  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDeclarationsText = (GetsAValueOther, IsCreatedAs2, IsDeclaredTogetherWithOther, ThePropertyInHasA,
+    ThePropertyReadsVia, ThePropertyWritesVia, ThePropertyHasIndexParameters, TheClassOfIsNot,
+    IsDeclaredTogetherWithOther2, IsAParameterTheSignature, IsNeitherAVariableNor);
+
+const
+  cTexts: array[TDeclarationsText] of TAtlasText = (
+    (De: '%s bekommt in %s einen anderen Wert als ein neues %s';
+     En: '%0:s gets a value other than a new %2:s in %1:s'),
+    (De: '%s wird in %s als %s erzeugt'; En: '%0:s is created as %2:s in %1:s'),
+    (De: '%s steht in %s mit weiteren Namen in einer Deklaration';
+     En: '%s is declared together with other names in %s'),
+    (De: 'Die Property %s in %s hat einen anderen Typ'; En: 'The property %s in %s has a different type'),
+    (De: 'Die Property %s liest über %s'; En: 'The property %s reads via %s'),
+    (De: 'Die Property %s schreibt über %s'; En: 'The property %s writes via %s'),
+    (De: 'Die Property %s hat Indexparameter'; En: 'The property %s has index parameters'),
+    (De: 'Die Klasse zu %s ist nicht erkennbar'; En: 'The class of %s is not recognizable'),
+    (De: '%s steht in %s mit weiteren Namen in einer Inline-Variable';
+     En: '%s is declared together with other names in an inline variable in %s'),
+    (De: '%s ist ein Parameter; die Signatur der Routine müsste sich ändern';
+     En: '%s is a parameter; the signature of the routine would have to change'),
+    (De: '%s ist keine Variable und kein Feld'; En: '%s is neither a variable nor a field'));
+
+{$SCOPEDENUMS OFF}
 
 { TGenericListDeclarations }
 
@@ -123,12 +152,12 @@ begin
   mClass := CreatedClass(AValue);
   if mClass = nil then
   begin
-    Fail(Format('%s bekommt in %s einen anderen Wert als ein neues %s', [FTarget.Name, LineOf(AValue),
+    Fail(cTexts[TDeclarationsText.GetsAValueOther].Fmt([FTarget.Name, LineOf(AValue),
       FKind.LegacyName]));
   end
   else if not IsLegacyName(mClass) then
   begin
-    Fail(Format('%s wird in %s als %s erzeugt', [FTarget.Name, LineOf(AValue), mSource.NodeText(mClass)]));
+    Fail(cTexts[TDeclarationsText.IsCreatedAs2].Fmt([FTarget.Name, LineOf(AValue), mSource.NodeText(mClass)]));
   end
   else
   begin
@@ -150,7 +179,7 @@ begin
   mRest := Copy(ASource.Text, ATypeRef.StartOffset + 1, ADeclaration.EndOffset - ATypeRef.StartOffset);
   if not EndsText(';', Trim(mRest)) then
   begin
-    Fail(Format('%s steht in %s mit weiteren Namen in einer Deklaration', [AName, LineOf(ADeclaration)]));
+    Fail(cTexts[TDeclarationsText.IsDeclaredTogetherWithOther].Fmt([AName, LineOf(ADeclaration)]));
     Exit;
   end;
   mOthers := nil;
@@ -211,19 +240,19 @@ begin
   if (mTypeRef = nil) or (mTypeRef.ChildCount > 0) or
     not SameText(TGenericListSyntax.LastName(mTypeRef.Name), FKind.LegacyName) then
   begin
-    Result := Format('Die Property %s in %s hat einen anderen Typ', [AMember.Name, LineOf(AMember)]);
+    Result := cTexts[TDeclarationsText.ThePropertyInHasA].Fmt([AMember.Name, LineOf(AMember)]);
   end
   else if (mReadName <> '') and not SameText(mReadName, FTarget.Name) then
   begin
-    Result := Format('Die Property %s liest über %s', [AMember.Name, mReadName]);
+    Result := cTexts[TDeclarationsText.ThePropertyReadsVia].Fmt([AMember.Name, mReadName]);
   end
   else if (mWriteName <> '') and not SameText(mWriteName, FTarget.Name) then
   begin
-    Result := Format('Die Property %s schreibt über %s', [AMember.Name, mWriteName]);
+    Result := cTexts[TDeclarationsText.ThePropertyWritesVia].Fmt([AMember.Name, mWriteName]);
   end
   else if (AMember.ChildCount > 1) and (AMember.FindChild(TSyntaxKind.Parameters) <> nil) then
   begin
-    Result := Format('Die Property %s hat Indexparameter', [AMember.Name]);
+    Result := cTexts[TDeclarationsText.ThePropertyHasIndexParameters].Fmt([AMember.Name]);
   end;
 end;
 
@@ -278,7 +307,7 @@ begin
   end;
   if mTypeDecl = nil then
   begin
-    Fail(Format('Die Klasse zu %s ist nicht erkennbar', [FTarget.Name]));
+    Fail(cTexts[TDeclarationsText.TheClassOfIsNot].Fmt([FTarget.Name]));
     Exit;
   end;
   FTarget.IsField := True;
@@ -318,7 +347,7 @@ begin
   FTarget.IsLocal := True;
   if Pos(',', mDeclaration.Name) > 0 then
   begin
-    Fail(Format('%s steht in %s mit weiteren Namen in einer Inline-Variable', [FTarget.Name,
+    Fail(cTexts[TDeclarationsText.IsDeclaredTogetherWithOther2].Fmt([FTarget.Name,
       LineOf(mDeclaration)]));
     Exit;
   end;
@@ -345,9 +374,9 @@ begin
     TSyntaxKind.InlineVar:
       ScanInlineVar(ASource);
     TSyntaxKind.Parameter:
-      Fail(Format('%s ist ein Parameter; die Signatur der Routine müsste sich ändern', [FTarget.Name]));
+      Fail(cTexts[TDeclarationsText.IsAParameterTheSignature].Fmt([FTarget.Name]));
   else
-    Fail(Format('%s ist keine Variable und kein Feld', [FTarget.Name]));
+    Fail(cTexts[TDeclarationsText.IsNeitherAVariableNor].Fmt([FTarget.Name]));
   end;
 end;
 
@@ -401,5 +430,8 @@ begin
     Result := mFound;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Declarations', cTexts);
 
 end.

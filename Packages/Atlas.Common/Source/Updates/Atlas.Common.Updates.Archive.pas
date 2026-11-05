@@ -27,7 +27,20 @@ type
 implementation
 
 uses
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TArchiveText = (Empty);
+
+const
+  cTexts: array[TArchiveText] of TAtlasText = (
+    (De: 'leer'; En: 'empty'));
+
+{$SCOPEDENUMS OFF}
 
 { TUpdateArchives }
 
@@ -82,7 +95,7 @@ begin
   mEntries := AArchive.Entries(AZipFile);
   if Length(mEntries) = 0 then
   begin
-    raise EUpdateError.CreateCode(TUpdateErrors.Archive, 'leer');
+    raise EUpdateError.CreateCode(TUpdateErrors.Archive, cTexts[TArchiveText.Empty].Text);
   end;
   for mEntry in mEntries do
   begin
@@ -99,5 +112,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Updates.Archive', cTexts);
 
 end.

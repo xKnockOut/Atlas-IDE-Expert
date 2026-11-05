@@ -11,7 +11,7 @@
 //     {"edit": WorkspaceEdit über alle Dateien, "warnings": [...], "places": n,
 //     "files": n, "calls": n, "preview": Text}; geht es nicht, ein Fehler mit
 //     Grund. Die Verwendungen kommen aus der Referenzsuche im Projekt.
-//   - Marken: Inlay-Hinweis „ohne Self“ am Ende des Kopfs (MarkerHints).
+//   - Marken: Inlay-Hinweis „braucht kein Self“ am Ende des Kopfs (MarkerHints).
 // Namensauflösung: Mitglieder, Interfaces, sichtbare Helper über
 // TMethodLookup.FromResolver, die Formulardatei wie bei #668.
 
@@ -75,7 +75,25 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.FormMentions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspMethodWithoutSelfText = (ConversionNotPossible, ConversionNotPossibleIsIn, ConversionNotPossibleCannotBe,
+    CallsInFiles, UnknownConversion);
+
+const
+  cTexts: array[TLspMethodWithoutSelfText] of TAtlasText = (
+    (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '),
+    (De: 'Umwandeln geht nicht: %s steht in %s'; En: 'Conversion not possible: %s is in %s'),
+    (De: 'Umwandeln geht nicht: %s lässt sich nicht lesen'; En: 'Conversion not possible: %s cannot be read'),
+    (De: '%s: %d Aufrufe in %d Dateien'; En: '%s: %d calls in %d files'),
+    (De: 'Unbekannte Umwandlung "%s"'; En: 'Unknown conversion "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspMethodWithoutSelf.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TMethodLookup;
@@ -225,7 +243,7 @@ begin
   end;
   if not mFound then
   begin
-    raise Fail('Umwandeln geht nicht: ' + mReason);
+    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
   end;
 end;
 
@@ -251,7 +269,8 @@ var
 begin
   if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
   begin
-    raise Fail(Format('Umwandeln geht nicht: %s steht in %s', [FTarget.Name, ExtractFileName(ALocation.FileName)]));
+    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossibleIsIn].Fmt([FTarget.Name,
+      ExtractFileName(ALocation.FileName)]));
   end;
   if SameText(ALocation.FileName, FFileName) then
   begin
@@ -272,7 +291,8 @@ begin
   end
   else
   begin
-    raise Fail(Format('Umwandeln geht nicht: %s lässt sich nicht lesen', [ExtractFileName(ALocation.FileName)]));
+    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossibleCannotBe].Fmt([
+      ExtractFileName(ALocation.FileName)]));
   end;
 end;
 
@@ -310,7 +330,7 @@ begin
   end;
   if not mDone then
   begin
-    raise Fail('Umwandeln geht nicht: ' + mReason);
+    raise Fail(cTexts[TLspMethodWithoutSelfText.ConversionNotPossible].Text + mReason);
   end;
 end;
 
@@ -333,7 +353,7 @@ begin
   mAnnotation := TJSONObject.Create;
   mAnnotation.AddPair('label', ATitle);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  mAnnotation.AddPair('description', Format('%s: %d Aufrufe in %d Dateien', [AName, AConverted.Calls,
+  mAnnotation.AddPair('description', cTexts[TLspMethodWithoutSelfText.CallsInFiles].Fmt([AName, AConverted.Calls,
     Length(AConverted.Files)]));
   mAnnotations := TJSONObject.Create;
   mAnnotations.AddPair(TLspMethodWithoutSelf.AnnotationId, mAnnotation);
@@ -363,8 +383,8 @@ var
 begin
   if not TMethodWithoutSelf.ConversionOf(AContext.Conversion, mConversion) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Umwandlung "%s"',
-      [AContext.Conversion]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspMethodWithoutSelfText.UnknownConversion].Fmt([AContext.Conversion]));
   end;
   mRun := TMethodKindRun.Create(AResolver, ATree, AFileName, AText, AContext);
   try
@@ -391,5 +411,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MethodWithoutSelf', cTexts);
 
 end.

@@ -38,7 +38,28 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TValidationText = (NotAValidJSONObject, Line);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TValidationText] of string = (
+    ('Kein gültiges JSON-Objekt',
+     'Zeile %d: %s'),
+    ('Not a valid JSON object',
+     'Line %d: %s'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TValidationText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasSettingIssue }
 
@@ -46,7 +67,7 @@ function TAtlasSettingIssue.Text: string;
 begin
   if Line >= 0 then
   begin
-    Result := Format('Zeile %d: %s', [Line + 1, Message]);
+    Result := Format(UiText(TValidationText.Line), [Line + 1, Message]);
   end
   else
   begin
@@ -113,7 +134,7 @@ begin
     Issue := Default(TAtlasSettingIssue);
     Issue.Line := -1;
     Issue.Character := -1;
-    Issue.Message := 'Kein gültiges JSON-Objekt';
+    Issue.Message := UiText(TValidationText.NotAValidJSONObject);
     Issue.Error := True;
     AIssues := [Issue];
   end;
@@ -139,5 +160,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.Validation', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -64,7 +64,8 @@ uses
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
-  Shell.Mcp.Startup;
+  Shell.Mcp.Startup,
+  Atlas.Text.LogMarks;
 
 class function TMcpShell.ToolNames: TArray<string>;
 var
@@ -245,7 +246,7 @@ begin
   Result :=
     procedure(const AError: Exception)
     begin
-      mLogger.Error(Format('MCP: %s: %s', [AError.ClassName, AError.Message]));
+      mLogger.Error(Format('MCP: %s: %s', [AError.ClassName, TLogMarks.Text(AError.Message)]));
     end;
 end;
 
@@ -258,7 +259,7 @@ begin
   except
     on E: Exception do
     begin
-      ALogger.Error('MCP-Server abgebrochen: ' + E.Message);
+      ALogger.Error('MCP-Server abgebrochen: ' + TLogMarks.Text(E.Message));
       Result := 1;
     end;
   end;
@@ -296,7 +297,7 @@ begin
     mServer.Attach(mDispatcher);
     mConnection.OnError := ConnectionErrorOf(mLogger);
     mLogger.Info(Format('%s %s im MCP-Modus für %s', [TProductVersion.Name, TProductVersion.Version,
-      mServices.Root]));
+      TLogMarks.Path(mServices.Root)]));
     // Mit index.projectGroup auch die übrigen Projekte der Gruppe.
     mServices.Group.Load(mGlobalSettings);
     Result := Serve(mConnection, mLogger);

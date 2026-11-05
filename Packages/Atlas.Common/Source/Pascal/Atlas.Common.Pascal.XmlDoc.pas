@@ -125,7 +125,21 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Text.Entities;
+  Atlas.Text.Entities,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TXmlDocText = (SeeAlso, TypeParameters, TypeParameters2, Example, ExampleLabel, ValueLabel);
+
+const
+  cTexts: array[TXmlDocText] of TAtlasText = (
+    (De: 'Siehe auch: '; En: 'See also: '),
+    (De: 'Typparameter:'; En: 'Type parameters:'),
+    (De: '**Typparameter**'; En: '**Type parameters**'),
+    (De: '**Beispiel**'; En: '**Example**'),
+    (De: 'Beispiel:'; En: 'Example:'),
+    (De: 'Wert: '; En: 'Value: '));
 
 const
   SectionNames: array[TXmlDocSectionKind] of string = ('summary', 'param', 'typeparam', 'returns', 'value',
@@ -1620,22 +1634,22 @@ begin
         begin
           if TypeLines = '' then
           begin
-            TypeLines := 'Typparameter:';
+            TypeLines := cTexts[TXmlDocText.TypeParameters].Text;
           end;
           AddLine(TypeLines, Section.Name + ': ' + Section.Text);
         end;
       TXmlDocSectionKind.Returns:
         AddLine(Facts, '→ ' + Section.Text);
       TXmlDocSectionKind.Value:
-        AddLine(Facts, 'Wert: ' + Section.Text);
+        AddLine(Facts, cTexts[TXmlDocText.ValueLabel].Text + Section.Text);
       TXmlDocSectionKind.Exception:
         AddLine(Facts, '! ' + Section.Name + ': ' + Section.Text);
       TXmlDocSectionKind.Remarks:
         Remark := Section.Text;
       TXmlDocSectionKind.Example:
-        Example := 'Beispiel:'#10 + Section.Text;
+        Example := cTexts[TXmlDocText.ExampleLabel].Text + #10 + Section.Text;
       TXmlDocSectionKind.SeeAlso:
-        SeeAlso := 'Siehe auch: ' + Section.Text;
+        SeeAlso := cTexts[TXmlDocText.SeeAlso].Text + Section.Text;
     end;
   Result := JoinBlocks([Main, ParamLines, TypeLines, Facts, Remark, Example, SeeAlso]);
 end;
@@ -1666,7 +1680,7 @@ begin
         begin
           if not TypeHeader then
           begin
-            Blocks := Blocks + ['**Typparameter**'];
+            Blocks := Blocks + [cTexts[TXmlDocText.TypeParameters2].Text];
           end;
           TypeHeader := True;
           Blocks := Blocks + ['*' + Section.Name + '*: ' + RunsMarkdown(Section.Runs)];
@@ -1674,13 +1688,13 @@ begin
       TXmlDocSectionKind.Returns:
         Blocks := Blocks + ['→ ' + RunsMarkdown(Section.Runs)];
       TXmlDocSectionKind.Value:
-        Blocks := Blocks + ['Wert: ' + RunsMarkdown(Section.Runs)];
+        Blocks := Blocks + [cTexts[TXmlDocText.ValueLabel].Text + RunsMarkdown(Section.Runs)];
       TXmlDocSectionKind.Exception:
         Blocks := Blocks + ['! `' + Section.Name + '`: ' + RunsMarkdown(Section.Runs)];
       TXmlDocSectionKind.Example:
-        Blocks := Blocks + ['**Beispiel**', RunsMarkdown(Section.Runs)];
+        Blocks := Blocks + [cTexts[TXmlDocText.Example].Text, RunsMarkdown(Section.Runs)];
       TXmlDocSectionKind.SeeAlso:
-        Blocks := Blocks + ['Siehe auch: ' + RunsMarkdown(Section.Runs)];
+        Blocks := Blocks + [cTexts[TXmlDocText.SeeAlso].Text + RunsMarkdown(Section.Runs)];
     end;
   Result := JoinBlocks(Blocks);
 end;
@@ -1755,5 +1769,8 @@ begin
   end;
   Result := False;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.XmlDoc', cTexts);
 
 end.

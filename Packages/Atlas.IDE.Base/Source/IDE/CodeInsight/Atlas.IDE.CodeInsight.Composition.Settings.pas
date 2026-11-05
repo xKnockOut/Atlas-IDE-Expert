@@ -97,6 +97,8 @@ begin
     ShortcutTips.ApplySettings;
   end;
   TAtlasTimeLimit.LimitMs := TAtlasIdeSettings.Current.ProviderTimeLimitMs;
+  // Klarnamen in atlas.log nur ausdrücklich (#1478, diagnostics.log.names).
+  TAtlasGuard.SetLogNames(TAtlasIdeSettings.Current.LogNames);
 end;
 
 /// <summary>Geänderte Tastenkürzel sofort neu belegen, fremde Vervollständigung melden (#494); ein Schnellschalter

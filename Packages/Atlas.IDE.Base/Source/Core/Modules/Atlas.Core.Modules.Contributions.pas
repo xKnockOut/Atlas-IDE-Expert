@@ -48,6 +48,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.LogMarks;
+
 class function TAtlasModuleContributions.Active(const ARegistry: IAtlasModuleRegistry;
   const AIID: TGUID): TArray<IInterface>;
 var
@@ -196,7 +199,7 @@ begin
         mListener.EditorViewActivated;
       except
         on mError: Exception do
-          Result := Result + ['IAtlasFollowsEditorView: ' + mError.ClassName + ': ' + mError.Message];
+          Result := Result + ['IAtlasFollowsEditorView: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
 end;
@@ -218,7 +221,7 @@ begin
         mListener.ApplySettings;
       except
         on mError: Exception do
-          Result := Result + ['IAtlasAppliesSettings: ' + mError.ClassName + ': ' + mError.Message];
+          Result := Result + ['IAtlasAppliesSettings: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
 end;
@@ -240,7 +243,7 @@ begin
         mListener.ThemeChanged;
       except
         on mError: Exception do
-          Result := Result + ['IAtlasFollowsTheme: ' + mError.ClassName + ': ' + mError.Message];
+          Result := Result + ['IAtlasFollowsTheme: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
 end;

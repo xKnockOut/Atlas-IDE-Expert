@@ -53,7 +53,32 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TUndoTargetText = (ProjectHasUnsavedChangesPlease, OpenInTheDesignerThere, ReadOnly, RecycleBinNotReachable);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TUndoTargetText] of string = (
+    ('Projekt hat ungespeicherte Änderungen; bitte erst speichern',
+     'im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und Eigenschaften (%s)',
+     'schreibgeschützt',
+     'Papierkorb nicht erreichbar'),
+    ('project has unsaved changes; please save first',
+     'open in the designer; there Atlas only changes event assignments and properties (%s)',
+     'read-only',
+     'recycle bin not reachable'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TUndoTargetText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasIdeUndoTarget }
 
@@ -162,7 +187,7 @@ begin
   mModule := TAtlasIdeFiles.ProjectModule(AFileName);
   if (mModule <> nil) and TAtlasIdeFiles.ProjectModified(mModule) then
   begin
-    raise EInOutError.Create('Projekt hat ungespeicherte Änderungen; bitte erst speichern');
+    raise EInOutError.Create(UiText(TUndoTargetText.ProjectHasUnsavedChangesPlease));
   end;
   ADisk.Write(AFileName, AContent);
   if (mModule <> nil) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
@@ -186,8 +211,7 @@ begin
   end;
   if not TAtlasFormChanges.Diff(mOld, AContent.Text, mChanges, mProperties, mReason) then
   begin
-    raise EInOutError.CreateFmt('im Designer offen; dort ändert Atlas nur Ereignis-Zuordnungen und ' +
-      'Eigenschaften (%s)', [mReason]);
+    raise EInOutError.CreateFmt(UiText(TUndoTargetText.OpenInTheDesignerThere), [mReason]);
   end;
   mReason := TAtlasIdeForms.Apply(AFileName, mChanges, mProperties);
   if mReason <> '' then
@@ -208,7 +232,7 @@ begin
   mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
   if (mBuffer <> nil) and mBuffer.IsReadOnly then
   begin
-    raise EInOutError.Create('schreibgeschützt');
+    raise EInOutError.Create(UiText(TUndoTargetText.ReadOnly));
   end;
   if mBuffer <> nil then
   begin
@@ -261,8 +285,11 @@ begin
   Operation.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FOF_SILENT or FOF_NOERRORUI;
   if (SHFileOperation(Operation) <> 0) or Operation.fAnyOperationsAborted then
   begin
-    raise EInOutError.Create('Papierkorb nicht erreichbar');
+    raise EInOutError.Create(UiText(TUndoTargetText.RecycleBinNotReachable));
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Undo.Target', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

@@ -59,7 +59,30 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Units;
+  Atlas.Common.Rules.Builtin.Units,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCompilerHintsText = (PublishedRtti, NoEffect, OnPointer, Title);
+
+const
+  cTexts: array[TCompilerHintsText] of TAtlasText = (
+    (De: 'published schaltet für %s RTTI ein ($M+), weil weder die Klasse noch ein Vorfahr mit RTTI übersetzt wird ' +
+      '(wie W1055). Von TPersistent ableiten oder {$M+} vor die Deklaration setzen, wenn das gewollt ist.';
+     En: 'published turns on RTTI for %s ($M+) because neither the class nor an ancestor is compiled with RTTI (like ' +
+      'W1055). Derive from TPersistent or put {$M+} before the declaration if that is intended.'),
+    (De: '%s(%s) hat keine Wirkung: %s braucht kein Initialize/Finalize (wie H2243).';
+     En: '%s(%s) has no effect: %s needs no Initialize/Finalize (like H2243).'),
+    (De: '%s(%s) wirkt auf den Zeiger, nicht auf das Ziel: %s braucht kein Initialize/Finalize, gemeint ist wohl %s^ ' +
+      '(wie H2244).';
+     En: '%s(%s) acts on the pointer, not on the target: %s needs no Initialize/Finalize, %s^ is probably meant ' +
+      '(like H2244).'),
+    (De: 'Hinweis des Compilers (wie W1055, H2243, H2244)'; En: 'Compiler hint (like W1055, H2243, H2244)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cTypeInfoWarning = 'TYPEINFO_IMPLICITLY_ADDED';
@@ -343,9 +366,7 @@ begin
     Exit;
   end;
   // Am Namen des Mitglieds.
-  FReport.Add(MemberNameRange(mMember), Format('published schaltet für %s RTTI ein ($M+), weil weder die Klasse ' +
-    'noch ein Vorfahr mit RTTI übersetzt wird (wie W1055). Von TPersistent ableiten oder {$M+} vor die ' +
-    'Deklaration setzen, wenn das gewollt ist.', [ADecl.Name]));
+  FReport.Add(MemberNameRange(mMember), cTexts[TCompilerHintsText.PublishedRtti].Fmt([ADecl.Name]));
 end;
 
 function TCompilerHintsCheck.InsideWith(ANode: TSyntaxNode): Boolean;
@@ -428,13 +449,12 @@ begin
   end;
   if IndexText(mTypeName, cPlainTypes) >= 0 then
   begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s(%s) hat keine Wirkung: %s ' +
-      'braucht kein Initialize/Finalize (wie H2243).', [mCallee.Name, mArgument.Name, mTypeName]));
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TCompilerHintsText.NoEffect].Fmt([mCallee.Name,
+      mArgument.Name, mTypeName]));
   end
   else if IndexText(mTypeName, cManagedPointers) >= 0 then
   begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s(%s) wirkt auf den Zeiger, nicht auf ' +
-      'das Ziel: %s braucht kein Initialize/Finalize, gemeint ist wohl %s^ (wie H2244).',
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TCompilerHintsText.OnPointer].Fmt(
       [mCallee.Name, mArgument.Name, mArgument.Name, mArgument.Name]));
   end;
 end;
@@ -525,7 +545,7 @@ end;
 function TCompilerHintsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(CompilerHintsRuleId, TRuleSeverity.Hint,
-    'Hinweis des Compilers (wie W1055, H2243, H2244)');
+    cTexts[TCompilerHintsText.Title].Text);
 end;
 
 procedure TCompilerHintsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -548,5 +568,8 @@ procedure RegisterCompilerHintRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TCompilerHintsRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.CompilerHints', cTexts);
 
 end.

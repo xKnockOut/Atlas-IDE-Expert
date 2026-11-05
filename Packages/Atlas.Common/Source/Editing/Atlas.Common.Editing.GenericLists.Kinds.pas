@@ -88,7 +88,24 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TKindsText = (SortSortWithTListSortCompare, SortListSortListWithTListSortCompareFunc, AssignAssignWithTListAssignOp,
+    PackPackRemovesNilEntries);
+
+const
+  cTexts: array[TKindsText] of TAtlasText = (
+    (De: 'Sort=Sort mit TListSortCompare'; En: 'Sort=Sort with TListSortCompare'),
+    (De: 'SortList=SortList mit TListSortCompareFunc'; En: 'SortList=SortList with TListSortCompareFunc'),
+    (De: 'Assign=Assign mit TListAssignOp'; En: 'Assign=Assign with TListAssignOp'),
+    (De: 'Pack=Pack entfernt nil-Einträge anders'; En: 'Pack=Pack removes nil entries differently'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cObjectMembers: array[0..12] of string = ('Free', 'Destroy', 'DisposeOf', 'ClassName', 'ClassType', 'ClassInfo',
@@ -124,9 +141,10 @@ begin
   Result.Reads := ['Items', 'First', 'Last', 'Extract', 'ExtractItem'];
   Result.ElementArgs := ['Add=0', 'Insert=1', 'Extract=0', 'Remove=0', 'IndexOf=0', 'ExtractItem=0',
     'RemoveItem=0', 'IndexOfItem=0'];
-  Result.Unsupported := ['Sort=Sort mit TListSortCompare', 'SortList=SortList mit TListSortCompareFunc',
-    'Assign=Assign mit TListAssignOp', 'List=List-Property (PPointerList)', 'Expand=Expand',
-    'Pack=Pack entfernt nil-Einträge anders', 'Grow=Grow', 'Error=Error'];
+  Result.Unsupported := [cTexts[TKindsText.SortSortWithTListSortCompare].Text,
+    cTexts[TKindsText.SortListSortListWithTListSortCompareFunc].Text,
+    cTexts[TKindsText.AssignAssignWithTListAssignOp].Text, 'List=List-Property (PPointerList)', 'Expand=Expand',
+    cTexts[TKindsText.PackPackRemovesNilEntries].Text, 'Grow=Grow', 'Error=Error'];
   Result.DefaultItems := True;
 end;
 
@@ -296,5 +314,8 @@ begin
   end;
   Result := False;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Kinds', cTexts);
 
 end.

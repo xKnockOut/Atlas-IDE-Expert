@@ -45,7 +45,27 @@ uses
   Atlas.Common.Configuration.Internals.RefactoringOptions,
   Atlas.Common.Configuration.Internals.WorkflowOptions,
   Atlas.Common.Configuration.Internals.AnalysisOptions,
-  Atlas.Common.Configuration.Internals.ProjectOptions;
+  Atlas.Common.Configuration.Internals.ProjectOptions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConfigurationParserText = (JSONError, UnknownSetting, ProfileExtendsTheUnknownProfile, TheConfigurationMustBeA,
+    UnknownProfileBuiltInOtherwise, UnknownProfile);
+
+const
+  cTexts: array[TConfigurationParserText] of TAtlasText = (
+    (De: 'JSON-Fehler: '; En: 'JSON error: '),
+    (De: 'Unbekannte Einstellung "%s"'; En: 'Unknown setting "%s"'),
+    (De: 'Profil "%s" erweitert das unbekannte Profil "%s"'; En: 'Profile "%s" extends the unknown profile "%s"'),
+    (De: 'Die Konfiguration muss ein JSON-Objekt sein'; En: 'The configuration must be a JSON object'),
+    (De: 'Unbekanntes Profil "%s"; eingebaut: %s, sonst unter "profiles" anlegen';
+     En: 'Unknown profile "%s"; built in: %s, otherwise create it under "profiles"'),
+    (De: 'Unbekanntes Profil "%s"'; En: 'Unknown profile "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Alle Abschnitte der obersten Ebene, je Thema in einer eigenen Unit.</summary>
 function AllSections: TArray<TConfigurationSection>;
@@ -80,7 +100,7 @@ begin
   except
     on E: EJsonTreeError do
     begin
-      AReader.Report(E.Offset, E.Offset + 1, 'JSON-Fehler: ' + E.Message, True);
+      AReader.Report(E.Offset, E.Offset + 1, cTexts[TConfigurationParserText.JSONError].Text + E.Message, True);
       Result := nil;
     end;
   end;
@@ -101,7 +121,7 @@ begin
     if not FindSection(mSections, mKey, mSection) then
     begin
       AReader.Report(ARoot.KeyStarts[mIndex], ARoot.KeyStarts[mIndex] + Length(mKey) + 2,
-        Format('Unbekannte Einstellung "%s"', [mKey]), False);
+        cTexts[TConfigurationParserText.UnknownSetting].Fmt([mKey]), False);
     end
     else if Assigned(mSection.Read) then
     begin
@@ -121,8 +141,8 @@ begin
   begin
     if (AReader.ProfileNode <> nil) and not ASettings.IsKnownProfile(mName) then
     begin
-      AReader.ReportNode(AReader.ProfileNode, Format('Unbekanntes Profil "%s"; eingebaut: %s, sonst unter ' +
-        '"profiles" anlegen', [mName, string.Join(', ', BuiltinProfileNames)]));
+      AReader.ReportNode(AReader.ProfileNode, cTexts[TConfigurationParserText.UnknownProfileBuiltInOtherwise].Fmt([
+        mName, string.Join(', ', BuiltinProfileNames)]));
     end;
   end;
   mTestNode := AReader.TestProfileNode;
@@ -132,13 +152,13 @@ begin
   end
   else if mTestNode <> nil then
   begin
-    AReader.ReportNode(mTestNode, Format('Unbekanntes Profil "%s"', [mTestNode.Value]));
+    AReader.ReportNode(mTestNode, cTexts[TConfigurationParserText.UnknownProfile].Fmt([mTestNode.Value]));
   end;
   for mProfile in ASettings.Profiles do
   begin
     if not ASettings.IsKnownProfile(mProfile.Extends) then
     begin
-      AReader.ReportNode(ARoot, Format('Profil "%s" erweitert das unbekannte Profil "%s"', [mProfile.Name,
+      AReader.ReportNode(ARoot, cTexts[TConfigurationParserText.ProfileExtendsTheUnknownProfile].Fmt([mProfile.Name,
         mProfile.Extends]));
     end;
   end;
@@ -157,7 +177,7 @@ begin
   try
     if mRoot.Kind <> TJsonKind.Object_ then
     begin
-      AReader.ReportNode(mRoot, 'Die Konfiguration muss ein JSON-Objekt sein');
+      AReader.ReportNode(mRoot, cTexts[TConfigurationParserText.TheConfigurationMustBeA].Text);
       Exit;
     end;
     ReadSections(AReader, mRoot, ASettings);
@@ -373,5 +393,8 @@ begin
     mReader.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Parser', cTexts);
 
 end.

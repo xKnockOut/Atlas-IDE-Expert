@@ -227,7 +227,20 @@ type
 implementation
 
 uses
-  System.Diagnostics;
+  System.Diagnostics,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIndexServiceText = (WriteLockNotObtained);
+
+const
+  cTexts: array[TIndexServiceText] of TAtlasText = (
+    (De: 'Schreibsperre nicht erhalten'; En: 'Write lock not obtained'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Schlüssel einer Cache-Datei im Prozess: Dateisystem und Datei.</summary>
 function SharedCacheKey(const AFileSystem: IIndexFileSystem; const AFileName: string): string;
@@ -880,7 +893,7 @@ begin
     // Abgebrochen ist kein Fehler: Der nächste Aufbau ergänzt den Cache.
     if not FCancelled() then
     begin
-      NotWritten(AFileName, 'Schreibsperre nicht erhalten');
+      NotWritten(AFileName, cTexts[TIndexServiceText.WriteLockNotObtained].Text);
     end;
     Exit;
   end;
@@ -1287,5 +1300,8 @@ begin
     ReleaseBuilder;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Index.Service', cTexts);
 
 end.

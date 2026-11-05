@@ -44,7 +44,34 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
-  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols;
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeRestrictionsTypeInfoText = (Title, VariableMeant, InsertCall, Variable, FileRtti, DefaultFileAssign,
+    DefaultFile, EnumRtti);
+
+const
+  cTexts: array[TTypeRestrictionsTypeInfoText] of TAtlasText = (
+    (De: 'TypeInfo oder Default mit unzulässigem Argument'; En: 'TypeInfo or Default with invalid argument'),
+    (De: '%s erwartet einen Typ, %s ist eine Variable; gemeint ist %s(%s) (wie %s).';
+     En: '%s expects a type, %s is a variable; %s(%s) is meant (like %s).'),
+    (De: '%s(%s) einsetzen'; En: 'Insert %s(%s)'),
+    (De: '%s erwartet einen Typ, %s ist eine Variable (wie %s).'; En: '%s expects a type, %s is a variable (like %s).'),
+    (De: '%s hat keine Typinformation: Dateitypen erzeugen keine RTTI (wie E2134).';
+     En: '%s has no type information: file types produce no RTTI (like E2134).'),
+    (De: 'Default ist für den Dateityp %s nicht erlaubt, und Dateivariablen lassen sich nicht zuweisen (wie E2538 ' +
+      'und E2015).';
+     En: 'Default is not allowed for the file type %s, and file variables cannot be assigned (like E2538 and E2015).'),
+    (De: 'Default ist für den Dateityp %s nicht erlaubt (wie E2538).';
+     En: 'Default is not allowed for the file type %s (like E2538).'),
+    (De: '%s hat keine Typinformation: Aufzählungen mit festen Werten erzeugen keine RTTI (wie E2134).';
+     En: '%s has no type information: enumerations with fixed values produce no RTTI (like E2134).'));
+
+{$SCOPEDENUMS OFF}
 
 { TTypeInfoInvalidRule }
 
@@ -343,7 +370,7 @@ end;
 function TTypeInfoInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TypeInfoInvalidRuleId, TRuleSeverity.Error,
-    'TypeInfo oder Default mit unzulässigem Argument');
+    cTexts[TTypeRestrictionsTypeInfoText.Title].Text);
 end;
 
 procedure TTypeInfoInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -530,14 +557,14 @@ var
     end;
     if mTypeText <> '' then
     begin
-      AReport.Add(NodeRange(ACall.Argument), Format('%s erwartet einen Typ, %s ist eine Variable; gemeint ist ' +
-        '%s(%s) (wie %s).', [ACall.Intrinsic, ACall.Name, ACall.Intrinsic, mTypeText, mCode]), TRuleConfidence.High,
-        [TRuleFix.Create(Format('%s(%s) einsetzen', [ACall.Intrinsic, mTypeText]),
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.VariableMeant].Fmt([ACall.Intrinsic,
+        ACall.Name, ACall.Intrinsic, mTypeText, mCode]), TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TTypeRestrictionsTypeInfoText.InsertCall].Fmt([ACall.Intrinsic, mTypeText]),
         [TRuleEdit.Create(NodeRange(ACall.Argument), mTypeText)])]);
     end
     else
     begin
-      AReport.Add(NodeRange(ACall.Argument), Format('%s erwartet einen Typ, %s ist eine Variable (wie %s).',
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.Variable].Fmt(
         [ACall.Intrinsic, ACall.Name, mCode]), TRuleConfidence.High, nil);
     end;
   end;
@@ -546,19 +573,19 @@ var
   begin
     if ACall.IsTypeInfo then
     begin
-      AReport.Add(NodeRange(ACall.Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
-        'RTTI (wie E2134).', [ACall.Name]), TRuleConfidence.High, nil);
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.FileRtti].Fmt([ACall.Name]),
+        TRuleConfidence.High, nil);
     end
     else if AssignedFrom(ACall.Call) then
     begin
       // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
-      AReport.Add(NodeRange(ACall.Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
-        'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [ACall.Name]), TRuleConfidence.High,
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.DefaultFileAssign].Fmt([ACall.Name]),
+        TRuleConfidence.High,
         nil);
     end
     else
     begin
-      AReport.Add(NodeRange(ACall.Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.DefaultFile].Fmt(
         [ACall.Name]), TRuleConfidence.High, nil);
     end;
   end;
@@ -605,8 +632,8 @@ var
     end
     else if ACall.IsTypeInfo and (mBehind.Kind = TSyntaxKind.EnumType) and HasExplicitValues(mBehind) then
     begin
-      AReport.Add(NodeRange(ACall.Argument), Format('%s hat keine Typinformation: Aufzählungen mit festen Werten ' +
-        'erzeugen keine RTTI (wie E2134).', [ACall.Name]), TRuleConfidence.High, nil);
+      AReport.Add(NodeRange(ACall.Argument), cTexts[TTypeRestrictionsTypeInfoText.EnumRtti].Fmt([ACall.Name]),
+        TRuleConfidence.High, nil);
     end;
   end;
 
@@ -681,5 +708,8 @@ begin
     Calls.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeRestrictions.TypeInfo', cTexts);
 
 end.

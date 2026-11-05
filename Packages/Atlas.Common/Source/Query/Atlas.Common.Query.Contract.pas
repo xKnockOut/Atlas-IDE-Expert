@@ -89,7 +89,8 @@ type
     /// <summary>Angezeigter Wert der Spalte AColumn in ARow; '' ohne.</summary>
     class function CellText(const ARow: TQueryRow; AColumn: Integer): string; static;
     /// <summary>Meldung einer gespeicherten Abfrage: {feld} durch den Wert der Spalte ersetzt, {query} durch die
-    /// Abfrage, {path} durch den Pfad; unbekannte Platzhalter bleiben stehen. '' = Vorgabetext.</summary>
+    /// Abfrage, {path} durch den Pfad; unbekannte Platzhalter bleiben stehen. Den Vorgabetext für '' liefert
+    /// TQueryOutput.MessageTemplate.</summary>
     function Message(const ATemplate: string; const ARow: TQueryRow): string;
     /// <summary>Felder in geschweiften Klammern aus ATemplate ({name} → name), in Reihenfolge.</summary>
     class function Placeholders(const ATemplate: string): TArray<string>; static;
@@ -283,10 +284,6 @@ var
   mColumn: Integer;
 begin
   Result := ATemplate;
-  if Result = '' then
-  begin
-    Result := '{name}: Treffer der Abfrage {query}';
-  end;
   for mName in Placeholders(Result) do
   begin
     mColumn := ColumnOf(mName);

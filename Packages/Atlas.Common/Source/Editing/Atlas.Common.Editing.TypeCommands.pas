@@ -57,7 +57,69 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.ClassMembers;
+  Atlas.Common.Editing.ClassMembers,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTypeCommandsText = (OnlyAppliesInAUnit, ExpectedIsEnumTTypeValue1, OnlyOneHelperPerType,
+    RaiseEArgumentExceptionCreateFmtUnknownValue, ExpectedIsHelperTType, OnlyAppliesInAClass,
+    SingletonConstructorStaysUnchangedAnd, SingletonOnlyAppliesInA, NoFieldIn, IsAlreadyPrivate,
+    ExpectedIsEncapsulateFName, EncapsulateOnlyAppliesInA, AssignOnlyAppliesInA, ExpectedIsExceptionENameEBase,
+    ExpectedIsThreadTName, IfNobodyWaitsForThe, CreateAnEnumerationTypeWith, CreateAnEnumerationTypeWithout,
+    MakeTheClassASingleton, ConvertAFieldIntoA, CreateAssignForAllFields, CreateToJsonAndFromJson,
+    CreateATThreadDescendantWith, OnlyAppliesAtUnitLevel, AlreadyExistsIn, MustBeDeclaredAloneOn,
+    ShowResultsInTheMain, CreateARecordOrClass, CreateAnExceptionClass, EnumTColorRedGreenBlue, EnumTColorRedGreen,
+    HelperTColor, ExceptionEImportError);
+
+const
+  cTexts: array[TTypeCommandsText] of TAtlasText = (
+    (De: '/%s gilt nur in einer Unit'; En: '/%s only applies in a unit'),
+    (De: 'Erwartet wird /enum TTyp wert1, wert2 [names]'; En: 'Expected is /enum TType value1, value2 [names]'),
+    (De: '// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.';
+     En: '// Only one helper per type takes effect: the last visible one.'),
+    (De: '  raise EArgumentException.CreateFmt(''Unbekannter Wert "%%s" für %s'', [AValue]);';
+     En: '  raise EArgumentException.CreateFmt(''Unknown value "%%s" for %s'', [AValue]);'),
+    (De: 'Erwartet wird /helper TTyp'; En: 'Expected is /helper TType'),
+    (De: '/%s gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/%s only applies in a class or one of its methods'),
+    (De: '/singleton: Konstruktor %s bleibt unverändert und öffentlich; Instance ruft Create ohne Parameter';
+     En: '/singleton: constructor %s stays unchanged and public; Instance calls Create without parameters'),
+    (De: '/singleton gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/singleton only applies in a class or one of its methods'),
+    (De: 'Kein Feld %s in '; En: 'No field %s in '),
+    (De: ' ist schon private'; En: ' is already private'),
+    (De: 'Erwartet wird /encapsulate FName'; En: 'Expected is /encapsulate FName'),
+    (De: '/encapsulate gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/encapsulate only applies in a class or one of its methods'),
+    (De: '/assign gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/assign only applies in a class or one of its methods'),
+    (De: 'Erwartet wird /exception EName [: EBasis]'; En: 'Expected is /exception EName [: EBase]'),
+    (De: 'Erwartet wird /thread TName'; En: 'Expected is /thread TName'),
+    (De: '  // Wartet niemand auf den Thread, im Konstruktor FreeOnTerminate := True setzen.';
+     En: '  // If nobody waits for the thread, set FreeOnTerminate := True in the constructor.'),
+    (De: 'Aufzählungstyp mit Präfix anlegen'; En: 'Create an enumeration type with prefix'),
+    (De: 'Aufzählungstyp ohne Präfix anlegen'; En: 'Create an enumeration type without prefix'),
+    (De: 'Klasse zum Singleton machen'; En: 'Make the class a singleton'),
+    (De: 'Feld in Property mit Setter umwandeln'; En: 'Convert a field into a property with setter'),
+    (De: 'Assign für alle Felder anlegen'; En: 'Create Assign for all fields'),
+    (De: 'ToJson und FromJson anlegen'; En: 'Create ToJson and FromJson'),
+    (De: 'TThread-Nachfahre mit Execute anlegen'; En: 'Create a TThread descendant with Execute'),
+    (De: '/%s gilt nur auf Unit-Ebene'; En: '/%s only applies at unit level'),
+    (De: '%s gibt es schon in %s'; En: '%s already exists in %s'),
+    (De: ' muss allein in seiner Zeile deklariert sein'; En: ' must be declared alone on its line'),
+    (De: '    // Ergebnisse im Hauptthread zeigen: TThread.Queue(nil, procedure begin … end);';
+     En: '    // Show results in the main thread: TThread.Queue(nil, procedure begin … end);'),
+    (De: 'Record- bzw. Class-Helper anlegen'; En: 'Create a record or class helper'),
+    (De: 'Ausnahmeklasse anlegen'; En: 'Create an exception class'),
+    (De: '/enum TFarbe rot, gruen, blau names'; En: '/enum TColor red, green, blue names'),
+    (De: '/enum! TFarbe rot, gruen'; En: '/enum! TColor red, green'),
+    (De: '/helper TFarbe'; En: '/helper TColor'),
+    (De: '/exception EImportFehler'; En: '/exception EImportError'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Typen, die per Zuweisung kopiert und als JSON-Wert geschrieben werden.
@@ -137,13 +199,13 @@ begin
   AInTypeSection := False;
   if (ASource.RoutineAt <> nil) or ASource.ClassAt(mClassSymbol) then
   begin
-    Exit(Fail('/' + AName + ' gilt nur auf Unit-Ebene', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.OnlyAppliesAtUnitLevel].Fmt([AName]), AReason));
   end;
   // type-Abschnitt, der die vorige Zeile mit Code enthält.
   AInTypeSection := InTypeSectionAt(ASource.Tree, PreviousCodeLine(ASource));
   if ASource.Tree.Root.FindChild(TSyntaxKind.InterfaceSection) = nil then
   begin
-    Exit(Fail('/' + AName + ' gilt nur in einer Unit', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.OnlyAppliesInAUnit].Fmt([AName]), AReason));
   end;
   Result := True;
 end;
@@ -274,7 +336,7 @@ begin
   AEdits := nil;
   if not EnumArguments(AContext.Arguments, mTypeName, mValues, mWithNames) then
   begin
-    Exit(Fail('Erwartet wird /enum TTyp wert1, wert2 [names]', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsEnumTTypeValue1].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
@@ -518,7 +580,7 @@ function SetHelper(ASource: TCommandSource; const AContext: TSlashContext; AInTy
 var
   Values, Lines, ToText, Body: TArray<string>;
 begin
-  Lines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+  Lines := [cTexts[TTypeCommandsText.OnlyOneHelperPerType].Text,
     Format('%s = record helper for %s', [AHelperName, ATypeName])];
   // Mit bekannten Werten eine Namenstabelle, sonst die Namen aus der RTTI.
   if EnumMembers(ASource, AContext.Index, AElement, Values) then
@@ -572,7 +634,7 @@ function EnumHelper(ASource: TCommandSource; AInTypeSection: Boolean; const ATyp
 var
   mLines: TArray<string>;
 begin
-  mLines := ['// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+  mLines := [cTexts[TTypeCommandsText.OnlyOneHelperPerType].Text,
     Format('%s = record helper for %s', [AHelperName, ATypeName]), 'private const'];
   mLines := mLines + NamesConstant(ATypeName, AValues);
   mLines := mLines + ['public', '  function ToString: string;',
@@ -583,7 +645,7 @@ begin
     Format('class function %s.FromString(const AValue: string): %s;', [AHelperName, ATypeName]), 'var',
     Format('  Value: %s;', [ATypeName]), 'begin', Format('  for Value := Low(%s) to High(%s) do', [ATypeName,
     ATypeName]), '    if SameText(cNames[Value], AValue) then', '      Exit(Value);',
-    Format('  raise EArgumentException.CreateFmt(''Unbekannter Wert "%%s" für %s'', [AValue]);', [ATypeName]),
+    cTexts[TTypeCommandsText.RaiseEArgumentExceptionCreateFmtUnknownValue].Fmt([ATypeName]),
     'end;']))];
 end;
 
@@ -592,7 +654,7 @@ function PlainHelper(ASource: TCommandSource; AInTypeSection: Boolean; const ATy
   AKind: string): TTextEdit;
 begin
   Result := TypeDeclaration(ASource, AInTypeSection, [
-    '// Nur ein Helper je Typ ist wirksam: der zuletzt sichtbare.',
+    cTexts[TTypeCommandsText.OnlyOneHelperPerType].Text,
     Format('%s = %s helper for %s', [AHelperName, AKind, ATypeName]),
     'public', 'end;']);
 end;
@@ -608,7 +670,7 @@ begin
   mTypeName := Trim(AContext.Arguments);
   if not IsValidIdent(mTypeName, True) then
   begin
-    Exit(Fail('Erwartet wird /helper TTyp', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsHelperTType].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
@@ -732,7 +794,7 @@ begin
       Exit(True);
     end;
   end;
-  Result := Fail('/' + AName + ' gilt nur in einer Klasse oder einer ihrer Methoden', AReason);
+  Result := Fail(cTexts[TTypeCommandsText.OnlyAppliesInAClass].Fmt([AName]), AReason);
 end;
 
 { /singleton }
@@ -755,8 +817,7 @@ begin
   Result := '';
   if Names <> nil then
   begin
-    Result := Format('/singleton: Konstruktor %s bleibt unverändert und öffentlich; Instance ruft Create ohne ' +
-      'Parameter', [string.Join(', ', Names)]);
+    Result := cTexts[TTypeCommandsText.SingletonConstructorStaysUnchangedAnd].Fmt([string.Join(', ', Names)]);
   end;
 end;
 
@@ -773,7 +834,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/singleton gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TTypeCommandsText.SingletonOnlyAppliesInA].Text, AReason));
     end;
     Name := ClassSymbol.Name;
     AEdits := AddToClass(Source, ClassSymbol, ['private', Format('class var FInstance: %s;', [Name]), 'public',
@@ -919,12 +980,12 @@ var
   mSymbol: TIndexSymbol;
 begin
   AField := Default(TIndexSymbol);
-  Result := 'Kein Feld ' + AOldName + ' in ' + AClass.Name;
+  Result := cTexts[TTypeCommandsText.NoFieldIn].Fmt([AOldName]) + AClass.Name;
   for mSymbol in FieldsOf(ASource, AClass) do
   begin
     if ARename and SameText(mSymbol.Name, AFieldName) then
     begin
-      Exit(Format('%s gibt es schon in %s', [AFieldName, AClass.Name]));
+      Exit(cTexts[TTypeCommandsText.AlreadyExistsIn].Fmt([AFieldName, AClass.Name]));
     end;
     if SameText(mSymbol.Name, AOldName) then
     begin
@@ -944,12 +1005,12 @@ begin
   Result := '';
   if AField.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate] then
   begin
-    Result := AOldName + ' ist schon private';
+    Result := AOldName + cTexts[TTypeCommandsText.IsAlreadyPrivate].Text;
   end
   else if (AField.Range.StartPos.Line <> AField.Range.EndPos.Line) or
     not StartsText(AOldName + ':', StringReplace(Trim(mLine), ' :', ':', [])) or (Pos(',', mLine) > 0) then
   begin
-    Result := AOldName + ' muss allein in seiner Zeile deklariert sein';
+    Result := AOldName + cTexts[TTypeCommandsText.MustBeDeclaredAloneOn].Text;
   end;
 end;
 
@@ -981,14 +1042,14 @@ begin
   mOldName := Trim(AContext.Arguments);
   if not IsValidIdent(mOldName) then
   begin
-    Exit(Fail('Erwartet wird /encapsulate FName', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsEncapsulateFName].Text, AReason));
   end;
   // Ohne F-Präfix (#298): das Feld heißt danach FName, die Property trägt den alten Namen, damit
   // Verwendungen außerhalb der Klasse gültig bleiben; in den eigenen Methoden wird es umbenannt.
   mRename := EncapsulateNames(mOldName, mName, mFieldName);
   mSource := TCommandSource.Create(AContext);
   try
-    AReason := '/encapsulate gilt nur in einer Klasse oder einer ihrer Methoden';
+    AReason := cTexts[TTypeCommandsText.EncapsulateOnlyAppliesInA].Text;
     if mSource.ClassAt(mClass) then
     begin
       AReason := FindField(mSource, mClass, mOldName, mFieldName, mRename, mField);
@@ -1031,7 +1092,7 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/assign gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TTypeCommandsText.AssignOnlyAppliesInA].Text, AReason));
     end;
     Name := ClassSymbol.Name;
     Body := Join(Source, [Format('procedure %s.Assign(Source: TPersistent);', [Name]), 'begin',
@@ -1172,7 +1233,7 @@ begin
   end;
   if not IsValidIdent(Name) or not IsValidIdent(Ancestor, True) then
   begin
-    Exit(Fail('Erwartet wird /exception EName [: EBasis]', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsExceptionENameEBase].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -1199,7 +1260,7 @@ begin
   TypeName := Trim(AContext.Arguments);
   if not IsValidIdent(TypeName) then
   begin
-    Exit(Fail('Erwartet wird /thread TName', AReason));
+    Exit(Fail(cTexts[TTypeCommandsText.ExpectedIsThreadTName].Text, AReason));
   end;
   Source := TCommandSource.Create(AContext);
   try
@@ -1210,9 +1271,9 @@ begin
     AEdits := [TypeDeclaration(Source, InTypeSection, [Format('%s = class(TThread)', [TypeName]), 'protected',
       '  procedure Execute; override;', 'end;']), Source.AddBody(TypeName, Join(Source, [
       Format('procedure %s.Execute;', [TypeName]), 'begin',
-      '  // Wartet niemand auf den Thread, im Konstruktor FreeOnTerminate := True setzen.',
+      cTexts[TTypeCommandsText.IfNobodyWaitsForThe].Text,
       '  while not Terminated do', '  begin',
-      '    // Ergebnisse im Hauptthread zeigen: TThread.Queue(nil, procedure begin … end);', '  end;', 'end;']))];
+      cTexts[TTypeCommandsText.ShowResultsInTheMain].Text, '  end;', 'end;']))];
     AddMissingUses(Source, AContext, 'System.Classes', Source.Line, AEdits);
     Result := True;
   finally
@@ -1230,24 +1291,34 @@ end;
 
 procedure RegisterTypeCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('enum', 'Aufzählungstyp mit Präfix anlegen', '/enum TFarbe rot, gruen, blau names',
+  ARegister(Command('enum', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWith].Text,
+    cTexts[TTypeCommandsText.EnumTColorRedGreenBlue].Text,
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('enum!', 'Aufzählungstyp ohne Präfix anlegen', '/enum! TFarbe rot, gruen',
+  ARegister(Command('enum!', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWithout].Text,
+    cTexts[TTypeCommandsText.EnumTColorRedGreen].Text,
     function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('helper', 'Record- bzw. Class-Helper anlegen', '/helper TFarbe', ExecuteHelper));
-  ARegister(Command('singleton', 'Klasse zum Singleton machen', '/singleton', ExecuteSingleton));
-  ARegister(Command('encapsulate', 'Feld in Property mit Setter umwandeln', '/encapsulate FName',
+  ARegister(Command('helper', cTexts[TTypeCommandsText.CreateARecordOrClass].Text,
+    cTexts[TTypeCommandsText.HelperTColor].Text, ExecuteHelper));
+  ARegister(Command('singleton', cTexts[TTypeCommandsText.MakeTheClassASingleton].Text, '/singleton',
+    ExecuteSingleton));
+  ARegister(Command('encapsulate', cTexts[TTypeCommandsText.ConvertAFieldIntoA].Text, '/encapsulate FName',
     ExecuteEncapsulate));
-  ARegister(Command('assign', 'Assign für alle Felder anlegen', '/assign', ExecuteAssign));
-  ARegister(Command('json', 'ToJson und FromJson anlegen', '/json', ExecuteJson));
-  ARegister(Command('exception', 'Ausnahmeklasse anlegen', '/exception EImportFehler', ExecuteException));
-  ARegister(Command('thread', 'TThread-Nachfahre mit Execute anlegen', '/thread TWorker', ExecuteThread));
+  ARegister(Command('assign', cTexts[TTypeCommandsText.CreateAssignForAllFields].Text, '/assign', ExecuteAssign));
+  ARegister(Command('json', cTexts[TTypeCommandsText.CreateToJsonAndFromJson].Text, '/json', ExecuteJson));
+  ARegister(Command('exception', cTexts[TTypeCommandsText.CreateAnExceptionClass].Text,
+    cTexts[TTypeCommandsText.ExceptionEImportError].Text,
+    ExecuteException));
+  ARegister(Command('thread', cTexts[TTypeCommandsText.CreateATThreadDescendantWith].Text, '/thread TWorker',
+    ExecuteThread));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.TypeCommands', cTexts);
 
 end.

@@ -61,7 +61,8 @@ uses
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Bootstrap,
-  Shell.Workspace.Listings;
+  Shell.Workspace.Listings,
+  Atlas.Text.LogMarks;
 
 { TShellIndexFiles }
 
@@ -169,7 +170,7 @@ begin
   if (mAdded > 0) or (mRequired > 0) then
   begin
     ALogger.Info(Format('%s: Package mit %d Units aus contains ohne DCCReference und %d aus requires-Packages',
-      [AName, mAdded, mRequired]));
+      [TLogMarks.Name(AName), mAdded, mRequired]));
   end;
 end;
 

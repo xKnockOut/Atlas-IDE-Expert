@@ -114,6 +114,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Completion.Names,
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Shell.Workspace.Jobs;
 
 constructor TShellCodeArea.Create(ACore: TShellCore; const AServices: TShellCodeAreaServices);
@@ -386,7 +388,9 @@ begin
       Result.MemberOrder := mWorkspace.Configuration.Settings.MemberOrder;
       Result.SortUses := mWorkspace.Configuration.Settings.SortUses;
       Result.SortUsesByNamespace := mWorkspace.Configuration.Settings.SortUsesByNamespace;
-      Result.UsesKeep := mWorkspace.Configuration.Settings.UsesKeep;
+      // usesKeep und die Option keep von unused-uses (#1135): Regel, Abblenden und „uses aufräumen“ gleich.
+      Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(UnusedUsesRuleId,
+        mWorkspace.Configuration.Settings), mWorkspace.Configuration.Settings.UsesKeep);
       Result.Namespaces := mWorkspace.State.Namespaces;
       Result.IncludePaths := mWorkspace.State.IncludePaths;
     end;

@@ -74,7 +74,8 @@ uses
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
   Shell.Bootstrap,
-  Shell.Workspace;
+  Shell.Workspace,
+  Atlas.Text.LogMarks;
 
 constructor TShellConfiguration.Create(const AServices: TShellConfigurationServices);
 begin
@@ -172,8 +173,8 @@ begin
   FServices.Logger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(mIssues) + Length(mMisplaced)]));
   for mIssue in mMisplaced do
   begin
-    FServices.Logger.Warning(Format('%s(%d,%d): %s', [ExtractFileName(FGlobalSettingsFile),
-      mIssue.Range.StartPos.Line + 1, mIssue.Range.StartPos.Character + 1, mIssue.Message]));
+    FServices.Logger.Warning(Format('%s(%d,%d): %s', [TLogMarks.Path(ExtractFileName(FGlobalSettingsFile)),
+      mIssue.Range.StartPos.Line + 1, mIssue.Range.StartPos.Character + 1, TLogMarks.Text(mIssue.Message)]));
   end;
 end;
 
@@ -212,7 +213,7 @@ begin
   begin
     if mWorkspace.Configuration.FileChanged(AFileName) then
     begin
-      FServices.Logger.Info(Format('Einstellungen von %s neu gelesen', [mWorkspace.Root]));
+      FServices.Logger.Info(Format('Einstellungen von %s neu gelesen', [TLogMarks.Path(mWorkspace.Root)]));
     end;
   end;
 end;
