@@ -119,7 +119,17 @@ uses
   Shell.Linter.Query,
   Shell.Linter.Hotspots,
   Shell.Linter.Formatting,
-  Shell.Linter.AffectedTests;
+  Shell.Linter.AffectedTests,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterShellText = (Cleared);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterShellText] of TAtlasText = (
+    (De: '%d Index-Caches gelöscht in %s'; En: '%d index caches deleted in %s'));
 
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;
 begin
@@ -170,8 +180,8 @@ end;
 class function TLinterShell.ClearCache: Integer;
 begin
   try
-    TLinterOutput.Error(Format('%d Index-Caches gelöscht in %s',
-      [TIndexCacheDirectory.Clear(TIndexCacheDirectory.DefaultRoot), TIndexCacheDirectory.DefaultRoot]));
+    TLinterOutput.Error(cTexts[TLinterShellText.Cleared].Fmt([TIndexCacheDirectory.Clear(
+      TIndexCacheDirectory.DefaultRoot), TIndexCacheDirectory.DefaultRoot]));
     Result := TFindingsOutput.ExitClean;
   except
     on E: Exception do
@@ -181,5 +191,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter', cTexts);
 
 end.

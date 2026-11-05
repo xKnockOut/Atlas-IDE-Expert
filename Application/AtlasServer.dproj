@@ -139,6 +139,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.Check.pas"/>
         <DCCReference Include="Source\Shell\Shell.Linter.Reports.pas"/>
         <DCCReference Include="Source\Shell\Shell.SlashHost.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Texts.pas"/>
         <DCCReference Include="Source\Shell\Shell.VcsChanges.pas"/>
         <DCCReference Include="Source\Shell\Shell.AffectedTests.pas"/>
         <DCCReference Include="Source\Shell\Shell.Hotspots.pas"/>
@@ -173,6 +174,7 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.ProjectTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.ChangeTools.pas"/>
         <DCCReference Include="Source\Shell\Shell.Mcp.Changes.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.CrashCases.pas"/>

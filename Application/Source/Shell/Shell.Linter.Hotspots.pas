@@ -36,7 +36,23 @@ uses
   Atlas.Common.Hotspots.Report,
   Shell.Hotspots,
   Shell.Linter.Output,
-  Shell.Linter.Files;
+  Shell.Linter.Files,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterHotspotsText = (Report, Off, NoVcs, FileKind);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterHotspotsText] of TAtlasText = (
+    (De: 'Hotspot-Bericht %s: %s, %d Units, %d Methoden, %d Kopplungen';
+    En: 'Hotspot report %s: %s, %d units, %d methods, %d couplings'),
+    (De: 'Hotspots sind ausgeschaltet (hotspots.enabled in settings.json)';
+    En: 'Hotspots are turned off (hotspots.enabled in settings.json)'),
+    (De: 'Hotspots brauchen eine Versionsverwaltung: %s'; En: 'Hotspots need version control: %s'),
+    (De: '--hotspots erwartet eine .md-, .html- oder .json-Datei';
+    En: '--hotspots expects a .md, .html or .json file'));
 
 function ReaderFunc(): TMetricsReadText;
 begin
@@ -76,7 +92,7 @@ begin
   ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.HotspotsFile)));
   TFile.WriteAllBytes(AOptions.HotspotsFile, TEncoding.UTF8.GetBytes(THotspotReport.ForFile(AResult,
     AOptions.HotspotsFile)));
-  TLinterOutput.Error(Format('Hotspot-Bericht %s: %s, %d Units, %d Methoden, %d Kopplungen', [AOptions.HotspotsFile,
+  TLinterOutput.Error(cTexts[TLinterHotspotsText.Report].Fmt([AOptions.HotspotsFile,
     THotspotReport.RangeText(AResult), Length(AResult.Units), Length(AResult.Methods), Length(AResult.Coupling)]));
 end;
 
@@ -90,12 +106,12 @@ begin
   mSettings := TLinterSettings.Load(ATarget.ConfigRoot);
   if not mSettings.HotspotsEnabled then
   begin
-    TLinterOutput.Error('Hotspots sind ausgeschaltet (hotspots.enabled in settings.json)');
+    TLinterOutput.Error(cTexts[TLinterHotspotsText.Off].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   if not TShellHotspotVcs.Detect(ATarget.ConfigRoot, mSettings, mVcs, mError) then
   begin
-    TLinterOutput.Error('Hotspots brauchen eine Versionsverwaltung: ' + mError);
+    TLinterOutput.Error(cTexts[TLinterHotspotsText.NoVcs].Fmt([mError]));
     Exit(TFindingsOutput.ExitFailure);
   end;
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
@@ -110,7 +126,7 @@ begin
   TLinterOutput.Warnings(AOptions);
   if not TLinterFiles.IsReportFile(AOptions.HotspotsFile) then
   begin
-    TLinterOutput.Error('--hotspots erwartet eine .md-, .html- oder .json-Datei');
+    TLinterOutput.Error(cTexts[TLinterHotspotsText.FileKind].Text);
     Exit(TFindingsOutput.ExitFailure);
   end;
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
@@ -127,5 +143,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Hotspots', cTexts);
 
 end.

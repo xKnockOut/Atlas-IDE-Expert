@@ -53,10 +53,6 @@ uses
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Mcp.Paths,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Prompt,
-  Atlas.Common.Rules.Conventions,
-  Atlas.Common.Rules.Builtin,
   Shell.Platform,
   Shell.CrashCases,
   Shell.Workspace,
@@ -64,8 +60,22 @@ uses
   Shell.Mcp.Services,
   Shell.Mcp.Tools,
   Shell.Mcp.Changes,
+  Shell.Mcp.Conventions,
   Shell.Mcp.Startup,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpHostText = (Instructions);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpHostText] of TAtlasText = (
+    (De: 'Delphi-Projekt in %s. Für Fragen zu Typen, Units und Formularen zuerst diese Werkzeuge nutzen statt ' +
+    'Quelldateien vollständig zu lesen.';
+    En: 'Delphi project in %s. For questions about types, units and forms, use these tools first instead of ' +
+    'reading source files completely.'));
 
 class function TMcpShell.ToolNames: TArray<string>;
 var
@@ -151,23 +161,6 @@ begin
     end;
 end;
 
-/// <summary>Projektkonventionen (#272) als Markdown.</summary>
-function ConventionsOf(AWorkspace: TShellWorkspace): TFunc<string>;
-begin
-  Result :=
-    function: string
-    var
-      mCatalog: TRuleCatalog;
-    begin
-      mCatalog := TFindingPrompt.GermanCatalog;
-      try
-        Result := TRuleConventions.Markdown(BuiltinRules, AWorkspace.Configuration.Settings, mCatalog);
-      finally
-        mCatalog.Free;
-      end;
-    end;
-end;
-
 /// <summary>Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).</summary>
 function BeforeToolCallOf(const AServices: TMcpServices; const ALogger: ILogger): TProc;
 var
@@ -197,15 +190,12 @@ end;
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
   const ALogger: ILogger);
 begin
-  AServer.Instructions := 'Delphi-Projekt in ' + AServices.Root + '. Für Fragen zu Typen, Units und Formularen ' +
-    'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
+  AServer.Instructions := cTexts[TMcpHostText.Instructions].Fmt([AServices.Root]);
   RegisterContextTools(AServices.ToolContext(AServer));
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  AServer.AddResource('delphi://conventions', 'Projektkonventionen',
-    'Regelprofil, Formatstil, Benennungsregeln und aktive Prüfregeln des Projekts als Markdown.', 'text/markdown',
-    ConventionsOf(AServices.Workspace));
+  TMcpConventions.Register(AServer, AServices.Workspace);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 
@@ -311,5 +301,8 @@ begin
     mServices.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp', cTexts);
 
 end.

@@ -9459,6 +9459,21 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
 
+## Meldungen des Servers zweisprachig (#1458, Gruppe C)
+
+Vorbereitung: AtlasServer und `Atlas.Tests` aus dem Branch gebaut; ein Projekt mit Befunden; MCP-Client (z. B. Claude Code) mit `AtlasServer --mcp`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZE1 | `AtlasServer --check <Projekt> --locale en` | Zusammenfassung, Hinweise und Fehlermeldungen englisch (z. B. „Symbol index: … units in … s“), Befundtexte englisch (**Abnahme**) |
+| ZE2 | Wie ZE1 mit `--locale de` | Dieselben Ausgaben deutsch wie bisher |
+| ZE3 | `AtlasServer --check <Projekt> --locale xx --format foo` | Zwei Warnungen in der Sprache aus `settings.json` (ohne `language` englisch): unbekannte Sprache und unbekanntes Format |
+| ZE4 | `AtlasServer --mcp --locale en`, im Client die Werkzeugliste ansehen | Beschreibungen aller Werkzeuge und Parameter englisch; ein Aufruf ohne Pflichtargument meldet „Argument … is missing“ (**Abnahme**) |
+| ZE5 | Wie ZE4 mit `--locale de` | Beschreibungen und Meldungen deutsch |
+| ZE6 | In der IDE mit englischer Oberfläche (`language` = en) eine abgeschaltete Refaktorierung (z. B. `refactoring.safeDelete` aus) auslösen | Meldung englisch „"Safe delete" is turned off (refactoring.safeDelete).“ |
+| ZE7 | In der IDE mit englischer Oberfläche „Projekt kompilieren“ ohne gültige Lizenz bzw. ohne Projekt | Meldungen des Servers englisch (z. B. „No folder with a project open“) |
+| ZE8 | `Atlas.Tests` bauen und ausführen (Win64) | 0 Fehler, 0 Warnungen, 0 Hinweise; `TShellTextsTests`, `TCommandLineOptionsTests.WarningTextFollowsLanguage`, `TMcpToolsTests.ToolsSpeakBothLanguages`, `TLocalizationTextsTests.AllTablesComplete` grün; Tests mit deutschen Erwartungen unabhängig von der Reihenfolge grün |
+| ZE9 | AtlasServer mit Delphi 12 und 13 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
 ## Tracker-, Willkommens- und Debugger-Texte englisch (#1458, Gruppe E)
 
 Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); Projekt in einem Git-Repository mit Tracker-Verbindung (YouTrack oder GitHub).

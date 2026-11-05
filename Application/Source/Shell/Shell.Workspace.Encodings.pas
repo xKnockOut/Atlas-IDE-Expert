@@ -39,7 +39,18 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Messages,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TWorkspaceEncodingText = (Mixed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TWorkspaceEncodingText] of TAtlasText = (
+    (De: 'Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.';
+    En: 'Mixed encodings in project %s: %s. When writing, each file keeps its encoding.'));
 
 type
   /// <summary>Jede Datei einmal in die Erhebung.</summary>
@@ -153,10 +164,12 @@ begin
 
     Exit;
   end;
-  mText := Format('Gemischte Kodierungen im Projekt %s: %s. Beim Schreiben behält jede Datei ihre Kodierung.',
-    [TLogMarks.Name(FName), mSurvey.Describe]);
+  mText := cTexts[TWorkspaceEncodingText.Mixed].Fmt([TLogMarks.Name(FName), mSurvey.Describe]);
   FLogger.Warning(mText);
   Show(TLogMarks.Plain(mText));
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Workspace.Encodings', cTexts);
 
 end.

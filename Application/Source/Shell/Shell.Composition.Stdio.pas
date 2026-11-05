@@ -150,7 +150,7 @@ end;
 class function TShellStdio.Open(const AOptions: TCommandLineOptions): TShellStdioChannel;
 var
   mLoggerImpl: TLogger;
-  mWarning: string;
+  mWarning: TCommandLineWarning;
 begin
   Result := Default(TShellStdioChannel);
   // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
@@ -164,7 +164,7 @@ begin
   mLoggerImpl.AddSink(TLspLogMessageSink.Create(Result.Transport), AOptions.LogLevel);
   for mWarning in AOptions.Warnings do
   begin
-    Result.Logger.Warning(mWarning);
+    Result.Logger.Warning(mWarning.Text);
   end;
   if Result.Tracing <> nil then
   begin

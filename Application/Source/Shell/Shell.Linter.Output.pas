@@ -36,7 +36,19 @@ uses
   System.JSON,
   Atlas.Text.LogMarks,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterOutputText = (Plain, Anonymous);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterOutputText] of TAtlasText = (
+    (De: '_Unit-Namen im Klartext (--log-names)._'; En: '_Unit names in plain text (--log-names)._'),
+    (De: '_Unit-Namen anonymisiert (name#N); im Klartext mit --log-names._';
+    En: '_Unit names anonymized (name#N); in plain text with --log-names._'));
 
 procedure WriteText(const AStream: TStream; const AText: string);
 var
@@ -92,11 +104,11 @@ end;
 
 class procedure TLinterOutput.Warnings(const AOptions: TCommandLineOptions);
 var
-  mWarning: string;
+  mWarning: TCommandLineWarning;
 begin
   for mWarning in AOptions.Warnings do
   begin
-    Error(mWarning);
+    Error(mWarning.Text);
   end;
 end;
 
@@ -121,11 +133,11 @@ var
   mNote: string;
 begin
   mTimings := ATimings;
-  mNote := '_Unit-Namen im Klartext (--log-names)._';
+  mNote := cTexts[TLinterOutputText.Plain].Text;
   if not AOptions.LogNames then
   begin
     mTimings := AnonymousTimings(ATimings);
-    mNote := '_Unit-Namen anonymisiert (name#N); im Klartext mit --log-names._';
+    mNote := cTexts[TLinterOutputText.Anonymous].Text;
   end;
   if not TCheckTimings.IsJsonFile(AOptions.TimingsFile) then
   begin
@@ -154,5 +166,8 @@ begin
   SaveUtf8(AOptions.TimingsFile, mText);
   Error(Format('Zeitprofil geschrieben: %s', [AOptions.TimingsFile]));
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Output', cTexts);
 
 end.

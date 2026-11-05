@@ -50,7 +50,17 @@ uses
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.CompilerFixes,
-  Atlas.Common.Lsp.MissingUnit;
+  Atlas.Common.Lsp.MissingUnit,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TFixRefactoringText = (DisableWarning);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TFixRefactoringText] of TAtlasText = (
+    (De: 'Warnung abschalten'; En: 'Disable warning'));
 
 /// <summary>Typ einer Inline-Variablen ohne Typangabe für „In var-Block verschieben“ (#644): dieselbe Ermittlung
 /// wie „Typ ausschreiben“ (#453), samt der uses, die ihn sichtbar machen.</summary>
@@ -138,10 +148,10 @@ var
   mUri: string;
   mDocument: ITextDocument;
 begin
-  Require(AArguments, 1, 'Argument "uri" fehlt');
+  Require(AArguments, ['uri']);
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).DisableWarning,
-    '"Warnung abschalten" ist abgeschaltet (refactoring.disableWarning).');
+    Disabled(cTexts[TFixRefactoringText.DisableWarning].Text, 'refactoring.disableWarning'));
   Result := TLspDisableWarning.Execute(AArguments, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree,
     DelphiVersion(mUri));
 end;
@@ -297,5 +307,8 @@ begin
     mResolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Fixes', cTexts);
 
 end.

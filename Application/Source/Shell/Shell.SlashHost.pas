@@ -126,7 +126,19 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.ApplyEdit,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TSlashHostText = (NotChanged, ResourceUnit, NoTestUnits);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TSlashHostText] of TAtlasText = (
+    (De: 'Atlas: %s wurde nicht geändert (%s).'; En: 'Atlas: %s was not changed (%s).'),
+    (De: 'Die Unit für resourcestrings'; En: 'The unit for resourcestrings'),
+    (De: 'Testunits sind hier nicht verfügbar'; En: 'Test units are not available here'));
 
 class function TShellSlashSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
   const AHeaderTemplate: THeaderTemplateFunc): TShellSlashSources;
@@ -237,7 +249,7 @@ begin
     mMessage.AddPair('jsonrpc', '2.0');
     mMessage.AddPair('method', 'window/showMessage');
     mMessage.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(2))
-      .AddPair('message', Format('Atlas: %s wurde nicht geändert (%s).', [ADescription, AReason])));
+      .AddPair('message', cTexts[TSlashHostText.NotChanged].Fmt([ADescription, AReason])));
     ATransport.WriteMessage(mMessage);
   finally
     mMessage.Free;
@@ -331,7 +343,7 @@ var
 begin
   if ClientWrites then
   begin
-    SendEdit(AUri, 'Die Unit für resourcestrings', TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
+    SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
     Exit;
   end;
   TFileEncoding.LoadFromFile(AFileName, FileFormat);
@@ -469,7 +481,7 @@ begin
   ATarget := Default(TSlashTestUnit);
   if not Assigned(FSources.TestUnitOf) then
   begin
-    ATarget.Reason := 'Testunits sind hier nicht verfügbar';
+    ATarget.Reason := cTexts[TSlashHostText.NoTestUnits].Text;
     Exit(False);
   end;
   Result := FSources.TestUnitOf(AUri, AText, ATarget);
@@ -668,5 +680,8 @@ begin
   end;
   InLoop(ReloadAndShow(FSources.WorkspaceOf, AUri, ShowAfter(FTransport, AShow)));
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.SlashHost', cTexts);
 
 end.
