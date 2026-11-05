@@ -155,11 +155,11 @@ begin
   mGate := TEvent.Create(nil, True, False, '');
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
-    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done));
-    Assert.IsFalse(mRequest.Start(Blocked(mGate), mProbe.Done), 'zweite Anfrage solange die erste läuft');
+    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()));
+    Assert.IsFalse(mRequest.Start(Blocked(mGate), mProbe.Done()), 'zweite Anfrage solange die erste läuft');
     mGate.SetEvent;
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
-    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done), 'nach dem Abschluss wieder frei');
+    Assert.IsTrue(mRequest.Start(Blocked(mGate), mProbe.Done()), 'nach dem Abschluss wieder frei');
     Assert.IsTrue(WaitUntil(Reached(mProbe, 2)));
     Assert.AreEqual(2, mProbe.Count);
   finally
@@ -182,7 +182,7 @@ begin
   mProbe := TDoneProbe.Create;
   try
     mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
-    mRequest.Start(mWork, mProbe.Done);
+    mRequest.Start(mWork, mProbe.Done());
     // Freigabe wartet die Arbeit ab; der eingereihte Abschluss darf danach nichts mehr tun.
     mRequest.Free;
     WaitUntil(Reached(mProbe, 1), 200);
@@ -200,7 +200,7 @@ begin
   mProbe := TDoneProbe.Create;
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
-    mRequest.Start(Raising(ELspTimeoutError.Create('Zeitlimit')), mProbe.Done);
+    mRequest.Start(Raising(ELspTimeoutError.Create('Zeitlimit')), mProbe.Done());
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
     Assert.AreEqual('Zeitlimit', mProbe.Error);
@@ -219,7 +219,7 @@ begin
   mProbe := TDoneProbe.Create;
   mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
   try
-    mRequest.Start(Raising(EAbort.Create('Abbruch')), mProbe.Done);
+    mRequest.Start(Raising(EAbort.Create('Abbruch')), mProbe.Done());
     Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
     Assert.IsFalse(mRequest.Busy, 'nach einer Ausnahme wieder frei');
