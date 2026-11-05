@@ -32,7 +32,7 @@ type
     /// <summary>#862: hinter ^C in Konstanten der Code, nicht in Ausdrücken; abschaltbar; data.controlChar.</summary>
     [Test]
     procedure ControlCharCodesBehindConstants;
-    /// <summary>#686: „ohne Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
+    /// <summary>#686: „braucht kein Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
     /// </summary>
     [Test]
     procedure MethodMarkersBehindHeaders;
@@ -411,7 +411,7 @@ begin
     Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, Source,
       'R.pas', nil), WholeFile, Settings)));
     Settings.MethodWithoutSelf := True;
-    Assert.AreEqual('11:47 ohne Self|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
+    Assert.AreEqual('11:47 Self unused|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
       Tree, Source, 'R.pas', nil), WholeFile, Settings)));
     Json := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, Tree, Source, 'R.pas', WholeFile, nil));
     try
