@@ -9623,3 +9623,18 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Fehlalarme von vier Prüfregeln (method-without-self, handle-leak, field-not-freed, unused-suppression)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener `atlas.json`, darin `"rules": {"method-without-self": "hint"}`. Fenster „Atlas-Prüfung“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FPR1 | Unit mit `TMelder = class(TNotifierObject, IOTAWizard)` und `function GetIDString: string;` (Rumpf `Result := 'X.Melder';`), uses `ToolsAPI` | Kein `method-without-self` an `GetIDString`, auch ohne ToolsAPI-Quelltext im Index |
+| FPR2 | `TVergleich = class(TInterfacedObject, IComparer<Integer>)` mit `function Compare(const A, B: Integer): Integer;` (Rumpf `Result := A - B;`) | Kein `method-without-self` an `Compare` |
+| FPR3 | `IBasis = interface procedure Zeige; end; IKind = interface(IBasis) end; TZeiger = class(TInterfacedObject, IKind)` mit `Zeige` ohne Self und einer weiteren Methode `Doppelt(A: Integer): Integer` ohne Self | Nur `TZeiger.Doppelt` wird gemeldet, `Zeige` nicht |
+| FPR4 | Funktion `function Darf: Boolean; var Token: THandle; begin Result := OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, Token); if not Result then begin Exit; end; CloseHandle(Token); end;` | Kein `handle-leak` |
+| FPR5 | Wie FPR4, aber `CloseHandle(Token)` nur im Zweig `if not Result then` | `handle-leak` „Token nicht auf jedem Weg mit CloseHandle geschlossen“ bleibt |
+| FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |
+| FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |
+| FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |

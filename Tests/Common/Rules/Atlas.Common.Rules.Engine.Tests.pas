@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Engine.Tests;
 
 // Tests für Prüfregel-Framework: Registrierung, Schweregrad aus der
-// Konfiguration, Ausnahmen, Unterdrückung per Kommentar und Korrekturen.
+// Konfiguration, Ausnahmen, Unterdrückung per Kommentar und Korrekturen;
+// keine unused-suppression, wo eine Regel mangels Wissen nicht entscheidet.
 
 interface
 
@@ -47,6 +48,8 @@ type
     procedure SuppressesWholeFile;
     [Test]
     procedure SuppressionReasonIsNoId;
+    [Test]
+    procedure UndecidedLineKeepsSuppression;
     [Test]
     procedure UnknownRuleIdWithSuggestion;
     [Test]
@@ -162,6 +165,27 @@ begin
       end;
     end;
   end;
+end;
+
+type
+  /// <summary>Wie TMarkerRule, kann aber die Zeile FUndecided nicht entscheiden (IRuleLineCertainty).</summary>
+  TUncertainMarkerRule = class(TMarkerRule, IRuleLineCertainty)
+  private
+    FUndecided: Integer;
+  public
+    constructor Create(AUndecided: Integer);
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+  end;
+
+constructor TUncertainMarkerRule.Create(AUndecided: Integer);
+begin
+  inherited Create;
+  FUndecided := AUndecided;
+end;
+
+function TUncertainMarkerRule.Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+begin
+  Result := ALine <> FUndecided;
 end;
 
 var
@@ -480,6 +504,20 @@ procedure TRuleEngineTests.SuppressesWholeFile;
 begin
   TRuleAssert.Silent(TMarkerRule.Create, '// lsp-ignore-file: marker'#13#10 +
     SourceWith('  Marker := 1;'#13#10'  Marker := 2;'#13#10));
+end;
+
+procedure TRuleEngineTests.UndecidedLineKeepsSuppression;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Zeile 5 kann die Regel nicht entscheiden: Ihr lsp-ignore dort ist keine unused-suppression, auch nicht "*".
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncertainMarkerRule.Create(5),
+    SourceWith('  X := 1; // lsp-ignore: marker'#13#10)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncertainMarkerRule.Create(5),
+    SourceWith('  X := 1; // lsp-ignore: *'#13#10)))));
+  mFindings := TRuleAssert.Findings(TUncertainMarkerRule.Create(7), SourceWith('  X := 1; // lsp-ignore: marker'#13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(UnusedSuppressionRuleId, mFindings[0].RuleId);
 end;
 
 procedure TRuleEngineTests.SuppressionReasonIsNoId;

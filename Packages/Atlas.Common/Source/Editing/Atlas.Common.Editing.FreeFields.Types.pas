@@ -4,6 +4,8 @@
 // (Klasse, Record, Interface, anderes) und Vorfahrenkette aus der Datei und dem
 // Index, ob eine Klasse eine Komponente ist, welche Feldtypen eine Klasse hat
 // und welchen Typ ein Feld eines Records hat.
+// Aliase (TPos = Werk.Lage.TLage) gelten in der Datei und im Index; der
+// Namensraum vor dem Ziel zählt nicht (TLage).
 // Ohne Deklaration helfen bekannte Records der RTL und die Namensregel IFoo.
 
 interface
@@ -22,7 +24,7 @@ type
     FText: string;
     FIndex: ISymbolIndex;
     function FromFile(const AName: string; out AAlias: string): TTypeGuess;
-    function IndexGuess(const ABase: string; AGeneric: Boolean; out AFound: Boolean): TTypeGuess;
+    function IndexGuess(const ABase: string; AGeneric: Boolean; out AAlias: string): TTypeGuess;
     function FileAncestor(const AName: string; out ANext: string): Boolean;
     function IndexAncestor(const AName: string; out ANext: string): Boolean;
     function FileFieldTypes(const AClassName: string; out ADeclared: Boolean): TArray<string>;
@@ -298,28 +300,48 @@ begin
   Result := mGuess;
 end;
 
-function TFreeFieldTypes.IndexGuess(const ABase: string; AGeneric: Boolean; out AFound: Boolean): TTypeGuess;
+/// <summary>Alias der obersten Ebene mit Ziel (TPos = Werk.Lage.TLage)?</summary>
+function IsIndexAlias(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and (ASymbol.Container = '') and (ASymbol.TypeName <> '');
+end;
+
+function TFreeFieldTypes.IndexGuess(const ABase: string; AGeneric: Boolean; out AAlias: string): TTypeGuess;
 var
   mLocation: TSymbolLocation;
 begin
-  AFound := False;
+  AAlias := '';
   Result := tgUnknown;
   if FIndex = nil then
   begin
     Exit;
   end;
+  // Eine Deklaration gleichen Namens geht vor; sonst das Ziel des ersten Alias.
   for mLocation in FIndex.FindSymbols(ABase) do
   begin
+    if IsIndexAlias(mLocation.Symbol) and (AAlias = '') then
+    begin
+      AAlias := mLocation.Symbol.TypeName;
+    end
     // Mit Typargumenten zählen nur generische Typen gleichen Namens.
-    if (mLocation.Symbol.Container = '') and not (AGeneric and (mLocation.Symbol.TypeParams = '')) then
+    else if (mLocation.Symbol.Container = '') and not (AGeneric and (mLocation.Symbol.TypeParams = '')) then
     begin
       Result := IndexKindGuess(mLocation.Symbol.Kind);
       if Result <> tgUnknown then
       begin
-        AFound := True;
         Exit;
       end;
     end;
+  end;
+end;
+
+/// <summary>Letzter Teil eines Typnamens ohne Typargumente: TLage aus Werk.Lage.TLage&lt;T&gt;.</summary>
+function UnqualifiedBase(const ATypeName: string): string;
+begin
+  Result := TFreeFieldTypes.BaseName(ATypeName);
+  if Pos('.', Result) > 0 then
+  begin
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
   end;
 end;
 
@@ -327,8 +349,9 @@ function TFreeFieldTypes.TypeGuess(const ATypeName: string): TTypeGuess;
 var
   mBase, mAlias: string;
   mDepth: Integer;
-  mGeneric, mFound: Boolean;
+  mGeneric: Boolean;
 begin
+  Result := tgUnknown;
   mBase := TFreeFieldTypes.BaseName(ATypeName);
   // TArray<T> ist ein dynamisches Array aus System; die Klasse TArray (System.Generics.Collections) trägt
   // keine Typparameter.
@@ -344,21 +367,22 @@ begin
       Break;
     end;
     Result := FromFile(mBase, mAlias);
-    if (Result = tgUnknown) and (mAlias = '') then
+    // Ohne Deklaration oder mit Alias gleichen Namens (TLage = Werk.Lage.TLage): Der Index kennt das Ziel.
+    if (Result = tgUnknown) and ((mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase)) then
     begin
-      Result := IndexGuess(mBase, mGeneric, mFound);
-      if not mFound then
-      begin
-        Break;
-      end;
+      Result := IndexGuess(mBase, mGeneric, mAlias);
     end;
-    if Result <> tgUnknown then
+    if (Result <> tgUnknown) or (mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase) then
     begin
-      Exit;
+      Break;
     end;
-    // Alias in der Datei (TFoo = TBar): weiter mit TBar.
-    mBase := TFreeFieldTypes.BaseName(mAlias);
+    // Alias in der Datei oder im Index (TFoo = TBar, TFoo = Werk.TBar): weiter mit TBar.
+    mBase := UnqualifiedBase(mAlias);
     mGeneric := Pos('<', mAlias) > 0;
+  end;
+  if Result <> tgUnknown then
+  begin
+    Exit;
   end;
   Result := FallbackGuess(mBase);
 end;
