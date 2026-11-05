@@ -7,7 +7,9 @@
 // - Abruf: Ein Zeitgeber prüft den oberen Editor. Nach einer Tipp-Pause fragt
 //   er atlas.server.metrics für die Datei (nur, wenn der Server ohnehin läuft)
 //   und merkt sich die Antwort je Datei und Textstand. Ohne Änderung fragt er
-//   alle RefreshMs neu (geänderte Grenzwerte in atlas.json).
+//   alle RefreshMs neu (geänderte Grenzwerte in atlas.json). Der Befehl läuft
+//   im Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread
+//   bis zu TimeoutMs, im Diagnose-Fenster einzeln bis 8,6 s.
 // - Bedarf: Jeder Leser meldet über Want, ob er die Werte liest (Read) oder
 //   im Editor zeigt (Paint). Ohne Bedarf, ohne metrics oder bei gesperrter
 //   Code Lens fragt der Zeitgeber nicht und vergisst die letzte Antwort.
@@ -20,6 +22,8 @@
 interface
 
 uses
+  System.SysUtils,
+  System.JSON,
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Metrics,
@@ -42,11 +46,13 @@ type
     end;
   private const
     QuietMs = 700;
-    TimeoutMs = 800;
+    // Im Hintergrund: Ein langsamer Server hält nur die Werte auf, nicht die IDE.
+    TimeoutMs = 5000;
     RetryMs = 5000;
     RefreshMs = 30000;
   private
     FSession: TAtlasMetricsSourceSessionFunc;
+    FRun: TAtlasLensCommandProc;
     FTimer: TTimer;
     /// <summary>Abruf; FPoll.FetchedFile ist die Datei, zu der FMetrics gehört.</summary>
     FPoll: TAtlasLensPoll;
@@ -56,11 +62,14 @@ type
     class var FVersion: Cardinal;
     procedure Tick(Sender: TObject);
     procedure Fetch;
+    function Answer: TProc<TJSONValue>;
+    procedure Take(AAnswer: TJSONValue);
     procedure Clear;
     class function Demand: TAtlasMetricsDemand; static;
     class function IndexOfClient(const AName: string): Integer; static;
   public
-    constructor Create(const ASession: TAtlasMetricsSourceSessionFunc);
+    /// <summary>ASession für den Textstand, ARun für den Befehl im Hintergrund.</summary>
+    constructor Create(const ASession: TAtlasMetricsSourceSessionFunc; const ARun: TAtlasLensCommandProc);
     destructor Destroy; override;
     /// <summary>Bedarf des Lesers AClient setzen; None meldet ihn ab.</summary>
     class procedure Want(const AClient: string; ADemand: TAtlasMetricsDemand); static;
@@ -75,8 +84,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  System.JSON,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Diagnostics.Guard,
@@ -89,10 +96,12 @@ const
 
 { TAtlasEditorMetricsSource }
 
-constructor TAtlasEditorMetricsSource.Create(const ASession: TAtlasMetricsSourceSessionFunc);
+constructor TAtlasEditorMetricsSource.Create(const ASession: TAtlasMetricsSourceSessionFunc;
+  const ARun: TAtlasLensCommandProc);
 begin
   inherited Create;
   FSession := ASession;
+  FRun := ARun;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 250;
   FTimer.OnTimer := Tick;
@@ -108,6 +117,8 @@ begin
     Inc(FVersion);
   end;
   FTimer.Free;
+  // Eine ausstehende Antwort erreicht die Quelle nicht mehr.
+  FPoll.Close;
   inherited Destroy;
 end;
 
@@ -213,6 +224,8 @@ end;
 
 procedure TAtlasEditorMetricsSource.Clear;
 begin
+  // Auch ohne geholten Stand: Eine ausstehende Antwort gilt nicht mehr (bei gesperrter Code Lens käme sie nie an).
+  FPoll.Asked.Drop;
   if FPoll.FetchedFile = '' then
   begin
     Exit;
@@ -251,21 +264,28 @@ begin
 end;
 
 procedure TAtlasEditorMetricsSource.Fetch;
-var
-  mAnswer: TJSONValue;
-  mMetrics: TAtlasFileMetrics;
 begin
-  if not FPoll.Ask(FSession(), MetricsCommand, FPoll.UriArguments, TimeoutMs, RetryMs, mAnswer) then
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, MetricsCommand, FPoll.UriArguments, RetryMs, TimeoutMs,
+    Answer);
+end;
+
+function TAtlasEditorMetricsSource.Answer: TProc<TJSONValue>;
+begin
+  Result :=
+    procedure(AAnswer: TJSONValue)
+    begin
+      Take(AAnswer);
+    end;
+end;
+
+procedure TAtlasEditorMetricsSource.Take(AAnswer: TJSONValue);
+begin
+  // Den Wert gibt der Manager frei.
+  if not FPoll.Answered(AAnswer, RetryMs) then
   begin
     Exit;
   end;
-  try
-    mMetrics := TAtlasFileMetrics.FromJson(mAnswer);
-  finally
-    mAnswer.Free;
-  end;
-  FPoll.Fetched;
-  FMetrics := mMetrics;
+  FMetrics := TAtlasFileMetrics.FromJson(AAnswer);
   Inc(FVersion);
   // Nur für die Statusleiste geholt: Der Editor zeigt nichts davon.
   if Demand = TAtlasMetricsDemand.Paint then

@@ -51,13 +51,22 @@ type
     FSearchHost: TPanel;
     FSearch: TAtlasWelcomeSearchBox;
     FData: TAtlasWelcomeHeaderInfo;
+    // ShowInfo lief schon einmal: Danach zählt nur, was sich geändert hat.
+    FFilled: Boolean;
     FArranging: Boolean;
     procedure Arrange;
   protected
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    /// <summary>Gruß und Kurzstatus zeigen; gleiche Angaben wie zuletzt lassen den Kopf unberührt (jede Änderung im
+    /// Statusfeld fragt nach, meist ohne Folgen für den Kopf).</summary>
     procedure ShowInfo(const AInfo: TAtlasWelcomeHeaderInfo);
+    /// <summary>Nach Themen-, Sprach- oder Einstellungswechsel: Symbol neu zeichnen (die Variante folgt dem
+    /// Hintergrund), und das nächste ShowInfo setzt alles neu.</summary>
+    procedure Renew;
+    /// <summary>Zeigen A und B denselben Kopf?</summary>
+    class function SameInfo(const A, B: TAtlasWelcomeHeaderInfo): Boolean; static;
     /// <summary>Suchfeld zeigen (beim ersten Mal anlegen) bzw. ausblenden und leeren (#760).</summary>
     procedure ShowSearch(AVisible: Boolean);
     /// <summary>„Guten Abend, Marco“; ohne Namen nur der Gruß.</summary>
@@ -124,6 +133,11 @@ end;
 
 procedure TAtlasWelcomeHeaderFrame.ShowInfo(const AInfo: TAtlasWelcomeHeaderInfo);
 begin
+  if FFilled and SameInfo(FData, AInfo) then
+  begin
+    Exit;
+  end;
+  FFilled := True;
   FData := AInfo;
   if AInfo.Greeting then
   begin
@@ -135,12 +149,32 @@ begin
   end;
   FInfo.Caption := InfoText(AInfo);
   Arrange;
-  // Symbol neu zeichnen: Die Variante folgt dem Hintergrund (Themenwechsel).
+end;
+
+procedure TAtlasWelcomeHeaderFrame.Renew;
+begin
+  FFilled := False;
   FSymbol.Invalidate;
+end;
+
+class function TAtlasWelcomeHeaderFrame.SameInfo(const A, B: TAtlasWelcomeHeaderInfo): Boolean;
+begin
+  Result := (A.Greeting = B.Greeting) and (A.Hour = B.Hour) and (A.FirstName = B.FirstName) and
+    (A.Version = B.Version) and (A.Phase = B.Phase) and (A.Units = B.Units) and (A.Indexing = B.Indexing) and
+    (A.Percent = B.Percent);
 end;
 
 procedure TAtlasWelcomeHeaderFrame.ShowSearch(AVisible: Boolean);
 begin
+  // Unverändert: nichts neu anordnen.
+  if (FSearch <> nil) and (FSearch.Visible = AVisible) and ((FSearchHost.Width > 0) = AVisible) then
+  begin
+    Exit;
+  end;
+  if (FSearch = nil) and not AVisible and (FSearchHost.Width = 0) then
+  begin
+    Exit;
+  end;
   if AVisible and (FSearch = nil) then
   begin
     FSearch := TAtlasWelcomeSearchBox.Create(Self);
