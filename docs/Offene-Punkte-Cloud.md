@@ -20,6 +20,8 @@ beim Start der Bau-IDE; die neue Variable gehört dorthin und muss am Rechner er
 
 **Fertig:** Test, dass eine Sitzung mit der Variable weder Marke schreibt noch den Zähler erhöht.
 
+**Stand:** Umgesetzt (`TAtlasSessionBook`, Variable `ATLAS_NO_SESSION_MARKER`, Test `SessionWithoutMarkerLeavesNoTrace`, Handtests AS21–AS24). Am Rechner offen: Delphi-Build und Variable in `cc.ps1` setzen.
+
 ## 2. Verlorene Known Packages
 
 **Problem:** Am 05.11.2026 zwischen 05:34 und 06:31 standen nur noch Base, die 11 Module fehlten unter
