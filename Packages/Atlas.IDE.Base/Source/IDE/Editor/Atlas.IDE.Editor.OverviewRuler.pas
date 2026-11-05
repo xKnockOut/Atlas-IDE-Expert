@@ -71,6 +71,7 @@ uses
   Atlas.UI.Editor.OverviewRuler,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -494,7 +495,7 @@ begin
     FSearchLines := nil;
     Exit;
   end;
-  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  mText := TAtlasEditorSnapshots.Get(AView).Text;
   if mText <> FText then
   begin
     FText := mText;
