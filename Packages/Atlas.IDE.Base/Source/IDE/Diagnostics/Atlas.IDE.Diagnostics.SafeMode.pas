@@ -16,6 +16,9 @@
 //   meldet die Composition mit den Startanteilen.
 // - RecordFailure: Fehler je Feature (#493) in die Marke.
 // - Stop (sauberes Entladen): Marke löschen, Absturzzähler zurücksetzen.
+// - ATLAS_NO_SESSION_MARKER=1 (Bau-IDE von cc.ps1): kein Sitzungsbuch, also
+//   keine Marke, keine Auswertung fremder Marken, Zustand unberührt
+//   (TAtlasSessionBook); Taste und ATLAS_SAFE_MODE wirken weiter.
 
 interface
 
@@ -39,7 +42,7 @@ type
     MaxLogLines = 200;
   private
     FLock: TCriticalSection;
-    FFolder: string;
+    FBook: TAtlasSessionBook;
     FMarker: TAtlasSessionMarker;
     FStarted: Boolean;
     FDecision: TAtlasSafeDecision;
@@ -249,7 +252,7 @@ begin
     Exit;
   end;
   try
-    TAtlasSessionFiles.WriteMarker(FFolder, FMarker);
+    FBook.SaveMarker(FMarker);
   except
     // Ohne Marke erkennt der nächste Start den Absturz nicht; die IDE stört das nicht.
     on Exception do
@@ -257,17 +260,17 @@ begin
   end;
 end;
 
-/// <summary>Zustand und Marken abgestürzter Sitzungen aus AFolder; leer, wenn das Lesen scheitert.</summary>
-procedure ReadSessions(const AFolder: string; out AState: TAtlasSafeState;
+/// <summary>Zustand und Marken abgestürzter Sitzungen aus ABook; leer ohne Buch oder wenn das Lesen
+/// scheitert.</summary>
+procedure ReadSessions(const ABook: TAtlasSessionBook; out AState: TAtlasSafeState;
   out ACrashed: TArray<TAtlasSessionMarker>);
 begin
   try
-    AState := TAtlasSessionFiles.ReadState(AFolder);
-    ACrashed := TAtlasSessionFiles.TakeCrashed(AFolder, GetCurrentProcessId,
+    ABook.Open(
       function(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean
       begin
         Result := Alive(AProcessId, AStartedAt);
-      end);
+      end, AState, ACrashed);
   except
     on Exception do
     begin
@@ -288,6 +291,16 @@ begin
   end;
 end;
 
+/// <summary>Zusatz der Startzeile im Protokoll, wenn die Sitzung kein Sitzungsbuch führt.</summary>
+function NoBookNote(const ABook: TAtlasSessionBook): string;
+begin
+  Result := '';
+  if not ABook.Tracked then
+  begin
+    Result := ', ohne Sitzungsmarke (' + TAtlasSafeMode.NoMarkerEnvironmentName + ')';
+  end;
+end;
+
 procedure TAtlasIdeSafeMode.Start(const AFolder: string; const ARegistry: IAtlasStatusRegistry);
 var
   State: TAtlasSafeState;
@@ -296,12 +309,13 @@ var
   StartedAt: TDateTime;
   Show: TThreadProcedure;
 begin
-  FFolder := AFolder;
+  FBook := TAtlasSessionBook.Create(AFolder, GetCurrentProcessId,
+    GetEnvironmentVariable(TAtlasSafeMode.NoMarkerEnvironmentName));
   FRegistry := ARegistry;
   StartedAt := NowUtc;
   FStartedLocal := Now;
   SafeOptions := Options;
-  ReadSessions(FFolder, State, Crashed);
+  ReadSessions(FBook, State, Crashed);
   FChangedKeys := LastChangedKeys;
   FDecision := TAtlasSafeMode.Decide(State, Crashed, StartedAt, SafeOptions, KeyDown(SafeOptions.StartupKey),
     Forced);
@@ -311,7 +325,7 @@ begin
   FHasCrashed := (Length(Crashed) > 0) and (State.CrashedMarker <> '') and
     TAtlasSessionMarker.FromJson(State.CrashedMarker, FCrashed);
   try
-    TAtlasSessionFiles.WriteState(FFolder, State);
+    FBook.SaveState(State);
   except
     on Exception do
       ;
@@ -325,9 +339,9 @@ begin
   FMarker.Features := EnabledFeatures;
   FStarted := True;
   WriteMarker;
-  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s', [TAtlasPluginVersion.Version,
+  TAtlasGuard.Log(Format('Atlas gestartet (%s), Stufe %s, Grund %s%s', [TAtlasPluginVersion.Version,
     GetEnumName(TypeInfo(TAtlasSafeLevel), Ord(FLevel)),
-    GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason))]));
+    GetEnumName(TypeInfo(TAtlasSafeReason), Ord(FDecision.Reason)), NoBookNote(FBook)]));
   if FLevel = TAtlasSafeLevel.Normal then
   begin
     Exit;
@@ -359,8 +373,6 @@ begin
 end;
 
 procedure TAtlasIdeSafeMode.Stop;
-var
-  State: TAtlasSafeState;
 begin
   if not FStarted then
   begin
@@ -373,10 +385,7 @@ begin
   end;
   HideLine;
   try
-    TAtlasSessionFiles.DeleteMarker(FFolder, FMarker.ProcessId);
-    State := TAtlasSessionFiles.ReadState(FFolder);
-    TAtlasSafeMode.CleanExit(State);
-    TAtlasSessionFiles.WriteState(FFolder, State);
+    FBook.Close;
   except
     on Exception do
       ;
