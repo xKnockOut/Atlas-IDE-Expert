@@ -108,7 +108,8 @@ var
 begin
   Word := AnsiLowerCase(Trim(AWord));
   Result := True;
-  if (Word = 'error') or (Word = 'fehler') or (Word = 'fatal') or (Word = 'schwerer fehler') then
+  // Wörter des deutschen Compilers, keine Oberfläche.
+  if (Word = 'error') or (Word = 'fehler') or (Word = 'fatal') or (Word = 'schwerer fehler') then // german-ok
   begin
     ASeverity := TAtlasTaskSeverity.Error;
   end
@@ -212,9 +213,9 @@ begin
     TAtlasTaskMatcherKind.Dcc:
       begin
         AddRule(TForm.DccIde, '^\s*\[\s*dcc\w*\s+(error|fehler|warning|warnung|hint|hinweis|fatal|' +
-          'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]);
+          'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
         AddRule(TForm.DccCommandLine, '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s+(error|fehler|warning|warnung|hint|' +
-          'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]);
+          'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
       end;
     TAtlasTaskMatcherKind.Pwsh:
       AddRule(TForm.PwshLine, '^\s*(?:Write-Error:\s*)?(?:(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\s*:?\s+)?' +

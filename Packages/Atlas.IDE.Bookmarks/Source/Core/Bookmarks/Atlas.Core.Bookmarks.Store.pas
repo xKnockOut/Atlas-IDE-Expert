@@ -225,7 +225,8 @@ const
   MarkKeys: array[0..13] of string = ('id', 'name', 'kind', 'number', 'file', 'method', 'signature', 'offset',
     'line', 'lineText', 'before', 'after', 'created', 'lost');
   KindNames: array[TAtlasBookmarkKind] of string = ('named', 'quick');
-  ExcludeComment = '# Atlas: persönliche Lesezeichen (#622)';
+  // Kommentar in .git/info/exclude für Git, keine Oberfläche.
+  ExcludeComment = '# Atlas: persönliche Lesezeichen (#622)'; // german-ok
 
 { TAtlasBookmark }
 
