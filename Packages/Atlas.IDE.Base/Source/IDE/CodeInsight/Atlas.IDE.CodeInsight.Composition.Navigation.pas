@@ -25,7 +25,6 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Settings.Options,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Commands.Editor,
@@ -33,12 +32,16 @@ uses
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.CodeInsight.Composition.Session;
 
 const
   /// <summary>Befehl des Moduls Analyse (#1455): Abhängigkeiten der Unit im Editor (#554, #593).</summary>
   cUnitDependenciesCommandId = 'Atlas.UnitDependencies';
   cRelatedTag = 'related:';
+  /// <summary>Regel-Aktionen im Tooltip (TAtlasEditorHoverActions.TipProblemAction).</summary>
+  cConfigureTag = 'rule.configure';
+  cSuppressLineTag = 'rule.suppressLine';
 
 procedure SwitchTestUnit;
 begin
@@ -59,13 +62,18 @@ begin
 end;
 
 /// <summary>Aktionen unter uses-Hinweisen (#621) und Regelbefunden (#909) im Tooltip: über die Code-Aktionen mit
-/// Kennung; „Regel einstellen…“ öffnet die Einstellungsseite auf der Regel, „Graph zeigen“ die
-/// Unit-Beziehungen der Unit im Editor.</summary>
+/// Kennung; „Regel einstellen…“ und „Für diese Zeile unterdrücken“ übernimmt das Modul Prüfregeln (#1755),
+/// „Graph zeigen“ zeigt die Unit-Beziehungen der Unit im Editor.</summary>
 procedure ProblemAction(const AProblem: TAtlasProblem; const ATag: string);
 begin
-  if ATag = 'rule.configure' then
+  if ATag = cConfigureTag then
   begin
-    TAtlasOptionsRegistration.ShowRule(AProblem.Code);
+    TAtlasRuleActions.Configure(AProblem.Code);
+  end
+  else if ATag = cSuppressLineTag then
+  begin
+    // Der Befund steht im oberen Editor: ohne Datei, kein Sprung.
+    TAtlasRuleActions.Suppress(TAtlasRuleActions.Place('', AProblem));
   end
   else if StartsStr(cRelatedTag, ATag) then
   begin

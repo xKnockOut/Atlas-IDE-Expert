@@ -551,7 +551,7 @@
   "Packages/Atlas.IDE.Designer/Source/IDE/Designer/Atlas.IDE.Designer.Composition.pas": 2,
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Strings.pas": 20,
   "Packages/Atlas.IDE.Rules/Source/IDE/Rules/Atlas.IDE.Rules.Composition.pas": 3,
-  "Packages/Atlas.IDE.Rules/Source/UI/Rules/Atlas.UI.Rules.Strings.pas": 36,
+  "Packages/Atlas.IDE.Rules/Source/UI/Rules/Atlas.UI.Rules.Strings.pas": 62,
   "Packages/Atlas.IDE.Search/Source/IDE/Search/Atlas.IDE.Search.Commands.pas": 3,
   "Packages/Atlas.IDE.Search/Source/IDE/Search/Atlas.IDE.Search.Composition.pas": 2,
   "Packages/Atlas.IDE.Search/Source/IDE/UnitSearch/Atlas.IDE.UnitSearch.Commands.pas": 2,
