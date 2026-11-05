@@ -37,7 +37,7 @@ In Atlas style instead of Help Insight:
   - the first `uses`: units
 - **Recursion marks** in the gutter
 - **Inactive `{$IFDEF}` branches** dimmed with the reason in the tooltip
-- **Unused uses** dimmed
+- **Unused uses** dimmed (rule `unused-uses`: also in `--check`, `get_diagnostics` and the baseline; `off`, `exclude`, `lsp-ignore` and the `keep` option apply to the dimming as well)
 - **Bracket and block pairs** coloured by depth, with matching block lines
 
 ### No findings in foreign code (`diagnostics.librarySources`)

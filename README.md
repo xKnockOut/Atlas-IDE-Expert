@@ -145,7 +145,7 @@ More: [docs/en/Installation.md](docs/en/Installation.md).
 - [Rules](docs/en/Rules.md) (generated from the rule catalog with `pwsh Tools/Update-RuleCatalog.ps1`)
 - [MCP tools](docs/en/MCP.md) and the [Claude Code plugin](Editors/ClaudeCode/README.en.md)
 - [Keywords](docs/en/Keywords.md): short help in the hover for keywords and directives
-- [Benchmark](docs/en/Benchmark.md) of the performance targets
+- [Benchmark](docs/en/Benchmark.md) of the performance targets and of the time until a project group is ready (`Tools/Benchmark/ready.mjs`, several runs per version, median and range)
 - In German only (developer documents): [architecture](docs/Architektur.md), [test cases](docs/Atlas-Testfaelle.md), [changelog](CHANGELOG.md)
 
 Every English page links its German original and vice versa.

@@ -8,6 +8,14 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Neu
 - Plugin: eigenes Tastenkürzel für „Datei jetzt prüfen“ (#1744, `keys.checkFile`, Vorgabe Strg+Umschalt+Alt+P, Seite *Befehle*; leer = keins): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von `problems.update` (im Live-Modus ohne die Wartezeit). Vorrang wie die Editorbefehle; steht in der Tastenkürzel-Übersicht (#520, mit Konflikterkennung), neben dem Befehl in der Befehlspalette und als neuer Eintrag im Atlas-Untermenü des Editor-Kontextmenüs; ohne Prüfregeln bleibt das Kürzel frei.
+- `Tools/Benchmark/ready.mjs` misst die Zeit bis „bereit“ mit mehreren Läufen je Fassung (#1479): ohne IDE über `AtlasServer --check` auf einer Projektgruppe oder aus den Diagnoselogs der IDE-Starts; Ausgabe Median und Spannweite, erster Lauf je Fassung (Umstieg) getrennt.
+
+### Geändert
+- `unused-uses` (#1135): Das Abblenden ungenutzter uses im Editor ist jetzt die Darstellung der Regel. Mit `"unused-uses": "off"` (auch über die Gruppe oder ein Profil), ihrem `exclude`, dem allgemeinen `exclude` und `// lsp-ignore: unused-uses` bleibt auch das Abblenden weg. Neue Option `keep` (Units, die nie als ungenutzt gelten, zusätzlich zu `usesKeep`); sie gilt für die Regel, das Abblenden und „uses aufräumen“.
+
+### Behoben
+- Ein `// lsp-ignore: unused-uses` galt im Editor als unnötig (`unused-suppression`), weil die Regel dort nicht prüft; dessen sichere Korrektur entfernte den Kommentar beim Speichern. Regeln können jetzt je Datei angeben, dass sie nicht prüfen (`IRuleCondition`); dann zählt ihr `lsp-ignore` nicht als unnötig. Dasselbe galt für `uses-cycle` mit `diagnostics.usesCycleLive` aus.
+- Zeit bis „bereit“ bei Projektgruppen (#1479): Beim Start jedes Projekts räumt der Server den Cache-Ordner auf und fragt dabei jeden Cache, ob er gesperrt ist. Die Sperren der schon gestarteten Projekte hält der eigene Prozess; die Probe über die Sperrdatei schlug dafür nur fehl, kostete aber Zeit, unter Linux (`AtlasServer --check`) wartete sie je Sperre, bevor sie aufgab. Jetzt kennt der Prozess seine Sperren selbst. Gemessen unter Linux mit vorhandenem Cache: Atlas-Gruppe mit 18 Projekten 1,6 statt 17,4 s, 8 Projekte mit gemeinsamen Suchpfaden 0,7 statt 4,0 s.
 
 ### Geändert
 - Doku zweisprachig (#1458): READMEs als Kurzüberblick, Details je Bereich unter `docs/features/de` und `docs/features/en`; englische Fassungen von IDE-Plugin, MCP, Prüfregeln, Einstellungen und Claude-Code-Plugin (`docs/en`), Regeln und Einstellungen aus den Werkzeugen erzeugt.

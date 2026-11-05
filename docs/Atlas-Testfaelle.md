@@ -9290,6 +9290,24 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
 | LV9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasProblemsRefreshTests`, `TAtlasPluginSettingsTests.ProblemsUpdateOptions`, `ImportMigratesProblemsLive`, `LiveHintsFollowUpdateMode` grün |
 
+## Prüfregel unused-uses (#1135)
+
+Vorbereitung: Projekt mit Unit `uBericht.pas`, deren uses `System.SysUtils, System.Classes, Vcl.Grids` enthält und nur `Format` aus SysUtils verwendet; Fenster „Atlas-Prüfung“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UU1 | uBericht im Editor öffnen | `System.Classes` und `Vcl.Grids` abgeblendet, Tooltip „Aus Vcl.Grids wird nichts verwendet“; keine zweite Meldung mit `unused-uses` im Prüffenster (**Abnahme**) |
+| UU2 | `AtlasServer --check <Projekt> --rules unused-uses`, danach dasselbe mit `--no-index` | Mit Index je ein Hinweis `unused-uses` für die beiden Units; ohne Index nichts |
+| UU3 | Claude Code: MCP `get_diagnostics` für uBericht.pas | Dieselben zwei Hinweise wie in UU2 |
+| UU4 | Schnellkorrektur „Eintrag entfernen“ in der Ausgabe von `get_diagnostics` bzw. `--fix unused-uses` | Eintrag samt Komma entfernt, Datei übersetzt weiter |
+| UU5 | In atlas.json `"rules": {"unused-uses": "off"}`, Datei neu öffnen | Kein Abblenden mehr, `--check` meldet nichts; „uses aufräumen“ entfernt weiter |
+| UU6 | `"rules": {"unused-uses": {"severity": "warning", "keep": ["Vcl.Grids"]}}` | Vcl.Grids nicht mehr abgeblendet, `--check` meldet nur System.Classes als Warnung; „uses aufräumen“ lässt Vcl.Grids stehen |
+| UU7 | `"rules": {"unused-uses": {"severity": "hint", "exclude": ["uBericht"]}}` | Kein Abblenden in uBericht, `--check` meldet dort nichts; andere Units unverändert |
+| UU8 | `// lsp-ignore: unused-uses` in eine eigene Zeile über `Vcl.Grids` schreiben, speichern (mit „Beim Speichern korrigieren“ an) | Vcl.Grids nicht mehr abgeblendet; kein Hinweis `unused-suppression`, der Kommentar bleibt nach dem Speichern stehen; `--check` meldet Vcl.Grids nicht |
+| UU9 | `--check` mit `--baseline`, in der der Treffer für Vcl.Grids steht | Nur System.Classes gemeldet |
+| UU10 | *Tools › Optionen › Atlas › Prüfregeln*, Regel „Ungenutzte Unit im uses“ öffnen | Schweregrad wählbar, Option „keep“ als Liste; Änderung wirkt wie UU5/UU6 |
+| UU11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TUnusedUsesTests` und `TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule` grün |
+
 ## Tastenkürzel für „Datei jetzt prüfen“ (#1744)
 
 Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfung“ offen, `problems.update` = „Nur auf Anforderung“.
@@ -9321,3 +9339,15 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | ME7 | Werte eines nicht installierten Moduls in der Registry (z. B. `DebugEnabled` = 0); Optionen mit OK schließen, Modul wieder installieren | Der Wert ist unverändert erhalten |
 | ME8 | Englische Oberfläche (`ui.language` = en), alle Module | Modulschalter auf jeder Seite englisch beschriftet |
 | ME9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; die Testklassen `T…SettingsSectionTests` der Module und `TAtlasSettingsSectionTests` grün |
+
+## Zeit bis „bereit“ bei Projektgruppen (#1479)
+
+Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an (`diagnostics.log`, Vorgabe). Zwei Fassungen: vor 38205b4e (z. B. 1.1.x) und dieser Stand. Je Fassung einen leeren Ordner für die Logs.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZB1 | Fassung „vor“ installieren; sechsmal: IDE frisch starten, Gruppe öffnen, warten bis die Statusleiste „bereit“ zeigt, Gipfel und Speicher im Fenster „Atlas-Server“ notieren, IDE schließen; die neue `diag-…log` aus `%LOCALAPPDATA%\Atlas\Logs\Diagnose` in den Ordner „vor“ kopieren | Sechs Dateien, jede mit `index project#0 start` … `index project#7 done` |
+| ZB2 | Dasselbe mit diesem Stand, Logs in den Ordner „nach“; der erste Lauf ist der Umstieg | Sechs Dateien |
+| ZB3 | `node Tools/Benchmark/ready.mjs --logs vor=<Ordner vor> --logs nach=<Ordner nach>` | Tabelle mit Umstieg, Median und Spannweite je Fassung; „nach“ nicht langsamer als „vor“ (**Abnahme**, Tabelle ins Issue #1479) |
+| ZB4 | Dieselbe Gruppe ohne IDE: `node Tools/Benchmark/ready.mjs --server vor=<alte AtlasServer.exe> --server nach=<neue> --target <Gruppenordner> --runs 6 --cache %TEMP%\atlas-ready` | Wie ZB3; die Zeiten liegen unter denen der IDE (ohne Start von Delphi) |
+| ZB5 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TIndexCacheDirectoryTests.OwnLockKnownInProcess` grün |
