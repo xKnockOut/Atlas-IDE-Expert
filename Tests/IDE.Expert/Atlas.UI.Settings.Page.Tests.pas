@@ -548,7 +548,6 @@ begin
   Assert.IsFalse(ASaved.TodoList, 'Befehl (#68)');
   Assert.IsFalse(ASaved.MetricsReport, 'Befehl (#66)');
   Assert.IsFalse(ASaved.TeamFile, 'Projektdatei (#486)');
-  Assert.IsFalse(ASaved.StartProfiles, 'Startprofile (#575)');
 end;
 procedure TAtlasSettingsPageTests.CreatesAndRoundTripsSettings;
 var

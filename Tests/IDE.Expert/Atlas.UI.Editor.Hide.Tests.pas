@@ -62,6 +62,7 @@ uses
   Atlas.UI.Editor.Hide,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
+  Atlas.UI.Analysis.SettingsSection,
   Atlas.UI.Tests.SettingsSection,
   Atlas.UI.Bookmarks.SettingsSection;
 
@@ -292,7 +293,7 @@ var
 begin
   mWelcome := ProvideWelcomeSettings;
   // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen.
-  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection]);
+  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection]);
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);

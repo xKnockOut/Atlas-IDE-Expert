@@ -74,6 +74,8 @@ type
     FOnReset: TProc;
     FOnCopy: TProc;
     FArranging: Boolean;
+    /// <summary>Breite der Knöpfe nebeneinander; in der zweiten Zeile ist FButtons so breit wie die Leiste.</summary>
+    FButtonsWidth: Integer;
     function NewButton(AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
     function NewLabel: TLabel;
     function RowHeight: Integer;
@@ -84,6 +86,7 @@ type
     procedure ResetClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
   protected
+    procedure CreateWnd; override;
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -282,7 +285,8 @@ begin
   FNote := NewLabel;
   FNote.Left := MulDiv(800, CurrentPPI, 96);
   FNote.Font.Color := clGrayText;
-  FButtons.Width := FCopy.Width + FReset.Width + FPause.Width + 3 * (FCopy.Margins.Left + FCopy.Margins.Right);
+  FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width + 3 * (FCopy.Margins.Left + FCopy.Margins.Right);
+  FButtons.Width := FButtonsWidth;
   Arrange;
 end;
 
@@ -315,13 +319,13 @@ procedure TAtlasDiagnosticBar.Arrange;
 var
   mTwoRows: Boolean;
 begin
-  if FArranging or (FButtons = nil) then
+  if FArranging or (FButtons = nil) or not HandleAllocated then
   begin
     Exit;
   end;
   FArranging := True;
   try
-    mTwoRows := NeedsTwoRows(InfoWidth, FButtons.Width, ClientWidth);
+    mTwoRows := NeedsTwoRows(InfoWidth, FButtonsWidth, ClientWidth);
     if mTwoRows then
     begin
       // Knöpfe rechtsbündig in der zweiten Zeile; die Angaben behalten die erste ganz.
@@ -332,11 +336,18 @@ begin
     else
     begin
       FButtons.Align := alRight;
+      FButtons.Width := FButtonsWidth;
       Height := RowHeight;
     end;
   finally
     FArranging := False;
   end;
+end;
+
+procedure TAtlasDiagnosticBar.CreateWnd;
+begin
+  inherited;
+  Arrange;
 end;
 
 procedure TAtlasDiagnosticBar.Resize;

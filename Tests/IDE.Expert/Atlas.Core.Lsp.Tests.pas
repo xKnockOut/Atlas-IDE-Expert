@@ -227,6 +227,7 @@ begin
     var
       mRequest: TJSONObject;
       mId: Integer;
+      mReply: TBytes;
     begin
       mRequest := Unframe(ABytes);
       try
@@ -234,7 +235,8 @@ begin
       finally
         mRequest.Free;
       end;
-      mClient.Receive(TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId])), 1);
+      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
+      mClient.Receive(mReply, Length(mReply));
     end);
   TAtlasPluginTimings.Shared.Reset;
   TAtlasPluginTimings.Enabled := True;
