@@ -36,6 +36,10 @@ type
     procedure RejectsHeaderWithoutEnd;
     [Test]
     procedure AcceptsMessageAtHeaderLimit;
+    /// <summary>Diagnose-Fenster (2.0-stable): Serverbefehle stehen je Befehl, nicht alle unter
+    /// workspace/executeCommand.</summary>
+    [Test]
+    procedure TimingNamesExecutedCommand;
   end;
 
   [TestFixture]
@@ -123,7 +127,8 @@ uses
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model;
+  Atlas.Core.Results.Model,
+  Atlas.Core.Diagnostics.PluginTimings;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -210,6 +215,45 @@ begin
     Client.Free;
   end;
 end;
+procedure TLspClientTests.TimingNamesExecutedCommand;
+var
+  mClient: TLspClient;
+  mTiming: TAtlasRequestTiming;
+  mNames: string;
+begin
+  mClient := nil;
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      mRequest: TJSONObject;
+      mId: Integer;
+    begin
+      mRequest := Unframe(ABytes);
+      try
+        mId := mRequest.GetValue<Integer>('id');
+      finally
+        mRequest.Free;
+      end;
+      mClient.Receive(TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId])), 1);
+    end);
+  TAtlasPluginTimings.Shared.Reset;
+  TAtlasPluginTimings.Enabled := True;
+  try
+    mClient.Request('workspace/executeCommand',
+      TJSONObject.ParseJSONValue('{"command":"atlas.server.status","arguments":[]}'), 1000).Free;
+    mNames := '';
+    for mTiming in TAtlasPluginTimings.Shared.Snapshot.Requests do
+    begin
+      mNames := mNames + mTiming.Method + '|';
+    end;
+    Assert.AreEqual('workspace/executeCommand atlas.server.status|', mNames);
+  finally
+    TAtlasPluginTimings.Enabled := False;
+    TAtlasPluginTimings.Shared.Reset;
+    mClient.Free;
+  end;
+end;
+
 procedure TLspClientTests.RaisesOnErrorResponse;
 var
   Client: TLspClient;
