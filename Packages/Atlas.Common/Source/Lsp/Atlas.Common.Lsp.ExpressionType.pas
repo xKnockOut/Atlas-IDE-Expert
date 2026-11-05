@@ -72,7 +72,21 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionTypeText = (URIAndRangeExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TExpressionTypeText] of TAtlasText = (
+    (De: 'Erwartet werden URI und Bereich'; En: 'URI and range expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 { TExpressionTypeQuery }
 
@@ -196,12 +210,13 @@ begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Bereich');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.URIAndRangeExpected].Text);
   end;
   mUri := AArguments.Items[0].Value;
   if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + mUri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.DocumentIsNotOpen].Text +
+      mUri);
   end;
   mShared := TSyntaxTreeCache.Get(mDocument);
   mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
@@ -213,5 +228,8 @@ begin
     mResolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExpressionType', cTexts);
 
 end.

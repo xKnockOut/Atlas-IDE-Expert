@@ -185,7 +185,7 @@ begin
   Assert.AreEqual('TA;B hat 12 Methoden ({unbekannt}) in U1.pas',
     mResult.Message('{name} hat {methods} Methoden ({unbekannt}) in {path}', mResult.Rows[0]));
   Assert.AreEqual('TA;B: Treffer der Abfrage classes where name like ''T*''',
-    mResult.Message('', mResult.Rows[0]));
+    mResult.Message(TQueryOutput.MessageTemplate(''), mResult.Rows[0]));
 end;
 
 procedure TQueryOutputTests.PlaceholdersInOrder;

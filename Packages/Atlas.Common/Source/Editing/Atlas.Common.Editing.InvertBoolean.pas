@@ -102,7 +102,23 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingInvertBooleanText = (PassedToAVarOr, AddressPassedOnlyRenamedPlease, InValueNotInvertedPlease);
+
+const
+  cTexts: array[TEditingInvertBooleanText] of TAtlasText = (
+    (De: 'Übergabe an einen var- oder out-Parameter: nur umbenannt, bitte prüfen';
+     En: 'Passed to a var or out parameter: only renamed, please check'),
+    (De: 'Adresse übergeben (@): nur umbenannt, bitte prüfen'; En: 'Address passed (@): only renamed, please check'),
+    (De: '%s = %s in %s: Wert nicht umgekehrt, bitte prüfen'; En: '%s = %s in %s: value not inverted, please check'));
+
+{$SCOPEDENUMS OFF}
 
 const
   Antonyms: array[0..22] of string = ('Hidden=Visible', 'Enabled=Disabled', 'IsEmpty=HasItems', 'Valid=Invalid',
@@ -891,7 +907,7 @@ begin
     if IsValueRef(Child) and not Negated and (ANode.Kind = TSyntaxKind.Call) and Assigned(FVarArgument) and
       FVarArgument(ANode, Index - 1) then
     begin
-      Warn(Child.StartOffset, 'Übergabe an einen var- oder out-Parameter: nur umbenannt, bitte prüfen');
+      Warn(Child.StartOffset, cTexts[TEditingInvertBooleanText.PassedToAVarOr].Text);
       Part := Rebuild(Child);
     end
     else
@@ -1008,7 +1024,7 @@ end;
 function TRewriter.PrintAddress(ANode: TSyntaxNode; ANegate: Boolean): string;
 begin
   // @X: Wer die Adresse bekommt, liest und schreibt den Wert selbst.
-  Warn(ANode.StartOffset, 'Adresse übergeben (@): nur umbenannt, bitte prüfen');
+  Warn(ANode.StartOffset, cTexts[TEditingInvertBooleanText.AddressPassedOnlyRenamedPlease].Text);
   Result := Renamed(ANode.StartOffset, ANode.EndOffset);
   if ANegate then
   begin
@@ -1468,7 +1484,7 @@ var
           else
           begin
             Warning.Position := Item.ValueRange.StartPos;
-            Warning.Text := Format('%s = %s in %s: Wert nicht umgekehrt, bitte prüfen', [AOld, Item.Value,
+            Warning.Text := cTexts[TEditingInvertBooleanText.InValueNotInvertedPlease].Fmt([AOld, Item.Value,
               AObject.Name]);
             Warnings := Warnings + [Warning];
           end;
@@ -1496,5 +1512,8 @@ begin
   AWarnings := Warnings;
   Result := Edits;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.InvertBoolean', cTexts);
 
 end.

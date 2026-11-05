@@ -132,7 +132,142 @@ uses
   System.Math,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.MapTemplate,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Architecture.MapTemplateEn,
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TArchitectureReportText = (EdgesThereAreNotCross, CrossLinksOutliers, WithLibraryUnits,
+    SubsystemsAlignedWithTheState, SubsystemKeepsColorAnd, SubsystemsKeepColorAndName, AtlasFormsTheSubsystemsFrom,
+    OrText, DoNotSplit, FoundationsAttached, FoundationsSeparateEdgesThereDo, ReachesOf1EdgeShort,
+    ReachesOfEdgesShortOf, AlreadyHasWeightedEdgesIts, DoesNotCount, AgainstTheMainDirection,
+    CycleThroughInterfaceOnlyCompiler, CycleThroughImplementation, Outlier, OutliersOutliers,
+    TotalDependentsUnitsThatAre, UnitSubsystemDirectDependentsTotal, SubsystemUnitsCentralUnitCohesion, Outliers,
+    UnitInSubsystemSuggestionReason, FromToSectionSubsystemsReason, Back, TotalDependents,
+    MoreSectionsCentralSubsystemsCycles, Outliers2, NoCycles, NoCrossLinks, ThereBack, CyclesNone,
+    OutlierBelongsRatherToEdges, UnitIsNotInThe, SSubsystemSdirectDependentsTotalDependents, PartOf,
+    UnitsUsesEdgesSubsystemsCycles, OfTheseInterfaceOnly, LastCalculatedState, FromPercentOfAllUnits,
+    BelowCohesionFromUnits, AssignmentEdgesPerSubsystemInterface, NamespaceFitsAnotherSubsystem,
+    MoreEdgesIntoAnotherSubsystem, CentralUnitsCentralUnits, SubsystemsSubsystems, CyclesCycles, CrossLinksCrossLinks,
+    ComparisonComparison, CentralUnits, CentralUnits2, UnitsCohesion, UnitSubsystemDirectTotalUses, UnitsCohesion2,
+    UsedBy, Project, ProjectGroup, WithoutLibraryUnits, Excluded, Resolution, SettingsResolution, Split,
+    FoundationsGroupedToo, Own, Narrow, Rare, NarrowlyAssigned, Architecture, State, ComputingTime, Scope, Subsystems,
+    Cycles, Component, CrossLinks, Forward, MoreInTotal, Subsystems2, InSuggestion, Architecture2, CrossLink,
+    UsesText);
+
+const
+  cTexts: array[TArchitectureReportText] of TAtlasText = (
+    (De: ': %s; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.';
+     En: ': %s; edges there are not cross links and do not count for cohesion.'),
+    (De: ' · Querverbindungen: %s · Ausreißer: '; En: ' · Cross links: %s · Outliers: '),
+    (De: ', mit Bibliotheks-Units'; En: ', with library units'),
+    (De: 'Teilsysteme an Stand vom %s angeglichen ('; En: 'Subsystems aligned with the state of %s ('),
+    (De: '; 1 Teilsystem behält Farbe und Namen)'; En: '; 1 subsystem keeps color and name)'),
+    (De: '; %s Teilsysteme behalten Farbe und Namen)'; En: '; %s subsystems keep color and name)'),
+    (De: 'Atlas bildet die Teilsysteme aus den uses-Kanten zwischen den Units, ein- und ausgehende zusammen. Eine ' +
+      'Kante im interface wiegt %s, eine im implementation-Teil %s. Das Louvain-Verfahren fasst Units zusammen, die ' +
+      'untereinander mehr gewichtete Kanten haben als nach außen; eine Unit liegt darum meist dort, wohin die ' +
+      'meisten ihrer gewichteten Kanten gehen, und gilt als knapp zugeordnet, wenn ein anderes Teilsystem mindestens ' +
+      '%s Prozent davon erreicht.';
+     En: 'Atlas forms the subsystems from the uses edges between the units, incoming and outgoing together. An edge ' +
+      'in the interface weighs %s, one in the implementation part %s. The Louvain method groups units that have more ' +
+      'weighted edges among each other than to the outside, so a unit usually lies where most of its weighted edges ' +
+      'lead, and counts as close when another subsystem reaches at least %s percent of that.'),
+    (De: ' oder '; En: ' or '),
+    (De: ' · nicht nachteilen'; En: ' · do not split'),
+    (De: ' · Fundamente angehängt'; En: ' · foundations attached'),
+    (De: ' · Fundamente getrennt (Kanten dorthin zählen nicht)';
+     En: ' · foundations separate (edges there do not count)'),
+    (De: ' erreicht %s von %s, 1 Kante fehlt zum Wechsel'; En: ' reaches %s of %s, 1 edge short of a move'),
+    (De: ' erreicht %s von %s, %s Kanten fehlen zum Wechsel'; En: ' reaches %s of %s, %s edges short of a move'),
+    (De: ' hat schon %s gewichtete Kanten, das eigene Teilsystem %s (Louvain wertet das ganze Teilsystem)';
+     En: ' already has %s weighted edges, its own subsystem %s (Louvain weighs the whole subsystem)'),
+    (De: ' (zählt nicht)'; En: ' (does not count)'),
+    (De: 'gegen die Hauptrichtung'; En: 'against the main direction'),
+    (De: 'Zyklus nur über interface (Compilerfehler F2047)';
+     En: 'Cycle through interface only (compiler error F2047)'),
+    (De: 'Zyklus über implementation'; En: 'Cycle through implementation'),
+    (De: ' (Ausreißer)'; En: ' (outlier)'),
+    (De: '- [Ausreißer](#ausreißer)'; En: '- [Outliers](#outliers)'),
+    (De: '„gesamt abhängig“: Units, die neu übersetzt werden, wenn sich das interface der Unit ändert.';
+     En: '“total dependents”: units that are recompiled when the interface of the unit changes.'),
+    (De: '| # | Unit | Teilsystem | direkt abhängig | gesamt abhängig | verwendet | Rolle |';
+     En: '| # | Unit | Subsystem | direct dependents | total dependents | uses | Role |'),
+    (De: '| Teilsystem | Units | zentrale Unit | Zusammenhalt | Kanten innen | Kanten nach außen |';
+     En: '| Subsystem | Units | central unit | Cohesion | inner edges | outgoing edges |'),
+    (De: '## Ausreißer'; En: '## Outliers'),
+    (De: '| Unit | in Teilsystem | Vorschlag | Grund | Kanten im eigenen | Kanten zum Vorschlag |';
+     En: '| Unit | in subsystem | Suggestion | Reason | edges in own | edges to suggestion |'),
+    (De: '| Von | Nach | Abschnitt | Teilsysteme | Grund | Fundstelle |';
+     En: '| From | To | Section | Subsystems | Reason | Location |'),
+    (De: ' zurück) | '; En: ' back) | '),
+    (De: '  %s: %s gesamt abhängig'; En: '  %s: %s total dependents'),
+    (De: 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
+     En: 'More sections: central, subsystems, cycles, crossLinks; unit for a profile.'),
+    (De: 'Ausreißer:'; En: 'Outliers:'),
+    (De: 'Keine Zyklen.'; En: 'No cycles.'),
+    (De: 'Keine Querverbindungen.'; En: 'No cross links.'),
+    (De: ' %s → %s, %s (%s hin, %s zurück)'; En: ' %s → %s, %s (%s there, %s back)'),
+    (De: 'Zyklen: keine'; En: 'Cycles: none'),
+    (De: 'Ausreißer: gehört eher zu %s (%s; %s Kanten im eigenen, %s zum Vorschlag)';
+     En: 'Outlier: belongs rather to %s (%s; %s edges in own, %s to suggestion)'),
+    (De: 'Unit "%s" ist nicht in der Architekturübersicht (nicht im Umfang, ausgeschlossen oder Bibliotheks-Unit).';
+     En: 'Unit "%s" is not in the architecture overview (out of scope, excluded or library unit).'),
+    (De: ' (%s)%sTeilsystem: %s%sdirekt abhängig: %s · gesamt abhängig: %s · verwendet: ';
+     En: ' (%s)%sSubsystem: %s%sdirect dependents: %s · total dependents: %s · uses: '),
+    (De: ' (Teil von %s)'; En: ' (part of %s)'),
+    (De: 'Units: %s · uses-Kanten: %s · Teilsysteme: %s · Zyklen: ';
+     En: 'Units: %s · uses edges: %s · subsystems: %s · cycles: '),
+    (De: ' (davon nur interface: %s)'; En: ' (of these interface only: %s)'),
+    (De: 'zuletzt berechneter Stand'; En: 'last calculated state'),
+    (De: 'ab %s Prozent aller Units'; En: 'from %s percent of all units'),
+    (De: 'unter Zusammenhalt %s (ab %s Units)'; En: 'below cohesion %s (from %s units)'),
+    (De: 'Zuordnung (Kanten je Teilsystem, interface %s, implementation %s):%s  Teilsystem | interface | impl. | ' +
+      'Summe';
+     En: 'Assignment (edges per subsystem, interface %s, implementation %s):%s  Subsystem | interface | impl. | ' +
+      'sum'),
+    (De: 'Namensraum passt zu einem anderen Teilsystem'; En: 'Namespace fits another subsystem'),
+    (De: 'mehr Kanten in ein anderes Teilsystem'; En: 'more edges into another subsystem'),
+    (De: '- [Zentrale Units](#zentrale-units)'; En: '- [Central units](#central-units)'),
+    (De: '- [Teilsysteme](#teilsysteme)'; En: '- [Subsystems](#subsystems)'),
+    (De: '- [Zyklen](#zyklen)'; En: '- [Cycles](#cycles)'),
+    (De: '- [Querverbindungen](#querverbindungen)'; En: '- [Cross links](#cross-links)'),
+    (De: '- [Vergleich](#vergleich)'; En: '- [Comparison](#comparison)'),
+    (De: '## Zentrale Units'; En: '## Central units'),
+    (De: 'Zentrale Units:'; En: 'Central units:'),
+    (De: '  %s: %s Units, Zusammenhalt '; En: '  %s: %s units, cohesion '),
+    (De: 'Unit | Teilsystem | direkt | gesamt | verwendet | Rolle';
+     En: 'Unit | Subsystem | direct | total | uses | Role'),
+    (De: ': %s Units, Zusammenhalt %s%s  '; En: ': %s units, cohesion %s%s  '),
+    (De: 'verwendet von: '; En: 'used by: '),
+    (De: 'Projekt'; En: 'Project'),
+    (De: 'Projektgruppe'; En: 'Project group'),
+    (De: ', ohne Bibliotheks-Units'; En: ', without library units'),
+    (De: ', ausgeschlossen: '; En: ', excluded: '),
+    (De: ', Feinheit γ = '; En: ', resolution γ = '),
+    (De: ' Einstellungen: Feinheit '; En: ' Settings: resolution '),
+    (De: ' · nachteilen '; En: ' · split '),
+    (De: ' · Fundamente mitgruppiert'; En: ' · foundations grouped too'),
+    (De: ' (eigenes)'; En: ' (own)'),
+    (De: '  knapp: '; En: '  narrow: '),
+    (De: 'selten'; En: 'rare'),
+    (De: 'Knapp zugeordnet:'; En: 'Narrowly assigned:'),
+    (De: '# Architektur: '; En: '# Architecture: '),
+    (De: 'Stand '; En: 'State '),
+    (De: ' · Rechendauer '; En: ' · computing time '),
+    (De: 'Umfang: '; En: 'Scope: '),
+    (De: '## Teilsysteme'; En: '## Subsystems'),
+    (De: '## Zyklen'; En: '## Cycles'),
+    (De: '- Komponente: '; En: '- Component: '),
+    (De: '## Querverbindungen'; En: '## Cross links'),
+    (De: ' hin, '; En: ' forward, '),
+    (De: '… %s weitere (insgesamt %s)'; En: '… %s more (%s in total)'),
+    (De: 'Teilsysteme:'; En: 'Subsystems:'),
+    (De: '  %s in %s, Vorschlag %s (%s)'; En: '  %s in %s, suggestion %s (%s)'),
+    (De: 'Architektur %s (%s)'; En: 'Architecture %s (%s)'),
+    (De: 'Querverbindung: '; En: 'Cross link: '),
+    (De: 'verwendet: '; En: 'uses: '));
 
 const
   LineBreak = #13#10;
@@ -221,7 +356,7 @@ begin
   Result := ASubsystem.Name;
   if ASubsystem.Parent <> '' then
   begin
-    Result := Result + ' (Teil von ' + ASubsystem.Parent + ')';
+    Result := Result + cTexts[TArchitectureReportText.PartOf].Fmt([ASubsystem.Parent]);
   end;
 end;
 
@@ -248,8 +383,8 @@ begin
   begin
     if mSubsystem.Foundation then
     begin
-      Result := TArchitectureAnalyzer.FoundationName + ': ' + TArchitectureAnalyzer.FoundationRule +
-        '; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.';
+      Result := TArchitectureAnalyzer.FoundationName + cTexts[TArchitectureReportText.EdgesThereAreNotCross].Fmt([
+        TArchitectureAnalyzer.FoundationRule]);
     end;
   end;
 end;
@@ -276,13 +411,14 @@ end;
 /// <summary>"Units: 12 · uses-Kanten: 17 · …" für Kopf und MCP.</summary>
 function Counts(const AOverview: TArchitectureOverview): string;
 begin
-  Result := 'Units: ' + IntToStr(Length(AOverview.Units)) + ' · uses-Kanten: ' + IntToStr(AOverview.EdgeCount) +
-    ' · Teilsysteme: ' + IntToStr(Length(AOverview.Subsystems)) + ' · Zyklen: ' + IntToStr(Length(AOverview.Cycles));
+  Result := cTexts[TArchitectureReportText.UnitsUsesEdgesSubsystemsCycles].Fmt([IntToStr(Length(AOverview.Units)),
+    IntToStr(AOverview.EdgeCount), IntToStr(Length(AOverview.Subsystems))]) + IntToStr(Length(AOverview.Cycles));
   if InterfaceCycleCount(AOverview) > 0 then
   begin
-    Result := Result + ' (davon nur interface: ' + IntToStr(InterfaceCycleCount(AOverview)) + ')';
+    Result := Result + cTexts[TArchitectureReportText.OfTheseInterfaceOnly].Fmt([
+      IntToStr(InterfaceCycleCount(AOverview))]);
   end;
-  Result := Result + ' · Querverbindungen: ' + IntToStr(Length(AOverview.CrossLinks)) + ' · Ausreißer: ' +
+  Result := Result + cTexts[TArchitectureReportText.CrossLinksOutliers].Fmt([IntToStr(Length(AOverview.CrossLinks))]) +
     IntToStr(Length(AOverview.Outliers));
 end;
 
@@ -290,28 +426,29 @@ function ScopeText(const AOverview: TArchitectureOverview): string;
 begin
   if SameText(AOverview.Scope, 'project') then
   begin
-    Result := 'Projekt';
+    Result := cTexts[TArchitectureReportText.Project].Text;
   end
   else
   begin
-    Result := 'Projektgruppe';
+    Result := cTexts[TArchitectureReportText.ProjectGroup].Text;
   end;
   if AOverview.IncludeLibrary then
   begin
-    Result := Result + ', mit Bibliotheks-Units';
+    Result := Result + cTexts[TArchitectureReportText.WithLibraryUnits].Text;
   end
   else
   begin
-    Result := Result + ', ohne Bibliotheks-Units';
+    Result := Result + cTexts[TArchitectureReportText.WithoutLibraryUnits].Text;
   end;
   if Length(AOverview.Excludes) > 0 then
   begin
-    Result := Result + ', ausgeschlossen: ' + string.Join(', ', AOverview.Excludes);
+    Result := Result + cTexts[TArchitectureReportText.Excluded].Text + string.Join(', ', AOverview.Excludes);
   end;
   // Feinheit der Teilsysteme (#1366) nur, wenn sie von 1,0 abweicht.
   if AOverview.Grouping.ResolutionChanged then
   begin
-    Result := Result + ', Feinheit γ = ' + TArchitectureGrouping.ResolutionText(AOverview.Grouping.Clamped.Resolution);
+    Result := Result + cTexts[TArchitectureReportText.Resolution].Text +
+      TArchitectureGrouping.ResolutionText(AOverview.Grouping.Clamped.Resolution);
   end;
 end;
 
@@ -324,23 +461,25 @@ begin
   begin
     Exit;
   end;
-  Result := 'Teilsysteme an Stand vom ' + FormatDateTime('yyyy-mm-dd hh:nn', AOverview.AlignedAt,
-    TFormatSettings.Invariant) + ' angeglichen (';
+  Result := cTexts[TArchitectureReportText.SubsystemsAlignedWithTheState].Fmt([FormatDateTime('yyyy-mm-dd hh:nn',
+    AOverview.AlignedAt,
+    TFormatSettings.Invariant)]);
   if AOverview.AlignedSource = TArchitectureAnalyzer.AlignedBaseline then
   begin
     Result := Result + 'architecture.baseline';
   end
   else
   begin
-    Result := Result + 'zuletzt berechneter Stand';
+    Result := Result + cTexts[TArchitectureReportText.LastCalculatedState].Text;
   end;
   if AOverview.AlignedKept = 1 then
   begin
-    Result := Result + '; 1 Teilsystem behält Farbe und Namen)';
+    Result := Result + cTexts[TArchitectureReportText.SubsystemKeepsColorAnd].Text;
   end
   else
   begin
-    Result := Result + '; ' + IntToStr(AOverview.AlignedKept) + ' Teilsysteme behalten Farbe und Namen)';
+    Result := Result + cTexts[TArchitectureReportText.SubsystemsKeepColorAndName].Fmt([
+      IntToStr(AOverview.AlignedKept)]);
   end;
 end;
 
@@ -350,42 +489,40 @@ var
   mSplit: string;
 begin
   mGrouping := AGrouping.Clamped;
-  Result := 'Atlas bildet die Teilsysteme aus den uses-Kanten zwischen den Units, ein- und ausgehende zusammen. ' +
-    'Eine Kante im interface wiegt ' + IntToStr(TArchitectureAnalyzer.InterfaceWeight) + ', eine im ' +
-    'implementation-Teil ' + IntToStr(TArchitectureAnalyzer.ImplementationWeight) + '. Das Louvain-Verfahren ' +
-    'fasst Units zusammen, die untereinander mehr gewichtete Kanten haben als nach außen; eine Unit liegt darum ' +
-    'meist dort, wohin die meisten ihrer gewichteten Kanten gehen, und gilt als knapp zugeordnet, wenn ein anderes ' +
-    'Teilsystem mindestens ' + IntToStr(TArchitectureAnalyzer.ClosePercent) + ' Prozent davon erreicht.';
-  Result := Result + ' Einstellungen: Feinheit ' + TArchitectureGrouping.ResolutionText(mGrouping.Resolution);
+  Result := cTexts[TArchitectureReportText.AtlasFormsTheSubsystemsFrom].Fmt([
+    IntToStr(TArchitectureAnalyzer.InterfaceWeight), IntToStr(TArchitectureAnalyzer.ImplementationWeight),
+    IntToStr(TArchitectureAnalyzer.ClosePercent)]);
+  Result := Result + cTexts[TArchitectureReportText.SettingsResolution].Text +
+    TArchitectureGrouping.ResolutionText(mGrouping.Resolution);
   mSplit := '';
   if mGrouping.MaxShare > 0 then
   begin
-    mSplit := 'ab ' + IntToStr(Round(mGrouping.MaxShare * 100)) + ' Prozent aller Units';
+    mSplit := cTexts[TArchitectureReportText.FromPercentOfAllUnits].Fmt([IntToStr(Round(mGrouping.MaxShare * 100))]);
   end;
   if mGrouping.MinCohesion > 0 then
   begin
     if mSplit <> '' then
     begin
-      mSplit := mSplit + ' oder ';
+      mSplit := mSplit + cTexts[TArchitectureReportText.OrText].Text;
     end;
-    mSplit := mSplit + 'unter Zusammenhalt ' + TArchitectureGrouping.ResolutionText(mGrouping.MinCohesion) + ' (ab ' +
-      IntToStr(TArchitectureGrouping.LooseMinUnits) + ' Units)';
+    mSplit := mSplit + cTexts[TArchitectureReportText.BelowCohesionFromUnits].Fmt([
+      TArchitectureGrouping.ResolutionText(mGrouping.MinCohesion), IntToStr(TArchitectureGrouping.LooseMinUnits)]);
   end;
   if mSplit = '' then
   begin
-    Result := Result + ' · nicht nachteilen';
+    Result := Result + cTexts[TArchitectureReportText.DoNotSplit].Text;
   end
   else
   begin
-    Result := Result + ' · nachteilen ' + mSplit;
+    Result := Result + cTexts[TArchitectureReportText.Split].Text + mSplit;
   end;
   case mGrouping.Foundations of
     TArchitectureFoundations.Group:
-      Result := Result + ' · Fundamente mitgruppiert';
+      Result := Result + cTexts[TArchitectureReportText.FoundationsGroupedToo].Text;
     TArchitectureFoundations.Attach:
-      Result := Result + ' · Fundamente angehängt';
+      Result := Result + cTexts[TArchitectureReportText.FoundationsAttached].Text;
   else
-    Result := Result + ' · Fundamente getrennt (Kanten dorthin zählen nicht)';
+    Result := Result + cTexts[TArchitectureReportText.FoundationsSeparateEdgesThereDo].Text;
   end;
   Result := Result + '.';
 end;
@@ -402,18 +539,18 @@ begin
   mRival := SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
   if AAssignment.Missing = 1 then
   begin
-    Result := mRival + ' erreicht ' + IntToStr(AAssignment.RivalSum) + ' von ' +
-      IntToStr(AAssignment.OwnSum) + ', 1 Kante fehlt zum Wechsel';
+    Result := mRival + cTexts[TArchitectureReportText.ReachesOf1EdgeShort].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum)]);
   end
   else if AAssignment.Missing > 1 then
   begin
-    Result := mRival + ' erreicht ' + IntToStr(AAssignment.RivalSum) + ' von ' +
-      IntToStr(AAssignment.OwnSum) + ', ' + IntToStr(AAssignment.Missing) + ' Kanten fehlen zum Wechsel';
+    Result := mRival + cTexts[TArchitectureReportText.ReachesOfEdgesShortOf].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum), IntToStr(AAssignment.Missing)]);
   end
   else
   begin
-    Result := mRival + ' hat schon ' + IntToStr(AAssignment.RivalSum) + ' gewichtete Kanten, das ' +
-      'eigene Teilsystem ' + IntToStr(AAssignment.OwnSum) + ' (Louvain wertet das ganze Teilsystem)';
+    Result := mRival + cTexts[TArchitectureReportText.AlreadyHasWeightedEdgesIts].Fmt([IntToStr(AAssignment.RivalSum),
+      IntToStr(AAssignment.OwnSum)]);
   end;
 end;
 
@@ -434,28 +571,28 @@ begin
   begin
     Exit;
   end;
-  Result := 'Zuordnung (Kanten je Teilsystem, interface ' + IntToStr(TArchitectureAnalyzer.InterfaceWeight) +
-    ', implementation ' + IntToStr(TArchitectureAnalyzer.ImplementationWeight) + '):' + LineBreak +
-    '  Teilsystem | interface | impl. | Summe' + LineBreak;
+  Result := cTexts[TArchitectureReportText.AssignmentEdgesPerSubsystemInterface].Fmt([
+    IntToStr(TArchitectureAnalyzer.InterfaceWeight), IntToStr(TArchitectureAnalyzer.ImplementationWeight),
+    LineBreak]) + LineBreak;
   for mIndex := 0 to High(mAssignment.Rows) do
   begin
     mRow := mAssignment.Rows[mIndex];
     mLine := '  ' + SubsystemName(AOverview, mRow.Subsystem);
     if mIndex = mAssignment.Own then
     begin
-      mLine := mLine + ' (eigenes)';
+      mLine := mLine + cTexts[TArchitectureReportText.Own].Text;
     end;
     mLine := mLine + ' | ' + IntToStr(mRow.Interfaces) + ' | ' + IntToStr(mRow.Implementations) + ' | ' +
       IntToStr(mRow.Sum);
     if not mRow.Counts then
     begin
-      mLine := mLine + ' (zählt nicht)';
+      mLine := mLine + cTexts[TArchitectureReportText.DoesNotCount].Text;
     end;
     Result := Result + mLine + LineBreak;
   end;
   if mAssignment.Close then
   begin
-    Result := Result + '  knapp: ' + CloseText(AOverview, mAssignment) + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.Narrow].Text + CloseText(AOverview, mAssignment) + LineBreak;
   end;
 end;
 
@@ -511,11 +648,11 @@ class function TArchitectureReport.CrossReasonCaption(AReason: TOverviewCrossRea
 begin
   if AReason = TOverviewCrossReason.Rare then
   begin
-    Result := 'selten';
+    Result := cTexts[TArchitectureReportText.Rare].Text;
   end
   else
   begin
-    Result := 'gegen die Hauptrichtung';
+    Result := cTexts[TArchitectureReportText.AgainstTheMainDirection].Text;
   end;
 end;
 
@@ -523,11 +660,11 @@ class function TArchitectureReport.OutlierReasonCaption(AReason: TOverviewOutlie
 begin
   if AReason = TOverviewOutlierReason.Namespace then
   begin
-    Result := 'Namensraum passt zu einem anderen Teilsystem';
+    Result := cTexts[TArchitectureReportText.NamespaceFitsAnotherSubsystem].Text;
   end
   else
   begin
-    Result := 'mehr Kanten in ein anderes Teilsystem';
+    Result := cTexts[TArchitectureReportText.MoreEdgesIntoAnotherSubsystem].Text;
   end;
 end;
 
@@ -535,11 +672,11 @@ class function TArchitectureReport.CycleCaption(const ACycle: TOverviewCycle): s
 begin
   if ACycle.InterfaceOnly then
   begin
-    Result := 'Zyklus nur über interface (Compilerfehler F2047)';
+    Result := cTexts[TArchitectureReportText.CycleThroughInterfaceOnlyCompiler].Text;
   end
   else
   begin
-    Result := 'Zyklus über implementation';
+    Result := cTexts[TArchitectureReportText.CycleThroughImplementation].Text;
   end;
 end;
 
@@ -920,7 +1057,7 @@ begin
     end;
     if mFirst then
     begin
-      ABuilder.Append('Knapp zugeordnet:').Append(LineBreak).Append(LineBreak);
+      ABuilder.Append(cTexts[TArchitectureReportText.NarrowlyAssigned].Text).Append(LineBreak).Append(LineBreak);
     end;
     mFirst := False;
     ABuilder.Append('- ').Append(AOverview.Units[mMember].Name).Append(': ')
@@ -948,7 +1085,7 @@ begin
     Result := Result + AOverview.Units[mMember].Name;
     if AMarkOutliers and (AOverview.Profile(mMember).Outlier >= 0) then
     begin
-      Result := Result + ' (Ausreißer)';
+      Result := Result + cTexts[TArchitectureReportText.Outlier].Text;
     end;
   end;
 end;
@@ -956,24 +1093,28 @@ end;
 procedure AppendMarkdownHeader(ABuilder: TStringBuilder; const AOverview: TArchitectureOverview;
   AWithComparison: Boolean);
 begin
-  ABuilder.Append('# Architektur: ').Append(AOverview.Title).Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('Stand ').Append(CreatedText(AOverview)).Append(' · Index-Generation ')
-    .Append(IntToStr(AOverview.Generation)).Append(' · Rechendauer ').Append(IntToStr(AOverview.DurationMs))
+  ABuilder.Append(cTexts[TArchitectureReportText.Architecture].Text).Append(AOverview.Title).Append(LineBreak)
+    .Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.State].Text).Append(CreatedText(AOverview))
+    .Append(' · Index-Generation ')
+    .Append(IntToStr(AOverview.Generation)).Append(cTexts[TArchitectureReportText.ComputingTime].Text)
+    .Append(IntToStr(AOverview.DurationMs))
     .Append(' ms').Append(LineBreak).Append(LineBreak);
   ABuilder.Append(Counts(AOverview)).Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('Umfang: ').Append(ScopeText(AOverview)).Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.Scope].Text).Append(ScopeText(AOverview)).Append(LineBreak)
+    .Append(LineBreak);
   if AOverview.IsAligned then
   begin
     ABuilder.Append(TArchitectureReport.AlignedText(AOverview)).Append(LineBreak).Append(LineBreak);
   end;
-  ABuilder.Append('- [Zentrale Units](#zentrale-units)').Append(LineBreak)
-    .Append('- [Teilsysteme](#teilsysteme)').Append(LineBreak)
-    .Append('- [Ausreißer](#ausreißer)').Append(LineBreak)
-    .Append('- [Zyklen](#zyklen)').Append(LineBreak)
-    .Append('- [Querverbindungen](#querverbindungen)').Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.CentralUnitsCentralUnits].Text).Append(LineBreak)
+    .Append(cTexts[TArchitectureReportText.SubsystemsSubsystems].Text).Append(LineBreak)
+    .Append(cTexts[TArchitectureReportText.OutliersOutliers].Text).Append(LineBreak)
+    .Append(cTexts[TArchitectureReportText.CyclesCycles].Text).Append(LineBreak)
+    .Append(cTexts[TArchitectureReportText.CrossLinksCrossLinks].Text).Append(LineBreak);
   if AWithComparison then
   begin
-    ABuilder.Append('- [Vergleich](#vergleich)').Append(LineBreak);
+    ABuilder.Append(cTexts[TArchitectureReportText.ComparisonComparison].Text).Append(LineBreak);
   end;
   ABuilder.Append(LineBreak);
 end;
@@ -983,10 +1124,10 @@ var
   mIndex: Integer;
   mItem: TOverviewUnit;
 begin
-  ABuilder.Append('## Zentrale Units').Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('„gesamt abhängig“: Units, die neu übersetzt werden, wenn sich das interface der Unit ändert.')
+  ABuilder.Append(cTexts[TArchitectureReportText.CentralUnits].Text).Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.TotalDependentsUnitsThatAre].Text)
     .Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('| # | Unit | Teilsystem | direkt abhängig | gesamt abhängig | verwendet | Rolle |').Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.UnitSubsystemDirectDependentsTotal].Text).Append(LineBreak);
   ABuilder.Append('|---|---|---|---|---|---|---|').Append(LineBreak);
   for mIndex := 0 to High(AOverview.Central) do
   begin
@@ -1003,8 +1144,8 @@ procedure AppendMarkdownSubsystems(ABuilder: TStringBuilder; const AOverview: TA
 var
   mSubsystem: TOverviewSubsystem;
 begin
-  ABuilder.Append('## Teilsysteme').Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('| Teilsystem | Units | zentrale Unit | Zusammenhalt | Kanten innen | Kanten nach außen |')
+  ABuilder.Append(cTexts[TArchitectureReportText.Subsystems].Text).Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.SubsystemUnitsCentralUnitCohesion].Text)
     .Append(LineBreak);
   ABuilder.Append('|---|---|---|---|---|---|').Append(LineBreak);
   for mSubsystem in AOverview.Subsystems do
@@ -1043,13 +1184,13 @@ procedure AppendMarkdownOutliers(ABuilder: TStringBuilder; const AOverview: TArc
 var
   mOutlier: TOverviewOutlier;
 begin
-  ABuilder.Append('## Ausreißer').Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.Outliers].Text).Append(LineBreak).Append(LineBreak);
   if Length(AOverview.Outliers) = 0 then
   begin
     ABuilder.Append('Keine.').Append(LineBreak).Append(LineBreak);
     Exit;
   end;
-  ABuilder.Append('| Unit | in Teilsystem | Vorschlag | Grund | Kanten im eigenen | Kanten zum Vorschlag |')
+  ABuilder.Append(cTexts[TArchitectureReportText.UnitInSubsystemSuggestionReason].Text)
     .Append(LineBreak);
   ABuilder.Append('|---|---|---|---|---|---|').Append(LineBreak);
   for mOutlier in AOverview.Outliers do
@@ -1069,7 +1210,7 @@ var
   mCycle: TOverviewCycle;
   mEdge: TOverviewEdge;
 begin
-  ABuilder.Append('## Zyklen').Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.Cycles].Text).Append(LineBreak).Append(LineBreak);
   if Length(AOverview.Cycles) = 0 then
   begin
     ABuilder.Append('Keine.').Append(LineBreak).Append(LineBreak);
@@ -1087,7 +1228,8 @@ begin
     end;
     if Length(mCycle.Component) > Length(mCycle.Units) then
     begin
-      ABuilder.Append('- Komponente: ').Append(UnitNameList(AOverview, mCycle.Component, False)).Append(LineBreak);
+      ABuilder.Append(cTexts[TArchitectureReportText.Component].Text).Append(UnitNameList(AOverview, mCycle.Component,
+        False)).Append(LineBreak);
     end;
     ABuilder.Append(LineBreak);
   end;
@@ -1097,13 +1239,13 @@ procedure AppendMarkdownCrossLinks(ABuilder: TStringBuilder; const AOverview: TA
 var
   mLink: TOverviewCrossLink;
 begin
-  ABuilder.Append('## Querverbindungen').Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.CrossLinks].Text).Append(LineBreak).Append(LineBreak);
   if Length(AOverview.CrossLinks) = 0 then
   begin
     ABuilder.Append('Keine.').Append(LineBreak);
     Exit;
   end;
-  ABuilder.Append('| Von | Nach | Abschnitt | Teilsysteme | Grund | Fundstelle |').Append(LineBreak);
+  ABuilder.Append(cTexts[TArchitectureReportText.FromToSectionSubsystemsReason].Text).Append(LineBreak);
   ABuilder.Append('|---|---|---|---|---|---|').Append(LineBreak);
   for mLink in AOverview.CrossLinks do
   begin
@@ -1113,7 +1255,8 @@ begin
       .Append(Cell(SubsystemName(AOverview, mLink.FromSubsystem) + ' → ' + SubsystemName(AOverview,
         mLink.ToSubsystem))).Append(' | ')
       .Append(TArchitectureReport.CrossReasonCaption(mLink.Reason)).Append(' (').Append(mLink.Forward)
-      .Append(' hin, ').Append(mLink.Backward).Append(' zurück) | ')
+      .Append(cTexts[TArchitectureReportText.Forward].Text).Append(mLink.Backward)
+      .Append(cTexts[TArchitectureReportText.Back].Text)
       .Append(Cell(TArchitectureReport.LocationText(AOverview, mLink.Edge))).Append(' |').Append(LineBreak);
   end;
 end;
@@ -1145,10 +1288,23 @@ begin
   Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
 end;
 
+/// <summary>Vorlage der Karte in der Sprache der Servertexte (#1458).</summary>
+function MapTemplate: string;
+begin
+  if TAtlasLocale.Language = TTextLanguage.English then
+  begin
+    Result := ArchitectureMapHtmlEn;
+  end
+  else
+  begin
+    Result := ArchitectureMapHtml;
+  end;
+end;
+
 function Page(const ATitle, AData: string): string;
 begin
   // In einem <script> darf "</" nicht vorkommen (schlösse das Element); \/ ist in JSON gleichwertig.
-  Result := StringReplace(ArchitectureMapHtml, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(MapTemplate, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
   Result := StringReplace(Result, '{{DATA}}', StringReplace(AData, '</', '<\/', [rfReplaceAll]), []);
 end;
 
@@ -1201,7 +1357,8 @@ begin
   Result := AText;
   if ACount > ALimit then
   begin
-    Result := Result + '… ' + IntToStr(ACount - ALimit) + ' weitere (insgesamt ' + IntToStr(ACount) + ')' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.MoreInTotal].Fmt([IntToStr(ACount - ALimit), IntToStr(ACount)]) +
+      LineBreak;
   end;
 end;
 
@@ -1211,21 +1368,22 @@ var
   mItem: TOverviewUnit;
   mSubsystem: TOverviewSubsystem;
 begin
-  Result := LineBreak + 'Zentrale Units:' + LineBreak;
+  Result := LineBreak + cTexts[TArchitectureReportText.CentralUnits2].Text + LineBreak;
   for mIndex := 0 to Min(High(AOverview.Central), 4) do
   begin
     mItem := AOverview.Units[AOverview.Central[mIndex]];
-    Result := Result + '  ' + mItem.Name + ': ' + IntToStr(mItem.Total) + ' gesamt abhängig' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.TotalDependents].Fmt([mItem.Name, IntToStr(mItem.Total)]) +
+      LineBreak;
   end;
-  Result := Result + 'Teilsysteme:' + LineBreak;
+  Result := Result + cTexts[TArchitectureReportText.Subsystems2].Text + LineBreak;
   for mIndex := 0 to Min(High(AOverview.Subsystems), ALimit - 1) do
   begin
     mSubsystem := AOverview.Subsystems[mIndex];
-    Result := Result + '  ' + SubsystemCaption(mSubsystem) + ': ' + IntToStr(Length(mSubsystem.Units)) +
-      ' Units, Zusammenhalt ' + CohesionText(mSubsystem) + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.UnitsCohesion].Fmt([SubsystemCaption(mSubsystem),
+      IntToStr(Length(mSubsystem.Units))]) + CohesionText(mSubsystem) + LineBreak;
   end;
   Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
-  Result := Result + 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
+  Result := Result + cTexts[TArchitectureReportText.MoreSectionsCentralSubsystemsCycles].Text;
 end;
 
 function CentralText(const AOverview: TArchitectureOverview; ALimit: Integer): string;
@@ -1234,7 +1392,7 @@ var
   mItem: TOverviewUnit;
   mLine: string;
 begin
-  Result := LineBreak + 'Unit | Teilsystem | direkt | gesamt | verwendet | Rolle' + LineBreak;
+  Result := LineBreak + cTexts[TArchitectureReportText.UnitSubsystemDirectTotalUses].Text + LineBreak;
   for mIndex := 0 to Min(High(AOverview.Central), ALimit - 1) do
   begin
     mItem := AOverview.Units[AOverview.Central[mIndex]];
@@ -1269,14 +1427,13 @@ begin
   begin
     Exit;
   end;
-  Result := 'Ausreißer:' + LineBreak;
+  Result := cTexts[TArchitectureReportText.Outliers2].Text + LineBreak;
   for mIndex := 0 to Min(High(AOverview.Outliers), ALimit - 1) do
   begin
     mOutlier := AOverview.Outliers[mIndex];
-    Result := Result + '  ' + AOverview.Units[mOutlier.Unit_].Name + ' in ' +
-      SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem) + ', Vorschlag ' +
-      SubsystemName(AOverview, mOutlier.Suggested) + ' (' +
-      TArchitectureReport.OutlierReasonCaption(mOutlier.Reason) + ')' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.InSuggestion].Fmt([AOverview.Units[mOutlier.Unit_].Name,
+      SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem), SubsystemName(AOverview,
+      mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason)]) + LineBreak;
   end;
   Result := Limited(Result, Length(AOverview.Outliers), ALimit);
 end;
@@ -1290,8 +1447,8 @@ begin
   for mIndex := 0 to Min(High(AOverview.Subsystems), ALimit - 1) do
   begin
     mSubsystem := AOverview.Subsystems[mIndex];
-    Result := Result + SubsystemCaption(mSubsystem) + ': ' + IntToStr(Length(mSubsystem.Units)) +
-      ' Units, Zusammenhalt ' + CohesionText(mSubsystem) + LineBreak + '  ' +
+    Result := Result + SubsystemCaption(mSubsystem) + cTexts[TArchitectureReportText.UnitsCohesion2].Fmt([
+      IntToStr(Length(mSubsystem.Units)), CohesionText(mSubsystem), LineBreak]) +
       ShortUnitList(AOverview, mSubsystem.Units) + LineBreak;
   end;
   Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
@@ -1310,7 +1467,7 @@ begin
   Result := LineBreak;
   if Length(AOverview.Cycles) = 0 then
   begin
-    Result := Result + 'Keine Zyklen.' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.NoCycles].Text + LineBreak;
   end;
   for mIndex := 0 to Min(High(AOverview.Cycles), ALimit - 1) do
   begin
@@ -1333,15 +1490,15 @@ begin
   Result := LineBreak;
   if Length(AOverview.CrossLinks) = 0 then
   begin
-    Result := Result + 'Keine Querverbindungen.' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.NoCrossLinks].Text + LineBreak;
   end;
   for mIndex := 0 to Min(High(AOverview.CrossLinks), ALimit - 1) do
   begin
     mLink := AOverview.CrossLinks[mIndex];
-    Result := Result + TArchitectureReport.EdgeText(AOverview, mLink.Edge) + ' ' +
-      SubsystemName(AOverview, mLink.FromSubsystem) + ' → ' + SubsystemName(AOverview, mLink.ToSubsystem) + ', ' +
-      TArchitectureReport.CrossReasonCaption(mLink.Reason) + ' (' + IntToStr(mLink.Forward) + ' hin, ' +
-      IntToStr(mLink.Backward) + ' zurück)' + LineBreak;
+    Result := Result + TArchitectureReport.EdgeText(AOverview, mLink.Edge) +
+      cTexts[TArchitectureReportText.ThereBack].Fmt([SubsystemName(AOverview, mLink.FromSubsystem),
+      SubsystemName(AOverview, mLink.ToSubsystem), TArchitectureReport.CrossReasonCaption(mLink.Reason),
+      IntToStr(mLink.Forward), IntToStr(mLink.Backward)]) + LineBreak;
   end;
   Result := Limited(Result, Length(AOverview.CrossLinks), ALimit);
 end;
@@ -1352,7 +1509,8 @@ var
   mLimit: Integer;
 begin
   mLimit := Max(ALimit, 1);
-  Result := 'Architektur ' + AOverview.Title + ' (' + ScopeText(AOverview) + ')' + LineBreak + Counts(AOverview) +
+  Result := cTexts[TArchitectureReportText.Architecture2].Fmt([AOverview.Title, ScopeText(AOverview)]) + LineBreak +
+    Counts(AOverview) +
     LineBreak;
   if AOverview.IsAligned then
   begin
@@ -1381,7 +1539,7 @@ begin
   Result := '';
   if Length(AProfile.Cycles) = 0 then
   begin
-    Result := 'Zyklen: keine' + LineBreak;
+    Result := cTexts[TArchitectureReportText.CyclesNone].Text + LineBreak;
   end;
   for mItem in AProfile.Cycles do
   begin
@@ -1390,15 +1548,16 @@ begin
   end;
   for mItem in AProfile.CrossLinks do
   begin
-    Result := Result + 'Querverbindung: ' + TArchitectureReport.EdgeText(AOverview, AOverview.CrossLinks[mItem].Edge) +
+    Result := Result + cTexts[TArchitectureReportText.CrossLink].Text + TArchitectureReport.EdgeText(AOverview,
+      AOverview.CrossLinks[mItem].Edge) +
       LineBreak;
   end;
   if AProfile.Outlier >= 0 then
   begin
     mOutlier := AOverview.Outliers[AProfile.Outlier];
-    Result := Result + 'Ausreißer: gehört eher zu ' + SubsystemName(AOverview, mOutlier.Suggested) + ' (' +
-      TArchitectureReport.OutlierReasonCaption(mOutlier.Reason) + '; ' + IntToStr(mOutlier.Inside) +
-      ' Kanten im eigenen, ' + IntToStr(mOutlier.Toward) + ' zum Vorschlag)' + LineBreak;
+    Result := Result + cTexts[TArchitectureReportText.OutlierBelongsRatherToEdges].Fmt([SubsystemName(AOverview,
+      mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason), IntToStr(mOutlier.Inside),
+      IntToStr(mOutlier.Toward)]) + LineBreak;
   end;
 end;
 
@@ -1411,24 +1570,28 @@ begin
   mIndex := AOverview.IndexOf(AUnitName);
   if mIndex < 0 then
   begin
-    Exit('Unit "' + AUnitName + '" ist nicht in der Architekturübersicht (nicht im Umfang, ausgeschlossen oder ' +
-      'Bibliotheks-Unit).');
+    Exit(cTexts[TArchitectureReportText.UnitIsNotInThe].Fmt([AUnitName]));
   end;
   mUnit := AOverview.Units[mIndex];
   mProfile := AOverview.Profile(mIndex);
-  Result := mUnit.Name + ' (' + AOverview.RelativePath(mUnit.FileName) + ')' + LineBreak +
-    'Teilsystem: ' + SubsystemName(AOverview, mUnit.Subsystem) + LineBreak +
-    'direkt abhängig: ' + IntToStr(mUnit.Direct) + ' · gesamt abhängig: ' + IntToStr(mUnit.Total) + ' · verwendet: ' +
+  Result := mUnit.Name + cTexts[TArchitectureReportText.SSubsystemSdirectDependentsTotalDependents].Fmt([
+    AOverview.RelativePath(mUnit.FileName), LineBreak, SubsystemName(AOverview, mUnit.Subsystem), LineBreak,
+    IntToStr(mUnit.Direct), IntToStr(mUnit.Total)]) +
     IntToStr(mUnit.Uses_);
   if mUnit.Role <> TOverviewUnitRole.None then
   begin
     Result := Result + ' · ' + TArchitectureAnalyzer.RoleCaption(mUnit.Role);
   end;
   Result := Result + LineBreak;
-  Result := Result + 'verwendet: ' + UnitNameList(AOverview, mProfile.DependsOn, False) + LineBreak;
-  Result := Result + 'verwendet von: ' + UnitNameList(AOverview, mProfile.UsedBy, False) + LineBreak;
+  Result := Result + cTexts[TArchitectureReportText.UsesText].Text + UnitNameList(AOverview, mProfile.DependsOn,
+    False) + LineBreak;
+  Result := Result + cTexts[TArchitectureReportText.UsedBy].Text + UnitNameList(AOverview, mProfile.UsedBy, False) +
+    LineBreak;
   Result := Result + ProfileFindings(AOverview, mProfile);
   Result := Result + AssignmentText(AOverview, mIndex);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Architecture.Report', cTexts);
 
 end.

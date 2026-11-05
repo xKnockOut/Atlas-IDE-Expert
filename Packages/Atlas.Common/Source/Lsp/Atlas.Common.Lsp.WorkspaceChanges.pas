@@ -74,7 +74,22 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWorkspaceChangesText = (NoProjectLoadedTheNew, HasNoUsesOrContains);
+
+const
+  cTexts: array[TWorkspaceChangesText] of TAtlasText = (
+    (De: 'Kein Projekt geladen: Die neue Unit steht in keiner .dpr, .dpk oder .dproj.';
+     En: 'No project loaded: the new unit is in no .dpr, .dpk or .dproj.'),
+    (De: '%s hat kein uses bzw. contains für die neue Unit'; En: '%s has no uses or contains for the new unit'));
+
+{$SCOPEDENUMS OFF}
 
 { TWorkspaceChanges }
 
@@ -157,7 +172,7 @@ var
 begin
   if not AHasProject then
   begin
-    Warn('Kein Projekt geladen: Die neue Unit steht in keiner .dpr, .dpk oder .dproj.');
+    Warn(cTexts[TWorkspaceChangesText.NoProjectLoadedTheNew].Text);
     Exit;
   end;
   if (AProject.MainSource <> '') and Assigned(AReadText) and AReadText(AProject.MainSource, Text) then
@@ -169,7 +184,7 @@ begin
     end
     else
     begin
-      Warn(Format('%s hat kein uses bzw. contains für die neue Unit', [ExtractFileName(AProject.MainSource)]));
+      Warn(cTexts[TWorkspaceChangesText.HasNoUsesOrContains].Fmt([ExtractFileName(AProject.MainSource)]));
     end;
   end;
   ProjectFile := AProject.FileName;
@@ -284,5 +299,8 @@ begin
     Result.Add(Warning);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WorkspaceChanges', cTexts);
 
 end.

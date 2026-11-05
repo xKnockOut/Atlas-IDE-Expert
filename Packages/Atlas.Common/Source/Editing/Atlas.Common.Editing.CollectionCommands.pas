@@ -38,7 +38,45 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.TypeCommands;
+  Atlas.Common.Editing.TypeCommands,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCollectionCommandsText = (OnlyAppliesInAClass, ExpectedIsListNameTType, ExpectedIsNameTKeyTValue,
+    DictNeedsAStringAs, ExpectedIsSortListMember, SortOnlyAppliesInThe, ElementTypeOfNotRecognized,
+    HasNoFieldOrProperty, ExpectedIsFilterListCondition, FilterOnlyAppliesInThe, ListAsFieldOrLocal,
+    DictionaryAsFieldOrLocal, DictionaryWithCaseInsensitiveKeys, SortAListByField, MatchesOfAConditionInto,
+    ListFCustomersTCustomer, DictFCacheStringTCustomer, DictFCacheStringTCustomer2, SortCustomersRevenue,
+    FilterCustomersActive);
+
+const
+  cTexts: array[TCollectionCommandsText] of TAtlasText = (
+    (De: '/%s gilt nur in einer Klasse oder im Rumpf einer Routine';
+     En: '/%s only applies in a class or in the body of a routine'),
+    (De: 'Erwartet wird /list Name: TTyp'; En: 'Expected is /list Name: TType'),
+    (De: 'Erwartet wird /%s Name: TSchluessel, TWert'; En: 'Expected is /%s Name: TKey, TValue'),
+    (De: '/dict! braucht einen String als Schlüssel'; En: '/dict! needs a string as key'),
+    (De: 'Erwartet wird /sort Liste [-]Mitglied'; En: 'Expected is /sort List [-]Member'),
+    (De: '/sort gilt nur im Rumpf einer Routine'; En: '/sort only applies in the body of a routine'),
+    (De: 'Elementtyp von %s nicht erkannt'; En: 'Element type of %s not recognized'),
+    (De: ' hat kein Feld oder keine Property '; En: ' has no field or property '),
+    (De: 'Erwartet wird /filter Liste Bedingung'; En: 'Expected is /filter List Condition'),
+    (De: '/filter gilt nur im Rumpf einer Routine'; En: '/filter only applies in the body of a routine'),
+    (De: 'Liste als Feld oder lokale Variable'; En: 'List as field or local variable'),
+    (De: 'Dictionary als Feld oder lokale Variable'; En: 'Dictionary as field or local variable'),
+    (De: 'Dictionary mit Schlüsseln ohne Groß-/Kleinschreibung'; En: 'Dictionary with case-insensitive keys'),
+    (De: 'Liste nach Feld oder Property sortieren'; En: 'Sort a list by field or property'),
+    (De: 'Treffer einer Bedingung in eine neue Liste'; En: 'Matches of a condition into a new list'),
+    (De: '/list FKunden: TKunde'; En: '/list FCustomers: TCustomer'),
+    (De: '/dict FCache: string, TKunde'; En: '/dict FCache: string, TCustomer'),
+    (De: '/dict! FCache: string, TKunde'; En: '/dict! FCache: string, TCustomer'),
+    (De: '/sort Kunden -Umsatz'; En: '/sort Customers -Revenue'),
+    (De: '/filter Kunden Aktiv'; En: '/filter Customers Active'));
+
+{$SCOPEDENUMS OFF}
 
 const
   StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char', 'TCaption',
@@ -339,7 +377,7 @@ begin
     end
     else
     begin
-      Exit(Fail('/' + AContext.Name + ' gilt nur in einer Klasse oder im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TCollectionCommandsText.OnlyAppliesInAClass].Fmt([AContext.Name]), AReason));
     end;
     AEdits := Edits;
     Result := True;
@@ -370,7 +408,7 @@ begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, ElementType) or not IsValidIdent(ElementType, True) then
   begin
-    Exit(Fail('Erwartet wird /list Name: TTyp', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsListNameTType].Text, AReason));
   end;
   if IsClass(AContext, ElementType) then
   begin
@@ -396,18 +434,18 @@ begin
   AEdits := nil;
   if not SplitDeclaration(AContext.Arguments, ':', Name, Types) then
   begin
-    Exit(Fail('Erwartet wird /' + AContext.Name + ' Name: TSchluessel, TWert', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsNameTKeyTValue].Fmt([AContext.Name]), AReason));
   end;
   Comma := Pos(',', Types);
   KeyType := Trim(Copy(Types, 1, Comma - 1));
   ValueType := Trim(Copy(Types, Comma + 1, MaxInt));
   if (Comma = 0) or not IsValidIdent(KeyType, True) or not IsValidIdent(ValueType, True) then
   begin
-    Exit(Fail('Erwartet wird /' + AContext.Name + ' Name: TSchluessel, TWert', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsNameTKeyTValue].Fmt([AContext.Name]), AReason));
   end;
   if AIgnoreCase and not MatchText(KeyType, StringTypes) then
   begin
-    Exit(Fail('/dict! braucht einen String als Schlüssel', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.DictNeedsAStringAs].Text, AReason));
   end;
   Owned := IsClass(AContext, ValueType);
   if Owned then
@@ -561,23 +599,23 @@ begin
   AEdits := nil;
   if not ParseSortArguments(AContext.Arguments, mCollection, mMember, mDescending) then
   begin
-    Exit(Fail('Erwartet wird /sort Liste [-]Mitglied', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsSortListMember].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     if mSource.RoutineAt = nil then
     begin
-      Exit(Fail('/sort gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TCollectionCommandsText.SortOnlyAppliesInThe].Text, AReason));
     end;
     mElement := ElementType(mSource, mCollection);
     if mElement = '' then
     begin
-      Exit(Fail('Elementtyp von ' + mCollection + ' nicht erkannt', AReason));
+      Exit(Fail(cTexts[TCollectionCommandsText.ElementTypeOfNotRecognized].Fmt([mCollection]), AReason));
     end;
     mKind := MemberType(mSource, AContext.Index, mElement, mMember);
     if mKind = '' then
     begin
-      Exit(Fail(mElement + ' hat kein Feld oder keine Property ' + mMember, AReason));
+      Exit(Fail(mElement + cTexts[TCollectionCommandsText.HasNoFieldOrProperty].Text + mMember, AReason));
     end;
     mCompare := CompareFunction(mKind, mCompareUnit);
     if mDescending then
@@ -761,19 +799,19 @@ begin
   mLoop := Default(TFilterLoop);
   if not ParseFilterArguments(AContext.Arguments, mLoop.Collection, mCondition) then
   begin
-    Exit(Fail('Erwartet wird /filter Liste Bedingung', AReason));
+    Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsFilterListCondition].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
     mRoutine := mSource.RoutineAt;
     if mRoutine = nil then
     begin
-      Exit(Fail('/filter gilt nur im Rumpf einer Routine', AReason));
+      Exit(Fail(cTexts[TCollectionCommandsText.FilterOnlyAppliesInThe].Text, AReason));
     end;
     mLoop.Element := ElementType(mSource, mLoop.Collection);
     if mLoop.Element = '' then
     begin
-      Exit(Fail('Elementtyp von ' + mLoop.Collection + ' nicht erkannt', AReason));
+      Exit(Fail(cTexts[TCollectionCommandsText.ElementTypeOfNotRecognized].Fmt([mLoop.Collection]), AReason));
     end;
     mLoop.Variable := LoopVariable(mLoop.Element);
     mLoop.Condition := ElementCondition(mSource, AContext.Index, mLoop.Element, mLoop.Variable, mCondition);
@@ -958,14 +996,23 @@ end;
 
 procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('list', 'Liste als Feld oder lokale Variable', '/list FKunden: TKunde', ExecuteList));
-  ARegister(Command('dict', 'Dictionary als Feld oder lokale Variable', '/dict FCache: string, TKunde',
+  ARegister(Command('list', cTexts[TCollectionCommandsText.ListAsFieldOrLocal].Text,
+    cTexts[TCollectionCommandsText.ListFCustomersTCustomer].Text,
+    ExecuteList));
+  ARegister(Command('dict', cTexts[TCollectionCommandsText.DictionaryAsFieldOrLocal].Text,
+    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer].Text,
     ExecuteDictPlain));
-  ARegister(Command('dict!', 'Dictionary mit Schlüsseln ohne Groß-/Kleinschreibung',
-    '/dict! FCache: string, TKunde', ExecuteDictIgnoreCase));
-  ARegister(Command('sort', 'Liste nach Feld oder Property sortieren', '/sort Kunden -Umsatz', ExecuteSort));
-  ARegister(Command('filter', 'Treffer einer Bedingung in eine neue Liste', '/filter Kunden Aktiv',
+  ARegister(Command('dict!', cTexts[TCollectionCommandsText.DictionaryWithCaseInsensitiveKeys].Text,
+    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer2].Text, ExecuteDictIgnoreCase));
+  ARegister(Command('sort', cTexts[TCollectionCommandsText.SortAListByField].Text,
+    cTexts[TCollectionCommandsText.SortCustomersRevenue].Text,
+    ExecuteSort));
+  ARegister(Command('filter', cTexts[TCollectionCommandsText.MatchesOfAConditionInto].Text,
+    cTexts[TCollectionCommandsText.FilterCustomersActive].Text,
     ExecuteFilter));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.CollectionCommands', cTexts);
 
 end.

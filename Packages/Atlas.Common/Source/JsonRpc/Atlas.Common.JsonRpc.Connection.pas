@@ -96,7 +96,21 @@ uses
   System.Threading,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Messages,
-  Atlas.Common.JsonRpc.PendingRequests;
+  Atlas.Common.JsonRpc.PendingRequests,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConnectionText = (ConcurrentRequestsDidNotFinish);
+
+const
+  cTexts: array[TConnectionText] of TAtlasText = (
+    (De: 'Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig';
+     En: 'Concurrent requests did not finish in time at shutdown'));
+
+{$SCOPEDENUMS OFF}
 
 const
   WaitForever = Cardinal($FFFFFFFF);
@@ -612,7 +626,7 @@ var
     if not FDispatcher.PendingRequests.WaitForWork(FWorkTimeout) then
     begin
       FUnfinishedWork := True;
-      ReportProblem('Nebenläufige Anfragen wurden beim Beenden nicht rechtzeitig fertig');
+      ReportProblem(cTexts[TConnectionText.ConcurrentRequestsDidNotFinish].Text);
     end;
     if mOwnScheduler then
     begin
@@ -710,5 +724,8 @@ begin
     Inbox.Put(InboxItem(ikWakeUp));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.Connection', cTexts);
 
 end.

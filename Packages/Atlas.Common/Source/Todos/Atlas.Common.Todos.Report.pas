@@ -62,7 +62,30 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTodosReportText = (Entries, OpenEntriesIn, LineMarkerPriorityCategoryPerson, NoEntries, ByCategory, ByPerson, Done,
+    Done2, Category);
+
+const
+  cTexts: array[TTodosReportText] of TAtlasText = (
+    (De: ' | Einträge |'; En: ' | Entries |'),
+    (De: ' offene Einträge in '; En: ' open entries in '),
+    (De: '| Zeile | Marke | Priorität | Kategorie | Person | Text |';
+     En: '| Line | Marker | Priority | Category | Person | Text |'),
+    (De: 'Keine Einträge.'; En: 'No entries.'),
+    (De: 'Nach Kategorie'; En: 'By category'),
+    (De: 'Nach Person'; En: 'By person'),
+    (De: ' erledigt'; En: ' done'),
+    (De: ' (erledigt)'; En: ' (done)'),
+    (De: 'Kategorie'; En: 'Category'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Wert und Anzahl seiner Einträge.</summary>
@@ -326,7 +349,7 @@ begin
       Exit;
     end;
     ABuilder.Append(LineBreak).Append('## ').Append(AHeading).Append(LineBreak).Append(LineBreak);
-    ABuilder.Append('| ').Append(AColumn).Append(' | Einträge |').Append(LineBreak);
+    ABuilder.Append('| ').Append(AColumn).Append(cTexts[TTodosReportText.Entries].Text).Append(LineBreak);
     ABuilder.Append('|---|---:|').Append(LineBreak);
     for mPair in ByCount(mCounts) do
     begin
@@ -349,11 +372,12 @@ begin
     ABuilder.Append(': ').Append(ATitle);
   end;
   ABuilder.Append(LineBreak).Append(LineBreak);
-  ABuilder.Append(IntToStr(ASummary.Open)).Append(' offene Einträge in ').Append(IntToStr(ASummary.Files))
+  ABuilder.Append(IntToStr(ASummary.Open)).Append(cTexts[TTodosReportText.OpenEntriesIn].Text)
+    .Append(IntToStr(ASummary.Files))
     .Append(' Dateien');
   if ASummary.Done > 0 then
   begin
-    ABuilder.Append(', ').Append(IntToStr(ASummary.Done)).Append(' erledigt');
+    ABuilder.Append(', ').Append(IntToStr(ASummary.Done)).Append(cTexts[TTodosReportText.Done].Text);
   end;
   if Length(ASummary.Keywords) > 0 then
   begin
@@ -380,14 +404,14 @@ begin
   ABuilder.Append(LineBreak).Append('## ').Append(AFile.UnitName).Append(' (')
     .Append(IntToStr(Length(AFile.Entries))).Append(')').Append(LineBreak).Append(LineBreak);
   ABuilder.Append('`').Append(AFile.Path).Append('`').Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('| Zeile | Marke | Priorität | Kategorie | Person | Text |').Append(LineBreak);
+  ABuilder.Append(cTexts[TTodosReportText.LineMarkerPriorityCategoryPerson].Text).Append(LineBreak);
   ABuilder.Append('|---:|---|---:|---|---|---|').Append(LineBreak);
   for mEntry in AFile.Entries do
   begin
     mKind := mEntry.Keyword;
     if mEntry.Done then
     begin
-      mKind := mKind + ' (erledigt)';
+      mKind := mKind + cTexts[TTodosReportText.Done2].Text;
     end;
     mPriority := '';
     if mEntry.Priority > 0 then
@@ -410,12 +434,13 @@ begin
     AppendHeader(mBuilder, Summarize(AFiles), ATitle);
     if Length(AFiles) = 0 then
     begin
-      mBuilder.Append(LineBreak).Append('Keine Einträge.').Append(LineBreak);
+      mBuilder.Append(LineBreak).Append(cTexts[TTodosReportText.NoEntries].Text).Append(LineBreak);
     end
     else
     begin
-      AppendCounts(mBuilder, AFiles, False, 'Nach Kategorie', 'Kategorie');
-      AppendCounts(mBuilder, AFiles, True, 'Nach Person', 'Person');
+      AppendCounts(mBuilder, AFiles, False, cTexts[TTodosReportText.ByCategory].Text,
+        cTexts[TTodosReportText.Category].Text);
+      AppendCounts(mBuilder, AFiles, True, cTexts[TTodosReportText.ByPerson].Text, 'Person');
       for mFileItem in AFiles do
       begin
         AppendFile(mBuilder, mFileItem);
@@ -426,5 +451,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Todos.Report', cTexts);
 
 end.

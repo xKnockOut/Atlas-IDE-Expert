@@ -60,7 +60,37 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.PublicMembers,
-  Atlas.Common.Rules.Builtin.DeadCode;
+  Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDeadCodeToolsText = (NotReadable, NoteUnusedPublicMemberAnd, TheRulesForUnusedCode, FileText,
+    AllDependenciesTransitive, ViaImplementationUses, None, UnitIsNotInThe, LineColumnConfidence, FindingsInFiles,
+    UsedBy, AllUsersTransitive, InterfaceUsesOnlyCompilerError, MoreFindings, UnusedCode, UsesText, Cycles);
+
+const
+  cTexts: array[TDeadCodeToolsText] of TAtlasText = (
+    (De: '- %s: nicht lesbar'; En: '- %s: not readable'),
+    (De: 'Hinweis: %s; unused-public-member und unused-unit schweigen, bis alle Projekte geladen und indiziert sind.';
+     En: 'Note: %s; unused-public-member and unused-unit stay silent until all projects are loaded and indexed.'),
+    (De: 'Die Regeln für ungenutzten Code sind nicht verfügbar.'; En: 'The rules for unused code are not available.'),
+    (De: 'Datei: '; En: 'File: '),
+    (De: 'Alle Abhängigkeiten, transitiv'; En: 'All dependencies, transitive'),
+    (De: '- %s (über implementation-uses)'; En: '- %s (via implementation uses)'),
+    (De: '- keine'; En: '- none'),
+    (De: 'Unit %s steht nicht im Uses-Graphen (nur Units der Projekte, ohne RTL/VCL; Index noch nicht vollständig?).';
+     En: 'Unit %s is not in the uses graph (only units of the projects, without RTL/VCL; index not complete yet?).'),
+    (De: '- Zeile %d, Spalte %d: %s (%s, Konfidenz %s)'; En: '- Line %d, column %d: %s (%s, confidence %s)'),
+    (De: '%d Befunde in %d Dateien (%s).'; En: '%d findings in %d files (%s).'),
+    (De: '## Verwendet von (%d)'; En: '## Used by (%d)'),
+    (De: 'Alle Nutzer, transitiv'; En: 'All users, transitive'),
+    (De: '- %s (nur interface-uses, Compilerfehler wie F2047)';
+     En: '- %s (interface uses only, compiler error like F2047)'),
+    (De: '… %d weitere Befunde'; En: '… %d more findings'),
+    (De: '# Ungenutzter Code'; En: '# Unused code'),
+    (De: '## Verwendet (%d)'; En: '## Uses (%d)'),
+    (De: '## Zyklen'; En: '## Cycles'));
 
 const
   DeadCodeIds: array[0..3] of string = (UnusedPrivateMemberRuleId, UnusedPublicMemberRuleId,
@@ -200,7 +230,7 @@ begin
     FLines.Add('');
     FLines.Add('## ' + ACurrent);
   end;
-  FLines.Add(Format('- Zeile %d, Spalte %d: %s (%s, Konfidenz %s)', [AFinding.Range.StartPos.Line + 1,
+  FLines.Add(cTexts[TDeadCodeToolsText.LineColumnConfidence].Fmt([AFinding.Range.StartPos.Line + 1,
     AFinding.Range.StartPos.Character + 1, AFinding.Message, AFinding.RuleId, ConfidenceText(AFinding.Confidence)]));
   mItem := TJSONObject.Create;
   (FRoot.GetValue('findings') as TJSONArray).AddElement(mItem);
@@ -220,7 +250,7 @@ var
 begin
   if (FProjectFiles = nil) or not FProjectFiles.ReadText(AFileName, mText) then
   begin
-    FLines.Add(Format('- %s: nicht lesbar', [RelativeTo(FScope.Root, AFileName)]));
+    FLines.Add(cTexts[TDeadCodeToolsText.NotReadable].Fmt([RelativeTo(FScope.Root, AFileName)]));
     Exit;
   end;
   Inc(FChecked);
@@ -240,19 +270,18 @@ procedure TUnusedCollector.AddHeader;
 begin
   if FCount > TMcpDeadCodeTools.MaxFindings then
   begin
-    FLines.Add(Format('… %d weitere Befunde', [FCount - TMcpDeadCodeTools.MaxFindings]));
+    FLines.Add(cTexts[TDeadCodeToolsText.MoreFindings].Fmt([FCount - TMcpDeadCodeTools.MaxFindings]));
   end;
   if not FComplete then
   begin
-    FLines.Insert(0, Format('Hinweis: %s; unused-public-member und unused-unit schweigen, bis alle Projekte ' +
-      'geladen und indiziert sind.', [FReason]));
+    FLines.Insert(0, cTexts[TDeadCodeToolsText.NoteUnusedPublicMemberAnd].Fmt([FReason]));
   end;
   if FRules = nil then
   begin
-    FLines.Insert(0, 'Die Regeln für ungenutzten Code sind nicht verfügbar.');
+    FLines.Insert(0, cTexts[TDeadCodeToolsText.TheRulesForUnusedCode].Text);
   end;
-  FLines.Insert(0, Format('%d Befunde in %d Dateien (%s).', [FCount, FChecked, string.Join(', ', DeadCodeIds)]));
-  FLines.Insert(0, '# Ungenutzter Code');
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', DeadCodeIds)]));
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.UnusedCode].Text);
 end;
 
 function TUnusedCollector.Report(AJson: Boolean): string;
@@ -349,7 +378,7 @@ begin
   FJson.AddPair('unit', FCurrent.UnitName);
   FJson.AddPair('file', RelativeTo(ARoot, FCurrent.FileName));
   Add('# ' + FCurrent.UnitName);
-  Add('Datei: ' + RelativeTo(ARoot, FCurrent.FileName));
+  Add(cTexts[TDeadCodeToolsText.FileText].Text + RelativeTo(ARoot, FCurrent.FileName));
 end;
 
 destructor TDependencyReport.Destroy;
@@ -411,14 +440,15 @@ begin
   mList := TJSONArray.Create;
   FJson.AddPair('uses', mList);
   Add('');
-  Add(Format('## Verwendet (%d)', [Length(FCurrent.Outgoing)]));
+  Add(cTexts[TDeadCodeToolsText.UsesText].Fmt([Length(FCurrent.Outgoing)]));
   for mEdge in FCurrent.Outgoing do
   begin
     AddUnit(mList, FGraph.Node(mEdge.Target).UnitName, SectionName(mEdge.Section));
   end;
   if ATransitive then
   begin
-    AddNames('Alle Abhängigkeiten, transitiv', 'transitiveUses', FGraph.Dependencies(FNode, AllUsesSections));
+    AddNames(cTexts[TDeadCodeToolsText.AllDependenciesTransitive].Text, 'transitiveUses', FGraph.Dependencies(FNode,
+      AllUsesSections));
   end;
 end;
 
@@ -433,7 +463,7 @@ begin
   mList := TJSONArray.Create;
   FJson.AddPair('usedBy', mList);
   Add('');
-  Add(Format('## Verwendet von (%d)', [Length(FCurrent.Incoming)]));
+  Add(cTexts[TDeadCodeToolsText.UsedBy].Fmt([Length(FCurrent.Incoming)]));
   // Eingehende Kanten stehen in Ladereihenfolge; nach Unit-Namen sortiert ist die Ausgabe stabil.
   mUsers := TStringList.Create;
   try
@@ -453,7 +483,8 @@ begin
   end;
   if ATransitive then
   begin
-    AddNames('Alle Nutzer, transitiv', 'transitiveUsedBy', FGraph.Dependents(FNode, AllUsesSections));
+    AddNames(cTexts[TDeadCodeToolsText.AllUsersTransitive].Text, 'transitiveUsedBy', FGraph.Dependents(FNode,
+      AllUsesSections));
   end;
 end;
 
@@ -484,11 +515,11 @@ var
 begin
   if AInterfaceOnly then
   begin
-    Add('- ' + FGraph.Describe(APath) + ' (nur interface-uses, Compilerfehler wie F2047)');
+    Add(cTexts[TDeadCodeToolsText.InterfaceUsesOnlyCompilerError].Fmt([FGraph.Describe(APath)]));
   end
   else
   begin
-    Add('- ' + FGraph.Describe(APath) + ' (über implementation-uses)');
+    Add(cTexts[TDeadCodeToolsText.ViaImplementationUses].Fmt([FGraph.Describe(APath)]));
   end;
   mItem := TJSONObject.Create;
   AList.AddElement(mItem);
@@ -514,7 +545,7 @@ begin
   mList := TJSONArray.Create;
   FJson.AddPair('cycles', mList);
   Add('');
-  Add('## Zyklen');
+  Add(cTexts[TDeadCodeToolsText.Cycles].Text);
   mSeen := TDictionary<Integer, Boolean>.Create;
   try
     for mEdge in FCurrent.Outgoing do
@@ -535,7 +566,7 @@ begin
   end;
   if mList.Count = 0 then
   begin
-    Add('- keine');
+    Add(cTexts[TDeadCodeToolsText.None].Text);
   end;
 end;
 
@@ -564,8 +595,7 @@ begin
   end;
   if (mNode < 0) or not AGraph.Node(mNode).Active then
   begin
-    Exit(Format('Unit %s steht nicht im Uses-Graphen (nur Units der Projekte, ohne RTL/VCL; Index noch nicht ' +
-      'vollständig?).', [AUnit]));
+    Exit(cTexts[TDeadCodeToolsText.UnitIsNotInThe].Fmt([AUnit]));
   end;
   mReport := TDependencyReport.Create(AGraph, mNode, ARoot);
   try
@@ -583,5 +613,8 @@ begin
     mReport.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.DeadCodeTools', cTexts);
 
 end.

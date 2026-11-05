@@ -36,6 +36,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Query.Contract,
+  Atlas.Common.Query.Output,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -116,7 +117,7 @@ begin
   begin
     if SameText(mRow.FileName, AContext.FileName) then
     begin
-      AReport.Add(mRow.Range, mResult.Message(FQuery.Message, mRow));
+      AReport.Add(mRow.Range, mResult.Message(TQueryOutput.MessageTemplate(FQuery.Message), mRow));
     end;
   end;
 end;

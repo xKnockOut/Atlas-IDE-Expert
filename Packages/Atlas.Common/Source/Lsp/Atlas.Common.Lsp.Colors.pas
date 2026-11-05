@@ -41,7 +41,22 @@ implementation
 uses
   System.Generics.Collections,
   System.Math,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TColorsText = (FieldTextDocumentUriMissingIn, FieldsTextDocumentUriColorAnd);
+
+const
+  cTexts: array[TColorsText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '),
+    (De: 'Felder "textDocument.uri", "color" und "range" fehlen in ';
+     En: 'Fields "textDocument.uri", "color" and "range" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 constructor TLspColors.Create(const AStore: IDocumentStore);
 begin
@@ -98,7 +113,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + ColorMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TColorsText.FieldTextDocumentUriMissingIn].Text + ColorMethod);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -134,7 +150,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and TryReadColor(ColorValue, Color)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "color" und "range" fehlen in ' + PresentationMethod);
+      cTexts[TColorsText.FieldsTextDocumentUriColorAnd].Text + PresentationMethod);
   end;
   Range := TLspPositions.ReadRange(RangeValue);
   // Ohne Fundstelle an dieser Stelle gilt Hex als Ausgangsformat.
@@ -162,5 +178,8 @@ begin
     TJSONArray(Result).AddElement(Item);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Colors', cTexts);
 
 end.

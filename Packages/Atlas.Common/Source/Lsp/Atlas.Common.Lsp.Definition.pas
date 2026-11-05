@@ -107,7 +107,20 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDefinitionText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TDefinitionText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -391,7 +404,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen');
+      cTexts[TDefinitionText.FieldsTextDocumentUriAndPosition].Text);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -461,5 +474,8 @@ function TLspDefinition.HandleTypeDefinition(const AParams: TJSONValue;
 begin
   Result := Handle(AParams, ACancellation, TDefinitionRequestKind.TypeDefinition);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Definition', cTexts);
 
 end.

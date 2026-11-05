@@ -125,7 +125,20 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Hotspots.History;
+  Atlas.Common.Hotspots.History,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THotspotsServiceText = (NoVersionControl);
+
+const
+  cTexts: array[THotspotsServiceText] of TAtlasText = (
+    (De: 'Keine Versionsverwaltung'; En: 'No version control'));
+
+{$SCOPEDENUMS OFF}
 
 function HotspotComplexity(const ARoutines: TArray<TRoutineMetrics>): Integer;
 var
@@ -725,7 +738,7 @@ var
 begin
   if AVcs = nil then
   begin
-    raise EHotspots.Create('Keine Versionsverwaltung');
+    raise EHotspots.Create(cTexts[THotspotsServiceText.NoVersionControl].Text);
   end;
   System.TMonitor.Enter(FLock);
   try
@@ -774,5 +787,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Hotspots.Service', cTexts);
 
 end.

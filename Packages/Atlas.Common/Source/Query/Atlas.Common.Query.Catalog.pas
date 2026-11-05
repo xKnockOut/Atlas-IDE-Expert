@@ -68,7 +68,86 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryCatalogText = (MethodsAndConstructorsOfTypes, FormsFramesAndDataModules, NameOfTheElement,
+    UnitOfTheDeclaration, FileRelativeToTheProject, LineOfTheDeclarationFrom, TypeThatDeclaresTheMember,
+    ClassesOfTheUnit, MethodsAndConstructorsUnitIncluding, FieldsOfTheType, PropertiesOfTheType,
+    LinesUnitLengthDeclarationOf, CyclomaticComplexityMetricLikeGet, CognitiveComplexity, CallersAccordingToTheCall,
+    Method1WithOverrideOtherwise, VirtualDynamicAbstractOrOverride, EntriesInAllUsesClauses, UnitsInScopeThatUse,
+    ComponentsInTheFormFile, InheritsAlsoOverSeveralLevels, ImplementsTheInterfaceAlsoVia, TheUnitOrTheUnit,
+    CallsTheRoutineOrMethod, CarriesTheAttributeWithOr, SetWhereConditionOrderBy, Predicates, ClassesAlsoObject,
+    RoutinesAtUnitLevel, FieldsOfTypes, PropertiesOfTypes, DeclaredTypeOrResultType, CalledRoutines, DirectAncestor,
+    ExamplesClassesWhereInheritsTForm, NestingDepth, NumberOfParameters, LocalVariables, ExitsExitRaise, Number,
+    Boolean);
+
+const
+  cTexts: array[TQueryCatalogText] of TAtlasText = (
+    (De: 'Methoden und Konstruktoren von Typen'; En: 'Methods and constructors of types'),
+    (De: 'Formulare, Frames und Datenmodule mit eigener Formulardatei';
+     En: 'Forms, frames and data modules with their own form file'),
+    (De: 'Name des Elements'; En: 'Name of the element'),
+    (De: 'Unit der Deklaration'; En: 'Unit of the declaration'),
+    (De: 'Datei relativ zum Projekt mit "/"'; En: 'File relative to the project with "/"'),
+    (De: 'Zeile der Deklaration (ab 1)'; En: 'Line of the declaration (from 1)'),
+    (De: 'Typ, der das Mitglied deklariert'; En: 'Type that declares the member'),
+    (De: 'Klassen der Unit'; En: 'Classes of the unit'),
+    (De: 'Methoden und Konstruktoren (Unit: samt Routinen)';
+     En: 'Methods and constructors (unit: including routines)'),
+    (De: 'Felder des Typs'; En: 'Fields of the type'),
+    (De: 'Properties des Typs'; En: 'Properties of the type'),
+    (De: 'Zeilen: Unit-Länge, Deklaration des Typs bzw. Codezeilen der Routine (Metrik)';
+     En: 'Lines: unit length, declaration of the type or code lines of the routine (metric)'),
+    (De: 'Zyklomatische Komplexität (Metrik wie get_metrics)'; En: 'Cyclomatic complexity (metric like get_metrics)'),
+    (De: 'Kognitive Komplexität'; En: 'Cognitive complexity'),
+    (De: 'Aufrufer laut Aufrufhierarchie, erschlossene mitgezählt';
+     En: 'Callers according to the call hierarchy, inferred ones included'),
+    (De: 'Methode: 1 mit override, sonst 0; Typ: Methoden mit override';
+     En: 'Method: 1 with override, otherwise 0; type: methods with override'),
+    (De: 'virtual, dynamic, abstract oder override'; En: 'virtual, dynamic, abstract or override'),
+    (De: 'Einträge in allen uses-Klauseln (wie metric-uses-count)';
+     En: 'Entries in all uses clauses (like metric-uses-count)'),
+    (De: 'Units im Umfang, die die Unit direkt verwenden (Uses-Graph)';
+     En: 'Units in scope that use the unit directly (uses graph)'),
+    (De: 'Komponenten in der Formulardatei ohne das Formular selbst';
+     En: 'Components in the form file without the form itself'),
+    (De: 'erbt (auch über mehrere Stufen) vom Typ; bei Mitgliedern der deklarierende Typ';
+     En: 'inherits (also over several levels) from the type; for members the declaring type'),
+    (De: 'setzt das Interface um, auch über Vorfahren und abgeleitete Interfaces';
+     En: 'implements the interface, also via ancestors and derived interfaces'),
+    (De: 'die Unit (bzw. die Unit der Deklaration) nennt die Unit im uses';
+     En: 'the unit (or the unit of the declaration) names the unit in uses'),
+    (De: 'ruft die Routine bzw. Methode auf (Name oder Typ.Name)';
+     En: 'calls the routine or method (name or Type.Name)'),
+    (De: 'trägt das Attribut, mit oder ohne Endung Attribute';
+     En: 'carries the attribute, with or without the ending Attribute'),
+    (De: '`<Menge> [where <Bedingung>] [order by <Feld> [asc|desc]] [limit n]`' + sLineBreak + sLineBreak +
+      'Vergleiche `=`, `<>`, `<`, `>`, `<=`, `>=`, `like` mit `*` und `?`; `and`, `or`, `not`, Klammern. Texte in ' +
+      'einfachen oder doppelten Anführungszeichen, Namen auch ohne.' + sLineBreak + sLineBreak + 'Mengen:';
+     En: '`<set> [where <condition>] [order by <field> [asc|desc]] [limit n]`' + sLineBreak + sLineBreak +
+      'Comparisons `=`, `<>`, `<`, `>`, `<=`, `>=`, `like` with `*` and `?`; `and`, `or`, `not`, parentheses. Texts ' +
+      'in single or double quotation marks, names also without.' + sLineBreak + sLineBreak + 'Sets:'),
+    (De: 'Prädikate:'; En: 'Predicates:'),
+    (De: 'Klassen (auch object)'; En: 'Classes (also object)'),
+    (De: 'Routinen auf Unit-Ebene'; En: 'Routines at unit level'),
+    (De: 'Felder von Typen'; En: 'Fields of types'),
+    (De: 'Properties von Typen'; En: 'Properties of types'),
+    (De: 'Deklarierter Typ bzw. Ergebnistyp'; En: 'Declared type or result type'),
+    (De: 'Aufgerufene Routinen'; En: 'Called routines'),
+    (De: 'Direkter Vorfahr'; En: 'Direct ancestor'),
+    (De: 'Beispiele: `classes where inherits TForm and methods > 40 order by methods desc`, `methods where ' +
+      'complexity > 15 and callers = 0`, `units where usedBy = 0 and name like ''*.Tests''`.';
+     En: 'Examples: `classes where inherits TForm and methods > 40 order by methods desc`, `methods where complexity ' +
+      '> 15 and callers = 0`, `units where usedBy = 0 and name like ''*.Tests''`.'),
+    (De: 'Verschachtelungstiefe'; En: 'Nesting depth'),
+    (De: 'Parameteranzahl'; En: 'Number of parameters'),
+    (De: 'Lokale Variablen'; En: 'Local variables'),
+    (De: 'Ausstiege (Exit, raise)'; En: 'Exits (Exit, raise)'),
+    (De: 'Zahl'; En: 'number'),
+    (De: 'Wahrheitswert'; En: 'Boolean'));
 
 function Field(const AName: string; AType: TQueryFieldType; AEntities: TQueryEntities;
   const ADescription: string): TQueryFieldInfo;
@@ -111,21 +190,21 @@ begin
     TQueryEntity.Units:
       Result := 'Units';
     TQueryEntity.Classes:
-      Result := 'Klassen (auch object)';
+      Result := cTexts[TQueryCatalogText.ClassesAlsoObject].Text;
     TQueryEntity.Records:
       Result := 'Records';
     TQueryEntity.Interfaces:
       Result := 'Interfaces';
     TQueryEntity.Methods:
-      Result := 'Methoden und Konstruktoren von Typen';
+      Result := cTexts[TQueryCatalogText.MethodsAndConstructorsOfTypes].Text;
     TQueryEntity.Routines:
-      Result := 'Routinen auf Unit-Ebene';
+      Result := cTexts[TQueryCatalogText.RoutinesAtUnitLevel].Text;
     TQueryEntity.Fields:
-      Result := 'Felder von Typen';
+      Result := cTexts[TQueryCatalogText.FieldsOfTypes].Text;
     TQueryEntity.Properties:
-      Result := 'Properties von Typen';
+      Result := cTexts[TQueryCatalogText.PropertiesOfTypes].Text;
   else
-    Result := 'Formulare, Frames und Datenmodule mit eigener Formulardatei';
+    Result := cTexts[TQueryCatalogText.FormsFramesAndDataModules].Text;
   end;
 end;
 
@@ -159,45 +238,58 @@ end;
 class function TQueryCatalog.Fields: TArray<TQueryFieldInfo>;
 begin
   Result := nil;
-  Result := Result + [Field('name', TQueryFieldType.Text, AllEntities, 'Name des Elements')];
-  Result := Result + [Field('unit', TQueryFieldType.Text, AllEntities, 'Unit der Deklaration')];
-  Result := Result + [Field('path', TQueryFieldType.Text, AllEntities, 'Datei relativ zum Projekt mit "/"')];
-  Result := Result + [Field('line', TQueryFieldType.Number, AllEntities, 'Zeile der Deklaration (ab 1)')];
-  Result := Result + [Field('class', TQueryFieldType.Text, MemberEntities, 'Typ, der das Mitglied deklariert')];
+  Result := Result + [Field('name', TQueryFieldType.Text, AllEntities,
+    cTexts[TQueryCatalogText.NameOfTheElement].Text)];
+  Result := Result + [Field('unit', TQueryFieldType.Text, AllEntities,
+    cTexts[TQueryCatalogText.UnitOfTheDeclaration].Text)];
+  Result := Result + [Field('path', TQueryFieldType.Text, AllEntities,
+    cTexts[TQueryCatalogText.FileRelativeToTheProject].Text)];
+  Result := Result + [Field('line', TQueryFieldType.Number, AllEntities,
+    cTexts[TQueryCatalogText.LineOfTheDeclarationFrom].Text)];
+  Result := Result + [Field('class', TQueryFieldType.Text, MemberEntities,
+    cTexts[TQueryCatalogText.TypeThatDeclaresTheMember].Text)];
   Result := Result + [Field('visibility', TQueryFieldType.Text, AllEntities - [TQueryEntity.Units],
     'Sichtbarkeit: public, published, protected, strict protected, private, strict private')];
   Result := Result + [Field('type', TQueryFieldType.Text, [TQueryEntity.Fields, TQueryEntity.Properties,
-    TQueryEntity.Methods, TQueryEntity.Routines], 'Deklarierter Typ bzw. Ergebnistyp')];
-  Result := Result + [Field('classes', TQueryFieldType.Number, [TQueryEntity.Units], 'Klassen der Unit')];
+    TQueryEntity.Methods, TQueryEntity.Routines], cTexts[TQueryCatalogText.DeclaredTypeOrResultType].Text)];
+  Result := Result + [Field('classes', TQueryFieldType.Number, [TQueryEntity.Units],
+    cTexts[TQueryCatalogText.ClassesOfTheUnit].Text)];
   Result := Result + [Field('methods', TQueryFieldType.Number, [TQueryEntity.Units] + TypeEntities,
-    'Methoden und Konstruktoren (Unit: samt Routinen)')];
+    cTexts[TQueryCatalogText.MethodsAndConstructorsUnitIncluding].Text)];
   Result := Result + [Field('fields', TQueryFieldType.Number, [TQueryEntity.Classes, TQueryEntity.Records,
-    TQueryEntity.Forms], 'Felder des Typs')];
-  Result := Result + [Field('properties', TQueryFieldType.Number, TypeEntities, 'Properties des Typs')];
+    TQueryEntity.Forms], cTexts[TQueryCatalogText.FieldsOfTheType].Text)];
+  Result := Result + [Field('properties', TQueryFieldType.Number, TypeEntities,
+    cTexts[TQueryCatalogText.PropertiesOfTheType].Text)];
   Result := Result + [Field('lines', TQueryFieldType.Number, AllEntities - [TQueryEntity.Fields,
-    TQueryEntity.Properties], 'Zeilen: Unit-Länge, Deklaration des Typs bzw. Codezeilen der Routine (Metrik)')];
+    TQueryEntity.Properties], cTexts[TQueryCatalogText.LinesUnitLengthDeclarationOf].Text)];
   Result := Result + [Field('complexity', TQueryFieldType.Number, RoutineEntities,
-    'Zyklomatische Komplexität (Metrik wie get_metrics)')];
-  Result := Result + [Field('cognitive', TQueryFieldType.Number, RoutineEntities, 'Kognitive Komplexität')];
-  Result := Result + [Field('nesting', TQueryFieldType.Number, RoutineEntities, 'Verschachtelungstiefe')];
-  Result := Result + [Field('params', TQueryFieldType.Number, RoutineEntities, 'Parameteranzahl')];
-  Result := Result + [Field('locals', TQueryFieldType.Number, RoutineEntities, 'Lokale Variablen')];
-  Result := Result + [Field('exits', TQueryFieldType.Number, RoutineEntities, 'Ausstiege (Exit, raise)')];
+    cTexts[TQueryCatalogText.CyclomaticComplexityMetricLikeGet].Text)];
+  Result := Result + [Field('cognitive', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.CognitiveComplexity].Text)];
+  Result := Result + [Field('nesting', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.NestingDepth].Text)];
+  Result := Result + [Field('params', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.NumberOfParameters].Text)];
+  Result := Result + [Field('locals', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.LocalVariables].Text)];
+  Result := Result + [Field('exits', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.ExitsExitRaise].Text)];
   Result := Result + [Field('callers', TQueryFieldType.Number, RoutineEntities,
-    'Aufrufer laut Aufrufhierarchie, erschlossene mitgezählt')];
-  Result := Result + [Field('callees', TQueryFieldType.Number, RoutineEntities, 'Aufgerufene Routinen')];
+    cTexts[TQueryCatalogText.CallersAccordingToTheCall].Text)];
+  Result := Result + [Field('callees', TQueryFieldType.Number, RoutineEntities,
+    cTexts[TQueryCatalogText.CalledRoutines].Text)];
   Result := Result + [Field('overrides', TQueryFieldType.Number, [TQueryEntity.Methods, TQueryEntity.Classes,
-    TQueryEntity.Records, TQueryEntity.Forms], 'Methode: 1 mit override, sonst 0; Typ: Methoden mit override')];
+    TQueryEntity.Records, TQueryEntity.Forms], cTexts[TQueryCatalogText.Method1WithOverrideOtherwise].Text)];
   Result := Result + [Field('virtual', TQueryFieldType.Flag, [TQueryEntity.Methods],
-    'virtual, dynamic, abstract oder override')];
+    cTexts[TQueryCatalogText.VirtualDynamicAbstractOrOverride].Text)];
   Result := Result + [Field('uses', TQueryFieldType.Number, [TQueryEntity.Units],
-    'Einträge in allen uses-Klauseln (wie metric-uses-count)')];
+    cTexts[TQueryCatalogText.EntriesInAllUsesClauses].Text)];
   Result := Result + [Field('usedBy', TQueryFieldType.Number, [TQueryEntity.Units],
-    'Units im Umfang, die die Unit direkt verwenden (Uses-Graph)')];
+    cTexts[TQueryCatalogText.UnitsInScopeThatUse].Text)];
   Result := Result + [Field('ancestor', TQueryFieldType.Text, [TQueryEntity.Classes, TQueryEntity.Interfaces,
-    TQueryEntity.Forms], 'Direkter Vorfahr')];
+    TQueryEntity.Forms], cTexts[TQueryCatalogText.DirectAncestor].Text)];
   Result := Result + [Field('components', TQueryFieldType.Number, [TQueryEntity.Forms],
-    'Komponenten in der Formulardatei ohne das Formular selbst')];
+    cTexts[TQueryCatalogText.ComponentsInTheFormFile].Text)];
 end;
 
 class function TQueryCatalog.FieldsOf(AEntity: TQueryEntity): TArray<TQueryFieldInfo>;
@@ -287,15 +379,15 @@ class function TQueryCatalog.PredicateDescription(AKind: TQueryPredicateKind): s
 begin
   case AKind of
     TQueryPredicateKind.Inherits:
-      Result := 'erbt (auch über mehrere Stufen) vom Typ; bei Mitgliedern der deklarierende Typ';
+      Result := cTexts[TQueryCatalogText.InheritsAlsoOverSeveralLevels].Text;
     TQueryPredicateKind.Implements:
-      Result := 'setzt das Interface um, auch über Vorfahren und abgeleitete Interfaces';
+      Result := cTexts[TQueryCatalogText.ImplementsTheInterfaceAlsoVia].Text;
     TQueryPredicateKind.Uses_:
-      Result := 'die Unit (bzw. die Unit der Deklaration) nennt die Unit im uses';
+      Result := cTexts[TQueryCatalogText.TheUnitOrTheUnit].Text;
     TQueryPredicateKind.Calls:
-      Result := 'ruft die Routine bzw. Methode auf (Name oder Typ.Name)';
+      Result := cTexts[TQueryCatalogText.CallsTheRoutineOrMethod].Text;
   else
-    Result := 'trägt das Attribut, mit oder ohne Endung Attribute';
+    Result := cTexts[TQueryCatalogText.CarriesTheAttributeWithOr].Text;
   end;
 end;
 
@@ -309,11 +401,11 @@ class function TQueryCatalog.FieldTypeName(AType: TQueryFieldType): string;
 begin
   case AType of
     TQueryFieldType.Number:
-      Result := 'Zahl';
+      Result := cTexts[TQueryCatalogText.Number].Text;
     TQueryFieldType.Text:
       Result := 'Text';
   else
-    Result := 'Wahrheitswert';
+    Result := cTexts[TQueryCatalogText.Boolean].Text;
   end;
 end;
 
@@ -324,15 +416,13 @@ var
   mField: TQueryFieldInfo;
   mNames: string;
 begin
-  Result := '`<Menge> [where <Bedingung>] [order by <Feld> [asc|desc]] [limit n]`' + sLineBreak + sLineBreak +
-    'Vergleiche `=`, `<>`, `<`, `>`, `<=`, `>=`, `like` mit `*` und `?`; `and`, `or`, `not`, Klammern. Texte in ' +
-    'einfachen oder doppelten Anführungszeichen, Namen auch ohne.' + sLineBreak + sLineBreak + 'Mengen:' + sLineBreak;
+  Result := cTexts[TQueryCatalogText.SetWhereConditionOrderBy].Text + sLineBreak;
   for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
   begin
     Result := Result + Format('- `%s`: %s; Felder %s', [EntityName(mEntity), EntityCaption(mEntity),
       string.Join(', ', FieldNames(mEntity))]) + sLineBreak;
   end;
-  Result := Result + sLineBreak + 'Prädikate:' + sLineBreak;
+  Result := Result + sLineBreak + cTexts[TQueryCatalogText.Predicates].Text + sLineBreak;
   for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
   begin
     Result := Result + Format('- `%s <Name>`: %s', [PredicateName(mKind), PredicateDescription(mKind)]) + sLineBreak;
@@ -351,8 +441,10 @@ begin
     Result := Result + Format('- `%s` (%s; %s): %s', [mField.Name, FieldTypeName(mField.FieldType), mNames,
       mField.Description]) + sLineBreak;
   end;
-  Result := Result + sLineBreak + 'Beispiele: `classes where inherits TForm and methods > 40 order by methods desc`, ' +
-    '`methods where complexity > 15 and callers = 0`, `units where usedBy = 0 and name like ''*.Tests''`.';
+  Result := Result + sLineBreak + cTexts[TQueryCatalogText.ExamplesClassesWhereInheritsTForm].Text;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Catalog', cTexts);
 
 end.

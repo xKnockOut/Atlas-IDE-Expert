@@ -111,12 +111,13 @@ type
 
   TMethodWithoutSelf = class
   public const
-    ClassMethodTitle = 'In class-Methode umwandeln';
-    ClassMethodCallsTitle = 'In class-Methode umwandeln, Aufrufe über %s';
-    RoutineTitle = 'In freie Routine umwandeln';
-    HelperTitle = 'In Record-Helper für %s verschieben';
+    /// <summary>Text der Marke für Clients; das Plugin beschriftet sie selbst in der Sprache der IDE.</summary>
     MarkerText = 'Self unused';
   public
+    class function ClassMethodTitle: string; static;
+    class function ClassMethodCallsTitle: string; static;
+    class function RoutineTitle: string; static;
+    class function HelperTitle: string; static;
     /// <summary>Methode ohne Self, deren Kopf (Implementierung oder Deklaration) APosition enthält.</summary>
     class function Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       const ALookup: TMethodLookup; out ATarget: TMethodTarget; out AReason: string): Boolean; static;
@@ -155,7 +156,114 @@ uses
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingMethodWithoutSelfText = (NoMethod, MethodOfAGenericOr, NoTree, NoMethodWithABody,
+    ConstructorDestructorOrOperator, AlreadyAClassMethod, UnsupportedForm, ClassNotInTheFile, Overloaded,
+    DeclarationMissing, UnsupportedParameters, NameNotFoundInThe, BelongsToTheInterface, AccessorOfTheProperty,
+    VirtualOverrideOrMessage, IsAnEventInThe, NamesCannotBeResolved, IsUnknown, IsUsedAsAMethod, TheHeaderNamesAType,
+    AlreadyExistsInTheUnit, IsWritten, InAnAnonymousMethod, FirstParameterIs, FirstParameterWithoutTypeOr,
+    FirstParameterHasNoSimple, IsNoLongerEvaluated, AccessorOfAProperty, UseNotRecognized, StaysWithoutStaticTheBody,
+    OtherUnitsCallItBut, FirstUseNotInA, TheHelperIsInThe, IsAlreadyVisibleFor, EndOfTheHelperNot, EndOfTheHelperIs,
+    AfterTheChangeNoLonger, BecomesAFreeRoutine, MovesToRecordHelperFor, BecomesAClassMethod, ChangedCalls,
+    MethodWithoutBody, MethodOfAnInterface, UsedAsAMethodPointer, InheritedCall, CallWithoutArguments, NestedCalls,
+    Line, Line2, UsesInherited, UsesWith, UsesSelf, UsesText, UsesStrict, ConvertToClassMethod,
+    ConvertToClassMethodCalls, ConvertToStandaloneRoutine, MoveToRecordHelperFor);
+
+const
+  cTexts: array[TEditingMethodWithoutSelfText] of TAtlasText = (
+    (De: 'keine Methode'; En: 'no method'),
+    (De: 'Methode eines generischen oder verschachtelten Typs'; En: 'method of a generic or nested type'),
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: 'keine Methode mit Rumpf in dieser Unit'; En: 'no method with a body in this unit'),
+    (De: 'Konstruktor, Destruktor oder Operator'; En: 'constructor, destructor or operator'),
+    (De: 'schon eine class-Methode'; En: 'already a class method'),
+    (De: 'nicht unterstützte Form'; En: 'unsupported form'),
+    (De: 'Klasse %s nicht in der Datei'; En: 'Class %s not in the file'),
+    (De: 'überladen'; En: 'overloaded'),
+    (De: 'Deklaration fehlt'; En: 'declaration missing'),
+    (De: 'nicht unterstützte Parameter'; En: 'unsupported parameters'),
+    (De: 'Name im Kopf nicht gefunden'; En: 'name not found in the header'),
+    (De: 'gehört zum Interface '; En: 'belongs to the interface '),
+    (De: 'Zugriffsmethode der Property '; En: 'accessor of the property '),
+    (De: 'virtuell, override oder Botschaft'; En: 'virtual, override or message'),
+    (De: 'steht als Ereignis in der Formulardatei'; En: 'is an event in the form file'),
+    (De: 'Namen nicht auflösbar'; En: 'names cannot be resolved'),
+    (De: '%s ist unbekannt (%s)'; En: '%s is unknown (%s)'),
+    (De: 'wird als Methodenzeiger benutzt (%s)'; En: 'is used as a method pointer (%s)'),
+    (De: 'der Kopf nennt einen Typ der Klasse'; En: 'the header names a type of the class'),
+    (De: ' gibt es schon in der Unit'; En: ' already exists in the unit'),
+    (De: ' wird geschrieben'; En: ' is written'),
+    (De: ' in einer anonymen Methode'; En: ' in an anonymous method'),
+    (De: 'erster Parameter ist '; En: 'first parameter is '),
+    (De: 'erster Parameter ohne Typ oder mit Vorgabewert'; En: 'first parameter without type or with default value'),
+    (De: 'erster Parameter hat keinen einfachen Typ'; En: 'first parameter has no simple type'),
+    (De: '%s: %s wird nicht mehr ausgewertet.'; En: '%s: %s is no longer evaluated.'),
+    (De: 'Zugriffsmethode einer Property'; En: 'accessor of a property'),
+    (De: 'Verwendung nicht erkannt'; En: 'use not recognized'),
+    (De: '%s bleibt ohne static: Der Rumpf ruft class-Methoden ohne static auf.';
+     En: '%s stays without static: the body calls class methods without static.'),
+    (De: 'andere Units rufen auf, die Klasse steht aber im implementation-Teil';
+     En: 'other units call it, but the class is in the implementation part'),
+    (De: 'erste Verwendung nicht in einer Routine'; En: 'first use not in a routine'),
+    (De: 'der Helper %s steht im implementation-Teil, andere Units rufen aber auf';
+     En: 'the helper %s is in the implementation part, but other units call it'),
+    (De: 'Für %s ist schon %s sichtbar. Nur ein Helper je Typ wirkt: Wo %s gilt, sind die Methoden von %s nicht mehr ' +
+      'erreichbar.';
+     En: '%1:s is already visible for %0:s. Only one helper per type takes effect: where %2:s applies, the methods ' +
+      'of %3:s are no longer reachable.'),
+    (De: 'Ende des Helpers nicht gefunden'; En: 'End of the helper not found'),
+    (De: 'end des Helpers steht nicht allein in der Zeile'; En: 'end of the helper is not alone on its line'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)';
+     En: 'After the change %s no longer parses without errors (line %d: %s)'),
+    (De: '%s.%s wird freie Routine'; En: '%s.%s becomes a free routine'),
+    (De: '%s.%s wandert nach %s (record helper for %s)'; En: '%s.%s moves to %s (record helper for %s)'),
+    (De: '%s.%s wird class-Methode'; En: '%s.%s becomes a class method'),
+    (De: ', %d geänderte Aufrufe.'; En: ', %d changed calls.'),
+    (De: 'Methode ohne Rumpf'; En: 'method without body'),
+    (De: 'Methode eines Interfaces (%s)'; En: 'method of an interface (%s)'),
+    (De: 'als Methodenzeiger benutzt'; En: 'used as a method pointer'),
+    (De: 'inherited-Aufruf'; En: 'inherited call'),
+    (De: 'Aufruf ohne Argumente'; En: 'call without arguments'),
+    (De: ': verschachtelte Aufrufe'; En: ': nested calls'),
+    (De: 'Zeile %d'; En: 'Line %d'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'),
+    (De: 'benutzt inherited'; En: 'uses inherited'),
+    (De: 'benutzt with'; En: 'uses with'),
+    (De: 'benutzt Self (%s)'; En: 'uses Self (%s)'),
+    (De: 'benutzt %s (%s)'; En: 'uses %s (%s)'),
+    (De: 'benutzt %s (strict)'; En: 'uses %s (strict)'),
+    (De: 'In class-Methode umwandeln'; En: 'Convert to class method'),
+    (De: 'In class-Methode umwandeln, Aufrufe über %s'; En: 'Convert to class method, calls via %s'),
+    (De: 'In freie Routine umwandeln'; En: 'Convert to standalone routine'),
+    (De: 'In Record-Helper für %s verschieben'; En: 'Move to record helper for %s'));
+
+{$SCOPEDENUMS OFF}
+
+class function TMethodWithoutSelf.ClassMethodTitle: string;
+begin
+  Result := cTexts[TEditingMethodWithoutSelfText.ConvertToClassMethod].Text;
+end;
+
+class function TMethodWithoutSelf.ClassMethodCallsTitle: string;
+begin
+  Result := cTexts[TEditingMethodWithoutSelfText.ConvertToClassMethodCalls].Text;
+end;
+
+class function TMethodWithoutSelf.RoutineTitle: string;
+begin
+  Result := cTexts[TEditingMethodWithoutSelfText.ConvertToStandaloneRoutine].Text;
+end;
+
+class function TMethodWithoutSelf.HelperTitle: string;
+begin
+  Result := cTexts[TEditingMethodWithoutSelfText.MoveToRecordHelperFor].Text;
+end;
 
 const
   SimpleTypes: array[0..27] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char',
@@ -191,11 +299,11 @@ function Where(const AFileName: string; ALine: Integer): string;
 begin
   if AFileName = '' then
   begin
-    Result := Format('Zeile %d', [ALine + 1]);
+    Result := cTexts[TEditingMethodWithoutSelfText.Line].Fmt([ALine + 1]);
   end
   else
   begin
-    Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), ALine + 1]);
+    Result := cTexts[TEditingMethodWithoutSelfText.Line2].Fmt([ExtractFileName(AFileName), ALine + 1]);
   end;
 end;
 
@@ -332,11 +440,11 @@ begin
   Result := '';
   if AClassName = '' then
   begin
-    Result := 'keine Methode';
+    Result := cTexts[TEditingMethodWithoutSelfText.NoMethod].Text;
   end
   else if (Pos('<', AClassName) > 0) or (Pos('.', AClassName) > 0) then
   begin
-    Result := 'Methode eines generischen oder verschachtelten Typs';
+    Result := cTexts[TEditingMethodWithoutSelfText.MethodOfAGenericOr].Text;
   end;
 end;
 
@@ -345,19 +453,19 @@ function RoutineIssue(APlan: TMethodPlan; AOffset: Integer): string;
 begin
   if (APlan.Tree = nil) or (APlan.Tree.Root = nil) then
   begin
-    Exit('kein Baum');
+    Exit(cTexts[TEditingMethodWithoutSelfText.NoTree].Text);
   end;
   APlan.Routine := TRoutineParts.TopRoutineAt(APlan.Tree, AOffset, APlan.Declaration);
   if (APlan.Routine = nil) or (APlan.Routine.Parent = nil) or
     (APlan.Routine.Parent.Kind <> TSyntaxKind.ImplementationSection) then
   begin
-    Exit('keine Methode mit Rumpf in dieser Unit');
+    Exit(cTexts[TEditingMethodWithoutSelfText.NoMethodWithABody].Text);
   end;
   APlan.Header := TRoutineParts.HeaderOf(APlan.Routine);
   APlan.Body := TRoutineBody.BodyOf(APlan.Routine);
   if (APlan.Header = nil) or (APlan.Body = nil) then
   begin
-    Exit('Methode ohne Rumpf');
+    Exit(cTexts[TEditingMethodWithoutSelfText.MethodWithoutBody].Text);
   end;
   APlan.Target.Name := TRoutineBody.ShortNameOf(APlan.Routine.Name);
   APlan.Target.ClassName := TRoutineBody.QualifierOf(APlan.Routine.Name);
@@ -378,15 +486,15 @@ begin
   Result := '';
   if IsSpecialRoutine(APlan.Tokens, APlan.Header) then
   begin
-    Result := 'Konstruktor, Destruktor oder Operator';
+    Result := cTexts[TEditingMethodWithoutSelfText.ConstructorDestructorOrOperator].Text;
   end
   else if TRoutineParts.IsClassHeader(APlan.Tokens, APlan.Header) then
   begin
-    Result := 'schon eine class-Methode';
+    Result := cTexts[TEditingMethodWithoutSelfText.AlreadyAClassMethod].Text;
   end
   else if TRoutineParts.HasWord(APlan.Tokens, APlan.Header, ['forward', 'external', 'assembler']) then
   begin
-    Result := 'nicht unterstützte Form';
+    Result := cTexts[TEditingMethodWithoutSelfText.UnsupportedForm].Text;
   end;
 end;
 
@@ -418,17 +526,17 @@ begin
   APlan.TypeBody := TRoutineBody.TypeBody(APlan.Tree.Root, APlan.Target.ClassName);
   if (APlan.TypeBody = nil) or not (APlan.TypeBody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
   begin
-    Exit('Klasse ' + APlan.Target.ClassName + ' nicht in der Datei');
+    Exit(cTexts[TEditingMethodWithoutSelfText.ClassNotInTheFile].Fmt([APlan.Target.ClassName]));
   end;
   APlan.Target.IsRecord := APlan.TypeBody.Kind = TSyntaxKind.RecordType;
   mFound := DeclarationsOf(APlan.TypeBody, APlan.Target.Name, APlan.Declaration);
   if mFound > 1 then
   begin
-    Result := 'überladen';
+    Result := cTexts[TEditingMethodWithoutSelfText.Overloaded].Text;
   end
   else if APlan.Declaration = nil then
   begin
-    Result := 'Deklaration fehlt';
+    Result := cTexts[TEditingMethodWithoutSelfText.DeclarationMissing].Text;
   end;
 end;
 
@@ -446,7 +554,7 @@ begin
   mParameters := APlan.Declaration.FindChild(TSyntaxKind.Parameters);
   if (APlan.Parameters = nil) and (mParameters <> nil) and (mParameters.ChildCount > 0) then
   begin
-    Result := 'nicht unterstützte Parameter';
+    Result := cTexts[TEditingMethodWithoutSelfText.UnsupportedParameters].Text;
   end;
 end;
 
@@ -457,7 +565,7 @@ begin
   Result := '';
   if not TRoutineParts.NameTokens(APlan.Tokens, APlan.Header, mFirst, mLast) then
   begin
-    Exit('Name im Kopf nicht gefunden');
+    Exit(cTexts[TEditingMethodWithoutSelfText.NameNotFoundInThe].Text);
   end;
   APlan.Target.NamePosition := APlan.Tokens[mLast].StartPos;
   APlan.Target.HeaderEnd := APlan.Header.EndPos;
@@ -533,17 +641,17 @@ begin
   if (AChild.Kind = TSyntaxKind.RoutineHeader) and AChild.IsMethodResolution and
     SameText(AChild.ResolutionTarget, APlan.Target.Name) then
   begin
-    Result := 'Methode eines Interfaces (' + AChild.Name + ')';
+    Result := cTexts[TEditingMethodWithoutSelfText.MethodOfAnInterface].Fmt([AChild.Name]);
   end
   // Vorfahrenliste: Interfaces, deren Mitglied die Methode ist.
   else if (AChild.Kind = TSyntaxKind.TypeReference) and Assigned(APlan.Lookup.InterfaceMember) and
     APlan.Lookup.InterfaceMember(AChild.Name, APlan.Target.Name, AChild.StartOffset) then
   begin
-    Result := 'gehört zum Interface ' + AChild.Name;
+    Result := cTexts[TEditingMethodWithoutSelfText.BelongsToTheInterface].Text + AChild.Name;
   end
   else if (AChild.Kind = TSyntaxKind.PropertyDecl) and IsAccessorOf(APlan.Tokens, AChild, APlan.Target.Name) then
   begin
-    Result := 'Zugriffsmethode der Property ' + AChild.Name;
+    Result := cTexts[TEditingMethodWithoutSelfText.AccessorOfTheProperty].Text + AChild.Name;
   end;
 end;
 
@@ -554,7 +662,7 @@ begin
   if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message',
     'reintroduce', 'final']) then
   begin
-    Exit('virtuell, override oder Botschaft');
+    Exit(cTexts[TEditingMethodWithoutSelfText.VirtualOverrideOrMessage].Text);
   end;
   for mIndex := 0 to TypeBody.ChildCount - 1 do
   begin
@@ -567,7 +675,7 @@ begin
   Result := '';
   if Assigned(Lookup.InForm) and Lookup.InForm(Target.Name) then
   begin
-    Result := 'steht als Ereignis in der Formulardatei';
+    Result := cTexts[TEditingMethodWithoutSelfText.IsAnEventInThe].Text;
   end;
 end;
 
@@ -596,16 +704,16 @@ begin
   Statics := nil;
   if not Assigned(Lookup.MemberLevel) then
   begin
-    Exit('Namen nicht auflösbar');
+    Exit(cTexts[TEditingMethodWithoutSelfText.NamesCannotBeResolved].Text);
   end;
   if HasKeyword(Tokens, Routine, 'inherited') then
   begin
-    Exit('benutzt inherited');
+    Exit(cTexts[TEditingMethodWithoutSelfText.UsesInherited].Text);
   end;
   Result := '';
   if TRoutineLocals.HasKind(Routine, TSyntaxKind.WithStatement) then
   begin
-    Exit('benutzt with');
+    Exit(cTexts[TEditingMethodWithoutSelfText.UsesWith].Text);
   end;
   mNodes := TList<TSyntaxNode>.Create;
   try
@@ -660,7 +768,7 @@ begin
   Result := '';
   if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, 'Self') then
   begin
-    Exit(Format('benutzt Self (%s)', [Where('', ANode.StartPos.Line)]));
+    Exit(cTexts[TEditingMethodWithoutSelfText.UsesSelf].Fmt([Where('', ANode.StartPos.Line)]));
   end;
   mInHead := TRoutineBody.Within(ANode, Declaration) or TRoutineBody.Within(ANode, Header);
   if IsNeutralName(Self, ANode, mInHead) then
@@ -670,9 +778,9 @@ begin
   mLevel := NodeLevel(Self, ANode, mVisible);
   case mLevel of
     TMemberLevel.Instance:
-      Result := Format('benutzt %s (%s)', [ANode.Name, Where('', ANode.StartPos.Line)]);
+      Result := cTexts[TEditingMethodWithoutSelfText.UsesText].Fmt([ANode.Name, Where('', ANode.StartPos.Line)]);
     TMemberLevel.Unknown:
-      Result := Format('%s ist unbekannt (%s)', [TMethodLookup.HeadName(ANode.Name),
+      Result := cTexts[TEditingMethodWithoutSelfText.IsUnknown].Fmt([TMethodLookup.HeadName(ANode.Name),
         Where('', ANode.StartPos.Line)]);
     TMemberLevel.ClassLevel, TMemberLevel.StaticLevel:
       NoteStatic(ANode, mLevel, mVisible, mInHead);
@@ -717,7 +825,7 @@ begin
         and APlan.IsPointer(TMethodWithoutSelf.UseAt(APlan.Tree, mNode.StartOffset, APlan.Target.Name, mCallee,
         mCall)) then
       begin
-        Exit(Format('wird als Methodenzeiger benutzt (%s)', [Where('', mNode.StartPos.Line)]));
+        Exit(cTexts[TEditingMethodWithoutSelfText.IsUsedAsAMethod].Fmt([Where('', mNode.StartPos.Line)]));
       end;
     end;
   finally
@@ -753,11 +861,11 @@ begin
   Result := '';
   if APlan.StrictName <> '' then
   begin
-    Result := 'benutzt ' + APlan.StrictName + ' (strict)';
+    Result := cTexts[TEditingMethodWithoutSelfText.UsesStrict].Fmt([APlan.StrictName]);
   end
   else if APlan.HeadUsesClassType then
   begin
-    Result := 'der Kopf nennt einen Typ der Klasse';
+    Result := cTexts[TEditingMethodWithoutSelfText.TheHeaderNamesAType].Text;
   end;
 end;
 
@@ -766,7 +874,7 @@ begin
   Target.RoutineReason := ClassBoundIssue(Self);
   if (Target.RoutineReason = '') and (IndexText(Target.Name, TRoutineParts.UnitNames(Tree.Root)) >= 0) then
   begin
-    Target.RoutineReason := Target.Name + ' gibt es schon in der Unit';
+    Target.RoutineReason := Target.Name + cTexts[TEditingMethodWithoutSelfText.AlreadyExistsInTheUnit].Text;
   end;
 end;
 
@@ -807,7 +915,7 @@ begin
     // const schreibt der Compiler ohnehin nicht; ein Wertparameter würde als Self den Wert des Aufrufers ändern.
     if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(Node, Lookup.Flow) <> TLocalAccess.Read) then
     begin
-      Exit(not Fail(Parameters[0].Name + ' wird geschrieben', AReason));
+      Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.IsWritten].Text, AReason));
     end;
     if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AddressOf) then
     begin
@@ -815,7 +923,7 @@ begin
     end;
     if TRoutineParts.InAnonymous(Node, Routine) then
     begin
-      Exit(not Fail(Parameters[0].Name + ' in einer anonymen Methode', AReason));
+      Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.InAnAnonymousMethod].Text, AReason));
     end;
   end;
 end;
@@ -830,11 +938,11 @@ begin
   end
   else if not MatchText(AParameters[0].Modifier, ['', 'const']) then
   begin
-    Result := 'erster Parameter ist ' + AParameters[0].Modifier;
+    Result := cTexts[TEditingMethodWithoutSelfText.FirstParameterIs].Text + AParameters[0].Modifier;
   end
   else if (AParameters[0].Rest = '') or (Pos('=', AParameters[0].Rest) > 0) then
   begin
-    Result := 'erster Parameter ohne Typ oder mit Vorgabewert';
+    Result := cTexts[TEditingMethodWithoutSelfText.FirstParameterWithoutTypeOr].Text;
   end;
 end;
 
@@ -853,7 +961,7 @@ begin
   ATypeName := Trim(Copy(APlan.Parameters[0].Rest, 3, MaxInt));
   if not TMethodWithoutSelf.IsSimpleType(ATypeName) then
   begin
-    Exit('erster Parameter hat keinen einfachen Typ');
+    Exit(cTexts[TEditingMethodWithoutSelfText.FirstParameterHasNoSimple].Text);
   end;
   APlan.FirstParameterUses(Result);
 end;
@@ -1029,7 +1137,7 @@ end;
 
 procedure TMethodBuild.WarnLost(AWork: TFileWork; ALine: Integer; AReceiver: TSyntaxNode);
 begin
-  Warn(Format('%s: %s wird nicht mehr ausgewertet.', [Where(AWork.FileName, ALine),
+  Warn(cTexts[TEditingMethodWithoutSelfText.IsNoLongerEvaluated].Fmt([Where(AWork.FileName, ALine),
     TRoutineBody.TextOf(AWork.Text, AReceiver)]));
 end;
 
@@ -1039,15 +1147,15 @@ begin
   Result := '';
   if AIsPointer then
   begin
-    Exit('als Methodenzeiger benutzt');
+    Exit(cTexts[TEditingMethodWithoutSelfText.UsedAsAMethodPointer].Text);
   end;
   case AUse of
     TMethodUse.Inherited_:
-      Result := 'inherited-Aufruf';
+      Result := cTexts[TEditingMethodWithoutSelfText.InheritedCall].Text;
     TMethodUse.Accessor:
-      Result := 'Zugriffsmethode einer Property';
+      Result := cTexts[TEditingMethodWithoutSelfText.AccessorOfAProperty].Text;
     TMethodUse.Unknown:
-      Result := 'Verwendung nicht erkannt';
+      Result := cTexts[TEditingMethodWithoutSelfText.UseNotRecognized].Text;
     TMethodUse.Call, TMethodUse.Value, TMethodUse.Pointer: ;
   end;
 end;
@@ -1098,7 +1206,7 @@ begin
   AReason := UseIssue(mUse, Plan.IsPointer(mUse));
   if (AReason = '') and (Conversion = TMethodConversion.Helper) and ((mCall = nil) or (mCall.ChildCount < 2)) then
   begin
-    AReason := 'Aufruf ohne Argumente';
+    AReason := cTexts[TEditingMethodWithoutSelfText.CallWithoutArguments].Text;
   end;
   if AReason <> '' then
   begin
@@ -1232,7 +1340,7 @@ begin
   if WithStatic and Plan.UsesClassLevel and not Plan.Target.IsRecord then
   begin
     WithStatic := False;
-    Warn(Format('%s bleibt ohne static: Der Rumpf ruft class-Methoden ohne static auf.', [Plan.Target.Name]));
+    Warn(cTexts[TEditingMethodWithoutSelfText.StaysWithoutStaticTheBody].Fmt([Plan.Target.Name]));
   end;
   Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.StartOffset, Plan.Declaration.StartOffset,
     'class '), TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.StartOffset, 'class ')];
@@ -1313,7 +1421,7 @@ begin
   Work := Works[0];
   if CalledOutside and not Plan.ClassInInterface then
   begin
-    Exit(Fail('andere Units rufen auf, die Klasse steht aber im implementation-Teil', AReason));
+    Exit(Fail(cTexts[TEditingMethodWithoutSelfText.OtherUnitsCallItBut].Text, AReason));
   end;
   Head := TRoutineParts.HeadText(Plan.Text, Plan.Declaration, Plan.Target.Name, Plan.Parameters, False);
   Work.Edits := Work.Edits + [RemoveLine(Plan.Text, Plan.Lines, Plan.Declaration)];
@@ -1338,7 +1446,7 @@ begin
     First := TopLevelAt(Implementation_, FirstUse);
     if First = nil then
     begin
-      Exit(Fail('erste Verwendung nicht in einer Routine', AReason));
+      Exit(Fail(cTexts[TEditingMethodWithoutSelfText.FirstUseNotInA].Text, AReason));
     end;
     RoutineSpan(Plan.Text, Plan.Lines, Plan.Routine, Start, Stop);
     Inner := SplitEdits(Work.Edits, Start, Stop);
@@ -1380,7 +1488,7 @@ begin
   mInterface := Plan.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   if CalledOutside and ((mInterface = nil) or not TRoutineBody.Within(AFound, mInterface)) then
   begin
-    Exit(Format('der Helper %s steht im implementation-Teil, andere Units rufen aber auf', [AFound.Parent.Name]));
+    Exit(cTexts[TEditingMethodWithoutSelfText.TheHelperIsInThe].Fmt([AFound.Parent.Name]));
   end;
   HelperNode := AFound;
   HelperName := AFound.Parent.Name;
@@ -1393,7 +1501,7 @@ begin
   Result := '';
   if CalledOutside and not Plan.ClassInInterface then
   begin
-    Exit('andere Units rufen auf, die Klasse steht aber im implementation-Teil');
+    Exit(cTexts[TEditingMethodWithoutSelfText.OtherUnitsCallItBut].Text);
   end;
   mBase := TMethodWithoutSelf.HelperNameFor(Plan.Target.HelperType);
   // Den Namen eines sichtbaren Helpers (TStringHelper der RTL) nicht verdecken: THauptStringHelper.
@@ -1432,8 +1540,7 @@ begin
   end;
   if (mVisible <> '') and not SameText(mVisible, HelperName) then
   begin
-    Warn(Format('Für %s ist schon %s sichtbar. Nur ein Helper je Typ wirkt: Wo %s gilt, sind die Methoden von ' +
-      '%s nicht mehr erreichbar.', [mTypeName, mVisible, HelperName, mVisible]));
+    Warn(cTexts[TEditingMethodWithoutSelfText.IsAlreadyVisibleFor].Fmt([mTypeName, mVisible, HelperName, mVisible]));
   end;
   Result := True;
 end;
@@ -1464,12 +1571,12 @@ begin
   mEndToken := LastEndToken(Plan.Tokens, HelperNode);
   if mEndToken < 0 then
   begin
-    Exit('Ende des Helpers nicht gefunden');
+    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperNot].Text);
   end;
   mLine := Plan.Tokens[mEndToken].StartPos.Line;
   if Trim(Copy(LineText(Plan.Text, Plan.Lines, mLine), 1, Plan.Tokens[mEndToken].StartPos.Character)) <> '' then
   begin
-    Exit('end des Helpers steht nicht allein in der Zeile');
+    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperIs].Text);
   end;
   Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(mLine),
     Plan.Lines.LineStart(mLine), IndentAt(Plan.Text, Plan.Lines, mLine) + AInner + ADecl + LineBreak)];
@@ -1621,8 +1728,8 @@ begin
   try
     if Length(mTree.Diagnostics) > Length(AWork.Tree.Diagnostics) then
     begin
-      Result := Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',
-        [ExtractFileName(AWork.FileName), mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]);
+      Result := cTexts[TEditingMethodWithoutSelfText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AWork.FileName),
+        mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]);
     end;
   finally
     mTree.Free;
@@ -1634,7 +1741,7 @@ begin
   AItem := Default(TMethodFileEdits);
   if Overlapping(AWork.Edits) then
   begin
-    Exit(Where(AWork.FileName, 0) + ': verschachtelte Aufrufe');
+    Exit(Where(AWork.FileName, 0) + cTexts[TEditingMethodWithoutSelfText.NestedCalls].Text);
   end;
   AItem := TextEditsOf(AWork, Plan.UnitName);
   Result := '';
@@ -1649,12 +1756,12 @@ function ActionText(AConversion: TMethodConversion; const ATarget: TMethodTarget
 begin
   case AConversion of
     TMethodConversion.Routine:
-      Result := Format('%s.%s wird freie Routine', [ATarget.ClassName, ATarget.Name]);
+      Result := cTexts[TEditingMethodWithoutSelfText.BecomesAFreeRoutine].Fmt([ATarget.ClassName, ATarget.Name]);
     TMethodConversion.Helper:
-      Result := Format('%s.%s wandert nach %s (record helper for %s)', [ATarget.ClassName, ATarget.Name,
+      Result := cTexts[TEditingMethodWithoutSelfText.MovesToRecordHelperFor].Fmt([ATarget.ClassName, ATarget.Name,
         AHelperName, ATarget.HelperType]);
   else
-    Result := Format('%s.%s wird class-Methode', [ATarget.ClassName, ATarget.Name]);
+    Result := cTexts[TEditingMethodWithoutSelfText.BecomesAClassMethod].Fmt([ATarget.ClassName, ATarget.Name]);
   end;
 end;
 
@@ -1677,7 +1784,8 @@ begin
       AResult.Files := AResult.Files + [mItem];
     end;
   end;
-  AResult.Preview := ActionText(Conversion, Plan.Target, HelperName) + Format(', %d geänderte Aufrufe.', [Calls]);
+  AResult.Preview := ActionText(Conversion, Plan.Target, HelperName) +
+    cTexts[TEditingMethodWithoutSelfText.ChangedCalls].Fmt([Calls]);
   if PreviewLines <> nil then
   begin
     AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
@@ -1698,7 +1806,7 @@ begin
   AReason := '';
   if (ATree = nil) or (ATree.Root = nil) then
   begin
-    Exit(Fail('kein Baum', AReason));
+    Exit(Fail(cTexts[TEditingMethodWithoutSelfText.NoTree].Text, AReason));
   end;
   Plan := TMethodPlan.Create(AText, ATree, ALookup);
   try
@@ -1924,7 +2032,7 @@ begin
   AReason := '';
   if (ADeclaring.Tree = nil) or (ADeclaring.Tree.Root = nil) then
   begin
-    AReason := 'kein Baum';
+    AReason := cTexts[TEditingMethodWithoutSelfText.NoTree].Text;
     Exit(False);
   end;
   mPlan := TMethodPlan.Create(ADeclaring.Text, ADeclaring.Tree, ARequest.Lookup);
@@ -1996,5 +2104,8 @@ begin
   end;
   Result := 'T' + Capitalized(Name) + 'Helper';
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MethodWithoutSelf', cTexts);
 
 end.

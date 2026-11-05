@@ -82,7 +82,22 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRationaleText = (Rationale, Rationale2);
+
+const
+  cTexts: array[TRationaleText] of TAtlasText = (
+    (De: '**Begründung**' + #10;
+     En: '**Rationale**' + #10),
+    (De: 'Begründung'; En: 'Rationale'));
+
+{$SCOPEDENUMS OFF}
 
 { TRationaleOptions }
 
@@ -380,7 +395,7 @@ begin
   begin
     Exit;
   end;
-  Result := '**Begründung**' + #10;
+  Result := cTexts[TRationaleText.Rationale].Text;
   for mEntry in AEntries do
   begin
     Result := Result + #10 + '- **' + mEntry.Marker + ':** ' + mEntry.Text;
@@ -396,11 +411,14 @@ begin
   begin
     Exit;
   end;
-  Result := 'Begründung';
+  Result := cTexts[TRationaleText.Rationale2].Text;
   for mEntry in AEntries do
   begin
     Result := Result + #10 + mEntry.Marker + ': ' + mEntry.Text;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Rationale', cTexts);
 
 end.
