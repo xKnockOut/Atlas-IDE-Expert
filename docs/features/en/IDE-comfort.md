@@ -317,6 +317,7 @@ With the diagnostic mode on, *Atlas diagnostics* shows what in Atlas is slow rig
 - Server crashes are logged with their cause (exit code, stderr); a server that crashes the same way twice is not restarted in a loop
 - Safe start after a crash
   - a slow IDE start is not a crash: instead of switching features off next time, Atlas names how long it held up the start and which of its parts took longest
+  - an IDE started with `ATLAS_NO_SESSION_MARKER=1`, such as a build IDE a script starts, neither counts as a crash itself nor evaluates crashes of other IDEs
 - Its own data files (favorites, histories, bookmarks, notes …) are replaced in one step, and a damaged one is kept next to it as `.defekt` instead of being silently overwritten
 - Bug report to attach
 - Anonymous diagnostics (#1478): plugin and server logs, bug report, status, diagnostic package and `--timings` name projects, units, paths, users and messages only as `name#N`, `datei#N`, `text#N`; real names only by explicit choice (`diagnostics.log.names`, “Anonymize bug reports” off, `--log-names`), noted in the package. Before saving, Atlas shows every file of the package.

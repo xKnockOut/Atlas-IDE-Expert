@@ -598,6 +598,10 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
 | AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
 | AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
+| AS21 | `set ATLAS_NO_SESSION_MARKER=1`, aus dieser Konsole `bds -r <Profil>` starten, warten bis Atlas geladen ist | Unter `%LOCALAPPDATA%\Atlas\Session` entsteht keine `session-<pid>.json` dieser IDE; im Protokoll steht „Atlas gestartet (…), Stufe Normal, Grund None, ohne Sitzungsmarke (ATLAS_NO_SESSION_MARKER)“ |
+| AS22 | Bei AS21 die IDE im Taskmanager beenden, danach die IDE normal (ohne Variable) starten | Keine Rückfrage „Die letzte Sitzung wurde unerwartet beendet“, Atlas startet normal; `crashCount` in `safemode.json` unverändert |
+| AS23 | Normale IDE wie AS3 im Taskmanager beenden, danach eine IDE mit `ATLAS_NO_SESSION_MARKER=1` starten und wieder schließen, dann normal starten | Die IDE mit Variable startet normal ohne Rückfrage und lässt die Marke der abgestürzten Sitzung liegen; erst der normale Start fragt wie AS3 |
+| AS24 | `ATLAS_NO_SESSION_MARKER=1` und `ATLAS_SAFE_MODE=1` setzen, IDE starten | Wie AS12 (nur Einstellungsseite und Statusfeld), aber ohne Startmarke |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 
