@@ -43,7 +43,7 @@ At the bottom of each editor window (state colours tuned separately for light an
 - server status
 - findings of this unit per kind
   - click jumps to the next one
-  - double-click opens "Atlas-Prüfung" for the unit
+  - double-click opens "Atlas Findings" for the unit
 - live check ("live · checked 2 s ago", during the project check "· project 45 %", then briefly "project done")
 - the method at the cursor with lines and CC (warning colour above the metric limit)
 - each element can be switched off
