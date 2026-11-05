@@ -110,7 +110,45 @@ implementation
 
 uses
   System.IOUtils,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TCrashCasesText = (ExceededTheTimeLimitOf, Raised, Crash, TheAtlasServerCrashed, Method, FileText, Line, Exception,
+    CaseText, FilesAttachedReproduceWithAtlasServer);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCrashCasesText] of string = (
+    ('überschritt das Zeitlimit von %d ms',
+     'löste %s aus',
+     'Absturz: ',
+     'Der Atlas-Server ist abgestürzt: ',
+     '- Methode: `',
+     '- Datei: `',
+     ', Zeile ',
+     '- Ausnahme: `',
+     '- Fall: `',
+     '` (Dateien als Anhang; nachstellen mit `AtlasServer --replay anfrage.json`)'),
+    ('exceeded the time limit of %d ms',
+     'raised %s',
+     'Crash: ',
+     'The Atlas server crashed: ',
+     '- Method: `',
+     '- File: `',
+     ', line ',
+     '- Exception: `',
+     '- Case: `',
+     '` (files attached; reproduce with `AtlasServer --replay anfrage.json`)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCrashCasesText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -219,11 +257,11 @@ begin
   end;
   if ACase.Kind = 'timeout' then
   begin
-    mWhat := Format('überschritt das Zeitlimit von %d ms', [ATimeoutMs]);
+    mWhat := Format(UiText(TCrashCasesText.ExceededTheTimeLimitOf), [ATimeoutMs]);
   end
   else
   begin
-    mWhat := 'löste ' + ACase.ExceptionClass + ' aus';
+    mWhat := Format(UiText(TCrashCasesText.Raised), [ACase.ExceptionClass]);
   end;
   if mWhere <> '' then
   begin
@@ -339,7 +377,7 @@ end;
 
 class function TAtlasCrashCases.IssueTitle(const ACase: TAtlasCrashCase): string;
 begin
-  Result := 'Absturz: ' + ACase.Summary;
+  Result := UiText(TCrashCasesText.Crash) + ACase.Summary;
 end;
 
 class function TAtlasCrashCases.IssueDescription(const ACase: TAtlasCrashCase): string;
@@ -362,29 +400,29 @@ begin
   end;
   mLines := TStringBuilder.Create;
   try
-    mLines.Append('Der Atlas-Server ist abgestürzt: ').Append(ACase.Summary).Append('.').Append(sLineBreak);
+    mLines.Append(UiText(TCrashCasesText.TheAtlasServerCrashed)).Append(ACase.Summary).Append('.').Append(sLineBreak);
     mLines.Append(sLineBreak);
-    mLines.Append('- Methode: `').Append(ACase.Method).Append('`').Append(sLineBreak);
+    mLines.Append(UiText(TCrashCasesText.Method)).Append(ACase.Method).Append('`').Append(sLineBreak);
     if ACase.FileName <> '' then
     begin
-      mLines.Append('- Datei: `').Append(ExtractFileName(ACase.FileName)).Append('`');
+      mLines.Append(UiText(TCrashCasesText.FileText)).Append(ExtractFileName(ACase.FileName)).Append('`');
       if ACase.Line >= 0 then
       begin
-        mLines.Append(', Zeile ').Append(IntToStr(ACase.Line + 1));
+        mLines.Append(UiText(TCrashCasesText.Line)).Append(IntToStr(ACase.Line + 1));
       end;
       mLines.Append(sLineBreak);
     end;
     if ACase.ExceptionClass <> '' then
     begin
-      mLines.Append('- Ausnahme: `').Append(ACase.ExceptionClass).Append('`: ').Append(ACase.ExceptionMessage)
+      mLines.Append(UiText(TCrashCasesText.Exception)).Append(ACase.ExceptionClass).Append('`: ').Append(ACase.ExceptionMessage)
         .Append(sLineBreak);
     end;
     if ACase.Version <> '' then
     begin
       mLines.Append('- Atlas-Version: ').Append(ACase.Version).Append(sLineBreak);
     end;
-    mLines.Append('- Fall: `').Append(ExtractFileName(ACase.Folder)).Append('` (Dateien als Anhang; ')
-      .Append('nachstellen mit `AtlasServer --replay anfrage.json`)').Append(sLineBreak);
+    mLines.Append(UiText(TCrashCasesText.CaseText)).Append(ExtractFileName(ACase.Folder))
+      .Append(UiText(TCrashCasesText.FilesAttachedReproduceWithAtlasServer)).Append(sLineBreak);
     if mStack <> '' then
     begin
       mLines.Append(sLineBreak).Append('```').Append(sLineBreak);
@@ -520,5 +558,8 @@ function TAtlasCrashSkips.Items: TArray<TAtlasCrashSkip>;
 begin
   Result := FItems.ToArray;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Lsp.CrashCases', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

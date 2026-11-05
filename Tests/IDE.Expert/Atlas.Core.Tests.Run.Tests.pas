@@ -29,6 +29,16 @@ type
     procedure SummaryForWelcomePage;
     [Test]
     procedure StatusForLens;
+    [Test]
+    procedure ExpectedTestsOfMarks;
+    [Test]
+    procedure FixtureNotPassedAfterSingleTest;
+    [Test]
+    procedure FixturePassedWhenAllRan;
+    [Test]
+    procedure CasesOfMethodCountSeparately;
+    [Test]
+    procedure TallyStatus;
   end;
 
 implementation
@@ -43,6 +53,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
+  Atlas.Text.DUnitX,
   Atlas.Text.TestResults;
 
 const
@@ -267,6 +278,132 @@ begin
     TAtlasTestStatus.Failed);
   Assert.IsTrue(TAtlasTestRun.StatusOf(Cases, 'Rechner.Tests', 'TRechnerTests', 'Summe', 'Mittel') =
     TAtlasTestStatus.Unknown, 'Fall nicht im Bericht');
+end;
+
+/// <summary>Fixture mit vier Tests (einer mit zwei Fällen, einer mit [Ignore]) wie im Bild von Marco.</summary>
+function WelcomeSource: TDUnitXUnit;
+begin
+  Result := TDUnitXSource.Scan(TArray<string>.Create(
+    'unit Welcome.Tests;',
+    'interface',
+    'uses DUnitX.TestFramework;',
+    'type',
+    '  [TestFixture]',
+    '  TNameTests = class',
+    '  public',
+    '    [Test]',
+    '    procedure IsReported;',
+    '    [TestCase(''Kurz'', ''a'')]',
+    '    [TestCase(''Lang'', ''abc'')]',
+    '    procedure Lookup(const A: string);',
+    '    [Test]',
+    '    [Ignore(''später'')]',
+    '    procedure Spaeter;',
+    '    [Test]',
+    '    procedure NothingAfterFree;',
+    '  end;',
+    'implementation',
+    'end.'));
+end;
+
+/// <summary>Bericht mit den Ergebnissen AResults (Name=Success|Failure|Ignored) der Fixture TNameTests.</summary>
+function WelcomeCases(const AResults: array of string): TArray<TTestCaseResult>;
+var
+  mXml: string;
+  mResult: string;
+  mParts: TArray<string>;
+begin
+  mXml := '<test-results><test-suite type="Assembly" name="W.exe"><results>' +
+    '<test-suite type="TestFixture" name="TNameTests"><results>';
+  for mResult in AResults do
+  begin
+    mParts := mResult.Split(['=']);
+    mXml := mXml + '<test-case name="Welcome.Tests.TNameTests.' + mParts[0] + '" executed="True" result="' +
+      mParts[1] + '" time="0.01"/>';
+  end;
+  mXml := mXml + '</results></test-suite></results></test-suite></test-results>';
+  Result := TTestResults.Parse(mXml).Cases;
+end;
+
+/// <summary>Stand der Marke Fixture/Test/Fall von WelcomeSource nach den Ergebnissen AResults.</summary>
+function WelcomeTally(const AResults: array of string; ATest, ACase: Integer): TAtlasTestTally;
+begin
+  Result := TAtlasTestRun.TallyOf(WelcomeCases(AResults), 'Welcome.Tests', 'TNameTests',
+    TAtlasTestRun.Expected(WelcomeSource, 0, ATest, ACase));
+end;
+
+procedure TAtlasTestRunTests.ExpectedTestsOfMarks;
+var
+  mKeys: TArray<TAtlasTestKey>;
+begin
+  mKeys := TAtlasTestRun.Expected(WelcomeSource, 0, -1, -1);
+  Assert.AreEqual(4, Integer(Length(mKeys)), 'Fixture: IsReported, zwei Fälle, NothingAfterFree; [Ignore] nicht');
+  Assert.AreEqual('IsReported', mKeys[0].Method);
+  Assert.AreEqual('', mKeys[0].CaseName);
+  Assert.AreEqual('Lookup', mKeys[1].Method);
+  Assert.AreEqual('Kurz', mKeys[1].CaseName);
+  Assert.AreEqual('Lang', mKeys[2].CaseName);
+  Assert.AreEqual('NothingAfterFree', mKeys[3].Method);
+  mKeys := TAtlasTestRun.Expected(WelcomeSource, 0, 1, -1);
+  Assert.AreEqual(2, Integer(Length(mKeys)), 'Methode mit Fällen: alle Fälle');
+  mKeys := TAtlasTestRun.Expected(WelcomeSource, 0, 1, 1);
+  Assert.AreEqual(1, Integer(Length(mKeys)), 'ein Fall');
+  Assert.AreEqual('Lang', mKeys[0].CaseName);
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.Expected(WelcomeSource, 0, 2, -1))), '[Ignore]');
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.Expected(WelcomeSource, 1, -1, -1))), 'keine Fixture');
+end;
+
+procedure TAtlasTestRunTests.FixtureNotPassedAfterSingleTest;
+var
+  mTally: TAtlasTestTally;
+begin
+  mTally := WelcomeTally(['NothingAfterFree=Success'], -1, -1);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial, 'nur ein Test gelaufen');
+  Assert.AreEqual(1, mTally.Passed);
+  Assert.AreEqual(4, mTally.Total);
+  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Success'], 3, -1).Status = TAtlasTestStatus.Passed,
+    'der gelaufene Test selbst');
+  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Success'], 0, -1).Status = TAtlasTestStatus.Unknown,
+    'nicht gelaufener Test');
+  Assert.IsTrue(WelcomeTally(['NothingAfterFree=Failure'], -1, -1).Status = TAtlasTestStatus.Failed,
+    'ein Fehlschlag gilt für die Fixture sofort');
+end;
+
+procedure TAtlasTestRunTests.FixturePassedWhenAllRan;
+var
+  mTally: TAtlasTestTally;
+begin
+  mTally := WelcomeTally(['IsReported=Success', 'Lookup.Kurz=Success', 'Lookup.Lang=Success',
+    'Spaeter=Ignored', 'NothingAfterFree=Success'], -1, -1);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed);
+  Assert.AreEqual(4, mTally.Passed);
+end;
+
+procedure TAtlasTestRunTests.CasesOfMethodCountSeparately;
+begin
+  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, -1).Status = TAtlasTestStatus.Partial,
+    'ein Fall von zwei');
+  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, 0).Status = TAtlasTestStatus.Passed, 'der Fall selbst');
+  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success'], 1, 1).Status = TAtlasTestStatus.Unknown, 'anderer Fall');
+  Assert.IsTrue(WelcomeTally(['Lookup.Kurz=Success', 'Lookup.Lang=Success'], 1, -1).Status =
+    TAtlasTestStatus.Passed);
+end;
+
+procedure TAtlasTestRunTests.TallyStatus;
+var
+  mTally: TAtlasTestTally;
+begin
+  mTally := Default(TAtlasTestTally);
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Unknown, 'ohne Tests');
+  mTally.Total := 2;
+  mTally.Ran := 2;
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Unknown, 'alle übersprungen');
+  mTally.Passed := 1;
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Passed, 'einer bestanden, einer übersprungen');
+  mTally.Ran := 1;
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Partial);
+  mTally.Failed := 1;
+  Assert.IsTrue(mTally.Status = TAtlasTestStatus.Failed);
 end;
 
 initialization

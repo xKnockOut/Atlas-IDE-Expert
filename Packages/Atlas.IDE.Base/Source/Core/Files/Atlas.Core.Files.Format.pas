@@ -63,7 +63,8 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Text.Encoding;
+  Atlas.Text.Encoding,
+  Atlas.Core.Localization.Language;
 
 { TAtlasFileFormat }
 
@@ -87,17 +88,20 @@ end;
 
 class function TAtlasFileFormats.EncodingText(AEncoding: TAtlasFileEncoding): string;
 const
-  Names: array[TAtlasFileEncoding] of string = ('UTF-8 ohne BOM', 'UTF-8 mit BOM', 'ANSI', 'UTF-16 LE',
-    'UTF-16 BE');
+  Names: array[TAtlasLanguage, TAtlasFileEncoding] of string = (
+    ('UTF-8 ohne BOM', 'UTF-8 mit BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'),
+    ('UTF-8 without BOM', 'UTF-8 with BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'));
 begin
-  Result := Names[AEncoding];
+  Result := Names[TAtlasTextLanguage.Current, AEncoding];
 end;
 
 class function TAtlasFileFormats.LineBreakText(ALineBreak: TAtlasLineBreak): string;
 const
-  Names: array[TAtlasLineBreak] of string = ('ohne Zeilenende', 'CRLF', 'LF', 'CR', 'gemischte Zeilenenden');
+  Names: array[TAtlasLanguage, TAtlasLineBreak] of string = (
+    ('ohne Zeilenende', 'CRLF', 'LF', 'CR', 'gemischte Zeilenenden'),
+    ('no line break', 'CRLF', 'LF', 'CR', 'mixed line breaks'));
 begin
-  Result := Names[ALineBreak];
+  Result := Names[TAtlasTextLanguage.Current, ALineBreak];
 end;
 
 class function TAtlasFileFormats.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;

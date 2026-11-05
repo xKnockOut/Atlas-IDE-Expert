@@ -613,6 +613,10 @@ begin
   Assert.AreEqual(90, mMinutes);
   Assert.IsTrue(TAtlasTimeRounding.ParseDuration('2 Std', mMinutes));
   Assert.AreEqual(120, mMinutes);
+  Assert.IsTrue(TAtlasTimeRounding.ParseDuration('2 hours 30 minutes', mMinutes), 'englische Einheiten');
+  Assert.AreEqual(150, mMinutes);
+  Assert.IsTrue(TAtlasTimeRounding.ParseDuration('1 hour', mMinutes));
+  Assert.AreEqual(60, mMinutes);
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('', mMinutes));
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('0', mMinutes));
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('1:75', mMinutes));

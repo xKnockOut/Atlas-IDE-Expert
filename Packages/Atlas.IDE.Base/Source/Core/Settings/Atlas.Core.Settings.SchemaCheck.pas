@@ -34,7 +34,47 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TSchemaCheckText = (MatchesNoneOfTheAllowed, Value, IsNotAllowed, LessThan, GreaterThan, Missing, UnknownKey,
+    BelongsInTheSettings, Expected, NotAValidJSONObject, SchemaNotReadable);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TSchemaCheckText] of string = (
+    ('passt zu keiner erlaubten Form',
+     'Wert ',
+     ' ist nicht erlaubt',
+     'kleiner als ',
+     'größer als ',
+     'fehlt',
+     'unbekannter Schlüssel',
+     'gehört in die Einstellungen "',
+     'erwartet ',
+     'kein gültiges JSON-Objekt',
+     'Schema nicht lesbar'),
+    ('matches none of the allowed forms',
+     'Value ',
+     ' is not allowed',
+     'less than ',
+     'greater than ',
+     'missing',
+     'unknown key',
+     'belongs in the settings "',
+     'expected ',
+     'not a valid JSON object',
+     'schema not readable'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TSchemaCheckText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function IsText(AValue: TJSONValue): Boolean;
 begin
@@ -178,7 +218,7 @@ begin
   end;
   if mMatches <> 1 then
   begin
-    Add(AIssues, APath, 'passt zu keiner erlaubten Form');
+    Add(AIssues, APath, UiText(TSchemaCheckText.MatchesNoneOfTheAllowed));
   end;
 end;
 
@@ -197,7 +237,7 @@ begin
       Exit;
     end;
   end;
-  Add(AIssues, APath, 'Wert ' + AValue.ToJSON + ' ist nicht erlaubt');
+  Add(AIssues, APath, UiText(TSchemaCheckText.Value) + AValue.ToJSON + UiText(TSchemaCheckText.IsNotAllowed));
 end;
 
 procedure CheckRange(AValue: TJSONValue; ASchema: TJSONObject; const APath: string; var AIssues: TArray<string>);
@@ -207,12 +247,12 @@ begin
   mBound := ASchema.GetValue('minimum');
   if (mBound is TJSONNumber) and (NumberOf(AValue) < NumberOf(mBound)) then
   begin
-    Add(AIssues, APath, 'kleiner als ' + mBound.ToJSON);
+    Add(AIssues, APath, UiText(TSchemaCheckText.LessThan) + mBound.ToJSON);
   end;
   mBound := ASchema.GetValue('maximum');
   if (mBound is TJSONNumber) and (NumberOf(AValue) > NumberOf(mBound)) then
   begin
-    Add(AIssues, APath, 'größer als ' + mBound.ToJSON);
+    Add(AIssues, APath, UiText(TSchemaCheckText.GreaterThan) + mBound.ToJSON);
   end;
 end;
 
@@ -229,7 +269,7 @@ begin
   begin
     if IsText(mItem) and (AObject.GetValue(mItem.Value) = nil) then
     begin
-      Add(AIssues, Child(APath, mItem.Value), 'fehlt');
+      Add(AIssues, Child(APath, mItem.Value), UiText(TSchemaCheckText.Missing));
     end;
   end;
 end;
@@ -257,7 +297,7 @@ begin
   end
   else if (AAdditional is TJSONBool) and not TJSONBool(AAdditional).AsBoolean then
   begin
-    Add(AIssues, mPath, 'unbekannter Schlüssel');
+    Add(AIssues, mPath, UiText(TSchemaCheckText.UnknownKey));
   end;
 end;
 
@@ -315,7 +355,7 @@ begin
     end;
     if IsText(mScope) and not SameText(mScope.Value, AScope) and not SameText(mScope.Value, 'both') then
     begin
-      Add(AIssues, mName, 'gehört in die Einstellungen "' + mScope.Value + '"');
+      Add(AIssues, mName, UiText(TSchemaCheckText.BelongsInTheSettings) + mScope.Value + '"');
     end;
   end;
 end;
@@ -360,7 +400,7 @@ begin
   end;
   if not TypeMatches(AValue, ASchema.GetValue('type'), mExpected) then
   begin
-    Add(AIssues, APath, 'erwartet ' + mExpected);
+    Add(AIssues, APath, UiText(TSchemaCheckText.Expected) + mExpected);
     Exit;
   end;
   CheckEnum(AValue, ASchema.GetValue('enum'), APath, AIssues);
@@ -390,7 +430,7 @@ begin
   try
     if mRoot = nil then
     begin
-      Add(AIssues, '', 'kein gültiges JSON-Objekt');
+      Add(AIssues, '', UiText(TSchemaCheckText.NotAValidJSONObject));
     end
     else
     begin
@@ -402,7 +442,7 @@ begin
       end
       else
       begin
-        Add(AIssues, '', 'Schema nicht lesbar');
+        Add(AIssues, '', UiText(TSchemaCheckText.SchemaNotReadable));
       end;
     end;
     Result := Length(AIssues) = 0;
@@ -411,5 +451,8 @@ begin
     mRoot.Free;
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Settings.SchemaCheck', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
