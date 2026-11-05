@@ -165,7 +165,7 @@ Every English page links its German original and vice versa.
 
 ### Packages of the IDE plugin (2.0, ADR 0017)
 
-All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3), with layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Every module requires only `Atlas.IDE.Base`, never another module; Base knows no module.
+All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit IDE from Delphi 12.3), with layers `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`. Every module requires only `Atlas.IDE.Base`, never another module; Base knows no module. Each module brings its settings in the options dialog as its own section, module switch included: with only `Atlas.IDE.Base` installed, *Tools › Options › Atlas* shows only the settings of Base.
 
 | Package | Content | Switch |
 |---|---|---|
