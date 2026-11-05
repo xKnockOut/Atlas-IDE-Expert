@@ -9307,3 +9307,35 @@ Vorbereitung: Projekt mit Unit `uBericht.pas`, deren uses `System.SysUtils, Syst
 | UU9 | `--check` mit `--baseline`, in der der Treffer für Vcl.Grids steht | Nur System.Classes gemeldet |
 | UU10 | *Tools › Optionen › Atlas › Prüfregeln*, Regel „Ungenutzte Unit im uses“ öffnen | Schweregrad wählbar, Option „keep“ als Liste; Änderung wirkt wie UU5/UU6 |
 | UU11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TUnusedUsesTests` und `TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule` grün |
+
+## Tastenkürzel für „Datei jetzt prüfen“ (#1744)
+
+Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfung“ offen, `problems.update` = „Nur auf Anforderung“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DP1 | *Tools › Optionen › Atlas › Befehle* ansehen | Zeile „Datei jetzt prüfen“ direkt unter „Fenster „Atlas-Prüfung““ mit Strg+Umschalt+Alt+P |
+| DP2 | Im Editor tippen (Befund erzeugen), dann Strg+Umschalt+Alt+P | Die offene Datei wird sofort geprüft, der neue Befund erscheint im Fenster und im Editor, ohne zu speichern (**Abnahme**) |
+| DP3 | „Beim Speichern“ einstellen, tippen, Strg+Umschalt+Alt+P | Sofort geprüft, ohne Strg+S |
+| DP4 | „Live beim Tippen“ mit Verzögerung 5000, tippen, sofort Strg+Umschalt+Alt+P | Geprüft, ohne die 5 s abzuwarten |
+| DP5 | Feld leeren, OK; Strg+Umschalt+Alt+P im Editor | Atlas reagiert nicht mehr; Befehlspalette und Knopf prüfen weiter |
+| DP6 | Kürzel Strg+Alt+F9 eintragen (schon „Prüfen“), *Atlas › Tastenkürzel-Übersicht…* öffnen | „Datei jetzt prüfen“ steht rot als Konflikt mit „Prüfen“; mit Strg+Umschalt+Alt+P wieder ohne Konflikt |
+| DP7 | Prüfregeln ausschalten (`problems.enabled` aus), Strg+Umschalt+Alt+P | Nichts passiert, die Tastenkürzel-Übersicht zeigt die Zeile als abgeschaltet; Eintrag im Editor-Kontextmenü (Atlas-Untermenü) fehlt |
+| DP8 | Rechtsklick im Editor › Atlas | Eintrag „Datei jetzt prüfen“ unter „Vorheriger Befund“ mit dem Kürzel daneben; Befehlspalette zeigt das Kürzel neben „Datei jetzt prüfen“ |
+| DP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPluginSettingsTests.CheckFileKeyOption`, `TAtlasKeyMapTests.CheckFileKeyFollowsProblems`, `TAtlasSettingsPageEditorTests.CheckFileKeyRoundTrip`, `EveryKeySettingIsInOverview` grün |
+
+## Einstellungen nur der installierten Module (05.11.2026)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasModule`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ME1 | Alle Packages installiert; *Tools › Optionen › Atlas* öffnen | Alle Seiten wie bisher: Debuggen, Release-Build, Willkommensseite, Issue-Tracker; auf „Compiler“ die Schalter von Build-Werkzeugen, Build-Pipeline und Tests; „Units suchen“ mit Suche und Suchleiste |
+| ME2 | Alle Packages außer `Atlas.IDE.Base` deinstallieren, IDE neu starten, Optionen öffnen | Nur die Einstellungen von Base: keine Seiten Debuggen, Release-Build, Willkommensseite, Issue-Tracker; auf „Compiler“ nur Probleme, Aktion nach dem Speichern und Kosten einer interface-Änderung; „Units suchen“ nur mit Quick Open; „Prüfregeln“ ohne Modulschalter und Sammelkorrektur (**Abnahme**) |
+| ME3 | In ME2 Seite „Versionsverwaltung“ | Keine Links „Willkommensseite“ und „Issue-Tracker“ |
+| ME4 | Nur `Atlas.IDE.Debugger` wieder installieren (Komponente › Packages installieren), Optionen öffnen | Seite „Debuggen“ mit Modulschalter und allen Einstellungen des Debuggers; die übrigen Module fehlen weiter |
+| ME5 | In ME4 einen Wert auf „Debuggen“ ändern, OK, Optionen wieder öffnen | Wert gespeichert; Punkt für geänderte Werte und „Auf Standard zurücksetzen“ im Kontextmenü wie auf den Seiten von Base |
+| ME6 | Willkommensseite installiert, Issue-Tracker nicht; Seite Willkommensseite › „Meine Issues“ | Neben „Meine Issues“ kein Knopf zur Seite Issue-Tracker; mit installiertem Tracker ist er da und führt dorthin |
+| ME7 | Werte eines nicht installierten Moduls in der Registry (z. B. `DebugEnabled` = 0); Optionen mit OK schließen, Modul wieder installieren | Der Wert ist unverändert erhalten |
+| ME8 | Englische Oberfläche (`ui.language` = en), alle Module | Modulschalter auf jeder Seite englisch beschriftet |
+| ME9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; die Testklassen `T…SettingsSectionTests` der Module und `TAtlasSettingsSectionTests` grün |

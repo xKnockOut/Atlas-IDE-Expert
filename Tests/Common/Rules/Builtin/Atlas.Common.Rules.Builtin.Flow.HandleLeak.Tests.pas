@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Flow.HandleLeak.Tests;
 
-// Tests der Teilunit handle-leak: Leck, Schließen, Weitergabe, Prüfung des Öffnens, Korrektur.
+// Tests der Teilunit handle-leak: Leck, Schließen, Weitergabe, Prüfung des Öffnens (auch über einen Merker),
+// Korrektur.
 
 interface
 
@@ -21,6 +22,10 @@ type
     procedure FailedOpenBranchIsSilent;
     [Test]
     procedure FixAppendsClose;
+    [Test]
+    procedure FlagGuardIsSilent;
+    [Test]
+    procedure WrongOrReassignedFlagIsReported;
   end;
 
 implementation
@@ -73,6 +78,42 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(';'#10'  CloseHandle(H)', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
+/// <summary>Funktion F: Boolean mit H: THandle und Ok: Boolean und dem Rumpf ABody.</summary>
+function FlagRoutine(const ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'implementation'#10'function F: Boolean;'#10'var'#10'  H: THandle;'#10 +
+    '  Ok: Boolean;'#10'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TFlowHandleLeakTests.FlagGuardIsSilent;
+begin
+  // Result := H <> 0; if Result then CloseHandle(H) (#1519, AtlasUpdate).
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  H := OpenProcess(0, False, 1);'#10 +
+    '  Result := H <> 0;'#10'  if Result then'#10'  begin'#10'    CloseHandle(H);'#10'  end;'));
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  H := CreateFile(nil, 0, 0, nil, 0, 0, 0);'#10 +
+    '  Ok := H = INVALID_HANDLE_VALUE;'#10'  if not (Ok) then'#10'    CloseHandle(H);'#10'  Result := not Ok;'));
+  // Weitere Zuweisung im then-Zweig (TUpdateWindowsProcesses.IsRunning).
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  H := OpenProcess(0, False, 1);'#10 +
+    '  Result := H <> 0;'#10'  if Result then'#10'  begin'#10'    Result := WaitForSingleObject(H, 0) = 0;'#10 +
+    '    CloseHandle(H);'#10'  end;'));
+end;
+
+procedure TFlowHandleLeakTests.WrongOrReassignedFlagIsReported;
+begin
+  // Falscher Zweig.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  H := OpenProcess(0, False, 1);'#10'  Result := H <> 0;'#10'  if not Result then'#10 +
+    '    CloseHandle(H);')))));
+  // Zweimal zugewiesen: der Merker sagt nichts mehr über das Handle.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  H := OpenProcess(0, False, 1);'#10'  Ok := H <> 0;'#10'  Ok := True;'#10'  if Ok then'#10 +
+    '    CloseHandle(H);'#10'  Result := Ok;')))));
+  // Vor dem Öffnen zugewiesen.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  Ok := H <> 0;'#10'  H := OpenProcess(0, False, 1);'#10'  if Ok then'#10 +
+    '    CloseHandle(H);'#10'  Result := Ok;')))));
 end;
 
 initialization

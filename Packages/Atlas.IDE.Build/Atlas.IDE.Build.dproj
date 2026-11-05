@@ -120,6 +120,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
+        <DCCReference Include="Source\UI\Build\Atlas.UI.Build.SettingsSection.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

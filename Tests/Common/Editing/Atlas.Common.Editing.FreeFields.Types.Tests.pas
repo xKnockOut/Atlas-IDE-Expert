@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.FreeFields.Types.Tests;
 
 // Tests für die Typauflösung von „Felder im Destruktor freigeben“: Art eines
-// Typs, Aliase, Vorfahrenkette, Komponenten und Feldtypen einer Klasse.
+// Typs, Aliase, Vorfahrenkette, Komponenten, Feldtypen einer Klasse und Typ
+// eines Felds von Record oder Klasse.
 
 interface
 
@@ -23,6 +24,8 @@ type
     [Test]
     procedure FieldTypesOfClass;
     [Test]
+    procedure MemberTypeOfRecordAndClass;
+    [Test]
     procedure TextHelpers;
   end;
 
@@ -39,7 +42,7 @@ const
     '  TFoo = class(TBar)'#10'    FList: TList<TFoo>;'#10'    FName: string;'#10'  end;'#10 +
     '  TBar = class(TComponent)'#10'  end;'#10 +
     '  TPlain = class'#10'  end;'#10 +
-    '  TPoint3 = record'#10'    X: Integer;'#10'  end;'#10 +
+    '  TPoint3 = record'#10'    X, Y: Integer;'#10'    Thing: IThing;'#10'  end;'#10 +
     '  IThing = interface'#10'  end;'#10 +
     '  TColorSet = set of Byte;'#10 +
     '  TAlias = TPoint3;'#10 +
@@ -142,6 +145,25 @@ begin
   try
     Assert.AreEqual('TList<TFoo>|string', string.Join('|', mTypes.ClassFieldTypes('TFoo')));
     Assert.AreEqual(0, Integer(Length(mTypes.ClassFieldTypes('TUnknown'))));
+  finally
+    mTypes.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TFreeFieldTypesTests.MemberTypeOfRecordAndClass;
+var
+  mTree: TSyntaxTree;
+  mTypes: TFreeFieldTypes;
+begin
+  mTree := TPascalParser.Parse(cUnit);
+  mTypes := TFreeFieldTypes.Create(mTree, cUnit, nil);
+  try
+    Assert.AreEqual('IThing', mTypes.MemberType('TPoint3', 'thing'));
+    Assert.AreEqual('Integer', mTypes.MemberType('TPoint3', 'Y'));
+    Assert.AreEqual('TList<TFoo>', mTypes.MemberType('TFoo', 'FList'));
+    Assert.AreEqual('', mTypes.MemberType('TPoint3', 'Z'));
+    Assert.AreEqual('', mTypes.MemberType('TUnknown', 'X'));
   finally
     mTypes.Free;
     mTree.Free;
