@@ -13,6 +13,11 @@ type
   [TestFixture]
   TMcpToolsTests = class
   public
+    /// <summary>Dienste einmal ungemessen anlegen: Was Index, Gruppe und Dienste beim ersten Gebrauch prozessweit
+    /// anlegen und behalten (globale Sperren), zählte sonst als Leck von ServicesStartWithoutLoading (72 Byte).
+    /// </summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure EachGroupRegistersItsTools;
     [Test]
@@ -261,6 +266,11 @@ function NewFolder: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'atlas-mcp-' + TGUID.NewGuid.ToString.Replace('{', '').Replace('}', ''));
   TDirectory.CreateDirectory(Result);
+end;
+
+procedure TMcpToolsTests.WarmUpFirstUse;
+begin
+  ServicesStartWithoutLoading;
 end;
 
 procedure TMcpToolsTests.ServicesStartWithoutLoading;
