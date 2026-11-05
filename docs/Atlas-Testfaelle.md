@@ -9446,3 +9446,20 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA8 | Marke rechts anklicken › Ausblenden › „Nur hier“ | Nur diese Marke verschwindet; Eintrag in `.atlas` wie bisher |
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
+
+## Tracker-, Willkommens- und Debugger-Texte englisch (#1458, Gruppe E)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); Projekt in einem Git-Repository mit Tracker-Verbindung (YouTrack oder GitHub).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UE1 | Englische Oberfläche (`ui.language` = en), IDE neu starten; Willkommensseite, „My issues“, Board, Issue-Vorschau, Fenster „Evaluate“ und „Exceptions“ öffnen | Alle Überschriften, Knöpfe, Menüs, Hinweise und Meldungen englisch (**Abnahme**) |
+| UE2 | *Tools › Options › Atlas › Issue tracker*, Tabelle „Snippets“ (nie geändert) | Zwei Bausteine „Please check with the current build“ und „Fixed in {commit}“ |
+| UE3 | Im Kommentar-Editor der Issue-Vorschau „Snippet ▾“ | Dieselben englischen Bausteine |
+| UE4 | Feld „Comment when finishing“ (nie geändert); dann ein Issue beenden | Feld zeigt `Done in {branch}.\n{commits}`, der Dialog „Finish …“ schlägt „Done in <Branch>.“ vor |
+| UE5 | Deutsche Oberfläche (`ui.language` = de), UE2 und UE4 | Wieder „Bitte mit aktuellem Build prüfen“, „Behoben in {commit}“ und `Erledigt in {branch}.\n{commits}` |
+| UE6 | Einen Baustein umbenennen, OK, Sprache wechseln | Eigene Bausteine bleiben, wie sie sind |
+| UE7 | Englische Oberfläche: beim Debuggen „Attach to issue …“ mit Debug-Notiz | Anhang heißt `debug-note-JJJJ-MM-TT-hhmm.md` (deutsch `debug-notiz-…`) |
+| UE8 | Englische Oberfläche: Issue beginnen, Git-Hook erlauben; `.git/hooks/prepare-commit-msg` öffnen | Kommentarzeilen englisch („Created by Atlas …“); Commit bekommt das Präfix wie bisher |
+| UE9 | Zeitbuchung „Correct …“ mit `2 hours 30 minutes`, dann `1 hour` | Wird als 2:30 bzw. 1:00 übernommen |
+| UE10 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage`, `TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage`, `TAtlasTrackerSettingsTablesTests.SnippetsDefaultsInLanguage`, `TAtlasCommitHookTests`, `TAtlasDebugNoteTests.FileNameHasDateAndTime` grün |

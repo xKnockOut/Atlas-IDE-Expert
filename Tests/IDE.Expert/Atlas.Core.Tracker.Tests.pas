@@ -807,8 +807,11 @@ procedure TAtlasCommitHookTests.ScriptHasMarkerAndUnixLineEnds;
 var
   Script: string;
 begin
-  Script := TAtlasCommitHook.Script;
+  Script := TAtlasCommitHook.Script(False);
   Assert.IsTrue(Script.StartsWith('#!/bin/sh' + #10 + TAtlasCommitHook.Marker + #10));
+  Assert.IsTrue(Pos('# Von Atlas angelegt', Script) > 0, 'Kommentar deutsch');
+  Assert.IsTrue(Pos('# Created by Atlas', TAtlasCommitHook.Script(True)) > 0, 'Kommentar englisch');
+  Assert.IsTrue(TAtlasCommitHook.IsOwn(TAtlasCommitHook.Script(True)), 'englischer Hook ist auch der eigene');
   Assert.AreEqual(0, Pos(#13, Script), 'sh verträgt kein CR');
   Assert.IsTrue(Pos('merge|squash|commit) exit 0', Script) > 0, 'Merge, Squash und Amend bleiben');
   Assert.IsTrue(TAtlasCommitHook.IsOwn(Script));
@@ -821,17 +824,17 @@ var
 begin
   Hooks := TPath.Combine(FDir, 'hooks');
   Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Missing);
-  Assert.IsTrue(TAtlasCommitHook.Install(Hooks), 'legt Ordner und Hook an');
+  Assert.IsTrue(TAtlasCommitHook.Install(Hooks, False), 'legt Ordner und Hook an');
   Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Own);
-  Assert.IsTrue(TAtlasCommitHook.Install(Hooks), 'eigener wird ersetzt');
+  Assert.IsTrue(TAtlasCommitHook.Install(Hooks, True), 'eigener wird ersetzt');
   Assert.IsTrue(TAtlasCommitHook.Uninstall(Hooks));
   Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Missing);
   TFile.WriteAllText(TAtlasCommitHook.HookFile(Hooks), '#!/bin/sh' + #10 + 'echo fremd' + #10);
   Assert.IsTrue(TAtlasCommitHook.State(Hooks) = TAtlasCommitHookState.Foreign);
-  Assert.IsFalse(TAtlasCommitHook.Install(Hooks), 'fremder Hook bleibt');
+  Assert.IsFalse(TAtlasCommitHook.Install(Hooks, False), 'fremder Hook bleibt');
   Assert.IsTrue(TAtlasCommitHook.Uninstall(Hooks));
   Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasCommitHook.HookFile(Hooks), TEncoding.UTF8)) > 0);
-  Assert.IsFalse(TAtlasCommitHook.Install(''));
+  Assert.IsFalse(TAtlasCommitHook.Install('', False));
 end;
 
 procedure TAtlasCommitHookTests.PrefixFileRoundTrip;

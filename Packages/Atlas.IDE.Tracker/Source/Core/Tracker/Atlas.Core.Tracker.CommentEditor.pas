@@ -116,15 +116,18 @@ type
     MaxName = 80;
     MaxText = 4000;
   public
-    /// <summary>Vorgaben von issues.commentSnippets.</summary>
-    class function Defaults: TArray<TAtlasCommentSnippet>; static;
-    /// <summary>Vorgaben als JSON wie im Schema.</summary>
-    class function DefaultJson: string; static;
+    /// <summary>Vorgaben von issues.commentSnippets in der Sprache der Oberfläche: deutsch wie im Schema, mit
+    /// AEnglish englisch (#1458).</summary>
+    class function Defaults(AEnglish: Boolean): TArray<TAtlasCommentSnippet>; static;
+    /// <summary>Vorgaben als JSON; deutsch wie im Schema.</summary>
+    class function DefaultJson(AEnglish: Boolean): string; static;
     /// <summary>Liste [{"name": …, "text": …}]; Einträge ohne Name oder Text entfallen, Längen werden gekürzt.
     /// False, wenn AJson keine Liste ist.</summary>
     class function Parse(const AJson: string; out ASnippets: TArray<TAtlasCommentSnippet>): Boolean; static;
-    /// <summary>Wie Parse; ungültiges JSON ergibt die Vorgaben (eine leere Liste bleibt leer).</summary>
-    class function Read(const AJson: string): TArray<TAtlasCommentSnippet>; static;
+    /// <summary>Wie Parse für die Oberfläche in AEnglish: Ungültiges JSON und die unveränderten Vorgaben einer
+    /// Sprache ergeben die Vorgaben in AEnglish, so folgen sie der Sprache der IDE; eine leere Liste bleibt leer.
+    /// </summary>
+    class function Read(const AJson: string; AEnglish: Boolean): TArray<TAtlasCommentSnippet>; static;
     class function ToJson(const ASnippets: TArray<TAtlasCommentSnippet>): string; static;
     /// <summary>Platzhalter ersetzen ({branch}, {commit}, {issue}, {version}, ohne Groß-/Kleinschreibung); ein
     /// leerer Wert lässt den Platzhalter stehen.</summary>
@@ -221,6 +224,13 @@ const
   cMention = '@';
   cHash = '#';
   cFence = '```';
+  /// <summary>Vorgaben von issues.commentSnippets je Sprache (False deutsch wie im Schema, True englisch), je
+  /// Baustein Name und Text.</summary>
+  cDefaultSnippets: array[Boolean, 0..1, 0..1] of string = (
+    (('Bitte mit aktuellem Build prüfen', 'Bitte mit dem aktuellen Build prüfen.'), // german-ok: Vorgabe im Schema
+     ('Behoben in {commit}', 'Behoben in {commit}.')),
+    (('Please check with the current build', 'Please check with the current build.'),
+     ('Fixed in {commit}', 'Fixed in {commit}.')));
 
 function IsNameChar(AChar: Char): Boolean;
 begin
@@ -494,17 +504,35 @@ end;
 
 { TAtlasCommentSnippets }
 
-class function TAtlasCommentSnippets.Defaults: TArray<TAtlasCommentSnippet>;
+class function TAtlasCommentSnippets.Defaults(AEnglish: Boolean): TArray<TAtlasCommentSnippet>;
+var
+  mIndex: Integer;
 begin
   Result := nil;
-  Result := Result + [TAtlasCommentSnippet.Create('Bitte mit aktuellem Build prüfen',
-    'Bitte mit dem aktuellen Build prüfen.')];
-  Result := Result + [TAtlasCommentSnippet.Create('Behoben in {commit}', 'Behoben in {commit}.')];
+  for mIndex := Low(cDefaultSnippets[AEnglish]) to High(cDefaultSnippets[AEnglish]) do
+  begin
+    Result := Result + [TAtlasCommentSnippet.Create(cDefaultSnippets[AEnglish, mIndex, 0],
+      cDefaultSnippets[AEnglish, mIndex, 1])];
+  end;
 end;
 
-class function TAtlasCommentSnippets.DefaultJson: string;
+class function TAtlasCommentSnippets.DefaultJson(AEnglish: Boolean): string;
 begin
-  Result := ToJson(Defaults);
+  Result := ToJson(Defaults(AEnglish));
+end;
+
+/// <summary>Gleiche Bausteine in gleicher Reihenfolge.</summary>
+function SameSnippets(const ALeft, ARight: TArray<TAtlasCommentSnippet>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(ALeft) = Length(ARight);
+  mIndex := 0;
+  while Result and (mIndex < Length(ALeft)) do
+  begin
+    Result := (ALeft[mIndex].Name = ARight[mIndex].Name) and (ALeft[mIndex].Text = ARight[mIndex].Text);
+    Inc(mIndex);
+  end;
 end;
 
 class function TAtlasCommentSnippets.Parse(const AJson: string; out ASnippets: TArray<TAtlasCommentSnippet>):
@@ -548,11 +576,11 @@ begin
   end;
 end;
 
-class function TAtlasCommentSnippets.Read(const AJson: string): TArray<TAtlasCommentSnippet>;
+class function TAtlasCommentSnippets.Read(const AJson: string; AEnglish: Boolean): TArray<TAtlasCommentSnippet>;
 begin
-  if not Parse(AJson, Result) then
+  if not Parse(AJson, Result) or SameSnippets(Result, Defaults(not AEnglish)) then
   begin
-    Result := Defaults;
+    Result := Defaults(AEnglish);
   end;
 end;
 
