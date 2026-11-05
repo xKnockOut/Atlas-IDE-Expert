@@ -20,6 +20,9 @@
 //   nur mit server.statusWindow).
 // - Ungelesene Benachrichtigungen (#1234) stehen als Plakette hinter dem
 //   Status (aus dem Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
+//   Dahinter stehen die Zusatzfelder des Atlas-Felds (z. B. „interface-Änderung“
+//   der Unit-Beziehungen); ein Klick ruft dort ihren Klick, in der Statuszeile
+//   stehen sie dann nicht.
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
 //   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
@@ -131,6 +134,8 @@ type
     /// <summary>Klick auf ein Element des Atlas-Felds: AAction mit dem Feld nach dem Klick; ALog ins Protokoll.
     /// </summary>
     function FieldClick(const ALog: string; const AAction: TFieldAction): TProc<TPoint>;
+    /// <summary>Klick auf ein Zusatzfeld: dessen Klick am Atlas-Feld nach dem Klick.</summary>
+    function ExtraClick: TAtlasStatusBarExtraEvent;
     /// <summary>AAction nach dem Klick; ALog ('' = nichts) ins Protokoll.</summary>
     function Deferred(const ALog: string; const AAction: TProc): TProc;
     procedure RefreshField;
@@ -297,6 +302,7 @@ begin
     begin
       AField.ClickBadge(APoint);
     end);
+  ABar.OnExtra := ExtraClick;
   ABar.OnStatusOpen :=
     procedure
     begin
@@ -502,6 +508,28 @@ begin
             mAction(mField, mCorner);
           end;
         end);
+    end;
+end;
+
+function TStatusBarState.ExtraClick: TAtlasStatusBarExtraEvent;
+var
+  mOwner: TStatusBarState;
+begin
+  mOwner := Self;
+  Result :=
+    procedure(const AId: string; const APoint: TPoint)
+    var
+      mId: string;
+      mClick: TProc<TPoint>;
+    begin
+      mId := AId;
+      TAtlasGuard.Log(LogPrefix + 'Klick auf Zusatzfeld ' + mId);
+      mClick := mOwner.FieldClick('',
+        procedure(AField: TAtlasStatusField; const ACorner: TPoint)
+        begin
+          AField.ClickExtra(mId, ACorner);
+        end);
+      mClick(APoint);
     end;
 end;
 

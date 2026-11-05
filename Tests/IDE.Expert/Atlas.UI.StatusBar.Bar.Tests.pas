@@ -36,6 +36,10 @@ type
     /// ihre Ecke.</summary>
     [Test]
     procedure BadgeFollowsTheStatus;
+    /// <summary>Zusatzfelder (z. B. „interface-Änderung“ der Unit-Beziehungen) stehen hinter Status und Plakette,
+    /// mit eigenem Tooltip; ein Klick meldet Kennung und Ecke, nur bei Feldern mit Klick.</summary>
+    [Test]
+    procedure ExtrasFollowTheStatus;
   end;
 
 implementation
@@ -323,6 +327,55 @@ begin
   View.Items := TArray<string>.Create(TAtlasStatusBarItems.Method);
   FBar.SetView(View);
   Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).IsEmpty);
+end;
+
+function Extra(const AId, AText, AHint: string; AClickable: Boolean): TAtlasStatusBarExtra;
+begin
+  Result.Id := AId;
+  Result.Text := AText;
+  Result.Hint := AHint;
+  Result.Clickable := AClickable;
+end;
+
+procedure TAtlasEditorStatusBarTests.ExtrasFollowTheStatus;
+var
+  mView: TAtlasStatusBarView;
+  mClickedId: string;
+  mClickedAt, mPoint: TPoint;
+begin
+  mClickedId := '';
+  mClickedAt := Point(-1, -1);
+  FBar.OnExtra :=
+    procedure(const AId: string; const APoint: TPoint)
+    begin
+      mClickedId := AId;
+      mClickedAt := APoint;
+    end;
+  mView := Sample;
+  mView.BadgeCount := 1;
+  mView.Extras := [Extra('interfaceCost', 'interface-Änderung: 12 Units', '12 Units werden neu übersetzt', True),
+    Extra('startProfile', 'Profil: Debug', 'Startprofil', False)];
+  FBar.SetView(mView);
+  Assert.IsFalse(FBar.ExtraRect(0).IsEmpty, 'erstes Zusatzfeld');
+  Assert.IsFalse(FBar.ExtraRect(1).IsEmpty, 'zweites Zusatzfeld');
+  Assert.IsTrue(FBar.PartRect(TAtlasStatusBarPart.Badge).Right <= FBar.ExtraRect(0).Left, 'hinter der Plakette');
+  Assert.IsTrue(FBar.ExtraRect(0).Right <= FBar.ExtraRect(1).Left, 'in ihrer Reihenfolge');
+  Assert.IsTrue(FBar.ExtraRect(1).Right <= FBar.PartRect(TAtlasStatusBarPart.Findings).Left, 'vor den Zählern');
+  mPoint := Middle(FBar.ExtraRect(0));
+  Assert.AreEqual('12 Units werden neu übersetzt', FBar.HintAt(mPoint.X, mPoint.Y));
+  FBar.ClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual('interfaceCost', mClickedId);
+  Assert.AreEqual(FBar.ClientToScreen(FBar.ExtraRect(0).TopLeft).X, mClickedAt.X);
+  // Ohne Klick meldet das Feld nichts.
+  mClickedId := '';
+  mPoint := Middle(FBar.ExtraRect(1));
+  Assert.AreEqual('Startprofil', FBar.HintAt(mPoint.X, mPoint.Y));
+  FBar.ClickAt(mPoint.X, mPoint.Y);
+  Assert.AreEqual('', mClickedId);
+  // Ohne Element status auch keine Zusatzfelder (dann stehen sie in der Statuszeile).
+  mView.Items := TArray<string>.Create(TAtlasStatusBarItems.Method);
+  FBar.SetView(mView);
+  Assert.IsTrue(FBar.ExtraRect(0).IsEmpty);
 end;
 
 initialization

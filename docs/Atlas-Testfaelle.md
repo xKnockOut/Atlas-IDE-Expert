@@ -9489,3 +9489,19 @@ end;
 | LR11 | Englische Oberfläche | Beschriftungen englisch |
 | LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
 | LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Zusatzfelder in der Atlas-Statusleiste (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Atlas-Statusleiste an (`editor.statusBar`) mit dem Element „Status“; Modul Analyse installiert, `architecture.enabled` und `build.showInterfaceCost` an; Unit `Unten.pas` aus IK1 offen.
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| ZF1 | Einfügemarke in den interface-Teil von `Unten.pas` | „interface-Änderung: 2 Units werden neu kompiliert“ steht in der Atlas-Statusleiste direkt hinter dem Status (und hinter einer Plakette ungelesener Benachrichtigungen), mit Trennstrich; in der Statuszeile der IDE steht das Feld nicht mehr (**Abnahme**) |
+| ZF2 | Maus über das Feld aus ZF1 | Tooltip nennt die ersten Units wie bisher; das Feld wird hervorgehoben |
+| ZF3 | Klick auf das Feld aus ZF1 | „Unit-Beziehungen“ öffnet sich mit „Abhängigkeiten dieser Unit“ (wie IK-Klick in der Statuszeile) |
+| ZF4 | Einfügemarke in den implementation-Teil | Das Feld verschwindet aus der Atlas-Statusleiste, ohne Lücke oder doppelten Trennstrich |
+| ZF5 | Zahnrad › „Status“ ausblenden, dann interface-Teil wie ZF1 | Das Feld steht wieder in der Statuszeile der IDE (zusammen mit dem Atlas-Feld); nach dem Einblenden von „Status“ wieder in der Atlas-Leiste |
+| ZF6 | Zahnrad › „Statusleiste ausblenden“ | Atlas-Feld und alle Zusatzfelder stehen in der Statuszeile der IDE; Klick auf das Feld aus ZF1 dort öffnet „Unit-Beziehungen“ |
+| ZF7 | Mit Leiste und Status: Startprofil (#575), Compilerschalter, Schnell-Lesezeichen, Mehrfachcursor oder Zeit eines Tracker-Issues auslösen | Auch diese Felder stehen hinter dem Status in der Atlas-Leiste statt in der Statuszeile; ein Klick tut dort dasselbe wie vorher in der Statuszeile |
+| ZF8 | Editorfenster schmal ziehen | Zusatzfelder kürzen sich mit „…“ zusammen mit der Live-Prüfung, nach der Methode; Zähler bleiben; nichts bricht um |
+| ZF9 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster), dort interface-Teil wie ZF1 | Die Leiste jedes Fensters zeigt die Zusatzfelder hinter ihrem Status |
