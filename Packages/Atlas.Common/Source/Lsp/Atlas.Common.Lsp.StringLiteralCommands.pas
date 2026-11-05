@@ -34,7 +34,24 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.StringLiterals,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TStringLiteralCommandsText = (URIAndPositionExpected, DocumentIsNotOpen, ThereIsNoStringLiteral,
+    TheTextIsExpectedAs);
+
+const
+  cTexts: array[TStringLiteralCommandsText] of TAtlasText = (
+    (De: 'Erwartet werden URI und Position'; En: 'URI and position expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '),
+    (De: 'An dieser Stelle steht kein String-Literal'; En: 'There is no string literal at this position'),
+    (De: 'Erwartet wird der Text als drittes Argument'; En: 'The text is expected as the third argument'));
+
+{$SCOPEDENUMS OFF}
 
 function DocumentOf(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer;
   out APosition: TTextPosition): ITextDocument;
@@ -43,11 +60,13 @@ begin
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) or
     (AArguments.Items[0] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Position');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TStringLiteralCommandsText.URIAndPositionExpected].Text);
   end;
   if not AStore.TryGet(AArguments.Items[0].Value, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' +
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TStringLiteralCommandsText.DocumentIsNotOpen].Text +
       AArguments.Items[0].Value);
   end;
   APosition := TLspPositions.ReadPosition(AArguments.Items[1]);
@@ -65,7 +84,8 @@ begin
   if not (TStringLiterals.LiteralAt(Document.Text, Position, Range) and
     TStringLiterals.PlainText(TStringLiterals.TextOf(Document.Text, Range), Text)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'An dieser Stelle steht kein String-Literal');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TStringLiteralCommandsText.ThereIsNoStringLiteral].Text);
   end;
   Result := TJSONString.Create(Text);
 end;
@@ -82,7 +102,8 @@ begin
   Document := DocumentOf(AStore, AArguments, 3, Position);
   if not (AArguments.Items[2] is TJSONString) or (AArguments.Items[2] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird der Text als drittes Argument');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TStringLiteralCommandsText.TheTextIsExpectedAs].Text);
   end;
   Lines := Document.Text.Split([#10]);
   Line := '';
@@ -100,5 +121,8 @@ begin
   Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, Indent, False, AMultiline,
     ASettings, LineEnd));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.StringLiteralCommands', cTexts);
 
 end.

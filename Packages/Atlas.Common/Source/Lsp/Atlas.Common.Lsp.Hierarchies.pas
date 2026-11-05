@@ -171,7 +171,17 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THierarchiesText = (FieldItemMissingOrIncomplete, FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[THierarchiesText] of TAtlasText = (
+    (De: 'Feld "item" fehlt oder ist unvollständig'; En: 'Field "item" missing or incomplete'),
+    (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'));
 
 type
   TIndexSymbolKinds = set of TIndexSymbolKind;
@@ -1087,7 +1097,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONValue>('item', Value) and
     TLspHierarchies.ItemFromJson(Value, Result)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "item" fehlt oder ist unvollständig');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[THierarchiesText.FieldItemMissingOrIncomplete].Text);
   end;
 end;
 
@@ -1115,7 +1126,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen');
+      cTexts[THierarchiesText.FieldsTextDocumentUriAndPosition].Text);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -1223,5 +1234,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Hierarchies', cTexts);
 
 end.

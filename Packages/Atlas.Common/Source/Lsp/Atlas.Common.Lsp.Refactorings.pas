@@ -140,7 +140,25 @@ uses
   Atlas.Common.Editing.ConditionalExpression,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.InlayHints,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRefactoringsText = (AddMissingValuesBeforeElse, CompleteCaseMissingValues, CreateMethod, CreateRoutine,
+    CreateMethodIn);
+
+const
+  cTexts: array[TRefactoringsText] of TAtlasText = (
+    (De: 'Fehlende Werte vor else ergänzen'; En: 'Add missing values before else'),
+    (De: 'case vervollständigen (%d fehlende Werte)'; En: 'Complete case (%d missing values)'),
+    (De: 'Methode %s anlegen'; En: 'Create method %s'),
+    (De: 'Routine %s anlegen'; En: 'Create routine %s'),
+    (De: 'Methode %s in %s anlegen'; En: 'Create method %s in %s'));
+
+{$SCOPEDENUMS OFF}
 
 function OptionsOf(const AContext: TRefactoringContext): TExtractOptions;
 begin
@@ -336,11 +354,11 @@ begin
   end;
   if Completion.HasElse then
   begin
-    AAction.Title := 'Fehlende Werte vor else ergänzen';
+    AAction.Title := cTexts[TRefactoringsText.AddMissingValuesBeforeElse].Text;
   end
   else
   begin
-    AAction.Title := Format('case vervollständigen (%d fehlende Werte)', [Completion.Count]);
+    AAction.Title := cTexts[TRefactoringsText.CompleteCaseMissingValues].Fmt([Completion.Count]);
     AAction.IsPreferred := True;
   end;
   AAction.Kind := RewriteKind;
@@ -508,7 +526,7 @@ begin
     begin
       Exit;
     end;
-    FCreated.Title := Format('Methode %s anlegen', [FPlan.Name]);
+    FCreated.Title := cTexts[TRefactoringsText.CreateMethod].Fmt([FPlan.Name]);
   end
   else if SameText(FSite.Qualifier, 'Self') then
   begin
@@ -517,7 +535,7 @@ begin
   else
   begin
     FCreated.Edits := [TCreateMethod.RoutineEdit(FText, ARoutine, FPlan)];
-    FCreated.Title := Format('Routine %s anlegen', [FPlan.Name]);
+    FCreated.Title := cTexts[TRefactoringsText.CreateRoutine].Fmt([FPlan.Name]);
   end;
   FCreated.Detail := TCreateMethod.Header(FPlan, False);
   Result := True;
@@ -604,7 +622,7 @@ begin
   begin
     FPlan.TypeName := mResolved.Container + '.' + FPlan.TypeName;
   end;
-  FCreated.Title := Format('Methode %s in %s anlegen', [FPlan.Name, FPlan.TypeName]);
+  FCreated.Title := cTexts[TRefactoringsText.CreateMethodIn].Fmt([FPlan.Name, FPlan.TypeName]);
   if SameText(mOwner.FileName, FContext.FileName) then
   begin
     Result := TCreateMethod.MethodEdits(FText, FTree, FPlan, FCreated.Edits);
@@ -1039,5 +1057,8 @@ begin
   end;
 end;
 
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Refactorings', cTexts);
 
 end.

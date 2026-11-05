@@ -151,7 +151,30 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingChangeSignatureText = (TheParameterDoesNotBelong, TheParameterAppearsTwiceIn, TheTypeForTheNew,
+    TheValueThatExistingCallers, TheNewParameterWouldCome, IsNotAValidParameter);
+
+const
+  cTexts: array[TEditingChangeSignatureText] of TAtlasText = (
+    (De: 'Der Parameter "%s" gehört nicht zur alten Signatur.';
+     En: 'The parameter "%s" does not belong to the old signature.'),
+    (De: 'Der Parameter "%s" steht zweimal in der Liste.'; En: 'The parameter "%s" appears twice in the list.'),
+    (De: 'Für den neuen Parameter "%s" fehlt der Typ.'; En: 'The type for the new parameter "%s" is missing.'),
+    (De: 'Für den neuen Parameter "%s" fehlt der Wert, den die bisherigen Aufrufer übergeben.';
+     En: 'The value that existing callers pass for the new parameter "%s" is missing.'),
+    (De: 'Der neue Parameter "%s" stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn einfügen.';
+     En: 'The new parameter "%s" would come after a parameter with a default value. Please insert it further to the ' +
+      'front.'),
+    (De: '"%s" ist kein gültiger Parametername.'; En: '"%s" is not a valid parameter name.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineWords: array[0..3] of string = ('procedure', 'function', 'constructor', 'destructor');
@@ -800,11 +823,11 @@ begin
   Result := '';
   if AChange.Origin > High(AOld) then
   begin
-    Result := Format('Der Parameter "%s" gehört nicht zur alten Signatur.', [AChange.Name]);
+    Result := cTexts[TEditingChangeSignatureText.TheParameterDoesNotBelong].Fmt([AChange.Name]);
   end
   else if AUsed[AChange.Origin] then
   begin
-    Result := Format('Der Parameter "%s" steht zweimal in der Liste.', [AOld[AChange.Origin].Name]);
+    Result := cTexts[TEditingChangeSignatureText.TheParameterAppearsTwiceIn].Fmt([AOld[AChange.Origin].Name]);
   end
   else
   begin
@@ -820,17 +843,15 @@ begin
   Result := '';
   if Trim(AChange.TypeName) = '' then
   begin
-    Result := Format('Für den neuen Parameter "%s" fehlt der Typ.', [AChange.Name]);
+    Result := cTexts[TEditingChangeSignatureText.TheTypeForTheNew].Fmt([AChange.Name]);
   end
   else if Trim(AChange.Value) = '' then
   begin
-    Result := Format('Für den neuen Parameter "%s" fehlt der Wert, den die bisherigen Aufrufer übergeben.',
-      [AChange.Name]);
+    Result := cTexts[TEditingChangeSignatureText.TheValueThatExistingCallers].Fmt([AChange.Name]);
   end
   else if ASeenDefault then
   begin
-    Result := Format('Der neue Parameter "%s" stünde hinter einem Parameter mit Standardwert. Bitte weiter vorn ' +
-      'einfügen.', [AChange.Name]);
+    Result := cTexts[TEditingChangeSignatureText.TheNewParameterWouldCome].Fmt([AChange.Name]);
   end;
 end;
 
@@ -849,11 +870,11 @@ begin
   begin
     if not IsIdentifier(AChanges[mIndex].Name) then
     begin
-      Result := Format('"%s" ist kein gültiger Parametername.', [AChanges[mIndex].Name]);
+      Result := cTexts[TEditingChangeSignatureText.IsNotAValidParameter].Fmt([AChanges[mIndex].Name]);
     end
     else if NamedBefore(AChanges, mIndex) then
     begin
-      Result := Format('Der Parameter "%s" steht zweimal in der Liste.', [AChanges[mIndex].Name]);
+      Result := cTexts[TEditingChangeSignatureText.TheParameterAppearsTwiceIn].Fmt([AChanges[mIndex].Name]);
     end
     else if AChanges[mIndex].Origin >= 0 then
     begin
@@ -1328,5 +1349,8 @@ begin
     Result := Copy(Result, 1, StartOffset) + Sorted[Index].NewText + Copy(Result, EndOffset + 1, MaxInt);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ChangeSignature', cTexts);
 
 end.

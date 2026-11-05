@@ -25,19 +25,19 @@ type
   public const
     Source = 'Atlas';
     CompilerSource = 'dcc';
-    InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
-    InactiveConditionMessage = 'Inaktiv: Bedingung %s nicht erfüllt';
-    InactiveTargetSuffix = ' (Zielplattform %s · %s)';
-    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
-    UsesUnusedMessage = 'Aus %s wird nichts verwendet';
-    UsesInitializationMessage = '%s wird wegen initialization nicht als ungenutzt gezeigt';
-    UsesAllowlistMessage = '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
-    UsesImplementationMessage = '%s wird nur in der implementation gebraucht';
     /// <summary>DiagnosticTag.Unnecessary: Der Editor blendet ab.</summary>
     TagUnnecessary = 1;
     /// <summary>DiagnosticTag.Deprecated: Der Editor streicht durch.</summary>
     TagDeprecated = 2;
   public
+    class function InactiveMessage: string; static;
+    class function InactiveConditionMessage: string; static;
+    class function InactiveTargetSuffix: string; static;
+    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
+    class function UsesUnusedMessage: string; static;
+    class function UsesInitializationMessage: string; static;
+    class function UsesAllowlistMessage: string; static;
+    class function UsesImplementationMessage: string; static;
     /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
     class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
     /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
@@ -80,7 +80,64 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.FormFiles,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDiagnosticItemsText = (InactiveRegionConditionalCompilation, InactiveConditionNotMet, TargetPlatform,
+    NothingFromIsUsed, IsNotShownAsUnused, IsInUsesKeepAndIs, IsOnlyNeededInThe);
+
+const
+  cTexts: array[TDiagnosticItemsText] of TAtlasText = (
+    (De: 'Inaktiver Bereich (bedingte Kompilierung)'; En: 'Inactive region (conditional compilation)'),
+    (De: 'Inaktiv: Bedingung %s nicht erfüllt'; En: 'Inactive: condition %s not met'),
+    (De: ' (Zielplattform %s · %s)'; En: ' (target platform %s · %s)'),
+    (De: 'Aus %s wird nichts verwendet'; En: 'Nothing from %s is used'),
+    (De: '%s wird wegen initialization nicht als ungenutzt gezeigt';
+     En: '%s is not shown as unused because of initialization'),
+    (De: '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
+     En: '%s is in usesKeep and is not shown as unused'),
+    (De: '%s wird nur in der implementation gebraucht'; En: '%s is only needed in the implementation'));
+
+{$SCOPEDENUMS OFF}
+
+class function TLspDiagnosticItems.InactiveMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.InactiveRegionConditionalCompilation].Text;
+end;
+
+class function TLspDiagnosticItems.InactiveConditionMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.InactiveConditionNotMet].Text;
+end;
+
+class function TLspDiagnosticItems.InactiveTargetSuffix: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.TargetPlatform].Text;
+end;
+
+class function TLspDiagnosticItems.UsesUnusedMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.NothingFromIsUsed].Text;
+end;
+
+class function TLspDiagnosticItems.UsesInitializationMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsNotShownAsUnused].Text;
+end;
+
+class function TLspDiagnosticItems.UsesAllowlistMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsInUsesKeepAndIs].Text;
+end;
+
+class function TLspDiagnosticItems.UsesImplementationMessage: string;
+begin
+  Result := cTexts[TDiagnosticItemsText.IsOnlyNeededInThe].Text;
+end;
 
 function SeverityOf(ASeverity: TRuleSeverity): Integer;
 begin
@@ -407,5 +464,8 @@ begin
     mForm.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DiagnosticItems', cTexts);
 
 end.

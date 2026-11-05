@@ -74,7 +74,21 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormatStringsText = (ANumber, AString);
+
+const
+  cTexts: array[TFormatStringsText] of TAtlasText = (
+    (De: 'eine Zahl'; En: 'a number'),
+    (De: 'ein String'; En: 'a string'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cTypeChars = ['d', 'u', 'e', 'f', 'g', 'n', 'm', 'p', 's', 'x'];
@@ -596,7 +610,7 @@ begin
   end;
   if CharInSet(mText[1], ['''', '#']) and LiteralValue(mText, mValue) then
   begin
-    ATypeName := 'ein String';
+    ATypeName := cTexts[TFormatStringsText.AString].Text;
     Result := TFormatArgumentClass.Text;
     if Length(mValue) = 1 then
     begin
@@ -605,7 +619,7 @@ begin
   end
   else if CharInSet(mText[1], ['0'..'9', '$']) then
   begin
-    ATypeName := 'eine Zahl';
+    ATypeName := cTexts[TFormatStringsText.ANumber].Text;
     Result := NumberClass(mText);
   end;
 end;
@@ -629,5 +643,8 @@ begin
     Result := True;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.FormatStrings', cTexts);
 
 end.

@@ -224,7 +224,17 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSymbolsText = (Field, PropertyText);
+
+const
+  cTexts: array[TSymbolsText] of TAtlasText = (
+    (De: 'Feld '; En: 'field '),
+    (De: 'Eigenschaft '; En: 'property '));
 
 const
   // Eingebaute Typen, die nicht als Symbol im Index stehen.
@@ -319,8 +329,8 @@ begin
   else if Container <> '' then
   begin
     case SymbolKind of
-      TIndexSymbolKind.Field: Result := 'Feld ';
-      TIndexSymbolKind.Property_: Result := 'Eigenschaft ';
+      TIndexSymbolKind.Field: Result := cTexts[TSymbolsText.Field].Text;
+      TIndexSymbolKind.Property_: Result := cTexts[TSymbolsText.PropertyText].Text;
       TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_: Result := 'Methode ';
     else
       Result := '';
@@ -755,5 +765,8 @@ begin
     Result := TIndexSymbolKind.Constant;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Semantics.NameResolver.Symbols', cTexts);
 
 end.

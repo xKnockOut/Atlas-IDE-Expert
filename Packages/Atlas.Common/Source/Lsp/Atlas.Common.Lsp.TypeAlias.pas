@@ -77,7 +77,26 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspTypeAliasText = (CannotBeRead, TypeAliasNotPossible, ResolvingTheAliasNotPossible,
+    ResolvingTheAliasNotPossible2, PlacesInFiles, UnknownScope);
+
+const
+  cTexts: array[TLspTypeAliasText] of TAtlasText = (
+    (De: '%s lässt sich nicht lesen'; En: '%s cannot be read'),
+    (De: 'Typ-Alias geht nicht: '; En: 'Type alias not possible: '),
+    (De: 'Alias auflösen geht nicht: %s steht in %s'; En: 'Resolving the alias not possible: %s is in %s'),
+    (De: 'Alias auflösen geht nicht: '; En: 'Resolving the alias not possible: '),
+    (De: '%d Stellen in %d Dateien'; En: '%d places in %d files'),
+    (De: 'Unbekannte Reichweite "%s"'; En: 'Unknown scope "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Längere Ausdrücke kürzt der Titel der Aktion.</summary>
@@ -306,7 +325,8 @@ begin
   Annotation := TJSONObject.Create;
   Annotation.AddPair('label', ALabel);
   Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%d Stellen in %d Dateien', [AResult.Places, Length(AResult.Files)]));
+  Annotation.AddPair('description', cTexts[TLspTypeAliasText.PlacesInFiles].Fmt([AResult.Places,
+    Length(AResult.Files)]));
   Annotations := TJSONObject.Create;
   Annotations.AddPair(TLspTypeAlias.AnnotationId, Annotation);
   Edit := TJSONObject.Create;
@@ -364,7 +384,7 @@ var
 begin
   if not Assigned(AContext.ReadText) or not AContext.ReadText(AFileName, Text) then
   begin
-    raise Fail(Format('%s lässt sich nicht lesen', [ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TLspTypeAliasText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
   Result := FileOf(AFileName, Text);
 end;
@@ -439,8 +459,8 @@ var
 begin
   if not TTypeAlias.ScopeOf(AContext.Scope, mScope) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Reichweite "%s"',
-      [AContext.Scope]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspTypeAliasText.UnknownScope].Fmt([
+      AContext.Scope]));
   end;
   mFiles := nil;
   try
@@ -453,7 +473,7 @@ begin
       if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(mFiles),
         TTypeAliasRequest.Create(APosition, Trim(AContext.Name), mScope, Lookup(AResolver)), mOutcome, mReason) then
       begin
-        raise Fail('Typ-Alias geht nicht: ' + mReason);
+        raise Fail(cTexts[TLspTypeAliasText.TypeAliasNotPossible].Text + mReason);
       end;
     finally
       UnpinAll(AResolver, mFiles);
@@ -473,7 +493,7 @@ begin
   begin
     if MatchText(ExtractFileExt(mLocation.FileName), ['.dfm', '.fmx']) then
     begin
-      raise Fail(Format('Alias auflösen geht nicht: %s steht in %s', [ATargetName,
+      raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible].Fmt([ATargetName,
         ExtractFileName(mLocation.FileName)]));
     end;
   end;
@@ -511,7 +531,7 @@ var
 begin
   if not TTypeAlias.InlineTarget(AText, ATree, APosition, mTarget, mReason) then
   begin
-    raise Fail('Alias auflösen geht nicht: ' + mReason);
+    raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
   end;
   mLocations := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
     mTarget.NamePosition, False, AContext.Files, AContext.ReadText));
@@ -537,7 +557,7 @@ begin
       if not TTypeAlias.InlineAlias(mDeclaring, SourcesOf(mFiles), APosition, Lookup(AResolver), mOutcome,
         mReason) then
       begin
-        raise Fail('Alias auflösen geht nicht: ' + mReason);
+        raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
       end;
     finally
       UnpinAll(AResolver, mFiles);
@@ -547,5 +567,8 @@ begin
   end;
   Result := AnswerJson(mOutcome, Format(TTypeAlias.InlineTitle, [mTarget.Name]));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.TypeAlias', cTexts);
 
 end.

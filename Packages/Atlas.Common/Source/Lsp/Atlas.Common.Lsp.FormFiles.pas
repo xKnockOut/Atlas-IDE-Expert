@@ -35,7 +35,20 @@ uses
   System.Generics.Collections,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormFilesText = (FormIsStoredAsBinary);
+
+const
+  cTexts: array[TFormFilesText] of TAtlasText = (
+    (De: 'Formular ist binär gespeichert; in Text umwandeln?'; En: 'Form is stored as binary; convert to text?'));
+
+{$SCOPEDENUMS OFF}
 
 function ObjectToJson(AObject: TDfmObject): TJSONObject;
 var
@@ -150,7 +163,7 @@ begin
   Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
   Item.AddPair('source', 'Atlas');
   Item.AddPair('code', BinaryCode);
-  Item.AddPair('message', 'Formular ist binär gespeichert; in Text umwandeln?');
+  Item.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
   Result.AddElement(Item);
 end;
 
@@ -170,5 +183,8 @@ begin
     Result.AddElement(Item);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.FormFiles', cTexts);
 
 end.

@@ -70,7 +70,20 @@ type
 implementation
 
 uses
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRecentMessagesText = (Characters);
+
+const
+  cTexts: array[TRecentMessagesText] of TAtlasText = (
+    (De: '… (%d Zeichen)'; En: '… (%d characters)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Platzhalter für die übrigen Werte eines Arrays bzw. Objekts über der Grenze.</summary>
@@ -83,7 +96,8 @@ var
 begin
   if Length(AText) > AMaxString then
   begin
-    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + Format('… (%d Zeichen)', [Length(AText)]));
+    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + cTexts[TRecentMessagesText.Characters].Fmt([
+      Length(AText)]));
   end
   else
   begin
@@ -309,5 +323,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.RecentMessages', cTexts);
 
 end.

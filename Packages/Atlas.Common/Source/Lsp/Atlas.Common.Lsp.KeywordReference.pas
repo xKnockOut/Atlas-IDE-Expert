@@ -60,7 +60,154 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Lsp.CompilerDirectives;
+  Atlas.Common.Lsp.CompilerDirectives,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TKeywordReferenceText = (DeliberatelyHidesAVirtualMethod, AllowsSeveralRoutinesOfThe, OverridesAVirtualOrDynamic,
+    MethodCanBeOverriddenIn, LikeVirtualButMoreCompact, MethodWithoutImplementationDescendantsMust,
+    MethodMustNotBeOverridden, ClassMethodWithoutSelfNot, MessageHandlerTheMethodIs, AsksTheCompilerToInsert,
+    ForwardDeclarationOfARoutine, RoutineFromADLLOr, RoutineInAssemblerObsoleteOnly, VariableParameterListForExternal,
+    RoutineDoesNotReturnE, TheDLLIsLoadedOnly, CallingConventionOfCParameters, CallingConventionOfTheWindows,
+    CallingConventionForCOMExceptions, OlderCallingConventionParametersFrom, CallingConventionOfThePlatform,
+    NumberOfAMemberIn, UseProducesAWarningOptionally, OnlyAvailableOnCertainPlatforms, NotStableYetUseProduces,
+    VisibleOnlyInsideTheClass, VisibleOnlyInTheClass, VisibleInTheClassIts, VisibleEverywhere,
+    VisibleEverywhereWithRTTIFor, ObsoleteLikePublicWithAutomation, ClassFieldOneValueFor, TheClassMustNotBe,
+    ClassHelperOrRecordHelper, DispatchInterfaceForAutomationCall, StoreFieldsWithoutAlignmentGaps,
+    PropertyWithReadAndWrite, DelegatesTheImplementationOfAn, WhetherTheValueOfThe, DefaultValueOfAProperty,
+    RemovesAnInheritedDefaultValue, IndexThatSeveralPropertiesPass, VariableLiesAtTheSame, GlobalVariableWithItsOwn,
+    TranslatableStringThatIsStored, OutputParameterTheInputValue, MakesTheMembersOfAn, JumpToALabel,
+    DeclaresLabelsForGoto, CallsTheMethodOfThe, BlockWithInlineAssembler, RoutinesThatADLLOffers, FileTypeFileOfFor,
+    CodeThatRunsWhenThe, CodeThatRunsWhenThe2, MethodThatCreatesAndInitializes, MethodThatFreesAnInstance,
+    ShiftBitsToTheLeft, ShiftBitsToTheRight, OverloadedOperatorOfARecord, NotAvailableInThisProject,
+    DefaultCallingConventionOfDelphi, HeaderOfADLLProject, DispatchPropertyReadOnly, DispatchPropertyWriteOnly,
+    Visibility, ObsoleteObjectTypeTurboPascal, Expression, ConditionalExpressionXIfA, NegatedTypeTestXIs,
+    NegatedSetTestXNot, Directive, ReservedWord);
+
+const
+  cTexts: array[TKeywordReferenceText] of TAtlasText = (
+    (De: 'Verdeckt eine virtuelle Methode des Vorfahren bewusst, ohne sie zu überschreiben; unterdrückt die Warnung ' +
+      'W1010.';
+     En: 'Deliberately hides a virtual method of the ancestor without overriding it; suppresses the warning W1010.'),
+    (De: 'Erlaubt mehrere Routinen gleichen Namens mit unterschiedlichen Parametern.';
+     En: 'Allows several routines of the same name with different parameters.'),
+    (De: 'Überschreibt eine virtuelle oder dynamische Methode des Vorfahren.';
+     En: 'Overrides a virtual or dynamic method of the ancestor.'),
+    (De: 'Methode kann in Nachfahren überschrieben werden (Aufruf über die VMT).';
+     En: 'Method can be overridden in descendants (call via the VMT).'),
+    (De: 'Wie virtual, aber platzsparender und langsamer (Aufruf über die DMT).';
+     En: 'Like virtual, but more compact and slower (call via the DMT).'),
+    (De: 'Methode ohne Implementierung; Nachfahren müssen sie überschreiben.';
+     En: 'Method without implementation; descendants must override it.'),
+    (De: 'Methode darf nicht weiter überschrieben, Klasse nicht abgeleitet werden.';
+     En: 'Method must not be overridden further, class must not be derived.'),
+    (De: 'Klassenmethode ohne Self; nicht virtuell.'; En: 'Class method without Self; not virtual.'),
+    (De: 'Message-Handler: Methode wird für die angegebene Windows-Nachricht aufgerufen.';
+     En: 'Message handler: the method is called for the given Windows message.'),
+    (De: 'Bittet den Compiler, die Routine an der Aufrufstelle einzusetzen.';
+     En: 'Asks the compiler to insert the routine at the call site.'),
+    (De: 'Vorwärtsdeklaration einer Routine, deren Rumpf später folgt.';
+     En: 'Forward declaration of a routine whose body follows later.'),
+    (De: 'Routine aus einer DLL oder Objektdatei.'; En: 'Routine from a DLL or object file.'),
+    (De: 'Routine in Assembler (veraltet, nur zur Kompatibilität).';
+     En: 'Routine in assembler (obsolete, only for compatibility).'),
+    (De: 'Variable Parameterliste für externe C-Routinen.'; En: 'Variable parameter list for external C routines.'),
+    (De: 'Routine kehrt nicht zurück (z. B. nach raise).'; En: 'Routine does not return (e.g. after raise).'),
+    (De: 'DLL wird erst beim ersten Aufruf geladen.'; En: 'The DLL is loaded only at the first call.'),
+    (De: 'Aufrufkonvention von C: Parameter von rechts nach links, Aufrufer räumt den Stack.';
+     En: 'Calling convention of C: parameters from right to left, the caller cleans up the stack.'),
+    (De: 'Aufrufkonvention der Windows-API.'; En: 'Calling convention of the Windows API.'),
+    (De: 'Aufrufkonvention für COM: Ausnahmen werden zu HResult.';
+     En: 'Calling convention for COM: exceptions become HResult.'),
+    (De: 'Ältere Aufrufkonvention: Parameter von links nach rechts.';
+     En: 'Older calling convention: parameters from left to right.'),
+    (De: 'Aufrufkonvention der Plattform-API (stdcall unter Windows).';
+     En: 'Calling convention of the platform API (stdcall on Windows).'),
+    (De: 'Nummer eines Mitglieds in einer Dispatch-Schnittstelle (Automation).';
+     En: 'Number of a member in a dispatch interface (Automation).'),
+    (De: 'Verwendung erzeugt eine Warnung; optional mit Hinweistext.';
+     En: 'Use produces a warning; optionally with a hint text.'),
+    (De: 'Nur auf bestimmten Plattformen verfügbar; Verwendung erzeugt eine Warnung.';
+     En: 'Only available on certain platforms; use produces a warning.'),
+    (De: 'Noch nicht stabil; Verwendung erzeugt eine Warnung.'; En: 'Not stable yet; use produces a warning.'),
+    (De: 'Nur innerhalb der Klasse sichtbar, auch nicht für andere Klassen derselben Unit.';
+     En: 'Visible only inside the class, not even for other classes of the same unit.'),
+    (De: 'Nur in der Klasse und ihren Nachfahren sichtbar, nicht für andere Klassen derselben Unit.';
+     En: 'Visible only in the class and its descendants, not for other classes of the same unit.'),
+    (De: 'Sichtbar in der Klasse, ihren Nachfahren und der eigenen Unit.';
+     En: 'Visible in the class, its descendants and its own unit.'),
+    (De: 'Überall sichtbar.'; En: 'Visible everywhere.'),
+    (De: 'Überall sichtbar, mit RTTI für den Objektinspektor und das Streaming (.dfm).';
+     En: 'Visible everywhere, with RTTI for the Object Inspector and streaming (.dfm).'),
+    (De: 'Veraltet: wie public, mit Automation-Typinformationen.';
+     En: 'Obsolete: like public, with Automation type information.'),
+    (De: 'Klassenfeld: ein Wert für alle Instanzen der Klasse.';
+     En: 'Class field: one value for all instances of the class.'),
+    (De: 'Von der Klasse darf nicht abgeleitet werden.'; En: 'The class must not be derived from.'),
+    (De: 'Class Helper bzw. Record Helper: erweitert einen Typ um Methoden.';
+     En: 'Class helper or record helper: extends a type with methods.'),
+    (De: 'Dispatch-Schnittstelle für Automation (Aufruf über IDispatch).';
+     En: 'Dispatch interface for Automation (call via IDispatch).'),
+    (De: 'Felder ohne Ausrichtungslücken ablegen.'; En: 'Store fields without alignment gaps.'),
+    (De: 'Eigenschaft mit Lese- und Schreibzugriff über Felder oder Methoden.';
+     En: 'Property with read and write access via fields or methods.'),
+    (De: 'Delegiert die Implementierung einer Schnittstelle an eine Property.';
+     En: 'Delegates the implementation of an interface to a property.'),
+    (De: 'Ob der Wert der Property in der .dfm gespeichert wird (Boolean oder Funktion).';
+     En: 'Whether the value of the property is stored in the .dfm (Boolean or function).'),
+    (De: 'Standardwert einer Property (wird dann nicht gespeichert) bzw. Standard-Array-Property.';
+     En: 'Default value of a property (then not stored) or default array property.'),
+    (De: 'Hebt einen geerbten Standardwert einer Property auf.';
+     En: 'Removes an inherited default value of a property.'),
+    (De: 'Index, den mehrere Properties an dieselbe Zugriffsmethode übergeben.';
+     En: 'Index that several properties pass to the same accessor.'),
+    (De: 'Variable liegt an derselben Adresse wie eine andere Variable.';
+     En: 'Variable lies at the same address as another variable.'),
+    (De: 'Globale Variable mit eigenem Wert je Thread.'; En: 'Global variable with its own value per thread.'),
+    (De: 'Übersetzbarer String, der als Ressource abgelegt wird.';
+     En: 'Translatable string that is stored as a resource.'),
+    (De: 'Ausgabeparameter: Der Eingangswert wird verworfen.'; En: 'Output parameter: the input value is discarded.'),
+    (De: 'Macht die Mitglieder eines Objekts ohne Präfix zugänglich; erschwert das Lesen.';
+     En: 'Makes the members of an object accessible without prefix; makes reading harder.'),
+    (De: 'Sprung zu einer Marke (label).'; En: 'Jump to a label.'),
+    (De: 'Deklariert Sprungmarken für goto.'; En: 'Declares labels for goto.'),
+    (De: 'Ruft die gleichnamige Methode des Vorfahren auf.';
+     En: 'Calls the method of the same name of the ancestor.'),
+    (De: 'Block mit Inline-Assembler.'; En: 'Block with inline assembler.'),
+    (De: 'Routinen, die eine DLL nach außen anbietet.'; En: 'Routines that a DLL offers to the outside.'),
+    (De: 'Dateityp (file of …) für typisierte und untypisierte Dateien.';
+     En: 'File type (file of …) for typed and untyped files.'),
+    (De: 'Code, der beim Laden der Unit ausgeführt wird.'; En: 'Code that runs when the unit is loaded.'),
+    (De: 'Code, der beim Entladen der Unit ausgeführt wird.'; En: 'Code that runs when the unit is unloaded.'),
+    (De: 'Methode, die eine Instanz anlegt und initialisiert.';
+     En: 'Method that creates and initializes an instance.'),
+    (De: 'Methode, die eine Instanz freigibt; Destroy wird über Free aufgerufen.';
+     En: 'Method that frees an instance; Destroy is called via Free.'),
+    (De: 'Bits nach links schieben.'; En: 'Shift bits to the left.'),
+    (De: 'Bits nach rechts schieben.'; En: 'Shift bits to the right.'),
+    (De: 'Überladener Operator eines Records (class operator).';
+     En: 'Overloaded operator of a record (class operator).'),
+    (De: ' In diesem Projekt (BDS %s) nicht verfügbar.'; En: ' Not available in this project (BDS %s).'),
+    (De: 'Standard-Aufrufkonvention von Delphi (Parameter in Registern).';
+     En: 'Default calling convention of Delphi (parameters in registers).'),
+    (De: 'Kopf eines DLL-Projekts; als Hinweisdirektive: nur in dieser Bibliothek.';
+     En: 'Header of a DLL project; as hint directive: only in this library.'),
+    (De: 'Dispatch-Property nur lesbar.'; En: 'Dispatch property read-only.'),
+    (De: 'Dispatch-Property nur schreibbar.'; En: 'Dispatch property write-only.'),
+    (De: 'Sichtbarkeit'; En: 'visibility'),
+    (De: 'Veralteter Objekttyp (Turbo Pascal); heute class bzw. record verwenden.';
+     En: 'Obsolete object type (Turbo Pascal); use class or record today.'),
+    (De: 'Ausdruck'; En: 'expression'),
+    (De: 'Bedingungsausdruck: X := if A then B else C.'; En: 'Conditional expression: X := if A then B else C.'),
+    (De: 'Negierter Typtest: X is not TFoo.'; En: 'Negated type test: X is not TFoo.'),
+    (De: 'Negierter Mengentest: X not in [A, B].'; En: 'Negated set test: X not in [A, B].'),
+    (De: 'Direktive'; En: 'directive'),
+    (De: 'reserviertes Wort'; En: 'reserved word'));
+
+{$SCOPEDENUMS OFF}
 
 const
   Delphi13 = '37.0';
@@ -87,155 +234,239 @@ begin
 end;
 
 var
-  Keywords: TArray<TKeywordInfo>;
+  /// <summary>Je Sprache einmal beim Laden aufgebaut, damit Anfragen in mehreren Threads nur lesen.</summary>
+  Keywords: array[TTextLanguage] of TArray<TKeywordInfo>;
 
-const
-  Directive = 'Direktive';
-  Reserved = 'reserviertes Wort';
 
 /// <summary>Methoden und Routinen.</summary>
-function RoutineKeywords: TArray<TKeywordInfo>;
+function RoutineKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
-    K('reintroduce', Directive, 'Verdeckt eine virtuelle Methode des Vorfahren bewusst, ohne sie zu überschreiben; ' +
-      'unterdrückt die Warnung W1010.', Methods),
-    K('overload', Directive, 'Erlaubt mehrere Routinen gleichen Namens mit unterschiedlichen Parametern.',
+    K('reintroduce', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DeliberatelyHidesAVirtualMethod].TextIn(ALanguage), Methods),
+    K('overload', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.AllowsSeveralRoutinesOfThe].TextIn(ALanguage),
       Routines + '#Overloading_Procedures_and_Functions'),
-    K('override', Directive, 'Überschreibt eine virtuelle oder dynamische Methode des Vorfahren.', Methods),
-    K('virtual', Directive, 'Methode kann in Nachfahren überschrieben werden (Aufruf über die VMT).', Methods),
-    K('dynamic', Directive, 'Wie virtual, aber platzsparender und langsamer (Aufruf über die DMT).', Methods),
-    K('abstract', Directive, 'Methode ohne Implementierung; Nachfahren müssen sie überschreiben.', Methods),
-    K('final', Directive, 'Methode darf nicht weiter überschrieben, Klasse nicht abgeleitet werden.', Methods),
-    K('static', Directive, 'Klassenmethode ohne Self; nicht virtuell.', Methods),
-    K('message', Directive, 'Message-Handler: Methode wird für die angegebene Windows-Nachricht aufgerufen.',
+    K('override', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.OverridesAVirtualOrDynamic].TextIn(ALanguage), Methods),
+    K('virtual', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MethodCanBeOverriddenIn].TextIn(ALanguage), Methods),
+    K('dynamic', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.LikeVirtualButMoreCompact].TextIn(ALanguage), Methods),
+    K('abstract', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MethodWithoutImplementationDescendantsMust].TextIn(ALanguage), Methods),
+    K('final', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MethodMustNotBeOverridden].TextIn(ALanguage), Methods),
+    K('static', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ClassMethodWithoutSelfNot].TextIn(ALanguage), Methods),
+    K('message', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MessageHandlerTheMethodIs].TextIn(ALanguage),
       Methods + '#Message_Methods'),
-    K('inline', Reserved, 'Bittet den Compiler, die Routine an der Aufrufstelle einzusetzen.',
+    K('inline', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.AsksTheCompilerToInsert].TextIn(ALanguage),
       'Calling_Procedures_and_Functions_(Delphi)#Using_the_inline_Directive'),
-    K('forward', Directive, 'Vorwärtsdeklaration einer Routine, deren Rumpf später folgt.',
+    K('forward', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ForwardDeclarationOfARoutine].TextIn(ALanguage),
       Routines + '#Forward_and_Interface_Declarations'),
-    K('external', Directive, 'Routine aus einer DLL oder Objektdatei.', Routines + '#External_Declarations'),
-    K('assembler', Directive, 'Routine in Assembler (veraltet, nur zur Kompatibilität).', 'Inline_Assembly_Code'),
-    K('varargs', Directive, 'Variable Parameterliste für externe C-Routinen.', Routines + '#Varargs'),
-    K('noreturn', Directive, 'Routine kehrt nicht zurück (z. B. nach raise).', Routines),
-    K('delayed', Directive, 'DLL wird erst beim ersten Aufruf geladen.', 'Libraries_and_Packages_(Delphi)'),
-    K('cdecl', Directive, 'Aufrufkonvention von C: Parameter von rechts nach links, Aufrufer räumt den Stack.',
+    K('external', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.RoutineFromADLLOr].TextIn(ALanguage),
+      Routines + '#External_Declarations'),
+    K('assembler', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.RoutineInAssemblerObsoleteOnly].TextIn(ALanguage),
+      'Inline_Assembly_Code'),
+    K('varargs', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VariableParameterListForExternal].TextIn(ALanguage), Routines + '#Varargs'),
+    K('noreturn', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.RoutineDoesNotReturnE].TextIn(ALanguage), Routines),
+    K('delayed', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.TheDLLIsLoadedOnly].TextIn(ALanguage),
+      'Libraries_and_Packages_(Delphi)'),
+    K('cdecl', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CallingConventionOfCParameters].TextIn(ALanguage),
       Routines + '#Calling_Conventions'),
-    K('stdcall', Directive, 'Aufrufkonvention der Windows-API.', Routines + '#Calling_Conventions'),
-    K('safecall', Directive, 'Aufrufkonvention für COM: Ausnahmen werden zu HResult.',
+    K('stdcall', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CallingConventionOfTheWindows].TextIn(ALanguage), Routines +
+      '#Calling_Conventions'),
+    K('safecall', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CallingConventionForCOMExceptions].TextIn(ALanguage),
       Routines + '#Calling_Conventions'),
-    K('register', Directive, 'Standard-Aufrufkonvention von Delphi (Parameter in Registern).',
+    K('register', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DefaultCallingConventionOfDelphi].TextIn(ALanguage),
       Routines + '#Calling_Conventions'),
-    K('pascal', Directive, 'Ältere Aufrufkonvention: Parameter von links nach rechts.',
+    K('pascal', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.OlderCallingConventionParametersFrom].TextIn(ALanguage),
       Routines + '#Calling_Conventions'),
-    K('winapi', Directive, 'Aufrufkonvention der Plattform-API (stdcall unter Windows).',
+    K('winapi', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CallingConventionOfThePlatform].TextIn(ALanguage),
       Routines + '#Calling_Conventions'),
-    K('dispid', Directive, 'Nummer eines Mitglieds in einer Dispatch-Schnittstelle (Automation).',
+    K('dispid', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.NumberOfAMemberIn].TextIn(ALanguage),
       'Automation_Objects_(Delphi)')];
 end;
 
 /// <summary>Hinweisdirektiven, Sichtbarkeit und Klassen.</summary>
-function ClassKeywords: TArray<TKeywordInfo>;
+function ClassKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
-    K('deprecated', Directive, 'Verwendung erzeugt eine Warnung; optional mit Hinweistext.', Hints),
-    K('platform', Directive, 'Nur auf bestimmten Plattformen verfügbar; Verwendung erzeugt eine Warnung.', Hints),
-    K('experimental', Directive, 'Noch nicht stabil; Verwendung erzeugt eine Warnung.', Hints),
-    K('library', Reserved, 'Kopf eines DLL-Projekts; als Hinweisdirektive: nur in dieser Bibliothek.', Hints),
+    K('deprecated', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.UseProducesAWarningOptionally].TextIn(ALanguage), Hints),
+    K('platform', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.OnlyAvailableOnCertainPlatforms].TextIn(ALanguage), Hints),
+    K('experimental', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.NotStableYetUseProduces].TextIn(ALanguage), Hints),
+    K('library', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.HeaderOfADLLProject].TextIn(ALanguage), Hints),
     // Sichtbarkeit und Klassen
-    K('strict private', 'Sichtbarkeit', 'Nur innerhalb der Klasse sichtbar, auch nicht für andere Klassen ' +
-      'derselben Unit.', Classes + '#Strict_Visibility_Specifiers'),
-    K('strict protected', 'Sichtbarkeit', 'Nur in der Klasse und ihren Nachfahren sichtbar, nicht für andere ' +
-      'Klassen derselben Unit.', Classes + '#Strict_Visibility_Specifiers'),
-    K('protected', 'Sichtbarkeit', 'Sichtbar in der Klasse, ihren Nachfahren und der eigenen Unit.', Classes),
-    K('public', 'Sichtbarkeit', 'Überall sichtbar.', Classes),
-    K('published', 'Sichtbarkeit', 'Überall sichtbar, mit RTTI für den Objektinspektor und das Streaming (.dfm).',
+    K('strict private', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VisibleOnlyInsideTheClass].TextIn(ALanguage), Classes +
+      '#Strict_Visibility_Specifiers'),
+    K('strict protected', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VisibleOnlyInTheClass].TextIn(ALanguage), Classes +
+      '#Strict_Visibility_Specifiers'),
+    K('protected', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VisibleInTheClassIts].TextIn(ALanguage), Classes),
+    K('public', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VisibleEverywhere].TextIn(ALanguage),
+      Classes),
+    K('published', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VisibleEverywhereWithRTTIFor].TextIn(ALanguage),
       Classes + '#Published_Members'),
-    K('automated', 'Sichtbarkeit', 'Veraltet: wie public, mit Automation-Typinformationen.', Classes),
-    K('class var', 'Deklaration', 'Klassenfeld: ein Wert für alle Instanzen der Klasse.',
+    K('automated', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ObsoleteLikePublicWithAutomation].TextIn(ALanguage), Classes),
+    K('class var', 'Deklaration', cTexts[TKeywordReferenceText.ClassFieldOneValueFor].TextIn(ALanguage),
       'Fields_(Delphi)#Class_Fields'),
-    K('sealed', Directive, 'Von der Klasse darf nicht abgeleitet werden.', Classes),
-    K('helper', Directive, 'Class Helper bzw. Record Helper: erweitert einen Typ um Methoden.',
+    K('sealed', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.TheClassMustNotBe].TextIn(ALanguage),
+      Classes),
+    K('helper', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ClassHelperOrRecordHelper].TextIn(ALanguage),
       'Class_and_Record_Helpers_(Delphi)'),
-    K('dispinterface', Reserved, 'Dispatch-Schnittstelle für Automation (Aufruf über IDispatch).',
+    K('dispinterface', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DispatchInterfaceForAutomationCall].TextIn(ALanguage),
       'Automation_Objects_(Delphi)#Dispatch_Interface_Types'),
-    K('object', Reserved, 'Veralteter Objekttyp (Turbo Pascal); heute class bzw. record verwenden.',
+    K('object', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ObsoleteObjectTypeTurboPascal].TextIn(ALanguage),
       'Classes_and_Objects_(Delphi)#Object_Types'),
-    K('packed', Reserved, 'Felder ohne Ausrichtungslücken ablegen.',
+    K('packed', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.StoreFieldsWithoutAlignmentGaps].TextIn(ALanguage),
       'Structured_Types_(Delphi)#Alignment_of_Structured_Types')];
 end;
 
 /// <summary>Properties.</summary>
-function PropertyKeywords: TArray<TKeywordInfo>;
+function PropertyKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
-    K('property', Reserved, 'Eigenschaft mit Lese- und Schreibzugriff über Felder oder Methoden.', Properties),
-    K('implements', Directive, 'Delegiert die Implementierung einer Schnittstelle an eine Property.',
+    K('property', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.PropertyWithReadAndWrite].TextIn(ALanguage), Properties),
+    K('implements', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DelegatesTheImplementationOfAn].TextIn(ALanguage),
       'Using_Implements_for_Delegation'),
-    K('stored', Directive, 'Ob der Wert der Property in der .dfm gespeichert wird (Boolean oder Funktion).',
+    K('stored', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.WhetherTheValueOfThe].TextIn(ALanguage),
       Properties + '#Storage_Specifiers'),
-    K('default', Directive, 'Standardwert einer Property (wird dann nicht gespeichert) bzw. Standard-Array-Property.',
+    K('default', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DefaultValueOfAProperty].TextIn(ALanguage),
       Properties + '#Storage_Specifiers'),
-    K('nodefault', Directive, 'Hebt einen geerbten Standardwert einer Property auf.',
+    K('nodefault', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.RemovesAnInheritedDefaultValue].TextIn(ALanguage),
       Properties + '#Storage_Specifiers'),
-    K('index', Directive, 'Index, den mehrere Properties an dieselbe Zugriffsmethode übergeben.',
+    K('index', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.IndexThatSeveralPropertiesPass].TextIn(ALanguage),
       Properties + '#Index_Specifiers'),
-    K('readonly', Directive, 'Dispatch-Property nur lesbar.', 'Automation_Objects_(Delphi)'),
-    K('writeonly', Directive, 'Dispatch-Property nur schreibbar.', 'Automation_Objects_(Delphi)')];
+    K('readonly', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DispatchPropertyReadOnly].TextIn(ALanguage),
+      'Automation_Objects_(Delphi)'),
+    K('writeonly', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DispatchPropertyWriteOnly].TextIn(ALanguage),
+      'Automation_Objects_(Delphi)')];
 end;
 
 /// <summary>Variablen, Anweisungen und Delphi 13.</summary>
-function StatementKeywords: TArray<TKeywordInfo>;
+function StatementKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
-    K('absolute', Directive, 'Variable liegt an derselben Adresse wie eine andere Variable.',
+    K('absolute', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.VariableLiesAtTheSame].TextIn(ALanguage),
       'Variables_(Delphi)#Absolute_Addresses'),
-    K('threadvar', Reserved, 'Globale Variable mit eigenem Wert je Thread.',
+    K('threadvar', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.GlobalVariableWithItsOwn].TextIn(ALanguage),
       'Variables_(Delphi)#Thread-local_Variables'),
-    K('resourcestring', Reserved, 'Übersetzbarer String, der als Ressource abgelegt wird.',
+    K('resourcestring', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.TranslatableStringThatIsStored].TextIn(ALanguage),
       'Resource_Strings_(Delphi)'),
-    K('out', Directive, 'Ausgabeparameter: Der Eingangswert wird verworfen.', 'Parameters_(Delphi)#Out_Parameters'),
-    K('with', Reserved, 'Macht die Mitglieder eines Objekts ohne Präfix zugänglich; erschwert das Lesen.',
+    K('out', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.OutputParameterTheInputValue].TextIn(ALanguage),
+      'Parameters_(Delphi)#Out_Parameters'),
+    K('with', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MakesTheMembersOfAn].TextIn(ALanguage),
       'Declarations_and_Statements_(Delphi)#With_Statements'),
-    K('goto', Reserved, 'Sprung zu einer Marke (label).', 'Declarations_and_Statements_(Delphi)#Goto_Statements'),
-    K('label', Reserved, 'Deklariert Sprungmarken für goto.', 'Declarations_and_Statements_(Delphi)#Goto_Statements'),
-    K('inherited', Reserved, 'Ruft die gleichnamige Methode des Vorfahren auf.', Methods + '#Inherited'),
-    K('asm', Reserved, 'Block mit Inline-Assembler.', 'Inline_Assembly_Code'),
-    K('exports', Reserved, 'Routinen, die eine DLL nach außen anbietet.', 'Writing_Dynamically_Loaded_Libraries'),
-    K('file', Reserved, 'Dateityp (file of …) für typisierte und untypisierte Dateien.', 'File_Types_(Delphi)'),
-    K('initialization', Reserved, 'Code, der beim Laden der Unit ausgeführt wird.',
+    K('goto', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.JumpToALabel].TextIn(ALanguage),
+      'Declarations_and_Statements_(Delphi)#Goto_Statements'),
+    K('label', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.DeclaresLabelsForGoto].TextIn(ALanguage),
+      'Declarations_and_Statements_(Delphi)#Goto_Statements'),
+    K('inherited', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CallsTheMethodOfThe].TextIn(ALanguage), Methods + '#Inherited'),
+    K('asm', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.BlockWithInlineAssembler].TextIn(ALanguage), 'Inline_Assembly_Code'),
+    K('exports', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.RoutinesThatADLLOffers].TextIn(ALanguage),
+      'Writing_Dynamically_Loaded_Libraries'),
+    K('file', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.FileTypeFileOfFor].TextIn(ALanguage),
+      'File_Types_(Delphi)'),
+    K('initialization', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CodeThatRunsWhenThe].TextIn(ALanguage),
       'Programs_and_Units_(Delphi)#The_Initialization_Section'),
-    K('finalization', Reserved, 'Code, der beim Entladen der Unit ausgeführt wird.',
+    K('finalization', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.CodeThatRunsWhenThe2].TextIn(ALanguage),
       'Programs_and_Units_(Delphi)#The_Finalization_Section'),
-    K('constructor', Reserved, 'Methode, die eine Instanz anlegt und initialisiert.', Methods + '#Constructors'),
-    K('destructor', Reserved, 'Methode, die eine Instanz freigibt; Destroy wird über Free aufgerufen.',
+    K('constructor', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MethodThatCreatesAndInitializes].TextIn(ALanguage), Methods +
+      '#Constructors'),
+    K('destructor', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.MethodThatFreesAnInstance].TextIn(ALanguage),
       Methods + '#Destructors'),
-    K('shl', Reserved, 'Bits nach links schieben.', Expressions + '#Bitwise_Operators'),
-    K('shr', Reserved, 'Bits nach rechts schieben.', Expressions + '#Bitwise_Operators'),
-    K('operator', Directive, 'Überladener Operator eines Records (class operator).',
+    K('shl', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ShiftBitsToTheLeft].TextIn(ALanguage),
+      Expressions + '#Bitwise_Operators'),
+    K('shr', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ShiftBitsToTheRight].TextIn(ALanguage),
+      Expressions + '#Bitwise_Operators'),
+    K('operator', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.OverloadedOperatorOfARecord].TextIn(ALanguage),
       'Operator_Overloading_(Delphi)'),
     // Delphi 13
-    K('if expression', 'Ausdruck', 'Bedingungsausdruck: X := if A then B else C.', Expressions, Delphi13),
-    K('is not', 'Operator', 'Negierter Typtest: X is not TFoo.', Expressions, Delphi13),
-    K('not in', 'Operator', 'Negierter Mengentest: X not in [A, B].', Expressions, Delphi13)];
+    K('if expression', cTexts[TKeywordReferenceText.Expression].TextIn(ALanguage),
+      cTexts[TKeywordReferenceText.ConditionalExpressionXIfA].TextIn(ALanguage), Expressions, Delphi13),
+    K('is not', 'Operator', cTexts[TKeywordReferenceText.NegatedTypeTestXIs].TextIn(ALanguage), Expressions, Delphi13),
+    K('not in', 'Operator', cTexts[TKeywordReferenceText.NegatedSetTestXNot].TextIn(ALanguage), Expressions, Delphi13)];
 end;
 
 procedure InitKeywords;
+var
+  mLanguage: TTextLanguage;
 begin
-  Keywords := RoutineKeywords + ClassKeywords + PropertyKeywords + StatementKeywords;
+  for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+  begin
+    Keywords[mLanguage] := RoutineKeywords(mLanguage) + ClassKeywords(mLanguage) + PropertyKeywords(mLanguage) +
+      StatementKeywords(mLanguage);
+  end;
 end;
 
 { TKeywordReference }
 
 class function TKeywordReference.All: TArray<TKeywordInfo>;
 begin
-  Result := Keywords;
+  Result := Keywords[TAtlasLocale.Language];
 end;
 
 class function TKeywordReference.Find(const AName: string; out AInfo: TKeywordInfo): Boolean;
 var
   Info: TKeywordInfo;
 begin
-  for Info in Keywords do
+  for Info in Keywords[TAtlasLocale.Language] do
   begin
     if SameText(Info.Name, AName) then
     begin
@@ -277,7 +508,7 @@ begin
     if (TLanguageFeatures.ParseVersion(ADelphiVersion) > 0) and
       (TLanguageFeatures.ParseVersion(ADelphiVersion) < TLanguageFeatures.ParseVersion(AInfo.MinVersion)) then
     begin
-      Result := Result + ' In diesem Projekt (BDS ' + ADelphiVersion + ') nicht verfügbar.';
+      Result := Result + cTexts[TKeywordReferenceText.NotAvailableInThisProject].Fmt([ADelphiVersion]);
     end;
   end;
   Result := Result + #10#10 + '[DocWiki](' + TCompilerDirectives.Url(ADelphiVersion, AInfo.Topic) + ')';
@@ -295,7 +526,8 @@ function Neighbour(const ATokens: TArray<TPascalToken>; AIndex, AStep: Integer):
 begin
   Result := AIndex + AStep;
   while (Result >= 0) and (Result <= High(ATokens)) and
-    (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    (ATokens[Result].Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.cTexts[TKeywordReferenceText.Directive].Text]) do
   begin
     Inc(Result, AStep);
   end;
@@ -397,6 +629,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.KeywordReference', cTexts);
   InitKeywords;
 
 end.

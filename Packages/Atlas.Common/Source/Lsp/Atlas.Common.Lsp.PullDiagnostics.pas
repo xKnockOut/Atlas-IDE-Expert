@@ -172,7 +172,20 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPullDiagnosticsText = (FieldTextDocumentUriMissingIn);
+
+const
+  cTexts: array[TPullDiagnosticsText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument;
   const ACancellation: IJsonRpcCancellationToken): TJSONArray;
@@ -483,7 +496,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + DocumentMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + DocumentMethod);
   end;
   if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
   begin
@@ -605,5 +619,8 @@ begin
     mPrevious.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PullDiagnostics', cTexts);
 
 end.

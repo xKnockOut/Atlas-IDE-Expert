@@ -96,7 +96,8 @@ uses
   Atlas.Core.Completion.Matching;
 
 const
-  UsesSuffix = ' (uses ergänzen)';
+  /// <summary>Endung des Details, mit der der Server die Unit nennt, je Sprache der Servertexte (#1458).</summary>
+  UsesSuffixes: array[0..1] of string = (' (uses ergänzen)', ' (add to uses)');
 
 function MakeBadge(AKind: TAtlasBadgeKind; const ACode: string): TAtlasBadge;
 begin
@@ -269,6 +270,7 @@ end;
 class function TAtlasItemPresentation.MissingUnit(const AItem: TAtlasCompletionItem): string;
 var
   Edit: TAtlasTextEdit;
+  Suffix: string;
   Text: string;
 begin
   Result := '';
@@ -276,10 +278,13 @@ begin
   begin
     Exit;
   end;
-  // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)").
-  if EndsText(UsesSuffix, AItem.Signature) then
+  // Der Server nennt die Unit im Detail ("System.Classes (uses ergänzen)" bzw. "System.Classes (add to uses)").
+  for Suffix in UsesSuffixes do
   begin
-    Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(UsesSuffix)));
+    if EndsText(Suffix, AItem.Signature) then
+    begin
+      Exit(Copy(AItem.Signature, 1, Length(AItem.Signature) - Length(Suffix)));
+    end;
   end;
   // Sonst aus der Ergänzung selbst (", System.Classes" bzw. "uses System.Classes;").
   for Edit in AItem.AdditionalEdits do

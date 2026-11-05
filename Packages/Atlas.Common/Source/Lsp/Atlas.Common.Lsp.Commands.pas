@@ -45,6 +45,22 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCommandsText = (FieldCommandMissingIn, UnknownCommand);
+
+const
+  cTexts: array[TCommandsText] of TAtlasText = (
+    (De: 'Feld "command" fehlt in '; En: 'Field "command" missing in '),
+    (De: 'Unbekannter Befehl: '; En: 'Unknown command: '));
+
+{$SCOPEDENUMS OFF}
+
 constructor TLspCommands.Create;
 begin
   inherited Create;
@@ -111,7 +127,7 @@ var
 begin
   if not FHandlers.TryGetValue(ACommand, Handler) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Unbekannter Befehl: ' + ACommand);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCommandsText.UnknownCommand].Text + ACommand);
   end;
   Result := Handler(AArguments);
   if Result = nil then
@@ -127,7 +143,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', Command)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "command" fehlt in ' + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCommandsText.FieldCommandMissingIn].Text +
+      Method);
   end;
   Arguments := TJSONObject(AParams).GetValue('arguments');
   if Arguments is TJSONArray then
@@ -139,5 +156,8 @@ begin
     Result := Execute(Command, nil);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Commands', cTexts);
 
 end.

@@ -41,7 +41,26 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMSBuildText = (StringNotClosed, ComparisonExpected, UnexpectedCharacter, OperandExpected, Expected,
+    NumberExpected);
+
+const
+  cTexts: array[TMSBuildText] of TAtlasText = (
+    (De: 'String nicht abgeschlossen'; En: 'String not closed'),
+    (De: 'Vergleich erwartet'; En: 'Comparison expected'),
+    (De: 'Unerwartetes Zeichen'; En: 'Unexpected character'),
+    (De: 'Operand erwartet'; En: 'Operand expected'),
+    (De: '")" erwartet'; En: '")" expected'),
+    (De: 'Zahl erwartet'; En: 'Number expected'));
+
+{$SCOPEDENUMS OFF}
 
 type
   EConditionError = class(Exception);
@@ -221,7 +240,7 @@ begin
   SkipSpace;
   if FPos <= Length(FText) then
   begin
-    raise EConditionError.Create('Unerwartetes Zeichen');
+    raise EConditionError.Create(cTexts[TMSBuildText.UnexpectedCharacter].Text);
   end;
 end;
 
@@ -275,7 +294,7 @@ begin
   end;
   if FPos > Length(FText) then
   begin
-    raise EConditionError.Create('String nicht abgeschlossen');
+    raise EConditionError.Create(cTexts[TMSBuildText.StringNotClosed].Text);
   end;
   Result := FProperties.Expand(Copy(FText, mStart, FPos - mStart));
   Inc(FPos);
@@ -301,7 +320,7 @@ begin
   end;
   if FPos = mStart then
   begin
-    raise EConditionError.Create('Operand erwartet');
+    raise EConditionError.Create(cTexts[TMSBuildText.OperandExpected].Text);
   end;
   Result := FProperties.Expand(Copy(FText, mStart, FPos - mStart));
 end;
@@ -311,7 +330,7 @@ begin
   SkipSpace;
   if FPos > Length(FText) then
   begin
-    raise EConditionError.Create('Operand erwartet');
+    raise EConditionError.Create(cTexts[TMSBuildText.OperandExpected].Text);
   end;
   if CharInSet(FText[FPos], ['''', '"']) then
   begin
@@ -348,7 +367,7 @@ begin
   SkipSpace;
   if (FPos > Length(FText)) or (FText[FPos] <> ')') then
   begin
-    raise EConditionError.Create('")" erwartet');
+    raise EConditionError.Create(cTexts[TMSBuildText.Expected].Text);
   end;
   Inc(FPos);
 end;
@@ -398,7 +417,7 @@ function SingleValue(const AValue: string): Boolean;
 begin
   if not SameText(AValue, 'true') and not SameText(AValue, 'false') then
   begin
-    raise EConditionError.Create('Vergleich erwartet');
+    raise EConditionError.Create(cTexts[TMSBuildText.ComparisonExpected].Text);
   end;
   Result := SameText(AValue, 'true');
 end;
@@ -410,7 +429,7 @@ begin
   if not (TryStrToFloat(ALeft, mLeft, TFormatSettings.Invariant) and
     TryStrToFloat(ARight, mRight, TFormatSettings.Invariant)) then
   begin
-    raise EConditionError.Create('Zahl erwartet');
+    raise EConditionError.Create(cTexts[TMSBuildText.NumberExpected].Text);
   end;
   case IndexStr(AOperator, ['<', '>', '<=']) of
     0:
@@ -471,5 +490,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.Internals.MSBuild', cTexts);
 
 end.
