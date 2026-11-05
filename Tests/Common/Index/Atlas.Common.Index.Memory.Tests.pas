@@ -31,6 +31,8 @@ type
     [Test]
     procedure CompactsProjectUnitsWhenLibrariesAreNotEnough;
     [Test]
+    procedure KeepsProjectUsagesWhileLibrariesAreEnough;
+    [Test]
     procedure MillionLinesStayBelowBudget;
     [Test]
     procedure CacheKeepsLibraryAndCompactFlags;
@@ -227,6 +229,26 @@ begin
   Assert.IsTrue(Index.FindUnit('Vcl', Found) and Found.Compact);
   Assert.IsTrue(Index.FindSymbols('VclSymbol0') <> nil);
   Assert.IsTrue(Index.FindSymbols('VclSymbol10') = nil);
+end;
+
+procedure TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough;
+var
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
+  mFull: Int64;
+begin
+  // Ohne die Verwendungen der Projekt-Units liest unused-public-member jede Datei der Gruppe (Abbrüche in
+  // 2.0-stable): Reicht das Kompakthalten der Bibliotheken, bleiben sie im Speicher.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(WithUsages(MakeUnit('Projekt', False, 5, 5)));
+  mIndex.AddUnit(MakeUnit('Vcl', True, 5, 50));
+  mFull := mIndex.MemoryBytes;
+  mIndex.SetBudget(mFull - 1);
+  Assert.IsTrue(mIndex.MemoryBytes <= mFull - 1);
+  Assert.IsTrue(mIndex.FindUnit('Vcl', mFound) and mFound.Compact);
+  Assert.IsTrue(mIndex.FindUnit('Projekt', mFound) and not mFound.Compact);
+  Assert.AreEqual(2, Integer(Length(mFound.Usages)));
+  Assert.IsTrue(mIndex.MemoryParts.UsageBytes > 0);
 end;
 
 procedure TIndexMemoryTests.MillionLinesStayBelowBudget;

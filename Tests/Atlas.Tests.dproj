@@ -403,6 +403,7 @@
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackGuard.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FindingsMemo.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.TestSupport.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Features.Tests.pas"/>
@@ -626,6 +627,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.BackgroundRequest.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Session.Base.pas"/>
@@ -790,6 +792,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.ShortcutTip.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Progress.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.BackgroundRequest.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Crashes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.CrashCases.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Guard.Tests.pas"/>
@@ -1159,6 +1162,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.AccountName.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.AccountName.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
