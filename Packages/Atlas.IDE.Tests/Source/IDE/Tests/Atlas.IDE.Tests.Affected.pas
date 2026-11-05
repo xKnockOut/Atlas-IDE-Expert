@@ -287,6 +287,18 @@ begin
   end;
 end;
 
+/// <summary>Texte des Hooks in der Sprache der Oberfläche (#1458), im Hauptthread gelesen.</summary>
+function HookTexts: TAtlasAffectedHookTexts;
+begin
+  Result := Default(TAtlasAffectedHookTexts);
+  Result.Purpose := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookPurpose);
+  Result.Removal := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookRemoval);
+  Result.ExitCodes := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookExitCodes);
+  Result.NoTerminal := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookNoTerminal);
+  Result.AskRun := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookAskRun);
+  Result.AskCommit := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsHookAskCommit);
+end;
+
 class procedure TAtlasIdeAffectedTests.InstallHook(const ATarget: TAtlasTestTarget);
 var
   mConfig: TAtlasAffectedHookConfig;
@@ -300,6 +312,7 @@ begin
   mConfig.ServerPath := FHooks.ServerPath();
   mConfig.Project := ATarget.Project;
   mConfig.Executable := ATarget.Executable;
+  mConfig.Texts := HookTexts;
   mFolder := ExtractFilePath(ATarget.Project);
   Spawn(
     procedure

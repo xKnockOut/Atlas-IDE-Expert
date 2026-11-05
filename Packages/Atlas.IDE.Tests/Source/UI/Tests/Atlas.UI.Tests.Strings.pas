@@ -21,7 +21,9 @@ type
     TestsAffectedHookInstalled,
     WelcomeQuickReasonTestsOff, WelcomeQuickReasonNotOpened,
     SettingsCodeLensTests, SettingsTestRun, SettingsTestsBuildFirst, SettingsTestsAfterBuild, SettingsTestDebug,
-    SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
+    SettingsTestBreakAtStart, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit,
+    TestsHookPurpose, TestsHookRemoval, TestsHookExitCodes, TestsHookNoTerminal, TestsHookAskRun,
+    TestsHookAskCommit);
 
   TAtlasTestsStrings = class
   public
@@ -95,7 +97,13 @@ const
      'Beim Test-Debuggen am Anfang der Methode anhalten (einmaliger Haltepunkt)',
      'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
      'Ebenen von der Änderung bis zum Test (1 bis 5):',
-     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)',
+     'Von Atlas angelegt (tests.affectedBeforeCommit): nennt vor dem Commit die betroffenen Tests und führt sie im Terminal auf Wunsch aus.',
+     'Entfernen: Einstellung ausschalten oder diese Datei löschen.',
+     '0 = Liste (leer: keine betroffenen Tests), 2 = alle Tests nötig, sonst (3 = aus, Fehler) nichts tun.',
+     'Ohne Terminal (Commit aus der IDE) bleibt es bei der Liste.',
+     'Atlas: Betroffene Tests jetzt ausführen (Test-EXE ohne neuen Build)? [j/N] ',
+     'Atlas: Tests fehlgeschlagen. Trotzdem committen? [j/N] '),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -153,7 +161,13 @@ const
      'Stop at the start of the method when debugging a test (one-time breakpoint)',
      'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
      'Levels from the change to the test (1 to 5):',
-     'Offer before committing (Git pre-commit hook, Git only)'));
+     'Offer before committing (Git pre-commit hook, Git only)',
+     'Created by Atlas (tests.affectedBeforeCommit): lists the affected tests before the commit and runs them in the terminal on request.',
+     'To remove: turn the setting off or delete this file.',
+     '0 = list (empty: no affected tests), 2 = all tests needed, otherwise (3 = off, error) do nothing.',
+     'Without a terminal (commit from the IDE) only the list is shown.',
+     'Atlas: Run the affected tests now (test EXE without a new build)? [y/N] ',
+     'Atlas: Tests failed. Commit anyway? [y/N] '));
 
 { TAtlasTestsStrings }
 
