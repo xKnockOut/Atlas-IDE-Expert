@@ -1,5 +1,7 @@
 # MCP-Modus
 
+*English version: [MCP.md](en/MCP.md)*
+
 Mit `--mcp` bietet Atlas den Symbolindex eines Projektordners über das
 Model Context Protocol an (stdio, eine JSON-Nachricht je Zeile). Ein KI-Assistent
 kann damit Fragen zum Projekt beantworten, ohne Quelldateien vollständig zu lesen.
