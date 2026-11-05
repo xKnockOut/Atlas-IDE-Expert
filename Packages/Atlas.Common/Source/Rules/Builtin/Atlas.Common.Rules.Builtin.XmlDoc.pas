@@ -74,7 +74,36 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TXmlDocText = (AndSep, NoDocComment, CreateDoc, CrefNoSymbol, CrefMeant, SetCref, ReturnsNoResult, ReturnsMissing,
+    MatchSignature, Title, DoesNotExist, NotDescribed, NotDescribedMany, LikeCodeDot, LikeCodeParen);
+
+const
+  cTexts: array[TXmlDocText] of TAtlasText = (
+    (De: ' und '; En: ' and '),
+    (De: 'Öffentliches Mitglied %s hat keinen Doku-Kommentar.'; En: 'Public member %s has no doc comment.'),
+    (De: 'Doku-Kommentar erzeugen'; En: 'Create doc comment'),
+    (De: 'cref "%s" zeigt auf kein Symbol.'; En: 'cref "%s" points to no symbol.'),
+    (De: ' Gemeint ist wohl %s.'; En: ' %s is probably meant.'),
+    (De: 'cref auf %s setzen'; En: 'Set cref to %s'),
+    (De: '<returns> steht an einer Routine ohne Ergebnis'; En: '<returns> is on a routine without result'),
+    (De: '<returns> fehlt'; En: '<returns> is missing'),
+    (De: 'Doku an die Signatur anpassen'; En: 'Adapt the doc to the signature'),
+    (De: 'XMLDoc passt nicht zur Signatur oder ist kein wohlgeformtes XML';
+     En: 'XMLDoc does not match the signature or is not well-formed XML'),
+    (De: '%s gibt es nicht'; En: '%s does not exist'),
+    (De: '%s ist nicht beschrieben'; En: '%s is not described'),
+    (De: '%s sind nicht beschrieben'; En: '%s are not described'),
+    (De: ' (wie %s).'; En: ' (like %s).'),
+    (De: ' (wie %s)'; En: ' (like %s)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineWords: array[0..5] of string = ('class', 'function', 'procedure', 'constructor', 'destructor', 'operator');
@@ -384,7 +413,7 @@ begin
     end
     else if Index = High(ANames) then
     begin
-      Result := Result + ' und ' + ANames[Index];
+      Result := Result + cTexts[TXmlDocText.AndSep].Text + ANames[Index];
     end
     else
     begin
@@ -680,11 +709,11 @@ begin
   end;
   if EndsStr('.', Result) then
   begin
-    Result := Copy(Result, 1, Length(Result) - 1) + ' (wie ' + ACode + ').';
+    Result := Copy(Result, 1, Length(Result) - 1) + cTexts[TXmlDocText.LikeCodeDot].Fmt([ACode]);
   end
   else
   begin
-    Result := Result + ' (wie ' + ACode + ')';
+    Result := Result + cTexts[TXmlDocText.LikeCodeParen].Fmt([ACode]);
   end;
 end;
 
@@ -901,8 +930,8 @@ begin
   mRow := SkeletonRow(AMember);
   mSkeleton := TDocComments.Skeleton(TDocComments.Signature(FLines, AMember.StartPos.Line),
     TTextLines.IndentOf(FLines[mRow]));
-  FReport.Add(DeclarationRange(AMember), Format('Öffentliches Mitglied %s hat keinen Doku-Kommentar.',
-    [AMember.Name]), [TRuleFix.Create('Doku-Kommentar erzeugen', [TRuleEdit.Create(TTextRange.Create(mRow,
+  FReport.Add(DeclarationRange(AMember), cTexts[TXmlDocText.NoDocComment].Fmt(
+    [AMember.Name]), [TRuleFix.Create(cTexts[TXmlDocText.CreateDoc].Text, [TRuleEdit.Create(TTextRange.Create(mRow,
     0, mRow, 0), TTextLines.JoinLines(mSkeleton, FLineBreak) + FLineBreak)])]);
 end;
 
@@ -1124,13 +1153,13 @@ begin
   begin
     Exit;
   end;
-  mMessage := FOwner.WithCode(ABlock, Format('cref "%s" zeigt auf kein Symbol.', [AAttribute.Value]), 'W1206');
+  mMessage := FOwner.WithCode(ABlock, cTexts[TXmlDocText.CrefNoSymbol].Fmt([AAttribute.Value]), 'W1206');
   mFixes := nil;
   mReplaced := Replacement(AContainer, mName, AOffset);
   if (mReplaced <> '') and FResolver.LocateCref(FFromUnit, AContainer, mReplaced, mFound) then
   begin
-    mMessage := mMessage + Format(' Gemeint ist wohl %s.', [mReplaced]);
-    mFixes := [TRuleFix.Create(Format('cref auf %s setzen', [mReplaced]),
+    mMessage := mMessage + cTexts[TXmlDocText.CrefMeant].Fmt([mReplaced]);
+    mFixes := [TRuleFix.Create(cTexts[TXmlDocText.SetCref].Fmt([mReplaced]),
       [TRuleEdit.Create(FOwner.XmlRange(ABlock, AAttribute.ValueStart, AAttribute.ValueStop),
       mPrefix + mReplaced + mRest)])];
   end;
@@ -1233,23 +1262,23 @@ begin
     begin
       mNames := mNames + [Format('<param name="%s">', [FParamNames[mPosition]])];
     end;
-    mParts := mParts + [FOwner.WithCode(FBlock, Joined(mNames) + ' gibt es nicht', 'W1207')];
+    mParts := mParts + [FOwner.WithCode(FBlock, cTexts[TXmlDocText.DoesNotExist].Fmt([Joined(mNames)]), 'W1207')];
   end;
   if Length(FMissing) = 1 then
   begin
-    mParts := mParts + [FOwner.WithCode(FBlock, FMissing[0] + ' ist nicht beschrieben', 'W1208')];
+    mParts := mParts + [FOwner.WithCode(FBlock, cTexts[TXmlDocText.NotDescribed].Fmt([FMissing[0]]), 'W1208')];
   end
   else if Length(FMissing) > 1 then
   begin
-    mParts := mParts + [FOwner.WithCode(FBlock, Joined(FMissing) + ' sind nicht beschrieben', 'W1208')];
+    mParts := mParts + [FOwner.WithCode(FBlock, cTexts[TXmlDocText.NotDescribedMany].Fmt([Joined(FMissing)]), 'W1208')];
   end;
   if FStrayReturns then
   begin
-    mParts := mParts + ['<returns> steht an einer Routine ohne Ergebnis'];
+    mParts := mParts + [cTexts[TXmlDocText.ReturnsNoResult].Text];
   end;
   if FMissingReturns then
   begin
-    mParts := mParts + ['<returns> fehlt'];
+    mParts := mParts + [cTexts[TXmlDocText.ReturnsMissing].Text];
   end;
   Result := String.Join('; ', mParts) + '.';
 end;
@@ -1430,7 +1459,7 @@ begin
   begin
     FEdits := FEdits + [FOwner.RemoveEdit(FBlock, FReturns)];
   end;
-  FReport.Add(ReportRange, mMessage, [TRuleFix.Create('Doku an die Signatur anpassen', Sorted(FEdits))]);
+  FReport.Add(ReportRange, mMessage, [TRuleFix.Create(cTexts[TXmlDocText.MatchSignature].Text, Sorted(FEdits))]);
 end;
 
 { TXmlDocMismatchRule }
@@ -1438,7 +1467,7 @@ end;
 function TXmlDocMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(XmlDocMismatchRuleId, TRuleSeverity.Hint,
-    'XMLDoc passt nicht zur Signatur oder ist kein wohlgeformtes XML');
+    cTexts[TXmlDocText.Title].Text);
 end;
 
 procedure TXmlDocMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1461,5 +1490,8 @@ procedure RegisterXmlDocRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TXmlDocMismatchRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.XmlDoc', cTexts);
 
 end.

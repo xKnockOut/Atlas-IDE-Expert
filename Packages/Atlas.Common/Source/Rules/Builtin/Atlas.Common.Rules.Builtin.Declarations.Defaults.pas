@@ -41,14 +41,32 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsDefaultsText = (Title, One, Many, Overloads);
+
+const
+  cTexts: array[TDeclarationsDefaultsText] of TAtlasText = (
+    (De: 'Standardparameter statt Überladung'; En: 'Default parameter instead of overload'),
+    (De: 'Standardparameter; eine Überladung ohne %s hält den Vorgabewert in der Bibliothek.';
+     En: 'Default parameter; an overload without %s keeps the default value in the library.'),
+    (De: 'Standardparameter; Überladungen ohne %s halten die Vorgabewerte in der Bibliothek.';
+     En: 'Default parameters; overloads without %s keep the default values in the library.'),
+    (De: 'Überladungen statt Standardparameter'; En: 'Overloads instead of default parameters'));
+
+{$SCOPEDENUMS OFF}
 
 { TDefaultParameterRule }
 
 function TDefaultParameterRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DefaultParameterRuleId, TRuleSeverity.Warning,
-    'Standardparameter statt Überladung', True);
+    cTexts[TDeclarationsDefaultsText.Title].Text, True);
 end;
 
 type
@@ -309,13 +327,11 @@ var
   begin
     if Length(ANames) = 1 then
     begin
-      Result := Format('Standardparameter; eine Überladung ohne %s hält den Vorgabewert in der Bibliothek.',
-        [ANames[0]]);
+      Result := cTexts[TDeclarationsDefaultsText.One].Fmt([ANames[0]]);
     end
     else
     begin
-      Result := Format('Standardparameter; Überladungen ohne %s halten die Vorgabewerte in der Bibliothek.',
-        [JoinedList(ANames)]);
+      Result := cTexts[TDeclarationsDefaultsText.Many].Fmt([JoinedList(ANames)]);
     end;
   end;
 
@@ -428,7 +444,8 @@ var
     // Sicher (auch für --fix und die Sammelkorrektur), wenn keine andere Unit die Routine sieht.
     if CanFix then
     begin
-      Fixes := [TRuleFix.Create('Überladungen statt Standardparameter', Fix(Decl, AHeader, Body, DeclIsBody, First),
+      Fixes := [TRuleFix.Create(cTexts[TDeclarationsDefaultsText.Overloads].Text, Fix(Decl, AHeader, Body, DeclIsBody,
+        First),
         UnitPrivate(AHeader))];
     end;
     ReportAt(Params, DefaultMessage(Names), Fixes);
@@ -596,5 +613,8 @@ begin
     end);
   Visit(AContext.Tree.Root);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.Defaults', cTexts);
 
 end.

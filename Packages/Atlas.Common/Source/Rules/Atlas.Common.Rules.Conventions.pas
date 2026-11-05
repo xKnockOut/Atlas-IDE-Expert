@@ -30,7 +30,28 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConventionsText = (Heading, Intro, Profile, FormatStyle, FormatDefault, Naming, NoNamingRule, ActiveRules);
+
+const
+  cTexts: array[TConventionsText] of TAtlasText = (
+    (De: '# Konventionen des Projekts'; En: '# Project conventions'),
+    (De: 'Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.';
+     En: 'Atlas checks code against these rules. Follow them before writing, then check with `check_code`.'),
+    (De: '- Regelprofil: `%s`'; En: '- Rule profile: `%s`'),
+    (De: '- Formatstil (`format` in atlas.json): `%s`'; En: '- Format style (`format` in atlas.json): `%s`'),
+    (De: '- Formatstil: Vorgaben bzw. `.editorconfig`'; En: '- Format style: defaults or `.editorconfig`'),
+    (De: '## Benennung'; En: '## Naming'),
+    (De: '- Keine aktive Benennungsregel.'; En: '- No active naming rule.'),
+    (De: '## Aktive Regeln (%d)'; En: '## Active rules (%d)'));
+
+{$SCOPEDENUMS OFF}
 
 class function TRuleConventions.IsNamingRule(const ARuleId: string): Boolean;
 begin
@@ -88,18 +109,18 @@ begin
   begin
     mProfile := 'standard';
   end;
-  ABuilder.AppendLine('# Konventionen des Projekts');
+  ABuilder.AppendLine(cTexts[TConventionsText.Heading].Text);
   ABuilder.AppendLine;
-  ABuilder.AppendLine('Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.');
+  ABuilder.AppendLine(cTexts[TConventionsText.Intro].Text);
   ABuilder.AppendLine;
-  ABuilder.AppendFormat('- Regelprofil: `%s`', [mProfile]).AppendLine;
+  ABuilder.AppendFormat(cTexts[TConventionsText.Profile].Text, [mProfile]).AppendLine;
   if ASettings.Format <> '' then
   begin
-    ABuilder.AppendFormat('- Formatstil (`format` in atlas.json): `%s`', [ASettings.Format]).AppendLine;
+    ABuilder.AppendFormat(cTexts[TConventionsText.FormatStyle].Text, [ASettings.Format]).AppendLine;
   end
   else
   begin
-    ABuilder.AppendLine('- Formatstil: Vorgaben bzw. `.editorconfig`');
+    ABuilder.AppendLine(cTexts[TConventionsText.FormatDefault].Text);
   end;
 end;
 
@@ -121,7 +142,7 @@ begin
   try
     AppendHeader(mBuilder, ASettings);
     mBuilder.AppendLine;
-    mBuilder.AppendLine('## Benennung');
+    mBuilder.AppendLine(cTexts[TConventionsText.Naming].Text);
     mBuilder.AppendLine;
     mNaming := False;
     for mItem in mActive do
@@ -134,10 +155,10 @@ begin
     end;
     if not mNaming then
     begin
-      mBuilder.AppendLine('- Keine aktive Benennungsregel.');
+      mBuilder.AppendLine(cTexts[TConventionsText.NoNamingRule].Text);
     end;
     mBuilder.AppendLine;
-    mBuilder.AppendFormat('## Aktive Regeln (%d)', [Length(mActive)]).AppendLine;
+    mBuilder.AppendFormat(cTexts[TConventionsText.ActiveRules].Text, [Length(mActive)]).AppendLine;
     mBuilder.AppendLine;
     for mItem in mActive do
     begin
@@ -148,5 +169,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Conventions', cTexts);
 
 end.

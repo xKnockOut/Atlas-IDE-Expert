@@ -67,7 +67,29 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.WarnSwitches,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeprecatedText = (IsKind, Better, Like, ReplaceWith, DotNetSwitch, RemoveSwitch, Title);
+
+const
+  cTexts: array[TDeprecatedText] of TAtlasText = (
+    (De: '%s%s ist %s'; En: '%s%s is %s'),
+    (De: '; besser '; En: '; better '),
+    (De: ' (wie %s).'; En: ' (like %s).'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'Den Schalter %s gibt es nur für .NET; er ist plattformspezifisch und wirkt hier nicht (wie W1002).';
+     En: 'The switch %s exists only for .NET; it is platform-specific and has no effect here (like W1002).'),
+    (De: 'Schalter %s entfernen'; En: 'Remove switch %s'),
+    (De: 'Verwendung eines Symbols oder einer Unit mit deprecated, experimental, platform oder library (wie ' +
+      'W1000–W1007).';
+     En: 'Use of a symbol or unit with deprecated, experimental, platform or library (like W1000–W1007).'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Je Art: Direktive, Code bei Symbolen, Code bei Units, Schalter für Symbole und für Units.
@@ -485,16 +507,16 @@ begin
     mPrefix := 'Unit ';
     mCode := UnitCodes[AKind];
   end;
-  Result := Format('%s%s ist %s', [mPrefix, AName, KindWords[AKind]]);
+  Result := cTexts[TDeprecatedText.IsKind].Fmt([mPrefix, AName, KindWords[AKind]]);
   if (AKind = 0) and (AHint.Reason <> '') then
   begin
     Result := Result + ': ' + AHint.Reason;
   end
   else if AHint.Replacement <> '' then
   begin
-    Result := Result + '; besser ' + AHint.Replacement;
+    Result := Result + cTexts[TDeprecatedText.Better].Text + AHint.Replacement;
   end;
-  Result := Result + Format(' (wie %s).', [mCode]);
+  Result := Result + cTexts[TDeprecatedText.Like].Fmt([mCode]);
 end;
 
 procedure TDeprecatedCheck.ReportKinds(const ARange: TTextRange; ATokenIndex: Integer; const AName: string;
@@ -508,7 +530,7 @@ begin
   mFixes := nil;
   if AHint.Replacement <> '' then
   begin
-    mFixes := [TRuleFix.Create(Format('Durch %s ersetzen', [AHint.Replacement]),
+    mFixes := [TRuleFix.Create(cTexts[TDeprecatedText.ReplaceWith].Fmt([AHint.Replacement]),
       [TTextEdit.Create(ARange, AHint.Replacement)])];
   end;
   for mKind := Low(KindWords) to High(KindWords) do
@@ -739,9 +761,8 @@ begin
       mSeverity := TRuleSeverity.Error;
     end;
     mRange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
-    FReport.AddWithSeverity(mRange, Format('Den Schalter %s gibt es nur für .NET; er ist plattformspezifisch ' +
-      'und wirkt hier nicht (wie W1002).', [mName]), mSeverity,
-      [TRuleFix.Create(Format('Schalter %s entfernen', [mName]), [TTextEdit.Create(mRange, '')])]);
+    FReport.AddWithSeverity(mRange, cTexts[TDeprecatedText.DotNetSwitch].Fmt([mName]), mSeverity,
+      [TRuleFix.Create(cTexts[TDeprecatedText.RemoveSwitch].Fmt([mName]), [TTextEdit.Create(mRange, '')])]);
   end;
 end;
 
@@ -765,13 +786,13 @@ end;
 function TDeprecatedSymbolRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DeprecatedSymbolRuleId, TRuleSeverity.Warning,
-    'Verwendung eines Symbols oder einer Unit mit deprecated, experimental, platform oder library ' +
-    '(wie W1000–W1007).');
+    cTexts[TDeprecatedText.Title].Text);
 end;
 
 class function TDeprecatedSymbolRule.IsDeprecation(const AMessage: string): Boolean;
 begin
-  Result := ContainsStr(AMessage, '(wie W1000).') or ContainsStr(AMessage, '(wie W1006).');
+  // Über die Compilernummer am Ende, nicht über den Text: die Meldung gibt es deutsch und englisch (#1458).
+  Result := EndsStr('W1000).', AMessage) or EndsStr('W1006).', AMessage);
 end;
 
 procedure TDeprecatedSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -794,5 +815,8 @@ procedure RegisterDeprecatedRules(ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDeprecatedSymbolRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Deprecated', cTexts);
 
 end.

@@ -36,14 +36,38 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TInheritanceOverrideCaseText = (Title, Spelling, TakeSpelling, LessVisible, AccessorName, RenameTo,
+    InlineVisibility);
+
+const
+  cTexts: array[TInheritanceOverrideCaseText] of TAtlasText = (
+    (De: 'Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab';
+     En: 'Spelling or visibility differs from the ancestor'),
+    (De: 'Schreibweise weicht von %s.%s ab (wie H2365).'; En: 'Spelling differs from %s.%s (like H2365).'),
+    (De: 'Schreibweise vom Vorfahr übernehmen'; En: 'Take spelling from the ancestor'),
+    (De: '%s.%s ist %s und damit weniger sichtbar als %s.%s (%s) (wie H2269).';
+     En: '%s.%s is %s and thus less visible than %s.%s (%s) (like H2269).'),
+    (De: 'Die Zugriffsmethode %s.%s sollte %s.%s geschrieben werden.';
+     En: 'The access method %s.%s should be written %s.%s.'),
+    (De: 'In %s umbenennen'; En: 'Rename to %s'),
+    (De: 'Die inline-Methode %s.%s ist %s, greift aber auf %s (%s) zu.';
+     En: 'The inline method %s.%s is %s but accesses %s (%s).'));
+
+{$SCOPEDENUMS OFF}
 
 { TOverrideCaseMismatchRule }
 
 function TOverrideCaseMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(OverrideCaseMismatchRuleId, TRuleSeverity.Hint,
-    'Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab', True);
+    cTexts[TInheritanceOverrideCaseText.Title].Text, True);
 end;
 
 /// <summary>Stufe einer Sichtbarkeit: 0 privat, 1 geschützt, 2 öffentlich (public und published). Nur Stufen
@@ -412,14 +436,14 @@ begin
   end;
   if Target.Name <> AOwn.Name then
   begin
-    FReport.Add(AOwn.SelectionRange, Format('Schreibweise weicht von %s.%s ab (wie H2365).', [Owner, Target.Name]),
-      TRuleConfidence.High, [TRuleFix.Create('Schreibweise vom Vorfahr übernehmen',
+    FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.Spelling].Fmt([Owner, Target.Name]),
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.TakeSpelling].Text,
       [TRuleEdit.Create(AOwn.SelectionRange, Target.Name)] + BodyHeadEdits(AOwn.Name, Target.Name))]);
   end;
   // Nur für Klassen im interface-Teil (die Sichtbarkeit sieht man nur dort von außen).
   if FClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(Target.Visibility)) then
   begin
-    FReport.Add(AOwn.SelectionRange, Format('%s.%s ist %s und damit weniger sichtbar als %s.%s (%s) (wie H2269).',
+    FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.LessVisible].Fmt(
       [FClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), Owner, Target.Name,
       VisibilityName(Target.Visibility)]), TRuleConfidence.High);
   end;
@@ -499,9 +523,9 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(TokenRange(AIndex + 1), Format('Die Zugriffsmethode %s.%s sollte %s.%s geschrieben werden.',
+  FReport.Add(TokenRange(AIndex + 1), cTexts[TInheritanceOverrideCaseText.AccessorName].Fmt(
     [FClass.Name, Method.Name, FClass.Name, Expected]), TRuleConfidence.High,
-    [TRuleFix.Create(Format('In %s umbenennen', [Expected]), RenameEdits(Name, Expected))]);
+    [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.RenameTo].Fmt([Expected]), RenameEdits(Name, Expected))]);
 end;
 
 /// <summary>Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.
@@ -569,7 +593,7 @@ begin
       and (VisibilityTier(Hit.Visibility) < VisibilityTier(AMethod.Visibility)) then
     begin
       AReported := AReported + [FTokens[Level].Text];
-      FReport.Add(TokenRange(Level), Format('Die inline-Methode %s.%s ist %s, greift aber auf %s (%s) zu.',
+      FReport.Add(TokenRange(Level), cTexts[TInheritanceOverrideCaseText.InlineVisibility].Fmt(
         [FClass.Name, AMethod.Name, VisibilityName(AMethod.Visibility), Hit.Name, VisibilityName(Hit.Visibility)]),
         TRuleConfidence.High);
     end;
@@ -678,5 +702,8 @@ begin
     Check.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Inheritance.OverrideCase', cTexts);
 
 end.

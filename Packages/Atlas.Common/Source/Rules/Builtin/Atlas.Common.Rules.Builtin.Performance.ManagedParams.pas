@@ -41,7 +41,31 @@ uses
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Performance.DynamicArrays;
+  Atlas.Common.Rules.Builtin.Performance.DynamicArrays,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TPerformanceManagedParamsText = (SavesBoth, SavesRefCount, SavesCopy, NotModified, AddConst, NotModifiedOverride,
+    Title, SubjectOne, SubjectMany);
+
+const
+  cTexts: array[TPerformanceManagedParamsText] of TAtlasText = (
+    (De: 'entfallen Referenzzählung und Kopie'; En: 'reference counting and the copy are avoided'),
+    (De: 'entfällt die Referenzzählung'; En: 'reference counting is avoided'),
+    (De: 'entfällt die Kopie'; En: 'the copy is avoided'),
+    (De: '%s nicht verändert; mit const %s.'; En: '%s not modified; with const %s.'),
+    (De: 'const ergänzen'; En: 'Add const'),
+    (De: '%s nicht verändert; mit const %s (override: die Signatur des Vorfahren mit ändern).';
+     En: '%s not modified; with const %s (override: change the signature of the ancestor too).'),
+    (De: 'String-, Interface-, Array- oder Record-Parameter ohne const wird nicht verändert';
+     En: 'String, interface, array or record parameter without const is not modified'),
+    (De: '%s wird'; En: '%s is'),
+    (De: '%s und %s werden'; En: '%s and %s are'));
+
+{$SCOPEDENUMS OFF}
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
@@ -684,11 +708,12 @@ begin
   end;
   if Length(mNames) = 1 then
   begin
-    Result := mNames[0] + ' wird';
+    Result := cTexts[TPerformanceManagedParamsText.SubjectOne].Fmt([mNames[0]]);
   end
   else
   begin
-    Result := string.Join(', ', Copy(mNames, 0, Length(mNames) - 1)) + ' und ' + mNames[High(mNames)] + ' werden';
+    Result := cTexts[TPerformanceManagedParamsText.SubjectMany].Fmt([string.Join(', ', Copy(mNames, 0,
+      Length(mNames) - 1)), mNames[High(mNames)]]);
   end;
 end;
 
@@ -707,15 +732,15 @@ begin
   end;
   if mHasRefCount and mHasCopy then
   begin
-    Result := 'entfallen Referenzzählung und Kopie';
+    Result := cTexts[TPerformanceManagedParamsText.SavesBoth].Text;
   end
   else if mHasRefCount then
   begin
-    Result := 'entfällt die Referenzzählung';
+    Result := cTexts[TPerformanceManagedParamsText.SavesRefCount].Text;
   end
   else
   begin
-    Result := 'entfällt die Kopie';
+    Result := cTexts[TPerformanceManagedParamsText.SavesCopy].Text;
   end;
 end;
 
@@ -1109,13 +1134,12 @@ begin
   end;
   if mEdits <> nil then
   begin
-    FReport.Add(mRange, Format('%s nicht verändert; mit const %s.', [mSubject, mCosts]),
-      [TRuleFix.Create('const ergänzen', mEdits)]);
+    FReport.Add(mRange, cTexts[TPerformanceManagedParamsText.NotModified].Fmt([mSubject, mCosts]),
+      [TRuleFix.Create(cTexts[TPerformanceManagedParamsText.AddConst].Text, mEdits)]);
   end
   else
   begin
-    FReport.Add(mRange, Format('%s nicht verändert; mit const %s ' +
-      '(override: die Signatur des Vorfahren mit ändern).', [mSubject, mCosts]));
+    FReport.Add(mRange, cTexts[TPerformanceManagedParamsText.NotModifiedOverride].Fmt([mSubject, mCosts]));
   end;
 end;
 
@@ -1200,7 +1224,7 @@ end;
 function TManagedParamWithoutConstRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ManagedParamRuleId, TRuleSeverity.Hint,
-    'String-, Interface-, Array- oder Record-Parameter ohne const wird nicht verändert', True);
+    cTexts[TPerformanceManagedParamsText.Title].Text, True);
 end;
 
 procedure TManagedParamWithoutConstRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1218,5 +1242,8 @@ begin
     mScan.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Performance.ManagedParams', cTexts);
 
 end.

@@ -37,13 +37,31 @@ uses
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDeclarationsTypeSizesText = (Title, OverPB, TheType, TooLarge, AtLeast);
+
+const
+  cTexts: array[TDeclarationsTypeSizesText] of TAtlasText = (
+    (De: 'Typ überschreitet eine Größengrenze'; En: 'Type exceeds a size limit'),
+    (De: 'über 1 PB'; En: 'over 1 PB'),
+    (De: 'Der Typ'; En: 'The type'),
+    (De: '%s ist %s groß; erlaubt sind 2 GB (wie %s).'; En: '%s is %s in size; 2 GB are allowed (like %s).'),
+    (De: 'mindestens %s'; En: 'at least %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TTypeTooLargeRule }
 
 function TTypeTooLargeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('type-too-large', TRuleSeverity.Error, 'Typ überschreitet eine Größengrenze');
+  Result := TRuleDescriptor.Create('type-too-large', TRuleSeverity.Error,
+    cTexts[TDeclarationsTypeSizesText.Title].Text);
 end;
 
 const
@@ -725,7 +743,7 @@ var
     Gigabytes := ASize.Bytes shr 30;
     if ASize.Bytes >= TypeSizeCap then
     begin
-      Result := 'über 1 PB';
+      Result := cTexts[TDeclarationsTypeSizesText.OverPB].Text;
     end
     else if ASize.Bytes and ((Int64(1) shl 30) - 1) = 0 then
     begin
@@ -739,7 +757,7 @@ var
     end;
     if not ASize.Exact and (ASize.Bytes < TypeSizeCap) then
     begin
-      Result := 'mindestens ' + Result;
+      Result := cTexts[TDeclarationsTypeSizesText.AtLeast].Fmt([Result]);
     end;
   end;
 
@@ -802,10 +820,10 @@ var
       Name := OwnerName(ANode);
       if Name = '' then
       begin
-        Name := 'Der Typ';
+        Name := cTexts[TDeclarationsTypeSizesText.TheType].Text;
       end;
     end;
-    AReport.Add(NameRange(ANode), Format('%s ist %s groß; erlaubt sind 2 GB (wie %s).', [Name, SizeText(Size),
+    AReport.Add(NameRange(ANode), cTexts[TDeclarationsTypeSizesText.TooLarge].Fmt([Name, SizeText(Size),
       Code]), TRuleConfidence.High);
   end;
 
@@ -852,5 +870,8 @@ begin
     Sizes.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Declarations.TypeSizes', cTexts);
 
 end.

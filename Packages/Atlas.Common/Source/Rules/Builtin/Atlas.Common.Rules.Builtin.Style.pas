@@ -105,7 +105,51 @@ uses
   Atlas.Common.Rules.Builtin.Style.Tokens,
   Atlas.Common.Rules.Builtin.Style.LineLength,
   Atlas.Common.Rules.Builtin.Style.Declarations,
-  Atlas.Common.Rules.Builtin.Style.BeginEnd;
+  Atlas.Common.Rules.Builtin.Style.BeginEnd,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStyleText = (BoolCompareTitle, AssignedFreeTitle, ToFreeAndNil, RemoveCheck, AssignedFree, RaiseFinallyTitle,
+    RaiseFinally, ParensTitle, Parens, RemoveParens, BeginEndTitle, BeginEnd, RemoveBeginEnd, WithHides, IfBoolTitle,
+    IfBool, CaseCompareTitle, CaseCompare, MagicTitle, IntroduceConstant, Magic, BoolCompare, ReplaceWith);
+
+const
+  cTexts: array[TStyleText] of TAtlasText = (
+    (De: 'Vergleich mit True oder False'; En: 'Comparison with True or False'),
+    (De: 'Assigned-Prüfung vor Free ist überflüssig'; En: 'Assigned check before Free is superfluous'),
+    (De: 'Durch FreeAndNil ersetzen'; En: 'Replace with FreeAndNil'),
+    (De: 'Prüfung entfernen'; En: 'Remove check'),
+    (De: 'Free prüft selbst auf nil; Assigned davor ist überflüssig';
+     En: 'Free checks for nil itself; Assigned before it is superfluous'),
+    (De: 'raise in einem finally-Block'; En: 'raise in a finally block'),
+    (De: 'raise im finally-Block überdeckt eine laufende Ausnahme';
+     En: 'raise in the finally block hides a running exception'),
+    (De: 'Überflüssige Klammern'; En: 'Superfluous parentheses'),
+    (De: 'Die Klammern um den ganzen Ausdruck sind überflüssig';
+     En: 'The parentheses around the whole expression are superfluous'),
+    (De: 'Klammern entfernen'; En: 'Remove parentheses'),
+    (De: 'begin/end um eine einzelne Anweisung'; En: 'begin/end around a single statement'),
+    (De: 'begin/end um eine einzelne Anweisung ist überflüssig';
+     En: 'begin/end around a single statement is superfluous'),
+    (De: 'begin/end entfernen'; En: 'Remove begin/end'),
+    (De: 'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben';
+     En: 'with hides which object an identifier belongs to; better write out the expression'),
+    (De: 'if, das nur True oder False zuweist'; En: 'if that only assigns True or False'),
+    (De: 'Das if weist nur True oder False zu.'; En: 'The if only assigns True or False.'),
+    (De: 'Vergleich über UpperCase oder LowerCase'; En: 'Comparison via UpperCase or LowerCase'),
+    (De: 'Vergleich über %s; %s vergleicht ohne Zwischenstrings.';
+     En: 'Comparison via %s; %s compares without intermediate strings.'),
+    (De: 'Zahl ohne Namen im Code'; En: 'Number without name in the code'),
+    (De: 'Konstante einführen'; En: 'Introduce constant'),
+    (De: 'Zahl %s ohne Namen; als Konstante wird klar, was sie bedeutet.';
+     En: 'Number %s without name; as a constant it becomes clear what it means.'),
+    (De: 'Vergleich mit %s ist überflüssig'; En: 'Comparison with %s is superfluous'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Index der schließenden Klammer zu AOpen; -1 ohne.</summary>
 function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
@@ -189,7 +233,7 @@ end;
 
 function TBoolCompareRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('bool-compare', TRuleSeverity.Hint, 'Vergleich mit True oder False');
+  Result := TRuleDescriptor.Create('bool-compare', TRuleSeverity.Hint, cTexts[TStyleText.BoolCompareTitle].Text);
 end;
 
 type
@@ -269,8 +313,9 @@ var
 begin
   Negate := SameText(ATokens[ACompare.Literal].Text, 'False') <> ATokens[AIndex].IsSymbol('<>');
   Text := IfThen(Negate, 'not ', '') + ATokens[ACompare.Name].Text;
-  AReport.Add(RangeOf(ATokens, ACompare.Left, ACompare.Right), 'Vergleich mit ' + ATokens[ACompare.Literal].Text +
-    ' ist überflüssig', TRuleConfidence.High, [TRuleFix.Create('Durch ' + Text + ' ersetzen',
+  AReport.Add(RangeOf(ATokens, ACompare.Left, ACompare.Right),
+    cTexts[TStyleText.BoolCompare].Fmt([ATokens[ACompare.Literal].Text]),
+    TRuleConfidence.High, [TRuleFix.Create(cTexts[TStyleText.ReplaceWith].Fmt([Text]),
     [TRuleEdit.Create(RangeOf(ATokens, ACompare.Left, ACompare.Right), Text)], True)]);
 end;
 
@@ -314,7 +359,7 @@ end;
 function TRedundantAssignedFreeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('redundant-assigned-free', TRuleSeverity.Hint,
-    'Assigned-Prüfung vor Free ist überflüssig');
+    cTexts[TStyleText.AssignedFreeTitle].Text);
 end;
 
 /// <summary>Passen die Tokens ab AAt zum Pfad APath (z. B. "Self.FListe")? AEnd: letztes Token.</summary>
@@ -418,7 +463,7 @@ begin
   end;
   AFree.Last := Last;
   AFree.Fix := 'FreeAndNil(' + AFree.Path + ')';
-  AFree.Title := 'Durch FreeAndNil ersetzen';
+  AFree.Title := cTexts[TStyleText.ToFreeAndNil].Text;
   Result := True;
 end;
 
@@ -432,7 +477,7 @@ begin
   begin
     AFree.Last := PathEnd;
     AFree.Fix := AFree.Path + '.Free';
-    AFree.Title := 'Prüfung entfernen';
+    AFree.Title := cTexts[TStyleText.RemoveCheck].Text;
   end;
 end;
 
@@ -480,7 +525,7 @@ begin
   begin
     if Tokens[Index].IsKeyword('if') and AssignedFreeAt(Tokens, Index, Found) then
     begin
-      AReport.Add(RangeOf(Tokens, Index, Found.Last), 'Free prüft selbst auf nil; Assigned davor ist überflüssig',
+      AReport.Add(RangeOf(Tokens, Index, Found.Last), cTexts[TStyleText.AssignedFree].Text,
         TRuleConfidence.High, [TRuleFix.Create(Found.Title, [TRuleEdit.Create(RangeOf(Tokens, Index, Found.Last),
         Found.Fix)], True)]);
     end;
@@ -491,7 +536,8 @@ end;
 
 function TRaiseInFinallyRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('raise-in-finally', TRuleSeverity.Warning, 'raise in einem finally-Block');
+  Result := TRuleDescriptor.Create('raise-in-finally', TRuleSeverity.Warning,
+    cTexts[TStyleText.RaiseFinallyTitle].Text);
 end;
 
 type
@@ -510,7 +556,7 @@ end;
 procedure ReportRaise(ANode: TSyntaxNode; const AReport: IRuleReport);
 begin
   AReport.Add(TTextRange.Create(ANode.StartPos, TTextPosition.Create(ANode.StartPos.Line,
-    ANode.StartPos.Character + Length('raise'))), 'raise im finally-Block überdeckt eine laufende Ausnahme',
+    ANode.StartPos.Character + Length('raise'))), cTexts[TStyleText.RaiseFinally].Text,
     TRuleConfidence.High);
 end;
 
@@ -615,7 +661,7 @@ end;
 
 function TRedundantParensRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('redundant-parens', TRuleSeverity.Hint, 'Überflüssige Klammern', True);
+  Result := TRuleDescriptor.Create('redundant-parens', TRuleSeverity.Hint, cTexts[TStyleText.ParensTitle].Text, True);
 end;
 
 /// <summary>Token, hinter dem ein ganzer Ausdruck folgt: if, while, until, case, :=.</summary>
@@ -691,8 +737,8 @@ begin
     begin
       Continue;
     end;
-    AReport.Add(RangeOf(Tokens, Open, Close), 'Die Klammern um den ganzen Ausdruck sind überflüssig',
-      TRuleConfidence.High, [TRuleFix.Create('Klammern entfernen', [
+    AReport.Add(RangeOf(Tokens, Open, Close), cTexts[TStyleText.Parens].Text,
+      TRuleConfidence.High, [TRuleFix.Create(cTexts[TStyleText.RemoveParens].Text, [
       TRuleEdit.Create(RangeOf(Tokens, Open, Open), ''), TRuleEdit.Create(RangeOf(Tokens, Close, Close), '')],
       True)]);
   end;
@@ -703,7 +749,7 @@ end;
 function TRedundantBeginEndRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('redundant-begin-end', TRuleSeverity.Hint,
-    'begin/end um eine einzelne Anweisung', True);
+    cTexts[TStyleText.BeginEndTitle].Text, True);
 end;
 
 /// <summary>Endet die Anweisung mit einem if ohne else (auch verschachtelt in for/while/with)?</summary>
@@ -830,8 +876,9 @@ begin
   begin
     Exit;
   end;
-  AReport.Add(RangeOf(ATokens, First, First), 'begin/end um eine einzelne Anweisung ist überflüssig',
-    TRuleConfidence.High, [TRuleFix.Create('begin/end entfernen', [TRuleEdit.Create(RangeOf(ATokens, First, Last),
+  AReport.Add(RangeOf(ATokens, First, First), cTexts[TStyleText.BeginEnd].Text,
+    TRuleConfidence.High, [TRuleFix.Create(cTexts[TStyleText.RemoveBeginEnd].Text, [TRuleEdit.Create(RangeOf(ATokens,
+      First, Last),
     TokenText(ATokens, BodyFirst, BodyLast))])]);
 end;
 
@@ -903,7 +950,7 @@ begin
       if (Keyword >= 0) and Tokens[Keyword].IsKeyword('with') then
       begin
         Report.Add(RangeOf(Tokens, Keyword, Keyword),
-          'with verdeckt, zu welchem Objekt ein Bezeichner gehört; besser den Ausdruck ausschreiben',
+          cTexts[TStyleText.WithHides].Text,
           TRuleConfidence.High);
       end;
     end);
@@ -913,12 +960,10 @@ end;
 
 function TBooleanAssignIfRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('boolean-assign-if', TRuleSeverity.Hint, 'if, das nur True oder False zuweist');
+  Result := TRuleDescriptor.Create('boolean-assign-if', TRuleSeverity.Hint, cTexts[TStyleText.IfBoolTitle].Text);
 end;
 
 procedure TBooleanAssignIfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  Message = 'Das if weist nur True oder False zu.';
 var
   Tokens: TTokens;
 
@@ -1035,10 +1080,12 @@ var
     Fixes := nil;
     if not HasComment(AIf.StartOffset, ALast.EndOffset) then
     begin
-      Fixes := [TRuleFix.Create('Durch ' + ANewText + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
+      Fixes := [TRuleFix.Create(cTexts[TStyleText.ReplaceWith].Fmt([ANewText]),
+        [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
         ALast.EndPos), ANewText)])];
     end;
-    AReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), Message, TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), cTexts[TStyleText.IfBool].Text, TRuleConfidence.High,
+      Fixes);
   end;
 
   function Expression(ACondition: TSyntaxNode; AValue: Integer): string;
@@ -1157,7 +1204,7 @@ type
 function TCaseInsensitiveCompareRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('case-insensitive-compare', TRuleSeverity.Hint,
-    'Vergleich über UpperCase oder LowerCase');
+    cTexts[TStyleText.CaseCompareTitle].Text);
 end;
 
 procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1288,9 +1335,10 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     begin
       Replacement := 'not ' + Replacement;
     end;
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Vergleich über %s; %s vergleicht ohne ' +
-      'Zwischenstrings.', [Name, SameName]), TRuleConfidence.High,
-      [TRuleFix.Create('Durch ' + Replacement + ' ersetzen', [TRuleEdit.Create(TTextRange.Create(ANode.StartPos,
+    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TStyleText.CaseCompare].Fmt([Name, SameName]),
+      TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TStyleText.ReplaceWith].Fmt([Replacement]),
+        [TRuleEdit.Create(TTextRange.Create(ANode.StartPos,
       ANode.EndPos), Replacement)])]);
   end;
 
@@ -1332,7 +1380,7 @@ end;
 
 function TMagicNumberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, 'Zahl ohne Namen im Code', True);
+  Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, cTexts[TStyleText.MagicTitle].Text, True);
 end;
 
 procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1411,10 +1459,10 @@ var
     if TExtractRefactoring.ExtractConstant(AContext.Text, AContext.Tree, TTextRange.Create(Node.StartPos, Node.EndPos),
       Options, False, Action) then
     begin
-      Fixes := [TRuleFix.Create('Konstante einführen', Action.Edits)];
+      Fixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, Action.Edits)];
     end;
-    AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), Format('Zahl %s ohne Namen; als Konstante wird klar, ' +
-      'was sie bedeutet.', [Text(Node)]), TRuleConfidence.Low, Fixes);
+    AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), cTexts[TStyleText.Magic].Fmt([Text(Node)]),
+      TRuleConfidence.Low, Fixes);
   end;
 
   procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
@@ -1498,5 +1546,8 @@ begin
   ARegistry.Register(TGlobalVariableRule.Create);
   ARegistry.Register(TMissingBeginEndRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Style', cTexts);
 
 end.
