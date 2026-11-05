@@ -176,7 +176,7 @@ Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE 
 | `Atlas.IDE.Rules` | Prüfregeln: Baseline, Compilermeldungen in die Baseline, Eigenschaftsregeln für Formulare, Sammelkorrektur | `ruleChecks.enabled` |
 | `Atlas.IDE.Bookmarks` | Notizen, benannte und schnelle Lesezeichen, TODO-Liste | `bookmarks.enabled` |
 | `Atlas.IDE.Search` | Atlas-Suche, Units suchen, Code-Abfragen | `search.enabled` |
-| `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen | `analysis.enabled` |
+| `Atlas.IDE.Analysis` | Architektur, Hotspots, Unit-Beziehungen, Weg zwischen Symbolen, Code Lens mit Code-Metriken | `analysis.enabled` |
 | `Atlas.IDE.Designer` | Designer-Leiste | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue-Tracker: Issue-Kennungen im Code, Zeilenhistorie, Board, „An Issue anhängen“, Kacheln „Meine Issues“ und Sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |

@@ -24,6 +24,7 @@ Ausnahmen:
 
 - Der allgemeine Tooltip `Atlas.UI.Popup.TitledTip` (bis #1455 `Atlas.UI.Notes.Tip`) liegt im Kern.
 - Die Build-Pipeline ist ein eigenes Modul (#1455, Entscheidung Marco 01.11.2026 14:36): Läufer der Builds auf Auftrag mit MCP-Eingang, Prüfung vor dem Kompilieren, Release-Wächter, Bewertung nach der 0/0/0-Regel mit Zusammenfassung (Ordner `BuildPipeline`, Schalter `buildPipeline`). Im Kern bleiben die Bewertung als Typen und `IAtlasBuildVerdictListener` (`Build.Verdict`, die Benachrichtigungszentrale hört darauf), was Base der Pipeline gibt (`Build.Pipeline`), die Werte ihrer Einstellungen (`Build.PipelineSettings`, `Build.OpenBuildSettings`), die Meldungen des letzten Builds (`IDE.Build.LastMessages`), `Build.IdleGate` (Diagnose-Zeitmessung) und `IDE.Build.Target` (Probleme, Projekt-Einstellungen). Andere Module bauen über `Atlas.IDE.Contracts.BuildPipeline`. Das Modul Build umfasst, was der Schalter `buildTools` abschaltet: Bauen beim Öffnen, Projektaufgaben, Startprofile, Compiler-Schalter.
+- Code Lens mit Code-Metriken (#66) im Modul Analyse (#1756, Entscheidung Marco 05.11.2026): Zeichnen (`IDE.Analysis.MetricsLens`) und Beschriftung (`Core.Analysis.MetricsLens`). Im Kern bleiben die Antwort von `atlas.server.metrics` (`Core.Editor.Metrics`) und ihr Abruf je Editor (`IDE.Editor.MetricsSource`), weil die Atlas-Statusleiste Zeilen und CC am Cursor daraus liest und der Metrikbericht dieselben Typen nutzt; die Lens meldet beim Abruf nur Bedarf an. `codeLens.metrics` hängt am Modulschalter `analysis.enabled`.
 - Aus `SymbolPath/` liegen das Modell eines Wegs (`Core.SymbolPath.Model`) und seine Kette (`UI.SymbolPath.Chain`) im Kern (#1455): Das Ergebnisfenster von Base zeigt den Weg; Suche, Dialog und Befehle gehören zum Modul Analyse.
 - Aus `StartProfiles/` liegt die lokale Datei (`Core.StartProfiles.Store`) im Kern, dazu `IDE.Foundation.StartOptions` (#1455): Startoptionen schreiben und „Start“ auslösen brauchen die Startprofile (Modul Build) und „Test debuggen“ (Modul Tests); kein Modul kennt das andere.
 - Aus `Build/` bleiben im Kern: Compilermeldungen (`Build.Messages`, `Build.MessageView`), Prüfen nach dem Speichern (`Build.CheckOnSave`), Compile-Ereignisse (`Build.Events`, `Build.Notifier`) und die Build-Auswahl für den Server (`Build.Target`). ADR 0017 hält Compilermeldungen und Prüfen nach dem Speichern ausdrücklich im Kern.
@@ -172,7 +173,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Match` | `Core/Editor/Atlas.Core.Editor.Match.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodPlacement` | `Core/Editor/Atlas.Core.Editor.MethodPlacement.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodToggle` | `Core/Editor/Atlas.Core.Editor.MethodToggle.pas` | Ordner `Core/Editor` |
-| `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor`; Antwort von `atlas.server.metrics` für Statusleiste, Metrikbericht und Metrik-Lens (#1756) |
 | `Atlas.Core.Editor.Minimap` | `Core/Editor/Atlas.Core.Editor.Minimap.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MissingUnit` | `Core/Editor/Atlas.Core.Editor.MissingUnit.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MultiCursor` | `Core/Editor/Atlas.Core.Editor.MultiCursor.pas` | Ordner `Core/Editor` |
@@ -496,7 +497,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodKind` | `IDE/Editor/Atlas.IDE.Editor.MethodKind.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodPlacement` | `IDE/Editor/Atlas.IDE.Editor.MethodPlacement.pas` | Ordner `IDE/Editor` |
-| `Atlas.IDE.Editor.MetricsLens` | `IDE/Editor/Atlas.IDE.Editor.MetricsLens.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.MetricsSource` | `IDE/Editor/Atlas.IDE.Editor.MetricsSource.pas` | Ordner `IDE/Editor`; Abruf der Metriken für Statusleiste und Metrik-Lens (#1756) |
 | `Atlas.IDE.Editor.Lens` | `IDE/Editor/Atlas.IDE.Editor.Lens.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Minimap` | `IDE/Editor/Atlas.IDE.Editor.Minimap.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MinimapFolds` | `IDE/Editor/Atlas.IDE.Editor.MinimapFolds.pas` | Ordner `IDE/Editor` |
@@ -993,6 +994,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 
 | Unit | Datei | Begründung |
 |---|---|---|
+| `Atlas.Core.Analysis.MetricsLens` | `Core/Analysis/Atlas.Core.Analysis.MetricsLens.pas` | Ordner `Core/Analysis`; Beschriftung der Metrik-Lens (#66, #1756) |
 | `Atlas.Core.Architecture.Model` | `Core/Architecture/Atlas.Core.Architecture.Model.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.Commands` | `Core/Architecture/Atlas.Core.Architecture.Commands.pas` | Ordner `Core/Architecture` |
 | `Atlas.Core.Architecture.MapState` | `Core/Architecture/Atlas.Core.Architecture.MapState.pas` | Ordner `Core/Architecture` |
@@ -1001,6 +1003,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.UnitRelations.InterfaceCost` | `Core/UnitRelations/Atlas.Core.UnitRelations.InterfaceCost.pas` | Ordner `Core/UnitRelations` |
 | `Atlas.Core.UnitRelations.Model` | `Core/UnitRelations/Atlas.Core.UnitRelations.Model.pas` | Ordner `Core/UnitRelations` |
 | `Atlas.IDE.Analysis.Composition` | `IDE/Analysis/Atlas.IDE.Analysis.Composition.pas` | Anmeldung des Moduls `atlas.analysis`, #1455 |
+| `Atlas.IDE.Analysis.MetricsLens` | `IDE/Analysis/Atlas.IDE.Analysis.MetricsLens.pas` | Ordner `IDE/Analysis`; Code Lens mit Code-Metriken (#66), bis #1756 in Base |
 | `Atlas.IDE.Architecture.Service` | `IDE/Architecture/Atlas.IDE.Architecture.Service.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Architecture.Window` | `IDE/Architecture/Atlas.IDE.Architecture.Window.pas` | Ordner `IDE/Architecture` |
 | `Atlas.IDE.Hotspots.Service` | `IDE/Hotspots/Atlas.IDE.Hotspots.Service.pas` | Ordner `IDE/Hotspots` |
